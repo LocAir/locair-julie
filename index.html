@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Réservez votre climatiseur mobile à Nice. 19€/jour, installation offerte, sans dépôt de garantie." />
+  <title>Réserver — Loc'Air Nice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #2778AE;
+      --blue-bg: #EAF4FB;
+      --text: #0f0f0f;
+      --muted: #6b7280;
+      --light: #9ca3af;
+      --border: #e5e7eb;
+      --bg: #ffffff;
+      --page: #F2F2F2;
+      --r: 10px;
+      --green: #10b981;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--page);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    /* Topbar */
+    .topbar {
+      background: #1a1a2e;
+      border-bottom: 1px solid var(--border);
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .topbar-logo { color: #fff; font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+    .topbar-back { font-size: 13px; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 4px; }
+    .topbar-back:hover { color: #fff; }
+
+    /* Hero compact */
+    .hero {
+      background: #F2F2F2;
+      border-bottom: 1px solid var(--border);
+      padding: 32px 20px 28px;
+      text-align: center;
+    }
+    .hero-title {
+      color: #E8811A;
+      font-size: clamp(24px, 5vw, 34px);
+      font-weight: 600;
+      letter-spacing: -0.6px;
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    .hero-sub { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+    .trust-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+    }
+    .trust-pill {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--page);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 4px 12px;
+    }
+
+    /* Form layout */
+    .page { max-width: 520px; margin: 0 auto; padding: 32px 16px 72px; }
+
+    /* Floating label groups */
+    .fl { position: relative; margin-bottom: 12px; }
+    .fl input, .fl select, .fl textarea {
+      width: 100%;
+      padding: 22px 14px 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      font-size: 15px;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text);
+      appearance: none;
+      -webkit-appearance: none;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      line-height: 1.4;
+    }
+    .fl input:focus, .fl select:focus, .fl textarea:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(37,99,235,.08);
+    }
+    .fl input:hover, .fl select:hover { border-color: #d1d5db; }
+    .fl label {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+      color: var(--light);
+      pointer-events: none;
+      transition: top .15s, font-size .15s, color .15s;
+    }
+    .fl input:focus ~ label,
+    .fl input:not(:placeholder-shown) ~ label,
+    .fl select:focus ~ label,
+    .fl select.has-val ~ label {
+      top: 10px;
+      transform: none;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--blue);
+    }
+    .fl textarea { padding-top: 26px; resize: vertical; min-height: 80px; }
+    .fl.ta label { top: 20px; transform: none; }
+    .fl.ta textarea:focus ~ label,
+    .fl.ta textarea:not(:placeholder-shown) ~ label { top: 8px; font-size: 11px; font-weight: 500; color: var(--blue); }
+    .fl select { padding-top: 22px; cursor: pointer; }
+    .fl select:not([value=""]):valid { }
+    select-arrow { pointer-events: none; }
+    .fl .arr {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: var(--light);
+    }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* Pill toggles */
+    .pill-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+    .pill-group input { display: none; }
+    .pill-group label {
+      padding: 9px 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      font-size: 14px;
+      color: var(--muted);
+      cursor: pointer;
+      background: var(--bg);
+      transition: border-color .15s, background .15s, color .15s;
+      user-select: none;
+    }
+    .pill-group label:hover { border-color: #d1d5db; color: var(--text); }
+    .pill-group input:checked + label {
+      border-color: var(--blue);
+      background: var(--blue-bg);
+      color: var(--blue);
+      font-weight: 500;
+    }
+    .pill-label { font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.02em; }
+
+    /* Section divider */
+    .sep {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0 16px;
+      color: var(--light);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+    }
+    .sep::before, .sep::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* Prix live */
+    .price-pill {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      background: #E8811A;
+      color: #fff;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 12px;
+    }
+    .price-pill.show { display: flex; }
+    .price-pill-left { font-size: 13px; color: rgba(255,255,255,.55); }
+    .price-pill-val { font-size: 22px; font-weight: 600; letter-spacing: -0.5px; }
+    .price-pill-note { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 1px; }
+
+    /* RGPD */
+    .rgpd-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+    .rgpd-row input { width: 15px; height: 15px; min-width: 15px; margin-top: 3px; accent-color: var(--blue); cursor: pointer; }
+    .rgpd-row label { font-size: 12px; color: var(--muted); cursor: pointer; line-height: 1.6; }
+
+    /* Error */
+    .error-msg {
+      display: none;
+      font-size: 13px;
+      color: #dc2626;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: var(--r);
+      padding: 10px 14px;
+      margin-bottom: 12px;
+    }
+
+    /* Submit */
+    .submit-btn {
+      width: 100%;
+      padding: 15px;
+      background: #E8811A;
+      color: #fff;
+      border: none;
+      border-radius: var(--r);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      letter-spacing: -0.1px;
+      transition: opacity .15s, transform .1s;
+    }
+    .submit-btn:hover { opacity: .9; }
+    .submit-btn:active { transform: scale(.99); }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      margin-top: 18px;
+      font-size: 13px;
+      color: var(--light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+    .footer a { color: var(--muted); }
+    .footer a:hover { color: var(--text); }
+
+    /* Success */
+    .success-screen { display: none; text-align: center; padding: 72px 20px; }
+    .success-ring {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: #ecfdf5;
+      border: 2px solid #d1fae5;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 26px;
+    }
+    .success-title { font-size: 24px; font-weight: 600; letter-spacing: -0.4px; margin-bottom: 10px; }
+    .success-body { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 28px; }
+    .success-body strong { color: var(--text); }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 10px 20px;
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      font-size: 14px;
+      transition: background .15s;
+    }
+    .back-btn:hover { background: var(--page); }
+
+    @media (max-width: 480px) {
+      .row2 { grid-template-columns: 1fr; }
+      .hero { padding: 24px 16px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="topbar">
+  <span class="topbar-logo"><img src="locair_logo.png" alt="Loc'Air" style="height:34px;width:auto;display:block;" /></span>
+  <a href="https://www.locair.fr" class="topbar-back">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Retour
+  </a>
+</nav>
+
+<header class="hero">
+  <h1 class="hero-title">L'air frais, livré chez vous</h1>
+  <p class="hero-sub">Remplissez le formulaire — on s'occupe du reste.</p>
+  <div class="trust-row">
+    <span class="trust-pill">✓ 19€/jour</span>
+    <span class="trust-pill">✓ Installation offerte</span>
+    <span class="trust-pill">✓ Sans dépôt de garantie</span>
+    <span class="trust-pill">✓ 7j/7</span>
+  </div>
+</header>
+
+<main class="page">
+
+  <form id="reservationForm" novalidate>
+
+    <!-- Coordonnées -->
+    <div class="row2">
+      <div class="fl">
+        <input type="text" id="prenom" name="prenom" placeholder=" " required autocomplete="given-name" oninput="live()" />
+        <label for="prenom">Prénom *</label>
+      </div>
+      <div class="fl">
+        <input type="text" id="nom" name="nom" placeholder=" " required autocomplete="family-name" />
+        <label for="nom">Nom *</label>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="fl">
+        <input type="tel" id="telephone" name="telephone" placeholder=" " required autocomplete="tel" />
+        <label for="telephone">Téléphone *</label>
+      </div>
+      <div class="fl">
+        <input type="email" id="email" name="email" placeholder=" " required autocomplete="email" />
+        <label for="email">Email *</label>
+      </div>
+    </div>
+
+    <div class="pill-label">Vous êtes *</div>
+    <div class="pill-group">
+      <input type="radio" name="type_client" id="tc1" value="Particulier" required />
+      <label for="tc1">Particulier</label>
+      <input type="radio" name="type_client" id="tc2" value="Professionnel" />
+      <label for="tc2">Professionnel</label>
+    </div>
+
+    <div class="sep">Livraison</div>
+
+    <div class="fl">
+      <input type="text" id="adresse" name="adresse" placeholder=" " required autocomplete="street-address" />
+      <label for="adresse">Adresse complète *</label>
+    </div>
+    <div class="row2">
+      <div class="fl">
+        <input type="text" id="etage" name="etage" placeholder=" " />
+        <label for="etage">Étage</label>
+      </div>
+      <div>
+        <div class="pill-label">Ascenseur</div>
+        <div class="pill-group">
+          <input type="radio" name="ascenseur" id="asc1" value="Oui" />
+          <label for="asc1">Oui</label>
+          <input type="radio" name="ascenseur" id="asc2" value="Non" />
+          <label for="asc2">Non</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="sep">Dates</div>
+
+    <div class="row2">
+      <div class="fl">
+        <input type="date" id="date_debut" name="date_debut" required />
+        <label for="date_debut" style="top:10px;font-size:11px;font-weight:500;color:var(--blue);transform:none;">Date de début *</label>
+      </div>
+      <div class="fl">
+        <select id="duree" name="duree" required onchange="updatePrice()">
+          <option value="" disabled selected></option>
+          <option value="3 jours (57€)" data-price="57">3 jours — 57€</option>
+          <option value="1 semaine (133€)" data-price="133">1 semaine — 133€</option>
+          <option value="2 semaines (266€)" data-price="266">2 semaines — 266€</option>
+          <option value="1 mois (~570€)" data-price="570">1 mois — ~570€</option>
+          <option value="Je ne sais pas encore" data-price="0">Je ne sais pas encore</option>
+        </select>
+        <label for="duree">Durée *</label>
+        <span class="arr">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </span>
+      </div>
+    </div>
+
+    <div class="price-pill" id="priceBar">
+      <div>
+        <div class="price-pill-left">Total estimé</div>
+        <div class="price-pill-note">Livraison &amp; installation incluses</div>
+      </div>
+      <div style="text-align:right">
+        <div class="price-pill-val" id="priceVal">—</div>
+        <div class="price-pill-note">HT si professionnel</div>
+      </div>
+    </div>
+
+    <div class="sep">Installation</div>
+
+    <div class="fl">
+      <select id="type_ouverture" name="type_ouverture" required onchange="markSel(this)">
+        <option value="" disabled selected></option>
+        <option value="Fenêtre coulissante">Fenêtre coulissante</option>
+        <option value="Fenêtre à battant">Fenêtre à battant</option>
+        <option value="Porte-fenêtre">Porte-fenêtre</option>
+        <option value="Vélux / toit">Vélux / toit</option>
+      </select>
+      <label for="type_ouverture">Type d'ouverture * <span style="font-weight:400;color:var(--light)">(kit calfeutrage inclus)</span></label>
+      <span class="arr">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </span>
+    </div>
+
+    <div class="fl">
+      <select id="source" name="source" onchange="markSel(this)">
+        <option value="" disabled selected></option>
+        <option value="Bouche à oreille">Bouche à oreille</option>
+        <option value="Instagram">Instagram</option>
+        <option value="Google">Google</option>
+        <option value="Autre">Autre</option>
+      </select>
+      <label for="source">Comment nous avez-vous connu ?</label>
+      <span class="arr">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </span>
+    </div>
+
+    <div class="fl ta">
+      <textarea id="message" name="message" placeholder=" "></textarea>
+      <label for="message">Message ou demande particulière</label>
+    </div>
+
+    <div class="rgpd-row">
+      <input type="checkbox" id="rgpd" name="rgpd" required />
+      <label for="rgpd">J'accepte que mes données soient utilisées pour traiter ma demande. Je peux demander leur suppression à tout moment.</label>
+    </div>
+
+    <p class="error-msg" id="errorMsg">Veuillez remplir tous les champs obligatoires (*).</p>
+
+    <button type="submit" class="submit-btn">Envoyer ma demande →</button>
+  </form>
+
+  <div class="footer" id="footerContact">
+    <a href="tel:0663798756">06.63.79.87.56</a>
+    <span>·</span>
+    <a href="mailto:contact@locair.fr">contact@locair.fr</a>
+    <span>·</span>
+    <span>7j/7 · 8h–20h</span>
+  </div>
+
+  <div class="success-screen" id="successScreen">
+    <div class="success-ring">✓</div>
+    <h2 class="success-title">Demande envoyée !</h2>
+    <p class="success-body">
+      Merci <strong id="successPrenom"></strong>, votre demande a bien été reçue.<br />
+      Vous allez recevoir une confirmation par email.<br />
+      Loc'Air vous recontacte très vite pour finaliser.
+    </p>
+    <a href="https://www.locair.fr" class="back-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Retour au site
+    </a>
+  </div>
+
+</main>
+
+<script>
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('date_debut').setAttribute('min', today);
+
+  function markSel(el) {
+    el.classList.toggle('has-val', el.value !== '');
+  }
+
+  function updatePrice() {
+    const sel = document.getElementById('duree');
+    const opt = sel.options[sel.selectedIndex];
+    const price = parseInt(opt.dataset.price || '0');
+    const bar = document.getElementById('priceBar');
+    if (price > 0) {
+      document.getElementById('priceVal').textContent = price + ' €';
+      bar.classList.add('show');
+    } else {
+      bar.classList.remove('show');
+    }
+    markSel(sel);
+  }
+
+  function live() {}
+
+  const form = document.getElementById('reservationForm');
+  const errorMsg = document.getElementById('errorMsg');
+
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    errorMsg.style.display = 'none';
+
+    const typeClient = form.querySelector('input[name="type_client"]:checked');
+    const rgpd = document.getElementById('rgpd');
+
+    if (!form.prenom.value || !form.nom.value || !form.telephone.value ||
+        !form.email.value || !typeClient || !form.adresse.value ||
+        !form.date_debut.value || !form.duree.value ||
+        !form.type_ouverture.value || !rgpd.checked) {
+      errorMsg.style.display = 'block';
+      errorMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
+    try {
+      const data = new FormData(form);
+      await fetch('https://formspree.io/f/mvzyngoy', {
+        method: 'POST',
+        body: data,
+        headers: { 'Accept': 'application/json' }
+      });
+    } catch(e) {}
+
+    document.getElementById('successPrenom').textContent = form.prenom.value;
+    form.style.display = 'none';
+    document.getElementById('footerContact').style.display = 'none';
+    document.getElementById('successScreen').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+</script>
+
+</body>
+</html>
