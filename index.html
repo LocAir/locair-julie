@@ -149,10 +149,32 @@ body{
   letter-spacing:-.02em;
 }
 .logo em{color:var(--blue);font-style:italic;font-weight:700}
-.nav-r{display:flex;align-items:center;gap:12px}
-.nav-tel-link{font-size:13px;font-weight:500;color:var(--grey);text-decoration:none;white-space:nowrap;display:none}
-.nav-tel-link:hover{color:var(--black)}
-@media(min-width:640px){.nav-tel-link{display:block}}
+.nav-r{display:flex;align-items:center;gap:10px}
+.phone-btn-wrap{position:relative}
+.nav-phone-btn{
+  width:40px;height:40px;border-radius:50%;
+  background:var(--bg);border:1.5px solid var(--rule);
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;transition:border-color .15s,background .15s;
+  flex-shrink:0;
+}
+.nav-phone-btn svg{width:16px;height:16px;stroke:var(--black2)}
+.nav-phone-btn:hover{border-color:var(--blue);background:var(--blue-lt)}
+.phone-popover{
+  position:absolute;top:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(-4px);
+  background:var(--black);color:#fff;border-radius:var(--r-sm);
+  padding:9px 16px;white-space:nowrap;
+  font-size:13.5px;font-weight:600;
+  opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity .15s,transform .15s;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
+}
+.phone-popover::before{
+  content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);
+  border:6px solid transparent;border-bottom-color:var(--black);
+}
+.phone-popover a{color:#fff;text-decoration:none}
+.phone-popover.open{opacity:1;pointer-events:auto;visibility:visible;transform:translateX(-50%) translateY(0)}
 .nav-btn{
   padding:10px 24px;background:var(--blue);color:var(--white);
   border:none;border-radius:var(--r-sm);font-size:13.5px;font-weight:700;
@@ -876,7 +898,14 @@ body{
   <div class="nav-in"><nav role="navigation" aria-label="Navigation principale" style="display:contents">
     <a href="#top" class="logo" rel="home" aria-label="Loc'Air — Retour en haut">Loc<em>'Air</em></a>
     <div class="nav-r">
-      <a href="tel:0663798756" class="nav-tel-link" aria-label="Appeler Loc'Air">06.63.79.87.56</a>
+      <div class="phone-btn-wrap">
+        <button class="nav-phone-btn" type="button" onclick="togglePhonePopover(this)" aria-label="Afficher le numéro de téléphone" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.77a19.79 19.79 0 01-3.07-8.68A2 2 0 012 .9h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        </button>
+        <div class="phone-popover" id="phonePopover" role="tooltip">
+          <a href="tel:0663798756">06.63.79.87.56</a>
+        </div>
+      </div>
       <button class="nav-btn" onclick="openModal()" type="button" aria-label="Réserver un climatiseur" aria-haspopup="dialog">Réserver</button>
     </div>
   </nav></div>
@@ -1531,6 +1560,22 @@ let curStep=1;
   const hp2=document.getElementById('hp');
   if(hp2)requestAnimationFrame(()=>hp2.classList.add('on'));
 })();
+
+function togglePhonePopover(btn){
+  const pop=document.getElementById('phonePopover');
+  if(!pop)return;
+  const willOpen=!pop.classList.contains('open');
+  pop.classList.toggle('open',willOpen);
+  btn.setAttribute('aria-expanded',willOpen?'true':'false');
+}
+document.addEventListener('click',e=>{
+  const wrap=document.querySelector('.phone-btn-wrap');
+  const pop=document.getElementById('phonePopover');
+  if(wrap&&pop&&!wrap.contains(e.target)){
+    pop.classList.remove('open');
+    wrap.querySelector('.nav-phone-btn')?.setAttribute('aria-expanded','false');
+  }
+});
 
 function openModal(dur){
   _lastFocused=document.activeElement;
