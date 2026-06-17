@@ -2008,18 +2008,25 @@ body{
         </div>
       </div>
 
-      <!-- ÉTAPE 4 — Date -->
+      <!-- ÉTAPE 4 — Date & créneau -->
       <div class="step-panel" id="s4">
         <div class="sp-head">
-          <h3 class="sp-title">Date de livraison</h3>
-          <p class="sp-sub">Pour quand souhaitez-vous être livré ?</p>
+          <h3 class="sp-title">Date & créneau de livraison</h3>
+          <p class="sp-sub">Choisissez votre date et l'heure de livraison.</p>
         </div>
         <div class="flds">
           <div class="fld">
-            <label>Date de début<span class="req">*</span></label>
+            <label>Date de livraison<span class="req">*</span></label>
             <input id="f-date" type="date" aria-label="Date de début de location"/>
           </div>
-          <p style="font-size:12px;color:var(--grey);margin-top:4px;line-height:1.6">Livraison sous 24h à Nice &nbsp;·&nbsp; Créneau matin (8h–13h) ou après-midi (13h–20h)</p>
+          <div class="fld" style="margin-top:14px">
+            <label>Créneau du matin<span class="req">*</span></label>
+            <div class="tpills" id="creneau-liv-group" role="radiogroup" aria-label="Créneau de livraison">
+              <button type="button" class="tpill on" onclick="tgl(this,'crl')" role="radio" aria-checked="true">8h – 10h</button>
+              <button type="button" class="tpill" onclick="tgl(this,'crl')" role="radio" aria-checked="false">10h – 12h</button>
+            </div>
+          </div>
+          <p style="font-size:12px;color:var(--grey);margin-top:8px;line-height:1.6">Livraison à Nice · Le technicien vous appelle 30 min avant son arrivée.</p>
         </div>
         <div class="modal-nav">
           <button class="btn-back" onclick="goTo(3)" type="button">
@@ -2041,6 +2048,16 @@ body{
         </div>
 
         <div class="recap" id="recap-box" role="region" aria-label="Récapitulatif de votre réservation"></div>
+
+        <div style="padding:0 24px">
+          <p style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--grey2);margin:18px 0 10px;border-top:1px solid var(--rule);padding-top:14px">Récupération</p>
+          <p id="recap-date-recup" style="font-size:13px;color:var(--grey);margin-bottom:10px">—</p>
+          <label style="font-size:12px;font-weight:600;color:var(--black2);display:block;margin-bottom:8px">Créneau d'après-midi</label>
+          <div class="tpills" id="creneau-recup-group" role="radiogroup" aria-label="Créneau de récupération">
+            <button type="button" class="tpill on" onclick="tgl(this,'crr')" role="radio" aria-checked="true">14h – 16h</button>
+            <button type="button" class="tpill" onclick="tgl(this,'crr')" role="radio" aria-checked="false">16h – 18h</button>
+          </div>
+        </div>
 
         <p style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--grey2);margin:18px 24px 0;border-top:1px solid var(--rule);padding-top:14px">Vos coordonnées</p>
         <div class="flds" style="padding:10px 24px 0">
@@ -2357,7 +2374,21 @@ function buildRecap(){
   const ouv=document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—';
   const rawDate=document.getElementById('f-date')?.value||'';
   let dateStr='—';
-  if(rawDate){const[y,m,d]=rawDate.split('-');if(y&&m&&d)dateStr=d+'/'+m+'/'+y;}
+  let pickupDateStr='—';
+  if(rawDate){
+    const[y,m,d]=rawDate.split('-');
+    if(y&&m&&d){
+      dateStr=d+'/'+m+'/'+y;
+      const pd=new Date(rawDate);
+      pd.setDate(pd.getDate()+days);
+      pickupDateStr=pd.getDate()+'/'+(pd.getMonth()+1)+'/'+pd.getFullYear();
+    }
+  }
+  const creneauLiv=document.querySelector('#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h';
+  const creneauRecup=document.querySelector('#creneau-recup-group .tpill.on')?.textContent.trim()||'14h–16h';
+  // Afficher la date de récupération calculée
+  const recupEl=document.getElementById('recap-date-recup');
+  if(recupEl)recupEl.textContent='Le '+pickupDateStr+' (fin de votre location de '+days+' jours)';
   const locPrice=price>0?price-10:0;
   const etageLabel=[etage,asc!=='—'?'Asc. '+asc:''].filter(Boolean).join(' · ')||'—';
   const rows=[
@@ -2365,7 +2396,8 @@ function buildRecap(){
     ['Étage · Ascenseur',etageLabel],
     ['Durée',durEntry?durEntry.label:'—'],
     ['Fenêtre',ouv],
-    ['Date de début',dateStr],
+    ['Livraison le',dateStr+' · '+creneauLiv],
+    ['Récupération le',pickupDateStr+' · '+creneauRecup],
     ['Location',(locPrice>0?locPrice:0)+' €'],
     ['Installation','10 € (une seule fois)'],
     ['Total TTC','<strong style="color:var(--blue);font-size:15px">'+(price===0?'Sur devis':price+' €')+'</strong>'],
@@ -2413,6 +2445,8 @@ function submitForm(btn,mode){
       date:document.getElementById('f-date')?.value,
       duree:document.getElementById('f-dur')?.value,
       fenetre:document.querySelector('#ouv-group .win-card.on')?.dataset.val,
+      creneau_livraison:document.querySelector('#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h',
+      creneau_recuperation:document.querySelector('#creneau-recup-group .tpill.on')?.textContent.trim()||'14h–16h',
       type_client:document.querySelector('#s5 .tpills .tpill.on')?.textContent.trim()||'Particulier',
       prenom:document.getElementById('f-prenom')?.value,
       nom:document.getElementById('f-nom')?.value,
