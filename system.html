@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Frizko — Comment ça marche</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #2778AE;
+      --blue-bg: #EAF4FB;
+      --text: #0f0f0f;
+      --muted: #6b7280;
+      --light: #9ca3af;
+      --border: #e5e7eb;
+      --bg: #ffffff;
+      --page: #F2F2F2;
+      --r: 10px;
+      --green: #10b981;
+      --orange: #E8811A;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--page);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+
+    .topbar {
+      background: #1a1a2e;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .topbar-logo { color: #fff; font-size: 17px; font-weight: 700; letter-spacing: 1px; }
+    .topbar-back { font-size: 13px; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 4px; }
+    .topbar-back:hover { color: #fff; }
+
+    .hero {
+      background: #1a1a2e;
+      padding: 52px 20px 44px;
+      text-align: center;
+    }
+    .hero-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .hero-title {
+      font-size: clamp(30px, 6vw, 48px);
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -1px;
+      line-height: 1.1;
+      margin-bottom: 14px;
+    }
+    .hero-sub {
+      font-size: 15px;
+      color: rgba(255,255,255,0.55);
+      max-width: 400px;
+      margin: 0 auto 24px;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.13);
+      border-radius: 99px;
+      padding: 6px 16px;
+      font-size: 12px;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .page { max-width: 680px; margin: 0 auto; padding: 40px 16px 80px; }
+
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--light);
+      margin-bottom: 16px;
+    }
+
+    /* ── Component chain ── */
+    .component-chain { display: flex; flex-direction: column; margin-bottom: 52px; }
+
+    .component-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px;
+    }
+    .component-header { display: flex; align-items: center; gap: 12px; margin-bottom: 6px; }
+    .component-icon { font-size: 22px; line-height: 1; }
+    .component-name { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+    .component-tool {
+      display: inline-block;
+      margin-top: 3px;
+      font-size: 11px;
+      color: var(--blue);
+      font-weight: 500;
+      background: var(--blue-bg);
+      padding: 1px 8px;
+      border-radius: 99px;
+    }
+    .component-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    .chain-arrow {
+      display: flex;
+      justify-content: center;
+      padding: 2px 0;
+      color: var(--border);
+    }
+
+    .brain-connections { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .brain-conn {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--page);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 10px;
+    }
+
+    .ads-scenarios { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+    .ads-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+      padding: 9px 12px;
+      border-radius: 8px;
+    }
+    .ads-row.green { background: #ecfdf5; }
+    .ads-row.yellow { background: #fffbeb; }
+    .ads-row.red { background: #fef2f2; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot.green { background: var(--green); }
+    .dot.yellow { background: #f59e0b; }
+    .dot.red { background: #dc2626; }
+    .ads-stock { font-weight: 500; min-width: 110px; }
+    .ads-action { color: var(--muted); }
+
+    .stock-statuses { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+    .s-pill {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 4px 10px;
+      border-radius: 99px;
+    }
+    .s-pill.green { background: #ecfdf5; color: #059669; border: 1px solid #d1fae5; }
+    .s-pill.blue  { background: #eff6ff; color: var(--blue); border: 1px solid #dbeafe; }
+    .s-pill.orange { background: #fff7ed; color: #c2410c; border: 1px solid #fed7aa; }
+    .s-pill.gray  { background: #f9fafb; color: #374151; border: 1px solid var(--border); }
+
+    .tech-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .tech-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 14px;
+      background: var(--page);
+      border-radius: 8px;
+      font-size: 13px;
+    }
+    .tech-name { font-weight: 600; }
+    .tech-days { color: var(--muted); font-size: 12px; }
+
+    /* ── Timeline ── */
+    .timeline { position: relative; margin-bottom: 40px; }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 19px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+
+    .tl-step { position: relative; padding-left: 52px; margin-bottom: 28px; }
+
+    .tl-dot {
+      position: absolute;
+      left: 6px;
+      top: 4px;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #1a1a2e;
+      border: 2px solid #1a1a2e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      z-index: 1;
+    }
+
+    .tl-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      overflow: hidden;
+    }
+
+    .tl-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .tl-title { font-size: 14px; font-weight: 600; letter-spacing: -0.2px; }
+
+    .tl-body { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; }
+
+    .tl-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.55;
+    }
+
+    .badge {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .b-stock  { background: #eff6ff; color: #1d4ed8; }
+    .b-tech   { background: #fff7ed; color: #c2410c; }
+    .b-client { background: #ecfdf5; color: #059669; }
+    .b-drive  { background: #f3f4f6; color: #374151; }
+    .b-pub    { background: #fdf4ff; color: #7c3aed; }
+    .b-you    { background: #fef2f2; color: #dc2626; }
+
+    .tl-alert {
+      margin: 0 18px 14px;
+      padding: 10px 14px;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      font-size: 12px;
+      color: #991b1b;
+      line-height: 1.6;
+    }
+
+    .tl-msg {
+      margin: 0 18px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .msg-label {
+      background: #1a1a2e;
+      color: rgba(255,255,255,0.6);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 6px 12px;
+    }
+    .msg-text {
+      padding: 11px 14px;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.65;
+      background: #fafafa;
+    }
+    .ph {
+      display: inline-block;
+      background: #e5e7eb;
+      border-radius: 3px;
+      padding: 0 5px;
+      font-size: 11px;
+      color: #6b7280;
+      font-family: monospace;
+    }
+
+    /* ── Manual cases ── */
+    .warn-banner {
+      background: #1a1a2e;
+      border-radius: var(--r);
+      padding: 18px 22px;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .warn-icon { font-size: 20px; flex-shrink: 0; }
+    .warn-text { color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.5; }
+    .warn-text strong { color: #fff; }
+
+    .cases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .case-card {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px 14px;
+      text-align: center;
+    }
+    .case-icon { font-size: 22px; margin-bottom: 10px; }
+    .case-label { font-size: 13px; font-weight: 500; line-height: 1.4; }
+
+    @media (max-width: 580px) {
+      .cases { grid-template-columns: 1fr; }
+      .ads-row { flex-wrap: wrap; }
+      .ads-stock { min-width: auto; }
+      .hero { padding: 40px 16px 32px; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="topbar">
+  <span class="topbar-logo">FRIZKO</span>
+  <a href="https://www.locair.fr" class="topbar-back">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    Retour
+  </a>
+</nav>
+
+<header class="hero">
+  <div class="hero-label">Système automatisé</div>
+  <h1 class="hero-title">Comment ça marche</h1>
+  <p class="hero-sub">Tout fonctionne automatiquement.<br>Tu n'as rien à faire.</p>
+  <span class="hero-badge">Loc'Air · Nice</span>
+</header>
+
+<div class="page">
+
+  <!-- LES PIÈCES DU SYSTÈME -->
+  <div class="section-title">Les pièces du système</div>
+
+  <div class="component-chain">
+
+    <div class="component-card">
+      <div class="component-header">
+        <span class="component-icon">🧠</span>
+        <div>
+          <div class="component-name">Le cerveau</div>
+        </div>
+      </div>
+      <div class="component-desc">C'est lui qui connecte tout. Il reçoit les infos et décide quoi faire.</div>
+      <div class="brain-connections">
+        <span class="brain-conn">💳 Paiements</span>
+        <span class="brain-conn">📦 Stock</span>
+        <span class="brain-conn">📢 Publicités</span>
+        <span class="brain-conn">📱 SMS techniciens</span>
+        <span class="brain-conn">✉️ Emails clients</span>
+        <span class="brain-conn">📄 Contrats</span>
+        <span class="brain-conn">☁️ Drive · preuves</span>
+      </div>
+    </div>
+
+    <div class="chain-arrow">
+      <svg width="2" height="20" viewBox="0 0 2 20"><line x1="1" y1="0" x2="1" y2="20" stroke="#e5e7eb" stroke-width="2"/></svg>
+    </div>
+
+    <div class="component-card">
+      <div class="component-header">
+        <span class="component-icon">📢</span>
+        <div>
+          <div class="component-name">La publicité</div>
+          <span class="component-tool">Google Ads</span>
+        </div>
+      </div>
+      <div class="component-desc">Elle s'adapte toute seule selon le stock disponible.</div>
+      <div class="ads-scenarios">
+        <div class="ads-row green">
+          <div class="dot green"></div>
+          <div class="ads-stock">2 clims dispo</div>
+          <div class="ads-action">→ pub à fond</div>
+        </div>
+        <div class="ads-row yellow">
+          <div class="dot yellow"></div>
+          <div class="ads-stock">1 clim dispo</div>
+          <div class="ads-action">→ budget réduit de moitié</div>
+        </div>
+        <div class="ads-row red">
+          <div class="dot red"></div>
+          <div class="ads-stock">0 clim dispo</div>
+          <div class="ads-action">→ pub mise en pause</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chain-arrow">
+      <svg width="2" height="20" viewBox="0 0 2 20"><line x1="1" y1="0" x2="1" y2="20" stroke="#e5e7eb" stroke-width="2"/></svg>
+    </div>
+
+    <div class="component-card">
+      <div class="component-header">
+        <span class="component-icon">📦</span>
+        <div>
+          <div class="component-name">Le stock</div>
+          <span class="component-tool">Airtable</span>
+        </div>
+      </div>
+      <div class="component-desc">Chaque clim a un statut. Il change automatiquement à chaque étape.</div>
+      <div class="stock-statuses">
+        <span class="s-pill green">✓ Disponible</span>
+        <span class="s-pill blue">🚚 En livraison</span>
+        <span class="s-pill orange">🏠 Chez le client</span>
+        <span class="s-pill gray">🔧 En réparation</span>
+      </div>
+    </div>
+
+    <div class="chain-arrow">
+      <svg width="2" height="20" viewBox="0 0 2 20"><line x1="1" y1="0" x2="1" y2="20" stroke="#e5e7eb" stroke-width="2"/></svg>
+    </div>
+
+    <div class="component-card">
+      <div class="component-header">
+        <span class="component-icon">🧰</span>
+        <div>
+          <div class="component-name">Les techniciens</div>
+          <span class="component-tool">SMS · WhatsApp</span>
+        </div>
+      </div>
+      <div class="component-desc">Ils reçoivent leurs missions automatiquement sur leur téléphone.</div>
+      <div class="tech-rows">
+        <div class="tech-row">
+          <span class="tech-name">Marco</span>
+          <span class="tech-days">Lundi – Vendredi</span>
+        </div>
+        <div class="tech-row">
+          <span class="tech-name">Karim</span>
+          <span class="tech-days">Samedi – Dimanche</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="chain-arrow">
+      <svg width="2" height="20" viewBox="0 0 2 20"><line x1="1" y1="0" x2="1" y2="20" stroke="#e5e7eb" stroke-width="2"/></svg>
+    </div>
+
+    <div class="component-card">
+      <div class="component-header">
+        <span class="component-icon">👤</span>
+        <div>
+          <div class="component-name">Le client</div>
+          <span class="component-tool">Email · Contrat</span>
+        </div>
+      </div>
+      <div class="component-desc">Il reçoit ses emails et son contrat automatiquement. Il n'a rien à demander.</div>
+    </div>
+
+  </div>
+
+  <!-- WORKFLOW -->
+  <div class="section-title">Ce qui se passe quand quelqu'un loue</div>
+
+  <div class="timeline">
+
+    <!-- 1. Payment -->
+    <div class="tl-step">
+      <div class="tl-dot">💳</div>
+      <div class="tl-card">
+        <div class="tl-header"><div class="tl-title">Le client paie en ligne</div></div>
+        <div class="tl-body">
+          <div class="tl-row">
+            <span class="badge b-stock">STOCK</span>
+            <span>La clim passe en <strong>« en livraison »</strong></span>
+          </div>
+          <div class="tl-row">
+            <span class="badge b-tech">TECHNICIEN</span>
+            <span>Reçoit un SMS — adresse · date · créneau</span>
+          </div>
+          <div class="tl-row">
+            <span class="badge b-client">CLIENT</span>
+            <span>Reçoit un email + son contrat à signer</span>
+          </div>
+        </div>
+        <div class="tl-msg">
+          <div class="msg-label">Message automatique — Confirmation</div>
+          <div class="msg-text">Bonjour ! Votre réservation Frizko est confirmée ✅ Votre climatiseur sera installé le <span class="ph">[date]</span> entre <span class="ph">[heure]</span>. Vous trouverez votre contrat en pièce jointe — merci de le signer avant la livraison.</div>
+        </div>
+        <div class="tl-alert">
+          <strong>⛔ Livraison bloquée</strong> si le contrat n'est pas signé dans les 24h — relance automatique, puis alerte vers toi.
+        </div>
+        <div class="tl-msg">
+          <div class="msg-label">Message automatique — Relance contrat (si non signé)</div>
+          <div class="msg-text">Rappel : votre contrat Frizko n'a pas encore été signé. La livraison ne pourra pas avoir lieu sans signature. Merci de le compléter ici : <span class="ph">[lien]</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Technician arrives -->
+    <div class="tl-step">
+      <div class="tl-dot">🚚</div>
+      <div class="tl-card">
+        <div class="tl-header"><div class="tl-title">Le technicien arrive chez le client</div></div>
+        <div class="tl-body">
+          <div class="tl-row">
+            <span class="badge b-tech">TECHNICIEN</span>
+            <span>Installe la clim · teste le fonctionnement · <strong>filme la clim installée et en marche 📹</strong></span>
+          </div>
+          <div class="tl-row">
+            <span class="badge b-drive">DRIVE</span>
+            <span>Vidéo envoyée sur le canal WhatsApp → sauvegardée automatiquement sur Drive</span>
+          </div>
+        </div>
+        <div class="tl-msg">
+          <div class="msg-label">Message automatique — Veille de livraison</div>
+          <div class="msg-text">Bonjour ! Votre climatiseur Frizko sera installé demain entre <span class="ph">[heure]</span>. Notre technicien se présentera à votre adresse. Pensez à être disponible 🙏</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Delivery confirmed -->
+    <div class="tl-step">
+      <div class="tl-dot">✅</div>
+      <div class="tl-card">
+        <div class="tl-header"><div class="tl-title">Le technicien confirme la livraison</div></div>
+        <div class="tl-body">
+          <div class="tl-row">
+            <span class="badge b-stock">STOCK</span>
+            <span>La clim passe en <strong>« chez le client »</strong></span>
+          </div>
+          <div class="tl-row">
+            <span class="badge b-client">CLIENT</span>
+            <span>Reçoit un email de confirmation d'installation</span>
+          </div>
+        </div>
+        <div class="tl-msg">
+          <div class="msg-label">Message automatique — Installation confirmée</div>
+          <div class="msg-text">Votre climatiseur Frizko est installé et opérationnel ✅ En cas de question sur l'utilisation, répondez simplement à ce message. Profitez bien de la fraîcheur ! 🌬️</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. Day before end -->
+    <div class="tl-step">
+      <div class="tl-dot">⏰</div>
+      <div class="tl-card">
+        <div class="tl-header"><div class="tl-title">La veille de la fin de location</div></div>
+        <div class="tl-body">
+          <div class="tl-row">
+            <span class="badge b-tech">TECHNICIEN</span>
+            <span>Reçoit un SMS de rappel — récupération demain</span>
+          </div>
+          <div class="tl-row">
+            <span class="badge b-client">CLIENT</span>
+            <span>Reçoit un email avec le créneau de récupération</span>
+          </div>
+        </div>
+        <div class="tl-msg">
+          <div class="msg-label">Message automatique — Rappel fin de location</div>
+          <div class="msg-text">Bonjour, votre location Frizko se termine demain. Notre technicien passera récupérer la climatiseur entre <span class="ph">[heure]</span>. Merci d'être disponible ou de nous indiquer un créneau alternatif.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. Recovery -->
+    <div class="tl-step">
+      <div class="tl-dot">🔄</div>
+      <div class="tl-card">
+        <div class="tl-header"><div class="tl-title">Le technicien récupère la clim</div></div>
+        <div class="tl-body">
+          <div class="tl-row">
+            <span class="badge b-tech">TECHNICIEN</span>
+            <span>Filme l'état de la clim avant de partir 📹 vidéo retour</span>
+          </div>
+          <div class="tl-row">
+            <span class="badge b-drive">DRIVE</span>
+            <span>Vidéo sauvegardée → comparée automatiquement avec celle de l'installation</span>
+          </div>
+        </div>
+        <div class="tl-alert">
+          <strong>⚠ Si dégât constaté</strong> → alerte vers toi avec les deux vidéos (installation + retour) pour décision.
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. Return confirmed -->
+    <div class="tl-step">
+      <div class="tl-dot">✅</div>
+      <div class="tl-card">
+        <div class="tl-header"><div class="tl-title">Retour confirmé — aucun dégât</div></div>
+        <div class="tl-body">
+          <div class="tl-row">
+            <span class="badge b-stock">STOCK</span>
+            <span>La clim repasse en <strong>« disponible »</strong></span>
+          </div>
+          <div class="tl-row">
+            <span class="badge b-pub">PUBLICITÉ</span>
+            <span>La pub repart à fond si 2 clims sont dispo</span>
+          </div>
+        </div>
+        <div class="tl-msg">
+          <div class="msg-label">Message automatique — Fin de location</div>
+          <div class="msg-text">Merci d'avoir choisi Frizko ! Nous espérons que vous avez passé un été agréable 🌞 Si vous souhaitez relouer l'an prochain ou recommander Frizko, voici notre lien : <span class="ph">[lien]</span>. Un avis Google nous aide énormément → <span class="ph">[lien avis]</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. All units rented -->
+    <div class="tl-step">
+      <div class="tl-dot">🚨</div>
+      <div class="tl-card">
+        <div class="tl-header"><div class="tl-title">Toutes les clims sont louées</div></div>
+        <div class="tl-body">
+          <div class="tl-row">
+            <span class="badge b-tech">TECHNICIEN</span>
+            <span>Reçoit une alerte — <strong>« stock épuisé, faut-il acheter une clim ? »</strong></span>
+          </div>
+          <div class="tl-row">
+            <span class="badge b-you">TOI</span>
+            <span>Il te demande confirmation avant d'acheter</span>
+          </div>
+          <div class="tl-row">
+            <span class="badge b-tech">TECHNICIEN</span>
+            <span>Tu valides → il commande et gère la réception</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MANUAL CASES -->
+  <div class="warn-banner">
+    <div class="warn-icon">⚠️</div>
+    <div class="warn-text"><strong>Seuls ces 3 cas nécessitent encore ton intervention</strong></div>
+  </div>
+
+  <div class="cases">
+    <div class="case-card">
+      <div class="case-icon">👥</div>
+      <div class="case-label">Recruter un technicien</div>
+    </div>
+    <div class="case-card">
+      <div class="case-icon">⚖️</div>
+      <div class="case-label">Litige client</div>
+    </div>
+    <div class="case-card">
+      <div class="case-icon">🔧</div>
+      <div class="case-label">Panne matériel grave</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
