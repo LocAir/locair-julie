@@ -1344,6 +1344,21 @@ body{
 
         <div class="frow">
           <div class="fld">
+            <label>Étage</label>
+            <input id="f-etage" type="text" placeholder="Ex. 3ème (RDC si rez-de-chaussée)" autocomplete="off" inputmode="text"/>
+          </div>
+          <div class="fld">
+            <label>Ascenseur</label>
+            <div class="tpills" role="radiogroup" aria-label="Présence d'un ascenseur">
+              <button type="button" class="tpill on" onclick="tgl(this,'asc')" role="radio" aria-checked="true">Oui</button>
+              <button type="button" class="tpill" onclick="tgl(this,'asc')" role="radio" aria-checked="false">Non</button>
+              <button type="button" class="tpill" onclick="tgl(this,'asc')" role="radio" aria-checked="false">RDC</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="frow">
+          <div class="fld">
             <label>Date de début<span class="req">*</span></label>
             <input id="f-date" type="date" aria-label="Date de début de location" aria-describedby="date-hint"/>
           </div>
@@ -1844,7 +1859,8 @@ function buildRecap(){
   const days=parseInt(dur?.value||'7');
   const price=prices[days]!=null?prices[days]:0;
 
-  // Ascenseur
+  // Étage & ascenseur
+  const etage=document.getElementById('f-etage')?.value.trim()||'—';
   let asc='—';
   const ascFlds=[...document.querySelectorAll('#s1 .frow .fld')];
   for(const fld of ascFlds){
@@ -1871,6 +1887,8 @@ function buildRecap(){
 
   const rows=[
     ['Adresse',document.getElementById('f-addr')?.value||'—'],
+    ['Étage',etage],
+    ['Ascenseur',asc],
     ['Date de début',dateStr],
     ['Durée',dopt?.text?.split('—')[0]?.trim()||'—'],
     ['Fenêtre',ouv],
@@ -1920,6 +1938,8 @@ function submitForm(btn,mode){
     const prenom=document.getElementById('f-prenom')?.value.trim()||'';
     const formData={
       adresse:document.getElementById('f-addr')?.value,
+      etage:document.getElementById('f-etage')?.value||'—',
+      ascenseur:document.querySelector('#s1 .frow .fld:nth-child(2) .tpill.on')?.textContent.trim()||'—',
       date:document.getElementById('f-date')?.value,
       duree:document.getElementById('f-dur')?.value,
       fenetre:document.querySelector('#ouv-group .win-card.on')?.dataset.val,
