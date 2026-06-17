@@ -771,14 +771,52 @@ body{
 .modal-overlay.open{display:flex}
 .modal{
   background:var(--white);border-radius:20px;
-  width:100%;max-width:520px;max-height:90vh;overflow-y:auto;
+  width:100%;max-width:720px;max-height:90vh;
+  display:flex;flex-direction:row;overflow:hidden;
   box-shadow:0 24px 80px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.04);
   position:relative;
   animation:modalIn .2s cubic-bezier(.4,0,.2,1);
-  scroll-behavior:smooth;
-  overscroll-behavior:contain;
 }
 @keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:none}}
+
+/* ── SIDEBAR STEPPER ── */
+.modal-sidebar{
+  width:196px;flex-shrink:0;
+  background:#f8fafc;
+  border-right:1px solid var(--rule);
+  border-radius:20px 0 0 20px;
+  padding:32px 20px;
+  display:flex;flex-direction:column;
+}
+.ms-title{
+  font-size:9px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--grey2);margin-bottom:28px;
+}
+.stepper{display:flex;flex-direction:column}
+.step-item{display:flex;align-items:center;gap:12px}
+.step-conn{width:2px;height:18px;background:var(--rule);margin-left:14px;flex-shrink:0}
+.step-dot{
+  width:28px;height:28px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;font-family:var(--body);
+  transition:background .2s;
+}
+.step-dot.stp-done{background:var(--blue);color:white}
+.step-dot.stp-cur{background:#1a1a2e;color:white}
+.step-dot.stp-pnd{background:#e2e2e7;color:var(--grey2)}
+.step-name{font-size:12.5px;color:var(--grey2);font-weight:400;transition:color .15s;line-height:1.2}
+.step-item.is-cur .step-name{color:var(--black);font-weight:700}
+.step-item.is-done .step-name{color:var(--grey)}
+
+/* ── MODAL BODY ── */
+.modal-body{
+  flex:1;overflow-y:auto;
+  border-radius:0 20px 20px 0;
+  display:flex;flex-direction:column;
+  overscroll-behavior:contain;
+  scroll-behavior:smooth;
+  position:relative;
+}
 .modal-close{
   position:absolute;top:12px;right:12px;
   width:32px;height:32px;border-radius:50%;
@@ -788,13 +826,10 @@ body{
 }
 .modal-close:active{transform:scale(.9)}
 .modal-close:hover{background:var(--rule)}
-.progress-bar{height:3px;background:var(--rule);border-radius:3px 3px 0 0;overflow:hidden}
-.progress-fill{height:100%;background:linear-gradient(90deg,var(--blue-d),var(--blue));transition:width .4s cubic-bezier(.4,0,.2,1)}
-.modal-head{padding:22px 24px 8px}
-.modal-step-lbl{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--blue);margin-bottom:6px}
-.modal-title{font-family:var(--disp);font-size:20px;font-weight:700;color:var(--black);line-height:1.2;letter-spacing:-.02em;margin-bottom:4px}
-.modal-sub{font-size:13px;color:var(--grey2);font-weight:400}
-.step-panel{display:none;padding:20px 26px 28px;animation:fadeUp .2s ease}
+.sp-head{padding:24px 24px 0}
+.sp-title{font-family:var(--disp);font-size:18px;font-weight:700;color:var(--black);line-height:1.2;letter-spacing:-.02em;margin-bottom:4px}
+.sp-sub{font-size:12.5px;color:var(--grey2);font-weight:400;margin-bottom:16px}
+.step-panel{display:none;padding:0 24px 24px;animation:fadeUp .2s ease}
 .step-panel.active{display:block}
 @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 .modal-success{display:none;padding:48px 28px;text-align:center;}
@@ -803,8 +838,30 @@ body{
 .s-ico svg{width:32px;height:32px;stroke-width:2}
 .s-h{font-family:var(--disp);font-size:27px;font-weight:700;color:var(--black);margin-bottom:10px}
 .s-p{font-size:14px;font-weight:300;color:var(--grey);line-height:1.7;max-width:320px;margin:0 auto 24px}
-.s-close{padding:14px 32px;background:var(--black);color:var(--white);border:none;border-radius:var(--r);font-size:14px;font-weight:700;font-family:var(--body);cursor:pointer;transition:background .15s;min-height:48px}
+.s-close{padding:14px 32px;background:var(--black);color:var(--white);border:none;border-radius:980px;font-size:14px;font-weight:700;font-family:var(--body);cursor:pointer;transition:background .15s;min-height:48px}
 .s-close:hover{background:var(--blue)}
+
+/* Mobile : sidebar → barre horizontale en haut */
+@media(max-width:640px){
+  .modal{flex-direction:column;border-radius:16px 16px 0 0;max-height:92vh;
+    position:fixed;bottom:0;left:0;right:0;max-width:100%}
+  .modal-overlay{align-items:flex-end;padding:0}
+  .modal-sidebar{
+    width:100%;border-right:none;
+    border-bottom:1px solid var(--rule);
+    border-radius:16px 16px 0 0;
+    padding:14px 20px 12px;flex-direction:row;align-items:center;gap:0;
+  }
+  .ms-title{display:none}
+  .stepper{flex-direction:row;align-items:center;flex:1;gap:0}
+  .step-item{flex-direction:column;align-items:center;flex:1;gap:0}
+  .step-item .step-name{display:none}
+  .step-conn{height:2px;width:auto;flex:1;margin:0;align-self:center}
+  .step-dot{width:24px;height:24px;font-size:10px}
+  .modal-body{border-radius:0}
+  .sp-head{padding:16px 18px 0}
+  .step-panel{padding:0 18px 20px}
+}
 
 /* ── FORM ELEMENTS ── */
 .flds{display:flex;flex-direction:column;gap:12px}
@@ -871,7 +928,7 @@ body{
 .win-hint{font-size:11px;font-weight:400;color:var(--grey)}
 
 /* ── RECAP ── */
-.recap{background:var(--bg);border-radius:var(--r);padding:14px 16px;margin-bottom:14px}
+.recap{background:var(--bg);border-radius:var(--r);padding:14px 16px;margin:0 24px 0}
 .recap-item{
   display:flex;align-items:flex-start;justify-content:space-between;
   gap:16px;padding:8px 0;border-bottom:1px solid var(--rule);
@@ -960,8 +1017,6 @@ body{
   .rev-grid{grid-template-columns:1fr}
   .fcta{padding:80px 20px}
   .footer-bar{padding:20px 16px;gap:16px}
-  .modal{border-radius:16px 16px 0 0;max-height:92vh;position:fixed;bottom:0;left:0;right:0;max-width:100%}
-  .modal-overlay{align-items:flex-end;padding:0}
   .frow{grid-template-columns:1fr}
   .win-grid{grid-template-columns:1fr 1fr}
   .about-grid{grid-template-columns:1fr}
@@ -1350,92 +1405,134 @@ body{
 <div class="modal-overlay" id="overlay" onclick="overlayClick(event)" role="dialog" aria-modal="true" aria-label="Formulaire de réservation">
   <div class="modal" id="modal" tabindex="-1">
 
-    <button class="modal-close" onclick="closeModal()" aria-label="Fermer le formulaire de réservation" type="button">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-    <div class="progress-bar" role="progressbar" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100" aria-label="Progression du formulaire"><div class="progress-fill" id="progress" style="width:25%"></div></div>
-
-    <!-- ÉTAPE 1 — Dates & adresse -->
-    <div class="modal-head" id="mhead">
-      <p class="modal-step-lbl" id="step-lbl" aria-live="polite" aria-atomic="true" tabindex="-1">Étape 1 / 4</p>
-      <h3 class="modal-title" id="step-title">Adresse &amp; dates</h3>
-      <p class="modal-sub" id="step-sub">Où livrons-nous et pour quelle période ?</p>
-    </div>
-
-    <div class="step-panel active" id="s1">
-      <div class="flds">
-        <div class="fld">
-          <label>Adresse de livraison<span class="req">*</span></label>
-          <input id="f-addr" type="text" placeholder="Votre adresse complète à Nice" autocomplete="street-address" spellcheck="false" data-lpignore="true"/>
+    <!-- SIDEBAR STEPPER -->
+    <aside class="modal-sidebar" aria-label="Étapes de la commande">
+      <p class="ms-title">Votre commande</p>
+      <div class="stepper">
+        <div class="step-item is-cur" id="si-1">
+          <div class="step-dot stp-cur">1</div>
+          <span class="step-name">Adresse</span>
         </div>
+        <div class="step-conn"></div>
+        <div class="step-item" id="si-2">
+          <div class="step-dot stp-pnd">2</div>
+          <span class="step-name">Durée</span>
+        </div>
+        <div class="step-conn"></div>
+        <div class="step-item" id="si-3">
+          <div class="step-dot stp-pnd">3</div>
+          <span class="step-name">Installation</span>
+        </div>
+        <div class="step-conn"></div>
+        <div class="step-item" id="si-4">
+          <div class="step-dot stp-pnd">4</div>
+          <span class="step-name">Date</span>
+        </div>
+        <div class="step-conn"></div>
+        <div class="step-item" id="si-5">
+          <div class="step-dot stp-pnd">5</div>
+          <span class="step-name">Récapitulatif</span>
+        </div>
+      </div>
+    </aside>
 
-        <div class="frow">
+    <!-- CORPS DU MODAL -->
+    <div class="modal-body" id="modal-body">
+      <button class="modal-close" onclick="closeModal()" aria-label="Fermer le formulaire de réservation" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+
+      <!-- ÉTAPE 1 — Adresse -->
+      <div class="step-panel active" id="s1">
+        <div class="sp-head">
+          <h3 class="sp-title">Adresse de livraison</h3>
+          <p class="sp-sub">Où devons-nous livrer le climatiseur ?</p>
+        </div>
+        <div class="flds">
           <div class="fld">
-            <label>Étage</label>
-            <input id="f-etage" type="text" placeholder="Ex. 3ème (RDC si rez-de-chaussée)" autocomplete="off" inputmode="text"/>
+            <label>Adresse<span class="req">*</span></label>
+            <input id="f-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="street-address" spellcheck="false" data-lpignore="true"/>
           </div>
-          <div class="fld">
-            <label>Ascenseur</label>
-            <div class="tpills" role="radiogroup" aria-label="Présence d'un ascenseur">
-              <button type="button" class="tpill on" onclick="tgl(this,'asc')" role="radio" aria-checked="true">Oui</button>
-              <button type="button" class="tpill" onclick="tgl(this,'asc')" role="radio" aria-checked="false">Non</button>
+          <div class="frow">
+            <div class="fld">
+              <label>Étage</label>
+              <input id="f-etage" type="text" placeholder="Ex. 3ème" autocomplete="off" inputmode="text"/>
+            </div>
+            <div class="fld">
+              <label>Ascenseur</label>
+              <div class="tpills" role="radiogroup" aria-label="Présence d'un ascenseur">
+                <button type="button" class="tpill on" onclick="tgl(this,'asc')" role="radio" aria-checked="true">Oui</button>
+                <button type="button" class="tpill" onclick="tgl(this,'asc')" role="radio" aria-checked="false">Non</button>
+              </div>
             </div>
           </div>
         </div>
-
-        <div class="fld">
-          <label>Date de début<span class="req">*</span></label>
-          <input id="f-date" type="date" aria-label="Date de début de location"/>
-        </div>
-
-        <div class="fld">
-          <label>Durée de location<span class="req">*</span></label>
-          <div class="dur-grid" role="radiogroup" aria-label="Durée de location">
-            <button type="button" class="dur-card on" onclick="setDurIdx(0)" role="radio" aria-checked="true">
-              <span class="dur-card-days">7 jours</span>
-              <span class="dur-card-price">133 €</span>
-            </button>
-            <button type="button" class="dur-card" onclick="setDurIdx(1)" role="radio" aria-checked="false">
-              <span class="dur-card-days">10 jours</span>
-              <span class="dur-card-price">190 €</span>
-            </button>
-            <button type="button" class="dur-card" onclick="setDurIdx(2)" role="radio" aria-checked="false">
-              <span class="dur-card-days">14 jours</span>
-              <span class="dur-card-price">266 €</span>
-            </button>
-            <button type="button" class="dur-card" onclick="setDurIdx(3)" role="radio" aria-checked="false">
-              <span class="dur-card-days">21 jours</span>
-              <span class="dur-card-price">399 €</span>
-            </button>
-          </div>
-          <input type="hidden" id="f-dur" value="7"/>
-        </div>
-        <div class="total-widget">
-          <div class="tw-left">
-            <div class="tw-lbl">Total</div>
-            <div class="tw-sub">Livraison · installation · récupération incluses</div>
-          </div>
-          <div class="tw-right">
-            <div class="tw-val" id="tw-val" aria-live="polite" aria-label="Total estimé">133 €</div>
-            <div class="tw-ht" id="tw-ht">HT si professionnel</div>
-          </div>
+        <div class="modal-nav">
+          <button class="btn-next" onclick="goTo(2)" type="button">
+            Suivant →
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
         </div>
       </div>
-      <div class="modal-nav">
-        <button class="btn-next" onclick="goTo(2)" type="button" aria-label="Passer à l'étape 2 — type de fenêtre">
-          Choisir ma fenêtre →
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </button>
+
+      <!-- ÉTAPE 2 — Durée -->
+      <div class="step-panel" id="s2">
+        <div class="sp-head">
+          <h3 class="sp-title">Durée de location</h3>
+          <p class="sp-sub">Combien de jours souhaitez-vous louer ?</p>
+        </div>
+        <div class="flds">
+          <div class="fld">
+            <label>Choisissez votre durée<span class="req">*</span></label>
+            <div class="dur-grid" role="radiogroup" aria-label="Durée de location">
+              <button type="button" class="dur-card on" onclick="setDurIdx(0)" role="radio" aria-checked="true">
+                <span class="dur-card-days">7 jours</span>
+                <span class="dur-card-price">133 €</span>
+              </button>
+              <button type="button" class="dur-card" onclick="setDurIdx(1)" role="radio" aria-checked="false">
+                <span class="dur-card-days">10 jours</span>
+                <span class="dur-card-price">190 €</span>
+              </button>
+              <button type="button" class="dur-card" onclick="setDurIdx(2)" role="radio" aria-checked="false">
+                <span class="dur-card-days">14 jours</span>
+                <span class="dur-card-price">266 €</span>
+              </button>
+              <button type="button" class="dur-card" onclick="setDurIdx(3)" role="radio" aria-checked="false">
+                <span class="dur-card-days">21 jours</span>
+                <span class="dur-card-price">399 €</span>
+              </button>
+            </div>
+            <input type="hidden" id="f-dur" value="7"/>
+          </div>
+          <div class="total-widget" style="margin-top:4px">
+            <div class="tw-left">
+              <div class="tw-lbl">Total</div>
+              <div class="tw-sub">Livraison · installation · récupération incluses</div>
+            </div>
+            <div class="tw-right">
+              <div class="tw-val" id="tw-val" aria-live="polite">133 €</div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-nav">
+          <button class="btn-back" onclick="goTo(1)" type="button">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            ← Adresse
+          </button>
+          <button class="btn-next" onclick="goTo(3)" type="button">
+            Suivant →
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
       </div>
-    </div>
 
-    <!-- ÉTAPE 2 — Installation -->
-    <div class="step-panel" id="s2">
-      <div class="flds">
-        <div class="fld">
-          <label>Comment s'ouvre votre fenêtre ?<span class="req">*</span></label>
-          <p style="font-size:11.5px;color:var(--grey);font-weight:300;margin-top:2px;margin-bottom:10px">Le kit calfeutrage est fourni et installé par notre équipe.</p>
-
+      <!-- ÉTAPE 3 — Installation (type de fenêtre) -->
+      <div class="step-panel" id="s3">
+        <div class="sp-head">
+          <h3 class="sp-title">Type de fenêtre</h3>
+          <p class="sp-sub">Pour adapter le kit d'installation fourni par notre équipe.</p>
+        </div>
+        <div class="flds">
           <p id="ouv-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:8px" role="alert">Veuillez sélectionner le type de fenêtre pour continuer.</p>
           <div class="win-grid" id="ouv-group">
 
@@ -1583,119 +1680,138 @@ body{
         </div>
       </div>
       <div class="modal-nav">
-        <button class="btn-back" onclick="goTo(1)" type="button" aria-label="Retour à l'étape 1">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-          ← Adresse
-        </button>
-        <button class="btn-next" onclick="goTo(3)" type="button" aria-label="Passer à l'étape 3">
-          Presque terminé →
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- ÉTAPE 3 — Coordonnées -->
-    <div class="step-panel" id="s3">
-      <div class="flds">
-        <div class="fld">
-          <label>Type de client</label>
-          <div class="tpills">
-            <div class="tpill on" onclick="tgl(this,'type')">Particulier</div>
-            <div class="tpill" onclick="tgl(this,'type')">Professionnel</div>
-          </div>
-        </div>
-        <p style="font-size:11px;color:var(--grey);margin-bottom:8px"><span style="color:var(--red)">*</span> Champs requis · Vos données ne sont jamais revendues</p>
-        <div class="frow">
-          <div class="fld">
-            <label>Prénom<span class="req">*</span></label>
-            <input id="f-prenom" type="text" placeholder="Jean" autocomplete="given-name" spellcheck="false"/>
-          </div>
-          <div class="fld">
-            <label>Nom<span class="req">*</span></label>
-            <input id="f-nom" type="text" placeholder="Dupont" autocomplete="family-name" spellcheck="false"/>
-          </div>
-        </div>
-        <div class="frow">
-          <div class="fld">
-            <label>Téléphone<span class="req">*</span></label>
-            <input id="f-tel" type="tel" placeholder="06 12 34 56 78" autocomplete="tel" inputmode="tel" pattern="[0-9 +\-\.]{10,15}"/>
-          </div>
-          <div class="fld">
-            <label>Email<span class="req">*</span></label>
-            <input id="f-email" type="email" placeholder="prenom@exemple.fr" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email"/>
-          </div>
+          <button class="btn-back" onclick="goTo(2)" type="button">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            ← Durée
+          </button>
+          <button class="btn-next" onclick="goTo(4)" type="button">
+            Suivant →
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
         </div>
       </div>
-      <div class="modal-nav">
-        <button class="btn-back" onclick="goTo(2)" type="button" aria-label="Retour à l'étape 2 — type de fenêtre">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-          ← Fenêtre
-        </button>
-        <button class="btn-next" onclick="goTo(4)" type="button" aria-label="Vérifier et passer au paiement">
-          Vérifier ma commande →
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
-        </button>
-      </div>
-    </div>
 
-    <!-- ÉTAPE 4 — Récap + Payer -->
-    <div class="step-panel" id="s4">
-      <div class="recap" id="recap-box" role="region" aria-label="Récapitulatif de votre réservation"></div>
-
-      <!-- Honeypot anti-spam Formspree -->
-      <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" aria-hidden="true"/>
-
-      <div class="rgpd-row">
-        <input type="checkbox" id="f-rgpd"/>
-        <label for="f-rgpd">J'accepte que mes coordonnées servent uniquement à organiser ma livraison. Rien d'autre. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Politique de confidentialité</a></label>
-      </div>
-
-      <button class="btn-pay" id="sbtn" onclick="submitForm(this,'pay')" type="button" aria-label="Payer de manière sécurisée et confirmer ma réservation">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-        Confirmer et être livré demain
-      </button>
-      <p class="pay-sub">🔒 Paiement sécurisé Stripe · Confirmation par email</p>
-      <div class="pay-trust" aria-hidden="true">
-        <svg viewBox="0 0 36 24" width="32"><rect width="36" height="24" rx="4" fill="#1A1F71"/><text x="18" y="16" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">VISA</text></svg>
-        <svg viewBox="0 0 36 24" width="32"><rect width="36" height="24" rx="4" fill="#252525"/><circle cx="15" cy="12" r="7" fill="#EB001B"/><circle cx="21" cy="12" r="7" fill="#F79E1B" opacity=".85"/></svg>
-        <svg viewBox="0 0 36 24" width="32"><rect width="36" height="24" rx="4" fill="#635BFF"/><text x="18" y="16" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">Stripe</text></svg>
+      <!-- ÉTAPE 4 — Date -->
+      <div class="step-panel" id="s4">
+        <div class="sp-head">
+          <h3 class="sp-title">Date de livraison</h3>
+          <p class="sp-sub">Pour quand souhaitez-vous être livré ?</p>
+        </div>
+        <div class="flds">
+          <div class="fld">
+            <label>Date de début<span class="req">*</span></label>
+            <input id="f-date" type="date" aria-label="Date de début de location"/>
+          </div>
+          <p style="font-size:12px;color:var(--grey);margin-top:4px;line-height:1.6">Livraison sous 24h à Nice &nbsp;·&nbsp; Créneau matin (8h–13h) ou après-midi (13h–20h)</p>
+        </div>
+        <div class="modal-nav">
+          <button class="btn-back" onclick="goTo(3)" type="button">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            ← Fenêtre
+          </button>
+          <button class="btn-next" onclick="goTo(5)" type="button">
+            Suivant →
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+        </div>
       </div>
 
-      <p class="recall-link">Vous préférez être rappelé ? <button type="button" onclick="submitForm(this,'call')" class="recall-btn">Demander un rappel gratuit →</button></p>
+      <!-- ÉTAPE 5 — Récapitulatif + Coordonnées + Paiement -->
+      <div class="step-panel" id="s5">
+        <div class="sp-head">
+          <h3 class="sp-title">Récapitulatif</h3>
+          <p class="sp-sub">Vérifiez votre commande et renseignez vos coordonnées.</p>
+        </div>
 
-      <div class="modal-nav">
-        <button class="btn-back" onclick="goTo(3)" type="button" aria-label="Modifier mes informations">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-          ← Modifier mes informations
-        </button>
+        <div class="recap" id="recap-box" role="region" aria-label="Récapitulatif de votre réservation"></div>
+
+        <p style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--grey2);margin:18px 24px 0;border-top:1px solid var(--rule);padding-top:14px">Vos coordonnées</p>
+        <div class="flds" style="padding:10px 24px 0">
+          <div class="fld">
+            <label>Type de client</label>
+            <div class="tpills">
+              <div class="tpill on" onclick="tgl(this,'type')">Particulier</div>
+              <div class="tpill" onclick="tgl(this,'type')">Professionnel</div>
+            </div>
+          </div>
+          <p style="font-size:11px;color:var(--grey);margin-bottom:0"><span style="color:var(--red)">*</span> Champs requis · Vos données ne sont jamais revendues</p>
+          <div class="frow">
+            <div class="fld">
+              <label>Prénom<span class="req">*</span></label>
+              <input id="f-prenom" type="text" placeholder="Jean" autocomplete="given-name" spellcheck="false"/>
+            </div>
+            <div class="fld">
+              <label>Nom<span class="req">*</span></label>
+              <input id="f-nom" type="text" placeholder="Dupont" autocomplete="family-name" spellcheck="false"/>
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fld">
+              <label>Téléphone<span class="req">*</span></label>
+              <input id="f-tel" type="tel" placeholder="06 12 34 56 78" autocomplete="tel" inputmode="tel"/>
+            </div>
+            <div class="fld">
+              <label>Email<span class="req">*</span></label>
+              <input id="f-email" type="email" placeholder="prenom@exemple.fr" autocomplete="email" autocapitalize="off" spellcheck="false" inputmode="email"/>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding:0 24px">
+          <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" aria-hidden="true"/>
+
+          <div class="rgpd-row" style="margin-top:16px">
+            <input type="checkbox" id="f-rgpd"/>
+            <label for="f-rgpd">J'accepte que mes coordonnées servent uniquement à organiser ma livraison. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Politique de confidentialité</a></label>
+          </div>
+
+          <button class="btn-pay" id="sbtn" onclick="submitForm(this,'pay')" type="button" aria-label="Payer de manière sécurisée">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            Confirmer et être livré demain
+          </button>
+          <p class="pay-sub">🔒 Paiement sécurisé Stripe · Confirmation par email</p>
+          <div class="pay-trust" aria-hidden="true">
+            <svg viewBox="0 0 36 24" width="32"><rect width="36" height="24" rx="4" fill="#1A1F71"/><text x="18" y="16" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">VISA</text></svg>
+            <svg viewBox="0 0 36 24" width="32"><rect width="36" height="24" rx="4" fill="#252525"/><circle cx="15" cy="12" r="7" fill="#EB001B"/><circle cx="21" cy="12" r="7" fill="#F79E1B" opacity=".85"/></svg>
+            <svg viewBox="0 0 36 24" width="32"><rect width="36" height="24" rx="4" fill="#635BFF"/><text x="18" y="16" font-family="Arial,sans-serif" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">Stripe</text></svg>
+          </div>
+
+          <p class="recall-link">Vous préférez être rappelé ? <button type="button" onclick="submitForm(this,'call')" class="recall-btn">Demander un rappel gratuit →</button></p>
+
+          <p id="form-error-msg" style="display:none;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;font-size:13px;text-align:center;margin-top:12px">
+            Problème de connexion. Appelez-nous au <a href="tel:0663798756" style="color:#b91c1c;font-weight:600" data-c-tel><span data-c="phone">06.63.79.87.56</span></a>
+          </p>
+
+          <div class="modal-nav" style="margin-top:12px">
+            <button class="btn-back" onclick="goTo(4)" type="button">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+              ← Date
+            </button>
+          </div>
+        </div>
       </div>
-    </div>
 
-    <!-- Message d'erreur réseau -->
-    <p id="form-error-msg" style="display:none;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;font-size:13px;text-align:center;margin-top:12px">
-      Problème de connexion. Appelez-nous directement au <a href="tel:0663798756" style="color:#b91c1c;font-weight:600" data-c-tel><span data-c="phone">06.63.79.87.56</span></a> — on vous confirme tout par téléphone.
-    </p>
-
-    <!-- SUCCESS — Payer -->
-    <div class="modal-success" id="msuccess-pay">
-      <div class="s-ico" style="background:#dcfce7"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-      <h2 class="s-h">Demande envoyée</h2>
-      <p class="s-p" id="s-msg-pay">Vous recevrez le lien de paiement <strong>dans les 5 minutes</strong> par email. Dès règlement, votre livraison est confirmée pour demain.</p>
-      <button class="s-close" onclick="closeModal()" type="button" aria-label="Fermer et retourner au site">Retour au site</button>
-    </div>
-
-    <!-- SUCCESS — Rappel -->
-    <div class="modal-success" id="msuccess-call">
-      <div class="s-ico" style="background:#dbeafe">
-        <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--blue)"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.77a19.79 19.79 0 01-3.07-8.68A2 2 0 012 .9h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      <!-- SUCCESS — Payer -->
+      <div class="modal-success" id="msuccess-pay">
+        <div class="s-ico" style="background:#dcfce7"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <h2 class="s-h">Demande envoyée !</h2>
+        <p class="s-p" id="s-msg-pay">Vous recevrez le lien de paiement <strong>dans les 5 minutes</strong> par email. Dès règlement, votre livraison est confirmée pour demain.</p>
+        <button class="s-close" onclick="closeModal()" type="button">Retour au site</button>
       </div>
-      <h2 class="s-h">Demande reçue</h2>
-      <p class="s-p" id="s-msg-call">Notre équipe vous rappelle dans l'heure.</p>
-      <button class="s-close" onclick="closeModal()" type="button" aria-label="Fermer et retourner au site">Retour au site</button>
-    </div>
 
-  </div>
-</div>
+      <!-- SUCCESS — Rappel -->
+      <div class="modal-success" id="msuccess-call">
+        <div class="s-ico" style="background:#dbeafe">
+          <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" style="stroke:var(--blue)"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.77a19.79 19.79 0 01-3.07-8.68A2 2 0 012 .9h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 8.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+        </div>
+        <h2 class="s-h">Demande reçue</h2>
+        <p class="s-p" id="s-msg-call">Notre équipe vous rappelle dans l'heure.</p>
+        <button class="s-close" onclick="closeModal()" type="button">Retour au site</button>
+      </div>
+
+    </div><!-- /modal-body -->
+  </div><!-- /modal -->
+</div><!-- /modal-overlay -->
 
 <script>
 
@@ -1784,63 +1900,66 @@ document.addEventListener('keydown',e=>{
 });
 
 const META={
-  1:{lbl:'Étape 1 / 4',title:'Adresse & dates',sub:'Où livrons-nous, et pour quelle période ?'},
-  2:{lbl:'Étape 2 / 4',title:'Type de fenêtre',sub:'Le kit calfeutrage est fourni et posé par notre technicien.'},
-  3:{lbl:'Étape 3 / 4',title:'Vos coordonnées',sub:'Pour planifier la livraison et vous envoyer le contrat.'},
-  4:{lbl:'Récapitulatif',title:'Vérification',sub:'Relisez et confirmez votre réservation.'},
+  1:{title:'Adresse de livraison',sub:'Où devons-nous livrer ?'},
+  2:{title:'Durée de location',sub:'Combien de jours ?'},
+  3:{title:'Type de fenêtre',sub:'Pour adapter le kit d\'installation'},
+  4:{title:'Date de livraison',sub:'Pour quand souhaitez-vous être livré ?'},
+  5:{title:'Récapitulatif',sub:'Vérifiez et confirmez votre commande'},
 };
 
 function goTo(n,silent){
   if(!silent&&n>curStep){
     if(curStep===1){
       const addr=document.getElementById('f-addr')?.value.trim();
-      const date=document.getElementById('f-date')?.value;
-      const miss=[];
-      if(!addr)miss.push('f-addr');
-      if(!date)miss.push('f-date');
-      if(miss.length){highlight(miss);return;}
+      if(!addr){highlight(['f-addr']);return;}
     }
-    if(curStep===2){
+    if(curStep===3){
       if(!document.querySelector('#ouv-group .win-card.on')){
         const g=document.getElementById('ouv-group');
-        if(g){g.style.outline='1.5px solid #dc2626';g.style.borderRadius='10px';g.setAttribute('aria-invalid','true');setTimeout(()=>{g.style.outline='';g.removeAttribute('aria-invalid');},2200);}
-        // Message d'erreur
+        if(g){g.style.outline='1.5px solid #dc2626';g.style.borderRadius='10px';setTimeout(()=>{g.style.outline='';},2200);}
         const errMsg=document.getElementById('ouv-err');
         if(errMsg){errMsg.style.display='block';setTimeout(()=>errMsg.style.display='none',3000);}
         return;
       }
     }
-    if(curStep===3){
-      const req=['f-prenom','f-nom','f-tel','f-email'];
-      const miss=req.filter(id=>!document.getElementById(id)?.value.trim());
-      if(miss.length){highlight(miss);return;}
+    if(curStep===4){
+      const date=document.getElementById('f-date')?.value;
+      if(!date){highlight(['f-date']);return;}
     }
   }
-  if(n===4)buildRecap();
+  if(n===5)buildRecap();
   document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.modal-success').forEach(s=>s.classList.remove('show'));
   const panel=document.getElementById('s'+n);
   if(panel)panel.classList.add('active');
-  const m=META[n];
-  if(m){
-    const mh=document.getElementById('mhead');
-    if(mh)mh.style.display='';
-    const sl=document.getElementById('step-lbl');
-    const st=document.getElementById('step-title');
-    const ss=document.getElementById('step-sub');
-    if(sl)sl.textContent=m.lbl;
-    if(st)st.textContent=m.title;
-    if(ss)ss.textContent=m.sub;
-  }
-  const pr=document.getElementById('progress');
-  if(pr){pr.style.width=(n/4*100)+'%';pr.closest('[role="progressbar"]')?.setAttribute('aria-valuenow',Math.round(n/4*100));}
-  // Title dynamique
-  const titles={1:'Adresse',2:'Type de fenêtre',3:'Coordonnées',4:'Récapitulatif'};
-  if(titles[n])document.title='Réservation — '+titles[n]+' | Loc\'Air';
+  updateStepper(n);
+  document.title='Réservation — Étape '+n+'/5 | Loc\'Air';
   curStep=n;
-  const modal=document.getElementById('modal');
-  if(modal){modal.scrollTo({top:0,behavior:'smooth'});}
-  const h=document.getElementById('step-lbl');if(h)setTimeout(()=>h.focus(),100);
+  const mb=document.getElementById('modal-body');
+  if(mb)mb.scrollTo({top:0,behavior:'smooth'});
+}
+
+function updateStepper(n){
+  const checkSvg='<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>';
+  for(let i=1;i<=5;i++){
+    const si=document.getElementById('si-'+i);
+    if(!si)continue;
+    const dot=si.querySelector('.step-dot');
+    if(!dot)continue;
+    si.className='step-item';
+    if(i<n){
+      dot.className='step-dot stp-done';
+      dot.innerHTML=checkSvg;
+      si.classList.add('is-done');
+    }else if(i===n){
+      dot.className='step-dot stp-cur';
+      dot.textContent=i;
+      si.classList.add('is-cur');
+    }else{
+      dot.className='step-dot stp-pnd';
+      dot.textContent=i;
+    }
+  }
 }
 
 function highlight(ids){
@@ -1864,11 +1983,6 @@ function updateTotal(){
     tv.textContent=price===0?'Sur devis':price+' €';
     tv.style.transform='scale(1.05)';
     setTimeout(()=>tv.style.transform='',200);
-  }
-  // Mettre à jour le bouton payer si visible
-  const sbtn=document.getElementById('sbtn');
-  if(sbtn&&price>0&&!sbtn.disabled){
-    sbtn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Payer et confirmer — '+price+' €';
   }
 }
 
@@ -1908,9 +2022,6 @@ function buildRecap(){
   const days=parseInt(document.getElementById('f-dur')?.value||'7');
   const price=prices[days]!=null?prices[days]:0;
   const durEntry=DUR_MAP.find(d=>d.days===days);
-
-  // Étage & ascenseur
-  const etage=document.getElementById('f-etage')?.value.trim()||'—';
   let asc='—';
   const ascFlds=[...document.querySelectorAll('#s1 .frow .fld')];
   for(const fld of ascFlds){
@@ -1920,41 +2031,24 @@ function buildRecap(){
       if(active){asc=active.textContent.trim();break;}
     }
   }
-
-  // Type client dans s2
-  const typeEl=document.querySelector('#s3 .tpills .tpill.on');
-  const type=typeEl?typeEl.textContent.trim():'Particulier';
-
-  const ouv=document.querySelector('#ouv-group .win-card.on')?.dataset.val||'Précisé à la livraison';
-
+  const etage=document.getElementById('f-etage')?.value.trim()||'—';
+  const ouv=document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—';
   const rawDate=document.getElementById('f-date')?.value||'';
   let dateStr='—';
   if(rawDate){const[y,m,d]=rawDate.split('-');if(y&&m&&d)dateStr=d+'/'+m+'/'+y;}
-
-  const prenom=document.getElementById('f-prenom')?.value.trim()||'';
-  const nom=document.getElementById('f-nom')?.value.trim()||'';
-  const nomFull=(prenom+' '+nom).trim()||'—';
-
   const rows=[
     ['Adresse',document.getElementById('f-addr')?.value||'—'],
-    ['Étage',etage],
-    ['Ascenseur',asc],
-    ['Date de début',dateStr],
+    ['Étage · Ascenseur',etage+(asc!=='—'?' · Asc. '+asc:'')],
     ['Durée',durEntry?durEntry.label:'—'],
     ['Fenêtre',ouv],
-    ['Nom',nomFull],
-    ['Téléphone',document.getElementById('f-tel')?.value||'—'],
-    ['Email',document.getElementById('f-email')?.value||'—'],
-    ['Profil',type],
-    ['Total',price===0?'Sur devis':price+' €'],
+    ['Date de début',dateStr],
+    ['Total TTC','<strong style="color:var(--blue);font-size:15px">'+(price===0?'Sur devis':price+' €')+'</strong>'],
   ];
-
   const box=document.getElementById('recap-box');
   if(!box)return;
   box.innerHTML='<dl style="display:contents">'+rows.map(([k,v])=>
     '<div class="recap-item"><dt class="recap-k">'+k+'</dt><dd class="recap-v">'+v+'</dd></div>'
   ).join('')+'</dl>';
-
   const sbtn=document.getElementById('sbtn');
   if(sbtn&&price>0){
     sbtn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Payer — '+price+' €';
@@ -1963,6 +2057,8 @@ function buildRecap(){
 }
 
 function submitForm(btn,mode){
+  const missCoords=['f-prenom','f-nom','f-tel','f-email'].filter(id=>!document.getElementById(id)?.value.trim());
+  if(missCoords.length){highlight(missCoords);return;}
   const rgpd=document.getElementById('f-rgpd');
   if(!rgpd||!rgpd.checked){
     if(rgpd){
@@ -1983,8 +2079,6 @@ function submitForm(btn,mode){
   setTimeout(()=>{
     document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
     document.querySelectorAll('.modal-success').forEach(s=>s.classList.remove('show'));
-    const mh=document.getElementById('mhead');if(mh)mh.style.display='none';
-    const pr=document.getElementById('progress');if(pr)pr.style.width='100%';
     const prenom=document.getElementById('f-prenom')?.value.trim()||'';
     const formData={
       adresse:document.getElementById('f-addr')?.value,
