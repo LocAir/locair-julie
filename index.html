@@ -880,6 +880,40 @@ body{
 .recap-k,dt.recap-k{font-size:12px;color:var(--grey);font-weight:400;white-space:nowrap;flex-shrink:0}
 .recap-v,dd.recap-v{font-size:13px;color:var(--black);font-weight:600;text-align:right;word-break:break-word;min-width:0;max-width:55%;margin:0}
 
+/* ── DURATION SLIDER ── */
+.dur-wrap{padding:4px 0 2px}
+.dur-range{
+  width:100%;-webkit-appearance:none;appearance:none;
+  height:4px;border-radius:4px;outline:none;cursor:pointer;
+  background:linear-gradient(90deg,var(--blue) 0%,var(--rule) 0%);
+}
+.dur-range::-webkit-slider-thumb{
+  -webkit-appearance:none;width:24px;height:24px;border-radius:50%;
+  background:var(--blue);border:3px solid var(--white);
+  box-shadow:0 2px 10px rgba(0,102,204,.4);
+  cursor:pointer;transition:transform .15s,box-shadow .15s;
+}
+.dur-range::-webkit-slider-thumb:hover{transform:scale(1.18);box-shadow:0 4px 16px rgba(0,102,204,.5)}
+.dur-range::-moz-range-thumb{
+  width:24px;height:24px;border-radius:50%;
+  background:var(--blue);border:3px solid var(--white);
+  box-shadow:0 2px 10px rgba(0,102,204,.4);cursor:pointer;
+}
+.dur-range:focus-visible{outline:2px solid var(--blue);outline-offset:4px;border-radius:4px}
+.dur-ticks{
+  display:flex;justify-content:space-between;
+  margin-top:12px;
+}
+.dur-tick{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  flex:1;cursor:pointer;
+  transition:color .15s;
+}
+.dur-tick-days{font-size:13px;font-weight:600;color:var(--grey2)}
+.dur-tick-price{font-size:11px;font-weight:400;color:var(--grey2)}
+.dur-tick.active .dur-tick-days{color:var(--blue);font-weight:700}
+.dur-tick.active .dur-tick-price{color:var(--blue)}
+
 /* ── CTA PAYER ── */
 .btn-pay{
   width:100%;margin-top:16px;padding:16px;
@@ -1356,21 +1390,39 @@ body{
           </div>
         </div>
 
-        <div class="frow">
-          <div class="fld">
-            <label>Date de début<span class="req">*</span></label>
-            <input id="f-date" type="date" aria-label="Date de début de location" aria-describedby="date-hint"/>
+        <div class="fld">
+          <label>Date de début<span class="req">*</span></label>
+          <input id="f-date" type="date" aria-label="Date de début de location"/>
+        </div>
+
+        <div class="fld">
+          <label>Durée de location<span class="req">*</span></label>
+          <div class="dur-wrap">
+            <input type="range" class="dur-range" id="f-dur-range"
+              min="0" max="3" step="1" value="0"
+              oninput="onDurSlide(this)"
+              aria-label="Durée de location"
+              aria-valuetext="7 jours — 133 €"/>
+            <div class="dur-ticks">
+              <div class="dur-tick active" onclick="setDurIdx(0)">
+                <span class="dur-tick-days">7 jours</span>
+                <span class="dur-tick-price">133 €</span>
+              </div>
+              <div class="dur-tick" onclick="setDurIdx(1)">
+                <span class="dur-tick-days">10 jours</span>
+                <span class="dur-tick-price">190 €</span>
+              </div>
+              <div class="dur-tick" onclick="setDurIdx(2)">
+                <span class="dur-tick-days">14 jours</span>
+                <span class="dur-tick-price">266 €</span>
+              </div>
+              <div class="dur-tick" onclick="setDurIdx(3)">
+                <span class="dur-tick-days">21 jours</span>
+                <span class="dur-tick-price">399 €</span>
+              </div>
+            </div>
           </div>
-          <div class="fld">
-            <label>Durée<span class="req">*</span></label>
-            <select id="f-dur" onchange="updateTotal()" aria-label="Durée de location souhaitée">
-              <option value="7" data-price="133" selected>7 jours — 133 €</option>
-              <option value="10" data-price="190">10 jours — 190 €</option>
-              <option value="14" data-price="266">14 jours — 266 €</option>
-              <option value="21" data-price="399">21 jours — 399 €</option>
-              <option value="0" data-price="0">Autre durée — devis gratuit</option>
-            </select>
-          </div>
+          <input type="hidden" id="f-dur" value="7"/>
         </div>
         <div class="total-widget">
           <div class="tw-left">
@@ -1674,6 +1726,28 @@ function trapFocus(modal){
 }
 
 const prices={7:133,10:190,14:266,21:399,0:0};
+const DUR_MAP=[
+  {days:7,  price:133, label:'7 jours — 133 €'},
+  {days:10, price:190, label:'10 jours — 190 €'},
+  {days:14, price:266, label:'14 jours — 266 €'},
+  {days:21, price:399, label:'21 jours — 399 €'},
+];
+function onDurSlide(range){
+  const idx=+range.value;
+  const pct=(idx/3)*100;
+  range.style.background=`linear-gradient(90deg,var(--blue) ${pct}%,var(--rule) ${pct}%)`;
+  const d=DUR_MAP[idx];
+  document.getElementById('f-dur').value=d.days;
+  range.setAttribute('aria-valuetext',d.label);
+  document.querySelectorAll('.dur-tick').forEach((el,i)=>el.classList.toggle('active',i===idx));
+  updateTotal();
+}
+function setDurIdx(idx){
+  const range=document.getElementById('f-dur-range');
+  if(!range)return;
+  range.value=idx;
+  onDurSlide(range);
+}
 const yr=document.getElementById("year");if(yr)yr.textContent=new Date().getFullYear();
 let curStep=1;
 
@@ -1804,8 +1878,7 @@ function highlight(ids){
 }
 
 function updateTotal(){
-  const sel=document.getElementById('f-dur');
-  const days=parseInt(sel?.value||'7');
+  const days=parseInt(document.getElementById('f-dur')?.value||'7');
   const price=prices[days]!=null?prices[days]:0;
   const tv=document.getElementById('tw-val');
   if(tv){
@@ -1853,10 +1926,9 @@ function tglOuv(el,val){
 }
 
 function buildRecap(){
-  const dur=document.getElementById('f-dur');
-  const dopt=dur?.options[dur?.selectedIndex];
-  const days=parseInt(dur?.value||'7');
+  const days=parseInt(document.getElementById('f-dur')?.value||'7');
   const price=prices[days]!=null?prices[days]:0;
+  const durEntry=DUR_MAP.find(d=>d.days===days);
 
   // Étage & ascenseur
   const etage=document.getElementById('f-etage')?.value.trim()||'—';
@@ -1889,7 +1961,7 @@ function buildRecap(){
     ['Étage',etage],
     ['Ascenseur',asc],
     ['Date de début',dateStr],
-    ['Durée',dopt?.text?.split('—')[0]?.trim()||'—'],
+    ['Durée',durEntry?durEntry.label:'—'],
     ['Fenêtre',ouv],
     ['Nom',nomFull],
     ['Téléphone',document.getElementById('f-tel')?.value||'—'],
