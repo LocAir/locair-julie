@@ -1784,19 +1784,6 @@ body{
             <label>Adresse<span class="req">*</span></label>
             <input id="f-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="street-address" spellcheck="false" data-lpignore="true"/>
           </div>
-          <div class="frow">
-            <div class="fld">
-              <label>Étage</label>
-              <input id="f-etage" type="text" placeholder="Ex. 3ème" autocomplete="off" inputmode="text"/>
-            </div>
-            <div class="fld">
-              <label>Ascenseur</label>
-              <div class="tpills" role="radiogroup" aria-label="Présence d'un ascenseur">
-                <button type="button" class="tpill on" onclick="tgl(this,'asc')" role="radio" aria-checked="true">Oui</button>
-                <button type="button" class="tpill" onclick="tgl(this,'asc')" role="radio" aria-checked="false">Non</button>
-              </div>
-            </div>
-          </div>
         </div>
         <div class="modal-nav">
           <button class="btn-next" onclick="goTo(2)" type="button">
@@ -2062,6 +2049,19 @@ body{
             <div class="tpills">
               <button type="button" class="tpill on" onclick="tgl(this,'type')" role="radio" aria-checked="true">Particulier</button>
               <button type="button" class="tpill" onclick="tgl(this,'type')" role="radio" aria-checked="false">Professionnel</button>
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fld">
+              <label>Étage</label>
+              <input id="f-etage" type="text" placeholder="Ex. 3ème" autocomplete="off" inputmode="text"/>
+            </div>
+            <div class="fld">
+              <label>Ascenseur</label>
+              <div class="tpills" id="asc-group" role="radiogroup" aria-label="Présence d'un ascenseur">
+                <button type="button" class="tpill on" onclick="tgl(this,'asc')" role="radio" aria-checked="true">Oui</button>
+                <button type="button" class="tpill" onclick="tgl(this,'asc')" role="radio" aria-checked="false">Non</button>
+              </div>
             </div>
           </div>
           <p style="font-size:11px;color:var(--grey);margin-bottom:0"><span style="color:var(--red)">*</span> Champs requis · Vos données ne sont jamais revendues</p>
@@ -2352,15 +2352,7 @@ function buildRecap(){
   const days=parseInt(document.getElementById('f-dur')?.value||'7');
   const price=prices[days]!=null?prices[days]:0;
   const durEntry=DUR_MAP.find(d=>d.days===days);
-  let asc='—';
-  const ascFlds=[...document.querySelectorAll('#s1 .frow .fld')];
-  for(const fld of ascFlds){
-    const lbl=fld.querySelector('label');
-    if(lbl&&lbl.textContent.includes('Ascenseur')){
-      const active=fld.querySelector('.tpill.on');
-      if(active){asc=active.textContent.trim();break;}
-    }
-  }
+  const asc=document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—';
   const etage=document.getElementById('f-etage')?.value.trim()||'';
   const ouv=document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—';
   const rawDate=document.getElementById('f-date')?.value||'';
@@ -2417,7 +2409,7 @@ function submitForm(btn,mode){
     const formData={
       adresse:document.getElementById('f-addr')?.value,
       etage:document.getElementById('f-etage')?.value||'—',
-      ascenseur:document.querySelector('#s1 .frow .fld:nth-child(2) .tpill.on')?.textContent.trim()||'—',
+      ascenseur:document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—',
       date:document.getElementById('f-date')?.value,
       duree:document.getElementById('f-dur')?.value,
       fenetre:document.querySelector('#ouv-group .win-card.on')?.dataset.val,
