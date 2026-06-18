@@ -875,11 +875,12 @@ body{
 .cookie-btn-refuse{background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);border:none;padding:9px 20px;border-radius:980px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--body);white-space:nowrap;transition:background .15s}
 .cookie-btn-refuse:hover{background:rgba(255,255,255,.14)}
 /* ── WHATSAPP BUTTON ── */
-.wa-btn{position:fixed;bottom:88px;right:20px;z-index:8000;width:52px;height:52px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,211,102,.4),0 2px 6px rgba(0,0,0,.15);text-decoration:none;transition:transform .2s,box-shadow .2s;border:none}
+.wa-btn{position:fixed;bottom:88px;right:20px;z-index:8000;width:52px;height:52px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(37,211,102,.4),0 2px 6px rgba(0,0,0,.15);text-decoration:none;transition:transform .2s,box-shadow .2s,opacity .3s;border:none;opacity:0;pointer-events:none}
+.wa-btn.wa-visible{opacity:1;pointer-events:auto}
 .wa-btn:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(37,211,102,.5),0 2px 8px rgba(0,0,0,.2)}
 .wa-btn svg{width:28px;height:28px;fill:#fff}
 @media(min-width:641px){.wa-btn{bottom:32px;right:28px}}
-.modal-overlay.open~.wa-btn{opacity:0;pointer-events:none}
+.modal-overlay.open~.wa-btn{opacity:0!important;pointer-events:none!important}
 
 /* ── MOBILE STICKY ── */
 .m-bar{
@@ -2582,16 +2583,19 @@ document.querySelectorAll('.sr').forEach(el=>io.observe(el));
 // Indicateur section active
 const sections=[...document.querySelectorAll('section[id],main[id]')];
 const navBtn=document.querySelector('.nav-btn');
+const waBtn=document.querySelector('.wa-btn');
 let scrollTimer=null;
 window.addEventListener('scroll',()=>{
   clearTimeout(scrollTimer);
   scrollTimer=setTimeout(()=>{
     const scrollY=window.scrollY;
+    const heroH=window.innerHeight*.85;
     if(scrollY>200&&navBtn){
       navBtn.style.boxShadow='0 0 0 2px rgba(0,87,184,.3)';
     }else if(navBtn){
       navBtn.style.boxShadow='';
     }
+    if(waBtn)waBtn.classList.toggle('wa-visible',scrollY>heroH);
   },50);
 },{passive:true});
 
