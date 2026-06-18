@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Suggestions — Animations & Dynamisme</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#1b3a5f;--gold:#c5a96c;--cream:#f4f0ea;--bg:#ede8e0;
+  --body:'DM Sans',sans-serif;--disp:'Cormorant Garamond',serif;
+}
+body{background:#0d0d0d;font-family:var(--body);color:#fff}
+
+/* NAV SUGGESTIONS */
+.sugg-nav{position:sticky;top:0;z-index:100;background:#0d0d0d;border-bottom:1px solid rgba(255,255,255,.08);display:flex;gap:0;overflow-x:auto;padding:0 20px}
+.sugg-nav a{padding:14px 18px;font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.4);text-decoration:none;white-space:nowrap;border-bottom:2px solid transparent;transition:color .15s,border-color .15s}
+.sugg-nav a:hover,.sugg-nav a.active{color:#c5a96c;border-bottom-color:#c5a96c}
+
+/* SECTION */
+.s{padding:64px 24px;max-width:900px;margin:0 auto}
+.s-num{font-size:10px;font-weight:700;letter-spacing:.2em;color:rgba(255,255,255,.25);margin-bottom:8px}
+.s-title{font-family:var(--disp);font-size:36px;font-weight:300;margin-bottom:6px}
+.s-title em{font-style:italic;color:var(--gold)}
+.s-desc{font-size:13px;color:rgba(255,255,255,.45);line-height:1.7;max-width:560px;margin-bottom:32px}
+.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:3px;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;margin-bottom:28px}
+.tag.high{background:rgba(197,169,108,.2);color:#c5a96c;border:1px solid rgba(197,169,108,.3)}
+.tag.med{background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.12)}
+.sep{height:1px;background:rgba(255,255,255,.07);margin:0}
+
+/* DEMO FRAME */
+.frame{border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.1);margin-bottom:16px;position:relative}
+.frame-label{position:absolute;top:12px;right:12px;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);padding:4px 10px;border-radius:4px;font-size:10px;color:rgba(255,255,255,.6);font-weight:500;letter-spacing:.06em;z-index:10}
+.note{font-size:11px;color:rgba(255,255,255,.35);line-height:1.6;margin-top:8px}
+
+/* ═══════════════════════════════════
+   1 — HERO CINÉMATIQUE
+   ═══════════════════════════════════ */
+#demo1{
+  height:480px;
+  background:linear-gradient(145deg,#1e3a5f 0%,#112240 40%,#06090f 100%);
+  display:flex;align-items:flex-end;position:relative;overflow:hidden;
+}
+#demo1 .scrim{position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,9,15,.1) 0%,rgba(6,9,15,.78) 70%,rgba(6,9,15,.92) 100%)}
+#demo1 .content{position:relative;z-index:2;padding:0 28px 40px;width:100%}
+.anim-eye{font-size:10px;font-weight:500;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.55);margin-bottom:10px}
+.anim-h1{font-family:var(--disp);font-size:clamp(40px,6vw,64px);font-weight:300;line-height:1.05;color:#fff;margin-bottom:14px}
+.anim-h1 em{font-style:italic;color:#c9d8f0}
+.anim-sub{font-size:13px;color:rgba(255,255,255,.6);margin-bottom:20px}
+.anim-sb{display:flex;background:rgba(255,255,255,.96);border-radius:6px;overflow:hidden;max-width:420px}
+.anim-sb input{flex:1;padding:12px 16px;border:none;outline:none;font-size:13px;font-family:var(--body);color:#333;background:none}
+.anim-sb button{background:var(--navy);color:#fff;border:none;padding:12px 20px;font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap}
+
+/* Animation classes */
+.reveal{opacity:0;transform:translateY(22px)}
+.reveal.in{animation:revealUp .6s cubic-bezier(.22,1,.36,1) forwards}
+.reveal-words span{opacity:0;display:inline;transform:translateY(16px);display:inline-block}
+.reveal-words.in span{animation:wordUp .5s cubic-bezier(.22,1,.36,1) forwards}
+@keyframes revealUp{to{opacity:1;transform:none}}
+@keyframes wordUp{to{opacity:1;transform:none}}
+
+/* ═══════════════════════════════════
+   2 — GRADIENT VIVANT
+   ═══════════════════════════════════ */
+#demo2{height:360px;position:relative;overflow:hidden;display:flex;align-items:flex-end}
+.grad-bg{
+  position:absolute;inset:0;
+  background:linear-gradient(145deg,#1e3a5f,#112240,#0a1525,#1b3a5f);
+  background-size:300% 300%;
+  animation:gradShift 8s ease-in-out infinite;
+}
+@keyframes gradShift{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+.grad-overlay{position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(6,9,15,.85) 100%)}
+.grad-content{position:relative;z-index:2;padding:0 28px 36px;width:100%}
+.g-h1{font-family:var(--disp);font-size:clamp(38px,6vw,58px);font-weight:300;color:#fff;line-height:1.05}
+.g-h1 em{font-style:italic;color:#c9d8f0}
+.g-sub{font-size:13px;color:rgba(255,255,255,.6);margin-top:10px}
+
+/* ═══════════════════════════════════
+   3 — SCROLL REVEAL SECTIONS
+   ═══════════════════════════════════ */
+.sr-demo-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:600px){.sr-demo-grid{grid-template-columns:1fr}}
+.sr-card{background:var(--bg);border-radius:12px;padding:24px;opacity:0;transform:translateY(32px);transition:opacity .6s cubic-bezier(.22,1,.36,1),transform .6s cubic-bezier(.22,1,.36,1)}
+.sr-card.visible{opacity:1;transform:none}
+.sr-card h3{font-family:var(--disp);font-size:22px;font-weight:300;color:var(--navy);margin-bottom:6px}
+.sr-card h3 em{font-style:italic;color:var(--gold)}
+.sr-card p{font-size:13px;color:#5a6577;line-height:1.6}
+.sr-badge{display:inline-block;width:32px;height:32px;border-radius:50%;background:var(--navy);color:#fff;font-family:var(--disp);font-size:16px;font-weight:600;line-height:32px;text-align:center;margin-bottom:12px}
+
+/* ═══════════════════════════════════
+   4 — COMPTEURS ANIMÉS
+   ═══════════════════════════════════ */
+.stats-demo{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;background:var(--bg);border-radius:16px;padding:32px}
+@media(max-width:500px){.stats-demo{grid-template-columns:1fr 1fr}}
+.stat-box{text-align:center}
+.stat-num{font-family:var(--disp);font-size:52px;font-weight:300;color:var(--navy);line-height:1;letter-spacing:-.02em}
+.stat-unit{font-size:20px;font-weight:300;color:var(--gold)}
+.stat-label{font-size:11px;font-weight:500;color:#8a95a3;letter-spacing:.1em;text-transform:uppercase;margin-top:6px}
+
+/* ═══════════════════════════════════
+   5 — MICRO-INTERACTIONS BOUTONS
+   ═══════════════════════════════════ */
+.micro-grid{display:flex;gap:14px;flex-wrap:wrap;align-items:center}
+/* Ripple */
+.btn-ripple{
+  position:relative;overflow:hidden;
+  padding:13px 28px;background:var(--navy);color:var(--cream);
+  border:none;border-radius:4px;font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;font-family:var(--body);
+}
+.btn-ripple .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.25);transform:scale(0);animation:rippleAnim .55s linear;pointer-events:none}
+@keyframes rippleAnim{to{transform:scale(4);opacity:0}}
+/* Magnetic */
+.btn-magnetic{
+  padding:13px 28px;background:transparent;color:var(--cream);
+  border:1.5px solid rgba(255,255,255,.3);border-radius:4px;font-size:11px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;font-family:var(--body);
+  transition:border-color .2s,background .2s,transform .15s;
+  display:inline-block;
+}
+.btn-magnetic:hover{border-color:var(--gold);color:var(--gold);background:rgba(197,169,108,.06)}
+/* Gold shimmer */
+.btn-shimmer{
+  position:relative;overflow:hidden;
+  padding:13px 28px;background:var(--gold);color:var(--navy);
+  border:none;border-radius:4px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;font-family:var(--body);
+}
+.btn-shimmer::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.4) 50%,transparent 100%);
+  transform:translateX(-100%);
+  transition:transform .6s ease;
+}
+.btn-shimmer:hover::after{transform:translateX(100%)}
+
+/* ═══════════════════════════════════
+   6 — PARALLAX HERO
+   ═══════════════════════════════════ */
+#demo6{
+  height:400px;
+  background:linear-gradient(145deg,#1e3a5f 0%,#112240 40%,#06090f 100%);
+  position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;
+}
+.para-bg{
+  position:absolute;inset:-60px;
+  background:radial-gradient(ellipse at 30% 60%,rgba(27,58,95,.8) 0%,transparent 60%),
+             radial-gradient(ellipse at 70% 30%,rgba(197,169,108,.12) 0%,transparent 50%);
+  will-change:transform;
+  transition:transform .05s linear;
+}
+.para-content{position:relative;z-index:2;text-align:center;padding:24px}
+.para-h1{font-family:var(--disp);font-size:clamp(36px,5vw,56px);font-weight:300;color:#fff;line-height:1.05}
+.para-h1 em{font-style:italic;color:#c9d8f0}
+.para-sub{font-size:13px;color:rgba(255,255,255,.55);margin-top:12px}
+
+/* ═══════════════════════════════════
+   7 — CARTE DE TARIFICATION HOVER
+   ═══════════════════════════════════ */
+.pricing-demo{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+@media(max-width:600px){.pricing-demo{grid-template-columns:1fr 1fr}}
+.dur-card-demo{
+  text-align:center;padding:16px 8px;
+  background:var(--cream);border:1.5px solid #ddd8cf;border-radius:10px;
+  cursor:pointer;transition:all .2s cubic-bezier(.22,1,.36,1);
+  position:relative;overflow:hidden;
+}
+.dur-card-demo::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(197,169,108,.15) 0%,transparent 60%);
+  opacity:0;transition:opacity .25s;
+}
+.dur-card-demo:hover{border-color:var(--gold);transform:translateY(-3px);box-shadow:0 8px 24px rgba(27,58,95,.14)}
+.dur-card-demo:hover::before{opacity:1}
+.dur-days{font-size:14px;font-weight:700;color:#1e2d45}
+.dur-price{font-size:12px;color:#8a95a3}
+.dur-card-demo.on{border-color:var(--navy);background:rgba(27,58,95,.06)}
+.dur-card-demo.on .dur-days{color:var(--navy)}
+</style>
+</head>
+<body>
+
+<nav class="sugg-nav">
+  <a href="#s1" class="active">1 · Hero cinématique</a>
+  <a href="#s2">2 · Gradient vivant</a>
+  <a href="#s3">3 · Scroll reveal</a>
+  <a href="#s4">4 · Compteurs</a>
+  <a href="#s5">5 · Micro-interactions</a>
+  <a href="#s6">6 · Parallax</a>
+  <a href="#s7">7 · Tarifs hover</a>
+</nav>
+
+<!-- 1 — HERO CINÉMATIQUE -->
+<section class="s" id="s1">
+  <p class="s-num">Suggestion 01</p>
+  <h2 class="s-title">Hero <em>cinématique</em></h2>
+  <p class="s-desc">À l'ouverture de la page, les éléments du hero apparaissent les uns après les autres avec un décalage précis : eyebrow → titre mot par mot → sous-titre → barre de recherche. Effet premium, immédiat, comme une mise en scène.</p>
+  <span class="tag high">★ Impact fort · Premier écran</span>
+  <div class="frame">
+    <span class="frame-label">Cliquez sur Rejouer →</span>
+    <div id="demo1">
+      <div class="scrim"></div>
+      <div class="content">
+        <p class="anim-eye reveal" id="a1-eye">Livraison à Nice · 7j/7</p>
+        <h1 class="anim-h1 reveal-words" id="a1-h1">
+          <span>Louez</span> <span>votre</span> <span>clim</span><br>
+          <em><span>livrée</span> <span>dès</span> <span>demain.</span></em>
+        </h1>
+        <p class="anim-sub reveal" id="a1-sub">Installation incluse · Zéro dépôt · Nice 7j/7</p>
+        <div class="anim-sb reveal" id="a1-sb">
+          <input placeholder="Ex. 12 rue de France, Nice" type="text"/>
+          <button>Réserver ma clim →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <button onclick="replayHero()" style="margin-top:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);padding:8px 18px;border-radius:4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-family:var(--body)">↺ Rejouer l'animation</button>
+  <p class="note">Code : 5 lignes JS avec IntersectionObserver + CSS stagger delays. Aucune librairie tierce.</p>
+</section>
+
+<div class="sep"></div>
+
+<!-- 2 — GRADIENT VIVANT -->
+<section class="s" id="s2">
+  <p class="s-num">Suggestion 02</p>
+  <h2 class="s-title">Fond <em>vivant</em></h2>
+  <p class="s-desc">Le dégradé du hero change lentement en continu (8 secondes par cycle) — like une respiration. Donne l'impression que le fond est atmosphérique, aérien. Zéro JavaScript, pure CSS.</p>
+  <span class="tag high">★ Toujours actif · Très subtil</span>
+  <div class="frame">
+    <div id="demo2">
+      <div class="grad-bg"></div>
+      <div class="grad-overlay"></div>
+      <div class="grad-content">
+        <h1 class="g-h1">Louez votre clim<br><em>livrée dès demain.</em></h1>
+        <p class="g-sub">Installation incluse · Zéro dépôt · Nice 7j/7</p>
+      </div>
+    </div>
+  </div>
+  <p class="note">1 ligne CSS : animation: gradShift 8s ease-in-out infinite. Testé sur Safari/Chrome/Firefox. Performance : GPU, aucun impact.</p>
+</section>
+
+<div class="sep"></div>
+
+<!-- 3 — SCROLL REVEAL -->
+<section class="s" id="s3">
+  <p class="s-num">Suggestion 03</p>
+  <h2 class="s-title">Scroll <em>reveal</em> · Sections</h2>
+  <p class="s-desc">Chaque bloc de contenu entre dans l'écran avec un fondu + légère montée quand l'utilisateur scroll. Donne une sensation de découverte progressive, de vie. Faites défiler la grille ci-dessous pour voir l'effet.</p>
+  <span class="tag high">★ Toute la page · Effet "premium"</span>
+  <div class="frame" style="padding:24px;background:#f4f0ea">
+    <div class="sr-demo-grid">
+      <div class="sr-card" data-sr>
+        <div class="sr-badge">1</div>
+        <h3>2 minutes <em>en ligne</em></h3>
+        <p>Adresse, dates, type de fenêtre. Confirmation par email immédiate.</p>
+      </div>
+      <div class="sr-card" data-sr style="transition-delay:.1s">
+        <div class="sr-badge">2</div>
+        <h3>On arrive <em>le lendemain</em></h3>
+        <p>Créneau matin ou après-midi. Technicien avec tout le matériel.</p>
+      </div>
+      <div class="sr-card" data-sr style="transition-delay:.2s">
+        <div class="sr-badge">3</div>
+        <h3>Installation <em>& mise en service</em></h3>
+        <p>20 à 30 minutes. Appareil testé devant vous avant le départ.</p>
+      </div>
+      <div class="sr-card" data-sr style="transition-delay:.3s">
+        <div class="sr-badge">4</div>
+        <h3>Récupération <em>offerte</em></h3>
+        <p>À la date convenue, on récupère l'appareil. Vous n'avez rien à faire.</p>
+      </div>
+    </div>
+  </div>
+  <button onclick="resetSR()" style="margin-top:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);padding:8px 18px;border-radius:4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-family:var(--body)">↺ Réinitialiser</button>
+  <p class="note">IntersectionObserver sur chaque .sr — déjà présent dans le HTML actuel. Ajout : 8 lignes CSS + 10 lignes JS.</p>
+</section>
+
+<div class="sep"></div>
+
+<!-- 4 — COMPTEURS ANIMÉS -->
+<section class="s" id="s4">
+  <p class="s-num">Suggestion 04</p>
+  <h2 class="s-title">Compteurs <em>animés</em></h2>
+  <p class="s-desc">Les chiffres clés (4,8 · 15 avis · 24h) comptent de 0 jusqu'à leur valeur réelle quand ils entrent dans le viewport. Effet très satisfaisant, montre la performance sans l'annoncer.</p>
+  <span class="tag med">Barre de réassurance · Section avis</span>
+  <div class="frame">
+    <div class="stats-demo">
+      <div class="stat-box">
+        <div class="stat-num"><span class="counter" data-target="4.8" data-decimal="1">0</span><span class="stat-unit">/5</span></div>
+        <div class="stat-label">Note Google</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num"><span class="counter" data-target="15" data-decimal="0">0</span></div>
+        <div class="stat-label">Avis vérifiés</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num"><span class="counter" data-target="24" data-decimal="0">0</span><span class="stat-unit">h</span></div>
+        <div class="stat-label">Délai livraison</div>
+      </div>
+    </div>
+  </div>
+  <button onclick="replayCounters()" style="margin-top:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);padding:8px 18px;border-radius:4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;font-family:var(--body)">↺ Rejouer</button>
+  <p class="note">Easing : cubic ease-out sur 1.4s. Chiffres décimaux supportés (4,8). 15 lignes JS total.</p>
+</section>
+
+<div class="sep"></div>
+
+<!-- 5 — MICRO-INTERACTIONS -->
+<section class="s" id="s5">
+  <p class="s-num">Suggestion 05</p>
+  <h2 class="s-title">Micro-interactions <em>boutons</em></h2>
+  <p class="s-desc">Chaque bouton réagit différemment : effet ripple au clic, contour qui s'allume au hover, shimmer doré sur le CTA principal. Détails invisibles jusqu'à l'interaction — qui trahissent le soin apporté.</p>
+  <span class="tag med">Sur tous les boutons · Subtil</span>
+  <div class="frame" style="padding:36px 28px;background:#1b3a5f;display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+    <button class="btn-ripple" onclick="createRipple(event,this)">Réserver ma clim</button>
+    <button class="btn-magnetic">Voir nos tarifs</button>
+    <button class="btn-shimmer">Obtenir mon tarif →</button>
+  </div>
+  <p class="note">Ripple : 8 lignes JS. Shimmer : 4 lignes CSS ::after. Border magnétique : 2 lignes CSS transition. Tous compatibles mobile (touch).</p>
+</section>
+
+<div class="sep"></div>
+
+<!-- 6 — PARALLAX -->
+<section class="s" id="s6">
+  <p class="s-num">Suggestion 06</p>
+  <h2 class="s-title">Parallax <em>hero</em></h2>
+  <p class="s-desc">En faisant défiler la page, le fond du hero se déplace plus lentement que le contenu, créant une impression de profondeur et d'espace. Passez la souris / scrollez sur le cadre ci-dessous.</p>
+  <span class="tag med">Hero uniquement · Subtil</span>
+  <div class="frame" style="cursor:crosshair" onmousemove="handleParallax(event,this)" onmouseleave="resetParallax(this)">
+    <div id="demo6">
+      <div class="para-bg" id="para-bg"></div>
+      <div class="para-content">
+        <h1 class="para-h1">Louez votre clim<br><em>livrée dès demain.</em></h1>
+        <p class="para-sub">Déplacez la souris sur cette zone</p>
+      </div>
+    </div>
+  </div>
+  <p class="note">Parallax souris (desktop) + scroll (mobile) sur la couche de fond uniquement. 12 lignes JS, requestAnimationFrame pour la fluidité.</p>
+</section>
+
+<div class="sep"></div>
+
+<!-- 7 — TARIFS HOVER -->
+<section class="s" id="s7">
+  <p class="s-num">Suggestion 07</p>
+  <h2 class="s-title">Cartes tarifs <em>hover élaboré</em></h2>
+  <p class="s-desc">En survolant une carte de durée, elle se soulève légèrement avec un reflet doré dans le coin. Au clic, elle se sélectionne avec un micro-bounce. Passez la souris sur les cartes.</p>
+  <span class="tag med">Section tarifs · Formulaire</span>
+  <div class="frame" style="padding:24px;background:#f4f0ea">
+    <div class="pricing-demo">
+      <div class="dur-card-demo on" onclick="selectDur(this)">
+        <div class="dur-days">7 jours</div>
+        <div class="dur-price">143 €</div>
+      </div>
+      <div class="dur-card-demo" onclick="selectDur(this)">
+        <div class="dur-days">10 jours</div>
+        <div class="dur-price">200 €</div>
+      </div>
+      <div class="dur-card-demo" onclick="selectDur(this)">
+        <div class="dur-days">14 jours</div>
+        <div class="dur-price">276 €</div>
+      </div>
+      <div class="dur-card-demo" onclick="selectDur(this)">
+        <div class="dur-days">21 jours</div>
+        <div class="dur-price">409 €</div>
+      </div>
+    </div>
+  </div>
+  <p class="note">CSS ::before pour le reflet doré + transition cubic-bezier. Le bounce : keyframe à 3 étapes (scale 1.04 → .97 → 1).</p>
+</section>
+
+<div class="sep"></div>
+
+<!-- RÉCAP -->
+<section class="s" style="padding-bottom:80px">
+  <p class="s-num">Récapitulatif</p>
+  <h2 class="s-title">Ce qu'on <em>recommande</em></h2>
+  <p class="s-desc" style="margin-bottom:32px">Pour un site haut de gamme, les animations doivent être subtiles et purposeful. Voici la combinaison optimale :</p>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div style="display:flex;align-items:flex-start;gap:16px;padding:20px;background:rgba(197,169,108,.08);border:1px solid rgba(197,169,108,.2);border-radius:10px">
+      <span style="font-size:20px;line-height:1">★</span>
+      <div>
+        <p style="font-size:13px;font-weight:600;color:#c5a96c;margin-bottom:4px">01 + 02 — Hero cinématique + Gradient vivant</p>
+        <p style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.6">La première impression. Le fond qui respire + le texte qui arrive en séquence. Impact immédiat, différenciant.</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:16px;padding:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px">
+      <span style="font-size:20px;line-height:1;color:rgba(255,255,255,.3)">◆</span>
+      <div>
+        <p style="font-size:13px;font-weight:600;color:rgba(255,255,255,.7);margin-bottom:4px">03 — Scroll reveal sur toutes les sections</p>
+        <p style="font-size:12px;color:rgba(255,255,255,.4);line-height:1.6">Transforme une page statique en expérience de découverte. Classe .sr déjà dans le HTML — il suffit d'activer la transition.</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:16px;padding:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px">
+      <span style="font-size:20px;line-height:1;color:rgba(255,255,255,.3)">◆</span>
+      <div>
+        <p style="font-size:13px;font-weight:600;color:rgba(255,255,255,.7);margin-bottom:4px">04 — Compteurs animés sur la section avis</p>
+        <p style="font-size:12px;color:rgba(255,255,255,.4);line-height:1.6">Moment fort de confiance. Voir "4,8" compter jusqu'à sa valeur est plus convaincant que de le lire statiquement.</p>
+      </div>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:16px;padding:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px">
+      <span style="font-size:20px;line-height:1;color:rgba(255,255,255,.3)">◆</span>
+      <div>
+        <p style="font-size:13px;font-weight:600;color:rgba(255,255,255,.7);margin-bottom:4px">05 — Ripple + shimmer sur les boutons CTA</p>
+        <p style="font-size:12px;color:rgba(255,255,255,.4);line-height:1.6">Invisible jusqu'au toucher. Les clients exigeants remarquent ces détails sans savoir pourquoi le site semble "mieux".</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ── 1. HERO CINÉMATIQUE ── */
+function playHero(){
+  const eye=document.getElementById('a1-eye');
+  const h1=document.getElementById('a1-h1');
+  const sub=document.getElementById('a1-sub');
+  const sb=document.getElementById('a1-sb');
+  eye.classList.remove('in');sub.classList.remove('in');sb.classList.remove('in');
+  h1.querySelectorAll('span').forEach(s=>s.style.animation='');
+  h1.classList.remove('in');
+  void eye.offsetWidth;
+  setTimeout(()=>{
+    eye.classList.add('in');
+  },100);
+  setTimeout(()=>{
+    h1.classList.add('in');
+    h1.querySelectorAll('span').forEach((s,i)=>{
+      s.style.animation=`wordUp .5s cubic-bezier(.22,1,.36,1) ${i*80}ms forwards`;
+    });
+  },350);
+  setTimeout(()=>sub.classList.add('in'),900);
+  setTimeout(()=>sb.classList.add('in'),1100);
+}
+function replayHero(){
+  const eye=document.getElementById('a1-eye');
+  const h1=document.getElementById('a1-h1');
+  const sub=document.getElementById('a1-sub');
+  const sb=document.getElementById('a1-sb');
+  [eye,sub,sb].forEach(el=>{el.classList.remove('in');void el.offsetWidth;});
+  h1.querySelectorAll('span').forEach(s=>{s.style.animation='none';void s.offsetWidth;});
+  setTimeout(playHero,50);
+}
+playHero();
+
+/* ── 3. SCROLL REVEAL ── */
+const srCards=document.querySelectorAll('[data-sr]');
+const srObs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')});
+},{threshold:.15});
+srCards.forEach(c=>srObs.observe(c));
+function resetSR(){
+  srCards.forEach(c=>c.classList.remove('visible'));
+  setTimeout(()=>srCards.forEach(c=>srObs.observe(c)),100);
+}
+
+/* ── 4. COMPTEURS ── */
+let countersRan=false;
+function animateCounter(el){
+  const target=parseFloat(el.dataset.target);
+  const decimal=parseInt(el.dataset.decimal)||0;
+  const dur=1400;const start=Date.now();
+  function tick(){
+    const p=Math.min((Date.now()-start)/dur,1);
+    const ease=1-Math.pow(1-p,3);
+    const val=target*ease;
+    el.textContent=decimal>0?val.toFixed(decimal):Math.floor(val);
+    if(p<1)requestAnimationFrame(tick);
+    else el.textContent=decimal>0?target.toFixed(decimal):target;
+  }
+  requestAnimationFrame(tick);
+}
+const statsObs=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting&&!countersRan){
+      countersRan=true;
+      document.querySelectorAll('.counter').forEach(animateCounter);
+    }
+  });
+},{threshold:.5});
+const statsEl=document.querySelector('.stats-demo');
+if(statsEl)statsObs.observe(statsEl);
+function replayCounters(){
+  countersRan=false;
+  document.querySelectorAll('.counter').forEach(el=>el.textContent='0');
+  setTimeout(()=>{
+    countersRan=true;
+    document.querySelectorAll('.counter').forEach(animateCounter);
+  },100);
+}
+
+/* ── 5. RIPPLE ── */
+function createRipple(e,btn){
+  const r=document.createElement('span');
+  const rect=btn.getBoundingClientRect();
+  const size=Math.max(rect.width,rect.height)*2;
+  r.className='ripple';
+  r.style.cssText=`width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
+  btn.appendChild(r);
+  r.addEventListener('animationend',()=>r.remove());
+}
+
+/* ── 6. PARALLAX ── */
+function handleParallax(e,frame){
+  const rect=frame.getBoundingClientRect();
+  const x=((e.clientX-rect.left)/rect.width-.5)*20;
+  const y=((e.clientY-rect.top)/rect.height-.5)*12;
+  document.getElementById('para-bg').style.transform=`translate(${x}px,${y}px)`;
+}
+function resetParallax(){
+  document.getElementById('para-bg').style.transform='translate(0,0)';
+}
+
+/* ── 7. DUR CARDS ── */
+function selectDur(el){
+  document.querySelectorAll('.dur-card-demo').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  el.style.animation='bounce .35s cubic-bezier(.22,1,.36,1)';
+  el.addEventListener('animationend',()=>el.style.animation='',{once:true});
+}
+const style=document.createElement('style');
+style.textContent=`@keyframes bounce{0%{transform:translateY(0)}30%{transform:translateY(-4px)}60%{transform:translateY(1px)}100%{transform:translateY(0)}}`;
+document.head.appendChild(style);
+
+/* Nav active */
+const sections=[...document.querySelectorAll('section[id]')];
+const navLinks=[...document.querySelectorAll('.sugg-nav a')];
+window.addEventListener('scroll',()=>{
+  const y=window.scrollY+120;
+  let cur='s1';
+  sections.forEach(s=>{if(s.offsetTop<=y)cur=s.id});
+  navLinks.forEach(a=>{a.classList.toggle('active',a.getAttribute('href')==='#'+cur)});
+},{passive:true});
+</script>
+</body>
+</html>
