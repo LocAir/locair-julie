@@ -224,11 +224,18 @@ body{
 }
 .nav-btn:hover{background:var(--blue-d);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,102,204,.35)}
 .nav-btn:active{transform:scale(.97)}
-.lang-sw{display:flex;align-items:center;gap:0;margin-left:4px}
-.lang-btn{background:none;border:none;cursor:pointer;font-size:12px;font-weight:700;color:var(--grey2);padding:5px 8px;border-radius:6px;font-family:var(--body);transition:color .15s;line-height:1;min-height:32px}
-.lang-btn.on{color:var(--blue)}
-.lang-btn:hover:not(.on){color:var(--black2)}
-.lang-sep{color:var(--rule);user-select:none;font-size:14px}
+.lang-sw{position:relative;margin-left:4px}
+.lang-cur{display:flex;align-items:center;gap:5px;background:none;border:1.5px solid var(--rule);border-radius:100px;padding:5px 12px 5px 10px;cursor:pointer;font-size:12px;font-weight:700;color:var(--black2);font-family:var(--body);transition:border-color .15s,color .15s;min-height:36px;white-space:nowrap}
+.lang-cur:hover{border-color:var(--blue);color:var(--blue)}
+.lang-cur svg{flex-shrink:0;transition:transform .2s}
+.lang-cur.open svg.chev{transform:rotate(180deg)}
+.lang-dd{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.12),0 0 0 1px rgba(0,0,0,.06);min-width:156px;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .15s,transform .15s;z-index:1100}
+.lang-dd.open{opacity:1;pointer-events:auto;transform:translateY(0)}
+.lang-opt{display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:500;color:var(--black2);cursor:pointer;transition:background .1s;border:none;background:none;width:100%;text-align:left;font-family:var(--body);line-height:1}
+.lang-opt:hover{background:#f5f5f7}
+.lang-opt.on{font-weight:700;color:var(--blue)}
+.lang-opt .lck{margin-left:auto;font-size:11px;opacity:0}
+.lang-opt.on .lck{opacity:1}
 
 /* ── HERO ── */
 .hero{
@@ -1246,10 +1253,20 @@ body{
         </div>
       </div>
       <button class="nav-btn" onclick="openModal()" type="button" aria-label="Réserver un climatiseur" aria-haspopup="dialog" id="nav-book-btn">Réserver</button>
-      <div class="lang-sw" role="group" aria-label="Language / Langue">
-        <button class="lang-btn on" data-lang="fr" onclick="setLang('fr')" type="button">FR</button>
-        <span class="lang-sep" aria-hidden="true">|</span>
-        <button class="lang-btn" data-lang="en" onclick="setLang('en')" type="button">EN</button>
+      <div class="lang-sw" id="lang-sw">
+        <button class="lang-cur" id="lang-cur-btn" onclick="toggleLangMenu()" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Langue / Language">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+          <span id="lang-label">FR</span>
+          <svg class="chev" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="lang-dd" id="lang-dd" role="listbox" aria-label="Choisir la langue">
+          <button class="lang-opt on" id="lopt-fr" data-lang="fr" onclick="setLang('fr');closeLangMenu()" role="option" type="button">
+            🇫🇷 &nbsp;Français<span class="lck">✓</span>
+          </button>
+          <button class="lang-opt" id="lopt-en" data-lang="en" onclick="setLang('en');closeLangMenu()" role="option" type="button">
+            🇬🇧 &nbsp;English<span class="lck">✓</span>
+          </button>
+        </div>
       </div>
     </div>
   </nav></div>
@@ -2215,6 +2232,24 @@ let curStep=1;
   if(hp2)requestAnimationFrame(()=>hp2.classList.add('on'));
 })();
 
+function toggleLangMenu(){
+  const dd=document.getElementById('lang-dd');
+  const btn=document.getElementById('lang-cur-btn');
+  if(!dd||!btn)return;
+  const isOpen=dd.classList.toggle('open');
+  btn.classList.toggle('open',isOpen);
+  btn.setAttribute('aria-expanded',isOpen);
+}
+function closeLangMenu(){
+  document.getElementById('lang-dd')?.classList.remove('open');
+  const btn=document.getElementById('lang-cur-btn');
+  if(btn){btn.classList.remove('open');btn.setAttribute('aria-expanded','false');}
+}
+document.addEventListener('click',e=>{
+  const sw=document.getElementById('lang-sw');
+  if(sw&&!sw.contains(e.target))closeLangMenu();
+});
+
 function togglePhonePopover(btn){
   const pop=document.getElementById('phonePopover');
   if(!pop)return;
@@ -2751,7 +2786,13 @@ function setLang(l){
       else el.innerHTML=vals[i];
     });
   });
-  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('on',b.dataset.lang===l));
+  // Sync dropdown
+  const lbl=document.getElementById('lang-label');
+  if(lbl)lbl.textContent=l.toUpperCase();
+  ['fr','en'].forEach(code=>{
+    const opt=document.getElementById('lopt-'+code);
+    if(opt)opt.classList.toggle('on',code===l);
+  });
   document.title=isEN?"AC Rental Nice · €19/day + €10 setup · Zero deposit | Loc'Air":"Location climatiseur Nice · 19 €/jour + 10 € installation · Zéro dépôt | Loc'Air";
   // Rebuild recap labels if modal open
   if(document.getElementById('overlay')?.classList.contains('open'))buildRecap();
