@@ -224,6 +224,11 @@ body{
 }
 .nav-btn:hover{background:var(--blue-d);transform:translateY(-1px);box-shadow:0 4px 16px rgba(0,102,204,.35)}
 .nav-btn:active{transform:scale(.97)}
+.lang-sw{display:flex;align-items:center;gap:0;margin-left:4px}
+.lang-btn{background:none;border:none;cursor:pointer;font-size:12px;font-weight:700;color:var(--grey2);padding:5px 8px;border-radius:6px;font-family:var(--body);transition:color .15s;line-height:1;min-height:32px}
+.lang-btn.on{color:var(--blue)}
+.lang-btn:hover:not(.on){color:var(--black2)}
+.lang-sep{color:var(--rule);user-select:none;font-size:14px}
 
 /* ── HERO ── */
 .hero{
@@ -1236,7 +1241,12 @@ body{
           <a href="tel:0663798756" data-c-tel><span data-c="phone">06.63.79.87.56</span></a>
         </div>
       </div>
-      <button class="nav-btn" onclick="openModal()" type="button" aria-label="Réserver un climatiseur" aria-haspopup="dialog">Réserver</button>
+      <button class="nav-btn" onclick="openModal()" type="button" aria-label="Réserver un climatiseur" aria-haspopup="dialog" id="nav-book-btn">Réserver</button>
+      <div class="lang-sw" role="group" aria-label="Language / Langue">
+        <button class="lang-btn on" data-lang="fr" onclick="setLang('fr')" type="button">FR</button>
+        <span class="lang-sep" aria-hidden="true">|</span>
+        <button class="lang-btn" data-lang="en" onclick="setLang('en')" type="button">EN</button>
+      </div>
     </div>
   </nav></div>
 </header>
@@ -2387,21 +2397,22 @@ function buildRecap(){
   }
   const creneauLiv=document.querySelector('#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h';
   const creneauRecup=document.querySelector('#creneau-recup-group .tpill.on')?.textContent.trim()||'14h–16h';
-  // Afficher la date de récupération calculée
   const recupEl=document.getElementById('recap-date-recup');
-  if(recupEl)recupEl.textContent='Le '+pickupDateStr+' (fin de votre location de '+days+' jours)';
+  const isEN=_lang==='en';
+  if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (end of your '+days+'-day rental)':'Le '+pickupDateStr+' (fin de votre location de '+days+' jours)';
   const locPrice=price>0?price-10:0;
-  const etageLabel=[etage,asc!=='—'?'Asc. '+asc:''].filter(Boolean).join(' · ')||'—';
+  const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
+  const durLabel=durEntry?(isEN?durEntry.days+' days — '+durEntry.price+' €':durEntry.label):'—';
   const rows=[
-    ['Adresse',document.getElementById('f-addr')?.value||'—'],
-    ['Étage · Ascenseur',etageLabel],
-    ['Durée',durEntry?durEntry.label:'—'],
-    ['Fenêtre',ouv],
-    ['Livraison le',dateStr+' · '+creneauLiv],
-    ['Récupération le',pickupDateStr+' · '+creneauRecup],
-    ['Location',(locPrice>0?locPrice:0)+' €'],
-    ['Installation','10 € (une seule fois)'],
-    ['Total TTC','<strong style="color:var(--blue);font-size:15px">'+(price===0?'Sur devis':price+' €')+'</strong>'],
+    [isEN?'Address':'Adresse',document.getElementById('f-addr')?.value||'—'],
+    [isEN?'Floor · Elevator':'Étage · Ascenseur',etageLabel],
+    [isEN?'Duration':'Durée',durLabel],
+    [isEN?'Window':'Fenêtre',ouv],
+    [isEN?'Delivery on':'Livraison le',dateStr+' · '+creneauLiv],
+    [isEN?'Pickup on':'Récupération le',pickupDateStr+' · '+creneauRecup],
+    [isEN?'Rental':'Location',(locPrice>0?locPrice:0)+' €'],
+    [isEN?'Setup':'Installation',isEN?'€10 (one-time fee)':'10 € (une seule fois)'],
+    [isEN?'Total incl. VAT':'Total TTC','<strong style="color:var(--blue);font-size:15px">'+(price===0?(isEN?'On quote':'Sur devis'):price+' €')+'</strong>'],
   ];
   const box=document.getElementById('recap-box');
   if(!box)return;
@@ -2410,7 +2421,7 @@ function buildRecap(){
   ).join('')+'</dl>';
   const sbtn=document.getElementById('sbtn');
   if(sbtn&&price>0){
-    sbtn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> Payer — '+price+' €';
+    sbtn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> '+(_lang==='en'?'Pay — ':'Payer — ')+price+' €';
     sbtn.disabled=false;
   }
 }
@@ -2552,6 +2563,190 @@ document.querySelectorAll('[data-stat]').forEach(el=>{
   el.style.transition='opacity .4s,transform .4s';
   statsObs.observe(el);
 });
+
+// ── i18n FR / EN ──
+let _lang=localStorage.getItem('locair-lang')||'fr';
+
+// Single-selector map: [selector, 'text'|'html'|'ph', fr, en]
+const LANG_MAP=[
+  /* nav */
+  ['#nav-book-btn','text','Réserver','Book now'],
+  /* ubar */
+  ['.ubar','html','N°1 à Nice pour la location de clim mobile &nbsp;·&nbsp; <strong>Depuis 2019</strong> &nbsp;·&nbsp; Réponse en moins de 5 min &nbsp;·&nbsp; 7j/7 · 8h–20h','No.1 in Nice for mobile AC rental &nbsp;·&nbsp; <strong>Since 2019</strong> &nbsp;·&nbsp; Response in under 5 min &nbsp;·&nbsp; 7d/7 · 8am–8pm'],
+  /* hero */
+  ['.hero-h1','html','Les experts de la clim<br><em>mobile à Nice.</em>','Mobile AC experts<br><em>in Nice.</em>'],
+  ['.hero-desc','text','19 €/jour · + 10 € installation · Zéro dépôt · Annulation libre · Depuis 2019','€19/day · + €10 setup · Zero deposit · Free cancellation · Since 2019'],
+  ['.sb-label','text','Adresse de livraison','Delivery address'],
+  ['#addr-init','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice'],
+  ['.sb-btn','text','Réserver ma clim →','Book my AC →'],
+  ['.hero-micro','html','<span>Zéro dépôt</span><span class="hm-dot">·</span><span>Annulation libre</span><span class="hm-dot">·</span><span>Paiement sécurisé Stripe</span>','<span>Zero deposit</span><span class="hm-dot">·</span><span>Free cancellation</span><span class="hm-dot">·</span><span>Secure Stripe payment</span>'],
+  /* howto */
+  ['.howto .sec-eye','text','Comment fonctionne la location','How rental works'],
+  ['#howto-title','html','De la réservation<br><em>à l\'air frais — en 24h</em>','From booking<br><em>to cool air — in 24h</em>'],
+  /* pricing */
+  ['.pricing .sec-eye','text','Location de climatiseur mobile','Mobile AC rental'],
+  ['#pricing-title','html','Simple, transparent,<br><em>sans mauvaises surprises</em>','Simple, transparent,<br><em>no hidden surprises</em>'],
+  ['.plan-btn.pb-s','text','Louer mon climatiseur →','Rent my AC →'],
+  /* reviews */
+  ['.reviews .sec-eye','text','Avis clients','Customer reviews'],
+  ['#reviews-title','html','Ils ont loué.<br><em>Voici ce qu\'ils en disent.</em>','They rented.<br><em>Here\'s what they say.</em>'],
+  ['.score-lbl','text','Avis vérifiés Google','Verified Google reviews'],
+  ['.rs-label','text','13 avis Google vérifiés','13 verified Google reviews'],
+  ['.rs-link','text','Voir sur Google →','View on Google →'],
+  /* pourqui */
+  ['.pourqui .sec-eye','text','Pour qui ?','Who is it for?'],
+  ['#pourqui-title','html','Une solution fraîcheur<br><em>pour chaque besoin</em>','A cooling solution<br><em>for every need</em>'],
+  /* faq */
+  ['.faq .sec-eye','text','Questions fréquentes','Frequently asked questions'],
+  ['#faq-title','html','Ce qu\'il faut<br><em>savoir avant de réserver</em>','What you need<br><em>to know before booking</em>'],
+  ['.faq-cta-title','html','Une question ?<br>On répond en&nbsp;moins de&nbsp;5&nbsp;min.','A question?<br>We answer in&nbsp;under&nbsp;5&nbsp;min.'],
+  ['.faq-cta-btn','text','Réserver maintenant →','Book now →'],
+  /* garantie */
+  ['.gar-t','text','Si ça ne fonctionne pas, on rembourse.','If it doesn\'t work, we refund.'],
+  /* about */
+  ['#about-title','html','Basés à Nice.<br><em style="font-style:italic;font-weight:400;color:var(--blue)">Depuis 2019.</em>','Based in Nice.<br><em style="font-style:italic;font-weight:400;color:var(--blue)">Since 2019.</em>'],
+  /* cta final */
+  ['#fcta-title','html','Votre climatiseur,<br><em>livré dès demain.</em>','Your AC,<br><em>delivered tomorrow.</em>'],
+  ['.fcta .btn-blue','text','Réserver maintenant','Book now'],
+  /* footer col titles */
+  ['.footer-col-title:nth-of-type(1)','text','Navigation','Navigation'],
+  /* mobile bar */
+  ['.m-bar-label','html','Location climatiseur · <strong>19 €/jour</strong> + 10 € installation','AC rental · <strong>€19/day</strong> + €10 setup'],
+  /* modal sidebar */
+  ['.ms-title','text','Votre commande','Your order'],
+  /* modal step 1 */
+  ['#s1 .sp-title','text','Adresse de livraison','Delivery address'],
+  ['#s1 .sp-sub','text','Où devons-nous livrer le climatiseur ?','Where should we deliver the AC?'],
+  ['#s1 label','text','Adresse *','Address *'],
+  ['#f-addr','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice'],
+  /* modal step 2 */
+  ['#s2 .sp-title','text','Durée de location','Rental duration'],
+  ['#s2 .sp-sub','text','Combien de jours souhaitez-vous louer ?','How many days would you like to rent?'],
+  ['#s2 label','text','Choisissez votre durée *','Choose your duration *'],
+  ['.tw-lbl','text','Total','Total'],
+  ['.tw-sub','text','19 €/j · +10 € installation · récupération incluse','€19/day · +€10 setup · pickup included'],
+  /* modal step 3 */
+  ['#s3 .sp-title','text','Type de fenêtre','Window type'],
+  ['#s3 .sp-sub','text','Pour adapter le kit d\'installation fourni par notre équipe.','To adapt the installation kit provided by our team.'],
+  /* modal step 4 */
+  ['#s4 .sp-title','text','Date & créneau de livraison','Delivery date & time slot'],
+  ['#s4 .sp-sub','text','Choisissez votre date et l\'heure de livraison.','Choose your delivery date and time slot.'],
+  ['#s4 label:first-of-type','text','Date de livraison *','Delivery date *'],
+  ['#creneau-liv-group','aria','Créneau de livraison','Delivery time slot'],
+  /* modal step 5 */
+  ['#s5 .sp-title','text','Récapitulatif','Summary'],
+  ['#s5 .sp-sub','text','Vérifiez votre commande et renseignez vos coordonnées.','Review your order and enter your details.'],
+  ['#f-etage','ph','Ex. 3ème','E.g. 3rd floor'],
+  ['#f-prenom','ph','Jean','John'],
+  ['#f-nom','ph','Dupont','Smith'],
+  ['#f-tel','ph','06 12 34 56 78','+33 6 12 34 56 78'],
+  ['#f-email','ph','prenom@exemple.fr','firstname@example.com'],
+  ['.pay-sub','text','🔒 Paiement sécurisé Stripe · Confirmation par email','🔒 Secure Stripe payment · Email confirmation'],
+  /* success screens */
+  ['#msuccess-pay .s-h','text','Demande envoyée !','Request sent!'],
+  ['#msuccess-pay .s-p','html','Vous recevrez le lien de paiement <strong>dans les 5 minutes</strong> par email. Dès règlement, votre livraison est confirmée pour demain.','You\'ll receive the payment link <strong>within 5 minutes</strong> by email. Once paid, your delivery is confirmed for tomorrow.'],
+  ['#msuccess-pay .s-close','text','Retour au site','Back to site'],
+  ['#msuccess-call .s-h','text','Demande reçue','Request received'],
+  ['#msuccess-call .s-p','text','Notre équipe vous rappelle dans l\'heure.','Our team will call you back within the hour.'],
+  ['#msuccess-call .s-close','text','Retour au site','Back to site'],
+  /* cookie */
+  ['.cookie-btn-refuse','text','Refuser','Decline'],
+  ['.cookie-btn-accept','text','Accepter','Accept'],
+];
+
+// Sequences: [selector, 'text'|'html', [fr_vals], [en_vals]]
+const LANG_SEQ=[
+  ['.ri-t','text',
+    ['Livraison sous 24h','Zéro dépôt de garantie','Paiement 100% sécurisé','Note 4,8 / 5 Google'],
+    ['Delivery within 24h','Zero security deposit','100% secure payment','4.8/5 Google rating']],
+  ['.ri-d','text',
+    [null,'Aucun chèque · Aucune empreinte','Stripe PCI-DSS · Remboursé si panne','13 avis vérifiés · Depuis 2019'],
+    [null,'No check · No card hold','Stripe PCI-DSS · Refunded if breakdown','13 verified reviews · Since 2019']],
+  ['.step-t','text',
+    ['2 minutes en ligne','On arrive le lendemain','Installation & mise en service','Récupération offerte'],
+    ['2 minutes online','We arrive next day','Setup & commissioning','Free pickup']],
+  ['.step-d','text',
+    ['Adresse, dates, type de fenêtre. Confirmation par email immédiate.','Créneau matin ou après-midi. Technicien avec tout le matériel.','20 à 30 minutes. Appareil testé devant vous avant le départ.','À la date convenue, on récupère l\'appareil. Vous n\'avez rien à faire.'],
+    ['Address, dates, window type. Instant email confirmation.','Morning or afternoon slot. Technician with all equipment.','20–30 minutes. Device tested before the technician leaves.','On the agreed date, we collect the unit. Nothing to do on your end.']],
+  ['.pq-title','text',
+    ['Particuliers & familles','Télétravailleurs','Pros, bureaux & commerces','Locations saisonnières','Événements & réceptions','Seniors & personnes fragiles'],
+    ['Individuals & families','Remote workers','Businesses & offices','Seasonal rentals','Events & receptions','Seniors & vulnerable persons']],
+  ['.stat-lbl','text',
+    ['avis Google','délai livraison','dépôt','disponible'],
+    ['Google reviews','delivery time','deposit','available']],
+  ['.about-item-t','text',
+    ['Équipe locale','Entreprise enregistrée','7j/7 · 8h–20h','Entretien inclus, toute la durée'],
+    ['Local team','Registered business','7d/7 · 8am–8pm','Full maintenance included']],
+  ['.about-item-d','text',
+    ['Nice · 7j/7 · Sans sous-traitance','SIRET 853 730 562 00024','Réponse immédiate','Panne, filtre, recharge : c\'est nous qui gérons, gratuitement'],
+    ['Nice · 7d/7 · No subcontracting','SIRET 853 730 562 00024','Immediate response','Breakdown, filter, recharge: we handle it, free of charge']],
+  ['.footer-col-title','text',
+    ['Navigation','Services','Zones desservies'],
+    ['Navigation','Services','Areas served']],
+  ['.step-name','text',
+    ['Adresse','Durée','Installation','Date','Récapitulatif'],
+    ['Address','Duration','Setup','Date','Summary']],
+  ['.win-name','text',
+    ['Fenêtre coulissante','Fenêtre à battant','Oscillo-battant','Porte-fenêtre','Vélux'],
+    ['Sliding window','Casement window','Tilt-and-turn','French door','Roof window']],
+  ['.win-hint','text',
+    ['Glisse sur le côté','Ouvre vers l\'intérieur','S\'incline — le plus courant à Nice','Du sol au plafond · terrasse','Fenêtre de toit · combles'],
+    ['Slides sideways','Opens inward','Tilts — most common in Nice','Floor to ceiling · terrace','Roof window · attic']],
+  ['.fi-q','html', /* FAQ questions — inject just the text before the SVG icon */
+    ['Comment se passe la livraison ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Quelle est la durée minimale ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Y a-t-il un dépôt de garantie ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Livrez-vous dans toute la région de <span data-c="name">Nice</span> ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Comment fonctionne la signature du contrat ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Que faire si j\'ai un problème ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Combien d\'unités pour mon logement ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Mon appartement a une fenêtre oscillo-battante — ça marche ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Puis-je annuler ma réservation ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Et si l\'appareil tombe en panne ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Est-il possible de prolonger ma location ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>'],
+    ['How does delivery work?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'What is the minimum rental period?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Is there a security deposit?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Do you deliver across <span data-c="name">Nice</span>?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'How does the contract signing work?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'What if I have a problem?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'How many units do I need?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'My apartment has a tilt-and-turn window — does it work?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Can I cancel my booking?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'What if the unit breaks down?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Can I extend my rental?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>']],
+];
+
+function setLang(l){
+  _lang=l;
+  localStorage.setItem('locair-lang',l);
+  document.documentElement.lang=l;
+  const isEN=l==='en';
+  LANG_MAP.forEach(([sel,mode,fr,en])=>{
+    const val=isEN?en:fr;
+    document.querySelectorAll(sel).forEach(el=>{
+      if(mode==='text')el.textContent=val;
+      else if(mode==='html')el.innerHTML=val;
+      else if(mode==='ph')el.setAttribute('placeholder',val);
+      else if(mode==='aria')el.setAttribute('aria-label',val);
+    });
+  });
+  LANG_SEQ.forEach(([sel,mode,frs,ens])=>{
+    const vals=isEN?ens:frs;
+    [...document.querySelectorAll(sel)].forEach((el,i)=>{
+      if(vals[i]==null)return;
+      if(mode==='text')el.textContent=vals[i];
+      else el.innerHTML=vals[i];
+    });
+  });
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('on',b.dataset.lang===l));
+  document.title=isEN?"AC Rental Nice · €19/day + €10 setup · Zero deposit | Loc'Air":"Location climatiseur Nice · 19 €/jour + 10 € installation · Zéro dépôt | Loc'Air";
+  // Rebuild recap labels if modal open
+  if(document.getElementById('overlay')?.classList.contains('open'))buildRecap();
+}
+
+// Appliquer la langue mémorisée au chargement
+document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
 
 // ── CITY INIT — hydrate tous les data-c à partir de window.CITY ──
 (function initCity(){
