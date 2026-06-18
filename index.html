@@ -2446,55 +2446,58 @@ function submitForm(btn,mode){
     }
     return;
   }
+  const origLabel=btn?btn.innerHTML:'';
   if(btn&&!btn.disabled){
-    btn.textContent='Envoi…';
+    btn.innerHTML='Envoi…';
     btn.disabled=true;
   }
-  setTimeout(()=>{
+  const prenom=document.getElementById('f-prenom')?.value.trim()||'';
+  const formData={
+    adresse:document.getElementById('f-addr')?.value,
+    etage:document.getElementById('f-etage')?.value||'—',
+    ascenseur:document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—',
+    date:document.getElementById('f-date')?.value,
+    duree:document.getElementById('f-dur')?.value,
+    fenetre:document.querySelector('#ouv-group .win-card.on')?.dataset.val,
+    creneau_livraison:document.querySelector('#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h',
+    creneau_recuperation:document.querySelector('#creneau-recup-group .tpill.on')?.textContent.trim()||'14h–16h',
+    type_client:document.querySelector('#type-client-group .tpill.on')?.textContent.trim()||'Particulier',
+    prenom:document.getElementById('f-prenom')?.value,
+    nom:document.getElementById('f-nom')?.value,
+    tel:document.getElementById('f-tel')?.value,
+    email:document.getElementById('f-email')?.value,
+    mode:mode
+  };
+
+  function showSuccess(){
     document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
     document.querySelectorAll('.modal-success').forEach(s=>s.classList.remove('show'));
-    const prenom=document.getElementById('f-prenom')?.value.trim()||'';
-    const formData={
-      adresse:document.getElementById('f-addr')?.value,
-      etage:document.getElementById('f-etage')?.value||'—',
-      ascenseur:document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—',
-      date:document.getElementById('f-date')?.value,
-      duree:document.getElementById('f-dur')?.value,
-      fenetre:document.querySelector('#ouv-group .win-card.on')?.dataset.val,
-      creneau_livraison:document.querySelector('#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h',
-      creneau_recuperation:document.querySelector('#creneau-recup-group .tpill.on')?.textContent.trim()||'14h–16h',
-      type_client:document.querySelector('#type-client-group .tpill.on')?.textContent.trim()||'Particulier',
-      prenom:document.getElementById('f-prenom')?.value,
-      nom:document.getElementById('f-nom')?.value,
-      tel:document.getElementById('f-tel')?.value,
-      email:document.getElementById('f-email')?.value,
-      mode:mode
-    };
-
-    fetch('https://formspree.io/f/mvzyngoy',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Accept':'application/json'},
-      body:JSON.stringify(formData)
-    }).then(r=>{
-      if(!r.ok)throw new Error('Formspree '+r.status);
-    }).catch(()=>{
-      // En cas d'erreur réseau, afficher le numéro de secours
-      const errEl=document.getElementById('form-error-msg');
-      if(errEl)errEl.style.display='block';
-    });
-
     if(mode==='pay'){
-      const s=document.getElementById('msuccess-pay');if(s)s.classList.add('show');
+      const s=document.getElementById('msuccess-pay');if(s){s.classList.add('show');s.focus();}
       const msg=document.getElementById('s-msg-pay');
       if(msg)msg.innerHTML=(prenom?'Merci '+prenom+' ! ':'')+"Vous allez recevoir le lien de paiement par email. D\xE8s r\xE8glement, votre livraison est confirm\xE9e.";
       // TODO: window.location.href='https://buy.stripe.com/VOTRE_LIEN';
     }else{
-      const s=document.getElementById('msuccess-call');if(s)s.classList.add('show');
+      const s=document.getElementById('msuccess-call');if(s){s.classList.add('show');s.focus();}
       const msg=document.getElementById('s-msg-call');
-      const greet=prenom?'Merci '+prenom+' !':'Merci !';
+      const greet=prenom?'Merci '+prenom+' !':'Merci !';
       if(msg)msg.innerHTML=greet+" L'\xE9quipe Loc'Air vous rappelle dans l'heure.";
     }
-  },700);
+  }
+
+  fetch('https://formspree.io/f/mvzyngoy',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body:JSON.stringify(formData)
+  }).then(r=>{
+    if(!r.ok)throw new Error('Formspree '+r.status);
+    showSuccess();
+  }).catch(()=>{
+    // En cas d'erreur réseau, réactiver le bouton et afficher le numéro de secours
+    if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
+    const errEl=document.getElementById('form-error-msg');
+    if(errEl){errEl.style.display='block';}
+  });
 }
 
 function startBooking(){
