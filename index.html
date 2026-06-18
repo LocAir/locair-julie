@@ -2206,7 +2206,11 @@ let curStep=1;
 
 (()=>{
   const d=document.getElementById('f-date');
-  if(d){const t=new Date().toISOString().split('T')[0];d.min=t;d.value=t;}
+  if(d){
+    const now=new Date();
+    const t=[now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
+    d.min=t;d.value=t;
+  }
   // Hero photo
   const hp2=document.getElementById('hp');
   if(hp2)requestAnimationFrame(()=>hp2.classList.add('on'));
@@ -2283,7 +2287,8 @@ function goTo(n,silent){
     if(curStep===4){
       const date=document.getElementById('f-date')?.value;
       if(!date){highlight(['f-date']);return;}
-      const today=new Date().toISOString().split('T')[0];
+      const _n=new Date();
+      const today=[_n.getFullYear(),String(_n.getMonth()+1).padStart(2,'0'),String(_n.getDate()).padStart(2,'0')].join('-');
       if(date<today){highlight(['f-date']);return;}
     }
   }
@@ -2392,11 +2397,12 @@ function buildRecap(){
     const[y,m,d]=rawDate.split('-');
     if(y&&m&&d){
       dateStr=d+'/'+m+'/'+y;
-      const pd=new Date(rawDate);
-      pd.setDate(pd.getDate()+days);
-      const pDay=String(pd.getDate()).padStart(2,'0');
-      const pMon=String(pd.getMonth()+1).padStart(2,'0');
-      pickupDateStr=pDay+'/'+pMon+'/'+pd.getFullYear();
+      // Calcul en UTC pour éviter le décalage horaire (new Date('YYYY-MM-DD') = minuit UTC)
+      const pd=new Date(Date.UTC(+y,+m-1,+d));
+      pd.setUTCDate(pd.getUTCDate()+days);
+      const pDay=String(pd.getUTCDate()).padStart(2,'0');
+      const pMon=String(pd.getUTCMonth()+1).padStart(2,'0');
+      pickupDateStr=pDay+'/'+pMon+'/'+pd.getUTCFullYear();
     }
   }
   const creneauLiv=document.querySelector('#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h';
