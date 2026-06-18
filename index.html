@@ -949,7 +949,7 @@ body{
 
 /* ── MODAL BODY ── */
 .modal-body{
-  flex:1;overflow-y:auto;
+  flex:1;min-height:0;overflow-y:auto;
   border-radius:0 20px 20px 0;
   display:flex;flex-direction:column;
   overscroll-behavior:contain;
@@ -1162,6 +1162,7 @@ body{
   .footer-bar{padding:20px 16px;gap:16px}
   .frow{grid-template-columns:1fr}
   .win-grid{grid-template-columns:1fr 1fr}
+  .dur-grid{grid-template-columns:1fr 1fr}
   .about-grid{grid-template-columns:1fr}
   .rev-summary{gap:8px}
   .rs-link{margin-left:0}
@@ -2173,16 +2174,19 @@ body{
 
 <script>
 
-// Focus trap dans la modal
+// Focus trap dans la modal — utilise AbortController pour éviter l'accumulation de listeners
+let _trapAbort=null;
 function trapFocus(modal){
-  const focusable=modal.querySelectorAll('button,input,select,textarea,a[href],[tabindex]:not([tabindex="-1"])');
-  if(!focusable.length)return;
-  const first=focusable[0],last=focusable[focusable.length-1];
-  modal.addEventListener('keydown',function trap(e){
+  if(_trapAbort)_trapAbort.abort();
+  _trapAbort=new AbortController();
+  modal.addEventListener('keydown',function(e){
     if(e.key!=='Tab')return;
+    const focusable=[...modal.querySelectorAll('button:not([disabled]),input:not([disabled]),select,textarea,a[href],[tabindex]:not([tabindex="-1"])')].filter(el=>!el.closest('[hidden]')&&el.offsetParent!==null);
+    if(!focusable.length)return;
+    const first=focusable[0],last=focusable[focusable.length-1];
     if(e.shiftKey){if(document.activeElement===first){e.preventDefault();last.focus();}}
     else{if(document.activeElement===last){e.preventDefault();first.focus();}}
-  });
+  },{signal:_trapAbort.signal});
 }
 
 const prices={7:143,10:200,14:276,21:409,0:0};
@@ -2252,6 +2256,7 @@ function closeModal(){
   document.body.style.overflow='';
   document.querySelectorAll('[aria-haspopup="dialog"]').forEach(b=>b.setAttribute('aria-expanded','false'));
   document.title="Location climatiseur Nice — 19€/j + 10€ installation | Loc'Air";
+  if(_trapAbort){_trapAbort.abort();_trapAbort=null;}
   if(_lastFocused)_lastFocused.focus();
 }
 function overlayClick(e){if(e.target===document.getElementById('overlay'))closeModal();}
