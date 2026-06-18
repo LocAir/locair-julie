@@ -1229,6 +1229,35 @@ body{
 .pay-trust{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;flex-wrap:wrap}
 .pay-trust svg{height:16px;width:auto;display:block;opacity:.7}
 
+/* ══════════════════════════════════════
+   ANIMATIONS
+══════════════════════════════════════ */
+
+/* 01 — Hero cinématique */
+@keyframes heroIn{
+  from{opacity:0;transform:translateY(22px)}
+  to{opacity:1;transform:none}
+}
+.hero-eye{animation:heroIn .7s .2s cubic-bezier(.25,.46,.45,.94) both}
+.hero-h1{animation:heroIn .8s .45s cubic-bezier(.25,.46,.45,.94) both}
+.hero-desc{animation:heroIn .7s .72s cubic-bezier(.25,.46,.45,.94) both}
+.search-box{animation:heroIn .7s .92s cubic-bezier(.25,.46,.45,.94) both}
+
+/* 03 — Scroll reveal */
+.sr{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.sr.in{opacity:1;transform:none}
+.rv.sr{opacity:1;transform:none}
+
+/* 05 — Shimmer doré sur les boutons primaires */
+.btn-blue,.sb-btn{position:relative;overflow:hidden}
+.btn-blue::after,.sb-btn::after{
+  content:'';position:absolute;top:0;left:-100%;
+  width:55%;height:100%;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(197,169,108,.28),transparent);
+  transition:left .55s ease;
+}
+.btn-blue:hover::after,.sb-btn:hover::after{left:150%}
+
 </style>
 </head>
 <body>
@@ -1446,7 +1475,7 @@ body{
         <h2 class="sec-h2" id="reviews-title" style="margin-bottom:8px">Ils ont loué.<br><em>Voici ce qu'ils en disent.</em></h2>
       </div>
       <a href="https://www.google.com/maps/place/Loc'Air/@43.7076,7.2793,17z" target="_blank" rel="noopener noreferrer" class="score" data-c-maps aria-label="Voir nos 15 avis Google — Note 4,8 sur 5">
-        <p class="score-n">4,8</p>
+        <p class="score-n" data-count="4.8" data-suffix="" data-decimal=",">4,8</p>
         <div><p class="score-stars" aria-label="4,8 étoiles sur 5">★★★★★</p><p class="score-lbl">Avis vérifiés Google</p>
         <p style="font-size:11px;color:var(--grey);margin-top:2px">15 avis · Depuis 2019</p>
         </div>
@@ -1605,9 +1634,9 @@ body{
       </div>
     </div>
     <div class="stats-bar">
-      <div class="stat-item"><span class="stat-val">15</span><span class="stat-lbl">avis Google</span></div>
+      <div class="stat-item"><span class="stat-val" data-count="15" data-suffix="">15</span><span class="stat-lbl">avis Google</span></div>
       <div class="stat-div"></div>
-      <div class="stat-item"><span class="stat-val">24h</span><span class="stat-lbl">délai livraison</span></div>
+      <div class="stat-item"><span class="stat-val" data-count="24" data-suffix="h">24h</span><span class="stat-lbl">délai livraison</span></div>
       <div class="stat-div"></div>
       <div class="stat-item"><span class="stat-val">0 €</span><span class="stat-lbl">dépôt</span></div>
       <div class="stat-div"></div>
@@ -2617,22 +2646,32 @@ window.addEventListener('scroll',()=>{
   },50);
 },{passive:true});
 
-// Animer les chiffres stats au scroll
-const statsObs=new IntersectionObserver(entries=>{
+// 04 — Compteurs animés
+function countUp(el){
+  const target=parseFloat(el.dataset.count);
+  const suffix=el.dataset.suffix||'';
+  const decimal=el.dataset.decimal||'.';
+  const isFloat=el.dataset.count.includes('.');
+  const dur=1400;
+  const start=performance.now();
+  function frame(now){
+    const p=Math.min((now-start)/dur,1);
+    const ease=1-Math.pow(1-p,3);
+    const val=target*ease;
+    el.textContent=(isFloat?val.toFixed(1).replace('.',decimal):Math.round(val))+suffix;
+    if(p<1)requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+const countObs=new IntersectionObserver(entries=>{
   entries.forEach(e=>{
-    if(e.isIntersecting){
-      e.target.style.opacity='1';
-      e.target.style.transform='none';
-      statsObs.unobserve(e.target);
+    if(e.isIntersecting&&e.target.dataset.count){
+      countUp(e.target);
+      countObs.unobserve(e.target);
     }
   });
-},{threshold:.1});
-document.querySelectorAll('[data-stat]').forEach(el=>{
-  el.style.opacity='0';
-  el.style.transform='translateY(8px)';
-  el.style.transition='opacity .4s,transform .4s';
-  statsObs.observe(el);
-});
+},{threshold:.3});
+document.querySelectorAll('[data-count]').forEach(el=>countObs.observe(el));
 
 // ── i18n FR / EN ──
 let _lang=localStorage.getItem('locair-lang')||'fr';
