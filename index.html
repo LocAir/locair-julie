@@ -2073,8 +2073,8 @@ body{
         <p style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--grey2);margin:18px 24px 0;border-top:1px solid var(--rule);padding-top:14px">Vos coordonnées</p>
         <div class="flds" style="padding:10px 24px 0">
           <div class="fld">
-            <label>Type de client</label>
-            <div class="tpills">
+            <p id="lbl-type-client" style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px">Type de client</p>
+            <div class="tpills" id="type-client-group" role="radiogroup" aria-labelledby="lbl-type-client">
               <button type="button" class="tpill on" onclick="tgl(this,'type')" role="radio" aria-checked="true">Particulier</button>
               <button type="button" class="tpill" onclick="tgl(this,'type')" role="radio" aria-checked="false">Professionnel</button>
             </div>
@@ -2283,6 +2283,8 @@ function goTo(n,silent){
     if(curStep===4){
       const date=document.getElementById('f-date')?.value;
       if(!date){highlight(['f-date']);return;}
+      const today=new Date().toISOString().split('T')[0];
+      if(date<today){highlight(['f-date']);return;}
     }
   }
   if(n===5)buildRecap();
@@ -2392,7 +2394,9 @@ function buildRecap(){
       dateStr=d+'/'+m+'/'+y;
       const pd=new Date(rawDate);
       pd.setDate(pd.getDate()+days);
-      pickupDateStr=pd.getDate()+'/'+(pd.getMonth()+1)+'/'+pd.getFullYear();
+      const pDay=String(pd.getDate()).padStart(2,'0');
+      const pMon=String(pd.getMonth()+1).padStart(2,'0');
+      pickupDateStr=pDay+'/'+pMon+'/'+pd.getFullYear();
     }
   }
   const creneauLiv=document.querySelector('#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h';
@@ -2459,7 +2463,7 @@ function submitForm(btn,mode){
       fenetre:document.querySelector('#ouv-group .win-card.on')?.dataset.val,
       creneau_livraison:document.querySelector('#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h',
       creneau_recuperation:document.querySelector('#creneau-recup-group .tpill.on')?.textContent.trim()||'14h–16h',
-      type_client:document.querySelector('#s5 .tpills .tpill.on')?.textContent.trim()||'Particulier',
+      type_client:document.querySelector('#type-client-group .tpill.on')?.textContent.trim()||'Particulier',
       prenom:document.getElementById('f-prenom')?.value,
       nom:document.getElementById('f-nom')?.value,
       tel:document.getElementById('f-tel')?.value,
