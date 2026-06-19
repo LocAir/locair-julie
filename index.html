@@ -2614,14 +2614,13 @@ function trapFocus(modal){
   },{signal:_trapAbort.signal});
 }
 
-// Tarif dégressif quadratique : 19€/j (7 jours) → 9€/j (30 jours).
-// rate(n) = 9 + 10 × ((30−n)/23)²  — courbe convexe, prix toujours croissant.
-// (Une pente linéaire créerait une inversion de prix vers le jour 25.)
+// Tarif dégressif quadratique : 17€/j (7 jours) → 9€/j (30 jours).
+// rate(n) = 9 + 8 × ((30−n)/23)²  — courbe convexe, prix toujours croissant.
 function _baseRate(days){
-  if(days<=7)return 19;
+  if(days<=7)return 17;
   if(days>=30)return 9;
   const t=(30-days)/23;
-  return 9+10*t*t;
+  return 9+8*t*t;
 }
 function calcPrice(days){return Math.round(days*_baseRate(days)+10);}
 
@@ -2632,7 +2631,7 @@ function updateDuration(days,silent){
   const price=calcPrice(days);
   const rate=_baseRate(days);
   const rateStr=rate.toFixed(2).replace('.',',');
-  const discPct=Math.round((19-rate)/19*100);
+  const discPct=Math.round((17-rate)/17*100);
   const en=_lang==='en';
   const isBest=days>=30;
 
