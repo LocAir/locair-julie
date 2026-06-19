@@ -178,7 +178,10 @@ body{
   -webkit-backdrop-filter:saturate(180%) blur(20px);
   border-bottom:1px solid rgba(20,30,48,.08);
   transform:translateZ(0);
+  transition:transform .28s cubic-bezier(.4,0,.2,1);
+  will-change:transform;
 }
+.nav.hidden{transform:translateY(-100%)}
 .nav-in{
   max-width:var(--max);margin:0 auto;
   padding:0 var(--pad);height:100%;
@@ -967,7 +970,7 @@ body{
   border-radius:0 20px 20px 0;
   display:flex;flex-direction:column;
   overscroll-behavior:contain;
-  scroll-behavior:smooth;
+  scroll-behavior:auto;
   position:relative;
 }
 .modal-close{
@@ -982,9 +985,11 @@ body{
 .sp-head{padding:24px 24px 0}
 .sp-title{font-family:var(--disp);font-size:18px;font-weight:700;color:var(--black);line-height:1.2;letter-spacing:-.02em;margin-bottom:4px}
 .sp-sub{font-size:12.5px;color:var(--grey2);font-weight:400;margin-bottom:16px}
-.step-panel{display:none;padding:0 24px 24px;animation:fadeUp .2s ease}
-.step-panel.active{display:block}
-@keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.step-panel{display:none;padding:0 24px 24px}
+.step-panel.active{display:block;animation:panelIn .18s cubic-bezier(.25,.46,.45,.94)}
+.step-panel.active.bwd{animation:panelInBwd .18s cubic-bezier(.25,.46,.45,.94)}
+@keyframes panelIn{from{opacity:0;transform:translateX(14px)}to{opacity:1;transform:none}}
+@keyframes panelInBwd{from{opacity:0;transform:translateX(-14px)}to{opacity:1;transform:none}}
 .modal-success{display:none;padding:48px 28px;text-align:center;}
 .modal-success.show{display:block;animation:fadeUp .3s ease}
 .s-ico{width:64px;height:64px;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center}
@@ -1235,18 +1240,19 @@ body{
 
 /* 01 — Hero cinématique */
 @keyframes heroIn{
-  from{opacity:0;transform:translateY(22px)}
+  from{opacity:0;transform:translateY(20px)}
   to{opacity:1;transform:none}
 }
-.hero-eye{animation:heroIn .7s .2s cubic-bezier(.25,.46,.45,.94) both}
-.hero-h1{animation:heroIn .8s .45s cubic-bezier(.25,.46,.45,.94) both}
-.hero-desc{animation:heroIn .7s .72s cubic-bezier(.25,.46,.45,.94) both}
-.search-box{animation:heroIn .7s .92s cubic-bezier(.25,.46,.45,.94) both}
+.hero-eye,.hero-h1,.hero-desc,.search-box{will-change:opacity,transform}
+.hero-eye{animation:heroIn .6s .15s cubic-bezier(.25,.46,.45,.94) both}
+.hero-h1{animation:heroIn .7s .35s cubic-bezier(.25,.46,.45,.94) both}
+.hero-desc{animation:heroIn .6s .58s cubic-bezier(.25,.46,.45,.94) both}
+.search-box{animation:heroIn .6s .75s cubic-bezier(.25,.46,.45,.94) both}
 
 /* 03 — Scroll reveal */
-.sr{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease}
+.sr{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease;will-change:opacity,transform}
 .sr.in{opacity:1;transform:none}
-.rv.sr{opacity:1;transform:none}
+.rv.sr{opacity:1;transform:none;will-change:auto}
 
 /* 05 — Shimmer doré sur les boutons primaires */
 .btn-blue,.sb-btn{position:relative;overflow:hidden}
@@ -2319,6 +2325,8 @@ function openModal(dur){
   _lastFocused=document.activeElement;
   document.querySelectorAll('[aria-haspopup="dialog"]').forEach(b=>b.setAttribute('aria-expanded','true'));
   if(dur){const idx=DUR_MAP.findIndex(d=>d.days===parseInt(dur));if(idx>=0)setDurIdx(idx);}
+  // Réafficher la nav si elle était cachée
+  if(navEl){navEl.classList.remove('hidden');_navHidden=false;}
   document.getElementById('overlay').classList.add('open');
   document.body.style.overflow='hidden';
   goTo(1,true);
@@ -2377,15 +2385,19 @@ function goTo(n,silent){
     }
   }
   if(n===5)buildRecap();
-  document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
+  const goingBack=n<curStep;
+  document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active','bwd'));
   document.querySelectorAll('.modal-success').forEach(s=>s.classList.remove('show'));
   const panel=document.getElementById('s'+n);
-  if(panel)panel.classList.add('active');
+  if(panel){
+    panel.classList.add('active');
+    if(goingBack)panel.classList.add('bwd');
+  }
   updateStepper(n);
   document.title='Réservation — Étape '+n+'/5 | Loc\'Air';
   curStep=n;
   const mb=document.getElementById('modal-body');
-  if(mb)mb.scrollTo({top:0,behavior:'smooth'});
+  if(mb)mb.scrollTop=0;
 }
 
 function updateStepper(n){
@@ -2621,29 +2633,30 @@ const io=new IntersectionObserver(entries=>{
     if(!e.isIntersecting)return;
     const sibs=[...e.target.parentElement.querySelectorAll('.sr:not(.in)')];
     const i=sibs.indexOf(e.target);
-    e.target.style.transitionDelay=(Math.max(0,i)*0.07)+'s';
+    e.target.style.transitionDelay=(Math.max(0,i)*0.04)+'s';
     e.target.classList.add('in');
     io.unobserve(e.target);
   });
 },{threshold:0.05,rootMargin:'0px 0px -16px 0px'});
 document.querySelectorAll('.sr').forEach(el=>io.observe(el));
 
-// Indicateur section active
-const sections=[...document.querySelectorAll('section[id],main[id]')];
+// Nav auto-hide + indicateurs scroll
+const navEl=document.querySelector('.nav');
 const navBtn=document.querySelector('.nav-btn');
 const waBtn=document.querySelector('.wa-btn');
-let scrollTimer=null;
+let _lastScrollY=window.scrollY;
+let _navHidden=false;
 window.addEventListener('scroll',()=>{
-  clearTimeout(scrollTimer);
-  scrollTimer=setTimeout(()=>{
-    const scrollY=window.scrollY;
-    if(scrollY>200&&navBtn){
-      navBtn.style.boxShadow='0 0 0 2px rgba(20,45,74,.3)';
-    }else if(navBtn){
-      navBtn.style.boxShadow='';
-    }
-    if(waBtn)waBtn.classList.toggle('wa-visible',scrollY>window.innerHeight*.65);
-  },50);
+  const y=window.scrollY;
+  const delta=y-_lastScrollY;
+  // Cache la nav en scrollant vers le bas (après 120px), la réaffiche vers le haut
+  if(navEl&&!document.getElementById('overlay').classList.contains('open')){
+    if(delta>4&&y>120&&!_navHidden){navEl.classList.add('hidden');_navHidden=true;}
+    else if(delta<-4&&_navHidden){navEl.classList.remove('hidden');_navHidden=false;}
+  }
+  if(navBtn){navBtn.style.boxShadow=y>200?'0 0 0 2px rgba(20,45,74,.3)':'';}
+  if(waBtn)waBtn.classList.toggle('wa-visible',y>window.innerHeight*.65);
+  _lastScrollY=y;
 },{passive:true});
 
 // 04 — Compteurs animés
