@@ -2458,7 +2458,7 @@ body{
           <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" aria-hidden="true"/>
 
           <div class="rgpd-row" style="margin-top:16px">
-            <input type="checkbox" id="f-rgpd"/>
+            <input type="checkbox" id="f-rgpd" onchange="buildRecap()"/>
             <label id="label-rgpd" for="f-rgpd">J'accepte que mes coordonnées servent uniquement à organiser ma livraison. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Politique de confidentialité</a></label>
           </div>
           <div class="rgpd-row" style="margin-top:8px">
@@ -2491,7 +2491,7 @@ body{
 
           <p style="text-align:center;margin-top:14px;font-size:12.5px;color:var(--grey)">
             Une question ?
-            <a href="https://wa.me/33663798756?text=Bonjour%2C%20j%27ai%20une%20question%20sur%20ma%20r%C3%A9servation%20Loc%27Air" data-c-wa target="_blank" rel="noopener" style="color:#25d366;font-weight:600;text-decoration:none">
+            <a href="https://wa.me/33663798756?text=Bonjour%2C%20j%27ai%20une%20question%20sur%20ma%20r%C3%A9servation%20Loc%27Air" data-c-wa target="_blank" rel="noopener noreferrer" style="color:#25d366;font-weight:600;text-decoration:none">
               <svg width="13" height="13" viewBox="0 0 24 24" style="vertical-align:-2px;fill:#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
               WhatsApp
             </a>
@@ -2560,6 +2560,8 @@ function setDurIdx(idx){
     el.setAttribute('aria-checked',i===idx?'true':'false');
   });
   updateTotal();
+  window.dataLayer=window.dataLayer||[];
+  dataLayer.push({event:'select_duration',days:d.days,price:d.price});
 }
 const yr=document.getElementById("year");if(yr)yr.textContent=new Date().getFullYear();
 let curStep=1;
@@ -2611,6 +2613,8 @@ document.addEventListener('click',e=>{
 });
 
 function openModal(dur){
+  window.dataLayer=window.dataLayer||[];
+  dataLayer.push({event:'open_booking_modal'});
   _lastFocused=document.activeElement;
   document.querySelectorAll('[aria-haspopup="dialog"]').forEach(b=>b.setAttribute('aria-expanded','true'));
   if(dur){const idx=DUR_MAP.findIndex(d=>d.days===parseInt(dur));if(idx>=0)setDurIdx(idx);}
@@ -2633,6 +2637,7 @@ function closeModal(){
   document.querySelectorAll('[aria-haspopup="dialog"]').forEach(b=>b.setAttribute('aria-expanded','false'));
   document.title="Location climatiseur Nice · Livraison sous 24h · Zéro dépôt | Loc'Air";
   if(_trapAbort){_trapAbort.abort();_trapAbort=null;}
+  curStep=1;
   if(_lastFocused)_lastFocused.focus();
 }
 function overlayClick(e){if(e.target===document.getElementById('overlay'))closeModal();}
@@ -2652,25 +2657,28 @@ const META={
 
 function goTo(n,silent){
   if(!silent&&n>curStep){
-    if(curStep===1){
-      const addr=document.getElementById('f-addr')?.value.trim();
-      if(!addr){highlight(['f-addr']);return;}
-    }
-    if(curStep===3){
-      if(!document.querySelector('#ouv-group .win-card.on')){
-        const g=document.getElementById('ouv-group');
-        if(g){g.style.outline='1.5px solid #dc2626';g.style.borderRadius='10px';setTimeout(()=>{g.style.outline='';},2200);}
-        const errMsg=document.getElementById('ouv-err');
-        if(errMsg){errMsg.style.display='block';setTimeout(()=>errMsg.style.display='none',3000);}
-        return;
+    // Validate all intermediate steps between curStep and n (exclusive)
+    for(let s=curStep;s<n;s++){
+      if(s===1){
+        const addr=document.getElementById('f-addr')?.value.trim();
+        if(!addr){highlight(['f-addr']);goTo(1,true);return;}
       }
-    }
-    if(curStep===4){
-      const date=document.getElementById('f-date')?.value;
-      if(!date){highlight(['f-date']);return;}
-      const _n=new Date();
-      const today=[_n.getFullYear(),String(_n.getMonth()+1).padStart(2,'0'),String(_n.getDate()).padStart(2,'0')].join('-');
-      if(date<today){highlight(['f-date']);return;}
+      if(s===3){
+        if(!document.querySelector('#ouv-group .win-card.on')){
+          const g=document.getElementById('ouv-group');
+          if(g){g.style.outline='1.5px solid #dc2626';g.style.borderRadius='10px';setTimeout(()=>{g.style.outline='';},2200);}
+          const errMsg=document.getElementById('ouv-err');
+          if(errMsg){errMsg.style.display='block';setTimeout(()=>errMsg.style.display='none',3000);}
+          goTo(3,true);return;
+        }
+      }
+      if(s===4){
+        const date=document.getElementById('f-date')?.value;
+        if(!date){highlight(['f-date']);goTo(4,true);return;}
+        const _n=new Date();
+        const today=[_n.getFullYear(),String(_n.getMonth()+1).padStart(2,'0'),String(_n.getDate()).padStart(2,'0')].join('-');
+        if(date<today){highlight(['f-date']);goTo(4,true);return;}
+      }
     }
   }
   const goingBack=n<curStep;
@@ -2687,6 +2695,8 @@ function goTo(n,silent){
   if(n===5)setTimeout(buildRecap,0);
   const mb=document.getElementById('modal-body');
   if(mb)mb.scrollTop=0;
+  window.dataLayer=window.dataLayer||[];
+  dataLayer.push({event:'funnel_step',step:n,step_name:META[n]?.title||'step'+n});
 }
 
 function updateStepper(n){
@@ -2718,7 +2728,12 @@ function highlight(ids){
     if(!el)return;
     el.style.borderColor='#c0392b';
     el.style.boxShadow='0 0 0 3px rgba(192,57,43,.15)';
-    const clear=()=>{el.style.borderColor='';el.style.boxShadow='';};
+    el.setAttribute('aria-invalid','true');
+    const clear=()=>{
+      el.style.borderColor='';
+      el.style.boxShadow='';
+      el.removeAttribute('aria-invalid');
+    };
     el.addEventListener('input',clear,{once:true});
     el.addEventListener('change',clear,{once:true});
     el.addEventListener('focus',clear,{once:true});
@@ -2770,11 +2785,14 @@ function tglOuv(el,val){
   el.classList.add('on');
   el.setAttribute('aria-checked','true');
   el.dataset.val=val;
+  window.dataLayer=window.dataLayer||[];
+  dataLayer.push({event:'select_window_type',window_type:val});
   // Reset outline d'erreur
   const g=document.getElementById('ouv-group');
   if(g){g.style.outline='';}  
 }
 
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function buildRecap(){
   const days=parseInt(document.getElementById('f-dur')?.value||'7');
   const price=prices[days]!=null?prices[days]:0;
@@ -2815,11 +2833,11 @@ function buildRecap(){
   const icoFloor='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 3 9 21"/><polyline points="15 3 15 21"/></svg>';
 
   const rows=[
-    [isEN?'Address':'Adresse',document.getElementById('f-addr')?.value||'—',icoPin],
-    [isEN?'Delivery':'Livraison',dateStr+' · '+creneauLiv,icoCal],
-    [isEN?'Window':'Fenêtre',ouv,icoWin],
-    [isEN?'Duration':'Durée',durLabel,icoDur],
-    [isEN?'Floor · Elevator':'Étage · Ascenseur',etageLabel,icoFloor],
+    [isEN?'Address':'Adresse',escHtml(document.getElementById('f-addr')?.value||'—'),icoPin],
+    [isEN?'Delivery':'Livraison',escHtml(dateStr+' · '+creneauLiv),icoCal],
+    [isEN?'Window':'Fenêtre',escHtml(ouv),icoWin],
+    [isEN?'Duration':'Durée',escHtml(durLabel),icoDur],
+    [isEN?'Floor · Elevator':'Étage · Ascenseur',escHtml(etageLabel),icoFloor],
   ];
 
   const box=document.getElementById('recap-box');
@@ -2828,14 +2846,14 @@ function buildRecap(){
     <div class="rc-card">
       <div class="rc-card-head">
         <span class="rc-card-label">${isEN?'Your order':'Votre commande'}</span>
-        <span class="rc-card-badge">${priceDisplay}</span>
+        <span class="rc-card-badge">${escHtml(priceDisplay)}</span>
       </div>
       <dl class="rc-details">
         ${rows.map(([k,v,ico])=>`
           <div class="rc-row">
             <div class="rc-row-left">
-              <div class="rc-row-icon">${ico}</div>
-              <div><div class="rc-row-k">${k}</div><div class="rc-row-v">${v}</div></div>
+              <div class="rc-row-icon" aria-hidden="true">${ico}</div>
+              <div><dt class="rc-row-k">${k}</dt><dd class="rc-row-v">${v}</dd></div>
             </div>
           </div>`).join('')}
       </dl>
@@ -2901,6 +2919,9 @@ function submitForm(btn,mode){
     mode:mode
   };
 
+  window.dataLayer=window.dataLayer||[];
+  dataLayer.push({event:'begin_checkout',mode:mode,value:price,currency:'EUR',days:parseInt(formData.duree)||0});
+
   function showSuccess(){
     document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
     document.querySelectorAll('.modal-success').forEach(s=>s.classList.remove('show'));
@@ -2908,6 +2929,7 @@ function submitForm(btn,mode){
       const s=document.getElementById('msuccess-pay');if(s){s.classList.add('show');s.focus();}
       const msg=document.getElementById('s-msg-pay');
       if(msg)msg.innerHTML=(prenom?'Merci '+prenom+' ! ':'')+"Votre r\xE9servation est confirm\xE9e — notre \xE9quipe vous contacte d'ici quelques heures pour confirmer le cr\xE9neau exact.";
+      dataLayer.push({event:'purchase',transaction_id:Date.now(),value:price,currency:'EUR',mode:'pay'});
       // TODO: window.location.href='https://buy.stripe.com/VOTRE_LIEN';
     }else{
       const s=document.getElementById('msuccess-call');if(s){s.classList.add('show');s.focus();}
@@ -2976,9 +2998,13 @@ const navBtn=document.querySelector('.nav-btn');
 const waBtn=document.querySelector('.wa-btn');
 let _lastScrollY=window.scrollY;
 let _navHidden=false;
+let _scrollDepths={50:false,90:false};
 window.addEventListener('scroll',()=>{
   const y=window.scrollY;
   const delta=y-_lastScrollY;
+  const pct=Math.round(y/(document.body.scrollHeight-window.innerHeight)*100);
+  if(!_scrollDepths[50]&&pct>=50){_scrollDepths[50]=true;(window.dataLayer=window.dataLayer||[]).push({event:'scroll_depth',percent:50});}
+  if(!_scrollDepths[90]&&pct>=90){_scrollDepths[90]=true;(window.dataLayer=window.dataLayer||[]).push({event:'scroll_depth',percent:90});}
   // Cache la nav en scrollant vers le bas (après 120px), la réaffiche vers le haut
   if(navEl&&!document.getElementById('overlay').classList.contains('open')){
     if(delta>4&&y>120&&!_navHidden){navEl.classList.add('hidden');_navHidden=true;}
@@ -3461,7 +3487,7 @@ document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
 </script>
 
 <!-- WHATSAPP BUTTON -->
-<a class="wa-btn" href="https://wa.me/33663798756?text=Bonjour%2C%20je%20voudrais%20louer%20un%20climatiseur%20%C3%A0%20Nice" target="_blank" rel="noopener" aria-label="Contacter Loc'Air sur WhatsApp" title="WhatsApp" data-c-wa>
+<a class="wa-btn" href="https://wa.me/33663798756?text=Bonjour%2C%20je%20voudrais%20louer%20un%20climatiseur%20%C3%A0%20Nice" target="_blank" rel="noopener noreferrer" aria-label="Contacter Loc'Air sur WhatsApp" title="WhatsApp" data-c-wa>
   <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
 </a>
 
