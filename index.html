@@ -1081,6 +1081,13 @@ body{
 .fld input::placeholder,.fld textarea::placeholder{color:var(--grey);opacity:.7}
 .fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,45,74,.1)}
 .fld input.valid{border-color:#22863a;box-shadow:0 0 0 3px rgba(34,134,58,.1);}
+.date-preview{
+  margin-top:10px;padding:10px 12px;
+  background:var(--blue-lt);border-radius:var(--r);border:1px solid rgba(27,58,95,.1);
+  font-size:12.5px;color:var(--blue);font-weight:500;
+  display:none;line-height:1.5;
+}
+.date-preview.show{display:block;}
 .fld input:invalid:not(:placeholder-shown){border-color:var(--red)}
 .fld textarea{resize:none;line-height:1.5}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -1115,14 +1122,15 @@ body{
   display:flex;flex-direction:column;overflow:hidden;position:relative;
 }
 .win-card:hover{border-color:var(--blue);box-shadow:0 4px 16px rgba(20,45,74,.1);transform:translateY(-1px)}
-.win-card.on{border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,45,74,.18);background:var(--blue-lt)}
+.win-card.on{border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,45,74,.18);background:var(--blue-lt);transform:scale(1.02);}
+@keyframes checkPop{0%{transform:scale(.4)}70%{transform:scale(1.2)}100%{transform:scale(1)}}
 .win-check{
   position:absolute;top:8px;right:8px;
   width:22px;height:22px;border-radius:50%;background:var(--blue);
   display:flex;align-items:center;justify-content:center;
-  opacity:0;transition:opacity .18s;z-index:2;
+  opacity:0;transition:opacity .15s;z-index:2;
 }
-.win-card.on .win-check{opacity:1}
+.win-card.on .win-check{opacity:1;animation:checkPop .25s cubic-bezier(.34,1.56,.64,1);}
 .win-check svg{width:11px;height:11px;stroke:white;stroke-width:2.5;fill:none}
 .win-photo{width:100%;height:110px;overflow:hidden;background:var(--bg);flex-shrink:0}
 .win-photo svg{width:100%;height:100%;display:block}
@@ -2369,8 +2377,9 @@ body{
         <div class="flds">
           <div class="fld">
             <label for="f-date">Date de livraison<span class="req">*</span></label>
-            <input id="f-date" type="date" aria-label="Date de début de location" required/>
-            <button type="button" class="tpill" style="margin-top:8px" onclick="(function(){const t=new Date();t.setDate(t.getDate()+1);const v=[t.getFullYear(),String(t.getMonth()+1).padStart(2,'0'),String(t.getDate()).padStart(2,'0')].join('-');document.getElementById('f-date').value=v;})()" id="btn-demain">→ Demain</button>
+            <input id="f-date" type="date" aria-label="Date de début de location" required oninput="updateDatePreview()"/>
+            <button type="button" class="tpill" style="margin-top:8px" onclick="(function(){const t=new Date();t.setDate(t.getDate()+1);const v=[t.getFullYear(),String(t.getMonth()+1).padStart(2,'0'),String(t.getDate()).padStart(2,'0')].join('-');document.getElementById('f-date').value=v;updateDatePreview();})()" id="btn-demain">→ Demain</button>
+            <div id="date-preview" class="date-preview" aria-live="polite"></div>
           </div>
           <div class="fld" style="margin-top:14px">
             <p id="lbl-creneau-liv" style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px">Créneau de livraison<span class="req">*</span></p>
@@ -2633,12 +2642,31 @@ function updateDuration(days,silent){
   }
   document.getElementById('f-dur').value=days;
   updateTotal();
+  updateDatePreview();
   if(!silent){
     window.dataLayer=window.dataLayer||[];
     dataLayer.push({event:'select_duration',days,price});
   }
 }
 function stepDur(delta){updateDuration(_durDays+delta);}
+function updateDatePreview(){
+  const el=document.getElementById('date-preview');
+  if(!el)return;
+  const raw=document.getElementById('f-date')?.value;
+  if(!raw){el.classList.remove('show');return;}
+  const[y,m,d]=raw.split('-');
+  if(!y||!m||!d){el.classList.remove('show');return;}
+  const days=_durDays||7;
+  const en=_lang==='en';
+  const start=new Date(Date.UTC(+y,+m-1,+d));
+  const end=new Date(start);
+  end.setUTCDate(end.getUTCDate()+days);
+  const fmt=dt=>`${String(dt.getUTCDate()).padStart(2,'0')}/${String(dt.getUTCMonth()+1).padStart(2,'0')}/${dt.getUTCFullYear()}`;
+  el.textContent=en
+    ?`📅 From ${fmt(start)} to ${fmt(end)} (${days} days)`
+    :`📅 Du ${fmt(start)} au ${fmt(end)} · ${days} jours de location`;
+  el.classList.add('show');
+}
 const yr=document.getElementById("year");if(yr)yr.textContent=new Date().getFullYear();
 let curStep=1;
 
