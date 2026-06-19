@@ -60,6 +60,7 @@ const CITY = {
 <meta name="geo.position" content="43.7102;7.2620"/>
 <meta name="ICBM" content="43.7102, 7.2620"/>
 <meta name="keywords" content="location climatiseur Nice, climatiseur livré Nice, clim mobile Nice, location clim Côte d'Azur, canicule Nice solution, Loc Air Nice"/>
+<meta name="robots" content="index, follow"/>
 <link rel="preload" as="image" href="/hero-nice.jpg" fetchpriority="high"/>
 <!-- ╚══════════════════════════════════════════════════════════════════╝ -->
 
@@ -1163,6 +1164,7 @@ body{
 .dur-card.on .dur-card-days{color:var(--blue)}
 .dur-card.on .dur-card-price{color:var(--blue);font-weight:600}
 .dur-badge{display:block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:2px}
+.dur-card-daily{font-size:10px;color:var(--grey);display:block;margin-top:2px}
 
 /* ── CTA PAYER ── */
 .btn-pay{
@@ -1215,6 +1217,7 @@ body{
   body.modal-open-mobile{padding-bottom:0}
   .reassure-in{grid-template-columns:1fr 1fr}
   .steps-grid{grid-template-columns:1fr 1fr;gap:24px}
+  .steps-grid::before{display:none}
   .rev-grid{grid-template-columns:1fr}
   .pq-grid{grid-template-columns:1fr 1fr}
   .faq-split{grid-template-columns:1fr;gap:32px}
@@ -1411,7 +1414,7 @@ body{
 <noscript><style>.m-bar,.modal-overlay{display:none!important}</style><div style="background:#fff3cd;color:#856404;padding:12px 20px;text-align:center;font-family:Arial,sans-serif;font-size:13px">JavaScript est désactivé. Pour réserver, appelez le <a href="tel:0663798756" style="color:#856404;font-weight:bold">06.63.79.87.56</a> ou écrivez à <a href="mailto:contact@locair.fr" style="color:#856404;font-weight:bold">contact@locair.fr</a></div></noscript>
 
 <div class="alert-bar hidden" id="alert-canicule" role="alert" aria-live="polite">
-  🔥&nbsp;<strong>Canicule à Nice</strong> — Climatiseur livré &amp; installé en moins de 24h. Stock limité, réservez maintenant.
+  🌡️&nbsp;<strong>Canicule prévue cette semaine</strong> — Il reste des climatiseurs disponibles. <a onclick="openModal()" style="color:inherit;font-weight:700;cursor:pointer">Réserver maintenant →</a>
   <button class="alert-close" onclick="this.closest('.alert-bar').classList.add('hidden');localStorage.setItem('alertDismissed','1')" aria-label="Fermer" type="button">×</button>
 </div>
 
@@ -1455,8 +1458,8 @@ body{
   <div class="hero-scrim"></div>
   <div class="hero-inner">
     <p class="hero-eye" data-i18n="hero_eye">Livraison à Nice · 7j/7</p>
-    <h1 class="hero-h1" data-i18n-h="hero_h1">Louez votre clim<br><em>livrée dès demain.</em></h1>
-    <p class="hero-desc" data-i18n="hero_desc">Installation incluse · Zéro dépôt · Annulation libre</p>
+    <h1 class="hero-h1" data-i18n-h="hero_h1">Il fait trop chaud<br><em>pour dormir à Nice ?</em></h1>
+    <p class="hero-desc" data-i18n="hero_desc">Climatiseur livré &amp; installé dès demain · Zéro dépôt · 7j/7</p>
 
     <div class="search-box" role="search" aria-label="Réserver un climatiseur">
       <div class="sb-row">
@@ -1464,6 +1467,7 @@ body{
         <button class="sb-btn" onclick="startBooking()" aria-label="Réserver un climatiseur" type="button">Réserver ma clim →</button>
       </div>
     </div>
+    <p class="hero-micro" data-i18n="hero_micro">4.8★ · 15 avis Google · Depuis 2019</p>
   </div>
 </section>
 
@@ -2049,7 +2053,7 @@ body{
       <div class="step-panel active" id="s1">
         <div class="sp-head">
           <h3 class="sp-title">Adresse de livraison</h3>
-          <p class="sp-sub">Indiquez l'adresse de livraison.</p>
+          <p class="sp-sub">Livraison possible dès demain à votre adresse.</p>
         </div>
         <div class="flds">
           <div class="fld">
@@ -2266,6 +2270,16 @@ body{
               </div>
             </div>
 
+            <!-- 6. Je ne sais pas -->
+            <div class="win-card" onclick="tglOuv(this,'À confirmer')" role="radio" aria-checked="false" tabindex="0">
+              <div class="win-check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="win-photo"><svg viewBox="0 0 180 120" fill="none" style="width:100%;height:100%;display:block"><rect width="180" height="120" fill="#f4f0ea"/><text x="90" y="55" font-family="DM Sans,sans-serif" font-size="22" fill="#1b3a5f" text-anchor="middle" opacity=".3">?</text><text x="90" y="80" font-family="DM Sans,sans-serif" font-size="9" fill="#8a95a3" text-anchor="middle">Je vais vérifier</text></svg></div>
+              <div class="win-label">
+                <div class="win-name">Je ne sais pas</div>
+                <div class="win-hint">Notre technicien vérifiera</div>
+              </div>
+            </div>
+
           </div>
         </div>
         <div class="modal-nav">
@@ -2284,12 +2298,13 @@ body{
       <div class="step-panel" id="s4">
         <div class="sp-head">
           <h3 class="sp-title">Date & créneau de livraison</h3>
-          <p class="sp-sub">Choisissez votre date et l'heure de livraison.</p>
+          <p class="sp-sub">Choisissez votre date · livraison 8h–20h · 7j/7</p>
         </div>
         <div class="flds">
           <div class="fld">
             <label for="f-date">Date de livraison<span class="req">*</span></label>
             <input id="f-date" type="date" aria-label="Date de début de location" required/>
+            <button type="button" class="tpill" style="margin-top:8px" onclick="(function(){const t=new Date();t.setDate(t.getDate()+1);const v=[t.getFullYear(),String(t.getMonth()+1).padStart(2,'0'),String(t.getDate()).padStart(2,'0')].join('-');document.getElementById('f-date').value=v;})()" id="btn-demain">→ Demain</button>
           </div>
           <div class="fld" style="margin-top:14px">
             <p id="lbl-creneau-liv" style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-bottom:4px">Créneau de livraison<span class="req">*</span></p>
@@ -2997,8 +3012,9 @@ const LANG_MAP=[
   ['.ubar','html','N°1 à Nice pour la location de clim mobile &nbsp;·&nbsp; <strong>Depuis 2019</strong> &nbsp;·&nbsp; Service humain garanti &nbsp;·&nbsp; 7j/7 · 8h–20h','No.1 in Nice for mobile AC rental &nbsp;·&nbsp; <strong>Since 2019</strong> &nbsp;·&nbsp; Human service guaranteed &nbsp;·&nbsp; 7d/7 · 8am–8pm'],
   /* hero */
   ['.hero-eye','text','Livraison à Nice · 7j/7','Delivery in Nice · 7d/7'],
-  ['.hero-h1','html','Louez votre clim<br><em>livrée dès demain.</em>','Rent your AC<br><em>delivered tomorrow.</em>'],
-  ['.hero-desc','text','Installation incluse · Zéro dépôt · Annulation libre','Setup included · Zero deposit · Free cancellation'],
+  ['.hero-h1','html','Il fait trop chaud<br><em>pour dormir à Nice ?</em>','Too hot<br><em>to sleep in Nice?</em>'],
+  ['.hero-desc','text','Climatiseur livré & installé dès demain · Zéro dépôt · 7j/7','AC delivered & installed tomorrow · Zero deposit · 7d/7'],
+  ['.hero-micro','text','4.8★ · 15 avis Google · Depuis 2019','4.8★ · 15 Google reviews · Since 2019'],
   ['#addr-init','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice'],
   ['.sb-btn','text','Réserver ma clim →','Book my AC →'],
   /* howto */
@@ -3037,7 +3053,7 @@ const LANG_MAP=[
   ['.ms-title','text','Votre commande','Your order'],
   /* modal step 1 */
   ['#s1 .sp-title','text','Adresse de livraison','Delivery address'],
-  ['#s1 .sp-sub','text','Indiquez l\'adresse de livraison.','Enter your delivery address.'],
+  ['#s1 .sp-sub','text','Livraison possible dès demain à votre adresse.','Delivery possible as soon as tomorrow at your address.'],
   ['#dur-badge-recommande','text','★ Recommandé','★ Recommended'],
   ['#s1 label','html','Adresse<span class="req">*</span>','Address<span class="req">*</span>'],
   ['#f-addr','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice'],
