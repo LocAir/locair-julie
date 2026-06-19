@@ -28,7 +28,7 @@ const CITY = {
   zones:    'Nice et environs',
   zoneFaq:  'Toute la ville de Nice : Centre, Promenade des Anglais, Vieux-Nice, Cimiez, Libération, Magnan, Riquier, Caucade, Saint-Isidore, Moulins…',
   ga4:      'G-XXXXXXXXXX',
-  alertActive: false,
+  alertActive: true,
 };
 </script>
 
@@ -41,6 +41,11 @@ const CITY = {
 <meta name="description" content="Il fait trop chaud ? Loc'Air livre et installe votre climatiseur à Nice dès demain. Installation incluse, zéro dépôt, annulation libre. Devis en 30 s. 7j/7."/>
 <link rel="canonical" href="https://www.locair.fr/"/>
 <link rel="alternate" hreflang="fr" href="https://www.locair.fr/"/>
+<link rel="alternate" hreflang="x-default" href="https://www.locair.fr/"/>
+<meta property="og:title" content="Location Climatiseur Nice — Livré &amp; installé dès demain | Loc'Air"/>
+<meta property="og:description" content="Il fait trop chaud pour dormir ? Climatiseur livré et installé dès demain à Nice. Installation incluse, zéro dépôt, annulation libre. Devis en 30 s."/>
+<meta property="og:type" content="website"/>
+<meta property="og:url" content="https://www.locair.fr/"/>
 <meta property="og:image" content="https://www.locair.fr/hero-nice.jpg"/>
 <meta property="og:image:width" content="1600"/>
 <meta property="og:image:height" content="1067"/>
@@ -730,6 +735,7 @@ body{
 @media(max-width:900px){
   .about-grid{grid-template-columns:1fr;gap:24px}
   .about-section{padding:var(--section-py-sm) var(--pad)}
+  .expertise-in{grid-template-columns:1fr;gap:36px}
   }
 
 /* ── AVIS ── */
@@ -1075,7 +1081,7 @@ body{
 .fld textarea{resize:none;line-height:1.5}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tpills{display:flex;gap:7px;flex-wrap:wrap}
-.tpill{
+.tpill{touch-action:manipulation;
   padding:9px 16px;border:1.5px solid var(--rule);border-radius:4px;
   font-size:12px;font-weight:500;color:var(--black2);
   background:var(--white);cursor:pointer;user-select:none;
@@ -1156,6 +1162,7 @@ body{
 }
 .dur-card.on .dur-card-days{color:var(--blue)}
 .dur-card.on .dur-card-price{color:var(--blue);font-weight:600}
+.dur-badge{display:block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:2px}
 
 /* ── CTA PAYER ── */
 .btn-pay{
@@ -1203,7 +1210,9 @@ body{
   .sb-input{font-size:16px}
   .hero-inner{padding:40px 20px 56px}
   :root{--section-py:64px}
-  .howto-in,.faq-in,.reviews-in,.pricing-in,.about-in{padding:var(--section-py) 20px}
+  .howto-in,.faq-in,.reviews-in,.pricing-in{padding:var(--section-py) 20px}
+  .m-bar.m-bar-visible{display:block}
+  body.modal-open-mobile{padding-bottom:0}
   .reassure-in{grid-template-columns:1fr 1fr}
   .steps-grid{grid-template-columns:1fr 1fr;gap:24px}
   .rev-grid{grid-template-columns:1fr}
@@ -1369,7 +1378,7 @@ body{
 
 /* 03 — Scroll reveal */
 .sr{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease;will-change:opacity,transform}
-.sr.in{opacity:1;transform:none}
+.sr.in{opacity:1;transform:none;will-change:auto}
 .rv.sr{opacity:1;transform:none;will-change:auto}
 
 /* 05 — Shimmer doré sur les boutons primaires */
@@ -1481,7 +1490,7 @@ body{
 </section>
 
 <!-- COMMENT ÇA MARCHE -->
-<section class="howto" aria-labelledby="howto-title">
+<section class="howto" id="comment-ca-marche" aria-labelledby="howto-title">
   <div class="howto-in">
     <p class="sec-eye">Comment fonctionne la location</p>
     <h2 class="sec-h2" id="howto-title">De la réservation<br><em>à l'air frais — en 24h</em></h2>
@@ -1511,7 +1520,7 @@ body{
 </section>
 
 <!-- TARIFS -->
-<section class="pricing" aria-labelledby="pricing-title">
+<section class="pricing" id="tarifs" aria-labelledby="pricing-title">
   <div class="pricing-in">
     <p class="sec-eye">Location de climatiseur mobile</p>
     <h2 class="sec-h2" id="pricing-title">Simple, transparent,<br><em>sans mauvaises surprises</em></h2>
@@ -2075,6 +2084,7 @@ body{
                 <span class="dur-card-price">200 €</span>
               </button>
               <button type="button" class="dur-card" onclick="setDurIdx(2)" role="radio" aria-checked="false">
+                <span class="dur-badge" id="dur-badge-recommande">★ Recommandé</span>
                 <span class="dur-card-days">14 jours</span>
                 <span class="dur-card-price">276 €</span>
               </button>
@@ -2321,13 +2331,13 @@ body{
           <div class="frow">
             <div class="fld">
               <label id="label-etage" for="f-etage">Étage</label>
-              <input id="f-etage" type="text" placeholder="Ex. 3e" autocomplete="off" inputmode="text"/>
+              <input id="f-etage" type="text" placeholder="Ex. 3e" autocomplete="off" inputmode="text" oninput="buildRecap()"/>
             </div>
             <div class="fld">
-              <label id="label-asc">Ascenseur</label>
-              <div class="tpills" id="asc-group" role="radiogroup" aria-label="Présence d'un ascenseur">
-                <button type="button" class="tpill on asc-yes" onclick="tgl(this,'asc')" role="radio" aria-checked="true">Oui</button>
-                <button type="button" class="tpill asc-no" onclick="tgl(this,'asc')" role="radio" aria-checked="false">Non</button>
+              <p id="label-asc" style="font-size:12px;font-weight:500;color:var(--black2);margin-bottom:6px">Ascenseur</p>
+              <div class="tpills" id="asc-group" role="radiogroup" aria-label="Présence d'un ascenseur" aria-labelledby="label-asc">
+                <button type="button" class="tpill on asc-yes" onclick="tgl(this,'asc');buildRecap()" role="radio" aria-checked="true">Oui</button>
+                <button type="button" class="tpill asc-no" onclick="tgl(this,'asc');buildRecap()" role="radio" aria-checked="false">Non</button>
               </div>
             </div>
           </div>
@@ -2393,8 +2403,8 @@ body{
           </div>
 
           <div class="fld">
-            <label id="label-logement">Type de logement</label>
-            <div class="tpills" id="logement-group" role="radiogroup" aria-label="Type de logement">
+            <p id="label-logement" style="font-size:12px;font-weight:500;color:var(--black2);margin-bottom:6px">Type de logement</p>
+            <div class="tpills" id="logement-group" role="radiogroup" aria-labelledby="label-logement">
               <button type="button" class="tpill" onclick="tgl(this,'log')" role="radio" aria-checked="false">Studio</button>
               <button type="button" class="tpill" onclick="tgl(this,'log')" role="radio" aria-checked="false">Appartement</button>
               <button type="button" class="tpill" onclick="tgl(this,'log')" role="radio" aria-checked="false">Maison</button>
@@ -2402,8 +2412,8 @@ body{
           </div>
 
           <div class="fld">
-            <label id="label-motif">Pourquoi vous louez ?</label>
-            <div class="tpills" id="motif-group" aria-label="Raison de la location">
+            <p id="label-motif" style="font-size:12px;font-weight:500;color:var(--black2);margin-bottom:6px">Pourquoi vous louez ?</p>
+            <div class="tpills" id="motif-group" aria-labelledby="label-motif" role="group">
               <button type="button" class="tpill tpill-m motif-1" onclick="tglM(this)" aria-pressed="false">Chaleur</button>
               <button type="button" class="tpill tpill-m motif-2" onclick="tglM(this)" aria-pressed="false">Bébé / Santé</button>
               <button type="button" class="tpill tpill-m motif-3" onclick="tglM(this)" aria-pressed="false">Airbnb / Location</button>
@@ -2445,6 +2455,14 @@ body{
 
           <p id="form-error-msg" role="alert" aria-live="assertive" style="display:none;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;font-size:13px;text-align:center;margin-top:12px">
             Problème de connexion. Appelez-nous au <a href="tel:0663798756" style="color:#b91c1c;font-weight:600" data-c-tel><span data-c="phone">06.63.79.87.56</span></a>
+          </p>
+
+          <p style="text-align:center;margin-top:14px;font-size:12.5px;color:var(--grey)">
+            Une question ?
+            <a href="https://wa.me/33663798756?text=Bonjour%2C%20j%27ai%20une%20question%20sur%20ma%20r%C3%A9servation%20Loc%27Air" data-c-wa target="_blank" rel="noopener" style="color:#25d366;font-weight:600;text-decoration:none">
+              <svg width="13" height="13" viewBox="0 0 24 24" style="vertical-align:-2px;fill:#25d366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+              WhatsApp
+            </a>
           </p>
 
           <div class="modal-nav" style="margin-top:12px">
@@ -2593,7 +2611,7 @@ document.addEventListener('keydown',e=>{
 });
 
 const META={
-  1:{title:'Adresse de livraison',sub:'Adresse, étage et accès'},
+  1:{title:'Adresse de livraison',sub:'Adresse de livraison'},
   2:{title:'Durée de location',sub:'Combien de jours ?'},
   3:{title:'Type de fenêtre',sub:'Pour adapter le kit d\'installation'},
   4:{title:'Date de livraison',sub:'Pour quand souhaitez-vous être livré ?'},
@@ -2623,7 +2641,6 @@ function goTo(n,silent){
       if(date<today){highlight(['f-date']);return;}
     }
   }
-  if(n===5)buildRecap();
   const goingBack=n<curStep;
   document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active','bwd'));
   document.querySelectorAll('.modal-success').forEach(s=>s.classList.remove('show'));
@@ -2635,6 +2652,7 @@ function goTo(n,silent){
   updateStepper(n);
   document.title='Réservation — Étape '+n+'/5 | Loc\'Air';
   curStep=n;
+  if(n===5)setTimeout(buildRecap,0);
   const mb=document.getElementById('modal-body');
   if(mb)mb.scrollTop=0;
 }
@@ -2731,7 +2749,9 @@ function buildRecap(){
   const durEntry=DUR_MAP.find(d=>d.days===days);
   const asc=document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—';
   const etage=document.getElementById('f-etage')?.value.trim()||'';
-  const ouv=document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—';
+  const _ouvFR=document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—';
+  const _ouvEN={'Fenêtre coulissante':'Sliding window','Fenêtre à battant':'Casement window','Oscillo-battant':'Tilt-and-turn','Porte-fenêtre':'French door','Vélux / toit':'Skylight / roof'};
+  const ouv=_lang==='en'?(_ouvEN[_ouvFR]||_ouvFR):_ouvFR;
   const rawDate=document.getElementById('f-date')?.value||'';
   let dateStr='—';let pickupDateStr='—';
   if(rawDate){
@@ -2802,7 +2822,7 @@ function buildRecap(){
   const sbtn=document.getElementById('sbtn');
   if(sbtn&&price>0){
     sbtn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>'+(_lang==='en'?' Confirm & Pay — ':' Confirmer — ')+price+' €';
-    sbtn.disabled=false;
+    sbtn.disabled=!document.getElementById('f-rgpd')?.checked;
   }
 }
 
@@ -2834,7 +2854,7 @@ function submitForm(btn,mode){
     ascenseur:document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—',
     date:document.getElementById('f-date')?.value,
     duree:document.getElementById('f-dur')?.value,
-    fenetre:document.querySelector('#ouv-group .win-card.on')?.dataset.val,
+    fenetre:document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—',
     creneau_livraison:document.querySelector('#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h',
     creneau_recuperation:document.querySelector('#creneau-recup-group .tpill.on')?.textContent.trim()||'14h–16h',
     type_client:document.querySelector('#type-client-group .tpill.on')?.textContent.trim()||'Particulier',
@@ -2934,6 +2954,8 @@ window.addEventListener('scroll',()=>{
   }
   if(navBtn){navBtn.style.boxShadow=y>200?'0 0 0 2px rgba(20,45,74,.3)':'';}
   if(waBtn)waBtn.classList.toggle('wa-visible',y>window.innerHeight*.65);
+  const msBar=document.getElementById('ms');
+  if(msBar&&window.innerWidth<=640)msBar.classList.toggle('m-bar-visible',y>300);
   _lastScrollY=y;
 },{passive:true});
 
@@ -3016,12 +3038,13 @@ const LANG_MAP=[
   /* modal step 1 */
   ['#s1 .sp-title','text','Adresse de livraison','Delivery address'],
   ['#s1 .sp-sub','text','Indiquez l\'adresse de livraison.','Enter your delivery address.'],
-  ['#s1 label','text','Adresse *','Address *'],
+  ['#dur-badge-recommande','text','★ Recommandé','★ Recommended'],
+  ['#s1 label','html','Adresse<span class="req">*</span>','Address<span class="req">*</span>'],
   ['#f-addr','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice'],
   /* modal step 2 */
   ['#s2 .sp-title','text','Durée de location','Rental duration'],
   ['#s2 .sp-sub','text','Combien de jours souhaitez-vous louer ?','How many days would you like to rent?'],
-  ['#s2 label','text','Choisissez votre durée *','Choose your duration *'],
+  ['#s2 label','html','Choisissez votre durée<span class="req">*</span>','Choose your duration<span class="req">*</span>'],
   ['.tw-lbl','text','Total','Total'],
   ['.tw-sub','text','Installation incluse · Récupération incluse','Setup included · Pickup included'],
   /* modal step 3 */
