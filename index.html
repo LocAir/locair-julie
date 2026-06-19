@@ -973,6 +973,7 @@ body{
   box-shadow:0 24px 80px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.04);
   position:relative;
   animation:modalIn .2s cubic-bezier(.4,0,.2,1);
+  padding-bottom:env(safe-area-inset-bottom,0);
 }
 @keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(10px)}to{opacity:1;transform:none}}
 
@@ -1061,6 +1062,7 @@ body{
   .sp-head{padding:16px 18px 0}
   .step-panel{padding:0 18px 20px}
 }
+@media(max-width:540px){.modal-sidebar{display:none}}
 
 /* ── FORM ELEMENTS ── */
 .flds{display:flex;flex-direction:column;gap:12px}
@@ -1408,6 +1410,8 @@ body{
 .tpill-m.on{background:rgba(197,169,108,.12);border-color:var(--gold);color:var(--black)}
 
 </style>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Comment se passe la livraison ?","acceptedAnswer":{"@type":"Answer","text":"Notre technicien sonne à votre porte avec l'appareil et tout le matériel. Il pose le kit sur votre fenêtre, branche le climatiseur, vérifie que ça refroidit bien — et vous explique les réglages en 2 minutes. De la sonnette à l'air frais : 20 à 30 minutes. Vous n'avez rien à préparer, rien à acheter."}},{"@type":"Question","name":"Quelle est la durée minimale ?","acceptedAnswer":{"@type":"Answer","text":"7 jours minimum — c'est la seule règle. En dessous, le déplacement du technicien n'est pas rentable pour vous ni pour nous. Au-delà, vous choisissez : 8, 10, 14, 21 jours ou plus. Le tarif varie selon la durée et la période — obtenez votre devis en 30 secondes via le formulaire. L'installation est facturée une seule fois. La récupération est incluse."}},{"@type":"Question","name":"Y a-t-il un dépôt de garantie ?","acceptedAnswer":{"@type":"Answer","text":"Non. Aucun chèque de caution, aucune empreinte bancaire, aucune somme bloquée. Vous payez le montant de la location — rien de plus. On croit que la confiance ça se mérite, pas ça s'exige."}},{"@type":"Question","name":"Livrez-vous dans toute la région de Nice ?","acceptedAnswer":{"@type":"Answer","text":"Toute la ville de Nice : Centre, Promenade des Anglais, Vieux-Nice, Cimiez, Libération, Magnan, Riquier, Caucade, Saint-Isidore, Moulins… Si vous habitez Nice, on livre. Pour Cannes, Antibes, Menton ou Villefranche — envoyez-nous votre adresse sur WhatsApp, on vous répond rapidement."}},{"@type":"Question","name":"Comment fonctionne la signature du contrat ?","acceptedAnswer":{"@type":"Answer","text":"Après votre réservation, vous recevez un email avec le contrat. Un clic pour lire, un clic pour signer. Votre exemplaire arrive instantanément. C'est la même technologie qu'utilisent les notaires et les banques en Europe. Aucun papier, aucun déplacement, aucune imprimante."}}]}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Accueil","item":"https://www.locair.fr/"}]}</script>
 </head>
 <body>
 <a href="#main-content" class="skip-link">Aller au contenu principal</a>
@@ -1473,7 +1477,7 @@ body{
 
 <!-- RÉASSURANCE -->
 <section class="reassure" aria-label="Nos engagements">
-  <div class="reassure-in">
+  <div class="reassure-in" role="list">
     <div class="ri sr" role="listitem">
       <div class="ri-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="var(--blue)"><path d="M12 2a10 10 0 110 20A10 10 0 0112 2zm0 4a1 1 0 00-1 1v5.586l-2.707 2.707a1 1 0 001.414 1.414L12.7 13.7A1 1 0 0013 13V7a1 1 0 00-1-1z"/></svg></div>
       <div><p class="ri-t">Livraison sous 24h</p><p class="ri-d"><span data-c="zones">Nice et environs</span> · 7j/7 · 8h–20h</p></div>
@@ -1538,13 +1542,18 @@ body{
             <span class="plan-price-big">19</span>
             <span class="plan-price-unit">€ / jour</span>
           </div>
-          <p style="text-align:center;font-size:13px;color:var(--gold);font-weight:500;margin:4px 0 6px;line-height:1.4;letter-spacing:.01em">+ 10 € installation (une seule fois)</p>
-          <p style="text-align:center;font-size:13px;color:var(--grey2);margin-bottom:20px">Minimum 7 jours</p>
-          <button class="plan-btn pb-s" onclick="openModal('7')" type="button">
+          <p style="text-align:center;font-size:13px;color:var(--grey2);margin-bottom:20px" id="pricing-min">Minimum 7 jours</p>
+          <button class="plan-btn pb-s" onclick="openModal('7')" type="button" id="pricing-cta">
             Louer mon climatiseur →
           </button>
-          <p style="text-align:center;font-size:11px;color:var(--grey2);margin-top:10px">Zéro dépôt &nbsp;·&nbsp; Annulation libre</p>
+          <p style="text-align:center;font-size:11px;color:var(--grey2);margin-top:10px" id="pricing-reassure">Zéro dépôt &nbsp;·&nbsp; Annulation libre</p>
         </div>
+        <div class="plan-sep"></div>
+        <ul class="plan-items" id="plan-items-list">
+          <li><span class="ck-b"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span id="plan-item-1">Livraison &amp; installation offerte</span></li>
+          <li><span class="ck-b"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span id="plan-item-2">Récupération offerte</span></li>
+          <li><span class="ck-b"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></span><span id="plan-item-3">Garantie panne — remboursé si défaillance</span></li>
+        </ul>
         <div class="plan-sep"></div>
         <p class="anchor-compare" style="margin:0;padding:0 32px 28px">
           <span class="ac-old">Achat neuf : ~450 €</span>
@@ -2082,19 +2091,24 @@ body{
               <button type="button" class="dur-card on" onclick="setDurIdx(0)" role="radio" aria-checked="true">
                 <span class="dur-card-days">7 jours</span>
                 <span class="dur-card-price">143 €</span>
+                <span class="dur-card-daily" id="dur-daily-0">soit 20,43 €/jour</span>
               </button>
               <button type="button" class="dur-card" onclick="setDurIdx(1)" role="radio" aria-checked="false">
                 <span class="dur-card-days">10 jours</span>
                 <span class="dur-card-price">200 €</span>
+                <span class="dur-card-daily" id="dur-daily-1">soit 20,00 €/jour</span>
               </button>
               <button type="button" class="dur-card" onclick="setDurIdx(2)" role="radio" aria-checked="false">
                 <span class="dur-badge" id="dur-badge-recommande">★ Recommandé</span>
                 <span class="dur-card-days">14 jours</span>
                 <span class="dur-card-price">276 €</span>
+                <span class="dur-card-daily" id="dur-daily-2">soit 19,71 €/jour</span>
               </button>
               <button type="button" class="dur-card" onclick="setDurIdx(3)" role="radio" aria-checked="false">
+                <span class="dur-badge" id="dur-badge-economique">Le + économique</span>
                 <span class="dur-card-days">21 jours</span>
                 <span class="dur-card-price">409 €</span>
+                <span class="dur-card-daily" id="dur-daily-3">soit 19,48 €/jour</span>
               </button>
             </div>
             <input type="hidden" id="f-dur" value="7"/>
@@ -3068,7 +3082,7 @@ const LANG_MAP=[
   ['#s3 .sp-sub','text','Pour adapter le kit d\'installation fourni par notre équipe.','To adapt the installation kit provided by our team.'],
   /* modal step 4 */
   ['#s4 .sp-title','text','Date & créneau de livraison','Delivery date & time slot'],
-  ['#s4 .sp-sub','text','Choisissez votre date et l\'heure de livraison.','Choose your delivery date and time slot.'],
+  ['#s4 .sp-sub','text','Choisissez votre date · livraison 8h–20h · 7j/7','Choose your date · delivery 8am–8pm · 7d/7'],
   ['#s4 label:first-of-type','text','Date de livraison *','Delivery date *'],
   ['#creneau-liv-group','aria','Créneau de livraison','Delivery time slot'],
   /* modal step 5 */
