@@ -1458,7 +1458,7 @@ body{
 <!-- HERO — plein écran, 1 seule action -->
 <main id="main-content">
 <section class="hero" id="top" aria-label="Bannière principale — Location climatiseur Nice">
-  <div class="hero-photo" id="hp" role="img" aria-label="Promenade des Anglais, Nice" style="background-image:url('hero-nice.jpg')"></div>
+  <div class="hero-photo" id="hp" role="img" aria-label="Vue de la Promenade des Anglais à Nice en été — Climatisation mobile Loc'Air" style="background-image:url('hero-nice.jpg')"></div>
   <div class="hero-scrim"></div>
   <div class="hero-inner">
     <p class="hero-eye" data-i18n="hero_eye">Livraison à Nice · 7j/7</p>
@@ -2105,7 +2105,7 @@ body{
                 <span class="dur-card-daily" id="dur-daily-2">soit 19,71 €/jour</span>
               </button>
               <button type="button" class="dur-card" onclick="setDurIdx(3)" role="radio" aria-checked="false">
-                <span class="dur-badge" id="dur-badge-economique">Le + économique</span>
+                <span class="dur-badge" id="dur-badge-economique" style="color:var(--grey)">Le + économique</span>
                 <span class="dur-card-days">21 jours</span>
                 <span class="dur-card-price">409 €</span>
                 <span class="dur-card-daily" id="dur-daily-3">soit 19,48 €/jour</span>
@@ -2779,7 +2779,7 @@ function buildRecap(){
   const asc=document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—';
   const etage=document.getElementById('f-etage')?.value.trim()||'';
   const _ouvFR=document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—';
-  const _ouvEN={'Fenêtre coulissante':'Sliding window','Fenêtre à battant':'Casement window','Oscillo-battant':'Tilt-and-turn','Porte-fenêtre':'French door','Vélux / toit':'Skylight / roof'};
+  const _ouvEN={'Fenêtre coulissante':'Sliding window','Fenêtre à battant':'Casement window','Oscillo-battant':'Tilt-and-turn','Porte-fenêtre':'French door','Vélux / toit':'Skylight / roof','À confirmer':'Not sure / Our tech will check'};
   const ouv=_lang==='en'?(_ouvEN[_ouvFR]||_ouvFR):_ouvFR;
   const rawDate=document.getElementById('f-date')?.value||'';
   let dateStr='—';let pickupDateStr='—';
@@ -3052,6 +3052,10 @@ const LANG_MAP=[
   ['#faq-title','html','Ce qu\'il faut<br><em>savoir avant de réserver</em>','What you need<br><em>to know before booking</em>'],
   ['.faq-cta-title','html','Une question ?<br>On répond le jour même.','A question?<br>We answer the same day.'],
   ['button.faq-cta-btn','text','Réserver maintenant →','Book now →'],
+  /* pricing plan items */
+  ['#plan-item-1','text','Livraison & installation offerte','Free delivery & installation'],
+  ['#plan-item-2','text','Récupération offerte','Free pickup'],
+  ['#plan-item-3','text','Garantie panne — remboursé si défaillance','Breakdown guarantee — refunded if faulty'],
   /* garantie */
   ['.gar-t','text','Si ça ne fonctionne pas, on rembourse.','If it doesn\'t work, we refund.'],
   /* about */
@@ -3069,6 +3073,7 @@ const LANG_MAP=[
   ['#s1 .sp-title','text','Adresse de livraison','Delivery address'],
   ['#s1 .sp-sub','text','Livraison possible dès demain à votre adresse.','Delivery possible as soon as tomorrow at your address.'],
   ['#dur-badge-recommande','text','★ Recommandé','★ Recommended'],
+  ['#dur-badge-economique','text','Le + économique','Best value'],
   ['#s1 label','html','Adresse<span class="req">*</span>','Address<span class="req">*</span>'],
   ['#f-addr','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice'],
   /* modal step 2 */
@@ -3077,12 +3082,19 @@ const LANG_MAP=[
   ['#s2 label','html','Choisissez votre durée<span class="req">*</span>','Choose your duration<span class="req">*</span>'],
   ['.tw-lbl','text','Total','Total'],
   ['.tw-sub','text','Installation incluse · Récupération incluse','Setup included · Pickup included'],
+  ['#dur-daily-0','text','soit 20,43 €/jour','i.e. €20.43/day'],
+  ['#dur-daily-1','text','soit 20,00 €/jour','i.e. €20.00/day'],
+  ['#dur-daily-2','text','soit 19,71 €/jour','i.e. €19.71/day'],
+  ['#dur-daily-3','text','soit 19,48 €/jour','i.e. €19.48/day'],
   /* modal step 3 */
   ['#s3 .sp-title','text','Type de fenêtre','Window type'],
   ['#s3 .sp-sub','text','Pour adapter le kit d\'installation fourni par notre équipe.','To adapt the installation kit provided by our team.'],
+  ['.win-card:last-child .win-name','text','Je ne sais pas','Not sure'],
+  ['.win-card:last-child .win-hint','text','Notre technicien vérifiera','Our technician will check'],
   /* modal step 4 */
   ['#s4 .sp-title','text','Date & créneau de livraison','Delivery date & time slot'],
   ['#s4 .sp-sub','text','Choisissez votre date · livraison 8h–20h · 7j/7','Choose your date · delivery 8am–8pm · 7d/7'],
+  ['#btn-demain','text','→ Demain','→ Tomorrow'],
   ['#s4 label:first-of-type','text','Date de livraison *','Delivery date *'],
   ['#creneau-liv-group','aria','Créneau de livraison','Delivery time slot'],
   /* modal step 5 */
@@ -3406,7 +3418,9 @@ document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
     'hasOfferCatalog':{'@type':'OfferCatalog','name':'Location climatiseur',
       'itemListElement':[{'@type':'Offer','name':'Location climatiseur mobile 7 jours',
       'price':'143','priceCurrency':'EUR','availability':'https://schema.org/InStock',
-      'priceValidUntil':'2026-09-30'}]}
+      'priceValidUntil':'2026-09-30'}]},
+    'serviceArea':{'@type':'GeoCircle','geoMidpoint':{'@type':'GeoCoordinates','latitude':CITY.geo.lat,'longitude':CITY.geo.lng},'geoRadius':'20000'},
+    'sameAs':['https://www.google.com/maps/place/Loc%27Air']
   });
   // Bannière alerte — affichée uniquement si CITY.alertActive = true
   const alertEl=document.getElementById('alert-canicule');
