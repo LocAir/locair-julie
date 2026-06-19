@@ -1184,17 +1184,24 @@ body{
   background:var(--blue-lt);border-radius:var(--r);
   border:1px solid rgba(27,58,95,.1);
 }
+.dur-rate-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.dur-rate-lbl{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--grey2);}
+.dur-rate-val{
+  font-size:28px;font-weight:700;color:var(--blue);line-height:1;
+  transition:transform .15s,color .25s;letter-spacing:-.02em;
+}
+.dur-rate-val.bump{transform:scale(1.08);}
+.dur-rate-val.best{color:var(--gold);}
 .dur-total-row{
   display:flex;justify-content:space-between;align-items:baseline;
   gap:8px;
 }
-.dur-total-lbl{font-size:13px;color:var(--grey);}
+.dur-total-lbl{font-size:12px;color:var(--grey);}
 .dur-total-val{
-  font-size:22px;font-weight:700;color:var(--blue);
+  font-size:16px;font-weight:700;color:var(--blue);
   transition:transform .15s;
 }
-.dur-total-val.bump{transform:scale(1.1);}
-.dur-perday{font-size:12px;color:var(--grey);margin-top:3px;}
+.dur-total-val.bump{transform:scale(1.08);}
 .dur-saving{
   margin-top:8px;padding-top:8px;
   border-top:1px solid rgba(27,58,95,.08);
@@ -2171,13 +2178,16 @@ body{
               <button type="button" class="dur-btn" id="dur-plus" onclick="stepDur(1)" aria-label="Augmenter la durée">+</button>
             </div>
             <div class="dur-info">
-              <div class="dur-total-row">
-                <span class="dur-total-lbl" id="dur-info-lbl">Total</span>
+              <div class="dur-rate-row">
+                <span class="dur-rate-lbl" id="dur-rate-lbl">TARIF JOURNALIER</span>
+                <span class="dur-rate-val" id="dur-rate-val">19,00 €/j</span>
+              </div>
+              <div class="dur-total-row" style="margin-top:10px">
+                <span class="dur-total-lbl" id="dur-info-lbl">Total (installation incluse)</span>
                 <span class="dur-total-val" id="dur-total-val">143 €</span>
               </div>
-              <div class="dur-perday" id="dur-perday">soit 20,43 €/jour</div>
               <div class="dur-saving" id="dur-saving">
-                <span class="dur-saving-neutral" id="dur-saving-text">7 jours minimum · Installation unique incluse</span>
+                <span class="dur-saving-neutral" id="dur-saving-text">7 jours minimum · tarif de base</span>
               </div>
             </div>
             <input type="hidden" id="f-dur" value="7"/>
@@ -2604,40 +2614,56 @@ function trapFocus(modal){
   },{signal:_trapAbort.signal});
 }
 
-function calcPrice(days){return days*19+10;}
+// Tarif dégressif : 19€/j à 7 jours → 12,5€/j à 30 jours (linéaire),
+// puis 12,5€/j fixe au-delà. Prix total = days × rate + 10€ installation.
+const _K=6.5/23; // pente : 6.5€ de baisse sur 23 jours (day7→day30)
+function _baseRate(days){return days<30?19-_K*(days-7):12.5;}
+function calcPrice(days){return Math.round(days*Math.max(12.5,_baseRate(days))+10);}
+
 let _durDays=7;
 function updateDuration(days,silent){
   days=Math.max(7,Math.round(days));
   _durDays=days;
   const price=calcPrice(days);
-  const perDay=(price/days).toFixed(2).replace('.',',');
+  const rate=Math.max(12.5,_baseRate(days));
+  const rateStr=rate.toFixed(2).replace('.',',');
+  const discPct=Math.round((19-rate)/19*100);
   const en=_lang==='en';
-  // savings vs renting in 7-day blocks
-  const savings=Math.round((days/7)*143)-price;
+  const isBest=days>=30;
+
   const dv=document.getElementById('dur-days-val');
   const dl=document.getElementById('dur-days-lbl');
+  const drv=document.getElementById('dur-rate-val');
   const dtv=document.getElementById('dur-total-val');
-  const dpd=document.getElementById('dur-perday');
   const dst=document.getElementById('dur-saving-text');
   const dm=document.getElementById('dur-minus');
   const dsEl=document.getElementById('dur-saving');
-  // animate value
-  if(dv&&!silent){dv.classList.add('bump');setTimeout(()=>dv.classList.remove('bump'),120);}
-  if(dtv&&!silent){dtv.classList.add('bump');setTimeout(()=>dtv.classList.remove('bump'),150);}
+
+  if(!silent){
+    if(dv){dv.classList.add('bump');setTimeout(()=>dv.classList.remove('bump'),120);}
+    if(drv){drv.classList.add('bump');setTimeout(()=>drv.classList.remove('bump'),150);}
+    if(dtv){dtv.classList.add('bump');setTimeout(()=>dtv.classList.remove('bump'),150);}
+  }
   if(dv)dv.textContent=days;
   if(dl)dl.textContent=en?'DAYS':'JOURS';
+  if(drv){
+    drv.textContent=rateStr+(en?' €/day':' €/j');
+    drv.classList.toggle('best',isBest);
+  }
   if(dtv)dtv.textContent=price+' €';
-  if(dpd)dpd.textContent=en?'i.e. €'+perDay+'/day':'soit '+perDay+' €/jour';
   if(dm)dm.disabled=(days<=7);
+
   if(dst&&dsEl){
-    if(savings>0){
-      dsEl.className='dur-saving';
+    dsEl.className='dur-saving';
+    if(isBest){
       dst.className='';
-      dst.textContent=en?'You save €'+savings+' vs multiple short rentals':'Économie de '+savings+' € vs plusieurs locations courtes';
-    }else{
-      dsEl.className='dur-saving';
+      dst.textContent=en?`🏆 Best rate reached · −${discPct}% vs base`:`🏆 Meilleur tarif atteint · −${discPct}%`;
+    } else if(discPct>0){
+      dst.className='';
+      dst.textContent=en?`−${discPct}% vs base rate`:`−${discPct}% vs tarif de base`;
+    } else {
       dst.className='dur-saving-neutral';
-      dst.textContent=en?'7-day minimum · One-time setup fee included':'7 jours minimum · Installation unique incluse';
+      dst.textContent=en?'7-day minimum · One-time setup fee':'7 jours minimum · tarif de base';
     }
   }
   document.getElementById('f-dur').value=days;
@@ -2645,7 +2671,7 @@ function updateDuration(days,silent){
   updateDatePreview();
   if(!silent){
     window.dataLayer=window.dataLayer||[];
-    dataLayer.push({event:'select_duration',days,price});
+    dataLayer.push({event:'select_duration',days,price,rate,discPct});
   }
 }
 function stepDur(delta){updateDuration(_durDays+delta);}
@@ -3223,6 +3249,8 @@ const LANG_MAP=[
   ['#s2 .sp-title','text','Durée de location','Rental duration'],
   ['#s2 .sp-sub','text','Combien de jours souhaitez-vous louer ?','How many days would you like to rent?'],
   ['#s2 label','html','Choisissez votre durée<span class="req">*</span>','Choose your duration<span class="req">*</span>'],
+  ['#dur-rate-lbl','text','TARIF JOURNALIER','DAILY RATE'],
+  ['#dur-info-lbl','text','Total (installation incluse)','Total (setup included)'],
 /* modal step 3 */
   ['#s3 .sp-title','text','Type de fenêtre','Window type'],
   ['#s3 .sp-sub','text','Pour adapter le kit d\'installation fourni par notre équipe.','To adapt the installation kit provided by our team.'],
