@@ -1080,6 +1080,7 @@ body{
 }
 .fld input::placeholder,.fld textarea::placeholder{color:var(--grey);opacity:.7}
 .fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,45,74,.1)}
+.fld input.valid{border-color:#22863a;box-shadow:0 0 0 3px rgba(34,134,58,.1);}
 .fld input:invalid:not(:placeholder-shown){border-color:var(--red)}
 .fld textarea{resize:none;line-height:1.5}
 .frow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -1201,10 +1202,13 @@ body{
   border:none;border-radius:4px;
   font-size:12px;font-weight:500;font-family:var(--body);letter-spacing:.1em;text-transform:uppercase;
   cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;
-  transition:background .15s;
+  transition:background .15s,box-shadow .15s,transform .1s;
   min-height:48px;
+  box-shadow:0 3px 12px rgba(27,58,95,.22);
 }
-.btn-pay:hover{background:var(--blue-d)}
+.btn-pay:not(:disabled):hover{background:var(--blue-d);box-shadow:0 5px 18px rgba(27,58,95,.32);}
+.btn-pay:not(:disabled):active{transform:scale(.99);box-shadow:0 1px 6px rgba(27,58,95,.14);}
+.btn-pay:disabled{opacity:.5;cursor:default;box-shadow:none;}
 .rgpd-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:14px}
 .rgpd-row input{width:15px;height:15px;min-width:15px;margin-top:3px;accent-color:var(--blue);cursor:pointer}
 .rgpd-row label{font-size:12px;color:var(--grey);cursor:pointer;line-height:1.6}
@@ -1213,25 +1217,50 @@ body{
 .recall-btn{background:none;border:none;font-family:var(--body);font-size:13px;color:var(--blue);cursor:pointer;text-decoration:underline;padding:4px 0;min-height:44px;display:inline-flex;align-items:center}
 
 /* ── NAV MODAL ── */
+/* ── MOBILE PROGRESS ── */
+.mob-progress{
+  display:none;margin:0 0 4px;position:relative;
+}
+.mob-progress-track{
+  height:3px;background:var(--rule);border-radius:2px;overflow:hidden;
+}
+.mob-progress-fill{
+  height:100%;background:var(--blue);border-radius:2px;
+  transition:width .35s cubic-bezier(.25,.46,.45,.94);
+  width:20%;
+}
+.mob-progress-label{
+  display:flex;justify-content:space-between;align-items:center;
+  margin-bottom:8px;
+}
+.mob-progress-step{font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.06em;text-transform:uppercase;}
+.mob-progress-name{font-size:11px;color:var(--grey);}
+@media(max-width:540px){.mob-progress{display:block;padding:48px 18px 0;}}
+
+/* ── NAV BUTTONS ── */
 .modal-nav{display:flex;align-items:center;gap:10px;margin-top:20px;justify-content:space-between}
 .btn-back{
   display:flex;align-items:center;gap:6px;
   padding:11px 18px;border:1.5px solid var(--rule);border-radius:var(--r);
   font-size:13.5px;font-weight:600;color:var(--grey);
   background:var(--white);cursor:pointer;font-family:var(--body);
-  transition:border-color .15s,color .15s;
+  transition:border-color .15s,color .15s,background .15s;
   min-height:44px;
 }
-.btn-back:hover{border-color:var(--blue);color:var(--blue)}
+.btn-back:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-lt)}
+.btn-back:active{transform:scale(.97);}
 .btn-next{
   flex:1;padding:13px;background:var(--blue);color:var(--white);
   border:none;border-radius:4px;font-size:12px;font-weight:500;
   font-family:var(--body);cursor:pointer;
   display:flex;align-items:center;justify-content:center;gap:7px;
-  transition:background .15s;
+  transition:background .15s,transform .1s,box-shadow .15s;
   letter-spacing:.08em;text-transform:uppercase;
   min-height:44px;
+  box-shadow:0 2px 8px rgba(27,58,95,.18);
 }
+.btn-next:hover{background:#243f6e;box-shadow:0 4px 14px rgba(27,58,95,.28);}
+.btn-next:active{transform:scale(.98);box-shadow:0 1px 4px rgba(27,58,95,.14);}
 @media(max-width:640px){
   .nav-in{padding:0 16px}
   .nav-tel-link{display:none}
@@ -2085,6 +2114,17 @@ body{
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
 
+      <!-- BARRE DE PROGRESSION MOBILE -->
+      <div class="mob-progress" id="mob-progress" aria-hidden="true">
+        <div class="mob-progress-label">
+          <span class="mob-progress-step" id="mob-step-num">Étape 1/5</span>
+          <span class="mob-progress-name" id="mob-step-name">Adresse</span>
+        </div>
+        <div class="mob-progress-track">
+          <div class="mob-progress-fill" id="mob-progress-fill" style="width:20%"></div>
+        </div>
+      </div>
+
       <!-- ÉTAPE 1 — Adresse -->
       <div class="step-panel active" id="s1">
         <div class="sp-head">
@@ -2094,7 +2134,7 @@ body{
         <div class="flds">
           <div class="fld">
             <label for="f-addr">Adresse<span class="req">*</span></label>
-            <input id="f-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="street-address" spellcheck="false" data-lpignore="true" required/>
+            <input id="f-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="street-address" spellcheck="false" data-lpignore="true" required oninput="this.classList.toggle('valid',this.value.trim().length>4)"/>
           </div>
         </div>
         <div class="modal-nav">
@@ -2133,15 +2173,6 @@ body{
               </div>
             </div>
             <input type="hidden" id="f-dur" value="7"/>
-          </div>
-          <div class="total-widget" style="margin-top:4px">
-            <div class="tw-left">
-              <div class="tw-lbl">Total</div>
-              <div class="tw-sub">Installation incluse · Récupération incluse</div>
-            </div>
-            <div class="tw-right">
-              <div class="tw-val" id="tw-val" aria-live="polite">143 €</div>
-            </div>
           </div>
         </div>
         <div class="modal-nav">
@@ -2744,6 +2775,8 @@ function goTo(n,silent){
   dataLayer.push({event:'funnel_step',step:n,step_name:META[n]?.title||'step'+n});
 }
 
+const _STEP_NAMES_FR=['Adresse','Durée','Installation','Date','Récapitulatif'];
+const _STEP_NAMES_EN=['Address','Duration','Setup','Date','Summary'];
 function updateStepper(n){
   const checkSvg='<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>';
   for(let i=1;i<=5;i++){
@@ -2765,6 +2798,14 @@ function updateStepper(n){
       dot.textContent=i;
     }
   }
+  // Mobile progress bar
+  const fill=document.getElementById('mob-progress-fill');
+  const stepNum=document.getElementById('mob-step-num');
+  const stepName=document.getElementById('mob-step-name');
+  const names=_lang==='en'?_STEP_NAMES_EN:_STEP_NAMES_FR;
+  if(fill)fill.style.width=(n/5*100)+'%';
+  if(stepNum)stepNum.textContent=(_lang==='en'?'Step ':'Étape ')+n+'/5';
+  if(stepName)stepName.textContent=names[n-1]||'';
 }
 
 function highlight(ids){
@@ -3152,8 +3193,6 @@ const LANG_MAP=[
   ['#s2 .sp-title','text','Durée de location','Rental duration'],
   ['#s2 .sp-sub','text','Combien de jours souhaitez-vous louer ?','How many days would you like to rent?'],
   ['#s2 label','html','Choisissez votre durée<span class="req">*</span>','Choose your duration<span class="req">*</span>'],
-  ['.tw-lbl','text','Total','Total'],
-  ['.tw-sub','text','Installation incluse · Récupération incluse','Setup included · Pickup included'],
 /* modal step 3 */
   ['#s3 .sp-title','text','Type de fenêtre','Window type'],
   ['#s3 .sp-sub','text','Pour adapter le kit d\'installation fourni par notre équipe.','To adapt the installation kit provided by our team.'],
