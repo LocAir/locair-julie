@@ -1347,6 +1347,19 @@ body{
 }
 .btn-blue:hover::after,.sb-btn:hover::after{left:150%}
 
+/* ── PROFIL — questions facultatives ── */
+.profil-bloc{
+  border-top:1px solid var(--rule);
+  padding:14px 24px 0;
+  display:flex;flex-direction:column;gap:12px;
+}
+.profil-ttl{
+  font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--grey2);
+}
+.profil-opt{color:var(--grey2);font-weight:400;text-transform:none;letter-spacing:0}
+.tpill-m.on{background:rgba(197,169,108,.12);border-color:var(--gold);color:var(--black)}
+
 </style>
 </head>
 <body>
@@ -2271,12 +2284,52 @@ body{
           </div>
         </div>
 
+        <!-- PROFIL — facultatif, 3 champs de connaissance client -->
+        <div class="profil-bloc">
+          <p class="profil-ttl">Pour mieux vous aider <span class="profil-opt">— facultatif</span></p>
+
+          <div class="fld">
+            <label for="f-source">Comment nous avez-vous trouvé ?</label>
+            <select id="f-source">
+              <option value="">— Sélectionner</option>
+              <option value="Google">Google</option>
+              <option value="Instagram">Instagram</option>
+              <option value="Bouche-à-oreille">Bouche-à-oreille</option>
+              <option value="Vu dans la rue">Vu dans la rue</option>
+              <option value="Autre">Autre</option>
+            </select>
+          </div>
+
+          <div class="fld">
+            <label>Type de logement</label>
+            <div class="tpills" id="logement-group" role="radiogroup" aria-label="Type de logement">
+              <button type="button" class="tpill" onclick="tgl(this,'log')" role="radio" aria-checked="false">Studio</button>
+              <button type="button" class="tpill" onclick="tgl(this,'log')" role="radio" aria-checked="false">Appartement</button>
+              <button type="button" class="tpill" onclick="tgl(this,'log')" role="radio" aria-checked="false">Maison</button>
+            </div>
+          </div>
+
+          <div class="fld">
+            <label>Pourquoi vous louez ?</label>
+            <div class="tpills" id="motif-group" aria-label="Raison de la location">
+              <button type="button" class="tpill tpill-m" onclick="tglM(this)" aria-pressed="false">Chaleur</button>
+              <button type="button" class="tpill tpill-m" onclick="tglM(this)" aria-pressed="false">Bébé / Santé</button>
+              <button type="button" class="tpill tpill-m" onclick="tglM(this)" aria-pressed="false">Airbnb / Location</button>
+              <button type="button" class="tpill tpill-m" onclick="tglM(this)" aria-pressed="false">Événement</button>
+            </div>
+          </div>
+        </div>
+
         <div style="padding:0 24px">
           <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" aria-hidden="true"/>
 
           <div class="rgpd-row" style="margin-top:16px">
             <input type="checkbox" id="f-rgpd"/>
             <label for="f-rgpd">J'accepte que mes coordonnées servent uniquement à organiser ma livraison. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Politique de confidentialité</a></label>
+          </div>
+          <div class="rgpd-row" style="margin-top:8px">
+            <input type="checkbox" id="f-mkt"/>
+            <label for="f-mkt">J'accepte de recevoir les offres et actualités Loc'Air par email. <span style="color:var(--grey2);font-size:10px">Optionnel · désinscription en 1 clic</span></label>
           </div>
 
           <button class="btn-pay" id="sbtn" onclick="submitForm(this,'pay')" type="button" aria-label="Payer de manière sécurisée" disabled>
@@ -2552,6 +2605,13 @@ function tgl(el,group){
   el.style.transform='scale(1.04)';
   setTimeout(()=>el.style.transform='',200);
 }
+function tglM(el){
+  const on=!el.classList.contains('on');
+  el.classList.toggle('on',on);
+  el.setAttribute('aria-pressed',String(on));
+  el.style.transform='scale(1.04)';
+  setTimeout(()=>el.style.transform='',200);
+}
 document.querySelectorAll('.win-card').forEach(card=>{
   card.addEventListener('keydown',e=>{
     if(e.key==='Enter'||e.key===' '){
@@ -2690,6 +2750,10 @@ function submitForm(btn,mode){
     nom:document.getElementById('f-nom')?.value,
     tel:document.getElementById('f-tel')?.value,
     email:document.getElementById('f-email')?.value,
+    source:document.getElementById('f-source')?.value||'—',
+    logement:document.querySelector('#logement-group .tpill.on')?.textContent.trim()||'—',
+    motifs:[...document.querySelectorAll('#motif-group .tpill.on')].map(t=>t.textContent.trim()).join(', ')||'—',
+    mkt_consent:document.getElementById('f-mkt')?.checked?'Oui':'Non',
     mode:mode
   };
 
