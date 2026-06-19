@@ -295,15 +295,26 @@ body{
   color:rgba(255,255,255,.88);line-height:1.6;margin-bottom:16px;
   max-width:500px;margin-left:auto;margin-right:auto;
 }
-.hero-price{
-  display:inline-flex;align-items:center;gap:8px;
-  background:rgba(197,169,108,.18);border:1px solid rgba(197,169,108,.45);
-  color:#f5e6c4;border-radius:40px;
-  padding:6px 16px;font-size:14px;font-weight:500;
-  margin-bottom:14px;letter-spacing:.01em;
-  animation:heroIn .6s .48s cubic-bezier(.25,.46,.45,.94) both;
+.hero-sub-info{
+  font-family:var(--body);font-size:15px;font-weight:400;
+  color:rgba(255,255,255,.75);margin-top:12px;margin-bottom:6px;
+  letter-spacing:.01em;
 }
-.hero-price strong{color:#fff;font-weight:700;}
+.hero-sub-info strong{color:#fff;font-weight:600;}
+.hero-avail{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--body);font-size:13px;font-weight:500;
+  color:rgba(255,255,255,.55);margin-bottom:14px;letter-spacing:.02em;
+}
+.avail-dot{
+  width:7px;height:7px;border-radius:50%;background:#4ade80;
+  box-shadow:0 0 6px rgba(74,222,128,.7);flex-shrink:0;
+  animation:pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot{
+  0%,100%{box-shadow:0 0 6px rgba(74,222,128,.7)}
+  50%{box-shadow:0 0 12px rgba(74,222,128,1)}
+}
 
 /* ── SEARCH BOX ── */
 .search-box{
@@ -1454,11 +1465,13 @@ body{
   from{opacity:0;transform:translateY(20px)}
   to{opacity:1;transform:none}
 }
-.hero-eye,.hero-h1,.hero-desc,.search-box{will-change:opacity,transform}
+.hero-eye,.hero-h1,.hero-desc,.search-box,.hero-sub-info,.hero-avail{will-change:opacity,transform}
 .hero-eye{animation:heroIn .6s .15s cubic-bezier(.25,.46,.45,.94) both}
 .hero-h1{animation:heroIn .7s .35s cubic-bezier(.25,.46,.45,.94) both}
-.hero-desc{animation:heroIn .6s .58s cubic-bezier(.25,.46,.45,.94) both}
-.search-box{animation:heroIn .6s .75s cubic-bezier(.25,.46,.45,.94) both}
+.hero-desc{animation:heroIn .6s .48s cubic-bezier(.25,.46,.45,.94) both}
+.search-box{animation:heroIn .6s .65s cubic-bezier(.25,.46,.45,.94) both}
+.hero-sub-info{animation:heroIn .6s .82s cubic-bezier(.25,.46,.45,.94) both}
+.hero-avail{animation:heroIn .6s .95s cubic-bezier(.25,.46,.45,.94) both}
 
 /* 03 — Scroll reveal */
 .sr{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease;will-change:opacity,transform}
@@ -1542,8 +1555,7 @@ body{
   <div class="hero-inner">
     <p class="hero-eye" data-i18n="hero_eye">Livraison à Nice · 7j/7</p>
     <h1 class="hero-h1" data-i18n-h="hero_h1">Il fait trop chaud<br><em>pour dormir à Nice ?</em></h1>
-    <p class="hero-price" id="hero-price-badge">À partir de <strong>9 €/jour</strong> · jusqu'à −47%</p>
-    <p class="hero-desc" data-i18n="hero_desc">Climatiseur livré &amp; installé dès demain · Zéro dépôt · 7j/7</p>
+    <p class="hero-desc" data-i18n="hero_desc">Installation incluse · Zéro dépôt</p>
 
     <div class="search-box" role="search" aria-label="Réserver un climatiseur">
       <div class="sb-row">
@@ -1551,6 +1563,8 @@ body{
         <button class="sb-btn" onclick="startBooking()" aria-label="Réserver un climatiseur" type="button">Réserver ma clim →</button>
       </div>
     </div>
+    <p class="hero-sub-info" data-i18n="hero_sub_info">Dès <strong>17 €/jour</strong> · Livré sous 24h</p>
+    <p class="hero-avail" data-i18n="hero_avail"><span class="avail-dot" aria-hidden="true"></span>3 climatiseurs disponibles à Nice</p>
     <p class="hero-micro" data-i18n="hero_micro">4.8★ · 15 avis Google · Depuis 2019</p>
   </div>
 </section>
@@ -3208,13 +3222,14 @@ let _lang=localStorage.getItem('locair-lang')||'fr';
 const LANG_MAP=[
   /* nav */
   ['#nav-book-btn','text','Réserver · dès 129 €','Book now · from €129'],
-  ['#hero-price-badge','html','À partir de <strong>9 €/jour</strong> · jusqu\'à −47%','From <strong>€9/day</strong> · up to −47%'],
   /* ubar */
   ['.ubar','html','N°1 à Nice pour la location de clim mobile &nbsp;·&nbsp; <strong>Depuis 2019</strong> &nbsp;·&nbsp; Service humain garanti &nbsp;·&nbsp; 7j/7 · 8h–20h','No.1 in Nice for mobile AC rental &nbsp;·&nbsp; <strong>Since 2019</strong> &nbsp;·&nbsp; Human service guaranteed &nbsp;·&nbsp; 7d/7 · 8am–8pm'],
   /* hero */
   ['.hero-eye','text','Livraison à Nice · 7j/7','Delivery in Nice · 7d/7'],
   ['.hero-h1','html','Il fait trop chaud<br><em>pour dormir à Nice ?</em>','Too hot<br><em>to sleep in Nice?</em>'],
-  ['.hero-desc','text','Climatiseur livré & installé dès demain · Zéro dépôt · 7j/7','AC delivered & installed tomorrow · Zero deposit · 7d/7'],
+  ['.hero-desc','text','Installation incluse · Zéro dépôt','Installation included · Zero deposit'],
+  ['.hero-sub-info','html','Dès <strong>17 €/jour</strong> · Livré sous 24h','From <strong>€17/day</strong> · Delivered within 24h'],
+  ['.hero-avail','html','<span class="avail-dot" aria-hidden="true"></span>3 climatiseurs disponibles à Nice','<span class="avail-dot" aria-hidden="true"></span>3 AC units available in Nice'],
   ['.hero-micro','text','4.8★ · 15 avis Google · Depuis 2019','4.8★ · 15 Google reviews · Since 2019'],
   ['#addr-init','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice'],
   ['.sb-btn','text','Réserver ma clim →','Book my AC →'],
