@@ -1140,33 +1140,59 @@ body{
 .recap-v,dd.recap-v{font-size:13px;color:var(--black);font-weight:600;text-align:right;word-break:break-word;min-width:0;max-width:55%;margin:0}
 
 /* ── DURATION PICKER ── */
-.dur-grid{
-  display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
-  margin-top:6px;
+/* ── DURATION STEPPER ── */
+.dur-stepper{
+  display:flex;align-items:center;justify-content:center;
+  gap:20px;margin-top:10px;
 }
-.dur-card{
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:3px;padding:12px 6px;
-  border:1.5px solid var(--rule);border-radius:var(--r);
-  background:var(--white);cursor:pointer;
-  transition:border-color .15s,background .15s,box-shadow .15s,transform .12s;
+.dur-btn{
+  width:48px;height:48px;border-radius:50%;
+  border:2px solid var(--blue);background:var(--white);
+  color:var(--blue);font-size:24px;font-weight:300;line-height:1;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s,transform .1s,border-color .15s,opacity .15s;
   user-select:none;-webkit-tap-highlight-color:transparent;
+  flex-shrink:0;
 }
-.dur-card:hover{border-color:var(--blue);background:var(--blue-lt)}
-.dur-card.on{
-  border-color:var(--blue);background:var(--blue-lt);
-  box-shadow:0 0 0 3px rgba(27,58,95,.14);
+.dur-btn:hover:not(:disabled){background:var(--blue);color:#fff;transform:scale(1.06);}
+.dur-btn:active:not(:disabled){transform:scale(.92);}
+.dur-btn:disabled{border-color:var(--rule);color:var(--rule);cursor:default;opacity:.5;}
+.dur-display{
+  text-align:center;min-width:76px;
 }
-.dur-card-days{
-  font-size:14px;font-weight:700;color:var(--black);letter-spacing:-.01em;
+.dur-days-val{
+  display:block;font-size:44px;font-weight:700;color:var(--blue);
+  line-height:1;letter-spacing:-.03em;
+  transition:transform .12s,opacity .1s;
 }
-.dur-card-price{
-  font-size:12px;font-weight:400;color:var(--grey);
+.dur-days-val.bump{transform:scale(1.18);opacity:.7;}
+.dur-days-lbl{
+  display:block;font-size:13px;font-weight:500;color:var(--grey);
+  margin-top:4px;letter-spacing:.04em;text-transform:uppercase;
 }
-.dur-card.on .dur-card-days{color:var(--blue)}
-.dur-card.on .dur-card-price{color:var(--blue);font-weight:600}
-.dur-badge{display:block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin-bottom:2px}
-.dur-card-daily{font-size:10px;color:var(--grey);display:block;margin-top:2px}
+.dur-info{
+  margin-top:14px;padding:14px 16px;
+  background:var(--blue-lt);border-radius:var(--r);
+  border:1px solid rgba(27,58,95,.1);
+}
+.dur-total-row{
+  display:flex;justify-content:space-between;align-items:baseline;
+  gap:8px;
+}
+.dur-total-lbl{font-size:13px;color:var(--grey);}
+.dur-total-val{
+  font-size:22px;font-weight:700;color:var(--blue);
+  transition:transform .15s;
+}
+.dur-total-val.bump{transform:scale(1.1);}
+.dur-perday{font-size:12px;color:var(--grey);margin-top:3px;}
+.dur-saving{
+  margin-top:8px;padding-top:8px;
+  border-top:1px solid rgba(27,58,95,.08);
+  font-size:12px;font-weight:600;color:var(--gold);
+  display:flex;align-items:center;gap:6px;
+}
+.dur-saving-neutral{color:var(--grey);font-weight:400;}
 
 /* ── CTA PAYER ── */
 .btn-pay{
@@ -1229,8 +1255,7 @@ body{
   .footer-bar{padding:20px 16px;gap:16px}
   .frow{grid-template-columns:1fr}
   .win-grid{grid-template-columns:1fr 1fr}
-  .dur-grid{grid-template-columns:1fr 1fr}
-  .about-grid{grid-template-columns:1fr}
+.about-grid{grid-template-columns:1fr}
   .expertise-in{grid-template-columns:1fr;gap:36px}
   .rev-summary{gap:8px}
   .rs-link{margin-left:0}
@@ -2089,29 +2114,23 @@ body{
         <div class="flds">
           <div class="fld">
             <label>Choisissez votre durée<span class="req">*</span></label>
-            <div class="dur-grid" role="radiogroup" aria-label="Durée de location">
-              <button type="button" class="dur-card on" onclick="setDurIdx(0)" role="radio" aria-checked="true">
-                <span class="dur-card-days">7 jours</span>
-                <span class="dur-card-price">143 €</span>
-                <span class="dur-card-daily" id="dur-daily-0">soit 20,43 €/jour</span>
-              </button>
-              <button type="button" class="dur-card" onclick="setDurIdx(1)" role="radio" aria-checked="false">
-                <span class="dur-card-days">10 jours</span>
-                <span class="dur-card-price">200 €</span>
-                <span class="dur-card-daily" id="dur-daily-1">soit 20,00 €/jour</span>
-              </button>
-              <button type="button" class="dur-card" onclick="setDurIdx(2)" role="radio" aria-checked="false">
-                <span class="dur-badge" id="dur-badge-recommande">★ Recommandé</span>
-                <span class="dur-card-days">14 jours</span>
-                <span class="dur-card-price">276 €</span>
-                <span class="dur-card-daily" id="dur-daily-2">soit 19,71 €/jour</span>
-              </button>
-              <button type="button" class="dur-card" onclick="setDurIdx(3)" role="radio" aria-checked="false">
-                <span class="dur-badge" id="dur-badge-economique" style="color:var(--grey)">Le + économique</span>
-                <span class="dur-card-days">21 jours</span>
-                <span class="dur-card-price">409 €</span>
-                <span class="dur-card-daily" id="dur-daily-3">soit 19,48 €/jour</span>
-              </button>
+            <div class="dur-stepper" role="group" aria-label="Durée de location">
+              <button type="button" class="dur-btn" id="dur-minus" onclick="stepDur(-1)" aria-label="Réduire la durée" disabled>−</button>
+              <div class="dur-display" aria-live="polite" aria-atomic="true">
+                <span class="dur-days-val" id="dur-days-val">7</span>
+                <span class="dur-days-lbl" id="dur-days-lbl">JOURS</span>
+              </div>
+              <button type="button" class="dur-btn" id="dur-plus" onclick="stepDur(1)" aria-label="Augmenter la durée">+</button>
+            </div>
+            <div class="dur-info">
+              <div class="dur-total-row">
+                <span class="dur-total-lbl" id="dur-info-lbl">Total</span>
+                <span class="dur-total-val" id="dur-total-val">143 €</span>
+              </div>
+              <div class="dur-perday" id="dur-perday">soit 20,43 €/jour</div>
+              <div class="dur-saving" id="dur-saving">
+                <span class="dur-saving-neutral" id="dur-saving-text">7 jours minimum · Installation unique incluse</span>
+              </div>
             </div>
             <input type="hidden" id="f-dur" value="7"/>
           </div>
@@ -2545,24 +2564,50 @@ function trapFocus(modal){
   },{signal:_trapAbort.signal});
 }
 
-const prices={7:143,10:200,14:276,21:409,0:0};
-const DUR_MAP=[
-  {days:7,  price:143, label:'7 jours — 143 €'},
-  {days:10, price:200, label:'10 jours — 200 €'},
-  {days:14, price:276, label:'14 jours — 276 €'},
-  {days:21, price:409, label:'21 jours — 409 €'},
-];
-function setDurIdx(idx){
-  const d=DUR_MAP[idx];
-  document.getElementById('f-dur').value=d.days;
-  document.querySelectorAll('.dur-card').forEach((el,i)=>{
-    el.classList.toggle('on',i===idx);
-    el.setAttribute('aria-checked',i===idx?'true':'false');
-  });
+function calcPrice(days){return days*19+10;}
+let _durDays=7;
+function updateDuration(days,silent){
+  days=Math.max(7,Math.round(days));
+  _durDays=days;
+  const price=calcPrice(days);
+  const perDay=(price/days).toFixed(2).replace('.',',');
+  const en=_lang==='en';
+  // savings vs renting in 7-day blocks
+  const savings=Math.round((days/7)*143)-price;
+  const dv=document.getElementById('dur-days-val');
+  const dl=document.getElementById('dur-days-lbl');
+  const dtv=document.getElementById('dur-total-val');
+  const dpd=document.getElementById('dur-perday');
+  const dst=document.getElementById('dur-saving-text');
+  const dm=document.getElementById('dur-minus');
+  const dsEl=document.getElementById('dur-saving');
+  // animate value
+  if(dv&&!silent){dv.classList.add('bump');setTimeout(()=>dv.classList.remove('bump'),120);}
+  if(dtv&&!silent){dtv.classList.add('bump');setTimeout(()=>dtv.classList.remove('bump'),150);}
+  if(dv)dv.textContent=days;
+  if(dl)dl.textContent=en?'DAYS':'JOURS';
+  if(dtv)dtv.textContent=price+' €';
+  if(dpd)dpd.textContent=en?'i.e. €'+perDay+'/day':'soit '+perDay+' €/jour';
+  if(dm)dm.disabled=(days<=7);
+  if(dst&&dsEl){
+    if(savings>0){
+      dsEl.className='dur-saving';
+      dst.className='';
+      dst.textContent=en?'You save €'+savings+' vs multiple short rentals':'Économie de '+savings+' € vs plusieurs locations courtes';
+    }else{
+      dsEl.className='dur-saving';
+      dst.className='dur-saving-neutral';
+      dst.textContent=en?'7-day minimum · One-time setup fee included':'7 jours minimum · Installation unique incluse';
+    }
+  }
+  document.getElementById('f-dur').value=days;
   updateTotal();
-  window.dataLayer=window.dataLayer||[];
-  dataLayer.push({event:'select_duration',days:d.days,price:d.price});
+  if(!silent){
+    window.dataLayer=window.dataLayer||[];
+    dataLayer.push({event:'select_duration',days,price});
+  }
 }
+function stepDur(delta){updateDuration(_durDays+delta);}
 const yr=document.getElementById("year");if(yr)yr.textContent=new Date().getFullYear();
 let curStep=1;
 
@@ -2617,7 +2662,7 @@ function openModal(dur){
   dataLayer.push({event:'open_booking_modal'});
   _lastFocused=document.activeElement;
   document.querySelectorAll('[aria-haspopup="dialog"]').forEach(b=>b.setAttribute('aria-expanded','true'));
-  if(dur){const idx=DUR_MAP.findIndex(d=>d.days===parseInt(dur));if(idx>=0)setDurIdx(idx);}
+  updateDuration(parseInt(dur)||7,true);
   // Réafficher la nav si elle était cachée
   if(navEl){navEl.classList.remove('hidden');_navHidden=false;}
   document.getElementById('overlay').classList.add('open');
@@ -2742,10 +2787,10 @@ function highlight(ids){
 
 function updateTotal(){
   const days=parseInt(document.getElementById('f-dur')?.value||'7');
-  const price=prices[days]!=null?prices[days]:0;
+  const price=calcPrice(days);
   const tv=document.getElementById('tw-val');
   if(tv){
-    tv.textContent=price===0?'Sur devis':price+' €';
+    tv.textContent=price+' €';
     tv.style.transform='scale(1.05)';
     setTimeout(()=>tv.style.transform='',200);
   }
@@ -2795,8 +2840,7 @@ function tglOuv(el,val){
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function buildRecap(){
   const days=parseInt(document.getElementById('f-dur')?.value||'7');
-  const price=prices[days]!=null?prices[days]:0;
-  const durEntry=DUR_MAP.find(d=>d.days===days);
+  const price=calcPrice(days);
   const asc=document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—';
   const etage=document.getElementById('f-etage')?.value.trim()||'';
   const _ouvFR=document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—';
@@ -2820,9 +2864,9 @@ function buildRecap(){
   const recupEl=document.getElementById('recap-date-recup');
   const isEN=_lang==='en';
   if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (end of your '+days+'-day rental)':'Le '+pickupDateStr+' (fin de votre location de '+days+' jours)';
-  const locPrice=price>0?price-10:0;
+  const locPrice=price-10;
   const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
-  const durLabel=durEntry?(isEN?durEntry.days+' days':durEntry.label):'—';
+  const durLabel=isEN?days+' days':days+' jours';
   const priceDisplay=price===0?(isEN?'On quote':'Sur devis'):price+' €';
 
   // SVG icons
@@ -3102,8 +3146,6 @@ const LANG_MAP=[
   /* modal step 1 */
   ['#s1 .sp-title','text','Adresse de livraison','Delivery address'],
   ['#s1 .sp-sub','text','Livraison possible dès demain à votre adresse.','Delivery possible as soon as tomorrow at your address.'],
-  ['#dur-badge-recommande','text','★ Recommandé','★ Recommended'],
-  ['#dur-badge-economique','text','Le + économique','Best value'],
   ['#s1 label','html','Adresse<span class="req">*</span>','Address<span class="req">*</span>'],
   ['#f-addr','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice'],
   /* modal step 2 */
@@ -3112,11 +3154,7 @@ const LANG_MAP=[
   ['#s2 label','html','Choisissez votre durée<span class="req">*</span>','Choose your duration<span class="req">*</span>'],
   ['.tw-lbl','text','Total','Total'],
   ['.tw-sub','text','Installation incluse · Récupération incluse','Setup included · Pickup included'],
-  ['#dur-daily-0','text','soit 20,43 €/jour','i.e. €20.43/day'],
-  ['#dur-daily-1','text','soit 20,00 €/jour','i.e. €20.00/day'],
-  ['#dur-daily-2','text','soit 19,71 €/jour','i.e. €19.71/day'],
-  ['#dur-daily-3','text','soit 19,48 €/jour','i.e. €19.48/day'],
-  /* modal step 3 */
+/* modal step 3 */
   ['#s3 .sp-title','text','Type de fenêtre','Window type'],
   ['#s3 .sp-sub','text','Pour adapter le kit d\'installation fourni par notre équipe.','To adapt the installation kit provided by our team.'],
   ['.win-card:last-child .win-name','text','Je ne sais pas','Not sure'],
@@ -3397,8 +3435,11 @@ function setLang(l){
       if(v!=null)el.textContent=v;
     });
   }
-  // Rebuild recap labels if modal open
-  if(document.getElementById('overlay')?.classList.contains('open'))buildRecap();
+  // Rebuild stepper + recap labels if modal open
+  if(document.getElementById('overlay')?.classList.contains('open')){
+    updateDuration(_durDays||7,true);
+    buildRecap();
+  }
 }
 
 // Appliquer la langue mémorisée au chargement
