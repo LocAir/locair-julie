@@ -3565,27 +3565,34 @@ document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
 (async function initWeather(){
   if(localStorage.getItem('alertDismissed')==='1')return;
   try{
-    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=43.7076&longitude=7.2793&current=temperature_2m&daily=temperature_2m_max&timezone=Europe%2FParis&forecast_days=2&models=best_match');
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=43.7076&longitude=7.2793&current=temperature_2m,apparent_temperature&daily=temperature_2m_max,apparent_temperature_max&timezone=Europe%2FParis&forecast_days=2&models=best_match');
     if(!r.ok)return;
     const d=await r.json();
     const cur=Math.round(d.current?.temperature_2m??0);
+    const ressenti=Math.round(d.current?.apparent_temperature??0);
     const maxToday=Math.round(d.daily?.temperature_2m_max?.[0]??0);
     const maxTomorrow=Math.round(d.daily?.temperature_2m_max?.[1]??0);
+    const ressentiMaxToday=Math.round(d.daily?.apparent_temperature_max?.[0]??0);
     const peakTemp=Math.max(cur,maxToday,maxTomorrow);
+    const peakRessenti=Math.max(ressenti,ressentiMaxToday);
 
-    // Badge température dans le hero-eye
+    // Badge température + ressenti dans le hero-eye
     const eyeEl=document.querySelector('.hero-eye');
     if(eyeEl&&cur>0){
-      eyeEl.textContent='Il fait '+cur+'°C à Nice · 7j/7';
+      const showRessenti=ressenti>cur+1;
+      eyeEl.textContent=showRessenti
+        ?'Il fait '+cur+'°C · ressenti '+ressenti+'°C à Nice'
+        :'Il fait '+cur+'°C à Nice · 7j/7';
     }
 
     // Barre d'alerte : afficher si ≥28°C courant ou ≥32°C prévu
     if(cur>=28||maxToday>=32||maxTomorrow>=32){
       const bar=document.getElementById('alert-canicule');
       if(bar){
+        const showR=peakRessenti>peakTemp+1;
         const label=peakTemp>=35
-          ?'<strong>Canicule — '+peakTemp+'°C prévus à Nice</strong> · Livraison sous 24h'
-          :'<strong>'+cur+'°C à Nice</strong> · Climatiseur livré sous 24h';
+          ?'<strong>Canicule — '+peakTemp+'°C'+(showR?' · ressenti '+peakRessenti+'°C':'')+' à Nice</strong> · Livraison sous 24h'
+          :'<strong>'+cur+'°C'+(showR?' · ressenti '+ressenti+'°C':'')+' à Nice</strong> · Climatiseur livré sous 24h';
         const closeBtn=bar.querySelector('.alert-close');
         bar.innerHTML='<span class="alert-dot" aria-hidden="true"></span>'+label;
         if(closeBtn)bar.appendChild(closeBtn);
