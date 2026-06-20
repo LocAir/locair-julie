@@ -1615,6 +1615,28 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   animation:actPulse 2.2s ease-in-out infinite;
 }
 
+/* ── HERO DUR BAR ── */
+.hero-dur-bar{
+  display:flex;gap:7px;justify-content:center;flex-wrap:wrap;
+  margin-top:14px;
+}
+.hdb-opt{
+  padding:7px 13px;border-radius:100px;
+  border:1px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.07);
+  color:rgba(255,255,255,.65);
+  font-size:12px;font-weight:600;cursor:pointer;font-family:var(--body);
+  transition:all .15s;white-space:nowrap;
+}
+.hdb-opt span{color:rgba(255,255,255,.4);margin-left:5px;font-weight:500;font-size:11.5px}
+.hdb-opt.on{
+  background:rgba(255,255,255,.18);
+  border-color:rgba(255,255,255,.6);
+  color:#fff;
+}
+.hdb-opt.on span{color:#c5a96c;font-weight:700}
+.hdb-opt:hover:not(.on){background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);color:rgba(255,255,255,.85)}
+
 /* ── ZONE CONFIRM BADGE ── */
 .zone-confirm{
   display:flex;align-items:center;gap:7px;
@@ -1828,6 +1850,12 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <input class="sb-input" id="addr-init" type="text" placeholder="Votre adresse à Nice..." autocomplete="street-address" enterkeyhint="go" inputmode="text" aria-label="Votre adresse de livraison" data-lpignore="true"/>
         <button class="sb-btn" onclick="startBooking()" aria-label="Réserver un climatiseur" type="button">Réserver →</button>
       </div>
+    </div>
+    <div class="hero-dur-bar" id="hero-dur-bar" role="radiogroup" aria-label="Durée de location">
+      <button class="hdb-opt on" data-days="7"  onclick="heroSelectDur(this)" type="button" aria-checked="true" >7 nuits  <span>129 €</span></button>
+      <button class="hdb-opt"    data-days="14" onclick="heroSelectDur(this)" type="button" aria-checked="false">14 nuits <span>190 €</span></button>
+      <button class="hdb-opt"    data-days="21" onclick="heroSelectDur(this)" type="button" aria-checked="false">21 nuits <span>225 €</span></button>
+      <button class="hdb-opt"    data-days="30" onclick="heroSelectDur(this)" type="button" aria-checked="false">30 nuits <span>280 €</span></button>
     </div>
     <p class="hero-friction-bar">Zéro dépôt &nbsp;·&nbsp; Livraison + installation incluses &nbsp;·&nbsp; Annulation gratuite</p>
     <p id="hero-smart-line" style="display:none;font-size:12px;text-align:center;margin-top:10px;font-weight:500;letter-spacing:.02em"></p>
@@ -3543,15 +3571,18 @@ function submitForm(btn,mode){
   });
 }
 
+let _heroDays=7;
+function heroSelectDur(btn){
+  document.querySelectorAll('.hdb-opt').forEach(b=>{b.classList.remove('on');b.setAttribute('aria-checked','false');});
+  btn.classList.add('on');btn.setAttribute('aria-checked','true');
+  _heroDays=parseInt(btn.dataset.days)||7;
+}
 function startBooking(){
   const a=document.getElementById('addr-init')?.value.trim();
-  openModal();
+  openModal(_heroDays);
   setTimeout(()=>{
     const f=document.getElementById('f-addr');
-    if(f){
-      if(a)f.value=a;
-      f.focus();
-    }
+    if(f){if(a)f.value=a;f.focus();}
   },150);
 }
 
@@ -4073,24 +4104,27 @@ document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
   });
 })();
 
-// ── SMART LINE : urgence horaire (prioritaire) puis géoloc ──────────────────
+// ── SMART LINE : countdown live + géoloc ────────────────────────────────────
 const _smartLine=document.getElementById('hero-smart-line');
 let _urgencyShown=false;
-(function(){
-  if(!_smartLine)return;
-  const h=new Date().getHours();
-  if(h>=8&&h<18){
-    _smartLine.textContent='⏱ Commandez avant 18h — livraison demain matin';
-    _smartLine.style.color='rgba(255,255,255,.65)';
-    _smartLine.style.display='block';
-    _urgencyShown=true;
-  } else if(h>=18&&h<20){
-    _smartLine.textContent='⏱ Commandez maintenant — livraison demain après-midi';
-    _smartLine.style.color='rgba(255,255,255,.65)';
-    _smartLine.style.display='block';
-    _urgencyShown=true;
-  }
-})();
+function _renderSmartLine(){
+  if(!_smartLine)return false;
+  const now=new Date();
+  const h=now.getHours(),m=now.getMinutes();
+  let cutoffH=0,msg='';
+  if(h>=8&&h<18){cutoffH=18;msg='⏱ Livraison demain matin si vous réservez avant 18h';}
+  else if(h>=18&&h<20){cutoffH=20;msg='⏱ Livraison demain après-midi si vous réservez avant 20h';}
+  if(!cutoffH)return false;
+  const remMin=(cutoffH*60)-(h*60+m);
+  const rh=Math.floor(remMin/60),rm=remMin%60;
+  const countStr=rh>0?rh+'h '+String(rm).padStart(2,'0')+'min':rm+' min restantes';
+  _smartLine.textContent=msg+' — '+countStr;
+  _smartLine.style.color='rgba(255,255,255,.7)';
+  _smartLine.style.display='block';
+  return true;
+}
+_urgencyShown=_renderSmartLine();
+if(_urgencyShown)setInterval(_renderSmartLine,60000);
 
 (async function initGeo(){
   if(_urgencyShown)return;
@@ -4255,10 +4289,11 @@ let _urgencyShown=false;
   el.style.display='flex';
   const txt=document.getElementById('hsp-text');
   if(!txt)return;
+  const stock=h>=10&&h<19?3:2;
   if(h>=8&&h<20){
-    txt.textContent='🟢 Réservé par 14 clients ce mois · Disponible maintenant';
+    txt.textContent='🟢 '+stock+' appareils dispo demain · Réservé 14× ce mois';
   } else {
-    txt.textContent='Réservé par 14 clients ce mois · Ouverture à 8h';
+    txt.textContent='Réservé 14× ce mois · Disponible dès 8h';
   }
 })();
 
