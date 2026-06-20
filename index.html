@@ -1695,7 +1695,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 /* ── ÉQUIPE ── */
 .equipe{background:var(--bg);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
 .equipe-in{
-  max-width:var(--mw);margin:0 auto;
+  max-width:var(--max);margin:0 auto;
   padding:var(--section-py) var(--pad);
   display:grid;grid-template-columns:200px 1fr;
   gap:64px;align-items:center;
@@ -2091,12 +2091,12 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <article class="rv sr" role="listitem">
           <p class="rv-stars" style="margin-bottom:12px">★★★★★</p>
           <p class="rv-q">Magnifique expérience</p>
-          <div class="rv-foot"><div><p class="rv-name">Daniel Lopez Francia</p><p class="rv-role">Nice · Juin 2026</p></div></div>
+          <div class="rv-foot"><div><p class="rv-name">Daniel Lopez Francia</p><p class="rv-role">Nice · Août 2025</p></div></div>
         </article>
         <article class="rv sr" role="listitem">
           <p class="rv-stars" style="margin-bottom:12px">★★★★★</p>
           <p class="rv-q">Service réactif et à l'écoute !</p>
-          <div class="rv-foot"><div><p class="rv-name">Badou Thiam</p><p class="rv-role">Nice · Juin 2026</p></div></div>
+          <div class="rv-foot"><div><p class="rv-name">Badou Thiam</p><p class="rv-role">Nice · Juillet 2025</p></div></div>
         </article>
         <!-- Doublons pour la boucle infinie -->
         <article class="rv sr" role="listitem" aria-hidden="true">
@@ -2162,12 +2162,12 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <article class="rv sr" role="listitem" aria-hidden="true">
           <p class="rv-stars" style="margin-bottom:12px">★★★★★</p>
           <p class="rv-q">Magnifique expérience</p>
-          <div class="rv-foot"><div><p class="rv-name">Daniel Lopez Francia</p><p class="rv-role">Nice · Juin 2026</p></div></div>
+          <div class="rv-foot"><div><p class="rv-name">Daniel Lopez Francia</p><p class="rv-role">Nice · Août 2025</p></div></div>
         </article>
         <article class="rv sr" role="listitem" aria-hidden="true">
           <p class="rv-stars" style="margin-bottom:12px">★★★★★</p>
           <p class="rv-q">Service réactif et à l'écoute !</p>
-          <div class="rv-foot"><div><p class="rv-name">Badou Thiam</p><p class="rv-role">Nice · Juin 2026</p></div></div>
+          <div class="rv-foot"><div><p class="rv-name">Badou Thiam</p><p class="rv-role">Nice · Juillet 2025</p></div></div>
         </article>
       </div>
     </div>
@@ -3399,6 +3399,7 @@ function submitForm(btn,mode){
     mode:mode
   };
 
+  const price=calcPrice(parseInt(formData.duree)||7);
   window.dataLayer=window.dataLayer||[];
   dataLayer.push({event:'begin_checkout',mode:mode,value:price,currency:'EUR',days:parseInt(formData.duree)||0});
 
@@ -4163,6 +4164,18 @@ function selectDurCard(card,days){
   card.setAttribute('aria-checked','true');
   updateDuration(days);
 }
+
+(function initDurCardPrices(){
+  document.querySelectorAll('.dur-card[data-days]').forEach(card=>{
+    const days=parseInt(card.getAttribute('data-days'));
+    const rate=Math.round(_baseRate(days));
+    const total=calcPrice(days);
+    const rEl=card.querySelector('.dur-card-rate');
+    const tEl=card.querySelector('.dur-card-total');
+    if(rEl)rEl.textContent=rate+' €/j';
+    if(tEl)tEl.textContent=total+' €';
+  });
+})();
 </script>
 
 <!-- WHATSAPP BUTTON -->
