@@ -3606,19 +3606,21 @@ let _urgencyShown=false;
     const maxTomorrow=Math.round(d.daily?.temperature_2m_max?.[1]??0);
     const peakTemp=Math.max(cur,maxToday,maxTomorrow);
 
-    // Badge température dans le hero-eye
+    const alertActive=cur>=28||maxToday>=32||maxTomorrow>=32;
+
+    // Hero-eye : température uniquement si l'alerte n'est PAS affichée (évite doublon)
     const eyeEl=document.querySelector('.hero-eye');
-    if(eyeEl&&cur>0){
+    if(eyeEl&&cur>0&&!alertActive){
       eyeEl.textContent='Il fait '+cur+'°C à Nice · 7j/7';
     }
 
     // Barre d'alerte : afficher si ≥28°C courant ou ≥32°C prévu
-    if(cur>=28||maxToday>=32||maxTomorrow>=32){
+    if(alertActive){
       const bar=document.getElementById('alert-canicule');
       if(bar){
         const label=peakTemp>=35
-          ?'<strong>Canicule — '+peakTemp+'°C prévus à Nice</strong> · Livraison sous 24h'
-          :'<strong>'+cur+'°C à Nice</strong> · Climatiseur livré sous 24h';
+          ?'<strong>Canicule — '+peakTemp+'°C prévus</strong> · Livraison sous 24h'
+          :'<strong>'+cur+'°C</strong> · Climatiseur livré sous 24h';
         const closeBtn=bar.querySelector('.alert-close');
         bar.innerHTML='<span class="alert-dot" aria-hidden="true"></span>'+label;
         if(closeBtn)bar.appendChild(closeBtn);
