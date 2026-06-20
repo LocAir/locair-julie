@@ -1574,8 +1574,8 @@ body{
 <!-- TARIFS -->
 <section class="pricing" id="tarifs" aria-labelledby="pricing-title">
   <div class="pricing-in">
-    <p class="sec-eye">Location de climatiseur mobile</p>
-    <h2 class="sec-h2" id="pricing-title">Simple, transparent,<br><em>sans mauvaises surprises</em></h2>
+    <p class="sec-eye">Tarifs</p>
+    <h2 class="sec-h2" id="pricing-title">Tarifs clairs,<br><em>sans mauvaises surprises</em></h2>
     <div class="plans">
       <div class="plan plan-feat sr">
         <div class="plan-header">
@@ -3142,7 +3142,7 @@ const LANG_MAP=[
   ['#howto-title','html','De la réservation<br><em>à l\'air frais — en 24h</em>','From booking<br><em>to cool air — in 24h</em>'],
   /* pricing */
   ['.pricing .sec-eye','text','Location de climatiseur mobile','Mobile AC rental'],
-  ['#pricing-title','html','Simple, transparent,<br><em>sans mauvaises surprises</em>','Simple, transparent,<br><em>no hidden surprises</em>'],
+  ['#pricing-title','html','Tarifs clairs,<br><em>sans mauvaises surprises</em>','Clear pricing,<br><em>no hidden surprises</em>'],
   ['#pricing-from','text','à partir de','from'],
   ['#pricing-min','text','Tarif dégressif selon la durée','Degressive rate by duration'],
   ['.plan-btn.pb-s','text','Louer mon climatiseur →','Rent my AC →'],
@@ -3559,6 +3559,40 @@ document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
     localStorage.setItem(KEY,'refused');
     bar.classList.remove('show');
   });
+})();
+
+// ── MÉTÉO EN DIRECT (Open-Meteo, sans clé API) ──────────────────────────────
+(async function initWeather(){
+  if(localStorage.getItem('alertDismissed')==='1')return;
+  try{
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude=43.7076&longitude=7.2793&current=temperature_2m&daily=temperature_2m_max&timezone=Europe%2FParis&forecast_days=2&models=best_match');
+    if(!r.ok)return;
+    const d=await r.json();
+    const cur=Math.round(d.current?.temperature_2m??0);
+    const maxToday=Math.round(d.daily?.temperature_2m_max?.[0]??0);
+    const maxTomorrow=Math.round(d.daily?.temperature_2m_max?.[1]??0);
+    const peakTemp=Math.max(cur,maxToday,maxTomorrow);
+
+    // Badge température dans le hero-eye
+    const eyeEl=document.querySelector('.hero-eye');
+    if(eyeEl&&cur>0){
+      eyeEl.textContent='Il fait '+cur+'°C à Nice · 7j/7';
+    }
+
+    // Barre d'alerte : afficher si ≥28°C courant ou ≥32°C prévu
+    if(cur>=28||maxToday>=32||maxTomorrow>=32){
+      const bar=document.getElementById('alert-canicule');
+      if(bar){
+        const label=peakTemp>=35
+          ?'<strong>Canicule — '+peakTemp+'°C prévus à Nice</strong> · Livraison sous 24h'
+          :'<strong>'+cur+'°C à Nice</strong> · Climatiseur livré sous 24h';
+        const closeBtn=bar.querySelector('.alert-close');
+        bar.innerHTML='<span class="alert-dot" aria-hidden="true"></span>'+label;
+        if(closeBtn)bar.appendChild(closeBtn);
+        bar.classList.remove('hidden');
+      }
+    }
+  }catch(e){}
 })();
 </script>
 
