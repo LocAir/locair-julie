@@ -287,13 +287,6 @@ body{
   color:rgba(255,255,255,.88);line-height:1.6;margin-bottom:16px;
   max-width:500px;margin-left:auto;margin-right:auto;
 }
-.hero-sub-info{
-  font-family:var(--body);font-size:15px;font-weight:400;
-  color:rgba(255,255,255,.75);margin-top:12px;margin-bottom:6px;
-  letter-spacing:.01em;
-}
-.hero-sub-info strong{color:#fff;font-weight:600;}
-
 /* ── SEARCH BOX ── */
 .search-box{
   max-width:480px;
@@ -302,8 +295,8 @@ body{
   box-sizing:border-box;
 }
 .sb-label{
-  font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-  color:rgba(255,255,255,.82);margin-bottom:8px;text-align:left;padding-left:4px;
+  font-size:11px;font-weight:500;letter-spacing:.06em;text-transform:none;
+  color:rgba(255,255,255,.55);margin-bottom:8px;text-align:left;padding-left:4px;
 }
 .sb-row{
   display:flex;align-items:center;
@@ -1439,13 +1432,11 @@ body{
   from{opacity:0;transform:translateY(20px)}
   to{opacity:1;transform:none}
 }
-.hero-eye,.hero-h1,.hero-desc,.search-box,.hero-sub-info{will-change:opacity,transform}
+.hero-eye,.hero-h1,.hero-desc,.search-box{will-change:opacity,transform}
 .hero-eye{animation:heroIn .6s .15s cubic-bezier(.25,.46,.45,.94) both}
 .hero-h1{animation:heroIn .7s .35s cubic-bezier(.25,.46,.45,.94) both}
 .hero-desc{animation:heroIn .6s .48s cubic-bezier(.25,.46,.45,.94) both}
 .search-box{animation:heroIn .6s .65s cubic-bezier(.25,.46,.45,.94) both}
-.hero-sub-info{animation:heroIn .6s .82s cubic-bezier(.25,.46,.45,.94) both}
-
 /* 03 — Scroll reveal */
 .sr{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease;will-change:opacity,transform}
 .sr.in{opacity:1;transform:none;will-change:auto}
@@ -1537,9 +1528,7 @@ body{
         <button class="sb-btn" onclick="startBooking()" aria-label="Réserver un climatiseur" type="button">Réserver →</button>
       </div>
     </div>
-    <p id="geo-badge" style="display:none;font-size:12.5px;color:#4ade80;font-weight:500;text-align:center;margin-top:10px;letter-spacing:.01em"></p>
-    <p id="hero-cutoff" style="display:none;font-size:12px;color:rgba(255,255,255,.55);text-align:center;margin-top:8px;font-weight:500;letter-spacing:.02em"></p>
-    <p class="hero-sub-info" data-i18n="hero_sub_info">Dès <strong>17 €/jour</strong> · 7 jours minimum · Livré sous 24h</p>
+    <p id="hero-smart-line" style="display:none;font-size:12px;text-align:center;margin-top:12px;font-weight:500;letter-spacing:.02em"></p>
     <p class="hero-micro" data-i18n="hero_micro">4.8★ · 15 avis Google · Depuis 2019</p>
   </div>
 </section>
@@ -3141,7 +3130,6 @@ const LANG_MAP=[
   ['.hero-eye','text','Livraison à Nice · 7j/7','Delivery in Nice · 7d/7'],
   ['.hero-h1','html','Il fait trop chaud<br><em>pour dormir à Nice ?</em>','Too hot<br><em>to sleep in Nice?</em>'],
   ['.hero-desc','text','Demain soir, vous dormez frais.','Tomorrow night, you sleep cool.'],
-  ['.hero-sub-info','html','Dès <strong>17 €/jour</strong> · 7 jours minimum · Livré sous 24h','From <strong>€17/day</strong> · 7-day minimum · Delivered within 24h'],
   ['.hero-micro','text','4.8★ · 15 avis Google · Depuis 2019','4.8★ · 15 Google reviews · Since 2019'],
   ['.sb-label','text','Adresse de livraison','Delivery address'],
   ['#addr-init','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice'],
@@ -3570,22 +3558,27 @@ document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
   });
 })();
 
-// ── URGENCE HORAIRE — créneau de livraison demain ───────────────────────────
+// ── SMART LINE : urgence horaire (prioritaire) puis géoloc ──────────────────
+const _smartLine=document.getElementById('hero-smart-line');
+let _urgencyShown=false;
 (function(){
+  if(!_smartLine)return;
   const h=new Date().getHours();
-  const el=document.getElementById('hero-cutoff');
-  if(!el)return;
   if(h>=8&&h<18){
-    el.textContent='⏱ Commandez avant 18h — livraison demain matin';
-    el.style.display='block';
+    _smartLine.textContent='⏱ Commandez avant 18h — livraison demain matin';
+    _smartLine.style.color='rgba(255,255,255,.65)';
+    _smartLine.style.display='block';
+    _urgencyShown=true;
   } else if(h>=18&&h<20){
-    el.textContent='⏱ Commandez maintenant — livraison demain après-midi';
-    el.style.display='block';
+    _smartLine.textContent='⏱ Commandez maintenant — livraison demain après-midi';
+    _smartLine.style.color='rgba(255,255,255,.65)';
+    _smartLine.style.display='block';
+    _urgencyShown=true;
   }
 })();
 
-// ── GÉOLOCALISATION IP (ipapi.co, sans clé API) ─────────────────────────────
 (async function initGeo(){
+  if(_urgencyShown)return;
   try{
     const r=await fetch('https://ipapi.co/json/');
     if(!r.ok)return;
@@ -3593,13 +3586,11 @@ document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
     const postal=(d.postal||'').toString();
     const city=d.city||'';
     const isZone06=postal.startsWith('06');
-    const badge=document.getElementById('geo-badge');
-    if(!badge)return;
-    if(isZone06){
-      const label=city?city+' — zone de livraison couverte ✓':'Zone de livraison couverte ✓';
-      badge.textContent='📍 '+label;
-      badge.style.display='block';
-    }
+    if(!_smartLine||!isZone06)return;
+    const label=city?city+' — zone de livraison couverte ✓':'Zone de livraison couverte ✓';
+    _smartLine.textContent='📍 '+label;
+    _smartLine.style.color='#4ade80';
+    _smartLine.style.display='block';
   }catch(e){}
 })();
 
