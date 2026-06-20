@@ -1912,7 +1912,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
       <span class="hsp-dot"></span>
       <span id="hsp-text">Réservé par 14 clients ce mois</span>
     </div>
-    <p class="hero-micro" data-i18n="hero_micro">4.8★ · 15 avis Google · Depuis 2019</p>
+    <p class="hero-micro" data-i18n="hero_micro">4.8★ · 15 avis Google · Panne → échangé ou remboursé sous 4h</p>
   </div>
 </section>
 
@@ -2837,6 +2837,14 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             </div>
           </div>
           <p id="delivery-notice" style="font-size:12px;color:var(--grey);margin-top:8px;line-height:1.6">🔔 Le technicien vous appelle 30 min avant son arrivée &nbsp;·&nbsp; <strong>Zéro attente imprévue.</strong></p>
+          <p style="font-size:11.5px;color:var(--grey2);margin-top:10px">Date complète dans votre quartier ? <button type="button" onclick="document.getElementById('waitlist-form').style.display=document.getElementById('waitlist-form').style.display==='none'?'block':'none'" style="background:none;border:none;color:var(--blue);font-size:11.5px;font-weight:600;cursor:pointer;padding:0;font-family:var(--body);text-decoration:underline">Rejoindre la liste d'attente →</button></p>
+          <div id="waitlist-form" style="display:none;background:var(--blue-lt);border-radius:10px;padding:12px 14px;margin-top:8px">
+            <p style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px">On vous prévient dès qu'un créneau se libère</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <input id="wl-email" type="email" placeholder="votre@email.fr" style="flex:1;min-width:0;padding:8px 12px;border:1px solid var(--rule);border-radius:8px;font-size:13px;font-family:var(--body)" autocomplete="email"/>
+              <button type="button" onclick="(function(){const e=document.getElementById('wl-email')?.value.trim();if(!e)return;const d=document.getElementById('f-date')?.value||'';fetch('https://formspree.io/f/mvzyngoy',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({_subject:'Liste attente',email:e,date:d,type:'waitlist'})}).catch(()=>{});document.getElementById('waitlist-form').innerHTML='<p style=\"font-size:12px;color:#059669;font-weight:600\">✓ Inscription confirmée — vous serez prévenu en priorité</p>';})()" style="padding:8px 16px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:var(--body)">M'inscrire</button>
+            </div>
+          </div>
         </div>
         <div class="modal-nav">
           <button class="btn-back" onclick="goTo(3)" type="button">
@@ -3648,6 +3656,7 @@ function submitForm(btn,mode){
       const sp=Object.assign({},formData,{prix:calcPrice(parseInt(formData.duree)||7)});
       fetch(CITY.sheetsWebhook,{method:'POST',body:JSON.stringify(sp),mode:'no-cors'}).catch(()=>{});
     }
+    try{localStorage.setItem('locair_client',JSON.stringify({prenom:formData.prenom,email:formData.email}));}catch(e){}
     showSuccess();
   }).catch(()=>{
     // En cas d'erreur réseau, réactiver le bouton et afficher le numéro de secours
@@ -3656,6 +3665,29 @@ function submitForm(btn,mode){
     if(errEl){errEl.style.display='block';}
   });
 }
+
+// ── RETOUR CLIENT : reconnaissance via localStorage ──────────────────────────
+(function initReturnClient(){
+  let prev=null;
+  try{prev=JSON.parse(localStorage.getItem('locair_client'));}catch(e){}
+  if(!prev?.prenom)return;
+  const bar=document.createElement('div');
+  bar.id='return-bar';
+  bar.style.cssText='background:rgba(27,58,95,.06);border-bottom:1px solid rgba(27,58,95,.08);padding:8px 20px;text-align:center;font-size:12.5px;color:var(--blue);font-family:var(--body);display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap';
+  bar.innerHTML='👋 Bienvenue de retour, <strong>'+escHtml(prev.prenom)+'</strong> — vos infos seront pré-remplies. <button type="button" onclick="openModal()" style="padding:4px 14px;background:var(--blue);color:#fff;border:none;border-radius:100px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--body)">Réserver en 1 clic →</button><button type="button" onclick="document.getElementById(\'return-bar\').remove();localStorage.removeItem(\'locair_client\')" style="background:none;border:none;color:var(--grey2);font-size:12px;cursor:pointer;font-family:var(--body)">✕</button>';
+  const ubar=document.querySelector('.ubar');
+  if(ubar)ubar.after(bar);
+  // Pré-remplir le modal à l'ouverture
+  const _origOpen=window.openModal;
+  window.openModal=function(dur){
+    _origOpen(dur);
+    setTimeout(()=>{
+      const fp=document.getElementById('f-prenom');const fn=document.getElementById('f-nom');const fe=document.getElementById('f-email');
+      if(fp&&!fp.value&&prev.prenom)fp.value=prev.prenom;
+      if(fe&&!fe.value&&prev.email)fe.value=prev.email;
+    },200);
+  };
+})();
 
 let _heroDays=7;
 function heroSelectDur(btn){
