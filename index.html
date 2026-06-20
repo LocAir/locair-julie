@@ -1428,6 +1428,10 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
   margin-top:14px;font-size:12.5px;color:rgba(255,255,255,.6);font-family:var(--body);
 }
+.hero-friction-bar{
+  font-size:11px;color:rgba(255,255,255,.45);
+  text-align:center;margin:8px 0 0;letter-spacing:.04em;font-weight:400;font-family:var(--body);
+}
 .hm-dot{color:rgba(255,255,255,.25)}
 
 /* ── ANCHOR COMPARISON (tarifs) ── */
@@ -1821,11 +1825,12 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 
     <div class="search-box" role="search" aria-label="Réserver un climatiseur">
       <div class="sb-row">
-        <input class="sb-input" id="addr-init" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="street-address" enterkeyhint="go" inputmode="text" aria-label="Votre adresse de livraison" data-lpignore="true"/>
+        <input class="sb-input" id="addr-init" type="text" placeholder="Votre adresse à Nice..." autocomplete="street-address" enterkeyhint="go" inputmode="text" aria-label="Votre adresse de livraison" data-lpignore="true"/>
         <button class="sb-btn" onclick="startBooking()" aria-label="Réserver un climatiseur" type="button">Réserver →</button>
       </div>
     </div>
-    <p id="hero-smart-line" style="display:none;font-size:12px;text-align:center;margin-top:12px;font-weight:500;letter-spacing:.02em"></p>
+    <p class="hero-friction-bar">Zéro dépôt &nbsp;·&nbsp; Annulation gratuite &nbsp;·&nbsp; Réponse sous 1h</p>
+    <p id="hero-smart-line" style="display:none;font-size:12px;text-align:center;margin-top:10px;font-weight:500;letter-spacing:.02em"></p>
     <div class="hero-social-proof" id="hero-social-proof">
       <span class="hsp-dot"></span>
       <span id="hsp-text">Réservé par 14 clients ce mois</span>
@@ -3611,7 +3616,7 @@ const LANG_MAP=[
   ['.hero-desc','text','Demain soir, vous dormez frais.','Tomorrow night, you sleep cool.'],
   ['.hero-micro','text','4.8★ · 15 avis Google · Depuis 2019','4.8★ · 15 Google reviews · Since 2019'],
   ['.sb-label','text','Adresse de livraison','Delivery address'],
-  ['#addr-init','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice'],
+  ['#addr-init','ph','Votre adresse à Nice...','Your address in Nice...'],
   ['.sb-btn','text','Réserver →','Book →'],
   /* howto */
   ['.howto .sec-eye','text','Comment fonctionne la location','How rental works'],
@@ -4070,6 +4075,8 @@ let _urgencyShown=false;
     _smartLine.textContent='📍 '+label;
     _smartLine.style.color='#4ade80';
     _smartLine.style.display='block';
+    const spEl=document.getElementById('hero-social-proof');
+    if(spEl)spEl.style.display='none';
   }catch(e){}
 })();
 
@@ -4210,6 +4217,7 @@ let _urgencyShown=false;
 })();
 
 (function initHeroSocialProof(){
+  if(_urgencyShown)return;
   const el=document.getElementById('hero-social-proof');
   if(!el)return;
   const h=new Date().getHours();
