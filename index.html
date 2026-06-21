@@ -3072,32 +3072,61 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         </div>
       </div>
 
-      <!-- ══ PROLONGATION — ÉTAPE P3 : CONFIRMATION ══ -->
+      <!-- ══ PROLONGATION — ÉTAPE P3 : DATE & CRÉNEAU ══ -->
       <div class="step-panel" id="sp3">
         <div class="sp-head">
-          <h3 class="sp-title">Confirmer la prolongation</h3>
-          <p class="sp-sub">Notre équipe vous contacte sous 2h pour valider et organiser la suite.</p>
+          <h3 class="sp-title">Date de récupération</h3>
+          <p class="sp-sub">Choisissez quand notre technicien vient reprendre le climatiseur.</p>
         </div>
-        <div id="prolong-recap-box" style="background:var(--blue-lt);border-radius:14px;padding:20px 24px;margin:0 24px 20px;font-size:14px;line-height:1.8"></div>
+        <div class="flds">
+          <div class="fld">
+            <label for="pe-date">Nouvelle date de fin<span class="req">*</span></label>
+            <input id="pe-date" type="date" required oninput="this.classList.toggle('valid',!!this.value)"/>
+          </div>
+          <div class="fld">
+            <label id="lbl-pe-cr">Créneau de récupération<span class="req">*</span></label>
+            <div class="tpills" id="pe-creneau-group" role="radiogroup" aria-labelledby="lbl-pe-cr">
+              <button type="button" class="tpill on" onclick="tgl(this,'pe-cr')" role="radio" aria-checked="true">8h – 10h</button>
+              <button type="button" class="tpill" onclick="tgl(this,'pe-cr')" role="radio" aria-checked="false">10h – 12h</button>
+              <button type="button" class="tpill" onclick="tgl(this,'pe-cr')" role="radio" aria-checked="false">14h – 16h</button>
+              <button type="button" class="tpill" onclick="tgl(this,'pe-cr')" role="radio" aria-checked="false">16h – 18h</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-nav" style="margin:8px 24px 20px">
+          <button class="btn-back" onclick="goProlongStep(2)" type="button">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Durée
+          </button>
+          <button class="btn-next" onclick="goProlongStep(4)" type="button">Récapitulatif →</button>
+        </div>
+      </div>
+
+      <!-- ══ PROLONGATION — ÉTAPE P4 : RÉCAPITULATIF ══ -->
+      <div class="step-panel" id="sp4">
+        <div class="sp-head">
+          <h3 class="sp-title">Confirmer la prolongation</h3>
+          <p class="sp-sub">Vérifiez et confirmez — annulation gratuite avant récupération.</p>
+        </div>
+        <div id="prolong-recap-box" style="background:var(--blue-lt);border-radius:14px;padding:20px 24px;margin:0 24px 16px;font-size:14px;line-height:1.8"></div>
         <div style="padding:0 24px">
           <div class="rgpd-row">
             <input type="checkbox" id="pe-cgv" onchange="document.getElementById('prolong-sbtn').disabled=!this.checked"/>
-            <label for="pe-cgv">J'accepte les <a href="/cgv" style="color:var(--blue);text-decoration:underline;font-size:11px">conditions générales de vente</a>.</label>
+            <label for="pe-cgv">J'accepte les <a href="/cgv" style="color:var(--blue);text-decoration:underline;font-size:11px">conditions générales de vente</a> et la durée de prolongation choisie.</label>
           </div>
           <button class="btn-pay" id="prolong-sbtn" onclick="submitProlongation()" type="button" disabled style="margin-top:16px">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-            <span id="prolong-sbtn-lbl">Demander la prolongation</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+            <span id="prolong-sbtn-lbl">Confirmer la prolongation →</span>
           </button>
-          <p class="sbtn-hint" id="prolong-hint" style="display:none">☝️ Cochez la case ci-dessus pour confirmer</p>
-          <p class="pay-sub">Pas de paiement immédiat — nous vous rappelons pour confirmer et encaisser.</p>
+          <p class="pay-sub">🔒 Confirmation par email · Paiement sécurisé Stripe</p>
           <p id="prolong-error" role="alert" style="display:none;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;font-size:13px;text-align:center;margin-top:12px">
             Problème de connexion. Appelez-nous au <a href="tel:0663798756" style="color:#b91c1c;font-weight:600">06.63.79.87.56</a>.
           </p>
         </div>
         <div class="modal-nav" style="margin:16px 24px 20px">
-          <button class="btn-back" onclick="goProlongStep(2)" type="button">
+          <button class="btn-back" onclick="goProlongStep(3)" type="button">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-            Durée
+            Date
           </button>
         </div>
       </div>
@@ -3147,10 +3176,9 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 
       <!-- SUCCESS — Prolongation -->
       <div class="modal-success" id="msuccess-prolong">
-        <div class="s-ico" style="background:#dbeafe"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-        <h3 class="s-title" style="margin-top:20px">Demande envoyée !</h3>
-        <p class="s-sub">Notre équipe vous rappelle sous 2 heures pour confirmer votre prolongation et organiser le paiement.</p>
-        <a href="tel:0663798756" class="s-tel" style="display:block;text-align:center;margin:20px 24px 8px;padding:14px;background:var(--blue);color:#fff;border-radius:12px;text-decoration:none;font-weight:600">Appeler maintenant → 06.63.79.87.56</a>
+        <div class="s-ico" style="background:#dcfce7"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <h2 class="s-h">Prolongation confirmée !</h2>
+        <p class="s-p" id="prolong-success-msg">Votre location est prolongée. Confirmation par email dans quelques minutes.</p>
         <button class="s-close" onclick="closeModal()" type="button" style="margin-top:12px">Retour au site</button>
       </div>
 
@@ -4590,13 +4618,27 @@ function chooseFlow(type){
 
 function goProlongStep(n){
   if(n===2&&!validateProlongStep1())return;
+  if(n===4&&!validateProlongStep3())return;
   document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active','bwd'));
   const panel=document.getElementById('sp'+n);
   if(panel)panel.classList.add('active');
   if(n===2)updateProlongPrice();
-  if(n===3)buildProlongRecap();
+  if(n===3){
+    // Set min date = tomorrow
+    const fd=document.getElementById('pe-date');
+    if(fd&&!fd.min){const t=new Date();t.setDate(t.getDate()+1);fd.min=[t.getFullYear(),String(t.getMonth()+1).padStart(2,'0'),String(t.getDate()).padStart(2,'0')].join('-');}
+  }
+  if(n===4)buildProlongRecap();
   const mb=document.getElementById('modal-body');if(mb)mb.scrollTop=0;
-  document.title='Prolongation — Étape '+n+'/3 | Loc\'Air';
+  document.title='Prolongation — Étape '+n+'/4 | Loc\'Air';
+}
+
+function validateProlongStep3(){
+  const date=document.getElementById('pe-date')?.value;
+  if(!date){highlight(['pe-date']);return false;}
+  const today=new Date();today.setHours(0,0,0,0);
+  if(new Date(date)<=today){highlight(['pe-date']);return false;}
+  return true;
 }
 
 function stepProlongDur(delta){
@@ -4639,6 +4681,11 @@ function buildProlongRecap(){
   const tel=document.getElementById('pe-tel')?.value.trim()||'—';
   const addr=document.getElementById('pe-addr')?.value.trim()||'—';
   const price=Math.round(_prolongDays*_baseRate(_prolongDays));
+  // Format date as DD/MM/YYYY
+  const rawDate=document.getElementById('pe-date')?.value||'';
+  let dateLabel='—';
+  if(rawDate){const[y,m,d]=rawDate.split('-');dateLabel=d+'/'+m+'/'+y;}
+  const creneau=document.querySelector('#pe-creneau-group .tpill.on')?.textContent.trim()||'—';
   box.innerHTML=`
     <p style="font-weight:700;color:var(--black);font-size:15px;margin-bottom:12px">Récapitulatif de prolongation</p>
     <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:13px">
@@ -4646,10 +4693,11 @@ function buildProlongRecap(){
       <span style="color:var(--grey2)">Email</span><span>${email}</span>
       <span style="color:var(--grey2)">Tél.</span><span>${tel}</span>
       ${addr!=='—'?`<span style="color:var(--grey2)">Adresse</span><span>${addr}</span>`:''}
-      <span style="color:var(--grey2)">Durée ajoutée</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} jours</span>
+      <span style="color:var(--grey2)">Durée ajoutée</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} jour${_prolongDays>1?'s':''}</span>
+      <span style="color:var(--grey2)">Récupération le</span><span style="font-weight:500">${dateLabel}</span>
+      <span style="color:var(--grey2)">Créneau</span><span style="font-weight:500">${creneau}</span>
       <span style="color:var(--grey2)">Montant</span><span style="font-weight:700;font-size:16px;color:var(--black)">${price} €</span>
     </div>
-    <p style="font-size:11px;color:var(--grey2);margin-top:12px;line-height:1.5">💬 Nous vous rappelons sous 2h pour confirmer la disponibilité et procéder au paiement.</p>
   `;
   // reset checkbox
   const cgv=document.getElementById('pe-cgv');
@@ -4665,29 +4713,35 @@ async function submitProlongation(){
   if(btn)btn.disabled=true;
   if(lbl)lbl.textContent='Envoi en cours…';
   const price=Math.round(_prolongDays*_baseRate(_prolongDays));
+  const rawDate=document.getElementById('pe-date')?.value||'';
+  let dateLabel='—';
+  if(rawDate){const[y,m,d]=rawDate.split('-');dateLabel=d+'/'+m+'/'+y;}
+  const creneau=document.querySelector('#pe-creneau-group .tpill.on')?.textContent.trim()||'—';
+  const prenom=document.getElementById('pe-prenom')?.value.trim()||'';
+  const nom=document.getElementById('pe-nom')?.value.trim()||'';
   const data={
     type:'prolongation',
-    prenom:document.getElementById('pe-prenom')?.value.trim(),
-    nom:document.getElementById('pe-nom')?.value.trim(),
+    prenom,
+    nom,
     email:document.getElementById('pe-email')?.value.trim(),
     tel:document.getElementById('pe-tel')?.value.trim(),
     adresse_origine:document.getElementById('pe-addr')?.value.trim()||'—',
     jours_supplementaires:_prolongDays,
-    montant_estime:price+' €',
+    date_recuperation:dateLabel,
+    creneau_recuperation:creneau,
+    montant:price+' €',
     ville:'Nice',
-    _subject:'Prolongation location — '+document.getElementById('pe-prenom')?.value.trim()+' '+document.getElementById('pe-nom')?.value.trim()+' — '+_prolongDays+'j',
+    _subject:'Prolongation — '+prenom+' '+nom+' — '+_prolongDays+'j — récup. '+dateLabel+' '+creneau,
   };
   try{
     const r=await fetch('https://formspree.io/f/mvzyngoy',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(data)});
     if(r.ok){
-      // Show success
       document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
       const succ=document.getElementById('msuccess-prolong');
-      if(succ)succ.classList.add('show');
-      else{
-        // fallback: show call success
-        const fallback=document.getElementById('msuccess-call');
-        if(fallback)fallback.classList.add('show');
+      if(succ){
+        const msg=document.getElementById('prolong-success-msg');
+        if(msg)msg.textContent='Votre location est prolongée de '+_prolongDays+' jour'+(_prolongDays>1?'s':'')+'. Récupération le '+dateLabel+' entre '+creneau+'. Confirmation par email dans quelques minutes.';
+        succ.classList.add('show');
       }
       window.dataLayer=window.dataLayer||[];
       dataLayer.push({event:'prolongation_submitted',days:_prolongDays,value:price});
@@ -4697,7 +4751,7 @@ async function submitProlongation(){
   }catch(e){
     if(errEl)errEl.style.display='block';
     if(btn)btn.disabled=false;
-    if(lbl)lbl.textContent='Demander la prolongation';
+    if(lbl)lbl.textContent='Confirmer la prolongation →';
   }
 }
 </script>
