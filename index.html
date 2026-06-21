@@ -247,7 +247,7 @@ body{
   position:relative;
   min-height:calc(100vh - 60px);
   display:flex;align-items:center;justify-content:center;
-  overflow-x:hidden;
+  overflow:hidden;
 }
 .hero-photo{
   position:absolute;inset:0;
@@ -265,6 +265,24 @@ body{
     linear-gradient(180deg,rgba(6,9,15,.3) 0%,rgba(6,9,15,.55) 50%,rgba(6,9,15,.82) 100%),
     linear-gradient(90deg,rgba(6,9,15,.4) 0%,transparent 60%);
 }
+/* ── HERO VIDÉO DE FOND ── */
+.hero-vid{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:center 30%;
+  opacity:0;
+  transform:scale(1.07);
+  transition:opacity 1.8s ease,transform 14s cubic-bezier(.25,.46,.45,.94);
+  will-change:opacity,transform;
+}
+.hero-vid.playing{opacity:1;transform:scale(1)}
+/* ── INTRO CURTAIN (rideau de scène) ── */
+.hero-intro{
+  position:fixed;inset:0;z-index:9999;
+  background:#06090f;
+  opacity:1;transition:opacity .9s ease;
+  pointer-events:none;
+}
+.hero-intro.out{opacity:0}
 .hero-inner{
   position:relative;z-index:2;
   width:100%;max-width:680px;margin:0 auto;
@@ -1305,7 +1323,7 @@ body{
 @media print{
   .nav,.m-bar,.modal-overlay,.fcta{display:none!important}
   .hero{min-height:auto;page-break-after:always}
-  .hero-photo,.hero-scrim{display:none}
+  .hero-photo,.hero-scrim,.hero-vid,.hero-intro{display:none}
   .hero-inner{color:black;padding:20px 0}
   .hero-h1{color:black;font-size:28px}
   body{font-size:12px;line-height:1.5}
@@ -2040,7 +2058,13 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 <!-- HERO — plein écran, 1 seule action -->
 <main id="main-content">
 <section class="hero" id="top" aria-label="Bannière principale — Location climatiseur Nice">
+  <div class="hero-intro" id="hero-intro" aria-hidden="true"></div>
   <div class="hero-photo" id="hp" role="img" aria-label="Vue de la Promenade des Anglais à Nice en été — Climatisation mobile Loc'Air" style="background-image:url('hero-nice.jpg')"></div>
+  <!-- VIDÉO AMBIANTE — remplacer src par votre URL MP4 (ex: Cloudinary, Bunny.net, votre CDN) -->
+  <!-- Recommandation : clip de 10-20s, 1080p, de Nice (mer, toits, chaleur estivale), muet, loop -->
+  <video class="hero-vid" id="hero-vid" autoplay muted loop playsinline preload="auto" aria-hidden="true">
+    <source src="" type="video/mp4">
+  </video>
   <div class="hero-scrim"></div>
   <div class="hero-inner">
     <h1 class="hero-h1" data-i18n-h="hero_h1">Il fait trop chaud<br><em>pour dormir à Nice ?</em></h1>
@@ -3636,6 +3660,35 @@ let curStep=1;
   // Hero photo
   const hp2=document.getElementById('hp');
   if(hp2)requestAnimationFrame(()=>hp2.classList.add('on'));
+})();
+
+// ── INTRO CURTAIN ─────────────────────────────────────────────────────────────
+(function(){
+  const intro=document.getElementById('hero-intro');
+  if(!intro)return;
+  if(sessionStorage.getItem('_la_intro')){intro.remove();return;}
+  sessionStorage.setItem('_la_intro','1');
+  // Rideau se lève 280ms après le premier rendu
+  requestAnimationFrame(()=>setTimeout(()=>{
+    intro.classList.add('out');
+    setTimeout(()=>intro.remove(),1000);
+  },280));
+})();
+
+// ── HERO VIDÉO AMBIANTE ────────────────────────────────────────────────────────
+(function(){
+  const vid=document.getElementById('hero-vid');
+  if(!vid)return;
+  const src=vid.querySelector('source')?.getAttribute('src');
+  if(!src)return; // pas de vidéo configurée, fallback sur la photo
+  function onPlaying(){
+    vid.classList.add('playing');
+    const hp=document.getElementById('hp');
+    if(hp){hp.style.transition='opacity 2.2s ease';hp.style.opacity='0';}
+  }
+  vid.addEventListener('canplaythrough',onPlaying,{once:true});
+  vid.addEventListener('playing',onPlaying,{once:true});
+  vid.play().catch(()=>{}); // silently ignore autoplay policy on some browsers
 })();
 
 function toggleLangMenu(){
