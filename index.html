@@ -4563,6 +4563,142 @@ function selectDurCard(card,days){
     if(tEl)tEl.textContent=total+' €';
   });
 })();
+
+// ── FLOW CHOICE (s0) ─────────────────────────────────────────────────────────
+let _currentFlow='new';
+let _prolongDays=7;
+
+function chooseFlow(type){
+  _currentFlow=type;
+  if(type==='new'){
+    document.querySelector('.stepper')?.classList.remove('stepper-hidden');
+    document.getElementById('mob-progress')?.style.removeProperty('display');
+    document.querySelector('.ms-title') && (document.querySelector('.ms-title').style.display='');
+    goTo(1,true);
+    setTimeout(()=>{
+      const h=document.getElementById('addr-init')?.value.trim();
+      if(h){const f=document.getElementById('f-addr');if(f&&!f.value)f.value=h;}
+      document.getElementById('f-addr')?.focus();
+    },100);
+  } else {
+    document.querySelector('.stepper')?.classList.add('stepper-hidden');
+    document.getElementById('mob-progress')?.style.setProperty('display','none');
+    document.getElementById('modal-recap-pill')?.setAttribute('aria-hidden','true');
+    goProlongStep(1);
+  }
+}
+
+function goProlongStep(n){
+  if(n===2&&!validateProlongStep1())return;
+  document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active','bwd'));
+  const panel=document.getElementById('sp'+n);
+  if(panel)panel.classList.add('active');
+  if(n===2)updateProlongPrice();
+  if(n===3)buildProlongRecap();
+  const mb=document.getElementById('modal-body');if(mb)mb.scrollTop=0;
+  document.title='Prolongation — Étape '+n+'/3 | Loc\'Air';
+}
+
+function selectProlongDur(btn){
+  document.querySelectorAll('.pdb-opt').forEach(b=>{b.classList.remove('on');b.setAttribute('aria-checked','false');});
+  btn.classList.add('on');btn.setAttribute('aria-checked','true');
+  _prolongDays=parseInt(btn.dataset.days)||7;
+  updateProlongPrice();
+}
+
+function updateProlongPrice(){
+  // Extension price: days × baseRate (no setup fee — already installed)
+  const price=Math.round(_prolongDays*_baseRate(_prolongDays));
+  const el_days=document.getElementById('pp-days');
+  const el_total=document.getElementById('pp-total');
+  if(el_days)el_days.textContent=_prolongDays;
+  if(el_total)el_total.textContent=price+' €';
+}
+
+function validateProlongStep1(){
+  const prenom=document.getElementById('pe-prenom')?.value.trim();
+  const nom=document.getElementById('pe-nom')?.value.trim();
+  const email=document.getElementById('pe-email')?.value.trim();
+  const tel=document.getElementById('pe-tel')?.value.trim();
+  const missing=[];
+  if(!prenom)missing.push('pe-prenom');
+  if(!nom)missing.push('pe-nom');
+  if(!email||!email.includes('@'))missing.push('pe-email');
+  if(!tel)missing.push('pe-tel');
+  if(missing.length){highlight(missing);return false;}
+  return true;
+}
+
+function buildProlongRecap(){
+  const box=document.getElementById('prolong-recap-box');
+  if(!box)return;
+  const prenom=document.getElementById('pe-prenom')?.value.trim()||'—';
+  const nom=document.getElementById('pe-nom')?.value.trim()||'—';
+  const email=document.getElementById('pe-email')?.value.trim()||'—';
+  const tel=document.getElementById('pe-tel')?.value.trim()||'—';
+  const addr=document.getElementById('pe-addr')?.value.trim()||'—';
+  const price=Math.round(_prolongDays*_baseRate(_prolongDays));
+  box.innerHTML=`
+    <p style="font-weight:700;color:var(--black);font-size:15px;margin-bottom:12px">Récapitulatif de prolongation</p>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:13px">
+      <span style="color:var(--grey2)">Nom</span><span style="font-weight:500">${prenom} ${nom}</span>
+      <span style="color:var(--grey2)">Email</span><span>${email}</span>
+      <span style="color:var(--grey2)">Tél.</span><span>${tel}</span>
+      ${addr!=='—'?`<span style="color:var(--grey2)">Adresse</span><span>${addr}</span>`:''}
+      <span style="color:var(--grey2)">Durée ajoutée</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} jours</span>
+      <span style="color:var(--grey2)">Montant</span><span style="font-weight:700;font-size:16px;color:var(--black)">${price} €</span>
+    </div>
+    <p style="font-size:11px;color:var(--grey2);margin-top:12px;line-height:1.5">💬 Nous vous rappelons sous 2h pour confirmer la disponibilité et procéder au paiement.</p>
+  `;
+  // reset checkbox
+  const cgv=document.getElementById('pe-cgv');
+  const sbtn=document.getElementById('prolong-sbtn');
+  if(cgv)cgv.checked=false;
+  if(sbtn)sbtn.disabled=true;
+}
+
+async function submitProlongation(){
+  const btn=document.getElementById('prolong-sbtn');
+  const lbl=document.getElementById('prolong-sbtn-lbl');
+  const errEl=document.getElementById('prolong-error');
+  if(btn)btn.disabled=true;
+  if(lbl)lbl.textContent='Envoi en cours…';
+  const price=Math.round(_prolongDays*_baseRate(_prolongDays));
+  const data={
+    type:'prolongation',
+    prenom:document.getElementById('pe-prenom')?.value.trim(),
+    nom:document.getElementById('pe-nom')?.value.trim(),
+    email:document.getElementById('pe-email')?.value.trim(),
+    tel:document.getElementById('pe-tel')?.value.trim(),
+    adresse_origine:document.getElementById('pe-addr')?.value.trim()||'—',
+    jours_supplementaires:_prolongDays,
+    montant_estime:price+' €',
+    ville:'Nice',
+    _subject:'Prolongation location — '+document.getElementById('pe-prenom')?.value.trim()+' '+document.getElementById('pe-nom')?.value.trim()+' — '+_prolongDays+'j',
+  };
+  try{
+    const r=await fetch('https://formspree.io/f/mvzyngoy',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(data)});
+    if(r.ok){
+      // Show success
+      document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
+      const succ=document.getElementById('msuccess-prolong');
+      if(succ)succ.classList.add('show');
+      else{
+        // fallback: show call success
+        const fallback=document.getElementById('msuccess-call');
+        if(fallback)fallback.classList.add('show');
+      }
+      window.dataLayer=window.dataLayer||[];
+      dataLayer.push({event:'prolongation_submitted',days:_prolongDays,value:price});
+    } else {
+      throw new Error('HTTP '+r.status);
+    }
+  }catch(e){
+    if(errEl)errEl.style.display='block';
+    if(btn)btn.disabled=false;
+    if(lbl)lbl.textContent='Demander la prolongation';
+  }
+}
 </script>
 
 <!-- WHATSAPP BUTTON -->
