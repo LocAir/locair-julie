@@ -3046,22 +3046,23 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
       <div class="step-panel" id="sp2">
         <div class="sp-head">
           <h3 class="sp-title">Combien de jours de plus ?</h3>
-          <p class="sp-sub">Choisissez la durée supplémentaire souhaitée.</p>
+          <p class="sp-sub">Minimum 1 jour — pas de maximum.</p>
         </div>
-        <div class="prolong-dur-btns" role="radiogroup" aria-label="Durée supplémentaire">
-          <button class="pdb-opt on" data-days="7"  onclick="selectProlongDur(this)" type="button">7 jours</button>
-          <button class="pdb-opt"    data-days="14" onclick="selectProlongDur(this)" type="button">14 jours</button>
-          <button class="pdb-opt"    data-days="21" onclick="selectProlongDur(this)" type="button">21 jours</button>
-          <button class="pdb-opt"    data-days="30" onclick="selectProlongDur(this)" type="button">30 jours</button>
+        <div style="display:flex;align-items:center;justify-content:center;gap:20px;padding:24px 24px 8px">
+          <button type="button" onclick="stepProlongDur(-1)" id="prolong-minus" aria-label="Retirer un jour"
+            style="width:44px;height:44px;border-radius:50%;border:1.5px solid var(--rule);background:#fff;font-size:22px;font-weight:300;color:var(--grey);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s">−</button>
+          <div style="text-align:center;min-width:90px">
+            <span class="pp-days" id="pp-days" style="font-family:var(--disp);font-size:48px;font-weight:700;color:var(--blue);line-height:1">1</span>
+            <p style="font-size:13px;color:var(--grey);margin-top:2px" id="pp-day-lbl">jour supplémentaire</p>
+          </div>
+          <button type="button" onclick="stepProlongDur(1)" id="prolong-plus" aria-label="Ajouter un jour"
+            style="width:44px;height:44px;border-radius:50%;border:1.5px solid var(--rule);background:#fff;font-size:22px;font-weight:300;color:var(--grey);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s">+</button>
         </div>
         <div class="prolong-price-box">
-          <div>
-            <span class="pp-days" id="pp-days">7</span><span class="pp-unit">jours supplémentaires</span>
-          </div>
-          <div class="pp-total" id="pp-total">110 €</div>
-          <div class="pp-rate" id="pp-rate">Installation déjà effectuée — tarif hors frais de mise en service</div>
+          <div class="pp-total" id="pp-total">17 €</div>
+          <div class="pp-rate">Sans frais d'installation — déjà effectuée</div>
         </div>
-        <p style="font-size:11px;color:var(--grey2);text-align:center;margin:0 24px 16px;line-height:1.5">Le tarif de prolongation est calculé sans les frais d'installation (déjà inclus dans votre réservation initiale).</p>
+        <p style="font-size:11px;color:var(--grey2);text-align:center;margin:0 24px 16px;line-height:1.5">Tarif dégressif selon la durée · Paiement lors du rappel de notre équipe.</p>
         <div class="modal-nav" style="margin:8px 24px 20px">
           <button class="btn-back" onclick="goProlongStep(1)" type="button">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -3340,7 +3341,7 @@ function closeModal(){
   if(_trapAbort){_trapAbort.abort();_trapAbort=null;}
   curStep=1;
   _currentFlow='new';
-  _prolongDays=7;
+  _prolongDays=1;
   document.querySelector('.stepper')?.classList.remove('stepper-hidden');
   const mobProg=document.getElementById('mob-progress');
   if(mobProg)mobProg.style.removeProperty('display');
@@ -3348,8 +3349,7 @@ function closeModal(){
   ['pe-prenom','pe-nom','pe-email','pe-tel','pe-addr'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
-  document.querySelectorAll('.pdb-opt').forEach((b,i)=>{b.classList.toggle('on',i===0);});
-  _prolongDays=7;
+  _prolongDays=1;
   const pecgv=document.getElementById('pe-cgv');if(pecgv)pecgv.checked=false;
   if(_lastFocused)_lastFocused.focus();
   // reset success timeline
@@ -4566,7 +4566,7 @@ function selectDurCard(card,days){
 
 // ── FLOW CHOICE (s0) ─────────────────────────────────────────────────────────
 let _currentFlow='new';
-let _prolongDays=7;
+let _prolongDays=1;
 
 function chooseFlow(type){
   _currentFlow=type;
@@ -4599,20 +4599,21 @@ function goProlongStep(n){
   document.title='Prolongation — Étape '+n+'/3 | Loc\'Air';
 }
 
-function selectProlongDur(btn){
-  document.querySelectorAll('.pdb-opt').forEach(b=>{b.classList.remove('on');b.setAttribute('aria-checked','false');});
-  btn.classList.add('on');btn.setAttribute('aria-checked','true');
-  _prolongDays=parseInt(btn.dataset.days)||7;
+function stepProlongDur(delta){
+  _prolongDays=Math.max(1,_prolongDays+delta);
   updateProlongPrice();
 }
 
 function updateProlongPrice(){
-  // Extension price: days × baseRate (no setup fee — already installed)
   const price=Math.round(_prolongDays*_baseRate(_prolongDays));
   const el_days=document.getElementById('pp-days');
+  const el_lbl=document.getElementById('pp-day-lbl');
   const el_total=document.getElementById('pp-total');
+  const el_minus=document.getElementById('prolong-minus');
   if(el_days)el_days.textContent=_prolongDays;
+  if(el_lbl)el_lbl.textContent=_prolongDays===1?'jour supplémentaire':'jours supplémentaires';
   if(el_total)el_total.textContent=price+' €';
+  if(el_minus)el_minus.style.opacity=_prolongDays<=1?'0.3':'1';
 }
 
 function validateProlongStep1(){
