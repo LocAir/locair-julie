@@ -1074,6 +1074,21 @@ body{
 .fld{display:flex;flex-direction:column;gap:4px}
 .fld label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2)}
 .req{color:var(--red);margin-left:2px}
+.fld-label-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:0}
+.fld-label-row label{margin-bottom:0}
+.geo-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  background:var(--blue-lt);border:none;cursor:pointer;
+  font-family:var(--body);font-size:10px;font-weight:600;letter-spacing:.05em;
+  color:var(--blue);padding:4px 10px;border-radius:20px;
+  transition:background .15s,opacity .15s;flex-shrink:0;
+}
+.geo-btn:hover{background:rgba(27,58,95,.14)}
+.geo-btn:disabled{opacity:.55;cursor:default}
+.geo-btn.geo-loading svg{animation:geoSpin .75s linear infinite}
+.geo-btn.geo-ok{background:#d1fae5;color:#059669}
+.geo-btn.geo-err{background:#fee2e2;color:#dc2626}
+@keyframes geoSpin{to{transform:rotate(360deg)}}
 .fld input,.fld select,.fld textarea{
   -webkit-appearance:none;appearance:none;
   padding:12px 14px;border:1.5px solid var(--rule);border-radius:var(--r);
@@ -2751,7 +2766,13 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         </div>
         <div class="flds">
           <div class="fld">
-            <label for="f-addr">Adresse<span class="req">*</span></label>
+            <div class="fld-label-row">
+              <label for="f-addr" id="label-addr">Adresse<span class="req">*</span></label>
+              <button type="button" class="geo-btn" id="geo-btn" onclick="geoLocate()" title="Utiliser ma position GPS">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="11" height="11"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+                <span id="geo-lbl">Ma position</span>
+              </button>
+            </div>
             <input id="f-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="street-address" spellcheck="false" data-lpignore="true" required oninput="this.classList.toggle('valid',this.value.trim().length>4);const zc=document.getElementById('zone-confirm');if(zc)zc.classList.toggle('visible',this.value.trim().length>4)"/>
             <div class="zone-confirm" id="zone-confirm" aria-live="polite">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -3630,6 +3651,48 @@ function onCustomDate(inp){
   if(!inp?.value)return;
   updateDatePreview();
   document.querySelectorAll('.ds-chip').forEach(c=>{c.classList.remove('on');c.setAttribute('aria-checked','false');});
+}
+
+// ── GÉOLOCALISATION ADRESSE ───────────────────────────────────────────────────────
+function geoLocate(){
+  const btn=document.getElementById('geo-btn');
+  const lbl=document.getElementById('geo-lbl');
+  const inp=document.getElementById('f-addr');
+  if(!btn||!lbl||!inp)return;
+  if(!navigator.geolocation){lbl.textContent='Non dispo';btn.classList.add('geo-err');return;}
+  btn.disabled=true;
+  btn.classList.remove('geo-ok','geo-err');
+  btn.classList.add('geo-loading');
+  lbl.textContent='Localisation…';
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      const{latitude:lat,longitude:lon}=pos.coords;
+      fetch('https://nominatim.openstreetmap.org/reverse?lat='+lat+'&lon='+lon+'&format=json&accept-language=fr')
+        .then(r=>r.json())
+        .then(d=>{
+          const a=d.address||{};
+          const street=(a.house_number?a.house_number+' ':'')+( a.road||a.pedestrian||a.path||'');
+          const city=a.city||a.town||a.village||a.municipality||'Nice';
+          inp.value=street?(street+', '+city):(d.display_name||'');
+          inp.dispatchEvent(new Event('input'));
+          btn.classList.remove('geo-loading');btn.classList.add('geo-ok');
+          lbl.textContent='Position trouvée ✓';
+          btn.disabled=false;
+          setTimeout(()=>{btn.classList.remove('geo-ok');lbl.textContent='Ma position';},3500);
+        })
+        .catch(()=>{
+          btn.classList.remove('geo-loading');btn.classList.add('geo-err');
+          lbl.textContent='Erreur réseau';btn.disabled=false;
+          setTimeout(()=>{btn.classList.remove('geo-err');lbl.textContent='Ma position';},3000);
+        });
+    },
+    err=>{
+      btn.classList.remove('geo-loading');btn.classList.add('geo-err');btn.disabled=false;
+      lbl.textContent=err.code===1?'Accès refusé':'Erreur GPS';
+      setTimeout(()=>{btn.classList.remove('geo-err');lbl.textContent='Ma position';},3000);
+    },
+    {enableHighAccuracy:true,timeout:9000,maximumAge:30000}
+  );
 }
 
 // ── LEGAL CHECKBOX SYNC ─────────────────────────────────────────────────────────
