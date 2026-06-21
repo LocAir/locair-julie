@@ -1838,6 +1838,27 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   padding:3px 8px;border-radius:10px;white-space:nowrap;flex-shrink:0;
 }
 
+/* ── STEP 0 / CHOICE SCREEN ── */
+.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:24px}
+.choice-card{background:#fff;border:1.5px solid var(--rule);border-radius:16px;padding:28px 20px;text-align:center;cursor:pointer;width:100%;transition:border-color .15s,box-shadow .15s,transform .15s}
+.choice-card:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(27,58,95,.12);transform:translateY(-2px)}
+.choice-card.chosen{border-color:var(--blue);background:rgba(27,58,95,.04)}
+.choice-ico{width:52px;height:52px;background:rgba(27,58,95,.07);border:1px solid rgba(27,58,95,.1);border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center}
+.choice-title{font-family:var(--disp);font-size:18px;font-weight:600;color:var(--black);margin-bottom:8px}
+.choice-desc{font-size:13px;color:var(--grey);line-height:1.5}
+.choice-badge{background:rgba(197,169,108,.12);color:#92630a;border:1px solid rgba(197,169,108,.35);border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.06em;padding:2px 8px;display:inline-block;margin-bottom:10px}
+/* ── PROLONGATION PANELS ── */
+.prolong-price-box{background:var(--blue-lt);border-radius:14px;padding:20px;margin:16px 24px;text-align:center}
+.pp-days{font-family:var(--disp);font-size:42px;font-weight:700;color:var(--blue)}
+.pp-unit{font-size:14px;color:var(--grey);margin-left:4px}
+.pp-total{font-size:22px;font-weight:700;color:var(--black);margin-top:8px}
+.pp-rate{font-size:12px;color:var(--grey2);margin-top:4px}
+.prolong-dur-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;padding:0 24px 20px}
+.pdb-opt{border:1.5px solid var(--rule);border-radius:10px;padding:10px 16px;font-size:13px;font-weight:600;color:var(--grey);background:#fff;cursor:pointer;transition:all .15s}
+.pdb-opt.on{border-color:var(--blue);background:rgba(27,58,95,.06);color:var(--blue)}
+.stepper-hidden{display:none!important}
+.ms-title-prolong{display:none}
+
 </style>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Comment se passe la livraison ?","acceptedAnswer":{"@type":"Answer","text":"Notre technicien sonne à votre porte avec l'appareil et tout le matériel. Il pose le kit sur votre fenêtre, branche le climatiseur, vérifie que ça refroidit bien — et vous explique les réglages en 2 minutes. De la sonnette à l'air frais : 20 à 30 minutes. Vous n'avez rien à préparer, rien à acheter."}},{"@type":"Question","name":"Quelle est la durée minimale ?","acceptedAnswer":{"@type":"Answer","text":"7 jours minimum. Au-delà, vous choisissez : 10, 14, 21 jours ou plus. Le tarif est dégressif — plus vous louez longtemps, moins ça coûte par jour. L'installation et la récupération sont incluses."}},{"@type":"Question","name":"Y a-t-il un dépôt de garantie ?","acceptedAnswer":{"@type":"Answer","text":"Non. Aucun chèque de caution, aucune empreinte bancaire. Vous payez la location — rien d'autre."}},{"@type":"Question","name":"Livrez-vous dans toute la région de Nice ?","acceptedAnswer":{"@type":"Answer","text":"Toute la ville de Nice : Centre, Promenade des Anglais, Vieux-Nice, Cimiez, Libération, Magnan, Riquier, Caucade, Saint-Isidore, Moulins… Si vous habitez Nice, on livre. Pour Cannes, Antibes, Menton ou Villefranche — envoyez-nous votre adresse sur WhatsApp, on vous répond rapidement."}},{"@type":"Question","name":"Comment fonctionne la signature du contrat ?","acceptedAnswer":{"@type":"Answer","text":"Après votre réservation, vous recevez un email avec le contrat. Un clic pour lire, un clic pour signer. Votre exemplaire arrive instantanément. C'est la même technologie qu'utilisent les notaires et les banques en Europe. Aucun papier, aucun déplacement, aucune imprimante."}}]}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Accueil","item":"https://www.locair.fr/"}]}</script>
@@ -1904,6 +1925,9 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
       <button class="hdb-opt"    data-days="14" onclick="heroSelectDur(this)" type="button" aria-checked="false">14 nuits <span>190 €</span></button>
       <button class="hdb-opt"    data-days="21" onclick="heroSelectDur(this)" type="button" aria-checked="false">21 nuits <span>225 €</span></button>
     </div>
+    <p style="text-align:center;margin-top:6px;font-size:12px">
+      <button type="button" onclick="openModal(7,'extend')" style="background:none;border:none;color:rgba(255,255,255,.55);cursor:pointer;font-size:12px;text-decoration:underline;font-family:inherit;padding:0">Prolonger une location existante →</button>
+    </p>
     <p class="hero-friction-bar">Zéro dépôt &nbsp;·&nbsp; Livraison + installation incluses &nbsp;·&nbsp; Annulation gratuite avant livraison</p>
     <p id="hero-smart-line" style="display:none;font-size:12px;text-align:center;margin-top:10px;font-weight:500;letter-spacing:.02em"></p>
   </div>
@@ -2483,8 +2507,32 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <span class="mrp-price" id="mrp-price">129€</span>
       </div>
 
+      <!-- ÉTAPE 0 — CHOIX -->
+      <div class="step-panel active" id="s0">
+        <div class="sp-head" style="padding-bottom:0">
+          <h3 class="sp-title">Que souhaitez-vous faire ?</h3>
+        </div>
+        <div class="choice-grid">
+          <button class="choice-card" onclick="chooseFlow('new')" type="button" aria-label="Nouvelle réservation">
+            <div class="choice-ico">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M9 10l2 2 4-4"/></svg>
+            </div>
+            <p class="choice-title">Nouvelle<br>réservation</p>
+            <p class="choice-desc">Louer un climatiseur — livraison dès demain.</p>
+          </button>
+          <button class="choice-card" onclick="chooseFlow('extend')" type="button" aria-label="Prolonger ma location">
+            <div class="choice-ico">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/><line x1="12" y1="2" x2="12" y2="4"/></svg>
+            </div>
+            <span class="choice-badge">Clients Loc'Air</span>
+            <p class="choice-title">Prolonger<br>ma location</p>
+            <p class="choice-desc">Vous avez déjà un climatiseur — ajouter des jours.</p>
+          </button>
+        </div>
+      </div>
+
       <!-- ÉTAPE 1 — Adresse -->
-      <div class="step-panel active" id="s1">
+      <div class="step-panel" id="s1">
         <div class="sp-head">
           <h3 class="sp-title">Où livrons-nous ?</h3>
           <p class="sp-sub">Entrez votre adresse — si vous réservez avant 18h, livraison <strong>demain</strong>.</p>
@@ -2954,6 +3002,105 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         </div>
       </div>
 
+      <!-- ══ PROLONGATION — ÉTAPE P1 : IDENTIFICATION ══ -->
+      <div class="step-panel" id="sp1">
+        <div class="sp-head">
+          <h3 class="sp-title">Votre location en cours</h3>
+          <p class="sp-sub">Renseignez vos coordonnées — nous retrouvons votre dossier et préparons la prolongation.</p>
+        </div>
+        <div class="flds">
+          <div class="fld-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="fld">
+              <label for="pe-prenom">Prénom<span class="req">*</span></label>
+              <input id="pe-prenom" type="text" autocomplete="given-name" placeholder="Ex. Marie" required/>
+            </div>
+            <div class="fld">
+              <label for="pe-nom">Nom<span class="req">*</span></label>
+              <input id="pe-nom" type="text" autocomplete="family-name" placeholder="Ex. Dupont" required/>
+            </div>
+          </div>
+          <div class="fld">
+            <label for="pe-email">Email<span class="req">*</span></label>
+            <input id="pe-email" type="email" autocomplete="email" placeholder="votre@email.com" required/>
+          </div>
+          <div class="fld">
+            <label for="pe-tel">Téléphone<span class="req">*</span></label>
+            <input id="pe-tel" type="tel" autocomplete="tel" placeholder="06 XX XX XX XX" required/>
+          </div>
+          <div class="fld">
+            <label for="pe-addr">Adresse de livraison d'origine</label>
+            <input id="pe-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="street-address"/>
+            <p style="font-size:11px;color:var(--grey2);margin-top:4px">Facultatif — aide à retrouver votre dossier plus vite</p>
+          </div>
+        </div>
+        <div class="modal-nav" style="margin:8px 24px 20px">
+          <button class="btn-back" onclick="goTo(0,true)" type="button">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Retour
+          </button>
+          <button class="btn-next" onclick="goProlongStep(2)" type="button">Choisir la durée →</button>
+        </div>
+      </div>
+
+      <!-- ══ PROLONGATION — ÉTAPE P2 : DURÉE ══ -->
+      <div class="step-panel" id="sp2">
+        <div class="sp-head">
+          <h3 class="sp-title">Combien de jours de plus ?</h3>
+          <p class="sp-sub">Choisissez la durée supplémentaire souhaitée.</p>
+        </div>
+        <div class="prolong-dur-btns" role="radiogroup" aria-label="Durée supplémentaire">
+          <button class="pdb-opt on" data-days="7"  onclick="selectProlongDur(this)" type="button">7 jours</button>
+          <button class="pdb-opt"    data-days="14" onclick="selectProlongDur(this)" type="button">14 jours</button>
+          <button class="pdb-opt"    data-days="21" onclick="selectProlongDur(this)" type="button">21 jours</button>
+          <button class="pdb-opt"    data-days="30" onclick="selectProlongDur(this)" type="button">30 jours</button>
+        </div>
+        <div class="prolong-price-box">
+          <div>
+            <span class="pp-days" id="pp-days">7</span><span class="pp-unit">jours supplémentaires</span>
+          </div>
+          <div class="pp-total" id="pp-total">110 €</div>
+          <div class="pp-rate" id="pp-rate">Installation déjà effectuée — tarif hors frais de mise en service</div>
+        </div>
+        <p style="font-size:11px;color:var(--grey2);text-align:center;margin:0 24px 16px;line-height:1.5">Le tarif de prolongation est calculé sans les frais d'installation (déjà inclus dans votre réservation initiale).</p>
+        <div class="modal-nav" style="margin:8px 24px 20px">
+          <button class="btn-back" onclick="goProlongStep(1)" type="button">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Identification
+          </button>
+          <button class="btn-next" onclick="goProlongStep(3)" type="button">Confirmer →</button>
+        </div>
+      </div>
+
+      <!-- ══ PROLONGATION — ÉTAPE P3 : CONFIRMATION ══ -->
+      <div class="step-panel" id="sp3">
+        <div class="sp-head">
+          <h3 class="sp-title">Confirmer la prolongation</h3>
+          <p class="sp-sub">Notre équipe vous contacte sous 2h pour valider et organiser la suite.</p>
+        </div>
+        <div id="prolong-recap-box" style="background:var(--blue-lt);border-radius:14px;padding:20px 24px;margin:0 24px 20px;font-size:14px;line-height:1.8"></div>
+        <div style="padding:0 24px">
+          <div class="rgpd-row">
+            <input type="checkbox" id="pe-cgv" onchange="document.getElementById('prolong-sbtn').disabled=!this.checked"/>
+            <label for="pe-cgv">J'accepte les <a href="/cgv" style="color:var(--blue);text-decoration:underline;font-size:11px">conditions générales de vente</a>.</label>
+          </div>
+          <button class="btn-pay" id="prolong-sbtn" onclick="submitProlongation()" type="button" disabled style="margin-top:16px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <span id="prolong-sbtn-lbl">Demander la prolongation</span>
+          </button>
+          <p class="sbtn-hint" id="prolong-hint" style="display:none">☝️ Cochez la case ci-dessus pour confirmer</p>
+          <p class="pay-sub">Pas de paiement immédiat — nous vous rappelons pour confirmer et encaisser.</p>
+          <p id="prolong-error" role="alert" style="display:none;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;font-size:13px;text-align:center;margin-top:12px">
+            Problème de connexion. Appelez-nous au <a href="tel:0663798756" style="color:#b91c1c;font-weight:600">06.63.79.87.56</a>.
+          </p>
+        </div>
+        <div class="modal-nav" style="margin:16px 24px 20px">
+          <button class="btn-back" onclick="goProlongStep(2)" type="button">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+            Durée
+          </button>
+        </div>
+      </div>
+
       <!-- SUCCESS — Payer -->
       <div class="modal-success" id="msuccess-pay">
         <div class="s-ico" style="background:#dcfce7"><svg viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
@@ -2995,6 +3142,15 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <h2 class="s-h">Demande reçue</h2>
         <p class="s-p" id="s-msg-call">Notre équipe vous rappelle dans la journée (8h–20h, 7j/7).</p>
         <button class="s-close" onclick="closeModal()" type="button">Retour au site</button>
+      </div>
+
+      <!-- SUCCESS — Prolongation -->
+      <div class="modal-success" id="msuccess-prolong">
+        <div class="s-ico" style="background:#dbeafe"><svg viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <h3 class="s-title" style="margin-top:20px">Demande envoyée !</h3>
+        <p class="s-sub">Notre équipe vous rappelle sous 2 heures pour confirmer votre prolongation et organiser le paiement.</p>
+        <a href="tel:0663798756" class="s-tel" style="display:block;text-align:center;margin:20px 24px 8px;padding:14px;background:var(--blue);color:#fff;border-radius:12px;text-decoration:none;font-weight:600">Appeler maintenant → 06.63.79.87.56</a>
+        <button class="s-close" onclick="closeModal()" type="button" style="margin-top:12px">Retour au site</button>
       </div>
 
     </div><!-- /modal-body -->
@@ -3152,23 +3308,28 @@ document.addEventListener('click',e=>{
   }
 });
 
-function openModal(dur){
+function openModal(dur, flowType){
   window.dataLayer=window.dataLayer||[];
-  dataLayer.push({event:'open_booking_modal'});
+  dataLayer.push({event:'open_booking_modal',flow:flowType||'choice'});
   _lastFocused=document.activeElement;
   document.querySelectorAll('[aria-haspopup="dialog"]').forEach(b=>b.setAttribute('aria-expanded','true'));
   updateDuration(parseInt(dur)||7,true);
-  // Réafficher la nav si elle était cachée
   if(navEl){navEl.classList.remove('hidden');_navHidden=false;}
   document.getElementById('overlay').classList.add('open');
   document.body.style.overflow='hidden';
-  goTo(1,true);
   const modal=document.getElementById('modal');
-  if(modal){trapFocus(modal);setTimeout(()=>{const f=document.getElementById('f-addr');if(f)f.focus();},100);}
-  requestAnimationFrame(()=>{
-    const h=document.getElementById('addr-init')?.value.trim();
-    if(h){const f=document.getElementById('f-addr');if(f&&!f.value)f.value=h;}
-  });
+  if(modal)trapFocus(modal);
+  if(flowType==='extend'){
+    chooseFlow('extend');
+  } else if(flowType==='new'){
+    chooseFlow('new');
+    requestAnimationFrame(()=>{
+      const h=document.getElementById('addr-init')?.value.trim();
+      if(h){const f=document.getElementById('f-addr');if(f&&!f.value)f.value=h;}
+    });
+  } else {
+    goTo(0,true);
+  }
 }
 let _lastFocused=null;
 function closeModal(){
@@ -3178,6 +3339,18 @@ function closeModal(){
   document.title="Location climatiseur Nice · Livraison sous 24h · Zéro dépôt | Loc'Air";
   if(_trapAbort){_trapAbort.abort();_trapAbort=null;}
   curStep=1;
+  _currentFlow='new';
+  _prolongDays=7;
+  document.querySelector('.stepper')?.classList.remove('stepper-hidden');
+  const mobProg=document.getElementById('mob-progress');
+  if(mobProg)mobProg.style.removeProperty('display');
+  // Reset prolongation form fields
+  ['pe-prenom','pe-nom','pe-email','pe-tel','pe-addr'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  document.querySelectorAll('.pdb-opt').forEach((b,i)=>{b.classList.toggle('on',i===0);});
+  _prolongDays=7;
+  const pecgv=document.getElementById('pe-cgv');if(pecgv)pecgv.checked=false;
   if(_lastFocused)_lastFocused.focus();
   // reset success timeline
   document.querySelectorAll('#success-timeline .stl-item').forEach(el=>el.classList.remove('stl-in'));
@@ -3201,6 +3374,24 @@ const META={
 };
 
 function goTo(n,silent){
+  if(n===0){
+    document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active','bwd'));
+    document.querySelectorAll('.modal-success').forEach(s=>s.classList.remove('show'));
+    document.getElementById('s0')?.classList.add('active');
+    document.querySelector('.stepper')?.classList.add('stepper-hidden');
+    document.getElementById('mob-progress')?.style.setProperty('display','none');
+    document.getElementById('modal-recap-pill')?.setAttribute('aria-hidden','true');
+    document.getElementById('ms-title')?.style.setProperty('display','none');
+    document.querySelector('.ms-title')?.style.setProperty('display','none');
+    curStep=0;
+    document.title='Réservation | Loc\'Air';
+    const mb=document.getElementById('modal-body');if(mb)mb.scrollTop=0;
+    return;
+  }
+  // restore stepper for regular steps
+  document.querySelector('.stepper')?.classList.remove('stepper-hidden');
+  document.getElementById('mob-progress')?.style.removeProperty('display');
+  document.querySelector('.ms-title') && (document.querySelector('.ms-title').style.display='');
   if(!silent&&n>curStep){
     // Validate all intermediate steps between curStep and n (exclusive)
     for(let s=curStep;s<n;s++){
