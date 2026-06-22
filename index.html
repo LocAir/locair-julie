@@ -1084,7 +1084,7 @@ body{
 }
 .modal-close:active{transform:scale(.9)}
 .modal-close:hover{background:var(--rule)}
-.sp-head{padding:32px 24px 12px;text-align:center}
+.sp-head{padding:32px 60px 12px 24px;text-align:center}
 .sp-title{font-family:var(--disp);font-size:clamp(28px,5.5vw,38px);font-weight:300;color:var(--blue);line-height:1.15;letter-spacing:-.03em;margin-bottom:6px;font-style:italic}
 .sp-sub{font-size:12.5px;color:var(--grey2);font-weight:400;margin-bottom:16px}
 .step-panel{display:none;padding:0 24px 24px}
@@ -1119,7 +1119,7 @@ body{
   .step-conn{height:2px;width:auto;flex:1;margin:0;align-self:center}
   .step-dot{width:24px;height:24px;font-size:10px}
   .modal-body{border-radius:0}
-  .sp-head{padding:20px 18px 8px}
+  .sp-head{padding:20px 62px 8px 18px}
   .step-panel{padding:0 18px 20px}
 }
 @media(max-width:540px){.modal-sidebar{display:none}}
@@ -4304,7 +4304,7 @@ function buildRecap(){
       pickupDateStr=pDay+'/'+pMon+'/'+pd.getUTCFullYear();
     }
   }
-  const creneauLiv=document.querySelector('#creneau-liv-group .cren-card.on,.creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h';
+  const creneauLiv=document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h';
   const creneauRecup=document.querySelector('#creneau-recup-group .cren-card.on,#creneau-recup-group .tpill.on')?.textContent.trim()||'14h–16h';
   const recupEl=document.getElementById('recap-date-recup');
   const isEN=_lang==='en';
@@ -4495,7 +4495,7 @@ function submitForm(btn,mode){
       // Build Google Calendar link
       (()=>{
         const rawDate=document.getElementById('f-date')?.value||'';
-        const cren=document.querySelector('#creneau-liv-group .tpill.on')?.textContent.trim()||'';
+        const cren=document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'';
         const addr=(document.getElementById('f-addr')?.value||'').trim();
         if(rawDate&&cren){
           const [y,m,d]=rawDate.split('-');
@@ -5865,11 +5865,11 @@ function cwBook(){
       return _origOpenModal.apply(this,args);
     };
   }
-  const _origGoStep=window.goStep;
-  if(typeof _origGoStep==='function'){
-    window.goStep=function(n,...rest){
+  const _origGoTo=window.goTo;
+  if(typeof _origGoTo==='function'){
+    window.goTo=function(n,...rest){
       (window.dataLayer=window.dataLayer||[]).push({event:'funnel_step',step:n});
-      return _origGoStep.apply(this,[n,...rest]);
+      return _origGoTo.apply(this,[n,...rest]);
     };
   }
 })();
