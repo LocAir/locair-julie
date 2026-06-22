@@ -1789,6 +1789,65 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   .equipe-photo-col{margin:0 auto}
 }
 
+/* ── KIT BADGE ── */
+.kit-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  background:rgba(197,169,108,.13);color:#7a5a10;
+  border:1px solid rgba(197,169,108,.45);
+  padding:7px 16px;border-radius:100px;
+  font-family:var(--body);font-size:12.5px;font-weight:500;
+  margin-top:10px;letter-spacing:.01em;
+}
+.kit-badge strong{font-weight:700;color:#5c4009}
+.kit-badge svg{color:#9a7220;flex-shrink:0}
+
+/* ── DURÉE LIBRE ── */
+.dur-free-toggle{
+  width:100%;margin-top:10px;
+  background:none;border:1.5px dashed rgba(27,58,95,.2);border-radius:14px;
+  padding:13px 18px;font-size:13px;font-family:var(--body);font-weight:400;
+  color:var(--grey);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:border-color .2s,color .2s,background .2s;letter-spacing:.01em;
+}
+.dur-free-toggle:hover{border-color:var(--blue);color:var(--blue);background:rgba(27,58,95,.02)}
+.dur-free-toggle.open{border-color:var(--blue);color:var(--blue);border-style:solid;background:rgba(27,58,95,.03)}
+.dur-free-wrap{
+  display:none;margin-top:10px;
+  background:var(--white);border:2px solid var(--rule);border-radius:14px;
+  padding:20px 18px 16px;
+}
+.dur-free-wrap.open{display:block}
+.dur-free-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.dur-free-stepper{
+  display:flex;align-items:center;
+  border:1.5px solid var(--rule);border-radius:var(--r);overflow:hidden;
+}
+.dur-free-btn{
+  width:42px;height:52px;background:none;border:none;
+  font-size:22px;font-weight:300;color:var(--blue);
+  cursor:pointer;font-family:var(--body);
+  transition:background .15s;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+.dur-free-btn:hover:not(:disabled){background:rgba(27,58,95,.06)}
+.dur-free-btn:disabled{color:var(--grey2);cursor:not-allowed}
+.dur-free-days{
+  padding:0 14px;text-align:center;
+  border-left:1px solid var(--rule);border-right:1px solid var(--rule);
+}
+.dur-free-days-num{font-family:var(--disp);font-size:32px;font-weight:700;color:var(--blue);line-height:1}
+.dur-free-days-unit{font-size:11px;color:var(--grey);font-family:var(--body);font-weight:500;letter-spacing:.04em;text-transform:uppercase;margin-top:2px}
+.dur-free-price{text-align:right}
+.dur-free-total{font-size:22px;font-weight:700;color:var(--blue);line-height:1}
+.dur-free-rate{font-size:11.5px;color:var(--grey);margin-top:4px}
+.dur-free-confirm{
+  width:100%;padding:13px;background:var(--blue);color:var(--bg);
+  border:none;border-radius:var(--r);font-size:14px;font-weight:600;
+  font-family:var(--body);cursor:pointer;transition:background .2s;letter-spacing:.02em;
+}
+.dur-free-confirm:hover{background:#142d4a}
+
 /* ── FORM UX IMPROVEMENTS ── */
 .modal-recap-pill{
   display:none;align-items:center;justify-content:center;
@@ -2700,6 +2759,29 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               </div>
 
             </div>
+            <!-- Durée libre -->
+            <button type="button" class="dur-free-toggle" id="dur-free-toggle" onclick="toggleDurFree()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Autre durée
+            </button>
+            <div class="dur-free-wrap" id="dur-free-wrap">
+              <div class="dur-free-row">
+                <div class="dur-free-stepper">
+                  <button type="button" class="dur-free-btn" id="dfb-minus" onclick="stepDurFree(-1)" aria-label="Moins">−</button>
+                  <div class="dur-free-days">
+                    <div class="dur-free-days-num" id="dfb-num">7</div>
+                    <div class="dur-free-days-unit">nuits</div>
+                  </div>
+                  <button type="button" class="dur-free-btn" id="dfb-plus" onclick="stepDurFree(1)" aria-label="Plus">+</button>
+                </div>
+                <div class="dur-free-price">
+                  <div class="dur-free-total" id="dfb-total">129 €</div>
+                  <div class="dur-free-rate" id="dfb-rate">18 €/nuit</div>
+                </div>
+              </div>
+              <button type="button" class="dur-free-confirm" onclick="confirmDurFree()">Confirmer — <span id="dfb-cta-label">7 nuits</span> →</button>
+            </div>
+
             <input type="hidden" id="f-dur" value="7"/>
           </div>
         </div>
@@ -2718,7 +2800,10 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
       <div class="step-panel" id="s3">
         <div class="sp-head">
           <h3 class="sp-title">Votre fenêtre ?</h3>
-          <p class="sp-sub" style="font-size:11px">Le kit d'installation est <strong>offert</strong> — le technicien adapte sur place.</p>
+          <div class="kit-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
+            Kit d'installation <strong>offert</strong>
+          </div>
         </div>
         <div class="flds">
           <p id="ouv-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:8px" role="alert">Veuillez sélectionner le type de fenêtre pour continuer.</p>
@@ -4369,7 +4454,7 @@ const LANG_MAP=[
   ['#s2 label','html','Choisissez votre durée<span class="req">*</span>','Choose your duration<span class="req">*</span>'],
 /* modal step 3 */
   ['#s3 .sp-title','text','Type de fenêtre','Window type'],
-  ['#s3 .sp-sub','html','Kit d\'installation <strong>offert</strong> · adapté à votre fenêtre par notre technicien.','Installation kit <strong>included free</strong> · fitted to your window by our technician.'],
+  ['#s3 .kit-badge strong','text','offert','included free'],
   ['.win-card:last-child .win-name','text','Je ne sais pas','Not sure'],
   ['.win-card:last-child .win-hint','text','Notre technicien vérifiera','Our technician will check'],
   /* modal step 4 */
@@ -4940,7 +5025,58 @@ function selectDurCard(card,days){
   card.setAttribute('aria-checked','true');
   updateDuration(days);
   updateModalRecapPill(2);
+  // Close free-duration panel if open
+  const dfw=document.getElementById('dur-free-wrap');
+  const dft=document.getElementById('dur-free-toggle');
+  if(dfw){dfw.classList.remove('open');}
+  if(dft){dft.classList.remove('open');}
   setTimeout(()=>goTo(3),480);
+}
+
+let _durFree=7;
+function toggleDurFree(){
+  const wrap=document.getElementById('dur-free-wrap');
+  const tog=document.getElementById('dur-free-toggle');
+  const opening=!wrap.classList.contains('open');
+  if(opening){
+    // Deselect preset cards (without triggering auto-advance)
+    document.querySelectorAll('.dur-card').forEach(c=>{c.classList.remove('on');c.setAttribute('aria-checked','false');});
+    _durFree=parseInt(document.getElementById('f-dur')?.value||'7')||7;
+    if(_durFree<7)_durFree=7;
+    _renderDurFree();
+    wrap.classList.add('open');
+    tog.classList.add('open');
+  } else {
+    wrap.classList.remove('open');
+    tog.classList.remove('open');
+    // Re-select matching card if exists, else keep custom
+    const prev=document.querySelector('.dur-card[data-days="'+_durFree+'"]');
+    if(prev){prev.classList.add('on');prev.setAttribute('aria-checked','true');}
+  }
+}
+function stepDurFree(delta){
+  _durFree=Math.max(7,_durFree+delta);
+  _renderDurFree();
+}
+function _renderDurFree(){
+  const d=_durFree;
+  const price=calcPrice(d);
+  const rate=Math.round(price/d);
+  const el=id=>document.getElementById(id);
+  if(el('dfb-num'))el('dfb-num').textContent=d;
+  if(el('dfb-total'))el('dfb-total').textContent=price+' €';
+  if(el('dfb-rate'))el('dfb-rate').textContent=rate+' €/nuit';
+  if(el('dfb-cta-label'))el('dfb-cta-label').textContent=d+' nuit'+(d>1?'s':'');
+  if(el('dfb-minus'))el('dfb-minus').disabled=(d<=7);
+}
+function confirmDurFree(){
+  updateDuration(_durFree);
+  updateModalRecapPill(2);
+  const wrap=document.getElementById('dur-free-wrap');
+  const tog=document.getElementById('dur-free-toggle');
+  if(wrap)wrap.classList.remove('open');
+  if(tog)tog.classList.remove('open');
+  setTimeout(()=>goTo(3),320);
 }
 
 (function addReviewTypes(){
