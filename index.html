@@ -1901,7 +1901,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   padding:0 14px;text-align:center;
   border-left:1px solid var(--rule);border-right:1px solid var(--rule);
 }
-.dur-free-days-num{font-family:var(--disp);font-size:32px;font-weight:700;color:var(--blue);line-height:1}
+.dur-free-days-num{font-family:var(--disp);font-size:32px;font-weight:700;color:var(--blue);line-height:1;width:64px;text-align:center;border:none;background:none;outline:none;padding:0;-moz-appearance:textfield}
+.dur-free-days-num::-webkit-outer-spin-button,.dur-free-days-num::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .dur-free-days-unit{font-size:11px;color:var(--grey);font-family:var(--body);font-weight:500;letter-spacing:.04em;text-transform:uppercase;margin-top:2px}
 .dur-free-price{text-align:right}
 .dur-free-total{font-size:22px;font-weight:700;color:var(--blue);line-height:1}
@@ -2983,7 +2984,9 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
                 <div class="dur-free-stepper">
                   <button type="button" class="dur-free-btn" id="dfb-minus" onclick="stepDurFree(-1)" aria-label="Moins">−</button>
                   <div class="dur-free-days">
-                    <div class="dur-free-days-num" id="dfb-num">7</div>
+                    <input class="dur-free-days-num" id="dfb-num" type="number" min="7" max="90" value="7" inputmode="numeric" aria-label="Nombre de nuits"
+                      oninput="setDurFreeInput(this)"
+                      onblur="if(!this.value||+this.value<7){this.value=7;setDurFreeInput(this);}"/>
                     <div class="dur-free-days-unit">nuits</div>
                   </div>
                   <button type="button" class="dur-free-btn" id="dfb-plus" onclick="stepDurFree(1)" aria-label="Plus">+</button>
@@ -5303,6 +5306,7 @@ function toggleDurFree(){
     _renderDurFree();
     wrap.classList.add('open');
     tog.classList.add('open');
+    setTimeout(()=>wrap.scrollIntoView({behavior:'smooth',block:'nearest'}),60);
   } else {
     wrap.classList.remove('open');
     tog.classList.remove('open');
@@ -5312,7 +5316,12 @@ function toggleDurFree(){
   }
 }
 function stepDurFree(delta){
-  _durFree=Math.max(7,_durFree+delta);
+  _durFree=Math.max(7,(_durFree||7)+delta);
+  _renderDurFree();
+}
+function setDurFreeInput(inp){
+  const v=parseInt(inp.value)||7;
+  _durFree=Math.max(7,v);
   _renderDurFree();
 }
 function _renderDurFree(){
@@ -5320,7 +5329,8 @@ function _renderDurFree(){
   const price=calcPrice(d);
   const rate=Math.round(price/d);
   const el=id=>document.getElementById(id);
-  if(el('dfb-num'))el('dfb-num').textContent=d;
+  const numEl=el('dfb-num');
+  if(numEl){if(numEl.tagName==='INPUT'){numEl.value=d;}else{numEl.textContent=d;}}
   if(el('dfb-total'))el('dfb-total').textContent=price+' €';
   if(el('dfb-rate'))el('dfb-rate').textContent=rate+' €/nuit';
   if(el('dfb-cta-label'))el('dfb-cta-label').textContent=d+' nuit'+(d>1?'s':'');
