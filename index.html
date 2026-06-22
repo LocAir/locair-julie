@@ -234,6 +234,50 @@ body{
 .lang-cur:hover{border-color:var(--blue);color:var(--blue)}
 .lang-cur svg{flex-shrink:0;transition:transform .2s}
 .lang-cur.open svg.chev{transform:rotate(180deg)}
+
+/* ── NAV HAMBURGER MENU ── */
+.nav-menu-wrap{position:relative}
+.nav-menu-btn{
+  width:40px;height:40px;border-radius:50%;
+  background:var(--bg);border:1.5px solid var(--rule);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4.5px;
+  cursor:pointer;transition:border-color .15s,background .15s;
+  flex-shrink:0;
+}
+.nav-menu-btn span{
+  display:block;width:16px;height:1.5px;
+  background:var(--black2);border-radius:2px;
+  transition:transform .22s,opacity .18s;
+  transform-origin:center;
+}
+.nav-menu-btn:hover{border-color:var(--blue);background:var(--blue-lt)}
+.nav-menu-btn.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.nav-menu-btn.open span:nth-child(2){opacity:0}
+.nav-menu-btn.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+.nav-menu-dd{
+  position:absolute;top:calc(100% + 10px);right:0;
+  background:var(--white);border:1px solid var(--rule);
+  border-radius:14px;padding:8px;min-width:210px;
+  box-shadow:0 8px 32px rgba(27,58,95,.12);
+  opacity:0;transform:translateY(-6px);pointer-events:none;
+  transition:opacity .16s,transform .16s;z-index:999;
+}
+.nav-menu-dd.open{opacity:1;transform:none;pointer-events:auto}
+.nav-menu-link{
+  display:block;padding:10px 14px;border-radius:8px;
+  font-size:13.5px;font-weight:500;color:var(--black2);
+  text-decoration:none;transition:background .12s,color .12s;
+}
+.nav-menu-link:hover{background:var(--bg);color:var(--blue)}
+.nav-menu-sep{height:1px;background:var(--rule);margin:6px 8px}
+.nav-menu-cta{
+  display:block;margin-top:2px;padding:10px 14px;
+  background:var(--blue);color:#fff!important;
+  border-radius:8px;text-align:center;
+  font-size:13px;font-weight:600;letter-spacing:.01em;
+  text-decoration:none;transition:background .15s;
+}
+.nav-menu-cta:hover{background:#243f6e}
 .lang-dd{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border-radius:14px;box-shadow:0 8px 32px rgba(0,0,0,.12),0 0 0 1px rgba(0,0,0,.06);min-width:156px;overflow:hidden;opacity:0;pointer-events:none;transform:translateY(-6px);transition:opacity .15s,transform .15s;z-index:1100}
 .lang-dd.open{opacity:1;pointer-events:auto;transform:translateY(0)}
 .lang-opt{display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;font-weight:500;color:var(--black2);cursor:pointer;transition:background .1s;border:none;background:none;width:100%;text-align:left;font-family:var(--body);line-height:1}
@@ -2085,6 +2129,20 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         </div>
       </div>
 
+      <div class="nav-menu-wrap">
+        <button class="nav-menu-btn" id="nav-menu-btn" type="button" onclick="toggleNavMenu()" aria-haspopup="true" aria-expanded="false" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+        <nav class="nav-menu-dd" id="nav-menu-dd" role="menu" aria-label="Navigation sections">
+          <a class="nav-menu-link" href="#comment-ca-marche" role="menuitem" onclick="closeNavMenu()">Comment ça marche</a>
+          <a class="nav-menu-link" href="#tarifs" role="menuitem" onclick="closeNavMenu()">Tarifs</a>
+          <a class="nav-menu-link" href="#avis" role="menuitem" onclick="closeNavMenu()">Avis clients</a>
+          <a class="nav-menu-link" href="#faq" role="menuitem" onclick="closeNavMenu()">FAQ</a>
+          <div class="nav-menu-sep" role="separator"></div>
+          <a class="nav-menu-cta" href="#" role="menuitem" onclick="openModal();closeNavMenu();return false">Réserver →</a>
+        </nav>
+      </div>
+
       <div class="lang-sw" id="lang-sw">
         <button class="lang-cur" id="lang-cur-btn" onclick="toggleLangMenu()" type="button" aria-haspopup="listbox" aria-expanded="false" aria-label="Langue / Language">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
@@ -2275,7 +2333,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 </section>
 
 <!-- AVIS -->
-<section class="reviews" aria-labelledby="reviews-title">
+<section class="reviews" id="avis" aria-labelledby="reviews-title">
   <div class="reviews-in">
     <div class="rev-head">
       <div>
@@ -2470,7 +2528,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 
 
 <!-- FAQ -->
-<section class="faq" aria-labelledby="faq-title">
+<section class="faq" id="faq" aria-labelledby="faq-title">
   <div class="faq-split">
     <!-- Colonne gauche — sticky CTA card -->
     <div class="faq-sticky">
@@ -3736,6 +3794,26 @@ function closeLangMenu(){
 document.addEventListener('click',e=>{
   const sw=document.getElementById('lang-sw');
   if(sw&&!sw.contains(e.target))closeLangMenu();
+});
+
+function toggleNavMenu(){
+  const btn=document.getElementById('nav-menu-btn');
+  const dd=document.getElementById('nav-menu-dd');
+  if(!btn||!dd)return;
+  const open=!dd.classList.contains('open');
+  dd.classList.toggle('open',open);
+  btn.classList.toggle('open',open);
+  btn.setAttribute('aria-expanded',String(open));
+}
+function closeNavMenu(){
+  const btn=document.getElementById('nav-menu-btn');
+  const dd=document.getElementById('nav-menu-dd');
+  if(btn){btn.classList.remove('open');btn.setAttribute('aria-expanded','false');}
+  if(dd)dd.classList.remove('open');
+}
+document.addEventListener('click',e=>{
+  const wrap=document.querySelector('.nav-menu-wrap');
+  if(wrap&&!wrap.contains(e.target))closeNavMenu();
 });
 
 function togglePhonePopover(btn){
