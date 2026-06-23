@@ -1970,10 +1970,18 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .choice-card{background:#fff;border:1.5px solid var(--rule);border-radius:16px;padding:20px 20px;text-align:center;cursor:pointer;width:100%;transition:border-color .15s,box-shadow .15s,transform .15s}
 .choice-card:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(27,58,95,.12);transform:translateY(-2px)}
 .choice-card.chosen{border-color:var(--blue);background:rgba(27,58,95,.04)}
+.choice-card.choice-primary{background:var(--blue);border-color:var(--blue)}
+.choice-card.choice-primary:hover{background:#142d4a;border-color:#142d4a;transform:translateY(-2px);box-shadow:0 4px 20px rgba(27,58,95,.35)}
+.choice-card.choice-primary .choice-ico{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.2)}
+.choice-card.choice-primary .choice-ico svg{stroke:#fff}
+.choice-card.choice-primary .choice-title{color:#fff}
+.choice-card.choice-primary .choice-desc{color:rgba(255,255,255,.72)}
+.choice-card.choice-primary .choice-price{color:rgba(255,255,255,.9);background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25)}
 .choice-ico{width:52px;height:52px;background:rgba(27,58,95,.07);border:1px solid rgba(27,58,95,.1);border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center}
 .choice-title{font-family:var(--disp);font-size:18px;font-weight:600;color:var(--black);margin-bottom:8px;text-decoration:none}
 #s0 .sp-title{font-style:normal}
 .choice-desc{font-size:13px;color:var(--grey);line-height:1.5}
+.choice-price{display:inline-block;margin-top:8px;font-size:11px;font-weight:700;color:var(--blue);background:rgba(27,58,95,.07);border:1px solid rgba(27,58,95,.12);border-radius:100px;padding:3px 10px;letter-spacing:.01em}
 .choice-badge{background:rgba(197,169,108,.12);color:#92630a;border:1px solid rgba(197,169,108,.35);border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.06em;padding:2px 8px;display:inline-block;margin-bottom:10px}
 /* ── PROLONGATION PANELS ── */
 .prolong-price-box{background:var(--blue-lt);border-radius:14px;padding:20px;margin:16px 24px;text-align:center}
@@ -2898,15 +2906,16 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
       <!-- ÉTAPE 0 — CHOIX -->
       <div class="step-panel active" id="s0">
         <div class="sp-head" style="padding-bottom:0">
-          <h3 class="sp-title">Bienvenue — que souhaitez-vous ?</h3>
+          <h3 class="sp-title">Que voulez-vous<br>faire ?</h3>
         </div>
         <div class="choice-grid">
-          <button class="choice-card" onclick="chooseFlow('new')" type="button" aria-label="Nouvelle réservation">
+          <button class="choice-card choice-primary" onclick="chooseFlow('new')" type="button" aria-label="Nouvelle réservation">
             <div class="choice-ico">
               <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M9 10l2 2 4-4"/></svg>
             </div>
             <p class="choice-title">Nouvelle<br>réservation</p>
-            <p class="choice-desc">Louer un climatiseur — livraison dès demain.</p>
+            <p class="choice-desc">Livraison demain · Kit complet inclus</p>
+            <span class="choice-price">À partir de 18 €/nuit</span>
           </button>
           <button class="choice-card" onclick="chooseFlow('extend')" type="button" aria-label="Prolonger ma location">
             <div class="choice-ico">
@@ -4095,7 +4104,17 @@ function openModal(dur, flowType){
       if(h){const f=document.getElementById('f-addr');if(f&&!f.value)f.value=h;}
     });
   } else {
-    goTo(0,true);
+    // Nouveaux visiteurs (pas de localStorage) → aller direct à la réservation
+    // Clients existants → afficher le choix prolongation/nouvelle résa
+    if(!localStorage.getItem('locair_client')){
+      chooseFlow('new');
+      requestAnimationFrame(()=>{
+        const h=document.getElementById('addr-init')?.value.trim();
+        if(h){const f=document.getElementById('f-addr');if(f&&!f.value)f.value=h;}
+      });
+    } else {
+      goTo(0,true);
+    }
   }
 }
 let _lastFocused=null;
