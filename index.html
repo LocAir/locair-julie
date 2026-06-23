@@ -2251,6 +2251,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
     </div>
   </nav></div>
 </header>
+<div class="ubar">Loc'Air · Nice · <strong>Depuis 2019</strong> &nbsp;·&nbsp; Installation incluse &nbsp;·&nbsp; 7j/7 · 8h–20h</div>
 
 <!-- HERO — plein écran, 1 seule action -->
 <main id="main-content">
@@ -3434,6 +3435,39 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           </div>
         </div>
 
+        <!-- PROFIL — facultatif -->
+        <div class="profil-bloc">
+          <p class="profil-ttl">Pour mieux vous aider <span class="profil-opt">— facultatif</span></p>
+          <div>
+            <label id="label-source" for="f-source" style="font-size:12px;font-weight:500;color:var(--black2);display:block;margin-bottom:6px">Comment nous avez-vous trouvé ?</label>
+            <select id="f-source" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:13px;font-family:var(--body);color:var(--black);background:#fff;outline:none;cursor:pointer">
+              <option value="">— Sélectionner</option>
+              <option value="Google">Google</option>
+              <option value="Instagram">Instagram</option>
+              <option value="Bouche-à-oreille">Bouche-à-oreille</option>
+              <option value="Vu dans la rue">Vu dans la rue</option>
+              <option value="Autre">Autre</option>
+            </select>
+          </div>
+          <div>
+            <p id="label-logement" style="font-size:12px;font-weight:500;color:var(--black2);margin-bottom:6px">Type de logement</p>
+            <div class="tpills" id="logement-group" role="radiogroup" aria-labelledby="label-logement">
+              <button type="button" class="tpill" onclick="tgl(this,'lgt')" role="radio" aria-checked="false">Studio</button>
+              <button type="button" class="tpill" onclick="tgl(this,'lgt')" role="radio" aria-checked="false">T2</button>
+              <button type="button" class="tpill" onclick="tgl(this,'lgt')" role="radio" aria-checked="false">T3/T4</button>
+              <button type="button" class="tpill" onclick="tgl(this,'lgt')" role="radio" aria-checked="false">Maison</button>
+            </div>
+          </div>
+          <div>
+            <p id="label-motif" style="font-size:12px;font-weight:500;color:var(--black2);margin-bottom:6px">Pourquoi vous louez ?</p>
+            <div class="tpills" id="motif-group" role="group" aria-labelledby="label-motif">
+              <button type="button" class="tpill motif-1" onclick="tglM(this)" role="checkbox" aria-pressed="false">Chaleur</button>
+              <button type="button" class="tpill motif-2" onclick="tglM(this)" role="checkbox" aria-pressed="false">Bébé / Santé</button>
+              <button type="button" class="tpill motif-3" onclick="tglM(this)" role="checkbox" aria-pressed="false">Airbnb / Location</button>
+              <button type="button" class="tpill motif-4" onclick="tglM(this)" role="checkbox" aria-pressed="false">Événement</button>
+            </div>
+          </div>
+        </div>
 
         <div class="modal-nav" style="margin:20px 24px 8px">
           <button class="btn-back" onclick="goTo(4)" type="button">
@@ -3789,48 +3823,9 @@ function updateDuration(days,silent){
   _durDays=days;
   const price=calcPrice(days);
   const rate=_baseRate(days);
-  const rateStr=rate.toFixed(2).replace('.',',');
   const discPct=Math.round((129/7-rate)/(129/7)*100);
-  const en=_lang==='en';
-  const isBest=days>=30;
 
-  const dv=document.getElementById('dur-days-val');
-  const dl=document.getElementById('dur-days-lbl');
-  const drv=document.getElementById('dur-rate-val');
-  const dtv=document.getElementById('dur-total-val');
-  const dst=document.getElementById('dur-saving-text');
-  const dm=document.getElementById('dur-minus');
-  const dsEl=document.getElementById('dur-saving');
-
-  if(!silent){
-    if(dv){dv.classList.add('bump');setTimeout(()=>dv.classList.remove('bump'),120);}
-    if(drv){drv.classList.add('bump');setTimeout(()=>drv.classList.remove('bump'),150);}
-    if(dtv){dtv.classList.add('bump');setTimeout(()=>dtv.classList.remove('bump'),150);}
-  }
-  if(dv)dv.textContent=days;
-  if(dl)dl.textContent=en?'DAYS':'JOURS';
-  if(drv){
-    drv.textContent=rateStr+(en?' €/day':' €/j');
-    drv.classList.toggle('best',isBest);
-  }
-  if(dtv)dtv.textContent=price+' €';
-  if(dm)dm.disabled=(days<=7);
-
-  if(dst&&dsEl){
-    dsEl.className='dur-saving';
-    if(isBest){
-      dst.className='';
-      dst.textContent=en?`Best rate — −${discPct}% vs base`:`Meilleur tarif — −${discPct}%`;
-    } else if(discPct>0){
-      dst.className='';
-      dst.textContent=en?`−${discPct}% vs base rate`:`−${discPct}% vs tarif de base`;
-    } else {
-      dst.className='dur-saving-neutral';
-      dst.textContent=en?'7-day minimum · One-time setup fee':'7 jours minimum · tarif de base';
-    }
-  }
   document.getElementById('f-dur').value=days;
-  updateTotal();
   updateDatePreview();
   if(!silent){
     window.dataLayer=window.dataLayer||[];
@@ -4283,16 +4278,6 @@ function highlight(ids){
   }
 }
 
-function updateTotal(){
-  const days=parseInt(document.getElementById('f-dur')?.value||'7');
-  const price=calcPrice(days);
-  const tv=document.getElementById('tw-val');
-  if(tv){
-    tv.textContent=price+' €';
-    tv.style.transform='scale(1.05)';
-    setTimeout(()=>tv.style.transform='',200);
-  }
-}
 
 function tgl(el,group){
   el.parentElement.querySelectorAll('.tpill,.cren-card').forEach(t=>{
