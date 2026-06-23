@@ -4116,6 +4116,13 @@ function closeModal(){
   document.querySelector('.stepper')?.classList.remove('stepper-hidden');
   const mobProg=document.getElementById('mob-progress');
   if(mobProg)mobProg.style.removeProperty('display');
+  // Reset all booking form fields
+  ['f-addr','f-etage','f-prenom','f-nom','f-tel','f-email'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  const fcgv=document.getElementById('f-cgv');if(fcgv)fcgv.checked=false;
+  const fmkt=document.getElementById('f-mkt');if(fmkt)fmkt.checked=false;
+  document.querySelectorAll('#asc-group .tpill,.tpill.on[role="radio"]').forEach(p=>{p.classList.remove('on');p.setAttribute('aria-checked','false');});
   // Reset prolongation form fields
   ['pe-prenom','pe-nom','pe-email','pe-tel','pe-addr'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
@@ -4181,9 +4188,9 @@ function goTo(n,silent){
       if(s===4){
         const date=document.getElementById('f-date')?.value;
         if(!date){document.getElementById('f-date-custom-wrap')?.classList.add('show');highlight(['f-date']);goTo(4,true);return;}
-        const _n=new Date();
-        const today=[_n.getFullYear(),String(_n.getMonth()+1).padStart(2,'0'),String(_n.getDate()).padStart(2,'0')].join('-');
-        if(date<today){document.getElementById('f-date-custom-wrap')?.classList.add('show');highlight(['f-date']);goTo(4,true);return;}
+        const _n=new Date();_n.setDate(_n.getDate()+1);
+        const tomorrow=[_n.getFullYear(),String(_n.getMonth()+1).padStart(2,'0'),String(_n.getDate()).padStart(2,'0')].join('-');
+        if(date<tomorrow){document.getElementById('f-date-custom-wrap')?.classList.add('show');highlight(['f-date']);goTo(4,true);return;}
       }
       if(s===5){
         const miss=['f-prenom','f-nom','f-tel','f-email'].filter(id=>!document.getElementById(id)?.value.trim());
@@ -4483,7 +4490,8 @@ async function submitCancellation(){
   const btn=document.getElementById('cancel-sbtn');
   if(btn){btn.disabled=true;btn.textContent='Envoi…';}
   try{
-    await fetch('https://formspree.io/f/mvzyngoy',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({type:'annulation',dossier:ref,email,_subject:'Annulation — '+ref})});
+    const r=await fetch('https://formspree.io/f/mvzyngoy',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({type:'annulation',dossier:ref,email,_subject:'Annulation — '+ref})});
+    if(!r.ok)throw new Error('http '+r.status);
     const msg=document.getElementById('cancel-msg');if(msg)msg.style.display='block';
     if(btn)btn.style.display='none';
   }catch(e){
@@ -5748,6 +5756,7 @@ function submitAlerte(e){
     headers:{'Content-Type':'application/json','Accept':'application/json'},
     body:JSON.stringify({email,_type:'alerte-canicule',_subject:'Alerte canicule — inscription'})
   }).then(r=>{
+    if(!r.ok)throw new Error('http '+r.status);
     const ok=document.querySelector('.ec-ok');
     const form=document.getElementById('ec-form');
     if(ok){ok.style.display='block';ok.textContent='✓ Inscrit ! On vous prévient dès la prochaine vague de chaleur.';}
