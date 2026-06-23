@@ -3766,13 +3766,17 @@ function trapFocus(modal){
   },{signal:_trapAbort.signal});
 }
 
-// Tarif dégressif quadratique : 17€/j (7 jours) → 9€/j (30 jours).
-// rate(n) = 9 + 8 × ((30−n)/23)²  — courbe convexe, prix toujours croissant.
+/// Tarif dégressif par paliers — interpolation linéaire entre ancres.
+// Ancres exactes : 7n→129€, 10n→160€, 14n→190€, 21n→225€, 30n→270€.
+const _PRICE_ANCHORS=[[7,129/7],[10,16],[14,190/14],[21,225/21],[30,9]];
 function _baseRate(days){
-  if(days<=7)return 17;
+  if(days<=7)return 129/7;
   if(days>=30)return 9;
-  const t=(30-days)/23;
-  return 9+8*t*t;
+  for(let i=0;i<_PRICE_ANCHORS.length-1;i++){
+    const[d1,r1]=_PRICE_ANCHORS[i],[d2,r2]=_PRICE_ANCHORS[i+1];
+    if(days<=d2)return r1+(r2-r1)*(days-d1)/(d2-d1);
+  }
+  return 9;
 }
 const INSTALL_FEE=25;
 let _techInstall=true; // true = technicien 25€, false = auto-installation gratuite
@@ -3786,7 +3790,7 @@ function updateDuration(days,silent){
   const price=calcPrice(days);
   const rate=_baseRate(days);
   const rateStr=rate.toFixed(2).replace('.',',');
-  const discPct=Math.round((17-rate)/17*100);
+  const discPct=Math.round((129/7-rate)/(129/7)*100);
   const en=_lang==='en';
   const isBest=days>=30;
 
@@ -4085,6 +4089,8 @@ function openModal(dur, flowType){
   document.body.style.overflow='hidden';
   const modal=document.getElementById('modal');
   if(modal)trapFocus(modal);
+  // Escape key closes modal (WCAG 2.1 SC 2.1.2)
+  modal.addEventListener('keydown',function _esc(e){if(e.key==='Escape'){closeModal();modal.removeEventListener('keydown',_esc);}},{once:false});
   if(flowType==='extend'){
     chooseFlow('extend');
   } else if(flowType==='new'){
@@ -4104,7 +4110,7 @@ function closeModal(){
   document.querySelectorAll('[aria-haspopup="dialog"]').forEach(b=>b.setAttribute('aria-expanded','false'));
   document.title="Location climatiseur Nice · Livraison sous 24h · Zéro dépôt | Loc'Air";
   if(_trapAbort){_trapAbort.abort();_trapAbort=null;}
-  curStep=1;
+  curStep=0;
   _currentFlow='new';
   _prolongDays=1;
   document.querySelector('.stepper')?.classList.remove('stepper-hidden');
@@ -4454,7 +4460,7 @@ function animateSuccessTimeline(){
       const [y,m,d]=fdate.split('-');
       const DAYS=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
       const MONTHS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
-      const dt=new Date(+y,+m-1,+d);
+      const dt=new Date(Date.UTC(+y,+m-1,+d));
       const cren=document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'';
       const crenTxt=cren?' entre '+cren:'';
       dd.textContent='Livraison le '+DAYS[dt.getDay()]+' '+d+' '+MONTHS[dt.getMonth()]+crenTxt+' · Technicien appelle 30 min avant';
@@ -4488,7 +4494,7 @@ function submitForm(btn,mode){
   const missCoords=['f-prenom','f-nom','f-tel','f-email'].filter(id=>!document.getElementById(id)?.value.trim());
   if(missCoords.length){highlight(missCoords);return;}
   const cgv=document.getElementById('f-cgv');
-  const rgpd=document.getElementById('f-cgv'); // synced via syncLegalCheck
+  const rgpd=document.getElementById('f-rgpd'); // synced via syncLegalCheck
   const highlightCb=(el,lblFor)=>{
     if(!el)return;
     el.style.outline='2px solid #c0392b';el.style.boxShadow='0 0 0 3px rgba(192,57,43,.15)';el.setAttribute('aria-invalid','true');
@@ -4536,7 +4542,7 @@ function submitForm(btn,mode){
       const s=document.getElementById('msuccess-pay');if(s){s.classList.add('show');s.focus();}
       animateSuccessTimeline();
       const msg=document.getElementById('s-msg-pay');
-      if(msg)msg.innerHTML=(prenom?'Merci '+prenom+' ! ':'')+"Tout est en ordre. Voici ce qui se passe maintenant.";
+      if(msg)msg.innerHTML=(prenom?'Merci '+escHtml(prenom)+' ! ':'')+"Tout est en ordre. Voici ce qui se passe maintenant.";
       const refEl=document.getElementById('s-ref');
       if(refEl)refEl.textContent='Dossier '+_orderRef;
       const cancelRef=document.getElementById('cancel-ref');if(cancelRef)cancelRef.value=_orderRef;
@@ -4550,8 +4556,9 @@ function submitForm(btn,mode){
         const addr=(document.getElementById('f-addr')?.value||'').trim();
         if(rawDate&&cren){
           const [y,m,d]=rawDate.split('-');
-          const startH=parseInt(cren.split('–')[0])||8;
-          const endH=parseInt(cren.split('–')[1])||10;
+          const _crenParts=cren.split('–');
+          const startH=parseInt(_crenParts[0])||8;
+          const endH=parseInt(_crenParts[1]||'10')||10;
           const pad=n=>String(n).padStart(2,'0');
           const dtStart=y+m+d+'T'+pad(startH)+'0000';
           const dtEnd=y+m+d+'T'+pad(endH)+'0000';
@@ -4566,7 +4573,7 @@ function submitForm(btn,mode){
     }else{
       const s=document.getElementById('msuccess-call');if(s){s.classList.add('show');s.focus();}
       const msg=document.getElementById('s-msg-call');
-      const greet=prenom?'Merci '+prenom+' !':'Merci !';
+      const greet=prenom?'Merci '+escHtml(prenom)+' !':'Merci !';
       if(msg)msg.innerHTML=greet+" L'\xE9quipe Loc'Air vous rappelle dans la journ\xE9e (8h–20h, 7j/7).";
     }
   }
@@ -4607,8 +4614,8 @@ function submitForm(btn,mode){
   if(ubar)ubar.after(bar);
   // Pré-remplir le modal à l'ouverture
   const _origOpen=window.openModal;
-  window.openModal=function(dur){
-    _origOpen(dur);
+  window.openModal=function(...args){
+    _origOpen(...args);
     setTimeout(()=>{
       const fp=document.getElementById('f-prenom');const fn=document.getElementById('f-nom');const fe=document.getElementById('f-email');const ft=document.getElementById('f-tel');
       if(fp&&!fp.value&&prev.prenom)fp.value=prev.prenom;
@@ -4637,7 +4644,7 @@ function updateHeroSim(days){
   if(el)el.textContent=price+'€';
   if(elN)elN.textContent='pour '+days+' nuit'+(days>1?'s':'');
   const rate=_baseRate(days);
-  const disc=Math.round((17-rate)/17*100);
+  const disc=Math.round((129/7-rate)/(129/7)*100);
   if(elD)elD.textContent=disc>0?'soit '+rate.toFixed(0)+'€/nuit — économie de '+disc+'%':'Kit fourni · Récupération incluse';
   // sync chips
   document.querySelectorAll('.hps-chip').forEach(c=>{
@@ -4768,7 +4775,7 @@ const LANG_MAP=[
   ['.reviews .sec-eye','text','Avis clients','Customer reviews'],
   ['#reviews-title','html','Ils ont loué.<br><em>Voici ce qu\'ils en disent.</em>','They rented.<br><em>Here\'s what they say.</em>'],
   ['.score-lbl','text','Avis vérifiés Google','Verified Google reviews'],
-  ['.rs-label','text','18 avis Google vérifiés','13 verified Google reviews'],
+  ['.rs-label','text','18 avis Google vérifiés','18 verified Google reviews'],
   ['.rs-link','text','Voir sur Google →','View on Google →'],
   /* pourqui */
   ['.pourqui .sec-eye','text','Pour qui ?','Who is it for?'],
@@ -4789,6 +4796,7 @@ const LANG_MAP=[
   /* cta final */
   ['#fcta-title','html','L\'air frais en 24h.<br><em>Sans dépôt. Sans surprise.</em>','Fresh air in 24h.<br><em>No deposit. No surprises.</em>'],
   ['.fcta .btn-blue','text','Réserver maintenant','Book now'],
+  ['.anchor-compare','text','La moitié de nos clients prolongent — tarif jusqu\'à 9 €/nuit · Paiement à la livraison · Annulation gratuite','Half our customers extend — rates from €9/night · Pay on delivery · Free cancellation'],
   ['.fcta-in > p:first-of-type','text','⭐⭐⭐⭐⭐ · Note 4,8/5 sur Google · Livraison garantie ou remboursé','⭐⭐⭐⭐⭐ · 4.8/5 on Google · Delivery guaranteed or refunded'],
   /* footer col titles */
   ['.footer-col-title:nth-of-type(1)','text','Navigation','Navigation'],
@@ -4909,7 +4917,7 @@ const LANG_SEQ=[
     ['2 minutes en ligne','On arrive le lendemain','Installation & mise en service','Récupération offerte'],
     ['2 minutes online','We arrive next day','Setup & commissioning','Free pickup']],
   ['.step-d','text',
-    ['Adresse, dates, type de fenêtre. Confirmation par email immédiate.','Créneau de 2h · 8h–20h · Technicien avec tout le matériel.','20 à 30 minutes. Appareil testé devant vous avant le départ.','À la date convenue, on récupère l\'appareil. Vous n\'avez rien à faire.'],
+    ['Adresse, dates, type de fenêtre. Confirmation par email immédiate.','Créneau de 2h · 8h–20h · Technicien avec tout le matériel.','20 à 30 minutes. Appareil testé devant vous. Il vous explique les réglages en 2 min.','À la date convenue, on récupère l\'appareil. Vous n\'avez rien à faire.'],
     ['Address, dates, window type. Instant email confirmation.','2h time slot · 8am–8pm · Technician with all equipment.','20–30 minutes. Device tested before the technician leaves.','On the agreed date, we collect the unit. Nothing to do on your end.']],
   ['.pq-title','text',
     ['Particuliers & familles','Télétravailleurs','Pros, bureaux & commerces','Locations saisonnières','Événements & réceptions','Seniors & personnes fragiles'],
@@ -4951,8 +4959,8 @@ const LANG_SEQ=[
      'Protect vulnerable loved ones from heat peaks. Fast delivery and setup — no need for them to travel.']],
   /* FAQ answers */
   ['.fi-a','html',
-    ['Notre technicien sonne à votre porte avec l\'appareil et tout le matériel. Il pose le kit sur votre fenêtre, branche le climatiseur, vérifie que ça refroidit bien — et vous explique les réglages en 2 minutes. De la sonnette à l\'air frais : 20 à 30 minutes. Vous n\'avez rien à préparer, rien à acheter.',
-     '7 jours minimum — c\'est la seule règle. En dessous, le déplacement du technicien n\'est pas rentable pour vous ni pour nous. Au-delà, vous choisissez : 8, 10, 14, 21 jours ou plus. Le tarif varie selon la durée et la période — obtenez votre devis en 30 secondes via le formulaire. L\'installation est facturée une seule fois. La récupération est incluse.',
+    ['7 jours minimum — c\'est la seule règle. En dessous, le déplacement du technicien n\'est pas rentable pour vous ni pour nous. Au-delà, vous choisissez : 8, 10, 14, 21 jours ou plus. Le tarif varie selon la durée et la période — obtenez votre devis en 30 secondes via le formulaire. L\'installation est facturée une seule fois. La récupération est incluse.',
+     'Notre technicien sonne à votre porte avec l\'appareil et tout le matériel. Il pose le kit sur votre fenêtre, branche le climatiseur, vérifie que ça refroidit bien — et vous explique les réglages en 2 minutes. De la sonnette à l\'air frais : 20 à 30 minutes. Vous n\'avez rien à préparer, rien à acheter.',
      'Non. Aucun chèque de caution, aucune empreinte bancaire, aucune somme bloquée. Vous payez le montant de la location — rien de plus. On croit que la confiance ça se mérite, pas ça s\'exige.',
      'Vous payez à la livraison, directement au technicien — par carte ou en espèces. Aucun prépaiement en ligne, aucune empreinte bancaire. Le montant exact est confirmé dans votre email de réservation avant la livraison.',
      '<span data-c="zoneFaq">Toute la ville de Nice : Centre, Promenade des Anglais, Vieux-Nice, Cimiez, Libération, Magnan, Riquier, Caucade, Saint-Isidore, Moulins…</span> Si vous habitez <span data-c="name">Nice</span>, on livre. Pour Cannes, Antibes, Menton ou Villefranche — envoyez-nous votre adresse sur WhatsApp, on vous répond rapidement.',
@@ -4962,9 +4970,11 @@ const LANG_SEQ=[
      'C\'est même la fenêtre la plus simple pour nous. En position inclinée, la gaine passe dans l\'entrebâillement sans forcer. Le technicien apporte le joint adapté et l\'installe lui-même. Vous ne touchez à rien, vous n\'achetez rien. Si vous avez un doute, envoyez-nous une photo de votre fenêtre sur WhatsApp — on vous confirme avant même de réserver.',
      'Oui. Si vous annulez avant la livraison, vous êtes remboursé intégralement. Sans condition, sans délai de traitement absurde. Vous lisez exactement les termes dans le contrat avant de signer — rien n\'est dissimulé dans les petites lignes.',
      'Vous appelez, on arrive dans les 4 heures. Si on ne peut pas réparer sur place, on remplace l\'appareil ou on rembourse les jours restants. Vous ne perdez jamais votre argent sur un appareil en panne — c\'est écrit dans le contrat que vous signez.',
-     'Oui — et c\'est même la moitié de nos clients qui prolongent. Un SMS ou un appel suffit. On vérifie la disponibilité et on prolonge le contrat en 5 minutes. Le tarif de prolongation est communiqué lors de votre demande selon la disponibilité. Pas de surprise.'],
-    ['Our technician arrives at your door with the unit and all equipment. He fits the kit on your window, connects the AC, checks it\'s cooling properly — and walks you through the settings in 2 minutes. From doorbell to cool air: 20–30 minutes. Nothing to prepare, nothing to buy.',
-     '7 days minimum — that\'s the only rule. Below that, the technician\'s visit isn\'t worthwhile for either of us. Beyond that, you choose: 8, 10, 14, 21 days or more. Pricing varies by duration and period — get your quote in 30 seconds via the form. Installation is charged once. Collection is included.',
+     'Oui — et c\'est même la moitié de nos clients qui prolongent. Un SMS ou un appel suffit. On vérifie la disponibilité et on prolonge le contrat en 5 minutes. Le tarif de prolongation est communiqué lors de votre demande selon la disponibilité. Pas de surprise.',
+     'Le Rowenta RWAC10KA émet environ 52 dB en mode silencieux — soit le bruit d\'une pièce calme. Sur le mode nuit, encore moins. Côté consommation : environ 1 kWh par heure (1 000 W), soit 0,18 à 0,22 € de l\'heure aux tarifs EDF actuels. Une nuit de 8h coûte environ 1,50 € en électricité.',
+     'Le climatiseur collecte la condensation dans un bac interne. Selon l\'humidité, il faut le vider toutes les 24 à 48h — votre technicien vous montre comment faire à l\'installation, c\'est 30 secondes. Un voyant s\'allume quand le bac est plein. La gaine sort par la fenêtre et évacue l\'air chaud vers l\'extérieur.'],
+    ['7 days minimum — that\'s the only rule. Below that, the technician\'s visit isn\'t worthwhile for either of us. Beyond that, you choose: 8, 10, 14, 21 days or more. Pricing varies by duration and period — get your quote in 30 seconds via the form. Installation is charged once. Collection is included.',
+     'Our technician arrives at your door with the unit and all equipment. He fits the kit on your window, connects the AC, checks it\'s cooling properly — and walks you through the settings in 2 minutes. From doorbell to cool air: 20–30 minutes. Nothing to prepare, nothing to buy.',
      'No. No security cheque, no card hold, no blocked funds. You pay the rental amount — nothing more. We believe trust is earned, not demanded.',
      'You pay on delivery, directly to the technician — by card or cash. No online prepayment, no card hold. The exact amount is confirmed in your booking email before delivery.',
      '<span data-c="zoneFaq">The whole city of Nice: Centre, Promenade des Anglais, Vieux-Nice, Cimiez, Libération, Magnan, Riquier, Caucade, Saint-Isidore, Moulins…</span> If you live in <span data-c="name">Nice</span>, we deliver. For Cannes, Antibes, Menton or Villefranche — send your address on WhatsApp, we\'ll get back to you quickly.',
@@ -4974,7 +4984,9 @@ const LANG_SEQ=[
      'This is actually the easiest window for us. In the tilted position, the duct slides through the gap without forcing. The technician brings the right seal and installs it himself. You don\'t touch anything, you don\'t buy anything. If in doubt, send us a photo of your window on WhatsApp — we\'ll confirm before you even book.',
      'Yes. If you cancel before delivery, you are refunded in full. No conditions, no absurd processing delays. You read the exact terms in the contract before signing — nothing hidden in the small print.',
      'You call, we\'re there within 4 hours. If we can\'t repair on-site, we replace the unit or refund the remaining days. You never lose money on a broken unit — it\'s written in the contract you sign.',
-     'Yes — in fact half our customers extend. A text or call is all it takes. We check availability and extend the contract in 5 minutes. The extension rate is confirmed at the time of your request based on availability. No surprises.']],
+     'Yes — in fact half our customers extend. A text or call is all it takes. We check availability and extend the contract in 5 minutes. The extension rate is confirmed at the time of your request based on availability. No surprises.',
+     'The Rowenta RWAC10KA runs at around 52 dB in quiet mode — about the noise level of a calm room. Night mode is even quieter. Power consumption: roughly 1 kWh per hour (1,000 W), or about €0.18–0.22 per hour at current EDF rates. An 8-hour night costs around €1.50 in electricity.',
+     'The AC collects condensation in an internal tank. Depending on humidity, you\'ll need to empty it every 24–48 hours — your technician shows you how at installation, it takes 30 seconds. A light comes on when the tank is full. The duct exits through the window and vents hot air outside.']],
   /* FAQ CTA USP list */
   ['.faq-cta-usp','html',
     ['<span style="color:#4ade80;font-size:14px">✓</span> Tarif selon votre durée · prix confirmé en 30 s',
@@ -5015,8 +5027,8 @@ const LANG_SEQ=[
     ['Chaleur','Bébé / Santé','Airbnb / Location','Événement'],
     ['Heat','Baby / Health','Airbnb / Rental','Event']],
   ['.fi-q','html', /* FAQ questions — inject just the text before the SVG icon */
-    ['Comment se passe la livraison ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
-     'Quelle est la durée minimale ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+    ['Quelle est la durée minimale ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Comment se passe la livraison ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'Y a-t-il un dépôt de garantie ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'Comment se passe le paiement ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      '<span>Livrez-vous dans toute la région de <span data-c="name">Nice</span> ?</span><span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
@@ -5026,9 +5038,11 @@ const LANG_SEQ=[
      'Mon appartement a une fenêtre oscillo-battante — ça marche ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'Puis-je annuler ma réservation ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'Et si l\'appareil tombe en panne ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
-     'Est-il possible de prolonger ma location ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>'],
-    ['How does delivery work?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
-     'What is the minimum rental period?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Est-il possible de prolonger ma location ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Ça fait quel bruit ? Et ça consomme combien ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'L'eau condensée, elle part où ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>'],
+    ['What is the minimum rental period?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'How does delivery work?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'Is there a security deposit?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'How does payment work?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'Do you deliver across <span data-c="name">Nice</span>?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
@@ -5038,7 +5052,9 @@ const LANG_SEQ=[
      'My apartment has a tilt-and-turn window — does it work?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'Can I cancel my booking?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'What if the unit breaks down?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
-     'Can I extend my rental?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>']],
+     'Can I extend my rental?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'How noisy is it? How much electricity does it use?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     'Where does the condensed water go?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>']],
 ];
 
 function setLang(l){
@@ -5570,16 +5586,17 @@ function buildProlongRecap(){
   let dateLabel='—';
   if(rawDate){const[y,m,d]=rawDate.split('-');dateLabel=d+'/'+m+'/'+y;}
   const creneau=document.querySelector('#pe-creneau-group .tpill.on')?.textContent.trim()||'—';
+  const _e=escHtml;
   box.innerHTML=`
     <p style="font-weight:700;color:var(--black);font-size:15px;margin-bottom:12px">Récapitulatif de prolongation</p>
     <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:13px">
-      <span style="color:var(--grey2)">Nom</span><span style="font-weight:500">${prenom} ${nom}</span>
-      <span style="color:var(--grey2)">Email</span><span>${email}</span>
-      <span style="color:var(--grey2)">Tél.</span><span>${tel}</span>
-      ${addr!=='—'?`<span style="color:var(--grey2)">Adresse</span><span>${addr}</span>`:''}
+      <span style="color:var(--grey2)">Nom</span><span style="font-weight:500">${_e(prenom)} ${_e(nom)}</span>
+      <span style="color:var(--grey2)">Email</span><span>${_e(email)}</span>
+      <span style="color:var(--grey2)">Tél.</span><span>${_e(tel)}</span>
+      ${addr!=='—'?`<span style="color:var(--grey2)">Adresse</span><span>${_e(addr)}</span>`:''}
       <span style="color:var(--grey2)">Durée ajoutée</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} jour${_prolongDays>1?'s':''}</span>
       <span style="color:var(--grey2)">Récupération le</span><span style="font-weight:500">${dateLabel}</span>
-      <span style="color:var(--grey2)">Créneau</span><span style="font-weight:500">${creneau}</span>
+      <span style="color:var(--grey2)">Créneau</span><span style="font-weight:500">${escHtml(creneau)}</span>
       <span style="color:var(--grey2)">Montant</span><span style="font-weight:700;font-size:16px;color:var(--black)">${price} €</span>
     </div>
   `;
@@ -5694,7 +5711,8 @@ function playInstallVideo(){
   }
   // Embed YouTube iframe
   if(wrap){
-    wrap.innerHTML='<iframe src="https://www.youtube.com/embed/'+ytId+'?autoplay=1&rel=0" allow="autoplay;fullscreen" style="position:absolute;inset:0;width:100%;height:100%;border:0" loading="lazy" title="Installation climatiseur Loc\'Air"></iframe>';
+    if(!/^[A-Za-z0-9_-]{11}$/.test(ytId))return;
+    wrap.innerHTML='<iframe src="https://www.youtube.com/embed/'+encodeURIComponent(ytId)+'?autoplay=1&rel=0" allow="autoplay;fullscreen" style="position:absolute;inset:0;width:100%;height:100%;border:0" loading="lazy" title="Installation climatiseur Loc\'Air"></iframe>';
   }
   (window.dataLayer=window.dataLayer||[]).push({event:'video_play',video:'install'});
 }
