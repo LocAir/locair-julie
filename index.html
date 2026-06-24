@@ -1769,7 +1769,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .prod-detail-item dd{font-size:12px;color:var(--black);line-height:1.4}
 .prod-detail-item.full{grid-column:1/-1}
 .qty-stepper{display:inline-flex;align-items:center;border:1.5px solid var(--rule);border-radius:9px;overflow:hidden;background:#fff;margin:8px 0 6px}
-.qty-stepper-btn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;cursor:pointer;font-size:17px;font-weight:600;color:var(--blue);line-height:1;transition:background .15s;flex-shrink:0;font-family:var(--body)}
+.qty-stepper-btn{width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;cursor:pointer;font-size:17px;font-weight:600;color:var(--blue);line-height:1;transition:background .15s;flex-shrink:0;font-family:var(--body)}
 .qty-stepper-btn:hover:not(:disabled){background:var(--blue-lt)}
 .qty-stepper-btn:disabled{color:var(--rule);cursor:not-allowed}
 .qty-stepper-val{min-width:32px;text-align:center;font-size:14px;font-weight:700;color:var(--black);border-left:1.5px solid var(--rule);border-right:1.5px solid var(--rule);height:30px;line-height:30px}
@@ -3618,7 +3618,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           <label class="legal-accept" style="margin-top:16px">
             <input type="checkbox" id="f-cgv" onchange="syncLegalCheck(this)"/>
             <input type="checkbox" id="f-rgpd" style="display:none"/>
-            <span class="legal-accept-txt" id="label-cgv">J'accepte les <a href="/cgv" onclick="event.stopPropagation()">CGV</a> et la <a href="/confidentialite" onclick="event.stopPropagation()">politique de confidentialité</a>.</span>
+            <span class="legal-accept-txt" id="label-cgv">J'accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> et la <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">politique de confidentialité</a>. <span style="color:var(--grey2);font-size:10px">Données traitées par Formspree (USA, Privacy Shield).</span></span>
           </label>
           <div class="rgpd-row" style="margin-top:10px">
             <input type="checkbox" id="f-mkt"/>
@@ -3801,7 +3801,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             <div class="stl-dot stl-pnd"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
             <div class="stl-body">
               <p class="stl-title">Contrat envoyé par email</p>
-              <p class="stl-sub">Signature électronique · 1 clic · Votre exemplaire instantané</p>
+              <p class="stl-sub">Notre équipe vous envoie le contrat sous 2h</p>
             </div>
           </div>
           <div class="stl-conn"></div>
@@ -3823,7 +3823,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           <p style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--grey);margin-bottom:12px">Prochaines étapes</p>
           <div style="display:flex;flex-direction:column;gap:9px">
             <p class="ns-text"><strong>Confirmation par email</strong> immédiate avec le récapitulatif</p>
-            <p class="ns-text"><strong>Notre équipe</strong> confirme le créneau par SMS le matin de la livraison</p>
+            <p class="ns-text"><strong>Notre équipe</strong> confirme le créneau par appel téléphonique le matin de la livraison</p>
             <p class="ns-text"><strong>Technicien sur place</strong>, installation 20–30 min</p>
           </div>
         </div>
@@ -4671,8 +4671,10 @@ function submitForm(btn,mode){
     logement:document.querySelector('#logement-group .tpill.on')?.textContent.trim()||'—',
     motifs:[...document.querySelectorAll('#motif-group .tpill.on')].map(t=>t.textContent.trim()).join(', ')||'—',
     mkt_consent:document.getElementById('f-mkt')?.checked?'Oui':'Non',
+    cgv_accepted_at:(()=>{try{return new Date().toISOString();}catch(e){return '';}})(),
     mode:mode,
-    prix:calcTotal(parseInt(document.getElementById('f-dur')?.value)||7)+' €'
+    prix:calcTotal(parseInt(document.getElementById('f-dur')?.value)||7)+' €',
+    date_recuperation:(()=>{try{const raw=document.getElementById('f-date')?.value;const dur=parseInt(document.getElementById('f-dur')?.value)||7;if(!raw)return '—';const d=new Date(raw);d.setDate(d.getDate()+dur);return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '—';}})()
   };
 
   const price=calcTotal(parseInt(formData.duree)||7);
@@ -4741,7 +4743,8 @@ function submitForm(btn,mode){
     }
     try{localStorage.setItem('locair_client',JSON.stringify({prenom:formData.prenom,nom:formData.nom,email:formData.email,tel:formData.tel}));}catch(e){}
     showSuccess();
-  }).catch(()=>{
+  }).catch(err=>{
+    console.error('[Formspree]',err);
     // En cas d'erreur réseau, réactiver le bouton et afficher le numéro de secours
     if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
     const errEl=document.getElementById('form-error-msg');
@@ -5121,7 +5124,7 @@ const LANG_SEQ=[
      'Non. Aucun chèque de caution, aucune empreinte bancaire, aucune somme bloquée. Vous payez le montant de la location — rien de plus. On croit que la confiance ça se mérite, pas ça s\'exige.',
      'Vous payez en ligne par carte bancaire au moment de la réservation. Le montant exact est confirmé dans votre email de réservation. Aucun accès à vos coordonnées bancaires.',
      '<span data-c="zoneFaq">Toute la ville de Nice : Centre, Promenade des Anglais, Vieux-Nice, Cimiez, Libération, Magnan, Riquier, Caucade, Saint-Isidore, Moulins…</span> Si vous habitez <span data-c="name">Nice</span>, on livre. Pour Cannes, Antibes, Menton ou Villefranche — envoyez-nous votre adresse sur WhatsApp, on vous répond rapidement.',
-     'Après votre réservation, vous recevez un email avec le contrat. Un clic pour lire, un clic pour signer. Votre exemplaire arrive instantanément. C\'est la même technologie qu\'utilisent les notaires et les banques en Europe. Aucun papier, aucun déplacement, aucune imprimante.',
+     'Après votre réservation, notre équipe vous envoie le contrat par email sous 2h. Lisez-le, signez-le, gardez votre exemplaire. Aucun papier, aucun déplacement, aucune imprimante.',
      'Appelez le <span data-c="phone">06.63.79.87.56</span>, disponible 7j/7 de 8h à 20h. En cas de défaut à la livraison, nous intervenons dans les 4h ou remboursons intégralement. Cette garantie est contractuelle.',
      'Un Rowenta RWAC10KA couvre jusqu\'à 30 m² efficacement — parfait pour une chambre ou un salon. Pour un T3, deux chambres, ou un espace ouvert plus grand : appelez le <span data-c="phone">06.63.79.87.56</span>. On vous dit honnêtement si vous avez besoin d\'une ou deux unités — sans essayer de vous vendre plus que nécessaire.',
      'C\'est même la fenêtre la plus simple pour nous. En position inclinée, la gaine passe dans l\'entrebâillement sans forcer. Le technicien apporte le joint adapté et l\'installe lui-même. Vous ne touchez à rien, vous n\'achetez rien. Si vous avez un doute, envoyez-nous une photo de votre fenêtre sur WhatsApp — on vous confirme avant même de réserver.',
@@ -5135,7 +5138,7 @@ const LANG_SEQ=[
      'No. No security cheque, no card hold, no blocked funds. You pay the rental amount — nothing more. We believe trust is earned, not demanded.',
      'You pay online by card at the time of booking. The exact amount is confirmed in your booking email. We never have access to your card details.',
      '<span data-c="zoneFaq">The whole city of Nice: Centre, Promenade des Anglais, Vieux-Nice, Cimiez, Libération, Magnan, Riquier, Caucade, Saint-Isidore, Moulins…</span> If you live in <span data-c="name">Nice</span>, we deliver. For Cannes, Antibes, Menton or Villefranche — send your address on WhatsApp, we\'ll get back to you quickly.',
-     'After booking, you receive an email with the contract. One click to read, one click to sign. Your copy arrives instantly. This is the same technology used by notaries and banks across Europe. No paper, no travel, no printer.',
+     'After booking, our team sends you the contract by email within 2 hours. Read it, sign it, keep your copy. No paper, no travel, no printer.',
      'Call <span data-c="phone">06.63.79.87.56</span>, available 7d/7 from 8am to 8pm. In case of a fault on delivery, we\'re there within 4 hours or refund in full. This guarantee is contractual.',
      'A Rowenta RWAC10KA covers up to 30 m² effectively — perfect for a bedroom or living room. For a 3-room flat, two bedrooms, or a larger open space: call <span data-c="phone">06.63.79.87.56</span>. We\'ll honestly tell you if you need one or two units — without trying to upsell.',
      'This is actually the easiest window for us. In the tilted position, the duct slides through the gap without forcing. The technician brings the right seal and installs it himself. You don\'t touch anything, you don\'t buy anything. If in doubt, send us a photo of your window on WhatsApp — we\'ll confirm before you even book.',
@@ -5161,10 +5164,10 @@ const LANG_SEQ=[
   /* next-steps items */
   ['.ns-text','html',
     ['<strong>Confirmation par email</strong> immédiate avec le récapitulatif',
-     '<strong>Notre équipe</strong> confirme le créneau par SMS le matin de la livraison',
+     '<strong>Notre équipe</strong> confirme le créneau par appel téléphonique le matin de la livraison',
      '<strong>Technicien sur place</strong>, installation 20–30 min'],
     ['<strong>Instant email confirmation</strong> with full summary',
-     '<strong>Our team</strong> confirms the time slot by SMS on the morning of delivery',
+     '<strong>Our team</strong> confirms the time slot by phone call on the morning of delivery',
      '<strong>Technician on site</strong>, installation 20–30 min']],
   /* footer navigation links */
   ['#fnav-main a','text',
@@ -5544,9 +5547,8 @@ if(_urgencyShown)setInterval(_renderSmartLine,60000);
   el.style.display='flex';
   const txt=document.getElementById('hsp-text');
   if(!txt)return;
-  const stock=h>=10&&h<19?3:2;
   if(h>=8&&h<20){
-    txt.textContent='🟢 '+stock+' appareils dispo demain · Réservé 14× ce mois';
+    txt.textContent='🟢 Disponible à la livraison · Réservé 14× ce mois';
   } else {
     txt.textContent='Réservé 14× ce mois · Disponible dès 8h';
   }
@@ -5958,7 +5960,7 @@ function toggleProdDetails(){
 let _unit2=false;
 let _qty=1;
 function setQty(n){
-  n=Math.max(1,Math.round(n));
+  n=Math.min(10,Math.max(1,Math.round(n)));
   _qty=n;_unit2=(n>1);
   const cb=document.getElementById('f-unit2');if(cb)cb.checked=_unit2;
   // Stepper UI
