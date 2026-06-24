@@ -2953,7 +2953,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             <input id="f-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="street-address" spellcheck="false" data-lpignore="true" required oninput="this.classList.toggle('valid',this.value.trim().length>4);const zc=document.getElementById('zone-confirm');if(zc)zc.classList.toggle('visible',this.value.trim().length>4)"/>
             <div class="zone-confirm" id="zone-confirm" aria-live="polite">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Zone couverte — livraison dès demain
+              Adresse enregistrée
             </div>
           </div>
         </div>
@@ -3008,6 +3008,16 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
                     <div class="prod-card-model">Climatiseur mobile</div>
                   </div>
                   <div class="prod-energy" aria-label="Classe énergie A">A</div>
+                </div>
+                <div style="margin-bottom:8px">
+                  <p style="font-size:11px;font-weight:500;color:var(--grey2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.08em">Surface à climatiser</p>
+                  <div class="tpills" id="logement-group" role="radiogroup" aria-labelledby="label-logement">
+                    <button type="button" class="tpill" onclick="tgl(this,'lgt');_onLogementChange(this)" role="radio" aria-checked="false">Studio</button>
+                    <button type="button" class="tpill" onclick="tgl(this,'lgt');_onLogementChange(this)" role="radio" aria-checked="false">T2</button>
+                    <button type="button" class="tpill" onclick="tgl(this,'lgt');_onLogementChange(this)" role="radio" aria-checked="false">T3/T4</button>
+                    <button type="button" class="tpill" onclick="tgl(this,'lgt');_onLogementChange(this)" role="radio" aria-checked="false">Maison</button>
+                  </div>
+                  <p id="lgt-suggest" style="display:none;font-size:11px;color:var(--blue);margin-top:5px;font-weight:500">💡 Pour cette surface, 2 climatiseurs sont recommandés</p>
                 </div>
                 <div style="display:flex;align-items:center;gap:0">
                   <div class="qty-stepper" role="group" aria-label="Quantité">
@@ -3204,7 +3214,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             </div>
             <p class="install-kit-note">Dans les deux cas, le kit de calfeutrage est fourni et la récupération est incluse.</p>
           </div>
-          <!-- Type de fenêtre -->
+          <!-- Type de fenêtre (seulement si pose autonome) -->
+          <div id="ouv-section" style="display:none">
           <p id="ouv-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:8px" role="alert">Veuillez sélectionner le type de fenêtre pour continuer.</p>
           <div class="win-grid" id="ouv-group">
 
@@ -3358,6 +3369,21 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             </div>
 
           </div>
+          </div><!-- /ouv-section -->
+          <!-- ACCÈS (étage + ascenseur) -->
+          <div class="frow" style="margin-top:16px">
+            <div class="fld">
+              <label id="label-etage" for="f-etage">Étage</label>
+              <input id="f-etage" type="text" placeholder="Ex. 3e" autocomplete="off" inputmode="text" oninput="buildRecap()"/>
+            </div>
+            <div class="fld">
+              <p id="label-asc" style="font-size:12px;font-weight:500;color:var(--black2);margin-bottom:6px">Ascenseur</p>
+              <div class="tpills" id="asc-group" role="radiogroup" aria-labelledby="label-asc">
+                <button type="button" class="tpill on asc-yes" onclick="tgl(this,'asc');buildRecap()" role="radio" aria-checked="true">Oui</button>
+                <button type="button" class="tpill asc-no" onclick="tgl(this,'asc');buildRecap()" role="radio" aria-checked="false">Non</button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="modal-nav">
           <button class="btn-back" onclick="goTo(2)" type="button">
@@ -3375,6 +3401,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <div class="sp-head">
           <h3 class="sp-title">Votre date de livraison</h3>
           <p class="sp-sub" style="font-size:11px">7j/7 · Livraison 8h–20h · Le technicien vous appelle avant.</p>
+          <p id="date-dur-reminder" style="font-size:11.5px;color:var(--blue);font-weight:600;margin-top:6px;display:none"></p>
         </div>
         <div class="flds">
           <!-- DATE -->
@@ -3406,7 +3433,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 
           <!-- CRÉNEAU LIVRAISON -->
           <div class="fld" style="margin-top:20px;padding-top:20px;border-top:1.5px solid var(--rule)">
-            <p id="lbl-creneau-liv" style="font-size:13px;font-weight:600;color:var(--black);margin-bottom:12px">Votre créneau de livraison <span class="req">*</span></p>
+            <p id="lbl-creneau-liv" style="font-size:13px;font-weight:600;color:var(--black);margin-bottom:4px">Préférence de créneau <span class="req">*</span></p>
+            <p style="font-size:11px;color:var(--grey);margin-bottom:10px">Le technicien confirme par appel — créneau à titre indicatif</p>
             <div class="cren-grid" id="creneau-liv-group" role="radiogroup" aria-labelledby="lbl-creneau-liv">
               <button type="button" class="cren-card on" onclick="selectCren(this)" role="radio" aria-checked="true">
                 <span class="cren-time">8h – 10h</span>
@@ -3447,27 +3475,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <div class="sp-head">
           <h3 class="sp-title">Vos coordonnées</h3>
           <p class="sp-sub" style="font-size:11px">Confirmation par email dès réception.</p>
-        </div>
-
-        <!-- ACCÈS -->
-        <div class="s5-sec">
-          <div class="s5-sec-hd">
-            <div class="s5-sec-ico"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
-            <span class="s5-sec-lbl" id="lbl-acces-section">Accès</span>
-          </div>
-          <div class="frow">
-            <div class="fld">
-              <label id="label-etage" for="f-etage">Étage</label>
-              <input id="f-etage" type="text" placeholder="Ex. 3e" autocomplete="off" inputmode="text" oninput="buildRecap()"/>
-            </div>
-            <div class="fld">
-              <p id="label-asc" style="font-size:12px;font-weight:500;color:var(--black2);margin-bottom:6px">Ascenseur</p>
-              <div class="tpills" id="asc-group" role="radiogroup" aria-labelledby="label-asc">
-                <button type="button" class="tpill on asc-yes" onclick="tgl(this,'asc');buildRecap()" role="radio" aria-checked="true">Oui</button>
-                <button type="button" class="tpill asc-no" onclick="tgl(this,'asc');buildRecap()" role="radio" aria-checked="false">Non</button>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- RÉCUPÉRATION -->
@@ -3519,8 +3526,12 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             <div class="fld">
               <p id="lbl-type-client" style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px">Vous réservez en tant que</p>
               <div class="tpills" id="type-client-group" role="radiogroup" aria-labelledby="lbl-type-client">
-                <button type="button" class="tpill on client-type-perso" onclick="tgl(this,'type')" role="radio" aria-checked="true">Particulier</button>
-                <button type="button" class="tpill client-type-pro" onclick="tgl(this,'type')" role="radio" aria-checked="false">Professionnel</button>
+                <button type="button" class="tpill on client-type-perso" onclick="tgl(this,'type');document.getElementById('siret-wrap').style.display='none'" role="radio" aria-checked="true">Particulier</button>
+                <button type="button" class="tpill client-type-pro" onclick="tgl(this,'type');document.getElementById('siret-wrap').style.display='block'" role="radio" aria-checked="false">Professionnel</button>
+              </div>
+              <div id="siret-wrap" style="display:none;margin-top:10px">
+                <label for="f-siret" style="font-size:12px;font-weight:500;color:var(--black2);display:block;margin-bottom:6px">SIRET <span style="color:var(--grey2);font-weight:400">(facultatif)</span></label>
+                <input id="f-siret" type="text" placeholder="123 456 789 00012" autocomplete="off" inputmode="numeric" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:13px;font-family:var(--body);color:var(--black);background:#fff;outline:none"/>
               </div>
             </div>
           </div>
@@ -3539,15 +3550,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               <option value="Vu dans la rue">Vu dans la rue</option>
               <option value="Autre">Autre</option>
             </select>
-          </div>
-          <div>
-            <p id="label-logement" style="font-size:12px;font-weight:500;color:var(--black2);margin-bottom:6px">Type de logement</p>
-            <div class="tpills" id="logement-group" role="radiogroup" aria-labelledby="label-logement">
-              <button type="button" class="tpill" onclick="tgl(this,'lgt')" role="radio" aria-checked="false">Studio</button>
-              <button type="button" class="tpill" onclick="tgl(this,'lgt')" role="radio" aria-checked="false">T2</button>
-              <button type="button" class="tpill" onclick="tgl(this,'lgt')" role="radio" aria-checked="false">T3/T4</button>
-              <button type="button" class="tpill" onclick="tgl(this,'lgt')" role="radio" aria-checked="false">Maison</button>
-            </div>
           </div>
           <div>
             <p id="label-motif" style="font-size:12px;font-weight:500;color:var(--black2);margin-bottom:6px">Pourquoi vous louez ?</p>
@@ -3593,7 +3595,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           <label class="legal-accept" style="margin-top:16px">
             <input type="checkbox" id="f-cgv" onchange="syncLegalCheck(this)"/>
             <input type="checkbox" id="f-rgpd" style="display:none"/>
-            <span class="legal-accept-txt" id="label-cgv">J'accepte les <a href="/cgv" onclick="event.stopPropagation()">CGV</a>, la <a href="/confidentialite" onclick="event.stopPropagation()">politique de confidentialité</a> et la durée minimum de 7 jours.</span>
+            <span class="legal-accept-txt" id="label-cgv">J'accepte les <a href="/cgv" onclick="event.stopPropagation()">CGV</a> et la <a href="/confidentialite" onclick="event.stopPropagation()">politique de confidentialité</a>.</span>
           </label>
           <div class="rgpd-row" style="margin-top:10px">
             <input type="checkbox" id="f-mkt"/>
@@ -4281,7 +4283,7 @@ function goTo(n,silent){
         if(!addr){highlight(['f-addr']);goTo(1,true);return;}
       }
       if(s===3){
-        if(!document.querySelector('#ouv-group .win-card.on')){
+        if(!_techInstall&&!document.querySelector('#ouv-group .win-card.on')){
           const g=document.getElementById('ouv-group');
           if(g){g.style.outline='1.5px solid #dc2626';g.style.borderRadius='10px';}
           const errMsg=document.getElementById('ouv-err');
@@ -4322,6 +4324,9 @@ function goTo(n,silent){
     const fd=document.getElementById('f-date');
     if(fd&&!fd.min){const t=new Date();t.setDate(t.getDate()+1);fd.min=[t.getFullYear(),String(t.getMonth()+1).padStart(2,'0'),String(t.getDate()).padStart(2,'0')].join('-');}
     initDateShortcuts();
+    const rem=document.getElementById('date-dur-reminder');
+    const durVal=document.getElementById('f-dur')?.value;
+    if(rem&&durVal){rem.textContent='Durée choisie : '+durVal+' nuits — fin de location calculée automatiquement';rem.style.display='block';}
   }
   if(n===5||n===6)setTimeout(buildRecap,0);
   updateModalRecapPill(n);
@@ -4633,6 +4638,7 @@ function submitForm(btn,mode){
     creneau_livraison:document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h',
     creneau_recuperation:'Coordonné par notre équipe (48h avant fin de location)',
     type_client:document.querySelector('#type-client-group .tpill.on')?.textContent.trim()||'Particulier',
+    siret:document.getElementById('f-siret')?.value.trim()||'',
     prenom:document.getElementById('f-prenom')?.value,
     nom:document.getElementById('f-nom')?.value,
     tel:document.getElementById('f-tel')?.value,
@@ -5896,12 +5902,21 @@ function submitAlerte(e){
 }
 
 // ── CHOIX D'INSTALLATION ─────────────────────────────────────────────────────
+function _onLogementChange(btn){
+  const val=btn.textContent.trim();
+  const suggest=document.getElementById('lgt-suggest');
+  const big=(val==='T3/T4'||val==='Maison');
+  if(suggest)suggest.style.display=big?'block':'none';
+}
+
 function selectInstall(tech){
   _techInstall=tech;
   const icTech=document.getElementById('ic-tech');
   const icSelf=document.getElementById('ic-self');
   if(icTech){icTech.classList.toggle('on',tech);icTech.setAttribute('aria-checked',String(tech));}
   if(icSelf){icSelf.classList.toggle('on',!tech);icSelf.setAttribute('aria-checked',String(!tech));}
+  const ouvSection=document.getElementById('ouv-section');
+  if(ouvSection)ouvSection.style.display=tech?'none':'block';
   updateModalRecapPill(3);
   buildRecap();
 }
