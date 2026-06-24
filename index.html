@@ -1739,6 +1739,19 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .zone-confirm.visible{opacity:1;transform:translateY(0)}
 
 /* ── DURATION LIST ── */
+
+/* ── STEP 2 : product card + quantity selector ─────────────────────────── */
+.prod-card{display:flex;align-items:center;gap:12px;background:rgba(27,58,95,.04);border:1px solid var(--rule);border-radius:12px;padding:11px 14px;margin-bottom:14px}
+.prod-card-ico{font-size:22px;flex-shrink:0;line-height:1}
+.prod-card-name{font-size:13px;font-weight:600;color:var(--black);line-height:1.3}
+.prod-card-specs{font-size:11px;color:var(--grey2);margin-top:2px;line-height:1.4}
+.qty-sel{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.qty-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:11px 8px;border:1.5px solid var(--rule);border-radius:12px;background:var(--white);cursor:pointer;font-family:var(--body);transition:border-color .15s,background .15s;width:100%}
+.qty-btn.on{border-color:var(--blue);background:rgba(27,58,95,.06)}
+.qty-btn-count{font-size:18px;font-weight:700;color:var(--black);line-height:1}
+.qty-btn.on .qty-btn-count{color:var(--blue)}
+.qty-btn-label{font-size:11px;color:var(--grey2);font-weight:400;margin-top:1px}
+.qty-btn-badge{font-size:9.5px;font-weight:700;color:var(--blue);background:rgba(27,58,95,.1);padding:2px 7px;border-radius:100px;margin-top:3px}
 .dur-list{
   margin:12px 0 0;
   border:1.5px solid var(--rule);border-radius:14px;overflow:hidden;
@@ -2380,9 +2393,9 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         </div>
         <div class="plan-sep"></div>
         <ul class="plan-items" id="plan-items-list">
-          <li><span class="ck-b"><svg viewBox="0 0 24 24" fill="none"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 13 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span><span id="plan-item-1">Livraison dès demain — pose technicien 25€ ou autonome</span></li>
-          <li><span class="ck-b"><svg viewBox="0 0 24 24" fill="none"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></span><span id="plan-item-2">Récupération incluse — rien à préparer</span></li>
-          <li><span class="ck-b"><svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span id="plan-item-3">Panne : 4h d'intervention ou remboursé</span></li>
+          <li><span class="ck-b"><svg viewBox="0 0 24 24" fill="none"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 13 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span><span id="plan-item-1"><strong>Livraison demain</strong> · Technicien 25€ ou autonome</span></li>
+          <li><span class="ck-b"><svg viewBox="0 0 24 24" fill="none"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></span><span id="plan-item-2"><strong>Récupération offerte</strong> · Rien à préparer</span></li>
+          <li><span class="ck-b"><svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span id="plan-item-3"><strong>Garantie panne 4h</strong> · Ou remboursé</span></li>
         </ul>
         <div class="plan-sep"></div>
       </div>
@@ -2960,6 +2973,26 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         </div>
         <div class="flds">
           <div class="fld">
+            <!-- PRODUCT CARD -->
+            <div class="prod-card">
+              <div class="prod-card-ico">❄️</div>
+              <div>
+                <div class="prod-card-name">Rowenta 10 000 BTU — silencieux</div>
+                <div class="prod-card-specs">Jusqu'à 30 m² · 52 dB · Kit fourni · Livraison + récupération incluses</div>
+              </div>
+            </div>
+            <!-- QUANTITÉ -->
+            <div class="qty-sel" role="radiogroup" aria-label="Nombre de climatiseurs">
+              <button type="button" class="qty-btn on" id="qty-1" onclick="setQty(1)" aria-pressed="true">
+                <span class="qty-btn-count">1</span>
+                <span class="qty-btn-label">climatiseur</span>
+              </button>
+              <button type="button" class="qty-btn" id="qty-2" onclick="setQty(2)" aria-pressed="false">
+                <span class="qty-btn-count">2</span>
+                <span class="qty-btn-label">climatiseurs</span>
+                <span class="qty-btn-badge">2 pièces</span>
+              </button>
+            </div>
             <div class="dur-list" id="dur-cards" role="radiogroup" aria-label="Durée de location">
 
               <div class="dur-row on" data-days="7" onclick="selectDurCard(this,7)" role="radio" aria-checked="true" tabindex="0">
@@ -3058,7 +3091,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 
             <input type="hidden" id="f-dur" value="7"/>
             <!-- UPSELL — 2ème appareil -->
-            <div class="unit2-toggle">
+            <div class="unit2-toggle" style="display:none" aria-hidden="true">
               <label class="unit2-lbl">
                 <input type="checkbox" id="f-unit2" onchange="toggleUnit2(this)"/>
                 <span class="unit2-ico">❄️</span>
@@ -4358,7 +4391,7 @@ function tglOuv(el,val){
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function buildRecap(){
   const days=parseInt(document.getElementById('f-dur')?.value||'7');
-  const price=calcPrice(days);
+  const price=calcPrice(days)*_qty;
   const asc=document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—';
   const etage=document.getElementById('f-etage')?.value.trim()||'';
   const _ouvFR=document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—';
@@ -4377,15 +4410,16 @@ function buildRecap(){
       pickupDateStr=pDay+'/'+pMon+'/'+pd.getUTCFullYear();
     }
   }
-  const creneauLiv=document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h';
-  const creneauRecup=document.querySelector('#creneau-recup-group .cren-card.on,#creneau-recup-group .tpill.on')?.textContent.trim()||'14h–16h';
+  const _getCrenText=sel=>{const el=document.querySelector(sel);if(!el)return null;const t=(el.querySelector('.cren-time')?.textContent||'').trim();const s=(el.querySelector('.cren-sub')?.textContent||'').trim();return t?(s?t+' · '+s:t):el.textContent.trim();};
+  const creneauLiv=_getCrenText('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')||'8h–10h';
+  const creneauRecup=_getCrenText('#creneau-recup-group .cren-card.on,#creneau-recup-group .tpill.on')||'14h–16h';
   const recupEl=document.getElementById('recap-date-recup');
   const isEN=_lang==='en';
   if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (end of your '+days+'-day rental)':'Le '+pickupDateStr+' (fin de votre location de '+days+' jours)';
   const total=calcTotal(days);
   const installLabel=_techInstall?(isEN?'Technician installation':'Pose technicien — 25 €'):(isEN?'Self-install (free)':'Pose autonome — Kit fourni');
   const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
-  const durLabel=isEN?days+' days':days+' jours';
+  const durLabel=isEN?days+' nights':days+' nuits';
   const priceDisplay=total===0?(isEN?'On quote':'Sur devis'):total+' €';
 
   // SVG icons
@@ -4401,6 +4435,7 @@ function buildRecap(){
     [isEN?'Collection':'Récupération',escHtml(pickupDateStr+' · '+creneauRecup),icoCal],
     [isEN?'Window':'Fenêtre',escHtml(ouv),icoWin],
     [isEN?'Duration':'Durée',escHtml(durLabel),icoDur],
+    ...((_qty===2)?[[isEN?'Quantity':'Quantité','2 climatiseurs',icoWin]]:[])
   ];
 
   const box=document.getElementById('recap-box');
@@ -4811,9 +4846,9 @@ const LANG_MAP=[
   ['.faq-cta-title','html','Une question ?<br>On répond le jour même.','A question?<br>We answer the same day.'],
   ['button.faq-cta-btn','text','Réserver maintenant →','Book now →'],
   /* pricing plan items */
-  ['#plan-item-1','text','Livraison dès demain — pose technicien 25€ ou autonome','Delivered tomorrow — tech install €25 or self-install free'],
-  ['#plan-item-2','text','Récupération incluse — rien à préparer','Pickup included — nothing to prepare'],
-  ['#plan-item-3','text','Panne : 4h d\'intervention ou remboursé','Breakdown: 4h response or refunded'],
+  ['#plan-item-1','html','<strong>Livraison demain</strong> · Technicien 25€ ou autonome','<strong>Delivery tomorrow</strong> · Tech install €25 or self-install free'],
+  ['#plan-item-2','html','<strong>Récupération offerte</strong> · Rien à préparer','<strong>Pickup included</strong> · Nothing to prepare'],
+  ['#plan-item-3','html','<strong>Garantie panne 4h</strong> · Ou remboursé','<strong>Breakdown guarantee</strong> · 4h response or refunded'],
   /* garantie */
   ['.gar-t','text','En panne ? On arrive dans les 4 heures.','Breakdown? We\'re there within 4 hours.'],
   /* about */
@@ -5808,12 +5843,30 @@ function selectInstall(tech){
   buildRecap();
 }
 
-// ── 2ÈME UNITÉ ───────────────────────────────────────────────────────────────
+// ── QUANTITÉ + 2ÈME UNITÉ ────────────────────────────────────────────────────
 let _unit2=false;
-function toggleUnit2(cb){
-  _unit2=cb.checked;
-  updateModalRecapPill(2);
+let _qty=1;
+function setQty(n){
+  _qty=n;_unit2=(n===2);
+  const cb=document.getElementById('f-unit2');if(cb)cb.checked=_unit2;
+  document.getElementById('qty-1')?.classList.toggle('on',n===1);
+  document.getElementById('qty-2')?.classList.toggle('on',n===2);
+  document.getElementById('qty-1')?.setAttribute('aria-pressed',n===1?'true':'false');
+  document.getElementById('qty-2')?.setAttribute('aria-pressed',n===2?'true':'false');
+  // Refresh displayed prices in dur-rows
+  document.querySelectorAll('.dur-row[data-days]').forEach(card=>{
+    const days=parseInt(card.getAttribute('data-days'));
+    const total=calcPrice(days)*_qty;
+    const rate=_baseRate(days);
+    const tEl=card.querySelector('.dur-row-total');
+    if(tEl)tEl.textContent=total+' €';
+  });
+  // Refresh free-duration total if open
+  const dfbTotal=document.getElementById('dfb-total');
+  if(dfbTotal){const d=parseInt(document.getElementById('f-dur')?.value||'7');dfbTotal.textContent=calcPrice(d)*_qty+' €';}
+  updateModalRecapPill(curStep);
 }
+function toggleUnit2(cb){_unit2=cb.checked;_qty=_unit2?2:1;updateModalRecapPill(2);}
 
 // ── PARRAINAGE ────────────────────────────────────────────────────────────────
 function copyReferral(){
