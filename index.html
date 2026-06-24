@@ -638,10 +638,10 @@ body{
 
 /* ── ALERT BAR ── */
 .alert-bar{
-  display:flex;align-items:center;justify-content:center;gap:8px;
-  padding:9px 40px 9px 20px;
-  background:#d97706;
-  color:#fff;font-size:12px;font-weight:500;letter-spacing:.01em;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  padding:5px 36px 5px 16px;
+  background:#b45309;
+  color:#fff;font-size:11px;font-weight:500;letter-spacing:.01em;
   position:relative;text-align:center;
 }
 .alert-bar strong{font-weight:700}
@@ -1504,14 +1504,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 
 /* Step panel : animation entrée douce — défini ligne 1105 */
 
-/* ── URGENCY BAR ── */
-.ubar{
-  background:var(--bg);color:var(--black);
-  text-align:center;font-size:12px;font-weight:400;
-  padding:9px var(--pad);letter-spacing:.01em;
-  border-bottom:1px solid var(--rule);
-}
-.ubar strong{color:var(--blue);font-weight:600}
 
 /* ── TRUST BADGES (paiement) ── */
 .trust-badges{
@@ -2302,8 +2294,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
     </div>
   </nav></div>
 </header>
-<div class="ubar">Loc'Air · Nice · <strong>Depuis 2019</strong> &nbsp;·&nbsp; Kit fourni &nbsp;·&nbsp; 7j/7 · 8h–20h</div>
-
 <!-- HERO — plein écran, 1 seule action -->
 <main id="main-content">
 <section class="hero" id="top" aria-label="Bannière principale — Location climatiseur Nice">
@@ -4785,15 +4775,15 @@ function submitForm(btn,mode){
   if(!prev?.prenom)return;
   const bar=document.createElement('div');
   bar.id='return-bar';
-  bar.style.cssText='background:rgba(27,58,95,.06);border-bottom:1px solid rgba(27,58,95,.08);padding:8px 20px;text-align:center;font-size:12.5px;color:var(--blue);font-family:var(--body);display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap';
+  bar.style.cssText='position:absolute;bottom:80px;left:50%;transform:translateX(-50%);z-index:4;background:rgba(255,255,255,.13);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.18);border-radius:100px;padding:7px 18px;font-size:12px;color:#fff;font-family:var(--body);white-space:nowrap;display:flex;align-items:center;gap:10px;box-shadow:0 2px 12px rgba(0,0,0,.18)';
   const _mo=new Date().getMonth();
   const _isPreSeason=(_mo===3||_mo===4);
   const _retMsg=_isPreSeason
-    ?'Vous avez loué avec nous l\'été dernier — réservez maintenant avant que les créneaux soient complets.'
-    :'Bienvenue de retour, <strong>'+escHtml(prev.prenom)+'</strong> — vos infos seront pré-remplies.';
-  bar.innerHTML='👋 '+_retMsg+' <button type="button" onclick="openModal()" style="padding:4px 14px;background:var(--blue);color:#fff;border:none;border-radius:100px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--body)">Réserver en 1 clic →</button><button type="button" onclick="document.getElementById(\'return-bar\').remove();localStorage.removeItem(\'locair_client\')" style="background:none;border:none;color:var(--grey2);font-size:12px;cursor:pointer;font-family:var(--body)">✕</button>';
-  const ubar=document.querySelector('.ubar');
-  if(ubar)ubar.after(bar);
+    ?'Créneaux limités cet été — réservez maintenant'
+    :'Bienvenue, <strong>'+escHtml(prev.prenom)+'</strong> — vos infos seront pré-remplies.';
+  bar.innerHTML=_retMsg+' <button type="button" onclick="openModal()" style="padding:3px 12px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:100px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--body);white-space:nowrap">Réserver →</button><button type="button" onclick="document.getElementById(\'return-bar\').remove()" aria-label="Fermer" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;line-height:1;padding:0 0 0 4px">✕</button>';
+  const hero=document.querySelector('.hero');
+  if(hero){hero.style.position='relative';hero.appendChild(bar);}
   // Pré-remplir le modal à l'ouverture
   const _origOpen=window.openModal;
   window.openModal=function(...args){
@@ -5384,9 +5374,9 @@ document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
     const bar=document.getElementById('cookieBar');
     if(!bar)return;
     try{if(localStorage.getItem(KEY))return;}catch(e){}
-    const show=()=>{bar.classList.add('show');window.removeEventListener('scroll',show);};
+    const show=()=>{bar.classList.add('show');window.removeEventListener('scroll',show);clearTimeout(_ct);};
     window.addEventListener('scroll',show,{passive:true,once:true});
-    setTimeout(show,4000);
+    const _ct=setTimeout(show,10000);
   }
   window._cookieAccept=function(){
     const bar=document.getElementById('cookieBar');
