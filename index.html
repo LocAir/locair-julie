@@ -1759,13 +1759,12 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .prod-detail-item dt{font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--grey2);font-weight:600;margin-bottom:2px}
 .prod-detail-item dd{font-size:12px;color:var(--black);line-height:1.4}
 .prod-detail-item.full{grid-column:1/-1}
-.qty-sel{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
-.qty-btn{display:flex;flex-direction:column;align-items:center;gap:2px;padding:11px 8px;border:1.5px solid var(--rule);border-radius:12px;background:var(--white);cursor:pointer;font-family:var(--body);transition:border-color .15s,background .15s;width:100%}
-.qty-btn.on{border-color:var(--blue);background:rgba(27,58,95,.06)}
-.qty-btn-count{font-size:18px;font-weight:700;color:var(--black);line-height:1}
-.qty-btn.on .qty-btn-count{color:var(--blue)}
-.qty-btn-label{font-size:11px;color:var(--grey2);font-weight:400;margin-top:1px}
-.qty-btn-badge{font-size:9.5px;font-weight:700;color:var(--blue);background:rgba(27,58,95,.1);padding:2px 7px;border-radius:100px;margin-top:3px}
+.qty-stepper{display:inline-flex;align-items:center;border:1.5px solid var(--rule);border-radius:9px;overflow:hidden;background:#fff;margin:8px 0 6px}
+.qty-stepper-btn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;cursor:pointer;font-size:17px;font-weight:600;color:var(--blue);line-height:1;transition:background .15s;flex-shrink:0;font-family:var(--body)}
+.qty-stepper-btn:hover:not(:disabled){background:var(--blue-lt)}
+.qty-stepper-btn:disabled{color:var(--rule);cursor:not-allowed}
+.qty-stepper-val{min-width:32px;text-align:center;font-size:14px;font-weight:700;color:var(--black);border-left:1.5px solid var(--rule);border-right:1.5px solid var(--rule);height:30px;line-height:30px}
+.qty-stepper-lbl{font-size:11.5px;color:var(--grey);margin-left:8px}
 .dur-list{
   margin:12px 0 0;
   border:1.5px solid var(--rule);border-radius:14px;overflow:hidden;
@@ -3006,6 +3005,14 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
                   </div>
                   <div class="prod-energy" aria-label="Classe énergie A">A</div>
                 </div>
+                <div style="display:flex;align-items:center;gap:0">
+                  <div class="qty-stepper" role="group" aria-label="Quantité">
+                    <button type="button" class="qty-stepper-btn" id="qty-minus" onclick="setQty(_qty-1)" aria-label="Retirer un climatiseur" disabled>−</button>
+                    <span class="qty-stepper-val" id="qty-val" aria-live="polite">1</span>
+                    <button type="button" class="qty-stepper-btn" id="qty-plus" onclick="setQty(_qty+1)" aria-label="Ajouter un climatiseur">+</button>
+                  </div>
+                  <span class="qty-stepper-lbl" id="qty-stepper-lbl">climatiseur</span>
+                </div>
                 <div class="spec-chips">
                   <span class="spec-chip">10 000 BTU</span>
                   <span class="spec-chip">Jusqu'à 30 m²</span>
@@ -3044,18 +3051,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
                 <dt>Inclus dans la location</dt><dd>Climatiseur · Télécommande · Gaine d'évacuation · Kit de calfeutrage · Mode d'emploi</dd>
               </div>
             </dl>
-            <!-- QUANTITÉ -->
-            <div class="qty-sel" role="radiogroup" aria-label="Nombre de climatiseurs">
-              <button type="button" class="qty-btn on" id="qty-1" onclick="setQty(1)" aria-pressed="true">
-                <span class="qty-btn-count">1</span>
-                <span class="qty-btn-label">climatiseur</span>
-              </button>
-              <button type="button" class="qty-btn" id="qty-2" onclick="setQty(2)" aria-pressed="false">
-                <span class="qty-btn-count">2</span>
-                <span class="qty-btn-label">climatiseurs</span>
-                <span class="qty-btn-badge">2 pièces</span>
-              </button>
-            </div>
             <div class="dur-list" id="dur-cards" role="radiogroup" aria-label="Durée de location">
 
               <div class="dur-row on" data-days="7" onclick="selectDurCard(this,7)" role="radio" aria-checked="true" tabindex="0">
@@ -5923,24 +5918,29 @@ function toggleProdDetails(){
 
 let _unit2=false;
 let _qty=1;
+const _QTY_MAX=2;
 function setQty(n){
+  n=Math.max(1,Math.min(_QTY_MAX,Math.round(n)));
   _qty=n;_unit2=(n===2);
   const cb=document.getElementById('f-unit2');if(cb)cb.checked=_unit2;
-  document.getElementById('qty-1')?.classList.toggle('on',n===1);
-  document.getElementById('qty-2')?.classList.toggle('on',n===2);
-  document.getElementById('qty-1')?.setAttribute('aria-pressed',n===1?'true':'false');
-  document.getElementById('qty-2')?.setAttribute('aria-pressed',n===2?'true':'false');
+  // Stepper UI
+  const valEl=document.getElementById('qty-val');
+  const minusBtn=document.getElementById('qty-minus');
+  const plusBtn=document.getElementById('qty-plus');
+  const lblEl=document.getElementById('qty-stepper-lbl');
+  if(valEl)valEl.textContent=n;
+  if(minusBtn)minusBtn.disabled=(n<=1);
+  if(plusBtn)plusBtn.disabled=(n>=_QTY_MAX);
+  if(lblEl)lblEl.textContent=n===1?'climatiseur':'climatiseurs';
   // Refresh displayed prices in dur-rows
   document.querySelectorAll('.dur-row[data-days]').forEach(card=>{
     const days=parseInt(card.getAttribute('data-days'));
-    const total=calcPrice(days)*_qty;
-    const rate=_baseRate(days);
     const tEl=card.querySelector('.dur-row-total');
-    if(tEl)tEl.textContent=total+' €';
+    if(tEl)tEl.textContent=calcPrice(days)*n+' €';
   });
   // Refresh free-duration total if open
   const dfbTotal=document.getElementById('dfb-total');
-  if(dfbTotal){const d=parseInt(document.getElementById('f-dur')?.value||'7');dfbTotal.textContent=calcPrice(d)*_qty+' €';}
+  if(dfbTotal){const d=parseInt(document.getElementById('f-dur')?.value||'7');dfbTotal.textContent=calcPrice(d)*n+' €';}
   updateModalRecapPill(curStep);
 }
 function toggleUnit2(cb){_unit2=cb.checked;_qty=_unit2?2:1;updateModalRecapPill(2);}
