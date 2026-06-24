@@ -339,7 +339,7 @@ body{
 .hero-inner{
   position:relative;z-index:2;
   width:100%;max-width:680px;margin:0 auto;
-  padding:clamp(72px,13vh,112px) var(--pad) clamp(56px,9vh,88px);
+  padding:clamp(88px,18vh,148px) var(--pad) clamp(72px,12vh,112px);
   text-align:center;
   display:flex;flex-direction:column;align-items:center;
 }
@@ -357,9 +357,26 @@ body{
 .hero-h1 em{font-style:italic;font-weight:300;color:#c9d8f0}
 .hero-desc{
   font-family:var(--body);font-size:18px;font-weight:300;
-  color:rgba(255,255,255,.78);line-height:1.55;margin-bottom:28px;
+  color:rgba(255,255,255,.72);line-height:1.55;margin-bottom:0;
   max-width:480px;margin-left:auto;margin-right:auto;letter-spacing:.01em;
 }
+/* ── HERO CTA (Apple-style pill) ── */
+.hero-cta{
+  display:inline-flex;align-items:center;
+  padding:16px 40px;
+  background:#f4f0ea;color:var(--blue);
+  border:none;border-radius:980px;
+  font-size:16px;font-weight:600;
+  font-family:var(--body);cursor:pointer;
+  letter-spacing:-.01em;
+  margin-top:40px;
+  transition:background .18s,transform .15s,box-shadow .18s;
+  box-shadow:0 4px 28px rgba(0,0,0,.22),0 1px 4px rgba(0,0,0,.12);
+  min-height:54px;
+  white-space:nowrap;
+}
+.hero-cta:hover{background:#fff;transform:scale(1.02);box-shadow:0 8px 36px rgba(0,0,0,.28)}
+.hero-cta:active{transform:scale(.97)}
 /* ── SEARCH BOX ── */
 .search-box{
   max-width:480px;
@@ -1518,9 +1535,10 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
   margin-top:14px;font-size:12.5px;color:rgba(255,255,255,.6);font-family:var(--body);
 }
-.hero-trust{
-  font-size:14px;color:rgba(255,255,255,.72);font-family:var(--body);font-weight:400;
-  text-align:center;margin-top:20px;letter-spacing:.03em;line-height:1.6;
+.hero-trust{display:none}
+.hero-micro{
+  font-size:12px;color:rgba(255,255,255,.38);font-family:var(--body);font-weight:400;
+  text-align:center;margin-top:18px;letter-spacing:.04em;
 }
 .hm-dot{color:rgba(255,255,255,.25)}
 
@@ -1634,12 +1652,12 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   from{opacity:0;transform:translateY(14px)}
   to{opacity:1;transform:none}
 }
-.hero-h1,.hero-desc,.search-box,.hero-trust{will-change:opacity,transform}
+.hero-h1,.hero-desc,.hero-cta,.hero-micro{will-change:opacity,transform}
 /* Cascade pendant le lever du rideau */
-.hero-h1{animation:heroIn .85s .42s cubic-bezier(.22,.61,.36,1) both}
-.hero-desc{animation:heroIn .65s .64s cubic-bezier(.22,.61,.36,1) both}
-.search-box{animation:heroIn .65s .82s cubic-bezier(.22,.61,.36,1) both}
-.hero-trust{animation:heroInFast .5s 1.0s cubic-bezier(.22,.61,.36,1) both}
+.hero-h1{animation:heroIn .85s .38s cubic-bezier(.22,.61,.36,1) both}
+.hero-desc{animation:heroIn .65s .58s cubic-bezier(.22,.61,.36,1) both}
+.hero-cta{animation:heroIn .65s .76s cubic-bezier(.22,.61,.36,1) both}
+.hero-micro{animation:heroInFast .5s .96s cubic-bezier(.22,.61,.36,1) both}
 /* 03 — Scroll reveal */
 .sr{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease;will-change:opacity,transform}
 .sr.in{opacity:1;transform:none;will-change:auto}
@@ -2301,17 +2319,12 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   <div class="hero-photo" id="hp" role="img" aria-label="Vue de la Promenade des Anglais à Nice en été — Climatisation mobile Loc'Air" style="background-image:url('hero-nice.jpg'),linear-gradient(160deg,#1b3a5f 0%,#0f2543 55%,#06090f 100%)"></div>
   <div class="hero-scrim"></div>
   <div class="hero-inner">
-    <p class="hero-eye">Nice · 7j/7</p>
     <h1 class="hero-h1" data-i18n-h="hero_h1">Il fait trop chaud<br><em>pour dormir à&nbsp;Nice&nbsp;?</em></h1>
     <p class="hero-desc" data-i18n="hero_desc">Demain soir, vous dormez frais.</p>
-
-    <div class="search-box" role="search" aria-label="Réserver un climatiseur">
-      <div class="sb-row">
-        <input class="sb-input" id="addr-init" type="text" placeholder="Votre adresse à Nice..." autocomplete="street-address" enterkeyhint="go" inputmode="text" aria-label="Votre adresse de livraison" data-lpignore="true"/>
-        <button class="sb-btn" onclick="startBooking()" aria-label="Réserver un climatiseur" type="button">Réserver →</button>
-      </div>
-    </div>
-    <p class="hero-trust">Dès 17 €/nuit · Zéro dépôt · ★ 4,8/5 · 19 avis · +400 locations</p>
+    <button class="hero-cta" onclick="openModal()" type="button" aria-label="Réserver un climatiseur">
+      Réserver — dès 17 €/nuit
+    </button>
+    <p class="hero-micro">4,8★ · 19 avis Google · Zéro dépôt</p>
   </div>
 </section>
 
@@ -4927,12 +4940,10 @@ const LANG_MAP=[
   /* ubar */
   ['.ubar','html','Loc\'Air · Nice · <strong>Depuis 2019</strong> &nbsp;·&nbsp; Kit fourni &nbsp;·&nbsp; 7j/7 · 8h–20h','Loc\'Air · Nice · <strong>Since 2019</strong> &nbsp;·&nbsp; Kit included &nbsp;·&nbsp; 7d/7 · 8am–8pm'],
   /* hero */
-  ['.hero-eye','text','Nice · 7j/7','Nice · 7d/7'],
   ['.hero-h1','html','Il fait trop chaud<br><em>pour dormir à&nbsp;Nice&nbsp;?</em>','Too hot<br><em>to sleep in&nbsp;Nice?</em>'],
   ['.hero-desc','text','Demain soir, vous dormez frais.','Tomorrow night, you sleep cool.'],
-  ['.hero-micro','text','4.8★ · 19 avis Google · Depuis 2019','4.8★ · 19 Google reviews · Since 2019'],
-  ['.sb-label','text','Adresse de livraison','Delivery address'],
-  ['#addr-init','ph','Votre adresse à Nice...','Your address in Nice...'],
+  ['.hero-cta','text','Réserver — dès 17 €/nuit','Book — from €17/night'],
+  ['.hero-micro','text','4,8★ · 19 avis Google · Zéro dépôt','4.8★ · 19 Google reviews · Zero deposit'],
   ['.sb-btn','text','Réserver →','Book →'],
   /* howto */
   ['.howto .sec-eye','text','Comment fonctionne la location','How rental works'],
