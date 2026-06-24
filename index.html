@@ -3559,7 +3559,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               </div>
               <div style="margin-top:10px">
                 <label for="f-parrain" style="font-size:12px;font-weight:500;color:var(--black2);display:block;margin-bottom:6px">Code parrain ou fidélité <span style="color:var(--grey2);font-weight:400">(facultatif — 10€ déduits)</span></label>
-                <input id="f-parrain" type="text" placeholder="ex. JULIE756" autocomplete="off" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:13px;font-family:var(--body);color:var(--black);background:#fff;outline:none"/>
+                <input id="f-parrain" type="text" placeholder="ex. JULIE756" autocomplete="off" oninput="validatePromo()" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:13px;font-family:var(--body);color:var(--black);background:#fff;outline:none"/>
+                <p id="promo-feedback" style="display:none;font-size:12px;font-weight:600;margin-top:5px"></p>
               </div>
             </div>
           </div>
@@ -4501,7 +4502,7 @@ function buildRecap(){
   const recupEl=document.getElementById('recap-date-recup');
   const isEN=_lang==='en';
   if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (end of your '+days+'-night rental)':'Le '+pickupDateStr+' (fin de votre location de '+days+' nuits)';
-  const total=calcTotal(days);
+  const total=Math.max(0,calcTotal(days)-_promoDiscount);
   const installLabel=_techInstall?(isEN?'Technician installation':'Pose technicien — 25 €'):(isEN?'Self-install (free)':'Pose autonome — Kit fourni');
   const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
   const durLabel=isEN?days+' nights':days+' nuits';
@@ -4548,10 +4549,14 @@ function buildRecap(){
           <span class="rc-total-lbl">${isEN?'Rental':'Location'} (${days} ${isEN?'nights':'nuits'})</span>
           <span>${price} €</span>
         </div>
-        <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:10px">
+        <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:${_promoDiscount>0?'4px':'10px'}">
           <span class="rc-total-lbl">${_techInstall?(isEN?'Technician setup':'Pose technicien'):(isEN?'Self-install':'Pose autonome')}</span>
           <span>${_techInstall?'25 €':(isEN?'Included':'Incluse')}</span>
         </div>
+        ${_promoDiscount>0?`<div class="rc-total-row" style="font-size:12px;color:#059669;font-weight:600;margin-bottom:10px">
+          <span class="rc-total-lbl">${isEN?'Promo code':'Code promo'} (${escHtml(_promoCode)})</span>
+          <span>−${_promoDiscount} €</span>
+        </div>`:''}
         <div class="rc-total-row">
           <span class="rc-total-lbl">Total TTC <span style="font-size:11px;font-weight:400;color:var(--grey2)">(récupération incluse)</span></span>
           <span class="rc-total-price">${priceDisplay}</span>
@@ -4562,7 +4567,10 @@ function buildRecap(){
   const sbtn=document.getElementById('sbtn');
   if(sbtn&&price>0){
     const _btnDate=(()=>{const raw=document.getElementById('f-date')?.value||'';if(!raw)return'';const[y,m,d]=raw.split('-');return(d&&m)?(' · '+d+'/'+m):'';})();
-    sbtn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>'+(_lang==='en'?' Confirm & Pay'+_btnDate+' — ':' Confirmer'+_btnDate+' — ')+total+' €';
+    const _origTotal=calcTotal(days);
+    const _btnTotal=Math.max(0,_origTotal-_promoDiscount);
+    const _strikeThrough=_promoDiscount>0?' <span style="text-decoration:line-through;opacity:.5;font-weight:400">'+_origTotal+' €</span> ':' ';
+    sbtn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>'+(_lang==='en'?' Confirm & Pay'+_btnDate+' —'+_strikeThrough:' Confirmer'+_btnDate+' —'+_strikeThrough)+_btnTotal+' €';
     sbtn.disabled=!document.getElementById('f-cgv')?.checked;
     const hint=document.getElementById('sbtn-hint');
     if(hint)hint.style.display=sbtn.disabled?'block':'none';
@@ -4667,7 +4675,8 @@ function submitForm(btn,mode){
     creneau_recuperation:'Coordonné par notre équipe (48h avant fin de location)',
     type_client:document.querySelector('#type-client-group .tpill.on')?.textContent.trim()||'Particulier',
     siret:document.getElementById('f-siret')?.value.trim()||'',
-    parrain_code:document.getElementById('f-parrain')?.value.trim()||'',
+    parrain_code:_promoCode||document.getElementById('f-parrain')?.value.trim()||'',
+    remise_promo:_promoDiscount>0?'-'+_promoDiscount+' €':'',
     prenom:document.getElementById('f-prenom')?.value,
     nom:document.getElementById('f-nom')?.value,
     tel:document.getElementById('f-tel')?.value,
@@ -4679,7 +4688,7 @@ function submitForm(btn,mode){
     mkt_consent:document.getElementById('f-mkt')?.checked?'Oui':'Non',
     cgv_accepted_at:(()=>{try{return new Date().toISOString();}catch(e){return '';}})(),
     mode:mode,
-    prix:calcTotal(parseInt(document.getElementById('f-dur')?.value)||7)+' €',
+    prix:Math.max(0,calcTotal(parseInt(document.getElementById('f-dur')?.value)||7)-_promoDiscount)+' €',
     date_recuperation:(()=>{try{const raw=document.getElementById('f-date')?.value;const dur=parseInt(document.getElementById('f-dur')?.value)||7;if(!raw)return '—';const d=new Date(raw);d.setDate(d.getDate()+dur);return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '—';}})()
   };
 
@@ -5971,6 +5980,28 @@ function toggleProdDetails(){
 
 let _unit2=false;
 let _qty=1;
+let _promoDiscount=0;
+let _promoCode='';
+const _PROMO_FIXED={'LOCAIR10':10,'LOCA10':10,'TESTPROMO':10};
+function validatePromo(){
+  const inp=document.getElementById('f-parrain');
+  const fb=document.getElementById('promo-feedback');
+  if(!inp)return;
+  const val=inp.value.trim().toUpperCase();
+  const prev=_promoDiscount;
+  if(!val){_promoDiscount=0;_promoCode='';if(fb){fb.textContent='';fb.style.display='none';}if(prev!==_promoDiscount){buildRecap();}return;}
+  const explicit=_PROMO_FIXED[val];
+  const isRef=/^[A-Z]{2,8}\d{2,4}$/.test(val);
+  if(explicit!==undefined||isRef){
+    _promoDiscount=explicit!==undefined?explicit:10;
+    _promoCode=val;
+    if(fb){fb.textContent='✓ Code valide — '+_promoDiscount+' € déduits';fb.style.color='#059669';fb.style.display='block';}
+  }else{
+    _promoDiscount=0;_promoCode='';
+    if(fb){fb.textContent='Code non reconnu';fb.style.color='var(--red)';fb.style.display='block';}
+  }
+  buildRecap();
+}
 function setQty(n){
   n=Math.min(10,Math.max(1,Math.round(n)));
   _qty=n;_unit2=(n>1);
