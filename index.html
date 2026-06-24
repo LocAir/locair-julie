@@ -3479,21 +3479,11 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               <p id="recap-date-recup" style="font-size:12px;color:var(--grey);margin-top:2px">—</p>
             </div>
           </div>
-          <p id="lbl-creneau-recup" style="font-size:13px;font-weight:600;color:var(--black);margin-bottom:10px">Créneau de récupération</p>
-          <div class="cren-grid" id="creneau-recup-group" role="radiogroup" aria-labelledby="lbl-creneau-recup" style="grid-template-columns:1fr 1fr">
-            <button type="button" class="cren-card" onclick="tgl(this,'crr');buildRecap()" role="radio" aria-checked="false">
-              <span class="cren-time">8h – 10h</span><span class="cren-sub">Matin</span>
-            </button>
-            <button type="button" class="cren-card" onclick="tgl(this,'crr');buildRecap()" role="radio" aria-checked="false">
-              <span class="cren-time">10h – 12h</span><span class="cren-sub">Matinée</span>
-            </button>
-            <button type="button" class="cren-card on" onclick="tgl(this,'crr');buildRecap()" role="radio" aria-checked="true">
-              <span class="cren-time">14h – 16h</span><span class="cren-sub">Après-midi</span>
-            </button>
-            <button type="button" class="cren-card" onclick="tgl(this,'crr');buildRecap()" role="radio" aria-checked="false">
-              <span class="cren-time">16h – 18h</span><span class="cren-sub">Fin d'AM</span>
-            </button>
-          </div>
+          <p id="lbl-creneau-recup" style="font-size:13px;font-weight:600;color:var(--black);margin-bottom:6px">Récupération</p>
+          <p style="font-size:13px;color:var(--grey);line-height:1.55;display:flex;align-items:flex-start;gap:8px">
+            <svg style="flex-shrink:0;margin-top:2px" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Notre équipe vous contactera 48h avant la fin de votre location pour coordonner la récupération.
+          </p>
         </div>
 
         <!-- COORDONNÉES -->
@@ -4474,7 +4464,7 @@ function buildRecap(){
   }
   const _getCrenText=sel=>{const el=document.querySelector(sel);if(!el)return null;const t=(el.querySelector('.cren-time')?.textContent||'').trim();return t||el.textContent.trim();};
   const creneauLiv=_getCrenText('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')||'8h–10h';
-  const creneauRecup=_getCrenText('#creneau-recup-group .cren-card.on,#creneau-recup-group .tpill.on')||'14h–16h';
+  const creneauRecup=null;
   const recupEl=document.getElementById('recap-date-recup');
   const isEN=_lang==='en';
   if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (end of your '+days+'-night rental)':'Le '+pickupDateStr+' (fin de votre location de '+days+' nuits)';
@@ -4492,11 +4482,11 @@ function buildRecap(){
   const icoFloor='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 3 9 21"/><polyline points="15 3 15 21"/></svg>';
   const icoQty='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="8" width="8" height="10" rx="1.5"/><rect x="14" y="8" width="8" height="10" rx="1.5"/><line x1="10" y1="13" x2="14" y2="13"/></svg>';
 
-  const qtyLabel=_qty===2?(isEN?'2 units':'2 climatiseurs'):(isEN?'1 unit':'1 climatiseur');
+  const qtyLabel=isEN?_qty+' unit'+(_qty>1?'s':''):_qty+' climatiseur'+(_qty>1?'s':'');
   const rows=[
     [isEN?'Address':'Adresse',escHtml(document.getElementById('f-addr')?.value||'—'),icoPin],
     [isEN?'Delivery':'Livraison',escHtml(dateStr+' · '+creneauLiv),icoCal],
-    [isEN?'Collection':'Récupération',escHtml(pickupDateStr+' · '+creneauRecup),icoCal],
+    [isEN?'Collection':'Récupération',escHtml(pickupDateStr)+' <span style="color:var(--grey2);font-size:11px">· coordonnée par notre équipe</span>',icoCal],
     [isEN?'Window':'Fenêtre',escHtml(ouv),icoWin],
     [isEN?'Duration':'Durée',escHtml(durLabel),icoDur],
     [isEN?'Quantity':'Quantité',escHtml(qtyLabel),icoQty]
@@ -4641,7 +4631,7 @@ function submitForm(btn,mode){
     quantite:_qty+'x',
     installation:_techInstall?'Technicien (25€)':'Autonome (kit fourni)',
     creneau_livraison:document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h',
-    creneau_recuperation:(document.querySelector('#creneau-recup-group .cren-card.on,#creneau-recup-group .tpill.on')?.querySelector('.cren-time')?.textContent?.trim())||(document.querySelector('#creneau-recup-group .cren-card.on,#creneau-recup-group .tpill.on')?.textContent?.trim())||'14h–16h',
+    creneau_recuperation:'Coordonné par notre équipe (48h avant fin de location)',
     type_client:document.querySelector('#type-client-group .tpill.on')?.textContent.trim()||'Particulier',
     prenom:document.getElementById('f-prenom')?.value,
     nom:document.getElementById('f-nom')?.value,
