@@ -711,8 +711,8 @@ body{
 .exp-stat-l{font-size:11px;color:var(--grey2);font-weight:500;text-transform:uppercase;letter-spacing:.08em}
 .exp-cards{display:flex;flex-direction:column}
 .exp-card{
-  display:flex;align-items:flex-start;gap:16px;
-  padding:22px 0;border-bottom:1px solid var(--rule);
+  display:flex;align-items:center;gap:16px;
+  padding:16px 0;border-bottom:1px solid var(--rule);
 }
 .exp-card:first-child{padding-top:0}
 .exp-card:last-child{border-bottom:none;padding-bottom:0}
@@ -722,7 +722,7 @@ body{
   display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;
 }
 .exp-ico svg{width:16px;height:16px;stroke:var(--blue);stroke-width:1.75;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.exp-t{font-size:14px;font-weight:600;color:var(--black2);margin-bottom:4px;line-height:1.3}
+.exp-t{font-size:14px;font-weight:600;color:var(--black2);margin-bottom:0;line-height:1.3}
 .exp-d{font-size:13px;color:var(--grey);line-height:1.65}
 .exp-badge{
   display:inline-flex;align-items:center;gap:5px;
@@ -2205,15 +2205,15 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .pt-rate{font-size:14px;font-weight:700;color:var(--blue);text-align:right;white-space:nowrap}
 .pt-unit{font-size:10px;font-weight:400;color:var(--grey)}
 .pt-tot{font-size:12px;color:var(--grey2);text-align:right}
-.pt-condensed-line{
-  display:block;width:100%;text-align:center;
-  font-size:13px;color:var(--grey);line-height:1.5;
-  padding:0;border:none;border-radius:0;
-  background:transparent;cursor:pointer;transition:color .18s;
-  margin-top:20px;text-decoration:underline;text-underline-offset:3px;
-}
-.pt-condensed-line:hover{color:var(--blue)}
-.pt-condensed-line strong{color:var(--blue)}
+.pt-tiers-strip{display:flex;align-items:stretch;border:1px solid var(--rule);border-radius:14px;overflow:hidden;max-width:440px;margin:24px auto 0;background:#fff}
+.pt-ts-col{flex:1;padding:16px 6px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
+.pt-ts-best{background:rgba(197,169,108,.05)}
+.pt-ts-div{width:1px;background:var(--rule);flex-shrink:0}
+.pt-ts-dur{font-size:10px;color:var(--grey2);font-weight:500;white-space:nowrap}
+.pt-ts-price{font-size:18px;font-weight:700;color:var(--blue);line-height:1.1;margin-top:2px}
+.pt-ts-price span{font-size:10px;font-weight:500;color:var(--grey)}
+.pt-ts-best .pt-ts-price{color:var(--gold)}
+.pt-ts-pct{font-size:10px;font-weight:700;color:#16a34a;margin-top:1px}
 .pt-note{font-size:12px;color:rgba(0,0,0,.4);text-align:center;margin-top:14px;letter-spacing:.01em}
 
 /* ── EMAIL CAPTURE ── */
@@ -2428,11 +2428,32 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <div class="plan-sep"></div>
       </div>
     </div>
-    <div class="price-tiers" aria-label="Comparatif des durées">
-      <button type="button" onclick="startBooking()" class="pt-condensed-line" aria-label="Voir les tarifs et réserver">
-        Dès <strong>25 €/jour</strong> · <strong>17 €/jour</strong> dès 22 jours — prix verrouillé à la réservation →
-      </button>
-      <p class="pt-note">Kit de calfeutrage fourni · Récupération incluse · Zéro dépôt · Annulation gratuite avant livraison</p>
+    <div class="price-tiers" aria-label="Barème tarifaire">
+      <div class="pt-tiers-strip" role="list" aria-label="Tarif selon la durée">
+        <div class="pt-ts-col" role="listitem">
+          <div class="pt-ts-dur">1–7 j</div>
+          <div class="pt-ts-price">25<span> €/j</span></div>
+        </div>
+        <div class="pt-ts-div" aria-hidden="true"></div>
+        <div class="pt-ts-col" role="listitem">
+          <div class="pt-ts-dur">8–14 j</div>
+          <div class="pt-ts-price">22<span> €/j</span></div>
+          <div class="pt-ts-pct">−12%</div>
+        </div>
+        <div class="pt-ts-div" aria-hidden="true"></div>
+        <div class="pt-ts-col" role="listitem">
+          <div class="pt-ts-dur">15–21 j</div>
+          <div class="pt-ts-price">19<span> €/j</span></div>
+          <div class="pt-ts-pct">−24%</div>
+        </div>
+        <div class="pt-ts-div" aria-hidden="true"></div>
+        <div class="pt-ts-col pt-ts-best" role="listitem">
+          <div class="pt-ts-dur">22+ j</div>
+          <div class="pt-ts-price">17<span> €/j</span></div>
+          <div class="pt-ts-pct">−32%</div>
+        </div>
+      </div>
+      <p class="pt-note">Prix garanti dès la réservation &nbsp;·&nbsp; Kit fourni &nbsp;·&nbsp; Récupération incluse &nbsp;·&nbsp; Zéro dépôt</p>
     </div>
   </div>
 </section>
@@ -2489,8 +2510,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         </div>
         <div>
           <p class="exp-t" id="exp-t-1">Appareil testé avant chaque livraison</p>
-          <p class="exp-d" id="exp-d-1">Filtres nettoyés, gaz vérifié, refroidissement testé. On ne livre pas un appareil qu'on n'a pas vérifié nous-mêmes le matin même.</p>
-          <p class="exp-badge" id="exp-badge-1">Entretenu entre chaque location</p>
         </div>
       </div>
       <div class="exp-card sr">
@@ -2499,8 +2518,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         </div>
         <div>
           <p class="exp-t" id="exp-t-2">De la sonnette à l'air frais : 20 à 30 minutes</p>
-          <p class="exp-d" id="exp-d-2">Kit de gaine fourni, aucun perçage, rien à préparer. On part seulement quand le refroidissement est confirmé devant vous.</p>
-          <p class="exp-badge" id="exp-badge-2">Compatible toutes fenêtres</p>
         </div>
       </div>
       <div class="exp-card sr">
@@ -2509,8 +2526,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         </div>
         <div>
           <p class="exp-t" id="exp-t-3">Panne ? On revient dans les 4 heures</p>
-          <p class="exp-d" id="exp-d-3">Si l'appareil tombe en panne, le technicien revient sous 4h ou on rembourse les jours restants. C'est dans le contrat — pas dans les petites lignes.</p>
-          <p class="exp-badge" id="exp-badge-3">Garanti contractuellement · RC Pro</p>
         </div>
       </div>
       <div class="exp-card sr">
@@ -2519,8 +2534,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         </div>
         <div>
           <p class="exp-t" id="exp-t-4">Vous parlez directement aux techniciens</p>
-          <p class="exp-d" id="exp-d-4">Pas de standard, pas de formulaire. Disponibles 7j/7 de 8h à 20h. Le numéro affiché est celui d'Aly — fondateur et qui livre encore.</p>
-          <p class="exp-badge" id="exp-badge-4">Entreprise niçoise depuis 2019</p>
         </div>
       </div>
     </div>
@@ -2841,7 +2854,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <a href="#" onclick="startBooking();return false">Magnan · Riquier</a>
         <a href="#" onclick="startBooking();return false">Caucade · Moulins</a>
         <a href="#" onclick="startBooking();return false">Saint-Isidore</a>
-        <a href="#" onclick="startBooking();return false">Cannes · Antibes ↗</a>
       </nav>
     </div>
   </div>
@@ -3437,7 +3449,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           <!-- CRÉNEAU LIVRAISON -->
           <div class="fld" style="margin-top:20px;padding-top:20px;border-top:1.5px solid var(--rule)">
             <p id="lbl-creneau-liv" style="font-size:13px;font-weight:600;color:var(--black);margin-bottom:4px">Préférence de créneau <span class="req">*</span></p>
-            <p style="font-size:11px;color:var(--grey);margin-bottom:10px">Le technicien confirme par appel — créneau à titre indicatif</p>
             <div class="cren-grid" id="creneau-liv-group" role="radiogroup" aria-labelledby="lbl-creneau-liv">
               <button type="button" class="cren-card on" onclick="selectCren(this)" role="radio" aria-checked="true">
                 <span class="cren-time">8h – 10h</span>
@@ -3538,7 +3549,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               </div>
               <div style="margin-top:10px">
                 <label for="f-parrain" style="font-size:12px;font-weight:500;color:var(--black2);display:block;margin-bottom:6px">Code promo <span style="color:var(--grey2);font-weight:400">(facultatif — −10€ automatiques)</span></label>
-                <input id="f-parrain" type="text" placeholder="ex. PROMO10" autocomplete="off" oninput="validatePromo()" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:13px;font-family:var(--body);color:var(--black);background:#fff;outline:none"/>
+                <input id="f-parrain" type="text" placeholder="Votre code" autocomplete="off" oninput="validatePromo()" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:13px;font-family:var(--body);color:var(--black);background:#fff;outline:none"/>
                 <p id="promo-feedback" style="display:none;font-size:12px;font-weight:600;margin-top:5px"></p>
               </div>
             </div>
@@ -4997,18 +5008,10 @@ const LANG_MAP=[
   ['#expertise-eyebrow','text','Notre savoir-faire','Our expertise'],
   ['#expertise-title','html','400 installations à Nice.<br><em>Toujours la même équipe.</em>','400 installations in Nice.<br><em>Always the same team.</em>'],
   ['#expertise-lead','text','Depuis 2019, nos techniciens ont réalisé plus de 400 installations à Nice. Matériel entretenu, installation soignée, disponibilité réelle. Aucune sous-traitance — vous avez affaire directement à notre équipe.','Since 2019, our technicians have completed over 400 installations in Nice. Maintained equipment, careful setup, real availability. No subcontracting — you deal directly with our team.'],
-  ['#exp-t-1','text','Rowenta 10 000 BTU — modèle professionnel','Rowenta 10,000 BTU — professional model'],
-  ['#exp-d-1','text','Climatiseur mobile silencieux, jusqu\'à 30 m² efficacement. Filtres nettoyés et appareil testé avant chaque livraison.','Silent mobile AC, effectively covers up to 30 m². Filters cleaned and unit tested before every delivery.'],
-  ['#exp-badge-1','text','Entretenu entre chaque location','Maintained between every rental'],
-  ['#exp-t-2','text','Installation en 20 à 30 minutes','Installation in 20 to 30 minutes'],
-  ['#exp-d-2','text','Kit de gaine fourni, aucun perçage, aucun outil de votre part. Le technicien teste le refroidissement devant vous avant de partir.','Duct kit included, no drilling, no tools needed from you. The technician tests cooling in front of you before leaving.'],
-  ['#exp-badge-2','text','Compatible toutes fenêtres à Nice','Compatible with all window types in Nice'],
-  ['#exp-t-3','text','Garantie panne — intervention sous 4h','Breakdown guarantee — response within 4h'],
-  ['#exp-d-3','text','En cas de défaut, notre technicien revient dans les 4 heures ou vous êtes remboursé intégralement. Inscrit dans le contrat.','In case of a fault, our technician returns within 4 hours or you are fully refunded. Written into the contract.'],
-  ['#exp-badge-3','text','Remboursement garanti contractuellement','Refund guaranteed contractually'],
-  ['#exp-t-4','text','+400 installations depuis 2019','+400 installations since 2019'],
-  ['#exp-d-4','text','Entreprise enregistrée (SIRET 853 730 562 00024), équipe locale niçoise, disponible 7j/7 de 8h à 20h sans sous-traitance.','Registered company (SIRET 853 730 562 00024), local Nice team, available 7d/7 from 8am to 8pm with no subcontracting.'],
-  ['#exp-badge-4','text','Note 4,8/5 · 19 avis Google vérifiés','Rated 4.8/5 · 19 verified Google reviews'],
+  ['#exp-t-1','text','Appareil testé avant chaque livraison','Unit tested before every delivery'],
+  ['#exp-t-2','text','De la sonnette à l\'air frais : 20 à 30 minutes','Doorbell to cool air: 20 to 30 minutes'],
+  ['#exp-t-3','text','Panne ? On revient dans les 4 heures','Breakdown? We\'re back within 4 hours'],
+  ['#exp-t-4','text','Vous parlez directement aux techniciens','You deal directly with the technicians'],
   /* faq cta card */
   ['.faq-cta-detail','text','7j/7 · 8h–20h · Réponse humaine garantie','7d/7 · 8am–8pm · Human response guaranteed'],
   /* about body */
@@ -5984,9 +5987,8 @@ function validatePromo(){
   const prev=_promoDiscount;
   if(!val){_promoDiscount=0;_promoCode='';if(fb){fb.textContent='';fb.style.display='none';}if(prev!==_promoDiscount){buildRecap();}return;}
   const explicit=_PROMO_FIXED[val];
-  const isRef=/^[A-Z]{2,8}\d{2,4}$/.test(val);
-  if(explicit!==undefined||isRef){
-    _promoDiscount=explicit!==undefined?explicit:10;
+  if(explicit!==undefined){
+    _promoDiscount=explicit;
     _promoCode=val;
     if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+_promoDiscount+' € off':'✓ Code valide — '+_promoDiscount+' € déduits';fb.style.color='#059669';fb.style.display='block';}
   }else{
