@@ -3132,7 +3132,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
                 <div class="dur-row-spacer"></div>
                 <div class="dur-row-rate" id="dcr-14">27 €/jour</div>
                 <div class="dur-row-right">
-                  <div class="dur-row-total" id="dct-14">378 €</div>
+                  <div class="dur-row-total" id="dct-14">420 €</div>
                   <div class="dur-row-save" id="dcs-14">−18%</div>
                 </div>
               </div>
@@ -3146,7 +3146,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
                 <div class="dur-row-spacer"></div>
                 <div class="dur-row-rate" id="dcr-21">22 €/jour</div>
                 <div class="dur-row-right">
-                  <div class="dur-row-total" id="dct-21">462 €</div>
+                  <div class="dur-row-total" id="dct-21">574 €</div>
                   <div class="dur-row-save" id="dcs-21">−33%</div>
                 </div>
               </div>
@@ -3160,7 +3160,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
                 <div class="dur-row-spacer"></div>
                 <div class="dur-row-rate" id="dcr-30">19 €/jour</div>
                 <div class="dur-row-right">
-                  <div class="dur-row-total" id="dct-30">570 €</div>
+                  <div class="dur-row-total" id="dct-30">745 €</div>
                   <div class="dur-row-save" id="dcs-30">−42%</div>
                 </div>
               </div>
@@ -3946,7 +3946,13 @@ function _baseRate(days){
 }
 const INSTALL_FEE=25;
 let _techInstall=true; // true = technicien 25€, false = auto-installation gratuite
-function calcPrice(days){return days*_baseRate(days);}
+function calcPrice(days){
+  // Tarification marginale : chaque palier ne s'applique qu'aux jours supplémentaires
+  if(days<=7)return days*33;
+  if(days<=14)return 7*33+(days-7)*27;
+  if(days<=21)return 7*33+7*27+(days-14)*22;
+  return 7*33+7*27+7*22+(days-21)*19;
+}
 function calcTotal(days){return calcPrice(days)*_qty+(_techInstall?INSTALL_FEE:0);}
 
 let _durDays=7;
