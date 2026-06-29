@@ -23,20 +23,32 @@ async function sendBrevo({ to, subject, html, scheduledAt }) {
 }
 
 // ── Calcul des dates programmées ──────────────────────────────────────────────
+function isParisDST(date) {
+  const y = date.getUTCFullYear();
+  // Dernier dimanche de mars (passage heure été)
+  const marchEnd = new Date(Date.UTC(y, 2, 31));
+  marchEnd.setUTCDate(31 - marchEnd.getUTCDay());
+  // Dernier dimanche d'octobre (passage heure hiver)
+  const octEnd = new Date(Date.UTC(y, 9, 31));
+  octEnd.setUTCDate(31 - octEnd.getUTCDay());
+  return date >= marchEnd && date < octEnd;
+}
+
 function scheduledISO(dateStr, offsetDays, hour = 9) {
-  // dateStr format YYYY-MM-DD (depuis le metadata Stripe)
   if (!dateStr || !dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return null;
   const d = new Date(dateStr + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() + offsetDays);
-  d.setUTCHours(hour - 1, 0, 0, 0); // heure Paris ~ UTC+1 (été UTC+2 → ajuster si besoin)
-  if (d < new Date()) return null; // passé → ne pas programmer
+  const parisOffset = isParisDST(d) ? 2 : 1; // UTC+2 été, UTC+1 hiver
+  d.setUTCHours(hour - parisOffset, 0, 0, 0);
+  if (d < new Date()) return null;
   return d.toISOString();
 }
 
 // ── Templates email ────────────────────────────────────────────────────────────
 function tplConfirmation({ ref, prenom, nom, adresse, date, creneau, duree, amount, installation }) {
-  const dateRecup = scheduledISO(date, parseInt(duree) || 7, 10)
-    ? (() => { const d = new Date(date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + (parseInt(duree) || 7)); return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); })()
+  const durDays = Number(duree) || 7;
+  const dateRecup = scheduledISO(date, durDays, 10)
+    ? (() => { const d = new Date(date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + durDays); return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); })()
     : '';
   const dateLivr = date ? new Date(date + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
@@ -65,7 +77,7 @@ function tplConfirmation({ ref, prenom, nom, adresse, date, creneau, duree, amou
       <div class="row"><span class="lbl">Client</span><span class="val">${prenom} ${nom}</span></div>
       <div class="row"><span class="lbl">Adresse</span><span class="val">${adresse}</span></div>
       <div class="row"><span class="lbl">Livraison</span><span class="val">${dateLivr}${creneau ? ' · ' + creneau : ''}</span></div>
-      <div class="row"><span class="lbl">Durée</span><span class="val">${duree} jour${parseInt(duree) > 1 ? 's' : ''}${dateRecup ? ' — récupération ' + dateRecup : ''}</span></div>
+      <div class="row"><span class="lbl">Durée</span><span class="val">${duree} jour${durDays > 1 ? 's' : ''}${dateRecup ? ' — récupération ' + dateRecup : ''}</span></div>
       <div class="row"><span class="lbl">Installation</span><span class="val">${installation || 'Autonome'}</span></div>
       <div class="row"><span class="lbl">Montant</span><span class="val">${amount}</span></div>
       <p style="margin:24px 0 8px;font-size:13px;color:#444">Notre équipe vous confirmera le créneau exact par appel téléphonique le matin de la livraison.</p>
@@ -200,7 +212,7 @@ module.exports = async (req, res) => {
     const duree = parseInt(meta.duree) || 7;
 
     // 1. Notifier l'opérateur via Formspree
-    fetch('https://formspree.io/f/mvzyngoy', {
+    await fetch('https://formspree.io/f/mvzyngoy', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({
@@ -252,8 +264,8 @@ module.exports = async (req, res) => {
       });
     }
 
-    // 4. Demande d'avis J+3 après livraison
-    const j3 = scheduledISO(meta.date, 3, 10);
+    // 4. Demande d'avis J+3 après fin de location (pas après livraison)
+    const j3 = scheduledISO(meta.date, duree + 3, 10);
     if (j3) {
       await sendBrevo({
         to:          email,

@@ -17,7 +17,7 @@ module.exports = async (req, res) => {
   const data   = req.body || {};
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-  const duree = Math.max(1, parseInt(data.duree) || 7);
+  const duree = Math.max(7, parseInt(data.duree) || 7);
   const baseCents = calcBase(duree) * 100;
 
   // Valider le code promo côté serveur
