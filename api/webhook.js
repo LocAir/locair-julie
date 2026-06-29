@@ -98,7 +98,7 @@ function tplRappelJMoins1({ ref, prenom, adresse, creneau }) {
       <p>Votre climatiseur mobile Loc'Air est livré <strong>demain</strong>.</p>
       <div class="box">
         <p style="margin:0 0 6px"><strong>📍 Adresse :</strong> ${adresse}</p>
-        <p style="margin:0 0 6px"><strong>🕗 Créneau :</strong> ${creneau || '8h – 20h'}</p>
+        <p style="margin:0 0 6px"><strong>🕗 Créneau :</strong> ${creneau || '8h – 12h'}</p>
         <p style="margin:0"><strong>📞 Le technicien vous appelle 30 min avant d'arriver.</strong></p>
       </div>
       <p>Assurez-vous d'être présent ou qu'une personne puisse réceptionner l'appareil.</p>
