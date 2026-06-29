@@ -3662,7 +3662,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 
           <!-- Stripe Payment Element (affiché après validation) -->
           <div id="stripe-section" style="display:none;margin-top:20px">
-            <div id="stripe-payment-element" style="margin-bottom:14px"></div>
+            <div id="stripe-payment-element" style="margin-bottom:14px;min-height:220px;display:flex;align-items:center;justify-content:center"><p id="stripe-loading" style="color:var(--grey);font-size:13px">Chargement du formulaire de paiement…</p></div>
             <p id="stripe-pay-error" role="alert" style="display:none;color:#b91c1c;font-size:13px;margin-bottom:10px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px"></p>
             <button id="stripe-pay-btn" type="button" onclick="doStripePayment()" class="btn-pay" style="width:100%">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -4901,15 +4901,16 @@ function submitForm(btn,mode){
         _stripeElements=_getStripe().elements({clientSecret:d.clientSecret,appearance,locale:'fr'});
         const payEl=_stripeElements.create('payment',{layout:'tabs'});
         const container=document.getElementById('stripe-payment-element');
-        if(container){container.innerHTML='';payEl.mount('#stripe-payment-element');}
+        if(container){container.innerHTML='<p id="stripe-loading" style="color:var(--grey);font-size:13px">Chargement du formulaire de paiement…</p>';payEl.mount('#stripe-payment-element');}
+        payEl.on('ready',()=>{const l=document.getElementById('stripe-loading');if(l)l.remove();const mb=document.getElementById('modal-body');if(mb&&container){const top=container.offsetTop-20;mb.scrollTo({top,behavior:'smooth'});}});
         const amtEl=document.getElementById('stripe-pay-amount');if(amtEl)amtEl.textContent=prixEuros;
         const sect=document.getElementById('stripe-section');if(sect)sect.style.display='block';
         if(btn){btn.style.display='none';}
         const hint=document.getElementById('sbtn-hint');if(hint)hint.style.display='none';
         const sub=document.querySelector('.pay-sub');if(sub)sub.style.display='none';
         _submitting=false;
-        // Scroll to payment element
-        setTimeout(()=>{const s=document.getElementById('stripe-section');if(s)s.scrollIntoView({behavior:'smooth',block:'nearest'});},200);
+        // Scroll initial pour montrer que quelque chose charge
+        setTimeout(()=>{const mb=document.getElementById('modal-body');if(mb&&container)mb.scrollTo({top:container.offsetTop-20,behavior:'smooth'});},100);
       })
       .catch(err=>{
         _submitting=false;
