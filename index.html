@@ -4720,6 +4720,10 @@ async function doStripePayment(){
     if(btn){btn.disabled=false;btn.querySelector('span').textContent='Réessayer le paiement';}
   }else if(paymentIntent&&paymentIntent.status==='succeeded'){
     _stripePaymentDone();
+  }else{
+    // Statut inattendu (processing, requires_action, etc.)
+    if(errEl){errEl.textContent='Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';}
+    if(btn){btn.disabled=false;btn.querySelector('span').textContent='Réessayer le paiement';}
   }
 }
 
@@ -4734,11 +4738,18 @@ function _stripePaymentDone(){
   showSuccess();
 }
 
-// Détection retour Stripe (redirect 3DS) → affiche la confirmation
+// Détection retour Stripe (redirect 3DS) → vérifie redirect_status avant d'afficher la confirmation
 (function _checkStripeReturn(){
   const p=new URLSearchParams(window.location.search);
   if(p.get('booking')==='success'){
     window.history.replaceState({},'','/');
+    // Stripe ajoute redirect_status au retour ; si absent ou non "succeeded", on ignore
+    const redirectStatus=p.get('redirect_status')||'';
+    if(redirectStatus&&redirectStatus!=='succeeded'){
+      // Paiement échoué après redirection 3DS → rouvrir le modal pour réessayer
+      setTimeout(()=>openModal(),100);
+      return;
+    }
     const ref=p.get('ref')||'';
     let pending={};try{pending=JSON.parse(localStorage.getItem('locair_pending')||'{}');}catch(e){}
     if(ref||pending._ref){
