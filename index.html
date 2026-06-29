@@ -3780,23 +3780,32 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         </div>
       </div>
 
-      <!-- ══ PROLONGATION — ÉTAPE P4 : RÉCAPITULATIF ══ -->
+      <!-- ══ PROLONGATION — ÉTAPE P4 : RÉCAPITULATIF + PAIEMENT ══ -->
       <div class="step-panel" id="sp4">
         <div class="sp-head">
           <h3 class="sp-title">Confirmer la prolongation</h3>
-          <p class="sp-sub">Vérifiez et confirmez — annulation gratuite avant récupération.</p>
+          <p class="sp-sub">Vérifiez et payez en ligne — confirmation email immédiate.</p>
         </div>
         <div id="prolong-recap-box" style="background:var(--blue-lt);border-radius:14px;padding:20px 24px;margin:0 24px 16px;font-size:14px;line-height:1.8"></div>
         <div style="padding:0 24px">
           <div class="rgpd-row">
-            <input type="checkbox" id="pe-cgv" onchange="document.getElementById('prolong-sbtn').disabled=!this.checked"/>
+            <input type="checkbox" id="pe-cgv" onchange="onProlongCGV(this)"/>
             <label for="pe-cgv">J'accepte les <a href="/cgv" style="color:var(--blue);text-decoration:underline;font-size:11px">conditions générales de vente</a> et la durée de prolongation choisie.</label>
           </div>
-          <button class="btn-pay" id="prolong-sbtn" onclick="submitProlongation()" type="button" disabled style="margin-top:16px">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-            <span id="prolong-sbtn-lbl">Confirmer la prolongation →</span>
+          <button class="btn-pay" id="prolong-sbtn" onclick="startProlongPayment()" type="button" disabled style="margin-top:16px">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            <span id="prolong-sbtn-lbl">Procéder au paiement</span>
           </button>
-          <p class="pay-sub">Confirmation par email dans quelques minutes</p>
+          <!-- Stripe Payment Element prolongation -->
+          <div id="prolong-stripe-section" style="display:none;margin-top:20px">
+            <div id="prolong-stripe-element" style="margin-bottom:14px;min-height:220px;display:flex;align-items:center;justify-content:center"><p id="prolong-stripe-loading" style="color:var(--grey);font-size:13px">Chargement du formulaire de paiement…</p></div>
+            <p id="prolong-stripe-error" role="alert" style="display:none;color:#b91c1c;font-size:13px;margin-bottom:10px;padding:10px 14px;background:#fef2f2;border:1px solid #fecaca;border-radius:10px"></p>
+            <button id="prolong-pay-btn" type="button" onclick="doProlongPayment()" class="btn-pay" style="width:100%">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              <span>Payer <span id="prolong-pay-amount"></span> en toute sécurité</span>
+            </button>
+            <p style="text-align:center;font-size:11px;color:var(--grey);margin-top:8px">🔒 Paiement sécurisé SSL · Stripe · Aucun stockage de vos données bancaires</p>
+          </div>
           <p id="prolong-error" role="alert" style="display:none;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;font-size:13px;text-align:center;margin-top:12px">
             Problème de connexion. Appelez-nous au <a href="tel:0663798756" style="color:#b91c1c;font-weight:600">06.63.79.87.56</a>.
           </p>
@@ -4301,6 +4310,13 @@ function closeModal(){
   const stripeContainer=document.getElementById('stripe-payment-element');
   if(stripeContainer)stripeContainer.innerHTML='<p id="stripe-loading" style="color:var(--grey);font-size:13px">Chargement du formulaire de paiement…</p>';
   const sbtn=document.getElementById('sbtn');if(sbtn)sbtn.style.removeProperty('display');
+  // Nettoyage Stripe prolongation
+  if(_prolongElements){try{_prolongElements.getElement('payment')?.unmount();}catch(e){}_prolongElements=null;}
+  _prolongPaying=false;
+  const prolongSect=document.getElementById('prolong-stripe-section');if(prolongSect)prolongSect.style.display='none';
+  const prolongContainer=document.getElementById('prolong-stripe-element');
+  if(prolongContainer)prolongContainer.innerHTML='<p id="prolong-stripe-loading" style="color:var(--grey);font-size:13px">Chargement du formulaire de paiement…</p>';
+  const prolongSbtn=document.getElementById('prolong-sbtn');if(prolongSbtn)prolongSbtn.style.removeProperty('display');
 }
 function overlayClick(e){
   if(e.target!==document.getElementById('overlay'))return;
@@ -5988,6 +6004,8 @@ initDurCardPrices();
 // ── FLOW CHOICE (s0) ─────────────────────────────────────────────────────────
 let _currentFlow='new';
 let _prolongDays=1;
+let _prolongPaying=false;
+let _prolongElements=null;
 
 function chooseFlow(type){
   _currentFlow=type;
@@ -6102,63 +6120,128 @@ function buildProlongRecap(){
       <span style="color:var(--grey2)">Montant</span><span style="font-weight:700;font-size:16px;color:var(--black)">${price} €</span>
     </div>
   `;
-  // reset checkbox
+  // reset checkbox + mettre le prix dans le bouton
   const cgv=document.getElementById('pe-cgv');
   const sbtn=document.getElementById('prolong-sbtn');
   if(cgv)cgv.checked=false;
   if(sbtn)sbtn.disabled=true;
+  const sbtlbl=document.getElementById('prolong-sbtn-lbl');
+  if(sbtlbl)sbtlbl.textContent='Procéder au paiement — '+price+' €';
+  // Réinitialiser Stripe si déjà monté
+  if(_prolongElements){try{_prolongElements.getElement('payment')?.unmount();}catch(e){}_prolongElements=null;}
+  const sect=document.getElementById('prolong-stripe-section');if(sect)sect.style.display='none';
+  if(sbtn)sbtn.style.removeProperty('display');
 }
 
-async function submitProlongation(){
+function onProlongCGV(cb){
+  const btn=document.getElementById('prolong-sbtn');
+  const sect=document.getElementById('prolong-stripe-section');
+  if(cb.checked){
+    if(btn)btn.disabled=false;
+  }else{
+    if(btn){btn.disabled=true;btn.style.removeProperty('display');}
+    if(sect)sect.style.display='none';
+    if(_prolongElements){try{_prolongElements.getElement('payment')?.unmount();}catch(e){}_prolongElements=null;}
+  }
+}
+
+async function startProlongPayment(){
   const btn=document.getElementById('prolong-sbtn');
   const lbl=document.getElementById('prolong-sbtn-lbl');
   const errEl=document.getElementById('prolong-error');
+  const origLbl=lbl?.textContent||'Procéder au paiement';
   if(btn)btn.disabled=true;
-  if(lbl)lbl.textContent='Envoi en cours…';
-  const price=Math.round(_prolongDays*_baseRate(_prolongDays));
+  if(lbl)lbl.textContent='Chargement…';
+  if(errEl)errEl.style.display='none';
+
+  const jours=_prolongDays;
+  const prenom=document.getElementById('pe-prenom')?.value.trim()||'';
+  const nom=document.getElementById('pe-nom')?.value.trim()||'';
+  const email=document.getElementById('pe-email')?.value.trim()||'';
+  const tel=document.getElementById('pe-tel')?.value.trim()||'';
+  const addr=document.getElementById('pe-addr')?.value.trim()||'';
   const rawDate=document.getElementById('pe-date')?.value||'';
   let dateLabel='—';
   if(rawDate){const[y,m,d]=rawDate.split('-');dateLabel=d+'/'+m+'/'+y;}
   const creneau=document.querySelector('#pe-creneau-group .tpill.on')?.textContent.trim()||'—';
-  const prenom=document.getElementById('pe-prenom')?.value.trim()||'';
-  const nom=document.getElementById('pe-nom')?.value.trim()||'';
-  const data={
-    type:'prolongation',
-    prenom,
-    nom,
-    email:document.getElementById('pe-email')?.value.trim(),
-    tel:document.getElementById('pe-tel')?.value.trim(),
-    adresse_origine:document.getElementById('pe-addr')?.value.trim()||'—',
-    jours_supplementaires:_prolongDays,
-    date_recuperation:dateLabel,
-    creneau_recuperation:creneau,
-    montant:price+' €',
-    ville:'Nice',
-    _subject:'Prolongation — '+prenom+' '+nom+' — '+_prolongDays+'j — récup. '+dateLabel+' '+creneau,
-  };
+
   try{
-    const r=await fetch('https://formspree.io/f/mvzyngoy',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(data)});
-    if(r.ok){
-      document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
-      const succ=document.getElementById('msuccess-prolong');
-      if(succ){
-        const msg=document.getElementById('prolong-success-msg');
-        if(msg)msg.textContent='Votre location est prolongée de '+_prolongDays+' jour'+(_prolongDays>1?'s':'')+'. Récupération le '+dateLabel+' entre '+creneau+'. Confirmation par email dans quelques minutes.';
-        const prolongRef=_generateOrderRef();
-        const refEl2=document.getElementById('prolong-ref');
-        if(refEl2)refEl2.textContent='Dossier '+prolongRef;
-        succ.classList.add('show');
-      }
-      window.dataLayer=window.dataLayer||[];
-      dataLayer.push({event:'prolongation_submitted',days:_prolongDays,value:price});
-    } else {
-      throw new Error('HTTP '+r.status);
+    const stripe=_getStripe();
+    if(!stripe)throw new Error('Stripe non chargé — désactivez votre bloqueur de publicités');
+    const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,prenom,nom,email,tel,adresse_origine:addr,date_recuperation:dateLabel,creneau})});
+    if(!r.ok)throw new Error('API '+r.status);
+    const d=await r.json();
+    if(!d.clientSecret)throw new Error(d.error||'No secret');
+
+    const appearance={theme:'stripe',variables:{colorPrimary:'#1b3a5f',borderRadius:'10px',fontFamily:'Inter,system-ui,sans-serif'}};
+    _prolongElements=stripe.elements({clientSecret:d.clientSecret,appearance,locale:'fr'});
+    const payEl=_prolongElements.create('payment',{layout:'tabs'});
+    const container=document.getElementById('prolong-stripe-element');
+    if(container){container.innerHTML='<p id="prolong-stripe-loading" style="color:var(--grey);font-size:13px">Chargement du formulaire de paiement…</p>';payEl.mount('#prolong-stripe-element');}
+    payEl.on('ready',()=>{const l=document.getElementById('prolong-stripe-loading');if(l)l.remove();const mb=document.getElementById('modal-body');if(mb&&container)mb.scrollTo({top:container.offsetTop-20,behavior:'smooth'});});
+    const amtEl=document.getElementById('prolong-pay-amount');
+    if(amtEl)amtEl.textContent=(d.amountCents/100).toFixed(0)+' €';
+    const sect=document.getElementById('prolong-stripe-section');
+    if(sect)sect.style.display='block';
+    if(btn)btn.style.display='none';
+    setTimeout(()=>{const mb=document.getElementById('modal-body');if(mb&&container)mb.scrollTo({top:container.offsetTop-20,behavior:'smooth'});},100);
+  }catch(e){
+    console.error('[prolong checkout]',e.message);
+    if(btn){btn.disabled=false;btn.style.removeProperty('display');}
+    if(lbl)lbl.textContent=origLbl;
+    if(errEl){errEl.textContent='Problème de connexion. Appelez-nous au 06.63.79.87.56.';errEl.style.display='block';}
+  }
+}
+
+async function doProlongPayment(){
+  if(_prolongPaying)return;
+  _prolongPaying=true;
+  const payBtn=document.getElementById('prolong-pay-btn');
+  const errEl=document.getElementById('prolong-stripe-error');
+  const btnSpan=payBtn?payBtn.querySelector('span'):null;
+  if(payBtn)payBtn.disabled=true;
+  if(btnSpan)btnSpan.textContent='Paiement en cours…';
+  if(errEl)errEl.style.display='none';
+  try{
+    const {error,paymentIntent}=await _getStripe().confirmPayment({elements:_prolongElements,redirect:'if_required'});
+    if(error){
+      if(errEl){errEl.textContent=error.message||'Paiement refusé.';errEl.style.display='block';}
+      if(payBtn)payBtn.disabled=false;
+      if(btnSpan)btnSpan.textContent='Réessayer le paiement';
+    }else if(paymentIntent?.status==='succeeded'){
+      _showProlongSuccess();
+    }else{
+      if(errEl){errEl.textContent='Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';}
+      if(payBtn)payBtn.disabled=false;
+      if(btnSpan)btnSpan.textContent='Réessayer';
     }
   }catch(e){
-    if(errEl)errEl.style.display='block';
-    if(btn)btn.disabled=false;
-    if(lbl)lbl.textContent='Confirmer la prolongation →';
+    if(errEl){errEl.textContent='Erreur inattendue. Réessayez.';errEl.style.display='block';}
+    if(payBtn)payBtn.disabled=false;
+    if(btnSpan)btnSpan.textContent='Réessayer le paiement';
+  }finally{
+    _prolongPaying=false;
   }
+}
+
+function _showProlongSuccess(){
+  const rawDate=document.getElementById('pe-date')?.value||'';
+  let dateLabel='—';
+  if(rawDate){const[y,m,d]=rawDate.split('-');dateLabel=d+'/'+m+'/'+y;}
+  const creneau=document.querySelector('#pe-creneau-group .tpill.on')?.textContent.trim()||'—';
+  document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.modal-success').forEach(s=>s.classList.remove('show'));
+  const succ=document.getElementById('msuccess-prolong');
+  if(succ){
+    const msg=document.getElementById('prolong-success-msg');
+    if(msg)msg.textContent='Votre location est prolongée de '+_prolongDays+' jour'+(_prolongDays>1?'s':'')+'. Récupération le '+dateLabel+' entre '+creneau+'. Confirmation par email dans quelques minutes.';
+    const prolongRef=_generateOrderRef();
+    const refEl2=document.getElementById('prolong-ref');
+    if(refEl2)refEl2.textContent='Dossier '+prolongRef;
+    succ.classList.add('show');
+  }
+  window.dataLayer=window.dataLayer||[];
+  dataLayer.push({event:'prolongation_paid',days:_prolongDays,value:Math.round(_prolongDays*_baseRate(_prolongDays))});
 }
 
 // ── EXIT INTENT ──────────────────────────────────────────────────────────────
