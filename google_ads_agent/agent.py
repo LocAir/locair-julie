@@ -225,6 +225,52 @@ TOOLS: list[dict] = [
         },
     },
     {
+        "name": "create_campaign",
+        "description": (
+            "Créer une nouvelle campagne Search Google Ads avec un budget quotidien et un ciblage géographique. "
+            "Retourne un campaign_id à utiliser ensuite avec create_ad_group. "
+            "Crée toujours en statut PAUSED par défaut pour validation avant activation."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Nom de la campagne"},
+                "daily_budget_euros": {"type": "number", "description": "Budget quotidien en euros"},
+                "cities": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Villes françaises à cibler (ex: ['Nice', 'Cannes', 'Antibes']). Laisser vide pour ciblage national.",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": ["PAUSED", "ENABLED"],
+                    "description": "PAUSED par défaut (recommandé). ENABLED pour activer immédiatement.",
+                },
+                "enhanced_cpc": {
+                    "type": "boolean",
+                    "description": "Activer l'enchère CPC améliorée (défaut: true)",
+                },
+            },
+            "required": ["name", "daily_budget_euros"],
+        },
+    },
+    {
+        "name": "create_ad_group",
+        "description": (
+            "Créer un groupe d'annonces dans une campagne existante. "
+            "Retourne un ad_group_id à utiliser avec add_keywords et create_responsive_search_ad."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "campaign_id": {"type": "string", "description": "ID de la campagne (obtenu via create_campaign ou list_campaigns)"},
+                "name": {"type": "string", "description": "Nom du groupe d'annonces"},
+                "cpc_max_euros": {"type": "number", "description": "Enchère CPC max par défaut en euros pour ce groupe"},
+            },
+            "required": ["campaign_id", "name", "cpc_max_euros"],
+        },
+    },
+    {
         "name": "create_responsive_search_ad",
         "description": "Créer une nouvelle annonce responsive search ad (RSA) dans un groupe d'annonces.",
         "input_schema": {
@@ -272,6 +318,18 @@ def execute_tool(ads: GoogleAdsClient, name: str, inputs: dict) -> str:
             "set_keyword_status": lambda: ads.set_keyword_status(inputs["ad_group_id"], inputs["criterion_id"], inputs["status"]),
             "update_keyword_bid": lambda: ads.update_keyword_bid(inputs["ad_group_id"], inputs["criterion_id"], inputs["new_cpc_max_euros"]),
             "add_negative_keywords": lambda: ads.add_negative_keywords(inputs["campaign_id"], inputs["keywords"]),
+            "create_campaign": lambda: ads.create_campaign(
+                inputs["name"],
+                inputs["daily_budget_euros"],
+                inputs.get("cities"),
+                inputs.get("status", "PAUSED"),
+                inputs.get("enhanced_cpc", True),
+            ),
+            "create_ad_group": lambda: ads.create_ad_group(
+                inputs["campaign_id"],
+                inputs["name"],
+                inputs["cpc_max_euros"],
+            ),
             "create_responsive_search_ad": lambda: ads.create_responsive_search_ad(
                 inputs["ad_group_id"],
                 inputs["headlines"],

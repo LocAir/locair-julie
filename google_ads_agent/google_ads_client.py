@@ -265,6 +265,143 @@ class GoogleAdsClient:
             })
         return ads
 
+    # ─────────────────────────── CAMPAIGN CREATION ──────────────────────────
+
+    def create_campaign(
+        self,
+        name: str,
+        daily_budget_euros: float,
+        cities: list[str] | None = None,
+        status: str = "PAUSED",
+        enhanced_cpc: bool = True,
+    ) -> dict:
+        """
+        Create a new Search campaign with a daily budget and optional geo targeting.
+        Returns campaign_id to be used with create_ad_group / add_keywords / create_responsive_search_ad.
+        status: 'PAUSED' (default, safe) or 'ENABLED'.
+        cities: list of French city names e.g. ['Nice', 'Cannes', 'Antibes'].
+        """
+        # 1. Budget
+        budget_svc = self.client.get_service("CampaignBudgetService")
+        b_op = self.client.get_type("CampaignBudgetOperation")
+        b = b_op.create
+        b.name = f"{name} — Budget"
+        b.amount_micros = _euros_to_micros(daily_budget_euros)
+        b.delivery_method = (
+            self.client.enums.BudgetDeliveryMethodEnum.BudgetDeliveryMethod.STANDARD
+        )
+        b_resp = budget_svc.mutate_campaign_budgets(
+            customer_id=self.customer_id, operations=[b_op]
+        )
+        budget_rn = b_resp.results[0].resource_name
+
+        # 2. Campaign
+        camp_svc = self.client.get_service("CampaignService")
+        c_op = self.client.get_type("CampaignOperation")
+        c = c_op.create
+        c.name = name
+        c.status = self.client.enums.CampaignStatusEnum.CampaignStatus[status]
+        c.advertising_channel_type = (
+            self.client.enums.AdvertisingChannelTypeEnum.AdvertisingChannelType.SEARCH
+        )
+        c.campaign_budget = budget_rn
+        c.manual_cpc.enhanced_cpc_enabled = enhanced_cpc
+        c.network_settings.target_google_search = True
+        c.network_settings.target_search_network = True
+        c.network_settings.target_content_network = False
+
+        try:
+            c_resp = camp_svc.mutate_campaigns(
+                customer_id=self.customer_id, operations=[c_op]
+            )
+        except GoogleAdsException as e:
+            return {"succes": False, "erreur": str(e)}
+
+        campaign_rn = c_resp.results[0].resource_name
+        campaign_id = campaign_rn.split("/")[-1]
+
+        # 3. Geo targeting
+        geo_added = []
+        if cities:
+            geo_rns = self._resolve_geo_targets(cities)
+            if geo_rns:
+                crit_svc = self.client.get_service("CampaignCriterionService")
+                geo_ops = []
+                for city, geo_rn in geo_rns.items():
+                    geo_op = self.client.get_type("CampaignCriterionOperation")
+                    geo_op.create.campaign = campaign_rn
+                    geo_op.create.location.geo_target_constant = geo_rn
+                    geo_ops.append(geo_op)
+                    geo_added.append(city)
+                crit_svc.mutate_campaign_criteria(
+                    customer_id=self.customer_id, operations=geo_ops
+                )
+
+        return {
+            "succes": True,
+            "campaign_id": campaign_id,
+            "nom": name,
+            "statut": status,
+            "budget_quotidien_euros": daily_budget_euros,
+            "zones_geo": geo_added,
+            "prochaine_etape": "Utilise create_ad_group avec ce campaign_id pour créer un groupe d'annonces.",
+        }
+
+    def create_ad_group(
+        self,
+        campaign_id: str,
+        name: str,
+        cpc_max_euros: float,
+    ) -> dict:
+        """
+        Create an ad group inside a campaign.
+        Returns ad_group_id to be used with add_keywords / create_responsive_search_ad.
+        """
+        campaign_svc = self.client.get_service("CampaignService")
+        ag_svc = self.client.get_service("AdGroupService")
+        op = self.client.get_type("AdGroupOperation")
+        ag = op.create
+        ag.name = name
+        ag.campaign = campaign_svc.campaign_path(self.customer_id, campaign_id)
+        ag.status = self.client.enums.AdGroupStatusEnum.AdGroupStatus.ENABLED
+        ag.type_ = self.client.enums.AdGroupTypeEnum.AdGroupType.SEARCH_STANDARD
+        ag.cpc_bid_micros = _euros_to_micros(cpc_max_euros)
+
+        try:
+            resp = ag_svc.mutate_ad_groups(customer_id=self.customer_id, operations=[op])
+        except GoogleAdsException as e:
+            return {"succes": False, "erreur": str(e)}
+
+        ag_rn = resp.results[0].resource_name
+        ad_group_id = ag_rn.split("/")[-1]
+        return {
+            "succes": True,
+            "ad_group_id": ad_group_id,
+            "nom": name,
+            "campaign_id": campaign_id,
+            "cpc_max_euros": cpc_max_euros,
+            "prochaine_etape": "Utilise add_keywords et create_responsive_search_ad avec cet ad_group_id.",
+        }
+
+    def _resolve_geo_targets(self, cities: list[str]) -> dict[str, str]:
+        """Return {city_name: resource_name} for given city names."""
+        svc = self.client.get_service("GeoTargetConstantService")
+        req = self.client.get_type("SuggestGeoTargetConstantsRequest")
+        req.locale = "fr"
+        req.country_code = "FR"
+        req.location_names.names.extend(cities)
+        try:
+            resp = svc.suggest_geo_target_constants(request=req)
+            result = {}
+            for s in resp.geo_target_constant_suggestions:
+                geo = s.geo_target_constant
+                for city in cities:
+                    if geo.name.lower() == city.lower() and city not in result:
+                        result[city] = geo.resource_name
+            return result
+        except Exception:
+            return {}
+
     # ─────────────────────────── CAMPAIGN ACTIONS ───────────────────────────
 
     def update_campaign_budget(self, campaign_id: str, new_budget_euros: float) -> dict:
