@@ -126,7 +126,7 @@ function tplAvis({ ref, prenom }) {
       <p>Nous espérons que votre climatiseur Loc'Air vous a apporté tout le confort souhaité !</p>
       <div class="stars">⭐⭐⭐⭐⭐</div>
       <p>Votre avis compte énormément et aide d'autres familles à nous faire confiance.</p>
-      <a class="btn" href="https://g.page/r/VOTRE_LIEN_GOOGLE/review">Laisser un avis Google</a>
+      <a class="btn" href="https://g.page/r/CeJQrt2gLNNrEAE/review">Laisser un avis Google</a>
       <p style="font-size:12px;color:#888;margin-top:16px">Dossier ${ref} — Merci pour votre confiance !</p>
     </div>
     <div class="footer">© 2026 Loc'Air · <a href="https://www.locair.fr" style="color:#1b3a5f">www.locair.fr</a></div>
