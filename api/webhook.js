@@ -4,7 +4,7 @@ const Stripe = require('stripe');
 async function sendBrevo({ to, subject, html, scheduledAt }) {
   if (!process.env.BREVO_API_KEY || !to) return;
   const body = {
-    sender:      { name: "Loc'Air", email: 'noreply@locair.fr' },
+    sender:      { name: "Loc'Air", email: 'contact@locair.fr' },
     to:          [{ email: to }],
     subject,
     htmlContent: html,
