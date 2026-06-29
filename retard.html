@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Retard de restitution — Loc'Air</title>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#f4f0ea;--black:#1b3a5f;--gold:#c5a96c;
+  --grey:#6b7280;--rule:#e5e0d8;--red:#dc2626;--green:#059669;
+  --body:'DM Sans',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:40px 16px 80px}
+.card{background:#fff;border-radius:20px;width:100%;max-width:480px;padding:32px 28px;box-shadow:0 4px 32px rgba(0,0,0,.08)}
+.logo{font-size:18px;font-weight:700;color:var(--black);letter-spacing:-.01em;margin-bottom:4px}
+.logo em{font-style:italic;font-weight:300;color:var(--gold)}
+h1{font-size:22px;font-weight:700;color:var(--black);margin:20px 0 4px}
+.sub{font-size:13px;color:var(--grey);margin-bottom:28px}
+label{display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:5px;margin-top:16px}
+input[type=text],input[type=email],input[type=number],input[type=password]{
+  width:100%;padding:12px 14px;border:1.5px solid var(--rule);border-radius:10px;
+  font-family:var(--body);font-size:15px;color:var(--black);background:#fff;
+  transition:border-color .15s;outline:none;
+}
+input:focus{border-color:var(--black);}
+.price-preview{background:#f4f0ea;border-radius:10px;padding:14px 16px;text-align:center;margin:20px 0;font-size:22px;font-weight:700;color:var(--black);display:none}
+.price-preview small{display:block;font-size:12px;font-weight:400;color:var(--grey);margin-top:2px}
+.btn{width:100%;padding:14px;background:var(--black);color:#fff;border:none;border-radius:12px;font-family:var(--body);font-size:15px;font-weight:700;cursor:pointer;margin-top:20px;transition:opacity .15s}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn:hover:not(:disabled){opacity:.85}
+.alert{padding:14px 16px;border-radius:10px;font-size:14px;margin-top:16px;display:none;line-height:1.5}
+.alert.error{background:#fef2f2;color:var(--red);border:1px solid #fecaca}
+.alert.success{background:#f0fdf4;color:#14532d;border:1px solid #bbf7d0}
+.auth-section{display:none}
+.auth-section.visible{display:block}
+.divider{border:none;border-top:1px solid var(--rule);margin:24px 0}
+.note{font-size:11px;color:var(--grey);margin-top:8px;line-height:1.4}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Loc<em>'Air</em></div>
+
+  <!-- Auth -->
+  <div id="auth-section">
+    <h1>Accès opérateur</h1>
+    <p class="sub">Entrez le mot de passe pour accéder à la facturation de retard.</p>
+    <label for="pwd">Mot de passe</label>
+    <input type="password" id="pwd" placeholder="••••••••" autocomplete="current-password"/>
+    <button class="btn" onclick="checkAuth()">Accéder →</button>
+    <div class="alert error" id="auth-error">Mot de passe incorrect.</div>
+  </div>
+
+  <!-- Formulaire retard -->
+  <div class="auth-section" id="retard-section">
+    <h1>Retard de restitution</h1>
+    <p class="sub">Prélevez directement la carte du client enregistrée lors de la réservation.</p>
+
+    <label for="r-email">Email du client</label>
+    <input type="email" id="r-email" placeholder="client@email.fr" oninput="updatePreview()"/>
+
+    <label for="r-nom">Nom (optionnel)</label>
+    <input type="text" id="r-nom" placeholder="Nom du client"/>
+
+    <label for="r-adresse">Adresse de la location (optionnel)</label>
+    <input type="text" id="r-adresse" placeholder="12 rue de la Paix, Nice"/>
+
+    <label for="r-jours">Jours de retard</label>
+    <input type="number" id="r-jours" min="1" max="90" value="1" oninput="updatePreview()"/>
+
+    <div class="price-preview" id="price-preview">
+      <span id="price-amount">—</span>
+      <small id="price-detail">Calcul selon grille tarifaire Loc'Air</small>
+    </div>
+
+    <button class="btn" id="charge-btn" onclick="chargeRetard()">Prélever la carte →</button>
+    <p class="note">⚠️ Action irréversible. Le client recevra un reçu Stripe par email.</p>
+    <div class="alert error" id="retard-error"></div>
+    <div class="alert success" id="retard-success"></div>
+  </div>
+</div>
+
+<script>
+let _token = '';
+
+function calcRetardPrice(days) {
+  days = Math.max(1, days);
+  if (days <= 7)  return days * 29;
+  if (days <= 14) return 7 * 29 + (days - 7) * 27;
+  if (days <= 21) return 7 * 29 + 7 * 27 + (days - 14) * 22;
+  return 7 * 29 + 7 * 27 + 7 * 22 + (days - 21) * 19;
+}
+
+function checkAuth() {
+  const pwd = document.getElementById('pwd').value.trim();
+  if (!pwd) return;
+  _token = pwd;
+  // Vérification soft côté client — l'API rejettera si mauvais token
+  document.getElementById('auth-section').style.display = 'none';
+  document.getElementById('retard-section').classList.add('visible');
+}
+
+document.getElementById('pwd').addEventListener('keydown', e => { if (e.key === 'Enter') checkAuth(); });
+
+function updatePreview() {
+  const jours = Math.max(1, parseInt(document.getElementById('r-jours').value) || 1);
+  const email = document.getElementById('r-email').value.trim();
+  const total = calcRetardPrice(jours);
+  const preview = document.getElementById('price-preview');
+  const amtEl  = document.getElementById('price-amount');
+  const detEl  = document.getElementById('price-detail');
+  if (email) {
+    preview.style.display = 'block';
+    amtEl.textContent = total.toFixed(2).replace('.', ',') + ' €';
+    detEl.textContent = jours + ' jour' + (jours > 1 ? 's' : '') + ' × tarif dégressif Loc\'Air';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+async function chargeRetard() {
+  const email  = document.getElementById('r-email').value.trim();
+  const nom    = document.getElementById('r-nom').value.trim();
+  const adresse = document.getElementById('r-adresse').value.trim();
+  const jours  = Math.max(1, parseInt(document.getElementById('r-jours').value) || 1);
+  const errEl  = document.getElementById('retard-error');
+  const okEl   = document.getElementById('retard-success');
+  const btn    = document.getElementById('charge-btn');
+
+  errEl.style.display = 'none';
+  okEl.style.display  = 'none';
+
+  if (!email) { errEl.textContent = 'Entrez l\'email du client.'; errEl.style.display = 'block'; return; }
+  if (jours < 1) { errEl.textContent = 'Nombre de jours invalide.'; errEl.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Prélèvement en cours…';
+
+  try {
+    const r = await fetch('/api/charge-retard', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ token: _token, email, nom, adresse, jours }),
+    });
+    const d = await r.json();
+
+    if (r.status === 402 && d.requires_action) {
+      okEl.textContent = '⚠️ 3D Secure requis — Stripe a envoyé un email au client pour valider le paiement. Vérifiez son statut dans le Dashboard Stripe.';
+      okEl.style.display = 'block';
+    } else if (!r.ok) {
+      throw new Error(d.error || 'Erreur ' + r.status);
+    } else {
+      const montant = parseFloat(d.amount_eur).toFixed(2).replace('.', ',');
+      okEl.textContent = '✅ Paiement de ' + montant + ' € confirmé (statut : ' + d.status + '). ID : ' + d.payment_intent_id;
+      okEl.style.display = 'block';
+      document.getElementById('r-email').value = '';
+      document.getElementById('r-jours').value = '1';
+      document.getElementById('r-nom').value = '';
+      document.getElementById('r-adresse').value = '';
+      document.getElementById('price-preview').style.display = 'none';
+    }
+  } catch (e) {
+    errEl.textContent = e.message || 'Erreur inattendue.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Prélever la carte →';
+  }
+}
+</script>
+</body>
+</html>

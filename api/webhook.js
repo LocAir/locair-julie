@@ -221,16 +221,20 @@ module.exports = async (req, res) => {
     const eventType = body.type || '';
     const obj       = body?.data?.object || {};
 
-    let meta   = null;
-    let amount = null;
-    let email  = null;
+    let meta            = null;
+    let amount          = null;
+    let email           = null;
+    let customerId      = '';
+    let paymentMethodId = '';
 
     if (eventType === 'payment_intent.succeeded') {
       const intent = await stripe.paymentIntents.retrieve(obj.id || '');
       if (intent.status !== 'succeeded') return res.json({ received: true, skipped: 'not succeeded' });
-      meta   = intent.metadata || {};
-      amount = (intent.amount / 100).toFixed(2) + ' €';
-      email  = intent.receipt_email || '';
+      meta            = intent.metadata || {};
+      amount          = (intent.amount / 100).toFixed(2) + ' €';
+      email           = intent.receipt_email || '';
+      customerId      = (typeof intent.customer === 'string' ? intent.customer : '') || meta.customer_id || '';
+      paymentMethodId = (typeof intent.payment_method === 'string' ? intent.payment_method : '') || '';
 
     } else if (eventType === 'checkout.session.completed') {
       const session = await stripe.checkout.sessions.retrieve(obj.id || '');
@@ -291,21 +295,23 @@ module.exports = async (req, res) => {
       body: JSON.stringify({
         _subject:       `✅ PAIEMENT — ${meta.ref || obj.id} — ${meta.prenom || ''} ${meta.nom || ''}`,
         _replyto:       email,
-        statut:         `✅ Stripe confirmé — ${amount}`,
-        stripe_id:      obj.id || '',
-        ref:            meta.ref          || '',
-        prenom:         meta.prenom       || '',
-        nom:            meta.nom          || '',
-        tel:            meta.tel          || '',
-        email:          email,
-        adresse:        meta.adresse      || '',
-        duree:          meta.duree        || '',
-        date_livraison: meta.date         || '',
-        creneau:        meta.creneau      || '',
-        installation:   meta.installation || '',
-        fenetre:        meta.fenetre      || '',
-        etage:          meta.etage        || '',
-        ascenseur:      meta.ascenseur    || '',
+        statut:           `✅ Stripe confirmé — ${amount}`,
+        stripe_id:        obj.id || '',
+        ref:              meta.ref          || '',
+        prenom:           meta.prenom       || '',
+        nom:              meta.nom          || '',
+        tel:              meta.tel          || '',
+        email:            email,
+        adresse:          meta.adresse      || '',
+        duree:            meta.duree        || '',
+        date_livraison:   meta.date         || '',
+        creneau:          meta.creneau      || '',
+        installation:     meta.installation || '',
+        fenetre:          meta.fenetre      || '',
+        etage:            meta.etage        || '',
+        ascenseur:        meta.ascenseur    || '',
+        customer_id:      customerId,
+        payment_method:   paymentMethodId,
       }),
     }).catch(e => console.error('[Formspree]', e.message));
 
