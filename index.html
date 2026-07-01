@@ -40,12 +40,12 @@ const CITY = {
      ║  (les robots lisent le HTML brut, pas le JS).                   ║
      ╚══════════════════════════════════════════════════════════════════╝ -->
 <title>Location climatiseur Nice · Livraison sous 24h · Zéro dépôt | Loc'Air</title>
-<meta name="description" content="Climatiseur mobile livré à Nice dès demain. Dès 29 €/jour — zéro dépôt, livraison 8h–12h, 7j/7. Installation technicien 25€ ou pose autonome gratuite. Loc'Air."/>
+<meta name="description" content="Climatiseur mobile livré à Nice dès demain. Dès 29 €/jour — zéro dépôt, livraison 8h–12h, 7j/7. Installation technicien 25€ ou pose autonome. Loc'Air."/>
 <link rel="canonical" href="https://www.locair.fr/"/>
 <link rel="alternate" hreflang="fr" href="https://www.locair.fr/"/>
 <link rel="alternate" hreflang="x-default" href="https://www.locair.fr/"/>
 <meta property="og:title" content="Location Climatiseur Nice — Livré &amp; installé dès demain | Loc'Air"/>
-<meta property="og:description" content="Il fait trop chaud pour dormir ? Climatiseur livré et installé dès demain à Nice. Dès 29 €/jour. Installation technicien 25€ ou pose autonome gratuite. Kit fourni. Zéro dépôt."/>
+<meta property="og:description" content="Il fait trop chaud pour dormir ? Climatiseur livré et installé dès demain à Nice. Dès 29 €/jour. Installation technicien 25€ ou pose autonome. Kit fourni. Zéro dépôt."/>
 <meta property="og:type" content="website"/>
 <meta property="og:url" content="https://www.locair.fr/"/>
 <meta property="og:image" content="https://www.locair.fr/hero-nice.jpg"/>
@@ -57,7 +57,7 @@ const CITY = {
 <meta name="twitter:card" content="summary_large_image"/>
 <meta name="twitter:site" content="@locair_nice"/>
 <meta name="twitter:title" content="Location Climatiseur Nice — Livré &amp; installé dès demain | Loc'Air"/>
-<meta name="twitter:description" content="Il fait trop chaud pour dormir ? Climatiseur livré et installé dès demain à Nice. Dès 29 €/jour. Installation technicien 25€ ou pose autonome gratuite. Kit fourni. Zéro dépôt."/>
+<meta name="twitter:description" content="Il fait trop chaud pour dormir ? Climatiseur livré et installé dès demain à Nice. Dès 29 €/jour. Installation technicien 25€ ou pose autonome. Kit fourni. Zéro dépôt."/>
 <meta name="twitter:image" content="https://www.locair.fr/hero-nice.jpg"/>
 <meta name="twitter:image:alt" content="Climatiseur mobile Rowenta livré et installé à Nice par Loc'Air"/>
 <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin/>
@@ -2499,7 +2499,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         </div>
       </div>
       <p class="pt-note">Prix garanti dès la réservation &nbsp;·&nbsp; Kit fourni &nbsp;·&nbsp; Récupération incluse &nbsp;·&nbsp; Zéro dépôt</p>
-      <p class="pt-note" style="margin-top:6px;color:rgba(0,0,0,.35)">Installation par technicien +25 € (unique) &nbsp;·&nbsp; Pose autonome incluse</p>
+      <p class="pt-note" style="margin-top:6px;color:rgba(0,0,0,.35)">Installation par technicien +25 € (unique) &nbsp;·&nbsp; Pose autonome (kit fourni)</p>
     </div>
   </div>
 </section>
@@ -4005,7 +4005,8 @@ function _baseRate(days){
   return 19;
 }
 const INSTALL_FEE=25;
-let _techInstall=false; // true = technicien 25€, false = auto-installation gratuite
+const DELIVERY_FEE=35;
+let _techInstall=false; // true = technicien 25€, false = auto-installation
 function calcPrice(days){
   // Tarification marginale : chaque palier ne s'applique qu'aux jours supplémentaires
   if(days<=7)return days*29;
@@ -4612,7 +4613,7 @@ function buildRecap(){
   const recupEl=document.getElementById('recap-date-recup');
   const isEN=_lang==='en';
   if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (end of your '+days+'-night rental)':'Le '+pickupDateStr+' (fin de votre location de '+days+' jours)';
-  const total=Math.max(0,calcTotal(days)-_promoDiscount);
+  const total=Math.max(0,calcTotal(days)-_promoDiscount+DELIVERY_FEE);
   const installLabel=_techInstall?(isEN?'Technician installation':'Pose technicien — 25 €'):(isEN?'Self-install (free)':'Pose autonome — Kit fourni');
   const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
   const durLabel=isEN?days+' days':days+' jours';
@@ -4659,16 +4660,20 @@ function buildRecap(){
           <span class="rc-total-lbl">${isEN?'Rental':'Location'} (${days} ${isEN?'days':'jours'})</span>
           <span>${price} €</span>
         </div>
-        <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:${_promoDiscount>0?'4px':'10px'}">
+        <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:6px">
           <span class="rc-total-lbl">${_techInstall?(isEN?'Technician setup':'Pose technicien'):(isEN?'Self-install':'Pose autonome')}</span>
-          <span>${_techInstall?'25 €':(isEN?'Included':'Incluse')}</span>
+          <span>${_techInstall?'25 €':(isEN?'Kit included':'Kit fourni')}</span>
+        </div>
+        <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:${_promoDiscount>0?'4px':'10px'}">
+          <span class="rc-total-lbl">${isEN?'Delivery & collection':'Livraison & récupération'}</span>
+          <span>35 €</span>
         </div>
         ${_promoDiscount>0?`<div class="rc-total-row" style="font-size:12px;color:#059669;font-weight:600;margin-bottom:10px">
           <span class="rc-total-lbl">${isEN?'Promo code':'Code promo'} (${escHtml(_promoCode)})</span>
           <span>−${_promoDiscount} €</span>
         </div>`:''}
         <div class="rc-total-row">
-          <span class="rc-total-lbl">Total TTC <span style="font-size:11px;font-weight:400;color:var(--grey2)">(récupération incluse)</span></span>
+          <span class="rc-total-lbl">Total TTC</span>
           <span class="rc-total-price">${priceDisplay}</span>
         </div>
       </div>
@@ -4677,7 +4682,7 @@ function buildRecap(){
   const sbtn=document.getElementById('sbtn');
   if(sbtn&&price>0){
     const _btnDate=(()=>{const raw=document.getElementById('f-date')?.value||'';if(!raw)return'';const[y,m,d]=raw.split('-');return(d&&m)?(' · '+d+'/'+m):'';})();
-    const _origTotal=calcTotal(days);
+    const _origTotal=calcTotal(days)+DELIVERY_FEE;
     const _btnTotal=Math.max(0,_origTotal-_promoDiscount);
     const _strikeThrough=_promoDiscount>0?' <span style="text-decoration:line-through;opacity:.5;font-weight:400">'+_origTotal+' €</span> ':' ';
     sbtn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>'+(_lang==='en'?' Proceed to payment'+_btnDate+' —'+_strikeThrough:' Procéder au paiement'+_btnDate+' —'+_strikeThrough)+_btnTotal+' €';
@@ -4965,7 +4970,7 @@ function submitForm(btn,mode){
 
   if(mode==='pay'){
     // ── Stripe Payment Element (paiement intégré, sans quitter le site) ──
-    const prixCents=Math.round(Math.max(0,calcTotal(parseInt(formData.duree)||7)-_promoDiscount)*100);
+    const prixCents=Math.round(Math.max(0,calcTotal(parseInt(formData.duree)||7)-_promoDiscount+DELIVERY_FEE)*100);
     const prixEuros=(prixCents/100).toFixed(2).replace('.',',')+' €';
     try{localStorage.setItem('locair_pending',JSON.stringify({...formData,_ref:_orderRef}));}catch(e){}
     if(!_getStripe()){
@@ -5547,9 +5552,9 @@ const LANG_SEQ=[
   /* pricing notes */
   ['.pt-note','text',
     ['Prix garanti dès la réservation  ·  Kit fourni  ·  Récupération incluse  ·  Zéro dépôt',
-     'Installation par technicien +25 € (unique)  ·  Pose autonome incluse'],
+     'Installation par technicien +25 € (unique)  ·  Pose autonome (kit fourni)'],
     ['Price guaranteed at booking  ·  Kit included  ·  Collection included  ·  Zero deposit',
-     'Technician installation +€25 (one-time)  ·  Self-install included']],
+     'Technician installation +€25 (one-time)  ·  Self-install (kit included)']],
   /* expertise stats labels */
   ['.exp-stat-l','text',
     ['installations à Nice','pose moyenne','remboursé si panne','21 avis Google'],
