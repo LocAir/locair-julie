@@ -1122,6 +1122,7 @@ body{
   overscroll-behavior:contain;
   scroll-behavior:auto;
   position:relative;
+  scroll-padding-bottom:120px;
 }
 .modal-close{
   position:absolute;top:10px;right:10px;
@@ -2901,6 +2902,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
       <a href="/mentions-legales">Mentions légales</a>
       <a href="/cgv">CGV</a>
       <a href="/confidentialite">Confidentialité</a>
+      <a href="https://www.medicys.fr" target="_blank" rel="noopener noreferrer">Médiation : MEDICYS</a>
     </nav>
     <p style="font-size:11px;color:rgba(255,255,255,.2)">© <span id="year">2026</span> Loc'Air · SIRET 853 730 562 00024</p>
   </div>
@@ -5648,6 +5650,16 @@ function setLang(l){
 // Appliquer la langue mémorisée au chargement
 document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
 
+// iOS Safari : ajuster la hauteur du modal quand le clavier virtuel apparaît
+if(window.visualViewport){
+  window.visualViewport.addEventListener('resize',()=>{
+    const modal=document.getElementById('modal');
+    if(modal&&document.getElementById('overlay')?.classList.contains('open')){
+      modal.style.maxHeight=Math.round(window.visualViewport.height*0.92)+'px';
+    }
+  });
+}
+
 // ── CITY INIT — hydrate tous les data-c à partir de window.CITY ──
 (function initCity(){
   if(typeof CITY==='undefined')return;
@@ -6362,8 +6374,8 @@ function upsellUnit2(){
 function submitAlerte(e){
   e.preventDefault();
   const btn=document.getElementById('ec-btn');
-  const email=document.getElementById('ec-email')?.value;
-  if(!email)return;
+  const email=(document.getElementById('ec-email')?.value||'').trim();
+  if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))return;
   if(btn){btn.disabled=true;btn.textContent='Envoi...';}
   fetch('https://formspree.io/f/mvzyngoy',{
     method:'POST',
