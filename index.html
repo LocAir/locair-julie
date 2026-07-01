@@ -1674,9 +1674,9 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .hero-cta{animation:heroIn .65s .76s cubic-bezier(.22,.61,.36,1) both}
 .hero-micro{animation:heroInFast .5s .96s cubic-bezier(.22,.61,.36,1) both}
 /* 03 — Scroll reveal */
-.sr{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease;will-change:opacity,transform}
-.sr.in{opacity:1;transform:none;will-change:auto}
-.rv.sr{opacity:1;transform:none;will-change:auto}
+.sr{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease}
+.sr.in{opacity:1;transform:none}
+.rv.sr{opacity:1;transform:none}
 
 /* 05 — Shimmer doré sur les boutons primaires */
 .btn-blue,.sb-btn{position:relative;overflow:hidden}
@@ -5079,6 +5079,7 @@ function faq(el){
   }
 }
 
+const _srReveal=el=>{el.style.transitionDelay='0s';el.classList.add('in');};
 const io=new IntersectionObserver(entries=>{
   entries.forEach(e=>{
     if(!e.isIntersecting)return;
@@ -5088,8 +5089,10 @@ const io=new IntersectionObserver(entries=>{
     e.target.classList.add('in');
     io.unobserve(e.target);
   });
-},{threshold:0.05,rootMargin:'0px 0px -16px 0px'});
+},{threshold:0,rootMargin:'0px 0px 0px 0px'});
 document.querySelectorAll('.sr').forEach(el=>io.observe(el));
+// Fallback iOS Safari : révèle tout ce qui reste caché après 2,5 s
+setTimeout(()=>document.querySelectorAll('.sr:not(.in)').forEach(_srReveal),2500);
 
 // Nav auto-hide + indicateurs scroll
 const navEl=document.querySelector('.nav');
