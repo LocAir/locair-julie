@@ -5080,6 +5080,7 @@ function faq(el){
 }
 
 const _srReveal=el=>{el.style.transitionDelay='0s';el.classList.add('in');};
+const _srCheck=()=>document.querySelectorAll('.sr:not(.in)').forEach(el=>{const r=el.getBoundingClientRect();if(r.top<window.innerHeight+40&&r.bottom>-40)_srReveal(el);});
 const io=new IntersectionObserver(entries=>{
   entries.forEach(e=>{
     if(!e.isIntersecting)return;
@@ -5091,8 +5092,11 @@ const io=new IntersectionObserver(entries=>{
   });
 },{threshold:0,rootMargin:'0px 0px 0px 0px'});
 document.querySelectorAll('.sr').forEach(el=>io.observe(el));
-// Fallback iOS Safari : révèle tout ce qui reste caché après 2,5 s
-setTimeout(()=>document.querySelectorAll('.sr:not(.in)').forEach(_srReveal),2500);
+// iOS Safari : l'IO ne détecte pas les éléments déjà dans le viewport au chargement
+// → vérification immédiate + à chaque scroll + fallback 600ms
+_srCheck();
+window.addEventListener('scroll',_srCheck,{passive:true});
+setTimeout(()=>document.querySelectorAll('.sr:not(.in)').forEach(_srReveal),600);
 
 // Nav auto-hide + indicateurs scroll
 const navEl=document.querySelector('.nav');
