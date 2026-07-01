@@ -8,7 +8,9 @@ function calcBase(days) {
   return 7 * 29 + 7 * 27 + 7 * 22 + (days - 21) * 19;
 }
 
-const PROMO_CODES = { LOCAIR10: 10, LOCA10: 10 };
+const PROMO_CODES  = { LOCAIR10: 10, LOCA10: 10 };
+const DELIVERY_FEE = 35;
+const INSTALL_FEE  = 25;
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -17,14 +19,15 @@ module.exports = async (req, res) => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
   const duree = Math.max(7, parseInt(data.duree) || 7);
-  const baseCents = calcBase(duree) * 100;
-
+  const baseCents     = calcBase(duree) * 100;
+  const isTech        = (data.installation || '').startsWith('Technicien');
+  const installCents  = isTech ? INSTALL_FEE * 100 : 0;
   const promoCode     = (data.parrain_code || '').trim().toUpperCase();
   const promoDiscount = (PROMO_CODES[promoCode] || 0) * 100;
-  const amountCents   = Math.max(0, baseCents - promoDiscount);
+  const amountCents   = Math.max(0, baseCents + installCents + DELIVERY_FEE * 100 - promoDiscount);
 
-  if (!amountCents || amountCents < 2000) {
-    return res.status(400).json({ error: 'Montant invalide (min 20 €)' });
+  if (!amountCents || amountCents < 20000) {
+    return res.status(400).json({ error: 'Montant invalide (min 200 €)' });
   }
 
   try {
