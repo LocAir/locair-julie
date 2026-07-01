@@ -339,11 +339,14 @@ body{
   background:linear-gradient(180deg,rgba(6,9,15,.12) 0%,rgba(6,9,15,.42) 38%,rgba(6,9,15,.88) 100%);
 }
 /* ── INTRO CURTAIN (rideau de scène) ── */
+@keyframes _la_lift{from{opacity:1}to{opacity:0}}
 .hero-intro{
   position:fixed;inset:0;z-index:9999;
   background:#06090f;
   opacity:1;transition:opacity .9s ease;
   pointer-events:none;
+  /* Fallback CSS : se lève toujours même si JS échoue */
+  animation:_la_lift .9s ease .28s both;
 }
 .hero-intro.out{opacity:0}
 .hero-inner{
@@ -4178,10 +4181,10 @@ let curStep=1;
   if(!intro)return;
   try{if(sessionStorage.getItem('_la_intro')){intro.remove();return;}sessionStorage.setItem('_la_intro','1');}catch(e){}
   // Rideau se lève 280ms après le premier rendu
-  requestAnimationFrame(()=>setTimeout(()=>{
-    intro.classList.add('out');
-    setTimeout(()=>intro.remove(),1000);
-  },280));
+  const _liftCurtain=()=>{intro.classList.add('out');setTimeout(()=>{if(intro.parentNode)intro.remove();},1000);};
+  requestAnimationFrame(()=>setTimeout(_liftCurtain,280));
+  // Sécurité absolue : si rAF ne se déclenche pas (iOS throttle, etc.)
+  setTimeout(_liftCurtain,1400);
 })();
 
 function toggleLangMenu(){
