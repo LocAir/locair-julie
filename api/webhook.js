@@ -1,5 +1,15 @@
 const Stripe = require('stripe');
 
+// ── Utilitaire sécurité ───────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── Brevo (emails client) ─────────────────────────────────────────────────────
 async function sendBrevo({ to, subject, html, scheduledAt }) {
   if (!process.env.BREVO_API_KEY || !to) return;
@@ -46,7 +56,7 @@ function scheduledISO(dateStr, offsetDays, hour = 9) {
 
 // ── Templates email ────────────────────────────────────────────────────────────
 function tplConfirmation({ ref, prenom, nom, adresse, date, creneau, duree, amount, installation }) {
-  const durDays = Number(duree) || 7;
+  const durDays = parseInt(duree) || 7;
   const dateRecup = scheduledISO(date, durDays, 10)
     ? (() => { const d = new Date(date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + durDays); return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); })()
     : '';
@@ -70,16 +80,16 @@ function tplConfirmation({ ref, prenom, nom, adresse, date, creneau, duree, amou
   <div class="wrap">
     <div class="head">
       <h1>✅ Réservation confirmée !</h1>
-      <p>Merci ${prenom || ''}, votre paiement de ${amount} a bien été reçu.</p>
+      <p>Merci ${escHtml(prenom)}, votre paiement de ${escHtml(amount)} a bien été reçu.</p>
     </div>
     <div class="body">
-      <div class="ref"><p style="margin:0 0 4px;color:#888;font-size:12px">VOTRE DOSSIER</p><strong>${ref}</strong></div>
-      <div class="row"><span class="lbl">Client</span><span class="val">${prenom} ${nom}</span></div>
-      <div class="row"><span class="lbl">Adresse</span><span class="val">${adresse}</span></div>
-      <div class="row"><span class="lbl">Livraison</span><span class="val">${dateLivr}${creneau ? ' · ' + creneau : ''}</span></div>
-      <div class="row"><span class="lbl">Durée</span><span class="val">${duree} jour${durDays > 1 ? 's' : ''}${dateRecup ? ' — récupération ' + dateRecup : ''}</span></div>
-      <div class="row"><span class="lbl">Installation</span><span class="val">${installation || 'Autonome'}</span></div>
-      <div class="row"><span class="lbl">Montant</span><span class="val">${amount}</span></div>
+      <div class="ref"><p style="margin:0 0 4px;color:#888;font-size:12px">VOTRE DOSSIER</p><strong>${escHtml(ref)}</strong></div>
+      <div class="row"><span class="lbl">Client</span><span class="val">${escHtml(prenom)} ${escHtml(nom)}</span></div>
+      <div class="row"><span class="lbl">Adresse</span><span class="val">${escHtml(adresse)}</span></div>
+      <div class="row"><span class="lbl">Livraison</span><span class="val">${escHtml(dateLivr)}${creneau ? ' · ' + escHtml(creneau) : ''}</span></div>
+      <div class="row"><span class="lbl">Durée</span><span class="val">${escHtml(duree)} jour${durDays > 1 ? 's' : ''}${dateRecup ? ' — récupération ' + escHtml(dateRecup) : ''}</span></div>
+      <div class="row"><span class="lbl">Installation</span><span class="val">${escHtml(installation || 'Autonome')}</span></div>
+      <div class="row"><span class="lbl">Montant</span><span class="val">${escHtml(amount)}</span></div>
       <p style="margin:24px 0 8px;font-size:13px;color:#444">Notre équipe vous confirmera le créneau exact par appel téléphonique le matin de la livraison.</p>
       <p style="margin:0;font-size:13px;color:#444">Le technicien vous appellera <strong>30 min avant d'arriver</strong>.</p>
       <a class="btn" href="https://wa.me/33663798756">Une question ? WhatsApp</a>
@@ -232,7 +242,7 @@ module.exports = async (req, res) => {
       if (intent.status !== 'succeeded') return res.json({ received: true, skipped: 'not succeeded' });
       meta            = intent.metadata || {};
       amount          = (intent.amount / 100).toFixed(2) + ' €';
-      email           = intent.receipt_email || '';
+      email           = intent.receipt_email || meta.email || '';
       customerId      = (typeof intent.customer === 'string' ? intent.customer : '') || meta.customer_id || '';
       paymentMethodId = (typeof intent.payment_method === 'string' ? intent.payment_method : '') || '';
 
@@ -332,50 +342,43 @@ module.exports = async (req, res) => {
       }),
     });
 
-    // 3. Rappel J-1 (veille de la livraison à 18h)
+    // 3-5. Emails programmés en parallèle pour respecter le timeout Vercel
+    const dateRecupStr = (() => {
+      if (!meta.date || !meta.date.match(/^\d{4}-\d{2}-\d{2}$/)) return '';
+      const d = new Date(meta.date + 'T12:00:00Z');
+      d.setUTCDate(d.getUTCDate() + duree);
+      return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    })();
+
+    const programmés = [];
     const j1 = scheduledISO(meta.date, -1, 18);
-    if (j1) {
-      await sendBrevo({
-        to:          email,
-        subject:     `📦 Demain, livraison de votre climatiseur Loc'Air`,
-        html:        tplRappelJMoins1({ ref: meta.ref || obj.id, prenom: meta.prenom || '', adresse: meta.adresse || '', creneau: meta.creneau || '' }),
-        scheduledAt: j1,
-      });
-    }
+    if (j1) programmés.push(sendBrevo({
+      to: email, subject: `📦 Demain, livraison de votre climatiseur Loc'Air`,
+      html: tplRappelJMoins1({ ref: meta.ref || obj.id, prenom: meta.prenom || '', adresse: meta.adresse || '', creneau: meta.creneau || '' }),
+      scheduledAt: j1,
+    }));
 
-    // 4. Demande d'avis J+3 après fin de location (pas après livraison)
     const j3 = scheduledISO(meta.date, duree + 3, 10);
-    if (j3) {
-      await sendBrevo({
-        to:          email,
-        subject:     `⭐ Comment s'est passée votre location Loc'Air ?`,
-        html:        tplAvis({ ref: meta.ref || obj.id, prenom: meta.prenom || '' }),
-        scheduledAt: j3,
-      });
-    }
+    if (j3) programmés.push(sendBrevo({
+      to: email, subject: `⭐ Comment s'est passée votre location Loc'Air ?`,
+      html: tplAvis({ ref: meta.ref || obj.id, prenom: meta.prenom || '' }),
+      scheduledAt: j3,
+    }));
 
-    // 5. Relance prolongation J-2 avant fin (si durée > 3 jours)
     if (duree > 3) {
       const jMoins2 = scheduledISO(meta.date, duree - 2, 10);
-      const dateRecupStr = (() => {
-        if (!meta.date || !meta.date.match(/^\d{4}-\d{2}-\d{2}$/)) return '';
-        const d = new Date(meta.date + 'T12:00:00Z');
-        d.setUTCDate(d.getUTCDate() + duree);
-        return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-      })();
-      if (jMoins2) {
-        await sendBrevo({
-          to:          email,
-          subject:     `🌡️ Votre location Loc'Air se termine dans 2 jours`,
-          html:        tplProlongation({ ref: meta.ref || obj.id, prenom: meta.prenom || '', dateRecup: dateRecupStr, duree: String(duree) }),
-          scheduledAt: jMoins2,
-        });
-      }
+      if (jMoins2) programmés.push(sendBrevo({
+        to: email, subject: `🌡️ Votre location Loc'Air se termine dans 2 jours`,
+        html: tplProlongation({ ref: meta.ref || obj.id, prenom: meta.prenom || '', dateRecup: dateRecupStr, duree: String(duree) }),
+        scheduledAt: jMoins2,
+      }));
     }
+
+    await Promise.allSettled(programmés);
 
     return res.status(200).json({ received: true });
   } catch (err) {
     console.error('[Stripe webhook]', err.message);
-    return res.status(500).json({ error: err.message });
+    return res.status(200).json({ received: true, error: 'internal' });
   }
 };

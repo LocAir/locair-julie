@@ -22,10 +22,29 @@ module.exports = async (req, res) => {
   }
 
   try {
+    // Créer ou retrouver le Customer Stripe pour setup_future_usage (retard éventuel)
+    let customerId = '';
+    if (data.email) {
+      const email = data.email.trim();
+      const existing = await stripe.customers.list({ email, limit: 1 });
+      if (existing.data.length > 0) {
+        customerId = existing.data[0].id;
+      } else {
+        const customer = await stripe.customers.create({
+          email,
+          name:  [data.prenom, data.nom].filter(Boolean).join(' ') || undefined,
+          phone: data.tel || undefined,
+        });
+        customerId = customer.id;
+      }
+    }
+
     const intent = await stripe.paymentIntents.create({
       amount:   amountCents,
       currency: 'eur',
       automatic_payment_methods: { enabled: true },
+      setup_future_usage: 'off_session',
+      customer:      customerId || undefined,
       receipt_email: data.email || undefined,
       description: [
         `Loc'Air Prolongation — ${jours} jour${jours > 1 ? 's' : ''}`,
@@ -41,6 +60,7 @@ module.exports = async (req, res) => {
         jours:             String(jours),
         date_recuperation: (data.date_recuperation || '').slice(0, 500),
         creneau:           (data.creneau           || '').slice(0, 500),
+        customer_id:       customerId,
       },
     });
 

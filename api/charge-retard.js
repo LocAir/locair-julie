@@ -76,11 +76,11 @@ module.exports = async (req, res) => {
     console.error('[Stripe retard]', err.message);
 
     // DSP2 : authentification 3D Secure requise — Stripe envoie un email au client automatiquement
-    if (err.code === 'authentication_required' || err.raw?.payment_intent?.status === 'requires_action') {
+    if (err.code === 'authentication_required' || err.payment_intent?.status === 'requires_action') {
       return res.status(402).json({
         error:             '3D Secure requis — Stripe a envoyé un email au client pour qu\'il valide le paiement.',
         requires_action:   true,
-        payment_intent_id: err.raw?.payment_intent?.id || '',
+        payment_intent_id: err.payment_intent?.id || '',
       });
     }
 
