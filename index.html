@@ -4180,11 +4180,11 @@ let curStep=1;
   const intro=document.getElementById('hero-intro');
   if(!intro)return;
   try{if(sessionStorage.getItem('_la_intro')){intro.remove();return;}sessionStorage.setItem('_la_intro','1');}catch(e){}
-  // Rideau se lève 280ms après le premier rendu
-  const _liftCurtain=()=>{intro.classList.add('out');setTimeout(()=>{if(intro.parentNode)intro.remove();},1000);};
-  requestAnimationFrame(()=>setTimeout(_liftCurtain,280));
-  // Sécurité absolue : si rAF ne se déclenche pas (iOS throttle, etc.)
-  setTimeout(_liftCurtain,1400);
+  // Rideau se lève 280ms après le premier rendu (garde idempotente pour éviter le double-appel)
+  let _liftDone=false;
+  const _liftCurtain=()=>{if(_liftDone)return;_liftDone=true;intro.classList.add('out');setTimeout(()=>{if(intro.parentNode)intro.remove();},1000);};
+  const _liftFallback=setTimeout(_liftCurtain,1400);
+  requestAnimationFrame(()=>{clearTimeout(_liftFallback);setTimeout(_liftCurtain,280);});
 })();
 
 function toggleLangMenu(){
@@ -4954,7 +4954,7 @@ function submitForm(btn,mode){
         if(container){container.innerHTML='<p id="stripe-loading" style="color:var(--grey);font-size:13px">Chargement du formulaire de paiement…</p>';payEl.mount('#stripe-payment-element');}
         payEl.on('ready',()=>{const l=document.getElementById('stripe-loading');if(l)l.remove();const mb=document.getElementById('modal-body');if(mb&&container){const top=container.offsetTop-20;mb.scrollTo({top,behavior:'smooth'});}});
         // Utiliser le montant confirmé par le serveur (évite toute divergence)
-        const serverEuros=d.amountCents?(d.amountCents/100).toFixed(2).replace('.',',')+' €':prixEuros;
+        const serverEuros=d.amountCents!=null?(d.amountCents/100).toFixed(2).replace('.',',')+' €':prixEuros;
         const amtEl=document.getElementById('stripe-pay-amount');if(amtEl)amtEl.textContent=serverEuros;
         const sect=document.getElementById('stripe-section');if(sect)sect.style.display='block';
         if(btn){btn.style.display='none';}
@@ -5768,17 +5768,17 @@ if(_urgencyShown)setInterval(_renderSmartLine,60000);
     const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+CITY.geo.lat+'&longitude='+CITY.geo.lng+'&current=temperature_2m,apparent_temperature&daily=temperature_2m_max&timezone=Europe%2FParis&forecast_days=2&models=best_match');
     if(!r.ok)return;
     const d=await r.json();
-    const cur=Math.round(d.current?.temperature_2m??0);
-    const res=Math.round(d.current?.apparent_temperature??cur);
+    const cur=d.current?.temperature_2m!=null?Math.round(d.current.temperature_2m):null;
+    const res=d.current?.apparent_temperature!=null?Math.round(d.current.apparent_temperature):cur;
     const maxToday=Math.round(d.daily?.temperature_2m_max?.[0]??0);
     const maxTomorrow=Math.round(d.daily?.temperature_2m_max?.[1]??0);
-    const peakTemp=Math.max(cur,maxToday,maxTomorrow);
+    const peakTemp=Math.max(cur??0,maxToday,maxTomorrow);
 
-    const alertActive=cur>=28||maxToday>=32||maxTomorrow>=32;
+    const alertActive=cur!==null&&(cur>=28||maxToday>=32||maxTomorrow>=32);
 
     // Hero-eye : température + ressenti si l'alerte n'est PAS affichée (évite doublon)
     const eyeEl=document.querySelector('.hero-eye');
-    if(eyeEl&&cur>0&&!alertActive){
+    if(eyeEl&&cur!==null&&!alertActive){
       eyeEl.textContent=cur+'°C · ressenti '+res+'°C · 7j/7';
     }
 
@@ -6196,7 +6196,7 @@ async function startProlongPayment(){
     if(container){container.innerHTML='<p id="prolong-stripe-loading" style="color:var(--grey);font-size:13px">Chargement du formulaire de paiement…</p>';payEl.mount('#prolong-stripe-element');}
     payEl.on('ready',()=>{const l=document.getElementById('prolong-stripe-loading');if(l)l.remove();const mb=document.getElementById('modal-body');if(mb&&container)mb.scrollTo({top:container.offsetTop-20,behavior:'smooth'});});
     const amtEl=document.getElementById('prolong-pay-amount');
-    if(amtEl)amtEl.textContent=(d.amountCents/100).toFixed(0)+' €';
+    if(amtEl)amtEl.textContent=(d.amountCents/100).toFixed(2).replace('.',',')+' €';
     const sect=document.getElementById('prolong-stripe-section');
     if(sect)sect.style.display='block';
     if(btn)btn.style.display='none';

@@ -221,11 +221,33 @@ function tplProlongation({ ref, prenom, dateRecup, duree }) {
 }
 
 // ── Webhook principal ─────────────────────────────────────────────────────────
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
+  // Lire le corps brut (nécessaire pour la vérification de signature Stripe)
+  const rawBody = await new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end',  () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-  const body   = req.body || {};
+
+  // Vérification de signature Stripe (activer via STRIPE_WEBHOOK_SECRET dans Vercel)
+  let body;
+  if (process.env.STRIPE_WEBHOOK_SECRET) {
+    const sig = req.headers['stripe-signature'];
+    try {
+      body = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
+    } catch (err) {
+      console.error('[Webhook signature]', err.message);
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+  } else {
+    console.warn('[Webhook] STRIPE_WEBHOOK_SECRET absent — vérification de signature désactivée');
+    body = JSON.parse(rawBody.toString('utf8'));
+  }
 
   try {
     const eventType = body.type || '';
@@ -251,7 +273,7 @@ module.exports = async (req, res) => {
       if (session.payment_status !== 'paid') return res.json({ received: true, skipped: 'not paid' });
       meta   = session.metadata || {};
       amount = (session.amount_total / 100).toFixed(2) + ' €';
-      email  = session.customer_email || '';
+      email  = session.customer_email || session.metadata?.email || '';
 
     } else {
       return res.json({ received: true, skipped: eventType });
@@ -382,3 +404,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({ received: true, error: 'internal' });
   }
 };
+
+// Désactiver le body parser Vercel pour accéder au corps brut (signature Stripe)
+handler.config = { api: { bodyParser: false } };
+module.exports = handler;

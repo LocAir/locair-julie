@@ -1,4 +1,9 @@
-const Stripe = require('stripe');
+const Stripe  = require('stripe');
+const crypto  = require('crypto');
+
+function safeEqual(a, b) {
+  try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); } catch { return false; }
+}
 
 function calcRetardPrice(days) {
   days = Math.max(1, days);
@@ -12,7 +17,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const token = ((req.body || {}).token || req.headers['x-operator-token'] || '').trim();
-  if (!process.env.OPERATOR_TOKEN || token !== process.env.OPERATOR_TOKEN) {
+  if (!process.env.OPERATOR_TOKEN || !safeEqual(token, process.env.OPERATOR_TOKEN)) {
     return res.status(401).json({ error: 'Non autorisé' });
   }
 
@@ -44,6 +49,10 @@ module.exports = async (req, res) => {
       paymentMethodId = methods.data[0].id;
     }
 
+    // Clé d'idempotence : empêche le double-prélèvement sur double-clic ou retry
+    const today = new Date().toISOString().slice(0, 10);
+    const idempotencyKey = `retard-${customerId}-${jours}j-${today}`;
+
     const intent = await stripe.paymentIntents.create({
       amount:         amountCents,
       currency:       'eur',
@@ -54,8 +63,8 @@ module.exports = async (req, res) => {
       receipt_email:  data.email || undefined,
       description: [
         `Loc'Air — Retard de restitution ${jours} jour${jours > 1 ? 's' : ''}`,
-        data.nom     ? (data.nom     || '').trim() : '',
-        data.adresse ? (data.adresse || '').trim() : '',
+        (data.nom     || '').trim(),
+        (data.adresse || '').trim(),
       ].filter(Boolean).join(' · ').slice(0, 1000),
       metadata: {
         type:    'retard',
@@ -63,7 +72,7 @@ module.exports = async (req, res) => {
         jours:   String(jours),
         adresse: (data.adresse || '').slice(0, 500),
       },
-    });
+    }, { idempotencyKey });
 
     return res.status(200).json({
       success:           true,
