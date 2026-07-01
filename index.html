@@ -5762,20 +5762,21 @@ if(_urgencyShown)setInterval(_renderSmartLine,60000);
 (async function initWeather(){
   if(localStorage.getItem('alertDismissed')==='1')return;
   try{
-    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+CITY.geo.lat+'&longitude='+CITY.geo.lng+'&current=temperature_2m&daily=temperature_2m_max&timezone=Europe%2FParis&forecast_days=2&models=best_match');
+    const r=await fetch('https://api.open-meteo.com/v1/forecast?latitude='+CITY.geo.lat+'&longitude='+CITY.geo.lng+'&current=temperature_2m,apparent_temperature&daily=temperature_2m_max&timezone=Europe%2FParis&forecast_days=2&models=best_match');
     if(!r.ok)return;
     const d=await r.json();
     const cur=Math.round(d.current?.temperature_2m??0);
+    const res=Math.round(d.current?.apparent_temperature??cur);
     const maxToday=Math.round(d.daily?.temperature_2m_max?.[0]??0);
     const maxTomorrow=Math.round(d.daily?.temperature_2m_max?.[1]??0);
     const peakTemp=Math.max(cur,maxToday,maxTomorrow);
 
     const alertActive=cur>=28||maxToday>=32||maxTomorrow>=32;
 
-    // Hero-eye : température uniquement si l'alerte n'est PAS affichée (évite doublon)
+    // Hero-eye : température + ressenti si l'alerte n'est PAS affichée (évite doublon)
     const eyeEl=document.querySelector('.hero-eye');
     if(eyeEl&&cur>0&&!alertActive){
-      eyeEl.textContent=cur+'°C à Nice · 7j/7';
+      eyeEl.textContent=cur+'°C · ressenti '+res+'°C · 7j/7';
     }
 
     // Barre d'alerte : afficher si ≥28°C courant ou ≥32°C prévu
@@ -5793,15 +5794,19 @@ if(_urgencyShown)setInterval(_renderSmartLine,60000);
     if(alertActive){
       const bar=document.getElementById('alert-canicule');
       if(bar){
-        if(peakTemp>=35)_setAlertBar(bar,'Canicule — '+peakTemp+'°C prévus','Livraison sous 24h');
-        else _setAlertBar(bar,cur+'°C','Climatiseur livré sous 24h');
+        const ressufix=res!==cur?' (ressenti '+res+'°C)':'';
+        if(peakTemp>=35)_setAlertBar(bar,'Canicule — '+peakTemp+'°C prévus'+ressufix,'Livraison sous 24h');
+        else _setAlertBar(bar,cur+'°C'+ressufix,'Climatiseur livré sous 24h');
       }
     } else {
       // Haute saison : juillet (6) ou août (7)
       const m=new Date().getMonth();
       if(m===6||m===7){
         const bar=document.getElementById('alert-canicule');
-        if(bar&&bar.classList.contains('hidden'))_setAlertBar(bar,'Haute saison','Disponibilité limitée — réservez tôt');
+        if(bar&&bar.classList.contains('hidden')){
+          const ressufix=cur>0?' · '+cur+'°C (ressenti '+res+'°C)':'';
+          _setAlertBar(bar,'Haute saison'+ressufix,'Disponibilité limitée — réservez tôt');
+        }
       }
     }
   }catch(e){}
