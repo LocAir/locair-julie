@@ -61,19 +61,19 @@ function tplConfirmation({ ref, prenom, nom, adresse, date, creneau, duree, amou
     ? (() => { const d = new Date(date + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + durDays); return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); })()
     : '';
   const dateLivr = date ? new Date(date + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
     body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
-    .wrap{max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden}
+    .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
     .head{background:#1b3a5f;padding:32px 32px 24px;text-align:center}
     .head h1{color:#fff;font-size:22px;margin:0 0 6px}
     .head p{color:rgba(255,255,255,.7);font-size:14px;margin:0}
     .body{padding:28px 32px}
     .ref{background:#f4f0ea;border-radius:10px;padding:14px 18px;text-align:center;margin-bottom:24px}
     .ref strong{font-size:18px;color:#1b3a5f;letter-spacing:.5px}
-    .row{display:flex;padding:10px 0;border-bottom:1px solid #f0ede8}
+    .row{padding:10px 0;border-bottom:1px solid #f0ede8}
     .row:last-child{border-bottom:none}
-    .lbl{color:#888;font-size:13px;width:140px;flex-shrink:0}
-    .val{color:#1a1a2e;font-size:13px;font-weight:600}
+    .lbl{color:#888;font-size:13px;display:block}
+    .val{color:#1a1a2e;font-size:13px;font-weight:600;display:block}
     .footer{background:#f4f0ea;padding:20px 32px;text-align:center;font-size:12px;color:#888}
     .btn{display:inline-block;background:#1b3a5f;color:#fff;padding:12px 28px;border-radius:100px;text-decoration:none;font-weight:700;font-size:14px;margin:20px 0}
   </style></head><body>
@@ -99,9 +99,10 @@ function tplConfirmation({ ref, prenom, nom, adresse, date, creneau, duree, amou
 }
 
 function tplRappelJMoins1({ ref, prenom, adresse, creneau }) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  const creneauDisplay = creneau || 'à confirmer (appel le matin)';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
     body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
-    .wrap{max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden}
+    .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
     .head{background:#0f766e;padding:28px 32px;text-align:center}
     .head h1{color:#fff;font-size:20px;margin:0 0 6px}
     .head p{color:rgba(255,255,255,.8);font-size:14px;margin:0}
@@ -112,16 +113,16 @@ function tplRappelJMoins1({ ref, prenom, adresse, creneau }) {
   </style></head><body>
   <div class="wrap">
     <div class="head">
-      <h1>📦 Demain, livraison de votre climatiseur !</h1>
-      <p>Dossier ${ref} — ${prenom}</p>
+      <h1>Demain, livraison de votre climatiseur !</h1>
+      <p>Dossier ${escHtml(ref)} — ${escHtml(prenom)}</p>
     </div>
     <div class="body">
-      <p>Bonjour ${prenom},</p>
+      <p>Bonjour ${escHtml(prenom)},</p>
       <p>Votre climatiseur mobile Loc'Air est livré <strong>demain</strong>.</p>
       <div class="box">
-        <p style="margin:0 0 6px"><strong>📍 Adresse :</strong> ${adresse}</p>
-        <p style="margin:0 0 6px"><strong>🕗 Créneau :</strong> ${creneau || '8h – 12h'}</p>
-        <p style="margin:0"><strong>📞 Le technicien vous appelle 30 min avant d'arriver.</strong></p>
+        <p style="margin:0 0 6px"><strong>Adresse :</strong> ${escHtml(adresse)}</p>
+        <p style="margin:0 0 6px"><strong>Créneau :</strong> ${escHtml(creneauDisplay)}</p>
+        <p style="margin:0"><strong>Le technicien vous appelle 30 min avant d'arriver.</strong></p>
       </div>
       <p>Assurez-vous d'être présent ou qu'une personne puisse réceptionner l'appareil.</p>
       <a class="btn" href="https://wa.me/33663798756">Modifier le créneau</a>
@@ -130,10 +131,42 @@ function tplRappelJMoins1({ ref, prenom, adresse, creneau }) {
   </div></body></html>`;
 }
 
-function tplAvis({ ref, prenom }) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+function tplRappelRecuperation({ ref, prenom, adresse, dateRecup }) {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
     body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
-    .wrap{max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden}
+    .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
+    .head{background:#1b3a5f;padding:28px 32px;text-align:center}
+    .head h1{color:#fff;font-size:20px;margin:0 0 6px}
+    .head p{color:rgba(255,255,255,.8);font-size:14px;margin:0}
+    .body{padding:28px 32px;font-size:14px;color:#333;line-height:1.6}
+    .box{background:#f4f0ea;border-radius:10px;padding:16px 20px;margin:16px 0}
+    .footer{background:#f4f0ea;padding:20px 32px;text-align:center;font-size:12px;color:#888}
+    .btn{display:inline-block;background:#1b3a5f;color:#fff;padding:12px 28px;border-radius:100px;text-decoration:none;font-weight:700;font-size:14px;margin:16px 0}
+  </style></head><body>
+  <div class="wrap">
+    <div class="head">
+      <h1>Récupération de votre climatiseur demain</h1>
+      <p>Dossier ${escHtml(ref)}</p>
+    </div>
+    <div class="body">
+      <p>Bonjour ${escHtml(prenom)},</p>
+      <p>Votre location Loc'Air se termine demain (<strong>${escHtml(dateRecup)}</strong>). Notre technicien viendra récupérer l'appareil.</p>
+      <div class="box">
+        <p style="margin:0 0 6px"><strong>Adresse :</strong> ${escHtml(adresse)}</p>
+        <p style="margin:0">Nous vous appellerons le matin pour confirmer le créneau.</p>
+      </div>
+      <p>Merci de préparer l'appareil (débranché, gaine récupérée si possible). En cas d'empêchement, contactez-nous dès que possible.</p>
+      <a class="btn" href="https://wa.me/33663798756">Nous contacter</a>
+    </div>
+    <div class="footer">© 2026 Loc'Air · <a href="https://www.locair.fr" style="color:#1b3a5f">www.locair.fr</a></div>
+  </div></body></html>`;
+}
+
+function tplAvis({ ref, prenom }) {
+  const greeting = prenom ? `Bonjour ${escHtml(prenom)}` : 'Bonjour';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+    body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
+    .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
     .head{background:#1b3a5f;padding:28px 32px;text-align:center}
     .head h1{color:#fff;font-size:20px;margin:0 0 6px}
     .body{padding:28px 32px;font-size:14px;color:#333;line-height:1.6;text-align:center}
@@ -142,14 +175,14 @@ function tplAvis({ ref, prenom }) {
     .btn{display:inline-block;background:#f59e0b;color:#fff;padding:14px 32px;border-radius:100px;text-decoration:none;font-weight:700;font-size:15px;margin:16px 0}
   </style></head><body>
   <div class="wrap">
-    <div class="head"><h1>⭐ Comment s'est passée votre location ?</h1></div>
+    <div class="head"><h1>Comment s'est passée votre location ?</h1></div>
     <div class="body">
-      <p>Bonjour ${prenom},</p>
-      <p>Nous espérons que votre climatiseur Loc'Air vous a apporté tout le confort souhaité !</p>
+      <p>${greeting},</p>
+      <p>C'est Aly. Votre location Loc'Air s'est terminée — j'espère que vous avez pu dormir au frais. Si vous avez une minute, votre avis aide d'autres familles niçoises à nous faire confiance.</p>
       <div class="stars">⭐⭐⭐⭐⭐</div>
-      <p>Votre avis compte énormément et aide d'autres familles à nous faire confiance.</p>
       <a class="btn" href="https://g.page/r/CeJQrt2gLNNrEAE/review">Laisser un avis Google</a>
-      <p style="font-size:12px;color:#888;margin-top:16px">Dossier ${ref} — Merci pour votre confiance !</p>
+      <p style="font-size:12px;color:#888;margin-top:16px">Dossier ${escHtml(ref)} — Merci pour votre confiance !</p>
+      <p style="font-size:11px;color:#aaa;margin-top:12px"><a href="https://www.locair.fr/confidentialite" style="color:#aaa">Se désabonner</a></p>
     </div>
     <div class="footer">© 2026 Loc'Air · <a href="https://www.locair.fr" style="color:#1b3a5f">www.locair.fr</a></div>
   </div></body></html>`;
@@ -157,31 +190,31 @@ function tplAvis({ ref, prenom }) {
 
 function tplProlongConfirmation({ prenom, nom, jours, date_recuperation, creneau, amount }) {
   const jNum = Number(jours) || 1;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
     body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
-    .wrap{max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden}
+    .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
     .head{background:#0f766e;padding:32px 32px 24px;text-align:center}
     .head h1{color:#fff;font-size:22px;margin:0 0 6px}
     .head p{color:rgba(255,255,255,.75);font-size:14px;margin:0}
     .body{padding:28px 32px}
-    .row{display:flex;padding:10px 0;border-bottom:1px solid #f0ede8}
+    .row{padding:10px 0;border-bottom:1px solid #f0ede8}
     .row:last-child{border-bottom:none}
-    .lbl{color:#888;font-size:13px;width:160px;flex-shrink:0}
-    .val{color:#1a1a2e;font-size:13px;font-weight:600}
+    .lbl{color:#888;font-size:13px;display:block}
+    .val{color:#1a1a2e;font-size:13px;font-weight:600;display:block}
     .footer{background:#f4f0ea;padding:20px 32px;text-align:center;font-size:12px;color:#888}
     .btn{display:inline-block;background:#0f766e;color:#fff;padding:12px 28px;border-radius:100px;text-decoration:none;font-weight:700;font-size:14px;margin:20px 0}
   </style></head><body>
   <div class="wrap">
     <div class="head">
       <h1>✅ Prolongation confirmée !</h1>
-      <p>Merci ${prenom || ''}, votre paiement de ${amount} a bien été reçu.</p>
+      <p>Merci ${escHtml(prenom || '')}, votre paiement de ${escHtml(amount)} a bien été reçu.</p>
     </div>
     <div class="body">
-      <div class="row"><span class="lbl">Client</span><span class="val">${prenom} ${nom}</span></div>
+      <div class="row"><span class="lbl">Client</span><span class="val">${escHtml(prenom || '')} ${escHtml(nom || '')}</span></div>
       <div class="row"><span class="lbl">Jours supplémentaires</span><span class="val">${jNum} jour${jNum > 1 ? 's' : ''}</span></div>
-      <div class="row"><span class="lbl">Récupération le</span><span class="val">${date_recuperation || '—'}</span></div>
-      <div class="row"><span class="lbl">Créneau</span><span class="val">${creneau || '—'}</span></div>
-      <div class="row"><span class="lbl">Montant payé</span><span class="val">${amount}</span></div>
+      <div class="row"><span class="lbl">Récupération le</span><span class="val">${escHtml(date_recuperation || '—')}</span></div>
+      <div class="row"><span class="lbl">Créneau</span><span class="val">${escHtml(creneau || '—')}</span></div>
+      <div class="row"><span class="lbl">Montant payé</span><span class="val">${escHtml(amount)}</span></div>
       <p style="margin:24px 0 8px;font-size:13px;color:#444">Notre technicien vous contactera la veille de la récupération pour confirmer le créneau.</p>
       <a class="btn" href="https://wa.me/33663798756">Une question ? WhatsApp</a>
     </div>
@@ -189,32 +222,33 @@ function tplProlongConfirmation({ prenom, nom, jours, date_recuperation, creneau
   </div></body></html>`;
 }
 
-function tplProlongation({ ref, prenom, dateRecup, duree }) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+function tplProlongation({ ref, prenom, dateRecup }) {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
     body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
-    .wrap{max-width:560px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden}
-    .head{background:#dc2626;padding:28px 32px;text-align:center}
+    .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
+    .head{background:#1b3a5f;padding:28px 32px;text-align:center}
     .head h1{color:#fff;font-size:20px;margin:0 0 6px}
     .head p{color:rgba(255,255,255,.8);font-size:14px;margin:0}
     .body{padding:28px 32px;font-size:14px;color:#333;line-height:1.6}
-    .box{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:16px 20px;margin:16px 0;text-align:center}
+    .box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:16px 20px;margin:16px 0;text-align:center}
     .footer{background:#f4f0ea;padding:20px 32px;text-align:center;font-size:12px;color:#888}
-    .btn{display:inline-block;background:#1b3a5f;color:#fff;padding:14px 32px;border-radius:100px;text-decoration:none;font-weight:700;font-size:14px;margin:16px 0}
+    .btn{display:inline-block;background:#0f766e;color:#fff;padding:14px 32px;border-radius:100px;text-decoration:none;font-weight:700;font-size:14px;margin:16px 0}
   </style></head><body>
   <div class="wrap">
     <div class="head">
-      <h1>🌡️ Votre location se termine dans 2 jours</h1>
-      <p>Dossier ${ref}</p>
+      <h1>Votre location se termine dans 2 jours</h1>
+      <p>Dossier ${escHtml(ref)}</p>
     </div>
     <div class="body">
-      <p>Bonjour ${prenom},</p>
-      <p>Votre climatiseur sera récupéré le <strong>${dateRecup}</strong>. La chaleur est toujours là ?</p>
+      <p>Bonjour ${escHtml(prenom)},</p>
+      <p>Votre climatiseur sera récupéré le <strong>${escHtml(dateRecup)}</strong>. La chaleur est toujours là ?</p>
       <div class="box">
         <p style="margin:0 0 8px;font-weight:700;font-size:15px">Prolongez votre location</p>
         <p style="margin:0;color:#666">Ajoutez des jours en quelques clics — dès 19 €/jour</p>
       </div>
-      <a class="btn" href="https://www.locair.fr">Prolonger ma location</a>
+      <a class="btn" href="https://www.locair.fr/#prolong">Prolonger ma location</a>
       <p style="font-size:13px;color:#888">Si vous n'avez pas besoin de prolonger, notre équipe récupérera l'appareil à la date prévue. Le technicien vous contactera la veille.</p>
+      <p style="font-size:11px;color:#aaa;margin-top:16px"><a href="https://www.locair.fr/confidentialite" style="color:#aaa">Se désabonner</a></p>
     </div>
     <div class="footer">© 2026 Loc'Air · <a href="https://www.locair.fr" style="color:#1b3a5f">www.locair.fr</a></div>
   </div></body></html>`;
@@ -387,11 +421,19 @@ const handler = async (req, res) => {
       scheduledAt: j3,
     }));
 
-    if (duree > 3) {
+    // Rappel J-1 récupération
+    const jRecup = scheduledISO(meta.date, duree - 1, 18);
+    if (jRecup) programmés.push(sendBrevo({
+      to: email, subject: `Récupération de votre climatiseur Loc'Air demain`,
+      html: tplRappelRecuperation({ ref: meta.ref || obj.id, prenom: meta.prenom || '', adresse: meta.adresse || '', dateRecup: dateRecupStr }),
+      scheduledAt: jRecup,
+    }));
+
+    if (duree > 2) {
       const jMoins2 = scheduledISO(meta.date, duree - 2, 10);
       if (jMoins2) programmés.push(sendBrevo({
-        to: email, subject: `🌡️ Votre location Loc'Air se termine dans 2 jours`,
-        html: tplProlongation({ ref: meta.ref || obj.id, prenom: meta.prenom || '', dateRecup: dateRecupStr, duree: String(duree) }),
+        to: email, subject: `Votre location Loc'Air se termine dans 2 jours`,
+        html: tplProlongation({ ref: meta.ref || obj.id, prenom: meta.prenom || '', dateRecup: dateRecupStr }),
         scheduledAt: jMoins2,
       }));
     }
