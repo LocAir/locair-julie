@@ -3760,6 +3760,18 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             <input id="pe-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="street-address"/>
             <p style="font-size:11px;color:var(--grey2);margin-top:4px">Facultatif — aide à retrouver votre dossier plus vite</p>
           </div>
+          <div class="fld-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="fld">
+              <label for="pe-debut">Début de location<span class="req">*</span></label>
+              <input id="pe-debut" type="date" required oninput="onProlongDateChange();this.classList.toggle('valid',!!this.value)"/>
+              <p style="font-size:11px;color:var(--grey2);margin-top:4px">Date de livraison</p>
+            </div>
+            <div class="fld">
+              <label for="pe-fin-init">Fin de contrat actuelle<span class="req">*</span></label>
+              <input id="pe-fin-init" type="date" required oninput="onProlongDateChange();this.classList.toggle('valid',!!this.value)"/>
+              <p style="font-size:11px;color:var(--grey2);margin-top:4px">Avant la prolongation</p>
+            </div>
+          </div>
         </div>
         <div class="modal-nav" style="margin:8px 24px 20px">
           <button class="btn-back" onclick="goTo(0,true)" type="button">
@@ -3809,7 +3821,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <div class="flds">
           <div class="fld">
             <label for="pe-date">Nouvelle date de fin<span class="req">*</span></label>
-            <input id="pe-date" type="date" required oninput="this.classList.toggle('valid',!!this.value)"/>
+            <input id="pe-date" type="date" required oninput="this.classList.toggle('valid',!!this.value);onProlongNewDateChange()"/>
           </div>
           <div class="fld">
             <label id="lbl-pe-cr">Créneau de récupération<span class="req">*</span></label>
@@ -4327,7 +4339,7 @@ function closeModal(){
   if(_trapAbort){_trapAbort.abort();_trapAbort=null;}
   curStep=0;
   _currentFlow='new';
-  _prolongDays=1;
+  _prolongDays=1;_prolongOrigDays=0;
   document.querySelector('.stepper')?.classList.remove('stepper-hidden');
   const mobProg=document.getElementById('mob-progress');
   if(mobProg)mobProg.style.removeProperty('display');
@@ -4342,10 +4354,10 @@ function closeModal(){
   _qty=1;_techInstall=true;
   document.getElementById('modal')?.querySelectorAll('.tpill.on[role="radio"]').forEach(p=>{p.classList.remove('on');p.setAttribute('aria-checked','false');});
   // Reset prolongation form fields
-  ['pe-prenom','pe-nom','pe-email','pe-tel','pe-addr'].forEach(id=>{
+  ['pe-prenom','pe-nom','pe-email','pe-tel','pe-addr','pe-debut','pe-fin-init','pe-date'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
-  _prolongDays=1;
+  _prolongDays=1;_prolongOrigDays=0;
   const pecgv=document.getElementById('pe-cgv');if(pecgv)pecgv.checked=false;
   const mc=document.getElementById('main-content');
   if(mc)mc.removeAttribute('inert');
@@ -6086,6 +6098,7 @@ initDurCardPrices();
 // ── FLOW CHOICE (s0) ─────────────────────────────────────────────────────────
 let _currentFlow='new';
 let _prolongDays=1;
+let _prolongOrigDays=0;
 let _prolongPaying=false;
 let _prolongElements=null;
 
@@ -6126,9 +6139,12 @@ function goProlongStep(n){
   if(n===2)updateProlongPrice();
   if(n===3){
     const fd=document.getElementById('pe-date');
-    const t=new Date();t.setDate(t.getDate()+1);
-    const tom=[t.getFullYear(),String(t.getMonth()+1).padStart(2,'0'),String(t.getDate()).padStart(2,'0')].join('-');
-    if(fd){fd.min=tom;if(!fd.value)fd.value=tom;}
+    const finInit=document.getElementById('pe-fin-init')?.value;
+    const base=finInit?new Date(finInit):new Date();
+    base.setDate(base.getDate()+1);
+    const minDate=[base.getFullYear(),String(base.getMonth()+1).padStart(2,'0'),String(base.getDate()).padStart(2,'0')].join('-');
+    if(fd){fd.min=minDate;if(!fd.value||fd.value<=minDate)fd.value=minDate;}
+    onProlongNewDateChange();
   }
   if(n===4)buildProlongRecap();
   const mb=document.getElementById('modal-body');if(mb)mb.scrollTop=0;
@@ -6138,8 +6154,10 @@ function goProlongStep(n){
 function validateProlongStep3(){
   const date=document.getElementById('pe-date')?.value;
   if(!date){highlight(['pe-date']);return false;}
-  const today=new Date();today.setHours(0,0,0,0);
-  if(new Date(date)<=today){highlight(['pe-date']);return false;}
+  const finInit=document.getElementById('pe-fin-init')?.value;
+  const baseline=finInit?new Date(finInit):new Date();
+  baseline.setHours(0,0,0,0);
+  if(new Date(date)<=baseline){highlight(['pe-date']);return false;}
   return true;
 }
 
@@ -6148,8 +6166,13 @@ function stepProlongDur(delta){
   updateProlongPrice();
 }
 
+function calcProlongIncremental(origDays,addDays){
+  if(origDays>0)return calcPrice(origDays+addDays)-calcPrice(origDays);
+  return calcPrice(addDays);
+}
+
 function updateProlongPrice(){
-  const price=calcPrice(_prolongDays);
+  const price=calcProlongIncremental(_prolongOrigDays,_prolongDays);
   const el_days=document.getElementById('pp-days');
   const el_lbl=document.getElementById('pp-day-lbl');
   const el_total=document.getElementById('pp-total');
@@ -6160,17 +6183,49 @@ function updateProlongPrice(){
   if(el_minus)el_minus.style.opacity=_prolongDays<=1?'0.3':'1';
 }
 
+function onProlongDateChange(){
+  const debut=document.getElementById('pe-debut')?.value;
+  const finInit=document.getElementById('pe-fin-init')?.value;
+  if(debut&&finInit){
+    const diff=Math.round((new Date(finInit)-new Date(debut))/86400000);
+    _prolongOrigDays=Math.max(0,diff);
+  }else{
+    _prolongOrigDays=0;
+  }
+  updateProlongPrice();
+}
+
+function onProlongNewDateChange(){
+  const finInit=document.getElementById('pe-fin-init')?.value;
+  const newDate=document.getElementById('pe-date')?.value;
+  if(finInit&&newDate){
+    const diff=Math.round((new Date(newDate)-new Date(finInit))/86400000);
+    if(diff>0){
+      _prolongDays=diff;
+      updateProlongPrice();
+      const el=document.getElementById('pp-days');if(el)el.textContent=_prolongDays;
+      const lbl=document.getElementById('pp-day-lbl');if(lbl)lbl.textContent=_prolongDays===1?'jour supplémentaire':'jours supplémentaires';
+      const minus=document.getElementById('prolong-minus');if(minus)minus.style.opacity=_prolongDays<=1?'0.3':'1';
+    }
+  }
+}
+
 function validateProlongStep1(){
   const prenom=document.getElementById('pe-prenom')?.value.trim();
   const nom=document.getElementById('pe-nom')?.value.trim();
   const email=document.getElementById('pe-email')?.value.trim();
   const tel=document.getElementById('pe-tel')?.value.trim();
+  const debut=document.getElementById('pe-debut')?.value;
+  const finInit=document.getElementById('pe-fin-init')?.value;
   const missing=[];
   if(!prenom)missing.push('pe-prenom');
   if(!nom)missing.push('pe-nom');
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))missing.push('pe-email');
   if(!tel)missing.push('pe-tel');
+  if(!debut)missing.push('pe-debut');
+  if(!finInit)missing.push('pe-fin-init');
   if(missing.length){highlight(missing);return false;}
+  if(new Date(finInit)<=new Date(debut)){highlight(['pe-fin-init']);return false;}
   return true;
 }
 
@@ -6182,7 +6237,7 @@ function buildProlongRecap(){
   const email=document.getElementById('pe-email')?.value.trim()||'—';
   const tel=document.getElementById('pe-tel')?.value.trim()||'—';
   const addr=document.getElementById('pe-addr')?.value.trim()||'—';
-  const price=calcPrice(_prolongDays);
+  const price=calcProlongIncremental(_prolongOrigDays,_prolongDays);
   // Format date as DD/MM/YYYY
   const rawDate=document.getElementById('pe-date')?.value||'';
   let dateLabel='—';
@@ -6250,7 +6305,9 @@ async function startProlongPayment(){
   try{
     const stripe=_getStripe();
     if(!stripe)throw new Error('Stripe non chargé — désactivez votre bloqueur de publicités');
-    const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,prenom,nom,email,tel,adresse_origine:addr,date_recuperation:dateLabel,creneau})});
+    const debutVal=document.getElementById('pe-debut')?.value||'';
+    const finInitVal=document.getElementById('pe-fin-init')?.value||'';
+    const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,original_days:_prolongOrigDays,prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,creneau})});
     if(!r.ok)throw new Error('API '+r.status);
     const d=await r.json();
     if(!d.clientSecret)throw new Error(d.error||'No secret');

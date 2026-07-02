@@ -1,11 +1,11 @@
 const Stripe = require('stripe');
 
-function calcProlongPrice(days) {
+function calcBase(days) {
   days = Math.max(1, days);
-  if (days <= 7)  return days * 29;
-  if (days <= 14) return 7 * 29 + (days - 7) * 27;
-  if (days <= 21) return 7 * 29 + 7 * 27 + (days - 14) * 22;
-  return 7 * 29 + 7 * 27 + 7 * 22 + (days - 21) * 19;
+  if (days <= 7)  return days * 24;
+  if (days <= 14) return 7 * 24 + (days - 7) * 22;
+  if (days <= 21) return 7 * 24 + 7 * 22 + (days - 14) * 20;
+  return 7 * 24 + 7 * 22 + 7 * 20 + (days - 21) * 19;
 }
 
 module.exports = async (req, res) => {
@@ -14,15 +14,21 @@ module.exports = async (req, res) => {
   const data   = req.body || {};
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-  const jours = Math.max(1, parseInt(data.jours) || 1);
-  const amountCents = calcProlongPrice(jours) * 100;
+  const jours    = Math.max(1, parseInt(data.jours) || 1);
+  const origDays = Math.max(0, parseInt(data.original_days) || 0);
+
+  // Incremental pricing: charge only the difference between (origDays+jours) and origDays
+  // so that tier transitions are priced correctly (e.g. 7→16 days = calcBase(16)−calcBase(7))
+  const totalBase  = origDays > 0
+    ? calcBase(origDays + jours) - calcBase(origDays)
+    : calcBase(jours);
+  const amountCents = totalBase * 100;
 
   if (!amountCents || amountCents < 1900) {
     return res.status(400).json({ error: 'Montant invalide (min 1 jour)' });
   }
 
   try {
-    // Créer ou retrouver le Customer Stripe pour setup_future_usage (retard éventuel)
     let customerId = '';
     if (data.email) {
       const email = data.email.trim();
@@ -48,6 +54,7 @@ module.exports = async (req, res) => {
       receipt_email: data.email || undefined,
       description: [
         `Loc'Air Prolongation — ${jours} jour${jours > 1 ? 's' : ''}`,
+        origDays > 0 ? `(total ${origDays + jours}j)` : '',
         data.prenom ? `${data.prenom} ${data.nom || ''}`.trim() : '',
         data.date_recuperation ? `Récup. ${data.date_recuperation}` : '',
       ].filter(Boolean).join(' · ').slice(0, 1000),
@@ -58,6 +65,10 @@ module.exports = async (req, res) => {
         tel:               (data.tel               || '').slice(0, 500),
         adresse_origine:   (data.adresse_origine   || '').slice(0, 500),
         jours:             String(jours),
+        original_days:     String(origDays),
+        total_days:        String(origDays + jours),
+        date_debut:        (data.date_debut        || '').slice(0, 500),
+        date_fin_initiale: (data.date_fin_initiale || '').slice(0, 500),
         date_recuperation: (data.date_recuperation || '').slice(0, 500),
         creneau:           (data.creneau           || '').slice(0, 500),
         customer_id:       customerId,
