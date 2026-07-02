@@ -324,23 +324,44 @@ body{
 .hero{
   position:relative;
   min-height:calc(100vh - 60px);
-  display:flex;align-items:center;justify-content:center;
+  display:flex;align-items:stretch;
   overflow:hidden;
+  background:linear-gradient(160deg,#1b3a5f 0%,#0f2543 55%,#06090f 100%);
 }
-.hero-photo{
-  position:absolute;inset:0;
-  background-color:#0c1e3b;
-  background-size:cover;
-  background-position:center 30%;
-  background-repeat:no-repeat;
-  transform:scale(1.03);
-  transition:transform 9s cubic-bezier(.25,.46,.45,.94);
-  will-change:transform;
+/* Split layout — texte gauche · photo droite */
+.hero-split{
+  width:100%;display:flex;min-height:calc(100vh - 60px);
+  position:relative;z-index:2;
 }
-.hero-photo.on{transform:scale(1)}
-.hero-scrim{
-  position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(6,9,15,.12) 0%,rgba(6,9,15,.42) 38%,rgba(6,9,15,.88) 100%);
+.hero-split-l{
+  flex:0 0 52%;display:flex;align-items:center;
+}
+.hero-split-r{
+  flex:0 0 48%;position:relative;overflow:hidden;
+}
+.hero-clim-img{
+  width:100%;height:100%;object-fit:cover;object-position:60% 12%;display:block;
+}
+/* Fondu gauche : fond navy → photo */
+.hero-split-r::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:90px;
+  background:linear-gradient(to right,#0f2543 0%,transparent 100%);
+  z-index:1;pointer-events:none;
+}
+/* Badge prix flottant */
+.hero-clim-badge{
+  position:absolute;bottom:44px;left:36px;
+  background:#fff;border-radius:16px;padding:14px 22px;
+  box-shadow:0 12px 40px rgba(0,0,0,.22),0 2px 8px rgba(0,0,0,.1);
+  z-index:2;line-height:1.2;
+}
+.hero-clim-badge strong{display:block;font-size:24px;font-weight:800;color:#0f2543;letter-spacing:-.02em}
+.hero-clim-badge span{font-size:12px;color:#5a6a7a;font-weight:500}
+/* Mobile : colonne photo masquée, fond navy plein écran */
+@media(max-width:768px){
+  .hero-split{flex-direction:column}
+  .hero-split-r{display:none}
+  .hero-split-l{flex:1;min-height:calc(100vh - 60px)}
 }
 /* ── INTRO CURTAIN (rideau de scène) ── */
 @keyframes _la_lift{from{opacity:1}to{opacity:0}}
@@ -355,10 +376,10 @@ body{
 .hero-intro.out{opacity:0}
 .hero-inner{
   position:relative;z-index:2;
-  width:100%;max-width:680px;margin:0 auto;
-  padding:clamp(88px,18vh,148px) var(--pad) clamp(72px,12vh,112px);
-  text-align:center;
-  display:flex;flex-direction:column;align-items:center;
+  width:100%;max-width:560px;
+  padding:clamp(56px,10vh,96px) clamp(28px,5vw,64px) clamp(56px,10vh,96px) clamp(28px,6vw,80px);
+  text-align:left;
+  display:flex;flex-direction:column;align-items:flex-start;
 }
 .hero-eye{
   font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
@@ -375,7 +396,7 @@ body{
 .hero-desc{
   font-family:var(--body);font-size:18px;font-weight:300;
   color:rgba(255,255,255,.72);line-height:1.55;margin-bottom:0;
-  max-width:480px;margin-left:auto;margin-right:auto;letter-spacing:.01em;
+  max-width:440px;letter-spacing:.01em;
 }
 /* ── HERO CTA (Apple-style pill) ── */
 .hero-cta{
@@ -1451,7 +1472,7 @@ body{
 @media print{
   .nav,.m-bar,.modal-overlay,.fcta{display:none!important}
   .hero{min-height:auto;page-break-after:always}
-  .hero-photo,.hero-scrim,.hero-intro{display:none}
+  .hero-split-r,.hero-intro{display:none}
   .hero-inner{color:black;padding:20px 0}
   .hero-h1{color:black;font-size:28px}
   body{font-size:12px;line-height:1.5}
@@ -1559,7 +1580,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 }
 .trust-badges svg{height:18px;width:auto;display:block}
 .hero-micro{
-  display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
+  display:flex;align-items:center;justify-content:flex-start;gap:8px;flex-wrap:wrap;
   margin-top:14px;font-size:12.5px;color:rgba(255,255,255,.6);font-family:var(--body);
 }
 .hero-trust{display:none}
@@ -2346,19 +2367,30 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 <main id="main-content">
 <section class="hero" id="top" aria-label="Bannière principale — Location climatiseur Nice">
   <div class="hero-intro" id="hero-intro" aria-hidden="true"></div>
-  <div class="hero-photo" id="hp" role="img" aria-label="Vue de la Promenade des Anglais à Nice en été — Climatisation mobile Loc'Air" style="background-image:url('hero-nice.jpg'),linear-gradient(160deg,#1b3a5f 0%,#0f2543 55%,#06090f 100%)"></div>
-  <div class="hero-scrim"></div>
-  <div class="hero-inner">
-    <h1 class="hero-h1" data-i18n-h="hero_h1">Il fait trop chaud<br><em>pour dormir à&nbsp;Nice&nbsp;?</em></h1>
-    <p class="hero-desc" data-i18n="hero_desc">Demain soir, vous dormez au frais.</p>
-    <button class="hero-cta" onclick="openModal()" type="button" aria-label="Réserver un climatiseur">
-      Réserver — dès 24 €/jour
-    </button>
-    <div id="hero-dispo" style="display:flex;align-items:center;gap:6px;margin-top:10px;margin-bottom:2px">
-      <span style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;animation:alertPulse 2.4s ease-in-out infinite;flex-shrink:0"></span>
-      <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.92);text-shadow:0 1px 6px rgba(0,0,0,.5)" id="hero-dispo-text">2 appareils disponibles à Nice</span>
+  <div class="hero-split">
+    <!-- Colonne gauche : texte + CTA -->
+    <div class="hero-split-l">
+      <div class="hero-inner">
+        <h1 class="hero-h1" data-i18n-h="hero_h1">Il fait trop chaud<br><em>pour dormir à&nbsp;Nice&nbsp;?</em></h1>
+        <p class="hero-desc" data-i18n="hero_desc">Demain soir, vous dormez au frais.</p>
+        <button class="hero-cta" onclick="openModal()" type="button" aria-label="Réserver un climatiseur">
+          Réserver — dès 24 €/jour
+        </button>
+        <div id="hero-dispo" style="display:flex;align-items:center;gap:6px;margin-top:10px;margin-bottom:2px">
+          <span style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;animation:alertPulse 2.4s ease-in-out infinite;flex-shrink:0"></span>
+          <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.92);text-shadow:0 1px 6px rgba(0,0,0,.5)" id="hero-dispo-text">2 appareils disponibles à Nice</span>
+        </div>
+        <p class="hero-micro">4,8★ · 21 avis Google · Zéro dépôt</p>
+      </div>
     </div>
-    <p class="hero-micro">4,8★ · 21 avis Google · Zéro dépôt</p>
+    <!-- Colonne droite : photo climatiseur -->
+    <div class="hero-split-r" aria-hidden="true">
+      <img src="hero-clim.jpg" alt="" class="hero-clim-img" fetchpriority="high" loading="eager" width="708" height="1062" decoding="async">
+      <div class="hero-clim-badge">
+        <strong>dès 24€</strong>
+        <span>/jour · 7j minimum</span>
+      </div>
+    </div>
   </div>
 </section>
 
