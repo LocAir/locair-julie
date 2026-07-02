@@ -371,7 +371,13 @@ body{
 .hero-clim-badge span{font-size:12px;color:#5a6a7a;font-weight:500}
 /* Mobile : photo en fond plein écran, texte ancré en bas */
 @media(max-width:768px){
-  .hero-split{flex-direction:column;position:relative}
+  /* Contraindre à 100svh (true viewport, excl. chrome Safari) — la var --chrome-h
+     est mise à jour par JS pour inclure la barre d'alerte météo si visible */
+  .hero-split{
+    flex-direction:column;position:relative;
+    min-height:calc(100vh - var(--chrome-h,56px));
+    min-height:calc(100svh - var(--chrome-h,56px));
+  }
   .hero-split-r{
     display:block;position:absolute;inset:0;z-index:0;
     flex:none;width:100%;height:100%;
@@ -387,24 +393,23 @@ body{
   }
   /* Cadrage : montre le dessus de l'appareil (grille + boutons) */
   .hero-clim-img{object-position:center 8%}
-  /* Texte ancré en bas — min-height svh pour iOS (exclut barres Safari) */
   .hero-split-l{
     flex:1;
-    min-height:calc(100vh - 60px);
-    min-height:calc(100svh - 60px);
+    min-height:calc(100vh - var(--chrome-h,56px));
+    min-height:calc(100svh - var(--chrome-h,56px));
     z-index:1;position:relative;
     align-items:flex-end;
   }
   .hero-split-l .hero-inner{
-    padding:0 24px 40px;max-width:100%;width:100%;
+    padding:0 24px 28px;max-width:100%;width:100%;
   }
   /* Espacement compact sur mobile */
-  .hero-split-l .hero-eye{margin-bottom:10px}
-  .hero-split-l .hero-h1{margin-bottom:10px}
+  .hero-split-l .hero-eye{margin-bottom:8px}
+  .hero-split-l .hero-h1{margin-bottom:8px}
   .hero-split-l .hero-desc{font-size:15px}
-  .hero-split-l .hero-cta{margin-top:18px;width:100%;max-width:none;justify-content:center}
-  .hero-split-l #hero-dispo{margin-top:10px;margin-bottom:0}
-  .hero-split-l .hero-micro{margin-top:8px}
+  .hero-split-l .hero-cta{margin-top:16px;width:100%;max-width:none;justify-content:center}
+  .hero-split-l #hero-dispo{margin-top:8px;margin-bottom:0}
+  .hero-split-l .hero-micro{margin-top:6px}
   .hero-clim-badge{display:none}
   /* Icônes FAQ : trop voyantes sur mobile, supprimées */
   .fi-tag{display:none}
@@ -2375,7 +2380,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 
 <div class="alert-bar hidden" id="alert-canicule" role="alert" aria-live="polite">
   <span class="alert-dot" aria-hidden="true"></span><strong>Canicule prévue cette semaine</strong> · Livraison sous 24h
-  <button class="alert-close" onclick="this.closest('.alert-bar').classList.add('hidden');localStorage.setItem('alertDismissed','1')" aria-label="Fermer" type="button">×</button>
+  <button class="alert-close" onclick="this.closest('.alert-bar').classList.add('hidden');localStorage.setItem('alertDismissed','1');if(typeof _updateChromeH==='function')_updateChromeH();" aria-label="Fermer" type="button">×</button>
 </div>
 
 
@@ -5929,6 +5934,17 @@ if(_urgencyShown)setInterval(_renderSmartLine,60000);
   }catch(e){}
 })();
 
+// ── CHROME HEIGHT — compense nav + barre d'alerte pour le hero mobile ────────
+function _updateChromeH(){
+  var nav=document.querySelector('header.nav');
+  var ab=document.getElementById('alert-canicule');
+  var h=(nav?nav.offsetHeight:56)+((ab&&!ab.classList.contains('hidden'))?ab.offsetHeight:0);
+  document.documentElement.style.setProperty('--chrome-h',h+'px');
+}
+// Calcul initial dès que le DOM est prêt (alerte encore cachée → juste la nav)
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',_updateChromeH);}
+else{_updateChromeH();}
+
 // ── MÉTÉO EN DIRECT (Open-Meteo, sans clé API) ──────────────────────────────
 (async function initWeather(){
   if(localStorage.getItem('alertDismissed')==='1')return;
@@ -5968,6 +5984,7 @@ if(_urgencyShown)setInterval(_renderSmartLine,60000);
         const ressufix=res!=null?' (ressenti '+res+'°C)':'';
         if(peakTemp>=35)_setAlertBar(bar,'Canicule — '+peakTemp+'°C prévus'+ressufix,'Livraison sous 24h');
         else _setAlertBar(bar,cur+'°C'+ressufix,'Climatiseur livré sous 24h');
+        _updateChromeH();
       }
     } else {
       // Haute saison : juillet (6) ou août (7)
@@ -5977,6 +5994,7 @@ if(_urgencyShown)setInterval(_renderSmartLine,60000);
         if(bar&&bar.classList.contains('hidden')){
           const ressufix=cur>0?' · '+cur+'°C (ressenti '+res+'°C)':'';
           _setAlertBar(bar,'Haute saison'+ressufix,'Disponibilité limitée — réservez tôt');
+          _updateChromeH();
         }
       }
     }
