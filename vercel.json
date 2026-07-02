@@ -1,12 +1,25 @@
 {
   "cleanUrls": true,
   "functions": {
+    "api/webhook.js": {
+      "maxDuration": 30,
+      "runtime": "nodejs20.x"
+    },
     "api/*.js": {
       "maxDuration": 10,
       "runtime": "nodejs20.x"
     }
   },
   "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+      ]
+    },
     {
       "source": "/(.*)\\.html",
       "headers": [
@@ -15,6 +28,12 @@
     },
     {
       "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/(cgv|mentions-legales|confidentialite|404|retard)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
