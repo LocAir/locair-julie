@@ -19,15 +19,16 @@ module.exports = async (req, res) => {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
   const duree = Math.max(7, parseInt(data.duree) || 7);
-  const baseCents     = calcBase(duree) * 100;
+  const qty   = Math.min(5, Math.max(1, parseInt((data.quantite || '1').replace(/[^0-9]/g, '')) || 1));
+  const baseCents     = calcBase(duree) * qty * 100;
   const isTech        = (data.installation || '').startsWith('Technicien');
   const installCents  = isTech ? INSTALL_FEE * 100 : 0;
   const promoCode     = (data.parrain_code || '').trim().toUpperCase();
   const promoDiscount = (PROMO_CODES[promoCode] || 0) * 100;
   const amountCents   = Math.max(0, baseCents + installCents + DELIVERY_FEE * 100 - promoDiscount);
 
-  if (!amountCents || amountCents < 20000) {
-    return res.status(400).json({ error: 'Montant invalide (min 200 €)' });
+  if (!amountCents || amountCents < 10000) {
+    return res.status(400).json({ error: 'Montant invalide' });
   }
 
   try {
@@ -65,7 +66,7 @@ module.exports = async (req, res) => {
       customer:      customerId || undefined,
       receipt_email: data.email || undefined,
       description: [
-        `Loc'Air — ${duree} jour${duree > 1 ? 's' : ''}`,
+        `Loc'Air — ${qty > 1 ? qty + 'x ' : ''}${duree} jour${duree > 1 ? 's' : ''}`,
         data.date              ? `Livraison ${data.date}` : '',
         data.creneau_livraison || '',
         data.adresse           || '',
@@ -77,6 +78,7 @@ module.exports = async (req, res) => {
         tel:          (data.tel               || '').slice(0, 500),
         adresse:      (data.adresse           || '').slice(0, 500),
         duree:        String(duree),
+        quantite:     String(qty),
         date:         (data.date              || '').slice(0, 500),
         creneau:      (data.creneau_livraison || '').slice(0, 500),
         installation: (data.installation      || '').slice(0, 500),
