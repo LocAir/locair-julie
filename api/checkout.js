@@ -2,10 +2,10 @@ const Stripe = require('stripe');
 
 function calcBase(days) {
   days = Math.max(1, days);
-  if (days <= 7)  return days * 29;
-  if (days <= 14) return 7 * 29 + (days - 7) * 27;
-  if (days <= 21) return 7 * 29 + 7 * 27 + (days - 14) * 22;
-  return 7 * 29 + 7 * 27 + 7 * 22 + (days - 21) * 19;
+  if (days <= 7)  return days * 24;
+  if (days <= 14) return 7 * 24 + (days - 7) * 22;
+  if (days <= 21) return 7 * 24 + 7 * 22 + (days - 14) * 20;
+  return 7 * 24 + 7 * 22 + 7 * 20 + (days - 21) * 19;
 }
 
 const PROMO_CODES  = { LOCAIR10: 10, LOCA10: 10 };
