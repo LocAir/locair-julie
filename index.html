@@ -1887,6 +1887,26 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 }
 .zone-confirm.visible{opacity:1;transform:translateY(0)}
 
+/* ── ADDRESS AUTOCOMPLETE ── */
+.addr-wrap{position:relative}
+.addr-ac{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:2000;
+  background:#fff;border:1.5px solid var(--blue);border-radius:12px;
+  box-shadow:0 8px 28px rgba(0,0,0,.13);overflow:hidden;
+  opacity:0;transform:translateY(-4px);pointer-events:none;
+  transition:opacity .15s,transform .15s;
+}
+.addr-ac.open{opacity:1;transform:translateY(0);pointer-events:auto}
+.addr-ac-item{
+  padding:11px 14px;font-size:13.5px;color:var(--black);cursor:pointer;
+  border-bottom:1px solid var(--rule);line-height:1.35;
+  display:flex;flex-direction:column;gap:2px;
+}
+.addr-ac-item:last-child{border-bottom:none}
+.addr-ac-item:hover,.addr-ac-item.on{background:#f4f0ea}
+.addr-ac-street{font-weight:600}
+.addr-ac-city{font-size:11.5px;color:var(--grey)}
+
 /* ── DURATION LIST ── */
 
 /* ── STEP 2 : product card + quantity selector ─────────────────────────── */
@@ -3150,7 +3170,13 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             <div class="fld-label-row">
               <label for="f-addr" id="label-addr">Adresse<span class="req">*</span></label>
             </div>
-            <input id="f-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="street-address" spellcheck="false" data-lpignore="true" required oninput="this.classList.toggle('valid',this.value.trim().length>4);const zc=document.getElementById('zone-confirm');if(zc)zc.classList.toggle('visible',this.value.trim().length>4)"/>
+            <div class="addr-wrap">
+              <input id="f-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="off" spellcheck="false" data-lpignore="true" required
+                oninput="onAddrInput(this)"
+                onkeydown="onAddrKey(event)"
+                aria-autocomplete="list" aria-controls="addr-ac" aria-expanded="false"/>
+              <ul class="addr-ac" id="addr-ac" role="listbox" aria-label="Suggestions d'adresse"></ul>
+            </div>
             <div class="zone-confirm" id="zone-confirm" aria-live="polite">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               Adresse enregistrée
@@ -4209,6 +4235,75 @@ function onCustomDate(inp){
   updateDatePreview();
   document.querySelectorAll('.ds-chip').forEach(c=>{c.classList.remove('on');c.setAttribute('aria-checked','false');});
 }
+
+// ── AUTOCOMPLETE ADRESSE (BAN — api-adresse.data.gouv.fr) ────────────────────
+let _acTimer=null,_acIdx=-1;
+
+function onAddrInput(inp){
+  inp.classList.toggle('valid',inp.value.trim().length>4);
+  const zc=document.getElementById('zone-confirm');
+  if(zc)zc.classList.toggle('visible',inp.value.trim().length>4);
+  clearTimeout(_acTimer);
+  const q=inp.value.trim();
+  if(q.length<3){_closeAddrAc();return;}
+  _acTimer=setTimeout(()=>_fetchAddrAc(q),280);
+}
+
+async function _fetchAddrAc(q){
+  const ac=document.getElementById('addr-ac');
+  const inp=document.getElementById('f-addr');
+  if(!ac||!inp)return;
+  try{
+    const url='https://api-adresse.data.gouv.fr/search/?q='+encodeURIComponent(q)+'&lat=43.7102&lon=7.262&limit=5&autocomplete=1';
+    const r=await fetch(url);if(!r.ok)return;
+    const d=await r.json();
+    const items=(d.features||[]).slice(0,5);
+    if(!items.length){_closeAddrAc();return;}
+    _acIdx=-1;
+    ac.innerHTML=items.map((f)=>{
+      const lbl=f.properties.label||'';
+      const parts=lbl.split(/ (?=\d{5} )/) ;
+      const street=parts[0]||lbl;
+      const city=parts[1]||'';
+      return '<li class="addr-ac-item" role="option" data-val="'+escHtml(lbl)+'" tabindex="-1">'
+        +'<span class="addr-ac-street">'+escHtml(street)+'</span>'
+        +(city?'<span class="addr-ac-city">'+escHtml(city)+'</span>':'')
+        +'</li>';
+    }).join('');
+    ac.querySelectorAll('.addr-ac-item').forEach(li=>li.addEventListener('mousedown',e=>{e.preventDefault();_pickAddrAc(li);}));
+    ac.classList.add('open');
+    inp.setAttribute('aria-expanded','true');
+  }catch(e){}
+}
+
+function _pickAddrAc(el){
+  const inp=document.getElementById('f-addr');
+  if(inp){inp.value=el.dataset.val;inp.dispatchEvent(new Event('input'));inp.focus();}
+  _closeAddrAc();
+}
+
+function _closeAddrAc(){
+  const ac=document.getElementById('addr-ac');
+  const inp=document.getElementById('f-addr');
+  if(ac){ac.classList.remove('open');ac.innerHTML='';}
+  if(inp)inp.setAttribute('aria-expanded','false');
+  _acIdx=-1;
+}
+
+function onAddrKey(e){
+  const ac=document.getElementById('addr-ac');
+  if(!ac||!ac.classList.contains('open'))return;
+  const items=[...ac.querySelectorAll('.addr-ac-item')];
+  if(!items.length)return;
+  if(e.key==='ArrowDown'){e.preventDefault();_acIdx=Math.min(_acIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('on',i===_acIdx));}
+  else if(e.key==='ArrowUp'){e.preventDefault();_acIdx=Math.max(_acIdx-1,0);items.forEach((el,i)=>el.classList.toggle('on',i===_acIdx));}
+  else if(e.key==='Enter'&&_acIdx>=0){e.preventDefault();_pickAddrAc(items[_acIdx]);}
+  else if(e.key==='Escape'){_closeAddrAc();}
+}
+
+document.addEventListener('click',e=>{
+  if(!e.target.closest('#addr-ac')&&e.target.id!=='f-addr')_closeAddrAc();
+},{passive:true});
 
 // ── GÉOLOCALISATION ADRESSE ───────────────────────────────────────────────────────
 function geoLocate(){
