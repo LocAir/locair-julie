@@ -1677,8 +1677,23 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .ac-new{color:var(--blue);font-weight:600;white-space:nowrap}
 
 /* ── PAY TRUST ROW (modal) ── */
-.pay-trust{display:flex;align-items:center;justify-content:center;gap:10px;margin-top:12px;flex-wrap:wrap}
+.pay-trust{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap}
 .pay-trust svg{height:16px;width:auto;display:block;opacity:.7}
+.pay-badge-method{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10px;font-weight:600;color:var(--grey2);
+  background:#f6f5f3;border:1px solid var(--rule);
+  border-radius:5px;padding:3px 8px;white-space:nowrap;letter-spacing:.01em;
+}
+.secure-banner{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  font-size:11px;color:var(--grey);
+  margin:16px 0 0;padding:10px 14px;
+  background:linear-gradient(135deg,rgba(20,45,74,.025),rgba(20,45,74,.055));
+  border:1px solid rgba(20,45,74,.1);border-radius:10px;
+}
+.secure-banner strong{color:var(--black2);font-weight:700}
+.secure-banner svg{color:var(--blue);opacity:.85;flex-shrink:0}
 
 /* ── RECAP STEP 5 ── */
 .rc-card{
@@ -3829,19 +3844,20 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" aria-hidden="true"/>
 
           <!-- Checkboxes légales fusionnées -->
-          <label class="legal-accept" style="margin-top:16px">
+          <p style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--grey2);margin:20px 0 10px">Confirmation &amp; autorisations</p>
+          <label class="legal-accept" style="margin-top:0">
             <input type="checkbox" id="f-cgv" onchange="syncLegalCheck(this)"/>
             <input type="checkbox" id="f-rgpd" style="display:none"/>
-            <span class="legal-accept-txt" id="label-cgv">J'accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> et la <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">politique de confidentialité</a>. <span style="color:var(--grey2);font-size:10px">Données traitées par Formspree (USA, Data Privacy Framework (DPF, décision d'adéquation UE 10/07/2023)).</span></span>
+            <span class="legal-accept-txt" id="label-cgv">J'accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> et la <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">politique de confidentialité</a>. <span style="color:var(--grey2);font-size:10px">Données personnelles protégées · RGPD.</span></span>
           </label>
           <div class="rgpd-row" style="margin-top:10px">
             <input type="checkbox" id="f-mkt"/>
-            <label id="label-mkt" for="f-mkt">J'accepte de recevoir les offres Loc'Air par email. <span style="color:var(--grey2);font-size:10px">Optionnel</span></label>
+            <label id="label-mkt" for="f-mkt">J'accepte de recevoir les offres et actualités Loc'Air par email. <span style="color:var(--grey2);font-size:10px">Optionnel · désinscription en 1 clic</span></label>
           </div>
-          <div class="rgpd-row" style="margin-top:10px">
+          <label class="legal-accept" style="margin-top:10px">
             <input type="checkbox" id="f-retard" onchange="buildRecap()" required/>
-            <label id="label-retard" for="f-retard">J'autorise Loc'Air à débiter ma carte pour tout jour de retard de restitution (de 16 à 20 €/j selon la durée totale, voir <a href="/cgv#retard" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV art. 10 bis</a>). <span style="color:var(--grey2);font-size:10px">Ma carte est enregistrée de façon sécurisée par Stripe — aucun montant n'est prélevé maintenant.</span></label>
-          </div>
+            <span class="legal-accept-txt" id="label-retard">J'autorise Loc'Air à débiter ma carte pour tout jour de retard de restitution (de 16 à 20 €/j selon la durée totale, voir <a href="/cgv#retard" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV art. 10 bis</a>). <span style="color:var(--grey2);font-size:10px">Aucun montant prélevé maintenant — carte enregistrée via Stripe.</span></span>
+          </label>
 
           <button class="btn-pay" id="sbtn" onclick="submitForm(this,'pay')" type="button" aria-label="Procéder au paiement" disabled>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
@@ -3849,6 +3865,12 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           </button>
           <p class="sbtn-hint" id="sbtn-hint">Cochez les cases ci-dessus pour confirmer</p>
           <p class="pay-sub">Paiement en ligne par carte via Stripe · Confirmation par email dans quelques minutes</p>
+          <div class="pay-trust" aria-label="Paiement sécurisé">
+            <span class="pay-badge-method"><svg style="width:9px;height:9px;display:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>SSL · 3D Secure</span>
+            <span class="pay-badge-method" style="font-style:italic;font-weight:800;letter-spacing:-.5px;color:#1a1f71">VISA</span>
+            <span class="pay-badge-method" style="font-weight:700">Mastercard</span>
+            <span class="pay-badge-method">Carte Bancaire</span>
+          </div>
 
           <!-- Stripe Payment Element (affiché après validation) -->
           <div id="stripe-section" style="display:none;margin-top:20px">
@@ -5716,7 +5738,7 @@ const LANG_MAP=[
   /* modal step 6 */
   ['#s6 .sp-title','text','Votre commande','Your order'],
   ['#s6 .sp-sub','text','Annulation gratuite avant livraison — remboursement intégral.','Free cancellation before delivery — full refund.'],
-  ['#label-cgv','html','J\'accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> et la <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">politique de confidentialité</a>. <span style="color:var(--grey2);font-size:10px">Données traitées par Formspree (USA, Data Privacy Framework (DPF, décision d\'adéquation UE 10/07/2023)).</span>','I accept the <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">T&amp;Cs</a> and the <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">privacy policy</a>. <span style="color:var(--grey2);font-size:10px">Data processed by Formspree (USA, Data Privacy Framework (DPF, EU adequacy decision 10/07/2023)).</span>'],
+  ['#label-cgv','html','J\'accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> et la <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">politique de confidentialité</a>. <span style="color:var(--grey2);font-size:10px">Données personnelles protégées · RGPD.</span>','I accept the <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">T&amp;Cs</a> and the <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">privacy policy</a>. <span style="color:var(--grey2);font-size:10px">Personal data protected · GDPR.</span>'],
   ['#sbtn-hint','text','Cochez les cases ci-dessus pour confirmer','Tick the boxes above to confirm'],
   ['#lbl-back-s6','text','Vos infos','Your info'],
 ];
