@@ -1888,24 +1888,26 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .zone-confirm.visible{opacity:1;transform:translateY(0)}
 
 /* ── ADDRESS AUTOCOMPLETE ── */
-.addr-wrap{position:relative}
+.addr-wrap{position:relative;width:100%}
 .addr-ac{
-  position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:2000;
-  background:#fff;border:1.5px solid var(--blue);border-radius:12px;
-  box-shadow:0 8px 28px rgba(0,0,0,.13);overflow:hidden;
+  position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:2000;
+  background:#fff;border:1.5px solid rgba(20,45,74,.18);border-radius:12px;
+  box-shadow:0 4px 20px rgba(0,0,0,.1),0 1px 4px rgba(0,0,0,.06);
+  list-style:none;overflow:hidden;max-height:220px;overflow-y:auto;
   opacity:0;transform:translateY(-4px);pointer-events:none;
-  transition:opacity .15s,transform .15s;
+  transition:opacity .12s,transform .12s;
 }
 .addr-ac.open{opacity:1;transform:translateY(0);pointer-events:auto}
 .addr-ac-item{
-  padding:11px 14px;font-size:13.5px;color:var(--black);cursor:pointer;
+  padding:11px 14px;font-size:13px;color:var(--black);cursor:pointer;
   border-bottom:1px solid var(--rule);line-height:1.35;
-  display:flex;flex-direction:column;gap:2px;
+  display:flex;flex-direction:column;gap:1px;
+  -webkit-tap-highlight-color:transparent;
 }
 .addr-ac-item:last-child{border-bottom:none}
-.addr-ac-item:hover,.addr-ac-item.on{background:#f4f0ea}
-.addr-ac-street{font-weight:600}
-.addr-ac-city{font-size:11.5px;color:var(--grey)}
+.addr-ac-item:active,.addr-ac-item.on{background:#eef1f5}
+.addr-ac-street{font-weight:600;font-size:13.5px}
+.addr-ac-city{font-size:11px;color:var(--grey);margin-top:1px}
 
 /* ── DURATION LIST ── */
 
@@ -4270,7 +4272,12 @@ async function _fetchAddrAc(q){
         +(city?'<span class="addr-ac-city">'+escHtml(city)+'</span>':'')
         +'</li>';
     }).join('');
-    ac.querySelectorAll('.addr-ac-item').forEach(li=>li.addEventListener('mousedown',e=>{e.preventDefault();_pickAddrAc(li);}));
+    ac.querySelectorAll('.addr-ac-item').forEach(li=>{
+      // mousedown + touchstart pour iOS
+      const pick=e=>{e.preventDefault();e.stopPropagation();_pickAddrAc(li);};
+      li.addEventListener('mousedown',pick);
+      li.addEventListener('touchstart',pick,{passive:false});
+    });
     ac.classList.add('open');
     inp.setAttribute('aria-expanded','true');
   }catch(e){}
@@ -4278,11 +4285,19 @@ async function _fetchAddrAc(q){
 
 function _pickAddrAc(el){
   const inp=document.getElementById('f-addr');
-  if(inp){inp.value=el.dataset.val;inp.dispatchEvent(new Event('input'));inp.focus();}
-  _closeAddrAc();
+  _closeAddrAc(); // ferme d'abord (cancelle le timer)
+  if(inp){
+    inp.value=el.dataset.val;
+    // Met à jour le style valid + zone-confirm sans re-déclencher le fetch
+    inp.classList.add('valid');
+    const zc=document.getElementById('zone-confirm');
+    if(zc)zc.classList.add('visible');
+    inp.focus();
+  }
 }
 
 function _closeAddrAc(){
+  clearTimeout(_acTimer); // annule tout fetch en attente
   const ac=document.getElementById('addr-ac');
   const inp=document.getElementById('f-addr');
   if(ac){ac.classList.remove('open');ac.innerHTML='';}
