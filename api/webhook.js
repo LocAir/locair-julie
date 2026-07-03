@@ -244,7 +244,7 @@ function tplProlongation({ ref, prenom, dateRecup }) {
       <p>Votre climatiseur sera récupéré le <strong>${escHtml(dateRecup)}</strong>. La chaleur est toujours là ?</p>
       <div class="box">
         <p style="margin:0 0 8px;font-weight:700;font-size:15px">Prolongez votre location</p>
-        <p style="margin:0;color:#666">Ajoutez des jours en quelques clics — dès 19 €/jour</p>
+        <p style="margin:0;color:#666">Ajoutez des jours en quelques clics — dès 16 €/jour</p>
       </div>
       <a class="btn" href="https://www.locair.fr/#prolong">Prolonger ma location</a>
       <p style="font-size:13px;color:#888">Si vous n'avez pas besoin de prolonger, notre équipe récupérera l'appareil à la date prévue. Le technicien vous contactera la veille.</p>
