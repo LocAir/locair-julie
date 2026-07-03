@@ -1889,20 +1889,36 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 
 /* ── ADDRESS AUTOCOMPLETE ── */
 .addr-wrap{position:relative;width:100%}
+/* Conteneur flex remplaçant la bordure de l'input */
+.addr-field{
+  display:flex;align-items:center;
+  border:1.5px solid var(--rule);border-radius:var(--r);
+  background:#fff;transition:border-color .15s,box-shadow .15s;
+  min-height:44px;
+}
+.addr-field:focus-within{border-color:var(--blue);box-shadow:0 0 0 3px rgba(20,45,74,.14)}
+.addr-field.valid{border-color:#22863a;box-shadow:0 0 0 3px rgba(34,134,58,.1)}
 .addr-icon{
-  position:absolute;left:13px;top:50%;transform:translateY(-50%);
-  color:var(--grey);pointer-events:none;display:flex;align-items:center;
+  flex-shrink:0;padding-left:13px;padding-right:6px;
+  color:var(--grey);display:flex;align-items:center;pointer-events:none;
   transition:color .15s;
 }
-.addr-wrap:focus-within .addr-icon{color:var(--blue)}
-.addr-clear{
-  position:absolute;right:11px;top:50%;transform:translateY(-50%);
-  background:none;border:none;cursor:pointer;padding:5px;
-  color:var(--grey);display:flex;align-items:center;border-radius:50%;
-  transition:background .1s,color .1s;line-height:0;
+.addr-field:focus-within .addr-icon{color:var(--blue)}
+/* L'input lui-même sans bordure ni focus ring propre */
+#f-addr{
+  flex:1;min-width:0;border:none!important;box-shadow:none!important;
+  padding:12px 6px 12px 0;background:transparent;outline:none;
+  font-size:16px;font-weight:400;font-family:var(--body);color:var(--black);
+  -webkit-appearance:none;appearance:none;touch-action:manipulation;
 }
-.addr-clear:hover{background:rgba(0,0,0,.07);color:var(--black)}
-#f-addr{padding-left:38px;padding-right:36px}
+#f-addr::placeholder{color:var(--grey);opacity:.7}
+.addr-clear{
+  flex-shrink:0;padding:10px 12px 10px 4px;
+  background:none;border:none;cursor:pointer;
+  color:var(--grey);display:flex;align-items:center;
+  transition:color .1s;-webkit-tap-highlight-color:transparent;
+}
+.addr-clear:hover{color:var(--black)}
 .addr-ac{
   position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:2000;
   background:#fff;border:1.5px solid rgba(20,45,74,.15);border-radius:12px;
@@ -3194,16 +3210,18 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               </button>
             </div>
             <div class="addr-wrap">
-              <span class="addr-icon" aria-hidden="true">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-              </span>
-              <input id="f-addr" type="text" placeholder="Votre adresse à Nice" autocomplete="off" spellcheck="false" data-lpignore="true" required
-                oninput="onAddrInput(this)"
-                onkeydown="onAddrKey(event)"
-                aria-autocomplete="list" aria-controls="addr-ac" aria-expanded="false"/>
-              <button type="button" class="addr-clear" id="addr-clear" onclick="clearAddr()" aria-label="Effacer" style="display:none">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
+              <div class="addr-field" id="addr-field">
+                <span class="addr-icon" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                </span>
+                <input id="f-addr" type="text" placeholder="Votre adresse à Nice" autocomplete="off" spellcheck="false" data-lpignore="true" required
+                  oninput="onAddrInput(this)"
+                  onkeydown="onAddrKey(event)"
+                  aria-autocomplete="list" aria-controls="addr-ac" aria-expanded="false"/>
+                <button type="button" class="addr-clear" id="addr-clear" onclick="clearAddr()" aria-label="Effacer" style="display:none">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </button>
+              </div>
               <ul class="addr-ac" id="addr-ac" role="listbox" aria-label="Suggestions d'adresse"></ul>
             </div>
             <div class="zone-confirm" id="zone-confirm" aria-live="polite">
@@ -4268,11 +4286,16 @@ function onCustomDate(inp){
 // ── AUTOCOMPLETE ADRESSE (BAN — api-adresse.data.gouv.fr) ────────────────────
 let _acTimer=null,_acIdx=-1;
 
+function _addrSetValid(on){
+  document.getElementById('f-addr')?.classList.toggle('valid',on); // pour goTo validation
+  document.getElementById('addr-field')?.classList.toggle('valid',on);
+  const zc=document.getElementById('zone-confirm');
+  if(zc)zc.classList.toggle('visible',on);
+}
+
 function onAddrInput(inp){
   const v=inp.value.trim();
-  inp.classList.toggle('valid',v.length>4);
-  const zc=document.getElementById('zone-confirm');
-  if(zc)zc.classList.toggle('visible',v.length>4);
+  _addrSetValid(v.length>4);
   const clr=document.getElementById('addr-clear');
   if(clr)clr.style.display=v?'flex':'none';
   clearTimeout(_acTimer);
@@ -4284,9 +4307,7 @@ function clearAddr(){
   const inp=document.getElementById('f-addr');
   if(!inp)return;
   inp.value='';
-  inp.classList.remove('valid');
-  const zc=document.getElementById('zone-confirm');
-  if(zc)zc.classList.remove('visible');
+  _addrSetValid(false);
   const clr=document.getElementById('addr-clear');
   if(clr)clr.style.display='none';
   _closeAddrAc();
@@ -4338,9 +4359,7 @@ function _pickAddrAc(el){
   _closeAddrAc(); // ferme d'abord (cancelle le timer)
   if(inp){
     inp.value=el.dataset.val;
-    inp.classList.add('valid');
-    const zc=document.getElementById('zone-confirm');
-    if(zc)zc.classList.add('visible');
+    _addrSetValid(true);
     const clr=document.getElementById('addr-clear');
     if(clr)clr.style.display='flex';
     inp.focus();
