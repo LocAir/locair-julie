@@ -1889,11 +1889,25 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 
 /* ── ADDRESS AUTOCOMPLETE ── */
 .addr-wrap{position:relative;width:100%}
+.addr-icon{
+  position:absolute;left:13px;top:50%;transform:translateY(-50%);
+  color:var(--grey);pointer-events:none;display:flex;align-items:center;
+  transition:color .15s;
+}
+.addr-wrap:focus-within .addr-icon{color:var(--blue)}
+.addr-clear{
+  position:absolute;right:11px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;padding:5px;
+  color:var(--grey);display:flex;align-items:center;border-radius:50%;
+  transition:background .1s,color .1s;line-height:0;
+}
+.addr-clear:hover{background:rgba(0,0,0,.07);color:var(--black)}
+#f-addr{padding-left:38px;padding-right:36px}
 .addr-ac{
   position:absolute;top:calc(100% + 5px);left:0;right:0;z-index:2000;
-  background:#fff;border:1.5px solid rgba(20,45,74,.18);border-radius:12px;
-  box-shadow:0 4px 20px rgba(0,0,0,.1),0 1px 4px rgba(0,0,0,.06);
-  list-style:none;overflow:hidden;max-height:220px;overflow-y:auto;
+  background:#fff;border:1.5px solid rgba(20,45,74,.15);border-radius:12px;
+  box-shadow:0 4px 20px rgba(0,0,0,.1),0 1px 4px rgba(0,0,0,.05);
+  list-style:none;overflow:hidden;max-height:210px;overflow-y:auto;
   opacity:0;transform:translateY(-4px);pointer-events:none;
   transition:opacity .12s,transform .12s;
 }
@@ -1901,13 +1915,16 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .addr-ac-item{
   padding:11px 14px;font-size:13px;color:var(--black);cursor:pointer;
   border-bottom:1px solid var(--rule);line-height:1.35;
-  display:flex;flex-direction:column;gap:1px;
+  display:flex;align-items:center;gap:10px;
   -webkit-tap-highlight-color:transparent;
 }
 .addr-ac-item:last-child{border-bottom:none}
-.addr-ac-item:active,.addr-ac-item.on{background:#eef1f5}
-.addr-ac-street{font-weight:600;font-size:13.5px}
-.addr-ac-city{font-size:11px;color:var(--grey);margin-top:1px}
+.addr-ac-item:active,.addr-ac-item.on{background:#f0f3f7}
+.addr-ac-ico{flex-shrink:0;color:var(--grey);opacity:.6;display:flex}
+.addr-ac-txt{display:flex;flex-direction:column;gap:1px;min-width:0}
+.addr-ac-street{font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.addr-ac-city{font-size:11px;color:var(--grey)}
+.addr-ac-empty{padding:14px;font-size:12.5px;color:var(--grey);text-align:center}
 
 /* ── DURATION LIST ── */
 
@@ -3171,12 +3188,22 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           <div class="fld">
             <div class="fld-label-row">
               <label for="f-addr" id="label-addr">Adresse<span class="req">*</span></label>
+              <button type="button" class="geo-btn" id="geo-btn" onclick="geoLocate()">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
+                <span id="geo-lbl">Ma position</span>
+              </button>
             </div>
             <div class="addr-wrap">
-              <input id="f-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="off" spellcheck="false" data-lpignore="true" required
+              <span class="addr-icon" aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              </span>
+              <input id="f-addr" type="text" placeholder="Votre adresse à Nice" autocomplete="off" spellcheck="false" data-lpignore="true" required
                 oninput="onAddrInput(this)"
                 onkeydown="onAddrKey(event)"
                 aria-autocomplete="list" aria-controls="addr-ac" aria-expanded="false"/>
+              <button type="button" class="addr-clear" id="addr-clear" onclick="clearAddr()" aria-label="Effacer" style="display:none">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
               <ul class="addr-ac" id="addr-ac" role="listbox" aria-label="Suggestions d'adresse"></ul>
             </div>
             <div class="zone-confirm" id="zone-confirm" aria-live="polite">
@@ -4242,13 +4269,28 @@ function onCustomDate(inp){
 let _acTimer=null,_acIdx=-1;
 
 function onAddrInput(inp){
-  inp.classList.toggle('valid',inp.value.trim().length>4);
+  const v=inp.value.trim();
+  inp.classList.toggle('valid',v.length>4);
   const zc=document.getElementById('zone-confirm');
-  if(zc)zc.classList.toggle('visible',inp.value.trim().length>4);
+  if(zc)zc.classList.toggle('visible',v.length>4);
+  const clr=document.getElementById('addr-clear');
+  if(clr)clr.style.display=v?'flex':'none';
   clearTimeout(_acTimer);
-  const q=inp.value.trim();
-  if(q.length<3){_closeAddrAc();return;}
-  _acTimer=setTimeout(()=>_fetchAddrAc(q),280);
+  if(v.length<3){_closeAddrAc();return;}
+  _acTimer=setTimeout(()=>_fetchAddrAc(v),280);
+}
+
+function clearAddr(){
+  const inp=document.getElementById('f-addr');
+  if(!inp)return;
+  inp.value='';
+  inp.classList.remove('valid');
+  const zc=document.getElementById('zone-confirm');
+  if(zc)zc.classList.remove('visible');
+  const clr=document.getElementById('addr-clear');
+  if(clr)clr.style.display='none';
+  _closeAddrAc();
+  inp.focus();
 }
 
 async function _fetchAddrAc(q){
@@ -4260,17 +4302,25 @@ async function _fetchAddrAc(q){
     const r=await fetch(url);if(!r.ok)return;
     const d=await r.json();
     const items=(d.features||[]).slice(0,5);
-    if(!items.length){_closeAddrAc();return;}
+    if(!items.length){
+      ac.innerHTML='<li class="addr-ac-empty" role="option">Aucune adresse trouvée à Nice</li>';
+      ac.classList.add('open');
+      inp.setAttribute('aria-expanded','true');
+      return;
+    }
     _acIdx=-1;
+    const pinIco='<span class="addr-ac-ico"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></span>';
     ac.innerHTML=items.map((f)=>{
       const lbl=f.properties.label||'';
-      const parts=lbl.split(/ (?=\d{5} )/) ;
+      const parts=lbl.split(/ (?=\d{5}[ ,])/) ;
       const street=parts[0]||lbl;
       const city=parts[1]||'';
       return '<li class="addr-ac-item" role="option" data-val="'+escHtml(lbl)+'" tabindex="-1">'
+        +pinIco
+        +'<span class="addr-ac-txt">'
         +'<span class="addr-ac-street">'+escHtml(street)+'</span>'
         +(city?'<span class="addr-ac-city">'+escHtml(city)+'</span>':'')
-        +'</li>';
+        +'</span></li>';
     }).join('');
     ac.querySelectorAll('.addr-ac-item').forEach(li=>{
       // mousedown + touchstart pour iOS
@@ -4288,10 +4338,11 @@ function _pickAddrAc(el){
   _closeAddrAc(); // ferme d'abord (cancelle le timer)
   if(inp){
     inp.value=el.dataset.val;
-    // Met à jour le style valid + zone-confirm sans re-déclencher le fetch
     inp.classList.add('valid');
     const zc=document.getElementById('zone-confirm');
     if(zc)zc.classList.add('visible');
+    const clr=document.getElementById('addr-clear');
+    if(clr)clr.style.display='flex';
     inp.focus();
   }
 }
