@@ -4319,12 +4319,13 @@ async function _fetchAddrAc(q){
   const inp=document.getElementById('f-addr');
   if(!ac||!inp)return;
   try{
-    const url='https://api-adresse.data.gouv.fr/search/?q='+encodeURIComponent(q)+'&lat=43.7102&lon=7.262&limit=5&autocomplete=1';
+    // Recherche libre sur toute la France — pas de biais lat/lon pour couvrir tout le 06 (Cannes, Antibes, Cagnes, Menton…)
+    const url='https://api-adresse.data.gouv.fr/search/?q='+encodeURIComponent(q)+'&limit=6&autocomplete=1';
     const r=await fetch(url);if(!r.ok)return;
     const d=await r.json();
-    const items=(d.features||[]).slice(0,5);
+    const items=(d.features||[]).slice(0,6);
     if(!items.length){
-      ac.innerHTML='<li class="addr-ac-empty" role="option">Aucune adresse trouvée à Nice</li>';
+      ac.innerHTML='<li class="addr-ac-empty" role="option">Aucune adresse trouvée dans le 06</li>';
       ac.classList.add('open');
       inp.setAttribute('aria-expanded','true');
       return;
