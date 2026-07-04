@@ -24,10 +24,10 @@ module.exports = async (req, res) => {
           probleme_type, probleme_description,
           photo_depart_path, video_installation_path, photo_retour_path,
           transporteur:transporteurs ( id, nom ),
-          reservation:reservations ( id, prenom, nom, tel, adresse, etage, ascenseur, fenetre )
+          reservation:reservations ( id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre )
         `)
-        .order('date_prevue', { ascending: true })
-        .limit(200);
+        .order('date_prevue', { ascending: false })
+        .limit(300);
       if (error) throw error;
       return res.status(200).json({ livraisons: data || [] });
     }

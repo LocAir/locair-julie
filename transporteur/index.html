@@ -291,6 +291,32 @@ const TYPE_LABEL = {livraison:'Livraison', recuperation:'Récupération'};
 const TYPE_ICON  = {livraison:'📦', recuperation:'🔄'};
 const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', arrivee:'Sur place', probleme:'Problème signalé'};
 
+function dateLabelFor(dateStr){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr+'T00:00:00');
+  const diffDays = Math.round((d-today)/86400000);
+  if(diffDays===0) return "📍 Aujourd'hui";
+  if(diffDays===1) return '📅 Demain';
+  return '📅 ' + d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+}
+
+function missionCardHtml(m){
+  const c = m.client || {};
+  const badge = STATUT_LABEL[m.statut] || m.statut;
+  const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
+  return `
+    <div class="mcard st-${m.statut}" onclick="openMission(${m.id})">
+      <div class="mcard-top">
+        <span class="mcard-icon">${TYPE_ICON[m.type]||'📍'}</span>
+        <span class="mcard-type">${TYPE_LABEL[m.type]||m.type}</span>
+        <span class="mcard-badge">${badge}</span>
+      </div>
+      <div class="mcard-addr">${(c.prenom||'')+' '+(c.nom||'')} — ${c.adresse||'Adresse à confirmer'}</div>
+      <div class="mcard-meta">${m.creneau||''} ${c.etage&&c.etage!=='—'?'· Étage '+c.etage:''}</div>
+      ${mapsUrl?`<div class="mcard-actions"><a href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Itinéraire</a>${c.tel?`<a href="tel:${c.tel}" onclick="event.stopPropagation()">📞 Appeler</a>`:''}</div>`:''}
+    </div>`;
+}
+
 function renderMissions(){
   const wrap = document.getElementById('missions-list');
   const tourZone = document.getElementById('tour-zone');
@@ -300,33 +326,30 @@ function renderMissions(){
     return;
   }
 
-  const actives = STATE.missions.filter(m => m.client && m.client.adresse && ['a_faire','acceptee','arrivee'].includes(m.statut));
-  if(actives.length > 1){
-    const stops = actives.map(m => m.client.adresse);
+  // La tournée groupée ne porte que sur AUJOURD'HUI — des missions à des
+  // dates différentes (parfois prévues bien à l'avance, parfois de dernière
+  // minute) ne doivent jamais être mélangées dans un même itinéraire.
+  const todayStr = new Date().toISOString().slice(0,10);
+  const todayActives = STATE.missions.filter(m => m.date_prevue===todayStr && m.client && m.client.adresse && ['a_faire','acceptee','arrivee'].includes(m.statut));
+  if(todayActives.length > 1){
+    const stops = todayActives.map(m => m.client.adresse);
     const last = encodeURIComponent(stops[stops.length-1]);
     const waypoints = encodeURIComponent(stops.slice(0,-1).join('|'));
     const url = `https://www.google.com/maps/dir/?api=1&destination=${last}${waypoints?('&waypoints='+waypoints):''}&travelmode=driving`;
-    tourZone.innerHTML = `<a class="tour-btn" href="${url}" target="_blank" rel="noopener">🗺️ Voir toute la tournée (ordre suggéré, pas obligatoire)</a>`;
+    tourZone.innerHTML = `<a class="tour-btn" href="${url}" target="_blank" rel="noopener">🗺️ Voir la tournée d'aujourd'hui (ordre suggéré, pas obligatoire)</a>`;
   } else {
     tourZone.innerHTML = '';
   }
 
-  wrap.innerHTML = STATE.missions.map(m => {
-    const c = m.client || {};
-    const badge = STATUT_LABEL[m.statut] || m.statut;
-    const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
-    return `
-      <div class="mcard st-${m.statut}" onclick="openMission(${m.id})">
-        <div class="mcard-top">
-          <span class="mcard-icon">${TYPE_ICON[m.type]||'📍'}</span>
-          <span class="mcard-type">${TYPE_LABEL[m.type]||m.type}</span>
-          <span class="mcard-badge">${badge}</span>
-        </div>
-        <div class="mcard-addr">${(c.prenom||'')+' '+(c.nom||'')} — ${c.adresse||'Adresse à confirmer'}</div>
-        <div class="mcard-meta">${m.creneau||''} ${c.etage&&c.etage!=='—'?'· Étage '+c.etage:''}</div>
-        ${mapsUrl?`<div class="mcard-actions"><a href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Itinéraire</a>${c.tel?`<a href="tel:${c.tel}" onclick="event.stopPropagation()">📞 Appeler</a>`:''}</div>`:''}
-      </div>`;
-  }).join('');
+  // Regroupées par date : une mission peut arriver la veille pour le
+  // lendemain, bien à l'avance, ou de dernière minute pour aujourd'hui.
+  const groups = {};
+  STATE.missions.forEach(m => { (groups[m.date_prevue] = groups[m.date_prevue] || []).push(m); });
+  const dates = Object.keys(groups).sort();
+
+  wrap.innerHTML = dates.map(dateStr =>
+    `<div class="section-title">${dateLabelFor(dateStr)}</div>` + groups[dateStr].map(missionCardHtml).join('')
+  ).join('');
 }
 
 function openMission(id){

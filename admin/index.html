@@ -74,6 +74,15 @@ input:focus,select:focus{border-color:var(--blue)}
 .dot-green{background:var(--green)}
 .dot-blue{background:var(--blue)}
 
+.spinner-wrap{display:flex;justify-content:center;padding:50px 0}
+.spinner{width:28px;height:28px;border-radius:50%;border:3px solid var(--rule);border-top-color:var(--blue);animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.btn,.tabs button,.periods button,.row-item,.stat-tile{transition:box-shadow .15s ease, transform .1s ease, background-color .15s ease}
+.btn:active:not(:disabled){transform:scale(.98)}
+.row-item:hover{box-shadow:0 4px 16px rgba(0,0,0,.07)}
+.tabs button:hover{border-color:var(--blue)}
+
 /* ── Version ordinateur : barre latérale fixe + contenu plus large ── */
 @media (min-width:860px){
   .wrap{max-width:1120px;padding:32px 32px 80px}
@@ -152,6 +161,13 @@ async function adminLogin(){
 }
 document.getElementById('a-pwd').addEventListener('keydown', e=>{ if(e.key==='Enter') adminLogin(); });
 
+function euros(cents){ return ((cents||0)/100).toFixed(2).replace('.',',') + ' €'; }
+function loading(){ return '<div class="spinner-wrap"><div class="spinner"></div></div>'; }
+const RESA_LABEL = {en_attente:'En attente', confirmee:'Confirmée', annulee:'Annulée', terminee:'Terminée'};
+const LIV_LABEL  = {a_faire:'Nouvelle', acceptee:'Acceptée', refusee:'Refusée', arrivee:'Sur place', fait:'Terminée', probleme:'Problème', annule:'Annulée'};
+const VIR_LABEL  = {demande:'Demandé', verse:'Versé'};
+const PROBLEME_LABEL = {client_injoignable:'Client injoignable', appareil_en_panne:'Appareil en panne', retard:'Retard important', autre:'Autre problème'};
+
 function switchAdminTab(tab){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
   ['accueil','stock','reservations','livraisons','transporteurs','virements'].forEach(t=>{
@@ -168,7 +184,7 @@ function switchAdminTab(tab){
 // ── ACCUEIL / CHIFFRES ────────────────────────────────────────────────────────
 async function loadDashboard(periode){
   const zone = document.getElementById('tab-accueil');
-  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-dashboard'), {method:'POST', headers:authHeaders(), body:JSON.stringify({periode})});
     const d = await r.json();
@@ -196,7 +212,7 @@ async function loadDashboard(periode){
 // ── STOCK ─────────────────────────────────────────────────────────────────────
 async function loadStock(){
   const zone = document.getElementById('tab-stock');
-  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:'{}'});
     const d = await r.json();
@@ -240,24 +256,24 @@ async function saveStock(ville){
 const STATUTS_RESA = ['en_attente','confirmee','annulee','terminee'];
 async function loadReservations(){
   const zone = document.getElementById('tab-reservations');
-  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    if(!d.reservations.length){ zone.innerHTML='<p class="empty">Aucune réservation.</p>'; return; }
+    if(!d.reservations.length){ zone.innerHTML='<p class="empty">🧾 Aucune réservation pour l\'instant.</p>'; return; }
     zone.innerHTML = d.reservations.map(res => `
       <div class="row-item">
         <div class="row-top">
           <span class="row-title">${res.ref||('#'+res.id)} — ${(res.prenom||'')+' '+(res.nom||'')}</span>
-          <span class="chip ${res.statut}">${res.statut}</span>
+          <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
         </div>
-        <div class="row-meta">${res.adresse||'—'}<br/>${res.date_debut} → ${res.date_fin} · ${res.quantite}x · ${(res.prix_total_cents/100).toFixed(2)} €</div>
+        <div class="row-meta">${res.adresse||'—'}<br/>${res.date_debut} → ${res.date_fin} · ${res.quantite}x · ${euros(res.prix_total_cents)}</div>
         <div class="row-actions">
           ${res.statut!=='annulee'?`<button class="btn btn-red" onclick="cancelReservation(${res.id})">Annuler</button>`:''}
           <select onchange="updateReservationStatut(${res.id}, this.value)">
             <option value="">Changer statut…</option>
-            ${STATUTS_RESA.map(s=>`<option value="${s}" ${s===res.statut?'selected':''}>${s}</option>`).join('')}
+            ${STATUTS_RESA.map(s=>`<option value="${s}" ${s===res.statut?'selected':''}>${RESA_LABEL[s]}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -279,10 +295,15 @@ async function updateReservationStatut(id, statut){
 }
 
 // ── LIVRAISONS ────────────────────────────────────────────────────────────────
+// Historique complet (pas seulement les missions en cours) pour qu'un manager
+// puisse retrouver n'importe quelle mission passée et revoir ses preuves.
 let TRANSPORTEURS_CACHE = [];
+let LIVRAISONS_CACHE = [];
+let LIVRAISONS_FILTER = 'toutes';
+
 async function loadLivraisons(){
   const zone = document.getElementById('tab-livraisons');
-  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  zone.innerHTML = loading();
   try{
     const [lr, tr] = await Promise.all([
       fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
@@ -291,36 +312,81 @@ async function loadLivraisons(){
     const ld = await lr.json(); const td = await tr.json();
     if(!lr.ok) throw new Error(ld.error||'Erreur');
     TRANSPORTEURS_CACHE = td.transporteurs || [];
-    if(!ld.livraisons.length){ zone.innerHTML='<p class="empty">Aucune mission.</p>'; return; }
-    zone.innerHTML = ld.livraisons.map(m => {
-      const res = m.reservation || {};
-      const options = ['<option value="">Non assigné</option>'].concat(
-        TRANSPORTEURS_CACHE.map(t => `<option value="${t.id}" ${m.transporteur&&m.transporteur.id===t.id?'selected':''}>${t.nom}</option>`)
-      ).join('');
-      const mediaBtns = [];
-      if(m.photo_depart_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_depart')">📷 Départ</button>`);
-      if(m.video_installation_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'video_installation')">🎥 Installation</button>`);
-      if(m.photo_retour_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_retour')">📷 Retour</button>`);
-      return `
-        <div class="row-item">
-          <div class="row-top">
-            <span class="row-title">${m.type==='livraison'?'📦':'🔄'} ${(res.prenom||'')+' '+(res.nom||'')}</span>
-            <span class="chip ${m.statut}">${m.statut}</span>
-          </div>
-          <div class="row-meta">${res.adresse||'—'}<br/>${m.date_prevue} · ${m.creneau||''}</div>
-          ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${m.probleme_type||''} — ${m.probleme_description||''}</div>`:''}
-          <div class="row-actions">
-            <select onchange="assignTransporteur(${m.id}, this.value)">${options}</select>
-            ${mediaBtns.join('')}
-          </div>
-        </div>`;
-    }).join('');
+    LIVRAISONS_CACHE = ld.livraisons || [];
+    renderLivraisonsToolbar();
+    renderLivraisons();
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
+
+function renderLivraisonsToolbar(){
+  const zone = document.getElementById('tab-livraisons');
+  const filters = [
+    {key:'toutes', label:'Toutes'},
+    {key:'en_cours', label:'En cours'},
+    {key:'fait', label:'Terminées'},
+    {key:'probleme', label:'Problèmes'},
+  ];
+  zone.innerHTML = `
+    <input type="text" id="liv-search" placeholder="🔎 Rechercher un client, une adresse, une référence…" oninput="renderLivraisons()"/>
+    <div class="periods" style="margin-bottom:16px">
+      ${filters.map(f => `<button class="${LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
+    </div>
+    <div id="liv-list"></div>`;
+}
+function setLivraisonsFilter(key){ LIVRAISONS_FILTER = key; renderLivraisonsToolbar(); renderLivraisons(); }
+
+function renderLivraisons(){
+  const list = document.getElementById('liv-list');
+  if(!list) return;
+  const q = (document.getElementById('liv-search')?.value || '').trim().toLowerCase();
+
+  let items = LIVRAISONS_CACHE;
+  if(LIVRAISONS_FILTER === 'en_cours') items = items.filter(m => ['a_faire','acceptee','arrivee'].includes(m.statut));
+  else if(LIVRAISONS_FILTER === 'fait') items = items.filter(m => m.statut === 'fait');
+  else if(LIVRAISONS_FILTER === 'probleme') items = items.filter(m => m.statut === 'probleme');
+
+  if(q){
+    items = items.filter(m => {
+      const res = m.reservation || {};
+      const haystack = [res.ref, res.prenom, res.nom, res.adresse].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(q);
+    });
+  }
+
+  if(!items.length){ list.innerHTML = '<p class="empty">🚚 Aucune mission ne correspond.</p>'; return; }
+
+  list.innerHTML = items.map(m => {
+    const res = m.reservation || {};
+    const options = ['<option value="">Non assigné</option>'].concat(
+      TRANSPORTEURS_CACHE.map(t => `<option value="${t.id}" ${m.transporteur&&m.transporteur.id===t.id?'selected':''}>${t.nom}</option>`)
+    ).join('');
+    const mediaBtns = [];
+    if(m.photo_depart_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_depart')">📷 Départ</button>`);
+    if(m.video_installation_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'video_installation')">🎥 Installation</button>`);
+    if(m.photo_retour_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_retour')">📷 Retour</button>`);
+    return `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${m.type==='livraison'?'📦':'🔄'} ${(res.prenom||'')+' '+(res.nom||'')}</span>
+          <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
+        </div>
+        <div class="row-meta">${res.ref?res.ref+' · ':''}${res.adresse||'—'}<br/>${m.date_prevue} · ${m.creneau||''}</div>
+        ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||m.probleme_type||''} — ${m.probleme_description||''}</div>`:''}
+        <div class="row-actions">
+          <select onchange="assignTransporteur(${m.id}, this.value)">${options}</select>
+          ${mediaBtns.join('')}
+          ${mediaBtns.length===0 && m.statut==='fait' ? '<span class="row-meta" style="align-self:center">Aucune preuve enregistrée</span>' : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
 async function assignTransporteur(livraisonId, transporteurId){
   await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'assign', livraison_id:livraisonId, transporteur_id: transporteurId||null})});
+  const m = LIVRAISONS_CACHE.find(x => x.id === livraisonId);
+  if(m) m.transporteur = TRANSPORTEURS_CACHE.find(t => t.id == transporteurId) || null;
 }
 async function viewMedia(livraisonId, kind){
   try{
@@ -334,7 +400,7 @@ async function viewMedia(livraisonId, kind){
 // ── TRANSPORTEURS ─────────────────────────────────────────────────────────────
 async function loadTransporteurs(){
   const zone = document.getElementById('tab-transporteurs');
-  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();
@@ -407,7 +473,7 @@ async function editRates(id, currentLiv, currentRec){
 // ── VIREMENTS ─────────────────────────────────────────────────────────────────
 async function loadVirements(){
   const zone = document.getElementById('tab-virements');
-  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();

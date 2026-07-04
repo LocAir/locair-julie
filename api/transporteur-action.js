@@ -6,7 +6,24 @@ const MEDIA_COLUMN = {
   video_installation:  'video_installation_path',
   photo_retour:        'photo_retour_path',
 };
+// À quelle étape chaque preuve peut être prise — empêche de brûler une étape
+// (ex. filmer l'installation avant même d'être arrivé chez le client).
+const STAGE_FOR_KIND = {
+  photo_depart:       'acceptee',
+  video_installation: 'arrivee',
+  photo_retour:       'arrivee',
+};
 const EXT_BY_TYPE = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' };
+
+function checkMediaAllowed(liv, kind) {
+  const column = MEDIA_COLUMN[kind];
+  if (!column) return 'Type de média invalide';
+  const expectsLivraison = kind === 'photo_depart' || kind === 'video_installation';
+  if (expectsLivraison && liv.type !== 'livraison') return 'Média non attendu pour cette mission';
+  if (kind === 'photo_retour' && liv.type !== 'recuperation') return 'Média non attendu pour cette mission';
+  if (liv.statut !== STAGE_FOR_KIND[kind]) return 'Cette étape n\'est pas encore accessible';
+  return null;
+}
 
 async function loadLivraison(supabase, id) {
   const { data, error } = await supabase.from('livraisons').select('*').eq('id', id).maybeSingle();
@@ -58,11 +75,8 @@ module.exports = async (req, res) => {
 
     if (action === 'demander_upload') {
       const kind = body.kind;
-      const column = MEDIA_COLUMN[kind];
-      if (!column) return res.status(400).json({ error: 'Type de média invalide' });
-      const expectsLivraison = kind === 'photo_depart' || kind === 'video_installation';
-      if (expectsLivraison && liv.type !== 'livraison') return res.status(400).json({ error: 'Média non attendu pour cette mission' });
-      if (kind === 'photo_retour' && liv.type !== 'recuperation') return res.status(400).json({ error: 'Média non attendu pour cette mission' });
+      const mediaErr = checkMediaAllowed(liv, kind);
+      if (mediaErr) return res.status(400).json({ error: mediaErr });
 
       const ext = EXT_BY_TYPE[body.content_type] || (kind === 'video_installation' ? 'mp4' : 'jpg');
       const path = `${liv.id}/${kind}-${Date.now()}.${ext}`;
@@ -73,12 +87,13 @@ module.exports = async (req, res) => {
 
     if (action === 'confirmer_media') {
       const kind = body.kind;
-      const column = MEDIA_COLUMN[kind];
       const path = (body.path || '').trim();
-      if (!column || !path || !path.startsWith(`${liv.id}/`)) {
+      const mediaErr = checkMediaAllowed(liv, kind);
+      if (mediaErr) return res.status(400).json({ error: mediaErr });
+      if (!path || !path.startsWith(`${liv.id}/`)) {
         return res.status(400).json({ error: 'Média invalide' });
       }
-      await supabase.from('livraisons').update({ [column]: path }).eq('id', liv.id);
+      await supabase.from('livraisons').update({ [MEDIA_COLUMN[kind]]: path }).eq('id', liv.id);
       return res.status(200).json({ ok: true });
     }
 
