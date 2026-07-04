@@ -97,6 +97,22 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .dot-green{background:var(--green)}
 .dot-blue{background:var(--blue)}
 
+/* Modales (remplacent confirm()/prompt()/alert() natifs du navigateur) */
+.modal-overlay{position:fixed;inset:0;background:rgba(13,24,41,.6);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px;backdrop-filter:blur(2px)}
+.modal-box{background:var(--white);border-radius:var(--r-lg);padding:26px 24px;max-width:380px;width:100%;box-shadow:var(--sh-lg)}
+.modal-box h2{font-size:18px}
+.modal-msg{font-size:14.5px;line-height:1.55;color:var(--black);margin-bottom:20px}
+.modal-msg strong{color:var(--blue)}
+.modal-actions{display:flex;gap:10px;margin-top:4px}
+.modal-actions .btn{flex:1}
+.modal-actions-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.toast-wrap{position:fixed;left:0;right:0;bottom:24px;display:flex;justify-content:center;z-index:300;pointer-events:none}
+.toast{background:var(--black);color:#fff;padding:13px 20px;border-radius:100px;font-size:13.5px;font-weight:600;box-shadow:var(--sh-md);opacity:0;transform:translateY(12px);transition:opacity .25s ease, transform .25s ease;max-width:90vw}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.toast-error{background:var(--red)}
+.toast.toast-success{background:var(--green)}
+
 .map-overlay{position:fixed;inset:0;background:rgba(13,24,41,.72);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(2px)}
 .map-modal{background:#fff;border-radius:20px;max-width:560px;width:100%;overflow:hidden;box-shadow:0 24px 64px rgba(13,24,41,.35)}
 .map-modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px}
@@ -221,6 +237,118 @@ function escHtml(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+
+// ── Modales maison (remplacent confirm()/prompt()/alert() du navigateur) ─────
+function closeModal(){
+  const o = document.getElementById('modal-overlay-el');
+  if(o) o.remove();
+}
+
+function confirmAction(message, onYes, opts={}){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <p class="modal-msg">${escHtml(message)}</p>
+      <div class="modal-actions">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn ${opts.danger?'btn-red':'btn-blue'}">${escHtml(opts.yesLabel||'Confirmer')}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const cancel = () => { closeModal(); if(opts.onCancel) opts.onCancel(); };
+  overlay.addEventListener('click', e => { if(e.target===overlay) cancel(); });
+  const [cancelBtn, yesBtn] = overlay.querySelectorAll('.btn');
+  cancelBtn.onclick = cancel;
+  yesBtn.onclick = () => { closeModal(); onYes(); };
+}
+
+function promptAction({title, label, value='', placeholder='', type='text'}, onSubmit){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      ${title?`<h2>${escHtml(title)}</h2>`:''}
+      ${label?`<label>${escHtml(label)}</label>`:''}
+      <input type="${type==='number'?'text':type}" inputmode="${type==='number'?'decimal':'text'}" id="modal-input-el" value="${escHtml(value)}" placeholder="${escHtml(placeholder)}"/>
+      <div class="modal-actions">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Valider</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const input = overlay.querySelector('#modal-input-el');
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.btn');
+  input.focus(); input.select();
+  const submit = () => { const v = input.value.trim(); closeModal(); onSubmit(v); };
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = submit;
+  input.addEventListener('keydown', e => { if(e.key==='Enter') submit(); });
+}
+
+function promptRates(current, onSubmit){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <h2>Taux de rémunération</h2>
+      <div class="modal-actions-2col">
+        <div><label>€ / livraison</label><input type="text" inputmode="decimal" id="modal-liv-el" value="${(current.liv/100).toFixed(2)}"/></div>
+        <div><label>€ / récupération</label><input type="text" inputmode="decimal" id="modal-rec-el" value="${(current.rec/100).toFixed(2)}"/></div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Valider</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = () => {
+    const liv = overlay.querySelector('#modal-liv-el').value.trim();
+    const rec = overlay.querySelector('#modal-rec-el').value.trim();
+    closeModal();
+    onSubmit(liv, rec);
+  };
+}
+
+function showInfo(title, message, onClose){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <h2>${escHtml(title)}</h2>
+      <p class="modal-msg" style="white-space:pre-line;margin-top:10px">${escHtml(message)}</p>
+      <div class="modal-actions"><button class="btn btn-blue">C'est noté</button></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.btn').onclick = () => { closeModal(); if(onClose) onClose(); };
+}
+
+function showToast(message, type='info'){
+  let wrap = document.getElementById('toast-wrap-el');
+  if(!wrap){
+    wrap = document.createElement('div');
+    wrap.id = 'toast-wrap-el';
+    wrap.className = 'toast-wrap';
+    document.body.appendChild(wrap);
+  }
+  const toast = document.createElement('div');
+  toast.className = 'toast' + (type!=='info' ? ' toast-'+type : '');
+  toast.textContent = message;
+  wrap.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 3800);
+}
+
 const RESA_LABEL = {en_attente:'En attente', confirmee:'Confirmée', annulee:'Annulée', terminee:'Terminée'};
 const LIV_LABEL  = {a_faire:'Nouvelle', acceptee:'Acceptée', refusee:'Refusée', arrivee:'Sur place', fait:'Terminée', probleme:'Problème', annule:'Annulée'};
 const VIR_LABEL  = {demande:'Demandé', verse:'Versé'};
@@ -294,20 +422,21 @@ async function loadStock(){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
-async function saveStock(ville){
+function saveStock(ville){
   const val = parseInt(document.getElementById('s-flotte').value);
   const errEl = document.getElementById('stock-err');
   errEl.style.display='none';
   if(!Number.isFinite(val) || val<0){ errEl.textContent='Valeur invalide'; errEl.style.display='block'; return; }
-  if(!confirm(`Modifier la flotte de ${ville} à ${val} climatiseur${val>1?'s':''} ?`)) return;
-  try{
-    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', flotte_totale:val})});
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.error||'Erreur');
-    loadStock();
-  }catch(e){
-    errEl.textContent = e.message; errEl.style.display='block';
-  }
+  confirmAction(`Modifier la flotte de ${ville} à ${val} climatiseur${val>1?'s':''} ?`, async () => {
+    try{
+      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', flotte_totale:val})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadStock();
+    }catch(e){
+      errEl.textContent = e.message; errEl.style.display='block';
+    }
+  });
 }
 
 // ── RÉSERVATIONS ──────────────────────────────────────────────────────────────
@@ -329,7 +458,7 @@ async function loadReservations(){
         <div class="row-meta">${escHtml(res.adresse||'—')}<br/>${res.date_debut} → ${res.date_fin} · ${res.quantite}x · ${euros(res.prix_total_cents)}</div>
         <div class="row-actions">
           ${res.statut!=='annulee'?`<button class="btn btn-red" onclick="cancelReservation(${res.id})">Annuler</button>`:''}
-          <select onchange="updateReservationStatut(${res.id}, this.value)">
+          <select onchange="updateReservationStatut(${res.id}, this.value, this)">
             <option value="">Changer statut…</option>
             ${STATUTS_RESA.map(s=>`<option value="${s}" ${s===res.statut?'selected':''}>${RESA_LABEL[s]}</option>`).join('')}
           </select>
@@ -340,14 +469,21 @@ async function loadReservations(){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
-async function cancelReservation(id){
-  if(!confirm('Annuler cette réservation ? Cette action libère le stock associé.')) return;
-  await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut:'annulee'})});
-  loadReservations();
+function cancelReservation(id){
+  confirmAction('Annuler cette réservation ? Cette action libère le stock associé.', async () => {
+    await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut:'annulee'})});
+    loadReservations();
+  }, {danger:true, yesLabel:'Annuler la réservation'});
 }
-async function updateReservationStatut(id, statut){
+function updateReservationStatut(id, statut, selectEl){
   if(!statut) return;
-  if(!confirm(`Passer cette réservation au statut "${statut}" ?`)) return;
+  confirmAction(
+    `Passer cette réservation au statut "${RESA_LABEL[statut]||statut}" ?`,
+    () => doUpdateReservationStatut(id, statut),
+    { onCancel: () => { if(selectEl) selectEl.value = ''; } }
+  );
+}
+async function doUpdateReservationStatut(id, statut){
   await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
   loadReservations();
 }
@@ -454,7 +590,7 @@ async function viewMedia(livraisonId, kind){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     window.open(d.url, '_blank', 'noopener');
-  }catch(e){ alert(e.message); }
+  }catch(e){ showToast(e.message, 'error'); }
 }
 
 // ── TRANSPORTEURS ─────────────────────────────────────────────────────────────
@@ -514,7 +650,7 @@ async function addTransporteur(){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadTransporteurs();
-    alert(`Transporteur ajouté. Code personnel à lui communiquer : ${d.pin}\n\nCe code lui permet de se connecter sur /transporteur.`);
+    showInfo('Transporteur ajouté', `Code personnel à lui communiquer :\n\n${d.pin}\n\nCe code lui permet de se connecter sur /transporteur.`);
   }catch(e){
     errEl.textContent = e.message; errEl.style.display='block';
   }
@@ -523,30 +659,32 @@ async function toggleTransporteur(id, actif){
   await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, actif})});
   loadTransporteurs();
 }
-async function resetPin(id){
+function resetPin(id){
   const suggestion = String(Math.floor(100000 + Math.random() * 900000));
-  const pin = prompt('Nouveau code personnel (6 chiffres) pour ce transporteur :', suggestion);
-  if(pin === null || !pin.trim()) return;
-  await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, pin: pin.trim()})});
-  loadTransporteurs();
+  promptAction({title:'Nouveau code', label:'Code personnel (6 chiffres)', value:suggestion}, async (pin) => {
+    if(!pin) return;
+    await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, pin})});
+    loadTransporteurs();
+    showToast('Code mis à jour', 'success');
+  });
 }
-async function editEmail(id, currentEmail){
-  const email = prompt("Email du transporteur (pour \"code oublié\") :", currentEmail || '');
-  if(email === null) return;
-  await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, email: email.trim()})});
-  loadTransporteurs();
+function editEmail(id, currentEmail){
+  promptAction({title:"Email pour \"code oublié\"", label:'Adresse email', value:currentEmail || '', type:'text'}, async (email) => {
+    await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, email})});
+    loadTransporteurs();
+    showToast('Email mis à jour', 'success');
+  });
 }
-async function editRates(id, currentLiv, currentRec){
-  const liv = prompt('€ par livraison', (currentLiv/100).toFixed(2));
-  if(liv===null) return;
-  const rec = prompt('€ par récupération', (currentRec/100).toFixed(2));
-  if(rec===null) return;
-  await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
-    action:'update', id,
-    taux_livraison_cents: Math.round((parseFloat(liv)||0)*100),
-    taux_recuperation_cents: Math.round((parseFloat(rec)||0)*100),
-  })});
-  loadTransporteurs();
+function editRates(id, currentLiv, currentRec){
+  promptRates({liv:currentLiv, rec:currentRec}, async (liv, rec) => {
+    await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action:'update', id,
+      taux_livraison_cents: Math.round((parseFloat(liv)||0)*100),
+      taux_recuperation_cents: Math.round((parseFloat(rec)||0)*100),
+    })});
+    loadTransporteurs();
+    showToast('Taux mis à jour', 'success');
+  });
 }
 
 // ── VIREMENTS ─────────────────────────────────────────────────────────────────
@@ -571,14 +709,16 @@ async function loadVirements(){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
-async function marquerVerse(id){
-  if(!confirm('Confirmer que ce virement a bien été envoyé au transporteur ? Cette action est irréversible.')) return;
-  try{
-    const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'marquer_verse', id})});
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.error||'Erreur');
-    loadVirements();
-  }catch(e){ alert(e.message); }
+function marquerVerse(id){
+  confirmAction('Confirmer que ce virement a bien été envoyé au transporteur ? Cette action est irréversible.', async () => {
+    try{
+      const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'marquer_verse', id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadVirements();
+      showToast('Virement marqué comme versé', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {danger:true, yesLabel:'Confirmer le virement'});
 }
 
 // ── Suivi en direct (carte gratuite OpenStreetMap) ───────────────────────────
