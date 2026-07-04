@@ -140,8 +140,19 @@ input:focus{border-color:var(--blue)}
 .map-filters{display:flex;gap:8px;margin:6px 0 12px}
 .map-filters button{flex:1;padding:10px;border-radius:10px;border:2px solid var(--rule);background:#fff;font-weight:700;font-size:12.5px;color:var(--grey);cursor:pointer}
 .map-filters button.on{background:var(--blue);border-color:var(--blue);color:#fff}
-#day-map{height:calc(100vh - 170px);border-radius:14px;overflow:hidden}
-.map-popup-btn{display:block;width:100%;margin-top:6px;padding:8px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--body)}
+#day-map{height:calc(100vh - 170px);border-radius:14px;overflow:hidden;background:#e8e6e0}
+.map-popup-btn{display:block;width:100%;margin-top:8px;padding:9px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--body)}
+
+.map-pin-teardrop{
+  width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  box-shadow:0 3px 10px rgba(20,30,48,.35);
+  display:flex;align-items:center;justify-content:center;
+}
+.map-pin-teardrop span{transform:rotate(45deg);font-size:15px}
+.map-pin-teardrop.livraison{background:var(--blue)}
+.map-pin-teardrop.recuperation{background:var(--amber)}
+.leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 8px 28px rgba(20,30,48,.22)}
+.leaflet-popup-content{font-family:var(--body);margin:12px 14px;font-size:13.5px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -743,8 +754,8 @@ async function openDayMap(){
 
   if(!DAY_MAP){
     DAY_MAP = L.map('day-map');
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap', maxZoom: 19,
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19, subdomains:'abcd',
     }).addTo(DAY_MAP);
   }
   setTimeout(() => DAY_MAP && DAY_MAP.invalidateSize(), 50);
@@ -767,7 +778,7 @@ function renderDayMapPins(){
     if(!coords) return;
     const point = [coords.lat, coords.lng];
     points.push(point);
-    const icon = L.divIcon({className:'', html:`<div style="font-size:26px">${m.type==='livraison'?'📦':'🔄'}</div>`, iconSize:[26,26], iconAnchor:[13,26]});
+    const icon = L.divIcon({className:'', html:`<div class="map-pin-teardrop ${m.type}"><span>${m.type==='livraison'?'📦':'🔄'}</span></div>`, iconSize:[32,32], iconAnchor:[16,32]});
     const marker = L.marker(point, {icon}).addTo(DAY_MAP);
     const popupDiv = document.createElement('div');
     popupDiv.innerHTML = `<strong>${escHtml((m.client.prenom||'')+' '+(m.client.nom||''))}</strong><br>${escHtml(m.client.adresse)}<br>${escHtml(m.creneau||'')}`;

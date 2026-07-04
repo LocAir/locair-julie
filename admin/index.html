@@ -7,12 +7,13 @@
 <meta name="robots" content="noindex,nofollow"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 :root{
   --blue:#1b3a5f; --black:#141e30; --bg:#ede8e0; --white:#f4f0ea;
   --grey:#5a6577; --rule:#ddd8cf; --green:#2d6a4f; --red:#9b2c1a; --amber:#b9770e; --gold:#c5a96c;
+  --disp:'Cormorant Garamond',Georgia,serif;
   --body:'Inter',system-ui,sans-serif;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -75,15 +76,35 @@ input:focus,select:focus{border-color:var(--blue)}
 .dot-green{background:var(--green)}
 .dot-blue{background:var(--blue)}
 
-.map-overlay{position:fixed;inset:0;background:rgba(20,30,48,.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
-.map-modal{background:#fff;border-radius:18px;max-width:560px;width:100%;overflow:hidden}
-.map-modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px}
-.map-modal-head h2{margin:0}
-.map-modal-head button{background:none;border:none;font-size:20px;cursor:pointer;color:var(--grey)}
-#live-map{height:380px;width:100%;background:var(--bg)}
-.map-eta{padding:14px 18px;font-size:13.5px;color:var(--grey);display:flex;justify-content:space-between;align-items:center}
-.map-eta strong{color:var(--black);font-size:15px}
+.map-overlay{position:fixed;inset:0;background:rgba(13,24,41,.72);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(2px)}
+.map-modal{background:#fff;border-radius:20px;max-width:560px;width:100%;overflow:hidden;box-shadow:0 24px 64px rgba(13,24,41,.35)}
+.map-modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px}
+.map-modal-head h2{margin:0;font-family:var(--disp);font-weight:600;font-size:19px}
+.map-modal-head button{background:var(--bg);border:none;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;color:var(--grey);line-height:1}
+#live-map{height:380px;width:100%;background:#e8e6e0}
+.map-eta{padding:14px 20px;font-size:13.5px;color:var(--grey);display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--rule)}
+.map-eta strong{color:var(--black);font-size:15px;font-variant-numeric:tabular-nums}
 .map-stale{color:var(--amber) !important;font-weight:700}
+
+/* Marqueurs personnalisés (remplace les pins Leaflet par défaut) */
+.map-pin-live{
+  width:34px;height:34px;border-radius:50%;background:var(--blue);border:3px solid #fff;
+  display:flex;align-items:center;justify-content:center;font-size:16px;position:relative;
+  box-shadow:0 3px 10px rgba(13,24,41,.4);
+}
+.map-pin-live::after{
+  content:'';position:absolute;inset:-9px;border-radius:50%;border:2px solid var(--blue);
+  animation:pinPulse 2s ease-out infinite;
+}
+@keyframes pinPulse{0%{transform:scale(.65);opacity:.7}100%{transform:scale(1.7);opacity:0}}
+.map-pin-teardrop{
+  width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  background:var(--gold);box-shadow:0 3px 10px rgba(13,24,41,.35);
+  display:flex;align-items:center;justify-content:center;
+}
+.map-pin-teardrop span{transform:rotate(45deg);font-size:15px}
+.leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 8px 28px rgba(13,24,41,.22)}
+.leaflet-popup-content{font-family:var(--body);margin:12px 14px;font-size:13.5px;line-height:1.5}
 .spinner-wrap{display:flex;justify-content:center;padding:50px 0}
 .spinner{width:28px;height:28px;border-radius:50%;border:3px solid var(--rule);border-top-color:var(--blue);animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -578,15 +599,15 @@ async function openLiveMap(transporteurId, transporteurNom, adresse){
   LIVE_DEST_COORDS = await geocodeAddress(adresse + ', France');
 
   setTimeout(() => {
-    LIVE_MAP = L.map('live-map');
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
-      maxZoom: 19,
+    LIVE_MAP = L.map('live-map', {zoomControl:true, attributionControl:true});
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+      maxZoom: 19, subdomains:'abcd',
     }).addTo(LIVE_MAP);
 
     if(LIVE_DEST_COORDS){
       LIVE_DEST_MARKER = L.marker([LIVE_DEST_COORDS.lat, LIVE_DEST_COORDS.lng], {
-        icon: L.divIcon({className:'', html:'<div style="font-size:26px">🏠</div>', iconSize:[26,26], iconAnchor:[13,26]}),
+        icon: L.divIcon({className:'', html:'<div class="map-pin-teardrop"><span>🏠</span></div>', iconSize:[32,32], iconAnchor:[16,32]}),
       }).addTo(LIVE_MAP);
     }
 
@@ -606,7 +627,7 @@ async function refreshLivePosition(transporteurId){
     const point = [d.lat, d.lng];
     if(!LIVE_MARKER){
       LIVE_MARKER = L.marker(point, {
-        icon: L.divIcon({className:'', html:'<div style="font-size:26px">🛵</div>', iconSize:[26,26], iconAnchor:[13,13]}),
+        icon: L.divIcon({className:'', html:'<div class="map-pin-live">🛵</div>', iconSize:[34,34], iconAnchor:[17,17]}),
       }).addTo(LIVE_MAP);
     } else {
       LIVE_MARKER.setLatLng(point);
