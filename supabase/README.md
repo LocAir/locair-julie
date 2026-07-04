@@ -35,6 +35,18 @@ Renseigner l'email de chaque transporteur n'est pas obligatoire, mais c'est ce q
 - Assigner la mission à un transporteur dans `/admin` → vérifier qu'elle apparaît dans `/transporteur` pour lui.
 - Dérouler une mission complète (Accepter → photo dépôt → Arrivé → vidéo installation → Livraison OK) et vérifier que le gain apparaît dans "Mon activité".
 - Vérifier que `retard.html` fonctionne toujours à l'identique (aucune régression).
+- Suivi en direct : depuis `/transporteur`, accepter une mission puis autoriser la géolocalisation quand le navigateur le demande → dans `/admin` → Livraisons, le bouton "🔴 Suivre en direct" doit faire apparaître une carte avec la position qui bouge.
+
+## Suivi en direct du livreur (carte)
+
+Pendant qu'une mission est acceptée ou en cours (`acceptee`/`arrivee`), le téléphone du transporteur envoie sa position toutes les ~10-15 secondes (avec son accord — un bandeau "Ta position est partagée avec Aly" s'affiche pendant ce temps). Dans `/admin` → Livraisons, le bouton "🔴 Suivre en direct" ouvre une carte (OpenStreetMap, gratuite, sans clé API) avec la position du livreur, l'adresse du client, et une estimation d'arrivée.
+
+Limites assumées pour cette v1 :
+- Le trajet affiché est une ligne droite, pas un itinéraire qui suit les rues.
+- L'ETA est une estimation à vitesse moyenne (pas de trafic réel).
+- Ça nécessite que le livreur garde l'onglet `/transporteur` ouvert et ait accepté la géolocalisation — s'il ferme l'appli, la position s'arrête de se mettre à jour (affiché comme "signal perdu" après 90s).
+- Passer à un itinéraire routier réel (comme Uber/Deliveroo) plus tard demande une clé API Google Maps ou Mapbox — pas urgent, à activer si besoin.
+- Pas encore de vue client — l'architecture (position stockée par transporteur, indépendante de l'admin) permet de l'ajouter plus tard sans tout refaire.
 
 ## Limites connues (volontairement simples pour l'instant)
 

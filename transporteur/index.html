@@ -22,6 +22,7 @@ body{background:var(--bg);color:var(--black);font-family:var(--body);-webkit-fon
 .logo em{font-style:normal;color:var(--amber)}
 .who{font-size:12px;color:var(--grey);font-weight:600}
 .who button{background:none;border:none;color:var(--grey);text-decoration:underline;font-size:12px;font-family:var(--body);cursor:pointer;padding:0;margin-left:8px}
+.tracking-badge{background:#eef6f1;color:var(--green);font-size:12px;font-weight:700;text-align:center;padding:8px 12px;border-radius:10px;margin-bottom:14px}
 
 .card{background:#fff;border-radius:18px;padding:24px 20px;box-shadow:0 4px 24px rgba(0,0,0,.07);margin-bottom:14px}
 h1{font-size:21px;font-weight:800;margin-bottom:6px}
@@ -142,6 +143,8 @@ input:focus{border-color:var(--blue)}
     <div class="who hidden" id="who-badge"></div>
   </div>
 
+  <div class="tracking-badge hidden" id="tracking-badge">📍 Ta position est partagée avec Aly pendant cette mission</div>
+
   <!-- Écran 1 : code personnel -->
   <div id="login-screen">
     <div class="card">
@@ -222,8 +225,47 @@ function updateWhoBadge(){
 function logout(){
   sessionStorage.clear();
   STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],currentMission:null,pendingUpload:null};
+  stopPositionTracking();
   document.getElementById('who-badge').classList.add('hidden');
   show('login-screen');
+}
+
+// ── Position en direct (pendant une mission en cours) ────────────────────────
+// Envoyée uniquement quand au moins une mission est acceptée/en route, pour
+// ne pas suivre le livreur en dehors de son activité.
+let _watchId = null;
+let _lastPositionSentAt = 0;
+
+function hasActiveTravelMission(){
+  return STATE.missions.some(m => m.statut === 'acceptee' || m.statut === 'arrivee');
+}
+
+function updatePositionTracking(){
+  if(hasActiveTravelMission()) startPositionTracking();
+  else stopPositionTracking();
+}
+
+function startPositionTracking(){
+  document.getElementById('tracking-badge')?.classList.remove('hidden');
+  if(_watchId !== null || !navigator.geolocation) return;
+  _watchId = navigator.geolocation.watchPosition(onPositionUpdate, ()=>{}, {
+    enableHighAccuracy: true, maximumAge: 10000, timeout: 20000,
+  });
+}
+
+function stopPositionTracking(){
+  document.getElementById('tracking-badge')?.classList.add('hidden');
+  if(_watchId !== null){ navigator.geolocation.clearWatch(_watchId); _watchId = null; }
+}
+
+function onPositionUpdate(pos){
+  const now = Date.now();
+  if(now - _lastPositionSentAt < 8000) return; // throttle : une position toutes les ~8s max
+  _lastPositionSentAt = now;
+  fetch(API('transporteur-position'), {
+    method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+    body: JSON.stringify({lat: pos.coords.latitude, lng: pos.coords.longitude}),
+  }).catch(()=>{});
 }
 
 async function doLogin(){
@@ -259,6 +301,7 @@ async function fetchMissions(){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     STATE.missions = d.missions || [];
+    updatePositionTracking();
     return true;
   }catch(e){
     return false;

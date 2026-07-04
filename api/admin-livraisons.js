@@ -41,6 +41,17 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    if (action === 'position') {
+      const transporteurId = parseInt(body.transporteur_id);
+      if (!transporteurId) return res.status(400).json({ error: 'transporteur_id manquant' });
+      const { data: t, error } = await supabase
+        .from('transporteurs').select('nom, position_lat, position_lng, position_at')
+        .eq('id', transporteurId).maybeSingle();
+      if (error) throw error;
+      if (!t || t.position_lat == null) return res.status(404).json({ error: 'Pas encore de position' });
+      return res.status(200).json({ nom: t.nom, lat: t.position_lat, lng: t.position_lng, position_at: t.position_at });
+    }
+
     if (action === 'media_url') {
       const livraisonId = parseInt(body.livraison_id);
       const kind = body.kind;

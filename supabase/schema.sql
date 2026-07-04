@@ -26,6 +26,11 @@ create table transporteurs (
   -- Rémunération par mission (définie par le propriétaire)
   taux_livraison_cents     integer not null default 0 check (taux_livraison_cents >= 0),
   taux_recuperation_cents  integer not null default 0 check (taux_recuperation_cents >= 0),
+  -- Dernière position connue, envoyée par son téléphone pendant une mission
+  -- en cours (voir api/transporteur-position.js). Pas d'historique conservé.
+  position_lat             double precision,
+  position_lng             double precision,
+  position_at              timestamptz,
   created_at               timestamptz not null default now()
 );
 create index transporteurs_city_idx on transporteurs (city_id, actif);

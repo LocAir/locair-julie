@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 :root{
   --blue:#1b3a5f; --black:#141e30; --bg:#ede8e0; --white:#f4f0ea;
@@ -74,6 +75,15 @@ input:focus,select:focus{border-color:var(--blue)}
 .dot-green{background:var(--green)}
 .dot-blue{background:var(--blue)}
 
+.map-overlay{position:fixed;inset:0;background:rgba(20,30,48,.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+.map-modal{background:#fff;border-radius:18px;max-width:560px;width:100%;overflow:hidden}
+.map-modal-head{display:flex;justify-content:space-between;align-items:center;padding:16px 18px}
+.map-modal-head h2{margin:0}
+.map-modal-head button{background:none;border:none;font-size:20px;cursor:pointer;color:var(--grey)}
+#live-map{height:380px;width:100%;background:var(--bg)}
+.map-eta{padding:14px 18px;font-size:13.5px;color:var(--grey);display:flex;justify-content:space-between;align-items:center}
+.map-eta strong{color:var(--black);font-size:15px}
+.map-stale{color:var(--amber) !important;font-weight:700}
 .spinner-wrap{display:flex;justify-content:center;padding:50px 0}
 .spinner{width:28px;height:28px;border-radius:50%;border:3px solid var(--rule);border-top-color:var(--blue);animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -135,6 +145,7 @@ input:focus,select:focus{border-color:var(--blue)}
   </div>
 </div>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API = (p) => '/api/' + p;
 let TOKEN = sessionStorage.getItem('a_token') || '';
@@ -371,6 +382,7 @@ function renderLivraisons(){
     if(m.photo_depart_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_depart')">📷 Départ</button>`);
     if(m.video_installation_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'video_installation')">🎥 Installation</button>`);
     if(m.photo_retour_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_retour')">📷 Retour</button>`);
+    const enRoute = m.transporteur && (m.statut==='acceptee' || m.statut==='arrivee');
     return `
       <div class="row-item">
         <div class="row-top">
@@ -381,6 +393,7 @@ function renderLivraisons(){
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')} — ${escHtml(m.probleme_description||'')}</div>`:''}
         <div class="row-actions">
           <select onchange="assignTransporteur(${m.id}, this.value)">${options}</select>
+          ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom).replace(/'/g,"\\'")}', '${escHtml(res.adresse||'').replace(/'/g,"\\'")}')">🔴 Suivre en direct</button>`:''}
           ${mediaBtns.join('')}
           ${mediaBtns.length===0 && m.statut==='fait' ? '<span class="row-meta" style="align-self:center">Aucune preuve enregistrée</span>' : ''}
         </div>
@@ -524,6 +537,110 @@ async function marquerVerse(id){
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadVirements();
   }catch(e){ alert(e.message); }
+}
+
+// ── Suivi en direct (carte gratuite OpenStreetMap) ───────────────────────────
+// Trajet affiché en ligne droite (pas d'itinéraire routier) et ETA estimé à
+// vitesse moyenne — pas de clé API, pas de coût. Voir supabase/README.md pour
+// upgrade éventuel vers un vrai itinéraire (Google/Mapbox) plus tard.
+let LIVE_MAP = null, LIVE_MARKER = null, LIVE_DEST_MARKER = null, LIVE_LINE = null, LIVE_POLL = null, LIVE_DEST_COORDS = null;
+
+function haversineKm(lat1, lng1, lat2, lng2){
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+async function geocodeAddress(address){
+  try{
+    const q = encodeURIComponent(address);
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=fr&q=${q}`);
+    const d = await r.json();
+    if(d && d[0]) return {lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon)};
+  }catch(e){}
+  return null;
+}
+
+async function openLiveMap(transporteurId, transporteurNom, adresse){
+  const overlay = document.createElement('div');
+  overlay.className = 'map-overlay';
+  overlay.id = 'map-overlay';
+  overlay.innerHTML = `
+    <div class="map-modal">
+      <div class="map-modal-head"><h2>🔴 ${escHtml(transporteurNom)} en direct</h2><button onclick="closeLiveMap()">✕</button></div>
+      <div id="live-map"></div>
+      <div class="map-eta" id="map-eta">Chargement…</div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  LIVE_DEST_COORDS = await geocodeAddress(adresse + ', France');
+
+  setTimeout(() => {
+    LIVE_MAP = L.map('live-map');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap',
+      maxZoom: 19,
+    }).addTo(LIVE_MAP);
+
+    if(LIVE_DEST_COORDS){
+      LIVE_DEST_MARKER = L.marker([LIVE_DEST_COORDS.lat, LIVE_DEST_COORDS.lng], {
+        icon: L.divIcon({className:'', html:'<div style="font-size:26px">🏠</div>', iconSize:[26,26], iconAnchor:[13,26]}),
+      }).addTo(LIVE_MAP);
+    }
+
+    refreshLivePosition(transporteurId);
+    LIVE_POLL = setInterval(() => refreshLivePosition(transporteurId), 8000);
+  }, 50);
+}
+
+async function refreshLivePosition(transporteurId){
+  const etaEl = document.getElementById('map-eta');
+  if(!etaEl) return; // la modale a été fermée entre-temps
+  try{
+    const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'position', transporteur_id: transporteurId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || 'Position indisponible pour le moment');
+
+    const point = [d.lat, d.lng];
+    if(!LIVE_MARKER){
+      LIVE_MARKER = L.marker(point, {
+        icon: L.divIcon({className:'', html:'<div style="font-size:26px">🛵</div>', iconSize:[26,26], iconAnchor:[13,13]}),
+      }).addTo(LIVE_MAP);
+    } else {
+      LIVE_MARKER.setLatLng(point);
+    }
+
+    const bounds = LIVE_DEST_COORDS ? L.latLngBounds([point, [LIVE_DEST_COORDS.lat, LIVE_DEST_COORDS.lng]]) : L.latLngBounds([point, point]);
+    LIVE_MAP.fitBounds(bounds, {padding: [40,40], maxZoom: 16});
+
+    if(LIVE_DEST_COORDS){
+      if(LIVE_LINE) LIVE_MAP.removeLayer(LIVE_LINE);
+      LIVE_LINE = L.polyline([point, [LIVE_DEST_COORDS.lat, LIVE_DEST_COORDS.lng]], {color:'#1b3a5f', weight:3, dashArray:'6,8'}).addTo(LIVE_MAP);
+    }
+
+    const ageSec = Math.round((Date.now() - new Date(d.position_at).getTime()) / 1000);
+    const stale = ageSec > 90;
+    let etaTxt = '';
+    if(LIVE_DEST_COORDS){
+      const km = haversineKm(point[0], point[1], LIVE_DEST_COORDS.lat, LIVE_DEST_COORDS.lng);
+      const minutes = Math.max(1, Math.round(km / 22 * 60)); // ~22 km/h en ville — estimation, pas de trafic réel
+      etaTxt = `<strong>~${minutes} min</strong> (${km.toFixed(1)} km, estimation)`;
+    }
+    etaEl.innerHTML = `<span class="${stale?'map-stale':''}">${stale ? '⚠️ Signal perdu — dernière position il y a '+Math.round(ageSec/60)+' min' : 'Mis à jour il y a '+ageSec+'s'}</span><span>${etaTxt}</span>`;
+  }catch(e){
+    etaEl.innerHTML = `<span class="map-stale">⚠️ ${escHtml(e.message)}</span>`;
+  }
+}
+
+function closeLiveMap(){
+  if(LIVE_POLL) clearInterval(LIVE_POLL);
+  LIVE_POLL = null;
+  if(LIVE_MAP){ LIVE_MAP.remove(); LIVE_MAP = null; }
+  LIVE_MARKER = null; LIVE_DEST_MARKER = null; LIVE_LINE = null; LIVE_DEST_COORDS = null;
+  const o = document.getElementById('map-overlay');
+  if(o) o.remove();
 }
 
 // ── Démarrage ─────────────────────────────────────────────────────────────────
