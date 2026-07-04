@@ -101,6 +101,13 @@ module.exports = async (req, res) => {
       await supabase.from('livraisons').update({
         statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,
       }).eq('id', liv.id);
+
+      // Une récupération confirmée libère le stock immédiatement (retour anticipé
+      // ou à la date prévue), sans attendre que date_fin soit dans le passé.
+      if (expectedType === 'recuperation') {
+        await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id);
+      }
+
       return res.status(200).json({ ok: true, statut: 'fait', montant_du_cents: montantDu });
     }
 

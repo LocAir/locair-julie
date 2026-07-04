@@ -59,13 +59,20 @@ input:focus,select:focus{border-color:var(--blue)}
 .row-title{font-weight:800;font-size:14.5px}
 .row-meta{font-size:12.5px;color:var(--grey);line-height:1.5}
 .chip{font-size:10.5px;font-weight:800;text-transform:uppercase;padding:3px 9px;border-radius:100px;background:var(--bg);color:var(--grey)}
-.chip.confirmee,.chip.fait,.chip.verse,.chip.actif{background:#eef6f1;color:var(--green)}
+.chip.confirmee,.chip.fait,.chip.verse,.chip.actif,.chip.terminee{background:#eef6f1;color:var(--green)}
 .chip.en_attente,.chip.a_faire,.chip.acceptee,.chip.demande{background:#fdf3e3;color:var(--amber)}
 .chip.annulee,.chip.probleme,.chip.refusee{background:#fdf0ee;color:var(--red)}
 .row-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
 .row-actions .btn{padding:8px 12px;font-size:12.5px}
 .empty{text-align:center;color:var(--grey);padding:30px;font-size:14px}
 .inline-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+.stock-gauge{height:14px;border-radius:100px;background:#eef6f1;overflow:hidden;margin-bottom:10px}
+.stock-gauge-fill{height:100%;background:var(--blue);border-radius:100px;transition:width .3s}
+.stock-legend{display:flex;gap:18px;font-size:13px;color:var(--black);font-weight:600}
+.dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:6px}
+.dot-green{background:var(--green)}
+.dot-blue{background:var(--blue)}
 
 /* ── Version ordinateur : barre latérale fixe + contenu plus large ── */
 @media (min-width:860px){
@@ -194,10 +201,16 @@ async function loadStock(){
     const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:'{}'});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
+    const pctOccupe = d.flotte_totale>0 ? Math.round((d.en_location/d.flotte_totale)*100) : 0;
     zone.innerHTML = `
       <div class="card">
         <h2>Flotte — ${d.ville}</h2>
-        <p class="sub">${d.disponibles} climatiseur${d.disponibles>1?'s':''} disponible${d.disponibles>1?'s':''} aujourd'hui.</p>
+        <div class="stock-gauge"><div class="stock-gauge-fill" style="width:${pctOccupe}%"></div></div>
+        <div class="stock-legend">
+          <span><i class="dot dot-green"></i> ${d.disponibles} disponible${d.disponibles>1?'s':''}</span>
+          <span><i class="dot dot-blue"></i> ${d.en_location} en location</span>
+        </div>
+        <p class="sub" style="margin-top:14px">Se met à jour automatiquement à chaque réservation et à chaque retour confirmé par un transporteur.</p>
         <label for="s-flotte">Nombre total de climatiseurs</label>
         <input type="number" id="s-flotte" min="0" value="${d.flotte_totale}"/>
         <button class="btn btn-blue btn-block" onclick="saveStock('${d.ville}')">Enregistrer</button>
