@@ -1,12 +1,22 @@
 const crypto = require('crypto');
+const { getClientIp, isRateLimited, recordFailedAttempt } = require('./ratelimit');
 
 function safeEqual(a, b) {
   try { return crypto.timingSafeEqual(Buffer.from(String(a)), Buffer.from(String(b))); } catch { return false; }
 }
 
-function checkAdminToken(req) {
+// Rate-limité ici plutôt que dans le seul endpoint admin-login.js : comme
+// chaque route /api/admin-*.js revalide le mot de passe à chaque appel (pas
+// de session serveur), le blocage doit s'appliquer partout où ce mot de passe
+// est vérifié, pas uniquement à l'écran de connexion.
+async function checkAdminToken(req, supabase) {
+  const rateKey = `admin:${getClientIp(req)}`;
+  if (await isRateLimited(supabase, rateKey)) return false;
+
   const token = ((req.body || {}).token || req.headers['x-admin-token'] || '').trim();
-  return Boolean(process.env.ADMIN_PASSWORD) && safeEqual(token, process.env.ADMIN_PASSWORD);
+  const ok = Boolean(process.env.ADMIN_PASSWORD) && safeEqual(token, process.env.ADMIN_PASSWORD);
+  if (!ok) await recordFailedAttempt(supabase, rateKey);
+  return ok;
 }
 
 // Un transporteur s'identifie par son PIN personnel (voir transporteur-login.js),

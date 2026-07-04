@@ -1,5 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
 const { safeEqual, signTransporteurToken } = require('./_lib/auth');
+const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -11,13 +12,22 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'Erreur serveur' });
   }
 
+  const supabase = getSupabase();
+  const rateKey = `transporteur:${getClientIp(req)}`;
+
   try {
-    const supabase = getSupabase();
+    if (await isRateLimited(supabase, rateKey)) {
+      return res.status(429).json({ error: 'Trop de tentatives. Réessaie dans 15 minutes ou contacte Aly.' });
+    }
+
     const { data, error } = await supabase.from('transporteurs').select('id, nom, pin').eq('actif', true);
     if (error) throw error;
 
     const match = (data || []).find(t => safeEqual(pin, t.pin || ''));
-    if (!match) return res.status(401).json({ error: 'Code incorrect' });
+    if (!match) {
+      await recordFailedAttempt(supabase, rateKey);
+      return res.status(401).json({ error: 'Code incorrect' });
+    }
 
     return res.status(200).json({
       token: signTransporteurToken(match.id, match.pin),

@@ -20,7 +20,7 @@ Les variables existantes (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `OPERATO
 
 ## 3. Ajouter les transporteurs
 
-Dans `/admin` → onglet **Transporteurs**, ajouter chaque transporteur avec son nom, son téléphone, son **email** et sa rémunération par mission (livraison / récupération). Un **code personnel à 4 chiffres** est généré automatiquement — communique-le au transporteur concerné pour qu'il se connecte sur `/transporteur`.
+Dans `/admin` → onglet **Transporteurs**, ajouter chaque transporteur avec son nom, son téléphone, son **email** et sa rémunération par mission (livraison / récupération). Un **code personnel à 6 chiffres** est généré automatiquement — communique-le au transporteur concerné pour qu'il se connecte sur `/transporteur`. Les tentatives de connexion (admin comme transporteur) sont limitées à 10 essais / 15 minutes par adresse IP pour empêcher un balayage automatique du code.
 
 Renseigner l'email de chaque transporteur n'est pas obligatoire, mais c'est ce qui lui permet d'utiliser "Code oublié ?" sur `/transporteur` sans avoir à te contacter — un nouveau code est alors généré et envoyé par email, et l'ancien cesse immédiatement de fonctionner (y compris sur un téléphone déjà connecté avec l'ancien code). Le bouton "Changer le code" dans l'admin fait la même chose manuellement (utile par exemple quand un transporteur quitte l'équipe) et déconnecte lui aussi tous ses appareils. Désactiver un transporteur (bouton "Désactiver") coupe également son accès immédiatement.
 

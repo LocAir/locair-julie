@@ -14,11 +14,11 @@ function rangeStartISO(periode) {
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!checkAdminToken(req)) return res.status(401).json({ error: 'Non autorisé' });
+  const supabase = getSupabase();
+  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
 
   const periode = (req.body || {}).periode || '7j';
   const since   = rangeStartISO(periode);
-  const supabase = getSupabase();
 
   try {
     const city = await getCity(supabase);

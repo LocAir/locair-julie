@@ -4,11 +4,11 @@ const { checkAdminToken } = require('./_lib/auth');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!checkAdminToken(req)) return res.status(401).json({ error: 'Non autorisé' });
+  const supabase = getSupabase();
+  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
 
   const body   = req.body || {};
   const action = body.action || 'list';
-  const supabase = getSupabase();
 
   try {
     if (action === 'list') {
@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
       // Code personnel à 4 chiffres — généré automatiquement si non fourni.
       let pin = (body.pin || '').trim();
       for (let attempt = 0; attempt < 5; attempt++) {
-        const candidate = pin || String(Math.floor(1000 + Math.random() * 9000));
+        const candidate = pin || String(Math.floor(100000 + Math.random() * 900000));
         const { error } = await supabase.from('transporteurs').insert({
           city_id:                 city.id,
           nom,

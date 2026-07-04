@@ -2,6 +2,15 @@
 -- À exécuter une fois dans l'éditeur SQL du projet Supabase.
 -- Accès uniquement via la clé service-role, depuis les fonctions Vercel (jamais côté navigateur).
 
+-- Anti-bruteforce sur les écrans de connexion (admin, transporteur). Une ligne
+-- par tentative échouée, par IP ; voir api/_lib/ratelimit.js.
+create table login_attempts (
+  id         bigint generated always as identity primary key,
+  key        text not null,
+  created_at timestamptz not null default now()
+);
+create index login_attempts_key_idx on login_attempts (key, created_at);
+
 create table cities (
   id            bigint generated always as identity primary key,
   slug          text not null unique,

@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
       // avec l'ancien code — voir _lib/auth.js).
       let newPin = null;
       for (let attempt = 0; attempt < 5; attempt++) {
-        const candidate = String(Math.floor(1000 + Math.random() * 9000));
+        const candidate = String(Math.floor(100000 + Math.random() * 900000));
         const { error } = await supabase.from('transporteurs').update({ pin: candidate }).eq('id', transp.id);
         if (!error) { newPin = candidate; break; }
         if (error.code !== '23505') throw error; // collision de code : réessayer
