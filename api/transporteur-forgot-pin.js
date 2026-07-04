@@ -18,22 +18,35 @@ module.exports = async (req, res) => {
     const supabase = getSupabase();
     const { data: transp } = await supabase
       .from('transporteurs')
-      .select('nom, pin, email')
+      .select('id, nom, email')
       .eq('actif', true)
-      .ilike('email', email)
+      .eq('email', email)
       .maybeSingle();
 
     if (transp && transp.email) {
-      await sendBrevoEmail({
-        to:      transp.email,
-        subject: "Ton code d'accès Loc'Air",
-        html: `
-          <p>Bonjour ${escHtml(transp.nom)},</p>
-          <p>Voici ton code personnel pour te connecter sur l'espace transporteur Loc'Air :</p>
-          <p style="font-size:28px;font-weight:700;letter-spacing:4px">${escHtml(transp.pin)}</p>
-          <p>Si tu n'es pas à l'origine de cette demande, contacte Aly.</p>
-        `,
-      });
+      // Un vrai reset : un nouveau code est généré et remplace l'ancien, qui
+      // devient immédiatement invalide (y compris les sessions déjà ouvertes
+      // avec l'ancien code — voir _lib/auth.js).
+      let newPin = null;
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const candidate = String(Math.floor(1000 + Math.random() * 9000));
+        const { error } = await supabase.from('transporteurs').update({ pin: candidate }).eq('id', transp.id);
+        if (!error) { newPin = candidate; break; }
+        if (error.code !== '23505') throw error; // collision de code : réessayer
+      }
+
+      if (newPin) {
+        await sendBrevoEmail({
+          to:      transp.email,
+          subject: 'Ton nouveau code Loc’Air',
+          html: `
+            <p>Bonjour ${escHtml(transp.nom)},</p>
+            <p>Voici ton nouveau code personnel pour te connecter sur l'espace transporteur Loc'Air :</p>
+            <p style="font-size:28px;font-weight:700;letter-spacing:4px">${escHtml(newPin)}</p>
+            <p>Ton ancien code ne fonctionne plus. Si tu n'es pas à l'origine de cette demande, contacte Aly immédiatement.</p>
+          `,
+        });
+      }
     }
 
     return res.status(200).json(genericResponse);

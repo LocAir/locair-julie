@@ -3,11 +3,12 @@ const { verifyTransporteurToken } = require('./_lib/auth');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const transporteurId = verifyTransporteurToken(req);
+
+  const supabase = getSupabase();
+  const transporteurId = await verifyTransporteurToken(req, supabase);
   if (!transporteurId) return res.status(401).json({ error: 'Session invalide' });
 
   try {
-    const supabase = getSupabase();
     const { data, error } = await supabase
       .from('livraisons')
       .select(`

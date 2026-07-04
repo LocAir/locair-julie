@@ -20,12 +20,16 @@ Les variables existantes (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `OPERATO
 
 ## 3. Ajouter les transporteurs
 
-Dans `/admin` → onglet **Transporteurs**, ajouter chaque transporteur avec son nom, son téléphone et sa rémunération par mission (livraison / récupération). Un **code personnel à 4 chiffres** est généré automatiquement — communique-le au transporteur concerné pour qu'il se connecte sur `/transporteur` (bouton "Changer le code" si besoin de le régénérer, par exemple si un transporteur quitte l'équipe).
+Dans `/admin` → onglet **Transporteurs**, ajouter chaque transporteur avec son nom, son téléphone, son **email** et sa rémunération par mission (livraison / récupération). Un **code personnel à 4 chiffres** est généré automatiquement — communique-le au transporteur concerné pour qu'il se connecte sur `/transporteur`.
+
+Renseigner l'email de chaque transporteur n'est pas obligatoire, mais c'est ce qui lui permet d'utiliser "Code oublié ?" sur `/transporteur` sans avoir à te contacter — un nouveau code est alors généré et envoyé par email, et l'ancien cesse immédiatement de fonctionner (y compris sur un téléphone déjà connecté avec l'ancien code). Le bouton "Changer le code" dans l'admin fait la même chose manuellement (utile par exemple quand un transporteur quitte l'équipe) et déconnecte lui aussi tous ses appareils. Désactiver un transporteur (bouton "Désactiver") coupe également son accès immédiatement.
 
 ## 4. Vérifications avant mise en production
 
 - `/admin` : mauvais mot de passe rejeté, bon mot de passe accepté, chiffres cohérents avec Stripe.
 - `/transporteur` : mauvais code rejeté ; un transporteur ne doit voir que ses propres missions et gains, jamais ceux d'un collègue.
+- "Code oublié ?" : demander un reset avec l'email d'un transporteur actif → un email avec un nouveau code arrive ; vérifier que l'ancien code ne fonctionne plus.
+- Désactiver un transporteur puis réessayer de se connecter avec son ancien code (ou depuis un appareil déjà connecté) → doit être rejeté.
 - Faire une réservation test en mode Stripe test avec le stock à 0 → le site doit bloquer avant le paiement.
 - Faire une réservation test avec stock disponible → vérifier qu'une ligne apparaît dans **Réservations**, puis que les 2 missions (livraison + récupération) apparaissent dans **Livraisons** après confirmation du paiement.
 - Assigner la mission à un transporteur dans `/admin` → vérifier qu'elle apparaît dans `/transporteur` pour lui.

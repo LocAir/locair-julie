@@ -33,7 +33,9 @@ async function loadLivraison(supabase, id) {
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const transporteurId = verifyTransporteurToken(req);
+
+  const supabase = getSupabase();
+  const transporteurId = await verifyTransporteurToken(req, supabase);
   if (!transporteurId) return res.status(401).json({ error: 'Session invalide' });
 
   const body        = req.body || {};
@@ -42,8 +44,6 @@ module.exports = async (req, res) => {
   if (!action || !livraisonId) {
     return res.status(400).json({ error: 'Paramètres manquants' });
   }
-
-  const supabase = getSupabase();
 
   try {
     const liv = await loadLivraison(supabase, livraisonId);

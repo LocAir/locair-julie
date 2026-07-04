@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
     if (!match) return res.status(401).json({ error: 'Code incorrect' });
 
     return res.status(200).json({
-      token: signTransporteurToken(match.id),
+      token: signTransporteurToken(match.id, match.pin),
       transporteur_id: match.id,
       nom: match.nom,
     });
