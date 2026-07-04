@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<title>Espace transporteur — Loc'Air</title>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --blue:#1b3a5f; --black:#141e30; --bg:#ede8e0; --white:#f4f0ea;
+  --grey:#5a6577; --rule:#ddd8cf; --green:#2d6a4f; --red:#9b2c1a; --amber:#b9770e;
+  --body:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--black);font-family:var(--body);-webkit-font-smoothing:antialiased;min-height:100vh}
+.wrap{max-width:520px;margin:0 auto;padding:20px 16px 100px;min-height:100vh}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 18px}
+.logo{font-size:19px;font-weight:800;color:var(--blue)}
+.logo em{font-style:normal;color:var(--amber)}
+.who{font-size:12px;color:var(--grey);font-weight:600}
+.who button{background:none;border:none;color:var(--grey);text-decoration:underline;font-size:12px;font-family:var(--body);cursor:pointer;padding:0;margin-left:8px}
+
+.card{background:#fff;border-radius:18px;padding:24px 20px;box-shadow:0 4px 24px rgba(0,0,0,.07);margin-bottom:14px}
+h1{font-size:21px;font-weight:800;margin-bottom:6px}
+.sub{font-size:14px;color:var(--grey);margin-bottom:20px;line-height:1.5}
+label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--grey);margin-bottom:6px}
+input[type=text],input[type=password],input[type=tel]{
+  width:100%;padding:16px;border:2px solid var(--rule);border-radius:12px;font-size:17px;
+  font-family:var(--body);background:#fff;color:var(--black);outline:none;
+}
+input:focus{border-color:var(--blue)}
+.btn{
+  width:100%;padding:18px;border:none;border-radius:14px;font-family:var(--body);
+  font-size:17px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:60px;text-align:center;
+}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-red{background:#fff;color:var(--red);border:2px solid var(--red)}
+.btn-amber{background:var(--amber);color:#fff}
+.btn-grey{background:#fff;color:var(--grey);border:2px solid var(--rule)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn:active:not(:disabled){transform:scale(.98)}
+.btn+.btn{margin-top:12px}
+.err{background:#fdf0ee;color:var(--red);border-radius:10px;padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.4}
+
+.name-btn{width:100%;padding:20px;background:#fff;border:2px solid var(--rule);border-radius:14px;font-size:18px;font-weight:700;color:var(--black);margin-bottom:12px;cursor:pointer;text-align:left}
+.name-btn:active{background:var(--bg)}
+
+.tour-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:14px;margin-bottom:16px;cursor:pointer}
+.section-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin:22px 2px 10px}
+
+.mcard{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 2px 14px rgba(0,0,0,.06);cursor:pointer;border-left:6px solid var(--rule)}
+.mcard.st-a_faire{border-left-color:var(--amber)}
+.mcard.st-acceptee{border-left-color:var(--blue)}
+.mcard.st-arrivee{border-left-color:var(--green)}
+.mcard.st-probleme{border-left-color:var(--red)}
+.mcard-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.mcard-icon{font-size:22px}
+.mcard-type{font-weight:800;font-size:15px}
+.mcard-badge{margin-left:auto;font-size:11px;font-weight:800;text-transform:uppercase;padding:4px 9px;border-radius:100px;background:var(--bg);color:var(--grey)}
+.mcard-addr{font-size:14px;color:var(--black);margin-top:6px;line-height:1.4}
+.mcard-meta{font-size:12.5px;color:var(--grey);margin-top:4px}
+.mcard-actions{display:flex;gap:8px;margin-top:12px}
+.mcard-actions a{flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:10px;font-size:13px;font-weight:700;color:var(--blue);text-decoration:none}
+
+.empty{text-align:center;color:var(--grey);font-size:14px;padding:40px 10px}
+
+.detail-back{background:none;border:none;color:var(--blue);font-weight:700;font-size:14px;margin-bottom:14px;cursor:pointer;padding:4px 0}
+.info-row{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid var(--rule);font-size:14.5px}
+.info-row:last-child{border-bottom:none}
+.info-ic{width:22px;flex-shrink:0;text-align:center}
+.info-label{color:var(--grey);width:90px;flex-shrink:0}
+.info-val{font-weight:600;flex:1}
+.maps-link{display:block;text-align:center;padding:14px;background:var(--bg);border-radius:12px;font-weight:700;color:var(--blue);text-decoration:none;margin:16px 0}
+
+.media-btn{display:flex;align-items:center;gap:10px;width:100%;padding:16px;border:2px solid var(--rule);border-radius:12px;background:#fff;font-weight:700;font-size:15px;color:var(--black);margin-bottom:12px;cursor:pointer}
+.media-btn.done{border-color:var(--green);background:#f0f7f3;color:var(--green)}
+.media-btn .ic{font-size:20px}
+
+.step-hint{font-size:14px;font-weight:700;color:var(--blue);background:var(--bg);border-radius:10px;padding:10px 14px;margin-bottom:14px}
+.probleme-box{background:#fdf0ee;border-radius:14px;padding:16px;margin-top:16px}
+.probleme-box p{font-size:14px;color:var(--red);line-height:1.5;font-weight:600}
+.probleme-list .btn{margin-top:10px}
+
+.overlay{position:fixed;inset:0;background:rgba(20,30,48,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+.sheet{background:var(--white);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:24px 20px 32px}
+.hidden{display:none !important}
+
+/* Stepper de progression mission */
+.stepper{display:flex;align-items:flex-start;margin:4px 0 22px}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative}
+.step-dot{width:32px;height:32px;border-radius:50%;background:var(--rule);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;z-index:1}
+.step.done .step-dot{background:var(--green)}
+.step.active .step-dot{background:var(--blue)}
+.step.blocked .step-dot{background:var(--red)}
+.step-label{font-size:10.5px;color:var(--grey);margin-top:6px;text-align:center;font-weight:700;line-height:1.2}
+.step.done .step-label,.step.active .step-label{color:var(--black)}
+.step-line{position:absolute;top:16px;left:-50%;width:100%;height:3px;background:var(--rule);z-index:0}
+.step.done .step-line{background:var(--green)}
+.step:first-child .step-line{display:none}
+
+/* Nav bas Missions / Activité */
+.tabbar{display:flex;gap:8px;margin-bottom:16px}
+.tabbar button{flex:1;padding:12px;border-radius:12px;border:2px solid var(--rule);background:#fff;font-weight:800;font-size:13.5px;color:var(--grey);cursor:pointer}
+.tabbar button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+
+/* Activité */
+.stat-big{background:linear-gradient(135deg,var(--blue),#0d1829);color:#fff;border-radius:18px;padding:24px 20px;margin-bottom:14px}
+.stat-big .amount{font-size:38px;font-weight:800;line-height:1}
+.stat-big .caption{font-size:13px;opacity:.85;margin-top:6px;font-weight:600}
+.stat-row{display:flex;gap:12px;margin-bottom:14px}
+.stat-tile{flex:1;background:#fff;border-radius:14px;padding:16px;text-align:center;box-shadow:0 2px 14px rgba(0,0,0,.06)}
+.stat-tile .n{font-size:22px;font-weight:800;color:var(--blue)}
+.stat-tile .l{font-size:11.5px;color:var(--grey);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.03em}
+.vlist{margin-top:6px}
+.vrow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule);font-size:14px}
+.vrow:last-child{border-bottom:none}
+.vchip{font-size:11px;font-weight:800;text-transform:uppercase;padding:4px 9px;border-radius:100px}
+.vchip.demande{background:#fdf3e3;color:var(--amber)}
+.vchip.verse{background:#eef6f1;color:var(--green)}
+
+/* Célébration */
+.celebrate{position:fixed;inset:0;background:rgba(20,30,48,.75);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px}
+.celebrate-card{background:#fff;border-radius:22px;padding:36px 26px;text-align:center;max-width:360px}
+.celebrate-emoji{font-size:52px;margin-bottom:10px}
+.celebrate-title{font-size:22px;font-weight:800;margin-bottom:6px}
+.celebrate-sub{font-size:15px;color:var(--grey);margin-bottom:22px;line-height:1.5}
+.celebrate-amount{font-size:32px;font-weight:800;color:var(--green);margin-bottom:22px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="logo">Loc<em>'Air</em> · Transporteur</div>
+    <div class="who hidden" id="who-badge"></div>
+  </div>
+
+  <!-- Écran 1 : code d'accès -->
+  <div id="login-screen">
+    <div class="card">
+      <h1>Bonjour 👋</h1>
+      <p class="sub">Entre le code transporteur pour voir tes missions.</p>
+      <label for="lg-code">Code d'accès</label>
+      <input type="password" id="lg-code" inputmode="numeric" autocomplete="off" placeholder="••••••"/>
+      <div style="height:16px"></div>
+      <button class="btn btn-blue" id="lg-btn" onclick="doLogin()">Entrer →</button>
+      <div class="err" id="lg-err"></div>
+    </div>
+  </div>
+
+  <!-- Écran 2 : qui es-tu -->
+  <div id="who-screen" class="hidden">
+    <div class="card">
+      <h1>Qui es-tu ?</h1>
+      <p class="sub">Choisis ton nom pour voir tes missions du jour.</p>
+      <div id="who-list"></div>
+    </div>
+  </div>
+
+  <!-- Écran 3 : liste des missions -->
+  <div id="missions-screen" class="hidden">
+    <div class="tabbar">
+      <button class="on" onclick="switchTab('missions')">📋 Mes missions</button>
+      <button onclick="switchTab('activite')">💰 Mon activité</button>
+    </div>
+    <div id="tour-zone"></div>
+    <div id="missions-list"></div>
+  </div>
+
+  <!-- Écran 3bis : activité / gains -->
+  <div id="activite-screen" class="hidden">
+    <div class="tabbar">
+      <button onclick="switchTab('missions')">📋 Mes missions</button>
+      <button class="on" onclick="switchTab('activite')">💰 Mon activité</button>
+    </div>
+    <div id="activite-content"><p class="empty">Chargement…</p></div>
+  </div>
+
+  <!-- Écran 4 : détail mission -->
+  <div id="detail-screen" class="hidden"></div>
+
+</div>
+
+<!-- input caché pour capture photo/vidéo -->
+<input type="file" id="media-input" accept="image/*" capture="environment" class="hidden"/>
+
+<script>
+const API = (path) => '/api/' + path;
+let STATE = {
+  token: sessionStorage.getItem('t_token') || '',
+  transporteurs: [],
+  transporteurId: sessionStorage.getItem('t_id') ? parseInt(sessionStorage.getItem('t_id')) : null,
+  transporteurNom: sessionStorage.getItem('t_nom') || '',
+  missions: [],
+  currentMission: null,
+  pendingUpload: null, // {livraisonId, kind}
+};
+
+function show(id){
+  ['login-screen','who-screen','missions-screen','activite-screen','detail-screen'].forEach(s=>{
+    document.getElementById(s).classList.toggle('hidden', s!==id);
+  });
+}
+
+function switchTab(tab){
+  if(tab==='activite'){ show('activite-screen'); loadActivite(); }
+  else { show('missions-screen'); loadMissions(); }
+}
+
+function updateWhoBadge(){
+  const b=document.getElementById('who-badge');
+  if(STATE.transporteurNom){
+    b.classList.remove('hidden');
+    b.innerHTML = STATE.transporteurNom + '<button onclick="logout()">changer</button>';
+  }
+}
+
+function logout(){
+  sessionStorage.clear();
+  STATE = {token:'',transporteurs:[],transporteurId:null,transporteurNom:'',missions:[],currentMission:null,pendingUpload:null};
+  document.getElementById('who-badge').classList.add('hidden');
+  show('login-screen');
+}
+
+async function doLogin(){
+  const code = document.getElementById('lg-code').value.trim();
+  const errEl = document.getElementById('lg-err');
+  const btn = document.getElementById('lg-btn');
+  errEl.style.display='none';
+  if(!code) return;
+  btn.disabled=true; btn.textContent='Vérification…';
+  try{
+    const r = await fetch(API('transporteur-login'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':code}, body: JSON.stringify({})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Code incorrect');
+    STATE.token = code;
+    STATE.transporteurs = d.transporteurs || [];
+    sessionStorage.setItem('t_token', code);
+    renderWho();
+    show('who-screen');
+  }catch(e){
+    errEl.textContent = e.message || 'Code incorrect.';
+    errEl.style.display='block';
+  }finally{
+    btn.disabled=false; btn.textContent='Entrer →';
+  }
+}
+
+function renderWho(){
+  const list = document.getElementById('who-list');
+  list.innerHTML = STATE.transporteurs.map(t =>
+    `<button class="name-btn" onclick="pickWho(${t.id}, '${t.nom.replace(/'/g,"\\'")}')">${t.nom}</button>`
+  ).join('') || '<p class="sub">Aucun transporteur actif. Contacte Aly.</p>';
+}
+
+function pickWho(id, nom){
+  STATE.transporteurId = id;
+  STATE.transporteurNom = nom;
+  sessionStorage.setItem('t_id', id);
+  sessionStorage.setItem('t_nom', nom);
+  updateWhoBadge();
+  loadMissions();
+}
+
+async function fetchMissions(){
+  try{
+    const r = await fetch(API('transporteur-missions'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({transporteur_id: STATE.transporteurId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    STATE.missions = d.missions || [];
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+async function loadMissions(){
+  show('missions-screen');
+  document.getElementById('missions-list').innerHTML = '<p class="empty">Chargement…</p>';
+  const ok = await fetchMissions();
+  if(ok) renderMissions();
+  else document.getElementById('missions-list').innerHTML = '<p class="empty">Impossible de charger tes missions. Réessaie.</p>';
+}
+
+const TYPE_LABEL = {livraison:'Livraison', recuperation:'Récupération'};
+const TYPE_ICON  = {livraison:'📦', recuperation:'🔄'};
+const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', arrivee:'Sur place', probleme:'Problème signalé'};
+
+function renderMissions(){
+  const wrap = document.getElementById('missions-list');
+  const tourZone = document.getElementById('tour-zone');
+  if(!STATE.missions.length){
+    tourZone.innerHTML='';
+    wrap.innerHTML = '<p class="empty">Aucune mission pour l\'instant. 👍</p>';
+    return;
+  }
+
+  const actives = STATE.missions.filter(m => m.client && m.client.adresse && ['a_faire','acceptee','arrivee'].includes(m.statut));
+  if(actives.length > 1){
+    const stops = actives.map(m => m.client.adresse);
+    const last = encodeURIComponent(stops[stops.length-1]);
+    const waypoints = encodeURIComponent(stops.slice(0,-1).join('|'));
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${last}${waypoints?('&waypoints='+waypoints):''}&travelmode=driving`;
+    tourZone.innerHTML = `<a class="tour-btn" href="${url}" target="_blank" rel="noopener">🗺️ Voir toute la tournée (ordre suggéré, pas obligatoire)</a>`;
+  } else {
+    tourZone.innerHTML = '';
+  }
+
+  wrap.innerHTML = STATE.missions.map(m => {
+    const c = m.client || {};
+    const badge = STATUT_LABEL[m.statut] || m.statut;
+    const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
+    return `
+      <div class="mcard st-${m.statut}" onclick="openMission(${m.id})">
+        <div class="mcard-top">
+          <span class="mcard-icon">${TYPE_ICON[m.type]||'📍'}</span>
+          <span class="mcard-type">${TYPE_LABEL[m.type]||m.type}</span>
+          <span class="mcard-badge">${badge}</span>
+        </div>
+        <div class="mcard-addr">${(c.prenom||'')+' '+(c.nom||'')} — ${c.adresse||'Adresse à confirmer'}</div>
+        <div class="mcard-meta">${m.creneau||''} ${c.etage&&c.etage!=='—'?'· Étage '+c.etage:''}</div>
+        ${mapsUrl?`<div class="mcard-actions"><a href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Itinéraire</a>${c.tel?`<a href="tel:${c.tel}" onclick="event.stopPropagation()">📞 Appeler</a>`:''}</div>`:''}
+      </div>`;
+  }).join('');
+}
+
+function openMission(id){
+  STATE.currentMission = STATE.missions.find(m => m.id === id);
+  if(!STATE.currentMission) return;
+  renderDetail();
+  show('detail-screen');
+}
+
+function actionBtnsForMission(m){
+  const c = m.client || {};
+  if(m.statut === 'a_faire'){
+    return `
+      <button class="btn btn-green" onclick="doAction('accepter')">✅ J'ACCEPTE LA MISSION</button>
+      <button class="btn btn-red" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
+  }
+  if(m.statut === 'acceptee' && m.type === 'livraison'){
+    if(!m.photo_depart_ok){
+      return `
+        <p class="step-hint">📦 Au dépôt : charge l'appareil et prends la photo avant de partir.</p>
+        <button class="media-btn" onclick="startUpload('photo_depart','image/*')"><span class="ic">📷</span> Photo appareil au départ dépôt</button>
+        <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
+    }
+    return `
+      <p class="step-hint">🚚 En route vers le client.</p>
+      <button class="btn btn-blue" onclick="doAction('arrive')">📍 JE SUIS ARRIVÉ CHEZ LE CLIENT</button>
+      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
+  }
+  if(m.statut === 'acceptee' && m.type === 'recuperation'){
+    return `
+      <p class="step-hint">🚚 En route vers le client.</p>
+      <button class="btn btn-blue" onclick="doAction('arrive')">📍 JE SUIS ARRIVÉ CHEZ LE CLIENT</button>
+      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
+  }
+  if(m.statut === 'arrivee' && m.type === 'livraison'){
+    return `
+      <p class="step-hint">🎥 Installe l'appareil puis filme-le en marche.</p>
+      <button class="media-btn ${m.video_installation_ok?'done':''}" onclick="startUpload('video_installation','video/*')"><span class="ic">🎥</span> ${m.video_installation_ok?'Vidéo installation ✔':'Vidéo appareil en marche chez le client'}</button>
+      <button class="btn btn-green" ${m.video_installation_ok?'':'disabled'} onclick="doAction('livraison_ok')">✅ LIVRAISON OK — JE PARS</button>
+      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
+  }
+  if(m.statut === 'arrivee' && m.type === 'recuperation'){
+    return `
+      <p class="step-hint">📷 Vérifie l'appareil et prends la photo avant de repartir.</p>
+      <button class="media-btn ${m.photo_retour_ok?'done':''}" onclick="startUpload('photo_retour','image/*')"><span class="ic">📷</span> ${m.photo_retour_ok?'Photo appareil récupéré ✔':'Photo de l\'appareil récupéré'}</button>
+      <button class="btn btn-green" ${m.photo_retour_ok?'':'disabled'} onclick="doAction('retour_ok')">✅ RETOUR OK — JE PARS</button>
+      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
+  }
+  if(m.statut === 'probleme'){
+    return `<div class="probleme-box"><p>⏳ Problème signalé. Aly va te recontacter — n'improvise rien avec le client.</p></div>`;
+  }
+  return '';
+}
+
+function renderStepper(m){
+  if(!['a_faire','acceptee','arrivee','fait'].includes(m.statut)) return '';
+  const labels=['Départ','Route','Client','Terminé'];
+  let idx=0;
+  if(m.statut==='a_faire') idx=0;
+  else if(m.statut==='acceptee') idx=(m.type==='livraison'&&!m.photo_depart_ok)?0:1;
+  else if(m.statut==='arrivee') idx=2;
+  else if(m.statut==='fait') idx=3;
+  return '<div class="stepper">'+labels.map((lbl,i)=>{
+    const cls = i<idx?'done':(i===idx?'active':'');
+    return `<div class="step ${cls}"><div class="step-line"></div><div class="step-dot">${i<idx?'✓':(i+1)}</div><div class="step-label">${lbl}</div></div>`;
+  }).join('')+'</div>';
+}
+
+function renderDetail(){
+  const m = STATE.currentMission;
+  const c = m.client || {};
+  const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
+  document.getElementById('detail-screen').innerHTML = `
+    <button class="detail-back" onclick="show('missions-screen')">← Retour</button>
+    <div class="card">
+      <h1>${TYPE_ICON[m.type]||''} ${TYPE_LABEL[m.type]||m.type}</h1>
+      <p class="sub">${STATUT_LABEL[m.statut]||m.statut} · ${m.creneau||''}</p>
+      ${renderStepper(m)}
+
+      <div class="info-row"><span class="info-ic">👤</span><span class="info-label">Client</span><span class="info-val">${(c.prenom||'')+' '+(c.nom||'')}</span></div>
+      <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${c.adresse||'—'}</span></div>
+      <div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${c.etage||'—'} ${c.ascenseur&&c.ascenseur!=='—'?'· Ascenseur: '+c.ascenseur:''}</span></div>
+      <div class="info-row"><span class="info-ic">🪟</span><span class="info-label">Fenêtre</span><span class="info-val">${c.fenetre||'—'}</span></div>
+      <div class="info-row"><span class="info-ic">📞</span><span class="info-label">Téléphone</span><span class="info-val">${c.tel?`<a href="tel:${c.tel}" style="color:var(--blue)">${c.tel}</a>`:'—'}</span></div>
+      <div class="info-row"><span class="info-ic">❄️</span><span class="info-label">Quantité</span><span class="info-val">${c.quantite||1}</span></div>
+
+      ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
+
+      <div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div>
+      <div class="err" id="detail-err"></div>
+    </div>
+  `;
+}
+
+async function doAction(action, extra){
+  const errEl = document.getElementById('detail-err');
+  if(errEl){errEl.style.display='none';}
+  try{
+    const r = await fetch(API('transporteur-action'), {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify(Object.assign({action, livraison_id: STATE.currentMission.id, transporteur_id: STATE.transporteurId}, extra||{}))
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+
+    if(action === 'livraison_ok' || action === 'retour_ok'){
+      showCelebration(d.montant_du_cents || 0);
+      return;
+    }
+
+    await fetchMissions();
+    const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
+    if(m){ STATE.currentMission = m; renderDetail(); show('detail-screen'); }
+    else { show('missions-screen'); renderMissions(); }
+  }catch(e){
+    if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
+  }
+}
+
+// ── Célébration (gamification, façon Uber/Deliveroo) ─────────────────────────
+function showCelebration(montantCents){
+  const overlay = document.createElement('div');
+  overlay.className = 'celebrate';
+  overlay.id = 'celebrate-overlay';
+  const montant = (montantCents/100).toFixed(2).replace('.',',');
+  const prenom = (STATE.transporteurNom||'').split(' ')[0] || '';
+  overlay.innerHTML = `
+    <div class="celebrate-card">
+      <div class="celebrate-emoji">🎉</div>
+      <div class="celebrate-title">Mission accomplie${prenom?', '+prenom:''} !</div>
+      <p class="celebrate-sub">Bien joué, le client va être content. On passe à la suite ?</p>
+      ${montantCents>0?`<div class="celebrate-amount">+${montant} €</div>`:''}
+      <button class="btn btn-blue" onclick="closeCelebration()">Continuer</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+async function closeCelebration(){
+  const o = document.getElementById('celebrate-overlay');
+  if(o) o.remove();
+  await loadMissions();
+}
+
+// ── Capture photo/vidéo ──────────────────────────────────────────────────────
+function startUpload(kind, accept){
+  const input = document.getElementById('media-input');
+  input.setAttribute('accept', accept);
+  input.setAttribute('capture', kind==='video_installation' ? 'environment' : 'environment');
+  STATE.pendingUpload = {kind};
+  input.value = '';
+  input.click();
+}
+
+document.getElementById('media-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file || !STATE.pendingUpload) return;
+  const {kind} = STATE.pendingUpload;
+  const zone = document.getElementById('action-zone');
+  try{
+    const r1 = await fetch(API('transporteur-action'), {
+      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify({action:'demander_upload', livraison_id: STATE.currentMission.id, transporteur_id: STATE.transporteurId, kind, content_type:file.type})
+    });
+    const d1 = await r1.json();
+    if(!r1.ok) throw new Error(d1.error||'Erreur');
+
+    const up = await fetch(d1.signedUrl, {method:'PUT', headers:{'Content-Type': file.type || 'application/octet-stream'}, body: file});
+    if(!up.ok) throw new Error('Échec de l\'envoi du fichier');
+
+    const r2 = await fetch(API('transporteur-action'), {
+      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify({action:'confirmer_media', livraison_id: STATE.currentMission.id, transporteur_id: STATE.transporteurId, kind, path:d1.path})
+    });
+    if(!r2.ok) throw new Error('Erreur de confirmation');
+
+    await fetchMissions();
+    const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
+    if(m){ STATE.currentMission = m; renderDetail(); }
+  }catch(err){
+    if(zone){
+      const errEl = document.createElement('div');
+      errEl.className='err'; errEl.style.display='block'; errEl.textContent = err.message;
+      zone.appendChild(errEl);
+    }
+  }
+});
+
+// ── Problème (aucune saisie de texte — juste une catégorie) ──────────────────
+function openProbleme(){
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'probleme-overlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h1 style="margin-bottom:14px">⚠️ Quel est le problème ?</h1>
+      <div class="probleme-list">
+        <button class="btn btn-amber" onclick="sendProbleme('client_injoignable')">📵 Client injoignable</button>
+        <button class="btn btn-amber" onclick="sendProbleme('appareil_en_panne')">🔧 Appareil en panne</button>
+        <button class="btn btn-amber" onclick="sendProbleme('retard')">⏰ Retard important</button>
+        <button class="btn btn-amber" onclick="sendProbleme('autre')">❓ Autre problème</button>
+        <button class="btn btn-grey" onclick="closeProbleme()">Annuler</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+function closeProbleme(){
+  const o = document.getElementById('probleme-overlay');
+  if(o) o.remove();
+}
+async function sendProbleme(type){
+  closeProbleme();
+  await doAction('probleme', {probleme_type: type});
+}
+
+// ── Mon activité (gains, façon Uber Driver) ──────────────────────────────────
+const VIREMENT_LABEL = {demande:'Demandé', verse:'Versé'};
+
+async function loadActivite(){
+  const zone = document.getElementById('activite-content');
+  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'resume', transporteur_id: STATE.transporteurId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    renderActivite(d);
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Impossible de charger ton activité. Réessaie.</p>';
+  }
+}
+
+function renderActivite(d){
+  const zone = document.getElementById('activite-content');
+  const nonVerse = (d.non_verse_euros||0).toFixed(2).replace('.',',');
+  const enCours = (d.virements||[]).some(v => v.statut==='demande');
+  zone.innerHTML = `
+    <div class="stat-big">
+      <div class="amount">${nonVerse} €</div>
+      <div class="caption">À verser · virement hebdo automatique, ou demande-le quand tu veux</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-tile"><div class="n">${d.missions_aujourdhui||0}</div><div class="l">Missions aujourd'hui</div></div>
+      <div class="stat-tile"><div class="n">${(d.gain_aujourdhui_euros||0).toFixed(2).replace('.',',')} €</div><div class="l">Gagné aujourd'hui</div></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-tile"><div class="n">${d.missions_mois||0}</div><div class="l">Missions ce mois</div></div>
+      <div class="stat-tile"><div class="n">${(d.gain_mois_euros||0).toFixed(2).replace('.',',')} €</div><div class="l">Gagné ce mois</div></div>
+    </div>
+    <button class="btn btn-green" ${(d.non_verse_euros>0 && !enCours)?'':'disabled'} onclick="demanderVirement()">💰 ${enCours?'Demande en cours…':'Demander mon virement'}</button>
+    <div class="err" id="activite-err"></div>
+    ${(d.virements&&d.virements.length)?`
+      <div class="section-title">Historique</div>
+      <div class="card vlist">${d.virements.map(v => `
+        <div class="vrow"><span>${new Date(v.created_at).toLocaleDateString('fr-FR')}</span><span>${(v.montant_cents/100).toFixed(2).replace('.',',')} €</span><span class="vchip ${v.statut}">${VIREMENT_LABEL[v.statut]||v.statut}</span></div>
+      `).join('')}</div>` : ''}
+  `;
+}
+
+async function demanderVirement(){
+  const errEl = document.getElementById('activite-err');
+  if(errEl) errEl.style.display='none';
+  try{
+    const r = await fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'demander_virement', transporteur_id: STATE.transporteurId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    await loadActivite();
+  }catch(e){
+    if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
+  }
+}
+
+// ── Démarrage ─────────────────────────────────────────────────────────────────
+(function init(){
+  if(STATE.token && STATE.transporteurId && STATE.transporteurNom){
+    updateWhoBadge();
+    loadMissions();
+  } else if(STATE.token){
+    // token connu mais pas de transporteur choisi -> relogin léger
+    show('login-screen');
+  } else {
+    show('login-screen');
+  }
+  document.getElementById('lg-code').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+})();
+</script>
+</body>
+</html>

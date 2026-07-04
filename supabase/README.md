@@ -1,0 +1,40 @@
+# Mise en route de l'application interne Loc'Air
+
+## 1. Créer le projet Supabase
+
+1. Sur [supabase.com](https://supabase.com), créer un projet (gratuit pour démarrer).
+2. Dans l'éditeur SQL du projet, exécuter le contenu de `supabase/schema.sql`.
+3. Vérifier/ajuster la ligne `insert into cities (...)` à la fin du script avec le vrai nombre de climatiseurs disponibles.
+
+## 2. Variables d'environnement (Vercel → Settings → Environment Variables)
+
+| Variable | Où la trouver |
+|---|---|
+| `SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
+| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → service_role key (secret, jamais côté navigateur) |
+| `ADMIN_PASSWORD` | À choisir — mot de passe de l'espace `/admin` (toi uniquement) |
+| `TRANSPORTEUR_TOKEN` | À choisir — code d'accès partagé de l'espace `/transporteur` |
+| `CITY_SLUG` | `nice` par défaut — à changer uniquement pour un futur déploiement d'une autre ville |
+
+Les variables existantes (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `OPERATOR_TOKEN`, `BREVO_API_KEY`) ne changent pas.
+
+## 3. Ajouter les transporteurs
+
+Dans `/admin` → onglet **Transporteurs**, ajouter chaque transporteur avec son nom, son téléphone et sa rémunération par mission (livraison / récupération). C'est ce qui alimente ses gains dans `/transporteur`.
+
+## 4. Vérifications avant mise en production
+
+- `/admin` : mauvais mot de passe rejeté, bon mot de passe accepté, chiffres cohérents avec Stripe.
+- `/transporteur` : mauvais code rejeté, missions visibles uniquement pour le transporteur assigné.
+- Faire une réservation test en mode Stripe test avec le stock à 0 → le site doit bloquer avant le paiement.
+- Faire une réservation test avec stock disponible → vérifier qu'une ligne apparaît dans **Réservations**, puis que les 2 missions (livraison + récupération) apparaissent dans **Livraisons** après confirmation du paiement.
+- Assigner la mission à un transporteur dans `/admin` → vérifier qu'elle apparaît dans `/transporteur` pour lui.
+- Dérouler une mission complète (Accepter → photo dépôt → Arrivé → vidéo installation → Livraison OK) et vérifier que le gain apparaît dans "Mon activité".
+- Vérifier que `retard.html` fonctionne toujours à l'identique (aucune régression).
+
+## Limites connues (volontairement simples pour l'instant)
+
+- Le taux d'occupation affiché est une photo instantanée (aujourd'hui), pas une moyenne sur la période.
+- Une prolongation crée une réservation séparée ; l'ancienne date de récupération est automatiquement annulée dans les missions terrain, mais l'historique reste sous deux lignes distinctes.
+- Le virement bancaire réel reste manuel (fait par toi) — l'application ne fait que suivre les montants dus et les demandes, elle ne transfère pas d'argent automatiquement.
+- Le bouton "Appeler le client" (tel:) est déjà en place dans `/transporteur`. Le SMS automatique au client ("votre livreur est en bas") via Brevo est prévu mais volontairement pas encore branché — à activer plus tard quand Brevo SMS sera configuré.

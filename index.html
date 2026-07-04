@@ -5295,7 +5295,7 @@ function _stripePaymentDone(){
 
 let _submitting=false;
 let _pendingShowSuccess=null;
-function submitForm(btn,mode){
+async function submitForm(btn,mode){
   if(_submitting)return;
   const missCoords=['f-prenom','f-nom','f-tel','f-email'].filter(id=>!document.getElementById(id)?.value.trim());
   if(missCoords.length){highlight(missCoords);return;}
@@ -5407,6 +5407,28 @@ function submitForm(btn,mode){
     // ── Stripe Payment Element (paiement intégré, sans quitter le site) ──
     const prixCents=Math.round(Math.max(0,calcTotal(parseInt(formData.duree)||7)-_promoDiscount+DELIVERY_FEE)*100);
     const prixEuros=(prixCents/100).toFixed(2).replace('.',',')+' €';
+
+    // ── Vérification du stock réel avant d'afficher le paiement ──
+    const _stockDuree=parseInt(formData.duree)||7;
+    const _stockDateFin=(()=>{const d=new Date(formData.date+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+_stockDuree);return d.toISOString().slice(0,10);})();
+    try{
+      const stockR=await fetch('/api/stock-check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({quantite:_qty,date_debut:formData.date,date_fin:_stockDateFin})});
+      const stockD=await stockR.json();
+      if(!stockR.ok||!stockD.available){
+        _submitting=false;
+        if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
+        const errEl=document.getElementById('form-error-msg');
+        if(errEl){errEl.textContent=stockD.disponibles>0?'Plus que '+stockD.disponibles+' climatiseur'+(stockD.disponibles>1?'s':'')+' disponible'+(stockD.disponibles>1?'s':'')+' pour ces dates — réduisez la quantité ou appelez-nous au 06.63.79.87.56.':'Aucun climatiseur disponible pour ces dates. Appelez-nous au 06.63.79.87.56 pour vérifier une autre période.';errEl.style.display='block';}
+        return;
+      }
+    }catch(e){
+      _submitting=false;
+      if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
+      const errEl=document.getElementById('form-error-msg');
+      if(errEl){errEl.textContent='Impossible de vérifier la disponibilité. Vérifiez votre connexion et réessayez.';errEl.style.display='block';}
+      return;
+    }
+
     try{localStorage.setItem('locair_pending',JSON.stringify({...formData,_ref:_orderRef}));}catch(e){}
     if(!_getStripe()){
       _submitting=false;
@@ -6338,6 +6360,23 @@ else{_updateChromeH();}
   }catch(e){}
 })();
 
+// ── STOCK RÉEL (remplace le texte marketing par la vraie disponibilité) ────────
+(async function initHeroStock(){
+  const el=document.getElementById('hero-dispo-text');
+  if(!el)return;
+  try{
+    const today=new Date();
+    const in7=new Date(today.getTime());in7.setDate(in7.getDate()+7);
+    const iso=d=>d.toISOString().slice(0,10);
+    const r=await fetch('/api/stock-check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({quantite:1,date_debut:iso(today),date_fin:iso(in7)})});
+    if(!r.ok)return;
+    const d=await r.json();
+    if(typeof d.disponibles==='number'){
+      el.textContent=d.disponibles<=0?'Complet sur les prochains jours à '+CITY.name:'Plus que '+d.disponibles+' climatiseur'+(d.disponibles>1?'s':'')+' disponible'+(d.disponibles>1?'s':'')+' à '+CITY.name;
+    }
+  }catch(e){}
+})();
+
 // ── 1. STATUT DISPONIBILITÉ ──────────────────────────────────────────────────
 (function initAvail(){
   const h=new Date().getHours();
@@ -6758,7 +6797,7 @@ async function startProlongPayment(){
     if(!stripe)throw new Error('Stripe non chargé — désactivez votre bloqueur de publicités');
     const debutVal=document.getElementById('pe-debut')?.value||'';
     const finInitVal=document.getElementById('pe-fin-init')?.value||'';
-    const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,original_days:_prolongOrigDays,prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,creneau})});
+    const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,original_days:_prolongOrigDays,prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,date_recuperation_iso:rawDate,creneau})});
     if(!r.ok)throw new Error('API '+r.status);
     const d=await r.json();
     if(!d.clientSecret)throw new Error(d.error||'No secret');

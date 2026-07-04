@@ -1,4 +1,8 @@
 const Stripe = require('stripe');
+const { getSupabase }     = require('./_lib/supabase');
+const { getCity }         = require('./_lib/city');
+const { getAvailability } = require('./_lib/stock');
+const { isValidDate, addDays } = require('./_lib/dates');
 
 function calcBase(days) {
   days = Math.max(1, days);
@@ -29,6 +33,25 @@ module.exports = async (req, res) => {
 
   if (!amountCents || amountCents < 10000) {
     return res.status(400).json({ error: 'Montant invalide' });
+  }
+
+  const dateDebut = (data.date || '').slice(0, 10);
+  if (!isValidDate(dateDebut)) {
+    return res.status(400).json({ error: 'Date de livraison invalide' });
+  }
+  const dateFin  = addDays(dateDebut, duree);
+  const supabase = getSupabase();
+  let city;
+
+  try {
+    city = await getCity(supabase);
+    const disponibles = await getAvailability(supabase, city.id, dateDebut, dateFin);
+    if (disponibles < qty) {
+      return res.status(409).json({ error: 'Plus assez de climatiseurs disponibles pour ces dates', disponibles: Math.max(0, disponibles) });
+    }
+  } catch (err) {
+    console.error('[Stock check checkout]', err.message);
+    return res.status(500).json({ error: 'Erreur serveur stock' });
   }
 
   try {
@@ -89,6 +112,34 @@ module.exports = async (req, res) => {
         customer_id:  customerId,
       },
     });
+
+    const { error: insertErr } = await supabase.from('reservations').insert({
+      city_id:                  city.id,
+      ref:                      (data._ref || '').slice(0, 100),
+      stripe_payment_intent_id: intent.id,
+      stripe_customer_id:       customerId || null,
+      prenom:                   (data.prenom  || '').slice(0, 200),
+      nom:                      (data.nom     || '').slice(0, 200),
+      email:                    (data.email   || '').slice(0, 200),
+      tel:                      (data.tel     || '').slice(0, 50),
+      adresse:                  (data.adresse || '').slice(0, 500),
+      etage:                    (data.etage        || '').slice(0, 50),
+      ascenseur:                (data.ascenseur    || '').slice(0, 50),
+      fenetre:                  (data.fenetre      || '').slice(0, 100),
+      installation:             (data.installation || '').slice(0, 100),
+      date_debut:               dateDebut,
+      date_fin:                 dateFin,
+      quantite:                 qty,
+      prix_total_cents:         amountCents,
+      statut:                   'en_attente',
+      source:                   'site',
+    });
+
+    if (insertErr) {
+      console.error('[Reservation insert]', insertErr.message);
+      await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel]', e.message));
+      return res.status(500).json({ error: 'Erreur serveur réservation' });
+    }
 
     return res.status(200).json({ clientSecret: intent.client_secret, amountCents, customerId });
   } catch (err) {

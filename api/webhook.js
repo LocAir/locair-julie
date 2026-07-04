@@ -1,4 +1,6 @@
 const Stripe = require('stripe');
+const { getSupabase } = require('./_lib/supabase');
+const { confirmReservationAndCreateLivraisons } = require('./_lib/reservations');
 
 // ── Utilitaire sécurité ───────────────────────────────────────────────────────
 function escHtml(s) {
@@ -311,6 +313,14 @@ const handler = async (req, res) => {
 
     } else {
       return res.json({ received: true, skipped: eventType });
+    }
+
+    // ── Réservation en base : confirmation + création des missions terrain ────
+    // Ne doit jamais bloquer les emails existants en cas de souci Supabase.
+    try {
+      await confirmReservationAndCreateLivraisons(getSupabase(), obj.id || '');
+    } catch (e) {
+      console.error('[Reservation confirm]', e.message);
     }
 
     // ── Prolongation : flux distinct ─────────────────────────────────────────

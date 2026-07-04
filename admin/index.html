@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Espace admin — Loc'Air</title>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --blue:#1b3a5f; --black:#141e30; --bg:#ede8e0; --white:#f4f0ea;
+  --grey:#5a6577; --rule:#ddd8cf; --green:#2d6a4f; --red:#9b2c1a; --amber:#b9770e; --gold:#c5a96c;
+  --body:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--black);font-family:var(--body);-webkit-font-smoothing:antialiased;min-height:100vh}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 80px}
+.logo{font-size:20px;font-weight:800;color:var(--blue);margin-bottom:18px}
+.logo em{font-style:normal;color:var(--gold)}
+
+.card{background:#fff;border-radius:16px;padding:22px 20px;box-shadow:0 4px 20px rgba(0,0,0,.06);margin-bottom:16px}
+h1{font-size:20px;font-weight:800;margin-bottom:6px}
+h2{font-size:15px;font-weight:800;margin-bottom:12px}
+.sub{font-size:13.5px;color:var(--grey);margin-bottom:18px;line-height:1.5}
+label{display:block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--grey);margin-bottom:5px}
+input[type=text],input[type=password],input[type=number],input[type=tel],select{
+  width:100%;padding:12px 14px;border:2px solid var(--rule);border-radius:10px;font-size:15px;
+  font-family:var(--body);background:#fff;color:var(--black);outline:none;margin-bottom:12px;
+}
+input:focus,select:focus{border-color:var(--blue)}
+.btn{padding:12px 18px;border:none;border-radius:10px;font-family:var(--body);font-size:14px;font-weight:700;cursor:pointer}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-green{background:var(--green);color:#fff}
+.btn-red{background:#fff;color:var(--red);border:2px solid var(--red)}
+.btn-grey{background:#fff;color:var(--grey);border:2px solid var(--rule)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-block{width:100%}
+.err{background:#fdf0ee;color:var(--red);border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px;display:none}
+.hidden{display:none !important}
+
+.tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:18px;padding-bottom:2px}
+.tabs button{flex-shrink:0;padding:9px 14px;border-radius:100px;border:2px solid var(--rule);background:#fff;font-weight:700;font-size:13px;color:var(--grey);cursor:pointer}
+.tabs button.on{background:var(--blue);border-color:var(--blue);color:#fff}
+
+.periods{display:flex;gap:6px;margin-bottom:16px}
+.periods button{flex:1;padding:8px;border-radius:8px;border:2px solid var(--rule);background:#fff;font-weight:700;font-size:12.5px;color:var(--grey);cursor:pointer}
+.periods button.on{background:var(--black);border-color:var(--black);color:#fff}
+
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat-tile{background:#fff;border-radius:14px;padding:18px;box-shadow:0 2px 14px rgba(0,0,0,.06)}
+.stat-tile .n{font-size:26px;font-weight:800;color:var(--blue)}
+.stat-tile .l{font-size:12px;color:var(--grey);font-weight:700;margin-top:4px}
+.stat-tile.warn .n{color:var(--red)}
+
+.row-item{padding:14px;border:2px solid var(--rule);border-radius:12px;margin-bottom:10px}
+.row-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.row-title{font-weight:800;font-size:14.5px}
+.row-meta{font-size:12.5px;color:var(--grey);line-height:1.5}
+.chip{font-size:10.5px;font-weight:800;text-transform:uppercase;padding:3px 9px;border-radius:100px;background:var(--bg);color:var(--grey)}
+.chip.confirmee,.chip.fait,.chip.verse,.chip.actif{background:#eef6f1;color:var(--green)}
+.chip.en_attente,.chip.a_faire,.chip.acceptee,.chip.demande{background:#fdf3e3;color:var(--amber)}
+.chip.annulee,.chip.probleme,.chip.refusee{background:#fdf0ee;color:var(--red)}
+.row-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.row-actions .btn{padding:8px 12px;font-size:12.5px}
+.empty{text-align:center;color:var(--grey);padding:30px;font-size:14px}
+.inline-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Loc<em>'Air</em> · Admin</div>
+
+  <div id="a-login">
+    <div class="card">
+      <h1>Connexion</h1>
+      <p class="sub">Accès réservé au propriétaire.</p>
+      <label for="a-pwd">Mot de passe</label>
+      <input type="password" id="a-pwd" autocomplete="current-password"/>
+      <button class="btn btn-blue btn-block" onclick="adminLogin()">Se connecter →</button>
+      <div class="err" id="a-login-err"></div>
+    </div>
+  </div>
+
+  <div id="a-app" class="hidden">
+    <div class="tabs">
+      <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')">📊 Accueil</button>
+      <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
+      <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations</button>
+      <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons</button>
+      <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs</button>
+      <button data-tab="virements" onclick="switchAdminTab('virements')">💶 Virements</button>
+    </div>
+
+    <div id="tab-accueil"></div>
+    <div id="tab-stock" class="hidden"></div>
+    <div id="tab-reservations" class="hidden"></div>
+    <div id="tab-livraisons" class="hidden"></div>
+    <div id="tab-transporteurs" class="hidden"></div>
+    <div id="tab-virements" class="hidden"></div>
+  </div>
+</div>
+
+<script>
+const API = (p) => '/api/' + p;
+let TOKEN = sessionStorage.getItem('a_token') || '';
+
+function authHeaders(){ return {'Content-Type':'application/json','x-admin-token':TOKEN}; }
+
+async function adminLogin(){
+  const pwd = document.getElementById('a-pwd').value.trim();
+  const errEl = document.getElementById('a-login-err');
+  errEl.style.display='none';
+  if(!pwd) return;
+  try{
+    const r = await fetch(API('admin-login'), {method:'POST', headers:{'Content-Type':'application/json','x-admin-token':pwd}, body:'{}'});
+    if(!r.ok){ const d=await r.json(); throw new Error(d.error||'Erreur'); }
+    TOKEN = pwd;
+    sessionStorage.setItem('a_token', pwd);
+    document.getElementById('a-login').classList.add('hidden');
+    document.getElementById('a-app').classList.remove('hidden');
+    switchAdminTab('accueil');
+  }catch(e){
+    errEl.textContent = e.message;
+    errEl.style.display='block';
+  }
+}
+document.getElementById('a-pwd').addEventListener('keydown', e=>{ if(e.key==='Enter') adminLogin(); });
+
+function switchAdminTab(tab){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
+  ['accueil','stock','reservations','livraisons','transporteurs','virements'].forEach(t=>{
+    document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
+  });
+  if(tab==='accueil') loadDashboard('7j');
+  if(tab==='stock') loadStock();
+  if(tab==='reservations') loadReservations();
+  if(tab==='livraisons') loadLivraisons();
+  if(tab==='transporteurs') loadTransporteurs();
+  if(tab==='virements') loadVirements();
+}
+
+// ── ACCUEIL / CHIFFRES ────────────────────────────────────────────────────────
+async function loadDashboard(periode){
+  const zone = document.getElementById('tab-accueil');
+  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('admin-dashboard'), {method:'POST', headers:authHeaders(), body:JSON.stringify({periode})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const pct = Math.round((d.taux_occupation||0)*100);
+    zone.innerHTML = `
+      <div class="periods">
+        <button class="${periode==='jour'?'on':''}" onclick="loadDashboard('jour')">Jour</button>
+        <button class="${periode==='7j'?'on':''}" onclick="loadDashboard('7j')">7 jours</button>
+        <button class="${periode==='30j'?'on':''}" onclick="loadDashboard('30j')">30 jours</button>
+        <button class="${periode==='mois'?'on':''}" onclick="loadDashboard('mois')">Ce mois</button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-tile"><div class="n">${(d.ca_euros||0).toFixed(0)} €</div><div class="l">Chiffre d'affaires</div></div>
+        <div class="stat-tile"><div class="n">${d.nb_reservations||0}</div><div class="l">Réservations</div></div>
+        <div class="stat-tile"><div class="n">${pct}%</div><div class="l">Occupation (${d.unites_occupees}/${d.flotte_totale} à ${d.ville})</div></div>
+        <div class="stat-tile ${d.incidents_ouverts>0?'warn':''}"><div class="n">${d.incidents_ouverts||0}</div><div class="l">Incidents ouverts</div></div>
+      </div>
+    `;
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+
+// ── STOCK ─────────────────────────────────────────────────────────────────────
+async function loadStock(){
+  const zone = document.getElementById('tab-stock');
+  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:'{}'});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    zone.innerHTML = `
+      <div class="card">
+        <h2>Flotte — ${d.ville}</h2>
+        <p class="sub">${d.disponibles} climatiseur${d.disponibles>1?'s':''} disponible${d.disponibles>1?'s':''} aujourd'hui.</p>
+        <label for="s-flotte">Nombre total de climatiseurs</label>
+        <input type="number" id="s-flotte" min="0" value="${d.flotte_totale}"/>
+        <button class="btn btn-blue btn-block" onclick="saveStock('${d.ville}')">Enregistrer</button>
+        <div class="err" id="stock-err"></div>
+      </div>`;
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+async function saveStock(ville){
+  const val = parseInt(document.getElementById('s-flotte').value);
+  const errEl = document.getElementById('stock-err');
+  errEl.style.display='none';
+  if(!Number.isFinite(val) || val<0){ errEl.textContent='Valeur invalide'; errEl.style.display='block'; return; }
+  if(!confirm(`Modifier la flotte de ${ville} à ${val} climatiseur${val>1?'s':''} ?`)) return;
+  try{
+    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', flotte_totale:val})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadStock();
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display='block';
+  }
+}
+
+// ── RÉSERVATIONS ──────────────────────────────────────────────────────────────
+const STATUTS_RESA = ['en_attente','confirmee','annulee','terminee'];
+async function loadReservations(){
+  const zone = document.getElementById('tab-reservations');
+  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    if(!d.reservations.length){ zone.innerHTML='<p class="empty">Aucune réservation.</p>'; return; }
+    zone.innerHTML = d.reservations.map(res => `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${res.ref||('#'+res.id)} — ${(res.prenom||'')+' '+(res.nom||'')}</span>
+          <span class="chip ${res.statut}">${res.statut}</span>
+        </div>
+        <div class="row-meta">${res.adresse||'—'}<br/>${res.date_debut} → ${res.date_fin} · ${res.quantite}x · ${(res.prix_total_cents/100).toFixed(2)} €</div>
+        <div class="row-actions">
+          ${res.statut!=='annulee'?`<button class="btn btn-red" onclick="cancelReservation(${res.id})">Annuler</button>`:''}
+          <select onchange="updateReservationStatut(${res.id}, this.value)">
+            <option value="">Changer statut…</option>
+            ${STATUTS_RESA.map(s=>`<option value="${s}" ${s===res.statut?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    `).join('');
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+async function cancelReservation(id){
+  if(!confirm('Annuler cette réservation ? Cette action libère le stock associé.')) return;
+  await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut:'annulee'})});
+  loadReservations();
+}
+async function updateReservationStatut(id, statut){
+  if(!statut) return;
+  if(!confirm(`Passer cette réservation au statut "${statut}" ?`)) return;
+  await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
+  loadReservations();
+}
+
+// ── LIVRAISONS ────────────────────────────────────────────────────────────────
+let TRANSPORTEURS_CACHE = [];
+async function loadLivraisons(){
+  const zone = document.getElementById('tab-livraisons');
+  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const [lr, tr] = await Promise.all([
+      fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+    ]);
+    const ld = await lr.json(); const td = await tr.json();
+    if(!lr.ok) throw new Error(ld.error||'Erreur');
+    TRANSPORTEURS_CACHE = td.transporteurs || [];
+    if(!ld.livraisons.length){ zone.innerHTML='<p class="empty">Aucune mission.</p>'; return; }
+    zone.innerHTML = ld.livraisons.map(m => {
+      const res = m.reservation || {};
+      const options = ['<option value="">Non assigné</option>'].concat(
+        TRANSPORTEURS_CACHE.map(t => `<option value="${t.id}" ${m.transporteur&&m.transporteur.id===t.id?'selected':''}>${t.nom}</option>`)
+      ).join('');
+      const mediaBtns = [];
+      if(m.photo_depart_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_depart')">📷 Départ</button>`);
+      if(m.video_installation_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'video_installation')">🎥 Installation</button>`);
+      if(m.photo_retour_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_retour')">📷 Retour</button>`);
+      return `
+        <div class="row-item">
+          <div class="row-top">
+            <span class="row-title">${m.type==='livraison'?'📦':'🔄'} ${(res.prenom||'')+' '+(res.nom||'')}</span>
+            <span class="chip ${m.statut}">${m.statut}</span>
+          </div>
+          <div class="row-meta">${res.adresse||'—'}<br/>${m.date_prevue} · ${m.creneau||''}</div>
+          ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${m.probleme_type||''} — ${m.probleme_description||''}</div>`:''}
+          <div class="row-actions">
+            <select onchange="assignTransporteur(${m.id}, this.value)">${options}</select>
+            ${mediaBtns.join('')}
+          </div>
+        </div>`;
+    }).join('');
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+async function assignTransporteur(livraisonId, transporteurId){
+  await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'assign', livraison_id:livraisonId, transporteur_id: transporteurId||null})});
+}
+async function viewMedia(livraisonId, kind){
+  try{
+    const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'media_url', livraison_id:livraisonId, kind})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    window.open(d.url, '_blank', 'noopener');
+  }catch(e){ alert(e.message); }
+}
+
+// ── TRANSPORTEURS ─────────────────────────────────────────────────────────────
+async function loadTransporteurs(){
+  const zone = document.getElementById('tab-transporteurs');
+  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const list = (d.transporteurs||[]).map(t => `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${t.nom}</span>
+          <span class="chip ${t.actif?'actif':'annulee'}">${t.actif?'actif':'inactif'}</span>
+        </div>
+        <div class="row-meta">${t.telephone||'—'} · ${(t.taux_livraison_cents/100).toFixed(2)} €/livraison · ${(t.taux_recuperation_cents/100).toFixed(2)} €/récupération</div>
+        <div class="row-actions">
+          <button class="btn btn-grey" onclick="toggleTransporteur(${t.id}, ${!t.actif})">${t.actif?'Désactiver':'Réactiver'}</button>
+          <button class="btn btn-grey" onclick="editRates(${t.id}, ${t.taux_livraison_cents}, ${t.taux_recuperation_cents})">Modifier taux</button>
+        </div>
+      </div>`).join('') || '<p class="empty">Aucun transporteur.</p>';
+
+    zone.innerHTML = list + `
+      <div class="card">
+        <h2>Ajouter un transporteur</h2>
+        <label for="t-nom">Nom</label>
+        <input type="text" id="t-nom" placeholder="Osama"/>
+        <label for="t-tel">Téléphone</label>
+        <input type="tel" id="t-tel" placeholder="06…"/>
+        <div class="inline-form">
+          <div><label for="t-liv">€ / livraison</label><input type="number" id="t-liv" min="0" step="0.5" value="10"/></div>
+          <div><label for="t-rec">€ / récupération</label><input type="number" id="t-rec" min="0" step="0.5" value="10"/></div>
+        </div>
+        <button class="btn btn-blue btn-block" onclick="addTransporteur()">Ajouter</button>
+        <div class="err" id="transp-err"></div>
+      </div>`;
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+async function addTransporteur(){
+  const nom = document.getElementById('t-nom').value.trim();
+  const telephone = document.getElementById('t-tel').value.trim();
+  const taux_livraison_cents = Math.round((parseFloat(document.getElementById('t-liv').value)||0)*100);
+  const taux_recuperation_cents = Math.round((parseFloat(document.getElementById('t-rec').value)||0)*100);
+  const errEl = document.getElementById('transp-err');
+  errEl.style.display='none';
+  if(!nom){ errEl.textContent='Nom requis'; errEl.style.display='block'; return; }
+  try{
+    const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, telephone, taux_livraison_cents, taux_recuperation_cents})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadTransporteurs();
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display='block';
+  }
+}
+async function toggleTransporteur(id, actif){
+  await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, actif})});
+  loadTransporteurs();
+}
+async function editRates(id, currentLiv, currentRec){
+  const liv = prompt('€ par livraison', (currentLiv/100).toFixed(2));
+  if(liv===null) return;
+  const rec = prompt('€ par récupération', (currentRec/100).toFixed(2));
+  if(rec===null) return;
+  await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+    action:'update', id,
+    taux_livraison_cents: Math.round((parseFloat(liv)||0)*100),
+    taux_recuperation_cents: Math.round((parseFloat(rec)||0)*100),
+  })});
+  loadTransporteurs();
+}
+
+// ── VIREMENTS ─────────────────────────────────────────────────────────────────
+async function loadVirements(){
+  const zone = document.getElementById('tab-virements');
+  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    if(!d.virements.length){ zone.innerHTML='<p class="empty">Aucun virement.</p>'; return; }
+    zone.innerHTML = d.virements.map(v => `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${(v.transporteur&&v.transporteur.nom)||'—'} — ${(v.montant_cents/100).toFixed(2)} €</span>
+          <span class="chip ${v.statut}">${v.statut}</span>
+        </div>
+        <div class="row-meta">Demandé le ${new Date(v.created_at).toLocaleDateString('fr-FR')}${v.verse_at?(' · Versé le '+new Date(v.verse_at).toLocaleDateString('fr-FR')):''}</div>
+        ${v.statut==='demande'?`<div class="row-actions"><button class="btn btn-green" onclick="marquerVerse(${v.id})">✅ Marquer comme versé</button></div>`:''}
+      </div>`).join('');
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+async function marquerVerse(id){
+  if(!confirm('Confirmer que ce virement a bien été envoyé au transporteur ? Cette action est irréversible.')) return;
+  try{
+    const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'marquer_verse', id})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadVirements();
+  }catch(e){ alert(e.message); }
+}
+
+// ── Démarrage ─────────────────────────────────────────────────────────────────
+(function init(){
+  if(TOKEN){
+    document.getElementById('a-login').classList.add('hidden');
+    document.getElementById('a-app').classList.remove('hidden');
+    switchAdminTab('accueil');
+  }
+})();
+</script>
+</body>
+</html>
