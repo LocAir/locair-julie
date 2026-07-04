@@ -163,6 +163,11 @@ document.getElementById('a-pwd').addEventListener('keydown', e=>{ if(e.key==='En
 
 function euros(cents){ return ((cents||0)/100).toFixed(2).replace('.',',') + ' €'; }
 function loading(){ return '<div class="spinner-wrap"><div class="spinner"></div></div>'; }
+function escHtml(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 const RESA_LABEL = {en_attente:'En attente', confirmee:'Confirmée', annulee:'Annulée', terminee:'Terminée'};
 const LIV_LABEL  = {a_faire:'Nouvelle', acceptee:'Acceptée', refusee:'Refusée', arrivee:'Sur place', fait:'Terminée', probleme:'Problème', annule:'Annulée'};
 const VIR_LABEL  = {demande:'Demandé', verse:'Versé'};
@@ -265,10 +270,10 @@ async function loadReservations(){
     zone.innerHTML = d.reservations.map(res => `
       <div class="row-item">
         <div class="row-top">
-          <span class="row-title">${res.ref||('#'+res.id)} — ${(res.prenom||'')+' '+(res.nom||'')}</span>
+          <span class="row-title">${escHtml(res.ref||('#'+res.id))} — ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
           <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
         </div>
-        <div class="row-meta">${res.adresse||'—'}<br/>${res.date_debut} → ${res.date_fin} · ${res.quantite}x · ${euros(res.prix_total_cents)}</div>
+        <div class="row-meta">${escHtml(res.adresse||'—')}<br/>${res.date_debut} → ${res.date_fin} · ${res.quantite}x · ${euros(res.prix_total_cents)}</div>
         <div class="row-actions">
           ${res.statut!=='annulee'?`<button class="btn btn-red" onclick="cancelReservation(${res.id})">Annuler</button>`:''}
           <select onchange="updateReservationStatut(${res.id}, this.value)">
@@ -360,7 +365,7 @@ function renderLivraisons(){
   list.innerHTML = items.map(m => {
     const res = m.reservation || {};
     const options = ['<option value="">Non assigné</option>'].concat(
-      TRANSPORTEURS_CACHE.map(t => `<option value="${t.id}" ${m.transporteur&&m.transporteur.id===t.id?'selected':''}>${t.nom}</option>`)
+      TRANSPORTEURS_CACHE.map(t => `<option value="${t.id}" ${m.transporteur&&m.transporteur.id===t.id?'selected':''}>${escHtml(t.nom)}</option>`)
     ).join('');
     const mediaBtns = [];
     if(m.photo_depart_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_depart')">📷 Départ</button>`);
@@ -369,11 +374,11 @@ function renderLivraisons(){
     return `
       <div class="row-item">
         <div class="row-top">
-          <span class="row-title">${m.type==='livraison'?'📦':'🔄'} ${(res.prenom||'')+' '+(res.nom||'')}</span>
+          <span class="row-title">${m.type==='livraison'?'📦':'🔄'} ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
           <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
         </div>
-        <div class="row-meta">${res.ref?res.ref+' · ':''}${res.adresse||'—'}<br/>${m.date_prevue} · ${m.creneau||''}</div>
-        ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||m.probleme_type||''} — ${m.probleme_description||''}</div>`:''}
+        <div class="row-meta">${res.ref?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${m.date_prevue} · ${escHtml(m.creneau||'')}</div>
+        ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')} — ${escHtml(m.probleme_description||'')}</div>`:''}
         <div class="row-actions">
           <select onchange="assignTransporteur(${m.id}, this.value)">${options}</select>
           ${mediaBtns.join('')}
@@ -408,13 +413,15 @@ async function loadTransporteurs(){
     const list = (d.transporteurs||[]).map(t => `
       <div class="row-item">
         <div class="row-top">
-          <span class="row-title">${t.nom}</span>
+          <span class="row-title">${escHtml(t.nom)}</span>
           <span class="chip ${t.actif?'actif':'annulee'}">${t.actif?'actif':'inactif'}</span>
         </div>
-        <div class="row-meta">${t.telephone||'—'} · ${(t.taux_livraison_cents/100).toFixed(2)} €/livraison · ${(t.taux_recuperation_cents/100).toFixed(2)} €/récupération</div>
+        <div class="row-meta">${escHtml(t.telephone||'—')} ${t.email?'· '+escHtml(t.email):''} · Code : <strong>${escHtml(t.pin||'—')}</strong> · ${euros(t.taux_livraison_cents)}/livraison · ${euros(t.taux_recuperation_cents)}/récupération</div>
         <div class="row-actions">
           <button class="btn btn-grey" onclick="toggleTransporteur(${t.id}, ${!t.actif})">${t.actif?'Désactiver':'Réactiver'}</button>
           <button class="btn btn-grey" onclick="editRates(${t.id}, ${t.taux_livraison_cents}, ${t.taux_recuperation_cents})">Modifier taux</button>
+          <button class="btn btn-grey" onclick="resetPin(${t.id})">Changer le code</button>
+          <button class="btn btn-grey" onclick="editEmail(${t.id}, '${(t.email||'').replace(/'/g,"\\'")}')">${t.email?'Modifier':'Ajouter'} l'email</button>
         </div>
       </div>`).join('') || '<p class="empty">Aucun transporteur.</p>';
 
@@ -425,6 +432,8 @@ async function loadTransporteurs(){
         <input type="text" id="t-nom" placeholder="Osama"/>
         <label for="t-tel">Téléphone</label>
         <input type="tel" id="t-tel" placeholder="06…"/>
+        <label for="t-email">Email (pour "code oublié")</label>
+        <input type="text" id="t-email" placeholder="osama@email.fr"/>
         <div class="inline-form">
           <div><label for="t-liv">€ / livraison</label><input type="number" id="t-liv" min="0" step="0.5" value="10"/></div>
           <div><label for="t-rec">€ / récupération</label><input type="number" id="t-rec" min="0" step="0.5" value="10"/></div>
@@ -439,22 +448,37 @@ async function loadTransporteurs(){
 async function addTransporteur(){
   const nom = document.getElementById('t-nom').value.trim();
   const telephone = document.getElementById('t-tel').value.trim();
+  const email = document.getElementById('t-email').value.trim();
   const taux_livraison_cents = Math.round((parseFloat(document.getElementById('t-liv').value)||0)*100);
   const taux_recuperation_cents = Math.round((parseFloat(document.getElementById('t-rec').value)||0)*100);
   const errEl = document.getElementById('transp-err');
   errEl.style.display='none';
   if(!nom){ errEl.textContent='Nom requis'; errEl.style.display='block'; return; }
   try{
-    const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, telephone, taux_livraison_cents, taux_recuperation_cents})});
+    const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, telephone, email, taux_livraison_cents, taux_recuperation_cents})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadTransporteurs();
+    alert(`Transporteur ajouté. Code personnel à lui communiquer : ${d.pin}\n\nCe code lui permet de se connecter sur /transporteur.`);
   }catch(e){
     errEl.textContent = e.message; errEl.style.display='block';
   }
 }
 async function toggleTransporteur(id, actif){
   await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, actif})});
+  loadTransporteurs();
+}
+async function resetPin(id){
+  const suggestion = String(Math.floor(1000 + Math.random() * 9000));
+  const pin = prompt('Nouveau code personnel (4 chiffres) pour ce transporteur :', suggestion);
+  if(pin === null || !pin.trim()) return;
+  await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, pin: pin.trim()})});
+  loadTransporteurs();
+}
+async function editEmail(id, currentEmail){
+  const email = prompt("Email du transporteur (pour \"code oublié\") :", currentEmail || '');
+  if(email === null) return;
+  await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, email: email.trim()})});
   loadTransporteurs();
 }
 async function editRates(id, currentLiv, currentRec){
@@ -482,8 +506,8 @@ async function loadVirements(){
     zone.innerHTML = d.virements.map(v => `
       <div class="row-item">
         <div class="row-top">
-          <span class="row-title">${(v.transporteur&&v.transporteur.nom)||'—'} — ${(v.montant_cents/100).toFixed(2)} €</span>
-          <span class="chip ${v.statut}">${v.statut}</span>
+          <span class="row-title">${escHtml((v.transporteur&&v.transporteur.nom)||'—')} — ${euros(v.montant_cents)}</span>
+          <span class="chip ${v.statut}">${VIR_LABEL[v.statut]||v.statut}</span>
         </div>
         <div class="row-meta">Demandé le ${new Date(v.created_at).toLocaleDateString('fr-FR')}${v.verse_at?(' · Versé le '+new Date(v.verse_at).toLocaleDateString('fr-FR')):''}</div>
         ${v.statut==='demande'?`<div class="row-actions"><button class="btn btn-green" onclick="marquerVerse(${v.id})">✅ Marquer comme versé</button></div>`:''}

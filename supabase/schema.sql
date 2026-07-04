@@ -18,6 +18,10 @@ create table transporteurs (
   city_id                  bigint not null references cities(id),
   nom                      text not null,
   telephone                text,
+  email                    text, -- utilisé uniquement pour "code oublié"
+  -- Code personnel (4-6 chiffres) : identifie ET authentifie ce transporteur,
+  -- pour qu'un livreur ne puisse jamais agir avec l'identifiant d'un collègue.
+  pin                      text not null unique,
   actif                    boolean not null default true,
   -- Rémunération par mission (définie par le propriétaire)
   taux_livraison_cents     integer not null default 0 check (taux_livraison_cents >= 0),
@@ -25,6 +29,7 @@ create table transporteurs (
   created_at               timestamptz not null default now()
 );
 create index transporteurs_city_idx on transporteurs (city_id, actif);
+create index transporteurs_pin_idx on transporteurs (pin) where actif;
 
 create table reservations (
   id                       bigint generated always as identity primary key,

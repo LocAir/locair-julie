@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkTransporteurToken } = require('./_lib/auth');
+const { verifyTransporteurToken } = require('./_lib/auth');
 
 function startOfDayISO() {
   const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
@@ -10,12 +10,11 @@ function startOfMonthISO() {
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!checkTransporteurToken(req)) return res.status(401).json({ error: 'Code incorrect' });
+  const transporteurId = verifyTransporteurToken(req);
+  if (!transporteurId) return res.status(401).json({ error: 'Session invalide' });
 
-  const body           = req.body || {};
-  const action         = body.action || 'resume';
-  const transporteurId = parseInt(body.transporteur_id);
-  if (!transporteurId) return res.status(400).json({ error: 'transporteur_id manquant' });
+  const body   = req.body || {};
+  const action = body.action || 'resume';
 
   const supabase = getSupabase();
 

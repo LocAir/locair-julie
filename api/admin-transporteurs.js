@@ -21,15 +21,24 @@ module.exports = async (req, res) => {
       const nom = (body.nom || '').trim();
       if (!nom) return res.status(400).json({ error: 'Nom requis' });
       const city = await getCity(supabase);
-      const { error } = await supabase.from('transporteurs').insert({
-        city_id:                city.id,
-        nom,
-        telephone:              (body.telephone || '').trim() || null,
-        taux_livraison_cents:   Math.max(0, parseInt(body.taux_livraison_cents)   || 0),
-        taux_recuperation_cents: Math.max(0, parseInt(body.taux_recuperation_cents) || 0),
-      });
-      if (error) throw error;
-      return res.status(200).json({ ok: true });
+
+      // Code personnel à 4 chiffres — généré automatiquement si non fourni.
+      let pin = (body.pin || '').trim();
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const candidate = pin || String(Math.floor(1000 + Math.random() * 9000));
+        const { error } = await supabase.from('transporteurs').insert({
+          city_id:                 city.id,
+          nom,
+          telephone:               (body.telephone || '').trim() || null,
+          email:                   (body.email || '').trim().toLowerCase() || null,
+          pin:                     candidate,
+          taux_livraison_cents:    Math.max(0, parseInt(body.taux_livraison_cents)    || 0),
+          taux_recuperation_cents: Math.max(0, parseInt(body.taux_recuperation_cents) || 0),
+        });
+        if (!error) return res.status(200).json({ ok: true, pin: candidate });
+        if (pin || error.code !== '23505') throw error; // pin fourni par l'admin ou autre erreur : ne pas boucler
+      }
+      return res.status(500).json({ error: 'Impossible de générer un code unique, réessaie' });
     }
 
     if (action === 'update') {
@@ -38,7 +47,9 @@ module.exports = async (req, res) => {
       const patch = {};
       if (body.nom != null)       patch.nom       = body.nom.trim();
       if (body.telephone != null) patch.telephone = body.telephone.trim() || null;
+      if (body.email != null)     patch.email     = body.email.trim().toLowerCase() || null;
       if (body.actif != null)     patch.actif     = Boolean(body.actif);
+      if (body.pin != null && body.pin.trim())  patch.pin = body.pin.trim();
       if (body.taux_livraison_cents != null)    patch.taux_livraison_cents    = Math.max(0, parseInt(body.taux_livraison_cents)    || 0);
       if (body.taux_recuperation_cents != null) patch.taux_recuperation_cents = Math.max(0, parseInt(body.taux_recuperation_cents) || 0);
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });

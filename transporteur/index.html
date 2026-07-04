@@ -46,6 +46,8 @@ input:focus{border-color:var(--blue)}
 .btn:active:not(:disabled){transform:scale(.98)}
 .btn+.btn{margin-top:12px}
 .err{background:#fdf0ee;color:var(--red);border-radius:10px;padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.4}
+.forgot-link{display:block;width:100%;background:none;border:none;color:var(--grey);text-decoration:underline;font-size:13px;font-family:var(--body);cursor:pointer;text-align:center;margin-top:16px;padding:4px}
+.ok-msg{background:#f0f7f3;color:var(--green);border-radius:10px;padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.4}
 
 .name-btn{width:100%;padding:20px;background:#fff;border:2px solid var(--rule);border-radius:14px;font-size:18px;font-weight:700;color:var(--black);margin-bottom:12px;cursor:pointer;text-align:left}
 .name-btn:active{background:var(--bg)}
@@ -140,25 +142,17 @@ input:focus{border-color:var(--blue)}
     <div class="who hidden" id="who-badge"></div>
   </div>
 
-  <!-- Écran 1 : code d'accès -->
+  <!-- Écran 1 : code personnel -->
   <div id="login-screen">
     <div class="card">
       <h1>Bonjour 👋</h1>
-      <p class="sub">Entre le code transporteur pour voir tes missions.</p>
-      <label for="lg-code">Code d'accès</label>
-      <input type="password" id="lg-code" inputmode="numeric" autocomplete="off" placeholder="••••••"/>
+      <p class="sub">Entre ton code personnel pour voir tes missions.</p>
+      <label for="lg-code">Ton code (4 chiffres)</label>
+      <input type="password" id="lg-code" inputmode="numeric" autocomplete="off" placeholder="••••"/>
       <div style="height:16px"></div>
       <button class="btn btn-blue" id="lg-btn" onclick="doLogin()">Entrer →</button>
       <div class="err" id="lg-err"></div>
-    </div>
-  </div>
-
-  <!-- Écran 2 : qui es-tu -->
-  <div id="who-screen" class="hidden">
-    <div class="card">
-      <h1>Qui es-tu ?</h1>
-      <p class="sub">Choisis ton nom pour voir tes missions du jour.</p>
-      <div id="who-list"></div>
+      <button class="forgot-link" onclick="openForgotPin()">Code oublié ?</button>
     </div>
   </div>
 
@@ -193,7 +187,6 @@ input:focus{border-color:var(--blue)}
 const API = (path) => '/api/' + path;
 let STATE = {
   token: sessionStorage.getItem('t_token') || '',
-  transporteurs: [],
   transporteurId: sessionStorage.getItem('t_id') ? parseInt(sessionStorage.getItem('t_id')) : null,
   transporteurNom: sessionStorage.getItem('t_nom') || '',
   missions: [],
@@ -202,7 +195,7 @@ let STATE = {
 };
 
 function show(id){
-  ['login-screen','who-screen','missions-screen','activite-screen','detail-screen'].forEach(s=>{
+  ['login-screen','missions-screen','activite-screen','detail-screen'].forEach(s=>{
     document.getElementById(s).classList.toggle('hidden', s!==id);
   });
 }
@@ -212,37 +205,46 @@ function switchTab(tab){
   else { show('missions-screen'); loadMissions(); }
 }
 
+function escHtml(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function updateWhoBadge(){
   const b=document.getElementById('who-badge');
   if(STATE.transporteurNom){
     b.classList.remove('hidden');
-    b.innerHTML = STATE.transporteurNom + '<button onclick="logout()">changer</button>';
+    b.innerHTML = escHtml(STATE.transporteurNom) + '<button onclick="logout()">changer</button>';
   }
 }
 
 function logout(){
   sessionStorage.clear();
-  STATE = {token:'',transporteurs:[],transporteurId:null,transporteurNom:'',missions:[],currentMission:null,pendingUpload:null};
+  STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],currentMission:null,pendingUpload:null};
   document.getElementById('who-badge').classList.add('hidden');
   show('login-screen');
 }
 
 async function doLogin(){
-  const code = document.getElementById('lg-code').value.trim();
+  const pin = document.getElementById('lg-code').value.trim();
   const errEl = document.getElementById('lg-err');
   const btn = document.getElementById('lg-btn');
   errEl.style.display='none';
-  if(!code) return;
+  if(!pin) return;
   btn.disabled=true; btn.textContent='Vérification…';
   try{
-    const r = await fetch(API('transporteur-login'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':code}, body: JSON.stringify({})});
+    const r = await fetch(API('transporteur-login'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({pin})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Code incorrect');
-    STATE.token = code;
-    STATE.transporteurs = d.transporteurs || [];
-    sessionStorage.setItem('t_token', code);
-    renderWho();
-    show('who-screen');
+    STATE.token = d.token;
+    STATE.transporteurId = d.transporteur_id;
+    STATE.transporteurNom = d.nom;
+    sessionStorage.setItem('t_token', d.token);
+    sessionStorage.setItem('t_id', d.transporteur_id);
+    sessionStorage.setItem('t_nom', d.nom);
+    updateWhoBadge();
+    loadMissions();
   }catch(e){
     errEl.textContent = e.message || 'Code incorrect.';
     errEl.style.display='block';
@@ -251,25 +253,9 @@ async function doLogin(){
   }
 }
 
-function renderWho(){
-  const list = document.getElementById('who-list');
-  list.innerHTML = STATE.transporteurs.map(t =>
-    `<button class="name-btn" onclick="pickWho(${t.id}, '${t.nom.replace(/'/g,"\\'")}')">${t.nom}</button>`
-  ).join('') || '<p class="sub">Aucun transporteur actif. Contacte Aly.</p>';
-}
-
-function pickWho(id, nom){
-  STATE.transporteurId = id;
-  STATE.transporteurNom = nom;
-  sessionStorage.setItem('t_id', id);
-  sessionStorage.setItem('t_nom', nom);
-  updateWhoBadge();
-  loadMissions();
-}
-
 async function fetchMissions(){
   try{
-    const r = await fetch(API('transporteur-missions'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({transporteur_id: STATE.transporteurId})});
+    const r = await fetch(API('transporteur-missions'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: '{}'});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     STATE.missions = d.missions || [];
@@ -311,9 +297,9 @@ function missionCardHtml(m){
         <span class="mcard-type">${TYPE_LABEL[m.type]||m.type}</span>
         <span class="mcard-badge">${badge}</span>
       </div>
-      <div class="mcard-addr">${(c.prenom||'')+' '+(c.nom||'')} — ${c.adresse||'Adresse à confirmer'}</div>
-      <div class="mcard-meta">${m.creneau||''} ${c.etage&&c.etage!=='—'?'· Étage '+c.etage:''}</div>
-      ${mapsUrl?`<div class="mcard-actions"><a href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Itinéraire</a>${c.tel?`<a href="tel:${c.tel}" onclick="event.stopPropagation()">📞 Appeler</a>`:''}</div>`:''}
+      <div class="mcard-addr">${escHtml((c.prenom||'')+' '+(c.nom||''))} — ${escHtml(c.adresse||'Adresse à confirmer')}</div>
+      <div class="mcard-meta">${escHtml(m.creneau||'')} ${c.etage&&c.etage!=='—'?'· Étage '+escHtml(c.etage):''}</div>
+      ${mapsUrl?`<div class="mcard-actions"><a href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Itinéraire</a>${c.tel?`<a href="tel:${encodeURIComponent(c.tel)}" onclick="event.stopPropagation()">📞 Appeler</a>`:''}</div>`:''}
     </div>`;
 }
 
@@ -426,14 +412,14 @@ function renderDetail(){
     <button class="detail-back" onclick="show('missions-screen')">← Retour</button>
     <div class="card">
       <h1>${TYPE_ICON[m.type]||''} ${TYPE_LABEL[m.type]||m.type}</h1>
-      <p class="sub">${STATUT_LABEL[m.statut]||m.statut} · ${m.creneau||''}</p>
+      <p class="sub">${STATUT_LABEL[m.statut]||m.statut} · ${escHtml(m.creneau||'')}</p>
       ${renderStepper(m)}
 
-      <div class="info-row"><span class="info-ic">👤</span><span class="info-label">Client</span><span class="info-val">${(c.prenom||'')+' '+(c.nom||'')}</span></div>
-      <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${c.adresse||'—'}</span></div>
-      <div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${c.etage||'—'} ${c.ascenseur&&c.ascenseur!=='—'?'· Ascenseur: '+c.ascenseur:''}</span></div>
-      <div class="info-row"><span class="info-ic">🪟</span><span class="info-label">Fenêtre</span><span class="info-val">${c.fenetre||'—'}</span></div>
-      <div class="info-row"><span class="info-ic">📞</span><span class="info-label">Téléphone</span><span class="info-val">${c.tel?`<a href="tel:${c.tel}" style="color:var(--blue)">${c.tel}</a>`:'—'}</span></div>
+      <div class="info-row"><span class="info-ic">👤</span><span class="info-label">Client</span><span class="info-val">${escHtml((c.prenom||'')+' '+(c.nom||''))}</span></div>
+      <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
+      <div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${escHtml(c.etage||'—')} ${c.ascenseur&&c.ascenseur!=='—'?'· Ascenseur: '+escHtml(c.ascenseur):''}</span></div>
+      <div class="info-row"><span class="info-ic">🪟</span><span class="info-label">Fenêtre</span><span class="info-val">${escHtml(c.fenetre||'—')}</span></div>
+      <div class="info-row"><span class="info-ic">📞</span><span class="info-label">Téléphone</span><span class="info-val">${c.tel?`<a href="tel:${encodeURIComponent(c.tel)}" style="color:var(--blue)">${escHtml(c.tel)}</a>`:'—'}</span></div>
       <div class="info-row"><span class="info-ic">❄️</span><span class="info-label">Quantité</span><span class="info-val">${c.quantite||1}</span></div>
 
       ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
@@ -451,7 +437,7 @@ async function doAction(action, extra){
     const r = await fetch(API('transporteur-action'), {
       method:'POST',
       headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
-      body: JSON.stringify(Object.assign({action, livraison_id: STATE.currentMission.id, transporteur_id: STATE.transporteurId}, extra||{}))
+      body: JSON.stringify(Object.assign({action, livraison_id: STATE.currentMission.id}, extra||{}))
     });
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
@@ -476,7 +462,7 @@ function showCelebration(montantCents){
   overlay.className = 'celebrate';
   overlay.id = 'celebrate-overlay';
   const montant = (montantCents/100).toFixed(2).replace('.',',');
-  const prenom = (STATE.transporteurNom||'').split(' ')[0] || '';
+  const prenom = escHtml((STATE.transporteurNom||'').split(' ')[0] || '');
   overlay.innerHTML = `
     <div class="celebrate-card">
       <div class="celebrate-emoji">🎉</div>
@@ -511,7 +497,7 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
   try{
     const r1 = await fetch(API('transporteur-action'), {
       method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
-      body: JSON.stringify({action:'demander_upload', livraison_id: STATE.currentMission.id, transporteur_id: STATE.transporteurId, kind, content_type:file.type})
+      body: JSON.stringify({action:'demander_upload', livraison_id: STATE.currentMission.id, kind, content_type:file.type})
     });
     const d1 = await r1.json();
     if(!r1.ok) throw new Error(d1.error||'Erreur');
@@ -521,7 +507,7 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
 
     const r2 = await fetch(API('transporteur-action'), {
       method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
-      body: JSON.stringify({action:'confirmer_media', livraison_id: STATE.currentMission.id, transporteur_id: STATE.transporteurId, kind, path:d1.path})
+      body: JSON.stringify({action:'confirmer_media', livraison_id: STATE.currentMission.id, kind, path:d1.path})
     });
     if(!r2.ok) throw new Error('Erreur de confirmation');
 
@@ -536,6 +522,39 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
     }
   }
 });
+
+// ── Code oublié ───────────────────────────────────────────────────────────────
+function openForgotPin(){
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'forgot-overlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h1 style="margin-bottom:6px">Code oublié ?</h1>
+      <p class="sub">Entre l'email connu par Aly, on t'envoie ton code.</p>
+      <input type="text" id="forgot-email" placeholder="ton@email.fr" autocomplete="email"/>
+      <button class="btn btn-blue" onclick="sendForgotPin()">Envoyer</button>
+      <button class="btn btn-grey" onclick="closeForgotPin()">Annuler</button>
+      <div class="ok-msg" id="forgot-ok"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+function closeForgotPin(){
+  const o = document.getElementById('forgot-overlay');
+  if(o) o.remove();
+}
+async function sendForgotPin(){
+  const email = document.getElementById('forgot-email').value.trim();
+  const okEl = document.getElementById('forgot-ok');
+  if(!email) return;
+  try{
+    await fetch(API('transporteur-forgot-pin'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
+  }catch(e){}
+  document.getElementById('forgot-email').style.display='none';
+  document.querySelectorAll('#forgot-overlay .btn').forEach(b=>b.style.display='none');
+  okEl.textContent = "Si cet email est connu, ton code vient d'être envoyé. Vérifie ta boîte mail.";
+  okEl.style.display='block';
+}
 
 // ── Problème (aucune saisie de texte — juste une catégorie) ──────────────────
 function openProbleme(){
@@ -571,7 +590,7 @@ async function loadActivite(){
   const zone = document.getElementById('activite-content');
   zone.innerHTML = '<p class="empty">Chargement…</p>';
   try{
-    const r = await fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'resume', transporteur_id: STATE.transporteurId})});
+    const r = await fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'resume'})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     renderActivite(d);
@@ -611,7 +630,7 @@ async function demanderVirement(){
   const errEl = document.getElementById('activite-err');
   if(errEl) errEl.style.display='none';
   try{
-    const r = await fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'demander_virement', transporteur_id: STATE.transporteurId})});
+    const r = await fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'demander_virement'})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     await loadActivite();

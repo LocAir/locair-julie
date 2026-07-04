@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkTransporteurToken } = require('./_lib/auth');
+const { verifyTransporteurToken } = require('./_lib/auth');
 
 const MEDIA_COLUMN = {
   photo_depart:        'photo_depart_path',
@@ -33,13 +33,13 @@ async function loadLivraison(supabase, id) {
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!checkTransporteurToken(req)) return res.status(401).json({ error: 'Code incorrect' });
+  const transporteurId = verifyTransporteurToken(req);
+  if (!transporteurId) return res.status(401).json({ error: 'Session invalide' });
 
-  const body            = req.body || {};
-  const action          = body.action;
-  const livraisonId     = parseInt(body.livraison_id);
-  const transporteurId  = parseInt(body.transporteur_id);
-  if (!action || !livraisonId || !transporteurId) {
+  const body        = req.body || {};
+  const action      = body.action;
+  const livraisonId = parseInt(body.livraison_id);
+  if (!action || !livraisonId) {
     return res.status(400).json({ error: 'Paramètres manquants' });
   }
 

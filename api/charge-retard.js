@@ -80,13 +80,19 @@ module.exports = async (req, res) => {
     try {
       const supabase = getSupabase();
       let reservationId = null;
-      const { data: resa } = await supabase
-        .from('reservations')
-        .select('id')
-        .or(`stripe_customer_id.eq.${customerId},email.eq.${(data.email || '').trim()}`)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      let resa = null;
+      if (customerId) {
+        ({ data: resa } = await supabase
+          .from('reservations').select('id')
+          .eq('stripe_customer_id', customerId)
+          .order('created_at', { ascending: false }).limit(1).maybeSingle());
+      }
+      if (!resa && data.email) {
+        ({ data: resa } = await supabase
+          .from('reservations').select('id')
+          .eq('email', data.email.trim())
+          .order('created_at', { ascending: false }).limit(1).maybeSingle());
+      }
       if (resa) reservationId = resa.id;
 
       await supabase.from('incidents').insert({

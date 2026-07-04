@@ -1,12 +1,10 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkTransporteurToken } = require('./_lib/auth');
+const { verifyTransporteurToken } = require('./_lib/auth');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!checkTransporteurToken(req)) return res.status(401).json({ error: 'Code incorrect' });
-
-  const transporteurId = parseInt((req.body || {}).transporteur_id);
-  if (!transporteurId) return res.status(400).json({ error: 'transporteur_id manquant' });
+  const transporteurId = verifyTransporteurToken(req);
+  if (!transporteurId) return res.status(401).json({ error: 'Session invalide' });
 
   try {
     const supabase = getSupabase();

@@ -13,19 +13,19 @@
 | `SUPABASE_URL` | Supabase → Project Settings → API → Project URL |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API → service_role key (secret, jamais côté navigateur) |
 | `ADMIN_PASSWORD` | À choisir — mot de passe de l'espace `/admin` (toi uniquement) |
-| `TRANSPORTEUR_TOKEN` | À choisir — code d'accès partagé de l'espace `/transporteur` |
+| `TRANSPORTEUR_SECRET` | À choisir — chaîne aléatoire longue (ex. générée par un gestionnaire de mots de passe). Sert uniquement à signer les sessions transporteur, jamais saisie par personne. |
 | `CITY_SLUG` | `nice` par défaut — à changer uniquement pour un futur déploiement d'une autre ville |
 
 Les variables existantes (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `OPERATOR_TOKEN`, `BREVO_API_KEY`) ne changent pas.
 
 ## 3. Ajouter les transporteurs
 
-Dans `/admin` → onglet **Transporteurs**, ajouter chaque transporteur avec son nom, son téléphone et sa rémunération par mission (livraison / récupération). C'est ce qui alimente ses gains dans `/transporteur`.
+Dans `/admin` → onglet **Transporteurs**, ajouter chaque transporteur avec son nom, son téléphone et sa rémunération par mission (livraison / récupération). Un **code personnel à 4 chiffres** est généré automatiquement — communique-le au transporteur concerné pour qu'il se connecte sur `/transporteur` (bouton "Changer le code" si besoin de le régénérer, par exemple si un transporteur quitte l'équipe).
 
 ## 4. Vérifications avant mise en production
 
 - `/admin` : mauvais mot de passe rejeté, bon mot de passe accepté, chiffres cohérents avec Stripe.
-- `/transporteur` : mauvais code rejeté, missions visibles uniquement pour le transporteur assigné.
+- `/transporteur` : mauvais code rejeté ; un transporteur ne doit voir que ses propres missions et gains, jamais ceux d'un collègue.
 - Faire une réservation test en mode Stripe test avec le stock à 0 → le site doit bloquer avant le paiement.
 - Faire une réservation test avec stock disponible → vérifier qu'une ligne apparaît dans **Réservations**, puis que les 2 missions (livraison + récupération) apparaissent dans **Livraisons** après confirmation du paiement.
 - Assigner la mission à un transporteur dans `/admin` → vérifier qu'elle apparaît dans `/transporteur` pour lui.
