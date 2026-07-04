@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
       if (!nom) return res.status(400).json({ error: 'Nom requis' });
       const city = await getCity(supabase);
 
-      // Code personnel à 4 chiffres — généré automatiquement si non fourni.
+      // Code personnel à 6 chiffres — généré automatiquement si non fourni.
       let pin = (body.pin || '').trim();
       for (let attempt = 0; attempt < 5; attempt++) {
         const candidate = pin || String(Math.floor(100000 + Math.random() * 900000));
@@ -54,7 +54,10 @@ module.exports = async (req, res) => {
       if (body.taux_recuperation_cents != null) patch.taux_recuperation_cents = Math.max(0, parseInt(body.taux_recuperation_cents) || 0);
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('transporteurs').update(patch).eq('id', id);
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') return res.status(409).json({ error: 'Ce code est déjà utilisé par un autre transporteur, réessaie' });
+        throw error;
+      }
       return res.status(200).json({ ok: true });
     }
 

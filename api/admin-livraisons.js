@@ -32,6 +32,27 @@ module.exports = async (req, res) => {
       return res.status(200).json({ livraisons: data || [] });
     }
 
+    if (action === 'resolve_probleme') {
+      const livraisonId = parseInt(body.livraison_id);
+      if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
+      const { data: liv } = await supabase.from('livraisons').select('id, statut, reservation_id').eq('id', livraisonId).maybeSingle();
+      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
+      if (liv.statut !== 'probleme') return res.status(409).json({ error: 'Cette mission n\'est pas signalée en problème' });
+
+      // Remet la mission à l'étape "acceptée" : le livreur doit repasser par "arrivé"
+      // (sans reperdre les preuves déjà prises) avant de pouvoir la terminer.
+      await supabase.from('livraisons').update({
+        statut: 'acceptee', probleme_type: null, probleme_description: null, probleme_at: null,
+      }).eq('id', liv.id);
+
+      if (liv.reservation_id) {
+        await supabase.from('incidents').update({ statut: 'resolu' })
+          .eq('reservation_id', liv.reservation_id).eq('statut', 'ouvert');
+      }
+
+      return res.status(200).json({ ok: true });
+    }
+
     if (action === 'assign') {
       const livraisonId    = parseInt(body.livraison_id);
       const transporteurId = body.transporteur_id ? parseInt(body.transporteur_id) : null;

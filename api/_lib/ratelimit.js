@@ -1,5 +1,12 @@
+// x-forwarded-for est une liste "client, proxy1, proxy2, …" où chaque saut
+// AJOUTE son IP à la fin. Un client peut donc écrire n'importe quelle valeur
+// en première position, mais pas falsifier ce que Vercel (le seul proxy en
+// amont de cette fonction) ajoute lui-même à la fin. Prendre le PREMIER élément
+// rendrait le rate-limit trivialement contournable (un en-tête différent à
+// chaque tentative) ; on prend donc le DERNIER, qui est celui observé par Vercel.
 function getClientIp(req) {
-  return (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
+  const parts = (req.headers['x-forwarded-for'] || '').split(',');
+  return parts[parts.length - 1].trim() || 'unknown';
 }
 
 // Bloque après trop d'échecs récents pour une même clé (ex. "admin:1.2.3.4").

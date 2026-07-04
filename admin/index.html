@@ -572,6 +572,7 @@ function renderLivraisons(){
         <div class="row-actions">
           <select onchange="assignTransporteur(${m.id}, this.value)">${options}</select>
           ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom).replace(/'/g,"\\'")}', '${escHtml(res.adresse||'').replace(/'/g,"\\'")}')">🔴 Suivre en direct</button>`:''}
+          ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">✅ Problème résolu</button>`:''}
           ${mediaBtns.join('')}
           ${mediaBtns.length===0 && m.statut==='fait' ? '<span class="row-meta" style="align-self:center">Aucune preuve enregistrée</span>' : ''}
         </div>
@@ -583,6 +584,17 @@ async function assignTransporteur(livraisonId, transporteurId){
   await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'assign', livraison_id:livraisonId, transporteur_id: transporteurId||null})});
   const m = LIVRAISONS_CACHE.find(x => x.id === livraisonId);
   if(m) m.transporteur = TRANSPORTEURS_CACHE.find(t => t.id == transporteurId) || null;
+}
+function resolveProbleme(livraisonId){
+  confirmAction('Confirmer que le problème est réglé ? Le livreur pourra reprendre la mission (il repassera par l\'étape "arrivé").', async () => {
+    try{
+      const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'resolve_probleme', livraison_id:livraisonId})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadLivraisons();
+      showToast('Mission réactivée', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
 }
 async function viewMedia(livraisonId, kind){
   try{

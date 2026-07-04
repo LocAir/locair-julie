@@ -6145,6 +6145,7 @@ function setLang(l){
   if(typeof _qty!=='undefined')setQty(_qty||1);
   if(typeof _durFree!=='undefined'&&_durFree)_renderDurFree();
   _rebuildCustomBtn();
+  renderHeroStock();
 }
 
 // Appliquer la langue mémorisée au chargement
@@ -6361,9 +6362,23 @@ else{_updateChromeH();}
 })();
 
 // ── STOCK RÉEL (remplace le texte marketing par la vraie disponibilité) ────────
-(async function initHeroStock(){
+// La disponibilité réelle est mise en cache puis ré-affichée après chaque
+// changement de langue (setLang réinitialise sinon ce texte au fallback
+// marketing codé en dur — voir renderHeroStock ci-dessous).
+let _heroDispo=null;
+function renderHeroStock(){
   const el=document.getElementById('hero-dispo-text');
-  if(!el)return;
+  if(!el||_heroDispo==null)return;
+  const isEN=_lang==='en';
+  if(_heroDispo<=0){
+    el.textContent=isEN?'Fully booked for the next few days in '+CITY.name:'Complet sur les prochains jours à '+CITY.name;
+  }else{
+    el.textContent=isEN
+      ?'Only '+_heroDispo+' unit'+(_heroDispo>1?'s':'')+' left in '+CITY.name
+      :'Plus que '+_heroDispo+' climatiseur'+(_heroDispo>1?'s':'')+' disponible'+(_heroDispo>1?'s':'')+' à '+CITY.name;
+  }
+}
+(async function initHeroStock(){
   try{
     const today=new Date();
     const in7=new Date(today.getTime());in7.setDate(in7.getDate()+7);
@@ -6372,7 +6387,8 @@ else{_updateChromeH();}
     if(!r.ok)return;
     const d=await r.json();
     if(typeof d.disponibles==='number'){
-      el.textContent=d.disponibles<=0?'Complet sur les prochains jours à '+CITY.name:'Plus que '+d.disponibles+' climatiseur'+(d.disponibles>1?'s':'')+' disponible'+(d.disponibles>1?'s':'')+' à '+CITY.name;
+      _heroDispo=d.disponibles;
+      renderHeroStock();
     }
   }catch(e){}
 })();
