@@ -6472,8 +6472,11 @@ function stepDurFree(delta){
   _renderDurFree();
 }
 function setDurFreeInput(inp){
-  const v=parseInt(inp.value)||7;
-  _durFree=Math.max(7,v);
+  const raw=inp.value;
+  if(raw==='')return; // l'utilisateur efface pour retaper — on laisse le champ vide
+  const v=parseInt(raw);
+  if(isNaN(v))return; // saisie incomplète, on attend
+  _durFree=Math.max(7,Math.min(90,v));
   _renderDurFree();
 }
 function _renderDurFree(){
@@ -6482,7 +6485,10 @@ function _renderDurFree(){
   const rate=Math.round(price/d);
   const el=id=>document.getElementById(id);
   const numEl=el('dfb-num');
-  if(numEl){if(numEl.tagName==='INPUT'){numEl.value=d;}else{numEl.textContent=d;}}
+  // Ne pas écraser l'input si l'utilisateur est en train de taper dedans
+  if(numEl&&document.activeElement!==numEl){
+    if(numEl.tagName==='INPUT'){numEl.value=d;}else{numEl.textContent=d;}
+  }
   if(el('dfb-total'))el('dfb-total').textContent=price+' €';
   if(el('dfb-rate'))el('dfb-rate').textContent=rate+(_lang==='en'?' €/day':' €/jour');
   if(el('dfb-cta-label'))el('dfb-cta-label').textContent=_lang==='en'?d+' day'+(d>1?'s':''):d+' jour'+(d>1?'s':'');
