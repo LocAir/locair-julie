@@ -32,6 +32,8 @@ body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:1
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 20px}
 .logo{font-family:var(--disp);font-size:21px;font-weight:600;color:var(--blue)}
 .logo em{font-style:normal;color:var(--gold)}
+.eyebrow{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.18em;color:var(--grey);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--gold);flex-shrink:0}
 .who{font-size:12px;color:var(--grey);font-weight:600}
 .who button{background:none;border:none;color:var(--grey);text-decoration:underline;font-size:12px;font-family:var(--body);cursor:pointer;padding:0;margin-left:8px}
 .tracking-badge{background:var(--green-bg);color:var(--green);font-size:12.5px;font-weight:700;text-align:center;padding:9px 12px;border-radius:var(--r-sm);margin-bottom:14px}
@@ -133,8 +135,8 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .stat-big .caption{font-size:13px;opacity:.8;margin-top:8px;font-weight:500;line-height:1.5}
 .stat-row{display:flex;gap:12px;margin-bottom:14px}
 .stat-tile{flex:1;background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:16px;text-align:center;box-shadow:var(--sh-xs)}
-.stat-tile .n{font-size:22px;font-weight:700;color:var(--black);font-variant-numeric:tabular-nums}
-.stat-tile .l{font-size:11px;color:var(--grey);font-weight:600;margin-top:3px;text-transform:uppercase;letter-spacing:.03em}
+.stat-tile .n{font-family:var(--disp);font-size:26px;font-weight:400;color:var(--black);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat-tile .l{font-size:11px;color:var(--grey);font-weight:600;margin-top:5px;text-transform:uppercase;letter-spacing:.03em}
 .vlist{margin-top:6px}
 .vrow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule);font-size:14px}
 .vrow:last-child{border-bottom:none}
@@ -183,6 +185,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
   <!-- Écran 1 : code personnel -->
   <div id="login-screen">
     <div class="card">
+      <div class="eyebrow">Espace transporteur</div>
       <h1>Bonjour 👋</h1>
       <p class="sub">Entre ton code personnel pour voir tes missions.</p>
       <label for="lg-code">Ton code (6 chiffres)</label>
@@ -457,8 +460,10 @@ function actionBtnsForMission(m){
   if(m.statut === 'acceptee' && m.type === 'livraison'){
     if(!m.photo_depart_ok){
       const numeros = m.appareil_numeros||[];
+      const plural = numeros.length>1;
+      const kitTxt = c.fenetre ? ` + ${numeros.length||1} kit${plural?'s':''} de calfeutrage (${c.fenetre})` : '';
       const pickup = numeros.length
-        ? `Récupère l'Unité n°${numeros.join(', ')}${c.fenetre?' + kit de calfeutrage ('+c.fenetre+')':''}, charge-la et prends la photo avant de partir.`
+        ? `Récupère ${plural?'les Unités':"l'Unité"} n°${numeros.join(', ')}${kitTxt}, charge-${plural?'les':'la'} et prends la photo avant de partir.`
         : `Charge l'appareil et prends la photo avant de partir.`;
       return `
         <p class="step-hint">📦 Au dépôt : ${pickup}</p>
