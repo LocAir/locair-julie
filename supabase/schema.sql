@@ -238,5 +238,5 @@ insert into appareils (city_id, numero)
   select id, n from cities, generate_series(1, 3) as n where slug = 'nice';
 -- Références produit connues (à compléter au fur et à mesure — voir /admin → Stock
 -- pour en ajouter/modifier directement sans repasser par ce fichier)
-update appareils set reference = 'SN 5400L 478501B12902K0132'
+update appareils set reference = 'SN 5400L478501B12902K0132'
   where numero = 3 and city_id = (select id from cities where slug = 'nice');
