@@ -44,9 +44,9 @@ module.exports = async (req, res) => {
     const tauxOccupation = flotteTotale > 0 ? occupees / flotteTotale : 0;
 
     const { count: incidentsOuverts } = await supabase
-      .from('incidents').select('id', { count: 'exact', head: true }).eq('statut', 'ouvert');
+      .from('incidents').select('id', { count: 'exact', head: true }).eq('city_id', city.id).eq('statut', 'ouvert');
     const { count: incidentsPeriode } = await supabase
-      .from('incidents').select('id', { count: 'exact', head: true }).gte('created_at', since);
+      .from('incidents').select('id', { count: 'exact', head: true }).eq('city_id', city.id).gte('created_at', since);
 
     return res.status(200).json({
       periode,

@@ -1,6 +1,7 @@
 const Stripe  = require('stripe');
 const crypto  = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
+const { getCity }     = require('./_lib/city');
 
 function safeEqual(a, b) {
   try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); } catch { return false; }
@@ -83,19 +84,21 @@ module.exports = async (req, res) => {
       let resa = null;
       if (customerId) {
         ({ data: resa } = await supabase
-          .from('reservations').select('id')
+          .from('reservations').select('id, city_id')
           .eq('stripe_customer_id', customerId)
           .order('created_at', { ascending: false }).limit(1).maybeSingle());
       }
       if (!resa && data.email) {
         ({ data: resa } = await supabase
-          .from('reservations').select('id')
+          .from('reservations').select('id, city_id')
           .eq('email', data.email.trim())
           .order('created_at', { ascending: false }).limit(1).maybeSingle());
       }
       if (resa) reservationId = resa.id;
+      const cityId = resa?.city_id || (await getCity(supabase).catch(() => null))?.id || null;
 
       await supabase.from('incidents').insert({
+        city_id:                cityId,
         reservation_id:        reservationId,
         type:                   'retard',
         description:            `${jours} jour${jours > 1 ? 's' : ''} de retard — ${(data.nom || '').slice(0, 200)}`,

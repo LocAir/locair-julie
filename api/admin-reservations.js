@@ -1,5 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
+const { getCity }     = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
+const { confirmReservation } = require('./_lib/reservations');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -10,10 +12,13 @@ module.exports = async (req, res) => {
   const action = body.action || 'list';
 
   try {
+    const city = await getCity(supabase);
+
     if (action === 'list') {
       const { data, error } = await supabase
         .from('reservations')
         .select('id, ref, prenom, nom, tel, email, adresse, date_debut, date_fin, quantite, prix_total_cents, statut, source, created_at')
+        .eq('city_id', city.id)
         .order('created_at', { ascending: false })
         .limit(200);
       if (error) throw error;
@@ -23,13 +28,36 @@ module.exports = async (req, res) => {
     if (action === 'update') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
+
+      // Confirmer manuellement (ex. réservation prise par téléphone) doit passer
+      // par le même circuit que le webhook Stripe : assignation d'un appareil
+      // numéroté + création des missions terrain. Un simple patch du statut
+      // laisserait la réservation "confirmée" sans aucune mission derrière.
+      if (body.statut === 'confirmee') {
+        const { data: resa } = await supabase.from('reservations').select('*').eq('id', id).eq('city_id', city.id).maybeSingle();
+        if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
+        await confirmReservation(supabase, resa);
+        return res.status(200).json({ ok: true });
+      }
+
       const patch = {};
       if (body.statut != null)   patch.statut   = body.statut;
       if (body.quantite != null) patch.quantite = Math.max(1, parseInt(body.quantite) || 1);
       if (body.prix_total_cents != null) patch.prix_total_cents = Math.max(0, parseInt(body.prix_total_cents) || 0);
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
-      const { error } = await supabase.from('reservations').update(patch).eq('id', id);
+      const { error } = await supabase.from('reservations').update(patch).eq('id', id).eq('city_id', city.id);
       if (error) throw error;
+
+      // Annuler une réservation doit aussi annuler ses missions non terminées —
+      // sinon un transporteur peut encore voir/accomplir une livraison pour une
+      // commande annulée. Les missions déjà "fait" restent intactes (travail réel
+      // déjà effectué, le transporteur reste payé).
+      if (patch.statut === 'annulee') {
+        await supabase.from('livraisons').update({ statut: 'annule' })
+          .eq('reservation_id', id)
+          .in('statut', ['a_faire', 'acceptee', 'arrivee', 'probleme']);
+      }
+
       return res.status(200).json({ ok: true });
     }
 

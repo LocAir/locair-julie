@@ -1,4 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
+const { getCity }     = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 
 const MEDIA_COLUMN = {
@@ -16,7 +17,16 @@ module.exports = async (req, res) => {
   const action = body.action || 'list';
 
   try {
+    const city = await getCity(supabase);
+
     if (action === 'list') {
+      // livraisons n'a pas de city_id direct — on passe par les réservations de
+      // cette ville pour ne jamais faire fuiter les missions d'une autre ville
+      // partageant la même base Supabase.
+      const { data: cityResas } = await supabase.from('reservations').select('id').eq('city_id', city.id);
+      const resaIds = (cityResas || []).map(r => r.id);
+      if (!resaIds.length) return res.status(200).json({ livraisons: [] });
+
       const { data, error } = await supabase
         .from('livraisons')
         .select(`
@@ -29,6 +39,7 @@ module.exports = async (req, res) => {
             reservation_appareils ( appareil:appareils ( numero, reference ) )
           )
         `)
+        .in('reservation_id', resaIds)
         .order('date_prevue', { ascending: false })
         .limit(300);
       if (error) throw error;
@@ -70,9 +81,23 @@ module.exports = async (req, res) => {
       const livraisonId    = parseInt(body.livraison_id);
       const transporteurId = body.transporteur_id ? parseInt(body.transporteur_id) : null;
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
-      const { error } = await supabase.from('livraisons').update({ transporteur_id: transporteurId }).eq('id', livraisonId);
+
+      const { data: liv } = await supabase.from('livraisons').select('transporteur_id, statut').eq('id', livraisonId).maybeSingle();
+      const patch = { transporteur_id: transporteurId };
+      // Réassigner une mission déjà en cours (ex. livreur indisponible en cours de
+      // route) à un AUTRE transporteur la remet à "à faire" : le nouveau livreur
+      // doit repasser par "j'accepte" plutôt que d'hériter d'une étape qu'il n'a
+      // pas vécue. Les preuves déjà prises (photo/vidéo) sont conservées.
+      const enCours = liv && ['acceptee', 'arrivee', 'probleme'].includes(liv.statut);
+      if (enCours && liv.transporteur_id !== transporteurId) {
+        Object.assign(patch, {
+          statut: 'a_faire', accepted_at: null, arrivee_at: null,
+          probleme_at: null, probleme_type: null, probleme_description: null,
+        });
+      }
+      const { error } = await supabase.from('livraisons').update(patch).eq('id', livraisonId);
       if (error) throw error;
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ ok: true, reset: patch.statut === 'a_faire' });
     }
 
     if (action === 'position') {
@@ -80,7 +105,7 @@ module.exports = async (req, res) => {
       if (!transporteurId) return res.status(400).json({ error: 'transporteur_id manquant' });
       const { data: t, error } = await supabase
         .from('transporteurs').select('nom, position_lat, position_lng, position_at')
-        .eq('id', transporteurId).maybeSingle();
+        .eq('id', transporteurId).eq('city_id', city.id).maybeSingle();
       if (error) throw error;
       if (!t || t.position_lat == null) return res.status(404).json({ error: 'Pas encore de position' });
       return res.status(200).json({ nom: t.nom, lat: t.position_lat, lng: t.position_lng, position_at: t.position_at });

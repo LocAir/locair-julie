@@ -11,8 +11,10 @@ module.exports = async (req, res) => {
   const action = body.action || 'list';
 
   try {
+    const city = await getCity(supabase);
+
     if (action === 'list') {
-      const { data, error } = await supabase.from('transporteurs').select('*').order('nom');
+      const { data, error } = await supabase.from('transporteurs').select('*').eq('city_id', city.id).order('nom');
       if (error) throw error;
       return res.status(200).json({ transporteurs: data || [] });
     }
@@ -20,7 +22,6 @@ module.exports = async (req, res) => {
     if (action === 'create') {
       const nom = (body.nom || '').trim();
       if (!nom) return res.status(400).json({ error: 'Nom requis' });
-      const city = await getCity(supabase);
 
       // Code personnel à 6 chiffres — généré automatiquement si non fourni.
       let pin = (body.pin || '').trim();
@@ -53,7 +54,7 @@ module.exports = async (req, res) => {
       if (body.taux_livraison_cents != null)    patch.taux_livraison_cents    = Math.max(0, parseInt(body.taux_livraison_cents)    || 0);
       if (body.taux_recuperation_cents != null) patch.taux_recuperation_cents = Math.max(0, parseInt(body.taux_recuperation_cents) || 0);
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
-      const { error } = await supabase.from('transporteurs').update(patch).eq('id', id);
+      const { error } = await supabase.from('transporteurs').update(patch).eq('id', id).eq('city_id', city.id);
       if (error) {
         if (error.code === '23505') return res.status(409).json({ error: 'Ce code est déjà utilisé par un autre transporteur, réessaie' });
         throw error;

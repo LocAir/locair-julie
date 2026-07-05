@@ -513,7 +513,7 @@ async function loadReservations(){
   }
 }
 function cancelReservation(id){
-  confirmAction('Annuler cette réservation ? Cette action libère le stock associé.', async () => {
+  confirmAction('Annuler cette réservation ? Cette action libère le stock associé et annule ses missions non terminées.', async () => {
     await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut:'annulee'})});
     loadReservations();
   }, {danger:true, yesLabel:'Annuler la réservation'});
@@ -625,7 +625,13 @@ function renderLivraisons(){
 }
 
 async function assignTransporteur(livraisonId, transporteurId){
-  await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'assign', livraison_id:livraisonId, transporteur_id: transporteurId||null})});
+  const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'assign', livraison_id:livraisonId, transporteur_id: transporteurId||null})});
+  const d = await r.json().catch(()=>({}));
+  if(d.reset){
+    showToast('Mission remise à "à faire" pour le nouveau livreur', 'success');
+    loadLivraisons();
+    return;
+  }
   const m = LIVRAISONS_CACHE.find(x => x.id === livraisonId);
   if(m) m.transporteur = TRANSPORTEURS_CACHE.find(t => t.id == transporteurId) || null;
 }

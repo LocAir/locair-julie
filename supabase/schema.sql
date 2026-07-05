@@ -157,6 +157,7 @@ create index virements_transporteur_idx on virements (transporteur_id, statut);
 
 create table incidents (
   id                    bigint generated always as identity primary key,
+  city_id               bigint references cities(id), -- indispensable dès qu'une 2e ville partage cette base
   reservation_id        bigint references reservations(id) on delete set null,
   type                  text not null check (type in ('retard','materiel','autre')),
   description           text,
@@ -165,6 +166,7 @@ create table incidents (
   created_at            timestamptz not null default now()
 );
 create index incidents_reservation_idx on incidents (reservation_id);
+create index incidents_city_idx on incidents (city_id, statut);
 
 -- Disponibilité = appareils actifs (hors panne/maintenance) moins :
 --  - les réservations 'en_attente' récentes (< 30 min, paiement en cours, pas

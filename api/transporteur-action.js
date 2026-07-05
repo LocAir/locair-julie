@@ -1,4 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
+const { getCity }     = require('./_lib/city');
 const { verifyTransporteurToken } = require('./_lib/auth');
 
 const MEDIA_COLUMN = {
@@ -149,7 +150,9 @@ module.exports = async (req, res) => {
       }).eq('id', liv.id);
 
       const incidentType = problemeType === 'retard' ? 'retard' : problemeType === 'appareil_en_panne' ? 'materiel' : 'autre';
+      const city = await getCity(supabase).catch(() => null);
       await supabase.from('incidents').insert({
+        city_id:         city?.id || null,
         reservation_id: liv.reservation_id,
         type:            incidentType,
         description:     `[${liv.type}] ${description || problemeType}`,

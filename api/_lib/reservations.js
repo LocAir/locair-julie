@@ -33,16 +33,12 @@ async function assignAppareils(supabase, resa, staleOriginalId) {
   }
 }
 
-// Confirme une réservation après paiement Stripe réussi, assigne les appareils
+// Confirme une réservation (paiement Stripe réussi OU confirmation manuelle par
+// l'admin, ex. réservation prise par téléphone), assigne les appareils
 // numérotés et crée les missions terrain (livraisons) associées. Idempotent :
-// sans effet si déjà traité, pour tolérer les livraisons en double des webhooks Stripe.
-async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) {
-  const { data: resa, error } = await supabase
-    .from('reservations')
-    .select('*')
-    .eq('stripe_payment_intent_id', paymentIntentId)
-    .maybeSingle();
-  if (error || !resa) return null;
+// sans effet si déjà confirmée, pour tolérer les livraisons en double des
+// webhooks Stripe redélivrés.
+async function confirmReservation(supabase, resa) {
   if (resa.statut === 'confirmee') return resa; // déjà traité
 
   await supabase.from('reservations').update({ statut: 'confirmee' }).eq('id', resa.id);
@@ -85,4 +81,16 @@ async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) 
   return resa;
 }
 
-module.exports = { confirmReservationAndCreateLivraisons };
+// Point d'entrée du webhook Stripe : retrouve la réservation par son
+// PaymentIntent puis délègue à confirmReservation.
+async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) {
+  const { data: resa, error } = await supabase
+    .from('reservations')
+    .select('*')
+    .eq('stripe_payment_intent_id', paymentIntentId)
+    .maybeSingle();
+  if (error || !resa) return null;
+  return confirmReservation(supabase, resa);
+}
+
+module.exports = { confirmReservationAndCreateLivraisons, confirmReservation };
