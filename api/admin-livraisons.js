@@ -26,16 +26,21 @@ module.exports = async (req, res) => {
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
             id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre,
-            reservation_appareils ( appareil:appareils ( numero ) )
+            reservation_appareils ( appareil:appareils ( numero, reference ) )
           )
         `)
         .order('date_prevue', { ascending: false })
         .limit(300);
       if (error) throw error;
       const livraisons = (data || []).map(l => {
-        const numeros = ((l.reservation?.reservation_appareils) || [])
-          .map(ra => ra.appareil?.numero).filter(n => n != null).sort((a, b) => a - b);
-        return { ...l, appareil_numeros: numeros };
+        const ras = ((l.reservation?.reservation_appareils) || [])
+          .filter(ra => ra.appareil?.numero != null)
+          .sort((a, b) => a.appareil.numero - b.appareil.numero);
+        return {
+          ...l,
+          appareil_numeros: ras.map(ra => ra.appareil.numero),
+          appareil_references: ras.map(ra => ra.appareil.reference).filter(Boolean),
+        };
       });
       return res.status(200).json({ livraisons });
     }

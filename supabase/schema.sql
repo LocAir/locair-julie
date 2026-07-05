@@ -32,6 +32,7 @@ create table appareils (
   city_id    bigint not null references cities(id),
   numero     integer not null,
   statut     text not null default 'disponible' check (statut in ('disponible','panne','maintenance')),
+  reference  text, -- référence produit du fabricant (ex. "RWAC10KA+"), saisie librement par l'admin
   notes      text,
   created_at timestamptz not null default now(),
   unique (city_id, numero)

@@ -25,13 +25,19 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, appareil: data });
     }
 
-    if (action === 'update_statut') {
-      const id     = parseInt(body.id);
-      const statut = body.statut;
-      if (!id || !['disponible', 'panne', 'maintenance'].includes(statut)) {
-        return res.status(400).json({ error: 'Paramètres invalides' });
+    if (action === 'update') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const patch = {};
+      if (body.statut != null) {
+        if (!['disponible', 'panne', 'maintenance'].includes(body.statut)) {
+          return res.status(400).json({ error: 'Statut invalide' });
+        }
+        patch.statut = body.statut;
       }
-      const { error } = await supabase.from('appareils').update({ statut }).eq('id', id).eq('city_id', city.id);
+      if (body.reference != null) patch.reference = body.reference.trim().slice(0, 200) || null;
+      if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
+      const { error } = await supabase.from('appareils').update(patch).eq('id', id).eq('city_id', city.id);
       if (error) throw error;
       return res.status(200).json({ ok: true });
     }

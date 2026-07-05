@@ -429,13 +429,14 @@ async function loadStock(){
               <span class="row-title">Unité n°${a.numero}</span>
               <span class="chip ${APPAREIL_STATUT_CHIP[a.statut]||''}">${APPAREIL_STATUT_LABEL[a.statut]||a.statut}</span>
             </div>
-            <div class="row-meta">${a.en_location?'Actuellement chez un client':(a.statut==='disponible'?'Au dépôt':'—')}</div>
+            <div class="row-meta">${a.reference?escHtml(a.reference)+' · ':''}${a.en_location?'Actuellement chez un client':(a.statut==='disponible'?'Au dépôt':'—')}</div>
             <div class="row-actions">
               <select onchange="updateAppareilStatut(${a.id}, this.value)">
                 <option value="disponible" ${a.statut==='disponible'?'selected':''}>Disponible</option>
                 <option value="panne" ${a.statut==='panne'?'selected':''}>En panne</option>
                 <option value="maintenance" ${a.statut==='maintenance'?'selected':''}>Maintenance</option>
               </select>
+              <button class="btn btn-grey" onclick="editAppareilReference(${a.id}, '${escHtml(a.reference||'').replace(/'/g,"\\'")}')">${a.reference?'Modifier':'Ajouter'} la référence</button>
             </div>
           </div>`).join('') || '<p class="empty">Aucun appareil enregistré.</p>'}
         </div>
@@ -460,13 +461,24 @@ function addAppareil(){
 function updateAppareilStatut(id, statut){
   (async () => {
     try{
-      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update_statut', id, statut})});
+      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadStock();
       showToast('Statut mis à jour', 'success');
     }catch(e){ showToast(e.message, 'error'); }
   })();
+}
+function editAppareilReference(id, current){
+  promptAction({title:'Référence produit', label:'Ex. RWAC10KA+ ou numéro de série', value:current, placeholder:'RWAC10KA+'}, async (reference) => {
+    try{
+      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, reference})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadStock();
+      showToast('Référence mise à jour', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
 }
 
 // ── RÉSERVATIONS ──────────────────────────────────────────────────────────────
@@ -597,7 +609,7 @@ function renderLivraisons(){
           <span class="row-title">${m.type==='livraison'?'📦':'🔄'} ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
           <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
         </div>
-        ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="row-meta" style="font-weight:700;color:var(--blue)">🔢 Unité${m.appareil_numeros.length>1?'s':''} n°${m.appareil_numeros.join(', ')}</div>`:''}
+        ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="row-meta" style="font-weight:700;color:var(--blue)">🔢 Unité${m.appareil_numeros.length>1?'s':''} n°${m.appareil_numeros.join(', ')}${(m.appareil_references&&m.appareil_references.length)?' · '+m.appareil_references.map(escHtml).join(', '):''}</div>`:''}
         <div class="row-meta">${res.ref?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${m.date_prevue} · ${escHtml(m.creneau||'')}</div>
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')} — ${escHtml(m.probleme_description||'')}</div>`:''}
         <div class="row-actions">
