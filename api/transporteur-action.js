@@ -54,6 +54,18 @@ module.exports = async (req, res) => {
 
     if (action === 'accepter') {
       if (liv.statut !== 'a_faire') return res.status(409).json({ error: 'Mission déjà traitée' });
+      // Une mission commencée doit être terminée avant d'en accepter une autre.
+      // Une mission mise en "problème" (ex. client injoignable pour une
+      // récupération) ne compte plus comme en cours : le livreur peut passer
+      // à la suivante et y revenir plus tard dans la journée.
+      const { count } = await supabase
+        .from('livraisons').select('id', { count: 'exact', head: true })
+        .eq('transporteur_id', transporteurId)
+        .in('statut', ['acceptee', 'arrivee'])
+        .neq('id', liv.id);
+      if (count > 0) {
+        return res.status(409).json({ error: 'Termine ta mission en cours avant d\'en accepter une nouvelle.' });
+      }
       await supabase.from('livraisons').update({ statut: 'acceptee', accepted_at: new Date().toISOString() }).eq('id', liv.id);
       return res.status(200).json({ ok: true, statut: 'acceptee' });
     }

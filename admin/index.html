@@ -396,6 +396,9 @@ async function loadDashboard(periode){
 }
 
 // ── STOCK ─────────────────────────────────────────────────────────────────────
+const APPAREIL_STATUT_LABEL = {disponible:'Disponible', panne:'En panne', maintenance:'Maintenance'};
+const APPAREIL_STATUT_CHIP  = {disponible:'actif', panne:'annulee', maintenance:'a_faire'};
+
 async function loadStock(){
   const zone = document.getElementById('tab-stock');
   zone.innerHTML = loading();
@@ -403,40 +406,64 @@ async function loadStock(){
     const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:'{}'});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    const pctOccupe = d.flotte_totale>0 ? Math.round((d.en_location/d.flotte_totale)*100) : 0;
+    const pctOccupe = d.actifs>0 ? Math.round((d.en_location/d.actifs)*100) : 0;
+    const appareils = d.appareils || [];
     zone.innerHTML = `
       <div class="card">
-        <h2>Flotte — ${d.ville}</h2>
+        <h2>Flotte — ${escHtml(d.ville)}</h2>
         <div class="stock-gauge"><div class="stock-gauge-fill" style="width:${pctOccupe}%"></div></div>
         <div class="stock-legend">
           <span><i class="dot dot-green"></i> ${d.disponibles} disponible${d.disponibles>1?'s':''}</span>
           <span><i class="dot dot-blue"></i> ${d.en_location} en location</span>
         </div>
-        <p class="sub" style="margin-top:14px">Se met à jour automatiquement à chaque réservation et à chaque retour confirmé par un transporteur.</p>
-        <label for="s-flotte">Nombre total de climatiseurs</label>
-        <input type="number" id="s-flotte" min="0" value="${d.flotte_totale}"/>
-        <button class="btn btn-blue btn-block" onclick="saveStock('${d.ville}')">Enregistrer</button>
+        <p class="sub" style="margin-top:14px">Se met à jour automatiquement à chaque réservation et à chaque retour confirmé par un transporteur. Chaque appareil a son numéro — le livreur sait exactement lequel récupérer.</p>
+      </div>
+      <div class="card">
+        <h2>Appareils (${appareils.length})</h2>
+        <div id="appareils-list">${appareils.map(a => `
+          <div class="row-item">
+            <div class="row-top">
+              <span class="row-title">Unité n°${a.numero}</span>
+              <span class="chip ${APPAREIL_STATUT_CHIP[a.statut]||''}">${APPAREIL_STATUT_LABEL[a.statut]||a.statut}</span>
+            </div>
+            <div class="row-meta">${a.en_location?'Actuellement chez un client':(a.statut==='disponible'?'Au dépôt':'—')}</div>
+            <div class="row-actions">
+              <select onchange="updateAppareilStatut(${a.id}, this.value)">
+                <option value="disponible" ${a.statut==='disponible'?'selected':''}>Disponible</option>
+                <option value="panne" ${a.statut==='panne'?'selected':''}>En panne</option>
+                <option value="maintenance" ${a.statut==='maintenance'?'selected':''}>Maintenance</option>
+              </select>
+            </div>
+          </div>`).join('') || '<p class="empty">Aucun appareil enregistré.</p>'}
+        </div>
+        <button class="btn btn-blue btn-block" onclick="addAppareil()" style="margin-top:14px">+ Ajouter un appareil (nouvel achat)</button>
         <div class="err" id="stock-err"></div>
       </div>`;
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
-function saveStock(ville){
-  const val = parseInt(document.getElementById('s-flotte').value);
-  const errEl = document.getElementById('stock-err');
-  errEl.style.display='none';
-  if(!Number.isFinite(val) || val<0){ errEl.textContent='Valeur invalide'; errEl.style.display='block'; return; }
-  confirmAction(`Modifier la flotte de ${ville} à ${val} climatiseur${val>1?'s':''} ?`, async () => {
+function addAppareil(){
+  confirmAction('Ajouter un nouvel appareil à la flotte ? Il recevra automatiquement le prochain numéro disponible.', async () => {
     try{
-      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', flotte_totale:val})});
+      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'add'})});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadStock();
-    }catch(e){
-      errEl.textContent = e.message; errEl.style.display='block';
-    }
+      showToast(`Unité n°${d.appareil.numero} ajoutée`, 'success');
+    }catch(e){ showToast(e.message, 'error'); }
   });
+}
+function updateAppareilStatut(id, statut){
+  (async () => {
+    try{
+      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update_statut', id, statut})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadStock();
+      showToast('Statut mis à jour', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  })();
 }
 
 // ── RÉSERVATIONS ──────────────────────────────────────────────────────────────
@@ -567,6 +594,7 @@ function renderLivraisons(){
           <span class="row-title">${m.type==='livraison'?'📦':'🔄'} ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
           <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
         </div>
+        ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="row-meta" style="font-weight:700;color:var(--blue)">🔢 Unité${m.appareil_numeros.length>1?'s':''} n°${m.appareil_numeros.join(', ')}</div>`:''}
         <div class="row-meta">${res.ref?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${m.date_prevue} · ${escHtml(m.creneau||'')}</div>
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')} — ${escHtml(m.probleme_description||'')}</div>`:''}
         <div class="row-actions">

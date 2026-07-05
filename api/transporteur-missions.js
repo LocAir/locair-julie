@@ -15,7 +15,10 @@ module.exports = async (req, res) => {
         id, type, statut, date_prevue, creneau,
         photo_depart_path, video_installation_path, photo_retour_path,
         probleme_type, probleme_description,
-        reservation:reservations ( prenom, nom, tel, adresse, etage, ascenseur, fenetre, installation, quantite )
+        reservation:reservations (
+          prenom, nom, tel, adresse, etage, ascenseur, fenetre, installation, quantite,
+          reservation_appareils ( appareil:appareils ( numero ) )
+        )
       `)
       .eq('transporteur_id', transporteurId)
       .in('statut', ['a_faire', 'acceptee', 'arrivee', 'probleme'])
@@ -34,6 +37,8 @@ module.exports = async (req, res) => {
       photo_retour_ok:     Boolean(m.photo_retour_path),
       probleme_type:       m.probleme_type,
       probleme_description: m.probleme_description,
+      appareil_numeros: ((m.reservation?.reservation_appareils) || [])
+        .map(ra => ra.appareil?.numero).filter(n => n != null).sort((a, b) => a - b),
       client: m.reservation || null,
     }));
 

@@ -437,14 +437,27 @@ function openMission(id){
 function actionBtnsForMission(m){
   const c = m.client || {};
   if(m.statut === 'a_faire'){
+    // Une mission en cours (acceptée/arrivée) doit être terminée avant d'en
+    // accepter une autre — une mission mise en "problème" ne bloque plus rien,
+    // le livreur peut y revenir plus tard dans la journée.
+    const hasMissionEnCours = STATE.missions.some(x => x.id!==m.id && ['acceptee','arrivee'].includes(x.statut));
+    if(hasMissionEnCours){
+      return `
+        <div class="probleme-box"><p>🔒 Termine ta mission en cours avant d'accepter celle-ci.</p></div>
+        <button class="btn btn-red" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
+    }
     return `
       <button class="btn btn-green" onclick="doAction('accepter')">✅ J'ACCEPTE LA MISSION</button>
       <button class="btn btn-red" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
   }
   if(m.statut === 'acceptee' && m.type === 'livraison'){
     if(!m.photo_depart_ok){
+      const numeros = m.appareil_numeros||[];
+      const pickup = numeros.length
+        ? `Récupère l'Unité n°${numeros.join(', ')}${c.fenetre?' + kit de calfeutrage ('+c.fenetre+')':''}, charge-la et prends la photo avant de partir.`
+        : `Charge l'appareil et prends la photo avant de partir.`;
       return `
-        <p class="step-hint">📦 Au dépôt : charge l'appareil et prends la photo avant de partir.</p>
+        <p class="step-hint">📦 Au dépôt : ${pickup}</p>
         <button class="media-btn" onclick="startUpload('photo_depart','image/*')"><span class="ic">📷</span> Photo appareil au départ dépôt</button>
         <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
     }
@@ -504,6 +517,7 @@ function renderDetail(){
       <p class="sub">${STATUT_LABEL[m.statut]||m.statut} · ${escHtml(m.creneau||'')}</p>
       ${renderStepper(m)}
 
+      ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="info-row"><span class="info-ic">🔢</span><span class="info-label">Unité${m.appareil_numeros.length>1?'s':''}</span><span class="info-val">n°${m.appareil_numeros.join(', ')}</span></div>`:''}
       <div class="info-row"><span class="info-ic">👤</span><span class="info-label">Client</span><span class="info-val">${escHtml((c.prenom||'')+' '+(c.nom||''))}</span></div>
       <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
       <div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${escHtml(c.etage||'—')} ${c.ascenseur&&c.ascenseur!=='—'?'· Ascenseur: '+escHtml(c.ascenseur):''}</span></div>

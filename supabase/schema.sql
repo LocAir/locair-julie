@@ -17,10 +17,26 @@ create table cities (
   name          text not null,
   dep           text,
   postal        text,
-  flotte_totale integer not null default 0 check (flotte_totale >= 0),
   actif         boolean not null default true,
   created_at    timestamptz not null default now()
 );
+
+-- Un appareil physique = une ligne, numérotée (étiquette à coller dessus).
+-- 'panne'/'maintenance' l'excluent définitivement du calcul de disponibilité
+-- jusqu'à ce qu'un admin le repasse en 'disponible'. Il n'y a pas de statut
+-- "loué" stocké ici : le fait qu'un appareil soit actuellement chez un client
+-- se déduit de reservation_appareils (voir plus bas), pour ne jamais avoir à
+-- le remettre à jour manuellement au retour du client.
+create table appareils (
+  id         bigint generated always as identity primary key,
+  city_id    bigint not null references cities(id),
+  numero     integer not null,
+  statut     text not null default 'disponible' check (statut in ('disponible','panne','maintenance')),
+  notes      text,
+  created_at timestamptz not null default now(),
+  unique (city_id, numero)
+);
+create index appareils_city_statut_idx on appareils (city_id, statut);
 
 create table transporteurs (
   id                       bigint generated always as identity primary key,
@@ -74,6 +90,20 @@ create table reservations (
 create index reservations_avail_idx on reservations (city_id, date_debut, date_fin)
   where statut in ('en_attente','confirmee');
 create index reservations_stripe_pi_idx on reservations (stripe_payment_intent_id);
+
+-- Quels appareils numérotés sont retenus pour quelle réservation. Rempli
+-- automatiquement à la confirmation du paiement (voir api/_lib/reservations.js,
+-- assign_appareils ci-dessous) — jamais à la création (une réservation encore
+-- 'en_attente' peut être abandonnée, on ne bloque pas un appareil précis pour ça).
+create table reservation_appareils (
+  id             bigint generated always as identity primary key,
+  reservation_id bigint not null references reservations(id) on delete cascade,
+  appareil_id    bigint not null references appareils(id),
+  created_at     timestamptz not null default now(),
+  unique (reservation_id, appareil_id)
+);
+create index reservation_appareils_resa_idx on reservation_appareils (reservation_id);
+create index reservation_appareils_app_idx  on reservation_appareils (appareil_id);
 
 -- Une ligne = une mission terrain (livraison ou récupération).
 -- Cycle de vie : a_faire -> acceptee -> arrivee -> fait | probleme
@@ -135,26 +165,73 @@ create table incidents (
 );
 create index incidents_reservation_idx on incidents (reservation_id);
 
--- Disponibilité = flotte totale − réservations actives qui chevauchent la période.
--- Une réservation 'en_attente' de plus de 30 min ne compte plus (paiement abandonné).
+-- Disponibilité = appareils actifs (hors panne/maintenance) moins :
+--  - les réservations 'en_attente' récentes (< 30 min, paiement en cours, pas
+--    encore d'appareil précis assigné) qui chevauchent la période demandée ;
+--  - les appareils déjà retenus par une réservation confirmée qui chevauche
+--    la période demandée.
+-- Compte par quantité (pas par appareil précis) côté 'en_attente' car on ne
+-- veut pas réserver un numéro précis pour un panier qui peut être abandonné.
 create or replace function available_units(p_city_id bigint, p_date_debut date, p_date_fin date)
 returns integer
 language sql
 stable
 as $$
-  select c.flotte_totale - coalesce(sum(r.quantite), 0)
-  from cities c
-  left join reservations r
-    on r.city_id = c.id
-    and r.date_debut < p_date_fin
-    and r.date_fin   > p_date_debut
-    and (
-      r.statut = 'confirmee'
-      or (r.statut = 'en_attente' and r.created_at > now() - interval '30 minutes')
-    )
-  where c.id = p_city_id
-  group by c.flotte_totale;
+  select
+    (select count(*)::int from appareils a
+       where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance'))
+    - coalesce((
+        select sum(r.quantite) from reservations r
+        where r.city_id = p_city_id and r.statut = 'en_attente'
+          and r.created_at > now() - interval '30 minutes'
+          and r.date_debut < p_date_fin and r.date_fin > p_date_debut
+      ), 0)
+    - coalesce((
+        select count(distinct ra.appareil_id)
+        from reservation_appareils ra
+        join reservations r on r.id = ra.reservation_id
+        where r.city_id = p_city_id and r.statut = 'confirmee'
+          and r.date_debut < p_date_fin and r.date_fin > p_date_debut
+      ), 0);
 $$;
 
--- Seed pour Nice — ajuster flotte_totale au vrai parc de climatiseurs avant mise en prod
-insert into cities (slug, name, dep, postal, flotte_totale) values ('nice', 'Nice', '06', '06300', 3);
+-- Assigne p_quantite appareils (les plus petits numéros libres d'abord) à une
+-- réservation confirmée : exclut panne/maintenance et les appareils déjà
+-- retenus par une AUTRE réservation confirmée qui chevauche la même période.
+-- "for update skip locked" évite qu'un webhook Stripe redélivré en parallèle
+-- assigne deux fois le même appareil.
+create or replace function assign_appareils(p_reservation_id bigint, p_city_id bigint, p_quantite integer, p_date_debut date, p_date_fin date)
+returns setof appareils
+language plpgsql
+as $$
+declare
+  v_ids bigint[];
+begin
+  select array_agg(id) into v_ids from (
+    select a.id from appareils a
+    where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance')
+      and not exists (
+        select 1 from reservation_appareils ra
+        join reservations r on r.id = ra.reservation_id
+        where ra.appareil_id = a.id and r.statut = 'confirmee'
+          and r.date_debut < p_date_fin and r.date_fin > p_date_debut
+      )
+    order by a.numero
+    limit p_quantite
+    for update of a skip locked
+  ) sub;
+
+  if v_ids is not null then
+    insert into reservation_appareils (reservation_id, appareil_id)
+      select p_reservation_id, unnest(v_ids)
+      on conflict do nothing;
+  end if;
+
+  return query select * from appareils where id = any(v_ids);
+end;
+$$;
+
+-- Seed pour Nice — ajuster le nombre d'appareils insérés ci-dessous au vrai parc
+insert into cities (slug, name, dep, postal) values ('nice', 'Nice', '06', '06300');
+insert into appareils (city_id, numero)
+  select id, n from cities, generate_series(1, 3) as n where slug = 'nice';

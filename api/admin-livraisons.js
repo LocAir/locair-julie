@@ -24,12 +24,20 @@ module.exports = async (req, res) => {
           probleme_type, probleme_description,
           photo_depart_path, video_installation_path, photo_retour_path,
           transporteur:transporteurs ( id, nom ),
-          reservation:reservations ( id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre )
+          reservation:reservations (
+            id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre,
+            reservation_appareils ( appareil:appareils ( numero ) )
+          )
         `)
         .order('date_prevue', { ascending: false })
         .limit(300);
       if (error) throw error;
-      return res.status(200).json({ livraisons: data || [] });
+      const livraisons = (data || []).map(l => {
+        const numeros = ((l.reservation?.reservation_appareils) || [])
+          .map(ra => ra.appareil?.numero).filter(n => n != null).sort((a, b) => a - b);
+        return { ...l, appareil_numeros: numeros };
+      });
+      return res.status(200).json({ livraisons });
     }
 
     if (action === 'resolve_probleme') {

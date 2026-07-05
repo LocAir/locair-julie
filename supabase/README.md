@@ -4,7 +4,7 @@
 
 1. Sur [supabase.com](https://supabase.com), créer un projet (gratuit pour démarrer).
 2. Dans l'éditeur SQL du projet, exécuter le contenu de `supabase/schema.sql`.
-3. Vérifier/ajuster la ligne `insert into cities (...)` à la fin du script avec le vrai nombre de climatiseurs disponibles.
+3. Vérifier/ajuster la ligne `insert into appareils (...)` à la fin du script avec le vrai nombre de climatiseurs à créer (numérotés automatiquement 1, 2, 3…). Tu pourras en ajouter d'autres plus tard directement depuis `/admin` → Stock.
 
 ## 2. Variables d'environnement (Vercel → Settings → Environment Variables)
 
@@ -36,6 +36,14 @@ Renseigner l'email de chaque transporteur n'est pas obligatoire, mais c'est ce q
 - Dérouler une mission complète (Accepter → photo dépôt → Arrivé → vidéo installation → Livraison OK) et vérifier que le gain apparaît dans "Mon activité".
 - Vérifier que `retard.html` fonctionne toujours à l'identique (aucune régression).
 - Suivi en direct : depuis `/transporteur`, accepter une mission puis autoriser la géolocalisation quand le navigateur le demande → dans `/admin` → Livraisons, le bouton "🔴 Suivre en direct" doit faire apparaître une carte avec la position qui bouge.
+
+## Stock par appareil numéroté
+
+Chaque climatiseur a un numéro (une étiquette à coller dessus). Dans `/admin` → Stock :
+- **+ Ajouter un appareil** : à chaque nouvel achat, un clic — le prochain numéro est attribué automatiquement.
+- Chaque appareil a un statut : **Disponible**, **En panne** ou **Maintenance**. Un appareil en panne/maintenance ne compte plus dans la disponibilité tant qu'il n'est pas repassé en disponible.
+- Il n'y a pas de statut "loué" à gérer à la main : dès qu'une réservation est payée, l'appli assigne automatiquement le prochain numéro libre à cette réservation (visible dans **Livraisons** et sur la mission du transporteur, ex. "Unité n°3"). Le livreur voit directement quelle unité récupérer au dépôt, avec le bon kit de calfeutrage selon le type de fenêtre du client.
+- Pour une prolongation, l'appli réattribue automatiquement le même appareil que la réservation d'origine (le client garde physiquement le même climatiseur).
 
 ## Suivi en direct du livreur (carte)
 

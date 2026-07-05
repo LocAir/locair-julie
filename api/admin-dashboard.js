@@ -33,11 +33,15 @@ module.exports = async (req, res) => {
 
     const caCents = (resas || []).reduce((sum, r) => sum + (r.prix_total_cents || 0), 0);
 
+    const { count: flotteTotale } = await supabase
+      .from('appareils').select('id', { count: 'exact', head: true })
+      .eq('city_id', city.id).not('statut', 'in', '(panne,maintenance)');
+
     const today    = new Date().toISOString().slice(0, 10);
     const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     const disponibles = Math.max(0, await getAvailability(supabase, city.id, today, tomorrow));
-    const occupees     = Math.max(0, city.flotte_totale - disponibles);
-    const tauxOccupation = city.flotte_totale > 0 ? occupees / city.flotte_totale : 0;
+    const occupees     = Math.max(0, (flotteTotale || 0) - disponibles);
+    const tauxOccupation = flotteTotale > 0 ? occupees / flotteTotale : 0;
 
     const { count: incidentsOuverts } = await supabase
       .from('incidents').select('id', { count: 'exact', head: true }).eq('statut', 'ouvert');
@@ -49,7 +53,7 @@ module.exports = async (req, res) => {
       ville:              city.name,
       ca_euros:           caCents / 100,
       nb_reservations:    (resas || []).length,
-      flotte_totale:      city.flotte_totale,
+      flotte_totale:      flotteTotale || 0,
       unites_occupees:    occupees,
       taux_occupation:    tauxOccupation,
       incidents_ouverts:  incidentsOuverts || 0,
