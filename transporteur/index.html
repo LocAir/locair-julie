@@ -318,6 +318,38 @@ function onPositionUpdate(pos){
   }).catch(()=>{});
 }
 
+// ── Notifications push (nouvelles missions, annulations) ─────────────────────
+// Fonctionne même l'app fermée : le navigateur réveille le service worker sur
+// réception d'un push. Un seul abonnement suffit tant qu'il n'a pas expiré —
+// on retente à chaque connexion par simplicité, le serveur fait juste un upsert.
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g,'+').replace(/_/g,'/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+async function setupPush(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try{
+    const reg = await navigator.serviceWorker.register('/transporteur/sw.js');
+    const keyRes = await fetch(API('transporteur-push-vapid-key'));
+    const { publicKey } = await keyRes.json();
+    if(!publicKey) return; // VAPID pas encore configuré côté serveur
+
+    const permission = await Notification.requestPermission();
+    if(permission !== 'granted') return;
+
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+    }
+    await fetch(API('transporteur-push-subscribe'), {
+      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify({ subscription: sub }),
+    });
+  }catch(e){ /* pas bloquant : l'app marche très bien sans push */ }
+}
+
 async function doLogin(){
   const pin = document.getElementById('lg-code').value.trim();
   const errEl = document.getElementById('lg-err');
@@ -337,6 +369,7 @@ async function doLogin(){
     sessionStorage.setItem('t_nom', d.nom);
     updateWhoBadge();
     loadMissions();
+    setupPush();
   }catch(e){
     errEl.textContent = e.message || 'Code incorrect.';
     errEl.style.display='block';
@@ -854,6 +887,7 @@ function closeDayMap(){
   if(STATE.token && STATE.transporteurId && STATE.transporteurNom){
     updateWhoBadge();
     loadMissions();
+    setupPush();
   } else if(STATE.token){
     // token connu mais pas de transporteur choisi -> relogin léger
     show('login-screen');

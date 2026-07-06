@@ -15,8 +15,13 @@
 | `ADMIN_PASSWORD` | À choisir — mot de passe de l'espace `/admin` (toi uniquement) |
 | `TRANSPORTEUR_SECRET` | À choisir — chaîne aléatoire longue (ex. générée par un gestionnaire de mots de passe). Sert uniquement à signer les sessions transporteur, jamais saisie par personne. |
 | `CITY_SLUG` | `nice` par défaut — à changer uniquement pour un futur déploiement d'une autre ville |
+| `VAPID_PUBLIC_KEY` | `BENuS69HM9nkUvhQmdBAO0H53GUiaJOZDM6sfMMh939W6rVdsTXpZRfflPK5YjeaGFAWYqmTiL4tPSw_pwC4tRI` (déjà généré, à copier tel quel) |
+| `VAPID_PRIVATE_KEY` | `DPJk3QuSOSPyRVsDnp4zAVbMKJySo97XaHQKhhxwvQs` (déjà généré, à copier tel quel — secret, jamais côté navigateur) |
+| `VAPID_SUBJECT` | `mailto:contact@locair.fr` (optionnel — c'est déjà la valeur par défaut si absent) |
 
 Les variables existantes (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `OPERATOR_TOKEN`, `BREVO_API_KEY`) ne changent pas.
+
+Les clés VAPID ci-dessus servent uniquement à signer les notifications push envoyées au transporteur (nouvelles missions, annulations) — elles ne sont liées à aucun compte externe, tu peux les utiliser telles quelles. Si tu préfères en générer de nouvelles toi-même : `npx web-push generate-vapid-keys`.
 
 ## 3. Ajouter les transporteurs
 
@@ -36,6 +41,13 @@ Renseigner l'email de chaque transporteur n'est pas obligatoire, mais c'est ce q
 - Dérouler une mission complète (Accepter → photo dépôt → Arrivé → vidéo installation → Livraison OK) et vérifier que le gain apparaît dans "Mon activité".
 - Vérifier que `retard.html` fonctionne toujours à l'identique (aucune régression).
 - Suivi en direct : depuis `/transporteur`, accepter une mission puis autoriser la géolocalisation quand le navigateur le demande → dans `/admin` → Livraisons, le bouton "🔴 Suivre en direct" doit faire apparaître une carte avec la position qui bouge.
+- Notifications push : se connecter sur `/transporteur` et accepter la demande de notification du navigateur → assigner une mission à ce transporteur depuis `/admin` → une notification doit apparaître sur son téléphone même si l'onglet/l'app est fermé.
+
+## Notifications push (nouvelles missions, annulations)
+
+Un transporteur reçoit une notification sur son téléphone — même app fermée — dans deux cas : une mission lui est assignée (première fois ou réassignation), ou une récupération qu'on lui avait confiée est annulée parce que le client a prolongé sa location. Il touche la notification pour ouvrir directement l'app.
+
+Ça ne marche qu'une fois que le transporteur a accepté la demande d'autorisation du navigateur (affichée automatiquement à sa connexion sur `/transporteur`). S'il l'a refusée par erreur, il doit réinitialiser les autorisations de notification du site dans les réglages de son navigateur puis se reconnecter. Aucune configuration de ton côté au-delà des variables `VAPID_*` ci-dessus.
 
 ## Stock par appareil numéroté
 

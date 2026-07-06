@@ -235,6 +235,19 @@ begin
 end;
 $$;
 
+-- Abonnements aux notifications push du navigateur (un transporteur peut avoir
+-- plusieurs appareils/onglets). "endpoint" identifie de façon unique un
+-- abonnement navigateur ; le réabonner (même endpoint) met juste à jour les clés.
+create table push_subscriptions (
+  id              bigint generated always as identity primary key,
+  transporteur_id bigint not null references transporteurs(id) on delete cascade,
+  endpoint        text not null unique,
+  p256dh          text not null,
+  auth            text not null,
+  created_at      timestamptz not null default now()
+);
+create index push_subscriptions_transporteur_idx on push_subscriptions (transporteur_id);
+
 -- Seed pour Nice — ajuster le nombre d'appareils insérés ci-dessous au vrai parc
 insert into cities (slug, name, dep, postal) values ('nice', 'Nice', '06', '06300');
 insert into appareils (city_id, numero)

@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { getCity }     = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
+const { pushToTransporteur } = require('./_lib/push');
 
 const MEDIA_COLUMN = {
   photo_depart:       'photo_depart_path',
@@ -114,6 +115,20 @@ module.exports = async (req, res) => {
       }
       const { error } = await supabase.from('livraisons').update(patch).eq('id', livraisonId);
       if (error) throw error;
+
+      // Nouvelle mission pour ce transporteur (première assignation ou
+      // réassignation vers quelqu'un d'autre) : le prévenir même si son
+      // téléphone est fermé, pour qu'il puisse l'accepter ou la refuser au plus vite.
+      // Attendu explicitement : une fonction serverless peut être coupée juste
+      // après la réponse HTTP, un push "fire-and-forget" risquerait de ne jamais partir.
+      if (transporteurId && transporteurId !== liv.transporteur_id) {
+        await pushToTransporteur(supabase, transporteurId, {
+          title: "Nouvelle mission Loc'Air",
+          body:  'Une mission t\'attend — ouvre l\'app pour l\'accepter ou la refuser.',
+          tag:   'nouvelle-mission',
+        });
+      }
+
       return res.status(200).json({ ok: true, reset: patch.statut === 'a_faire' });
     }
 

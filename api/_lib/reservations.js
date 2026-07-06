@@ -1,3 +1,5 @@
+const { pushToTransporteur } = require('./push');
+
 // Assigne un ou plusieurs appareils numérotés à une réservation confirmée.
 // Idempotent par construction : si des appareils sont déjà liés à cette
 // réservation (webhook Stripe redélivré), ne fait rien.
@@ -57,11 +59,25 @@ async function confirmReservation(supabase, resa) {
       .neq('id', resa.id);
     if (stale && stale.length) {
       staleOriginalId = stale[0].id;
-      await supabase.from('livraisons')
-        .update({ statut: 'annule' })
+      // Récupère les transporteurs déjà assignés avant d'annuler, pour pouvoir
+      // les prévenir (même téléphone fermé) qu'une mission qu'on leur avait
+      // confiée n'a plus lieu d'être.
+      const { data: toCancel } = await supabase
+        .from('livraisons').select('id, transporteur_id')
         .in('reservation_id', stale.map(r => r.id))
         .eq('type', 'recuperation')
         .eq('statut', 'a_faire');
+      if (toCancel && toCancel.length) {
+        await supabase.from('livraisons').update({ statut: 'annule' }).in('id', toCancel.map(l => l.id));
+        const transpIds = [...new Set(toCancel.map(l => l.transporteur_id).filter(Boolean))];
+        for (const tid of transpIds) {
+          await pushToTransporteur(supabase, tid, {
+            title: 'Mission annulée',
+            body:  'Une récupération a été annulée — le client a prolongé sa location.',
+            tag:   'mission-annulee',
+          });
+        }
+      }
     }
   }
 
