@@ -3569,10 +3569,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           <div class="fld">
             <div class="fld-label-row">
               <label for="f-addr" id="label-addr">Adresse<span class="req">*</span></label>
-              <button type="button" class="geo-btn" id="geo-btn" onclick="geoLocate()">
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg>
-                <span id="geo-lbl">Ma position</span>
-              </button>
             </div>
             <div class="addr-wrap">
               <div class="addr-field" id="addr-field">
@@ -4997,8 +4993,12 @@ function closeModal(){
   const fmkt=document.getElementById('f-mkt');if(fmkt)fmkt.checked=false;
   const fretard=document.getElementById('f-retard');if(fretard)fretard.checked=false;
   _promoDiscount=0;_promoCode='';const promoInp=document.getElementById('f-parrain');if(promoInp)promoInp.value='';
+  const instrTa=document.getElementById('f-instructions');if(instrTa)instrTa.value='';
+  const instrWrap=document.getElementById('instructions-wrap');if(instrWrap)instrWrap.style.display='none';
   _qty=1;_techInstall=true;
   document.getElementById('modal')?.querySelectorAll('.tpill.on[role="radio"]').forEach(p=>{p.classList.remove('on');p.setAttribute('aria-checked','false');});
+  const instrNo=document.getElementById('instructions-no');if(instrNo){instrNo.classList.add('on');instrNo.setAttribute('aria-checked','true');}
+  const instrYes=document.getElementById('instructions-yes');if(instrYes)instrYes.setAttribute('aria-checked','false');
   // Reset prolongation form fields
   ['pe-prenom','pe-nom','pe-email','pe-tel','pe-addr','pe-debut','pe-fin-init','pe-date'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
@@ -5291,13 +5291,16 @@ function buildRecap(){
   const icoQty='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="8" width="8" height="10" rx="1.5"/><rect x="14" y="8" width="8" height="10" rx="1.5"/><line x1="10" y1="13" x2="14" y2="13"/></svg>';
 
   const qtyLabel=isEN?_qty+' unit'+(_qty>1?'s':''):_qty+' climatiseur'+(_qty>1?'s':'');
+  const instrVal=(document.getElementById('f-instructions')?.value||'').trim();
+  const icoNote='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
   const rows=[
     [isEN?'Address':'Adresse',escHtml(document.getElementById('f-addr')?.value||'—'),icoPin],
     [isEN?'Delivery':'Livraison',escHtml(dateStr+' · '+creneauLiv),icoCal],
     [isEN?'Collection':'Récupération',escHtml(pickupDateStr)+' <span style="color:var(--grey2);font-size:11px">· '+(isEN?'coordinated by our team':'coordonnée par notre équipe')+'</span>',icoCal],
     [isEN?'Window':'Fenêtre',escHtml(ouv),icoWin],
     [isEN?'Duration':'Durée',escHtml(durLabel),icoDur],
-    [isEN?'Quantity':'Quantité',escHtml(qtyLabel),icoQty]
+    [isEN?'Quantity':'Quantité',escHtml(qtyLabel),icoQty],
+    ...(instrVal?[[isEN?'Instructions':'Instructions',escHtml(instrVal),icoNote]]:[])
   ];
 
   const box=document.getElementById('recap-box');
