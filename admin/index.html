@@ -491,8 +491,7 @@ async function loadReservations(){
     const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    if(!d.reservations.length){ zone.innerHTML='<p class="empty">🧾 Aucune réservation pour l\'instant.</p>'; return; }
-    zone.innerHTML = d.reservations.map(res => `
+    const list = (d.reservations||[]).map(res => `
       <div class="row-item">
         <div class="row-top">
           <span class="row-title">${escHtml(res.ref||('#'+res.id))} — ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
@@ -507,9 +506,64 @@ async function loadReservations(){
           </select>
         </div>
       </div>
-    `).join('');
+    `).join('') || '<p class="empty">🧾 Aucune réservation pour l\'instant.</p>';
+
+    zone.innerHTML = `
+      <button class="btn btn-grey btn-block" onclick="toggleNewReservationForm()" id="new-resa-toggle">+ Nouvelle réservation (téléphone, WhatsApp…)</button>
+      <div class="card hidden" id="new-resa-form" style="margin-top:12px">
+        <h2>Nouvelle réservation</h2>
+        <label for="nr-prenom">Prénom</label>
+        <input type="text" id="nr-prenom"/>
+        <label for="nr-nom">Nom</label>
+        <input type="text" id="nr-nom"/>
+        <label for="nr-tel">Téléphone</label>
+        <input type="tel" id="nr-tel"/>
+        <label for="nr-email">Email</label>
+        <input type="text" id="nr-email"/>
+        <label for="nr-adresse">Adresse</label>
+        <input type="text" id="nr-adresse"/>
+        <div class="inline-form">
+          <div><label for="nr-debut">Date livraison</label><input type="date" id="nr-debut"/></div>
+          <div><label for="nr-fin">Date récupération</label><input type="date" id="nr-fin"/></div>
+        </div>
+        <div class="inline-form">
+          <div><label for="nr-qte">Quantité</label><input type="number" id="nr-qte" min="1" max="5" value="1"/></div>
+          <div><label for="nr-prix">Prix total (€)</label><input type="number" id="nr-prix" min="0" step="0.5"/></div>
+        </div>
+        <button class="btn btn-blue btn-block" onclick="createReservation()">Créer et confirmer</button>
+        <div class="err" id="new-resa-err"></div>
+      </div>
+      ${list}`;
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+function toggleNewReservationForm(){
+  document.getElementById('new-resa-form').classList.toggle('hidden');
+}
+async function createReservation(){
+  const errEl = document.getElementById('new-resa-err');
+  errEl.style.display = 'none';
+  const body = {
+    action: 'create',
+    prenom: document.getElementById('nr-prenom').value.trim(),
+    nom: document.getElementById('nr-nom').value.trim(),
+    tel: document.getElementById('nr-tel').value.trim(),
+    email: document.getElementById('nr-email').value.trim(),
+    adresse: document.getElementById('nr-adresse').value.trim(),
+    date_debut: document.getElementById('nr-debut').value,
+    date_fin: document.getElementById('nr-fin').value,
+    quantite: document.getElementById('nr-qte').value,
+    prix_total_cents: Math.round((parseFloat(document.getElementById('nr-prix').value)||0)*100),
+  };
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadReservations();
+    showToast(`Réservation ${d.ref} créée et confirmée`, 'success');
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display = 'block';
   }
 }
 function cancelReservation(id){

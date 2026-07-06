@@ -8,6 +8,18 @@ const MEDIA_COLUMN = {
   photo_retour:       'photo_retour_path',
 };
 
+// Charge une livraison en vérifiant qu'elle appartient bien (via sa réservation)
+// à la ville de l'admin authentifié — empêche d'agir sur une mission d'une autre
+// ville en devinant son id, une fois plusieurs villes sur la même base Supabase.
+async function loadLivraisonScoped(supabase, cityId, livraisonId, select) {
+  const { data } = await supabase
+    .from('livraisons').select(`${select}, reservation:reservations ( city_id )`)
+    .eq('id', livraisonId).maybeSingle();
+  if (!data || !data.reservation || data.reservation.city_id !== cityId) return null;
+  delete data.reservation;
+  return data;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
@@ -59,7 +71,7 @@ module.exports = async (req, res) => {
     if (action === 'resolve_probleme') {
       const livraisonId = parseInt(body.livraison_id);
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
-      const { data: liv } = await supabase.from('livraisons').select('id, statut, reservation_id').eq('id', livraisonId).maybeSingle();
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, statut, reservation_id');
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
       if (liv.statut !== 'probleme') return res.status(409).json({ error: 'Cette mission n\'est pas signalée en problème' });
 
@@ -82,7 +94,12 @@ module.exports = async (req, res) => {
       const transporteurId = body.transporteur_id ? parseInt(body.transporteur_id) : null;
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
 
-      const { data: liv } = await supabase.from('livraisons').select('transporteur_id, statut').eq('id', livraisonId).maybeSingle();
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'transporteur_id, statut');
+      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
+      if (transporteurId) {
+        const { data: t } = await supabase.from('transporteurs').select('id').eq('id', transporteurId).eq('city_id', city.id).maybeSingle();
+        if (!t) return res.status(400).json({ error: 'Transporteur invalide' });
+      }
       const patch = { transporteur_id: transporteurId };
       // Réassigner une mission déjà en cours (ex. livreur indisponible en cours de
       // route) à un AUTRE transporteur la remet à "à faire" : le nouveau livreur
@@ -116,7 +133,7 @@ module.exports = async (req, res) => {
       const kind = body.kind;
       const column = MEDIA_COLUMN[kind];
       if (!livraisonId || !column) return res.status(400).json({ error: 'Paramètres invalides' });
-      const { data: liv } = await supabase.from('livraisons').select(column).eq('id', livraisonId).maybeSingle();
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, column);
       if (!liv || !liv[column]) return res.status(404).json({ error: 'Média introuvable' });
       const { data, error } = await supabase.storage.from('missions').createSignedUrl(liv[column], 300);
       if (error) throw error;
