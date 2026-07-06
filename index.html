@@ -4059,7 +4059,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             </div>
             <div id="instructions-wrap" style="display:none;margin-top:10px">
               <textarea id="f-instructions" rows="4" placeholder="Ex : Code d'entrée 1234B, boîte à clefs sur le côté gauche de la porte, appartement au 3e étage, sonner à Dupont…" autocomplete="off" spellcheck="false" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-size:15px;font-family:var(--body);color:var(--black);background:#fff;outline:none;resize:none;line-height:1.55;box-sizing:border-box"
-                onfocus="setTimeout(function(){var el=document.getElementById('f-instructions');var mb=document.getElementById('modal-body');if(!el||!mb)return;var vh=window.visualViewport?window.visualViewport.height:window.innerHeight;var r=el.getBoundingClientRect();if(r.bottom>vh-16)mb.scrollTop+=r.bottom-vh+80;},380)"></textarea>
+"></textarea>
             </div>
           </div>
         </div>
@@ -6464,12 +6464,24 @@ function setLang(l){
 // Appliquer la langue mémorisée au chargement
 document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
 
-// iOS Safari : ajuster la hauteur du modal quand le clavier virtuel apparaît
+/// iOS Safari : ajuster la hauteur du modal + scroller vers le champ actif quand le clavier apparaît
 if(window.visualViewport){
   window.visualViewport.addEventListener('resize',()=>{
+    const vvh=Math.round(window.visualViewport.height);
     const modal=document.getElementById('modal');
     if(modal&&document.getElementById('overlay')?.classList.contains('open')){
-      modal.style.maxHeight=Math.round(window.visualViewport.height*0.92)+'px';
+      modal.style.maxHeight=vvh*0.92+'px';
+      // Scroll modal-body pour garder le champ focalisé visible au-dessus du clavier
+      const active=document.activeElement;
+      if(active&&active!==document.body){
+        const mb=document.getElementById('modal-body');
+        if(mb){
+          setTimeout(()=>{
+            const r=active.getBoundingClientRect();
+            if(r.bottom>vvh-16)mb.scrollTop+=r.bottom-vvh+80;
+          },80);
+        }
+      }
     }
   });
 }
