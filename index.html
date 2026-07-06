@@ -2765,7 +2765,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <button class="hero-cta" onclick="openModal()" type="button" aria-label="Réserver un climatiseur">
           Réserver — dès 20 €/jour
         </button>
-        <div id="hero-dispo" style="display:flex;align-items:center;gap:6px;margin-top:10px;margin-bottom:2px">
+        <div id="hero-smart-line" style="display:none;margin-top:8px;margin-bottom:0;font-size:12.5px;font-weight:600;letter-spacing:.01em;text-shadow:0 1px 5px rgba(0,0,0,.35)"></div>
+        <div id="hero-dispo" style="display:flex;align-items:center;gap:6px;margin-top:8px;margin-bottom:2px">
           <span style="width:7px;height:7px;border-radius:50%;background:#ef4444;display:inline-block;animation:alertPulse 2.4s ease-in-out infinite;flex-shrink:0"></span>
           <span style="font-size:12px;font-weight:600;color:rgba(255,255,255,.92);text-shadow:0 1px 6px rgba(0,0,0,.5)" id="hero-dispo-text">Plus que 1 appareil disponible à Nice</span>
         </div>
@@ -2790,7 +2791,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
       <div class="ri-ico" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 13 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
       </div>
-      <p class="ri-t">Livraison sous 24h</p>
+      <p class="ri-t" id="ri-livraison-t">Livraison sous 24h</p>
       <p class="ri-d">7j/7 · Matin 8h–12h · Technicien en personne</p>
     </div>
     <div class="ri sr">
@@ -2955,7 +2956,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             <span style="font-size:12.5px;color:var(--grey);font-weight:500" id="pricing-social-proof">4,8/5 · <strong style="color:var(--black)">21 avis</strong> Google vérifiés</span>
           </a>
           <button class="plan-btn pb-s" onclick="openModal('7')" type="button" id="pricing-cta">
-            Être livré demain →
+            Réserver ma livraison →
           </button>
           <p style="text-align:center;font-size:11px;color:var(--grey2);margin-top:10px" id="pricing-reassure">Stripe &nbsp;·&nbsp; Aucune caution &nbsp;·&nbsp; Annulation gratuite</p>
           <p style="text-align:center;font-size:10.5px;color:var(--grey2);margin-top:4px;opacity:.7" id="pricing-delivery-note">Livraison &amp; récupération : <strong>35 €</strong> (forfait fixe, facturé séparément).</p>
@@ -4035,6 +4036,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               <input id="f-date" type="date" aria-label="Date personnalisée" required oninput="onCustomDate(this)" style="margin-top:0"/>
             </div>
             <div id="date-preview" class="date-preview" aria-live="polite"></div>
+            <div id="cutoff-notice" style="display:none;margin-top:10px;padding:10px 13px;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:9px;font-size:12px;color:#92400e;line-height:1.55"></div>
           </div>
 
           <!-- CRÉNEAU LIVRAISON -->
@@ -4608,6 +4610,29 @@ function updateDatePreview(){
   el.classList.add('show');
 }
 
+// ── PARIS TIME HELPERS (20h cutoff policy) ───────────────────────────────────
+function _parisNow(){
+  const p={};
+  new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',
+    year:'numeric',month:'2-digit',day:'2-digit',
+    hour:'2-digit',minute:'2-digit',hour12:false
+  }).formatToParts(new Date()).forEach(({type,value})=>{p[type]=value;});
+  return{y:+p.year,mo:+p.month-1,d:+p.day,h:+p.hour,m:+p.minute};
+}
+function _cutoffOk(){const{h,m}=_parisNow();return h<20||(h===20&&m===0);}
+function _minOff(){return _cutoffOk()?1:2;}
+function _addDays(n){const{y,mo,d}=_parisNow();const dt=new Date(y,mo,d);dt.setDate(dt.getDate()+n);return dt;}
+function _localCutoffStr(){
+  try{
+    const now=new Date();
+    const p=_parisNow();
+    const remToParisMin=(20*60)-(p.h*60+p.m);
+    const cutoffLocal=new Date(now.getTime()+remToParisMin*60000);
+    const lh=cutoffLocal.getHours(),lm=cutoffLocal.getMinutes();
+    return lh+'h'+(lm>0?String(lm).padStart(2,'0'):'');
+  }catch(e){return '20h';}
+}
+
 // ── DATE SHORTCUTS ─────────────────────────────────────────────────────────────
 function _fmtDate(dt){return[dt.getFullYear(),String(dt.getMonth()+1).padStart(2,'0'),String(dt.getDate()).padStart(2,'0')].join('-');}
 function initDateShortcuts(){
@@ -4617,19 +4642,38 @@ function initDateShortcuts(){
   const MONTHS_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DAYS=_lang==='en'?DAYS_EN:DAYS_FR;
   const MONTHS=_lang==='en'?MONTHS_EN:MONTHS_FR;
+  const off=_minOff();
   for(let i=0;i<3;i++){
-    const dt=new Date();dt.setDate(dt.getDate()+1+i);
+    const dt=_addDays(off+i);
     const dayEl=document.getElementById('ds-day-'+i);
     const dtEl=document.getElementById('ds-dt-'+i);
     if(dayEl)dayEl.textContent=DAYS[dt.getDay()];
     if(dtEl)dtEl.textContent=dt.getDate()+' '+MONTHS[dt.getMonth()];
   }
-  // Set default date = demain
+  // Set default date = first available
   const fd=document.getElementById('f-date');
-  if(fd&&!fd.value){const t=new Date();t.setDate(t.getDate()+1);fd.value=_fmtDate(t);updateDatePreview();}
+  if(fd&&!fd.value){fd.value=_fmtDate(_addDays(off));updateDatePreview();}
+  // Show cutoff notice if past 20h Paris
+  const notice=document.getElementById('cutoff-notice');
+  if(notice){
+    if(off===2){
+      const cutoffLocal=_localCutoffStr();
+      const isEn=_lang==='en';
+      const dt2=_addDays(2);
+      const MONTHS_LONG_FR=['jan','fév','mars','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
+      const MONTHS_LONG_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const dateStr=isEn?(dt2.getDate()+' '+MONTHS_LONG_EN[dt2.getMonth()]):(dt2.getDate()+' '+MONTHS_LONG_FR[dt2.getMonth()]);
+      notice.innerHTML=isEn
+        ?'<strong>Booking cut-off reached</strong> — orders after 8pm Paris time ('+cutoffLocal+' your time) are scheduled from the next day. First available date: <strong>'+dateStr+'</strong>.'
+        :'<strong>Délai dépassé</strong> — les réservations après 20h00 (heure de Paris · '+cutoffLocal+' chez vous) sont planifiées à partir du lendemain. Première date disponible : <strong>'+dateStr+'</strong>.';
+      notice.style.display='block';
+    } else {
+      notice.style.display='none';
+    }
+  }
 }
 function setDateOffset(offset,btn){
-  const dt=new Date();dt.setDate(dt.getDate()+offset);
+  const dt=_addDays(_minOff()+offset-1);
   const fd=document.getElementById('f-date');
   if(fd){fd.value=_fmtDate(dt);updateDatePreview();}
   // Close custom input
@@ -5099,9 +5143,8 @@ function goTo(n,silent){
       if(s===4){
         const date=document.getElementById('f-date')?.value;
         if(!date){document.getElementById('f-date-custom-wrap')?.classList.add('show');highlight(['f-date']);goTo(4,true);return;}
-        const _n=new Date();_n.setDate(_n.getDate()+1);
-        const tomorrow=[_n.getFullYear(),String(_n.getMonth()+1).padStart(2,'0'),String(_n.getDate()).padStart(2,'0')].join('-');
-        if(date<tomorrow){document.getElementById('f-date-custom-wrap')?.classList.add('show');highlight(['f-date']);goTo(4,true);return;}
+        const minDate=_fmtDate(_addDays(_minOff()));
+        if(date<minDate){document.getElementById('f-date-custom-wrap')?.classList.add('show');highlight(['f-date']);goTo(4,true);return;}
       }
       if(s===5){
         const miss=['f-prenom','f-nom','f-tel','f-email'].filter(id=>!document.getElementById(id)?.value.trim());
@@ -5127,7 +5170,7 @@ function goTo(n,silent){
   curStep=n;
   if(n===4){
     const fd=document.getElementById('f-date');
-    if(fd&&!fd.min){const t=new Date();t.setDate(t.getDate()+1);fd.min=[t.getFullYear(),String(t.getMonth()+1).padStart(2,'0'),String(t.getDate()).padStart(2,'0')].join('-');}
+    if(fd)fd.min=_fmtDate(_addDays(_minOff()));
     initDateShortcuts();
   }
   if(n===5||n===6)setTimeout(buildRecap,0);
@@ -5914,7 +5957,7 @@ const LANG_MAP=[
   ['#pricing-from','text','à partir de','from'],
   ['#pricing-min','text','Prix dégressif à partir de 7 jours.','Tiered pricing from 7 days.'],
   ['#pricing-social-proof','html','4,8/5 · <strong style="color:var(--black)">21 avis</strong> Google vérifiés','4.8/5 · <strong style="color:var(--black)">21 reviews</strong> on Google'],
-  ['.plan-btn.pb-s','text','Être livré demain →','Get delivered tomorrow →'],
+  ['.plan-btn.pb-s','text','Réserver ma livraison →','Book my delivery →'],
   /* reviews */
   ['.reviews .sec-eye','text','Avis clients','Customer reviews'],
   ['#reviews-title','html','Ils ont loué.<br><em>Voici ce qu\'ils en disent.</em>','They rented.<br><em>Here\'s what they say.</em>'],
@@ -6416,6 +6459,8 @@ function setLang(l){
   if(typeof _qty!=='undefined')setQty(_qty||1);
   if(typeof _durFree!=='undefined'&&_durFree)_renderDurFree();
   _rebuildCustomBtn();
+  if(typeof _renderSmartLine==='function')_renderSmartLine();
+  if(typeof _initDynamicText==='function')_initDynamicText();
 }
 
 // Appliquer la langue mémorisée au chargement
@@ -6526,24 +6571,79 @@ if(window.visualViewport){
 
 // ── SMART LINE : countdown live + géoloc ────────────────────────────────────
 const _smartLine=document.getElementById('hero-smart-line');
+const _MONTHS_LONG_FR=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+const _MONTHS_LONG_EN=['January','February','March','April','May','June','July','August','September','October','November','December'];
 let _urgencyShown=false;
+function _updateMobileBar(){
+  const el=document.querySelector('.m-bar-label');
+  if(!el)return;
+  const isEn=_lang==='en';
+  if(_cutoffOk()){
+    el.innerHTML=isEn?'Delivered to you tomorrow · <strong>8am–12pm · 7d/7</strong>':'Livré chez vous demain · <strong>8h–12h · 7j/7</strong>';
+  }else{
+    const dt=_addDays(2);
+    const mo=isEn?_MONTHS_LONG_EN[dt.getMonth()]:_MONTHS_LONG_FR[dt.getMonth()];
+    el.innerHTML=isEn?'Delivery '+dt.getDate()+' '+mo+' · <strong>8am–12pm · 7d/7</strong>':'Livraison le '+dt.getDate()+' '+mo+' · <strong>8h–12h · 7j/7</strong>';
+  }
+}
 function _renderSmartLine(){
   if(!_smartLine)return false;
-  const now=new Date();
-  const h=now.getHours(),m=now.getMinutes();
-  let cutoffH=0,msg='';
-  if(h>=8&&h<20){cutoffH=20;msg='⏱ Livraison demain matin · 8h–12h si vous réservez avant 20h';}
-  if(!cutoffH)return false;
-  const remMin=(cutoffH*60)-(h*60+m);
-  const rh=Math.floor(remMin/60),rm=remMin%60;
-  const countStr=rh>0?rh+'h '+String(rm).padStart(2,'0')+'min':rm+' min restantes';
-  _smartLine.textContent=msg+' — '+countStr;
-  _smartLine.style.color='rgba(255,255,255,.7)';
-  _smartLine.style.display='block';
+  const p=_parisNow();
+  const h=p.h,m=p.m;
+  const isEn=_lang==='en';
+  if(h>=8&&(h<20||(h===20&&m===0))){
+    const remMin=(20*60)-(h*60+m);
+    const rh=Math.floor(remMin/60),rm=remMin%60;
+    const timeStr=rh>0?rh+'h '+String(rm).padStart(2,'0')+'min':rm+' min';
+    _smartLine.textContent=isEn
+      ?'⚡ '+timeStr+' left — guaranteed next-day delivery'
+      :'⚡ Il vous reste '+timeStr+' — livraison garantie demain';
+    _smartLine.style.color='rgba(255,255,255,.92)';
+    _smartLine.style.display='block';
+  }else if(h>=20||(h===20&&m>0)){
+    const dt=_addDays(2);
+    const dateStr=isEn?(dt.getDate()+' '+_MONTHS_LONG_EN[dt.getMonth()]):(dt.getDate()+' '+_MONTHS_LONG_FR[dt.getMonth()]);
+    _smartLine.textContent=isEn?'📅 Next available: '+dateStr:'📅 Livraison le '+dateStr;
+    _smartLine.style.color='rgba(255,255,255,.72)';
+    _smartLine.style.display='block';
+  }else{
+    _smartLine.style.display='none';
+  }
+  _updateMobileBar();
+  _initDynamicText();
   return true;
 }
+function _initDynamicText(){
+  const isEn=_lang==='en';
+  const ok=_cutoffOk();
+  const MONTHS_S_FR=['jan','fév','mars','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
+  const MONTHS_S_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dt2=_addDays(2);
+  const dateShort=(isEn?dt2.getDate()+' '+MONTHS_S_EN[dt2.getMonth()]:dt2.getDate()+' '+MONTHS_S_FR[dt2.getMonth()]);
+  const dateLong=(isEn?dt2.getDate()+' '+_MONTHS_LONG_EN[dt2.getMonth()]:dt2.getDate()+' '+_MONTHS_LONG_FR[dt2.getMonth()]);
+  // Choice card
+  const cd=document.querySelector('.choice-card.choice-primary .choice-desc');
+  if(cd)cd.textContent=ok
+    ?(isEn?'Delivery tomorrow · Full kit included':'Livraison demain · Kit complet inclus')
+    :(isEn?'Delivery '+dateShort+' · Full kit included':'Livraison le '+dateShort+' · Kit complet inclus');
+  // Exit intent heading
+  const eiH=document.querySelector('.ei-h');
+  if(eiH)eiH.innerHTML=ok
+    ?(isEn?'A cool night,<br><em>from tomorrow evening.</em>':'Une nuit fraîche,<br><em>dès demain soir.</em>')
+    :(isEn?'A cool night,<br><em>from '+dateLong+'.</em>':'Une nuit fraîche,<br><em>dès le '+dateLong+'.</em>');
+  // Exit intent CTA
+  const eiCta=document.querySelector('.ei-cta');
+  if(eiCta)eiCta.textContent=ok
+    ?(isEn?'Book — delivery tomorrow →':'Réserver — livraison demain →')
+    :(isEn?'Book — delivery '+dateShort+' →':'Réserver — livraison le '+dateShort+' →');
+  // Trust badge
+  const riT=document.getElementById('ri-livraison-t');
+  if(riT)riT.textContent=ok
+    ?(isEn?'Delivery within 24h':'Livraison sous 24h')
+    :(isEn?'Next-day delivery':'Livraison J+2');
+}
 _urgencyShown=_renderSmartLine();
-if(_urgencyShown)setInterval(_renderSmartLine,60000);
+setInterval(_renderSmartLine,60000);
 
 (async function initGeo(){
   if(_urgencyShown)return;
@@ -6612,8 +6712,9 @@ else{_updateChromeH();}
       const bar=document.getElementById('alert-canicule');
       if(bar){
         const ressufix=res!=null?' (ressenti '+res+'°C)':'';
-        if(peakTemp>=35)_setAlertBar(bar,_lang==='en'?'Heatwave — '+peakTemp+'°C expected'+ressufix:'Canicule — '+peakTemp+'°C prévus'+ressufix,_lang==='en'?'Delivery within 24h':'Livraison sous 24h');
-        else _setAlertBar(bar,cur+'°C'+ressufix,_lang==='en'?'AC unit delivered within 24h':'Climatiseur livré sous 24h');
+        const _alertTiming=_cutoffOk()?(_lang==='en'?'Delivery within 24h':'Livraison sous 24h'):(_lang==='en'?'Delivery within 48h':'Livraison sous 48h');
+        if(peakTemp>=35)_setAlertBar(bar,_lang==='en'?'Heatwave — '+peakTemp+'°C expected'+ressufix:'Canicule — '+peakTemp+'°C prévus'+ressufix,_alertTiming);
+        else _setAlertBar(bar,cur+'°C'+ressufix,_alertTiming);
         _updateChromeH();
       }
     } else {
@@ -6643,26 +6744,12 @@ else{_updateChromeH();}
   });
 })();
 
-// ── 2. CTAs AVEC LA VRAIE DATE DE LIVRAISON ─────────────────────────────────
+// ── 2. CTAs GÉNÉRIQUES ───────────────────────────────────────────────────────
 (function initDynamicCTAs(){
-  const DAYS_FR=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
-  const DAYS_EN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
-  const MONTHS_FR=['janvier','février','mars','avril','mai','juin','juillet',
-    'août','septembre','octobre','novembre','décembre'];
-  const MONTHS_EN=['January','February','March','April','May','June','July',
-    'August','September','October','November','December'];
-  const t=new Date();t.setDate(t.getDate()+1);
   const cta=document.getElementById('pricing-cta');
+  if(cta)cta.innerHTML=_lang==='en'?'Book my delivery &rarr;':'Réserver ma livraison &rarr;';
   const btn=document.getElementById('sbtn-lbl');
-  if(_lang==='en'){
-    const label=DAYS_EN[t.getDay()]+' '+t.getDate()+' '+MONTHS_EN[t.getMonth()];
-    if(cta)cta.textContent='Delivered on '+label+' →';
-    if(btn)btn.textContent='Proceed to payment · delivery '+label;
-  }else{
-    const label='le '+DAYS_FR[t.getDay()]+' '+t.getDate()+' '+MONTHS_FR[t.getMonth()];
-    if(cta)cta.textContent='Être livré '+label+' →';
-    if(btn)btn.textContent='Procéder au paiement · livraison '+label;
-  }
+  if(btn)btn.textContent=_lang==='en'?'Proceed to payment':'Procéder au paiement';
 })();
 
 // ── 3. DATES RELATIVES SUR LES AVIS ─────────────────────────────────────────
