@@ -6591,6 +6591,7 @@ function _renderSmartLine(){
   const isEn=_lang==='en';
   const _dot=(color,pulse)=>'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+color+';flex-shrink:0;margin-right:7px;vertical-align:middle'+(pulse?';animation:alertPulse 2.4s ease-in-out infinite':'')+'" aria-hidden="true"></span>';
   if(h>=8&&(h<20||(h===20&&m===0))){
+    // Fenêtre 8h–20h : compte à rebours
     const remMin=(20*60)-(h*60+m);
     const rh=Math.floor(remMin/60),rm=remMin%60;
     const timeStr=rh>0?rh+'h '+String(rm).padStart(2,'0')+'min':rm+' min';
@@ -6599,10 +6600,18 @@ function _renderSmartLine(){
       :'Il vous reste '+timeStr+' — livraison garantie demain');
     _smartLine.style.color='rgba(255,255,255,.92)';
     _smartLine.style.display='block';
-  }else{
+  }else if(h>=20||(h===20&&m>0)){
+    // Après 20h : cutoff dépassé → J+2
     const dt=_addDays(2);
     const dateStr=isEn?(dt.getDate()+' '+_MONTHS_LONG_EN[dt.getMonth()]):(dt.getDate()+' '+_MONTHS_LONG_FR[dt.getMonth()]);
     _smartLine.innerHTML=_dot('rgba(255,255,255,.4)',false)+(isEn?'Next available: '+dateStr:'Livraison le '+dateStr);
+    _smartLine.style.color='rgba(255,255,255,.72)';
+    _smartLine.style.display='block';
+  }else{
+    // 0h–7h59 : J+1 encore valide, livraison demain — pas d'urgence, pas de compte à rebours
+    _smartLine.innerHTML=_dot('rgba(255,255,255,.55)',false)+(isEn
+      ?'Next-day delivery · book before 8pm today'
+      :'Livraison dès demain matin · réservez avant 20h');
     _smartLine.style.color='rgba(255,255,255,.72)';
     _smartLine.style.display='block';
   }
@@ -6637,7 +6646,22 @@ function _initDynamicText(){
   const riT=document.getElementById('ri-livraison-t');
   if(riT)riT.textContent=ok
     ?(isEn?'Delivery within 24h':'Livraison sous 24h')
-    :(isEn?'Next-day delivery':'Livraison J+2');
+    :(isEn?'Delivery within 48h':'Livraison sous 48h');
+  // Pricing plan item 1
+  const pi1=document.getElementById('plan-item-1');
+  if(pi1)pi1.innerHTML=ok
+    ?(isEn?'<strong>Delivered tomorrow</strong>':'<strong>Livraison dès demain</strong>')
+    :(isEn?'<strong>Delivery from '+dateShort+'</strong>':'<strong>Livraison dès le '+dateShort+'</strong>');
+  // Final CTA title
+  const fctaT=document.getElementById('fcta-title');
+  if(fctaT)fctaT.innerHTML=ok
+    ?(isEn?'Fresh air by tomorrow morning.<br><em>No deposit. No surprises.</em>':'L\'air frais dès demain matin.<br><em>Aucune caution. Aucune surprise.</em>')
+    :(isEn?'Fresh air from '+dateShort+'.<br><em>No deposit. No surprises.</em>':'L\'air frais dès le '+dateShort+'.<br><em>Aucune caution. Aucune surprise.</em>');
+  // Success screen note — use neutral text that's always true
+  const gn=document.getElementById('s-gratitude-note');
+  if(gn)gn.textContent=ok
+    ?(isEn?'The whole team is ready to welcome you tomorrow. See you soon. — Aly':'Toute l\'équipe est mobilisée pour votre livraison demain. À très vite. — Aly')
+    :(isEn?'The whole team is ready for your delivery on '+dateLong+'. See you soon. — Aly':'Toute l\'équipe est mobilisée pour votre livraison le '+dateLong+'. À très vite. — Aly');
 }
 _urgencyShown=_renderSmartLine();
 setInterval(_renderSmartLine,60000);
@@ -6690,7 +6714,7 @@ else{_updateChromeH();}
     // Hero-eye : température + ressenti si l'alerte n'est PAS affichée (évite doublon)
     const eyeEl=document.querySelector('.hero-eye');
     if(eyeEl&&cur!==null&&!alertActive){
-      eyeEl.textContent=_lang==='en'?cur+'°C · feels like '+res+'°C · 7d/7':cur+'°C · ressenti '+res+'°C · 7j/7';
+      eyeEl.textContent=_lang==='en'?CITY.name+' · '+cur+'°C · feels like '+res+'°C':CITY.name+' · '+cur+'°C · ressenti '+res+'°C';
     }
 
     // Barre d'alerte : afficher si ≥28°C courant ou ≥32°C prévu
