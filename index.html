@@ -6591,19 +6591,20 @@ function _renderSmartLine(){
   const p=_parisNow();
   const h=p.h,m=p.m;
   const isEn=_lang==='en';
+  const _dot=(color,pulse)=>'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+color+';flex-shrink:0;margin-right:7px;vertical-align:middle'+(pulse?';animation:alertPulse 2.4s ease-in-out infinite':'')+'" aria-hidden="true"></span>';
   if(h>=8&&(h<20||(h===20&&m===0))){
     const remMin=(20*60)-(h*60+m);
     const rh=Math.floor(remMin/60),rm=remMin%60;
     const timeStr=rh>0?rh+'h '+String(rm).padStart(2,'0')+'min':rm+' min';
-    _smartLine.textContent=isEn
-      ?'⚡ '+timeStr+' left — guaranteed next-day delivery'
-      :'⚡ Il vous reste '+timeStr+' — livraison garantie demain';
+    _smartLine.innerHTML=_dot('#c5a96c',true)+(isEn
+      ?timeStr+' left — guaranteed next-day delivery'
+      :'Il vous reste '+timeStr+' — livraison garantie demain');
     _smartLine.style.color='rgba(255,255,255,.92)';
     _smartLine.style.display='block';
   }else if(h>=20||(h===20&&m>0)){
     const dt=_addDays(2);
     const dateStr=isEn?(dt.getDate()+' '+_MONTHS_LONG_EN[dt.getMonth()]):(dt.getDate()+' '+_MONTHS_LONG_FR[dt.getMonth()]);
-    _smartLine.textContent=isEn?'📅 Next available: '+dateStr:'📅 Livraison le '+dateStr;
+    _smartLine.innerHTML=_dot('rgba(255,255,255,.4)',false)+(isEn?'Next available: '+dateStr:'Livraison le '+dateStr);
     _smartLine.style.color='rgba(255,255,255,.72)';
     _smartLine.style.display='block';
   }else{
