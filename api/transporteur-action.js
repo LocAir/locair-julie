@@ -1,6 +1,11 @@
 const { getSupabase } = require('./_lib/supabase');
 const { getCity }     = require('./_lib/city');
 const { verifyTransporteurToken } = require('./_lib/auth');
+const { sendBrevoEmail } = require('./_lib/brevo');
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
 
 const MEDIA_COLUMN = {
   photo_depart:        'photo_depart_path',
@@ -77,10 +82,39 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, statut: 'refusee' });
     }
 
+    if (action === 'prevenir_client') {
+      if (liv.statut !== 'acceptee') return res.status(409).json({ error: 'Mission pas encore acceptée' });
+      if (liv.type === 'livraison' && !liv.photo_depart_path) {
+        return res.status(400).json({ error: 'Photo de l\'appareil au départ dépôt requise avant de prévenir le client' });
+      }
+      if (liv.client_notifie_at) return res.status(200).json({ ok: true });
+
+      const { data: resa } = await supabase
+        .from('reservations').select('prenom, email, adresse').eq('id', liv.reservation_id).maybeSingle();
+      await supabase.from('livraisons').update({ client_notifie_at: new Date().toISOString() }).eq('id', liv.id);
+
+      if (resa?.email) {
+        const verbe = liv.type === 'livraison' ? 'livrer votre climatiseur' : 'récupérer votre climatiseur';
+        await sendBrevoEmail({
+          to:      resa.email,
+          subject: `📦 Votre livreur Loc'Air arrive dans environ 30 minutes`,
+          html: `<p>Bonjour ${escHtml(resa.prenom || '')},</p>
+                 <p>Notre livreur est en route pour ${verbe} — il devrait arriver d'ici environ 30 minutes à l'adresse :</p>
+                 <p><strong>${escHtml(resa.adresse || '')}</strong></p>
+                 <p>Merci d'être disponible pour le réceptionner.</p>`,
+        }).catch(() => {});
+      }
+
+      return res.status(200).json({ ok: true });
+    }
+
     if (action === 'arrive') {
       if (liv.statut !== 'acceptee') return res.status(409).json({ error: 'Mission pas encore acceptée' });
       if (liv.type === 'livraison' && !liv.photo_depart_path) {
         return res.status(400).json({ error: 'Photo de l\'appareil au départ dépôt requise avant de partir' });
+      }
+      if (!liv.client_notifie_at) {
+        return res.status(400).json({ error: 'Préviens le client avant d\'arriver chez lui' });
       }
       await supabase.from('livraisons').update({ statut: 'arrivee', arrivee_at: new Date().toISOString() }).eq('id', liv.id);
       return res.status(200).json({ ok: true, statut: 'arrivee' });

@@ -130,6 +130,7 @@ create table livraisons (
   montant_du_cents       integer not null default 0,
   paye                   boolean not null default false,
   accepted_at            timestamptz,
+  client_notifie_at      timestamptz, -- message envoyé au client ~30 min avant l'arrivée
   arrivee_at             timestamptz,
   fait_at                timestamptz,
   probleme_at            timestamptz,
