@@ -5711,7 +5711,20 @@ function submitForm(btn,mode){
       .then(r=>{
         clearTimeout(_fsTimer);
         if(!r.ok)throw new Error('Formspree '+r.status);
-        if(CITY.sheetsWebhook){const sp=Object.assign({},formData,{prix:(calcTotal(parseInt(formData.duree)||7)+DELIVERY_FEE)+(formData.remise_promo?' (promo: '+formData.remise_promo+')':'')});fetch(CITY.sheetsWebhook,{method:'POST',body:JSON.stringify(sp),mode:'no-cors'}).catch(()=>{});}
+        if(CITY.sheetsWebhook){
+          const sp={
+            type:'Demande de rappel',statut:'À rappeler',ref:formData._ref||'',
+            prenom:formData.prenom||'',nom:formData.nom||'',tel:formData.tel||'',email:formData.email||'',
+            adresse:formData.adresse||'',duree:formData.duree||'',
+            date_livraison:formData.date||'',creneau:formData.creneau_livraison||'',
+            date_recuperation:formData.date_recuperation||'',installation:formData.installation||'',
+            etage:formData.etage||'',ascenseur:formData.ascenseur||'',fenetre:formData.fenetre||'',
+            quantite:formData.quantite||'',promo:formData.parrain_code||'',
+            montant:(calcTotal(parseInt(formData.duree)||7)+DELIVERY_FEE)+(formData.remise_promo?' € (promo: '+formData.remise_promo+')':' €'),
+            notes:['Source: '+(formData.source||'—'),'Logement: '+(formData.logement||'—'),'Type client: '+(formData.type_client||'—'),formData.motifs?'Motifs: '+formData.motifs:''].filter(Boolean).join(' · '),
+          };
+          fetch(CITY.sheetsWebhook,{method:'POST',body:JSON.stringify(sp),mode:'no-cors'}).catch(()=>{});
+        }
         try{localStorage.setItem('locair_client',JSON.stringify({prenom:formData.prenom,nom:formData.nom,email:formData.email,tel:(formData.tel||'').replace(/\D/g,''),last_booked:new Date().toISOString(),last_duration:formData.duree}));localStorage.setItem('locair_booked','1');}catch(e){}
         _submitting=false;
         showSuccess();

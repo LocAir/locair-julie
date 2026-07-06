@@ -32,6 +32,21 @@ async function sendBrevo({ to, subject, html, scheduledAt }) {
   }
 }
 
+// ── Google Sheets (journal centralisé des réservations) ──────────────────────
+async function logToSheet(payload) {
+  if (!process.env.GOOGLE_SHEET_URL) return;
+  try {
+    const r = await fetch(process.env.GOOGLE_SHEET_URL, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(payload),
+    });
+    if (!r.ok) console.error('[Google Sheet]', r.status, await r.text());
+  } catch (e) {
+    console.error('[Google Sheet]', e.message);
+  }
+}
+
 // ── Calcul des dates programmées ──────────────────────────────────────────────
 function isParisDST(date) {
   const y = date.getUTCFullYear();
@@ -348,7 +363,58 @@ const handler = async (req, res) => {
         }),
       });
 
+      await logToSheet({
+        type:              'Prolongation',
+        statut:            '✅ Stripe confirmé',
+        stripe_id:         obj.id || '',
+        prenom:            meta.prenom            || '',
+        nom:               meta.nom               || '',
+        tel:               meta.tel               || '',
+        email,
+        adresse:           meta.adresse_origine   || '',
+        jours_supp:        meta.jours             || '',
+        jours_totaux:      meta.total_days        || '',
+        date_recuperation: meta.date_recuperation || '',
+        creneau:           meta.creneau           || '',
+        montant:           amount,
+        customer_id:       customerId,
+      });
+
       return res.status(200).json({ received: true, type: 'prolongation' });
+    }
+
+    // ── Retard de restitution : flux distinct ────────────────────────────────
+    if (meta.type === 'retard') {
+      await fetch('https://formspree.io/f/mvzyngoy', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          _subject:  `✅ RETARD — ${meta.nom || ''} — ${meta.jours}j supplémentaire(s)`,
+          type:      'retard',
+          stripe_id: obj.id || '',
+          nom:       meta.nom     || '',
+          email,
+          adresse:   meta.adresse || '',
+          jours:     meta.jours   || '',
+          montant:   amount,
+          statut:    '✅ Stripe confirmé',
+        }),
+      }).catch(e => console.error('[Formspree retard]', e.message));
+
+      await logToSheet({
+        type:           'Retard',
+        statut:         '✅ Stripe confirmé',
+        stripe_id:      obj.id || '',
+        nom:            meta.nom     || '',
+        email,
+        adresse:        meta.adresse || '',
+        jours_supp:     meta.jours   || '',
+        montant:        amount,
+        customer_id:    customerId,
+        payment_method: paymentMethodId,
+      });
+
+      return res.status(200).json({ received: true, type: 'retard' });
     }
 
     // ── Location standard ─────────────────────────────────────────────────────
@@ -381,7 +447,32 @@ const handler = async (req, res) => {
       }),
     }).catch(e => console.error('[Formspree]', e.message));
 
-    // 2. Email de confirmation immédiat au client
+    // 2. Journal Google Sheets
+    await logToSheet({
+      type:           'Réservation',
+      statut:         `✅ Stripe confirmé — ${amount}`,
+      stripe_id:      obj.id || '',
+      ref:            meta.ref          || '',
+      prenom:         meta.prenom       || '',
+      nom:            meta.nom          || '',
+      tel:            meta.tel          || '',
+      email,
+      adresse:        meta.adresse      || '',
+      duree:          meta.duree        || '',
+      date_livraison: meta.date         || '',
+      creneau:        meta.creneau      || '',
+      installation:   meta.installation || '',
+      etage:          meta.etage        || '',
+      ascenseur:      meta.ascenseur    || '',
+      fenetre:        meta.fenetre      || '',
+      quantite:       meta.quantite     || '',
+      promo:          meta.promo        || '',
+      montant:        amount,
+      customer_id:    customerId,
+      payment_method: paymentMethodId,
+    });
+
+    // 3. Email de confirmation immédiat au client
     await sendBrevo({
       to:      email,
       subject: `✅ Réservation confirmée — Dossier ${meta.ref || obj.id}`,
@@ -398,7 +489,7 @@ const handler = async (req, res) => {
       }),
     });
 
-    // 3-5. Emails programmés en parallèle pour respecter le timeout Vercel
+    // 4-6. Emails programmés en parallèle pour respecter le timeout Vercel
     const dateRecupStr = (() => {
       if (!meta.date || !meta.date.match(/^\d{4}-\d{2}-\d{2}$/)) return '';
       const d = new Date(meta.date + 'T12:00:00Z');
