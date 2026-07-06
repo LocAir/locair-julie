@@ -6464,25 +6464,32 @@ function setLang(l){
 // Appliquer la langue mémorisée au chargement
 document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
 
-/// iOS Safari : ajuster la hauteur du modal + scroller vers le champ actif quand le clavier apparaît
+// Scroll modal-body pour garder le champ actif visible — tous appareils (iOS, Android, desktop)
+function _scrollModalToField(el,delay){
+  const mb=document.getElementById('modal-body');
+  if(!mb||!el)return;
+  setTimeout(function(){
+    const vh=window.visualViewport?window.visualViewport.height:window.innerHeight;
+    const mbR=mb.getBoundingClientRect();
+    const r=el.getBoundingClientRect();
+    if(r.bottom>vh-16)mb.scrollTop+=r.bottom-vh+88;
+    else if(r.top<mbR.top+8)mb.scrollTop-=mbR.top+8-r.top;
+  },delay||0);
+}
+// Desktop + tablette : focus sur un champ dans le modal → scroll immédiat
+document.addEventListener('focusin',function(e){
+  if(!e.target.matches('input,textarea,select'))return;
+  if(!e.target.closest('#overlay'))return;
+  _scrollModalToField(e.target,320);
+},true);
+// iOS/Android : clavier virtuel réduit le viewport → resize → scroll
 if(window.visualViewport){
-  window.visualViewport.addEventListener('resize',()=>{
+  window.visualViewport.addEventListener('resize',function(){
     const vvh=Math.round(window.visualViewport.height);
     const modal=document.getElementById('modal');
-    if(modal&&document.getElementById('overlay')?.classList.contains('open')){
-      modal.style.maxHeight=vvh*0.92+'px';
-      // Scroll modal-body pour garder le champ focalisé visible au-dessus du clavier
-      const active=document.activeElement;
-      if(active&&active!==document.body){
-        const mb=document.getElementById('modal-body');
-        if(mb){
-          setTimeout(()=>{
-            const r=active.getBoundingClientRect();
-            if(r.bottom>vvh-16)mb.scrollTop+=r.bottom-vvh+80;
-          },80);
-        }
-      }
-    }
+    if(!modal||!document.getElementById('overlay')?.classList.contains('open'))return;
+    modal.style.maxHeight=vvh*0.92+'px';
+    _scrollModalToField(document.activeElement,120);
   });
 }
 
