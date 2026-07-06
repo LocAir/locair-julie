@@ -2774,8 +2774,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
     <div class="hero-split-r" aria-hidden="true">
       <img src="hero-clim.jpg" alt="" class="hero-clim-img" fetchpriority="high" loading="eager" width="708" height="1062" decoding="async">
       <div class="hero-clim-badge">
-        <strong>dès 20€<span class="hero-clim-badge-unit"> /j</span></strong>
-        <span>7j min · Transport 35€</span>
+        <strong id="hero-badge-price">dès 20€<span class="hero-clim-badge-unit"> /j</span></strong>
+        <span id="hero-badge-info">7j min · Transport 35€</span>
       </div>
     </div>
   </div>
@@ -3618,7 +3618,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               <div class="prod-info">
                 <div class="prod-card-header">
                   <div>
-                    <div class="prod-card-name">Pack Confort</div>
+                    <div class="prod-card-name" id="prod-card-name">Pack Confort</div>
                     <div class="prod-card-model">Climatiseur mobile</div>
                   </div>
                   <div class="prod-energy" aria-label="Classe énergie A">A</div>
@@ -5048,7 +5048,7 @@ function goTo(n,silent){
     document.querySelector('.modal-sidebar')?.style.setProperty('display','none');
     document.getElementById('mob-progress')?.style.setProperty('display','none');
     curStep=0;
-    document.title='Réservation | Loc\'Air';
+    document.title=_lang==='en'?'Booking | Loc\'Air':'Réservation | Loc\'Air';
     const mb=document.getElementById('modal-body');if(mb)mb.scrollTop=0;
     return;
   }
@@ -5109,7 +5109,7 @@ function goTo(n,silent){
     if(goingBack)panel.classList.add('bwd');
   }
   updateStepper(n);
-  document.title='Réservation — Étape '+n+'/6 | Loc\'Air';
+  document.title=_lang==='en'?'Booking — Step '+n+'/6 | Loc\'Air':'Réservation — Étape '+n+'/6 | Loc\'Air';
   curStep=n;
   if(n===4){
     const fd=document.getElementById('f-date');
@@ -5283,7 +5283,7 @@ function buildRecap(){
   const rows=[
     [isEN?'Address':'Adresse',escHtml(document.getElementById('f-addr')?.value||'—'),icoPin],
     [isEN?'Delivery':'Livraison',escHtml(dateStr+' · '+creneauLiv),icoCal],
-    [isEN?'Collection':'Récupération',escHtml(pickupDateStr)+' <span style="color:var(--grey2);font-size:11px">· coordonnée par notre équipe</span>',icoCal],
+    [isEN?'Collection':'Récupération',escHtml(pickupDateStr)+' <span style="color:var(--grey2);font-size:11px">· '+(isEN?'coordinated by our team':'coordonnée par notre équipe')+'</span>',icoCal],
     [isEN?'Window':'Fenêtre',escHtml(ouv),icoWin],
     [isEN?'Duration':'Durée',escHtml(durLabel),icoDur],
     [isEN?'Quantity':'Quantité',escHtml(qtyLabel),icoQty]
@@ -5428,11 +5428,11 @@ async function doStripePayment(){
   const btnSpan=btn?btn.querySelector('span'):null;
   if(!_stripeElements||!_stripeClientSecret){
     _paySubmitting=false;
-    if(errEl){errEl.textContent='Formulaire non initialisé. Réessayez.';errEl.style.display='block';}
+    if(errEl){errEl.textContent=_lang==='en'?'Form not initialised. Please try again.':'Formulaire non initialisé. Réessayez.';errEl.style.display='block';}
     return;
   }
   if(btn)btn.disabled=true;
-  if(btnSpan)btnSpan.textContent='Paiement en cours…';
+  if(btnSpan)btnSpan.textContent=_lang==='en'?'Payment in progress…':'Paiement en cours…';
   if(errEl)errEl.style.display='none';
   try{
     const {error,paymentIntent}=await _getStripe().confirmPayment({
@@ -5443,20 +5443,20 @@ async function doStripePayment(){
       redirect:'if_required'
     });
     if(error){
-      if(errEl){errEl.textContent=error.message||'Paiement refusé.';errEl.style.display='block';}
+      if(errEl){errEl.textContent=error.message||(_lang==='en'?'Payment declined.':'Paiement refusé.');errEl.style.display='block';}
       if(btn)btn.disabled=false;
-      if(btnSpan)btnSpan.textContent='Réessayer le paiement';
+      if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':'Réessayer le paiement';
     }else if(paymentIntent&&paymentIntent.status==='succeeded'){
       _stripePaymentDone();
     }else{
-      if(errEl){errEl.textContent='Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';}
+      if(errEl){errEl.textContent=_lang==='en'?'Payment pending confirmation. Check your email.':'Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';}
       if(btn)btn.disabled=false;
-      if(btnSpan)btnSpan.textContent='Réessayer le paiement';
+      if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':'Réessayer le paiement';
     }
   }catch(e){
-    if(errEl){errEl.textContent='Erreur inattendue. Réessayez.';errEl.style.display='block';}
+    if(errEl){errEl.textContent=_lang==='en'?'Unexpected error. Please try again.':'Erreur inattendue. Réessayez.';errEl.style.display='block';}
     if(btn)btn.disabled=false;
-    if(btnSpan)btnSpan.textContent='Réessayer le paiement';
+    if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':'Réessayer le paiement';
   }finally{
     _paySubmitting=false;
   }
@@ -5665,10 +5665,10 @@ function submitForm(btn,mode){
         _stripeClientSecret=d.clientSecret;
         // Monter le Payment Element
         const appearance={theme:'stripe',variables:{colorPrimary:'#1b3a5f',borderRadius:'10px',fontFamily:'Inter,system-ui,sans-serif'}};
-        _stripeElements=_getStripe().elements({clientSecret:d.clientSecret,appearance,locale:'fr'});
+        _stripeElements=_getStripe().elements({clientSecret:d.clientSecret,appearance,locale:_lang==='en'?'en':'fr'});
         const payEl=_stripeElements.create('payment',{layout:'tabs'});
         const container=document.getElementById('stripe-payment-element');
-        if(container){container.innerHTML='<p id="stripe-loading" style="color:var(--grey);font-size:13px">Chargement du formulaire de paiement…</p>';payEl.mount('#stripe-payment-element');}
+        if(container){container.innerHTML='<p id="stripe-loading" style="color:var(--grey);font-size:13px">'+((_lang==='en')?'Loading payment form…':'Chargement du formulaire de paiement…')+'</p>';payEl.mount('#stripe-payment-element');}
         payEl.on('ready',()=>{const l=document.getElementById('stripe-loading');if(l)l.remove();const mb=document.getElementById('modal-body');if(mb&&container){const top=container.offsetTop-20;mb.scrollTo({top,behavior:'smooth'});}});
         // Utiliser le montant confirmé par le serveur (évite toute divergence)
         const serverEuros=d.amountCents!=null?(d.amountCents/100).toFixed(2).replace('.',',')+' €':prixEuros;
@@ -6126,6 +6126,11 @@ const LANG_MAP=[
   ['#label-retard','html','J\'autorise Loc\'Air à débiter ma carte pour tout jour de retard de restitution (de 16 à 20 €/j selon la durée totale, voir <a href="/cgv#retard" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV art. 10 bis</a>). <span style="color:var(--grey2);font-size:10px">Aucun montant prélevé maintenant — carte enregistrée via Stripe.</span>','I authorise Loc\'Air to charge my card for any late return day (€16–20/d depending on total duration, see <a href="/cgv#retard" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">T&amp;Cs art. 10 bis</a>). <span style="color:var(--grey2);font-size:10px">Nothing charged now — card stored via Stripe.</span>'],
   ['#sbtn-hint','text','Cochez les cases ci-dessus pour confirmer','Tick the boxes above to confirm'],
   ['#lbl-back-s6','text','Vos infos','Your info'],
+  /* hero badge */
+  ['#hero-badge-price','html','dès 20€<span class="hero-clim-badge-unit"> /j</span>','from €20<span class="hero-clim-badge-unit"> /d</span>'],
+  ['#hero-badge-info','text','7j min · Transport 35€','7d min · Delivery €35'],
+  /* product card */
+  ['#prod-card-name','text','Pack Confort','Comfort Pack'],
 ];
 
 // Sequences: [selector, 'text'|'html', [fr_vals], [en_vals]]
@@ -6585,8 +6590,8 @@ else{_updateChromeH();}
       const bar=document.getElementById('alert-canicule');
       if(bar){
         const ressufix=res!=null?' (ressenti '+res+'°C)':'';
-        if(peakTemp>=35)_setAlertBar(bar,'Canicule — '+peakTemp+'°C prévus'+ressufix,'Livraison sous 24h');
-        else _setAlertBar(bar,cur+'°C'+ressufix,'Climatiseur livré sous 24h');
+        if(peakTemp>=35)_setAlertBar(bar,_lang==='en'?'Heatwave — '+peakTemp+'°C expected'+ressufix:'Canicule — '+peakTemp+'°C prévus'+ressufix,_lang==='en'?'Delivery within 24h':'Livraison sous 24h');
+        else _setAlertBar(bar,cur+'°C'+ressufix,_lang==='en'?'AC unit delivered within 24h':'Climatiseur livré sous 24h');
         _updateChromeH();
       }
     } else {
@@ -6596,7 +6601,7 @@ else{_updateChromeH();}
         const bar=document.getElementById('alert-canicule');
         if(bar&&bar.classList.contains('hidden')){
           const ressufix=cur>0?' · '+cur+'°C (ressenti '+res+'°C)':'';
-          _setAlertBar(bar,'Haute saison'+ressufix,'Disponibilité limitée — réservez tôt');
+          _setAlertBar(bar,_lang==='en'?'Peak season'+ressufix:'Haute saison'+ressufix,_lang==='en'?'Limited availability — book early':'Disponibilité limitée — réservez tôt');
           _updateChromeH();
         }
       }
@@ -6609,7 +6614,7 @@ else{_updateChromeH();}
   const h=new Date().getHours();
   const open=h>=8&&h<20;
   const cls=open?'avail-open':'avail-closed';
-  const txt=open?'Disponible':'Réouvre à 8h';
+  const txt=open?(_lang==='en'?'Available':'Disponible'):(_lang==='en'?'Opens at 8am':'Réouvre à 8h');
   document.querySelectorAll('.avail-tag').forEach(el=>{
     el.className='avail-tag '+cls;
     el.textContent=txt;
@@ -6618,15 +6623,24 @@ else{_updateChromeH();}
 
 // ── 2. CTAs AVEC LA VRAIE DATE DE LIVRAISON ─────────────────────────────────
 (function initDynamicCTAs(){
-  const DAYS=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
-  const MONTHS=['janvier','février','mars','avril','mai','juin','juillet',
+  const DAYS_FR=['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  const DAYS_EN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const MONTHS_FR=['janvier','février','mars','avril','mai','juin','juillet',
     'août','septembre','octobre','novembre','décembre'];
+  const MONTHS_EN=['January','February','March','April','May','June','July',
+    'August','September','October','November','December'];
   const t=new Date();t.setDate(t.getDate()+1);
-  const label='le '+DAYS[t.getDay()]+' '+t.getDate()+' '+MONTHS[t.getMonth()];
   const cta=document.getElementById('pricing-cta');
-  if(cta)cta.textContent='Être livré '+label+' →';
   const btn=document.getElementById('sbtn-lbl');
-  if(btn)btn.textContent='Procéder au paiement · livraison '+label;
+  if(_lang==='en'){
+    const label=DAYS_EN[t.getDay()]+' '+t.getDate()+' '+MONTHS_EN[t.getMonth()];
+    if(cta)cta.textContent='Delivered on '+label+' →';
+    if(btn)btn.textContent='Proceed to payment · delivery '+label;
+  }else{
+    const label='le '+DAYS_FR[t.getDay()]+' '+t.getDate()+' '+MONTHS_FR[t.getMonth()];
+    if(cta)cta.textContent='Être livré '+label+' →';
+    if(btn)btn.textContent='Procéder au paiement · livraison '+label;
+  }
 })();
 
 // ── 3. DATES RELATIVES SUR LES AVIS ─────────────────────────────────────────
@@ -6640,9 +6654,9 @@ else{_updateChromeH();}
     const idx=MOIS[m[1].toLowerCase()];
     if(idx===undefined)return;
     const diff=(now.getFullYear()-parseInt(m[2]))*12+(now.getMonth()-idx);
-    const rel=diff<1?'ce mois-ci':diff===1?'il y a 1 mois':
-      diff<12?'il y a '+diff+' mois':diff<24?'il y a 1 an':
-      'il y a '+Math.floor(diff/12)+' ans';
+    const rel=_lang==='en'
+      ?(diff<1?'this month':diff===1?'1 month ago':diff<12?diff+' months ago':diff<24?'1 year ago':Math.floor(diff/12)+' years ago')
+      :(diff<1?'ce mois-ci':diff===1?'il y a 1 mois':diff<12?'il y a '+diff+' mois':diff<24?'il y a 1 an':'il y a '+Math.floor(diff/12)+' ans');
     el.textContent=el.textContent.replace(/·\s*\S+\s+\d{4}$/i,'· '+rel);
   });
 })();
@@ -6671,9 +6685,9 @@ else{_updateChromeH();}
   if(h>=8&&h<20){
     // Business hours: show active delivery count (vary by hour for realism)
     const active=h<12?2:h<16?3:2;
-    el.textContent=base+' réservations ce mois · '+active+' livraisons en cours';
+    el.textContent=_lang==='en'?base+' bookings this month · '+active+' deliveries underway':base+' réservations ce mois · '+active+' livraisons en cours';
   } else {
-    el.textContent=base+' réservations ce mois à Nice';
+    el.textContent=_lang==='en'?base+' bookings this month in Nice':base+' réservations ce mois à Nice';
   }
 })();
 
@@ -6685,9 +6699,9 @@ else{_updateChromeH();}
     el.style.display='flex';
     const txt=document.getElementById('es-text');
     if(txt){
-      if(h>=8&&h<12) txt.textContent='Ligne ouverte · Technicien disponible ce matin';
-      else if(h>=12&&h<16) txt.textContent='Ligne ouverte · Livraison cet après-midi disponible';
-      else txt.textContent='Ligne ouverte · Dernières livraisons de la journée';
+      if(h>=8&&h<12) txt.textContent=_lang==='en'?'Open · Technician available this morning':'Ligne ouverte · Technicien disponible ce matin';
+      else if(h>=12&&h<16) txt.textContent=_lang==='en'?'Open · Afternoon delivery available':'Ligne ouverte · Livraison cet après-midi disponible';
+      else txt.textContent=_lang==='en'?'Open · Last deliveries of the day':'Ligne ouverte · Dernières livraisons de la journée';
     }
   }
 })();
@@ -6701,9 +6715,9 @@ else{_updateChromeH();}
   const txt=document.getElementById('hsp-text');
   if(!txt)return;
   if(h>=8&&h<20){
-    txt.textContent='🟢 Disponible à la livraison · Réservé 14× ce mois';
+    txt.textContent=_lang==='en'?'🟢 Available for delivery · Booked 14× this month':'🟢 Disponible à la livraison · Réservé 14× ce mois';
   } else {
-    txt.textContent='Réservé 14× ce mois · Disponible dès 8h';
+    txt.textContent=_lang==='en'?'Booked 14× this month · Available from 8am':'Réservé 14× ce mois · Disponible dès 8h';
   }
 })();
 
@@ -7030,10 +7044,10 @@ async function startProlongPayment(){
     if(!d.clientSecret)throw new Error(d.error||'No secret');
 
     const appearance={theme:'stripe',variables:{colorPrimary:'#1b3a5f',borderRadius:'10px',fontFamily:'Inter,system-ui,sans-serif'}};
-    _prolongElements=stripe.elements({clientSecret:d.clientSecret,appearance,locale:'fr'});
+    _prolongElements=stripe.elements({clientSecret:d.clientSecret,appearance,locale:_lang==='en'?'en':'fr'});
     const payEl=_prolongElements.create('payment',{layout:'tabs'});
     const container=document.getElementById('prolong-stripe-element');
-    if(container){container.innerHTML='<p id="prolong-stripe-loading" style="color:var(--grey);font-size:13px">Chargement du formulaire de paiement…</p>';payEl.mount('#prolong-stripe-element');}
+    if(container){container.innerHTML='<p id="prolong-stripe-loading" style="color:var(--grey);font-size:13px">'+((_lang==='en')?'Loading payment form…':'Chargement du formulaire de paiement…')+'</p>';payEl.mount('#prolong-stripe-element');}
     payEl.on('ready',()=>{const l=document.getElementById('prolong-stripe-loading');if(l)l.remove();const mb=document.getElementById('modal-body');if(mb&&container)mb.scrollTo({top:container.offsetTop-20,behavior:'smooth'});});
     const amtEl=document.getElementById('prolong-pay-amount');
     if(amtEl)amtEl.textContent=(d.amountCents/100).toFixed(2).replace('.',',')+' €';
@@ -7056,26 +7070,26 @@ async function doProlongPayment(){
   const errEl=document.getElementById('prolong-stripe-error');
   const btnSpan=payBtn?payBtn.querySelector('span'):null;
   if(payBtn)payBtn.disabled=true;
-  if(btnSpan)btnSpan.textContent='Paiement en cours…';
+  if(btnSpan)btnSpan.textContent=_lang==='en'?'Payment in progress…':'Paiement en cours…';
   if(errEl)errEl.style.display='none';
   try{
     const {error,paymentIntent}=await _getStripe().confirmPayment({elements:_prolongElements,redirect:'if_required',confirmParams:{return_url:window.location.origin+'/?prolong_return=1'}});
     if(error){
-      if(errEl){errEl.textContent=error.message||'Paiement refusé.';errEl.style.display='block';}
+      if(errEl){errEl.textContent=error.message||(_lang==='en'?'Payment declined.':'Paiement refusé.');errEl.style.display='block';}
       if(payBtn)payBtn.disabled=false;
-      if(btnSpan)btnSpan.textContent='Réessayer le paiement';
+      if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':'Réessayer le paiement';
     }else if(paymentIntent?.status==='succeeded'){
       if(payBtn)payBtn.disabled=true;
       _showProlongSuccess();
     }else{
-      if(errEl){errEl.textContent='Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';}
+      if(errEl){errEl.textContent=_lang==='en'?'Payment pending confirmation. Check your email.':'Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';}
       if(payBtn)payBtn.disabled=false;
-      if(btnSpan)btnSpan.textContent='Réessayer';
+      if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':'Réessayer';
     }
   }catch(e){
-    if(errEl){errEl.textContent='Erreur inattendue. Réessayez.';errEl.style.display='block';}
+    if(errEl){errEl.textContent=_lang==='en'?'Unexpected error. Please try again.':'Erreur inattendue. Réessayez.';errEl.style.display='block';}
     if(payBtn)payBtn.disabled=false;
-    if(btnSpan)btnSpan.textContent='Réessayer le paiement';
+    if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':'Réessayer le paiement';
   }finally{
     _prolongPaying=false;
   }
