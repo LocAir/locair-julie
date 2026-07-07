@@ -45,8 +45,10 @@ const CITY = {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SOLD OUT — mettre à true pour bloquer les réservations et afficher l'overlay
+// Accès admin : ajouter ?admin=locair à l'URL pour bypasser même si SOLD_OUT=true
 // ─────────────────────────────────────────────────────────────────────────────
 const SOLD_OUT = true; // true = formulaire bloqué, overlay "complet" affiché
+(function(){if(new URLSearchParams(location.search).get('admin')==='locair')sessionStorage.setItem('_la','1');})();
 </script>
 
 <!-- ╔══════════════════════════════════════════════════════════════════╗
@@ -5040,7 +5042,7 @@ function _initSoldOut(){
 }
 
 function openModal(dur, flowType){
-  if(SOLD_OUT){showSoldOutOverlay();return;}
+  if(SOLD_OUT&&!sessionStorage.getItem('_la')){showSoldOutOverlay();return;}
   window.dataLayer=window.dataLayer||[];
   dataLayer.push({event:'open_booking_modal',flow:flowType||'choice'});
   _lastFocused=document.activeElement;
