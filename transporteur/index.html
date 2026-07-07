@@ -188,6 +188,8 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
       <div class="eyebrow">Espace transporteur</div>
       <h1>Bonjour 👋</h1>
       <p class="sub">Entre ton code personnel pour voir tes missions.</p>
+      <button class="btn btn-blue btn-block hidden" id="webauthn-login-btn" onclick="loginWithFaceId()" style="margin-bottom:14px">🔓 Face ID / empreinte</button>
+      <div class="err" id="webauthn-login-err"></div>
       <label for="lg-code">Ton code (6 chiffres)</label>
       <input type="password" id="lg-code" inputmode="numeric" autocomplete="off" placeholder="••••••" maxlength="6"/>
       <div style="height:16px"></div>
@@ -204,6 +206,13 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
       <button onclick="switchTab('activite')">💰 Mon activité</button>
     </div>
     <div id="tour-zone"></div>
+    <div class="card hidden" id="faceid-offer">
+      <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
+      <p class="sub" style="margin-bottom:16px">Active Face ID / empreinte pour te connecter sans ressaisir ton code la prochaine fois.</p>
+      <button class="btn btn-blue btn-block" onclick="setupFaceId()">Activer</button>
+      <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="dismissFaceIdOffer()">Plus tard</button>
+      <div class="err" id="faceid-err"></div>
+    </div>
     <div id="missions-list"></div>
   </div>
 
@@ -350,6 +359,121 @@ async function setupPush(){
   }catch(e){ /* pas bloquant : l'app marche très bien sans push */ }
 }
 
+// ── Face ID / empreinte (WebAuthn) ────────────────────────────────────────────
+function bufToBase64url(buf){
+  const bytes = new Uint8Array(buf);
+  let str = '';
+  for(const b of bytes) str += String.fromCharCode(b);
+  return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function base64urlToBuf(b64url){
+  const pad = '='.repeat((4 - b64url.length % 4) % 4);
+  const base64 = (b64url + pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw = atob(base64);
+  const buf = new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) buf[i] = raw.charCodeAt(i);
+  return buf.buffer;
+}
+async function hasPlatformAuthenticator(){
+  if(!window.PublicKeyCredential || !PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) return false;
+  try{ return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }catch(e){ return false; }
+}
+async function initWebauthnLoginButton(){
+  if(await hasPlatformAuthenticator()) document.getElementById('webauthn-login-btn')?.classList.remove('hidden');
+}
+async function maybeOfferFaceId(){
+  if(!STATE.transporteurId) return;
+  if(localStorage.getItem('t_faceid_'+STATE.transporteurId)) return; // déjà activé ou refusé sur cet appareil
+  if(await hasPlatformAuthenticator()) document.getElementById('faceid-offer')?.classList.remove('hidden');
+}
+function dismissFaceIdOffer(){
+  localStorage.setItem('t_faceid_'+STATE.transporteurId, 'refuse');
+  document.getElementById('faceid-offer')?.classList.add('hidden');
+}
+async function setupFaceId(){
+  const errEl = document.getElementById('faceid-err');
+  errEl.style.display = 'none';
+  try{
+    const optRes = await fetch(API('transporteur-webauthn-register-options'), {
+      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body:'{}',
+    });
+    const options = await optRes.json();
+    if(!optRes.ok) throw new Error(options.error||'Erreur');
+
+    const publicKey = {
+      ...options,
+      challenge: base64urlToBuf(options.challenge),
+      user: { ...options.user, id: base64urlToBuf(options.user.id) },
+      excludeCredentials: (options.excludeCredentials||[]).map(c => ({...c, id: base64urlToBuf(c.id)})),
+    };
+    const cred = await navigator.credentials.create({ publicKey });
+    const response = {
+      id: cred.id, rawId: bufToBase64url(cred.rawId), type: cred.type,
+      response: {
+        clientDataJSON: bufToBase64url(cred.response.clientDataJSON),
+        attestationObject: bufToBase64url(cred.response.attestationObject),
+        transports: cred.response.getTransports ? cred.response.getTransports() : undefined,
+      },
+      clientExtensionResults: cred.getClientExtensionResults ? cred.getClientExtensionResults() : {},
+    };
+
+    const verRes = await fetch(API('transporteur-webauthn-register-verify'), {
+      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify({ response }),
+    });
+    const verData = await verRes.json();
+    if(!verRes.ok) throw new Error(verData.error||'Erreur');
+
+    localStorage.setItem('t_faceid_'+STATE.transporteurId, 'actif');
+    document.getElementById('faceid-offer').innerHTML = '<p class="sub">✅ Face ID / empreinte activé pour cet appareil.</p>';
+  }catch(e){
+    errEl.textContent = "Impossible d'activer — réessaie plus tard";
+    errEl.style.display = 'block';
+  }
+}
+async function loginWithFaceId(){
+  const errEl = document.getElementById('webauthn-login-err');
+  errEl.style.display = 'none';
+  try{
+    const optRes = await fetch(API('transporteur-webauthn-login-options'), {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    const options = await optRes.json();
+    if(!optRes.ok) throw new Error(options.error||'Erreur');
+
+    const publicKey = {
+      ...options,
+      challenge: base64urlToBuf(options.challenge),
+      allowCredentials: (options.allowCredentials||[]).map(c => ({...c, id: base64urlToBuf(c.id)})),
+    };
+    const assertion = await navigator.credentials.get({ publicKey });
+    const response = {
+      id: assertion.id, rawId: bufToBase64url(assertion.rawId), type: assertion.type,
+      response: {
+        clientDataJSON: bufToBase64url(assertion.response.clientDataJSON),
+        authenticatorData: bufToBase64url(assertion.response.authenticatorData),
+        signature: bufToBase64url(assertion.response.signature),
+        userHandle: assertion.response.userHandle ? bufToBase64url(assertion.response.userHandle) : undefined,
+      },
+      clientExtensionResults: assertion.getClientExtensionResults ? assertion.getClientExtensionResults() : {},
+    };
+
+    const verRes = await fetch(API('transporteur-webauthn-login-verify'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ response })});
+    const d = await verRes.json();
+    if(!verRes.ok) throw new Error(d.error||'Connexion refusée.');
+
+    STATE.token = d.token; STATE.transporteurId = d.transporteur_id; STATE.transporteurNom = d.nom;
+    sessionStorage.setItem('t_token', d.token);
+    sessionStorage.setItem('t_id', d.transporteur_id);
+    sessionStorage.setItem('t_nom', d.nom);
+    updateWhoBadge();
+    loadMissions();
+    setupPush();
+    maybeOfferFaceId();
+  }catch(e){
+    errEl.textContent = e.message || 'Connexion refusée.';
+    errEl.style.display = 'block';
+  }
+}
+
 async function doLogin(){
   const pin = document.getElementById('lg-code').value.trim();
   const errEl = document.getElementById('lg-err');
@@ -370,6 +494,7 @@ async function doLogin(){
     updateWhoBadge();
     loadMissions();
     setupPush();
+    maybeOfferFaceId();
   }catch(e){
     errEl.textContent = e.message || 'Code incorrect.';
     errEl.style.display='block';
@@ -884,10 +1009,12 @@ function closeDayMap(){
 
 // ── Démarrage ─────────────────────────────────────────────────────────────────
 (function init(){
+  initWebauthnLoginButton();
   if(STATE.token && STATE.transporteurId && STATE.transporteurNom){
     updateWhoBadge();
     loadMissions();
     setupPush();
+    maybeOfferFaceId();
   } else if(STATE.token){
     // token connu mais pas de transporteur choisi -> relogin léger
     show('login-screen');

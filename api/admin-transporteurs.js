@@ -59,6 +59,12 @@ module.exports = async (req, res) => {
         if (error.code === '23505') return res.status(409).json({ error: 'Ce code est déjà utilisé par un autre transporteur, réessaie' });
         throw error;
       }
+      // Changer le code déconnecte aussi tout accès biométrique déjà enregistré
+      // (même logique que pour les jetons de session) — le transporteur devra le
+      // réactiver avec son nouveau code.
+      if (patch.pin) {
+        await supabase.from('webauthn_credentials').delete().eq('transporteur_id', id);
+      }
       return res.status(200).json({ ok: true });
     }
 

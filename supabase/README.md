@@ -42,12 +42,19 @@ Renseigner l'email de chaque transporteur n'est pas obligatoire, mais c'est ce q
 - Vérifier que `retard.html` fonctionne toujours à l'identique (aucune régression).
 - Suivi en direct : depuis `/transporteur`, accepter une mission puis autoriser la géolocalisation quand le navigateur le demande → dans `/admin` → Livraisons, le bouton "🔴 Suivre en direct" doit faire apparaître une carte avec la position qui bouge.
 - Notifications push : se connecter sur `/transporteur` et accepter la demande de notification du navigateur → assigner une mission à ce transporteur depuis `/admin` → une notification doit apparaître sur son téléphone même si l'onglet/l'app est fermé.
+- Face ID / empreinte : se connecter avec le code une première fois → accepter "Activer" sur la carte proposée → se déconnecter ("changer") → le bouton "🔓 Face ID / empreinte" doit permettre de se reconnecter sans ressaisir le code. Changer le code de ce transporteur depuis `/admin` doit ensuite désactiver cet accès (il doit revalider avec le nouveau code puis réactiver Face ID).
 
 ## Notifications push (nouvelles missions, annulations)
 
 Un transporteur reçoit une notification sur son téléphone — même app fermée — dans deux cas : une mission lui est assignée (première fois ou réassignation), ou une récupération qu'on lui avait confiée est annulée parce que le client a prolongé sa location. Il touche la notification pour ouvrir directement l'app.
 
 Ça ne marche qu'une fois que le transporteur a accepté la demande d'autorisation du navigateur (affichée automatiquement à sa connexion sur `/transporteur`). S'il l'a refusée par erreur, il doit réinitialiser les autorisations de notification du site dans les réglages de son navigateur puis se reconnecter. Aucune configuration de ton côté au-delà des variables `VAPID_*` ci-dessus.
+
+## Connexion par Face ID / empreinte (WebAuthn)
+
+Le code à 6 chiffres reste toujours disponible — Face ID/empreinte est une option en plus, pas un remplacement. À sa connexion, un transporteur dont l'appareil a un capteur biométrique voit une carte "Active Face ID / empreinte" ; s'il accepte, son navigateur (Face ID sur iPhone, empreinte/reconnaissance faciale sur Android) est enregistré. Aux connexions suivantes, un bouton "🔓 Face ID / empreinte" apparaît au-dessus du champ code et le connecte directement, sans rien taper.
+
+Gratuit et standard (WebAuthn, le même mécanisme que les grandes apps bancaires utilisent côté web) — rien à configurer côté toi, aucun compte tiers. Changer le code d'un transporteur (depuis `/admin` ou via "Code oublié ?") révoque automatiquement son accès Face ID par sécurité ; il devra le réactiver après s'être reconnecté avec le nouveau code.
 
 ## Stock par appareil numéroté
 

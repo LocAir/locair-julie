@@ -36,6 +36,9 @@ module.exports = async (req, res) => {
       }
 
       if (newPin) {
+        // Même logique qu'un changement de code depuis l'admin : révoque tout
+        // accès biométrique déjà enregistré (probable perte/vol de téléphone).
+        await supabase.from('webauthn_credentials').delete().eq('transporteur_id', transp.id);
         await sendBrevoEmail({
           to:      transp.email,
           subject: 'Ton nouveau code Loc’Air',

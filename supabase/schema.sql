@@ -248,6 +248,32 @@ create table push_subscriptions (
 );
 create index push_subscriptions_transporteur_idx on push_subscriptions (transporteur_id);
 
+-- Authentification biométrique (Face ID / empreinte) via le standard WebAuthn,
+-- comme n'importe quelle app bancaire côté web. Un transporteur peut enregistrer
+-- plusieurs appareils. La clé publique ne permet jamais de retrouver le PIN ni
+-- de se faire passer pour quelqu'un d'autre sans le capteur biométrique physique.
+create table webauthn_credentials (
+  id              bigint generated always as identity primary key,
+  transporteur_id bigint not null references transporteurs(id) on delete cascade,
+  credential_id   text not null unique,
+  public_key      text not null,
+  counter         bigint not null default 0,
+  device_type     text,
+  backed_up       boolean not null default false,
+  created_at      timestamptz not null default now()
+);
+create index webauthn_credentials_transporteur_idx on webauthn_credentials (transporteur_id);
+
+-- Challenges WebAuthn à usage unique, courte durée de vie (~5 min). Pas de lien
+-- vers un transporteur à la génération : la connexion biométrique ne demande pas
+-- de PIN au préalable, l'identité est déduite du "credential_id" renvoyé par
+-- l'appareil au moment de la vérification.
+create table webauthn_challenges (
+  id         bigint generated always as identity primary key,
+  challenge  text not null unique,
+  created_at timestamptz not null default now()
+);
+
 -- Seed pour Nice — ajuster le nombre d'appareils insérés ci-dessous au vrai parc
 insert into cities (slug, name, dep, postal) values ('nice', 'Nice', '06', '06300');
 insert into appareils (city_id, numero)
