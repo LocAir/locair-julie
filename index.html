@@ -42,6 +42,11 @@ const CITY = {
   alertActive: true,
   sheetsWebhook: '', // ← coller ici l'URL du Web App Google Apps Script
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SOLD OUT — mettre à true pour bloquer les réservations et afficher l'overlay
+// ─────────────────────────────────────────────────────────────────────────────
+const SOLD_OUT = false; // true = formulaire bloqué, overlay "complet" affiché
 </script>
 
 <!-- ╔══════════════════════════════════════════════════════════════════╗
@@ -2367,6 +2372,20 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .hps-chip{padding:6px 16px;border:1px solid rgba(255,255,255,.2);border-radius:100px;font-size:12px;font-weight:400;color:rgba(255,255,255,.6);background:none;cursor:pointer;font-family:var(--body);transition:all .18s;letter-spacing:.03em}
 .hps-chip.on{border-color:var(--gold);color:var(--gold);background:rgba(197,169,108,.1);font-weight:500}
 .hps-chip:hover:not(.on){border-color:rgba(255,255,255,.4);color:rgba(255,255,255,.85)}
+
+/* ── SOLD OUT OVERLAY ── */
+.so-overlay{position:fixed;inset:0;z-index:2100;background:rgba(6,9,15,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px}
+.so-overlay.open{display:flex;animation:fadeInEl .22s ease}
+.so-card{background:var(--white);border-radius:20px;max-width:380px;width:100%;padding:36px 28px 28px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.22)}
+.so-icon{width:52px;height:52px;background:#fef3c7;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center}
+.so-icon svg{width:22px;height:22px;stroke:#d97706;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.so-h{font-family:var(--head);font-size:21px;color:var(--black);margin-bottom:8px;letter-spacing:-.02em;line-height:1.25}
+.so-p{font-size:13.5px;color:var(--grey2);line-height:1.7;margin-bottom:22px}
+.so-wa{display:inline-flex;align-items:center;gap:8px;background:#25d366;color:#fff;font-size:14px;font-weight:600;border-radius:100px;padding:13px 24px;text-decoration:none;transition:background .15s;font-family:var(--body)}
+.so-wa:hover{background:#1ebe5d}
+.so-close{display:block;margin:14px auto 0;background:none;border:none;font-size:12.5px;color:var(--grey);cursor:pointer;padding:4px 12px;font-family:var(--body);text-decoration:underline}
+.so-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(217,119,6,.1);border:1px solid rgba(217,119,6,.22);color:#92400e;border-radius:100px;font-size:10.5px;font-weight:600;padding:4px 11px;letter-spacing:.04em;margin-top:12px;margin-bottom:4px}
+@media(max-width:480px){.so-overlay{align-items:flex-end;padding:0}.so-card{border-radius:20px 20px 0 0;max-width:100%}}
 
 /* ── EXIT INTENT ── */
 .ei-overlay{position:fixed;inset:0;z-index:2000;background:rgba(6,9,15,.55);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;padding:24px}
@@ -4978,7 +4997,50 @@ document.addEventListener('click',e=>{
   }
 });
 
+function showSoldOutOverlay(){
+  const ov=document.getElementById('so-overlay');
+  if(!ov)return;
+  ov.classList.add('open');
+  ov.removeAttribute('aria-hidden');
+  document.body.style.overflow='hidden';
+  ov.querySelector('.so-close')?.focus();
+}
+function closeSoldOutOverlay(){
+  const ov=document.getElementById('so-overlay');
+  if(!ov)return;
+  ov.classList.remove('open');
+  ov.setAttribute('aria-hidden','true');
+  document.body.style.overflow='';
+}
+// Close on backdrop click
+document.addEventListener('click',function(e){
+  if(e.target.id==='so-overlay')closeSoldOutOverlay();
+});
+// Close on Escape
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&document.getElementById('so-overlay')?.classList.contains('open'))closeSoldOutOverlay();
+});
+function _initSoldOut(){
+  if(!SOLD_OUT)return;
+  // Badge sous le CTA hero
+  const cta=document.querySelector('.hero-cta');
+  if(cta){
+    const badge=document.createElement('p');
+    badge.className='so-badge';
+    badge.id='so-hero-badge';
+    badge.innerHTML='<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span id="so-badge-txt">Complet — réouverture prochaine</span>';
+    cta.insertAdjacentElement('afterend',badge);
+  }
+  // Désactiver le stock-notice dans le funnel (0 dispo)
+  const sn=document.getElementById('stock-notice');
+  if(sn)sn.style.display='none';
+  // Désactiver la mobile bar booking button
+  const mb=document.querySelector('.m-btn-book');
+  if(mb){mb.style.opacity='.55';mb.style.cursor='default';}
+}
+
 function openModal(dur, flowType){
+  if(SOLD_OUT){showSoldOutOverlay();return;}
   window.dataLayer=window.dataLayer||[];
   dataLayer.push({event:'open_booking_modal',flow:flowType||'choice'});
   _lastFocused=document.activeElement;
@@ -6192,6 +6254,12 @@ const LANG_MAP=[
   ['#hero-badge-info','text','7j min · Transport 35€','7d min · Delivery €35'],
   /* product card */
   ['#prod-card-name','text','Pack Confort','Comfort Pack'],
+  /* sold-out overlay */
+  ['#so-h','text','Complet pour le moment','Sold out for now'],
+  ['#so-p','text','Tous nos appareils sont actuellement loués. Écrivez-nous sur WhatsApp — nous vous prévenons dès qu\'un appareil se libère.','All units are currently rented. Write to us on WhatsApp — we\'ll let you know as soon as one becomes available.'],
+  ['#so-wa-txt','text','Me prévenir sur WhatsApp','Notify me on WhatsApp'],
+  ['#so-close','text','Fermer','Close'],
+  ['#so-badge-txt','text','Complet — réouverture prochaine','Sold out — coming back soon'],
   /* spec chips — funnel step 2 */
   ['#spec-chip-m2','text','Jusqu\'à 30 m²','Up to 30 m²'],
   ['#spec-chip-remote','text','Télécommande','Remote control'],
@@ -6490,7 +6558,7 @@ function setLang(l){
 }
 
 // Appliquer la langue mémorisée au chargement
-document.addEventListener('DOMContentLoaded',()=>setLang(_lang));
+document.addEventListener('DOMContentLoaded',()=>{setLang(_lang);_initSoldOut();});
 
 // Scroll modal-body pour garder le champ actif visible — tous appareils (iOS, Android, desktop)
 function _scrollModalToField(el,delay){
@@ -7686,6 +7754,23 @@ function cwBook(){
       <button class="cookie-btn-refuse" id="cookieRefuse" type="button" onclick="_cookieRefuse()">Rejeter</button>
       <button class="cookie-btn-prefs" type="button" onclick="window.location='/confidentialite'">Préférences</button>
     </div>
+  </div>
+</div>
+
+<!-- ── SOLD OUT OVERLAY ── -->
+<div id="so-overlay" class="so-overlay" role="dialog" aria-modal="true" aria-labelledby="so-h" aria-hidden="true">
+  <div class="so-card">
+    <div class="so-icon">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+    </div>
+    <h2 class="so-h" id="so-h">Complet pour le moment</h2>
+    <p class="so-p" id="so-p">Tous nos appareils sont actuellement loués. Écrivez-nous sur WhatsApp — nous vous prévenons dès qu'un appareil se libère.</p>
+    <a href="https://wa.me/33663798756?text=Bonjour%2C%20je%20souhaite%20être%20pr%C3%A9venu%20d%C3%A8s%20qu%27un%20climatiseur%20est%20disponible%20%C3%A0%20Nice."
+       class="so-wa" id="so-wa" target="_blank" rel="noopener noreferrer" data-c-wa>
+      <svg style="width:15px;height:15px;flex-shrink:0" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      <span id="so-wa-txt">Me prévenir sur WhatsApp</span>
+    </a>
+    <button class="so-close" onclick="closeSoldOutOverlay()" type="button" id="so-close">Fermer</button>
   </div>
 </div>
 
