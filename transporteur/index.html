@@ -649,20 +649,14 @@ function actionBtnsForMission(m){
       <button class="btn btn-red" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
   }
   if(m.statut === 'acceptee' && m.type === 'livraison'){
-    if(!m.photo_depart_ok){
-      const numeros = m.appareil_numeros||[];
-      const plural = numeros.length>1;
-      const kitTxt = c.fenetre ? ` + ${numeros.length||1} kit${plural?'s':''} de calfeutrage (${c.fenetre})` : '';
-      const pickup = numeros.length
-        ? `Récupère ${plural?'les Unités':"l'Unité"} n°${numeros.join(', ')}${kitTxt}, charge-${plural?'les':'la'} et prends la photo avant de partir.`
-        : `Charge l'appareil et prends la photo avant de partir.`;
-      return `
-        <p class="step-hint">📦 Au dépôt : ${pickup}</p>
-        <button class="media-btn" onclick="startUpload('photo_depart','image/*')"><span class="ic">📷</span> Photo appareil au départ dépôt</button>
-        <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
-    }
+    const numeros = m.appareil_numeros||[];
+    const plural = numeros.length>1;
+    const kitTxt = c.fenetre ? ` + ${numeros.length||1} kit${plural?'s':''} de calfeutrage (${c.fenetre})` : '';
+    const pickup = numeros.length
+      ? `Récupère ${plural?'les Unités':"l'Unité"} n°${numeros.join(', ')}${kitTxt} et charge-${plural?'les':'la'}.`
+      : `Charge l'appareil.`;
     return `
-      <p class="step-hint">🚚 En route vers le client.</p>
+      <p class="step-hint">📦 Au dépôt : ${pickup}</p>
       <button class="media-btn ${m.client_notifie?'done':''}" onclick="doAction('prevenir_client')"><span class="ic">📲</span> ${m.client_notifie?'Client prévenu ✔':'Prévenir le client (arrivée ~30 min)'}</button>
       <button class="btn btn-blue" ${m.client_notifie?'':'disabled'} onclick="doAction('arrive')">📍 JE SUIS ARRIVÉ CHEZ LE CLIENT</button>
       <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
@@ -699,7 +693,7 @@ function renderStepper(m){
   const labels=['Départ','Route','Client','Terminé'];
   let idx=0;
   if(m.statut==='a_faire') idx=0;
-  else if(m.statut==='acceptee') idx=(m.type==='livraison'&&!m.photo_depart_ok)?0:1;
+  else if(m.statut==='acceptee') idx=1;
   else if(m.statut==='arrivee') idx=2;
   else if(m.statut==='fait') idx=3;
   return '<div class="stepper">'+labels.map((lbl,i)=>{

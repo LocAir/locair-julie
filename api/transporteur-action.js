@@ -84,9 +84,6 @@ module.exports = async (req, res) => {
 
     if (action === 'prevenir_client') {
       if (liv.statut !== 'acceptee') return res.status(409).json({ error: 'Mission pas encore acceptée' });
-      if (liv.type === 'livraison' && !liv.photo_depart_path) {
-        return res.status(400).json({ error: 'Photo de l\'appareil au départ dépôt requise avant de prévenir le client' });
-      }
       if (liv.client_notifie_at) return res.status(200).json({ ok: true });
 
       const { data: resa } = await supabase
@@ -110,9 +107,6 @@ module.exports = async (req, res) => {
 
     if (action === 'arrive') {
       if (liv.statut !== 'acceptee') return res.status(409).json({ error: 'Mission pas encore acceptée' });
-      if (liv.type === 'livraison' && !liv.photo_depart_path) {
-        return res.status(400).json({ error: 'Photo de l\'appareil au départ dépôt requise avant de partir' });
-      }
       if (!liv.client_notifie_at) {
         return res.status(400).json({ error: 'Préviens le client avant d\'arriver chez lui' });
       }
@@ -147,8 +141,8 @@ module.exports = async (req, res) => {
     if (action === 'livraison_ok' || action === 'retour_ok') {
       const expectedType = action === 'livraison_ok' ? 'livraison' : 'recuperation';
       if (liv.type !== expectedType || liv.statut !== 'arrivee') return res.status(409).json({ error: 'Étape non disponible' });
-      if (expectedType === 'livraison' && (!liv.photo_depart_path || !liv.video_installation_path)) {
-        return res.status(400).json({ error: 'Photo de départ et vidéo d\'installation requises avant de valider' });
+      if (expectedType === 'livraison' && !liv.video_installation_path) {
+        return res.status(400).json({ error: 'Vidéo d\'installation requise avant de valider' });
       }
       if (expectedType === 'recuperation' && !liv.photo_retour_path) {
         return res.status(400).json({ error: 'Photo de l\'appareil récupéré requise avant de valider' });
