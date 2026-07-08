@@ -81,6 +81,17 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .stat-tile .l{font-size:11px;color:var(--grey);font-weight:600;margin-top:8px;letter-spacing:.03em;text-transform:uppercase}
 .stat-tile.warn .n{color:var(--red)}
 
+.morning-banner{background:var(--blue);color:#fff;border-radius:var(--r-lg);padding:18px 44px 18px 20px;margin-bottom:16px;box-shadow:var(--sh-blue);position:relative}
+.morning-banner .mb-title{font-family:var(--disp);font-size:17px;font-weight:600;margin-bottom:6px}
+.morning-banner .mb-text{font-size:13px;line-height:1.6;opacity:.92}
+.morning-banner .mb-close{position:absolute;top:12px;right:12px;background:none;border:none;color:#fff;opacity:.7;cursor:pointer;font-size:15px;padding:6px}
+.morning-banner .mb-close:hover{opacity:1}
+
+.week-header{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--rule)}
+.week-header:first-child{margin-top:0}
+.week-header .wk-label{font-family:var(--disp);font-size:16px;font-weight:600}
+.week-header .wk-ca{font-size:12px;color:var(--grey);font-weight:600}
+
 .row-item{padding:16px 18px;border:1px solid var(--rule);border-radius:var(--r);margin-bottom:10px;background:var(--white);box-shadow:var(--sh-xs)}
 .row-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}
 .row-title{font-weight:700;font-size:14.5px;letter-spacing:-.005em}
@@ -191,6 +202,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')">📊 Accueil</button>
         <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
         <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations</button>
+        <button data-tab="calendrier" onclick="switchAdminTab('calendrier')">📅 Calendrier</button>
         <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
         <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs</button>
         <button data-tab="virements" onclick="switchAdminTab('virements')">💶 Virements<span class="tab-badge hidden" id="badge-virements"></span></button>
@@ -200,6 +212,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-accueil"></div>
         <div id="tab-stock" class="hidden"></div>
         <div id="tab-reservations" class="hidden"></div>
+        <div id="tab-calendrier" class="hidden"></div>
         <div id="tab-livraisons" class="hidden"></div>
         <div id="tab-transporteurs" class="hidden"></div>
         <div id="tab-virements" class="hidden"></div>
@@ -363,12 +376,13 @@ const PROBLEME_LABEL = {client_injoignable:'Client injoignable', appareil_en_pan
 
 function switchAdminTab(tab){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','livraisons','transporteurs','virements'].forEach(t=>{
+  ['accueil','stock','reservations','calendrier','livraisons','transporteurs','virements'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard('7j');
   if(tab==='stock') loadStock();
   if(tab==='reservations') loadReservations();
+  if(tab==='calendrier') loadCalendrier();
   if(tab==='livraisons') loadLivraisons();
   if(tab==='transporteurs') loadTransporteurs();
   if(tab==='virements') loadVirements();
@@ -403,6 +417,7 @@ async function loadDashboard(periode){
     if(!r.ok) throw new Error(d.error||'Erreur');
     const pct = Math.round((d.taux_occupation||0)*100);
     zone.innerHTML = `
+      ${morningBannerHtml(d.hier)}
       <div class="periods">
         <button class="${periode==='jour'?'on':''}" onclick="loadDashboard('jour')">Jour</button>
         <button class="${periode==='7j'?'on':''}" onclick="loadDashboard('7j')">7 jours</button>
@@ -414,11 +429,33 @@ async function loadDashboard(periode){
         <div class="stat-tile"><div class="n">${d.nb_reservations||0}</div><div class="l">Réservations</div></div>
         <div class="stat-tile"><div class="n">${pct}%</div><div class="l">Occupation (${d.unites_occupees}/${d.flotte_totale} à ${d.ville})</div></div>
         <div class="stat-tile ${d.incidents_ouverts>0?'warn':''}"><div class="n">${d.incidents_ouverts||0}</div><div class="l">Incidents ouverts</div></div>
+        <div class="stat-tile" style="grid-column:1/-1"><div class="n">${(d.ca_total_euros||0).toFixed(0)} €</div><div class="l">CA total généré (depuis le début)</div></div>
       </div>
     `;
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
+}
+
+// ── Bandeau matinal (performances de la veille) ──────────────────────────────
+// Message provisoire — Aly précisera le texte définitif plus tard. Affiché une
+// seule fois par jour (marqueur localStorage daté), pas à chaque rechargement.
+function morningBannerHtml(hier){
+  if(!hier) return '';
+  const todayStr = new Date().toISOString().slice(0,10);
+  if(localStorage.getItem('a_morning_seen') === todayStr) return '';
+  const incidentsTxt = hier.incidents>0 ? `, ${hier.incidents} incident${hier.incidents>1?'s':''}` : '';
+  return `
+    <div class="morning-banner" id="morning-banner-el">
+      <button class="mb-close" onclick="dismissMorningBanner()">✕</button>
+      <div class="mb-title">👋 Bonjour Aly</div>
+      <div class="mb-text">Hier : ${hier.ca_euros.toFixed(0)} € de CA, ${hier.nb_reservations} réservation${hier.nb_reservations>1?'s':''}, ${hier.missions_terminees} mission${hier.missions_terminees>1?'s':''} terminée${hier.missions_terminees>1?'s':''}${incidentsTxt}.</div>
+    </div>`;
+}
+function dismissMorningBanner(){
+  localStorage.setItem('a_morning_seen', new Date().toISOString().slice(0,10));
+  const el = document.getElementById('morning-banner-el');
+  if(el) el.remove();
 }
 
 // ── STOCK ─────────────────────────────────────────────────────────────────────
@@ -605,6 +642,63 @@ function updateReservationStatut(id, statut, selectEl){
 async function doUpdateReservationStatut(id, statut){
   await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
   loadReservations();
+}
+
+// ── CALENDRIER ────────────────────────────────────────────────────────────────
+// Vue des réservations groupées par semaine (avec tarifs) — pour visualiser
+// l'occupation sur plusieurs semaines d'un coup d'œil, sans dépouiller le
+// tableau "Réservations" (trié par date de création, pas par date de séjour).
+function mondayOf(dateStr){
+  const d = new Date(dateStr+'T00:00:00');
+  const day = (d.getDay()+6)%7; // 0=lundi
+  d.setDate(d.getDate()-day);
+  return d;
+}
+function weekRangeLabel(monday){
+  const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
+  const fmt = dt => dt.toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
+  return `Semaine du ${fmt(monday)} au ${fmt(sunday)}`;
+}
+async function loadCalendrier(){
+  const zone = document.getElementById('tab-calendrier');
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+
+    const resas = (d.reservations||[]).filter(res => res.statut!=='annulee');
+    if(!resas.length){ zone.innerHTML = '<p class="empty">📅 Aucune réservation à venir.</p>'; return; }
+    resas.sort((a,b) => a.date_debut.localeCompare(b.date_debut));
+
+    const weeks = {};
+    resas.forEach(res => {
+      const key = mondayOf(res.date_debut).toISOString().slice(0,10);
+      (weeks[key] = weeks[key] || []).push(res);
+    });
+    const weekKeys = Object.keys(weeks).sort();
+
+    zone.innerHTML = weekKeys.map(key => {
+      const items = weeks[key];
+      const caSemaine = items.filter(r=>r.statut==='confirmee').reduce((s,r)=>s+(r.prix_total_cents||0),0);
+      return `
+        <div class="week-header">
+          <span class="wk-label">${weekRangeLabel(new Date(key+'T00:00:00'))}</span>
+          <span class="wk-ca">${euros(caSemaine)} de CA</span>
+        </div>
+        ${items.map(res => `
+          <div class="row-item">
+            <div class="row-top">
+              <span class="row-title">${escHtml(res.ref||('#'+res.id))} — ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
+              <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
+            </div>
+            <div class="row-meta">${escHtml(res.adresse||'—')}<br/>${res.date_debut} → ${res.date_fin} · ${res.quantite}x · ${euros(res.prix_total_cents)}</div>
+          </div>
+        `).join('')}`;
+    }).join('');
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
 }
 
 // ── LIVRAISONS ────────────────────────────────────────────────────────────────
