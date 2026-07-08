@@ -69,6 +69,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .tabs button:hover{background:rgba(20,30,48,.04);color:var(--black)}
 .tabs button.on{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
 .tabs button.on:hover{background:var(--blue-d)}
+.tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;margin-left:6px;border-radius:100px;background:var(--red);color:#fff;font-size:10.5px;font-weight:800;line-height:1;vertical-align:2px}
 
 .periods{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);padding:4px;border-radius:var(--r-sm)}
 .periods button{flex:1;padding:8px;border-radius:7px;border:none;background:transparent;font-weight:600;font-size:12.5px;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
@@ -190,9 +191,9 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')">📊 Accueil</button>
         <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
         <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations</button>
-        <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons</button>
+        <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
         <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs</button>
-        <button data-tab="virements" onclick="switchAdminTab('virements')">💶 Virements</button>
+        <button data-tab="virements" onclick="switchAdminTab('virements')">💶 Virements<span class="tab-badge hidden" id="badge-virements"></span></button>
       </div>
 
       <div class="a-content">
@@ -227,6 +228,8 @@ async function adminLogin(){
     document.getElementById('a-login').classList.add('hidden');
     document.getElementById('a-app').classList.remove('hidden');
     switchAdminTab('accueil');
+    loadAlerts();
+    if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
   }catch(e){
     errEl.textContent = e.message;
     errEl.style.display='block';
@@ -369,6 +372,25 @@ function switchAdminTab(tab){
   if(tab==='livraisons') loadLivraisons();
   if(tab==='transporteurs') loadTransporteurs();
   if(tab==='virements') loadVirements();
+}
+
+// ── Badges "à regarder" sur les onglets (virements demandés, missions en
+// problème) — rafraîchis périodiquement pour rester à jour même si l'admin
+// reste sur le même onglet pendant qu'un livreur signale un souci ailleurs.
+async function loadAlerts(){
+  try{
+    const r = await fetch(API('admin-alerts'), {method:'POST', headers:authHeaders(), body:'{}'});
+    const d = await r.json();
+    if(!r.ok) return;
+    updateTabBadge('livraisons', d.livraisons);
+    updateTabBadge('virements', d.virements);
+  }catch(e){}
+}
+function updateTabBadge(tab, count){
+  const el = document.getElementById('badge-'+tab);
+  if(!el) return;
+  if(count>0){ el.textContent = count; el.classList.remove('hidden'); }
+  else{ el.classList.add('hidden'); }
 }
 
 // ── ACCUEIL / CHIFFRES ────────────────────────────────────────────────────────
@@ -696,6 +718,7 @@ function resolveProbleme(livraisonId){
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadLivraisons();
+      loadAlerts();
       showToast('Mission réactivée', 'success');
     }catch(e){ showToast(e.message, 'error'); }
   });
@@ -832,6 +855,7 @@ function marquerVerse(id){
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadVirements();
+      loadAlerts();
       showToast('Virement marqué comme versé', 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {danger:true, yesLabel:'Confirmer le virement'});
