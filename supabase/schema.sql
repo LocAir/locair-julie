@@ -92,6 +92,7 @@ create table reservations (
   nom                      text,
   email                    text,
   tel                      text,
+  tel_secondaire           text, -- numéro de secours si le principal ne répond pas (ex. client absent)
   adresse                  text,
   etage                    text,
   ascenseur                text,
@@ -105,6 +106,7 @@ create table reservations (
   statut                   text not null default 'en_attente'
                              check (statut in ('en_attente','confirmee','annulee','terminee')),
   source                   text,
+  masquee                  boolean not null default false, -- retirée de la liste admin (ex. doublon), sans toucher au statut/stock
   created_at               timestamptz not null default now(),
   constraint reservations_dates_check check (date_fin > date_debut)
 );
