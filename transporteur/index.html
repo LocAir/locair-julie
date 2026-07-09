@@ -103,6 +103,8 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .media-btn .ic{font-size:20px}
 
 .step-hint{font-size:14px;font-weight:700;color:var(--blue);background:var(--gold-lt);border-radius:var(--r-sm);padding:11px 14px;margin-bottom:14px}
+.upload-preview{margin-bottom:14px}
+.upload-preview img,.upload-preview video{width:100%;max-height:240px;object-fit:cover;border-radius:var(--r);display:block;box-shadow:var(--sh-xs);background:#000}
 .probleme-box{background:var(--red-bg);border-radius:var(--r);padding:16px}
 .probleme-box p{font-size:14px;color:var(--red);line-height:1.55;font-weight:600}
 .probleme-list .btn{margin-top:10px}
@@ -916,12 +918,19 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
   // Le seul geste de l'app qui pouvait sembler figé sans rien indiquer — une
   // vidéo lente à envoyer donnait l'impression que rien ne se passait, alors
   // que ces preuves sont la seule protection en cas de litige avec un client.
+  // L'aperçu (miniature de ce qui vient d'être capturé) confirme aussi que la
+  // photo/vidéo a bien pris quelque chose d'exploitable avant l'envoi.
   let loadingEl = null;
+  let previewUrl = null;
   if(zone){
     zone.querySelectorAll('button').forEach(b => b.disabled = true);
+    previewUrl = URL.createObjectURL(file);
+    const isVideoFile = file.type.startsWith('video');
     loadingEl = document.createElement('div');
-    loadingEl.className = 'step-hint';
-    loadingEl.textContent = '⏳ Envoi en cours, ne quitte pas cet écran…';
+    loadingEl.className = 'upload-preview';
+    loadingEl.innerHTML = `
+      ${isVideoFile ? `<video src="${previewUrl}" muted playsinline></video>` : `<img src="${previewUrl}" alt=""/>`}
+      <p class="step-hint" style="margin:10px 0 0">⏳ Envoi en cours, ne quitte pas cet écran…</p>`;
     zone.prepend(loadingEl);
   }
   try{
@@ -960,6 +969,8 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
       errEl.className='err'; errEl.style.display='block'; errEl.textContent = err.message;
       zone2.appendChild(errEl);
     }
+  }finally{
+    if(previewUrl) URL.revokeObjectURL(previewUrl);
   }
 });
 

@@ -165,6 +165,10 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .map-modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px}
 .map-modal-head h2{margin:0;font-family:var(--disp);font-weight:600;font-size:19px}
 .map-modal-head button{background:var(--bg);border:none;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;color:var(--grey);line-height:1}
+.media-modal-body{background:#0d1829;display:flex;align-items:center;justify-content:center;max-height:70vh}
+.media-modal-body img,.media-modal-body video{width:100%;max-height:70vh;object-fit:contain;display:block}
+.media-modal-foot{display:flex;justify-content:flex-end;padding:12px 20px;border-top:1px solid var(--rule)}
+.media-modal-foot a{color:var(--grey);font-size:12.5px;font-weight:600}
 #live-map{height:380px;width:100%;background:#e8e6e0}
 .map-stats{padding:0 20px 14px;font-size:12.5px;color:var(--grey);line-height:1.6}
 .map-eta{padding:14px 20px;font-size:13.5px;color:var(--grey);display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--rule)}
@@ -1311,13 +1315,45 @@ function resolveProbleme(livraisonId){
     }catch(e){ showToast(e.message, 'error'); }
   });
 }
+const MEDIA_KIND_LABEL = {
+  photo_depart: 'Photo — départ dépôt', video_installation: 'Vidéo — installation',
+  photo_retour: 'Photo — appareil récupéré', photo_absence: 'Photo — preuve de passage',
+};
 async function viewMedia(livraisonId, kind){
   try{
     const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'media_url', livraison_id:livraisonId, kind})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    window.open(d.url, '_blank', 'noopener');
+    openMediaViewer(d.url, kind);
   }catch(e){ showToast(e.message, 'error'); }
+}
+// Aperçu directement dans l'app plutôt que d'ouvrir le fichier brut dans un
+// nouvel onglet — plus rapide à consulter (surtout plusieurs preuves de
+// suite) et visuellement cohérent avec le reste de l'admin.
+function openMediaViewer(url, kind){
+  closeMediaViewer();
+  const isVideo = kind === 'video_installation';
+  const safeUrl = escHtml(url);
+  const overlay = document.createElement('div');
+  overlay.className = 'map-overlay';
+  overlay.id = 'media-overlay-el';
+  overlay.innerHTML = `
+    <div class="map-modal">
+      <div class="map-modal-head">
+        <h2>${escHtml(MEDIA_KIND_LABEL[kind]||'Preuve')}</h2>
+        <button onclick="closeMediaViewer()">✕</button>
+      </div>
+      <div class="media-modal-body">
+        ${isVideo ? `<video src="${safeUrl}" controls autoplay playsinline></video>` : `<img src="${safeUrl}" alt="${escHtml(MEDIA_KIND_LABEL[kind]||'Preuve')}"/>`}
+      </div>
+      <div class="media-modal-foot"><a href="${safeUrl}" target="_blank" rel="noopener">Ouvrir dans un nouvel onglet ↗</a></div>
+    </div>`;
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeMediaViewer(); });
+  document.body.appendChild(overlay);
+}
+function closeMediaViewer(){
+  const o = document.getElementById('media-overlay-el');
+  if(o) o.remove();
 }
 
 // ── TRANSPORTEURS ─────────────────────────────────────────────────────────────
