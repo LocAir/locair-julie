@@ -23,7 +23,9 @@ module.exports = async (req, res) => {
       virements = count || 0;
     }
 
-    const { data: cityResas } = await supabase.from('reservations').select('id').eq('city_id', city.id);
+    // Une réservation masquée (doublon retiré de l'écran par l'admin) ne doit
+    // gonfler ni le badge "problèmes/non assignées" ni le bandeau permanent.
+    const { data: cityResas } = await supabase.from('reservations').select('id').eq('city_id', city.id).eq('masquee', false);
     const resaIds = (cityResas || []).map(r => r.id);
     let livraisons = 0;
     let nonAssignees = 0;

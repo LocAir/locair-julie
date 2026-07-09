@@ -71,6 +71,11 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .tabs button.on:hover{background:var(--blue-d)}
 .tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;margin-left:6px;border-radius:100px;background:var(--red);color:#fff;font-size:10.5px;font-weight:800;line-height:1;vertical-align:2px}
 
+/* Bandeau permanent en haut d'écran tant qu'au moins une mission n'a pas de
+   livreur — visible depuis n'importe quel onglet, pas seulement Livraisons. */
+.unassigned-banner{background:var(--red);color:#fff;text-align:center;padding:12px 16px;border-radius:var(--r);font-weight:700;font-size:13px;margin-bottom:16px;cursor:pointer;box-shadow:var(--sh-sm);transition:background-color .15s ease}
+.unassigned-banner:hover{background:#7d2818}
+
 .periods{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);padding:4px;border-radius:var(--r-sm)}
 .periods button{flex:1;padding:8px;border-radius:7px;border:none;background:transparent;font-weight:600;font-size:12.5px;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
 .periods button.on{background:var(--white);color:var(--black);box-shadow:var(--sh-xs)}
@@ -217,6 +222,9 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
   </div>
 
   <div id="a-app" class="hidden">
+    <div class="unassigned-banner hidden" id="unassigned-banner" onclick="goToUnassigned()">
+      <span id="unassigned-banner-text"></span> — cliquer pour voir
+    </div>
     <div class="a-layout">
       <div class="tabs">
         <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')">📊 Accueil</button>
@@ -430,6 +438,7 @@ async function loadAlerts(){
     if(!r.ok) return;
     updateTabBadge('livraisons', d.livraisons);
     updateTabBadge('virements', d.virements);
+    updateUnassignedBanner(d.non_assignees || 0);
   }catch(e){}
 }
 function updateTabBadge(tab, count){
@@ -437,6 +446,23 @@ function updateTabBadge(tab, count){
   if(!el) return;
   if(count>0){ el.textContent = count; el.classList.remove('hidden'); }
   else{ el.classList.add('hidden'); }
+}
+// Bandeau permanent (toutes pages) tant qu'au moins une mission n'a pas de
+// livreur — le badge sur l'onglet Livraisons seul se manque trop facilement
+// quand on travaille sur un autre onglet.
+function updateUnassignedBanner(count){
+  const banner = document.getElementById('unassigned-banner');
+  if(!banner) return;
+  if(count>0){
+    document.getElementById('unassigned-banner-text').textContent = `⚠️ ${count} mission${count>1?'s':''} non assignée${count>1?'s':''}`;
+    banner.classList.remove('hidden');
+  }else{
+    banner.classList.add('hidden');
+  }
+}
+function goToUnassigned(){
+  LIVRAISONS_FILTER = 'non_assignees';
+  switchAdminTab('livraisons');
 }
 
 // ── ACCUEIL / CHIFFRES ────────────────────────────────────────────────────────
@@ -1066,12 +1092,17 @@ function renderLivraisons(){
     if(m.photo_retour_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_retour')">📷 Retour</button>`);
     if(m.photo_absence_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_absence')">📵 Preuve passage</button>`);
     const enRoute = m.transporteur && (m.statut==='acceptee' || m.statut==='arrivee');
+    // Icône permanente sur les missions sans livreur — visible même en dehors
+    // du filtre "Non assignées", pour qu'une mission non dispatchée ne se
+    // perde jamais visuellement dans la liste "Toutes".
+    const nonAssignee = m.statut==='a_faire' && !m.transporteur;
     return `
-      <div class="row-item">
+      <div class="row-item" ${nonAssignee?'style="border-left:3px solid var(--red)"':''}>
         <div class="row-top">
-          <span class="row-title">${m.type==='livraison'?'📦':'🔄'} ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
+          <span class="row-title">${nonAssignee?'🔔 ':''}${m.type==='livraison'?'📦':'🔄'} ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
           <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
         </div>
+        ${nonAssignee?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-bottom:4px">🔔 Non assignée</div>`:''}
         ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="row-meta" style="font-weight:700;color:var(--blue)">🔢 Unité${m.appareil_numeros.length>1?'s':''} n°${m.appareil_numeros.join(', ')}${(m.appareil_references&&m.appareil_references.length)?' · '+m.appareil_references.map(escHtml).join(', '):''}</div>`:''}
         <div class="row-meta">${res.ref?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
         ${(m.duree_trajet_min!=null || m.duree_sur_place_min!=null)?`<div class="row-meta">🕐 ${m.duree_trajet_min!=null?m.duree_trajet_min+' min trajet':''}${m.duree_trajet_min!=null&&m.duree_sur_place_min!=null?' · ':''}${m.duree_sur_place_min!=null?m.duree_sur_place_min+' min sur place':''}</div>`:''}
@@ -1497,6 +1528,12 @@ function closeLiveMap(){
     document.getElementById('a-login').classList.add('hidden');
     document.getElementById('a-app').classList.remove('hidden');
     switchAdminTab('accueil');
+    // Sans ça, les badges (missions non assignées, virements) et le bandeau
+    // permanent ne se remettaient à jour qu'après une saisie de mot de passe —
+    // donc jamais après un simple rechargement de page avec une session déjà
+    // active (l'écran ne bouge plus jusqu'à une déconnexion/reconnexion).
+    loadAlerts();
+    if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
   }
 })();
 </script>
