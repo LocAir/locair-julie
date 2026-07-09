@@ -135,6 +135,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .map-modal-head h2{margin:0;font-family:var(--disp);font-weight:600;font-size:19px}
 .map-modal-head button{background:var(--bg);border:none;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;color:var(--grey);line-height:1}
 #live-map{height:380px;width:100%;background:#e8e6e0}
+.map-stats{padding:0 20px 14px;font-size:12.5px;color:var(--grey);line-height:1.6}
 .map-eta{padding:14px 20px;font-size:13.5px;color:var(--grey);display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--rule)}
 .map-eta strong{color:var(--black);font-size:15px;font-variant-numeric:tabular-nums}
 .map-stale{color:var(--amber) !important;font-weight:700}
@@ -738,6 +739,15 @@ function avgDureeSurPlace(type){
   if(!vals.length) return null;
   return Math.round(vals.reduce((s,v)=>s+v,0) / vals.length);
 }
+// Même moyenne, mais isolée pour un livreur précis — affichée à côté de la
+// carte en temps réel pour donner du contexte pendant qu'on suit sa mission.
+function avgDureeSurPlaceForTransporteur(transporteurId, type){
+  const vals = LIVRAISONS_CACHE
+    .filter(m => m.type===type && m.statut==='fait' && m.duree_sur_place_min!=null && m.transporteur?.id===transporteurId)
+    .map(m => m.duree_sur_place_min);
+  if(!vals.length) return null;
+  return { avg: Math.round(vals.reduce((s,v)=>s+v,0) / vals.length), n: vals.length };
+}
 function renderLivraisonsToolbar(){
   const zone = document.getElementById('tab-livraisons');
   const filters = [
@@ -1004,9 +1014,16 @@ async function openLiveMap(transporteurId, transporteurNom, adresse){
   const overlay = document.createElement('div');
   overlay.className = 'map-overlay';
   overlay.id = 'map-overlay';
+  const avgLiv = avgDureeSurPlaceForTransporteur(transporteurId, 'livraison');
+  const avgRec = avgDureeSurPlaceForTransporteur(transporteurId, 'recuperation');
+  const statsLines = [
+    avgLiv ? `📦 Livraison : ${avgLiv.avg} min en moyenne sur place (${avgLiv.n} mission${avgLiv.n>1?'s':''})` : '',
+    avgRec ? `🔄 Récupération : ${avgRec.avg} min en moyenne sur place (${avgRec.n} mission${avgRec.n>1?'s':''})` : '',
+  ].filter(Boolean);
   overlay.innerHTML = `
     <div class="map-modal">
       <div class="map-modal-head"><h2>🔴 ${escHtml(transporteurNom)} en direct</h2><button onclick="closeLiveMap()">✕</button></div>
+      ${statsLines.length?`<div class="map-stats">${statsLines.join('<br/>')}</div>`:''}
       <div id="live-map"></div>
       <div class="map-eta" id="map-eta">Chargement…</div>
     </div>`;
