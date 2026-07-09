@@ -1,7 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { getCity }     = require('./_lib/city');
 const { verifyTransporteurToken } = require('./_lib/auth');
-const { sendBrevoEmail } = require('./_lib/brevo');
+const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
 
 function escHtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -11,6 +11,7 @@ const MEDIA_COLUMN = {
   photo_depart:        'photo_depart_path',
   video_installation:  'video_installation_path',
   photo_retour:        'photo_retour_path',
+  photo_absence:       'photo_absence_path',
 };
 // À quelle étape chaque preuve peut être prise — empêche de brûler une étape
 // (ex. filmer l'installation avant même d'être arrivé chez le client).
@@ -24,6 +25,12 @@ const EXT_BY_TYPE = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'we
 function checkMediaAllowed(liv, kind) {
   const column = MEDIA_COLUMN[kind];
   if (!column) return 'Type de média invalide';
+  // La preuve de passage "client absent" peut être prise en route (déjà
+  // prévenu, personne ne répond) ou une fois sur place — pas d'étape unique.
+  if (kind === 'photo_absence') {
+    if (!['acceptee', 'arrivee'].includes(liv.statut)) return 'Cette étape n\'est pas encore accessible';
+    return null;
+  }
   const expectsLivraison = kind === 'photo_depart' || kind === 'video_installation';
   if (expectsLivraison && liv.type !== 'livraison') return 'Média non attendu pour cette mission';
   if (kind === 'photo_retour' && liv.type !== 'recuperation') return 'Média non attendu pour cette mission';
@@ -168,8 +175,15 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'probleme') {
-      const problemeType = ['client_injoignable', 'appareil_en_panne', 'retard', 'autre'].includes(body.probleme_type) ? body.probleme_type : 'autre';
+      const problemeType = ['client_absent', 'appareil_en_panne', 'retard', 'autre'].includes(body.probleme_type) ? body.probleme_type : 'autre';
       const description  = (body.probleme_description || '').slice(0, 1000);
+
+      // "Client absent" exige la preuve de passage (photo prise juste avant) —
+      // sans quoi le SMS automatique pourrait partir sans rien qui le justifie.
+      if (problemeType === 'client_absent' && !liv.photo_absence_path) {
+        return res.status(400).json({ error: 'Photo de passage requise avant de signaler un client absent' });
+      }
+
       await supabase.from('livraisons').update({
         statut:               'probleme',
         probleme_type:        problemeType,
@@ -186,6 +200,18 @@ module.exports = async (req, res) => {
         description:     `[${liv.type}] ${description || problemeType}`,
         statut:          'ouvert',
       });
+
+      if (problemeType === 'client_absent') {
+        const { data: resa } = await supabase
+          .from('reservations').select('prenom, tel').eq('id', liv.reservation_id).maybeSingle();
+        if (resa?.tel) {
+          const verbe = liv.type === 'livraison' ? 'livrer' : 'récupérer';
+          await sendBrevoSms({
+            to: resa.tel,
+            content: `Loc'Air : notre livreur est passé pour ${verbe} votre climatiseur mais personne ne répondait. Merci de nous rappeler pour reprogrammer.`,
+          }).catch(() => {});
+        }
+      }
 
       return res.status(200).json({ ok: true, statut: 'probleme' });
     }

@@ -7,6 +7,7 @@ const MEDIA_COLUMN = {
   photo_depart:       'photo_depart_path',
   video_installation: 'video_installation_path',
   photo_retour:       'photo_retour_path',
+  photo_absence:      'photo_absence_path',
 };
 
 // Charge une livraison en vérifiant qu'elle appartient bien (via sa réservation)
@@ -45,7 +46,7 @@ module.exports = async (req, res) => {
         .select(`
           id, type, statut, date_prevue, creneau,
           probleme_type, probleme_description,
-          photo_depart_path, video_installation_path, photo_retour_path,
+          photo_depart_path, video_installation_path, photo_retour_path, photo_absence_path,
           accepted_at, client_notifie_at, arrivee_at, fait_at,
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (

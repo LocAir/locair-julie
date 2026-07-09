@@ -122,7 +122,8 @@ create table livraisons (
   photo_depart_path      text,   -- appareil au départ dépôt (livraison)
   video_installation_path text,  -- appareil en marche chez le client (livraison)
   photo_retour_path      text,   -- appareil récupéré chez le client (récupération)
-  probleme_type          text check (probleme_type in ('client_injoignable','appareil_en_panne','retard','autre')),
+  photo_absence_path     text,   -- preuve de passage devant le bâtiment (client absent)
+  probleme_type          text check (probleme_type in ('client_absent','appareil_en_panne','retard','autre')),
   probleme_description   text,
   notes                  text,
   -- Rémunération du transporteur pour cette mission (figée au moment du "fait"

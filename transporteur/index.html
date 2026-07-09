@@ -810,6 +810,11 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
     });
     if(!r2.ok) throw new Error('Erreur de confirmation');
 
+    if(kind === 'photo_absence'){
+      await doAction('probleme', {probleme_type:'client_absent'});
+      return;
+    }
+
     await fetchMissions();
     const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
     if(m){ STATE.currentMission = m; renderDetail(); }
@@ -864,7 +869,7 @@ function openProbleme(){
     <div class="sheet">
       <h1 style="margin-bottom:14px">⚠️ Quel est le problème ?</h1>
       <div class="probleme-list">
-        <button class="btn btn-amber" onclick="sendProbleme('client_injoignable')">📵 Client injoignable</button>
+        <button class="btn btn-amber" onclick="startClientAbsent()">📵 Client absent</button>
         <button class="btn btn-amber" onclick="sendProbleme('appareil_en_panne')">🔧 Appareil en panne</button>
         <button class="btn btn-amber" onclick="sendProbleme('retard')">⏰ Retard important</button>
         <button class="btn btn-amber" onclick="sendProbleme('autre')">❓ Autre problème</button>
@@ -880,6 +885,13 @@ function closeProbleme(){
 async function sendProbleme(type){
   closeProbleme();
   await doAction('probleme', {probleme_type: type});
+}
+// "Client absent" exige une photo de passage avant d'envoyer le SMS
+// automatique — startUpload() enchaîne ensuite sur le signalement du problème
+// une fois la photo confirmée (voir le listener de #media-input).
+function startClientAbsent(){
+  closeProbleme();
+  startUpload('photo_absence', 'image/*');
 }
 
 // ── Mon activité (gains, façon Uber Driver) ──────────────────────────────────
