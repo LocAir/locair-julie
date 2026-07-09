@@ -616,13 +616,23 @@ function renderMissions(){
 
   // Regroupées par date : une mission peut arriver la veille pour le
   // lendemain, bien à l'avance, ou de dernière minute pour aujourd'hui.
+  // Le jour même, on sépare installations et récupérations — c'est ainsi
+  // qu'une tournée se planifie concrètement, pas mission par mission.
   const groups = {};
   STATE.missions.forEach(m => { (groups[m.date_prevue] = groups[m.date_prevue] || []).push(m); });
   const dates = Object.keys(groups).sort();
 
-  wrap.innerHTML = dates.map(dateStr =>
-    `<div class="section-title">${dateLabelFor(dateStr)}</div>` + groups[dateStr].map(missionCardHtml).join('')
-  ).join('');
+  wrap.innerHTML = dates.map(dateStr => {
+    const items = groups[dateStr];
+    if(dateStr === todayStr){
+      const installs = items.filter(m => m.type==='livraison');
+      const pickups  = items.filter(m => m.type==='recuperation');
+      return `<div class="section-title">${dateLabelFor(dateStr)}</div>`
+        + (installs.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🏠 Installations (${installs.length})</div>${installs.map(missionCardHtml).join('')}`:'')
+        + (pickups.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔄 Récupérations (${pickups.length})</div>${pickups.map(missionCardHtml).join('')}`:'');
+    }
+    return `<div class="section-title">${dateLabelFor(dateStr)}</div>` + items.map(missionCardHtml).join('');
+  }).join('');
 }
 
 function openMission(id){

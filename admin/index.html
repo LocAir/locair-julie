@@ -413,12 +413,17 @@ async function loadDashboard(periode){
   const zone = document.getElementById('tab-accueil');
   zone.innerHTML = loading();
   try{
-    const r = await fetch(API('admin-dashboard'), {method:'POST', headers:authHeaders(), body:JSON.stringify({periode})});
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.error||'Erreur');
+    const [dr, lr] = await Promise.all([
+      fetch(API('admin-dashboard'), {method:'POST', headers:authHeaders(), body:JSON.stringify({periode})}),
+      fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+    ]);
+    const d = await dr.json();
+    if(!dr.ok) throw new Error(d.error||'Erreur');
+    const ld = await lr.json().catch(()=>({livraisons:[]}));
     const pct = Math.round((d.taux_occupation||0)*100);
     zone.innerHTML = `
       ${morningBannerHtml(d.hier)}
+      ${boardHtml(ld.livraisons||[])}
       <div class="periods">
         <button class="${periode==='jour'?'on':''}" onclick="loadDashboard('jour')">Jour</button>
         <button class="${periode==='7j'?'on':''}" onclick="loadDashboard('7j')">7 jours</button>
@@ -436,6 +441,37 @@ async function loadDashboard(periode){
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
+}
+
+// ── Board du jour (installations / récupérations) ────────────────────────────
+// Vue opérationnelle "coup d'œil" — seulement ce qui sert à exécuter la
+// journée (créneau, client, adresse, unité, livreur assigné, statut). Pas la
+// durée de location, pas l'email, pas le prix : ça, c'est le rôle de l'onglet
+// Réservations, pas celui d'un board logistique du jour.
+function boardRowHtml(m){
+  const res = m.reservation || {};
+  const numeros = (m.appareil_numeros||[]).join(', ');
+  return `
+    <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
+      <div class="row-top">
+        <span class="row-title">${escHtml(m.creneau||'—')} · ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
+        <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
+      </div>
+      <div class="row-meta">${escHtml(res.adresse||'—')}${numeros?' · Unité n°'+escHtml(numeros):''}${m.transporteur?' · '+escHtml(m.transporteur.nom):' · Non assigné'}</div>
+    </div>`;
+}
+function boardHtml(livraisons){
+  const todayStr = new Date().toISOString().slice(0,10);
+  const today = (livraisons||[]).filter(m => m.date_prevue===todayStr && m.statut!=='annule' && m.statut!=='refusee');
+  const installs = today.filter(m => m.type==='livraison');
+  const pickups  = today.filter(m => m.type==='recuperation');
+  if(!installs.length && !pickups.length) return '';
+  return `
+    <div class="card">
+      <h2>📋 Aujourd'hui</h2>
+      ${installs.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin-bottom:8px">🏠 Installations (${installs.length})</div>${installs.map(boardRowHtml).join('')}`:''}
+      ${pickups.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin:${installs.length?'16px':'0'} 0 8px">🔄 Récupérations (${pickups.length})</div>${pickups.map(boardRowHtml).join('')}`:''}
+    </div>`;
 }
 
 // ── Bandeau matinal (performances de la veille) ──────────────────────────────
