@@ -7709,6 +7709,275 @@ function cwBook(){
 }
 
 // ── FUNNEL ANALYTICS (patchFunnelAnalytics supprimé — double push évité) ─────
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN ANALYTICS PANEL — visible uniquement en mode admin (?admin=locair)
+// ═══════════════════════════════════════════════════════════════════════════════
+(function(){
+  if(!sessionStorage.getItem('_la'))return;
+
+  const _SK='_la_v1';
+  const _now=()=>Date.now();
+
+  // ── Session courante ──────────────────────────────────────────────────────
+  const _s={
+    id:Math.random().toString(36).slice(2,10),
+    t0:_now(),
+    lang:(typeof _lang!=='undefined'?_lang:'fr'),
+    dev:innerWidth<768?'mobile':'desktop',
+    clicks:{},   // {label: count}
+    steps:[],    // étapes modal atteintes
+    scroll:0,    // scroll max %
+    t1clic:null, // ms avant 1er clic CTA
+    soldOut:typeof SOLD_OUT!=='undefined'&&SOLD_OUT
+  };
+
+  // ── Persistance localStorage ──────────────────────────────────────────────
+  function _load(){try{return JSON.parse(localStorage.getItem(_SK)||'[]')}catch(e){return[]}}
+  function _save(){
+    _s.dur=_now()-_s.t0;
+    _s.lang=typeof _lang!=='undefined'?_lang:_s.lang;
+    const h=_load();
+    const i=h.findIndex(x=>x.id===_s.id);
+    if(i>=0)h[i]={..._s};else h.push({..._s});
+    if(h.length>500)h.splice(0,h.length-500);
+    try{localStorage.setItem(_SK,JSON.stringify(h))}catch(e){}
+  }
+
+  // ── Trackers ─────────────────────────────────────────────────────────────
+  function _atCTA(lbl){
+    _s.clicks[lbl]=(_s.clicks[lbl]||0)+1;
+    if(!_s.t1clic)_s.t1clic=_now()-_s.t0;
+    _save();_render();
+  }
+  function _atStep(n){
+    if(!_s.steps.includes(n)){_s.steps.push(n);_save();_render();}
+  }
+
+  // ── Scroll ────────────────────────────────────────────────────────────────
+  let _sf=false;
+  addEventListener('scroll',()=>{
+    if(_sf)return;_sf=true;
+    requestAnimationFrame(()=>{
+      const p=Math.min(100,Math.round((scrollY+innerHeight)/Math.max(1,document.body.scrollHeight)*100));
+      if(p>_s.scroll){_s.scroll=p;_render();}
+      _sf=false;
+    });
+  });
+  setInterval(()=>{_save();_render();},15000);
+  addEventListener('beforeunload',_save);
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const _fmt=ms=>{const s=Math.round(ms/1000);return s<60?s+'s':Math.floor(s/60)+'m'+String(s%60).padStart(2,'0')+'s'};
+  const _pct=(n,d)=>d?Math.round(n/d*100)+'%':'—';
+  const _CTA={
+    'Hero CTA':'🎯 Hero CTA',
+    'Mobile':'📱 Barre mobile',
+    'Tarifs':'💰 Section tarifs',
+    'Produit':'🖥️ Produit',
+    'FAQ':'❓ FAQ CTA',
+    'Menu':'☰ Menu',
+    'Autre':'↗ Autre CTA'
+  };
+
+  // ── État panneau ──────────────────────────────────────────────────────────
+  let _open=false;
+
+  // ── Render ────────────────────────────────────────────────────────────────
+  function _render(){
+    const wrap=document.getElementById('_lap');
+    if(!wrap)return;
+    const dur=_now()-_s.t0;
+    const h=_load();
+    const totS=h.length;
+    let totC=0,totIntent=0,totMod=0;
+    const aggC={};
+    const aggScroll=[];
+    const aggT1=[];
+    h.forEach(s=>{
+      const sc=Object.values(s.clicks||{}).reduce((a,b)=>a+b,0);
+      totC+=sc;
+      if(sc>0)totMod++;
+      if((s.steps||[]).includes(5))totIntent++;
+      if(s.scroll)aggScroll.push(s.scroll);
+      if(s.t1clic)aggT1.push(s.t1clic);
+      Object.entries(s.clicks||{}).forEach(([k,v])=>{aggC[k]=(aggC[k]||0)+v;});
+    });
+    const avgC=totS?Math.round(totC/totS*10)/10:0;
+    const modRate=_pct(totMod,totS);
+    const intentRate=_pct(totIntent,totS);
+    const avgScroll=aggScroll.length?Math.round(aggScroll.reduce((a,b)=>a+b,0)/aggScroll.length)+'%':'—';
+    const avgT1=aggT1.length?_fmt(Math.round(aggT1.reduce((a,b)=>a+b,0)/aggT1.length)):'—';
+
+    const cur=_s.clicks;
+    const totCur=Object.values(cur).reduce((a,b)=>a+b,0);
+    const maxCur=Math.max(1,...Object.values(cur));
+
+    const allKeys=[...new Set([...Object.keys(_CTA),...Object.keys(cur)])];
+    const barsHTML=allKeys.map(k=>`
+      <div class="_lb-row">
+        <div class="_lb-lbl">${_CTA[k]||k}</div>
+        <div class="_lb-track"><div class="_lb-fill" style="width:${Math.round((cur[k]||0)/maxCur*100)}%"></div></div>
+        <div class="_lb-n">${cur[k]||0}</div>
+      </div>`).join('');
+
+    const stepsHTML=[1,2,3,4,5,6].map((n,i)=>{
+      const done=_s.steps.includes(n);
+      return `<div class="_ls${done?' _ld':''}"><span class="_lsn">${n}</span><span class="_lsl">${['Adresse','Durée','Install.','Date','Infos','Récap'][i]}</span></div>${n<6?'<span class="_la_">›</span>':''}`;
+    }).join('');
+
+    const topCTA=Object.keys(aggC).length?Object.keys(aggC).reduce((a,b)=>aggC[a]>aggC[b]?a:b):null;
+
+    const recentHTML=h.slice(-5).reverse().map(s=>{
+      const sc=Object.values(s.clicks||{}).reduce((a,b)=>a+b,0);
+      const mx=s.steps?.length?Math.max(...s.steps):0;
+      return `<div class="_lr"><span>${s.dev==='mobile'?'📱':'🖥️'} ${(s.lang||'fr').toUpperCase()} · ${sc} clic${sc!==1?'s':''}</span><span>Étape ${mx||'—'} · ${s.scroll||0}%↓</span></div>`;
+    }).join('');
+
+    wrap.innerHTML=`
+      <button id="_lbtn" onclick="(()=>{_open=!document.getElementById('_lpan').classList.contains('open');document.getElementById('_lpan').classList.toggle('open')})()">
+        📊 <span style="opacity:.6;font-size:11px">Analytics</span>
+        <span style="background:#635BFF;border-radius:100px;font-size:9px;padding:1px 7px;margin-left:2px;font-weight:700">${totCur}</span>
+      </button>
+      <div id="_lpan"${_open?' class="open"':''}>
+        <div class="_lhead">
+          <span class="_lht">📊 Admin Analytics</span>
+          <span class="_lsub">${_s.dev==='mobile'?'📱 Mobile':'🖥️ Desktop'} · ${(_s.lang||'fr').toUpperCase()}${_s.soldOut?' · 🔒 Sold-out':''}</span>
+        </div>
+
+        <div class="_lsec">
+          <div class="_lsec-h">Session en cours</div>
+          <div class="_lkv"><span>Durée</span><b id="_ldur">${_fmt(dur)}</b></div>
+          <div class="_lkv"><span>Scroll max</span><b>${_s.scroll}%</b></div>
+          <div class="_lkv"><span>1er clic CTA</span><b>${_s.t1clic?_fmt(_s.t1clic):'—'}</b></div>
+          <div class="_lkv"><span>Total clics CTA</span><b>${totCur}</b></div>
+          <div class="_lkv"><span>Étape max atteinte</span><b>${_s.steps.length?Math.max(..._s.steps)+' / 6':'—'}</b></div>
+        </div>
+
+        <div class="_lsec">
+          <div class="_lsec-h">Clics par CTA — session</div>
+          ${totCur===0?'<div style="color:rgba(255,255,255,.3);font-size:11px;padding:4px 0">Aucun clic pour le moment</div>':barsHTML}
+        </div>
+
+        <div class="_lsec">
+          <div class="_lsec-h">Funnel modal</div>
+          <div class="_lfunnel">${stepsHTML}</div>
+        </div>
+
+        <div class="_lsec">
+          <div class="_lsec-h">Historique · ${totS} session${totS!==1?'s':''}</div>
+          <div class="_lkv"><span>Clics CTA / session</span><b>${avgC}</b></div>
+          <div class="_lkv"><span>Taux ouverture modal</span><b>${modRate}</b></div>
+          <div class="_lkv"><span>Taux intention paiement</span><b>${intentRate}</b></div>
+          <div class="_lkv"><span>Scroll moyen</span><b>${avgScroll}</b></div>
+          <div class="_lkv"><span>Délai moyen 1er clic</span><b>${avgT1}</b></div>
+          ${topCTA?`<div class="_lkv" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06)"><span>CTA le + utilisé</span><b>${_CTA[topCTA]||topCTA}</b></div>`:''}
+        </div>
+
+        ${recentHTML?`<div class="_lsec"><div class="_lsec-h">5 dernières sessions</div>${recentHTML}</div>`:''}
+
+        <div class="_lfooter">
+          <button class="_lact" onclick="_laExport()">⬇ Export JSON</button>
+          <button class="_lact" style="color:#ff8080" onclick="_laReset()">🗑 Reset</button>
+        </div>
+      </div>`;
+  }
+
+  window._laExport=function(){
+    const data=JSON.stringify(_load(),null,2);
+    const b=new Blob([data],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(b);
+    a.download='locair-analytics-'+(new Date()).toISOString().slice(0,10)+'.json';
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},3000);
+  };
+  window._laReset=function(){
+    if(!confirm('Effacer toutes les données analytics ?'))return;
+    localStorage.removeItem(_SK);location.reload();
+  };
+
+  // ── CSS ───────────────────────────────────────────────────────────────────
+  const _css=`
+    #_lap{position:fixed;bottom:18px;right:14px;z-index:99999;font-family:system-ui,-apple-system,sans-serif}
+    #_lbtn{background:#12122a;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:100px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 4px 24px rgba(0,0,0,.55);display:flex;align-items:center;gap:5px}
+    #_lbtn:hover{background:#1e1e3a}
+    #_lpan{display:none;position:absolute;bottom:48px;right:0;width:300px;background:#12122a;border-radius:16px;box-shadow:0 12px 50px rgba(0,0,0,.65);overflow:hidden;color:#fff;max-height:85vh;overflow-y:auto}
+    #_lpan.open{display:block;animation:_lfade .18s ease}
+    @keyframes _lfade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    ._lhead{background:#0d0d1e;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:1}
+    ._lht{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.45)}
+    ._lsub{font-size:10px;color:rgba(255,255,255,.3)}
+    ._lsec{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+    ._lsec-h{font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:8px}
+    ._lkv{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:12px}
+    ._lkv:last-child{margin-bottom:0}
+    ._lkv span{color:rgba(255,255,255,.45)}
+    ._lkv b{color:#fff;font-weight:600}
+    ._lb-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px}
+    ._lb-lbl{width:105px;color:rgba(255,255,255,.5);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    ._lb-track{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+    ._lb-fill{height:100%;background:#635BFF;border-radius:3px;transition:width .4s}
+    ._lb-n{color:#fff;font-weight:700;min-width:18px;text-align:right;font-size:12px}
+    ._lfunnel{display:flex;align-items:center;gap:3px;margin:4px 0 4px;flex-wrap:wrap}
+    ._ls{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,.05);display:flex;flex-direction:column;align-items:center;justify-content:center}
+    ._ld{background:rgba(99,91,255,.22)}
+    ._lsn{font-size:14px;font-weight:700;color:rgba(255,255,255,.3);line-height:1}
+    ._lsl{font-size:7px;color:rgba(255,255,255,.25);margin-top:1px;text-align:center}
+    ._ld ._lsn{color:#fff}
+    ._ld ._lsl{color:#a5a0ff}
+    ._la_{color:rgba(255,255,255,.15);font-size:10px;line-height:1;margin-top:2px}
+    ._lr{display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.45);padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+    ._lr:last-child{border-bottom:none}
+    ._lfooter{padding:10px 16px;display:flex;gap:8px}
+    ._lact{flex:1;background:rgba(255,255,255,.07);border:none;border-radius:8px;color:rgba(255,255,255,.6);font-size:11px;font-weight:600;padding:8px;cursor:pointer;transition:background .2s;font-family:inherit}
+    ._lact:hover{background:rgba(255,255,255,.14)}
+  `;
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  function _init(){
+    const s=document.createElement('style');s.textContent=_css;document.head.appendChild(s);
+    const w=document.createElement('div');w.id='_lap';document.body.appendChild(w);
+    _render();
+
+    // Démarrer le timer live
+    setInterval(()=>{const b=document.getElementById('_ldur');if(b)b.textContent=_fmt(_now()-_s.t0);},1000);
+
+    // ── Hooks CTA (capture = avant le clic handler) ──
+    const ctaMap=[
+      ['.hero-cta','Hero CTA'],
+      ['.m-btn-book','Mobile'],
+      ['#pricing-cta','Tarifs'],
+      ['#product-cta','Produit'],
+      ['.faq-cta-btn','FAQ'],
+      ['.nav-menu-cta','Menu'],
+    ];
+    ctaMap.forEach(([sel,lbl])=>{
+      document.querySelectorAll(sel).forEach(el=>el.addEventListener('click',()=>_atCTA(lbl),{capture:true}));
+    });
+    // Fallback : tout openModal non capturé ci-dessus
+    document.querySelectorAll('[onclick*="openModal"]').forEach(el=>{
+      if(!ctaMap.some(([sel])=>el.matches(sel))){
+        el.addEventListener('click',()=>_atCTA('Autre'),{capture:true});
+      }
+    });
+
+    // ── Patch goTo pour funnel ──
+    const _og=window.goTo;
+    if(typeof _og==='function'){
+      window.goTo=function(n,...a){_atStep(n);return _og(n,...a);};
+    }
+
+    // ── Patch setLang pour tracker changement de langue ──
+    const _osl=window.setLang;
+    if(typeof _osl==='function'){
+      window.setLang=function(l,...a){_s.lang=l;_render();return _osl(l,...a);};
+    }
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_init);
+  else _init();
+})();
 </script>
 
 <!-- WHATSAPP BUTTON -->
