@@ -46,6 +46,7 @@ module.exports = async (req, res) => {
           id, type, statut, date_prevue, creneau,
           probleme_type, probleme_description,
           photo_depart_path, video_installation_path, photo_retour_path,
+          accepted_at, client_notifie_at, arrivee_at, fait_at,
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
             id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre,
@@ -60,10 +61,18 @@ module.exports = async (req, res) => {
         const ras = ((l.reservation?.reservation_appareils) || [])
           .filter(ra => ra.appareil?.numero != null)
           .sort((a, b) => a.appareil.numero - b.appareil.numero);
+        // Durées calculées à partir des horodatages posés automatiquement par le
+        // parcours du livreur (aucune action dédiée requise) : le temps de trajet
+        // dépôt→client, et le temps passé sur place (installation ou
+        // vérification/vidange) — utile pour objectiver des hypothèses comme
+        // "20-30 min d'installation" avec de la vraie donnée.
+        const minsBetween = (a, b) => (a && b) ? Math.round((new Date(b) - new Date(a)) / 60000) : null;
         return {
           ...l,
           appareil_numeros: ras.map(ra => ra.appareil.numero),
           appareil_references: ras.map(ra => ra.appareil.reference).filter(Boolean),
+          duree_trajet_min:    minsBetween(l.accepted_at, l.arrivee_at),
+          duree_sur_place_min: minsBetween(l.arrivee_at, l.fait_at),
         };
       });
       return res.status(200).json({ livraisons });

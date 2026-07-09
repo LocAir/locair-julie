@@ -727,6 +727,17 @@ async function loadLivraisons(){
   }
 }
 
+// Moyenne du temps passé sur place (arrivée → terminé), à partir des horodatages
+// posés automatiquement pendant le parcours du livreur — aucune saisie manuelle.
+// Sert à objectiver des hypothèses comme "20-30 min d'installation" avec de la
+// vraie donnée plutôt qu'une estimation.
+function avgDureeSurPlace(type){
+  const vals = LIVRAISONS_CACHE
+    .filter(m => m.type===type && m.statut==='fait' && m.duree_sur_place_min!=null)
+    .map(m => m.duree_sur_place_min);
+  if(!vals.length) return null;
+  return Math.round(vals.reduce((s,v)=>s+v,0) / vals.length);
+}
 function renderLivraisonsToolbar(){
   const zone = document.getElementById('tab-livraisons');
   const filters = [
@@ -735,7 +746,15 @@ function renderLivraisonsToolbar(){
     {key:'fait', label:'Terminées'},
     {key:'probleme', label:'Problèmes'},
   ];
+  const avgLiv = avgDureeSurPlace('livraison');
+  const avgRec = avgDureeSurPlace('recuperation');
+  const avgHtml = (avgLiv!=null || avgRec!=null) ? `
+    <div class="stat-grid" style="margin-bottom:16px">
+      ${avgLiv!=null?`<div class="stat-tile"><div class="n">${avgLiv} min</div><div class="l">Temps moyen sur place · Livraison</div></div>`:''}
+      ${avgRec!=null?`<div class="stat-tile"><div class="n">${avgRec} min</div><div class="l">Temps moyen sur place · Récupération</div></div>`:''}
+    </div>` : '';
   zone.innerHTML = `
+    ${avgHtml}
     <input type="text" id="liv-search" placeholder="🔎 Rechercher un client, une adresse, une référence…" oninput="renderLivraisons()"/>
     <div class="periods" style="margin-bottom:16px">
       ${filters.map(f => `<button class="${LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
@@ -782,6 +801,7 @@ function renderLivraisons(){
         </div>
         ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="row-meta" style="font-weight:700;color:var(--blue)">🔢 Unité${m.appareil_numeros.length>1?'s':''} n°${m.appareil_numeros.join(', ')}${(m.appareil_references&&m.appareil_references.length)?' · '+m.appareil_references.map(escHtml).join(', '):''}</div>`:''}
         <div class="row-meta">${res.ref?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${m.date_prevue} · ${escHtml(m.creneau||'')}</div>
+        ${(m.duree_trajet_min!=null || m.duree_sur_place_min!=null)?`<div class="row-meta">🕐 ${m.duree_trajet_min!=null?m.duree_trajet_min+' min trajet':''}${m.duree_trajet_min!=null&&m.duree_sur_place_min!=null?' · ':''}${m.duree_sur_place_min!=null?m.duree_sur_place_min+' min sur place':''}</div>`:''}
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
         <div class="row-actions">
           <select onchange="assignTransporteur(${m.id}, this.value)">${options}</select>
