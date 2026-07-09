@@ -7711,186 +7711,276 @@ function cwBook(){
 // ── FUNNEL ANALYTICS (patchFunnelAnalytics supprimé — double push évité) ─────
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// ADMIN ANALYTICS PANEL — visible uniquement en mode admin (?admin=locair)
+// ADMIN ANALYTICS — Dashboard temps réel (admin-only · ?admin=locair)
 // ═══════════════════════════════════════════════════════════════════════════════
 (function(){
   if(!sessionStorage.getItem('_la'))return;
 
-  const _SK='_la_v1';
+  const _SK='_la_v2';
   const _now=()=>Date.now();
 
   // ── Session courante ──────────────────────────────────────────────────────
+  const _utm={};try{new URLSearchParams(location.search).forEach((v,k)=>{if(k.startsWith('utm_'))_utm[k]=v;});}catch(e){}
   const _s={
     id:Math.random().toString(36).slice(2,10),
-    t0:_now(),
+    t0:_now(),dur:0,
     lang:(typeof _lang!=='undefined'?_lang:'fr'),
     dev:innerWidth<768?'mobile':'desktop',
-    clicks:{},   // {label: count}
-    steps:[],    // étapes modal atteintes
-    scroll:0,    // scroll max %
-    t1clic:null, // ms avant 1er clic CTA
-    soldOut:typeof SOLD_OUT!=='undefined'&&SOLD_OUT
+    ref:document.referrer||'direct',utm:_utm,
+    events:[{t:0,type:'pageview',d:{}}],
+    scroll:0,steps:[],clicks:{},t1clic:null,
+    so:typeof SOLD_OUT!=='undefined'&&SOLD_OUT
   };
 
-  // ── Persistance localStorage ──────────────────────────────────────────────
+  // ── Storage ───────────────────────────────────────────────────────────────
   function _load(){try{return JSON.parse(localStorage.getItem(_SK)||'[]')}catch(e){return[]}}
   function _save(){
-    _s.dur=_now()-_s.t0;
-    _s.lang=typeof _lang!=='undefined'?_lang:_s.lang;
-    const h=_load();
-    const i=h.findIndex(x=>x.id===_s.id);
-    if(i>=0)h[i]={..._s};else h.push({..._s});
-    if(h.length>500)h.splice(0,h.length-500);
+    _s.dur=_now()-_s.t0;_s.lang=typeof _lang!=='undefined'?_lang:_s.lang;
+    const h=_load(),i=h.findIndex(x=>x.id===_s.id);
+    const cp={..._s,events:[..._s.events]};
+    if(i>=0)h[i]=cp;else h.push(cp);
+    if(h.length>300)h.splice(0,h.length-300);
     try{localStorage.setItem(_SK,JSON.stringify(h))}catch(e){}
   }
 
-  // ── Trackers ─────────────────────────────────────────────────────────────
-  function _atCTA(lbl){
-    _s.clicks[lbl]=(_s.clicks[lbl]||0)+1;
-    if(!_s.t1clic)_s.t1clic=_now()-_s.t0;
-    _save();_render();
-  }
-  function _atStep(n){
-    if(!_s.steps.includes(n)){_s.steps.push(n);_save();_render();}
-  }
-
-  // ── Scroll ────────────────────────────────────────────────────────────────
-  let _sf=false;
-  addEventListener('scroll',()=>{
-    if(_sf)return;_sf=true;
-    requestAnimationFrame(()=>{
-      const p=Math.min(100,Math.round((scrollY+innerHeight)/Math.max(1,document.body.scrollHeight)*100));
-      if(p>_s.scroll){_s.scroll=p;_render();}
-      _sf=false;
-    });
-  });
-  setInterval(()=>{_save();_render();},15000);
-  addEventListener('beforeunload',_save);
+  // ── Trackers ──────────────────────────────────────────────────────────────
+  function _evt(type,d){_s.events.push({t:_now()-_s.t0,type,d:d||{}});_save();_pill();}
+  function _atCTA(lbl){_s.clicks[lbl]=(_s.clicks[lbl]||0)+1;if(!_s.t1clic)_s.t1clic=_now()-_s.t0;_evt('cta',{label:lbl});if(_open)_renderDash();}
+  function _atStep(n){if(!_s.steps.includes(n))_s.steps.push(n);_evt('step',{n});if(_open)_renderDash();}
+  let _sf=false,_sm={25:false,50:false,75:false,100:false};
+  addEventListener('scroll',()=>{if(_sf)return;_sf=true;requestAnimationFrame(()=>{
+    const p=Math.min(100,Math.round((scrollY+innerHeight)/Math.max(1,document.body.scrollHeight)*100));
+    if(p>_s.scroll){_s.scroll=p;if([25,50,75,100].some(ms=>{if(p>=ms&&!_sm[ms]){_sm[ms]=true;return true;}return false;}))_evt('scroll_milestone',{pct:p});else _save();}
+    _sf=false;
+  });});
+  setInterval(_save,20000);
+  addEventListener('beforeunload',()=>{_evt('exit',{scroll:_s.scroll,steps:_s.steps.length});_save();});
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const _fmt=ms=>{const s=Math.round(ms/1000);return s<60?s+'s':Math.floor(s/60)+'m'+String(s%60).padStart(2,'0')+'s'};
-  const _pct=(n,d)=>d?Math.round(n/d*100)+'%':'—';
-  const _CTA={
-    'Hero CTA':'🎯 Hero CTA',
-    'Mobile':'📱 Barre mobile',
-    'Tarifs':'💰 Section tarifs',
-    'Produit':'🖥️ Produit',
-    'FAQ':'❓ FAQ CTA',
-    'Menu':'☰ Menu',
-    'Autre':'↗ Autre CTA'
-  };
-
-  // ── État panneau ──────────────────────────────────────────────────────────
-  let _open=false;
-
-  // ── Render ────────────────────────────────────────────────────────────────
-  function _render(){
-    const wrap=document.getElementById('_lap');
-    if(!wrap)return;
-    const dur=_now()-_s.t0;
-    const h=_load();
-    const totS=h.length;
-    let totC=0,totIntent=0,totMod=0;
-    const aggC={};
-    const aggScroll=[];
-    const aggT1=[];
-    h.forEach(s=>{
-      const sc=Object.values(s.clicks||{}).reduce((a,b)=>a+b,0);
-      totC+=sc;
-      if(sc>0)totMod++;
-      if((s.steps||[]).includes(5))totIntent++;
-      if(s.scroll)aggScroll.push(s.scroll);
-      if(s.t1clic)aggT1.push(s.t1clic);
-      Object.entries(s.clicks||{}).forEach(([k,v])=>{aggC[k]=(aggC[k]||0)+v;});
-    });
-    const avgC=totS?Math.round(totC/totS*10)/10:0;
-    const modRate=_pct(totMod,totS);
-    const intentRate=_pct(totIntent,totS);
-    const avgScroll=aggScroll.length?Math.round(aggScroll.reduce((a,b)=>a+b,0)/aggScroll.length)+'%':'—';
-    const avgT1=aggT1.length?_fmt(Math.round(aggT1.reduce((a,b)=>a+b,0)/aggT1.length)):'—';
-
-    const cur=_s.clicks;
-    const totCur=Object.values(cur).reduce((a,b)=>a+b,0);
-    const maxCur=Math.max(1,...Object.values(cur));
-
-    const allKeys=[...new Set([...Object.keys(_CTA),...Object.keys(cur)])];
-    const barsHTML=allKeys.map(k=>`
-      <div class="_lb-row">
-        <div class="_lb-lbl">${_CTA[k]||k}</div>
-        <div class="_lb-track"><div class="_lb-fill" style="width:${Math.round((cur[k]||0)/maxCur*100)}%"></div></div>
-        <div class="_lb-n">${cur[k]||0}</div>
-      </div>`).join('');
-
-    const stepsHTML=[1,2,3,4,5,6].map((n,i)=>{
-      const done=_s.steps.includes(n);
-      return `<div class="_ls${done?' _ld':''}"><span class="_lsn">${n}</span><span class="_lsl">${['Adresse','Durée','Install.','Date','Infos','Récap'][i]}</span></div>${n<6?'<span class="_la_">›</span>':''}`;
-    }).join('');
-
-    const topCTA=Object.keys(aggC).length?Object.keys(aggC).reduce((a,b)=>aggC[a]>aggC[b]?a:b):null;
-
-    const recentHTML=h.slice(-5).reverse().map(s=>{
-      const sc=Object.values(s.clicks||{}).reduce((a,b)=>a+b,0);
-      const mx=s.steps?.length?Math.max(...s.steps):0;
-      return `<div class="_lr"><span>${s.dev==='mobile'?'📱':'🖥️'} ${(s.lang||'fr').toUpperCase()} · ${sc} clic${sc!==1?'s':''}</span><span>Étape ${mx||'—'} · ${s.scroll||0}%↓</span></div>`;
-    }).join('');
-
-    wrap.innerHTML=`
-      <button id="_lbtn" onclick="(()=>{_open=!document.getElementById('_lpan').classList.contains('open');document.getElementById('_lpan').classList.toggle('open')})()">
-        📊 <span style="opacity:.6;font-size:11px">Analytics</span>
-        <span style="background:#635BFF;border-radius:100px;font-size:9px;padding:1px 7px;margin-left:2px;font-weight:700">${totCur}</span>
-      </button>
-      <div id="_lpan"${_open?' class="open"':''}>
-        <div class="_lhead">
-          <span class="_lht">📊 Admin Analytics</span>
-          <span class="_lsub">${_s.dev==='mobile'?'📱 Mobile':'🖥️ Desktop'} · ${(_s.lang||'fr').toUpperCase()}${_s.soldOut?' · 🔒 Sold-out':''}</span>
-        </div>
-
-        <div class="_lsec">
-          <div class="_lsec-h">Session en cours</div>
-          <div class="_lkv"><span>Durée</span><b id="_ldur">${_fmt(dur)}</b></div>
-          <div class="_lkv"><span>Scroll max</span><b>${_s.scroll}%</b></div>
-          <div class="_lkv"><span>1er clic CTA</span><b>${_s.t1clic?_fmt(_s.t1clic):'—'}</b></div>
-          <div class="_lkv"><span>Total clics CTA</span><b>${totCur}</b></div>
-          <div class="_lkv"><span>Étape max atteinte</span><b>${_s.steps.length?Math.max(..._s.steps)+' / 6':'—'}</b></div>
-        </div>
-
-        <div class="_lsec">
-          <div class="_lsec-h">Clics par CTA — session</div>
-          ${totCur===0?'<div style="color:rgba(255,255,255,.3);font-size:11px;padding:4px 0">Aucun clic pour le moment</div>':barsHTML}
-        </div>
-
-        <div class="_lsec">
-          <div class="_lsec-h">Funnel modal</div>
-          <div class="_lfunnel">${stepsHTML}</div>
-        </div>
-
-        <div class="_lsec">
-          <div class="_lsec-h">Historique · ${totS} session${totS!==1?'s':''}</div>
-          <div class="_lkv"><span>Clics CTA / session</span><b>${avgC}</b></div>
-          <div class="_lkv"><span>Taux ouverture modal</span><b>${modRate}</b></div>
-          <div class="_lkv"><span>Taux intention paiement</span><b>${intentRate}</b></div>
-          <div class="_lkv"><span>Scroll moyen</span><b>${avgScroll}</b></div>
-          <div class="_lkv"><span>Délai moyen 1er clic</span><b>${avgT1}</b></div>
-          ${topCTA?`<div class="_lkv" style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06)"><span>CTA le + utilisé</span><b>${_CTA[topCTA]||topCTA}</b></div>`:''}
-        </div>
-
-        ${recentHTML?`<div class="_lsec"><div class="_lsec-h">5 dernières sessions</div>${recentHTML}</div>`:''}
-
-        <div class="_lfooter">
-          <button class="_lact" onclick="_laExport()">⬇ Export JSON</button>
-          <button class="_lact" style="color:#ff8080" onclick="_laReset()">🗑 Reset</button>
-        </div>
-      </div>`;
+  const _pct=(n,d)=>d?Math.round(n/d*100):0;
+  const _CTA={'Hero CTA':'🎯 Hero CTA','Mobile':'📱 Barre mobile','Tarifs':'💰 Tarifs','Produit':'🖥️ Produit','FAQ':'❓ FAQ','Menu':'☰ Menu','Autre':'↗ Autre'};
+  const _EVT={pageview:'📄 Arrivée',scroll_milestone:'📍 Scroll',cta:'🖱️ Clic CTA',step:'📋 Étape modal',lang:'🌐 Langue',exit:'🚪 Sortie'};
+  function _evtTxt(e){
+    switch(e.type){
+      case'cta':return`🖱️ ${_CTA[e.d.label]||e.d.label}`;
+      case'step':return`📋 Étape ${e.d.n} / 6`;
+      case'scroll_milestone':return`📍 Scroll ${e.d.pct}%`;
+      case'lang':return`🌐 → ${(e.d.l||'').toUpperCase()}`;
+      case'exit':return`🚪 Sortie · scroll ${e.d.scroll||0}%`;
+      default:return _EVT[e.type]||e.type;
+    }
   }
 
+  // ── Agrégation historique ─────────────────────────────────────────────────
+  function _agg(){
+    const h=_load(),n=h.length;
+    if(!n)return{n:0,totC:0,avgC:0,modRate:0,intentRate:0,avgScroll:0,avgDur:0,avgT1:0,ctaMap:{},steps:Array(6).fill(0),dev:{mobile:0,desktop:0},lang:{fr:0,en:0},sessions:[]};
+    let totC=0,modS=0,intentS=0,sumScroll=0,sumDur=0,sumT1=0,cntT1=0;
+    const ctaMap={},steps=Array(6).fill(0),dev={mobile:0,desktop:0},lang={fr:0,en:0};
+    h.forEach(s=>{
+      const sc=Object.values(s.clicks||{}).reduce((a,b)=>a+b,0);
+      totC+=sc;if(sc>0)modS++;if((s.steps||[]).includes(5))intentS++;
+      sumScroll+=s.scroll||0;sumDur+=s.dur||0;
+      if(s.t1clic){sumT1+=s.t1clic;cntT1++;}
+      Object.entries(s.clicks||{}).forEach(([k,v])=>{ctaMap[k]=(ctaMap[k]||0)+v;});
+      (s.steps||[]).forEach(sn=>{if(sn>=1&&sn<=6)steps[sn-1]++;});
+      dev[s.dev==='mobile'?'mobile':'desktop']++;
+      lang[s.lang==='en'?'en':'fr']++;
+    });
+    return{n,totC,avgC:Math.round(totC/n*10)/10,modRate:_pct(modS,n),intentRate:_pct(intentS,n),avgScroll:Math.round(sumScroll/n),avgDur:Math.round(sumDur/n),avgT1:cntT1?Math.round(sumT1/cntT1):0,ctaMap,steps,dev,lang,sessions:h.slice().reverse()};
+  }
+
+  // ── SVG donut ─────────────────────────────────────────────────────────────
+  function _donut(pct,color='#635BFF'){
+    const r=13,c=18,circ=2*Math.PI*r,dash=circ*(pct/100);
+    return`<svg width="36" height="36" viewBox="0 0 36 36"><circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="4"/><circle cx="${c}" cy="${c}" r="${r}" fill="none" stroke="${color}" stroke-width="4" stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}" stroke-dashoffset="${(circ/4).toFixed(1)}" stroke-linecap="round"/><text x="${c}" y="${c+4}" text-anchor="middle" font-size="9" font-weight="700" fill="${color}" font-family="system-ui">${pct}%</text></svg>`;
+  }
+
+  // ── Tab renders ───────────────────────────────────────────────────────────
+  let _tab='overview';
+  function _tabOverview(a){
+    const dur=_now()-_s.t0,curC=Object.values(_s.clicks).reduce((x,y)=>x+y,0);
+    const colors=['#635BFF','#818cf8','#a78bfa','#c084fc','#e879f9','#f472b6','#fb923c'];
+    const ctaItems=Object.entries(a.ctaMap).sort((x,y)=>y[1]-x[1]);
+    const ctaMax=ctaItems.length?ctaItems[0][1]:1;
+    return`
+    <div class="_dk-grid">
+      <div class="_dk"><div class="_dk-v">${a.n}</div><div class="_dk-l">Sessions</div></div>
+      <div class="_dk"><div class="_dk-v">${a.modRate}%</div><div class="_dk-l">Taux clic CTA</div></div>
+      <div class="_dk"><div class="_dk-v">${a.intentRate}%</div><div class="_dk-l">Intent paiement</div></div>
+      <div class="_dk"><div class="_dk-v">${a.avgScroll}%</div><div class="_dk-l">Scroll moyen</div></div>
+      <div class="_dk"><div class="_dk-v">${a.avgC}</div><div class="_dk-l">Clics/session</div></div>
+      <div class="_dk"><div class="_dk-v">${a.avgT1?_fmt(a.avgT1):'—'}</div><div class="_dk-l">Délai 1er clic</div></div>
+    </div>
+    <div class="_drow">
+      <div class="_dcard" style="flex:1">
+        <div class="_dch">📱 Devices</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          ${_donut(_pct(a.dev.mobile,a.n))}
+          <div><div class="_dmr">📱 Mobile <b>${a.dev.mobile}</b></div><div class="_dmr">🖥️ Desktop <b>${a.dev.desktop}</b></div></div>
+        </div>
+      </div>
+      <div class="_dcard" style="flex:1">
+        <div class="_dch">🌐 Langues</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          ${_donut(_pct(a.lang.fr,a.n),'#f59e0b')}
+          <div><div class="_dmr">🇫🇷 FR <b>${a.lang.fr}</b></div><div class="_dmr">🇬🇧 EN <b>${a.lang.en}</b></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="_dcard">
+      <div class="_dch">🔝 CTAs (historique)</div>
+      ${ctaItems.length?ctaItems.map(([k,v],i)=>`
+        <div class="_dbar">
+          <div class="_dbl">${_CTA[k]||k}</div>
+          <div class="_dbt"><div class="_dbf" style="width:${Math.round(v/ctaMax*100)}%;background:${colors[i%colors.length]}"></div></div>
+          <div class="_dbn">${v}</div>
+        </div>`).join(''):'<div class="_dem">Aucun clic encore</div>'}
+    </div>
+    <div class="_dcard">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div class="_dch" style="margin:0">🟢 Session en cours</div>
+        <span class="_dlive-pill">LIVE · ${_fmt(dur)}</span>
+      </div>
+      <div class="_dlg">
+        <div class="_dlc"><div class="_dlk">Scroll</div><div class="_dlv">${_s.scroll}%</div></div>
+        <div class="_dlc"><div class="_dlk">Clics CTA</div><div class="_dlv">${curC}</div></div>
+        <div class="_dlc"><div class="_dlk">Étape max</div><div class="_dlv">${_s.steps.length?Math.max(..._s.steps)+'/6':'—'}</div></div>
+        <div class="_dlc"><div class="_dlk">1er clic</div><div class="_dlv">${_s.t1clic?_fmt(_s.t1clic):'—'}</div></div>
+      </div>
+      <div class="_dfeed">
+        ${_s.events.slice(-10).reverse().map(e=>`<div class="_dfe"><span class="_dft">${_fmt(e.t)}</span><span>${_evtTxt(e)}</span></div>`).join('')||'<div class="_dem">En attente d\'événements…</div>'}
+      </div>
+    </div>`;
+  }
+
+  function _tabCTAs(a){
+    const colors=['#635BFF','#818cf8','#a78bfa','#c084fc','#e879f9','#f472b6'];
+    const items=Object.entries(a.ctaMap).sort((x,y)=>y[1]-x[1]);
+    const totC=items.reduce((s,[,v])=>s+v,0),maxV=items.length?items[0][1]:1;
+    const curItems=Object.entries(_s.clicks).sort((x,y)=>y[1]-x[1]);
+    const curMax=curItems.length?curItems[0][1]:1;
+    return`
+    <div class="_dcard">
+      <div class="_dch">Performance CTA — ${totC} clics · ${a.n} sessions</div>
+      ${items.length?items.map(([k,v],i)=>`
+        <div class="_dbar">
+          <div class="_dbl">${_CTA[k]||k}</div>
+          <div class="_dbt"><div class="_dbf" style="width:${Math.round(v/maxV*100)}%;background:${colors[i%colors.length]}"></div></div>
+          <div class="_dbn">${v}</div>
+          <div class="_dbp">${_pct(v,totC)}%</div>
+        </div>`).join(''):'<div class="_dem">Pas encore de données</div>'}
+    </div>
+    <div class="_dcard">
+      <div class="_dch">Session courante</div>
+      ${curItems.length?curItems.map(([k,v],i)=>`
+        <div class="_dbar">
+          <div class="_dbl">${_CTA[k]||k}</div>
+          <div class="_dbt"><div class="_dbf" style="width:${Math.round(v/curMax*100)}%;background:${colors[i%colors.length]}"></div></div>
+          <div class="_dbn">${v}</div>
+          <div class="_dbp"></div>
+        </div>`).join(''):'<div class="_dem">Aucun clic cette session</div>'}
+    </div>`;
+  }
+
+  function _tabFunnel(a){
+    const lbl=['Adresse','Durée','Installation','Date','Infos','Récapitulatif'];
+    const ico=['📍','⏱️','🔧','📅','👤','✅'];
+    const max=a.steps[0]||1;
+    return`
+    <div class="_dcard">
+      <div class="_dch">Funnel modal — ${a.n} sessions</div>
+      ${a.steps.map((n,i)=>{
+        const w=Math.round(n/max*100);
+        const drop=i>0&&a.steps[i-1]>0?100-_pct(n,a.steps[i-1]):null;
+        const col=i<3?'#635BFF':i<5?'#8b5cf6':'#10b981';
+        return`<div class="_dfs">
+          <div class="_dfl">${ico[i]} ${i+1}. ${lbl[i]}</div>
+          <div class="_dfbt"><div class="_dfbf" style="width:${w}%;background:${col}"><span class="_dfn">${n}</span></div></div>
+          <div class="_dfd">${drop!==null&&drop>0?`<span style="color:#ef4444">−${drop}%</span>`:'&nbsp;'}</div>
+        </div>`;
+      }).join('')}
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:16px;flex-wrap:wrap">
+        <div class="_dmr">Intent paiement (step 5+)<b style="margin-left:8px;color:#10b981">${a.intentRate}%</b></div>
+        <div class="_dmr">Taux complétion modal<b style="margin-left:8px;color:#635BFF">${a.steps[5]?_pct(a.steps[5],a.steps[0])+'%':'—'}</b></div>
+      </div>
+    </div>
+    <div class="_dcard">
+      <div class="_dch">Session courante</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${[1,2,3,4,5,6].map((n,i)=>`<div class="_dsb${_s.steps.includes(n)?' _dsbd':''}">${ico[i]} ${lbl[i]}</div>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  function _tabSessions(a){
+    const sess=a.sessions.slice(0,30);
+    if(!sess.length)return'<div class="_dcard"><div class="_dem">Aucune session enregistrée</div></div>';
+    return`<div class="_dcard" style="padding:0;overflow:hidden">
+      <div class="_dch" style="padding:12px 16px">Sessions récentes (${sess.length} / ${a.n})</div>
+      <div style="overflow-x:auto">
+        <table class="_dtbl">
+          <thead><tr><th>Device</th><th>Lang</th><th>Durée</th><th>Scroll</th><th>Clics</th><th>Étape</th><th>Sold-out</th></tr></thead>
+          <tbody>${sess.map(s=>{
+            const sc=Object.values(s.clicks||{}).reduce((a,b)=>a+b,0);
+            const mx=s.steps?.length?Math.max(...s.steps):0;
+            const live=s.id===_s.id;
+            return`<tr${live?' class="_dtr-live"':''}><td>${s.dev==='mobile'?'📱':'🖥️'}</td><td>${(s.lang||'fr').toUpperCase()}</td><td>${_fmt(s.dur||0)}</td><td>${s.scroll||0}%</td><td>${sc}</td><td>${mx?mx+'/6':'—'}</td><td>${s.so?'🔒':'—'}</td></tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  // ── Dashboard full-screen ─────────────────────────────────────────────────
+  let _open=false;
+  function _renderDash(){
+    const wrap=document.getElementById('_dw');if(!wrap)return;
+    const a=_agg();
+    const tabs=[['overview','📊 Vue d\'ensemble'],['ctas','🖱️ CTAs'],['funnel','🔽 Funnel'],['sessions','📋 Sessions']];
+    let body='';
+    if(_tab==='overview')body=_tabOverview(a);
+    else if(_tab==='ctas')body=_tabCTAs(a);
+    else if(_tab==='funnel')body=_tabFunnel(a);
+    else if(_tab==='sessions')body=_tabSessions(a);
+    wrap.innerHTML=`
+    <div id="_dash">
+      <div class="_dheader">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:15px;font-weight:800;color:#fff;letter-spacing:-.01em">Loc'Air Analytics</span>
+          <span class="_dlive-pill">🟢 LIVE</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="_diBtn" onclick="_laExport()" title="Exporter les données">⬇</button>
+          <button class="_diBtn" onclick="_laReset()" title="Effacer" style="color:#ff8080">🗑</button>
+          <button class="_diBtn" onclick="_cDash()" style="font-size:18px;font-weight:300">×</button>
+        </div>
+      </div>
+      <div class="_dtabs">${tabs.map(([k,l])=>`<button class="_dtab${_tab===k?' _dtab-on':''}" onclick="_sTab('${k}')">${l}</button>`).join('')}</div>
+      <div class="_dbody">${body}</div>
+    </div>`;
+  }
+
+  // ── Pill ──────────────────────────────────────────────────────────────────
+  function _pill(){
+    const el=document.getElementById('_lap');if(!el)return;
+    const c=Object.values(_s.clicks).reduce((a,b)=>a+b,0);
+    el.innerHTML=`<button id="_lbtn" onclick="_oDash()" title="Ouvrir le dashboard analytics">
+      📊 <span style="opacity:.55;font-size:11px;margin-left:2px">${_fmt(_now()-_s.t0)}</span>
+      ${c?`<span class="_dbadge">${c}</span>`:''}
+    </button>`;
+  }
+
+  // ── Publiques ─────────────────────────────────────────────────────────────
+  window._oDash=function(){_open=true;const w=document.getElementById('_dw');if(w){w.style.display='block';document.body.style.overflow='hidden';}_renderDash();};
+  window._cDash=function(){_open=false;const w=document.getElementById('_dw');if(w)w.style.display='none';document.body.style.overflow='';};
+  window._sTab=function(t){_tab=t;_renderDash();};
   window._laExport=function(){
-    const data=JSON.stringify(_load(),null,2);
-    const b=new Blob([data],{type:'application/json'});
-    const a=document.createElement('a');
-    a.href=URL.createObjectURL(b);
+    const b=new Blob([JSON.stringify(_load(),null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(b);
     a.download='locair-analytics-'+(new Date()).toISOString().slice(0,10)+'.json';
-    document.body.appendChild(a);a.click();
-    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},3000);
+    document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},3000);
   };
   window._laReset=function(){
     if(!confirm('Effacer toutes les données analytics ?'))return;
@@ -7899,80 +7989,105 @@ function cwBook(){
 
   // ── CSS ───────────────────────────────────────────────────────────────────
   const _css=`
-    #_lap{position:fixed;bottom:18px;right:14px;z-index:99999;font-family:system-ui,-apple-system,sans-serif}
-    #_lbtn{background:#12122a;color:#fff;border:1px solid rgba(255,255,255,.14);border-radius:100px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 4px 24px rgba(0,0,0,.55);display:flex;align-items:center;gap:5px}
-    #_lbtn:hover{background:#1e1e3a}
-    #_lpan{display:none;position:absolute;bottom:48px;right:0;width:300px;background:#12122a;border-radius:16px;box-shadow:0 12px 50px rgba(0,0,0,.65);overflow:hidden;color:#fff;max-height:85vh;overflow-y:auto}
-    #_lpan.open{display:block;animation:_lfade .18s ease}
-    @keyframes _lfade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-    ._lhead{background:#0d0d1e;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:1}
-    ._lht{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.45)}
-    ._lsub{font-size:10px;color:rgba(255,255,255,.3)}
-    ._lsec{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
-    ._lsec-h{font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:8px}
-    ._lkv{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;font-size:12px}
-    ._lkv:last-child{margin-bottom:0}
-    ._lkv span{color:rgba(255,255,255,.45)}
-    ._lkv b{color:#fff;font-weight:600}
-    ._lb-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px}
-    ._lb-lbl{width:105px;color:rgba(255,255,255,.5);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    ._lb-track{flex:1;height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
-    ._lb-fill{height:100%;background:#635BFF;border-radius:3px;transition:width .4s}
-    ._lb-n{color:#fff;font-weight:700;min-width:18px;text-align:right;font-size:12px}
-    ._lfunnel{display:flex;align-items:center;gap:3px;margin:4px 0 4px;flex-wrap:wrap}
-    ._ls{width:36px;height:36px;border-radius:8px;background:rgba(255,255,255,.05);display:flex;flex-direction:column;align-items:center;justify-content:center}
-    ._ld{background:rgba(99,91,255,.22)}
-    ._lsn{font-size:14px;font-weight:700;color:rgba(255,255,255,.3);line-height:1}
-    ._lsl{font-size:7px;color:rgba(255,255,255,.25);margin-top:1px;text-align:center}
-    ._ld ._lsn{color:#fff}
-    ._ld ._lsl{color:#a5a0ff}
-    ._la_{color:rgba(255,255,255,.15);font-size:10px;line-height:1;margin-top:2px}
-    ._lr{display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.45);padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)}
-    ._lr:last-child{border-bottom:none}
-    ._lfooter{padding:10px 16px;display:flex;gap:8px}
-    ._lact{flex:1;background:rgba(255,255,255,.07);border:none;border-radius:8px;color:rgba(255,255,255,.6);font-size:11px;font-weight:600;padding:8px;cursor:pointer;transition:background .2s;font-family:inherit}
-    ._lact:hover{background:rgba(255,255,255,.14)}
+    #_lap{position:fixed;bottom:18px;right:14px;z-index:99997;font-family:system-ui,-apple-system,sans-serif}
+    #_lbtn{background:#0f0f23;color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:100px;padding:9px 16px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 4px 28px rgba(0,0,0,.6);display:flex;align-items:center;gap:6px;transition:all .2s}
+    #_lbtn:hover{background:#1a1a36;transform:translateY(-1px)}
+    ._dbadge{background:#635BFF;border-radius:100px;font-size:9px;padding:1px 7px;font-weight:800;margin-left:1px}
+    #_dw{display:none;position:fixed;inset:0;z-index:99998;background:#05050f;overflow-y:auto;font-family:system-ui,-apple-system,sans-serif}
+    #_dash{max-width:860px;margin:0 auto;padding-bottom:80px}
+    ._dheader{position:sticky;top:0;background:rgba(5,5,15,.96);backdrop-filter:blur(8px);border-bottom:1px solid rgba(255,255,255,.07);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;z-index:10}
+    ._dlive-pill{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#10b981;border-radius:100px;font-size:9px;font-weight:800;padding:3px 10px;letter-spacing:.06em;animation:_lpulse 2s infinite}
+    @keyframes _lpulse{0%,100%{opacity:1}50%{opacity:.6}}
+    ._diBtn{background:rgba(255,255,255,.06);border:none;color:rgba(255,255,255,.65);border-radius:8px;width:32px;height:32px;font-size:13px;cursor:pointer;transition:background .2s;font-family:inherit}
+    ._diBtn:hover{background:rgba(255,255,255,.14)}
+    ._dtabs{display:flex;gap:2px;padding:12px 20px 0;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto}
+    ._dtab{background:none;border:none;color:rgba(255,255,255,.38);font-size:12px;font-weight:600;padding:9px 14px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;font-family:inherit;border-radius:6px 6px 0 0}
+    ._dtab:hover{color:rgba(255,255,255,.7);background:rgba(255,255,255,.03)}
+    ._dtab-on{color:#fff;border-bottom-color:#635BFF;background:rgba(99,91,255,.06)}
+    ._dbody{padding:16px 20px;display:flex;flex-direction:column;gap:12px;color:#fff}
+    ._dk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    ._dk{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px 16px;transition:border-color .2s}
+    ._dk:hover{border-color:rgba(255,255,255,.14)}
+    ._dk-v{font-size:28px;font-weight:800;color:#fff;letter-spacing:-.03em;line-height:1.1}
+    ._dk-l{font-size:10px;color:rgba(255,255,255,.38);margin-top:4px;font-weight:500}
+    ._dcard{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px 16px}
+    ._dch{font-size:9px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:12px}
+    ._drow{display:flex;gap:10px}
+    ._dmr{font-size:11px;color:rgba(255,255,255,.45);margin-bottom:5px;display:flex;align-items:center}
+    ._dmr b{color:#fff;font-weight:600}
+    ._dbar{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11px}
+    ._dbar:last-child{margin-bottom:0}
+    ._dbl{width:110px;color:rgba(255,255,255,.5);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    ._dbt{flex:1;height:7px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
+    ._dbf{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.34,1.2,.64,1)}
+    ._dbn{color:#fff;font-weight:700;min-width:22px;text-align:right}
+    ._dbp{color:rgba(255,255,255,.3);min-width:32px;text-align:right}
+    ._dlg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+    ._dlc{background:rgba(255,255,255,.04);border-radius:8px;padding:10px 8px;text-align:center}
+    ._dlk{font-size:9px;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+    ._dlv{font-size:17px;font-weight:700;color:#fff}
+    ._dfeed{max-height:160px;overflow-y:auto}
+    ._dfe{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px}
+    ._dfe:last-child{border-bottom:none}
+    ._dft{color:rgba(255,255,255,.28);min-width:34px;font-variant-numeric:tabular-nums;font-size:10px;flex-shrink:0}
+    ._dfs{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:12px}
+    ._dfs:last-of-type{margin-bottom:0}
+    ._dfl{width:130px;color:rgba(255,255,255,.55);flex-shrink:0;font-size:11px}
+    ._dfbt{flex:1;height:24px;background:rgba(255,255,255,.05);border-radius:6px;overflow:hidden}
+    ._dfbf{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:8px;min-width:4px;transition:width .7s cubic-bezier(.34,1.2,.64,1)}
+    ._dfn{color:#fff;font-size:11px;font-weight:700;white-space:nowrap}
+    ._dfd{width:40px;font-size:10px;text-align:right;flex-shrink:0}
+    ._dsb{padding:5px 10px;border-radius:8px;background:rgba(255,255,255,.04);font-size:11px;color:rgba(255,255,255,.3)}
+    ._dsbd{background:rgba(99,91,255,.2);color:#c4b5fd}
+    ._dtbl{width:100%;border-collapse:collapse;font-size:11px}
+    ._dtbl th{padding:8px 14px;text-align:left;color:rgba(255,255,255,.3);font-weight:600;font-size:9px;letter-spacing:.07em;text-transform:uppercase;border-bottom:1px solid rgba(255,255,255,.06)}
+    ._dtbl td{padding:8px 14px;color:rgba(255,255,255,.65);border-bottom:1px solid rgba(255,255,255,.04)}
+    ._dtbl tr:last-child td{border-bottom:none}
+    ._dtr-live td{color:#10b981;background:rgba(16,185,129,.04)}
+    ._dem{color:rgba(255,255,255,.28);font-size:11px;text-align:center;padding:12px 0}
+    @media(max-width:600px){
+      ._dk-grid{grid-template-columns:repeat(2,1fr)}
+      ._drow{flex-direction:column}
+      ._dlg{grid-template-columns:repeat(2,1fr)}
+      ._dfl{width:85px;font-size:10px}
+      ._dbl{width:85px}
+    }
   `;
 
   // ── Init ──────────────────────────────────────────────────────────────────
   function _init(){
     const s=document.createElement('style');s.textContent=_css;document.head.appendChild(s);
-    const w=document.createElement('div');w.id='_lap';document.body.appendChild(w);
-    _render();
+    const pill=document.createElement('div');pill.id='_lap';document.body.appendChild(pill);
+    const dw=document.createElement('div');dw.id='_dw';document.body.appendChild(dw);
+    _pill();
 
-    // Démarrer le timer live
-    setInterval(()=>{const b=document.getElementById('_ldur');if(b)b.textContent=_fmt(_now()-_s.t0);},1000);
+    // Timer live 1s
+    setInterval(()=>{_pill();if(_open&&_tab==='overview'){const el=document.querySelector('._dlive-pill+div,._dlc');if(el)_renderDash();}},1000);
 
-    // ── Hooks CTA (capture = avant le clic handler) ──
-    const ctaMap=[
-      ['.hero-cta','Hero CTA'],
-      ['.m-btn-book','Mobile'],
-      ['#pricing-cta','Tarifs'],
-      ['#product-cta','Produit'],
-      ['.faq-cta-btn','FAQ'],
-      ['.nav-menu-cta','Menu'],
-    ];
-    ctaMap.forEach(([sel,lbl])=>{
+    // CTA hooks
+    [
+      ['.hero-cta','Hero CTA'],['.m-btn-book','Mobile'],
+      ['#pricing-cta','Tarifs'],['#product-cta','Produit'],
+      ['.faq-cta-btn','FAQ'],['.nav-menu-cta','Menu'],
+    ].forEach(([sel,lbl])=>{
       document.querySelectorAll(sel).forEach(el=>el.addEventListener('click',()=>_atCTA(lbl),{capture:true}));
     });
-    // Fallback : tout openModal non capturé ci-dessus
     document.querySelectorAll('[onclick*="openModal"]').forEach(el=>{
-      if(!ctaMap.some(([sel])=>el.matches(sel))){
+      if(!el.matches('.hero-cta,.m-btn-book,#pricing-cta,#product-cta,.faq-cta-btn,.nav-menu-cta')){
         el.addEventListener('click',()=>_atCTA('Autre'),{capture:true});
       }
     });
 
-    // ── Patch goTo pour funnel ──
+    // Patch goTo (funnel)
     const _og=window.goTo;
-    if(typeof _og==='function'){
-      window.goTo=function(n,...a){_atStep(n);return _og(n,...a);};
-    }
+    if(typeof _og==='function')window.goTo=function(n,...a){_atStep(n);return _og(n,...a);};
 
-    // ── Patch setLang pour tracker changement de langue ──
+    // Patch setLang
     const _osl=window.setLang;
-    if(typeof _osl==='function'){
-      window.setLang=function(l,...a){_s.lang=l;_render();return _osl(l,...a);};
-    }
+    if(typeof _osl==='function')window.setLang=function(l,...a){_s.lang=l;_evt('lang',{l});return _osl(l,...a);};
+
+    // Fermer avec Escape
+    addEventListener('keydown',e=>{if(e.key==='Escape'&&_open)_cDash();});
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',_init);
