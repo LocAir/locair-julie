@@ -7998,17 +7998,158 @@ function cwBook(){
     </div>`;
   }
 
+  // ── Transporteurs tab ─────────────────────────────────────────────────────
+  function _tabTransporteurs(){
+    const tok=sessionStorage.getItem('_la_tok');
+    if(!tok)return`<div class="_dcard" style="text-align:center;padding:32px 16px">
+      <div style="font-size:28px;margin-bottom:10px">🔐</div>
+      <div style="color:rgba(255,255,255,.4);font-size:13px;margin-bottom:16px">Mot de passe admin requis pour accéder aux stats transporteurs</div>
+      <button class="_dso-btn" onclick="_trAuth()">Authentifier</button>
+    </div>`;
+    if(_trState.list===null){if(!_trState.loading)setTimeout(_loadTrList,0);return`<div style="text-align:center;padding:48px;color:rgba(255,255,255,.3);font-size:13px">Chargement des transporteurs…</div>`;}
+    return _trState.sel?_renderTrDetail():_renderTrList();
+  }
+
+  function _renderTrList(){
+    const list=_trState.list||[];
+    if(!list.length)return`<div class="_dcard"><div class="_dem">Aucun transporteur enregistré</div></div>`;
+    const rows=list.map(t=>{
+      const sc=t.perf_score;
+      const scCol=sc!==null?(sc>=80?'#10b981':sc>=60?'#f59e0b':'#ef4444'):null;
+      const nomE=t.nom.replace(/'/g,"\\'");
+      const statusHtml=!t.actif
+        ?'<span style="color:#ef4444;font-weight:600;font-size:11px">⛔ Inactif</span>'
+        :t.en_pause?'<span style="color:#f59e0b;font-weight:600;font-size:11px">⏸ Pause</span>'
+        :'<span style="color:#10b981;font-weight:600;font-size:11px">🟢 Actif</span>';
+      const actionBtns=t.actif
+        ?`<button class="_trBtn" onclick="event.stopPropagation();_trAction(${t.id},'${t.en_pause?'resume':'pause'}','${nomE}')">${t.en_pause?'▶ Reprendre':'⏸ Pause'}</button><button class="_trBtn _trBtn-r" onclick="event.stopPropagation();_trAction(${t.id},'stop','${nomE}')">⛔ Stop</button>`
+        :`<button class="_trBtn _trBtn-g" onclick="event.stopPropagation();_trAction(${t.id},'activate','${nomE}')">▶ Réactiver</button>`;
+      return`<tr class="_trRow" onclick="_trSel(${t.id})">
+        <td><b style="color:#fff">${t.nom}</b></td>
+        <td style="text-align:center;font-weight:700;color:rgba(255,255,255,.8)">${t.missions_30j}</td>
+        <td style="text-align:center">${scCol?`<span style="background:${scCol}22;color:${scCol};border:1px solid ${scCol}44;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">${sc}%</span>`:'<span style="color:rgba(255,255,255,.3)">—</span>'}</td>
+        <td>${statusHtml}</td>
+        <td><div style="display:flex;gap:5px;flex-wrap:wrap">${actionBtns}</div></td>
+      </tr>`;
+    }).join('');
+    return`<div class="_dcard" style="padding:0;overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px">
+        <div class="_dch" style="margin:0">Transporteurs · 30 derniers jours</div>
+        <button class="_diBtn" onclick="_trState.list=null;_loadTrList()" title="Actualiser">↻</button>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="_dtbl">
+          <thead><tr><th>Nom</th><th>Missions</th><th>Score perf.</th><th>Statut</th><th>Actions</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+
+  function _renderTrDetail(){
+    const tr=(_trState.list||[]).find(t=>t.id===_trState.sel)||{nom:'?',actif:true,en_pause:false};
+    const stats=_trState.stats;
+    const periods=[['hour','Auj. / h'],['day','7 jours'],['week','4 sem.'],['month','12 mois'],['year','5 ans']];
+    const nomE=tr.nom.replace(/'/g,"\\'");
+    const statusTxt=!tr.actif?'⛔ Inactif':tr.en_pause?'⏸ En pause':'🟢 Actif';
+
+    // Graphique
+    let chartHtml=`<div style="text-align:center;padding:24px;color:rgba(255,255,255,.3);font-size:12px">${stats===null?'Chargement…':'Aucune donnée pour cette période'}</div>`;
+    if(stats&&stats.chart&&stats.chart.length){
+      const chart=stats.chart;
+      const maxV=Math.max(...chart.map(c=>c.total),1);
+      chartHtml=`<div style="display:flex;align-items:flex-end;gap:3px;height:90px;border-bottom:1px solid rgba(255,255,255,.06);overflow:hidden">
+        ${chart.map(c=>{const pct=Math.max(2,Math.round(c.total/maxV*100));const col=c.total>maxV*.66?'#635BFF':c.total>maxV*.33?'#8b5cf6':'#a78bfa';return`<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;gap:1px"><div style="font-size:8px;color:rgba(255,255,255,.5);font-weight:700;flex-shrink:0">${c.total||''}</div><div style="width:100%;height:${pct}%;background:${col};border-radius:2px 2px 0 0"></div></div>`;}).join('')}
+      </div>
+      <div style="display:flex;gap:3px;padding:3px 0 0">
+        ${chart.map(c=>`<div style="flex:1;font-size:8px;color:rgba(255,255,255,.28);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">${c.label}</div>`).join('')}
+      </div>`;
+    }
+
+    // KPIs
+    let kpiHtml='';
+    if(stats){
+      const g=stats.growth;
+      const gStr=g===null?'—':(g>=0?`+${g}%`:g+'%');
+      const gCol=g===null?'rgba(255,255,255,.35)':g>=0?'#10b981':'#ef4444';
+      kpiHtml=`<div class="_dk-grid" style="margin-bottom:12px">
+        <div class="_dk"><div class="_dk-v">${stats.total}</div><div class="_dk-l">Missions total</div></div>
+        <div class="_dk"><div class="_dk-v">${stats.fait}</div><div class="_dk-l">Terminées</div></div>
+        <div class="_dk"><div class="_dk-v" style="color:${gCol}">${gStr}</div><div class="_dk-l">Croissance vs période préc.</div></div>
+        <div class="_dk"><div class="_dk-v">${stats.lph}</div><div class="_dk-l">Livraisons/h (temps actif)</div></div>
+        <div class="_dk"><div class="_dk-v">${stats.livraisons}</div><div class="_dk-l">Livraisons</div></div>
+        <div class="_dk"><div class="_dk-v">${stats.recuperations}</div><div class="_dk-l">Récupérations</div></div>
+      </div>`;
+    }
+
+    // Score de performance
+    let perfHtml='';
+    if(stats&&stats.perf&&stats.perf.score!==null){
+      const p=stats.perf;
+      const scCol=p.score>=85?'#10b981':p.score>=70?'#f59e0b':'#ef4444';
+      const grade=p.score>=95?'A+':p.score>=85?'A':p.score>=75?'B':p.score>=60?'C':'D';
+      const criteria=[
+        ['Taux d\'acceptation',p.acceptance,25],
+        ['Taux de complétion',p.completion,30],
+        ['Notification client',p.notification,20],
+        ['Preuves terrain',p.proof,15],
+        ['Sans incident',p.no_incident,10],
+      ];
+      perfHtml=`<div class="_dcard" style="margin-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div class="_dch" style="margin:0">Score de performance</div>
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span style="font-size:36px;font-weight:900;color:${scCol};line-height:1">${p.score}%</span>
+            <span style="background:${scCol}22;color:${scCol};border:1px solid ${scCol}44;border-radius:8px;font-size:18px;font-weight:800;padding:3px 12px">${grade}</span>
+          </div>
+        </div>
+        ${criteria.map(([lbl,val,w])=>{
+          const col=val>=80?'#10b981':val>=60?'#f59e0b':'#ef4444';
+          return`<div class="_dbar" style="margin-bottom:10px">
+            <div style="width:155px;color:rgba(255,255,255,.5);flex-shrink:0;font-size:11px">${lbl} <span style="opacity:.45">(×${w})</span></div>
+            <div class="_dbt"><div class="_dbf" style="width:${val}%;background:${col}"></div></div>
+            <div class="_dbn" style="color:${col};min-width:38px">${val}%</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }else if(stats){
+      perfHtml=`<div class="_dcard" style="margin-top:12px"><div class="_dem">Score indisponible — aucune mission terminée sur cette période</div></div>`;
+    }
+
+    return`<div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="_trBtn" onclick="_trState.sel=null;_trState.stats=null;_renderDash()" style="padding:4px 10px">← Retour</button>
+        <span style="font-size:16px;font-weight:800;color:#fff">${tr.nom}</span>
+        <span style="font-size:11px;color:rgba(255,255,255,.4)">${statusTxt}</span>
+        <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+          ${tr.actif
+            ?`<button class="_trBtn" onclick="_trAction(${tr.id},'${tr.en_pause?'resume':'pause'}','${nomE}')">${tr.en_pause?'▶ Reprendre':'⏸ Mettre en pause'}</button><button class="_trBtn _trBtn-r" onclick="_trAction(${tr.id},'stop','${nomE}')">⛔ Stop définitif</button>`
+            :`<button class="_trBtn _trBtn-g" onclick="_trAction(${tr.id},'activate','${nomE}')">▶ Réactiver</button>`
+          }
+        </div>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px">
+        ${periods.map(([k,l])=>`<button class="_trPill${_trState.period===k?' _trPill-on':''}" onclick="_trPeriod('${k}')">${l}</button>`).join('')}
+      </div>
+      ${kpiHtml}
+      <div class="_dcard"><div class="_dch">Missions par période</div>${chartHtml}</div>
+      ${perfHtml}
+    </div>`;
+  }
+
   // ── Dashboard full-screen ─────────────────────────────────────────────────
   let _open=false;
+  let _trState={list:null,loading:false,sel:null,period:'month',stats:null};
   function _renderDash(){
     const wrap=document.getElementById('_dw');if(!wrap)return;
     const a=_agg();
-    const tabs=[['overview','📊 Vue d\'ensemble'],['ctas','🖱️ CTAs'],['funnel','🔽 Funnel'],['sessions','📋 Sessions']];
+    const tabs=[['overview','📊 Vue d\'ensemble'],['ctas','🖱️ CTAs'],['funnel','🔽 Funnel'],['sessions','📋 Sessions'],['transporteurs','🚚 Transporteurs']];
     let body='';
     if(_tab==='overview')body=_tabOverview(a);
     else if(_tab==='ctas')body=_tabCTAs(a);
     else if(_tab==='funnel')body=_tabFunnel(a);
     else if(_tab==='sessions')body=_tabSessions(a);
+    else if(_tab==='transporteurs')body=_tabTransporteurs();
     wrap.innerHTML=`
     <div id="_dash">
       <div class="_dheader">
@@ -8061,6 +8202,53 @@ function cwBook(){
     if(!confirm('Effacer toutes les données analytics ?'))return;
     localStorage.removeItem(_SK);location.reload();
   };
+  // ── Transporteurs — loaders & actions ────────────────────────────────────
+  async function _loadTrList(){
+    const tok=sessionStorage.getItem('_la_tok')||'';if(!tok)return;
+    _trState.loading=true;_renderDash();
+    try{
+      const r=await fetch('/api/admin-transporteur-stats',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,action:'list'})});
+      const d=await r.json().catch(()=>({}));
+      if(r.ok)_trState.list=d.transporteurs||[];
+      else if(r.status===401)sessionStorage.removeItem('_la_tok');
+    }catch(e){}
+    _trState.loading=false;_renderDash();
+  }
+  async function _loadTrStats(){
+    if(!_trState.sel)return;
+    const tok=sessionStorage.getItem('_la_tok')||'';if(!tok)return;
+    _trState.stats=null;_renderDash();
+    try{
+      const r=await fetch('/api/admin-transporteur-stats',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,action:'stats',transporteur_id:_trState.sel,period:_trState.period})});
+      const d=await r.json().catch(()=>({}));
+      if(r.ok)_trState.stats=d;
+    }catch(e){}
+    _renderDash();
+  }
+  window._trAuth=function(){
+    const tok=(prompt('Mot de passe admin :')||'').trim();
+    if(tok){sessionStorage.setItem('_la_tok',tok);_trState.list=null;_renderDash();}
+  };
+  window._trSel=function(id){_trState.sel=id;_trState.stats=null;_renderDash();_loadTrStats();};
+  window._trPeriod=function(p){_trState.period=p;_trState.stats=null;if(_trState.sel)_loadTrStats();else _renderDash();};
+  window._trAction=async function(id,action,nom){
+    let tok=sessionStorage.getItem('_la_tok')||'';
+    if(!tok){tok=(prompt('Mot de passe admin :')||'').trim();if(!tok)return;sessionStorage.setItem('_la_tok',tok);}
+    const msgs={
+      pause:`Mettre ${nom} en pause ?\n(Il reste connecté mais vous ne lui assignerez plus de nouvelles missions.)`,
+      resume:`Réactiver ${nom} ?`,
+      stop:`⚠ Désactiver définitivement ${nom} ?\nIl sera déconnecté et ne pourra plus se connecter.`,
+      activate:`Réactiver ${nom} ?`,
+    };
+    if(!confirm(msgs[action]||`${action} ${nom} ?`))return;
+    try{
+      const r=await fetch('/api/admin-transporteur-stats',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,action,transporteur_id:id})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok){if(r.status===401)sessionStorage.removeItem('_la_tok');alert('Erreur : '+(d.error||r.status));return;}
+      _trState.list=null;_trState.sel=null;_trState.stats=null;_loadTrList();
+    }catch(e){alert('Erreur réseau : '+e.message);}
+  };
+
   window._toggleModeComplet=async function(newVal){
     let tok=sessionStorage.getItem('_la_tok')||'';
     if(!tok){tok=(prompt('Mot de passe admin :')||'').trim();if(!tok)return;sessionStorage.setItem('_la_tok',tok);}
@@ -8132,6 +8320,16 @@ function cwBook(){
     ._dtbl tr:last-child td{border-bottom:none}
     ._dtr-live td{color:#10b981;background:rgba(16,185,129,.04)}
     ._dem{color:rgba(255,255,255,.28);font-size:11px;text-align:center;padding:12px 0}
+    ._trRow{cursor:pointer}._trRow:hover td{background:rgba(255,255,255,.03)}
+    ._trBtn{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.13);color:rgba(255,255,255,.8);border-radius:7px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer;transition:background .2s;font-family:inherit;white-space:nowrap}
+    ._trBtn:hover{background:rgba(255,255,255,.14)}
+    ._trBtn-r{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.25);color:#fca5a5}
+    ._trBtn-r:hover{background:rgba(239,68,68,.22)}
+    ._trBtn-g{background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.25);color:#6ee7b7}
+    ._trBtn-g:hover{background:rgba(16,185,129,.22)}
+    ._trPill{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.5);border-radius:100px;padding:5px 14px;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;white-space:nowrap}
+    ._trPill:hover{background:rgba(255,255,255,.1);color:rgba(255,255,255,.75)}
+    ._trPill-on{background:rgba(99,91,255,.2);border-color:rgba(99,91,255,.4);color:#a5b4fc}
     ._dsobar{background:rgba(255,200,0,.05);border-bottom:1px solid rgba(255,200,0,.12);padding:10px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px}
     ._dso-pill{border-radius:100px;font-size:10px;font-weight:800;padding:3px 10px;letter-spacing:.06em;display:inline-flex;align-items:center;gap:4px}
     ._dso-active{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
