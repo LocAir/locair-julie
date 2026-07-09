@@ -101,6 +101,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .chip.confirmee,.chip.fait,.chip.verse,.chip.actif,.chip.terminee{background:var(--green-bg);color:var(--green)}
 .chip.en_attente,.chip.a_faire,.chip.acceptee,.chip.demande{background:var(--amber-bg);color:var(--amber)}
 .chip.annulee,.chip.probleme,.chip.refusee{background:var(--red-bg);color:var(--red)}
+.chip.en_location{background:var(--blue-lt);color:var(--blue)}
 .row-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .row-actions .btn{padding:8px 13px;font-size:12.5px}
 .empty{text-align:center;color:var(--grey);padding:44px 20px;font-size:14px}
@@ -181,6 +182,8 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
   .a-content{flex:1;min-width:0}
   .stat-grid{grid-template-columns:repeat(4,1fr)}
   .card{padding:28px}
+  .row-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;align-items:start}
+  .row-grid .row-item{margin-bottom:0}
 }
 </style>
 </head>
@@ -556,11 +559,20 @@ async function loadStock(){
       </div>
       <div class="card">
         <h2>Appareils (${appareils.length})</h2>
-        <div id="appareils-list">${appareils.map(a => `
+        <div id="appareils-list">${appareils.map(a => {
+          // "En location" n'est jamais choisi à la main : c'est déduit automatiquement
+          // de la réservation confirmée qui couvre aujourd'hui (voir admin-stock.js).
+          // On le montre en priorité sur le badge pour ne pas afficher "Disponible"
+          // sur un appareil qui est en réalité chez un client.
+          const chipClass = a.en_location ? 'en_location' : (APPAREIL_STATUT_CHIP[a.statut]||'');
+          const chipLabel = a.en_location
+            ? (a.statut==='disponible' ? 'En location' : `En location · ${APPAREIL_STATUT_LABEL[a.statut]||a.statut}`)
+            : (APPAREIL_STATUT_LABEL[a.statut]||a.statut);
+          return `
           <div class="row-item">
             <div class="row-top">
               <span class="row-title">Unité n°${a.numero}</span>
-              <span class="chip ${APPAREIL_STATUT_CHIP[a.statut]||''}">${APPAREIL_STATUT_LABEL[a.statut]||a.statut}</span>
+              <span class="chip ${chipClass}">${chipLabel}</span>
             </div>
             <div class="row-meta">${a.reference?escHtml(a.reference)+' · ':''}${a.en_location?'Actuellement chez un client':(a.statut==='disponible'?'Au dépôt':'—')}</div>
             <div class="row-actions">
@@ -571,7 +583,8 @@ async function loadStock(){
               </select>
               <button class="btn btn-grey" onclick="editAppareilReference(${a.id}, '${escHtml(a.reference||'').replace(/'/g,"\\'")}')">${a.reference?'Modifier':'Ajouter'} la référence</button>
             </div>
-          </div>`).join('') || '<p class="empty">Aucun appareil enregistré.</p>'}
+          </div>`;
+        }).join('') || '<p class="empty">Aucun appareil enregistré.</p>'}
         </div>
         <button class="btn btn-blue btn-block" onclick="addAppareil()" style="margin-top:14px">+ Ajouter un appareil (nouvel achat)</button>
         <div class="err" id="stock-err"></div>

@@ -53,6 +53,12 @@ alter table livraisons add constraint livraisons_probleme_type_check
 -- ── Créneau choisi par le client, jusqu'à la mission ──────────────────────────
 alter table reservations add column if not exists creneau text;
 
+-- ── Téléphone secondaire (secours) sur une réservation ────────────────────────
+alter table reservations add column if not exists tel_secondaire text;
+
+-- ── Masquer une réservation de la liste admin (ex. doublon) sans l'annuler ────
+alter table reservations add column if not exists masquee boolean not null default false;
+
 -- ── Fiche client persistante ───────────────────────────────────────────────────
 create table if not exists clients (
   id                bigint generated always as identity primary key,
