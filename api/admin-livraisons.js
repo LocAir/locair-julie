@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
       const { data, error } = await supabase
         .from('livraisons')
         .select(`
-          id, type, statut, date_prevue, creneau,
+          id, type, statut, date_prevue, creneau, masquee,
           probleme_type, probleme_description,
           photo_depart_path, video_installation_path, photo_retour_path, photo_absence_path,
           accepted_at, client_notifie_at, arrivee_at, fait_at,
@@ -144,6 +144,20 @@ module.exports = async (req, res) => {
       }
 
       return res.status(200).json({ ok: true, reset: patch.statut === 'a_faire' });
+    }
+
+    if (action === 'mask') {
+      // Retire une mission de l'écran Livraisons (ménage manuel, ex. doublon ou
+      // vieille mission annulée qui traîne) — n'importe quel statut, y compris
+      // "annulee"/"fait". Ne touche ni au statut ni aux données réelles,
+      // réversible via masquee=false.
+      const livraisonId = parseInt(body.livraison_id);
+      if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id');
+      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
+      const { error } = await supabase.from('livraisons').update({ masquee: !!body.masquee }).eq('id', livraisonId);
+      if (error) throw error;
+      return res.status(200).json({ ok: true });
     }
 
     if (action === 'position') {
