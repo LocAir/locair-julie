@@ -170,6 +170,12 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    if (action === 'confirmer_vidange') {
+      if (liv.type !== 'recuperation' || liv.statut !== 'arrivee') return res.status(409).json({ error: 'Étape non disponible' });
+      await supabase.from('livraisons').update({ vidange_confirmee: true, vidange_at: new Date().toISOString() }).eq('id', liv.id);
+      return res.status(200).json({ ok: true });
+    }
+
     if (action === 'livraison_ok' || action === 'retour_ok') {
       const expectedType = action === 'livraison_ok' ? 'livraison' : 'recuperation';
       if (liv.type !== expectedType || liv.statut !== 'arrivee') return res.status(409).json({ error: 'Étape non disponible' });
@@ -178,6 +184,9 @@ module.exports = async (req, res) => {
       }
       if (expectedType === 'recuperation' && !liv.photo_retour_path) {
         return res.status(400).json({ error: 'Photo de l\'appareil récupéré requise avant de valider' });
+      }
+      if (expectedType === 'recuperation' && !liv.vidange_confirmee) {
+        return res.status(400).json({ error: 'Vérification et vidange requises avant de valider' });
       }
 
       const { data: transp } = await supabase

@@ -727,10 +727,12 @@ function actionBtnsForMission(m){
       <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
   }
   if(m.statut === 'arrivee' && m.type === 'recuperation'){
+    const ready = m.photo_retour_ok && m.vidange_ok;
     return `
-      <p class="step-hint">📷 Vérifie l'appareil et prends la photo avant de repartir.</p>
+      <p class="step-hint">📷 Vérifie l'appareil, vidange-le (~5 min) et prends la photo avant de repartir.</p>
+      <button class="media-btn ${m.vidange_ok?'done':''}" ${m.vidange_ok?'disabled':''} onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> ${m.vidange_ok?'Vérification + vidange ✔':'Vérification + vidange effectuées'}</button>
       <button class="media-btn ${m.photo_retour_ok?'done':''}" onclick="startUpload('photo_retour','image/*')"><span class="ic">📷</span> ${m.photo_retour_ok?'Photo appareil récupéré ✔':'Photo de l\'appareil récupéré'}</button>
-      <button class="btn btn-green" ${m.photo_retour_ok?'':'disabled'} onclick="doAction('retour_ok')">✅ RETOUR OK — JE PARS</button>
+      <button class="btn btn-green" ${ready?'':'disabled'} onclick="doAction('retour_ok')">✅ RETOUR OK — JE PARS</button>
       <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
   }
   if(m.statut === 'probleme'){

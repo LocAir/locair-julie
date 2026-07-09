@@ -124,6 +124,8 @@ create table livraisons (
   video_installation_path text,  -- appareil en marche chez le client (livraison)
   photo_retour_path      text,   -- appareil récupéré chez le client (récupération)
   photo_absence_path     text,   -- preuve de passage devant le bâtiment (client absent)
+  vidange_confirmee      boolean not null default false, -- vérification + vidange du climatiseur, faite chez le client à la récupération (~5 min)
+  vidange_at             timestamptz,
   probleme_type          text check (probleme_type in ('client_absent','appareil_en_panne','retard','autre')),
   probleme_description   text,
   notes                  text,
