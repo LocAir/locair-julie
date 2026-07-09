@@ -644,7 +644,9 @@ function renderMissions(){
   // Regroupées par date : une mission peut arriver la veille pour le
   // lendemain, bien à l'avance, ou de dernière minute pour aujourd'hui.
   // Le jour même, on sépare installations et récupérations — c'est ainsi
-  // qu'une tournée se planifie concrètement, pas mission par mission.
+  // qu'une tournée se planifie concrètement, pas mission par mission. Et à
+  // l'intérieur, par code postal (déjà dans l'adresse) pour repérer d'un
+  // coup d'œil les missions dans le même secteur.
   const groups = {};
   STATE.missions.forEach(m => { (groups[m.date_prevue] = groups[m.date_prevue] || []).push(m); });
   const dates = Object.keys(groups).sort();
@@ -655,11 +657,23 @@ function renderMissions(){
       const installs = items.filter(m => m.type==='livraison');
       const pickups  = items.filter(m => m.type==='recuperation');
       return `<div class="section-title">${dateLabelFor(dateStr)}</div>`
-        + (installs.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🏠 Installations (${installs.length})</div>${installs.map(missionCardHtml).join('')}`:'')
-        + (pickups.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔄 Récupérations (${pickups.length})</div>${pickups.map(missionCardHtml).join('')}`:'');
+        + (installs.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🏠 Installations (${installs.length})</div>${missionsByPostalHtml(installs)}`:'')
+        + (pickups.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔄 Récupérations (${pickups.length})</div>${missionsByPostalHtml(pickups)}`:'');
     }
     return `<div class="section-title">${dateLabelFor(dateStr)}</div>` + items.map(missionCardHtml).join('');
   }).join('');
+}
+
+function postalCode(adresse){
+  const m = String(adresse||'').match(/\b(\d{5})\b/);
+  return m ? m[1] : null;
+}
+function missionsByPostalHtml(items){
+  const groups = {};
+  items.forEach(m => { const cp = postalCode((m.client||{}).adresse) || 'Autre'; (groups[cp] = groups[cp] || []).push(m); });
+  return Object.keys(groups).sort().map(cp => `
+    <div class="section-title" style="font-size:10px;color:var(--grey-soft);margin:8px 2px 6px;text-transform:none;letter-spacing:normal">📮 ${escHtml(cp)} (${groups[cp].length})</div>
+    ${groups[cp].map(missionCardHtml).join('')}`).join('');
 }
 
 function openMission(id){

@@ -468,6 +468,27 @@ function boardRowHtml(m){
       <div class="row-meta">${escHtml(res.adresse||'—')}${numeros?' · Unité n°'+escHtml(numeros):''}${m.transporteur?' · '+escHtml(m.transporteur.nom):' · Non assigné'}</div>
     </div>`;
 }
+// Le code postal est déjà présent dans l'adresse (le site utilise l'autocomplete
+// officiel BAN, qui renvoie "12 Rue de la Paix 06000 Nice") — pas besoin d'un
+// champ séparé. Grouper par code postal aide à visualiser les missions qui se
+// trouvent dans la même zone, sans dépendre d'une API de routage payante.
+function postalCode(adresse){
+  const m = String(adresse||'').match(/\b(\d{5})\b/);
+  return m ? m[1] : null;
+}
+function groupByPostal(items, getAdresse){
+  const groups = {};
+  items.forEach(m => {
+    const cp = postalCode(getAdresse(m)) || 'Autre';
+    (groups[cp] = groups[cp] || []).push(m);
+  });
+  return Object.keys(groups).sort().map(cp => ({cp, items: groups[cp]}));
+}
+function boardSectionHtml(items){
+  return groupByPostal(items, m => (m.reservation||{}).adresse).map(g => `
+    <div class="row-meta" style="font-size:11px;color:var(--grey-soft);font-weight:700;margin:10px 0 6px 2px">📮 ${escHtml(g.cp)} (${g.items.length})</div>
+    ${g.items.map(boardRowHtml).join('')}`).join('');
+}
 function boardHtml(livraisons){
   const todayStr = new Date().toISOString().slice(0,10);
   const today = (livraisons||[]).filter(m => m.date_prevue===todayStr && m.statut!=='annule' && m.statut!=='refusee');
@@ -477,8 +498,8 @@ function boardHtml(livraisons){
   return `
     <div class="card">
       <h2>📋 Aujourd'hui</h2>
-      ${installs.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin-bottom:8px">🏠 Installations (${installs.length})</div>${installs.map(boardRowHtml).join('')}`:''}
-      ${pickups.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin:${installs.length?'16px':'0'} 0 8px">🔄 Récupérations (${pickups.length})</div>${pickups.map(boardRowHtml).join('')}`:''}
+      ${installs.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin-bottom:4px">🏠 Installations (${installs.length})</div>${boardSectionHtml(installs)}`:''}
+      ${pickups.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin:${installs.length?'16px':'0'} 0 4px">🔄 Récupérations (${pickups.length})</div>${boardSectionHtml(pickups)}`:''}
     </div>`;
 }
 
