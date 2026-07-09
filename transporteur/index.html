@@ -482,6 +482,7 @@ async function loginWithFaceId(){
     setupPush();
     maybeOfferFaceId();
     updateActiviteBadge();
+    startTransporteurAutoRefresh();
   }catch(e){
     errEl.textContent = e.message || 'Connexion refusée.';
     errEl.style.display = 'block';
@@ -511,6 +512,7 @@ async function doLogin(){
     setupPush();
     maybeOfferFaceId();
     updateActiviteBadge();
+    startTransporteurAutoRefresh();
   }catch(e){
     errEl.textContent = e.message || 'Code incorrect.';
     errEl.style.display='block';
@@ -568,6 +570,41 @@ async function loadMissions(){
   const ok = await fetchMissions();
   if(ok) renderMissions();
   else document.getElementById('missions-list').innerHTML = '<p class="empty">Impossible de charger tes missions. Réessaie.</p>';
+}
+
+// ── Actualisation automatique ─────────────────────────────────────────────────
+// Sans ça, un livreur qui garde l'app ouverte (le cas normal en journée de
+// travail) ne voit une mission qu'on vient de lui assigner qu'en fermant et
+// rouvrant l'app — la notification push seule ne suffit pas : la toucher
+// remet juste l'onglet au premier plan, elle ne recharge rien dedans (voir
+// sw.js, notificationclick ne fait que .focus()).
+function isTransporteurBusy(){
+  if(document.getElementById('probleme-overlay') || document.getElementById('forgot-overlay') || document.getElementById('celebrate-overlay')) return true;
+  const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
+  return tag==='input' || tag==='textarea' || tag==='select';
+}
+async function silentRefreshMissions(){
+  try{
+    const r = await fetch(API('transporteur-missions'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body:'{}'});
+    const d = await r.json();
+    if(!r.ok) return;
+    STATE.missions = d.missions || [];
+    updatePositionTracking();
+    updateMissionsBadge();
+    if(!document.getElementById('missions-screen').classList.contains('hidden')){
+      renderMissions();
+    }else if(!document.getElementById('detail-screen').classList.contains('hidden') && STATE.currentMission){
+      const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
+      if(m){ STATE.currentMission = m; renderDetail(); }
+    }
+  }catch(e){}
+}
+function transporteurAutoRefreshTick(){
+  if(!STATE.token || isTransporteurBusy()) return;
+  silentRefreshMissions();
+}
+function startTransporteurAutoRefresh(){
+  if(!window._transpAutoRefresh) window._transpAutoRefresh = setInterval(transporteurAutoRefreshTick, 18000);
 }
 
 const TYPE_LABEL = {livraison:'Livraison', recuperation:'Récupération'};
@@ -1206,6 +1243,7 @@ function closeDayMap(){
     setupPush();
     maybeOfferFaceId();
     updateActiviteBadge();
+    startTransporteurAutoRefresh();
   } else if(STATE.token){
     // token connu mais pas de transporteur choisi -> relogin léger
     show('login-screen');
