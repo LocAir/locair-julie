@@ -630,7 +630,11 @@ function renderMissions(){
   const todayActives = STATE.missions.filter(m => m.date_prevue===todayStr && m.client && m.client.adresse && ['a_faire','acceptee','arrivee','probleme'].includes(m.statut));
   let zoneHtml = '';
   if(todayActives.length > 1){
-    const stops = todayActives.map(m => m.client.adresse);
+    // Trie par code postal avant de construire l'itinéraire : sans vraie API de
+    // routage (payante), regrouper les arrêts du même secteur reste la
+    // meilleure approximation gratuite d'un ordre efficace.
+    const sortedActives = [...todayActives].sort((a,b) => (postalCode(a.client.adresse)||'').localeCompare(postalCode(b.client.adresse)||''));
+    const stops = sortedActives.map(m => m.client.adresse);
     const last = encodeURIComponent(stops[stops.length-1]);
     const waypoints = encodeURIComponent(stops.slice(0,-1).join('|'));
     const url = `https://www.google.com/maps/dir/?api=1&destination=${last}${waypoints?('&waypoints='+waypoints):''}&travelmode=driving`;
