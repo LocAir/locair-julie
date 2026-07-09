@@ -632,7 +632,7 @@ function missionCardHtml(m){
         <span class="mcard-badge">${badge}</span>
       </div>
       <div class="mcard-addr">${escHtml((c.prenom||'')+' '+(c.nom||''))} — ${escHtml(c.adresse||'Adresse à confirmer')}</div>
-      <div class="mcard-meta">${escHtml(m.creneau||'')} ${c.etage&&c.etage!=='—'?'· Étage '+escHtml(c.etage):''}</div>
+      <div class="mcard-meta">${[m.creneau?escHtml(m.creneau):'', (c.etage&&c.etage!=='—')?'Étage '+escHtml(c.etage):''].filter(Boolean).join(' · ')}</div>
       ${mapsUrl?`<div class="mcard-actions"><a href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Itinéraire</a>${c.tel?`<a href="tel:${encodeURIComponent(c.tel)}" onclick="event.stopPropagation()">📞 Appeler</a>`:''}</div>`:''}
     </div>`;
 }
@@ -817,7 +817,7 @@ function renderDetail(){
       <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
       <div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${escHtml(c.etage||'—')} ${c.ascenseur&&c.ascenseur!=='—'?'· Ascenseur: '+escHtml(c.ascenseur):''}</span></div>
       <div class="info-row"><span class="info-ic">🪟</span><span class="info-label">Fenêtre</span><span class="info-val">${escHtml(c.fenetre||'—')}</span></div>
-      <div class="info-row"><span class="info-ic">📞</span><span class="info-label">Téléphone</span><span class="info-val">${c.tel?`<a href="tel:${encodeURIComponent(c.tel)}" style="color:var(--blue)">${escHtml(c.tel)}</a>`:'—'}</span></div>
+      <div class="info-row"><span class="info-ic">📞</span><span class="info-label">Téléphone</span><span class="info-val">${c.tel?`<a href="tel:${encodeURIComponent(c.tel)}" style="color:var(--blue);text-decoration:none">${escHtml(c.tel)}</a>`:'—'}</span></div>
       <div class="info-row"><span class="info-ic">❄️</span><span class="info-label">Quantité</span><span class="info-val">${c.quantite||1}</span></div>
       ${m.acces_difficile?`<p class="step-hint" style="margin-top:10px">📌 ${escHtml(m.acces_difficile)}</p>`:''}
       ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
@@ -831,7 +831,7 @@ function renderDetail(){
     <button class="detail-back" onclick="show('missions-screen')">← Retour</button>
     <div class="card">
       <h1>${TYPE_ICON[m.type]||''} ${TYPE_LABEL[m.type]||m.type}</h1>
-      <p class="sub">${STATUT_LABEL[m.statut]||m.statut} · ${escHtml(m.creneau||'')}</p>
+      <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):''].filter(Boolean).join(' · ')}</p>
       ${renderStepper(m)}
 
       ${infoRows}
@@ -1060,11 +1060,11 @@ function renderActivite(d){
       <div class="caption">À verser · virement hebdo automatique, ou demande-le quand tu veux</div>
     </div>
     <div class="stat-row">
-      <div class="stat-tile"><div class="n">${d.missions_aujourdhui||0}</div><div class="l">Missions aujourd'hui</div></div>
+      <div class="stat-tile"><div class="n">${d.missions_aujourdhui||0}</div><div class="l">Mission${(d.missions_aujourdhui||0)>1?'s':''} aujourd'hui</div></div>
       <div class="stat-tile"><div class="n">${(d.gain_aujourdhui_euros||0).toFixed(2).replace('.',',')} €</div><div class="l">Gagné aujourd'hui</div></div>
     </div>
     <div class="stat-row">
-      <div class="stat-tile"><div class="n">${d.missions_mois||0}</div><div class="l">Missions ce mois</div></div>
+      <div class="stat-tile"><div class="n">${d.missions_mois||0}</div><div class="l">Mission${(d.missions_mois||0)>1?'s':''} ce mois</div></div>
       <div class="stat-tile"><div class="n">${(d.gain_mois_euros||0).toFixed(2).replace('.',',')} €</div><div class="l">Gagné ce mois</div></div>
     </div>
     <button class="btn btn-green" id="demander-virement-btn" ${(d.non_verse_euros>0 && !enCours)?'':'disabled'} onclick="demanderVirement()">💰 ${enCours?'Demande en cours…':'Demander mon virement'}</button>
