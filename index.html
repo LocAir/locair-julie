@@ -47,7 +47,7 @@ const CITY = {
 // SOLD OUT — mettre à true pour bloquer les réservations et afficher l'overlay
 // Accès admin : ajouter ?admin=locair à l'URL pour bypasser même si SOLD_OUT=true
 // ─────────────────────────────────────────────────────────────────────────────
-const SOLD_OUT = true; // true = formulaire bloqué, overlay "complet" affiché
+let SOLD_OUT = false; // Initialisé dynamiquement via /api/mode-complet au chargement
 (function(){if(new URLSearchParams(location.search).get('admin')==='locair')sessionStorage.setItem('_la','1');})();
 </script>
 
@@ -5088,6 +5088,12 @@ document.addEventListener('keydown',function(e){
   if(e.key==='Escape'&&document.getElementById('so-overlay')?.classList.contains('open'))closeSoldOutOverlay();
 });
 function _initSoldOut(){
+  // Nettoyage préalable — idempotent pour permettre un re-init après toggle admin
+  document.getElementById('so-hero-badge')?.remove();
+  const _sn=document.getElementById('stock-notice');
+  const _mb=document.querySelector('.m-btn-book');
+  if(_sn)_sn.style.display='';
+  if(_mb){_mb.style.opacity='';_mb.style.cursor='';}
   if(!SOLD_OUT)return;
   // Badge sous le CTA hero
   const cta=document.querySelector('.hero-cta');
@@ -5099,11 +5105,9 @@ function _initSoldOut(){
     cta.insertAdjacentElement('afterend',badge);
   }
   // Désactiver le stock-notice dans le funnel (0 dispo)
-  const sn=document.getElementById('stock-notice');
-  if(sn)sn.style.display='none';
+  if(_sn)_sn.style.display='none';
   // Désactiver la mobile bar booking button
-  const mb=document.querySelector('.m-btn-book');
-  if(mb){mb.style.opacity='.55';mb.style.cursor='default';}
+  if(_mb){_mb.style.opacity='.55';_mb.style.cursor='default';}
 }
 
 function openModal(dur, flowType){
@@ -6624,7 +6628,11 @@ function setLang(l){
 }
 
 // Appliquer la langue mémorisée au chargement
-document.addEventListener('DOMContentLoaded',()=>{setLang(_lang);_initSoldOut();});
+document.addEventListener('DOMContentLoaded',async()=>{
+  setLang(_lang);
+  try{const r=await fetch('/api/mode-complet',{cache:'no-store'});if(r.ok){const d=await r.json();SOLD_OUT=!!d.sold_out;}}catch(e){}
+  _initSoldOut();
+});
 
 // Scroll modal-body pour garder le champ actif visible — tous appareils (iOS, Android, desktop)
 function _scrollModalToField(el,delay){
@@ -8014,6 +8022,16 @@ function cwBook(){
           <button class="_diBtn" onclick="_cDash()" style="font-size:18px;font-weight:300">×</button>
         </div>
       </div>
+      <div class="_dsobar">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.5)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Mode Complet
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="_dso-pill ${SOLD_OUT?'_dso-active':'_dso-off'}">${SOLD_OUT?'🔴 ACTIF':'🟢 INACTIF'}</span>
+          <button class="_dso-btn" onclick="_toggleModeComplet(${!SOLD_OUT})">${SOLD_OUT?'Désactiver':'⚡ Activer'}</button>
+        </div>
+      </div>
       <div class="_dtabs">${tabs.map(([k,l])=>`<button class="_dtab${_tab===k?' _dtab-on':''}" onclick="_sTab('${k}')">${l}</button>`).join('')}</div>
       <div class="_dbody">${body}</div>
     </div>`;
@@ -8042,6 +8060,18 @@ function cwBook(){
   window._laReset=function(){
     if(!confirm('Effacer toutes les données analytics ?'))return;
     localStorage.removeItem(_SK);location.reload();
+  };
+  window._toggleModeComplet=async function(newVal){
+    let tok=sessionStorage.getItem('_la_tok')||'';
+    if(!tok){tok=(prompt('Mot de passe admin :')||'').trim();if(!tok)return;sessionStorage.setItem('_la_tok',tok);}
+    try{
+      const r=await fetch('/api/mode-complet',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,sold_out:newVal})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok){if(r.status===401){sessionStorage.removeItem('_la_tok');}alert('Erreur : '+(d.error||r.status));return;}
+      SOLD_OUT=d.sold_out;
+      _initSoldOut();
+      _renderDash();
+    }catch(e){alert('Erreur réseau : '+e.message);}
   };
 
   // ── CSS ───────────────────────────────────────────────────────────────────
@@ -8102,6 +8132,12 @@ function cwBook(){
     ._dtbl tr:last-child td{border-bottom:none}
     ._dtr-live td{color:#10b981;background:rgba(16,185,129,.04)}
     ._dem{color:rgba(255,255,255,.28);font-size:11px;text-align:center;padding:12px 0}
+    ._dsobar{background:rgba(255,200,0,.05);border-bottom:1px solid rgba(255,200,0,.12);padding:10px 20px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+    ._dso-pill{border-radius:100px;font-size:10px;font-weight:800;padding:3px 10px;letter-spacing:.06em;display:inline-flex;align-items:center;gap:4px}
+    ._dso-active{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+    ._dso-off{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);color:#6ee7b7}
+    ._dso-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:8px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;transition:background .2s;font-family:inherit;white-space:nowrap}
+    ._dso-btn:hover{background:rgba(255,255,255,.16)}
     @media(max-width:600px){
       ._dk-grid{grid-template-columns:repeat(2,1fr)}
       ._drow{flex-direction:column}
