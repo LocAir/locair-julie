@@ -26,14 +26,22 @@ module.exports = async (req, res) => {
     const { data: cityResas } = await supabase.from('reservations').select('id').eq('city_id', city.id);
     const resaIds = (cityResas || []).map(r => r.id);
     let livraisons = 0;
+    let nonAssignees = 0;
     if (resaIds.length) {
-      const { count } = await supabase
+      const { count: problemeCount } = await supabase
         .from('livraisons').select('id', { count: 'exact', head: true })
         .in('reservation_id', resaIds).eq('statut', 'probleme');
-      livraisons = count || 0;
+      // Le pire scénario opérationnel : une réservation confirmée dont les
+      // missions n'ont encore aucun livreur assigné — sans ce compteur, rien
+      // ne signale activement qu'un client attend une livraison non dispatchée.
+      const { count: nonAssigneesCount } = await supabase
+        .from('livraisons').select('id', { count: 'exact', head: true })
+        .in('reservation_id', resaIds).eq('statut', 'a_faire').is('transporteur_id', null);
+      livraisons = (problemeCount || 0) + (nonAssigneesCount || 0);
+      nonAssignees = nonAssigneesCount || 0;
     }
 
-    return res.status(200).json({ virements, livraisons });
+    return res.status(200).json({ virements, livraisons, non_assignees: nonAssignees });
   } catch (err) {
     console.error('[Admin alerts]', err.message);
     return res.status(500).json({ error: 'Erreur serveur' });

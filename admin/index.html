@@ -212,6 +212,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
         <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs</button>
         <button data-tab="virements" onclick="switchAdminTab('virements')">💶 Virements<span class="tab-badge hidden" id="badge-virements"></span></button>
+        <button data-tab="incidents" onclick="switchAdminTab('incidents')">🧯 Incidents</button>
       </div>
 
       <div class="a-content">
@@ -222,6 +223,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-livraisons" class="hidden"></div>
         <div id="tab-transporteurs" class="hidden"></div>
         <div id="tab-virements" class="hidden"></div>
+        <div id="tab-incidents" class="hidden"></div>
       </div>
     </div>
   </div>
@@ -382,7 +384,7 @@ const PROBLEME_LABEL = {client_absent:'Client absent', appareil_en_panne:'Appare
 
 function switchAdminTab(tab){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','calendrier','livraisons','transporteurs','virements'].forEach(t=>{
+  ['accueil','stock','reservations','calendrier','livraisons','transporteurs','virements','incidents'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard('7j');
@@ -392,6 +394,7 @@ function switchAdminTab(tab){
   if(tab==='livraisons') loadLivraisons();
   if(tab==='transporteurs') loadTransporteurs();
   if(tab==='virements') loadVirements();
+  if(tab==='incidents') loadIncidents();
 }
 
 // ── Badges "à regarder" sur les onglets (virements demandés, missions en
@@ -791,8 +794,10 @@ function avgDureeSurPlaceForTransporteur(transporteurId, type){
 }
 function renderLivraisonsToolbar(){
   const zone = document.getElementById('tab-livraisons');
+  const nonAssigneesCount = LIVRAISONS_CACHE.filter(m => m.statut==='a_faire' && !m.transporteur).length;
   const filters = [
     {key:'toutes', label:'Toutes'},
+    {key:'non_assignees', label:`⚠️ Non assignées${nonAssigneesCount?' ('+nonAssigneesCount+')':''}`},
     {key:'en_cours', label:'En cours'},
     {key:'fait', label:'Terminées'},
     {key:'probleme', label:'Problèmes'},
@@ -820,7 +825,8 @@ function renderLivraisons(){
   const q = (document.getElementById('liv-search')?.value || '').trim().toLowerCase();
 
   let items = LIVRAISONS_CACHE;
-  if(LIVRAISONS_FILTER === 'en_cours') items = items.filter(m => ['a_faire','acceptee','arrivee'].includes(m.statut));
+  if(LIVRAISONS_FILTER === 'non_assignees') items = items.filter(m => m.statut==='a_faire' && !m.transporteur);
+  else if(LIVRAISONS_FILTER === 'en_cours') items = items.filter(m => ['a_faire','acceptee','arrivee'].includes(m.statut));
   else if(LIVRAISONS_FILTER === 'fait') items = items.filter(m => m.statut === 'fait');
   else if(LIVRAISONS_FILTER === 'probleme') items = items.filter(m => m.statut === 'probleme');
 
@@ -1045,6 +1051,51 @@ function marquerVerse(id){
       showToast('Virement marqué comme versé', 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {danger:true, yesLabel:'Confirmer le virement'});
+}
+
+// ── INCIDENTS ─────────────────────────────────────────────────────────────────
+// Historique consultable des problèmes signalés terrain — jusqu'ici alimenté
+// en base mais invisible pour l'admin (juste un compteur "ouverts" sur le
+// dashboard). Sert à repérer un motif récurrent (ex. une adresse où le
+// digicode pose systématiquement problème).
+const INCIDENT_CHIP = {ouvert:'probleme', facture:'a_faire', resolu:'fait'};
+const INCIDENT_STATUT_LABEL = {ouvert:'Ouvert', facture:'Facturé', resolu:'Résolu'};
+const INCIDENT_TYPE_LABEL = {retard:'Retard', materiel:'Matériel', autre:'Autre'};
+async function loadIncidents(){
+  const zone = document.getElementById('tab-incidents');
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-incidents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const pt = d.par_type_30j || {};
+    const statHtml = `
+      <div class="stat-grid" style="margin-bottom:16px">
+        <div class="stat-tile"><div class="n">${pt.retard||0}</div><div class="l">Retards (30j)</div></div>
+        <div class="stat-tile"><div class="n">${pt.materiel||0}</div><div class="l">Matériel (30j)</div></div>
+        <div class="stat-tile" style="grid-column:1/-1"><div class="n">${pt.autre||0}</div><div class="l">Autres incidents (30j) — dont client absent</div></div>
+      </div>`;
+    if(!d.incidents || !d.incidents.length){ zone.innerHTML = statHtml + '<p class="empty">🧯 Aucun incident enregistré.</p>'; return; }
+    const list = d.incidents.map(i => {
+      const res = i.reservation || {};
+      return `
+        <div class="row-item">
+          <div class="row-top">
+            <span class="row-title">${INCIDENT_TYPE_LABEL[i.type]||i.type}${res.ref?' · '+escHtml(res.ref):''}</span>
+            <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
+          </div>
+          <div class="row-meta">${escHtml((res.prenom||'')+' '+(res.nom||''))}${res.adresse?' · '+escHtml(res.adresse):''}<br/>${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
+          ${i.statut!=='resolu'?`<div class="row-actions"><button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'resolu')">Marquer résolu</button></div>`:''}
+        </div>`;
+    }).join('');
+    zone.innerHTML = statHtml + list;
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+async function updateIncidentStatut(id, statut){
+  await fetch(API('admin-incidents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
+  loadIncidents();
 }
 
 // ── Suivi en direct (carte gratuite OpenStreetMap) ───────────────────────────
