@@ -108,6 +108,8 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .chip.en_attente,.chip.a_faire,.chip.acceptee,.chip.demande{background:var(--amber-bg);color:var(--amber)}
 .chip.annulee,.chip.probleme,.chip.refusee{background:var(--red-bg);color:var(--red)}
 .chip.en_location{background:var(--blue-lt);color:var(--blue)}
+.chip.type-livraison{background:var(--blue-lt);color:var(--blue)}
+.chip.type-recuperation{background:var(--amber-bg);color:var(--amber)}
 
 /* Carte réservation : hiérarchie client → dates → prix, au lieu d'une seule
    ligne de métadonnées à parser. Le prix reprend le traitement typographique
@@ -410,6 +412,14 @@ function showToast(message, type='info'){
 
 const RESA_LABEL = {en_attente:'En attente', confirmee:'Confirmée', annulee:'Annulée', terminee:'Terminée'};
 const LIV_LABEL  = {a_faire:'Nouvelle', acceptee:'Acceptée', refusee:'Refusée', arrivee:'Sur place', fait:'Terminée', probleme:'Problème', annule:'Annulée'};
+// Badge type de mission — bien plus visible qu'un simple emoji dans le titre
+// (confondu entre livraison et récupération sinon, notamment sur deux missions
+// de la même réservation qui n'ont que la date pour les distinguer).
+function missionTypeBadge(type){
+  return type==='livraison'
+    ? '<span class="chip type-livraison">📦 Livraison</span>'
+    : '<span class="chip type-recuperation">🔄 Récupération</span>';
+}
 const PROBLEME_LABEL = {client_absent:'Client absent', appareil_en_panne:'Appareil en panne', retard:'Retard important', autre:'Autre problème'};
 
 let CURRENT_TAB = 'accueil';
@@ -1201,9 +1211,10 @@ function renderLivraisons(){
       return `
         <div class="row-item" style="opacity:.6">
           <div class="row-top">
-            <span class="row-title">${m.type==='livraison'?'📦':'🔄'} ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
+            <span class="row-title">${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
             <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
           </div>
+          <div style="margin-bottom:6px">${missionTypeBadge(m.type)}</div>
           <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
           <div class="row-actions"><button class="btn btn-grey" onclick="restoreLivraison(${m.id})">Restaurer</button></div>
         </div>`;
@@ -1211,9 +1222,10 @@ function renderLivraisons(){
     return `
       <div class="row-item" ${nonAssignee?'style="border-left:3px solid var(--red)"':''}>
         <div class="row-top">
-          <span class="row-title">${nonAssignee?'🔔 ':''}${m.type==='livraison'?'📦':'🔄'} ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
+          <span class="row-title">${nonAssignee?'🔔 ':''}${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
           <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
         </div>
+        <div style="margin-bottom:6px">${missionTypeBadge(m.type)}</div>
         ${nonAssignee?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-bottom:4px">🔔 Non assignée</div>`:''}
         ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="row-meta" style="font-weight:700;color:var(--blue)">🔢 Unité${m.appareil_numeros.length>1?'s':''} n°${m.appareil_numeros.join(', ')}${(m.appareil_references&&m.appareil_references.length)?' · '+m.appareil_references.map(escHtml).join(', '):''}</div>`:''}
         <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
@@ -1473,7 +1485,7 @@ async function loadTransporteursRevenus(){
       const missionsHtml = t.missions.length ? t.missions.map(m => `
         <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
           <div class="row-top">
-            <span class="row-title" style="font-size:13px">${m.type==='livraison'?'📦':'🔄'} ${escHtml(m.client||'—')}</span>
+            <span class="row-title" style="font-size:13px">${m.type==='livraison'?'📦 Livraison':'🔄 Récupération'} — ${escHtml(m.client||'—')}</span>
             <span class="chip ${m.paye?'actif':'en_attente'}">${m.paye?'Versé':'À verser'}</span>
           </div>
           <div class="row-meta">${m.fait_at?frDate(m.fait_at.slice(0,10)):'—'} · ${euros(m.montant_cents)}</div>
