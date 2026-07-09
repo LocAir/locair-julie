@@ -2,6 +2,29 @@ const { getSupabase } = require('./_lib/supabase');
 const { getCity }     = require('./_lib/city');
 const { verifyTransporteurToken } = require('./_lib/auth');
 const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
+const { geocodeAddress, haversineKm } = require('./_lib/geo');
+
+// Estime le temps d'arrivée réel à partir de la dernière position GPS connue
+// du livreur (partagée pendant une mission en cours) — pour ne plus annoncer
+// systématiquement "~30 min" à un client alors que le livreur est à 5 min.
+// Si la position est absente/trop ancienne ou le géocodage échoue, retourne
+// null : l'appelant retombe alors sur le message générique existant.
+async function estimateEtaMinutes(supabase, transporteurId, adresse) {
+  if (!transporteurId || !adresse) return null;
+  try {
+    const { data: t } = await supabase
+      .from('transporteurs').select('position_lat, position_lng, position_at').eq('id', transporteurId).maybeSingle();
+    if (!t || t.position_lat == null || t.position_lng == null || !t.position_at) return null;
+    const ageMin = (Date.now() - new Date(t.position_at).getTime()) / 60000;
+    if (ageMin > 10) return null;
+    const dest = await geocodeAddress(adresse);
+    if (!dest) return null;
+    const km = haversineKm(t.position_lat, t.position_lng, dest.lat, dest.lng);
+    return Math.max(3, Math.min(60, Math.round(km / 22 * 60))); // ~22km/h en ville, estimation, pas de trafic réel
+  } catch (e) {
+    return null;
+  }
+}
 
 function escHtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -99,11 +122,13 @@ module.exports = async (req, res) => {
 
       if (resa?.email) {
         const verbe = liv.type === 'livraison' ? 'livrer votre climatiseur' : 'récupérer votre climatiseur';
+        const etaMin = await estimateEtaMinutes(supabase, liv.transporteur_id, resa.adresse);
+        const etaTxt = etaMin ? `environ ${etaMin} minute${etaMin > 1 ? 's' : ''}` : 'environ 30 minutes';
         await sendBrevoEmail({
           to:      resa.email,
-          subject: `📦 Votre livreur Loc'Air arrive dans environ 30 minutes`,
+          subject: `📦 Votre livreur Loc'Air arrive dans ${etaTxt}`,
           html: `<p>Bonjour ${escHtml(resa.prenom || '')},</p>
-                 <p>Notre livreur est en route pour ${verbe} — il devrait arriver d'ici environ 30 minutes à l'adresse :</p>
+                 <p>Notre livreur est en route pour ${verbe} — il devrait arriver d'ici ${etaTxt} à l'adresse :</p>
                  <p><strong>${escHtml(resa.adresse || '')}</strong></p>
                  <p>Merci d'être disponible pour le réceptionner.</p>`,
         }).catch(() => {});
