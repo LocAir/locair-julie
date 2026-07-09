@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+<title>Espace transporteur — Loc'Air</title>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root{
+  /* Palette identique à index.html (site vitrine) et admin/index.html */
+  --blue:#1b3a5f; --blue-d:#142d4a; --blue-lt:#dce8f5;
+  --black:#141e30; --black2:#1e2d45; --bg:#ede8e0; --white:#f4f0ea;
+  --grey:#5a6577; --grey2:#6b7785; --grey-soft:#8b93a3; --rule:#ddd8cf; --gold:#c5a96c; --gold-lt:#f3ead9;
+  --green:#2d6a4f; --green-bg:#e6f0ea; --red:#9b2c1a; --red-bg:#f8e9e6; --amber:#9c6a17; --amber-bg:#f6eed9;
+  --navy:#0d1829;
+  --disp:'Cormorant Garamond',Georgia,serif;
+  --body:'Inter',system-ui,sans-serif;
+  --r-sm:8px; --r:12px; --r-lg:20px;
+  --sh-xs:0 1px 3px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.03);
+  --sh-sm:0 2px 12px rgba(0,0,0,.06),0 1px 4px rgba(0,0,0,.04);
+  --sh-md:0 8px 40px rgba(0,0,0,.09),0 2px 10px rgba(0,0,0,.05);
+  --sh-lg:0 24px 80px rgba(0,0,0,.11),0 6px 24px rgba(0,0,0,.06);
+  --sh-blue:0 6px 24px rgba(27,58,95,.32);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:15px;-webkit-font-smoothing:antialiased;min-height:100vh}
+.wrap{max-width:520px;margin:0 auto;padding:20px 16px 100px;min-height:100vh}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 20px}
+.logo{font-family:var(--disp);font-size:21px;font-weight:600;color:var(--blue)}
+.logo em{font-style:normal;color:var(--gold)}
+.eyebrow{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.18em;color:var(--grey);margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--gold);flex-shrink:0}
+.who{font-size:12px;color:var(--grey);font-weight:600}
+.who button{background:none;border:none;color:var(--grey);text-decoration:underline;font-size:12px;font-family:var(--body);cursor:pointer;padding:0;margin-left:8px}
+.tracking-badge{background:var(--green-bg);color:var(--green);font-size:12.5px;font-weight:700;text-align:center;padding:9px 12px;border-radius:var(--r-sm);margin-bottom:14px}
+
+.card{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:26px 22px;box-shadow:var(--sh-sm);margin-bottom:14px}
+h1{font-family:var(--disp);font-size:25px;font-weight:600;margin-bottom:6px}
+.sub{font-size:14px;color:var(--grey);margin-bottom:20px;line-height:1.55}
+label{display:block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--grey-soft);margin-bottom:7px}
+input[type=text],input[type=password],input[type=tel]{
+  width:100%;padding:16px;border:1.5px solid var(--rule);border-radius:var(--r-sm);font-size:17px;
+  font-family:var(--body);background:var(--white);color:var(--black);outline:none;
+  transition:border-color .15s ease, box-shadow .15s ease;
+}
+input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
+.btn{
+  width:100%;padding:18px;border:none;border-radius:var(--r);font-family:var(--body);
+  font-size:16.5px;font-weight:700;letter-spacing:-.005em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
+  min-height:58px;text-align:center;transition:transform .1s ease, opacity .15s ease;
+}
+.btn-blue{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
+.btn-green{background:var(--green);color:#fff;box-shadow:var(--sh-xs)}
+.btn-red{background:var(--white);color:var(--red);border:1.5px solid #e3c3bc}
+.btn-amber{background:var(--amber);color:#fff;box-shadow:var(--sh-xs)}
+.btn-grey{background:var(--white);color:var(--grey);border:1.5px solid var(--rule)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn:active:not(:disabled){transform:scale(.98)}
+.btn+.btn{margin-top:12px}
+.err{background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.5}
+.forgot-link{display:block;width:100%;background:none;border:none;color:var(--grey);text-decoration:underline;font-size:13px;font-family:var(--body);cursor:pointer;text-align:center;margin-top:16px;padding:4px}
+.ok-msg{background:var(--green-bg);color:var(--green);border-radius:var(--r-sm);padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.5}
+
+.name-btn{width:100%;padding:20px;background:var(--white);border:1.5px solid var(--rule);border-radius:var(--r);font-size:18px;font-weight:700;color:var(--black);margin-bottom:12px;cursor:pointer;text-align:left;box-shadow:var(--sh-xs)}
+.name-btn:active{background:var(--bg)}
+
+.tour-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:var(--r-sm);font-weight:700;font-size:14px;margin-bottom:12px;cursor:pointer;text-decoration:none;box-shadow:var(--sh-xs)}
+.tour-btn-alt{background:var(--white);color:var(--blue);border:1.5px solid var(--blue);box-shadow:none}
+.section-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey-soft);margin:24px 2px 10px}
+
+.mcard{background:var(--white);border-radius:var(--r);padding:17px 18px;margin-bottom:12px;box-shadow:var(--sh-xs);cursor:pointer;border-left:5px solid var(--rule);transition:box-shadow .15s ease}
+.mcard:active{box-shadow:var(--sh-sm)}
+.mcard.st-a_faire{border-left-color:var(--amber)}
+.mcard.st-acceptee{border-left-color:var(--blue)}
+.mcard.st-arrivee{border-left-color:var(--green)}
+.mcard.st-probleme{border-left-color:var(--red)}
+.mcard-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.mcard-icon{font-size:20px}
+.mcard-type{font-weight:700;font-size:15px;letter-spacing:-.005em}
+.mcard-badge{display:inline-flex;align-items:center;gap:5px;margin-left:auto;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:4px 10px 4px 8px;border-radius:100px;background:var(--bg);color:var(--grey)}
+.mcard-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.mcard-addr{font-size:14px;color:var(--black);margin-top:6px;line-height:1.45}
+.mcard-meta{font-size:12.5px;color:var(--grey);margin-top:4px}
+.mcard-actions{display:flex;gap:8px;margin-top:12px}
+.mcard-actions a{flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:var(--r-sm);font-size:13px;font-weight:700;color:var(--blue);text-decoration:none}
+
+.empty{text-align:center;color:var(--grey);font-size:14px;padding:44px 10px}
+
+.detail-back{background:none;border:none;color:var(--blue);font-weight:700;font-size:14px;margin-bottom:14px;cursor:pointer;padding:4px 0}
+.info-row{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--rule);font-size:14.5px}
+.info-row:last-child{border-bottom:none}
+.info-ic{width:22px;flex-shrink:0;text-align:center}
+.info-label{color:var(--grey);width:90px;flex-shrink:0}
+.info-val{font-weight:600;flex:1}
+.maps-link{display:block;text-align:center;padding:14px;background:var(--bg);border-radius:var(--r-sm);font-weight:700;color:var(--blue);text-decoration:none;margin:16px 0}
+
+.media-btn{display:flex;align-items:center;gap:10px;width:100%;padding:16px;border:1.5px solid var(--rule);border-radius:var(--r-sm);background:var(--white);font-weight:700;font-size:15px;color:var(--black);margin-bottom:12px;cursor:pointer}
+.media-btn.done{border-color:var(--green);background:var(--green-bg);color:var(--green)}
+.media-btn .ic{font-size:20px}
+
+.step-hint{font-size:14px;font-weight:700;color:var(--blue);background:var(--gold-lt);border-radius:var(--r-sm);padding:11px 14px;margin-bottom:14px}
+.probleme-box{background:var(--red-bg);border-radius:var(--r);padding:16px}
+.probleme-box p{font-size:14px;color:var(--red);line-height:1.55;font-weight:600}
+.probleme-list .btn{margin-top:10px}
+
+.overlay{position:fixed;inset:0;background:rgba(13,24,41,.6);display:flex;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px)}
+.sheet{background:var(--white);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:26px 22px 34px;box-shadow:var(--sh-lg)}
+.hidden{display:none !important}
+
+/* Stepper de progression mission */
+.stepper{display:flex;align-items:flex-start;margin:4px 0 24px}
+.step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative}
+.step-dot{width:30px;height:30px;border-radius:50%;background:var(--rule);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;z-index:1;transition:background-color .2s ease}
+.step.done .step-dot{background:var(--green)}
+.step.active .step-dot{background:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
+.step.blocked .step-dot{background:var(--red)}
+.step-label{font-size:10.5px;color:var(--grey-soft);margin-top:7px;text-align:center;font-weight:700;line-height:1.2}
+.step.done .step-label,.step.active .step-label{color:var(--black)}
+.step-line{position:absolute;top:15px;left:-50%;width:100%;height:2px;background:var(--rule);z-index:0}
+.step.done .step-line{background:var(--green)}
+.step:first-child .step-line{display:none}
+
+/* Nav bas Missions / Activité */
+.tabbar{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);padding:4px;border-radius:var(--r-sm)}
+.tabbar button{flex:1;padding:11px;border-radius:8px;border:none;background:transparent;font-weight:700;font-size:13.5px;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
+.tabbar button.on{background:var(--white);color:var(--black);box-shadow:var(--sh-xs)}
+.tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;margin-left:6px;border-radius:100px;background:var(--red);color:#fff;font-size:10.5px;font-weight:800;line-height:1;vertical-align:2px}
+
+.day-progress{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;box-shadow:var(--sh-xs)}
+.day-progress .dp-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;font-size:13px;font-weight:700}
+.day-progress .dp-bar{height:10px;border-radius:100px;background:var(--bg);overflow:hidden}
+.day-progress .dp-fill{height:100%;border-radius:100px;background:var(--blue);transition:width .4s ease}
+.day-progress .dp-fill.over{background:var(--red)}
+
+/* Activité */
+.stat-big{background:linear-gradient(150deg,var(--blue) 0%,var(--blue-d) 60%,#0a1424 100%);color:#fff;border-radius:var(--r-lg);padding:26px 22px;margin-bottom:14px;box-shadow:var(--sh-md)}
+.stat-big .amount{font-family:var(--disp);font-size:42px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.stat-big .caption{font-size:13px;opacity:.8;margin-top:8px;font-weight:500;line-height:1.5}
+.stat-row{display:flex;gap:12px;margin-bottom:14px}
+.stat-tile{flex:1;background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:16px;text-align:center;box-shadow:var(--sh-xs)}
+.stat-tile .n{font-family:var(--disp);font-size:26px;font-weight:400;color:var(--black);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat-tile .l{font-size:11px;color:var(--grey);font-weight:600;margin-top:5px;text-transform:uppercase;letter-spacing:.03em}
+.vlist{margin-top:6px}
+.vrow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule);font-size:14px}
+.vrow:last-child{border-bottom:none}
+.vchip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:4px 10px 4px 8px;border-radius:100px}
+.vchip::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.vchip.demande{background:var(--amber-bg);color:var(--amber)}
+.vchip.verse{background:var(--green-bg);color:var(--green)}
+
+/* Célébration */
+.celebrate{position:fixed;inset:0;background:rgba(13,24,41,.72);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px;backdrop-filter:blur(3px)}
+.celebrate-card{background:var(--white);border-radius:var(--r-lg);padding:38px 28px;text-align:center;max-width:360px;box-shadow:var(--sh-lg)}
+.celebrate-emoji{font-size:50px;margin-bottom:12px}
+.celebrate-title{font-family:var(--disp);font-size:24px;font-weight:600;margin-bottom:8px}
+.celebrate-sub{font-size:15px;color:var(--grey);margin-bottom:22px;line-height:1.55}
+.celebrate-amount{font-family:var(--disp);font-size:34px;font-weight:600;color:var(--green);margin-bottom:22px}
+
+/* Carte du jour */
+.map-filters{display:flex;gap:4px;margin:8px 0 14px;background:var(--bg);padding:4px;border-radius:var(--r-sm)}
+.map-filters button{flex:1;padding:10px;border-radius:8px;border:none;background:transparent;font-weight:700;font-size:12.5px;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
+.map-filters button.on{background:var(--white);color:var(--black);box-shadow:var(--sh-xs)}
+#day-map{height:calc(100vh - 180px);border-radius:var(--r-lg);overflow:hidden;background:#e8e6e0;box-shadow:var(--sh-sm)}
+.map-popup-btn{display:block;width:100%;margin-top:8px;padding:9px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--body)}
+
+.map-pin-teardrop{
+  width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
+  box-shadow:0 3px 10px rgba(20,30,48,.35);
+  display:flex;align-items:center;justify-content:center;
+}
+.map-pin-teardrop span{transform:rotate(45deg);font-size:15px}
+.map-pin-teardrop.livraison{background:var(--blue)}
+.map-pin-teardrop.recuperation{background:var(--amber)}
+.leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 8px 28px rgba(20,30,48,.22)}
+.leaflet-popup-content{font-family:var(--body);margin:12px 14px;font-size:13.5px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="logo">Loc<em>'Air</em> · Transporteur</div>
+    <div class="who hidden" id="who-badge"></div>
+  </div>
+
+  <div class="tracking-badge hidden" id="tracking-badge">📍 Ta position est partagée avec Aly pendant cette mission</div>
+
+  <!-- Écran 1 : code personnel -->
+  <div id="login-screen">
+    <div class="card">
+      <div class="eyebrow">Espace transporteur</div>
+      <h1>Bonjour 👋</h1>
+      <p class="sub">Entre ton code personnel pour voir tes missions.</p>
+      <button class="btn btn-blue btn-block hidden" id="webauthn-login-btn" onclick="loginWithFaceId()" style="margin-bottom:14px">🔓 Face ID / empreinte</button>
+      <div class="err" id="webauthn-login-err"></div>
+      <label for="lg-code">Ton code (6 chiffres)</label>
+      <input type="password" id="lg-code" inputmode="numeric" autocomplete="off" placeholder="••••••" maxlength="6"/>
+      <div style="height:16px"></div>
+      <button class="btn btn-blue" id="lg-btn" onclick="doLogin()">Entrer →</button>
+      <div class="err" id="lg-err"></div>
+      <button class="forgot-link" onclick="openForgotPin()">Code oublié ?</button>
+    </div>
+  </div>
+
+  <!-- Écran 3 : liste des missions -->
+  <div id="missions-screen" class="hidden">
+    <div class="tabbar">
+      <button class="on" onclick="switchTab('missions')">📋 Mes missions<span class="tab-badge hidden badge-missions"></span></button>
+      <button onclick="switchTab('activite')">💰 Mon activité<span class="tab-badge hidden badge-activite"></span></button>
+    </div>
+    <div id="progress-zone"></div>
+    <div id="tour-zone"></div>
+    <div class="card hidden" id="faceid-offer">
+      <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
+      <p class="sub" style="margin-bottom:16px">Active Face ID / empreinte pour te connecter sans ressaisir ton code la prochaine fois.</p>
+      <button class="btn btn-blue btn-block" onclick="setupFaceId()">Activer</button>
+      <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="dismissFaceIdOffer()">Plus tard</button>
+      <div class="err" id="faceid-err"></div>
+    </div>
+    <div id="missions-list"></div>
+  </div>
+
+  <!-- Écran 3bis : activité / gains -->
+  <div id="activite-screen" class="hidden">
+    <div class="tabbar">
+      <button onclick="switchTab('missions')">📋 Mes missions<span class="tab-badge hidden badge-missions"></span></button>
+      <button class="on" onclick="switchTab('activite')">💰 Mon activité<span class="tab-badge hidden badge-activite"></span></button>
+    </div>
+    <div id="activite-content"><p class="empty">Chargement…</p></div>
+  </div>
+
+  <!-- Écran 4 : détail mission -->
+  <div id="detail-screen" class="hidden"></div>
+
+  <!-- Écran 5 : carte du jour -->
+  <div id="map-screen" class="hidden">
+    <button class="detail-back" onclick="closeDayMap()">← Retour</button>
+    <div class="map-filters">
+      <button class="on" data-f="toutes" onclick="setDayMapFilter('toutes')">Toutes</button>
+      <button data-f="livraison" onclick="setDayMapFilter('livraison')">📦 Livraisons</button>
+      <button data-f="recuperation" onclick="setDayMapFilter('recuperation')">🔄 Récupérations</button>
+    </div>
+    <div id="day-map"></div>
+  </div>
+
+</div>
+
+<!-- input caché pour capture photo/vidéo -->
+<input type="file" id="media-input" accept="image/*" capture="environment" class="hidden"/>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const API = (path) => '/api/' + path;
+let STATE = {
+  token: sessionStorage.getItem('t_token') || '',
+  transporteurId: sessionStorage.getItem('t_id') ? parseInt(sessionStorage.getItem('t_id')) : null,
+  transporteurNom: sessionStorage.getItem('t_nom') || '',
+  missions: [],
+  currentMission: null,
+  pendingUpload: null, // {livraisonId, kind}
+};
+
+function show(id){
+  ['login-screen','missions-screen','activite-screen','detail-screen','map-screen'].forEach(s=>{
+    document.getElementById(s).classList.toggle('hidden', s!==id);
+  });
+}
+
+function switchTab(tab){
+  if(tab==='activite'){ show('activite-screen'); loadActivite(); }
+  else { show('missions-screen'); loadMissions(); }
+}
+
+function escHtml(s){
+  return String(s==null?'':s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function updateWhoBadge(){
+  const b=document.getElementById('who-badge');
+  if(STATE.transporteurNom){
+    b.classList.remove('hidden');
+    b.innerHTML = escHtml(STATE.transporteurNom) + '<button onclick="logout()">changer</button>';
+  }
+}
+
+function logout(){
+  sessionStorage.clear();
+  STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],currentMission:null,pendingUpload:null};
+  stopPositionTracking();
+  document.getElementById('who-badge').classList.add('hidden');
+  show('login-screen');
+}
+
+// ── Position en direct (pendant une mission en cours) ────────────────────────
+// Envoyée uniquement quand au moins une mission est acceptée/en route, pour
+// ne pas suivre le livreur en dehors de son activité.
+let _watchId = null;
+let _lastPositionSentAt = 0;
+
+function hasActiveTravelMission(){
+  return STATE.missions.some(m => m.statut === 'acceptee' || m.statut === 'arrivee');
+}
+
+function updatePositionTracking(){
+  if(hasActiveTravelMission()) startPositionTracking();
+  else stopPositionTracking();
+}
+
+function startPositionTracking(){
+  document.getElementById('tracking-badge')?.classList.remove('hidden');
+  if(_watchId !== null || !navigator.geolocation) return;
+  _watchId = navigator.geolocation.watchPosition(onPositionUpdate, ()=>{}, {
+    enableHighAccuracy: true, maximumAge: 10000, timeout: 20000,
+  });
+}
+
+function stopPositionTracking(){
+  document.getElementById('tracking-badge')?.classList.add('hidden');
+  if(_watchId !== null){ navigator.geolocation.clearWatch(_watchId); _watchId = null; }
+}
+
+function onPositionUpdate(pos){
+  const now = Date.now();
+  if(now - _lastPositionSentAt < 8000) return; // throttle : une position toutes les ~8s max
+  _lastPositionSentAt = now;
+  fetch(API('transporteur-position'), {
+    method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+    body: JSON.stringify({lat: pos.coords.latitude, lng: pos.coords.longitude}),
+  }).catch(()=>{});
+}
+
+// ── Notifications push (nouvelles missions, annulations) ─────────────────────
+// Fonctionne même l'app fermée : le navigateur réveille le service worker sur
+// réception d'un push. Un seul abonnement suffit tant qu'il n'a pas expiré —
+// on retente à chaque connexion par simplicité, le serveur fait juste un upsert.
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g,'+').replace(/_/g,'/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+async function setupPush(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try{
+    const reg = await navigator.serviceWorker.register('/transporteur/sw.js');
+    const keyRes = await fetch(API('transporteur-push-vapid-key'));
+    const { publicKey } = await keyRes.json();
+    if(!publicKey) return; // VAPID pas encore configuré côté serveur
+
+    const permission = await Notification.requestPermission();
+    if(permission !== 'granted') return;
+
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+    }
+    await fetch(API('transporteur-push-subscribe'), {
+      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify({ subscription: sub }),
+    });
+  }catch(e){ /* pas bloquant : l'app marche très bien sans push */ }
+}
+
+// ── Face ID / empreinte (WebAuthn) ────────────────────────────────────────────
+function bufToBase64url(buf){
+  const bytes = new Uint8Array(buf);
+  let str = '';
+  for(const b of bytes) str += String.fromCharCode(b);
+  return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function base64urlToBuf(b64url){
+  const pad = '='.repeat((4 - b64url.length % 4) % 4);
+  const base64 = (b64url + pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw = atob(base64);
+  const buf = new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) buf[i] = raw.charCodeAt(i);
+  return buf.buffer;
+}
+async function hasPlatformAuthenticator(){
+  if(!window.PublicKeyCredential || !PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) return false;
+  try{ return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }catch(e){ return false; }
+}
+async function initWebauthnLoginButton(){
+  if(await hasPlatformAuthenticator()) document.getElementById('webauthn-login-btn')?.classList.remove('hidden');
+}
+async function maybeOfferFaceId(){
+  if(!STATE.transporteurId) return;
+  if(localStorage.getItem('t_faceid_'+STATE.transporteurId)) return; // déjà activé ou refusé sur cet appareil
+  if(await hasPlatformAuthenticator()) document.getElementById('faceid-offer')?.classList.remove('hidden');
+}
+function dismissFaceIdOffer(){
+  localStorage.setItem('t_faceid_'+STATE.transporteurId, 'refuse');
+  document.getElementById('faceid-offer')?.classList.add('hidden');
+}
+async function setupFaceId(){
+  const errEl = document.getElementById('faceid-err');
+  errEl.style.display = 'none';
+  try{
+    const optRes = await fetch(API('transporteur-webauthn-register-options'), {
+      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body:'{}',
+    });
+    const options = await optRes.json();
+    if(!optRes.ok) throw new Error(options.error||'Erreur');
+
+    const publicKey = {
+      ...options,
+      challenge: base64urlToBuf(options.challenge),
+      user: { ...options.user, id: base64urlToBuf(options.user.id) },
+      excludeCredentials: (options.excludeCredentials||[]).map(c => ({...c, id: base64urlToBuf(c.id)})),
+    };
+    const cred = await navigator.credentials.create({ publicKey });
+    const response = {
+      id: cred.id, rawId: bufToBase64url(cred.rawId), type: cred.type,
+      response: {
+        clientDataJSON: bufToBase64url(cred.response.clientDataJSON),
+        attestationObject: bufToBase64url(cred.response.attestationObject),
+        transports: cred.response.getTransports ? cred.response.getTransports() : undefined,
+      },
+      clientExtensionResults: cred.getClientExtensionResults ? cred.getClientExtensionResults() : {},
+    };
+
+    const verRes = await fetch(API('transporteur-webauthn-register-verify'), {
+      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify({ response }),
+    });
+    const verData = await verRes.json();
+    if(!verRes.ok) throw new Error(verData.error||'Erreur');
+
+    localStorage.setItem('t_faceid_'+STATE.transporteurId, 'actif');
+    document.getElementById('faceid-offer').innerHTML = '<p class="sub">✅ Face ID / empreinte activé pour cet appareil.</p>';
+  }catch(e){
+    errEl.textContent = "Impossible d'activer — réessaie plus tard";
+    errEl.style.display = 'block';
+  }
+}
+async function loginWithFaceId(){
+  const errEl = document.getElementById('webauthn-login-err');
+  errEl.style.display = 'none';
+  try{
+    const optRes = await fetch(API('transporteur-webauthn-login-options'), {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    const options = await optRes.json();
+    if(!optRes.ok) throw new Error(options.error||'Erreur');
+
+    const publicKey = {
+      ...options,
+      challenge: base64urlToBuf(options.challenge),
+      allowCredentials: (options.allowCredentials||[]).map(c => ({...c, id: base64urlToBuf(c.id)})),
+    };
+    const assertion = await navigator.credentials.get({ publicKey });
+    const response = {
+      id: assertion.id, rawId: bufToBase64url(assertion.rawId), type: assertion.type,
+      response: {
+        clientDataJSON: bufToBase64url(assertion.response.clientDataJSON),
+        authenticatorData: bufToBase64url(assertion.response.authenticatorData),
+        signature: bufToBase64url(assertion.response.signature),
+        userHandle: assertion.response.userHandle ? bufToBase64url(assertion.response.userHandle) : undefined,
+      },
+      clientExtensionResults: assertion.getClientExtensionResults ? assertion.getClientExtensionResults() : {},
+    };
+
+    const verRes = await fetch(API('transporteur-webauthn-login-verify'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ response })});
+    const d = await verRes.json();
+    if(!verRes.ok) throw new Error(d.error||'Connexion refusée.');
+
+    STATE.token = d.token; STATE.transporteurId = d.transporteur_id; STATE.transporteurNom = d.nom;
+    sessionStorage.setItem('t_token', d.token);
+    sessionStorage.setItem('t_id', d.transporteur_id);
+    sessionStorage.setItem('t_nom', d.nom);
+    updateWhoBadge();
+    loadMissions();
+    setupPush();
+    maybeOfferFaceId();
+    updateActiviteBadge();
+  }catch(e){
+    errEl.textContent = e.message || 'Connexion refusée.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function doLogin(){
+  const pin = document.getElementById('lg-code').value.trim();
+  const errEl = document.getElementById('lg-err');
+  const btn = document.getElementById('lg-btn');
+  errEl.style.display='none';
+  if(!pin) return;
+  btn.disabled=true; btn.textContent='Vérification…';
+  try{
+    const r = await fetch(API('transporteur-login'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({pin})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Code incorrect');
+    STATE.token = d.token;
+    STATE.transporteurId = d.transporteur_id;
+    STATE.transporteurNom = d.nom;
+    sessionStorage.setItem('t_token', d.token);
+    sessionStorage.setItem('t_id', d.transporteur_id);
+    sessionStorage.setItem('t_nom', d.nom);
+    updateWhoBadge();
+    loadMissions();
+    setupPush();
+    maybeOfferFaceId();
+    updateActiviteBadge();
+  }catch(e){
+    errEl.textContent = e.message || 'Code incorrect.';
+    errEl.style.display='block';
+  }finally{
+    btn.disabled=false; btn.textContent='Entrer →';
+  }
+}
+
+async function fetchMissions(){
+  try{
+    const r = await fetch(API('transporteur-missions'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: '{}'});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    STATE.missions = d.missions || [];
+    updatePositionTracking();
+    updateMissionsBadge();
+    return true;
+  }catch(e){
+    return false;
+  }
+}
+
+function updateMissionsBadge(){
+  const count = STATE.missions.filter(m => m.statut === 'a_faire').length;
+  document.querySelectorAll('.badge-missions').forEach(el => {
+    if(count>0){ el.textContent = count; el.classList.remove('hidden'); }
+    else el.classList.add('hidden');
+  });
+}
+
+async function updateActiviteBadge(){
+  try{
+    const r = await fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'resume'})});
+    const d = await r.json();
+    if(!r.ok) return;
+    const verses = (d.virements||[]).filter(v => v.statut==='verse');
+    const lastSeenId = parseInt(localStorage.getItem('t_lastseen_virement_'+STATE.transporteurId) || '0');
+    const unseen = verses.filter(v => v.id > lastSeenId).length;
+    document.querySelectorAll('.badge-activite').forEach(el => {
+      if(unseen>0){ el.textContent = unseen; el.classList.remove('hidden'); }
+      else el.classList.add('hidden');
+    });
+  }catch(e){}
+}
+
+function markActiviteSeen(virements){
+  const maxId = Math.max(0, ...(virements||[]).filter(v=>v.statut==='verse').map(v=>v.id));
+  if(maxId>0) localStorage.setItem('t_lastseen_virement_'+STATE.transporteurId, String(maxId));
+  document.querySelectorAll('.badge-activite').forEach(el => el.classList.add('hidden'));
+}
+
+async function loadMissions(){
+  show('missions-screen');
+  document.getElementById('missions-list').innerHTML = '<p class="empty">Chargement…</p>';
+  const ok = await fetchMissions();
+  if(ok) renderMissions();
+  else document.getElementById('missions-list').innerHTML = '<p class="empty">Impossible de charger tes missions. Réessaie.</p>';
+}
+
+const TYPE_LABEL = {livraison:'Livraison', recuperation:'Récupération'};
+const TYPE_ICON  = {livraison:'📦', recuperation:'🔄'};
+const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', arrivee:'Sur place', probleme:'Problème signalé'};
+
+function dateLabelFor(dateStr){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr+'T00:00:00');
+  const diffDays = Math.round((d-today)/86400000);
+  if(diffDays===0) return "📍 Aujourd'hui";
+  if(diffDays===1) return '📅 Demain';
+  return '📅 ' + d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+}
+
+function missionCardHtml(m){
+  const c = m.client || {};
+  const badge = STATUT_LABEL[m.statut] || m.statut;
+  const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
+  return `
+    <div class="mcard st-${m.statut}" onclick="openMission(${m.id})">
+      <div class="mcard-top">
+        <span class="mcard-icon">${TYPE_ICON[m.type]||'📍'}</span>
+        <span class="mcard-type">${TYPE_LABEL[m.type]||m.type}</span>
+        <span class="mcard-badge">${badge}</span>
+      </div>
+      <div class="mcard-addr">${escHtml((c.prenom||'')+' '+(c.nom||''))} — ${escHtml(c.adresse||'Adresse à confirmer')}</div>
+      <div class="mcard-meta">${escHtml(m.creneau||'')} ${c.etage&&c.etage!=='—'?'· Étage '+escHtml(c.etage):''}</div>
+      ${mapsUrl?`<div class="mcard-actions"><a href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Itinéraire</a>${c.tel?`<a href="tel:${encodeURIComponent(c.tel)}" onclick="event.stopPropagation()">📞 Appeler</a>`:''}</div>`:''}
+    </div>`;
+}
+
+// Capacité réaliste d'un livreur : jusqu'à 10 missions/jour — même
+// référence que côté admin, pour que la barre affichée soit cohérente des
+// deux côtés.
+const MISSIONS_CIBLE_JOUR = 10;
+function renderDayProgress(){
+  const zone = document.getElementById('progress-zone');
+  if(!zone) return;
+  const todayStr = new Date().toISOString().slice(0,10);
+  const count = STATE.missions.filter(m => m.date_prevue===todayStr && !['annule','refusee'].includes(m.statut)).length;
+  if(!count){ zone.innerHTML = ''; return; }
+  const pct = Math.min(100, Math.round(count/MISSIONS_CIBLE_JOUR*100));
+  const over = count > MISSIONS_CIBLE_JOUR;
+  zone.innerHTML = `
+    <div class="day-progress">
+      <div class="dp-top"><span>Ta journée</span><span>${count} / ${MISSIONS_CIBLE_JOUR} missions</span></div>
+      <div class="dp-bar"><div class="dp-fill ${over?'over':''}" style="width:${pct}%"></div></div>
+    </div>`;
+}
+
+function renderMissions(){
+  const wrap = document.getElementById('missions-list');
+  const tourZone = document.getElementById('tour-zone');
+  renderDayProgress();
+  if(!STATE.missions.length){
+    tourZone.innerHTML='';
+    wrap.innerHTML = '<p class="empty">Aucune mission pour l\'instant. 👍</p>';
+    return;
+  }
+
+  // La tournée groupée ne porte que sur AUJOURD'HUI — des missions à des
+  // dates différentes (parfois prévues bien à l'avance, parfois de dernière
+  // minute) ne doivent jamais être mélangées dans un même itinéraire.
+  const todayStr = new Date().toISOString().slice(0,10);
+  const todayActives = STATE.missions.filter(m => m.date_prevue===todayStr && m.client && m.client.adresse && ['a_faire','acceptee','arrivee','probleme'].includes(m.statut));
+  let zoneHtml = '';
+  if(todayActives.length > 1){
+    // Trie par code postal avant de construire l'itinéraire : sans vraie API de
+    // routage (payante), regrouper les arrêts du même secteur reste la
+    // meilleure approximation gratuite d'un ordre efficace.
+    const sortedActives = [...todayActives].sort((a,b) => (postalCode(a.client.adresse)||'').localeCompare(postalCode(b.client.adresse)||''));
+    const stops = sortedActives.map(m => m.client.adresse);
+    const last = encodeURIComponent(stops[stops.length-1]);
+    const waypoints = encodeURIComponent(stops.slice(0,-1).join('|'));
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${last}${waypoints?('&waypoints='+waypoints):''}&travelmode=driving`;
+    zoneHtml += `<a class="tour-btn" href="${url}" target="_blank" rel="noopener">🧭 Voir la tournée d'aujourd'hui (ordre suggéré, pas obligatoire)</a>`;
+  }
+  if(todayActives.length > 1){
+    zoneHtml += `<button class="tour-btn tour-btn-alt" onclick="openDayMap()">🗺️ Voir sur la carte</button>`;
+  }
+  tourZone.innerHTML = zoneHtml;
+
+  // Regroupées par date : une mission peut arriver la veille pour le
+  // lendemain, bien à l'avance, ou de dernière minute pour aujourd'hui.
+  // Le jour même, on sépare installations et récupérations — c'est ainsi
+  // qu'une tournée se planifie concrètement, pas mission par mission. Et à
+  // l'intérieur, par code postal (déjà dans l'adresse) pour repérer d'un
+  // coup d'œil les missions dans le même secteur.
+  const groups = {};
+  STATE.missions.forEach(m => { (groups[m.date_prevue] = groups[m.date_prevue] || []).push(m); });
+  const dates = Object.keys(groups).sort();
+
+  wrap.innerHTML = dates.map(dateStr => {
+    const items = groups[dateStr];
+    if(dateStr === todayStr){
+      const installs = items.filter(m => m.type==='livraison');
+      const pickups  = items.filter(m => m.type==='recuperation');
+      return `<div class="section-title">${dateLabelFor(dateStr)}</div>`
+        + (installs.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🏠 Installations (${installs.length})</div>${missionsByPostalHtml(installs)}`:'')
+        + (pickups.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔄 Récupérations (${pickups.length})</div>${missionsByPostalHtml(pickups)}`:'');
+    }
+    return `<div class="section-title">${dateLabelFor(dateStr)}</div>` + items.map(missionCardHtml).join('');
+  }).join('');
+}
+
+function postalCode(adresse){
+  const m = String(adresse||'').match(/\b(\d{5})\b/);
+  return m ? m[1] : null;
+}
+function missionsByPostalHtml(items){
+  const groups = {};
+  items.forEach(m => { const cp = postalCode((m.client||{}).adresse) || 'Autre'; (groups[cp] = groups[cp] || []).push(m); });
+  return Object.keys(groups).sort().map(cp => `
+    <div class="section-title" style="font-size:10px;color:var(--grey-soft);margin:8px 2px 6px;text-transform:none;letter-spacing:normal">📮 ${escHtml(cp)} (${groups[cp].length})</div>
+    ${groups[cp].map(missionCardHtml).join('')}`).join('');
+}
+
+function openMission(id){
+  STATE.currentMission = STATE.missions.find(m => m.id === id);
+  if(!STATE.currentMission) return;
+  renderDetail();
+  show('detail-screen');
+}
+
+function actionBtnsForMission(m){
+  const c = m.client || {};
+  if(m.statut === 'a_faire'){
+    // Une mission en cours (acceptée/arrivée) doit être terminée avant d'en
+    // accepter une autre — une mission mise en "problème" ne bloque plus rien,
+    // le livreur peut y revenir plus tard dans la journée.
+    const hasMissionEnCours = STATE.missions.some(x => x.id!==m.id && ['acceptee','arrivee'].includes(x.statut));
+    if(hasMissionEnCours){
+      return `
+        <div class="probleme-box"><p>🔒 Termine ta mission en cours avant d'accepter celle-ci.</p></div>
+        <button class="btn btn-red" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
+    }
+    return `
+      <button class="btn btn-green" onclick="doAction('accepter')">✅ J'ACCEPTE LA MISSION</button>
+      <button class="btn btn-red" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
+  }
+  if(m.statut === 'acceptee' && m.type === 'livraison'){
+    const numeros = m.appareil_numeros||[];
+    const plural = numeros.length>1;
+    const kitTxt = c.fenetre ? ` + ${numeros.length||1} kit${plural?'s':''} de calfeutrage (${c.fenetre})` : '';
+    const pickup = numeros.length
+      ? `Récupère ${plural?'les Unités':"l'Unité"} n°${numeros.join(', ')}${kitTxt} et charge-${plural?'les':'la'}.`
+      : `Charge l'appareil.`;
+    return `
+      <p class="step-hint">📦 Au dépôt : ${pickup}</p>
+      <button class="media-btn ${m.client_notifie?'done':''}" onclick="doAction('prevenir_client')"><span class="ic">📲</span> ${m.client_notifie?'Client prévenu ✔':'Prévenir le client (arrivée ~30 min)'}</button>
+      <button class="btn btn-blue" ${m.client_notifie?'':'disabled'} onclick="doAction('arrive')">📍 JE SUIS ARRIVÉ CHEZ LE CLIENT</button>
+      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
+  }
+  if(m.statut === 'acceptee' && m.type === 'recuperation'){
+    return `
+      <p class="step-hint">🚚 En route vers le client.</p>
+      <button class="media-btn ${m.client_notifie?'done':''}" onclick="doAction('prevenir_client')"><span class="ic">📲</span> ${m.client_notifie?'Client prévenu ✔':'Prévenir le client (arrivée ~30 min)'}</button>
+      <button class="btn btn-blue" ${m.client_notifie?'':'disabled'} onclick="doAction('arrive')">📍 JE SUIS ARRIVÉ CHEZ LE CLIENT</button>
+      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
+  }
+  if(m.statut === 'arrivee' && m.type === 'livraison'){
+    return `
+      <p class="step-hint">🎥 Installe l'appareil puis filme-le en marche.</p>
+      <button class="media-btn ${m.video_installation_ok?'done':''}" onclick="startUpload('video_installation','video/*')"><span class="ic">🎥</span> ${m.video_installation_ok?'Vidéo installation ✔':'Vidéo appareil en marche chez le client'}</button>
+      <button class="btn btn-green" ${m.video_installation_ok?'':'disabled'} onclick="doAction('livraison_ok')">✅ LIVRAISON OK — JE PARS</button>
+      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
+  }
+  if(m.statut === 'arrivee' && m.type === 'recuperation'){
+    const ready = m.photo_retour_ok && m.vidange_ok;
+    return `
+      <p class="step-hint">📷 Vérifie l'appareil, vidange-le (~5 min) et prends la photo avant de repartir.</p>
+      <button class="media-btn ${m.vidange_ok?'done':''}" ${m.vidange_ok?'disabled':''} onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> ${m.vidange_ok?'Vérification + vidange ✔':'Vérification + vidange effectuées'}</button>
+      <button class="media-btn ${m.photo_retour_ok?'done':''}" onclick="startUpload('photo_retour','image/*')"><span class="ic">📷</span> ${m.photo_retour_ok?'Photo appareil récupéré ✔':'Photo de l\'appareil récupéré'}</button>
+      <button class="btn btn-green" ${ready?'':'disabled'} onclick="doAction('retour_ok')">✅ RETOUR OK — JE PARS</button>
+      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
+  }
+  if(m.statut === 'probleme'){
+    return `<div class="probleme-box"><p>⏳ Problème signalé. Aly va te recontacter — n'improvise rien avec le client.</p></div>`;
+  }
+  return '';
+}
+
+function renderStepper(m){
+  if(!['a_faire','acceptee','arrivee','fait'].includes(m.statut)) return '';
+  const labels=['Départ','Route','Client','Terminé'];
+  let idx=0;
+  if(m.statut==='a_faire') idx=0;
+  else if(m.statut==='acceptee') idx=1;
+  else if(m.statut==='arrivee') idx=2;
+  else if(m.statut==='fait') idx=3;
+  return '<div class="stepper">'+labels.map((lbl,i)=>{
+    const cls = i<idx?'done':(i===idx?'active':'');
+    return `<div class="step ${cls}"><div class="step-line"></div><div class="step-dot">${i<idx?'✓':(i+1)}</div><div class="step-label">${lbl}</div></div>`;
+  }).join('')+'</div>';
+}
+
+// Page 1 (avant "J'accepte") : juste de quoi juger la mission — type, créneau,
+// zone. Page 2 (une fois démarrée) : la fiche client complète s'ouvre, avec un
+// bouton d'appel direct et toutes les actions propres à l'étape en cours.
+function renderDetail(){
+  const m = STATE.currentMission;
+  const c = m.client || {};
+  const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
+  const started = m.statut !== 'a_faire';
+
+  const infoRows = started ? `
+      ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="info-row"><span class="info-ic">🔢</span><span class="info-label">Unité${m.appareil_numeros.length>1?'s':''}</span><span class="info-val">n°${m.appareil_numeros.join(', ')}</span></div>`:''}
+      <div class="info-row"><span class="info-ic">👤</span><span class="info-label">Client</span><span class="info-val">${escHtml((c.prenom||'')+' '+(c.nom||''))}</span></div>
+      <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
+      <div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${escHtml(c.etage||'—')} ${c.ascenseur&&c.ascenseur!=='—'?'· Ascenseur: '+escHtml(c.ascenseur):''}</span></div>
+      <div class="info-row"><span class="info-ic">🪟</span><span class="info-label">Fenêtre</span><span class="info-val">${escHtml(c.fenetre||'—')}</span></div>
+      <div class="info-row"><span class="info-ic">📞</span><span class="info-label">Téléphone</span><span class="info-val">${c.tel?`<a href="tel:${encodeURIComponent(c.tel)}" style="color:var(--blue)">${escHtml(c.tel)}</a>`:'—'}</span></div>
+      <div class="info-row"><span class="info-ic">❄️</span><span class="info-label">Quantité</span><span class="info-val">${c.quantite||1}</span></div>
+      ${m.acces_difficile?`<p class="step-hint" style="margin-top:10px">📌 ${escHtml(m.acces_difficile)}</p>`:''}
+      ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
+      ${c.tel?`<a class="btn btn-blue" href="tel:${encodeURIComponent(c.tel)}" style="margin-bottom:12px;text-decoration:none">📞 Appeler ${escHtml(c.prenom||'le client')}</a>`:''}
+    ` : `
+      <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
+      ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
+    `;
+
+  document.getElementById('detail-screen').innerHTML = `
+    <button class="detail-back" onclick="show('missions-screen')">← Retour</button>
+    <div class="card">
+      <h1>${TYPE_ICON[m.type]||''} ${TYPE_LABEL[m.type]||m.type}</h1>
+      <p class="sub">${STATUT_LABEL[m.statut]||m.statut} · ${escHtml(m.creneau||'')}</p>
+      ${renderStepper(m)}
+
+      ${infoRows}
+
+      <div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div>
+      <div class="err" id="detail-err"></div>
+    </div>
+  `;
+}
+
+async function doAction(action, extra){
+  const errEl = document.getElementById('detail-err');
+  if(errEl){errEl.style.display='none';}
+  try{
+    const r = await fetch(API('transporteur-action'), {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify(Object.assign({action, livraison_id: STATE.currentMission.id}, extra||{}))
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+
+    if(action === 'livraison_ok' || action === 'retour_ok'){
+      showCelebration(d.montant_du_cents || 0);
+      return;
+    }
+
+    await fetchMissions();
+    const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
+    if(m){ STATE.currentMission = m; renderDetail(); show('detail-screen'); }
+    else { show('missions-screen'); renderMissions(); }
+  }catch(e){
+    if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
+  }
+}
+
+// ── Célébration (gamification, façon Uber/Deliveroo) ─────────────────────────
+function showCelebration(montantCents){
+  const overlay = document.createElement('div');
+  overlay.className = 'celebrate';
+  overlay.id = 'celebrate-overlay';
+  const montant = (montantCents/100).toFixed(2).replace('.',',');
+  const prenom = escHtml((STATE.transporteurNom||'').split(' ')[0] || '');
+  overlay.innerHTML = `
+    <div class="celebrate-card">
+      <div class="celebrate-emoji">🎉</div>
+      <div class="celebrate-title">Mission accomplie${prenom?', '+prenom:''} !</div>
+      <p class="celebrate-sub">Bien joué, le client va être content. On passe à la suite ?</p>
+      ${montantCents>0?`<div class="celebrate-amount">+${montant} €</div>`:''}
+      <button class="btn btn-blue" onclick="closeCelebration()">Continuer</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+async function closeCelebration(){
+  const o = document.getElementById('celebrate-overlay');
+  if(o) o.remove();
+  await loadMissions();
+}
+
+// ── Capture photo/vidéo ──────────────────────────────────────────────────────
+function startUpload(kind, accept){
+  const input = document.getElementById('media-input');
+  input.setAttribute('accept', accept);
+  input.setAttribute('capture', kind==='video_installation' ? 'environment' : 'environment');
+  STATE.pendingUpload = {kind};
+  input.value = '';
+  input.click();
+}
+
+document.getElementById('media-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file || !STATE.pendingUpload) return;
+  const {kind} = STATE.pendingUpload;
+  const zone = document.getElementById('action-zone');
+  try{
+    const r1 = await fetch(API('transporteur-action'), {
+      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify({action:'demander_upload', livraison_id: STATE.currentMission.id, kind, content_type:file.type})
+    });
+    const d1 = await r1.json();
+    if(!r1.ok) throw new Error(d1.error||'Erreur');
+
+    const up = await fetch(d1.signedUrl, {method:'PUT', headers:{'Content-Type': file.type || 'application/octet-stream'}, body: file});
+    if(!up.ok) throw new Error('Échec de l\'envoi du fichier');
+
+    const r2 = await fetch(API('transporteur-action'), {
+      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify({action:'confirmer_media', livraison_id: STATE.currentMission.id, kind, path:d1.path})
+    });
+    if(!r2.ok) throw new Error('Erreur de confirmation');
+
+    if(kind === 'photo_absence'){
+      await doAction('probleme', {probleme_type:'client_absent'});
+      return;
+    }
+
+    await fetchMissions();
+    const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
+    if(m){ STATE.currentMission = m; renderDetail(); }
+  }catch(err){
+    if(zone){
+      const errEl = document.createElement('div');
+      errEl.className='err'; errEl.style.display='block'; errEl.textContent = err.message;
+      zone.appendChild(errEl);
+    }
+  }
+});
+
+// ── Code oublié ───────────────────────────────────────────────────────────────
+function openForgotPin(){
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'forgot-overlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h1 style="margin-bottom:6px">Code oublié ?</h1>
+      <p class="sub">Entre l'email connu par Aly, on t'envoie ton code.</p>
+      <input type="text" id="forgot-email" placeholder="ton@email.fr" autocomplete="email"/>
+      <button class="btn btn-blue" onclick="sendForgotPin()">Envoyer</button>
+      <button class="btn btn-grey" onclick="closeForgotPin()">Annuler</button>
+      <div class="ok-msg" id="forgot-ok"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+function closeForgotPin(){
+  const o = document.getElementById('forgot-overlay');
+  if(o) o.remove();
+}
+async function sendForgotPin(){
+  const email = document.getElementById('forgot-email').value.trim();
+  const okEl = document.getElementById('forgot-ok');
+  if(!email) return;
+  try{
+    await fetch(API('transporteur-forgot-pin'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
+  }catch(e){}
+  document.getElementById('forgot-email').style.display='none';
+  document.querySelectorAll('#forgot-overlay .btn').forEach(b=>b.style.display='none');
+  okEl.textContent = "Si cet email est connu, ton code vient d'être envoyé. Vérifie ta boîte mail.";
+  okEl.style.display='block';
+}
+
+// ── Problème (aucune saisie de texte — juste une catégorie) ──────────────────
+function openProbleme(){
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'probleme-overlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h1 style="margin-bottom:14px">⚠️ Quel est le problème ?</h1>
+      <div class="probleme-list">
+        <button class="btn btn-amber" onclick="startClientAbsent()">📵 Client absent</button>
+        <button class="btn btn-amber" onclick="sendProbleme('appareil_en_panne')">🔧 Appareil en panne</button>
+        <button class="btn btn-amber" onclick="sendProbleme('retard')">⏰ Retard important</button>
+        <button class="btn btn-amber" onclick="sendProbleme('autre')">❓ Autre problème</button>
+        <button class="btn btn-grey" onclick="closeProbleme()">Annuler</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+function closeProbleme(){
+  const o = document.getElementById('probleme-overlay');
+  if(o) o.remove();
+}
+async function sendProbleme(type){
+  closeProbleme();
+  await doAction('probleme', {probleme_type: type});
+}
+// "Client absent" exige une photo de passage avant d'envoyer le SMS
+// automatique — startUpload() enchaîne ensuite sur le signalement du problème
+// une fois la photo confirmée (voir le listener de #media-input).
+function startClientAbsent(){
+  closeProbleme();
+  startUpload('photo_absence', 'image/*');
+}
+
+// ── Mon activité (gains, façon Uber Driver) ──────────────────────────────────
+const VIREMENT_LABEL = {demande:'Demandé', verse:'Versé'};
+
+async function loadActivite(){
+  const zone = document.getElementById('activite-content');
+  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'resume'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    renderActivite(d);
+    markActiviteSeen(d.virements);
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Impossible de charger ton activité. Réessaie.</p>';
+  }
+}
+
+function renderActivite(d){
+  const zone = document.getElementById('activite-content');
+  const nonVerse = (d.non_verse_euros||0).toFixed(2).replace('.',',');
+  const enCours = (d.virements||[]).some(v => v.statut==='demande');
+  zone.innerHTML = `
+    <div class="stat-big">
+      <div class="amount">${nonVerse} €</div>
+      <div class="caption">À verser · virement hebdo automatique, ou demande-le quand tu veux</div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-tile"><div class="n">${d.missions_aujourdhui||0}</div><div class="l">Missions aujourd'hui</div></div>
+      <div class="stat-tile"><div class="n">${(d.gain_aujourdhui_euros||0).toFixed(2).replace('.',',')} €</div><div class="l">Gagné aujourd'hui</div></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-tile"><div class="n">${d.missions_mois||0}</div><div class="l">Missions ce mois</div></div>
+      <div class="stat-tile"><div class="n">${(d.gain_mois_euros||0).toFixed(2).replace('.',',')} €</div><div class="l">Gagné ce mois</div></div>
+    </div>
+    <button class="btn btn-green" ${(d.non_verse_euros>0 && !enCours)?'':'disabled'} onclick="demanderVirement()">💰 ${enCours?'Demande en cours…':'Demander mon virement'}</button>
+    <div class="err" id="activite-err"></div>
+    ${(d.virements&&d.virements.length)?`
+      <div class="section-title">Historique</div>
+      <div class="card vlist">${d.virements.map(v => `
+        <div class="vrow"><span>${new Date(v.created_at).toLocaleDateString('fr-FR')}</span><span>${(v.montant_cents/100).toFixed(2).replace('.',',')} €</span><span class="vchip ${v.statut}">${VIREMENT_LABEL[v.statut]||v.statut}</span></div>
+      `).join('')}</div>` : ''}
+  `;
+}
+
+async function demanderVirement(){
+  const errEl = document.getElementById('activite-err');
+  if(errEl) errEl.style.display='none';
+  try{
+    const r = await fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'demander_virement'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    await loadActivite();
+  }catch(e){
+    if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
+  }
+}
+
+// ── Carte du jour (vue d'ensemble, gratuite OpenStreetMap) ───────────────────
+// Volontairement PAS affichée par défaut sur l'écran des missions : elle
+// n'apporte rien quand il n'y a qu'une ou deux missions (le bouton Itinéraire
+// de chaque carte suffit), et charger une carte à chaque ouverture de l'appli
+// ralentirait l'écran principal pour rien. Elle n'apparaît qu'à la demande,
+// un seul tap, quand il y a plusieurs missions à comparer dans l'espace.
+let DAY_MAP = null;
+let DAY_MAP_FILTER = 'toutes';
+let DAY_MAP_MARKERS = [];
+const DAY_MAP_GEOCACHE = {};
+
+async function geocodeAddress(address){
+  if(DAY_MAP_GEOCACHE[address] !== undefined) return DAY_MAP_GEOCACHE[address];
+  try{
+    const q = encodeURIComponent(address);
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=fr&q=${q}`);
+    const d = await r.json();
+    const point = (d && d[0]) ? {lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon)} : null;
+    DAY_MAP_GEOCACHE[address] = point;
+    return point;
+  }catch(e){
+    return null;
+  }
+}
+
+function todayMissionsWithAddress(){
+  const todayStr = new Date().toISOString().slice(0,10);
+  return STATE.missions.filter(m => m.date_prevue===todayStr && m.client && m.client.adresse && ['a_faire','acceptee','arrivee','probleme'].includes(m.statut));
+}
+
+async function openDayMap(){
+  show('map-screen');
+  document.querySelectorAll('.map-filters button').forEach(b=>b.classList.toggle('on', b.dataset.f==='toutes'));
+  DAY_MAP_FILTER = 'toutes';
+
+  if(!DAY_MAP){
+    DAY_MAP = L.map('day-map');
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19, subdomains:'abcd',
+    }).addTo(DAY_MAP);
+  }
+  setTimeout(() => DAY_MAP && DAY_MAP.invalidateSize(), 50);
+
+  const missions = todayMissionsWithAddress();
+  await Promise.all(missions.map(m => geocodeAddress(m.client.adresse)));
+  renderDayMapPins();
+}
+
+function renderDayMapPins(){
+  if(!DAY_MAP) return;
+  DAY_MAP_MARKERS.forEach(mk => DAY_MAP.removeLayer(mk));
+  DAY_MAP_MARKERS = [];
+
+  const missions = todayMissionsWithAddress().filter(m => DAY_MAP_FILTER==='toutes' || m.type===DAY_MAP_FILTER);
+  const points = [];
+
+  missions.forEach(m => {
+    const coords = DAY_MAP_GEOCACHE[m.client.adresse];
+    if(!coords) return;
+    const point = [coords.lat, coords.lng];
+    points.push(point);
+    const icon = L.divIcon({className:'', html:`<div class="map-pin-teardrop ${m.type}"><span>${m.type==='livraison'?'📦':'🔄'}</span></div>`, iconSize:[32,32], iconAnchor:[16,32]});
+    const marker = L.marker(point, {icon}).addTo(DAY_MAP);
+    const popupDiv = document.createElement('div');
+    popupDiv.innerHTML = `<strong>${escHtml((m.client.prenom||'')+' '+(m.client.nom||''))}</strong><br>${escHtml(m.client.adresse)}<br>${escHtml(m.creneau||'')}`;
+    const btn = document.createElement('button');
+    btn.className = 'map-popup-btn';
+    btn.textContent = 'Voir la mission →';
+    btn.onclick = () => goToMissionFromMap(m.id);
+    popupDiv.appendChild(btn);
+    marker.bindPopup(popupDiv);
+    DAY_MAP_MARKERS.push(marker);
+  });
+
+  if(points.length){
+    DAY_MAP.fitBounds(L.latLngBounds(points), {padding:[30,30], maxZoom:16});
+  } else {
+    DAY_MAP.setView([46.6, 2.2], 5); // pas de mission géolocalisée pour ce filtre
+  }
+}
+
+function setDayMapFilter(f){
+  DAY_MAP_FILTER = f;
+  document.querySelectorAll('.map-filters button').forEach(b=>b.classList.toggle('on', b.dataset.f===f));
+  renderDayMapPins();
+}
+
+function goToMissionFromMap(id){
+  show('missions-screen');
+  openMission(id);
+}
+
+function closeDayMap(){
+  show('missions-screen');
+}
+
+// ── Démarrage ─────────────────────────────────────────────────────────────────
+(function init(){
+  initWebauthnLoginButton();
+  if(STATE.token && STATE.transporteurId && STATE.transporteurNom){
+    updateWhoBadge();
+    loadMissions();
+    setupPush();
+    maybeOfferFaceId();
+    updateActiviteBadge();
+  } else if(STATE.token){
+    // token connu mais pas de transporteur choisi -> relogin léger
+    show('login-screen');
+  } else {
+    show('login-screen');
+  }
+  document.getElementById('lg-code').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+})();
+</script>
+</body>
+</html>
