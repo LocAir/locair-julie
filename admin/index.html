@@ -213,6 +213,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs</button>
         <button data-tab="virements" onclick="switchAdminTab('virements')">💶 Virements<span class="tab-badge hidden" id="badge-virements"></span></button>
         <button data-tab="incidents" onclick="switchAdminTab('incidents')">🧯 Incidents</button>
+        <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
       </div>
 
       <div class="a-content">
@@ -224,6 +225,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-transporteurs" class="hidden"></div>
         <div id="tab-virements" class="hidden"></div>
         <div id="tab-incidents" class="hidden"></div>
+        <div id="tab-clients" class="hidden"></div>
       </div>
     </div>
   </div>
@@ -384,7 +386,7 @@ const PROBLEME_LABEL = {client_absent:'Client absent', appareil_en_panne:'Appare
 
 function switchAdminTab(tab){
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','calendrier','livraisons','transporteurs','virements','incidents'].forEach(t=>{
+  ['accueil','stock','reservations','calendrier','livraisons','transporteurs','virements','incidents','clients'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard('7j');
@@ -395,6 +397,7 @@ function switchAdminTab(tab){
   if(tab==='transporteurs') loadTransporteurs();
   if(tab==='virements') loadVirements();
   if(tab==='incidents') loadIncidents();
+  if(tab==='clients') loadClients();
 }
 
 // ── Badges "à regarder" sur les onglets (virements demandés, missions en
@@ -1117,6 +1120,61 @@ async function loadIncidents(){
 async function updateIncidentStatut(id, statut){
   await fetch(API('admin-incidents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
   loadIncidents();
+}
+
+// ── CLIENTS ───────────────────────────────────────────────────────────────────
+// Fiche persistante par client (déduplication par téléphone) — jusqu'ici
+// chaque réservation était une île isolée, aucune mémoire d'une fois sur
+// l'autre. La note "accès difficile" (digicode, étage, parking...) est
+// rattachée au client, pas à une réservation ni à un appareil, pour profiter
+// à toute visite future — jamais un blocage, juste une info.
+let CLIENTS_CACHE = [];
+async function loadClients(){
+  const zone = document.getElementById('tab-clients');
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-clients'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    CLIENTS_CACHE = d.clients || [];
+    renderClients();
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+function renderClients(){
+  const zone = document.getElementById('tab-clients');
+  const q = (document.getElementById('cli-search')?.value || '').trim().toLowerCase();
+  let items = CLIENTS_CACHE;
+  if(q){
+    items = items.filter(c => [c.prenom,c.nom,c.tel,c.email].filter(Boolean).join(' ').toLowerCase().includes(q));
+  }
+  const list = items.map(c => `
+    <div class="row-item">
+      <div class="row-top">
+        <span class="row-title">${escHtml((c.prenom||'')+' '+(c.nom||''))}</span>
+        <span class="chip actif">${c.nb_reservations} réservation${c.nb_reservations>1?'s':''}</span>
+      </div>
+      <div class="row-meta">${escHtml(c.tel||'—')}${c.email?' · '+escHtml(c.email):''}${c.derniere_adresse?'<br/>Dernière adresse : '+escHtml(c.derniere_adresse):''}</div>
+      ${c.acces_difficile?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-top:6px">⚠️ ${escHtml(c.acces_difficile)}</div>`:''}
+      <div class="row-actions">
+        <button class="btn btn-grey" onclick="editAccesDifficile(${c.id}, '${(c.acces_difficile||'').replace(/'/g,"\\'")}')">${c.acces_difficile?'Modifier':'Ajouter'} une note d'accès</button>
+      </div>
+    </div>`).join('') || '<p class="empty">👤 Aucun client pour l\'instant.</p>';
+  zone.innerHTML = `
+    <input type="text" id="cli-search" placeholder="🔎 Rechercher un client, un téléphone…" oninput="renderClients()" value="${escHtml(document.getElementById('cli-search')?.value||'')}"/>
+    ${list}`;
+}
+function editAccesDifficile(id, current){
+  promptAction({
+    title: "Note d'accès",
+    label: 'Digicode, étage sans ascenseur, parking impossible… (visible par l\'admin et le livreur, jamais bloquant)',
+    value: current, placeholder: 'Ex : digicode 4B12, sonner fort',
+  }, async (value) => {
+    await fetch(API('admin-clients'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, acces_difficile:value})});
+    loadClients();
+    showToast('Note mise à jour', 'success');
+  });
 }
 
 // ── Suivi en direct (carte gratuite OpenStreetMap) ───────────────────────────

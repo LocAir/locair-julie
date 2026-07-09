@@ -18,7 +18,8 @@ module.exports = async (req, res) => {
         probleme_type, probleme_description,
         reservation:reservations (
           prenom, nom, tel, adresse, etage, ascenseur, fenetre, installation, quantite,
-          reservation_appareils ( appareil:appareils ( numero ) )
+          reservation_appareils ( appareil:appareils ( numero ) ),
+          client:clients ( acces_difficile )
         )
       `)
       .eq('transporteur_id', transporteurId)
@@ -42,6 +43,7 @@ module.exports = async (req, res) => {
       probleme_description: m.probleme_description,
       appareil_numeros: ((m.reservation?.reservation_appareils) || [])
         .map(ra => ra.appareil?.numero).filter(n => n != null).sort((a, b) => a - b),
+      acces_difficile: m.reservation?.client?.acces_difficile || null,
       client: m.reservation || null,
     }));
 

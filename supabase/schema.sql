@@ -62,9 +62,29 @@ create table transporteurs (
 create index transporteurs_city_idx on transporteurs (city_id, actif);
 create index transporteurs_pin_idx on transporteurs (pin) where actif;
 
+-- Un client peut réserver plusieurs fois — jusqu'ici chaque réservation était
+-- une île isolée, aucune mémoire d'une fois sur l'autre. Déduplication par
+-- téléphone (le plus stable : un client garde son numéro plus souvent que son
+-- email). acces_difficile est une note libre ("digicode faux", "pas
+-- d'ascenseur"...) qui enrichit la fiche pour la prochaine visite — jamais un
+-- blocage, juste une info consultée par l'admin et le livreur.
+create table clients (
+  id                bigint generated always as identity primary key,
+  city_id           bigint not null references cities(id),
+  prenom            text,
+  nom               text,
+  tel               text,
+  tel_normalise     text, -- chiffres uniquement, sert à la déduplication
+  email             text,
+  acces_difficile   text,
+  created_at        timestamptz not null default now()
+);
+create index clients_city_tel_idx on clients (city_id, tel_normalise);
+
 create table reservations (
   id                       bigint generated always as identity primary key,
   city_id                  bigint not null references cities(id),
+  client_id                bigint references clients(id),
   ref                      text not null,
   stripe_payment_intent_id text unique,
   stripe_customer_id       text,

@@ -1,5 +1,27 @@
 const { pushToTransporteur } = require('./push');
 
+function normalizeTel(tel) {
+  return String(tel || '').replace(/\D/g, '');
+}
+
+// Retrouve ou crée la fiche client (déduplication par téléphone, dans la même
+// ville) — sans quoi chaque réservation reste une île isolée et une info comme
+// "digicode faux à cette adresse" ne profite jamais aux visites suivantes.
+async function findOrCreateClient(supabase, resa) {
+  const telNorm = normalizeTel(resa.tel);
+  if (!telNorm) return null;
+
+  const { data: existing } = await supabase
+    .from('clients').select('id').eq('city_id', resa.city_id).eq('tel_normalise', telNorm).maybeSingle();
+  if (existing) return existing.id;
+
+  const { data: created } = await supabase.from('clients').insert({
+    city_id: resa.city_id, prenom: resa.prenom, nom: resa.nom,
+    tel: resa.tel, tel_normalise: telNorm, email: resa.email,
+  }).select('id').single();
+  return created?.id || null;
+}
+
 // Assigne un ou plusieurs appareils numérotés à une réservation confirmée.
 // Idempotent par construction : si des appareils sont déjà liés à cette
 // réservation (webhook Stripe redélivré), ne fait rien.
@@ -43,7 +65,9 @@ async function assignAppareils(supabase, resa, staleOriginalId) {
 async function confirmReservation(supabase, resa) {
   if (resa.statut === 'confirmee') return resa; // déjà traité
 
-  await supabase.from('reservations').update({ statut: 'confirmee' }).eq('id', resa.id);
+  const clientId = await findOrCreateClient(supabase, resa);
+  resa.client_id = clientId;
+  await supabase.from('reservations').update({ statut: 'confirmee', client_id: clientId }).eq('id', resa.id);
 
   // Prolongation : retrouver la réservation d'origine (même client, même ville,
   // récupération initiale = début de l'extension) — sert à la fois à lui
