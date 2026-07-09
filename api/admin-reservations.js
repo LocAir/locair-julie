@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
     if (action === 'list') {
       const { data, error } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, email, adresse, date_debut, date_fin, quantite, prix_total_cents, statut, source, created_at')
+        .select('id, ref, prenom, nom, tel, email, adresse, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, created_at')
         .eq('city_id', city.id)
         .order('created_at', { ascending: false })
         .limit(200);

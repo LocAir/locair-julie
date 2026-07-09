@@ -85,10 +85,17 @@ async function confirmReservation(supabase, resa) {
 
   const { data: existing } = await supabase.from('livraisons').select('id').eq('reservation_id', resa.id);
   if (!existing || existing.length === 0) {
+    // Le créneau choisi par le client sur le site (reservations.creneau) doit
+    // atteindre la mission opérationnelle — jusqu'ici il finissait seulement
+    // dans l'email de confirmation, jamais dans le planning admin/livreur.
+    // Pour une réservation normale, resa.creneau = créneau de LIVRAISON choisi
+    // par le client (la récupération reste "coordonnée par l'équipe", jamais
+    // choisie côté site — pas de créneau à pré-remplir). Pour une prolongation,
+    // resa.creneau = créneau de RÉCUPÉRATION choisi par le client.
     const rows = resa.source === 'site_prolongation'
-      ? [{ reservation_id: resa.id, type: 'recuperation', date_prevue: resa.date_fin }]
+      ? [{ reservation_id: resa.id, type: 'recuperation', date_prevue: resa.date_fin, creneau: resa.creneau || null }]
       : [
-          { reservation_id: resa.id, type: 'livraison',    date_prevue: resa.date_debut },
+          { reservation_id: resa.id, type: 'livraison',    date_prevue: resa.date_debut, creneau: resa.creneau || null },
           { reservation_id: resa.id, type: 'recuperation', date_prevue: resa.date_fin },
         ];
     await supabase.from('livraisons').insert(rows);

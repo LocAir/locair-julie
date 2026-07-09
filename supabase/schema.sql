@@ -77,6 +77,7 @@ create table reservations (
   ascenseur                text,
   fenetre                  text,
   installation             text,
+  creneau                  text, -- créneau de livraison choisi par le client sur le site (récupération = coordonnée par l'équipe, jamais choisie côté client)
   date_debut               date not null,
   date_fin                 date not null,
   quantite                 integer not null default 1 check (quantite > 0),

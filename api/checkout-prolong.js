@@ -109,6 +109,7 @@ module.exports = async (req, res) => {
       email:                    (data.email           || '').slice(0, 200),
       tel:                      (data.tel             || '').slice(0, 50),
       adresse:                  (data.adresse_origine || '').slice(0, 500),
+      creneau:                  (data.creneau         || '').slice(0, 500),
       date_debut:               extDateDebut,
       date_fin:                 extDateFin,
       quantite:                 qty,

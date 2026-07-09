@@ -127,6 +127,7 @@ module.exports = async (req, res) => {
       ascenseur:                (data.ascenseur    || '').slice(0, 50),
       fenetre:                  (data.fenetre      || '').slice(0, 100),
       installation:             (data.installation || '').slice(0, 100),
+      creneau:                  (data.creneau_livraison || '').slice(0, 500),
       date_debut:               dateDebut,
       date_fin:                 dateFin,
       quantite:                 qty,
