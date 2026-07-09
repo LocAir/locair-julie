@@ -130,6 +130,12 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .tabbar button.on{background:var(--white);color:var(--black);box-shadow:var(--sh-xs)}
 .tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;margin-left:6px;border-radius:100px;background:var(--red);color:#fff;font-size:10.5px;font-weight:800;line-height:1;vertical-align:2px}
 
+.day-progress{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;box-shadow:var(--sh-xs)}
+.day-progress .dp-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;font-size:13px;font-weight:700}
+.day-progress .dp-bar{height:10px;border-radius:100px;background:var(--bg);overflow:hidden}
+.day-progress .dp-fill{height:100%;border-radius:100px;background:var(--blue);transition:width .4s ease}
+.day-progress .dp-fill.over{background:var(--red)}
+
 /* Activité */
 .stat-big{background:linear-gradient(150deg,var(--blue) 0%,var(--blue-d) 60%,#0a1424 100%);color:#fff;border-radius:var(--r-lg);padding:26px 22px;margin-bottom:14px;box-shadow:var(--sh-md)}
 .stat-big .amount{font-family:var(--disp);font-size:42px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
@@ -206,6 +212,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
       <button class="on" onclick="switchTab('missions')">📋 Mes missions<span class="tab-badge hidden badge-missions"></span></button>
       <button onclick="switchTab('activite')">💰 Mon activité<span class="tab-badge hidden badge-activite"></span></button>
     </div>
+    <div id="progress-zone"></div>
     <div id="tour-zone"></div>
     <div class="card hidden" id="faceid-offer">
       <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
@@ -587,9 +594,29 @@ function missionCardHtml(m){
     </div>`;
 }
 
+// Capacité réaliste d'un livreur : ~10 missions/jour en moyenne — même
+// référence que côté admin, pour que la barre affichée soit cohérente des
+// deux côtés.
+const MISSIONS_CIBLE_JOUR = 10;
+function renderDayProgress(){
+  const zone = document.getElementById('progress-zone');
+  if(!zone) return;
+  const todayStr = new Date().toISOString().slice(0,10);
+  const count = STATE.missions.filter(m => m.date_prevue===todayStr && !['annule','refusee'].includes(m.statut)).length;
+  if(!count){ zone.innerHTML = ''; return; }
+  const pct = Math.min(100, Math.round(count/MISSIONS_CIBLE_JOUR*100));
+  const over = count > MISSIONS_CIBLE_JOUR;
+  zone.innerHTML = `
+    <div class="day-progress">
+      <div class="dp-top"><span>Ta journée</span><span>${count} / ${MISSIONS_CIBLE_JOUR} missions</span></div>
+      <div class="dp-bar"><div class="dp-fill ${over?'over':''}" style="width:${pct}%"></div></div>
+    </div>`;
+}
+
 function renderMissions(){
   const wrap = document.getElementById('missions-list');
   const tourZone = document.getElementById('tour-zone');
+  renderDayProgress();
   if(!STATE.missions.length){
     tourZone.innerHTML='';
     wrap.innerHTML = '<p class="empty">Aucune mission pour l\'instant. 👍</p>';
