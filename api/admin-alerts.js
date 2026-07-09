@@ -36,9 +36,17 @@ module.exports = async (req, res) => {
       // Le pire scénario opérationnel : une réservation confirmée dont les
       // missions n'ont encore aucun livreur assigné — sans ce compteur, rien
       // ne signale activement qu'un client attend une livraison non dispatchée.
+      // Limité aux missions dues sous 72h (ou déjà en retard) : au-delà, ne
+      // pas avoir encore assigné est normal (le dispatch se fait au fil de
+      // l'eau) — tout compter en alerte permanente rendrait le signal
+      // inutile, allumé en continu même quand rien n'est urgent.
+      const horizon = new Date();
+      horizon.setDate(horizon.getDate() + 3);
+      const horizonStr = horizon.toISOString().slice(0, 10);
       const { count: nonAssigneesCount } = await supabase
         .from('livraisons').select('id', { count: 'exact', head: true })
-        .in('reservation_id', resaIds).eq('statut', 'a_faire').is('transporteur_id', null);
+        .in('reservation_id', resaIds).eq('statut', 'a_faire').is('transporteur_id', null)
+        .lte('date_prevue', horizonStr);
       livraisons = (problemeCount || 0) + (nonAssigneesCount || 0);
       nonAssignees = nonAssigneesCount || 0;
     }

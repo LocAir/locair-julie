@@ -217,7 +217,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
     <div class="card hidden" id="faceid-offer">
       <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
       <p class="sub" style="margin-bottom:16px">Active Face ID / empreinte pour te connecter sans ressaisir ton code la prochaine fois.</p>
-      <button class="btn btn-blue btn-block" onclick="setupFaceId()">Activer</button>
+      <button class="btn btn-blue btn-block" id="faceid-setup-btn" onclick="setupFaceId()">Activer</button>
       <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="dismissFaceIdOffer()">Plus tard</button>
       <div class="err" id="faceid-err"></div>
     </div>
@@ -400,7 +400,9 @@ function dismissFaceIdOffer(){
 }
 async function setupFaceId(){
   const errEl = document.getElementById('faceid-err');
+  const btn = document.getElementById('faceid-setup-btn');
   errEl.style.display = 'none';
+  if(btn){ btn.disabled = true; btn.textContent = 'Activation…'; }
   try{
     const optRes = await fetch(API('transporteur-webauthn-register-options'), {
       method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body:'{}',
@@ -437,11 +439,14 @@ async function setupFaceId(){
   }catch(e){
     errEl.textContent = "Impossible d'activer — réessaie plus tard";
     errEl.style.display = 'block';
+    if(btn){ btn.disabled = false; btn.textContent = 'Activer'; }
   }
 }
 async function loginWithFaceId(){
   const errEl = document.getElementById('webauthn-login-err');
+  const btn = document.getElementById('webauthn-login-btn');
   errEl.style.display = 'none';
+  if(btn){ btn.disabled = true; btn.textContent = 'Connexion…'; }
   try{
     const optRes = await fetch(API('transporteur-webauthn-login-options'), {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
     const options = await optRes.json();
@@ -480,6 +485,7 @@ async function loginWithFaceId(){
   }catch(e){
     errEl.textContent = e.message || 'Connexion refusée.';
     errEl.style.display = 'block';
+    if(btn){ btn.disabled = false; btn.textContent = '🔓 Face ID / empreinte'; }
   }
 }
 
@@ -802,6 +808,11 @@ function renderDetail(){
 async function doAction(action, extra){
   const errEl = document.getElementById('detail-err');
   if(errEl){errEl.style.display='none';}
+  // Verrou anti-double-clic : sur le terrain (4G capricieuse), un double-tap
+  // sur "Livraison OK" ne doit jamais déclencher deux fois la suite du
+  // parcours (notification client, calcul du gain...).
+  const zone = document.getElementById('action-zone');
+  if(zone) zone.querySelectorAll('button').forEach(b => b.disabled = true);
   try{
     const r = await fetch(API('transporteur-action'), {
       method:'POST',
@@ -821,7 +832,9 @@ async function doAction(action, extra){
     if(m){ STATE.currentMission = m; renderDetail(); show('detail-screen'); }
     else { show('missions-screen'); renderMissions(); }
   }catch(e){
-    if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
+    renderDetail(); // reconstruit les boutons avec les bons états disabled/actifs
+    const errEl2 = document.getElementById('detail-err');
+    if(errEl2){errEl2.textContent = e.message; errEl2.style.display='block';}
   }
 }
 
@@ -863,6 +876,17 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
   if(!file || !STATE.pendingUpload) return;
   const {kind} = STATE.pendingUpload;
   const zone = document.getElementById('action-zone');
+  // Le seul geste de l'app qui pouvait sembler figé sans rien indiquer — une
+  // vidéo lente à envoyer donnait l'impression que rien ne se passait, alors
+  // que ces preuves sont la seule protection en cas de litige avec un client.
+  let loadingEl = null;
+  if(zone){
+    zone.querySelectorAll('button').forEach(b => b.disabled = true);
+    loadingEl = document.createElement('div');
+    loadingEl.className = 'step-hint';
+    loadingEl.textContent = '⏳ Envoi en cours, ne quitte pas cet écran…';
+    zone.prepend(loadingEl);
+  }
   try{
     const r1 = await fetch(API('transporteur-action'), {
       method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
@@ -889,10 +913,15 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
     const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
     if(m){ STATE.currentMission = m; renderDetail(); }
   }catch(err){
-    if(zone){
+    // renderDetail() reconstruit les boutons avec leurs bons états
+    // disabled/actifs (ex. "Livraison OK" doit rester verrouillé tant que la
+    // vidéo n'est pas confirmée) — pas un simple re-enable de tout en bloc.
+    renderDetail();
+    const zone2 = document.getElementById('action-zone');
+    if(zone2){
       const errEl = document.createElement('div');
       errEl.className='err'; errEl.style.display='block'; errEl.textContent = err.message;
-      zone.appendChild(errEl);
+      zone2.appendChild(errEl);
     }
   }
 });
@@ -907,7 +936,7 @@ function openForgotPin(){
       <h1 style="margin-bottom:6px">Code oublié ?</h1>
       <p class="sub">Entre l'email connu par Aly, on t'envoie ton code.</p>
       <input type="text" id="forgot-email" placeholder="ton@email.fr" autocomplete="email"/>
-      <button class="btn btn-blue" onclick="sendForgotPin()">Envoyer</button>
+      <button class="btn btn-blue" id="forgot-send-btn" onclick="sendForgotPin()">Envoyer</button>
       <button class="btn btn-grey" onclick="closeForgotPin()">Annuler</button>
       <div class="ok-msg" id="forgot-ok"></div>
     </div>`;
@@ -920,7 +949,10 @@ function closeForgotPin(){
 async function sendForgotPin(){
   const email = document.getElementById('forgot-email').value.trim();
   const okEl = document.getElementById('forgot-ok');
+  const btn = document.getElementById('forgot-send-btn');
   if(!email) return;
+  if(btn && btn.disabled) return;
+  if(btn){ btn.disabled = true; btn.textContent = 'Envoi…'; }
   try{
     await fetch(API('transporteur-forgot-pin'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
   }catch(e){}
@@ -998,7 +1030,7 @@ function renderActivite(d){
       <div class="stat-tile"><div class="n">${d.missions_mois||0}</div><div class="l">Missions ce mois</div></div>
       <div class="stat-tile"><div class="n">${(d.gain_mois_euros||0).toFixed(2).replace('.',',')} €</div><div class="l">Gagné ce mois</div></div>
     </div>
-    <button class="btn btn-green" ${(d.non_verse_euros>0 && !enCours)?'':'disabled'} onclick="demanderVirement()">💰 ${enCours?'Demande en cours…':'Demander mon virement'}</button>
+    <button class="btn btn-green" id="demander-virement-btn" ${(d.non_verse_euros>0 && !enCours)?'':'disabled'} onclick="demanderVirement()">💰 ${enCours?'Demande en cours…':'Demander mon virement'}</button>
     <div class="err" id="activite-err"></div>
     ${missionsHistoryHtml(d.missions)}
     ${(d.virements&&d.virements.length)?`
@@ -1055,14 +1087,17 @@ function missionsHistoryHtml(missions){
 
 async function demanderVirement(){
   const errEl = document.getElementById('activite-err');
+  const btn = document.getElementById('demander-virement-btn');
   if(errEl) errEl.style.display='none';
+  if(btn){ btn.disabled = true; btn.textContent = '💰 Envoi…'; }
   try{
     const r = await fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'demander_virement'})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    await loadActivite();
+    await loadActivite(); // reconstruit le bouton avec le bon état ("Demande en cours…")
   }catch(e){
     if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
+    if(btn){ btn.disabled = false; btn.textContent = '💰 Demander mon virement'; }
   }
 }
 

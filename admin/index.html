@@ -222,7 +222,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
       <p class="sub">Entre ton mot de passe pour accéder au tableau de bord.</p>
       <label for="a-pwd">Mot de passe</label>
       <input type="password" id="a-pwd" autocomplete="current-password"/>
-      <button class="btn btn-blue btn-block" onclick="adminLogin()">Se connecter →</button>
+      <button class="btn btn-blue btn-block" id="a-login-btn" onclick="adminLogin()">Se connecter →</button>
       <div class="err" id="a-login-err"></div>
     </div>
   </div>
@@ -268,8 +268,11 @@ function authHeaders(){ return {'Content-Type':'application/json','x-admin-token
 async function adminLogin(){
   const pwd = document.getElementById('a-pwd').value.trim();
   const errEl = document.getElementById('a-login-err');
+  const btn = document.getElementById('a-login-btn');
   errEl.style.display='none';
   if(!pwd) return;
+  if(btn && btn.disabled) return;
+  if(btn){ btn.disabled = true; btn.textContent = 'Connexion…'; }
   try{
     const r = await fetch(API('admin-login'), {method:'POST', headers:{'Content-Type':'application/json','x-admin-token':pwd}, body:'{}'});
     if(!r.ok){ const d=await r.json(); throw new Error(d.error||'Erreur'); }
@@ -284,6 +287,7 @@ async function adminLogin(){
   }catch(e){
     errEl.textContent = e.message;
     errEl.style.display='block';
+    if(btn){ btn.disabled = false; btn.textContent = 'Se connecter →'; }
   }
 }
 document.getElementById('a-pwd').addEventListener('keydown', e=>{ if(e.key==='Enter') adminLogin(); });
@@ -467,7 +471,7 @@ function updateUnassignedBanner(count){
   const banner = document.getElementById('unassigned-banner');
   if(!banner) return;
   if(count>0){
-    document.getElementById('unassigned-banner-text').textContent = `⚠️ ${count} mission${count>1?'s':''} non assignée${count>1?'s':''}`;
+    document.getElementById('unassigned-banner-text').textContent = `⚠️ ${count} mission${count>1?'s':''} non assignée${count>1?'s':''} sous 72h`;
     banner.classList.remove('hidden');
   }else{
     banner.classList.add('hidden');
@@ -1391,7 +1395,7 @@ async function loadTransporteursEquipe(){
         <div class="row-meta">${escHtml(t.telephone||'—')} ${t.email?'· '+escHtml(t.email):''} · Code : <strong>${escHtml(t.pin||'—')}</strong> · ${euros(t.taux_livraison_cents)}/livraison · ${euros(t.taux_recuperation_cents)}/récupération</div>
         <div class="day-progress" style="margin:12px 0 0;padding:0">${chargeJourHtml(t.id, ld.livraisons)}</div>
         <div class="row-actions">
-          <button class="btn btn-grey" onclick="toggleTransporteur(${t.id}, ${!t.actif})">${t.actif?'Désactiver':'Réactiver'}</button>
+          <button class="btn btn-grey" onclick="toggleTransporteur(${t.id}, ${!t.actif}, this)">${t.actif?'Désactiver':'Réactiver'}</button>
           <button class="btn btn-grey" onclick="editRates(${t.id}, ${t.taux_livraison_cents}, ${t.taux_recuperation_cents})">Modifier taux</button>
           <button class="btn btn-grey" onclick="resetPin(${t.id})">Changer le code</button>
           <button class="btn btn-grey" onclick="editEmail(${t.id}, '${(t.email||'').replace(/'/g,"\\'")}')">${t.email?'Modifier':'Ajouter'} l'email</button>
@@ -1437,35 +1441,55 @@ async function addTransporteur(){
     errEl.textContent = e.message; errEl.style.display='block';
   }
 }
-async function toggleTransporteur(id, actif){
-  await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, actif})});
-  loadTransporteursEquipe();
+async function toggleTransporteur(id, actif, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, actif})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadTransporteursEquipe();
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
 }
 function resetPin(id){
   const suggestion = String(Math.floor(100000 + Math.random() * 900000));
   promptAction({title:'Nouveau code', label:'Code personnel (6 chiffres)', value:suggestion}, async (pin) => {
     if(!pin) return;
-    await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, pin})});
-    loadTransporteursEquipe();
-    showToast('Code mis à jour', 'success');
+    try{
+      const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, pin})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadTransporteursEquipe();
+      showToast('Code mis à jour', 'success');
+    }catch(e){ showToast(`Code non mis à jour : ${e.message}`, 'error'); }
   });
 }
 function editEmail(id, currentEmail){
   promptAction({title:"Email pour \"code oublié\"", label:'Adresse email', value:currentEmail || '', type:'text'}, async (email) => {
-    await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, email})});
-    loadTransporteursEquipe();
-    showToast('Email mis à jour', 'success');
+    try{
+      const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, email})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadTransporteursEquipe();
+      showToast('Email mis à jour', 'success');
+    }catch(e){ showToast(`Email non mis à jour : ${e.message}`, 'error'); }
   });
 }
 function editRates(id, currentLiv, currentRec){
   promptRates({liv:currentLiv, rec:currentRec}, async (liv, rec) => {
-    await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
-      action:'update', id,
-      taux_livraison_cents: Math.round((parseFloat(liv)||0)*100),
-      taux_recuperation_cents: Math.round((parseFloat(rec)||0)*100),
-    })});
-    loadTransporteursEquipe();
-    showToast('Taux mis à jour', 'success');
+    try{
+      const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+        action:'update', id,
+        taux_livraison_cents: Math.round((parseFloat(liv)||0)*100),
+        taux_recuperation_cents: Math.round((parseFloat(rec)||0)*100),
+      })});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadTransporteursEquipe();
+      showToast('Taux mis à jour', 'success');
+    }catch(e){ showToast(`Taux non mis à jour : ${e.message}`, 'error'); }
   });
 }
 
@@ -1561,7 +1585,7 @@ async function loadIncidents(){
             <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
           </div>
           <div class="row-meta">${escHtml((res.prenom||'')+' '+(res.nom||''))}${res.adresse?' · '+escHtml(res.adresse):''}<br/>${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
-          ${i.statut!=='resolu'?`<div class="row-actions"><button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'resolu')">Marquer résolu</button></div>`:''}
+          ${i.statut!=='resolu'?`<div class="row-actions"><button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'resolu',this)">Marquer résolu</button></div>`:''}
         </div>`;
     }).join('');
     zone.innerHTML = statHtml + list;
@@ -1569,9 +1593,18 @@ async function loadIncidents(){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
-async function updateIncidentStatut(id, statut){
-  await fetch(API('admin-incidents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
-  loadIncidents();
+async function updateIncidentStatut(id, statut, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-incidents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadIncidents();
+    showToast('Incident mis à jour', 'success');
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
 }
 
 // ── CLIENTS ───────────────────────────────────────────────────────────────────
@@ -1623,9 +1656,13 @@ function editAccesDifficile(id, current){
     label: 'Digicode, étage sans ascenseur, parking impossible… (visible par l\'admin et le livreur, jamais bloquant)',
     value: current, placeholder: 'Ex : digicode 4B12, sonner fort',
   }, async (value) => {
-    await fetch(API('admin-clients'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, acces_difficile:value})});
-    loadClients();
-    showToast('Note mise à jour', 'success');
+    try{
+      const r = await fetch(API('admin-clients'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, acces_difficile:value})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadClients();
+      showToast('Note mise à jour', 'success');
+    }catch(e){ showToast(`Note non enregistrée : ${e.message}`, 'error'); }
   });
 }
 
