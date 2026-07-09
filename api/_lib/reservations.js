@@ -4,6 +4,49 @@ function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
 }
 
+// Doit rester synchronisé avec TEST_TRANSPORTEUR_NOM dans admin/index.html —
+// ce compte factice (créé pour qu'Aly puisse tester /transporteur lui-même)
+// ne doit jamais recevoir de vraie mission cliente par la répartition auto.
+const TEST_TRANSPORTEUR_NOM = '🧪 Test (aperçu admin)';
+
+// Répartition équitable automatique des nouvelles missions : un tour de
+// rôle fixe (transporteurs actifs triés par id) qui reprend juste après le
+// dernier transporteur ayant reçu une mission — "un chacun, puis on
+// recommence", littéralement. Le tour se déduit de la dernière assignation
+// en base plutôt que d'un curseur stocké à part : aucune migration requise,
+// et ça reste cohérent même si un transporteur est ajouté/désactivé entre
+// deux confirmations (il rejoint simplement le tour à sa position triée).
+async function buildRoundRobinState(supabase, cityId) {
+  const { data: transporteurs } = await supabase
+    .from('transporteurs').select('id')
+    .eq('city_id', cityId).eq('actif', true).neq('nom', TEST_TRANSPORTEUR_NOM)
+    .order('id', { ascending: true });
+  if (!transporteurs || !transporteurs.length) return null;
+  const ids = transporteurs.map(t => t.id);
+
+  const { data: last } = await supabase
+    .from('livraisons').select('transporteur_id')
+    .in('transporteur_id', ids)
+    .order('created_at', { ascending: false })
+    .limit(1).maybeSingle();
+
+  let idx = 0;
+  if (last && last.transporteur_id) {
+    const lastIdx = ids.indexOf(last.transporteur_id);
+    if (lastIdx !== -1) idx = (lastIdx + 1) % ids.length;
+  }
+  return { ids, idx };
+}
+// Avance le tour localement (pas de nouvelle requête) — pour que la 2e
+// mission d'une même confirmation (livraison + récupération) aille bien au
+// transporteur suivant, pas au même que la 1re.
+function pickNextRoundRobin(state) {
+  if (!state) return null;
+  const id = state.ids[state.idx];
+  state.idx = (state.idx + 1) % state.ids.length;
+  return id;
+}
+
 // Retrouve ou crée la fiche client (déduplication par téléphone, dans la même
 // ville) — sans quoi chaque réservation reste une île isolée et une info comme
 // "digicode faux à cette adresse" ne profite jamais aux visites suivantes.
@@ -122,7 +165,34 @@ async function confirmReservation(supabase, resa) {
           { reservation_id: resa.id, type: 'livraison',    date_prevue: resa.date_debut, creneau: resa.creneau || null },
           { reservation_id: resa.id, type: 'recuperation', date_prevue: resa.date_fin },
         ];
-    await supabase.from('livraisons').insert(rows);
+
+    // Répartition auto uniquement pour ce qui vient vraiment du site (paiement
+    // ou prolongation) — une réservation saisie à la main par l'admin
+    // (téléphone/WhatsApp, source "manuel") reste à assigner soi-même : à ce
+    // moment-là, l'admin a souvent déjà négocié avec un transporteur précis.
+    if (resa.source !== 'manuel') {
+      const rrState = await buildRoundRobinState(supabase, resa.city_id);
+      if (rrState) rows.forEach(row => { row.transporteur_id = pickNextRoundRobin(rrState); });
+    }
+
+    const { data: insertedLivraisons, error: livError } = await supabase
+      .from('livraisons').insert(rows).select('id, transporteur_id');
+    if (livError) throw livError;
+
+    // Prévient chaque transporteur auto-assigné, exactement comme pour une
+    // assignation manuelle — sans quoi une mission peut attendre des heures
+    // qu'il pense à rouvrir l'app de lui-même.
+    const notified = new Set();
+    for (const liv of (insertedLivraisons || [])) {
+      if (liv.transporteur_id && !notified.has(liv.transporteur_id)) {
+        notified.add(liv.transporteur_id);
+        await pushToTransporteur(supabase, liv.transporteur_id, {
+          title: "Nouvelle mission Loc'Air",
+          body:  'Une mission t\'a été attribuée automatiquement — ouvre l\'app pour l\'accepter ou la refuser.',
+          tag:   'nouvelle-mission',
+        });
+      }
+    }
   }
 
   return resa;
