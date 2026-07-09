@@ -102,6 +102,19 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .chip.en_attente,.chip.a_faire,.chip.acceptee,.chip.demande{background:var(--amber-bg);color:var(--amber)}
 .chip.annulee,.chip.probleme,.chip.refusee{background:var(--red-bg);color:var(--red)}
 .chip.en_location{background:var(--blue-lt);color:var(--blue)}
+
+/* Carte réservation : hiérarchie client → dates → prix, au lieu d'une seule
+   ligne de métadonnées à parser. Le prix reprend le traitement typographique
+   des tuiles chiffrées de l'Accueil (police --disp) pour rester cohérent. */
+.resa-addr{font-size:12.5px;color:var(--grey);margin-bottom:10px;display:flex;align-items:baseline;gap:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resa-dates{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px;font-size:13px;padding-bottom:10px;margin-bottom:10px;border-bottom:1px dashed var(--rule)}
+.resa-date-range{font-weight:700;color:var(--black);white-space:nowrap}
+.resa-rel{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--gold);white-space:nowrap;flex-shrink:0}
+.resa-rel.urgent{color:var(--red)}
+.resa-bottom{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:2px}
+.resa-price{font-family:var(--disp);font-size:23px;font-weight:600;color:var(--black);letter-spacing:-.01em;white-space:nowrap;flex-shrink:0}
+.resa-sub{font-size:11px;color:var(--grey-soft);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+
 .row-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .row-actions .btn{padding:8px 13px;font-size:12.5px}
 .empty{text-align:center;color:var(--grey);padding:44px 20px;font-size:14px}
@@ -629,6 +642,75 @@ function editAppareilReference(id, current){
 
 // ── RÉSERVATIONS ──────────────────────────────────────────────────────────────
 const STATUTS_RESA = ['en_attente','confirmee','annulee','terminee'];
+let RESERVATIONS_CACHE = [];
+let RESERVATIONS_FILTER = 'toutes';
+let RESERVATIONS_SHOW_MASQUEES = false;
+
+// Nombre de nuits + urgence relative à côté des dates — évite le calcul mental
+// pour prioriser d'un coup d'œil parmi une longue liste.
+function nightsLabel(dateDebut, dateFin){
+  const nights = Math.round((new Date(dateFin+'T00:00:00') - new Date(dateDebut+'T00:00:00')) / 86400000);
+  return nights>0 ? `${nights} nuit${nights>1?'s':''}` : '';
+}
+function relLabel(dateDebut){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diffDays = Math.round((new Date(dateDebut+'T00:00:00') - today) / 86400000);
+  if(diffDays===0) return "aujourd'hui";
+  if(diffDays===1) return 'demain';
+  if(diffDays===-1) return 'hier';
+  if(diffDays>1 && diffDays<=13) return `dans ${diffDays} j`;
+  if(diffDays>13) return `dans ${Math.round(diffDays/7)} sem.`;
+  if(diffDays<-1) return `il y a ${Math.abs(diffDays)} j`;
+  return "aujourd'hui";
+}
+// Livraison aujourd'hui ou demain = à traiter en priorité, mérite d'être en rouge
+// plutôt que dans le même or discret que le reste des dates à venir.
+function isUrgent(dateDebut){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const diffDays = Math.round((new Date(dateDebut+'T00:00:00') - today) / 86400000);
+  return diffDays>=0 && diffDays<=1;
+}
+function reservationRowHtml(res, readOnly){
+  const nom = escHtml((res.prenom||'')+' '+(res.nom||''))||'—';
+  if(res.masquee){
+    return `
+      <div class="row-item" style="opacity:.6">
+        <div class="row-top">
+          <span class="row-title">${nom}</span>
+          <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
+        </div>
+        <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
+        <div class="resa-dates"><span class="resa-date-range">${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span></div>
+        <div class="resa-bottom"><span class="resa-price">${euros(res.prix_total_cents)}</span><span class="resa-sub">${escHtml(res.ref||('#'+res.id))}</span></div>
+        ${readOnly ? '' : `<div class="row-actions"><button class="btn btn-grey" onclick="restoreReservation(${res.id})">Restaurer</button></div>`}
+      </div>`;
+  }
+  return `
+    <div class="row-item">
+      <div class="row-top">
+        <span class="row-title">${nom}</span>
+        <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
+      </div>
+      <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
+      <div class="resa-dates">
+        <span class="resa-date-range">📅 ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
+        <span class="resa-rel ${isUrgent(res.date_debut)?'urgent':''}">${nightsLabel(res.date_debut,res.date_fin)} · ${relLabel(res.date_debut)}</span>
+      </div>
+      <div class="resa-bottom">
+        <span class="resa-price">${euros(res.prix_total_cents)}</span>
+        <span class="resa-sub">${res.quantite}x · ${escHtml(res.ref||('#'+res.id))}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}</span>
+      </div>
+      ${readOnly ? '' : `
+      <div class="row-actions">
+        ${res.statut!=='annulee'?`<button class="btn btn-red" onclick="cancelReservation(${res.id})">Annuler</button>`:''}
+        <select aria-label="Changer le statut" onchange="updateReservationStatut(${res.id}, this.value, this)">
+          <option value="">Changer statut…</option>
+          ${STATUTS_RESA.map(s=>`<option value="${s}" ${s===res.statut?'selected':''}>${RESA_LABEL[s]}</option>`).join('')}
+        </select>
+        <button class="btn btn-grey" onclick="deleteReservation(${res.id}, '${res.statut}')">Supprimer</button>
+      </div>`}
+    </div>`;
+}
 async function loadReservations(){
   const zone = document.getElementById('tab-reservations');
   zone.innerHTML = loading();
@@ -636,65 +718,85 @@ async function loadReservations(){
     const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    const list = (d.reservations||[]).map(res => `
-      <div class="row-item">
-        <div class="row-top">
-          <span class="row-title">${escHtml(res.ref||('#'+res.id))} — ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
-          <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
-        </div>
-        <div class="row-meta">${escHtml(res.adresse||'—')}<br/>${frDate(res.date_debut)} → ${frDate(res.date_fin)} · ${res.quantite}x · ${euros(res.prix_total_cents)}${res.creneau?' · Créneau souhaité : '+escHtml(res.creneau):''}</div>
-        <div class="row-actions">
-          ${res.statut!=='annulee'?`<button class="btn btn-red" onclick="cancelReservation(${res.id})">Annuler</button>`:''}
-          <select onchange="updateReservationStatut(${res.id}, this.value, this)">
-            <option value="">Changer statut…</option>
-            ${STATUTS_RESA.map(s=>`<option value="${s}" ${s===res.statut?'selected':''}>${RESA_LABEL[s]}</option>`).join('')}
-          </select>
-        </div>
-      </div>
-    `).join('') || '<p class="empty">🧾 Aucune réservation pour l\'instant.</p>';
-
-    zone.innerHTML = `
-      <button class="btn btn-grey btn-block" onclick="toggleNewReservationForm()" id="new-resa-toggle">+ Nouvelle réservation (téléphone, WhatsApp…)</button>
-      <div class="card hidden" id="new-resa-form" style="margin-top:12px">
-        <h2>Nouvelle réservation</h2>
-        <label for="nr-prenom">Prénom</label>
-        <input type="text" id="nr-prenom"/>
-        <label for="nr-nom">Nom</label>
-        <input type="text" id="nr-nom"/>
-        <label for="nr-tel">Téléphone</label>
-        <input type="tel" id="nr-tel"/>
-        <label for="nr-tel2">Téléphone secondaire (secours, optionnel)</label>
-        <input type="tel" id="nr-tel2"/>
-        <label for="nr-email">Email</label>
-        <input type="text" id="nr-email"/>
-        <label for="nr-adresse">Adresse</label>
-        <input type="text" id="nr-adresse"/>
-        <div class="inline-form">
-          <div><label for="nr-debut">Date livraison</label><input type="date" id="nr-debut"/></div>
-          <div><label for="nr-fin">Date récupération</label><input type="date" id="nr-fin"/></div>
-        </div>
-        <div class="inline-form">
-          <div><label for="nr-qte">Quantité</label><input type="number" id="nr-qte" min="1" max="5" value="1"/></div>
-          <div><label for="nr-prix">Prix total (€)</label><input type="number" id="nr-prix" min="0" step="0.5"/></div>
-        </div>
-        <button class="btn btn-blue btn-block" id="nr-submit" onclick="createReservation()">Créer et confirmer</button>
-        <div class="err" id="new-resa-err"></div>
-      </div>
-      ${list}`;
+    RESERVATIONS_CACHE = d.reservations || [];
+    renderReservationsToolbar();
+    renderReservations();
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
+}
+function renderReservationsToolbar(){
+  const zone = document.getElementById('tab-reservations');
+  const masqueesCount = RESERVATIONS_CACHE.filter(r => r.masquee).length;
+  const filters = [
+    {key:'toutes', label:'Toutes'},
+    {key:'en_attente', label:'En attente'},
+    {key:'confirmee', label:'Confirmées'},
+    {key:'annulee', label:'Annulées'},
+    {key:'terminee', label:'Terminées'},
+  ];
+  zone.innerHTML = `
+    <button class="btn btn-grey btn-block" onclick="toggleNewReservationForm()" id="new-resa-toggle">+ Nouvelle réservation (téléphone, WhatsApp…)</button>
+    <div class="card hidden" id="new-resa-form" style="margin-top:12px">
+      <h2>Nouvelle réservation</h2>
+      <label for="nr-prenom">Prénom *</label>
+      <input type="text" id="nr-prenom"/>
+      <label for="nr-nom">Nom *</label>
+      <input type="text" id="nr-nom"/>
+      <label for="nr-tel">Téléphone</label>
+      <input type="tel" id="nr-tel"/>
+      <label for="nr-tel2">Téléphone secondaire (secours, optionnel)</label>
+      <input type="tel" id="nr-tel2"/>
+      <label for="nr-email">Email</label>
+      <input type="text" id="nr-email"/>
+      <label for="nr-adresse">Adresse *</label>
+      <input type="text" id="nr-adresse"/>
+      <div class="inline-form">
+        <div><label for="nr-debut">Date livraison *</label><input type="date" id="nr-debut"/></div>
+        <div><label for="nr-fin">Date récupération *</label><input type="date" id="nr-fin"/></div>
+      </div>
+      <div class="inline-form">
+        <div><label for="nr-qte">Quantité</label><input type="number" id="nr-qte" min="1" max="5" value="1"/></div>
+        <div><label for="nr-prix">Prix total (€)</label><input type="number" id="nr-prix" min="0" step="0.5"/></div>
+      </div>
+      <button class="btn btn-blue btn-block" id="nr-submit" onclick="createReservation()">Créer et confirmer</button>
+      <div class="err" id="new-resa-err"></div>
+    </div>
+    <input type="text" id="resa-search" placeholder="🔎 Rechercher un client, une adresse, une référence…" oninput="renderReservations()" style="margin-top:12px"/>
+    <div class="periods" style="margin-bottom:16px">
+      ${filters.map(f => `<button class="${RESERVATIONS_FILTER===f.key?'on':''}" onclick="setReservationsFilter('${f.key}')">${f.label}</button>`).join('')}
+    </div>
+    <div id="resa-list" class="row-grid"></div>
+    ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleMasquees()">${RESERVATIONS_SHOW_MASQUEES?'← Revenir aux réservations':`🙈 Afficher les réservations supprimées (${masqueesCount})`}</button>` : ''}
+  `;
+  renderReservations();
+}
+function setReservationsFilter(key){
+  const searchVal = document.getElementById('resa-search')?.value || '';
+  RESERVATIONS_FILTER = key;
+  renderReservationsToolbar();
+  const searchEl = document.getElementById('resa-search');
+  if(searchEl) searchEl.value = searchVal;
+  renderReservations();
+}
+function toggleMasquees(){ RESERVATIONS_SHOW_MASQUEES = !RESERVATIONS_SHOW_MASQUEES; renderReservationsToolbar(); }
+function renderReservations(){
+  const list = document.getElementById('resa-list');
+  if(!list) return;
+  const q = (document.getElementById('resa-search')?.value || '').trim().toLowerCase();
+  let items = RESERVATIONS_CACHE.filter(r => RESERVATIONS_SHOW_MASQUEES ? r.masquee : !r.masquee);
+  if(!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER !== 'toutes') items = items.filter(r => r.statut === RESERVATIONS_FILTER);
+  if(q){
+    items = items.filter(r => [r.ref, r.prenom, r.nom, r.adresse, r.tel].filter(Boolean).join(' ').toLowerCase().includes(q));
+  }
+  list.innerHTML = items.map(reservationRowHtml).join('') || `<p class="empty">🧾 ${RESERVATIONS_SHOW_MASQUEES?'Aucune réservation supprimée.':'Aucune réservation pour l\'instant.'}</p>`;
 }
 function toggleNewReservationForm(){
   document.getElementById('new-resa-form').classList.toggle('hidden');
 }
 async function createReservation(){
-  // Verrou anti-double-clic : une réservation manuelle engage un vrai paiement
-  // et un vrai appareil — un double-clic (ou un clic pendant que la requête
-  // précédente est encore en cours) ne doit jamais créer deux réservations.
   const submitBtn = document.getElementById('nr-submit');
   if(submitBtn && submitBtn.disabled) return;
-  if(submitBtn) submitBtn.disabled = true;
   const errEl = document.getElementById('new-resa-err');
   errEl.style.display = 'none';
   const body = {
@@ -710,35 +812,104 @@ async function createReservation(){
     quantite: document.getElementById('nr-qte').value,
     prix_total_cents: Math.round((parseFloat(document.getElementById('nr-prix').value)||0)*100),
   };
+  if(!body.prenom || !body.nom || !body.adresse || !body.date_debut || !body.date_fin){
+    errEl.textContent = 'Prénom, nom, adresse et dates sont obligatoires.';
+    errEl.style.display = 'block';
+    return;
+  }
+  await submitReservation(body, submitBtn, errEl);
+}
+async function submitReservation(body, submitBtn, errEl){
+  // Verrou anti-double-clic : une réservation manuelle engage un vrai paiement
+  // et un vrai appareil — un double-clic (ou un clic pendant que la requête
+  // précédente est encore en cours) ne doit jamais créer deux réservations.
+  if(submitBtn) submitBtn.disabled = true;
   try{
     const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
     const d = await r.json();
-    if(!r.ok) throw new Error(d.error||'Erreur');
-    loadReservations();
+    if(!r.ok){
+      if(d.duplicate){
+        confirmAction(d.error, () => { body.force = true; submitReservation(body, submitBtn, errEl); }, {danger:true, yesLabel:'Créer quand même'});
+        return;
+      }
+      throw new Error(d.error||'Erreur');
+    }
+    if(d.reservation){
+      RESERVATIONS_CACHE.unshift(d.reservation);
+      renderReservationsToolbar();
+    } else {
+      loadReservations();
+    }
+    document.getElementById('new-resa-form').classList.add('hidden');
+    ['nr-prenom','nr-nom','nr-tel','nr-tel2','nr-email','nr-adresse','nr-debut','nr-fin','nr-prix'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    const qteEl = document.getElementById('nr-qte'); if(qteEl) qteEl.value = '1';
     showToast(`Réservation ${d.ref} créée et confirmée`, 'success');
   }catch(e){
     errEl.textContent = e.message; errEl.style.display = 'block';
+  }finally{
     if(submitBtn) submitBtn.disabled = false;
   }
 }
 function cancelReservation(id){
   confirmAction('Annuler cette réservation ? Cette action libère le stock associé et annule ses missions non terminées.', async () => {
-    await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut:'annulee'})});
-    loadReservations();
+    const res = RESERVATIONS_CACHE.find(r => r.id===id);
+    const prev = res?.statut;
+    if(res){ res.statut = 'annulee'; renderReservations(); }
+    try{
+      const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut:'annulee'})});
+      if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+      showToast('Réservation annulée', 'success');
+    }catch(e){
+      if(res){ res.statut = prev; renderReservations(); }
+      showToast(e.message, 'error');
+    }
   }, {danger:true, yesLabel:'Annuler la réservation'});
 }
 function updateReservationStatut(id, statut, selectEl){
   if(!statut) return;
   confirmAction(
     `Passer cette réservation au statut "${RESA_LABEL[statut]||statut}" ?`,
-    () => doUpdateReservationStatut(id, statut, selectEl),
+    () => doUpdateReservationStatut(id, statut),
     { onCancel: () => { if(selectEl) selectEl.value = ''; } }
   );
 }
-async function doUpdateReservationStatut(id, statut, selectEl){
-  if(selectEl) selectEl.disabled = true;
-  await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
-  loadReservations();
+async function doUpdateReservationStatut(id, statut){
+  const res = RESERVATIONS_CACHE.find(r => r.id===id);
+  const prev = res?.statut;
+  if(res){ res.statut = statut; renderReservations(); }
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
+    if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+    showToast('Statut mis à jour', 'success');
+  }catch(e){
+    if(res){ res.statut = prev; renderReservations(); }
+    showToast(e.message, 'error');
+  }
+}
+function deleteReservation(id, statut){
+  const warn = (statut==='confirmee'||statut==='en_attente')
+    ? " Cette réservation est encore active — la retirer de l'écran ne l'annule pas et ne libère pas le stock, elle disparaît juste de cette liste (et de l'onglet Livraisons)."
+    : " Elle disparaît de cette liste (et de l'onglet Livraisons) — récupérable via \"Afficher les réservations supprimées\" en bas de page.";
+  confirmAction(`Supprimer cette réservation de l'écran ?${warn}`, async () => {
+    try{
+      const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, masquee:true})});
+      if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+      const res = RESERVATIONS_CACHE.find(x => x.id===id);
+      if(res) res.masquee = true;
+      renderReservationsToolbar();
+      showToast('Réservation supprimée de l\'écran', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {danger:true, yesLabel:'Supprimer de l\'écran'});
+}
+async function restoreReservation(id){
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, masquee:false})});
+    if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+    const res = RESERVATIONS_CACHE.find(x => x.id===id);
+    if(res) res.masquee = false;
+    renderReservationsToolbar();
+    showToast('Réservation restaurée', 'success');
+  }catch(e){ showToast(e.message, 'error'); }
 }
 
 // ── CALENDRIER ────────────────────────────────────────────────────────────────
@@ -783,15 +954,7 @@ async function loadCalendrier(){
           <span class="wk-label">${weekRangeLabel(new Date(key+'T00:00:00'))}</span>
           <span class="wk-ca">${euros(caSemaine)} de CA</span>
         </div>
-        ${items.map(res => `
-          <div class="row-item">
-            <div class="row-top">
-              <span class="row-title">${escHtml(res.ref||('#'+res.id))} — ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
-              <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
-            </div>
-            <div class="row-meta">${escHtml(res.adresse||'—')}<br/>${frDate(res.date_debut)} → ${frDate(res.date_fin)} · ${res.quantite}x · ${euros(res.prix_total_cents)}</div>
-          </div>
-        `).join('')}`;
+        ${items.map(res => reservationRowHtml(res, true)).join('')}`;
     }).join('');
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';

@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
           accepted_at, client_notifie_at, arrivee_at, fait_at,
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
-            id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre,
+            id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, masquee,
             reservation_appareils ( appareil:appareils ( numero, reference ) )
           )
         `)
@@ -58,7 +58,11 @@ module.exports = async (req, res) => {
         .order('date_prevue', { ascending: false })
         .limit(300);
       if (error) throw error;
-      const livraisons = (data || []).map(l => {
+      // Une réservation masquée (ex. doublon retiré de l'écran par l'admin) sort
+      // aussi de la liste des missions — sans quoi ses livraisons/récupérations
+      // continuent d'encombrer cet onglet alors que la réservation a disparu de
+      // l'onglet Réservations.
+      const livraisons = (data || []).filter(l => !l.reservation?.masquee).map(l => {
         const ras = ((l.reservation?.reservation_appareils) || [])
           .filter(ra => ra.appareil?.numero != null)
           .sort((a, b) => a.appareil.numero - b.appareil.numero);
