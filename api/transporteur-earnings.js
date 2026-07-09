@@ -22,9 +22,14 @@ module.exports = async (req, res) => {
     if (action === 'resume') {
       const { data: faites, error } = await supabase
         .from('livraisons')
-        .select('montant_du_cents, paye, fait_at')
+        .select(`
+          id, type, montant_du_cents, paye, fait_at,
+          reservation:reservations ( prenom, nom, adresse )
+        `)
         .eq('transporteur_id', transporteurId)
-        .eq('statut', 'fait');
+        .eq('statut', 'fait')
+        .order('fait_at', { ascending: false })
+        .limit(300);
       if (error) throw error;
 
       const todayISO = startOfDayISO();
@@ -54,6 +59,14 @@ module.exports = async (req, res) => {
         gain_mois_euros: gainMois / 100,
         non_verse_euros: nonVerse / 100,
         virements: virements || [],
+        // Historique mission par mission — pour que le livreur retrouve ce
+        // qu'il a fait et gagné sur chacune, pas seulement des totaux.
+        missions: (faites || []).map(f => ({
+          id: f.id, type: f.type, montant_cents: f.montant_du_cents || 0,
+          paye: f.paye, fait_at: f.fait_at,
+          client:  [f.reservation?.prenom, f.reservation?.nom].filter(Boolean).join(' ') || null,
+          adresse: f.reservation?.adresse || null,
+        })),
       });
     }
 
