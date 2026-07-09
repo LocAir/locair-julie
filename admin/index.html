@@ -49,6 +49,7 @@ input[type=text],input[type=password],input[type=number],input[type=tel],select{
   width:100%;padding:12px 14px;border:1.5px solid var(--rule);border-radius:var(--r-sm);font-size:14.5px;
   font-family:var(--body);background:var(--white);color:var(--black);outline:none;margin-bottom:14px;
   transition:border-color .15s ease, box-shadow .15s ease;
+  text-overflow:ellipsis;
 }
 input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-lt)}
 .btn{padding:11px 18px;border:none;border-radius:var(--r-sm);font-family:var(--body);font-size:13.5px;font-weight:700;letter-spacing:.005em;cursor:pointer}
@@ -64,7 +65,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .err{background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:11px 14px;font-size:13px;margin-top:10px;display:none;line-height:1.5}
 .hidden{display:none !important}
 
-.tabs{display:flex;gap:5px;overflow-x:auto;margin-bottom:20px;padding-bottom:2px}
+.tabs{display:flex;gap:5px;overflow-x:auto;margin-bottom:20px;padding-bottom:2px;mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent 100%);-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent 100%)}
 .tabs button{flex-shrink:0;padding:9px 15px;border-radius:100px;border:1.5px solid transparent;background:transparent;font-weight:600;font-size:13px;color:var(--grey);cursor:pointer;transition:background-color .15s ease, color .15s ease}
 .tabs button:hover{background:rgba(20,30,48,.04);color:var(--black)}
 .tabs button.on{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
@@ -124,7 +125,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .resa-rel.urgent{color:var(--red)}
 .resa-bottom{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:2px}
 .resa-price{font-family:var(--disp);font-size:23px;font-weight:600;color:var(--black);letter-spacing:-.01em;white-space:nowrap;flex-shrink:0}
-.resa-sub{font-size:11px;color:var(--grey-soft);text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.resa-sub{font-size:11px;color:var(--grey-soft);text-align:right;min-width:0;line-height:1.5}
 
 .row-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .row-actions .btn{padding:8px 13px;font-size:12.5px}
@@ -201,8 +202,9 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 @media (min-width:860px){
   .wrap{max-width:1120px;padding:32px 32px 80px}
   .a-layout{display:flex;align-items:flex-start;gap:28px}
-  .tabs{flex-direction:column;overflow-x:visible;width:200px;flex-shrink:0;position:sticky;top:32px;gap:8px}
+  .tabs{flex-direction:column;overflow-x:visible;width:200px;flex-shrink:0;position:sticky;top:32px;gap:8px;mask-image:none;-webkit-mask-image:none}
   .tabs button{width:100%;text-align:left;padding:12px 16px;border-radius:12px}
+  .tabs-group-label{display:block}
   .a-content{flex:1;min-width:0}
   .stat-grid{grid-template-columns:repeat(4,1fr)}
   .card{padding:28px}
@@ -901,7 +903,7 @@ function renderReservationsToolbar(){
       <button class="${RESERVATIONS_VIEW==='calendrier'?'on':''}" onclick="setReservationsView('calendrier')">📅 Calendrier</button>
     </div>
     <div id="resa-liste-view" class="${RESERVATIONS_VIEW==='calendrier'?'hidden':''}">
-      <input type="text" id="resa-search" placeholder="🔎 Rechercher un client, une adresse, une référence…" oninput="renderReservations()"/>
+      <input type="text" id="resa-search" placeholder="🔎 Client, adresse, référence…" oninput="renderReservations()"/>
       <div class="periods" style="margin:16px 0">
         ${filters.map(f => `<button class="${!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER===f.key?'on':''}" onclick="setReservationsFilter('${f.key}')">${f.label}</button>`).join('')}
       </div>
@@ -1166,7 +1168,7 @@ function renderLivraisonsToolbar(){
     </div>` : '';
   zone.innerHTML = `
     ${avgHtml}
-    <input type="text" id="liv-search" placeholder="🔎 Rechercher un client, une adresse, une référence…" oninput="renderLivraisons()"/>
+    <input type="text" id="liv-search" placeholder="🔎 Client, adresse, référence…" oninput="renderLivraisons()"/>
     <div class="periods" style="margin-bottom:16px">
       ${filters.map(f => `<button class="${!LIVRAISONS_SHOW_MASQUEES && LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
     </div>
@@ -1392,7 +1394,8 @@ async function loadTransporteursEquipe(){
           <span class="row-title">${escHtml(t.nom)}</span>
           <span class="chip ${t.actif?'actif':'annulee'}">${t.actif?'actif':'inactif'}</span>
         </div>
-        <div class="row-meta">${escHtml(t.telephone||'—')} ${t.email?'· '+escHtml(t.email):''} · Code : <strong>${escHtml(t.pin||'—')}</strong> · ${euros(t.taux_livraison_cents)}/livraison · ${euros(t.taux_recuperation_cents)}/récupération</div>
+        <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''}</div>
+        <div class="row-meta">Code : <strong>${escHtml(t.pin||'—')}</strong> · ${euros(t.taux_livraison_cents)}/livraison · ${euros(t.taux_recuperation_cents)}/récupération</div>
         <div class="day-progress" style="margin:12px 0 0;padding:0">${chargeJourHtml(t.id, ld.livraisons)}</div>
         <div class="row-actions">
           <button class="btn btn-grey" onclick="toggleTransporteur(${t.id}, ${!t.actif}, this)">${t.actif?'Désactiver':'Réactiver'}</button>
