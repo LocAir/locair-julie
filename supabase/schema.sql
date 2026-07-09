@@ -92,6 +92,7 @@ create table reservations (
   nom                      text,
   email                    text,
   tel                      text,
+  tel_secondaire           text, -- numéro de secours si le principal ne répond pas (ex. client absent)
   adresse                  text,
   etage                    text,
   ascenseur                text,

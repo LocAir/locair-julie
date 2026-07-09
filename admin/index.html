@@ -180,8 +180,6 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
   .tabs button{width:100%;text-align:left;padding:12px 16px;border-radius:12px}
   .a-content{flex:1;min-width:0}
   .stat-grid{grid-template-columns:repeat(4,1fr)}
-  #tab-reservations,#tab-livraisons{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}
-  #tab-reservations .row-item,#tab-livraisons .row-item{margin-bottom:0}
   .card{padding:28px}
 }
 </style>
@@ -261,6 +259,12 @@ async function adminLogin(){
 document.getElementById('a-pwd').addEventListener('keydown', e=>{ if(e.key==='Enter') adminLogin(); });
 
 function euros(cents){ return ((cents||0)/100).toFixed(2).replace('.',',') + ' €'; }
+function frDate(iso){
+  if(!iso) return '—';
+  const d = new Date(iso+'T00:00:00');
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+}
 function loading(){ return '<div class="spinner-wrap"><div class="spinner"></div></div>'; }
 function escHtml(s){
   return String(s==null?'':s)
@@ -625,7 +629,7 @@ async function loadReservations(){
           <span class="row-title">${escHtml(res.ref||('#'+res.id))} — ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
           <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
         </div>
-        <div class="row-meta">${escHtml(res.adresse||'—')}<br/>${res.date_debut} → ${res.date_fin} · ${res.quantite}x · ${euros(res.prix_total_cents)}${res.creneau?' · Créneau souhaité : '+escHtml(res.creneau):''}</div>
+        <div class="row-meta">${escHtml(res.adresse||'—')}<br/>${frDate(res.date_debut)} → ${frDate(res.date_fin)} · ${res.quantite}x · ${euros(res.prix_total_cents)}${res.creneau?' · Créneau souhaité : '+escHtml(res.creneau):''}</div>
         <div class="row-actions">
           ${res.statut!=='annulee'?`<button class="btn btn-red" onclick="cancelReservation(${res.id})">Annuler</button>`:''}
           <select onchange="updateReservationStatut(${res.id}, this.value, this)">
@@ -646,6 +650,8 @@ async function loadReservations(){
         <input type="text" id="nr-nom"/>
         <label for="nr-tel">Téléphone</label>
         <input type="tel" id="nr-tel"/>
+        <label for="nr-tel2">Téléphone secondaire (secours, optionnel)</label>
+        <input type="tel" id="nr-tel2"/>
         <label for="nr-email">Email</label>
         <input type="text" id="nr-email"/>
         <label for="nr-adresse">Adresse</label>
@@ -658,7 +664,7 @@ async function loadReservations(){
           <div><label for="nr-qte">Quantité</label><input type="number" id="nr-qte" min="1" max="5" value="1"/></div>
           <div><label for="nr-prix">Prix total (€)</label><input type="number" id="nr-prix" min="0" step="0.5"/></div>
         </div>
-        <button class="btn btn-blue btn-block" onclick="createReservation()">Créer et confirmer</button>
+        <button class="btn btn-blue btn-block" id="nr-submit" onclick="createReservation()">Créer et confirmer</button>
         <div class="err" id="new-resa-err"></div>
       </div>
       ${list}`;
@@ -670,6 +676,12 @@ function toggleNewReservationForm(){
   document.getElementById('new-resa-form').classList.toggle('hidden');
 }
 async function createReservation(){
+  // Verrou anti-double-clic : une réservation manuelle engage un vrai paiement
+  // et un vrai appareil — un double-clic (ou un clic pendant que la requête
+  // précédente est encore en cours) ne doit jamais créer deux réservations.
+  const submitBtn = document.getElementById('nr-submit');
+  if(submitBtn && submitBtn.disabled) return;
+  if(submitBtn) submitBtn.disabled = true;
   const errEl = document.getElementById('new-resa-err');
   errEl.style.display = 'none';
   const body = {
@@ -677,6 +689,7 @@ async function createReservation(){
     prenom: document.getElementById('nr-prenom').value.trim(),
     nom: document.getElementById('nr-nom').value.trim(),
     tel: document.getElementById('nr-tel').value.trim(),
+    tel_secondaire: document.getElementById('nr-tel2').value.trim(),
     email: document.getElementById('nr-email').value.trim(),
     adresse: document.getElementById('nr-adresse').value.trim(),
     date_debut: document.getElementById('nr-debut').value,
@@ -692,6 +705,7 @@ async function createReservation(){
     showToast(`Réservation ${d.ref} créée et confirmée`, 'success');
   }catch(e){
     errEl.textContent = e.message; errEl.style.display = 'block';
+    if(submitBtn) submitBtn.disabled = false;
   }
 }
 function cancelReservation(id){
@@ -704,11 +718,12 @@ function updateReservationStatut(id, statut, selectEl){
   if(!statut) return;
   confirmAction(
     `Passer cette réservation au statut "${RESA_LABEL[statut]||statut}" ?`,
-    () => doUpdateReservationStatut(id, statut),
+    () => doUpdateReservationStatut(id, statut, selectEl),
     { onCancel: () => { if(selectEl) selectEl.value = ''; } }
   );
 }
-async function doUpdateReservationStatut(id, statut){
+async function doUpdateReservationStatut(id, statut, selectEl){
+  if(selectEl) selectEl.disabled = true;
   await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
   loadReservations();
 }
@@ -761,7 +776,7 @@ async function loadCalendrier(){
               <span class="row-title">${escHtml(res.ref||('#'+res.id))} — ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
               <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
             </div>
-            <div class="row-meta">${escHtml(res.adresse||'—')}<br/>${res.date_debut} → ${res.date_fin} · ${res.quantite}x · ${euros(res.prix_total_cents)}</div>
+            <div class="row-meta">${escHtml(res.adresse||'—')}<br/>${frDate(res.date_debut)} → ${frDate(res.date_fin)} · ${res.quantite}x · ${euros(res.prix_total_cents)}</div>
           </div>
         `).join('')}`;
     }).join('');
@@ -882,11 +897,11 @@ function renderLivraisons(){
           <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
         </div>
         ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="row-meta" style="font-weight:700;color:var(--blue)">🔢 Unité${m.appareil_numeros.length>1?'s':''} n°${m.appareil_numeros.join(', ')}${(m.appareil_references&&m.appareil_references.length)?' · '+m.appareil_references.map(escHtml).join(', '):''}</div>`:''}
-        <div class="row-meta">${res.ref?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${m.date_prevue} · ${escHtml(m.creneau||'')}</div>
+        <div class="row-meta">${res.ref?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
         ${(m.duree_trajet_min!=null || m.duree_sur_place_min!=null)?`<div class="row-meta">🕐 ${m.duree_trajet_min!=null?m.duree_trajet_min+' min trajet':''}${m.duree_trajet_min!=null&&m.duree_sur_place_min!=null?' · ':''}${m.duree_sur_place_min!=null?m.duree_sur_place_min+' min sur place':''}</div>`:''}
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
         <div class="row-actions">
-          <select onchange="assignTransporteur(${m.id}, this.value)">${options}</select>
+          <select onchange="assignTransporteur(${m.id}, this.value, this)">${options}</select>
           ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom).replace(/'/g,"\\'")}', '${escHtml(res.adresse||'').replace(/'/g,"\\'")}')">🔴 Suivre en direct</button>`:''}
           ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">✅ Problème résolu</button>`:''}
           ${mediaBtns.join('')}
@@ -896,7 +911,10 @@ function renderLivraisons(){
   }).join('');
 }
 
-async function assignTransporteur(livraisonId, transporteurId){
+async function assignTransporteur(livraisonId, transporteurId, selectEl){
+  // Verrou anti-double-clic : bloque le select le temps de la requête pour
+  // éviter deux assignations qui se chevauchent sur la même mission.
+  if(selectEl) selectEl.disabled = true;
   const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'assign', livraison_id:livraisonId, transporteur_id: transporteurId||null})});
   const d = await r.json().catch(()=>({}));
   if(d.reset){
@@ -906,6 +924,15 @@ async function assignTransporteur(livraisonId, transporteurId){
   }
   const m = LIVRAISONS_CACHE.find(x => x.id === livraisonId);
   if(m) m.transporteur = TRANSPORTEURS_CACHE.find(t => t.id == transporteurId) || null;
+  // Rafraîchit le badge "non assignées" et le filtre courant (sinon la mission
+  // qu'on vient d'assigner reste affichée dans "⚠️ Non assignées" jusqu'au
+  // prochain rechargement complet de l'onglet). On garde la recherche en cours
+  // pour ne pas l'effacer sous les pieds de l'admin qui vient de l'écrire.
+  const searchVal = document.getElementById('liv-search')?.value || '';
+  renderLivraisonsToolbar();
+  const searchEl = document.getElementById('liv-search');
+  if(searchEl) searchEl.value = searchVal;
+  renderLivraisons();
 }
 function resolveProbleme(livraisonId){
   confirmAction('Confirmer que le problème est réglé ? Le livreur pourra reprendre la mission (il repassera par l\'étape "arrivé").', async () => {
