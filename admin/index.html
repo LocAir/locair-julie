@@ -70,6 +70,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .tabs button.on{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
 .tabs button.on:hover{background:var(--blue-d)}
 .tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;margin-left:6px;border-radius:100px;background:var(--red);color:#fff;font-size:10.5px;font-weight:800;line-height:1;vertical-align:2px}
+.tabs-group-label{flex-shrink:0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--grey-soft);padding:9px 15px 2px;white-space:nowrap}
 
 /* Bandeau permanent en haut d'écran tant qu'au moins une mission n'a pas de
    livreur — visible depuis n'importe quel onglet, pas seulement Livraisons. */
@@ -228,12 +229,13 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
     <div class="a-layout">
       <div class="tabs">
         <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')">📊 Accueil</button>
-        <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
+        <div class="tabs-group-label">Opérations</div>
         <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations</button>
-        <button data-tab="calendrier" onclick="switchAdminTab('calendrier')">📅 Calendrier</button>
         <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
-        <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs</button>
-        <button data-tab="virements" onclick="switchAdminTab('virements')">💶 Virements<span class="tab-badge hidden" id="badge-virements"></span></button>
+        <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
+        <div class="tabs-group-label">Équipe</div>
+        <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
+        <div class="tabs-group-label">Suivi</div>
         <button data-tab="incidents" onclick="switchAdminTab('incidents')">🧯 Incidents</button>
         <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
       </div>
@@ -242,10 +244,8 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-accueil"></div>
         <div id="tab-stock" class="hidden"></div>
         <div id="tab-reservations" class="hidden"></div>
-        <div id="tab-calendrier" class="hidden"></div>
         <div id="tab-livraisons" class="hidden"></div>
         <div id="tab-transporteurs" class="hidden"></div>
-        <div id="tab-virements" class="hidden"></div>
         <div id="tab-incidents" class="hidden"></div>
         <div id="tab-clients" class="hidden"></div>
       </div>
@@ -275,6 +275,7 @@ async function adminLogin(){
     switchAdminTab('accueil');
     loadAlerts();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
+    if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
   }catch(e){
     errEl.textContent = e.message;
     errEl.style.display='block';
@@ -409,21 +410,20 @@ function showToast(message, type='info'){
 
 const RESA_LABEL = {en_attente:'En attente', confirmee:'Confirmée', annulee:'Annulée', terminee:'Terminée'};
 const LIV_LABEL  = {a_faire:'Nouvelle', acceptee:'Acceptée', refusee:'Refusée', arrivee:'Sur place', fait:'Terminée', probleme:'Problème', annule:'Annulée'};
-const VIR_LABEL  = {demande:'Demandé', verse:'Versé'};
 const PROBLEME_LABEL = {client_absent:'Client absent', appareil_en_panne:'Appareil en panne', retard:'Retard important', autre:'Autre problème'};
 
+let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
+  CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','calendrier','livraisons','transporteurs','virements','incidents','clients'].forEach(t=>{
+  ['accueil','stock','reservations','livraisons','transporteurs','incidents','clients'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
-  if(tab==='accueil') loadDashboard('7j');
+  if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
   if(tab==='stock') loadStock();
   if(tab==='reservations') loadReservations();
-  if(tab==='calendrier') loadCalendrier();
   if(tab==='livraisons') loadLivraisons();
-  if(tab==='transporteurs') loadTransporteurs();
-  if(tab==='virements') loadVirements();
+  if(tab==='transporteurs') loadTransporteursTab();
   if(tab==='incidents') loadIncidents();
   if(tab==='clients') loadClients();
 }
@@ -465,8 +465,67 @@ function goToUnassigned(){
   switchAdminTab('livraisons');
 }
 
+// ── Actualisation automatique de l'onglet ouvert ──────────────────────────────
+// Ce que voit l'admin ne doit pas se figer pendant qu'un livreur avance sur le
+// terrain ou qu'une autre personne modifie quelque chose ailleurs. Réservations
+// et Livraisons se rafraîchissent "en silence" (juste la liste, pas tout
+// l'écran) pour ne jamais couper une recherche ou un formulaire en cours ; les
+// autres onglets se rechargent normalement, mais seulement si l'admin n'est pas
+// en train de taper ou de répondre à une confirmation.
+async function silentRefreshReservations(){
+  try{
+    const [r, lr] = await Promise.all([
+      fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+    ]);
+    if(!r.ok) return;
+    const d = await r.json();
+    RESERVATIONS_CACHE = d.reservations || [];
+    const ld = await lr.json().catch(()=>null);
+    if(ld) LIVRAISONS_CACHE = ld.livraisons || [];
+    if(RESERVATIONS_VIEW==='liste') renderReservations(); else renderReservationsCalendrier();
+  }catch(e){}
+}
+async function silentRefreshLivraisons(){
+  try{
+    const [lr, tr] = await Promise.all([
+      fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+    ]);
+    if(!lr.ok) return;
+    const ld = await lr.json();
+    const td = await tr.json().catch(()=>null);
+    LIVRAISONS_CACHE = ld.livraisons || [];
+    if(td) TRANSPORTEURS_CACHE = td.transporteurs || TRANSPORTEURS_CACHE;
+    renderLivraisons();
+  }catch(e){}
+}
+const TAB_AUTO_REFRESH = {
+  accueil:       () => loadDashboard(CURRENT_DASHBOARD_PERIODE),
+  stock:         loadStock,
+  reservations:  silentRefreshReservations,
+  livraisons:    silentRefreshLivraisons,
+  transporteurs: () => TRANSPORTEURS_VIEW==='equipe' ? loadTransporteursEquipe() : loadTransporteursRevenus(),
+  incidents:     loadIncidents,
+  clients:       loadClients,
+};
+function isUserBusy(){
+  if(document.getElementById('modal-overlay-el')) return true; // confirmation/prompt en cours
+  if(document.querySelector('#tab-transporteurs details[open]')) return true; // détail des missions ouvert
+  const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
+  return tag==='input' || tag==='textarea' || tag==='select';
+}
+async function autoRefreshTick(){
+  if(document.getElementById('a-app').classList.contains('hidden')) return; // pas connecté
+  if(isUserBusy()) return;
+  const fn = TAB_AUTO_REFRESH[CURRENT_TAB];
+  if(fn){ try{ await fn(); }catch(e){} }
+}
+
 // ── ACCUEIL / CHIFFRES ────────────────────────────────────────────────────────
+let CURRENT_DASHBOARD_PERIODE = '7j';
 async function loadDashboard(periode){
+  CURRENT_DASHBOARD_PERIODE = periode;
   const zone = document.getElementById('tab-accueil');
   zone.innerHTML = loading();
   try{
@@ -671,6 +730,7 @@ const STATUTS_RESA = ['en_attente','confirmee','annulee','terminee'];
 let RESERVATIONS_CACHE = [];
 let RESERVATIONS_FILTER = 'toutes';
 let RESERVATIONS_SHOW_MASQUEES = false;
+let RESERVATIONS_VIEW = 'liste'; // 'liste' | 'calendrier' — le calendrier vit ici plutôt que dans un onglet séparé (même données, juste groupées par semaine)
 
 // Nombre de nuits + urgence relative à côté des dates — évite le calcul mental
 // pour prioriser d'un coup d'œil parmi une longue liste.
@@ -696,6 +756,29 @@ function isUrgent(dateDebut){
   const diffDays = Math.round((new Date(dateDebut+'T00:00:00') - today) / 86400000);
   return diffDays>=0 && diffDays<=1;
 }
+// MANUEL-xxx/PROLONG-xxx sont des identifiants techniques générés en interne,
+// jamais vus par le client — aucun intérêt à les afficher. LOC-xxx est le vrai
+// numéro de commande envoyé au client dans son email de confirmation, utile si
+// un client rappelle en le citant.
+function isInternalRef(ref){
+  return !ref || /^(MANUEL|PROLONG)-/.test(ref);
+}
+// Qui s'occupe de la livraison / récupération d'une réservation — lit le
+// cache Livraisons déjà chargé (LIVRAISONS_CACHE), quelle que soit la
+// dernière page qui l'a alimenté (Livraisons, Réservations ou Calendrier
+// le rafraîchissent tous désormais). Vide tant que rien n'a encore chargé
+// de missions dans cette session.
+function agentLineHtml(resId){
+  const missions = (typeof LIVRAISONS_CACHE!=='undefined' ? LIVRAISONS_CACHE : [])
+    .filter(m => m.reservation && m.reservation.id===resId && m.statut!=='annule' && !m.masquee);
+  if(!missions.length) return '';
+  const liv = missions.find(m => m.type==='livraison');
+  const rec = missions.find(m => m.type==='recuperation');
+  const parts = [];
+  if(liv) parts.push(`📦 Livraison : ${liv.transporteur?escHtml(liv.transporteur.nom):'<span style="color:var(--red);font-weight:700">Non assigné</span>'}`);
+  if(rec) parts.push(`🔄 Récupération : ${rec.transporteur?escHtml(rec.transporteur.nom):'<span style="color:var(--red);font-weight:700">Non assigné</span>'}`);
+  return parts.length ? `<div class="row-meta" style="margin-top:4px">${parts.join(' · ')}</div>` : '';
+}
 function reservationRowHtml(res, readOnly){
   const nom = escHtml((res.prenom||'')+' '+(res.nom||''))||'—';
   if(res.masquee){
@@ -707,7 +790,7 @@ function reservationRowHtml(res, readOnly){
         </div>
         <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
         <div class="resa-dates"><span class="resa-date-range">${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span></div>
-        <div class="resa-bottom"><span class="resa-price">${euros(res.prix_total_cents)}</span><span class="resa-sub">${escHtml(res.ref||('#'+res.id))}</span></div>
+        <div class="resa-bottom"><span class="resa-price">${euros(res.prix_total_cents)}</span>${isInternalRef(res.ref)?'':`<span class="resa-sub">${escHtml(res.ref)}</span>`}</div>
         ${readOnly ? '' : `<div class="row-actions"><button class="btn btn-grey" onclick="restoreReservation(${res.id})">Restaurer</button></div>`}
       </div>`;
   }
@@ -724,8 +807,9 @@ function reservationRowHtml(res, readOnly){
       </div>
       <div class="resa-bottom">
         <span class="resa-price">${euros(res.prix_total_cents)}</span>
-        <span class="resa-sub">${res.quantite}x · ${escHtml(res.ref||('#'+res.id))}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}</span>
+        <span class="resa-sub">${res.quantite}x${isInternalRef(res.ref)?'':' · '+escHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}</span>
       </div>
+      ${res.statut==='confirmee' ? agentLineHtml(res.id) : ''}
       ${readOnly ? '' : `
       <div class="row-actions">
         ${res.statut!=='annulee'?`<button class="btn btn-red" onclick="cancelReservation(${res.id})">Annuler</button>`:''}
@@ -741,10 +825,17 @@ async function loadReservations(){
   const zone = document.getElementById('tab-reservations');
   zone.innerHTML = loading();
   try{
-    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const [r, lr] = await Promise.all([
+      fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+    ]);
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     RESERVATIONS_CACHE = d.reservations || [];
+    // Alimente aussi LIVRAISONS_CACHE (partagé avec l'onglet Livraisons) pour
+    // pouvoir afficher qui est assigné à chaque réservation ici.
+    const ld = await lr.json().catch(()=>null);
+    if(ld) LIVRAISONS_CACHE = ld.livraisons || [];
     renderReservationsToolbar();
     renderReservations();
   }catch(e){
@@ -788,15 +879,26 @@ function renderReservationsToolbar(){
       <button class="btn btn-blue btn-block" id="nr-submit" onclick="createReservation()">Créer et confirmer</button>
       <div class="err" id="new-resa-err"></div>
     </div>
-    <input type="text" id="resa-search" placeholder="🔎 Rechercher un client, une adresse, une référence…" oninput="renderReservations()" style="margin-top:12px"/>
     <div class="periods" style="margin-bottom:16px">
-      ${filters.map(f => `<button class="${RESERVATIONS_FILTER===f.key?'on':''}" onclick="setReservationsFilter('${f.key}')">${f.label}</button>`).join('')}
+      <button class="${RESERVATIONS_VIEW==='liste'?'on':''}" onclick="setReservationsView('liste')">📋 Liste</button>
+      <button class="${RESERVATIONS_VIEW==='calendrier'?'on':''}" onclick="setReservationsView('calendrier')">📅 Calendrier</button>
     </div>
-    <div id="resa-list" class="row-grid"></div>
-    ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleMasquees()">${RESERVATIONS_SHOW_MASQUEES?'← Revenir aux réservations':`🙈 Afficher les réservations supprimées (${masqueesCount})`}</button>` : ''}
+    <div id="resa-liste-view" class="${RESERVATIONS_VIEW==='calendrier'?'hidden':''}">
+      <input type="text" id="resa-search" placeholder="🔎 Rechercher un client, une adresse, une référence…" oninput="renderReservations()"/>
+      <div class="periods" style="margin:16px 0">
+        ${filters.map(f => `<button class="${!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER===f.key?'on':''}" onclick="setReservationsFilter('${f.key}')">${f.label}</button>`).join('')}
+      </div>
+      <div id="resa-list" class="row-grid"></div>
+      ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleMasquees()">${RESERVATIONS_SHOW_MASQUEES?'← Revenir aux réservations':`🙈 Afficher les réservations supprimées (${masqueesCount})`}</button>` : ''}
+    </div>
+    <div id="resa-calendrier-view" class="${RESERVATIONS_VIEW==='liste'?'hidden':''}">
+      <div id="resa-calendrier-content"></div>
+    </div>
   `;
-  renderReservations();
+  if(RESERVATIONS_VIEW==='liste') renderReservations();
+  else renderReservationsCalendrier();
 }
+function setReservationsView(view){ RESERVATIONS_VIEW = view; renderReservationsToolbar(); }
 function setReservationsFilter(key){
   const searchVal = document.getElementById('resa-search')?.value || '';
   RESERVATIONS_FILTER = key;
@@ -806,6 +908,33 @@ function setReservationsFilter(key){
   renderReservations();
 }
 function toggleMasquees(){ RESERVATIONS_SHOW_MASQUEES = !RESERVATIONS_SHOW_MASQUEES; renderReservationsToolbar(); }
+// Vue calendrier — mêmes données que la liste (RESERVATIONS_CACHE), groupées
+// par semaine avec le CA de chaque semaine. Fusionnée ici plutôt que dans un
+// onglet séparé : c'était littéralement la même information, juste triée
+// autrement, ça ne mérite pas sa propre entrée dans le menu.
+function renderReservationsCalendrier(){
+  const el = document.getElementById('resa-calendrier-content');
+  if(!el) return;
+  const resas = RESERVATIONS_CACHE.filter(res => res.statut!=='annulee' && !res.masquee);
+  if(!resas.length){ el.innerHTML = '<p class="empty">📅 Aucune réservation à venir.</p>'; return; }
+  const sorted = [...resas].sort((a,b) => a.date_debut.localeCompare(b.date_debut));
+  const weeks = {};
+  sorted.forEach(res => {
+    const key = mondayOf(res.date_debut).toISOString().slice(0,10);
+    (weeks[key] = weeks[key] || []).push(res);
+  });
+  const weekKeys = Object.keys(weeks).sort();
+  el.innerHTML = weekKeys.map(key => {
+    const items = weeks[key];
+    const caSemaine = items.filter(r=>r.statut==='confirmee').reduce((s,r)=>s+(r.prix_total_cents||0),0);
+    return `
+      <div class="week-header">
+        <span class="wk-label">${weekRangeLabel(new Date(key+'T00:00:00'))}</span>
+        <span class="wk-ca">${euros(caSemaine)} de CA</span>
+      </div>
+      ${items.map(res => reservationRowHtml(res, true)).join('')}`;
+  }).join('');
+}
 function renderReservations(){
   const list = document.getElementById('resa-list');
   if(!list) return;
@@ -938,10 +1067,8 @@ async function restoreReservation(id){
   }catch(e){ showToast(e.message, 'error'); }
 }
 
-// ── CALENDRIER ────────────────────────────────────────────────────────────────
-// Vue des réservations groupées par semaine (avec tarifs) — pour visualiser
-// l'occupation sur plusieurs semaines d'un coup d'œil, sans dépouiller le
-// tableau "Réservations" (trié par date de création, pas par date de séjour).
+// Helpers de regroupement par semaine, utilisés par la vue Calendrier fusionnée
+// dans l'onglet Réservations (voir renderReservationsCalendrier plus haut).
 function mondayOf(dateStr){
   const d = new Date(dateStr+'T00:00:00');
   const day = (d.getDay()+6)%7; // 0=lundi
@@ -953,39 +1080,6 @@ function weekRangeLabel(monday){
   const fmt = dt => dt.toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
   return `Semaine du ${fmt(monday)} au ${fmt(sunday)}`;
 }
-async function loadCalendrier(){
-  const zone = document.getElementById('tab-calendrier');
-  zone.innerHTML = loading();
-  try{
-    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.error||'Erreur');
-
-    const resas = (d.reservations||[]).filter(res => res.statut!=='annulee');
-    if(!resas.length){ zone.innerHTML = '<p class="empty">📅 Aucune réservation à venir.</p>'; return; }
-    resas.sort((a,b) => a.date_debut.localeCompare(b.date_debut));
-
-    const weeks = {};
-    resas.forEach(res => {
-      const key = mondayOf(res.date_debut).toISOString().slice(0,10);
-      (weeks[key] = weeks[key] || []).push(res);
-    });
-    const weekKeys = Object.keys(weeks).sort();
-
-    zone.innerHTML = weekKeys.map(key => {
-      const items = weeks[key];
-      const caSemaine = items.filter(r=>r.statut==='confirmee').reduce((s,r)=>s+(r.prix_total_cents||0),0);
-      return `
-        <div class="week-header">
-          <span class="wk-label">${weekRangeLabel(new Date(key+'T00:00:00'))}</span>
-          <span class="wk-ca">${euros(caSemaine)} de CA</span>
-        </div>
-        ${items.map(res => reservationRowHtml(res, true)).join('')}`;
-    }).join('');
-  }catch(e){
-    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
-  }
-}
 
 // ── LIVRAISONS ────────────────────────────────────────────────────────────────
 // Historique complet (pas seulement les missions en cours) pour qu'un manager
@@ -993,6 +1087,7 @@ async function loadCalendrier(){
 let TRANSPORTEURS_CACHE = [];
 let LIVRAISONS_CACHE = [];
 let LIVRAISONS_FILTER = 'toutes';
+let LIVRAISONS_SHOW_MASQUEES = false;
 
 async function loadLivraisons(){
   const zone = document.getElementById('tab-livraisons');
@@ -1035,7 +1130,9 @@ function avgDureeSurPlaceForTransporteur(transporteurId, type){
 }
 function renderLivraisonsToolbar(){
   const zone = document.getElementById('tab-livraisons');
-  const nonAssigneesCount = LIVRAISONS_CACHE.filter(m => m.statut==='a_faire' && !m.transporteur).length;
+  const visibles = LIVRAISONS_CACHE.filter(m => !m.masquee);
+  const nonAssigneesCount = visibles.filter(m => m.statut==='a_faire' && !m.transporteur).length;
+  const masqueesCount = LIVRAISONS_CACHE.filter(m => m.masquee).length;
   const filters = [
     {key:'toutes', label:'Toutes'},
     {key:'non_assignees', label:`⚠️ Non assignées${nonAssigneesCount?' ('+nonAssigneesCount+')':''}`},
@@ -1054,22 +1151,26 @@ function renderLivraisonsToolbar(){
     ${avgHtml}
     <input type="text" id="liv-search" placeholder="🔎 Rechercher un client, une adresse, une référence…" oninput="renderLivraisons()"/>
     <div class="periods" style="margin-bottom:16px">
-      ${filters.map(f => `<button class="${LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
+      ${filters.map(f => `<button class="${!LIVRAISONS_SHOW_MASQUEES && LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
     </div>
-    <div id="liv-list"></div>`;
+    <div id="liv-list"></div>
+    ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleLivraisonsMasquees()">${LIVRAISONS_SHOW_MASQUEES?'← Revenir aux missions':`🙈 Afficher les missions supprimées (${masqueesCount})`}</button>` : ''}`;
 }
-function setLivraisonsFilter(key){ LIVRAISONS_FILTER = key; renderLivraisonsToolbar(); renderLivraisons(); }
+function setLivraisonsFilter(key){ LIVRAISONS_SHOW_MASQUEES = false; LIVRAISONS_FILTER = key; renderLivraisonsToolbar(); renderLivraisons(); }
+function toggleLivraisonsMasquees(){ LIVRAISONS_SHOW_MASQUEES = !LIVRAISONS_SHOW_MASQUEES; renderLivraisonsToolbar(); renderLivraisons(); }
 
 function renderLivraisons(){
   const list = document.getElementById('liv-list');
   if(!list) return;
   const q = (document.getElementById('liv-search')?.value || '').trim().toLowerCase();
 
-  let items = LIVRAISONS_CACHE;
-  if(LIVRAISONS_FILTER === 'non_assignees') items = items.filter(m => m.statut==='a_faire' && !m.transporteur);
-  else if(LIVRAISONS_FILTER === 'en_cours') items = items.filter(m => ['a_faire','acceptee','arrivee'].includes(m.statut));
-  else if(LIVRAISONS_FILTER === 'fait') items = items.filter(m => m.statut === 'fait');
-  else if(LIVRAISONS_FILTER === 'probleme') items = items.filter(m => m.statut === 'probleme');
+  let items = LIVRAISONS_CACHE.filter(m => LIVRAISONS_SHOW_MASQUEES ? m.masquee : !m.masquee);
+  if(!LIVRAISONS_SHOW_MASQUEES){
+    if(LIVRAISONS_FILTER === 'non_assignees') items = items.filter(m => m.statut==='a_faire' && !m.transporteur);
+    else if(LIVRAISONS_FILTER === 'en_cours') items = items.filter(m => ['a_faire','acceptee','arrivee'].includes(m.statut));
+    else if(LIVRAISONS_FILTER === 'fait') items = items.filter(m => m.statut === 'fait');
+    else if(LIVRAISONS_FILTER === 'probleme') items = items.filter(m => m.statut === 'probleme');
+  }
 
   if(q){
     items = items.filter(m => {
@@ -1096,6 +1197,17 @@ function renderLivraisons(){
     // du filtre "Non assignées", pour qu'une mission non dispatchée ne se
     // perde jamais visuellement dans la liste "Toutes".
     const nonAssignee = m.statut==='a_faire' && !m.transporteur;
+    if(m.masquee){
+      return `
+        <div class="row-item" style="opacity:.6">
+          <div class="row-top">
+            <span class="row-title">${m.type==='livraison'?'📦':'🔄'} ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
+            <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
+          </div>
+          <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
+          <div class="row-actions"><button class="btn btn-grey" onclick="restoreLivraison(${m.id})">Restaurer</button></div>
+        </div>`;
+    }
     return `
       <div class="row-item" ${nonAssignee?'style="border-left:3px solid var(--red)"':''}>
         <div class="row-top">
@@ -1104,7 +1216,7 @@ function renderLivraisons(){
         </div>
         ${nonAssignee?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-bottom:4px">🔔 Non assignée</div>`:''}
         ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="row-meta" style="font-weight:700;color:var(--blue)">🔢 Unité${m.appareil_numeros.length>1?'s':''} n°${m.appareil_numeros.join(', ')}${(m.appareil_references&&m.appareil_references.length)?' · '+m.appareil_references.map(escHtml).join(', '):''}</div>`:''}
-        <div class="row-meta">${res.ref?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
+        <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
         ${(m.duree_trajet_min!=null || m.duree_sur_place_min!=null)?`<div class="row-meta">🕐 ${m.duree_trajet_min!=null?m.duree_trajet_min+' min trajet':''}${m.duree_trajet_min!=null&&m.duree_sur_place_min!=null?' · ':''}${m.duree_sur_place_min!=null?m.duree_sur_place_min+' min sur place':''}</div>`:''}
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
         <div class="row-actions">
@@ -1113,6 +1225,7 @@ function renderLivraisons(){
           ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">✅ Problème résolu</button>`:''}
           ${mediaBtns.join('')}
           ${mediaBtns.length===0 && m.statut==='fait' ? '<span class="row-meta" style="align-self:center">Aucune preuve enregistrée</span>' : ''}
+          <button class="btn btn-grey" title="Supprimer de l'écran" onclick="maskLivraison(${m.id})">🗑️</button>
         </div>
       </div>`;
   }).join('');
@@ -1141,6 +1254,30 @@ async function assignTransporteur(livraisonId, transporteurId, selectEl){
   if(searchEl) searchEl.value = searchVal;
   renderLivraisons();
 }
+function maskLivraison(livraisonId){
+  confirmAction('Supprimer cette mission de l\'écran ? Ça ne touche ni son statut ni les données réelles — juste le fait qu\'elle s\'affiche ici. Récupérable via "Afficher les missions supprimées" en bas de page.', async () => {
+    try{
+      const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'mask', livraison_id:livraisonId, masquee:true})});
+      if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+      const m = LIVRAISONS_CACHE.find(x => x.id===livraisonId);
+      if(m) m.masquee = true;
+      renderLivraisonsToolbar();
+      loadAlerts();
+      showToast('Mission supprimée de l\'écran', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {danger:true, yesLabel:'Supprimer de l\'écran'});
+}
+async function restoreLivraison(livraisonId){
+  try{
+    const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'mask', livraison_id:livraisonId, masquee:false})});
+    if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+    const m = LIVRAISONS_CACHE.find(x => x.id===livraisonId);
+    if(m) m.masquee = false;
+    renderLivraisonsToolbar();
+    loadAlerts();
+    showToast('Mission restaurée', 'success');
+  }catch(e){ showToast(e.message, 'error'); }
+}
 function resolveProbleme(livraisonId){
   confirmAction('Confirmer que le problème est réglé ? Le livreur pourra reprendre la mission (il repassera par l\'étape "arrivé").', async () => {
     try{
@@ -1163,6 +1300,9 @@ async function viewMedia(livraisonId, kind){
 }
 
 // ── TRANSPORTEURS ─────────────────────────────────────────────────────────────
+// "Revenus" (ex-onglet Virements) vit ici plutôt que dans son propre onglet :
+// "combien je dois à qui" n'a de sens qu'à côté des transporteurs eux-mêmes.
+let TRANSPORTEURS_VIEW = 'equipe'; // 'equipe' | 'revenus'
 // Capacité réaliste d'un livreur : jusqu'à 10 missions/jour. Sert de
 // référence pour la barre de charge du jour, affichée ici et côté livreur.
 const MISSIONS_CIBLE_JOUR = 10;
@@ -1178,8 +1318,35 @@ function chargeJourHtml(transporteurId, livraisons){
     <div class="dp-top"><span>Aujourd'hui</span><span>${count} / ${MISSIONS_CIBLE_JOUR} missions</span></div>
     <div class="dp-bar"><div class="dp-fill ${over?'over':''}" style="width:${pct}%"></div></div>`;
 }
-async function loadTransporteurs(){
+// Compte transporteur factice pour que l'admin puisse ouvrir /transporteur et
+// voir/tester l'espace livreur lui-même (aucune colonne dédiée en base — juste
+// un transporteur normal reconnu par ce nom réservé, taux à 0€ pour qu'aucun
+// virement réel ne puisse s'accumuler dessus même si une mission lui est
+// assignée par erreur pendant un test).
+const TEST_TRANSPORTEUR_NOM = '🧪 Test (aperçu admin)';
+async function createTestTransporteur(){
+  try{
+    const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom: TEST_TRANSPORTEUR_NOM, taux_livraison_cents:0, taux_recuperation_cents:0})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    await loadTransporteursEquipe();
+    showInfo('Environnement de test créé', `Code : ${d.pin}\n\nOuvre /transporteur dans un nouvel onglet et connecte-toi avec ce code pour voir/tester l'espace livreur comme un vrai transporteur.`);
+  }catch(e){ showToast(e.message, 'error'); }
+}
+function loadTransporteursTab(){
   const zone = document.getElementById('tab-transporteurs');
+  zone.innerHTML = `
+    <div class="periods" style="margin-bottom:16px">
+      <button class="${TRANSPORTEURS_VIEW==='equipe'?'on':''}" onclick="setTransporteursView('equipe')">👷 Équipe</button>
+      <button class="${TRANSPORTEURS_VIEW==='revenus'?'on':''}" onclick="setTransporteursView('revenus')">💶 Revenus</button>
+    </div>
+    <div id="transp-view-content">${loading()}</div>`;
+  if(TRANSPORTEURS_VIEW==='equipe') loadTransporteursEquipe(); else loadTransporteursRevenus();
+}
+function setTransporteursView(view){ TRANSPORTEURS_VIEW = view; loadTransporteursTab(); }
+async function loadTransporteursEquipe(){
+  const zone = document.getElementById('transp-view-content');
+  if(!zone) return;
   zone.innerHTML = loading();
   try{
     const [tr, lr] = await Promise.all([
@@ -1189,7 +1356,18 @@ async function loadTransporteurs(){
     const d = await tr.json();
     if(!tr.ok) throw new Error(d.error||'Erreur');
     const ld = await lr.json().catch(()=>({livraisons:[]}));
-    const list = (d.transporteurs||[]).map(t => `
+    const testTransp = (d.transporteurs||[]).find(t => t.nom === TEST_TRANSPORTEUR_NOM);
+    const testCardHtml = `
+      <div class="card" style="border-color:var(--blue)">
+        <h2>🧪 Environnement de test</h2>
+        <p class="sub">Compte factice pour ouvrir /transporteur et voir/déboguer l'espace livreur toi-même, comme un vrai transporteur — sans jamais générer de vrai virement (taux à 0 €).</p>
+        ${testTransp ? `
+          <div class="row-meta" style="margin-bottom:14px">Code : <strong style="font-size:16px">${escHtml(testTransp.pin)}</strong></div>
+          <button class="btn btn-blue btn-block" onclick="window.open('/transporteur','_blank','noopener')">Ouvrir l'espace transporteur ↗</button>
+          <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="resetPin(${testTransp.id})">Régénérer le code</button>
+        ` : `<button class="btn btn-blue btn-block" onclick="createTestTransporteur()">Créer mon compte de test</button>`}
+      </div>`;
+    const list = (d.transporteurs||[]).filter(t => t.nom !== TEST_TRANSPORTEUR_NOM).map(t => `
       <div class="row-item">
         <div class="row-top">
           <span class="row-title">${escHtml(t.nom)}</span>
@@ -1205,7 +1383,7 @@ async function loadTransporteurs(){
         </div>
       </div>`).join('') || '<p class="empty">Aucun transporteur.</p>';
 
-    zone.innerHTML = list + `
+    zone.innerHTML = testCardHtml + list + `
       <div class="card">
         <h2>Ajouter un transporteur</h2>
         <label for="t-nom">Nom</label>
@@ -1238,7 +1416,7 @@ async function addTransporteur(){
     const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, telephone, email, taux_livraison_cents, taux_recuperation_cents})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    loadTransporteurs();
+    loadTransporteursEquipe();
     showInfo('Transporteur ajouté', `Code personnel à lui communiquer :\n\n${d.pin}\n\nCe code lui permet de se connecter sur /transporteur.`);
   }catch(e){
     errEl.textContent = e.message; errEl.style.display='block';
@@ -1246,21 +1424,21 @@ async function addTransporteur(){
 }
 async function toggleTransporteur(id, actif){
   await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, actif})});
-  loadTransporteurs();
+  loadTransporteursEquipe();
 }
 function resetPin(id){
   const suggestion = String(Math.floor(100000 + Math.random() * 900000));
   promptAction({title:'Nouveau code', label:'Code personnel (6 chiffres)', value:suggestion}, async (pin) => {
     if(!pin) return;
     await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, pin})});
-    loadTransporteurs();
+    loadTransporteursEquipe();
     showToast('Code mis à jour', 'success');
   });
 }
 function editEmail(id, currentEmail){
   promptAction({title:"Email pour \"code oublié\"", label:'Adresse email', value:currentEmail || '', type:'text'}, async (email) => {
     await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, email})});
-    loadTransporteurs();
+    loadTransporteursEquipe();
     showToast('Email mis à jour', 'success');
   });
 }
@@ -1271,42 +1449,67 @@ function editRates(id, currentLiv, currentRec){
       taux_livraison_cents: Math.round((parseFloat(liv)||0)*100),
       taux_recuperation_cents: Math.round((parseFloat(rec)||0)*100),
     })});
-    loadTransporteurs();
+    loadTransporteursEquipe();
     showToast('Taux mis à jour', 'success');
   });
 }
 
-// ── VIREMENTS ─────────────────────────────────────────────────────────────────
-async function loadVirements(){
-  const zone = document.getElementById('tab-virements');
+// ── REVENUS (ex-onglet Virements, fusionné dans Transporteurs) ────────────────
+// Jusqu'ici l'admin ne voyait un transporteur ici que s'il avait lui-même
+// demandé un virement — aucune visibilité sur ce qui est dû avant ça. Montre
+// désormais chaque transporteur avec ce qu'il lui est dû, ce qu'il a déjà
+// touché, et le détail mission par mission derrière un menu déroulant natif.
+async function loadTransporteursRevenus(){
+  const zone = document.getElementById('transp-view-content');
+  if(!zone) return;
   zone.innerHTML = loading();
   try{
-    const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'summary'})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    if(!d.virements.length){ zone.innerHTML='<p class="empty">Aucun virement.</p>'; return; }
-    zone.innerHTML = d.virements.map(v => `
-      <div class="row-item">
-        <div class="row-top">
-          <span class="row-title">${escHtml((v.transporteur&&v.transporteur.nom)||'—')} — ${euros(v.montant_cents)}</span>
-          <span class="chip ${v.statut}">${VIR_LABEL[v.statut]||v.statut}</span>
-        </div>
-        <div class="row-meta">Demandé le ${new Date(v.created_at).toLocaleDateString('fr-FR')}${v.verse_at?(' · Versé le '+new Date(v.verse_at).toLocaleDateString('fr-FR')):''}</div>
-        ${v.statut==='demande'?`<div class="row-actions"><button class="btn btn-green" onclick="marquerVerse(${v.id})">✅ Marquer comme versé</button></div>`:''}
-      </div>`).join('');
+    const transporteurs = (d.transporteurs||[]).filter(t => t.nom !== TEST_TRANSPORTEUR_NOM);
+    if(!transporteurs.length){ zone.innerHTML = '<p class="empty">Aucun transporteur.</p>'; return; }
+    zone.innerHTML = transporteurs.map(t => {
+      const missionsHtml = t.missions.length ? t.missions.map(m => `
+        <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
+          <div class="row-top">
+            <span class="row-title" style="font-size:13px">${m.type==='livraison'?'📦':'🔄'} ${escHtml(m.client||'—')}</span>
+            <span class="chip ${m.paye?'actif':'en_attente'}">${m.paye?'Versé':'À verser'}</span>
+          </div>
+          <div class="row-meta">${m.fait_at?frDate(m.fait_at.slice(0,10)):'—'} · ${euros(m.montant_cents)}</div>
+        </div>`).join('') : '';
+      return `
+        <div class="card">
+          <div class="row-top" style="margin-bottom:14px">
+            <h2 style="margin:0">${escHtml(t.nom)}</h2>
+            <span class="chip ${t.actif?'actif':'annulee'}">${t.actif?'actif':'inactif'}</span>
+          </div>
+          <div class="resa-bottom" style="margin-bottom:14px">
+            <span class="resa-price" style="${t.non_verse_cents>0?'color:var(--red)':''}">${euros(t.non_verse_cents)}<span style="font-family:var(--body);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-soft);display:block;margin-top:2px">À verser</span></span>
+            <span class="resa-sub">${t.missions.length} mission${t.missions.length>1?'s':''} au total<br/>${euros(t.verse_cents)} déjà versés</span>
+          </div>
+          ${t.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par le livreur</div>':''}
+          ${t.non_verse_cents>0?`<button class="btn btn-green btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.non_verse_cents})">✅ Marquer comme versé (${euros(t.non_verse_cents)})</button>`:''}
+          ${t.missions.length?`
+          <details style="margin-top:12px">
+            <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Voir le détail (${t.missions.length} mission${t.missions.length>1?'s':''})</summary>
+            <div style="margin-top:12px">${missionsHtml}</div>
+          </details>`:'<p class="row-meta" style="margin-top:8px">Aucune mission terminée pour l\'instant.</p>'}
+        </div>`;
+    }).join('');
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
-function marquerVerse(id){
-  confirmAction('Confirmer que ce virement a bien été envoyé au transporteur ? Cette action est irréversible.', async () => {
+function verserMaintenant(id, nom, montantCents){
+  confirmAction(`Confirmer que ${euros(montantCents)} ont bien été versés à ${nom} ? Cette action est irréversible.`, async () => {
     try{
-      const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'marquer_verse', id})});
+      const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'verser_maintenant', transporteur_id:id})});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
-      loadVirements();
+      loadTransporteursRevenus();
       loadAlerts();
-      showToast('Virement marqué comme versé', 'success');
+      showToast(`${euros(d.montant_cents)} marqués comme versés`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {danger:true, yesLabel:'Confirmer le virement'});
 }
@@ -1534,6 +1737,7 @@ function closeLiveMap(){
     // active (l'écran ne bouge plus jusqu'à une déconnexion/reconnexion).
     loadAlerts();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
+    if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
   }
 })();
 </script>

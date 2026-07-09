@@ -160,6 +160,7 @@ create table livraisons (
   arrivee_at             timestamptz,
   fait_at                timestamptz,
   probleme_at            timestamptz,
+  masquee                boolean not null default false, -- retirée de l'écran admin (ménage manuel), sans toucher au statut
   created_at             timestamptz not null default now()
 );
 create index livraisons_date_idx on livraisons (date_prevue, statut);

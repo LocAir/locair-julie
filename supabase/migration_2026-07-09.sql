@@ -59,6 +59,9 @@ alter table reservations add column if not exists tel_secondaire text;
 -- ── Masquer une réservation de la liste admin (ex. doublon) sans l'annuler ────
 alter table reservations add column if not exists masquee boolean not null default false;
 
+-- ── Masquer une mission de l'écran Livraisons (ménage manuel) sans l'annuler ──
+alter table livraisons add column if not exists masquee boolean not null default false;
+
 -- ── Fiche client persistante ───────────────────────────────────────────────────
 create table if not exists clients (
   id                bigint generated always as identity primary key,

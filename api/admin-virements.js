@@ -30,6 +30,81 @@ module.exports = async (req, res) => {
       return res.status(200).json({ virements: data || [] });
     }
 
+    // Vue "revenus par livreur" : ce qui manquait jusqu'ici, l'admin ne voyait
+    // un transporteur ici que s'il avait lui-même demandé un virement — aucune
+    // visibilité sur ce qui est dû avant ça. Regroupe toutes les missions
+    // terminées par transporteur, payées ou non, pour un aperçu complet
+    // (montant à verser, déjà versé, détail mission par mission).
+    if (action === 'summary') {
+      const { data: transporteurs } = await supabase
+        .from('transporteurs').select('id, nom, actif').eq('city_id', city.id).order('nom');
+      const ids = (transporteurs || []).map(t => t.id);
+      if (!ids.length) return res.status(200).json({ transporteurs: [] });
+
+      const { data: faites } = await supabase
+        .from('livraisons')
+        .select(`
+          id, type, transporteur_id, montant_du_cents, paye, fait_at,
+          reservation:reservations ( prenom, nom, adresse )
+        `)
+        .in('transporteur_id', ids).eq('statut', 'fait')
+        .order('fait_at', { ascending: false });
+
+      const { data: demandesEnCours } = await supabase
+        .from('virements').select('transporteur_id').in('transporteur_id', ids).eq('statut', 'demande');
+      const enCoursSet = new Set((demandesEnCours || []).map(v => v.transporteur_id));
+
+      const byTransp = {};
+      (faites || []).forEach(f => { (byTransp[f.transporteur_id] = byTransp[f.transporteur_id] || []).push(f); });
+
+      const result = (transporteurs || []).map(t => {
+        const missions = byTransp[t.id] || [];
+        const nonVerse = missions.filter(m => !m.paye).reduce((s, m) => s + (m.montant_du_cents || 0), 0);
+        const verse    = missions.filter(m => m.paye).reduce((s, m) => s + (m.montant_du_cents || 0), 0);
+        return {
+          id: t.id, nom: t.nom, actif: t.actif,
+          non_verse_cents: nonVerse, verse_cents: verse,
+          demande_en_cours: enCoursSet.has(t.id),
+          missions: missions.map(m => ({
+            id: m.id, type: m.type, montant_cents: m.montant_du_cents || 0, paye: m.paye, fait_at: m.fait_at,
+            client: [m.reservation?.prenom, m.reservation?.nom].filter(Boolean).join(' ') || null,
+          })),
+        };
+      });
+      return res.status(200).json({ transporteurs: result });
+    }
+
+    // Verser directement depuis l'admin, sans attendre que le livreur en fasse
+    // la demande côté /transporteur — utile s'il ne pense pas à demander, ou
+    // pour tout solder avant qu'il quitte l'équipe.
+    if (action === 'verser_maintenant') {
+      const transporteurId = parseInt(body.transporteur_id);
+      if (!transporteurId || !transpIds.includes(transporteurId)) return res.status(404).json({ error: 'Transporteur introuvable' });
+
+      const { data: faites } = await supabase
+        .from('livraisons').select('id, montant_du_cents')
+        .eq('transporteur_id', transporteurId).eq('statut', 'fait').eq('paye', false);
+      const montant = (faites || []).reduce((s, f) => s + (f.montant_du_cents || 0), 0);
+      if (montant <= 0) return res.status(400).json({ error: 'Rien à verser pour ce transporteur' });
+      const ids = (faites || []).map(f => f.id);
+
+      await supabase.from('livraisons').update({ paye: true }).in('id', ids);
+
+      // Une demande de virement déjà en cours pour ce transporteur est réglée
+      // par ce paiement plutôt que dupliquée avec une nouvelle ligne.
+      const { data: existante } = await supabase
+        .from('virements').select('id').eq('transporteur_id', transporteurId).eq('statut', 'demande').maybeSingle();
+      if (existante) {
+        await supabase.from('virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', existante.id);
+      } else {
+        await supabase.from('virements').insert({
+          transporteur_id: transporteurId, montant_cents: montant, statut: 'verse', verse_at: new Date().toISOString(),
+        });
+      }
+
+      return res.status(200).json({ ok: true, montant_cents: montant });
+    }
+
     if (action === 'marquer_verse') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
