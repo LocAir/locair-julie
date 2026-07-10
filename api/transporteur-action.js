@@ -1,5 +1,4 @@
 const { getSupabase } = require('./_lib/supabase');
-const { getCity }     = require('./_lib/city');
 const { verifyTransporteurToken } = require('./_lib/auth');
 const { sendBrevoSms } = require('./_lib/brevo');
 
@@ -176,9 +175,12 @@ module.exports = async (req, res) => {
       }).eq('id', liv.id);
 
       const incidentType = problemeType === 'retard' ? 'retard' : problemeType === 'appareil_en_panne' ? 'materiel' : 'autre';
-      const city = await getCity(supabase).catch(() => null);
+      // La mission a toujours une réservation d'origine — sa city_id est la
+      // source de vérité, jamais une ville devinée (voir charge-retard.js).
+      const { data: resaCity } = await supabase
+        .from('reservations').select('city_id').eq('id', liv.reservation_id).maybeSingle();
       await supabase.from('incidents').insert({
-        city_id:         city?.id || null,
+        city_id:         resaCity?.city_id || null,
         reservation_id: liv.reservation_id,
         type:            incidentType,
         description:     `[${liv.type}] ${description || problemeType}`,

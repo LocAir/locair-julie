@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { getCity }     = require('./_lib/city');
+const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 
 // La table incidents est alimentée automatiquement à chaque problème signalé
@@ -17,13 +17,17 @@ module.exports = async (req, res) => {
   const action = body.action || 'list';
 
   try {
-    const city = await getCity(supabase);
+    const city = await resolveAdminCity(supabase, body);
+    if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
 
     if (action === 'list') {
+      // Un incident sans réservation retrouvée (voir charge-retard.js) n'a pas
+      // de city_id connu — plutôt que de le rendre invisible partout, il
+      // s'affiche dans toutes les vues plutôt que d'être perdu.
       const { data, error } = await supabase
         .from('incidents')
         .select('id, type, description, montant_facture_cents, statut, created_at, reservation:reservations ( id, ref, prenom, nom, adresse )')
-        .eq('city_id', city.id)
+        .or(`city_id.eq.${city.id},city_id.is.null`)
         .order('created_at', { ascending: false })
         .limit(300);
       if (error) throw error;
@@ -39,9 +43,9 @@ module.exports = async (req, res) => {
       const id = parseInt(body.id);
       if (!id || !body.statut) return res.status(400).json({ error: 'Paramètres manquants' });
       const { data: before } = await supabase
-        .from('incidents').select('id, reservation:reservations!inner ( city_id )')
+        .from('incidents').select('id, city_id')
         .eq('id', id).maybeSingle();
-      if (!before || before.reservation?.city_id !== city.id) return res.status(404).json({ error: 'Incident introuvable' });
+      if (!before || (before.city_id !== null && before.city_id !== city.id)) return res.status(404).json({ error: 'Incident introuvable' });
       const { error } = await supabase.from('incidents').update({ statut: body.statut }).eq('id', id);
       if (error) throw error;
       return res.status(200).json({ ok: true });

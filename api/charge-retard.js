@@ -1,7 +1,6 @@
 const Stripe  = require('stripe');
 const crypto  = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
-const { getCity }     = require('./_lib/city');
 
 function safeEqual(a, b) {
   try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); } catch { return false; }
@@ -95,7 +94,10 @@ module.exports = async (req, res) => {
           .order('created_at', { ascending: false }).limit(1).maybeSingle());
       }
       if (resa) reservationId = resa.id;
-      const cityId = resa?.city_id || (await getCity(supabase).catch(() => null))?.id || null;
+      // Pas de ville devinée en secours : sans réservation retrouvée, mieux
+      // vaut un incident sans city_id (visible sur toutes les vues) qu'une
+      // supposition fausse une fois plusieurs zones actives.
+      const cityId = resa?.city_id || null;
 
       await supabase.from('incidents').insert({
         city_id:                cityId,

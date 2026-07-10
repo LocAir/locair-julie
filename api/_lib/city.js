@@ -45,4 +45,15 @@ async function resolveCityByAddress(supabase, adresse, codePostal) {
   return (data && data[0]) || null;
 }
 
-module.exports = { getCity, listCities, resolveCityById, resolveCityByAddress };
+// Ville pour un endpoint admin : city_id explicite envoyé par le sélecteur
+// de ville de l'UI, sinon la première zone active (comportement de secours
+// raisonnable — jamais d'erreur juste parce que le sélecteur n'a pas encore
+// envoyé de valeur, ex. tout premier chargement).
+async function resolveAdminCity(supabase, body) {
+  const explicit = await resolveCityById(supabase, body?.city_id);
+  if (explicit) return explicit;
+  const cities = await listCities(supabase);
+  return cities[0] || null;
+}
+
+module.exports = { getCity, listCities, resolveCityById, resolveCityByAddress, resolveAdminCity };

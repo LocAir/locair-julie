@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { getCity }     = require('./_lib/city');
+const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 
 // Compte, par onglet, ce qui attend une action de l'admin — affiché en badge
@@ -11,7 +11,8 @@ module.exports = async (req, res) => {
   if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
 
   try {
-    const city = await getCity(supabase);
+    const city = await resolveAdminCity(supabase, req.body);
+    if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
 
     const { data: cityTransp } = await supabase.from('transporteurs').select('id').eq('city_id', city.id);
     const transpIds = (cityTransp || []).map(t => t.id);
