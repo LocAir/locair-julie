@@ -1,6 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
-const { computeBareme } = require('./_lib/bareme');
+const { computeBareme, getBaremeByCityIds } = require('./_lib/bareme');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
         vidange_confirmee,
         probleme_type, probleme_description,
         reservation:reservations (
-          prenom, nom, tel, tel_secondaire, adresse, etage, ascenseur, fenetre, installation, quantite, instructions_acces,
+          prenom, nom, tel, tel_secondaire, adresse, etage, ascenseur, fenetre, installation, quantite, instructions_acces, city_id,
           reservation_appareils ( appareil:appareils ( numero ) ),
           client:clients ( acces_difficile )
         )
@@ -37,11 +37,13 @@ module.exports = async (req, res) => {
       .order('creneau', { ascending: true });
     if (error) throw error;
 
+    const baremeByCity = await getBaremeByCityIds(supabase, (data || []).map(m => m.reservation?.city_id));
+
     const missions = (data || []).map(m => ({
       id:                  m.id,
       type:                m.type,
       installation:        m.reservation?.installation || null,
-      montant_preview:     computeBareme(m.type, m.reservation?.installation),
+      montant_preview:     computeBareme(m.type, m.reservation?.installation, baremeByCity[m.reservation?.city_id]),
       statut:              m.statut,
       date_prevue:         m.date_prevue,
       creneau:             m.creneau,

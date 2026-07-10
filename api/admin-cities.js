@@ -1,6 +1,14 @@
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminToken } = require('./_lib/auth');
 
+// undefined = champ non fourni (ne pas toucher) ; '' ou null = revenir au
+// barème par défaut ; nombre = tarif personnalisé en centimes.
+function tarifCentsOrNull(v) {
+  if (v === '' || v == null) return null;
+  const n = Math.round(parseFloat(v) * 100);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 // Gestion des villes/zones — une "ville" ici est une zone opérationnelle
 // pouvant couvrir plusieurs communes (ex. Nice + Saint-Laurent-du-Var +
 // Cagnes-sur-Mer), routées par code postal (voir api/_lib/city.js,
@@ -39,6 +47,10 @@ module.exports = async (req, res) => {
         postal:       postalCodes[0] || null,
         postal_codes: postalCodes,
         actif:        true,
+        tarif_livraison_autonome_cents:   tarifCentsOrNull(body.tarif_livraison_autonome),
+        tarif_livraison_technicien_cents: tarifCentsOrNull(body.tarif_livraison_technicien),
+        tarif_recuperation_cents:         tarifCentsOrNull(body.tarif_recuperation),
+        tarif_changement_cents:           tarifCentsOrNull(body.tarif_changement),
       });
       if (error) {
         if (error.code === '23505') return res.status(409).json({ error: 'Une ville avec ce slug existe déjà' });
@@ -58,6 +70,10 @@ module.exports = async (req, res) => {
       if (Array.isArray(body.postal_codes)) {
         patch.postal_codes = body.postal_codes.map(cp => String(cp).trim()).filter(Boolean);
       }
+      if (body.tarif_livraison_autonome != null)   patch.tarif_livraison_autonome_cents   = tarifCentsOrNull(body.tarif_livraison_autonome);
+      if (body.tarif_livraison_technicien != null) patch.tarif_livraison_technicien_cents = tarifCentsOrNull(body.tarif_livraison_technicien);
+      if (body.tarif_recuperation != null)         patch.tarif_recuperation_cents         = tarifCentsOrNull(body.tarif_recuperation);
+      if (body.tarif_changement != null)           patch.tarif_changement_cents           = tarifCentsOrNull(body.tarif_changement);
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('cities').update(patch).eq('id', id);
       if (error) throw error;
