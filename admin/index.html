@@ -606,6 +606,42 @@ function escHtml(s){
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+// wa.me exige un numéro international sans "0" ni "+" — même conversion que
+// côté transporteur (une seule ville/pays par déploiement, voir CLAUDE.md).
+function waNumber(tel){
+  const digits = String(tel||'').replace(/\D/g,'');
+  if(!digits) return '';
+  return digits.startsWith('0') ? '33'+digits.slice(1) : digits;
+}
+// Boutons Appeler/WhatsApp réutilisés partout où un numéro client est affiché
+// côté admin (Réservations, Livraisons, Clients) — jusqu'ici seul le
+// transporteur avait ces raccourcis, l'admin devait recopier le numéro à la
+// main pour joindre un client.
+function contactButtonsHtml(tel){
+  if(!tel) return '';
+  const w = waNumber(tel);
+  return `<a class="btn btn-grey" style="text-decoration:none" href="tel:${encodeURIComponent(tel)}" title="Appeler">📞</a>`
+    + (w ? `<a class="btn btn-grey" style="text-decoration:none" href="https://wa.me/${w}" target="_blank" rel="noopener" title="WhatsApp">💬</a>` : '');
+}
+// Génère et télécharge un CSV côté navigateur (aucun appel serveur) à partir
+// d'un tableau d'objets déjà en cache — évite d'ajouter un endpoint juste
+// pour une extraction ponctuelle vers Excel/compta.
+function downloadCsv(filename, rows, columns){
+  const esc = v => {
+    const s = v==null ? '' : String(v);
+    return /[",\n;]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+  };
+  const header = columns.map(c=>c.label).join(';');
+  const lines = rows.map(r => columns.map(c=>esc(typeof c.value==='function'?c.value(r):r[c.value])).join(';'));
+  const csv = '﻿'+[header, ...lines].join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
 // ── Modales maison (remplacent confirm()/prompt()/alert() du navigateur) ─────
 function closeModal(){
   const o = document.getElementById('modal-overlay-el');
@@ -1162,6 +1198,7 @@ function reservationRowHtml(res, readOnly){
       ${res.statut==='confirmee' ? agentLineHtml(res.id) : ''}
       ${readOnly ? '' : `
       <div class="row-actions">
+        ${contactButtonsHtml(res.tel)}
         ${res.statut!=='annulee'?`<button class="btn btn-red" onclick="cancelReservation(${res.id})">Annuler</button>`:''}
         <select aria-label="Changer le statut" onchange="updateReservationStatut(${res.id}, this.value, this)">
           <option value="">Changer statut…</option>
@@ -1237,6 +1274,7 @@ function renderReservationsToolbar(){
       <button class="${RESERVATIONS_VIEW==='liste'?'on':''}" onclick="setReservationsView('liste')">📋 Liste</button>
       <button class="${RESERVATIONS_VIEW==='calendrier'?'on':''}" onclick="setReservationsView('calendrier')">📅 Calendrier</button>
     </div>
+    <button class="btn btn-grey btn-block" style="margin-bottom:16px" onclick="exportReservationsCsv()">⬇️ Exporter en CSV</button>
     <div id="resa-liste-view" class="${RESERVATIONS_VIEW==='calendrier'?'hidden':''}">
       <input type="text" id="resa-search" placeholder="🔎 Client, adresse, référence…" oninput="renderReservations()"/>
       <div class="periods" style="margin:16px 0">
@@ -1251,6 +1289,28 @@ function renderReservationsToolbar(){
   `;
   if(RESERVATIONS_VIEW==='liste') renderReservations();
   else renderReservationsCalendrier();
+}
+function exportReservationsCsv(){
+  const rows = RESERVATIONS_CACHE.filter(r => !r.masquee);
+  if(!rows.length){ showToast('Aucune réservation à exporter', 'error'); return; }
+  downloadCsv(`reservations-${new Date().toISOString().slice(0,10)}.csv`, rows, [
+    {label:'Référence', value:'ref'},
+    {label:'Prénom', value:'prenom'},
+    {label:'Nom', value:'nom'},
+    {label:'Entreprise', value: r => r.type_client==='entreprise' ? (r.raison_sociale||'Oui') : ''},
+    {label:'SIRET', value:'siret'},
+    {label:'Téléphone', value:'tel'},
+    {label:'Téléphone secours', value:'tel_secondaire'},
+    {label:'Email', value:'email'},
+    {label:'Adresse', value:'adresse'},
+    {label:'Date début', value:'date_debut'},
+    {label:'Date fin', value:'date_fin'},
+    {label:'Quantité', value:'quantite'},
+    {label:'Prix total (€)', value: r => ((r.prix_total_cents||0)/100).toFixed(2)},
+    {label:'Statut', value: r => RESA_LABEL[r.statut]||r.statut},
+    {label:'Source', value:'source'},
+    {label:'Créée le', value: r => frDateHeure(r.created_at)},
+  ]);
 }
 function setReservationsView(view){ RESERVATIONS_VIEW = view; renderReservationsToolbar(); }
 function setReservationsFilter(key){
@@ -1537,7 +1597,20 @@ function renderLivraisonsToolbar(){
       ${avgLiv!=null?`<div class="stat-tile"><div class="n">${avgLiv} min</div><div class="l">Temps moyen sur place · Livraison</div></div>`:''}
       ${avgRec!=null?`<div class="stat-tile"><div class="n">${avgRec} min</div><div class="l">Temps moyen sur place · Récupération</div></div>`:''}
     </div>` : '';
+  // Compteur compact "aujourd'hui" : ce qui reste à faire aujourd'hui même,
+  // et ce qui traîne depuis avant aujourd'hui sans être terminé — les 2
+  // chiffres qu'Aly regarde en premier chaque matin.
+  const today = new Date().toISOString().slice(0,10);
+  const EN_COURS_STATUTS = ['a_faire','acceptee','arrivee','probleme'];
+  const missionsAujourdhui = visibles.filter(m => m.date_prevue===today && EN_COURS_STATUTS.includes(m.statut)).length;
+  const missionsEnRetard = visibles.filter(m => m.date_prevue<today && EN_COURS_STATUTS.includes(m.statut)).length;
+  const todayHtml = (missionsAujourdhui || missionsEnRetard) ? `
+    <div class="stat-grid" style="margin-bottom:16px">
+      <div class="stat-tile"><div class="n">${missionsAujourdhui}</div><div class="l">Restant aujourd'hui</div></div>
+      ${missionsEnRetard?`<div class="stat-tile warn"><div class="n">${missionsEnRetard}</div><div class="l">En retard</div></div>`:''}
+    </div>` : '';
   zone.innerHTML = `
+    ${todayHtml}
     ${avgHtml}
     <button class="btn btn-blue btn-block" style="margin-bottom:14px" onclick="openCreateMissionModal()">+ Créer une mission</button>
     <input type="text" id="liv-search" placeholder="🔎 Client, adresse, référence…" oninput="renderLivraisons()"/>
@@ -1772,6 +1845,7 @@ function renderLivraisons(){
         ${m.client_notifie_at?`<div class="row-meta" style="color:var(--green)">✅ Client notifié ${frDateHeure(m.client_notifie_at)}</div>`:''}
         ${(['recuperation','changement'].includes(m.type) && m.statut==='fait')?`<div class="row-meta" style="color:${m.vidange_confirmee?'var(--green)':'var(--amber)'};">${m.vidange_confirmee?'✅ Vidange confirmée':'⚠️ Vidange non confirmée'}</div>`:''}
         <div class="row-actions">
+          ${contactButtonsHtml(res.tel)}
           <select onchange="assignTransporteur(${m.id}, this.value, this)">${options}</select>
           ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom).replace(/'/g,"\\'")}', '${escHtml(res.adresse||'').replace(/'/g,"\\'")}')">🔴 Suivre en direct</button>`:''}
           ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">✅ Problème résolu</button>`:''}
@@ -2457,14 +2531,31 @@ function renderClients(){
       <div class="row-meta">${escHtml(c.tel||'—')}${c.email?' · '+escHtml(c.email):''}${c.tel_secondaire?' · ☎️ Secours : '+escHtml(c.tel_secondaire):''}${c.siret?' · SIRET : '+escHtml(c.siret):''}${c.derniere_adresse?'<br/>Dernière adresse : '+escHtml(c.derniere_adresse):''}</div>
       ${c.acces_difficile?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-top:6px">⚠️ ${escHtml(c.acces_difficile)}</div>`:''}
       <div class="row-actions">
+        ${contactButtonsHtml(c.tel)}
         <button class="btn btn-grey" onclick="editAccesDifficile(${c.id}, '${(c.acces_difficile||'').replace(/'/g,"\\'")}')">${c.acces_difficile?'Modifier':'Ajouter'} une note d'accès</button>
         <button class="btn btn-grey" onclick="toggleClientPhotos(${c.id})">📷 Photos</button>
       </div>
       <div class="row-actions hidden" id="cli-photos-${c.id}" style="margin-top:8px"></div>
     </div>`).join('') || '<p class="empty">👤 Aucun client pour l\'instant.</p>';
   zone.innerHTML = `
+    <button class="btn btn-grey btn-block" style="margin-bottom:12px" onclick="exportClientsCsv()">⬇️ Exporter en CSV</button>
     <input type="text" id="cli-search" placeholder="🔎 Rechercher un client, un téléphone…" oninput="renderClients()" value="${escHtml(document.getElementById('cli-search')?.value||'')}"/>
     ${list}`;
+}
+function exportClientsCsv(){
+  if(!CLIENTS_CACHE.length){ showToast('Aucun client à exporter', 'error'); return; }
+  downloadCsv(`clients-${new Date().toISOString().slice(0,10)}.csv`, CLIENTS_CACHE, [
+    {label:'Prénom', value:'prenom'},
+    {label:'Nom', value:'nom'},
+    {label:'Entreprise', value:'raison_sociale'},
+    {label:'SIRET', value:'siret'},
+    {label:'Téléphone', value:'tel'},
+    {label:'Téléphone secours', value:'tel_secondaire'},
+    {label:'Email', value:'email'},
+    {label:'Réservations', value:'nb_reservations'},
+    {label:'Dernière adresse', value:'derniere_adresse'},
+    {label:'Note d\'accès', value:'acces_difficile'},
+  ]);
 }
 function editAccesDifficile(id, current){
   promptAction({
