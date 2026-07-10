@@ -9,6 +9,14 @@ module.exports = async (req, res) => {
   if (!transporteurId) return res.status(401).json({ error: 'Session invalide' });
 
   try {
+    // Les missions actives (à traiter) remontent sans limite de date ; les
+    // missions "fait" ne remontent que sur les 14 derniers jours — le filtre
+    // "Terminées" sert à confirmer ce qui vient d'être fait, pas à
+    // reconstituer tout l'historique (déjà disponible dans "Mon activité").
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 14);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+
     const { data, error } = await supabase
       .from('livraisons')
       .select(`
@@ -23,7 +31,7 @@ module.exports = async (req, res) => {
         )
       `)
       .eq('transporteur_id', transporteurId)
-      .in('statut', ['a_faire', 'acceptee', 'arrivee', 'probleme'])
+      .or(`statut.in.(a_faire,acceptee,arrivee,probleme),and(statut.eq.fait,date_prevue.gte.${cutoffStr})`)
       .order('date_prevue', { ascending: true })
       .order('creneau', { ascending: true });
     if (error) throw error;

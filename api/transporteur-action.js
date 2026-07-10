@@ -1,34 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { getCity }     = require('./_lib/city');
 const { verifyTransporteurToken } = require('./_lib/auth');
-const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
-const { geocodeAddress, haversineKm } = require('./_lib/geo');
-
-// Estime le temps d'arrivée réel à partir de la dernière position GPS connue
-// du livreur (partagée pendant une mission en cours) — pour ne plus annoncer
-// systématiquement "~30 min" à un client alors que le livreur est à 5 min.
-// Si la position est absente/trop ancienne ou le géocodage échoue, retourne
-// null : l'appelant retombe alors sur le message générique existant.
-async function estimateEtaMinutes(supabase, transporteurId, adresse) {
-  if (!transporteurId || !adresse) return null;
-  try {
-    const { data: t } = await supabase
-      .from('transporteurs').select('position_lat, position_lng, position_at').eq('id', transporteurId).maybeSingle();
-    if (!t || t.position_lat == null || t.position_lng == null || !t.position_at) return null;
-    const ageMin = (Date.now() - new Date(t.position_at).getTime()) / 60000;
-    if (ageMin > 10) return null;
-    const dest = await geocodeAddress(adresse);
-    if (!dest) return null;
-    const km = haversineKm(t.position_lat, t.position_lng, dest.lat, dest.lng);
-    return Math.max(3, Math.min(60, Math.round(km / 22 * 60))); // ~22km/h en ville, estimation, pas de trafic réel
-  } catch (e) {
-    return null;
-  }
-}
-
-function escHtml(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+const { sendBrevoSms } = require('./_lib/brevo');
 
 const MEDIA_COLUMN = {
   photo_depart:        'photo_depart_path',
@@ -36,12 +9,13 @@ const MEDIA_COLUMN = {
   photo_retour:        'photo_retour_path',
   photo_absence:       'photo_absence_path',
 };
-// À quelle étape chaque preuve peut être prise — empêche de brûler une étape
-// (ex. photographier l'installation avant même d'être arrivé chez le client).
+// À quelle(s) étape(s) chaque preuve peut être prise. "arrivee" reste accepté
+// en plus de "acceptee" par compatibilité avec une mission déjà à cette étape
+// au moment du déploiement — le statut n'est plus jamais réémis depuis.
 const STAGE_FOR_KIND = {
-  photo_depart:       'acceptee',
-  photo_installation: 'arrivee',
-  photo_retour:       'arrivee',
+  photo_depart:       ['acceptee'],
+  photo_installation: ['acceptee', 'arrivee'],
+  photo_retour:       ['acceptee', 'arrivee'],
 };
 const EXT_BY_TYPE = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 
@@ -57,7 +31,7 @@ function checkMediaAllowed(liv, kind) {
   const expectsLivraison = kind === 'photo_depart' || kind === 'photo_installation';
   if (expectsLivraison && liv.type !== 'livraison') return 'Média non attendu pour cette mission';
   if (kind === 'photo_retour' && liv.type !== 'recuperation') return 'Média non attendu pour cette mission';
-  if (liv.statut !== STAGE_FOR_KIND[kind]) return 'Cette étape n\'est pas encore accessible';
+  if (!STAGE_FOR_KIND[kind].includes(liv.statut)) return 'Cette étape n\'est pas encore accessible';
   return null;
 }
 
@@ -112,38 +86,14 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, statut: 'refusee' });
     }
 
+    // Le livreur prévient désormais lui-même par SMS depuis son propre
+    // téléphone (bouton côté client, ouvre l'app SMS) — cette action se
+    // contente d'horodater "client prévenu" pour les stats de performance.
     if (action === 'prevenir_client') {
-      if (liv.statut !== 'acceptee') return res.status(409).json({ error: 'Mission pas encore acceptée' });
+      if (!['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Mission pas encore acceptée' });
       if (liv.client_notifie_at) return res.status(200).json({ ok: true });
-
-      const { data: resa } = await supabase
-        .from('reservations').select('prenom, email, adresse').eq('id', liv.reservation_id).maybeSingle();
       await supabase.from('livraisons').update({ client_notifie_at: new Date().toISOString() }).eq('id', liv.id);
-
-      if (resa?.email) {
-        const verbe = liv.type === 'livraison' ? 'livrer votre climatiseur' : 'récupérer votre climatiseur';
-        const etaMin = await estimateEtaMinutes(supabase, liv.transporteur_id, resa.adresse);
-        const etaTxt = etaMin ? `environ ${etaMin} minute${etaMin > 1 ? 's' : ''}` : 'environ 30 minutes';
-        await sendBrevoEmail({
-          to:      resa.email,
-          subject: `📦 Votre livreur Loc'Air arrive dans ${etaTxt}`,
-          html: `<p>Bonjour ${escHtml(resa.prenom || '')},</p>
-                 <p>Notre livreur est en route pour ${verbe} — il devrait arriver d'ici ${etaTxt} à l'adresse :</p>
-                 <p><strong>${escHtml(resa.adresse || '')}</strong></p>
-                 <p>Merci d'être disponible pour le réceptionner.</p>`,
-        }).catch(() => {});
-      }
-
       return res.status(200).json({ ok: true });
-    }
-
-    if (action === 'arrive') {
-      if (liv.statut !== 'acceptee') return res.status(409).json({ error: 'Mission pas encore acceptée' });
-      if (!liv.client_notifie_at) {
-        return res.status(400).json({ error: 'Préviens le client avant d\'arriver chez lui' });
-      }
-      await supabase.from('livraisons').update({ statut: 'arrivee', arrivee_at: new Date().toISOString() }).eq('id', liv.id);
-      return res.status(200).json({ ok: true, statut: 'arrivee' });
     }
 
     if (action === 'demander_upload') {
@@ -171,14 +121,14 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'confirmer_vidange') {
-      if (liv.type !== 'recuperation' || liv.statut !== 'arrivee') return res.status(409).json({ error: 'Étape non disponible' });
+      if (liv.type !== 'recuperation' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       await supabase.from('livraisons').update({ vidange_confirmee: true, vidange_at: new Date().toISOString() }).eq('id', liv.id);
       return res.status(200).json({ ok: true });
     }
 
     if (action === 'livraison_ok' || action === 'retour_ok') {
       const expectedType = action === 'livraison_ok' ? 'livraison' : 'recuperation';
-      if (liv.type !== expectedType || liv.statut !== 'arrivee') return res.status(409).json({ error: 'Étape non disponible' });
+      if (liv.type !== expectedType || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       if (expectedType === 'livraison' && !liv.photo_installation_path) {
         return res.status(400).json({ error: 'Photo d\'installation requise avant de valider' });
       }
