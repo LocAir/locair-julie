@@ -4710,7 +4710,7 @@ function updateDatePreview(){
     el.textContent=`Delivery ${fmtEn(start)} · Collection ${fmtEn(end)} (${days} nights)`;
   } else {
     const fmtFr=dt=>dt.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'});
-    el.textContent=`Livraison ${fmtFr(start)} · Récupération ${fmtFr(end)}`;
+    el.textContent=`Livraison ${fmtFr(start)} · Récupération ${fmtFr(end)} (${days} nuits)`;
   }
   el.classList.add('show');
 }
@@ -4755,9 +4755,20 @@ function initDateShortcuts(){
     if(dayEl)dayEl.textContent=DAYS[dt.getDay()];
     if(dtEl)dtEl.textContent=dt.getDate()+' '+MONTHS[dt.getMonth()];
   }
-  // Set default date = first available
+  // Set default date = first available; also reset if stale value is before minDate
   const fd=document.getElementById('f-date');
-  if(fd&&!fd.value){fd.value=_fmtDate(_addDays(off));updateDatePreview();}
+  const minDateStr=_fmtDate(_addDays(off));
+  if(fd){
+    if(!fd.value||fd.value<minDateStr){
+      fd.value=minDateStr;
+      // Re-select chip 0 (the "Recommandé" card)
+      document.querySelectorAll('.ds-chip').forEach((c,i)=>{
+        c.classList.toggle('on',i===0);
+        c.setAttribute('aria-checked',i===0?'true':'false');
+      });
+    }
+    updateDatePreview();
+  }
   // Show cutoff notice if past 20h Paris
   const notice=document.getElementById('cutoff-notice');
   if(notice){
