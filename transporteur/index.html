@@ -796,7 +796,7 @@ function actionBtnsForMission(m){
       : `Charge l'appareil.`;
     return `
       <p class="step-hint">📦 ${pickup}</p>
-      <button class="media-btn ${m.client_notifie?'done':''}" onclick="prevenirClientSms()"><span class="ic">📲</span> ${m.client_notifie?'Client prévenu ✔':'Prévenir le client (SMS)'}</button>
+      ${prevenirRowHtml(m)}
       <p class="step-hint">📷 Installe l'appareil, prends une photo pour terminer la mission.</p>
       <button class="media-btn ${m.photo_installation_ok?'done':''}" onclick="startUpload('photo_installation','image/*')"><span class="ic">📷</span> ${m.photo_installation_ok?'Photo installation ✔':'Photo de l\'appareil installé'}</button>
       <button class="btn btn-green" ${m.photo_installation_ok?'':'disabled'} onclick="doAction('livraison_ok')">✅ LIVRAISON OK — JE PARS</button>
@@ -805,7 +805,7 @@ function actionBtnsForMission(m){
   if((m.statut === 'acceptee' || m.statut === 'arrivee') && m.type === 'recuperation'){
     const ready = m.photo_retour_ok && m.vidange_ok;
     return `
-      <button class="media-btn ${m.client_notifie?'done':''}" onclick="prevenirClientSms()"><span class="ic">📲</span> ${m.client_notifie?'Client prévenu ✔':'Prévenir le client (SMS)'}</button>
+      ${prevenirRowHtml(m)}
       <p class="step-hint">📷 Vérifie l'appareil, vidange-le (~5 min) et prends la photo pour terminer la mission.</p>
       <button class="media-btn ${m.vidange_ok?'done':''}" ${m.vidange_ok?'disabled':''} onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> ${m.vidange_ok?'Vérification + vidange ✔':'Vérification + vidange effectuées'}</button>
       <button class="media-btn ${m.photo_retour_ok?'done':''}" onclick="startUpload('photo_retour','image/*')"><span class="ic">📷</span> ${m.photo_retour_ok?'Photo appareil récupéré ✔':'Photo de l\'appareil récupéré'}</button>
@@ -872,20 +872,39 @@ function renderDetail(){
   `;
 }
 
-// Ouvre directement l'app SMS du livreur avec un message pré-rempli et son
-// prénom — plus personnel et plus fiable qu'un email automatique (le client
-// peut répondre directement au livreur). L'envoi effectif reste un geste du
-// livreur (il valide dans son app SMS) ; l'API marque juste la mission comme
-// "client prévenu" pour les stats, sans bloquer l'ouverture de la messagerie
-// même si cet appel réseau échoue.
-function prevenirClientSms(){
+function prevenirRowHtml(m){
+  const done = m.client_notifie;
+  return `
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="media-btn ${done?'done':''}" style="margin-bottom:0" onclick="prevenirClientSms()"><span class="ic">📲</span> ${done?'Prévenu ✔':'SMS'}</button>
+      <button class="media-btn ${done?'done':''}" style="margin-bottom:0" onclick="prevenirClientWhatsapp()"><span class="ic">💬</span> WhatsApp</button>
+    </div>`;
+}
+// Ouvre directement l'app SMS ou WhatsApp du livreur avec un message
+// pré-rempli et son prénom — plus personnel et plus fiable qu'un email
+// automatique (le client peut répondre directement au livreur). L'envoi
+// effectif reste un geste du livreur (il valide dans son app) ; l'API marque
+// juste la mission comme "client prévenu" pour les stats, sans bloquer
+// l'ouverture de la messagerie même si cet appel réseau échoue.
+function prevenirClientMessage(){
   const m = STATE.currentMission;
   const c = (m && m.client) || {};
-  if(c.tel){
-    const prenomLivreur = (STATE.transporteurNom||'').split(' ')[0] || STATE.transporteurNom || '';
-    const msg = `Bonjour, c'est ${prenomLivreur} de Loc'Air, j'arrive chez vous d'ici environ 30 minutes.`;
-    window.location.href = `sms:${c.tel.replace(/\s+/g,'')}?body=${encodeURIComponent(msg)}`;
-  }
+  const prenomLivreur = (STATE.transporteurNom||'').split(' ')[0] || STATE.transporteurNom || '';
+  return { c, msg: `Bonjour, c'est ${prenomLivreur} de Loc'Air, j'arrive chez vous d'ici environ 30 minutes.` };
+}
+function prevenirClientSms(){
+  const { c, msg } = prevenirClientMessage();
+  if(c.tel) window.location.href = `sms:${c.tel.replace(/\s+/g,'')}?body=${encodeURIComponent(msg)}`;
+  doAction('prevenir_client');
+}
+// wa.me exige un numéro international sans "0" ni "+" : un 06/07 français
+// devient 336/337 — seul format français géré ici, cohérent avec le reste de
+// l'app (une seule ville/pays par déploiement, voir CLAUDE.md).
+function prevenirClientWhatsapp(){
+  const { c, msg } = prevenirClientMessage();
+  const digits = String(c.tel||'').replace(/\D/g,'');
+  const waNumber = digits.startsWith('0') ? '33'+digits.slice(1) : digits;
+  if(waNumber) window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`, '_blank');
   doAction('prevenir_client');
 }
 async function doAction(action, extra){
@@ -938,10 +957,16 @@ function showCelebration(montantCents){
     </div>`;
   document.body.appendChild(overlay);
 }
+// Enchaîne directement sur la mission suivante de la liste (déjà acceptée en
+// priorité, sinon la prochaine à traiter) plutôt que de renvoyer à la liste —
+// le livreur reste dans le flux au lieu de retaper sur une carte.
 async function closeCelebration(){
   const o = document.getElementById('celebrate-overlay');
   if(o) o.remove();
   await loadMissions();
+  const next = STATE.missions.find(m => ['acceptee', 'arrivee'].includes(m.statut))
+    || STATE.missions.find(m => m.statut === 'a_faire');
+  if(next) openMission(next.id);
 }
 
 // ── Capture photo/vidéo ──────────────────────────────────────────────────────
