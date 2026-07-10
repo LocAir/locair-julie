@@ -174,4 +174,15 @@ alter table livraisons rename column video_installation_path to photo_installati
 -- clés...) — collectées côté formulaire mais jamais enregistrées jusqu'ici ──
 alter table reservations add column if not exists instructions_acces text;
 
+-- ── Face ID / empreinte pour l'espace admin ───────────────────────────────────
+create table if not exists admin_webauthn_credentials (
+  id            bigint generated always as identity primary key,
+  credential_id text not null unique,
+  public_key    text not null,
+  counter       bigint not null default 0,
+  device_type   text,
+  backed_up     boolean not null default false,
+  created_at    timestamptz not null default now()
+);
+
 -- Fin de la migration.

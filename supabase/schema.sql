@@ -302,6 +302,19 @@ create table webauthn_challenges (
   created_at timestamptz not null default now()
 );
 
+-- Face ID / empreinte pour l'espace admin — un seul admin (mot de passe
+-- unique), donc pas de colonne de rattachement comme pour les transporteurs :
+-- chaque ligne est juste un appareil autorisé (téléphone, ordinateur...).
+create table admin_webauthn_credentials (
+  id            bigint generated always as identity primary key,
+  credential_id text not null unique,
+  public_key    text not null,
+  counter       bigint not null default 0,
+  device_type   text,
+  backed_up     boolean not null default false,
+  created_at    timestamptz not null default now()
+);
+
 -- Seed pour Nice — ajuster le nombre d'appareils insérés ci-dessous au vrai parc
 insert into cities (slug, name, dep, postal) values ('nice', 'Nice', '06', '06300');
 insert into appareils (city_id, numero)

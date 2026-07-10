@@ -257,10 +257,13 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API = (path) => '/api/' + path;
+// localStorage plutôt que sessionStorage : le jeton ne périme jamais côté
+// serveur tant que le PIN ne change pas, donc pas de raison de redemander le
+// code à chaque fermeture de l'app.
 let STATE = {
-  token: sessionStorage.getItem('t_token') || '',
-  transporteurId: sessionStorage.getItem('t_id') ? parseInt(sessionStorage.getItem('t_id')) : null,
-  transporteurNom: sessionStorage.getItem('t_nom') || '',
+  token: localStorage.getItem('t_token') || '',
+  transporteurId: localStorage.getItem('t_id') ? parseInt(localStorage.getItem('t_id')) : null,
+  transporteurNom: localStorage.getItem('t_nom') || '',
   missions: [],
   currentMission: null,
   pendingUpload: null, // {livraisonId, kind}
@@ -292,7 +295,9 @@ function updateWhoBadge(){
 }
 
 function logout(){
-  sessionStorage.clear();
+  localStorage.removeItem('t_token');
+  localStorage.removeItem('t_id');
+  localStorage.removeItem('t_nom');
   STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],currentMission:null,pendingUpload:null};
   stopPositionTracking();
   document.getElementById('who-badge').classList.add('hidden');
@@ -476,9 +481,9 @@ async function loginWithFaceId(){
     if(!verRes.ok) throw new Error(d.error||'Connexion refusée.');
 
     STATE.token = d.token; STATE.transporteurId = d.transporteur_id; STATE.transporteurNom = d.nom;
-    sessionStorage.setItem('t_token', d.token);
-    sessionStorage.setItem('t_id', d.transporteur_id);
-    sessionStorage.setItem('t_nom', d.nom);
+    localStorage.setItem('t_token', d.token);
+    localStorage.setItem('t_id', d.transporteur_id);
+    localStorage.setItem('t_nom', d.nom);
     updateWhoBadge();
     loadMissions();
     setupPush();
@@ -506,9 +511,9 @@ async function doLogin(){
     STATE.token = d.token;
     STATE.transporteurId = d.transporteur_id;
     STATE.transporteurNom = d.nom;
-    sessionStorage.setItem('t_token', d.token);
-    sessionStorage.setItem('t_id', d.transporteur_id);
-    sessionStorage.setItem('t_nom', d.nom);
+    localStorage.setItem('t_token', d.token);
+    localStorage.setItem('t_id', d.transporteur_id);
+    localStorage.setItem('t_nom', d.nom);
     updateWhoBadge();
     loadMissions();
     setupPush();
