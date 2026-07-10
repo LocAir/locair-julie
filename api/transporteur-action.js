@@ -1,7 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
 const { sendBrevoSms, sendBrevoEmail } = require('./_lib/brevo');
-const { computeBareme } = require('./_lib/bareme');
+const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { pushToAdmin, pushToTransporteur } = require('./_lib/push');
 const { pickTransporteurForMission } = require('./_lib/reservations');
 
@@ -194,7 +194,8 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Vérification et vidange requises avant de valider' });
       }
 
-      const montantDu = computeBareme(liv.type, liv.reservation?.installation);
+      const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
+      const montantDu = computeBareme(liv.type, liv.reservation?.installation, tarifs);
 
       await supabase.from('livraisons').update({
         statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,
@@ -244,7 +245,8 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
       if (!liv.photo_retour_path) return res.status(400).json({ error: 'Photo de l\'ancien appareil récupéré requise avant de valider' });
       if (!liv.vidange_confirmee) return res.status(400).json({ error: 'Vidange de l\'ancien appareil requise avant de valider' });
 
-      const montantDu = computeBareme('changement', null);
+      const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
+      const montantDu = computeBareme('changement', null, tarifs);
 
       await supabase.from('livraisons').update({
         statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,

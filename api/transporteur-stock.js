@@ -20,6 +20,7 @@ module.exports = async (req, res) => {
     const disponibles = list.filter(a => a.statut === 'disponible').length;
     const en_panne    = list.filter(a => a.statut === 'panne').length;
     const maintenance = list.filter(a => a.statut === 'maintenance').length;
+    const loue_hors_systeme = list.filter(a => a.statut === 'loue').length;
     // Seuil d'alerte : 10 % du stock total (minimum 1)
     const seuil_alerte = Math.max(1, Math.round(total * 0.1));
 
@@ -36,7 +37,7 @@ module.exports = async (req, res) => {
     const en_location = enLocationIds.size;
 
     return res.status(200).json({
-      total, disponibles, en_location, en_panne, maintenance, seuil_alerte,
+      total, disponibles, en_location, en_panne, maintenance, loue_hors_systeme, seuil_alerte,
       appareils: list.map(a => ({ ...a, en_location: enLocationIds.has(a.id) })),
     });
   } catch (err) {

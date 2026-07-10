@@ -6645,16 +6645,45 @@ function setLang(l){
   if(typeof initDurCardPrices==='function')initDurCardPrices();
   if(typeof _qty!=='undefined')setQty(_qty||1);
   if(typeof _durFree!=='undefined'&&_durFree)_renderDurFree();
+  if(typeof _updateStockNoticeText==='function')_updateStockNoticeText(); // le texte statique du LANG_MAP ci-dessus vient d'écraser le compteur réel
   _rebuildCustomBtn();
   if(typeof _renderSmartLine==='function')_renderSmartLine();
   if(typeof _initDynamicText==='function')_initDynamicText();
 }
 
+// Compteur de stock réel — synchronisé avec l'espace admin (et le statut
+// "loué" hors système) via /api/mode-complet, au lieu du texte d'urgence
+// statique d'origine. Revérifié périodiquement pour rester à jour même sans
+// recharger la page (ex. un appareil marqué loué pendant la visite).
+let STOCK_DISPONIBLES=null;
+function _updateStockNoticeText(){
+  const el=document.getElementById('stock-notice-txt');
+  if(!el||STOCK_DISPONIBLES==null)return;
+  const n=STOCK_DISPONIBLES;
+  el.textContent=_lang==='en'
+    ? `Only ${n} unit${n>1?'s':''} available`
+    : `Plus que ${n} appareil${n>1?'s':''} disponible${n>1?'s':''}`;
+}
+async function _refreshStockAndSoldOut(){
+  try{
+    const r=await fetch('/api/mode-complet',{cache:'no-store'});
+    if(r.ok){
+      const d=await r.json();
+      SOLD_OUT=!!d.sold_out;
+      STOCK_DISPONIBLES=typeof d.disponibles==='number'?d.disponibles:null;
+    }
+  }catch(e){}
+  _initSoldOut();
+  _updateStockNoticeText();
+}
+
 // Appliquer la langue mémorisée au chargement
 document.addEventListener('DOMContentLoaded',async()=>{
   setLang(_lang);
-  try{const r=await fetch('/api/mode-complet',{cache:'no-store'});if(r.ok){const d=await r.json();SOLD_OUT=!!d.sold_out;}}catch(e){}
-  _initSoldOut();
+  await _refreshStockAndSoldOut();
+  // Garde le compteur et le mode "complet" synchronisés avec le stock réel
+  // pendant toute la visite, sans recharger la page.
+  setInterval(_refreshStockAndSoldOut,60000);
 });
 
 // Scroll modal-body pour garder le champ actif visible — tous appareils (iOS, Android, desktop)

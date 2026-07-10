@@ -122,6 +122,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .chip.en_location{background:var(--blue-lt);color:var(--blue)}
 .chip.type-livraison{background:var(--blue-lt);color:var(--blue)}
 .chip.type-recuperation{background:var(--amber-bg);color:var(--amber)}
+.chip.type-changement{background:var(--gold-lt);color:#8a6d2f}
 
 /* Carte réservation : hiérarchie client → dates → prix, au lieu d'une seule
    ligne de métadonnées à parser. Le prix reprend le traitement typographique
@@ -657,34 +658,6 @@ function promptAction({title, label, value='', placeholder='', type='text'}, onS
   input.addEventListener('keydown', e => { if(e.key==='Enter') submit(); });
 }
 
-function promptRates(current, onSubmit){
-  closeModal();
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.id = 'modal-overlay-el';
-  overlay.innerHTML = `
-    <div class="modal-box">
-      <h2>Taux de rémunération</h2>
-      <div class="modal-actions-2col">
-        <div><label>€ / livraison</label><input type="text" inputmode="decimal" id="modal-liv-el" value="${(current.liv/100).toFixed(2)}"/></div>
-        <div><label>€ / récupération</label><input type="text" inputmode="decimal" id="modal-rec-el" value="${(current.rec/100).toFixed(2)}"/></div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn btn-grey">Annuler</button>
-        <button class="btn btn-blue">Valider</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
-  cancelBtn.onclick = closeModal;
-  okBtn.onclick = () => {
-    const liv = overlay.querySelector('#modal-liv-el').value.trim();
-    const rec = overlay.querySelector('#modal-rec-el').value.trim();
-    closeModal();
-    onSubmit(liv, rec);
-  };
-}
-
 function showInfo(title, message, onClose){
   closeModal();
   const overlay = document.createElement('div');
@@ -721,10 +694,13 @@ const LIV_LABEL  = {a_faire:'Nouvelle', acceptee:'Acceptée', refusee:'Refusée'
 // Badge type de mission — bien plus visible qu'un simple emoji dans le titre
 // (confondu entre livraison et récupération sinon, notamment sur deux missions
 // de la même réservation qui n'ont que la date pour les distinguer).
+const TYPE_BADGE = {
+  livraison:    '<span class="chip type-livraison">📦 Livraison</span>',
+  recuperation: '<span class="chip type-recuperation">🔄 Récupération</span>',
+  changement:   '<span class="chip type-changement">🔁 Remplacement</span>',
+};
 function missionTypeBadge(type){
-  return type==='livraison'
-    ? '<span class="chip type-livraison">📦 Livraison</span>'
-    : '<span class="chip type-recuperation">🔄 Récupération</span>';
+  return TYPE_BADGE[type] || TYPE_BADGE.recuperation;
 }
 const PROBLEME_LABEL = {client_absent:'Client absent', appareil_en_panne:'Appareil en panne', retard:'Retard important', autre:'Autre problème'};
 
@@ -943,14 +919,16 @@ function boardSectionHtml(items){
 function boardHtml(livraisons){
   const todayStr = new Date().toISOString().slice(0,10);
   const today = (livraisons||[]).filter(m => m.date_prevue===todayStr && m.statut!=='annule' && m.statut!=='refusee');
-  const installs = today.filter(m => m.type==='livraison');
-  const pickups  = today.filter(m => m.type==='recuperation');
-  if(!installs.length && !pickups.length) return '';
+  const installs   = today.filter(m => m.type==='livraison');
+  const pickups    = today.filter(m => m.type==='recuperation');
+  const changements = today.filter(m => m.type==='changement');
+  if(!installs.length && !pickups.length && !changements.length) return '';
   return `
     <div class="card">
       <h2>📋 Aujourd'hui</h2>
       ${installs.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin-bottom:4px">🏠 Installations (${installs.length})</div>${boardSectionHtml(installs)}`:''}
       ${pickups.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin:${installs.length?'16px':'0'} 0 4px">🔄 Récupérations (${pickups.length})</div>${boardSectionHtml(pickups)}`:''}
+      ${changements.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin:${(installs.length||pickups.length)?'16px':'0'} 0 4px">🔁 Remplacements (${changements.length})</div>${boardSectionHtml(changements)}`:''}
     </div>`;
 }
 
@@ -976,8 +954,8 @@ function dismissMorningBanner(){
 }
 
 // ── STOCK ─────────────────────────────────────────────────────────────────────
-const APPAREIL_STATUT_LABEL = {disponible:'Disponible', panne:'En panne', maintenance:'Maintenance'};
-const APPAREIL_STATUT_CHIP  = {disponible:'actif', panne:'annulee', maintenance:'a_faire'};
+const APPAREIL_STATUT_LABEL = {disponible:'Disponible', panne:'En panne', maintenance:'Maintenance', loue:'Loué'};
+const APPAREIL_STATUT_CHIP  = {disponible:'actif', panne:'annulee', maintenance:'a_faire', loue:'en_location'};
 
 async function loadStock(){
   const zone = document.getElementById('tab-stock');
@@ -1001,10 +979,13 @@ async function loadStock(){
       <div class="card">
         <h2>Appareils (${appareils.length})</h2>
         <div id="appareils-list">${appareils.map(a => {
-          // "En location" n'est jamais choisi à la main : c'est déduit automatiquement
-          // de la réservation confirmée qui couvre aujourd'hui (voir admin-stock.js).
-          // On le montre en priorité sur le badge pour ne pas afficher "Disponible"
-          // sur un appareil qui est en réalité chez un client.
+          // "En location" (badge bleu) n'est jamais choisi à la main : déduit
+          // automatiquement de la réservation confirmée qui couvre aujourd'hui
+          // (voir admin-stock.js) — prioritaire sur le badge pour ne jamais
+          // afficher "Disponible" sur un appareil en réalité chez un client.
+          // "Loué" (option du menu) est le contrôle manuel séparé pour une
+          // location hors système (accord de gré à gré, non passée par une
+          // réservation) — exclu du calcul de disponibilité comme panne/maintenance.
           const chipClass = a.en_location ? 'en_location' : (APPAREIL_STATUT_CHIP[a.statut]||'');
           const chipLabel = a.en_location
             ? (a.statut==='disponible' ? 'En location' : `En location · ${APPAREIL_STATUT_LABEL[a.statut]||a.statut}`)
@@ -1015,10 +996,11 @@ async function loadStock(){
               <span class="row-title">Unité n°${a.numero}</span>
               <span class="chip ${chipClass}">${chipLabel}</span>
             </div>
-            <div class="row-meta">${a.reference?escHtml(a.reference)+' · ':''}${a.en_location?'Actuellement chez un client':(a.statut==='disponible'?'Au dépôt':'—')}</div>
+            <div class="row-meta">${a.reference?escHtml(a.reference)+' · ':''}${a.en_location?'Actuellement chez un client (réservation confirmée)':a.statut==='loue'?'Loué hors système — marqué manuellement':(a.statut==='disponible'?'Au dépôt':'—')}</div>
             <div class="row-actions">
               <select onchange="updateAppareilStatut(${a.id}, this.value)">
                 <option value="disponible" ${a.statut==='disponible'?'selected':''}>Disponible</option>
+                <option value="loue" ${a.statut==='loue'?'selected':''}>Loué</option>
                 <option value="panne" ${a.statut==='panne'?'selected':''}>En panne</option>
                 <option value="maintenance" ${a.statut==='maintenance'?'selected':''}>Maintenance</option>
               </select>
@@ -1503,12 +1485,90 @@ function renderLivraisonsToolbar(){
     </div>` : '';
   zone.innerHTML = `
     ${avgHtml}
+    <button class="btn btn-blue btn-block" style="margin-bottom:14px" onclick="openCreateMissionModal()">+ Créer une mission</button>
     <input type="text" id="liv-search" placeholder="🔎 Client, adresse, référence…" oninput="renderLivraisons()"/>
     <div class="periods" style="margin-bottom:16px">
       ${filters.map(f => `<button class="${!LIVRAISONS_SHOW_MASQUEES && LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
     </div>
     <div id="liv-list"></div>
     ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleLivraisonsMasquees()">${LIVRAISONS_SHOW_MASQUEES?'← Revenir aux missions':`🙈 Afficher les missions supprimées (${masqueesCount})`}</button>` : ''}`;
+}
+// ── Créer une mission manuellement ─────────────────────────────────────────
+// admin-livraisons.js avait déjà l'action 'create' (type/réservation/
+// transporteur/date/créneau) mais aucune UI ne l'appelait — utile pour une
+// mission hors cycle normal (changement d'appareil, mission ajoutée après
+// coup, correction d'un oubli de dispatch).
+const MISSION_TYPE_LABEL = { livraison: '📦 Livraison', recuperation: '🔄 Récupération', changement: '🔁 Remplacement' };
+async function openCreateMissionModal(){
+  closeModal();
+  let resas = [];
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    resas = (d.reservations||[]).filter(res => res.statut==='confirmee' && !res.masquee);
+  }catch(e){}
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  const resaOptions = resas.map(res =>
+    `<option value="${res.id}">${escHtml((res.prenom||'')+' '+(res.nom||''))} · ${escHtml(res.adresse||'')} · ${frDate(res.date_debut)}</option>`
+  ).join('') || '<option value="">Aucune réservation confirmée</option>';
+  const transpOptions = TRANSPORTEURS_CACHE.filter(t => t.actif && t.nom !== TEST_TRANSPORTEUR_NOM)
+    .map(t => `<option value="${t.id}">${escHtml(t.nom)}</option>`).join('');
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
+      <h2 style="margin-bottom:14px">➕ Créer une mission</h2>
+      <label for="cm-type">Type</label>
+      <select id="cm-type">
+        ${Object.entries(MISSION_TYPE_LABEL).map(([v,l]) => `<option value="${v}">${l}</option>`).join('')}
+      </select>
+      <label for="cm-resa" style="margin-top:12px">Réservation</label>
+      <select id="cm-resa">${resaOptions}</select>
+      <label for="cm-transp" style="margin-top:12px">Transporteur (optionnel)</label>
+      <select id="cm-transp">
+        <option value="">Non assigné</option>
+        ${transpOptions}
+      </select>
+      <div class="inline-form" style="margin-top:12px">
+        <div><label for="cm-date">Date</label><input type="date" id="cm-date" value="${new Date().toISOString().slice(0,10)}"/></div>
+        <div><label for="cm-creneau">Créneau</label><input type="text" id="cm-creneau" placeholder="8h–10h"/></div>
+      </div>
+      <div class="modal-actions" style="margin-top:18px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Créer</button>
+      </div>
+      <div class="err" id="cm-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const errEl = document.getElementById('cm-err');
+    errEl.style.display = 'none';
+    const reservation_id = parseInt(document.getElementById('cm-resa').value);
+    if(!reservation_id){ errEl.textContent='Aucune réservation sélectionnée'; errEl.style.display='block'; return; }
+    const body = {
+      action: 'create',
+      type: document.getElementById('cm-type').value,
+      reservation_id,
+      transporteur_id: document.getElementById('cm-transp').value || null,
+      date_prevue: document.getElementById('cm-date').value,
+      creneau: document.getElementById('cm-creneau').value.trim(),
+    };
+    okBtn.disabled = true;
+    try{
+      const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      loadLivraisons();
+      showToast('Mission créée', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      errEl.textContent = e.message; errEl.style.display = 'block';
+    }
+  };
 }
 function setLivraisonsFilter(key){ LIVRAISONS_SHOW_MASQUEES = false; LIVRAISONS_FILTER = key; renderLivraisonsToolbar(); renderLivraisons(); }
 function toggleLivraisonsMasquees(){ LIVRAISONS_SHOW_MASQUEES = !LIVRAISONS_SHOW_MASQUEES; renderLivraisonsToolbar(); renderLivraisons(); }
@@ -1819,47 +1879,6 @@ function collectDispoForm(prefix){
   }
   return rows;
 }
-function editZonesDispo(id){
-  const t = TRANSPORTEURS_CACHE.find(x => x.id === id);
-  if(!t) return;
-  closeModal();
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.id = 'modal-overlay-el';
-  overlay.innerHTML = `
-    <div class="modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
-      <h2 style="margin-bottom:14px">🌍 Zones & disponibilité — ${escHtml(t.nom)}</h2>
-      <label>Villes d'intervention</label>
-      ${villesCheckboxesHtml('zd', t.villes)}
-      <label style="margin-top:16px">Disponibilité</label>
-      ${dispoFormHtml('zd', t.disponibilites)}
-      <div class="modal-actions" style="margin-top:18px">
-        <button class="btn btn-grey">Annuler</button>
-        <button class="btn btn-blue">Enregistrer</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
-  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
-  cancelBtn.onclick = closeModal;
-  okBtn.onclick = async () => {
-    const villes = collectVillesForm('zd');
-    const disponibilites = collectDispoForm('zd');
-    okBtn.disabled = true;
-    try{
-      const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id:t.id, villes, disponibilites})});
-      const d = await r.json();
-      if(!r.ok) throw new Error(d.error||'Erreur');
-      closeModal();
-      loadTransporteursEquipe();
-      showToast('Zones et disponibilité mises à jour', 'success');
-    }catch(e){
-      okBtn.disabled = false;
-      showToast(`Non enregistré : ${e.message}`, 'error');
-    }
-  };
-}
-
 function editFiche(id){
   const t = TRANSPORTEURS_CACHE.find(x => x.id === id);
   if(!t) return;
@@ -1958,7 +1977,7 @@ async function loadTransporteursEquipe(){
           </span>
         </div>
         <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''}</div>
-        <div class="row-meta">Code : <strong>${escHtml(t.pin||'—')}</strong> · ${euros(t.taux_livraison_cents)}/livraison · ${euros(t.taux_recuperation_cents)}/récupération</div>
+        <div class="row-meta">Code : <strong>${escHtml(t.pin||'—')}</strong></div>
         ${CITIES_CACHE.length>1?`<div class="row-meta">🌍 ${(t.villes&&t.villes.length) ? t.villes.map(id => escHtml((CITIES_CACHE.find(c=>c.id===id)||{}).name||'?')).join(', ') : 'Aucune zone'}</div>`:''}
         <div class="row-meta" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
           ${[{key:'livraison',label:'Livraison',tarif:'30€'},{key:'livraison_technicien',label:'Livr.+install.',tarif:'40€'},{key:'recuperation',label:'Récupération',tarif:'30€'},{key:'changement',label:'Remplacement',tarif:'40€'}].map(mt=>{const on=!(t.types_autorises&&t.types_autorises.length)||t.types_autorises.includes(mt.key);return`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;background:${on?'var(--green-bg)':'var(--bg)'};color:${on?'var(--green)':'var(--grey-soft)'};opacity:${on?1:.5};text-decoration:${on?'none':'line-through'}">${mt.label} · ${mt.tarif}</span>`;}).join('')}
@@ -1991,10 +2010,7 @@ async function loadTransporteursEquipe(){
         <input type="tel" id="t-tel" placeholder="06…"/>
         <label for="t-email">Email (pour "code oublié")</label>
         <input type="text" id="t-email" placeholder="osama@email.fr"/>
-        <div class="inline-form">
-          <div><label for="t-liv">€ / livraison</label><input type="number" id="t-liv" min="0" step="0.5" value="10"/></div>
-          <div><label for="t-rec">€ / récupération</label><input type="number" id="t-rec" min="0" step="0.5" value="10"/></div>
-        </div>
+        <p class="sub" style="margin-top:2px">💶 Le montant payé par mission est le même pour toute l'équipe — réglable dans l'onglet Villes (barème).</p>
         <label style="margin-top:14px">Types de mission autorisés</label>
         <p class="sub" style="margin:4px 0 10px;font-size:12px">Cocher tout = aucune restriction</p>
         ${missionTypesHtml('t-new', null)}
@@ -2015,8 +2031,6 @@ async function addTransporteur(){
   const nom = document.getElementById('t-nom').value.trim();
   const telephone = document.getElementById('t-tel').value.trim();
   const email = document.getElementById('t-email').value.trim();
-  const taux_livraison_cents = Math.round((parseFloat(document.getElementById('t-liv').value)||0)*100);
-  const taux_recuperation_cents = Math.round((parseFloat(document.getElementById('t-rec').value)||0)*100);
   const errEl = document.getElementById('transp-err');
   errEl.style.display='none';
   if(!nom){ errEl.textContent='Nom requis'; errEl.style.display='block'; return; }
@@ -2029,7 +2043,7 @@ async function addTransporteur(){
     ...(CITIES_CACHE.length>1 ? { villes: collectVillesForm('t-new') } : {}),
   };
   try{
-    const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, telephone, email, taux_livraison_cents, taux_recuperation_cents, ...extra})});
+    const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, telephone, email, ...extra})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadTransporteursEquipe();
@@ -2138,22 +2152,6 @@ function editEmail(id, currentEmail){
     }catch(e){ showToast(`Email non mis à jour : ${e.message}`, 'error'); }
   });
 }
-function editRates(id, currentLiv, currentRec){
-  promptRates({liv:currentLiv, rec:currentRec}, async (liv, rec) => {
-    try{
-      const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
-        action:'update', id,
-        taux_livraison_cents: Math.round((parseFloat(liv)||0)*100),
-        taux_recuperation_cents: Math.round((parseFloat(rec)||0)*100),
-      })});
-      const d = await r.json();
-      if(!r.ok) throw new Error(d.error||'Erreur');
-      loadTransporteursEquipe();
-      showToast('Taux mis à jour', 'success');
-    }catch(e){ showToast(`Taux non mis à jour : ${e.message}`, 'error'); }
-  });
-}
-
 // ── REVENUS (ex-onglet Virements, fusionné dans Transporteurs) ────────────────
 // Jusqu'ici l'admin ne voyait un transporteur ici que s'il avait lui-même
 // demandé un virement — aucune visibilité sur ce qui est dû avant ça. Montre
@@ -2675,8 +2673,10 @@ function renderVilles(){
       <div class="row-meta">${escHtml(c.dep||'—')}</div>
       <div class="row-meta">Codes postaux : ${(c.postal_codes&&c.postal_codes.length) ? escHtml(c.postal_codes.join(', ')) : '—'}</div>
       ${c.sold_out?`<div class="row-meta" style="color:var(--red);font-size:12px">Le site affiche "complet" pour cette ville — aucune nouvelle réservation possible.</div>`:''}
+      <div class="row-meta">💶 ${baremeSummaryHtml(c)}</div>
       <div class="row-actions">
         <button class="btn btn-grey" onclick="editVillePostaux(${c.id}, '${((c.postal_codes||[]).join(', ')).replace(/'/g,"\\'")}')">Modifier les codes postaux</button>
+        <button class="btn btn-grey" onclick="editVilleBareme(${c.id})">Modifier le barème</button>
         <button class="btn ${c.sold_out?'btn-green':'btn-grey'}" onclick="toggleVilleSoldOut(${c.id}, ${!c.sold_out})">${c.sold_out?'🔓 Rouvrir':'🔒 Passer en complet'}</button>
         <button class="btn btn-grey" onclick="toggleVilleActif(${c.id}, ${!c.actif})">${c.actif?'Désactiver':'Réactiver'}</button>
       </div>
@@ -2761,6 +2761,65 @@ function addCpsFromVille(jsonStr){
   input.value = merged.join(', ');
   const sug = document.getElementById('v-cp-suggest');
   if(sug) sug.style.display='none';
+}
+// Le barème payé au transporteur par mission (remplace l'ancien taux fixé par
+// transporteur, désormais sans effet — voir api/_lib/bareme.js) : éditable
+// ici par ville, null = valeur par défaut du barème Loc'Air.
+const BAREME_DEFAULTS = { tarif_livraison_autonome: 30, tarif_livraison_technicien: 40, tarif_recuperation: 30, tarif_changement: 40 };
+const BAREME_FIELDS = [
+  ['tarif_livraison_autonome_cents',   'tarif_livraison_autonome',   'Livraison autonome'],
+  ['tarif_livraison_technicien_cents', 'tarif_livraison_technicien', 'Livraison + installation'],
+  ['tarif_recuperation_cents',         'tarif_recuperation',         'Récupération'],
+  ['tarif_changement_cents',           'tarif_changement',           'Remplacement'],
+];
+function baremeSummaryHtml(c){
+  return BAREME_FIELDS.map(([col, key, label]) => {
+    const euros = c[col] != null ? (c[col]/100) : BAREME_DEFAULTS[key];
+    return `${label} ${euros}€`;
+  }).join(' · ');
+}
+function editVilleBareme(id){
+  const c = VILLES_CACHE.find(x => x.id === id);
+  if(!c) return;
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:380px">
+      <h2 style="margin-bottom:6px">💶 Barème — ${escHtml(c.name)}</h2>
+      <p class="sub" style="margin-bottom:16px">Montant payé au transporteur par mission terminée. Laisser vide = valeur par défaut Loc'Air.</p>
+      ${BAREME_FIELDS.map(([col, key, label]) => `
+        <label for="bar-${key}">${label} (€)</label>
+        <input type="text" inputmode="decimal" id="bar-${key}" placeholder="${BAREME_DEFAULTS[key]}" value="${c[col]!=null ? (c[col]/100) : ''}"/>
+      `).join('')}
+      <div class="modal-actions" style="margin-top:14px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Enregistrer</button>
+      </div>
+      <div class="err" id="bareme-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const body = { action:'update', id, city_id:'all' };
+    BAREME_FIELDS.forEach(([, key]) => { body[key] = document.getElementById(`bar-${key}`).value.trim(); });
+    okBtn.disabled = true;
+    try{
+      const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      loadVilles();
+      showToast('Barème mis à jour', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      const errEl = document.getElementById('bareme-err');
+      if(errEl){ errEl.textContent = e.message; errEl.style.display='block'; }
+    }
+  };
 }
 async function addVille(){
   const name = document.getElementById('v-nom').value.trim();

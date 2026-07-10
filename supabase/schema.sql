@@ -24,7 +24,14 @@ create table cities (
   postal_codes  text[] not null default '{}',
   sold_out      boolean not null default false, -- mode "complet" affiché sur le site (api/mode-complet.js)
   actif         boolean not null default true,
-  created_at    timestamptz not null default now()
+  created_at    timestamptz not null default now(),
+  -- Barème payé au transporteur par mission, éditable dans l'admin (onglet
+  -- Villes) — remplace l'ancien taux fixé par transporteur (voir
+  -- api/_lib/bareme.js). null = valeur par défaut du barème.
+  tarif_livraison_autonome_cents   integer,
+  tarif_livraison_technicien_cents integer,
+  tarif_recuperation_cents         integer,
+  tarif_changement_cents           integer
 );
 
 -- Un appareil physique = une ligne, numérotée (étiquette à coller dessus).
@@ -37,7 +44,7 @@ create table appareils (
   id         bigint generated always as identity primary key,
   city_id    bigint not null references cities(id),
   numero     integer not null,
-  statut     text not null default 'disponible' check (statut in ('disponible','panne','maintenance')),
+  statut     text not null default 'disponible' check (statut in ('disponible','panne','maintenance','loue')),
   reference  text, -- référence produit du fabricant (ex. "RWAC10KA+"), saisie librement par l'admin
   notes      text,
   created_at timestamptz not null default now(),
@@ -167,7 +174,7 @@ create index reservation_appareils_app_idx  on reservation_appareils (appareil_i
 create table livraisons (
   id                     bigint generated always as identity primary key,
   reservation_id         bigint not null references reservations(id) on delete cascade,
-  type                   text not null check (type in ('livraison','recuperation')),
+  type                   text not null check (type in ('livraison','recuperation','changement')),
   transporteur_id        bigint references transporteurs(id),
   date_prevue            date not null,
   creneau                text,
@@ -242,7 +249,7 @@ stable
 as $$
   select
     (select count(*)::int from appareils a
-       where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance'))
+       where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue'))
     - coalesce((
         select sum(r.quantite) from reservations r
         where r.city_id = p_city_id and r.statut = 'en_attente'
@@ -272,7 +279,7 @@ declare
 begin
   select array_agg(id) into v_ids from (
     select a.id from appareils a
-    where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance')
+    where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue')
       and not exists (
         select 1 from reservation_appareils ra
         join reservations r on r.id = ra.reservation_id

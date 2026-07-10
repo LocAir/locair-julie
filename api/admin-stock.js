@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
       if (!id) return res.status(400).json({ error: 'id manquant' });
       const patch = {};
       if (body.statut != null) {
-        if (!['disponible', 'panne', 'maintenance'].includes(body.statut)) {
+        if (!['disponible', 'panne', 'maintenance', 'loue'].includes(body.statut)) {
           return res.status(400).json({ error: 'Statut invalide' });
         }
         patch.statut = body.statut;
@@ -66,7 +66,7 @@ module.exports = async (req, res) => {
     );
 
     const list = (appareils || []).map(a => ({ ...a, en_location: enLocationIds.has(a.id) }));
-    const actifs = list.filter(a => a.statut !== 'panne' && a.statut !== 'maintenance').length;
+    const actifs = list.filter(a => !['panne', 'maintenance', 'loue'].includes(a.statut)).length;
 
     return res.status(200).json({
       ville:        city.name,

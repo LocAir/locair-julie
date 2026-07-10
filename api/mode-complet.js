@@ -1,6 +1,7 @@
 const { getSupabase }     = require('./_lib/supabase');
 const { getCity, resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken }  = require('./_lib/auth');
+const { getAvailability } = require('./_lib/stock');
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -9,11 +10,16 @@ module.exports = async (req, res) => {
 
   const supabase = getSupabase();
 
-  // GET — lecture publique de l'état sold_out
+  // GET — lecture publique de l'état sold_out + compteur temps réel (le site
+  // en fait un texte "Plus que N appareil(s) disponible(s)" synchronisé avec
+  // le vrai stock, y compris les appareils marqués "loué" hors système).
   if (req.method === 'GET') {
     try {
       const city = await getCity(supabase);
-      return res.status(200).json({ sold_out: city.sold_out === true });
+      const today    = new Date().toISOString().slice(0, 10);
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      const disponibles = Math.max(0, await getAvailability(supabase, city.id, today, tomorrow));
+      return res.status(200).json({ sold_out: city.sold_out === true, disponibles });
     } catch (err) {
       console.error('[mode-complet GET]', err.message);
       return res.status(500).json({ error: 'Erreur serveur' });
