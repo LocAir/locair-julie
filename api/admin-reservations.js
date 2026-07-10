@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
     if (action === 'list') {
       const { data, error } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, created_at')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, created_at')
         .eq('city_id', city.id)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -147,6 +147,17 @@ module.exports = async (req, res) => {
       }
 
       return res.status(200).json({ ok: true });
+    }
+
+    if (action === 'window_photo_url') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { data: resa } = await supabase
+        .from('reservations').select('fenetre_photo_path').eq('id', id).eq('city_id', city.id).maybeSingle();
+      if (!resa || !resa.fenetre_photo_path) return res.status(404).json({ error: 'Photo introuvable' });
+      const { data, error } = await supabase.storage.from('missions').createSignedUrl(resa.fenetre_photo_path, 300);
+      if (error) throw error;
+      return res.status(200).json({ url: data.signedUrl });
     }
 
     return res.status(400).json({ error: 'Action inconnue' });

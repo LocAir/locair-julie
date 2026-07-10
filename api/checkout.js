@@ -140,6 +140,7 @@ module.exports = async (req, res) => {
       etage:                    (data.etage        || '').slice(0, 50),
       ascenseur:                (data.ascenseur    || '').slice(0, 50),
       fenetre:                  (data.fenetre      || '').slice(0, 100),
+      fenetre_photo_path:       (data.fenetre_photo_path || '').slice(0, 500) || null,
       installation:             (data.installation || '').slice(0, 100),
       instructions_acces:       (data.instructions_acces || '').slice(0, 1000),
       creneau:                  (data.creneau_livraison || '').slice(0, 500),

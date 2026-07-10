@@ -4043,25 +4043,46 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               </div>
             </div>
 
-            <!-- 6. Je ne sais pas -->
+            <!-- 6. Je ne sais pas / Photo -->
             <div class="win-card on" onclick="tglOuv(this,'À confirmer')" role="radio" aria-checked="true" tabindex="0" data-val="À confirmer">
               <div class="win-check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
               <div class="win-photo">
                 <svg viewBox="0 0 200 140" fill="none" style="width:100%;height:100%;display:block">
                   <defs><linearGradient id="wg6" x1="0" y1="0" x2="0" y2="140" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#dce8f5" stop-opacity=".3"/><stop offset="100%" stop-color="#ede8e0" stop-opacity=".7"/></linearGradient></defs>
                   <rect width="200" height="140" fill="url(#wg6)"/>
-                  <circle cx="100" cy="62" r="36" stroke="#1b3a5f" stroke-width="1.5" stroke-dasharray="5 4" opacity=".28"/>
-                  <text x="100" y="73" font-family="Georgia,serif" font-size="32" fill="#1b3a5f" text-anchor="middle" opacity=".32" font-weight="400">?</text>
-                  <text x="100" y="114" font-family="Inter,system-ui,sans-serif" font-size="10" fill="#6b7785" text-anchor="middle" font-weight="400">Notre technicien vérifiera</text>
+                  <!-- Appareil photo stylisé -->
+                  <rect x="56" y="46" width="88" height="62" rx="8" fill="rgba(27,58,95,.12)" stroke="#1b3a5f" stroke-width="2"/>
+                  <rect x="72" y="38" width="28" height="14" rx="4" fill="rgba(27,58,95,.18)" stroke="#1b3a5f" stroke-width="1.5"/>
+                  <circle cx="100" cy="77" r="18" fill="rgba(255,255,255,.55)" stroke="#1b3a5f" stroke-width="2"/>
+                  <circle cx="100" cy="77" r="11" fill="rgba(27,58,95,.1)" stroke="#1b3a5f" stroke-width="1.5"/>
+                  <circle cx="100" cy="77" r="5" fill="#1b3a5f" opacity=".4"/>
+                  <circle cx="130" cy="57" r="4" fill="rgba(197,169,108,.7)" stroke="#c5a96c" stroke-width="1"/>
+                  <text x="100" y="126" font-family="Inter,system-ui,sans-serif" font-size="10" fill="#6b7785" text-anchor="middle" font-weight="500">Envoyer une photo</text>
                 </svg>
               </div>
               <div class="win-label">
-                <div class="win-name">Je ne sais pas</div>
-                <div class="win-hint">Notre technicien vérifiera</div>
+                <div class="win-name">Je ne suis pas sûr·e</div>
+                <div class="win-hint">Envoyez une photo →</div>
               </div>
             </div>
 
           </div>
+
+          <!-- Zone photo fenêtre — visible uniquement si "Je ne suis pas sûr·e" -->
+          <div id="fenetre-photo-zone" style="display:none;margin-top:14px;padding:14px 16px;background:rgba(27,58,95,.04);border:1.5px dashed rgba(27,58,95,.22);border-radius:12px">
+            <p style="font-size:12.5px;font-weight:600;color:var(--black2);margin-bottom:5px">📸 Photo de votre fenêtre <span style="font-weight:400;color:var(--grey)">(optionnel)</span></p>
+            <p style="font-size:12px;color:var(--grey);line-height:1.55;margin-bottom:12px">Notre technicien la verra avant d'arriver et apportera le matériel adapté à votre configuration.</p>
+            <label id="fenetre-photo-label" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:11px 14px;border:1.5px solid var(--rule);border-radius:10px;background:#fff;user-select:none">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <span id="fenetre-photo-btn-text" style="font-size:13px;font-weight:500">Prendre une photo / Choisir depuis la galerie</span>
+              <input id="fenetre-photo-input" type="file" accept="image/*" capture="environment" style="display:none" onchange="handleFenetrePhoto(this)"/>
+            </label>
+            <div id="fenetre-photo-preview" style="display:none;margin-top:10px">
+              <img id="fenetre-photo-img" style="max-width:100%;max-height:180px;border-radius:10px;object-fit:contain;display:block" alt="Aperçu fenêtre"/>
+              <p id="fenetre-photo-status" style="font-size:11.5px;color:var(--grey);margin-top:6px"></p>
+            </div>
+          </div>
+
           </div><!-- /ouv-section -->
           <!-- ACCÈS (étage + ascenseur) -->
           <div class="frow" style="margin-top:16px">
@@ -4123,20 +4144,16 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             <div id="cutoff-notice" style="display:none;margin-top:10px;padding:10px 13px;background:#fff7ed;border:1.5px solid #fed7aa;border-radius:9px;font-size:12px;color:#92400e;line-height:1.55"></div>
           </div>
 
-          <!-- CRÉNEAU LIVRAISON -->
+          <!-- CRÉNEAU LIVRAISON — fixe, pas de choix client -->
           <div class="fld" style="margin-top:20px;padding-top:20px;border-top:1.5px solid var(--rule)">
-            <p id="lbl-creneau-liv" style="font-size:13px;font-weight:600;color:var(--black);margin-bottom:4px">Préférence de créneau <span class="req">*</span></p>
-            <div class="cren-grid" id="creneau-liv-group" role="radiogroup" aria-labelledby="lbl-creneau-liv">
-              <button type="button" class="cren-card on" onclick="selectCren(this)" role="radio" aria-checked="true">
-                <span class="cren-time">8h – 10h</span>
-              </button>
-              <button type="button" class="cren-card" onclick="selectCren(this)" role="radio" aria-checked="false">
-                <span class="cren-time">10h – 12h</span>
-              </button>
+            <p id="lbl-creneau-liv" style="font-size:13px;font-weight:600;color:var(--black);margin-bottom:10px">Créneau de livraison</p>
+            <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:rgba(27,58,95,.05);border:1.5px solid rgba(27,58,95,.15);border-radius:12px">
+              <span style="font-size:24px;font-weight:900;color:#1b3a5f;letter-spacing:-.02em;white-space:nowrap">8h – 12h</span>
+              <span style="font-size:12.5px;color:var(--grey);line-height:1.55">Notre technicien vous appelle<br><strong>30 min avant</strong> d'arriver.</span>
             </div>
+            <!-- Valeur fixe lue par le JS de récap et de checkout -->
+            <div id="creneau-liv-group" style="display:none" aria-hidden="true"><span class="cren-card on">8h–12h</span></div>
           </div>
-
-          <p id="delivery-notice" style="font-size:12px;color:var(--grey);line-height:1.6;margin-top:10px">Le technicien vous appelle 30 min avant d'arriver.</p>
           <!-- INSTRUCTIONS D'ACCÈS -->
           <div style="margin-top:16px;padding-top:16px;border-top:1.5px solid var(--rule)">
             <p id="lbl-instructions-q" style="font-size:12px;font-weight:500;color:var(--black2);margin-bottom:8px">Souhaitez-vous laisser des instructions au technicien ?</p>
@@ -5412,6 +5429,8 @@ document.querySelectorAll('.win-card').forEach(card=>{
     }
   });
 });
+let _fenetrePhotoPath=null;
+
 function tglOuv(el,val){
   document.querySelectorAll('#ouv-group .win-card').forEach(c=>{
     c.classList.remove('on');
@@ -5428,7 +5447,45 @@ function tglOuv(el,val){
   dataLayer.push({event:'select_window_type',window_type:val});
   const g=document.getElementById('ouv-group');
   if(g){g.style.outline='';}
+  // Affiche la zone photo si "Je ne suis pas sûr·e" est sélectionné
+  const photoZone=document.getElementById('fenetre-photo-zone');
+  if(photoZone){
+    const show=val==='À confirmer';
+    photoZone.style.display=show?'block':'none';
+    if(!show){ _fenetrePhotoPath=null; }
+  }
   buildRecap();
+}
+
+async function handleFenetrePhoto(input){
+  const file=input.files[0];
+  if(!file)return;
+  const preview=document.getElementById('fenetre-photo-preview');
+  const img=document.getElementById('fenetre-photo-img');
+  const status=document.getElementById('fenetre-photo-status');
+  const btnText=document.getElementById('fenetre-photo-btn-text');
+  // Aperçu local immédiat
+  const reader=new FileReader();
+  reader.onload=e=>{
+    if(img){img.src=e.target.result;}
+    if(preview){preview.style.display='block';}
+    if(status){status.textContent='⏳ Envoi en cours…';}
+    if(btnText){btnText.textContent='Changer la photo';}
+  };
+  reader.readAsDataURL(file);
+  // Upload vers Supabase Storage via API
+  try{
+    const r=await fetch('/api/checkout-window-photo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:file.type})});
+    if(!r.ok)throw new Error('Endpoint indisponible');
+    const {signedUrl,path}=await r.json();
+    const up=await fetch(signedUrl,{method:'PUT',headers:{'Content-Type':file.type,'x-upsert':'false'},body:file});
+    if(!up.ok)throw new Error('Erreur réseau');
+    _fenetrePhotoPath=path;
+    if(status)status.textContent='✅ Photo bien jointe — notre technicien la verra avant d\'arriver.';
+  }catch(e){
+    _fenetrePhotoPath=null;
+    if(status)status.textContent='⚠️ La photo n\'a pas pu être envoyée. Ce n\'est pas bloquant — notre technicien évaluera sur place.';
+  }
 }
 
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -5454,7 +5511,7 @@ function buildRecap(){
     }
   }
   const _getCrenText=sel=>{const el=document.querySelector(sel);if(!el)return null;const t=(el.querySelector('.cren-time')?.textContent||'').trim();return t||el.textContent.trim();};
-  const creneauLiv=_getCrenText('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')||'8h–10h';
+  const creneauLiv=_getCrenText('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')||'8h–12h';
   const creneauRecup=null;
   const recupEl=document.getElementById('recap-date-recup');
   const isEN=_lang==='en';
@@ -5767,9 +5824,10 @@ function submitForm(btn,mode){
     date:document.getElementById('f-date')?.value,
     duree:document.getElementById('f-dur')?.value,
     fenetre:document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—',
+    fenetre_photo_path:_fenetrePhotoPath||'',
     quantite:_qty+'x',
     installation:_techInstall?'Technicien (25€)':'Autonome (kit fourni)',
-    creneau_livraison:document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–10h',
+    creneau_livraison:document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–12h',
     creneau_recuperation:'Coordonné par notre équipe (48h avant fin de location)',
     type_client:document.querySelector('#type-client-group .tpill.on')?.textContent.trim()||'Particulier',
     siret:document.getElementById('f-siret')?.value.trim()||'',

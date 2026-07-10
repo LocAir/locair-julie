@@ -1128,7 +1128,7 @@ function reservationRowHtml(res, readOnly){
       ${res.hors_zone?`<div class="resa-sub" style="color:var(--red);font-weight:700">⚠️ Hors zone — affectation manuelle requise</div>`:''}
       ${res.source==='site_prolongation'?`<div class="resa-sub" style="color:var(--blue);font-weight:700">🔄 Location prolongée</div>`:''}
       <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
-      ${(res.etage||res.ascenseur||res.fenetre)?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):''].filter(Boolean).join(' · ')}</div>`:''}
+      ${(res.etage||res.ascenseur||res.fenetre)?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):''].filter(Boolean).join(' · ')}${res.fenetre_photo_path?` <button class="btn btn-grey" style="padding:2px 8px;font-size:11px;vertical-align:middle" onclick="openFenetrePhoto(${res.id})">📷 Photo</button>`:''}</div>`:''}
       ${res.instructions_acces?`<div class="resa-sub" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
       <div class="resa-dates">
         <span class="resa-date-range">📅 ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
@@ -1773,6 +1773,7 @@ function resolveProbleme(livraisonId){
 const MEDIA_KIND_LABEL = {
   photo_depart: 'Photo — départ dépôt', photo_installation: 'Photo — installation',
   photo_retour: 'Photo — appareil récupéré', photo_absence: 'Photo — preuve de passage',
+  fenetre_photo: 'Photo — fenêtre (client)',
 };
 async function viewMedia(livraisonId, kind){
   try{
@@ -1780,6 +1781,14 @@ async function viewMedia(livraisonId, kind){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     openMediaViewer(d.url, kind);
+  }catch(e){ showToast(e.message, 'error'); }
+}
+async function openFenetrePhoto(resaId){
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'window_photo_url', id:resaId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    openMediaViewer(d.url, 'fenetre_photo');
   }catch(e){ showToast(e.message, 'error'); }
 }
 // Aperçu directement dans l'app plutôt que d'ouvrir le fichier brut dans un
