@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
         vidange_confirmee,
         probleme_type, probleme_description,
         reservation:reservations (
-          prenom, nom, tel, adresse, etage, ascenseur, fenetre, installation, quantite, instructions_acces,
+          prenom, nom, tel, tel_secondaire, adresse, etage, ascenseur, fenetre, installation, quantite, instructions_acces,
           reservation_appareils ( appareil:appareils ( numero ) ),
           client:clients ( acces_difficile )
         )

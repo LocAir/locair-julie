@@ -125,6 +125,7 @@ module.exports = async (req, res) => {
       nom:                      (data.nom     || '').slice(0, 200),
       email:                    (data.email   || '').slice(0, 200),
       tel:                      (data.tel     || '').slice(0, 50),
+      tel_secondaire:           (data.tel_secondaire || '').slice(0, 50) || null,
       adresse:                  (data.adresse || '').slice(0, 500),
       etage:                    (data.etage        || '').slice(0, 50),
       ascenseur:                (data.ascenseur    || '').slice(0, 50),
