@@ -82,6 +82,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .mcard-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
 .mcard-icon{font-size:20px}
 .mcard-type{font-weight:700;font-size:15px;letter-spacing:-.005em}
+.mcard-cp{font-size:11.5px;font-weight:700;color:var(--grey)}
 .mcard-badge{display:inline-flex;align-items:center;gap:5px;margin-left:auto;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:4px 10px 4px 8px;border-radius:100px;background:var(--bg);color:var(--grey)}
 .mcard-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
 .mcard-addr{font-size:14px;color:var(--black);margin-top:6px;line-height:1.45}
@@ -222,6 +223,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
       <button data-f="en_cours" onclick="setMissionFilter('en_cours')">🚚 En cours</button>
       <button data-f="terminee" onclick="setMissionFilter('terminee')">✅ Terminées</button>
     </div>
+    <div class="map-filters hidden" id="postal-filters"></div>
     <div id="tour-zone"></div>
     <div class="card hidden" id="faceid-offer">
       <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
@@ -638,11 +640,13 @@ function missionCardHtml(m){
   const c = m.client || {};
   const badge = STATUT_LABEL[m.statut] || m.statut;
   const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
+  const cp = postalCode(c.adresse);
   return `
     <div class="mcard st-${m.statut}" onclick="openMission(${m.id})">
       <div class="mcard-top">
         <span class="mcard-icon">${TYPE_ICON[m.type]||'📍'}</span>
         <span class="mcard-type">${TYPE_LABEL[m.type]||m.type}</span>
+        ${cp?`<span class="mcard-cp">📮 ${escHtml(cp)}</span>`:''}
         <span class="mcard-badge">${badge}</span>
       </div>
       <div class="mcard-addr">${escHtml((c.prenom||'')+' '+(c.nom||''))} — ${escHtml(c.adresse||'Adresse à confirmer')}</div>
@@ -684,6 +688,7 @@ const MISSION_FILTER_EMPTY = {
 };
 function setMissionFilter(f){
   MISSION_FILTER = f;
+  POSTAL_FILTER = null; // change de statut = on repart sur tous les secteurs
   document.querySelectorAll('#mission-filters button').forEach(b => b.classList.toggle('on', b.dataset.f===f));
   renderMissions();
 }
@@ -692,14 +697,33 @@ function filteredMissions(){
   return statuts ? STATE.missions.filter(m => statuts.includes(m.statut)) : STATE.missions;
 }
 
+// Filtre secondaire par code postal — pour que le livreur retrouve sa
+// tournée d'un secteur en un coup d'œil sans dérouler toute la liste.
+let POSTAL_FILTER = null;
+function setPostalFilter(cp){
+  POSTAL_FILTER = (POSTAL_FILTER === cp) ? null : cp;
+  renderMissions();
+}
+function renderPostalFilter(missionsForStatut){
+  const zone = document.getElementById('postal-filters');
+  if(!zone) return;
+  const codes = [...new Set(missionsForStatut.map(m => postalCode((m.client||{}).adresse)).filter(Boolean))].sort();
+  if(codes.length < 2){ zone.classList.add('hidden'); zone.innerHTML=''; return; }
+  zone.classList.remove('hidden');
+  zone.innerHTML = `<button class="${POSTAL_FILTER?'':'on'}" onclick="setPostalFilter(null)">Tous secteurs</button>`
+    + codes.map(cp => `<button class="${POSTAL_FILTER===cp?'on':''}" onclick="setPostalFilter('${cp}')">📮 ${cp}</button>`).join('');
+}
+
 function renderMissions(){
   const wrap = document.getElementById('missions-list');
   const tourZone = document.getElementById('tour-zone');
   renderDayProgress();
-  const visible = filteredMissions();
+  const byStatut = filteredMissions();
+  renderPostalFilter(byStatut);
+  const visible = POSTAL_FILTER ? byStatut.filter(m => postalCode((m.client||{}).adresse) === POSTAL_FILTER) : byStatut;
   if(!visible.length){
     tourZone.innerHTML='';
-    wrap.innerHTML = `<p class="empty">${MISSION_FILTER_EMPTY[MISSION_FILTER]}</p>`;
+    wrap.innerHTML = `<p class="empty">${POSTAL_FILTER ? 'Aucune mission dans ce secteur.' : MISSION_FILTER_EMPTY[MISSION_FILTER]}</p>`;
     return;
   }
 
