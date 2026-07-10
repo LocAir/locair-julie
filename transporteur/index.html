@@ -770,9 +770,9 @@ function actionBtnsForMission(m){
   }
   if(m.statut === 'arrivee' && m.type === 'livraison'){
     return `
-      <p class="step-hint">🎥 Installe l'appareil puis filme-le en marche.</p>
-      <button class="media-btn ${m.video_installation_ok?'done':''}" onclick="startUpload('video_installation','video/*')"><span class="ic">🎥</span> ${m.video_installation_ok?'Vidéo installation ✔':'Vidéo appareil en marche chez le client'}</button>
-      <button class="btn btn-green" ${m.video_installation_ok?'':'disabled'} onclick="doAction('livraison_ok')">✅ LIVRAISON OK — JE PARS</button>
+      <p class="step-hint">📷 Installe l'appareil puis prends une photo une fois branché.</p>
+      <button class="media-btn ${m.photo_installation_ok?'done':''}" onclick="startUpload('photo_installation','image/*')"><span class="ic">📷</span> ${m.photo_installation_ok?'Photo installation ✔':'Photo de l\'appareil installé'}</button>
+      <button class="btn btn-green" ${m.photo_installation_ok?'':'disabled'} onclick="doAction('livraison_ok')">✅ LIVRAISON OK — JE PARS</button>
       <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
   }
   if(m.statut === 'arrivee' && m.type === 'recuperation'){
@@ -821,6 +821,7 @@ function renderDetail(){
       <div class="info-row"><span class="info-ic">🪟</span><span class="info-label">Fenêtre</span><span class="info-val">${escHtml(c.fenetre||'—')}</span></div>
       <div class="info-row"><span class="info-ic">📞</span><span class="info-label">Téléphone</span><span class="info-val">${c.tel?`<a href="tel:${encodeURIComponent(c.tel)}" style="color:var(--blue);text-decoration:none">${escHtml(c.tel)}</a>`:'—'}</span></div>
       <div class="info-row"><span class="info-ic">❄️</span><span class="info-label">Quantité</span><span class="info-val">${c.quantite||1}</span></div>
+      ${c.instructions_acces?`<p class="step-hint" style="margin-top:10px">🔑 ${escHtml(c.instructions_acces)}</p>`:''}
       ${m.acces_difficile?`<p class="step-hint" style="margin-top:10px">📌 ${escHtml(m.acces_difficile)}</p>`:''}
       ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
       ${c.tel?`<a class="btn btn-blue" href="tel:${encodeURIComponent(c.tel)}" style="margin-bottom:12px;text-decoration:none">📞 Appeler ${escHtml(c.prenom||'le client')}</a>`:''}
@@ -904,7 +905,7 @@ async function closeCelebration(){
 function startUpload(kind, accept){
   const input = document.getElementById('media-input');
   input.setAttribute('accept', accept);
-  input.setAttribute('capture', kind==='video_installation' ? 'environment' : 'environment');
+  input.setAttribute('capture', 'environment');
   STATE.pendingUpload = {kind};
   input.value = '';
   input.click();

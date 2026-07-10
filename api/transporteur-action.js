@@ -32,18 +32,18 @@ function escHtml(s) {
 
 const MEDIA_COLUMN = {
   photo_depart:        'photo_depart_path',
-  video_installation:  'video_installation_path',
+  photo_installation:  'photo_installation_path',
   photo_retour:        'photo_retour_path',
   photo_absence:       'photo_absence_path',
 };
 // À quelle étape chaque preuve peut être prise — empêche de brûler une étape
-// (ex. filmer l'installation avant même d'être arrivé chez le client).
+// (ex. photographier l'installation avant même d'être arrivé chez le client).
 const STAGE_FOR_KIND = {
   photo_depart:       'acceptee',
-  video_installation: 'arrivee',
+  photo_installation: 'arrivee',
   photo_retour:       'arrivee',
 };
-const EXT_BY_TYPE = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'video/mp4': 'mp4', 'video/webm': 'webm', 'video/quicktime': 'mov' };
+const EXT_BY_TYPE = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 
 function checkMediaAllowed(liv, kind) {
   const column = MEDIA_COLUMN[kind];
@@ -54,7 +54,7 @@ function checkMediaAllowed(liv, kind) {
     if (!['acceptee', 'arrivee'].includes(liv.statut)) return 'Cette étape n\'est pas encore accessible';
     return null;
   }
-  const expectsLivraison = kind === 'photo_depart' || kind === 'video_installation';
+  const expectsLivraison = kind === 'photo_depart' || kind === 'photo_installation';
   if (expectsLivraison && liv.type !== 'livraison') return 'Média non attendu pour cette mission';
   if (kind === 'photo_retour' && liv.type !== 'recuperation') return 'Média non attendu pour cette mission';
   if (liv.statut !== STAGE_FOR_KIND[kind]) return 'Cette étape n\'est pas encore accessible';
@@ -151,7 +151,7 @@ module.exports = async (req, res) => {
       const mediaErr = checkMediaAllowed(liv, kind);
       if (mediaErr) return res.status(400).json({ error: mediaErr });
 
-      const ext = EXT_BY_TYPE[body.content_type] || (kind === 'video_installation' ? 'mp4' : 'jpg');
+      const ext = EXT_BY_TYPE[body.content_type] || 'jpg';
       const path = `${liv.id}/${kind}-${Date.now()}.${ext}`;
       const { data, error } = await supabase.storage.from('missions').createSignedUploadUrl(path, { upsert: true });
       if (error) throw error;
@@ -179,8 +179,8 @@ module.exports = async (req, res) => {
     if (action === 'livraison_ok' || action === 'retour_ok') {
       const expectedType = action === 'livraison_ok' ? 'livraison' : 'recuperation';
       if (liv.type !== expectedType || liv.statut !== 'arrivee') return res.status(409).json({ error: 'Étape non disponible' });
-      if (expectedType === 'livraison' && !liv.video_installation_path) {
-        return res.status(400).json({ error: 'Vidéo d\'installation requise avant de valider' });
+      if (expectedType === 'livraison' && !liv.photo_installation_path) {
+        return res.status(400).json({ error: 'Photo d\'installation requise avant de valider' });
       }
       if (expectedType === 'recuperation' && !liv.photo_retour_path) {
         return res.status(400).json({ error: 'Photo de l\'appareil récupéré requise avant de valider' });

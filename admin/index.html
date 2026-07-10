@@ -824,6 +824,8 @@ function reservationRowHtml(res, readOnly){
         <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
       </div>
       <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
+      ${(res.etage||res.ascenseur||res.fenetre)?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):''].filter(Boolean).join(' · ')}</div>`:''}
+      ${res.instructions_acces?`<div class="resa-sub" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
       <div class="resa-dates">
         <span class="resa-date-range">📅 ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
         <span class="resa-rel ${isUrgent(res.date_debut)?'urgent':''}">${nightsLabel(res.date_debut,res.date_fin)} · ${relLabel(res.date_debut)}</span>
@@ -1212,7 +1214,7 @@ function renderLivraisons(){
     ).join('');
     const mediaBtns = [];
     if(m.photo_depart_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_depart')">📷 Départ</button>`);
-    if(m.video_installation_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'video_installation')">🎥 Installation</button>`);
+    if(m.photo_installation_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_installation')">📷 Installation</button>`);
     if(m.photo_retour_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_retour')">📷 Retour</button>`);
     if(m.photo_absence_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_absence')">📵 Preuve passage</button>`);
     const enRoute = m.transporteur && (m.statut==='acceptee' || m.statut==='arrivee');
@@ -1242,6 +1244,8 @@ function renderLivraisons(){
         ${nonAssignee?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-bottom:4px">🔔 Non assignée</div>`:''}
         ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="row-meta" style="font-weight:700;color:var(--blue)">🔢 Unité${m.appareil_numeros.length>1?'s':''} n°${m.appareil_numeros.join(', ')}${(m.appareil_references&&m.appareil_references.length)?' · '+m.appareil_references.map(escHtml).join(', '):''}</div>`:''}
         <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
+        ${(res.etage||res.ascenseur||res.fenetre)?`<div class="row-meta">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):''].filter(Boolean).join(' · ')}</div>`:''}
+        ${res.instructions_acces?`<div class="row-meta" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
         ${(m.duree_trajet_min!=null || m.duree_sur_place_min!=null)?`<div class="row-meta">🕐 ${m.duree_trajet_min!=null?m.duree_trajet_min+' min trajet':''}${m.duree_trajet_min!=null&&m.duree_sur_place_min!=null?' · ':''}${m.duree_sur_place_min!=null?m.duree_sur_place_min+' min sur place':''}</div>`:''}
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
         <div class="row-actions">
@@ -1316,7 +1320,7 @@ function resolveProbleme(livraisonId){
   });
 }
 const MEDIA_KIND_LABEL = {
-  photo_depart: 'Photo — départ dépôt', video_installation: 'Vidéo — installation',
+  photo_depart: 'Photo — départ dépôt', photo_installation: 'Photo — installation',
   photo_retour: 'Photo — appareil récupéré', photo_absence: 'Photo — preuve de passage',
 };
 async function viewMedia(livraisonId, kind){
@@ -1332,7 +1336,10 @@ async function viewMedia(livraisonId, kind){
 // suite) et visuellement cohérent avec le reste de l'admin.
 function openMediaViewer(url, kind){
   closeMediaViewer();
-  const isVideo = kind === 'video_installation';
+  // Détection par extension plutôt que par kind : une preuve "installation"
+  // capturée avant ce changement (vidéo, ancien format) doit rester lisible
+  // correctement même si le type attendu aujourd'hui est une photo.
+  const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url);
   const safeUrl = escHtml(url);
   const overlay = document.createElement('div');
   overlay.className = 'map-overlay';
@@ -1683,7 +1690,9 @@ function renderClients(){
       ${c.acces_difficile?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-top:6px">⚠️ ${escHtml(c.acces_difficile)}</div>`:''}
       <div class="row-actions">
         <button class="btn btn-grey" onclick="editAccesDifficile(${c.id}, '${(c.acces_difficile||'').replace(/'/g,"\\'")}')">${c.acces_difficile?'Modifier':'Ajouter'} une note d'accès</button>
+        <button class="btn btn-grey" onclick="toggleClientPhotos(${c.id})">📷 Photos</button>
       </div>
+      <div class="row-actions hidden" id="cli-photos-${c.id}" style="margin-top:8px"></div>
     </div>`).join('') || '<p class="empty">👤 Aucun client pour l\'instant.</p>';
   zone.innerHTML = `
     <input type="text" id="cli-search" placeholder="🔎 Rechercher un client, un téléphone…" oninput="renderClients()" value="${escHtml(document.getElementById('cli-search')?.value||'')}"/>
@@ -1703,6 +1712,29 @@ function editAccesDifficile(id, current){
       showToast('Note mise à jour', 'success');
     }catch(e){ showToast(`Note non enregistrée : ${e.message}`, 'error'); }
   });
+}
+// Galerie des preuves (installation/récupération/passage) accumulées pour ce
+// client au fil des missions — chargée à la demande, pas au chargement de la
+// liste (évite une requête par client alors que la plupart ne seront jamais ouverts).
+async function toggleClientPhotos(id){
+  const panel = document.getElementById(`cli-photos-${id}`);
+  if(!panel) return;
+  if(!panel.classList.contains('hidden')){ panel.classList.add('hidden'); return; }
+  panel.classList.remove('hidden');
+  if(panel.dataset.loaded) return;
+  panel.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-clients'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'photos', id})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const photos = d.photos || [];
+    panel.innerHTML = photos.length
+      ? photos.map(p => `<button class="btn btn-grey" onclick="viewMedia(${p.livraison_id},'${p.kind}')">${p.type==='livraison'?'📦':'🔄'} ${MEDIA_KIND_LABEL[p.kind]||p.kind} — ${frDate(p.date_prevue)}</button>`).join('')
+      : '<p class="empty" style="padding:0">Aucune photo enregistrée pour l\'instant.</p>';
+    panel.dataset.loaded = '1';
+  }catch(e){
+    panel.innerHTML = '<p class="empty" style="padding:0">Erreur de chargement.</p>';
+  }
 }
 
 // ── Suivi en direct (carte gratuite OpenStreetMap) ───────────────────────────

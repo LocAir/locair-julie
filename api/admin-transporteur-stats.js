@@ -20,7 +20,7 @@ function computePerf(missions) {
     ? mFait.filter(m => m.client_notifie_at).length / mFait.length : 1;
   const proofOk  = mFait.filter(m =>
     m.type === 'livraison'
-      ? (m.photo_depart_path && m.video_installation_path)
+      ? (m.photo_depart_path && m.photo_installation_path)
       : m.photo_retour_path
   ).length;
   const proof   = mFait.length > 0 ? proofOk / mFait.length : 1;
@@ -139,7 +139,7 @@ module.exports = async (req, res) => {
       const tIds = (tList||[]).map(t => t.id);
       const { data: livs30 } = tIds.length
         ? await supabase.from('livraisons')
-            .select('transporteur_id, statut, type, client_notifie_at, fait_at, accepted_at, photo_depart_path, video_installation_path, photo_retour_path, probleme_type')
+            .select('transporteur_id, statut, type, client_notifie_at, fait_at, accepted_at, photo_depart_path, photo_installation_path, photo_retour_path, probleme_type')
             .in('transporteur_id', tIds)
             .gte('date_prevue', d30.toISOString().slice(0,10))
         : { data: [] };
@@ -167,7 +167,7 @@ module.exports = async (req, res) => {
 
       const period = body.period || 'month';
       const { start, prevStart } = periodRange(period);
-      const SEL = 'id, type, statut, date_prevue, fait_at, accepted_at, client_notifie_at, photo_depart_path, video_installation_path, photo_retour_path, probleme_type';
+      const SEL = 'id, type, statut, date_prevue, fait_at, accepted_at, client_notifie_at, photo_depart_path, photo_installation_path, photo_retour_path, probleme_type';
 
       const [{ data: cur }, { data: prev }] = await Promise.all([
         supabase.from('livraisons').select(SEL).eq('transporteur_id', tid).gte('date_prevue', start).order('date_prevue'),

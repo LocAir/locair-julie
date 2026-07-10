@@ -167,4 +167,11 @@ begin
 end;
 $$;
 
+-- ── Livraison : preuve vidéo remplacée par une photo (comme la récupération) ──
+alter table livraisons rename column video_installation_path to photo_installation_path;
+
+-- ── Instructions d'accès saisies par le client sur le site (digicode, boîte à
+-- clés...) — collectées côté formulaire mais jamais enregistrées jusqu'ici ──
+alter table reservations add column if not exists instructions_acces text;
+
 -- Fin de la migration.
