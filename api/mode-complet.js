@@ -1,5 +1,5 @@
 const { getSupabase }     = require('./_lib/supabase');
-const { getCity }          = require('./_lib/city');
+const { getCity, resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken }  = require('./_lib/auth');
 
 module.exports = async (req, res) => {
@@ -26,7 +26,8 @@ module.exports = async (req, res) => {
       return res.status(401).json({ error: 'Non autorisé' });
     }
     try {
-      const city   = await getCity(supabase);
+      const city = await resolveAdminCity(supabase, req.body);
+      if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
       const newVal = req.body?.sold_out !== undefined
         ? Boolean(req.body.sold_out)
         : !city.sold_out;

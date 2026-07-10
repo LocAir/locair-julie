@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { getCity }     = require('./_lib/city');
+const { resolveAdminCity } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate }     = require('./_lib/dates');
 const { checkAdminToken } = require('./_lib/auth');
@@ -16,7 +16,8 @@ module.exports = async (req, res) => {
   const action = body.action || 'list';
 
   try {
-    const city = await getCity(supabase);
+    const city = await resolveAdminCity(supabase, body);
+    if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
 
     if (action === 'list') {
       const { data, error } = await supabase

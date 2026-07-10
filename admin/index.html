@@ -83,6 +83,12 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .unassigned-banner{background:var(--red);color:#fff;text-align:center;padding:12px 16px;border-radius:var(--r);font-weight:700;font-size:13px;margin-bottom:16px;cursor:pointer;box-shadow:var(--sh-sm);transition:background-color .15s ease}
 .unassigned-banner:hover{background:#7d2818}
 
+/* Sélecteur de ville/zone — visible seulement dès 2 villes actives (voir
+   loadCitySwitcher), sinon inutile pour une exploitation mono-ville. */
+.city-switcher{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--white);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh-xs)}
+.city-switcher label{margin:0;flex-shrink:0}
+.city-switcher select{width:auto;flex:1;padding:8px 12px;margin:0}
+
 .periods{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);padding:4px;border-radius:var(--r-sm)}
 .periods button{flex:1;padding:8px;border-radius:7px;border:none;background:transparent;font-weight:600;font-size:12.5px;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
 .periods button.on{background:var(--white);color:var(--black);box-shadow:var(--sh-xs)}
@@ -155,6 +161,12 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .modal-actions{display:flex;gap:10px;margin-top:4px}
 .modal-actions .btn{flex:1}
 .modal-actions-2col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ville-checks{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:4px}
+.ville-checks label{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--black);margin:0}
+.dispo-grid{display:flex;flex-direction:column;gap:6px}
+.dispo-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.dispo-row .dispo-day{font-size:13px;color:var(--grey);flex:1}
+.dispo-row select{width:auto;flex:1.3;padding:8px 10px;margin:0;font-size:13px}
 
 .toast-wrap{position:fixed;left:0;right:0;bottom:24px;display:flex;justify-content:center;z-index:300;pointer-events:none}
 .toast{background:var(--black);color:#fff;padding:13px 20px;border-radius:100px;font-size:13.5px;font-weight:600;box-shadow:var(--sh-md);opacity:0;transform:translateY(12px);transition:opacity .25s ease, transform .25s ease;max-width:90vw}
@@ -248,6 +260,10 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
       <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="dismissAdminFaceIdOffer()">Plus tard</button>
       <div class="err" id="a-faceid-err"></div>
     </div>
+    <div class="city-switcher hidden" id="a-city-switcher">
+      <label for="a-city-select">🏙️ Ville / zone</label>
+      <select id="a-city-select" onchange="setSelectedCityId(this.value)"></select>
+    </div>
     <div class="a-layout">
       <div class="tabs">
         <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')">📊 Accueil</button>
@@ -260,6 +276,8 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div class="tabs-group-label">Suivi</div>
         <button data-tab="incidents" onclick="switchAdminTab('incidents')">🧯 Incidents</button>
         <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
+        <div class="tabs-group-label">Réglages</div>
+        <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
       </div>
 
       <div class="a-content">
@@ -270,6 +288,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-transporteurs" class="hidden"></div>
         <div id="tab-incidents" class="hidden"></div>
         <div id="tab-clients" class="hidden"></div>
+        <div id="tab-villes" class="hidden"></div>
       </div>
     </div>
   </div>
@@ -284,6 +303,69 @@ const API = (p) => '/api/' + p;
 let TOKEN = localStorage.getItem('a_token') || '';
 
 function authHeaders(){ return {'Content-Type':'application/json','x-admin-token':TOKEN}; }
+
+// ── Ville/zone sélectionnée (multi-ville) ─────────────────────────────────
+// Plutôt que de retoucher chaque site d'appel fetch(API('admin-...'), ...)
+// un par un (des dizaines), un seul point d'interception : city_id est
+// injecté automatiquement dans le corps de toute requête POST vers un
+// endpoint admin-* qui ne le précise pas déjà explicitement. 'all' (vue
+// agrégée) n'est compris que par admin-dashboard.js — les autres endpoints
+// le traitent comme absent et retombent sur la première ville active
+// (resolveAdminCity), donc aucun risque à l'envoyer partout.
+// Vide par défaut (jamais 'all') : tant qu'aucune préférence n'est connue,
+// le corps de requête n'est pas touché et chaque endpoint retombe sur son
+// comportement pré-multi-ville (resolveAdminCity → première ville active) —
+// donc zéro changement pour une exploitation à une seule ville tant que
+// l'admin n'a jamais vu/touché le sélecteur (ex. premier chargement jamais
+// fait sur cet appareil). 'all' n'est choisi explicitement que s'il y a
+// réellement plusieurs villes actives (voir loadCitySwitcher).
+let CITY_ID = localStorage.getItem('a_city_id') || '';
+let CITIES_CACHE = [];
+const _rawFetch = window.fetch.bind(window);
+window.fetch = function(url, opts){
+  if(CITY_ID && opts && opts.method === 'POST' && typeof url === 'string' && url.indexOf('/api/admin-') !== -1 && typeof opts.body === 'string'){
+    try{
+      const parsed = JSON.parse(opts.body);
+      if(parsed.city_id === undefined){
+        parsed.city_id = CITY_ID;
+        opts = Object.assign({}, opts, { body: JSON.stringify(parsed) });
+      }
+    }catch(e){}
+  }
+  return _rawFetch(url, opts);
+};
+function setSelectedCityId(id){
+  CITY_ID = id;
+  localStorage.setItem('a_city_id', id);
+  if(CURRENT_TAB) switchAdminTab(CURRENT_TAB);
+}
+async function loadCitySwitcher(){
+  try{
+    const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list', city_id:'all'})});
+    const d = await r.json();
+    if(!r.ok) return;
+    CITIES_CACHE = (d.cities||[]).filter(c => c.actif);
+    const sel = document.getElementById('a-city-select');
+    if(!sel) return;
+    const showAll = CITIES_CACHE.length > 1;
+    sel.innerHTML = (showAll ? `<option value="all">🌍 Toutes les villes</option>` : '')
+      + CITIES_CACHE.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+    const knownIds = new Set(CITIES_CACHE.map(c => String(c.id)));
+    const storedValid = CITY_ID === 'all' ? showAll : knownIds.has(CITY_ID);
+    if(!storedValid){
+      // Pas de préférence connue/valide : une seule ville → la sélectionner
+      // silencieusement (comportement inchangé) ; plusieurs → vue agrégée.
+      CITY_ID = showAll ? 'all' : (CITIES_CACHE[0] ? String(CITIES_CACHE[0].id) : '');
+    }
+    sel.value = CITY_ID;
+    document.getElementById('a-city-switcher').classList.toggle('hidden', CITIES_CACHE.length < 2);
+    localStorage.setItem('a_city_id', CITY_ID);
+    // La ville n'était pas encore connue au moment du premier chargement de
+    // l'onglet (ce fetch est asynchrone, lancé en parallèle) — on rejoue le
+    // chargement maintenant qu'elle l'est, seulement si elle a changé.
+    if(showAll && CURRENT_TAB) switchAdminTab(CURRENT_TAB);
+  }catch(e){}
+}
 
 // Nécessaire maintenant que la session est permanente (localStorage) : sans
 // ce bouton, la seule façon de sortir du compte sur un appareil serait de
@@ -319,6 +401,7 @@ async function adminLogin(){
     document.getElementById('a-logout-btn').classList.remove('hidden');
     switchAdminTab('accueil');
     loadAlerts();
+    loadCitySwitcher();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
     if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
     maybeOfferAdminFaceId();
@@ -440,6 +523,7 @@ async function loginWithAdminFaceId(auto){
     document.getElementById('a-logout-btn').classList.remove('hidden');
     switchAdminTab('accueil');
     loadAlerts();
+    loadCitySwitcher();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
     if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
     maybeOfferAdminFaceId();
@@ -598,7 +682,7 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','livraisons','transporteurs','incidents','clients'].forEach(t=>{
+  ['accueil','stock','reservations','livraisons','transporteurs','incidents','clients','villes'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
@@ -608,6 +692,7 @@ function switchAdminTab(tab){
   if(tab==='transporteurs') loadTransporteursTab();
   if(tab==='incidents') loadIncidents();
   if(tab==='clients') loadClients();
+  if(tab==='villes') loadVilles();
 }
 
 // ── Badges "à regarder" sur les onglets (virements demandés, missions en
@@ -719,9 +804,13 @@ async function loadDashboard(periode){
     if(!dr.ok) throw new Error(d.error||'Erreur');
     const ld = await lr.json().catch(()=>({livraisons:[]}));
     const pct = Math.round((d.taux_occupation||0)*100);
+    // En vue agrégée ("Toutes les villes"), le board du jour et l'occupation
+    // par ville n'ont de sens que ville par ville — remplacés par le tableau
+    // de répartition par_ville plutôt que d'afficher les chiffres d'une
+    // seule zone sous une étiquette "toutes villes" trompeuse.
     zone.innerHTML = `
       ${morningBannerHtml(d.hier)}
-      ${boardHtml(ld.livraisons||[])}
+      ${d.agregat ? '' : boardHtml(ld.livraisons||[])}
       <div class="periods">
         <button class="${periode==='jour'?'on':''}" onclick="loadDashboard('jour')">Jour</button>
         <button class="${periode==='7j'?'on':''}" onclick="loadDashboard('7j')">7 jours</button>
@@ -731,14 +820,31 @@ async function loadDashboard(periode){
       <div class="stat-grid">
         <div class="stat-tile"><div class="n">${(d.ca_euros||0).toFixed(0)} €</div><div class="l">Chiffre d'affaires</div></div>
         <div class="stat-tile"><div class="n">${d.nb_reservations||0}</div><div class="l">Réservations</div></div>
-        <div class="stat-tile"><div class="n">${pct}%</div><div class="l">Occupation (${d.unites_occupees}/${d.flotte_totale} à ${d.ville})</div></div>
+        <div class="stat-tile"><div class="n">${pct}%</div><div class="l">Occupation (${d.unites_occupees}/${d.flotte_totale}${d.agregat?' · toutes villes':' à '+escHtml(d.ville||'')})</div></div>
         <div class="stat-tile ${d.incidents_ouverts>0?'warn':''}"><div class="n">${d.incidents_ouverts||0}</div><div class="l">Incidents ouverts</div></div>
         <div class="stat-tile" style="grid-column:1/-1"><div class="n">${(d.ca_total_euros||0).toFixed(0)} €</div><div class="l">CA total généré (depuis le début)</div></div>
       </div>
+      ${d.agregat ? parVilleTableHtml(d.par_ville||[]) : ''}
     `;
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
+}
+function parVilleTableHtml(parVille){
+  if(!parVille.length) return '';
+  return `
+    <div class="card">
+      <h2>Répartition par ville</h2>
+      ${parVille.map(v => `
+        <div class="row-item">
+          <div class="row-top">
+            <span class="row-title">${escHtml(v.ville)}</span>
+            <span class="chip ${v.incidents_ouverts>0?'probleme':'actif'}">${Math.round((v.taux_occupation||0)*100)}% occ.</span>
+          </div>
+          <div class="row-meta">${(v.ca_euros||0).toFixed(0)} € · ${v.nb_reservations||0} réservation${v.nb_reservations>1?'s':''} · ${v.unites_occupees}/${v.flotte_totale} unités</div>
+          ${v.incidents_ouverts>0?`<div class="row-meta" style="color:var(--red);font-weight:700">🧯 ${v.incidents_ouverts} incident${v.incidents_ouverts>1?'s':''} ouvert${v.incidents_ouverts>1?'s':''}</div>`:''}
+        </div>`).join('')}
+    </div>`;
 }
 
 // ── Board du jour (installations / récupérations) ────────────────────────────
@@ -1570,6 +1676,104 @@ function loadTransporteursTab(){
   if(TRANSPORTEURS_VIEW==='equipe') loadTransporteursEquipe(); else loadTransporteursRevenus();
 }
 function setTransporteursView(view){ TRANSPORTEURS_VIEW = view; loadTransporteursTab(); }
+// ── Zones d'intervention + disponibilité (multi-ville) ────────────────────
+// Distinct de transporteurs.city_id (ville de rattachement, équipe/paie) :
+// transporteur_villes couvre plusieurs zones possibles pour la répartition
+// automatique des missions ; transporteur_disponibilites précise jour ×
+// moment. Aucune ligne de dispo = disponible tous les jours, tous moments
+// (comportement historique inchangé pour un transporteur jamais restreint).
+const JOURS_LABELS = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+function villesCheckboxesHtml(prefix, selectedIds){
+  const sel = new Set((selectedIds||[]).map(String));
+  if(!CITIES_CACHE.length) return '<p class="sub" style="margin:0">Aucune ville configurée.</p>';
+  return `<div class="ville-checks">${CITIES_CACHE.map(c => `
+    <label><input type="checkbox" id="${prefix}-ville-${c.id}" ${sel.has(String(c.id))?'checked':''}/> ${escHtml(c.name)}</label>
+  `).join('')}</div>`;
+}
+function collectVillesForm(prefix){
+  return CITIES_CACHE.map(c => c.id).filter(id => document.getElementById(`${prefix}-ville-${id}`)?.checked);
+}
+function dispoFormHtml(prefix, dispoRows){
+  const byJour = {};
+  (dispoRows||[]).forEach(d => { byJour[d.jour] = d.moment; });
+  const rows = [0,1,2,3,4,5,6].map(j => {
+    const val = byJour[j] || '';
+    return `<div class="dispo-row">
+      <span class="dispo-day">${JOURS_LABELS[j]}</span>
+      <select id="${prefix}-jour-${j}">
+        <option value="" ${val===''?'selected':''}>Indisponible</option>
+        <option value="matin" ${val==='matin'?'selected':''}>Matin</option>
+        <option value="apres_midi" ${val==='apres_midi'?'selected':''}>Après-midi</option>
+        <option value="journee" ${val==='journee'?'selected':''}>Toute la journée</option>
+      </select>
+    </div>`;
+  }).join('');
+  return `
+    <div class="dispo-grid" id="${prefix}-dispo-grid">${rows}</div>
+    <div class="periods" style="margin-top:8px">
+      <button type="button" onclick="applyDispoPreset('${prefix}','semaine')">Semaine</button>
+      <button type="button" onclick="applyDispoPreset('${prefix}','weekend')">Week-end</button>
+      <button type="button" onclick="applyDispoPreset('${prefix}','tous')">Tous les jours</button>
+    </div>`;
+}
+function applyDispoPreset(prefix, preset){
+  for(let j=0;j<=6;j++){
+    const sel = document.getElementById(`${prefix}-jour-${j}`);
+    if(!sel) continue;
+    if(preset==='semaine') sel.value = (j>=1 && j<=5) ? 'journee' : '';
+    else if(preset==='weekend') sel.value = (j===0 || j===6) ? 'journee' : '';
+    else sel.value = ''; // 'tous' — vide toutes les lignes = disponible tous les jours
+  }
+}
+function collectDispoForm(prefix){
+  const rows = [];
+  for(let j=0;j<=6;j++){
+    const sel = document.getElementById(`${prefix}-jour-${j}`);
+    if(sel && sel.value) rows.push({jour:j, moment:sel.value});
+  }
+  return rows;
+}
+function editZonesDispo(id){
+  const t = TRANSPORTEURS_CACHE.find(x => x.id === id);
+  if(!t) return;
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
+      <h2 style="margin-bottom:14px">🌍 Zones & disponibilité — ${escHtml(t.nom)}</h2>
+      <label>Villes d'intervention</label>
+      ${villesCheckboxesHtml('zd', t.villes)}
+      <label style="margin-top:16px">Disponibilité</label>
+      ${dispoFormHtml('zd', t.disponibilites)}
+      <div class="modal-actions" style="margin-top:18px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Enregistrer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const villes = collectVillesForm('zd');
+    const disponibilites = collectDispoForm('zd');
+    okBtn.disabled = true;
+    try{
+      const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id:t.id, villes, disponibilites})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      loadTransporteursEquipe();
+      showToast('Zones et disponibilité mises à jour', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      showToast(`Non enregistré : ${e.message}`, 'error');
+    }
+  };
+}
+
 async function loadTransporteursEquipe(){
   const zone = document.getElementById('transp-view-content');
   if(!zone) return;
@@ -1581,6 +1785,7 @@ async function loadTransporteursEquipe(){
     ]);
     const d = await tr.json();
     if(!tr.ok) throw new Error(d.error||'Erreur');
+    TRANSPORTEURS_CACHE = d.transporteurs || [];
     const ld = await lr.json().catch(()=>({livraisons:[]}));
     const testTransp = (d.transporteurs||[]).find(t => t.nom === TEST_TRANSPORTEUR_NOM);
     const testCardHtml = `
@@ -1601,12 +1806,14 @@ async function loadTransporteursEquipe(){
         </div>
         <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''}</div>
         <div class="row-meta">Code : <strong>${escHtml(t.pin||'—')}</strong> · ${euros(t.taux_livraison_cents)}/livraison · ${euros(t.taux_recuperation_cents)}/récupération</div>
+        ${CITIES_CACHE.length>1?`<div class="row-meta">🌍 ${(t.villes&&t.villes.length) ? t.villes.map(id => escHtml((CITIES_CACHE.find(c=>c.id===id)||{}).name||'?')).join(', ') : 'Aucune zone'}</div>`:''}
         <div class="day-progress" style="margin:12px 0 0;padding:0">${chargeJourHtml(t.id, ld.livraisons)}</div>
         <div class="row-actions">
           <button class="btn btn-grey" onclick="toggleTransporteur(${t.id}, ${!t.actif}, this)">${t.actif?'Désactiver':'Réactiver'}</button>
           <button class="btn btn-grey" onclick="editRates(${t.id}, ${t.taux_livraison_cents}, ${t.taux_recuperation_cents})">Modifier taux</button>
           <button class="btn btn-grey" onclick="resetPin(${t.id})">Changer le code</button>
           <button class="btn btn-grey" onclick="editEmail(${t.id}, '${(t.email||'').replace(/'/g,"\\'")}')">${t.email?'Modifier':'Ajouter'} l'email</button>
+          <button class="btn btn-grey" onclick="editZonesDispo(${t.id})">🌍 Zones & disponibilité</button>
         </div>
       </div>`).join('') || '<p class="empty">Aucun transporteur.</p>';
 
@@ -1623,7 +1830,13 @@ async function loadTransporteursEquipe(){
           <div><label for="t-liv">€ / livraison</label><input type="number" id="t-liv" min="0" step="0.5" value="10"/></div>
           <div><label for="t-rec">€ / récupération</label><input type="number" id="t-rec" min="0" step="0.5" value="10"/></div>
         </div>
-        <button class="btn btn-blue btn-block" onclick="addTransporteur()">Ajouter</button>
+        ${CITIES_CACHE.length>1?`
+        <label style="margin-top:14px">Villes d'intervention</label>
+        ${villesCheckboxesHtml('t-new', CITY_ID!=='all'?[parseInt(CITY_ID)]:[])}
+        <label style="margin-top:14px">Disponibilité</label>
+        ${dispoFormHtml('t-new', [])}
+        `:''}
+        <button class="btn btn-blue btn-block" style="margin-top:16px" onclick="addTransporteur()">Ajouter</button>
         <div class="err" id="transp-err"></div>
       </div>`;
   }catch(e){
@@ -1639,8 +1852,11 @@ async function addTransporteur(){
   const errEl = document.getElementById('transp-err');
   errEl.style.display='none';
   if(!nom){ errEl.textContent='Nom requis'; errEl.style.display='block'; return; }
+  const extra = CITIES_CACHE.length>1
+    ? { villes: collectVillesForm('t-new'), disponibilites: collectDispoForm('t-new') }
+    : {};
   try{
-    const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, telephone, email, taux_livraison_cents, taux_recuperation_cents})});
+    const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, telephone, email, taux_livraison_cents, taux_recuperation_cents, ...extra})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadTransporteursEquipe();
@@ -1899,6 +2115,95 @@ async function toggleClientPhotos(id){
   }
 }
 
+// ── VILLES / ZONES (multi-ville) ──────────────────────────────────────────
+// Une "ville" ici est une zone opérationnelle pouvant couvrir plusieurs
+// communes (ex. Nice + Saint-Laurent-du-Var + Cagnes-sur-Mer), routée par
+// code postal — voir api/_lib/city.js (resolveCityByAddress).
+let VILLES_CACHE = [];
+async function loadVilles(){
+  const zone = document.getElementById('tab-villes');
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list', city_id:'all'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    VILLES_CACHE = d.cities || [];
+    renderVilles();
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+function renderVilles(){
+  const zone = document.getElementById('tab-villes');
+  const list = VILLES_CACHE.map(c => `
+    <div class="row-item">
+      <div class="row-top">
+        <span class="row-title">${escHtml(c.name)}</span>
+        <span class="chip ${c.actif?'actif':'annulee'}">${c.actif?'active':'inactive'}</span>
+      </div>
+      <div class="row-meta">${escHtml(c.dep||'—')}</div>
+      <div class="row-meta">Codes postaux : ${(c.postal_codes&&c.postal_codes.length) ? escHtml(c.postal_codes.join(', ')) : '—'}</div>
+      <div class="row-actions">
+        <button class="btn btn-grey" onclick="editVillePostaux(${c.id}, '${((c.postal_codes||[]).join(', ')).replace(/'/g,"\\'")}')">Modifier les codes postaux</button>
+        <button class="btn btn-grey" onclick="toggleVilleActif(${c.id}, ${!c.actif})">${c.actif?'Désactiver':'Réactiver'}</button>
+      </div>
+    </div>`).join('') || '<p class="empty">🌍 Aucune ville configurée.</p>';
+  zone.innerHTML = list + `
+    <div class="card">
+      <h2>Ouvrir une nouvelle ville</h2>
+      <p class="sub" style="margin-bottom:16px">Les commandes du site sont automatiquement affectées à la ville dont les codes postaux couvrent l'adresse de livraison.</p>
+      <label for="v-nom">Nom</label>
+      <input type="text" id="v-nom" placeholder="Cannes"/>
+      <label for="v-dep">Département</label>
+      <input type="text" id="v-dep" placeholder="06"/>
+      <label for="v-cp">Codes postaux couverts (séparés par une virgule)</label>
+      <input type="text" id="v-cp" placeholder="06400, 06110, 06150"/>
+      <button class="btn btn-blue btn-block" onclick="addVille()">Créer la ville</button>
+      <div class="err" id="ville-err"></div>
+    </div>`;
+}
+function parsePostalCodesInput(raw){
+  return (raw||'').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+}
+async function addVille(){
+  const name = document.getElementById('v-nom').value.trim();
+  const dep = document.getElementById('v-dep').value.trim();
+  const postal_codes = parsePostalCodesInput(document.getElementById('v-cp').value);
+  const errEl = document.getElementById('ville-err');
+  errEl.style.display='none';
+  if(!name){ errEl.textContent='Nom requis'; errEl.style.display='block'; return; }
+  try{
+    const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', name, dep, postal_codes, city_id:'all'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadVilles();
+    loadCitySwitcher();
+    showToast('Ville créée', 'success');
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display='block';
+  }
+}
+function editVillePostaux(id, current){
+  promptAction({title:'Codes postaux couverts', label:'Séparés par une virgule', value:current, placeholder:'06400, 06110'}, async (value) => {
+    try{
+      const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, postal_codes:parsePostalCodesInput(value), city_id:'all'})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadVilles();
+      showToast('Codes postaux mis à jour', 'success');
+    }catch(e){ showToast(`Non enregistré : ${e.message}`, 'error'); }
+  });
+}
+async function toggleVilleActif(id, actif){
+  try{
+    const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, actif, city_id:'all'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadVilles();
+    loadCitySwitcher();
+  }catch(e){ showToast(e.message, 'error'); }
+}
+
 // ── Suivi en direct (carte gratuite OpenStreetMap) ───────────────────────────
 // Trajet affiché en ligne droite (pas d'itinéraire routier) et ETA estimé à
 // vitesse moyenne — pas de clé API, pas de coût. Voir supabase/README.md pour
@@ -2023,6 +2328,7 @@ function closeLiveMap(){
     // donc jamais après un simple rechargement de page avec une session déjà
     // active (l'écran ne bouge plus jusqu'à une déconnexion/reconnexion).
     loadAlerts();
+    loadCitySwitcher();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
     if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
     maybeOfferAdminFaceId();

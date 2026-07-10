@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { getCity }     = require('./_lib/city');
+const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 
 module.exports = async (req, res) => {
@@ -11,7 +11,8 @@ module.exports = async (req, res) => {
   const action = body.action || 'list';
 
   try {
-    const city = await getCity(supabase);
+    const city = await resolveAdminCity(supabase, body);
+    if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
     // virements n'a pas de city_id direct — on passe par les transporteurs de
     // cette ville pour ne jamais faire fuiter les paiements d'une autre ville
     // partageant la même base Supabase.
