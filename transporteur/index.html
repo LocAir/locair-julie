@@ -78,6 +78,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .mcard.st-acceptee{border-left-color:var(--blue)}
 .mcard.st-arrivee{border-left-color:var(--green)}
 .mcard.st-probleme{border-left-color:var(--red)}
+.mcard.st-fait{border-left-color:var(--rule)}
 .mcard-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
 .mcard-icon{font-size:20px}
 .mcard-type{font-weight:700;font-size:15px;letter-spacing:-.005em}
@@ -215,6 +216,12 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
       <button onclick="switchTab('activite')">💰 Mon activité<span class="tab-badge hidden badge-activite"></span></button>
     </div>
     <div id="progress-zone"></div>
+    <div class="map-filters" id="mission-filters">
+      <button class="on" data-f="toutes" onclick="setMissionFilter('toutes')">Toutes</button>
+      <button data-f="nouvelle" onclick="setMissionFilter('nouvelle')">🆕 À accepter</button>
+      <button data-f="en_cours" onclick="setMissionFilter('en_cours')">🚚 En cours</button>
+      <button data-f="terminee" onclick="setMissionFilter('terminee')">✅ Terminées</button>
+    </div>
     <div id="tour-zone"></div>
     <div class="card hidden" id="faceid-offer">
       <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
@@ -616,7 +623,7 @@ function startTransporteurAutoRefresh(){
 
 const TYPE_LABEL = {livraison:'Livraison', recuperation:'Récupération'};
 const TYPE_ICON  = {livraison:'📦', recuperation:'🔄'};
-const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', arrivee:'Sur place', probleme:'Problème signalé'};
+const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', arrivee:'Sur place', probleme:'Problème signalé', fait:'Terminée'};
 
 function dateLabelFor(dateStr){
   const today = new Date(); today.setHours(0,0,0,0);
@@ -663,13 +670,36 @@ function renderDayProgress(){
     </div>`;
 }
 
+let MISSION_FILTER = 'toutes';
+const MISSION_FILTER_STATUTS = {
+  nouvelle: ['a_faire'],
+  en_cours: ['acceptee', 'arrivee', 'probleme'],
+  terminee: ['fait'],
+};
+const MISSION_FILTER_EMPTY = {
+  toutes:   'Aucune mission pour l\'instant. 👍',
+  nouvelle: 'Aucune mission à accepter pour l\'instant. 👍',
+  en_cours: 'Aucune mission en cours.',
+  terminee: 'Aucune mission terminée récemment.',
+};
+function setMissionFilter(f){
+  MISSION_FILTER = f;
+  document.querySelectorAll('#mission-filters button').forEach(b => b.classList.toggle('on', b.dataset.f===f));
+  renderMissions();
+}
+function filteredMissions(){
+  const statuts = MISSION_FILTER_STATUTS[MISSION_FILTER];
+  return statuts ? STATE.missions.filter(m => statuts.includes(m.statut)) : STATE.missions;
+}
+
 function renderMissions(){
   const wrap = document.getElementById('missions-list');
   const tourZone = document.getElementById('tour-zone');
   renderDayProgress();
-  if(!STATE.missions.length){
+  const visible = filteredMissions();
+  if(!visible.length){
     tourZone.innerHTML='';
-    wrap.innerHTML = '<p class="empty">Aucune mission pour l\'instant. 👍</p>';
+    wrap.innerHTML = `<p class="empty">${MISSION_FILTER_EMPTY[MISSION_FILTER]}</p>`;
     return;
   }
 
@@ -702,7 +732,7 @@ function renderMissions(){
   // l'intérieur, par code postal (déjà dans l'adresse) pour repérer d'un
   // coup d'œil les missions dans le même secteur.
   const groups = {};
-  STATE.missions.forEach(m => { (groups[m.date_prevue] = groups[m.date_prevue] || []).push(m); });
+  visible.forEach(m => { (groups[m.date_prevue] = groups[m.date_prevue] || []).push(m); });
   const dates = Object.keys(groups).sort();
 
   wrap.innerHTML = dates.map(dateStr => {
@@ -753,7 +783,11 @@ function actionBtnsForMission(m){
       <button class="btn btn-green" onclick="doAction('accepter')">✅ J'ACCEPTE LA MISSION</button>
       <button class="btn btn-red" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
   }
-  if(m.statut === 'acceptee' && m.type === 'livraison'){
+  // Un seul écran après acceptation : prévenir le client (optionnel, par SMS
+  // depuis le téléphone du livreur) puis une photo pour terminer — plus de
+  // bouton "arrivé" séparé. "arrivee" reste géré ici pour les missions déjà
+  // à cette étape au moment du déploiement (compat', jamais réémis depuis).
+  if((m.statut === 'acceptee' || m.statut === 'arrivee') && m.type === 'livraison'){
     const numeros = m.appareil_numeros||[];
     const plural = numeros.length>1;
     const kitTxt = c.fenetre ? ` + ${numeros.length||1} kit${plural?'s':''} de calfeutrage (${c.fenetre})` : '';
@@ -761,29 +795,18 @@ function actionBtnsForMission(m){
       ? `Récupère ${plural?'les Unités':"l'Unité"} n°${numeros.join(', ')}${kitTxt} et charge-${plural?'les':'la'}.`
       : `Charge l'appareil.`;
     return `
-      <p class="step-hint">📦 Au dépôt : ${pickup}</p>
-      <button class="media-btn ${m.client_notifie?'done':''}" onclick="doAction('prevenir_client')"><span class="ic">📲</span> ${m.client_notifie?'Client prévenu ✔':'Prévenir le client (arrivée ~30 min)'}</button>
-      <button class="btn btn-blue" ${m.client_notifie?'':'disabled'} onclick="doAction('arrive')">📍 JE SUIS ARRIVÉ CHEZ LE CLIENT</button>
-      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
-  }
-  if(m.statut === 'acceptee' && m.type === 'recuperation'){
-    return `
-      <p class="step-hint">🚚 En route vers le client.</p>
-      <button class="media-btn ${m.client_notifie?'done':''}" onclick="doAction('prevenir_client')"><span class="ic">📲</span> ${m.client_notifie?'Client prévenu ✔':'Prévenir le client (arrivée ~30 min)'}</button>
-      <button class="btn btn-blue" ${m.client_notifie?'':'disabled'} onclick="doAction('arrive')">📍 JE SUIS ARRIVÉ CHEZ LE CLIENT</button>
-      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
-  }
-  if(m.statut === 'arrivee' && m.type === 'livraison'){
-    return `
-      <p class="step-hint">📷 Installe l'appareil puis prends une photo une fois branché.</p>
+      <p class="step-hint">📦 ${pickup}</p>
+      <button class="media-btn ${m.client_notifie?'done':''}" onclick="prevenirClientSms()"><span class="ic">📲</span> ${m.client_notifie?'Client prévenu ✔':'Prévenir le client (SMS)'}</button>
+      <p class="step-hint">📷 Installe l'appareil, prends une photo pour terminer la mission.</p>
       <button class="media-btn ${m.photo_installation_ok?'done':''}" onclick="startUpload('photo_installation','image/*')"><span class="ic">📷</span> ${m.photo_installation_ok?'Photo installation ✔':'Photo de l\'appareil installé'}</button>
       <button class="btn btn-green" ${m.photo_installation_ok?'':'disabled'} onclick="doAction('livraison_ok')">✅ LIVRAISON OK — JE PARS</button>
       <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
   }
-  if(m.statut === 'arrivee' && m.type === 'recuperation'){
+  if((m.statut === 'acceptee' || m.statut === 'arrivee') && m.type === 'recuperation'){
     const ready = m.photo_retour_ok && m.vidange_ok;
     return `
-      <p class="step-hint">📷 Vérifie l'appareil, vidange-le (~5 min) et prends la photo avant de repartir.</p>
+      <button class="media-btn ${m.client_notifie?'done':''}" onclick="prevenirClientSms()"><span class="ic">📲</span> ${m.client_notifie?'Client prévenu ✔':'Prévenir le client (SMS)'}</button>
+      <p class="step-hint">📷 Vérifie l'appareil, vidange-le (~5 min) et prends la photo pour terminer la mission.</p>
       <button class="media-btn ${m.vidange_ok?'done':''}" ${m.vidange_ok?'disabled':''} onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> ${m.vidange_ok?'Vérification + vidange ✔':'Vérification + vidange effectuées'}</button>
       <button class="media-btn ${m.photo_retour_ok?'done':''}" onclick="startUpload('photo_retour','image/*')"><span class="ic">📷</span> ${m.photo_retour_ok?'Photo appareil récupéré ✔':'Photo de l\'appareil récupéré'}</button>
       <button class="btn btn-green" ${ready?'':'disabled'} onclick="doAction('retour_ok')">✅ RETOUR OK — JE PARS</button>
@@ -797,12 +820,11 @@ function actionBtnsForMission(m){
 
 function renderStepper(m){
   if(!['a_faire','acceptee','arrivee','fait'].includes(m.statut)) return '';
-  const labels=['Départ','Route','Client','Terminé'];
+  const labels=['Départ','Chez le client','Terminé'];
   let idx=0;
   if(m.statut==='a_faire') idx=0;
-  else if(m.statut==='acceptee') idx=1;
-  else if(m.statut==='arrivee') idx=2;
-  else if(m.statut==='fait') idx=3;
+  else if(m.statut==='acceptee' || m.statut==='arrivee') idx=1;
+  else if(m.statut==='fait') idx=2;
   return '<div class="stepper">'+labels.map((lbl,i)=>{
     const cls = i<idx?'done':(i===idx?'active':'');
     return `<div class="step ${cls}"><div class="step-line"></div><div class="step-dot">${i<idx?'✓':(i+1)}</div><div class="step-label">${lbl}</div></div>`;
@@ -850,6 +872,22 @@ function renderDetail(){
   `;
 }
 
+// Ouvre directement l'app SMS du livreur avec un message pré-rempli et son
+// prénom — plus personnel et plus fiable qu'un email automatique (le client
+// peut répondre directement au livreur). L'envoi effectif reste un geste du
+// livreur (il valide dans son app SMS) ; l'API marque juste la mission comme
+// "client prévenu" pour les stats, sans bloquer l'ouverture de la messagerie
+// même si cet appel réseau échoue.
+function prevenirClientSms(){
+  const m = STATE.currentMission;
+  const c = (m && m.client) || {};
+  if(c.tel){
+    const prenomLivreur = (STATE.transporteurNom||'').split(' ')[0] || STATE.transporteurNom || '';
+    const msg = `Bonjour, c'est ${prenomLivreur} de Loc'Air, j'arrive chez vous d'ici environ 30 minutes.`;
+    window.location.href = `sms:${c.tel.replace(/\s+/g,'')}?body=${encodeURIComponent(msg)}`;
+  }
+  doAction('prevenir_client');
+}
 async function doAction(action, extra){
   const errEl = document.getElementById('detail-err');
   if(errEl){errEl.style.display='none';}
