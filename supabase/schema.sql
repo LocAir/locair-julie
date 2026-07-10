@@ -98,6 +98,7 @@ create table reservations (
   ascenseur                text,
   fenetre                  text,
   installation             text,
+  instructions_acces       text, -- digicode, boîte à clés... saisi par le client sur le site
   creneau                  text, -- créneau de livraison choisi par le client sur le site (récupération = coordonnée par l'équipe, jamais choisie côté client)
   date_debut               date not null,
   date_fin                 date not null,
@@ -143,7 +144,7 @@ create table livraisons (
                            check (statut in ('a_faire','acceptee','refusee','arrivee','fait','probleme','annule')),
   -- Preuves terrain (chemins dans le bucket de stockage 'missions', jamais publics)
   photo_depart_path      text,   -- appareil au départ dépôt (livraison)
-  video_installation_path text,  -- appareil en marche chez le client (livraison)
+  photo_installation_path text,  -- appareil installé chez le client (livraison)
   photo_retour_path      text,   -- appareil récupéré chez le client (récupération)
   photo_absence_path     text,   -- preuve de passage devant le bâtiment (client absent)
   vidange_confirmee      boolean not null default false, -- vérification + vidange du climatiseur, faite chez le client à la récupération (~5 min)

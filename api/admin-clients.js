@@ -50,6 +50,40 @@ module.exports = async (req, res) => {
       return res.status(200).json({ clients: result });
     }
 
+    // Historique des preuves photo prises chez ce client, tous appareils/missions
+    // confondus dans le temps — la fiche client doit rester la mémoire durable
+    // (litige, appareil en panne, contrôle) même une fois la mission archivée.
+    if (action === 'photos') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { data: client } = await supabase.from('clients').select('id').eq('id', id).eq('city_id', city.id).maybeSingle();
+      if (!client) return res.status(404).json({ error: 'Client introuvable' });
+
+      const { data: resas } = await supabase.from('reservations').select('id').eq('client_id', id);
+      const resaIds = (resas || []).map(r => r.id);
+      if (!resaIds.length) return res.status(200).json({ photos: [] });
+
+      const { data: livs } = await supabase
+        .from('livraisons')
+        .select('id, type, date_prevue, photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path')
+        .in('reservation_id', resaIds)
+        .order('date_prevue', { ascending: false });
+
+      const KINDS = [
+        ['photo_depart',       'photo_depart_path'],
+        ['photo_installation', 'photo_installation_path'],
+        ['photo_retour',       'photo_retour_path'],
+        ['photo_absence',      'photo_absence_path'],
+      ];
+      const photos = [];
+      (livs || []).forEach(l => {
+        KINDS.forEach(([kind, col]) => {
+          if (l[col]) photos.push({ livraison_id: l.id, kind, type: l.type, date_prevue: l.date_prevue });
+        });
+      });
+      return res.status(200).json({ photos });
+    }
+
     if (action === 'update') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });

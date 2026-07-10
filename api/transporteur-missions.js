@@ -13,11 +13,11 @@ module.exports = async (req, res) => {
       .from('livraisons')
       .select(`
         id, type, statut, date_prevue, creneau,
-        photo_depart_path, video_installation_path, photo_retour_path, client_notifie_at,
+        photo_depart_path, photo_installation_path, photo_retour_path, client_notifie_at,
         vidange_confirmee,
         probleme_type, probleme_description,
         reservation:reservations (
-          prenom, nom, tel, adresse, etage, ascenseur, fenetre, installation, quantite,
+          prenom, nom, tel, adresse, etage, ascenseur, fenetre, installation, quantite, instructions_acces,
           reservation_appareils ( appareil:appareils ( numero ) ),
           client:clients ( acces_difficile )
         )
@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
       date_prevue:         m.date_prevue,
       creneau:             m.creneau,
       photo_depart_ok:     Boolean(m.photo_depart_path),
-      video_installation_ok: Boolean(m.video_installation_path),
+      photo_installation_ok: Boolean(m.photo_installation_path),
       photo_retour_ok:     Boolean(m.photo_retour_path),
       vidange_ok:          Boolean(m.vidange_confirmee),
       client_notifie:      Boolean(m.client_notifie_at),

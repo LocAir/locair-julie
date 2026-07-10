@@ -5,7 +5,7 @@ const { pushToTransporteur } = require('./_lib/push');
 
 const MEDIA_COLUMN = {
   photo_depart:       'photo_depart_path',
-  video_installation: 'video_installation_path',
+  photo_installation: 'photo_installation_path',
   photo_retour:       'photo_retour_path',
   photo_absence:      'photo_absence_path',
 };
@@ -46,11 +46,11 @@ module.exports = async (req, res) => {
         .select(`
           id, type, statut, date_prevue, creneau, masquee,
           probleme_type, probleme_description,
-          photo_depart_path, video_installation_path, photo_retour_path, photo_absence_path,
+          photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path,
           accepted_at, client_notifie_at, arrivee_at, fait_at,
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
-            id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, masquee,
+            id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, instructions_acces, masquee,
             reservation_appareils ( appareil:appareils ( numero, reference ) )
           )
         `)
