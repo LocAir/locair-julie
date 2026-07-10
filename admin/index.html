@@ -800,7 +800,7 @@ async function silentRefreshLivraisons(){
 }
 const TAB_AUTO_REFRESH = {
   accueil:       () => loadDashboard(CURRENT_DASHBOARD_PERIODE),
-  stock:         loadStock,
+  stock:         () => loadStock(true),
   reservations:  silentRefreshReservations,
   livraisons:    silentRefreshLivraisons,
   transporteurs: () => TRANSPORTEURS_VIEW==='equipe' ? loadTransporteursEquipe() : loadTransporteursRevenus(),
@@ -957,9 +957,9 @@ function dismissMorningBanner(){
 const APPAREIL_STATUT_LABEL = {disponible:'Disponible', panne:'En panne', maintenance:'Maintenance', loue:'Loué'};
 const APPAREIL_STATUT_CHIP  = {disponible:'actif', panne:'annulee', maintenance:'a_faire', loue:'en_location'};
 
-async function loadStock(){
+async function loadStock(silent){
   const zone = document.getElementById('tab-stock');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:'{}'});
     const d = await r.json();
@@ -1005,6 +1005,7 @@ async function loadStock(){
                 <option value="maintenance" ${a.statut==='maintenance'?'selected':''}>Maintenance</option>
               </select>
               <button class="btn btn-grey" onclick="editAppareilReference(${a.id}, '${escHtml(a.reference||'').replace(/'/g,"\\'")}')">${a.reference?'Modifier':'Ajouter'} la référence</button>
+              <button class="btn btn-red" onclick="deleteAppareil(${a.id}, ${a.numero})">🗑️ Supprimer</button>
             </div>
           </div>`;
         }).join('') || '<p class="empty">Aucun appareil enregistré.</p>'}
@@ -1013,7 +1014,7 @@ async function loadStock(){
         <div class="err" id="stock-err"></div>
       </div>`;
   }catch(e){
-    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+    if(!silent) zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
 function addAppareil(){
@@ -1027,6 +1028,17 @@ function addAppareil(){
     }catch(e){ showToast(e.message, 'error'); }
   });
 }
+function deleteAppareil(id, numero){
+  confirmAction(`Supprimer l'unité n°${numero} ? Impossible si elle a un historique de missions — marque-la "En panne" dans ce cas.`, async () => {
+    try{
+      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadStock();
+      showToast(`Unité n°${numero} supprimée`, 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {danger:true, yesLabel:'Supprimer'});
+}
 function updateAppareilStatut(id, statut){
   (async () => {
     try{
@@ -1035,7 +1047,14 @@ function updateAppareilStatut(id, statut){
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadStock();
       showToast('Statut mis à jour', 'success');
-    }catch(e){ showToast(e.message, 'error'); }
+    }catch(e){
+      showToast(e.message, 'error');
+      // Sans ça, le menu déroulant reste affiché sur la valeur choisie même si
+      // l'enregistrement a échoué — l'admin croit le changement fait alors que
+      // l'appareil garde son vrai statut côté serveur (ex. contrainte SQL du
+      // statut "loué" pas encore appliquée en prod).
+      loadStock();
+    }
   })();
 }
 function editAppareilReference(id, current){
@@ -1106,6 +1125,7 @@ function agentLineHtml(resId){
 }
 function reservationRowHtml(res, readOnly){
   const nom = escHtml((res.prenom||'')+' '+(res.nom||''))||'—';
+  const entrepriseTag = res.type_client==='entreprise' ? ` <span class="chip a_faire">🏢 ${escHtml(res.raison_sociale||'Entreprise')}</span>` : '';
   if(res.masquee){
     return `
       <div class="row-item" style="opacity:.6">
@@ -1122,7 +1142,7 @@ function reservationRowHtml(res, readOnly){
   return `
     <div class="row-item">
       <div class="row-top">
-        <span class="row-title">${nom}</span>
+        <span class="row-title">${nom}${entrepriseTag}</span>
         <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
       </div>
       ${res.hors_zone?`<div class="resa-sub" style="color:var(--red);font-weight:700">⚠️ Hors zone — affectation manuelle requise</div>`:''}
@@ -1130,6 +1150,7 @@ function reservationRowHtml(res, readOnly){
       <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
       ${(res.etage||res.ascenseur||res.fenetre||res.fenetre_photo_path)?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):''].filter(Boolean).join(' · ')}${res.fenetre_photo_path?` <button class="btn btn-grey" style="padding:2px 8px;font-size:11px;vertical-align:middle" onclick="openFenetrePhoto(${res.id})">📷 Photo</button>`:''}</div>`:''}
       ${res.instructions_acces?`<div class="resa-sub" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
+      ${(res.type_client==='entreprise' && res.siret)?`<div class="resa-sub">SIRET : ${escHtml(res.siret)}</div>`:''}
       <div class="resa-dates">
         <span class="resa-date-range">📅 ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
         <span class="resa-rel ${isUrgent(res.date_debut)?'urgent':''}">${nightsLabel(res.date_debut,res.date_fin)} · ${relLabel(res.date_debut)}</span>
@@ -1198,7 +1219,8 @@ function renderReservationsToolbar(){
       <input type="tel" id="nr-tel2"/>
       <label for="nr-email">Email</label>
       <input type="text" id="nr-email"/>
-      <label for="nr-adresse">Adresse *</label>
+      ${typeClientFieldsHtml('nr')}
+      <label for="nr-adresse" style="margin-top:8px">Adresse *</label>
       <input type="text" id="nr-adresse"/>
       <div class="inline-form">
         <div><label for="nr-debut">Date livraison *</label><input type="date" id="nr-debut"/></div>
@@ -1280,6 +1302,36 @@ function renderReservations(){
   }
   list.innerHTML = items.map(r => reservationRowHtml(r)).join('') || `<p class="empty">🧾 ${RESERVATIONS_SHOW_MASQUEES?'Aucune réservation supprimée.':'Aucune réservation pour l\'instant.'}</p>`;
 }
+// Champs "type de client" (particulier/entreprise) réutilisés dans les 2
+// formulaires de création manuelle (Réservations + "Créer une mission").
+function typeClientFieldsHtml(prefix){
+  return `
+      <label for="${prefix}-type">Type de client</label>
+      <select id="${prefix}-type" onchange="document.getElementById('${prefix}-entreprise-wrap').classList.toggle('hidden', this.value!=='entreprise')">
+        <option value="particulier">Particulier</option>
+        <option value="entreprise">Entreprise</option>
+      </select>
+      <div id="${prefix}-entreprise-wrap" class="hidden" style="margin-top:8px">
+        <label for="${prefix}-raison">Raison sociale</label>
+        <input type="text" id="${prefix}-raison"/>
+        <label for="${prefix}-siret" style="margin-top:8px">SIRET (optionnel)</label>
+        <input type="text" id="${prefix}-siret"/>
+      </div>`;
+}
+function typeClientPayload(prefix){
+  const type_client = document.getElementById(`${prefix}-type`)?.value === 'entreprise' ? 'entreprise' : 'particulier';
+  return {
+    type_client,
+    raison_sociale: type_client==='entreprise' ? (document.getElementById(`${prefix}-raison`)?.value.trim()||'') : '',
+    siret:          type_client==='entreprise' ? (document.getElementById(`${prefix}-siret`)?.value.trim()||'') : '',
+  };
+}
+function resetTypeClientFields(prefix){
+  const sel = document.getElementById(`${prefix}-type`); if(sel) sel.value = 'particulier';
+  const raison = document.getElementById(`${prefix}-raison`); if(raison) raison.value = '';
+  const siret = document.getElementById(`${prefix}-siret`); if(siret) siret.value = '';
+  document.getElementById(`${prefix}-entreprise-wrap`)?.classList.add('hidden');
+}
 function toggleNewReservationForm(){
   document.getElementById('new-resa-form').classList.toggle('hidden');
 }
@@ -1300,6 +1352,7 @@ async function createReservation(){
     date_fin: document.getElementById('nr-fin').value,
     quantite: document.getElementById('nr-qte').value,
     prix_total_cents: Math.round((parseFloat(document.getElementById('nr-prix').value)||0)*100),
+    ...typeClientPayload('nr'),
   };
   if(!body.prenom || !body.nom || !body.adresse || !body.date_debut || !body.date_fin){
     errEl.textContent = 'Prénom, nom, adresse et dates sont obligatoires.';
@@ -1332,6 +1385,7 @@ async function submitReservation(body, submitBtn, errEl){
     document.getElementById('new-resa-form').classList.add('hidden');
     ['nr-prenom','nr-nom','nr-tel','nr-tel2','nr-email','nr-adresse','nr-debut','nr-fin','nr-prix'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     const qteEl = document.getElementById('nr-qte'); if(qteEl) qteEl.value = '1';
+    resetTypeClientFields('nr');
     showToast(`Réservation ${d.ref} créée et confirmée`, 'success');
   }catch(e){
     errEl.textContent = e.message; errEl.style.display = 'block';
@@ -1507,16 +1561,25 @@ function toggleCreateMissionMode(value){
 async function openCreateMissionModal(){
   closeModal();
   let resas = [];
+  let appareilsDispo = [];
   try{
     const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();
     resas = (d.reservations||[]).filter(res => res.statut==='confirmee' && !res.masquee);
   }catch(e){}
+  try{
+    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:'{}'});
+    const d = await r.json();
+    appareilsDispo = (d.appareils||[]).filter(a => a.statut==='disponible' && !a.en_location);
+  }catch(e){}
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.id = 'modal-overlay-el';
   const resaOptions = resas.map(res =>
-    `<option value="${res.id}">${escHtml((res.prenom||'')+' '+(res.nom||''))} · ${escHtml(res.adresse||'')} · ${frDate(res.date_debut)}</option>`
+    `<option value="${res.id}">${res.type_client==='entreprise'?'🏢 ':''}${escHtml((res.prenom||'')+' '+(res.nom||''))} · ${escHtml(res.adresse||'')} · ${frDate(res.date_debut)}</option>`
+  ).join('');
+  const appareilOptions = appareilsDispo.map(a =>
+    `<option value="${a.id}">n°${a.numero}${a.reference?' · '+escHtml(a.reference):''}</option>`
   ).join('');
   const transpOptions = TRANSPORTEURS_CACHE.filter(t => t.actif && t.nom !== TEST_TRANSPORTEUR_NOM)
     .map(t => `<option value="${t.id}">${escHtml(t.nom)}</option>`).join('');
@@ -1537,6 +1600,7 @@ async function openCreateMissionModal(){
         <input type="text" id="cm-c-nom"/>
         <label for="cm-c-tel" style="margin-top:8px">Téléphone</label>
         <input type="tel" id="cm-c-tel"/>
+        <div style="margin-top:8px">${typeClientFieldsHtml('cm-c')}</div>
         <label for="cm-c-adresse" style="margin-top:8px">Adresse *</label>
         <input type="text" id="cm-c-adresse"/>
         <div class="inline-form" style="margin-top:8px">
@@ -1562,6 +1626,12 @@ async function openCreateMissionModal(){
           <div><label for="cm-date">Date</label><input type="date" id="cm-date" value="${today}"/></div>
           <div><label for="cm-creneau">Créneau</label><input type="text" id="cm-creneau" placeholder="8h–10h"/></div>
         </div>
+        <label for="cm-appareil" style="margin-top:12px">Unité climatiseur (optionnel)</label>
+        <select id="cm-appareil">
+          <option value="">— Ne pas assigner —</option>
+          ${appareilOptions}
+        </select>
+        <p class="sub" style="margin-top:4px">Pour un remplacement, choisis la nouvelle unité — l'ancienne redevient automatiquement disponible au stock.</p>
       </div>
       <div class="modal-actions" style="margin-top:18px">
         <button class="btn btn-grey">Annuler</button>
@@ -1597,6 +1667,7 @@ async function openCreateMissionModal(){
           tel: document.getElementById('cm-c-tel').value.trim(),
           quantite: document.getElementById('cm-c-qte').value,
           prix_total_cents: Math.round((parseFloat(document.getElementById('cm-c-prix').value)||0)*100),
+          ...typeClientPayload('cm-c'),
         })});
         const rd = await rr.json();
         if(!rr.ok) throw new Error(rd.error||'Erreur lors de la création du client');
@@ -1615,12 +1686,14 @@ async function openCreateMissionModal(){
         transporteur_id: document.getElementById('cm-transp').value || null,
         date_prevue: document.getElementById('cm-date').value,
         creneau: document.getElementById('cm-creneau').value.trim(),
+        appareil_id: document.getElementById('cm-appareil').value || null,
       };
       const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       closeModal();
       loadLivraisons();
+      loadStock(true);
       showToast('Mission créée', 'success');
     }catch(e){
       okBtn.disabled = false;
@@ -2064,6 +2137,7 @@ async function loadTransporteursEquipe(){
           <button class="btn btn-blue" onclick="editFiche(${t.id})">✏️ Modifier la fiche</button>
           <button class="btn btn-grey" onclick="resetPin(${t.id})">Changer le code</button>
           <button class="btn btn-grey" onclick="editEmail(${t.id}, '${(t.email||'').replace(/'/g,"\\'")}')">${t.email?'Modifier':'Ajouter'} l'email</button>
+          <button class="btn btn-red" onclick="deleteTransporteur(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}')">🗑️ Supprimer</button>
         </div>
       </div>`;
     }).join('') || '<p class="empty">Aucun transporteur.</p>';
@@ -2118,6 +2192,19 @@ async function addTransporteur(){
   }catch(e){
     errEl.textContent = e.message; errEl.style.display='block';
   }
+}
+function deleteTransporteur(id, nom){
+  confirmAction(`Supprimer définitivement ${nom} ? S'il a des missions ou virements liés, il sera désactivé à la place (pour garder l'historique).`, async () => {
+    try{
+      const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadTransporteursEquipe();
+      showToast(d.deactivated ? d.error : 'Transporteur supprimé', d.deactivated ? 'info' : 'success');
+    }catch(e){
+      showToast(e.message, 'error');
+    }
+  }, {danger:true, yesLabel:'Supprimer'});
 }
 async function toggleTransporteur(id, actif, btnEl){
   if(btnEl) btnEl.disabled = true;
@@ -2364,10 +2451,10 @@ function renderClients(){
   const list = items.map(c => `
     <div class="row-item">
       <div class="row-top">
-        <span class="row-title">${escHtml((c.prenom||'')+' '+(c.nom||''))}</span>
+        <span class="row-title">${escHtml((c.prenom||'')+' '+(c.nom||''))}${c.raison_sociale?` <span class="chip a_faire">🏢 ${escHtml(c.raison_sociale)}</span>`:''}</span>
         <span class="chip actif">${c.nb_reservations} réservation${c.nb_reservations>1?'s':''}</span>
       </div>
-      <div class="row-meta">${escHtml(c.tel||'—')}${c.email?' · '+escHtml(c.email):''}${c.tel_secondaire?' · ☎️ Secours : '+escHtml(c.tel_secondaire):''}${c.derniere_adresse?'<br/>Dernière adresse : '+escHtml(c.derniere_adresse):''}</div>
+      <div class="row-meta">${escHtml(c.tel||'—')}${c.email?' · '+escHtml(c.email):''}${c.tel_secondaire?' · ☎️ Secours : '+escHtml(c.tel_secondaire):''}${c.siret?' · SIRET : '+escHtml(c.siret):''}${c.derniere_adresse?'<br/>Dernière adresse : '+escHtml(c.derniere_adresse):''}</div>
       ${c.acces_difficile?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-top:6px">⚠️ ${escHtml(c.acces_difficile)}</div>`:''}
       <div class="row-actions">
         <button class="btn btn-grey" onclick="editAccesDifficile(${c.id}, '${(c.acces_difficile||'').replace(/'/g,"\\'")}')">${c.acces_difficile?'Modifier':'Ajouter'} une note d'accès</button>

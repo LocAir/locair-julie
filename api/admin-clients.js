@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
       if (clientIds.length) {
         const { data: resas } = await supabase
           .from('reservations')
-          .select('client_id, adresse, tel_secondaire, date_debut, statut')
+          .select('client_id, adresse, tel_secondaire, type_client, raison_sociale, siret, date_debut, statut')
           .in('client_id', clientIds)
           .order('date_debut', { ascending: false });
         (resas || []).forEach(r => {
@@ -47,6 +47,8 @@ module.exports = async (req, res) => {
           nb_reservations:  resas.length,
           derniere_adresse: resas[0]?.adresse || null,
           tel_secondaire:   resas.find(r => r.tel_secondaire)?.tel_secondaire || null,
+          raison_sociale:   resas.find(r => r.type_client === 'entreprise')?.raison_sociale || null,
+          siret:            resas.find(r => r.type_client === 'entreprise')?.siret || null,
         };
       });
       return res.status(200).json({ clients: result });

@@ -4242,6 +4242,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
                 <button type="button" class="tpill client-type-pro" onclick="tgl(this,'type');document.getElementById('siret-wrap').style.display='block'" role="radio" aria-checked="false">Professionnel</button>
               </div>
               <div id="siret-wrap" style="display:none;margin-top:10px">
+                <label id="label-raison-sociale" for="f-raison-sociale" style="font-size:12px;font-weight:500;color:var(--black2);display:block;margin-bottom:6px">Raison sociale</label>
+                <input id="f-raison-sociale" type="text" placeholder="Nom de l'entreprise" autocomplete="organization" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:16px;font-family:var(--body);color:var(--black);background:#fff;outline:none;margin-bottom:10px"/>
                 <label id="label-siret" for="f-siret" style="font-size:12px;font-weight:500;color:var(--black2);display:block;margin-bottom:6px">SIRET <span style="color:var(--grey2);font-weight:400">(facultatif)</span></label>
                 <input id="f-siret" type="text" placeholder="123 456 789 00012" autocomplete="off" inputmode="numeric" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:16px;font-family:var(--body);color:var(--black);background:#fff;outline:none"/>
               </div>
@@ -5807,6 +5809,8 @@ function submitForm(btn,mode){
   if(telRaw.replace(/\D/g,'').length<10){highlight(['f-tel']);return;}
   const emailVal=document.getElementById('f-email')?.value||'';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailVal)){highlight(['f-email']);return;}
+  const isPro=document.querySelector('#type-client-group .tpill.on')?.classList.contains('client-type-pro');
+  if(isPro && !document.getElementById('f-raison-sociale')?.value.trim()){highlight(['f-raison-sociale']);return;}
   const cgv=document.getElementById('f-cgv');
   const rgpd=document.getElementById('f-rgpd'); // synced via syncLegalCheck
   const highlightCb=(el,lblFor)=>{
@@ -5840,6 +5844,7 @@ function submitForm(btn,mode){
     creneau_livraison:document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–12h',
     creneau_recuperation:'Coordonné par notre équipe (48h avant fin de location)',
     type_client:document.querySelector('#type-client-group .tpill.on')?.textContent.trim()||'Particulier',
+    raison_sociale:document.getElementById('f-raison-sociale')?.value.trim()||'',
     siret:document.getElementById('f-siret')?.value.trim()||'',
     parrain_code:_promoCode||document.getElementById('f-parrain')?.value.trim()||'',
     instructions_acces:document.getElementById('f-instructions')?.value.trim()||'',
@@ -6397,6 +6402,8 @@ const LANG_MAP=[
   ['#s4 .btn-next','text','C\'est noté →','Got it →'],
   /* modal step 5 */
   ['#collect-note','text','Notre équipe vous contactera 48h avant la fin de votre location pour coordonner la récupération.','Our team will contact you 48 hours before the end of your rental to arrange collection.'],
+  ['#label-raison-sociale','text','Raison sociale','Company name'],
+  ['#f-raison-sociale','ph','Nom de l\'entreprise','Company name'],
   ['#label-siret','html','SIRET <span style="color:var(--grey2);font-weight:400">(facultatif)</span>','SIRET <span style="color:var(--grey2);font-weight:400">(optional)</span>'],
   ['#lbl-instructions-q','text','Souhaitez-vous laisser des instructions au technicien ?','Would you like to leave instructions for the technician?'],
   ['#instructions-no','text','Non','No'],

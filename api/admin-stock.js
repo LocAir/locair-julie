@@ -43,6 +43,26 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    if (action === 'delete') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { data: owned } = await supabase.from('appareils').select('id').eq('id', id).eq('city_id', city.id).maybeSingle();
+      if (!owned) return res.status(404).json({ error: 'Unité introuvable' });
+
+      const { error } = await supabase.from('appareils').delete().eq('id', id);
+      if (error) {
+        // Contrainte de clé étrangère : une unité déjà attachée à une réservation
+        // (même passée) a un historique de missions à garder — on refuse la
+        // suppression et on suggère de la marquer "En panne" pour la sortir du
+        // service à la place.
+        if (error.code === '23503') {
+          return res.status(409).json({ error: 'Impossible de supprimer : cette unité a un historique de missions. Marque-la plutôt "En panne" pour la retirer du service.' });
+        }
+        throw error;
+      }
+      return res.status(200).json({ ok: true });
+    }
+
     // action 'list' (par défaut)
     const { data: appareils, error } = await supabase
       .from('appareils').select('*').eq('city_id', city.id).order('numero');
