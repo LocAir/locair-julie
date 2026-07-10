@@ -1267,7 +1267,8 @@ function renderReservationsToolbar(){
         <div><label for="nr-qte">Quantité</label><input type="number" id="nr-qte" min="1" max="5" value="1"/></div>
         <div><label for="nr-prix">Prix total (€)</label><input type="number" id="nr-prix" min="0" step="0.5"/></div>
       </div>
-      <button class="btn btn-blue btn-block" id="nr-submit" onclick="createReservation()">Créer et confirmer</button>
+      ${logisticsFieldsHtml('nr')}
+      <button class="btn btn-blue btn-block" style="margin-top:14px" id="nr-submit" onclick="createReservation()">Créer et confirmer</button>
       <div class="err" id="new-resa-err"></div>
     </div>
     <div class="periods" style="margin-bottom:16px">
@@ -1386,6 +1387,35 @@ function typeClientPayload(prefix){
     siret:          type_client==='entreprise' ? (document.getElementById(`${prefix}-siret`)?.value.trim()||'') : '',
   };
 }
+// Champs logistiques (étage/ascenseur/fenêtre/installation/instructions
+// d'accès/créneau) — sans eux une mission créée à la main dans l'admin arrive
+// chez le transporteur avec des "—" partout, alors que ces infos sont
+// systématiquement collectées sur le site public.
+const INSTALLATION_OPTIONS = ['Autonome (kit fourni)', 'Technicien (25€)'];
+const FENETRE_OPTIONS = ['À confirmer', 'Fenêtre coulissante', 'Fenêtre à battant', 'Oscillo-battant', 'Porte-fenêtre', 'Vélux / toit'];
+function logisticsFieldsHtml(prefix){
+  return `
+      <div class="inline-form" style="margin-top:8px">
+        <div><label for="${prefix}-etage">Étage</label><input type="text" id="${prefix}-etage" placeholder="Ex. 3e"/></div>
+        <div><label for="${prefix}-asc">Ascenseur</label><select id="${prefix}-asc"><option value="Oui">Oui</option><option value="Non">Non</option></select></div>
+      </div>
+      <div class="inline-form" style="margin-top:8px">
+        <div><label for="${prefix}-fenetre">Type de fenêtre</label><select id="${prefix}-fenetre">${FENETRE_OPTIONS.map(f=>`<option value="${f}">${f}</option>`).join('')}</select></div>
+        <div><label for="${prefix}-installation">Installation</label><select id="${prefix}-installation">${INSTALLATION_OPTIONS.map(o=>`<option value="${o}">${o}</option>`).join('')}</select></div>
+      </div>
+      <label for="${prefix}-instructions" style="margin-top:8px">Instructions d'accès (digicode…)</label>
+      <input type="text" id="${prefix}-instructions"/>`;
+}
+function logisticsPayload(prefix){
+  return {
+    etage:               document.getElementById(`${prefix}-etage`)?.value.trim() || '',
+    ascenseur:           document.getElementById(`${prefix}-asc`)?.value || 'Oui',
+    fenetre:             document.getElementById(`${prefix}-fenetre`)?.value || 'À confirmer',
+    installation:        document.getElementById(`${prefix}-installation`)?.value || INSTALLATION_OPTIONS[0],
+    instructions_acces:  document.getElementById(`${prefix}-instructions`)?.value.trim() || '',
+    creneau_livraison:   '8h–12h',
+  };
+}
 function resetTypeClientFields(prefix){
   const sel = document.getElementById(`${prefix}-type`); if(sel) sel.value = 'particulier';
   const raison = document.getElementById(`${prefix}-raison`); if(raison) raison.value = '';
@@ -1413,6 +1443,7 @@ async function createReservation(){
     quantite: document.getElementById('nr-qte').value,
     prix_total_cents: Math.round((parseFloat(document.getElementById('nr-prix').value)||0)*100),
     ...typeClientPayload('nr'),
+    ...logisticsPayload('nr'),
   };
   if(!body.prenom || !body.nom || !body.adresse || !body.date_debut || !body.date_fin){
     errEl.textContent = 'Prénom, nom, adresse et dates sont obligatoires.';
@@ -1443,8 +1474,9 @@ async function submitReservation(body, submitBtn, errEl){
       loadReservations();
     }
     document.getElementById('new-resa-form').classList.add('hidden');
-    ['nr-prenom','nr-nom','nr-tel','nr-tel2','nr-email','nr-adresse','nr-debut','nr-fin','nr-prix'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    ['nr-prenom','nr-nom','nr-tel','nr-tel2','nr-email','nr-adresse','nr-debut','nr-fin','nr-prix','nr-etage','nr-instructions'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
     const qteEl = document.getElementById('nr-qte'); if(qteEl) qteEl.value = '1';
+    ['nr-asc','nr-fenetre','nr-installation'].forEach(id => { const el = document.getElementById(id); if(el) el.selectedIndex = 0; });
     resetTypeClientFields('nr');
     showToast(`Réservation ${d.ref} créée et confirmée`, 'success');
   }catch(e){
@@ -1684,6 +1716,7 @@ async function openCreateMissionModal(){
           <div><label for="cm-c-qte">Quantité</label><input type="number" id="cm-c-qte" min="1" max="5" value="1"/></div>
           <div><label for="cm-c-prix">Prix total (€)</label><input type="number" id="cm-c-prix" min="0" step="0.5"/></div>
         </div>
+        ${logisticsFieldsHtml('cm-c')}
       </div>
       <div id="cm-existing-resa" class="hidden">
         <label for="cm-type">Type</label>
@@ -1741,6 +1774,7 @@ async function openCreateMissionModal(){
           quantite: document.getElementById('cm-c-qte').value,
           prix_total_cents: Math.round((parseFloat(document.getElementById('cm-c-prix').value)||0)*100),
           ...typeClientPayload('cm-c'),
+          ...logisticsPayload('cm-c'),
         })});
         const rd = await rr.json();
         if(!rr.ok) throw new Error(rd.error||'Erreur lors de la création du client');

@@ -616,23 +616,38 @@ async function fetchMissions(){
   }
 }
 
+// Deux familles de badges, jamais confondues :
+//  - "à traiter" (aFaire, en_cours) : le compteur reste tant que l'action
+//    réelle (accepter/refuser, livrer, récupérer) n'a pas été faite — le
+//    simple fait d'ouvrir l'onglet ne les fait jamais disparaître.
+//  - "informatif" (terminée) : une mission "fait" n'attend plus aucune
+//    action, donc son badge ne sert qu'à signaler "il y en a une nouvelle
+//    que tu n'as pas encore vue" — il disparaît dès que la liste des
+//    terminées a été affichée (voir markTermineeSeen dans renderMissions).
 function updateMissionsBadge(){
   const aFaire  = STATE.missions.filter(m => m.statut === 'a_faire').length;
   const enCours = STATE.missions.filter(m => ['acceptee','arrivee','probleme'].includes(m.statut)).length;
-  const terminees = STATE.missions.filter(m => m.statut === 'fait').length;
-  const toutes  = aFaire + enCours + terminees;
+  const terminees = STATE.missions.filter(m => m.statut === 'fait');
+  const lastSeenTerminee = parseInt(localStorage.getItem('t_lastseen_terminee_'+STATE.transporteurId) || '0');
+  const termineesNonVues = terminees.filter(m => m.id > lastSeenTerminee).length;
+  const toutes = aFaire + termineesNonVues;
 
   document.querySelectorAll('.badge-missions').forEach(el => {
     if(aFaire>0){ el.textContent = aFaire; el.classList.remove('hidden'); }
     else el.classList.add('hidden');
   });
-  const sfMap = {nouvelle: aFaire, en_cours: enCours, terminee: terminees, toutes};
+  const sfMap = {nouvelle: aFaire, en_cours: enCours, terminee: termineesNonVues, toutes};
   Object.entries(sfMap).forEach(([key, count]) => {
     document.querySelectorAll('.badge-sf-'+key).forEach(el => {
       if(count>0){ el.textContent = count; el.classList.remove('hidden'); }
       else el.classList.add('hidden');
     });
   });
+}
+function markTermineeSeen(){
+  const maxId = Math.max(0, ...STATE.missions.filter(m => m.statut==='fait').map(m => m.id));
+  if(maxId>0) localStorage.setItem('t_lastseen_terminee_'+STATE.transporteurId, String(maxId));
+  document.querySelectorAll('.badge-sf-terminee, .badge-sf-toutes').forEach(el => el.classList.add('hidden'));
 }
 
 async function updateActiviteBadge(){
@@ -818,7 +833,13 @@ function renderDayProgress(){
 }
 
 let MISSION_FILTER = 'toutes';
+// "Toutes" = toutes les missions ACTIVES (à faire + en cours) — une fois
+// "fait", une mission n'a plus rien à demander au livreur, elle se range
+// dans "Terminées" et sort de la vue par défaut. Sans ce filtre explicite,
+// l'historique s'accumulait avec les missions du jour et noyait ce qui
+// reste réellement à traiter maintenant.
 const MISSION_FILTER_STATUTS = {
+  toutes:   ['a_faire', 'acceptee', 'arrivee', 'probleme'],
   nouvelle: ['a_faire'],
   en_cours: ['acceptee', 'arrivee', 'probleme'],
   terminee: ['fait'],
@@ -862,6 +883,7 @@ function renderMissions(){
   const tourZone = document.getElementById('tour-zone');
   renderTranspBanner();
   renderDayProgress();
+  if(MISSION_FILTER==='terminee' || MISSION_FILTER==='toutes') markTermineeSeen();
   const byStatut = filteredMissions();
   renderPostalFilter(byStatut);
   const visible = POSTAL_FILTER ? byStatut.filter(m => postalCode((m.client||{}).adresse) === POSTAL_FILTER) : byStatut;

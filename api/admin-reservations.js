@@ -43,6 +43,12 @@ module.exports = async (req, res) => {
       const siret   = (body.siret   || '').trim().slice(0, 50);
       const email   = (body.email   || '').trim().slice(0, 200);
       const adresse = (body.adresse || '').trim().slice(0, 500);
+      const etage       = (body.etage       || '').trim().slice(0, 50);
+      const ascenseur   = (body.ascenseur   || '').trim().slice(0, 50);
+      const fenetre     = (body.fenetre     || '').trim().slice(0, 100);
+      const installation = (body.installation || '').trim().slice(0, 100);
+      const instructionsAcces = (body.instructions_acces || '').trim().slice(0, 1000);
+      const creneau     = (body.creneau_livraison || '').trim().slice(0, 500);
       const dateDebut = (body.date_debut || '').slice(0, 10);
       const dateFin    = (body.date_fin   || '').slice(0, 10);
       const quantite   = Math.min(5, Math.max(1, parseInt(body.quantite) || 1));
@@ -84,6 +90,9 @@ module.exports = async (req, res) => {
         city_id: city.id, ref, prenom, nom, tel, tel_secondaire: telSecondaire || null,
         type_client: typeClient, raison_sociale: raisonSociale || null, siret: siret || null,
         email, adresse,
+        etage: etage || null, ascenseur: ascenseur || null, fenetre: fenetre || null,
+        installation: installation || null, instructions_acces: instructionsAcces || null,
+        creneau: creneau || null,
         date_debut: dateDebut, date_fin: dateFin, quantite,
         prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'manuel',
       }).select().single();
@@ -117,6 +126,17 @@ module.exports = async (req, res) => {
       // doublon créé par erreur) — ça ne touche ni le statut, ni le stock, ni les
       // missions, contrairement à "Annuler". Réversible via "Restaurer".
       if (body.masquee != null) patch.masquee = !!body.masquee;
+      // Complète/corrige les infos logistiques d'une réservation déjà créée (ex.
+      // une réservation manuelle créée sans ces champs, ou une info donnée par
+      // téléphone après coup) — ces infos remontent telles quelles à la mission
+      // du transporteur, jamais un simple détail admin.
+      if (body.etage != null)              patch.etage              = body.etage.trim().slice(0, 50) || null;
+      if (body.ascenseur != null)          patch.ascenseur          = body.ascenseur.trim().slice(0, 50) || null;
+      if (body.fenetre != null)            patch.fenetre            = body.fenetre.trim().slice(0, 100) || null;
+      if (body.installation != null)       patch.installation       = body.installation.trim().slice(0, 100) || null;
+      if (body.instructions_acces != null) patch.instructions_acces = body.instructions_acces.trim().slice(0, 1000) || null;
+      if (body.creneau_livraison != null)  patch.creneau            = body.creneau_livraison.trim().slice(0, 500) || null;
+      if (body.tel_secondaire != null)     patch.tel_secondaire     = body.tel_secondaire.trim().slice(0, 50) || null;
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('reservations').update(patch).eq('id', id).eq('city_id', city.id);
       if (error) throw error;
