@@ -304,6 +304,7 @@ let STATE = {
   transporteurId: localStorage.getItem('t_id') ? parseInt(localStorage.getItem('t_id')) : null,
   transporteurNom: localStorage.getItem('t_nom') || '',
   missions: [],
+  en_pause: false,
   currentMission: null,
   pendingUpload: null, // {livraisonId, kind}
 };
@@ -338,7 +339,7 @@ function logout(){
   localStorage.removeItem('t_token');
   localStorage.removeItem('t_id');
   localStorage.removeItem('t_nom');
-  STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],currentMission:null,pendingUpload:null};
+  STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],en_pause:false,currentMission:null,pendingUpload:null};
   stopPositionTracking();
   document.getElementById('who-badge').classList.add('hidden');
   show('login-screen');
@@ -606,6 +607,7 @@ async function fetchMissions(){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     STATE.missions = d.missions || [];
+    STATE.en_pause = d.en_pause || false;
     updatePositionTracking();
     updateMissionsBadge();
     return true;
@@ -679,6 +681,7 @@ async function silentRefreshMissions(){
     const d = await r.json();
     if(!r.ok) return;
     STATE.missions = d.missions || [];
+    STATE.en_pause = d.en_pause || false;
     updatePositionTracking();
     updateMissionsBadge();
     if(!document.getElementById('missions-screen').classList.contains('hidden')){
@@ -762,6 +765,13 @@ function renderTranspBanner(){
   const aFaireTotal   = STATE.missions.filter(m => m.statut==='a_faire').length;
   const enCours       = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut)).length;
   const banners = [];
+  if(STATE.en_pause){
+    banners.push({
+      msg: '⏸ Tu es actuellement en pause — tu ne recevras pas de nouvelles missions. Contacte Aly pour reprendre.',
+      action: '',
+      bg: '#92400e',
+    });
+  }
   if(aFaireAujourd > 0){
     banners.push({
       msg: `🔔 ${aFaireAujourd} mission${aFaireAujourd>1?'s':''} à accepter aujourd'hui`,
@@ -783,10 +793,9 @@ function renderTranspBanner(){
     });
   }
   zone.innerHTML = banners.map(b =>
-    `<div onclick="${b.action}" style="background:${b.bg};color:#fff;border-radius:8px;padding:10px 14px;margin:8px 0 4px;font-weight:700;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
-      <span>${b.msg}</span>
-      <span style="font-size:11px;opacity:.85">Voir →</span>
-    </div>`
+    b.action
+      ? `<div onclick="${b.action}" style="background:${b.bg};color:#fff;border-radius:8px;padding:10px 14px;margin:8px 0 4px;font-weight:700;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;align-items:center"><span>${b.msg}</span><span style="font-size:11px;opacity:.85">Voir →</span></div>`
+      : `<div style="background:${b.bg};color:#fff;border-radius:8px;padding:10px 14px;margin:8px 0 4px;font-weight:700;font-size:13px;line-height:1.4">${b.msg}</div>`
   ).join('');
 }
 

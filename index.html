@@ -4149,7 +4149,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             <p id="lbl-creneau-liv" style="font-size:13px;font-weight:600;color:var(--black);margin-bottom:10px">Créneau de livraison</p>
             <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;background:rgba(27,58,95,.05);border:1.5px solid rgba(27,58,95,.15);border-radius:12px">
               <span style="font-size:24px;font-weight:900;color:#1b3a5f;letter-spacing:-.02em;white-space:nowrap">8h – 12h</span>
-              <span style="font-size:12.5px;color:var(--grey);line-height:1.55">Notre technicien vous appelle<br><strong>30 min avant</strong> d'arriver.</span>
+              <span id="delivery-notice" style="font-size:12.5px;color:var(--grey);line-height:1.55">Notre technicien vous appelle<br><strong>30 min avant</strong> d'arriver.</span>
             </div>
             <!-- Valeur fixe lue par le JS de récap et de checkout -->
             <div id="creneau-liv-group" style="display:none" aria-hidden="true"><span class="cren-card on">8h–12h</span></div>
@@ -5452,7 +5452,17 @@ function tglOuv(el,val){
   if(photoZone){
     const show=val==='À confirmer';
     photoZone.style.display=show?'block':'none';
-    if(!show){ _fenetrePhotoPath=null; }
+    if(!show){
+      _fenetrePhotoPath=null;
+      const preview=document.getElementById('fenetre-photo-preview');
+      const img=document.getElementById('fenetre-photo-img');
+      const status=document.getElementById('fenetre-photo-status');
+      const btnText=document.getElementById('fenetre-photo-btn-text');
+      if(preview){preview.style.display='none';}
+      if(img){img.src='';}
+      if(status){status.textContent='';}
+      if(btnText){btnText.textContent='Prendre une photo / Choisir depuis la galerie';}
+    }
   }
   buildRecap();
 }
@@ -5478,7 +5488,7 @@ async function handleFenetrePhoto(input){
     const r=await fetch('/api/checkout-window-photo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:file.type})});
     if(!r.ok)throw new Error('Endpoint indisponible');
     const {signedUrl,path}=await r.json();
-    const up=await fetch(signedUrl,{method:'PUT',headers:{'Content-Type':file.type,'x-upsert':'false'},body:file});
+    const up=await fetch(signedUrl,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});
     if(!up.ok)throw new Error('Erreur réseau');
     _fenetrePhotoPath=path;
     if(status)status.textContent='✅ Photo bien jointe — notre technicien la verra avant d\'arriver.';
@@ -6270,7 +6280,7 @@ const LANG_MAP=[
   ['#ouv-err','text','Veuillez sélectionner le type de fenêtre pour continuer.','Please select the window type to continue.'],
   /* modal step 4 */
   ['#lbl-creneau-liv','text','Votre créneau de livraison','Your delivery slot'],
-  ['#delivery-notice','text','Le technicien vous appelle 30 min avant d\'arriver.','The technician calls you 30 min before arriving.'],
+  ['#delivery-notice','html','Notre technicien vous appelle<br><strong>30 min avant</strong> d\'arriver.','Our technician calls you<br><strong>30 min before</strong> arriving.'],
   /* modal step 5 — recap labels */
   ['#lbl-recup-section','text','Récupération','Collection'],
   ['#lbl-creneau-recup','text','Créneau de récupération','Collection slot'],

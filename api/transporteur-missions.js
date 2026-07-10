@@ -26,18 +26,22 @@ module.exports = async (req, res) => {
         vidange_confirmee,
         probleme_type, probleme_description,
         reservation:reservations (
-          prenom, nom, tel, tel_secondaire, adresse, etage, ascenseur, fenetre, installation, quantite, instructions_acces, city_id,
+          prenom, nom, tel, tel_secondaire, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, quantite, instructions_acces, city_id,
           reservation_appareils ( appareil:appareils ( numero ) ),
           client:clients ( acces_difficile )
         )
       `)
       .eq('transporteur_id', transporteurId)
+      .eq('masquee', false)
       .or(`statut.in.(a_faire,acceptee,arrivee,probleme),and(statut.eq.fait,date_prevue.gte.${cutoffStr})`)
       .order('date_prevue', { ascending: true })
       .order('creneau', { ascending: true });
     if (error) throw error;
 
-    const baremeByCity = await getBaremeByCityIds(supabase, (data || []).map(m => m.reservation?.city_id));
+    const [baremeByCity, tData] = await Promise.all([
+      getBaremeByCityIds(supabase, (data || []).map(m => m.reservation?.city_id)),
+      supabase.from('transporteurs').select('en_pause').eq('id', transporteurId).maybeSingle(),
+    ]);
 
     const missions = (data || []).map(m => ({
       id:                  m.id,
@@ -52,6 +56,7 @@ module.exports = async (req, res) => {
       photo_retour_ok:     Boolean(m.photo_retour_path),
       vidange_ok:          Boolean(m.vidange_confirmee),
       client_notifie:      Boolean(m.client_notifie_at),
+      fenetre_photo_ok:    Boolean(m.reservation?.fenetre_photo_path),
       probleme_type:       m.probleme_type,
       probleme_description: m.probleme_description,
       appareil_numeros: ((m.reservation?.reservation_appareils) || [])
@@ -60,7 +65,7 @@ module.exports = async (req, res) => {
       client: m.reservation || null,
     }));
 
-    return res.status(200).json({ missions });
+    return res.status(200).json({ missions, en_pause: tData?.data?.en_pause || false });
   } catch (err) {
     console.error('[Transporteur missions]', err.message);
     return res.status(500).json({ error: 'Erreur serveur' });
