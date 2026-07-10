@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Email requis pour retrouver ta réservation' });
     }
     const { data: orig } = await supabase
-      .from('reservations').select('city_id')
+      .from('reservations').select('city_id, tel_secondaire')
       .eq('email', String(data.email).trim())
       .order('created_at', { ascending: false })
       .limit(1).maybeSingle();
@@ -123,6 +123,7 @@ module.exports = async (req, res) => {
       nom:                      (data.nom             || '').slice(0, 200),
       email:                    (data.email           || '').slice(0, 200),
       tel:                      (data.tel             || '').slice(0, 50),
+      tel_secondaire:           orig?.tel_secondaire || null,
       adresse:                  (data.adresse_origine || '').slice(0, 500),
       creneau:                  (data.creneau         || '').slice(0, 500),
       date_debut:               extDateDebut,
