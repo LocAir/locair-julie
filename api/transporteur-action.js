@@ -306,6 +306,18 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
       return res.status(200).json({ ok: true, statut: 'probleme' });
     }
 
+    if (action === 'fenetre_photo_url') {
+      const { data: liv2 } = await supabase
+        .from('livraisons')
+        .select('reservation:reservations(fenetre_photo_path)')
+        .eq('id', livraisonId).eq('transporteur_id', transporteurId).maybeSingle();
+      if (!liv2?.reservation?.fenetre_photo_path) return res.status(404).json({ error: 'Photo introuvable' });
+      const { data: urlData, error: urlErr } = await supabase.storage
+        .from('missions').createSignedUrl(liv2.reservation.fenetre_photo_path, 300);
+      if (urlErr) throw urlErr;
+      return res.status(200).json({ url: urlData.signedUrl });
+    }
+
     return res.status(400).json({ error: 'Action inconnue' });
   } catch (err) {
     console.error('[Transporteur action]', err.message);

@@ -1026,7 +1026,7 @@ function renderDetail(){
       <div class="info-row"><span class="info-ic">👤</span><span class="info-label">Client</span><span class="info-val">${escHtml((c.prenom||'')+' '+(c.nom||''))}</span></div>
       <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
       <div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${escHtml(c.etage||'—')} ${c.ascenseur&&c.ascenseur!=='—'?'· Ascenseur: '+escHtml(c.ascenseur):''}</span></div>
-      <div class="info-row"><span class="info-ic">🪟</span><span class="info-label">Fenêtre</span><span class="info-val">${escHtml(c.fenetre||'—')}</span></div>
+      <div class="info-row"><span class="info-ic">🪟</span><span class="info-label">Fenêtre</span><span class="info-val">${escHtml(c.fenetre||'—')}${m.fenetre_photo_ok?` <button onclick="voirPhotoFenetre(${m.id})" style="margin-left:6px;font-size:11px;padding:2px 7px;border:1px solid var(--rule);border-radius:6px;background:#fff;cursor:pointer;color:var(--blue)">📷 Voir photo</button>`:''}</span></div>
       <div class="info-row"><span class="info-ic">📞</span><span class="info-label">Téléphone</span><span class="info-val">${c.tel?`<a href="tel:${encodeURIComponent(c.tel)}" style="color:var(--blue);text-decoration:none">${escHtml(c.tel)}</a>`:'—'}</span></div>
       ${c.tel_secondaire?`<div class="info-row"><span class="info-ic">☎️</span><span class="info-label">Secours</span><span class="info-val"><a href="tel:${encodeURIComponent(c.tel_secondaire)}" style="color:var(--blue);text-decoration:none">${escHtml(c.tel_secondaire)}</a></span></div>`:''}
       <div class="info-row"><span class="info-ic">❄️</span><span class="info-label">Quantité</span><span class="info-val">${c.quantite||1}</span></div>
@@ -1034,9 +1034,13 @@ function renderDetail(){
       ${m.acces_difficile?`<p class="step-hint" style="margin-top:10px">📌 ${escHtml(m.acces_difficile)}</p>`:''}
       ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
       ${c.tel?`<a class="btn btn-blue" href="tel:${encodeURIComponent(c.tel)}" style="margin-bottom:8px;text-decoration:none">📞 Appeler ${escHtml(c.prenom||'le client')}</a>`:''}
-      ${c.tel_secondaire?`<a class="btn btn-grey" href="tel:${encodeURIComponent(c.tel_secondaire)}" style="margin-bottom:12px;text-decoration:none">☎️ Appeler le numéro de secours</a>`:''}
+      ${c.tel_secondaire?`<a class="btn btn-grey" href="tel:${encodeURIComponent(c.tel_secondaire)}" style="margin-bottom:4px;text-decoration:none">☎️ Appeler le numéro de secours</a>`:''}
+      ${c.tel_secondaire?(()=>{const t=encodeURIComponent(c.tel_secondaire.replace(/\s+/g,''));const prenom=(STATE.transporteurNom||'').split(' ')[0]||'';const msg=encodeURIComponent(`Bonjour, c'est ${prenom} de Loc'Air, j'arrive chez vous d'ici environ 30 minutes.`);return `<div style="display:flex;gap:8px;margin-bottom:12px"><a class="media-btn" href="sms:${t}?body=${msg}" style="flex:1;text-decoration:none;text-align:center"><span class="ic">📲</span> SMS secours</a><a class="media-btn" href="https://wa.me/${t}?text=${msg}" target="_blank" rel="noopener" style="flex:1;text-decoration:none;text-align:center"><span class="ic">💬</span> WA secours</a></div>`;})():''}
     ` : `
       <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
+      ${(c.quantite&&c.quantite>1)?`<div class="info-row"><span class="info-ic">❄️</span><span class="info-label">Quantité</span><span class="info-val">${c.quantite} appareils à ${m.type==='recuperation'?'récupérer':'livrer'}</span></div>`:''}
+      ${c.fenetre&&c.fenetre!=='—'?`<div class="info-row"><span class="info-ic">🪟</span><span class="info-label">Fenêtre</span><span class="info-val">${escHtml(c.fenetre)}</span></div>`:''}
+      ${c.instructions_acces?`<p class="step-hint" style="margin-top:10px">🔑 ${escHtml(c.instructions_acces)}</p>`:''}
       ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
     `;
 
@@ -1089,6 +1093,22 @@ function prevenirClientWhatsapp(){
   const waNumber = digits.startsWith('0') ? '33'+digits.slice(1) : digits;
   if(waNumber) window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`, '_blank');
   doAction('prevenir_client');
+}
+async function voirPhotoFenetre(livraisonId){
+  try{
+    const r = await fetch(API('transporteur-action'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body:JSON.stringify({action:'fenetre_photo_url', livraison_id:livraisonId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    // Ouvre la photo dans un overlay léger
+    const ov = document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML=`<img src="${d.url}" style="max-width:100%;max-height:80vh;border-radius:10px;object-fit:contain"/><button onclick="this.closest('div').remove()" style="margin-top:14px;padding:10px 24px;border-radius:10px;border:none;background:#fff;font-size:15px;cursor:pointer;font-weight:600">Fermer</button>`;
+    ov.onclick = e => { if(e.target===ov) ov.remove(); };
+    document.body.appendChild(ov);
+  }catch(e){
+    const errEl = document.getElementById('detail-err');
+    if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
+  }
 }
 async function doAction(action, extra){
   const errEl = document.getElementById('detail-err');

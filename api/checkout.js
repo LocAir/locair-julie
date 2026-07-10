@@ -150,6 +150,14 @@ module.exports = async (req, res) => {
       prix_total_cents:         amountCents,
       statut:                   'en_attente',
       source:                   'site',
+      source_channel:           (data.source || '').slice(0, 100) || null,
+      type_client:              (data.type_client || '').slice(0, 50) || null,
+      siret:                    (data.siret || '').replace(/\s/g, '').slice(0, 14) || null,
+      parrain_code:             (data.parrain_code || '').slice(0, 100) || null,
+      logement:                 (data.logement || '').slice(0, 100) || null,
+      motifs:                   (data.motifs || '').slice(0, 500) || null,
+      mkt_consent:              data.mkt_consent === 'Oui' || data.mkt_consent === true,
+      cgv_accepted_at:          (data.cgv_accepted_at || null),
     });
 
     if (insertErr) {
