@@ -78,6 +78,7 @@ module.exports = async (req, res) => {
       let pin = (body.pin || '').trim();
       for (let attempt = 0; attempt < 5; attempt++) {
         const candidate = pin || String(Math.floor(100000 + Math.random() * 900000));
+        const typesAutorises = Array.isArray(body.types_autorises) ? body.types_autorises : [];
         const { data: created, error } = await supabase.from('transporteurs').insert({
           city_id:                 city.id,
           nom,
@@ -86,6 +87,7 @@ module.exports = async (req, res) => {
           pin:                     candidate,
           taux_livraison_cents:    Math.max(0, parseInt(body.taux_livraison_cents)    || 0),
           taux_recuperation_cents: Math.max(0, parseInt(body.taux_recuperation_cents) || 0),
+          types_autorises:         typesAutorises,
         }).select('id').single();
         if (!error) {
           await replaceVilles(supabase, created.id, villes);

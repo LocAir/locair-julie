@@ -72,7 +72,19 @@ module.exports = async (req, res) => {
       .in('reservation_id', resaIds).eq('statut', 'ouvert');
     const incidents = incidentsCount || 0;
 
-    return res.status(200).json({ virements, livraisons, non_assignees: nonAssignees, reservations, incidents });
+    // Récupérations en retard : date_prevue dépassée, mission pas encore faite.
+    // Chaque retard = un appareil chez le client au-delà du délai prévu — risque
+    // financier et stock bloqué, à traiter en priorité.
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const { count: retardsCount } = await supabase
+      .from('livraisons').select('id', { count: 'exact', head: true })
+      .in('reservation_id', resaIds)
+      .eq('type', 'recuperation')
+      .in('statut', ['a_faire', 'acceptee'])
+      .lt('date_prevue', todayStr);
+    const retards = retardsCount || 0;
+
+    return res.status(200).json({ virements, livraisons, non_assignees: nonAssignees, reservations, incidents, retards });
   } catch (err) {
     console.error('[Admin alerts]', err.message);
     return res.status(500).json({ error: 'Erreur serveur' });

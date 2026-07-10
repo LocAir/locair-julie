@@ -234,6 +234,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
       <button onclick="switchTab('activite')">💰 Activité<span class="tab-badge hidden badge-activite"></span></button>
       <button onclick="switchTab('stock')">📦 Stock</button>
     </div>
+    <div id="transp-banner-zone"></div>
     <div id="progress-zone"></div>
     <div class="map-filters" id="mission-filters">
       <button class="on" data-f="toutes" onclick="setMissionFilter('toutes')">Toutes<span class="tab-badge hidden badge-sf-toutes"></span></button>
@@ -753,6 +754,42 @@ function acceptFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMissio
 function refuseFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMission = STATE.missions.find(m=>m.id===id); doAction('indisponible'); }
 
 // Capacité réaliste d'un livreur : jusqu'à 10 missions/jour — même
+function renderTranspBanner(){
+  const zone = document.getElementById('transp-banner-zone');
+  if(!zone) return;
+  const todayStr = new Date().toISOString().slice(0,10);
+  const aFaireAujourd = STATE.missions.filter(m => m.statut==='a_faire' && m.date_prevue===todayStr).length;
+  const aFaireTotal   = STATE.missions.filter(m => m.statut==='a_faire').length;
+  const enCours       = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut)).length;
+  const banners = [];
+  if(aFaireAujourd > 0){
+    banners.push({
+      msg: `🔔 ${aFaireAujourd} mission${aFaireAujourd>1?'s':''} à accepter aujourd'hui`,
+      action: `setMissionFilter('nouvelle')`,
+      bg: '#c2410c',
+    });
+  } else if(aFaireTotal > 0){
+    banners.push({
+      msg: `📋 ${aFaireTotal} mission${aFaireTotal>1?'s':''} à accepter prochainement`,
+      action: `setMissionFilter('nouvelle')`,
+      bg: '#1e40af',
+    });
+  }
+  if(enCours > 0){
+    banners.push({
+      msg: `🚚 ${enCours} mission${enCours>1?'s':''} en cours`,
+      action: `setMissionFilter('en_cours')`,
+      bg: '#065f46',
+    });
+  }
+  zone.innerHTML = banners.map(b =>
+    `<div onclick="${b.action}" style="background:${b.bg};color:#fff;border-radius:8px;padding:10px 14px;margin:8px 0 4px;font-weight:700;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">
+      <span>${b.msg}</span>
+      <span style="font-size:11px;opacity:.85">Voir →</span>
+    </div>`
+  ).join('');
+}
+
 // référence que côté admin, pour que la barre affichée soit cohérente des
 // deux côtés.
 const MISSIONS_CIBLE_JOUR = 10;
@@ -814,6 +851,7 @@ function renderPostalFilter(missionsForStatut){
 function renderMissions(){
   const wrap = document.getElementById('missions-list');
   const tourZone = document.getElementById('tour-zone');
+  renderTranspBanner();
   renderDayProgress();
   const byStatut = filteredMissions();
   renderPostalFilter(byStatut);

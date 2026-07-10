@@ -83,11 +83,6 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
    apporter — visible seulement une fois la barre verticale (desktop). */
 .tabs-group-label{display:none;flex-shrink:0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--grey-soft);padding:9px 15px 2px;white-space:nowrap}
 
-/* Bandeau permanent en haut d'écran tant qu'au moins une mission n'a pas de
-   livreur — visible depuis n'importe quel onglet, pas seulement Livraisons. */
-.unassigned-banner{background:var(--red);color:#fff;text-align:center;padding:12px 16px;border-radius:var(--r);font-weight:700;font-size:13px;margin-bottom:16px;cursor:pointer;box-shadow:var(--sh-sm);transition:background-color .15s ease}
-.unassigned-banner:hover{background:#7d2818}
-
 /* Sélecteur de ville/zone — visible seulement dès 2 villes actives (voir
    loadCitySwitcher), sinon inutile pour une exploitation mono-ville. */
 .city-switcher{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--white);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh-xs)}
@@ -255,9 +250,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
   </div>
 
   <div id="a-app" class="hidden">
-    <div class="unassigned-banner hidden" id="unassigned-banner" onclick="goToUnassigned()">
-      <span id="unassigned-banner-text"></span> — cliquer pour voir
-    </div>
+    <div id="alerts-banner-zone"></div>
     <div class="card hidden" id="a-faceid-offer" style="margin-bottom:16px">
       <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
       <p class="sub" style="margin-bottom:16px">Active Face ID / empreinte pour te connecter sans ressaisir ton mot de passe la prochaine fois.</p>
@@ -758,7 +751,7 @@ async function loadAlerts(){
     updateTabBadge('livraisons', d.livraisons);
     updateTabBadge('virements', d.virements);
     updateTabBadge('incidents', d.incidents);
-    updateUnassignedBanner(d.non_assignees || 0);
+    renderAlertsBanner(d);
   }catch(e){}
 }
 function updateTabBadge(tab, count){
@@ -767,23 +760,26 @@ function updateTabBadge(tab, count){
   if(count>0){ el.textContent = count; el.classList.remove('hidden'); }
   else{ el.classList.add('hidden'); }
 }
-// Bandeau permanent (toutes pages) tant qu'au moins une mission n'a pas de
-// livreur — le badge sur l'onglet Livraisons seul se manque trop facilement
-// quand on travaille sur un autre onglet.
-function updateUnassignedBanner(count){
-  const banner = document.getElementById('unassigned-banner');
-  if(!banner) return;
-  if(count>0){
-    document.getElementById('unassigned-banner-text').textContent = `⚠️ ${count} mission${count>1?'s':''} non assignée${count>1?'s':''} sous 72h`;
-    banner.classList.remove('hidden');
-  }else{
-    banner.classList.add('hidden');
-  }
+
+// Bandeau permanent multi-alertes — visible sur tous les onglets, se met à jour
+// automatiquement. Chaque alerte est cliquable et redirige vers l'onglet concerné.
+function renderAlertsBanner(d){
+  const zone = document.getElementById('alerts-banner-zone');
+  if(!zone) return;
+  const alerts = [];
+  if(d.retards > 0)       alerts.push({msg:`🚨 ${d.retards} récupération${d.retards>1?'s':''} en retard`, fn:"goToRetards()", color:'#7f1d1d', bg:'#991b1b'});
+  if(d.non_assignees > 0) alerts.push({msg:`⚠️ ${d.non_assignees} mission${d.non_assignees>1?'s':''} non assignée${d.non_assignees>1?'s':''} sous 72h`, fn:"goToUnassigned()", color:'#7c2d12', bg:'#c2410c'});
+  if(d.incidents > 0)     alerts.push({msg:`🧯 ${d.incidents} incident${d.incidents>1?'s':''} ouvert${d.incidents>1?'s':''}`, fn:"switchAdminTab('incidents')", color:'#1e3a5f', bg:'#1b3a5f'});
+  if(d.reservations > 0)  alerts.push({msg:`🧾 ${d.reservations} réservation${d.reservations>1?'s':''} à traiter`, fn:"switchAdminTab('reservations')", color:'#3b0764', bg:'#6d28d9'});
+  if(d.virements > 0)     alerts.push({msg:`💶 ${d.virements} virement${d.virements>1?'s':''} demandé${d.virements>1?'s':''}`, fn:"switchAdminTab('transporteurs')", color:'#064e3b', bg:'#065f46'});
+  zone.innerHTML = alerts.map(a =>
+    `<div onclick="${a.fn}" style="background:${a.bg};color:#fff;padding:10px 16px;border-radius:var(--r);font-weight:700;font-size:13px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+      <span>${a.msg}</span><span style="font-size:11px;opacity:.8">Voir →</span>
+    </div>`
+  ).join('');
 }
-function goToUnassigned(){
-  LIVRAISONS_FILTER = 'non_assignees';
-  switchAdminTab('livraisons');
-}
+function goToUnassigned(){ LIVRAISONS_FILTER = 'non_assignees'; switchAdminTab('livraisons'); }
+function goToRetards(){ LIVRAISONS_FILTER = 'toutes'; switchAdminTab('livraisons'); }
 
 // ── Actualisation automatique de l'onglet ouvert ──────────────────────────────
 // Ce que voit l'admin ne doit pas se figer pendant qu'un livreur avance sur le
@@ -1744,6 +1740,27 @@ function setTransporteursView(view){ TRANSPORTEURS_VIEW = view; loadTransporteur
 // moment. Aucune ligne de dispo = disponible tous les jours, tous moments
 // (comportement historique inchangé pour un transporteur jamais restreint).
 const JOURS_LABELS = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+const MISSION_TYPES_DEF = [
+  {key:'livraison',            label:'📦 Livraison',               tarif:'30€'},
+  {key:'livraison_technicien', label:'📦 Livraison + installation', tarif:'40€'},
+  {key:'recuperation',         label:'🔄 Récupération',            tarif:'30€'},
+  {key:'changement',           label:'🔁 Remplacement',            tarif:'40€'},
+];
+// Disponibilités par défaut : Lundi–Samedi, toute la journée
+const DEFAULT_DISPOS = [1,2,3,4,5,6].map(j => ({jour: j, moment: 'journee'}));
+
+function missionTypesHtml(prefix, activeKeys){
+  const active = activeKeys == null ? null : new Set(activeKeys);
+  return MISSION_TYPES_DEF.map(mt => `
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer">
+      <input type="checkbox" id="${prefix}-type-${mt.key}" ${!active||active.has(mt.key)?'checked':''}/>
+      <span style="flex:1">${mt.label}</span>
+      <span style="font-size:12px;font-weight:700;color:var(--green);background:var(--green-bg);padding:2px 8px;border-radius:100px">${mt.tarif}</span>
+    </label>`).join('');
+}
+function collectMissionTypes(prefix){
+  return MISSION_TYPES_DEF.map(mt => mt.key).filter(k => document.getElementById(`${prefix}-type-${k}`)?.checked);
+}
 function villesCheckboxesHtml(prefix, selectedIds){
   const sel = new Set((selectedIds||[]).map(String));
   if(!CITIES_CACHE.length) return '<p class="sub" style="margin:0">Aucune ville configurée.</p>';
@@ -1839,19 +1856,7 @@ function editFiche(id){
   const t = TRANSPORTEURS_CACHE.find(x => x.id === id);
   if(!t) return;
   closeModal();
-  const MISSION_TYPES = [
-    {key:'livraison',            label:'📦 Livraison',               tarif:'30€'},
-    {key:'livraison_technicien', label:'📦 Livraison + installation', tarif:'40€'},
-    {key:'recuperation',         label:'🔄 Récupération',            tarif:'30€'},
-    {key:'changement',           label:'🔁 Remplacement',            tarif:'40€'},
-  ];
-  const typesChecked = new Set(t.types_autorises || []);
-  const typesHtml = MISSION_TYPES.map(mt => `
-    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer">
-      <input type="checkbox" id="fiche-type-${mt.key}" ${typesChecked.has(mt.key)||!typesChecked.size?'checked':''}/>
-      <span style="flex:1">${mt.label}</span>
-      <span style="font-size:12px;font-weight:700;color:var(--green);background:var(--green-bg);padding:2px 8px;border-radius:100px">${mt.tarif}</span>
-    </label>`).join('');
+  const activeKeys = (t.types_autorises && t.types_autorises.length) ? t.types_autorises : null;
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.id = 'modal-overlay-el';
@@ -1860,11 +1865,11 @@ function editFiche(id){
       <h2 style="margin-bottom:14px">✏️ Fiche — ${escHtml(t.nom)}</h2>
       <label>Types de mission autorisés</label>
       <p class="sub" style="margin:4px 0 10px;font-size:12px">Cocher tout = aucune restriction</p>
-      ${typesHtml}
+      ${missionTypesHtml('fiche', activeKeys)}
       <label style="margin-top:16px">Villes d'intervention</label>
       ${villesCheckboxesHtml('fiche', t.villes)}
       <label style="margin-top:16px">Disponibilité</label>
-      ${dispoFormHtml('fiche', t.disponibilites)}
+      ${dispoFormHtml('fiche', t.disponibilites && t.disponibilites.length ? t.disponibilites : DEFAULT_DISPOS)}
       <div class="modal-actions" style="margin-top:18px">
         <button class="btn btn-grey">Annuler</button>
         <button class="btn btn-blue">Enregistrer</button>
@@ -1875,8 +1880,8 @@ function editFiche(id){
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
-    const types = MISSION_TYPES.map(mt => mt.key).filter(k => document.getElementById(`fiche-type-${k}`)?.checked);
-    const allChecked = types.length === MISSION_TYPES.length;
+    const types = collectMissionTypes('fiche');
+    const allChecked = types.length === MISSION_TYPES_DEF.length;
     const villes = collectVillesForm('fiche');
     const disponibilites = collectDispoForm('fiche');
     okBtn.disabled = true;
@@ -1931,7 +1936,12 @@ async function loadTransporteursEquipe(){
         <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''}</div>
         <div class="row-meta">Code : <strong>${escHtml(t.pin||'—')}</strong> · ${euros(t.taux_livraison_cents)}/livraison · ${euros(t.taux_recuperation_cents)}/récupération</div>
         ${CITIES_CACHE.length>1?`<div class="row-meta">🌍 ${(t.villes&&t.villes.length) ? t.villes.map(id => escHtml((CITIES_CACHE.find(c=>c.id===id)||{}).name||'?')).join(', ') : 'Aucune zone'}</div>`:''}
-        ${(t.types_autorises&&t.types_autorises.length)?`<div class="row-meta">📋 Missions : ${t.types_autorises.map(x=>({'livraison':'Livraison','livraison_technicien':'Livraison + install.','recuperation':'Récupération','changement':'Remplacement'}[x]||x)).join(', ')}</div>`:''}
+        <div class="row-meta" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${[
+          {key:'livraison',            label:'Livraison',        tarif:'30€'},
+          {key:'livraison_technicien', label:'Livr.+install.',   tarif:'40€'},
+          {key:'recuperation',         label:'Récupération',     tarif:'30€'},
+          {key:'changement',           label:'Remplacement',     tarif:'40€'},
+        ].map(mt=>{const on=!(t.types_autorises&&t.types_autorises.length)||t.types_autorises.includes(mt.key);return`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;background:${on?'var(--green-bg)':'var(--bg)'};color:${on?'var(--green)':'var(--grey-soft)'};opacity:${on?1:.5};text-decoration:${on?'none':'line-through'}">${mt.label} · ${mt.tarif}</span>`;}).join('')}</div>
         <div class="day-progress" style="margin:12px 0 0;padding:0">${chargeJourHtml(t.id, ld.livraisons)}</div>
         <div class="row-actions">
           <button class="btn btn-grey" onclick="toggleTransporteur(${t.id}, ${!t.actif}, this)">${t.actif?'Désactiver':'Réactiver'}</button>
@@ -1954,12 +1964,15 @@ async function loadTransporteursEquipe(){
           <div><label for="t-liv">€ / livraison</label><input type="number" id="t-liv" min="0" step="0.5" value="10"/></div>
           <div><label for="t-rec">€ / récupération</label><input type="number" id="t-rec" min="0" step="0.5" value="10"/></div>
         </div>
+        <label style="margin-top:14px">Types de mission autorisés</label>
+        <p class="sub" style="margin:4px 0 10px;font-size:12px">Cocher tout = aucune restriction</p>
+        ${missionTypesHtml('t-new', null)}
         ${CITIES_CACHE.length>1?`
         <label style="margin-top:14px">Villes d'intervention</label>
         ${villesCheckboxesHtml('t-new', CITY_ID!=='all'?[parseInt(CITY_ID)]:[])}
-        <label style="margin-top:14px">Disponibilité</label>
-        ${dispoFormHtml('t-new', [])}
         `:''}
+        <label style="margin-top:14px">Disponibilité</label>
+        ${dispoFormHtml('t-new', DEFAULT_DISPOS)}
         <button class="btn btn-blue btn-block" style="margin-top:16px" onclick="addTransporteur()">Ajouter</button>
         <div class="err" id="transp-err"></div>
       </div>`;
@@ -1976,9 +1989,14 @@ async function addTransporteur(){
   const errEl = document.getElementById('transp-err');
   errEl.style.display='none';
   if(!nom){ errEl.textContent='Nom requis'; errEl.style.display='block'; return; }
-  const extra = CITIES_CACHE.length>1
-    ? { villes: collectVillesForm('t-new'), disponibilites: collectDispoForm('t-new') }
-    : {};
+  const types = collectMissionTypes('t-new');
+  const allChecked = types.length === MISSION_TYPES_DEF.length;
+  const types_autorises = allChecked ? [] : types;
+  const extra = {
+    types_autorises,
+    disponibilites: collectDispoForm('t-new'),
+    ...(CITIES_CACHE.length>1 ? { villes: collectVillesForm('t-new') } : {}),
+  };
   try{
     const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, telephone, email, taux_livraison_cents, taux_recuperation_cents, ...extra})});
     const d = await r.json();
