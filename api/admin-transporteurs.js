@@ -109,6 +109,7 @@ module.exports = async (req, res) => {
       if (body.pin != null && body.pin.trim())  patch.pin = body.pin.trim();
       if (body.taux_livraison_cents != null)    patch.taux_livraison_cents    = Math.max(0, parseInt(body.taux_livraison_cents)    || 0);
       if (body.taux_recuperation_cents != null) patch.taux_recuperation_cents = Math.max(0, parseInt(body.taux_recuperation_cents) || 0);
+      if (body.types_autorises !== undefined)   patch.types_autorises = Array.isArray(body.types_autorises) ? body.types_autorises : [];
       const hasFieldPatch = Object.keys(patch).length > 0;
       const hasVillesPatch = body.villes !== undefined || body.disponibilites !== undefined;
       if (!hasFieldPatch && !hasVillesPatch) return res.status(400).json({ error: 'Rien à modifier' });

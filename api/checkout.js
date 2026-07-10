@@ -42,11 +42,20 @@ module.exports = async (req, res) => {
   const dateFin  = addDays(dateDebut, duree);
   const supabase = getSupabase();
   let city;
+  let horsZone = false;
 
   try {
     city = await resolveCityByAddress(supabase, data.adresse, data.code_postal);
     if (!city) {
-      return res.status(422).json({ error: 'Adresse hors zone de livraison — contacte-nous pour vérifier si on peut te livrer.' });
+      // Code postal non couvert : accepter la commande en la marquant hors zone
+      // pour traitement manuel — l'admin verra le badge dans l'onglet Réservations.
+      const { data: fallback } = await supabase
+        .from('cities').select('id').eq('actif', true).order('id').limit(1).maybeSingle();
+      city = fallback;
+      horsZone = true;
+      if (!city) {
+        return res.status(422).json({ error: 'Aucune ville configurée pour recevoir cette commande — contacte-nous.' });
+      }
     }
     const disponibles = await getAvailability(supabase, city.id, dateDebut, dateFin);
     if (disponibles < qty) {
@@ -118,6 +127,7 @@ module.exports = async (req, res) => {
 
     const { error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  city.id,
+      hors_zone:                horsZone || false,
       ref:                      (data._ref || '').slice(0, 100),
       stripe_payment_intent_id: intent.id,
       stripe_customer_id:       customerId || null,

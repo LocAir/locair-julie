@@ -87,14 +87,15 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .mcard-top{display:flex;align-items:center;gap:8px;margin-bottom:5px}
 .mcard-icon{font-size:20px}
 .mcard-type{font-weight:700;font-size:15px;letter-spacing:-.005em}
-.mcard-cp{font-size:11.5px;font-weight:700;color:var(--grey)}
 .mcard-badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:4px 10px 4px 8px;border-radius:100px;background:var(--bg);color:var(--grey)}
 .mcard-earn{display:inline-flex;align-items:center;font-size:11.5px;font-weight:800;color:var(--green);background:var(--green-bg);padding:3px 9px;border-radius:100px;margin-right:6px}
 .mcard-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
-.mcard-addr{font-size:14px;color:var(--black);margin-top:6px;line-height:1.45}
-.mcard-meta{font-size:12.5px;color:var(--grey);margin-top:4px}
-.mcard-actions{display:flex;gap:8px;margin-top:12px}
-.mcard-actions a{flex:1;text-align:center;padding:10px;background:var(--bg);border-radius:var(--r-sm);font-size:13px;font-weight:700;color:var(--blue);text-decoration:none}
+.mcard-name{font-size:14px;font-weight:700;color:var(--black);margin-top:8px}
+.mcard-addr{font-size:13px;color:var(--grey);margin-top:2px;line-height:1.4}
+.mcard-meta{font-size:12px;color:var(--grey-soft);margin-top:4px}
+/* Actions fusionnées : icônes compact (carte/tél) + boutons accept/refuse sur 1 ligne */
+.mcard-actions{display:flex;gap:7px;margin-top:12px;align-items:center}
+.mcard-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;border:1.5px solid var(--border);background:var(--bg-soft);font-size:17px;text-decoration:none;flex-shrink:0;color:var(--black)}
 
 .empty{text-align:center;color:var(--grey);font-size:14px;padding:44px 10px}
 
@@ -718,37 +719,35 @@ function missionCardHtml(m){
   const c = m.client || {};
   const badge = STATUT_LABEL[m.statut] || m.statut;
   const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
-  const cp = postalCode(c.adresse);
   const earn = m.montant_preview ? `<span class="mcard-earn">💶 ${Math.round(m.montant_preview/100)}€</span>` : '';
+  const metaParts = [m.creneau?escHtml(m.creneau):'', (c.etage&&c.etage!=='—')?'Étage '+escHtml(c.etage):''].filter(Boolean);
   return `
     <div class="mcard st-${m.statut}" onclick="openMission(${m.id})">
       <div class="mcard-top">
         <span class="mcard-icon">${TYPE_ICON[m.type]||'📍'}</span>
         <span class="mcard-type">${missionTypeLabel(m)}</span>
-        ${cp?`<span class="mcard-cp">📮 ${escHtml(cp)}</span>`:''}
         <span style="flex:1"></span>
         ${earn}
         <span class="mcard-badge">${badge}</span>
       </div>
-      <div class="mcard-addr">${escHtml((c.prenom||'')+' '+(c.nom||''))} — ${escHtml(c.adresse||'Adresse à confirmer')}</div>
-      <div class="mcard-meta">${[m.creneau?escHtml(m.creneau):'', (c.etage&&c.etage!=='—')?'Étage '+escHtml(c.etage):''].filter(Boolean).join(' · ')}</div>
-      ${mapsUrl?`<div class="mcard-actions"><a href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Itinéraire</a>${c.tel?`<a href="tel:${encodeURIComponent(c.tel)}" onclick="event.stopPropagation()">📞 Appeler</a>`:''}</div>`:''}
-      ${m.statut==='a_faire'?missionCardAcceptRefuseHtml(m):''}
+      <div class="mcard-name">${escHtml((c.prenom||'')+' '+(c.nom||'')).trim()||'Client'}</div>
+      <div class="mcard-addr">${escHtml(c.adresse||'Adresse à confirmer')}</div>
+      ${metaParts.length?`<div class="mcard-meta">${metaParts.join(' · ')}</div>`:''}
+      ${missionCardActionsHtml(m, mapsUrl, c.tel)}
     </div>`;
 }
-// L'acceptation/refus d'une nouvelle mission se fait directement depuis la
-// carte de la liste — pas besoin d'ouvrir le détail juste pour ce choix
-// binaire. Même garde-fou que côté détail : une mission déjà en cours doit
-// être terminée avant d'en accepter une autre.
-function missionCardAcceptRefuseHtml(m){
+// Actions fusionnées en 1 seule ligne : icônes compactes carte/tél à gauche,
+// bouton principal accept à droite, refus réduit à l'essentiel — économise
+// une ligne complète par rapport aux 2 rangées séparées précédentes.
+function missionCardActionsHtml(m, mapsUrl, tel){
+  const mapBtn  = mapsUrl ? `<a class="mcard-icon-btn" href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Itinéraire">🗺️</a>` : '';
+  const callBtn = tel     ? `<a class="mcard-icon-btn" href="tel:${encodeURIComponent(tel)}" onclick="event.stopPropagation()" title="Appeler">📞</a>` : '';
+  if(m.statut !== 'a_faire') return (mapBtn||callBtn) ? `<div class="mcard-actions">${mapBtn}${callBtn}</div>` : '';
   const hasMissionEnCours = STATE.missions.some(x => x.id!==m.id && ['acceptee','arrivee'].includes(x.statut));
   if(hasMissionEnCours){
-    return `<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-red" style="flex:1" onclick="refuseFromList(${m.id},event)">❌ Indisponible</button></div>`;
+    return `<div class="mcard-actions">${mapBtn}${callBtn}<button class="btn btn-red" style="flex:1;min-width:0" onclick="refuseFromList(${m.id},event)">✖ Non dispo</button></div>`;
   }
-  return `<div style="display:flex;gap:8px;margin-top:10px">
-    <button class="btn btn-green" style="flex:1" onclick="acceptFromList(${m.id},event)">✅ J'accepte</button>
-    <button class="btn btn-red" style="flex:1" onclick="refuseFromList(${m.id},event)">❌ Indisponible</button>
-  </div>`;
+  return `<div class="mcard-actions">${mapBtn}${callBtn}<button class="btn btn-green" style="flex:1;min-width:0" onclick="acceptFromList(${m.id},event)">✅ J'accepte</button><button class="btn btn-red" style="flex:0 0 52px" onclick="refuseFromList(${m.id},event)" title="Indisponible">✖</button></div>`;
 }
 function acceptFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMission = STATE.missions.find(m=>m.id===id); doAction('accepter'); }
 function refuseFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMission = STATE.missions.find(m=>m.id===id); doAction('indisponible'); }

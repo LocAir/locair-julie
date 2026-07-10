@@ -1139,6 +1139,7 @@ function reservationRowHtml(res, readOnly){
         <span class="row-title">${nom}</span>
         <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
       </div>
+      ${res.hors_zone?`<div class="resa-sub" style="color:var(--red);font-weight:700">⚠️ Hors zone — affectation manuelle requise</div>`:''}
       ${res.source==='site_prolongation'?`<div class="resa-sub" style="color:var(--blue);font-weight:700">🔄 Location prolongée</div>`:''}
       <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
       ${(res.etage||res.ascenseur||res.fenetre)?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):''].filter(Boolean).join(' · ')}</div>`:''}
@@ -1187,8 +1188,10 @@ async function loadReservations(){
 function renderReservationsToolbar(){
   const zone = document.getElementById('tab-reservations');
   const masqueesCount = RESERVATIONS_CACHE.filter(r => r.masquee).length;
+  const horsZoneCount = RESERVATIONS_CACHE.filter(r => r.hors_zone && !r.masquee).length;
   const filters = [
     {key:'toutes', label:'Toutes'},
+    {key:'hors_zone', label:`⚠️ Hors zone${horsZoneCount?' ('+horsZoneCount+')':''}`},
     {key:'en_attente', label:'En attente'},
     {key:'confirmee', label:'Confirmées'},
     {key:'prolongation', label:'🔄 Prolongations'},
@@ -1284,6 +1287,7 @@ function renderReservations(){
   const q = (document.getElementById('resa-search')?.value || '').trim().toLowerCase();
   let items = RESERVATIONS_CACHE.filter(r => RESERVATIONS_SHOW_MASQUEES ? r.masquee : !r.masquee);
   if(!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER === 'prolongation') items = items.filter(r => r.source === 'site_prolongation');
+  else if(!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER === 'hors_zone') items = items.filter(r => r.hors_zone);
   else if(!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER !== 'toutes') items = items.filter(r => r.statut === RESERVATIONS_FILTER);
   if(q){
     items = items.filter(r => [r.ref, r.prenom, r.nom, r.adresse, r.tel].filter(Boolean).join(' ').toLowerCase().includes(q));
@@ -1561,6 +1565,7 @@ function renderLivraisons(){
         </div>
         <div style="margin-bottom:6px">${missionTypeBadge(m.type)}</div>
         ${nonAssignee?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-bottom:4px">🔔 Non assignée</div>`:''}
+        ${res.hors_zone?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-bottom:4px">⚠️ Hors zone</div>`:''}
         ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="row-meta" style="font-weight:700;color:var(--blue)">🔢 Unité${m.appareil_numeros.length>1?'s':''} n°${m.appareil_numeros.join(', ')}${(m.appareil_references&&m.appareil_references.length)?' · '+m.appareil_references.map(escHtml).join(', '):''}</div>`:''}
         <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
         ${(res.etage||res.ascenseur||res.fenetre)?`<div class="row-meta">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):''].filter(Boolean).join(' · ')}</div>`:''}
@@ -1825,6 +1830,67 @@ function editZonesDispo(id){
   };
 }
 
+function editFiche(id){
+  const t = TRANSPORTEURS_CACHE.find(x => x.id === id);
+  if(!t) return;
+  closeModal();
+  const MISSION_TYPES = [
+    {key:'livraison',    label:'📦 Livraison'},
+    {key:'recuperation', label:'🔄 Récupération'},
+    {key:'changement',   label:'🔁 Remplacement'},
+  ];
+  const typesChecked = new Set(t.types_autorises || []);
+  const typesHtml = MISSION_TYPES.map(mt => `
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 0">
+      <input type="checkbox" id="fiche-type-${mt.key}" ${typesChecked.has(mt.key)||!typesChecked.size?'checked':''}/>
+      ${mt.label}
+    </label>`).join('');
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px;max-height:90vh;overflow-y:auto">
+      <h2 style="margin-bottom:14px">✏️ Fiche — ${escHtml(t.nom)}</h2>
+      <label>Types de mission autorisés</label>
+      <p class="sub" style="margin:4px 0 10px;font-size:12px">Cocher tout = aucune restriction</p>
+      ${typesHtml}
+      <label style="margin-top:16px">Villes d'intervention</label>
+      ${villesCheckboxesHtml('fiche', t.villes)}
+      <label style="margin-top:16px">Disponibilité</label>
+      ${dispoFormHtml('fiche', t.disponibilites)}
+      <div class="modal-actions" style="margin-top:18px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Enregistrer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const types = MISSION_TYPES.map(mt => mt.key).filter(k => document.getElementById(`fiche-type-${k}`)?.checked);
+    const allChecked = types.length === MISSION_TYPES.length;
+    const villes = collectVillesForm('fiche');
+    const disponibilites = collectDispoForm('fiche');
+    okBtn.disabled = true;
+    try{
+      const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+        action:'update', id:t.id,
+        types_autorises: allChecked ? [] : types,
+        villes, disponibilites,
+      })});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      loadTransporteursEquipe();
+      showToast('Fiche mise à jour', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      showToast(`Non enregistré : ${e.message}`, 'error');
+    }
+  };
+}
+
 async function loadTransporteursEquipe(){
   const zone = document.getElementById('transp-view-content');
   if(!zone) return;
@@ -1858,13 +1924,13 @@ async function loadTransporteursEquipe(){
         <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''}</div>
         <div class="row-meta">Code : <strong>${escHtml(t.pin||'—')}</strong> · ${euros(t.taux_livraison_cents)}/livraison · ${euros(t.taux_recuperation_cents)}/récupération</div>
         ${CITIES_CACHE.length>1?`<div class="row-meta">🌍 ${(t.villes&&t.villes.length) ? t.villes.map(id => escHtml((CITIES_CACHE.find(c=>c.id===id)||{}).name||'?')).join(', ') : 'Aucune zone'}</div>`:''}
+        ${(t.types_autorises&&t.types_autorises.length)?`<div class="row-meta">📋 Missions : ${t.types_autorises.map(x=>({'livraison':'Livraison','recuperation':'Récupération','changement':'Remplacement'}[x]||x)).join(', ')}</div>`:''}
         <div class="day-progress" style="margin:12px 0 0;padding:0">${chargeJourHtml(t.id, ld.livraisons)}</div>
         <div class="row-actions">
           <button class="btn btn-grey" onclick="toggleTransporteur(${t.id}, ${!t.actif}, this)">${t.actif?'Désactiver':'Réactiver'}</button>
-          <button class="btn btn-grey" onclick="editRates(${t.id}, ${t.taux_livraison_cents}, ${t.taux_recuperation_cents})">Modifier taux</button>
+          <button class="btn btn-blue" onclick="editFiche(${t.id})">✏️ Modifier la fiche</button>
           <button class="btn btn-grey" onclick="resetPin(${t.id})">Changer le code</button>
           <button class="btn btn-grey" onclick="editEmail(${t.id}, '${(t.email||'').replace(/'/g,"\\'")}')">${t.email?'Modifier':'Ajouter'} l'email</button>
-          <button class="btn btn-grey" onclick="editZonesDispo(${t.id})">🌍 Zones & disponibilité</button>
         </div>
       </div>`).join('') || '<p class="empty">Aucun transporteur.</p>';
 
@@ -2171,6 +2237,296 @@ async function toggleClientPhotos(id){
 // communes (ex. Nice + Saint-Laurent-du-Var + Cagnes-sur-Mer), routée par
 // code postal — voir api/_lib/city.js (resolveCityByAddress).
 let VILLES_CACHE = [];
+
+// Base de référence : communes françaises avec codes postaux.
+// Sélection des communes les plus pertinentes (PACA + grandes villes).
+const FR_VILLES = [
+  // Alpes-Maritimes (06) — zone opérationnelle principale
+  {nom:'Nice',dep:'06',cps:['06000','06100','06200','06300']},
+  {nom:'Cannes',dep:'06',cps:['06400']},
+  {nom:'Cannes La Bocca',dep:'06',cps:['06150']},
+  {nom:'Le Cannet',dep:'06',cps:['06110']},
+  {nom:'Grasse',dep:'06',cps:['06130']},
+  {nom:'Antibes',dep:'06',cps:['06600']},
+  {nom:'Juan-les-Pins',dep:'06',cps:['06160']},
+  {nom:'Sophia Antipolis / Valbonne',dep:'06',cps:['06560']},
+  {nom:'Biot',dep:'06',cps:['06410']},
+  {nom:'Mougins',dep:'06',cps:['06250']},
+  {nom:'Mouans-Sartoux',dep:'06',cps:['06370']},
+  {nom:'Vallauris / Golfe-Juan',dep:'06',cps:['06220']},
+  {nom:'Mandelieu-la-Napoule',dep:'06',cps:['06210']},
+  {nom:'Théoule-sur-Mer',dep:'06',cps:['06590']},
+  {nom:'La Roquette-sur-Siagne',dep:'06',cps:['06550']},
+  {nom:'Pégomas',dep:'06',cps:['06580']},
+  {nom:'Auribeau-sur-Siagne',dep:'06',cps:['06810']},
+  {nom:'Peymeinade',dep:'06',cps:['06530']},
+  {nom:'Cabris',dep:'06',cps:['06530']},
+  {nom:'Villeneuve-Loubet',dep:'06',cps:['06270']},
+  {nom:'Cagnes-sur-Mer',dep:'06',cps:['06800']},
+  {nom:'Saint-Laurent-du-Var',dep:'06',cps:['06700']},
+  {nom:'Carros',dep:'06',cps:['06510']},
+  {nom:'Le Broc',dep:'06',cps:['06510']},
+  {nom:'Gattières',dep:'06',cps:['06510']},
+  {nom:'La Colle-sur-Loup',dep:'06',cps:['06480']},
+  {nom:'Saint-Paul-de-Vence',dep:'06',cps:['06570']},
+  {nom:'Vence',dep:'06',cps:['06140']},
+  {nom:'Tourrettes-sur-Loup',dep:'06',cps:['06140']},
+  {nom:'La Gaude',dep:'06',cps:['06610']},
+  {nom:'Saint-Jeannet',dep:'06',cps:['06640']},
+  {nom:'Roquefort-les-Pins',dep:'06',cps:['06330']},
+  {nom:'Châteauneuf-Grasse',dep:'06',cps:['06740']},
+  {nom:'Opio',dep:'06',cps:['06650']},
+  {nom:'Le Bar-sur-Loup',dep:'06',cps:['06620']},
+  {nom:'Gourdon',dep:'06',cps:['06620']},
+  {nom:'Menton',dep:'06',cps:['06500']},
+  {nom:'Roquebrune-Cap-Martin',dep:'06',cps:['06190']},
+  {nom:'Beausoleil',dep:'06',cps:['06240']},
+  {nom:'Cap-d\'Ail',dep:'06',cps:['06320']},
+  {nom:'La Turbie',dep:'06',cps:['06320']},
+  {nom:'Èze',dep:'06',cps:['06360']},
+  {nom:'Beaulieu-sur-Mer',dep:'06',cps:['06310']},
+  {nom:'Villefranche-sur-Mer',dep:'06',cps:['06230']},
+  {nom:'Saint-Jean-Cap-Ferrat',dep:'06',cps:['06230']},
+  {nom:'La Trinité',dep:'06',cps:['06340']},
+  {nom:'Drap',dep:'06',cps:['06340']},
+  {nom:'Contes',dep:'06',cps:['06390']},
+  {nom:'Berre-les-Alpes',dep:'06',cps:['06390']},
+  {nom:'L\'Escarène',dep:'06',cps:['06440']},
+  {nom:'Levens',dep:'06',cps:['06670']},
+  {nom:'Saint-Martin-du-Var',dep:'06',cps:['06670']},
+  {nom:'Aspremont',dep:'06',cps:['06790']},
+  {nom:'Tourrette-Levens',dep:'06',cps:['06690']},
+  {nom:'Gilette',dep:'06',cps:['06830']},
+  {nom:'Puget-Théniers',dep:'06',cps:['06260']},
+  {nom:'Villars-sur-Var',dep:'06',cps:['06710']},
+  {nom:'Guillaumes',dep:'06',cps:['06470']},
+  {nom:'Beuil / Valberg',dep:'06',cps:['06470']},
+  {nom:'Saint-Étienne-de-Tinée / Auron',dep:'06',cps:['06660']},
+  {nom:'Saint-Sauveur-sur-Tinée',dep:'06',cps:['06420']},
+  {nom:'Isola 2000',dep:'06',cps:['06420']},
+  {nom:'Valdeblore',dep:'06',cps:['06420']},
+  {nom:'Saint-Martin-Vésubie',dep:'06',cps:['06450']},
+  {nom:'Roquebillière',dep:'06',cps:['06450']},
+  {nom:'Lantosque',dep:'06',cps:['06450']},
+  {nom:'Sospel',dep:'06',cps:['06380']},
+  {nom:'Breil-sur-Roya',dep:'06',cps:['06540']},
+  {nom:'Fontan',dep:'06',cps:['06540']},
+  {nom:'Saorge',dep:'06',cps:['06540']},
+  {nom:'Tende',dep:'06',cps:['06430']},
+  {nom:'La Brigue',dep:'06',cps:['06430']},
+  {nom:'Saint-Vallier-de-Thiey',dep:'06',cps:['06460']},
+  // Var (83)
+  {nom:'Toulon',dep:'83',cps:['83000','83100','83200']},
+  {nom:'Hyères',dep:'83',cps:['83400']},
+  {nom:'La Seyne-sur-Mer',dep:'83',cps:['83500']},
+  {nom:'Six-Fours-les-Plages',dep:'83',cps:['83140']},
+  {nom:'Ollioules',dep:'83',cps:['83190']},
+  {nom:'Bandol',dep:'83',cps:['83150']},
+  {nom:'Sanary-sur-Mer',dep:'83',cps:['83110']},
+  {nom:'La Valette-du-Var',dep:'83',cps:['83160']},
+  {nom:'La Garde',dep:'83',cps:['83130']},
+  {nom:'Le Pradet',dep:'83',cps:['83220']},
+  {nom:'Carqueiranne',dep:'83',cps:['83320']},
+  {nom:'La Crau',dep:'83',cps:['83260']},
+  {nom:'Cuers',dep:'83',cps:['83390']},
+  {nom:'Solliès-Pont',dep:'83',cps:['83210']},
+  {nom:'Saint-Raphaël',dep:'83',cps:['83700']},
+  {nom:'Fréjus',dep:'83',cps:['83600']},
+  {nom:'Roquebrune-sur-Argens',dep:'83',cps:['83520']},
+  {nom:'Draguignan',dep:'83',cps:['83300']},
+  {nom:'Les Arcs-sur-Argens',dep:'83',cps:['83460']},
+  {nom:'Brignoles',dep:'83',cps:['83170']},
+  {nom:'Lorgues',dep:'83',cps:['83510']},
+  {nom:'Vidauban',dep:'83',cps:['83550']},
+  {nom:'Aups',dep:'83',cps:['83630']},
+  {nom:'Le Lavandou',dep:'83',cps:['83980']},
+  {nom:'Bormes-les-Mimosas',dep:'83',cps:['83230']},
+  {nom:'Cogolin',dep:'83',cps:['83310']},
+  {nom:'Grimaud',dep:'83',cps:['83310']},
+  {nom:'Sainte-Maxime',dep:'83',cps:['83120']},
+  {nom:'Saint-Tropez',dep:'83',cps:['83990']},
+  {nom:'Ramatuelle',dep:'83',cps:['83350']},
+  {nom:'Cavalaire-sur-Mer',dep:'83',cps:['83240']},
+  // Bouches-du-Rhône (13)
+  {nom:'Marseille 1er–2e',dep:'13',cps:['13001','13002']},
+  {nom:'Marseille 3e–4e',dep:'13',cps:['13003','13004']},
+  {nom:'Marseille 5e–6e',dep:'13',cps:['13005','13006']},
+  {nom:'Marseille 7e–8e',dep:'13',cps:['13007','13008']},
+  {nom:'Marseille 9e–10e',dep:'13',cps:['13009','13010']},
+  {nom:'Marseille 11e–12e',dep:'13',cps:['13011','13012']},
+  {nom:'Marseille 13e–14e',dep:'13',cps:['13013','13014']},
+  {nom:'Marseille 15e–16e',dep:'13',cps:['13015','13016']},
+  {nom:'Aix-en-Provence',dep:'13',cps:['13100']},
+  {nom:'Arles',dep:'13',cps:['13200']},
+  {nom:'Martigues',dep:'13',cps:['13500']},
+  {nom:'Salon-de-Provence',dep:'13',cps:['13300']},
+  {nom:'Istres',dep:'13',cps:['13800']},
+  {nom:'Vitrolles',dep:'13',cps:['13127']},
+  {nom:'Gardanne',dep:'13',cps:['13120']},
+  {nom:'Aubagne',dep:'13',cps:['13400']},
+  {nom:'La Ciotat',dep:'13',cps:['13600']},
+  {nom:'Cassis',dep:'13',cps:['13260']},
+  {nom:'Fos-sur-Mer',dep:'13',cps:['13270']},
+  {nom:'Port-de-Bouc',dep:'13',cps:['13110']},
+  {nom:'Berre-l\'Étang',dep:'13',cps:['13130']},
+  {nom:'Rognac',dep:'13',cps:['13340']},
+  {nom:'Allauch',dep:'13',cps:['13190']},
+  {nom:'Plan-de-Cuques',dep:'13',cps:['13380']},
+  {nom:'Saint-Rémy-de-Provence',dep:'13',cps:['13210']},
+  {nom:'Les Baux-de-Provence',dep:'13',cps:['13520']},
+  // Alpes-de-Haute-Provence (04)
+  {nom:'Digne-les-Bains',dep:'04',cps:['04000']},
+  {nom:'Manosque',dep:'04',cps:['04100']},
+  {nom:'Barcelonnette',dep:'04',cps:['04400']},
+  {nom:'Forcalquier',dep:'04',cps:['04300']},
+  {nom:'Sisteron',dep:'04',cps:['04200']},
+  {nom:'Castellane',dep:'04',cps:['04120']},
+  {nom:'Entrevaux',dep:'04',cps:['04320']},
+  {nom:'Annot',dep:'04',cps:['04240']},
+  // Vaucluse (84)
+  {nom:'Avignon',dep:'84',cps:['84000']},
+  {nom:'Orange',dep:'84',cps:['84100']},
+  {nom:'Carpentras',dep:'84',cps:['84200']},
+  {nom:'Apt',dep:'84',cps:['84400']},
+  {nom:'Cavaillon',dep:'84',cps:['84300']},
+  {nom:'Sorgues',dep:'84',cps:['84700']},
+  {nom:'Le Pontet',dep:'84',cps:['84130']},
+  {nom:'Pertuis',dep:'84',cps:['84120']},
+  // Gard (30)
+  {nom:'Nîmes',dep:'30',cps:['30000','30900']},
+  {nom:'Alès',dep:'30',cps:['30100']},
+  {nom:'Le Grau-du-Roi',dep:'30',cps:['30240']},
+  {nom:'Aigues-Mortes',dep:'30',cps:['30220']},
+  // Hérault (34)
+  {nom:'Montpellier',dep:'34',cps:['34000','34070','34080','34090']},
+  {nom:'Béziers',dep:'34',cps:['34500']},
+  {nom:'Sète',dep:'34',cps:['34200']},
+  {nom:'Palavas-les-Flots',dep:'34',cps:['34250']},
+  {nom:'La Grande-Motte',dep:'34',cps:['34280']},
+  {nom:'Lunel',dep:'34',cps:['34400']},
+  // Haute-Garonne (31)
+  {nom:'Toulouse',dep:'31',cps:['31000','31100','31200','31300','31400','31500']},
+  {nom:'Blagnac',dep:'31',cps:['31700']},
+  {nom:'Colomiers',dep:'31',cps:['31770']},
+  {nom:'Tournefeuille',dep:'31',cps:['31170']},
+  {nom:'Muret',dep:'31',cps:['31600']},
+  // Gironde (33)
+  {nom:'Bordeaux',dep:'33',cps:['33000','33100','33200','33300','33800']},
+  {nom:'Mérignac',dep:'33',cps:['33700']},
+  {nom:'Pessac',dep:'33',cps:['33600']},
+  {nom:'Talence',dep:'33',cps:['33400']},
+  {nom:'Bègles',dep:'33',cps:['33130']},
+  {nom:'Libourne',dep:'33',cps:['33500']},
+  {nom:'Arcachon',dep:'33',cps:['33120']},
+  // Rhône (69)
+  {nom:'Lyon 1er–2e',dep:'69',cps:['69001','69002']},
+  {nom:'Lyon 3e–4e',dep:'69',cps:['69003','69004']},
+  {nom:'Lyon 5e–6e',dep:'69',cps:['69005','69006']},
+  {nom:'Lyon 7e–8e',dep:'69',cps:['69007','69008']},
+  {nom:'Lyon 9e',dep:'69',cps:['69009']},
+  {nom:'Villeurbanne',dep:'69',cps:['69100']},
+  {nom:'Vénissieux',dep:'69',cps:['69200']},
+  {nom:'Bron',dep:'69',cps:['69500']},
+  {nom:'Caluire-et-Cuire',dep:'69',cps:['69300']},
+  {nom:'Décines-Charpieu',dep:'69',cps:['69150']},
+  {nom:'Saint-Priest',dep:'69',cps:['69800']},
+  {nom:'Vaulx-en-Velin',dep:'69',cps:['69120']},
+  // Isère (38)
+  {nom:'Grenoble',dep:'38',cps:['38000','38100']},
+  {nom:'Échirolles',dep:'38',cps:['38130']},
+  {nom:'Vienne',dep:'38',cps:['38200']},
+  {nom:'Bourgoin-Jallieu',dep:'38',cps:['38300']},
+  // Haute-Savoie (74)
+  {nom:'Annecy',dep:'74',cps:['74000']},
+  {nom:'Annemasse',dep:'74',cps:['74100']},
+  {nom:'Thonon-les-Bains',dep:'74',cps:['74200']},
+  {nom:'Cluses',dep:'74',cps:['74300']},
+  {nom:'Annecy-le-Vieux',dep:'74',cps:['74940']},
+  {nom:'Chamonix-Mont-Blanc',dep:'74',cps:['74400']},
+  // Savoie (73)
+  {nom:'Chambéry',dep:'73',cps:['73000']},
+  {nom:'Aix-les-Bains',dep:'73',cps:['73100']},
+  {nom:'Albertville',dep:'73',cps:['73200']},
+  {nom:'Modane',dep:'73',cps:['73500']},
+  // Nord (59)
+  {nom:'Lille',dep:'59',cps:['59000','59800']},
+  {nom:'Roubaix',dep:'59',cps:['59100']},
+  {nom:'Tourcoing',dep:'59',cps:['59200']},
+  {nom:'Dunkerque',dep:'59',cps:['59140','59240']},
+  {nom:'Valenciennes',dep:'59',cps:['59300']},
+  // Bas-Rhin (67)
+  {nom:'Strasbourg',dep:'67',cps:['67000','67100','67200']},
+  {nom:'Schiltigheim',dep:'67',cps:['67300']},
+  {nom:'Illkirch-Graffenstaden',dep:'67',cps:['67400']},
+  {nom:'Haguenau',dep:'67',cps:['67500']},
+  // Loire-Atlantique (44)
+  {nom:'Nantes',dep:'44',cps:['44000','44100','44200','44300']},
+  {nom:'Saint-Nazaire',dep:'44',cps:['44600']},
+  {nom:'Saint-Herblain',dep:'44',cps:['44800']},
+  // Ille-et-Vilaine (35)
+  {nom:'Rennes',dep:'35',cps:['35000','35200','35700']},
+  {nom:'Saint-Malo',dep:'35',cps:['35400']},
+  // Finistère (29)
+  {nom:'Brest',dep:'29',cps:['29200']},
+  {nom:'Quimper',dep:'29',cps:['29000']},
+  // Morbihan (56)
+  {nom:'Lorient',dep:'56',cps:['56100']},
+  {nom:'Vannes',dep:'56',cps:['56000']},
+  // Calvados (14)
+  {nom:'Caen',dep:'14',cps:['14000']},
+  // Seine-Maritime (76)
+  {nom:'Rouen',dep:'76',cps:['76000','76100']},
+  {nom:'Le Havre',dep:'76',cps:['76600']},
+  // Paris (75)
+  {nom:'Paris 1er–4e',dep:'75',cps:['75001','75002','75003','75004']},
+  {nom:'Paris 5e–8e',dep:'75',cps:['75005','75006','75007','75008']},
+  {nom:'Paris 9e–12e',dep:'75',cps:['75009','75010','75011','75012']},
+  {nom:'Paris 13e–16e',dep:'75',cps:['75013','75014','75015','75016','75116']},
+  {nom:'Paris 17e–20e',dep:'75',cps:['75017','75018','75019','75020']},
+  // Hauts-de-Seine (92)
+  {nom:'Boulogne-Billancourt',dep:'92',cps:['92100']},
+  {nom:'Nanterre',dep:'92',cps:['92000']},
+  {nom:'Courbevoie',dep:'92',cps:['92400']},
+  {nom:'Levallois-Perret',dep:'92',cps:['92300']},
+  {nom:'Neuilly-sur-Seine',dep:'92',cps:['92200']},
+  {nom:'Asnières-sur-Seine',dep:'92',cps:['92600']},
+  {nom:'Clichy',dep:'92',cps:['92110']},
+  {nom:'Colombes',dep:'92',cps:['92700']},
+  {nom:'Issy-les-Moulineaux',dep:'92',cps:['92130']},
+  {nom:'Rueil-Malmaison',dep:'92',cps:['92500']},
+  {nom:'Saint-Cloud',dep:'92',cps:['92210']},
+  {nom:'Montrouge',dep:'92',cps:['92120']},
+  {nom:'Antony',dep:'92',cps:['92160']},
+  // Seine-Saint-Denis (93)
+  {nom:'Saint-Denis',dep:'93',cps:['93200']},
+  {nom:'Montreuil',dep:'93',cps:['93100']},
+  {nom:'Aubervilliers',dep:'93',cps:['93300']},
+  {nom:'Aulnay-sous-Bois',dep:'93',cps:['93600']},
+  {nom:'Noisy-le-Grand',dep:'93',cps:['93160']},
+  // Val-de-Marne (94)
+  {nom:'Créteil',dep:'94',cps:['94000']},
+  {nom:'Vitry-sur-Seine',dep:'94',cps:['94400']},
+  {nom:'Saint-Maur-des-Fossés',dep:'94',cps:['94100']},
+  {nom:'Vincennes',dep:'94',cps:['94300']},
+  {nom:'Champigny-sur-Marne',dep:'94',cps:['94500']},
+  // Yvelines (78)
+  {nom:'Versailles',dep:'78',cps:['78000']},
+  {nom:'Saint-Germain-en-Laye',dep:'78',cps:['78100']},
+  {nom:'Mantes-la-Jolie',dep:'78',cps:['78200']},
+  {nom:'Poissy',dep:'78',cps:['78300']},
+  // Val-d\'Oise (95)
+  {nom:'Cergy',dep:'95',cps:['95000']},
+  {nom:'Argenteuil',dep:'95',cps:['95100']},
+  {nom:'Sarcelles',dep:'95',cps:['95200']},
+  // Essonne (91)
+  {nom:'Évry-Courcouronnes',dep:'91',cps:['91000']},
+  {nom:'Corbeil-Essonnes',dep:'91',cps:['91100']},
+  {nom:'Massy',dep:'91',cps:['91300']},
+  // Seine-et-Marne (77)
+  {nom:'Meaux',dep:'77',cps:['77100']},
+  {nom:'Melun',dep:'77',cps:['77000']},
+  {nom:'Chelles',dep:'77',cps:['77500']},
+];
 async function loadVilles(){
   const zone = document.getElementById('tab-villes');
   zone.innerHTML = loading();
@@ -2203,18 +2559,82 @@ function renderVilles(){
     <div class="card">
       <h2>Ouvrir une nouvelle ville</h2>
       <p class="sub" style="margin-bottom:16px">Les commandes du site sont automatiquement affectées à la ville dont les codes postaux couvrent l'adresse de livraison.</p>
-      <label for="v-nom">Nom</label>
-      <input type="text" id="v-nom" placeholder="Cannes"/>
-      <label for="v-dep">Département</label>
+      <label for="v-nom">Nom de la ville ou zone</label>
+      <div style="position:relative">
+        <input type="text" id="v-nom" placeholder="Cannes, Grasse, Côte d'Azur Est…" oninput="villeAutocomplete(this.value)" autocomplete="off" onfocus="villeAutocomplete(this.value)"/>
+        <div id="v-nom-dd" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-top:3px;max-height:220px;overflow-y:auto;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.12)"></div>
+      </div>
+      <label for="v-dep" style="margin-top:14px">Département</label>
       <input type="text" id="v-dep" placeholder="06"/>
-      <label for="v-cp">Codes postaux couverts (séparés par une virgule)</label>
-      <input type="text" id="v-cp" placeholder="06400, 06110, 06150"/>
-      <button class="btn btn-blue btn-block" onclick="addVille()">Créer la ville</button>
+      <label for="v-cp" style="margin-top:14px">Codes postaux couverts (séparés par une virgule)</label>
+      <input type="text" id="v-cp" placeholder="06400, 06110, 06150" oninput="cpSearch(this.value)" autocomplete="off"/>
+      <div id="v-cp-suggest" style="display:none;margin-top:6px;margin-bottom:4px"></div>
+      <button class="btn btn-blue btn-block" style="margin-top:14px" onclick="addVille()">Créer la ville</button>
       <div class="err" id="ville-err"></div>
     </div>`;
 }
 function parsePostalCodesInput(raw){
   return (raw||'').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
+}
+function normVilleStr(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+function villeAutocomplete(q){
+  const dd = document.getElementById('v-nom-dd');
+  if(!dd) return;
+  if(!q || q.length < 2){ dd.style.display='none'; return; }
+  const low = normVilleStr(q);
+  // Recherche par nom ET par code postal si la saisie ressemble à un nombre
+  const isNum = /^\d/.test(q);
+  const matches = FR_VILLES.filter(v =>
+    isNum ? v.cps.some(cp => cp.startsWith(q)) : normVilleStr(v.nom).includes(low)
+  ).slice(0, 12);
+  if(!matches.length){ dd.style.display='none'; return; }
+  dd.innerHTML = matches.map(v => {
+    const cpPreview = v.cps.slice(0,4).join(', ')+(v.cps.length>4?'…':'');
+    return `<div onclick="selectVilleRef(${JSON.stringify(JSON.stringify(v))})" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border-soft)" onmousedown="event.preventDefault()">
+      <strong>${escHtml(v.nom)}</strong> <span style="color:var(--grey-soft);font-size:11.5px">— Dép. ${escHtml(v.dep)}</span><br>
+      <span style="font-size:12px;color:var(--grey)">${escHtml(cpPreview)}</span>
+    </div>`;
+  }).join('');
+  dd.style.display='block';
+}
+function selectVilleRef(jsonStr){
+  const v = JSON.parse(jsonStr);
+  const nomEl = document.getElementById('v-nom');
+  const depEl = document.getElementById('v-dep');
+  const cpEl  = document.getElementById('v-cp');
+  if(nomEl) nomEl.value = v.nom;
+  if(depEl) depEl.value = v.dep;
+  if(cpEl)  cpEl.value  = v.cps.join(', ');
+  const dd = document.getElementById('v-nom-dd');
+  if(dd) dd.style.display='none';
+  const sug = document.getElementById('v-cp-suggest');
+  if(sug) sug.style.display='none';
+}
+document.addEventListener('click', e => {
+  const dd = document.getElementById('v-nom-dd');
+  if(dd && !dd.contains(e.target) && e.target.id!=='v-nom') dd.style.display='none';
+});
+function cpSearch(q){
+  const sug = document.getElementById('v-cp-suggest');
+  if(!sug) return;
+  const parts = q.split(',').map(s=>s.trim());
+  const last = parts[parts.length-1];
+  if(!last || last.length < 2){ sug.style.display='none'; return; }
+  const matches = FR_VILLES.filter(v => v.cps.some(cp => cp.startsWith(last))).slice(0, 8);
+  if(!matches.length){ sug.style.display='none'; return; }
+  sug.innerHTML = '<span style="font-size:11.5px;color:var(--grey-soft);display:block;margin-bottom:5px">Communes correspondantes :</span>'
+    + matches.map(v => `<button type="button" class="btn btn-grey" style="margin:2px 2px 2px 0;padding:4px 10px;font-size:12px;border-radius:100px" onclick="addCpsFromVille(${JSON.stringify(JSON.stringify(v.cps))})">${escHtml(v.nom)} (${v.cps.join(', ')})</button>`).join('');
+  sug.style.display='block';
+}
+function addCpsFromVille(jsonStr){
+  const cps = JSON.parse(jsonStr);
+  const input = document.getElementById('v-cp');
+  if(!input) return;
+  const existing = parsePostalCodesInput(input.value);
+  const merged = [...new Set([...existing, ...cps])];
+  input.value = merged.join(', ');
+  const sug = document.getElementById('v-cp-suggest');
+  if(sug) sug.style.display='none';
 }
 async function addVille(){
   const name = document.getElementById('v-nom').value.trim();

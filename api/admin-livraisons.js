@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
           accepted_at, client_notifie_at, arrivee_at, fait_at,
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
-            id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, instructions_acces, masquee,
+            id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, instructions_acces, masquee, hors_zone,
             reservation_appareils ( appareil:appareils ( numero, reference ) )
           )
         `)
