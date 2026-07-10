@@ -1,4 +1,5 @@
 const { pushToTransporteur } = require('./push');
+const { extractPostalCode } = require('./postal');
 
 function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
@@ -9,42 +10,111 @@ function normalizeTel(tel) {
 // ne doit jamais recevoir de vraie mission cliente par la répartition auto.
 const TEST_TRANSPORTEUR_NOM = '🧪 Test (aperçu admin)';
 
-// Répartition équitable automatique des nouvelles missions : un tour de
-// rôle fixe (transporteurs actifs triés par id) qui reprend juste après le
-// dernier transporteur ayant reçu une mission — "un chacun, puis on
-// recommence", littéralement. Le tour se déduit de la dernière assignation
-// en base plutôt que d'un curseur stocké à part : aucune migration requise,
-// et ça reste cohérent même si un transporteur est ajouté/désactivé entre
-// deux confirmations (il rejoint simplement le tour à sa position triée).
-async function buildRoundRobinState(supabase, cityId) {
+// Dérive le moment (matin/après-midi) d'un créneau texte libre choisi par le
+// client (ex. "8h-12h") — heure de début < 12 -> matin, sinon après-midi.
+// Une mission sans créneau précis (récupération, coordonnée par l'équipe) a
+// moment=null : la disponibilité ne compare alors que le jour.
+function momentForCreneau(creneau) {
+  const m = String(creneau || '').match(/^(\d{1,2})h/);
+  if (!m) return null;
+  return parseInt(m[1], 10) < 12 ? 'matin' : 'apres_midi';
+}
+
+// Transporteurs éligibles pour une mission donnée : actifs, pas en pause, pas
+// le compte de test, couvrant la zone (transporteur_villes), et disponibles
+// ce jour/moment (transporteur_disponibilites — aucune ligne = disponible
+// tout le temps, compatibilité avec une équipe sans restriction configurée).
+async function eligibleTransporteurs(supabase, cityId, dateISO, moment) {
+  const { data: villes } = await supabase
+    .from('transporteur_villes').select('transporteur_id').eq('city_id', cityId);
+  const villeIds = [...new Set((villes || []).map(v => v.transporteur_id))];
+  if (!villeIds.length) return [];
+
   const { data: transporteurs } = await supabase
     .from('transporteurs').select('id')
-    .eq('city_id', cityId).eq('actif', true).neq('nom', TEST_TRANSPORTEUR_NOM)
+    .in('id', villeIds).eq('actif', true).eq('en_pause', false).neq('nom', TEST_TRANSPORTEUR_NOM)
     .order('id', { ascending: true });
-  if (!transporteurs || !transporteurs.length) return null;
+  if (!transporteurs || !transporteurs.length) return [];
   const ids = transporteurs.map(t => t.id);
 
+  const jour = new Date(dateISO + 'T00:00:00').getDay();
+  const { data: dispos } = await supabase
+    .from('transporteur_disponibilites').select('transporteur_id, jour, moment')
+    .in('transporteur_id', ids);
+
+  const restricted = new Set((dispos || []).map(d => d.transporteur_id));
+  return ids.filter(id => {
+    if (!restricted.has(id)) return true; // aucune ligne = toujours disponible
+    return (dispos || []).some(d =>
+      d.transporteur_id === id && d.jour === jour &&
+      (d.moment === 'journee' || !moment || d.moment === moment)
+    );
+  });
+}
+
+// Rotation dérivée de l'historique réel (jamais de compteur stocké à part) —
+// le tour se déduit à chaque appel du dernier transporteur (parmi le pool
+// éligible donné) ayant reçu une mission, donc aucune désynchronisation
+// possible si quelqu'un est ajouté/retiré/devient indisponible entre deux
+// confirmations : il rejoint simplement le tour à sa position triée.
+async function roundRobinPickFromPool(supabase, pool) {
+  if (!pool.length) return null;
+  const sorted = [...pool].sort((a, b) => a - b);
   const { data: last } = await supabase
     .from('livraisons').select('transporteur_id')
-    .in('transporteur_id', ids)
+    .in('transporteur_id', sorted)
     .order('created_at', { ascending: false })
     .limit(1).maybeSingle();
-
   let idx = 0;
   if (last && last.transporteur_id) {
-    const lastIdx = ids.indexOf(last.transporteur_id);
-    if (lastIdx !== -1) idx = (lastIdx + 1) % ids.length;
+    const lastIdx = sorted.indexOf(last.transporteur_id);
+    if (lastIdx !== -1) idx = (lastIdx + 1) % sorted.length;
   }
-  return { ids, idx };
+  return sorted[idx];
 }
-// Avance le tour localement (pas de nouvelle requête) — pour que la 2e
-// mission d'une même confirmation (livraison + récupération) aille bien au
-// transporteur suivant, pas au même que la 1re.
-function pickNextRoundRobin(state) {
-  if (!state) return null;
-  const id = state.ids[state.idx];
-  state.idx = (state.idx + 1) % state.ids.length;
-  return id;
+
+// Choisit le transporteur pour UNE mission (une ligne livraison/récupération) :
+//  1. Zone + disponibilité (filtre strict, voir eligibleTransporteurs) — si
+//     personne n'est éligible, renvoie null (mission non assignée, captée
+//     par le badge "non assignées" de l'admin).
+//  2. Regroupement géographique : si quelqu'un du pool a déjà une mission ce
+//     jour-là dans le même code postal, elle lui revient en priorité — sauf
+//     si un autre éligible n'a encore aucune mission ce jour-là, l'équité
+//     prime alors sur le regroupement.
+//  3. Rotation équitable classique sinon.
+// `usedInBatch` évite que les deux jambes d'une même confirmation tombent
+// sur la même personne quand une alternative existe dans le pool (la 1re
+// ligne n'est pas encore en base au moment de choisir la 2e, donc invisible
+// à la rotation dérivée de l'historique).
+async function pickTransporteurForMission(supabase, { cityId, dateISO, creneau, adresse, usedInBatch }) {
+  const moment = momentForCreneau(creneau);
+  const pool = await eligibleTransporteurs(supabase, cityId, dateISO, moment);
+  if (!pool.length) return null;
+  if (pool.length === 1) return pool[0];
+
+  const { data: todaysLivraisons } = await supabase
+    .from('livraisons')
+    .select('transporteur_id, reservation:reservations(adresse)')
+    .eq('date_prevue', dateISO)
+    .in('transporteur_id', pool)
+    .not('statut', 'in', '(annule,refusee)');
+
+  const assignedToday = new Set((todaysLivraisons || []).map(l => l.transporteur_id));
+  const hasSomeoneAtZero = pool.some(id => !assignedToday.has(id));
+
+  let chosen = null;
+  const cp = extractPostalCode(adresse);
+  if (cp && !hasSomeoneAtZero) {
+    const match = (todaysLivraisons || []).find(l => extractPostalCode(l.reservation?.adresse) === cp);
+    if (match) chosen = match.transporteur_id;
+  }
+  if (!chosen) chosen = await roundRobinPickFromPool(supabase, pool);
+
+  if (usedInBatch && usedInBatch.has(chosen) && pool.length > 1) {
+    const alt = pool.find(id => !usedInBatch.has(id));
+    if (alt != null) chosen = alt;
+  }
+  return chosen;
 }
 
 // Retrouve ou crée la fiche client (déduplication par téléphone, dans la même
@@ -171,8 +241,13 @@ async function confirmReservation(supabase, resa) {
     // (téléphone/WhatsApp, source "manuel") reste à assigner soi-même : à ce
     // moment-là, l'admin a souvent déjà négocié avec un transporteur précis.
     if (resa.source !== 'manuel') {
-      const rrState = await buildRoundRobinState(supabase, resa.city_id);
-      if (rrState) rows.forEach(row => { row.transporteur_id = pickNextRoundRobin(rrState); });
+      const usedInBatch = new Set();
+      for (const row of rows) {
+        const tid = await pickTransporteurForMission(supabase, {
+          cityId: resa.city_id, dateISO: row.date_prevue, creneau: row.creneau, adresse: resa.adresse, usedInBatch,
+        });
+        if (tid) { row.transporteur_id = tid; usedInBatch.add(tid); }
+      }
     }
 
     const { data: insertedLivraisons, error: livError } = await supabase
