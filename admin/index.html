@@ -32,7 +32,9 @@
 body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:14.5px;-webkit-font-smoothing:antialiased;min-height:100vh;letter-spacing:-.005em}
 ::selection{background:var(--gold-lt);color:var(--black)}
 .wrap{max-width:760px;margin:0 auto;padding:28px 18px 80px}
-.logo{font-family:var(--disp);font-size:23px;font-weight:600;color:var(--blue);margin-bottom:26px;letter-spacing:.01em}
+.logo{font-family:var(--disp);font-size:23px;font-weight:600;color:var(--blue);margin-bottom:26px;letter-spacing:.01em;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.logout-link{font-family:var(--body);font-size:12.5px;font-weight:700;color:var(--grey);background:none;border:none;cursor:pointer;letter-spacing:normal}
+.logout-link:hover{color:var(--red)}
 .logo em{font-style:normal;color:var(--gold)}
 .eyebrow{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.18em;color:var(--grey);margin-bottom:14px;display:flex;align-items:center;gap:10px}
 .eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--gold);flex-shrink:0}
@@ -219,7 +221,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 </head>
 <body>
 <div class="wrap">
-  <div class="logo">Loc<em>'Air</em> · Admin</div>
+  <div class="logo"><span>Loc<em>'Air</em> · Admin</span><button class="logout-link hidden" id="a-logout-btn" onclick="adminLogout()">🚪 Déconnexion</button></div>
 
   <div id="a-login" class="login-screen">
     <div class="card login-card">
@@ -283,6 +285,22 @@ let TOKEN = localStorage.getItem('a_token') || '';
 
 function authHeaders(){ return {'Content-Type':'application/json','x-admin-token':TOKEN}; }
 
+// Nécessaire maintenant que la session est permanente (localStorage) : sans
+// ce bouton, la seule façon de sortir du compte sur un appareil serait de
+// vider manuellement les données du navigateur.
+function adminLogout(){
+  confirmAction('Se déconnecter de l\'espace admin sur cet appareil ?', () => {
+    localStorage.removeItem('a_token');
+    TOKEN = '';
+    if(window._alertsInterval){ clearInterval(window._alertsInterval); window._alertsInterval = null; }
+    if(window._autoRefreshInterval){ clearInterval(window._autoRefreshInterval); window._autoRefreshInterval = null; }
+    document.getElementById('a-app').classList.add('hidden');
+    document.getElementById('a-logout-btn').classList.add('hidden');
+    document.getElementById('a-login').classList.remove('hidden');
+    document.getElementById('a-pwd').value = '';
+  });
+}
+
 async function adminLogin(){
   const pwd = document.getElementById('a-pwd').value.trim();
   const errEl = document.getElementById('a-login-err');
@@ -298,6 +316,7 @@ async function adminLogin(){
     localStorage.setItem('a_token', pwd);
     document.getElementById('a-login').classList.add('hidden');
     document.getElementById('a-app').classList.remove('hidden');
+    document.getElementById('a-logout-btn').classList.remove('hidden');
     switchAdminTab('accueil');
     loadAlerts();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
@@ -414,6 +433,7 @@ async function loginWithAdminFaceId(){
     localStorage.setItem('a_token', d.token);
     document.getElementById('a-login').classList.add('hidden');
     document.getElementById('a-app').classList.remove('hidden');
+    document.getElementById('a-logout-btn').classList.remove('hidden');
     switchAdminTab('accueil');
     loadAlerts();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
@@ -953,6 +973,7 @@ function reservationRowHtml(res, readOnly){
         <span class="row-title">${nom}</span>
         <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
       </div>
+      ${res.source==='site_prolongation'?`<div class="resa-sub" style="color:var(--blue);font-weight:700">🔄 Location prolongée</div>`:''}
       <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
       ${(res.etage||res.ascenseur||res.fenetre)?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):''].filter(Boolean).join(' · ')}</div>`:''}
       ${res.instructions_acces?`<div class="resa-sub" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
@@ -1004,6 +1025,7 @@ function renderReservationsToolbar(){
     {key:'toutes', label:'Toutes'},
     {key:'en_attente', label:'En attente'},
     {key:'confirmee', label:'Confirmées'},
+    {key:'prolongation', label:'🔄 Prolongations'},
     {key:'annulee', label:'Annulées'},
     {key:'terminee', label:'Terminées'},
   ];
@@ -1095,7 +1117,8 @@ function renderReservations(){
   if(!list) return;
   const q = (document.getElementById('resa-search')?.value || '').trim().toLowerCase();
   let items = RESERVATIONS_CACHE.filter(r => RESERVATIONS_SHOW_MASQUEES ? r.masquee : !r.masquee);
-  if(!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER !== 'toutes') items = items.filter(r => r.statut === RESERVATIONS_FILTER);
+  if(!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER === 'prolongation') items = items.filter(r => r.source === 'site_prolongation');
+  else if(!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER !== 'toutes') items = items.filter(r => r.statut === RESERVATIONS_FILTER);
   if(q){
     items = items.filter(r => [r.ref, r.prenom, r.nom, r.adresse, r.tel].filter(Boolean).join(' ').toLowerCase().includes(q));
   }
@@ -1984,6 +2007,7 @@ function closeLiveMap(){
   if(TOKEN){
     document.getElementById('a-login').classList.add('hidden');
     document.getElementById('a-app').classList.remove('hidden');
+    document.getElementById('a-logout-btn').classList.remove('hidden');
     switchAdminTab('accueil');
     // Sans ça, les badges (missions non assignées, virements) et le bandeau
     // permanent ne se remettaient à jour qu'après une saisie de mot de passe —
