@@ -99,12 +99,45 @@ module.exports = async (req, res) => {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(datePrevue)) return res.status(400).json({ error: 'date_prevue invalide (YYYY-MM-DD)' });
 
       const { data: resa } = await supabase
-        .from('reservations').select('id, city_id').eq('id', reservationId).maybeSingle();
+        .from('reservations').select('id, city_id, date_debut, date_fin').eq('id', reservationId).maybeSingle();
       if (!resa || resa.city_id !== city.id) return res.status(404).json({ error: 'Réservation introuvable' });
 
       if (transporteurId) {
         const { data: t } = await supabase.from('transporteurs').select('id').eq('id', transporteurId).eq('city_id', city.id).maybeSingle();
         if (!t) return res.status(400).json({ error: 'Transporteur invalide' });
+      }
+
+      // Assignation manuelle d'une unité (climatiseur) à cette mission — surtout
+      // utile pour un 'changement' (remplacement physique) créé à la main, cas
+      // que la confirmation automatique de réservation ne couvre pas puisqu'elle
+      // n'assigne qu'une fois, à la confirmation initiale.
+      const appareilId = body.appareil_id ? parseInt(body.appareil_id) : null;
+      if (appareilId) {
+        const { data: appareil } = await supabase
+          .from('appareils').select('id, statut').eq('id', appareilId).eq('city_id', city.id).maybeSingle();
+        if (!appareil) return res.status(400).json({ error: 'Unité introuvable' });
+        if (['panne', 'maintenance', 'loue'].includes(appareil.statut)) {
+          return res.status(409).json({ error: 'Cette unité n\'est pas disponible' });
+        }
+        // Même logique d'exclusion que assign_appareils() : refuser une unité déjà
+        // retenue par une AUTRE réservation confirmée dont la période chevauche.
+        const { data: liens } = await supabase
+          .from('reservation_appareils')
+          .select('reservation_id, reservation:reservations(statut, date_debut, date_fin)')
+          .eq('appareil_id', appareilId).neq('reservation_id', reservationId);
+        const busy = (liens || []).some(l => l.reservation?.statut === 'confirmee'
+          && l.reservation.date_debut < resa.date_fin && l.reservation.date_fin > resa.date_debut);
+        if (busy) return res.status(409).json({ error: 'Cette unité est déjà affectée à une autre réservation sur cette période' });
+
+        // Un remplacement libère l'ancienne unité de la réservation (elle redevient
+        // disponible au stock) et attache la nouvelle à sa place.
+        if (type === 'changement') {
+          await supabase.from('reservation_appareils').delete().eq('reservation_id', reservationId);
+        }
+        const { error: raErr } = await supabase
+          .from('reservation_appareils')
+          .upsert({ reservation_id: reservationId, appareil_id: appareilId }, { onConflict: 'reservation_id,appareil_id' });
+        if (raErr) throw raErr;
       }
 
       const { data, error } = await supabase.from('livraisons').insert({

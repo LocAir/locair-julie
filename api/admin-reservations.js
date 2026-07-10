@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
     if (action === 'list') {
       const { data, error } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, created_at')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, created_at')
         .eq('city_id', city.id)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -38,6 +38,9 @@ module.exports = async (req, res) => {
       const nom     = (body.nom     || '').trim().slice(0, 200);
       const tel     = (body.tel     || '').trim().slice(0, 50);
       const telSecondaire = (body.tel_secondaire || '').trim().slice(0, 50);
+      const typeClient = body.type_client === 'entreprise' ? 'entreprise' : 'particulier';
+      const raisonSociale = (body.raison_sociale || '').trim().slice(0, 300);
+      const siret   = (body.siret   || '').trim().slice(0, 50);
       const email   = (body.email   || '').trim().slice(0, 200);
       const adresse = (body.adresse || '').trim().slice(0, 500);
       const dateDebut = (body.date_debut || '').slice(0, 10);
@@ -78,7 +81,9 @@ module.exports = async (req, res) => {
 
       const ref = `MANUEL-${Date.now().toString(36).toUpperCase()}`;
       const { data: resa, error } = await supabase.from('reservations').insert({
-        city_id: city.id, ref, prenom, nom, tel, tel_secondaire: telSecondaire || null, email, adresse,
+        city_id: city.id, ref, prenom, nom, tel, tel_secondaire: telSecondaire || null,
+        type_client: typeClient, raison_sociale: raisonSociale || null, siret: siret || null,
+        email, adresse,
         date_debut: dateDebut, date_fin: dateFin, quantite,
         prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'manuel',
       }).select().single();

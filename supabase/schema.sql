@@ -131,6 +131,10 @@ create table reservations (
   email                    text,
   tel                      text,
   tel_secondaire           text, -- numéro de secours si le principal ne répond pas (ex. client absent)
+  type_client              text not null default 'particulier'
+                             check (type_client in ('particulier','entreprise')),
+  raison_sociale           text, -- nom de l'entreprise, si type_client = 'entreprise'
+  siret                    text,
   adresse                  text,
   etage                    text,
   ascenseur                text,

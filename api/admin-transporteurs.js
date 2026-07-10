@@ -139,6 +139,26 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    if (action === 'delete') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { data: owned } = await supabase.from('transporteurs').select('id').eq('id', id).eq('city_id', city.id).maybeSingle();
+      if (!owned) return res.status(404).json({ error: 'Transporteur introuvable' });
+
+      const { error } = await supabase.from('transporteurs').delete().eq('id', id);
+      if (error) {
+        // Contrainte de clé étrangère (missions/virements liés) : un transporteur
+        // avec un historique réel ne doit jamais disparaître silencieusement
+        // (perte de traçabilité des paiements) — on le désactive à la place.
+        if (error.code === '23503') {
+          await supabase.from('transporteurs').update({ actif: false }).eq('id', id);
+          return res.status(200).json({ ok: true, deactivated: true, error: 'Ce transporteur a des missions ou virements liés — il a été désactivé plutôt que supprimé, pour garder l\'historique.' });
+        }
+        throw error;
+      }
+      return res.status(200).json({ ok: true });
+    }
+
     return res.status(400).json({ error: 'Action inconnue' });
   } catch (err) {
     console.error('[Admin transporteurs]', err.message);
