@@ -1,5 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
+const { computeBareme } = require('./_lib/bareme');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -39,6 +40,8 @@ module.exports = async (req, res) => {
     const missions = (data || []).map(m => ({
       id:                  m.id,
       type:                m.type,
+      installation:        m.reservation?.installation || null,
+      montant_preview:     computeBareme(m.type, m.reservation?.installation),
       statut:              m.statut,
       date_prevue:         m.date_prevue,
       creneau:             m.creneau,

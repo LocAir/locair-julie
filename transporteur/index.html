@@ -83,7 +83,8 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .mcard-icon{font-size:20px}
 .mcard-type{font-weight:700;font-size:15px;letter-spacing:-.005em}
 .mcard-cp{font-size:11.5px;font-weight:700;color:var(--grey)}
-.mcard-badge{display:inline-flex;align-items:center;gap:5px;margin-left:auto;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:4px 10px 4px 8px;border-radius:100px;background:var(--bg);color:var(--grey)}
+.mcard-badge{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:4px 10px 4px 8px;border-radius:100px;background:var(--bg);color:var(--grey)}
+.mcard-earn{display:inline-flex;align-items:center;font-size:11.5px;font-weight:800;color:var(--green);background:var(--green-bg);padding:3px 9px;border-radius:100px;margin-right:6px}
 .mcard-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
 .mcard-addr{font-size:14px;color:var(--black);margin-top:6px;line-height:1.45}
 .mcard-meta{font-size:12.5px;color:var(--grey);margin-top:4px}
@@ -171,6 +172,16 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 #day-map{height:calc(100vh - 180px);border-radius:var(--r-lg);overflow:hidden;background:#e8e6e0;box-shadow:var(--sh-sm)}
 .map-popup-btn{display:block;width:100%;margin-top:8px;padding:9px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--body)}
 
+.stock-gauge{height:12px;border-radius:100px;background:var(--rule);overflow:hidden;margin:10px 0 6px}
+.stock-gauge-fill{height:100%;border-radius:100px;background:var(--green);transition:width .4s ease}
+.stock-gauge-fill.alert{background:var(--red)}
+.stock-unit{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--rule);font-size:14px}
+.stock-unit:last-child{border-bottom:none}
+.stock-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 8px;border-radius:100px}
+.stock-chip.dispo{background:var(--green-bg);color:var(--green)}
+.stock-chip.loc{background:var(--blue-lt);color:var(--blue)}
+.stock-chip.panne{background:var(--red-bg);color:var(--red)}
+.stock-chip.maint{background:var(--amber-bg);color:var(--amber)}
 .map-pin-teardrop{
   width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
   box-shadow:0 3px 10px rgba(20,30,48,.35);
@@ -213,15 +224,16 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
   <!-- Écran 3 : liste des missions -->
   <div id="missions-screen" class="hidden">
     <div class="tabbar">
-      <button class="on" onclick="switchTab('missions')">📋 Mes missions<span class="tab-badge hidden badge-missions"></span></button>
-      <button onclick="switchTab('activite')">💰 Mon activité<span class="tab-badge hidden badge-activite"></span></button>
+      <button class="on" onclick="switchTab('missions')">📋 Missions<span class="tab-badge hidden badge-missions"></span></button>
+      <button onclick="switchTab('activite')">💰 Activité<span class="tab-badge hidden badge-activite"></span></button>
+      <button onclick="switchTab('stock')">📦 Stock</button>
     </div>
     <div id="progress-zone"></div>
     <div class="map-filters" id="mission-filters">
-      <button class="on" data-f="toutes" onclick="setMissionFilter('toutes')">Toutes</button>
-      <button data-f="nouvelle" onclick="setMissionFilter('nouvelle')">🆕 À accepter</button>
-      <button data-f="en_cours" onclick="setMissionFilter('en_cours')">🚚 En cours</button>
-      <button data-f="terminee" onclick="setMissionFilter('terminee')">✅ Terminées</button>
+      <button class="on" data-f="toutes" onclick="setMissionFilter('toutes')">Toutes<span class="tab-badge hidden badge-sf-toutes"></span></button>
+      <button data-f="nouvelle" onclick="setMissionFilter('nouvelle')">🆕 À accepter<span class="tab-badge hidden badge-sf-nouvelle"></span></button>
+      <button data-f="en_cours" onclick="setMissionFilter('en_cours')">🚚 En cours<span class="tab-badge hidden badge-sf-en_cours"></span></button>
+      <button data-f="terminee" onclick="setMissionFilter('terminee')">✅ Terminées<span class="tab-badge hidden badge-sf-terminee"></span></button>
     </div>
     <div class="map-filters hidden" id="postal-filters"></div>
     <div id="tour-zone"></div>
@@ -238,10 +250,21 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
   <!-- Écran 3bis : activité / gains -->
   <div id="activite-screen" class="hidden">
     <div class="tabbar">
-      <button onclick="switchTab('missions')">📋 Mes missions<span class="tab-badge hidden badge-missions"></span></button>
-      <button class="on" onclick="switchTab('activite')">💰 Mon activité<span class="tab-badge hidden badge-activite"></span></button>
+      <button onclick="switchTab('missions')">📋 Missions<span class="tab-badge hidden badge-missions"></span></button>
+      <button class="on" onclick="switchTab('activite')">💰 Activité<span class="tab-badge hidden badge-activite"></span></button>
+      <button onclick="switchTab('stock')">📦 Stock</button>
     </div>
     <div id="activite-content"><p class="empty">Chargement…</p></div>
+  </div>
+
+  <!-- Écran 3ter : stock d'appareils -->
+  <div id="stock-screen" class="hidden">
+    <div class="tabbar">
+      <button onclick="switchTab('missions')">📋 Missions<span class="tab-badge hidden badge-missions"></span></button>
+      <button onclick="switchTab('activite')">💰 Activité<span class="tab-badge hidden badge-activite"></span></button>
+      <button class="on" onclick="switchTab('stock')">📦 Stock</button>
+    </div>
+    <div id="stock-content"><p class="empty">Chargement…</p></div>
   </div>
 
   <!-- Écran 4 : détail mission -->
@@ -279,13 +302,14 @@ let STATE = {
 };
 
 function show(id){
-  ['login-screen','missions-screen','activite-screen','detail-screen','map-screen'].forEach(s=>{
+  ['login-screen','missions-screen','activite-screen','stock-screen','detail-screen','map-screen'].forEach(s=>{
     document.getElementById(s).classList.toggle('hidden', s!==id);
   });
 }
 
 function switchTab(tab){
   if(tab==='activite'){ show('activite-screen'); loadActivite(); }
+  else if(tab==='stock'){ show('stock-screen'); loadStock(); }
   else { show('missions-screen'); loadMissions(); }
 }
 
@@ -575,10 +599,21 @@ async function fetchMissions(){
 }
 
 function updateMissionsBadge(){
-  const count = STATE.missions.filter(m => m.statut === 'a_faire').length;
+  const aFaire  = STATE.missions.filter(m => m.statut === 'a_faire').length;
+  const enCours = STATE.missions.filter(m => ['acceptee','arrivee','probleme'].includes(m.statut)).length;
+  const terminees = STATE.missions.filter(m => m.statut === 'fait').length;
+  const toutes  = aFaire + enCours + terminees;
+
   document.querySelectorAll('.badge-missions').forEach(el => {
-    if(count>0){ el.textContent = count; el.classList.remove('hidden'); }
+    if(aFaire>0){ el.textContent = aFaire; el.classList.remove('hidden'); }
     else el.classList.add('hidden');
+  });
+  const sfMap = {nouvelle: aFaire, en_cours: enCours, terminee: terminees, toutes};
+  Object.entries(sfMap).forEach(([key, count]) => {
+    document.querySelectorAll('.badge-sf-'+key).forEach(el => {
+      if(count>0){ el.textContent = count; el.classList.remove('hidden'); }
+      else el.classList.add('hidden');
+    });
   });
 }
 
@@ -646,9 +681,15 @@ function startTransporteurAutoRefresh(){
   if(!window._transpAutoRefresh) window._transpAutoRefresh = setInterval(transporteurAutoRefreshTick, 18000);
 }
 
-const TYPE_LABEL = {livraison:'Livraison', recuperation:'Récupération'};
-const TYPE_ICON  = {livraison:'📦', recuperation:'🔄'};
+const TYPE_LABEL = {livraison:'Livraison', recuperation:'Récupération', changement:'Remplacement'};
+const TYPE_ICON  = {livraison:'📦', recuperation:'🔄', changement:'🔁'};
 const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', arrivee:'Sur place', probleme:'Problème signalé', fait:'Terminée'};
+// Label précis selon type + option d'installation
+function missionTypeLabel(m){
+  if(m.type==='changement') return 'Remplacement';
+  if(m.type==='recuperation') return 'Récupération';
+  return (m.installation||'').startsWith('Technicien') ? 'Livraison + installation' : 'Livraison';
+}
 
 function dateLabelFor(dateStr){
   const today = new Date(); today.setHours(0,0,0,0);
@@ -664,12 +705,15 @@ function missionCardHtml(m){
   const badge = STATUT_LABEL[m.statut] || m.statut;
   const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
   const cp = postalCode(c.adresse);
+  const earn = m.montant_preview ? `<span class="mcard-earn">💶 ${Math.round(m.montant_preview/100)}€</span>` : '';
   return `
     <div class="mcard st-${m.statut}" onclick="openMission(${m.id})">
       <div class="mcard-top">
         <span class="mcard-icon">${TYPE_ICON[m.type]||'📍'}</span>
-        <span class="mcard-type">${TYPE_LABEL[m.type]||m.type}</span>
+        <span class="mcard-type">${missionTypeLabel(m)}</span>
         ${cp?`<span class="mcard-cp">📮 ${escHtml(cp)}</span>`:''}
+        <span style="flex:1"></span>
+        ${earn}
         <span class="mcard-badge">${badge}</span>
       </div>
       <div class="mcard-addr">${escHtml((c.prenom||'')+' '+(c.nom||''))} — ${escHtml(c.adresse||'Adresse à confirmer')}</div>
@@ -802,11 +846,13 @@ function renderMissions(){
   wrap.innerHTML = dates.map(dateStr => {
     const items = groups[dateStr];
     if(dateStr === todayStr){
-      const installs = items.filter(m => m.type==='livraison');
-      const pickups  = items.filter(m => m.type==='recuperation');
+      const installs    = items.filter(m => m.type==='livraison');
+      const pickups     = items.filter(m => m.type==='recuperation');
+      const changements = items.filter(m => m.type==='changement');
       return `<div class="section-title">${dateLabelFor(dateStr)}</div>`
-        + (installs.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🏠 Installations (${installs.length})</div>${missionsByPostalHtml(installs)}`:'')
-        + (pickups.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔄 Récupérations (${pickups.length})</div>${missionsByPostalHtml(pickups)}`:'');
+        + (installs.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">📦 Livraisons (${installs.length})</div>${missionsByPostalHtml(installs)}`:'')
+        + (pickups.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔄 Récupérations (${pickups.length})</div>${missionsByPostalHtml(pickups)}`:'')
+        + (changements.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔁 Remplacements (${changements.length})</div>${missionsByPostalHtml(changements)}`:'');
     }
     return `<div class="section-title">${dateLabelFor(dateStr)}</div>` + items.map(missionCardHtml).join('');
   }).join('');
@@ -876,6 +922,17 @@ function actionBtnsForMission(m){
       <button class="btn btn-green" ${ready?'':'disabled'} onclick="doAction('retour_ok')">✅ RETOUR OK — JE PARS</button>
       <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
   }
+  if((m.statut === 'acceptee' || m.statut === 'arrivee') && m.type === 'changement'){
+    const ready = m.photo_installation_ok && m.photo_retour_ok && m.vidange_ok;
+    return `
+      ${prevenirRowHtml(m)}
+      <p class="step-hint">🔁 Récupère l'ancien appareil après vidange, installe le nouvel appareil et prends les deux photos.</p>
+      <button class="media-btn ${m.vidange_ok?'done':''}" ${m.vidange_ok?'disabled':''} onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> ${m.vidange_ok?'Vidange ancien appareil ✔':'Vidange de l\'ancien appareil'}</button>
+      <button class="media-btn ${m.photo_retour_ok?'done':''}" onclick="startUpload('photo_retour','image/*')"><span class="ic">📷</span> ${m.photo_retour_ok?'Photo ancien appareil ✔':'Photo de l\'ancien appareil récupéré'}</button>
+      <button class="media-btn ${m.photo_installation_ok?'done':''}" onclick="startUpload('photo_installation','image/*')"><span class="ic">📷</span> ${m.photo_installation_ok?'Photo nouvel appareil ✔':'Photo du nouvel appareil installé'}</button>
+      <button class="btn btn-green" ${ready?'':'disabled'} onclick="doAction('changement_ok')">✅ REMPLACEMENT TERMINÉ — JE PARS</button>
+      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
+  }
   if(m.statut === 'probleme'){
     return `<div class="probleme-box"><p>⏳ Problème signalé. Aly va te recontacter — n'improvise rien avec le client.</p></div>`;
   }
@@ -924,8 +981,8 @@ function renderDetail(){
   document.getElementById('detail-screen').innerHTML = `
     <button class="detail-back" onclick="show('missions-screen')">← Retour</button>
     <div class="card">
-      <h1>${TYPE_ICON[m.type]||''} ${TYPE_LABEL[m.type]||m.type}</h1>
-      <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):''].filter(Boolean).join(' · ')}</p>
+      <h1>${TYPE_ICON[m.type]||''} ${missionTypeLabel(m)}</h1>
+      <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):'', m.montant_preview?`💶 ${Math.round(m.montant_preview/100)} €`:''].filter(Boolean).join(' · ')}</p>
       ${renderStepper(m)}
 
       ${infoRows}
@@ -988,7 +1045,7 @@ async function doAction(action, extra){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
 
-    if(action === 'livraison_ok' || action === 'retour_ok'){
+    if(action === 'livraison_ok' || action === 'retour_ok' || action === 'changement_ok'){
       showCelebration(d.montant_du_cents || 0);
       return;
     }
@@ -1290,6 +1347,60 @@ async function demanderVirement(){
     if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
     if(btn){ btn.disabled = false; btn.textContent = '💰 Demander mon virement'; }
   }
+}
+
+// ── Stock d'appareils ─────────────────────────────────────────────────────────
+async function loadStock(){
+  const zone = document.getElementById('stock-content');
+  if(!zone) return;
+  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('transporteur-stock'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body:'{}'});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    renderStock(d);
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Impossible de charger le stock. Réessaie.</p>';
+  }
+}
+function renderStock(d){
+  const zone = document.getElementById('stock-content');
+  const pct = d.total ? Math.round(d.disponibles/d.total*100) : 0;
+  const alerte = d.disponibles <= d.seuil_alerte;
+  const chipClass = s => s==='disponible'?'dispo':s==='panne'?'panne':s==='maintenance'?'maint':'loc';
+  const chipLabel = s => ({disponible:'Disponible',panne:'En panne',maintenance:'Maintenance'}[s]||'Chez client');
+  zone.innerHTML = `
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
+        <span style="font-weight:700;font-size:15px">Flotte d'appareils</span>
+        <span style="font-size:13px;color:var(--grey)">${d.total} unité${d.total>1?'s':''} au total</span>
+      </div>
+      <div class="stock-gauge">
+        <div class="stock-gauge-fill ${alerte?'alert':''}" style="width:${pct}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--grey)">
+        <span>${alerte?'⚠️ Stock bas — ':''}<strong>${d.disponibles}</strong> disponible${d.disponibles>1?'s':''}</span>
+        <span>${pct}% libre</span>
+      </div>
+      ${alerte?`<p class="step-hint" style="margin-top:10px">⚠️ Seuil d'alerte atteint (≤ ${d.seuil_alerte} unité${d.seuil_alerte>1?'s':''}). Préviens Aly.</p>`:''}
+    </div>
+    <div class="stat-row">
+      <div class="stat-tile"><div class="n" style="color:var(--green)">${d.disponibles}</div><div class="l">Disponibles</div></div>
+      <div class="stat-tile"><div class="n" style="color:var(--blue)">${d.en_location}</div><div class="l">Chez clients</div></div>
+      <div class="stat-tile"><div class="n" style="color:var(--red)">${d.en_panne}</div><div class="l">En panne</div></div>
+    </div>
+    <div class="section-title">Détail par unité</div>
+    <div class="card" style="padding:6px 16px">
+      ${(d.appareils||[]).map(a => {
+        const statut = a.en_location ? 'location' : a.statut;
+        return `<div class="stock-unit">
+          <span>Unité n°${a.numero}${a.reference?` <span style="color:var(--grey);font-size:12px">(${escHtml(a.reference)})</span>`:''}</span>
+          <span class="stock-chip ${chipClass(a.en_location?'location':a.statut)}">${chipLabel(a.en_location?'location':a.statut)}</span>
+        </div>`;
+      }).join('')}
+    </div>
+    <button class="btn btn-grey" style="margin-top:8px" onclick="loadStock()">🔄 Actualiser</button>
+  `;
 }
 
 // ── Carte du jour (vue d'ensemble, gratuite OpenStreetMap) ───────────────────

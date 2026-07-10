@@ -84,6 +84,49 @@ module.exports = async (req, res) => {
       return res.status(200).json({ livraisons });
     }
 
+    if (action === 'create') {
+      const type = body.type;
+      if (!['livraison', 'recuperation', 'changement'].includes(type)) {
+        return res.status(400).json({ error: 'Type invalide (livraison | recuperation | changement)' });
+      }
+      const reservationId  = parseInt(body.reservation_id);
+      const transporteurId = body.transporteur_id ? parseInt(body.transporteur_id) : null;
+      const datePrevue     = (body.date_prevue || '').slice(0, 10);
+      const creneau        = (body.creneau || '').trim().slice(0, 100) || null;
+
+      if (!reservationId) return res.status(400).json({ error: 'reservation_id manquant' });
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(datePrevue)) return res.status(400).json({ error: 'date_prevue invalide (YYYY-MM-DD)' });
+
+      const { data: resa } = await supabase
+        .from('reservations').select('id, city_id').eq('id', reservationId).maybeSingle();
+      if (!resa || resa.city_id !== city.id) return res.status(404).json({ error: 'Réservation introuvable' });
+
+      if (transporteurId) {
+        const { data: t } = await supabase.from('transporteurs').select('id').eq('id', transporteurId).eq('city_id', city.id).maybeSingle();
+        if (!t) return res.status(400).json({ error: 'Transporteur invalide' });
+      }
+
+      const { data, error } = await supabase.from('livraisons').insert({
+        reservation_id:  reservationId,
+        transporteur_id: transporteurId || null,
+        type,
+        date_prevue:     datePrevue,
+        creneau,
+        statut:          'a_faire',
+      }).select().single();
+      if (error) throw error;
+
+      if (transporteurId) {
+        await pushToTransporteur(supabase, transporteurId, {
+          title: "Nouvelle mission Loc'Air",
+          body:  'Une mission t\'attend — ouvre l\'app pour l\'accepter ou la refuser.',
+          tag:   'nouvelle-mission',
+        });
+      }
+
+      return res.status(200).json({ ok: true, livraison: data });
+    }
+
     if (action === 'resolve_probleme') {
       const livraisonId = parseInt(body.livraison_id);
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });

@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
 const { sendBrevoSms } = require('./_lib/brevo');
+const { computeBareme } = require('./_lib/bareme');
 
 const MEDIA_COLUMN = {
   photo_depart:        'photo_depart_path',
@@ -27,15 +28,18 @@ function checkMediaAllowed(liv, kind) {
     if (!['acceptee', 'arrivee'].includes(liv.statut)) return 'Cette étape n\'est pas encore accessible';
     return null;
   }
-  const expectsLivraison = kind === 'photo_depart' || kind === 'photo_installation';
-  if (expectsLivraison && liv.type !== 'livraison') return 'Média non attendu pour cette mission';
-  if (kind === 'photo_retour' && liv.type !== 'recuperation') return 'Média non attendu pour cette mission';
+    const expectsLivraison = kind === 'photo_depart' || kind === 'photo_installation';
+  if (expectsLivraison && !['livraison', 'changement'].includes(liv.type)) return 'Média non attendu pour cette mission';
+  if (kind === 'photo_retour' && !['recuperation', 'changement'].includes(liv.type)) return 'Média non attendu pour cette mission';
   if (!STAGE_FOR_KIND[kind].includes(liv.statut)) return 'Cette étape n\'est pas encore accessible';
   return null;
 }
 
 async function loadLivraison(supabase, id) {
-  const { data, error } = await supabase.from('livraisons').select('*').eq('id', id).maybeSingle();
+  const { data, error } = await supabase
+    .from('livraisons')
+    .select('*, reservation:reservations(installation, city_id, prenom, tel)')
+    .eq('id', id).maybeSingle();
   if (error || !data) return null;
   return data;
 }
@@ -138,21 +142,30 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Vérification et vidange requises avant de valider' });
       }
 
-      const { data: transp } = await supabase
-        .from('transporteurs').select('taux_livraison_cents, taux_recuperation_cents').eq('id', transporteurId).maybeSingle();
-      const montantDu = expectedType === 'livraison'
-        ? (transp?.taux_livraison_cents || 0)
-        : (transp?.taux_recuperation_cents || 0);
+      const montantDu = computeBareme(liv.type, liv.reservation?.installation);
 
       await supabase.from('livraisons').update({
         statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,
       }).eq('id', liv.id);
 
-      // Une récupération confirmée libère le stock immédiatement (retour anticipé
-      // ou à la date prévue), sans attendre que date_fin soit dans le passé.
       if (expectedType === 'recuperation') {
         await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id);
       }
+
+      return res.status(200).json({ ok: true, statut: 'fait', montant_du_cents: montantDu });
+    }
+
+    if (action === 'changement_ok') {
+      if (liv.type !== 'changement' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      if (!liv.photo_installation_path) return res.status(400).json({ error: 'Photo du nouvel appareil installé requise avant de valider' });
+      if (!liv.photo_retour_path) return res.status(400).json({ error: 'Photo de l\'ancien appareil récupéré requise avant de valider' });
+      if (!liv.vidange_confirmee) return res.status(400).json({ error: 'Vidange de l\'ancien appareil requise avant de valider' });
+
+      const montantDu = computeBareme('changement', null);
+
+      await supabase.from('livraisons').update({
+        statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,
+      }).eq('id', liv.id);
 
       return res.status(200).json({ ok: true, statut: 'fait', montant_du_cents: montantDu });
     }

@@ -8159,19 +8159,139 @@ function cwBook(){
     </div>`;
   }
 
+  // ── Stock (admin) ─────────────────────────────────────────────────────────
+  let _stockAdmin={data:null,loading:false};
+  function _tabStock(){
+    const tok=sessionStorage.getItem('_la_tok');
+    if(!tok)return`<div class="_dcard" style="text-align:center;padding:32px 16px">
+      <div style="font-size:28px;margin-bottom:10px">🔐</div>
+      <div style="color:rgba(255,255,255,.4);font-size:13px;margin-bottom:16px">Mot de passe admin requis</div>
+      <button class="_dso-btn" onclick="_trAuth()">Authentifier</button>
+    </div>`;
+    if(_stockAdmin.data===null){if(!_stockAdmin.loading)setTimeout(_loadStockAdmin,0);return`<div style="text-align:center;padding:48px;color:rgba(255,255,255,.3);font-size:13px">Chargement du stock…</div>`;}
+    const d=_stockAdmin.data;
+    const pct=d.total?Math.round(d.disponibles/d.total*100):0;
+    const alerte=d.disponibles<=d.seuil_alerte;
+    const barCol=alerte?'#ef4444':'#10b981';
+    const unitStatus=a=>{
+      if(a.en_location)return{txt:'Chez client',col:'#635BFF',bg:'rgba(99,91,255,.12)'};
+      if(a.statut==='panne')return{txt:'En panne',col:'#ef4444',bg:'rgba(239,68,68,.1)'};
+      if(a.statut==='maintenance')return{txt:'Maintenance',col:'#f59e0b',bg:'rgba(245,158,11,.1)'};
+      return{txt:'Disponible',col:'#10b981',bg:'rgba(16,185,129,.1)'};
+    };
+    return`<div>
+      <div class="_dcard">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <div class="_dch" style="margin:0">Flotte ${d.ville||''}</div>
+          <button class="_diBtn" onclick="_stockAdmin.data=null;_loadStockAdmin()" title="Actualiser">↻</button>
+        </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+          ${[['Total',d.total,'rgba(255,255,255,.8)'],['Disponibles',d.disponibles,barCol],['Chez clients',d.en_location,'#635BFF'],['En panne',d.actifs-d.disponibles-d.en_location,'#ef4444']].map(([l,v,c])=>`<div class="_dk"><div class="_dk-v" style="color:${c}">${v}</div><div class="_dk-l">${l}</div></div>`).join('')}
+        </div>
+        <div style="height:10px;border-radius:100px;background:rgba(255,255,255,.07);overflow:hidden;margin-bottom:5px">
+          <div style="height:100%;width:${pct}%;background:${barCol};border-radius:100px;transition:width .4s ease"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.35)">
+          <span>${alerte?'⚠️ Seuil bas (≤'+d.seuil_alerte+' unité'+(d.seuil_alerte>1?'s':'')+')':''}</span>
+          <span>${pct}% libre</span>
+        </div>
+      </div>
+      <div class="_dcard" style="padding:6px 0;overflow:hidden">
+        <div style="padding:8px 16px 4px;font-size:11px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.08em">Appareils</div>
+        ${(d.appareils||[]).map(a=>{const s=unitStatus(a);return`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid rgba(255,255,255,.04)">
+          <span style="color:rgba(255,255,255,.8);font-size:13px">Unité n°${a.numero}${a.reference?`<span style="color:rgba(255,255,255,.3);font-size:11px;margin-left:6px">${a.reference}</span>`:''}</span>
+          <span style="background:${s.bg};color:${s.col};border:1px solid ${s.col}44;border-radius:6px;font-size:10.5px;font-weight:700;padding:2px 8px">${s.txt}</span>
+        </div>`;}).join('')}
+        <div style="padding:12px 16px 6px"><button class="_trBtn _trBtn-g" onclick="_addAppareil()">+ Ajouter une unité</button></div>
+      </div>
+    </div>`;
+  }
+
+  // ── Livraisons (admin) ────────────────────────────────────────────────────
+  let _livState={list:null,loading:false,resas:null,trs:null,creating:false};
+  const _LIV_TYPE_LABELS={livraison:'Livraison (autonome)',livraison_tech:'Livraison + installation',recuperation:'Récupération',changement:'Remplacement'};
+  function _tabLivraisons(){
+    const tok=sessionStorage.getItem('_la_tok');
+    if(!tok)return`<div class="_dcard" style="text-align:center;padding:32px 16px">
+      <div style="font-size:28px;margin-bottom:10px">🔐</div>
+      <div style="color:rgba(255,255,255,.4);font-size:13px;margin-bottom:16px">Mot de passe admin requis</div>
+      <button class="_dso-btn" onclick="_trAuth()">Authentifier</button>
+    </div>`;
+    if(_livState.list===null&&!_livState.loading){setTimeout(_loadLivAdmin,0);}
+    const resaOpts=(_livState.resas||[]).slice(0,50).map(r=>`<option value="${r.id}">${r.ref||('#'+r.id)} — ${r.prenom} ${r.nom}</option>`).join('');
+    const trOpts=(_livState.trs||[]).map(t=>`<option value="${t.id}">${t.nom}</option>`).join('');
+    const createForm=`
+      <div class="_dcard">
+        <div class="_dch">Créer une mission</div>
+        <div style="display:grid;gap:8px;margin-bottom:10px">
+          <div>
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Type de mission</div>
+            <select id="_lv-type" style="width:100%;padding:9px;background:#0d1829;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:6px;font-size:13px">
+              <option value="livraison">📦 Livraison (autonome)</option>
+              <option value="livraison_tech">📦 Livraison + installation</option>
+              <option value="recuperation">🔄 Récupération</option>
+              <option value="changement">🔁 Remplacement</option>
+            </select>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Réservation client</div>
+            <select id="_lv-resa" style="width:100%;padding:9px;background:#0d1829;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:6px;font-size:13px">
+              <option value="">— Sélectionner —</option>${resaOpts}
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div>
+              <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Date prévue</div>
+              <input type="date" id="_lv-date" style="width:100%;padding:9px;background:#0d1829;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:6px;font-size:13px"/>
+            </div>
+            <div>
+              <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Créneau</div>
+              <input type="text" id="_lv-creneau" placeholder="ex. 9h-12h" style="width:100%;padding:9px;background:#0d1829;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:6px;font-size:13px"/>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Transporteur (optionnel)</div>
+            <select id="_lv-tr" style="width:100%;padding:9px;background:#0d1829;color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:6px;font-size:13px">
+              <option value="">— Non assigné —</option>${trOpts}
+            </select>
+          </div>
+        </div>
+        <div id="_lv-err" style="color:#ef4444;font-size:12px;min-height:16px;margin-bottom:6px"></div>
+        <button class="_trBtn _trBtn-g" id="_lv-submit" onclick="_createMission()" ${_livState.creating?'disabled':''} style="padding:10px 18px">${_livState.creating?'Création…':'✅ Créer la mission'}</button>
+      </div>`;
+    const missionsHtml=_livState.loading?`<div style="text-align:center;padding:30px;color:rgba(255,255,255,.3);font-size:12px">Chargement…</div>`:
+      (_livState.list&&_livState.list.length?`<div class="_dcard" style="padding:0;overflow:hidden">
+        <div style="padding:10px 16px 6px;display:flex;justify-content:space-between;align-items:center">
+          <div class="_dch" style="margin:0">Missions récentes</div>
+          <button class="_diBtn" onclick="_livState.list=null;_loadLivAdmin()" title="Actualiser">↻</button>
+        </div>
+        <div style="overflow-x:auto"><table class="_dtbl">
+          <thead><tr><th>Ref</th><th>Type</th><th>Date</th><th>Statut</th><th>Livreur</th></tr></thead>
+          <tbody>${(_livState.list||[]).slice(0,30).map(l=>{
+            const typeLabel={livraison:'📦 Livraison',recuperation:'🔄 Récup.',changement:'🔁 Remplacement'}[l.type]||(l.type||'');
+            const statMap={a_faire:'À faire',acceptee:'Acceptée',arrivee:'Sur place',fait:'Terminée',probleme:'Problème',refusee:'Refusée'};
+            return`<tr><td style="color:rgba(255,255,255,.5);font-size:11px">${(l.reservation?.ref||'—')}</td><td>${typeLabel}</td><td style="color:rgba(255,255,255,.5)">${l.date_prevue||'—'}</td><td style="font-size:11px">${statMap[l.statut]||l.statut}</td><td style="color:rgba(255,255,255,.5);font-size:11px">${l.transporteur?.nom||'—'}</td></tr>`;
+          }).join('')}</tbody>
+        </table></div>
+      </div>`:_livState.list?`<div class="_dcard"><div class="_dem">Aucune mission récente</div></div>`:'');
+    return`<div>${createForm}${missionsHtml}</div>`;
+  }
+
   // ── Dashboard full-screen ─────────────────────────────────────────────────
   let _open=false;
   let _trState={list:null,loading:false,sel:null,period:'month',stats:null};
   function _renderDash(){
     const wrap=document.getElementById('_dw');if(!wrap)return;
     const a=_agg();
-    const tabs=[['overview','📊 Vue d\'ensemble'],['ctas','🖱️ CTAs'],['funnel','🔽 Funnel'],['sessions','📋 Sessions'],['transporteurs','🚚 Transporteurs']];
+    const tabs=[['overview','📊 Vue'],['ctas','🖱️ CTAs'],['funnel','🔽 Funnel'],['sessions','📋 Sessions'],['transporteurs','🚚 Livraisons'],['stock','📦 Stock'],['livraisons','➕ Mission']];
     let body='';
     if(_tab==='overview')body=_tabOverview(a);
     else if(_tab==='ctas')body=_tabCTAs(a);
     else if(_tab==='funnel')body=_tabFunnel(a);
     else if(_tab==='sessions')body=_tabSessions(a);
     else if(_tab==='transporteurs')body=_tabTransporteurs();
+    else if(_tab==='stock')body=_tabStock();
+    else if(_tab==='livraisons')body=_tabLivraisons();
     wrap.innerHTML=`
     <div id="_dash">
       <div class="_dheader">
@@ -8269,6 +8389,73 @@ function cwBook(){
       if(!r.ok){if(r.status===401)sessionStorage.removeItem('_la_tok');alert('Erreur : '+(d.error||r.status));return;}
       _trState.list=null;_trState.sel=null;_trState.stats=null;_loadTrList();
     }catch(e){alert('Erreur réseau : '+e.message);}
+  };
+
+  // ── Stock admin — loaders ─────────────────────────────────────────────────
+  async function _loadStockAdmin(){
+    const tok=sessionStorage.getItem('_la_tok')||'';if(!tok)return;
+    _stockAdmin.loading=true;_renderDash();
+    try{
+      const r=await fetch('/api/admin-stock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,action:'list'})});
+      const d=await r.json().catch(()=>({}));
+      if(r.ok){
+        // Seuil alerte = 10 % du total (min 1)
+        d.seuil_alerte=Math.max(1,Math.round((d.total||0)*0.1));
+        _stockAdmin.data=d;
+      }else if(r.status===401)sessionStorage.removeItem('_la_tok');
+    }catch(e){}
+    _stockAdmin.loading=false;_renderDash();
+  }
+  window._addAppareil=async function(){
+    const tok=sessionStorage.getItem('_la_tok')||'';if(!tok)return;
+    if(!confirm('Ajouter une nouvelle unité au stock ?'))return;
+    try{
+      const r=await fetch('/api/admin-stock',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,action:'add'})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok){alert('Erreur : '+(d.error||r.status));return;}
+      _stockAdmin.data=null;_loadStockAdmin();
+    }catch(e){alert('Erreur réseau : '+e.message);}
+  };
+
+  // ── Livraisons admin — loaders & create ───────────────────────────────────
+  async function _loadLivAdmin(){
+    const tok=sessionStorage.getItem('_la_tok')||'';if(!tok)return;
+    _livState.loading=true;_renderDash();
+    try{
+      const [r1,r2,r3]=await Promise.all([
+        fetch('/api/admin-livraisons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,action:'list'})}),
+        fetch('/api/admin-reservations',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,action:'list'})}),
+        fetch('/api/admin-transporteurs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,action:'list'})}),
+      ]);
+      const [d1,d2,d3]=await Promise.all([r1.json().catch(()=>({})),r2.json().catch(()=>({})),r3.json().catch(()=>({}))]);
+      if(r1.ok)_livState.list=d1.livraisons||[];
+      if(r2.ok)_livState.resas=d2.reservations||[];
+      if(r3.ok)_livState.trs=d3.transporteurs||[];
+      if(r1.status===401||r2.status===401)sessionStorage.removeItem('_la_tok');
+    }catch(e){}
+    _livState.loading=false;_renderDash();
+  }
+  window._createMission=async function(){
+    const tok=sessionStorage.getItem('_la_tok')||'';if(!tok)return;
+    const typeRaw=document.getElementById('_lv-type')?.value||'';
+    const resaId=document.getElementById('_lv-resa')?.value||'';
+    const datePrev=document.getElementById('_lv-date')?.value||'';
+    const creneau=document.getElementById('_lv-creneau')?.value||'';
+    const trId=document.getElementById('_lv-tr')?.value||'';
+    const errEl=document.getElementById('_lv-err');
+    if(errEl)errEl.textContent='';
+    if(!resaId){if(errEl)errEl.textContent='Sélectionner une réservation.';return;}
+    if(!datePrev){if(errEl)errEl.textContent='Date requise.';return;}
+    // livraison_tech → type livraison (la distinction est dans le label, pas dans la DB)
+    const type=typeRaw==='livraison_tech'?'livraison':typeRaw;
+    _livState.creating=true;_renderDash();
+    try{
+      const r=await fetch('/api/admin-livraisons',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:tok,action:'create',type,reservation_id:parseInt(resaId),date_prevue:datePrev,creneau:creneau||null,transporteur_id:trId?parseInt(trId):null})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok){if(errEl)errEl.textContent=d.error||('Erreur '+r.status);return;}
+      _livState.list=null;_loadLivAdmin();
+    }catch(e){if(errEl)errEl.textContent='Erreur réseau : '+e.message;}
+    finally{_livState.creating=false;_renderDash();}
   };
 
   window._toggleModeComplet=async function(newVal){
