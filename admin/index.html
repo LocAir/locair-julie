@@ -1234,7 +1234,7 @@ function renderReservationsToolbar(){
   const masqueesCount = RESERVATIONS_CACHE.filter(r => r.masquee).length;
   const horsZoneCount = RESERVATIONS_CACHE.filter(r => r.hors_zone && !r.masquee).length;
   const filters = [
-    {key:'toutes', label:'Toutes'},
+    {key:'toutes', label:'Actives'},
     {key:'hors_zone', label:`⚠️ Hors zone${horsZoneCount?' ('+horsZoneCount+')':''}`},
     {key:'en_attente', label:'En attente'},
     {key:'confirmee', label:'Confirmées'},
@@ -1357,6 +1357,11 @@ function renderReservations(){
   let items = RESERVATIONS_CACHE.filter(r => RESERVATIONS_SHOW_MASQUEES ? r.masquee : !r.masquee);
   if(!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER === 'prolongation') items = items.filter(r => r.source === 'site_prolongation');
   else if(!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER === 'hors_zone') items = items.filter(r => r.hors_zone);
+  // "Toutes" = réservations actives (en attente + confirmées) — une fois
+  // annulée ou terminée, une réservation n'attend plus rien de l'admin au
+  // jour le jour, elle se range dans son propre filtre (déjà présent en
+  // dessous) plutôt que de noyer celles qui restent à suivre.
+  else if(!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER === 'toutes') items = items.filter(r => !['annulee','terminee'].includes(r.statut));
   else if(!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER !== 'toutes') items = items.filter(r => r.statut === RESERVATIONS_FILTER);
   if(q){
     items = items.filter(r => [r.ref, r.prenom, r.nom, r.adresse, r.tel].filter(Boolean).join(' ').toLowerCase().includes(q));
@@ -1616,11 +1621,12 @@ function renderLivraisonsToolbar(){
   const nonAssigneesCount = visibles.filter(m => m.statut==='a_faire' && !m.transporteur).length;
   const masqueesCount = LIVRAISONS_CACHE.filter(m => m.masquee).length;
   const filters = [
-    {key:'toutes', label:'Toutes'},
+    {key:'toutes', label:'Actives'},
     {key:'non_assignees', label:`⚠️ Non assignées${nonAssigneesCount?' ('+nonAssigneesCount+')':''}`},
     {key:'en_cours', label:'En cours'},
     {key:'fait', label:'Terminées'},
     {key:'probleme', label:'Problèmes'},
+    {key:'annule', label:'Annulées'},
   ];
   const avgLiv = avgDureeSurPlace('livraison');
   const avgRec = avgDureeSurPlace('recuperation');
@@ -1822,6 +1828,12 @@ function renderLivraisons(){
     else if(LIVRAISONS_FILTER === 'en_cours') items = items.filter(m => ['a_faire','acceptee','arrivee'].includes(m.statut));
     else if(LIVRAISONS_FILTER === 'fait') items = items.filter(m => m.statut === 'fait');
     else if(LIVRAISONS_FILTER === 'probleme') items = items.filter(m => m.statut === 'probleme');
+    else if(LIVRAISONS_FILTER === 'annule') items = items.filter(m => m.statut === 'annule');
+    // "Actives" = tout ce qui attend encore quelque chose du transporteur ou
+    // de l'admin — une fois "fait" ou "annule", une mission n'a plus rien à
+    // demander, elle se range dans son propre filtre plutôt que de rester
+    // mélangée à ce qui reste réellement à traiter.
+    else if(LIVRAISONS_FILTER === 'toutes') items = items.filter(m => !['fait','annule'].includes(m.statut));
   }
 
   if(q){
