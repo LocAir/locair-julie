@@ -592,6 +592,12 @@ function frDate(iso){
   if(isNaN(d)) return iso;
   return d.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
 }
+function frDateHeure(iso){
+  if(!iso) return '—';
+  const d = new Date(iso);
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString('fr-FR', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+}
 function loading(){ return '<div class="spinner-wrap"><div class="spinner"></div></div>'; }
 function escHtml(s){
   return String(s==null?'':s)
@@ -1572,6 +1578,8 @@ function renderLivraisons(){
         ${res.instructions_acces?`<div class="row-meta" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
         ${(m.duree_trajet_min!=null || m.duree_sur_place_min!=null)?`<div class="row-meta">🕐 ${m.duree_trajet_min!=null?m.duree_trajet_min+' min trajet':''}${m.duree_trajet_min!=null&&m.duree_sur_place_min!=null?' · ':''}${m.duree_sur_place_min!=null?m.duree_sur_place_min+' min sur place':''}</div>`:''}
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
+        ${m.client_notifie_at?`<div class="row-meta" style="color:var(--green)">✅ Client notifié ${frDateHeure(m.client_notifie_at)}</div>`:''}
+        ${(['recuperation','changement'].includes(m.type) && m.statut==='fait')?`<div class="row-meta" style="color:${m.vidange_confirmee?'var(--green)':'var(--amber)'};">${m.vidange_confirmee?'✅ Vidange confirmée':'⚠️ Vidange non confirmée'}</div>`:''}
         <div class="row-actions">
           <select onchange="assignTransporteur(${m.id}, this.value, this)">${options}</select>
           ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom).replace(/'/g,"\\'")}', '${escHtml(res.adresse||'').replace(/'/g,"\\'")}')">🔴 Suivre en direct</button>`:''}
@@ -1908,14 +1916,19 @@ async function loadTransporteursEquipe(){
   if(!zone) return;
   zone.innerHTML = loading();
   try{
-    const [tr, lr] = await Promise.all([
+    const [tr, lr, sr] = await Promise.all([
       fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
       fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-transporteur-stats'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}).catch(()=>null),
     ]);
     const d = await tr.json();
     if(!tr.ok) throw new Error(d.error||'Erreur');
     TRANSPORTEURS_CACHE = d.transporteurs || [];
     const ld = await lr.json().catch(()=>({livraisons:[]}));
+    const sd = sr ? await sr.json().catch(()=>({})) : {};
+    const statsByT = {};
+    (sd.transporteurs||[]).forEach(s => { statsByT[s.id] = s; });
+
     const testTransp = (d.transporteurs||[]).find(t => t.nom === TEST_TRANSPORTEUR_NOM);
     const testCardHtml = `
       <div class="card" style="border-color:var(--blue)">
@@ -1927,29 +1940,47 @@ async function loadTransporteursEquipe(){
           <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="resetPin(${testTransp.id})">Régénérer le code</button>
         ` : `<button class="btn btn-blue btn-block" onclick="createTestTransporteur()">Créer mon compte de test</button>`}
       </div>`;
-    const list = (d.transporteurs||[]).filter(t => t.nom !== TEST_TRANSPORTEUR_NOM).map(t => `
-      <div class="row-item">
+    const list = (d.transporteurs||[]).filter(t => t.nom !== TEST_TRANSPORTEUR_NOM).map(t => {
+      const st = statsByT[t.id] || {};
+      const score = st.perf_score != null ? st.perf_score : null;
+      const scoreBg = score == null ? 'var(--bg)' : score >= 80 ? 'var(--green-bg)' : score >= 60 ? '#fef3c7' : '#fee2e2';
+      const scoreColor = score == null ? 'var(--grey)' : score >= 80 ? 'var(--green)' : score >= 60 ? '#b45309' : 'var(--red)';
+      const scoreLabel = score == null ? '—' : score + ' pts';
+      const missions30 = st.missions_30j != null ? st.missions_30j : null;
+      const enPause = t.en_pause || false;
+      return `
+      <div class="row-item" style="${enPause?'opacity:.8;border-left:3px solid var(--amber)':''}">
         <div class="row-top">
           <span class="row-title">${escHtml(t.nom)}</span>
-          <span class="chip ${t.actif?'actif':'annulee'}">${t.actif?'actif':'inactif'}</span>
+          <span style="display:flex;gap:6px;align-items:center">
+            ${enPause?`<span class="chip" style="background:#fef3c7;color:#b45309;border:1px solid #fcd34d">⏸ En pause</span>`:''}
+            <span class="chip ${t.actif?'actif':'annulee'}">${t.actif?'actif':'inactif'}</span>
+          </span>
         </div>
         <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''}</div>
         <div class="row-meta">Code : <strong>${escHtml(t.pin||'—')}</strong> · ${euros(t.taux_livraison_cents)}/livraison · ${euros(t.taux_recuperation_cents)}/récupération</div>
         ${CITIES_CACHE.length>1?`<div class="row-meta">🌍 ${(t.villes&&t.villes.length) ? t.villes.map(id => escHtml((CITIES_CACHE.find(c=>c.id===id)||{}).name||'?')).join(', ') : 'Aucune zone'}</div>`:''}
-        <div class="row-meta" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${[
-          {key:'livraison',            label:'Livraison',        tarif:'30€'},
-          {key:'livraison_technicien', label:'Livr.+install.',   tarif:'40€'},
-          {key:'recuperation',         label:'Récupération',     tarif:'30€'},
-          {key:'changement',           label:'Remplacement',     tarif:'40€'},
-        ].map(mt=>{const on=!(t.types_autorises&&t.types_autorises.length)||t.types_autorises.includes(mt.key);return`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;background:${on?'var(--green-bg)':'var(--bg)'};color:${on?'var(--green)':'var(--grey-soft)'};opacity:${on?1:.5};text-decoration:${on?'none':'line-through'}">${mt.label} · ${mt.tarif}</span>`;}).join('')}</div>
-        <div class="day-progress" style="margin:12px 0 0;padding:0">${chargeJourHtml(t.id, ld.livraisons)}</div>
+        <div class="row-meta" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
+          ${[{key:'livraison',label:'Livraison',tarif:'30€'},{key:'livraison_technicien',label:'Livr.+install.',tarif:'40€'},{key:'recuperation',label:'Récupération',tarif:'30€'},{key:'changement',label:'Remplacement',tarif:'40€'}].map(mt=>{const on=!(t.types_autorises&&t.types_autorises.length)||t.types_autorises.includes(mt.key);return`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;background:${on?'var(--green-bg)':'var(--bg)'};color:${on?'var(--green)':'var(--grey-soft)'};opacity:${on?1:.5};text-decoration:${on?'none':'line-through'}">${mt.label} · ${mt.tarif}</span>`;}).join('')}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin:10px 0 4px">
+          <span style="font-size:12px;color:var(--grey)">Score 30j</span>
+          <span style="padding:2px 10px;border-radius:100px;font-size:12px;font-weight:700;background:${scoreBg};color:${scoreColor}">${scoreLabel}</span>
+          ${missions30!=null?`<span style="font-size:12px;color:var(--grey)">${missions30} mission${missions30>1?'s':''}</span>`:''}
+          <button class="btn btn-grey" style="padding:3px 10px;font-size:12px;margin-left:auto" onclick="openTransporteurStats(${t.id})">📊 Stats</button>
+        </div>
+        <div class="day-progress" style="margin:8px 0 0;padding:0">${chargeJourHtml(t.id, ld.livraisons)}</div>
         <div class="row-actions">
+          ${enPause
+            ? `<button class="btn btn-green" onclick="pauseTransporteur(${t.id}, false, this)">▶ Reprendre</button>`
+            : `<button class="btn btn-grey" onclick="pauseTransporteur(${t.id}, true, this)">⏸ Mettre en pause</button>`}
           <button class="btn btn-grey" onclick="toggleTransporteur(${t.id}, ${!t.actif}, this)">${t.actif?'Désactiver':'Réactiver'}</button>
           <button class="btn btn-blue" onclick="editFiche(${t.id})">✏️ Modifier la fiche</button>
           <button class="btn btn-grey" onclick="resetPin(${t.id})">Changer le code</button>
           <button class="btn btn-grey" onclick="editEmail(${t.id}, '${(t.email||'').replace(/'/g,"\\'")}')">${t.email?'Modifier':'Ajouter'} l'email</button>
         </div>
-      </div>`).join('') || '<p class="empty">Aucun transporteur.</p>';
+      </div>`;
+    }).join('') || '<p class="empty">Aucun transporteur.</p>';
 
     zone.innerHTML = testCardHtml + list + `
       <div class="card">
@@ -2017,6 +2048,70 @@ async function toggleTransporteur(id, actif, btnEl){
   }catch(e){
     if(btnEl) btnEl.disabled = false;
     showToast(e.message, 'error');
+  }
+}
+async function pauseTransporteur(id, pause, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const action = pause ? 'pause' : 'resume';
+    const r = await fetch(API('admin-transporteur-stats'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action, transporteur_id:id})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadTransporteursEquipe();
+    showToast(pause ? 'Transporteur mis en pause' : 'Transporteur repris', 'success');
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
+}
+async function openTransporteurStats(id){
+  const t = TRANSPORTEURS_CACHE.find(x => x.id === id);
+  if(!t) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `<div class="modal-box" style="max-width:440px;max-height:90vh;overflow-y:auto">
+    <h2 style="margin-bottom:4px">📊 Stats — ${escHtml(t.nom)}</h2>
+    <div class="sub" style="margin-bottom:16px">30 derniers jours</div>
+    <div id="stats-modal-body">${loading()}</div>
+    <div class="modal-actions" style="margin-top:18px"><button class="btn btn-grey">Fermer</button></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  overlay.querySelector('.modal-actions .btn').onclick = closeModal;
+  try{
+    const r = await fetch(API('admin-transporteur-stats'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'stats', transporteur_id:id, period:'month'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const p = d.perf || {};
+    const scoreColor = p.score >= 80 ? 'var(--green)' : p.score >= 60 ? '#b45309' : 'var(--red)';
+    const bar = (pct) => `<div style="height:6px;border-radius:100px;background:var(--bg);overflow:hidden;margin-top:3px"><div style="height:100%;width:${pct}%;background:var(--blue);border-radius:100px"></div></div>`;
+    const row = (label, pct) => `<div style="margin:8px 0"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${label}</span><span style="font-weight:700">${pct}%</span></div>${bar(pct)}</div>`;
+    const el = overlay.querySelector('#stats-modal-body');
+    el.innerHTML = `
+      <div style="text-align:center;margin-bottom:20px">
+        <div style="font-size:40px;font-weight:900;color:${scoreColor}">${p.score != null ? p.score : '—'}</div>
+        <div style="font-size:12px;color:var(--grey)">Score de performance</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+        <div class="card" style="padding:12px;text-align:center">
+          <div style="font-size:22px;font-weight:800">${d.total||0}</div>
+          <div style="font-size:11px;color:var(--grey)">missions</div>
+        </div>
+        <div class="card" style="padding:12px;text-align:center">
+          <div style="font-size:22px;font-weight:800">${d.lph||'—'}</div>
+          <div style="font-size:11px;color:var(--grey)">missions/h</div>
+        </div>
+      </div>
+      ${row('Taux d\'acceptation', p.acceptance??100)}
+      ${row('Taux de complétion', p.completion??100)}
+      ${row('Notification client', p.notification??100)}
+      ${row('Preuves terrain', p.proof??100)}
+      ${row('Sans incident', p.no_incident??100)}
+      ${d.growth!=null?`<div style="margin-top:12px;font-size:12px;text-align:right;color:${d.growth>=0?'var(--green)':'var(--red)'}">vs période précédente : ${d.growth>=0?'+':''}${d.growth}%</div>`:''}`;
+  }catch(e){
+    const el = overlay.querySelector('#stats-modal-body');
+    if(el) el.innerHTML = `<p class="empty">Erreur : ${escHtml(e.message)}</p>`;
   }
 }
 function resetPin(id){
@@ -2572,12 +2667,17 @@ function renderVilles(){
     <div class="row-item">
       <div class="row-top">
         <span class="row-title">${escHtml(c.name)}</span>
-        <span class="chip ${c.actif?'actif':'annulee'}">${c.actif?'active':'inactive'}</span>
+        <span style="display:flex;gap:6px;align-items:center">
+          ${c.sold_out?`<span class="chip" style="background:#fee2e2;color:var(--red);border:1px solid #fca5a5">🔒 Complet</span>`:''}
+          <span class="chip ${c.actif?'actif':'annulee'}">${c.actif?'active':'inactive'}</span>
+        </span>
       </div>
       <div class="row-meta">${escHtml(c.dep||'—')}</div>
       <div class="row-meta">Codes postaux : ${(c.postal_codes&&c.postal_codes.length) ? escHtml(c.postal_codes.join(', ')) : '—'}</div>
+      ${c.sold_out?`<div class="row-meta" style="color:var(--red);font-size:12px">Le site affiche "complet" pour cette ville — aucune nouvelle réservation possible.</div>`:''}
       <div class="row-actions">
         <button class="btn btn-grey" onclick="editVillePostaux(${c.id}, '${((c.postal_codes||[]).join(', ')).replace(/'/g,"\\'")}')">Modifier les codes postaux</button>
+        <button class="btn ${c.sold_out?'btn-green':'btn-grey'}" onclick="toggleVilleSoldOut(${c.id}, ${!c.sold_out})">${c.sold_out?'🔓 Rouvrir':'🔒 Passer en complet'}</button>
         <button class="btn btn-grey" onclick="toggleVilleActif(${c.id}, ${!c.actif})">${c.actif?'Désactiver':'Réactiver'}</button>
       </div>
     </div>`).join('') || '<p class="empty">🌍 Aucune ville configurée.</p>';
@@ -2698,6 +2798,15 @@ async function toggleVilleActif(id, actif){
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadVilles();
     loadCitySwitcher();
+  }catch(e){ showToast(e.message, 'error'); }
+}
+async function toggleVilleSoldOut(id, sold_out){
+  try{
+    const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, sold_out, city_id:'all'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadVilles();
+    showToast(sold_out ? '🔒 Ville passée en mode complet' : '🔓 Ville rouverte aux réservations', sold_out ? 'error' : 'success');
   }catch(e){ showToast(e.message, 'error'); }
 }
 

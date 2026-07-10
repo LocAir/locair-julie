@@ -49,6 +49,7 @@ module.exports = async (req, res) => {
           probleme_type, probleme_description,
           photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path,
           accepted_at, client_notifie_at, arrivee_at, fait_at,
+          vidange_confirmee, vidange_at,
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
             id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, instructions_acces, masquee, hors_zone,

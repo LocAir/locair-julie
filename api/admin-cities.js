@@ -53,7 +53,8 @@ module.exports = async (req, res) => {
       const patch = {};
       if (body.name != null)  patch.name  = body.name.trim();
       if (body.dep != null)   patch.dep   = body.dep.trim() || null;
-      if (body.actif != null) patch.actif = Boolean(body.actif);
+      if (body.actif     != null) patch.actif     = Boolean(body.actif);
+      if (body.sold_out  != null) patch.sold_out  = Boolean(body.sold_out);
       if (Array.isArray(body.postal_codes)) {
         patch.postal_codes = body.postal_codes.map(cp => String(cp).trim()).filter(Boolean);
       }
