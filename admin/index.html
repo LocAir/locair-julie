@@ -226,6 +226,8 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
       <div class="eyebrow">Espace propriétaire</div>
       <h1>Content de te revoir</h1>
       <p class="sub">Entre ton mot de passe pour accéder au tableau de bord.</p>
+      <button class="btn btn-blue btn-block hidden" id="a-webauthn-login-btn" onclick="loginWithAdminFaceId()" style="margin-bottom:14px">🔓 Face ID / empreinte</button>
+      <div class="err" id="a-webauthn-login-err"></div>
       <label for="a-pwd">Mot de passe</label>
       <input type="password" id="a-pwd" autocomplete="current-password"/>
       <button class="btn btn-blue btn-block" id="a-login-btn" onclick="adminLogin()">Se connecter →</button>
@@ -236,6 +238,13 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
   <div id="a-app" class="hidden">
     <div class="unassigned-banner hidden" id="unassigned-banner" onclick="goToUnassigned()">
       <span id="unassigned-banner-text"></span> — cliquer pour voir
+    </div>
+    <div class="card hidden" id="a-faceid-offer" style="margin-bottom:16px">
+      <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
+      <p class="sub" style="margin-bottom:16px">Active Face ID / empreinte pour te connecter sans ressaisir ton mot de passe la prochaine fois.</p>
+      <button class="btn btn-blue btn-block" id="a-faceid-setup-btn" onclick="setupAdminFaceId()">Activer</button>
+      <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="dismissAdminFaceIdOffer()">Plus tard</button>
+      <div class="err" id="a-faceid-err"></div>
     </div>
     <div class="a-layout">
       <div class="tabs">
@@ -267,7 +276,10 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API = (p) => '/api/' + p;
-let TOKEN = sessionStorage.getItem('a_token') || '';
+// localStorage plutôt que sessionStorage : le mot de passe admin ne périme
+// jamais côté serveur (comparé tel quel à ADMIN_PASSWORD à chaque requête),
+// donc pas de raison de le redemander à chaque fermeture de l'onglet/app.
+let TOKEN = localStorage.getItem('a_token') || '';
 
 function authHeaders(){ return {'Content-Type':'application/json','x-admin-token':TOKEN}; }
 
@@ -283,17 +295,135 @@ async function adminLogin(){
     const r = await fetch(API('admin-login'), {method:'POST', headers:{'Content-Type':'application/json','x-admin-token':pwd}, body:'{}'});
     if(!r.ok){ const d=await r.json(); throw new Error(d.error||'Erreur'); }
     TOKEN = pwd;
-    sessionStorage.setItem('a_token', pwd);
+    localStorage.setItem('a_token', pwd);
     document.getElementById('a-login').classList.add('hidden');
     document.getElementById('a-app').classList.remove('hidden');
     switchAdminTab('accueil');
     loadAlerts();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
     if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
+    maybeOfferAdminFaceId();
   }catch(e){
     errEl.textContent = e.message;
     errEl.style.display='block';
     if(btn){ btn.disabled = false; btn.textContent = 'Se connecter →'; }
+  }
+}
+
+// ── Face ID / empreinte (WebAuthn) ────────────────────────────────────────────
+function bufToBase64url(buf){
+  const bytes = new Uint8Array(buf);
+  let str = '';
+  for(const b of bytes) str += String.fromCharCode(b);
+  return btoa(str).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function base64urlToBuf(b64url){
+  const pad = '='.repeat((4 - b64url.length % 4) % 4);
+  const base64 = (b64url + pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw = atob(base64);
+  const buf = new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) buf[i] = raw.charCodeAt(i);
+  return buf.buffer;
+}
+async function hasPlatformAuthenticator(){
+  if(!window.PublicKeyCredential || !PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) return false;
+  try{ return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }catch(e){ return false; }
+}
+async function initAdminWebauthnLoginButton(){
+  if(await hasPlatformAuthenticator()) document.getElementById('a-webauthn-login-btn')?.classList.remove('hidden');
+}
+async function maybeOfferAdminFaceId(){
+  if(localStorage.getItem('a_faceid')) return; // déjà activé ou refusé sur cet appareil
+  if(await hasPlatformAuthenticator()) document.getElementById('a-faceid-offer')?.classList.remove('hidden');
+}
+function dismissAdminFaceIdOffer(){
+  localStorage.setItem('a_faceid', 'refuse');
+  document.getElementById('a-faceid-offer')?.classList.add('hidden');
+}
+async function setupAdminFaceId(){
+  const errEl = document.getElementById('a-faceid-err');
+  const btn = document.getElementById('a-faceid-setup-btn');
+  errEl.style.display = 'none';
+  if(btn){ btn.disabled = true; btn.textContent = 'Activation…'; }
+  try{
+    const optRes = await fetch(API('admin-webauthn-register-options'), {method:'POST', headers:authHeaders(), body:'{}'});
+    const options = await optRes.json();
+    if(!optRes.ok) throw new Error(options.error||'Erreur');
+
+    const publicKey = {
+      ...options,
+      challenge: base64urlToBuf(options.challenge),
+      user: { ...options.user, id: base64urlToBuf(options.user.id) },
+      excludeCredentials: (options.excludeCredentials||[]).map(c => ({...c, id: base64urlToBuf(c.id)})),
+    };
+    const cred = await navigator.credentials.create({ publicKey });
+    const response = {
+      id: cred.id, rawId: bufToBase64url(cred.rawId), type: cred.type,
+      response: {
+        clientDataJSON: bufToBase64url(cred.response.clientDataJSON),
+        attestationObject: bufToBase64url(cred.response.attestationObject),
+        transports: cred.response.getTransports ? cred.response.getTransports() : undefined,
+      },
+      clientExtensionResults: cred.getClientExtensionResults ? cred.getClientExtensionResults() : {},
+    };
+
+    const verRes = await fetch(API('admin-webauthn-register-verify'), {method:'POST', headers:authHeaders(), body: JSON.stringify({ response })});
+    const verData = await verRes.json();
+    if(!verRes.ok) throw new Error(verData.error||'Erreur');
+
+    localStorage.setItem('a_faceid', 'actif');
+    document.getElementById('a-faceid-offer').innerHTML = '<p class="sub">✅ Face ID / empreinte activé pour cet appareil.</p>';
+  }catch(e){
+    errEl.textContent = "Impossible d'activer — réessaie plus tard";
+    errEl.style.display = 'block';
+    if(btn){ btn.disabled = false; btn.textContent = 'Activer'; }
+  }
+}
+async function loginWithAdminFaceId(){
+  const errEl = document.getElementById('a-webauthn-login-err');
+  const btn = document.getElementById('a-webauthn-login-btn');
+  errEl.style.display = 'none';
+  if(btn){ btn.disabled = true; btn.textContent = 'Connexion…'; }
+  try{
+    const optRes = await fetch(API('admin-webauthn-login-options'), {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+    const options = await optRes.json();
+    if(!optRes.ok) throw new Error(options.error||'Erreur');
+
+    const publicKey = {
+      ...options,
+      challenge: base64urlToBuf(options.challenge),
+      allowCredentials: (options.allowCredentials||[]).map(c => ({...c, id: base64urlToBuf(c.id)})),
+    };
+    const assertion = await navigator.credentials.get({ publicKey });
+    const response = {
+      id: assertion.id, rawId: bufToBase64url(assertion.rawId), type: assertion.type,
+      response: {
+        clientDataJSON: bufToBase64url(assertion.response.clientDataJSON),
+        authenticatorData: bufToBase64url(assertion.response.authenticatorData),
+        signature: bufToBase64url(assertion.response.signature),
+        userHandle: assertion.response.userHandle ? bufToBase64url(assertion.response.userHandle) : undefined,
+      },
+      clientExtensionResults: assertion.getClientExtensionResults ? assertion.getClientExtensionResults() : {},
+    };
+
+    const verRes = await fetch(API('admin-webauthn-login-verify'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ response })});
+    const d = await verRes.json();
+    if(!verRes.ok) throw new Error(d.error||'Connexion refusée.');
+
+    TOKEN = d.token;
+    localStorage.setItem('a_token', d.token);
+    document.getElementById('a-login').classList.add('hidden');
+    document.getElementById('a-app').classList.remove('hidden');
+    switchAdminTab('accueil');
+    loadAlerts();
+    if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
+    if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
+    maybeOfferAdminFaceId();
+  }catch(e){
+    errEl.textContent = e.message || 'Connexion refusée.';
+    errEl.style.display = 'block';
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = '🔓 Face ID / empreinte'; }
   }
 }
 document.getElementById('a-pwd').addEventListener('keydown', e=>{ if(e.key==='Enter') adminLogin(); });
@@ -1850,6 +1980,7 @@ function closeLiveMap(){
 
 // ── Démarrage ─────────────────────────────────────────────────────────────────
 (function init(){
+  initAdminWebauthnLoginButton();
   if(TOKEN){
     document.getElementById('a-login').classList.add('hidden');
     document.getElementById('a-app').classList.remove('hidden');
@@ -1861,6 +1992,7 @@ function closeLiveMap(){
     loadAlerts();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
     if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
+    maybeOfferAdminFaceId();
   }
 })();
 </script>
