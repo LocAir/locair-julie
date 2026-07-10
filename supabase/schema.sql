@@ -149,6 +149,12 @@ create table reservations (
   statut                   text not null default 'en_attente'
                              check (statut in ('en_attente','confirmee','annulee','terminee')),
   source                   text,
+  source_channel           text, -- canal d'acquisition marketing (ex. 'google', 'instagram', 'bouche-a-oreille')
+  parrain_code             text, -- code parrain saisi par le client (programme parrainage)
+  logement                 text,
+  motifs                   text,
+  mkt_consent              boolean not null default false, -- opt-in marketing (RGPD)
+  cgv_accepted_at          timestamptz, -- horodatage acceptation CGV (preuve légale)
   masquee                  boolean not null default false, -- retirée de la liste admin (ex. doublon), sans toucher au statut/stock
   created_at               timestamptz not null default now(),
   constraint reservations_dates_check check (date_fin > date_debut)
