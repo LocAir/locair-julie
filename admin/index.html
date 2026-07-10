@@ -800,7 +800,7 @@ async function silentRefreshLivraisons(){
 }
 const TAB_AUTO_REFRESH = {
   accueil:       () => loadDashboard(CURRENT_DASHBOARD_PERIODE),
-  stock:         loadStock,
+  stock:         () => loadStock(true),
   reservations:  silentRefreshReservations,
   livraisons:    silentRefreshLivraisons,
   transporteurs: () => TRANSPORTEURS_VIEW==='equipe' ? loadTransporteursEquipe() : loadTransporteursRevenus(),
@@ -957,9 +957,9 @@ function dismissMorningBanner(){
 const APPAREIL_STATUT_LABEL = {disponible:'Disponible', panne:'En panne', maintenance:'Maintenance', loue:'Loué'};
 const APPAREIL_STATUT_CHIP  = {disponible:'actif', panne:'annulee', maintenance:'a_faire', loue:'en_location'};
 
-async function loadStock(){
+async function loadStock(silent){
   const zone = document.getElementById('tab-stock');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:'{}'});
     const d = await r.json();
@@ -1013,7 +1013,7 @@ async function loadStock(){
         <div class="err" id="stock-err"></div>
       </div>`;
   }catch(e){
-    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+    if(!silent) zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
 function addAppareil(){
@@ -1035,7 +1035,14 @@ function updateAppareilStatut(id, statut){
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadStock();
       showToast('Statut mis à jour', 'success');
-    }catch(e){ showToast(e.message, 'error'); }
+    }catch(e){
+      showToast(e.message, 'error');
+      // Sans ça, le menu déroulant reste affiché sur la valeur choisie même si
+      // l'enregistrement a échoué — l'admin croit le changement fait alors que
+      // l'appareil garde son vrai statut côté serveur (ex. contrainte SQL du
+      // statut "loué" pas encore appliquée en prod).
+      loadStock();
+    }
   })();
 }
 function editAppareilReference(id, current){
