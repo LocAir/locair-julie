@@ -1840,15 +1840,17 @@ function editFiche(id){
   if(!t) return;
   closeModal();
   const MISSION_TYPES = [
-    {key:'livraison',    label:'📦 Livraison'},
-    {key:'recuperation', label:'🔄 Récupération'},
-    {key:'changement',   label:'🔁 Remplacement'},
+    {key:'livraison',            label:'📦 Livraison',               tarif:'30€'},
+    {key:'livraison_technicien', label:'📦 Livraison + installation', tarif:'40€'},
+    {key:'recuperation',         label:'🔄 Récupération',            tarif:'30€'},
+    {key:'changement',           label:'🔁 Remplacement',            tarif:'40€'},
   ];
   const typesChecked = new Set(t.types_autorises || []);
   const typesHtml = MISSION_TYPES.map(mt => `
-    <label style="display:flex;align-items:center;gap:8px;padding:6px 0">
+    <label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer">
       <input type="checkbox" id="fiche-type-${mt.key}" ${typesChecked.has(mt.key)||!typesChecked.size?'checked':''}/>
-      ${mt.label}
+      <span style="flex:1">${mt.label}</span>
+      <span style="font-size:12px;font-weight:700;color:var(--green);background:var(--green-bg);padding:2px 8px;border-radius:100px">${mt.tarif}</span>
     </label>`).join('');
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -1929,7 +1931,7 @@ async function loadTransporteursEquipe(){
         <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''}</div>
         <div class="row-meta">Code : <strong>${escHtml(t.pin||'—')}</strong> · ${euros(t.taux_livraison_cents)}/livraison · ${euros(t.taux_recuperation_cents)}/récupération</div>
         ${CITIES_CACHE.length>1?`<div class="row-meta">🌍 ${(t.villes&&t.villes.length) ? t.villes.map(id => escHtml((CITIES_CACHE.find(c=>c.id===id)||{}).name||'?')).join(', ') : 'Aucune zone'}</div>`:''}
-        ${(t.types_autorises&&t.types_autorises.length)?`<div class="row-meta">📋 Missions : ${t.types_autorises.map(x=>({'livraison':'Livraison','recuperation':'Récupération','changement':'Remplacement'}[x]||x)).join(', ')}</div>`:''}
+        ${(t.types_autorises&&t.types_autorises.length)?`<div class="row-meta">📋 Missions : ${t.types_autorises.map(x=>({'livraison':'Livraison','livraison_technicien':'Livraison + install.','recuperation':'Récupération','changement':'Remplacement'}[x]||x)).join(', ')}</div>`:''}
         <div class="day-progress" style="margin:12px 0 0;padding:0">${chargeJourHtml(t.id, ld.livraisons)}</div>
         <div class="row-actions">
           <button class="btn btn-grey" onclick="toggleTransporteur(${t.id}, ${!t.actif}, this)">${t.actif?'Désactiver':'Réactiver'}</button>

@@ -1,6 +1,7 @@
 const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
 const { confirmReservationAndCreateLivraisons } = require('./_lib/reservations');
+const { sendBrevoSms } = require('./_lib/brevo');
 
 // ── Utilitaire sécurité ───────────────────────────────────────────────────────
 function escHtml(s) {
@@ -391,7 +392,18 @@ const handler = async (req, res) => {
       }),
     }).catch(e => console.error('[Formspree]', e.message));
 
-    // 2. Email de confirmation immédiat au client
+    // 2a. SMS de confirmation immédiat au client
+    if (meta.tel) {
+      const dateStr = meta.date
+        ? new Date(meta.date + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+        : '';
+      await sendBrevoSms({
+        to:      meta.tel,
+        content: `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`,
+      }).catch(() => {});
+    }
+
+    // 2b. Email de confirmation immédiat au client
     await sendBrevo({
       to:      email,
       subject: `✅ Réservation confirmée — Dossier ${meta.ref || obj.id}`,

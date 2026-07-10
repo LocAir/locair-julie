@@ -1,8 +1,9 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
-const { sendBrevoSms } = require('./_lib/brevo');
+const { sendBrevoSms, sendBrevoEmail } = require('./_lib/brevo');
 const { computeBareme } = require('./_lib/bareme');
-const { pushToAdmin } = require('./_lib/push');
+const { pushToAdmin, pushToTransporteur } = require('./_lib/push');
+const { pickTransporteurForMission } = require('./_lib/reservations');
 
 const PROBLEME_LABEL = {
   client_absent:     'Client absent',
@@ -46,7 +47,7 @@ function checkMediaAllowed(liv, kind) {
 async function loadLivraison(supabase, id) {
   const { data, error } = await supabase
     .from('livraisons')
-    .select('*, reservation:reservations(installation, city_id, prenom, tel)')
+    .select('*, reservation:reservations(installation, city_id, prenom, nom, tel, email, ref, adresse, creneau)')
     .eq('id', id).maybeSingle();
   if (error || !data) return null;
   return data;
@@ -88,13 +89,56 @@ module.exports = async (req, res) => {
         return res.status(409).json({ error: 'Termine ta mission en cours avant d\'en accepter une nouvelle.' });
       }
       await supabase.from('livraisons').update({ statut: 'acceptee', accepted_at: new Date().toISOString() }).eq('id', liv.id);
+
+      // SMS client : prise en charge confirmée
+      if (liv.reservation?.tel) {
+        const dateStr = new Date(liv.date_prevue + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+        const verbe = liv.type === 'recuperation' ? 'récupérer votre climatiseur' : 'vous livrer votre climatiseur';
+        await sendBrevoSms({
+          to: liv.reservation.tel,
+          content: `Loc'Air : votre mission du ${dateStr} est confirmée, notre technicien viendra ${verbe}. Il vous contactera 30 min avant. Questions : 06 63 79 87 56`,
+        }).catch(() => {});
+      }
+
       return res.status(200).json({ ok: true, statut: 'acceptee' });
     }
 
     if (action === 'indisponible') {
       if (liv.statut !== 'a_faire') return res.status(409).json({ error: 'Mission déjà traitée' });
-      await supabase.from('livraisons').update({ statut: 'refusee' }).eq('id', liv.id);
-      return res.status(200).json({ ok: true, statut: 'refusee' });
+
+      // Tenter une réassignation automatique avant de marquer refusée
+      let reassigned = false;
+      if (liv.reservation) {
+        const newTid = await pickTransporteurForMission(supabase, {
+          cityId:      liv.reservation.city_id,
+          dateISO:     liv.date_prevue,
+          creneau:     liv.creneau || liv.reservation.creneau,
+          adresse:     liv.reservation.adresse,
+          usedInBatch: new Set([transporteurId]),
+          type:        liv.type,
+          installation: liv.reservation.installation,
+        });
+        if (newTid && newTid !== transporteurId) {
+          await supabase.from('livraisons').update({ transporteur_id: newTid, statut: 'a_faire' }).eq('id', liv.id);
+          await pushToTransporteur(supabase, newTid, {
+            title: "Nouvelle mission Loc'Air",
+            body:  "Une mission vous a été réassignée — ouvre l'app pour l'accepter.",
+            tag:   'nouvelle-mission',
+          });
+          reassigned = true;
+        }
+      }
+
+      if (!reassigned) {
+        await supabase.from('livraisons').update({ statut: 'refusee' }).eq('id', liv.id);
+        await pushToAdmin(supabase, {
+          title: '⚠️ Mission sans transporteur',
+          body:  'Un transporteur a refusé une mission et aucun remplaçant disponible — assigne manuellement.',
+          tag:   'mission-non-couverte',
+        });
+      }
+
+      return res.status(200).json({ ok: true, statut: reassigned ? 'reassigne' : 'refusee' });
     }
 
     // Le livreur prévient désormais lui-même par SMS depuis son propre
@@ -158,6 +202,37 @@ module.exports = async (req, res) => {
 
       if (expectedType === 'recuperation') {
         await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id);
+
+        // Email de fin de location au client
+        if (liv.reservation?.email) {
+          const prenom = liv.reservation.prenom || '';
+          const ref    = liv.reservation.ref    || '';
+          await sendBrevoEmail({
+            to:      liv.reservation.email,
+            subject: `Loc'Air — Location terminée · Merci ${prenom} !`,
+            html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
+.wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
+.head{background:#1b3a5f;padding:28px 32px;text-align:center}
+.head h1{color:#fff;font-size:20px;margin:0}
+.body{padding:28px 32px;font-size:14px;color:#333;line-height:1.6;text-align:center}
+.footer{background:#f4f0ea;padding:20px 32px;text-align:center;font-size:12px;color:#888}
+.btn{display:inline-block;background:#f59e0b;color:#fff;padding:14px 32px;border-radius:100px;text-decoration:none;font-weight:700;font-size:15px;margin:16px 0}
+</style></head><body>
+<div class="wrap">
+<div class="head"><h1>✅ Location terminée</h1></div>
+<div class="body">
+<p>Bonjour ${prenom},</p>
+<p>Notre technicien a récupéré votre climatiseur. Merci d'avoir choisi Loc'Air !</p>
+<p style="font-size:13px;color:#666">Dossier ${ref}</p>
+<p style="margin:8px 0 0;font-size:13px;color:#444">Si vous avez une minute, votre avis aide d'autres Niçois à nous faire confiance :</p>
+<a class="btn" href="https://g.page/r/CeJQrt2gLNNrEAE/review">Laisser un avis Google ⭐</a>
+<p style="font-size:12px;color:#999">À très bientôt !</p>
+</div>
+<div class="footer">© 2026 Loc'Air · <a href="https://www.locair.fr" style="color:#1b3a5f">www.locair.fr</a></div>
+</div></body></html>`,
+          }).catch(() => {});
+        }
       }
 
       return res.status(200).json({ ok: true, statut: 'fait', montant_du_cents: montantDu });

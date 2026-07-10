@@ -24,18 +24,26 @@ function momentForCreneau(creneau) {
 // le compte de test, couvrant la zone (transporteur_villes), et disponibles
 // ce jour/moment (transporteur_disponibilites — aucune ligne = disponible
 // tout le temps, compatibilité avec une équipe sans restriction configurée).
-async function eligibleTransporteurs(supabase, cityId, dateISO, moment) {
+// missionType : valeur parmi 'livraison', 'livraison_technicien', 'recuperation',
+// 'changement'. Un tableau types_autorises vide = sans restriction (default).
+async function eligibleTransporteurs(supabase, cityId, dateISO, moment, missionType) {
   const { data: villes } = await supabase
     .from('transporteur_villes').select('transporteur_id').eq('city_id', cityId);
   const villeIds = [...new Set((villes || []).map(v => v.transporteur_id))];
   if (!villeIds.length) return [];
 
   const { data: transporteurs } = await supabase
-    .from('transporteurs').select('id')
+    .from('transporteurs').select('id, types_autorises')
     .in('id', villeIds).eq('actif', true).eq('en_pause', false).neq('nom', TEST_TRANSPORTEUR_NOM)
     .order('id', { ascending: true });
   if (!transporteurs || !transporteurs.length) return [];
-  const ids = transporteurs.map(t => t.id);
+
+  // Filtrer par type de mission si précisé — tableau vide = tous types autorisés
+  const filtered = missionType
+    ? transporteurs.filter(t => !t.types_autorises?.length || t.types_autorises.includes(missionType))
+    : transporteurs;
+  const ids = filtered.map(t => t.id);
+  if (!ids.length) return [];
 
   const jour = new Date(dateISO + 'T00:00:00').getDay();
   const { data: dispos } = await supabase
@@ -86,9 +94,13 @@ async function roundRobinPickFromPool(supabase, pool) {
 // sur la même personne quand une alternative existe dans le pool (la 1re
 // ligne n'est pas encore en base au moment de choisir la 2e, donc invisible
 // à la rotation dérivée de l'historique).
-async function pickTransporteurForMission(supabase, { cityId, dateISO, creneau, adresse, usedInBatch }) {
+async function pickTransporteurForMission(supabase, { cityId, dateISO, creneau, adresse, usedInBatch, type, installation }) {
   const moment = momentForCreneau(creneau);
-  const pool = await eligibleTransporteurs(supabase, cityId, dateISO, moment);
+  // 'livraison_technicien' si le client a choisi l'option technicien (tarif 40€)
+  const missionType = type === 'livraison' && (installation || '').startsWith('Technicien')
+    ? 'livraison_technicien'
+    : (type || null);
+  const pool = await eligibleTransporteurs(supabase, cityId, dateISO, moment, missionType);
   if (!pool.length) return null;
   if (pool.length === 1) return pool[0];
 
@@ -245,6 +257,7 @@ async function confirmReservation(supabase, resa) {
       for (const row of rows) {
         const tid = await pickTransporteurForMission(supabase, {
           cityId: resa.city_id, dateISO: row.date_prevue, creneau: row.creneau, adresse: resa.adresse, usedInBatch,
+          type: row.type, installation: resa.installation,
         });
         if (tid) { row.transporteur_id = tid; usedInBatch.add(tid); }
       }
@@ -285,4 +298,4 @@ async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) 
   return confirmReservation(supabase, resa);
 }
 
-module.exports = { confirmReservationAndCreateLivraisons, confirmReservation };
+module.exports = { confirmReservationAndCreateLivraisons, confirmReservation, pickTransporteurForMission };
