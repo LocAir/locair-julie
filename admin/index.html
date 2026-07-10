@@ -273,13 +273,13 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
       <div class="tabs">
         <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')">📊 Accueil</button>
         <div class="tabs-group-label">Opérations</div>
-        <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations</button>
+        <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
         <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
         <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
         <div class="tabs-group-label">Équipe</div>
         <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
         <div class="tabs-group-label">Suivi</div>
-        <button data-tab="incidents" onclick="switchAdminTab('incidents')">🧯 Incidents</button>
+        <button data-tab="incidents" onclick="switchAdminTab('incidents')">🧯 Incidents<span class="tab-badge hidden" id="badge-incidents"></span></button>
         <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
         <div class="tabs-group-label">Réglages</div>
         <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
@@ -754,8 +754,10 @@ async function loadAlerts(){
     const r = await fetch(API('admin-alerts'), {method:'POST', headers:authHeaders(), body:'{}'});
     const d = await r.json();
     if(!r.ok) return;
+    updateTabBadge('reservations', d.reservations);
     updateTabBadge('livraisons', d.livraisons);
     updateTabBadge('virements', d.virements);
+    updateTabBadge('incidents', d.incidents);
     updateUnassignedBanner(d.non_assignees || 0);
   }catch(e){}
 }
@@ -1361,6 +1363,7 @@ function cancelReservation(id){
     try{
       const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut:'annulee'})});
       if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+      loadAlerts();
       showToast('Réservation annulée', 'success');
     }catch(e){
       if(res){ res.statut = prev; renderReservations(); }
@@ -1383,6 +1386,7 @@ async function doUpdateReservationStatut(id, statut){
   try{
     const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
     if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+    loadAlerts();
     showToast('Statut mis à jour', 'success');
   }catch(e){
     if(res){ res.statut = prev; renderReservations(); }
@@ -1606,6 +1610,7 @@ async function assignTransporteur(livraisonId, transporteurId, selectEl){
   const searchEl = document.getElementById('liv-search');
   if(searchEl) searchEl.value = searchVal;
   renderLivraisons();
+  loadAlerts();
 }
 function maskLivraison(livraisonId){
   confirmAction('Supprimer cette mission de l\'écran ? Ça ne touche ni son statut ni les données réelles — juste le fait qu\'elle s\'affiche ici. Récupérable via "Afficher les missions supprimées" en bas de page.', async () => {
@@ -2141,6 +2146,7 @@ async function updateIncidentStatut(id, statut, btnEl){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadIncidents();
+    loadAlerts();
     showToast('Incident mis à jour', 'success');
   }catch(e){
     if(btnEl) btnEl.disabled = false;

@@ -52,7 +52,27 @@ module.exports = async (req, res) => {
       nonAssignees = nonAssigneesCount || 0;
     }
 
-    return res.status(200).json({ virements, livraisons, non_assignees: nonAssignees });
+    // Réservations nécessitant une action :
+    //  — en_attente : paiement reçu mais pas encore confirmé par le webhook
+    //    (rare, mais si ça traîne l'admin doit regarder)
+    //  — hors_zone : code postal non couvert, affectation manuelle requise
+    const { count: enAttenteCount } = await supabase
+      .from('reservations').select('id', { count: 'exact', head: true })
+      .eq('city_id', city.id).eq('statut', 'en_attente').eq('masquee', false);
+    const { count: horsZoneCount } = await supabase
+      .from('reservations').select('id', { count: 'exact', head: true })
+      .eq('city_id', city.id).eq('hors_zone', true).eq('masquee', false)
+      .neq('statut', 'annulee');
+    const reservations = (enAttenteCount || 0) + (horsZoneCount || 0);
+
+    // Incidents ouverts (non résolus) — signal fort : chaque incident signifie
+    // un livreur bloqué ou un client mécontent qui attend un retour de l'admin.
+    const { count: incidentsCount } = await supabase
+      .from('incidents').select('id', { count: 'exact', head: true })
+      .in('reservation_id', resaIds).eq('statut', 'ouvert');
+    const incidents = incidentsCount || 0;
+
+    return res.status(200).json({ virements, livraisons, non_assignees: nonAssignees, reservations, incidents });
   } catch (err) {
     console.error('[Admin alerts]', err.message);
     return res.status(500).json({ error: 'Erreur serveur' });
