@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <title>Espace transporteur — Loc'Air</title>
 <meta name="robots" content="noindex,nofollow"/>
+<link rel="manifest" href="/transporteur/manifest.json"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Loc'Air Transporteur"/>
+<meta name="theme-color" content="#1b3a5f"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet"/>
@@ -406,6 +411,13 @@ async function setupPush(){
     });
   }catch(e){ /* pas bloquant : l'app marche très bien sans push */ }
 }
+// Le badge indique juste "il y a du nouveau" (pas de compteur exact) — vidé
+// dès que le livreur ouvre/revient sur l'app, puisqu'il est alors en train
+// de regarder ce qui a changé.
+function clearAppBadge(){
+  if(navigator.clearAppBadge) navigator.clearAppBadge().catch(()=>{});
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState==='visible') clearAppBadge(); });
 
 // ── Face ID / empreinte (WebAuthn) ────────────────────────────────────────────
 function bufToBase64url(buf){
@@ -537,6 +549,7 @@ async function loginWithFaceId(auto){
     updateWhoBadge();
     loadMissions();
     setupPush();
+    clearAppBadge();
     maybeOfferFaceId();
     updateActiviteBadge();
     startTransporteurAutoRefresh();
@@ -573,6 +586,7 @@ async function doLogin(){
     updateWhoBadge();
     loadMissions();
     setupPush();
+    clearAppBadge();
     maybeOfferFaceId();
     updateActiviteBadge();
     startTransporteurAutoRefresh();
@@ -1508,6 +1522,7 @@ function closeDayMap(){
     updateWhoBadge();
     loadMissions();
     setupPush();
+    clearAppBadge();
     maybeOfferFaceId();
     updateActiviteBadge();
     startTransporteurAutoRefresh();

@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Espace admin — Loc'Air</title>
 <meta name="robots" content="noindex,nofollow"/>
+<link rel="manifest" href="/admin/manifest.json"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="Loc'Air Admin"/>
+<meta name="theme-color" content="#1b3a5f"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet"/>
@@ -367,6 +372,48 @@ async function loadCitySwitcher(){
   }catch(e){}
 }
 
+// ── Notifications push + badge d'app ──────────────────────────────────────
+// Règle générale de l'app (voulue pour tous les espaces, actuels et à venir) :
+// app fermée + événement important → notification sur le téléphone ET badge
+// sur l'icône de l'app. Le transporteur avait déjà les notifications, ni lui
+// ni l'admin n'avaient le badge — les deux sont complétés ici. Un seul
+// abonnement suffit tant qu'il n'a pas expiré — on retente à chaque
+// connexion par simplicité, le serveur fait juste un upsert.
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g,'+').replace(/_/g,'/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+async function setupAdminPush(){
+  if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  try{
+    const reg = await navigator.serviceWorker.register('/admin/sw.js');
+    const keyRes = await fetch(API('admin-push-vapid-key'));
+    const { publicKey } = await keyRes.json();
+    if(!publicKey) return; // VAPID pas encore configuré côté serveur
+
+    const permission = await Notification.requestPermission();
+    if(permission !== 'granted') return;
+
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+    }
+    await fetch(API('admin-push-subscribe'), {
+      method:'POST', headers:authHeaders(),
+      body: JSON.stringify({ subscription: sub }),
+    });
+  }catch(e){ /* pas bloquant : l'app marche très bien sans push */ }
+}
+// Le badge indique juste "il y a du nouveau" (pas de compteur exact) — vidé
+// dès que l'admin ouvre/revient sur l'app, puisqu'il est alors en train de
+// regarder ce qui a changé.
+function clearAppBadge(){
+  if(navigator.clearAppBadge) navigator.clearAppBadge().catch(()=>{});
+}
+document.addEventListener('visibilitychange', () => { if(document.visibilityState==='visible') clearAppBadge(); });
+
 // Nécessaire maintenant que la session est permanente (localStorage) : sans
 // ce bouton, la seule façon de sortir du compte sur un appareil serait de
 // vider manuellement les données du navigateur.
@@ -402,6 +449,8 @@ async function adminLogin(){
     switchAdminTab('accueil');
     loadAlerts();
     loadCitySwitcher();
+    setupAdminPush();
+    clearAppBadge();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
     if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
     maybeOfferAdminFaceId();
@@ -524,6 +573,8 @@ async function loginWithAdminFaceId(auto){
     switchAdminTab('accueil');
     loadAlerts();
     loadCitySwitcher();
+    setupAdminPush();
+    clearAppBadge();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
     if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
     maybeOfferAdminFaceId();
@@ -2329,6 +2380,8 @@ function closeLiveMap(){
     // active (l'écran ne bouge plus jusqu'à une déconnexion/reconnexion).
     loadAlerts();
     loadCitySwitcher();
+    setupAdminPush();
+    clearAppBadge();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
     if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
     maybeOfferAdminFaceId();

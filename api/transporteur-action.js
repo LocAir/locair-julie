@@ -2,6 +2,14 @@ const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
 const { sendBrevoSms } = require('./_lib/brevo');
 const { computeBareme } = require('./_lib/bareme');
+const { pushToAdmin } = require('./_lib/push');
+
+const PROBLEME_LABEL = {
+  client_absent:     'Client absent',
+  appareil_en_panne: 'Appareil en panne',
+  retard:            'Retard',
+  autre:             'Problème',
+};
 
 const MEDIA_COLUMN = {
   photo_depart:        'photo_depart_path',
@@ -198,6 +206,12 @@ module.exports = async (req, res) => {
         type:            incidentType,
         description:     `[${liv.type}] ${description || problemeType}`,
         statut:          'ouvert',
+      });
+
+      await pushToAdmin(supabase, {
+        title: `🧯 ${PROBLEME_LABEL[problemeType] || 'Problème'} signalé`,
+        body:  description || 'Un livreur a signalé un problème sur une mission — ouvre l\'app pour voir le détail.',
+        tag:   'incident',
       });
 
       if (problemeType === 'client_absent') {

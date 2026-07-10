@@ -307,6 +307,16 @@ create table push_subscriptions (
 );
 create index push_subscriptions_transporteur_idx on push_subscriptions (transporteur_id);
 
+-- Idem côté admin — pas de colonne propriétaire, l'admin n'a qu'un seul
+-- compte partagé (mot de passe), pas d'identité par utilisateur.
+create table admin_push_subscriptions (
+  id         bigint generated always as identity primary key,
+  endpoint   text not null unique,
+  p256dh     text not null,
+  auth       text not null,
+  created_at timestamptz not null default now()
+);
+
 -- Authentification biométrique (Face ID / empreinte) via le standard WebAuthn,
 -- comme n'importe quelle app bancaire côté web. Un transporteur peut enregistrer
 -- plusieurs appareils. La clé publique ne permet jamais de retrouver le PIN ni
