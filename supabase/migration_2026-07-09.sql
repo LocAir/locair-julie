@@ -185,4 +185,58 @@ create table if not exists admin_webauthn_credentials (
   created_at    timestamptz not null default now()
 );
 
+-- ── Rattrapage schéma existant : fonctionnalités déjà en prod (mode "complet"
+-- du site, mise en pause d'un transporteur) mais colonnes absentes de ce
+-- fichier suivi jusqu'ici — sans impact si déjà présentes ────────────────────
+alter table cities add column if not exists sold_out boolean not null default false;
+alter table transporteurs add column if not exists en_pause boolean not null default false;
+
+-- ── Multi-ville / zones : couverture postale, zones d'intervention et
+-- disponibilité par transporteur (jour + moment de la journée) ─────────────
+
+-- Une "ville" est en réalité une zone opérationnelle pouvant couvrir
+-- plusieurs communes (ex. Nice + Saint-Laurent-du-Var + Cagnes-sur-Mer) —
+-- postal_codes route chaque commande à la bonne zone à partir de l'adresse
+-- du client.
+alter table cities add column if not exists postal_codes text[] not null default '{}';
+
+-- Seed de démarrage pour Nice à partir de la colonne "postal" existante, pour
+-- ne pas laisser la zone actuelle sans aucune correspondance tant qu'Aly n'a
+-- pas affiné la liste via l'onglet Villes. Sans effet si déjà renseigné.
+update cities set postal_codes = array[postal]
+  where postal is not null and postal_codes = '{}';
+
+-- Zones d'intervention d'un transporteur (plusieurs zones possibles) —
+-- distinct de transporteurs.city_id qui reste la "ville de rattachement"
+-- (équipe/paie/stats), conservée telle quelle pour ne pas casser les écrans
+-- existants qui listent une équipe par ville.
+create table if not exists transporteur_villes (
+  transporteur_id bigint not null references transporteurs(id) on delete cascade,
+  city_id         bigint not null references cities(id) on delete cascade,
+  created_at      timestamptz not null default now(),
+  primary key (transporteur_id, city_id)
+);
+create index if not exists transporteur_villes_city_idx on transporteur_villes (city_id);
+
+-- Backfill : chaque transporteur existant couvre aujourd'hui exactement sa
+-- ville de rattachement actuelle — comportement strictement inchangé après
+-- cette migration tant que personne ne touche à ses zones via l'admin.
+insert into transporteur_villes (transporteur_id, city_id)
+  select id, city_id from transporteurs
+  on conflict do nothing;
+
+-- Disponibilité par jour de la semaine (0=dimanche … 6=samedi, aligné sur
+-- extract(dow from ...) côté SQL et Date.getDay() côté JS — aucune conversion
+-- nécessaire entre les deux) et par moment de la journée. AUCUNE LIGNE pour
+-- un transporteur = disponible tous les jours, tous moments (compatibilité :
+-- l'équipe actuelle n'a aucune restriction configurée et doit continuer à
+-- recevoir toutes les missions).
+create table if not exists transporteur_disponibilites (
+  transporteur_id bigint not null references transporteurs(id) on delete cascade,
+  jour            smallint not null check (jour between 0 and 6),
+  moment          text not null default 'journee' check (moment in ('matin','apres_midi','journee')),
+  created_at      timestamptz not null default now(),
+  primary key (transporteur_id, jour, moment)
+);
+
 -- Fin de la migration.

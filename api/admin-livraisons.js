@@ -130,16 +130,24 @@ module.exports = async (req, res) => {
       const { error } = await supabase.from('livraisons').update(patch).eq('id', livraisonId);
       if (error) throw error;
 
-      // Nouvelle mission pour ce transporteur (première assignation ou
-      // réassignation vers quelqu'un d'autre) : le prévenir même si son
-      // téléphone est fermé, pour qu'il puisse l'accepter ou la refuser au plus vite.
-      // Attendu explicitement : une fonction serverless peut être coupée juste
-      // après la réponse HTTP, un push "fire-and-forget" risquerait de ne jamais partir.
+      // Prévenir les deux côtés d'une réaffectation, même téléphone fermé :
+      // le nouveau transporteur (nouvelle mission à traiter) ET l'ancien s'il
+      // en avait une (mission qui lui a été retirée — sans ça il continue de
+      // la croire sienne jusqu'à rouvrir l'app). Attendu explicitement : une
+      // fonction serverless peut être coupée juste après la réponse HTTP, un
+      // push "fire-and-forget" risquerait de ne jamais partir.
       if (transporteurId && transporteurId !== liv.transporteur_id) {
         await pushToTransporteur(supabase, transporteurId, {
           title: "Nouvelle mission Loc'Air",
           body:  'Une mission t\'attend — ouvre l\'app pour l\'accepter ou la refuser.',
           tag:   'nouvelle-mission',
+        });
+      }
+      if (liv.transporteur_id && liv.transporteur_id !== transporteurId) {
+        await pushToTransporteur(supabase, liv.transporteur_id, {
+          title: 'Mission réattribuée',
+          body:  'Une mission qui t\'était assignée a été confiée à quelqu\'un d\'autre.',
+          tag:   'mission-reattribuee',
         });
       }
 

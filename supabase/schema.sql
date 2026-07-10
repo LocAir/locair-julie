@@ -17,6 +17,12 @@ create table cities (
   name          text not null,
   dep           text,
   postal        text,
+  -- Une "ville" est en réalité une zone opérationnelle pouvant couvrir
+  -- plusieurs communes (ex. Nice + Saint-Laurent-du-Var + Cagnes-sur-Mer) —
+  -- postal_codes route chaque commande à la bonne zone à partir de l'adresse
+  -- du client (voir api/_lib/city.js, resolveCityByAddress).
+  postal_codes  text[] not null default '{}',
+  sold_out      boolean not null default false, -- mode "complet" affiché sur le site (api/mode-complet.js)
   actif         boolean not null default true,
   created_at    timestamptz not null default now()
 );
@@ -49,6 +55,7 @@ create table transporteurs (
   -- pour qu'un livreur ne puisse jamais agir avec l'identifiant d'un collègue.
   pin                      text not null unique,
   actif                    boolean not null default true,
+  en_pause                 boolean not null default false, -- mis en pause temporairement, ne reçoit plus de nouvelle mission
   -- Rémunération par mission (définie par le propriétaire)
   taux_livraison_cents     integer not null default 0 check (taux_livraison_cents >= 0),
   taux_recuperation_cents  integer not null default 0 check (taux_recuperation_cents >= 0),
@@ -61,6 +68,30 @@ create table transporteurs (
 );
 create index transporteurs_city_idx on transporteurs (city_id, actif);
 create index transporteurs_pin_idx on transporteurs (pin) where actif;
+
+-- Zones d'intervention d'un transporteur pour la répartition automatique
+-- (plusieurs zones possibles) — distinct de transporteurs.city_id qui reste
+-- la "ville de rattachement" (équipe/paie/stats).
+create table transporteur_villes (
+  transporteur_id bigint not null references transporteurs(id) on delete cascade,
+  city_id         bigint not null references cities(id) on delete cascade,
+  created_at      timestamptz not null default now(),
+  primary key (transporteur_id, city_id)
+);
+create index transporteur_villes_city_idx on transporteur_villes (city_id);
+
+-- Disponibilité par jour de la semaine et moment de la journée.
+-- jour : 0=dimanche … 6=samedi (aligné sur Date.getDay() JS et
+-- extract(dow from ...) Postgres). moment : 'matin'/'apres_midi'/'journee'.
+-- AUCUNE LIGNE pour un transporteur = disponible tous les jours, tous
+-- moments (pas de restriction configurée).
+create table transporteur_disponibilites (
+  transporteur_id bigint not null references transporteurs(id) on delete cascade,
+  jour            smallint not null check (jour between 0 and 6),
+  moment          text not null default 'journee' check (moment in ('matin','apres_midi','journee')),
+  created_at      timestamptz not null default now(),
+  primary key (transporteur_id, jour, moment)
+);
 
 -- Un client peut réserver plusieurs fois — jusqu'ici chaque réservation était
 -- une île isolée, aucune mémoire d'une fois sur l'autre. Déduplication par
@@ -315,8 +346,10 @@ create table admin_webauthn_credentials (
   created_at    timestamptz not null default now()
 );
 
--- Seed pour Nice — ajuster le nombre d'appareils insérés ci-dessous au vrai parc
-insert into cities (slug, name, dep, postal) values ('nice', 'Nice', '06', '06300');
+-- Seed pour Nice — ajuster le nombre d'appareils insérés ci-dessous au vrai
+-- parc, et postal_codes à la zone de livraison réelle une fois affinée
+-- (voir onglet Villes de l'admin).
+insert into cities (slug, name, dep, postal, postal_codes) values ('nice', 'Nice', '06', '06300', array['06300']);
 insert into appareils (city_id, numero)
   select id, n from cities, generate_series(1, 3) as n where slug = 'nice';
 -- Références produit connues (à compléter au fur et à mesure — voir /admin → Stock

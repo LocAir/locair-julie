@@ -349,7 +349,11 @@ async function hasPlatformAuthenticator(){
   try{ return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }catch(e){ return false; }
 }
 async function initAdminWebauthnLoginButton(){
-  if(await hasPlatformAuthenticator()) document.getElementById('a-webauthn-login-btn')?.classList.remove('hidden');
+  if(!(await hasPlatformAuthenticator())) return;
+  document.getElementById('a-webauthn-login-btn')?.classList.remove('hidden');
+  // Comme une app bancaire : Face ID se déclenche tout seul à l'ouverture si
+  // déjà activé sur cet appareil, pas besoin de taper sur le bouton.
+  if(localStorage.getItem('a_faceid')==='actif') loginWithAdminFaceId(true);
 }
 async function maybeOfferAdminFaceId(){
   if(localStorage.getItem('a_faceid')) return; // déjà activé ou refusé sur cet appareil
@@ -398,7 +402,7 @@ async function setupAdminFaceId(){
     if(btn){ btn.disabled = false; btn.textContent = 'Activer'; }
   }
 }
-async function loginWithAdminFaceId(){
+async function loginWithAdminFaceId(auto){
   const errEl = document.getElementById('a-webauthn-login-err');
   const btn = document.getElementById('a-webauthn-login-btn');
   errEl.style.display = 'none';
@@ -440,8 +444,13 @@ async function loginWithAdminFaceId(){
     if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
     maybeOfferAdminFaceId();
   }catch(e){
-    errEl.textContent = e.message || 'Connexion refusée.';
-    errEl.style.display = 'block';
+    // Déclenchement automatique à l'ouverture : un échec/annulation ne doit
+    // pas afficher une erreur sans qu'un tap explicite ait eu lieu — l'écran
+    // de connexion normal reste simplement affiché, prêt à réessayer.
+    if(!auto){
+      errEl.textContent = e.message || 'Connexion refusée.';
+      errEl.style.display = 'block';
+    }
   }finally{
     if(btn){ btn.disabled = false; btn.textContent = '🔓 Face ID / empreinte'; }
   }

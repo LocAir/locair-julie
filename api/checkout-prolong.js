@@ -1,6 +1,6 @@
 const Stripe = require('stripe');
 const { getSupabase }     = require('./_lib/supabase');
-const { getCity }         = require('./_lib/city');
+const { resolveCityById } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate }     = require('./_lib/dates');
 
@@ -42,7 +42,22 @@ module.exports = async (req, res) => {
   const supabase = getSupabase();
   let city;
   try {
-    city = await getCity(supabase);
+    // Une prolongation ne collecte pas une nouvelle adresse — on reprend la
+    // même zone que la réservation d'origine du client, retrouvée par email
+    // (pas par adresse : plus fiable, et cohérent avec la logique de
+    // rattachement déjà utilisée dans confirmReservation).
+    if (!data.email) {
+      return res.status(400).json({ error: 'Email requis pour retrouver ta réservation' });
+    }
+    const { data: orig } = await supabase
+      .from('reservations').select('city_id')
+      .eq('email', String(data.email).trim())
+      .order('created_at', { ascending: false })
+      .limit(1).maybeSingle();
+    city = orig ? await resolveCityById(supabase, orig.city_id) : null;
+    if (!city) {
+      return res.status(422).json({ error: 'Réservation d\'origine introuvable — contacte-nous directement pour prolonger.' });
+    }
     const disponibles = await getAvailability(supabase, city.id, extDateDebut, extDateFin);
     if (disponibles < qty) {
       return res.status(409).json({ error: 'Plus assez de climatiseurs disponibles pour cette prolongation', disponibles: Math.max(0, disponibles) });

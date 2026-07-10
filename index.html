@@ -3664,6 +3664,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
                   oninput="onAddrInput(this)"
                   onkeydown="onAddrKey(event)"
                   aria-autocomplete="list" aria-controls="addr-ac" aria-expanded="false"/>
+                <input type="hidden" id="f-cp"/>
                 <button type="button" class="addr-clear" id="addr-clear" onclick="clearAddr()" aria-label="Effacer" style="display:none">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
@@ -4821,6 +4822,8 @@ function clearAddr(){
   if(clr)clr.style.display='none';
   _closeAddrAc();
   inp.focus();
+  const cpInp=document.getElementById('f-cp');
+  if(cpInp)cpInp.value='';
 }
 
 async function _fetchAddrAc(q){
@@ -4846,7 +4849,7 @@ async function _fetchAddrAc(q){
       const parts=lbl.split(/ (?=\d{5}[ ,])/) ;
       const street=parts[0]||lbl;
       const city=parts[1]||'';
-      return '<li class="addr-ac-item" role="option" data-val="'+escHtml(lbl)+'" tabindex="-1">'
+      return '<li class="addr-ac-item" role="option" data-val="'+escHtml(lbl)+'" data-cp="'+escHtml(f.properties.postcode||'')+'" tabindex="-1">'
         +pinIco
         +'<span class="addr-ac-txt">'
         +'<span class="addr-ac-street">'+escHtml(street)+'</span>'
@@ -4874,6 +4877,8 @@ function _pickAddrAc(el){
     if(clr)clr.style.display='flex';
     inp.focus();
   }
+  const cpInp=document.getElementById('f-cp');
+  if(cpInp)cpInp.value=el.dataset.cp||'';
 }
 
 function _closeAddrAc(){
@@ -5161,7 +5166,7 @@ function closeModal(){
   const mobProg=document.getElementById('mob-progress');
   if(mobProg)mobProg.style.removeProperty('display');
   // Reset all booking form fields
-  ['f-addr','f-etage','f-prenom','f-nom','f-tel','f-email'].forEach(id=>{
+  ['f-addr','f-cp','f-etage','f-prenom','f-nom','f-tel','f-email'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   const fcgv=document.getElementById('f-cgv');if(fcgv)fcgv.checked=false;
@@ -5752,6 +5757,7 @@ function submitForm(btn,mode){
   const prenom=document.getElementById('f-prenom')?.value.trim()||'';
   const formData={
     adresse:document.getElementById('f-addr')?.value,
+    code_postal:document.getElementById('f-cp')?.value||'',
     etage:document.getElementById('f-etage')?.value||'—',
     ascenseur:document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—',
     date:document.getElementById('f-date')?.value,
@@ -5848,7 +5854,13 @@ function submitForm(btn,mode){
     _stripeAbortCtrl=new AbortController();
     const _timer=setTimeout(()=>_stripeAbortCtrl.abort(),15000);
     fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...formData,prix_cents:prixCents}),signal:_stripeAbortCtrl.signal})
-      .then(r=>{clearTimeout(_timer);if(!r.ok)throw new Error('API '+r.status);return r.json();})
+      .then(r=>{
+        clearTimeout(_timer);
+        // Remonte le message d'erreur serveur (ex. "hors zone de livraison")
+        // au lieu d'un générique "API 4xx" que le client ne comprendrait pas.
+        if(!r.ok)return r.json().catch(()=>({})).then(d=>{throw new Error(d.error||('API '+r.status));});
+        return r.json();
+      })
       .then(d=>{
         if(!d.clientSecret)throw new Error('No client secret');
         _stripeClientSecret=d.clientSecret;
@@ -5875,7 +5887,13 @@ function submitForm(btn,mode){
         console.error('[Stripe]',err);
         if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
         const errEl=document.getElementById('form-error-msg');
-        if(errEl){errEl.style.display='block';const retryBtn=document.getElementById('form-error-retry');if(retryBtn)retryBtn.style.display='inline-block';}
+        if(errEl){
+          const genericMsg=_lang==='en'?'Something went wrong. Please try again.':'Une erreur est survenue. Réessayez.';
+          const msg=(err&&err.message)||'';
+          errEl.textContent=(msg&&!/^API \d+$/.test(msg)&&msg!=='No client secret')?msg:genericMsg;
+          errEl.style.display='block';
+          const retryBtn=document.getElementById('form-error-retry');if(retryBtn)retryBtn.style.display='inline-block';
+        }
       });
   }else{
     // ── Formspree (autres modes : rappel, prolongation interne…) ──
@@ -7358,7 +7376,7 @@ async function startProlongPayment(){
     const debutVal=document.getElementById('pe-debut')?.value||'';
     const finInitVal=document.getElementById('pe-fin-init')?.value||'';
     const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,original_days:_prolongOrigDays,prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,creneau})});
-    if(!r.ok)throw new Error('API '+r.status);
+    if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||('API '+r.status));}
     const d=await r.json();
     if(!d.clientSecret)throw new Error(d.error||'No secret');
 
@@ -7378,7 +7396,11 @@ async function startProlongPayment(){
     console.error('[prolong checkout]',e.message);
     if(btn){btn.disabled=false;btn.style.removeProperty('display');}
     if(lbl)lbl.textContent=origLbl;
-    if(errEl){errEl.textContent='Problème de connexion. Appelez-nous au 06.63.79.87.56.';errEl.style.display='block';}
+    if(errEl){
+      const msg=(e&&e.message)||'';
+      errEl.textContent=(msg&&!/^API \d+$/.test(msg))?msg:'Problème de connexion. Appelez-nous au 06.63.79.87.56.';
+      errEl.style.display='block';
+    }
   }
 }
 
