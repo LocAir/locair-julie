@@ -41,4 +41,32 @@ async function pushToTransporteur(supabase, transporteurId, { title, body, tag }
   }
 }
 
-module.exports = { pushToTransporteur };
+// Envoie une notification push à tous les appareils/onglets abonnés de
+// l'espace admin (un seul compte partagé — pas de propriétaire à filtrer,
+// contrairement à pushToTransporteur). Même contrat : ne fait jamais échouer
+// l'appelant, purge les abonnements révoqués/expirés.
+async function pushToAdmin(supabase, { title, body, tag }) {
+  if (!ensureConfigured()) return;
+  try {
+    const { data: subs } = await supabase
+      .from('admin_push_subscriptions').select('id, endpoint, p256dh, auth');
+    if (!subs || !subs.length) return;
+
+    const payload = JSON.stringify({ title, body, tag, url: '/admin/' });
+    await Promise.all(subs.map(async (s) => {
+      try {
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);
+      } catch (e) {
+        if (e.statusCode === 404 || e.statusCode === 410) {
+          await supabase.from('admin_push_subscriptions').delete().eq('id', s.id);
+        } else {
+          console.error('[Push admin]', e.message);
+        }
+      }
+    }));
+  } catch (e) {
+    console.error('[Push admin]', e.message);
+  }
+}
+
+module.exports = { pushToTransporteur, pushToAdmin };

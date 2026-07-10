@@ -1,5 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
+const { pushToAdmin } = require('./_lib/push');
 
 function startOfDayISO() {
   const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
@@ -82,6 +83,14 @@ module.exports = async (req, res) => {
 
       const { error } = await supabase.from('virements').insert({ transporteur_id: transporteurId, montant_cents: montant, statut: 'demande' });
       if (error) throw error;
+
+      const { data: t } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
+      await pushToAdmin(supabase, {
+        title: '💶 Virement demandé',
+        body:  `${t?.nom || 'Un transporteur'} demande un virement de ${(montant / 100).toFixed(2)} €.`,
+        tag:   'virement',
+      });
+
       return res.status(200).json({ ok: true });
     }
 

@@ -5,11 +5,11 @@
 self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (e) {}
-  const title = data.title || "Loc'Air";
+  const title = data.title || "Loc'Air Admin";
   const options = {
     body: data.body || '',
-    tag:  data.tag || 'locair',
-    data: { url: data.url || '/transporteur/' },
+    tag:  data.tag || 'locair-admin',
+    data: { url: data.url || '/admin/' },
     requireInteraction: true,
   };
   event.waitUntil(Promise.all([
@@ -20,11 +20,11 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || '/transporteur/';
+  const url = (event.notification.data && event.notification.data.url) || '/admin/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const c of list) {
-        if (c.url.includes('/transporteur') && 'focus' in c) return c.focus();
+        if (c.url.includes('/admin') && 'focus' in c) return c.focus();
       }
       if (clients.openWindow) return clients.openWindow(url);
     })
