@@ -1,7 +1,7 @@
 const Stripe = require('stripe');
-const { getSupabase }     = require('./_lib/supabase');
-const { getCity }         = require('./_lib/city');
-const { getAvailability } = require('./_lib/stock');
+const { getSupabase }         = require('./_lib/supabase');
+const { resolveCityByAddress } = require('./_lib/city');
+const { getAvailability }     = require('./_lib/stock');
 const { isValidDate, addDays } = require('./_lib/dates');
 
 function calcBase(days) {
@@ -44,7 +44,10 @@ module.exports = async (req, res) => {
   let city;
 
   try {
-    city = await getCity(supabase);
+    city = await resolveCityByAddress(supabase, data.adresse, data.code_postal);
+    if (!city) {
+      return res.status(422).json({ error: 'Adresse hors zone de livraison — contacte-nous pour vérifier si on peut te livrer.' });
+    }
     const disponibles = await getAvailability(supabase, city.id, dateDebut, dateFin);
     if (disponibles < qty) {
       return res.status(409).json({ error: 'Plus assez de climatiseurs disponibles pour ces dates', disponibles: Math.max(0, disponibles) });

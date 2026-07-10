@@ -402,8 +402,25 @@ async function hasPlatformAuthenticator(){
   if(!window.PublicKeyCredential || !PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) return false;
   try{ return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }catch(e){ return false; }
 }
+// Un appareil a déjà activé Face ID s'il porte au moins un "t_faceid_<id>"
+// à 'actif' — on ne connaît pas encore l'id avant la connexion, donc on
+// regarde toutes les clés plutôt qu'une précise (un appareil appartient en
+// pratique à un seul livreur).
+function hasFaceIdActivated(){
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith('t_faceid_') && localStorage.getItem(k)==='actif') return true;
+  }
+  return false;
+}
 async function initWebauthnLoginButton(){
-  if(await hasPlatformAuthenticator()) document.getElementById('webauthn-login-btn')?.classList.remove('hidden');
+  if(!(await hasPlatformAuthenticator())) return;
+  document.getElementById('webauthn-login-btn')?.classList.remove('hidden');
+  // Comme une app bancaire : Face ID se déclenche tout seul à l'ouverture si
+  // déjà activé sur cet appareil, pas besoin de taper sur le bouton. Le
+  // bouton reste affiché en secours (échec/annulation du scan, appareil pas
+  // encore reconnu).
+  if(hasFaceIdActivated()) loginWithFaceId(true);
 }
 async function maybeOfferFaceId(){
   if(!STATE.transporteurId) return;
@@ -458,7 +475,7 @@ async function setupFaceId(){
     if(btn){ btn.disabled = false; btn.textContent = 'Activer'; }
   }
 }
-async function loginWithFaceId(){
+async function loginWithFaceId(auto){
   const errEl = document.getElementById('webauthn-login-err');
   const btn = document.getElementById('webauthn-login-btn');
   errEl.style.display = 'none';
@@ -500,8 +517,14 @@ async function loginWithFaceId(){
     updateActiviteBadge();
     startTransporteurAutoRefresh();
   }catch(e){
-    errEl.textContent = e.message || 'Connexion refusée.';
-    errEl.style.display = 'block';
+    // Déclenchement automatique à l'ouverture : un échec/annulation (l'OS
+    // propose Face ID, le livreur ne scanne pas) ne doit pas afficher une
+    // erreur effrayante sans qu'il ait rien demandé — l'écran de connexion
+    // normal (code + bouton Face ID) reste simplement là, prêt à réessayer.
+    if(!auto){
+      errEl.textContent = e.message || 'Connexion refusée.';
+      errEl.style.display = 'block';
+    }
     if(btn){ btn.disabled = false; btn.textContent = '🔓 Face ID / empreinte'; }
   }
 }
@@ -652,8 +675,25 @@ function missionCardHtml(m){
       <div class="mcard-addr">${escHtml((c.prenom||'')+' '+(c.nom||''))} — ${escHtml(c.adresse||'Adresse à confirmer')}</div>
       <div class="mcard-meta">${[m.creneau?escHtml(m.creneau):'', (c.etage&&c.etage!=='—')?'Étage '+escHtml(c.etage):''].filter(Boolean).join(' · ')}</div>
       ${mapsUrl?`<div class="mcard-actions"><a href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Itinéraire</a>${c.tel?`<a href="tel:${encodeURIComponent(c.tel)}" onclick="event.stopPropagation()">📞 Appeler</a>`:''}</div>`:''}
+      ${m.statut==='a_faire'?missionCardAcceptRefuseHtml(m):''}
     </div>`;
 }
+// L'acceptation/refus d'une nouvelle mission se fait directement depuis la
+// carte de la liste — pas besoin d'ouvrir le détail juste pour ce choix
+// binaire. Même garde-fou que côté détail : une mission déjà en cours doit
+// être terminée avant d'en accepter une autre.
+function missionCardAcceptRefuseHtml(m){
+  const hasMissionEnCours = STATE.missions.some(x => x.id!==m.id && ['acceptee','arrivee'].includes(x.statut));
+  if(hasMissionEnCours){
+    return `<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-red" style="flex:1" onclick="refuseFromList(${m.id},event)">❌ Indisponible</button></div>`;
+  }
+  return `<div style="display:flex;gap:8px;margin-top:10px">
+    <button class="btn btn-green" style="flex:1" onclick="acceptFromList(${m.id},event)">✅ J'accepte</button>
+    <button class="btn btn-red" style="flex:1" onclick="refuseFromList(${m.id},event)">❌ Indisponible</button>
+  </div>`;
+}
+function acceptFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMission = STATE.missions.find(m=>m.id===id); doAction('accepter'); }
+function refuseFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMission = STATE.missions.find(m=>m.id===id); doAction('indisponible'); }
 
 // Capacité réaliste d'un livreur : jusqu'à 10 missions/jour — même
 // référence que côté admin, pour que la barre affichée soit cohérente des
@@ -958,9 +998,19 @@ async function doAction(action, extra){
     if(m){ STATE.currentMission = m; renderDetail(); show('detail-screen'); }
     else { show('missions-screen'); renderMissions(); }
   }catch(e){
-    renderDetail(); // reconstruit les boutons avec les bons états disabled/actifs
-    const errEl2 = document.getElementById('detail-err');
-    if(errEl2){errEl2.textContent = e.message; errEl2.style.display='block';}
+    // Accepter/refuser peut être déclenché directement depuis une carte de la
+    // liste (pas seulement depuis l'écran détail) — dans ce cas #detail-err
+    // n'est pas visible à l'écran, un message écrit dedans passerait inaperçu.
+    const onListScreen = !document.getElementById('missions-screen')?.classList.contains('hidden');
+    if(onListScreen){
+      alert(e.message || 'Erreur');
+      await fetchMissions();
+      renderMissions();
+    }else{
+      renderDetail(); // reconstruit les boutons avec les bons états disabled/actifs
+      const errEl2 = document.getElementById('detail-err');
+      if(errEl2){errEl2.textContent = e.message; errEl2.style.display='block';}
+    }
   }
 }
 
@@ -1161,7 +1211,7 @@ function renderActivite(d){
   zone.innerHTML = `
     <div class="stat-big">
       <div class="amount">${nonVerse} €</div>
-      <div class="caption">À verser · virement hebdo automatique, ou demande-le quand tu veux</div>
+      <div class="caption">Solde à verser · virement hebdomadaire automatique, ou à la demande — traité sous 48h</div>
     </div>
     <div class="stat-row">
       <div class="stat-tile"><div class="n">${d.missions_aujourdhui||0}</div><div class="l">Mission${(d.missions_aujourdhui||0)>1?'s':''} aujourd'hui</div></div>
