@@ -215,19 +215,6 @@ create table livraisons (
 create index livraisons_date_idx on livraisons (date_prevue, statut);
 create index livraisons_transporteur_idx on livraisons (transporteur_id, statut);
 
--- Photos/vidéos supplémentaires attachées à une mission, en plus de la preuve
--- obligatoire — ajoutées à n'importe quel moment, prises en direct ou
--- choisies depuis la galerie du téléphone, par le transporteur ou l'admin.
-create table mission_medias (
-  id           bigint generated always as identity primary key,
-  livraison_id bigint not null references livraisons(id) on delete cascade,
-  type         text not null check (type in ('photo','video')),
-  path         text not null,
-  uploaded_by  text not null check (uploaded_by in ('transporteur','admin')),
-  created_at   timestamptz not null default now()
-);
-create index mission_medias_livraison_idx on mission_medias (livraison_id);
-
 -- Bucket privé pour les photos/vidéos de mission — accès uniquement via URL signée
 -- générée côté serveur (clé service-role). Aucune policy publique nécessaire.
 insert into storage.buckets (id, name, public) values ('missions', 'missions', false);

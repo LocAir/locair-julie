@@ -25,7 +25,6 @@ module.exports = async (req, res) => {
         photo_depart_path, photo_installation_path, photo_retour_path, client_notifie_at,
         vidange_confirmee,
         probleme_type, probleme_description,
-        mission_medias ( id, type, path, created_at ),
         reservation:reservations (
           prenom, nom, tel, tel_secondaire, type_client, raison_sociale, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, quantite, instructions_acces, city_id,
           reservation_appareils ( appareil:appareils ( numero ) ),
@@ -63,7 +62,6 @@ module.exports = async (req, res) => {
       appareil_numeros: ((m.reservation?.reservation_appareils) || [])
         .map(ra => ra.appareil?.numero).filter(n => n != null).sort((a, b) => a - b),
       acces_difficile: m.reservation?.client?.acces_difficile || null,
-      medias_supp: ((m.mission_medias) || []).map(md => ({ id: md.id, type: md.type })).sort((a, b) => a.id - b.id),
       client: m.reservation || null,
     }));
 

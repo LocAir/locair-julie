@@ -178,52 +178,6 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // Photos/vidéos supplémentaires (galerie libre, pas de preuve obligatoire
-    // remplacée) — disponibles à n'importe quelle étape d'une mission en
-    // cours, prises en direct ou choisies dans la galerie du téléphone.
-    if (action === 'demander_upload_supp') {
-      const type = body.type === 'video' ? 'video' : 'photo';
-      const ext = EXT_BY_TYPE[body.content_type] || (type === 'video' ? 'mp4' : 'jpg');
-      const rand = Math.random().toString(36).slice(2, 8);
-      const path = `${liv.id}/supp-${Date.now()}-${rand}.${ext}`;
-      const { data, error } = await supabase.storage.from('missions').createSignedUploadUrl(path, { upsert: true });
-      if (error) throw error;
-      return res.status(200).json({ ok: true, path: data.path, token: data.token, signedUrl: data.signedUrl });
-    }
-
-    if (action === 'confirmer_media_supp') {
-      const type = body.type === 'video' ? 'video' : 'photo';
-      const path = (body.path || '').trim();
-      if (!path || !path.startsWith(`${liv.id}/supp-`)) {
-        return res.status(400).json({ error: 'Média invalide' });
-      }
-      const { data, error } = await supabase.from('mission_medias')
-        .insert({ livraison_id: liv.id, type, path, uploaded_by: 'transporteur' })
-        .select().single();
-      if (error) throw error;
-      return res.status(200).json({ ok: true, media: data });
-    }
-
-    if (action === 'media_url_supp') {
-      const mediaId = parseInt(body.media_id);
-      if (!mediaId) return res.status(400).json({ error: 'media_id manquant' });
-      const { data: media } = await supabase.from('mission_medias').select('id, path').eq('id', mediaId).eq('livraison_id', liv.id).maybeSingle();
-      if (!media) return res.status(404).json({ error: 'Média introuvable' });
-      const { data, error } = await supabase.storage.from('missions').createSignedUrl(media.path, 300);
-      if (error) throw error;
-      return res.status(200).json({ url: data.signedUrl });
-    }
-
-    if (action === 'supprimer_media_supp') {
-      const mediaId = parseInt(body.media_id);
-      if (!mediaId) return res.status(400).json({ error: 'media_id manquant' });
-      const { data: media } = await supabase.from('mission_medias').select('id, path').eq('id', mediaId).eq('livraison_id', liv.id).maybeSingle();
-      if (!media) return res.status(404).json({ error: 'Média introuvable' });
-      await supabase.storage.from('missions').remove([media.path]).catch(() => {});
-      await supabase.from('mission_medias').delete().eq('id', mediaId);
-      return res.status(200).json({ ok: true });
-    }
-
     if (action === 'confirmer_vidange') {
       if (liv.type !== 'recuperation' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       await supabase.from('livraisons').update({ vidange_confirmee: true, vidange_at: new Date().toISOString() }).eq('id', liv.id);
