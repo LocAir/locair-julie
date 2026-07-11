@@ -11,17 +11,17 @@ function escHtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-module.exports = async (req, res) => {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  if (!verifyCronAuth(req)) return res.status(401).json({ error: 'Non autorisé' });
-
-  const supabase = getSupabase();
+// Rapport CA/missions/incidents/virements de la semaine écoulée, envoyé par
+// email à l'admin — logique extraite du handler HTTP pour être appelée
+// directement depuis cron-daily.js (un seul cron programmé sur ce plan
+// Vercel, voir vercel.json) plutôt que comme cron indépendant.
+async function runWeeklyReport(supabase) {
   const today    = new Date();
   const todayStr = today.toISOString().slice(0, 10);
   const weekAgo  = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
   const weekAgoStr = weekAgo.toISOString().slice(0, 10);
 
-  try {
+  {
     // Missions effectuées cette semaine
     const { data: livDone } = await supabase
       .from('livraisons')
@@ -94,9 +94,22 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
 </div></body></html>`,
     });
 
-    return res.status(200).json({ ok: true, date: todayStr, nbMissions, totalCA, newResas });
+    return { date: todayStr, nbMissions, totalCA, newResas };
+  }
+}
+
+// Conservé comme endpoint indépendant (déclenchable manuellement avec
+// CRON_SECRET) même si non planifié directement — voir cron-daily.js qui
+// l'appelle chaque lundi.
+module.exports = async (req, res) => {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (!verifyCronAuth(req)) return res.status(401).json({ error: 'Non autorisé' });
+  try {
+    const report = await runWeeklyReport(getSupabase());
+    return res.status(200).json({ ok: true, ...report });
   } catch (err) {
     console.error('[Cron weekly]', err.message);
     return res.status(500).json({ error: 'Erreur serveur' });
   }
 };
+module.exports.runWeeklyReport = runWeeklyReport;
