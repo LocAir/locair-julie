@@ -284,6 +284,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
   </div>
 
   <div id="a-app" class="hidden">
+    <input type="file" id="admin-supp-media-input" class="hidden"/>
     <div id="alerts-banner-zone"></div>
     <div class="card hidden" id="a-faceid-offer" style="margin-bottom:16px">
       <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
@@ -1908,6 +1909,11 @@ function renderLivraisons(){
     if(m.photo_installation_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_installation')">📷 Installation</button>`);
     if(m.photo_retour_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_retour')">📷 Retour</button>`);
     if(m.photo_absence_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_absence')">📵 Preuve passage</button>`);
+    // Galerie libre (photos/vidéos supplémentaires) — jamais obligatoire,
+    // ajoutable par l'admin à tout moment en plus des preuves ci-dessus.
+    (m.medias_supp||[]).forEach(md => {
+      mediaBtns.push(`<button class="btn btn-grey" onclick="viewMediaSupp(${m.id},${md.id})">${md.type==='video'?'🎥':'📷'} Supp. (${md.uploaded_by==='admin'?'admin':'livreur'})</button>`);
+    });
     const enRoute = m.transporteur && (m.statut==='acceptee' || m.statut==='arrivee');
     // Icône permanente sur les missions sans livreur — visible même en dehors
     // du filtre "Non assignées", pour qu'une mission non dispatchée ne se
@@ -1949,6 +1955,10 @@ function renderLivraisons(){
           ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">✅ Problème résolu</button>`:''}
           ${mediaBtns.join('')}
           ${mediaBtns.length===0 && m.statut==='fait' ? '<span class="row-meta" style="align-self:center">Aucune preuve enregistrée</span>' : ''}
+          <button class="btn btn-grey" title="Ajouter une photo" onclick="startUploadMediaSupp(${m.id},'photo','camera')">📷+</button>
+          <button class="btn btn-grey" title="Joindre une photo depuis la galerie" onclick="startUploadMediaSupp(${m.id},'photo','galerie')">🖼️+</button>
+          <button class="btn btn-grey" title="Filmer" onclick="startUploadMediaSupp(${m.id},'video','camera')">🎥+</button>
+          <button class="btn btn-grey" title="Joindre une vidéo depuis la galerie" onclick="startUploadMediaSupp(${m.id},'video','galerie')">📼+</button>
           <button class="btn btn-grey" title="Supprimer de l'écran" onclick="maskLivraison(${m.id})">🗑️</button>
         </div>
       </div>`;
@@ -2018,7 +2028,7 @@ function resolveProbleme(livraisonId){
 const MEDIA_KIND_LABEL = {
   photo_depart: 'Photo — départ dépôt', photo_installation: 'Photo — installation',
   photo_retour: 'Photo — appareil récupéré', photo_absence: 'Photo — preuve de passage',
-  fenetre_photo: 'Photo — fenêtre (client)',
+  fenetre_photo: 'Photo — fenêtre (client)', media_supp: 'Supplémentaire',
 };
 async function viewMedia(livraisonId, kind){
   try{
@@ -2027,6 +2037,41 @@ async function viewMedia(livraisonId, kind){
     if(!r.ok) throw new Error(d.error||'Erreur');
     openMediaViewer(d.url, kind);
   }catch(e){ showToast(e.message, 'error'); }
+}
+// Galerie libre (photos/vidéos supplémentaires) — ajoutée à tout moment,
+// caméra ou galerie, par le transporteur ou l'admin, en plus des preuves
+// obligatoires ci-dessus. mediaId identifie une ligne de mission_medias,
+// pas une colonne fixe — viewer/suppression passent donc l'id, pas un kind.
+async function viewMediaSupp(livraisonId, mediaId){
+  try{
+    const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'media_url_supp', livraison_id:livraisonId, media_id:mediaId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    openMediaViewer(d.url, 'media_supp', {livraisonId, mediaId, deletable:true});
+  }catch(e){ showToast(e.message, 'error'); }
+}
+async function deleteMediaSupp(livraisonId, mediaId){
+  try{
+    const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'supprimer_media_supp', livraison_id:livraisonId, media_id:mediaId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    closeMediaViewer();
+    loadLivraisons();
+    showToast('Média supprimé', 'success');
+  }catch(e){ showToast(e.message, 'error'); }
+}
+// Ajout d'une photo/vidéo supplémentaire côté admin — même flux 3 étapes que
+// côté transporteur (URL signée, PUT direct sur Storage, confirmation en
+// base), un seul input caché réutilisé pour toutes les missions de la liste.
+let PENDING_UPLOAD_MEDIA_SUPP = null;
+function startUploadMediaSupp(livraisonId, type, source){
+  const input = document.getElementById('admin-supp-media-input');
+  input.setAttribute('accept', type==='video' ? 'video/*' : 'image/*');
+  if(source==='camera') input.setAttribute('capture','environment');
+  else input.removeAttribute('capture');
+  PENDING_UPLOAD_MEDIA_SUPP = {livraisonId, type};
+  input.value = '';
+  input.click();
 }
 async function openFenetrePhoto(resaId){
   try{
@@ -2039,7 +2084,7 @@ async function openFenetrePhoto(resaId){
 // Aperçu directement dans l'app plutôt que d'ouvrir le fichier brut dans un
 // nouvel onglet — plus rapide à consulter (surtout plusieurs preuves de
 // suite) et visuellement cohérent avec le reste de l'admin.
-function openMediaViewer(url, kind){
+function openMediaViewer(url, kind, opts){
   closeMediaViewer();
   // Détection par extension plutôt que par kind : une preuve "installation"
   // capturée avant ce changement (vidéo, ancien format) doit rester lisible
@@ -2058,7 +2103,10 @@ function openMediaViewer(url, kind){
       <div class="media-modal-body">
         ${isVideo ? `<video src="${safeUrl}" controls autoplay playsinline></video>` : `<img src="${safeUrl}" alt="${escHtml(MEDIA_KIND_LABEL[kind]||'Preuve')}"/>`}
       </div>
-      <div class="media-modal-foot"><a href="${safeUrl}" target="_blank" rel="noopener">Ouvrir dans un nouvel onglet ↗</a></div>
+      <div class="media-modal-foot">
+        <a href="${safeUrl}" target="_blank" rel="noopener">Ouvrir dans un nouvel onglet ↗</a>
+        ${opts&&opts.deletable?`<button class="btn btn-red" style="margin-left:auto" onclick="deleteMediaSupp(${opts.livraisonId},${opts.mediaId})">Supprimer</button>`:''}
+      </div>
     </div>`;
   overlay.addEventListener('click', e => { if(e.target===overlay) closeMediaViewer(); });
   document.body.appendChild(overlay);
@@ -2067,6 +2115,26 @@ function closeMediaViewer(){
   const o = document.getElementById('media-overlay-el');
   if(o) o.remove();
 }
+document.getElementById('admin-supp-media-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if(!file || !PENDING_UPLOAD_MEDIA_SUPP) return;
+  const {livraisonId, type} = PENDING_UPLOAD_MEDIA_SUPP;
+  try{
+    const r1 = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'demander_upload_media_supp', livraison_id:livraisonId, type, content_type:file.type})});
+    const d1 = await r1.json();
+    if(!r1.ok) throw new Error(d1.error||'Erreur');
+
+    const up = await fetch(d1.signedUrl, {method:'PUT', headers:{'Content-Type': file.type || 'application/octet-stream'}, body: file});
+    if(!up.ok) throw new Error('Échec de l\'envoi du fichier');
+
+    const r2 = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'confirmer_media_supp', livraison_id:livraisonId, type, path:d1.path})});
+    const d2 = await r2.json();
+    if(!r2.ok) throw new Error(d2.error||'Erreur de confirmation');
+
+    loadLivraisons();
+    showToast('Média ajouté', 'success');
+  }catch(err){ showToast(err.message, 'error'); }
+});
 
 // ── TRANSPORTEURS ─────────────────────────────────────────────────────────────
 // "Revenus" (ex-onglet Virements) vit ici plutôt que dans son propre onglet :
@@ -2686,7 +2754,10 @@ async function toggleClientPhotos(id){
     if(!r.ok) throw new Error(d.error||'Erreur');
     const photos = d.photos || [];
     panel.innerHTML = photos.length
-      ? photos.map(p => `<button class="btn btn-grey" onclick="viewMedia(${p.livraison_id},'${p.kind}')">${p.type==='livraison'?'📦':'🔄'} ${MEDIA_KIND_LABEL[p.kind]||p.kind} — ${frDate(p.date_prevue)}</button>`).join('')
+      ? photos.map(p => p.supp
+          ? `<button class="btn btn-grey" onclick="viewMediaSupp(${p.livraison_id},${p.media_id})">${p.media_type==='video'?'🎥':'📷'} Supplémentaire (${p.uploaded_by==='admin'?'admin':'livreur'}) — ${frDate(p.date_prevue)}</button>`
+          : `<button class="btn btn-grey" onclick="viewMedia(${p.livraison_id},'${p.kind}')">${p.type==='livraison'?'📦':'🔄'} ${MEDIA_KIND_LABEL[p.kind]||p.kind} — ${frDate(p.date_prevue)}</button>`
+        ).join('')
       : '<p class="empty" style="padding:0">Aucune photo enregistrée pour l\'instant.</p>';
     panel.dataset.loaded = '1';
   }catch(e){

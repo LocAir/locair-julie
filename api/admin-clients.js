@@ -69,7 +69,7 @@ module.exports = async (req, res) => {
 
       const { data: livs } = await supabase
         .from('livraisons')
-        .select('id, type, date_prevue, photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path')
+        .select('id, type, date_prevue, photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path, mission_medias ( id, type, uploaded_by )')
         .in('reservation_id', resaIds)
         .order('date_prevue', { ascending: false });
 
@@ -83,6 +83,9 @@ module.exports = async (req, res) => {
       (livs || []).forEach(l => {
         KINDS.forEach(([kind, col]) => {
           if (l[col]) photos.push({ livraison_id: l.id, kind, type: l.type, date_prevue: l.date_prevue });
+        });
+        (l.mission_medias || []).forEach(md => {
+          photos.push({ livraison_id: l.id, media_id: md.id, supp: true, media_type: md.type, uploaded_by: md.uploaded_by, type: l.type, date_prevue: l.date_prevue });
         });
       });
       return res.status(200).json({ photos });
