@@ -79,6 +79,15 @@ module.exports = async (req, res) => {
 
     if (action === 'accepter') {
       if (liv.statut !== 'a_faire') return res.status(409).json({ error: 'Mission déjà traitée' });
+      // Une mission ne peut être acceptée que le jour prévu, jamais en avance —
+      // vérifié aussi côté client (transporteur/index.html) mais la source de
+      // vérité reste ici : un appel direct à l'API ne doit pas pouvoir la
+      // contourner.
+      const todayStr = new Date().toISOString().slice(0, 10);
+      if (liv.date_prevue > todayStr) {
+        const dateLabel = new Date(liv.date_prevue + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+        return res.status(409).json({ error: `Cette mission n'est prévue que le ${dateLabel} — tu pourras l'accepter ce jour-là.` });
+      }
       // Une mission commencée doit être terminée avant d'en accepter une autre.
       // Une mission mise en "problème" (ex. client injoignable pour une
       // récupération) ne compte plus comme en cours : le livreur peut passer

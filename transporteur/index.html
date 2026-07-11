@@ -688,7 +688,9 @@ async function loadMissions(){
 function maybeAutoOpenMission(){
   if(STATE.autoOpenChecked) return;
   STATE.autoOpenChecked = true;
-  const actives = STATE.missions.filter(m => ['a_faire','acceptee','arrivee'].includes(m.statut));
+  const todayStr = new Date().toISOString().slice(0,10);
+  const actives = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut)
+    || (m.statut==='a_faire' && m.date_prevue<=todayStr));
   if(actives.length === 1) openMission(actives[0].id);
 }
 
@@ -746,6 +748,16 @@ function dateLabelFor(dateStr){
   if(diffDays===1) return '📅 Demain';
   return '📅 ' + d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
 }
+// Pour une phrase grammaticalement correcte ("prévue demain" / "prévue le
+// vendredi 25 juillet"), contrairement à dateLabelFor qui sert de titre de
+// section ("📅 Demain").
+function futureDateText(dateStr){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const d = new Date(dateStr+'T00:00:00');
+  const diffDays = Math.round((d-today)/86400000);
+  if(diffDays===1) return 'demain';
+  return 'le ' + d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+}
 
 function missionCardHtml(m){
   const c = m.client || {};
@@ -775,6 +787,10 @@ function missionCardActionsHtml(m, mapsUrl, tel){
   const mapBtn  = mapsUrl ? `<a class="mcard-icon-btn" href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Itinéraire">🗺️</a>` : '';
   const callBtn = tel     ? `<a class="mcard-icon-btn" href="tel:${encodeURIComponent(tel)}" onclick="event.stopPropagation()" title="Appeler">📞</a>` : '';
   if(m.statut !== 'a_faire') return (mapBtn||callBtn) ? `<div class="mcard-actions">${mapBtn}${callBtn}</div>` : '';
+  const todayStr = new Date().toISOString().slice(0,10);
+  if(m.date_prevue > todayStr){
+    return `<div class="mcard-actions">${mapBtn}${callBtn}<span class="mcard-meta" style="align-self:center">Pas encore — ${dateLabelFor(m.date_prevue).replace('📅 ','').replace('📍 ','')}</span></div>`;
+  }
   const hasMissionEnCours = STATE.missions.some(x => x.id!==m.id && ['acceptee','arrivee'].includes(x.statut));
   if(hasMissionEnCours){
     return `<div class="mcard-actions">${mapBtn}${callBtn}<button class="btn btn-red" style="flex:1;min-width:0" onclick="refuseFromList(${m.id},event)">✖ Non dispo</button></div>`;
@@ -975,6 +991,15 @@ function openMission(id){
 function actionBtnsForMission(m){
   const c = m.client || {};
   if(m.statut === 'a_faire'){
+    // Une mission ne peut être acceptée/démarrée que le jour prévu, jamais en
+    // avance — évite qu'une mission du 25 juillet soit prise (et sa fenêtre de
+    // créneau consommée) alors qu'on est encore le 11.
+    const todayStr = new Date().toISOString().slice(0,10);
+    if(m.date_prevue > todayStr){
+      return `
+        <div class="probleme-box"><p>📅 Cette mission est prévue ${futureDateText(m.date_prevue)} — tu pourras l'accepter ce jour-là.</p></div>
+        <button class="btn btn-grey" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
+    }
     // Une mission en cours (acceptée/arrivée) doit être terminée avant d'en
     // accepter une autre — une mission mise en "problème" ne bloque plus rien,
     // le livreur peut y revenir plus tard dans la journée.
