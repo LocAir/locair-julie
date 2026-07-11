@@ -307,6 +307,7 @@ let STATE = {
   en_pause: false,
   currentMission: null,
   pendingUpload: null, // {livraisonId, kind}
+  autoOpenChecked: false, // une seule fois par connexion, voir maybeAutoOpenMission()
 };
 
 function show(id){
@@ -339,7 +340,7 @@ function logout(){
   localStorage.removeItem('t_token');
   localStorage.removeItem('t_id');
   localStorage.removeItem('t_nom');
-  STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],en_pause:false,currentMission:null,pendingUpload:null};
+  STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],en_pause:false,currentMission:null,pendingUpload:null,autoOpenChecked:false};
   stopPositionTracking();
   document.getElementById('who-badge').classList.add('hidden');
   show('login-screen');
@@ -675,8 +676,21 @@ async function loadMissions(){
   show('missions-screen');
   document.getElementById('missions-list').innerHTML = '<p class="empty">Chargement…</p>';
   const ok = await fetchMissions();
-  if(ok) renderMissions();
+  if(ok){ renderMissions(); maybeAutoOpenMission(); }
   else document.getElementById('missions-list').innerHTML = '<p class="empty">Impossible de charger tes missions. Réessaie.</p>';
+}
+// Une seule fois par connexion : si une seule mission attend une action
+// (à accepter, ou déjà acceptée/en route), on saute directement dessus au
+// lieu de forcer un premier arrêt sur la liste + les filtres — pour un
+// chauffeur qui n'a jamais ouvert l'app, "qu'est-ce que je fais maintenant"
+// ne doit jamais dépendre de savoir quel onglet regarder. À partir de la
+// 2e mission de la journée, ou avec plusieurs en attente, la liste reste la
+// meilleure vue (tournée, choix), donc on ne force plus rien.
+function maybeAutoOpenMission(){
+  if(STATE.autoOpenChecked) return;
+  STATE.autoOpenChecked = true;
+  const actives = STATE.missions.filter(m => ['a_faire','acceptee','arrivee'].includes(m.statut));
+  if(actives.length === 1) openMission(actives[0].id);
 }
 
 // ── Actualisation automatique ─────────────────────────────────────────────────
