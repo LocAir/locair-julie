@@ -688,9 +688,7 @@ async function loadMissions(){
 function maybeAutoOpenMission(){
   if(STATE.autoOpenChecked) return;
   STATE.autoOpenChecked = true;
-  const todayStr = new Date().toISOString().slice(0,10);
-  const actives = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut)
-    || (m.statut==='a_faire' && m.date_prevue<=todayStr));
+  const actives = STATE.missions.filter(m => ['a_faire','acceptee','arrivee'].includes(m.statut));
   if(actives.length === 1) openMission(actives[0].id);
 }
 
@@ -787,10 +785,6 @@ function missionCardActionsHtml(m, mapsUrl, tel){
   const mapBtn  = mapsUrl ? `<a class="mcard-icon-btn" href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Itinéraire">🗺️</a>` : '';
   const callBtn = tel     ? `<a class="mcard-icon-btn" href="tel:${encodeURIComponent(tel)}" onclick="event.stopPropagation()" title="Appeler">📞</a>` : '';
   if(m.statut !== 'a_faire') return (mapBtn||callBtn) ? `<div class="mcard-actions">${mapBtn}${callBtn}</div>` : '';
-  const todayStr = new Date().toISOString().slice(0,10);
-  if(m.date_prevue > todayStr){
-    return `<div class="mcard-actions">${mapBtn}${callBtn}<span class="mcard-meta" style="align-self:center">Pas encore — ${dateLabelFor(m.date_prevue).replace('📅 ','').replace('📍 ','')}</span></div>`;
-  }
   const hasMissionEnCours = STATE.missions.some(x => x.id!==m.id && ['acceptee','arrivee'].includes(x.statut));
   if(hasMissionEnCours){
     return `<div class="mcard-actions">${mapBtn}${callBtn}<button class="btn btn-red" style="flex:1;min-width:0" onclick="refuseFromList(${m.id},event)">✖ Non dispo</button></div>`;
@@ -991,15 +985,10 @@ function openMission(id){
 function actionBtnsForMission(m){
   const c = m.client || {};
   if(m.statut === 'a_faire'){
-    // Une mission ne peut être acceptée/démarrée que le jour prévu, jamais en
-    // avance — évite qu'une mission du 25 juillet soit prise (et sa fenêtre de
-    // créneau consommée) alors qu'on est encore le 11.
-    const todayStr = new Date().toISOString().slice(0,10);
-    if(m.date_prevue > todayStr){
-      return `
-        <div class="probleme-box"><p>📅 Cette mission est prévue ${futureDateText(m.date_prevue)} — tu pourras l'accepter ce jour-là.</p></div>
-        <button class="btn btn-grey" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
-    }
+    // Accepter une mission n'est pas la démarrer : ça peut se faire à
+    // n'importe quel moment, même bien à l'avance (ex. accepter aujourd'hui
+    // une mission du 25 juillet). Seul le démarrage effectif sur place (plus
+    // bas) est bloqué avant le jour prévu.
     // Une mission en cours (acceptée/arrivée) doit être terminée avant d'en
     // accepter une autre — une mission mise en "problème" ne bloque plus rien,
     // le livreur peut y revenir plus tard dans la journée.
@@ -1012,6 +1001,15 @@ function actionBtnsForMission(m){
     return `
       <button class="btn btn-green" onclick="doAction('accepter')">✅ J'ACCEPTE LA MISSION</button>
       <button class="btn btn-red" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
+  }
+  // Une mission acceptée ne peut être démarrée (photo/vidange/étapes sur
+  // place) que le jour prévu, jamais en avance — le bouton "⏪ Faire plus
+  // tard" (en haut de l'écran) reste la seule action possible avant ça.
+  if((m.statut === 'acceptee' || m.statut === 'arrivee')){
+    const todayStr = new Date().toISOString().slice(0,10);
+    if(m.date_prevue > todayStr){
+      return `<div class="probleme-box"><p>📅 Tu as accepté cette mission — tu pourras la démarrer ${futureDateText(m.date_prevue)}.</p></div>`;
+    }
   }
   // Un seul écran après acceptation : prévenir le client (optionnel, par SMS
   // depuis le téléphone du livreur) puis une photo pour terminer — plus de
