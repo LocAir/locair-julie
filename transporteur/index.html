@@ -292,9 +292,6 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 
 <!-- input caché pour la preuve de mission obligatoire (vidéo uniquement, caméra live) -->
 <input type="file" id="media-input" accept="video/*" capture="environment" class="hidden"/>
-<!-- input caché pour la galerie libre (photos/vidéos supplémentaires, caméra ou galerie du téléphone) -->
-<input type="file" id="supp-media-input" class="hidden"/>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API = (path) => '/api/' + path;
@@ -1091,35 +1088,10 @@ function renderDetail(){
 
       ${infoRows}
 
-      ${started ? renderSuppMediaSection(m) : ''}
-
       <div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div>
       <div class="err" id="detail-err"></div>
     </div>
   `;
-}
-
-// Galerie libre (photos/vidéos supplémentaires) — jamais bloquante, jamais
-// obligatoire, contrairement à la preuve de mission. Prise en direct ou
-// choisie dans la galerie du téléphone, ajoutable à n'importe quel moment
-// une fois la mission acceptée.
-function renderSuppMediaSection(m){
-  const medias = m.medias_supp || [];
-  const thumbs = medias.map(md => `
-    <button class="btn btn-grey" style="font-size:16px;padding:8px 12px" onclick="viewSuppMedia(${md.id})" title="${md.type==='video'?'Vidéo':'Photo'}">
-      ${md.type==='video' ? '🎥' : '📷'}
-    </button>`).join('');
-  return `
-    <div class="info-row" style="flex-direction:column;align-items:flex-start;gap:8px">
-      <span class="info-label">📷🎥 Photos &amp; vidéos supplémentaires</span>
-      ${medias.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap">${thumbs}</div>` : `<span class="info-val" style="font-size:12px;color:var(--grey-soft)">Aucune pour l'instant — optionnel</span>`}
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:2px">
-        <button class="btn btn-grey" style="font-size:12px;padding:7px 10px" onclick="startUploadSupp('photo','camera')">📷 Prendre une photo</button>
-        <button class="btn btn-grey" style="font-size:12px;padding:7px 10px" onclick="startUploadSupp('photo','galerie')">🖼️ Choisir une photo</button>
-        <button class="btn btn-grey" style="font-size:12px;padding:7px 10px" onclick="startUploadSupp('video','camera')">🎥 Filmer</button>
-        <button class="btn btn-grey" style="font-size:12px;padding:7px 10px" onclick="startUploadSupp('video','galerie')">📼 Choisir une vidéo</button>
-      </div>
-    </div>`;
 }
 
 // Preuve de mission obligatoire : filmer en direct (caméra) ou joindre une
@@ -1342,91 +1314,6 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
   }
 });
 
-// ── Galerie libre (photos/vidéos supplémentaires) ────────────────────────────
-// Séparée du flux de preuve obligatoire ci-dessus : input dédié, jamais de
-// blocage d'action en attendant l'envoi, disponible à tout moment une fois
-// la mission acceptée. "camera" force l'appareil photo, "galerie" laisse le
-// choix (galerie ou appareil photo selon ce que propose le téléphone).
-function startUploadSupp(type, source){
-  const input = document.getElementById('supp-media-input');
-  input.setAttribute('accept', type==='video' ? 'video/*' : 'image/*');
-  if(source==='camera') input.setAttribute('capture','environment');
-  else input.removeAttribute('capture');
-  STATE.pendingUploadSupp = {type};
-  input.value = '';
-  input.click();
-}
-document.getElementById('supp-media-input').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if(!file || !STATE.pendingUploadSupp) return;
-  const {type} = STATE.pendingUploadSupp;
-  const errEl = document.getElementById('detail-err');
-  if(errEl) errEl.style.display = 'none';
-  try{
-    const r1 = await fetch(API('transporteur-action'), {
-      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
-      body: JSON.stringify({action:'demander_upload_supp', livraison_id: STATE.currentMission.id, type, content_type:file.type})
-    });
-    const d1 = await r1.json();
-    if(!r1.ok) throw new Error(d1.error||'Erreur');
-
-    const up = await fetch(d1.signedUrl, {method:'PUT', headers:{'Content-Type': file.type || 'application/octet-stream'}, body: file});
-    if(!up.ok) throw new Error('Échec de l\'envoi du fichier');
-
-    const r2 = await fetch(API('transporteur-action'), {
-      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
-      body: JSON.stringify({action:'confirmer_media_supp', livraison_id: STATE.currentMission.id, type, path:d1.path})
-    });
-    const d2 = await r2.json();
-    if(!r2.ok) throw new Error(d2.error||'Erreur de confirmation');
-
-    if(!STATE.currentMission.medias_supp) STATE.currentMission.medias_supp = [];
-    STATE.currentMission.medias_supp.push({id: d2.media.id, type});
-    const idx = STATE.missions.findIndex(x => x.id === STATE.currentMission.id);
-    if(idx>-1) STATE.missions[idx] = STATE.currentMission;
-    renderDetail();
-  }catch(err){
-    if(errEl){ errEl.textContent = err.message; errEl.style.display = 'block'; }
-  }
-});
-async function viewSuppMedia(mediaId){
-  try{
-    const r = await fetch(API('transporteur-action'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body:JSON.stringify({action:'media_url_supp', livraison_id: STATE.currentMission.id, media_id:mediaId})});
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.error||'Erreur');
-    const media = (STATE.currentMission.medias_supp||[]).find(md => md.id===mediaId);
-    const isVideo = media && media.type==='video';
-    document.getElementById('supp-media-overlay-el')?.remove();
-    const ov = document.createElement('div');
-    ov.id = 'supp-media-overlay-el';
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px';
-    ov.innerHTML = `
-      ${isVideo ? `<video src="${d.url}" controls autoplay playsinline style="max-width:100%;max-height:70vh;border-radius:10px"></video>` : `<img src="${d.url}" style="max-width:100%;max-height:70vh;border-radius:10px;object-fit:contain"/>`}
-      <div style="display:flex;gap:10px;margin-top:14px">
-        <button onclick="document.getElementById('supp-media-overlay-el').remove()" style="padding:10px 24px;border-radius:10px;border:none;background:#fff;font-size:15px;cursor:pointer;font-weight:600">Fermer</button>
-        <button onclick="deleteSuppMedia(${mediaId})" style="padding:10px 24px;border-radius:10px;border:none;background:#e3524a;color:#fff;font-size:15px;cursor:pointer;font-weight:600">Supprimer</button>
-      </div>`;
-    ov.onclick = e => { if(e.target===ov) ov.remove(); };
-    document.body.appendChild(ov);
-  }catch(e){
-    const errEl = document.getElementById('detail-err');
-    if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
-  }
-}
-async function deleteSuppMedia(mediaId){
-  try{
-    const r = await fetch(API('transporteur-action'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body:JSON.stringify({action:'supprimer_media_supp', livraison_id: STATE.currentMission.id, media_id:mediaId})});
-    if(!r.ok){ const d = await r.json(); throw new Error(d.error||'Erreur'); }
-    STATE.currentMission.medias_supp = (STATE.currentMission.medias_supp||[]).filter(md => md.id!==mediaId);
-    const idx = STATE.missions.findIndex(x => x.id === STATE.currentMission.id);
-    if(idx>-1) STATE.missions[idx] = STATE.currentMission;
-    document.getElementById('supp-media-overlay-el')?.remove();
-    renderDetail();
-  }catch(e){
-    const errEl = document.getElementById('detail-err');
-    if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
-  }
-}
 
 // ── Code oublié ───────────────────────────────────────────────────────────────
 function openForgotPin(){

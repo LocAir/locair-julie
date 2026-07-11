@@ -9,11 +9,6 @@ const MEDIA_COLUMN = {
   photo_retour:       'photo_retour_path',
   photo_absence:      'photo_absence_path',
 };
-const EXT_BY_TYPE = {
-  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp',
-  'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm',
-};
-
 // Charge une livraison en vérifiant qu'elle appartient bien (via sa réservation)
 // à la ville de l'admin authentifié — empêche d'agir sur une mission d'une autre
 // ville en devinant son id, une fois plusieurs villes sur la même base Supabase.
@@ -54,7 +49,6 @@ module.exports = async (req, res) => {
           photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path,
           accepted_at, client_notifie_at, arrivee_at, fait_at,
           vidange_confirmee, vidange_at,
-          mission_medias ( id, type, path, uploaded_by, created_at ),
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
             id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, instructions_acces, masquee, hors_zone,
@@ -85,7 +79,6 @@ module.exports = async (req, res) => {
           appareil_references: ras.map(ra => ra.appareil.reference).filter(Boolean),
           duree_trajet_min:    minsBetween(l.accepted_at, l.arrivee_at),
           duree_sur_place_min: minsBetween(l.arrivee_at, l.fait_at),
-          medias_supp: ((l.mission_medias) || []).map(md => ({ id: md.id, type: md.type, uploaded_by: md.uploaded_by })).sort((a, b) => a.id - b.id),
         };
       });
       return res.status(200).json({ livraisons });
@@ -273,67 +266,6 @@ module.exports = async (req, res) => {
       const { data, error } = await supabase.storage.from('missions').createSignedUrl(liv[column], 300);
       if (error) throw error;
       return res.status(200).json({ url: data.signedUrl });
-    }
-
-    // Photos/vidéos supplémentaires (galerie libre) — même mécanisme que côté
-    // transporteur (api/transporteur-action.js), pour que l'admin puisse lui
-    // aussi documenter une mission depuis son espace, caméra ou galerie.
-    if (action === 'demander_upload_media_supp') {
-      const livraisonId = parseInt(body.livraison_id);
-      const type = body.type === 'video' ? 'video' : 'photo';
-      if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
-      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id');
-      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
-
-      const ext = EXT_BY_TYPE[body.content_type] || (type === 'video' ? 'mp4' : 'jpg');
-      const rand = Math.random().toString(36).slice(2, 8);
-      const path = `${livraisonId}/supp-${Date.now()}-${rand}.${ext}`;
-      const { data, error } = await supabase.storage.from('missions').createSignedUploadUrl(path, { upsert: true });
-      if (error) throw error;
-      return res.status(200).json({ ok: true, path: data.path, token: data.token, signedUrl: data.signedUrl });
-    }
-
-    if (action === 'confirmer_media_supp') {
-      const livraisonId = parseInt(body.livraison_id);
-      const type = body.type === 'video' ? 'video' : 'photo';
-      const path = (body.path || '').trim();
-      if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
-      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id');
-      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
-      if (!path || !path.startsWith(`${livraisonId}/supp-`)) {
-        return res.status(400).json({ error: 'Média invalide' });
-      }
-      const { data, error } = await supabase.from('mission_medias')
-        .insert({ livraison_id: livraisonId, type, path, uploaded_by: 'admin' })
-        .select().single();
-      if (error) throw error;
-      return res.status(200).json({ ok: true, media: data });
-    }
-
-    if (action === 'media_url_supp') {
-      const livraisonId = parseInt(body.livraison_id);
-      const mediaId = parseInt(body.media_id);
-      if (!livraisonId || !mediaId) return res.status(400).json({ error: 'Paramètres invalides' });
-      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id');
-      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
-      const { data: media } = await supabase.from('mission_medias').select('id, path').eq('id', mediaId).eq('livraison_id', livraisonId).maybeSingle();
-      if (!media) return res.status(404).json({ error: 'Média introuvable' });
-      const { data, error } = await supabase.storage.from('missions').createSignedUrl(media.path, 300);
-      if (error) throw error;
-      return res.status(200).json({ url: data.signedUrl });
-    }
-
-    if (action === 'supprimer_media_supp') {
-      const livraisonId = parseInt(body.livraison_id);
-      const mediaId = parseInt(body.media_id);
-      if (!livraisonId || !mediaId) return res.status(400).json({ error: 'Paramètres invalides' });
-      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id');
-      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
-      const { data: media } = await supabase.from('mission_medias').select('id, path').eq('id', mediaId).eq('livraison_id', livraisonId).maybeSingle();
-      if (!media) return res.status(404).json({ error: 'Média introuvable' });
-      await supabase.storage.from('missions').remove([media.path]).catch(() => {});
-      await supabase.from('mission_medias').delete().eq('id', mediaId);
-      return res.status(200).json({ ok: true });
     }
 
     return res.status(400).json({ error: 'Action inconnue' });
