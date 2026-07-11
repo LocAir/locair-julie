@@ -162,8 +162,8 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 /* Carte réservation : hiérarchie client → dates → prix, au lieu d'une seule
    ligne de métadonnées à parser. Le prix reprend le traitement typographique
    des tuiles chiffrées de l'Accueil (police --disp) pour rester cohérent. */
-.resa-addr{font-size:12.5px;color:var(--grey);margin-bottom:10px;display:flex;align-items:baseline;gap:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.resa-dates{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px;font-size:13px;padding-bottom:10px;margin-bottom:10px;border-bottom:1px dashed var(--rule)}
+.resa-addr{font-size:12.5px;color:var(--grey);margin-bottom:8px;display:flex;align-items:baseline;gap:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resa-dates{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px;font-size:13px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px dashed var(--rule)}
 .resa-date-range{font-weight:700;color:var(--black);white-space:nowrap}
 .resa-rel{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--gold);white-space:nowrap;flex-shrink:0}
 .resa-rel.urgent{color:var(--red)}
@@ -1324,9 +1324,8 @@ function reservationRowHtml(res, readOnly){
       ${res.hors_zone?`<div class="resa-sub" style="color:var(--red);font-weight:700">⚠️ Hors zone — affectation manuelle requise</div>`:''}
       ${res.source==='site_prolongation'?`<div class="resa-sub" style="color:var(--blue);font-weight:700">🔄 Location prolongée</div>`:''}
       <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
-      ${(res.etage||res.ascenseur||res.fenetre||res.fenetre_photo_path)?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):''].filter(Boolean).join(' · ')}${res.fenetre_photo_path?` <button class="btn btn-grey" style="padding:2px 8px;font-size:11px;vertical-align:middle" onclick="openFenetrePhoto(${res.id})">📷 Photo</button>`:''}</div>`:''}
       ${res.instructions_acces?`<div class="resa-sub" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
-      ${(res.type_client==='entreprise' && res.siret)?`<div class="resa-sub">SIRET : ${escHtml(res.siret)}</div>`:''}
+      ${(res.etage||res.ascenseur||res.fenetre||res.fenetre_photo_path||(res.type_client==='entreprise'&&res.siret))?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):'',(res.type_client==='entreprise'&&res.siret)?'SIRET : '+escHtml(res.siret):''].filter(Boolean).join(' · ')}${res.fenetre_photo_path?` <button class="btn btn-grey" style="padding:2px 8px;font-size:11px;vertical-align:middle" onclick="openFenetrePhoto(${res.id})">📷 Photo</button>`:''}</div>`:''}
       <div class="resa-dates">
         <span class="resa-date-range">📅 ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
         <span class="resa-rel ${isUrgent(res.date_debut)?'urgent':''}">${nightsLabel(res.date_debut,res.date_fin)} · ${relLabel(res.date_debut)}</span>
