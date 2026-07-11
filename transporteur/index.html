@@ -192,6 +192,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .tools-group-body .map-filters{margin-top:0}
 .map-filters{display:flex;gap:4px;margin:8px 0 14px;background:var(--bg);padding:4px;border-radius:100px}
 .map-filters button{flex:1;padding:10px;border-radius:100px;border:none;background:transparent;font-weight:700;font-size:12.5px;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
+#mission-filters button{padding:9px 4px;font-size:11.5px}
 .map-filters button.on{background:var(--white);color:var(--black);box-shadow:var(--sh-xs)}
 #day-map{height:calc(100vh - 180px);border-radius:var(--r-lg);overflow:hidden;background:#e8e6e0;box-shadow:var(--sh-sm)}
 .map-popup-btn{display:block;width:100%;margin-top:8px;padding:9px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--body)}
@@ -267,9 +268,9 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
     <div id="transp-banner-zone"></div>
     <div class="map-filters" id="mission-filters">
       <button class="on" data-f="toutes" onclick="setMissionFilter('toutes')">Toutes<span class="tab-badge hidden badge-sf-toutes"></span></button>
-      <button data-f="nouvelle" onclick="setMissionFilter('nouvelle')">🆕 À accepter<span class="tab-badge hidden badge-sf-nouvelle"></span></button>
+      <button data-f="nouvelle" onclick="setMissionFilter('nouvelle')">🆕 Accepter<span class="tab-badge hidden badge-sf-nouvelle"></span></button>
       <button data-f="en_cours" onclick="setMissionFilter('en_cours')">🚚 En cours<span class="tab-badge hidden badge-sf-en_cours"></span></button>
-      <button data-f="terminee" onclick="setMissionFilter('terminee')">✅ Terminées<span class="tab-badge hidden badge-sf-terminee"></span></button>
+      <button data-f="terminee" onclick="setMissionFilter('terminee')">✅ Finies<span class="tab-badge hidden badge-sf-terminee"></span></button>
     </div>
     <details class="tools-group hidden" id="tools-group">
       <summary>🔧 Secteurs &amp; tournée du jour</summary>
@@ -827,7 +828,7 @@ function missionCardActionsHtml(m, mapsUrl, tel){
   const mapBtn  = mapsUrl ? `<a class="mcard-icon-btn" href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Itinéraire">🗺️</a>` : '';
   const callBtn = tel     ? `<a class="mcard-icon-btn" href="tel:${encodeURIComponent(tel)}" onclick="event.stopPropagation()" title="Appeler">📞</a>` : '';
   if(m.statut !== 'a_faire') return (mapBtn||callBtn) ? `<div class="mcard-actions">${mapBtn}${callBtn}</div>` : '';
-  const hasMissionEnCours = isAnotherMissionEnCours(m.id);
+  const hasMissionEnCours = isAnotherMissionEnCours(m.id, m.date_prevue);
   if(hasMissionEnCours){
     return `<div class="mcard-actions">${mapBtn}${callBtn}<button class="btn btn-red" style="flex:1;min-width:0" onclick="refuseFromList(${m.id},event)">✖ Non dispo</button></div>`;
   }
@@ -836,8 +837,12 @@ function missionCardActionsHtml(m, mapsUrl, tel){
 // Une mission acceptée mais pas encore démarrable (date future) ne bloque
 // jamais l'acceptation d'une autre mission — seule une mission réellement en
 // cours AUJOURD'HUI (accepter n'importe quand, démarrer le jour J) compte.
-function isAnotherMissionEnCours(excludeId){
+// Et dans l'autre sens : accepter une mission dont la date prévue est future
+// n'est lui-même jamais bloqué par une mission en cours aujourd'hui — ce
+// n'est qu'au jour J que la capacité du livreur compte réellement.
+function isAnotherMissionEnCours(excludeId, forDate){
   const todayStr = new Date().toISOString().slice(0,10);
+  if(forDate && forDate > todayStr) return false;
   return STATE.missions.some(x => x.id!==excludeId && ['acceptee','arrivee'].includes(x.statut) && x.date_prevue<=todayStr);
 }
 function acceptFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMission = STATE.missions.find(m=>m.id===id); doAction('accepter'); }
@@ -868,7 +873,14 @@ function renderTranspBanner(){
     : '';
 
   const chips = [];
-  if(aFaireAujourd > 0) chips.push({msg:`🔔 ${aFaireAujourd} à accepter aujourd'hui`, cls:'dp-chip-amber', f:'nouvelle'});
+  // Le badge de l'onglet "À accepter" compte TOUTES les missions a_faire (y
+  // compris celles prévues plus tard) alors que cette puce ne parlait que
+  // d'aujourd'hui — deux chiffres différents affichés côte à côte pour ce qui
+  // ressemble au même compteur. On aligne le texte sur le même périmètre dès
+  // qu'ils divergent, sans rien changer quand ils coïncident (cas courant).
+  if(aFaireAujourd > 0) chips.push({msg: aFaireTotal > aFaireAujourd
+    ? `🔔 ${aFaireTotal} à accepter, dont ${aFaireAujourd} aujourd'hui`
+    : `🔔 ${aFaireAujourd} à accepter aujourd'hui`, cls:'dp-chip-amber', f:'nouvelle'});
   else if(aFaireTotal > 0) chips.push({msg:`📋 ${aFaireTotal} à accepter prochainement`, cls:'dp-chip-blue', f:'nouvelle'});
   if(enCours > 0) chips.push({msg:`🚚 ${enCours} en cours`, cls:'dp-chip-green', f:'en_cours'});
   const chipsHtml = chips.length
@@ -1013,7 +1025,12 @@ function postalCode(adresse){
 function missionsByPostalHtml(items){
   const groups = {};
   items.forEach(m => { const cp = postalCode((m.client||{}).adresse) || 'Autre'; (groups[cp] = groups[cp] || []).push(m); });
-  return Object.keys(groups).sort().map(cp => `
+  const codes = Object.keys(groups);
+  // Un seul secteur dans le groupe : le sous-titre code postal n'apporte rien
+  // (même seuil que renderPostalFilter, qui masque déjà son propre filtre
+  // dans ce cas) — évite un empilement de 3 niveaux de titre pour 1 carte.
+  if(codes.length < 2) return items.map(missionCardHtml).join('');
+  return codes.sort().map(cp => `
     <div class="section-title" style="font-size:10px;color:var(--grey-soft);margin:8px 2px 6px;text-transform:none;letter-spacing:normal">📮 ${escHtml(cp)} (${groups[cp].length})</div>
     ${groups[cp].map(missionCardHtml).join('')}`).join('');
 }
@@ -1035,7 +1052,7 @@ function actionBtnsForMission(m){
     // Une mission en cours (acceptée/arrivée) doit être terminée avant d'en
     // accepter une autre — une mission mise en "problème" ne bloque plus rien,
     // le livreur peut y revenir plus tard dans la journée.
-    const hasMissionEnCours = isAnotherMissionEnCours(m.id);
+    const hasMissionEnCours = isAnotherMissionEnCours(m.id, m.date_prevue);
     if(hasMissionEnCours){
       return `
         <div class="probleme-box"><p>🔒 Termine ta mission en cours avant d'accepter celle-ci.</p></div>
