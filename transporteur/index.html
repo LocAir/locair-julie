@@ -46,7 +46,7 @@ body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:1
 .card{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:26px 22px;box-shadow:var(--sh-sm);margin-bottom:14px}
 h1{font-family:var(--disp);font-size:25px;font-weight:600;margin-bottom:6px}
 .sub{font-size:14px;color:var(--grey);margin-bottom:20px;line-height:1.55}
-label{display:block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--grey-soft);margin-bottom:7px}
+label{display:block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:7px}
 input[type=text],input[type=password],input[type=tel]{
   width:100%;padding:16px;border:1.5px solid var(--rule);border-radius:var(--r-sm);font-size:17px;
   font-family:var(--body);background:var(--white);color:var(--black);outline:none;
@@ -115,6 +115,9 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 
 .step-hint{font-size:14px;font-weight:700;color:var(--blue);background:var(--gold-lt);border-radius:var(--r-sm);padding:11px 14px;margin-bottom:14px}
 .btn-missing-hint{text-align:center;font-size:12.5px;color:var(--grey);margin:-6px 0 12px}
+.month-details summary::-webkit-details-marker{display:none}
+.month-chevron{display:inline-block;font-size:17px;line-height:1;color:var(--grey-soft);transition:transform .15s ease}
+.month-details[open] .month-chevron{transform:rotate(90deg)}
 .upload-preview{margin-bottom:14px}
 .upload-preview img,.upload-preview video{width:100%;max-height:240px;object-fit:cover;border-radius:var(--r);display:block;box-shadow:var(--sh-xs);background:#000}
 .probleme-box{background:var(--red-bg);border-radius:var(--r);padding:16px}
@@ -185,7 +188,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .celebrate-emoji{font-size:50px;margin-bottom:12px}
 .celebrate-title{font-family:var(--disp);font-size:24px;font-weight:600;margin-bottom:8px}
 .celebrate-sub{font-size:15px;color:var(--grey);margin-bottom:22px;line-height:1.55}
-.celebrate-amount{font-family:var(--disp);font-size:34px;font-weight:600;color:var(--green);margin-bottom:22px}
+.celebrate-amount{display:inline-block;font-family:var(--disp);font-size:34px;font-weight:600;color:var(--blue);background:var(--gold-lt);padding:6px 24px;border-radius:100px;margin-bottom:22px}
 
 /* Carte du jour */
 .tools-group{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);margin:0 0 14px;overflow:hidden}
@@ -208,7 +211,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .stock-gauge-fill.alert{background:var(--red)}
 .stock-unit{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--rule);font-size:14px}
 .stock-unit:last-child{border-bottom:none}
-.stock-chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 8px;border-radius:100px}
+.stock-chip{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 8px;border-radius:100px}
 .stock-chip.dispo{background:var(--green-bg);color:var(--green)}
 .stock-chip.loc{background:var(--blue-lt);color:var(--blue)}
 .stock-chip.panne{background:var(--red-bg);color:var(--red)}
@@ -1328,7 +1331,7 @@ function showCelebration(montantCents){
   const prenom = escHtml((STATE.transporteurNom||'').split(' ')[0] || '');
   overlay.innerHTML = `
     <div class="celebrate-card">
-      <div class="celebrate-emoji">🎉</div>
+      <div class="celebrate-emoji" aria-hidden="true">🎉</div>
       <div class="celebrate-title">Mission accomplie${prenom?', '+prenom:''} !</div>
       <p class="celebrate-sub">Bien joué, le client va être content. On passe à la suite ?</p>
       ${montantCents>0?`<div class="celebrate-amount">+${montant} €</div>`:''}
@@ -1437,7 +1440,7 @@ function openForgotPin(){
       <p class="sub">Entre l'email connu par Aly, on t'envoie ton code.</p>
       <input type="text" id="forgot-email" placeholder="ton@email.fr" autocomplete="email"/>
       <button class="btn btn-blue" id="forgot-send-btn" onclick="sendForgotPin()">Envoyer</button>
-      <button class="btn btn-grey" onclick="closeForgotPin()">Annuler</button>
+      <button class="forgot-link" onclick="closeForgotPin()">Annuler</button>
       <div class="ok-msg" id="forgot-ok"></div>
     </div>`;
   document.body.appendChild(overlay);
@@ -1471,13 +1474,11 @@ function openProbleme(){
     <div class="sheet">
       <h1 style="margin-bottom:14px">⚠️ Quel est le problème ?</h1>
       <div class="probleme-list">
-        <div style="display:flex;gap:8px">
-          <button class="btn btn-amber" style="flex:1" onclick="startClientAbsent('camera')">📵 Client absent — filmer</button>
-          <button class="btn btn-amber" style="flex:1" onclick="startClientAbsent('galerie')">📵 Client absent — galerie</button>
-        </div>
+        <button class="btn btn-amber" onclick="startClientAbsent('camera')">📵 Client absent — filmer</button>
+        <button class="btn btn-amber" onclick="startClientAbsent('galerie')">📵 Client absent — depuis la galerie</button>
         <button class="btn btn-amber" onclick="sendProbleme('appareil_en_panne')">🔧 Appareil en panne</button>
-        <button class="btn btn-amber" onclick="sendProbleme('retard')">⏰ Retard important</button>
-        <button class="btn btn-amber" onclick="sendProbleme('autre')">❓ Autre problème</button>
+        <button class="btn btn-grey" onclick="sendProbleme('retard')">⏰ Retard important</button>
+        <button class="btn btn-grey" onclick="sendProbleme('autre')">❓ Autre problème</button>
         <button class="btn btn-grey" onclick="closeProbleme()">Annuler</button>
       </div>
     </div>`;
@@ -1523,17 +1524,16 @@ function renderActivite(d){
   zone.innerHTML = `
     <div class="stat-big">
       <div class="amount">${nonVerse} €</div>
-      <div class="caption">Solde à verser · virement hebdomadaire automatique, ou à la demande — traité sous 48h</div>
+      <div class="caption" style="opacity:1">Solde à verser · virement hebdomadaire automatique</div>
     </div>
-    <div class="stat-row">
+    <div class="stat-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="stat-tile"><div class="n">${d.missions_aujourdhui||0}</div><div class="l">Mission${(d.missions_aujourdhui||0)>1?'s':''} aujourd'hui</div></div>
-      <div class="stat-tile"><div class="n">${(d.gain_aujourdhui_euros||0).toFixed(2).replace('.',',')} €</div><div class="l">Gagné aujourd'hui</div></div>
-    </div>
-    <div class="stat-row">
+      <div class="stat-tile"><div class="n" style="color:var(--green);font-weight:700">${(d.gain_aujourdhui_euros||0).toFixed(2).replace('.',',')} €</div><div class="l">Gagné aujourd'hui</div></div>
       <div class="stat-tile"><div class="n">${d.missions_mois||0}</div><div class="l">Mission${(d.missions_mois||0)>1?'s':''} ce mois</div></div>
-      <div class="stat-tile"><div class="n">${(d.gain_mois_euros||0).toFixed(2).replace('.',',')} €</div><div class="l">Gagné ce mois</div></div>
+      <div class="stat-tile"><div class="n" style="color:var(--green);font-weight:700">${(d.gain_mois_euros||0).toFixed(2).replace('.',',')} €</div><div class="l">Gagné ce mois</div></div>
     </div>
     <button class="btn btn-green" id="demander-virement-btn" ${(d.non_verse_euros>0 && !enCours)?'':'disabled'} onclick="demanderVirement()">💰 ${enCours?'Demande en cours…':'Demander mon virement'}</button>
+    ${(!d.non_verse_euros && !enCours)?`<p style="text-align:center;font-size:12.5px;color:var(--grey);margin-top:-6px">Pas de solde à verser pour l'instant</p>`:''}
     <div class="err" id="activite-err"></div>
     ${missionsHistoryHtml(d.missions)}
     ${(d.virements&&d.virements.length)?`
@@ -1564,10 +1564,10 @@ function missionsHistoryHtml(missions){
       const items = groups[key];
       const total = items.reduce((s,m)=>s+(m.montant_cents||0),0);
       return `
-      <details class="card" ${i===0?'open':''} style="margin-bottom:10px;padding:16px 18px">
-        <summary style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-weight:700;list-style:none">
+      <details class="card month-details" ${i===0?'open':''} style="margin-bottom:10px;padding:16px 18px">
+        <summary style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;list-style:none">
           <span style="text-transform:capitalize">${monthLabel(key)}</span>
-          <span style="font-weight:600;color:var(--grey)">${items.length} mission${items.length>1?'s':''} · ${(total/100).toFixed(2).replace('.',',')} €</span>
+          <span style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--grey)">${items.length} mission${items.length>1?'s':''} · ${(total/100).toFixed(2).replace('.',',')} €<span class="month-chevron">›</span></span>
         </summary>
         <div class="vlist">
           ${items.map(m => `
@@ -1630,21 +1630,22 @@ function renderChecklist(d){
     return;
   }
   const climatiseurPills = d.climatiseurs.map(c =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef2f7;color:var(--blue);font-weight:700;font-size:13px;padding:6px 12px;border-radius:100px">❄️ Unité n°${c.numero}${c.kit==='velux'?' 🔺':''}</span>`
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-lt);color:var(--blue);font-weight:700;font-size:13px;padding:6px 12px;border-radius:100px">❄️ Unité n°${c.numero}${c.kit==='velux'?' 🪟':''}</span>`
   ).join('');
   const items = [];
   if(d.kits.universel) items.push(`🧰 ${d.kits.universel} kit${d.kits.universel>1?'s':''} de calfeutrage universel`);
-  if(d.kits.velux) items.push(`🔺 ${d.kits.velux} kit${d.kits.velux>1?'s':''} de calfeutrage Vélux`);
+  if(d.kits.velux) items.push(`🪟 ${d.kits.velux} kit${d.kits.velux>1?'s':''} de calfeutrage Vélux`);
   if(d.fixe){
     items.push(`🎒 ${d.fixe.sac_transport} sac de transport`);
     items.push(`✂️ ${d.fixe.ciseaux} paire de ciseaux`);
-    items.push(`🎗️ ${d.fixe.velcro_secours} rouleaux de velcro de secours`);
+    items.push(`🧵 ${d.fixe.velcro_secours} rouleaux de velcro de secours`);
     items.push(`🪣 ${d.fixe.bac_vidange} bac vidange`);
   }
   const itemsHtml = items.map(t => `<div class="info-row" style="font-size:14.5px">${t}</div>`).join('');
   zone.innerHTML = `
     <div class="card">
-      <h1 style="margin-bottom:4px">🎒 Matériel à récupérer au box</h1>
+      <div class="eyebrow">Avant de partir</div>
+      <h1 style="margin-bottom:4px">🧳 Matériel à récupérer au box</h1>
       <p class="sub" style="margin-bottom:16px">${d.nb_missions} mission${d.nb_missions>1?'s':''} aujourd'hui</p>
       ${d.climatiseurs.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${climatiseurPills}</div>` : ''}
       <div style="margin-bottom:16px">${itemsHtml}</div>
@@ -1699,11 +1700,8 @@ function renderStock(d){
       <div class="stock-gauge">
         <div class="stock-gauge-fill ${alerte?'alert':''}" style="width:${pct}%"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--grey)">
-        <span>${alerte?'⚠️ Stock bas — ':''}<strong>${d.disponibles}</strong> disponible${d.disponibles>1?'s':''}</span>
-        <span>${pct}% libre</span>
-      </div>
-      ${alerte?`<p class="step-hint" style="margin-top:10px">⚠️ Seuil d'alerte atteint (≤ ${d.seuil_alerte} unité${d.seuil_alerte>1?'s':''}). Préviens Aly.</p>`:''}
+      <div style="text-align:right;font-size:12px;color:var(--grey)">${pct}% de la flotte disponible</div>
+      ${alerte?`<p class="step-hint" style="margin-top:10px">⚠️ Stock bas — ${d.disponibles} disponible${d.disponibles>1?'s':''} (seuil ≤ ${d.seuil_alerte}). Préviens Aly.</p>`:''}
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
       <div class="stat-tile"><div class="n" style="color:var(--green)">${d.disponibles}</div><div class="l">Disponibles</div></div>
@@ -1711,7 +1709,7 @@ function renderStock(d){
       <div class="stat-tile"><div class="n" style="color:var(--red)">${d.en_panne}</div><div class="l">En panne</div></div>
       <div class="stat-tile"><div class="n" style="color:var(--amber)">${d.maintenance}</div><div class="l">Maintenance</div></div>
     </div>
-    <div class="section-title">Détail par unité</div>
+    <div class="eyebrow" style="margin-bottom:8px">Détail par unité</div>
     <div class="card" style="padding:6px 16px">
       ${(d.appareils||[]).map(a => {
         const statut = a.en_location ? 'location' : a.statut;
