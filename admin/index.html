@@ -154,6 +154,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .chip.en_attente,.chip.a_faire,.chip.acceptee,.chip.demande{background:var(--amber-bg);color:var(--amber)}
 .chip.annulee,.chip.probleme,.chip.refusee{background:var(--red-bg);color:var(--red)}
 .chip.en_location{background:var(--blue-lt);color:var(--blue)}
+.chip.inactif{background:var(--bg);color:var(--grey)}
 .chip.type-livraison{background:var(--blue-lt);color:var(--blue)}
 .chip.type-recuperation{background:var(--amber-bg);color:var(--amber)}
 .chip.type-changement{background:var(--gold-lt);color:#8a6d2f}
@@ -658,8 +659,8 @@ function waNumber(tel){
 function contactButtonsHtml(tel){
   if(!tel) return '';
   const w = waNumber(tel);
-  return `<a class="btn btn-grey" style="text-decoration:none" href="tel:${encodeURIComponent(tel)}" title="Appeler">📞</a>`
-    + (w ? `<a class="btn btn-grey" style="text-decoration:none" href="https://wa.me/${w}" target="_blank" rel="noopener" title="WhatsApp">💬</a>` : '');
+  return `<a class="btn btn-grey" style="text-decoration:none" href="tel:${encodeURIComponent(tel)}" title="Appeler" aria-label="Appeler">📞</a>`
+    + (w ? `<a class="btn btn-grey" style="text-decoration:none" href="https://wa.me/${w}" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp">💬</a>` : '');
 }
 // Génère et télécharge un CSV côté navigateur (aucun appel serveur) à partir
 // d'un tableau d'objets déjà en cache — évite d'ajouter un endpoint juste
@@ -1080,10 +1081,10 @@ function renderChecklistBox(d){
   const dateLabel = new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
   const header = `
     <div class="card" style="margin-bottom:16px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <button class="btn btn-grey" onclick="changeChecklistDate(-1)">← Veille</button>
-        <h2 style="text-transform:capitalize;margin:0">📅 ${escHtml(dateLabel)}</h2>
-        <button class="btn btn-grey" onclick="changeChecklistDate(1)">Lendemain →</button>
+      <div style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px">
+        <button class="btn btn-grey" style="min-height:44px" onclick="changeChecklistDate(-1)">← Veille</button>
+        <h2 style="text-transform:capitalize;margin:0;text-align:center">📅 ${escHtml(dateLabel)}</h2>
+        <button class="btn btn-grey" style="min-height:44px" onclick="changeChecklistDate(1)">Lendemain →</button>
       </div>
     </div>`;
   if(!d.checklists.length){
@@ -1105,7 +1106,7 @@ function renderChecklistBox(d){
     return `
       <div class="card" style="margin-bottom:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-          <span style="font-weight:700;font-size:15px">👷 ${escHtml(c.nom)}</span>
+          <span style="font-family:var(--disp);font-weight:600;font-size:17px">👷 ${escHtml(c.nom)}</span>
           <span class="chip ${c.validated?'actif':'a_faire'}">${c.validated?'✅ Prise en charge':'⏳ Pas encore prise en charge'}</span>
         </div>
         <div class="row-meta" style="margin-bottom:10px">${c.nb_missions} mission${c.nb_missions>1?'s':''}</div>
@@ -2399,7 +2400,7 @@ async function loadTransporteursEquipe(){
           <span class="row-title">${escHtml(t.nom)}</span>
           <span style="display:flex;gap:6px;align-items:center">
             ${enPause?`<span class="chip" style="background:#fef3c7;color:#b45309;border:1px solid #fcd34d">⏸ En pause</span>`:''}
-            <span class="chip ${t.actif?'actif':'annulee'}">${t.actif?'actif':'inactif'}</span>
+            <span class="chip ${t.actif?'actif':'inactif'}">${t.actif?'actif':'inactif'}</span>
           </span>
         </div>
         <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''}</div>
@@ -2407,12 +2408,12 @@ async function loadTransporteursEquipe(){
         ${CITIES_CACHE.length>1?`<div class="row-meta">🌍 ${(t.villes&&t.villes.length) ? t.villes.map(id => escHtml((CITIES_CACHE.find(c=>c.id===id)||{}).name||'?')).join(', ') : 'Aucune zone'}</div>`:''}
         ${t.notes?`<div class="row-meta" style="font-style:italic">📝 ${escHtml(t.notes)}</div>`:''}
         <div class="row-meta" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
-          ${[{key:'livraison',label:'Livraison',tarif:'30€'},{key:'livraison_technicien',label:'Livr.+install.',tarif:'40€'},{key:'recuperation',label:'Récupération',tarif:'30€'},{key:'changement',label:'Remplacement',tarif:'40€'}].map(mt=>{const on=!(t.types_autorises&&t.types_autorises.length)||t.types_autorises.includes(mt.key);return`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;background:${on?'var(--green-bg)':'var(--bg)'};color:${on?'var(--green)':'var(--grey-soft)'};opacity:${on?1:.5};text-decoration:${on?'none':'line-through'}">${mt.label} · ${mt.tarif}</span>`;}).join('')}
+          ${[{key:'livraison',label:'Livraison',tarif:'30€'},{key:'livraison_technicien',label:'Livr.+install.',tarif:'40€'},{key:'recuperation',label:'Récupération',tarif:'30€'},{key:'changement',label:'Remplacement',tarif:'40€'}].filter(mt=>!(t.types_autorises&&t.types_autorises.length)||t.types_autorises.includes(mt.key)).map(mt=>`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;background:var(--green-bg);color:var(--green)">${mt.label} · ${mt.tarif}</span>`).join('')}
         </div>
         <div style="display:flex;align-items:center;gap:10px;margin:10px 0 4px">
           <span style="font-size:12px;color:var(--grey)">Score 30j</span>
           <span style="padding:2px 10px;border-radius:100px;font-size:12px;font-weight:700;background:${scoreBg};color:${scoreColor}">${scoreLabel}</span>
-          ${missions30!=null?`<span style="font-size:12px;color:var(--grey)">${missions30} mission${missions30>1?'s':''}</span>`:''}
+          ${missions30!=null?`<span style="font-size:12px;color:var(--grey)">${missions30} mission${missions30>1?'s':''}</span>`:score==null?`<span style="font-size:12px;color:var(--grey)">Pas encore assez de missions</span>`:''}
           <button class="btn btn-grey" style="padding:3px 10px;font-size:12px;margin-left:auto" onclick="openTransporteurStats(${t.id})">📊 Stats</button>
         </div>
         <div class="day-progress" style="margin:8px 0 0;padding:0">${chargeJourHtml(t.id, ld.livraisons)}</div>
@@ -2420,7 +2421,7 @@ async function loadTransporteursEquipe(){
           ${enPause
             ? `<button class="btn btn-green" onclick="pauseTransporteur(${t.id}, false, this)">▶ Reprendre</button>`
             : `<button class="btn btn-grey" onclick="pauseTransporteur(${t.id}, true, this)">⏸ Mettre en pause</button>`}
-          <button class="btn btn-grey" onclick="toggleTransporteur(${t.id}, ${!t.actif}, this)">${t.actif?'Désactiver':'Réactiver'}</button>
+          <button class="btn ${t.actif?'btn-grey':'btn-green'}" onclick="toggleTransporteur(${t.id}, ${!t.actif}, this)">${t.actif?'Désactiver':'✅ Réactiver'}</button>
           <button class="btn btn-blue" onclick="editFiche(${t.id})">✏️ Modifier la fiche</button>
           <button class="btn btn-grey" onclick="resetPin(${t.id})">Changer le code</button>
           <button class="btn btn-red" onclick="deleteTransporteur(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}')">🗑️ Supprimer</button>
@@ -2428,7 +2429,7 @@ async function loadTransporteursEquipe(){
       </div>`;
     }).join('') || '<p class="empty">Aucun transporteur.</p>';
 
-    zone.innerHTML = testCardHtml + list + `
+    zone.innerHTML = list + testCardHtml + `
       <div class="card">
         <h2>Ajouter un transporteur</h2>
         <label for="t-nom">Nom</label>
@@ -2659,9 +2660,9 @@ async function loadIncidents(){
     const pt = d.par_type_30j || {};
     const statHtml = `
       <div class="stat-grid" style="margin-bottom:16px">
-        <div class="stat-tile"><div class="n">${pt.retard||0}</div><div class="l">Retards (30j)</div></div>
-        <div class="stat-tile"><div class="n">${pt.materiel||0}</div><div class="l">Matériel (30j)</div></div>
-        <div class="stat-tile" style="grid-column:1/-1"><div class="n">${pt.autre||0}</div><div class="l">Autres incidents (30j) — dont client absent</div></div>
+        <div class="stat-tile"><div class="n" style="${pt.retard?'color:var(--red)':''}">${pt.retard||0}</div><div class="l">Retards (30j)</div></div>
+        <div class="stat-tile"><div class="n" style="${pt.materiel?'color:var(--red)':''}">${pt.materiel||0}</div><div class="l">Matériel (30j)</div></div>
+        <div class="stat-tile" style="grid-column:1/-1"><div class="n" style="${pt.autre?'color:var(--amber)':''}">${pt.autre||0}</div><div class="l">Autres incidents (30j) — dont client absent</div></div>
       </div>`;
     if(!d.incidents || !d.incidents.length){ zone.innerHTML = statHtml + '<p class="empty">🧯 Aucun incident enregistré.</p>'; return; }
     const list = d.incidents.map(i => {
@@ -2673,7 +2674,7 @@ async function loadIncidents(){
             <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
           </div>
           <div class="row-meta">${escHtml((res.prenom||'')+' '+(res.nom||''))}${res.adresse?' · '+escHtml(res.adresse):''}<br/>${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
-          ${i.statut!=='resolu'?`<div class="row-actions"><button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'resolu',this)">Marquer résolu</button></div>`:''}
+          ${i.statut!=='resolu'?`<div class="row-actions"><button class="btn btn-green" onclick="updateIncidentStatut(${i.id},'resolu',this)">✅ Marquer résolu</button></div>`:''}
         </div>`;
     }).join('');
     zone.innerHTML = statHtml + list;
@@ -2727,10 +2728,10 @@ function renderClients(){
     <div class="row-item">
       <div class="row-top">
         <span class="row-title">${escHtml((c.prenom||'')+' '+(c.nom||''))}${c.raison_sociale?` <span class="chip a_faire">🏢 ${escHtml(c.raison_sociale)}</span>`:''}</span>
-        <span class="chip actif">${c.nb_reservations} réservation${c.nb_reservations>1?'s':''}</span>
+        <span class="chip inactif">${c.nb_reservations} réservation${c.nb_reservations>1?'s':''}</span>
       </div>
       <div class="row-meta">${escHtml(c.tel||'—')}${c.email?' · '+escHtml(c.email):''}${c.tel_secondaire?' · ☎️ Secours : '+escHtml(c.tel_secondaire):''}${c.siret?' · SIRET : '+escHtml(c.siret):''}${c.derniere_adresse?'<br/>Dernière adresse : '+escHtml(c.derniere_adresse):''}</div>
-      ${c.acces_difficile?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-top:6px">⚠️ ${escHtml(c.acces_difficile)}</div>`:''}
+      ${c.acces_difficile?`<div class="row-meta" style="color:var(--blue);font-weight:700;margin-top:6px">📌 ${escHtml(c.acces_difficile)}</div>`:''}
       <div class="row-actions">
         ${contactButtonsHtml(c.tel)}
         <button class="btn btn-grey" onclick="editAccesDifficile(${c.id}, '${(c.acces_difficile||'').replace(/'/g,"\\'")}')">${c.acces_difficile?'Modifier':'Ajouter'} une note d'accès</button>
@@ -3112,19 +3113,19 @@ function renderVilles(){
       <div class="row-top">
         <span class="row-title">${escHtml(c.name)}</span>
         <span style="display:flex;gap:6px;align-items:center">
-          ${c.sold_out?`<span class="chip" style="background:#fee2e2;color:var(--red);border:1px solid #fca5a5">🔒 Complet</span>`:''}
-          <span class="chip ${c.actif?'actif':'annulee'}">${c.actif?'active':'inactive'}</span>
+          ${c.sold_out?`<span class="chip" style="background:#fee2e2;color:var(--red);border:1px solid #fca5a5">🚫 Complet</span>`:''}
+          <span class="chip ${c.actif?'actif':'inactif'}">${c.actif?'active':'inactive'}</span>
         </span>
       </div>
-      <div class="row-meta">${escHtml(c.dep||'—')}</div>
+      ${c.dep?`<div class="row-meta">${escHtml(c.dep)}</div>`:''}
       <div class="row-meta">Codes postaux : ${(c.postal_codes&&c.postal_codes.length) ? escHtml(c.postal_codes.join(', ')) : '—'}</div>
       ${c.sold_out?`<div class="row-meta" style="color:var(--red);font-size:12px">Le site affiche "complet" pour cette ville — aucune nouvelle réservation possible.</div>`:''}
       <div class="row-meta">💶 ${baremeSummaryHtml(c)}</div>
       <div class="row-actions">
         <button class="btn btn-grey" onclick="editVillePostaux(${c.id}, '${((c.postal_codes||[]).join(', ')).replace(/'/g,"\\'")}')">Modifier les codes postaux</button>
         <button class="btn btn-grey" onclick="editVilleBareme(${c.id})">Modifier le barème</button>
-        <button class="btn ${c.sold_out?'btn-green':'btn-grey'}" onclick="toggleVilleSoldOut(${c.id}, ${!c.sold_out})">${c.sold_out?'🔓 Rouvrir':'🔒 Passer en complet'}</button>
-        <button class="btn btn-grey" onclick="toggleVilleActif(${c.id}, ${!c.actif})">${c.actif?'Désactiver':'Réactiver'}</button>
+        <button class="btn ${c.sold_out?'btn-green':'btn-grey'}" onclick="toggleVilleSoldOut(${c.id}, ${!c.sold_out})">${c.sold_out?'🔓 Rouvrir':'🚫 Passer en complet'}</button>
+        <button class="btn ${c.actif?'btn-grey':'btn-green'}" onclick="toggleVilleActif(${c.id}, ${!c.actif})">${c.actif?'Désactiver':'✅ Réactiver'}</button>
       </div>
     </div>`).join('') || '<p class="empty">🌍 Aucune ville configurée.</p>';
   zone.innerHTML = list + `
@@ -3138,6 +3139,7 @@ function renderVilles(){
       </div>
       <label for="v-dep" style="margin-top:14px">Département</label>
       <input type="text" id="v-dep" placeholder="06"/>
+      <p class="sub" style="margin-top:-8px;font-size:12px">Sert uniquement à l'affichage, pas au routage des commandes.</p>
       <label for="v-cp" style="margin-top:14px">Codes postaux couverts (séparés par une virgule)</label>
       <input type="text" id="v-cp" placeholder="06400, 06110, 06150" oninput="cpSearch(this.value)" autocomplete="off"/>
       <div id="v-cp-suggest" style="display:none;margin-top:6px;margin-bottom:4px"></div>
