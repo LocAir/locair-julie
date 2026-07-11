@@ -1332,7 +1332,7 @@ function reservationRowHtml(res, readOnly){
           <option value="">Changer statut…</option>
           ${STATUTS_RESA.map(s=>`<option value="${s}" ${s===res.statut?'selected':''}>${RESA_LABEL[s]}</option>`).join('')}
         </select>
-        <button class="btn btn-grey" onclick="deleteReservation(${res.id}, '${res.statut}')">Supprimer</button>
+        <button class="btn btn-grey" onclick="deleteReservation(${res.id}, '${res.statut}')">Masquer</button>
       </div>`}
     </div>`;
 }
@@ -1660,14 +1660,14 @@ function deleteReservation(id, statut){
   const warn = (statut==='confirmee'||statut==='en_attente')
     ? " Cette réservation est encore active — la retirer de l'écran ne l'annule pas et ne libère pas le stock, elle disparaît juste de cette liste (et de l'onglet Livraisons)."
     : " Elle disparaît de cette liste (et de l'onglet Livraisons) — récupérable via \"Afficher les réservations supprimées\" en bas de page.";
-  confirmAction(`Supprimer cette réservation de l'écran ?${warn}`, async () => {
+  confirmAction(`Masquer cette réservation de l'écran ?${warn}`, async () => {
     try{
       const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, masquee:true})});
       if(!r.ok) throw new Error((await r.json()).error||'Erreur');
       const res = RESERVATIONS_CACHE.find(x => x.id===id);
       if(res) res.masquee = true;
       renderReservationsToolbar();
-      showToast('Réservation supprimée de l\'écran', 'success');
+      showToast('Réservation masquée', 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {danger:true, yesLabel:'Supprimer de l\'écran'});
 }
@@ -1834,6 +1834,7 @@ async function openCreateMissionModal(){
       </select>
       <div id="cm-new-client" style="margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--r-sm)">
         <p class="sub" style="margin:0 0 10px">Crée le client, sa réservation, et ses missions de livraison/récupération automatiquement — comme dans l'onglet Réservations.</p>
+        <div class="eyebrow" style="margin-bottom:8px">Client</div>
         <label for="cm-c-prenom">Prénom *</label>
         <input type="text" id="cm-c-prenom"/>
         <label for="cm-c-nom" style="margin-top:8px">Nom *</label>
@@ -1841,17 +1842,19 @@ async function openCreateMissionModal(){
         <label for="cm-c-tel" style="margin-top:8px">Téléphone</label>
         <input type="tel" id="cm-c-tel"/>
         <div style="margin-top:8px">${typeClientFieldsHtml('cm-c')}</div>
-        <label for="cm-c-adresse" style="margin-top:8px">Adresse *</label>
+        <div class="eyebrow" style="margin:14px 0 8px">Logement</div>
+        <label for="cm-c-adresse">Adresse *</label>
         <input type="text" id="cm-c-adresse"/>
-        <div class="inline-form" style="margin-top:8px">
-          <div><label for="cm-c-debut">Date livraison *</label><input type="date" id="cm-c-debut" value="${today}"/></div>
-          <div><label for="cm-c-fin">Date récupération *</label><input type="date" id="cm-c-fin"/></div>
+        ${logisticsFieldsHtml('cm-c')}
+        <div class="eyebrow" style="margin:14px 0 8px">Dates &amp; quantité</div>
+        <div class="inline-form">
+          <div><label for="cm-c-debut">Date livraison *</label><input type="date" id="cm-c-debut" value="${today}" oninput="document.getElementById('cm-c-debut-preview').textContent = this.value ? frDate(this.value) : ''"/><div id="cm-c-debut-preview" style="font-size:11.5px;color:var(--grey);margin-top:3px">${frDate(today)}</div></div>
+          <div><label for="cm-c-fin">Date récupération *</label><input type="date" id="cm-c-fin" oninput="document.getElementById('cm-c-fin-preview').textContent = this.value ? frDate(this.value) : ''"/><div id="cm-c-fin-preview" style="font-size:11.5px;color:var(--grey);margin-top:3px"></div></div>
         </div>
         <div class="inline-form" style="margin-top:8px">
           <div><label for="cm-c-qte">Quantité</label><input type="number" id="cm-c-qte" min="1" max="5" value="1"/></div>
           <div><label for="cm-c-prix">Prix total (€)</label><input type="number" id="cm-c-prix" min="0" step="0.5"/></div>
         </div>
-        ${logisticsFieldsHtml('cm-c')}
       </div>
       <div id="cm-existing-resa" class="hidden">
         <label for="cm-type">Type</label>
