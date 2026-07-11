@@ -1946,6 +1946,7 @@ function renderLivraisons(){
           ${contactButtonsHtml(res.tel)}
           <select onchange="assignTransporteur(${m.id}, this.value, this)">${options}</select>
           ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom).replace(/'/g,"\\'")}', '${escHtml(res.adresse||'').replace(/'/g,"\\'")}')">🔴 Suivre en direct</button>`:''}
+          ${['acceptee','arrivee'].includes(m.statut)?`<button class="btn btn-grey" title="Remettre en attente d'acceptation" onclick="remettreAFaire(${m.id})">↩️ Remettre à faire</button>`:''}
           ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">✅ Problème résolu</button>`:''}
           ${mediaBtns.join('')}
           ${mediaBtns.length===0 && m.statut==='fait' ? '<span class="row-meta" style="align-self:center">Aucune preuve enregistrée</span>' : ''}
@@ -2012,6 +2013,22 @@ function resolveProbleme(livraisonId){
       loadLivraisons();
       loadAlerts();
       showToast('Mission réactivée', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
+}
+// Équivalent admin du bouton "⏪ Faire plus tard" côté transporteur — utile
+// quand une mission a été acceptée par erreur (ou trop en avance pour être
+// démarrée) et qu'on ne veut pas dépendre du téléphone du livreur pour la
+// remettre en attente d'acceptation.
+function remettreAFaire(livraisonId){
+  confirmAction('Remettre cette mission en attente d\'acceptation ? Le livreur devra la ré-accepter avant de pouvoir la démarrer.', async () => {
+    try{
+      const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'remettre_a_faire', livraison_id:livraisonId})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadLivraisons();
+      loadAlerts();
+      showToast('Mission remise à faire', 'success');
     }catch(e){ showToast(e.message, 'error'); }
   });
 }
