@@ -58,6 +58,7 @@ create table transporteurs (
   nom                      text not null,
   telephone                text,
   email                    text, -- utilisé uniquement pour "code oublié"
+  notes                    text, -- informations libres saisies par l'admin (fiche transporteur)
   -- Code personnel (4-6 chiffres) : identifie ET authentifie ce transporteur,
   -- pour qu'un livreur ne puisse jamais agir avec l'identifiant d'un collègue.
   pin                      text not null unique,
