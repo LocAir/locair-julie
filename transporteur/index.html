@@ -1104,8 +1104,12 @@ function renderDetail(){
       ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
     `;
 
+  const enCours = ['acceptee','arrivee'].includes(m.statut);
   document.getElementById('detail-screen').innerHTML = `
-    <button class="detail-back" onclick="show('missions-screen')">← Retour</button>
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <button class="detail-back" style="margin-bottom:14px" onclick="show('missions-screen')">← Retour</button>
+      ${enCours ? `<button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>` : ''}
+    </div>
     <div class="card">
       <h1>${TYPE_ICON[m.type]||''} ${missionTypeLabel(m)}</h1>
       <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):'', m.montant_preview?`💶 ${Math.round(m.montant_preview/100)} €`:''].filter(Boolean).join(' · ')}</p>
@@ -1231,6 +1235,13 @@ async function doAction(action, extra){
       if(errEl2){errEl2.textContent = e.message; errEl2.style.display='block';}
     }
   }
+}
+
+// Retour arrière si une mission a été acceptée par erreur (mauvais tap) —
+// la remet dans "À faire" (même transporteur, pas de réassignation) sans
+// perdre une éventuelle progression déjà enregistrée (photo, vidange).
+function reporterMission(){
+  doAction('reporter');
 }
 
 // ── Célébration (gamification, façon Uber/Deliveroo) ─────────────────────────

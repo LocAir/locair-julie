@@ -115,6 +115,18 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, statut: 'acceptee' });
     }
 
+    // Retour arrière si le livreur a accepté une mission par erreur (mauvais
+    // tap) — remise en "à faire" pour lui-même (pas de réassignation à un
+    // autre transporteur), sans effacer une éventuelle progression déjà
+    // enregistrée (photo, vidange) qui resterait valable au retour dessus.
+    if (action === 'reporter') {
+      if (!['acceptee', 'arrivee'].includes(liv.statut)) {
+        return res.status(409).json({ error: 'Cette mission n\'est pas en cours' });
+      }
+      await supabase.from('livraisons').update({ statut: 'a_faire', accepted_at: null, arrivee_at: null }).eq('id', liv.id);
+      return res.status(200).json({ ok: true, statut: 'a_faire' });
+    }
+
     if (action === 'indisponible') {
       if (liv.statut !== 'a_faire') return res.status(409).json({ error: 'Mission déjà traitée' });
 
