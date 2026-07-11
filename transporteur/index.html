@@ -1685,6 +1685,16 @@ async function loadStock(){
     zone.innerHTML = '<p class="empty">Impossible de charger le stock. Réessaie.</p>';
   }
 }
+function sortAppareilsByGravite(appareils){
+  // Remonte en tête les unités qui demandent une action (panne, maintenance),
+  // puis celles chez un client, puis les disponibles — plutôt que l'ordre
+  // brut par numéro qui noyait les pannes dans la liste.
+  const rang = a => {
+    const statut = a.en_location ? 'location' : a.statut;
+    return statut==='panne' ? 0 : statut==='maintenance' ? 1 : statut==='location' ? 2 : statut==='loue' ? 4 : 3;
+  };
+  return [...appareils].sort((a,b) => rang(a)-rang(b) || a.numero-b.numero);
+}
 function renderStock(d){
   const zone = document.getElementById('stock-content');
   const pct = d.total ? Math.round(d.disponibles/d.total*100) : 0;
@@ -1711,7 +1721,7 @@ function renderStock(d){
     </div>
     <div class="eyebrow" style="margin-bottom:8px">Détail par unité</div>
     <div class="card" style="padding:6px 16px">
-      ${(d.appareils||[]).map(a => {
+      ${sortAppareilsByGravite(d.appareils||[]).map(a => {
         const statut = a.en_location ? 'location' : a.statut;
         return `<div class="stock-unit">
           <span>Unité n°${a.numero}${a.reference?` <span style="color:var(--grey);font-size:12px">(${escHtml(a.reference)})</span>`:''}</span>
