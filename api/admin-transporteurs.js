@@ -106,6 +106,7 @@ module.exports = async (req, res) => {
       if (body.nom != null)       patch.nom       = body.nom.trim();
       if (body.telephone != null) patch.telephone = body.telephone.trim() || null;
       if (body.email != null)     patch.email     = body.email.trim().toLowerCase() || null;
+      if (body.notes != null)     patch.notes     = body.notes.trim().slice(0, 2000) || null;
       if (body.actif != null)     patch.actif     = Boolean(body.actif);
       if (body.en_pause != null)  patch.en_pause  = Boolean(body.en_pause);
       if (body.pin != null && body.pin.trim())  patch.pin = body.pin.trim();
