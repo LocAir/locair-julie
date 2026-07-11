@@ -346,13 +346,15 @@ function logout(){
 }
 
 // ── Position en direct (pendant une mission en cours) ────────────────────────
-// Envoyée uniquement quand au moins une mission est acceptée/en route, pour
-// ne pas suivre le livreur en dehors de son activité.
+// Envoyée uniquement quand au moins une mission acceptée est démarrable
+// aujourd'hui — accepter une mission plusieurs semaines à l'avance ne doit
+// jamais déclencher le suivi GPS avant le jour réel du travail.
 let _watchId = null;
 let _lastPositionSentAt = 0;
 
 function hasActiveTravelMission(){
-  return STATE.missions.some(m => m.statut === 'acceptee' || m.statut === 'arrivee');
+  const todayStr = new Date().toISOString().slice(0,10);
+  return STATE.missions.some(m => ['acceptee','arrivee'].includes(m.statut) && m.date_prevue<=todayStr);
 }
 
 function updatePositionTracking(){
@@ -801,7 +803,10 @@ function renderTranspBanner(){
   const todayStr = new Date().toISOString().slice(0,10);
   const aFaireAujourd = STATE.missions.filter(m => m.statut==='a_faire' && m.date_prevue===todayStr).length;
   const aFaireTotal   = STATE.missions.filter(m => m.statut==='a_faire').length;
-  const enCours       = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut)).length;
+  // "En cours" = démarrable aujourd'hui, pas seulement acceptée — une mission
+  // acceptée à l'avance pour une date future n'est pas encore en cours et ne
+  // doit pas déclencher le suivi GPS ni ce bandeau.
+  const enCours       = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut) && m.date_prevue<=todayStr).length;
   const banners = [];
   if(STATE.en_pause){
     banners.push({
