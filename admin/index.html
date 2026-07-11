@@ -839,15 +839,20 @@ function updateTabBadge(tab, count){
 function renderAlertsBanner(d){
   const zone = document.getElementById('alerts-banner-zone');
   if(!zone) return;
+  // Deux paliers seulement, alignés sur le code couleur déjà utilisé ailleurs
+  // dans l'admin (chip.probleme/annulee = rouge, chip.en_attente/demande =
+  // ambre) plutôt que 4 couleurs inventées à la volée — et triés du plus
+  // urgent au moins urgent pour donner une vraie hiérarchie à la pile.
   const alerts = [];
-  if(d.retards > 0)       alerts.push({msg:`🚨 ${d.retards} récupération${d.retards>1?'s':''} en retard`, fn:"goToRetards()", color:'#7f1d1d', bg:'#991b1b'});
-  if(d.non_assignees > 0) alerts.push({msg:`⚠️ ${d.non_assignees} mission${d.non_assignees>1?'s':''} non assignée${d.non_assignees>1?'s':''} sous 72h`, fn:"goToUnassigned()", color:'#7c2d12', bg:'#c2410c'});
-  if(d.incidents > 0)     alerts.push({msg:`🧯 ${d.incidents} incident${d.incidents>1?'s':''} ouvert${d.incidents>1?'s':''}`, fn:"switchAdminTab('incidents')", color:'#1e3a5f', bg:'#1b3a5f'});
-  if(d.reservations > 0)  alerts.push({msg:`🧾 ${d.reservations} réservation${d.reservations>1?'s':''} à traiter`, fn:"switchAdminTab('reservations')", color:'#3b0764', bg:'#6d28d9'});
-  if(d.virements > 0)     alerts.push({msg:`💶 ${d.virements} virement${d.virements>1?'s':''} demandé${d.virements>1?'s':''}`, fn:"switchAdminTab('transporteurs')", color:'#064e3b', bg:'#065f46'});
+  if(d.retards > 0)       alerts.push({sev:1, msg:`🚨 ${d.retards} récupération${d.retards>1?'s':''} en retard`, fn:"goToRetards()"});
+  if(d.non_assignees > 0) alerts.push({sev:1, msg:`⚠️ ${d.non_assignees} mission${d.non_assignees>1?'s':''} non assignée${d.non_assignees>1?'s':''} sous 72h`, fn:"goToUnassigned()"});
+  if(d.incidents > 0)     alerts.push({sev:1, msg:`🧯 ${d.incidents} incident${d.incidents>1?'s':''} ouvert${d.incidents>1?'s':''}`, fn:"switchAdminTab('incidents')"});
+  if(d.reservations > 0)  alerts.push({sev:2, msg:`🧾 ${d.reservations} réservation${d.reservations>1?'s':''} à traiter`, fn:"switchAdminTab('reservations')"});
+  if(d.virements > 0)     alerts.push({sev:2, msg:`💶 ${d.virements} virement${d.virements>1?'s':''} demandé${d.virements>1?'s':''}`, fn:"switchAdminTab('transporteurs')"});
+  alerts.sort((a,b) => a.sev-b.sev);
   zone.innerHTML = alerts.map(a =>
-    `<div onclick="${a.fn}" style="background:${a.bg};color:#fff;padding:10px 16px;border-radius:var(--r);font-weight:700;font-size:13px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
-      <span>${a.msg}</span><span style="font-size:11px;opacity:.8">Voir →</span>
+    `<div onclick="${a.fn}" style="background:${a.sev===1?'var(--red)':'var(--amber)'};color:#fff;padding:10px 16px;border-radius:var(--r);font-weight:700;font-size:13px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+      <span>${a.msg}</span><span style="font-size:11px">Voir →</span>
     </div>`
   ).join('');
 }
