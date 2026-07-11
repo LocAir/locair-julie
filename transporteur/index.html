@@ -227,9 +227,21 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
     </div>
   </div>
 
+  <!-- Écran 2bis : checklist matériel à récupérer au box -->
+  <div id="checklist-screen" class="hidden">
+    <div class="tabbar">
+      <button class="on" onclick="switchTab('checklist')">🎒 Checklist box</button>
+      <button onclick="switchTab('missions')">📋 Missions<span class="tab-badge hidden badge-missions"></span></button>
+      <button onclick="switchTab('activite')">💰 Activité<span class="tab-badge hidden badge-activite"></span></button>
+      <button onclick="switchTab('stock')">📦 Stock</button>
+    </div>
+    <div id="checklist-content"><p class="empty">Chargement…</p></div>
+  </div>
+
   <!-- Écran 3 : liste des missions -->
   <div id="missions-screen" class="hidden">
     <div class="tabbar">
+      <button onclick="switchTab('checklist')">🎒 Checklist box</button>
       <button class="on" onclick="switchTab('missions')">📋 Missions<span class="tab-badge hidden badge-missions"></span></button>
       <button onclick="switchTab('activite')">💰 Activité<span class="tab-badge hidden badge-activite"></span></button>
       <button onclick="switchTab('stock')">📦 Stock</button>
@@ -257,6 +269,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
   <!-- Écran 3bis : activité / gains -->
   <div id="activite-screen" class="hidden">
     <div class="tabbar">
+      <button onclick="switchTab('checklist')">🎒 Checklist box</button>
       <button onclick="switchTab('missions')">📋 Missions<span class="tab-badge hidden badge-missions"></span></button>
       <button class="on" onclick="switchTab('activite')">💰 Activité<span class="tab-badge hidden badge-activite"></span></button>
       <button onclick="switchTab('stock')">📦 Stock</button>
@@ -267,6 +280,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
   <!-- Écran 3ter : stock d'appareils -->
   <div id="stock-screen" class="hidden">
     <div class="tabbar">
+      <button onclick="switchTab('checklist')">🎒 Checklist box</button>
       <button onclick="switchTab('missions')">📋 Missions<span class="tab-badge hidden badge-missions"></span></button>
       <button onclick="switchTab('activite')">💰 Activité<span class="tab-badge hidden badge-activite"></span></button>
       <button class="on" onclick="switchTab('stock')">📦 Stock</button>
@@ -310,13 +324,14 @@ let STATE = {
 };
 
 function show(id){
-  ['login-screen','missions-screen','activite-screen','stock-screen','detail-screen','map-screen'].forEach(s=>{
+  ['login-screen','checklist-screen','missions-screen','activite-screen','stock-screen','detail-screen','map-screen'].forEach(s=>{
     document.getElementById(s).classList.toggle('hidden', s!==id);
   });
 }
 
 function switchTab(tab){
-  if(tab==='activite'){ show('activite-screen'); loadActivite(); }
+  if(tab==='checklist'){ show('checklist-screen'); loadChecklist(); }
+  else if(tab==='activite'){ show('activite-screen'); loadActivite(); }
   else if(tab==='stock'){ show('stock-screen'); loadStock(); }
   else { show('missions-screen'); loadMissions(); }
 }
@@ -1530,6 +1545,72 @@ async function demanderVirement(){
     if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
     if(btn){ btn.disabled = false; btn.textContent = '💰 Demander mon virement'; }
   }
+}
+
+// ── Checklist box (matériel à récupérer avant de partir en tournée) ─────────
+// Synchronisée avec les missions du jour : climatiseurs à emporter (numéros
+// déjà assignés en stock), kits de calfeutrage (universel, sauf Vélux/toit),
+// plus les outils fixes (sac, ciseaux, velcro, bac vidange) qui ne bougent
+// jamais avec le nombre de missions. Validée par le transporteur avant de
+// partir — "↩️ Retour" annule la prise en charge si tapé par erreur.
+async function loadChecklist(){
+  const zone = document.getElementById('checklist-content');
+  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('transporteur-checklist'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'get'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    STATE.checklist = d;
+    renderChecklist(d);
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Impossible de charger la checklist. Réessaie.</p>';
+  }
+}
+function renderChecklist(d){
+  const zone = document.getElementById('checklist-content');
+  if(!d || !d.nb_missions){
+    zone.innerHTML = '<div class="card"><p class="empty" style="padding:0">Aucune mission aujourd\'hui — rien à préparer.</p></div>';
+    return;
+  }
+  const climatiseurPills = d.climatiseurs.map(c =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:#eef2f7;color:var(--blue);font-weight:700;font-size:13px;padding:6px 12px;border-radius:100px">❄️ Unité n°${c.numero}${c.kit==='velux'?' 🔺':''}</span>`
+  ).join('');
+  const items = [];
+  if(d.kits.universel) items.push(`🧰 ${d.kits.universel} kit${d.kits.universel>1?'s':''} de calfeutrage universel`);
+  if(d.kits.velux) items.push(`🔺 ${d.kits.velux} kit${d.kits.velux>1?'s':''} de calfeutrage Vélux`);
+  if(d.fixe){
+    items.push(`🎒 ${d.fixe.sac_transport} sac de transport`);
+    items.push(`✂️ ${d.fixe.ciseaux} paire de ciseaux`);
+    items.push(`🎗️ ${d.fixe.velcro_secours} rouleaux de velcro de secours`);
+    items.push(`🪣 ${d.fixe.bac_vidange} bac vidange`);
+  }
+  const itemsHtml = items.map(t => `<div class="info-row" style="font-size:14.5px">${t}</div>`).join('');
+  zone.innerHTML = `
+    <div class="card">
+      <h1 style="margin-bottom:4px">🎒 Matériel à récupérer au box</h1>
+      <p class="sub" style="margin-bottom:16px">${d.nb_missions} mission${d.nb_missions>1?'s':''} aujourd'hui</p>
+      ${d.climatiseurs.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${climatiseurPills}</div>` : ''}
+      <div style="margin-bottom:16px">${itemsHtml}</div>
+      ${d.validated
+        ? `<div class="probleme-box" style="background:var(--green-bg);margin-bottom:12px"><p style="color:var(--green);font-weight:700">✅ Checklist prise en charge${d.validated_at?' à '+new Date(d.validated_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):''}</p></div>
+           <button class="btn btn-grey" onclick="annulerChecklist()">↩️ Retour — pas encore fait</button>`
+        : `<button class="btn btn-green" onclick="validerChecklist()">✅ Prise en charge — j'ai tout le matériel</button>`
+      }
+    </div>`;
+}
+async function validerChecklist(){
+  try{
+    const r = await fetch(API('transporteur-checklist'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'valider'})});
+    if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+    await loadChecklist();
+  }catch(e){ alert(e.message||'Erreur'); }
+}
+async function annulerChecklist(){
+  try{
+    const r = await fetch(API('transporteur-checklist'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'annuler'})});
+    if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+    await loadChecklist();
+  }catch(e){ alert(e.message||'Erreur'); }
 }
 
 // ── Stock d'appareils ─────────────────────────────────────────────────────────

@@ -303,6 +303,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')">📊 Accueil</button>
         <div class="tabs-group-label">Opérations</div>
         <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
+        <button data-tab="checklist" onclick="switchAdminTab('checklist')">🎒 Checklist box</button>
         <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
         <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
         <div class="tabs-group-label">Équipe</div>
@@ -318,6 +319,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-accueil"></div>
         <div id="tab-stock" class="hidden"></div>
         <div id="tab-reservations" class="hidden"></div>
+        <div id="tab-checklist" class="hidden"></div>
         <div id="tab-livraisons" class="hidden"></div>
         <div id="tab-transporteurs" class="hidden"></div>
         <div id="tab-incidents" class="hidden"></div>
@@ -779,12 +781,13 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','livraisons','transporteurs','incidents','clients','villes'].forEach(t=>{
+  ['accueil','stock','reservations','checklist','livraisons','transporteurs','incidents','clients','villes'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
   if(tab==='stock') loadStock();
   if(tab==='reservations') loadReservations();
+  if(tab==='checklist') loadChecklistBox();
   if(tab==='livraisons') loadLivraisons();
   if(tab==='transporteurs') loadTransporteursTab();
   if(tab==='incidents') loadIncidents();
@@ -1039,6 +1042,71 @@ function dismissMorningBanner(){
   localStorage.setItem('a_morning_seen', new Date().toISOString().slice(0,10));
   const el = document.getElementById('morning-banner-el');
   if(el) el.remove();
+}
+
+// ── CHECKLIST BOX ────────────────────────────────────────────────────────────
+// Vue journalière, par transporteur, du matériel à récupérer au box avant de
+// partir en tournée — même calcul que côté transporteur (api/_lib/checklistBox.js),
+// synchronisé avec les missions du jour sélectionné. Lecture seule ici : la
+// prise en charge (validation) reste un geste du transporteur lui-même.
+let CHECKLIST_DATE = new Date().toISOString().slice(0,10);
+async function loadChecklistBox(){
+  const zone = document.getElementById('tab-checklist');
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-checklist'), {method:'POST', headers:authHeaders(), body:JSON.stringify({date:CHECKLIST_DATE})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    CHECKLIST_DATE = d.date;
+    renderChecklistBox(d);
+  }catch(e){
+    zone.innerHTML = `<p class="empty">Erreur : ${escHtml(e.message)}</p>`;
+  }
+}
+function changeChecklistDate(delta){
+  const d = new Date(CHECKLIST_DATE+'T00:00:00');
+  d.setDate(d.getDate()+delta);
+  CHECKLIST_DATE = d.toISOString().slice(0,10);
+  loadChecklistBox();
+}
+function renderChecklistBox(d){
+  const zone = document.getElementById('tab-checklist');
+  const dateLabel = new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
+  const header = `
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-grey" onclick="changeChecklistDate(-1)">← Veille</button>
+        <h2 style="text-transform:capitalize;margin:0">🎒 ${escHtml(dateLabel)}</h2>
+        <button class="btn btn-grey" onclick="changeChecklistDate(1)">Lendemain →</button>
+      </div>
+    </div>`;
+  if(!d.checklists.length){
+    zone.innerHTML = header + '<p class="empty">Aucune mission ce jour-là.</p>';
+    return;
+  }
+  zone.innerHTML = header + d.checklists.map(c => {
+    const climatiseurPills = c.climatiseurs.map(x =>
+      `<span class="chip actif">❄️ n°${x.numero}${x.kit==='velux'?' 🔺':''}</span>`).join('');
+    const items = [];
+    if(c.kits.universel) items.push(`🧰 ${c.kits.universel} kit${c.kits.universel>1?'s':''} calfeutrage universel`);
+    if(c.kits.velux) items.push(`🔺 ${c.kits.velux} kit${c.kits.velux>1?'s':''} calfeutrage Vélux`);
+    if(c.fixe){
+      items.push(`🎒 ${c.fixe.sac_transport} sac de transport`);
+      items.push(`✂️ ${c.fixe.ciseaux} paire de ciseaux`);
+      items.push(`🎗️ ${c.fixe.velcro_secours} rouleaux velcro de secours`);
+      items.push(`🪣 ${c.fixe.bac_vidange} bac vidange`);
+    }
+    return `
+      <div class="card" style="margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <span style="font-weight:700;font-size:15px">👷 ${escHtml(c.nom)}</span>
+          <span class="chip ${c.validated?'actif':'a_faire'}">${c.validated?'✅ Prise en charge':'⏳ Pas encore prise en charge'}</span>
+        </div>
+        <div class="row-meta" style="margin-bottom:10px">${c.nb_missions} mission${c.nb_missions>1?'s':''}</div>
+        ${climatiseurPills?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">${climatiseurPills}</div>`:''}
+        <div class="row-meta">${items.join(' · ')}</div>
+      </div>`;
+  }).join('');
 }
 
 // ── STOCK ─────────────────────────────────────────────────────────────────────
@@ -1674,6 +1742,7 @@ function renderLivraisonsToolbar(){
   const masqueesCount = LIVRAISONS_CACHE.filter(m => m.masquee).length;
   const filters = [
     {key:'toutes', label:'Actives'},
+    {key:'a_venir', label:'📅 À venir'},
     {key:'non_assignees', label:`⚠️ Non assignées${nonAssigneesCount?' ('+nonAssigneesCount+')':''}`},
     {key:'en_cours', label:'En cours'},
     {key:'fait', label:'Terminées'},
@@ -1876,7 +1945,11 @@ function renderLivraisons(){
 
   let items = LIVRAISONS_CACHE.filter(m => LIVRAISONS_SHOW_MASQUEES ? m.masquee : !m.masquee);
   if(!LIVRAISONS_SHOW_MASQUEES){
-    if(LIVRAISONS_FILTER === 'non_assignees') items = items.filter(m => m.statut==='a_faire' && !m.transporteur);
+    // "À venir" = actives dont la date prévue n'est pas encore arrivée —
+    // isole les missions déjà acceptées à l'avance (voir date-gate côté
+    // transporteur) de ce qui reste réellement à traiter aujourd'hui.
+    if(LIVRAISONS_FILTER === 'a_venir') items = items.filter(m => m.date_prevue > new Date().toISOString().slice(0,10) && !['fait','annule'].includes(m.statut));
+    else if(LIVRAISONS_FILTER === 'non_assignees') items = items.filter(m => m.statut==='a_faire' && !m.transporteur);
     else if(LIVRAISONS_FILTER === 'en_cours') items = items.filter(m => ['a_faire','acceptee','arrivee'].includes(m.statut));
     else if(LIVRAISONS_FILTER === 'fait') items = items.filter(m => m.statut === 'fait');
     else if(LIVRAISONS_FILTER === 'probleme') items = items.filter(m => m.statut === 'probleme');
