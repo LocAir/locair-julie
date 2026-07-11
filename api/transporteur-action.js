@@ -102,16 +102,21 @@ module.exports = async (req, res) => {
       // récupération) ne compte plus comme en cours : le livreur peut passer
       // à la suivante et y revenir plus tard dans la journée. Une mission
       // acceptée à l'avance pour une date future ne compte pas non plus —
-      // elle n'est pas encore "en cours", juste réservée.
+      // elle n'est pas encore "en cours", juste réservée. Et dans l'autre
+      // sens : accepter une mission dont la date prévue est future n'est lui-
+      // même jamais bloqué par une mission en cours aujourd'hui, seule la
+      // capacité du jour J compte réellement.
       const todayStr = new Date().toISOString().slice(0, 10);
-      const { count } = await supabase
-        .from('livraisons').select('id', { count: 'exact', head: true })
-        .eq('transporteur_id', transporteurId)
-        .in('statut', ['acceptee', 'arrivee'])
-        .lte('date_prevue', todayStr)
-        .neq('id', liv.id);
-      if (count > 0) {
-        return res.status(409).json({ error: 'Termine ta mission en cours avant d\'en accepter une nouvelle.' });
+      if (liv.date_prevue <= todayStr) {
+        const { count } = await supabase
+          .from('livraisons').select('id', { count: 'exact', head: true })
+          .eq('transporteur_id', transporteurId)
+          .in('statut', ['acceptee', 'arrivee'])
+          .lte('date_prevue', todayStr)
+          .neq('id', liv.id);
+        if (count > 0) {
+          return res.status(409).json({ error: 'Termine ta mission en cours avant d\'en accepter une nouvelle.' });
+        }
       }
       await supabase.from('livraisons').update({ statut: 'acceptee', accepted_at: new Date().toISOString() }).eq('id', liv.id);
 
