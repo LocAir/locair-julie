@@ -1057,7 +1057,7 @@ function renderDetail(){
       ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
       ${c.tel?`<a class="btn btn-blue" href="tel:${encodeURIComponent(c.tel)}" style="margin-bottom:8px;text-decoration:none">📞 Appeler ${escHtml(c.prenom||'le client')}</a>`:''}
       ${c.tel_secondaire?`<a class="btn btn-grey" href="tel:${encodeURIComponent(c.tel_secondaire)}" style="margin-bottom:4px;text-decoration:none">☎️ Appeler le numéro de secours</a>`:''}
-      ${c.tel_secondaire?(()=>{const t=encodeURIComponent(c.tel_secondaire.replace(/\s+/g,''));const prenom=(STATE.transporteurNom||'').split(' ')[0]||'';const msg=encodeURIComponent(`Bonjour, c'est ${prenom} de Loc'Air, j'arrive chez vous d'ici environ 30 minutes.`);return `<div style="display:flex;gap:8px;margin-bottom:12px"><a class="media-btn" href="sms:${t}?body=${msg}" style="flex:1;text-decoration:none;text-align:center"><span class="ic">📲</span> SMS secours</a><a class="media-btn" href="https://wa.me/${t}?text=${msg}" target="_blank" rel="noopener" style="flex:1;text-decoration:none;text-align:center"><span class="ic">💬</span> WA secours</a></div>`;})():''}
+      ${c.tel_secondaire?(()=>{const t=encodeURIComponent(c.tel_secondaire.replace(/\s+/g,''));const msg=encodeURIComponent(arrivalMessageText());return `<div style="display:flex;gap:8px;margin-bottom:12px"><a class="media-btn" href="sms:${t}?body=${msg}" style="flex:1;text-decoration:none;text-align:center"><span class="ic">📲</span> SMS secours</a><a class="media-btn" href="https://wa.me/${t}?text=${msg}" target="_blank" rel="noopener" style="flex:1;text-decoration:none;text-align:center"><span class="ic">💬</span> WA secours</a></div>`;})():''}
     ` : `
       <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
       ${(c.quantite&&c.quantite>1)?`<div class="info-row"><span class="info-ic">❄️</span><span class="info-label">Quantité</span><span class="info-val">${c.quantite} appareils à ${m.type==='recuperation'?'récupérer':'livrer'}</span></div>`:''}
@@ -1095,11 +1095,17 @@ function prevenirRowHtml(m){
 // effectif reste un geste du livreur (il valide dans son app) ; l'API marque
 // juste la mission comme "client prévenu" pour les stats, sans bloquer
 // l'ouverture de la messagerie même si cet appel réseau échoue.
+// Filet de sécurité : si le nom du transporteur n'est pas encore chargé
+// (session tout juste rétablie), le client reçoit quand même un message
+// correct plutôt qu'un "c'est de Loc'Air" bancal sans personne derrière.
+function arrivalMessageText(){
+  const prenomLivreur = (STATE.transporteurNom||'').trim().split(' ')[0] || 'votre livreur';
+  return `Bonjour, c'est ${prenomLivreur}, votre livreur Loc'Air — j'arrive chez vous d'ici environ 30 minutes.`;
+}
 function prevenirClientMessage(){
   const m = STATE.currentMission;
   const c = (m && m.client) || {};
-  const prenomLivreur = (STATE.transporteurNom||'').split(' ')[0] || STATE.transporteurNom || '';
-  return { c, msg: `Bonjour, c'est ${prenomLivreur} de Loc'Air, j'arrive chez vous d'ici environ 30 minutes.` };
+  return { c, msg: arrivalMessageText() };
 }
 function prevenirClientSms(){
   const { c, msg } = prevenirClientMessage();
