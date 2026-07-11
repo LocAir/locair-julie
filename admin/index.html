@@ -83,6 +83,39 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
    apporter — visible seulement une fois la barre verticale (desktop). */
 .tabs-group-label{display:none;flex-shrink:0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--grey-soft);padding:9px 15px 2px;white-space:nowrap}
 
+/* Menu ☰ mobile : la barre horizontale scrollable cachait des onglets sans
+   affordance claire (juste un léger fondu de 28px) — sur mobile elle devient
+   un tiroir latéral qu'on ouvre explicitement, avec tous les onglets et
+   labels de groupe visibles d'un coup, plutôt que de compter sur un scroll
+   qu'une bonne partie des utilisateurs ne découvre jamais. */
+.mobile-menu-btn{display:none}
+.mobile-menu-backdrop{display:none}
+@media (max-width:859px){
+  .mobile-menu-btn{
+    display:flex;align-items:center;gap:9px;width:100%;
+    padding:11px 16px;margin-bottom:16px;
+    border-radius:var(--r);border:1.5px solid var(--rule);background:var(--white);
+    font-family:var(--body);font-weight:700;font-size:14px;color:var(--black);
+    cursor:pointer;box-shadow:var(--sh-xs);position:relative;
+  }
+  .mobile-menu-dot{width:8px;height:8px;border-radius:50%;background:var(--red);margin-left:2px}
+  .mobile-menu-backdrop{
+    display:none;position:fixed;inset:0;background:rgba(20,30,48,.45);z-index:199;
+  }
+  .mobile-menu-backdrop.show{display:block}
+  .tabs{
+    position:fixed;top:0;left:0;bottom:0;z-index:200;width:min(80vw,300px);
+    background:var(--bg);flex-direction:column;overflow-x:visible;overflow-y:auto;
+    margin-bottom:0;padding:20px 14px;gap:6px;
+    mask-image:none;-webkit-mask-image:none;
+    transform:translateX(-105%);transition:transform .25s ease;
+    box-shadow:2px 0 28px rgba(0,0,0,.18);
+  }
+  .tabs.mobile-open{transform:translateX(0)}
+  .tabs button{width:100%;text-align:left;padding:12px 16px;border-radius:12px}
+  .tabs-group-label{display:block}
+}
+
 /* Sélecteur de ville/zone — visible seulement dès 2 villes actives (voir
    loadCitySwitcher), sinon inutile pour une exploitation mono-ville. */
 .city-switcher{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--white);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh-xs)}
@@ -264,6 +297,8 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
       <select id="a-city-select" onchange="setSelectedCityId(this.value)"></select>
     </div>
     <div class="a-layout">
+      <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu<span class="mobile-menu-dot hidden" id="mobile-menu-dot"></span></button>
+      <div class="mobile-menu-backdrop" id="mobile-menu-backdrop" onclick="toggleMobileMenu(false)"></div>
       <div class="tabs">
         <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')">📊 Accueil</button>
         <div class="tabs-group-label">Opérations</div>
@@ -755,6 +790,17 @@ function switchAdminTab(tab){
   if(tab==='incidents') loadIncidents();
   if(tab==='clients') loadClients();
   if(tab==='villes') loadVilles();
+  toggleMobileMenu(false);
+}
+// Tiroir latéral mobile (voir .mobile-menu-btn / .tabs.mobile-open en CSS) —
+// n'a aucun effet visuel sur desktop, où .tabs reste la barre latérale fixe.
+function toggleMobileMenu(force){
+  const tabsEl = document.querySelector('.tabs');
+  const backdrop = document.getElementById('mobile-menu-backdrop');
+  if(!tabsEl || !backdrop) return;
+  const open = force != null ? force : !tabsEl.classList.contains('mobile-open');
+  tabsEl.classList.toggle('mobile-open', open);
+  backdrop.classList.toggle('show', open);
 }
 
 // ── Badges "à regarder" sur les onglets (virements demandés, missions en
@@ -770,6 +816,12 @@ async function loadAlerts(){
     updateTabBadge('virements', d.virements);
     updateTabBadge('incidents', d.incidents);
     renderAlertsBanner(d);
+    // Point rouge sur le bouton ☰ (mobile) : sur la barre horizontale
+    // scrollable, les badges des onglets cachés passaient inaperçus — ce
+    // point signale qu'il y a quelque chose à traiter dans le menu sans
+    // avoir à l'ouvrir pour le découvrir.
+    const anyAlert = (d.reservations||0) + (d.livraisons||0) + (d.virements||0) + (d.incidents||0) > 0;
+    document.getElementById('mobile-menu-dot')?.classList.toggle('hidden', !anyAlert);
   }catch(e){}
 }
 function updateTabBadge(tab, count){
