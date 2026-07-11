@@ -173,6 +173,18 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 
 .row-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .row-actions .btn{padding:8px 13px;font-size:12.5px}
+/* Menu "⋯" pour les actions secondaires/rares d'une carte — garde les 1-3
+   actions les plus utilisées visibles en permanence, range le reste
+   (édition ponctuelle, actions destructives) derrière un clic plutôt que de
+   les afficher toutes au même poids visuel. */
+.more-actions{position:relative;display:inline-block}
+.more-actions summary{list-style:none;cursor:pointer;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:100px;border:1.5px solid var(--rule);background:var(--white);font-size:18px;font-weight:700;color:var(--grey)}
+.more-actions summary::-webkit-details-marker{display:none}
+.more-actions[open] summary{background:var(--bg);border-color:var(--grey-soft)}
+.more-actions-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:50;background:var(--white);border:1px solid var(--rule);border-radius:var(--r-sm);box-shadow:var(--sh-md);min-width:200px;padding:6px;display:flex;flex-direction:column;gap:2px}
+.more-actions-menu button,.more-actions-menu a{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:8px;border:none;background:none;font-family:var(--body);font-size:13.5px;font-weight:600;color:var(--black);cursor:pointer;text-decoration:none}
+.more-actions-menu button:hover,.more-actions-menu a:hover{background:var(--bg)}
+.more-actions-menu button.danger,.more-actions-menu a.danger{color:var(--red)}
 .empty{text-align:center;color:var(--grey);padding:44px 20px;font-size:14px}
 .inline-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
@@ -1327,12 +1339,17 @@ function reservationRowHtml(res, readOnly){
       ${readOnly ? '' : `
       <div class="row-actions">
         ${contactButtonsHtml(res.tel)}
-        ${res.statut!=='annulee'?`<button class="btn btn-red" onclick="cancelReservation(${res.id})">Annuler</button>`:''}
         <select aria-label="Changer le statut" onchange="updateReservationStatut(${res.id}, this.value, this)">
           <option value="">Changer statut…</option>
           ${STATUTS_RESA.map(s=>`<option value="${s}" ${s===res.statut?'selected':''}>${RESA_LABEL[s]}</option>`).join('')}
         </select>
-        <button class="btn btn-grey" onclick="deleteReservation(${res.id}, '${res.statut}')">Masquer</button>
+        <details class="more-actions" style="margin-left:auto">
+          <summary title="Plus d'actions">⋯</summary>
+          <div class="more-actions-menu">
+            ${res.statut!=='annulee'?`<button class="danger" onclick="cancelReservation(${res.id})">Annuler la réservation</button>`:''}
+            <button onclick="deleteReservation(${res.id}, '${res.statut}')">Masquer de l'écran</button>
+          </div>
+        </details>
       </div>`}
     </div>`;
 }
@@ -1988,10 +2005,10 @@ function renderLivraisons(){
       TRANSPORTEURS_CACHE.map(t => `<option value="${t.id}" ${m.transporteur&&m.transporteur.id===t.id?'selected':''}>${escHtml(t.nom)}</option>`)
     ).join('');
     const mediaBtns = [];
-    if(m.photo_depart_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_depart')">📷 Départ</button>`);
-    if(m.photo_installation_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_installation')">🎥 Installation</button>`);
-    if(m.photo_retour_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_retour')">🎥 Retour</button>`);
-    if(m.photo_absence_path) mediaBtns.push(`<button class="btn btn-grey" onclick="viewMedia(${m.id},'photo_absence')">📵 Preuve passage</button>`);
+    if(m.photo_depart_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_depart')">📷 Voir — Départ</button>`);
+    if(m.photo_installation_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_installation')">🎥 Voir — Installation</button>`);
+    if(m.photo_retour_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_retour')">🎥 Voir — Retour</button>`);
+    if(m.photo_absence_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_absence')">📵 Voir — Preuve passage</button>`);
     const enRoute = m.transporteur && (m.statut==='acceptee' || m.statut==='arrivee');
     // Icône permanente sur les missions sans livreur — visible même en dehors
     // du filtre "Non assignées", pour qu'une mission non dispatchée ne se
@@ -2031,11 +2048,16 @@ function renderLivraisons(){
           ${nonAssignee?`<div style="width:100%;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--red);margin-bottom:-2px">Assigner un transporteur →</div>`:''}
           <select onchange="assignTransporteur(${m.id}, this.value, this)" style="${nonAssignee?'border-color:var(--red);border-width:1.5px':''}">${options}</select>
           ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom).replace(/'/g,"\\'")}', '${escHtml(res.adresse||'').replace(/'/g,"\\'")}')">🔴 Suivre en direct</button>`:''}
-          ${['acceptee','arrivee'].includes(m.statut)?`<button class="btn btn-grey" title="Remettre en attente d'acceptation" onclick="remettreAFaire(${m.id})">↩️ Remettre à faire</button>`:''}
           ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">✅ Problème résolu</button>`:''}
-          ${mediaBtns.join('')}
           ${mediaBtns.length===0 && m.statut==='fait' ? '<span class="row-meta" style="align-self:center">Aucune preuve enregistrée</span>' : ''}
-          <button class="btn btn-grey" title="Supprimer de l'écran" style="margin-left:auto;min-width:44px;min-height:38px" onclick="maskLivraison(${m.id})">🗑️</button>
+          <details class="more-actions" style="margin-left:auto">
+            <summary title="Plus d'actions">⋯</summary>
+            <div class="more-actions-menu">
+              ${['acceptee','arrivee'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
+              ${mediaBtns.join('')}
+              <button class="danger" onclick="maskLivraison(${m.id})">🗑️ Supprimer de l'écran</button>
+            </div>
+          </details>
         </div>
       </div>`;
   }).join('');
@@ -2426,8 +2448,13 @@ async function loadTransporteursEquipe(){
             : `<button class="btn btn-grey" onclick="pauseTransporteur(${t.id}, true, this)">⏸ Mettre en pause</button>`}
           <button class="btn ${t.actif?'btn-grey':'btn-green'}" onclick="toggleTransporteur(${t.id}, ${!t.actif}, this)">${t.actif?'Désactiver':'✅ Réactiver'}</button>
           <button class="btn btn-blue" onclick="editFiche(${t.id})">✏️ Modifier la fiche</button>
-          <button class="btn btn-grey" onclick="resetPin(${t.id})">Changer le code</button>
-          <button class="btn btn-red" onclick="deleteTransporteur(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}')">🗑️ Supprimer</button>
+          <details class="more-actions" style="margin-left:auto">
+            <summary title="Plus d'actions">⋯</summary>
+            <div class="more-actions-menu">
+              <button onclick="resetPin(${t.id})">Changer le code</button>
+              <button class="danger" onclick="deleteTransporteur(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}')">🗑️ Supprimer</button>
+            </div>
+          </details>
         </div>
       </div>`;
     }).join('') || '<p class="empty">Aucun transporteur.</p>';
@@ -3125,10 +3152,15 @@ function renderVilles(){
       ${c.sold_out?`<div class="row-meta" style="color:var(--red);font-size:12px">Le site affiche "complet" pour cette ville — aucune nouvelle réservation possible.</div>`:''}
       <div class="row-meta">💶 ${baremeSummaryHtml(c)}</div>
       <div class="row-actions">
-        <button class="btn btn-grey" onclick="editVillePostaux(${c.id}, '${((c.postal_codes||[]).join(', ')).replace(/'/g,"\\'")}')">Modifier les codes postaux</button>
-        <button class="btn btn-grey" onclick="editVilleBareme(${c.id})">Modifier le barème</button>
         <button class="btn ${c.sold_out?'btn-green':'btn-grey'}" onclick="toggleVilleSoldOut(${c.id}, ${!c.sold_out})">${c.sold_out?'🔓 Rouvrir':'🚫 Passer en complet'}</button>
         <button class="btn ${c.actif?'btn-grey':'btn-green'}" onclick="toggleVilleActif(${c.id}, ${!c.actif})">${c.actif?'Désactiver':'✅ Réactiver'}</button>
+        <details class="more-actions" style="margin-left:auto">
+          <summary title="Plus d'actions">⋯</summary>
+          <div class="more-actions-menu">
+            <button onclick="editVillePostaux(${c.id}, '${((c.postal_codes||[]).join(', ')).replace(/'/g,"\\'")}')">Modifier les codes postaux</button>
+            <button onclick="editVilleBareme(${c.id})">Modifier le barème</button>
+          </div>
+        </details>
       </div>
     </div>`).join('') || '<p class="empty">🌍 Aucune ville configurée.</p>';
   zone.innerHTML = list + `
@@ -3190,6 +3222,9 @@ function selectVilleRef(jsonStr){
 document.addEventListener('click', e => {
   const dd = document.getElementById('v-nom-dd');
   if(dd && !dd.contains(e.target) && e.target.id!=='v-nom') dd.style.display='none';
+  document.querySelectorAll('details.more-actions[open]').forEach(el => {
+    if(!el.contains(e.target)) el.open = false;
+  });
 });
 function cpSearch(q){
   const sug = document.getElementById('v-cp-suggest');
