@@ -1,8 +1,10 @@
 const Stripe = require('stripe');
 const { getSupabase }          = require('./_lib/supabase');
-const { sendBrevoSms, sendBrevoEmail } = require('./_lib/brevo');
-const { pushToAdmin }          = require('./_lib/push');
+const { sendBrevoSms }         = require('./_lib/brevo');
+const { pushToAdmin, pushToTransporteur } = require('./_lib/push');
 const { getAvailability }      = require('./_lib/stock');
+const { runWeeklyReport }      = require('./cron-weekly');
+const { runMonthlyRecap }      = require('./cron-monthly');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
@@ -34,14 +36,15 @@ module.exports = async (req, res) => {
 
   const report = {};
 
-  // ── 1. Rappel J-1 transporteurs ─────────────────────────────────────────────
-  // UN seul SMS par transporteur, même s'il a plusieurs missions demain.
+  // ── 1. Rappel J-1 transporteurs (push, une notif par transporteur même
+  // avec plusieurs missions demain — voir aussi 'acceptee', un transporteur
+  // qui a déjà accepté sa mission de demain mérite le rappel tout autant) ──
   try {
     const { data: demain } = await supabase
       .from('livraisons')
       .select('transporteur_id')
       .eq('date_prevue', tomorrowStr)
-      .eq('statut', 'a_faire')
+      .in('statut', ['a_faire', 'acceptee'])
       .not('transporteur_id', 'is', null);
 
     const byTransp = {};
@@ -51,20 +54,14 @@ module.exports = async (req, res) => {
     const tids = Object.keys(byTransp).map(Number);
 
     if (tids.length) {
-      const { data: transporteurs } = await supabase
-        .from('transporteurs').select('id, tel').in('id', tids);
-
-      let sent = 0;
-      for (const t of transporteurs || []) {
-        if (!t.tel) continue;
-        const nb = byTransp[t.id] || 0;
-        await sendBrevoSms({
-          to:      t.tel,
-          content: `Loc'Air : vous avez ${nb} mission${nb > 1 ? 's' : ''} demain. Consultez votre espace : https://www.locair.fr/transporteur`,
-        }).catch(() => {});
-        sent++;
-      }
-      report.transporteurReminders = sent;
+      await Promise.all(tids.map(tid =>
+        pushToTransporteur(supabase, tid, {
+          title: '📋 Missions demain',
+          body:  `${byTransp[tid]} mission${byTransp[tid] > 1 ? 's' : ''} prévue${byTransp[tid] > 1 ? 's' : ''} demain — ouvre l'app pour voir les détails.`,
+          tag:   'rappel-missions-demain',
+        })
+      ));
+      report.transporteurReminders = tids.length;
     }
   } catch (e) {
     console.error('[Cron J-1 transporteur]', e.message);
@@ -206,6 +203,25 @@ module.exports = async (req, res) => {
     }
   } catch (e) {
     console.error('[Cron stock alerte]', e.message);
+  }
+
+  // ── 6. Rapport hebdomadaire (lundi) et récap virements mensuel (le 1er) ─────
+  // Un seul cron programmé sur ce plan Vercel (voir vercel.json) — ces deux
+  // automatisations, jusque-là écrites mais jamais planifiées, se déclenchent
+  // ici plutôt que sur leur propre entrée de cron.
+  try {
+    if (today.getDay() === 1) { // lundi
+      report.weekly = await runWeeklyReport(supabase);
+    }
+  } catch (e) {
+    console.error('[Cron weekly via daily]', e.message);
+  }
+  try {
+    if (today.getDate() === 1) { // 1er du mois
+      report.monthly = await runMonthlyRecap(supabase);
+    }
+  } catch (e) {
+    console.error('[Cron monthly via daily]', e.message);
   }
 
   return res.status(200).json({ ok: true, date: todayStr, ...report });

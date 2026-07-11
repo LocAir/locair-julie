@@ -13,11 +13,11 @@ function escHtml(s) {
 
 const MOIS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
-module.exports = async (req, res) => {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
-  if (!verifyCronAuth(req)) return res.status(401).json({ error: 'Non autorisé' });
-
-  const supabase = getSupabase();
+// Récap mensuel des montants dus par transporteur (email admin + SMS à
+// chacun) — logique extraite du handler HTTP pour être appelée directement
+// depuis cron-daily.js le 1er de chaque mois (un seul cron programmé sur ce
+// plan Vercel, voir vercel.json).
+async function runMonthlyRecap(supabase) {
   const today    = new Date();
   // Mois précédent
   const firstOfThisMonth  = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -27,7 +27,7 @@ module.exports = async (req, res) => {
   const nomMois  = MOIS_FR[firstOfLastMonth.getMonth()];
   const annee    = firstOfLastMonth.getFullYear();
 
-  try {
+  {
     // Toutes les missions faites le mois dernier avec transporteur
     const { data: livraisons } = await supabase
       .from('livraisons')
@@ -39,7 +39,7 @@ module.exports = async (req, res) => {
       .gt('montant_du_cents', 0);
 
     if (!livraisons || !livraisons.length) {
-      return res.status(200).json({ ok: true, message: 'Aucune mission ce mois-ci' });
+      return { message: 'Aucune mission ce mois-ci' };
     }
 
     // Grouper par transporteur
@@ -116,9 +116,22 @@ ${rows}
       }).catch(() => {});
     }
 
-    return res.status(200).json({ ok: true, mois: `${nomMois} ${annee}`, nb: entries.length, grandTotal });
+    return { mois: `${nomMois} ${annee}`, nb: entries.length, grandTotal };
+  }
+}
+
+// Conservé comme endpoint indépendant (déclenchable manuellement avec
+// CRON_SECRET) même si non planifié directement — voir cron-daily.js qui
+// l'appelle le 1er de chaque mois.
+module.exports = async (req, res) => {
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+  if (!verifyCronAuth(req)) return res.status(401).json({ error: 'Non autorisé' });
+  try {
+    const report = await runMonthlyRecap(getSupabase());
+    return res.status(200).json({ ok: true, ...report });
   } catch (err) {
     console.error('[Cron monthly]', err.message);
     return res.status(500).json({ error: 'Erreur serveur' });
   }
 };
+module.exports.runMonthlyRecap = runMonthlyRecap;
