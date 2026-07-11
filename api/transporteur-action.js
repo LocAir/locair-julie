@@ -31,9 +31,24 @@ const EXT_BY_TYPE = {
   'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm',
 };
 
+// Accepter une mission n'est pas la démarrer : ça peut se faire n'importe
+// quand, même en avance. Seules les étapes de terrain (photo/vidéo, vidange,
+// validation finale, signalement) exigent que le jour prévu soit arrivé —
+// vérifié ici, source de vérité serveur, en plus du gate côté client.
+function missionStartDateError(liv) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  if (liv.date_prevue > todayStr) {
+    const dateLabel = new Date(liv.date_prevue + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    return `Cette mission ne peut être démarrée que le ${dateLabel}.`;
+  }
+  return null;
+}
+
 function checkMediaAllowed(liv, kind) {
   const column = MEDIA_COLUMN[kind];
   if (!column) return 'Type de média invalide';
+  const dateErr = missionStartDateError(liv);
+  if (dateErr) return dateErr;
   // La preuve de passage "client absent" peut être prise en route (déjà
   // prévenu, personne ne répond) ou une fois sur place — pas d'étape unique.
   if (kind === 'photo_absence') {
@@ -79,15 +94,9 @@ module.exports = async (req, res) => {
 
     if (action === 'accepter') {
       if (liv.statut !== 'a_faire') return res.status(409).json({ error: 'Mission déjà traitée' });
-      // Une mission ne peut être acceptée que le jour prévu, jamais en avance —
-      // vérifié aussi côté client (transporteur/index.html) mais la source de
-      // vérité reste ici : un appel direct à l'API ne doit pas pouvoir la
-      // contourner.
-      const todayStr = new Date().toISOString().slice(0, 10);
-      if (liv.date_prevue > todayStr) {
-        const dateLabel = new Date(liv.date_prevue + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-        return res.status(409).json({ error: `Cette mission n'est prévue que le ${dateLabel} — tu pourras l'accepter ce jour-là.` });
-      }
+      // Accepter n'est pas démarrer : possible n'importe quand, même en
+      // avance — c'est le démarrage effectif sur place (plus bas dans ce
+      // fichier) qui est réservé au jour prévu.
       // Une mission commencée doit être terminée avant d'en accepter une autre.
       // Une mission mise en "problème" (ex. client injoignable pour une
       // récupération) ne compte plus comme en cours : le livreur peut passer
@@ -201,6 +210,8 @@ module.exports = async (req, res) => {
 
     if (action === 'confirmer_vidange') {
       if (liv.type !== 'recuperation' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      const dateErr = missionStartDateError(liv);
+      if (dateErr) return res.status(409).json({ error: dateErr });
       await supabase.from('livraisons').update({ vidange_confirmee: true, vidange_at: new Date().toISOString() }).eq('id', liv.id);
       return res.status(200).json({ ok: true });
     }
@@ -208,6 +219,8 @@ module.exports = async (req, res) => {
     if (action === 'livraison_ok' || action === 'retour_ok') {
       const expectedType = action === 'livraison_ok' ? 'livraison' : 'recuperation';
       if (liv.type !== expectedType || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      const dateErr = missionStartDateError(liv);
+      if (dateErr) return res.status(409).json({ error: dateErr });
       if (expectedType === 'livraison' && !liv.photo_installation_path) {
         return res.status(400).json({ error: 'Vidéo d\'installation requise avant de valider' });
       }
@@ -265,6 +278,8 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
 
     if (action === 'changement_ok') {
       if (liv.type !== 'changement' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      const dateErr = missionStartDateError(liv);
+      if (dateErr) return res.status(409).json({ error: dateErr });
       if (!liv.photo_installation_path) return res.status(400).json({ error: 'Vidéo du nouvel appareil installé requise avant de valider' });
       if (!liv.photo_retour_path) return res.status(400).json({ error: 'Vidéo de l\'ancien appareil récupéré requise avant de valider' });
       if (!liv.vidange_confirmee) return res.status(400).json({ error: 'Vidange de l\'ancien appareil requise avant de valider' });
@@ -282,6 +297,11 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
     if (action === 'probleme') {
       const problemeType = ['client_absent', 'appareil_en_panne', 'retard', 'autre'].includes(body.probleme_type) ? body.probleme_type : 'autre';
       const description  = (body.probleme_description || '').slice(0, 1000);
+
+      if (['acceptee', 'arrivee'].includes(liv.statut)) {
+        const dateErr = missionStartDateError(liv);
+        if (dateErr) return res.status(409).json({ error: dateErr });
+      }
 
       // "Client absent" exige la preuve de passage (vidéo prise juste avant) —
       // sans quoi le SMS automatique pourrait partir sans rien qui le justifie.
