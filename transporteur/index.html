@@ -182,6 +182,14 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .celebrate-amount{font-family:var(--disp);font-size:34px;font-weight:600;color:var(--green);margin-bottom:22px}
 
 /* Carte du jour */
+.tools-group{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);margin:0 0 14px;overflow:hidden}
+.tools-group summary{list-style:none;cursor:pointer;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:8px;font-weight:700;font-size:13px;color:var(--grey)}
+.tools-group summary::-webkit-details-marker{display:none}
+.tools-group summary::after{content:"›";font-size:19px;line-height:1;color:var(--grey-soft);transition:transform .15s ease}
+.tools-group[open] summary::after{transform:rotate(90deg)}
+.tools-group[open] summary{border-bottom:1px solid var(--rule)}
+.tools-group-body{padding:12px 14px 4px}
+.tools-group-body .map-filters{margin-top:0}
 .map-filters{display:flex;gap:4px;margin:8px 0 14px;background:var(--bg);padding:4px;border-radius:100px}
 .map-filters button{flex:1;padding:10px;border-radius:100px;border:none;background:transparent;font-weight:700;font-size:12.5px;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
 .map-filters button.on{background:var(--white);color:var(--black);box-shadow:var(--sh-xs)}
@@ -263,8 +271,13 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
       <button data-f="en_cours" onclick="setMissionFilter('en_cours')">🚚 En cours<span class="tab-badge hidden badge-sf-en_cours"></span></button>
       <button data-f="terminee" onclick="setMissionFilter('terminee')">✅ Terminées<span class="tab-badge hidden badge-sf-terminee"></span></button>
     </div>
-    <div class="map-filters hidden" id="postal-filters"></div>
-    <div id="tour-zone"></div>
+    <details class="tools-group hidden" id="tools-group">
+      <summary>🔧 Secteurs &amp; tournée du jour</summary>
+      <div class="tools-group-body">
+        <div class="map-filters hidden" id="postal-filters"></div>
+        <div id="tour-zone"></div>
+      </div>
+    </details>
     <div class="card hidden" id="faceid-offer">
       <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
       <p class="sub" style="margin-bottom:16px">Active Face ID / empreinte pour te connecter sans ressaisir ton code la prochaine fois.</p>
@@ -929,6 +942,7 @@ function renderMissions(){
   const visible = POSTAL_FILTER ? byStatut.filter(m => postalCode((m.client||{}).adresse) === POSTAL_FILTER) : byStatut;
   if(!visible.length){
     tourZone.innerHTML='';
+    document.getElementById('tools-group')?.classList.add('hidden');
     wrap.innerHTML = `<p class="empty">${POSTAL_FILTER ? 'Aucune mission dans ce secteur.' : MISSION_FILTER_EMPTY[MISSION_FILTER]}</p>`;
     return;
   }
@@ -954,6 +968,18 @@ function renderMissions(){
     zoneHtml += `<button class="tour-btn tour-btn-alt" onclick="openDayMap()">🗺️ Voir sur la carte</button>`;
   }
   tourZone.innerHTML = zoneHtml;
+
+  // Le tiroir "Secteurs & tournée" range des contrôles utilisés seulement de
+  // temps en temps (plusieurs secteurs, plusieurs missions le même jour) —
+  // même principe que le menu ☰ de l'admin qui range la navigation secondaire
+  // au lieu de tout étaler à l'écran. On le masque entièrement s'il n'a rien
+  // à proposer aujourd'hui, pour ne pas afficher un tiroir vide.
+  const toolsGroup = document.getElementById('tools-group');
+  if(toolsGroup){
+    const postalZone = document.getElementById('postal-filters');
+    const hasPostal = postalZone && !postalZone.classList.contains('hidden');
+    toolsGroup.classList.toggle('hidden', !hasPostal && !zoneHtml);
+  }
 
   // Regroupées par date : une mission peut arriver la veille pour le
   // lendemain, bien à l'avance, ou de dernière minute pour aujourd'hui.
