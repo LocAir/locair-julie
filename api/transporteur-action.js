@@ -159,7 +159,7 @@ module.exports = async (req, res) => {
       const mediaErr = checkMediaAllowed(liv, kind);
       if (mediaErr) return res.status(400).json({ error: mediaErr });
 
-      const ext = EXT_BY_TYPE[body.content_type] || 'jpg';
+      const ext = EXT_BY_TYPE[body.content_type] || 'mp4';
       const path = `${liv.id}/${kind}-${Date.now()}.${ext}`;
       const { data, error } = await supabase.storage.from('missions').createSignedUploadUrl(path, { upsert: true });
       if (error) throw error;
@@ -234,10 +234,10 @@ module.exports = async (req, res) => {
       const expectedType = action === 'livraison_ok' ? 'livraison' : 'recuperation';
       if (liv.type !== expectedType || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       if (expectedType === 'livraison' && !liv.photo_installation_path) {
-        return res.status(400).json({ error: 'Photo d\'installation requise avant de valider' });
+        return res.status(400).json({ error: 'Vidéo d\'installation requise avant de valider' });
       }
       if (expectedType === 'recuperation' && !liv.photo_retour_path) {
-        return res.status(400).json({ error: 'Photo de l\'appareil récupéré requise avant de valider' });
+        return res.status(400).json({ error: 'Vidéo de l\'appareil récupéré requise avant de valider' });
       }
       if (expectedType === 'recuperation' && !liv.vidange_confirmee) {
         return res.status(400).json({ error: 'Vérification et vidange requises avant de valider' });
@@ -290,8 +290,8 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
 
     if (action === 'changement_ok') {
       if (liv.type !== 'changement' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
-      if (!liv.photo_installation_path) return res.status(400).json({ error: 'Photo du nouvel appareil installé requise avant de valider' });
-      if (!liv.photo_retour_path) return res.status(400).json({ error: 'Photo de l\'ancien appareil récupéré requise avant de valider' });
+      if (!liv.photo_installation_path) return res.status(400).json({ error: 'Vidéo du nouvel appareil installé requise avant de valider' });
+      if (!liv.photo_retour_path) return res.status(400).json({ error: 'Vidéo de l\'ancien appareil récupéré requise avant de valider' });
       if (!liv.vidange_confirmee) return res.status(400).json({ error: 'Vidange de l\'ancien appareil requise avant de valider' });
 
       const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
@@ -308,10 +308,10 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
       const problemeType = ['client_absent', 'appareil_en_panne', 'retard', 'autre'].includes(body.probleme_type) ? body.probleme_type : 'autre';
       const description  = (body.probleme_description || '').slice(0, 1000);
 
-      // "Client absent" exige la preuve de passage (photo prise juste avant) —
+      // "Client absent" exige la preuve de passage (vidéo prise juste avant) —
       // sans quoi le SMS automatique pourrait partir sans rien qui le justifie.
       if (problemeType === 'client_absent' && !liv.photo_absence_path) {
-        return res.status(400).json({ error: 'Photo de passage requise avant de signaler un client absent' });
+        return res.status(400).json({ error: 'Vidéo de passage requise avant de signaler un client absent' });
       }
 
       await supabase.from('livraisons').update({

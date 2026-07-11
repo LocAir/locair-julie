@@ -290,8 +290,8 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 
 </div>
 
-<!-- input caché pour capture photo/vidéo -->
-<input type="file" id="media-input" accept="image/*" capture="environment" class="hidden"/>
+<!-- input caché pour la preuve de mission obligatoire (vidéo uniquement, caméra live) -->
+<input type="file" id="media-input" accept="video/*" capture="environment" class="hidden"/>
 <!-- input caché pour la galerie libre (photos/vidéos supplémentaires, caméra ou galerie du téléphone) -->
 <input type="file" id="supp-media-input" class="hidden"/>
 
@@ -1005,8 +1005,8 @@ function actionBtnsForMission(m){
     return `
       <p class="step-hint">📦 ${pickup}</p>
       ${prevenirRowHtml(m)}
-      <p class="step-hint">📷 Installe l'appareil, prends une photo pour terminer la mission.</p>
-      <button class="media-btn ${m.photo_installation_ok?'done':''}" onclick="startUpload('photo_installation','image/*')"><span class="ic">📷</span> ${m.photo_installation_ok?'Photo installation ✔':'Photo de l\'appareil installé'}</button>
+      <p class="step-hint">🎥 Installe l'appareil, filme-le pour terminer la mission.</p>
+      <button class="media-btn ${m.photo_installation_ok?'done':''}" onclick="startUpload('photo_installation','video/*')"><span class="ic">🎥</span> ${m.photo_installation_ok?'Vidéo installation ✔':'Vidéo de l\'appareil installé'}</button>
       <button class="btn btn-green" ${m.photo_installation_ok?'':'disabled'} onclick="doAction('livraison_ok')">✅ LIVRAISON OK — JE PARS</button>
       <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
   }
@@ -1014,9 +1014,9 @@ function actionBtnsForMission(m){
     const ready = m.photo_retour_ok && m.vidange_ok;
     return `
       ${prevenirRowHtml(m)}
-      <p class="step-hint">📷 Vérifie l'appareil, vidange-le (~5 min) et prends la photo pour terminer la mission.</p>
+      <p class="step-hint">🎥 Vérifie l'appareil, vidange-le (~5 min) et filme-le pour terminer la mission.</p>
       <button class="media-btn ${m.vidange_ok?'done':''}" ${m.vidange_ok?'disabled':''} onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> ${m.vidange_ok?'Vérification + vidange ✔':'Vérification + vidange effectuées'}</button>
-      <button class="media-btn ${m.photo_retour_ok?'done':''}" onclick="startUpload('photo_retour','image/*')"><span class="ic">📷</span> ${m.photo_retour_ok?'Photo appareil récupéré ✔':'Photo de l\'appareil récupéré'}</button>
+      <button class="media-btn ${m.photo_retour_ok?'done':''}" onclick="startUpload('photo_retour','video/*')"><span class="ic">🎥</span> ${m.photo_retour_ok?'Vidéo appareil récupéré ✔':'Vidéo de l\'appareil récupéré'}</button>
       <button class="btn btn-green" ${ready?'':'disabled'} onclick="doAction('retour_ok')">✅ RETOUR OK — JE PARS</button>
       <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
   }
@@ -1024,10 +1024,10 @@ function actionBtnsForMission(m){
     const ready = m.photo_installation_ok && m.photo_retour_ok && m.vidange_ok;
     return `
       ${prevenirRowHtml(m)}
-      <p class="step-hint">🔁 Récupère l'ancien appareil après vidange, installe le nouvel appareil et prends les deux photos.</p>
+      <p class="step-hint">🔁 Récupère l'ancien appareil après vidange, installe le nouvel appareil et filme les deux.</p>
       <button class="media-btn ${m.vidange_ok?'done':''}" ${m.vidange_ok?'disabled':''} onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> ${m.vidange_ok?'Vidange ancien appareil ✔':'Vidange de l\'ancien appareil'}</button>
-      <button class="media-btn ${m.photo_retour_ok?'done':''}" onclick="startUpload('photo_retour','image/*')"><span class="ic">📷</span> ${m.photo_retour_ok?'Photo ancien appareil ✔':'Photo de l\'ancien appareil récupéré'}</button>
-      <button class="media-btn ${m.photo_installation_ok?'done':''}" onclick="startUpload('photo_installation','image/*')"><span class="ic">📷</span> ${m.photo_installation_ok?'Photo nouvel appareil ✔':'Photo du nouvel appareil installé'}</button>
+      <button class="media-btn ${m.photo_retour_ok?'done':''}" onclick="startUpload('photo_retour','video/*')"><span class="ic">🎥</span> ${m.photo_retour_ok?'Vidéo ancien appareil ✔':'Vidéo de l\'ancien appareil récupéré'}</button>
+      <button class="media-btn ${m.photo_installation_ok?'done':''}" onclick="startUpload('photo_installation','video/*')"><span class="ic">🎥</span> ${m.photo_installation_ok?'Vidéo nouvel appareil ✔':'Vidéo du nouvel appareil installé'}</button>
       <button class="btn btn-green" ${ready?'':'disabled'} onclick="doAction('changement_ok')">✅ REMPLACEMENT TERMINÉ — JE PARS</button>
       <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
   }
@@ -1473,12 +1473,12 @@ async function sendProbleme(type){
   closeProbleme();
   await doAction('probleme', {probleme_type: type});
 }
-// "Client absent" exige une photo de passage avant d'envoyer le SMS
+// "Client absent" exige une vidéo de passage avant d'envoyer le SMS
 // automatique — startUpload() enchaîne ensuite sur le signalement du problème
-// une fois la photo confirmée (voir le listener de #media-input).
+// une fois la vidéo confirmée (voir le listener de #media-input).
 function startClientAbsent(){
   closeProbleme();
-  startUpload('photo_absence', 'image/*');
+  startUpload('photo_absence', 'video/*');
 }
 
 // ── Mon activité (gains, façon Uber Driver) ──────────────────────────────────
