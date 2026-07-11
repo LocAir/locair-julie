@@ -100,11 +100,15 @@ module.exports = async (req, res) => {
       // Une mission commencée doit être terminée avant d'en accepter une autre.
       // Une mission mise en "problème" (ex. client injoignable pour une
       // récupération) ne compte plus comme en cours : le livreur peut passer
-      // à la suivante et y revenir plus tard dans la journée.
+      // à la suivante et y revenir plus tard dans la journée. Une mission
+      // acceptée à l'avance pour une date future ne compte pas non plus —
+      // elle n'est pas encore "en cours", juste réservée.
+      const todayStr = new Date().toISOString().slice(0, 10);
       const { count } = await supabase
         .from('livraisons').select('id', { count: 'exact', head: true })
         .eq('transporteur_id', transporteurId)
         .in('statut', ['acceptee', 'arrivee'])
+        .lte('date_prevue', todayStr)
         .neq('id', liv.id);
       if (count > 0) {
         return res.status(409).json({ error: 'Termine ta mission en cours avant d\'en accepter une nouvelle.' });
