@@ -2301,7 +2301,13 @@ function editFiche(id){
   overlay.innerHTML = `
     <div class="modal-box" style="max-width:420px;max-height:90vh;overflow-y:auto">
       <h2 style="margin-bottom:14px">✏️ Fiche — ${escHtml(t.nom)}</h2>
-      <label>Types de mission autorisés</label>
+      <label for="fiche-nom">Nom</label>
+      <input type="text" id="fiche-nom" value="${escHtml(t.nom||'')}"/>
+      <label for="fiche-tel" style="margin-top:12px">Téléphone</label>
+      <input type="tel" id="fiche-tel" value="${escHtml(t.telephone||'')}" placeholder="06…"/>
+      <label for="fiche-email" style="margin-top:12px">Email (pour "code oublié")</label>
+      <input type="text" id="fiche-email" value="${escHtml(t.email||'')}" placeholder="osama@email.fr"/>
+      <label style="margin-top:16px">Types de mission autorisés</label>
       <p class="sub" style="margin:4px 0 10px;font-size:12px">Cocher tout = aucune restriction</p>
       ${missionTypesHtml('fiche', activeKeys)}
       <label style="margin-top:16px">Villes d'intervention</label>
@@ -2318,6 +2324,10 @@ function editFiche(id){
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
+    const nom = document.getElementById('fiche-nom').value.trim();
+    if(!nom){ showToast('Le nom ne peut pas être vide', 'error'); return; }
+    const telephone = document.getElementById('fiche-tel').value.trim();
+    const email = document.getElementById('fiche-email').value.trim();
     const types = collectMissionTypes('fiche');
     const allChecked = types.length === MISSION_TYPES_DEF.length;
     const villes = collectVillesForm('fiche');
@@ -2326,6 +2336,7 @@ function editFiche(id){
     try{
       const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
         action:'update', id:t.id,
+        nom, telephone, email,
         types_autorises: allChecked ? [] : types,
         villes, disponibilites,
       })});
@@ -2407,7 +2418,6 @@ async function loadTransporteursEquipe(){
           <button class="btn btn-grey" onclick="toggleTransporteur(${t.id}, ${!t.actif}, this)">${t.actif?'Désactiver':'Réactiver'}</button>
           <button class="btn btn-blue" onclick="editFiche(${t.id})">✏️ Modifier la fiche</button>
           <button class="btn btn-grey" onclick="resetPin(${t.id})">Changer le code</button>
-          <button class="btn btn-grey" onclick="editEmail(${t.id}, '${(t.email||'').replace(/'/g,"\\'")}')">${t.email?'Modifier':'Ajouter'} l'email</button>
           <button class="btn btn-red" onclick="deleteTransporteur(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}')">🗑️ Supprimer</button>
         </div>
       </div>`;
@@ -2564,17 +2574,6 @@ function resetPin(id){
       loadTransporteursEquipe();
       showToast('Code mis à jour', 'success');
     }catch(e){ showToast(`Code non mis à jour : ${e.message}`, 'error'); }
-  });
-}
-function editEmail(id, currentEmail){
-  promptAction({title:"Email pour \"code oublié\"", label:'Adresse email', value:currentEmail || '', type:'text'}, async (email) => {
-    try{
-      const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, email})});
-      const d = await r.json();
-      if(!r.ok) throw new Error(d.error||'Erreur');
-      loadTransporteursEquipe();
-      showToast('Email mis à jour', 'success');
-    }catch(e){ showToast(`Email non mis à jour : ${e.message}`, 'error'); }
   });
 }
 // ── REVENUS (ex-onglet Virements, fusionné dans Transporteurs) ────────────────
