@@ -114,10 +114,16 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .media-btn .ic{font-size:20px}
 
 .step-hint{font-size:14px;font-weight:700;color:var(--blue);background:var(--gold-lt);border-radius:var(--r-sm);padding:11px 14px;margin-bottom:14px}
+.btn-missing-hint{text-align:center;font-size:12.5px;color:var(--grey);margin:-6px 0 12px}
 .upload-preview{margin-bottom:14px}
 .upload-preview img,.upload-preview video{width:100%;max-height:240px;object-fit:cover;border-radius:var(--r);display:block;box-shadow:var(--sh-xs);background:#000}
 .probleme-box{background:var(--red-bg);border-radius:var(--r);padding:16px}
 .probleme-box p{font-size:14px;color:var(--red);line-height:1.55;font-weight:600}
+/* Contrainte de planning normale (mission pas encore démarrable, mission en
+   cours à terminer d'abord) — pas une urgence, ne doit pas emprunter le
+   rouge des vrais signalements de problème. */
+.info-box{background:var(--blue-lt);border-radius:var(--r);padding:16px}
+.info-box p{font-size:14px;color:var(--blue);line-height:1.55;font-weight:600}
 .probleme-list .btn{margin-top:10px}
 
 .overlay{position:fixed;inset:0;background:rgba(13,24,41,.6);display:flex;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px)}
@@ -1055,7 +1061,7 @@ function actionBtnsForMission(m){
     const hasMissionEnCours = isAnotherMissionEnCours(m.id, m.date_prevue);
     if(hasMissionEnCours){
       return `
-        <div class="probleme-box"><p>🔒 Termine ta mission en cours avant d'accepter celle-ci.</p></div>
+        <div class="info-box"><p>🔒 Termine ta mission en cours avant d'accepter celle-ci.</p></div>
         <button class="btn btn-red" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
     }
     return `
@@ -1068,7 +1074,7 @@ function actionBtnsForMission(m){
   if((m.statut === 'acceptee' || m.statut === 'arrivee')){
     const todayStr = new Date().toISOString().slice(0,10);
     if(m.date_prevue > todayStr){
-      return `<div class="probleme-box"><p>📅 Tu as accepté cette mission — tu pourras la démarrer ${futureDateText(m.date_prevue)}.</p></div>`;
+      return `<div class="info-box"><p>📅 Tu as accepté cette mission — tu pourras la démarrer ${futureDateText(m.date_prevue)}.</p></div>`;
     }
   }
   // Un seul écran après acceptation : prévenir le client (optionnel, par SMS
@@ -1088,20 +1094,24 @@ function actionBtnsForMission(m){
       <p class="step-hint">🎥 Installe l'appareil, filme-le (ou joins une vidéo de ta galerie) pour terminer la mission.</p>
       ${proofButtonsHtml('photo_installation', m.photo_installation_ok, 'Vidéo installation')}
       <button class="btn btn-green" ${m.photo_installation_ok?'':'disabled'} onclick="doAction('livraison_ok')">✅ LIVRAISON OK — JE PARS</button>
+      ${!m.photo_installation_ok?`<p class="btn-missing-hint">Encore à faire : vidéo d'installation</p>`:''}
       <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
   }
   if((m.statut === 'acceptee' || m.statut === 'arrivee') && m.type === 'recuperation'){
     const ready = m.photo_retour_ok && m.vidange_ok;
+    const missing = [!m.vidange_ok?'vidange':null, !m.photo_retour_ok?'vidéo de l\'appareil':null].filter(Boolean);
     return `
       ${prevenirRowHtml(m)}
       <p class="step-hint">🎥 Vérifie l'appareil, vidange-le (~5 min) et filme-le (ou joins une vidéo de ta galerie) pour terminer la mission.</p>
-      <button class="media-btn ${m.vidange_ok?'done':''}" ${m.vidange_ok?'disabled':''} onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> ${m.vidange_ok?'Vérification + vidange ✔':'Vérification + vidange effectuées'}</button>
+      <button class="media-btn ${m.vidange_ok?'done':''}" ${m.vidange_ok?'disabled':''} onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> ${m.vidange_ok?'Vidange de l\'appareil ✔':'Vidange de l\'appareil'}</button>
       ${proofButtonsHtml('photo_retour', m.photo_retour_ok, 'Vidéo appareil récupéré')}
       <button class="btn btn-green" ${ready?'':'disabled'} onclick="doAction('retour_ok')">✅ RETOUR OK — JE PARS</button>
+      ${missing.length?`<p class="btn-missing-hint">Encore à faire : ${missing.join(', ')}</p>`:''}
       <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
   }
   if((m.statut === 'acceptee' || m.statut === 'arrivee') && m.type === 'changement'){
     const ready = m.photo_installation_ok && m.photo_retour_ok && m.vidange_ok;
+    const missing = [!m.vidange_ok?'vidange':null, !m.photo_retour_ok?'vidéo ancien appareil':null, !m.photo_installation_ok?'vidéo nouvel appareil':null].filter(Boolean);
     return `
       ${prevenirRowHtml(m)}
       <p class="step-hint">🔁 Récupère l'ancien appareil après vidange, installe le nouvel appareil et filme les deux (ou joins des vidéos de ta galerie).</p>
@@ -1109,6 +1119,7 @@ function actionBtnsForMission(m){
       ${proofButtonsHtml('photo_retour', m.photo_retour_ok, 'Vidéo ancien appareil')}
       ${proofButtonsHtml('photo_installation', m.photo_installation_ok, 'Vidéo nouvel appareil')}
       <button class="btn btn-green" ${ready?'':'disabled'} onclick="doAction('changement_ok')">✅ REMPLACEMENT TERMINÉ — JE PARS</button>
+      ${missing.length?`<p class="btn-missing-hint">Encore à faire : ${missing.join(', ')}</p>`:''}
       <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
   }
   if(m.statut === 'probleme'){
@@ -1189,7 +1200,13 @@ function proofButtonsHtml(kind, done, doneLabel){
   if(done){
     return `<button class="media-btn done" onclick="startUpload('${kind}','camera')"><span class="ic">🎥</span> ${doneLabel} ✔</button>`;
   }
+  // Le libellé (ex. "Vidéo ancien appareil" / "Vidéo nouvel appareil") doit
+  // être visible AVANT la capture, pas seulement une fois faite — sur
+  // "Changement" les deux paires de boutons sont sinon strictement
+  // identiques et rien ne dit laquelle filmer en premier. Un mauvais choix
+  // ici envoie la preuve du mauvais appareil.
   return `
+    <div class="section-title" style="margin:0 0 6px 2px">${doneLabel}</div>
     <div style="display:flex;gap:8px">
       <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','camera')"><span class="ic">🎥</span> Filmer</button>
       <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','galerie')"><span class="ic">🎞️</span> Depuis la galerie</button>
