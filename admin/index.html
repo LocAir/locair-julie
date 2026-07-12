@@ -1394,10 +1394,12 @@ function reservationRowHtml(res, readOnly){
     <div class="row-item">
       <div class="row-top">
         <span class="row-title">${nom}${entrepriseTag}</span>
-        <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
+        <span style="display:flex;gap:6px;align-items:center">
+          ${res.hors_zone?`<span class="chip" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red)" title="Affectation manuelle requise">⚠️ Hors zone</span>`:''}
+          ${res.source==='site_prolongation'?`<span class="chip" style="background:var(--blue-lt);color:var(--blue);border:1px solid var(--blue)">🔄 Prolongée</span>`:''}
+          <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
+        </span>
       </div>
-      ${res.hors_zone?`<div class="resa-sub" style="color:var(--red);font-weight:700">⚠️ Hors zone — affectation manuelle requise</div>`:''}
-      ${res.source==='site_prolongation'?`<div class="resa-sub" style="color:var(--blue);font-weight:700">🔄 Location prolongée</div>`:''}
       <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
       ${res.instructions_acces?`<div class="resa-sub" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
       ${(res.etage||res.ascenseur||res.fenetre||res.fenetre_photo_path||(res.type_client==='entreprise'&&res.siret))?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):'',(res.type_client==='entreprise'&&res.siret)?'SIRET : '+escHtml(res.siret):''].filter(Boolean).join(' · ')}${res.fenetre_photo_path?` <button class="btn btn-grey" style="padding:2px 8px;font-size:11px;vertical-align:middle" onclick="openFenetrePhoto(${res.id})">📷 Photo</button>`:''}</div>`:''}
