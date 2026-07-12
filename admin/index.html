@@ -188,6 +188,31 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .empty{text-align:center;color:var(--grey);padding:44px 20px;font-size:14px}
 .inline-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
+/* Affectation par glisser-déposer — deux colonnes toujours côte à côte, y
+   compris sur mobile (le geste est volontairement gauche/droite, un
+   empilement vertical le casserait). */
+.affect-hint{background:var(--blue-lt);color:var(--blue);font-size:12.5px;font-weight:600;border-radius:var(--r-sm);padding:10px 13px;margin-bottom:14px;line-height:1.4}
+.affect-cols{display:flex;gap:8px;align-items:flex-start}
+.affect-col{flex:1;min-width:0}
+.affect-col-title{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--grey-soft);margin-bottom:8px;padding:0 2px}
+.affect-unassigned-zone{background:var(--bg);border:1.5px dashed var(--rule);border-radius:var(--r);padding:8px;min-height:70px}
+.affect-transp-zone{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:8px;margin-bottom:8px;box-shadow:var(--sh-xs);transition:background-color .15s ease,border-color .15s ease}
+.affect-transp-zone.affect-drop-hover,.affect-unassigned-zone.affect-drop-hover{border-color:var(--blue);background:var(--blue-lt)}
+.affect-transp-head{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:12.5px;margin-bottom:6px;padding:0 2px}
+.affect-transp-count{background:var(--bg);color:var(--grey);font-size:10.5px;font-weight:800;border-radius:100px;padding:2px 7px;flex-shrink:0}
+.affect-transp-body{min-height:36px}
+.affect-empty-hint{font-size:11px;color:var(--grey-soft);text-align:center;padding:8px 2px}
+.affect-card{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-sm);padding:8px 9px;margin-bottom:6px;cursor:grab;touch-action:none;user-select:none;box-shadow:var(--sh-xs)}
+.affect-card.dirty{border-color:var(--blue);box-shadow:0 0 0 2px var(--blue-lt)}
+.affect-card-top{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;font-weight:700;color:var(--blue);gap:6px}
+.affect-card-cren{font-size:10.5px;color:var(--grey);font-weight:600;white-space:nowrap;flex-shrink:0}
+.affect-card-name{font-size:12.5px;font-weight:700;color:var(--black);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.affect-card-addr{font-size:10.5px;color:var(--grey);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.affect-ghost{position:fixed;top:0;left:0;z-index:500;pointer-events:none;box-shadow:var(--sh-lg);opacity:.95;transform:rotate(-2deg)}
+.affect-confirm-bar{position:sticky;bottom:14px;display:flex;align-items:center;gap:8px;background:var(--black);color:#fff;border-radius:100px;padding:8px 8px 8px 16px;box-shadow:var(--sh-lg);margin-top:16px}
+.affect-confirm-bar span{flex:1;font-weight:700;font-size:12.5px}
+.affect-confirm-bar .btn{padding:8px 14px;font-size:12px}
+
 .stock-gauge{height:12px;border-radius:100px;background:var(--green-bg);overflow:hidden;margin-bottom:14px}
 .stock-gauge-fill{height:100%;background:var(--blue);border-radius:100px;transition:width .4s ease}
 
@@ -1725,10 +1750,12 @@ let TRANSPORTEURS_CACHE = [];
 let LIVRAISONS_CACHE = [];
 let LIVRAISONS_FILTER = 'toutes';
 let LIVRAISONS_SHOW_MASQUEES = false;
+let LIVRAISONS_VIEW = 'liste';
 
 async function loadLivraisons(){
   const zone = document.getElementById('tab-livraisons');
   zone.innerHTML = loading();
+  AFFECT_STAGED = null; // données fraîches à chaque ouverture de l'onglet -> brouillon d'affectation repart de zéro
   try{
     const [lr, tr] = await Promise.all([
       fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
@@ -1744,6 +1771,7 @@ async function loadLivraisons(){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
+function setLivraisonsView(view){ LIVRAISONS_VIEW = view; renderLivraisonsToolbar(); }
 
 // Moyenne du temps passé sur place (arrivée → terminé), à partir des horodatages
 // posés automatiquement pendant le parcours du livreur — aucune saisie manuelle.
@@ -1802,12 +1830,28 @@ function renderLivraisonsToolbar(){
     ${todayHtml}
     ${avgHtml}
     <button class="btn btn-blue btn-block" style="margin-bottom:14px" onclick="openCreateMissionModal()">+ Créer une mission</button>
-    <input type="text" id="liv-search" placeholder="🔎 Client, adresse, référence…" oninput="renderLivraisons()"/>
     <div class="periods" style="margin-bottom:16px">
-      ${filters.map(f => `<button class="${!LIVRAISONS_SHOW_MASQUEES && LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
+      <button class="${LIVRAISONS_VIEW==='liste'?'on':''}" onclick="setLivraisonsView('liste')">📋 Liste</button>
+      <button class="${LIVRAISONS_VIEW==='affectation'?'on':''}" onclick="setLivraisonsView('affectation')">🖐️ Affectation</button>
     </div>
-    <div id="liv-list" class="row-grid"></div>
-    ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleLivraisonsMasquees()">${LIVRAISONS_SHOW_MASQUEES?'← Revenir aux missions':`🙈 Afficher les missions supprimées (${masqueesCount})`}</button>` : ''}`;
+    <div id="liv-liste-view" class="${LIVRAISONS_VIEW==='affectation'?'hidden':''}">
+      <input type="text" id="liv-search" placeholder="🔎 Client, adresse, référence…" oninput="renderLivraisons()"/>
+      <div class="periods" style="margin:16px 0">
+        ${filters.map(f => `<button class="${!LIVRAISONS_SHOW_MASQUEES && LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
+      </div>
+      <div id="liv-list" class="row-grid"></div>
+      ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleLivraisonsMasquees()">${LIVRAISONS_SHOW_MASQUEES?'← Revenir aux missions':`🙈 Afficher les missions supprimées (${masqueesCount})`}</button>` : ''}
+    </div>
+    <div id="liv-affect-view" class="${LIVRAISONS_VIEW==='liste'?'hidden':''}">
+      <div id="liv-affect-board"></div>
+      <div class="affect-confirm-bar hidden" id="affect-confirm-bar">
+        <span id="affect-confirm-count"></span>
+        <button class="btn btn-grey" onclick="cancelAffectChanges()">Annuler</button>
+        <button class="btn btn-blue" id="affect-confirm-btn" onclick="applyAffectChanges()">Mettre à jour</button>
+      </div>
+    </div>`;
+  if(LIVRAISONS_VIEW==='liste') renderLivraisons();
+  else renderAffectBoard();
 }
 // ── Créer une mission manuellement ─────────────────────────────────────────
 // admin-livraisons.js avait déjà l'action 'create' (type/réservation/
@@ -2144,6 +2188,186 @@ function remettreAFaire(livraisonId){
     }catch(e){ showToast(e.message, 'error'); }
   });
 }
+// ── Affectation par glisser-déposer ───────────────────────────────────────
+// Deux colonnes : missions du jour à affecter / transporteurs du jour avec
+// leurs missions déjà affectées. Le glisser-déposer ne touche qu'un état
+// local en brouillon (AFFECT_STAGED) — rien n'est écrit en base tant qu'Aly
+// n'a pas cliqué "Mettre à jour", pour pouvoir se tromper sans risque pendant
+// la manipulation. Réutilise l'action 'assign' déjà existante et déjà testée
+// (gère la remise à "à faire" d'une mission en cours réaffectée, et les
+// notifications push aux deux transporteurs concernés) plutôt que de créer un
+// nouvel endpoint : "Mettre à jour" l'appelle une fois par mission modifiée.
+let AFFECT_STAGED = null;   // livraison_id -> transporteur_id|null (état en cours d'édition)
+let AFFECT_ORIGINAL = null; // livraison_id -> transporteur_id|null (état réel, pour savoir ce qui a changé)
+
+function affectMissionsToday(){
+  const todayStr = new Date().toISOString().slice(0,10);
+  return LIVRAISONS_CACHE.filter(m => !m.masquee && m.date_prevue===todayStr && ['a_faire','acceptee','arrivee','probleme'].includes(m.statut));
+}
+function initAffectStaged(){
+  AFFECT_STAGED = {}; AFFECT_ORIGINAL = {};
+  affectMissionsToday().forEach(m => {
+    const tId = m.transporteur ? m.transporteur.id : null;
+    AFFECT_STAGED[m.id] = tId; AFFECT_ORIGINAL[m.id] = tId;
+  });
+}
+function affectDirtyIds(){
+  return Object.keys(AFFECT_STAGED).filter(id => AFFECT_STAGED[id] !== AFFECT_ORIGINAL[id]);
+}
+function renderAffectBoard(){
+  const zone = document.getElementById('liv-affect-board');
+  if(!zone) return;
+  if(!AFFECT_STAGED) initAffectStaged();
+  const missions = affectMissionsToday();
+  const byId = new Map(missions.map(m => [String(m.id), m]));
+  const transporteurs = TRANSPORTEURS_CACHE.filter(t => t.actif && t.nom !== TEST_TRANSPORTEUR_NOM);
+
+  const sortIds = ids => ids.map(id => byId.get(id)).filter(Boolean)
+    .sort((a,b) => (a.creneau||'').localeCompare(b.creneau||'') || a.id-b.id);
+  const cardHtml = m => {
+    const res = m.reservation || {};
+    const dirty = AFFECT_STAGED[m.id] !== AFFECT_ORIGINAL[m.id];
+    return `
+      <div class="affect-card ${dirty?'dirty':''}" data-id="${m.id}">
+        <div class="affect-card-top"><span>${MISSION_TYPE_LABEL[m.type]||m.type}</span>${m.creneau?`<span class="affect-card-cren">${escHtml(m.creneau)}</span>`:''}</div>
+        <div class="affect-card-name">${escHtml((res.prenom||'')+' '+(res.nom||''))}</div>
+        <div class="affect-card-addr">📍 ${escHtml(res.adresse||'—')}</div>
+      </div>`;
+  };
+
+  if(!missions.length){
+    zone.innerHTML = '<p class="empty">🚚 Aucune mission active aujourd\'hui.</p>';
+    updateAffectConfirmBar();
+    return;
+  }
+
+  const unassignedIds = Object.keys(AFFECT_STAGED).filter(id => AFFECT_STAGED[id]==null);
+  const unassignedHtml = sortIds(unassignedIds).map(cardHtml).join('') || '<p class="affect-empty-hint">Tout est affecté 👍</p>';
+
+  const transpColHtml = transporteurs.map(t => {
+    const idsForT = Object.keys(AFFECT_STAGED).filter(id => AFFECT_STAGED[id]===t.id);
+    const cards = sortIds(idsForT).map(cardHtml).join('');
+    return `
+      <div class="affect-transp-zone" data-transp-id="${t.id}">
+        <div class="affect-transp-head">${escHtml(t.nom)}<span class="affect-transp-count">${idsForT.length}</span></div>
+        <div class="affect-transp-body">${cards || '<p class="affect-empty-hint">Glisse une mission ici</p>'}</div>
+      </div>`;
+  }).join('') || '<p class="empty">Aucun transporteur actif.</p>';
+
+  zone.innerHTML = `
+    <p class="affect-hint">🖐️ Glisse une mission d'une colonne à l'autre pour l'affecter. Rien n'est appliqué avant "Mettre à jour".</p>
+    <div class="affect-cols">
+      <div class="affect-col">
+        <div class="affect-col-title">À affecter</div>
+        <div class="affect-unassigned-zone">${unassignedHtml}</div>
+      </div>
+      <div class="affect-col">
+        <div class="affect-col-title">Transporteurs</div>
+        ${transpColHtml}
+      </div>
+    </div>`;
+  updateAffectConfirmBar();
+  bindAffectDrag();
+}
+function updateAffectConfirmBar(){
+  const bar = document.getElementById('affect-confirm-bar');
+  if(!bar || !AFFECT_STAGED) return;
+  const n = affectDirtyIds().length;
+  bar.classList.toggle('hidden', n===0);
+  const countEl = document.getElementById('affect-confirm-count');
+  if(countEl) countEl.textContent = `${n} changement${n>1?'s':''} en attente`;
+}
+function cancelAffectChanges(){
+  initAffectStaged();
+  renderAffectBoard();
+}
+async function applyAffectChanges(){
+  const dirtyIds = affectDirtyIds();
+  if(!dirtyIds.length) return;
+  const btn = document.getElementById('affect-confirm-btn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Mise à jour…'; }
+  let ok = 0, fail = 0;
+  for(const id of dirtyIds){
+    try{
+      const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'assign', livraison_id:Number(id), transporteur_id: AFFECT_STAGED[id]||null})});
+      if(!r.ok) throw new Error();
+      ok++;
+    }catch(e){ fail++; }
+  }
+  showToast(fail ? `${ok} affectation${ok>1?'s':''} mise${ok>1?'s':''} à jour, ${fail} échec${fail>1?'s':''}` : `${ok} affectation${ok>1?'s':''} mise${ok>1?'s':''} à jour`, fail?'error':'success');
+  await loadLivraisons();
+  loadAlerts();
+}
+
+// Glisser-déposer tactile : le drag-and-drop natif HTML5 ne fonctionne pas au
+// doigt sur mobile Safari/Chrome, donc geste codé à la main via Pointer Events
+// (unifie souris/tactile/stylet). Une carte "flotte" (ghost) au-dessus du
+// doigt pendant le geste ; la carte d'origine reste en place, estompée.
+let AFFECT_DRAG = null;
+function bindAffectDrag(){
+  document.querySelectorAll('#liv-affect-board .affect-card').forEach(card => {
+    card.addEventListener('pointerdown', onAffectDragStart);
+  });
+}
+function onAffectDragStart(e){
+  if(e.button != null && e.button !== 0) return;
+  const card = e.currentTarget;
+  const rect = card.getBoundingClientRect();
+  AFFECT_DRAG = {
+    id: card.dataset.id, startX: e.clientX, startY: e.clientY, moved: false,
+    offsetX: e.clientX - rect.left, offsetY: e.clientY - rect.top, w: rect.width,
+  };
+  try{ card.setPointerCapture(e.pointerId); }catch(err){}
+  card.addEventListener('pointermove', onAffectDragMove);
+  card.addEventListener('pointerup', onAffectDragEnd);
+  card.addEventListener('pointercancel', onAffectDragEnd);
+}
+function onAffectDragMove(e){
+  if(!AFFECT_DRAG) return;
+  const dx = e.clientX - AFFECT_DRAG.startX, dy = e.clientY - AFFECT_DRAG.startY;
+  if(!AFFECT_DRAG.moved && Math.hypot(dx,dy) < 6) return;
+  if(!AFFECT_DRAG.moved){
+    AFFECT_DRAG.moved = true;
+    const original = document.querySelector(`#liv-affect-board .affect-card[data-id="${AFFECT_DRAG.id}"]`);
+    if(original){
+      original.style.opacity = '.35';
+      const ghost = original.cloneNode(true);
+      ghost.classList.add('affect-ghost');
+      ghost.style.width = AFFECT_DRAG.w+'px';
+      document.body.appendChild(ghost);
+      AFFECT_DRAG.ghost = ghost;
+    }
+  }
+  if(AFFECT_DRAG.ghost){
+    AFFECT_DRAG.ghost.style.left = (e.clientX - AFFECT_DRAG.offsetX)+'px';
+    AFFECT_DRAG.ghost.style.top = (e.clientY - AFFECT_DRAG.offsetY)+'px';
+  }
+  document.querySelectorAll('.affect-drop-hover').forEach(z => z.classList.remove('affect-drop-hover'));
+  const target = document.elementFromPoint(e.clientX, e.clientY);
+  const zone = target && target.closest('.affect-transp-zone, .affect-unassigned-zone');
+  if(zone) zone.classList.add('affect-drop-hover');
+}
+function onAffectDragEnd(e){
+  if(!AFFECT_DRAG) return;
+  const card = e.currentTarget;
+  try{ card.releasePointerCapture(e.pointerId); }catch(err){}
+  card.removeEventListener('pointermove', onAffectDragMove);
+  card.removeEventListener('pointerup', onAffectDragEnd);
+  card.removeEventListener('pointercancel', onAffectDragEnd);
+  if(AFFECT_DRAG.ghost) AFFECT_DRAG.ghost.remove();
+  document.querySelectorAll('.affect-drop-hover').forEach(z => z.classList.remove('affect-drop-hover'));
+
+  if(AFFECT_DRAG.moved){
+    const target = document.elementFromPoint(e.clientX, e.clientY);
+    const transpZone = target && target.closest('.affect-transp-zone');
+    const unassignedZone = target && target.closest('.affect-unassigned-zone');
+    if(transpZone) AFFECT_STAGED[AFFECT_DRAG.id] = Number(transpZone.dataset.transpId);
+    else if(unassignedZone) AFFECT_STAGED[AFFECT_DRAG.id] = null;
+    renderAffectBoard();
+  }
+  AFFECT_DRAG = null;
+}
+
 const MEDIA_KIND_LABEL = {
   photo_depart: 'Photo — départ dépôt', photo_installation: 'Vidéo — installation',
   photo_retour: 'Vidéo — appareil récupéré', photo_absence: 'Vidéo — preuve de passage',
