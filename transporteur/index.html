@@ -19,7 +19,7 @@
   /* Palette identique à index.html (site vitrine) et admin/index.html */
   --blue:#1b3a5f; --blue-d:#142d4a; --blue-lt:#dce8f5;
   --black:#141e30; --black2:#1e2d45; --bg:#eef1f5; --white:#ffffff;
-  --grey:#5a6577; --grey2:#6b7785; --grey-soft:#8b93a3; --rule:#dde3ea; --gold:#c5a96c; --gold-lt:#f3ead9;
+  --grey:#5a6577; --grey2:#6b7785; --grey-soft:#707a8a; --rule:#dde3ea; --gold:#c5a96c; --gold-lt:#f3ead9;
   --green:#2d6a4f; --green-bg:#e6f0ea; --red:#9b2c1a; --red-bg:#f8e9e6; --amber:#9c6a17; --amber-bg:#f6eed9;
   --navy:#0d1829;
   --disp:'Cormorant Garamond',Georgia,serif;
@@ -93,6 +93,8 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .mcard-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 9px 3px 7px;border-radius:100px;background:var(--bg);color:var(--grey)}
 .mcard-earn{display:inline-flex;align-items:center;font-size:11px;font-weight:800;color:var(--green);background:var(--green-bg);padding:3px 9px;border-radius:100px}
 .mcard-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.mcard-late-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:3px 9px;border-radius:100px;background:var(--amber-bg);color:var(--amber)}
+.detail-late-badge{display:inline-block;font-size:12px;font-weight:800;color:var(--amber);background:var(--amber-bg);border-radius:100px;padding:4px 12px;margin-bottom:10px}
 .mcard-addr{font-size:13.5px;color:var(--grey);margin-top:7px;line-height:1.4}
 .mcard-meta{font-size:11.5px;color:var(--grey-soft);margin-top:3px}
 /* Actions fusionnées : icônes compact (carte/tél) + boutons accept/refuse sur 1 ligne */
@@ -990,6 +992,11 @@ function missionCardHtml(m){
   // traiter maintenant.
   const todayStr = new Date().toISOString().slice(0,10);
   const badge = (m.statut === 'acceptee' && m.date_prevue > todayStr) ? 'Programmée' : (STATUT_LABEL[m.statut] || m.statut);
+  // Mission acceptée/sur place dont le jour prévu est déjà passé : elle se
+  // fond sinon avec les missions du jour même dans "En cours" — un badge
+  // d'alerte permet de la repérer d'un coup d'œil dans la liste.
+  const isLate = ['acceptee','arrivee'].includes(m.statut) && m.date_prevue < todayStr;
+  const lateBadge = isLate ? `<span class="mcard-late-badge">⏰ En retard</span>` : '';
   const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
   const earn = m.montant_preview ? `<span class="mcard-earn">💶 ${Math.round(m.montant_preview/100)}€</span>` : '';
   const metaParts = [m.creneau?escHtml(m.creneau):'', (c.etage&&c.etage!=='—')?'Étage '+escHtml(c.etage):''].filter(Boolean);
@@ -1003,6 +1010,7 @@ function missionCardHtml(m){
         <span class="mcard-icon">${TYPE_ICON[m.type]||'📍'}</span>
         <span class="mcard-type">${missionTypeLabel(m)}${unitsTxt?` · 🔢 ${unitsTxt}`:''}</span>
         <span class="mcard-badge">${badge}</span>
+        ${lateBadge}
         <span style="flex:1"></span>
         ${earn}
       </div>
@@ -1401,7 +1409,7 @@ function missionWizardHtml(m, infoRows){
   return `
     ${missionWizardProgressHtml(steps, idx)}
     <div id="action-zone">${wizardStepBodyHtml(m, infoRows, key)}</div>
-    <button class="btn btn-grey" style="margin-top:10px" onclick="openProbleme()">⚠️ PROBLÈME</button>
+    <button class="btn btn-amber" style="margin-top:10px" onclick="openProbleme()">⚠️ PROBLÈME</button>
     <div class="err" id="detail-err"></div>`;
 }
 
@@ -1484,6 +1492,7 @@ function renderDetail(){
       ${enCours ? `<button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>` : ''}
     </div>
     <div class="card">
+      ${(['acceptee','arrivee'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
       <h1>${TYPE_ICON[m.type]||''} ${missionTypeLabel(m)}</h1>
       <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):'', m.montant_preview?`💶 ${Math.round(m.montant_preview/100)} €`:''].filter(Boolean).join(' · ')}</p>
       ${bodyHtml}
@@ -2105,6 +2114,15 @@ function closeDayMap(){
     show('login-screen');
   }
   document.getElementById('lg-code').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+  // Validation automatique dès que les 6 chiffres sont saisis — évite d'avoir
+  // à taper sur "Entrer →" en plus. Le bouton reste utilisable en filet de
+  // secours (ex. si l'auto-submit échoue). On ignore les fois où le champ est
+  // déjà en cours de vérification (bouton désactivé) pour ne pas relancer une
+  // 2e requête pendant que la 1re est en vol.
+  document.getElementById('lg-code').addEventListener('input', e => {
+    const btn = document.getElementById('lg-btn');
+    if(e.target.value.length===6 && !btn.disabled) doLogin();
+  });
 })();
 </script>
 </body>
