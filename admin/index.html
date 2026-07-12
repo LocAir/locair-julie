@@ -3431,19 +3431,15 @@ function renderVilles(){
           <span class="chip ${c.actif?'actif':'inactif'}">${c.actif?'active':'inactive'}</span>
         </span>
       </div>
-      ${c.dep?`<div class="row-meta">${escHtml(c.dep)}</div>`:''}
-      <div class="row-meta">Codes postaux : ${(c.postal_codes&&c.postal_codes.length) ? escHtml(c.postal_codes.join(', ')) : '—'}</div>
-      <div class="row-meta" style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span style="font-weight:700;color:var(--grey);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em">Mode "complet"</span>
+      <div class="row-meta">${c.dep?escHtml(c.dep)+' · ':''}${(c.postal_codes&&c.postal_codes.length) ? escHtml(c.postal_codes.join(', ')) : 'Aucun code postal'}</div>
+      <div class="row-meta">💶 ${baremeSummaryHtml(c)}</div>
+      <div class="row-meta" style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="periods" style="margin:0;width:auto;display:inline-flex">
-          <button class="${(c.sold_out_mode||'auto')==='auto'?'on':''}" onclick="setVilleSoldOutMode(${c.id}, 'auto')">⚙️ Automatique</button>
+          <button class="${(c.sold_out_mode||'auto')==='auto'?'on':''}" onclick="setVilleSoldOutMode(${c.id}, 'auto')">⚙️ Auto</button>
           <button class="${c.sold_out_mode==='manuel'?'on':''}" onclick="setVilleSoldOutMode(${c.id}, 'manuel')">🖐️ Manuel</button>
         </span>
+        ${c.sold_out_mode==='manuel'?`<span style="font-size:11.5px;color:var(--amber);font-weight:600">"Complet" géré par toi, pas par le stock</span>`:''}
       </div>
-      ${c.sold_out_mode==='manuel'
-        ? `<div class="row-meta" style="color:var(--amber);font-size:12px">Mode manuel actif : le calcul automatique est en pause pour cette ville, c'est toi qui décides.</div>`
-        : (c.sold_out?`<div class="row-meta" style="color:var(--red);font-size:12px">Le site affiche "complet" pour cette ville — aucune nouvelle réservation possible. Calculé automatiquement dès qu'un appareil se libère (aucune action requise).</div>`:'')}
-      <div class="row-meta">💶 ${baremeSummaryHtml(c)}</div>
       <div class="row-actions">
         ${c.sold_out_mode==='manuel'?`<button class="btn ${c.sold_out?'btn-green':'btn-grey'}" onclick="toggleVilleSoldOut(${c.id}, ${!c.sold_out})">${c.sold_out?'🔓 Rouvrir':'🚫 Passer en complet'}</button>`:''}
         <button class="btn ${c.actif?'btn-grey':'btn-green'}" onclick="toggleVilleActif(${c.id}, ${!c.actif})">${c.actif?'Désactiver':'✅ Réactiver'}</button>
@@ -3457,7 +3453,7 @@ function renderVilles(){
       </div>
     </div>`).join('') || '<p class="empty">🌍 Aucune ville configurée.</p>';
   const soldOutHint = `
-    <div class="affect-hint">💡 <strong>Mode "complet"</strong> : plus de stock disponible ? Le site affiche automatiquement "Complet" à vos visiteurs pour éviter qu'ils réservent un appareil qui n'existe plus — pas d'action requise. Repassez une ville en "Manuel" seulement si vous voulez garder la main vous-même (ex. incident, fermeture volontaire).</div>`;
+    <div class="affect-hint">💡 Plus de stock ? Le site affiche "Complet" tout seul, sans rien à faire. Passez une ville en "Manuel" seulement pour garder la main vous-même (incident, fermeture volontaire).</div>`;
   zone.innerHTML = soldOutHint + list + `
     <div class="card">
       <h2>Ouvrir une nouvelle ville</h2>
