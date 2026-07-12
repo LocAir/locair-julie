@@ -3,6 +3,7 @@ const { getSupabase }          = require('./_lib/supabase');
 const { sendBrevoSms }         = require('./_lib/brevo');
 const { pushToAdmin, pushToTransporteur } = require('./_lib/push');
 const { getAvailability }      = require('./_lib/stock');
+const { notifyIfSoldOut }      = require('./_lib/city');
 const { runWeeklyReport }      = require('./cron-weekly');
 const { runMonthlyRecap }      = require('./cron-monthly');
 
@@ -216,6 +217,7 @@ module.exports = async (req, res) => {
     const { data: citiesForSoldOut } = await supabase.from('cities').select('id').eq('actif', true);
     for (const city of citiesForSoldOut || []) {
       await supabase.rpc('_auto_sold_out', { p_city_id: city.id });
+      await notifyIfSoldOut(supabase, city.id);
     }
   } catch (e) {
     console.error('[Cron sold_out refresh]', e.message);

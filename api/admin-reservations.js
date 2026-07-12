@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { resolveAdminCity } = require('./_lib/city');
+const { resolveAdminCity, notifyIfSoldOut } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate }     = require('./_lib/dates');
 const { checkAdminToken } = require('./_lib/auth');
@@ -161,6 +161,7 @@ module.exports = async (req, res) => {
             p_reservation_id: id, p_city_id: before.city_id, p_quantite: diff,
             p_date_debut: before.date_debut, p_date_fin: before.date_fin,
           });
+          await notifyIfSoldOut(supabase, before.city_id);
         } else {
           const { data: toFree } = await supabase
             .from('reservation_appareils').select('id').eq('reservation_id', id)

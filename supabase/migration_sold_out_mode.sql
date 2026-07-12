@@ -45,3 +45,28 @@ BEGIN
   WHERE id = p_city_id;
 END;
 $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 3. Alerte admin dès qu'une ville affiche "complet" (une seule fois par
+--    épisode) : sold_out_notified passe à true côté application (api/_lib/
+--    city.js, notifyIfSoldOut) juste après l'envoi du push. Ce trigger se
+--    charge uniquement de le réinitialiser à false dès que la ville redevient
+--    disponible — que ce soit via le calcul automatique ou une réouverture
+--    manuelle — pour que la prochaine fermeture déclenche une nouvelle alerte.
+-- ─────────────────────────────────────────────────────────────────────────────
+ALTER TABLE cities ADD COLUMN IF NOT EXISTS sold_out_notified boolean NOT NULL DEFAULT false;
+
+CREATE OR REPLACE FUNCTION _reset_sold_out_notified()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.sold_out = false THEN
+    NEW.sold_out_notified := false;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_reset_sold_out_notified ON cities;
+CREATE TRIGGER trg_reset_sold_out_notified
+  BEFORE UPDATE OF sold_out ON cities
+  FOR EACH ROW EXECUTE FUNCTION _reset_sold_out_notified();
