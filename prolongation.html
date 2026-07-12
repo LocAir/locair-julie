@@ -69,8 +69,11 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
 .price-box-amount{font-size:22px;font-weight:700;color:var(--blue)}
 .price-box-note{font-size:12px;color:var(--grey);line-height:1.5}
 
-.pay-summary{background:#fff;border:1.5px solid var(--rule);border-radius:12px;padding:16px 20px;margin-bottom:20px;font-size:13.5px;color:var(--grey)}
-.pay-summary strong{color:var(--black)}
+.pay-summary{background:#fff;border:1.5px solid var(--rule);border-radius:12px;padding:16px 20px;margin-bottom:20px}
+.pay-sum-row{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.pay-sum-type{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:2px}
+.pay-sum-detail{font-size:13.5px;font-weight:500;color:var(--black)}
+.pay-sum-price{font-size:22px;font-weight:700;color:var(--blue);white-space:nowrap;flex-shrink:0}
 
 .payment-card{background:#fff;border:1.5px solid var(--rule);border-radius:14px;padding:22px;margin-bottom:16px}
 .payment-card-hdr{font-size:12.5px;font-weight:600;color:var(--black2);letter-spacing:.03em;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--rule)}
@@ -176,7 +179,13 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
   <!-- ÉTAPE 3 : paiement Stripe -->
   <div id="step-3" style="display:none">
     <div class="pay-summary" id="pay-summary">
-      Prolongation · <strong id="pay-summary-label"></strong>
+      <div class="pay-sum-row">
+        <div>
+          <p class="pay-sum-type">Prolongation</p>
+          <p class="pay-sum-detail" id="pay-summary-detail"></p>
+        </div>
+        <p class="pay-sum-price" id="pay-summary-price"></p>
+      </div>
     </div>
     <div class="payment-card">
       <p class="payment-card-hdr">Paiement sécurisé</p>
@@ -345,7 +354,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
     hide('step-2');show('step-3');
     const psub=document.getElementById('page-sub-txt');if(psub)psub.textContent='Vérifiez le récapitulatif ci-dessous et réglez par carte. Une confirmation vous sera envoyée par email dès validation.';
     const amtFmt=(amtCents/100).toLocaleString('fr-FR')+' €';
-    document.getElementById('pay-summary-label').textContent='+'+jours+' jour'+(jours>1?'s':'')+' jusqu’au '+fmtLong(dateFin)+' \xb7 '+amtFmt;
+    document.getElementById('pay-summary-detail').textContent='+'+jours+' jour'+(jours>1?'s':'')+' jusqu’au '+fmtLong(dateFin);
+    document.getElementById('pay-summary-price').textContent=amtFmt;
     document.getElementById('btn-confirm-label').textContent='Payer '+amtFmt;
     if(typeof Stripe==='undefined'){err('payment-error','Erreur de chargement du module de paiement. Rechargez la page.');return;}
     strInst=Stripe(STRIPE_PK);
