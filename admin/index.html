@@ -1489,7 +1489,36 @@ function renderReservationsToolbar(){
 // public (index.html), pour qu'Aly puisse saisir intégralement une réservation
 // prise par téléphone (ex. personne âgée peu à l'aise avec le site) sans rien
 // perdre par rapport à ce qu'un client aurait rempli lui-même.
+// Mêmes codes/montants que le site public (index.html _PROMO_FIXED,
+// api/checkout.js PROMO_CODES) — à tenir synchronisé si un code est ajouté.
+const NR_PROMO_CODES = {'LOCAIR10':10, 'LOCA10':10};
+let _nrPromoDiscount = 0;
+// Applique/retire la remise sur le prix déjà saisi plutôt que de reconstruire
+// tout le calcul à partir de zéro — un prix négocié à la main pour d'autres
+// raisons (geste commercial, tarif spécial) n'est jamais écrasé.
+function onNrParrainInput(){
+  const inp = document.getElementById('nr-parrain');
+  const prixEl = document.getElementById('nr-prix');
+  const fb = document.getElementById('nr-parrain-fb');
+  if(!inp || !prixEl || !fb) return;
+  const val = inp.value.trim().toUpperCase();
+  const prevDiscount = _nrPromoDiscount;
+  const newDiscount = NR_PROMO_CODES[val] || 0;
+  if(val && !newDiscount){
+    fb.textContent = 'Code non reconnu'; fb.style.color = 'var(--red)'; fb.style.display = 'block';
+    return;
+  }
+  if(newDiscount !== prevDiscount){
+    const restored = (parseFloat(prixEl.value)||0) + prevDiscount;
+    const applied  = Math.max(0, restored - newDiscount);
+    prixEl.value = applied ? (Math.round(applied*100)/100) : '';
+    _nrPromoDiscount = newDiscount;
+  }
+  if(newDiscount){ fb.textContent = `✓ Code valide — ${newDiscount} € déduits`; fb.style.color = 'var(--green)'; fb.style.display = 'block'; }
+  else fb.style.display = 'none';
+}
 function reservationCreerHtml(){
+  _nrPromoDiscount = 0;
   return `
     <div class="card">
       <h2>Nouvelle réservation</h2>
@@ -1522,8 +1551,8 @@ function reservationCreerHtml(){
         <option>Studio</option><option>T2</option><option>T3/T4</option><option>Maison</option>
       </select>
       <label for="nr-parrain" style="margin-top:8px">Code parrain (optionnel)</label>
-      <input type="text" id="nr-parrain"/>
-      <p class="sub" style="margin-top:4px;font-size:11.5px">💡 Ici le code n'est enregistré qu'à titre indicatif, contrairement au site — pense à déduire la remise toi-même dans "Prix total".</p>
+      <input type="text" id="nr-parrain" oninput="onNrParrainInput()"/>
+      <p id="nr-parrain-fb" style="display:none;font-size:12px;font-weight:600;margin-top:4px"></p>
       <label style="margin-top:8px">Motif de location (optionnel)</label>
       <div class="periods" id="nr-motifs" style="margin:0;flex-wrap:wrap;height:auto">
         ${['Chaleur','Bébé / Santé','Airbnb / Location','Événement'].map(m => `<button type="button" data-motif="${m}" onclick="this.classList.toggle('on')" style="flex:none;padding:8px 14px">${m}</button>`).join('')}
