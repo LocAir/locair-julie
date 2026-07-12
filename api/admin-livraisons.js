@@ -188,6 +188,12 @@ module.exports = async (req, res) => {
 
       const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'transporteur_id, statut');
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
+      // Une mission terminée ou annulée ne change plus de transporteur : le
+      // montant dû lui est déjà rattaché (admin-virements.js) — réaffecter
+      // changerait silencieusement qui est payé pour un travail déjà fait.
+      if (['fait', 'annule'].includes(liv.statut)) {
+        return res.status(400).json({ error: 'Mission terminée ou annulée : transporteur non modifiable' });
+      }
       if (transporteurId) {
         const { data: t } = await supabase.from('transporteurs').select('id').eq('id', transporteurId).eq('city_id', city.id).maybeSingle();
         if (!t) return res.status(400).json({ error: 'Transporteur invalide' });
