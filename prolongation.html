@@ -111,7 +111,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
 
   <p class="page-label">Location en cours</p>
   <h1>Prolonger <em>ma location</em></h1>
-  <p class="page-sub">Retrouvez votre commande avec votre email et votre numéro de dossier. Le paiement est immédiat — vous recevez une confirmation par email dans la foulée.</p>
+  <p class="page-sub" id="page-sub-txt">Retrouvez votre commande avec votre email et votre numéro de dossier. Le paiement est immédiat — vous recevez une confirmation par email dans la foulée.</p>
 
   <!-- ÉTAPE 1 : identification -->
   <div id="step-1">
@@ -343,6 +343,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
 
   async function goStep3(clientSecret,amtCents,jours,dateFin){
     hide('step-2');show('step-3');
+    const psub=document.getElementById('page-sub-txt');if(psub)psub.textContent='Vérifiez le récapitulatif ci-dessous et réglez par carte. Une confirmation vous sera envoyée par email dès validation.';
     const amtFmt=(amtCents/100).toLocaleString('fr-FR')+' €';
     document.getElementById('pay-summary-label').textContent='+'+jours+' jour'+(jours>1?'s':'')+' jusqu’au '+fmtLong(dateFin)+' \xb7 '+amtFmt;
     document.getElementById('btn-confirm-label').textContent='Payer '+amtFmt;
@@ -371,6 +372,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
     document.getElementById('prolong-payment-element').innerHTML='<p style="color:var(--grey);font-size:13px;text-align:center;padding:32px 0">Chargement…</p>';
     document.getElementById('btn-confirm').disabled=true;noerr('payment-error');
     hide('step-3');show('step-2');
+    const psub2=document.getElementById('page-sub-txt');if(psub2)psub2.textContent='Retrouvez votre commande avec votre email et votre numéro de dossier. Le paiement est immédiat — vous recevez une confirmation par email dans la foulée.';
     const b=document.getElementById('btn-pay');b.disabled=false;b.innerHTML='Payer <span id="btn-pay-label">'+(cents/100)+' €</span>';
   });
 })();
