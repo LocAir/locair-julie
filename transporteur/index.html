@@ -222,6 +222,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .map-pin-teardrop span{transform:rotate(45deg);font-size:15px}
 .map-pin-teardrop.livraison{background:var(--blue)}
 .map-pin-teardrop.recuperation{background:var(--amber)}
+.map-pin-teardrop.future{opacity:.55}
 .leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 8px 28px rgba(20,30,48,.22)}
 .leaflet-popup-content{font-family:var(--body);margin:12px 14px;font-size:13.5px;line-height:1.5}
 </style>
@@ -1126,9 +1127,13 @@ function renderMissions(){
     return;
   }
 
-  // La tournée groupée ne porte que sur AUJOURD'HUI — des missions à des
-  // dates différentes (parfois prévues bien à l'avance, parfois de dernière
-  // minute) ne doivent jamais être mélangées dans un même itinéraire.
+  // La tournée en itinéraire Google Maps ne porte que sur AUJOURD'HUI — des
+  // missions à des dates différentes ne doivent jamais être mélangées dans
+  // un même trajet. La carte elle-même (juste en dessous), en revanche,
+  // porte sur TOUTES les missions actives quelle que soit leur date : le
+  // livreur reste autonome sur l'organisation de sa tournée et doit pouvoir
+  // repérer où se trouvent ses prochaines missions bien avant le jour J,
+  // indépendamment de la checklist (qui ne bloque jamais la carte).
   const todayStr = new Date().toISOString().slice(0,10);
   const todayActives = STATE.missions.filter(m => m.date_prevue===todayStr && m.client && m.client.adresse && ['a_faire','acceptee','arrivee','probleme'].includes(m.statut));
   let zoneHtml = '';
@@ -1143,7 +1148,7 @@ function renderMissions(){
     const url = `https://www.google.com/maps/dir/?api=1&destination=${last}${waypoints?('&waypoints='+waypoints):''}&travelmode=driving`;
     zoneHtml += `<a class="tour-btn" href="${url}" target="_blank" rel="noopener">🧭 Voir la tournée d'aujourd'hui (ordre suggéré, pas obligatoire)</a>`;
   }
-  if(todayActives.length > 1){
+  if(allActiveMissionsWithAddress().length > 1){
     zoneHtml += `<button class="tour-btn tour-btn-alt" onclick="openDayMap()">🗺️ Voir sur la carte</button>`;
   }
   tourZone.innerHTML = zoneHtml;
@@ -1885,9 +1890,14 @@ async function geocodeAddress(address){
   }
 }
 
-function todayMissionsWithAddress(){
-  const todayStr = new Date().toISOString().slice(0,10);
-  return STATE.missions.filter(m => m.date_prevue===todayStr && m.client && m.client.adresse && ['a_faire','acceptee','arrivee','probleme'].includes(m.statut));
+// Toutes les missions actives géolocalisables, sans filtre de date — le
+// livreur est autonome sur l'organisation de sa tournée (l'app suggère un
+// ordre par secteur, ne l'impose jamais) et doit pouvoir repérer sur la
+// carte où se trouvent ses prochaines missions, aujourd'hui comme dans
+// plusieurs jours, indépendamment de la checklist (qui ne bloque que les
+// coordonnées précises/l'appel d'une mission du jour, jamais la carte).
+function allActiveMissionsWithAddress(){
+  return STATE.missions.filter(m => m.client && m.client.adresse && ['a_faire','acceptee','arrivee','probleme'].includes(m.statut));
 }
 
 async function openDayMap(){
@@ -1903,7 +1913,7 @@ async function openDayMap(){
   }
   setTimeout(() => DAY_MAP && DAY_MAP.invalidateSize(), 50);
 
-  const missions = todayMissionsWithAddress();
+  const missions = allActiveMissionsWithAddress();
   await Promise.all(missions.map(m => geocodeAddress(m.client.adresse)));
   renderDayMapPins();
 }
@@ -1913,7 +1923,8 @@ function renderDayMapPins(){
   DAY_MAP_MARKERS.forEach(mk => DAY_MAP.removeLayer(mk));
   DAY_MAP_MARKERS = [];
 
-  const missions = todayMissionsWithAddress().filter(m => DAY_MAP_FILTER==='toutes' || m.type===DAY_MAP_FILTER);
+  const todayStr = new Date().toISOString().slice(0,10);
+  const missions = allActiveMissionsWithAddress().filter(m => DAY_MAP_FILTER==='toutes' || m.type===DAY_MAP_FILTER);
   const points = [];
 
   missions.forEach(m => {
@@ -1921,10 +1932,14 @@ function renderDayMapPins(){
     if(!coords) return;
     const point = [coords.lat, coords.lng];
     points.push(point);
-    const icon = L.divIcon({className:'', html:`<div class="map-pin-teardrop ${m.type}"><span>${m.type==='livraison'?'📦':'🔄'}</span></div>`, iconSize:[32,32], iconAnchor:[16,32]});
+    // Les missions d'un autre jour que le tien s'affichent en léger retrait
+    // (moins opaques) — la carte reste centrée sur "où", pas "quand", mais
+    // le jour même doit rester le plus lisible au premier coup d'œil.
+    const isFuture = m.date_prevue !== todayStr;
+    const icon = L.divIcon({className:'', html:`<div class="map-pin-teardrop ${m.type}${isFuture?' future':''}"><span>${m.type==='livraison'?'📦':'🔄'}</span></div>`, iconSize:[32,32], iconAnchor:[16,32]});
     const marker = L.marker(point, {icon}).addTo(DAY_MAP);
     const popupDiv = document.createElement('div');
-    popupDiv.innerHTML = `<strong>${escHtml((m.client.prenom||'')+' '+(m.client.nom||''))}</strong><br>${escHtml(m.client.adresse)}<br>${escHtml(m.creneau||'')}`;
+    popupDiv.innerHTML = `<strong>${escHtml((m.client.prenom||'')+' '+(m.client.nom||''))}</strong><br>${escHtml(m.client.adresse)}<br>${dateLabelFor(m.date_prevue)}${m.creneau?' · '+escHtml(m.creneau):''}`;
     const btn = document.createElement('button');
     btn.className = 'map-popup-btn';
     btn.textContent = 'Voir la mission →';

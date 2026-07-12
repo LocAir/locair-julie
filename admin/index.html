@@ -324,6 +324,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 
   <div id="a-app" class="hidden">
     <div id="alerts-banner-zone"></div>
+    <div id="virement-monday-banner-zone"></div>
     <div class="card hidden" id="a-faceid-offer" style="margin-bottom:16px">
       <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
       <p class="sub" style="margin-bottom:16px">Active Face ID / empreinte pour te connecter sans ressaisir ton mot de passe la prochaine fois.</p>
@@ -861,6 +862,7 @@ async function loadAlerts(){
     updateTabBadge('virements', d.virements);
     updateTabBadge('incidents', d.incidents);
     renderAlertsBanner(d);
+    renderVirementMondayBanner();
     // Point rouge sur le bouton ☰ (mobile) : sur la barre horizontale
     // scrollable, les badges des onglets cachés passaient inaperçus — ce
     // point signale qu'il y a quelque chose à traiter dans le menu sans
@@ -1092,6 +1094,48 @@ function dismissMorningBanner(){
   localStorage.setItem('a_morning_seen', new Date().toISOString().slice(0,10));
   const el = document.getElementById('morning-banner-el');
   if(el) el.remove();
+}
+
+// ── Rappel virements du lundi ─────────────────────────────────────────────────
+// Purement côté client (pas d'appel serveur) : chaque lundi à partir de 8h,
+// tant qu'il n'a pas été vu ou traité CE lundi précis (marqueur localStorage
+// daté sur le lundi courant, pas juste "aujourd'hui" — sinon il réapparaîtrait
+// les autres jours de la même semaine après un rechargement). Complète
+// l'alerte réactive existante ("virement demandé par le livreur") par un
+// rappel proactif hebdomadaire, même si personne n'a rien demandé.
+function currentMondayKey(){
+  const d = new Date();
+  const day = d.getDay(); // 0=dimanche .. 6=samedi
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diffToMonday);
+  return d.toISOString().slice(0, 10);
+}
+function renderVirementMondayBanner(){
+  const zone = document.getElementById('virement-monday-banner-zone');
+  if(!zone) return;
+  const now = new Date();
+  const isMondayMorningOrLater = now.getDay() === 1 && now.getHours() >= 8;
+  const mondayKey = currentMondayKey();
+  if(!isMondayMorningOrLater || localStorage.getItem('a_virement_monday_seen') === mondayKey){
+    zone.innerHTML = '';
+    return;
+  }
+  zone.innerHTML = `
+    <div class="morning-banner" id="virement-monday-banner-el" style="background:linear-gradient(150deg,var(--blue) 0%,var(--blue-d) 60%,#0a1424 100%)">
+      <button class="mb-close" onclick="dismissVirementMondayBanner()">✕</button>
+      <div class="mb-title">💶 C'est lundi</div>
+      <div class="mb-text">Pense aux virements transporteurs de la semaine.</div>
+      <button class="btn btn-blue btn-block" style="margin-top:14px" onclick="goToVirements()">Voir les virements à faire →</button>
+    </div>`;
+}
+function dismissVirementMondayBanner(){
+  localStorage.setItem('a_virement_monday_seen', currentMondayKey());
+  document.getElementById('virement-monday-banner-el')?.remove();
+}
+function goToVirements(){
+  dismissVirementMondayBanner();
+  TRANSPORTEURS_VIEW = 'revenus';
+  switchAdminTab('transporteurs');
 }
 
 // ── CHECKLIST BOX ────────────────────────────────────────────────────────────
