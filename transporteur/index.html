@@ -227,6 +227,12 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .map-filters button{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:10px;border-radius:100px;border:none;background:transparent;font-family:var(--body);font-weight:600;font-size:12.5px;letter-spacing:-.005em;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
 .map-filters button .tab-ic{width:14px;height:14px;flex-shrink:0;opacity:.7;transition:opacity .15s ease}
 #mission-filters button{padding:9px 4px;font-size:11.5px}
+/* Le nombre de secteurs (codes postaux) du jour n'est pas borné comme les 4
+   onglets de statut — flex:1 les écraserait illisibles dès 6-7 secteurs le
+   même jour. Défilement horizontal plutôt que rétrécissement. */
+#postal-filters{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+#postal-filters::-webkit-scrollbar{display:none}
+#postal-filters button{flex:none}
 .map-filters button.on{background:var(--white);color:var(--blue);font-weight:700;box-shadow:var(--sh-xs)}
 .map-filters button.on .tab-ic{opacity:1}
 #day-map{height:calc(100vh - 180px);border-radius:var(--r-lg);overflow:hidden;background:#e8e6e0;box-shadow:var(--sh-sm)}
@@ -298,9 +304,9 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
     </div>
     <div id="transp-banner-zone"></div>
     <div class="map-filters" id="mission-filters">
-      <button class="on" data-f="toutes" onclick="setMissionFilter('toutes')">Toutes<span class="tab-badge hidden badge-sf-toutes"></span></button>
       <button data-f="nouvelle" onclick="setMissionFilter('nouvelle')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.2v7.6M8.2 12h7.6"/></svg>Accepter<span class="tab-badge hidden badge-sf-nouvelle"></span></button>
-      <button data-f="en_cours" onclick="setMissionFilter('en_cours')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5h10.5v8.5H3z"/><path d="M13.5 11h3.7l3.3 3v2h-7z"/><circle cx="7" cy="18" r="1.6" fill="currentColor" stroke="none"/><circle cx="17" cy="18" r="1.6" fill="currentColor" stroke="none"/></svg>En cours<span class="tab-badge hidden badge-sf-en_cours"></span></button>
+      <button class="on" data-f="en_cours" onclick="setMissionFilter('en_cours')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5h10.5v8.5H3z"/><path d="M13.5 11h3.7l3.3 3v2h-7z"/><circle cx="7" cy="18" r="1.6" fill="currentColor" stroke="none"/><circle cx="17" cy="18" r="1.6" fill="currentColor" stroke="none"/></svg>En cours<span class="tab-badge hidden badge-sf-en_cours"></span></button>
+      <button data-f="a_venir" onclick="setMissionFilter('a_venir')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>À venir</button>
       <button data-f="terminee" onclick="setMissionFilter('terminee')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.2 12.3l2.6 2.6 5-5.4"/></svg>Finies<span class="tab-badge hidden badge-sf-terminee"></span></button>
     </div>
     <details class="tools-group hidden" id="tools-group">
@@ -756,13 +762,14 @@ function updateMissionsBadge(){
   const terminees = STATE.missions.filter(m => m.statut === 'fait');
   const lastSeenTerminee = parseInt(localStorage.getItem('t_lastseen_terminee_'+STATE.transporteurId) || '0');
   const termineesNonVues = terminees.filter(m => m.id > lastSeenTerminee).length;
-  const toutes = aFaire + termineesNonVues;
 
   document.querySelectorAll('.badge-missions').forEach(el => {
     if(aFaire>0){ el.textContent = aFaire; el.classList.remove('hidden'); }
     else el.classList.add('hidden');
   });
-  const sfMap = {nouvelle: aFaire, en_cours: enCours, terminee: termineesNonVues, toutes};
+  // Pas de badge sur "À venir" : rien n'y attend de décision immédiate, un
+  // badge rouge y ferait croire à une urgence qui n'existe pas.
+  const sfMap = {nouvelle: aFaire, en_cours: enCours, terminee: termineesNonVues};
   Object.entries(sfMap).forEach(([key, count]) => {
     document.querySelectorAll('.badge-sf-'+key).forEach(el => {
       if(count>0){ el.textContent = count; el.classList.remove('hidden'); }
@@ -773,7 +780,7 @@ function updateMissionsBadge(){
 function markTermineeSeen(){
   const maxId = Math.max(0, ...STATE.missions.filter(m => m.statut==='fait').map(m => m.id));
   if(maxId>0) localStorage.setItem('t_lastseen_terminee_'+STATE.transporteurId, String(maxId));
-  document.querySelectorAll('.badge-sf-terminee, .badge-sf-toutes').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.badge-sf-terminee').forEach(el => el.classList.add('hidden'));
 }
 
 async function updateActiviteBadge(){
@@ -986,7 +993,7 @@ function futureDateText(dateStr){
 function missionCardHtml(m){
   const c = m.client || {};
   // Une mission acceptée pour plus tard n'est pas "en cours" — le pill doit
-  // le dire clairement même hors du filtre "En cours" (ex. vue "Toutes"),
+  // le dire clairement même hors du filtre "En cours" (ex. vue "À venir"),
   // sinon deux missions au même statut technique ("acceptee") semblent
   // identiques alors que l'une attend son jour et l'autre est vraiment à
   // traiter maintenant.
@@ -995,7 +1002,7 @@ function missionCardHtml(m){
   // Mission acceptée/sur place dont le jour prévu est déjà passé : elle se
   // fond sinon avec les missions du jour même dans "En cours" — un badge
   // d'alerte permet de la repérer d'un coup d'œil dans la liste.
-  const isLate = ['acceptee','arrivee'].includes(m.statut) && m.date_prevue < todayStr;
+  const isLate = ['acceptee','arrivee','probleme'].includes(m.statut) && m.date_prevue < todayStr;
   const lateBadge = isLate ? `<span class="mcard-late-badge">⏰ En retard</span>` : '';
   const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
   const earn = m.montant_preview ? `<span class="mcard-earn">💶 ${Math.round(m.montant_preview/100)}€</span>` : '';
@@ -1097,21 +1104,23 @@ function renderTranspBanner(){
   zone.innerHTML = pauseHtml + (progressHtml ? `<div class="day-progress">${progressHtml}</div>` : '');
 }
 
-let MISSION_FILTER = 'toutes';
-// "Toutes" = toutes les missions ACTIVES (à faire + en cours) — une fois
-// "fait", une mission n'a plus rien à demander au livreur, elle se range
-// dans "Terminées" et sort de la vue par défaut. Sans ce filtre explicite,
-// l'historique s'accumulait avec les missions du jour et noyait ce qui
-// reste réellement à traiter maintenant.
+// Par défaut sur "En cours" — c'est la question que se pose le livreur en
+// ouvrant l'app : "qu'est-ce que je dois faire maintenant". "Accepter" a son
+// propre badge sur l'onglet Missions du bas pour attirer l'œil quand il y a
+// une réponse à donner, pas besoin d'en faire l'écran par défaut. L'ancien
+// filtre "Toutes" a été retiré : il mélangeait "à accepter" et "à venir" (une
+// mission déjà acceptée mais pas encore due) dans le même tas, et un livreur
+// qui cherchait une mission déjà acceptée pour dans 3 jours ne la trouvait
+// nulle part ailleurs — d'où l'onglet dédié "À venir" ci-dessous.
+let MISSION_FILTER = 'en_cours';
 const MISSION_FILTER_STATUTS = {
-  toutes:   ['a_faire', 'acceptee', 'arrivee', 'probleme'],
   nouvelle: ['a_faire'],
   terminee: ['fait'],
 };
 const MISSION_FILTER_EMPTY = {
-  toutes:   'Aucune mission pour l\'instant. 👍',
   nouvelle: 'Aucune mission à accepter pour l\'instant. 👍',
   en_cours: 'Aucune mission en cours.',
+  a_venir:  'Aucune mission à venir pour l\'instant.',
   terminee: 'Aucune mission terminée récemment.',
 };
 function setMissionFilter(f){
@@ -1139,6 +1148,9 @@ function missionUrgenceRang(m){
 function filteredMissions(){
   let list;
   if(MISSION_FILTER === 'en_cours') list = STATE.missions.filter(missionEstEnCours);
+  // "À venir" = le complément exact de "En cours" côté missions acceptées :
+  // déjà dit oui, mais pas encore due aujourd'hui (voir missionEstEnCours).
+  else if(MISSION_FILTER === 'a_venir') list = STATE.missions.filter(m => m.statut === 'acceptee' && !missionEstEnCours(m));
   else{
     const statuts = MISSION_FILTER_STATUTS[MISSION_FILTER];
     list = statuts ? STATE.missions.filter(m => statuts.includes(m.statut)) : STATE.missions.slice();
@@ -1168,8 +1180,17 @@ function renderMissions(){
   const wrap = document.getElementById('missions-list');
   const tourZone = document.getElementById('tour-zone');
   renderTranspBanner();
-  if(MISSION_FILTER==='terminee' || MISSION_FILTER==='toutes') markTermineeSeen();
+  if(MISSION_FILTER==='terminee') markTermineeSeen();
   const byStatut = filteredMissions();
+  // Le secteur sélectionné peut disparaître entre deux rafraîchissements (sa
+  // dernière mission a changé de statut pendant que le livreur regardait
+  // autre chose) — sans ce reset, le tiroir se cache dès qu'il reste moins de
+  // 2 secteurs (voir renderPostalFilter), bouton "Tous secteurs" compris, et
+  // le livreur se retrouve bloqué sur "Aucune mission dans ce secteur." sans
+  // rien à taper pour en sortir.
+  if(POSTAL_FILTER && !byStatut.some(m => postalCode((m.client||{}).adresse) === POSTAL_FILTER)){
+    POSTAL_FILTER = null;
+  }
   renderPostalFilter(byStatut);
   const visible = POSTAL_FILTER ? byStatut.filter(m => postalCode((m.client||{}).adresse) === POSTAL_FILTER) : byStatut;
   if(!visible.length){
@@ -1254,7 +1275,12 @@ function missionsByPostalHtml(items){
   // (même seuil que renderPostalFilter, qui masque déjà son propre filtre
   // dans ce cas) — évite un empilement de 3 niveaux de titre pour 1 carte.
   if(codes.length < 2) return items.map(missionCardHtml).join('');
-  return codes.sort().map(cp => `
+  // Trie les groupes par l'urgence du pire cas qu'ils contiennent (ex. un
+  // problème signalé) plutôt que par ordre alphabétique du code postal —
+  // sinon un secteur "06100" passe toujours avant "06200" même s'il contient
+  // la mission la plus urgente de la journée.
+  const rangFor = cp => Math.min(...groups[cp].map(missionUrgenceRang));
+  return codes.sort((a,b) => rangFor(a)-rangFor(b) || a.localeCompare(b)).map(cp => `
     <div class="section-title" style="font-size:10px;color:var(--grey-soft);margin:8px 2px 6px;text-transform:none;letter-spacing:normal">📮 ${escHtml(cp)} (${groups[cp].length})</div>
     ${groups[cp].map(missionCardHtml).join('')}`).join('');
 }
@@ -1492,7 +1518,7 @@ function renderDetail(){
       ${enCours ? `<button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>` : ''}
     </div>
     <div class="card">
-      ${(['acceptee','arrivee'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
+      ${(['acceptee','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
       <h1>${TYPE_ICON[m.type]||''} ${missionTypeLabel(m)}</h1>
       <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):'', m.montant_preview?`💶 ${Math.round(m.montant_preview/100)} €`:''].filter(Boolean).join(' · ')}</p>
       ${bodyHtml}
