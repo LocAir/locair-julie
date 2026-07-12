@@ -164,6 +164,7 @@ module.exports = async (req, res) => {
       prix_total_cents:         amountCents,
       statut:                   'en_attente',
       source:                   'site_prolongation',
+      parrain_code:             promoCode || null,
     });
 
     if (insertErr) {
