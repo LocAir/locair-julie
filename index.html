@@ -54,7 +54,17 @@ let SOLD_OUT = false; // Initialisé dynamiquement via /api/mode-complet au char
 // Mémorisé pour la durée de la session (le visiteur peut naviguer sur
 // plusieurs pages avant de réserver) et renvoyé avec la réservation pour
 // que la commission du partenaire soit rattachée à la bonne conciergerie.
-(function(){const p=new URLSearchParams(location.search).get('p');if(p)sessionStorage.setItem('_la_p',p.trim().slice(0,50));})();
+// Le ?p=CODE est ensuite effacé de la barre d'adresse (history.replaceState,
+// sans recharger la page) — le visiteur du site du partenaire ne doit jamais
+// voir qu'il vient d'un lien de tracking, l'URL doit rester "propre".
+(function(){
+  const url=new URL(location.href);
+  const p=url.searchParams.get('p');
+  if(!p)return;
+  sessionStorage.setItem('_la_p',p.trim().slice(0,50));
+  url.searchParams.delete('p');
+  history.replaceState(null,'',url.pathname+url.search+url.hash);
+})();
 </script>
 
 <!-- ╔══════════════════════════════════════════════════════════════════╗
