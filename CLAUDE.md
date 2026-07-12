@@ -1,5 +1,9 @@
 # Instructions du dépôt
 
+## Style de communication
+
+Toujours expliquer les choses simplement, comme si le propriétaire était un adolescent qui n'y connaît rien en technique. Pas de jargon, pas de termes complexes — des phrases courtes, concrètes, qui vont droit au but. Cette règle s'applique à toutes les réponses, synthèses et résumés, sur l'ensemble du projet Loc'Air (site, app admin, app transporteur).
+
 ## Déploiement
 
 Quand une pull request de correctifs/améliorations est prête sur la branche de
