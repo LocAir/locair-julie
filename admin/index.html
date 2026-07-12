@@ -1468,8 +1468,10 @@ function renderReservationsToolbar(){
       <button class="${RESERVATIONS_VIEW==='liste'?'on':''}" onclick="setReservationsView('liste')">📋 Liste</button>
       <button class="${RESERVATIONS_VIEW==='calendrier'?'on':''}" onclick="setReservationsView('calendrier')">📅 Calendrier</button>
       <button class="${RESERVATIONS_VIEW==='creer'?'on':''}" onclick="setReservationsView('creer')">🆕 Créer</button>
+      <button class="${RESERVATIONS_VIEW==='prolonger'?'on':''}" onclick="PROLONG_ORIG=null;setReservationsView('prolonger')">🔄 Prolonger</button>
     </div>
     <div id="resa-creer-view" class="${RESERVATIONS_VIEW==='creer'?'':'hidden'}">${reservationCreerHtml()}</div>
+    <div id="resa-prolonger-view" class="${RESERVATIONS_VIEW==='prolonger'?'':'hidden'}">${reservationProlongerHtml()}</div>
     <div id="resa-liste-view" class="${RESERVATIONS_VIEW==='liste'?'':'hidden'}">
       <button class="btn btn-grey btn-block" style="margin-bottom:16px" onclick="exportReservationsCsv()">⬇️ Exporter en CSV</button>
       <input type="text" id="resa-search" placeholder="🔎 Client, adresse, référence…" oninput="renderReservations()"/>
@@ -1567,6 +1569,137 @@ function reservationCreerHtml(){
       <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" crée la réservation en attente — l'envoi automatique du lien de paiement par email arrive bientôt. En attendant, confirme-la manuellement depuis la liste dès que le paiement est reçu.</p>
       <div class="err" id="new-resa-err"></div>
     </div>`;
+}
+// Formulaire "Créer une prolongation" — reprend le formulaire du site
+// (/prolongation, api/prolong-lookup.js + api/prolong-pay.js) : retrouver la
+// réservation d'origine par email (+ référence), puis choisir la nouvelle
+// date de fin. Même grille tarifaire et même format de code promo
+// (PRENOM + 10/20/30) que /prolongation — à tenir synchronisé si la grille
+// ou le format de code changent là-bas.
+let PROLONG_ORIG = null;
+function prCalcBase(d){ d=Math.max(1,d); if(d<=7) return d*20; if(d<=14) return 7*20+(d-7)*18; if(d<=21) return 7*20+7*18+(d-14)*17; return 7*20+7*18+7*17+(d-21)*16; }
+function prDiffDays(a,b){ return Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000); }
+function prAddDay(iso){ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+1); return d.toISOString().slice(0,10); }
+function prDiscountPct(code, prenom){
+  if(!code || !prenom) return 0;
+  const norm = prenom.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z]/g,'').toUpperCase();
+  if(!norm || !code.startsWith(norm)) return 0;
+  const pct = parseInt(code.slice(norm.length));
+  return [10,20,30].includes(pct) ? pct : 0;
+}
+function reservationProlongerHtml(){
+  if(!PROLONG_ORIG){
+    return `
+    <div class="card">
+      <h2>Prolonger une location</h2>
+      <p class="sub" style="margin-bottom:16px">Reprend le formulaire de prolongation du site (/prolongation) — retrouve la réservation du client par email, pour saisir toi-même une prolongation demandée par téléphone.</p>
+      <label for="pr-email">Email du client *</label>
+      <input type="email" id="pr-email"/>
+      <label for="pr-ref" style="margin-top:8px">Numéro de commande (optionnel, si plusieurs réservations pour cet email)</label>
+      <input type="text" id="pr-ref" style="text-transform:uppercase" placeholder="LOC-260710-8129"/>
+      <button class="btn btn-blue btn-block" style="margin-top:16px" id="pr-lookup-btn" onclick="lookupProlongation()">🔎 Rechercher la réservation</button>
+      <div class="err" id="pr-lookup-err"></div>
+    </div>`;
+  }
+  const o = PROLONG_ORIG;
+  return `
+    <div class="card">
+      <h2>Prolonger une location</h2>
+      <div style="background:var(--blue-lt);border-radius:12px;padding:14px 16px;margin-bottom:16px">
+        <p style="font-weight:700">${escHtml(o.prenom)} ${escHtml(o.nom)} · ${escHtml(o.ref)}</p>
+        <p class="sub" style="margin-top:2px">Du ${frDate(o.date_debut)} au ${frDate(o.date_fin)} (${o.orig_days} j) · ${o.quantite}x</p>
+      </div>
+      <button class="btn btn-grey" style="margin-bottom:16px" onclick="resetProlongLookup()">← Modifier l'email / la référence</button>
+      <label for="pr-newdate">Nouvelle date de fin *</label>
+      <input type="date" id="pr-newdate" min="${prAddDay(o.date_fin)}" oninput="onProlongInputChange()"/>
+      <label for="pr-promo" style="margin-top:8px">Code promo (optionnel)</label>
+      <input type="text" id="pr-promo" style="text-transform:uppercase" oninput="onProlongInputChange()"/>
+      <p id="pr-promo-fb" style="display:none;font-size:12px;font-weight:600;margin-top:4px"></p>
+      <p id="pr-price-note" class="sub" style="margin-top:8px;display:none"></p>
+      <label for="pr-prix" style="margin-top:8px">Prix de la prolongation (€)</label>
+      <input type="number" id="pr-prix" min="0" step="0.5"/>
+      <p class="sub" style="font-size:12px">Calculé automatiquement selon la grille tarifaire du site — modifiable si besoin.</p>
+      <button class="btn btn-blue btn-block" style="margin-top:16px" id="pr-submit-attente" onclick="createProlongation(false)">📧 Créer — paiement à finaliser par le client</button>
+      <button class="btn btn-grey btn-block" style="margin-top:8px" id="pr-submit-confirme" onclick="createProlongation(true)">✅ Créer et confirmer (paiement déjà reçu)</button>
+      <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" crée la prolongation en attente — l'envoi automatique du lien de paiement par email arrive bientôt. En attendant, confirme-la manuellement depuis la liste dès que le paiement est reçu.</p>
+      <div class="err" id="new-prolong-err"></div>
+    </div>`;
+}
+async function lookupProlongation(){
+  const btn = document.getElementById('pr-lookup-btn');
+  const errEl = document.getElementById('pr-lookup-err');
+  errEl.style.display = 'none';
+  const email = document.getElementById('pr-email').value.trim();
+  const ref = document.getElementById('pr-ref').value.trim();
+  if(!email){ errEl.textContent = 'Email requis.'; errEl.style.display = 'block'; return; }
+  btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'lookup_prolongation', email, ref})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    PROLONG_ORIG = d;
+    renderReservationsToolbar();
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display = 'block';
+  }finally{
+    btn.disabled = false;
+  }
+}
+function resetProlongLookup(){ PROLONG_ORIG = null; renderReservationsToolbar(); }
+function onProlongInputChange(){
+  const o = PROLONG_ORIG;
+  const newDate = document.getElementById('pr-newdate')?.value;
+  const promoEl = document.getElementById('pr-promo');
+  const fb = document.getElementById('pr-promo-fb');
+  const note = document.getElementById('pr-price-note');
+  const prixEl = document.getElementById('pr-prix');
+  if(!o || !newDate || newDate <= o.date_fin){ if(note) note.style.display = 'none'; if(fb) fb.style.display = 'none'; return; }
+  const ext = prDiffDays(o.date_fin, newDate);
+  const totalDays = o.orig_days + ext;
+  const base = (prCalcBase(totalDays) - prCalcBase(o.orig_days)) * (o.quantite || 1);
+  const code = (promoEl?.value || '').trim().toUpperCase();
+  const pct = prDiscountPct(code, o.prenom);
+  const discAmt = Math.round(base * pct / 100);
+  const price = Math.max(0, base - discAmt);
+  if(prixEl) prixEl.value = price;
+  if(note){ note.textContent = `+ ${ext} jour${ext>1?'s':''} → ${price} €${pct?` (code −${pct}%, −${discAmt} €)`:''}`; note.style.display = 'block'; }
+  if(fb){
+    if(!code) fb.style.display = 'none';
+    else if(pct>0){ fb.textContent = `✓ Code valide — −${pct}% appliqués`; fb.style.color = 'var(--green)'; fb.style.display = 'block'; }
+    else { fb.textContent = 'Code non reconnu'; fb.style.color = 'var(--red)'; fb.style.display = 'block'; }
+  }
+}
+async function createProlongation(confirmer){
+  const submitBtn = document.getElementById(confirmer ? 'pr-submit-confirme' : 'pr-submit-attente');
+  if(submitBtn && submitBtn.disabled) return;
+  const errEl = document.getElementById('new-prolong-err');
+  errEl.style.display = 'none';
+  const newDateFin = document.getElementById('pr-newdate').value;
+  if(!PROLONG_ORIG || !newDateFin){
+    errEl.textContent = 'Choisis une nouvelle date de fin.'; errEl.style.display = 'block'; return;
+  }
+  const body = {
+    action: 'create_prolongation',
+    confirmer,
+    orig_id: PROLONG_ORIG.id,
+    new_date_fin: newDateFin,
+    promo_code: document.getElementById('pr-promo').value.trim(),
+    prix_total_cents: Math.round((parseFloat(document.getElementById('pr-prix').value)||0)*100),
+  };
+  document.querySelectorAll('#pr-submit-attente, #pr-submit-confirme').forEach(b => b.disabled = true);
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    if(d.reservation) RESERVATIONS_CACHE.unshift(d.reservation);
+    PROLONG_ORIG = null;
+    setReservationsView('liste');
+    showToast(d.en_attente ? `Prolongation ${d.ref} créée, en attente de paiement` : `Prolongation ${d.ref} créée et confirmée`, 'success');
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display = 'block';
+  }finally{
+    document.querySelectorAll('#pr-submit-attente, #pr-submit-confirme').forEach(b => b.disabled = false);
+  }
 }
 function exportReservationsCsv(){
   const rows = RESERVATIONS_CACHE.filter(r => !r.masquee);

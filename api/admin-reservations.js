@@ -117,6 +117,94 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, ref, reservation: { ...resa, statut: 'confirmee', masquee: false } });
     }
 
+    // Prolongation prise en direct par l'admin (téléphone) — même principe que
+    // "create" ci-dessus mais pour /prolongation (api/prolong-lookup.js +
+    // api/prolong-pay.js) : retrouver la réservation d'origine par email
+    // (+ référence si besoin), pour afficher ses dates et permettre à l'admin
+    // de saisir la nouvelle date de fin.
+    if (action === 'lookup_prolongation') {
+      const email = (body.email || '').trim().toLowerCase().slice(0, 200);
+      const ref   = (body.ref   || '').trim().slice(0, 50);
+      if (!email) return res.status(400).json({ error: 'Email requis' });
+
+      let q = supabase
+        .from('reservations')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut')
+        .eq('city_id', city.id)
+        .eq('email', email)
+        .not('source', 'eq', 'site_prolongation')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (ref) q = q.ilike('ref', ref.toUpperCase());
+
+      const { data: resa, error } = await q.maybeSingle();
+      if (error) throw error;
+      if (!resa) {
+        return res.status(404).json({ error: `Aucune réservation trouvée pour cet email${ref ? ' et cette référence' : ''}.` });
+      }
+      if (['annulee', 'remboursee'].includes(resa.statut)) {
+        return res.status(422).json({ error: 'Cette réservation ne peut pas être prolongée.' });
+      }
+      const origDays = Math.round((new Date(resa.date_fin + 'T00:00:00Z') - new Date(resa.date_debut + 'T00:00:00Z')) / 86400000);
+      return res.status(200).json({ ...resa, orig_days: origDays });
+    }
+
+    // Le device reste chez le client : contrairement à "create", pas de nouvel
+    // appareil à livrer — la réservation créée transfère juste la même
+    // logistique (adresse, téléphone) sur une nouvelle fenêtre de dates
+    // (date_debut = ancienne date_fin), avec source 'site_prolongation' pour
+    // que confirmReservation() sache n'assigner qu'une mission de
+    // récupération (pas de livraison) et annuler l'ancienne récupération
+    // devenue obsolète — exactement le circuit suivi par un paiement Stripe
+    // fait depuis /prolongation.
+    if (action === 'create_prolongation') {
+      const origId       = parseInt(body.orig_id);
+      const newDateFin    = (body.new_date_fin || '').slice(0, 10);
+      const promoCode     = (body.promo_code || '').trim().toUpperCase().slice(0, 50);
+      const prixTotalCents = Math.max(0, parseInt(body.prix_total_cents) || 0);
+      const confirmerImmediat = body.confirmer !== false;
+
+      if (!origId || !isValidDate(newDateFin)) {
+        return res.status(400).json({ error: 'Réservation d\'origine et nouvelle date requises' });
+      }
+
+      const { data: orig, error: origErr } = await supabase
+        .from('reservations')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut')
+        .eq('id', origId).eq('city_id', city.id).maybeSingle();
+      if (origErr) throw origErr;
+      if (!orig) return res.status(404).json({ error: 'Réservation d\'origine introuvable' });
+      if (['annulee', 'remboursee'].includes(orig.statut)) {
+        return res.status(422).json({ error: 'Cette réservation ne peut pas être prolongée.' });
+      }
+      if (newDateFin <= orig.date_fin) {
+        return res.status(400).json({ error: `La nouvelle date doit être postérieure au ${orig.date_fin}.` });
+      }
+
+      const disponibles = await getAvailability(supabase, city.id, orig.date_fin, newDateFin);
+      if (disponibles < (orig.quantite || 1)) {
+        return res.status(409).json({ error: `Plus assez d'appareils disponibles (${Math.max(0, disponibles)} dispo sur ces dates)` });
+      }
+
+      const ref = `PROLONG-MANUEL-${Date.now().toString(36).toUpperCase()}`;
+      const { data: resa, error } = await supabase.from('reservations').insert({
+        city_id: city.id, ref,
+        prenom: orig.prenom, nom: orig.nom, email: orig.email,
+        tel: orig.tel, tel_secondaire: orig.tel_secondaire || null,
+        adresse: orig.adresse,
+        date_debut: orig.date_fin, date_fin: newDateFin, quantite: orig.quantite || 1,
+        prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'site_prolongation',
+        parrain_code: promoCode || null,
+      }).select().single();
+      if (error) throw error;
+
+      if (!confirmerImmediat) {
+        return res.status(200).json({ ok: true, ref, en_attente: true, reservation: { ...resa, masquee: false } });
+      }
+      await confirmReservation(supabase, resa);
+      return res.status(200).json({ ok: true, ref, reservation: { ...resa, statut: 'confirmee', masquee: false } });
+    }
+
     if (action === 'update') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
