@@ -157,14 +157,6 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .day-progress .dp-bar{height:10px;border-radius:100px;background:var(--bg);overflow:hidden}
 .day-progress .dp-fill{height:100%;border-radius:100px;background:var(--blue);transition:width .4s ease}
 .day-progress .dp-fill.over{background:var(--red)}
-/* Puces de rappel (à accepter / en cours) : remplacent les anciens bandeaux
-   pleine largeur saturés, trop lourds visuellement pour de l'information
-   routinière — un simple tap reste possible pour sauter au bon filtre. */
-.dp-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.dp-chip{display:inline-flex;align-items:center;font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:100px;cursor:pointer}
-.dp-chip-blue{background:var(--blue-lt);color:var(--blue)}
-.dp-chip-amber{background:var(--amber-bg);color:var(--amber)}
-.dp-chip-green{background:var(--green-bg);color:var(--green)}
 
 /* Activité */
 .stat-big{background:linear-gradient(150deg,var(--blue) 0%,var(--blue-d) 60%,#0a1424 100%);color:#fff;border-radius:var(--r-lg);padding:26px 22px;margin-bottom:14px;box-shadow:var(--sh-md)}
@@ -973,35 +965,19 @@ function refuseFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMissio
 // jusqu'à 10 missions/jour — même référence que côté admin, pour que la
 // barre affichée soit cohérente des deux côtés.
 const MISSIONS_CIBLE_JOUR = 10;
+// Volontairement sobre : les puces de rappel ("X à accepter", "Y en cours")
+// qui existaient ici en plus faisaient doublon avec les badges déjà affichés
+// sur les filtres juste en dessous (Accepter/En cours) — et l'info est déjà
+// donnée sur l'Accueil avant même d'arriver sur cet écran. Ne reste que ce
+// qui n'existe nulle part ailleurs : la pause et la barre de la journée.
 function renderTranspBanner(){
   const zone = document.getElementById('transp-banner-zone');
   if(!zone) return;
   const todayStr = new Date().toISOString().slice(0,10);
-  const aFaireAujourd = STATE.missions.filter(m => m.statut==='a_faire' && m.date_prevue===todayStr).length;
-  const aFaireTotal   = STATE.missions.filter(m => m.statut==='a_faire').length;
-  // "En cours" = démarrable aujourd'hui, pas seulement acceptée — une mission
-  // acceptée à l'avance pour une date future n'est pas encore en cours et ne
-  // doit pas déclencher le suivi GPS ni cette puce.
-  const enCours = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut) && m.date_prevue<=todayStr).length;
   const countJour = STATE.missions.filter(m => m.date_prevue===todayStr && !['annule','refusee'].includes(m.statut)).length;
 
   const pauseHtml = STATE.en_pause
     ? `<div style="background:var(--amber);color:#fff;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-weight:700;font-size:13px;line-height:1.4">⏸ Tu es actuellement en pause — tu ne recevras pas de nouvelles missions. Contacte Aly pour reprendre.</div>`
-    : '';
-
-  const chips = [];
-  // Le badge de l'onglet "À accepter" compte TOUTES les missions a_faire (y
-  // compris celles prévues plus tard) alors que cette puce ne parlait que
-  // d'aujourd'hui — deux chiffres différents affichés côte à côte pour ce qui
-  // ressemble au même compteur. On aligne le texte sur le même périmètre dès
-  // qu'ils divergent, sans rien changer quand ils coïncident (cas courant).
-  if(aFaireAujourd > 0) chips.push({msg: aFaireTotal > aFaireAujourd
-    ? `🔔 ${aFaireTotal} à accepter, dont ${aFaireAujourd} aujourd'hui`
-    : `🔔 ${aFaireAujourd} à accepter aujourd'hui`, cls:'dp-chip-amber', f:'nouvelle'});
-  else if(aFaireTotal > 0) chips.push({msg:`📋 ${aFaireTotal} à accepter prochainement`, cls:'dp-chip-blue', f:'nouvelle'});
-  if(enCours > 0) chips.push({msg:`🚚 ${enCours} en cours`, cls:'dp-chip-green', f:'en_cours'});
-  const chipsHtml = chips.length
-    ? `<div class="dp-chips">${chips.map(c => `<span class="dp-chip ${c.cls}" onclick="setMissionFilter('${c.f}')">${c.msg}</span>`).join('')}</div>`
     : '';
 
   const progressHtml = countJour ? (() => {
@@ -1012,7 +988,7 @@ function renderTranspBanner(){
       <div class="dp-bar"><div class="dp-fill ${over?'over':''}" style="width:${pct}%"></div></div>`;
   })() : '';
 
-  zone.innerHTML = pauseHtml + ((progressHtml || chipsHtml) ? `<div class="day-progress">${progressHtml}${chipsHtml}</div>` : '');
+  zone.innerHTML = pauseHtml + (progressHtml ? `<div class="day-progress">${progressHtml}</div>` : '');
 }
 
 let MISSION_FILTER = 'toutes';
