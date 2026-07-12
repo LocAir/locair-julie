@@ -158,6 +158,13 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
       <p class="price-box-note" id="price-note"></p>
     </div>
 
+    <div class="form-group" style="margin-top:4px">
+      <label for="f-promo">Code promo <span style="color:var(--grey);font-weight:400">(optionnel)</span></label>
+      <input type="text" id="f-promo" name="promo_code"
+        autocomplete="off" inputmode="text" style="text-transform:uppercase"/>
+      <p id="promo-feedback" style="font-size:12px;margin-top:6px;display:none"></p>
+    </div>
+
     <div id="extend-error" class="alert-error" role="alert" style="display:none"></div>
 
     <button class="btn-submit" id="btn-pay" disabled>
@@ -264,24 +271,46 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
     document.getElementById('resa-dates').textContent='Du '+fmtShort(resa.date_debut)+' au '+fmtLong(resa.date_fin)+' ( '+resa.orig_days+' j )';
     const inp=document.getElementById('f-newdate');inp.min=addDay(resa.date_fin);inp.value='';
     hide('price-box');noerr('extend-error');
+    const promoInp=document.getElementById('f-promo');if(promoInp){promoInp.value='';}
+    const promoFb=document.getElementById('promo-feedback');if(promoFb){promoFb.style.display='none';}
     document.getElementById('btn-pay').disabled=true;
     document.getElementById('btn-pay-label').textContent='—';
   }
 
-  /* ── Calcul en temps réel ── */
-  document.getElementById('f-newdate').addEventListener('change',function(){
-    newDate=this.value;
+  /* ── Calcul prix (date + promo) ── */
+  function getDiscount(code){
+    if(!code||!resa||!resa.prenom)return 0;
+    const norm=resa.prenom.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z]/g,'').toUpperCase();
+    return code.toUpperCase()===norm+'10'?10:0;
+  }
+
+  function updatePrice(){
+    newDate=document.getElementById('f-newdate').value;
     if(!newDate||!resa||newDate<=resa.date_fin){hide('price-box');document.getElementById('btn-pay').disabled=true;return;}
     const ext=diffDays(resa.date_fin,newDate),tot=resa.orig_days+ext;
-    const price=(calcBase(tot)-calcBase(resa.orig_days))*(resa.quantite||1);
+    const base=(calcBase(tot)-calcBase(resa.orig_days))*(resa.quantite||1);
+    const code=(document.getElementById('f-promo')?.value||'').trim();
+    const disc=getDiscount(code);
+    const price=Math.max(0,base-disc);
     cents=price*100;
     document.getElementById('price-days').textContent='+ '+ext+' jour'+(ext>1?'s':'');
     document.getElementById('price-amount').textContent=price+' €';
-    document.getElementById('price-note').textContent=breakdown(resa.orig_days,ext)+' \xb7 grille depuis le j1 de votre location';
+    let note=breakdown(resa.orig_days,ext);
+    if(disc>0)note+=' · Code promo −10 €';
+    document.getElementById('price-note').textContent=note+' · grille depuis le j1 de votre location';
     show('price-box');
     document.getElementById('btn-pay-label').textContent=price+' €';
     document.getElementById('btn-pay').disabled=false;
-  });
+    const fb=document.getElementById('promo-feedback');
+    if(fb){
+      if(!code){fb.style.display='none';}
+      else if(disc>0){fb.textContent='✓ Code valide — −10 € appliqués';fb.style.color='#0f766e';fb.style.display='block';}
+      else{fb.textContent='Code incorrect';fb.style.color='var(--red)';fb.style.display='block';}
+    }
+  }
+
+  document.getElementById('f-newdate').addEventListener('change',updatePrice);
+  document.getElementById('f-promo').addEventListener('input',updatePrice);
 
   /* ── Payer → créer PI + afficher Stripe ── */
   document.getElementById('btn-pay').addEventListener('click',async function(){
@@ -289,7 +318,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
     this.disabled=true;this.innerHTML=SPIN+' Pr\xe9paration…';noerr('extend-error');
     try{
       const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),15000);
-      const r=await fetch('/api/prolong-pay',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({email,ref,new_date_fin:newDate}),signal:ctrl.signal});
+      const r=await fetch('/api/prolong-pay',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({email,ref,new_date_fin:newDate,promo_code:(document.getElementById('f-promo')?.value||'').trim().toUpperCase()}),signal:ctrl.signal});
       clearTimeout(t);
       const d=await r.json();
       if(!r.ok)throw new Error(d.error||'Erreur serveur');

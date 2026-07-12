@@ -77,9 +77,15 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Durée minimale : 1 jour.' });
   }
 
-  const amountCents = (calcBase(totalDays) - calcBase(origDays)) * (orig.quantite || 1) * 100;
+  // Validation code promo : PRENOM_NORMALISE + 10 (ex. "ERIK10" pour Érik)
+  const promoCode = ((req.body.promo_code || '')).trim().toUpperCase();
+  const normalizedPrenom = (orig.prenom || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z]/g, '').toUpperCase();
+  const promoDiscount = (promoCode && promoCode === normalizedPrenom + '10') ? 10 * 100 : 0;
 
-  if (!amountCents || amountCents < 1900) {
+  const baseCents   = (calcBase(totalDays) - calcBase(origDays)) * (orig.quantite || 1) * 100;
+  const amountCents = Math.max(0, baseCents - promoDiscount);
+
+  if (!amountCents || amountCents < 100) {
     return res.status(400).json({ error: 'Montant invalide' });
   }
 
@@ -130,6 +136,7 @@ module.exports = async (req, res) => {
         date_debut:        orig.date_debut,
         date_fin_initiale: orig.date_fin,
         date_recuperation: new_date_fin,
+        promo:             promoCode || '',
         customer_id:       customerId,
       },
     });
