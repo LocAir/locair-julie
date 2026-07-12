@@ -769,7 +769,8 @@ function renderDashboard(){
   const todayStr = new Date().toISOString().slice(0,10);
   const aFaireAujourd = STATE.missions.filter(m => m.statut==='a_faire' && m.date_prevue===todayStr);
   const aFaireTotal   = STATE.missions.filter(m => m.statut==='a_faire');
-  const enCours = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut) && m.date_prevue<=todayStr);
+  const enCours = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut) && m.date_prevue<=todayStr)
+    .sort((a,b) => missionUrgenceRang(a)-missionUrgenceRang(b));
   const countJour = STATE.missions.filter(m => m.date_prevue===todayStr && !['annule','refusee'].includes(m.statut)).length;
   const gainsJour = STATE.missions.filter(m => m.date_prevue===todayStr && !['annule','refusee'].includes(m.statut))
     .reduce((s,m) => s + (m.montant_preview||0), 0);
@@ -1038,9 +1039,27 @@ function setMissionFilter(f){
   document.querySelectorAll('#mission-filters button').forEach(b => b.classList.toggle('on', b.dataset.f===f));
   renderMissions();
 }
+// Tri par urgence — généralise le tri par gravité déjà fait sur le Stock
+// (pannes/maintenance en tête) : ce qui demande une action MAINTENANT passe
+// toujours avant le reste, plutôt qu'un ordre chronologique brut qui mélange
+// un problème signalé aujourd'hui avec une livraison tranquille dans 3
+// semaines simplement parce que la date de celle-ci tombe avant en tri texte.
+function missionUrgenceRang(m){
+  const todayStr = new Date().toISOString().slice(0,10);
+  const dueToday = m.date_prevue <= todayStr;
+  if(m.statut==='probleme') return 0;
+  if(m.statut==='arrivee') return 1;
+  if(m.statut==='acceptee' && dueToday) return 2;
+  if(m.statut==='a_faire' && dueToday) return 3;
+  if(m.statut==='acceptee') return 4;
+  if(m.statut==='a_faire') return 5;
+  return 6; // fait
+}
 function filteredMissions(){
   const statuts = MISSION_FILTER_STATUTS[MISSION_FILTER];
-  return statuts ? STATE.missions.filter(m => statuts.includes(m.statut)) : STATE.missions;
+  const list = statuts ? STATE.missions.filter(m => statuts.includes(m.statut)) : STATE.missions.slice();
+  return list.sort((a,b) => missionUrgenceRang(a)-missionUrgenceRang(b)
+    || a.date_prevue.localeCompare(b.date_prevue) || (a.creneau||'').localeCompare(b.creneau||''));
 }
 
 // Filtre secondaire par code postal — pour que le livreur retrouve sa
