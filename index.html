@@ -49,6 +49,12 @@ const CITY = {
 // ─────────────────────────────────────────────────────────────────────────────
 let SOLD_OUT = false; // Initialisé dynamiquement via /api/mode-complet au chargement
 (function(){if(new URLSearchParams(location.search).get('admin')==='locair')sessionStorage.setItem('_la','1');})();
+
+// Lien d'affiliation partenaire (conciergeries...) : ?p=CODE dans l'URL.
+// Mémorisé pour la durée de la session (le visiteur peut naviguer sur
+// plusieurs pages avant de réserver) et renvoyé avec la réservation pour
+// que la commission du partenaire soit rattachée à la bonne conciergerie.
+(function(){const p=new URLSearchParams(location.search).get('p');if(p)sessionStorage.setItem('_la_p',p.trim().slice(0,50));})();
 </script>
 
 <!-- ╔══════════════════════════════════════════════════════════════════╗
@@ -5895,6 +5901,7 @@ function submitForm(btn,mode){
     raison_sociale:document.getElementById('f-raison-sociale')?.value.trim()||'',
     siret:document.getElementById('f-siret')?.value.trim()||'',
     parrain_code:_promoCode||document.getElementById('f-parrain')?.value.trim()||'',
+    partenaire_code:sessionStorage.getItem('_la_p')||'',
     instructions_acces:document.getElementById('f-instructions')?.value.trim()||'',
     remise_promo:_promoDiscount>0?'-'+_promoDiscount+' €':'',
     prenom:document.getElementById('f-prenom')?.value,

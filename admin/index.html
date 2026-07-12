@@ -350,6 +350,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
         <div class="tabs-group-label">Gérer</div>
         <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
+        <button data-tab="partenaires" onclick="switchAdminTab('partenaires')">🤝 Partenaires<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
         <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
         <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
         <div class="tabs-group-label">Suivre</div>
@@ -365,6 +366,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-checklist" class="hidden"></div>
         <div id="tab-livraisons" class="hidden"></div>
         <div id="tab-transporteurs" class="hidden"></div>
+        <div id="tab-partenaires" class="hidden"></div>
         <div id="tab-incidents" class="hidden"></div>
         <div id="tab-clients" class="hidden"></div>
         <div id="tab-villes" class="hidden"></div>
@@ -824,7 +826,7 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','checklist','livraisons','transporteurs','incidents','clients','villes'].forEach(t=>{
+  ['accueil','stock','reservations','checklist','livraisons','transporteurs','partenaires','incidents','clients','villes'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
@@ -833,6 +835,7 @@ function switchAdminTab(tab){
   if(tab==='checklist') loadChecklistBox();
   if(tab==='livraisons') loadLivraisons();
   if(tab==='transporteurs') loadTransporteursTab();
+  if(tab==='partenaires') loadPartenairesTab();
   if(tab==='incidents') loadIncidents();
   if(tab==='clients') loadClients();
   if(tab==='villes') loadVilles();
@@ -860,6 +863,7 @@ async function loadAlerts(){
     updateTabBadge('reservations', d.reservations);
     updateTabBadge('livraisons', d.livraisons);
     updateTabBadge('virements', d.virements);
+    updateTabBadge('partenaire_virements', d.partenaire_virements);
     updateTabBadge('incidents', d.incidents);
     renderAlertsBanner(d);
     renderVirementMondayBanner();
@@ -867,7 +871,7 @@ async function loadAlerts(){
     // scrollable, les badges des onglets cachés passaient inaperçus — ce
     // point signale qu'il y a quelque chose à traiter dans le menu sans
     // avoir à l'ouvrir pour le découvrir.
-    const anyAlert = (d.reservations||0) + (d.livraisons||0) + (d.virements||0) + (d.incidents||0) > 0;
+    const anyAlert = (d.reservations||0) + (d.livraisons||0) + (d.virements||0) + (d.partenaire_virements||0) + (d.incidents||0) > 0;
     document.getElementById('mobile-menu-dot')?.classList.toggle('hidden', !anyAlert);
   }catch(e){}
 }
@@ -893,6 +897,7 @@ function renderAlertsBanner(d){
   if(d.incidents > 0)     alerts.push({sev:1, msg:`🧯 ${d.incidents} incident${d.incidents>1?'s':''} ouvert${d.incidents>1?'s':''}`, fn:"switchAdminTab('incidents')"});
   if(d.reservations > 0)  alerts.push({sev:2, msg:`🧾 ${d.reservations} réservation${d.reservations>1?'s':''} à traiter`, fn:"switchAdminTab('reservations')"});
   if(d.virements > 0)     alerts.push({sev:2, msg:`💶 ${d.virements} virement${d.virements>1?'s':''} demandé${d.virements>1?'s':''}`, fn:"switchAdminTab('transporteurs')"});
+  if(d.partenaire_virements > 0) alerts.push({sev:2, msg:`💶 ${d.partenaire_virements} virement${d.partenaire_virements>1?'s':''} partenaire demandé${d.partenaire_virements>1?'s':''}`, fn:"switchAdminTab('partenaires')"});
   alerts.sort((a,b) => a.sev-b.sev);
   zone.innerHTML = alerts.map(a =>
     `<div onclick="${a.fn}" style="background:${a.sev===1?'var(--red)':'var(--amber)'};color:#fff;padding:10px 16px;border-radius:var(--r);font-weight:700;font-size:13px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
@@ -944,12 +949,14 @@ const TAB_AUTO_REFRESH = {
   reservations:  silentRefreshReservations,
   livraisons:    silentRefreshLivraisons,
   transporteurs: () => TRANSPORTEURS_VIEW==='equipe' ? loadTransporteursEquipe() : loadTransporteursRevenus(),
+  partenaires:   () => PARTENAIRES_VIEW==='equipe' ? loadPartenairesEquipe() : loadPartenairesRevenus(),
   incidents:     loadIncidents,
   clients:       loadClients,
 };
 function isUserBusy(){
   if(document.getElementById('modal-overlay-el')) return true; // confirmation/prompt en cours
   if(document.querySelector('#tab-transporteurs details[open]')) return true; // détail des missions ouvert
+  if(document.querySelector('#tab-partenaires details[open]')) return true; // détail des réservations ouvert
   const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
   return tag==='input' || tag==='textarea' || tag==='select';
 }
@@ -1409,7 +1416,7 @@ function reservationRowHtml(res, readOnly){
       </div>
       <div class="resa-bottom">
         <span class="resa-price">${euros(res.prix_total_cents)}</span>
-        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+escHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${(()=>{const p=res.parrain_code;if(!p)return '';const m=p.match(/(\d+)$/);const pct=m?parseInt(m[1]):0;return [10,20,30].includes(pct)?' · <span style="background:#fef9c3;color:#92400e;font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid #fde68a">Code promo '+escHtml(p)+' −'+pct+'%</span>':'';})()}</span>
+        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+escHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${(()=>{const p=res.parrain_code;if(!p)return '';const m=p.match(/(\d+)$/);const pct=m?parseInt(m[1]):0;return [10,20,30].includes(pct)?' · <span style="background:#fef9c3;color:#92400e;font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid #fde68a">Code promo '+escHtml(p)+' −'+pct+'%</span>':'';})()}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
       </div>
       ${res.statut==='confirmee' ? agentLineHtml(res.id) : ''}
       ${readOnly ? '' : `
@@ -3209,6 +3216,251 @@ function verserMaintenant(id, nom, montantCents){
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadTransporteursRevenus();
+      loadAlerts();
+      showToast(`${euros(d.montant_cents)} marqués comme versés`, 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {danger:true, yesLabel:'Confirmer le virement'});
+}
+
+// ── PARTENAIRES (conciergeries, apporteurs d'affaires) ───────────────────────
+// Même principe que l'onglet Transporteurs ci-dessus (équipe + revenus), mais
+// pour les partenaires qui apportent des clients via leur lien d'affiliation
+// et touchent une commission (voir api/admin-partenaires.js, migration_partenaires.sql).
+let PARTENAIRES_VIEW = 'equipe';
+let PARTENAIRES_CACHE = [];
+function loadPartenairesTab(){
+  const zone = document.getElementById('tab-partenaires');
+  zone.innerHTML = `
+    <div class="periods" style="margin-bottom:16px">
+      <button class="${PARTENAIRES_VIEW==='equipe'?'on':''}" onclick="setPartenairesView('equipe')">🤝 Partenaires</button>
+      <button class="${PARTENAIRES_VIEW==='revenus'?'on':''}" onclick="setPartenairesView('revenus')">💶 Revenus</button>
+    </div>
+    <div id="part-view-content">${loading()}</div>`;
+  if(PARTENAIRES_VIEW==='equipe') loadPartenairesEquipe(); else loadPartenairesRevenus();
+}
+function setPartenairesView(view){ PARTENAIRES_VIEW = view; loadPartenairesTab(); }
+
+function partenaireLinkFor(code){ return location.origin + '/?p=' + encodeURIComponent(code); }
+function copyPartenaireLink(code){
+  const link = partenaireLinkFor(code);
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(link).then(()=>showToast('Lien copié', 'success')).catch(()=>showInfo('Lien du partenaire', link));
+  }else{
+    showInfo('Lien du partenaire', link);
+  }
+}
+
+async function loadPartenairesEquipe(){
+  const zone = document.getElementById('part-view-content');
+  if(!zone) return;
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    PARTENAIRES_CACHE = d.partenaires || [];
+
+    const list = PARTENAIRES_CACHE.map(p => `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${escHtml(p.nom)}</span>
+          <span class="chip ${p.actif?'actif':'inactif'}">${p.actif?'actif':'inactif'}</span>
+        </div>
+        <div class="row-meta">${escHtml(p.contact_nom||'—')}${p.telephone?' · '+escHtml(p.telephone):''}${p.email?' · '+escHtml(p.email):''}</div>
+        <div class="row-meta">Code personnel : <strong>${escHtml(p.pin)}</strong> · Commission : <strong>${p.taux_commission_pct}%</strong></div>
+        <div class="row-meta" style="word-break:break-all">🔗 ${escHtml(partenaireLinkFor(p.code))}</div>
+        <div class="row-actions">
+          <button class="btn btn-blue" onclick="copyPartenaireLink('${escHtml(p.code)}')">Copier le lien</button>
+          <button class="btn ${p.actif?'btn-grey':'btn-green'}" onclick="togglePartenaire(${p.id}, ${!p.actif}, this)">${p.actif?'Désactiver':'✅ Réactiver'}</button>
+          <button class="btn btn-blue" onclick="editPartenaireFiche(${p.id})">✏️ Modifier</button>
+          <details class="more-actions" style="margin-left:auto">
+            <summary title="Plus d'actions">⋯</summary>
+            <div class="more-actions-menu">
+              <button onclick="resetPartenairePin(${p.id})">Changer le code personnel</button>
+              <button class="danger" onclick="deletePartenaire(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}')">🗑️ Supprimer</button>
+            </div>
+          </details>
+        </div>
+      </div>`).join('') || '<p class="empty">Aucun partenaire.</p>';
+
+    zone.innerHTML = list + `
+      <div class="card">
+        <h2>Ajouter un partenaire</h2>
+        <p class="sub" style="margin-top:2px">Une conciergerie ou toute entreprise qui t'apporte des clients — elle touche une commission sur chaque réservation faite depuis son lien.</p>
+        <label for="p-nom">Nom (conciergerie/entreprise)</label>
+        <input type="text" id="p-nom" placeholder="Conciergerie Azur"/>
+        <label for="p-contact">Personne de contact</label>
+        <input type="text" id="p-contact" placeholder="Julie"/>
+        <label for="p-tel">Téléphone</label>
+        <input type="tel" id="p-tel" placeholder="06…"/>
+        <label for="p-email">Email</label>
+        <input type="text" id="p-email" placeholder="contact@conciergerie.fr"/>
+        <label for="p-taux">Commission (%)</label>
+        <input type="text" id="p-taux" inputmode="numeric" value="10"/>
+        <button class="btn btn-blue btn-block" style="margin-top:16px" onclick="addPartenaire()">Ajouter</button>
+        <div class="err" id="part-err"></div>
+      </div>`;
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+async function addPartenaire(){
+  const nom = document.getElementById('p-nom').value.trim();
+  const errEl = document.getElementById('part-err');
+  errEl.style.display='none';
+  if(!nom){ errEl.textContent='Nom requis'; errEl.style.display='block'; return; }
+  const contact_nom = document.getElementById('p-contact').value.trim();
+  const telephone = document.getElementById('p-tel').value.trim();
+  const email = document.getElementById('p-email').value.trim();
+  const taux_commission_pct = parseInt(document.getElementById('p-taux').value) || 10;
+  try{
+    const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, contact_nom, telephone, email, taux_commission_pct})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadPartenairesEquipe();
+    showInfo('Partenaire ajouté', `Lien à lui donner (à mettre sur son site) :\n${partenaireLinkFor(d.code)}\n\nCode personnel pour se connecter sur /partenaire :\n${d.pin}`);
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display='block';
+  }
+}
+function deletePartenaire(id, nom){
+  confirmAction(`Supprimer définitivement ${nom} ? S'il a des réservations ou virements liés, il sera désactivé à la place (pour garder l'historique).`, async () => {
+    try{
+      const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadPartenairesEquipe();
+      showToast(d.deactivated ? d.error : 'Partenaire supprimé', d.deactivated ? 'info' : 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {danger:true});
+}
+async function togglePartenaire(id, actif, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, actif})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadPartenairesEquipe();
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
+}
+function resetPartenairePin(id){
+  confirmAction('Régénérer le code personnel de connexion ? L\'ancien code cessera de fonctionner immédiatement.', async () => {
+    try{
+      const newPin = String(Math.floor(100000 + Math.random()*900000));
+      const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, pin:newPin})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadPartenairesEquipe();
+      showInfo('Code personnel changé', `Nouveau code à communiquer :\n\n${newPin}`);
+    }catch(e){ showToast(e.message, 'error'); }
+  });
+}
+function editPartenaireFiche(id){
+  const p = PARTENAIRES_CACHE.find(x => x.id === id);
+  if(!p) return;
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px;max-height:90vh;overflow-y:auto">
+      <h2 style="margin-bottom:14px">✏️ Fiche — ${escHtml(p.nom)}</h2>
+      <label for="fp-nom">Nom</label>
+      <input type="text" id="fp-nom" value="${escHtml(p.nom||'')}"/>
+      <label for="fp-contact" style="margin-top:12px">Personne de contact</label>
+      <input type="text" id="fp-contact" value="${escHtml(p.contact_nom||'')}"/>
+      <label for="fp-tel" style="margin-top:12px">Téléphone</label>
+      <input type="tel" id="fp-tel" value="${escHtml(p.telephone||'')}"/>
+      <label for="fp-email" style="margin-top:12px">Email</label>
+      <input type="text" id="fp-email" value="${escHtml(p.email||'')}"/>
+      <label for="fp-taux" style="margin-top:12px">Commission (%)</label>
+      <input type="text" id="fp-taux" inputmode="numeric" value="${p.taux_commission_pct}"/>
+      <div class="modal-actions" style="margin-top:18px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Enregistrer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const nom = document.getElementById('fp-nom').value.trim();
+    if(!nom){ showToast('Le nom ne peut pas être vide', 'error'); return; }
+    okBtn.disabled = true;
+    try{
+      const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+        action:'update', id:p.id,
+        nom,
+        contact_nom: document.getElementById('fp-contact').value.trim(),
+        telephone:   document.getElementById('fp-tel').value.trim(),
+        email:       document.getElementById('fp-email').value.trim(),
+        taux_commission_pct: parseInt(document.getElementById('fp-taux').value)||0,
+      })});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      loadPartenairesEquipe();
+      showToast('Fiche mise à jour', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      showToast(`Non enregistré : ${e.message}`, 'error');
+    }
+  };
+}
+
+async function loadPartenairesRevenus(){
+  const zone = document.getElementById('part-view-content');
+  if(!zone) return;
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-partenaire-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'summary'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const partenaires = d.partenaires || [];
+    if(!partenaires.length){ zone.innerHTML = '<p class="empty">Aucun partenaire.</p>'; return; }
+    zone.innerHTML = partenaires.map(p => {
+      const resasHtml = p.reservations.length ? p.reservations.map(r => `
+        <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
+          <div class="row-top">
+            <span class="row-title" style="font-size:13px">${escHtml(r.client||'—')}${r.ref?' · '+escHtml(r.ref):''}</span>
+            <span class="chip ${r.payee?'actif':'en_attente'}">${r.payee?'Versé':'À verser'}</span>
+          </div>
+          <div class="row-meta">${r.created_at?frDate(r.created_at.slice(0,10)):'—'} · ${euros(r.montant_cents)} réservés → ${euros(r.commission_cents)} de commission</div>
+        </div>`).join('') : '';
+      return `
+        <div class="card">
+          <div class="row-top" style="margin-bottom:14px">
+            <h2 style="margin:0">${escHtml(p.nom)}</h2>
+            <span class="chip ${p.actif?'actif':'annulee'}">${p.actif?'actif':'inactif'}</span>
+          </div>
+          <div class="resa-bottom" style="margin-bottom:14px">
+            <span class="resa-price" style="${p.non_verse_cents>0?'color:var(--red)':''}">${euros(p.non_verse_cents)}<span style="font-family:var(--body);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-soft);display:block;margin-top:2px">À verser</span></span>
+            <span class="resa-sub">${p.reservations.length} réservation${p.reservations.length>1?'s':''} au total<br/>${euros(p.verse_cents)} déjà versés</span>
+          </div>
+          ${p.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par le partenaire</div>':''}
+          ${p.non_verse_cents>0?`<button class="btn btn-green btn-block" onclick="verserPartenaireMaintenant(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}', ${p.non_verse_cents})">✅ Marquer comme versé (${euros(p.non_verse_cents)})</button>`:''}
+          ${p.reservations.length?`
+          <details style="margin-top:12px">
+            <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Voir le détail (${p.reservations.length} réservation${p.reservations.length>1?'s':''})</summary>
+            <div style="margin-top:12px">${resasHtml}</div>
+          </details>`:'<p class="row-meta" style="margin-top:8px">Aucune réservation confirmée pour l\'instant.</p>'}
+        </div>`;
+    }).join('');
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+function verserPartenaireMaintenant(id, nom, montantCents){
+  confirmAction(`Confirmer que ${euros(montantCents)} ont bien été versés à ${nom} ? Cette action est irréversible.`, async () => {
+    try{
+      const r = await fetch(API('admin-partenaire-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'verser_maintenant', partenaire_id:id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadPartenairesRevenus();
       loadAlerts();
       showToast(`${euros(d.montant_cents)} marqués comme versés`, 'success');
     }catch(e){ showToast(e.message, 'error'); }

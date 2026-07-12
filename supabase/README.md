@@ -42,6 +42,7 @@ Renseigner l'email de chaque transporteur n'est pas obligatoire, mais c'est ce q
 - Vérifier que `retard.html` fonctionne toujours à l'identique (aucune régression).
 - Suivi en direct : depuis `/transporteur`, accepter une mission puis autoriser la géolocalisation quand le navigateur le demande → dans `/admin` → Livraisons, le bouton "🔴 Suivre en direct" doit faire apparaître une carte avec la position qui bouge.
 - Notifications push : se connecter sur `/transporteur` et accepter la demande de notification du navigateur → assigner une mission à ce transporteur depuis `/admin` → une notification doit apparaître sur son téléphone même si l'onglet/l'app est fermé.
+- Partenaires : créer un partenaire de test dans `/admin` → Partenaires, ouvrir `www.locair.fr/?p=SONCODE` puis faire une réservation test → vérifier qu'elle apparaît avec la bonne commission dans `/admin` → Partenaires → Revenus, et dans `/partenaire` une fois connecté avec le code personnel du partenaire.
 - Face ID / empreinte : se connecter avec le code une première fois → accepter "Activer" sur la carte proposée → se déconnecter ("changer") → le bouton "🔓 Face ID / empreinte" doit permettre de se reconnecter sans ressaisir le code. Changer le code de ce transporteur depuis `/admin` doit ensuite désactiver cet accès (il doit revalider avec le nouveau code puis réactiver Face ID).
 
 ## Notifications push (nouvelles missions, annulations)
@@ -63,6 +64,16 @@ Chaque climatiseur a un numéro (une étiquette à coller dessus). Dans `/admin`
 - Chaque appareil a un statut : **Disponible**, **En panne** ou **Maintenance**. Un appareil en panne/maintenance ne compte plus dans la disponibilité tant qu'il n'est pas repassé en disponible.
 - Il n'y a pas de statut "loué" à gérer à la main : dès qu'une réservation est payée, l'appli assigne automatiquement le prochain numéro libre à cette réservation (visible dans **Livraisons** et sur la mission du transporteur, ex. "Unité n°3"). Le livreur voit directement quelle unité récupérer au dépôt, avec le bon kit de calfeutrage selon le type de fenêtre du client.
 - Pour une prolongation, l'appli réattribue automatiquement le même appareil que la réservation d'origine (le client garde physiquement le même climatiseur).
+
+## Espace partenaire (conciergeries, apporteurs d'affaires)
+
+Une conciergerie (ou toute entreprise) qui t'apporte des clients touche une commission (10% par défaut, réglable par partenaire) sur chaque réservation faite depuis son lien.
+
+Dans `/admin` → onglet **Partenaires**, ajouter chaque partenaire (nom, contact, commission). Deux codes sont générés automatiquement :
+- **Le lien d'affiliation** (ex. `locair.fr/?p=azur12`) — à donner au partenaire pour qu'il le mette sur son propre site. Un client qui clique dessus puis réserve est automatiquement rattaché à ce partenaire.
+- **Le code personnel à 6 chiffres** — à communiquer au partenaire pour qu'il se connecte sur `/partenaire` et suive ses gains au jour le jour.
+
+Sur `/partenaire`, le partenaire voit : son lien à copier, ses gains du jour et du mois, l'historique des réservations qu'il a apportées, et un bouton pour demander un virement (comme les transporteurs). Le virement réel reste manuel — l'appli suit juste les montants dus et les demandes, elle ne transfère pas d'argent automatiquement. Aucune variable d'environnement supplémentaire n'est nécessaire (réutilise `TRANSPORTEUR_SECRET`, déjà configuré).
 
 ## Suivi en direct du livreur (carte)
 

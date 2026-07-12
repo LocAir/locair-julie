@@ -61,4 +61,41 @@ async function verifyTransporteurToken(req, supabase) {
   return id;
 }
 
-module.exports = { safeEqual, checkAdminToken, signTransporteurToken, verifyTransporteurToken };
+// Même mécanisme que signTransporteurToken/verifyTransporteurToken ci-dessus,
+// pour l'espace partenaire (conciergeries...). Réutilise TRANSPORTEUR_SECRET
+// (déjà configuré en prod) plutôt qu'un nouveau secret dédié — le préfixe
+// "partenaire:" dans le payload signé empêche tout chevauchement avec un
+// jeton transporteur qui aurait par hasard le même id/empreinte de PIN.
+function signPartenaireToken(partenaireId, pin) {
+  const secret  = process.env.TRANSPORTEUR_SECRET || '';
+  const payload = `partenaire:${partenaireId}.${pinFingerprint(pin)}`;
+  const sig     = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return `${payload}.${sig}`;
+}
+
+async function verifyPartenaireToken(req, supabase) {
+  const secret = process.env.TRANSPORTEUR_SECRET;
+  if (!secret) return null;
+  const token = ((req.body || {}).token || req.headers['x-partenaire-token'] || '').trim();
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [prefixedId, fingerprint, sig] = parts;
+  if (!prefixedId.startsWith('partenaire:')) return null;
+  const payload  = `${prefixedId}.${fingerprint}`;
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  if (!safeEqual(sig, expected)) return null;
+
+  const id = parseInt(prefixedId.slice('partenaire:'.length), 10);
+  if (!Number.isFinite(id) || id <= 0) return null;
+
+  const { data: p } = await supabase.from('partenaires').select('pin, actif').eq('id', id).maybeSingle();
+  if (!p || !p.actif || !safeEqual(fingerprint, pinFingerprint(p.pin))) return null;
+
+  return id;
+}
+
+module.exports = {
+  safeEqual, checkAdminToken,
+  signTransporteurToken, verifyTransporteurToken,
+  signPartenaireToken, verifyPartenaireToken,
+};

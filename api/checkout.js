@@ -40,8 +40,19 @@ module.exports = async (req, res) => {
   const supabase = getSupabase();
   let city;
   let horsZone = false;
+  // Réservation apportée par un partenaire (conciergerie...) via son lien
+  // d'affiliation (ex. locair.fr/?p=CODE) — voir index.html (capture du
+  // paramètre d'URL) et migration_partenaires.sql.
+  let partenaireId = null;
+  let partenaireTaux = 0;
 
   try {
+    const partenaireCode = (data.partenaire_code || '').trim().toLowerCase();
+    if (partenaireCode) {
+      const { data: partenaire } = await supabase
+        .from('partenaires').select('id, taux_commission_pct').eq('code', partenaireCode).eq('actif', true).maybeSingle();
+      if (partenaire) { partenaireId = partenaire.id; partenaireTaux = partenaire.taux_commission_pct; } // commission calculée ci-dessous, une fois amountCents connu
+    }
     city = await resolveCityByAddress(supabase, data.adresse, data.code_postal);
     if (!city) {
       // Code postal non couvert : accepter la commande en la marquant hors zone
@@ -70,6 +81,10 @@ module.exports = async (req, res) => {
   if (!amountCents || amountCents < 10000) {
     return res.status(400).json({ error: 'Montant invalide' });
   }
+
+  // Commission partenaire figée sur le montant payé par le client — ne bouge
+  // pas rétroactivement si le taux du partenaire change ensuite.
+  const partenaireCommissionCents = partenaireId ? Math.round(amountCents * partenaireTaux / 100) : 0;
 
   try {
     // Créer ou retrouver le Customer Stripe — nécessaire pour l'autorisation de prélèvement
@@ -162,6 +177,8 @@ module.exports = async (req, res) => {
       type_client:              (data.type_client || '').toLowerCase().startsWith('pro') ? 'entreprise' : 'particulier',
       siret:                    (data.siret || '').replace(/\s/g, '').slice(0, 14) || null,
       parrain_code:             (data.parrain_code || '').slice(0, 100) || null,
+      partenaire_id:            partenaireId,
+      partenaire_commission_cents: partenaireCommissionCents,
       logement:                 (data.logement || '').slice(0, 100) || null,
       motifs:                   (data.motifs || '').slice(0, 500) || null,
       mkt_consent:              data.mkt_consent === 'Oui' || data.mkt_consent === true,

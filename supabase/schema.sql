@@ -101,6 +101,27 @@ create table transporteur_disponibilites (
   primary key (transporteur_id, jour, moment)
 );
 
+-- Espace partenaire (conciergeries, autres apporteurs d'affaires) : un
+-- partenaire pose un lien d'affiliation (ex. locair.fr/?p=CODE) sur son
+-- propre site, et touche une commission sur chaque réservation faite depuis
+-- ce lien (voir reservations.partenaire_id ci-dessous).
+create table partenaires (
+  id                  bigint generated always as identity primary key,
+  nom                 text not null, -- nom de la conciergerie/entreprise
+  contact_nom         text,          -- personne de contact, si différent de "nom"
+  email               text,
+  telephone           text,
+  -- Code utilisé dans le lien d'affiliation (ex. ?p=CODE) — public, visible
+  -- dans l'URL. Distinct du PIN (secret, sert uniquement à se connecter).
+  code                text not null unique,
+  pin                 text not null unique,
+  taux_commission_pct integer not null default 10 check (taux_commission_pct >= 0 and taux_commission_pct <= 100),
+  actif               boolean not null default true,
+  created_at          timestamptz not null default now()
+);
+create index partenaires_code_idx on partenaires (code) where actif;
+create index partenaires_pin_idx  on partenaires (pin)  where actif;
+
 -- Un client peut réserver plusieurs fois — jusqu'ici chaque réservation était
 -- une île isolée, aucune mémoire d'une fois sur l'autre. Déduplication par
 -- téléphone (le plus stable : un client garde son numéro plus souvent que son
@@ -152,6 +173,12 @@ create table reservations (
   source                   text,
   source_channel           text, -- canal d'acquisition marketing (ex. 'google', 'instagram', 'bouche-a-oreille')
   parrain_code             text, -- code parrain saisi par le client (programme parrainage)
+  -- Réservation apportée par un partenaire (conciergerie...) via son lien
+  -- d'affiliation. Commission figée à la réservation (voir partenaires.taux_commission_pct),
+  -- pour ne pas bouger rétroactivement si le taux change ensuite.
+  partenaire_id            bigint references partenaires(id),
+  partenaire_commission_cents integer not null default 0,
+  partenaire_commission_payee boolean not null default false,
   logement                 text,
   motifs                   text,
   mkt_consent              boolean not null default false, -- opt-in marketing (RGPD)
@@ -164,6 +191,7 @@ create table reservations (
 create index reservations_avail_idx on reservations (city_id, date_debut, date_fin)
   where statut in ('en_attente','confirmee');
 create index reservations_stripe_pi_idx on reservations (stripe_payment_intent_id);
+create index reservations_partenaire_idx on reservations (partenaire_id) where partenaire_id is not null;
 
 -- Quels appareils numérotés sont retenus pour quelle réservation. Rempli
 -- automatiquement à la confirmation du paiement (voir api/_lib/reservations.js,
@@ -244,6 +272,19 @@ create table virements (
   verse_at       timestamptz
 );
 create index virements_transporteur_idx on virements (transporteur_id, statut);
+
+-- Demandes de virement partenaire — même logique que `virements` ci-dessus,
+-- mais table séparée pour ne rien toucher à ce circuit transporteur déjà en
+-- prod. Voir api/admin-partenaire-virements.js.
+create table partenaire_virements (
+  id            bigint generated always as identity primary key,
+  partenaire_id bigint not null references partenaires(id),
+  montant_cents integer not null default 0,
+  statut        text not null default 'demande' check (statut in ('demande','verse')),
+  created_at    timestamptz not null default now(),
+  verse_at      timestamptz
+);
+create index partenaire_virements_partenaire_idx on partenaire_virements (partenaire_id, statut);
 
 create table incidents (
   id                    bigint generated always as identity primary key,

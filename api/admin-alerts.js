@@ -87,7 +87,16 @@ module.exports = async (req, res) => {
       .lt('date_prevue', todayStr);
     const retards = retardsCount || 0;
 
-    return res.status(200).json({ virements, livraisons, non_assignees: nonAssignees, reservations, incidents, retards });
+    // Demandes de virement partenaire — pas de rattachement par ville (un
+    // partenaire n'est pas une ressource opérationnelle localisée), donc
+    // compté globalement plutôt que via cityTransp comme pour les transporteurs.
+    const { count: partenaireVirementsCount } = await supabase
+      .from('partenaire_virements').select('id', { count: 'exact', head: true }).eq('statut', 'demande');
+
+    return res.status(200).json({
+      virements, livraisons, non_assignees: nonAssignees, reservations, incidents, retards,
+      partenaire_virements: partenaireVirementsCount || 0,
+    });
   } catch (err) {
     console.error('[Admin alerts]', err.message);
     return res.status(500).json({ error: 'Erreur serveur' });
