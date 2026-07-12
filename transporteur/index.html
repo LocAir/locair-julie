@@ -714,6 +714,19 @@ function returnFromChecklist(){
   else switchTab('accueil');
 }
 
+// "En cours" = actif MAINTENANT, pas simplement accepté à l'avance. Une
+// mission peut rester au statut "acceptee" pendant des semaines avant sa
+// date prévue (accepter n'est pas démarrer, voir actionBtnsForMission) —
+// sans ce filtre par date, une mission acceptée pour dans 3 semaines
+// gonflait le badge "En cours" au même titre qu'une mission réellement sur
+// la route aujourd'hui, ce qui n'a pas de sens pour le livreur. Sur place
+// (arrivee) ou en problème compte toujours, quelle que soit la date.
+function missionEstEnCours(m){
+  if(m.statut === 'arrivee' || m.statut === 'probleme') return true;
+  if(m.statut !== 'acceptee') return false;
+  const todayStr = new Date().toISOString().slice(0,10);
+  return m.date_prevue <= todayStr;
+}
 // Deux familles de badges, jamais confondues :
 //  - "à traiter" (aFaire, en_cours) : le compteur reste tant que l'action
 //    réelle (accepter/refuser, livrer, récupérer) n'a pas été faite — le
@@ -724,7 +737,7 @@ function returnFromChecklist(){
 //    terminées a été affichée (voir markTermineeSeen dans renderMissions).
 function updateMissionsBadge(){
   const aFaire  = STATE.missions.filter(m => m.statut === 'a_faire').length;
-  const enCours = STATE.missions.filter(m => ['acceptee','arrivee','probleme'].includes(m.statut)).length;
+  const enCours = STATE.missions.filter(missionEstEnCours).length;
   const terminees = STATE.missions.filter(m => m.statut === 'fait');
   const lastSeenTerminee = parseInt(localStorage.getItem('t_lastseen_terminee_'+STATE.transporteurId) || '0');
   const termineesNonVues = terminees.filter(m => m.id > lastSeenTerminee).length;
@@ -954,7 +967,13 @@ function futureDateText(dateStr){
 
 function missionCardHtml(m){
   const c = m.client || {};
-  const badge = STATUT_LABEL[m.statut] || m.statut;
+  // Une mission acceptée pour plus tard n'est pas "en cours" — le pill doit
+  // le dire clairement même hors du filtre "En cours" (ex. vue "Toutes"),
+  // sinon deux missions au même statut technique ("acceptee") semblent
+  // identiques alors que l'une attend son jour et l'autre est vraiment à
+  // traiter maintenant.
+  const todayStr = new Date().toISOString().slice(0,10);
+  const badge = (m.statut === 'acceptee' && m.date_prevue > todayStr) ? 'Programmée' : (STATUT_LABEL[m.statut] || m.statut);
   const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
   const earn = m.montant_preview ? `<span class="mcard-earn">💶 ${Math.round(m.montant_preview/100)}€</span>` : '';
   const metaParts = [m.creneau?escHtml(m.creneau):'', (c.etage&&c.etage!=='—')?'Étage '+escHtml(c.etage):''].filter(Boolean);
@@ -1063,7 +1082,6 @@ let MISSION_FILTER = 'toutes';
 const MISSION_FILTER_STATUTS = {
   toutes:   ['a_faire', 'acceptee', 'arrivee', 'probleme'],
   nouvelle: ['a_faire'],
-  en_cours: ['acceptee', 'arrivee', 'probleme'],
   terminee: ['fait'],
 };
 const MISSION_FILTER_EMPTY = {
@@ -1095,8 +1113,12 @@ function missionUrgenceRang(m){
   return 6; // fait
 }
 function filteredMissions(){
-  const statuts = MISSION_FILTER_STATUTS[MISSION_FILTER];
-  const list = statuts ? STATE.missions.filter(m => statuts.includes(m.statut)) : STATE.missions.slice();
+  let list;
+  if(MISSION_FILTER === 'en_cours') list = STATE.missions.filter(missionEstEnCours);
+  else{
+    const statuts = MISSION_FILTER_STATUTS[MISSION_FILTER];
+    list = statuts ? STATE.missions.filter(m => statuts.includes(m.statut)) : STATE.missions.slice();
+  }
   return list.sort((a,b) => missionUrgenceRang(a)-missionUrgenceRang(b)
     || a.date_prevue.localeCompare(b.date_prevue) || (a.creneau||'').localeCompare(b.creneau||''));
 }
