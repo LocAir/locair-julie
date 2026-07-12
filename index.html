@@ -3681,6 +3681,10 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
               Adresse enregistrée
             </div>
+            <div id="zone-delivery-notice" aria-live="polite" style="display:none;margin-top:8px;padding:10px 13px;background:#fff8ee;border:1.5px solid #e8d5a3;border-radius:10px;font-size:12.5px;color:#92400e;line-height:1.55;align-items:flex-start;gap:8px">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>Livraison hors zone standard : <strong>95 €</strong> — votre adresse est en dehors de Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche ou Beaulieu-sur-Mer.</span>
+            </div>
           </div>
         </div>
         <div class="modal-nav">
@@ -4672,7 +4676,15 @@ function _baseRate(days){
   return 16;
 }
 const INSTALL_FEE=25;
-const DELIVERY_FEE=35;
+let DELIVERY_FEE=35;
+// CP en zone standard (35 €) — tout autre CP → hors zone (95 €)
+const _ZONE_CP=new Set(['06000','06100','06200','06300','06700','06800','06230','06310']);
+function _updateDeliveryFee(){
+  const cp=(document.getElementById('f-cp')?.value||'').trim();
+  DELIVERY_FEE=_ZONE_CP.has(cp)?35:95;
+  const notice=document.getElementById('zone-delivery-notice');
+  if(notice)notice.style.display=DELIVERY_FEE>35?'flex':'none';
+}
 let _techInstall=true; // true = technicien 25€ (défaut), false = auto-installation
 function calcPrice(days){
   // Tarification marginale : chaque palier ne s'applique qu'aux jours supplémentaires
@@ -4864,6 +4876,9 @@ function clearAddr(){
   inp.focus();
   const cpInp=document.getElementById('f-cp');
   if(cpInp)cpInp.value='';
+  DELIVERY_FEE=35;
+  const _zn=document.getElementById('zone-delivery-notice');
+  if(_zn)_zn.style.display='none';
 }
 
 async function _fetchAddrAc(q){
@@ -4919,6 +4934,7 @@ function _pickAddrAc(el){
   }
   const cpInp=document.getElementById('f-cp');
   if(cpInp)cpInp.value=el.dataset.cp||'';
+  _updateDeliveryFee();
 }
 
 function _closeAddrAc(){
@@ -5607,8 +5623,8 @@ function buildRecap(){
           <span>${_techInstall?'25 €':(isEN?'Kit included':'Kit fourni')}</span>
         </div>
         <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:${_promoDiscount>0?'4px':'10px'}">
-          <span class="rc-total-lbl">${isEN?'Delivery & collection':'Livraison & récupération'}</span>
-          <span>35 €</span>
+          <span class="rc-total-lbl">${isEN?'Delivery & collection':'Livraison & récupération'}${DELIVERY_FEE>35?' <span style="font-size:10px;background:#fff8ee;color:#92400e;padding:1px 6px;border-radius:100px;border:1px solid #e8d5a3">hors zone</span>':''}</span>
+          <span>${DELIVERY_FEE} €</span>
         </div>
         ${_promoDiscount>0?`<div class="rc-total-row" style="font-size:12px;color:#059669;font-weight:600;margin-bottom:10px">
           <span class="rc-total-lbl">${isEN?'Promo code':'Code promo'} (${escHtml(_promoCode)})</span>

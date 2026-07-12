@@ -13,8 +13,10 @@ function calcBase(days) {
 }
 
 const PROMO_CODES  = { LOCAIR10: 10, LOCA10: 10 };
-const DELIVERY_FEE = 35;
 const INSTALL_FEE  = 25;
+// Codes postaux en zone standard (livraison 35 €)
+// Tout autre code postal → tarif hors zone (95 €)
+const ZONE_CP = new Set(['06000','06100','06200','06300','06700','06800','06230','06310']);
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -29,11 +31,6 @@ module.exports = async (req, res) => {
   const installCents  = isTech ? INSTALL_FEE * 100 : 0;
   const promoCode     = (data.parrain_code || '').trim().toUpperCase();
   const promoDiscount = (PROMO_CODES[promoCode] || 0) * 100;
-  const amountCents   = Math.max(0, baseCents + installCents + DELIVERY_FEE * 100 - promoDiscount);
-
-  if (!amountCents || amountCents < 10000) {
-    return res.status(400).json({ error: 'Montant invalide' });
-  }
 
   const dateDebut = (data.date || '').slice(0, 10);
   if (!isValidDate(dateDebut)) {
@@ -64,6 +61,14 @@ module.exports = async (req, res) => {
   } catch (err) {
     console.error('[Stock check checkout]', err.message);
     return res.status(500).json({ error: 'Erreur serveur stock' });
+  }
+
+  // Frais de livraison déterminés après résolution de l'adresse
+  const deliveryFeeCents = ZONE_CP.has((data.code_postal || '').trim()) ? 35 * 100 : 95 * 100;
+  const amountCents      = Math.max(0, baseCents + installCents + deliveryFeeCents - promoDiscount);
+
+  if (!amountCents || amountCents < 10000) {
+    return res.status(400).json({ error: 'Montant invalide' });
   }
 
   try {
@@ -120,6 +125,8 @@ module.exports = async (req, res) => {
         fenetre:      (data.fenetre           || '').slice(0, 500),
         etage:        (data.etage             || '').slice(0, 500),
         ascenseur:    (data.ascenseur         || '').slice(0, 500),
+        frais_livraison: String(deliveryFeeCents / 100) + ' EUR',
+        hors_zone:    horsZone ? 'oui' : 'non',
         promo:        promoCode,
         customer_id:  customerId,
       },
