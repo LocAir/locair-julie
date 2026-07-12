@@ -146,6 +146,15 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .step.done .step-line{background:var(--green)}
 .step:first-child .step-line{display:none}
 
+/* Parcours mission étape par étape — une action par écran, même principe que
+   le tunnel de réservation du site public (index.html, .mob-progress). */
+.wiz-progress{margin:2px 0 18px}
+.wiz-progress-label{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+.wiz-progress-step{font-size:11px;font-weight:800;color:var(--blue);letter-spacing:.06em;text-transform:uppercase}
+.wiz-progress-name{font-size:12.5px;color:var(--grey);font-weight:600}
+.wiz-progress-track{height:4px;background:var(--rule);border-radius:2px;overflow:hidden}
+.wiz-progress-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .35s cubic-bezier(.25,.46,.45,.94)}
+
 /* Nav bas Missions / Activité */
 .tabbar{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);border:1px solid var(--rule);padding:4px;border-radius:100px}
 .tabbar button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 8px;border-radius:100px;border:none;background:transparent;font-family:var(--body);font-weight:600;font-size:13.5px;letter-spacing:-.005em;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
@@ -354,6 +363,7 @@ let STATE = {
   autoOpenChecked: false, // une seule fois par connexion, voir maybeAutoOpenMission()
   checklist: null, // état du jour, chargé avec les missions — voir checklistBlocksMission()
   returnToMission: null, // mission à rouvrir après validation checklist, voir goToChecklistFromMission()
+  detailRouteSeenFor: null, // id de la mission dont l'étape "En route" du parcours a déjà été vue, voir missionStepIndex()
 };
 
 function show(id){
@@ -1277,55 +1287,122 @@ function actionBtnsForMission(m){
       return `<div class="info-box"><p>📅 Tu as accepté cette mission — tu pourras la démarrer ${futureDateText(m.date_prevue)}.</p></div>`;
     }
   }
-  // Un seul écran après acceptation : prévenir le client (optionnel, par SMS
-  // depuis le téléphone du livreur) puis une photo pour terminer — plus de
-  // bouton "arrivé" séparé. "arrivee" reste géré ici pour les missions déjà
-  // à cette étape au moment du déploiement (compat', jamais réémis depuis).
-  if((m.statut === 'acceptee' || m.statut === 'arrivee') && m.type === 'livraison'){
-    const numeros = m.appareil_numeros||[];
-    const plural = numeros.length>1;
-    const kitTxt = c.fenetre ? ` + ${numeros.length||1} kit${plural?'s':''} de calfeutrage (${c.fenetre})` : '';
-    const pickup = numeros.length
-      ? `Récupère ${plural?'les Unités':"l'Unité"} n°${numeros.join(', ')}${kitTxt} et charge-${plural?'les':'la'}.`
-      : `Charge l'appareil.`;
-    return `
-      <p class="step-hint">📦 ${pickup}</p>
-      ${prevenirRowHtml(m)}
-      <p class="step-hint">🎥 Installe l'appareil, filme-le (ou joins une vidéo de ta galerie) pour terminer la mission.</p>
-      ${proofButtonsHtml('photo_installation', m.photo_installation_ok, 'Vidéo installation')}
-      <button class="btn btn-green" ${m.photo_installation_ok?'':'disabled'} onclick="doAction('livraison_ok')">✅ LIVRAISON OK — JE PARS</button>
-      ${!m.photo_installation_ok?`<p class="btn-missing-hint">Encore à faire : vidéo d'installation</p>`:''}
-      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
-  }
-  if((m.statut === 'acceptee' || m.statut === 'arrivee') && m.type === 'recuperation'){
-    const ready = m.photo_retour_ok && m.vidange_ok;
-    const missing = [!m.vidange_ok?'vidange':null, !m.photo_retour_ok?'vidéo de l\'appareil':null].filter(Boolean);
-    return `
-      ${prevenirRowHtml(m)}
-      <p class="step-hint">🎥 Vérifie l'appareil, vidange-le (~5 min) et filme-le (ou joins une vidéo de ta galerie) pour terminer la mission.</p>
-      <button class="media-btn ${m.vidange_ok?'done':''}" ${m.vidange_ok?'disabled':''} onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> ${m.vidange_ok?'Vidange de l\'appareil ✔':'Vidange de l\'appareil'}</button>
-      ${proofButtonsHtml('photo_retour', m.photo_retour_ok, 'Vidéo appareil récupéré')}
-      <button class="btn btn-green" ${ready?'':'disabled'} onclick="doAction('retour_ok')">✅ RETOUR OK — JE PARS</button>
-      ${missing.length?`<p class="btn-missing-hint">Encore à faire : ${missing.join(', ')}</p>`:''}
-      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
-  }
-  if((m.statut === 'acceptee' || m.statut === 'arrivee') && m.type === 'changement'){
-    const ready = m.photo_installation_ok && m.photo_retour_ok && m.vidange_ok;
-    const missing = [!m.vidange_ok?'vidange':null, !m.photo_retour_ok?'vidéo ancien appareil':null, !m.photo_installation_ok?'vidéo nouvel appareil':null].filter(Boolean);
-    return `
-      ${prevenirRowHtml(m)}
-      <p class="step-hint">🔁 Récupère l'ancien appareil après vidange, installe le nouvel appareil et filme les deux (ou joins des vidéos de ta galerie).</p>
-      <button class="media-btn ${m.vidange_ok?'done':''}" ${m.vidange_ok?'disabled':''} onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> ${m.vidange_ok?'Vidange ancien appareil ✔':'Vidange de l\'ancien appareil'}</button>
-      ${proofButtonsHtml('photo_retour', m.photo_retour_ok, 'Vidéo ancien appareil')}
-      ${proofButtonsHtml('photo_installation', m.photo_installation_ok, 'Vidéo nouvel appareil')}
-      <button class="btn btn-green" ${ready?'':'disabled'} onclick="doAction('changement_ok')">✅ REMPLACEMENT TERMINÉ — JE PARS</button>
-      ${missing.length?`<p class="btn-missing-hint">Encore à faire : ${missing.join(', ')}</p>`:''}
-      <button class="btn btn-grey" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
-  }
+  // Une fois acceptée et le jour J arrivé, le parcours sur place passe par
+  // l'assistant étape par étape (missionWizardHtml, plus bas) — une action
+  // par écran, comme le tunnel de réservation du site public. Ne reste ici
+  // que ce qui est en dehors de ce parcours.
   if(m.statut === 'probleme'){
     return `<div class="probleme-box"><p>⏳ Problème signalé. Aly va te recontacter — n'improvise rien avec le client.</p></div>`;
   }
   return '';
+}
+
+// ── Parcours mission étape par étape ────────────────────────────────────────
+// Objectif d'Aly : le moins de réflexion possible pour le livreur sur le
+// terrain — une action à la fois, une validation, puis l'écran suivant,
+// jusqu'à l'écran final de fin de mission (la célébration existante,
+// showCelebration). Même principe que le tunnel de réservation du site
+// public (index.html) : un intitulé d'étape + une barre de progression en
+// haut, un seul geste à faire par écran.
+//
+// L'étape courante se déduit des données réelles de la mission (vidange
+// faite ? preuve envoyée ?) plutôt que d'un compteur séparé à tenir à jour
+// à la main — après chaque action (upload, vidange...) un simple
+// renderDetail() retombe automatiquement sur la bonne étape. Seule
+// exception : l'étape "En route" n'a pas de donnée serveur associée (pure
+// consultation), donc on retient juste qu'elle a été vue pour cette
+// mission précise (remis à zéro dès qu'on change de mission).
+function missionStepDefs(m){
+  const steps = [{key:'route', title:'En route'}];
+  if(m.type === 'livraison') steps.push({key:'installation', title:'Installation'});
+  else if(m.type === 'recuperation') steps.push({key:'vidange', title:'Vidange'}, {key:'preuve', title:'Vidéo appareil'});
+  else if(m.type === 'changement') steps.push({key:'vidange', title:'Vidange'}, {key:'ancien', title:'Ancien appareil'}, {key:'nouveau', title:'Nouvel appareil'});
+  steps.push({key:'final', title:'Terminer'});
+  return steps;
+}
+function missionStepDoneFlag(m, key){
+  if(key==='vidange') return Boolean(m.vidange_ok);
+  if(key==='installation') return Boolean(m.photo_installation_ok);
+  if(key==='preuve' || key==='ancien') return Boolean(m.photo_retour_ok);
+  if(key==='nouveau') return Boolean(m.photo_installation_ok);
+  return false;
+}
+function missionStepIndex(m, steps){
+  if(STATE.detailRouteSeenFor !== m.id) return 0;
+  let idx = 1;
+  while(idx < steps.length-1 && missionStepDoneFlag(m, steps[idx].key)) idx++;
+  return idx;
+}
+// Avance manuellement depuis "En route" — seule étape sans donnée serveur à
+// observer, donc la seule qui a besoin d'un vrai bouton "Suivant".
+function goToNextStepFromRoute(){
+  STATE.detailRouteSeenFor = STATE.currentMission.id;
+  renderDetail();
+}
+function missionWizardProgressHtml(steps, idx){
+  const pct = Math.round(((idx+1)/steps.length)*100);
+  return `
+    <div class="wiz-progress">
+      <div class="wiz-progress-label">
+        <span class="wiz-progress-step">Étape ${idx+1}/${steps.length}</span>
+        <span class="wiz-progress-name">${escHtml(steps[idx].title)}</span>
+      </div>
+      <div class="wiz-progress-track"><div class="wiz-progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+}
+function wizardProofStepHtml(m, kind, doneLabel, hint){
+  return `
+    <p class="step-hint">🎥 ${hint}</p>
+    ${proofButtonsHtml(kind, m[kind+'_ok'], doneLabel)}`;
+}
+function wizardStepBodyHtml(m, infoRows, key){
+  if(key === 'route'){
+    const numeros = m.appareil_numeros||[];
+    const plural = numeros.length>1;
+    const pickupHtml = (m.type==='livraison') ? `<p class="step-hint">📦 ${numeros.length
+      ? `Récupère ${plural?'les Unités':"l'Unité"} n°${numeros.join(', ')}${m.client&&m.client.fenetre?` + ${numeros.length||1} kit${plural?'s':''} de calfeutrage (${escHtml(m.client.fenetre)})`:''} et charge-${plural?'les':'la'}.`
+      : `Charge l'appareil.`}</p>` : '';
+    return `
+      ${infoRows}
+      ${pickupHtml}
+      <div class="section-title" style="margin:14px 0 6px 2px">Prévenir le client (optionnel)</div>
+      ${prevenirRowHtml(m)}
+      <button class="btn btn-blue btn-block" style="margin-top:6px" onclick="goToNextStepFromRoute()">Suivant →</button>`;
+  }
+  if(key === 'vidange'){
+    const label = m.type==='changement' ? "l'ancien appareil" : "l'appareil";
+    return `
+      <p class="step-hint">💧 Vérifie ${label} et vidange-le (~5 min).</p>
+      <button class="media-btn" onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> Vidange ${m.type==='changement'?"de l'ancien appareil":"de l'appareil"}</button>`;
+  }
+  if(key === 'installation'){
+    return wizardProofStepHtml(m, 'photo_installation', 'Vidéo installation', "Installe l'appareil, filme-le (ou joins une vidéo de ta galerie) pour terminer la mission.");
+  }
+  if(key === 'preuve'){
+    return wizardProofStepHtml(m, 'photo_retour', 'Vidéo appareil récupéré', "Filme l'appareil récupéré (ou joins une vidéo de ta galerie) pour terminer la mission.");
+  }
+  if(key === 'ancien'){
+    return wizardProofStepHtml(m, 'photo_retour', 'Vidéo ancien appareil', "Filme l'ancien appareil avant de le charger.");
+  }
+  if(key === 'nouveau'){
+    return wizardProofStepHtml(m, 'photo_installation', 'Vidéo nouvel appareil', "Installe le nouvel appareil et filme-le pour terminer la mission.");
+  }
+  // 'final'
+  const okAction = m.type==='livraison' ? 'livraison_ok' : m.type==='recuperation' ? 'retour_ok' : 'changement_ok';
+  const okLabel = m.type==='livraison' ? '✅ LIVRAISON OK — JE PARS' : m.type==='recuperation' ? '✅ RETOUR OK — JE PARS' : '✅ REMPLACEMENT TERMINÉ — JE PARS';
+  return `
+    <p class="step-hint">🎉 Tout est prêt — valide pour terminer la mission.</p>
+    <button class="btn btn-green btn-block" onclick="doAction('${okAction}')">${okLabel}</button>`;
+}
+function missionWizardHtml(m, infoRows){
+  const steps = missionStepDefs(m);
+  const idx = missionStepIndex(m, steps);
+  const key = steps[idx].key;
+  return `
+    ${missionWizardProgressHtml(steps, idx)}
+    <div id="action-zone">${wizardStepBodyHtml(m, infoRows, key)}</div>
+    <button class="btn btn-grey" style="margin-top:10px" onclick="openProbleme()">⚠️ PROBLÈME</button>
+    <div class="err" id="detail-err"></div>`;
 }
 
 function renderStepper(m){
@@ -1391,6 +1468,16 @@ function renderDetail(){
     `;
 
   const enCours = ['acceptee','arrivee'].includes(m.statut);
+  // Le parcours étape par étape ne s'applique qu'une fois sur place, le jour
+  // prévu (jamais en avance — voir le garde-fou déjà existant dans
+  // actionBtnsForMission) et pour les 3 types de mission qui ont des étapes
+  // sur place. Le reste (pas encore acceptée, en attente d'une date future,
+  // problème signalé) garde l'écran simple d'avant.
+  const todayStr = new Date().toISOString().slice(0,10);
+  const isWizard = enCours && m.date_prevue<=todayStr && ['livraison','recuperation','changement'].includes(m.type);
+  const bodyHtml = isWizard
+    ? missionWizardHtml(m, infoRows)
+    : `${renderStepper(m)}${infoRows}<div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div><div class="err" id="detail-err"></div>`;
   document.getElementById('detail-screen').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center">
       <button class="detail-back" style="margin-bottom:14px" onclick="show('missions-screen')">← Retour</button>
@@ -1399,12 +1486,7 @@ function renderDetail(){
     <div class="card">
       <h1>${TYPE_ICON[m.type]||''} ${missionTypeLabel(m)}</h1>
       <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):'', m.montant_preview?`💶 ${Math.round(m.montant_preview/100)} €`:''].filter(Boolean).join(' · ')}</p>
-      ${renderStepper(m)}
-
-      ${infoRows}
-
-      <div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div>
-      <div class="err" id="detail-err"></div>
+      ${bodyHtml}
     </div>
   `;
 }
