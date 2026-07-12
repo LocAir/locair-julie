@@ -3431,11 +3431,17 @@ function renderVilles(){
           <span class="chip ${c.actif?'actif':'inactif'}">${c.actif?'active':'inactive'}</span>
         </span>
       </div>
-      ${c.dep?`<div class="row-meta">${escHtml(c.dep)}</div>`:''}
-      <div class="row-meta">Codes postaux : ${(c.postal_codes&&c.postal_codes.length) ? escHtml(c.postal_codes.join(', ')) : '—'}</div>
-      ${c.sold_out?`<div class="row-meta" style="color:var(--red);font-size:12px">Le site affiche "complet" pour cette ville — aucune nouvelle réservation possible. Calculé automatiquement dès qu'un appareil se libère (aucune action requise).</div>`:''}
+      <div class="row-meta">${c.dep?escHtml(c.dep)+' · ':''}${(c.postal_codes&&c.postal_codes.length) ? escHtml(c.postal_codes.join(', ')) : 'Aucun code postal'}</div>
       <div class="row-meta">💶 ${baremeSummaryHtml(c)}</div>
+      <div class="row-meta" style="margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="periods" style="margin:0;width:auto;display:inline-flex">
+          <button class="${(c.sold_out_mode||'auto')==='auto'?'on':''}" onclick="setVilleSoldOutMode(${c.id}, 'auto')">⚙️ Auto</button>
+          <button class="${c.sold_out_mode==='manuel'?'on':''}" onclick="setVilleSoldOutMode(${c.id}, 'manuel')">🖐️ Manuel</button>
+        </span>
+        ${c.sold_out_mode==='manuel'?`<span style="font-size:11.5px;color:var(--amber);font-weight:600">"Complet" géré par toi, pas par le stock</span>`:''}
+      </div>
       <div class="row-actions">
+        ${c.sold_out_mode==='manuel'?`<button class="btn ${c.sold_out?'btn-green':'btn-grey'}" onclick="toggleVilleSoldOut(${c.id}, ${!c.sold_out})">${c.sold_out?'🔓 Rouvrir':'🚫 Passer en complet'}</button>`:''}
         <button class="btn ${c.actif?'btn-grey':'btn-green'}" onclick="toggleVilleActif(${c.id}, ${!c.actif})">${c.actif?'Désactiver':'✅ Réactiver'}</button>
         <details class="more-actions" style="margin-left:auto">
           <summary title="Plus d'actions">⋯</summary>
@@ -3446,7 +3452,9 @@ function renderVilles(){
         </details>
       </div>
     </div>`).join('') || '<p class="empty">🌍 Aucune ville configurée.</p>';
-  zone.innerHTML = list + `
+  const soldOutHint = `
+    <div class="affect-hint">💡 Plus de stock ? Le site affiche "Complet" tout seul, sans rien à faire. Passez une ville en "Manuel" seulement pour garder la main vous-même (incident, fermeture volontaire).</div>`;
+  zone.innerHTML = soldOutHint + list + `
     <div class="card">
       <h2>Ouvrir une nouvelle ville</h2>
       <p class="sub" style="margin-bottom:16px">Les commandes du site sont automatiquement affectées à la ville dont les codes postaux couvrent l'adresse de livraison.</p>
@@ -3618,6 +3626,24 @@ function editVillePostaux(id, current){
       showToast('Codes postaux mis à jour', 'success');
     }catch(e){ showToast(`Non enregistré : ${e.message}`, 'error'); }
   });
+}
+async function setVilleSoldOutMode(id, mode){
+  try{
+    const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, sold_out_mode:mode, city_id:'all'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadVilles();
+    showToast(mode==='manuel' ? '🖐️ Mode manuel activé — c\'est toi qui décides désormais' : '⚙️ Mode automatique réactivé', 'success');
+  }catch(e){ showToast(e.message, 'error'); }
+}
+async function toggleVilleSoldOut(id, sold_out){
+  try{
+    const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, sold_out, city_id:'all'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadVilles();
+    showToast(sold_out ? '🔒 Ville passée en mode complet' : '🔓 Ville rouverte aux réservations', sold_out ? 'error' : 'success');
+  }catch(e){ showToast(e.message, 'error'); }
 }
 async function toggleVilleActif(id, actif){
   try{

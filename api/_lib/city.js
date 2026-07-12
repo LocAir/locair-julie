@@ -1,4 +1,5 @@
 const { extractPostalCode } = require('./postal');
+const { pushToAdmin } = require('./push');
 
 // Historique : un déploiement = une ville (voir CITY object dans index.html),
 // résolue via CITY_SLUG. Conservé le temps que tous les appelants migrent
@@ -56,4 +57,28 @@ async function resolveAdminCity(supabase, body) {
   return cities[0] || null;
 }
 
-module.exports = { getCity, listCities, resolveCityById, resolveCityByAddress, resolveAdminCity };
+// Alerte Aly dès qu'une ville affiche "complet" côté site — une seule fois
+// par épisode : sold_out_notified se réinitialise tout seul en base
+// (trigger SQL) dès que la ville redevient disponible, donc pas besoin de le
+// refaire ici. Appelé après toute opération qui pourrait faire tomber le
+// stock à zéro (confirmation de réservation, augmentation de quantité,
+// appareil mis hors service) — ne fait jamais échouer l'appelant, une
+// notification manquée ne doit jamais bloquer une action métier.
+async function notifyIfSoldOut(supabase, cityId) {
+  if (!cityId) return;
+  try {
+    const { data: city } = await supabase
+      .from('cities').select('id, name, sold_out, sold_out_notified').eq('id', cityId).maybeSingle();
+    if (!city || !city.sold_out || city.sold_out_notified) return;
+    await pushToAdmin(supabase, {
+      title: `🚫 ${city.name} affiche "complet"`,
+      body:  'Plus aucun appareil disponible — le site bloque les nouvelles réservations pour cette ville.',
+      tag:   `sold-out-${city.id}`,
+    });
+    await supabase.from('cities').update({ sold_out_notified: true }).eq('id', cityId);
+  } catch (e) {
+    console.error('[notifyIfSoldOut]', e.message);
+  }
+}
+
+module.exports = { getCity, listCities, resolveCityById, resolveCityByAddress, resolveAdminCity, notifyIfSoldOut };

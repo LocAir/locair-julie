@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { resolveAdminCity } = require('./_lib/city');
+const { resolveAdminCity, notifyIfSoldOut } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { checkAdminToken } = require('./_lib/auth');
 
@@ -40,6 +40,10 @@ module.exports = async (req, res) => {
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('appareils').update(patch).eq('id', id).eq('city_id', city.id);
       if (error) throw error;
+      // Un appareil mis en panne/maintenance/loué réduit le stock actif — le
+      // trigger SQL a déjà recalculé sold_out au moment de ce même UPDATE,
+      // reste à alerter Aly si ça vient de faire passer la ville à "complet".
+      if (patch.statut != null) await notifyIfSoldOut(supabase, city.id);
       return res.status(200).json({ ok: true });
     }
 

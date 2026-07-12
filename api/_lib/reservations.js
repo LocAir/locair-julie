@@ -1,5 +1,6 @@
 const { pushToTransporteur } = require('./push');
 const { extractPostalCode } = require('./postal');
+const { notifyIfSoldOut } = require('./city');
 
 function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
@@ -282,6 +283,11 @@ async function confirmReservation(supabase, resa) {
       }
     }
   }
+
+  // Cette confirmation vient d'assigner des appareils — c'est le moment le
+  // plus probable pour que le stock de la ville tombe à zéro. Alerte Aly
+  // si c'est le cas (ne fait jamais échouer la confirmation elle-même).
+  await notifyIfSoldOut(supabase, resa.city_id);
 
   return resa;
 }
