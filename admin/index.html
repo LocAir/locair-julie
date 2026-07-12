@@ -2778,20 +2778,21 @@ async function loadTransporteursEquipe(){
             <span class="chip ${t.actif?'actif':'inactif'}">${t.actif?'actif':'inactif'}</span>
           </span>
         </div>
-        <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''}</div>
-        <div class="row-meta">Code : <strong>${escHtml(t.pin||'—')}</strong></div>
+        <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''} · Code : <strong>${escHtml(t.pin||'—')}</strong></div>
         ${CITIES_CACHE.length>1?`<div class="row-meta">🌍 ${(t.villes&&t.villes.length) ? t.villes.map(id => escHtml((CITIES_CACHE.find(c=>c.id===id)||{}).name||'?')).join(', ') : 'Aucune zone'}</div>`:''}
         ${t.notes?`<div class="row-meta" style="font-style:italic">📝 ${escHtml(t.notes)}</div>`:''}
         <div class="row-meta" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
           ${[{key:'livraison',label:'Livraison',tarif:'30€'},{key:'livraison_technicien',label:'Livr.+install.',tarif:'40€'},{key:'recuperation',label:'Récupération',tarif:'30€'},{key:'changement',label:'Remplacement',tarif:'40€'}].filter(mt=>!(t.types_autorises&&t.types_autorises.length)||t.types_autorises.includes(mt.key)).map(mt=>`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;background:var(--green-bg);color:var(--green)">${mt.label} · ${mt.tarif}</span>`).join('')}
         </div>
-        <div style="display:flex;align-items:center;gap:10px;margin:10px 0 4px">
-          <span style="font-size:12px;color:var(--grey)">Score 30j</span>
-          <span style="padding:2px 10px;border-radius:100px;font-size:12px;font-weight:700;background:${scoreBg};color:${scoreColor}">${scoreLabel}</span>
-          ${missions30!=null?`<span style="font-size:12px;color:var(--grey)">${missions30} mission${missions30>1?'s':''}</span>`:score==null?`<span style="font-size:12px;color:var(--grey)">Pas encore assez de missions</span>`:''}
-          <button class="btn btn-grey" style="padding:3px 10px;font-size:12px;margin-left:auto" onclick="openTransporteurStats(${t.id})">📊 Stats</button>
+        <div class="day-progress" style="margin:10px 0 0">
+          ${chargeJourHtml(t.id, ld.livraisons)}
+          <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule)">
+            <span style="font-size:12px;color:var(--grey)">30 jours</span>
+            <span style="padding:2px 10px;border-radius:100px;font-size:12px;font-weight:700;background:${scoreBg};color:${scoreColor}">${scoreLabel}</span>
+            ${missions30!=null?`<span style="font-size:12px;color:var(--grey)">${missions30} mission${missions30>1?'s':''}</span>`:score==null?`<span style="font-size:12px;color:var(--grey)">Pas encore assez de missions</span>`:''}
+            <button class="btn btn-grey" style="padding:3px 10px;font-size:12px;margin-left:auto" onclick="openTransporteurStats(${t.id})">📊 Détail</button>
+          </div>
         </div>
-        <div class="day-progress" style="margin:8px 0 0;padding:0">${chargeJourHtml(t.id, ld.livraisons)}</div>
         <div class="row-actions">
           ${enPause
             ? `<button class="btn btn-green" onclick="pauseTransporteur(${t.id}, false, this)">▶ Reprendre</button>`
