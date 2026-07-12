@@ -1462,9 +1462,37 @@ function renderReservationsToolbar(){
     {key:'terminee', label:'Terminées'},
   ];
   zone.innerHTML = `
-    <button class="btn btn-grey btn-block" onclick="toggleNewReservationForm()" id="new-resa-toggle">+ Nouvelle réservation (téléphone, WhatsApp…)</button>
-    <div class="card hidden" id="new-resa-form" style="margin-top:12px">
+    <div class="periods" style="margin-bottom:16px">
+      <button class="${RESERVATIONS_VIEW==='liste'?'on':''}" onclick="setReservationsView('liste')">📋 Liste</button>
+      <button class="${RESERVATIONS_VIEW==='calendrier'?'on':''}" onclick="setReservationsView('calendrier')">📅 Calendrier</button>
+      <button class="${RESERVATIONS_VIEW==='creer'?'on':''}" onclick="setReservationsView('creer')">🆕 Créer</button>
+    </div>
+    <div id="resa-creer-view" class="${RESERVATIONS_VIEW==='creer'?'':'hidden'}">${reservationCreerHtml()}</div>
+    <div id="resa-liste-view" class="${RESERVATIONS_VIEW==='liste'?'':'hidden'}">
+      <button class="btn btn-grey btn-block" style="margin-bottom:16px" onclick="exportReservationsCsv()">⬇️ Exporter en CSV</button>
+      <input type="text" id="resa-search" placeholder="🔎 Client, adresse, référence…" oninput="renderReservations()"/>
+      <div class="periods" style="margin:16px 0">
+        ${filters.map(f => `<button class="${!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER===f.key?'on':''}" onclick="setReservationsFilter('${f.key}')">${f.label}</button>`).join('')}
+      </div>
+      <div id="resa-list" class="row-grid"></div>
+      ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleMasquees()">${RESERVATIONS_SHOW_MASQUEES?'← Revenir aux réservations':`🙈 Afficher les réservations supprimées (${masqueesCount})`}</button>` : ''}
+    </div>
+    <div id="resa-calendrier-view" class="${RESERVATIONS_VIEW==='calendrier'?'':'hidden'}">
+      <div id="resa-calendrier-content"></div>
+    </div>
+  `;
+  if(RESERVATIONS_VIEW==='liste') renderReservations();
+  else if(RESERVATIONS_VIEW==='calendrier') renderReservationsCalendrier();
+}
+// Formulaire complet de création manuelle — reprend tous les champs du tunnel
+// public (index.html), pour qu'Aly puisse saisir intégralement une réservation
+// prise par téléphone (ex. personne âgée peu à l'aise avec le site) sans rien
+// perdre par rapport à ce qu'un client aurait rempli lui-même.
+function reservationCreerHtml(){
+  return `
+    <div class="card">
       <h2>Nouvelle réservation</h2>
+      <p class="sub" style="margin-bottom:16px">Reprend tous les champs du formulaire du site — pour saisir toi-même une réservation prise par téléphone.</p>
       <label for="nr-prenom">Prénom *</label>
       <input type="text" id="nr-prenom"/>
       <label for="nr-nom">Nom *</label>
@@ -1487,28 +1515,25 @@ function renderReservationsToolbar(){
         <div><label for="nr-prix">Prix total (€)</label><input type="number" id="nr-prix" min="0" step="0.5"/></div>
       </div>
       ${logisticsFieldsHtml('nr')}
-      <button class="btn btn-blue btn-block" style="margin-top:14px" id="nr-submit" onclick="createReservation()">Créer et confirmer</button>
-      <div class="err" id="new-resa-err"></div>
-    </div>
-    <div class="periods" style="margin-bottom:16px">
-      <button class="${RESERVATIONS_VIEW==='liste'?'on':''}" onclick="setReservationsView('liste')">📋 Liste</button>
-      <button class="${RESERVATIONS_VIEW==='calendrier'?'on':''}" onclick="setReservationsView('calendrier')">📅 Calendrier</button>
-    </div>
-    <button class="btn btn-grey btn-block" style="margin-bottom:16px" onclick="exportReservationsCsv()">⬇️ Exporter en CSV</button>
-    <div id="resa-liste-view" class="${RESERVATIONS_VIEW==='calendrier'?'hidden':''}">
-      <input type="text" id="resa-search" placeholder="🔎 Client, adresse, référence…" oninput="renderReservations()"/>
-      <div class="periods" style="margin:16px 0">
-        ${filters.map(f => `<button class="${!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER===f.key?'on':''}" onclick="setReservationsFilter('${f.key}')">${f.label}</button>`).join('')}
+      <label for="nr-logement" style="margin-top:8px">Surface à climatiser</label>
+      <select id="nr-logement">
+        <option value="">—</option>
+        <option>Studio</option><option>T2</option><option>T3/T4</option><option>Maison</option>
+      </select>
+      <label for="nr-parrain" style="margin-top:8px">Code parrain (optionnel)</label>
+      <input type="text" id="nr-parrain"/>
+      <label style="margin-top:8px">Motif de location (optionnel)</label>
+      <div class="periods" id="nr-motifs" style="margin:0;flex-wrap:wrap;height:auto">
+        ${['Chaleur','Bébé / Santé','Airbnb / Location','Événement'].map(m => `<button type="button" data-motif="${m}" onclick="this.classList.toggle('on')" style="flex:none;padding:8px 14px">${m}</button>`).join('')}
       </div>
-      <div id="resa-list" class="row-grid"></div>
-      ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleMasquees()">${RESERVATIONS_SHOW_MASQUEES?'← Revenir aux réservations':`🙈 Afficher les réservations supprimées (${masqueesCount})`}</button>` : ''}
-    </div>
-    <div id="resa-calendrier-view" class="${RESERVATIONS_VIEW==='liste'?'hidden':''}">
-      <div id="resa-calendrier-content"></div>
-    </div>
-  `;
-  if(RESERVATIONS_VIEW==='liste') renderReservations();
-  else renderReservationsCalendrier();
+      <label style="margin-top:14px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
+        <input type="checkbox" id="nr-mkt" style="width:auto"/> Le client accepte de recevoir les offres et actualités par email
+      </label>
+      <button class="btn btn-blue btn-block" style="margin-top:16px" id="nr-submit-attente" onclick="createReservation(false)">📧 Créer — paiement à finaliser par le client</button>
+      <button class="btn btn-grey btn-block" style="margin-top:8px" id="nr-submit-confirme" onclick="createReservation(true)">✅ Créer et confirmer (paiement déjà reçu)</button>
+      <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" crée la réservation en attente — l'envoi automatique du lien de paiement par email arrive bientôt. En attendant, confirme-la manuellement depuis la liste dès que le paiement est reçu.</p>
+      <div class="err" id="new-resa-err"></div>
+    </div>`;
 }
 function exportReservationsCsv(){
   const rows = RESERVATIONS_CACHE.filter(r => !r.masquee);
@@ -1646,16 +1671,15 @@ function resetTypeClientFields(prefix){
   const siret = document.getElementById(`${prefix}-siret`); if(siret) siret.value = '';
   document.getElementById(`${prefix}-entreprise-wrap`)?.classList.add('hidden');
 }
-function toggleNewReservationForm(){
-  document.getElementById('new-resa-form').classList.toggle('hidden');
-}
-async function createReservation(){
-  const submitBtn = document.getElementById('nr-submit');
+async function createReservation(confirmer){
+  const submitBtn = document.getElementById(confirmer ? 'nr-submit-confirme' : 'nr-submit-attente');
   if(submitBtn && submitBtn.disabled) return;
   const errEl = document.getElementById('new-resa-err');
   errEl.style.display = 'none';
+  const motifs = [...document.querySelectorAll('#nr-motifs button.on')].map(b => b.dataset.motif).join(', ');
   const body = {
     action: 'create',
+    confirmer,
     prenom: document.getElementById('nr-prenom').value.trim(),
     nom: document.getElementById('nr-nom').value.trim(),
     tel: document.getElementById('nr-tel').value.trim(),
@@ -1666,6 +1690,10 @@ async function createReservation(){
     date_fin: document.getElementById('nr-fin').value,
     quantite: document.getElementById('nr-qte').value,
     prix_total_cents: Math.round((parseFloat(document.getElementById('nr-prix').value)||0)*100),
+    logement: document.getElementById('nr-logement').value,
+    parrain_code: document.getElementById('nr-parrain').value.trim(),
+    motifs,
+    mkt_consent: document.getElementById('nr-mkt').checked,
     ...typeClientPayload('nr'),
     ...logisticsPayload('nr'),
   };
@@ -1680,7 +1708,7 @@ async function submitReservation(body, submitBtn, errEl){
   // Verrou anti-double-clic : une réservation manuelle engage un vrai paiement
   // et un vrai appareil — un double-clic (ou un clic pendant que la requête
   // précédente est encore en cours) ne doit jamais créer deux réservations.
-  if(submitBtn) submitBtn.disabled = true;
+  document.querySelectorAll('#nr-submit-attente, #nr-submit-confirme').forEach(b => b.disabled = true);
   try{
     const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
     const d = await r.json();
@@ -1693,20 +1721,13 @@ async function submitReservation(body, submitBtn, errEl){
     }
     if(d.reservation){
       RESERVATIONS_CACHE.unshift(d.reservation);
-      renderReservationsToolbar();
-    } else {
-      loadReservations();
     }
-    document.getElementById('new-resa-form').classList.add('hidden');
-    ['nr-prenom','nr-nom','nr-tel','nr-tel2','nr-email','nr-adresse','nr-debut','nr-fin','nr-prix','nr-etage','nr-instructions'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
-    const qteEl = document.getElementById('nr-qte'); if(qteEl) qteEl.value = '1';
-    ['nr-asc','nr-fenetre','nr-installation'].forEach(id => { const el = document.getElementById(id); if(el) el.selectedIndex = 0; });
-    resetTypeClientFields('nr');
-    showToast(`Réservation ${d.ref} créée et confirmée`, 'success');
+    setReservationsView('liste');
+    showToast(d.en_attente ? `Réservation ${d.ref} créée, en attente de paiement` : `Réservation ${d.ref} créée et confirmée`, 'success');
   }catch(e){
     errEl.textContent = e.message; errEl.style.display = 'block';
   }finally{
-    if(submitBtn) submitBtn.disabled = false;
+    document.querySelectorAll('#nr-submit-attente, #nr-submit-confirme').forEach(b => b.disabled = false);
   }
 }
 function cancelReservation(id){

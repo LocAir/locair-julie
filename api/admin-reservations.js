@@ -53,6 +53,16 @@ module.exports = async (req, res) => {
       const dateFin    = (body.date_fin   || '').slice(0, 10);
       const quantite   = Math.min(5, Math.max(1, parseInt(body.quantite) || 1));
       const prixTotalCents = Math.max(0, parseInt(body.prix_total_cents) || 0);
+      const logement    = (body.logement     || '').trim().slice(0, 100);
+      const parrainCode = (body.parrain_code || '').trim().slice(0, 50);
+      const motifs      = (body.motifs       || '').trim().slice(0, 300);
+      const mktConsent  = Boolean(body.mkt_consent);
+      // Une réservation prise par téléphone pour un client qui va payer
+      // lui-même via un lien envoyé ensuite (ex. personne âgée pas à l'aise
+      // avec le site) reste "en attente" — le circuit de confirmation normal
+      // (webhook Stripe) s'en charge une fois le paiement fait. Par défaut
+      // true pour ne pas changer le comportement des appelants existants.
+      const confirmerImmediat = body.confirmer !== false;
 
       if (!prenom || !nom || !adresse) return res.status(400).json({ error: 'Prénom, nom et adresse requis' });
       if (!isValidDate(dateDebut) || !isValidDate(dateFin) || dateFin <= dateDebut) {
@@ -95,9 +105,14 @@ module.exports = async (req, res) => {
         creneau: creneau || null,
         date_debut: dateDebut, date_fin: dateFin, quantite,
         prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'manuel',
+        logement: logement || null, parrain_code: parrainCode || null,
+        motifs: motifs || null, mkt_consent: mktConsent,
       }).select().single();
       if (error) throw error;
 
+      if (!confirmerImmediat) {
+        return res.status(200).json({ ok: true, ref, en_attente: true, reservation: { ...resa, masquee: false } });
+      }
       await confirmReservation(supabase, resa);
       return res.status(200).json({ ok: true, ref, reservation: { ...resa, statut: 'confirmee', masquee: false } });
     }
