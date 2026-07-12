@@ -175,6 +175,23 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
 .stat-tile .n{font-family:var(--disp);font-size:26px;font-weight:400;color:var(--black);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .stat-tile .l{font-size:11px;color:var(--grey);font-weight:600;margin-top:5px;text-transform:uppercase;letter-spacing:.03em}
 .vlist{margin-top:6px}
+
+/* Accueil (dashboard) : 1 seule action prioritaire mise en avant, le reste
+   en second plan — "qu'est-ce que je fais maintenant" ne doit jamais
+   demander de parcourir une liste. */
+.dash-hero{background:linear-gradient(150deg,var(--blue) 0%,var(--blue-d) 60%,#0a1424 100%);color:#fff;border-radius:var(--r-lg);padding:24px 22px;margin-bottom:14px;box-shadow:var(--sh-md)}
+.dash-hero .eyebrow{color:rgba(255,255,255,.65);margin-bottom:10px}
+.dash-hero h2{font-family:var(--disp);font-size:22px;font-weight:600;margin-bottom:6px;line-height:1.25}
+.dash-hero p{font-size:13.5px;opacity:.85;margin-bottom:18px;line-height:1.5}
+.dash-hero.calm{background:var(--white);color:var(--black);border:1px solid var(--rule);box-shadow:var(--sh-xs)}
+.dash-hero.calm .eyebrow{color:var(--grey)}
+.dash-hero.calm p{opacity:1;color:var(--grey)}
+.dash-link-card{display:flex;align-items:center;gap:12px;background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;box-shadow:var(--sh-xs);cursor:pointer;text-align:left}
+.dash-link-card .ic{font-size:22px;flex-shrink:0}
+.dash-link-card .tx{flex:1;min-width:0}
+.dash-link-card .tx .t{font-weight:700;font-size:14px;color:var(--black)}
+.dash-link-card .tx .s{font-size:12px;color:var(--grey);margin-top:2px}
+.dash-link-card .chev{color:var(--grey-soft);font-size:18px;flex-shrink:0}
 .vrow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule);font-size:14px}
 .vrow:last-child{border-bottom:none}
 .vchip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:4px 10px 4px 8px;border-radius:100px}
@@ -255,21 +272,29 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
     </div>
   </div>
 
-  <!-- Écran 2bis : checklist matériel à récupérer au box -->
-  <div id="checklist-screen" class="hidden">
+  <!-- Écran 2 : accueil / tableau de bord — point d'entrée après connexion -->
+  <div id="dashboard-screen" class="hidden">
     <div class="tabbar">
-      <button class="on" onclick="switchTab('checklist')">🎒 Checklist</button>
+      <button class="on" onclick="switchTab('accueil')">🏠 Accueil</button>
       <button onclick="switchTab('missions')">📋 Missions<span class="tab-badge hidden badge-missions"></span></button>
       <button onclick="switchTab('activite')">💰 Activité<span class="tab-badge hidden badge-activite"></span></button>
       <button onclick="switchTab('stock')">📦 Stock</button>
     </div>
+    <div id="dashboard-content"><p class="empty">Chargement…</p></div>
+  </div>
+
+  <!-- Écran 2bis : checklist matériel à récupérer au box — sous-écran de
+       l'Accueil (consulté une fois par jour, avant de partir), pas un onglet
+       de même rang que Missions. -->
+  <div id="checklist-screen" class="hidden">
+    <button class="detail-back" onclick="switchTab('accueil')">← Accueil</button>
     <div id="checklist-content"><p class="empty">Chargement…</p></div>
   </div>
 
   <!-- Écran 3 : liste des missions -->
   <div id="missions-screen" class="hidden">
     <div class="tabbar">
-      <button onclick="switchTab('checklist')">🎒 Checklist</button>
+      <button onclick="switchTab('accueil')">🏠 Accueil</button>
       <button class="on" onclick="switchTab('missions')">📋 Missions<span class="tab-badge hidden badge-missions"></span></button>
       <button onclick="switchTab('activite')">💰 Activité<span class="tab-badge hidden badge-activite"></span></button>
       <button onclick="switchTab('stock')">📦 Stock</button>
@@ -301,7 +326,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
   <!-- Écran 3bis : activité / gains -->
   <div id="activite-screen" class="hidden">
     <div class="tabbar">
-      <button onclick="switchTab('checklist')">🎒 Checklist</button>
+      <button onclick="switchTab('accueil')">🏠 Accueil</button>
       <button onclick="switchTab('missions')">📋 Missions<span class="tab-badge hidden badge-missions"></span></button>
       <button class="on" onclick="switchTab('activite')">💰 Activité<span class="tab-badge hidden badge-activite"></span></button>
       <button onclick="switchTab('stock')">📦 Stock</button>
@@ -312,7 +337,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--gold-lt)}
   <!-- Écran 3ter : stock d'appareils -->
   <div id="stock-screen" class="hidden">
     <div class="tabbar">
-      <button onclick="switchTab('checklist')">🎒 Checklist</button>
+      <button onclick="switchTab('accueil')">🏠 Accueil</button>
       <button onclick="switchTab('missions')">📋 Missions<span class="tab-badge hidden badge-missions"></span></button>
       <button onclick="switchTab('activite')">💰 Activité<span class="tab-badge hidden badge-activite"></span></button>
       <button class="on" onclick="switchTab('stock')">📦 Stock</button>
@@ -356,7 +381,7 @@ let STATE = {
 };
 
 function show(id){
-  ['login-screen','checklist-screen','missions-screen','activite-screen','stock-screen','detail-screen','map-screen'].forEach(s=>{
+  ['login-screen','dashboard-screen','checklist-screen','missions-screen','activite-screen','stock-screen','detail-screen','map-screen'].forEach(s=>{
     document.getElementById(s).classList.toggle('hidden', s!==id);
   });
 }
@@ -365,7 +390,8 @@ function switchTab(tab){
   if(tab==='checklist'){ show('checklist-screen'); loadChecklist(); }
   else if(tab==='activite'){ show('activite-screen'); loadActivite(); }
   else if(tab==='stock'){ show('stock-screen'); loadStock(); }
-  else { show('missions-screen'); loadMissions(); }
+  else if(tab==='missions'){ show('missions-screen'); loadMissions(); }
+  else { show('dashboard-screen'); loadDashboard(); }
 }
 
 function escHtml(s){
@@ -599,7 +625,7 @@ async function loginWithFaceId(auto){
     localStorage.setItem('t_id', d.transporteur_id);
     localStorage.setItem('t_nom', d.nom);
     updateWhoBadge();
-    loadMissions();
+    loadDashboard();
     setupPush();
     clearAppBadge();
     maybeOfferFaceId();
@@ -636,7 +662,7 @@ async function doLogin(){
     localStorage.setItem('t_id', d.transporteur_id);
     localStorage.setItem('t_nom', d.nom);
     updateWhoBadge();
-    loadMissions();
+    loadDashboard();
     setupPush();
     clearAppBadge();
     maybeOfferFaceId();
@@ -718,6 +744,87 @@ function markActiviteSeen(virements){
   const maxId = Math.max(0, ...(virements||[]).filter(v=>v.statut==='verse').map(v=>v.id));
   if(maxId>0) localStorage.setItem('t_lastseen_virement_'+STATE.transporteurId, String(maxId));
   document.querySelectorAll('.badge-activite').forEach(el => el.classList.add('hidden'));
+}
+
+// ── Accueil (tableau de bord) ───────────────────────────────────────────────
+// Point d'entrée après connexion : une seule action prioritaire mise en avant
+// plutôt qu'une liste à parcourir — "qu'est-ce que je fais maintenant" doit se
+// lire sans réfléchir. Réutilise STATE.missions déjà chargé par
+// fetchMissions(), aucun appel réseau supplémentaire par rapport à l'ancien
+// écran Missions par défaut.
+async function loadDashboard(){
+  show('dashboard-screen');
+  document.getElementById('dashboard-content').innerHTML = '<p class="empty">Chargement…</p>';
+  const ok = await fetchMissions();
+  if(!ok){ document.getElementById('dashboard-content').innerHTML = '<p class="empty">Impossible de charger tes missions. Réessaie.</p>'; return; }
+  maybeAutoOpenMission();
+  // Si maybeAutoOpenMission() a basculé directement sur le détail d'une
+  // mission (cas fréquent : une seule mission active), inutile de rendre
+  // l'Accueil dans le dos de l'utilisateur.
+  if(document.getElementById('dashboard-screen').classList.contains('hidden')) return;
+  renderDashboard();
+}
+function renderDashboard(){
+  const zone = document.getElementById('dashboard-content');
+  const todayStr = new Date().toISOString().slice(0,10);
+  const aFaireAujourd = STATE.missions.filter(m => m.statut==='a_faire' && m.date_prevue===todayStr);
+  const aFaireTotal   = STATE.missions.filter(m => m.statut==='a_faire');
+  const enCours = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut) && m.date_prevue<=todayStr);
+  const countJour = STATE.missions.filter(m => m.date_prevue===todayStr && !['annule','refusee'].includes(m.statut)).length;
+  const gainsJour = STATE.missions.filter(m => m.date_prevue===todayStr && !['annule','refusee'].includes(m.statut))
+    .reduce((s,m) => s + (m.montant_preview||0), 0);
+
+  const pauseHtml = STATE.en_pause
+    ? `<div style="background:var(--amber);color:#fff;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-weight:700;font-size:13px;line-height:1.4">⏸ Tu es en pause — tu ne reçois pas de nouvelles missions. Contacte Aly pour reprendre.</div>`
+    : '';
+
+  const heroFor = (m, eyebrow, cta, ctaLabel) => {
+    const c = m.client || {};
+    return `
+      <div class="dash-hero">
+        <div class="eyebrow">${eyebrow}</div>
+        <h2>${escHtml((c.prenom||'')+' '+(c.nom||'')).trim()||'Mission'}</h2>
+        <p>${TYPE_ICON[m.type]||'📍'} ${missionTypeLabel(m)} · 📍 ${escHtml(c.adresse||'Adresse à confirmer')}</p>
+        <button class="btn btn-blue btn-block" onclick="${cta}">${ctaLabel}</button>
+      </div>`;
+  };
+
+  let heroHtml;
+  if(aFaireAujourd.length){
+    heroHtml = heroFor(aFaireAujourd[0], aFaireAujourd.length>1?`${aFaireAujourd.length} missions à accepter`:'À accepter maintenant', `openMission(${aFaireAujourd[0].id})`, 'Voir et accepter →');
+  } else if(enCours.length){
+    heroHtml = heroFor(enCours[0], enCours.length>1?`${enCours.length} missions en cours`:'Mission en cours', `openMission(${enCours[0].id})`, 'Continuer →');
+  } else if(aFaireTotal.length){
+    heroHtml = `
+      <div class="dash-hero calm">
+        <div class="eyebrow">À venir</div>
+        <h2>✅ Rien à faire pour l'instant</h2>
+        <p>${aFaireTotal.length} mission${aFaireTotal.length>1?'s':''} à accepter prochainement.</p>
+        <button class="btn btn-blue btn-block" onclick="switchTab('missions')">Voir mes missions →</button>
+      </div>`;
+  } else {
+    heroHtml = `
+      <div class="dash-hero calm">
+        <div class="eyebrow">Aujourd'hui</div>
+        <h2>✅ Tu es à jour</h2>
+        <p>Aucune mission en attente pour l'instant.</p>
+      </div>`;
+  }
+
+  const statsHtml = `
+    <div class="stat-row">
+      <div class="stat-tile"><div class="n">${countJour}</div><div class="l">Missions aujourd'hui</div></div>
+      <div class="stat-tile"><div class="n" style="color:var(--green)">${gainsJour?Math.round(gainsJour/100)+' €':'—'}</div><div class="l">Gains du jour</div></div>
+    </div>`;
+
+  const checklistCard = `
+    <div class="dash-link-card" onclick="switchTab('checklist')">
+      <span class="ic">🎒</span>
+      <span class="tx"><div class="t">Checklist avant de partir</div><div class="s">Matériel à récupérer au box</div></span>
+      <span class="chev">›</span>
+    </div>`;
+
+  zone.innerHTML = pauseHtml + heroHtml + statsHtml + checklistCard;
 }
 
 async function loadMissions(){
@@ -1834,7 +1941,7 @@ function closeDayMap(){
   initWebauthnLoginButton();
   if(STATE.token && STATE.transporteurId && STATE.transporteurNom){
     updateWhoBadge();
-    loadMissions();
+    loadDashboard();
     setupPush();
     clearAppBadge();
     maybeOfferFaceId();
