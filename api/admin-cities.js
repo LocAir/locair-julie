@@ -66,7 +66,9 @@ module.exports = async (req, res) => {
       if (body.name != null)  patch.name  = body.name.trim();
       if (body.dep != null)   patch.dep   = body.dep.trim() || null;
       if (body.actif     != null) patch.actif     = Boolean(body.actif);
-      if (body.sold_out  != null) patch.sold_out  = Boolean(body.sold_out);
+      // sold_out n'est jamais écrit à la main : recalculé automatiquement en
+      // base par les triggers de migration_auto_sold_out.sql à partir du
+      // stock réel (0 appareil "disponible" ou tous loués → complet).
       if (Array.isArray(body.postal_codes)) {
         patch.postal_codes = body.postal_codes.map(cp => String(cp).trim()).filter(Boolean);
       }

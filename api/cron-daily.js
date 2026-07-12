@@ -205,6 +205,22 @@ module.exports = async (req, res) => {
     console.error('[Cron stock alerte]', e.message);
   }
 
+  // ── 5bis. Filet de sécurité : recalcul quotidien de sold_out ────────────────
+  // _auto_sold_out (migration_auto_sold_out.sql) ne se relance que sur des
+  // écritures (nouvelle réservation, appareil qui change de statut) — jamais
+  // au simple passage de minuit. Une location qui se termine dans la nuit
+  // sans qu'aucune autre écriture ne survienne ensuite peut laisser le site
+  // bloqué sur "complet" plus longtemps que nécessaire. Ce passage quotidien
+  // rattrape ce cas, ville par ville.
+  try {
+    const { data: citiesForSoldOut } = await supabase.from('cities').select('id').eq('actif', true);
+    for (const city of citiesForSoldOut || []) {
+      await supabase.rpc('_auto_sold_out', { p_city_id: city.id });
+    }
+  } catch (e) {
+    console.error('[Cron sold_out refresh]', e.message);
+  }
+
   // ── 6. Rapport hebdomadaire (lundi) et récap virements mensuel (le 1er) ─────
   // Un seul cron programmé sur ce plan Vercel (voir vercel.json) — ces deux
   // automatisations, jusque-là écrites mais jamais planifiées, se déclenchent
