@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
     // détail réservation par réservation.
     if (action === 'summary') {
       const { data: partenaires } = await supabase
-        .from('partenaires').select('id, nom, code, actif').order('nom');
+        .from('partenaires').select('id, nom, code, actif, titulaire_compte, iban, bic').order('nom');
       const ids = (partenaires || []).map(p => p.id);
       if (!ids.length) return res.status(200).json({ partenaires: [] });
 
@@ -51,6 +51,7 @@ module.exports = async (req, res) => {
         const verse    = reservations.filter(r => r.partenaire_commission_payee).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
         return {
           id: p.id, nom: p.nom, code: p.code, actif: p.actif,
+          titulaire_compte: p.titulaire_compte, iban: p.iban, bic: p.bic,
           non_verse_cents: nonVerse, verse_cents: verse,
           demande_en_cours: enCoursSet.has(p.id),
           reservations: reservations.map(r => ({

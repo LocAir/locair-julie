@@ -144,6 +144,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .week-header .wk-label{font-family:var(--disp);font-size:16px;font-weight:600}
 .week-header .wk-ca{font-size:12px;color:var(--grey);font-weight:600}
 
+.section-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey-soft);margin:24px 2px 10px}
 .row-item{padding:16px 18px;border:1px solid var(--rule);border-radius:var(--r);margin-bottom:10px;background:var(--white);box-shadow:var(--sh-xs)}
 .row-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}
 .row-title{font-family:var(--disp);font-weight:600;font-size:17px;letter-spacing:0}
@@ -349,6 +350,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
         <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
         <div class="tabs-group-label">Gérer</div>
+        <button data-tab="virements" onclick="switchAdminTab('virements')">💶 Virements<span class="tab-badge hidden" id="badge-virements_total"></span></button>
         <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
         <button data-tab="partenaires" onclick="switchAdminTab('partenaires')">🤝 Partenaires<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
         <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
@@ -365,6 +367,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-reservations" class="hidden"></div>
         <div id="tab-checklist" class="hidden"></div>
         <div id="tab-livraisons" class="hidden"></div>
+        <div id="tab-virements" class="hidden"></div>
         <div id="tab-transporteurs" class="hidden"></div>
         <div id="tab-partenaires" class="hidden"></div>
         <div id="tab-incidents" class="hidden"></div>
@@ -826,7 +829,7 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','checklist','livraisons','transporteurs','partenaires','incidents','clients','villes'].forEach(t=>{
+  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
@@ -834,6 +837,7 @@ function switchAdminTab(tab){
   if(tab==='reservations') loadReservations();
   if(tab==='checklist') loadChecklistBox();
   if(tab==='livraisons') loadLivraisons();
+  if(tab==='virements') loadVirementsTab();
   if(tab==='transporteurs') loadTransporteursTab();
   if(tab==='partenaires') loadPartenairesTab();
   if(tab==='incidents') loadIncidents();
@@ -864,6 +868,7 @@ async function loadAlerts(){
     updateTabBadge('livraisons', d.livraisons);
     updateTabBadge('virements', d.virements);
     updateTabBadge('partenaire_virements', d.partenaire_virements);
+    updateTabBadge('virements_total', (d.virements||0) + (d.partenaire_virements||0));
     updateTabBadge('incidents', d.incidents);
     renderAlertsBanner(d);
     renderVirementMondayBanner();
@@ -896,8 +901,8 @@ function renderAlertsBanner(d){
   if(d.non_assignees > 0) alerts.push({sev:1, msg:`⚠️ ${d.non_assignees} mission${d.non_assignees>1?'s':''} non assignée${d.non_assignees>1?'s':''} sous 72h`, fn:"goToUnassigned()"});
   if(d.incidents > 0)     alerts.push({sev:1, msg:`🧯 ${d.incidents} incident${d.incidents>1?'s':''} ouvert${d.incidents>1?'s':''}`, fn:"switchAdminTab('incidents')"});
   if(d.reservations > 0)  alerts.push({sev:2, msg:`🧾 ${d.reservations} réservation${d.reservations>1?'s':''} à traiter`, fn:"switchAdminTab('reservations')"});
-  if(d.virements > 0)     alerts.push({sev:2, msg:`💶 ${d.virements} virement${d.virements>1?'s':''} demandé${d.virements>1?'s':''}`, fn:"switchAdminTab('transporteurs')"});
-  if(d.partenaire_virements > 0) alerts.push({sev:2, msg:`💶 ${d.partenaire_virements} virement${d.partenaire_virements>1?'s':''} partenaire demandé${d.partenaire_virements>1?'s':''}`, fn:"switchAdminTab('partenaires')"});
+  const totalVirementsDemandes = (d.virements||0) + (d.partenaire_virements||0);
+  if(totalVirementsDemandes > 0) alerts.push({sev:2, msg:`💶 ${totalVirementsDemandes} virement${totalVirementsDemandes>1?'s':''} demandé${totalVirementsDemandes>1?'s':''}`, fn:"switchAdminTab('virements')"});
   alerts.sort((a,b) => a.sev-b.sev);
   zone.innerHTML = alerts.map(a =>
     `<div onclick="${a.fn}" style="background:${a.sev===1?'var(--red)':'var(--amber)'};color:#fff;padding:10px 16px;border-radius:var(--r);font-weight:700;font-size:13px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
@@ -948,6 +953,7 @@ const TAB_AUTO_REFRESH = {
   stock:         () => loadStock(true),
   reservations:  silentRefreshReservations,
   livraisons:    silentRefreshLivraisons,
+  virements:     loadVirementsTab,
   transporteurs: () => TRANSPORTEURS_VIEW==='equipe' ? loadTransporteursEquipe() : loadTransporteursRevenus(),
   partenaires:   () => PARTENAIRES_VIEW==='equipe' ? loadPartenairesEquipe() : loadPartenairesRevenus(),
   incidents:     loadIncidents,
@@ -957,6 +963,7 @@ function isUserBusy(){
   if(document.getElementById('modal-overlay-el')) return true; // confirmation/prompt en cours
   if(document.querySelector('#tab-transporteurs details[open]')) return true; // détail des missions ouvert
   if(document.querySelector('#tab-partenaires details[open]')) return true; // détail des réservations ouvert
+  if(document.querySelector('#tab-virements details[open]')) return true; // détail ouvert dans la vue consolidée
   const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
   return tag==='input' || tag==='textarea' || tag==='select';
 }
@@ -1131,7 +1138,7 @@ function renderVirementMondayBanner(){
     <div class="morning-banner" id="virement-monday-banner-el" style="background:linear-gradient(150deg,var(--blue) 0%,var(--blue-d) 60%,#0a1424 100%)">
       <button class="mb-close" onclick="dismissVirementMondayBanner()">✕</button>
       <div class="mb-title">💶 C'est lundi</div>
-      <div class="mb-text">Pense aux virements transporteurs de la semaine.</div>
+      <div class="mb-text">Pense aux virements de la semaine (transporteurs et partenaires).</div>
       <button class="btn btn-blue btn-block" style="margin-top:14px" onclick="goToVirements()">Voir les virements à faire →</button>
     </div>`;
 }
@@ -1141,8 +1148,7 @@ function dismissVirementMondayBanner(){
 }
 function goToVirements(){
   dismissVirementMondayBanner();
-  TRANSPORTEURS_VIEW = 'revenus';
-  switchAdminTab('transporteurs');
+  switchAdminTab('virements');
 }
 
 // ── CHECKLIST BOX ────────────────────────────────────────────────────────────
@@ -3167,6 +3173,36 @@ function resetPin(id){
 // demandé un virement — aucune visibilité sur ce qui est dû avant ça. Montre
 // désormais chaque transporteur avec ce qu'il lui est dû, ce qu'il a déjà
 // touché, et le détail mission par mission derrière un menu déroulant natif.
+// Extrait pour être réutilisé tel quel dans l'onglet général 💶 Virements
+// (voir loadVirementsTab) — un seul rendu, jamais deux versions qui pourraient diverger.
+function transporteurRevenusCardHtml(t){
+  const missionsHtml = t.missions.length ? t.missions.map(m => `
+    <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
+      <div class="row-top">
+        <span class="row-title" style="font-size:13px">${m.type==='livraison'?'📦 Livraison':'🔄 Récupération'} — ${escHtml(m.client||'—')}</span>
+        <span class="chip ${m.paye?'actif':'en_attente'}">${m.paye?'Versé':'À verser'}</span>
+      </div>
+      <div class="row-meta">${m.fait_at?frDate(m.fait_at.slice(0,10)):'—'} · ${euros(m.montant_cents)}</div>
+    </div>`).join('') : '';
+  return `
+    <div class="card">
+      <div class="row-top" style="margin-bottom:14px">
+        <h2 style="margin:0">${escHtml(t.nom)}</h2>
+        <span class="chip ${t.actif?'actif':'annulee'}">${t.actif?'actif':'inactif'}</span>
+      </div>
+      <div class="resa-bottom" style="margin-bottom:14px">
+        <span class="resa-price" style="${t.non_verse_cents>0?'color:var(--red)':''}">${euros(t.non_verse_cents)}<span style="font-family:var(--body);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-soft);display:block;margin-top:2px">À verser</span></span>
+        <span class="resa-sub">${t.missions.length} mission${t.missions.length>1?'s':''} au total<br/>${euros(t.verse_cents)} déjà versés</span>
+      </div>
+      ${t.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par le livreur</div>':''}
+      ${t.non_verse_cents>0?`<button class="btn btn-green btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.non_verse_cents})">✅ Marquer comme versé (${euros(t.non_verse_cents)})</button>`:''}
+      ${t.missions.length?`
+      <details style="margin-top:12px">
+        <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Voir le détail (${t.missions.length} mission${t.missions.length>1?'s':''})</summary>
+        <div style="margin-top:12px">${missionsHtml}</div>
+      </details>`:'<p class="row-meta" style="margin-top:8px">Aucune mission terminée pour l\'instant.</p>'}
+    </div>`;
+}
 async function loadTransporteursRevenus(){
   const zone = document.getElementById('transp-view-content');
   if(!zone) return;
@@ -3177,34 +3213,7 @@ async function loadTransporteursRevenus(){
     if(!r.ok) throw new Error(d.error||'Erreur');
     const transporteurs = (d.transporteurs||[]).filter(t => t.nom !== TEST_TRANSPORTEUR_NOM);
     if(!transporteurs.length){ zone.innerHTML = '<p class="empty">Aucun transporteur.</p>'; return; }
-    zone.innerHTML = transporteurs.map(t => {
-      const missionsHtml = t.missions.length ? t.missions.map(m => `
-        <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
-          <div class="row-top">
-            <span class="row-title" style="font-size:13px">${m.type==='livraison'?'📦 Livraison':'🔄 Récupération'} — ${escHtml(m.client||'—')}</span>
-            <span class="chip ${m.paye?'actif':'en_attente'}">${m.paye?'Versé':'À verser'}</span>
-          </div>
-          <div class="row-meta">${m.fait_at?frDate(m.fait_at.slice(0,10)):'—'} · ${euros(m.montant_cents)}</div>
-        </div>`).join('') : '';
-      return `
-        <div class="card">
-          <div class="row-top" style="margin-bottom:14px">
-            <h2 style="margin:0">${escHtml(t.nom)}</h2>
-            <span class="chip ${t.actif?'actif':'annulee'}">${t.actif?'actif':'inactif'}</span>
-          </div>
-          <div class="resa-bottom" style="margin-bottom:14px">
-            <span class="resa-price" style="${t.non_verse_cents>0?'color:var(--red)':''}">${euros(t.non_verse_cents)}<span style="font-family:var(--body);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-soft);display:block;margin-top:2px">À verser</span></span>
-            <span class="resa-sub">${t.missions.length} mission${t.missions.length>1?'s':''} au total<br/>${euros(t.verse_cents)} déjà versés</span>
-          </div>
-          ${t.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par le livreur</div>':''}
-          ${t.non_verse_cents>0?`<button class="btn btn-green btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.non_verse_cents})">✅ Marquer comme versé (${euros(t.non_verse_cents)})</button>`:''}
-          ${t.missions.length?`
-          <details style="margin-top:12px">
-            <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Voir le détail (${t.missions.length} mission${t.missions.length>1?'s':''})</summary>
-            <div style="margin-top:12px">${missionsHtml}</div>
-          </details>`:'<p class="row-meta" style="margin-top:8px">Aucune mission terminée pour l\'instant.</p>'}
-        </div>`;
-    }).join('');
+    zone.innerHTML = transporteurs.map(transporteurRevenusCardHtml).join('');
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
@@ -3215,7 +3224,7 @@ function verserMaintenant(id, nom, montantCents){
       const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'verser_maintenant', transporteur_id:id})});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
-      loadTransporteursRevenus();
+      TAB_AUTO_REFRESH[CURRENT_TAB]?.(); // rafraîchit la vue courante, qu'on soit dans Transporteurs ou dans Virements
       loadAlerts();
       showToast(`${euros(d.montant_cents)} marqués comme versés`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
@@ -3241,13 +3250,47 @@ function loadPartenairesTab(){
 function setPartenairesView(view){ PARTENAIRES_VIEW = view; loadPartenairesTab(); }
 
 function partenaireLinkFor(code){ return location.origin + '/?p=' + encodeURIComponent(code); }
-function copyPartenaireLink(code){
-  const link = partenaireLinkFor(code);
+function copyText(label, text){
   if(navigator.clipboard){
-    navigator.clipboard.writeText(link).then(()=>showToast('Lien copié', 'success')).catch(()=>showInfo('Lien du partenaire', link));
+    navigator.clipboard.writeText(text).then(()=>showToast(label+' copié', 'success')).catch(()=>showInfo(label, text));
   }else{
-    showInfo('Lien du partenaire', link);
+    showInfo(label, text);
   }
+}
+function copyPartenaireLink(code){ copyText('Lien', partenaireLinkFor(code)); }
+// Espaces tous les 4 caractères — juste pour l'affichage, jamais stocké ainsi
+// (l'API garde l'IBAN compact, plus simple à réutiliser plus tard avec une
+// vraie API de virement).
+function formatIban(iban){ return (iban||'').replace(/(.{4})/g,'$1 ').trim(); }
+
+// Un partenaire qui a des réservations aujourd'hui/ce mois — recalculé à
+// chaque chargement à partir de l'historique réel, jamais un compteur stocké
+// à part : le total ne peut donc jamais désynchroniser de la réalité.
+function partenaireKpi(reservations){
+  const todayStr = new Date().toISOString().slice(0,10);
+  const monthStr = todayStr.slice(0,7);
+  let ajd = 0, mois = 0, ajdN = 0, moisN = 0;
+  (reservations||[]).forEach(r => {
+    const day = (r.created_at||'').slice(0,10);
+    if(day === todayStr){ ajd += r.commission_cents||0; ajdN++; }
+    if(day.slice(0,7) === monthStr){ mois += r.commission_cents||0; moisN++; }
+  });
+  return {ajd, mois, ajdN, moisN};
+}
+// Bloc RIB réutilisé dans le dossier partenaire (onglet Partenaires) et dans
+// l'onglet général Virements — un partenaire sans RIB enregistré affiche une
+// invite à le compléter plutôt qu'un bloc vide.
+function ribBlockHtml(p){
+  if(!p.iban && !p.bic && !p.titulaire_compte){
+    return `<div class="row-meta" style="margin:10px 0;color:var(--amber)">⚠️ Aucun RIB enregistré — ajoute-le depuis l'onglet Équipe (✏️ Modifier) pour préparer le virement.</div>`;
+  }
+  return `
+    <div class="card" style="padding:14px 16px;margin:10px 0;background:var(--bg);box-shadow:none">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--grey-soft);margin-bottom:8px">💳 RIB — pour le virement</div>
+      ${p.titulaire_compte?`<div class="row-meta">Titulaire : <strong>${escHtml(p.titulaire_compte)}</strong></div>`:''}
+      ${p.iban?`<div class="row-meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">IBAN : <strong style="font-family:monospace">${escHtml(formatIban(p.iban))}</strong> <button class="btn btn-grey" style="padding:2px 10px;font-size:11px;width:auto;min-height:auto" onclick="copyText('IBAN','${escHtml(p.iban)}')">Copier</button></div>`:''}
+      ${p.bic?`<div class="row-meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">BIC : <strong style="font-family:monospace">${escHtml(p.bic)}</strong> <button class="btn btn-grey" style="padding:2px 10px;font-size:11px;width:auto;min-height:auto" onclick="copyText('BIC','${escHtml(p.bic)}')">Copier</button></div>`:''}
+    </div>`;
 }
 
 async function loadPartenairesEquipe(){
@@ -3267,7 +3310,7 @@ async function loadPartenairesEquipe(){
           <span class="chip ${p.actif?'actif':'inactif'}">${p.actif?'actif':'inactif'}</span>
         </div>
         <div class="row-meta">${escHtml(p.contact_nom||'—')}${p.telephone?' · '+escHtml(p.telephone):''}${p.email?' · '+escHtml(p.email):''}</div>
-        <div class="row-meta">Code personnel : <strong>${escHtml(p.pin)}</strong> · Commission : <strong>${p.taux_commission_pct}%</strong></div>
+        <div class="row-meta">Code personnel : <strong>${escHtml(p.pin)}</strong> · Commission : <strong>${p.taux_commission_pct}%</strong> · ${p.iban?'✅ RIB enregistré':'⚠️ Pas de RIB'}</div>
         <div class="row-meta" style="word-break:break-all">🔗 ${escHtml(partenaireLinkFor(p.code))}</div>
         <div class="row-actions">
           <button class="btn btn-blue" onclick="copyPartenaireLink('${escHtml(p.code)}')">Copier le lien</button>
@@ -3297,6 +3340,13 @@ async function loadPartenairesEquipe(){
         <input type="text" id="p-email" placeholder="contact@conciergerie.fr"/>
         <label for="p-taux">Commission (%)</label>
         <input type="text" id="p-taux" inputmode="numeric" value="10"/>
+        <p class="sub" style="margin:14px 0 0;font-size:12px">RIB (facultatif — tu peux l'ajouter plus tard) : pour préparer le virement du moment venu.</p>
+        <label for="p-titulaire" style="margin-top:10px">Titulaire du compte</label>
+        <input type="text" id="p-titulaire" placeholder="Nom sur le compte bancaire"/>
+        <label for="p-iban" style="margin-top:12px">IBAN</label>
+        <input type="text" id="p-iban" placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"/>
+        <label for="p-bic" style="margin-top:12px">BIC</label>
+        <input type="text" id="p-bic" placeholder="XXXXXXXX"/>
         <button class="btn btn-blue btn-block" style="margin-top:16px" onclick="addPartenaire()">Ajouter</button>
         <div class="err" id="part-err"></div>
       </div>`;
@@ -3313,8 +3363,11 @@ async function addPartenaire(){
   const telephone = document.getElementById('p-tel').value.trim();
   const email = document.getElementById('p-email').value.trim();
   const taux_commission_pct = parseInt(document.getElementById('p-taux').value) || 10;
+  const titulaire_compte = document.getElementById('p-titulaire').value.trim();
+  const iban = document.getElementById('p-iban').value.trim();
+  const bic = document.getElementById('p-bic').value.trim();
   try{
-    const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, contact_nom, telephone, email, taux_commission_pct})});
+    const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, contact_nom, telephone, email, taux_commission_pct, titulaire_compte, iban, bic})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadPartenairesEquipe();
@@ -3378,6 +3431,13 @@ function editPartenaireFiche(id){
       <input type="text" id="fp-email" value="${escHtml(p.email||'')}"/>
       <label for="fp-taux" style="margin-top:12px">Commission (%)</label>
       <input type="text" id="fp-taux" inputmode="numeric" value="${p.taux_commission_pct}"/>
+      <p class="sub" style="margin:14px 0 0;font-size:12px">RIB — pour préparer le virement du moment venu.</p>
+      <label for="fp-titulaire" style="margin-top:10px">Titulaire du compte</label>
+      <input type="text" id="fp-titulaire" value="${escHtml(p.titulaire_compte||'')}" placeholder="Nom sur le compte bancaire"/>
+      <label for="fp-iban" style="margin-top:12px">IBAN</label>
+      <input type="text" id="fp-iban" value="${escHtml(p.iban||'')}" placeholder="FR76 XXXX XXXX XXXX XXXX XXXX XXX"/>
+      <label for="fp-bic" style="margin-top:12px">BIC</label>
+      <input type="text" id="fp-bic" value="${escHtml(p.bic||'')}" placeholder="XXXXXXXX"/>
       <div class="modal-actions" style="margin-top:18px">
         <button class="btn btn-grey">Annuler</button>
         <button class="btn btn-blue">Enregistrer</button>
@@ -3399,6 +3459,9 @@ function editPartenaireFiche(id){
         telephone:   document.getElementById('fp-tel').value.trim(),
         email:       document.getElementById('fp-email').value.trim(),
         taux_commission_pct: parseInt(document.getElementById('fp-taux').value)||0,
+        titulaire_compte: document.getElementById('fp-titulaire').value.trim(),
+        iban: document.getElementById('fp-iban').value.trim(),
+        bic:  document.getElementById('fp-bic').value.trim(),
       })});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
@@ -3412,6 +3475,44 @@ function editPartenaireFiche(id){
   };
 }
 
+// Extrait pour être réutilisé tel quel dans l'onglet général 💶 Virements
+// (voir loadVirementsTab) — un seul rendu, jamais deux versions qui pourraient diverger.
+function partenaireRevenusCardHtml(p){
+  const resasHtml = p.reservations.length ? p.reservations.map(r => `
+    <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
+      <div class="row-top">
+        <span class="row-title" style="font-size:13px">${escHtml(r.client||'—')}${r.ref?' · '+escHtml(r.ref):''}</span>
+        <span class="chip ${r.payee?'actif':'en_attente'}">${r.payee?'Versé':'À verser'}</span>
+      </div>
+      <div class="row-meta">${r.created_at?frDate(r.created_at.slice(0,10)):'—'} · ${euros(r.montant_cents)} réservés → ${euros(r.commission_cents)} de commission</div>
+    </div>`).join('') : '';
+  const kpi = partenaireKpi(p.reservations);
+  const totalGenere = p.non_verse_cents + p.verse_cents;
+  return `
+    <div class="card">
+      <div class="row-top" style="margin-bottom:14px">
+        <h2 style="margin:0">🤝 ${escHtml(p.nom)}</h2>
+        <span class="chip ${p.actif?'actif':'annulee'}">${p.actif?'actif':'inactif'}</span>
+      </div>
+      <div class="stat-grid" style="margin-bottom:14px">
+        <div class="stat-tile"><div class="n" style="color:var(--green)">${euros(kpi.ajd)}</div><div class="l">Commission aujourd'hui · ${kpi.ajdN} résa.</div></div>
+        <div class="stat-tile"><div class="n" style="color:var(--green)">${euros(kpi.mois)}</div><div class="l">Commission ce mois · ${kpi.moisN} résa.</div></div>
+        <div class="stat-tile" style="grid-column:1/-1"><div class="n">${euros(totalGenere)}</div><div class="l">Commission générée au total (${p.reservations.length} réservation${p.reservations.length>1?'s':''})</div></div>
+      </div>
+      <div class="resa-bottom" style="margin-bottom:14px">
+        <span class="resa-price" style="${p.non_verse_cents>0?'color:var(--red)':''}">${euros(p.non_verse_cents)}<span style="font-family:var(--body);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-soft);display:block;margin-top:2px">À verser</span></span>
+        <span class="resa-sub">${euros(p.verse_cents)} déjà versés</span>
+      </div>
+      ${p.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par le partenaire</div>':''}
+      ${ribBlockHtml(p)}
+      ${p.non_verse_cents>0?`<button class="btn btn-green btn-block" onclick="verserPartenaireMaintenant(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}', ${p.non_verse_cents})">✅ Marquer comme versé (${euros(p.non_verse_cents)})</button>`:''}
+      ${p.reservations.length?`
+      <details style="margin-top:12px">
+        <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Historique complet (${p.reservations.length} réservation${p.reservations.length>1?'s':''})</summary>
+        <div style="margin-top:12px">${resasHtml}</div>
+      </details>`:'<p class="row-meta" style="margin-top:8px">Aucune réservation confirmée pour l\'instant.</p>'}
+    </div>`;
+}
 async function loadPartenairesRevenus(){
   const zone = document.getElementById('part-view-content');
   if(!zone) return;
@@ -3422,34 +3523,7 @@ async function loadPartenairesRevenus(){
     if(!r.ok) throw new Error(d.error||'Erreur');
     const partenaires = d.partenaires || [];
     if(!partenaires.length){ zone.innerHTML = '<p class="empty">Aucun partenaire.</p>'; return; }
-    zone.innerHTML = partenaires.map(p => {
-      const resasHtml = p.reservations.length ? p.reservations.map(r => `
-        <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
-          <div class="row-top">
-            <span class="row-title" style="font-size:13px">${escHtml(r.client||'—')}${r.ref?' · '+escHtml(r.ref):''}</span>
-            <span class="chip ${r.payee?'actif':'en_attente'}">${r.payee?'Versé':'À verser'}</span>
-          </div>
-          <div class="row-meta">${r.created_at?frDate(r.created_at.slice(0,10)):'—'} · ${euros(r.montant_cents)} réservés → ${euros(r.commission_cents)} de commission</div>
-        </div>`).join('') : '';
-      return `
-        <div class="card">
-          <div class="row-top" style="margin-bottom:14px">
-            <h2 style="margin:0">${escHtml(p.nom)}</h2>
-            <span class="chip ${p.actif?'actif':'annulee'}">${p.actif?'actif':'inactif'}</span>
-          </div>
-          <div class="resa-bottom" style="margin-bottom:14px">
-            <span class="resa-price" style="${p.non_verse_cents>0?'color:var(--red)':''}">${euros(p.non_verse_cents)}<span style="font-family:var(--body);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-soft);display:block;margin-top:2px">À verser</span></span>
-            <span class="resa-sub">${p.reservations.length} réservation${p.reservations.length>1?'s':''} au total<br/>${euros(p.verse_cents)} déjà versés</span>
-          </div>
-          ${p.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par le partenaire</div>':''}
-          ${p.non_verse_cents>0?`<button class="btn btn-green btn-block" onclick="verserPartenaireMaintenant(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}', ${p.non_verse_cents})">✅ Marquer comme versé (${euros(p.non_verse_cents)})</button>`:''}
-          ${p.reservations.length?`
-          <details style="margin-top:12px">
-            <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Voir le détail (${p.reservations.length} réservation${p.reservations.length>1?'s':''})</summary>
-            <div style="margin-top:12px">${resasHtml}</div>
-          </details>`:'<p class="row-meta" style="margin-top:8px">Aucune réservation confirmée pour l\'instant.</p>'}
-        </div>`;
-    }).join('');
+    zone.innerHTML = partenaires.map(partenaireRevenusCardHtml).join('');
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
@@ -3460,11 +3534,55 @@ function verserPartenaireMaintenant(id, nom, montantCents){
       const r = await fetch(API('admin-partenaire-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'verser_maintenant', partenaire_id:id})});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
-      loadPartenairesRevenus();
+      TAB_AUTO_REFRESH[CURRENT_TAB]?.(); // rafraîchit la vue courante, qu'on soit dans Partenaires ou dans Virements
       loadAlerts();
       showToast(`${euros(d.montant_cents)} marqués comme versés`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {danger:true, yesLabel:'Confirmer le virement'});
+}
+
+// ── VIREMENTS (vue consolidée) ────────────────────────────────────────────────
+// Un seul endroit pour voir tout ce qu'il y a à payer — transporteurs ET
+// partenaires — plutôt que de devoir passer par deux onglets séparés.
+// Réutilise exactement les mêmes cartes que Transporteurs→Revenus et
+// Partenaires→Revenus (transporteurRevenusCardHtml / partenaireRevenusCardHtml)
+// pour ne jamais afficher deux versions différentes du même chiffre.
+async function loadVirementsTab(){
+  const zone = document.getElementById('tab-virements');
+  zone.innerHTML = loading();
+  try{
+    const [tr, pr] = await Promise.all([
+      fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'summary'})}),
+      fetch(API('admin-partenaire-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'summary'})}),
+    ]);
+    const td = await tr.json();
+    const pd = await pr.json();
+    if(!tr.ok) throw new Error(td.error||'Erreur');
+    if(!pr.ok) throw new Error(pd.error||'Erreur');
+
+    const transporteurs = (td.transporteurs||[]).filter(t => t.nom !== TEST_TRANSPORTEUR_NOM);
+    const partenaires   = pd.partenaires || [];
+    const aVerserTransp = transporteurs.reduce((s,t)=>s+(t.non_verse_cents||0),0);
+    const aVerserPart   = partenaires.reduce((s,p)=>s+(p.non_verse_cents||0),0);
+
+    const sommaireHtml = `
+      <div class="stat-grid" style="margin-bottom:20px">
+        <div class="stat-tile"><div class="n" style="${aVerserTransp>0?'color:var(--red)':''}">${euros(aVerserTransp)}</div><div class="l">À verser · transporteurs</div></div>
+        <div class="stat-tile"><div class="n" style="${aVerserPart>0?'color:var(--red)':''}">${euros(aVerserPart)}</div><div class="l">À verser · partenaires</div></div>
+      </div>`;
+
+    const transpSection = `
+      <div class="section-title" style="margin-top:0">🚚 Transporteurs</div>
+      ${transporteurs.length ? transporteurs.map(transporteurRevenusCardHtml).join('') : '<p class="empty">Aucun transporteur.</p>'}`;
+
+    const partSection = `
+      <div class="section-title">🤝 Partenaires</div>
+      ${partenaires.length ? partenaires.map(partenaireRevenusCardHtml).join('') : '<p class="empty">Aucun partenaire.</p>'}`;
+
+    zone.innerHTML = sommaireHtml + transpSection + partSection;
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
 }
 
 // ── INCIDENTS ─────────────────────────────────────────────────────────────────

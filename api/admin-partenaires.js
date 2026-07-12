@@ -13,6 +13,12 @@ function slugifyNom(nom) {
     .slice(0, 16) || 'partenaire';
 }
 
+// IBAN/BIC stockés sans espaces (format le plus utile pour les réutiliser
+// plus tard avec une vraie API de virement) — affichés avec des espaces
+// uniquement côté admin/index.html.
+function normalizeIban(v) { return (v || '').trim().toUpperCase().replace(/\s+/g, '').slice(0, 34) || null; }
+function normalizeBic(v)  { return (v || '').trim().toUpperCase().replace(/\s+/g, '').slice(0, 11) || null; }
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
@@ -46,6 +52,9 @@ module.exports = async (req, res) => {
           code,
           pin,
           taux_commission_pct: taux,
+          titulaire_compte:    (body.titulaire_compte || '').trim() || null,
+          iban:                normalizeIban(body.iban),
+          bic:                 normalizeBic(body.bic),
         }).select('id, code, pin').single();
         if (!error) return res.status(200).json({ ok: true, code: created.code, pin: created.pin });
         if (error.code !== '23505') throw error; // pas un conflit code/pin : autre erreur
@@ -66,6 +75,9 @@ module.exports = async (req, res) => {
       if (body.taux_commission_pct != null) patch.taux_commission_pct = Math.min(100, Math.max(0, parseInt(body.taux_commission_pct) || 0));
       if (body.code != null && body.code.trim()) patch.code = body.code.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
       if (body.pin != null && body.pin.trim())   patch.pin  = body.pin.trim();
+      if (body.titulaire_compte != null) patch.titulaire_compte = body.titulaire_compte.trim() || null;
+      if (body.iban != null)             patch.iban            = normalizeIban(body.iban);
+      if (body.bic != null)              patch.bic             = normalizeBic(body.bic);
       if (!Object.keys(patch).length) return res.status(400).json({ error: 'Rien à modifier' });
 
       const { error } = await supabase.from('partenaires').update(patch).eq('id', id);

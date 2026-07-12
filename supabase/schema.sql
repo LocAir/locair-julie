@@ -117,6 +117,12 @@ create table partenaires (
   pin                 text not null unique,
   taux_commission_pct integer not null default 10 check (taux_commission_pct >= 0 and taux_commission_pct <= 100),
   actif               boolean not null default true,
+  -- Coordonnées bancaires — saisies une fois, réutilisées à chaque virement.
+  -- Le paiement reste manuel (voir partenaire_virements) ; déjà là pour
+  -- brancher plus tard un vrai virement automatisé sans tout reconstruire.
+  titulaire_compte    text,
+  iban                text,
+  bic                 text,
   created_at          timestamptz not null default now()
 );
 create index partenaires_code_idx on partenaires (code) where actif;
