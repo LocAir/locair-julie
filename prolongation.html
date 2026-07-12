@@ -4,7 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Prolonger ma location — Loc'Air · Nice</title>
-<meta name="description" content="Demandez une prolongation de votre location de climatiseur Loc'Air. Simple, rapide, confirmation par email avant tout paiement."/>
+<meta name="description" content="Prolongez votre location de climatiseur Loc'Air en ligne. Paiement sécurisé par carte, confirmation immédiate."/>
 <link rel="canonical" href="https://www.locair.fr/prolongation"/>
 <meta name="robots" content="noindex,follow"/>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
@@ -12,140 +12,88 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,700;1,300;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://js.stripe.com/v3/" async></script>
 <style>
 :root{
   --blue:#1b3a5f;--blue-d:#142d4a;
   --gold:#c5a96c;
   --black:#141e30;--black2:#1e2d45;
   --grey:#5a6577;--rule:#ddd8cf;
-  --bg:#ede8e0;--white:#f4f0ea;
+  --bg:#ede8e0;
   --disp:'Cormorant Garamond',Georgia,serif;
   --body:'Inter',system-ui,sans-serif;
+  --red:#b91c1c;--red-bg:#fef2f2;--red-border:#fecaca;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{
-  background:var(--bg);color:var(--black);
-  font-family:var(--body);font-size:15px;line-height:1.7;
-  -webkit-font-smoothing:antialiased;
-  min-height:100vh;display:flex;flex-direction:column;
-}
+body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
 a{color:var(--blue);text-decoration:none}
 a:hover{opacity:.75}
 
-/* ── NAV ───────────────────────────────────────────────────────────────────── */
-.nav{
-  position:sticky;top:0;z-index:100;height:58px;
-  background:rgba(237,232,224,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
-  border-bottom:1px solid var(--rule);
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 clamp(20px,5vw,64px);flex-shrink:0;
-}
-.nav-logo{
-  font-family:var(--disp);font-size:22px;font-weight:700;
-  color:var(--black);text-decoration:none;letter-spacing:-.01em;
-}
+.nav{position:sticky;top:0;z-index:100;height:58px;background:rgba(237,232,224,.96);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;padding:0 clamp(20px,5vw,64px);flex-shrink:0}
+.nav-logo{font-family:var(--disp);font-size:22px;font-weight:700;color:var(--black);text-decoration:none;letter-spacing:-.01em}
 .nav-logo em{font-style:italic;font-weight:300;color:var(--gold)}
-.nav-back{
-  font-size:13px;color:var(--grey);text-decoration:none;
-  display:flex;align-items:center;gap:5px;font-weight:500;
-  transition:color .15s;
-}
+.nav-back{font-size:13px;color:var(--grey);text-decoration:none;display:flex;align-items:center;gap:5px;font-weight:500;transition:color .15s}
 .nav-back:hover{color:var(--black)}
 
-/* ── PAGE BODY ─────────────────────────────────────────────────────────────── */
 main{flex:1}
-.page-wrap{max-width:600px;margin:0 auto;padding:56px clamp(20px,5vw,40px) 100px}
-
-.page-label{
-  font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
-  color:var(--gold);margin-bottom:14px;
-}
-h1{
-  font-family:var(--disp);font-size:clamp(36px,6vw,52px);
-  font-weight:300;line-height:1.05;letter-spacing:-.02em;margin-bottom:10px;
-}
+.page-wrap{max-width:560px;margin:0 auto;padding:56px clamp(20px,5vw,40px) 100px}
+.page-label{font-size:10.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:14px}
+h1{font-family:var(--disp);font-size:clamp(36px,6vw,52px);font-weight:300;line-height:1.05;letter-spacing:-.02em;margin-bottom:10px}
 h1 em{font-style:italic;font-weight:300}
-.page-sub{
-  font-size:13.5px;color:var(--grey);line-height:1.65;
-  margin-bottom:36px;padding-bottom:32px;border-bottom:1px solid var(--rule);
-}
+.page-sub{font-size:13.5px;color:var(--grey);line-height:1.65;margin-bottom:36px;padding-bottom:32px;border-bottom:1px solid var(--rule)}
 
-/* ── INFO BOX ──────────────────────────────────────────────────────────────── */
-.info-box{
-  background:#fffbf0;border:1.5px solid #e8d5a3;
-  border-left:3px solid var(--gold);border-radius:0 12px 12px 0;
-  padding:16px 20px;margin-bottom:36px;
-}
-.info-box p{font-size:13.5px;color:var(--black2);line-height:1.7;margin:0}
-.info-box strong{color:var(--black);font-weight:600}
-
-/* ── FORM ──────────────────────────────────────────────────────────────────── */
 .form-group{margin-bottom:22px}
-label{
-  display:block;font-size:12.5px;font-weight:600;
-  color:var(--black2);letter-spacing:.03em;margin-bottom:7px;
-}
+label{display:block;font-size:12.5px;font-weight:600;color:var(--black2);letter-spacing:.03em;margin-bottom:7px}
 label .req{color:var(--grey);font-weight:400;margin-left:2px}
-
-input[type="text"],
-input[type="email"],
-input[type="date"]{
-  width:100%;padding:13px 15px;
-  border:1.5px solid var(--rule);border-radius:10px;
-  background:#fff;color:var(--black);
-  font-family:var(--body);font-size:15px;
-  outline:none;
-  transition:border-color .15s,box-shadow .15s;
-  -webkit-appearance:none;appearance:none;
-}
-input:focus{
-  border-color:var(--blue);
-  box-shadow:0 0 0 3px rgba(27,58,95,.08);
-}
+input[type="text"],input[type="email"],input[type="date"]{width:100%;padding:13px 15px;border:1.5px solid var(--rule);border-radius:10px;background:#fff;color:var(--black);font-family:var(--body);font-size:15px;outline:none;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;appearance:none}
+input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,58,95,.08)}
 input::placeholder{color:#aaa}
 input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
 
-.btn-submit{
-  width:100%;padding:16px;margin-top:8px;
-  background:var(--blue);color:#fff;
-  border:none;border-radius:12px;
-  font-family:var(--body);font-size:16px;font-weight:600;
-  cursor:pointer;
-  display:flex;align-items:center;justify-content:center;gap:10px;
-  transition:background .15s,transform .1s,box-shadow .15s;
-  box-shadow:0 4px 16px rgba(27,58,95,.25);
-}
-.btn-submit:hover:not(:disabled){
-  background:var(--blue-d);transform:translateY(-1px);
-  box-shadow:0 6px 22px rgba(27,58,95,.32);
-}
+.btn-submit{width:100%;padding:16px;margin-top:8px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-family:var(--body);font-size:16px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s,transform .1s,box-shadow .15s;box-shadow:0 4px 16px rgba(27,58,95,.25)}
+.btn-submit:hover:not(:disabled){background:var(--blue-d);transform:translateY(-1px);box-shadow:0 6px 22px rgba(27,58,95,.32)}
 .btn-submit:active:not(:disabled){transform:translateY(0);box-shadow:none}
 .btn-submit:disabled{opacity:.55;cursor:default;transform:none;box-shadow:none}
+.btn-back{width:100%;padding:12px;margin-top:10px;background:transparent;color:var(--grey);border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:14px;font-weight:500;cursor:pointer;transition:color .15s,border-color .15s}
+.btn-back:hover{color:var(--black);border-color:var(--grey)}
 
-/* ── STATES ────────────────────────────────────────────────────────────────── */
-#form-success,
-#form-error{display:none;margin-top:32px;padding:20px 22px;border-radius:12px;font-size:14px;line-height:1.65}
-#form-success{background:#f0fdf4;border:1.5px solid #bbf7d0;color:#14532d}
-#form-success strong{display:block;font-size:15px;margin-bottom:6px;color:#14532d}
-#form-error{background:#fef2f2;border:1.5px solid #fecaca;color:#7f1d1d}
-#form-error a{color:#7f1d1d;font-weight:600;text-decoration:underline;text-underline-offset:2px}
+.resa-card{background:#fff;border:1.5px solid var(--rule);border-radius:14px;padding:20px 22px;margin-bottom:28px}
+.resa-card-label{font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:8px}
+.resa-card-name{font-size:15px;font-weight:600;color:var(--black);margin-bottom:4px}
+.resa-card-dates{font-size:13.5px;color:var(--grey)}
 
-/* ── FOOTER ────────────────────────────────────────────────────────────────── */
-.footer{
-  background:#0e1f35;padding:22px clamp(20px,5vw,64px);
-  text-align:center;flex-shrink:0;
-}
+.price-box{background:#fffbf0;border:1.5px solid #e8d5a3;border-left:3px solid var(--gold);border-radius:0 12px 12px 0;padding:16px 20px;margin-bottom:24px}
+.price-box-main{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.price-box-days{font-size:14px;font-weight:600;color:var(--black)}
+.price-box-amount{font-size:22px;font-weight:700;color:var(--blue)}
+.price-box-note{font-size:12px;color:var(--grey);line-height:1.5}
+
+.pay-summary{background:#fff;border:1.5px solid var(--rule);border-radius:12px;padding:16px 20px;margin-bottom:20px;font-size:13.5px;color:var(--grey)}
+.pay-summary strong{color:var(--black)}
+
+.payment-card{background:#fff;border:1.5px solid var(--rule);border-radius:14px;padding:22px;margin-bottom:16px}
+.payment-card-hdr{font-size:12.5px;font-weight:600;color:var(--black2);letter-spacing:.03em;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--rule)}
+#prolong-payment-element{min-height:200px}
+.ssl-note{text-align:center;font-size:11px;color:var(--grey);margin-top:10px;line-height:1.6}
+
+.alert-error{background:var(--red-bg);border:1.5px solid var(--red-border);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--red);line-height:1.65;margin-bottom:16px}
+
+.success-wrap{text-align:center;padding:32px 0}
+.success-icon{font-size:48px;margin-bottom:16px}
+.success-h{font-family:var(--disp);font-size:clamp(32px,5vw,44px);font-weight:300;letter-spacing:-.02em;margin-bottom:12px}
+.success-h em{font-style:italic}
+.success-sub{font-size:14px;color:var(--grey);line-height:1.7;margin-bottom:28px}
+
+.footer{background:#0e1f35;padding:22px clamp(20px,5vw,64px);text-align:center;flex-shrink:0}
 .footer p{font-size:11px;color:rgba(255,255,255,.25)}
 .footer a{color:rgba(255,255,255,.4);text-decoration:none;margin:0 8px;transition:color .15s}
 .footer a:hover{color:rgba(255,255,255,.7);opacity:1}
 
-/* ── MOBILE ────────────────────────────────────────────────────────────────── */
-@media(max-width:480px){
-  .page-wrap{padding-top:40px;padding-bottom:72px}
-  h1{font-size:36px}
-  .btn-submit{font-size:15px;padding:15px}
-}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin .7s linear infinite;flex-shrink:0}
+
+@media(max-width:480px){.page-wrap{padding-top:40px;padding-bottom:72px}h1{font-size:36px}.btn-submit{font-size:15px;padding:15px}}
 </style>
 </head>
 <body>
@@ -159,60 +107,99 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
 </nav>
 
 <main>
-  <div class="page-wrap">
-    <p class="page-label">Location en cours</p>
-    <h1>Prolonger <em>ma location</em></h1>
-    <p class="page-sub">Remplissez le formulaire ci-dessous. Nous vérifions les disponibilités et vous confirmons le montant par email — aucun paiement avant votre accord.</p>
+<div class="page-wrap">
 
-    <div class="info-box">
-      <p>La prolongation prend effet <strong>le jour suivant votre date de fin actuelle</strong>. Le tarif des jours ajoutés suit la grille progressive en comptant depuis le <strong>premier jour de votre location</strong> (20 €/j jours 1–7 · 18 €/j jours 8–14 · 17 €/j jours 15–21 · 16 €/j au-delà) — jamais de recalcul rétroactif sur la période déjà payée.</p>
-    </div>
+  <p class="page-label">Location en cours</p>
+  <h1>Prolonger <em>ma location</em></h1>
+  <p class="page-sub">Retrouvez votre commande avec votre email et votre numéro de dossier. Le paiement est immédiat — vous recevez une confirmation par email dans la foulée.</p>
 
-    <form id="prolong-form" novalidate>
-      <div class="form-group">
-        <label for="f-nom">Nom et prénom <span class="req">*</span></label>
-        <input type="text" id="f-nom" name="nom"
-          placeholder="Marie Dupont" required
-          autocomplete="name" inputmode="text"/>
-      </div>
-      <div class="form-group">
-        <label for="f-ref">Référence de commande <span class="req">*</span></label>
-        <input type="text" id="f-ref" name="reference"
-          placeholder="Ex : LA-2026-0042" required
-          autocomplete="off" inputmode="text"/>
-      </div>
+  <!-- ÉTAPE 1 : identification -->
+  <div id="step-1">
+    <form id="lookup-form" novalidate>
       <div class="form-group">
         <label for="f-email">Email <span class="req">*</span></label>
-        <input type="email" id="f-email" name="email"
-          placeholder="marie@exemple.fr" required
-          autocomplete="email" inputmode="email"/>
+        <input type="email" id="f-email" name="email" placeholder="marie@exemple.fr"
+          required autocomplete="email" inputmode="email"/>
       </div>
       <div class="form-group">
-        <label for="f-date">Nouvelle date de fin souhaitée <span class="req">*</span></label>
-        <input type="date" id="f-date" name="date_fin_souhaitee" required/>
+        <label for="f-ref">Numéro de commande <span class="req">*</span></label>
+        <input type="text" id="f-ref" name="ref" placeholder="LOC-260710-8129"
+          required autocomplete="off" inputmode="text" style="text-transform:uppercase"/>
       </div>
-      <button type="submit" class="btn-submit" id="btn-submit">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-        Envoyer ma demande
+      <div id="lookup-error" class="alert-error" role="alert" style="display:none"></div>
+      <button type="submit" class="btn-submit" id="btn-lookup">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Vérifier ma location
       </button>
     </form>
+  </div>
 
-    <div id="form-success" role="alert">
-      <strong>Votre demande est bien reçue ✓</strong>
-      Nous vous confirmons votre prolongation par email sous peu.
+  <!-- ÉTAPE 2 : nouvelle date + aperçu prix -->
+  <div id="step-2" style="display:none">
+    <div class="resa-card">
+      <p class="resa-card-label">Votre location</p>
+      <p class="resa-card-name" id="resa-name"></p>
+      <p class="resa-card-dates" id="resa-dates"></p>
     </div>
-    <div id="form-error" role="alert">
-      Une erreur s'est produite. Réessayez ou contactez-nous directement à
-      <a href="mailto:contact@locair.fr">contact@locair.fr</a>.
+
+    <div class="form-group">
+      <label for="f-newdate">Nouvelle date de fin <span class="req">*</span></label>
+      <input type="date" id="f-newdate" name="new_date_fin" required/>
+    </div>
+
+    <div id="price-box" class="price-box" style="display:none">
+      <div class="price-box-main">
+        <span class="price-box-days" id="price-days"></span>
+        <span class="price-box-amount" id="price-amount"></span>
+      </div>
+      <p class="price-box-note" id="price-note"></p>
+    </div>
+
+    <div id="extend-error" class="alert-error" role="alert" style="display:none"></div>
+
+    <button class="btn-submit" id="btn-pay" disabled>
+      Payer <span id="btn-pay-label">—</span>
+    </button>
+    <button class="btn-back" id="btn-back-1">← Modifier mon email / numéro</button>
+  </div>
+
+  <!-- ÉTAPE 3 : paiement Stripe -->
+  <div id="step-3" style="display:none">
+    <div class="pay-summary" id="pay-summary">
+      Prolongation · <strong id="pay-summary-label"></strong>
+    </div>
+    <div class="payment-card">
+      <p class="payment-card-hdr">Paiement sécurisé</p>
+      <div id="prolong-payment-element">
+        <p style="color:var(--grey);font-size:13px;text-align:center;padding:32px 0">Chargement…</p>
+      </div>
+    </div>
+    <div id="payment-error" class="alert-error" role="alert" style="display:none"></div>
+    <button class="btn-submit" id="btn-confirm" disabled>
+      <span id="btn-confirm-label">Confirmer le paiement</span>
+    </button>
+    <p class="ssl-note">🔒 Paiement sécurisé SSL · Stripe · Aucun stockage de vos données bancaires</p>
+    <button class="btn-back" id="btn-back-2">← Modifier la date</button>
+  </div>
+
+  <!-- SUCCÈS -->
+  <div id="step-success" style="display:none">
+    <div class="success-wrap">
+      <div class="success-icon">✅</div>
+      <h2 class="success-h">Prolongation <em>confirmée !</em></h2>
+      <p class="success-sub" id="success-msg">Un email de confirmation vous a été envoyé.</p>
+      <a href="/" class="btn-submit" style="text-decoration:none">Retour au site</a>
     </div>
   </div>
+
+</div>
 </main>
 
 <footer class="footer">
   <p>
-    <a href="/">Accueil</a>·
-    <a href="/cgv">CGV</a>·
-    <a href="/mentions-legales">Mentions légales</a>·
+    <a href="/">Accueil</a>&nbsp;·
+    <a href="/cgv">CGV</a>&nbsp;·
+    <a href="/mentions-legales">Mentions légales</a>&nbsp;·
     <a href="/confidentialite">Confidentialité</a>
   </p>
   <p style="margin-top:6px">© 2026 Loc'Air · SIRET 853 730 562 00024</p>
@@ -220,63 +207,133 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
 
 <script>
 (function(){
-  // date minimum = demain
-  const inp = document.getElementById('f-date');
-  if(inp){
-    const t = new Date();
-    t.setDate(t.getDate() + 1);
-    inp.min = t.toISOString().slice(0, 10);
+  const STRIPE_PK='pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpYcFY8Sj4cL4pK64YO5v49flzW8SWlLek1dr00nJtbX09Y';
+  const SPIN='<svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke-opacity=".2"/><path d="M12 3a9 9 0 019 9"/></svg>';
+  const ICO_SEARCH='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+
+  function calcBase(d){d=Math.max(1,d);if(d<=7)return d*20;if(d<=14)return 7*20+(d-7)*18;if(d<=21)return 7*20+7*18+(d-14)*17;return 7*20+7*18+7*17+(d-21)*16;}
+  function diffDays(a,b){return Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000);}
+  function addDay(iso){const d=new Date(iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
+  function fmtLong(iso){return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}
+  function fmtShort(iso){return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{day:'numeric',month:'long'});}
+
+  function breakdown(origDays,extDays){
+    const lines=[];let d=origDays+1,end=origDays+extDays;
+    while(d<=end){let rate,nb;if(d<=7){rate=20;nb=7;}else if(d<=14){rate=18;nb=14;}else if(d<=21){rate=17;nb=21;}else{rate=16;nb=end;}
+    const g=Math.min(nb,end);const c=g-d+1;lines.push(c+'j \xd7 '+rate+' €/j = '+(c*rate)+' €');d=g+1;}
+    return lines.join(' \xb7 ');
   }
 
-  const SPINNER = '<svg style="animation:spin .7s linear infinite" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke-opacity=".2"/><path d="M12 3a9 9 0 019 9"/></svg> Envoi en cours…';
-  const IDLE    = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Envoyer ma demande';
+  function show(id){const e=document.getElementById(id);if(e)e.style.display='block';}
+  function hide(id){const e=document.getElementById(id);if(e)e.style.display='none';}
+  function err(id,msg){const e=document.getElementById(id);if(!e)return;e.textContent=msg;e.style.display='block';}
+  function noerr(id){hide(id);}
 
-  const style = document.createElement('style');
-  style.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
-  document.head.appendChild(style);
+  let resa=null,email='',ref='',strInst=null,strEl=null,cents=0,newDate='';
 
-  document.getElementById('prolong-form').addEventListener('submit', async function(e){
+  // Retour Stripe après 3DS
+  if(new URLSearchParams(location.search).get('success')){hide('step-1');show('step-success');}
+
+  /* ── Étape 1 : lookup ── */
+  document.getElementById('lookup-form').addEventListener('submit',async function(e){
     e.preventDefault();
-    const btn   = document.getElementById('btn-submit');
-    const nom   = document.getElementById('f-nom').value.trim();
-    const ref   = document.getElementById('f-ref').value.trim();
-    const email = document.getElementById('f-email').value.trim();
-    const date  = document.getElementById('f-date').value;
-    if(!nom || !ref || !email || !date) return;
-
-    btn.disabled = true;
-    btn.innerHTML = SPINNER;
-    document.getElementById('form-success').style.display = 'none';
-    document.getElementById('form-error').style.display   = 'none';
-
+    email=document.getElementById('f-email').value.trim();
+    ref=document.getElementById('f-ref').value.trim().toUpperCase();
+    if(!email||!ref)return;
+    const btn=document.getElementById('btn-lookup');
+    btn.disabled=true;btn.innerHTML=SPIN+' Recherche…';noerr('lookup-error');
     try{
-      const ctrl  = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 15000);
-      const r = await fetch('https://formspree.io/f/xzdnpoap', {
-        method:  'POST',
-        headers: {'Content-Type':'application/json','Accept':'application/json'},
-        body: JSON.stringify({
-          nom,
-          reference:         ref,
-          email,
-          date_fin_souhaitee: date,
-          _subject:          'Prolongation — ' + ref,
-          _replyto:          email,
-        }),
-        signal: ctrl.signal,
-      });
-      clearTimeout(timer);
-      if(r.ok){
-        document.getElementById('prolong-form').style.display  = 'none';
-        document.getElementById('form-success').style.display  = 'block';
-      } else {
-        throw new Error('http ' + r.status);
-      }
-    } catch(err){
-      document.getElementById('form-error').style.display = 'block';
-      btn.disabled  = false;
-      btn.innerHTML = IDLE;
+      const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),12000);
+      const r=await fetch('/api/prolong-lookup',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({email,ref}),signal:ctrl.signal});
+      clearTimeout(t);
+      const d=await r.json();
+      if(!r.ok)throw new Error(d.error||'Erreur serveur');
+      resa=d;goStep2();
+    }catch(ex){
+      err('lookup-error',ex.name==='AbortError'?'D\xe9lai d\xe9pass\xe9 — r\xe9essayez.':ex.message);
+      btn.disabled=false;btn.innerHTML=ICO_SEARCH+' V\xe9rifier ma location';
     }
+  });
+
+  function goStep2(){
+    hide('step-1');show('step-2');
+    document.getElementById('resa-name').textContent=(resa.prenom?resa.prenom+' \xb7 ':'')+'№ '+(resa.ref||ref);
+    document.getElementById('resa-dates').textContent='Du '+fmtShort(resa.date_debut)+' au '+fmtLong(resa.date_fin)+' ( '+resa.orig_days+' j )';
+    const inp=document.getElementById('f-newdate');inp.min=addDay(resa.date_fin);inp.value='';
+    hide('price-box');noerr('extend-error');
+    document.getElementById('btn-pay').disabled=true;
+    document.getElementById('btn-pay-label').textContent='—';
+  }
+
+  /* ── Calcul en temps réel ── */
+  document.getElementById('f-newdate').addEventListener('change',function(){
+    newDate=this.value;
+    if(!newDate||!resa||newDate<=resa.date_fin){hide('price-box');document.getElementById('btn-pay').disabled=true;return;}
+    const ext=diffDays(resa.date_fin,newDate),tot=resa.orig_days+ext;
+    const price=(calcBase(tot)-calcBase(resa.orig_days))*(resa.quantite||1);
+    cents=price*100;
+    document.getElementById('price-days').textContent='+ '+ext+' jour'+(ext>1?'s':'');
+    document.getElementById('price-amount').textContent=price+' €';
+    document.getElementById('price-note').textContent=breakdown(resa.orig_days,ext)+' \xb7 grille depuis le j1 de votre location';
+    show('price-box');
+    document.getElementById('btn-pay-label').textContent=price+' €';
+    document.getElementById('btn-pay').disabled=false;
+  });
+
+  /* ── Payer → créer PI + afficher Stripe ── */
+  document.getElementById('btn-pay').addEventListener('click',async function(){
+    if(!resa||!newDate)return;
+    this.disabled=true;this.innerHTML=SPIN+' Pr\xe9paration…';noerr('extend-error');
+    try{
+      const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),15000);
+      const r=await fetch('/api/prolong-pay',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({email,ref,new_date_fin:newDate}),signal:ctrl.signal});
+      clearTimeout(t);
+      const d=await r.json();
+      if(!r.ok)throw new Error(d.error||'Erreur serveur');
+      cents=d.amountCents;
+      await goStep3(d.clientSecret,d.amountCents,d.jours,newDate);
+    }catch(ex){
+      err('extend-error',ex.name==='AbortError'?'D\xe9lai d\xe9pass\xe9 — r\xe9essayez.':ex.message);
+      this.disabled=false;this.innerHTML='Payer <span id="btn-pay-label">'+(cents/100)+' €</span>';
+    }
+  });
+
+  document.getElementById('btn-back-1').addEventListener('click',function(){
+    hide('step-2');show('step-1');noerr('extend-error');
+    const b=document.getElementById('btn-lookup');b.disabled=false;b.innerHTML=ICO_SEARCH+' V\xe9rifier ma location';
+  });
+
+  async function goStep3(clientSecret,amtCents,jours,dateFin){
+    hide('step-2');show('step-3');
+    const amtFmt=(amtCents/100).toLocaleString('fr-FR')+' €';
+    document.getElementById('pay-summary-label').textContent='+'+jours+' jour'+(jours>1?'s':'')+' jusqu’au '+fmtLong(dateFin)+' \xb7 '+amtFmt;
+    document.getElementById('btn-confirm-label').textContent='Payer '+amtFmt;
+    if(typeof Stripe==='undefined'){err('payment-error','Erreur de chargement du module de paiement. Rechargez la page.');return;}
+    strInst=Stripe(STRIPE_PK);
+    strEl=strInst.elements({clientSecret,locale:'fr',appearance:{theme:'stripe',variables:{colorPrimary:'#1b3a5f',colorBackground:'#ffffff',colorText:'#141e30',fontFamily:'Inter, system-ui, sans-serif',borderRadius:'10px'}}});
+    const pe=strEl.create('payment');
+    document.getElementById('prolong-payment-element').innerHTML='';
+    pe.mount('#prolong-payment-element');
+    pe.on('ready',function(){document.getElementById('btn-confirm').disabled=false;});
+  }
+
+  document.getElementById('btn-confirm').addEventListener('click',async function(){
+    if(!strEl)return;
+    this.disabled=true;const orig=this.innerHTML;this.innerHTML=SPIN+' Paiement en cours…';noerr('payment-error');
+    const{error}=await strInst.confirmPayment({elements:strEl,redirect:'if_required',confirmParams:{return_url:location.origin+'/prolongation?success=1'}});
+    if(error){err('payment-error',error.message);this.disabled=false;this.innerHTML=orig;}
+    else{
+      hide('step-3');show('step-success');
+      document.getElementById('success-msg').textContent='Votre location est prolong\xe9e jusqu’au '+fmtLong(newDate)+'. Un email de confirmation a \xe9t\xe9 envoy\xe9 \xe0 '+email+'.';
+    }
+  });
+
+  document.getElementById('btn-back-2').addEventListener('click',function(){
+    if(strEl){try{strEl.getElement('payment')?.unmount();}catch(e){}strEl=null;strInst=null;}
+    document.getElementById('prolong-payment-element').innerHTML='<p style="color:var(--grey);font-size:13px;text-align:center;padding:32px 0">Chargement…</p>';
+    document.getElementById('btn-confirm').disabled=true;noerr('payment-error');
+    hide('step-3');show('step-2');
+    const b=document.getElementById('btn-pay');b.disabled=false;b.innerHTML='Payer <span id="btn-pay-label">'+(cents/100)+' €</span>';
   });
 })();
 </script>
