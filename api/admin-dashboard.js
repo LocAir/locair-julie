@@ -33,13 +33,14 @@ async function computeCityStats(supabase, city, periode, since) {
 
   const caCents = (resas || []).reduce((sum, r) => sum + (r.prix_total_cents || 0), 0);
 
-  const { data: resasTotal, error: resaTotalErr } = await supabase
-    .from('reservations')
-    .select('prix_total_cents')
-    .eq('city_id', city.id)
-    .eq('statut', 'confirmee');
-  if (resaTotalErr) throw resaTotalErr;
-  const caTotalCents = (resasTotal || []).reduce((sum, r) => sum + (r.prix_total_cents || 0), 0);
+  // Somme calculée côté base (fonction SQL `ca_total_ville`, voir
+  // supabase/migration_dashboard_ca_total.sql) plutôt que de télécharger une
+  // ligne par réservation confirmée de tout l'historique de la ville — cette
+  // requête est rejouée à chaque rafraîchissement automatique du tableau de
+  // bord (toutes les 18s côté admin/index.html tant que l'onglet reste ouvert).
+  const { data: caTotalCentsRaw, error: caTotalErr } = await supabase.rpc('ca_total_ville', { p_city_id: city.id });
+  if (caTotalErr) throw caTotalErr;
+  const caTotalCents = typeof caTotalCentsRaw === 'number' ? caTotalCentsRaw : 0;
 
   const { count: flotteTotale } = await supabase
     .from('appareils').select('id', { count: 'exact', head: true })
@@ -63,16 +64,18 @@ async function computeCityStats(supabase, city, periode, since) {
     .gte('created_at', hierStart).lt('created_at', hierEnd);
   const caHierCents = (resasHier || []).reduce((sum, r) => sum + (r.prix_total_cents || 0), 0);
 
-  const { data: cityResasIds } = await supabase.from('reservations').select('id').eq('city_id', city.id);
-  const resaIds = (cityResasIds || []).map(r => r.id);
-  let missionsTermineesHier = 0;
-  if (resaIds.length) {
-    const { count } = await supabase
-      .from('livraisons').select('id', { count: 'exact', head: true })
-      .in('reservation_id', resaIds).eq('statut', 'fait')
-      .gte('fait_at', hierStart).lt('fait_at', hierEnd);
-    missionsTermineesHier = count || 0;
-  }
+  // Filtre d'abord sur la journée d'hier (gte/lt sur fait_at) — livraisons n'a
+  // pas de city_id direct, donc on rattache la ville via un inner join sur
+  // reservations plutôt que de télécharger d'abord TOUS les ids de réservation
+  // de la ville (potentiellement tout l'historique) pour filtrer dessus ensuite.
+  const { count: missionsTermineesHierCount, error: missionsHierErr } = await supabase
+    .from('livraisons')
+    .select('id, reservation:reservations!inner(city_id)', { count: 'exact', head: true })
+    .eq('reservation.city_id', city.id)
+    .eq('statut', 'fait')
+    .gte('fait_at', hierStart).lt('fait_at', hierEnd);
+  if (missionsHierErr) throw missionsHierErr;
+  const missionsTermineesHier = missionsTermineesHierCount || 0;
   const { count: incidentsHier } = await supabase
     .from('incidents').select('id', { count: 'exact', head: true })
     .eq('city_id', city.id).gte('created_at', hierStart).lt('created_at', hierEnd);
@@ -113,10 +116,12 @@ module.exports = async (req, res) => {
     // city_id:'all' quand aucune ville précise n'est choisie.
     if (body.city_id === 'all') {
       const cities = await listCities(supabase);
-      const parVille = [];
-      for (const city of cities) {
-        parVille.push(await computeCityStats(supabase, city, periode, since));
-      }
+      // Chaque ville est indépendante (aucun état partagé entre itérations) —
+      // on les calcule en parallèle plutôt qu'une par une, ce qui évite
+      // d'attendre N fois la durée d'une seule ville pour N villes.
+      const parVille = await Promise.all(
+        cities.map(city => computeCityStats(supabase, city, periode, since))
+      );
       const sum = (key) => parVille.reduce((s, v) => s + (v[key] || 0), 0);
       const sumHier = (key) => parVille.reduce((s, v) => s + (v.hier[key] || 0), 0);
       return res.status(200).json({
