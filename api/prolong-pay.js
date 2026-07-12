@@ -77,13 +77,18 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Durée minimale : 1 jour.' });
   }
 
-  // Validation code promo : PRENOM_NORMALISE + 10 (ex. "ERIK10" pour Érik)
-  const promoCode = ((req.body.promo_code || '')).trim().toUpperCase();
+  // Validation code promo : PRENOM_NORMALISE + 10|20|30 (ex. "ERIK20" pour 20% de remise)
+  const promoCode        = ((req.body.promo_code || '')).trim().toUpperCase();
   const normalizedPrenom = (orig.prenom || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z]/g, '').toUpperCase();
-  const promoDiscount = (promoCode && promoCode === normalizedPrenom + '10') ? 10 * 100 : 0;
+  let promoPct = 0;
+  if (promoCode && normalizedPrenom && promoCode.startsWith(normalizedPrenom)) {
+    const suffix = parseInt(promoCode.slice(normalizedPrenom.length));
+    if ([10, 20, 30].includes(suffix)) promoPct = suffix;
+  }
 
-  const baseCents   = (calcBase(totalDays) - calcBase(origDays)) * (orig.quantite || 1) * 100;
-  const amountCents = Math.max(0, baseCents - promoDiscount);
+  const baseCents    = (calcBase(totalDays) - calcBase(origDays)) * (orig.quantite || 1) * 100;
+  const promoDiscount = Math.round(baseCents * promoPct / 100);
+  const amountCents  = Math.max(0, baseCents - promoDiscount);
 
   if (!amountCents || amountCents < 100) {
     return res.status(400).json({ error: 'Montant invalide' });
@@ -137,6 +142,7 @@ module.exports = async (req, res) => {
         date_fin_initiale: orig.date_fin,
         date_recuperation: new_date_fin,
         promo:             promoCode || '',
+        promo_pct:         promoPct ? String(promoPct) + '%' : '',
         customer_id:       customerId,
       },
     });

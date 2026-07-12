@@ -278,10 +278,13 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
   }
 
   /* ── Calcul prix (date + promo) ── */
-  function getDiscount(code){
+  // Retourne le % de remise (10, 20 ou 30) ou 0 si code invalide
+  function getDiscountPct(code){
     if(!code||!resa||!resa.prenom)return 0;
     const norm=resa.prenom.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z]/g,'').toUpperCase();
-    return code.toUpperCase()===norm+'10'?10:0;
+    if(!code.toUpperCase().startsWith(norm))return 0;
+    const pct=parseInt(code.toUpperCase().slice(norm.length));
+    return [10,20,30].includes(pct)?pct:0;
   }
 
   function updatePrice(){
@@ -290,21 +293,22 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
     const ext=diffDays(resa.date_fin,newDate),tot=resa.orig_days+ext;
     const base=(calcBase(tot)-calcBase(resa.orig_days))*(resa.quantite||1);
     const code=(document.getElementById('f-promo')?.value||'').trim();
-    const disc=getDiscount(code);
-    const price=Math.max(0,base-disc);
+    const pct=getDiscountPct(code);
+    const discAmt=Math.round(base*pct/100);
+    const price=Math.max(0,base-discAmt);
     cents=price*100;
-    document.getElementById('price-days').textContent='+ '+ext+' jour'+(ext>1?'s':'');
-    document.getElementById('price-amount').textContent=price+' €';
+    document.getElementById('price-days').textContent='+ '+ext+' jour'+(ext>1?'s':'');
+    document.getElementById('price-amount').textContent=price+' €';
     let note=breakdown(resa.orig_days,ext);
-    if(disc>0)note+=' · Code promo −10 €';
-    document.getElementById('price-note').textContent=note+' · grille depuis le j1 de votre location';
+    if(pct>0)note+=' · Code promo −'+pct+'% (−'+discAmt+' €)';
+    document.getElementById('price-note').textContent=note+' · grille depuis le j1 de votre location';
     show('price-box');
-    document.getElementById('btn-pay-label').textContent=price+' €';
+    document.getElementById('btn-pay-label').textContent=price+' €';
     document.getElementById('btn-pay').disabled=false;
     const fb=document.getElementById('promo-feedback');
     if(fb){
       if(!code){fb.style.display='none';}
-      else if(disc>0){fb.textContent='✓ Code valide — −10 € appliqués';fb.style.color='#0f766e';fb.style.display='block';}
+      else if(pct>0){fb.textContent='✓ Code valide — −'+pct+'% appliqués (−'+discAmt+' €)';fb.style.color='#0f766e';fb.style.display='block';}
       else{fb.textContent='Code incorrect';fb.style.color='var(--red)';fb.style.display='block';}
     }
   }
