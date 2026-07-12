@@ -289,7 +289,9 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
 
   function updatePrice(){
     newDate=document.getElementById('f-newdate').value;
-    if(!newDate||!resa||newDate<=resa.date_fin){hide('price-box');document.getElementById('btn-pay').disabled=true;return;}
+    if(!newDate||!resa){hide('price-box');noerr('extend-error');document.getElementById('btn-pay').disabled=true;return;}
+    if(newDate<=resa.date_fin){hide('price-box');err('extend-error','La nouvelle date doit être après le '+fmtLong(resa.date_fin)+' (date de fin actuelle).');document.getElementById('btn-pay').disabled=true;return;}
+    noerr('extend-error');
     const ext=diffDays(resa.date_fin,newDate),tot=resa.orig_days+ext;
     const base=(calcBase(tot)-calcBase(resa.orig_days))*(resa.quantite||1);
     const code=(document.getElementById('f-promo')?.value||'').trim();
