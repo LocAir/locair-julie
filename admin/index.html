@@ -1394,10 +1394,12 @@ function reservationRowHtml(res, readOnly){
     <div class="row-item">
       <div class="row-top">
         <span class="row-title">${nom}${entrepriseTag}</span>
-        <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
+        <span style="display:flex;gap:6px;align-items:center">
+          ${res.hors_zone?`<span class="chip" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red)" title="Affectation manuelle requise">⚠️ Hors zone</span>`:''}
+          ${res.source==='site_prolongation'?`<span class="chip" style="background:var(--blue-lt);color:var(--blue);border:1px solid var(--blue)">🔄 Prolongée</span>`:''}
+          <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
+        </span>
       </div>
-      ${res.hors_zone?`<div class="resa-sub" style="color:var(--red);font-weight:700">⚠️ Hors zone — affectation manuelle requise</div>`:''}
-      ${res.source==='site_prolongation'?`<div class="resa-sub" style="color:var(--blue);font-weight:700">🔄 Location prolongée</div>`:''}
       <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
       ${res.instructions_acces?`<div class="resa-sub" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
       ${(res.etage||res.ascenseur||res.fenetre||res.fenetre_photo_path||(res.type_client==='entreprise'&&res.siret))?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):'',(res.type_client==='entreprise'&&res.siret)?'SIRET : '+escHtml(res.siret):''].filter(Boolean).join(' · ')}${res.fenetre_photo_path?` <button class="btn btn-grey" style="padding:2px 8px;font-size:11px;vertical-align:middle" onclick="openFenetrePhoto(${res.id})">📷 Photo</button>`:''}</div>`:''}
@@ -2183,21 +2185,33 @@ function renderLivraisons(){
           <div class="row-actions"><button class="btn btn-grey" onclick="restoreLivraison(${m.id})">Restaurer</button></div>
         </div>`;
     }
+    // Détails secondaires fusionnés en une seule ligne grise (étage, ascenseur,
+    // fenêtre, unité assignée, durées, confirmation client) — aucun n'a besoin
+    // de sa propre ligne colorée, seuls les éléments qui appellent une action
+    // (instructions d'accès, problème, vidange non confirmée) gardent un
+    // traitement visuel distinct ci-dessous.
+    const detailBits = [];
+    if(res.etage) detailBits.push('Étage '+escHtml(res.etage));
+    if(res.ascenseur && res.ascenseur!=='—') detailBits.push('Ascenseur : '+escHtml(res.ascenseur));
+    if(res.fenetre) detailBits.push('🪟 '+escHtml(res.fenetre));
+    if(m.appareil_numeros && m.appareil_numeros.length) detailBits.push(`🔢 n°${m.appareil_numeros.join(', ')}${(m.appareil_references&&m.appareil_references.length)?' · '+m.appareil_references.map(escHtml).join(', '):''}`);
+    if(m.duree_trajet_min!=null) detailBits.push(m.duree_trajet_min+' min trajet');
+    if(m.duree_sur_place_min!=null) detailBits.push(m.duree_sur_place_min+' min sur place');
+    if(m.client_notifie_at) detailBits.push('✅ Client notifié '+frDateHeure(m.client_notifie_at));
     return `
       <div class="row-item" ${nonAssignee?'style="border-left:3px solid var(--red)"':''}>
         <div class="row-top">
           <span class="row-title">${nonAssignee?'🔔 ':''}${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
-          <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
+          <span style="display:flex;gap:6px;align-items:center">
+            ${res.hors_zone?`<span class="chip" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red)">⚠️ Hors zone</span>`:''}
+            <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
+          </span>
         </div>
         <div style="margin-bottom:6px">${missionTypeBadge(m.type)}</div>
-        ${res.hors_zone?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-bottom:4px">⚠️ Hors zone</div>`:''}
-        ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="row-meta" style="font-weight:700;color:var(--blue)">🔢 Unité${m.appareil_numeros.length>1?'s':''} n°${m.appareil_numeros.join(', ')}${(m.appareil_references&&m.appareil_references.length)?' · '+m.appareil_references.map(escHtml).join(', '):''}</div>`:''}
         <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
-        ${(res.etage||res.ascenseur||res.fenetre)?`<div class="row-meta">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):''].filter(Boolean).join(' · ')}</div>`:''}
+        ${detailBits.length?`<div class="row-meta">${detailBits.join(' · ')}</div>`:''}
         ${res.instructions_acces?`<div class="row-meta" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
-        ${(m.duree_trajet_min!=null || m.duree_sur_place_min!=null)?`<div class="row-meta">🕐 ${m.duree_trajet_min!=null?m.duree_trajet_min+' min trajet':''}${m.duree_trajet_min!=null&&m.duree_sur_place_min!=null?' · ':''}${m.duree_sur_place_min!=null?m.duree_sur_place_min+' min sur place':''}</div>`:''}
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
-        ${m.client_notifie_at?`<div class="row-meta" style="color:var(--green)">✅ Client notifié ${frDateHeure(m.client_notifie_at)}</div>`:''}
         ${(['recuperation','changement'].includes(m.type) && m.statut==='fait' && !m.vidange_confirmee)?`<div class="row-meta" style="color:var(--amber)">⚠️ Vidange non confirmée</div>`:''}
         <div class="row-actions">
           ${contactButtonsHtml(res.tel)}
@@ -2764,20 +2778,21 @@ async function loadTransporteursEquipe(){
             <span class="chip ${t.actif?'actif':'inactif'}">${t.actif?'actif':'inactif'}</span>
           </span>
         </div>
-        <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''}</div>
-        <div class="row-meta">Code : <strong>${escHtml(t.pin||'—')}</strong></div>
+        <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''} · Code : <strong>${escHtml(t.pin||'—')}</strong></div>
         ${CITIES_CACHE.length>1?`<div class="row-meta">🌍 ${(t.villes&&t.villes.length) ? t.villes.map(id => escHtml((CITIES_CACHE.find(c=>c.id===id)||{}).name||'?')).join(', ') : 'Aucune zone'}</div>`:''}
         ${t.notes?`<div class="row-meta" style="font-style:italic">📝 ${escHtml(t.notes)}</div>`:''}
         <div class="row-meta" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
           ${[{key:'livraison',label:'Livraison',tarif:'30€'},{key:'livraison_technicien',label:'Livr.+install.',tarif:'40€'},{key:'recuperation',label:'Récupération',tarif:'30€'},{key:'changement',label:'Remplacement',tarif:'40€'}].filter(mt=>!(t.types_autorises&&t.types_autorises.length)||t.types_autorises.includes(mt.key)).map(mt=>`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;background:var(--green-bg);color:var(--green)">${mt.label} · ${mt.tarif}</span>`).join('')}
         </div>
-        <div style="display:flex;align-items:center;gap:10px;margin:10px 0 4px">
-          <span style="font-size:12px;color:var(--grey)">Score 30j</span>
-          <span style="padding:2px 10px;border-radius:100px;font-size:12px;font-weight:700;background:${scoreBg};color:${scoreColor}">${scoreLabel}</span>
-          ${missions30!=null?`<span style="font-size:12px;color:var(--grey)">${missions30} mission${missions30>1?'s':''}</span>`:score==null?`<span style="font-size:12px;color:var(--grey)">Pas encore assez de missions</span>`:''}
-          <button class="btn btn-grey" style="padding:3px 10px;font-size:12px;margin-left:auto" onclick="openTransporteurStats(${t.id})">📊 Stats</button>
+        <div class="day-progress" style="margin:10px 0 0">
+          ${chargeJourHtml(t.id, ld.livraisons)}
+          <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule)">
+            <span style="font-size:12px;color:var(--grey)">30 jours</span>
+            <span style="padding:2px 10px;border-radius:100px;font-size:12px;font-weight:700;background:${scoreBg};color:${scoreColor}">${scoreLabel}</span>
+            ${missions30!=null?`<span style="font-size:12px;color:var(--grey)">${missions30} mission${missions30>1?'s':''}</span>`:score==null?`<span style="font-size:12px;color:var(--grey)">Pas encore assez de missions</span>`:''}
+            <button class="btn btn-grey" style="padding:3px 10px;font-size:12px;margin-left:auto" onclick="openTransporteurStats(${t.id})">📊 Détail</button>
+          </div>
         </div>
-        <div class="day-progress" style="margin:8px 0 0;padding:0">${chargeJourHtml(t.id, ld.livraisons)}</div>
         <div class="row-actions">
           ${enPause
             ? `<button class="btn btn-green" onclick="pauseTransporteur(${t.id}, false, this)">▶ Reprendre</button>`
