@@ -66,9 +66,29 @@ module.exports = async (req, res) => {
       if (body.name != null)  patch.name  = body.name.trim();
       if (body.dep != null)   patch.dep   = body.dep.trim() || null;
       if (body.actif     != null) patch.actif     = Boolean(body.actif);
-      // sold_out n'est jamais écrit à la main : recalculé automatiquement en
-      // base par les triggers de migration_auto_sold_out.sql à partir du
-      // stock réel (0 appareil "disponible" ou tous loués → complet).
+      // Mode "complet" : automatique par défaut (recalculé en base par les
+      // triggers de migration_auto_sold_out.sql à partir du stock réel), ou
+      // manuel si l'admin veut garder la main temporairement (incident,
+      // contrôle qualité, fermeture volontaire).
+      if (body.sold_out_mode != null) {
+        const mode = String(body.sold_out_mode);
+        if (!['auto', 'manuel'].includes(mode)) return res.status(400).json({ error: 'Mode invalide' });
+        patch.sold_out_mode = mode;
+      }
+      // sold_out ne peut être forcé à la main que si la ville est (ou
+      // devient, dans cette même requête) en mode "manuel" — sinon le
+      // prochain mouvement de stock l'écraserait silencieusement.
+      if (body.sold_out != null) {
+        let mode = patch.sold_out_mode;
+        if (!mode) {
+          const { data: cur } = await supabase.from('cities').select('sold_out_mode').eq('id', id).maybeSingle();
+          mode = cur?.sold_out_mode;
+        }
+        if (mode !== 'manuel') {
+          return res.status(400).json({ error: 'Passe la ville en mode manuel avant de forcer "complet"' });
+        }
+        patch.sold_out = Boolean(body.sold_out);
+      }
       if (Array.isArray(body.postal_codes)) {
         patch.postal_codes = body.postal_codes.map(cp => String(cp).trim()).filter(Boolean);
       }
@@ -79,6 +99,11 @@ module.exports = async (req, res) => {
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('cities').update(patch).eq('id', id);
       if (error) throw error;
+      // En repassant en automatique, resynchroniser tout de suite avec le
+      // vrai stock plutôt que d'attendre le prochain mouvement.
+      if (patch.sold_out_mode === 'auto') {
+        await supabase.rpc('_auto_sold_out', { p_city_id: id });
+      }
       return res.status(200).json({ ok: true });
     }
 
