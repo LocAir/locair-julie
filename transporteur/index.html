@@ -267,7 +267,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
        l'Accueil (consulté une fois par jour, avant de partir), pas un onglet
        de même rang que Missions. -->
   <div id="checklist-screen" class="hidden">
-    <button class="detail-back" onclick="switchTab('accueil')">← Accueil</button>
+    <button class="detail-back" id="checklist-back-btn" onclick="switchTab('accueil')">← Accueil</button>
     <div id="checklist-content"><p class="empty">Chargement…</p></div>
   </div>
 
@@ -345,6 +345,8 @@ let STATE = {
   currentMission: null,
   pendingUpload: null, // {livraisonId, kind}
   autoOpenChecked: false, // une seule fois par connexion, voir maybeAutoOpenMission()
+  checklist: null, // état du jour, chargé avec les missions — voir checklistBlocksMission()
+  returnToMission: null, // mission à rouvrir après validation checklist, voir goToChecklistFromMission()
 };
 
 function show(id){
@@ -393,7 +395,16 @@ let _lastPositionSentAt = 0;
 
 function hasActiveTravelMission(){
   const todayStr = new Date().toISOString().slice(0,10);
-  return STATE.missions.some(m => ['acceptee','arrivee'].includes(m.statut) && m.date_prevue<=todayStr);
+  const activeToday = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut) && m.date_prevue<=todayStr);
+  if(!activeToday.length) return false;
+  // Une mission déjà entamée (client prévenu, preuve prise) garde le suivi
+  // actif même si la checklist a depuis été "dé-validée" par erreur — seul
+  // le tout premier départ de la journée attend la validation, même repère
+  // que le verrou "démarrer" une mission (checklistBlocksMission).
+  const alreadyStarted = activeToday.some(m => m.statut==='arrivee' || m.client_notifie || m.photo_installation_ok || m.photo_retour_ok || m.vidange_ok);
+  if(alreadyStarted) return true;
+  if(STATE.checklist && STATE.checklist.nb_missions > 0 && !STATE.checklist.validated) return false;
+  return true;
 }
 
 function updatePositionTracking(){
@@ -644,17 +655,56 @@ async function doLogin(){
 
 async function fetchMissions(){
   try{
-    const r = await fetch(API('transporteur-missions'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: '{}'});
+    // La checklist est chargée en même temps que les missions (pas seulement
+    // à la visite de son écran) pour que le verrou "démarrer" (voir
+    // checklistBlocksMission) soit fiable quel que soit le chemin
+    // d'entrée sur une mission (carte, auto-ouverture, bouton Accueil…).
+    const [r, cr] = await Promise.all([
+      fetch(API('transporteur-missions'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: '{}'}),
+      fetch(API('transporteur-checklist'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'get'})}),
+    ]);
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     STATE.missions = d.missions || [];
     STATE.en_pause = d.en_pause || false;
+    const cd = await cr.json().catch(()=>null);
+    if(cr.ok && cd) STATE.checklist = cd;
     updatePositionTracking();
     updateMissionsBadge();
     return true;
   }catch(e){
     return false;
   }
+}
+// Une mission acceptée pour AUJOURD'HUI ne peut être démarrée (coordonnées
+// client, appel, étapes sur place) qu'une fois la checklist "avant de partir"
+// validée — reflète le vrai parcours du livreur : passage au box, matériel
+// vérifié, puis départ. Ne s'applique jamais à une mission déjà en cours
+// (arrivee/probleme, matériel déjà pris) ni à une mission future (checklist
+// = "aujourd'hui" uniquement, rien à en dire avant).
+function checklistBlocksMission(m){
+  if(!m || m.statut !== 'acceptee') return false;
+  const todayStr = new Date().toISOString().slice(0,10);
+  if(m.date_prevue !== todayStr) return false;
+  // Le statut reste "acceptee" pendant TOUTE l'exécution sur place (jusqu'à
+  // "fait") — sans ce garde-fou, annuler la checklist en cours de route
+  // (bouton "pas encore fait") reverrouillerait une mission déjà entamée.
+  // Ne bloque donc que tant qu'aucun geste sur place n'a encore été fait.
+  if(m.client_notifie || m.photo_installation_ok || m.photo_retour_ok || m.vidange_ok) return false;
+  return Boolean(STATE.checklist) && STATE.checklist.nb_missions > 0 && !STATE.checklist.validated;
+}
+// Envoie vers la checklist en gardant en mémoire la mission à rouvrir une
+// fois validée — sans ça, valider la checklist depuis le verrou d'une
+// mission renvoie à l'Accueil au lieu de reprendre où on en était.
+function goToChecklistFromMission(missionId){
+  STATE.returnToMission = missionId;
+  switchTab('checklist');
+}
+function returnFromChecklist(){
+  const id = STATE.returnToMission;
+  STATE.returnToMission = null;
+  if(id && STATE.missions.find(m => m.id === id)) openMission(id);
+  else switchTab('accueil');
 }
 
 // Deux familles de badges, jamais confondues :
@@ -759,6 +809,17 @@ function renderDashboard(){
   let heroHtml;
   if(aFaireAujourd.length){
     heroHtml = heroFor(aFaireAujourd[0], aFaireAujourd.length>1?`${aFaireAujourd.length} missions à accepter`:'À accepter maintenant', `openMission(${aFaireAujourd[0].id})`, 'Voir et accepter →');
+  } else if(enCours.length && checklistBlocksMission(enCours[0])){
+    // Avant même de proposer "Continuer" sur la mission, le premier geste de
+    // la journée reste la checklist — cohérent avec le vrai parcours du
+    // livreur (passage au box avant de partir chez le premier client).
+    heroHtml = `
+      <div class="dash-hero">
+        <div class="eyebrow">Avant de démarrer</div>
+        <h2>🎒 Valider la checklist</h2>
+        <p>${enCours.length>1?`${enCours.length} missions t'attendent`:'Une mission t\'attend'} — récupère d'abord ton matériel au box.</p>
+        <button class="btn btn-blue btn-block" onclick="goToChecklistFromMission(${enCours[0].id})">Valider la checklist →</button>
+      </div>`;
   } else if(enCours.length){
     heroHtml = heroFor(enCours[0], enCours.length>1?`${enCours.length} missions en cours`:'Mission en cours', `openMission(${enCours[0].id})`, 'Continuer →');
   } else if(aFaireTotal.length){
@@ -784,12 +845,16 @@ function renderDashboard(){
       <div class="stat-tile"><div class="n" style="color:var(--green)">${gainsJour?Math.round(gainsJour/100)+' €':'—'}</div><div class="l">Gains du jour</div></div>
     </div>`;
 
-  const checklistCard = `
-    <div class="dash-link-card" onclick="switchTab('checklist')">
-      <span class="ic">🎒</span>
-      <span class="tx"><div class="t">Checklist avant de partir</div><div class="s">Matériel à récupérer au box</div></span>
+  // Un seul repère checklist sur toute la page : le "cadran bleu" ci-dessus
+  // s'en charge tant qu'elle bloque une mission. Une fois validée, ce même
+  // repère reprend cette place (plus discrète, plus besoin d'insister) pour
+  // le reste de la journée — jamais les deux en même temps.
+  const checklistCard = (STATE.checklist && STATE.checklist.nb_missions > 0 && STATE.checklist.validated) ? `
+    <div class="dash-link-card" onclick="STATE.returnToMission=null;switchTab('checklist')">
+      <span class="ic">✅</span>
+      <span class="tx"><div class="t">Checklist validée</div><div class="s">Voir la checklist du jour</div></span>
       <span class="chev">›</span>
-    </div>`;
+    </div>` : '';
 
   zone.innerHTML = pauseHtml + heroHtml + statsHtml + checklistCard;
 }
@@ -909,8 +974,25 @@ function missionCardHtml(m){
 // une ligne complète par rapport aux 2 rangées séparées précédentes.
 function missionCardActionsHtml(m, mapsUrl, tel){
   const mapBtn  = mapsUrl ? `<a class="mcard-icon-btn" href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="Itinéraire">🗺️</a>` : '';
-  const callBtn = tel     ? `<a class="mcard-icon-btn" href="tel:${encodeURIComponent(tel)}" onclick="event.stopPropagation()" title="Appeler">📞</a>` : '';
-  if(m.statut !== 'a_faire') return (mapBtn||callBtn) ? `<div class="mcard-actions">${mapBtn}${callBtn}</div>` : '';
+  if(m.statut !== 'a_faire'){
+    // Verrou checklist : pas de bouton d'appel direct depuis la carte tant
+    // qu'elle n'est pas validée — sans ça le numéro reste joignable en
+    // contournant l'écran verrouillé de renderDetail().
+    if(checklistBlocksMission(m)){
+      return `<div class="mcard-actions">${mapBtn}<button class="btn btn-grey" style="flex:1;min-width:0" onclick="event.stopPropagation();goToChecklistFromMission(${m.id})">🔒 Checklist requise</button></div>`;
+    }
+    const callBtn = tel ? `<a class="mcard-icon-btn" href="tel:${encodeURIComponent(tel)}" onclick="event.stopPropagation()" title="Appeler">📞</a>` : '';
+    // Bouton "Démarrer" explicite seulement pour une mission acceptée
+    // démarrable aujourd'hui — le geste qui compte dans la journée du
+    // livreur. Les autres cas (acceptée pour plus tard, déjà en cours,
+    // problème signalé) gardent la simple ligne d'icônes.
+    const todayStr = new Date().toISOString().slice(0,10);
+    if(m.statut === 'acceptee' && m.date_prevue === todayStr){
+      return `<div class="mcard-actions">${mapBtn}${callBtn}<button class="btn btn-blue" style="flex:1;min-width:0" onclick="event.stopPropagation();openMission(${m.id})">▶️ Démarrer</button></div>`;
+    }
+    return (mapBtn||callBtn) ? `<div class="mcard-actions">${mapBtn}${callBtn}</div>` : '';
+  }
+  const callBtn = tel ? `<a class="mcard-icon-btn" href="tel:${encodeURIComponent(tel)}" onclick="event.stopPropagation()" title="Appeler">📞</a>` : '';
   const hasMissionEnCours = isAnotherMissionEnCours(m.id, m.date_prevue);
   if(hasMissionEnCours){
     return `<div class="mcard-actions">${mapBtn}${callBtn}<button class="btn btn-red" style="flex:1;min-width:0" onclick="refuseFromList(${m.id},event)">✖ Non dispo</button></div>`;
@@ -1225,6 +1307,23 @@ function renderStepper(m){
 // bouton d'appel direct et toutes les actions propres à l'étape en cours.
 function renderDetail(){
   const m = STATE.currentMission;
+  // Verrou "démarrer" : tant que la checklist du jour n'est pas validée, on
+  // ne montre ni les coordonnées client (adresse précise, téléphone) ni les
+  // boutons d'appel/message — seule la checklist est accessible depuis là.
+  if(checklistBlocksMission(m)){
+    document.getElementById('detail-screen').innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <button class="detail-back" style="margin-bottom:14px" onclick="show('missions-screen')">← Retour</button>
+        <button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>
+      </div>
+      <div class="card">
+        <div class="eyebrow">Avant de démarrer</div>
+        <h1>🔒 Valide ta checklist</h1>
+        <p class="sub">Assure-toi d'avoir tout le matériel avant de partir — les coordonnées du client s'affichent une fois la checklist validée.</p>
+        <button class="btn btn-blue btn-block" onclick="goToChecklistFromMission(${m.id})">🎒 Voir la checklist</button>
+      </div>`;
+    return;
+  }
   const c = m.client || {};
   const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
   const started = m.statut !== 'a_faire';
@@ -1689,6 +1788,13 @@ async function demanderVirement(){
 async function loadChecklist(){
   const zone = document.getElementById('checklist-content');
   zone.innerHTML = '<p class="empty">Chargement…</p>';
+  // Arrivé ici depuis le verrou d'une mission (goToChecklistFromMission) : le
+  // retour doit reprendre cette mission, pas renvoyer à l'Accueil.
+  const backBtn = document.getElementById('checklist-back-btn');
+  if(backBtn){
+    if(STATE.returnToMission){ backBtn.textContent = '← Retour à la mission'; backBtn.onclick = returnFromChecklist; }
+    else{ backBtn.textContent = '← Accueil'; backBtn.onclick = () => switchTab('accueil'); }
+  }
   try{
     const r = await fetch(API('transporteur-checklist'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'get'})});
     const d = await r.json();
@@ -1736,7 +1842,14 @@ async function validerChecklist(){
   try{
     const r = await fetch(API('transporteur-checklist'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'valider'})});
     if(!r.ok) throw new Error((await r.json()).error||'Erreur');
-    await loadChecklist();
+    // Valider fait avancer directement vers la suite (la mission qu'on
+    // venait de débloquer, ou la liste des missions) plutôt que de laisser
+    // le livreur sur l'écran checklist — il n'y a rien de plus à y faire.
+    const r2 = await fetch(API('transporteur-checklist'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'get'})});
+    const d2 = await r2.json().catch(()=>null);
+    if(r2.ok && d2) STATE.checklist = d2;
+    if(STATE.returnToMission) returnFromChecklist();
+    else switchTab('missions');
   }catch(e){ alert(e.message||'Erreur'); }
 }
 async function annulerChecklist(){
