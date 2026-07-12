@@ -1474,6 +1474,7 @@ function renderReservationsToolbar(){
       <div class="periods" style="margin:16px 0">
         ${filters.map(f => `<button class="${!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER===f.key?'on':''}" onclick="setReservationsFilter('${f.key}')">${f.label}</button>`).join('')}
       </div>
+      ${RESERVATIONS_FILTER==='hors_zone'?`<div class="affect-hint">💡 Le code postal du client ne correspond à aucune ville configurée — aucun livreur n'est assigné automatiquement, choisis-en un toi-même sur chaque réservation.</div>`:''}
       <div id="resa-list" class="row-grid"></div>
       ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleMasquees()">${RESERVATIONS_SHOW_MASQUEES?'← Revenir aux réservations':`🙈 Afficher les réservations supprimées (${masqueesCount})`}</button>` : ''}
     </div>
@@ -1522,6 +1523,7 @@ function reservationCreerHtml(){
       </select>
       <label for="nr-parrain" style="margin-top:8px">Code parrain (optionnel)</label>
       <input type="text" id="nr-parrain"/>
+      <p class="sub" style="margin-top:4px;font-size:11.5px">💡 Ici le code n'est enregistré qu'à titre indicatif, contrairement au site — pense à déduire la remise toi-même dans "Prix total".</p>
       <label style="margin-top:8px">Motif de location (optionnel)</label>
       <div class="periods" id="nr-motifs" style="margin:0;flex-wrap:wrap;height:auto">
         ${['Chaleur','Bébé / Santé','Airbnb / Location','Événement'].map(m => `<button type="button" data-motif="${m}" onclick="this.classList.toggle('on')" style="flex:none;padding:8px 14px">${m}</button>`).join('')}
@@ -1904,6 +1906,7 @@ function renderLivraisonsToolbar(){
       <div class="periods" style="margin:16px 0">
         ${filters.map(f => `<button class="${!LIVRAISONS_SHOW_MASQUEES && LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
       </div>
+      ${LIVRAISONS_FILTER==='non_assignees'?`<div class="affect-hint">💡 Les nouvelles missions sont assignées automatiquement selon la zone et la disponibilité du livreur (regroupées par code postal quand possible). Le badge rouge en haut ne compte que ce qui est dû sous 72h — cette liste montre tout, y compris ce qui peut attendre.</div>`:''}
       <div id="liv-list" class="row-grid"></div>
       ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleLivraisonsMasquees()">${LIVRAISONS_SHOW_MASQUEES?'← Revenir aux missions':`🙈 Afficher les missions supprimées (${masqueesCount})`}</button>` : ''}
     </div>
@@ -2158,7 +2161,6 @@ function renderLivraisons(){
           <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
         </div>
         <div style="margin-bottom:6px">${missionTypeBadge(m.type)}</div>
-        ${nonAssignee?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-bottom:4px">🔔 Non assignée</div>`:''}
         ${res.hors_zone?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-bottom:4px">⚠️ Hors zone</div>`:''}
         ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="row-meta" style="font-weight:700;color:var(--blue)">🔢 Unité${m.appareil_numeros.length>1?'s':''} n°${m.appareil_numeros.join(', ')}${(m.appareil_references&&m.appareil_references.length)?' · '+m.appareil_references.map(escHtml).join(', '):''}</div>`:''}
         <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
@@ -2167,7 +2169,7 @@ function renderLivraisons(){
         ${(m.duree_trajet_min!=null || m.duree_sur_place_min!=null)?`<div class="row-meta">🕐 ${m.duree_trajet_min!=null?m.duree_trajet_min+' min trajet':''}${m.duree_trajet_min!=null&&m.duree_sur_place_min!=null?' · ':''}${m.duree_sur_place_min!=null?m.duree_sur_place_min+' min sur place':''}</div>`:''}
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
         ${m.client_notifie_at?`<div class="row-meta" style="color:var(--green)">✅ Client notifié ${frDateHeure(m.client_notifie_at)}</div>`:''}
-        ${(['recuperation','changement'].includes(m.type) && m.statut==='fait')?`<div class="row-meta" style="color:${m.vidange_confirmee?'var(--green)':'var(--amber)'};">${m.vidange_confirmee?'✅ Vidange confirmée':'⚠️ Vidange non confirmée'}</div>`:''}
+        ${(['recuperation','changement'].includes(m.type) && m.statut==='fait' && !m.vidange_confirmee)?`<div class="row-meta" style="color:var(--amber)">⚠️ Vidange non confirmée</div>`:''}
         <div class="row-actions">
           ${contactButtonsHtml(res.tel)}
           ${nonAssignee?`<div style="width:100%;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--red);margin-bottom:-2px">Assigner un transporteur →</div>`:''}
@@ -2331,7 +2333,7 @@ function renderAffectBoard(){
   }).join('') || '<p class="empty">Aucun transporteur actif.</p>';
 
   zone.innerHTML = `
-    <p class="affect-hint">🖐️ Glisse une mission d'une colonne à l'autre pour l'affecter. Rien n'est appliqué avant "Mettre à jour".</p>
+    <p class="affect-hint">🖐️ Glisse une mission d'une colonne à l'autre pour l'affecter. Rien n'est appliqué avant "Mettre à jour". Seules les missions d'aujourd'hui apparaissent ici — pour une autre date, utilise la Liste.</p>
     <div class="affect-cols">
       <div class="affect-col">
         <div class="affect-col-title">À affecter</div>
@@ -2883,6 +2885,7 @@ async function openTransporteurStats(id){
         <div style="font-size:40px;font-weight:900;color:${scoreColor}">${p.score != null ? p.score : '—'}</div>
         <div style="font-size:12px;color:var(--grey)">Score de performance</div>
       </div>
+      <div class="affect-hint">💡 Le score pondère surtout la complétion (30%) et l'acceptation (25%) — les preuves terrain et l'absence d'incident comptent moins mais s'additionnent.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
         <div class="card" style="padding:12px;text-align:center">
           <div style="font-size:22px;font-weight:800">${d.total||0}</div>
