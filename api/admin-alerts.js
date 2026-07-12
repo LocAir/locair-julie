@@ -72,14 +72,17 @@ module.exports = async (req, res) => {
       .in('reservation_id', resaIds).eq('statut', 'ouvert');
     const incidents = incidentsCount || 0;
 
-    // Récupérations en retard : date_prevue dépassée, mission pas encore faite.
-    // Chaque retard = un appareil chez le client au-delà du délai prévu — risque
-    // financier et stock bloqué, à traiter en priorité.
+    // Missions en retard, tous types confondus (livraison, récupération,
+    // changement) : date_prevue dépassée, mission pas encore faite. Une
+    // livraison ou un remplacement en retard laisse un client sans clim —
+    // au moins aussi urgent qu'une récupération en retard (appareil bloqué
+    // chez le client) — donc pas de restriction de type ici : l'onglet
+    // Livraisons a lui-même un filtre "En retard" tous types confondus,
+    // ce compteur doit correspondre exactement à ce qu'il affiche.
     const todayStr = new Date().toISOString().slice(0, 10);
     const { count: retardsCount } = await supabase
       .from('livraisons').select('id', { count: 'exact', head: true })
       .in('reservation_id', resaIds)
-      .eq('type', 'recuperation')
       .in('statut', ['a_faire', 'acceptee'])
       .lt('date_prevue', todayStr);
     const retards = retardsCount || 0;

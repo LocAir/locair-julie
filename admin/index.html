@@ -888,7 +888,7 @@ function renderAlertsBanner(d){
   // ambre) plutôt que 4 couleurs inventées à la volée — et triés du plus
   // urgent au moins urgent pour donner une vraie hiérarchie à la pile.
   const alerts = [];
-  if(d.retards > 0)       alerts.push({sev:1, msg:`🚨 ${d.retards} récupération${d.retards>1?'s':''} en retard`, fn:"goToRetards()"});
+  if(d.retards > 0)       alerts.push({sev:1, msg:`🚨 ${d.retards} mission${d.retards>1?'s':''} en retard`, fn:"goToRetards()"});
   if(d.non_assignees > 0) alerts.push({sev:1, msg:`⚠️ ${d.non_assignees} mission${d.non_assignees>1?'s':''} non assignée${d.non_assignees>1?'s':''} sous 72h`, fn:"goToUnassigned()"});
   if(d.incidents > 0)     alerts.push({sev:1, msg:`🧯 ${d.incidents} incident${d.incidents>1?'s':''} ouvert${d.incidents>1?'s':''}`, fn:"switchAdminTab('incidents')"});
   if(d.reservations > 0)  alerts.push({sev:2, msg:`🧾 ${d.reservations} réservation${d.reservations>1?'s':''} à traiter`, fn:"switchAdminTab('reservations')"});
@@ -900,8 +900,8 @@ function renderAlertsBanner(d){
     </div>`
   ).join('');
 }
-function goToUnassigned(){ LIVRAISONS_FILTER = 'non_assignees'; switchAdminTab('livraisons'); }
-function goToRetards(){ LIVRAISONS_FILTER = 'toutes'; switchAdminTab('livraisons'); }
+function goToUnassigned(){ LIVRAISONS_FILTER = 'non_assignees'; LIVRAISONS_NON_ASSIGNEES_ALERT_ONLY = true; switchAdminTab('livraisons'); }
+function goToRetards(){ LIVRAISONS_FILTER = 'en_retard'; switchAdminTab('livraisons'); }
 
 // ── Actualisation automatique de l'onglet ouvert ──────────────────────────────
 // Ce que voit l'admin ne doit pas se figer pendant qu'un livreur avance sur le
@@ -1760,6 +1760,16 @@ function renderReservationsCalendrier(){
       ${items.map(res => reservationRowHtml(res, true)).join('')}`;
   }).join('');
 }
+// Date qui détermine l'urgence d'une réservation : tant que la livraison n'a
+// pas encore eu lieu (date_debut pas encore passée), c'est elle qui presse ;
+// une fois la période démarrée, c'est la date de récupération (date_fin) qui
+// devient l'échéance à surveiller. Un filtre comme "Actives" mélange les deux
+// cas (livraisons à venir et récupérations à venir) — calculer la bonne date
+// au cas par cas évite de trier la moitié de la liste sur le mauvais champ.
+function resaUrgencyDate(r){
+  const todayStr = new Date().toISOString().slice(0,10);
+  return (r.date_debut && r.date_debut >= todayStr) ? r.date_debut : (r.date_fin || r.date_debut || '');
+}
 function renderReservations(){
   const list = document.getElementById('resa-list');
   if(!list) return;
@@ -1775,6 +1785,16 @@ function renderReservations(){
   else if(!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER !== 'toutes') items = items.filter(r => r.statut === RESERVATIONS_FILTER);
   if(q){
     items = items.filter(r => [r.ref, r.prenom, r.nom, r.adresse, r.tel].filter(Boolean).join(' ').toLowerCase().includes(q));
+  }
+  // Les plus urgentes (date la plus proche/la plus en retard) en premier —
+  // sur les filtres où l'urgence compte : "Actives" et les filtres par statut
+  // qui restent à traiter (en attente, confirmées, hors zone, prolongations).
+  // "Annulées"/"Terminées" gardent l'ordre par défaut de l'API (création la
+  // plus récente en premier) : une fois close, une réservation n'a plus
+  // d'échéance à surveiller, seul "la dernière en date" est utile à retrouver.
+  const RESA_URGENCY_FILTERS = ['toutes', 'hors_zone', 'prolongation', 'en_attente', 'confirmee'];
+  if(!RESERVATIONS_SHOW_MASQUEES && RESA_URGENCY_FILTERS.includes(RESERVATIONS_FILTER)){
+    items = [...items].sort((a,b) => resaUrgencyDate(a).localeCompare(resaUrgencyDate(b)));
   }
   list.innerHTML = items.map(r => reservationRowHtml(r)).join('') || `<p class="empty">🧾 ${RESERVATIONS_SHOW_MASQUEES?'Aucune réservation supprimée.':'Aucune réservation pour l\'instant.'}</p>`;
 }
@@ -1982,6 +2002,12 @@ let LIVRAISONS_CACHE = [];
 let LIVRAISONS_FILTER = 'toutes';
 let LIVRAISONS_SHOW_MASQUEES = false;
 let LIVRAISONS_VIEW = 'liste';
+// Vrai uniquement juste après un clic sur l'alerte "non assignées" du bandeau
+// (voir goToUnassigned) — restreint la liste aux missions dues sous 72h pour
+// coller exactement au chiffre compté par api/admin-alerts.js. Un clic manuel
+// sur le bouton de filtre "Non assignées" repart à zéro et montre tout,
+// comme avant (voir setLivraisonsFilter).
+let LIVRAISONS_NON_ASSIGNEES_ALERT_ONLY = false;
 
 async function loadLivraisons(){
   const zone = document.getElementById('tab-livraisons');
@@ -2033,6 +2059,7 @@ function renderLivraisonsToolbar(){
     {key:'toutes', label:'Actives'},
     {key:'a_venir', label:'📅 À venir'},
     {key:'non_assignees', label:`⚠️ Non assignées${nonAssigneesCount?' ('+nonAssigneesCount+')':''}`},
+    {key:'en_retard', label:'🚨 En retard'},
     {key:'en_cours', label:'En cours'},
     {key:'fait', label:'Terminées'},
     {key:'probleme', label:'Problèmes'},
@@ -2070,7 +2097,7 @@ function renderLivraisonsToolbar(){
       <div class="periods" style="margin:16px 0">
         ${filters.map(f => `<button class="${!LIVRAISONS_SHOW_MASQUEES && LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
       </div>
-      ${LIVRAISONS_FILTER==='non_assignees'?`<div class="affect-hint">💡 Les nouvelles missions sont assignées automatiquement selon la zone et la disponibilité du livreur (regroupées par code postal quand possible). Le badge rouge en haut ne compte que ce qui est dû sous 72h — cette liste montre tout, y compris ce qui peut attendre.</div>`:''}
+      ${LIVRAISONS_FILTER==='non_assignees'?(LIVRAISONS_NON_ASSIGNEES_ALERT_ONLY?`<div class="affect-hint">💡 Vue filtrée depuis l'alerte du bandeau : uniquement les missions non assignées dues sous 72h (ou déjà en retard) — exactement ce qui a été compté. <a href="#" onclick="event.preventDefault();setLivraisonsFilter('non_assignees')">Voir toutes les non assignées →</a></div>`:`<div class="affect-hint">💡 Les nouvelles missions sont assignées automatiquement selon la zone et la disponibilité du livreur (regroupées par code postal quand possible). Le badge rouge en haut ne compte que ce qui est dû sous 72h — cette liste montre tout, y compris ce qui peut attendre.</div>`):''}
       <div id="liv-list" class="row-grid"></div>
       ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleLivraisonsMasquees()">${LIVRAISONS_SHOW_MASQUEES?'← Revenir aux missions':`🙈 Afficher les missions supprimées (${masqueesCount})`}</button>` : ''}
     </div>
@@ -2244,7 +2271,7 @@ async function openCreateMissionModal(){
     }
   };
 }
-function setLivraisonsFilter(key){ LIVRAISONS_SHOW_MASQUEES = false; LIVRAISONS_FILTER = key; renderLivraisonsToolbar(); renderLivraisons(); }
+function setLivraisonsFilter(key){ LIVRAISONS_SHOW_MASQUEES = false; LIVRAISONS_FILTER = key; LIVRAISONS_NON_ASSIGNEES_ALERT_ONLY = false; renderLivraisonsToolbar(); renderLivraisons(); }
 function toggleLivraisonsMasquees(){ LIVRAISONS_SHOW_MASQUEES = !LIVRAISONS_SHOW_MASQUEES; renderLivraisonsToolbar(); renderLivraisons(); }
 
 function renderLivraisons(){
@@ -2258,7 +2285,26 @@ function renderLivraisons(){
     // isole les missions déjà acceptées à l'avance (voir date-gate côté
     // transporteur) de ce qui reste réellement à traiter aujourd'hui.
     if(LIVRAISONS_FILTER === 'a_venir') items = items.filter(m => m.date_prevue > new Date().toISOString().slice(0,10) && !['fait','annule'].includes(m.statut));
-    else if(LIVRAISONS_FILTER === 'non_assignees') items = items.filter(m => m.statut==='a_faire' && !m.transporteur);
+    else if(LIVRAISONS_FILTER === 'non_assignees'){
+      items = items.filter(m => m.statut==='a_faire' && !m.transporteur);
+      // Venue du bandeau d'alerte : le compteur ne compte que ce qui est dû
+      // sous 72h (voir api/admin-alerts.js) — sans ce filtre en plus ici, le
+      // clic sur "3 non assignées" atterrirait sur une liste qui en montre
+      // plus, et le chiffre du bandeau perdrait toute crédibilité.
+      if(LIVRAISONS_NON_ASSIGNEES_ALERT_ONLY){
+        const horizon = new Date(); horizon.setDate(horizon.getDate()+3);
+        const horizonStr = horizon.toISOString().slice(0,10);
+        items = items.filter(m => m.date_prevue <= horizonStr);
+      }
+    }
+    // "En retard" : mêmes critères que l'alerte 🚨 du bandeau (api/admin-alerts.js)
+    // — tous types de mission confondus (une livraison ou un remplacement en
+    // retard est au moins aussi urgent qu'une récupération), statut pas
+    // encore commencé/terminé, date prévue dépassée.
+    else if(LIVRAISONS_FILTER === 'en_retard'){
+      const todayStr = new Date().toISOString().slice(0,10);
+      items = items.filter(m => ['a_faire','acceptee'].includes(m.statut) && m.date_prevue < todayStr);
+    }
     // "En cours" = réellement actif maintenant, pas juste accepté à
     // l'avance (voir "À venir" ci-dessus) ni "Nouvelle"/non démarrée
     // (a_faire) — même logique que côté transporteur (missionEstEnCours).
@@ -2282,6 +2328,18 @@ function renderLivraisons(){
       const haystack = [res.ref, res.prenom, res.nom, res.adresse].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(q);
     });
+  }
+
+  // Urgence d'abord : la date prévue la plus ancienne (donc la plus en
+  // retard) en tête, sur les filtres où ça compte vraiment pour Aly — ce
+  // qu'il reste à traiter. Le tri par défaut de l'API (date la plus future
+  // en premier) reste tel quel pour "À venir", "Terminées" et "Annulées" :
+  // pour "Terminées"/"Annulées" c'est le plus récent d'abord qui est utile
+  // (retrouver une mission qui vient de se terminer), et "À venir" n'a rien
+  // d'urgent par définition. Le Calendrier a sa propre logique, pas concerné.
+  const LIVRAISONS_URGENCY_FILTERS = ['toutes', 'non_assignees', 'en_retard', 'en_cours', 'probleme'];
+  if(!LIVRAISONS_SHOW_MASQUEES && LIVRAISONS_URGENCY_FILTERS.includes(LIVRAISONS_FILTER)){
+    items = [...items].sort((a,b) => (a.date_prevue||'').localeCompare(b.date_prevue||''));
   }
 
   if(!items.length){ list.innerHTML = '<p class="empty">🚚 Aucune mission ne correspond.</p>'; return; }
