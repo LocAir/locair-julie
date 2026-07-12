@@ -401,8 +401,11 @@ let _watchId = null;
 let _lastPositionSentAt = 0;
 
 function hasActiveTravelMission(){
-  const todayStr = new Date().toISOString().slice(0,10);
-  const activeToday = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut) && m.date_prevue<=todayStr);
+  // Réutilise missionEstEnCours (défini plus bas, hissé par le hoisting des
+  // déclarations de fonction) pour rester cohérent avec le badge/filtre
+  // "En cours" — une mission en "problème" reste active, elle ne doit pas
+  // couper le suivi de position en cours de route.
+  const activeToday = STATE.missions.filter(missionEstEnCours);
   if(!activeToday.length) return false;
   // Une mission déjà entamée (client prévenu, preuve prise) garde le suivi
   // actif même si la checklist a depuis été "dé-validée" par erreur — seul
@@ -805,7 +808,10 @@ function renderDashboard(){
   const todayStr = new Date().toISOString().slice(0,10);
   const aFaireAujourd = STATE.missions.filter(m => m.statut==='a_faire' && m.date_prevue===todayStr);
   const aFaireTotal   = STATE.missions.filter(m => m.statut==='a_faire');
-  const enCours = STATE.missions.filter(m => ['acceptee','arrivee'].includes(m.statut) && m.date_prevue<=todayStr)
+  // missionEstEnCours (plus bas dans le fichier) inclut aussi "probleme" —
+  // sans ça, une mission signalée en problème disparaissait de l'Accueil
+  // ("tu es à jour") alors qu'elle reste active et affichée ailleurs.
+  const enCours = STATE.missions.filter(missionEstEnCours)
     .sort((a,b) => missionUrgenceRang(a)-missionUrgenceRang(b));
   const countJour = STATE.missions.filter(m => m.date_prevue===todayStr && !['annule','refusee'].includes(m.statut)).length;
   const gainsJour = STATE.missions.filter(m => m.date_prevue===todayStr && !['annule','refusee'].includes(m.statut))
@@ -862,7 +868,7 @@ function renderDashboard(){
   const statsHtml = `
     <div class="stat-row">
       <div class="stat-tile"><div class="n">${countJour}</div><div class="l">Missions aujourd'hui</div></div>
-      <div class="stat-tile"><div class="n" style="color:var(--green)">${gainsJour?Math.round(gainsJour/100)+' €':'—'}</div><div class="l">Gains du jour</div></div>
+      <div class="stat-tile"><div class="n" style="color:var(--green)">${gainsJour?Math.round(gainsJour/100)+' €':'—'}</div><div class="l">Prévu aujourd'hui</div></div>
     </div>`;
 
   // Un seul repère checklist sur toute la page : le "cadran bleu" ci-dessus

@@ -189,12 +189,12 @@ module.exports = async (req, res) => {
   // ── 5. Alerte stock saturé J+7 ───────────────────────────────────────────────
   // Aucun appareil disponible dans 7 jours → push admin.
   try {
-    const { data: cities } = await supabase.from('cities').select('id, nom').eq('actif', true);
+    const { data: cities } = await supabase.from('cities').select('id, name').eq('actif', true);
     for (const city of cities || []) {
       const dispo = await getAvailability(supabase, city.id, in7dStr, in8dStr);
       if (dispo === 0) {
         await pushToAdmin(supabase, {
-          title: `📦 Stock saturé dans 7 jours — ${city.nom}`,
+          title: `📦 Stock saturé dans 7 jours — ${city.name}`,
           body:  `Aucun appareil libre le ${in7dStr}. Pensez à activer le mode complet si nécessaire.`,
           tag:   `stock-sature-${city.id}-${in7dStr}`,
         });
