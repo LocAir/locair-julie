@@ -2905,9 +2905,9 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 <!-- PROLONGATION CTA -->
 <section style="background:var(--bg);padding:96px var(--pad) 0;text-align:center">
   <div style="max-width:520px;margin:0 auto;background:#0d1829;border-radius:20px;padding:28px 28px;border-top:2px solid var(--blue)">
-    <p style="font-family:var(--disp);font-size:22px;font-weight:300;color:#f4f0ea;line-height:1.2;margin-bottom:8px;letter-spacing:-.01em">Votre location<br>se termine bientôt ?</p>
-    <p style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.65;margin-bottom:20px">Prolongez directement en ligne, en moins de 2 minutes.</p>
-    <a href="/prolongation" style="display:inline-block;padding:12px 28px;background:rgba(99,162,255,.15);color:#a8c8ff;border:1.5px solid rgba(99,162,255,.3);border-radius:980px;font-size:13px;font-weight:500;font-family:var(--body);text-decoration:none;transition:background .15s">Prolonger ma location →</a>
+    <p style="font-family:var(--disp);font-size:22px;font-weight:300;color:#f4f0ea;line-height:1.2;margin-bottom:8px;letter-spacing:-.01em" id="prolong-cta-h">Votre location<br>se termine bientôt ?</p>
+    <p style="font-size:13px;color:rgba(255,255,255,.5);line-height:1.65;margin-bottom:20px" id="prolong-cta-p">Prolongez directement en ligne, en moins de 2 minutes.</p>
+    <a href="/prolongation" style="display:inline-block;padding:12px 28px;background:rgba(99,162,255,.15);color:#a8c8ff;border:1.5px solid rgba(99,162,255,.3);border-radius:980px;font-size:13px;font-weight:500;font-family:var(--body);text-decoration:none;transition:background .15s" id="prolong-cta-btn">Prolonger ma location →</a>
   </div>
 </section>
 
@@ -3694,11 +3694,11 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             </div>
             <div class="zone-confirm" id="zone-confirm" aria-live="polite">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              Adresse enregistrée
+              <span id="zone-confirm-txt">Adresse enregistrée</span>
             </div>
             <div id="zone-delivery-notice" aria-live="polite" style="display:none;margin-top:8px;padding:10px 13px;background:#fff8ee;border:1.5px solid #e8d5a3;border-radius:10px;font-size:12.5px;color:#92400e;line-height:1.55;align-items:flex-start;gap:8px">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              <span>Livraison hors zone standard : <strong>95 €</strong> — votre adresse est en dehors de Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche ou Beaulieu-sur-Mer.</span>
+              <span id="zone-notice-txt">Livraison hors zone standard : <strong>95 €</strong> — votre adresse est en dehors de Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche ou Beaulieu-sur-Mer.</span>
             </div>
           </div>
         </div>
@@ -5282,7 +5282,7 @@ function closeModal(){
 function overlayClick(e){
   if(e.target!==document.getElementById('overlay'))return;
   if(curStep>=2&&(document.getElementById('f-addr')?.value.trim()||document.getElementById('f-prenom')?.value.trim())){
-    if(!confirm('Fermer ? Votre réservation sera perdue.'))return;
+    if(!confirm(_lang==='en'?'Close? Your booking will be lost.':'Fermer ? Votre réservation sera perdue.'))return;
   }
   closeModal();
 }
@@ -5638,7 +5638,7 @@ function buildRecap(){
           <span>${_techInstall?'25 €':(isEN?'Kit included':'Kit fourni')}</span>
         </div>
         <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:${_promoDiscount>0?'4px':'10px'}">
-          <span class="rc-total-lbl">${isEN?'Delivery & collection':'Livraison & récupération'}${DELIVERY_FEE>35?' <span style="font-size:10px;background:#fff8ee;color:#92400e;padding:1px 6px;border-radius:100px;border:1px solid #e8d5a3">hors zone</span>':''}</span>
+          <span class="rc-total-lbl">${isEN?'Delivery & collection':'Livraison & récupération'}${DELIVERY_FEE>35?' <span style="font-size:10px;background:#fff8ee;color:#92400e;padding:1px 6px;border-radius:100px;border:1px solid #e8d5a3'>'+(_lang==='en'?'out of zone':'hors zone')+'</span>':''}</span>
           <span>${DELIVERY_FEE} €</span>
         </div>
         ${_promoDiscount>0?`<div class="rc-total-row" style="font-size:12px;color:#059669;font-weight:600;margin-bottom:10px">
@@ -5874,7 +5874,7 @@ function submitForm(btn,mode){
   _submitting=true;
   const origLabel=btn?btn.innerHTML:'';
   if(btn&&!btn.disabled){
-    btn.innerHTML='Envoi…';
+    btn.innerHTML=_lang==='en'?'Sending…':'Envoi…';
     btn.disabled=true;
   }
   const prenom=document.getElementById('f-prenom')?.value.trim()||'';
@@ -6054,9 +6054,9 @@ function submitForm(btn,mode){
   const _mo=new Date().getMonth();
   const _isPreSeason=(_mo===3||_mo===4);
   const _retMsg=_isPreSeason
-    ?'Créneaux limités cet été — réservez maintenant'
-    :'Bienvenue, <strong>'+escHtml(prev.prenom)+'</strong> — vos infos seront pré-remplies.';
-  bar.innerHTML=_retMsg+' <button type="button" onclick="openModal()" style="padding:3px 12px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:100px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--body);white-space:nowrap">Réserver →</button><button type="button" onclick="document.getElementById(\'return-bar\').remove()" aria-label="Fermer" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;line-height:1;padding:0 0 0 4px">✕</button>';
+    ?(_lang==='en'?'Limited slots this summer — book now':'Créneaux limités cet été — réservez maintenant')
+    :(_lang==='en'?'Welcome back, <strong>'+escHtml(prev.prenom)+'</strong> — your details will be pre-filled.':'Bienvenue, <strong>'+escHtml(prev.prenom)+'</strong> — vos infos seront pré-remplies.');
+  bar.innerHTML=_retMsg+' <button type="button" onclick="openModal()" style="padding:3px 12px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:100px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--body);white-space:nowrap">'+(_lang==='en'?'Book →':'Réserver →')+'</button><button type="button" onclick="document.getElementById(\'return-bar\').remove()" aria-label="Fermer" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;line-height:1;padding:0 0 0 4px">✕</button>';
   const hero=document.querySelector('.hero');
   if(hero){hero.style.position='relative';hero.appendChild(bar);}
   // Pré-remplir le modal à l'ouverture
@@ -6210,8 +6210,16 @@ const LANG_MAP=[
   ['#nav-menu-dd .nav-menu-link:nth-child(2)','text','Tarifs','Pricing'],
   ['#nav-menu-dd .nav-menu-link:nth-child(3)','text','Avis clients','Reviews'],
   ['#nav-menu-dd .nav-menu-link:nth-child(4)','text','FAQ','FAQ'],
+  ['#nav-menu-dd .nav-menu-prolong','text','Prolonger ma location','Extend my rental'],
   ['.nav-menu-cta','text','Réserver →','Book →'],
   /* ubar */
+  /* prolongation CTA card */
+  ['#prolong-cta-h','html','Votre location<br>se termine bientôt ?','Rental ending<br>soon?'],
+  ['#prolong-cta-p','text','Prolongez directement en ligne, en moins de 2 minutes.','Extend online in less than 2 minutes.'],
+  ['#prolong-cta-btn','text','Prolonger ma location →','Extend my rental →'],
+  /* zone confirm & notice */
+  ['#zone-confirm-txt','text','Adresse enregistrée','Address saved'],
+  ['#zone-notice-txt','html','Livraison hors zone standard : <strong>95 €</strong> — votre adresse est en dehors de Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche ou Beaulieu-sur-Mer.','Delivery outside standard zone: <strong>€95</strong> — your address is outside Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche or Beaulieu-sur-Mer.'],
   ['.ubar','html','Loc\'Air · Nice · <strong>Depuis 2019</strong> &nbsp;·&nbsp; Kit fourni &nbsp;·&nbsp; 7j/7 · 8h–20h','Loc\'Air · Nice · <strong>Since 2019</strong> &nbsp;·&nbsp; Kit included &nbsp;·&nbsp; 7d/7 · 8am–8pm'],
   /* hero */
   ['.hero-eye','text','Nice · 7j/7','Nice · 7d/7'],
@@ -6618,8 +6626,8 @@ const LANG_SEQ=[
      '<strong>48h before end of rental</strong> — our team calls to coordinate collection']],
   /* footer navigation links */
   ['#fnav-main a','text',
-    ['Comment ça marche','Tarifs','FAQ','À propos','Réserver'],
-    ['How it works','Pricing','FAQ','About','Book now']],
+    ['Comment ça marche','Tarifs','FAQ','À propos','Réserver','Prolonger ma location'],
+    ['How it works','Pricing','FAQ','About','Book now','Extend my rental']],
   ['#fnav-services a','text',
     ['Location clim mobile','Livraison & installation','Entretien inclus','Remboursement si panne','Contrat électronique'],
     ['Mobile AC rental','Delivery & setup','Maintenance included','Breakdown? Replaced or refunded','Electronic contract']],
@@ -7513,7 +7521,7 @@ async function startProlongPayment(){
   const errEl=document.getElementById('prolong-error');
   const origLbl=lbl?.textContent||'Procéder au paiement';
   if(btn)btn.disabled=true;
-  if(lbl)lbl.textContent='Chargement…';
+  if(lbl)lbl.textContent=_lang==='en'?'Loading…':'Chargement…';
   if(errEl)errEl.style.display='none';
 
   const jours=_prolongDays;
