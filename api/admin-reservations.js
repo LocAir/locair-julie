@@ -34,7 +34,7 @@ module.exports = async (req, res) => {
     // puis confirmée immédiatement : contrairement à un panier du site, il n'y a
     // pas de risque d'abandon puisque l'admin sait déjà que le client s'engage.
     if (action === 'create') {
-      const prenom  = (body.prenom  || '').trim().slice(0, 200);
+      let prenom    = (body.prenom  || '').trim().slice(0, 200);
       const nom     = (body.nom     || '').trim().slice(0, 200);
       const tel     = (body.tel     || '').trim().slice(0, 50);
       const telSecondaire = (body.tel_secondaire || '').trim().slice(0, 50);
@@ -49,8 +49,20 @@ module.exports = async (req, res) => {
       const installation = (body.installation || '').trim().slice(0, 100);
       const instructionsAcces = (body.instructions_acces || '').trim().slice(0, 1000);
       const creneau     = (body.creneau_livraison || '').trim().slice(0, 500);
-      const dateDebut = (body.date_debut || '').slice(0, 10);
-      const dateFin    = (body.date_fin   || '').slice(0, 10);
+      // Aucun champ obligatoire pour une réservation créée à la main (prise
+      // au téléphone vite fait) — ce qui manque est complété avec des valeurs
+      // par défaut sûres, à corriger plus tard depuis la fiche client. Les
+      // dates restent structurellement nécessaires (elles pilotent le calcul
+      // du stock disponible et la date des missions livraison/récupération),
+      // donc jamais laissées vides : à défaut, aujourd'hui → +7 jours.
+      let dateDebut = (body.date_debut || '').slice(0, 10);
+      if (!isValidDate(dateDebut)) dateDebut = new Date().toISOString().slice(0, 10);
+      let dateFin = (body.date_fin || '').slice(0, 10);
+      if (!isValidDate(dateFin) || dateFin <= dateDebut) {
+        const d = new Date(dateDebut + 'T12:00:00Z');
+        d.setUTCDate(d.getUTCDate() + 7);
+        dateFin = d.toISOString().slice(0, 10);
+      }
       const quantite   = Math.min(5, Math.max(1, parseInt(body.quantite) || 1));
       const prixTotalCents = Math.max(0, parseInt(body.prix_total_cents) || 0);
       const logement    = (body.logement     || '').trim().slice(0, 100);
@@ -64,10 +76,7 @@ module.exports = async (req, res) => {
       // true pour ne pas changer le comportement des appelants existants.
       const confirmerImmediat = body.confirmer !== false;
 
-      if (!prenom || !nom || !adresse) return res.status(400).json({ error: 'Prénom, nom et adresse requis' });
-      if (!isValidDate(dateDebut) || !isValidDate(dateFin) || dateFin <= dateDebut) {
-        return res.status(400).json({ error: 'Dates invalides' });
-      }
+      if (!prenom) prenom = 'Client';
 
       const disponibles = await getAvailability(supabase, city.id, dateDebut, dateFin);
       if (disponibles < quantite) {

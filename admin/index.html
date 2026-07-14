@@ -2191,8 +2191,8 @@ async function openCreateMissionModal(){
         </div>
       </div>
       <div id="cm-autre" class="hidden" style="margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--r-sm)">
-        <p class="sub" style="margin:0 0 10px">Pour une tâche qui ne concerne pas un client (ex. aller chercher du matériel livré par un fournisseur et le ramener au box). Pas de barème ici — tu fixes le tarif toi-même.</p>
-        <label for="cm-a-titre">Titre *</label>
+        <p class="sub" style="margin:0 0 10px">Pour une tâche qui ne concerne pas un client (ex. aller chercher du matériel livré par un fournisseur et le ramener au box). Pas de barème ici — tu fixes le tarif toi-même. Aucun champ n'est obligatoire ici : remplis juste ce que tu sais, tu pourras compléter plus tard.</p>
+        <label for="cm-a-titre">Instructions (optionnel)</label>
         <input type="text" id="cm-a-titre" placeholder="Ex. Récupérer livraison fournisseur"/>
         <label for="cm-a-adresse" style="margin-top:8px">Adresse (optionnel)</label>
         <input type="text" id="cm-a-adresse" placeholder="Ex. adresse du fournisseur"/>
@@ -2205,8 +2205,8 @@ async function openCreateMissionModal(){
           <div><label for="cm-a-date">Date</label><input type="date" id="cm-a-date" value="${today}"/></div>
           <div><label for="cm-a-creneau">Créneau</label><input type="text" id="cm-a-creneau" placeholder="8h–10h"/></div>
         </div>
-        <label for="cm-a-tarif" style="margin-top:8px">Tarif payé au transporteur (€) *</label>
-        <input type="number" id="cm-a-tarif" min="0" step="0.5"/>
+        <label for="cm-a-tarif" style="margin-top:8px">Tarif payé au transporteur (€)</label>
+        <input type="number" id="cm-a-tarif" min="0" step="0.5" placeholder="0"/>
       </div>
       <div id="cm-existing-resa" class="hidden">
         <label for="cm-type">Type</label>
@@ -2250,14 +2250,15 @@ async function openCreateMissionModal(){
       // confirmation crée déjà toute seule les missions livraison/récupération
       // et les dispatche, inutile (et faux) d'en recréer une par-dessus.
       if(document.getElementById('cm-resa').value === '__new__'){
+        // Aucun champ obligatoire ici : ce qui manque est complété côté
+        // serveur avec des valeurs par défaut sûres (voir admin-reservations.js)
+        // — utile pour une réservation prise vite au téléphone, à compléter
+        // plus tard depuis la fiche client.
         const prenom = document.getElementById('cm-c-prenom').value.trim();
         const nom = document.getElementById('cm-c-nom').value.trim();
         const adresse = document.getElementById('cm-c-adresse').value.trim();
         const date_debut = document.getElementById('cm-c-debut').value;
         const date_fin = document.getElementById('cm-c-fin').value;
-        if(!prenom || !nom || !adresse || !date_debut || !date_fin){
-          throw new Error('Prénom, nom, adresse et dates sont obligatoires pour le nouveau client.');
-        }
         const rr = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
           action: 'create', prenom, nom, adresse, date_debut, date_fin,
           tel: document.getElementById('cm-c-tel').value.trim(),
@@ -2275,10 +2276,10 @@ async function openCreateMissionModal(){
         return;
       }
       if(document.getElementById('cm-resa').value === '__autre__'){
+        // Aucun champ obligatoire ici non plus — un tarif vide part à 0€,
+        // à corriger plus tard depuis la liste si besoin.
         const titre = document.getElementById('cm-a-titre').value.trim();
-        if(!titre){ throw new Error('Le titre est obligatoire.'); }
         const tarif = document.getElementById('cm-a-tarif').value;
-        if(tarif === '' || parseFloat(tarif) < 0){ throw new Error('Le tarif est obligatoire.'); }
         const body = {
           action: 'create', type: 'autre', titre,
           adresse_libre: document.getElementById('cm-a-adresse').value.trim(),
