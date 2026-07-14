@@ -3144,7 +3144,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
       <input class="ec-input" type="email" name="email" id="ec-email" placeholder="votre@email.fr" required autocomplete="email"/>
       <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px">
         <input type="checkbox" id="ec-optin" required style="margin-top:3px;flex-shrink:0;width:16px;height:16px;cursor:pointer" aria-required="true"/>
-        <label for="ec-optin" style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.5;cursor:pointer">J'accepte de recevoir les alertes canicule de Loc'Air par email. <a href="/confidentialite" style="color:rgba(255,255,255,.8)">Politique de confidentialité</a>.</label>
+        <label id="ec-optin-lbl" for="ec-optin" style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.5;cursor:pointer">J'accepte de recevoir les alertes canicule de Loc'Air par email. <a href="/confidentialite" style="color:rgba(255,255,255,.8)">Politique de confidentialité</a>.</label>
       </div>
       <button class="ec-btn" type="submit" id="ec-btn">Recevoir l'alerte →</button>
       <p class="ec-micro">Aucun spam · Résiliable en 1 clic</p>
@@ -4427,18 +4427,18 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           <div class="fld">
             <label for="pe-addr">Adresse de livraison d'origine</label>
             <input id="pe-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="street-address"/>
-            <p style="font-size:11px;color:var(--grey2);margin-top:4px">Facultatif — aide à retrouver votre dossier plus vite</p>
+            <p id="pe-addr-hint" style="font-size:11px;color:var(--grey2);margin-top:4px">Facultatif — aide à retrouver votre dossier plus vite</p>
           </div>
           <div class="fld-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="fld">
               <label for="pe-debut">Début de location<span class="req">*</span></label>
               <input id="pe-debut" type="date" required oninput="onProlongDateChange();this.classList.toggle('valid',!!this.value)"/>
-              <p style="font-size:11px;color:var(--grey2);margin-top:4px">Date de livraison</p>
+              <p id="pe-debut-hint" style="font-size:11px;color:var(--grey2);margin-top:4px">Date de livraison</p>
             </div>
             <div class="fld">
               <label for="pe-fin-init">Fin de contrat actuelle<span class="req">*</span></label>
               <input id="pe-fin-init" type="date" required oninput="onProlongDateChange();this.classList.toggle('valid',!!this.value)"/>
-              <p style="font-size:11px;color:var(--grey2);margin-top:4px">Avant la prolongation</p>
+              <p id="pe-fin-hint" style="font-size:11px;color:var(--grey2);margin-top:4px">Avant la prolongation</p>
             </div>
           </div>
         </div>
@@ -4471,7 +4471,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           <div class="pp-total" id="pp-total">17 €</div>
           <div class="pp-rate">Sans frais d'installation — déjà effectuée</div>
         </div>
-        <p style="font-size:11px;color:var(--grey2);text-align:center;margin:0 24px 16px;line-height:1.5">Tarif dégressif selon la durée · Paiement en ligne par carte via Stripe.</p>
+        <p id="pp-pricing-note" style="font-size:11px;color:var(--grey2);text-align:center;margin:0 24px 16px;line-height:1.5">Tarif dégressif selon la durée · Paiement en ligne par carte via Stripe.</p>
         <div class="modal-nav" style="margin:8px 24px 20px">
           <button class="btn-back" onclick="goProlongStep(1)" type="button">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
@@ -4557,7 +4557,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             <div class="stl-dot stl-done"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
             <div class="stl-body">
               <p class="stl-title">Réservation enregistrée</p>
-              <p class="stl-sub">Notre équipe vous confirme par email sous 2h — <button type="button" id="copy-ref-btn" onclick="(function(){const r=document.getElementById('s-ref')?.textContent;if(r){navigator.clipboard?.writeText(r).then(()=>{const b=document.getElementById('copy-ref-btn');if(b){b.textContent='Copié ✓';setTimeout(()=>{b.textContent='Copier le n°';},2000);}}).catch(()=>{});}})()" style="background:none;border:none;color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;padding:0;font-family:var(--body);text-decoration:underline">Copier le n°</button></p>
+              <p class="stl-sub">Notre équipe vous confirme par email sous 2h — <button type="button" id="copy-ref-btn" onclick="(function(){const r=document.getElementById('s-ref')?.textContent;if(r){navigator.clipboard?.writeText(r).then(()=>{const b=document.getElementById('copy-ref-btn');if(b){b.textContent=_lang==='en'?'Copied ✓':'Copié ✓';setTimeout(()=>{b.textContent=_lang==='en'?'Copy ref':'Copier le n°';},2000);}}).catch(()=>{});}})()" style="background:none;border:none;color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;padding:0;font-family:var(--body);text-decoration:underline">Copier le n°</button></p>
             </div>
           </div>
           <div class="stl-conn"></div>
@@ -4580,11 +4580,11 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <p class="s-p" id="s-ref" style="font-size:14px;font-weight:700;color:var(--blue);margin-top:6px;letter-spacing:.04em"></p>
         <a id="cal-link" href="#" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:7px;margin-top:16px;padding:10px 20px;background:var(--blue-lt);color:var(--blue);border-radius:100px;font-size:13px;font-weight:600;font-family:var(--body);text-decoration:none">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-          Ajouter à mon agenda
+          <span id="cal-link-txt">Ajouter à mon agenda</span>
         </a>
         <!-- PROCHAINES ÉTAPES -->
         <div style="margin:20px 0 4px;padding:16px;background:var(--bg);border-radius:14px;text-align:left;width:100%;max-width:320px;margin-left:auto;margin-right:auto">
-          <p style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--grey);margin-bottom:12px">Prochaines étapes</p>
+          <p id="prochaines-etapes-hdr" style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--grey);margin-bottom:12px">Prochaines étapes</p>
           <div style="display:flex;flex-direction:column;gap:9px">
             <p class="ns-text"><strong>Confirmation par email</strong> immédiate avec le récapitulatif</p>
             <p class="ns-text"><strong>Notre équipe</strong> confirme le créneau par appel téléphonique le matin de la livraison</p>
@@ -5529,8 +5529,8 @@ async function handleFenetrePhoto(input){
   reader.onload=e=>{
     if(img){img.src=e.target.result;}
     if(preview){preview.style.display='block';}
-    if(status){status.textContent='⏳ Envoi en cours…';}
-    if(btnText){btnText.textContent='Changer la photo';}
+    if(status){status.textContent=_lang==='en'?'⏳ Uploading…':'⏳ Envoi en cours…';}
+    if(btnText){btnText.textContent=_lang==='en'?'Change photo':'Changer la photo';}
   };
   reader.readAsDataURL(file);
   // Upload vers Supabase Storage via API
@@ -5541,10 +5541,10 @@ async function handleFenetrePhoto(input){
     const up=await fetch(signedUrl,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});
     if(!up.ok)throw new Error('Erreur réseau');
     _fenetrePhotoPath=path;
-    if(status)status.textContent='✅ Photo bien jointe — notre technicien la verra avant d\'arriver.';
+    if(status)status.textContent=_lang==='en'?'✅ Photo attached — our technician will see it before arriving.':'✅ Photo bien jointe — notre technicien la verra avant d\'arriver.';
   }catch(e){
     _fenetrePhotoPath=null;
-    if(status)status.textContent='⚠️ La photo n\'a pas pu être envoyée. Ce n\'est pas bloquant — notre technicien évaluera sur place.';
+    if(status)status.textContent=_lang==='en'?'⚠️ Photo couldn\'t be uploaded. No worries — our technician will assess on site.':'⚠️ La photo n\'a pas pu être envoyée. Ce n\'est pas bloquant — notre technicien évaluera sur place.';
   }
 }
 
@@ -5699,7 +5699,13 @@ function animateSuccessTimeline(){
       const dt=new Date(Date.UTC(+y,+m-1,+d));
       const cren=document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'';
       const crenTxt=cren?' entre '+cren:'';
-      dd.textContent='Livraison le '+DAYS[dt.getUTCDay()]+' '+d+' '+MONTHS[dt.getUTCMonth()]+crenTxt+' · Technicien appelle 30 min avant';
+      if(_lang==='en'){
+        const DAYS_EN_L=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+        const MONTHS_EN_L=['January','February','March','April','May','June','July','August','September','October','November','December'];
+        dd.textContent='Delivery '+DAYS_EN_L[dt.getUTCDay()]+' '+parseInt(d)+' '+MONTHS_EN_L[dt.getUTCMonth()]+crenTxt+' · Technician calls 30 min before';
+      } else {
+        dd.textContent='Livraison le '+DAYS[dt.getUTCDay()]+' '+d+' '+MONTHS[dt.getUTCMonth()]+crenTxt+' · Technicien appelle 30 min avant';
+      }
     }
   },1800);
 }
@@ -5717,14 +5723,14 @@ async function submitCancellation(){
   const email=document.getElementById('cancel-email')?.value.trim();
   if(!ref||!email)return;
   const btn=document.getElementById('cancel-sbtn');
-  if(btn){btn.disabled=true;btn.textContent='Envoi…';}
+  if(btn){btn.disabled=true;btn.textContent=_lang==='en'?'Sending…':'Envoi…';}
   try{
     const r=await fetch('https://formspree.io/f/mvzyngoy',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({type:'annulation',dossier:ref,email,_subject:'Annulation — '+ref})});
     if(!r.ok)throw new Error('http '+r.status);
     const msg=document.getElementById('cancel-msg');if(msg)msg.style.display='block';
     if(btn)btn.style.display='none';
   }catch(e){
-    if(btn){btn.disabled=false;btn.textContent="Confirmer l'annulation";}
+    if(btn){btn.disabled=false;btn.textContent=_lang==='en'?'Confirm cancellation':"Confirmer l'annulation";}
   }
 }
 // ── STRIPE ────────────────────────────────────────────────────────────────────
@@ -5833,8 +5839,8 @@ function _stripePaymentDone(){
           const s=document.getElementById('msuccess-pay');if(s){s.classList.add('show');s.focus();}
           animateSuccessTimeline();
           const msg=document.getElementById('s-msg-pay');
-          if(msg)msg.innerHTML=(prenom?'Merci '+escHtml(prenom)+' ! ':'')+'Paiement confirmé. Voici ce qui se passe maintenant.';
-          const refEl=document.getElementById('s-ref');if(refEl)refEl.textContent='Dossier '+_orderRef;
+          if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+'Payment confirmed. Here\'s what happens next.':(prenom?'Merci '+escHtml(prenom)+' ! ':'')+'Paiement confirmé. Voici ce qui se passe maintenant.';
+          const refEl=document.getElementById('s-ref');if(refEl)refEl.textContent=(_lang==='en'?'Booking ref: ':'Dossier ')+_orderRef;
           const cancelRef=document.getElementById('cancel-ref');if(cancelRef)cancelRef.value=_orderRef;
           const cancelEmail=document.getElementById('cancel-email');if(cancelEmail)cancelEmail.value=pending.email||'';
           initReferralCode(prenom);initReviewLink();
@@ -5924,9 +5930,9 @@ function submitForm(btn,mode){
       const s=document.getElementById('msuccess-pay');if(s){s.classList.add('show');s.focus();}
       animateSuccessTimeline();
       const msg=document.getElementById('s-msg-pay');
-      if(msg)msg.innerHTML=(prenom?'Merci '+escHtml(prenom)+' ! ':'')+"Tout est en ordre. Voici ce qui se passe maintenant.";
+      if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+'All good. Here\'s what happens next.':(prenom?'Merci '+escHtml(prenom)+' ! ':'')+"Tout est en ordre. Voici ce qui se passe maintenant.";
       const refEl=document.getElementById('s-ref');
-      if(refEl)refEl.textContent='Dossier '+_orderRef;
+      if(refEl)refEl.textContent=(_lang==='en'?'Booking ref: ':'Dossier ')+_orderRef;
       const cancelRef=document.getElementById('cancel-ref');if(cancelRef)cancelRef.value=_orderRef;
       const cancelEmail=document.getElementById('cancel-email');const cem=document.getElementById('f-email')?.value;if(cancelEmail&&cem)cancelEmail.value=cem;
       initReferralCode(prenom);
@@ -5945,8 +5951,8 @@ function submitForm(btn,mode){
         const pad=n=>String(n).padStart(2,'0');
         const dtStart=y+m+d+'T'+pad(startH)+'0000';
         const dtEnd=y+m+d+'T'+pad(endH)+'0000';
-        const text=encodeURIComponent("Livraison climatiseur Loc'Air");
-        const details=encodeURIComponent('Dossier '+_orderRef+' · Le technicien appelle 30 min avant');
+        const text=encodeURIComponent(_lang==='en'?"AC delivery Loc'Air":"Livraison climatiseur Loc'Air");
+        const details=encodeURIComponent(_lang==='en'?'Booking '+_orderRef+' · Technician calls 30 min before':'Dossier '+_orderRef+' · Le technicien appelle 30 min avant');
         const loc=encodeURIComponent(addr+', Nice');
         if(calEl)calEl.href='https://calendar.google.com/calendar/render?action=TEMPLATE&text='+text+'&dates='+dtStart+'/'+dtEnd+'&details='+details+'&location='+loc;
       })();
@@ -5955,7 +5961,7 @@ function submitForm(btn,mode){
       const s=document.getElementById('msuccess-call');if(s){s.classList.add('show');s.focus();}
       const msg=document.getElementById('s-msg-call');
       const greet=prenom?'Merci '+escHtml(prenom)+' !':'Merci !';
-      if(msg)msg.innerHTML=greet+" L'\xE9quipe Loc'Air vous rappelle dans la journ\xE9e (8h–20h, 7j/7).";
+      if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+"The Loc'Air team will call you back today (8am–20h, 7d/7).":greet+" L'\xE9quipe Loc'Air vous rappelle dans la journ\xE9e (8h–20h, 7j/7).";
     }
   }
 
@@ -6220,6 +6226,69 @@ const LANG_MAP=[
   /* zone confirm & notice */
   ['#zone-confirm-txt','text','Adresse enregistrée','Address saved'],
   ['#zone-notice-txt','html','Livraison hors zone standard : <strong>95 €</strong> — votre adresse est en dehors de Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche ou Beaulieu-sur-Mer.','Delivery outside standard zone: <strong>€95</strong> — your address is outside Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche or Beaulieu-sur-Mer.'],
+  /* prolongation modal — SP1 */
+  ['#sp1 .sp-title','text','Votre location en cours','Your current rental'],
+  ['#sp1 .sp-sub','text','Renseignez vos coordonnées — nous retrouvons votre dossier et préparons la prolongation.','Enter your details — we\'ll find your file and prepare the extension.'],
+  ['label[for="pe-prenom"]','html','Prénom<span class="req">*</span>','First name<span class="req">*</span>'],
+  ['label[for="pe-nom"]','html','Nom<span class="req">*</span>','Last name<span class="req">*</span>'],
+  ['label[for="pe-tel"]','html','Téléphone<span class="req">*</span>','Phone<span class="req">*</span>'],
+  ['label[for="pe-addr"]','text','Adresse de livraison d\'origine','Original delivery address'],
+  ['#pe-addr-hint','text','Facultatif — aide à retrouver votre dossier plus vite','Optional — helps us find your file faster'],
+  ['label[for="pe-debut"]','html','Début de location<span class="req">*</span>','Rental start<span class="req">*</span>'],
+  ['#pe-debut-hint','text','Date de livraison','Delivery date'],
+  ['label[for="pe-fin-init"]','html','Fin de contrat actuelle<span class="req">*</span>','Current contract end<span class="req">*</span>'],
+  ['#pe-fin-hint','text','Avant la prolongation','Before the extension'],
+  ['#sp1 .btn-next','text','Choisir la durée →','Choose duration →'],
+  /* prolongation modal — SP2 */
+  ['#sp2 .sp-title','text','Combien de jours de plus ?','How many more days?'],
+  ['#sp2 .sp-sub','text','Minimum 1 jour — pas de maximum.','Minimum 1 day — no maximum.'],
+  ['.pp-rate','text','Sans frais d\'installation — déjà effectuée','No setup fee — already done'],
+  ['#pp-pricing-note','text','Tarif dégressif selon la durée · Paiement en ligne par carte via Stripe.','Tiered pricing · Online card payment via Stripe.'],
+  ['#sp2 .btn-back','text','Identification','Identification'],
+  ['#sp2 .btn-next','text','Confirmer →','Confirm →'],
+  /* prolongation modal — SP3 */
+  ['#sp3 .sp-title','text','Date de récupération','Collection date'],
+  ['#sp3 .sp-sub','text','Choisissez quand notre technicien vient reprendre le climatiseur.','Choose when our technician comes to collect the AC.'],
+  ['label[for="pe-date"]','html','Nouvelle date de fin<span class="req">*</span>','New end date<span class="req">*</span>'],
+  ['#lbl-pe-cr','html','Créneau de récupération<span class="req">*</span>','Collection time slot<span class="req">*</span>'],
+  ['#sp3 .btn-back','text','Durée','Duration'],
+  ['#sp3 .btn-next','text','Récapitulatif →','Summary →'],
+  /* prolongation modal — SP4 */
+  ['#sp4 .sp-title','text','Confirmer la prolongation','Confirm extension'],
+  ['#sp4 .sp-sub','text','Vérifiez et payez en ligne — confirmation email immédiate.','Review and pay online — instant email confirmation.'],
+  ['#prolong-stripe-loading','text','Chargement du formulaire de paiement…','Loading payment form…'],
+  ['#prolong-pay-pre','text','Payer','Pay'],
+  ['#prolong-pay-post','text',' en toute sécurité',' securely'],
+  ['#prolong-ssl-txt','text','🔒 Paiement sécurisé SSL · Stripe · Aucun stockage de vos données bancaires','🔒 Secure SSL payment · Stripe · Your card details are never stored'],
+  ['#prolong-error','html','Problème de connexion. Appelez-nous au <a href="tel:0663798756" style="color:#b91c1c;font-weight:600">06.63.79.87.56</a>.','Connection issue. Call us at <a href="tel:0663798756" style="color:#b91c1c;font-weight:600">06.63.79.87.56</a>.'],
+  ['#sp4 .btn-back','text','Date','Date'],
+  /* success screen — timeline static */
+  ['#stl-1 .stl-title','text','Réservation enregistrée','Booking confirmed'],
+  ['#stl-2 .stl-title','text','Contrat envoyé par email','Contract sent by email'],
+  ['#stl-2 .stl-sub','text','Notre équipe vous envoie le contrat sous 2h','Our team sends your contract within 2h'],
+  ['#stl-3 .stl-title','text','Technicien sur place','Technician on site'],
+  ['#stl-3 .stl-sub','text','Livraison le lendemain au créneau choisi','Delivery the next day at your chosen time'],
+  ['#copy-ref-btn','text','Copier le n°','Copy ref'],
+  ['#cal-link-txt','text','Ajouter à mon agenda','Add to my calendar'],
+  ['#prochaines-etapes-hdr','text','Prochaines étapes','Next steps'],
+  ['#s-msg-call','text','Notre équipe vous rappelle dans la journée (8h–20h, 7j/7).','Our team will call you back today (8am–8pm, 7d/7).'],
+  /* success — cancel section */
+  ['#cancel-summary','text','Besoin d\'annuler ?','Need to cancel?'],
+  ['#cancel-free-txt','text','Annulation gratuite avant livraison','Free cancellation before delivery'],
+  ['#cancel-sbtn','text','Confirmer l\'annulation','Confirm cancellation'],
+  ['#cancel-msg','html','✓ Annulation enregistrée — vous serez remboursé sous 48h.','✓ Cancellation recorded — refund within 48h.'],
+  /* success — upsell & referral */
+  ['#upsell-pay .upsell-h','text','Complétez votre confort','Complete your setup'],
+  ['#upsell-pay .upsell-card:first-child .uc-t','text','Prolonger','Extend'],
+  ['#upsell-pay .upsell-card:first-child .uc-p','text','Ajouter des jours','Add days'],
+  ['#upsell-pay .upsell-card:last-child .uc-t','text','2ème clim','2nd unit'],
+  ['#upsell-pay .upsell-card:last-child .uc-p','text','Une autre pièce','Another room'],
+  ['#referral-box .ref-h','text','10€ offerts — à vous et à vos amis','€10 gift — for you and your friends'],
+  ['#referral-box .ref-sub','html','Partagez votre code. Chaque ami qui l\'utilise économise <strong>10€</strong>. Vous aussi, à votre prochaine réservation.','Share your code. Every friend who uses it saves <strong>€10</strong>. So do you, on your next booking.'],
+  ['#ref-copy-btn','text','Copier','Copy'],
+  ['#referral-box .ref-share','text','Partager mon code','Share my code'],
+  /* email alert opt-in */
+  ['#ec-optin-lbl','html','J\'accepte de recevoir les alertes canicule de Loc\'Air par email. <a href="/confidentialite" style="color:rgba(255,255,255,.8)">Politique de confidentialité</a>.','I agree to receive heatwave alerts from Loc\'Air by email. <a href="/confidentialite" style="color:rgba(255,255,255,.8)">Privacy policy</a>.'],
   ['.ubar','html','Loc\'Air · Nice · <strong>Depuis 2019</strong> &nbsp;·&nbsp; Kit fourni &nbsp;·&nbsp; 7j/7 · 8h–20h','Loc\'Air · Nice · <strong>Since 2019</strong> &nbsp;·&nbsp; Kit included &nbsp;·&nbsp; 7d/7 · 8am–8pm'],
   /* hero */
   ['.hero-eye','text','Nice · 7j/7','Nice · 7d/7'],
@@ -7411,7 +7480,7 @@ function updateProlongPrice(){
   const el_total=document.getElementById('pp-total');
   const el_minus=document.getElementById('prolong-minus');
   if(el_days)el_days.textContent=_prolongDays;
-  if(el_lbl)el_lbl.textContent=_prolongDays===1?'jour supplémentaire':'jours supplémentaires';
+  if(el_lbl)el_lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
   if(el_total)el_total.textContent=price+' €';
   if(el_minus)el_minus.style.opacity=_prolongDays<=1?'0.3':'1';
 }
@@ -7437,7 +7506,7 @@ function onProlongNewDateChange(){
       _prolongDays=diff;
       updateProlongPrice();
       const el=document.getElementById('pp-days');if(el)el.textContent=_prolongDays;
-      const lbl=document.getElementById('pp-day-lbl');if(lbl)lbl.textContent=_prolongDays===1?'jour supplémentaire':'jours supplémentaires';
+      const lbl=document.getElementById('pp-day-lbl');if(lbl)lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
       const minus=document.getElementById('prolong-minus');if(minus)minus.style.opacity=_prolongDays<=1?'0.3':'1';
     }
   }
@@ -7478,16 +7547,16 @@ function buildProlongRecap(){
   const creneau=document.querySelector('#pe-creneau-group .tpill.on')?.textContent.trim()||'—';
   const _e=escHtml;
   box.innerHTML=`
-    <p style="font-weight:700;color:var(--black);font-size:15px;margin-bottom:12px">Récapitulatif de prolongation</p>
+    <p style="font-weight:700;color:var(--black);font-size:15px;margin-bottom:12px">${_lang==='en'?'Extension summary':'Récapitulatif de prolongation'}</p>
     <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:13px">
-      <span style="color:var(--grey2)">Nom</span><span style="font-weight:500">${_e(prenom)} ${_e(nom)}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Name':'Nom'}</span><span style="font-weight:500">${_e(prenom)} ${_e(nom)}</span>
       <span style="color:var(--grey2)">Email</span><span>${_e(email)}</span>
-      <span style="color:var(--grey2)">Tél.</span><span>${_e(tel)}</span>
-      ${addr!=='—'?`<span style="color:var(--grey2)">Adresse</span><span>${_e(addr)}</span>`:''}
-      <span style="color:var(--grey2)">Durée ajoutée</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} jour${_prolongDays>1?'s':''}</span>
-      <span style="color:var(--grey2)">Récupération le</span><span style="font-weight:500">${dateLabel}</span>
-      <span style="color:var(--grey2)">Créneau</span><span style="font-weight:500">${escHtml(creneau)}</span>
-      <span style="color:var(--grey2)">Montant</span><span style="font-weight:700;font-size:16px;color:var(--black)">${price} €</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Phone':'Tél.'}</span><span>${_e(tel)}</span>
+      ${addr!=='—'?`<span style="color:var(--grey2)">${_lang==='en'?'Address':'Adresse'}</span><span>${_e(addr)}</span>`:''}
+      <span style="color:var(--grey2)">${_lang==='en'?'Added duration':'Durée ajoutée'}</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} ${_lang==='en'?'day'+(_prolongDays>1?'s':''):'jour'+(_prolongDays>1?'s':'')}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Collection on':'Récupération le'}</span><span style="font-weight:500">${dateLabel}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Time slot':'Créneau'}</span><span style="font-weight:500">${escHtml(creneau)}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Amount':'Montant'}</span><span style="font-weight:700;font-size:16px;color:var(--black)">${price} €</span>
     </div>
   `;
   // reset checkbox + mettre le prix dans le bouton
@@ -7706,7 +7775,7 @@ function submitAlerte(e){
   const btn=document.getElementById('ec-btn');
   const email=(document.getElementById('ec-email')?.value||'').trim();
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))return;
-  if(btn){btn.disabled=true;btn.textContent='Envoi...';}
+  if(btn){btn.disabled=true;btn.textContent=_lang==='en'?'Sending...':'Envoi...';}
   fetch('https://formspree.io/f/mvzyngoy',{
     method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json'},
@@ -7715,11 +7784,11 @@ function submitAlerte(e){
     if(!r.ok)throw new Error('http '+r.status);
     const ok=document.querySelector('.ec-ok');
     const form=document.getElementById('ec-form');
-    if(ok){ok.style.display='block';ok.textContent='✓ Inscrit ! On vous prévient dès la prochaine vague de chaleur.';}
+    if(ok){ok.style.display='block';ok.textContent=_lang==='en'?'✓ Signed up! We\'ll alert you before the next heatwave.':'✓ Inscrit ! On vous prévient dès la prochaine vague de chaleur.';}
     if(form)form.style.display='none';
     if(typeof gtag==='function')gtag('event','alerte_signup',{method:'email'});
   }).catch(()=>{
-    if(btn){btn.disabled=false;btn.textContent='Recevoir l\'alerte →';}
+    if(btn){btn.disabled=false;btn.textContent=_lang==='en'?'Get the alert →':'Recevoir l\'alerte →';}
   });
 }
 
@@ -7809,7 +7878,7 @@ function copyReferral(){
   const code=document.getElementById('ref-code')?.textContent||'LOCAIR10';
   navigator.clipboard?.writeText(code).then(()=>{
     const btn=document.getElementById('ref-copy-btn');
-    if(btn){btn.textContent='Copié ✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent='Copier';btn.classList.remove('copied');},2000);}
+    if(btn){btn.textContent=_lang==='en'?'Copied ✓':'Copié ✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent=_lang==='en'?'Copy':'Copier';btn.classList.remove('copied');},2000);}
   }).catch(()=>{});
 }
 function shareReferral(){
@@ -7850,8 +7919,8 @@ function openChat(){
   _cwData={date:'',days:7,addr:''};
   const body=document.getElementById('cw-body');
   if(body)body.innerHTML='';
-  _cwBot('Bonjour ! 👋',300);
-  _cwBot('C\'est pour quand ?',800);
+  _cwBot(_lang==='en'?'Hello! 👋':'Bonjour ! 👋',300);
+  _cwBot(_lang==='en'?'When do you need it?':'C\'est pour quand ?',800);
   setTimeout(()=>_cwShowStep(1),1300);
   (window.dataLayer=window.dataLayer||[]).push({event:'chat_open'});
 }
@@ -7903,19 +7972,19 @@ function _cwShowStep(step){
     const min=new Date();min.setDate(min.getDate()+1);
     const minStr=min.toISOString().split('T')[0];
     const def=minStr;
-    foot.innerHTML=`<div class="cw-row"><input type="date" class="cw-inp" id="cw-date" min="${minStr}" value="${def}" aria-label="Date de début"/><button class="cw-send" onclick="cwNextDate()" type="button" aria-label="Valider">→</button></div>`;
+    foot.innerHTML=`<div class="cw-row"><input type="date" class="cw-inp" id="cw-date" min="${minStr}" value="${def}" aria-label="${_lang==='en'?'Start date':'Date de début'}"/><button class="cw-send" onclick="cwNextDate()" type="button" aria-label="${_lang==='en'?'Submit':'Valider'}">→</button></div>`;
     setTimeout(()=>document.getElementById('cw-date')?.focus(),100);
   } else if(step===2){
     // Duration
-    foot.innerHTML=`<div class="cw-chips"><button class="cw-chip on" type="button" onclick="cwSelDays(7,this)">7 jours</button><button class="cw-chip" type="button" onclick="cwSelDays(14,this)">14 jours</button><button class="cw-chip" type="button" onclick="cwSelDays(21,this)">21 jours</button><button class="cw-chip" type="button" onclick="cwSelDays(30,this)">30 jours</button></div><button class="cw-send" style="width:100%;border-radius:12px;padding:11px" onclick="cwNextDays()" type="button">Continuer →</button>`;
+    foot.innerHTML=`<div class="cw-chips"><button class="cw-chip on" type="button" onclick="cwSelDays(7,this)">${_lang==='en'?'7 days':'7 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(14,this)">${_lang==='en'?'14 days':'14 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(21,this)">${_lang==='en'?'21 days':'21 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(30,this)">${_lang==='en'?'30 days':'30 jours'}</button></div><button class="cw-send" style="width:100%;border-radius:12px;padding:11px" onclick="cwNextDays()" type="button">${_lang==='en'?'Continue →':'Continuer →'}</button>`;
   } else if(step===3){
     // Address
-    foot.innerHTML=`<div class="cw-row"><input type="text" class="cw-inp" id="cw-addr" placeholder="Votre adresse à Nice…" autocomplete="street-address" aria-label="Adresse de livraison"/><button class="cw-send" onclick="cwNextAddr()" type="button" aria-label="Valider">→</button></div>`;
+    foot.innerHTML=`<div class="cw-row"><input type="text" class="cw-inp" id="cw-addr" placeholder="${_lang==='en'?'Your address in Nice…':'Votre adresse à Nice…'}" autocomplete="street-address" aria-label="${_lang==='en'?'Delivery address':'Adresse de livraison'}"/><button class="cw-send" onclick="cwNextAddr()" type="button" aria-label="${_lang==='en'?'Submit':'Valider'}">→</button></div>`;
     setTimeout(()=>document.getElementById('cw-addr')?.focus(),100);
   } else if(step===4){
     // Recap + CTA
     const price=calcPrice(_cwData.days);
-    foot.innerHTML=`<button class="cw-cta-full" onclick="cwBook()" type="button">Réserver — ${price}€ →</button>`;
+    foot.innerHTML=`<button class="cw-cta-full" onclick="cwBook()" type="button">${_lang==='en'?'Book — ':'Réserver — '}${price}€ →</button>`;
   }
 }
 function cwSelDays(n,btn){
@@ -7930,12 +7999,12 @@ function cwNextDate(){
   const d=new Date(v);
   const fmt=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   _cwUser(fmt);
-  _cwBot('Super ! Combien de jours ?',600);
+  _cwBot(_lang==='en'?'Great! How many days?':'Super ! Combien de jours ?',600);
   setTimeout(()=>_cwShowStep(2),1200);
 }
 function cwNextDays(){
-  _cwUser(_cwData.days+' jour'+(_cwData.days>1?'s':''));
-  _cwBot('À quelle adresse à Nice ?',600);
+  _cwUser(_cwData.days+(_lang==='en'?' day'+(_cwData.days>1?'s':''):'  jour'+(_cwData.days>1?'s':'')));
+  _cwBot(_lang==='en'?'What\'s your address in Nice?':'À quelle adresse à Nice ?',600);
   setTimeout(()=>_cwShowStep(3),1200);
 }
 function cwNextAddr(){
@@ -7944,7 +8013,7 @@ function cwNextAddr(){
   _cwData.addr=v;
   _cwUser(v);
   const price=calcPrice(_cwData.days);
-  _cwBot('Parfait ! '+_cwData.days+' jours à '+v+' = '+price+'€. On confirme ?',700);
+  _cwBot(_lang==='en'?'Perfect! '+_cwData.days+' days at '+v+' = '+price+'€. Confirm?':'Parfait ! '+_cwData.days+' jours à '+v+' = '+price+'€. On confirme ?',700);
   setTimeout(()=>_cwShowStep(4),1400);
 }
 function cwBook(){
