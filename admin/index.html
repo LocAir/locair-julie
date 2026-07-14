@@ -1016,7 +1016,7 @@ function parVilleTableHtml(parVille){
             <span class="row-title">${escHtml(v.ville)}</span>
             <span class="chip ${v.incidents_ouverts>0?'probleme':'actif'}">${Math.round((v.taux_occupation||0)*100)}% occ.</span>
           </div>
-          <div class="row-meta">${(v.ca_euros||0).toFixed(0)} € · ${v.nb_reservations||0} réservation${v.nb_reservations>1?'s':''} · ${v.unites_occupees}/${v.flotte_totale} unités</div>
+          <div class="row-meta">${(v.ca_euros||0).toFixed(0)} € · ${v.nb_reservations||0} réservation${v.nb_reservations>1?'s':''} · ${v.unites_occupees}/${v.flotte_totale} climatiseurs</div>
           ${v.incidents_ouverts>0?`<div class="row-meta" style="color:var(--red);font-weight:700">🧯 ${v.incidents_ouverts} incident${v.incidents_ouverts>1?'s':''} ouvert${v.incidents_ouverts>1?'s':''}</div>`:''}
         </div>`).join('')}
     </div>`;
@@ -1039,7 +1039,7 @@ function boardRowHtml(m){
         <span class="row-title">${escHtml(m.creneau||'—')} · ${escHtml(nom)}</span>
         <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
       </div>
-      <div class="row-meta">${escHtml(adresse)}${numeros?' · Unité n°'+escHtml(numeros):''}${m.transporteur?' · '+escHtml(m.transporteur.nom):' · Non assigné'}</div>
+      <div class="row-meta">${escHtml(adresse)}${numeros?' · Climatiseur n°'+escHtml(numeros):''}${m.transporteur?' · '+escHtml(m.transporteur.nom):' · Non assigné'}</div>
     </div>`;
 }
 // Le code postal est déjà présent dans l'adresse (le site utilise l'autocomplete
@@ -1249,7 +1249,7 @@ async function loadStock(silent){
           return `
           <div class="row-item">
             <div class="row-top">
-              <span class="row-title">Unité n°${a.numero}</span>
+              <span class="row-title">Climatiseur n°${a.numero}</span>
               <span class="chip ${chipClass}">${chipLabel}</span>
             </div>
             <div class="row-meta">${a.reference?escHtml(a.reference)+' · ':''}${a.en_location?'Actuellement chez un client (réservation confirmée)':a.statut==='loue'?'Loué hors système — marqué manuellement':(a.statut==='disponible'?'Au dépôt':'—')}</div>
@@ -1281,18 +1281,18 @@ function addAppareil(){
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadStock();
-      showToast(`Unité n°${d.appareil.numero} ajoutée`, 'success');
+      showToast(`Climatiseur n°${d.appareil.numero} ajouté`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
   });
 }
 function deleteAppareil(id, numero){
-  confirmAction(`Supprimer l'unité n°${numero} ? Impossible si elle a un historique de missions — marque-la "En panne" dans ce cas.`, async () => {
+  confirmAction(`Supprimer le climatiseur n°${numero} ? Impossible s'il a un historique de missions — marque-le "En panne" dans ce cas.`, async () => {
     try{
       const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadStock();
-      showToast(`Unité n°${numero} supprimée`, 'success');
+      showToast(`Climatiseur n°${numero} supprimé`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {danger:true, yesLabel:'Supprimer'});
 }
@@ -2323,12 +2323,12 @@ async function openCreateMissionModal(){
           <div><label for="cm-date">Date</label><input type="date" id="cm-date" value="${today}"/></div>
           <div><label for="cm-creneau">Créneau</label><input type="text" id="cm-creneau" placeholder="8h–10h"/></div>
         </div>
-        <label for="cm-appareil" style="margin-top:12px">Unité climatiseur (optionnel)</label>
+        <label for="cm-appareil" style="margin-top:12px">Climatiseur (optionnel)</label>
         <select id="cm-appareil">
           <option value="">— Ne pas assigner —</option>
           ${appareilOptions}
         </select>
-        <p class="sub" style="margin-top:4px">Pour un remplacement, choisis la nouvelle unité — l'ancienne redevient automatiquement disponible au stock.</p>
+        <p class="sub" style="margin-top:4px">Pour un remplacement, choisis le nouveau climatiseur — l'ancien redevient automatiquement disponible au stock.</p>
       </div>
       <div class="modal-actions" style="margin-top:18px">
         <button class="btn btn-grey">Annuler</button>
