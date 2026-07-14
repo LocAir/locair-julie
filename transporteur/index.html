@@ -114,6 +114,8 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .media-btn{display:flex;align-items:center;gap:10px;width:100%;padding:16px 22px;border:1.5px solid var(--rule);border-radius:100px;background:var(--white);font-weight:700;font-size:15px;color:var(--black);margin-bottom:12px;cursor:pointer}
 .media-btn.done{border-color:var(--green);background:var(--green-bg);color:var(--green)}
 .media-btn .ic{font-size:20px}
+.media-btn.pulse{animation:media-btn-pulse 1.4s ease-in-out infinite}
+@keyframes media-btn-pulse{0%,100%{opacity:1}50%{opacity:.55}}
 
 .step-hint{font-size:14px;font-weight:700;color:var(--blue);background:var(--blue-lt);border-radius:var(--r-sm);padding:11px 14px;margin-bottom:14px}
 .btn-missing-hint{text-align:center;font-size:12.5px;color:var(--grey);margin:-6px 0 12px}
@@ -408,6 +410,8 @@ let STATE = {
   checklist: null, // état du jour, chargé avec les missions — voir checklistBlocksMission()
   returnToMission: null, // mission à rouvrir après validation checklist, voir goToChecklistFromMission()
   detailRouteSeenFor: null, // id de la mission dont l'étape "En route" du parcours a déjà été vue, voir missionStepIndex()
+  detailArriveeSeenFor: null, // idem pour l'étape "Arrivée", voir missionStepIndex()
+  detailArriveeSmsSentFor: null, // id de la mission dont le SMS "merci de descendre" a été envoyé (état "clignotant"), voir wizardStepBodyHtml()
   // Tournée du jour (plus proche en voiture, api/transporteur-route.js) —
   // calculée une fois au choix du point de départ (voir startTournee()),
   // puis recalculée localement à chaque étape franchie (voir advanceTournee())
@@ -1410,7 +1414,7 @@ function actionBtnsForMission(m){
 // consultation), donc on retient juste qu'elle a été vue pour cette
 // mission précise (remis à zéro dès qu'on change de mission).
 function missionStepDefs(m){
-  const steps = [{key:'route', title:'En route'}];
+  const steps = [{key:'route', title:'En route'}, {key:'arrivee', title:'Arrivée'}];
   if(m.type === 'livraison') steps.push({key:'installation', title:'Installation'});
   else if(m.type === 'recuperation') steps.push({key:'vidange', title:'Vidange'}, {key:'preuve', title:'Photo appareil'});
   else if(m.type === 'changement') steps.push({key:'vidange', title:'Vidange'}, {key:'ancien', title:'Ancien appareil'}, {key:'nouveau', title:'Nouvel appareil'});
@@ -1426,14 +1430,19 @@ function missionStepDoneFlag(m, key){
 }
 function missionStepIndex(m, steps){
   if(STATE.detailRouteSeenFor !== m.id) return 0;
-  let idx = 1;
+  if(STATE.detailArriveeSeenFor !== m.id) return 1;
+  let idx = 2;
   while(idx < steps.length-1 && missionStepDoneFlag(m, steps[idx].key)) idx++;
   return idx;
 }
-// Avance manuellement depuis "En route" — seule étape sans donnée serveur à
-// observer, donc la seule qui a besoin d'un vrai bouton "Suivant".
+// Avance manuellement depuis "En route"/"Arrivée" — deux étapes sans donnée
+// serveur à observer, donc les seules qui ont besoin d'un vrai bouton "Suivant".
 function goToNextStepFromRoute(){
   STATE.detailRouteSeenFor = STATE.currentMission.id;
+  renderDetail();
+}
+function goToNextStepFromArrivee(){
+  STATE.detailArriveeSeenFor = STATE.currentMission.id;
   renderDetail();
 }
 function missionWizardProgressHtml(steps, idx){
@@ -1452,7 +1461,7 @@ function wizardProofStepHtml(m, kind, doneLabel, hint){
     <p class="step-hint">📷 ${hint}</p>
     ${proofButtonsHtml(kind, m[kind+'_ok'], doneLabel)}`;
 }
-function wizardStepBodyHtml(m, infoRows, key){
+function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   if(key === 'route'){
     const numeros = m.appareil_numeros||[];
     const plural = numeros.length>1;
@@ -1465,6 +1474,17 @@ function wizardStepBodyHtml(m, infoRows, key){
       <div class="section-title" style="margin:14px 0 6px 2px">Prévenir le client (optionnel)</div>
       ${prevenirRowHtml(m)}
       <button class="btn btn-blue btn-block" style="margin-top:6px" onclick="goToNextStepFromRoute()">Suivant →</button>`;
+  }
+  if(key === 'arrivee'){
+    const c = m.client || {};
+    const smsSent = STATE.detailArriveeSmsSentFor === m.id;
+    return `
+      <p class="step-hint">🔔 Préviens le client que tu es arrivé.</p>
+      <button class="media-btn ${smsSent?'done pulse':''}" style="margin-bottom:8px;width:100%" onclick="prevenirArriveeSms()"><span class="ic">📩</span> ${smsSent?'SMS envoyé ✔':'SMS — Merci de descendre'}</button>
+      ${smsSent && c.tel?`<a class="btn btn-blue btn-block" style="margin-bottom:8px;text-decoration:none" href="tel:${encodeURIComponent(c.tel)}">📞 Appeler ${escHtml(c.prenom||'le client')}</a>`:''}
+      ${smsSent && mapsUrl?`<a class="btn btn-grey btn-block" style="margin-bottom:8px;text-decoration:none" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Voir l'itinéraire</a>`:''}
+      <button class="btn btn-amber btn-block" style="margin-bottom:8px" onclick="startClientAbsent('camera')">🚫 Client injoignable — signaler</button>
+      <button class="btn btn-blue btn-block" style="margin-top:6px" onclick="goToNextStepFromArrivee()">Suivant →</button>`;
   }
   if(key === 'vidange'){
     const label = m.type==='changement' ? "l'ancien appareil" : "l'appareil";
@@ -1491,14 +1511,14 @@ function wizardStepBodyHtml(m, infoRows, key){
     <p class="step-hint">🎉 Tout est prêt — valide pour terminer la mission.</p>
     <button class="btn btn-green btn-block" onclick="doAction('${okAction}')">${okLabel}</button>`;
 }
-function missionWizardHtml(m, infoRows){
+function missionWizardHtml(m, infoRows, mapsUrl){
   const steps = missionStepDefs(m);
   const idx = missionStepIndex(m, steps);
   const key = steps[idx].key;
   return `
     ${tourneeBannerHtml(m)}
     ${missionWizardProgressHtml(steps, idx)}
-    <div id="action-zone">${wizardStepBodyHtml(m, infoRows, key)}</div>
+    <div id="action-zone">${wizardStepBodyHtml(m, infoRows, key, mapsUrl)}</div>
     <button class="btn btn-amber" style="margin-top:10px" onclick="openProbleme()">⚠️ PROBLÈME</button>
     <div class="err" id="detail-err"></div>`;
 }
@@ -1600,7 +1620,7 @@ function renderDetail(){
   // du message "Problème signalé".
   const canPause = ['acceptee','arrivee','probleme'].includes(m.statut);
   const bodyHtml = isWizard
-    ? missionWizardHtml(m, infoRows)
+    ? missionWizardHtml(m, infoRows, mapsUrl)
     : `${renderStepper(m)}${infoRows}<div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div><div class="err" id="detail-err"></div>`;
   document.getElementById('detail-screen').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center">
@@ -1662,6 +1682,23 @@ function prevenirClientMessage(){
   const c = (m && m.client) || {};
   return { c, msg: arrivalMessageText() };
 }
+// Message de l'étape "Arrivée" (devant chez le client) — distinct du message
+// "j'arrive dans 30 min" de l'étape "En route". Toujours en français : rien
+// n'enregistre la langue choisie par le client à sa réservation (voir plan).
+function arriveeMessageText(){
+  return "Merci de descendre, votre livraison Loc'Air est arrivée.";
+}
+// Ouvre le SMS natif avec le message "Arrivée" — pas d'envoi automatique
+// serveur (contrairement à prevenirClientSms(), ce geste n'est pas tracké
+// côté stats). Marque juste un état visuel local (bouton clignotant) une
+// fois revenu dans l'app.
+function prevenirArriveeSms(){
+  const m = STATE.currentMission;
+  const c = (m && m.client) || {};
+  if(c.tel) window.location.href = `sms:${c.tel.replace(/\s+/g,'')}?body=${encodeURIComponent(arriveeMessageText())}`;
+  STATE.detailArriveeSmsSentFor = m.id;
+  renderDetail();
+}
 function prevenirClientSms(){
   const { c, msg } = prevenirClientMessage();
   if(c.tel) window.location.href = `sms:${c.tel.replace(/\s+/g,'')}?body=${encodeURIComponent(msg)}`;
@@ -1715,6 +1752,20 @@ async function doAction(action, extra){
       return;
     }
 
+    // Client injoignable après SMS + appel restés sans réponse (étape
+    // "Arrivée") : contrairement aux autres catégories de problème, la
+    // mission ne doit pas rester bloquée en "problème" — elle repart en
+    // "à faire" (le livreur pourra y repasser plus tard) tout en gardant
+    // l'incident déjà créé ci-dessus intact (voir action 'reporter',
+    // api/transporteur-action.js:141, qui ne touche jamais "incidents").
+    if(action === 'probleme' && extra && extra.probleme_type === 'client_absent'){
+      await fetch(API('transporteur-action'), {
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+        body: JSON.stringify({action:'reporter', livraison_id: STATE.currentMission.id})
+      });
+    }
+
     // Client injoignable/problème signalé pendant une tournée en cours :
     // on passe directement à la mission la plus proche suivante plutôt que
     // de rouvrir celle qu'on vient justement de ne pas pouvoir traiter (voir
@@ -1728,6 +1779,11 @@ async function doAction(action, extra){
       show('missions-screen'); renderMissions();
       return;
     }
+    // TODO: pas de tournée active (STATE.tourneeOrder vide) — pas de
+    // recalcul Google Routes en direct ici, simple retour à la liste des
+    // missions ci-dessous. À rebrancher sur api/transporteur-route.js si
+    // le besoin d'un vrai "suggère la mission la plus proche" se confirme
+    // pour ce cas (transporteur qui a démarré une mission hors tournée).
 
     await fetchMissions();
     const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
