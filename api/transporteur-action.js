@@ -14,18 +14,22 @@ const PROBLEME_LABEL = {
 };
 
 const MEDIA_COLUMN = {
-  photo_depart:        'photo_depart_path',
-  photo_installation:  'photo_installation_path',
-  photo_retour:        'photo_retour_path',
-  photo_absence:       'photo_absence_path',
+  photo_depart:             'photo_depart_path',
+  photo_installation:       'photo_installation_path',
+  photo_retour:             'photo_retour_path',
+  photo_absence:            'photo_absence_path',
+  photo_fenetre_installee:  'photo_fenetre_installee_path',
+  photo_telecommande:       'photo_telecommande_path',
 };
 // À quelle(s) étape(s) chaque preuve peut être prise. "arrivee" reste accepté
 // en plus de "acceptee" par compatibilité avec une mission déjà à cette étape
 // au moment du déploiement — le statut n'est plus jamais réémis depuis.
 const STAGE_FOR_KIND = {
-  photo_depart:       ['acceptee'],
-  photo_installation: ['acceptee', 'arrivee'],
-  photo_retour:       ['acceptee', 'arrivee'],
+  photo_depart:             ['acceptee'],
+  photo_installation:       ['acceptee', 'arrivee'],
+  photo_retour:             ['acceptee', 'arrivee'],
+  photo_fenetre_installee:  ['acceptee', 'arrivee'],
+  photo_telecommande:       ['acceptee', 'arrivee'],
 };
 
 // Accepter une mission n'est pas la démarrer : ça peut se faire n'importe
@@ -55,6 +59,10 @@ function checkMediaAllowed(liv, kind) {
     const expectsLivraison = kind === 'photo_depart' || kind === 'photo_installation';
   if (expectsLivraison && !['livraison', 'changement'].includes(liv.type)) return 'Média non attendu pour cette mission';
   if (kind === 'photo_retour' && !['recuperation', 'changement'].includes(liv.type)) return 'Média non attendu pour cette mission';
+  // Les 2 photos supplémentaires de l'étape Installation (démo au client)
+  // n'existent que pour une livraison — pas pour "changement" qui garde son
+  // étape "nouveau" à une seule photo, inchangée.
+  if ((kind === 'photo_fenetre_installee' || kind === 'photo_telecommande') && liv.type !== 'livraison') return 'Média non attendu pour cette mission';
   if (!STAGE_FOR_KIND[kind].includes(liv.statut)) return 'Cette étape n\'est pas encore accessible';
   return null;
 }
@@ -66,6 +74,14 @@ async function loadLivraison(supabase, id) {
     .eq('id', id).maybeSingle();
   if (error || !data) return null;
   return data;
+}
+
+// Si cette mission avait déclenché un incident (client absent, retard...) et
+// qu'elle se termine normalement, referme cet incident précis — sans toucher
+// à un incident déjà facturé ou déjà résolu par ailleurs.
+async function closeMissionIncident(supabase, liv) {
+  if (!liv.incident_id) return;
+  await supabase.from('incidents').update({ statut: 'resolu' }).eq('id', liv.incident_id).eq('statut', 'ouvert');
 }
 
 module.exports = async (req, res) => {
@@ -229,13 +245,28 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // Étape Installation (livraison uniquement) : les 3 photos de preuve
+    // doivent déjà être là avant de pouvoir confirmer avoir montré le
+    // fonctionnement au client — même logique de garde-fou serveur que
+    // confirmer_vidange.
+    if (action === 'confirmer_demo') {
+      if (liv.type !== 'livraison' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      const dateErr = missionStartDateError(liv);
+      if (dateErr) return res.status(409).json({ error: dateErr });
+      if (!liv.photo_installation_path || !liv.photo_fenetre_installee_path || !liv.photo_telecommande_path) {
+        return res.status(400).json({ error: 'Les 3 photos sont requises avant de confirmer la démonstration' });
+      }
+      await supabase.from('livraisons').update({ demo_faite: true, demo_faite_at: new Date().toISOString() }).eq('id', liv.id);
+      return res.status(200).json({ ok: true });
+    }
+
     if (action === 'livraison_ok' || action === 'retour_ok') {
       const expectedType = action === 'livraison_ok' ? 'livraison' : 'recuperation';
       if (liv.type !== expectedType || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
-      if (expectedType === 'livraison' && !liv.photo_installation_path) {
-        return res.status(400).json({ error: 'Vidéo d\'installation requise avant de valider' });
+      if (expectedType === 'livraison' && !liv.demo_faite) {
+        return res.status(400).json({ error: 'Démonstration au client requise avant de valider' });
       }
       if (expectedType === 'recuperation' && !liv.photo_retour_path) {
         return res.status(400).json({ error: 'Vidéo de l\'appareil récupéré requise avant de valider' });
@@ -250,6 +281,7 @@ module.exports = async (req, res) => {
       await supabase.from('livraisons').update({
         statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,
       }).eq('id', liv.id);
+      await closeMissionIncident(supabase, liv);
 
       if (expectedType === 'recuperation') {
         await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id);
@@ -300,6 +332,7 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
       await supabase.from('livraisons').update({
         statut: 'fait', fait_at: new Date().toISOString(),
       }).eq('id', liv.id);
+      await closeMissionIncident(supabase, liv);
 
       return res.status(200).json({ ok: true, statut: 'fait', montant_du_cents: liv.montant_du_cents });
     }
@@ -318,6 +351,7 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
       await supabase.from('livraisons').update({
         statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,
       }).eq('id', liv.id);
+      await closeMissionIncident(supabase, liv);
 
       return res.status(200).json({ ok: true, statut: 'fait', montant_du_cents: montantDu });
     }
@@ -355,13 +389,18 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
           .from('reservations').select('city_id').eq('id', liv.reservation_id).maybeSingle();
         incidentCityId = resaCity?.city_id || null;
       }
-      await supabase.from('incidents').insert({
+      const { data: incident } = await supabase.from('incidents').insert({
         city_id:         incidentCityId,
         reservation_id: liv.reservation_id,
         type:            incidentType,
         description:     `[${liv.type}] ${description || problemeType}`,
         statut:          'ouvert',
-      });
+      }).select('id').single();
+      // Lien précis mission -> incident, pour le refermer automatiquement
+      // dès que CETTE mission se termine normalement (voir closeMissionIncident).
+      if (incident) {
+        await supabase.from('livraisons').update({ incident_id: incident.id }).eq('id', liv.id);
+      }
 
       await pushToAdmin(supabase, {
         title: `🧯 ${PROBLEME_LABEL[problemeType] || 'Problème'} signalé`,

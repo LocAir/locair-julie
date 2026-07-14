@@ -211,6 +211,10 @@ create table livraisons (
   photo_installation_path text,  -- appareil installé chez le client (livraison)
   photo_retour_path      text,   -- appareil récupéré chez le client (récupération)
   photo_absence_path     text,   -- preuve de passage devant le bâtiment (client absent)
+  photo_fenetre_installee_path text, -- fenêtre + calfeutrage en place (étape Installation, livraison)
+  photo_telecommande_path text,  -- télécommande fournie au client (étape Installation, livraison)
+  demo_faite             boolean not null default false, -- fonctionnement montré au client (étape Installation)
+  demo_faite_at          timestamptz,
   vidange_confirmee      boolean not null default false, -- vérification + vidange du climatiseur, faite chez le client à la récupération (~5 min)
   vidange_at             timestamptz,
   probleme_type          text check (probleme_type in ('client_absent','appareil_en_panne','retard','autre')),
@@ -304,6 +308,12 @@ create table incidents (
 );
 create index incidents_reservation_idx on incidents (reservation_id);
 create index incidents_city_idx on incidents (city_id, statut);
+
+-- Dernier incident déclenché par CETTE mission (client absent, retard...),
+-- utilisé pour le refermer automatiquement quand la mission se termine
+-- normalement. Ne remplace pas incidents.reservation_id (toujours utilisé
+-- par ailleurs) : lien plus précis, mission par mission.
+alter table livraisons add column incident_id bigint references incidents(id) on delete set null;
 
 -- Disponibilité = appareils actifs (hors panne/maintenance) moins :
 --  - les réservations 'en_attente' récentes (< 30 min, paiement en cours, pas

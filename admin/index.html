@@ -4010,7 +4010,7 @@ const TUTO_CATEGORIES = [
   {key:'entree_sortie_centre', label:'🏢 Entrée / sortie du centre',     actif:true},
   {key:'chargement',          label:'⬆️ Chargement',                    actif:false},
   {key:'dechargement',        label:'⬇️ Déchargement',                  actif:false},
-  {key:'installation',        label:"🔧 Installation par type d'ouverture", actif:false,
+  {key:'installation',        label:"🔧 Installation par type d'ouverture", actif:true,
     sousTypes:['Porte fenêtre','Fenêtre battante','Porte coulissante','Volet']},
 ];
 let TUTO_VIDEOS_CACHE = [];
@@ -4065,6 +4065,22 @@ function renderTutoriels(){
             ${sousTypesHtml}
           </div>`;
       }
+      // Catégorie avec sous-types (Installation) : une sous-section par type
+      // d'ouverture plutôt qu'un listing plat, avec son propre bouton
+      // d'ajout pré-rempli — les autres catégories actives sont inchangées.
+      if(cat.sousTypes){
+        return `
+          <div class="card">
+            <h2>${cat.label}</h2>
+            ${cat.sousTypes.map(t => {
+              const sousVideos = videos.filter(v => v.sous_categorie === t);
+              return `
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey);margin:14px 0 6px 2px">${t}</div>
+                ${sousVideos.map(tutoVideoRowHtml).join('') || '<p class="empty">Aucune vidéo pour l\'instant.</p>'}
+                <button class="btn btn-grey btn-block" style="margin-top:6px" onclick="addTutoVideo('${cat.key}', '${t}')">+ Ajouter une vidéo — ${t}</button>`;
+            }).join('')}
+          </div>`;
+      }
       return `
         <div class="card">
           <h2>${cat.label}</h2>
@@ -4073,11 +4089,11 @@ function renderTutoriels(){
         </div>`;
     }).join('')}`;
 }
-function addTutoVideo(categorie){
+function addTutoVideo(categorie, sousCategorie){
   promptAction({title:'Nouvelle vidéo', label:'Titre', placeholder:'Ex. Ouvrir le portail du centre'}, async (titre) => {
     if(!titre) return;
     try{
-      const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'upsert_meta', categorie, titre})});
+      const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'upsert_meta', categorie, sous_categorie:sousCategorie, titre})});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadTutoriels();

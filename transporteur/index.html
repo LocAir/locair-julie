@@ -1423,7 +1423,7 @@ function missionStepDefs(m){
 }
 function missionStepDoneFlag(m, key){
   if(key==='vidange') return Boolean(m.vidange_ok);
-  if(key==='installation') return Boolean(m.photo_installation_ok);
+  if(key==='installation') return Boolean(m.demo_faite);
   if(key==='preuve' || key==='ancien') return Boolean(m.photo_retour_ok);
   if(key==='nouveau') return Boolean(m.photo_installation_ok);
   return false;
@@ -1493,7 +1493,20 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
       <button class="media-btn" onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> Vidange ${m.type==='changement'?"de l'ancien appareil":"de l'appareil"}</button>`;
   }
   if(key === 'installation'){
-    return wizardProofStepHtml(m, 'photo_installation', 'Photo installation', "Installe l'appareil, prends-le en photo (ou choisis une photo depuis ta galerie) pour terminer la mission.");
+    const sousTypes = (TUTO_CATEGORIES.find(c => c.key==='installation') || {}).sousTypes || [];
+    const allPhotosOk = m.photo_installation_ok && m.photo_fenetre_installee_ok && m.photo_telecommande_ok;
+    return `
+      <p class="step-hint">🎬 Montre le fonctionnement au client, puis prends les 3 photos.</p>
+      <div class="section-title" style="margin:0 0 6px 2px">Tuto par type d'ouverture</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        ${sousTypes.map(t => `<button class="btn btn-grey" style="flex:1 1 auto;min-width:120px" onclick="openTutoVideo('installation','${t}')">🎥 ${t}</button>`).join('')}
+      </div>
+      ${proofButtonsHtml('photo_installation', m.photo_installation_ok, 'Climatiseur en marche')}
+      ${proofButtonsHtml('photo_fenetre_installee', m.photo_fenetre_installee_ok, 'Fenêtre + calfeutrage')}
+      ${proofButtonsHtml('photo_telecommande', m.photo_telecommande_ok, 'Télécommande')}
+      ${allPhotosOk
+        ? `<button class="btn btn-green btn-block" style="margin-top:6px" onclick="doAction('confirmer_demo')">✅ Confirmer la démonstration</button>`
+        : `<p class="step-hint" style="margin-top:6px">Prends les 3 photos pour pouvoir confirmer la démonstration.</p>`}`;
   }
   if(key === 'preuve'){
     return wizardProofStepHtml(m, 'photo_retour', 'Photo appareil récupéré', "Prends l'appareil récupéré en photo (ou choisis une photo depuis ta galerie) pour terminer la mission.");
@@ -2010,7 +2023,8 @@ const TUTO_CATEGORIES = [
   {key:'entree_sortie_centre', label:'🏢 Entrée / sortie du centre',   actif:true},
   {key:'chargement',           label:'⬆️ Chargement',                 actif:false},
   {key:'dechargement',         label:'⬇️ Déchargement',               actif:false},
-  {key:'installation',         label:"🔧 Installation par type d'ouverture", actif:false},
+  {key:'installation',         label:"🔧 Installation par type d'ouverture", actif:true,
+    sousTypes:['Porte fenêtre','Fenêtre battante','Porte coulissante','Volet']},
 ];
 let TUTO_LIST_CACHE = null;
 let TUTO_PLAYER = null; // {videoId, furthestTime} — état du visionnage en cours (1er passage)
@@ -2059,14 +2073,26 @@ function renderTutoCategoryList(){
         return `<div class="tuto-cat-row disabled"><span>${cat.label}</span><span style="font-size:12px;color:var(--grey2)">Bientôt</span></div>`;
       }
       const videos = (TUTO_LIST_CACHE||[]).filter(v => v.categorie===cat.key && v.disponible).sort((a,b)=>a.ordre-b.ordre);
+      const videoRowHtml = v => `
+        <div class="tuto-video-row">
+          <span>${escHtml(v.titre)}${v.deja_vu?' <span class="done">✔ vue</span>':''}</span>
+          <button class="btn ${v.deja_vu?'btn-grey':'btn-blue'}" onclick="openTutoPlayer(${v.id})">▶️ ${v.deja_vu?'Revoir':'Voir'}</button>
+        </div>`;
+      // Catégorie "installation" : regroupée par type d'ouverture plutôt
+      // qu'un simple listing plat (seule catégorie où sous_categorie est
+      // renseigné) — les autres catégories gardent l'affichage inchangé.
+      const bodyHtml = cat.sousTypes
+        ? cat.sousTypes.map(t => {
+            const sousVideos = videos.filter(v => v.sous_categorie === t);
+            return `
+              <div class="section-title" style="margin:10px 0 4px 12px;font-size:12px">${t}</div>
+              ${sousVideos.length ? sousVideos.map(videoRowHtml).join('') : `<p class="step-hint" style="margin:2px 0 2px 12px">Pas encore de vidéo.</p>`}`;
+          }).join('')
+        : (videos.length ? videos.map(videoRowHtml).join('') : `<p class="step-hint" style="margin:4px 0">Pas encore de vidéo.</p>`);
       return `
         <div style="margin-bottom:6px">
           <div class="section-title" style="margin:14px 0 4px 2px">${cat.label}</div>
-          ${videos.length ? videos.map(v => `
-            <div class="tuto-video-row">
-              <span>${escHtml(v.titre)}${v.deja_vu?' <span class="done">✔ vue</span>':''}</span>
-              <button class="btn ${v.deja_vu?'btn-grey':'btn-blue'}" onclick="openTutoPlayer(${v.id})">▶️ ${v.deja_vu?'Revoir':'Voir'}</button>
-            </div>`).join('') : `<p class="step-hint" style="margin:4px 0">Pas encore de vidéo.</p>`}
+          ${bodyHtml}
         </div>`;
     }).join('')}
     <button class="btn btn-grey btn-block" style="margin-top:14px" onclick="closeTutoLibrary()">Fermer</button>`;
@@ -2144,12 +2170,13 @@ async function tutoMarquerVu(videoId){
 }
 // Ouvre directement le lecteur sur la 1ère vidéo active d'une catégorie —
 // utilisé par l'étape BOX (checklist) pour lancer "Accès/sortie boxe" sans
-// passer par la liste de catégories.
-async function openTutoVideo(categorie){
+// passer par la liste de catégories, et par l'étape Installation avec un
+// 2e paramètre pour filtrer sur le type d'ouverture choisi.
+async function openTutoVideo(categorie, sousCategorie){
   ensureTutoOverlay();
   try{
     await fetchTutoList();
-    const v = (TUTO_LIST_CACHE||[]).filter(x => x.categorie===categorie && x.disponible).sort((a,b)=>a.ordre-b.ordre)[0];
+    const v = (TUTO_LIST_CACHE||[]).filter(x => x.categorie===categorie && x.disponible && (!sousCategorie || x.sous_categorie===sousCategorie)).sort((a,b)=>a.ordre-b.ordre)[0];
     const sheet = document.getElementById('tuto-sheet');
     if(!v){
       if(sheet) sheet.innerHTML = `<p class="empty">Vidéo pas encore disponible.</p><button class="btn btn-grey btn-block" onclick="closeTutoLibrary()">Fermer</button>`;
