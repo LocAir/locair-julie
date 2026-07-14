@@ -211,8 +211,8 @@ create table livraisons (
   photo_installation_path text,  -- appareil installé chez le client (livraison)
   photo_retour_path      text,   -- appareil récupéré chez le client (récupération)
   photo_absence_path     text,   -- preuve de passage devant le bâtiment (client absent)
-  photo_fenetre_installee_path text, -- fenêtre + calfeutrage en place (étape Installation, livraison)
-  photo_telecommande_path text,  -- télécommande fournie au client (étape Installation, livraison)
+  photo_fenetre_installee_path text, -- non utilisée : l'étape Installation ne demande finalement qu'une seule photo (climatiseur + fenêtre + télécommande visibles ensemble), voir photo_installation_path
+  photo_telecommande_path text,  -- non utilisée, même raison que ci-dessus
   demo_faite             boolean not null default false, -- fonctionnement montré au client (étape Installation)
   demo_faite_at          timestamptz,
   vidange_confirmee      boolean not null default false, -- vérification + vidange du climatiseur, faite chez le client à la récupération (~5 min)

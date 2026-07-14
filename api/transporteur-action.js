@@ -14,22 +14,18 @@ const PROBLEME_LABEL = {
 };
 
 const MEDIA_COLUMN = {
-  photo_depart:             'photo_depart_path',
-  photo_installation:       'photo_installation_path',
-  photo_retour:             'photo_retour_path',
-  photo_absence:            'photo_absence_path',
-  photo_fenetre_installee:  'photo_fenetre_installee_path',
-  photo_telecommande:       'photo_telecommande_path',
+  photo_depart:        'photo_depart_path',
+  photo_installation:  'photo_installation_path',
+  photo_retour:        'photo_retour_path',
+  photo_absence:       'photo_absence_path',
 };
 // À quelle(s) étape(s) chaque preuve peut être prise. "arrivee" reste accepté
 // en plus de "acceptee" par compatibilité avec une mission déjà à cette étape
 // au moment du déploiement — le statut n'est plus jamais réémis depuis.
 const STAGE_FOR_KIND = {
-  photo_depart:             ['acceptee'],
-  photo_installation:       ['acceptee', 'arrivee'],
-  photo_retour:             ['acceptee', 'arrivee'],
-  photo_fenetre_installee:  ['acceptee', 'arrivee'],
-  photo_telecommande:       ['acceptee', 'arrivee'],
+  photo_depart:       ['acceptee'],
+  photo_installation: ['acceptee', 'arrivee'],
+  photo_retour:       ['acceptee', 'arrivee'],
 };
 
 // Accepter une mission n'est pas la démarrer : ça peut se faire n'importe
@@ -59,10 +55,6 @@ function checkMediaAllowed(liv, kind) {
     const expectsLivraison = kind === 'photo_depart' || kind === 'photo_installation';
   if (expectsLivraison && !['livraison', 'changement'].includes(liv.type)) return 'Média non attendu pour cette mission';
   if (kind === 'photo_retour' && !['recuperation', 'changement'].includes(liv.type)) return 'Média non attendu pour cette mission';
-  // Les 2 photos supplémentaires de l'étape Installation (démo au client)
-  // n'existent que pour une livraison — pas pour "changement" qui garde son
-  // étape "nouveau" à une seule photo, inchangée.
-  if ((kind === 'photo_fenetre_installee' || kind === 'photo_telecommande') && liv.type !== 'livraison') return 'Média non attendu pour cette mission';
   if (!STAGE_FOR_KIND[kind].includes(liv.statut)) return 'Cette étape n\'est pas encore accessible';
   return null;
 }
@@ -245,16 +237,17 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // Étape Installation (livraison uniquement) : les 3 photos de preuve
-    // doivent déjà être là avant de pouvoir confirmer avoir montré le
+    // Étape Installation (livraison uniquement) : la photo de preuve (climatiseur
+    // en marche + fenêtre calfeutrée + télécommande, tous visibles ensemble)
+    // doit déjà être là avant de pouvoir confirmer avoir montré le
     // fonctionnement au client — même logique de garde-fou serveur que
     // confirmer_vidange.
     if (action === 'confirmer_demo') {
       if (liv.type !== 'livraison' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
-      if (!liv.photo_installation_path || !liv.photo_fenetre_installee_path || !liv.photo_telecommande_path) {
-        return res.status(400).json({ error: 'Les 3 photos sont requises avant de confirmer la démonstration' });
+      if (!liv.photo_installation_path) {
+        return res.status(400).json({ error: 'Photo requise avant de confirmer la démonstration' });
       }
       await supabase.from('livraisons').update({ demo_faite: true, demo_faite_at: new Date().toISOString() }).eq('id', liv.id);
       return res.status(200).json({ ok: true });
