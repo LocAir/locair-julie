@@ -101,11 +101,13 @@ module.exports = async (req, res) => {
       // titre, l'adresse et le tarif lui-même (ex. aller chercher du matériel
       // livré par un fournisseur et le ramener au box).
       if (type === 'autre') {
-        const titre = (body.titre || '').trim().slice(0, 200);
-        if (!titre) return res.status(400).json({ error: 'Titre requis' });
+        // Aucun champ obligatoire : une mission créée avec le strict minimum
+        // (juste le tarif et le jour) reste utile — le reste se complète plus
+        // tard depuis la liste si besoin.
+        const titre = (body.titre || '').trim().slice(0, 200) || 'Mission libre';
         const adresseLibre = (body.adresse_libre || '').trim().slice(0, 500);
-        const datePrevueAutre = (body.date_prevue || '').slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(datePrevueAutre)) return res.status(400).json({ error: 'date_prevue invalide (YYYY-MM-DD)' });
+        let datePrevueAutre = (body.date_prevue || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(datePrevueAutre)) datePrevueAutre = new Date().toISOString().slice(0, 10);
         const transporteurIdAutre = body.transporteur_id ? parseInt(body.transporteur_id) : null;
         if (transporteurIdAutre) {
           const { data: t } = await supabase.from('transporteurs').select('id').eq('id', transporteurIdAutre).eq('city_id', city.id).maybeSingle();
