@@ -370,8 +370,8 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 
 </div>
 
-<!-- input caché pour la preuve de mission obligatoire (vidéo uniquement, caméra live) -->
-<input type="file" id="media-input" accept="video/*" capture="environment" class="hidden"/>
+<!-- input caché pour la preuve de mission obligatoire (photo, caméra live) -->
+<input type="file" id="media-input" accept="image/*" capture="environment" class="hidden"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API = (path) => '/api/' + path;
@@ -1390,7 +1390,7 @@ function actionBtnsForMission(m){
 function missionStepDefs(m){
   const steps = [{key:'route', title:'En route'}];
   if(m.type === 'livraison') steps.push({key:'installation', title:'Installation'});
-  else if(m.type === 'recuperation') steps.push({key:'vidange', title:'Vidange'}, {key:'preuve', title:'Vidéo appareil'});
+  else if(m.type === 'recuperation') steps.push({key:'vidange', title:'Vidange'}, {key:'preuve', title:'Photo appareil'});
   else if(m.type === 'changement') steps.push({key:'vidange', title:'Vidange'}, {key:'ancien', title:'Ancien appareil'}, {key:'nouveau', title:'Nouvel appareil'});
   steps.push({key:'final', title:'Terminer'});
   return steps;
@@ -1427,7 +1427,7 @@ function missionWizardProgressHtml(steps, idx){
 }
 function wizardProofStepHtml(m, kind, doneLabel, hint){
   return `
-    <p class="step-hint">🎥 ${hint}</p>
+    <p class="step-hint">📷 ${hint}</p>
     ${proofButtonsHtml(kind, m[kind+'_ok'], doneLabel)}`;
 }
 function wizardStepBodyHtml(m, infoRows, key){
@@ -1451,16 +1451,16 @@ function wizardStepBodyHtml(m, infoRows, key){
       <button class="media-btn" onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> Vidange ${m.type==='changement'?"de l'ancien appareil":"de l'appareil"}</button>`;
   }
   if(key === 'installation'){
-    return wizardProofStepHtml(m, 'photo_installation', 'Vidéo installation', "Installe l'appareil, filme-le (ou joins une vidéo de ta galerie) pour terminer la mission.");
+    return wizardProofStepHtml(m, 'photo_installation', 'Photo installation', "Installe l'appareil, prends-le en photo (ou choisis une photo depuis ta galerie) pour terminer la mission.");
   }
   if(key === 'preuve'){
-    return wizardProofStepHtml(m, 'photo_retour', 'Vidéo appareil récupéré', "Filme l'appareil récupéré (ou joins une vidéo de ta galerie) pour terminer la mission.");
+    return wizardProofStepHtml(m, 'photo_retour', 'Photo appareil récupéré', "Prends l'appareil récupéré en photo (ou choisis une photo depuis ta galerie) pour terminer la mission.");
   }
   if(key === 'ancien'){
-    return wizardProofStepHtml(m, 'photo_retour', 'Vidéo ancien appareil', "Filme l'ancien appareil avant de le charger.");
+    return wizardProofStepHtml(m, 'photo_retour', 'Photo ancien appareil', "Prends l'ancien appareil en photo avant de le charger.");
   }
   if(key === 'nouveau'){
-    return wizardProofStepHtml(m, 'photo_installation', 'Vidéo nouvel appareil', "Installe le nouvel appareil et filme-le pour terminer la mission.");
+    return wizardProofStepHtml(m, 'photo_installation', 'Photo nouvel appareil', "Installe le nouvel appareil et prends-le en photo pour terminer la mission.");
   }
   // 'final'
   const okAction = m.type==='livraison' ? 'livraison_ok' : m.type==='recuperation' ? 'retour_ok' : 'changement_ok';
@@ -1588,24 +1588,24 @@ function renderDetail(){
   `;
 }
 
-// Preuve de mission obligatoire : filmer en direct (caméra) ou joindre une
-// vidéo déjà présente dans la photothèque du téléphone — les deux sources
-// sont acceptées, contrairement à la galerie libre qui reste un ajout
-// séparé, non bloquant.
+// Preuve de mission obligatoire : prendre une photo en direct (caméra) ou
+// joindre une photo déjà présente dans la photothèque du téléphone — les
+// deux sources sont acceptées, contrairement à la galerie libre qui reste
+// un ajout séparé, non bloquant.
 function proofButtonsHtml(kind, done, doneLabel){
   if(done){
-    return `<button class="media-btn done" onclick="startUpload('${kind}','camera')"><span class="ic">🎥</span> ${doneLabel} ✔</button>`;
+    return `<button class="media-btn done" onclick="startUpload('${kind}','camera')"><span class="ic">📷</span> ${doneLabel} ✔</button>`;
   }
-  // Le libellé (ex. "Vidéo ancien appareil" / "Vidéo nouvel appareil") doit
+  // Le libellé (ex. "Photo ancien appareil" / "Photo nouvel appareil") doit
   // être visible AVANT la capture, pas seulement une fois faite — sur
   // "Changement" les deux paires de boutons sont sinon strictement
-  // identiques et rien ne dit laquelle filmer en premier. Un mauvais choix
-  // ici envoie la preuve du mauvais appareil.
+  // identiques et rien ne dit laquelle photographier en premier. Un mauvais
+  // choix ici envoie la preuve du mauvais appareil.
   return `
     <div class="section-title" style="margin:0 0 6px 2px">${doneLabel}</div>
     <div style="display:flex;gap:8px">
-      <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','camera')"><span class="ic">🎥</span> Filmer</button>
-      <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','galerie')"><span class="ic">🎞️</span> Depuis la galerie</button>
+      <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','camera')"><span class="ic">📷</span> Photo</button>
+      <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','galerie')"><span class="ic">🖼️</span> Depuis la galerie</button>
     </div>`;
 }
 function prevenirRowHtml(m){
@@ -1766,12 +1766,12 @@ async function closeCelebration(){
   if(next) openMission(next.id);
 }
 
-// ── Capture vidéo (preuve de mission obligatoire) ────────────────────────────
-// "camera" force l'enregistrement en direct ; "galerie" laisse le choix
-// dans la photothèque du téléphone (vidéo déjà existante).
+// ── Capture photo (preuve de mission obligatoire) ─────────────────────────────
+// "camera" force la prise en direct ; "galerie" laisse le choix dans la
+// photothèque du téléphone (photo déjà existante).
 function startUpload(kind, source){
   const input = document.getElementById('media-input');
-  input.setAttribute('accept', 'video/*');
+  input.setAttribute('accept', 'image/*');
   if(source==='camera') input.setAttribute('capture','environment');
   else input.removeAttribute('capture');
   STATE.pendingUpload = {kind};
@@ -1889,7 +1889,7 @@ function openProbleme(){
     <div class="sheet">
       <h1 style="margin-bottom:14px">⚠️ Quel est le problème ?</h1>
       <div class="probleme-list">
-        <button class="btn btn-amber" onclick="startClientAbsent('camera')">📵 Client absent — filmer</button>
+        <button class="btn btn-amber" onclick="startClientAbsent('camera')">📵 Client absent — photo</button>
         <button class="btn btn-amber" onclick="startClientAbsent('galerie')">📵 Client absent — depuis la galerie</button>
         <button class="btn btn-amber" onclick="sendProbleme('appareil_en_panne')">🔧 Appareil en panne</button>
         <button class="btn btn-grey" onclick="sendProbleme('retard')">⏰ Retard important</button>
@@ -1907,9 +1907,9 @@ async function sendProbleme(type){
   closeProbleme();
   await doAction('probleme', {probleme_type: type});
 }
-// "Client absent" exige une vidéo de passage avant d'envoyer le SMS
+// "Client absent" exige une photo de passage avant d'envoyer le SMS
 // automatique — startUpload() enchaîne ensuite sur le signalement du problème
-// une fois la vidéo confirmée (voir le listener de #media-input).
+// une fois la photo confirmée (voir le listener de #media-input).
 function startClientAbsent(source){
   closeProbleme();
   startUpload('photo_absence', source);
