@@ -4,8 +4,9 @@ const { getAvailability } = require('./_lib/stock');
 const { isValidDate }     = require('./_lib/dates');
 const { checkAdminToken } = require('./_lib/auth');
 const { confirmReservation } = require('./_lib/reservations');
+const { computeOrderStatus } = require('./_lib/orderStatus');
 
-const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée' };
+const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -27,7 +28,30 @@ module.exports = async (req, res) => {
         .order('created_at', { ascending: false })
         .limit(200);
       if (error) throw error;
-      return res.status(200).json({ reservations: data || [] });
+      const reservations = data || [];
+
+      // Statut "commande" (affichage uniquement) : combine reservations.statut
+      // et l'état des missions livraison/récupération — voir _lib/orderStatus.js.
+      // N'écrit rien, ne modifie aucun statut existant.
+      const ids = reservations.map(r => r.id);
+      let livraisonsByResa = new Map();
+      let incidentResaIds = new Set();
+      if (ids.length) {
+        const [{ data: livs }, { data: incs }] = await Promise.all([
+          supabase.from('livraisons').select('reservation_id, type, statut, fait_at').in('reservation_id', ids),
+          supabase.from('incidents').select('reservation_id').in('reservation_id', ids).eq('statut', 'ouvert'),
+        ]);
+        for (const l of (livs || [])) {
+          if (!livraisonsByResa.has(l.reservation_id)) livraisonsByResa.set(l.reservation_id, []);
+          livraisonsByResa.get(l.reservation_id).push(l);
+        }
+        incidentResaIds = new Set((incs || []).map(i => i.reservation_id));
+      }
+      for (const r of reservations) {
+        r.statut_commande = computeOrderStatus(r, livraisonsByResa.get(r.id) || [], incidentResaIds.has(r.id));
+      }
+
+      return res.status(200).json({ reservations });
     }
 
     // Réservation prise en direct par l'admin (téléphone, WhatsApp...). Créée

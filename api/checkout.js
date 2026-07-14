@@ -3,14 +3,10 @@ const { getSupabase }         = require('./_lib/supabase');
 const { resolveCityByAddress } = require('./_lib/city');
 const { getAvailability }     = require('./_lib/stock');
 const { isValidDate, addDays } = require('./_lib/dates');
+const { calcTieredPrice }      = require('./_lib/pricing');
+const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 
-function calcBase(days) {
-  days = Math.max(1, days);
-  if (days <= 7)  return days * 20;
-  if (days <= 14) return 7 * 20 + (days - 7) * 18;
-  if (days <= 21) return 7 * 20 + 7 * 18 + (days - 14) * 17;
-  return 7 * 20 + 7 * 18 + 7 * 17 + (days - 21) * 16;
-}
+const calcBase = calcTieredPrice;
 
 const PROMO_CODES  = { LOCAIR10: 10, LOCA10: 10 };
 const INSTALL_FEE  = 25;
@@ -23,6 +19,15 @@ module.exports = async (req, res) => {
 
   const data   = req.body || {};
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+  // Acceptation obligatoire des CGV/CGL et des conditions d'utilisation du
+  // climatiseur — le bouton de paiement est déjà désactivé côté site tant que
+  // ces deux cases ne sont pas cochées, mais ça ne protège que l'UI : sans ce
+  // contrôle serveur, un appel direct à cette API pourrait créer un paiement
+  // sans qu'aucune des deux acceptations n'ait jamais été donnée.
+  if (data.cgv_accepted !== true || data.conditions_utilisation_accepted !== true) {
+    return res.status(400).json({ error: 'Vous devez accepter les CGV et les conditions d\'utilisation avant de payer.' });
+  }
 
   const duree = Math.max(7, parseInt(data.duree) || 7);
   const qty   = Math.min(5, Math.max(1, parseInt((data.quantite || '1').replace(/[^0-9]/g, '')) || 1));
@@ -132,7 +137,7 @@ module.exports = async (req, res) => {
       },
     });
 
-    const { error: insertErr } = await supabase.from('reservations').insert({
+    const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  city.id,
       hors_zone:                horsZone || false,
       ref:                      (data._ref || '').slice(0, 100),
@@ -166,12 +171,24 @@ module.exports = async (req, res) => {
       motifs:                   (data.motifs || '').slice(0, 500) || null,
       mkt_consent:              data.mkt_consent === 'Oui' || data.mkt_consent === true,
       cgv_accepted_at:          (data.cgv_accepted_at || null),
-    });
+    }).select('id').single();
 
     if (insertErr) {
       console.error('[Reservation insert]', insertErr.message);
       await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel]', e.message));
       return res.status(500).json({ error: 'Erreur serveur réservation' });
+    }
+
+    // Trace d'audit des deux acceptations (CGV/CGL + conditions d'utilisation) —
+    // ne doit jamais faire échouer une réservation déjà payée si l'écriture
+    // rate, mais son absence ne doit pas non plus passer inaperçue.
+    try {
+      await supabase.from('cgv_acceptations').insert([
+        { reservation_id: insertedResa.id, type: ACCEPTANCE_TYPES.CGV_LOCATION,           version: CGV_VERSION, accepted_at: data.cgv_accepted_at || new Date().toISOString() },
+        { reservation_id: insertedResa.id, type: ACCEPTANCE_TYPES.CONDITIONS_UTILISATION, version: CGV_VERSION, accepted_at: data.conditions_utilisation_accepted_at || new Date().toISOString() },
+      ]);
+    } catch (e) {
+      console.error('[CGV acceptations]', e.message);
     }
 
     return res.status(200).json({ clientSecret: intent.client_secret, amountCents, customerId });

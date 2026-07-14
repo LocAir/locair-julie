@@ -4351,6 +4351,10 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             <label id="label-mkt" for="f-mkt">J'accepte de recevoir les offres et actualités Loc'Air par email. <span style="color:var(--grey2);font-size:10px">Optionnel · désinscription en 1 clic</span></label>
           </div>
           <label class="legal-accept" style="margin-top:10px">
+            <input type="checkbox" id="f-conditions" onchange="buildRecap()" required/>
+            <span class="legal-accept-txt" id="label-conditions">Je reconnais avoir pris connaissance des <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">conditions d'utilisation du climatiseur et des obligations liées à la location</a> (entretien courant, restitution en bon état).</span>
+          </label>
+          <label class="legal-accept" style="margin-top:10px">
             <input type="checkbox" id="f-retard" onchange="buildRecap()" required/>
             <span class="legal-accept-txt" id="label-retard">J'autorise Loc'Air à débiter ma carte pour tout jour de retard de restitution (de 16 à 20 €/j selon la durée totale, voir <a href="/cgv#retard" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV art. 10 bis</a>). <span style="color:var(--grey2);font-size:10px">Aucun montant prélevé maintenant — carte enregistrée via Stripe.</span></span>
           </label>
@@ -5242,6 +5246,7 @@ function closeModal(){
   });
   const fcgv=document.getElementById('f-cgv');if(fcgv)fcgv.checked=false;
   const fmkt=document.getElementById('f-mkt');if(fmkt)fmkt.checked=false;
+  const fcond=document.getElementById('f-conditions');if(fcond)fcond.checked=false;
   const fretard=document.getElementById('f-retard');if(fretard)fretard.checked=false;
   _promoDiscount=0;_promoCode='';const promoInp=document.getElementById('f-parrain');if(promoInp)promoInp.value='';
   const instrTa=document.getElementById('f-instructions');if(instrTa)instrTa.value='';
@@ -5659,7 +5664,7 @@ function buildRecap(){
     const _btnTotal=Math.max(0,_origTotal-_promoDiscount);
     const _strikeThrough=_promoDiscount>0?' <span style="text-decoration:line-through;opacity:.5;font-weight:400">'+_origTotal+' €</span> ':' ';
     sbtn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>'+(_lang==='en'?' Proceed to payment'+_btnDate+' —'+_strikeThrough:' Procéder au paiement'+_btnDate+' —'+_strikeThrough)+_btnTotal+' €';
-    sbtn.disabled=!(document.getElementById('f-cgv')?.checked && document.getElementById('f-retard')?.checked);
+    sbtn.disabled=!(document.getElementById('f-cgv')?.checked && document.getElementById('f-conditions')?.checked && document.getElementById('f-retard')?.checked);
     const hint=document.getElementById('sbtn-hint');
     if(hint)hint.style.display=sbtn.disabled?'block':'none';
   }
@@ -5875,6 +5880,8 @@ function submitForm(btn,mode){
     if(lb){lb.style.color='var(--red)';setTimeout(()=>lb.style.color='',2500);}
   };
   if(!cgv?.checked){highlightCb(cgv,'f-cgv');return;}
+  const condCb=document.getElementById('f-conditions');
+  if(!condCb?.checked){highlightCb(condCb,'f-conditions');return;}
   const retardCb=document.getElementById('f-retard');
   if(!retardCb?.checked){highlightCb(retardCb,'f-retard');return;}
   _submitting=true;
@@ -5913,7 +5920,10 @@ function submitForm(btn,mode){
     logement:document.querySelector('#logement-group .tpill.on')?.textContent.trim()||'—',
     motifs:[...document.querySelectorAll('#motif-group .tpill.on')].map(t=>t.textContent.trim()).join(', ')||'—',
     mkt_consent:document.getElementById('f-mkt')?.checked?'Oui':'Non',
+    cgv_accepted:true,
     cgv_accepted_at:(()=>{try{return new Date().toISOString();}catch(e){return '';}})(),
+    conditions_utilisation_accepted:true,
+    conditions_utilisation_accepted_at:(()=>{try{return new Date().toISOString();}catch(e){return '';}})(),
     mode:mode,
     prix:Math.max(0,calcTotal(parseInt(document.getElementById('f-dur')?.value)||7)-_promoDiscount+DELIVERY_FEE)+' €',
     date_recuperation:(()=>{try{const raw=document.getElementById('f-date')?.value;const dur=parseInt(document.getElementById('f-dur')?.value)||7;if(!raw)return '—';const d=new Date(raw+'T12:00:00');d.setDate(d.getDate()+dur);return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '—';}})()
@@ -7629,7 +7639,8 @@ async function startProlongPayment(){
     if(!stripe)throw new Error('Stripe non chargé — désactivez votre bloqueur de publicités');
     const debutVal=document.getElementById('pe-debut')?.value||'';
     const finInitVal=document.getElementById('pe-fin-init')?.value||'';
-    const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,original_days:_prolongOrigDays,prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,date_recuperation_iso:rawDate,creneau})});
+    if(!document.getElementById('pe-cgv')?.checked)throw new Error('Merci d\'accepter les CGV avant de payer.');
+    const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,original_days:_prolongOrigDays,prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,date_recuperation_iso:rawDate,creneau,cgv_accepted:true,cgv_accepted_at:new Date().toISOString()})});
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||('API '+r.status));}
     const d=await r.json();
     if(!d.clientSecret)throw new Error(d.error||'No secret');

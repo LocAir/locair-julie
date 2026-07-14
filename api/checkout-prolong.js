@@ -3,20 +3,23 @@ const { getSupabase }     = require('./_lib/supabase');
 const { resolveCityById } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate }     = require('./_lib/dates');
+const { calcTieredPrice } = require('./_lib/pricing');
+const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 
-function calcBase(days) {
-  days = Math.max(1, days);
-  if (days <= 7)  return days * 20;
-  if (days <= 14) return 7 * 20 + (days - 7) * 18;
-  if (days <= 21) return 7 * 20 + 7 * 18 + (days - 14) * 17;
-  return 7 * 20 + 7 * 18 + 7 * 17 + (days - 21) * 16;
-}
+const calcBase = calcTieredPrice;
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const data   = req.body || {};
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+  // Même contrôle serveur que /api/checkout — le bouton de paiement est déjà
+  // désactivé côté site tant que la case CGV n'est pas cochée, mais ça ne
+  // protège que l'UI.
+  if (data.cgv_accepted !== true) {
+    return res.status(400).json({ error: 'Vous devez accepter les CGV avant de payer.' });
+  }
 
   const jours    = Math.max(1, parseInt(data.jours) || 1);
   const origDays = Math.max(0, parseInt(data.original_days) || 0);
@@ -41,6 +44,7 @@ module.exports = async (req, res) => {
 
   const supabase = getSupabase();
   let city;
+  let orig; // récupérée dans le 1er bloc try, réutilisée dans le 2e (insert) plus bas
   try {
     // Une prolongation ne collecte pas une nouvelle adresse — on reprend la
     // même zone que la réservation d'origine du client, retrouvée par email
@@ -49,11 +53,11 @@ module.exports = async (req, res) => {
     if (!data.email) {
       return res.status(400).json({ error: 'Email requis pour retrouver ta réservation' });
     }
-    const { data: orig } = await supabase
+    ({ data: orig } = await supabase
       .from('reservations').select('city_id, tel_secondaire')
       .eq('email', String(data.email).trim())
       .order('created_at', { ascending: false })
-      .limit(1).maybeSingle();
+      .limit(1).maybeSingle());
     city = orig ? await resolveCityById(supabase, orig.city_id) : null;
     if (!city) {
       return res.status(422).json({ error: 'Réservation d\'origine introuvable — contacte-nous directement pour prolonger.' });
@@ -114,7 +118,7 @@ module.exports = async (req, res) => {
       },
     });
 
-    const { error: insertErr } = await supabase.from('reservations').insert({
+    const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  city.id,
       ref:                      `PROLONG-${intent.id.slice(-8)}`,
       stripe_payment_intent_id: intent.id,
@@ -132,12 +136,23 @@ module.exports = async (req, res) => {
       prix_total_cents:         amountCents,
       statut:                   'en_attente',
       source:                   'site_prolongation',
-    });
+    }).select('id').single();
 
     if (insertErr) {
       console.error('[Reservation prolong insert]', insertErr.message);
       await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel]', e.message));
       return res.status(500).json({ error: 'Erreur serveur réservation' });
+    }
+
+    try {
+      await supabase.from('cgv_acceptations').insert({
+        reservation_id: insertedResa.id,
+        type:           ACCEPTANCE_TYPES.CGV_LOCATION,
+        version:        CGV_VERSION,
+        accepted_at:    data.cgv_accepted_at || new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error('[CGV acceptations prolong]', e.message);
     }
 
     return res.status(200).json({ clientSecret: intent.client_secret, amountCents });

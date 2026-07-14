@@ -148,7 +148,7 @@ create table reservations (
   quantite                 integer not null default 1 check (quantite > 0),
   prix_total_cents         integer not null default 0,
   statut                   text not null default 'en_attente'
-                             check (statut in ('en_attente','confirmee','annulee','terminee')),
+                             check (statut in ('en_attente','confirmee','annulee','terminee','remboursee')),
   source                   text,
   source_channel           text, -- canal d'acquisition marketing (ex. 'google', 'instagram', 'bouche-a-oreille')
   parrain_code             text, -- code parrain saisi par le client (programme parrainage)
@@ -164,6 +164,21 @@ create table reservations (
 create index reservations_avail_idx on reservations (city_id, date_debut, date_fin)
   where statut in ('en_attente','confirmee');
 create index reservations_stripe_pi_idx on reservations (stripe_payment_intent_id);
+
+-- Trace d'audit des acceptations légales avant paiement (case CGV/CGL et case
+-- conditions d'utilisation du climatiseur, cochées séparément côté site) — une
+-- ligne par type par réservation, avec la version du document réellement
+-- affichée au moment de l'acceptation (voir api/_lib/legal.js).
+create table cgv_acceptations (
+  id             bigint generated always as identity primary key,
+  reservation_id bigint not null references reservations(id) on delete cascade,
+  type           text not null check (type in ('cgv_location','conditions_utilisation')),
+  version        text not null,
+  accepted_at    timestamptz not null default now(),
+  created_at     timestamptz not null default now(),
+  unique (reservation_id, type)
+);
+create index cgv_acceptations_reservation_idx on cgv_acceptations (reservation_id);
 
 -- Quels appareils numérotés sont retenus pour quelle réservation. Rempli
 -- automatiquement à la confirmation du paiement (voir api/_lib/reservations.js,

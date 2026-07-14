@@ -2,6 +2,93 @@ const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
 const { confirmReservationAndCreateLivraisons } = require('./_lib/reservations');
 const { sendBrevoSms } = require('./_lib/brevo');
+const { pushToAdmin } = require('./_lib/push');
+
+// ── Échec de paiement / remboursement / litige ────────────────────────────────
+// Ces trois événements n'ont jamais été écoutés jusqu'ici : une carte refusée,
+// un remboursement ou un litige Stripe restaient invisibles pour l'équipe
+// (aucun incident créé, aucune notification). Ne touchent jamais aux emails
+// de confirmation ni à la création des missions (chemin réservé à
+// payment_intent.succeeded / checkout.session.completed, plus bas).
+async function findReservationByPaymentIntent(supabase, paymentIntentId) {
+  if (!paymentIntentId) return null;
+  const { data } = await supabase
+    .from('reservations').select('id, city_id, ref, statut, prenom, nom')
+    .eq('stripe_payment_intent_id', paymentIntentId).maybeSingle();
+  return data || null;
+}
+
+async function logPaymentIncident(supabase, { cityId, reservationId, description, montantCents = 0 }) {
+  try {
+    await supabase.from('incidents').insert({
+      city_id: cityId || null,
+      reservation_id: reservationId || null,
+      type: 'autre',
+      description,
+      montant_facture_cents: montantCents,
+      statut: 'ouvert',
+    });
+  } catch (e) {
+    console.error('[Incident paiement]', e.message);
+  }
+}
+
+async function handlePaymentFailed(supabase, intent) {
+  const resa = await findReservationByPaymentIntent(supabase, intent.id);
+  const raison = intent.last_payment_error?.message || 'raison inconnue';
+  if (resa && resa.statut === 'en_attente') {
+    await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', resa.id);
+  }
+  await logPaymentIncident(supabase, {
+    cityId: resa?.city_id,
+    reservationId: resa?.id,
+    description: `Paiement échoué${resa ? ' — dossier ' + resa.ref : ''} — ${raison}`,
+  });
+  await pushToAdmin(supabase, {
+    title: 'Paiement échoué',
+    body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${raison}`.trim(),
+    tag:   'paiement-echoue',
+  });
+}
+
+async function handleChargeRefunded(supabase, charge) {
+  const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : (charge.payment_intent?.id || '');
+  const resa = await findReservationByPaymentIntent(supabase, piId);
+  const montant = (charge.amount_refunded / 100).toFixed(2) + ' €';
+  if (resa) {
+    await supabase.from('reservations').update({ statut: 'remboursee' }).eq('id', resa.id);
+  }
+  await logPaymentIncident(supabase, {
+    cityId: resa?.city_id,
+    reservationId: resa?.id,
+    description: `Remboursement Stripe${resa ? ' — dossier ' + resa.ref : ''} — ${montant}`,
+    montantCents: charge.amount_refunded || 0,
+  });
+  await pushToAdmin(supabase, {
+    title: 'Remboursement Stripe',
+    body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant}`.trim(),
+    tag:   'remboursement',
+  });
+}
+
+async function handleDisputeCreated(supabase, dispute) {
+  const piId = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : (dispute.payment_intent?.id || '');
+  const resa = await findReservationByPaymentIntent(supabase, piId);
+  const montant = (dispute.amount / 100).toFixed(2) + ' €';
+  await logPaymentIncident(supabase, {
+    cityId: resa?.city_id,
+    reservationId: resa?.id,
+    description: `Litige Stripe (chargeback)${resa ? ' — dossier ' + resa.ref : ''} — ${montant} — motif : ${dispute.reason || 'non précisé'}`,
+    montantCents: dispute.amount || 0,
+  });
+  // Un litige a un délai de réponse imposé par Stripe (généralement quelques
+  // jours) — l'admin doit le voir immédiatement, ce n'est jamais anodin.
+  await pushToAdmin(supabase, {
+    title: '⚠️ Litige Stripe (chargeback)',
+    body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant} — à traiter dans le dashboard Stripe`.trim(),
+    tag:   'litige-stripe',
+  });
+}
 
 // ── Utilitaire sécurité ───────────────────────────────────────────────────────
 function escHtml(s) {
@@ -311,6 +398,18 @@ const handler = async (req, res) => {
       meta   = session.metadata || {};
       amount = (session.amount_total / 100).toFixed(2) + ' €';
       email  = session.customer_email || session.metadata?.email || '';
+
+    } else if (eventType === 'payment_intent.payment_failed') {
+      await handlePaymentFailed(getSupabase(), obj);
+      return res.status(200).json({ received: true, type: 'payment_failed' });
+
+    } else if (eventType === 'charge.refunded') {
+      await handleChargeRefunded(getSupabase(), obj);
+      return res.status(200).json({ received: true, type: 'refunded' });
+
+    } else if (eventType === 'charge.dispute.created') {
+      await handleDisputeCreated(getSupabase(), obj);
+      return res.status(200).json({ received: true, type: 'dispute' });
 
     } else {
       return res.json({ received: true, skipped: eventType });
