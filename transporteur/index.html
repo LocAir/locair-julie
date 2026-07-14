@@ -1571,13 +1571,19 @@ function renderDetail(){
   // problème signalé) garde l'écran simple d'avant.
   const todayStr = new Date().toISOString().slice(0,10);
   const isWizard = enCours && m.date_prevue<=todayStr && ['livraison','recuperation','changement'].includes(m.type);
+  // "Faire plus tard" doit rester disponible même en Problème (le
+  // transporteur peut se débloquer lui-même sans attendre qu'Aly résolve
+  // l'incident) — distinct de enCours, qui ne doit PAS inclure "probleme"
+  // sous peine de faire apparaître le parcours étape par étape à la place
+  // du message "Problème signalé".
+  const canPause = ['acceptee','arrivee','probleme'].includes(m.statut);
   const bodyHtml = isWizard
     ? missionWizardHtml(m, infoRows)
     : `${renderStepper(m)}${infoRows}<div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div><div class="err" id="detail-err"></div>`;
   document.getElementById('detail-screen').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center">
       <button class="detail-back" style="margin-bottom:14px" onclick="show('missions-screen')">← Retour</button>
-      ${enCours ? `<button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>` : ''}
+      ${canPause ? `<button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>` : ''}
     </div>
     <div class="card">
       ${(['acceptee','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
