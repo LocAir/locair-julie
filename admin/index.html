@@ -1428,12 +1428,110 @@ function reservationRowHtml(res, readOnly){
         <details class="more-actions" style="margin-left:auto">
           <summary title="Plus d'actions">⋯</summary>
           <div class="more-actions-menu">
+            <button onclick="openEditReservationModal(${res.id})">✏️ Modifier</button>
             ${res.statut!=='annulee'?`<button class="danger" onclick="cancelReservation(${res.id})">Annuler la réservation</button>`:''}
             <button onclick="deleteReservation(${res.id}, '${res.statut}')">Masquer de l'écran</button>
           </div>
         </details>
       </div>`}
     </div>`;
+}
+const MOTIFS_OPTIONS = ['Chaleur','Bébé / Santé','Airbnb / Location','Événement'];
+// ── Modifier une réservation (tous les champs, sauf les dates de location) ──
+// Les dates pilotent le calcul du stock disponible et la date des missions
+// livraison/récupération déjà créées — les changer à la main ici les
+// désynchroniserait silencieusement. Pour changer les dates d'une location,
+// annule et recrée la réservation (le stock et les missions restent cohérents).
+function openEditReservationModal(id){
+  const r = RESERVATIONS_CACHE.find(x => x.id === id);
+  if(!r) return;
+  closeModal();
+  const motifsList = (r.motifs||'').split(',').map(m=>m.trim()).filter(Boolean);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
+      <h2 style="margin-bottom:14px">✏️ Modifier la réservation</h2>
+      <label for="er-prenom">Prénom</label>
+      <input type="text" id="er-prenom" value="${escHtml(r.prenom||'')}"/>
+      <label for="er-nom" style="margin-top:8px">Nom</label>
+      <input type="text" id="er-nom" value="${escHtml(r.nom||'')}"/>
+      <label for="er-tel" style="margin-top:8px">Téléphone</label>
+      <input type="tel" id="er-tel" value="${escHtml(r.tel||'')}"/>
+      <label for="er-tel2" style="margin-top:8px">Téléphone secondaire (secours)</label>
+      <input type="tel" id="er-tel2" value="${escHtml(r.tel_secondaire||'')}"/>
+      <label for="er-email" style="margin-top:8px">Email</label>
+      <input type="text" id="er-email" value="${escHtml(r.email||'')}"/>
+      <div style="margin-top:8px">${typeClientFieldsHtml('er', r)}</div>
+      <label for="er-adresse" style="margin-top:14px">Adresse</label>
+      <input type="text" id="er-adresse" value="${escHtml(r.adresse||'')}"/>
+      <div class="inline-form" style="margin-top:8px">
+        <div><label for="er-qte">Quantité</label><input type="number" id="er-qte" min="1" max="5" value="${r.quantite||1}"/></div>
+        <div><label for="er-prix">Prix total (€)</label><input type="number" id="er-prix" min="0" step="0.5" value="${((r.prix_total_cents||0)/100)}"/></div>
+      </div>
+      ${logisticsFieldsHtml('er', r)}
+      <label for="er-logement" style="margin-top:8px">Surface à climatiser</label>
+      <select id="er-logement">
+        <option value="" ${!r.logement?'selected':''}>—</option>
+        ${['Studio','T2','T3/T4','Maison'].map(o=>`<option ${r.logement===o?'selected':''}>${o}</option>`).join('')}
+      </select>
+      <label for="er-parrain" style="margin-top:8px">Code parrain (optionnel)</label>
+      <input type="text" id="er-parrain" value="${escHtml(r.parrain_code||'')}"/>
+      <label style="margin-top:8px">Motif de location (optionnel)</label>
+      <div class="periods" id="er-motifs" style="margin:0;flex-wrap:wrap;height:auto">
+        ${MOTIFS_OPTIONS.map(m => `<button type="button" data-motif="${m}" class="${motifsList.includes(m)?'on':''}" onclick="this.classList.toggle('on')" style="flex:none;padding:8px 14px">${m}</button>`).join('')}
+      </div>
+      <label style="margin-top:14px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
+        <input type="checkbox" id="er-mkt" style="width:auto" ${r.mkt_consent?'checked':''}/> Le client accepte de recevoir les offres et actualités par email
+      </label>
+      <p class="sub" style="margin-top:12px;font-size:12px">Les dates de location ne se modifient pas ici (ça toucherait le stock et les missions déjà créées) — pour ça, annule cette réservation et recrées-en une avec les bonnes dates.</p>
+      <div class="modal-actions" style="margin-top:10px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Enregistrer</button>
+      </div>
+      <div class="err" id="er-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const errEl = document.getElementById('er-err');
+    errEl.style.display = 'none';
+    okBtn.disabled = true;
+    try{
+      const motifs = [...document.querySelectorAll('#er-motifs button.on')].map(b => b.dataset.motif).join(', ');
+      const body = {
+        action: 'update', id,
+        prenom: document.getElementById('er-prenom').value.trim(),
+        nom: document.getElementById('er-nom').value.trim(),
+        tel: document.getElementById('er-tel').value.trim(),
+        tel_secondaire: document.getElementById('er-tel2').value.trim(),
+        email: document.getElementById('er-email').value.trim(),
+        adresse: document.getElementById('er-adresse').value.trim(),
+        quantite: document.getElementById('er-qte').value,
+        prix_total_cents: Math.round((parseFloat(document.getElementById('er-prix').value)||0)*100),
+        logement: document.getElementById('er-logement').value,
+        parrain_code: document.getElementById('er-parrain').value.trim(),
+        motifs,
+        mkt_consent: document.getElementById('er-mkt').checked,
+        ...typeClientPayload('er'),
+        ...logisticsPayload('er'),
+      };
+      delete body.creneau_livraison; // pas de champ créneau ici, ne rien écraser par erreur
+      const r2 = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+      const d = await r2.json();
+      if(!r2.ok) throw new Error(d.error||'Erreur');
+      Object.assign(r, body);
+      closeModal();
+      renderReservations();
+      showToast('Réservation mise à jour', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      errEl.textContent = e.message; errEl.style.display = 'block';
+    }
+  };
 }
 async function loadReservations(){
   const zone = document.getElementById('tab-reservations');
@@ -1806,18 +1904,20 @@ function renderReservations(){
 }
 // Champs "type de client" (particulier/entreprise) réutilisés dans les 2
 // formulaires de création manuelle (Réservations + "Créer une mission").
-function typeClientFieldsHtml(prefix){
+function typeClientFieldsHtml(prefix, v){
+  v = v || {};
+  const isEnt = v.type_client === 'entreprise';
   return `
       <label for="${prefix}-type">Type de client</label>
       <select id="${prefix}-type" onchange="document.getElementById('${prefix}-entreprise-wrap').classList.toggle('hidden', this.value!=='entreprise')">
-        <option value="particulier">Particulier</option>
-        <option value="entreprise">Entreprise</option>
+        <option value="particulier" ${!isEnt?'selected':''}>Particulier</option>
+        <option value="entreprise" ${isEnt?'selected':''}>Entreprise</option>
       </select>
-      <div id="${prefix}-entreprise-wrap" class="hidden" style="margin-top:8px">
+      <div id="${prefix}-entreprise-wrap" class="${isEnt?'':'hidden'}" style="margin-top:8px">
         <label for="${prefix}-raison">Raison sociale</label>
-        <input type="text" id="${prefix}-raison"/>
+        <input type="text" id="${prefix}-raison" value="${escHtml(v.raison_sociale||'')}"/>
         <label for="${prefix}-siret" style="margin-top:8px">SIRET (optionnel)</label>
-        <input type="text" id="${prefix}-siret"/>
+        <input type="text" id="${prefix}-siret" value="${escHtml(v.siret||'')}"/>
       </div>`;
 }
 function typeClientPayload(prefix){
@@ -1834,18 +1934,19 @@ function typeClientPayload(prefix){
 // systématiquement collectées sur le site public.
 const INSTALLATION_OPTIONS = ['Autonome (kit fourni)', 'Technicien (25€)'];
 const FENETRE_OPTIONS = ['À confirmer', 'Fenêtre coulissante', 'Fenêtre à battant', 'Oscillo-battant', 'Porte-fenêtre', 'Vélux / toit'];
-function logisticsFieldsHtml(prefix){
+function logisticsFieldsHtml(prefix, v){
+  v = v || {};
   return `
       <div class="inline-form" style="margin-top:8px">
-        <div><label for="${prefix}-etage">Étage</label><input type="text" id="${prefix}-etage" placeholder="Ex. 3e"/></div>
-        <div><label for="${prefix}-asc">Ascenseur</label><select id="${prefix}-asc"><option value="Oui">Oui</option><option value="Non">Non</option></select></div>
+        <div><label for="${prefix}-etage">Étage</label><input type="text" id="${prefix}-etage" placeholder="Ex. 3e" value="${escHtml(v.etage||'')}"/></div>
+        <div><label for="${prefix}-asc">Ascenseur</label><select id="${prefix}-asc"><option value="Oui" ${v.ascenseur!=='Non'?'selected':''}>Oui</option><option value="Non" ${v.ascenseur==='Non'?'selected':''}>Non</option></select></div>
       </div>
       <div class="inline-form" style="margin-top:8px">
-        <div><label for="${prefix}-fenetre">Type de fenêtre</label><select id="${prefix}-fenetre">${FENETRE_OPTIONS.map(f=>`<option value="${f}">${f}</option>`).join('')}</select></div>
-        <div><label for="${prefix}-installation">Installation</label><select id="${prefix}-installation">${INSTALLATION_OPTIONS.map(o=>`<option value="${o}">${o}</option>`).join('')}</select></div>
+        <div><label for="${prefix}-fenetre">Type de fenêtre</label><select id="${prefix}-fenetre">${FENETRE_OPTIONS.map(f=>`<option value="${f}" ${v.fenetre===f?'selected':''}>${f}</option>`).join('')}</select></div>
+        <div><label for="${prefix}-installation">Installation</label><select id="${prefix}-installation">${INSTALLATION_OPTIONS.map(o=>`<option value="${o}" ${v.installation===o?'selected':''}>${o}</option>`).join('')}</select></div>
       </div>
       <label for="${prefix}-instructions" style="margin-top:8px">Instructions d'accès (digicode…)</label>
-      <input type="text" id="${prefix}-instructions"/>`;
+      <input type="text" id="${prefix}-instructions" value="${escHtml(v.instructions_acces||'')}"/>`;
 }
 function logisticsPayload(prefix){
   return {

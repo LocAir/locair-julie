@@ -22,7 +22,7 @@ module.exports = async (req, res) => {
     if (action === 'list') {
       const { data, error } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, parrain_code, created_at')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, logement, parrain_code, motifs, mkt_consent, created_at')
         .eq('city_id', city.id)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -256,6 +256,14 @@ module.exports = async (req, res) => {
       if (body.instructions_acces != null) patch.instructions_acces = body.instructions_acces.trim().slice(0, 1000) || null;
       if (body.creneau_livraison != null)  patch.creneau            = body.creneau_livraison.trim().slice(0, 500) || null;
       if (body.tel_secondaire != null)     patch.tel_secondaire     = body.tel_secondaire.trim().slice(0, 50) || null;
+      if (body.email != null)              patch.email              = body.email.trim().slice(0, 200) || null;
+      if (body.type_client != null)        patch.type_client        = body.type_client === 'entreprise' ? 'entreprise' : 'particulier';
+      if (body.raison_sociale != null)     patch.raison_sociale     = body.raison_sociale.trim().slice(0, 300) || null;
+      if (body.siret != null)              patch.siret              = body.siret.trim().slice(0, 50) || null;
+      if (body.logement != null)           patch.logement           = body.logement.trim().slice(0, 100) || null;
+      if (body.parrain_code != null)       patch.parrain_code       = body.parrain_code.trim().slice(0, 50) || null;
+      if (body.motifs != null)             patch.motifs             = body.motifs.trim().slice(0, 300) || null;
+      if (body.mkt_consent != null)        patch.mkt_consent        = !!body.mkt_consent;
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('reservations').update(patch).eq('id', id).eq('city_id', city.id);
       if (error) throw error;
