@@ -814,6 +814,7 @@ const TYPE_BADGE = {
   livraison:    '<span class="chip type-livraison">📦 Livraison</span>',
   recuperation: '<span class="chip type-recuperation">🔄 Récupération</span>',
   changement:   '<span class="chip type-changement">🔁 Remplacement</span>',
+  autre:        '<span class="chip type-changement">🧳 Mission libre</span>',
 };
 function missionTypeBadge(type){
   return TYPE_BADGE[type] || TYPE_BADGE.recuperation;
@@ -1028,14 +1029,17 @@ function parVilleTableHtml(parVille){
 // Réservations, pas celui d'un board logistique du jour.
 function boardRowHtml(m){
   const res = m.reservation || {};
+  const isAutre = m.type === 'autre';
+  const nom = isAutre ? (m.titre || 'Mission libre') : ((res.prenom||'')+' '+(res.nom||''));
+  const adresse = isAutre ? (m.adresse_libre||'—') : (res.adresse||'—');
   const numeros = (m.appareil_numeros||[]).join(', ');
   return `
     <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
       <div class="row-top">
-        <span class="row-title">${escHtml(m.creneau||'—')} · ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
+        <span class="row-title">${escHtml(m.creneau||'—')} · ${escHtml(nom)}</span>
         <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
       </div>
-      <div class="row-meta">${escHtml(res.adresse||'—')}${numeros?' · Unité n°'+escHtml(numeros):''}${m.transporteur?' · '+escHtml(m.transporteur.nom):' · Non assigné'}</div>
+      <div class="row-meta">${escHtml(adresse)}${numeros?' · Unité n°'+escHtml(numeros):''}${m.transporteur?' · '+escHtml(m.transporteur.nom):' · Non assigné'}</div>
     </div>`;
 }
 // Le code postal est déjà présent dans l'adresse (le site utilise l'autocomplete
@@ -1055,7 +1059,7 @@ function groupByPostal(items, getAdresse){
   return Object.keys(groups).sort().map(cp => ({cp, items: groups[cp]}));
 }
 function boardSectionHtml(items){
-  return groupByPostal(items, m => (m.reservation||{}).adresse).map(g => `
+  return groupByPostal(items, m => m.type==='autre' ? m.adresse_libre : (m.reservation||{}).adresse).map(g => `
     <div class="row-meta" style="font-size:11px;color:var(--grey-soft);font-weight:700;margin:10px 0 6px 2px">📮 ${escHtml(g.cp)} (${g.items.length})</div>
     ${g.items.map(boardRowHtml).join('')}`).join('');
 }
@@ -1065,13 +1069,15 @@ function boardHtml(livraisons){
   const installs   = today.filter(m => m.type==='livraison');
   const pickups    = today.filter(m => m.type==='recuperation');
   const changements = today.filter(m => m.type==='changement');
-  if(!installs.length && !pickups.length && !changements.length) return '';
+  const autres     = today.filter(m => m.type==='autre');
+  if(!installs.length && !pickups.length && !changements.length && !autres.length) return '';
   return `
     <div class="card">
       <h2>📋 Aujourd'hui</h2>
       ${installs.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin-bottom:4px">🏠 Installations (${installs.length})</div>${boardSectionHtml(installs)}`:''}
       ${pickups.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin:${installs.length?'16px':'0'} 0 4px">🔄 Récupérations (${pickups.length})</div>${boardSectionHtml(pickups)}`:''}
       ${changements.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin:${(installs.length||pickups.length)?'16px':'0'} 0 4px">🔁 Remplacements (${changements.length})</div>${boardSectionHtml(changements)}`:''}
+      ${autres.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin:${(installs.length||pickups.length||changements.length)?'16px':'0'} 0 4px">🧳 Missions libres (${autres.length})</div>${boardSectionHtml(autres)}`:''}
     </div>`;
 }
 
@@ -2117,11 +2123,13 @@ function renderLivraisonsToolbar(){
 // transporteur/date/créneau) mais aucune UI ne l'appelait — utile pour une
 // mission hors cycle normal (changement d'appareil, mission ajoutée après
 // coup, correction d'un oubli de dispatch).
-const MISSION_TYPE_LABEL = { livraison: '📦 Livraison', recuperation: '🔄 Récupération', changement: '🔁 Remplacement' };
+const MISSION_TYPE_LABEL = { livraison: '📦 Livraison', recuperation: '🔄 Récupération', changement: '🔁 Remplacement', autre: '🧳 Mission libre' };
 function toggleCreateMissionMode(value){
   const isNew = value === '__new__';
+  const isAutre = value === '__autre__';
   document.getElementById('cm-new-client')?.classList.toggle('hidden', !isNew);
-  document.getElementById('cm-existing-resa')?.classList.toggle('hidden', isNew);
+  document.getElementById('cm-existing-resa')?.classList.toggle('hidden', isNew || isAutre);
+  document.getElementById('cm-autre')?.classList.toggle('hidden', !isAutre);
 }
 async function openCreateMissionModal(){
   closeModal();
@@ -2155,6 +2163,7 @@ async function openCreateMissionModal(){
       <label for="cm-resa">Réservation</label>
       <select id="cm-resa" onchange="toggleCreateMissionMode(this.value)">
         <option value="__new__">+ Nouveau client…</option>
+        <option value="__autre__">🧳 Mission libre (hors réservation)</option>
         ${resaOptions}
       </select>
       <div id="cm-new-client" style="margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--r-sm)">
@@ -2180,6 +2189,24 @@ async function openCreateMissionModal(){
           <div><label for="cm-c-qte">Quantité</label><input type="number" id="cm-c-qte" min="1" max="5" value="1"/></div>
           <div><label for="cm-c-prix">Prix total (€)</label><input type="number" id="cm-c-prix" min="0" step="0.5"/></div>
         </div>
+      </div>
+      <div id="cm-autre" class="hidden" style="margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--r-sm)">
+        <p class="sub" style="margin:0 0 10px">Pour une tâche qui ne concerne pas un client (ex. aller chercher du matériel livré par un fournisseur et le ramener au box). Pas de barème ici — tu fixes le tarif toi-même.</p>
+        <label for="cm-a-titre">Titre *</label>
+        <input type="text" id="cm-a-titre" placeholder="Ex. Récupérer livraison fournisseur"/>
+        <label for="cm-a-adresse" style="margin-top:8px">Adresse (optionnel)</label>
+        <input type="text" id="cm-a-adresse" placeholder="Ex. adresse du fournisseur"/>
+        <label for="cm-a-transp" style="margin-top:8px">Transporteur</label>
+        <select id="cm-a-transp">
+          <option value="">Non assigné</option>
+          ${transpOptions}
+        </select>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="cm-a-date">Date</label><input type="date" id="cm-a-date" value="${today}"/></div>
+          <div><label for="cm-a-creneau">Créneau</label><input type="text" id="cm-a-creneau" placeholder="8h–10h"/></div>
+        </div>
+        <label for="cm-a-tarif" style="margin-top:8px">Tarif payé au transporteur (€) *</label>
+        <input type="number" id="cm-a-tarif" min="0" step="0.5"/>
       </div>
       <div id="cm-existing-resa" class="hidden">
         <label for="cm-type">Type</label>
@@ -2245,6 +2272,27 @@ async function openCreateMissionModal(){
         closeModal();
         loadLivraisons();
         showToast('Client et réservation créés — missions générées automatiquement', 'success');
+        return;
+      }
+      if(document.getElementById('cm-resa').value === '__autre__'){
+        const titre = document.getElementById('cm-a-titre').value.trim();
+        if(!titre){ throw new Error('Le titre est obligatoire.'); }
+        const tarif = document.getElementById('cm-a-tarif').value;
+        if(tarif === '' || parseFloat(tarif) < 0){ throw new Error('Le tarif est obligatoire.'); }
+        const body = {
+          action: 'create', type: 'autre', titre,
+          adresse_libre: document.getElementById('cm-a-adresse').value.trim(),
+          transporteur_id: document.getElementById('cm-a-transp').value || null,
+          date_prevue: document.getElementById('cm-a-date').value,
+          creneau: document.getElementById('cm-a-creneau').value.trim(),
+          montant_du_cents: Math.round((parseFloat(tarif)||0)*100),
+        };
+        const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.error||'Erreur');
+        closeModal();
+        loadLivraisons();
+        showToast('Mission créée', 'success');
         return;
       }
       const reservation_id = parseInt(document.getElementById('cm-resa').value);
@@ -2325,7 +2373,7 @@ function renderLivraisons(){
   if(q){
     items = items.filter(m => {
       const res = m.reservation || {};
-      const haystack = [res.ref, res.prenom, res.nom, res.adresse].filter(Boolean).join(' ').toLowerCase();
+      const haystack = [res.ref, res.prenom, res.nom, res.adresse, m.titre, m.adresse_libre].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(q);
     });
   }
@@ -2346,6 +2394,11 @@ function renderLivraisons(){
 
   list.innerHTML = items.map(m => {
     const res = m.reservation || {};
+    // Mission "autre" : pas de réservation/client, titre + adresse libres
+    // saisis par l'admin à la création (voir openCreateMissionModal).
+    const isAutre = m.type === 'autre';
+    const displayName = isAutre ? (m.titre || 'Mission libre') : ((res.prenom||'')+' '+(res.nom||''));
+    const displayAddr = isAutre ? (m.adresse_libre || '—') : (res.adresse||'—');
     const options = ['<option value="">Non assigné</option>'].concat(
       TRANSPORTEURS_CACHE.map(t => `<option value="${t.id}" ${m.transporteur&&m.transporteur.id===t.id?'selected':''}>${escHtml(t.nom)}</option>`)
     ).join('');
@@ -2368,11 +2421,11 @@ function renderLivraisons(){
       return `
         <div class="row-item" style="opacity:.6">
           <div class="row-top">
-            <span class="row-title">${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
+            <span class="row-title">${escHtml(displayName)}</span>
             <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
           </div>
           <div style="margin-bottom:6px">${missionTypeBadge(m.type)}</div>
-          <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
+          <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(displayAddr)}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
           <div class="row-actions"><button class="btn btn-grey" onclick="restoreLivraison(${m.id})">Restaurer</button></div>
         </div>`;
     }
@@ -2389,17 +2442,18 @@ function renderLivraisons(){
     if(m.duree_trajet_min!=null) detailBits.push(m.duree_trajet_min+' min trajet');
     if(m.duree_sur_place_min!=null) detailBits.push(m.duree_sur_place_min+' min sur place');
     if(m.client_notifie_at) detailBits.push('✅ Client notifié '+frDateHeure(m.client_notifie_at));
+    if(isAutre) detailBits.push('💰 '+euros(m.montant_du_cents)+' (tarif fixé)');
     return `
       <div class="row-item" ${nonAssignee?'style="border-left:3px solid var(--red)"':''}>
         <div class="row-top">
-          <span class="row-title">${nonAssignee?'🔔 ':''}${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
+          <span class="row-title">${nonAssignee?'🔔 ':''}${escHtml(displayName)}</span>
           <span style="display:flex;gap:6px;align-items:center">
             ${res.hors_zone?`<span class="chip" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red)">⚠️ Hors zone</span>`:''}
             <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
           </span>
         </div>
         <div style="margin-bottom:6px">${missionTypeBadge(m.type)}</div>
-        <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
+        <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(displayAddr)}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
         ${detailBits.length?`<div class="row-meta">${detailBits.join(' · ')}</div>`:''}
         ${res.instructions_acces?`<div class="row-meta" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
@@ -2538,12 +2592,15 @@ function renderAffectBoard(){
     .sort((a,b) => (a.creneau||'').localeCompare(b.creneau||'') || a.id-b.id);
   const cardHtml = m => {
     const res = m.reservation || {};
+    const isAutre = m.type === 'autre';
+    const nom = isAutre ? (m.titre || 'Mission libre') : ((res.prenom||'')+' '+(res.nom||''));
+    const adresse = isAutre ? (m.adresse_libre||'—') : (res.adresse||'—');
     const dirty = AFFECT_STAGED[m.id] !== AFFECT_ORIGINAL[m.id];
     return `
       <div class="affect-card ${dirty?'dirty':''}" data-id="${m.id}">
         <div class="affect-card-top"><span>${MISSION_TYPE_LABEL[m.type]||m.type}</span>${m.creneau?`<span class="affect-card-cren">${escHtml(m.creneau)}</span>`:''}</div>
-        <div class="affect-card-name">${escHtml((res.prenom||'')+' '+(res.nom||''))}</div>
-        <div class="affect-card-addr">📍 ${escHtml(res.adresse||'—')}</div>
+        <div class="affect-card-name">${escHtml(nom)}</div>
+        <div class="affect-card-addr">📍 ${escHtml(adresse)}</div>
       </div>`;
   };
 

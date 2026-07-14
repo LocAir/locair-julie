@@ -285,6 +285,21 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
       return res.status(200).json({ ok: true, statut: 'fait', montant_du_cents: montantDu });
     }
 
+    // Mission "autre" (hors réservation, ex. récupérer du matériel livré et le
+    // ramener au box) : pas de photo/vidange à valider, pas de barème — le
+    // tarif a déjà été fixé par l'admin à la création, on ne le touche pas.
+    if (action === 'autre_ok') {
+      if (liv.type !== 'autre' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      const dateErr = missionStartDateError(liv);
+      if (dateErr) return res.status(409).json({ error: dateErr });
+
+      await supabase.from('livraisons').update({
+        statut: 'fait', fait_at: new Date().toISOString(),
+      }).eq('id', liv.id);
+
+      return res.status(200).json({ ok: true, statut: 'fait', montant_du_cents: liv.montant_du_cents });
+    }
+
     if (action === 'changement_ok') {
       if (liv.type !== 'changement' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
@@ -326,12 +341,18 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
       }).eq('id', liv.id);
 
       const incidentType = problemeType === 'retard' ? 'retard' : problemeType === 'appareil_en_panne' ? 'materiel' : 'autre';
-      // La mission a toujours une réservation d'origine — sa city_id est la
-      // source de vérité, jamais une ville devinée (voir charge-retard.js).
-      const { data: resaCity } = await supabase
-        .from('reservations').select('city_id').eq('id', liv.reservation_id).maybeSingle();
+      // Une mission normale a toujours une réservation d'origine — sa city_id
+      // est la source de vérité, jamais une ville devinée (voir
+      // charge-retard.js). Une mission "autre" (hors réservation) porte sa
+      // ville directement sur la ligne livraisons.
+      let incidentCityId = liv.city_id || null;
+      if (liv.reservation_id) {
+        const { data: resaCity } = await supabase
+          .from('reservations').select('city_id').eq('id', liv.reservation_id).maybeSingle();
+        incidentCityId = resaCity?.city_id || null;
+      }
       await supabase.from('incidents').insert({
-        city_id:         resaCity?.city_id || null,
+        city_id:         incidentCityId,
         reservation_id: liv.reservation_id,
         type:            incidentType,
         description:     `[${liv.type}] ${description || problemeType}`,
