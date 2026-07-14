@@ -9,14 +9,18 @@ const MEDIA_COLUMN = {
   photo_retour:       'photo_retour_path',
   photo_absence:      'photo_absence_path',
 };
-// Charge une livraison en vérifiant qu'elle appartient bien (via sa réservation)
-// à la ville de l'admin authentifié — empêche d'agir sur une mission d'une autre
-// ville en devinant son id, une fois plusieurs villes sur la même base Supabase.
+// Charge une livraison en vérifiant qu'elle appartient bien à la ville de
+// l'admin authentifié — empêche d'agir sur une mission d'une autre ville en
+// devinant son id, une fois plusieurs villes sur la même base Supabase. Une
+// mission "autre" (hors réservation) porte sa ville directement (city_id) ;
+// une mission normale la tire de sa réservation.
 async function loadLivraisonScoped(supabase, cityId, livraisonId, select) {
   const { data } = await supabase
-    .from('livraisons').select(`${select}, reservation:reservations ( city_id )`)
+    .from('livraisons').select(`${select}, city_id, reservation:reservations ( city_id )`)
     .eq('id', livraisonId).maybeSingle();
-  if (!data || !data.reservation || data.reservation.city_id !== cityId) return null;
+  if (!data) return null;
+  const belongsToCity = data.reservation ? data.reservation.city_id === cityId : data.city_id === cityId;
+  if (!belongsToCity) return null;
   delete data.reservation;
   return data;
 }
@@ -34,17 +38,15 @@ module.exports = async (req, res) => {
     if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
 
     if (action === 'list') {
-      // livraisons n'a pas de city_id direct — on passe par les réservations de
-      // cette ville pour ne jamais faire fuiter les missions d'une autre ville
-      // partageant la même base Supabase.
+      // livraisons n'a pas de city_id direct pour une mission normale — on passe
+      // par les réservations de cette ville pour ne jamais faire fuiter les
+      // missions d'une autre ville partageant la même base Supabase. Une
+      // mission "autre" (hors réservation) porte sa ville directement.
       const { data: cityResas } = await supabase.from('reservations').select('id').eq('city_id', city.id);
       const resaIds = (cityResas || []).map(r => r.id);
-      if (!resaIds.length) return res.status(200).json({ livraisons: [] });
 
-      const { data, error } = await supabase
-        .from('livraisons')
-        .select(`
-          id, type, statut, date_prevue, creneau, masquee,
+      const selectCols = `
+          id, type, statut, date_prevue, creneau, masquee, titre, adresse_libre, montant_du_cents,
           probleme_type, probleme_description,
           photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path,
           accepted_at, client_notifie_at, arrivee_at, fait_at,
@@ -54,16 +56,21 @@ module.exports = async (req, res) => {
             id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, instructions_acces, masquee, hors_zone,
             reservation_appareils ( appareil:appareils ( numero, reference ) )
           )
-        `)
-        .in('reservation_id', resaIds)
-        .order('date_prevue', { ascending: false })
-        .limit(300);
-      if (error) throw error;
+        `;
+      const queries = [];
+      if (resaIds.length) {
+        queries.push(supabase.from('livraisons').select(selectCols).in('reservation_id', resaIds).order('date_prevue', { ascending: false }).limit(300));
+      }
+      queries.push(supabase.from('livraisons').select(selectCols).eq('type', 'autre').eq('city_id', city.id).order('date_prevue', { ascending: false }).limit(100));
+      const results = await Promise.all(queries);
+      for (const r of results) if (r.error) throw r.error;
+      const data = results.flatMap(r => r.data || []);
+
       // Une réservation masquée (ex. doublon retiré de l'écran par l'admin) sort
       // aussi de la liste des missions — sans quoi ses livraisons/récupérations
       // continuent d'encombrer cet onglet alors que la réservation a disparu de
       // l'onglet Réservations.
-      const livraisons = (data || []).filter(l => !l.reservation?.masquee).map(l => {
+      const livraisons = data.filter(l => !l.reservation?.masquee).map(l => {
         const ras = ((l.reservation?.reservation_appareils) || [])
           .filter(ra => ra.appareil?.numero != null)
           .sort((a, b) => a.appareil.numero - b.appareil.numero);
@@ -80,15 +87,50 @@ module.exports = async (req, res) => {
           duree_trajet_min:    minsBetween(l.accepted_at, l.arrivee_at),
           duree_sur_place_min: minsBetween(l.arrivee_at, l.fait_at),
         };
-      });
+      }).sort((a, b) => b.date_prevue.localeCompare(a.date_prevue));
       return res.status(200).json({ livraisons });
     }
 
     if (action === 'create') {
       const type = body.type;
-      if (!['livraison', 'recuperation', 'changement'].includes(type)) {
-        return res.status(400).json({ error: 'Type invalide (livraison | recuperation | changement)' });
+      if (!['livraison', 'recuperation', 'changement', 'autre'].includes(type)) {
+        return res.status(400).json({ error: 'Type invalide (livraison | recuperation | changement | autre)' });
       }
+
+      // Mission "autre" : pas de réservation, pas de barème — l'admin fixe le
+      // titre, l'adresse et le tarif lui-même (ex. aller chercher du matériel
+      // livré par un fournisseur et le ramener au box).
+      if (type === 'autre') {
+        const titre = (body.titre || '').trim().slice(0, 200);
+        if (!titre) return res.status(400).json({ error: 'Titre requis' });
+        const adresseLibre = (body.adresse_libre || '').trim().slice(0, 500);
+        const datePrevueAutre = (body.date_prevue || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(datePrevueAutre)) return res.status(400).json({ error: 'date_prevue invalide (YYYY-MM-DD)' });
+        const transporteurIdAutre = body.transporteur_id ? parseInt(body.transporteur_id) : null;
+        if (transporteurIdAutre) {
+          const { data: t } = await supabase.from('transporteurs').select('id').eq('id', transporteurIdAutre).eq('city_id', city.id).maybeSingle();
+          if (!t) return res.status(400).json({ error: 'Transporteur invalide' });
+        }
+        const montantCents = Math.max(0, parseInt(body.montant_du_cents) || 0);
+
+        const { data, error } = await supabase.from('livraisons').insert({
+          type: 'autre', city_id: city.id, titre, adresse_libre: adresseLibre || null,
+          transporteur_id: transporteurIdAutre, date_prevue: datePrevueAutre,
+          creneau: (body.creneau || '').trim().slice(0, 100) || null,
+          statut: 'a_faire', montant_du_cents: montantCents,
+        }).select().single();
+        if (error) throw error;
+
+        if (transporteurIdAutre) {
+          await pushToTransporteur(supabase, transporteurIdAutre, {
+            title: "Nouvelle mission Loc'Air",
+            body:  `${titre} — ouvre l'app pour l'accepter ou la refuser.`,
+            tag:   'nouvelle-mission',
+          });
+        }
+        return res.status(200).json({ ok: true, livraison: data });
+      }
+
       const reservationId  = parseInt(body.reservation_id);
       const transporteurId = body.transporteur_id ? parseInt(body.transporteur_id) : null;
       const datePrevue     = (body.date_prevue || '').slice(0, 10);

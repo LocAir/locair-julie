@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
     const { data, error } = await supabase
       .from('livraisons')
       .select(`
-        id, type, statut, date_prevue, creneau,
+        id, type, statut, date_prevue, creneau, titre, adresse_libre, montant_du_cents,
         photo_depart_path, photo_installation_path, photo_retour_path, client_notifie_at,
         vidange_confirmee,
         probleme_type, probleme_description,
@@ -47,10 +47,14 @@ module.exports = async (req, res) => {
       id:                  m.id,
       type:                m.type,
       installation:        m.reservation?.installation || null,
-      montant_preview:     computeBareme(m.type, m.reservation?.installation, baremeByCity[m.reservation?.city_id]),
+      // "autre" : pas de barème, le tarif est fixé une fois pour toutes par
+      // l'admin à la création (montant_du_cents), jamais recalculé ici.
+      montant_preview:     m.type === 'autre' ? (m.montant_du_cents || 0) : computeBareme(m.type, m.reservation?.installation, baremeByCity[m.reservation?.city_id]),
       statut:              m.statut,
       date_prevue:         m.date_prevue,
       creneau:             m.creneau,
+      titre:               m.titre || null,
+      adresse_libre:       m.adresse_libre || null,
       photo_depart_ok:     Boolean(m.photo_depart_path),
       photo_installation_ok: Boolean(m.photo_installation_path),
       photo_retour_ok:     Boolean(m.photo_retour_path),

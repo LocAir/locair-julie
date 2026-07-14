@@ -868,11 +868,13 @@ function renderDashboard(){
 
   const heroFor = (m, eyebrow, cta, ctaLabel) => {
     const c = m.client || {};
+    const nom = m.type==='autre' ? (m.titre||'Mission libre') : (escHtml((c.prenom||'')+' '+(c.nom||'')).trim()||'Mission');
+    const adresse = m.type==='autre' ? (m.adresse_libre||'Adresse à confirmer') : (c.adresse||'Adresse à confirmer');
     return `
       <div class="dash-hero">
         <div class="eyebrow">${eyebrow}</div>
-        <h2>${escHtml((c.prenom||'')+' '+(c.nom||'')).trim()||'Mission'}</h2>
-        <p>${TYPE_ICON[m.type]||'📍'} ${missionTypeLabel(m)} · 📍 ${escHtml(c.adresse||'Adresse à confirmer')}</p>
+        <h2>${m.type==='autre'?escHtml(nom):nom}</h2>
+        <p>${TYPE_ICON[m.type]||'📍'} ${missionTypeLabel(m)} · 📍 ${escHtml(adresse)}</p>
         <button class="btn btn-blue btn-block" onclick="${cta}">${ctaLabel}</button>
       </div>`;
   };
@@ -988,10 +990,11 @@ function startTransporteurAutoRefresh(){
 }
 
 const TYPE_LABEL = {livraison:'Livraison', recuperation:'Récupération', changement:'Remplacement'};
-const TYPE_ICON  = {livraison:'📦', recuperation:'🔄', changement:'🔁'};
+const TYPE_ICON  = {livraison:'📦', recuperation:'🔄', changement:'🔁', autre:'🧳'};
 const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', arrivee:'Sur place', probleme:'Problème signalé', fait:'Terminée'};
 // Label précis selon type + option d'installation
 function missionTypeLabel(m){
+  if(m.type==='autre') return 'Mission libre';
   if(m.type==='changement') return 'Remplacement';
   if(m.type==='recuperation') return 'Récupération';
   return (m.installation||'').startsWith('Technicien') ? 'Livraison + installation' : 'Livraison';
@@ -1018,6 +1021,7 @@ function futureDateText(dateStr){
 
 function missionCardHtml(m){
   const c = m.client || {};
+  const isAutre = m.type === 'autre';
   // Une mission acceptée pour plus tard n'est pas "en cours" — le pill doit
   // le dire clairement même hors du filtre "En cours" (ex. vue "À venir"),
   // sinon deux missions au même statut technique ("acceptee") semblent
@@ -1030,15 +1034,17 @@ function missionCardHtml(m){
   // d'alerte permet de la repérer d'un coup d'œil dans la liste.
   const isLate = ['acceptee','arrivee','probleme'].includes(m.statut) && m.date_prevue < todayStr;
   const lateBadge = isLate ? `<span class="mcard-late-badge">⏰ En retard</span>` : '';
-  const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
+  const adresse = isAutre ? (m.adresse_libre||'') : (c.adresse||'');
+  const mapsUrl = adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(adresse)}` : '';
   const earn = m.montant_preview ? `<span class="mcard-earn">💶 ${Math.round(m.montant_preview/100)}€</span>` : '';
   const metaParts = [m.creneau?escHtml(m.creneau):'', (c.etage&&c.etage!=='—')?'Étage '+escHtml(c.etage):''].filter(Boolean);
   // Numéro(s) d'unité déjà assignés en stock — pour identifier tout de suite
   // de quel(s) climatiseur(s) il s'agit, sans devoir ouvrir la mission.
   const unitsTxt = (m.appareil_numeros&&m.appareil_numeros.length) ? `n°${m.appareil_numeros.join(', ')}` : '';
+  const nom = isAutre ? (m.titre || 'Mission libre') : ((escHtml((c.prenom||'')+' '+(c.nom||'')).trim())||'Client');
   return `
     <div class="mcard st-${m.statut}" onclick="openMission(${m.id})">
-      <div class="mcard-name">${escHtml((c.prenom||'')+' '+(c.nom||'')).trim()||'Client'}</div>
+      <div class="mcard-name">${isAutre?escHtml(nom):nom}</div>
       <div class="mcard-top">
         <span class="mcard-icon">${TYPE_ICON[m.type]||'📍'}</span>
         <span class="mcard-type">${missionTypeLabel(m)}${unitsTxt?` · 🔢 ${unitsTxt}`:''}</span>
@@ -1047,7 +1053,7 @@ function missionCardHtml(m){
         <span style="flex:1"></span>
         ${earn}
       </div>
-      <div class="mcard-addr">📍 ${escHtml(c.adresse||'Adresse à confirmer')}</div>
+      <div class="mcard-addr">📍 ${escHtml(adresse||'Adresse à confirmer')}</div>
       ${metaParts.length?`<div class="mcard-meta">${metaParts.join(' · ')}</div>`:''}
       ${missionCardActionsHtml(m, mapsUrl, c.tel)}
     </div>`;
@@ -1280,10 +1286,12 @@ function renderMissions(){
       const installs    = items.filter(m => m.type==='livraison');
       const pickups     = items.filter(m => m.type==='recuperation');
       const changements = items.filter(m => m.type==='changement');
+      const autres      = items.filter(m => m.type==='autre');
       return `<div class="section-title">${dateLabelFor(dateStr)}</div>`
         + (installs.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">📦 Livraisons (${installs.length})</div>${missionsByPostalHtml(installs)}`:'')
         + (pickups.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔄 Récupérations (${pickups.length})</div>${missionsByPostalHtml(pickups)}`:'')
-        + (changements.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔁 Remplacements (${changements.length})</div>${missionsByPostalHtml(changements)}`:'');
+        + (changements.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔁 Remplacements (${changements.length})</div>${missionsByPostalHtml(changements)}`:'')
+        + (autres.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🧳 Missions libres (${autres.length})</div>${missionsByPostalHtml(autres)}`:'');
     }
     return `<div class="section-title">${dateLabelFor(dateStr)}</div>` + items.map(missionCardHtml).join('');
   }).join('');
@@ -1295,7 +1303,7 @@ function postalCode(adresse){
 }
 function missionsByPostalHtml(items){
   const groups = {};
-  items.forEach(m => { const cp = postalCode((m.client||{}).adresse) || 'Autre'; (groups[cp] = groups[cp] || []).push(m); });
+  items.forEach(m => { const cp = postalCode(m.type==='autre' ? m.adresse_libre : (m.client||{}).adresse) || 'Autre'; (groups[cp] = groups[cp] || []).push(m); });
   const codes = Object.keys(groups);
   // Un seul secteur dans le groupe : le sous-titre code postal n'apporte rien
   // (même seuil que renderPostalFilter, qui masque déjà son propre filtre
@@ -1345,6 +1353,13 @@ function actionBtnsForMission(m){
     const todayStr = new Date().toISOString().slice(0,10);
     if(m.date_prevue > todayStr){
       return `<div class="info-box"><p>📅 Tu as accepté cette mission — tu pourras la démarrer ${futureDateText(m.date_prevue)}.</p></div>`;
+    }
+    // Mission libre : pas d'assistant étape par étape (pas de photo/vidange à
+    // faire), juste "Terminé" ou "Problème" une fois sur place le jour J.
+    if(m.type === 'autre'){
+      return `
+        <button class="btn btn-green" onclick="doAction('autre_ok')">✅ TERMINÉ</button>
+        <button class="btn btn-amber" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
     }
   }
   // Une fois acceptée et le jour J arrivé, le parcours sur place passe par
@@ -1512,10 +1527,20 @@ function renderDetail(){
     return;
   }
   const c = m.client || {};
-  const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
+  const isAutre = m.type === 'autre';
+  const mapsUrl = isAutre
+    ? (m.adresse_libre ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(m.adresse_libre)}` : '')
+    : (c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '');
   const started = m.statut !== 'a_faire';
 
-  const infoRows = started ? `
+  // Mission libre : pas de fiche client, juste le titre saisi par l'admin,
+  // l'adresse libre et l'itinéraire — pas d'étage/fenêtre/quantité/téléphone
+  // puisqu'il n'y a pas de client rattaché.
+  const infoRows = isAutre ? `
+      <div class="info-row"><span class="info-ic">📝</span><span class="info-label">Détail</span><span class="info-val">${escHtml(m.titre||'—')}</span></div>
+      <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(m.adresse_libre||'—')}</span></div>
+      ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
+    ` : started ? `
       ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="info-row"><span class="info-ic">🔢</span><span class="info-label">Unité${m.appareil_numeros.length>1?'s':''}</span><span class="info-val">n°${m.appareil_numeros.join(', ')}</span></div>`:''}
       <div class="info-row"><span class="info-ic">👤</span><span class="info-label">Client</span><span class="info-val">${escHtml((c.prenom||'')+' '+(c.nom||''))}${c.raison_sociale?' · 🏢 '+escHtml(c.raison_sociale):''}</span></div>
       <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
@@ -1657,7 +1682,7 @@ async function doAction(action, extra){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
 
-    if(action === 'livraison_ok' || action === 'retour_ok' || action === 'changement_ok'){
+    if(action === 'livraison_ok' || action === 'retour_ok' || action === 'changement_ok' || action === 'autre_ok'){
       showCelebration(d.montant_du_cents || 0);
       return;
     }
