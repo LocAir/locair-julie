@@ -137,11 +137,18 @@ module.exports = async (req, res) => {
     // tap) — remise en "à faire" pour lui-même (pas de réassignation à un
     // autre transporteur), sans effacer une éventuelle progression déjà
     // enregistrée (photo, vidange) qui resterait valable au retour dessus.
+    // Autorisé aussi depuis "probleme" : le transporteur peut se débloquer
+    // lui-même (ex. client absent, il repassera plus tard) sans attendre
+    // qu'Aly résolve l'incident — la ligne "incidents" créée reste intacte,
+    // seuls les champs de statut courant de la mission sont effacés.
     if (action === 'reporter') {
-      if (!['acceptee', 'arrivee'].includes(liv.statut)) {
+      if (!['acceptee', 'arrivee', 'probleme'].includes(liv.statut)) {
         return res.status(409).json({ error: 'Cette mission n\'est pas en cours' });
       }
-      await supabase.from('livraisons').update({ statut: 'a_faire', accepted_at: null, arrivee_at: null }).eq('id', liv.id);
+      await supabase.from('livraisons').update({
+        statut: 'a_faire', accepted_at: null, arrivee_at: null,
+        probleme_type: null, probleme_description: null, probleme_at: null,
+      }).eq('id', liv.id);
       return res.status(200).json({ ok: true, statut: 'a_faire' });
     }
 

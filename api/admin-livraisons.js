@@ -316,16 +316,22 @@ module.exports = async (req, res) => {
     // Équivalent admin du bouton "⏪ Faire plus tard" côté transporteur —
     // remet la mission en attente d'acceptation pour le MÊME transporteur
     // (contrairement à 'assign' vers un autre transporteur), sans perdre une
-    // éventuelle progression déjà enregistrée (photo, vidange).
+    // éventuelle progression déjà enregistrée (photo, vidange). Autorisé
+    // aussi depuis "probleme" (secours si le transporteur est injoignable) —
+    // la ligne "incidents" déjà créée reste intacte, seuls les champs de
+    // statut courant de la mission sont effacés.
     if (action === 'remettre_a_faire') {
       const livraisonId = parseInt(body.livraison_id);
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
       const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, statut, transporteur_id');
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
-      if (!['acceptee', 'arrivee'].includes(liv.statut)) {
+      if (!['acceptee', 'arrivee', 'probleme'].includes(liv.statut)) {
         return res.status(409).json({ error: 'Cette mission n\'est pas en cours' });
       }
-      await supabase.from('livraisons').update({ statut: 'a_faire', accepted_at: null, arrivee_at: null }).eq('id', liv.id);
+      await supabase.from('livraisons').update({
+        statut: 'a_faire', accepted_at: null, arrivee_at: null,
+        probleme_type: null, probleme_description: null, probleme_at: null,
+      }).eq('id', liv.id);
       if (liv.transporteur_id) {
         await pushToTransporteur(supabase, liv.transporteur_id, {
           title: 'Mission remise à faire',
