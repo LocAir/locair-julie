@@ -1,5 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminToken } = require('./_lib/auth');
+const { geocodeAddress } = require('./_lib/geo');
 
 // undefined = champ non fourni (ne pas toucher) ; '' ou null = revenir au
 // barème par défaut ; nombre = tarif personnalisé en centimes.
@@ -96,6 +97,22 @@ module.exports = async (req, res) => {
       if (body.tarif_livraison_technicien != null) patch.tarif_livraison_technicien_cents = tarifCentsOrNull(body.tarif_livraison_technicien);
       if (body.tarif_recuperation != null)         patch.tarif_recuperation_cents         = tarifCentsOrNull(body.tarif_recuperation);
       if (body.tarif_changement != null)           patch.tarif_changement_cents           = tarifCentsOrNull(body.tarif_changement);
+      // Adresse du box (dépôt matériel) — géocodée une seule fois ici plutôt
+      // qu'à chaque calcul de tournée transporteur (api/transporteur-route.js),
+      // qui la relit telle quelle depuis la ville.
+      if (body.depot_adresse != null) {
+        const depotAdresse = body.depot_adresse.trim();
+        patch.depot_adresse = depotAdresse || null;
+        if (depotAdresse) {
+          const geo = await geocodeAddress(depotAdresse);
+          patch.depot_lat = geo ? geo.lat : null;
+          patch.depot_lng = geo ? geo.lng : null;
+          if (!geo) console.error('[Admin cities] Géocodage échoué pour l\'adresse du box:', depotAdresse);
+        } else {
+          patch.depot_lat = null;
+          patch.depot_lng = null;
+        }
+      }
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('cities').update(patch).eq('id', id);
       if (error) throw error;

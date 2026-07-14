@@ -295,6 +295,24 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
     <div id="checklist-content"><p class="empty">Chargement…</p></div>
   </div>
 
+  <!-- Écran 2ter : point de départ de la tournée du jour — une fois par
+       jour, juste après la validation de la checklist, avant les missions.
+       Détermine depuis où calculer le trajet le plus proche en voiture
+       (api/transporteur-route.js) : le box, ou la position actuelle si le
+       livreur a déjà son matériel et part directement en mission. -->
+  <div id="tournee-start-screen" class="hidden">
+    <div class="card">
+      <div class="eyebrow">Avant de démarrer</div>
+      <h1>D'où pars-tu ?</h1>
+      <p class="sub">Pour t'indiquer, mission après mission, le trajet le plus efficace jusqu'à la fin de ta journée.</p>
+      <button class="btn btn-blue btn-block" id="tournee-btn-box" onclick="startTournee('box')">🏬 Je pars du box</button>
+      <button class="btn btn-grey btn-block" style="margin-top:10px" id="tournee-btn-gps" onclick="startTournee('gps')">📍 Je commence directement une mission</button>
+      <p class="sub" style="margin-top:14px;font-size:12px">Tu as déjà ton matériel avec toi ? Choisis la 2ᵉ option — l'app utilisera ta position actuelle.</p>
+      <div class="err" id="tournee-start-err"></div>
+      <button class="forgot-link" onclick="switchTab('missions')">Passer cette étape →</button>
+    </div>
+  </div>
+
   <!-- Écran 3 : liste des missions -->
   <div id="missions-screen" class="hidden">
     <div class="tabbar">
@@ -372,10 +390,18 @@ let STATE = {
   checklist: null, // état du jour, chargé avec les missions — voir checklistBlocksMission()
   returnToMission: null, // mission à rouvrir après validation checklist, voir goToChecklistFromMission()
   detailRouteSeenFor: null, // id de la mission dont l'étape "En route" du parcours a déjà été vue, voir missionStepIndex()
+  // Tournée du jour (plus proche en voiture, api/transporteur-route.js) —
+  // calculée une fois au choix du point de départ (voir startTournee()),
+  // puis recalculée localement à chaque étape franchie (voir advanceTournee())
+  // à partir de la matrice de distances déjà reçue, sans nouvel appel réseau.
+  tourneeOrder: [],        // [missionId, ...] restant à traiter, dans l'ordre
+  tourneeTotal: 0,         // nombre total de missions dans la tournée du jour
+  tourneeMatrix: null,     // matrice de distances (mètres) entre tous les points
+  tourneeMissionIndex: [], // tourneeMissionIndex[i-1] = id mission au point d'index i de la matrice (0 = départ)
 };
 
 function show(id){
-  ['login-screen','dashboard-screen','checklist-screen','missions-screen','activite-screen','detail-screen','map-screen'].forEach(s=>{
+  ['login-screen','dashboard-screen','checklist-screen','tournee-start-screen','missions-screen','activite-screen','detail-screen','map-screen'].forEach(s=>{
     document.getElementById(s).classList.toggle('hidden', s!==id);
   });
 }
@@ -1433,10 +1459,21 @@ function missionWizardHtml(m, infoRows){
   const idx = missionStepIndex(m, steps);
   const key = steps[idx].key;
   return `
+    ${tourneeBannerHtml(m)}
     ${missionWizardProgressHtml(steps, idx)}
     <div id="action-zone">${wizardStepBodyHtml(m, infoRows, key)}</div>
     <button class="btn btn-amber" style="margin-top:10px" onclick="openProbleme()">⚠️ PROBLÈME</button>
     <div class="err" id="detail-err"></div>`;
+}
+// Affiché seulement si cette mission fait partie de la tournée calculée le
+// matin (voir startTournee()) — une mission ouverte hors de ce contexte
+// (ex. depuis la liste, sans être passé par le choix de départ) n'affiche
+// rien de plus que d'habitude.
+function tourneeBannerHtml(m){
+  if(!STATE.tourneeOrder || !STATE.tourneeOrder.length || !STATE.tourneeTotal) return '';
+  if(STATE.tourneeOrder.indexOf(m.id) === -1) return '';
+  const num = STATE.tourneeTotal - STATE.tourneeOrder.length + 1;
+  return `<p class="step-hint">🧭 Mission ${num}/${STATE.tourneeTotal} de ta tournée — la plus proche ensuite</p>`;
 }
 
 function renderStepper(m){
@@ -1625,6 +1662,20 @@ async function doAction(action, extra){
       return;
     }
 
+    // Client injoignable/problème signalé pendant une tournée en cours :
+    // on passe directement à la mission la plus proche suivante plutôt que
+    // de rouvrir celle qu'on vient justement de ne pas pouvoir traiter (voir
+    // advanceTournee, qui recalcule depuis l'adresse où le livreur vient de
+    // se trouver, pas depuis le point de départ du matin).
+    if(action === 'probleme' && STATE.tourneeOrder.length){
+      const justId = STATE.currentMission.id;
+      await fetchMissions();
+      const nextId = advanceTournee(justId);
+      if(nextId){ openMission(nextId); return; }
+      show('missions-screen'); renderMissions();
+      return;
+    }
+
     await fetchMissions();
     const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
     if(m){ STATE.currentMission = m; renderDetail(); show('detail-screen'); }
@@ -1676,7 +1727,15 @@ function showCelebration(montantCents){
 async function closeCelebration(){
   const o = document.getElementById('celebrate-overlay');
   if(o) o.remove();
+  const justId = STATE.currentMission ? STATE.currentMission.id : null;
   await loadMissions();
+  // Tournée en cours : enchaîne sur la mission la plus proche suivante
+  // (recalculée depuis l'adresse qu'on vient de quitter), pas seulement la
+  // prochaine de la liste brute.
+  if(STATE.tourneeOrder.length && justId){
+    const nextId = advanceTournee(justId);
+    if(nextId){ openMission(nextId); return; }
+  }
   const next = STATE.missions.find(m => ['acceptee', 'arrivee'].includes(m.statut))
     || STATE.missions.find(m => m.statut === 'a_faire');
   if(next) openMission(next.id);
@@ -2005,7 +2064,7 @@ async function validerChecklist(){
     const d2 = await r2.json().catch(()=>null);
     if(r2.ok && d2) STATE.checklist = d2;
     if(STATE.returnToMission) returnFromChecklist();
-    else switchTab('missions');
+    else show('tournee-start-screen');
   }catch(e){ alert(e.message||'Erreur'); }
 }
 async function annulerChecklist(){
@@ -2014,6 +2073,75 @@ async function annulerChecklist(){
     if(!r.ok) throw new Error((await r.json()).error||'Erreur');
     await loadChecklist();
   }catch(e){ alert(e.message||'Erreur'); }
+}
+
+// ── Tournée du jour (plus proche en voiture) ─────────────────────────────────
+// mode 'box' : calcule depuis l'adresse du box (voir api/transporteur-route.js,
+// qui la relit sur la ville). mode 'gps' : le livreur a déjà son matériel
+// (ex. chez lui) et part directement en mission — on utilise sa position
+// actuelle plutôt que le box.
+async function startTournee(mode){
+  const errEl = document.getElementById('tournee-start-err');
+  if(errEl) errEl.style.display = 'none';
+  const btns = document.querySelectorAll('#tournee-start-screen .btn');
+  btns.forEach(b => b.disabled = true);
+  try{
+    let body = {};
+    if(mode === 'gps'){
+      const pos = await new Promise((resolve, reject) => {
+        if(!navigator.geolocation){ reject(new Error("La géolocalisation n'est pas disponible sur cet appareil.")); return; }
+        navigator.geolocation.getCurrentPosition(resolve,
+          () => reject(new Error("Impossible d'obtenir ta position — vérifie que la localisation est autorisée pour cette app, ou choisis \"Je pars du box\".")),
+          { enableHighAccuracy: true, timeout: 12000 });
+      });
+      body = { start_lat: pos.coords.latitude, start_lng: pos.coords.longitude };
+    }
+    const r = await fetch(API('transporteur-route'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || 'Erreur');
+    STATE.tourneeOrder        = d.order || [];
+    STATE.tourneeTotal        = STATE.tourneeOrder.length;
+    STATE.tourneeMatrix       = d.matrix || null;
+    STATE.tourneeMissionIndex = d.missionIndex || [];
+    if(STATE.tourneeOrder.length) openMission(STATE.tourneeOrder[0]);
+    else switchTab('missions');
+  }catch(e){
+    // Le GPS refusé/en échec ne doit jamais bloquer la journée du livreur —
+    // il reste sur cet écran, peut réessayer ou basculer sur "Je pars du box".
+    if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+    btns.forEach(b => b.disabled = false);
+  }
+}
+function tourneeMatrixIndex(missionId){
+  const i = (STATE.tourneeMissionIndex||[]).indexOf(missionId);
+  return i === -1 ? -1 : i + 1; // +1 : l'index 0 de la matrice est le point de départ, pas une mission
+}
+function nearestNeighborLocal(matrix, current, remainingIdx){
+  let best = null, bestDist = Infinity;
+  remainingIdx.forEach(idx => { const d = matrix[current][idx]; if(d < bestDist){ bestDist = d; best = idx; } });
+  return best;
+}
+// Après une mission traitée (terminée OU signalée en problème), recalcule le
+// prochain arrêt depuis SON adresse plutôt que depuis le point de départ du
+// matin — c'est là que le livreur se trouve réellement, y compris s'il a dû
+// signaler un client injoignable (voir doAction, action 'probleme'). Utilise
+// la matrice de distances déjà reçue de api/transporteur-route.js : aucun
+// nouvel appel réseau à chaque étape.
+function advanceTournee(justHandledMissionId){
+  STATE.tourneeOrder = (STATE.tourneeOrder||[]).filter(id => id !== justHandledMissionId);
+  if(!STATE.tourneeOrder.length) return null;
+  if(STATE.tourneeMatrix && STATE.tourneeMissionIndex && STATE.tourneeMissionIndex.length){
+    const fromIdx = tourneeMatrixIndex(justHandledMissionId);
+    const remainingIdx = STATE.tourneeOrder.map(tourneeMatrixIndex).filter(i => i !== -1);
+    if(fromIdx !== -1 && remainingIdx.length){
+      const nextIdx = nearestNeighborLocal(STATE.tourneeMatrix, fromIdx, remainingIdx);
+      if(nextIdx != null){
+        const nextId = STATE.tourneeMissionIndex[nextIdx-1];
+        STATE.tourneeOrder = [nextId, ...STATE.tourneeOrder.filter(id => id !== nextId)];
+      }
+    }
+  }
+  return STATE.tourneeOrder[0];
 }
 
 // ── Carte du jour (vue d'ensemble, gratuite OpenStreetMap) ───────────────────

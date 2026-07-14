@@ -3692,6 +3692,7 @@ function renderVilles(){
       </div>
       <div class="row-meta">${c.dep?escHtml(c.dep)+' · ':''}${(c.postal_codes&&c.postal_codes.length) ? escHtml(c.postal_codes.join(', ')) : 'Aucun code postal'}</div>
       <div class="row-meta">💶 ${baremeSummaryHtml(c)}</div>
+      <div class="row-meta">🏬 ${c.depot_adresse ? escHtml(c.depot_adresse) : 'Adresse du box non renseignée — nécessaire pour le calcul de tournée du transporteur'}</div>
       <div class="row-meta" style="margin-top:10px;font-size:11.5px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.03em">Qui décide si le site affiche "Complet" ?</div>
       <div class="row-meta" style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="periods" style="margin:0;width:auto;display:inline-flex">
@@ -3708,6 +3709,7 @@ function renderVilles(){
           <div class="more-actions-menu">
             <button onclick="editVillePostaux(${c.id}, '${((c.postal_codes||[]).join(', ')).replace(/'/g,"\\'")}')">Modifier les codes postaux</button>
             <button onclick="editVilleBareme(${c.id})">Modifier le barème</button>
+            <button onclick="editVilleDepot(${c.id}, '${(c.depot_adresse||'').replace(/'/g,"\\'")}')">Modifier l'adresse du box</button>
           </div>
         </details>
       </div>
@@ -3884,6 +3886,21 @@ function editVillePostaux(id, current){
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadVilles();
       showToast('Codes postaux mis à jour', 'success');
+    }catch(e){ showToast(`Non enregistré : ${e.message}`, 'error'); }
+  });
+}
+// Adresse du dépôt matériel (box) de la ville — sert de point de départ au
+// calcul de tournée du transporteur quand il choisit "Je pars du box" en
+// début de journée (voir transporteur/index.html, écran de démarrage).
+// Géocodée côté serveur à l'enregistrement (api/admin-cities.js).
+function editVilleDepot(id, current){
+  promptAction({title:'Adresse du box (dépôt matériel)', label:'Adresse complète', value:current, placeholder:'48 bd René Cassin, 06200 Nice'}, async (value) => {
+    try{
+      const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, depot_adresse:value, city_id:'all'})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadVilles();
+      showToast('Adresse du box mise à jour', 'success');
     }catch(e){ showToast(`Non enregistré : ${e.message}`, 'error'); }
   });
 }
