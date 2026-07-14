@@ -23,6 +23,7 @@ module.exports = async (req, res) => {
       .select(`
         id, type, statut, date_prevue, creneau, titre, adresse_libre, montant_du_cents,
         photo_depart_path, photo_installation_path, photo_retour_path, client_notifie_at,
+        photo_fenetre_installee_path, photo_telecommande_path, demo_faite,
         vidange_confirmee,
         probleme_type, probleme_description,
         reservation:reservations (
@@ -58,6 +59,9 @@ module.exports = async (req, res) => {
       photo_depart_ok:     Boolean(m.photo_depart_path),
       photo_installation_ok: Boolean(m.photo_installation_path),
       photo_retour_ok:     Boolean(m.photo_retour_path),
+      photo_fenetre_installee_ok: Boolean(m.photo_fenetre_installee_path),
+      photo_telecommande_ok: Boolean(m.photo_telecommande_path),
+      demo_faite:          Boolean(m.demo_faite),
       vidange_ok:          Boolean(m.vidange_confirmee),
       client_notifie:      Boolean(m.client_notifie_at),
       fenetre_photo_ok:    Boolean(m.reservation?.fenetre_photo_path),
