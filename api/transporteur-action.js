@@ -4,6 +4,7 @@ const { sendBrevoSms, sendBrevoEmail } = require('./_lib/brevo');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { pushToAdmin, pushToTransporteur } = require('./_lib/push');
 const { pickTransporteurForMission } = require('./_lib/reservations');
+const { EXT_BY_TYPE } = require('./_lib/media');
 
 const PROBLEME_LABEL = {
   client_absent:     'Client absent',
@@ -25,10 +26,6 @@ const STAGE_FOR_KIND = {
   photo_depart:       ['acceptee'],
   photo_installation: ['acceptee', 'arrivee'],
   photo_retour:       ['acceptee', 'arrivee'],
-};
-const EXT_BY_TYPE = {
-  'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp',
-  'video/mp4': 'mp4', 'video/quicktime': 'mov', 'video/webm': 'webm',
 };
 
 // Accepter une mission n'est pas la démarrer : ça peut se faire n'importe
