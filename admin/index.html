@@ -352,6 +352,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
         <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
         <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
+        <button data-tab="tutoriels" onclick="switchAdminTab('tutoriels')">🎓 Tutoriels</button>
         <div class="tabs-group-label">Suivre</div>
         <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
         <button data-tab="checklist" onclick="switchAdminTab('checklist')">🎒 Checklist box</button>
@@ -368,10 +369,14 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-incidents" class="hidden"></div>
         <div id="tab-clients" class="hidden"></div>
         <div id="tab-villes" class="hidden"></div>
+        <div id="tab-tutoriels" class="hidden"></div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- input caché pour l'upload des fichiers vidéo tutoriel (onglet Tutoriels) -->
+<input type="file" id="tuto-media-input" accept="video/*" class="hidden"/>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -825,7 +830,7 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','checklist','livraisons','transporteurs','incidents','clients','villes'].forEach(t=>{
+  ['accueil','stock','reservations','checklist','livraisons','transporteurs','incidents','clients','villes','tutoriels'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
@@ -837,6 +842,7 @@ function switchAdminTab(tab){
   if(tab==='incidents') loadIncidents();
   if(tab==='clients') loadClients();
   if(tab==='villes') loadVilles();
+  if(tab==='tutoriels') loadTutoriels();
   toggleMobileMenu(false);
 }
 // Tiroir latéral mobile (voir .mobile-menu-btn / .tabs.mobile-open en CSS) —
@@ -3992,6 +3998,185 @@ function renderVilles(){
       <button class="btn btn-blue btn-block" style="margin-top:14px" onclick="addVille()">Créer la ville</button>
       <div class="err" id="ville-err"></div>
     </div>`;
+}
+// ── Tutoriels vidéo (prise en main transporteur) ─────────────────────────────
+// Bibliothèque unique pour toutes les villes — 7 catégories fixes, dont 3
+// (chargement/déchargement/installation) sont volontairement des emplacements
+// vides/désactivés pour l'instant (contenu pas encore déterminé).
+const TUTO_CATEGORIES = [
+  {key:'acces_sortie_boxe',   label:'🚪 Accès / sortie boxe',            actif:true},
+  {key:'recuperation_materiel', label:'📦 Récupération matériel',        actif:true},
+  {key:'fermeture_boxe',      label:'🔒 Fermeture boxe',                 actif:true},
+  {key:'entree_sortie_centre', label:'🏢 Entrée / sortie du centre',     actif:true},
+  {key:'chargement',          label:'⬆️ Chargement',                    actif:false},
+  {key:'dechargement',        label:'⬇️ Déchargement',                  actif:false},
+  {key:'installation',        label:"🔧 Installation par type d'ouverture", actif:false,
+    sousTypes:['Porte fenêtre','Fenêtre battante','Porte coulissante','Volet']},
+];
+let TUTO_VIDEOS_CACHE = [];
+let TUTO_PENDING_UPLOAD = null;
+async function loadTutoriels(){
+  const zone = document.getElementById('tab-tutoriels');
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    TUTO_VIDEOS_CACHE = d.videos || [];
+    renderTutoriels();
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+function tutoVideoRowHtml(v){
+  return `
+    <div class="row-item">
+      <div class="row-top">
+        <span class="row-title">${escHtml(v.titre)}${v.sous_categorie?' · '+escHtml(v.sous_categorie):''}</span>
+        <span class="chip ${v.actif?'actif':'inactif'}">${v.actif?'active':'désactivée'}</span>
+      </div>
+      <div class="row-meta">${v.storage_path?'✅ Fichier envoyé':'⏳ Pas encore de fichier'}</div>
+      <div class="row-actions">
+        ${v.storage_path?`<button class="btn btn-grey" onclick="viewTutoVideo(${v.id})">▶️ Voir</button>`:''}
+        <button class="btn btn-blue" onclick="startTutoUpload(${v.id})">${v.storage_path?'🔄 Remplacer le fichier':'📤 Envoyer le fichier'}</button>
+        <details class="more-actions" style="margin-left:auto">
+          <summary title="Plus d'actions">⋯</summary>
+          <div class="more-actions-menu">
+            <button onclick="editTutoTitre(${v.id}, '${escHtml(v.titre).replace(/'/g,"\\'")}')">Modifier le titre</button>
+            <button onclick="toggleTutoActif(${v.id}, ${!v.actif})">${v.actif?'Désactiver':'Réactiver'}</button>
+            <button class="danger" onclick="deleteTutoVideo(${v.id})">🗑️ Supprimer</button>
+          </div>
+        </details>
+      </div>
+    </div>`;
+}
+function renderTutoriels(){
+  const zone = document.getElementById('tab-tutoriels');
+  zone.innerHTML = `
+    <div class="affect-hint">💡 Ces vidéos sont partagées par toutes les villes — une seule bibliothèque, pas besoin de les uploader plusieurs fois.</div>
+    ${TUTO_CATEGORIES.map(cat => {
+      const videos = TUTO_VIDEOS_CACHE.filter(v => v.categorie === cat.key);
+      if(!cat.actif){
+        const sousTypesHtml = cat.sousTypes ? `<div class="row-meta">${cat.sousTypes.join(' · ')}</div>` : '';
+        return `
+          <div class="card" style="opacity:.55">
+            <h2>${cat.label}</h2>
+            <p class="sub">Pas encore disponible — structure prête, contenu à venir.</p>
+            ${sousTypesHtml}
+          </div>`;
+      }
+      return `
+        <div class="card">
+          <h2>${cat.label}</h2>
+          ${videos.map(tutoVideoRowHtml).join('') || '<p class="empty">Aucune vidéo pour l\'instant.</p>'}
+          <button class="btn btn-grey btn-block" style="margin-top:10px" onclick="addTutoVideo('${cat.key}')">+ Ajouter une vidéo</button>
+        </div>`;
+    }).join('')}`;
+}
+function addTutoVideo(categorie){
+  promptAction({title:'Nouvelle vidéo', label:'Titre', placeholder:'Ex. Ouvrir le portail du centre'}, async (titre) => {
+    if(!titre) return;
+    try{
+      const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'upsert_meta', categorie, titre})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadTutoriels();
+      showToast('Vidéo créée — envoie maintenant le fichier', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
+}
+function editTutoTitre(id, current){
+  promptAction({title:'Modifier le titre', label:'Titre', value:current}, async (titre) => {
+    if(!titre) return;
+    const v = TUTO_VIDEOS_CACHE.find(x => x.id===id);
+    try{
+      const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'upsert_meta', id, categorie:v.categorie, sous_categorie:v.sous_categorie, ordre:v.ordre, actif:v.actif, titre})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadTutoriels();
+      showToast('Titre mis à jour', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
+}
+async function toggleTutoActif(id, actif){
+  const v = TUTO_VIDEOS_CACHE.find(x => x.id===id);
+  try{
+    const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'upsert_meta', id, categorie:v.categorie, sous_categorie:v.sous_categorie, ordre:v.ordre, titre:v.titre, actif})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadTutoriels();
+  }catch(e){ showToast(e.message, 'error'); }
+}
+function deleteTutoVideo(id){
+  confirmAction('Supprimer cette vidéo ? Le fichier ne sera plus accessible aux transporteurs, et leur historique "vu" pour cette vidéo disparaît.', async () => {
+    try{
+      const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadTutoriels();
+      showToast('Vidéo supprimée', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {danger:true, yesLabel:'Supprimer'});
+}
+function startTutoUpload(videoId){
+  TUTO_PENDING_UPLOAD = videoId;
+  const input = document.getElementById('tuto-media-input');
+  input.value = '';
+  input.click();
+}
+// Même flux 2 temps que côté transporteur (demander_upload → PUT direct vers
+// Supabase Storage → confirmer_upload) : les octets du fichier ne passent
+// jamais par la fonction Vercel.
+document.getElementById('tuto-media-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  const videoId = TUTO_PENDING_UPLOAD;
+  if(!file || !videoId) return;
+  showToast('Envoi de la vidéo en cours…', 'success');
+  try{
+    const r1 = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'demander_upload', video_id:videoId, content_type:file.type})});
+    const d1 = await r1.json();
+    if(!r1.ok) throw new Error(d1.error||'Erreur');
+
+    const up = await fetch(d1.signedUrl, {method:'PUT', headers:{'Content-Type': file.type || 'application/octet-stream'}, body: file});
+    if(!up.ok) throw new Error("Échec de l'envoi du fichier");
+
+    const r2 = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'confirmer_upload', video_id:videoId, path:d1.path})});
+    const d2 = await r2.json();
+    if(!r2.ok) throw new Error(d2.error||'Erreur');
+
+    loadTutoriels();
+    showToast('Vidéo envoyée', 'success');
+  }catch(err){
+    showToast(err.message, 'error');
+  }finally{
+    TUTO_PENDING_UPLOAD = null;
+  }
+});
+async function viewTutoVideo(id){
+  try{
+    const v = TUTO_VIDEOS_CACHE.find(x => x.id===id);
+    const rr = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'video_url', video_id:id})});
+    const rd = await rr.json();
+    if(!rr.ok) throw new Error(rd.error||'Erreur');
+    // Même structure visuelle que openMediaViewer (preuves de mission), avec
+    // le titre de la vidéo au lieu d'un libellé de type de preuve.
+    closeMediaViewer();
+    const overlay = document.createElement('div');
+    overlay.className = 'map-overlay';
+    overlay.id = 'media-overlay-el';
+    overlay.innerHTML = `
+      <div class="map-modal">
+        <div class="map-modal-head">
+          <h2>${escHtml(v?.titre||'Tutoriel')}</h2>
+          <button onclick="closeMediaViewer()">✕</button>
+        </div>
+        <div class="media-modal-body">
+          <video src="${escHtml(rd.url)}" controls autoplay playsinline></video>
+        </div>
+      </div>`;
+    overlay.addEventListener('click', e => { if(e.target===overlay) closeMediaViewer(); });
+    document.body.appendChild(overlay);
+  }catch(e){ showToast(e.message, 'error'); }
 }
 function parsePostalCodesInput(raw){
   return (raw||'').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);

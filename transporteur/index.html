@@ -135,6 +135,19 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .sheet{background:var(--white);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:26px 22px 34px;box-shadow:var(--sh-lg)}
 .hidden{display:none !important}
 
+/* Bouton tuto : flottant, au-dessus de la tabbar/detail-back, visible sur
+   toutes les pages sauf la connexion (voir show()). */
+#tuto-fab{position:fixed;right:16px;bottom:20px;width:52px;height:52px;border-radius:50%;background:var(--navy,#0d1829);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
+.tuto-cat-row{display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid var(--rule)}
+.tuto-cat-row:last-child{border-bottom:none}
+.tuto-cat-row.disabled{opacity:.5}
+.tuto-video-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;gap:10px}
+.tuto-video-row .done{color:var(--green,#1a7f4b);font-weight:700;font-size:12px}
+#tuto-player-wrap{position:relative;background:#000;border-radius:var(--r);overflow:hidden}
+#tuto-player-wrap video{width:100%;display:block;max-height:60vh}
+.tuto-progress-track{height:5px;background:rgba(255,255,255,.25);border-radius:100px;margin-top:10px;overflow:hidden}
+.tuto-progress-fill{height:100%;background:var(--blue);width:0%}
+
 /* Stepper de progression mission */
 .stepper{display:flex;align-items:flex-start;margin:4px 0 24px}
 .step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative}
@@ -372,6 +385,11 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 
 <!-- input caché pour la preuve de mission obligatoire (photo, caméra live) -->
 <input type="file" id="media-input" accept="image/*" capture="environment" class="hidden"/>
+
+<!-- Bouton "Tutoriel prise en main", accessible en permanence (voir show()) —
+     un seul élément hors des écrans plutôt que dupliqué dans chacun d'eux. -->
+<button id="tuto-fab" class="hidden" onclick="openTutoLibrary()" title="Tutoriel prise en main">🎓</button>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API = (path) => '/api/' + path;
@@ -404,6 +422,10 @@ function show(id){
   ['login-screen','dashboard-screen','checklist-screen','tournee-start-screen','missions-screen','activite-screen','detail-screen','map-screen'].forEach(s=>{
     document.getElementById(s).classList.toggle('hidden', s!==id);
   });
+  // Bouton tuto accessible en permanence, sur toutes les pages sauf la
+  // connexion — un seul point de bascule plutôt que de dupliquer un bouton
+  // dans chacun des 8 écrans.
+  document.getElementById('tuto-fab')?.classList.toggle('hidden', id==='login-screen');
 }
 
 function switchTab(tab){
@@ -1921,6 +1943,169 @@ function startClientAbsent(source){
   startUpload('photo_absence', source);
 }
 
+// ── Tutoriel prise en main (bibliothèque vidéo) ───────────────────────────────
+// Bouton accessible en permanence (voir #tuto-fab + show()). Overlay type
+// "sheet", même mécanique que openProbleme()/closeProbleme() — pas de
+// navigation d'écran, donc rien n'est perdu sous l'overlay.
+const TUTO_CATEGORIES = [
+  {key:'acces_sortie_boxe',    label:'🚪 Accès / sortie boxe',        actif:true},
+  {key:'recuperation_materiel', label:'📦 Récupération matériel',      actif:true},
+  {key:'fermeture_boxe',       label:'🔒 Fermeture boxe',              actif:true},
+  {key:'entree_sortie_centre', label:'🏢 Entrée / sortie du centre',   actif:true},
+  {key:'chargement',           label:'⬆️ Chargement',                 actif:false},
+  {key:'dechargement',         label:'⬇️ Déchargement',               actif:false},
+  {key:'installation',         label:"🔧 Installation par type d'ouverture", actif:false},
+];
+let TUTO_LIST_CACHE = null;
+let TUTO_PLAYER = null; // {videoId, furthestTime} — état du visionnage en cours (1er passage)
+
+async function fetchTutoList(){
+  const r = await fetch(API('transporteur-tutoriels'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'list'})});
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error||'Erreur');
+  TUTO_LIST_CACHE = d.videos || [];
+  return TUTO_LIST_CACHE;
+}
+function ensureTutoOverlay(){
+  let overlay = document.getElementById('tuto-overlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    overlay.id = 'tuto-overlay';
+    overlay.innerHTML = `<div class="sheet" id="tuto-sheet"><p class="empty">Chargement…</p></div>`;
+    overlay.addEventListener('click', e => { if(e.target===overlay) closeTutoLibrary(); });
+    document.body.appendChild(overlay);
+  }
+  return overlay;
+}
+function closeTutoLibrary(){
+  const o = document.getElementById('tuto-overlay');
+  if(o) o.remove();
+  TUTO_PLAYER = null;
+}
+async function openTutoLibrary(){
+  ensureTutoOverlay();
+  try{
+    await fetchTutoList();
+    renderTutoCategoryList();
+  }catch(e){
+    const sheet = document.getElementById('tuto-sheet');
+    if(sheet) sheet.innerHTML = `<p class="empty">Impossible de charger les tutoriels.</p><button class="btn btn-grey btn-block" onclick="closeTutoLibrary()">Fermer</button>`;
+  }
+}
+function renderTutoCategoryList(){
+  const sheet = document.getElementById('tuto-sheet');
+  if(!sheet) return;
+  sheet.innerHTML = `
+    <h1 style="margin-bottom:14px">🎓 Tutoriel prise en main</h1>
+    ${TUTO_CATEGORIES.map(cat => {
+      if(!cat.actif){
+        return `<div class="tuto-cat-row disabled"><span>${cat.label}</span><span style="font-size:12px;color:var(--grey2)">Bientôt</span></div>`;
+      }
+      const videos = (TUTO_LIST_CACHE||[]).filter(v => v.categorie===cat.key && v.disponible).sort((a,b)=>a.ordre-b.ordre);
+      return `
+        <div style="margin-bottom:6px">
+          <div class="section-title" style="margin:14px 0 4px 2px">${cat.label}</div>
+          ${videos.length ? videos.map(v => `
+            <div class="tuto-video-row">
+              <span>${escHtml(v.titre)}${v.deja_vu?' <span class="done">✔ vue</span>':''}</span>
+              <button class="btn ${v.deja_vu?'btn-grey':'btn-blue'}" onclick="openTutoPlayer(${v.id})">▶️ ${v.deja_vu?'Revoir':'Voir'}</button>
+            </div>`).join('') : `<p class="step-hint" style="margin:4px 0">Pas encore de vidéo.</p>`}
+        </div>`;
+    }).join('')}
+    <button class="btn btn-grey btn-block" style="margin-top:14px" onclick="closeTutoLibrary()">Fermer</button>`;
+}
+async function openTutoPlayer(videoId){
+  const sheet = document.getElementById('tuto-sheet');
+  if(!sheet) return;
+  const v = (TUTO_LIST_CACHE||[]).find(x => x.id===videoId);
+  if(!v) return;
+  sheet.innerHTML = `<p class="empty">Chargement de la vidéo…</p>`;
+  try{
+    const r = await fetch(API('transporteur-tutoriels'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'video_url', video_id:videoId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    renderTutoPlayer(v, d.url);
+  }catch(e){
+    sheet.innerHTML = `<p class="empty">Vidéo indisponible.</p><button class="btn btn-grey btn-block" onclick="renderTutoCategoryList()">← Retour</button>`;
+  }
+}
+function renderTutoPlayer(v, url){
+  const sheet = document.getElementById('tuto-sheet');
+  if(!sheet) return;
+  const dejaVu = v.deja_vu;
+  TUTO_PLAYER = {videoId: v.id, furthestTime: 0};
+  sheet.innerHTML = `
+    <button class="detail-back" style="margin-bottom:10px" onclick="renderTutoCategoryList()">← Retour</button>
+    <h1 style="margin-bottom:10px;font-size:18px">${escHtml(v.titre)}</h1>
+    <div id="tuto-player-wrap">
+      <video id="tuto-video" src="${escHtml(url)}" playsinline webkit-playsinline disablepictureinpicture controlslist="nodownload noplaybackrate" ${dejaVu?'controls':''}></video>
+    </div>
+    ${dejaVu ? '' : `
+      <div id="tuto-controls-row" style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <button class="btn btn-blue" id="tuto-playpause" onclick="tutoTogglePlay()">▶️ Lecture</button>
+        <span style="font-size:12px;color:var(--grey2)">À voir en entier la 1ère fois — pas de retour rapide possible</span>
+      </div>
+      <div class="tuto-progress-track"><div class="tuto-progress-fill" id="tuto-progress-fill"></div></div>`}
+  `;
+  const video = document.getElementById('tuto-video');
+  if(!video || dejaVu) return;
+  video.addEventListener('timeupdate', () => {
+    if(video.currentTime > TUTO_PLAYER.furthestTime) TUTO_PLAYER.furthestTime = video.currentTime;
+    const fill = document.getElementById('tuto-progress-fill');
+    if(fill && video.duration) fill.style.width = Math.round((video.currentTime/video.duration)*100) + '%';
+  });
+  // Anti-avance : si l'utilisateur arrive quand même à sauter en avant (geste
+  // natif malgré l'absence de controls — AirPlay, plein écran forcé...), on
+  // le ramène au point le plus loin réellement visionné. C'est le vrai
+  // mécanisme anti-skip, pas juste l'absence de l'attribut controls.
+  video.addEventListener('seeking', () => {
+    if(TUTO_PLAYER && video.currentTime > TUTO_PLAYER.furthestTime + 0.5){
+      video.currentTime = TUTO_PLAYER.furthestTime;
+    }
+  });
+  video.addEventListener('ended', () => tutoMarquerVu(v.id));
+}
+function tutoTogglePlay(){
+  const video = document.getElementById('tuto-video');
+  const btn = document.getElementById('tuto-playpause');
+  if(!video) return;
+  if(video.paused){ video.play(); if(btn) btn.textContent = '⏸️ Pause'; }
+  else{ video.pause(); if(btn) btn.textContent = '▶️ Lecture'; }
+}
+async function tutoMarquerVu(videoId){
+  try{
+    await fetch(API('transporteur-tutoriels'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'marquer_vu', video_id:videoId})});
+  }catch(e){}
+  const v = (TUTO_LIST_CACHE||[]).find(x => x.id===videoId);
+  if(v) v.deja_vu = true;
+  // Repasse en lecteur natif complet (skip autorisé dès maintenant) sans
+  // recharger toute la vue.
+  const video = document.getElementById('tuto-video');
+  if(video) video.setAttribute('controls', 'controls');
+  document.getElementById('tuto-controls-row')?.remove();
+  document.querySelector('.tuto-progress-track')?.remove();
+}
+// Ouvre directement le lecteur sur la 1ère vidéo active d'une catégorie —
+// utilisé par l'étape BOX (checklist) pour lancer "Accès/sortie boxe" sans
+// passer par la liste de catégories.
+async function openTutoVideo(categorie){
+  ensureTutoOverlay();
+  try{
+    await fetchTutoList();
+    const v = (TUTO_LIST_CACHE||[]).filter(x => x.categorie===categorie && x.disponible).sort((a,b)=>a.ordre-b.ordre)[0];
+    const sheet = document.getElementById('tuto-sheet');
+    if(!v){
+      if(sheet) sheet.innerHTML = `<p class="empty">Vidéo pas encore disponible.</p><button class="btn btn-grey btn-block" onclick="closeTutoLibrary()">Fermer</button>`;
+      return;
+    }
+    await openTutoPlayer(v.id);
+  }catch(e){
+    const sheet = document.getElementById('tuto-sheet');
+    if(sheet) sheet.innerHTML = `<p class="empty">Impossible de charger les tutoriels.</p><button class="btn btn-grey btn-block" onclick="closeTutoLibrary()">Fermer</button>`;
+  }
+}
+
 // ── Mon activité (gains, façon Uber Driver) ──────────────────────────────────
 const VIREMENT_LABEL = {demande:'Demandé', verse:'Versé'};
 
@@ -2074,7 +2259,8 @@ function renderChecklist(d){
     <div class="card">
       <div class="eyebrow">Avant de partir</div>
       <h1 style="margin-bottom:4px">🧳 Matériel à récupérer au box</h1>
-      <p class="sub" style="margin-bottom:16px">${d.nb_missions} mission${d.nb_missions>1?'s':''} aujourd'hui</p>
+      <p class="sub" style="margin-bottom:10px">${d.nb_missions} mission${d.nb_missions>1?'s':''} aujourd'hui</p>
+      <button class="btn btn-grey" style="margin-bottom:16px" onclick="openTutoVideo('acces_sortie_boxe')">🎥 Voir le tuto : Accès/sortie boxe</button>
       ${d.climatiseurs.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${climatiseurPills}</div>` : ''}
       <div style="margin-bottom:16px">${itemsHtml}</div>
       ${d.validated
