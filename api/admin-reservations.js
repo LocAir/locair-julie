@@ -238,6 +238,13 @@ module.exports = async (req, res) => {
       // doublon créé par erreur) — ça ne touche ni le statut, ni le stock, ni les
       // missions, contrairement à "Annuler". Réversible via "Restaurer".
       if (body.masquee != null) patch.masquee = !!body.masquee;
+      // Complète/corrige l'identité du client (ex. réservation créée avec le strict
+      // minimum au téléphone, prénom/nom/adresse à ajouter après coup) — remonte
+      // telle quelle aux missions terrain déjà créées (jointure reservation).
+      if (body.prenom != null) patch.prenom = body.prenom.trim().slice(0, 200) || 'Client';
+      if (body.nom != null)    patch.nom    = body.nom.trim().slice(0, 200);
+      if (body.tel != null)    patch.tel    = body.tel.trim().slice(0, 50);
+      if (body.adresse != null) patch.adresse = body.adresse.trim().slice(0, 500);
       // Complète/corrige les infos logistiques d'une réservation déjà créée (ex.
       // une réservation manuelle créée sans ces champs, ou une info donnée par
       // téléphone après coup) — ces infos remontent telles quelles à la mission

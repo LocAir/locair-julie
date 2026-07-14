@@ -2469,6 +2469,7 @@ function renderLivraisons(){
           <details class="more-actions" style="margin-left:auto">
             <summary title="Plus d'actions">⋯</summary>
             <div class="more-actions-menu">
+              ${!reassignLocked?`<button onclick="openEditMissionModal(${m.id})">✏️ Modifier</button>`:''}
               ${['acceptee','arrivee'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
               ${mediaBtns.join('')}
               <button class="danger" onclick="maskLivraison(${m.id})">🗑️ Supprimer de l'écran</button>
@@ -2477,6 +2478,104 @@ function renderLivraisons(){
         </div>
       </div>`;
   }).join('');
+}
+
+// ── Modifier une mission ────────────────────────────────────────────────────
+// Pour une mission "autre" : titre/adresse/tarif/date/créneau lui appartiennent
+// en propre. Pour une mission normale, seuls date/créneau sont à elle — le
+// reste (nom, téléphone, adresse, étage...) vit sur la réservation liée, donc
+// corrigé via une 2e requête (admin-reservations action 'update').
+function openEditMissionModal(livraisonId){
+  const m = LIVRAISONS_CACHE.find(x => x.id === livraisonId);
+  if(!m) return;
+  closeModal();
+  const isAutre = m.type === 'autre';
+  const res = m.reservation || {};
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
+      <h2 style="margin-bottom:14px">✏️ Modifier la mission</h2>
+      ${isAutre ? `
+        <label for="em-titre">Instructions</label>
+        <input type="text" id="em-titre" value="${escHtml(m.titre||'')}"/>
+        <label for="em-adresse" style="margin-top:8px">Adresse</label>
+        <input type="text" id="em-adresse" value="${escHtml(m.adresse_libre||'')}"/>
+        <label for="em-tarif" style="margin-top:8px">Tarif payé au transporteur (€)</label>
+        <input type="number" id="em-tarif" min="0" step="0.5" value="${((m.montant_du_cents||0)/100)}"/>
+      ` : `
+        <label for="em-prenom">Prénom</label>
+        <input type="text" id="em-prenom" value="${escHtml(res.prenom||'')}"/>
+        <label for="em-nom" style="margin-top:8px">Nom</label>
+        <input type="text" id="em-nom" value="${escHtml(res.nom||'')}"/>
+        <label for="em-tel" style="margin-top:8px">Téléphone</label>
+        <input type="tel" id="em-tel" value="${escHtml(res.tel||'')}"/>
+        <label for="em-adresse-r" style="margin-top:8px">Adresse</label>
+        <input type="text" id="em-adresse-r" value="${escHtml(res.adresse||'')}"/>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="em-etage">Étage</label><input type="text" id="em-etage" value="${escHtml(res.etage||'')}"/></div>
+          <div><label for="em-ascenseur">Ascenseur</label><input type="text" id="em-ascenseur" value="${escHtml(res.ascenseur||'')}"/></div>
+        </div>
+        <label for="em-instructions" style="margin-top:8px">Instructions d'accès</label>
+        <input type="text" id="em-instructions" value="${escHtml(res.instructions_acces||'')}"/>
+      `}
+      <div class="inline-form" style="margin-top:8px">
+        <div><label for="em-date">Date</label><input type="date" id="em-date" value="${m.date_prevue||''}"/></div>
+        <div><label for="em-creneau">Créneau</label><input type="text" id="em-creneau" value="${escHtml(m.creneau||'')}" placeholder="8h–10h"/></div>
+      </div>
+      <div class="modal-actions" style="margin-top:18px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Enregistrer</button>
+      </div>
+      <div class="err" id="em-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const errEl = document.getElementById('em-err');
+    errEl.style.display = 'none';
+    okBtn.disabled = true;
+    try{
+      const missionPatch = {
+        action: 'update', livraison_id: livraisonId,
+        date_prevue: document.getElementById('em-date').value,
+        creneau: document.getElementById('em-creneau').value.trim(),
+      };
+      if(isAutre){
+        missionPatch.titre = document.getElementById('em-titre').value.trim();
+        missionPatch.adresse_libre = document.getElementById('em-adresse').value.trim();
+        missionPatch.montant_du_cents = Math.round((parseFloat(document.getElementById('em-tarif').value)||0)*100);
+      }
+      const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify(missionPatch)});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+
+      if(!isAutre && res.id){
+        const rr = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+          action: 'update', id: res.id,
+          prenom: document.getElementById('em-prenom').value.trim(),
+          nom: document.getElementById('em-nom').value.trim(),
+          tel: document.getElementById('em-tel').value.trim(),
+          adresse: document.getElementById('em-adresse-r').value.trim(),
+          etage: document.getElementById('em-etage').value.trim(),
+          ascenseur: document.getElementById('em-ascenseur').value.trim(),
+          instructions_acces: document.getElementById('em-instructions').value.trim(),
+        })});
+        const rd = await rr.json();
+        if(!rr.ok) throw new Error(rd.error||'Erreur lors de la mise à jour du client');
+      }
+
+      closeModal();
+      loadLivraisons();
+      showToast('Mission mise à jour', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      errEl.textContent = e.message; errEl.style.display = 'block';
+    }
+  };
 }
 
 async function assignTransporteur(livraisonId, transporteurId, selectEl){

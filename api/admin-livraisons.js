@@ -225,6 +225,38 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // Modifier une mission déjà créée : date/créneau pour tout type, et en
+    // plus titre/adresse/tarif pour une mission "autre" (les champs propres
+    // au client d'une mission normale se corrigent via admin-reservations
+    // action 'update', pas ici — cette mission n'a pas de client à elle).
+    if (action === 'update') {
+      const livraisonId = parseInt(body.livraison_id);
+      if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, type, statut');
+      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
+      if (['fait', 'annule'].includes(liv.statut)) {
+        return res.status(400).json({ error: 'Mission terminée ou annulée : non modifiable' });
+      }
+
+      const patch = {};
+      if (body.date_prevue != null) {
+        const d = (body.date_prevue || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return res.status(400).json({ error: 'date_prevue invalide (YYYY-MM-DD)' });
+        patch.date_prevue = d;
+      }
+      if (body.creneau != null) patch.creneau = (body.creneau || '').trim().slice(0, 100) || null;
+      if (liv.type === 'autre') {
+        if (body.titre != null) patch.titre = (body.titre || '').trim().slice(0, 200) || 'Mission libre';
+        if (body.adresse_libre != null) patch.adresse_libre = (body.adresse_libre || '').trim().slice(0, 500) || null;
+        if (body.montant_du_cents != null) patch.montant_du_cents = Math.max(0, parseInt(body.montant_du_cents) || 0);
+      }
+      if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
+
+      const { error } = await supabase.from('livraisons').update(patch).eq('id', livraisonId);
+      if (error) throw error;
+      return res.status(200).json({ ok: true });
+    }
+
     if (action === 'assign') {
       const livraisonId    = parseInt(body.livraison_id);
       const transporteurId = body.transporteur_id ? parseInt(body.transporteur_id) : null;
