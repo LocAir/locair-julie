@@ -35,7 +35,15 @@ function contratHtml({ prenom, ref, viewUrlContrat, viewUrlFacture }) {
 // à l'installation) — voir api/webhook.js. Idempotent : si une facture existe
 // déjà pour cette réservation, ne régénère ni ne renvoie rien (protège contre
 // une redélivrance du webhook Stripe).
+//
+// Verrou volontaire : la mise en page du contrat/facture (_lib/pdf.js) est
+// encore le modèle générique par défaut, en attente des modèles réels
+// (Contrat de location Loc'Air / Facture Loc'Air) à fournir par le
+// propriétaire. Tant que DOCUMENTS_ENABLED n'est pas explicitement à 'true'
+// dans les variables d'environnement Vercel, cette fonction ne fait rien —
+// aucun document n'est généré ni envoyé, même si le code est en prod.
 async function generateAndSendDocuments(supabase, resa) {
+  if (process.env.DOCUMENTS_ENABLED !== 'true') return;
   if (!resa || !resa.id) return;
 
   const { data: existingFacture } = await supabase

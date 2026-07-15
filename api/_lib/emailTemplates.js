@@ -94,6 +94,9 @@ function tplRappelJ1(ctx) {
 }
 
 // 5. Post-installation
+// La mention "votre facture vous a déjà été envoyée" sera réintégrée dès que
+// le Module 2 (contrat/facture PDF) sera activé (DOCUMENTS_ENABLED=true) —
+// actuellement en pause en attente des modèles réels du propriétaire.
 function tplPostInstallation(ctx) {
   return wrap({
     title: '✅ Votre climatiseur est installé !',
@@ -101,7 +104,6 @@ function tplPostInstallation(ctx) {
     bodyHtml: `
       <p>Bonjour ${escHtml(ctx.prenom)},</p>
       <p>Votre ${escHtml(ctx.modeleClimatiseur)} est installé et prêt à l'emploi.</p>
-      <p><strong>Votre facture</strong> vous a déjà été envoyée par email juste après votre paiement — pensez à vérifier vos spams si vous ne la trouvez pas.</p>
       <p>Un souci, une question sur l'utilisation ? Notre équipe reste joignable à tout moment.</p>
       <div class="box"><p style="margin:0">📖 Besoin d'un rappel sur l'utilisation ? <a href="${ctx.lienTutoriel}" style="color:#1b3a5f">Consultez notre guide</a>.</p></div>
       <p style="font-size:13px;color:#888">Si vous avez une minute dès maintenant, votre avis nous aide beaucoup :</p>`,
