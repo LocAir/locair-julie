@@ -457,7 +457,8 @@ function logout(){
   localStorage.removeItem('t_token');
   localStorage.removeItem('t_id');
   localStorage.removeItem('t_nom');
-  STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],en_pause:false,currentMission:null,pendingUpload:null,autoOpenChecked:false};
+  STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],en_pause:false,currentMission:null,pendingUpload:null,autoOpenChecked:false,
+    tourneeOrder:[], tourneeTotal:0, tourneeMatrix:null, tourneeMissionIndex:[]};
   stopPositionTracking();
   document.getElementById('who-badge').classList.add('hidden');
   show('login-screen');
@@ -524,6 +525,19 @@ function urlBase64ToUint8Array(base64String){
   const base64 = (base64String + padding).replace(/-/g,'+').replace(/_/g,'/');
   const rawData = atob(base64);
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+// Cas "app déjà ouverte" : le SW ne fait que .focus() l'onglet existant au
+// clic sur une notif (voir sw.js), sans jamais le dire à la page — sans ce
+// listener, cliquer une notif "client disponible" avec l'app déjà ouverte ne
+// ferait donc rien.
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const data = event.data || {};
+    if(data.type === 'notification-click' && data.tag === 'client-disponible'){
+      const missionId = parseInt(new URLSearchParams((data.url||'').split('?')[1]||'').get('mission'));
+      if(missionId) handleClientDisponible(missionId);
+    }
+  });
 }
 async function setupPush(){
   if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
@@ -868,6 +882,7 @@ async function loadDashboard(){
   const ok = await fetchMissions();
   if(!ok){ document.getElementById('dashboard-content').innerHTML = '<p class="empty">Impossible de charger tes missions. Réessaie.</p>'; return; }
   maybeAutoOpenMission();
+  checkClientDisponibleDeepLink();
   // Si maybeAutoOpenMission() a basculé directement sur le détail d'une
   // mission (cas fréquent : une seule mission active), inutile de rendre
   // l'Accueil dans le dos de l'utilisateur.
@@ -1757,6 +1772,12 @@ async function doAction(action, extra){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
 
+    // Le pool de missions "à faire" vient de changer (mission reportée ou
+    // acceptée) : recalcule la tournée en tâche de fond (sans attendre, pour
+    // ne pas ralentir la navigation) si une tournée est active — couvre
+    // report/reprise/nouvelle mission/bascule en un seul point d'ancrage.
+    if(action === 'reporter' || action === 'accepter') refreshTournee();
+
     if(action === 'livraison_ok' || action === 'retour_ok' || action === 'changement_ok' || action === 'autre_ok'){
       showCelebration(d.montant_du_cents || 0);
       return;
@@ -1972,6 +1993,65 @@ async function sendForgotPin(){
   document.querySelectorAll('#forgot-overlay .btn').forEach(b=>b.style.display='none');
   okEl.textContent = "Si cet email est connu, ton code vient d'être envoyé. Vérifie ta boîte mail.";
   okEl.style.display='block';
+}
+
+// ── Client redevenu joignable (notification admin, deep-link) ────────────────
+// Deux chemins convergent ici : le message du service worker (app déjà
+// ouverte, voir listener plus bas) et le paramètre d'URL au boot (app
+// fermée, ouverte via clients.openWindow — voir checkClientDisponibleDeepLink).
+async function handleClientDisponible(missionId){
+  await fetchMissions();
+  const m = STATE.missions.find(x => x.id === missionId);
+  if(!m || m.statut !== 'a_faire') return; // déjà repris par quelqu'un d'autre entretemps
+  const enCours = STATE.missions.find(x => x.id !== missionId && missionEstEnCours(x));
+  const adresse = escHtml((m.client && m.client.adresse) || m.adresse_libre || 'cette mission');
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'client-dispo-overlay';
+  overlay.innerHTML = enCours ? `
+    <div class="sheet">
+      <h1 style="margin-bottom:14px">📞 Client de nouveau joignable</h1>
+      <p class="step-hint">Le client de la mission ${adresse} a rappelé.</p>
+      <button class="btn btn-blue btn-block" style="margin-top:10px" onclick="closeClientDisponible()">Continuer ma mission actuelle</button>
+      <button class="btn btn-green btn-block" style="margin-top:8px" onclick="basculerVersMission(${missionId})">🔁 Basculer sur cette mission</button>
+    </div>` : `
+    <div class="sheet">
+      <h1 style="margin-bottom:14px">📞 Client de nouveau joignable</h1>
+      <p class="step-hint">Le client de la mission ${adresse} a rappelé.</p>
+      <button class="btn btn-blue btn-block" style="margin-top:10px" onclick="closeClientDisponible(); openMission(${missionId})">Voir la mission</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+function closeClientDisponible(){
+  const o = document.getElementById('client-dispo-overlay');
+  if(o) o.remove();
+}
+// Reporter la mission en cours (B) puis accepter celle redevenue joignable
+// (A) — même chaînage d'actions déjà existantes que "client absent"→"reporter"
+// (voir doAction), pas de nouvelle action serveur dédiée.
+async function basculerVersMission(missionId){
+  closeClientDisponible();
+  try{
+    const enCours = STATE.missions.find(x => x.id !== missionId && missionEstEnCours(x));
+    if(enCours){
+      await fetch(API('transporteur-action'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'reporter', livraison_id: enCours.id})});
+    }
+    const r = await fetch(API('transporteur-action'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'accepter', livraison_id: missionId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || 'Erreur');
+    refreshTournee();
+    await fetchMissions();
+    openMission(missionId);
+  }catch(e){ alert(e.message || 'Erreur'); }
+}
+// Cas "app fermée" : le clic sur la notif l'a rouverte via clients.openWindow(url)
+// (voir sw.js) — le paramètre reste dans l'URL au premier chargement.
+function checkClientDisponibleDeepLink(){
+  const params = new URLSearchParams(location.search);
+  if(params.get('notif') !== 'disponible') return;
+  const missionId = parseInt(params.get('mission'));
+  history.replaceState({}, '', location.pathname);
+  if(missionId) handleClientDisponible(missionId);
 }
 
 // ── Problème (aucune saisie de texte — juste une catégorie) ──────────────────
@@ -2408,6 +2488,42 @@ async function startTournee(mode){
     if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
     btns.forEach(b => b.disabled = false);
   }
+}
+// Recalcul silencieux de la tournée (nouvel appel réseau à l'API Google
+// Routes déjà en place, PAS juste le recalcul local d'advanceTournee) —
+// déclenché après un report/reprise/bascule pour que la matrice en mémoire
+// tienne compte des missions qui viennent de rentrer/sortir du pool "à
+// faire". Ne fait rien si le transporteur n'a pas démarré de tournée
+// aujourd'hui, et ne navigue jamais nulle part (contrairement à
+// startTournee) — purement un rafraîchissement de fond.
+async function refreshTournee(){
+  if(!STATE.tourneeMissionIndex || !STATE.tourneeMissionIndex.length) return;
+  try{
+    let body = {};
+    try{
+      // Timeout à nous en plus de l'option native (elle ne se déclenche pas
+      // toujours de façon fiable si la permission reste bloquée en attente)
+      // — refreshTournee est une tâche de fond, elle ne doit jamais rester
+      // bloquée indéfiniment.
+      const pos = await new Promise((resolve, reject) => {
+        if(!navigator.geolocation){ reject(new Error('no geo')); return; }
+        const timer = setTimeout(() => reject(new Error('geo timeout')), 6000);
+        navigator.geolocation.getCurrentPosition(
+          (p) => { clearTimeout(timer); resolve(p); },
+          () => { clearTimeout(timer); reject(new Error('geo failed')); },
+          { enableHighAccuracy: true, timeout: 6000 }
+        );
+      });
+      body = { start_lat: pos.coords.latitude, start_lng: pos.coords.longitude };
+    }catch(e){ /* repli silencieux sur le départ box */ }
+    const r = await fetch(API('transporteur-route'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok) return;
+    STATE.tourneeOrder        = d.order || [];
+    STATE.tourneeTotal        = STATE.tourneeOrder.length;
+    STATE.tourneeMatrix       = d.matrix || null;
+    STATE.tourneeMissionIndex = d.missionIndex || [];
+  }catch(e){ /* échec silencieux — le recalcul local d'advanceTournee reste le repli */ }
 }
 function tourneeMatrixIndex(missionId){
   const i = (STATE.tourneeMissionIndex||[]).indexOf(missionId);
