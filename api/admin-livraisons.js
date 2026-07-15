@@ -47,9 +47,10 @@ module.exports = async (req, res) => {
 
       const selectCols = `
           id, type, statut, date_prevue, creneau, masquee, titre, adresse_libre, montant_du_cents,
-          probleme_type, probleme_description, incident_id,
+          probleme_type, probleme_description, probleme_at, incident_id,
           photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path,
           accepted_at, client_notifie_at, arrivee_at, fait_at,
+          demo_faite, demo_faite_at,
           vidange_confirmee, vidange_at,
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (

@@ -24,12 +24,17 @@ module.exports = async (req, res) => {
       // Un incident sans réservation retrouvée (voir charge-retard.js) n'a pas
       // de city_id connu — plutôt que de le rendre invisible partout, il
       // s'affiche dans toutes les vues plutôt que d'être perdu.
-      const { data, error } = await supabase
+      let query = supabase
         .from('incidents')
-        .select('id, type, description, montant_facture_cents, statut, created_at, reservation:reservations ( id, ref, prenom, nom, adresse )')
+        .select('id, type, description, montant_facture_cents, statut, created_at, reservation_id, reservation:reservations ( id, ref, prenom, nom, adresse )')
         .or(`city_id.eq.${city.id},city_id.is.null`)
         .order('created_at', { ascending: false })
         .limit(300);
+      // Filtre optionnel pour la fiche client (suivi des incidents d'une
+      // réservation précise) — sans ça la liste reste globale à la ville.
+      const reservationId = parseInt(body.reservation_id);
+      if (reservationId) query = query.eq('reservation_id', reservationId);
+      const { data, error } = await query;
       if (error) throw error;
 
       const since30j = new Date(Date.now() - 30 * 86400000).toISOString();
