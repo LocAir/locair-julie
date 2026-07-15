@@ -2,6 +2,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity, notifyIfSoldOut } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { checkAdminToken } = require('./_lib/auth');
+const { recordMouvement } = require('./_lib/stockMouvements');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -54,6 +55,13 @@ module.exports = async (req, res) => {
       const { data, error } = await supabase
         .from('appareils').insert({ city_id: city.id, numero }).select().single();
       if (error) throw error;
+      // Mouvement de stock (Module 6, Partie 5) : entrée dans le parc.
+      await supabase.from('appareil_mouvements').insert({
+        appareil_id: data.id, type_evenement: 'entree_parc',
+        ancien_statut: null, nouveau_statut: data.statut,
+        ancienne_localisation: null, nouvelle_localisation: data.localisation,
+        utilisateur: 'admin',
+      });
       return res.status(200).json({ ok: true, appareil: data });
     }
 
@@ -62,7 +70,7 @@ module.exports = async (req, res) => {
       if (!id) return res.status(400).json({ error: 'id manquant' });
       const patch = {};
       if (body.statut != null) {
-        if (!['disponible', 'panne', 'maintenance', 'loue'].includes(body.statut)) {
+        if (!['disponible', 'panne', 'maintenance', 'loue', 'nettoyage'].includes(body.statut)) {
           return res.status(400).json({ error: 'Statut invalide' });
         }
         patch.statut = body.statut;
@@ -71,13 +79,53 @@ module.exports = async (req, res) => {
       if (body.notes != null) patch.notes = body.notes.trim().slice(0, 1000) || null;
       if (body.modele_id != null) patch.modele_id = parseInt(body.modele_id) || null;
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
-      const { error } = await supabase.from('appareils').update(patch).eq('id', id).eq('city_id', city.id);
-      if (error) throw error;
+      // Vérifie l'appartenance à cette ville AVANT tout écriture (recordMouvement
+      // n'a pas connaissance de la ville, contrairement à l'update ci-dessous).
+      const { data: owned } = await supabase.from('appareils').select('id').eq('id', id).eq('city_id', city.id).maybeSingle();
+      if (!owned) return res.status(404).json({ error: 'Unité introuvable' });
+      const statutChange = patch.statut != null;
+      if (statutChange) {
+        // Changement de statut manuel par l'admin -> mouvement de stock
+        // (Module 6, Partie 5), plutôt qu'un update() muet.
+        const localisationByStatut = {
+          disponible: 'stock_principal', nettoyage: 'stock_principal',
+          maintenance: 'maintenance', panne: 'maintenance', loue: 'chez_client',
+        };
+        await recordMouvement(supabase, {
+          appareilId: id,
+          typeEvenement: ['disponible'].includes(patch.statut) ? 'remise_disponibilite'
+            : ['maintenance', 'panne'].includes(patch.statut) ? 'passage_maintenance' : 'autre',
+          nouveauStatut: patch.statut,
+          nouvelleLocalisation: localisationByStatut[patch.statut] || 'autre',
+          utilisateur: 'admin',
+        });
+        delete patch.statut; // déjà appliqué par recordMouvement
+      }
+      if (Object.keys(patch).length) {
+        const { error } = await supabase.from('appareils').update(patch).eq('id', id).eq('city_id', city.id);
+        if (error) throw error;
+      }
       // Un appareil mis en panne/maintenance/loué réduit le stock actif — le
       // trigger SQL a déjà recalculé sold_out au moment de ce même UPDATE,
       // reste à alerter Aly si ça vient de faire passer la ville à "complet".
-      if (patch.statut != null) await notifyIfSoldOut(supabase, city.id);
+      if (statutChange) await notifyIfSoldOut(supabase, city.id);
       return res.status(200).json({ ok: true });
+    }
+
+    // Historique des mouvements d'un appareil précis (Module 6, Partie 5).
+    if (action === 'mouvements_list') {
+      const appareilId = parseInt(body.appareil_id);
+      if (!appareilId) return res.status(400).json({ error: 'appareil_id manquant' });
+      const { data: owned } = await supabase.from('appareils').select('id').eq('id', appareilId).eq('city_id', city.id).maybeSingle();
+      if (!owned) return res.status(404).json({ error: 'Unité introuvable' });
+      const { data, error } = await supabase
+        .from('appareil_mouvements')
+        .select('id, type_evenement, ancien_statut, nouveau_statut, ancienne_localisation, nouvelle_localisation, utilisateur, commentaire, created_at, livraison_id, reservation_id')
+        .eq('appareil_id', appareilId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return res.status(200).json({ mouvements: data || [] });
     }
 
     if (action === 'delete') {
@@ -123,7 +171,7 @@ module.exports = async (req, res) => {
     );
 
     const list = (appareils || []).map(a => ({ ...a, en_location: enLocationIds.has(a.id) }));
-    const actifs = list.filter(a => !['panne', 'maintenance', 'loue'].includes(a.statut)).length;
+    const actifs = list.filter(a => !['panne', 'maintenance', 'loue', 'nettoyage'].includes(a.statut)).length;
 
     return res.status(200).json({
       ville:        city.name,

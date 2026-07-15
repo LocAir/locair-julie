@@ -9,7 +9,7 @@ const { EXT_BY_TYPE } = require('./_lib/media');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { getActiveChecklistItems, validateChecklistReponses } = require('./_lib/checklistItems');
-const { setAppareilsStatutForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
+const { setAppareilsStatutForReservation, moveAppareilsForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
 
 const PROBLEME_LABEL = {
   client_absent:       'Client absent',
@@ -182,6 +182,15 @@ module.exports = async (req, res) => {
         body:  `${liv.reservation?.adresse || 'Une mission'} — le transporteur vient de partir.`,
         tag:   'en-route',
       });
+      // Mouvement de stock (Module 6, Partie 5) : le climatiseur quitte
+      // l'entrepôt dans le véhicule du transporteur — livraison uniquement,
+      // une récupération part du client, pas du dépôt.
+      if (liv.type === 'livraison') {
+        const { data: t } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
+        await moveAppareilsForReservation(supabase, liv.reservation_id, 'vehicule_transporteur', {
+          typeEvenement: 'depart_entrepot', livraisonId: liv.id, utilisateur: t?.nom || null,
+        });
+      }
       return res.status(200).json({ ok: true, statut: 'en_route' });
     }
 
@@ -355,11 +364,18 @@ module.exports = async (req, res) => {
       await supabase.from('livraisons').update(update).eq('id', liv.id);
       await closeMissionIncident(supabase, liv);
 
-      // Parc matériel (Partie 8) : synchronisation automatique du statut.
+      // Parc matériel (Module 5 Partie 8, Module 6 Partie 5) : synchronisation
+      // automatique du statut + localisation, historisée (recordMouvement).
+      const { data: transp } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
       if (expectedType === 'livraison') {
-        await setAppareilsStatutForReservation(supabase, liv.reservation_id, 'loue');
+        await setAppareilsStatutForReservation(supabase, liv.reservation_id, 'loue', {
+          typeEvenement: 'installation', livraisonId: liv.id, utilisateur: transp?.nom || null,
+        });
       } else {
-        await setAppareilsStatutForReservation(supabase, liv.reservation_id, ETAT_MATERIEL_TO_APPAREIL_STATUT[body.etat_materiel]);
+        await setAppareilsStatutForReservation(supabase, liv.reservation_id, ETAT_MATERIEL_TO_APPAREIL_STATUT[body.etat_materiel], {
+          typeEvenement: 'recuperation', livraisonId: liv.id, utilisateur: transp?.nom || null,
+          commentaire: (body.etat_materiel_commentaire || '').slice(0, 1000) || null,
+        });
       }
 
       // Emails de scénario (moteur central _lib/emailEngine.js) — jamais

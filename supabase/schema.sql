@@ -61,17 +61,42 @@ create table modeles_climatiseur (
 -- se déduit de reservation_appareils (voir plus bas), pour ne jamais avoir à
 -- le remettre à jour manuellement au retour du client.
 create table appareils (
-  id         bigint generated always as identity primary key,
-  city_id    bigint not null references cities(id),
-  numero     integer not null,
-  statut     text not null default 'disponible' check (statut in ('disponible','panne','maintenance','loue','nettoyage')),
-  reference  text, -- référence produit du fabricant (ex. "RWAC10KA+"), saisie librement par l'admin
-  modele_id  bigint references modeles_climatiseur(id), -- fiche catalogue affichée côté espace client (nullable = description générique)
-  notes      text,
-  created_at timestamptz not null default now(),
+  id          bigint generated always as identity primary key,
+  city_id     bigint not null references cities(id),
+  numero      integer not null,
+  statut      text not null default 'disponible' check (statut in ('disponible','panne','maintenance','loue','nettoyage')),
+  localisation text not null default 'stock_principal'
+                check (localisation in ('stock_principal','vehicule_transporteur','chez_client','maintenance','autre')),
+  reference   text, -- référence produit du fabricant (ex. "RWAC10KA+"), saisie librement par l'admin
+  modele_id   bigint references modeles_climatiseur(id), -- fiche catalogue affichée côté espace client (nullable = description générique)
+  notes       text,
+  created_at  timestamptz not null default now(),
   unique (city_id, numero)
 );
 create index appareils_city_statut_idx on appareils (city_id, statut);
+
+-- Historique des mouvements de stock (Module 6) — "aucun mouvement ne doit
+-- être invisible" : chaque changement de statut/localisation d'un
+-- climatiseur crée un événement, jamais un simple écrasement silencieux.
+-- livraison_id/reservation_id ajoutées plus bas par alter table, une fois
+-- livraisons/reservations définies (elles viennent après dans ce fichier).
+create table appareil_mouvements (
+  id                    bigint generated always as identity primary key,
+  appareil_id           bigint not null references appareils(id) on delete cascade,
+  type_evenement        text not null check (type_evenement in (
+                          'entree_parc','attribution_reservation','preparation_livraison','depart_entrepot',
+                          'livraison_client','installation','recuperation','retour_stockage',
+                          'passage_maintenance','remise_disponibilite','autre'
+                        )),
+  ancien_statut         text,
+  nouveau_statut        text not null,
+  ancienne_localisation text,
+  nouvelle_localisation text not null,
+  utilisateur           text, -- nom du transporteur, "admin", ou "systeme" (automatique)
+  commentaire           text,
+  created_at            timestamptz not null default now()
+);
+create index appareil_mouvements_appareil_idx on appareil_mouvements (appareil_id, created_at desc);
 
 create table transporteurs (
   id                       bigint generated always as identity primary key,
@@ -247,6 +272,13 @@ create table reservation_appareils (
   id             bigint generated always as identity primary key,
   reservation_id bigint not null references reservations(id) on delete cascade,
   appareil_id    bigint not null references appareils(id),
+  -- Validation administrative (Module 6, Partie 6) : "réservé en attente
+  -- validation" (valide=false) -> "réservation confirmée" (valide=true).
+  -- Oversight uniquement — ne bloque jamais la confirmation automatique ni
+  -- la création des missions transporteur, déjà protégées contre tout
+  -- chevauchement par available_units()/assign_appareils() ci-dessous.
+  valide         boolean not null default false,
+  valide_at      timestamptz,
   created_at     timestamptz not null default now(),
   unique (reservation_id, appareil_id)
 );
@@ -328,7 +360,7 @@ create index checklist_box_transporteur_idx on checklist_box (transporteur_id, d
 -- Réponses figées au moment de la validation : voir livraisons.checklist_*.
 create table checklist_items (
   id         bigint generated always as identity primary key,
-  workflow   text not null check (workflow in ('installation','recuperation')),
+  workflow   text not null check (workflow in ('installation','recuperation','preparation')),
   libelle    text not null,
   ordre      integer not null default 0,
   actif      boolean not null default true,
@@ -346,7 +378,15 @@ insert into checklist_items (workflow, libelle, ordre) values
   ('recuperation', 'Télécommande récupérée', 2),
   ('recuperation', 'Gaine récupérée', 3),
   ('recuperation', 'Kit de calfeutrage récupéré', 4),
-  ('recuperation', 'Notice récupérée', 5);
+  ('recuperation', 'Notice récupérée', 5),
+  -- Checklist de préparation avant livraison (Module 6, Partie 7).
+  ('preparation', 'Climatiseur correspondant sélectionné', 1),
+  ('preparation', 'État contrôlé', 2),
+  ('preparation', 'Télécommande présente', 3),
+  ('preparation', 'Gaine présente', 4),
+  ('preparation', 'Kit de calfeutrage présent', 5),
+  ('preparation', 'Notice présente', 6),
+  ('preparation', 'Appareil propre', 7);
 
 -- Bibliothèque de tutoriels vidéo (prise en main transporteur) — vidéos
 -- catégorisées, uploadées par l'admin. Bibliothèque unique, non liée à une
@@ -585,6 +625,11 @@ create index incidents_city_idx on incidents (city_id, statut);
 -- par ailleurs) : lien plus précis, mission par mission.
 alter table livraisons add column incident_id bigint references incidents(id) on delete set null;
 
+-- Liens différés de appareil_mouvements (défini plus haut, avant livraisons
+-- et reservations dans ce fichier).
+alter table appareil_mouvements add column livraison_id   bigint references livraisons(id) on delete set null;
+alter table appareil_mouvements add column reservation_id bigint references reservations(id) on delete set null;
+
 -- Disponibilité = appareils actifs (hors panne/maintenance) moins :
 --  - les réservations 'en_attente' récentes (< 30 min, paiement en cours, pas
 --    encore d'appareil précis assigné) qui chevauchent la période demandée ;
@@ -599,7 +644,7 @@ stable
 as $$
   select
     (select count(*)::int from appareils a
-       where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue'))
+       where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue', 'nettoyage'))
     - coalesce((
         select sum(r.quantite) from reservations r
         where r.city_id = p_city_id and r.statut = 'en_attente'
@@ -629,7 +674,7 @@ declare
 begin
   select array_agg(id) into v_ids from (
     select a.id from appareils a
-    where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue')
+    where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue', 'nettoyage')
       and not exists (
         select 1 from reservation_appareils ra
         join reservations r on r.id = ra.reservation_id

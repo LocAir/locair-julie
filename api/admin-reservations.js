@@ -38,19 +38,25 @@ module.exports = async (req, res) => {
       const ids = reservations.map(r => r.id);
       let livraisonsByResa = new Map();
       let incidentResaIds = new Set();
+      let appareilsEnAttenteResaIds = new Set();
       if (ids.length) {
-        const [{ data: livs }, { data: incs }] = await Promise.all([
+        const [{ data: livs }, { data: incs }, { data: ras }] = await Promise.all([
           supabase.from('livraisons').select('reservation_id, type, statut, fait_at').in('reservation_id', ids),
           supabase.from('incidents').select('reservation_id').in('reservation_id', ids).in('statut', INCIDENT_OPEN_STATUSES),
+          supabase.from('reservation_appareils').select('reservation_id, valide').in('reservation_id', ids),
         ]);
         for (const l of (livs || [])) {
           if (!livraisonsByResa.has(l.reservation_id)) livraisonsByResa.set(l.reservation_id, []);
           livraisonsByResa.get(l.reservation_id).push(l);
         }
         incidentResaIds = new Set((incs || []).map(i => i.reservation_id));
+        // Attribution appareil "en attente de validation" (Module 6, Partie 6) :
+        // au moins un appareil pas encore validé par l'administration.
+        appareilsEnAttenteResaIds = new Set((ras || []).filter(r => !r.valide).map(r => r.reservation_id));
       }
       for (const r of reservations) {
         r.statut_commande = computeOrderStatus(r, livraisonsByResa.get(r.id) || [], incidentResaIds.has(r.id));
+        r.appareils_en_attente_validation = appareilsEnAttenteResaIds.has(r.id);
       }
 
       return res.status(200).json({ reservations });
@@ -335,6 +341,21 @@ module.exports = async (req, res) => {
         }
       }
 
+      return res.status(200).json({ ok: true });
+    }
+
+    // Validation administrative de l'attribution d'un appareil (Module 6,
+    // Partie 6) : "réservé en attente validation" -> "réservation confirmée".
+    // Oversight uniquement — ne bloque rien d'autre dans le parcours.
+    if (action === 'valider_appareils') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { data: owned } = await supabase.from('reservations').select('id').eq('id', id).eq('city_id', city.id).maybeSingle();
+      if (!owned) return res.status(404).json({ error: 'Réservation introuvable' });
+      const { error } = await supabase.from('reservation_appareils')
+        .update({ valide: true, valide_at: new Date().toISOString() })
+        .eq('reservation_id', id).eq('valide', false);
+      if (error) throw error;
       return res.status(200).json({ ok: true });
     }
 

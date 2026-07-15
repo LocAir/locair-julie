@@ -1,6 +1,7 @@
-const { pushToTransporteur } = require('./push');
+const { notifyTransporteur } = require('./transporteurNotif');
 const { extractPostalCode } = require('./postal');
 const { notifyIfSoldOut } = require('./city');
+const { recordMouvement } = require('./stockMouvements');
 
 function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
@@ -173,13 +174,23 @@ async function assignAppareils(supabase, resa, staleOriginalId) {
   }
 
   if (manque > 0) {
-    await supabase.rpc('assign_appareils', {
+    const { data: assigned } = await supabase.rpc('assign_appareils', {
       p_reservation_id: resa.id,
       p_city_id:        resa.city_id,
       p_quantite:       manque,
       p_date_debut:     resa.date_debut,
       p_date_fin:       resa.date_fin,
     });
+    // Mouvement de stock (Module 6, Partie 5) : attribution à une réservation.
+    // Ne touche pas au statut (déjà géré par assign_appareils/le parcours
+    // transporteur) — seule la localisation reste "stock_principal" à ce
+    // stade (l'appareil n'a pas encore quitté le dépôt).
+    for (const a of (assigned || [])) {
+      await recordMouvement(supabase, {
+        appareilId: a.id, typeEvenement: 'attribution_reservation',
+        nouvelleLocalisation: 'stock_principal', reservationId: resa.id, utilisateur: 'systeme',
+      });
+    }
   }
 }
 
@@ -221,10 +232,9 @@ async function confirmReservation(supabase, resa) {
         await supabase.from('livraisons').update({ statut: 'annule' }).in('id', toCancel.map(l => l.id));
         const transpIds = [...new Set(toCancel.map(l => l.transporteur_id).filter(Boolean))];
         for (const tid of transpIds) {
-          await pushToTransporteur(supabase, tid, {
-            title: 'Mission annulée',
-            body:  'Une récupération a été annulée — le client a prolongé sa location.',
-            tag:   'mission-annulee',
+          await notifyTransporteur(supabase, tid, {
+            type: 'annulation', message: 'Une récupération a été annulée — le client a prolongé sa location.',
+            tag: 'mission-annulee',
           });
         }
       }
@@ -265,7 +275,7 @@ async function confirmReservation(supabase, resa) {
     }
 
     const { data: insertedLivraisons, error: livError } = await supabase
-      .from('livraisons').insert(rows).select('id, transporteur_id');
+      .from('livraisons').insert(rows).select('id, type, transporteur_id');
     if (livError) throw livError;
 
     // Prévient chaque transporteur auto-assigné, exactement comme pour une
@@ -275,10 +285,25 @@ async function confirmReservation(supabase, resa) {
     for (const liv of (insertedLivraisons || [])) {
       if (liv.transporteur_id && !notified.has(liv.transporteur_id)) {
         notified.add(liv.transporteur_id);
-        await pushToTransporteur(supabase, liv.transporteur_id, {
-          title: "Nouvelle mission Loc'Air",
-          body:  'Une mission t\'a été attribuée automatiquement — ouvre l\'app pour l\'accepter ou la refuser.',
-          tag:   'nouvelle-mission',
+        await notifyTransporteur(supabase, liv.transporteur_id, {
+          type: 'nouvelle_mission', message: 'Une mission vous a été attribuée automatiquement.',
+          livraisonId: liv.id, tag: 'nouvelle-mission',
+        });
+      }
+    }
+
+    // Mouvement de stock (Module 6, Partie 7) : dès qu'une mission de
+    // livraison existe, l'appareil attribué à cette réservation passe "en
+    // préparation" (événement seul — le statut lui-même ne change qu'à
+    // l'installation réelle, voir _lib/appareilSync.js).
+    const livraisonMission = (insertedLivraisons || []).find(l => l.type === 'livraison');
+    if (livraisonMission) {
+      const { data: ras } = await supabase.from('reservation_appareils').select('appareil_id').eq('reservation_id', resa.id);
+      for (const ra of (ras || [])) {
+        await recordMouvement(supabase, {
+          appareilId: ra.appareil_id, typeEvenement: 'preparation_livraison',
+          nouvelleLocalisation: 'stock_principal', livraisonId: livraisonMission.id,
+          reservationId: resa.id, utilisateur: 'systeme',
         });
       }
     }
