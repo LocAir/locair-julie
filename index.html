@@ -5058,7 +5058,7 @@ function geoLocate(){
               const city=d.city||d.principalSubdivision||'Nice';
               _setOk(locality&&locality!==city?locality+', '+city:city);
             })
-            .catch(function(){_setErr('Erreur réseau');});
+            .catch(function(){_setErr(_lang==='en'?'Network error':'Erreur réseau');});
         });
     },
     function(err){
@@ -5561,10 +5561,10 @@ async function handleFenetrePhoto(input){
   // Upload vers Supabase Storage via API
   try{
     const r=await fetch('/api/checkout-window-photo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:file.type})});
-    if(!r.ok)throw new Error('Endpoint indisponible');
+    if(!r.ok)throw new Error(_lang==='en'?'Upload unavailable':'Endpoint indisponible');
     const {signedUrl,path}=await r.json();
     const up=await fetch(signedUrl,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});
-    if(!up.ok)throw new Error('Erreur réseau');
+    if(!up.ok)throw new Error(_lang==='en'?'Network error':'Erreur réseau');
     _fenetrePhotoPath=path;
     if(status)status.textContent=_lang==='en'?'✅ Photo attached — our technician will see it before arriving.':'✅ Photo bien jointe — notre technicien la verra avant d\'arriver.';
   }catch(e){
@@ -6436,6 +6436,8 @@ const LANG_MAP=[
   ['#lbl-acces-section','text','Accès','Access'],
   /* modal step 1 */
   ['#label-etage','text','Étage','Floor'],
+  ['#label-addr','html','Adresse<span class="req">*</span>','Address<span class="req">*</span>'],
+  ['#label-conditions','html','Je reconnais avoir pris connaissance des <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">conditions d\'utilisation du climatiseur et des obligations liées à la location</a> (entretien courant, restitution en bon état).','I acknowledge reading the <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">terms of use for the air conditioner and obligations related to the rental</a> (routine maintenance, return in good condition).'],
   ['#label-asc','text','Ascenseur','Lift'],
   ['.asc-yes','text','Oui','Yes'],
   ['.asc-no','text','Non','No'],
