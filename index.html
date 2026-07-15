@@ -5229,7 +5229,11 @@ function openModal(dur, flowType){
 }
 let _lastFocused=null;
 function closeModal(){
-  document.getElementById('overlay').classList.remove('open');
+  const _ov=document.getElementById('overlay');
+  _ov.classList.remove('open');
+  _ov.style.top='';_ov.style.height='';_ov.style.bottom='';
+  const _mo=document.getElementById('modal');
+  if(_mo){_mo.style.maxHeight='';_mo.style.bottom='';}
   document.body.style.overflow='';
   document.querySelectorAll('[aria-haspopup="dialog"]').forEach(b=>b.setAttribute('aria-expanded','false'));
   document.title="Location climatiseur Nice · Livraison sous 24h · Aucune caution | Loc'Air";
@@ -6938,9 +6942,19 @@ document.addEventListener('focusin',function(e){
 if(window.visualViewport){
   window.visualViewport.addEventListener('resize',function(){
     const vvh=Math.round(window.visualViewport.height);
+    const vvt=Math.round(window.visualViewport.offsetTop);
+    const overlay=document.getElementById('overlay');
     const modal=document.getElementById('modal');
-    if(!modal||!document.getElementById('overlay')?.classList.contains('open'))return;
-    modal.style.maxHeight=vvh*0.92+'px';
+    if(!overlay?.classList.contains('open'))return;
+    if(window.innerWidth<=640){
+      // Mobile : l'overlay doit couvrir uniquement la zone visible (pas derrière le clavier)
+      overlay.style.top=vvt+'px';
+      overlay.style.height=vvh+'px';
+      overlay.style.bottom='unset';
+      if(modal)modal.style.maxHeight=(vvh*0.95)+'px';
+    } else {
+      if(modal)modal.style.maxHeight=vvh*0.92+'px';
+    }
     _scrollModalToField(document.activeElement,120);
   });
 }
