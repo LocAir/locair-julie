@@ -17,14 +17,14 @@ function ensureConfigured() {
 // (plusieurs appareils/onglets possibles). Ne fait jamais échouer l'appelant :
 // une notification manquée ne doit jamais bloquer une action métier (assignation,
 // annulation...). Purge automatiquement les abonnements révoqués/expirés (404/410).
-async function pushToTransporteur(supabase, transporteurId, { title, body, tag, url }) {
+async function pushToTransporteur(supabase, transporteurId, { title, body, tag }) {
   if (!ensureConfigured() || !transporteurId) return;
   try {
     const { data: subs } = await supabase
       .from('push_subscriptions').select('id, endpoint, p256dh, auth').eq('transporteur_id', transporteurId);
     if (!subs || !subs.length) return;
 
-    const payload = JSON.stringify({ title, body, tag, url: url || '/transporteur/' });
+    const payload = JSON.stringify({ title, body, tag, url: '/transporteur/' });
     await Promise.all(subs.map(async (s) => {
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);

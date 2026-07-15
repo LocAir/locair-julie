@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
       .select(`
         id, type, statut, date_prevue, creneau, titre, adresse_libre, montant_du_cents,
         photo_depart_path, photo_installation_path, photo_retour_path, client_notifie_at,
-        demo_faite,
+        demo_faite, incident_id,
         vidange_confirmee,
         probleme_type, probleme_description,
         reservation:reservations (
@@ -65,6 +65,7 @@ module.exports = async (req, res) => {
       fenetre_photo_ok:    Boolean(m.reservation?.fenetre_photo_path),
       probleme_type:       m.probleme_type,
       probleme_description: m.probleme_description,
+      incident_id:         m.incident_id,
       appareil_numeros: ((m.reservation?.reservation_appareils) || [])
         .map(ra => ra.appareil?.numero).filter(n => n != null).sort((a, b) => a - b),
       acces_difficile: m.reservation?.client?.acces_difficile || null,
