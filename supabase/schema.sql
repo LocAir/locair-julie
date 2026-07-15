@@ -465,6 +465,11 @@ create table email_log (
   modele         text,
   statut         text not null check (statut in ('envoye','erreur')),
   erreur         text,
+  -- Contenu réel envoyé (HTML pour un email, texte brut pour un SMS) — permet
+  -- un aperçu fidèle à 100% depuis la fiche client, même si le modèle a
+  -- changé depuis. Nullable : les lignes créées avant cette colonne n'ont
+  -- pas d'aperçu disponible, ce qui est acceptable (historique ancien).
+  contenu        text,
   created_at     timestamptz not null default now()
 );
 create index email_log_reservation_idx on email_log (reservation_id, created_at desc);

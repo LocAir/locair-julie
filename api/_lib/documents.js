@@ -103,15 +103,16 @@ async function generateAndSendDocuments(supabase, resa) {
   // les documents restent générés et consultables par l'admin dans ce cas.
   if (resa.email) {
     const base = 'https://www.locair.fr';
+    const contratEmailHtml = contratHtml({
+      prenom: resa.prenom,
+      ref:    resa.ref,
+      viewUrlContrat: `${base}/api/document-view?token=${contratToken}`,
+      viewUrlFacture: `${base}/api/document-view?token=${factureToken}`,
+    });
     await sendBrevoEmail({
       to:      resa.email,
       subject: `📄 Votre contrat et votre facture Loc'Air — Dossier ${resa.ref}`,
-      html:    contratHtml({
-        prenom: resa.prenom,
-        ref:    resa.ref,
-        viewUrlContrat: `${base}/api/document-view?token=${contratToken}`,
-        viewUrlFacture: `${base}/api/document-view?token=${factureToken}`,
-      }),
+      html:    contratEmailHtml,
       attachments: [
         { name: `Contrat-${resa.ref}.pdf`, content: contratBuffer },
         { name: `${numero}.pdf`, content: factureBuffer },
@@ -122,10 +123,12 @@ async function generateAndSendDocuments(supabase, resa) {
     await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt }).eq('id', contratRow.id);
     await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt })
       .eq('reservation_id', resa.id).eq('type', 'facture');
-    // Best-effort : trace pour l'historique de la fiche client admin.
+    // Best-effort : trace pour l'historique de la fiche client admin. Le
+    // contenu stocké est le corps de l'email (pas les PDF joints, non
+    // affichables dans l'aperçu).
     supabase.from('email_log').insert({
       reservation_id: resa.id, scenario: 'email_contrat_facture', canal: 'email',
-      destinataire: resa.email, modele: 'email_contrat_facture', statut: 'envoye',
+      destinataire: resa.email, modele: 'email_contrat_facture', statut: 'envoye', contenu: contratEmailHtml,
     }).catch(() => {});
   }
 }

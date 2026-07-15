@@ -4193,7 +4193,10 @@ function renderEmails(emails, sig){
           <span class="chip ${e.statut==='envoye'?'fait':'probleme'}">${e.statut==='envoye'?'Envoyé':'Erreur'}</span>
         </div>
         <div class="row-meta">${escHtml((r.prenom||'')+' '+(r.nom||''))}${e.destinataire?' · '+escHtml(e.destinataire):''}<br/>${new Date(e.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${e.erreur?' · '+escHtml(e.erreur):''}</div>
-        ${e.reservation_id?`<div class="row-actions"><button class="btn" onclick="resendEmail(${e.reservation_id},'${e.scenario}',this)">🔁 Renvoyer</button></div>`:''}
+        <div class="row-actions">
+          <button class="btn btn-grey" onclick="viewCommunicationContent(${e.id},this)">👁️ Aperçu</button>
+          ${e.reservation_id?`<button class="btn" onclick="resendEmail(${e.reservation_id},'${e.scenario}',this)">🔁 Renvoyer</button>`:''}
+        </div>
       </div>`;
   }).join('') : '<p class="empty">Aucun email envoyé pour l\'instant.</p>';
 
@@ -4721,6 +4724,7 @@ function renderClientCommunications(d){
           <span class="chip ${e.statut==='envoye'?'fait':'probleme'}">${e.statut==='envoye'?'Envoyé':'Erreur'}</span>
         </div>
         <div class="row-meta">${new Date(e.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${e.ref?' · '+escHtml(e.ref):''}${e.erreur?' · '+escHtml(e.erreur):''}</div>
+        <div class="row-actions"><button class="btn btn-grey" onclick="viewCommunicationContent(${e.id},this)">👁️ Aperçu</button></div>
       </div>`).join('')
     : '<p class="empty">Aucun envoi enregistré pour l\'instant.</p>';
 
@@ -4760,6 +4764,27 @@ async function unskipClientEmail(reservationId, scenario, btnEl){
   }catch(e){
     if(btnEl) btnEl.disabled = false;
     showToast(e.message, 'error');
+  }
+}
+
+// Ouvre le contenu exact envoyé (email ou SMS) dans un vrai nouvel onglet —
+// pas une pop-up in-page — via un Blob, pour un aperçu fidèle même si le
+// modèle a changé depuis (voir contenu sauvegardé dans email_log).
+async function viewCommunicationContent(id, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'content', id})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const isHtml = d.canal !== 'sms';
+    const blob = new Blob([isHtml ? d.contenu : `<!DOCTYPE html><html><head><meta charset="utf-8"><title>SMS</title></head><body style="font-family:Arial,sans-serif;white-space:pre-wrap;max-width:480px;margin:40px auto;padding:0 16px">${escHtml(d.contenu)}</body></html>`], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }catch(e){
+    showToast(e.message, 'error');
+  }finally{
+    if(btnEl) btnEl.disabled = false;
   }
 }
 

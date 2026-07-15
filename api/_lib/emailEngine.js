@@ -113,12 +113,13 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
       .upsert({ reservation_id: reservationId, scenario, sent_at: new Date().toISOString() }, { onConflict: 'reservation_id,scenario' });
     await supabase.from('email_log').insert({
       reservation_id: reservationId, scenario, destinataire: reservation.email, modele: scenario, statut: 'envoye',
+      contenu: html,
     });
     return { sent: true };
   } catch (e) {
     await supabase.from('email_log').insert({
       reservation_id: reservationId, scenario, destinataire: reservation.email, modele: scenario,
-      statut: 'erreur', erreur: String(e.message || e).slice(0, 500),
+      statut: 'erreur', erreur: String(e.message || e).slice(0, 500), contenu: html,
     });
     return { sent: false, reason: 'error', error: e.message };
   }
