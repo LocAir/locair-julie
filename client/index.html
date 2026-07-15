@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Mon espace — Loc'Air</title>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,700;1,300;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --blue:#1b3a5f;--blue-d:#142d4a;--blue-lt:#eef3fa;
+  --gold:#c5a96c;
+  --black:#141e30;--black2:#1e2d45;
+  --grey:#5a6577;--rule:#ddd8cf;
+  --bg:#ede8e0;
+  --green:#3f7d52;--green-bg:#eaf6ee;
+  --amber:#92400e;--amber-bg:#fff8ee;
+  --red:#b91c1c;--red-bg:#fef2f2;--red-border:#fecaca;
+  --disp:'Cormorant Garamond',Georgia,serif;
+  --body:'Inter',system-ui,sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased;min-height:100vh;display:flex;flex-direction:column}
+a{color:var(--blue);text-decoration:none}
+.hidden{display:none!important}
+
+.nav{position:sticky;top:0;z-index:100;min-height:58px;background:rgba(237,232,224,.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;padding:10px clamp(16px,5vw,64px);flex-shrink:0}
+.nav-logo{font-family:var(--disp);font-size:22px;font-weight:700;color:var(--black);letter-spacing:-.01em}
+.nav-logo em{font-style:italic;font-weight:300;color:var(--gold)}
+.nav-logout{font-size:12.5px;color:var(--grey);background:none;border:1.5px solid var(--rule);border-radius:100px;padding:6px 14px;cursor:pointer;font-family:var(--body)}
+
+main{flex:1}
+.page-wrap{max-width:640px;margin:0 auto;padding:32px clamp(16px,5vw,32px) 100px}
+
+.form-group{margin-bottom:20px}
+label{display:block;font-size:12.5px;font-weight:600;color:var(--black2);margin-bottom:7px}
+input[type="text"],input[type="email"]{width:100%;padding:13px 15px;border:1.5px solid var(--rule);border-radius:10px;background:#fff;font-family:var(--body);font-size:15px;outline:none}
+input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,58,95,.08)}
+.btn-submit{width:100%;padding:16px;margin-top:8px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer}
+.btn-submit:disabled{opacity:.55;cursor:default}
+.alert-error{background:var(--red-bg);border:1.5px solid var(--red-border);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--red);line-height:1.6;margin-bottom:16px}
+.alert-info{background:var(--amber-bg);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--amber);line-height:1.6;margin-bottom:16px}
+
+h1{font-family:var(--disp);font-size:clamp(30px,6vw,42px);font-weight:300;letter-spacing:-.02em;margin-bottom:6px}
+h1 em{font-style:italic}
+.page-sub{font-size:13.5px;color:var(--grey);margin-bottom:28px}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);margin:32px 0 12px}
+h2:first-of-type{margin-top:0}
+
+.card{background:#fff;border:1.5px solid var(--rule);border-radius:14px;padding:20px 22px;margin-bottom:14px}
+.card-row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #f2efe9;font-size:13.5px}
+.card-row:last-child{border-bottom:none}
+.card-row .lbl{color:var(--grey)}
+.card-row .val{font-weight:600;text-align:right}
+
+.progress{display:flex;flex-direction:column;gap:2px;margin-bottom:8px}
+.progress-step{display:flex;align-items:center;gap:12px;padding:6px 0}
+.progress-dot{width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.progress-step.done .progress-dot{background:var(--green);color:#fff}
+.progress-step.current .progress-dot{background:var(--blue);color:#fff}
+.progress-step.todo .progress-dot{background:#fff;border:1.5px solid var(--rule);color:var(--rule)}
+.progress-label{font-size:13.5px}
+.progress-step.todo .progress-label{color:var(--grey)}
+.progress-step.current .progress-label{font-weight:700}
+
+.next-step{background:var(--blue-lt);border-left:3px solid var(--blue);border-radius:0 12px 12px 0;padding:16px 18px;font-size:14px;font-weight:600;color:var(--black2);margin-bottom:20px}
+.banner-cancel{background:var(--red-bg);border-left:3px solid var(--red);border-radius:0 12px 12px 0;padding:16px 18px;font-size:14px;font-weight:600;color:var(--red);margin-bottom:20px}
+
+.doc-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid #f2efe9;font-size:14px}
+.doc-row:last-child{border-bottom:none}
+.doc-btn{font-size:12.5px;font-weight:600;color:var(--blue);border:1.5px solid var(--rule);border-radius:100px;padding:6px 14px}
+
+.aide-item{border-bottom:1px solid #f2efe9}
+.aide-item:last-child{border-bottom:none}
+.aide-q{width:100%;text-align:left;background:none;border:none;padding:14px 0;font-size:14px;font-weight:600;color:var(--black);cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:var(--body)}
+.aide-a{font-size:13.5px;color:var(--grey);line-height:1.6;padding:0 0 14px;display:none;white-space:pre-line}
+.aide-item.open .aide-a{display:block}
+
+.notif-row{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #f2efe9;font-size:13.5px}
+.notif-row:last-child{border-bottom:none}
+.notif-date{color:var(--grey);font-size:12px;white-space:nowrap}
+
+.btn-prolong{display:block;width:100%;text-align:center;padding:15px;background:var(--gold);color:#fff;border-radius:12px;font-weight:700;font-size:15px;margin:8px 0 4px}
+.btn-outline{display:block;width:100%;text-align:center;padding:13px;border:1.5px solid var(--rule);border-radius:12px;font-weight:600;font-size:14px;color:var(--black2)}
+
+.spec-chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.spec-chip{font-size:11.5px;font-weight:600;background:var(--blue-lt);color:var(--blue);border-radius:100px;padding:4px 12px}
+
+.footer{background:#0e1f35;padding:22px clamp(16px,5vw,64px);text-align:center;flex-shrink:0}
+.footer p{font-size:11px;color:rgba(255,255,255,.3)}
+
+@media(max-width:480px){.page-wrap{padding-top:24px}h1{font-size:30px}}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="/" class="nav-logo">Loc<em>'Air</em></a>
+  <button class="nav-logout hidden" id="btn-logout" onclick="logout()">Se déconnecter</button>
+</nav>
+
+<main>
+  <div class="page-wrap">
+
+    <!-- ÉCRAN 1 : identification -->
+    <div id="screen-login">
+      <p class="page-sub" style="margin-bottom:8px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold)">Mon espace</p>
+      <h1>Suivez votre <em>location</em></h1>
+      <p class="page-sub">Retrouvez le statut de votre commande, vos documents et l'assistance — avec votre numéro de commande et votre email.</p>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="f-email">Email</label>
+          <input type="email" id="f-email" autocomplete="email" placeholder="marie@exemple.fr" required/>
+        </div>
+        <div class="form-group">
+          <label for="f-ref">Numéro de commande</label>
+          <input type="text" id="f-ref" autocomplete="off" placeholder="LOC-260710-8129" style="text-transform:uppercase" required/>
+        </div>
+        <div id="login-error" class="alert-error hidden" role="alert"></div>
+        <button type="submit" class="btn-submit" id="btn-login">Accéder à mon espace</button>
+      </form>
+    </div>
+
+    <!-- ÉCRAN 2 : tableau de bord -->
+    <div id="screen-dashboard" class="hidden">
+      <div id="dash-loading" style="text-align:center;padding:60px 0;color:var(--grey)">Chargement…</div>
+      <div id="dash-content" class="hidden"></div>
+    </div>
+
+  </div>
+</main>
+
+<div class="footer">
+  <p>© <span id="year"></span> Loc'Air · Nice — <a href="/cgv" style="color:rgba(255,255,255,.5)">CGV</a></p>
+</div>
+
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+
+function escHtml(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function fmtDate(iso){
+  if(!iso) return '—';
+  return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+}
+function euros(cents){ return ((cents||0)/100).toFixed(2).replace('.',',')+' €'; }
+
+const STAGES = [1,2,3,4,5,6,7];
+
+async function apiClient(path, body){
+  const token = localStorage.getItem('client_token');
+  const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...body, token})});
+  const d = await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(d.error || 'Erreur');
+  return d;
+}
+
+document.getElementById('login-form').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const email = document.getElementById('f-email').value.trim();
+  const ref = document.getElementById('f-ref').value.trim();
+  const btn = document.getElementById('btn-login');
+  const errEl = document.getElementById('login-error');
+  errEl.classList.add('hidden');
+  btn.disabled = true; btn.textContent = 'Recherche…';
+  try{
+    const r = await fetch('/api/client-login', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, ref})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || 'Erreur');
+    localStorage.setItem('client_token', d.token);
+    localStorage.setItem('client_ref', d.ref);
+    showDashboard();
+  }catch(err){
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  }finally{
+    btn.disabled = false; btn.textContent = 'Accéder à mon espace';
+  }
+});
+
+function logout(){
+  localStorage.removeItem('client_token');
+  localStorage.removeItem('client_ref');
+  location.reload();
+}
+
+function renderProgress(progress){
+  if(progress.banner){
+    return `<div class="banner-cancel">${escHtml(progress.banner)}</div>`;
+  }
+  const steps = STAGES.map(n => {
+    const cls = progress.stage > n ? 'done' : (progress.stage === n ? 'current' : 'todo');
+    const label = progress.stageLabel && progress.stage === n ? progress.stageLabel : STAGE_LABELS_FALLBACK[n];
+    return `<div class="progress-step ${cls}"><div class="progress-dot">${progress.stage > n ? '✓' : n}</div><div class="progress-label">${escHtml(label)}</div></div>`;
+  }).join('');
+  return `<div class="progress">${steps}</div>
+    ${progress.nextStep ? `<div class="next-step">📍 ${escHtml(progress.nextStep)}</div>` : ''}`;
+}
+const STAGE_LABELS_FALLBACK = {
+  1:'Réservation confirmée', 2:'Préparation de votre livraison', 3:'Livraison programmée',
+  4:'Installation réalisée', 5:'Location en cours', 6:'Retour programmé', 7:'Location terminée',
+};
+
+function renderDashboard(d){
+  const c = d.client, ml = d.ma_location;
+  const climHtml = ml.climatiseur ? `
+    <div class="card-row"><span class="lbl">Modèle</span><span class="val">${escHtml(ml.climatiseur.marque||'')} ${escHtml(ml.climatiseur.modele||'')}</span></div>
+    ${ml.climatiseur.puissance_btu?`<div class="card-row"><span class="lbl">Puissance</span><span class="val">${escHtml(ml.climatiseur.puissance_btu)}</span></div>`:''}
+    <div class="card-row"><span class="lbl">Unité</span><span class="val">N°${escHtml(ml.climatiseur.numero)}</span></div>` :
+    `<div class="card-row"><span class="lbl">Climatiseur</span><span class="val">Attribué à la livraison</span></div>`;
+
+  const livraisonHtml = d.livraison ? `
+    <h2>Livraison</h2>
+    <div class="card">
+      <div class="card-row"><span class="lbl">Date prévue</span><span class="val">${escHtml(fmtDate(d.livraison.date_prevue))}</span></div>
+      ${d.livraison.creneau?`<div class="card-row"><span class="lbl">Créneau</span><span class="val">${escHtml(d.livraison.creneau)}</span></div>`:''}
+      <div class="card-row"><span class="lbl">Intervention</span><span class="val">${escHtml(d.livraison.type_intervention)}</span></div>
+    </div>` : '';
+
+  const recupHtml = d.recuperation ? `
+    <h2>Récupération</h2>
+    <div class="card">
+      <div class="card-row"><span class="lbl">Date prévue</span><span class="val">${escHtml(fmtDate(d.recuperation.date_prevue))}</span></div>
+      ${d.recuperation.creneau?`<div class="card-row"><span class="lbl">Créneau</span><span class="val">${escHtml(d.recuperation.creneau)}</span></div>`:''}
+      <ul style="margin:10px 0 0 18px;font-size:13px;color:var(--grey);line-height:1.7">
+        ${d.recuperation.consignes.map(c=>`<li>${escHtml(c)}</li>`).join('')}
+      </ul>
+    </div>` : '';
+
+  const docLabels = {contrat:'Contrat de location', facture:'Facture'};
+  let docsHtml = (d.documents||[]).map(doc => `
+    <div class="doc-row"><span>${escHtml(docLabels[doc.type]||doc.type)}${doc.numero?' · '+escHtml(doc.numero):''}</span>
+    <a class="doc-btn" href="${doc.url}" target="_blank" rel="noopener">Ouvrir</a></div>`).join('');
+  if(d.mon_climatiseur?.documentation_url) docsHtml += `<div class="doc-row"><span>Guide utilisateur</span><a class="doc-btn" href="${escHtml(d.mon_climatiseur.documentation_url)}" target="_blank" rel="noopener">Ouvrir</a></div>`;
+  if(d.mon_climatiseur?.video_tutoriel_url) docsHtml += `<div class="doc-row"><span>Tutoriel vidéo</span><a class="doc-btn" href="${escHtml(d.mon_climatiseur.video_tutoriel_url)}" target="_blank" rel="noopener">Voir</a></div>`;
+  (d.cgv_acceptees||[]).forEach(a => {
+    const label = a.type === 'conditions_utilisation' ? "Conditions d'utilisation" : 'CGV / CGL';
+    docsHtml += `<div class="doc-row"><span>${label} <span style="color:var(--grey);font-weight:400">— acceptées le ${escHtml(fmtDate(a.accepted_at))}</span></span><a class="doc-btn" href="${a.lien}" target="_blank" rel="noopener">Voir</a></div>`;
+  });
+  if(!docsHtml) docsHtml = '<p style="color:var(--grey);font-size:13.5px">Vos documents apparaîtront ici dès qu\'ils seront disponibles.</p>';
+
+  const climInfoHtml = d.mon_climatiseur ? `
+    <div class="spec-chips">
+      ${d.mon_climatiseur.puissance_btu?`<span class="spec-chip">${escHtml(d.mon_climatiseur.puissance_btu)}</span>`:''}
+      ${d.mon_climatiseur.surface_max_m2?`<span class="spec-chip">Jusqu'à ${escHtml(d.mon_climatiseur.surface_max_m2)}</span>`:''}
+      ${d.mon_climatiseur.niveau_sonore_db?`<span class="spec-chip">${escHtml(d.mon_climatiseur.niveau_sonore_db)}</span>`:''}
+      ${d.mon_climatiseur.classe_energie?`<span class="spec-chip">Classe ${escHtml(d.mon_climatiseur.classe_energie)}</span>`:''}
+    </div>
+    ${d.mon_climatiseur.conseils_utilisation?`<p style="font-size:13.5px;color:var(--grey);line-height:1.6;white-space:pre-line">${escHtml(d.mon_climatiseur.conseils_utilisation)}</p>`:''}
+  ` : '<p style="color:var(--grey);font-size:13.5px">Les informations détaillées de votre climatiseur apparaîtront ici une fois l\'appareil attribué.</p>';
+
+  const aideHtml = (d.centre_aide||[]).length ? d.centre_aide.map((a,i) => `
+    <div class="aide-item" id="aide-${i}">
+      <button class="aide-q" onclick="toggleAide(${i})"><span>${escHtml(a.titre)}</span><span>+</span></button>
+      <div class="aide-a">${escHtml(a.contenu)}</div>
+    </div>`).join('') : '<p style="color:var(--grey);font-size:13.5px">Aucun article pour l\'instant.</p>';
+
+  const notifHtml = (d.notifications||[]).length ? d.notifications.map(n => `
+    <div class="notif-row"><span>${escHtml(n.label)}</span><span class="notif-date">${escHtml(fmtDate(n.date))}</span></div>`).join('')
+    : '<p style="color:var(--grey);font-size:13.5px">Aucun événement pour l\'instant.</p>';
+
+  const a = d.assistance || {};
+
+  document.getElementById('dash-content').innerHTML = `
+    <p style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:6px">Dossier ${escHtml(c.ref)}</p>
+    <h1>Bonjour ${escHtml(c.prenom)}</h1>
+    <p class="page-sub">${c.jours_restants!=null && c.jours_restants>0 ? c.jours_restants+' jour'+(c.jours_restants>1?'s':'')+' restant'+(c.jours_restants>1?'s':'')+' avant récupération' : ''}</p>
+
+    ${renderProgress(d.progress)}
+
+    <h2>Ma location</h2>
+    <div class="card">
+      ${climHtml}
+      <div class="card-row"><span class="lbl">Livraison</span><span class="val">${escHtml(fmtDate(c.date_debut))}</span></div>
+      <div class="card-row"><span class="lbl">Récupération</span><span class="val">${escHtml(fmtDate(c.date_fin))}</span></div>
+      <div class="card-row"><span class="lbl">Montant</span><span class="val">${euros(ml.montant_ttc_cents)}</span></div>
+    </div>
+
+    ${livraisonHtml}
+    ${recupHtml}
+
+    <a class="btn-prolong" href="${d.lien_prolongation}">Prolonger ma location</a>
+
+    <h2>Mes documents</h2>
+    <div class="card">${docsHtml}</div>
+
+    <h2>Mon climatiseur</h2>
+    <div class="card">${climInfoHtml}</div>
+
+    <h2>Besoin d'aide ?</h2>
+    <div class="card">${aideHtml}</div>
+
+    <h2>Mes notifications</h2>
+    <div class="card">${notifHtml}</div>
+
+    <h2>Assistance</h2>
+    <div class="card">
+      ${a.horaires?`<div class="card-row"><span class="lbl">Horaires</span><span class="val">${escHtml(a.horaires)}</span></div>`:''}
+      ${a.telephone?`<div class="card-row"><span class="lbl">Téléphone</span><span class="val"><a href="tel:${escHtml(a.telephone.replace(/\\s/g,''))}">${escHtml(a.telephone)}</a></span></div>`:''}
+      ${a.email?`<div class="card-row"><span class="lbl">Email</span><span class="val"><a href="mailto:${escHtml(a.email)}">${escHtml(a.email)}</a></span></div>`:''}
+      ${a.urgence?`<p style="margin-top:10px;font-size:12.5px;color:var(--grey);line-height:1.6">${escHtml(a.urgence)}</p>`:''}
+    </div>
+  `;
+}
+
+function toggleAide(i){
+  document.getElementById('aide-'+i).classList.toggle('open');
+}
+
+async function showDashboard(){
+  document.getElementById('screen-login').classList.add('hidden');
+  document.getElementById('screen-dashboard').classList.remove('hidden');
+  document.getElementById('dash-loading').classList.remove('hidden');
+  document.getElementById('dash-content').classList.add('hidden');
+  document.getElementById('btn-logout').classList.remove('hidden');
+  try{
+    const d = await apiClient('/api/client-dashboard', {});
+    renderDashboard(d);
+    document.getElementById('dash-loading').classList.add('hidden');
+    document.getElementById('dash-content').classList.remove('hidden');
+  }catch(err){
+    document.getElementById('dash-loading').innerHTML = `<div class="alert-error" style="text-align:left">${escHtml(err.message)}</div><button class="btn-outline" onclick="logout()" style="margin-top:12px">Retour</button>`;
+  }
+}
+
+// Session déjà ouverte (visite suivante) → tableau de bord directement.
+if(localStorage.getItem('client_token')){
+  showDashboard();
+}
+</script>
+</body>
+</html>

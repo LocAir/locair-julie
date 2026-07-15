@@ -82,6 +82,22 @@ Renseigner l'email de chaque transporteur n'est pas obligatoire, mais c'est ce q
 
 **⚠️ Point à trancher avec le propriétaire** (découvert pendant ce module, hors périmètre) : la page dédiée `/prolongation` (`api/prolong-lookup.js` + `api/prolong-pay.js`) — le parcours vers lequel pointent tous les liens "Prolonger ma location" du site — ne comporte aucune case CGV et n'enregistre aucune acceptation, contrairement à `/api/checkout-prolong` durci au Module 1. Cette page est le vrai chemin emprunté par la majorité des clients qui prolongent.
 
+### Module 4 — Espace client (2026-07-16)
+
+- Se connecter sur `/client` avec l'email et le numéro de commande d'une réservation test → le tableau de bord doit s'afficher avec les bonnes dates, le bon statut, et le climatiseur assigné (ou "Attribué à la livraison" si pas encore assigné).
+- Se connecter avec un email correct mais un mauvais numéro de commande (ou l'inverse) → message générique "Nous n'avons pas retrouvé votre réservation…", jamais une erreur technique.
+- Vérifier que la progression affichée (7 étapes) correspond bien à l'état réel de la mission, et qu'aucun libellé technique (`a_faire`, `webhook`, etc.) n'apparaît jamais à l'écran ni dans la réponse réseau (onglet réseau du navigateur).
+- Réservation annulée ou remboursée → la barre de progression est remplacée par un message clair, pas par une étape numérotée trompeuse.
+- Dans "Mes documents" : le contrat et la facture (si le Module 2 est activé) doivent s'ouvrir sans jamais régénérer de nouveau PDF ; les CGV/conditions acceptées doivent afficher la bonne date et renvoyer vers `/cgv`.
+- Cliquer sur "Prolonger ma location" depuis l'espace client → arrive sur `/prolongation` avec le numéro de commande déjà pré-rempli, sans ressaisie.
+- Vérifier l'isolation : avec le jeton d'accès d'une réservation A, tenter d'appeler `/api/client-dashboard` ne doit jamais renvoyer les données d'une réservation B, même en modifiant l'URL/le payload à la main.
+- Dans `/admin` → onglet **🛟 Espace client** : ajouter un modèle de climatiseur, un article d'aide, modifier les coordonnées d'assistance → vérifier que ça apparaît correctement côté `/client`.
+- Tester les 7 cas listés dans le cahier des charges (réservation standard, anticipée, dernière minute, prolongation, terminée, remboursée, réservation inexistante) et vérifier statuts, documents, sécurité et affichage mobile pour chacun.
+
+**Nouveauté Supabase requise** : voir `migration_2026-07-16_module4_espace_client.sql`. Aucune nouvelle variable d'environnement — le jeton client réutilise `TRANSPORTEUR_SECRET`, déjà configuré.
+
+**⚠️ Limite connue** : les notifications "Contrat disponible" et "Prolongation confirmée" ne sont pas encore alimentées par le moteur central d'emails (Module 3) — l'envoi du contrat/facture (Module 2) et l'email de confirmation de prolongation ne passent pas encore par `email_log`. L'espace client n'affiche donc que les notifications réellement traçées aujourd'hui (confirmation, livraison programmée, installation terminée, récupération programmée, location terminée).
+
 ## Notifications push (nouvelles missions, annulations)
 
 Un transporteur reçoit une notification sur son téléphone — même app fermée — dans deux cas : une mission lui est assignée (première fois ou réassignation), ou une récupération qu'on lui avait confiée est annulée parce que le client a prolongé sa location. Il touche la notification pour ouvrir directement l'app.

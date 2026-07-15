@@ -34,6 +34,26 @@ create table cities (
   tarif_changement_cents           integer
 );
 
+-- Catalogue des modèles de climatiseur (Rowenta, Frico...) — une fiche par
+-- modèle, réutilisée par tous les appareils physiques de ce modèle (jamais
+-- dupliquée par appareil). Alimente la section "Mon climatiseur" de l'espace
+-- client (Module 4).
+create table modeles_climatiseur (
+  id                   bigint generated always as identity primary key,
+  marque               text not null,
+  modele               text not null,
+  puissance_btu        text,
+  surface_max_m2       text,
+  niveau_sonore_db     text,
+  classe_energie       text,
+  photo_url            text,
+  conseils_utilisation text,
+  video_tutoriel_url   text,
+  documentation_url    text,
+  actif                boolean not null default true,
+  created_at           timestamptz not null default now()
+);
+
 -- Un appareil physique = une ligne, numérotée (étiquette à coller dessus).
 -- 'panne'/'maintenance' l'excluent définitivement du calcul de disponibilité
 -- jusqu'à ce qu'un admin le repasse en 'disponible'. Il n'y a pas de statut
@@ -46,6 +66,7 @@ create table appareils (
   numero     integer not null,
   statut     text not null default 'disponible' check (statut in ('disponible','panne','maintenance','loue')),
   reference  text, -- référence produit du fabricant (ex. "RWAC10KA+"), saisie librement par l'admin
+  modele_id  bigint references modeles_climatiseur(id), -- fiche catalogue affichée côté espace client (nullable = description générique)
   notes      text,
   created_at timestamptz not null default now(),
   unique (city_id, numero)
@@ -417,6 +438,33 @@ create table email_signature (
   constraint email_signature_single_row check (id = 1)
 );
 insert into email_signature (id) values (1);
+
+-- Centre d'aide client (espace client, Module 4) — contenu administrable,
+-- structuré par slug/catégorie pour rester exploitable par un futur
+-- assistant IA (recherche par mots-clés) sans développement de chatbot en V1.
+create table centre_aide_articles (
+  id         bigint generated always as identity primary key,
+  slug       text not null unique,
+  categorie  text,
+  titre      text not null,
+  contenu    text not null,
+  ordre      integer not null default 0,
+  actif      boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Coordonnées d'assistance affichées dans l'espace client — une seule ligne,
+-- jamais codées en dur dans le front.
+create table assistance_config (
+  id         integer primary key default 1,
+  horaires   text default 'Tous les jours, 8h–20h',
+  telephone  text default '06 63 79 87 56',
+  email      text default 'contact@locair.fr',
+  urgence    text default 'En cas de panne, contactez-nous directement par téléphone ou WhatsApp.',
+  updated_at timestamptz not null default now(),
+  constraint assistance_config_single_row check (id = 1)
+);
+insert into assistance_config (id) values (1);
 
 -- Demandes de virement transporteur. Le montant réel et le passage à 'verse'
 -- sont toujours déclenchés par le propriétaire (voir api/admin-virements.js) —

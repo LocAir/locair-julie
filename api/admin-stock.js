@@ -12,6 +12,37 @@ module.exports = async (req, res) => {
   const action = body.action || 'list';
 
   try {
+    // Catalogue des modèles de climatiseur (voir espace client, Module 4) —
+    // global, pas rattaché à une ville, donc traité avant la résolution de
+    // ville ci-dessous.
+    if (action === 'modeles_list') {
+      const { data, error } = await supabase.from('modeles_climatiseur').select('*').order('marque').order('modele');
+      if (error) throw error;
+      return res.status(200).json({ modeles: data || [] });
+    }
+    if (action === 'modele_upsert') {
+      const id = parseInt(body.id) || null;
+      const row = {
+        marque:               (body.marque || '').trim().slice(0, 100),
+        modele:               (body.modele || '').trim().slice(0, 100),
+        puissance_btu:        (body.puissance_btu || '').trim().slice(0, 100) || null,
+        surface_max_m2:       (body.surface_max_m2 || '').trim().slice(0, 100) || null,
+        niveau_sonore_db:     (body.niveau_sonore_db || '').trim().slice(0, 100) || null,
+        classe_energie:       (body.classe_energie || '').trim().slice(0, 20) || null,
+        photo_url:            (body.photo_url || '').trim().slice(0, 500) || null,
+        conseils_utilisation: (body.conseils_utilisation || '').trim().slice(0, 2000) || null,
+        video_tutoriel_url:   (body.video_tutoriel_url || '').trim().slice(0, 500) || null,
+        documentation_url:    (body.documentation_url || '').trim().slice(0, 500) || null,
+        actif:                body.actif !== false,
+      };
+      if (!row.marque || !row.modele) return res.status(400).json({ error: 'Marque et modèle requis' });
+      const { error } = id
+        ? await supabase.from('modeles_climatiseur').update(row).eq('id', id)
+        : await supabase.from('modeles_climatiseur').insert(row);
+      if (error) throw error;
+      return res.status(200).json({ ok: true });
+    }
+
     const city = await resolveAdminCity(supabase, body);
     if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
 
@@ -37,6 +68,7 @@ module.exports = async (req, res) => {
         patch.statut = body.statut;
       }
       if (body.reference != null) patch.reference = body.reference.trim().slice(0, 200) || null;
+      if (body.modele_id != null) patch.modele_id = parseInt(body.modele_id) || null;
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('appareils').update(patch).eq('id', id).eq('city_id', city.id);
       if (error) throw error;
