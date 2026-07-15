@@ -3573,9 +3573,8 @@ function renderClients(){
       <div class="row-actions">
         ${contactButtonsHtml(c.tel)}
         <button class="btn btn-grey" onclick="editAccesDifficile(${c.id}, '${(c.acces_difficile||'').replace(/'/g,"\\'")}')">${c.acces_difficile?'Modifier':'Ajouter'} une note d'accès</button>
-        <button class="btn btn-grey" onclick="toggleClientPhotos(${c.id})">📷 Photos</button>
+        <button class="btn btn-blue" onclick="openClientFiche(${c.id})">👤 Fiche client</button>
       </div>
-      <div class="row-actions hidden" id="cli-photos-${c.id}" style="margin-top:8px"></div>
     </div>`).join('') || '<p class="empty">👤 Aucun client pour l\'instant.</p>';
   zone.innerHTML = `
     <button class="btn btn-grey btn-block" style="margin-bottom:12px" onclick="exportClientsCsv()">⬇️ Exporter en CSV</button>
@@ -3612,28 +3611,233 @@ function editAccesDifficile(id, current){
     }catch(e){ showToast(`Note non enregistrée : ${e.message}`, 'error'); }
   });
 }
-// Galerie des preuves (installation/récupération/passage) accumulées pour ce
-// client au fil des missions — chargée à la demande, pas au chargement de la
-// liste (évite une requête par client alors que la plupart ne seront jamais ouverts).
-async function toggleClientPhotos(id){
-  const panel = document.getElementById(`cli-photos-${id}`);
-  if(!panel) return;
-  if(!panel.classList.contains('hidden')){ panel.classList.add('hidden'); return; }
-  panel.classList.remove('hidden');
-  if(panel.dataset.loaded) return;
-  panel.innerHTML = loading();
+// ── FICHE CLIENT (suivi en direct + édition) ────────────────────────────────
+// Vue détaillée d'un client : avancement en direct de sa mission active
+// (étape par étape), photos au fur et à mesure, incidents liés — sécurité et
+// traçabilité en cas de litige. L'admin reste un observateur passif (pas de
+// bureau, le transporteur est autonome) : cette vue affiche, elle n'agit
+// jamais sur le transporteur. Polling 8s sur le modèle de openLiveMap/
+// refreshLivePosition (admin/index.html) — overlay indépendant de
+// #modal-overlay-el pour que isUserBusy() ne mette pas en pause le suivi
+// juste quand la fiche est ouverte.
+let CLIENT_FICHE_ID = null;
+let CLIENT_FICHE_POLL = null;
+let CLIENT_FICHE_DATA = null;
+
+const MISSION_STEP_LABEL = {
+  accepted_at: 'Acceptée', client_notifie_at: 'Client notifié', arrivee_at: 'Arrivée sur place',
+  demo_faite_at: 'Démonstration faite', vidange_at: 'Vidange vérifiée', fait_at: 'Terminée',
+};
+
+function closeClientFiche(){
+  if(CLIENT_FICHE_POLL) clearInterval(CLIENT_FICHE_POLL);
+  CLIENT_FICHE_POLL = null;
+  CLIENT_FICHE_ID = null;
+  CLIENT_FICHE_DATA = null;
+  const o = document.getElementById('client-fiche-overlay');
+  if(o) o.remove();
+}
+
+async function openClientFiche(clientId){
+  closeClientFiche();
+  CLIENT_FICHE_ID = clientId;
+  const overlay = document.createElement('div');
+  overlay.className = 'map-overlay';
+  overlay.id = 'client-fiche-overlay';
+  overlay.innerHTML = `
+    <div class="map-modal" style="max-width:640px;max-height:88vh;overflow-y:auto">
+      <div class="map-modal-head"><h2>Fiche client</h2><button onclick="closeClientFiche()">✕</button></div>
+      <div id="client-fiche-body" style="padding:0 20px 20px"><p class="empty">Chargement…</p></div>
+    </div>`;
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeClientFiche(); });
+  document.body.appendChild(overlay);
+  await loadClientFiche();
+  CLIENT_FICHE_POLL = setInterval(loadClientFiche, 8000);
+}
+
+async function loadClientFiche(){
+  const body = document.getElementById('client-fiche-body');
+  if(!body || !CLIENT_FICHE_ID) return; // fiche fermée entre-temps
   try{
-    const r = await fetch(API('admin-clients'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'photos', id})});
+    const r = await fetch(API('admin-clients'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'fiche', id:CLIENT_FICHE_ID})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    const photos = d.photos || [];
-    panel.innerHTML = photos.length
-      ? photos.map(p => `<button class="btn btn-grey" onclick="viewMedia(${p.livraison_id},'${p.kind}')">${p.type==='livraison'?'📦':'🔄'} ${MEDIA_KIND_LABEL[p.kind]||p.kind} — ${frDate(p.date_prevue)}</button>`).join('')
-      : '<p class="empty" style="padding:0">Aucune photo enregistrée pour l\'instant.</p>';
-    panel.dataset.loaded = '1';
+    CLIENT_FICHE_DATA = d;
+    renderClientFiche(d);
   }catch(e){
-    panel.innerHTML = '<p class="empty" style="padding:0">Erreur de chargement.</p>';
+    body.innerHTML = `<p class="empty">${escHtml(e.message)}</p>`;
   }
+}
+
+function missionStepsHtml(m){
+  const steps = [
+    ['accepted_at', m.accepted_at], ['client_notifie_at', m.client_notifie_at], ['arrivee_at', m.arrivee_at],
+    (m.type==='livraison' ? ['demo_faite_at', m.demo_faite_at] : ['vidange_at', m.vidange_at]),
+    ['fait_at', m.fait_at],
+  ];
+  return `<div style="margin-top:8px;font-size:13px">
+    ${steps.map(([key, at]) => `<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;color:${at?'var(--ink)':'var(--grey2)'}">
+      <span>${at?'✅':'⬜️'} ${MISSION_STEP_LABEL[key]}</span>${at?`<span style="color:var(--grey)">${frDateHeure(at)}</span>`:''}
+    </div>`).join('')}
+  </div>`;
+}
+
+function missionPhotosHtml(m){
+  const KINDS = [['photo_depart_ok','photo_depart'],['photo_installation_ok','photo_installation'],['photo_retour_ok','photo_retour'],['photo_absence_ok','photo_absence']];
+  const buttons = KINDS.filter(([flag]) => m[flag]).map(([,kind]) => `<button class="btn btn-grey" onclick="viewMedia(${m.id},'${kind}')">${MEDIA_KIND_LABEL[kind]||kind}</button>`).join('');
+  return buttons ? `<div class="row-actions" style="margin-top:8px">${buttons}</div>` : '';
+}
+
+function renderClientFiche(d){
+  const body = document.getElementById('client-fiche-body');
+  if(!body) return;
+  const c = d.client;
+  const head = document.querySelector('#client-fiche-overlay .map-modal-head h2');
+  if(head) head.textContent = `👤 ${((c.prenom||'')+' '+(c.nom||'')).trim() || 'Client'}`;
+
+  const missionsHtml = (d.missions_actives||[]).length
+    ? d.missions_actives.map(m => `
+      <div class="card" style="margin-bottom:12px;padding:14px 16px">
+        <div class="row-top">
+          <span class="row-title">${m.type==='livraison'?'📦 Livraison':m.type==='recuperation'?'🔄 Récupération':'📍 '+(m.type||'Mission')}</span>
+          <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
+        </div>
+        <div class="row-meta">${frDate(m.date_prevue)}${m.creneau?' · '+escHtml(m.creneau):''}</div>
+        ${missionStepsHtml(m)}
+        ${m.statut==='probleme' ? `<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:8px">⚠️ Problème : ${escHtml(m.probleme_description||m.probleme_type||'')}</div>` : ''}
+        ${missionPhotosHtml(m)}
+      </div>`).join('')
+    : '<p class="empty">Aucune mission en cours actuellement.</p>';
+
+  const incidentsHtml = (d.incidents||[]).length
+    ? d.incidents.map(i => `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${INCIDENT_TYPE_LABEL[i.type]||i.type}</span>
+          <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
+        </div>
+        <div class="row-meta">${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
+        ${i.statut!=='resolu'?`<div class="row-actions"><button class="btn btn-green" onclick="updateIncidentStatutInFiche(${i.id},'resolu',this)">✅ Marquer résolu</button></div>`:''}
+      </div>`).join('')
+    : '<p class="empty">Aucun incident enregistré pour ce client.</p>';
+
+  const latestResa = (d.reservations||[])[0] || null;
+
+  body.innerHTML = `
+    <div class="row-meta" style="margin-top:4px">
+      ${escHtml(c.tel||'—')}${c.email?' · '+escHtml(c.email):''}
+      ${latestResa?.adresse?'<br/>'+escHtml(latestResa.adresse):''}
+      ${latestResa?.instructions_acces?'<br/>📌 '+escHtml(latestResa.instructions_acces):''}
+    </div>
+    ${c.acces_difficile?`<div class="row-meta" style="color:var(--blue);font-weight:700;margin-top:6px">📌 ${escHtml(c.acces_difficile)}</div>`:''}
+    <div class="row-actions" style="margin-top:10px">
+      <button class="btn btn-grey" onclick="openEditClientFicheModal()">✏️ Modifier la fiche</button>
+    </div>
+
+    <div class="section-title" style="margin-top:18px">🔴 Mission en cours (mise à jour toutes les 8s)</div>
+    ${missionsHtml}
+
+    <div class="section-title" style="margin-top:18px">🧯 Incidents</div>
+    ${incidentsHtml}
+  `;
+}
+
+async function updateIncidentStatutInFiche(id, statut, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-incidents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadClientFiche();
+    showToast('Incident mis à jour', 'success');
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
+}
+
+// Édition complète de la fiche : les champs client (prenom/nom/tel/email)
+// vivent sur `clients`, mais adresse/instructions de livraison n'existent
+// que par réservation (un client peut en avoir plusieurs dans le temps) —
+// l'édition cible donc la réservation la plus récente, comme la dérivation
+// en lecture seule "dernière adresse" déjà utilisée dans la liste Clients.
+function openEditClientFicheModal(){
+  if(!CLIENT_FICHE_DATA) return;
+  const c = CLIENT_FICHE_DATA.client;
+  const latestResa = (CLIENT_FICHE_DATA.reservations||[])[0] || null;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
+      <h2 style="margin-bottom:14px">✏️ Modifier la fiche client</h2>
+      <label for="ecf-prenom">Prénom</label>
+      <input type="text" id="ecf-prenom" value="${escHtml(c.prenom||'')}"/>
+      <label for="ecf-nom" style="margin-top:8px">Nom</label>
+      <input type="text" id="ecf-nom" value="${escHtml(c.nom||'')}"/>
+      <label for="ecf-tel" style="margin-top:8px">Téléphone</label>
+      <input type="tel" id="ecf-tel" value="${escHtml(c.tel||'')}"/>
+      <label for="ecf-email" style="margin-top:8px">Email</label>
+      <input type="email" id="ecf-email" value="${escHtml(c.email||'')}"/>
+      ${latestResa ? `
+        <label for="ecf-adresse" style="margin-top:8px">Adresse (dernière réservation)</label>
+        <input type="text" id="ecf-adresse" value="${escHtml(latestResa.adresse||'')}"/>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="ecf-etage">Étage</label><input type="text" id="ecf-etage" value="${escHtml(latestResa.etage||'')}"/></div>
+          <div><label for="ecf-ascenseur">Ascenseur</label><input type="text" id="ecf-ascenseur" value="${escHtml(latestResa.ascenseur||'')}"/></div>
+        </div>
+        <label for="ecf-instructions" style="margin-top:8px">Instructions d'accès</label>
+        <input type="text" id="ecf-instructions" value="${escHtml(latestResa.instructions_acces||'')}"/>
+        <label for="ecf-tel-secours" style="margin-top:8px">Téléphone secours</label>
+        <input type="tel" id="ecf-tel-secours" value="${escHtml(latestResa.tel_secondaire||'')}"/>
+      ` : '<p class="step-hint" style="margin-top:8px">Aucune réservation pour ce client — pas d\'adresse à modifier pour l\'instant.</p>'}
+      <div class="modal-actions" style="margin-top:18px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Enregistrer</button>
+      </div>
+      <div class="err" id="ecf-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const errEl = document.getElementById('ecf-err');
+    errEl.style.display = 'none';
+    okBtn.disabled = true;
+    try{
+      const r = await fetch(API('admin-clients'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+        action: 'update', id: c.id,
+        prenom: document.getElementById('ecf-prenom').value.trim(),
+        nom: document.getElementById('ecf-nom').value.trim(),
+        tel: document.getElementById('ecf-tel').value.trim(),
+        email: document.getElementById('ecf-email').value.trim(),
+      })});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+
+      if(latestResa){
+        const rr = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+          action: 'update', id: latestResa.id,
+          adresse: document.getElementById('ecf-adresse').value.trim(),
+          etage: document.getElementById('ecf-etage').value.trim(),
+          ascenseur: document.getElementById('ecf-ascenseur').value.trim(),
+          instructions_acces: document.getElementById('ecf-instructions').value.trim(),
+          tel_secondaire: document.getElementById('ecf-tel-secours').value.trim(),
+        })});
+        const rd = await rr.json();
+        if(!rr.ok) throw new Error(rd.error||"Erreur lors de la mise à jour de l'adresse");
+      }
+
+      closeModal();
+      loadClients();
+      loadClientFiche();
+      showToast('Fiche client mise à jour', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      errEl.textContent = e.message; errEl.style.display = 'block';
+    }
+  };
 }
 
 // ── VILLES / ZONES (multi-ville) ──────────────────────────────────────────

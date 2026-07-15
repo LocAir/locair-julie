@@ -9,7 +9,47 @@ module.exports = async (req, res) => {
   const transporteurId = await verifyTransporteurToken(req, supabase);
   if (!transporteurId) return res.status(401).json({ error: 'Session invalide' });
 
+  const body   = req.body || {};
+  const action = body.action || 'list';
+
   try {
+    // Signe les URLs des photos d'une mission passée, pour "Mon activité"
+    // (transporteur-earnings.js action 'resume' fournit déjà l'historique
+    // complet des missions "fait" avec leur id — inutile de le dupliquer
+    // ici, seule la récupération des photos manque). Vérifie que la mission
+    // appartient bien à ce transporteur — même garde-fou que
+    // fenetre_photo_url dans transporteur-action.js. Fenêtre de 90 jours
+    // décidée avec Aly : assez large pour couvrir un litige tardif, sans
+    // accès illimité.
+    if (action === 'past_photos') {
+      const livraisonId = parseInt(body.livraison_id);
+      if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
+      const cutoff90 = new Date();
+      cutoff90.setDate(cutoff90.getDate() - 90);
+      const { data: liv } = await supabase
+        .from('livraisons')
+        .select('fait_at, photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path')
+        .eq('id', livraisonId).eq('transporteur_id', transporteurId).maybeSingle();
+      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
+      if (!liv.fait_at || new Date(liv.fait_at) < cutoff90) {
+        return res.status(404).json({ error: 'Photos disponibles seulement pour les 90 derniers jours' });
+      }
+
+      const KINDS = [
+        ['photo_depart',       liv.photo_depart_path],
+        ['photo_installation', liv.photo_installation_path],
+        ['photo_retour',       liv.photo_retour_path],
+        ['photo_absence',      liv.photo_absence_path],
+      ];
+      const photos = {};
+      await Promise.all(KINDS.map(async ([kind, path]) => {
+        if (!path) return;
+        const { data: urlData } = await supabase.storage.from('missions').createSignedUrl(path, 300);
+        if (urlData?.signedUrl) photos[kind] = urlData.signedUrl;
+      }));
+      return res.status(200).json({ photos });
+    }
+
     // Les missions actives (à traiter) remontent sans limite de date ; les
     // missions "fait" ne remontent que sur les 14 derniers jours — le filtre
     // "Terminées" sert à confirmer ce qui vient d'être fait, pas à

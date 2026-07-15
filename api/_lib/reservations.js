@@ -304,4 +304,4 @@ async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) 
   return confirmReservation(supabase, resa);
 }
 
-module.exports = { confirmReservationAndCreateLivraisons, confirmReservation, pickTransporteurForMission };
+module.exports = { confirmReservationAndCreateLivraisons, confirmReservation, pickTransporteurForMission, normalizeTel };

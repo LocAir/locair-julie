@@ -2299,6 +2299,10 @@ function renderActivite(d){
 // gagné sur chaque mission, pas seulement des totaux agrégés.
 function missionsHistoryHtml(missions){
   if(!missions || !missions.length) return '';
+  // Accès aux photos limité aux missions des 90 derniers jours (même règle
+  // que api/transporteur-missions.js action 'past_photos') — pas la peine
+  // d'afficher un bouton qui échouera pour une mission plus ancienne.
+  const photoCutoff = new Date(); photoCutoff.setDate(photoCutoff.getDate() - 90);
   const groups = {};
   missions.forEach(m => {
     const key = (m.fait_at||'').slice(0,7); // YYYY-MM
@@ -2327,6 +2331,7 @@ function missionsHistoryHtml(missions){
                 <span class="mcard-icon" style="font-size:14px;vertical-align:-2px">${TYPE_ICON[m.type]||'📍'}</span>
                 ${TYPE_LABEL[m.type]||m.type}
                 <div class="mcard-meta" style="margin-top:2px">${m.fait_at?new Date(m.fait_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
+                ${(m.fait_at && new Date(m.fait_at) >= photoCutoff) ? `<button class="btn btn-grey" style="margin-top:6px;padding:4px 10px;font-size:12px" onclick="openMissionMedia(${m.id})">📷 Photos</button>` : ''}
               </span>
               <span style="text-align:right;flex-shrink:0">
                 <div style="font-weight:700">${(m.montant_cents/100).toFixed(2).replace('.',',')} €</div>
@@ -2337,6 +2342,44 @@ function missionsHistoryHtml(missions){
       </details>`;
     }).join('')}
   `;
+}
+
+const MISSION_PHOTO_LABEL = {
+  photo_depart:       '📦 Départ / état des lieux',
+  photo_installation: '🔧 Installation',
+  photo_retour:       '🔄 Récupération',
+  photo_absence:      '🚪 Client absent',
+};
+function closeMissionMedia(){
+  const o = document.getElementById('mission-media-overlay');
+  if(o) o.remove();
+}
+async function openMissionMedia(livraisonId){
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'mission-media-overlay';
+  overlay.innerHTML = `<div class="sheet"><p class="empty">Chargement…</p></div>`;
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeMissionMedia(); });
+  document.body.appendChild(overlay);
+  const sheet = overlay.querySelector('.sheet');
+  try{
+    const r = await fetch(API('transporteur-missions'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'past_photos', livraison_id:livraisonId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const kinds = Object.keys(d.photos||{});
+    sheet.innerHTML = `
+      <h1 style="margin-bottom:14px">📷 Photos de la mission</h1>
+      ${kinds.length ? kinds.map(kind => `
+        <div style="margin-bottom:16px">
+          <div class="section-title" style="margin-bottom:6px">${MISSION_PHOTO_LABEL[kind]||kind}</div>
+          <img src="${d.photos[kind]}" style="width:100%;border-radius:12px;object-fit:cover"/>
+        </div>`).join('') : `<p class="empty">Aucune photo pour cette mission.</p>`}
+      <button class="btn btn-blue btn-block" style="margin-top:6px" onclick="closeMissionMedia(); openTutoLibrary();">🎓 Revoir le tutoriel</button>
+      <button class="btn btn-grey btn-block" style="margin-top:10px" onclick="closeMissionMedia()">Fermer</button>
+    `;
+  }catch(e){
+    sheet.innerHTML = `<p class="empty">${escHtml(e.message)}</p><button class="btn btn-grey btn-block" onclick="closeMissionMedia()">Fermer</button>`;
+  }
 }
 
 async function demanderVirement(){
