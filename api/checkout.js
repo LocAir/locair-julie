@@ -9,7 +9,10 @@ const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const calcBase = calcTieredPrice;
 
 const PROMO_CODES  = { LOCAIR10: 10, LOCA10: 10 };
-const INSTALL_FEE  = 25;
+// Doit rester synchronisé avec INSTALL_FEE dans index.html (prix affiché au
+// client) — un écart entre les deux fait payer un montant différent de celui
+// confirmé pendant la réservation.
+const INSTALL_FEE  = 49;
 // Codes postaux en zone standard (livraison 35 €)
 // Tout autre code postal → tarif hors zone (95 €)
 const ZONE_CP = new Set(['06000','06100','06200','06300','06700','06800','06230','06310']);
