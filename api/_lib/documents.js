@@ -122,6 +122,11 @@ async function generateAndSendDocuments(supabase, resa) {
     await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt }).eq('id', contratRow.id);
     await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt })
       .eq('reservation_id', resa.id).eq('type', 'facture');
+    // Best-effort : trace pour l'historique de la fiche client admin.
+    supabase.from('email_log').insert({
+      reservation_id: resa.id, scenario: 'email_contrat_facture', canal: 'email',
+      destinataire: resa.email, modele: 'email_contrat_facture', statut: 'envoye',
+    }).catch(() => {});
   }
 }
 

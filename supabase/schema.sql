@@ -413,11 +413,16 @@ create table email_sent (
   primary key (reservation_id, scenario)
 );
 
--- Historique complet de chaque tentative d'envoi (succès ou échec).
+-- Historique complet de chaque tentative d'envoi (succès ou échec). canal
+-- distingue email/SMS — les envois ponctuels hors moteur (confirmation SMS,
+-- prolongation, contrat/facture, mission acceptée, client absent) y sont
+-- aussi enregistrés en best-effort (jamais bloquant) pour que la fiche
+-- client montre un historique complet, pas seulement les 8 scénarios email.
 create table email_log (
   id             bigint generated always as identity primary key,
   reservation_id bigint references reservations(id) on delete cascade,
   scenario       text not null,
+  canal          text not null default 'email' check (canal in ('email','sms')),
   destinataire   text,
   modele         text,
   statut         text not null check (statut in ('envoye','erreur')),
@@ -426,6 +431,19 @@ create table email_log (
 );
 create index email_log_reservation_idx on email_log (reservation_id, created_at desc);
 create index email_log_scenario_idx on email_log (scenario);
+
+-- Exclusion d'un envoi précis à venir (fiche client admin, panneau
+-- Communications) — une ligne = ce scénario ne partira jamais pour cette
+-- réservation. `action` est purement informatif pour l'affichage ("en
+-- pause" vs "supprimé") : le mécanisme de blocage est identique dans les
+-- deux cas, voir wasScenarioSkipped() dans api/_lib/emailEngine.js.
+create table email_skip (
+  reservation_id bigint not null references reservations(id) on delete cascade,
+  scenario       text not null references email_scenarios(id),
+  action         text not null default 'suppression' check (action in ('pause','suppression')),
+  created_at     timestamptz not null default now(),
+  primary key (reservation_id, scenario)
+);
 
 -- Signature email administrable (nom expéditeur, fonction, logo,
 -- coordonnées, site) — une seule ligne, indépendante de la signature du

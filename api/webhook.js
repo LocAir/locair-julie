@@ -244,6 +244,14 @@ const handler = async (req, res) => {
           amount,
         }),
       });
+      // Best-effort : hors moteur de scénarios, juste une trace pour
+      // l'historique de la fiche client.
+      if (confirmedResa) {
+        getSupabase().from('email_log').insert({
+          reservation_id: confirmedResa.id, scenario: 'email_prolongation', canal: 'email',
+          destinataire: email, modele: 'email_prolongation', statut: 'envoye',
+        }).catch(() => {});
+      }
 
       return res.status(200).json({ received: true, type: 'prolongation' });
     }
@@ -294,6 +302,15 @@ const handler = async (req, res) => {
         to:      meta.tel,
         content: `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`,
       }).catch(() => {});
+      // Best-effort : hors moteur de scénarios (SMS ponctuel, jamais figé à
+      // l'avance), juste une trace pour l'historique de la fiche client —
+      // ne doit jamais faire échouer le webhook Stripe.
+      if (confirmedResa) {
+        getSupabase().from('email_log').insert({
+          reservation_id: confirmedResa.id, scenario: 'sms_confirmation', canal: 'sms',
+          destinataire: meta.tel, modele: 'sms_confirmation', statut: 'envoye',
+        }).catch(() => {});
+      }
     }
 
     // 2b. Email de confirmation — via le moteur central (scénario

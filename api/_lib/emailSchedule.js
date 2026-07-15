@@ -42,4 +42,32 @@ function scenariosDueToday(reservation, todayISO) {
   return due;
 }
 
-module.exports = { scenariosDueToday, daysDiff };
+function scenarioDate(baseISO, offsetDays) {
+  const d = new Date(String(baseISO).slice(0, 10) + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() - offsetDays);
+  return d.toISOString().slice(0, 10);
+}
+
+// Sœur de scenariosDueToday() : au lieu d'un booléen "dû aujourd'hui",
+// calcule la date calendaire exacte de chacun des 5 scénarios pilotés par
+// date et ne garde que celles pas encore passées — pour afficher/pauser un
+// envoi à venir depuis la fiche client (panneau Communications). Le jour
+// "pivot" de chaque fenêtre (ex. J-3 plutôt que J-2, le rattrapage de
+// scenariosDueToday) est celui affiché : c'est la date réellement visée,
+// pas la marge de rattrapage.
+function upcomingScenariosForReservation(reservation, todayISO) {
+  if (!reservation || reservation.statut !== 'confirmee') return [];
+  if (!reservation.date_debut || !reservation.date_fin) return [];
+  const duree = daysDiff(reservation.date_debut, reservation.date_fin);
+
+  const candidats = [
+    { scenario: 'suivi_j14',           date: scenarioDate(reservation.date_debut, 14) },
+    { scenario: 'preparation_j3',      date: scenarioDate(reservation.date_debut, 3) },
+    { scenario: 'rappel_j1',           date: scenarioDate(reservation.date_debut, 1) },
+    ...(duree > 2 ? [{ scenario: 'avant_fin_location', date: scenarioDate(reservation.date_fin, 3) }] : []),
+    { scenario: 'rappel_recuperation', date: scenarioDate(reservation.date_fin, 1) },
+  ];
+  return candidats.filter(c => c.date >= todayISO);
+}
+
+module.exports = { scenariosDueToday, upcomingScenariosForReservation, daysDiff };
