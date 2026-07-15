@@ -155,15 +155,13 @@ module.exports = async (req, res) => {
       if (liv.reservation?.tel) {
         const dateStr = new Date(liv.date_prevue + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
         const verbe = liv.type === 'recuperation' ? 'récupérer votre climatiseur' : 'vous livrer votre climatiseur';
-        await sendBrevoSms({
-          to: liv.reservation.tel,
-          content: `Loc'Air : votre mission du ${dateStr} est confirmée, notre technicien viendra ${verbe}. Il vous contactera 30 min avant. Questions : 06 63 79 87 56`,
-        }).catch(() => {});
+        const smsMissionContent = `Loc'Air : votre mission du ${dateStr} est confirmée, notre technicien viendra ${verbe}. Il vous contactera 30 min avant. Questions : 06 63 79 87 56`;
+        await sendBrevoSms({ to: liv.reservation.tel, content: smsMissionContent }).catch(() => {});
         // Best-effort : trace pour l'historique de la fiche client admin.
         if (liv.reservation_id) {
           supabase.from('email_log').insert({
             reservation_id: liv.reservation_id, scenario: 'sms_mission_confirmee', canal: 'sms',
-            destinataire: liv.reservation.tel, modele: 'sms_mission_confirmee', statut: 'envoye',
+            destinataire: liv.reservation.tel, modele: 'sms_mission_confirmee', statut: 'envoye', contenu: smsMissionContent,
           }).catch(() => {});
         }
       }
@@ -480,14 +478,12 @@ module.exports = async (req, res) => {
           .from('reservations').select('prenom, tel').eq('id', liv.reservation_id).maybeSingle();
         if (resa?.tel) {
           const verbe = liv.type === 'livraison' ? 'livrer' : 'récupérer';
-          await sendBrevoSms({
-            to: resa.tel,
-            content: `Loc'Air : notre livreur est passé pour ${verbe} votre climatiseur mais personne ne répondait. Merci de nous rappeler pour reprogrammer.`,
-          }).catch(() => {});
+          const smsAbsentContent = `Loc'Air : notre livreur est passé pour ${verbe} votre climatiseur mais personne ne répondait. Merci de nous rappeler pour reprogrammer.`;
+          await sendBrevoSms({ to: resa.tel, content: smsAbsentContent }).catch(() => {});
           // Best-effort : trace pour l'historique de la fiche client admin.
           supabase.from('email_log').insert({
             reservation_id: liv.reservation_id, scenario: 'sms_client_absent', canal: 'sms',
-            destinataire: resa.tel, modele: 'sms_client_absent', statut: 'envoye',
+            destinataire: resa.tel, modele: 'sms_client_absent', statut: 'envoye', contenu: smsAbsentContent,
           }).catch(() => {});
         }
       }

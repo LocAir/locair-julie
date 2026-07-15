@@ -145,6 +145,23 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // Aperçu fidèle d'un envoi précis (fiche client + onglet Emails) —
+    // contenu réel sauvegardé au moment de l'envoi (voir sendScenarioEmail()
+    // et les points d'enregistrement best-effort dans webhook.js,
+    // documents.js, transporteur-action.js). Scopé à la ville de l'admin via
+    // la réservation liée, comme le reste de ce fichier.
+    if (action === 'content') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const city = await resolveAdminCity(supabase, body);
+      if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
+      const { data: log } = await supabase
+        .from('email_log').select('canal, contenu, reservation:reservations(city_id)').eq('id', id).maybeSingle();
+      if (!log || log.reservation?.city_id !== city.id) return res.status(404).json({ error: 'Introuvable' });
+      if (!log.contenu) return res.status(404).json({ error: 'Aperçu non disponible pour cet envoi (antérieur à cette fonctionnalité)' });
+      return res.status(200).json({ canal: log.canal, contenu: log.contenu });
+    }
+
     // Retire une exclusion ("Reprendre") — sans effet si la date est déjà
     // passée, l'envoi n'aura simplement plus jamais lieu de toute façon.
     if (action === 'unskip') {

@@ -232,24 +232,25 @@ const handler = async (req, res) => {
         }),
       }).catch(e => console.error('[Formspree prolong]', e.message));
 
+      const prolongHtml = tplProlongConfirmation({
+        prenom:            meta.prenom            || '',
+        nom:               meta.nom               || '',
+        jours:             meta.jours             || '1',
+        date_recuperation: meta.date_recuperation || '',
+        creneau:           meta.creneau           || '',
+        amount,
+      });
       await sendBrevoEmail({
         to:      email,
         subject: `✅ Prolongation confirmée — ${meta.jours} jour${Number(meta.jours) > 1 ? 's' : ''} ajoutés`,
-        html:    tplProlongConfirmation({
-          prenom:            meta.prenom            || '',
-          nom:               meta.nom               || '',
-          jours:             meta.jours             || '1',
-          date_recuperation: meta.date_recuperation || '',
-          creneau:           meta.creneau           || '',
-          amount,
-        }),
+        html:    prolongHtml,
       });
       // Best-effort : hors moteur de scénarios, juste une trace pour
       // l'historique de la fiche client.
       if (confirmedResa) {
         getSupabase().from('email_log').insert({
           reservation_id: confirmedResa.id, scenario: 'email_prolongation', canal: 'email',
-          destinataire: email, modele: 'email_prolongation', statut: 'envoye',
+          destinataire: email, modele: 'email_prolongation', statut: 'envoye', contenu: prolongHtml,
         }).catch(() => {});
       }
 
@@ -298,17 +299,15 @@ const handler = async (req, res) => {
       const dateStr = meta.date
         ? new Date(meta.date + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
         : '';
-      await sendBrevoSms({
-        to:      meta.tel,
-        content: `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`,
-      }).catch(() => {});
+      const smsConfirmationContent = `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`;
+      await sendBrevoSms({ to: meta.tel, content: smsConfirmationContent }).catch(() => {});
       // Best-effort : hors moteur de scénarios (SMS ponctuel, jamais figé à
       // l'avance), juste une trace pour l'historique de la fiche client —
       // ne doit jamais faire échouer le webhook Stripe.
       if (confirmedResa) {
         getSupabase().from('email_log').insert({
           reservation_id: confirmedResa.id, scenario: 'sms_confirmation', canal: 'sms',
-          destinataire: meta.tel, modele: 'sms_confirmation', statut: 'envoye',
+          destinataire: meta.tel, modele: 'sms_confirmation', statut: 'envoye', contenu: smsConfirmationContent,
         }).catch(() => {});
       }
     }
