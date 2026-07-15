@@ -175,7 +175,7 @@ create table reservations (
   quantite                 integer not null default 1 check (quantite > 0),
   prix_total_cents         integer not null default 0,
   statut                   text not null default 'en_attente'
-                             check (statut in ('en_attente','confirmee','annulee','terminee')),
+                             check (statut in ('en_attente','confirmee','annulee','terminee','remboursee')),
   source                   text,
   source_channel           text, -- canal d'acquisition marketing (ex. 'google', 'instagram', 'bouche-a-oreille')
   parrain_code             text, -- code parrain saisi par le client (programme parrainage)
@@ -198,6 +198,21 @@ create index reservations_avail_idx on reservations (city_id, date_debut, date_f
   where statut in ('en_attente','confirmee');
 create index reservations_stripe_pi_idx on reservations (stripe_payment_intent_id);
 create index reservations_partenaire_idx on reservations (partenaire_id) where partenaire_id is not null;
+
+-- Trace d'audit des acceptations légales avant paiement (case CGV/CGL et case
+-- conditions d'utilisation du climatiseur, cochées séparément côté site) — une
+-- ligne par type par réservation, avec la version du document réellement
+-- affichée au moment de l'acceptation (voir api/_lib/legal.js).
+create table cgv_acceptations (
+  id             bigint generated always as identity primary key,
+  reservation_id bigint not null references reservations(id) on delete cascade,
+  type           text not null check (type in ('cgv_location','conditions_utilisation')),
+  version        text not null,
+  accepted_at    timestamptz not null default now(),
+  created_at     timestamptz not null default now(),
+  unique (reservation_id, type)
+);
+create index cgv_acceptations_reservation_idx on cgv_acceptations (reservation_id);
 
 -- Quels appareils numérotés sont retenus pour quelle réservation. Rempli
 -- automatiquement à la confirmation du paiement (voir api/_lib/reservations.js,
@@ -230,6 +245,10 @@ create table livraisons (
   photo_installation_path text,  -- appareil installé chez le client (livraison)
   photo_retour_path      text,   -- appareil récupéré chez le client (récupération)
   photo_absence_path     text,   -- preuve de passage devant le bâtiment (client absent)
+  photo_fenetre_installee_path text, -- non utilisée : l'étape Installation ne demande finalement qu'une seule photo (climatiseur + fenêtre + télécommande visibles ensemble), voir photo_installation_path
+  photo_telecommande_path text,  -- non utilisée, même raison que ci-dessus
+  demo_faite             boolean not null default false, -- fonctionnement montré au client (étape Installation)
+  demo_faite_at          timestamptz,
   vidange_confirmee      boolean not null default false, -- vérification + vidange du climatiseur, faite chez le client à la récupération (~5 min)
   vidange_at             timestamptz,
   probleme_type          text check (probleme_type in ('client_absent','appareil_en_panne','retard','autre')),
@@ -265,6 +284,38 @@ create table checklist_box (
   unique (transporteur_id, date)
 );
 create index checklist_box_transporteur_idx on checklist_box (transporteur_id, date);
+
+-- Bibliothèque de tutoriels vidéo (prise en main transporteur) — vidéos
+-- catégorisées, uploadées par l'admin. Bibliothèque unique, non liée à une
+-- ville.
+create table tutoriel_videos (
+  id             bigint generated always as identity primary key,
+  categorie      text not null check (categorie in (
+                   'acces_sortie_boxe','recuperation_materiel','fermeture_boxe',
+                   'entree_sortie_centre','chargement','dechargement','installation'
+                 )),
+  -- Catégorie 7 (installation) seulement : porte fenêtre / fenêtre battante /
+  -- porte coulissante / volet. Pas de check() sur les valeurs — détail exact
+  -- laissé à l'étape future qui remplira cette catégorie.
+  sous_categorie text,
+  titre          text not null,
+  -- null tant qu'aucun fichier n'est uploadé (slot de métadonnées créé à
+  -- l'avance par l'admin, avant d'avoir la vidéo elle-même).
+  storage_path   text,
+  ordre          integer not null default 0,
+  actif          boolean not null default true,
+  created_at     timestamptz not null default now()
+);
+create index tutoriel_videos_categorie_idx on tutoriel_videos (categorie, ordre);
+
+-- L'existence d'une ligne = vue en entier au moins une fois par ce
+-- transporteur — même convention que checklist_box (ligne = événement).
+create table tutoriel_vus (
+  transporteur_id bigint not null references transporteurs(id) on delete cascade,
+  video_id        bigint not null references tutoriel_videos(id) on delete cascade,
+  vu_complet_at   timestamptz not null default now(),
+  primary key (transporteur_id, video_id)
+);
 
 -- Demandes de virement transporteur. Le montant réel et le passage à 'verse'
 -- sont toujours déclenchés par le propriétaire (voir api/admin-virements.js) —
@@ -304,6 +355,12 @@ create table incidents (
 );
 create index incidents_reservation_idx on incidents (reservation_id);
 create index incidents_city_idx on incidents (city_id, statut);
+
+-- Dernier incident déclenché par CETTE mission (client absent, retard...),
+-- utilisé pour le refermer automatiquement quand la mission se termine
+-- normalement. Ne remplace pas incidents.reservation_id (toujours utilisé
+-- par ailleurs) : lien plus précis, mission par mission.
+alter table livraisons add column incident_id bigint references incidents(id) on delete set null;
 
 -- Disponibilité = appareils actifs (hors panne/maintenance) moins :
 --  - les réservations 'en_attente' récentes (< 30 min, paiement en cours, pas

@@ -355,6 +355,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <button data-tab="partenaires" onclick="switchAdminTab('partenaires')">🤝 Partenaires<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
         <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
         <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
+        <button data-tab="tutoriels" onclick="switchAdminTab('tutoriels')">🎓 Tutoriels</button>
         <div class="tabs-group-label">Suivre</div>
         <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
         <button data-tab="checklist" onclick="switchAdminTab('checklist')">🎒 Checklist box</button>
@@ -373,10 +374,14 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-incidents" class="hidden"></div>
         <div id="tab-clients" class="hidden"></div>
         <div id="tab-villes" class="hidden"></div>
+        <div id="tab-tutoriels" class="hidden"></div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- input caché pour l'upload des fichiers vidéo tutoriel (onglet Tutoriels) -->
+<input type="file" id="tuto-media-input" accept="video/*" class="hidden"/>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -819,6 +824,7 @@ const TYPE_BADGE = {
   livraison:    '<span class="chip type-livraison">📦 Livraison</span>',
   recuperation: '<span class="chip type-recuperation">🔄 Récupération</span>',
   changement:   '<span class="chip type-changement">🔁 Remplacement</span>',
+  autre:        '<span class="chip type-changement">🧳 Mission libre</span>',
 };
 function missionTypeBadge(type){
   return TYPE_BADGE[type] || TYPE_BADGE.recuperation;
@@ -829,7 +835,7 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes'].forEach(t=>{
+  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tutoriels'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
@@ -843,6 +849,7 @@ function switchAdminTab(tab){
   if(tab==='incidents') loadIncidents();
   if(tab==='clients') loadClients();
   if(tab==='villes') loadVilles();
+  if(tab==='tutoriels') loadTutoriels();
   toggleMobileMenu(false);
 }
 // Tiroir latéral mobile (voir .mobile-menu-btn / .tabs.mobile-open en CSS) —
@@ -1029,7 +1036,7 @@ function parVilleTableHtml(parVille){
             <span class="row-title">${escHtml(v.ville)}</span>
             <span class="chip ${v.incidents_ouverts>0?'probleme':'actif'}">${Math.round((v.taux_occupation||0)*100)}% occ.</span>
           </div>
-          <div class="row-meta">${(v.ca_euros||0).toFixed(0)} € · ${v.nb_reservations||0} réservation${v.nb_reservations>1?'s':''} · ${v.unites_occupees}/${v.flotte_totale} unités</div>
+          <div class="row-meta">${(v.ca_euros||0).toFixed(0)} € · ${v.nb_reservations||0} réservation${v.nb_reservations>1?'s':''} · ${v.unites_occupees}/${v.flotte_totale} climatiseurs</div>
           ${v.incidents_ouverts>0?`<div class="row-meta" style="color:var(--red);font-weight:700">🧯 ${v.incidents_ouverts} incident${v.incidents_ouverts>1?'s':''} ouvert${v.incidents_ouverts>1?'s':''}</div>`:''}
         </div>`).join('')}
     </div>`;
@@ -1042,14 +1049,17 @@ function parVilleTableHtml(parVille){
 // Réservations, pas celui d'un board logistique du jour.
 function boardRowHtml(m){
   const res = m.reservation || {};
+  const isAutre = m.type === 'autre';
+  const nom = isAutre ? (m.titre || 'Mission libre') : ((res.prenom||'')+' '+(res.nom||''));
+  const adresse = isAutre ? (m.adresse_libre||'—') : (res.adresse||'—');
   const numeros = (m.appareil_numeros||[]).join(', ');
   return `
     <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
       <div class="row-top">
-        <span class="row-title">${escHtml(m.creneau||'—')} · ${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
+        <span class="row-title">${escHtml(m.creneau||'—')} · ${escHtml(nom)}</span>
         <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
       </div>
-      <div class="row-meta">${escHtml(res.adresse||'—')}${numeros?' · Unité n°'+escHtml(numeros):''}${m.transporteur?' · '+escHtml(m.transporteur.nom):' · Non assigné'}</div>
+      <div class="row-meta">${escHtml(adresse)}${numeros?' · Climatiseur n°'+escHtml(numeros):''}${m.transporteur?' · '+escHtml(m.transporteur.nom):' · Non assigné'}</div>
     </div>`;
 }
 // Le code postal est déjà présent dans l'adresse (le site utilise l'autocomplete
@@ -1069,7 +1079,7 @@ function groupByPostal(items, getAdresse){
   return Object.keys(groups).sort().map(cp => ({cp, items: groups[cp]}));
 }
 function boardSectionHtml(items){
-  return groupByPostal(items, m => (m.reservation||{}).adresse).map(g => `
+  return groupByPostal(items, m => m.type==='autre' ? m.adresse_libre : (m.reservation||{}).adresse).map(g => `
     <div class="row-meta" style="font-size:11px;color:var(--grey-soft);font-weight:700;margin:10px 0 6px 2px">📮 ${escHtml(g.cp)} (${g.items.length})</div>
     ${g.items.map(boardRowHtml).join('')}`).join('');
 }
@@ -1079,13 +1089,15 @@ function boardHtml(livraisons){
   const installs   = today.filter(m => m.type==='livraison');
   const pickups    = today.filter(m => m.type==='recuperation');
   const changements = today.filter(m => m.type==='changement');
-  if(!installs.length && !pickups.length && !changements.length) return '';
+  const autres     = today.filter(m => m.type==='autre');
+  if(!installs.length && !pickups.length && !changements.length && !autres.length) return '';
   return `
     <div class="card">
       <h2>📋 Aujourd'hui</h2>
       ${installs.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin-bottom:4px">🏠 Installations (${installs.length})</div>${boardSectionHtml(installs)}`:''}
       ${pickups.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin:${installs.length?'16px':'0'} 0 4px">🔄 Récupérations (${pickups.length})</div>${boardSectionHtml(pickups)}`:''}
       ${changements.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin:${(installs.length||pickups.length)?'16px':'0'} 0 4px">🔁 Remplacements (${changements.length})</div>${boardSectionHtml(changements)}`:''}
+      ${autres.length?`<div class="row-meta" style="font-weight:700;text-transform:uppercase;font-size:11px;letter-spacing:.05em;margin:${(installs.length||pickups.length||changements.length)?'16px':'0'} 0 4px">🧳 Missions libres (${autres.length})</div>${boardSectionHtml(autres)}`:''}
     </div>`;
 }
 
@@ -1256,7 +1268,7 @@ async function loadStock(silent){
           return `
           <div class="row-item">
             <div class="row-top">
-              <span class="row-title">Unité n°${a.numero}</span>
+              <span class="row-title">Climatiseur n°${a.numero}</span>
               <span class="chip ${chipClass}">${chipLabel}</span>
             </div>
             <div class="row-meta">${a.reference?escHtml(a.reference)+' · ':''}${a.en_location?'Actuellement chez un client (réservation confirmée)':a.statut==='loue'?'Loué hors système — marqué manuellement':(a.statut==='disponible'?'Au dépôt':'—')}</div>
@@ -1288,18 +1300,18 @@ function addAppareil(){
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadStock();
-      showToast(`Unité n°${d.appareil.numero} ajoutée`, 'success');
+      showToast(`Climatiseur n°${d.appareil.numero} ajouté`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
   });
 }
 function deleteAppareil(id, numero){
-  confirmAction(`Supprimer l'unité n°${numero} ? Impossible si elle a un historique de missions — marque-la "En panne" dans ce cas.`, async () => {
+  confirmAction(`Supprimer le climatiseur n°${numero} ? Impossible s'il a un historique de missions — marque-le "En panne" dans ce cas.`, async () => {
     try{
       const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadStock();
-      showToast(`Unité n°${numero} supprimée`, 'success');
+      showToast(`Climatiseur n°${numero} supprimé`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {danger:true, yesLabel:'Supprimer'});
 }
@@ -1435,12 +1447,110 @@ function reservationRowHtml(res, readOnly){
         <details class="more-actions" style="margin-left:auto">
           <summary title="Plus d'actions">⋯</summary>
           <div class="more-actions-menu">
+            <button onclick="openEditReservationModal(${res.id})">✏️ Modifier</button>
             ${res.statut!=='annulee'?`<button class="danger" onclick="cancelReservation(${res.id})">Annuler la réservation</button>`:''}
             <button onclick="deleteReservation(${res.id}, '${res.statut}')">Masquer de l'écran</button>
           </div>
         </details>
       </div>`}
     </div>`;
+}
+const MOTIFS_OPTIONS = ['Chaleur','Bébé / Santé','Airbnb / Location','Événement'];
+// ── Modifier une réservation (tous les champs, sauf les dates de location) ──
+// Les dates pilotent le calcul du stock disponible et la date des missions
+// livraison/récupération déjà créées — les changer à la main ici les
+// désynchroniserait silencieusement. Pour changer les dates d'une location,
+// annule et recrée la réservation (le stock et les missions restent cohérents).
+function openEditReservationModal(id){
+  const r = RESERVATIONS_CACHE.find(x => x.id === id);
+  if(!r) return;
+  closeModal();
+  const motifsList = (r.motifs||'').split(',').map(m=>m.trim()).filter(Boolean);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
+      <h2 style="margin-bottom:14px">✏️ Modifier la réservation</h2>
+      <label for="er-prenom">Prénom</label>
+      <input type="text" id="er-prenom" value="${escHtml(r.prenom||'')}"/>
+      <label for="er-nom" style="margin-top:8px">Nom</label>
+      <input type="text" id="er-nom" value="${escHtml(r.nom||'')}"/>
+      <label for="er-tel" style="margin-top:8px">Téléphone</label>
+      <input type="tel" id="er-tel" value="${escHtml(r.tel||'')}"/>
+      <label for="er-tel2" style="margin-top:8px">Téléphone secondaire (secours)</label>
+      <input type="tel" id="er-tel2" value="${escHtml(r.tel_secondaire||'')}"/>
+      <label for="er-email" style="margin-top:8px">Email</label>
+      <input type="text" id="er-email" value="${escHtml(r.email||'')}"/>
+      <div style="margin-top:8px">${typeClientFieldsHtml('er', r)}</div>
+      <label for="er-adresse" style="margin-top:14px">Adresse</label>
+      <input type="text" id="er-adresse" value="${escHtml(r.adresse||'')}"/>
+      <div class="inline-form" style="margin-top:8px">
+        <div><label for="er-qte">Quantité</label><input type="number" id="er-qte" min="1" max="5" value="${r.quantite||1}"/></div>
+        <div><label for="er-prix">Prix total (€)</label><input type="number" id="er-prix" min="0" step="0.5" value="${((r.prix_total_cents||0)/100)}"/></div>
+      </div>
+      ${logisticsFieldsHtml('er', r)}
+      <label for="er-logement" style="margin-top:8px">Surface à climatiser</label>
+      <select id="er-logement">
+        <option value="" ${!r.logement?'selected':''}>—</option>
+        ${['Studio','T2','T3/T4','Maison'].map(o=>`<option ${r.logement===o?'selected':''}>${o}</option>`).join('')}
+      </select>
+      <label for="er-parrain" style="margin-top:8px">Code parrain (optionnel)</label>
+      <input type="text" id="er-parrain" value="${escHtml(r.parrain_code||'')}"/>
+      <label style="margin-top:8px">Motif de location (optionnel)</label>
+      <div class="periods" id="er-motifs" style="margin:0;flex-wrap:wrap;height:auto">
+        ${MOTIFS_OPTIONS.map(m => `<button type="button" data-motif="${m}" class="${motifsList.includes(m)?'on':''}" onclick="this.classList.toggle('on')" style="flex:none;padding:8px 14px">${m}</button>`).join('')}
+      </div>
+      <label style="margin-top:14px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
+        <input type="checkbox" id="er-mkt" style="width:auto" ${r.mkt_consent?'checked':''}/> Le client accepte de recevoir les offres et actualités par email
+      </label>
+      <p class="sub" style="margin-top:12px;font-size:12px">Les dates de location ne se modifient pas ici (ça toucherait le stock et les missions déjà créées) — pour ça, annule cette réservation et recrées-en une avec les bonnes dates.</p>
+      <div class="modal-actions" style="margin-top:10px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Enregistrer</button>
+      </div>
+      <div class="err" id="er-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const errEl = document.getElementById('er-err');
+    errEl.style.display = 'none';
+    okBtn.disabled = true;
+    try{
+      const motifs = [...document.querySelectorAll('#er-motifs button.on')].map(b => b.dataset.motif).join(', ');
+      const body = {
+        action: 'update', id,
+        prenom: document.getElementById('er-prenom').value.trim(),
+        nom: document.getElementById('er-nom').value.trim(),
+        tel: document.getElementById('er-tel').value.trim(),
+        tel_secondaire: document.getElementById('er-tel2').value.trim(),
+        email: document.getElementById('er-email').value.trim(),
+        adresse: document.getElementById('er-adresse').value.trim(),
+        quantite: document.getElementById('er-qte').value,
+        prix_total_cents: Math.round((parseFloat(document.getElementById('er-prix').value)||0)*100),
+        logement: document.getElementById('er-logement').value,
+        parrain_code: document.getElementById('er-parrain').value.trim(),
+        motifs,
+        mkt_consent: document.getElementById('er-mkt').checked,
+        ...typeClientPayload('er'),
+        ...logisticsPayload('er'),
+      };
+      delete body.creneau_livraison; // pas de champ créneau ici, ne rien écraser par erreur
+      const r2 = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+      const d = await r2.json();
+      if(!r2.ok) throw new Error(d.error||'Erreur');
+      Object.assign(r, body);
+      closeModal();
+      renderReservations();
+      showToast('Réservation mise à jour', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      errEl.textContent = e.message; errEl.style.display = 'block';
+    }
+  };
 }
 async function loadReservations(){
   const zone = document.getElementById('tab-reservations');
@@ -1813,18 +1923,20 @@ function renderReservations(){
 }
 // Champs "type de client" (particulier/entreprise) réutilisés dans les 2
 // formulaires de création manuelle (Réservations + "Créer une mission").
-function typeClientFieldsHtml(prefix){
+function typeClientFieldsHtml(prefix, v){
+  v = v || {};
+  const isEnt = v.type_client === 'entreprise';
   return `
       <label for="${prefix}-type">Type de client</label>
       <select id="${prefix}-type" onchange="document.getElementById('${prefix}-entreprise-wrap').classList.toggle('hidden', this.value!=='entreprise')">
-        <option value="particulier">Particulier</option>
-        <option value="entreprise">Entreprise</option>
+        <option value="particulier" ${!isEnt?'selected':''}>Particulier</option>
+        <option value="entreprise" ${isEnt?'selected':''}>Entreprise</option>
       </select>
-      <div id="${prefix}-entreprise-wrap" class="hidden" style="margin-top:8px">
+      <div id="${prefix}-entreprise-wrap" class="${isEnt?'':'hidden'}" style="margin-top:8px">
         <label for="${prefix}-raison">Raison sociale</label>
-        <input type="text" id="${prefix}-raison"/>
+        <input type="text" id="${prefix}-raison" value="${escHtml(v.raison_sociale||'')}"/>
         <label for="${prefix}-siret" style="margin-top:8px">SIRET (optionnel)</label>
-        <input type="text" id="${prefix}-siret"/>
+        <input type="text" id="${prefix}-siret" value="${escHtml(v.siret||'')}"/>
       </div>`;
 }
 function typeClientPayload(prefix){
@@ -1841,18 +1953,19 @@ function typeClientPayload(prefix){
 // systématiquement collectées sur le site public.
 const INSTALLATION_OPTIONS = ['Autonome (kit fourni)', 'Technicien (25€)'];
 const FENETRE_OPTIONS = ['À confirmer', 'Fenêtre coulissante', 'Fenêtre à battant', 'Oscillo-battant', 'Porte-fenêtre', 'Vélux / toit'];
-function logisticsFieldsHtml(prefix){
+function logisticsFieldsHtml(prefix, v){
+  v = v || {};
   return `
       <div class="inline-form" style="margin-top:8px">
-        <div><label for="${prefix}-etage">Étage</label><input type="text" id="${prefix}-etage" placeholder="Ex. 3e"/></div>
-        <div><label for="${prefix}-asc">Ascenseur</label><select id="${prefix}-asc"><option value="Oui">Oui</option><option value="Non">Non</option></select></div>
+        <div><label for="${prefix}-etage">Étage</label><input type="text" id="${prefix}-etage" placeholder="Ex. 3e" value="${escHtml(v.etage||'')}"/></div>
+        <div><label for="${prefix}-asc">Ascenseur</label><select id="${prefix}-asc"><option value="Oui" ${v.ascenseur!=='Non'?'selected':''}>Oui</option><option value="Non" ${v.ascenseur==='Non'?'selected':''}>Non</option></select></div>
       </div>
       <div class="inline-form" style="margin-top:8px">
-        <div><label for="${prefix}-fenetre">Type de fenêtre</label><select id="${prefix}-fenetre">${FENETRE_OPTIONS.map(f=>`<option value="${f}">${f}</option>`).join('')}</select></div>
-        <div><label for="${prefix}-installation">Installation</label><select id="${prefix}-installation">${INSTALLATION_OPTIONS.map(o=>`<option value="${o}">${o}</option>`).join('')}</select></div>
+        <div><label for="${prefix}-fenetre">Type de fenêtre</label><select id="${prefix}-fenetre">${FENETRE_OPTIONS.map(f=>`<option value="${f}" ${v.fenetre===f?'selected':''}>${f}</option>`).join('')}</select></div>
+        <div><label for="${prefix}-installation">Installation</label><select id="${prefix}-installation">${INSTALLATION_OPTIONS.map(o=>`<option value="${o}" ${v.installation===o?'selected':''}>${o}</option>`).join('')}</select></div>
       </div>
       <label for="${prefix}-instructions" style="margin-top:8px">Instructions d'accès (digicode…)</label>
-      <input type="text" id="${prefix}-instructions"/>`;
+      <input type="text" id="${prefix}-instructions" value="${escHtml(v.instructions_acces||'')}"/>`;
 }
 function logisticsPayload(prefix){
   return {
@@ -2130,11 +2243,13 @@ function renderLivraisonsToolbar(){
 // transporteur/date/créneau) mais aucune UI ne l'appelait — utile pour une
 // mission hors cycle normal (changement d'appareil, mission ajoutée après
 // coup, correction d'un oubli de dispatch).
-const MISSION_TYPE_LABEL = { livraison: '📦 Livraison', recuperation: '🔄 Récupération', changement: '🔁 Remplacement' };
+const MISSION_TYPE_LABEL = { livraison: '📦 Livraison', recuperation: '🔄 Récupération', changement: '🔁 Remplacement', autre: '🧳 Mission libre' };
 function toggleCreateMissionMode(value){
   const isNew = value === '__new__';
+  const isAutre = value === '__autre__';
   document.getElementById('cm-new-client')?.classList.toggle('hidden', !isNew);
-  document.getElementById('cm-existing-resa')?.classList.toggle('hidden', isNew);
+  document.getElementById('cm-existing-resa')?.classList.toggle('hidden', isNew || isAutre);
+  document.getElementById('cm-autre')?.classList.toggle('hidden', !isAutre);
 }
 async function openCreateMissionModal(){
   closeModal();
@@ -2168,6 +2283,7 @@ async function openCreateMissionModal(){
       <label for="cm-resa">Réservation</label>
       <select id="cm-resa" onchange="toggleCreateMissionMode(this.value)">
         <option value="__new__">+ Nouveau client…</option>
+        <option value="__autre__">🧳 Mission libre (hors réservation)</option>
         ${resaOptions}
       </select>
       <div id="cm-new-client" style="margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--r-sm)">
@@ -2194,6 +2310,24 @@ async function openCreateMissionModal(){
           <div><label for="cm-c-prix">Prix total (€)</label><input type="number" id="cm-c-prix" min="0" step="0.5"/></div>
         </div>
       </div>
+      <div id="cm-autre" class="hidden" style="margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--r-sm)">
+        <p class="sub" style="margin:0 0 10px">Pour une tâche qui ne concerne pas un client (ex. aller chercher du matériel livré par un fournisseur et le ramener au box). Pas de barème ici — tu fixes le tarif toi-même. Aucun champ n'est obligatoire ici : remplis juste ce que tu sais, tu pourras compléter plus tard.</p>
+        <label for="cm-a-titre">Instructions (optionnel)</label>
+        <input type="text" id="cm-a-titre" placeholder="Ex. Récupérer livraison fournisseur"/>
+        <label for="cm-a-adresse" style="margin-top:8px">Adresse (optionnel)</label>
+        <input type="text" id="cm-a-adresse" placeholder="Ex. adresse du fournisseur"/>
+        <label for="cm-a-transp" style="margin-top:8px">Transporteur</label>
+        <select id="cm-a-transp">
+          <option value="">Non assigné</option>
+          ${transpOptions}
+        </select>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="cm-a-date">Date</label><input type="date" id="cm-a-date" value="${today}"/></div>
+          <div><label for="cm-a-creneau">Créneau</label><input type="text" id="cm-a-creneau" placeholder="8h–10h"/></div>
+        </div>
+        <label for="cm-a-tarif" style="margin-top:8px">Tarif payé au transporteur (€)</label>
+        <input type="number" id="cm-a-tarif" min="0" step="0.5" placeholder="0"/>
+      </div>
       <div id="cm-existing-resa" class="hidden">
         <label for="cm-type">Type</label>
         <select id="cm-type">
@@ -2208,12 +2342,12 @@ async function openCreateMissionModal(){
           <div><label for="cm-date">Date</label><input type="date" id="cm-date" value="${today}"/></div>
           <div><label for="cm-creneau">Créneau</label><input type="text" id="cm-creneau" placeholder="8h–10h"/></div>
         </div>
-        <label for="cm-appareil" style="margin-top:12px">Unité climatiseur (optionnel)</label>
+        <label for="cm-appareil" style="margin-top:12px">Climatiseur (optionnel)</label>
         <select id="cm-appareil">
           <option value="">— Ne pas assigner —</option>
           ${appareilOptions}
         </select>
-        <p class="sub" style="margin-top:4px">Pour un remplacement, choisis la nouvelle unité — l'ancienne redevient automatiquement disponible au stock.</p>
+        <p class="sub" style="margin-top:4px">Pour un remplacement, choisis le nouveau climatiseur — l'ancien redevient automatiquement disponible au stock.</p>
       </div>
       <div class="modal-actions" style="margin-top:18px">
         <button class="btn btn-grey">Annuler</button>
@@ -2236,14 +2370,15 @@ async function openCreateMissionModal(){
       // confirmation crée déjà toute seule les missions livraison/récupération
       // et les dispatche, inutile (et faux) d'en recréer une par-dessus.
       if(document.getElementById('cm-resa').value === '__new__'){
+        // Aucun champ obligatoire ici : ce qui manque est complété côté
+        // serveur avec des valeurs par défaut sûres (voir admin-reservations.js)
+        // — utile pour une réservation prise vite au téléphone, à compléter
+        // plus tard depuis la fiche client.
         const prenom = document.getElementById('cm-c-prenom').value.trim();
         const nom = document.getElementById('cm-c-nom').value.trim();
         const adresse = document.getElementById('cm-c-adresse').value.trim();
         const date_debut = document.getElementById('cm-c-debut').value;
         const date_fin = document.getElementById('cm-c-fin').value;
-        if(!prenom || !nom || !adresse || !date_debut || !date_fin){
-          throw new Error('Prénom, nom, adresse et dates sont obligatoires pour le nouveau client.');
-        }
         const rr = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
           action: 'create', prenom, nom, adresse, date_debut, date_fin,
           tel: document.getElementById('cm-c-tel').value.trim(),
@@ -2258,6 +2393,27 @@ async function openCreateMissionModal(){
         closeModal();
         loadLivraisons();
         showToast('Client et réservation créés — missions générées automatiquement', 'success');
+        return;
+      }
+      if(document.getElementById('cm-resa').value === '__autre__'){
+        // Aucun champ obligatoire ici non plus — un tarif vide part à 0€,
+        // à corriger plus tard depuis la liste si besoin.
+        const titre = document.getElementById('cm-a-titre').value.trim();
+        const tarif = document.getElementById('cm-a-tarif').value;
+        const body = {
+          action: 'create', type: 'autre', titre,
+          adresse_libre: document.getElementById('cm-a-adresse').value.trim(),
+          transporteur_id: document.getElementById('cm-a-transp').value || null,
+          date_prevue: document.getElementById('cm-a-date').value,
+          creneau: document.getElementById('cm-a-creneau').value.trim(),
+          montant_du_cents: Math.round((parseFloat(tarif)||0)*100),
+        };
+        const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.error||'Erreur');
+        closeModal();
+        loadLivraisons();
+        showToast('Mission créée', 'success');
         return;
       }
       const reservation_id = parseInt(document.getElementById('cm-resa').value);
@@ -2338,7 +2494,7 @@ function renderLivraisons(){
   if(q){
     items = items.filter(m => {
       const res = m.reservation || {};
-      const haystack = [res.ref, res.prenom, res.nom, res.adresse].filter(Boolean).join(' ').toLowerCase();
+      const haystack = [res.ref, res.prenom, res.nom, res.adresse, m.titre, m.adresse_libre].filter(Boolean).join(' ').toLowerCase();
       return haystack.includes(q);
     });
   }
@@ -2359,13 +2515,18 @@ function renderLivraisons(){
 
   list.innerHTML = items.map(m => {
     const res = m.reservation || {};
+    // Mission "autre" : pas de réservation/client, titre + adresse libres
+    // saisis par l'admin à la création (voir openCreateMissionModal).
+    const isAutre = m.type === 'autre';
+    const displayName = isAutre ? (m.titre || 'Mission libre') : ((res.prenom||'')+' '+(res.nom||''));
+    const displayAddr = isAutre ? (m.adresse_libre || '—') : (res.adresse||'—');
     const options = ['<option value="">Non assigné</option>'].concat(
       TRANSPORTEURS_CACHE.map(t => `<option value="${t.id}" ${m.transporteur&&m.transporteur.id===t.id?'selected':''}>${escHtml(t.nom)}</option>`)
     ).join('');
     const mediaBtns = [];
     if(m.photo_depart_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_depart')">📷 Voir — Départ</button>`);
-    if(m.photo_installation_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_installation')">🎥 Voir — Installation</button>`);
-    if(m.photo_retour_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_retour')">🎥 Voir — Retour</button>`);
+    if(m.photo_installation_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_installation')">📷 Voir — Installation</button>`);
+    if(m.photo_retour_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_retour')">📷 Voir — Retour</button>`);
     if(m.photo_absence_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_absence')">📵 Voir — Preuve passage</button>`);
     const enRoute = m.transporteur && (m.statut==='acceptee' || m.statut==='arrivee');
     // Icône permanente sur les missions sans livreur — visible même en dehors
@@ -2381,11 +2542,11 @@ function renderLivraisons(){
       return `
         <div class="row-item" style="opacity:.6">
           <div class="row-top">
-            <span class="row-title">${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
+            <span class="row-title">${escHtml(displayName)}</span>
             <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
           </div>
           <div style="margin-bottom:6px">${missionTypeBadge(m.type)}</div>
-          <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
+          <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(displayAddr)}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
           <div class="row-actions"><button class="btn btn-grey" onclick="restoreLivraison(${m.id})">Restaurer</button></div>
         </div>`;
     }
@@ -2402,20 +2563,22 @@ function renderLivraisons(){
     if(m.duree_trajet_min!=null) detailBits.push(m.duree_trajet_min+' min trajet');
     if(m.duree_sur_place_min!=null) detailBits.push(m.duree_sur_place_min+' min sur place');
     if(m.client_notifie_at) detailBits.push('✅ Client notifié '+frDateHeure(m.client_notifie_at));
+    if(isAutre) detailBits.push('💰 '+euros(m.montant_du_cents)+' (tarif fixé)');
     return `
       <div class="row-item" ${nonAssignee?'style="border-left:3px solid var(--red)"':''}>
         <div class="row-top">
-          <span class="row-title">${nonAssignee?'🔔 ':''}${escHtml((res.prenom||'')+' '+(res.nom||''))}</span>
+          <span class="row-title">${nonAssignee?'🔔 ':''}${escHtml(displayName)}</span>
           <span style="display:flex;gap:6px;align-items:center">
             ${res.hors_zone?`<span class="chip" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red)">⚠️ Hors zone</span>`:''}
             <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
           </span>
         </div>
         <div style="margin-bottom:6px">${missionTypeBadge(m.type)}</div>
-        <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(res.adresse||'—')}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
+        <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(displayAddr)}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
         ${detailBits.length?`<div class="row-meta">${detailBits.join(' · ')}</div>`:''}
         ${res.instructions_acces?`<div class="row-meta" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
+        ${m.statut==='a_faire' && m.incident_id?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-top:6px">☎️ A eu un incident — client peut-être de nouveau joignable</div>`:''}
         ${(['recuperation','changement'].includes(m.type) && m.statut==='fait' && !m.vidange_confirmee)?`<div class="row-meta" style="color:var(--amber)">⚠️ Vidange non confirmée</div>`:''}
         <div class="row-actions">
           ${contactButtonsHtml(res.tel)}
@@ -2427,7 +2590,8 @@ function renderLivraisons(){
           <details class="more-actions" style="margin-left:auto">
             <summary title="Plus d'actions">⋯</summary>
             <div class="more-actions-menu">
-              ${['acceptee','arrivee'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
+              ${!reassignLocked?`<button onclick="openEditMissionModal(${m.id})">✏️ Modifier</button>`:''}
+              ${['acceptee','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
               ${mediaBtns.join('')}
               <button class="danger" onclick="maskLivraison(${m.id})">🗑️ Supprimer de l'écran</button>
             </div>
@@ -2435,6 +2599,104 @@ function renderLivraisons(){
         </div>
       </div>`;
   }).join('');
+}
+
+// ── Modifier une mission ────────────────────────────────────────────────────
+// Pour une mission "autre" : titre/adresse/tarif/date/créneau lui appartiennent
+// en propre. Pour une mission normale, seuls date/créneau sont à elle — le
+// reste (nom, téléphone, adresse, étage...) vit sur la réservation liée, donc
+// corrigé via une 2e requête (admin-reservations action 'update').
+function openEditMissionModal(livraisonId){
+  const m = LIVRAISONS_CACHE.find(x => x.id === livraisonId);
+  if(!m) return;
+  closeModal();
+  const isAutre = m.type === 'autre';
+  const res = m.reservation || {};
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
+      <h2 style="margin-bottom:14px">✏️ Modifier la mission</h2>
+      ${isAutre ? `
+        <label for="em-titre">Instructions</label>
+        <input type="text" id="em-titre" value="${escHtml(m.titre||'')}"/>
+        <label for="em-adresse" style="margin-top:8px">Adresse</label>
+        <input type="text" id="em-adresse" value="${escHtml(m.adresse_libre||'')}"/>
+        <label for="em-tarif" style="margin-top:8px">Tarif payé au transporteur (€)</label>
+        <input type="number" id="em-tarif" min="0" step="0.5" value="${((m.montant_du_cents||0)/100)}"/>
+      ` : `
+        <label for="em-prenom">Prénom</label>
+        <input type="text" id="em-prenom" value="${escHtml(res.prenom||'')}"/>
+        <label for="em-nom" style="margin-top:8px">Nom</label>
+        <input type="text" id="em-nom" value="${escHtml(res.nom||'')}"/>
+        <label for="em-tel" style="margin-top:8px">Téléphone</label>
+        <input type="tel" id="em-tel" value="${escHtml(res.tel||'')}"/>
+        <label for="em-adresse-r" style="margin-top:8px">Adresse</label>
+        <input type="text" id="em-adresse-r" value="${escHtml(res.adresse||'')}"/>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="em-etage">Étage</label><input type="text" id="em-etage" value="${escHtml(res.etage||'')}"/></div>
+          <div><label for="em-ascenseur">Ascenseur</label><input type="text" id="em-ascenseur" value="${escHtml(res.ascenseur||'')}"/></div>
+        </div>
+        <label for="em-instructions" style="margin-top:8px">Instructions d'accès</label>
+        <input type="text" id="em-instructions" value="${escHtml(res.instructions_acces||'')}"/>
+      `}
+      <div class="inline-form" style="margin-top:8px">
+        <div><label for="em-date">Date</label><input type="date" id="em-date" value="${m.date_prevue||''}"/></div>
+        <div><label for="em-creneau">Créneau</label><input type="text" id="em-creneau" value="${escHtml(m.creneau||'')}" placeholder="8h–10h"/></div>
+      </div>
+      <div class="modal-actions" style="margin-top:18px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Enregistrer</button>
+      </div>
+      <div class="err" id="em-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const errEl = document.getElementById('em-err');
+    errEl.style.display = 'none';
+    okBtn.disabled = true;
+    try{
+      const missionPatch = {
+        action: 'update', livraison_id: livraisonId,
+        date_prevue: document.getElementById('em-date').value,
+        creneau: document.getElementById('em-creneau').value.trim(),
+      };
+      if(isAutre){
+        missionPatch.titre = document.getElementById('em-titre').value.trim();
+        missionPatch.adresse_libre = document.getElementById('em-adresse').value.trim();
+        missionPatch.montant_du_cents = Math.round((parseFloat(document.getElementById('em-tarif').value)||0)*100);
+      }
+      const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify(missionPatch)});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+
+      if(!isAutre && res.id){
+        const rr = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+          action: 'update', id: res.id,
+          prenom: document.getElementById('em-prenom').value.trim(),
+          nom: document.getElementById('em-nom').value.trim(),
+          tel: document.getElementById('em-tel').value.trim(),
+          adresse: document.getElementById('em-adresse-r').value.trim(),
+          etage: document.getElementById('em-etage').value.trim(),
+          ascenseur: document.getElementById('em-ascenseur').value.trim(),
+          instructions_acces: document.getElementById('em-instructions').value.trim(),
+        })});
+        const rd = await rr.json();
+        if(!rr.ok) throw new Error(rd.error||'Erreur lors de la mise à jour du client');
+      }
+
+      closeModal();
+      loadLivraisons();
+      showToast('Mission mise à jour', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      errEl.textContent = e.message; errEl.style.display = 'block';
+    }
+  };
 }
 
 async function assignTransporteur(livraisonId, transporteurId, selectEl){
@@ -2551,12 +2813,15 @@ function renderAffectBoard(){
     .sort((a,b) => (a.creneau||'').localeCompare(b.creneau||'') || a.id-b.id);
   const cardHtml = m => {
     const res = m.reservation || {};
+    const isAutre = m.type === 'autre';
+    const nom = isAutre ? (m.titre || 'Mission libre') : ((res.prenom||'')+' '+(res.nom||''));
+    const adresse = isAutre ? (m.adresse_libre||'—') : (res.adresse||'—');
     const dirty = AFFECT_STAGED[m.id] !== AFFECT_ORIGINAL[m.id];
     return `
       <div class="affect-card ${dirty?'dirty':''}" data-id="${m.id}">
         <div class="affect-card-top"><span>${MISSION_TYPE_LABEL[m.type]||m.type}</span>${m.creneau?`<span class="affect-card-cren">${escHtml(m.creneau)}</span>`:''}</div>
-        <div class="affect-card-name">${escHtml((res.prenom||'')+' '+(res.nom||''))}</div>
-        <div class="affect-card-addr">📍 ${escHtml(res.adresse||'—')}</div>
+        <div class="affect-card-name">${escHtml(nom)}</div>
+        <div class="affect-card-addr">📍 ${escHtml(adresse)}</div>
       </div>`;
   };
 
@@ -2694,8 +2959,8 @@ function onAffectDragEnd(e){
 }
 
 const MEDIA_KIND_LABEL = {
-  photo_depart: 'Photo — départ dépôt', photo_installation: 'Vidéo — installation',
-  photo_retour: 'Vidéo — appareil récupéré', photo_absence: 'Vidéo — preuve de passage',
+  photo_depart: 'Photo — départ dépôt', photo_installation: 'Photo — installation',
+  photo_retour: 'Photo — appareil récupéré', photo_absence: 'Photo — preuve de passage',
   fenetre_photo: 'Photo — fenêtre (client)',
 };
 async function viewMedia(livraisonId, kind){
@@ -3678,9 +3943,8 @@ function renderClients(){
       <div class="row-actions">
         ${contactButtonsHtml(c.tel)}
         <button class="btn btn-grey" onclick="editAccesDifficile(${c.id}, '${(c.acces_difficile||'').replace(/'/g,"\\'")}')">${c.acces_difficile?'Modifier':'Ajouter'} une note d'accès</button>
-        <button class="btn btn-grey" onclick="toggleClientPhotos(${c.id})">📷 Photos</button>
+        <button class="btn btn-blue" onclick="openClientFiche(${c.id})">👤 Fiche client</button>
       </div>
-      <div class="row-actions hidden" id="cli-photos-${c.id}" style="margin-top:8px"></div>
     </div>`).join('') || '<p class="empty">👤 Aucun client pour l\'instant.</p>';
   zone.innerHTML = `
     <button class="btn btn-grey btn-block" style="margin-bottom:12px" onclick="exportClientsCsv()">⬇️ Exporter en CSV</button>
@@ -3717,28 +3981,233 @@ function editAccesDifficile(id, current){
     }catch(e){ showToast(`Note non enregistrée : ${e.message}`, 'error'); }
   });
 }
-// Galerie des preuves (installation/récupération/passage) accumulées pour ce
-// client au fil des missions — chargée à la demande, pas au chargement de la
-// liste (évite une requête par client alors que la plupart ne seront jamais ouverts).
-async function toggleClientPhotos(id){
-  const panel = document.getElementById(`cli-photos-${id}`);
-  if(!panel) return;
-  if(!panel.classList.contains('hidden')){ panel.classList.add('hidden'); return; }
-  panel.classList.remove('hidden');
-  if(panel.dataset.loaded) return;
-  panel.innerHTML = loading();
+// ── FICHE CLIENT (suivi en direct + édition) ────────────────────────────────
+// Vue détaillée d'un client : avancement en direct de sa mission active
+// (étape par étape), photos au fur et à mesure, incidents liés — sécurité et
+// traçabilité en cas de litige. L'admin reste un observateur passif (pas de
+// bureau, le transporteur est autonome) : cette vue affiche, elle n'agit
+// jamais sur le transporteur. Polling 8s sur le modèle de openLiveMap/
+// refreshLivePosition (admin/index.html) — overlay indépendant de
+// #modal-overlay-el pour que isUserBusy() ne mette pas en pause le suivi
+// juste quand la fiche est ouverte.
+let CLIENT_FICHE_ID = null;
+let CLIENT_FICHE_POLL = null;
+let CLIENT_FICHE_DATA = null;
+
+const MISSION_STEP_LABEL = {
+  accepted_at: 'Acceptée', client_notifie_at: 'Client notifié', arrivee_at: 'Arrivée sur place',
+  demo_faite_at: 'Démonstration faite', vidange_at: 'Vidange vérifiée', fait_at: 'Terminée',
+};
+
+function closeClientFiche(){
+  if(CLIENT_FICHE_POLL) clearInterval(CLIENT_FICHE_POLL);
+  CLIENT_FICHE_POLL = null;
+  CLIENT_FICHE_ID = null;
+  CLIENT_FICHE_DATA = null;
+  const o = document.getElementById('client-fiche-overlay');
+  if(o) o.remove();
+}
+
+async function openClientFiche(clientId){
+  closeClientFiche();
+  CLIENT_FICHE_ID = clientId;
+  const overlay = document.createElement('div');
+  overlay.className = 'map-overlay';
+  overlay.id = 'client-fiche-overlay';
+  overlay.innerHTML = `
+    <div class="map-modal" style="max-width:640px;max-height:88vh;overflow-y:auto">
+      <div class="map-modal-head"><h2>Fiche client</h2><button onclick="closeClientFiche()">✕</button></div>
+      <div id="client-fiche-body" style="padding:0 20px 20px"><p class="empty">Chargement…</p></div>
+    </div>`;
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeClientFiche(); });
+  document.body.appendChild(overlay);
+  await loadClientFiche();
+  CLIENT_FICHE_POLL = setInterval(loadClientFiche, 8000);
+}
+
+async function loadClientFiche(){
+  const body = document.getElementById('client-fiche-body');
+  if(!body || !CLIENT_FICHE_ID) return; // fiche fermée entre-temps
   try{
-    const r = await fetch(API('admin-clients'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'photos', id})});
+    const r = await fetch(API('admin-clients'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'fiche', id:CLIENT_FICHE_ID})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    const photos = d.photos || [];
-    panel.innerHTML = photos.length
-      ? photos.map(p => `<button class="btn btn-grey" onclick="viewMedia(${p.livraison_id},'${p.kind}')">${p.type==='livraison'?'📦':'🔄'} ${MEDIA_KIND_LABEL[p.kind]||p.kind} — ${frDate(p.date_prevue)}</button>`).join('')
-      : '<p class="empty" style="padding:0">Aucune photo enregistrée pour l\'instant.</p>';
-    panel.dataset.loaded = '1';
+    CLIENT_FICHE_DATA = d;
+    renderClientFiche(d);
   }catch(e){
-    panel.innerHTML = '<p class="empty" style="padding:0">Erreur de chargement.</p>';
+    body.innerHTML = `<p class="empty">${escHtml(e.message)}</p>`;
   }
+}
+
+function missionStepsHtml(m){
+  const steps = [
+    ['accepted_at', m.accepted_at], ['client_notifie_at', m.client_notifie_at], ['arrivee_at', m.arrivee_at],
+    (m.type==='livraison' ? ['demo_faite_at', m.demo_faite_at] : ['vidange_at', m.vidange_at]),
+    ['fait_at', m.fait_at],
+  ];
+  return `<div style="margin-top:8px;font-size:13px">
+    ${steps.map(([key, at]) => `<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;color:${at?'var(--ink)':'var(--grey2)'}">
+      <span>${at?'✅':'⬜️'} ${MISSION_STEP_LABEL[key]}</span>${at?`<span style="color:var(--grey)">${frDateHeure(at)}</span>`:''}
+    </div>`).join('')}
+  </div>`;
+}
+
+function missionPhotosHtml(m){
+  const KINDS = [['photo_depart_ok','photo_depart'],['photo_installation_ok','photo_installation'],['photo_retour_ok','photo_retour'],['photo_absence_ok','photo_absence']];
+  const buttons = KINDS.filter(([flag]) => m[flag]).map(([,kind]) => `<button class="btn btn-grey" onclick="viewMedia(${m.id},'${kind}')">${MEDIA_KIND_LABEL[kind]||kind}</button>`).join('');
+  return buttons ? `<div class="row-actions" style="margin-top:8px">${buttons}</div>` : '';
+}
+
+function renderClientFiche(d){
+  const body = document.getElementById('client-fiche-body');
+  if(!body) return;
+  const c = d.client;
+  const head = document.querySelector('#client-fiche-overlay .map-modal-head h2');
+  if(head) head.textContent = `👤 ${((c.prenom||'')+' '+(c.nom||'')).trim() || 'Client'}`;
+
+  const missionsHtml = (d.missions_actives||[]).length
+    ? d.missions_actives.map(m => `
+      <div class="card" style="margin-bottom:12px;padding:14px 16px">
+        <div class="row-top">
+          <span class="row-title">${m.type==='livraison'?'📦 Livraison':m.type==='recuperation'?'🔄 Récupération':'📍 '+(m.type||'Mission')}</span>
+          <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
+        </div>
+        <div class="row-meta">${frDate(m.date_prevue)}${m.creneau?' · '+escHtml(m.creneau):''}</div>
+        ${missionStepsHtml(m)}
+        ${m.statut==='probleme' ? `<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:8px">⚠️ Problème : ${escHtml(m.probleme_description||m.probleme_type||'')}</div>` : ''}
+        ${missionPhotosHtml(m)}
+      </div>`).join('')
+    : '<p class="empty">Aucune mission en cours actuellement.</p>';
+
+  const incidentsHtml = (d.incidents||[]).length
+    ? d.incidents.map(i => `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${INCIDENT_TYPE_LABEL[i.type]||i.type}</span>
+          <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
+        </div>
+        <div class="row-meta">${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
+        ${i.statut!=='resolu'?`<div class="row-actions"><button class="btn btn-green" onclick="updateIncidentStatutInFiche(${i.id},'resolu',this)">✅ Marquer résolu</button></div>`:''}
+      </div>`).join('')
+    : '<p class="empty">Aucun incident enregistré pour ce client.</p>';
+
+  const latestResa = (d.reservations||[])[0] || null;
+
+  body.innerHTML = `
+    <div class="row-meta" style="margin-top:4px">
+      ${escHtml(c.tel||'—')}${c.email?' · '+escHtml(c.email):''}
+      ${latestResa?.adresse?'<br/>'+escHtml(latestResa.adresse):''}
+      ${latestResa?.instructions_acces?'<br/>📌 '+escHtml(latestResa.instructions_acces):''}
+    </div>
+    ${c.acces_difficile?`<div class="row-meta" style="color:var(--blue);font-weight:700;margin-top:6px">📌 ${escHtml(c.acces_difficile)}</div>`:''}
+    <div class="row-actions" style="margin-top:10px">
+      <button class="btn btn-grey" onclick="openEditClientFicheModal()">✏️ Modifier la fiche</button>
+    </div>
+
+    <div class="section-title" style="margin-top:18px">🔴 Mission en cours (mise à jour toutes les 8s)</div>
+    ${missionsHtml}
+
+    <div class="section-title" style="margin-top:18px">🧯 Incidents</div>
+    ${incidentsHtml}
+  `;
+}
+
+async function updateIncidentStatutInFiche(id, statut, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-incidents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadClientFiche();
+    showToast('Incident mis à jour', 'success');
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
+}
+
+// Édition complète de la fiche : les champs client (prenom/nom/tel/email)
+// vivent sur `clients`, mais adresse/instructions de livraison n'existent
+// que par réservation (un client peut en avoir plusieurs dans le temps) —
+// l'édition cible donc la réservation la plus récente, comme la dérivation
+// en lecture seule "dernière adresse" déjà utilisée dans la liste Clients.
+function openEditClientFicheModal(){
+  if(!CLIENT_FICHE_DATA) return;
+  const c = CLIENT_FICHE_DATA.client;
+  const latestResa = (CLIENT_FICHE_DATA.reservations||[])[0] || null;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
+      <h2 style="margin-bottom:14px">✏️ Modifier la fiche client</h2>
+      <label for="ecf-prenom">Prénom</label>
+      <input type="text" id="ecf-prenom" value="${escHtml(c.prenom||'')}"/>
+      <label for="ecf-nom" style="margin-top:8px">Nom</label>
+      <input type="text" id="ecf-nom" value="${escHtml(c.nom||'')}"/>
+      <label for="ecf-tel" style="margin-top:8px">Téléphone</label>
+      <input type="tel" id="ecf-tel" value="${escHtml(c.tel||'')}"/>
+      <label for="ecf-email" style="margin-top:8px">Email</label>
+      <input type="email" id="ecf-email" value="${escHtml(c.email||'')}"/>
+      ${latestResa ? `
+        <label for="ecf-adresse" style="margin-top:8px">Adresse (dernière réservation)</label>
+        <input type="text" id="ecf-adresse" value="${escHtml(latestResa.adresse||'')}"/>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="ecf-etage">Étage</label><input type="text" id="ecf-etage" value="${escHtml(latestResa.etage||'')}"/></div>
+          <div><label for="ecf-ascenseur">Ascenseur</label><input type="text" id="ecf-ascenseur" value="${escHtml(latestResa.ascenseur||'')}"/></div>
+        </div>
+        <label for="ecf-instructions" style="margin-top:8px">Instructions d'accès</label>
+        <input type="text" id="ecf-instructions" value="${escHtml(latestResa.instructions_acces||'')}"/>
+        <label for="ecf-tel-secours" style="margin-top:8px">Téléphone secours</label>
+        <input type="tel" id="ecf-tel-secours" value="${escHtml(latestResa.tel_secondaire||'')}"/>
+      ` : '<p class="step-hint" style="margin-top:8px">Aucune réservation pour ce client — pas d\'adresse à modifier pour l\'instant.</p>'}
+      <div class="modal-actions" style="margin-top:18px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Enregistrer</button>
+      </div>
+      <div class="err" id="ecf-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const errEl = document.getElementById('ecf-err');
+    errEl.style.display = 'none';
+    okBtn.disabled = true;
+    try{
+      const r = await fetch(API('admin-clients'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+        action: 'update', id: c.id,
+        prenom: document.getElementById('ecf-prenom').value.trim(),
+        nom: document.getElementById('ecf-nom').value.trim(),
+        tel: document.getElementById('ecf-tel').value.trim(),
+        email: document.getElementById('ecf-email').value.trim(),
+      })});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+
+      if(latestResa){
+        const rr = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+          action: 'update', id: latestResa.id,
+          adresse: document.getElementById('ecf-adresse').value.trim(),
+          etage: document.getElementById('ecf-etage').value.trim(),
+          ascenseur: document.getElementById('ecf-ascenseur').value.trim(),
+          instructions_acces: document.getElementById('ecf-instructions').value.trim(),
+          tel_secondaire: document.getElementById('ecf-tel-secours').value.trim(),
+        })});
+        const rd = await rr.json();
+        if(!rr.ok) throw new Error(rd.error||"Erreur lors de la mise à jour de l'adresse");
+      }
+
+      closeModal();
+      loadClients();
+      loadClientFiche();
+      showToast('Fiche client mise à jour', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      errEl.textContent = e.message; errEl.style.display = 'block';
+    }
+  };
 }
 
 // ── VILLES / ZONES (multi-ville) ──────────────────────────────────────────
@@ -4062,6 +4531,7 @@ function renderVilles(){
       </div>
       <div class="row-meta">${c.dep?escHtml(c.dep)+' · ':''}${(c.postal_codes&&c.postal_codes.length) ? escHtml(c.postal_codes.join(', ')) : 'Aucun code postal'}</div>
       <div class="row-meta">💶 ${baremeSummaryHtml(c)}</div>
+      <div class="row-meta">🏬 ${c.depot_adresse ? escHtml(c.depot_adresse) : 'Adresse du box non renseignée — nécessaire pour le calcul de tournée du transporteur'}</div>
       <div class="row-meta" style="margin-top:10px;font-size:11.5px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.03em">Qui décide si le site affiche "Complet" ?</div>
       <div class="row-meta" style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="periods" style="margin:0;width:auto;display:inline-flex">
@@ -4078,6 +4548,7 @@ function renderVilles(){
           <div class="more-actions-menu">
             <button onclick="editVillePostaux(${c.id}, '${((c.postal_codes||[]).join(', ')).replace(/'/g,"\\'")}')">Modifier les codes postaux</button>
             <button onclick="editVilleBareme(${c.id})">Modifier le barème</button>
+            <button onclick="editVilleDepot(${c.id}, '${(c.depot_adresse||'').replace(/'/g,"\\'")}')">Modifier l'adresse du box</button>
           </div>
         </details>
       </div>
@@ -4102,6 +4573,201 @@ function renderVilles(){
       <button class="btn btn-blue btn-block" style="margin-top:14px" onclick="addVille()">Créer la ville</button>
       <div class="err" id="ville-err"></div>
     </div>`;
+}
+// ── Tutoriels vidéo (prise en main transporteur) ─────────────────────────────
+// Bibliothèque unique pour toutes les villes — 7 catégories fixes, dont 3
+// (chargement/déchargement/installation) sont volontairement des emplacements
+// vides/désactivés pour l'instant (contenu pas encore déterminé).
+const TUTO_CATEGORIES = [
+  {key:'acces_sortie_boxe',   label:'🚪 Accès / sortie boxe',            actif:true},
+  {key:'recuperation_materiel', label:'📦 Récupération matériel',        actif:true},
+  {key:'fermeture_boxe',      label:'🔒 Fermeture boxe',                 actif:true},
+  {key:'entree_sortie_centre', label:'🏢 Entrée / sortie du centre',     actif:true},
+  {key:'chargement',          label:'⬆️ Chargement',                    actif:false},
+  {key:'dechargement',        label:'⬇️ Déchargement',                  actif:false},
+  {key:'installation',        label:"🔧 Installation par type d'ouverture", actif:true,
+    sousTypes:['Porte fenêtre','Fenêtre battante','Porte coulissante','Volet']},
+];
+let TUTO_VIDEOS_CACHE = [];
+let TUTO_PENDING_UPLOAD = null;
+async function loadTutoriels(){
+  const zone = document.getElementById('tab-tutoriels');
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    TUTO_VIDEOS_CACHE = d.videos || [];
+    renderTutoriels();
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+function tutoVideoRowHtml(v){
+  return `
+    <div class="row-item">
+      <div class="row-top">
+        <span class="row-title">${escHtml(v.titre)}${v.sous_categorie?' · '+escHtml(v.sous_categorie):''}</span>
+        <span class="chip ${v.actif?'actif':'inactif'}">${v.actif?'active':'désactivée'}</span>
+      </div>
+      <div class="row-meta">${v.storage_path?'✅ Fichier envoyé':'⏳ Pas encore de fichier'}</div>
+      <div class="row-actions">
+        ${v.storage_path?`<button class="btn btn-grey" onclick="viewTutoVideo(${v.id})">▶️ Voir</button>`:''}
+        <button class="btn btn-blue" onclick="startTutoUpload(${v.id})">${v.storage_path?'🔄 Remplacer le fichier':'📤 Envoyer le fichier'}</button>
+        <details class="more-actions" style="margin-left:auto">
+          <summary title="Plus d'actions">⋯</summary>
+          <div class="more-actions-menu">
+            <button onclick="editTutoTitre(${v.id}, '${escHtml(v.titre).replace(/'/g,"\\'")}')">Modifier le titre</button>
+            <button onclick="toggleTutoActif(${v.id}, ${!v.actif})">${v.actif?'Désactiver':'Réactiver'}</button>
+            <button class="danger" onclick="deleteTutoVideo(${v.id})">🗑️ Supprimer</button>
+          </div>
+        </details>
+      </div>
+    </div>`;
+}
+function renderTutoriels(){
+  const zone = document.getElementById('tab-tutoriels');
+  zone.innerHTML = `
+    <div class="affect-hint">💡 Ces vidéos sont partagées par toutes les villes — une seule bibliothèque, pas besoin de les uploader plusieurs fois.</div>
+    ${TUTO_CATEGORIES.map(cat => {
+      const videos = TUTO_VIDEOS_CACHE.filter(v => v.categorie === cat.key);
+      if(!cat.actif){
+        const sousTypesHtml = cat.sousTypes ? `<div class="row-meta">${cat.sousTypes.join(' · ')}</div>` : '';
+        return `
+          <div class="card" style="opacity:.55">
+            <h2>${cat.label}</h2>
+            <p class="sub">Pas encore disponible — structure prête, contenu à venir.</p>
+            ${sousTypesHtml}
+          </div>`;
+      }
+      // Catégorie avec sous-types (Installation) : une sous-section par type
+      // d'ouverture plutôt qu'un listing plat, avec son propre bouton
+      // d'ajout pré-rempli — les autres catégories actives sont inchangées.
+      if(cat.sousTypes){
+        return `
+          <div class="card">
+            <h2>${cat.label}</h2>
+            ${cat.sousTypes.map(t => {
+              const sousVideos = videos.filter(v => v.sous_categorie === t);
+              return `
+                <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey);margin:14px 0 6px 2px">${t}</div>
+                ${sousVideos.map(tutoVideoRowHtml).join('') || '<p class="empty">Aucune vidéo pour l\'instant.</p>'}
+                <button class="btn btn-grey btn-block" style="margin-top:6px" onclick="addTutoVideo('${cat.key}', '${t}')">+ Ajouter une vidéo — ${t}</button>`;
+            }).join('')}
+          </div>`;
+      }
+      return `
+        <div class="card">
+          <h2>${cat.label}</h2>
+          ${videos.map(tutoVideoRowHtml).join('') || '<p class="empty">Aucune vidéo pour l\'instant.</p>'}
+          <button class="btn btn-grey btn-block" style="margin-top:10px" onclick="addTutoVideo('${cat.key}')">+ Ajouter une vidéo</button>
+        </div>`;
+    }).join('')}`;
+}
+function addTutoVideo(categorie, sousCategorie){
+  promptAction({title:'Nouvelle vidéo', label:'Titre', placeholder:'Ex. Ouvrir le portail du centre'}, async (titre) => {
+    if(!titre) return;
+    try{
+      const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'upsert_meta', categorie, sous_categorie:sousCategorie, titre})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadTutoriels();
+      showToast('Vidéo créée — envoie maintenant le fichier', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
+}
+function editTutoTitre(id, current){
+  promptAction({title:'Modifier le titre', label:'Titre', value:current}, async (titre) => {
+    if(!titre) return;
+    const v = TUTO_VIDEOS_CACHE.find(x => x.id===id);
+    try{
+      const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'upsert_meta', id, categorie:v.categorie, sous_categorie:v.sous_categorie, ordre:v.ordre, actif:v.actif, titre})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadTutoriels();
+      showToast('Titre mis à jour', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
+}
+async function toggleTutoActif(id, actif){
+  const v = TUTO_VIDEOS_CACHE.find(x => x.id===id);
+  try{
+    const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'upsert_meta', id, categorie:v.categorie, sous_categorie:v.sous_categorie, ordre:v.ordre, titre:v.titre, actif})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadTutoriels();
+  }catch(e){ showToast(e.message, 'error'); }
+}
+function deleteTutoVideo(id){
+  confirmAction('Supprimer cette vidéo ? Le fichier ne sera plus accessible aux transporteurs, et leur historique "vu" pour cette vidéo disparaît.', async () => {
+    try{
+      const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadTutoriels();
+      showToast('Vidéo supprimée', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {danger:true, yesLabel:'Supprimer'});
+}
+function startTutoUpload(videoId){
+  TUTO_PENDING_UPLOAD = videoId;
+  const input = document.getElementById('tuto-media-input');
+  input.value = '';
+  input.click();
+}
+// Même flux 2 temps que côté transporteur (demander_upload → PUT direct vers
+// Supabase Storage → confirmer_upload) : les octets du fichier ne passent
+// jamais par la fonction Vercel.
+document.getElementById('tuto-media-input').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  const videoId = TUTO_PENDING_UPLOAD;
+  if(!file || !videoId) return;
+  showToast('Envoi de la vidéo en cours…', 'success');
+  try{
+    const r1 = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'demander_upload', video_id:videoId, content_type:file.type})});
+    const d1 = await r1.json();
+    if(!r1.ok) throw new Error(d1.error||'Erreur');
+
+    const up = await fetch(d1.signedUrl, {method:'PUT', headers:{'Content-Type': file.type || 'application/octet-stream'}, body: file});
+    if(!up.ok) throw new Error("Échec de l'envoi du fichier");
+
+    const r2 = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'confirmer_upload', video_id:videoId, path:d1.path})});
+    const d2 = await r2.json();
+    if(!r2.ok) throw new Error(d2.error||'Erreur');
+
+    loadTutoriels();
+    showToast('Vidéo envoyée', 'success');
+  }catch(err){
+    showToast(err.message, 'error');
+  }finally{
+    TUTO_PENDING_UPLOAD = null;
+  }
+});
+async function viewTutoVideo(id){
+  try{
+    const v = TUTO_VIDEOS_CACHE.find(x => x.id===id);
+    const rr = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'video_url', video_id:id})});
+    const rd = await rr.json();
+    if(!rr.ok) throw new Error(rd.error||'Erreur');
+    // Même structure visuelle que openMediaViewer (preuves de mission), avec
+    // le titre de la vidéo au lieu d'un libellé de type de preuve.
+    closeMediaViewer();
+    const overlay = document.createElement('div');
+    overlay.className = 'map-overlay';
+    overlay.id = 'media-overlay-el';
+    overlay.innerHTML = `
+      <div class="map-modal">
+        <div class="map-modal-head">
+          <h2>${escHtml(v?.titre||'Tutoriel')}</h2>
+          <button onclick="closeMediaViewer()">✕</button>
+        </div>
+        <div class="media-modal-body">
+          <video src="${escHtml(rd.url)}" controls autoplay playsinline></video>
+        </div>
+      </div>`;
+    overlay.addEventListener('click', e => { if(e.target===overlay) closeMediaViewer(); });
+    document.body.appendChild(overlay);
+  }catch(e){ showToast(e.message, 'error'); }
 }
 function parsePostalCodesInput(raw){
   return (raw||'').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
@@ -4254,6 +4920,21 @@ function editVillePostaux(id, current){
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadVilles();
       showToast('Codes postaux mis à jour', 'success');
+    }catch(e){ showToast(`Non enregistré : ${e.message}`, 'error'); }
+  });
+}
+// Adresse du dépôt matériel (box) de la ville — sert de point de départ au
+// calcul de tournée du transporteur quand il choisit "Je pars du box" en
+// début de journée (voir transporteur/index.html, écran de démarrage).
+// Géocodée côté serveur à l'enregistrement (api/admin-cities.js).
+function editVilleDepot(id, current){
+  promptAction({title:'Adresse du box (dépôt matériel)', label:'Adresse complète', value:current, placeholder:'48 bd René Cassin, 06200 Nice'}, async (value) => {
+    try{
+      const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, depot_adresse:value, city_id:'all'})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadVilles();
+      showToast('Adresse du box mise à jour', 'success');
     }catch(e){ showToast(`Non enregistré : ${e.message}`, 'error'); }
   });
 }

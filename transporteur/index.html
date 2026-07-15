@@ -114,6 +114,8 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .media-btn{display:flex;align-items:center;gap:10px;width:100%;padding:16px 22px;border:1.5px solid var(--rule);border-radius:100px;background:var(--white);font-weight:700;font-size:15px;color:var(--black);margin-bottom:12px;cursor:pointer}
 .media-btn.done{border-color:var(--green);background:var(--green-bg);color:var(--green)}
 .media-btn .ic{font-size:20px}
+.media-btn.pulse{animation:media-btn-pulse 1.4s ease-in-out infinite}
+@keyframes media-btn-pulse{0%,100%{opacity:1}50%{opacity:.55}}
 
 .step-hint{font-size:14px;font-weight:700;color:var(--blue);background:var(--blue-lt);border-radius:var(--r-sm);padding:11px 14px;margin-bottom:14px}
 .btn-missing-hint{text-align:center;font-size:12.5px;color:var(--grey);margin:-6px 0 12px}
@@ -134,6 +136,19 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .overlay{position:fixed;inset:0;background:rgba(13,24,41,.6);display:flex;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px)}
 .sheet{background:var(--white);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:26px 22px 34px;box-shadow:var(--sh-lg)}
 .hidden{display:none !important}
+
+/* Bouton tuto : flottant, au-dessus de la tabbar/detail-back, visible sur
+   toutes les pages sauf la connexion (voir show()). */
+#tuto-fab{position:fixed;right:16px;bottom:20px;width:52px;height:52px;border-radius:50%;background:var(--navy,#0d1829);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
+.tuto-cat-row{display:flex;align-items:center;justify-content:space-between;padding:14px 4px;border-bottom:1px solid var(--rule)}
+.tuto-cat-row:last-child{border-bottom:none}
+.tuto-cat-row.disabled{opacity:.5}
+.tuto-video-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;gap:10px}
+.tuto-video-row .done{color:var(--green,#1a7f4b);font-weight:700;font-size:12px}
+#tuto-player-wrap{position:relative;background:#000;border-radius:var(--r);overflow:hidden}
+#tuto-player-wrap video{width:100%;display:block;max-height:60vh}
+.tuto-progress-track{height:5px;background:rgba(255,255,255,.25);border-radius:100px;margin-top:10px;overflow:hidden}
+.tuto-progress-fill{height:100%;background:var(--blue);width:0%}
 
 /* Stepper de progression mission */
 .stepper{display:flex;align-items:flex-start;margin:4px 0 24px}
@@ -227,6 +242,12 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .map-filters button{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:10px;border-radius:100px;border:none;background:transparent;font-family:var(--body);font-weight:600;font-size:12.5px;letter-spacing:-.005em;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
 .map-filters button .tab-ic{width:14px;height:14px;flex-shrink:0;opacity:.7;transition:opacity .15s ease}
 #mission-filters button{padding:9px 4px;font-size:11.5px}
+/* Le nombre de secteurs (codes postaux) du jour n'est pas borné comme les 4
+   onglets de statut — flex:1 les écraserait illisibles dès 6-7 secteurs le
+   même jour. Défilement horizontal plutôt que rétrécissement. */
+#postal-filters{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+#postal-filters::-webkit-scrollbar{display:none}
+#postal-filters button{flex:none}
 .map-filters button.on{background:var(--white);color:var(--blue);font-weight:700;box-shadow:var(--sh-xs)}
 .map-filters button.on .tab-ic{opacity:1}
 #day-map{height:calc(100vh - 180px);border-radius:var(--r-lg);overflow:hidden;background:#e8e6e0;box-shadow:var(--sh-sm)}
@@ -289,6 +310,24 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
     <div id="checklist-content"><p class="empty">Chargement…</p></div>
   </div>
 
+  <!-- Écran 2ter : point de départ de la tournée du jour — une fois par
+       jour, juste après la validation de la checklist, avant les missions.
+       Détermine depuis où calculer le trajet le plus proche en voiture
+       (api/transporteur-route.js) : le box, ou la position actuelle si le
+       livreur a déjà son matériel et part directement en mission. -->
+  <div id="tournee-start-screen" class="hidden">
+    <div class="card">
+      <div class="eyebrow">Avant de démarrer</div>
+      <h1>D'où pars-tu ?</h1>
+      <p class="sub">Pour t'indiquer, mission après mission, le trajet le plus efficace jusqu'à la fin de ta journée.</p>
+      <button class="btn btn-blue btn-block" id="tournee-btn-box" onclick="startTournee('box')">🏬 Je pars du box</button>
+      <button class="btn btn-grey btn-block" style="margin-top:10px" id="tournee-btn-gps" onclick="startTournee('gps')">📍 Je commence directement une mission</button>
+      <p class="sub" style="margin-top:14px;font-size:12px">Tu as déjà ton matériel avec toi ? Choisis la 2ᵉ option — l'app utilisera ta position actuelle.</p>
+      <div class="err" id="tournee-start-err"></div>
+      <button class="forgot-link" onclick="switchTab('missions')">Passer cette étape →</button>
+    </div>
+  </div>
+
   <!-- Écran 3 : liste des missions -->
   <div id="missions-screen" class="hidden">
     <div class="tabbar">
@@ -298,9 +337,9 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
     </div>
     <div id="transp-banner-zone"></div>
     <div class="map-filters" id="mission-filters">
-      <button class="on" data-f="toutes" onclick="setMissionFilter('toutes')">Toutes<span class="tab-badge hidden badge-sf-toutes"></span></button>
       <button data-f="nouvelle" onclick="setMissionFilter('nouvelle')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 8.2v7.6M8.2 12h7.6"/></svg>Accepter<span class="tab-badge hidden badge-sf-nouvelle"></span></button>
-      <button data-f="en_cours" onclick="setMissionFilter('en_cours')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5h10.5v8.5H3z"/><path d="M13.5 11h3.7l3.3 3v2h-7z"/><circle cx="7" cy="18" r="1.6" fill="currentColor" stroke="none"/><circle cx="17" cy="18" r="1.6" fill="currentColor" stroke="none"/></svg>En cours<span class="tab-badge hidden badge-sf-en_cours"></span></button>
+      <button class="on" data-f="en_cours" onclick="setMissionFilter('en_cours')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5h10.5v8.5H3z"/><path d="M13.5 11h3.7l3.3 3v2h-7z"/><circle cx="7" cy="18" r="1.6" fill="currentColor" stroke="none"/><circle cx="17" cy="18" r="1.6" fill="currentColor" stroke="none"/></svg>En cours<span class="tab-badge hidden badge-sf-en_cours"></span></button>
+      <button data-f="a_venir" onclick="setMissionFilter('a_venir')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>À venir</button>
       <button data-f="terminee" onclick="setMissionFilter('terminee')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.2 12.3l2.6 2.6 5-5.4"/></svg>Finies<span class="tab-badge hidden badge-sf-terminee"></span></button>
     </div>
     <details class="tools-group hidden" id="tools-group">
@@ -346,8 +385,13 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 
 </div>
 
-<!-- input caché pour la preuve de mission obligatoire (vidéo uniquement, caméra live) -->
-<input type="file" id="media-input" accept="video/*" capture="environment" class="hidden"/>
+<!-- input caché pour la preuve de mission obligatoire (photo, caméra live) -->
+<input type="file" id="media-input" accept="image/*" capture="environment" class="hidden"/>
+
+<!-- Bouton "Tutoriel prise en main", accessible en permanence (voir show()) —
+     un seul élément hors des écrans plutôt que dupliqué dans chacun d'eux. -->
+<button id="tuto-fab" class="hidden" onclick="openTutoLibrary()" title="Tutoriel prise en main">🎓</button>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API = (path) => '/api/' + path;
@@ -366,12 +410,26 @@ let STATE = {
   checklist: null, // état du jour, chargé avec les missions — voir checklistBlocksMission()
   returnToMission: null, // mission à rouvrir après validation checklist, voir goToChecklistFromMission()
   detailRouteSeenFor: null, // id de la mission dont l'étape "En route" du parcours a déjà été vue, voir missionStepIndex()
+  detailArriveeSeenFor: null, // idem pour l'étape "Arrivée", voir missionStepIndex()
+  detailArriveeSmsSentFor: null, // id de la mission dont le SMS "merci de descendre" a été envoyé (état "clignotant"), voir wizardStepBodyHtml()
+  // Tournée du jour (plus proche en voiture, api/transporteur-route.js) —
+  // calculée une fois au choix du point de départ (voir startTournee()),
+  // puis recalculée localement à chaque étape franchie (voir advanceTournee())
+  // à partir de la matrice de distances déjà reçue, sans nouvel appel réseau.
+  tourneeOrder: [],        // [missionId, ...] restant à traiter, dans l'ordre
+  tourneeTotal: 0,         // nombre total de missions dans la tournée du jour
+  tourneeMatrix: null,     // matrice de distances (mètres) entre tous les points
+  tourneeMissionIndex: [], // tourneeMissionIndex[i-1] = id mission au point d'index i de la matrice (0 = départ)
 };
 
 function show(id){
-  ['login-screen','dashboard-screen','checklist-screen','missions-screen','activite-screen','detail-screen','map-screen'].forEach(s=>{
+  ['login-screen','dashboard-screen','checklist-screen','tournee-start-screen','missions-screen','activite-screen','detail-screen','map-screen'].forEach(s=>{
     document.getElementById(s).classList.toggle('hidden', s!==id);
   });
+  // Bouton tuto accessible en permanence, sur toutes les pages sauf la
+  // connexion — un seul point de bascule plutôt que de dupliquer un bouton
+  // dans chacun des 8 écrans.
+  document.getElementById('tuto-fab')?.classList.toggle('hidden', id==='login-screen');
 }
 
 function switchTab(tab){
@@ -399,7 +457,8 @@ function logout(){
   localStorage.removeItem('t_token');
   localStorage.removeItem('t_id');
   localStorage.removeItem('t_nom');
-  STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],en_pause:false,currentMission:null,pendingUpload:null,autoOpenChecked:false};
+  STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],en_pause:false,currentMission:null,pendingUpload:null,autoOpenChecked:false,
+    tourneeOrder:[], tourneeTotal:0, tourneeMatrix:null, tourneeMissionIndex:[]};
   stopPositionTracking();
   document.getElementById('who-badge').classList.add('hidden');
   show('login-screen');
@@ -756,13 +815,14 @@ function updateMissionsBadge(){
   const terminees = STATE.missions.filter(m => m.statut === 'fait');
   const lastSeenTerminee = parseInt(localStorage.getItem('t_lastseen_terminee_'+STATE.transporteurId) || '0');
   const termineesNonVues = terminees.filter(m => m.id > lastSeenTerminee).length;
-  const toutes = aFaire + termineesNonVues;
 
   document.querySelectorAll('.badge-missions').forEach(el => {
     if(aFaire>0){ el.textContent = aFaire; el.classList.remove('hidden'); }
     else el.classList.add('hidden');
   });
-  const sfMap = {nouvelle: aFaire, en_cours: enCours, terminee: termineesNonVues, toutes};
+  // Pas de badge sur "À venir" : rien n'y attend de décision immédiate, un
+  // badge rouge y ferait croire à une urgence qui n'existe pas.
+  const sfMap = {nouvelle: aFaire, en_cours: enCours, terminee: termineesNonVues};
   Object.entries(sfMap).forEach(([key, count]) => {
     document.querySelectorAll('.badge-sf-'+key).forEach(el => {
       if(count>0){ el.textContent = count; el.classList.remove('hidden'); }
@@ -773,7 +833,7 @@ function updateMissionsBadge(){
 function markTermineeSeen(){
   const maxId = Math.max(0, ...STATE.missions.filter(m => m.statut==='fait').map(m => m.id));
   if(maxId>0) localStorage.setItem('t_lastseen_terminee_'+STATE.transporteurId, String(maxId));
-  document.querySelectorAll('.badge-sf-terminee, .badge-sf-toutes').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.badge-sf-terminee').forEach(el => el.classList.add('hidden'));
 }
 
 async function updateActiviteBadge(){
@@ -835,11 +895,13 @@ function renderDashboard(){
 
   const heroFor = (m, eyebrow, cta, ctaLabel) => {
     const c = m.client || {};
+    const nom = m.type==='autre' ? (m.titre||'Mission libre') : (escHtml((c.prenom||'')+' '+(c.nom||'')).trim()||'Mission');
+    const adresse = m.type==='autre' ? (m.adresse_libre||'Adresse à confirmer') : (c.adresse||'Adresse à confirmer');
     return `
       <div class="dash-hero">
         <div class="eyebrow">${eyebrow}</div>
-        <h2>${escHtml((c.prenom||'')+' '+(c.nom||'')).trim()||'Mission'}</h2>
-        <p>${TYPE_ICON[m.type]||'📍'} ${missionTypeLabel(m)} · 📍 ${escHtml(c.adresse||'Adresse à confirmer')}</p>
+        <h2>${m.type==='autre'?escHtml(nom):nom}</h2>
+        <p>${TYPE_ICON[m.type]||'📍'} ${missionTypeLabel(m)} · 📍 ${escHtml(adresse)}</p>
         <button class="btn btn-blue btn-block" onclick="${cta}">${ctaLabel}</button>
       </div>`;
   };
@@ -955,10 +1017,11 @@ function startTransporteurAutoRefresh(){
 }
 
 const TYPE_LABEL = {livraison:'Livraison', recuperation:'Récupération', changement:'Remplacement'};
-const TYPE_ICON  = {livraison:'📦', recuperation:'🔄', changement:'🔁'};
+const TYPE_ICON  = {livraison:'📦', recuperation:'🔄', changement:'🔁', autre:'🧳'};
 const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', arrivee:'Sur place', probleme:'Problème signalé', fait:'Terminée'};
 // Label précis selon type + option d'installation
 function missionTypeLabel(m){
+  if(m.type==='autre') return 'Mission libre';
   if(m.type==='changement') return 'Remplacement';
   if(m.type==='recuperation') return 'Récupération';
   return (m.installation||'').startsWith('Technicien') ? 'Livraison + installation' : 'Livraison';
@@ -985,8 +1048,9 @@ function futureDateText(dateStr){
 
 function missionCardHtml(m){
   const c = m.client || {};
+  const isAutre = m.type === 'autre';
   // Une mission acceptée pour plus tard n'est pas "en cours" — le pill doit
-  // le dire clairement même hors du filtre "En cours" (ex. vue "Toutes"),
+  // le dire clairement même hors du filtre "En cours" (ex. vue "À venir"),
   // sinon deux missions au même statut technique ("acceptee") semblent
   // identiques alors que l'une attend son jour et l'autre est vraiment à
   // traiter maintenant.
@@ -995,17 +1059,19 @@ function missionCardHtml(m){
   // Mission acceptée/sur place dont le jour prévu est déjà passé : elle se
   // fond sinon avec les missions du jour même dans "En cours" — un badge
   // d'alerte permet de la repérer d'un coup d'œil dans la liste.
-  const isLate = ['acceptee','arrivee'].includes(m.statut) && m.date_prevue < todayStr;
+  const isLate = ['acceptee','arrivee','probleme'].includes(m.statut) && m.date_prevue < todayStr;
   const lateBadge = isLate ? `<span class="mcard-late-badge">⏰ En retard</span>` : '';
-  const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
+  const adresse = isAutre ? (m.adresse_libre||'') : (c.adresse||'');
+  const mapsUrl = adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(adresse)}` : '';
   const earn = m.montant_preview ? `<span class="mcard-earn">💶 ${Math.round(m.montant_preview/100)}€</span>` : '';
   const metaParts = [m.creneau?escHtml(m.creneau):'', (c.etage&&c.etage!=='—')?'Étage '+escHtml(c.etage):''].filter(Boolean);
   // Numéro(s) d'unité déjà assignés en stock — pour identifier tout de suite
   // de quel(s) climatiseur(s) il s'agit, sans devoir ouvrir la mission.
   const unitsTxt = (m.appareil_numeros&&m.appareil_numeros.length) ? `n°${m.appareil_numeros.join(', ')}` : '';
+  const nom = isAutre ? (m.titre || 'Mission libre') : ((escHtml((c.prenom||'')+' '+(c.nom||'')).trim())||'Client');
   return `
     <div class="mcard st-${m.statut}" onclick="openMission(${m.id})">
-      <div class="mcard-name">${escHtml((c.prenom||'')+' '+(c.nom||'')).trim()||'Client'}</div>
+      <div class="mcard-name">${isAutre?escHtml(nom):nom}</div>
       <div class="mcard-top">
         <span class="mcard-icon">${TYPE_ICON[m.type]||'📍'}</span>
         <span class="mcard-type">${missionTypeLabel(m)}${unitsTxt?` · 🔢 ${unitsTxt}`:''}</span>
@@ -1014,7 +1080,7 @@ function missionCardHtml(m){
         <span style="flex:1"></span>
         ${earn}
       </div>
-      <div class="mcard-addr">📍 ${escHtml(c.adresse||'Adresse à confirmer')}</div>
+      <div class="mcard-addr">📍 ${escHtml(adresse||'Adresse à confirmer')}</div>
       ${metaParts.length?`<div class="mcard-meta">${metaParts.join(' · ')}</div>`:''}
       ${missionCardActionsHtml(m, mapsUrl, c.tel)}
     </div>`;
@@ -1097,21 +1163,23 @@ function renderTranspBanner(){
   zone.innerHTML = pauseHtml + (progressHtml ? `<div class="day-progress">${progressHtml}</div>` : '');
 }
 
-let MISSION_FILTER = 'toutes';
-// "Toutes" = toutes les missions ACTIVES (à faire + en cours) — une fois
-// "fait", une mission n'a plus rien à demander au livreur, elle se range
-// dans "Terminées" et sort de la vue par défaut. Sans ce filtre explicite,
-// l'historique s'accumulait avec les missions du jour et noyait ce qui
-// reste réellement à traiter maintenant.
+// Par défaut sur "En cours" — c'est la question que se pose le livreur en
+// ouvrant l'app : "qu'est-ce que je dois faire maintenant". "Accepter" a son
+// propre badge sur l'onglet Missions du bas pour attirer l'œil quand il y a
+// une réponse à donner, pas besoin d'en faire l'écran par défaut. L'ancien
+// filtre "Toutes" a été retiré : il mélangeait "à accepter" et "à venir" (une
+// mission déjà acceptée mais pas encore due) dans le même tas, et un livreur
+// qui cherchait une mission déjà acceptée pour dans 3 jours ne la trouvait
+// nulle part ailleurs — d'où l'onglet dédié "À venir" ci-dessous.
+let MISSION_FILTER = 'en_cours';
 const MISSION_FILTER_STATUTS = {
-  toutes:   ['a_faire', 'acceptee', 'arrivee', 'probleme'],
   nouvelle: ['a_faire'],
   terminee: ['fait'],
 };
 const MISSION_FILTER_EMPTY = {
-  toutes:   'Aucune mission pour l\'instant. 👍',
   nouvelle: 'Aucune mission à accepter pour l\'instant. 👍',
   en_cours: 'Aucune mission en cours.',
+  a_venir:  'Aucune mission à venir pour l\'instant.',
   terminee: 'Aucune mission terminée récemment.',
 };
 function setMissionFilter(f){
@@ -1139,6 +1207,9 @@ function missionUrgenceRang(m){
 function filteredMissions(){
   let list;
   if(MISSION_FILTER === 'en_cours') list = STATE.missions.filter(missionEstEnCours);
+  // "À venir" = le complément exact de "En cours" côté missions acceptées :
+  // déjà dit oui, mais pas encore due aujourd'hui (voir missionEstEnCours).
+  else if(MISSION_FILTER === 'a_venir') list = STATE.missions.filter(m => m.statut === 'acceptee' && !missionEstEnCours(m));
   else{
     const statuts = MISSION_FILTER_STATUTS[MISSION_FILTER];
     list = statuts ? STATE.missions.filter(m => statuts.includes(m.statut)) : STATE.missions.slice();
@@ -1168,8 +1239,17 @@ function renderMissions(){
   const wrap = document.getElementById('missions-list');
   const tourZone = document.getElementById('tour-zone');
   renderTranspBanner();
-  if(MISSION_FILTER==='terminee' || MISSION_FILTER==='toutes') markTermineeSeen();
+  if(MISSION_FILTER==='terminee') markTermineeSeen();
   const byStatut = filteredMissions();
+  // Le secteur sélectionné peut disparaître entre deux rafraîchissements (sa
+  // dernière mission a changé de statut pendant que le livreur regardait
+  // autre chose) — sans ce reset, le tiroir se cache dès qu'il reste moins de
+  // 2 secteurs (voir renderPostalFilter), bouton "Tous secteurs" compris, et
+  // le livreur se retrouve bloqué sur "Aucune mission dans ce secteur." sans
+  // rien à taper pour en sortir.
+  if(POSTAL_FILTER && !byStatut.some(m => postalCode((m.client||{}).adresse) === POSTAL_FILTER)){
+    POSTAL_FILTER = null;
+  }
   renderPostalFilter(byStatut);
   const visible = POSTAL_FILTER ? byStatut.filter(m => postalCode((m.client||{}).adresse) === POSTAL_FILTER) : byStatut;
   if(!visible.length){
@@ -1233,10 +1313,12 @@ function renderMissions(){
       const installs    = items.filter(m => m.type==='livraison');
       const pickups     = items.filter(m => m.type==='recuperation');
       const changements = items.filter(m => m.type==='changement');
+      const autres      = items.filter(m => m.type==='autre');
       return `<div class="section-title">${dateLabelFor(dateStr)}</div>`
         + (installs.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">📦 Livraisons (${installs.length})</div>${missionsByPostalHtml(installs)}`:'')
         + (pickups.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔄 Récupérations (${pickups.length})</div>${missionsByPostalHtml(pickups)}`:'')
-        + (changements.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔁 Remplacements (${changements.length})</div>${missionsByPostalHtml(changements)}`:'');
+        + (changements.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🔁 Remplacements (${changements.length})</div>${missionsByPostalHtml(changements)}`:'')
+        + (autres.length?`<div class="section-title" style="font-size:11px;margin:14px 2px 8px">🧳 Missions libres (${autres.length})</div>${missionsByPostalHtml(autres)}`:'');
     }
     return `<div class="section-title">${dateLabelFor(dateStr)}</div>` + items.map(missionCardHtml).join('');
   }).join('');
@@ -1248,13 +1330,18 @@ function postalCode(adresse){
 }
 function missionsByPostalHtml(items){
   const groups = {};
-  items.forEach(m => { const cp = postalCode((m.client||{}).adresse) || 'Autre'; (groups[cp] = groups[cp] || []).push(m); });
+  items.forEach(m => { const cp = postalCode(m.type==='autre' ? m.adresse_libre : (m.client||{}).adresse) || 'Autre'; (groups[cp] = groups[cp] || []).push(m); });
   const codes = Object.keys(groups);
   // Un seul secteur dans le groupe : le sous-titre code postal n'apporte rien
   // (même seuil que renderPostalFilter, qui masque déjà son propre filtre
   // dans ce cas) — évite un empilement de 3 niveaux de titre pour 1 carte.
   if(codes.length < 2) return items.map(missionCardHtml).join('');
-  return codes.sort().map(cp => `
+  // Trie les groupes par l'urgence du pire cas qu'ils contiennent (ex. un
+  // problème signalé) plutôt que par ordre alphabétique du code postal —
+  // sinon un secteur "06100" passe toujours avant "06200" même s'il contient
+  // la mission la plus urgente de la journée.
+  const rangFor = cp => Math.min(...groups[cp].map(missionUrgenceRang));
+  return codes.sort((a,b) => rangFor(a)-rangFor(b) || a.localeCompare(b)).map(cp => `
     <div class="section-title" style="font-size:10px;color:var(--grey-soft);margin:8px 2px 6px;text-transform:none;letter-spacing:normal">📮 ${escHtml(cp)} (${groups[cp].length})</div>
     ${groups[cp].map(missionCardHtml).join('')}`).join('');
 }
@@ -1278,8 +1365,13 @@ function actionBtnsForMission(m){
     // le livreur peut y revenir plus tard dans la journée.
     const hasMissionEnCours = isAnotherMissionEnCours(m.id, m.date_prevue);
     if(hasMissionEnCours){
+      // Mission "à faire" qui a déjà eu un incident (ex. client injoignable,
+      // voir étape Arrivée) : le client a pu rappeler directement le
+      // transporteur entretemps (pas de bureau intermédiaire) — proposer de
+      // basculer dessus plutôt que de terminer sa mission actuelle d'abord.
       return `
         <div class="info-box"><p>🔒 Termine ta mission en cours avant d'accepter celle-ci.</p></div>
+        ${m.incident_id?`<button class="btn btn-amber btn-block" style="margin-bottom:8px" onclick="handleClientDisponible(${m.id})">📞 Client a rappelé — je m'en occupe</button>`:''}
         <button class="btn btn-red" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
     }
     return `
@@ -1293,6 +1385,13 @@ function actionBtnsForMission(m){
     const todayStr = new Date().toISOString().slice(0,10);
     if(m.date_prevue > todayStr){
       return `<div class="info-box"><p>📅 Tu as accepté cette mission — tu pourras la démarrer ${futureDateText(m.date_prevue)}.</p></div>`;
+    }
+    // Mission libre : pas d'assistant étape par étape (pas de photo/vidange à
+    // faire), juste "Terminé" ou "Problème" une fois sur place le jour J.
+    if(m.type === 'autre'){
+      return `
+        <button class="btn btn-green" onclick="doAction('autre_ok')">✅ TERMINÉ</button>
+        <button class="btn btn-amber" onclick="openProbleme()">⚠️ PROBLÈME</button>`;
     }
   }
   // Une fois acceptée et le jour J arrivé, le parcours sur place passe par
@@ -1321,30 +1420,35 @@ function actionBtnsForMission(m){
 // consultation), donc on retient juste qu'elle a été vue pour cette
 // mission précise (remis à zéro dès qu'on change de mission).
 function missionStepDefs(m){
-  const steps = [{key:'route', title:'En route'}];
+  const steps = [{key:'route', title:'En route'}, {key:'arrivee', title:'Arrivée'}];
   if(m.type === 'livraison') steps.push({key:'installation', title:'Installation'});
-  else if(m.type === 'recuperation') steps.push({key:'vidange', title:'Vidange'}, {key:'preuve', title:'Vidéo appareil'});
+  else if(m.type === 'recuperation') steps.push({key:'vidange', title:'Vidange'}, {key:'preuve', title:'Photo appareil'});
   else if(m.type === 'changement') steps.push({key:'vidange', title:'Vidange'}, {key:'ancien', title:'Ancien appareil'}, {key:'nouveau', title:'Nouvel appareil'});
   steps.push({key:'final', title:'Terminer'});
   return steps;
 }
 function missionStepDoneFlag(m, key){
   if(key==='vidange') return Boolean(m.vidange_ok);
-  if(key==='installation') return Boolean(m.photo_installation_ok);
+  if(key==='installation') return Boolean(m.demo_faite);
   if(key==='preuve' || key==='ancien') return Boolean(m.photo_retour_ok);
   if(key==='nouveau') return Boolean(m.photo_installation_ok);
   return false;
 }
 function missionStepIndex(m, steps){
   if(STATE.detailRouteSeenFor !== m.id) return 0;
-  let idx = 1;
+  if(STATE.detailArriveeSeenFor !== m.id) return 1;
+  let idx = 2;
   while(idx < steps.length-1 && missionStepDoneFlag(m, steps[idx].key)) idx++;
   return idx;
 }
-// Avance manuellement depuis "En route" — seule étape sans donnée serveur à
-// observer, donc la seule qui a besoin d'un vrai bouton "Suivant".
+// Avance manuellement depuis "En route"/"Arrivée" — deux étapes sans donnée
+// serveur à observer, donc les seules qui ont besoin d'un vrai bouton "Suivant".
 function goToNextStepFromRoute(){
   STATE.detailRouteSeenFor = STATE.currentMission.id;
+  renderDetail();
+}
+function goToNextStepFromArrivee(){
+  STATE.detailArriveeSeenFor = STATE.currentMission.id;
   renderDetail();
 }
 function missionWizardProgressHtml(steps, idx){
@@ -1360,15 +1464,15 @@ function missionWizardProgressHtml(steps, idx){
 }
 function wizardProofStepHtml(m, kind, doneLabel, hint){
   return `
-    <p class="step-hint">🎥 ${hint}</p>
+    <p class="step-hint">📷 ${hint}</p>
     ${proofButtonsHtml(kind, m[kind+'_ok'], doneLabel)}`;
 }
-function wizardStepBodyHtml(m, infoRows, key){
+function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   if(key === 'route'){
     const numeros = m.appareil_numeros||[];
     const plural = numeros.length>1;
     const pickupHtml = (m.type==='livraison') ? `<p class="step-hint">📦 ${numeros.length
-      ? `Récupère ${plural?'les Unités':"l'Unité"} n°${numeros.join(', ')}${m.client&&m.client.fenetre?` + ${numeros.length||1} kit${plural?'s':''} de calfeutrage (${escHtml(m.client.fenetre)})`:''} et charge-${plural?'les':'la'}.`
+      ? `Récupère ${plural?'les Climatiseurs':'le Climatiseur'} n°${numeros.join(', ')}${m.client&&m.client.fenetre?` + ${numeros.length||1} kit${plural?'s':''} de calfeutrage (${escHtml(m.client.fenetre)})`:''} et charge-${plural?'les':'le'}.`
       : `Charge l'appareil.`}</p>` : '';
     return `
       ${infoRows}
@@ -1377,6 +1481,17 @@ function wizardStepBodyHtml(m, infoRows, key){
       ${prevenirRowHtml(m)}
       <button class="btn btn-blue btn-block" style="margin-top:6px" onclick="goToNextStepFromRoute()">Suivant →</button>`;
   }
+  if(key === 'arrivee'){
+    const c = m.client || {};
+    const smsSent = STATE.detailArriveeSmsSentFor === m.id;
+    return `
+      <p class="step-hint">🔔 Préviens le client que tu es arrivé.</p>
+      <button class="media-btn ${smsSent?'done':'pulse'}" style="margin-bottom:8px;width:100%" onclick="prevenirArriveeSms()"><span class="ic">📩</span> ${smsSent?'SMS envoyé ✔':'SMS — Merci de descendre'}</button>
+      ${c.tel?`<a class="btn btn-blue btn-block" style="margin-bottom:8px;text-decoration:none" href="tel:${encodeURIComponent(c.tel)}">📞 Appeler ${escHtml(c.prenom||'le client')}</a>`:''}
+      ${mapsUrl?`<a class="btn btn-grey btn-block" style="margin-bottom:8px;text-decoration:none" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Voir l'itinéraire</a>`:''}
+      <button class="btn btn-amber btn-block" style="margin-bottom:8px" onclick="startClientAbsent('camera')">🚫 Client injoignable — signaler</button>
+      <button class="btn btn-blue btn-block" style="margin-top:6px" onclick="goToNextStepFromArrivee()">Suivant →</button>`;
+  }
   if(key === 'vidange'){
     const label = m.type==='changement' ? "l'ancien appareil" : "l'appareil";
     return `
@@ -1384,16 +1499,26 @@ function wizardStepBodyHtml(m, infoRows, key){
       <button class="media-btn" onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> Vidange ${m.type==='changement'?"de l'ancien appareil":"de l'appareil"}</button>`;
   }
   if(key === 'installation'){
-    return wizardProofStepHtml(m, 'photo_installation', 'Vidéo installation', "Installe l'appareil, filme-le (ou joins une vidéo de ta galerie) pour terminer la mission.");
+    const sousTypes = (TUTO_CATEGORIES.find(c => c.key==='installation') || {}).sousTypes || [];
+    return `
+      <p class="step-hint">🎬 Montre le fonctionnement au client, puis prends une photo où l'on voit ensemble : le climatiseur en marche, la fenêtre calfeutrée et la télécommande.</p>
+      <div class="section-title" style="margin:0 0 6px 2px">Tuto par type d'ouverture</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+        ${sousTypes.map(t => `<button class="btn btn-grey" style="flex:1 1 auto;min-width:120px" onclick="openTutoVideo('installation','${t}')">🎥 ${t}</button>`).join('')}
+      </div>
+      ${proofButtonsHtml('photo_installation', m.photo_installation_ok, 'Photo installation')}
+      ${m.photo_installation_ok
+        ? `<button class="btn btn-green btn-block" style="margin-top:6px" onclick="doAction('confirmer_demo')">✅ Confirmer la démonstration</button>`
+        : `<p class="step-hint" style="margin-top:6px">Prends la photo pour pouvoir confirmer la démonstration.</p>`}`;
   }
   if(key === 'preuve'){
-    return wizardProofStepHtml(m, 'photo_retour', 'Vidéo appareil récupéré', "Filme l'appareil récupéré (ou joins une vidéo de ta galerie) pour terminer la mission.");
+    return wizardProofStepHtml(m, 'photo_retour', 'Photo appareil récupéré', "Prends l'appareil récupéré en photo (ou choisis une photo depuis ta galerie) pour terminer la mission.");
   }
   if(key === 'ancien'){
-    return wizardProofStepHtml(m, 'photo_retour', 'Vidéo ancien appareil', "Filme l'ancien appareil avant de le charger.");
+    return wizardProofStepHtml(m, 'photo_retour', 'Photo ancien appareil', "Prends l'ancien appareil en photo avant de le charger.");
   }
   if(key === 'nouveau'){
-    return wizardProofStepHtml(m, 'photo_installation', 'Vidéo nouvel appareil', "Installe le nouvel appareil et filme-le pour terminer la mission.");
+    return wizardProofStepHtml(m, 'photo_installation', 'Photo nouvel appareil', "Installe le nouvel appareil et prends-le en photo pour terminer la mission.");
   }
   // 'final'
   const okAction = m.type==='livraison' ? 'livraison_ok' : m.type==='recuperation' ? 'retour_ok' : 'changement_ok';
@@ -1402,15 +1527,26 @@ function wizardStepBodyHtml(m, infoRows, key){
     <p class="step-hint">🎉 Tout est prêt — valide pour terminer la mission.</p>
     <button class="btn btn-green btn-block" onclick="doAction('${okAction}')">${okLabel}</button>`;
 }
-function missionWizardHtml(m, infoRows){
+function missionWizardHtml(m, infoRows, mapsUrl){
   const steps = missionStepDefs(m);
   const idx = missionStepIndex(m, steps);
   const key = steps[idx].key;
   return `
+    ${tourneeBannerHtml(m)}
     ${missionWizardProgressHtml(steps, idx)}
-    <div id="action-zone">${wizardStepBodyHtml(m, infoRows, key)}</div>
+    <div id="action-zone">${wizardStepBodyHtml(m, infoRows, key, mapsUrl)}</div>
     <button class="btn btn-amber" style="margin-top:10px" onclick="openProbleme()">⚠️ PROBLÈME</button>
     <div class="err" id="detail-err"></div>`;
+}
+// Affiché seulement si cette mission fait partie de la tournée calculée le
+// matin (voir startTournee()) — une mission ouverte hors de ce contexte
+// (ex. depuis la liste, sans être passé par le choix de départ) n'affiche
+// rien de plus que d'habitude.
+function tourneeBannerHtml(m){
+  if(!STATE.tourneeOrder || !STATE.tourneeOrder.length || !STATE.tourneeTotal) return '';
+  if(STATE.tourneeOrder.indexOf(m.id) === -1) return '';
+  const num = STATE.tourneeTotal - STATE.tourneeOrder.length + 1;
+  return `<p class="step-hint">🧭 Mission ${num}/${STATE.tourneeTotal} de ta tournée — la plus proche ensuite</p>`;
 }
 
 function renderStepper(m){
@@ -1449,11 +1585,21 @@ function renderDetail(){
     return;
   }
   const c = m.client || {};
-  const mapsUrl = c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '';
+  const isAutre = m.type === 'autre';
+  const mapsUrl = isAutre
+    ? (m.adresse_libre ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(m.adresse_libre)}` : '')
+    : (c.adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(c.adresse)}` : '');
   const started = m.statut !== 'a_faire';
 
-  const infoRows = started ? `
-      ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="info-row"><span class="info-ic">🔢</span><span class="info-label">Unité${m.appareil_numeros.length>1?'s':''}</span><span class="info-val">n°${m.appareil_numeros.join(', ')}</span></div>`:''}
+  // Mission libre : pas de fiche client, juste le titre saisi par l'admin,
+  // l'adresse libre et l'itinéraire — pas d'étage/fenêtre/quantité/téléphone
+  // puisqu'il n'y a pas de client rattaché.
+  const infoRows = isAutre ? `
+      <div class="info-row"><span class="info-ic">📝</span><span class="info-label">Détail</span><span class="info-val">${escHtml(m.titre||'—')}</span></div>
+      <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(m.adresse_libre||'—')}</span></div>
+      ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
+    ` : started ? `
+      ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="info-row"><span class="info-ic">🔢</span><span class="info-label">Climatiseur${m.appareil_numeros.length>1?'s':''}</span><span class="info-val">n°${m.appareil_numeros.join(', ')}</span></div>`:''}
       <div class="info-row"><span class="info-ic">👤</span><span class="info-label">Client</span><span class="info-val">${escHtml((c.prenom||'')+' '+(c.nom||''))}${c.raison_sociale?' · 🏢 '+escHtml(c.raison_sociale):''}</span></div>
       <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
       <div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${escHtml(c.etage||'—')} ${c.ascenseur&&c.ascenseur!=='—'?'· Ascenseur: '+escHtml(c.ascenseur):''}</span></div>
@@ -1483,16 +1629,22 @@ function renderDetail(){
   // problème signalé) garde l'écran simple d'avant.
   const todayStr = new Date().toISOString().slice(0,10);
   const isWizard = enCours && m.date_prevue<=todayStr && ['livraison','recuperation','changement'].includes(m.type);
+  // "Faire plus tard" doit rester disponible même en Problème (le
+  // transporteur peut se débloquer lui-même sans attendre qu'Aly résolve
+  // l'incident) — distinct de enCours, qui ne doit PAS inclure "probleme"
+  // sous peine de faire apparaître le parcours étape par étape à la place
+  // du message "Problème signalé".
+  const canPause = ['acceptee','arrivee','probleme'].includes(m.statut);
   const bodyHtml = isWizard
-    ? missionWizardHtml(m, infoRows)
+    ? missionWizardHtml(m, infoRows, mapsUrl)
     : `${renderStepper(m)}${infoRows}<div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div><div class="err" id="detail-err"></div>`;
   document.getElementById('detail-screen').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center">
       <button class="detail-back" style="margin-bottom:14px" onclick="show('missions-screen')">← Retour</button>
-      ${enCours ? `<button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>` : ''}
+      ${canPause ? `<button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>` : ''}
     </div>
     <div class="card">
-      ${(['acceptee','arrivee'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
+      ${(['acceptee','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
       <h1>${TYPE_ICON[m.type]||''} ${missionTypeLabel(m)}</h1>
       <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):'', m.montant_preview?`💶 ${Math.round(m.montant_preview/100)} €`:''].filter(Boolean).join(' · ')}</p>
       ${bodyHtml}
@@ -1500,31 +1652,31 @@ function renderDetail(){
   `;
 }
 
-// Preuve de mission obligatoire : filmer en direct (caméra) ou joindre une
-// vidéo déjà présente dans la photothèque du téléphone — les deux sources
-// sont acceptées, contrairement à la galerie libre qui reste un ajout
-// séparé, non bloquant.
+// Preuve de mission obligatoire : prendre une photo en direct (caméra) ou
+// joindre une photo déjà présente dans la photothèque du téléphone — les
+// deux sources sont acceptées, contrairement à la galerie libre qui reste
+// un ajout séparé, non bloquant.
 function proofButtonsHtml(kind, done, doneLabel){
   if(done){
-    return `<button class="media-btn done" onclick="startUpload('${kind}','camera')"><span class="ic">🎥</span> ${doneLabel} ✔</button>`;
+    return `<button class="media-btn done" onclick="startUpload('${kind}','camera')"><span class="ic">📷</span> ${doneLabel} ✔</button>`;
   }
-  // Le libellé (ex. "Vidéo ancien appareil" / "Vidéo nouvel appareil") doit
+  // Le libellé (ex. "Photo ancien appareil" / "Photo nouvel appareil") doit
   // être visible AVANT la capture, pas seulement une fois faite — sur
   // "Changement" les deux paires de boutons sont sinon strictement
-  // identiques et rien ne dit laquelle filmer en premier. Un mauvais choix
-  // ici envoie la preuve du mauvais appareil.
+  // identiques et rien ne dit laquelle photographier en premier. Un mauvais
+  // choix ici envoie la preuve du mauvais appareil.
   return `
     <div class="section-title" style="margin:0 0 6px 2px">${doneLabel}</div>
     <div style="display:flex;gap:8px">
-      <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','camera')"><span class="ic">🎥</span> Filmer</button>
-      <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','galerie')"><span class="ic">🎞️</span> Depuis la galerie</button>
+      <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','camera')"><span class="ic">📷</span> Photo</button>
+      <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','galerie')"><span class="ic">🖼️</span> Depuis la galerie</button>
     </div>`;
 }
 function prevenirRowHtml(m){
   const done = m.client_notifie;
   return `
     <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="media-btn ${done?'done':''}" style="margin-bottom:0" onclick="prevenirClientSms()"><span class="ic">📲</span> ${done?'Prévenu ✔':'SMS'}</button>
+      <button class="media-btn ${done?'done':'pulse'}" style="margin-bottom:0" onclick="prevenirClientSms()"><span class="ic">📲</span> ${done?'Prévenu ✔':'SMS'}</button>
       <button class="media-btn ${done?'done':''}" style="margin-bottom:0" onclick="prevenirClientWhatsapp()"><span class="ic">💬</span> WhatsApp</button>
     </div>`;
 }
@@ -1545,6 +1697,23 @@ function prevenirClientMessage(){
   const m = STATE.currentMission;
   const c = (m && m.client) || {};
   return { c, msg: arrivalMessageText() };
+}
+// Message de l'étape "Arrivée" (devant chez le client) — distinct du message
+// "j'arrive dans 30 min" de l'étape "En route". Toujours en français : rien
+// n'enregistre la langue choisie par le client à sa réservation (voir plan).
+function arriveeMessageText(){
+  return "Merci de descendre, votre livraison Loc'Air est arrivée.";
+}
+// Ouvre le SMS natif avec le message "Arrivée" — pas d'envoi automatique
+// serveur (contrairement à prevenirClientSms(), ce geste n'est pas tracké
+// côté stats). Marque juste un état visuel local (bouton clignotant) une
+// fois revenu dans l'app.
+function prevenirArriveeSms(){
+  const m = STATE.currentMission;
+  const c = (m && m.client) || {};
+  if(c.tel) window.location.href = `sms:${c.tel.replace(/\s+/g,'')}?body=${encodeURIComponent(arriveeMessageText())}`;
+  STATE.detailArriveeSmsSentFor = m.id;
+  renderDetail();
 }
 function prevenirClientSms(){
   const { c, msg } = prevenirClientMessage();
@@ -1594,10 +1763,49 @@ async function doAction(action, extra){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
 
-    if(action === 'livraison_ok' || action === 'retour_ok' || action === 'changement_ok'){
+    // Le pool de missions "à faire" vient de changer (mission reportée ou
+    // acceptée) : recalcule la tournée en tâche de fond (sans attendre, pour
+    // ne pas ralentir la navigation) si une tournée est active — couvre
+    // report/reprise/nouvelle mission/bascule en un seul point d'ancrage.
+    if(action === 'reporter' || action === 'accepter') refreshTournee();
+
+    if(action === 'livraison_ok' || action === 'retour_ok' || action === 'changement_ok' || action === 'autre_ok'){
       showCelebration(d.montant_du_cents || 0);
       return;
     }
+
+    // Client injoignable après SMS + appel restés sans réponse (étape
+    // "Arrivée") : contrairement aux autres catégories de problème, la
+    // mission ne doit pas rester bloquée en "problème" — elle repart en
+    // "à faire" (le livreur pourra y repasser plus tard) tout en gardant
+    // l'incident déjà créé ci-dessus intact (voir action 'reporter',
+    // api/transporteur-action.js:141, qui ne touche jamais "incidents").
+    if(action === 'probleme' && extra && extra.probleme_type === 'client_absent'){
+      await fetch(API('transporteur-action'), {
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+        body: JSON.stringify({action:'reporter', livraison_id: STATE.currentMission.id})
+      });
+    }
+
+    // Client injoignable/problème signalé pendant une tournée en cours :
+    // on passe directement à la mission la plus proche suivante plutôt que
+    // de rouvrir celle qu'on vient justement de ne pas pouvoir traiter (voir
+    // advanceTournee, qui recalcule depuis l'adresse où le livreur vient de
+    // se trouver, pas depuis le point de départ du matin).
+    if(action === 'probleme' && STATE.tourneeOrder.length){
+      const justId = STATE.currentMission.id;
+      await fetchMissions();
+      const nextId = advanceTournee(justId);
+      if(nextId){ openMission(nextId); return; }
+      show('missions-screen'); renderMissions();
+      return;
+    }
+    // TODO: pas de tournée active (STATE.tourneeOrder vide) — pas de
+    // recalcul Google Routes en direct ici, simple retour à la liste des
+    // missions ci-dessous. À rebrancher sur api/transporteur-route.js si
+    // le besoin d'un vrai "suggère la mission la plus proche" se confirme
+    // pour ce cas (transporteur qui a démarré une mission hors tournée).
 
     await fetchMissions();
     const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
@@ -1650,18 +1858,26 @@ function showCelebration(montantCents){
 async function closeCelebration(){
   const o = document.getElementById('celebrate-overlay');
   if(o) o.remove();
+  const justId = STATE.currentMission ? STATE.currentMission.id : null;
   await loadMissions();
+  // Tournée en cours : enchaîne sur la mission la plus proche suivante
+  // (recalculée depuis l'adresse qu'on vient de quitter), pas seulement la
+  // prochaine de la liste brute.
+  if(STATE.tourneeOrder.length && justId){
+    const nextId = advanceTournee(justId);
+    if(nextId){ openMission(nextId); return; }
+  }
   const next = STATE.missions.find(m => ['acceptee', 'arrivee'].includes(m.statut))
     || STATE.missions.find(m => m.statut === 'a_faire');
   if(next) openMission(next.id);
 }
 
-// ── Capture vidéo (preuve de mission obligatoire) ────────────────────────────
-// "camera" force l'enregistrement en direct ; "galerie" laisse le choix
-// dans la photothèque du téléphone (vidéo déjà existante).
+// ── Capture photo (preuve de mission obligatoire) ─────────────────────────────
+// "camera" force la prise en direct ; "galerie" laisse le choix dans la
+// photothèque du téléphone (photo déjà existante).
 function startUpload(kind, source){
   const input = document.getElementById('media-input');
-  input.setAttribute('accept', 'video/*');
+  input.setAttribute('accept', 'image/*');
   if(source==='camera') input.setAttribute('capture','environment');
   else input.removeAttribute('capture');
   STATE.pendingUpload = {kind};
@@ -1770,6 +1986,59 @@ async function sendForgotPin(){
   okEl.style.display='block';
 }
 
+// ── Client redevenu joignable ─────────────────────────────────────────────────
+// Le transporteur est autonome : les appels du client passent directement sur
+// son propre téléphone (pas de bureau intermédiaire) — c'est donc lui qui
+// déclenche cet écran, depuis le bouton "Client a rappelé" d'une mission "à
+// faire" ayant un incident lié (voir actionBtnsForMission). Aly est prévenue
+// côté serveur (pushToAdmin) une fois la mission reprise, pour suivre
+// l'avancement sans avoir à faire quoi que ce soit elle-même.
+async function handleClientDisponible(missionId){
+  await fetchMissions();
+  const m = STATE.missions.find(x => x.id === missionId);
+  if(!m || m.statut !== 'a_faire') return; // déjà repris par quelqu'un d'autre entretemps
+  const enCours = STATE.missions.find(x => x.id !== missionId && missionEstEnCours(x));
+  const adresse = escHtml((m.client && m.client.adresse) || m.adresse_libre || 'cette mission');
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'client-dispo-overlay';
+  overlay.innerHTML = enCours ? `
+    <div class="sheet">
+      <h1 style="margin-bottom:14px">📞 Client de nouveau joignable</h1>
+      <p class="step-hint">Le client de la mission ${adresse} a rappelé.</p>
+      <button class="btn btn-blue btn-block" style="margin-top:10px" onclick="closeClientDisponible()">Continuer ma mission actuelle</button>
+      <button class="btn btn-green btn-block" style="margin-top:8px" onclick="basculerVersMission(${missionId})">🔁 Basculer sur cette mission</button>
+    </div>` : `
+    <div class="sheet">
+      <h1 style="margin-bottom:14px">📞 Client de nouveau joignable</h1>
+      <p class="step-hint">Le client de la mission ${adresse} a rappelé.</p>
+      <button class="btn btn-blue btn-block" style="margin-top:10px" onclick="closeClientDisponible(); openMission(${missionId})">Voir la mission</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+function closeClientDisponible(){
+  const o = document.getElementById('client-dispo-overlay');
+  if(o) o.remove();
+}
+// Reporter la mission en cours (B) puis accepter celle redevenue joignable
+// (A) — même chaînage d'actions déjà existantes que "client absent"→"reporter"
+// (voir doAction), pas de nouvelle action serveur dédiée.
+async function basculerVersMission(missionId){
+  closeClientDisponible();
+  try{
+    const enCours = STATE.missions.find(x => x.id !== missionId && missionEstEnCours(x));
+    if(enCours){
+      await fetch(API('transporteur-action'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'reporter', livraison_id: enCours.id})});
+    }
+    const r = await fetch(API('transporteur-action'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'accepter', livraison_id: missionId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || 'Erreur');
+    refreshTournee();
+    await fetchMissions();
+    openMission(missionId);
+  }catch(e){ alert(e.message || 'Erreur'); }
+}
+
 // ── Problème (aucune saisie de texte — juste une catégorie) ──────────────────
 function openProbleme(){
   const overlay = document.createElement('div');
@@ -1779,7 +2048,7 @@ function openProbleme(){
     <div class="sheet">
       <h1 style="margin-bottom:14px">⚠️ Quel est le problème ?</h1>
       <div class="probleme-list">
-        <button class="btn btn-amber" onclick="startClientAbsent('camera')">📵 Client absent — filmer</button>
+        <button class="btn btn-amber" onclick="startClientAbsent('camera')">📵 Client absent — photo</button>
         <button class="btn btn-amber" onclick="startClientAbsent('galerie')">📵 Client absent — depuis la galerie</button>
         <button class="btn btn-amber" onclick="sendProbleme('appareil_en_panne')">🔧 Appareil en panne</button>
         <button class="btn btn-grey" onclick="sendProbleme('retard')">⏰ Retard important</button>
@@ -1797,12 +2066,189 @@ async function sendProbleme(type){
   closeProbleme();
   await doAction('probleme', {probleme_type: type});
 }
-// "Client absent" exige une vidéo de passage avant d'envoyer le SMS
+// "Client absent" exige une photo de passage avant d'envoyer le SMS
 // automatique — startUpload() enchaîne ensuite sur le signalement du problème
-// une fois la vidéo confirmée (voir le listener de #media-input).
+// une fois la photo confirmée (voir le listener de #media-input).
 function startClientAbsent(source){
   closeProbleme();
   startUpload('photo_absence', source);
+}
+
+// ── Tutoriel prise en main (bibliothèque vidéo) ───────────────────────────────
+// Bouton accessible en permanence (voir #tuto-fab + show()). Overlay type
+// "sheet", même mécanique que openProbleme()/closeProbleme() — pas de
+// navigation d'écran, donc rien n'est perdu sous l'overlay.
+const TUTO_CATEGORIES = [
+  {key:'acces_sortie_boxe',    label:'🚪 Accès / sortie boxe',        actif:true},
+  {key:'recuperation_materiel', label:'📦 Récupération matériel',      actif:true},
+  {key:'fermeture_boxe',       label:'🔒 Fermeture boxe',              actif:true},
+  {key:'entree_sortie_centre', label:'🏢 Entrée / sortie du centre',   actif:true},
+  {key:'chargement',           label:'⬆️ Chargement',                 actif:false},
+  {key:'dechargement',         label:'⬇️ Déchargement',               actif:false},
+  {key:'installation',         label:"🔧 Installation par type d'ouverture", actif:true,
+    sousTypes:['Porte fenêtre','Fenêtre battante','Porte coulissante','Volet']},
+];
+let TUTO_LIST_CACHE = null;
+let TUTO_PLAYER = null; // {videoId, furthestTime} — état du visionnage en cours (1er passage)
+
+async function fetchTutoList(){
+  const r = await fetch(API('transporteur-tutoriels'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'list'})});
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error||'Erreur');
+  TUTO_LIST_CACHE = d.videos || [];
+  return TUTO_LIST_CACHE;
+}
+function ensureTutoOverlay(){
+  let overlay = document.getElementById('tuto-overlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    overlay.id = 'tuto-overlay';
+    overlay.innerHTML = `<div class="sheet" id="tuto-sheet"><p class="empty">Chargement…</p></div>`;
+    overlay.addEventListener('click', e => { if(e.target===overlay) closeTutoLibrary(); });
+    document.body.appendChild(overlay);
+  }
+  return overlay;
+}
+function closeTutoLibrary(){
+  const o = document.getElementById('tuto-overlay');
+  if(o) o.remove();
+  TUTO_PLAYER = null;
+}
+async function openTutoLibrary(){
+  ensureTutoOverlay();
+  try{
+    await fetchTutoList();
+    renderTutoCategoryList();
+  }catch(e){
+    const sheet = document.getElementById('tuto-sheet');
+    if(sheet) sheet.innerHTML = `<p class="empty">Impossible de charger les tutoriels.</p><button class="btn btn-grey btn-block" onclick="closeTutoLibrary()">Fermer</button>`;
+  }
+}
+function renderTutoCategoryList(){
+  const sheet = document.getElementById('tuto-sheet');
+  if(!sheet) return;
+  sheet.innerHTML = `
+    <h1 style="margin-bottom:14px">🎓 Tutoriel prise en main</h1>
+    ${TUTO_CATEGORIES.map(cat => {
+      if(!cat.actif){
+        return `<div class="tuto-cat-row disabled"><span>${cat.label}</span><span style="font-size:12px;color:var(--grey2)">Bientôt</span></div>`;
+      }
+      const videos = (TUTO_LIST_CACHE||[]).filter(v => v.categorie===cat.key && v.disponible).sort((a,b)=>a.ordre-b.ordre);
+      const videoRowHtml = v => `
+        <div class="tuto-video-row">
+          <span>${escHtml(v.titre)}${v.deja_vu?' <span class="done">✔ vue</span>':''}</span>
+          <button class="btn ${v.deja_vu?'btn-grey':'btn-blue'}" onclick="openTutoPlayer(${v.id})">▶️ ${v.deja_vu?'Revoir':'Voir'}</button>
+        </div>`;
+      // Catégorie "installation" : regroupée par type d'ouverture plutôt
+      // qu'un simple listing plat (seule catégorie où sous_categorie est
+      // renseigné) — les autres catégories gardent l'affichage inchangé.
+      const bodyHtml = cat.sousTypes
+        ? cat.sousTypes.map(t => {
+            const sousVideos = videos.filter(v => v.sous_categorie === t);
+            return `
+              <div class="section-title" style="margin:10px 0 4px 12px;font-size:12px">${t}</div>
+              ${sousVideos.length ? sousVideos.map(videoRowHtml).join('') : `<p class="step-hint" style="margin:2px 0 2px 12px">Pas encore de vidéo.</p>`}`;
+          }).join('')
+        : (videos.length ? videos.map(videoRowHtml).join('') : `<p class="step-hint" style="margin:4px 0">Pas encore de vidéo.</p>`);
+      return `
+        <div style="margin-bottom:6px">
+          <div class="section-title" style="margin:14px 0 4px 2px">${cat.label}</div>
+          ${bodyHtml}
+        </div>`;
+    }).join('')}
+    <button class="btn btn-grey btn-block" style="margin-top:14px" onclick="closeTutoLibrary()">Fermer</button>`;
+}
+async function openTutoPlayer(videoId){
+  const sheet = document.getElementById('tuto-sheet');
+  if(!sheet) return;
+  const v = (TUTO_LIST_CACHE||[]).find(x => x.id===videoId);
+  if(!v) return;
+  sheet.innerHTML = `<p class="empty">Chargement de la vidéo…</p>`;
+  try{
+    const r = await fetch(API('transporteur-tutoriels'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'video_url', video_id:videoId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    renderTutoPlayer(v, d.url);
+  }catch(e){
+    sheet.innerHTML = `<p class="empty">Vidéo indisponible.</p><button class="btn btn-grey btn-block" onclick="renderTutoCategoryList()">← Retour</button>`;
+  }
+}
+function renderTutoPlayer(v, url){
+  const sheet = document.getElementById('tuto-sheet');
+  if(!sheet) return;
+  const dejaVu = v.deja_vu;
+  TUTO_PLAYER = {videoId: v.id, furthestTime: 0};
+  sheet.innerHTML = `
+    <button class="detail-back" style="margin-bottom:10px" onclick="renderTutoCategoryList()">← Retour</button>
+    <h1 style="margin-bottom:10px;font-size:18px">${escHtml(v.titre)}</h1>
+    <div id="tuto-player-wrap">
+      <video id="tuto-video" src="${escHtml(url)}" playsinline webkit-playsinline disablepictureinpicture controlslist="nodownload noplaybackrate" ${dejaVu?'controls':''}></video>
+    </div>
+    ${dejaVu ? '' : `
+      <div id="tuto-controls-row" style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <button class="btn btn-blue" id="tuto-playpause" onclick="tutoTogglePlay()">▶️ Lecture</button>
+        <span style="font-size:12px;color:var(--grey2)">À voir en entier la 1ère fois — pas de retour rapide possible</span>
+      </div>
+      <div class="tuto-progress-track"><div class="tuto-progress-fill" id="tuto-progress-fill"></div></div>`}
+  `;
+  const video = document.getElementById('tuto-video');
+  if(!video || dejaVu) return;
+  video.addEventListener('timeupdate', () => {
+    if(video.currentTime > TUTO_PLAYER.furthestTime) TUTO_PLAYER.furthestTime = video.currentTime;
+    const fill = document.getElementById('tuto-progress-fill');
+    if(fill && video.duration) fill.style.width = Math.round((video.currentTime/video.duration)*100) + '%';
+  });
+  // Anti-avance : si l'utilisateur arrive quand même à sauter en avant (geste
+  // natif malgré l'absence de controls — AirPlay, plein écran forcé...), on
+  // le ramène au point le plus loin réellement visionné. C'est le vrai
+  // mécanisme anti-skip, pas juste l'absence de l'attribut controls.
+  video.addEventListener('seeking', () => {
+    if(TUTO_PLAYER && video.currentTime > TUTO_PLAYER.furthestTime + 0.5){
+      video.currentTime = TUTO_PLAYER.furthestTime;
+    }
+  });
+  video.addEventListener('ended', () => tutoMarquerVu(v.id));
+}
+function tutoTogglePlay(){
+  const video = document.getElementById('tuto-video');
+  const btn = document.getElementById('tuto-playpause');
+  if(!video) return;
+  if(video.paused){ video.play(); if(btn) btn.textContent = '⏸️ Pause'; }
+  else{ video.pause(); if(btn) btn.textContent = '▶️ Lecture'; }
+}
+async function tutoMarquerVu(videoId){
+  try{
+    await fetch(API('transporteur-tutoriels'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'marquer_vu', video_id:videoId})});
+  }catch(e){}
+  const v = (TUTO_LIST_CACHE||[]).find(x => x.id===videoId);
+  if(v) v.deja_vu = true;
+  // Repasse en lecteur natif complet (skip autorisé dès maintenant) sans
+  // recharger toute la vue.
+  const video = document.getElementById('tuto-video');
+  if(video) video.setAttribute('controls', 'controls');
+  document.getElementById('tuto-controls-row')?.remove();
+  document.querySelector('.tuto-progress-track')?.remove();
+}
+// Ouvre directement le lecteur sur la 1ère vidéo active d'une catégorie —
+// utilisé par l'étape BOX (checklist) pour lancer "Accès/sortie boxe" sans
+// passer par la liste de catégories, et par l'étape Installation avec un
+// 2e paramètre pour filtrer sur le type d'ouverture choisi.
+async function openTutoVideo(categorie, sousCategorie){
+  ensureTutoOverlay();
+  try{
+    await fetchTutoList();
+    const v = (TUTO_LIST_CACHE||[]).filter(x => x.categorie===categorie && x.disponible && (!sousCategorie || x.sous_categorie===sousCategorie)).sort((a,b)=>a.ordre-b.ordre)[0];
+    const sheet = document.getElementById('tuto-sheet');
+    if(!v){
+      if(sheet) sheet.innerHTML = `<p class="empty">Vidéo pas encore disponible.</p><button class="btn btn-grey btn-block" onclick="closeTutoLibrary()">Fermer</button>`;
+      return;
+    }
+    await openTutoPlayer(v.id);
+  }catch(e){
+    const sheet = document.getElementById('tuto-sheet');
+    if(sheet) sheet.innerHTML = `<p class="empty">Impossible de charger les tutoriels.</p><button class="btn btn-grey btn-block" onclick="closeTutoLibrary()">Fermer</button>`;
+  }
 }
 
 // ── Mon activité (gains, façon Uber Driver) ──────────────────────────────────
@@ -1853,6 +2299,10 @@ function renderActivite(d){
 // gagné sur chaque mission, pas seulement des totaux agrégés.
 function missionsHistoryHtml(missions){
   if(!missions || !missions.length) return '';
+  // Accès aux photos limité aux missions des 90 derniers jours (même règle
+  // que api/transporteur-missions.js action 'past_photos') — pas la peine
+  // d'afficher un bouton qui échouera pour une mission plus ancienne.
+  const photoCutoff = new Date(); photoCutoff.setDate(photoCutoff.getDate() - 90);
   const groups = {};
   missions.forEach(m => {
     const key = (m.fait_at||'').slice(0,7); // YYYY-MM
@@ -1881,6 +2331,7 @@ function missionsHistoryHtml(missions){
                 <span class="mcard-icon" style="font-size:14px;vertical-align:-2px">${TYPE_ICON[m.type]||'📍'}</span>
                 ${TYPE_LABEL[m.type]||m.type}
                 <div class="mcard-meta" style="margin-top:2px">${m.fait_at?new Date(m.fait_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
+                ${(m.fait_at && new Date(m.fait_at) >= photoCutoff) ? `<button class="btn btn-grey" style="margin-top:6px;padding:4px 10px;font-size:12px" onclick="openMissionMedia(${m.id})">📷 Photos</button>` : ''}
               </span>
               <span style="text-align:right;flex-shrink:0">
                 <div style="font-weight:700">${(m.montant_cents/100).toFixed(2).replace('.',',')} €</div>
@@ -1891,6 +2342,44 @@ function missionsHistoryHtml(missions){
       </details>`;
     }).join('')}
   `;
+}
+
+const MISSION_PHOTO_LABEL = {
+  photo_depart:       '📦 Départ / état des lieux',
+  photo_installation: '🔧 Installation',
+  photo_retour:       '🔄 Récupération',
+  photo_absence:      '🚪 Client absent',
+};
+function closeMissionMedia(){
+  const o = document.getElementById('mission-media-overlay');
+  if(o) o.remove();
+}
+async function openMissionMedia(livraisonId){
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'mission-media-overlay';
+  overlay.innerHTML = `<div class="sheet"><p class="empty">Chargement…</p></div>`;
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeMissionMedia(); });
+  document.body.appendChild(overlay);
+  const sheet = overlay.querySelector('.sheet');
+  try{
+    const r = await fetch(API('transporteur-missions'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'past_photos', livraison_id:livraisonId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const kinds = Object.keys(d.photos||{});
+    sheet.innerHTML = `
+      <h1 style="margin-bottom:14px">📷 Photos de la mission</h1>
+      ${kinds.length ? kinds.map(kind => `
+        <div style="margin-bottom:16px">
+          <div class="section-title" style="margin-bottom:6px">${MISSION_PHOTO_LABEL[kind]||kind}</div>
+          <img src="${d.photos[kind]}" style="width:100%;border-radius:12px;object-fit:cover"/>
+        </div>`).join('') : `<p class="empty">Aucune photo pour cette mission.</p>`}
+      <button class="btn btn-blue btn-block" style="margin-top:6px" onclick="closeMissionMedia(); openTutoLibrary();">🎓 Revoir le tutoriel</button>
+      <button class="btn btn-grey btn-block" style="margin-top:10px" onclick="closeMissionMedia()">Fermer</button>
+    `;
+  }catch(e){
+    sheet.innerHTML = `<p class="empty">${escHtml(e.message)}</p><button class="btn btn-grey btn-block" onclick="closeMissionMedia()">Fermer</button>`;
+  }
 }
 
 async function demanderVirement(){
@@ -1942,7 +2431,7 @@ function renderChecklist(d){
     return;
   }
   const climatiseurPills = d.climatiseurs.map(c =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-lt);color:var(--blue);font-weight:700;font-size:13px;padding:6px 12px;border-radius:100px">❄️ Unité n°${c.numero}${c.kit==='velux'?' 🪟':''}</span>`
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-lt);color:var(--blue);font-weight:700;font-size:13px;padding:6px 12px;border-radius:100px">❄️ Climatiseur n°${c.numero}${c.kit==='velux'?' 🪟':''}</span>`
   ).join('');
   const items = [];
   if(d.kits.universel) items.push(`🧰 ${d.kits.universel} kit${d.kits.universel>1?'s':''} de calfeutrage universel`);
@@ -1958,7 +2447,8 @@ function renderChecklist(d){
     <div class="card">
       <div class="eyebrow">Avant de partir</div>
       <h1 style="margin-bottom:4px">🧳 Matériel à récupérer au box</h1>
-      <p class="sub" style="margin-bottom:16px">${d.nb_missions} mission${d.nb_missions>1?'s':''} aujourd'hui</p>
+      <p class="sub" style="margin-bottom:10px">${d.nb_missions} mission${d.nb_missions>1?'s':''} aujourd'hui</p>
+      <button class="btn btn-grey" style="margin-bottom:16px" onclick="openTutoVideo('acces_sortie_boxe')">🎥 Voir le tuto : Accès/sortie boxe</button>
       ${d.climatiseurs.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${climatiseurPills}</div>` : ''}
       <div style="margin-bottom:16px">${itemsHtml}</div>
       ${d.validated
@@ -1979,7 +2469,7 @@ async function validerChecklist(){
     const d2 = await r2.json().catch(()=>null);
     if(r2.ok && d2) STATE.checklist = d2;
     if(STATE.returnToMission) returnFromChecklist();
-    else switchTab('missions');
+    else show('tournee-start-screen');
   }catch(e){ alert(e.message||'Erreur'); }
 }
 async function annulerChecklist(){
@@ -1988,6 +2478,111 @@ async function annulerChecklist(){
     if(!r.ok) throw new Error((await r.json()).error||'Erreur');
     await loadChecklist();
   }catch(e){ alert(e.message||'Erreur'); }
+}
+
+// ── Tournée du jour (plus proche en voiture) ─────────────────────────────────
+// mode 'box' : calcule depuis l'adresse du box (voir api/transporteur-route.js,
+// qui la relit sur la ville). mode 'gps' : le livreur a déjà son matériel
+// (ex. chez lui) et part directement en mission — on utilise sa position
+// actuelle plutôt que le box.
+async function startTournee(mode){
+  const errEl = document.getElementById('tournee-start-err');
+  if(errEl) errEl.style.display = 'none';
+  const btns = document.querySelectorAll('#tournee-start-screen .btn');
+  btns.forEach(b => b.disabled = true);
+  try{
+    let body = {};
+    if(mode === 'gps'){
+      const pos = await new Promise((resolve, reject) => {
+        if(!navigator.geolocation){ reject(new Error("La géolocalisation n'est pas disponible sur cet appareil.")); return; }
+        navigator.geolocation.getCurrentPosition(resolve,
+          () => reject(new Error("Impossible d'obtenir ta position — vérifie que la localisation est autorisée pour cette app, ou choisis \"Je pars du box\".")),
+          { enableHighAccuracy: true, timeout: 12000 });
+      });
+      body = { start_lat: pos.coords.latitude, start_lng: pos.coords.longitude };
+    }
+    const r = await fetch(API('transporteur-route'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || 'Erreur');
+    STATE.tourneeOrder        = d.order || [];
+    STATE.tourneeTotal        = STATE.tourneeOrder.length;
+    STATE.tourneeMatrix       = d.matrix || null;
+    STATE.tourneeMissionIndex = d.missionIndex || [];
+    if(STATE.tourneeOrder.length) openMission(STATE.tourneeOrder[0]);
+    else switchTab('missions');
+  }catch(e){
+    // Le GPS refusé/en échec ne doit jamais bloquer la journée du livreur —
+    // il reste sur cet écran, peut réessayer ou basculer sur "Je pars du box".
+    if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+    btns.forEach(b => b.disabled = false);
+  }
+}
+// Recalcul silencieux de la tournée (nouvel appel réseau à l'API Google
+// Routes déjà en place, PAS juste le recalcul local d'advanceTournee) —
+// déclenché après un report/reprise/bascule pour que la matrice en mémoire
+// tienne compte des missions qui viennent de rentrer/sortir du pool "à
+// faire". Ne fait rien si le transporteur n'a pas démarré de tournée
+// aujourd'hui, et ne navigue jamais nulle part (contrairement à
+// startTournee) — purement un rafraîchissement de fond.
+async function refreshTournee(){
+  if(!STATE.tourneeMissionIndex || !STATE.tourneeMissionIndex.length) return;
+  try{
+    let body = {};
+    try{
+      // Timeout à nous en plus de l'option native (elle ne se déclenche pas
+      // toujours de façon fiable si la permission reste bloquée en attente)
+      // — refreshTournee est une tâche de fond, elle ne doit jamais rester
+      // bloquée indéfiniment.
+      const pos = await new Promise((resolve, reject) => {
+        if(!navigator.geolocation){ reject(new Error('no geo')); return; }
+        const timer = setTimeout(() => reject(new Error('geo timeout')), 6000);
+        navigator.geolocation.getCurrentPosition(
+          (p) => { clearTimeout(timer); resolve(p); },
+          () => { clearTimeout(timer); reject(new Error('geo failed')); },
+          { enableHighAccuracy: true, timeout: 6000 }
+        );
+      });
+      body = { start_lat: pos.coords.latitude, start_lng: pos.coords.longitude };
+    }catch(e){ /* repli silencieux sur le départ box */ }
+    const r = await fetch(API('transporteur-route'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok) return;
+    STATE.tourneeOrder        = d.order || [];
+    STATE.tourneeTotal        = STATE.tourneeOrder.length;
+    STATE.tourneeMatrix       = d.matrix || null;
+    STATE.tourneeMissionIndex = d.missionIndex || [];
+  }catch(e){ /* échec silencieux — le recalcul local d'advanceTournee reste le repli */ }
+}
+function tourneeMatrixIndex(missionId){
+  const i = (STATE.tourneeMissionIndex||[]).indexOf(missionId);
+  return i === -1 ? -1 : i + 1; // +1 : l'index 0 de la matrice est le point de départ, pas une mission
+}
+function nearestNeighborLocal(matrix, current, remainingIdx){
+  let best = null, bestDist = Infinity;
+  remainingIdx.forEach(idx => { const d = matrix[current][idx]; if(d < bestDist){ bestDist = d; best = idx; } });
+  return best;
+}
+// Après une mission traitée (terminée OU signalée en problème), recalcule le
+// prochain arrêt depuis SON adresse plutôt que depuis le point de départ du
+// matin — c'est là que le livreur se trouve réellement, y compris s'il a dû
+// signaler un client injoignable (voir doAction, action 'probleme'). Utilise
+// la matrice de distances déjà reçue de api/transporteur-route.js : aucun
+// nouvel appel réseau à chaque étape.
+function advanceTournee(justHandledMissionId){
+  STATE.tourneeOrder = (STATE.tourneeOrder||[]).filter(id => id !== justHandledMissionId);
+  if(!STATE.tourneeOrder.length) return null;
+  if(STATE.tourneeMatrix && STATE.tourneeMissionIndex && STATE.tourneeMissionIndex.length){
+    const fromIdx = tourneeMatrixIndex(justHandledMissionId);
+    const remainingIdx = STATE.tourneeOrder.map(tourneeMatrixIndex).filter(i => i !== -1);
+    if(fromIdx !== -1 && remainingIdx.length){
+      const nextIdx = nearestNeighborLocal(STATE.tourneeMatrix, fromIdx, remainingIdx);
+      if(nextIdx != null){
+        const nextId = STATE.tourneeMissionIndex[nextIdx-1];
+        STATE.tourneeOrder = [nextId, ...STATE.tourneeOrder.filter(id => id !== nextId)];
+      }
+    }
+  }
+  return STATE.tourneeOrder[0];
 }
 
 // ── Carte du jour (vue d'ensemble, gratuite OpenStreetMap) ───────────────────

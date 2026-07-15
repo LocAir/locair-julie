@@ -1,17 +1,10 @@
 const Stripe  = require('stripe');
 const crypto  = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
+const { calcTieredPrice: calcRetardPrice } = require('./_lib/pricing');
 
 function safeEqual(a, b) {
   try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); } catch { return false; }
-}
-
-function calcRetardPrice(days) {
-  days = Math.max(1, days);
-  if (days <= 7)  return days * 20;
-  if (days <= 14) return 7 * 20 + (days - 7) * 18;
-  if (days <= 21) return 7 * 20 + 7 * 18 + (days - 14) * 17;
-  return 7 * 20 + 7 * 18 + 7 * 17 + (days - 21) * 16;
 }
 
 module.exports = async (req, res) => {

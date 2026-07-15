@@ -45,6 +45,16 @@ Renseigner l'email de chaque transporteur n'est pas obligatoire, mais c'est ce q
 - Partenaires : créer un partenaire de test dans `/admin` → Partenaires, ouvrir `www.locair.fr/?p=SONCODE` puis faire une réservation test → vérifier qu'elle apparaît avec la bonne commission dans `/admin` → Partenaires → Revenus, et dans `/partenaire` une fois connecté avec le code personnel du partenaire.
 - Face ID / empreinte : se connecter avec le code une première fois → accepter "Activer" sur la carte proposée → se déconnecter ("changer") → le bouton "🔓 Face ID / empreinte" doit permettre de se reconnecter sans ressaisir le code. Changer le code de ce transporteur depuis `/admin` doit ensuite désactiver cet accès (il doit revalider avec le nouveau code puis réactiver Face ID).
 
+### Module 1 — Réservation et paiement (2026-07-14)
+
+- Le bouton "Procéder au paiement" reste désactivé tant que les 3 cases (CGV/CGL, conditions d'utilisation du climatiseur, autorisation de prélèvement retard) ne sont pas toutes cochées.
+- Un appel direct à `/api/checkout` sans `cgv_accepted: true` **et** `conditions_utilisation_accepted: true` doit être rejeté (400), même si le montant et les dates sont valides — la validation ne doit jamais reposer uniquement sur le bouton désactivé côté site.
+- Après une réservation payée, vérifier dans Supabase → table `cgv_acceptations` que 2 lignes existent pour cette réservation (`cgv_location` et `conditions_utilisation`), avec un `accepted_at` cohérent.
+- Prolongation (`/#prolong`) : refaire un test complet de bout en bout (la prolongation était cassée — un bug de portée de variable faisait échouer *tous* les paiements de prolongation en 500 avant ce correctif). Un appel direct à `/api/checkout-prolong` sans `cgv_accepted: true` doit être rejeté (400).
+- Simuler dans Stripe (mode test) un paiement refusé (`payment_intent.payment_failed`) → un incident doit apparaître dans `/admin` → Incidents, et une notification push doit arriver côté admin.
+- Simuler un remboursement Stripe (`charge.refunded`) sur une réservation confirmée → son statut doit passer à "remboursée" et un incident + une notification admin doivent être créés.
+- Dans `/admin` → Réservations, l'API renvoie désormais un champ `statut_commande` calculé (paiement en attente / confirmée / à préparer / en livraison / installée / en location / à récupérer / terminée / annulée / remboursée / incident) à partir du statut de la réservation et de ses missions — pas encore affiché dans l'interface (`admin/index.html`), à faire dans un module suivant si utile visuellement.
+
 ## Notifications push (nouvelles missions, annulations)
 
 Un transporteur reçoit une notification sur son téléphone — même app fermée — dans deux cas : une mission lui est assignée (première fois ou réassignation), ou une récupération qu'on lui avait confiée est annulée parce que le client a prolongé sa location. Il touche la notification pour ouvrir directement l'app.

@@ -4,8 +4,9 @@ const { getAvailability } = require('./_lib/stock');
 const { isValidDate }     = require('./_lib/dates');
 const { checkAdminToken } = require('./_lib/auth');
 const { confirmReservation } = require('./_lib/reservations');
+const { computeOrderStatus } = require('./_lib/orderStatus');
 
-const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée' };
+const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -22,19 +23,42 @@ module.exports = async (req, res) => {
     if (action === 'list') {
       const { data, error } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, parrain_code, partenaire_commission_cents, created_at, partenaire:partenaires ( nom )')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, logement, parrain_code, partenaire_commission_cents, motifs, mkt_consent, created_at, partenaire:partenaires ( nom )')
         .eq('city_id', city.id)
         .order('created_at', { ascending: false })
         .limit(200);
       if (error) throw error;
-      return res.status(200).json({ reservations: data || [] });
+      const reservations = data || [];
+
+      // Statut "commande" (affichage uniquement) : combine reservations.statut
+      // et l'état des missions livraison/récupération — voir _lib/orderStatus.js.
+      // N'écrit rien, ne modifie aucun statut existant.
+      const ids = reservations.map(r => r.id);
+      let livraisonsByResa = new Map();
+      let incidentResaIds = new Set();
+      if (ids.length) {
+        const [{ data: livs }, { data: incs }] = await Promise.all([
+          supabase.from('livraisons').select('reservation_id, type, statut, fait_at').in('reservation_id', ids),
+          supabase.from('incidents').select('reservation_id').in('reservation_id', ids).eq('statut', 'ouvert'),
+        ]);
+        for (const l of (livs || [])) {
+          if (!livraisonsByResa.has(l.reservation_id)) livraisonsByResa.set(l.reservation_id, []);
+          livraisonsByResa.get(l.reservation_id).push(l);
+        }
+        incidentResaIds = new Set((incs || []).map(i => i.reservation_id));
+      }
+      for (const r of reservations) {
+        r.statut_commande = computeOrderStatus(r, livraisonsByResa.get(r.id) || [], incidentResaIds.has(r.id));
+      }
+
+      return res.status(200).json({ reservations });
     }
 
     // Réservation prise en direct par l'admin (téléphone, WhatsApp...). Créée
     // puis confirmée immédiatement : contrairement à un panier du site, il n'y a
     // pas de risque d'abandon puisque l'admin sait déjà que le client s'engage.
     if (action === 'create') {
-      const prenom  = (body.prenom  || '').trim().slice(0, 200);
+      let prenom    = (body.prenom  || '').trim().slice(0, 200);
       const nom     = (body.nom     || '').trim().slice(0, 200);
       const tel     = (body.tel     || '').trim().slice(0, 50);
       const telSecondaire = (body.tel_secondaire || '').trim().slice(0, 50);
@@ -49,8 +73,20 @@ module.exports = async (req, res) => {
       const installation = (body.installation || '').trim().slice(0, 100);
       const instructionsAcces = (body.instructions_acces || '').trim().slice(0, 1000);
       const creneau     = (body.creneau_livraison || '').trim().slice(0, 500);
-      const dateDebut = (body.date_debut || '').slice(0, 10);
-      const dateFin    = (body.date_fin   || '').slice(0, 10);
+      // Aucun champ obligatoire pour une réservation créée à la main (prise
+      // au téléphone vite fait) — ce qui manque est complété avec des valeurs
+      // par défaut sûres, à corriger plus tard depuis la fiche client. Les
+      // dates restent structurellement nécessaires (elles pilotent le calcul
+      // du stock disponible et la date des missions livraison/récupération),
+      // donc jamais laissées vides : à défaut, aujourd'hui → +7 jours.
+      let dateDebut = (body.date_debut || '').slice(0, 10);
+      if (!isValidDate(dateDebut)) dateDebut = new Date().toISOString().slice(0, 10);
+      let dateFin = (body.date_fin || '').slice(0, 10);
+      if (!isValidDate(dateFin) || dateFin <= dateDebut) {
+        const d = new Date(dateDebut + 'T12:00:00Z');
+        d.setUTCDate(d.getUTCDate() + 7);
+        dateFin = d.toISOString().slice(0, 10);
+      }
       const quantite   = Math.min(5, Math.max(1, parseInt(body.quantite) || 1));
       const prixTotalCents = Math.max(0, parseInt(body.prix_total_cents) || 0);
       const logement    = (body.logement     || '').trim().slice(0, 100);
@@ -64,10 +100,7 @@ module.exports = async (req, res) => {
       // true pour ne pas changer le comportement des appelants existants.
       const confirmerImmediat = body.confirmer !== false;
 
-      if (!prenom || !nom || !adresse) return res.status(400).json({ error: 'Prénom, nom et adresse requis' });
-      if (!isValidDate(dateDebut) || !isValidDate(dateFin) || dateFin <= dateDebut) {
-        return res.status(400).json({ error: 'Dates invalides' });
-      }
+      if (!prenom) prenom = 'Client';
 
       const disponibles = await getAvailability(supabase, city.id, dateDebut, dateFin);
       if (disponibles < quantite) {
@@ -229,6 +262,13 @@ module.exports = async (req, res) => {
       // doublon créé par erreur) — ça ne touche ni le statut, ni le stock, ni les
       // missions, contrairement à "Annuler". Réversible via "Restaurer".
       if (body.masquee != null) patch.masquee = !!body.masquee;
+      // Complète/corrige l'identité du client (ex. réservation créée avec le strict
+      // minimum au téléphone, prénom/nom/adresse à ajouter après coup) — remonte
+      // telle quelle aux missions terrain déjà créées (jointure reservation).
+      if (body.prenom != null) patch.prenom = body.prenom.trim().slice(0, 200) || 'Client';
+      if (body.nom != null)    patch.nom    = body.nom.trim().slice(0, 200);
+      if (body.tel != null)    patch.tel    = body.tel.trim().slice(0, 50);
+      if (body.adresse != null) patch.adresse = body.adresse.trim().slice(0, 500);
       // Complète/corrige les infos logistiques d'une réservation déjà créée (ex.
       // une réservation manuelle créée sans ces champs, ou une info donnée par
       // téléphone après coup) — ces infos remontent telles quelles à la mission
@@ -240,6 +280,14 @@ module.exports = async (req, res) => {
       if (body.instructions_acces != null) patch.instructions_acces = body.instructions_acces.trim().slice(0, 1000) || null;
       if (body.creneau_livraison != null)  patch.creneau            = body.creneau_livraison.trim().slice(0, 500) || null;
       if (body.tel_secondaire != null)     patch.tel_secondaire     = body.tel_secondaire.trim().slice(0, 50) || null;
+      if (body.email != null)              patch.email              = body.email.trim().slice(0, 200) || null;
+      if (body.type_client != null)        patch.type_client        = body.type_client === 'entreprise' ? 'entreprise' : 'particulier';
+      if (body.raison_sociale != null)     patch.raison_sociale     = body.raison_sociale.trim().slice(0, 300) || null;
+      if (body.siret != null)              patch.siret              = body.siret.trim().slice(0, 50) || null;
+      if (body.logement != null)           patch.logement           = body.logement.trim().slice(0, 100) || null;
+      if (body.parrain_code != null)       patch.parrain_code       = body.parrain_code.trim().slice(0, 50) || null;
+      if (body.motifs != null)             patch.motifs             = body.motifs.trim().slice(0, 300) || null;
+      if (body.mkt_consent != null)        patch.mkt_consent        = !!body.mkt_consent;
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('reservations').update(patch).eq('id', id).eq('city_id', city.id);
       if (error) throw error;
