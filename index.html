@@ -2978,7 +2978,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 <section class="product" id="produit" aria-labelledby="product-title">
   <div class="prod-topbar">
     <div class="prod-topbar-eye" id="product-eyebrow">Sélection Loc’Air</div>
-    <div class="prod-topbar-brand">Climatiseur mobile</div>
+    <div class="prod-topbar-brand" id="product-brand">Climatiseur mobile</div>
   </div>
   <div class="prod-media-new sr">
     <img src="hero-clim.jpg" alt="Climatiseur mobile professionnel Loc'Air" loading="lazy" width="480" height="540">
@@ -5007,15 +5007,15 @@ function geoLocate(){
     inp.value=addr;
     inp.dispatchEvent(new Event('input'));
     btn.classList.remove('geo-loading');btn.classList.add('geo-ok');
-    lbl.textContent='Adresse trouvée ✓';
+    lbl.textContent=_lang==='en'?'Address found ✓':'Adresse trouvée ✓';
     btn.disabled=false;
     inp.focus();
-    setTimeout(()=>{btn.classList.remove('geo-ok');lbl.textContent='Ma position';},5000);
+    setTimeout(()=>{btn.classList.remove('geo-ok');lbl.textContent=_lang==='en'?'My location':'Ma position';},5000);
   }
   function _setErr(msg){
     btn.classList.remove('geo-loading');btn.classList.add('geo-err');
     lbl.textContent=msg;btn.disabled=false;
-    setTimeout(()=>{btn.classList.remove('geo-err');lbl.textContent='Ma position';},5000);
+    setTimeout(()=>{btn.classList.remove('geo-err');lbl.textContent=_lang==='en'?'My location':'Ma position';},5000);
   }
   function _parseNominatim(d){
     if(d.error||!d.address)return null;
@@ -5027,11 +5027,11 @@ function geoLocate(){
     return num+road+', '+city;
   }
 
-  if(!navigator.geolocation){_setErr('Non disponible');return;}
+  if(!navigator.geolocation){_setErr(_lang==='en'?'Unavailable':'Non disponible');return;}
   btn.disabled=true;
   btn.classList.remove('geo-ok','geo-err');
   btn.classList.add('geo-loading');
-  lbl.textContent='Localisation…';
+  lbl.textContent=_lang==='en'?'Locating…':'Localisation…';
 
   navigator.geolocation.getCurrentPosition(
     function(pos){
@@ -6126,10 +6126,10 @@ function updateHeroSim(days){
   const elN=document.getElementById('hps-nights');
   const elD=document.getElementById('hps-detail');
   if(el){el.setAttribute('aria-live','polite');el.setAttribute('aria-atomic','true');el.textContent=price+'€';}
-  if(elN)elN.textContent='pour '+days+' jour'+(days>1?'s':'');
+  if(elN)elN.textContent=_lang==='en'?'for '+days+' day'+(days>1?'s':''):'pour '+days+' jour'+(days>1?'s':'');
   const rate=_baseRate(days);
   const disc=Math.round((20-rate)/20*100);
-  if(elD)elD.textContent=disc>0?'soit '+rate.toFixed(0)+' €/jour — économie de '+disc+'%':'Prix garanti · Livraison dès 35 €';
+  if(elD)elD.textContent=_lang==='en'?(disc>0?'i.e. €'+rate.toFixed(0)+'/day — '+disc+'% off':'Fixed price · Delivery from €35'):(disc>0?'soit '+rate.toFixed(0)+' €/jour — économie de '+disc+'%':'Prix garanti · Livraison dès 35 €');
   // sync chips
   document.querySelectorAll('.hps-chip').forEach(c=>{
     const cd=parseInt(c.onclick?.toString().match(/\d+/)?.[0]||'0');
@@ -6472,6 +6472,7 @@ const LANG_MAP=[
   ['#label-mkt','html','J\'accepte de recevoir les offres et actualités Loc\'Air par email. <span style="color:var(--grey2);font-size:10px">Optionnel · désinscription en 1 clic</span>','I agree to receive Loc\'Air offers and news by email. <span style="color:var(--grey2);font-size:10px">Optional · unsubscribe in 1 click</span>'],
   /* pay button & next steps */
   ['#sbtn-lbl','text','Procéder au paiement','Proceed to payment'],
+  ['#prolong-sbtn-lbl','text','Procéder au paiement','Proceed to payment'],
   ['#pricing-garantie','html','<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>Garantie Panne 4h — remboursé si défaillance','<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>4h breakdown warranty — refunded if faulty'],
   ['#ns-header-lbl','text','Après votre réservation','After your booking'],
   ['#s1 .btn-next','text','Confirmer mon adresse →','Confirm my address →'],
@@ -6492,6 +6493,7 @@ const LANG_MAP=[
   ['.plan-price-unit','text','€ / jour','€ / day'],
   /* product section */
   ['#product-eyebrow','text','Sélection Loc’Air','Loc’Air selection'],
+  ['#product-brand','text','Climatiseur mobile','Mobile air conditioner'],
   ['#product-title','html','Climatiseur mobile<br><em>Rowenta &amp; Frico</em>','Mobile air conditioner<br><em>Rowenta &amp; Frico</em>'],
   ['#product-lead','text','Deux climatiseurs professionnels testés et maîtrisés. Puissant, économique, efficace : tout ce dont vous avez besoin pour traverser la canicule.','Two professional air conditioners, tested and mastered. Powerful, economical, effective: everything you need to get through the heat wave.'],
   ['#product-avail-txt','text','Disponible à Nice','Available in Nice'],
@@ -7667,10 +7669,10 @@ async function startProlongPayment(){
 
   try{
     const stripe=_getStripe();
-    if(!stripe)throw new Error('Stripe non chargé — désactivez votre bloqueur de publicités');
+    if(!stripe)throw new Error(_lang==='en'?'Stripe not loaded — please disable your ad blocker':'Stripe non chargé — désactivez votre bloqueur de publicités');
     const debutVal=document.getElementById('pe-debut')?.value||'';
     const finInitVal=document.getElementById('pe-fin-init')?.value||'';
-    if(!document.getElementById('pe-cgv')?.checked)throw new Error('Merci d\'accepter les CGV avant de payer.');
+    if(!document.getElementById('pe-cgv')?.checked)throw new Error(_lang==='en'?'Please accept the T\u0026Cs before paying.':'Merci d\'accepter les CGV avant de payer.');
     const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,original_days:_prolongOrigDays,prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,date_recuperation_iso:rawDate,creneau,cgv_accepted:true,cgv_accepted_at:new Date().toISOString()})});
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||('API '+r.status));}
     const d=await r.json();
@@ -7694,7 +7696,7 @@ async function startProlongPayment(){
     if(lbl)lbl.textContent=origLbl;
     if(errEl){
       const msg=(e&&e.message)||'';
-      errEl.textContent=(msg&&!/^API \d+$/.test(msg))?msg:'Problème de connexion. Appelez-nous au 06.63.79.87.56.';
+      errEl.textContent=(msg&&!/^API \d+$/.test(msg))?msg:(_lang==='en'?'Connection error. Call us at 06.63.79.87.56.':'Problème de connexion. Appelez-nous au 06.63.79.87.56.');
       errEl.style.display='block';
     }
   }
@@ -7826,7 +7828,7 @@ function upsellUnit2(){
     // Pre-fill note field with context
     setTimeout(()=>{
       const note=document.getElementById('f-note');
-      if(note&&!note.value)note.value='2ème climatiseur — même adresse';
+      if(note&&!note.value)note.value=_lang==='en'?'2nd AC — same address':'2ème climatiseur — même adresse';
     },300);
   },80);
 }
