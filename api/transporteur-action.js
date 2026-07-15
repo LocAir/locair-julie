@@ -147,6 +147,13 @@ module.exports = async (req, res) => {
           to: liv.reservation.tel,
           content: `Loc'Air : votre mission du ${dateStr} est confirmée, notre technicien viendra ${verbe}. Il vous contactera 30 min avant. Questions : 06 63 79 87 56`,
         }).catch(() => {});
+        // Best-effort : trace pour l'historique de la fiche client admin.
+        if (liv.reservation_id) {
+          supabase.from('email_log').insert({
+            reservation_id: liv.reservation_id, scenario: 'sms_mission_confirmee', canal: 'sms',
+            destinataire: liv.reservation.tel, modele: 'sms_mission_confirmee', statut: 'envoye',
+          }).catch(() => {});
+        }
       }
 
       return res.status(200).json({ ok: true, statut: 'acceptee' });
@@ -408,6 +415,11 @@ module.exports = async (req, res) => {
           await sendBrevoSms({
             to: resa.tel,
             content: `Loc'Air : notre livreur est passé pour ${verbe} votre climatiseur mais personne ne répondait. Merci de nous rappeler pour reprogrammer.`,
+          }).catch(() => {});
+          // Best-effort : trace pour l'historique de la fiche client admin.
+          supabase.from('email_log').insert({
+            reservation_id: liv.reservation_id, scenario: 'sms_client_absent', canal: 'sms',
+            destinataire: resa.tel, modele: 'sms_client_absent', statut: 'envoye',
           }).catch(() => {});
         }
       }

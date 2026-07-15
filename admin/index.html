@@ -4421,6 +4421,8 @@ function editAccesDifficile(id, current){
 let CLIENT_FICHE_ID = null;
 let CLIENT_FICHE_POLL = null;
 let CLIENT_FICHE_DATA = null;
+let CLIENT_COMMS_DATA = null;
+const CANAL_ICON = { email: '📧', sms: '📱' };
 
 const MISSION_STEP_LABEL = {
   accepted_at: 'Acceptée', client_notifie_at: 'Client notifié', arrivee_at: 'Arrivée sur place',
@@ -4432,6 +4434,7 @@ function closeClientFiche(){
   CLIENT_FICHE_POLL = null;
   CLIENT_FICHE_ID = null;
   CLIENT_FICHE_DATA = null;
+  CLIENT_COMMS_DATA = null;
   const o = document.getElementById('client-fiche-overlay');
   if(o) o.remove();
 }
@@ -4446,10 +4449,14 @@ async function openClientFiche(clientId){
     <div class="map-modal" style="max-width:640px;max-height:88vh;overflow-y:auto">
       <div class="map-modal-head"><h2>Fiche client</h2><button onclick="closeClientFiche()">✕</button></div>
       <div id="client-fiche-body" style="padding:0 20px 20px"><p class="empty">Chargement…</p></div>
+      <div id="client-comms-body" style="padding:0 20px 20px"><p class="empty">Chargement…</p></div>
     </div>`;
   overlay.addEventListener('click', e => { if(e.target===overlay) closeClientFiche(); });
   document.body.appendChild(overlay);
-  await loadClientFiche();
+  // Communications chargées une fois à l'ouverture, pas dans le polling 8s
+  // de la mission en cours — l'historique/le planning email ne change pas
+  // assez vite pour justifier un rafraîchissement automatique.
+  await Promise.all([loadClientFiche(), loadClientCommunications()]);
   CLIENT_FICHE_POLL = setInterval(loadClientFiche, 8000);
 }
 
@@ -4548,6 +4555,100 @@ async function updateIncidentStatutInFiche(id, statut, btnEl){
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadClientFiche();
     showToast('Incident mis à jour', 'success');
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
+}
+
+// ── Communications (panneau emails/SMS de la fiche client) ──────────────────
+async function loadClientCommunications(){
+  const zone = document.getElementById('client-comms-body');
+  if(!zone || !CLIENT_FICHE_ID) return; // fiche fermée entre-temps
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'client_timeline', client_id:CLIENT_FICHE_ID})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    CLIENT_COMMS_DATA = d;
+    renderClientCommunications(d);
+  }catch(e){
+    zone.innerHTML = `<p class="empty">${escHtml(e.message)}</p>`;
+  }
+}
+
+function renderClientCommunications(d){
+  const zone = document.getElementById('client-comms-body');
+  if(!zone) return;
+
+  const upcomingHtml = (d.upcoming||[]).length
+    ? d.upcoming.map(u => {
+        const statutChip = !u.actif_globalement
+          ? `<span class="chip inactif">Désactivé pour tous les clients</span>`
+          : u.skip
+            ? `<span class="chip ${u.skip==='pause'?'en_attente':'annulee'}">${u.skip==='pause'?'En pause':'Supprimé'}</span>`
+            : `<span class="chip a_faire">Prévu</span>`;
+        const actionsHtml = !u.actif_globalement ? '' : u.skip
+          ? `<div class="row-actions"><button class="btn btn-green" onclick="unskipClientEmail(${u.reservation_id},'${u.scenario}',this)">▶️ Reprendre</button></div>`
+          : `<div class="row-actions">
+               <button class="btn btn-grey" onclick="skipClientEmail(${u.reservation_id},'${u.scenario}','pause',this)">⏸️ Mettre en pause</button>
+               <button class="btn btn-red" onclick="skipClientEmail(${u.reservation_id},'${u.scenario}','suppression',this)">🗑️ Supprimer</button>
+             </div>`;
+        return `
+        <div class="row-item">
+          <div class="row-top">
+            <span class="row-title">📧 ${escHtml(u.libelle)}</span>
+            ${statutChip}
+          </div>
+          <div class="row-meta">${frDate(u.date)}${u.ref?' · '+escHtml(u.ref):''}</div>
+          ${actionsHtml}
+        </div>`;
+      }).join('')
+    : '<p class="empty">Aucun envoi programmé à venir.</p>';
+
+  const sentHtml = (d.sent||[]).length
+    ? d.sent.map(e => `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${CANAL_ICON[e.canal]||'📧'} ${escHtml(e.libelle)}</span>
+          <span class="chip ${e.statut==='envoye'?'fait':'probleme'}">${e.statut==='envoye'?'Envoyé':'Erreur'}</span>
+        </div>
+        <div class="row-meta">${new Date(e.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${e.ref?' · '+escHtml(e.ref):''}${e.erreur?' · '+escHtml(e.erreur):''}</div>
+      </div>`).join('')
+    : '<p class="empty">Aucun envoi enregistré pour l\'instant.</p>';
+
+  zone.innerHTML = `
+    <div class="section-title">📧 Communications — à venir</div>
+    ${upcomingHtml}
+    <div class="section-title" style="margin-top:18px">📬 Communications — envoyées</div>
+    ${sentHtml}
+  `;
+}
+
+// action: 'pause' (réversible, l'envoi reste visible avec un bouton
+// Reprendre) ou 'suppression' (même mécanisme de blocage, juste présenté
+// comme définitif) — voir email_skip et wasScenarioSkipped() dans
+// api/_lib/emailEngine.js. Ne touche jamais aux autres scénarios/réservations.
+async function skipClientEmail(reservationId, scenario, skipAction, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'skip', reservation_id:reservationId, scenario, skip_action:skipAction})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadClientCommunications();
+    showToast(skipAction==='pause' ? 'Envoi mis en pause' : 'Envoi supprimé', 'success');
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
+}
+async function unskipClientEmail(reservationId, scenario, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'unskip', reservation_id:reservationId, scenario})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadClientCommunications();
+    showToast('Envoi repris', 'success');
   }catch(e){
     if(btnEl) btnEl.disabled = false;
     showToast(e.message, 'error');

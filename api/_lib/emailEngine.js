@@ -76,6 +76,16 @@ async function wasScenarioSent(supabase, reservationId, scenario) {
   return !!data;
 }
 
+// Exclusion posée depuis la fiche client admin (panneau Communications,
+// "Mettre en pause"/"Supprimer") — contrairement à wasScenarioSent(), n'est
+// JAMAIS contournée par `force` : c'est une décision explicite de l'admin
+// sur cet envoi précis, un renvoi manuel accidentel ne doit pas l'écraser.
+async function wasScenarioSkipped(supabase, reservationId, scenario) {
+  const { data } = await supabase
+    .from('email_skip').select('reservation_id').eq('reservation_id', reservationId).eq('scenario', scenario).maybeSingle();
+  return !!data;
+}
+
 // Point d'entrée unique pour l'envoi d'un email de scénario — garantit :
 // scénario actif, jamais deux fois pour la même réservation (sauf `force`,
 // réservé au renvoi manuel admin), historique complet (email_log) que
@@ -88,6 +98,7 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
   if (!reservation) return { sent: false, reason: 'no_reservation' };
 
   if (!(await isScenarioActive(supabase, scenario))) return { sent: false, reason: 'scenario_disabled' };
+  if (await wasScenarioSkipped(supabase, reservationId, scenario)) return { sent: false, reason: 'skipped_by_admin' };
   if (!force && (await wasScenarioSent(supabase, reservationId, scenario))) return { sent: false, reason: 'already_sent' };
   if (!reservation.email) return { sent: false, reason: 'no_email' };
 
@@ -113,4 +124,4 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
   }
 }
 
-module.exports = { SCENARIOS, sendScenarioEmail, buildEmailContext, getSignature, signatureFooterHtml, wasScenarioSent, isScenarioActive };
+module.exports = { SCENARIOS, sendScenarioEmail, buildEmailContext, getSignature, signatureFooterHtml, wasScenarioSent, wasScenarioSkipped, isScenarioActive };

@@ -1,6 +1,27 @@
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminToken } = require('./_lib/auth');
+const { resolveAdminCity } = require('./_lib/city');
 const { SCENARIOS, sendScenarioEmail } = require('./_lib/emailEngine');
+const { upcomingScenariosForReservation } = require('./_lib/emailSchedule');
+
+const RESEND_ERROR_LABEL = {
+  no_email: "Ce client n'a pas d'email enregistré",
+  skipped_by_admin: 'Cet envoi a été mis en pause/supprimé depuis la fiche client — reprends-le avant de le renvoyer',
+};
+
+// Libellés des envois ponctuels hors moteur de scénarios (voir
+// api/webhook.js, api/_lib/documents.js, api/transporteur-action.js) —
+// SCENARIOS (emailEngine.js) ne couvre que les 8 scénarios du moteur.
+const AD_HOC_LABEL = {
+  sms_confirmation:       'SMS confirmation de réservation',
+  email_prolongation:     'Email confirmation de prolongation',
+  email_contrat_facture:  'Email contrat + facture',
+  sms_mission_confirmee:  'SMS mission confirmée',
+  sms_client_absent:      'SMS client absent',
+};
+function scenarioLibelle(scenario) {
+  return SCENARIOS[scenario]?.libelle || AD_HOC_LABEL[scenario] || scenario;
+}
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -54,7 +75,84 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'reservation_id et scenario valides requis' });
       }
       const result = await sendScenarioEmail(supabase, { reservationId, scenario, force: true });
-      if (!result.sent) return res.status(422).json({ error: result.reason === 'no_email' ? 'Ce client n\'a pas d\'email enregistré' : (result.error || result.reason) });
+      if (!result.sent) return res.status(422).json({ error: RESEND_ERROR_LABEL[result.reason] || (result.error || result.reason) });
+      return res.status(200).json({ ok: true });
+    }
+
+    // Historique + envois à venir d'un client précis (fiche client admin,
+    // panneau Communications) — remonte par ses réservations puisque
+    // email_log/email_sent/email_skip n'ont pas de client_id direct (même
+    // pattern que les incidents dans admin-clients.js action 'fiche').
+    if (action === 'client_timeline') {
+      const clientId = parseInt(body.client_id);
+      if (!clientId) return res.status(400).json({ error: 'client_id manquant' });
+
+      const city = await resolveAdminCity(supabase, body);
+      if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
+      const { data: client } = await supabase.from('clients').select('id').eq('id', clientId).eq('city_id', city.id).maybeSingle();
+      if (!client) return res.status(404).json({ error: 'Client introuvable' });
+
+      const { data: resas } = await supabase
+        .from('reservations').select('id, ref, statut, date_debut, date_fin').eq('client_id', clientId);
+      const resaIds = (resas || []).map(r => r.id);
+      if (!resaIds.length) return res.status(200).json({ sent: [], upcoming: [] });
+
+      const todayISO = new Date().toISOString().slice(0, 10);
+      const [logRes, sentRes, skipRes, scenariosRes] = await Promise.all([
+        supabase.from('email_log').select('id, reservation_id, scenario, canal, destinataire, statut, erreur, created_at')
+          .in('reservation_id', resaIds).order('created_at', { ascending: false }).limit(200),
+        supabase.from('email_sent').select('reservation_id, scenario').in('reservation_id', resaIds),
+        supabase.from('email_skip').select('reservation_id, scenario, action').in('reservation_id', resaIds),
+        supabase.from('email_scenarios').select('id, actif'),
+      ]);
+
+      const resaById = Object.fromEntries((resas || []).map(r => [r.id, r]));
+      const sentSet = new Set((sentRes.data || []).map(s => `${s.reservation_id}:${s.scenario}`));
+      const skipByKey = Object.fromEntries((skipRes.data || []).map(s => [`${s.reservation_id}:${s.scenario}`, s.action]));
+      const scenarioActif = Object.fromEntries((scenariosRes.data || []).map(s => [s.id, s.actif !== false]));
+
+      const upcoming = [];
+      for (const resa of resas || []) {
+        for (const { scenario, date } of upcomingScenariosForReservation(resa, todayISO)) {
+          const key = `${resa.id}:${scenario}`;
+          if (sentSet.has(key)) continue; // déjà parti (cron passé aujourd'hui même)
+          upcoming.push({
+            reservation_id: resa.id, ref: resa.ref, scenario,
+            libelle: SCENARIOS[scenario]?.libelle || scenario,
+            date, actif_globalement: scenarioActif[scenario] !== false,
+            skip: skipByKey[key] || null,
+          });
+        }
+      }
+      upcoming.sort((a, b) => a.date.localeCompare(b.date));
+
+      const sent = (logRes.data || []).map(e => ({ ...e, ref: resaById[e.reservation_id]?.ref || null, libelle: scenarioLibelle(e.scenario) }));
+      return res.status(200).json({ sent, upcoming });
+    }
+
+    // Pose une exclusion sur un envoi précis à venir — bloque
+    // sendScenarioEmail() pour cette réservation+scénario, sans toucher aux
+    // autres scénarios ni aux autres réservations (voir wasScenarioSkipped
+    // dans _lib/emailEngine.js).
+    if (action === 'skip') {
+      const reservationId = parseInt(body.reservation_id);
+      const scenario = String(body.scenario || '');
+      const skipAction = body.skip_action === 'pause' ? 'pause' : 'suppression';
+      if (!reservationId || !scenario) return res.status(400).json({ error: 'reservation_id et scenario requis' });
+      const { error } = await supabase.from('email_skip')
+        .upsert({ reservation_id: reservationId, scenario, action: skipAction }, { onConflict: 'reservation_id,scenario' });
+      if (error) throw error;
+      return res.status(200).json({ ok: true });
+    }
+
+    // Retire une exclusion ("Reprendre") — sans effet si la date est déjà
+    // passée, l'envoi n'aura simplement plus jamais lieu de toute façon.
+    if (action === 'unskip') {
+      const reservationId = parseInt(body.reservation_id);
+      const scenario = String(body.scenario || '');
+      if (!reservationId || !scenario) return res.status(400).json({ error: 'reservation_id et scenario requis' });
+      const { error } = await supabase.from('email_skip').delete().eq('reservation_id', reservationId).eq('scenario', scenario);
+      if (error) throw error;
       return res.status(200).json({ ok: true });
     }
 
