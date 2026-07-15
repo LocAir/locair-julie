@@ -7,6 +7,8 @@ const { notifyIfSoldOut }      = require('./_lib/city');
 const { runWeeklyReport }      = require('./cron-weekly');
 const { runMonthlyRecap }      = require('./cron-monthly');
 const { calcTieredPrice: calcRetardPrice } = require('./_lib/pricing');
+const { scenariosDueToday } = require('./_lib/emailSchedule');
+const { sendScenarioEmail } = require('./_lib/emailEngine');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
@@ -216,7 +218,37 @@ module.exports = async (req, res) => {
     console.error('[Cron sold_out refresh]', e.message);
   }
 
-  // ── 6. Rapport hebdomadaire (lundi) et récap virements mensuel (le 1er) ─────
+  // ── 6. Emails client automatisés (J-14, J-3, J-1, avant fin de location,
+  // rappel récupération) — fenêtres dans _lib/emailSchedule.js, garantie
+  // "jamais deux fois" + historique dans _lib/emailEngine.js. Les données de
+  // la réservation sont relues ici, au moment de l'envoi, jamais figées à
+  // l'avance. Les scénarios événementiels (confirmation, post-installation,
+  // fin de location) se déclenchent ailleurs (webhook Stripe, actions
+  // transporteur), pas dans cette boucle.
+  try {
+    const in14d = new Date(today); in14d.setDate(in14d.getDate() + 14);
+    const in14dStr = in14d.toISOString().slice(0, 10);
+
+    const { data: candidats } = await supabase
+      .from('reservations')
+      .select('id, statut, date_debut, date_fin')
+      .eq('statut', 'confirmee')
+      .lte('date_debut', in14dStr)
+      .gte('date_fin', todayStr);
+
+    let emailsEnvoyes = 0;
+    for (const resa of candidats || []) {
+      for (const scenario of scenariosDueToday(resa, todayStr)) {
+        const result = await sendScenarioEmail(supabase, { reservationId: resa.id, scenario });
+        if (result.sent) emailsEnvoyes++;
+      }
+    }
+    if (emailsEnvoyes) report.emailsScenarios = emailsEnvoyes;
+  } catch (e) {
+    console.error('[Cron emails scénarios]', e.message);
+  }
+
+  // ── 7. Rapport hebdomadaire (lundi) et récap virements mensuel (le 1er) ─────
   // Un seul cron programmé sur ce plan Vercel (voir vercel.json) — ces deux
   // automatisations, jusque-là écrites mais jamais planifiées, se déclenchent
   // ici plutôt que sur leur propre entrée de cron.

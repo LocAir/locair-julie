@@ -356,6 +356,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
         <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
         <button data-tab="tutoriels" onclick="switchAdminTab('tutoriels')">🎓 Tutoriels</button>
+        <button data-tab="emails" onclick="switchAdminTab('emails')">✉️ Emails</button>
         <div class="tabs-group-label">Suivre</div>
         <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
         <button data-tab="checklist" onclick="switchAdminTab('checklist')">🎒 Checklist box</button>
@@ -375,6 +376,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-clients" class="hidden"></div>
         <div id="tab-villes" class="hidden"></div>
         <div id="tab-tutoriels" class="hidden"></div>
+        <div id="tab-emails" class="hidden"></div>
       </div>
     </div>
   </div>
@@ -835,7 +837,7 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tutoriels'].forEach(t=>{
+  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tutoriels','emails'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
@@ -850,6 +852,7 @@ function switchAdminTab(tab){
   if(tab==='clients') loadClients();
   if(tab==='villes') loadVilles();
   if(tab==='tutoriels') loadTutoriels();
+  if(tab==='emails') loadEmails();
   toggleMobileMenu(false);
 }
 // Tiroir latéral mobile (voir .mobile-menu-btn / .tabs.mobile-open en CSS) —
@@ -3901,6 +3904,127 @@ async function updateIncidentStatut(id, statut, btnEl){
     showToast('Incident mis à jour', 'success');
   }catch(e){
     if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
+}
+
+// ── EMAILS (moteur central de scénarios client, Module 3) ─────────────────────
+let EMAIL_SCENARIOS_CACHE = [];
+async function loadEmails(){
+  const zone = document.getElementById('tab-emails');
+  zone.innerHTML = loading();
+  try{
+    const [rLog, rScen, rSig] = await Promise.all([
+      fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'scenarios'})}),
+      fetch(API('admin-email-signature'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'get'})}),
+    ]);
+    const dLog = await rLog.json(), dScen = await rScen.json(), dSig = await rSig.json();
+    if(!rLog.ok) throw new Error(dLog.error||'Erreur');
+    EMAIL_SCENARIOS_CACHE = dScen.scenarios || [];
+    renderEmails(dLog.emails || [], dSig.signature || {});
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+
+function scenarioLibelle(id){
+  return EMAIL_SCENARIOS_CACHE.find(s=>s.id===id)?.libelle || id;
+}
+
+function renderEmails(emails, sig){
+  const zone = document.getElementById('tab-emails');
+  const nbEnvoyes = emails.filter(e=>e.statut==='envoye').length;
+  const nbErreurs = emails.filter(e=>e.statut==='erreur').length;
+
+  const scenariosHtml = EMAIL_SCENARIOS_CACHE.map(s => `
+    <div class="row-item" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <span class="row-title">${escHtml(s.libelle)}</span>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--grey2)">
+        <span class="chip ${s.actif?'actif':'inactif'}">${s.actif?'Actif':'Désactivé'}</span>
+        <input type="checkbox" ${s.actif?'checked':''} onchange="toggleEmailScenario('${s.id}',this.checked)"/>
+      </label>
+    </div>`).join('');
+
+  const sigHtml = `
+    <div style="display:grid;gap:8px;max-width:420px">
+      <input type="text" id="sig-nom" placeholder="Nom expéditeur" value="${escHtml(sig.nom_expediteur||'')}"/>
+      <input type="text" id="sig-fonction" placeholder="Fonction (ex. Service client)" value="${escHtml(sig.fonction||'')}"/>
+      <input type="text" id="sig-logo" placeholder="URL du logo (optionnel)" value="${escHtml(sig.logo_url||'')}"/>
+      <input type="text" id="sig-tel" placeholder="Téléphone" value="${escHtml(sig.telephone||'')}"/>
+      <input type="text" id="sig-email" placeholder="Email" value="${escHtml(sig.email||'')}"/>
+      <input type="text" id="sig-site" placeholder="Site web" value="${escHtml(sig.site_web||'')}"/>
+      <button class="btn btn-blue" onclick="saveEmailSignature()" style="width:fit-content">Enregistrer la signature</button>
+    </div>`;
+
+  const logHtml = emails.length ? emails.map(e => {
+    const r = e.reservation || {};
+    return `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${escHtml(scenarioLibelle(e.scenario))}${r.ref?' · '+escHtml(r.ref):''}</span>
+          <span class="chip ${e.statut==='envoye'?'fait':'probleme'}">${e.statut==='envoye'?'Envoyé':'Erreur'}</span>
+        </div>
+        <div class="row-meta">${escHtml((r.prenom||'')+' '+(r.nom||''))}${e.destinataire?' · '+escHtml(e.destinataire):''}<br/>${new Date(e.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${e.erreur?' · '+escHtml(e.erreur):''}</div>
+        ${e.reservation_id?`<div class="row-actions"><button class="btn" onclick="resendEmail(${e.reservation_id},'${e.scenario}',this)">🔁 Renvoyer</button></div>`:''}
+      </div>`;
+  }).join('') : '<p class="empty">Aucun email envoyé pour l\'instant.</p>';
+
+  zone.innerHTML = `
+    <div class="stat-grid" style="margin-bottom:16px">
+      <div class="stat-tile"><div class="n">${nbEnvoyes}</div><div class="l">Envoyés</div></div>
+      <div class="stat-tile"><div class="n" style="${nbErreurs?'color:var(--red)':''}">${nbErreurs}</div><div class="l">Erreurs</div></div>
+    </div>
+    <h3 style="margin:16px 0 8px;font-size:14px">Scénarios</h3>
+    ${scenariosHtml}
+    <h3 style="margin:20px 0 8px;font-size:14px">Signature email</h3>
+    ${sigHtml}
+    <h3 style="margin:20px 0 8px;font-size:14px">Historique</h3>
+    ${logHtml}`;
+}
+
+async function toggleEmailScenario(id, actif){
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'toggle_scenario', id, actif})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast(actif?'Scénario activé':'Scénario désactivé', 'success');
+    loadEmails();
+  }catch(e){
+    showToast(e.message, 'error');
+    loadEmails();
+  }
+}
+
+async function resendEmail(reservationId, scenario, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'resend', reservation_id:reservationId, scenario})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Email renvoyé', 'success');
+    loadEmails();
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
+}
+
+async function saveEmailSignature(){
+  try{
+    const r = await fetch(API('admin-email-signature'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action: 'update',
+      nom_expediteur: document.getElementById('sig-nom')?.value||'',
+      fonction:       document.getElementById('sig-fonction')?.value||'',
+      logo_url:       document.getElementById('sig-logo')?.value||'',
+      telephone:      document.getElementById('sig-tel')?.value||'',
+      email:          document.getElementById('sig-email')?.value||'',
+      site_web:       document.getElementById('sig-site')?.value||'',
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Signature enregistrée', 'success');
+  }catch(e){
     showToast(e.message, 'error');
   }
 }

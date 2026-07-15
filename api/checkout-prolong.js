@@ -49,15 +49,18 @@ module.exports = async (req, res) => {
     // Une prolongation ne collecte pas une nouvelle adresse — on reprend la
     // même zone que la réservation d'origine du client, retrouvée par email
     // (pas par adresse : plus fiable, et cohérent avec la logique de
-    // rattachement déjà utilisée dans confirmReservation).
+    // rattachement déjà utilisée dans confirmReservation). Si un numéro de
+    // commande est fourni (ex. lien depuis l'email "avant fin de location"),
+    // il précise la recherche — utile si le client a plusieurs réservations
+    // passées avec la même adresse email.
     if (!data.email) {
       return res.status(400).json({ error: 'Email requis pour retrouver ta réservation' });
     }
-    ({ data: orig } = await supabase
+    let origQuery = supabase
       .from('reservations').select('city_id, tel_secondaire')
-      .eq('email', String(data.email).trim())
-      .order('created_at', { ascending: false })
-      .limit(1).maybeSingle());
+      .eq('email', String(data.email).trim());
+    if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim());
+    ({ data: orig } = await origQuery.order('created_at', { ascending: false }).limit(1).maybeSingle());
     city = orig ? await resolveCityById(supabase, orig.city_id) : null;
     if (!city) {
       return res.status(422).json({ error: 'Réservation d\'origine introuvable — contacte-nous directement pour prolonger.' });
