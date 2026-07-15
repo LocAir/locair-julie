@@ -3,6 +3,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { confirmReservationAndCreateLivraisons } = require('./_lib/reservations');
 const { sendBrevoSms } = require('./_lib/brevo');
 const { pushToAdmin } = require('./_lib/push');
+const { generateAndSendDocuments } = require('./_lib/documents');
 
 // ── Échec de paiement / remboursement / litige ────────────────────────────────
 // Ces trois événements n'ont jamais été écoutés jusqu'ici : une carte refusée,
@@ -417,8 +418,9 @@ const handler = async (req, res) => {
 
     // ── Réservation en base : confirmation + création des missions terrain ────
     // Ne doit jamais bloquer les emails existants en cas de souci Supabase.
+    let confirmedResa = null;
     try {
-      await confirmReservationAndCreateLivraisons(getSupabase(), obj.id || '');
+      confirmedResa = await confirmReservationAndCreateLivraisons(getSupabase(), obj.id || '');
     } catch (e) {
       console.error('[Reservation confirm]', e.message);
     }
@@ -459,6 +461,15 @@ const handler = async (req, res) => {
       });
 
       return res.status(200).json({ received: true, type: 'prolongation' });
+    }
+
+    // ── Contrat + facture PDF (réservation standard uniquement, jamais pour
+    // une prolongation, jamais régénéré si déjà fait — voir _lib/documents.js) ─
+    // Ne doit jamais bloquer les emails de confirmation existants ci-dessous.
+    try {
+      await generateAndSendDocuments(getSupabase(), confirmedResa);
+    } catch (e) {
+      console.error('[Documents]', e.message);
     }
 
     // ── Location standard ─────────────────────────────────────────────────────

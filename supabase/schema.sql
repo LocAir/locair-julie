@@ -317,6 +317,49 @@ create table tutoriel_vus (
   primary key (transporteur_id, video_id)
 );
 
+-- Contrat + facture PDF, générés automatiquement une seule fois à la
+-- confirmation du paiement Stripe (jamais à l'installation, jamais
+-- régénérés pour une facture déjà existante — voir api/_lib/documents.js).
+-- Fichiers stockés dans le bucket "missions" existant (préfixe documents/).
+create table documents (
+  id                bigint generated always as identity primary key,
+  reservation_id    bigint not null references reservations(id) on delete cascade,
+  type              text not null check (type in ('contrat','facture')),
+  numero            text,
+  version           text not null,
+  storage_path      text not null,
+  access_token      text not null unique,
+  montant_ttc_cents integer not null default 0,
+  statut            text not null default 'genere' check (statut in ('genere','envoye','consulte')),
+  genere_at         timestamptz not null default now(),
+  envoye_at         timestamptz,
+  consulte_at       timestamptz,
+  created_at        timestamptz not null default now()
+);
+create unique index documents_facture_unique_idx on documents (reservation_id) where type = 'facture';
+create index documents_reservation_idx on documents (reservation_id);
+create index documents_access_token_idx on documents (access_token);
+
+-- Numérotation séquentielle des factures par année, sans rupture (obligation
+-- légale) — verrou de ligne via ON CONFLICT DO UPDATE, atomique même en cas
+-- d'appels concurrents.
+create table facture_compteur (
+  annee          integer primary key,
+  dernier_numero integer not null default 0
+);
+
+create or replace function next_invoice_number(p_annee integer) returns integer
+language plpgsql as $$
+declare
+  v_numero integer;
+begin
+  insert into facture_compteur (annee, dernier_numero) values (p_annee, 1)
+    on conflict (annee) do update set dernier_numero = facture_compteur.dernier_numero + 1
+  returning dernier_numero into v_numero;
+  return v_numero;
+end;
+$$;
+
 -- Demandes de virement transporteur. Le montant réel et le passage à 'verse'
 -- sont toujours déclenchés par le propriétaire (voir api/admin-virements.js) —
 -- aucun virement bancaire n'est automatisé.

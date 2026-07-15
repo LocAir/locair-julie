@@ -55,6 +55,17 @@ Renseigner l'email de chaque transporteur n'est pas obligatoire, mais c'est ce q
 - Simuler un remboursement Stripe (`charge.refunded`) sur une réservation confirmée → son statut doit passer à "remboursée" et un incident + une notification admin doivent être créés.
 - Dans `/admin` → Réservations, l'API renvoie désormais un champ `statut_commande` calculé (paiement en attente / confirmée / à préparer / en livraison / installée / en location / à récupérer / terminée / annulée / remboursée / incident) à partir du statut de la réservation et de ses missions — pas encore affiché dans l'interface (`admin/index.html`), à faire dans un module suivant si utile visuellement.
 
+### Module 2 — Documents automatiques : contrat + facture PDF (2026-07-15)
+
+- Faire une réservation test payée (Stripe mode test) → dans Supabase → table `documents`, 2 lignes doivent apparaître pour cette réservation (`type = 'contrat'` et `type = 'facture'`), statut `envoye` si le client a un email.
+- Le client doit recevoir **un seul email** avec les 2 PDF en pièce jointe (contrat + facture) en plus des emails de confirmation existants.
+- Ouvrir le PDF du contrat reçu : vérifier identité client, numéro de commande, dates, climatiseur assigné (ou "Attribué à la livraison" si pas encore assigné), montant, et les 2 acceptations CGV/conditions avec horodatage + version.
+- Ouvrir le PDF de la facture reçue : vérifier numéro de facture (`FACT-2026-NNNNNN`), numéro de commande, montant payé, mention TVA non applicable (art. 293 B).
+- Rejouer le même événement webhook Stripe (redélivrance) → vérifier qu'aucune nouvelle ligne `documents` n'apparaît et qu'aucun second email n'est envoyé (idempotence — la facture ne doit **jamais** être dupliquée).
+- Cliquer sur "Consulter le contrat en ligne" / "Consulter la facture en ligne" depuis l'email → le document s'ouvre, et son statut passe à `consulte` dans Supabase (avec `consulte_at` renseigné).
+- Faire 2 réservations payées presque simultanément → vérifier dans `facture_compteur` que les 2 numéros de facture générés sont bien consécutifs, sans doublon ni trou.
+- Un lien `/api/document-view?token=...` avec un token invalide/inexistant doit renvoyer une erreur claire, jamais un chemin de fichier ou une donnée interne.
+
 ## Notifications push (nouvelles missions, annulations)
 
 Un transporteur reçoit une notification sur son téléphone — même app fermée — dans deux cas : une mission lui est assignée (première fois ou réassignation), ou une récupération qu'on lui avait confiée est annulée parce que le client a prolongé sa location. Il touche la notification pour ouvrir directement l'app.

@@ -12,4 +12,19 @@ const ACCEPTANCE_TYPES = {
   CONDITIONS_UTILISATION: 'conditions_utilisation',
 };
 
-module.exports = { CGV_VERSION, ACCEPTANCE_TYPES };
+// Identité légale du vendeur — reprise telle quelle de mentions-legales.html
+// et cgv.html, utilisée sur les contrats/factures PDF (module documents).
+// À maintenir synchronisée si ces pages changent (raison sociale, SIRET...).
+const SELLER = {
+  raisonSociale: 'THIAM ALY',
+  nomCommercial: "Loc'Air",
+  formeJuridique: 'Entreprise individuelle (auto-entrepreneur)',
+  siret: '853 730 562 00024',
+  adresse: '1 Place de Tende, 06300 Nice, France',
+  tel: '06 63 79 87 56',
+  email: 'contact@locair.fr',
+  // TVA non applicable — art. 293 B du CGI (franchise en base, cf. cgv.html §5).
+  mentionTva: 'TVA non applicable — art. 293 B du CGI',
+};
+
+module.exports = { CGV_VERSION, ACCEPTANCE_TYPES, SELLER };
