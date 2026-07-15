@@ -79,10 +79,19 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .tabs button.on{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
 .tabs button.on:hover{background:var(--blue-d)}
 .tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 5px;margin-left:6px;border-radius:100px;background:var(--red);color:#fff;font-size:10.5px;font-weight:800;line-height:1;vertical-align:2px}
-/* Caché par défaut (mobile) : dans la bande horizontale scrollable, un label
-   de groupe ressemble à un bouton cassé et prend de la place sans rien
-   apporter — visible seulement une fois la barre verticale (desktop). */
-.tabs-group-label{display:none;flex-shrink:0;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--grey-soft);padding:9px 15px 2px;white-space:nowrap}
+/* Caché par défaut (mobile) : dans la bande horizontale scrollable, un
+   groupe accordéon prend de la place sans rien apporter — visible
+   seulement une fois la barre verticale (tiroir mobile ou desktop). Le
+   chevron/ouverture est géré nativement par <details>/<summary> (même
+   mécanique que .tools-group dans transporteur/index.html), aucun JS de
+   toggle n'est nécessaire. */
+.tabs-group{display:none}
+.tabs-group summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--grey-soft);padding:9px 15px;white-space:nowrap}
+.tabs-group summary::-webkit-details-marker{display:none}
+.tabs-group summary::after{content:"›";font-size:15px;font-weight:400;text-transform:none;letter-spacing:0;line-height:1;color:var(--grey-soft);transition:transform .15s ease}
+.tabs-group[open] summary::after{transform:rotate(90deg)}
+.tabs-group-body{display:flex;flex-direction:column;gap:5px}
+.tabs-group-dot{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}
 
 /* Menu ☰ mobile : la barre horizontale scrollable cachait des onglets sans
    affordance claire (juste un léger fondu de 28px) — sur mobile elle devient
@@ -114,7 +123,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
   }
   .tabs.mobile-open{transform:translateX(0)}
   .tabs button{width:100%;text-align:left;padding:12px 16px;border-radius:12px}
-  .tabs-group-label{display:block}
+  .tabs-group{display:block}
 }
 
 /* Sélecteur de ville/zone — visible seulement dès 2 villes actives (voir
@@ -296,7 +305,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
   .a-layout{display:flex;align-items:flex-start;gap:28px}
   .tabs{flex-direction:column;overflow-x:visible;width:200px;flex-shrink:0;position:sticky;top:32px;gap:8px;mask-image:none;-webkit-mask-image:none}
   .tabs button{width:100%;text-align:left;padding:12px 16px;border-radius:12px}
-  .tabs-group-label{display:block}
+  .tabs-group{display:block}
   .a-content{flex:1;min-width:0}
   .stat-grid{grid-template-columns:repeat(4,1fr)}
   .card{padding:28px}
@@ -345,23 +354,38 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <!-- Groupé par intention (fréquence réelle d'usage), pas par table de
              base de données : Piloter = ce qu'on regarde tous les jours,
              Gérer = ce qu'on touche occasionnellement, Suivre = consultation,
-             rarement une action. -->
-        <div class="tabs-group-label">Piloter</div>
-        <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
-        <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
-        <div class="tabs-group-label">Gérer</div>
-        <button data-tab="virements" onclick="switchAdminTab('virements')">💶 Virements<span class="tab-badge hidden" id="badge-virements_total"></span></button>
-        <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
-        <button data-tab="partenaires" onclick="switchAdminTab('partenaires')">🤝 Partenaires<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
-        <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
-        <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
-        <button data-tab="tutoriels" onclick="switchAdminTab('tutoriels')">🎓 Tutoriels</button>
-        <button data-tab="emails" onclick="switchAdminTab('emails')">✉️ Emails</button>
-        <button data-tab="espaceclient" onclick="switchAdminTab('espaceclient')">🛟 Espace client</button>
-        <div class="tabs-group-label">Suivre</div>
-        <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
-        <button data-tab="checklist" onclick="switchAdminTab('checklist')">🎒 Checklist box</button>
-        <button data-tab="incidents" onclick="switchAdminTab('incidents')">🧯 Incidents<span class="tab-badge hidden" id="badge-incidents"></span></button>
+             rarement une action. Chaque groupe est un accordéon replié par
+             défaut (gain de place) — loadAlerts() le déplie tout seul et
+             pose un point rouge sur son titre dès qu'une alerte s'y trouve,
+             pour qu'une notification ne soit jamais cachée derrière un clic. -->
+        <details class="tabs-group" data-group="piloter">
+          <summary>Piloter<span class="tabs-group-dot hidden" id="group-dot-piloter"></span></summary>
+          <div class="tabs-group-body">
+            <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
+            <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
+          </div>
+        </details>
+        <details class="tabs-group" data-group="gerer">
+          <summary>Gérer<span class="tabs-group-dot hidden" id="group-dot-gerer"></span></summary>
+          <div class="tabs-group-body">
+            <button data-tab="virements" onclick="switchAdminTab('virements')">💶 Virements<span class="tab-badge hidden" id="badge-virements_total"></span></button>
+            <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
+            <button data-tab="partenaires" onclick="switchAdminTab('partenaires')">🤝 Partenaires<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
+            <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
+            <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
+            <button data-tab="tutoriels" onclick="switchAdminTab('tutoriels')">🎓 Tutoriels</button>
+            <button data-tab="emails" onclick="switchAdminTab('emails')">✉️ Emails</button>
+            <button data-tab="espaceclient" onclick="switchAdminTab('espaceclient')">🛟 Espace client</button>
+          </div>
+        </details>
+        <details class="tabs-group" data-group="suivre">
+          <summary>Suivre<span class="tabs-group-dot hidden" id="group-dot-suivre"></span></summary>
+          <div class="tabs-group-body">
+            <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
+            <button data-tab="checklist" onclick="switchAdminTab('checklist')">🎒 Checklist box</button>
+            <button data-tab="incidents" onclick="switchAdminTab('incidents')">🧯 Incidents<span class="tab-badge hidden" id="badge-incidents"></span></button>
+          </div>
+        </details>
       </div>
 
       <div class="a-content">
@@ -883,6 +907,14 @@ async function loadAlerts(){
     updateTabBadge('partenaire_virements', d.partenaire_virements);
     updateTabBadge('virements_total', (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0));
     updateTabBadge('incidents', d.incidents);
+    // Les groupes Piloter/Gérer/Suivre sont des accordéons repliés par
+    // défaut (gain de place) — sans ça une alerte cachée dans un groupe
+    // fermé passerait inaperçue. On déplie automatiquement le groupe
+    // concerné et on pose un point rouge sur son titre, même logique que
+    // le point sur le bouton ☰ juste en dessous.
+    updateGroupAlert('piloter', (d.reservations||0) + (d.livraisons||0) > 0);
+    updateGroupAlert('gerer',   (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0) > 0);
+    updateGroupAlert('suivre',  (d.incidents||0) > 0);
     renderAlertsBanner(d);
     renderVirementMondayBanner();
     // Point rouge sur le bouton ☰ (mobile) : sur la barre horizontale
@@ -898,6 +930,14 @@ function updateTabBadge(tab, count){
   if(!el) return;
   if(count>0){ el.textContent = count; el.classList.remove('hidden'); }
   else{ el.classList.add('hidden'); }
+}
+function updateGroupAlert(group, hasAlert){
+  const dot = document.getElementById('group-dot-'+group);
+  dot?.classList.toggle('hidden', !hasAlert);
+  if(hasAlert){
+    const details = document.querySelector(`.tabs-group[data-group="${group}"]`);
+    if(details) details.open = true;
+  }
 }
 
 // Bandeau permanent multi-alertes — visible sur tous les onglets, se met à jour
@@ -1279,6 +1319,7 @@ async function loadStock(silent){
               <span class="chip ${chipClass}">${chipLabel}</span>
             </div>
             <div class="row-meta">${a.reference?escHtml(a.reference)+' · ':''}${a.en_location?'Actuellement chez un client (réservation confirmée)':a.statut==='loue'?'Loué hors système — marqué manuellement':(a.statut==='disponible'?'Au dépôt':'—')}</div>
+            ${a.notes?`<div class="row-meta" style="font-style:italic">📝 ${escHtml(a.notes)}</div>`:''}
             <div class="row-actions">
               <select onchange="updateAppareilStatut(${a.id}, this.value)">
                 <option value="disponible" ${a.statut==='disponible'?'selected':''}>Disponible</option>
@@ -1288,6 +1329,7 @@ async function loadStock(silent){
               </select>
               ${a.en_location?`<div class="row-meta" style="width:100%">ℹ️ Statut manuel affiché ci-dessus, indépendant de la location en cours — repasse à "Disponible" tout seul au retour.</div>`:''}
               <button class="btn btn-grey" onclick="editAppareilReference(${a.id}, '${escHtml(a.reference||'').replace(/'/g,"\\'")}')">${a.reference?'Modifier':'Ajouter'} la référence</button>
+              <button class="btn btn-grey" onclick="editAppareilNote(${a.id}, '${escHtml(a.notes||'').replace(/'/g,"\\'")}')">${a.notes?'Modifier':'Ajouter'} une note</button>
               <button class="btn btn-red" onclick="deleteAppareil(${a.id}, ${a.numero})">🗑️ Supprimer</button>
             </div>
           </div>`;
@@ -1348,6 +1390,17 @@ function editAppareilReference(id, current){
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadStock();
       showToast('Référence mise à jour', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
+}
+function editAppareilNote(id, current){
+  promptAction({title:'Note', label:'Bruit anormal, à réviser, rayure…', value:current, placeholder:'Ex : bruit anormal en marche'}, async (notes) => {
+    try{
+      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, notes})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadStock();
+      showToast('Note mise à jour', 'success');
     }catch(e){ showToast(e.message, 'error'); }
   });
 }

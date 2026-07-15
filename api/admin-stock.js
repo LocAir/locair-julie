@@ -68,6 +68,7 @@ module.exports = async (req, res) => {
         patch.statut = body.statut;
       }
       if (body.reference != null) patch.reference = body.reference.trim().slice(0, 200) || null;
+      if (body.notes != null) patch.notes = body.notes.trim().slice(0, 1000) || null;
       if (body.modele_id != null) patch.modele_id = parseInt(body.modele_id) || null;
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('appareils').update(patch).eq('id', id).eq('city_id', city.id);
