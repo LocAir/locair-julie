@@ -55,6 +55,49 @@ Renseigner l'email de chaque transporteur n'est pas obligatoire, mais c'est ce q
 - Simuler un remboursement Stripe (`charge.refunded`) sur une réservation confirmée → son statut doit passer à "remboursée" et un incident + une notification admin doivent être créés.
 - Dans `/admin` → Réservations, l'API renvoie désormais un champ `statut_commande` calculé (paiement en attente / confirmée / à préparer / en livraison / installée / en location / à récupérer / terminée / annulée / remboursée / incident) à partir du statut de la réservation et de ses missions — pas encore affiché dans l'interface (`admin/index.html`), à faire dans un module suivant si utile visuellement.
 
+### Module 2 — Documents automatiques : contrat + facture PDF (2026-07-15)
+
+- Faire une réservation test payée (Stripe mode test) → dans Supabase → table `documents`, 2 lignes doivent apparaître pour cette réservation (`type = 'contrat'` et `type = 'facture'`), statut `envoye` si le client a un email.
+- Le client doit recevoir **un seul email** avec les 2 PDF en pièce jointe (contrat + facture) en plus des emails de confirmation existants.
+- Ouvrir le PDF du contrat reçu : vérifier identité client, numéro de commande, dates, climatiseur assigné (ou "Attribué à la livraison" si pas encore assigné), montant, et les 2 acceptations CGV/conditions avec horodatage + version.
+- Ouvrir le PDF de la facture reçue : vérifier numéro de facture (`FACT-2026-NNNNNN`), numéro de commande, montant payé, mention TVA non applicable (art. 293 B).
+- Rejouer le même événement webhook Stripe (redélivrance) → vérifier qu'aucune nouvelle ligne `documents` n'apparaît et qu'aucun second email n'est envoyé (idempotence — la facture ne doit **jamais** être dupliquée).
+- Cliquer sur "Consulter le contrat en ligne" / "Consulter la facture en ligne" depuis l'email → le document s'ouvre, et son statut passe à `consulte` dans Supabase (avec `consulte_at` renseigné).
+- Faire 2 réservations payées presque simultanément → vérifier dans `facture_compteur` que les 2 numéros de facture générés sont bien consécutifs, sans doublon ni trou.
+- Un lien `/api/document-view?token=...` avec un token invalide/inexistant doit renvoyer une erreur claire, jamais un chemin de fichier ou une donnée interne.
+
+### Module 3 — Emails Brevo et automatisations client (2026-07-15)
+
+- Dans `/admin` → onglet **✉️ Emails** : vérifier que les 8 scénarios s'affichent, que l'historique se charge, et que le formulaire de signature enregistre correctement (nom, fonction, logo, téléphone, email, site).
+- Réservation test avec livraison dans **30 jours** : vérifier que seuls "Suivi J-14" (à J-14), "Préparation J-3" (à J-3/J-2) et "Rappel J-1" (à J-1 exactement) partent, chacun une seule fois.
+- Réservation test avec livraison dans **5 jours** : vérifier que "Suivi J-14" ne part **jamais** (délai insuffisant), mais que "Préparation J-3" et "Rappel J-1" partent bien à leur date.
+- Réservation test avec livraison **la veille** (J-1) : seul "Rappel J-1" doit partir.
+- Réservation test avec livraison **le jour même** : **aucun** rappel ne doit partir (ni J-14, ni J-3, ni J-1 — cohérent avec "jamais de rappel après/le jour de la livraison").
+- Valider une mission "Installation" (`livraison_ok`) depuis `/transporteur` → l'email "Post-installation" doit partir une seule fois, avec le lien facture déjà généré (Module 2) et le lien tutoriel.
+- Valider une récupération (`retour_ok`) → l'email "Fin de location" (remerciement + avis) doit partir une seule fois — vérifier qu'aucun second email d'avis Google ne part par ailleurs (l'ancien envoi programmé à J+durée+3 a été retiré, remplacé par ce déclencheur).
+- Rejouer le cron `cron-daily` deux fois le même jour → aucun scénario ne doit être envoyé deux fois (table `email_sent`).
+- Désactiver un scénario depuis l'admin → vérifier qu'il ne se déclenche plus, même si sa fenêtre de date est atteinte.
+- Depuis l'admin, renvoyer manuellement un email déjà envoyé → une nouvelle ligne apparaît dans l'historique, `email_sent.sent_at` est mis à jour.
+- Cliquer sur le lien "Prolonger ma location" reçu par email → arrive sur `/prolongation` avec le numéro de commande déjà pré-rempli.
+
+**⚠️ Point à trancher avec le propriétaire** (découvert pendant ce module, hors périmètre) : la page dédiée `/prolongation` (`api/prolong-lookup.js` + `api/prolong-pay.js`) — le parcours vers lequel pointent tous les liens "Prolonger ma location" du site — ne comporte aucune case CGV et n'enregistre aucune acceptation, contrairement à `/api/checkout-prolong` durci au Module 1. Cette page est le vrai chemin emprunté par la majorité des clients qui prolongent.
+
+### Module 4 — Espace client (2026-07-16)
+
+- Se connecter sur `/client` avec l'email et le numéro de commande d'une réservation test → le tableau de bord doit s'afficher avec les bonnes dates, le bon statut, et le climatiseur assigné (ou "Attribué à la livraison" si pas encore assigné).
+- Se connecter avec un email correct mais un mauvais numéro de commande (ou l'inverse) → message générique "Nous n'avons pas retrouvé votre réservation…", jamais une erreur technique.
+- Vérifier que la progression affichée (7 étapes) correspond bien à l'état réel de la mission, et qu'aucun libellé technique (`a_faire`, `webhook`, etc.) n'apparaît jamais à l'écran ni dans la réponse réseau (onglet réseau du navigateur).
+- Réservation annulée ou remboursée → la barre de progression est remplacée par un message clair, pas par une étape numérotée trompeuse.
+- Dans "Mes documents" : le contrat et la facture (si le Module 2 est activé) doivent s'ouvrir sans jamais régénérer de nouveau PDF ; les CGV/conditions acceptées doivent afficher la bonne date et renvoyer vers `/cgv`.
+- Cliquer sur "Prolonger ma location" depuis l'espace client → arrive sur `/prolongation` avec le numéro de commande déjà pré-rempli, sans ressaisie.
+- Vérifier l'isolation : avec le jeton d'accès d'une réservation A, tenter d'appeler `/api/client-dashboard` ne doit jamais renvoyer les données d'une réservation B, même en modifiant l'URL/le payload à la main.
+- Dans `/admin` → onglet **🛟 Espace client** : ajouter un modèle de climatiseur, un article d'aide, modifier les coordonnées d'assistance → vérifier que ça apparaît correctement côté `/client`.
+- Tester les 7 cas listés dans le cahier des charges (réservation standard, anticipée, dernière minute, prolongation, terminée, remboursée, réservation inexistante) et vérifier statuts, documents, sécurité et affichage mobile pour chacun.
+
+**Nouveauté Supabase requise** : voir `migration_2026-07-16_module4_espace_client.sql`. Aucune nouvelle variable d'environnement — le jeton client réutilise `TRANSPORTEUR_SECRET`, déjà configuré.
+
+**⚠️ Limite connue** : les notifications "Contrat disponible" et "Prolongation confirmée" ne sont pas encore alimentées par le moteur central d'emails (Module 3) — l'envoi du contrat/facture (Module 2) et l'email de confirmation de prolongation ne passent pas encore par `email_log`. L'espace client n'affiche donc que les notifications réellement traçées aujourd'hui (confirmation, livraison programmée, installation terminée, récupération programmée, location terminée).
+
 ## Notifications push (nouvelles missions, annulations)
 
 Un transporteur reçoit une notification sur son téléphone — même app fermée — dans deux cas : une mission lui est assignée (première fois ou réassignation), ou une récupération qu'on lui avait confiée est annulée parce que le client a prolongé sa location. Il touche la notification pour ouvrir directement l'app.

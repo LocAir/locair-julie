@@ -253,6 +253,17 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
   // Retour Stripe après 3DS
   if(new URLSearchParams(location.search).get('success')){hide('step-1');show('step-success');}
 
+  // Pré-remplit le numéro de commande depuis le lien reçu par email (voir
+  // scénario "avant fin de location", api/_lib/emailTemplates.js) — le client
+  // n'a alors plus qu'à saisir son email pour retrouver son dossier.
+  (function(){
+    const refFromUrl=(new URLSearchParams(location.search).get('ref')||'').trim();
+    if(refFromUrl){
+      const el=document.getElementById('f-ref');
+      if(el){el.value=refFromUrl.toUpperCase();document.getElementById('f-email')?.focus();}
+    }
+  })();
+
   /* ── Étape 1 : lookup ── */
   document.getElementById('lookup-form').addEventListener('submit',async function(e){
     e.preventDefault();

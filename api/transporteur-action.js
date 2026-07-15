@@ -1,10 +1,11 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
-const { sendBrevoSms, sendBrevoEmail } = require('./_lib/brevo');
+const { sendBrevoSms } = require('./_lib/brevo');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { pushToAdmin, pushToTransporteur } = require('./_lib/push');
 const { pickTransporteurForMission } = require('./_lib/reservations');
 const { EXT_BY_TYPE } = require('./_lib/media');
+const { sendScenarioEmail } = require('./_lib/emailEngine');
 
 const PROBLEME_LABEL = {
   client_absent:     'Client absent',
@@ -289,38 +290,23 @@ module.exports = async (req, res) => {
       }).eq('id', liv.id);
       await closeMissionIncident(supabase, liv);
 
+      // Emails de scénario (moteur central _lib/emailEngine.js) — jamais
+      // envoyés deux fois, historisés dans email_log. Ne doit jamais faire
+      // échouer la validation de la mission si Brevo est indisponible.
+      if (expectedType === 'livraison') {
+        try {
+          await sendScenarioEmail(supabase, { reservationId: liv.reservation_id, scenario: 'post_installation' });
+        } catch (e) {
+          console.error('[Email post_installation]', e.message);
+        }
+      }
+
       if (expectedType === 'recuperation') {
         await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id);
-
-        // Email de fin de location au client
-        if (liv.reservation?.email) {
-          const prenom = liv.reservation.prenom || '';
-          const ref    = liv.reservation.ref    || '';
-          await sendBrevoEmail({
-            to:      liv.reservation.email,
-            subject: `Loc'Air — Location terminée · Merci ${prenom} !`,
-            html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
-body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
-.wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
-.head{background:#1b3a5f;padding:28px 32px;text-align:center}
-.head h1{color:#fff;font-size:20px;margin:0}
-.body{padding:28px 32px;font-size:14px;color:#333;line-height:1.6;text-align:center}
-.footer{background:#f4f0ea;padding:20px 32px;text-align:center;font-size:12px;color:#888}
-.btn{display:inline-block;background:#f59e0b;color:#fff;padding:14px 32px;border-radius:100px;text-decoration:none;font-weight:700;font-size:15px;margin:16px 0}
-</style></head><body>
-<div class="wrap">
-<div class="head"><h1>✅ Location terminée</h1></div>
-<div class="body">
-<p>Bonjour ${prenom},</p>
-<p>Notre technicien a récupéré votre climatiseur. Merci d'avoir choisi Loc'Air !</p>
-<p style="font-size:13px;color:#666">Dossier ${ref}</p>
-<p style="margin:8px 0 0;font-size:13px;color:#444">Si vous avez une minute, votre avis aide d'autres Niçois à nous faire confiance :</p>
-<a class="btn" href="https://g.page/r/CeJQrt2gLNNrEAE/review">Laisser un avis Google ⭐</a>
-<p style="font-size:12px;color:#999">À très bientôt !</p>
-</div>
-<div class="footer">© 2026 Loc'Air · <a href="https://www.locair.fr" style="color:#1b3a5f">www.locair.fr</a></div>
-</div></body></html>`,
-          }).catch(() => {});
+        try {
+          await sendScenarioEmail(supabase, { reservationId: liv.reservation_id, scenario: 'fin_location' });
+        } catch (e) {
+          console.error('[Email fin_location]', e.message);
         }
       }
 

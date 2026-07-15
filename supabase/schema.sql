@@ -34,6 +34,26 @@ create table cities (
   tarif_changement_cents           integer
 );
 
+-- Catalogue des modèles de climatiseur (Rowenta, Frico...) — une fiche par
+-- modèle, réutilisée par tous les appareils physiques de ce modèle (jamais
+-- dupliquée par appareil). Alimente la section "Mon climatiseur" de l'espace
+-- client (Module 4).
+create table modeles_climatiseur (
+  id                   bigint generated always as identity primary key,
+  marque               text not null,
+  modele               text not null,
+  puissance_btu        text,
+  surface_max_m2       text,
+  niveau_sonore_db     text,
+  classe_energie       text,
+  photo_url            text,
+  conseils_utilisation text,
+  video_tutoriel_url   text,
+  documentation_url    text,
+  actif                boolean not null default true,
+  created_at           timestamptz not null default now()
+);
+
 -- Un appareil physique = une ligne, numérotée (étiquette à coller dessus).
 -- 'panne'/'maintenance' l'excluent définitivement du calcul de disponibilité
 -- jusqu'à ce qu'un admin le repasse en 'disponible'. Il n'y a pas de statut
@@ -46,6 +66,7 @@ create table appareils (
   numero     integer not null,
   statut     text not null default 'disponible' check (statut in ('disponible','panne','maintenance','loue')),
   reference  text, -- référence produit du fabricant (ex. "RWAC10KA+"), saisie librement par l'admin
+  modele_id  bigint references modeles_climatiseur(id), -- fiche catalogue affichée côté espace client (nullable = description générique)
   notes      text,
   created_at timestamptz not null default now(),
   unique (city_id, numero)
@@ -320,6 +341,134 @@ create table tutoriel_vus (
   vu_complet_at   timestamptz not null default now(),
   primary key (transporteur_id, video_id)
 );
+
+-- Contrat + facture PDF, générés automatiquement une seule fois à la
+-- confirmation du paiement Stripe (jamais à l'installation, jamais
+-- régénérés pour une facture déjà existante — voir api/_lib/documents.js).
+-- Fichiers stockés dans le bucket "missions" existant (préfixe documents/).
+create table documents (
+  id                bigint generated always as identity primary key,
+  reservation_id    bigint not null references reservations(id) on delete cascade,
+  type              text not null check (type in ('contrat','facture')),
+  numero            text,
+  version           text not null,
+  storage_path      text not null,
+  access_token      text not null unique,
+  montant_ttc_cents integer not null default 0,
+  statut            text not null default 'genere' check (statut in ('genere','envoye','consulte')),
+  genere_at         timestamptz not null default now(),
+  envoye_at         timestamptz,
+  consulte_at       timestamptz,
+  created_at        timestamptz not null default now()
+);
+create unique index documents_facture_unique_idx on documents (reservation_id) where type = 'facture';
+create index documents_reservation_idx on documents (reservation_id);
+create index documents_access_token_idx on documents (access_token);
+
+-- Numérotation séquentielle des factures par année, sans rupture (obligation
+-- légale) — verrou de ligne via ON CONFLICT DO UPDATE, atomique même en cas
+-- d'appels concurrents.
+create table facture_compteur (
+  annee          integer primary key,
+  dernier_numero integer not null default 0
+);
+
+create or replace function next_invoice_number(p_annee integer) returns integer
+language plpgsql as $$
+declare
+  v_numero integer;
+begin
+  insert into facture_compteur (annee, dernier_numero) values (p_annee, 1)
+    on conflict (annee) do update set dernier_numero = facture_compteur.dernier_numero + 1
+  returning dernier_numero into v_numero;
+  return v_numero;
+end;
+$$;
+
+-- Catalogue des scénarios email client (moteur central, voir
+-- api/_lib/emailEngine.js) — permet de désactiver un scénario depuis
+-- l'administration sans toucher au code.
+create table email_scenarios (
+  id         text primary key,
+  libelle    text not null,
+  actif      boolean not null default true,
+  created_at timestamptz not null default now()
+);
+insert into email_scenarios (id, libelle) values
+  ('confirmation',        'Confirmation de réservation'),
+  ('suivi_j14',           'Suivi J-14'),
+  ('preparation_j3',      'Préparation J-3'),
+  ('rappel_j1',           'Rappel J-1 (livraison)'),
+  ('post_installation',   'Post-installation'),
+  ('avant_fin_location',  'Avant fin de location (prolongation)'),
+  ('rappel_recuperation', 'Rappel J-1 (récupération)'),
+  ('fin_location',        'Fin de location (avis)');
+
+-- Garantit qu'un scénario n'est jamais envoyé deux fois pour la même
+-- réservation (clé primaire composite).
+create table email_sent (
+  reservation_id bigint not null references reservations(id) on delete cascade,
+  scenario       text not null references email_scenarios(id),
+  sent_at        timestamptz not null default now(),
+  primary key (reservation_id, scenario)
+);
+
+-- Historique complet de chaque tentative d'envoi (succès ou échec).
+create table email_log (
+  id             bigint generated always as identity primary key,
+  reservation_id bigint references reservations(id) on delete cascade,
+  scenario       text not null,
+  destinataire   text,
+  modele         text,
+  statut         text not null check (statut in ('envoye','erreur')),
+  erreur         text,
+  created_at     timestamptz not null default now()
+);
+create index email_log_reservation_idx on email_log (reservation_id, created_at desc);
+create index email_log_scenario_idx on email_log (scenario);
+
+-- Signature email administrable (nom expéditeur, fonction, logo,
+-- coordonnées, site) — une seule ligne, indépendante de la signature du
+-- webmail IONOS.
+create table email_signature (
+  id             integer primary key default 1,
+  nom_expediteur text not null default 'Loc''Air',
+  fonction       text,
+  logo_url       text,
+  telephone      text,
+  email          text not null default 'contact@locair.fr',
+  site_web       text default 'https://www.locair.fr',
+  updated_at     timestamptz not null default now(),
+  constraint email_signature_single_row check (id = 1)
+);
+insert into email_signature (id) values (1);
+
+-- Centre d'aide client (espace client, Module 4) — contenu administrable,
+-- structuré par slug/catégorie pour rester exploitable par un futur
+-- assistant IA (recherche par mots-clés) sans développement de chatbot en V1.
+create table centre_aide_articles (
+  id         bigint generated always as identity primary key,
+  slug       text not null unique,
+  categorie  text,
+  titre      text not null,
+  contenu    text not null,
+  ordre      integer not null default 0,
+  actif      boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+-- Coordonnées d'assistance affichées dans l'espace client — une seule ligne,
+-- jamais codées en dur dans le front.
+create table assistance_config (
+  id         integer primary key default 1,
+  horaires   text default 'Tous les jours, 8h–20h',
+  telephone  text default '06 63 79 87 56',
+  email      text default 'contact@locair.fr',
+  urgence    text default 'En cas de panne, contactez-nous directement par téléphone ou WhatsApp.',
+  updated_at timestamptz not null default now(),
+  constraint assistance_config_single_row check (id = 1)
+);
+insert into assistance_config (id) values (1);
 
 -- Demandes de virement transporteur. Le montant réel et le passage à 'verse'
 -- sont toujours déclenchés par le propriétaire (voir api/admin-virements.js) —

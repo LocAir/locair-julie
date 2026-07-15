@@ -356,6 +356,8 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
         <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
         <button data-tab="tutoriels" onclick="switchAdminTab('tutoriels')">🎓 Tutoriels</button>
+        <button data-tab="emails" onclick="switchAdminTab('emails')">✉️ Emails</button>
+        <button data-tab="espaceclient" onclick="switchAdminTab('espaceclient')">🛟 Espace client</button>
         <div class="tabs-group-label">Suivre</div>
         <button data-tab="stock" onclick="switchAdminTab('stock')">📦 Stock</button>
         <button data-tab="checklist" onclick="switchAdminTab('checklist')">🎒 Checklist box</button>
@@ -375,6 +377,8 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-clients" class="hidden"></div>
         <div id="tab-villes" class="hidden"></div>
         <div id="tab-tutoriels" class="hidden"></div>
+        <div id="tab-emails" class="hidden"></div>
+        <div id="tab-espaceclient" class="hidden"></div>
       </div>
     </div>
   </div>
@@ -835,7 +839,7 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tutoriels'].forEach(t=>{
+  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tutoriels','emails','espaceclient'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
@@ -850,6 +854,8 @@ function switchAdminTab(tab){
   if(tab==='clients') loadClients();
   if(tab==='villes') loadVilles();
   if(tab==='tutoriels') loadTutoriels();
+  if(tab==='emails') loadEmails();
+  if(tab==='espaceclient') loadEspaceClient();
   toggleMobileMenu(false);
 }
 // Tiroir latéral mobile (voir .mobile-menu-btn / .tabs.mobile-open en CSS) —
@@ -3966,6 +3972,312 @@ async function updateIncidentStatut(id, statut, btnEl){
     if(btnEl) btnEl.disabled = false;
     showToast(e.message, 'error');
   }
+}
+
+// ── EMAILS (moteur central de scénarios client, Module 3) ─────────────────────
+let EMAIL_SCENARIOS_CACHE = [];
+async function loadEmails(){
+  const zone = document.getElementById('tab-emails');
+  zone.innerHTML = loading();
+  try{
+    const [rLog, rScen, rSig] = await Promise.all([
+      fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'scenarios'})}),
+      fetch(API('admin-email-signature'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'get'})}),
+    ]);
+    const dLog = await rLog.json(), dScen = await rScen.json(), dSig = await rSig.json();
+    if(!rLog.ok) throw new Error(dLog.error||'Erreur');
+    EMAIL_SCENARIOS_CACHE = dScen.scenarios || [];
+    renderEmails(dLog.emails || [], dSig.signature || {});
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+
+function scenarioLibelle(id){
+  return EMAIL_SCENARIOS_CACHE.find(s=>s.id===id)?.libelle || id;
+}
+
+function renderEmails(emails, sig){
+  const zone = document.getElementById('tab-emails');
+  const nbEnvoyes = emails.filter(e=>e.statut==='envoye').length;
+  const nbErreurs = emails.filter(e=>e.statut==='erreur').length;
+
+  const scenariosHtml = EMAIL_SCENARIOS_CACHE.map(s => `
+    <div class="row-item" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <span class="row-title">${escHtml(s.libelle)}</span>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--grey2)">
+        <span class="chip ${s.actif?'actif':'inactif'}">${s.actif?'Actif':'Désactivé'}</span>
+        <input type="checkbox" ${s.actif?'checked':''} onchange="toggleEmailScenario('${s.id}',this.checked)"/>
+      </label>
+    </div>`).join('');
+
+  const sigHtml = `
+    <div style="display:grid;gap:8px;max-width:420px">
+      <input type="text" id="sig-nom" placeholder="Nom expéditeur" value="${escHtml(sig.nom_expediteur||'')}"/>
+      <input type="text" id="sig-fonction" placeholder="Fonction (ex. Service client)" value="${escHtml(sig.fonction||'')}"/>
+      <input type="text" id="sig-logo" placeholder="URL du logo (optionnel)" value="${escHtml(sig.logo_url||'')}"/>
+      <input type="text" id="sig-tel" placeholder="Téléphone" value="${escHtml(sig.telephone||'')}"/>
+      <input type="text" id="sig-email" placeholder="Email" value="${escHtml(sig.email||'')}"/>
+      <input type="text" id="sig-site" placeholder="Site web" value="${escHtml(sig.site_web||'')}"/>
+      <button class="btn btn-blue" onclick="saveEmailSignature()" style="width:fit-content">Enregistrer la signature</button>
+    </div>`;
+
+  const logHtml = emails.length ? emails.map(e => {
+    const r = e.reservation || {};
+    return `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${escHtml(scenarioLibelle(e.scenario))}${r.ref?' · '+escHtml(r.ref):''}</span>
+          <span class="chip ${e.statut==='envoye'?'fait':'probleme'}">${e.statut==='envoye'?'Envoyé':'Erreur'}</span>
+        </div>
+        <div class="row-meta">${escHtml((r.prenom||'')+' '+(r.nom||''))}${e.destinataire?' · '+escHtml(e.destinataire):''}<br/>${new Date(e.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${e.erreur?' · '+escHtml(e.erreur):''}</div>
+        ${e.reservation_id?`<div class="row-actions"><button class="btn" onclick="resendEmail(${e.reservation_id},'${e.scenario}',this)">🔁 Renvoyer</button></div>`:''}
+      </div>`;
+  }).join('') : '<p class="empty">Aucun email envoyé pour l\'instant.</p>';
+
+  zone.innerHTML = `
+    <div class="stat-grid" style="margin-bottom:16px">
+      <div class="stat-tile"><div class="n">${nbEnvoyes}</div><div class="l">Envoyés</div></div>
+      <div class="stat-tile"><div class="n" style="${nbErreurs?'color:var(--red)':''}">${nbErreurs}</div><div class="l">Erreurs</div></div>
+    </div>
+    <h3 style="margin:16px 0 8px;font-size:14px">Scénarios</h3>
+    ${scenariosHtml}
+    <h3 style="margin:20px 0 8px;font-size:14px">Signature email</h3>
+    ${sigHtml}
+    <h3 style="margin:20px 0 8px;font-size:14px">Historique</h3>
+    ${logHtml}`;
+}
+
+async function toggleEmailScenario(id, actif){
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'toggle_scenario', id, actif})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast(actif?'Scénario activé':'Scénario désactivé', 'success');
+    loadEmails();
+  }catch(e){
+    showToast(e.message, 'error');
+    loadEmails();
+  }
+}
+
+async function resendEmail(reservationId, scenario, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'resend', reservation_id:reservationId, scenario})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Email renvoyé', 'success');
+    loadEmails();
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
+}
+
+async function saveEmailSignature(){
+  try{
+    const r = await fetch(API('admin-email-signature'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action: 'update',
+      nom_expediteur: document.getElementById('sig-nom')?.value||'',
+      fonction:       document.getElementById('sig-fonction')?.value||'',
+      logo_url:       document.getElementById('sig-logo')?.value||'',
+      telephone:      document.getElementById('sig-tel')?.value||'',
+      email:          document.getElementById('sig-email')?.value||'',
+      site_web:       document.getElementById('sig-site')?.value||'',
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Signature enregistrée', 'success');
+  }catch(e){
+    showToast(e.message, 'error');
+  }
+}
+
+// ── ESPACE CLIENT (Module 4) — catalogue climatiseurs, centre d'aide, assistance ──
+let ESPACECLIENT_MODELES = [], ESPACECLIENT_AIDE = [];
+
+async function loadEspaceClient(){
+  const zone = document.getElementById('tab-espaceclient');
+  zone.innerHTML = loading();
+  try{
+    const [rMod, rAide, rAssist] = await Promise.all([
+      fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'modeles_list'})}),
+      fetch(API('admin-aide'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-assistance'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'get'})}),
+    ]);
+    const dMod = await rMod.json(), dAide = await rAide.json(), dAssist = await rAssist.json();
+    if(!rMod.ok) throw new Error(dMod.error||'Erreur');
+    ESPACECLIENT_MODELES = dMod.modeles || [];
+    ESPACECLIENT_AIDE = dAide.articles || [];
+    renderEspaceClient(dAssist.assistance || {});
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+
+function renderEspaceClient(assistance){
+  const zone = document.getElementById('tab-espaceclient');
+
+  const modelesHtml = ESPACECLIENT_MODELES.map(m => `
+    <div class="row-item">
+      <div class="row-top"><span class="row-title">${escHtml(m.marque)} ${escHtml(m.modele)}</span><span class="chip ${m.actif?'actif':'inactif'}">${m.actif?'Actif':'Inactif'}</span></div>
+      <div class="row-meta">${escHtml(m.puissance_btu||'—')}${m.surface_max_m2?' · '+escHtml(m.surface_max_m2):''}${m.niveau_sonore_db?' · '+escHtml(m.niveau_sonore_db):''}</div>
+      <div class="row-actions"><button class="btn" onclick="editModele(${m.id})">✏️ Modifier</button></div>
+    </div>`).join('') || '<p class="empty">Aucun modèle enregistré.</p>';
+
+  const aideHtml = ESPACECLIENT_AIDE.map(a => `
+    <div class="row-item">
+      <div class="row-top"><span class="row-title">${escHtml(a.titre)}</span><span class="chip ${a.actif?'actif':'inactif'}">${a.actif?'Actif':'Inactif'}</span></div>
+      <div class="row-meta">${escHtml((a.contenu||'').slice(0,120))}${(a.contenu||'').length>120?'…':''}</div>
+      <div class="row-actions">
+        <button class="btn" onclick="editAideArticle('${a.slug}')">✏️ Modifier</button>
+        <button class="btn btn-red" onclick="deleteAideArticle(${a.id})">🗑️ Supprimer</button>
+      </div>
+    </div>`).join('') || '<p class="empty">Aucun article pour l\'instant.</p>';
+
+  zone.innerHTML = `
+    <h3 style="font-size:14px;margin-bottom:8px">Modèles de climatiseur</h3>
+    <div id="modele-form" style="display:grid;gap:8px;max-width:480px;margin-bottom:12px">
+      <input type="hidden" id="modele-id"/>
+      <input type="text" id="modele-marque" placeholder="Marque (ex. Rowenta)"/>
+      <input type="text" id="modele-modele" placeholder="Modèle (ex. RWAC10KA+)"/>
+      <input type="text" id="modele-puissance" placeholder="Puissance (ex. 9 000–12 000 BTU)"/>
+      <input type="text" id="modele-surface" placeholder="Surface max (ex. 15 m²)"/>
+      <input type="text" id="modele-db" placeholder="Niveau sonore (ex. 52 dB minimum)"/>
+      <input type="text" id="modele-classe" placeholder="Classe énergie (ex. A)"/>
+      <input type="text" id="modele-photo" placeholder="URL photo"/>
+      <textarea id="modele-conseils" placeholder="Conseils d'utilisation" rows="3"></textarea>
+      <input type="text" id="modele-video" placeholder="URL vidéo tutoriel"/>
+      <input type="text" id="modele-doc" placeholder="URL documentation / guide PDF"/>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-blue" onclick="saveModele()">Enregistrer</button>
+        <button class="btn" onclick="resetModeleForm()">Nouveau modèle</button>
+      </div>
+    </div>
+    ${modelesHtml}
+
+    <h3 style="font-size:14px;margin:24px 0 8px">Centre d'aide client</h3>
+    <div id="aide-form" style="display:grid;gap:8px;max-width:480px;margin-bottom:12px">
+      <input type="hidden" id="aide-id"/>
+      <input type="text" id="aide-slug" placeholder="Identifiant unique (ex. vidange-bac-eau)"/>
+      <input type="text" id="aide-categorie" placeholder="Catégorie (optionnel)"/>
+      <input type="text" id="aide-titre" placeholder="Titre (ex. Vidange du bac à eau)"/>
+      <textarea id="aide-contenu" placeholder="Contenu" rows="4"></textarea>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-blue" onclick="saveAideArticle()">Enregistrer</button>
+        <button class="btn" onclick="resetAideForm()">Nouvel article</button>
+      </div>
+    </div>
+    ${aideHtml}
+
+    <h3 style="font-size:14px;margin:24px 0 8px">Assistance (espace client)</h3>
+    <div style="display:grid;gap:8px;max-width:480px">
+      <input type="text" id="assist-horaires" placeholder="Horaires" value="${escHtml(assistance.horaires||'')}"/>
+      <input type="text" id="assist-tel" placeholder="Téléphone" value="${escHtml(assistance.telephone||'')}"/>
+      <input type="text" id="assist-email" placeholder="Email" value="${escHtml(assistance.email||'')}"/>
+      <textarea id="assist-urgence" placeholder="Message urgence" rows="2">${escHtml(assistance.urgence||'')}</textarea>
+      <button class="btn btn-blue" onclick="saveAssistance()" style="width:fit-content">Enregistrer</button>
+    </div>`;
+}
+
+function resetModeleForm(){
+  ['modele-id','modele-marque','modele-modele','modele-puissance','modele-surface','modele-db','modele-classe','modele-photo','modele-conseils','modele-video','modele-doc']
+    .forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+}
+function editModele(id){
+  const m = ESPACECLIENT_MODELES.find(x=>x.id===id);
+  if(!m) return;
+  document.getElementById('modele-id').value = m.id;
+  document.getElementById('modele-marque').value = m.marque||'';
+  document.getElementById('modele-modele').value = m.modele||'';
+  document.getElementById('modele-puissance').value = m.puissance_btu||'';
+  document.getElementById('modele-surface').value = m.surface_max_m2||'';
+  document.getElementById('modele-db').value = m.niveau_sonore_db||'';
+  document.getElementById('modele-classe').value = m.classe_energie||'';
+  document.getElementById('modele-photo').value = m.photo_url||'';
+  document.getElementById('modele-conseils').value = m.conseils_utilisation||'';
+  document.getElementById('modele-video').value = m.video_tutoriel_url||'';
+  document.getElementById('modele-doc').value = m.documentation_url||'';
+  document.getElementById('modele-form').scrollIntoView({behavior:'smooth'});
+}
+async function saveModele(){
+  try{
+    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action:'modele_upsert',
+      id: document.getElementById('modele-id').value||null,
+      marque: document.getElementById('modele-marque').value,
+      modele: document.getElementById('modele-modele').value,
+      puissance_btu: document.getElementById('modele-puissance').value,
+      surface_max_m2: document.getElementById('modele-surface').value,
+      niveau_sonore_db: document.getElementById('modele-db').value,
+      classe_energie: document.getElementById('modele-classe').value,
+      photo_url: document.getElementById('modele-photo').value,
+      conseils_utilisation: document.getElementById('modele-conseils').value,
+      video_tutoriel_url: document.getElementById('modele-video').value,
+      documentation_url: document.getElementById('modele-doc').value,
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Modèle enregistré', 'success');
+    loadEspaceClient();
+  }catch(e){ showToast(e.message, 'error'); }
+}
+
+function resetAideForm(){
+  ['aide-id','aide-slug','aide-categorie','aide-titre','aide-contenu'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+}
+function editAideArticle(slug){
+  const a = ESPACECLIENT_AIDE.find(x=>x.slug===slug);
+  if(!a) return;
+  document.getElementById('aide-id').value = a.id;
+  document.getElementById('aide-slug').value = a.slug;
+  document.getElementById('aide-categorie').value = a.categorie||'';
+  document.getElementById('aide-titre').value = a.titre||'';
+  document.getElementById('aide-contenu').value = a.contenu||'';
+  document.getElementById('aide-form').scrollIntoView({behavior:'smooth'});
+}
+async function saveAideArticle(){
+  try{
+    const r = await fetch(API('admin-aide'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action:'upsert',
+      id: document.getElementById('aide-id').value||null,
+      slug: document.getElementById('aide-slug').value,
+      categorie: document.getElementById('aide-categorie').value,
+      titre: document.getElementById('aide-titre').value,
+      contenu: document.getElementById('aide-contenu').value,
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Article enregistré', 'success');
+    loadEspaceClient();
+  }catch(e){ showToast(e.message, 'error'); }
+}
+async function deleteAideArticle(id){
+  if(!confirm('Supprimer cet article ?')) return;
+  try{
+    const r = await fetch(API('admin-aide'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Article supprimé', 'success');
+    loadEspaceClient();
+  }catch(e){ showToast(e.message, 'error'); }
+}
+
+async function saveAssistance(){
+  try{
+    const r = await fetch(API('admin-assistance'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action:'update',
+      horaires: document.getElementById('assist-horaires').value,
+      telephone: document.getElementById('assist-tel').value,
+      email: document.getElementById('assist-email').value,
+      urgence: document.getElementById('assist-urgence').value,
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Assistance mise à jour', 'success');
+  }catch(e){ showToast(e.message, 'error'); }
 }
 
 // ── CLIENTS ───────────────────────────────────────────────────────────────────

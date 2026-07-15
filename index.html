@@ -2107,11 +2107,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .prod-energy{flex-shrink:0;background:#f59e0b;color:#fff;font-size:11px;font-weight:800;width:22px;height:22px;border-radius:3px;display:flex;align-items:center;justify-content:center;letter-spacing:.02em}
 .spec-chips{display:flex;flex-wrap:wrap;gap:4px;margin:8px 0 9px}
 .spec-chip{font-size:10.5px;color:var(--grey);background:rgba(0,0,0,.04);border:1px solid var(--rule);padding:3px 8px;border-radius:100px;white-space:nowrap;line-height:1.4}
-.prod-expand-btn{font-size:11px;color:var(--blue);background:none;border:none;padding:0;cursor:pointer;font-family:var(--body);display:flex;align-items:center;gap:4px}
-.prod-expand-btn svg{transition:transform .2s}
-.prod-expand-btn.open svg{transform:rotate(90deg)}
-.prod-details{background:rgba(27,58,95,.03);border:1.5px solid var(--rule);border-radius:12px;padding:12px 14px;margin-bottom:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px 16px}
-.prod-details[hidden]{display:none}
 .prod-detail-item dt{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--grey2);font-weight:600;margin-bottom:2px}
 .prod-detail-item dd{font-size:12px;color:var(--black);line-height:1.4}
 .prod-detail-item.full{grid-column:1/-1}
@@ -3771,38 +3766,8 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
                   <span class="spec-chip">52 dB min.</span>
                   <span class="spec-chip" id="spec-chip-remote">Télécommande</span>
                 </div>
-                <button type="button" class="prod-expand-btn" id="prod-expand-btn" onclick="toggleProdDetails()" aria-expanded="false" aria-controls="prod-details">
-                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="3,1 7,5 3,9"/></svg>
-                  <span id="prod-expand-label">Caractéristiques complètes</span>
-                </button>
-              </div>
-            </div>
-            <dl class="prod-details" id="prod-details" hidden>
-              <div class="prod-detail-item">
-                <dt>Puissance</dt><dd>9 000 – 12 000 BTU selon modèle</dd>
-              </div>
-              <div class="prod-detail-item">
-                <dt>Surface</dt><dd>Jusqu'à 15 m²</dd>
-              </div>
-              <div class="prod-detail-item">
-                <dt>Niveau sonore</dt><dd>52 dB minimum</dd>
-              </div>
-              <div class="prod-detail-item">
-                <dt>Débit d'air</dt><dd>398 m³/h</dd>
-              </div>
-              <div class="prod-detail-item">
-                <dt>Classe énergie</dt><dd>A</dd>
-              </div>
-              <div class="prod-detail-item">
-                <dt>Déshumidification</dt><dd>1,6 L/h</dd>
-              </div>
-              <div class="prod-detail-item full">
-                <dt>4 fonctions</dt><dd>Climatisation · Déshumidification · Ventilation · Mode nuit</dd>
-              </div>
-              <div class="prod-detail-item full">
-                <dt>Inclus dans la location</dt><dd>Climatiseur · Télécommande · Gaine d'évacuation · Kit de calfeutrage · Mode d'emploi</dd>
-              </div>
-            </dl>
+              </div><!-- /prod-info -->
+            </div><!-- /prod-card -->
             <div class="dur-list" id="dur-cards" role="radiogroup" aria-label="Durée de location">
 
                             <div class="dur-row on" data-days="7" onclick="selectDurCard(this,7)" role="radio" aria-checked="true" tabindex="0">
@@ -5058,7 +5023,7 @@ function geoLocate(){
               const city=d.city||d.principalSubdivision||'Nice';
               _setOk(locality&&locality!==city?locality+', '+city:city);
             })
-            .catch(function(){_setErr('Erreur réseau');});
+            .catch(function(){_setErr(_lang==='en'?'Network error':'Erreur réseau');});
         });
     },
     function(err){
@@ -5561,10 +5526,10 @@ async function handleFenetrePhoto(input){
   // Upload vers Supabase Storage via API
   try{
     const r=await fetch('/api/checkout-window-photo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:file.type})});
-    if(!r.ok)throw new Error('Endpoint indisponible');
+    if(!r.ok)throw new Error(_lang==='en'?'Upload unavailable':'Endpoint indisponible');
     const {signedUrl,path}=await r.json();
     const up=await fetch(signedUrl,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});
-    if(!up.ok)throw new Error('Erreur réseau');
+    if(!up.ok)throw new Error(_lang==='en'?'Network error':'Erreur réseau');
     _fenetrePhotoPath=path;
     if(status)status.textContent=_lang==='en'?'✅ Photo attached — our technician will see it before arriving.':'✅ Photo bien jointe — notre technicien la verra avant d\'arriver.';
   }catch(e){
@@ -6436,6 +6401,8 @@ const LANG_MAP=[
   ['#lbl-acces-section','text','Accès','Access'],
   /* modal step 1 */
   ['#label-etage','text','Étage','Floor'],
+  ['#label-addr','html','Adresse<span class="req">*</span>','Address<span class="req">*</span>'],
+  ['#label-conditions','html','Je reconnais avoir pris connaissance des <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">conditions d\'utilisation du climatiseur et des obligations liées à la location</a> (entretien courant, restitution en bon état).','I acknowledge reading the <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">terms of use for the air conditioner and obligations related to the rental</a> (routine maintenance, return in good condition).'],
   ['#label-asc','text','Ascenseur','Lift'],
   ['.asc-yes','text','Oui','Yes'],
   ['.asc-no','text','Non','No'],
@@ -6544,7 +6511,6 @@ const LANG_MAP=[
   ['.prod-card-model','text','Climatiseur mobile','Mobile AC unit'],
   ['#lgt-suggest','text','💡 Pour cette surface, 2 climatiseurs sont recommandés','💡 For this area, 2 AC units are recommended'],
   ['#stock-notice-txt','text','Plus que 1 appareil disponible','Only 1 unit available'],
-  ['#prod-expand-label','text','Caractéristiques complètes','Full specifications'],
   ['#dur-free-toggle-text','text','Ma durée exacte','My exact duration'],
   ['.dur-free-days-unit','text','jours','days'],
   ['#dur-confirm-prefix','text','Confirmer','Confirm'],
@@ -6796,17 +6762,6 @@ const LANG_SEQ=[
   ['.install-card-sub','text',
     ['Installé et testé devant vous · 20–30 min','Gaine + joint fournis · Livraison à votre porte'],
     ['Installed & tested in front of you · 20–30 min','Duct + seal included · Delivered to your door']],
-  /* product spec table */
-  ['#prod-details dt','text',
-    ['Puissance','Surface','Niveau sonore','Débit d\'air','Classe énergie','Déshumidification','4 fonctions','Inclus dans la location'],
-    ['Power','Coverage','Noise level','Airflow','Energy class','Dehumidification','4 modes','Included in rental']],
-  ['#prod-details dd','text',
-    ['9 000–12 000 BTU','Jusqu\'à 15 m²','52 dB minimum','398 m³/h','A','1,6 L/h',
-     'Climatisation · Déshumidification · Ventilation · Mode nuit',
-     'Climatiseur · Télécommande · Gaine d\'évacuation · Kit de calfeutrage · Mode d\'emploi'],
-    ['9,000–12,000 BTU','Up to 15 m²','52 dB minimum','398 m³/h','A','1.6 L/h',
-     'Air conditioning · Dehumidification · Fan · Night mode',
-     'AC unit · Remote control · Exhaust duct · Weatherstripping kit · User manual']],
   ['.fi-q','html', /* FAQ questions — inject just the text before the SVG icon */
     ['Quelle est la durée minimale ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'Comment se passe la livraison ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
@@ -7878,15 +7833,6 @@ function selectInstall(tech){
 }
 
 // ── QUANTITÉ + 2ÈME UNITÉ ────────────────────────────────────────────────────
-function toggleProdDetails(){
-  const el=document.getElementById('prod-details');
-  const btn=document.getElementById('prod-expand-btn');
-  if(!el||!btn)return;
-  const open=el.hasAttribute('hidden');
-  if(open){el.removeAttribute('hidden');}else{el.setAttribute('hidden','');}
-  btn.classList.toggle('open',open);
-  btn.setAttribute('aria-expanded',String(open));
-}
 
 let _unit2=false;
 let _qty=1;

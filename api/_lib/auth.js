@@ -94,8 +94,50 @@ async function verifyPartenaireToken(req, supabase) {
   return id;
 }
 
+// Espace client (Module 4) : pas de compte, pas de mot de passe — le client
+// s'identifie une fois par email + numéro de commande (voir
+// api/client-login.js), qui lui renvoie ce jeton pour éviter de ressaisir
+// ses informations à chaque visite. Même mécanisme que
+// signPartenaireToken/verifyPartenaireToken ci-dessus (réutilise
+// TRANSPORTEUR_SECRET, préfixe "client:" pour éviter tout chevauchement),
+// mais l'empreinte porte sur le numéro de commande (ref) plutôt qu'un PIN —
+// il n'y a rien d'autre à invalider ce jeton, hormis la suppression de la
+// réservation elle-même, revérifiée en base à chaque appel.
+function refFingerprint(ref) {
+  return crypto.createHash('sha256').update(String(ref || '')).digest('hex').slice(0, 16);
+}
+
+function signClientToken(reservationId, ref) {
+  const secret  = process.env.TRANSPORTEUR_SECRET || '';
+  const payload = `client:${reservationId}.${refFingerprint(ref)}`;
+  const sig     = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return `${payload}.${sig}`;
+}
+
+async function verifyClientToken(req, supabase) {
+  const secret = process.env.TRANSPORTEUR_SECRET;
+  if (!secret) return null;
+  const token = ((req.body || {}).token || req.headers['x-client-token'] || '').trim();
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  const [prefixedId, fingerprint, sig] = parts;
+  if (!prefixedId.startsWith('client:')) return null;
+  const payload  = `${prefixedId}.${fingerprint}`;
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  if (!safeEqual(sig, expected)) return null;
+
+  const id = parseInt(prefixedId.slice('client:'.length), 10);
+  if (!Number.isFinite(id) || id <= 0) return null;
+
+  const { data: r } = await supabase.from('reservations').select('ref').eq('id', id).maybeSingle();
+  if (!r || !safeEqual(fingerprint, refFingerprint(r.ref))) return null;
+
+  return id;
+}
+
 module.exports = {
   safeEqual, checkAdminToken,
   signTransporteurToken, verifyTransporteurToken,
   signPartenaireToken, verifyPartenaireToken,
+  signClientToken, verifyClientToken,
 };
