@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
+const { notifyTransporteur } = require('./_lib/transporteurNotif');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -45,7 +46,7 @@ module.exports = async (req, res) => {
       const { data: faites } = await supabase
         .from('livraisons')
         .select(`
-          id, type, transporteur_id, montant_du_cents, paye, fait_at,
+          id, type, transporteur_id, montant_du_cents, paye, valide, fait_at,
           reservation:reservations ( prenom, nom, adresse )
         `)
         .in('transporteur_id', ids).eq('statut', 'fait')
@@ -58,21 +59,47 @@ module.exports = async (req, res) => {
       const byTransp = {};
       (faites || []).forEach(f => { (byTransp[f.transporteur_id] = byTransp[f.transporteur_id] || []).push(f); });
 
+      // 3 statuts (Partie 9) : en attente de validation humaine -> validé
+      // (payable) -> payé. Seules les missions "validé" comptent pour le
+      // montant réellement versable (voir verser_maintenant/marquer_verse).
       const result = (transporteurs || []).map(t => {
         const missions = byTransp[t.id] || [];
-        const nonVerse = missions.filter(m => !m.paye).reduce((s, m) => s + (m.montant_du_cents || 0), 0);
+        const enAttenteValidation = missions.filter(m => !m.paye && !m.valide).reduce((s, m) => s + (m.montant_du_cents || 0), 0);
+        const nonVerse = missions.filter(m => !m.paye && m.valide).reduce((s, m) => s + (m.montant_du_cents || 0), 0);
         const verse    = missions.filter(m => m.paye).reduce((s, m) => s + (m.montant_du_cents || 0), 0);
         return {
           id: t.id, nom: t.nom, actif: t.actif,
-          non_verse_cents: nonVerse, verse_cents: verse,
+          en_attente_validation_cents: enAttenteValidation, non_verse_cents: nonVerse, verse_cents: verse,
           demande_en_cours: enCoursSet.has(t.id),
           missions: missions.map(m => ({
-            id: m.id, type: m.type, montant_cents: m.montant_du_cents || 0, paye: m.paye, fait_at: m.fait_at,
+            id: m.id, type: m.type, montant_cents: m.montant_du_cents || 0,
+            statut_paiement: m.paye ? 'paye' : (m.valide ? 'valide' : 'en_attente'),
+            fait_at: m.fait_at,
             client: [m.reservation?.prenom, m.reservation?.nom].filter(Boolean).join(' ') || null,
           })),
         };
       });
       return res.status(200).json({ transporteurs: result });
+    }
+
+    // Validation humaine obligatoire avant paiement (Partie 9) — valide
+    // toutes les missions terminées et pas encore validées d'un transporteur.
+    if (action === 'valider') {
+      const transporteurId = parseInt(body.transporteur_id);
+      if (!transporteurId || !transpIds.includes(transporteurId)) return res.status(404).json({ error: 'Transporteur introuvable' });
+
+      const { data: aValider } = await supabase
+        .from('livraisons').select('id')
+        .eq('transporteur_id', transporteurId).eq('statut', 'fait').eq('valide', false);
+      const ids = (aValider || []).map(l => l.id);
+      if (!ids.length) return res.status(400).json({ error: 'Rien à valider pour ce transporteur' });
+
+      await supabase.from('livraisons').update({ valide: true, valide_at: new Date().toISOString() }).in('id', ids);
+      await notifyTransporteur(supabase, transporteurId, {
+        type: 'validation', message: 'Votre mission a été validée.', tag: 'validation',
+      });
+
+      return res.status(200).json({ ok: true, missions_validees: ids.length });
     }
 
     // Verser directement depuis l'admin, sans attendre que le livreur en fasse
@@ -84,9 +111,9 @@ module.exports = async (req, res) => {
 
       const { data: faites } = await supabase
         .from('livraisons').select('id, montant_du_cents')
-        .eq('transporteur_id', transporteurId).eq('statut', 'fait').eq('paye', false);
+        .eq('transporteur_id', transporteurId).eq('statut', 'fait').eq('paye', false).eq('valide', true);
       const montant = (faites || []).reduce((s, f) => s + (f.montant_du_cents || 0), 0);
-      if (montant <= 0) return res.status(400).json({ error: 'Rien à verser pour ce transporteur' });
+      if (montant <= 0) return res.status(400).json({ error: 'Rien à verser pour ce transporteur (missions pas encore validées ?)' });
       const ids = (faites || []).map(f => f.id);
 
       await supabase.from('livraisons').update({ paye: true }).in('id', ids);
@@ -102,6 +129,9 @@ module.exports = async (req, res) => {
           transporteur_id: transporteurId, montant_cents: montant, statut: 'verse', verse_at: new Date().toISOString(),
         });
       }
+      await notifyTransporteur(supabase, transporteurId, {
+        type: 'paiement', message: `Votre rémunération a été payée (${(montant / 100).toFixed(2)} €).`, tag: 'paiement',
+      });
 
       return res.status(200).json({ ok: true, montant_cents: montant });
     }
@@ -115,10 +145,11 @@ module.exports = async (req, res) => {
       if (virement.statut === 'verse') return res.status(409).json({ error: 'Déjà marqué comme versé' });
 
       // Recalcul du montant réel au moment du virement (peut différer de la demande
-      // si d'autres missions ont été terminées entre-temps).
+      // si d'autres missions ont été terminées entre-temps). Seules les
+      // missions validées par l'administration sont payables (Partie 9).
       const { data: faites } = await supabase
         .from('livraisons').select('id, montant_du_cents')
-        .eq('transporteur_id', virement.transporteur_id).eq('statut', 'fait').eq('paye', false);
+        .eq('transporteur_id', virement.transporteur_id).eq('statut', 'fait').eq('paye', false).eq('valide', true);
       const montant = (faites || []).reduce((s, f) => s + (f.montant_du_cents || 0), 0);
       const ids = (faites || []).map(f => f.id);
 
@@ -126,6 +157,9 @@ module.exports = async (req, res) => {
         await supabase.from('livraisons').update({ paye: true }).in('id', ids);
       }
       await supabase.from('virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', id);
+      await notifyTransporteur(supabase, virement.transporteur_id, {
+        type: 'paiement', message: `Votre rémunération a été payée (${(montant / 100).toFixed(2)} €).`, tag: 'paiement',
+      });
 
       return res.status(200).json({ ok: true, montant_cents: montant });
     }

@@ -64,7 +64,7 @@ create table appareils (
   id         bigint generated always as identity primary key,
   city_id    bigint not null references cities(id),
   numero     integer not null,
-  statut     text not null default 'disponible' check (statut in ('disponible','panne','maintenance','loue')),
+  statut     text not null default 'disponible' check (statut in ('disponible','panne','maintenance','loue','nettoyage')),
   reference  text, -- référence produit du fabricant (ex. "RWAC10KA+"), saisie librement par l'admin
   modele_id  bigint references modeles_climatiseur(id), -- fiche catalogue affichée côté espace client (nullable = description générique)
   notes      text,
@@ -264,7 +264,8 @@ create table livraisons (
   date_prevue            date not null,
   creneau                text,
   statut                 text not null default 'a_faire'
-                           check (statut in ('a_faire','acceptee','refusee','arrivee','fait','probleme','annule')),
+                           check (statut in ('a_faire','acceptee','refusee','en_route','arrivee','fait','probleme','annule')),
+  depart_at              timestamptz, -- heure de "Commencer la mission/récupération" (statut en_route)
   -- Preuves terrain (chemins dans le bucket de stockage 'missions', jamais publics)
   photo_depart_path      text,   -- appareil au départ dépôt (livraison)
   photo_installation_path text,  -- appareil installé chez le client (livraison)
@@ -276,12 +277,23 @@ create table livraisons (
   demo_faite_at          timestamptz,
   vidange_confirmee      boolean not null default false, -- vérification + vidange du climatiseur, faite chez le client à la récupération (~5 min)
   vidange_at             timestamptz,
-  probleme_type          text check (probleme_type in ('client_absent','appareil_en_panne','retard','autre')),
+  -- Checklists administrables (checklist_items), réponses figées au moment de
+  -- la validation de mission — traçabilité même si la liste évolue ensuite.
+  checklist_installation_reponses  jsonb,
+  checklist_recuperation_reponses  jsonb,
+  -- Contrôle d'état du matériel, renseigné à la récupération
+  etat_materiel          text check (etat_materiel in ('parfait_etat','usure_normale','nettoyage_necessaire','maintenance_necessaire','hors_service')),
+  etat_materiel_commentaire text,
+  probleme_type          text check (probleme_type in ('client_absent','acces_impossible','mauvaise_adresse','materiel_endommage','probleme_technique','refus_client','retard','autre')),
   probleme_description   text,
   notes                  text,
   -- Rémunération du transporteur pour cette mission (figée au moment du "fait"
   -- pour ne pas bouger rétroactivement si le taux change ensuite)
   montant_du_cents       integer not null default 0,
+  -- Validation humaine par l'administration, requise avant d'être payable
+  -- (voir api/admin-virements.js) — "payé" implique toujours "validé".
+  valide                 boolean not null default false,
+  valide_at              timestamptz,
   paye                   boolean not null default false,
   accepted_at            timestamptz,
   client_notifie_at      timestamptz, -- message envoyé au client ~30 min avant l'arrivée
@@ -309,6 +321,32 @@ create table checklist_box (
   unique (transporteur_id, date)
 );
 create index checklist_box_transporteur_idx on checklist_box (transporteur_id, date);
+
+-- Checklists administrables faites CHEZ LE CLIENT avant de valider une
+-- mission ("Installation terminée" / "Récupération terminée") — distinctes
+-- de checklist_box ci-dessus (matériel à prendre au box avant de partir).
+-- Réponses figées au moment de la validation : voir livraisons.checklist_*.
+create table checklist_items (
+  id         bigint generated always as identity primary key,
+  workflow   text not null check (workflow in ('installation','recuperation')),
+  libelle    text not null,
+  ordre      integer not null default 0,
+  actif      boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index checklist_items_workflow_idx on checklist_items (workflow, actif, ordre);
+
+insert into checklist_items (workflow, libelle, ordre) values
+  ('installation', 'Climatiseur installé', 1),
+  ('installation', 'Gaine installée correctement', 2),
+  ('installation', 'Kit de calfeutrage installé (si prévu)', 3),
+  ('installation', 'Test de fonctionnement effectué', 4),
+  ('installation', 'Explication d''utilisation donnée au client', 5),
+  ('recuperation', 'Appareil récupéré', 1),
+  ('recuperation', 'Télécommande récupérée', 2),
+  ('recuperation', 'Gaine récupérée', 3),
+  ('recuperation', 'Kit de calfeutrage récupéré', 4),
+  ('recuperation', 'Notice récupérée', 5);
 
 -- Bibliothèque de tutoriels vidéo (prise en main transporteur) — vidéos
 -- catégorisées, uploadées par l'admin. Bibliothèque unique, non liée à une
@@ -522,10 +560,15 @@ create table incidents (
   id                    bigint generated always as identity primary key,
   city_id               bigint references cities(id), -- indispensable dès qu'une 2e ville partage cette base
   reservation_id        bigint references reservations(id) on delete set null,
-  type                  text not null check (type in ('retard','materiel','autre')),
+  transporteur_id       bigint references transporteurs(id),
+  livraison_id          bigint references livraisons(id) on delete set null, -- mission précise à l'origine de l'incident
+  type                  text not null check (type in ('client_absent','acces_impossible','mauvaise_adresse','materiel_endommage','probleme_technique','refus_client','retard','autre')),
   description           text,
+  photos                text[], -- chemins dans le bucket 'missions', si le transporteur en a joint
   montant_facture_cents integer not null default 0,
-  statut                text not null default 'ouvert' check (statut in ('ouvert','facture','resolu')),
+  -- 'retard_a_facturer' = anciennement 'facture' : incident de retard dont la
+  -- facturation client reste à faire (voir api/charge-retard.js).
+  statut                text not null default 'nouveau' check (statut in ('nouveau','en_analyse','retard_a_facturer','resolu','clos')),
   created_at            timestamptz not null default now()
 );
 create index incidents_reservation_idx on incidents (reservation_id);
@@ -615,6 +658,20 @@ create table push_subscriptions (
   created_at      timestamptz not null default now()
 );
 create index push_subscriptions_transporteur_idx on push_subscriptions (transporteur_id);
+
+-- Centre de notifications interne transporteur — persisté (lu/non lu,
+-- historique), en complément du push navigateur ci-dessus qui reste éphémère.
+create table transporteur_notifications (
+  id              bigint generated always as identity primary key,
+  transporteur_id bigint not null references transporteurs(id) on delete cascade,
+  type            text not null check (type in ('nouvelle_mission','modification','annulation','incident','validation','paiement')),
+  message         text not null,
+  livraison_id    bigint references livraisons(id) on delete set null,
+  lu              boolean not null default false,
+  lu_at           timestamptz,
+  created_at      timestamptz not null default now()
+);
+create index transporteur_notifications_idx on transporteur_notifications (transporteur_id, lu, created_at desc);
 
 -- Idem côté admin — pas de colonne propriétaire, l'admin n'a qu'un seul
 -- compte partagé (mot de passe), pas d'identité par utilisateur.

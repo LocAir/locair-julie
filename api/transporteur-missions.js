@@ -74,7 +74,7 @@ module.exports = async (req, res) => {
       `)
       .eq('transporteur_id', transporteurId)
       .eq('masquee', false)
-      .or(`statut.in.(a_faire,acceptee,arrivee,probleme),and(statut.eq.fait,date_prevue.gte.${cutoffStr})`)
+      .or(`statut.in.(a_faire,acceptee,en_route,arrivee,probleme),and(statut.eq.fait,date_prevue.gte.${cutoffStr})`)
       .order('date_prevue', { ascending: true })
       .order('creneau', { ascending: true });
     if (error) throw error;

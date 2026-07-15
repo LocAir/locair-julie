@@ -36,7 +36,7 @@ function computeOrderStatus(reservation, livraisons = [], incidentOuvert = false
   if (!livraison) return 'confirmee'; // missions pas encore créées
 
   if (['a_faire', 'acceptee'].includes(livraison.statut)) return 'a_preparer';
-  if (livraison.statut === 'arrivee')  return 'en_livraison';
+  if (['en_route', 'arrivee'].includes(livraison.statut)) return 'en_livraison';
   if (livraison.statut === 'probleme') return 'incident';
 
   // livraison.statut === 'fait' à partir d'ici : le client a l'appareil.
@@ -48,7 +48,7 @@ function computeOrderStatus(reservation, livraisons = [], incidentOuvert = false
       && (Date.now() - new Date(livraison.fait_at).getTime()) < 24 * 3600 * 1000;
     return installedRecently ? 'installee' : 'en_location';
   }
-  if (recuperation.statut === 'arrivee')  return 'a_recuperer';
+  if (['en_route', 'arrivee'].includes(recuperation.statut)) return 'a_recuperer';
   if (recuperation.statut === 'probleme') return 'incident';
   return 'en_location';
 }

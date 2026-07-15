@@ -29,7 +29,7 @@ async function logPaymentIncident(supabase, { cityId, reservationId, description
       type: 'autre',
       description,
       montant_facture_cents: montantCents,
-      statut: 'ouvert',
+      statut: 'nouveau',
     });
   } catch (e) {
     console.error('[Incident paiement]', e.message);

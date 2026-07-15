@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyClientToken } = require('./_lib/auth');
 const { computeClientProgress } = require('./_lib/clientProgress');
+const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
 const GENERIC_ERROR = "Nous n'avons pas retrouvé votre réservation. Merci de vérifier votre numéro de commande et votre adresse email.";
 
@@ -49,7 +50,7 @@ module.exports = async (req, res) => {
       { data: assistance },
     ] = await Promise.all([
       supabase.from('livraisons').select('type, statut, date_prevue, creneau, fait_at').eq('reservation_id', reservationId),
-      supabase.from('incidents').select('id').eq('reservation_id', reservationId).eq('statut', 'ouvert'),
+      supabase.from('incidents').select('id').eq('reservation_id', reservationId).in('statut', INCIDENT_OPEN_STATUSES),
       supabase.from('reservation_appareils').select('appareil:appareils(numero, reference, modele:modeles_climatiseur(*))').eq('reservation_id', reservationId),
       supabase.from('documents').select('id, type, numero, statut, genere_at, access_token').eq('reservation_id', reservationId),
       supabase.from('cgv_acceptations').select('type, version, accepted_at').eq('reservation_id', reservationId),

@@ -161,7 +161,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px 4px 8px;border-radius:100px;background:var(--bg);color:var(--grey)}
 .chip::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
 .chip.confirmee,.chip.fait,.chip.verse,.chip.actif,.chip.terminee{background:var(--green-bg);color:var(--green)}
-.chip.en_attente,.chip.a_faire,.chip.acceptee,.chip.demande{background:var(--amber-bg);color:var(--amber)}
+.chip.en_attente,.chip.a_faire,.chip.acceptee,.chip.demande,.chip.en_route{background:var(--amber-bg);color:var(--amber)}
 .chip.annulee,.chip.probleme,.chip.refusee{background:var(--red-bg);color:var(--red)}
 .chip.en_location{background:var(--blue-lt);color:var(--blue)}
 .chip.inactif{background:var(--bg);color:var(--grey)}
@@ -376,6 +376,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
             <button data-tab="tutoriels" onclick="switchAdminTab('tutoriels')">🎓 Tutoriels</button>
             <button data-tab="emails" onclick="switchAdminTab('emails')">✉️ Emails</button>
             <button data-tab="espaceclient" onclick="switchAdminTab('espaceclient')">🛟 Espace client</button>
+            <button data-tab="checklistitems" onclick="switchAdminTab('checklistitems')">✅ Checklists mission</button>
           </div>
         </details>
         <details class="tabs-group" data-group="suivre">
@@ -403,6 +404,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-tutoriels" class="hidden"></div>
         <div id="tab-emails" class="hidden"></div>
         <div id="tab-espaceclient" class="hidden"></div>
+        <div id="tab-checklistitems" class="hidden"></div>
       </div>
     </div>
   </div>
@@ -844,7 +846,7 @@ function showToast(message, type='info'){
 }
 
 const RESA_LABEL = {en_attente:'En attente', confirmee:'Confirmée', annulee:'Annulée', terminee:'Terminée'};
-const LIV_LABEL  = {a_faire:'Nouvelle', acceptee:'Acceptée', refusee:'Refusée', arrivee:'Sur place', fait:'Terminée', probleme:'Problème', annule:'Annulée'};
+const LIV_LABEL  = {a_faire:'Nouvelle', acceptee:'Acceptée', en_route:'En route', refusee:'Refusée', arrivee:'Sur place', fait:'Terminée', probleme:'Problème', annule:'Annulée'};
 // Badge type de mission — bien plus visible qu'un simple emoji dans le titre
 // (confondu entre livraison et récupération sinon, notamment sur deux missions
 // de la même réservation qui n'ont que la date pour les distinguer).
@@ -863,7 +865,7 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tutoriels','emails','espaceclient'].forEach(t=>{
+  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
@@ -880,6 +882,7 @@ function switchAdminTab(tab){
   if(tab==='tutoriels') loadTutoriels();
   if(tab==='emails') loadEmails();
   if(tab==='espaceclient') loadEspaceClient();
+  if(tab==='checklistitems') loadChecklistItemsAdmin();
   toggleMobileMenu(false);
 }
 // Tiroir latéral mobile (voir .mobile-menu-btn / .tabs.mobile-open en CSS) —
@@ -2262,7 +2265,7 @@ function renderLivraisonsToolbar(){
   // et ce qui traîne depuis avant aujourd'hui sans être terminé — les 2
   // chiffres qu'Aly regarde en premier chaque matin.
   const today = new Date().toISOString().slice(0,10);
-  const EN_COURS_STATUTS = ['a_faire','acceptee','arrivee','probleme'];
+  const EN_COURS_STATUTS = ['a_faire','acceptee','en_route','arrivee','probleme'];
   const missionsAujourdhui = visibles.filter(m => m.date_prevue===today && EN_COURS_STATUTS.includes(m.statut)).length;
   const missionsEnRetard = visibles.filter(m => m.date_prevue<today && EN_COURS_STATUTS.includes(m.statut)).length;
   const todayHtml = (missionsAujourdhui || missionsEnRetard) ? `
@@ -2539,7 +2542,7 @@ function renderLivraisons(){
     // (a_faire) — même logique que côté transporteur (missionEstEnCours).
     else if(LIVRAISONS_FILTER === 'en_cours'){
       const todayStr = new Date().toISOString().slice(0,10);
-      items = items.filter(m => m.statut==='arrivee' || (m.statut==='acceptee' && m.date_prevue<=todayStr));
+      items = items.filter(m => ['arrivee','en_route'].includes(m.statut) || (m.statut==='acceptee' && m.date_prevue<=todayStr));
     }
     else if(LIVRAISONS_FILTER === 'fait') items = items.filter(m => m.statut === 'fait');
     else if(LIVRAISONS_FILTER === 'probleme') items = items.filter(m => m.statut === 'probleme');
@@ -2588,7 +2591,7 @@ function renderLivraisons(){
     if(m.photo_installation_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_installation')">📷 Voir — Installation</button>`);
     if(m.photo_retour_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_retour')">📷 Voir — Retour</button>`);
     if(m.photo_absence_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_absence')">📵 Voir — Preuve passage</button>`);
-    const enRoute = m.transporteur && (m.statut==='acceptee' || m.statut==='arrivee');
+    const enRoute = m.transporteur && ['acceptee','en_route','arrivee'].includes(m.statut);
     // Icône permanente sur les missions sans livreur — visible même en dehors
     // du filtre "Non assignées", pour qu'une mission non dispatchée ne se
     // perde jamais visuellement dans la liste "Toutes".
@@ -2651,7 +2654,7 @@ function renderLivraisons(){
             <summary title="Plus d'actions">⋯</summary>
             <div class="more-actions-menu">
               ${!reassignLocked?`<button onclick="openEditMissionModal(${m.id})">✏️ Modifier</button>`:''}
-              ${['acceptee','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
+              ${['acceptee','en_route','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
               ${mediaBtns.join('')}
               <button class="danger" onclick="maskLivraison(${m.id})">🗑️ Supprimer de l'écran</button>
             </div>
@@ -2849,7 +2852,7 @@ let AFFECT_ORIGINAL = null; // livraison_id -> transporteur_id|null (état réel
 
 function affectMissionsToday(){
   const todayStr = new Date().toISOString().slice(0,10);
-  return LIVRAISONS_CACHE.filter(m => !m.masquee && m.date_prevue===todayStr && ['a_faire','acceptee','arrivee','probleme'].includes(m.statut));
+  return LIVRAISONS_CACHE.filter(m => !m.masquee && m.date_prevue===todayStr && ['a_faire','acceptee','en_route','arrivee','probleme'].includes(m.statut));
 }
 function initAffectStaged(){
   AFFECT_STAGED = {}; AFFECT_ORIGINAL = {};
@@ -3500,15 +3503,19 @@ function resetPin(id){
 // touché, et le détail mission par mission derrière un menu déroulant natif.
 // Extrait pour être réutilisé tel quel dans l'onglet général 💶 Virements
 // (voir loadVirementsTab) — un seul rendu, jamais deux versions qui pourraient diverger.
+const PAIEMENT_MISSION_CHIP  = {en_attente:'en_attente', valide:'a_faire', paye:'actif'};
+const PAIEMENT_MISSION_LABEL = {en_attente:'À valider', valide:'Validé — à verser', paye:'Versé'};
 function transporteurRevenusCardHtml(t){
   const missionsHtml = t.missions.length ? t.missions.map(m => `
     <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
       <div class="row-top">
         <span class="row-title" style="font-size:13px">${m.type==='livraison'?'📦 Livraison':'🔄 Récupération'} — ${escHtml(m.client||'—')}</span>
-        <span class="chip ${m.paye?'actif':'en_attente'}">${m.paye?'Versé':'À verser'}</span>
+        <span class="chip ${PAIEMENT_MISSION_CHIP[m.statut_paiement]||''}">${PAIEMENT_MISSION_LABEL[m.statut_paiement]||m.statut_paiement}</span>
       </div>
       <div class="row-meta">${m.fait_at?frDate(m.fait_at.slice(0,10)):'—'} · ${euros(m.montant_cents)}</div>
     </div>`).join('') : '';
+  // Validation humaine obligatoire avant paiement (Partie 9) : ce qui est "à
+  // valider" n'est pas encore payable, ce qui est "validé" l'est.
   return `
     <div class="card">
       <div class="row-top" style="margin-bottom:14px">
@@ -3516,10 +3523,11 @@ function transporteurRevenusCardHtml(t){
         <span class="chip ${t.actif?'actif':'annulee'}">${t.actif?'actif':'inactif'}</span>
       </div>
       <div class="resa-bottom" style="margin-bottom:14px">
-        <span class="resa-price" style="${t.non_verse_cents>0?'color:var(--red)':''}">${euros(t.non_verse_cents)}<span style="font-family:var(--body);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-soft);display:block;margin-top:2px">À verser</span></span>
-        <span class="resa-sub">${t.missions.length} mission${t.missions.length>1?'s':''} au total<br/>${euros(t.verse_cents)} déjà versés</span>
+        <span class="resa-price" style="${t.non_verse_cents>0?'color:var(--red)':''}">${euros(t.non_verse_cents)}<span style="font-family:var(--body);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-soft);display:block;margin-top:2px">Validé, à verser</span></span>
+        <span class="resa-sub">${t.en_attente_validation_cents>0?euros(t.en_attente_validation_cents)+' à valider · ':''}${euros(t.verse_cents)} déjà versés</span>
       </div>
       ${t.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par le livreur</div>':''}
+      ${t.en_attente_validation_cents>0?`<button class="btn btn-grey btn-block" style="margin-bottom:8px" onclick="validerRemuneration(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.en_attente_validation_cents})">🔍 Valider les missions (${euros(t.en_attente_validation_cents)})</button>`:''}
       ${t.non_verse_cents>0?`<button class="btn btn-green btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.non_verse_cents})">✅ Marquer comme versé (${euros(t.non_verse_cents)})</button>`:''}
       ${t.missions.length?`
       <details style="margin-top:12px">
@@ -3527,6 +3535,17 @@ function transporteurRevenusCardHtml(t){
         <div style="margin-top:12px">${missionsHtml}</div>
       </details>`:'<p class="row-meta" style="margin-top:8px">Aucune mission terminée pour l\'instant.</p>'}
     </div>`;
+}
+function validerRemuneration(id, nom, montantCents){
+  confirmAction(`Valider ${euros(montantCents)} de missions pour ${nom} ? Elles deviendront payables (versement séparé).`, async () => {
+    try{
+      const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'valider', transporteur_id:id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      TAB_AUTO_REFRESH[CURRENT_TAB]?.();
+      showToast(`${d.missions_validees} mission(s) validée(s)`, 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {yesLabel:'Valider'});
 }
 async function loadTransporteursRevenus(){
   const zone = document.getElementById('transp-view-content');
@@ -3977,9 +3996,20 @@ async function loadVirementsTab(){
 // en base mais invisible pour l'admin (juste un compteur "ouverts" sur le
 // dashboard). Sert à repérer un motif récurrent (ex. une adresse où le
 // digicode pose systématiquement problème).
-const INCIDENT_CHIP = {ouvert:'probleme', facture:'a_faire', resolu:'fait'};
-const INCIDENT_STATUT_LABEL = {ouvert:'Ouvert', facture:'Facturé', resolu:'Résolu'};
-const INCIDENT_TYPE_LABEL = {retard:'Retard', materiel:'Matériel', autre:'Autre'};
+const INCIDENT_CHIP = {nouveau:'probleme', en_analyse:'a_faire', retard_a_facturer:'a_faire', resolu:'fait', clos:'inactif'};
+const INCIDENT_STATUT_LABEL = {nouveau:'Nouveau', en_analyse:'En analyse', retard_a_facturer:'Retard à facturer', resolu:'Résolu', clos:'Clos'};
+const INCIDENT_TYPE_LABEL = {
+  client_absent:'Client absent', acces_impossible:'Accès impossible', mauvaise_adresse:'Mauvaise adresse',
+  materiel_endommage:'Matériel endommagé', probleme_technique:'Problème technique', refus_client:'Refus client',
+  retard:'Retard', autre:'Autre',
+};
+function incidentActionsHtml(i){
+  const btns = [];
+  if(i.statut==='nouveau') btns.push(`<button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'en_analyse',this)">🔍 En analyse</button>`);
+  if(!['resolu','clos'].includes(i.statut)) btns.push(`<button class="btn btn-green" onclick="updateIncidentStatut(${i.id},'resolu',this)">✅ Marquer résolu</button>`);
+  if(i.statut==='resolu') btns.push(`<button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'clos',this)">🗄️ Clore</button>`);
+  return btns.length ? `<div class="row-actions">${btns.join('')}</div>` : '';
+}
 async function loadIncidents(){
   const zone = document.getElementById('tab-incidents');
   zone.innerHTML = loading();
@@ -3988,11 +4018,12 @@ async function loadIncidents(){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     const pt = d.par_type_30j || {};
+    const total30j = Object.values(pt).reduce((s,v)=>s+(v||0),0);
     const statHtml = `
       <div class="stat-grid" style="margin-bottom:16px">
-        <div class="stat-tile"><div class="n" style="${pt.retard?'color:var(--red)':''}">${pt.retard||0}</div><div class="l">Retards (30j)</div></div>
-        <div class="stat-tile"><div class="n" style="${pt.materiel?'color:var(--red)':''}">${pt.materiel||0}</div><div class="l">Matériel (30j)</div></div>
-        <div class="stat-tile" style="grid-column:1/-1"><div class="n" style="${pt.autre?'color:var(--amber)':''}">${pt.autre||0}</div><div class="l">Autres incidents (30j) — dont client absent</div></div>
+        <div class="stat-tile"><div class="n" style="${total30j?'color:var(--amber)':''}">${total30j}</div><div class="l">Incidents (30j)</div></div>
+        <div class="stat-tile"><div class="n" style="${pt.materiel_endommage?'color:var(--red)':''}">${pt.materiel_endommage||0}</div><div class="l">Matériel endommagé (30j)</div></div>
+        <div class="stat-tile" style="grid-column:1/-1"><div class="n" style="${pt.retard?'color:var(--amber)':''}">${pt.retard||0}</div><div class="l">Retards (30j)</div></div>
       </div>`;
     if(!d.incidents || !d.incidents.length){ zone.innerHTML = statHtml + '<p class="empty">🧯 Aucun incident enregistré.</p>'; return; }
     const list = d.incidents.map(i => {
@@ -4003,8 +4034,8 @@ async function loadIncidents(){
             <span class="row-title">${INCIDENT_TYPE_LABEL[i.type]||i.type}${res.ref?' · '+escHtml(res.ref):''}</span>
             <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
           </div>
-          <div class="row-meta">${escHtml((res.prenom||'')+' '+(res.nom||''))}${res.adresse?' · '+escHtml(res.adresse):''}<br/>${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
-          ${i.statut!=='resolu'?`<div class="row-actions"><button class="btn btn-green" onclick="updateIncidentStatut(${i.id},'resolu',this)">✅ Marquer résolu</button></div>`:''}
+          <div class="row-meta">${escHtml((res.prenom||'')+' '+(res.nom||''))}${res.adresse?' · '+escHtml(res.adresse):''}${i.transporteur?.nom?' · 🚚 '+escHtml(i.transporteur.nom):''}<br/>${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
+          ${incidentActionsHtml(i)}
         </div>`;
     }).join('');
     zone.innerHTML = statHtml + list;
@@ -4025,6 +4056,83 @@ async function updateIncidentStatut(id, statut, btnEl){
     if(btnEl) btnEl.disabled = false;
     showToast(e.message, 'error');
   }
+}
+
+// ── CHECKLISTS MISSION (Module 5, Parties 5/7) ────────────────────────────────
+// Checklists administrables faites CHEZ LE CLIENT avant "Installation
+// terminée"/"Récupération terminée" — distinctes de "Checklist box" (matériel
+// à prendre au box avant de partir), qui reste inchangée.
+const CHECKLIST_WORKFLOW_LABEL = {installation:'📦 Installation', recuperation:'🔄 Récupération'};
+async function loadChecklistItemsAdmin(){
+  const zone = document.getElementById('tab-checklistitems');
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-checklist-items'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    CHECKLIST_ITEMS_CACHE = d.items || [];
+    renderChecklistItemsAdmin();
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+let CHECKLIST_ITEMS_CACHE = [];
+function renderChecklistItemsAdmin(){
+  const zone = document.getElementById('tab-checklistitems');
+  const sections = Object.keys(CHECKLIST_WORKFLOW_LABEL).map(wf => {
+    const items = CHECKLIST_ITEMS_CACHE.filter(i => i.workflow===wf).sort((a,b)=>a.ordre-b.ordre);
+    return `
+      <div class="section-title" style="${wf==='installation'?'margin-top:0':''}">${CHECKLIST_WORKFLOW_LABEL[wf]}</div>
+      ${items.length ? items.map(i => `
+        <div class="row-item">
+          <div class="row-top">
+            <span class="row-title" style="${i.actif?'':'text-decoration:line-through;color:var(--grey)'}">${escHtml(i.libelle)}</span>
+            <span class="chip ${i.actif?'actif':'inactif'}">${i.actif?'Actif':'Désactivé'}</span>
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-grey" onclick="toggleChecklistItemActif(${i.id}, ${!i.actif})">${i.actif?'⏸️ Désactiver':'▶️ Réactiver'}</button>
+            <button class="btn btn-red" onclick="deleteChecklistItem(${i.id})">🗑️ Supprimer</button>
+          </div>
+        </div>`).join('') : '<p class="empty">Aucun item.</p>'}
+      <div class="card" style="margin-top:8px;margin-bottom:20px">
+        <div style="display:flex;gap:8px">
+          <input type="text" id="new-item-${wf}" placeholder="Nouvel item…" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border)">
+          <button class="btn btn-blue" onclick="createChecklistItem('${wf}')">+ Ajouter</button>
+        </div>
+      </div>`;
+  }).join('');
+  zone.innerHTML = sections;
+}
+async function createChecklistItem(workflow){
+  const input = document.getElementById('new-item-'+workflow);
+  const libelle = (input?.value||'').trim();
+  if(!libelle) return;
+  try{
+    const r = await fetch(API('admin-checklist-items'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', workflow, libelle})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadChecklistItemsAdmin();
+    showToast('Item ajouté', 'success');
+  }catch(e){ showToast(e.message, 'error'); }
+}
+async function toggleChecklistItemActif(id, actif){
+  try{
+    const r = await fetch(API('admin-checklist-items'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, actif})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadChecklistItemsAdmin();
+  }catch(e){ showToast(e.message, 'error'); }
+}
+function deleteChecklistItem(id){
+  confirmAction('Supprimer définitivement cet item de checklist ?', async () => {
+    try{
+      const r = await fetch(API('admin-checklist-items'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadChecklistItemsAdmin();
+      showToast('Item supprimé', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {danger:true, yesLabel:'Supprimer'});
 }
 
 // ── EMAILS (moteur central de scénarios client, Module 3) ─────────────────────
@@ -4425,7 +4533,7 @@ let CLIENT_COMMS_DATA = null;
 const CANAL_ICON = { email: '📧', sms: '📱' };
 
 const MISSION_STEP_LABEL = {
-  accepted_at: 'Acceptée', client_notifie_at: 'Client notifié', arrivee_at: 'Arrivée sur place',
+  accepted_at: 'Acceptée', depart_at: 'En route', client_notifie_at: 'Client notifié', arrivee_at: 'Arrivée sur place',
   demo_faite_at: 'Démonstration faite', vidange_at: 'Vidange vérifiée', fait_at: 'Terminée',
 };
 
@@ -4476,7 +4584,7 @@ async function loadClientFiche(){
 
 function missionStepsHtml(m){
   const steps = [
-    ['accepted_at', m.accepted_at], ['client_notifie_at', m.client_notifie_at], ['arrivee_at', m.arrivee_at],
+    ['accepted_at', m.accepted_at], ['depart_at', m.depart_at], ['client_notifie_at', m.client_notifie_at], ['arrivee_at', m.arrivee_at],
     (m.type==='livraison' ? ['demo_faite_at', m.demo_faite_at] : ['vidange_at', m.vidange_at]),
     ['fait_at', m.fait_at],
   ];
@@ -4521,8 +4629,8 @@ function renderClientFiche(d){
           <span class="row-title">${INCIDENT_TYPE_LABEL[i.type]||i.type}</span>
           <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
         </div>
-        <div class="row-meta">${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
-        ${i.statut!=='resolu'?`<div class="row-actions"><button class="btn btn-green" onclick="updateIncidentStatutInFiche(${i.id},'resolu',this)">✅ Marquer résolu</button></div>`:''}
+        <div class="row-meta">${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.transporteur?.nom?' · 🚚 '+escHtml(i.transporteur.nom):''}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
+        ${incidentActionsHtml(i).replace(/updateIncidentStatut\(/g,'updateIncidentStatutInFiche(')}
       </div>`).join('')
     : '<p class="empty">Aucun incident enregistré pour ce client.</p>';
 

@@ -147,6 +147,10 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 /* Bouton tuto : flottant, au-dessus de la tabbar/detail-back, visible sur
    toutes les pages sauf la connexion (voir show()). */
 #tuto-fab{position:fixed;right:16px;bottom:20px;width:52px;height:52px;border-radius:50%;background:var(--navy,#0d1829);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
+/* Centre de notifications (Module 5) : même principe que #tuto-fab, côté
+   gauche pour ne pas se superposer au bouton tuto. */
+#notif-fab{position:fixed;left:16px;bottom:20px;width:52px;height:52px;border-radius:50%;background:var(--navy,#0d1829);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
+#notif-fab-badge{position:absolute;top:-2px;right:-2px}
 .tuto-cat-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);margin-bottom:8px}
 .tuto-cat-row.disabled{opacity:.55;box-shadow:none;background:var(--bg)}
 .tuto-video-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;gap:10px;border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);margin-bottom:8px}
@@ -399,6 +403,10 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
      un seul élément hors des écrans plutôt que dupliqué dans chacun d'eux. -->
 <button id="tuto-fab" class="hidden" onclick="openTutoLibrary()" title="Tutoriel prise en main">🎓</button>
 
+<!-- Centre de notifications (Module 5, Partie 11), même principe que le
+     bouton tuto ci-dessus. -->
+<button id="notif-fab" class="hidden" onclick="openNotifCenter()" title="Notifications">🔔<span class="tab-badge hidden" id="notif-fab-badge"></span></button>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API = (path) => '/api/' + path;
@@ -416,9 +424,11 @@ let STATE = {
   autoOpenChecked: false, // une seule fois par connexion, voir maybeAutoOpenMission()
   checklist: null, // état du jour, chargé avec les missions — voir checklistBlocksMission()
   returnToMission: null, // mission à rouvrir après validation checklist, voir goToChecklistFromMission()
-  detailRouteSeenFor: null, // id de la mission dont l'étape "En route" du parcours a déjà été vue, voir missionStepIndex()
-  detailArriveeSeenFor: null, // idem pour l'étape "Arrivée", voir missionStepIndex()
   detailArriveeSmsSentFor: null, // id de la mission dont le SMS "merci de descendre" a été envoyé (état "clignotant"), voir wizardStepBodyHtml()
+  checklistItems: null, // {installation:[...], recuperation:[...]} — chargé une fois, voir fetchMissions()
+  notifications: [], // centre de notifications (Module 5, Partie 11), voir updateNotifBadge()
+  activiteMissionsCache: [], // dernière liste "terminées" reçue, voir switchMissionsFiltre()
+  missionsFiltre: 'terminees', // filtre courant de l'onglet "Mes missions"
   // Tournée du jour (plus proche en voiture, api/transporteur-route.js) —
   // calculée une fois au choix du point de départ (voir startTournee()),
   // puis recalculée localement à chaque étape franchie (voir advanceTournee())
@@ -435,8 +445,9 @@ function show(id){
   });
   // Bouton tuto accessible en permanence, sur toutes les pages sauf la
   // connexion — un seul point de bascule plutôt que de dupliquer un bouton
-  // dans chacun des 8 écrans.
+  // dans chacun des 8 écrans. Même principe pour le centre de notifications.
   document.getElementById('tuto-fab')?.classList.toggle('hidden', id==='login-screen');
+  document.getElementById('notif-fab')?.classList.toggle('hidden', id==='login-screen');
 }
 
 function switchTab(tab){
@@ -759,10 +770,96 @@ async function fetchMissions(){
     if(cr.ok && cd) STATE.checklist = cd;
     updatePositionTracking();
     updateMissionsBadge();
+    if(!STATE.checklistItems) fetchChecklistItems(); // une seule fois, en tâche de fond
+    updateNotifBadge();
     return true;
   }catch(e){
     return false;
   }
+}
+// Checklists administrables "Installation terminée"/"Récupération terminée"
+// (Module 5) — chargées une fois, réutilisées pour toutes les missions.
+async function fetchChecklistItems(){
+  try{
+    const [ri, rr] = await Promise.all([
+      fetch(API('transporteur-checklist-items'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({workflow:'installation'})}),
+      fetch(API('transporteur-checklist-items'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({workflow:'recuperation'})}),
+    ]);
+    const [di, dr] = await Promise.all([ri.json(), rr.json()]);
+    STATE.checklistItems = { installation: (ri.ok && di.items) || [], recuperation: (rr.ok && dr.items) || [] };
+    if(STATE.currentMission) renderDetail(); // affiche les cases si l'étape finale était déjà ouverte
+  }catch(e){ /* pas bloquant — le serveur revalidera de toute façon */ }
+}
+
+// ── Centre de notifications (Module 5, Partie 11) ────────────────────────────
+const NOTIF_ICON = {
+  nouvelle_mission:'📦', modification:'✏️', annulation:'🚫',
+  incident:'🧯', validation:'✅', paiement:'💶',
+};
+async function updateNotifBadge(){
+  try{
+    const r = await fetch(API('transporteur-notifications'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) return;
+    STATE.notifications = d.notifications || [];
+    const badge = document.getElementById('notif-fab-badge');
+    if(badge){
+      badge.textContent = d.non_lues > 9 ? '9+' : String(d.non_lues || '');
+      badge.classList.toggle('hidden', !d.non_lues);
+    }
+  }catch(e){ /* pas bloquant */ }
+}
+function closeNotifCenter(){
+  const o = document.getElementById('notif-overlay');
+  if(o) o.remove();
+}
+function openNotifCenter(){
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'notif-overlay';
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeNotifCenter(); });
+  document.body.appendChild(overlay);
+  renderNotifCenter();
+  updateNotifBadge();
+}
+function renderNotifCenter(){
+  const overlay = document.getElementById('notif-overlay');
+  if(!overlay) return;
+  const notifs = STATE.notifications || [];
+  overlay.innerHTML = `
+    <div class="sheet">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h1 style="margin:0">🔔 Notifications</h1>
+        ${notifs.some(n=>!n.lu) ? `<button class="btn btn-grey" style="padding:6px 12px;font-size:12.5px" onclick="marquerToutLu()">Tout marquer lu</button>` : ''}
+      </div>
+      ${notifs.length ? `<div class="vlist">${notifs.map(n => `
+        <div class="vrow" style="align-items:flex-start;${n.lu?'opacity:.6':''}" ${n.lu?'':`onclick="marquerNotifLu(${n.id})"`}>
+          <span>
+            <span style="font-size:16px;vertical-align:-2px">${NOTIF_ICON[n.type]||'🔔'}</span>
+            ${escHtml(n.message)}
+            <div class="mcard-meta" style="margin-top:2px">${new Date(n.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
+          </span>
+          ${n.lu?'':'<span class="vchip demande">Non lu</span>'}
+        </div>`).join('')}</div>` : `<p class="empty">Aucune notification pour l'instant.</p>`}
+      <button class="btn btn-grey btn-block" style="margin-top:14px" onclick="closeNotifCenter()">Fermer</button>
+    </div>`;
+}
+async function marquerNotifLu(id){
+  try{
+    await fetch(API('transporteur-notifications'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'marquer_lu', id})});
+    const n = (STATE.notifications||[]).find(x => x.id===id);
+    if(n) n.lu = true;
+    renderNotifCenter();
+    updateNotifBadge();
+  }catch(e){ /* pas bloquant */ }
+}
+async function marquerToutLu(){
+  try{
+    await fetch(API('transporteur-notifications'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'marquer_tout_lu'})});
+    (STATE.notifications||[]).forEach(n => n.lu = true);
+    renderNotifCenter();
+    updateNotifBadge();
+  }catch(e){ /* pas bloquant */ }
 }
 // Une mission acceptée pour AUJOURD'HUI ne peut être démarrée (coordonnées
 // client, appel, étapes sur place) qu'une fois la checklist "avant de partir"
@@ -983,7 +1080,7 @@ async function loadMissions(){
 function maybeAutoOpenMission(){
   if(STATE.autoOpenChecked) return;
   STATE.autoOpenChecked = true;
-  const actives = STATE.missions.filter(m => ['a_faire','acceptee','arrivee'].includes(m.statut));
+  const actives = STATE.missions.filter(m => ['a_faire','acceptee','en_route','arrivee'].includes(m.statut));
   if(actives.length === 1) openMission(actives[0].id);
 }
 
@@ -1025,7 +1122,7 @@ function startTransporteurAutoRefresh(){
 
 const TYPE_LABEL = {livraison:'Livraison', recuperation:'Récupération', changement:'Remplacement'};
 const TYPE_ICON  = {livraison:'📦', recuperation:'🔄', changement:'🔁', autre:'🧳'};
-const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', arrivee:'Sur place', probleme:'Problème signalé', fait:'Terminée'};
+const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', en_route:'En route', arrivee:'Sur place', probleme:'Problème signalé', fait:'Terminée'};
 // Label précis selon type + option d'installation
 function missionTypeLabel(m){
   if(m.type==='autre') return 'Mission libre';
@@ -1066,7 +1163,7 @@ function missionCardHtml(m){
   // Mission acceptée/sur place dont le jour prévu est déjà passé : elle se
   // fond sinon avec les missions du jour même dans "En cours" — un badge
   // d'alerte permet de la repérer d'un coup d'œil dans la liste.
-  const isLate = ['acceptee','arrivee','probleme'].includes(m.statut) && m.date_prevue < todayStr;
+  const isLate = ['acceptee','en_route','arrivee','probleme'].includes(m.statut) && m.date_prevue < todayStr;
   const lateBadge = isLate ? `<span class="mcard-late-badge">⏰ En retard</span>` : '';
   const adresse = isAutre ? (m.adresse_libre||'') : (c.adresse||'');
   const mapsUrl = adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(adresse)}` : '';
@@ -1131,7 +1228,7 @@ function missionCardActionsHtml(m, mapsUrl, tel){
 function isAnotherMissionEnCours(excludeId, forDate){
   const todayStr = new Date().toISOString().slice(0,10);
   if(forDate && forDate > todayStr) return false;
-  return STATE.missions.some(x => x.id!==excludeId && ['acceptee','arrivee'].includes(x.statut) && x.date_prevue<=todayStr);
+  return STATE.missions.some(x => x.id!==excludeId && ['acceptee','en_route','arrivee'].includes(x.statut) && x.date_prevue<=todayStr);
 }
 function acceptFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMission = STATE.missions.find(m=>m.id===id); doAction('accepter'); }
 function refuseFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMission = STATE.missions.find(m=>m.id===id); doAction('indisponible'); }
@@ -1274,7 +1371,7 @@ function renderMissions(){
   // repérer où se trouvent ses prochaines missions bien avant le jour J,
   // indépendamment de la checklist (qui ne bloque jamais la carte).
   const todayStr = new Date().toISOString().slice(0,10);
-  const todayActives = STATE.missions.filter(m => m.date_prevue===todayStr && m.client && m.client.adresse && ['a_faire','acceptee','arrivee','probleme'].includes(m.statut));
+  const todayActives = STATE.missions.filter(m => m.date_prevue===todayStr && m.client && m.client.adresse && ['a_faire','acceptee','en_route','arrivee','probleme'].includes(m.statut));
   let zoneHtml = '';
   if(todayActives.length > 1){
     // Trie par code postal avant de construire l'itinéraire : sans vraie API de
@@ -1388,7 +1485,7 @@ function actionBtnsForMission(m){
   // Une mission acceptée ne peut être démarrée (photo/vidange/étapes sur
   // place) que le jour prévu, jamais en avance — le bouton "⏪ Faire plus
   // tard" (en haut de l'écran) reste la seule action possible avant ça.
-  if((m.statut === 'acceptee' || m.statut === 'arrivee')){
+  if((m.statut === 'acceptee' || m.statut === 'en_route' || m.statut === 'arrivee')){
     const todayStr = new Date().toISOString().slice(0,10);
     if(m.date_prevue > todayStr){
       return `<div class="info-box"><p>📅 Tu as accepté cette mission — tu pourras la démarrer ${futureDateText(m.date_prevue)}.</p></div>`;
@@ -1419,13 +1516,11 @@ function actionBtnsForMission(m){
 // public (index.html) : un intitulé d'étape + une barre de progression en
 // haut, un seul geste à faire par écran.
 //
-// L'étape courante se déduit des données réelles de la mission (vidange
-// faite ? preuve envoyée ?) plutôt que d'un compteur séparé à tenir à jour
-// à la main — après chaque action (upload, vidange...) un simple
-// renderDetail() retombe automatiquement sur la bonne étape. Seule
-// exception : l'étape "En route" n'a pas de donnée serveur associée (pure
-// consultation), donc on retient juste qu'elle a été vue pour cette
-// mission précise (remis à zéro dès qu'on change de mission).
+// L'étape courante se déduit des données réelles de la mission (statut
+// en_route/arrivee, vidange faite ? preuve envoyée ?) plutôt que d'un
+// compteur séparé à tenir à jour à la main — après chaque action (commencer,
+// arriver, upload, vidange...) un simple renderDetail() retombe
+// automatiquement sur la bonne étape.
 function missionStepDefs(m){
   const steps = [{key:'route', title:'En route'}, {key:'arrivee', title:'Arrivée'}];
   if(m.type === 'livraison') steps.push({key:'installation', title:'Installation'});
@@ -1442,21 +1537,20 @@ function missionStepDoneFlag(m, key){
   return false;
 }
 function missionStepIndex(m, steps){
-  if(STATE.detailRouteSeenFor !== m.id) return 0;
-  if(STATE.detailArriveeSeenFor !== m.id) return 1;
+  if(m.statut === 'acceptee') return 0;
+  if(m.statut === 'en_route') return 1;
   let idx = 2;
   while(idx < steps.length-1 && missionStepDoneFlag(m, steps[idx].key)) idx++;
   return idx;
 }
-// Avance manuellement depuis "En route"/"Arrivée" — deux étapes sans donnée
-// serveur à observer, donc les seules qui ont besoin d'un vrai bouton "Suivant".
+// "Suivant" depuis "En route"/"Arrivée" enregistre réellement l'heure de
+// départ/arrivée côté serveur (statut en_route puis arrivee) — visible côté
+// admin, pas juste un repère local.
 function goToNextStepFromRoute(){
-  STATE.detailRouteSeenFor = STATE.currentMission.id;
-  renderDetail();
+  doAction('commencer');
 }
 function goToNextStepFromArrivee(){
-  STATE.detailArriveeSeenFor = STATE.currentMission.id;
-  renderDetail();
+  doAction('arriver');
 }
 function missionWizardProgressHtml(steps, idx){
   const pct = Math.round(((idx+1)/steps.length)*100);
@@ -1530,9 +1624,65 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   // 'final'
   const okAction = m.type==='livraison' ? 'livraison_ok' : m.type==='recuperation' ? 'retour_ok' : 'changement_ok';
   const okLabel = m.type==='livraison' ? '✅ LIVRAISON OK — JE PARS' : m.type==='recuperation' ? '✅ RETOUR OK — JE PARS' : '✅ REMPLACEMENT TERMINÉ — JE PARS';
+  const checklistWorkflow = m.type==='livraison' ? 'installation' : m.type==='recuperation' ? 'recuperation' : null;
   return `
-    <p class="step-hint">🎉 Tout est prêt — valide pour terminer la mission.</p>
-    <button class="btn btn-green btn-block" onclick="doAction('${okAction}')">${okLabel}</button>`;
+    <p class="step-hint">🎉 Tout est prêt — vérifie la checklist puis valide pour terminer la mission.</p>
+    ${checklistWorkflow ? checklistFinalHtml(checklistWorkflow) : ''}
+    ${m.type==='recuperation' ? etatMaterielHtml() : ''}
+    <button class="btn btn-green btn-block" onclick="submitFinalMission('${okAction}')">${okLabel}</button>`;
+}
+
+// Checklist administrable (Module 5, Parties 5/7) — cases à cocher avant de
+// valider "Installation/Récupération terminée". Lues au clic (voir
+// submitFinalMission), pas de blocage client-side : le serveur revalide et
+// renvoie un message clair si une case manque.
+function checklistFinalHtml(workflow){
+  const items = (STATE.checklistItems && STATE.checklistItems[workflow]) || [];
+  if(!items.length) return '';
+  return `
+    <div class="section-title" style="margin:10px 0 6px 2px">Checklist</div>
+    <div class="card" style="margin-bottom:12px">
+      ${items.map(it => `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 0">
+          <input type="checkbox" class="checklist-final-cb" data-item-id="${it.id}" style="width:20px;height:20px;flex-shrink:0">
+          <span>${escHtml(it.libelle)}</span>
+        </label>`).join('')}
+    </div>`;
+}
+const ETAT_MATERIEL_LABEL = {
+  parfait_etat: 'Parfait état', usure_normale: 'Usure normale',
+  nettoyage_necessaire: 'Nettoyage nécessaire', maintenance_necessaire: 'Maintenance nécessaire',
+  hors_service: 'Hors service',
+};
+function etatMaterielHtml(){
+  return `
+    <div class="section-title" style="margin:10px 0 6px 2px">État du matériel récupéré</div>
+    <div class="card" style="margin-bottom:12px">
+      ${Object.entries(ETAT_MATERIEL_LABEL).map(([val,lbl]) => `
+        <label style="display:flex;align-items:center;gap:10px;padding:6px 0">
+          <input type="radio" name="etat-materiel" value="${val}" style="width:20px;height:20px;flex-shrink:0">
+          <span>${lbl}</span>
+        </label>`).join('')}
+      <textarea id="etat-materiel-commentaire" placeholder="Commentaire (optionnel)" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid var(--border);font-family:inherit;font-size:14px" rows="2"></textarea>
+    </div>`;
+}
+// Rassemble la checklist cochée (+ état matériel si récupération) et
+// déclenche la validation de mission — le serveur reste seul juge de ce qui
+// est complet ou non (message d'erreur affiché normalement via doAction()).
+function submitFinalMission(okAction){
+  const extra = {};
+  const boxes = document.querySelectorAll('.checklist-final-cb');
+  if(boxes.length){
+    const reponses = {};
+    boxes.forEach(b => { reponses[b.dataset.itemId] = b.checked; });
+    extra.checklist_reponses = reponses;
+  }
+  if(okAction === 'retour_ok'){
+    const etatEl = document.querySelector('input[name="etat-materiel"]:checked');
+    extra.etat_materiel = etatEl ? etatEl.value : null;
+    extra.etat_materiel_commentaire = (document.getElementById('etat-materiel-commentaire')||{}).value || '';
+  }
+  doAction(okAction, extra);
 }
 function missionWizardHtml(m, infoRows, mapsUrl){
   const steps = missionStepDefs(m);
@@ -1557,11 +1707,11 @@ function tourneeBannerHtml(m){
 }
 
 function renderStepper(m){
-  if(!['a_faire','acceptee','arrivee','fait'].includes(m.statut)) return '';
+  if(!['a_faire','acceptee','en_route','arrivee','fait'].includes(m.statut)) return '';
   const labels=['Départ','Chez le client','Terminé'];
   let idx=0;
   if(m.statut==='a_faire') idx=0;
-  else if(m.statut==='acceptee' || m.statut==='arrivee') idx=1;
+  else if(m.statut==='acceptee' || m.statut==='en_route' || m.statut==='arrivee') idx=1;
   else if(m.statut==='fait') idx=2;
   return '<div class="stepper">'+labels.map((lbl,i)=>{
     const cls = i<idx?'done':(i===idx?'active':'');
@@ -1628,7 +1778,7 @@ function renderDetail(){
       ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
     `;
 
-  const enCours = ['acceptee','arrivee'].includes(m.statut);
+  const enCours = ['acceptee','en_route','arrivee'].includes(m.statut);
   // Le parcours étape par étape ne s'applique qu'une fois sur place, le jour
   // prévu (jamais en avance — voir le garde-fou déjà existant dans
   // actionBtnsForMission) et pour les 3 types de mission qui ont des étapes
@@ -1641,7 +1791,7 @@ function renderDetail(){
   // l'incident) — distinct de enCours, qui ne doit PAS inclure "probleme"
   // sous peine de faire apparaître le parcours étape par étape à la place
   // du message "Problème signalé".
-  const canPause = ['acceptee','arrivee','probleme'].includes(m.statut);
+  const canPause = ['acceptee','en_route','arrivee','probleme'].includes(m.statut);
   const bodyHtml = isWizard
     ? missionWizardHtml(m, infoRows, mapsUrl)
     : `${renderStepper(m)}${infoRows}<div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div><div class="err" id="detail-err"></div>`;
@@ -1651,7 +1801,7 @@ function renderDetail(){
       ${canPause ? `<button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>` : ''}
     </div>
     <div class="card">
-      ${(['acceptee','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
+      ${(['acceptee','en_route','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
       <h1>${TYPE_ICON[m.type]||''} ${missionTypeLabel(m)}</h1>
       <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):'', m.montant_preview?`💶 ${Math.round(m.montant_preview/100)} €`:''].filter(Boolean).join(' · ')}</p>
       ${bodyHtml}
@@ -1874,7 +2024,7 @@ async function closeCelebration(){
     const nextId = advanceTournee(justId);
     if(nextId){ openMission(nextId); return; }
   }
-  const next = STATE.missions.find(m => ['acceptee', 'arrivee'].includes(m.statut))
+  const next = STATE.missions.find(m => ['acceptee', 'en_route', 'arrivee'].includes(m.statut))
     || STATE.missions.find(m => m.statut === 'a_faire');
   if(next) openMission(next.id);
 }
@@ -2057,7 +2207,11 @@ function openProbleme(){
       <div class="probleme-list">
         <button class="btn btn-amber" onclick="startClientAbsent('camera')">📵 Client absent — photo</button>
         <button class="btn btn-amber" onclick="startClientAbsent('galerie')">📵 Client absent — depuis la galerie</button>
-        <button class="btn btn-amber" onclick="sendProbleme('appareil_en_panne')">🔧 Appareil en panne</button>
+        <button class="btn btn-amber" onclick="sendProbleme('materiel_endommage')">🔧 Matériel endommagé</button>
+        <button class="btn btn-grey" onclick="sendProbleme('acces_impossible')">🚫 Accès impossible</button>
+        <button class="btn btn-grey" onclick="sendProbleme('mauvaise_adresse')">📍 Mauvaise adresse</button>
+        <button class="btn btn-grey" onclick="sendProbleme('probleme_technique')">⚙️ Problème technique</button>
+        <button class="btn btn-grey" onclick="sendProbleme('refus_client')">🙅 Refus client</button>
         <button class="btn btn-grey" onclick="sendProbleme('retard')">⏰ Retard important</button>
         <button class="btn btn-grey" onclick="sendProbleme('autre')">❓ Autre problème</button>
         <button class="btn btn-grey" onclick="closeProbleme()">Annuler</button>
@@ -2260,30 +2414,38 @@ async function openTutoVideo(categorie, sousCategorie){
 
 // ── Mon activité (gains, façon Uber Driver) ──────────────────────────────────
 const VIREMENT_LABEL = {demande:'Demandé', verse:'Versé'};
+const PAIEMENT_MISSION_LABEL = {en_attente:'En attente', valide:'Validé — à verser', paye:'Versé'};
 
 async function loadActivite(){
   const zone = document.getElementById('activite-content');
   zone.innerHTML = '<p class="empty">Chargement…</p>';
   try{
-    const r = await fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'resume'})});
+    const [r, rs] = await Promise.all([
+      fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'resume'})}),
+      fetch(API('transporteur-history'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'stats'})}),
+    ]);
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    renderActivite(d);
+    const ds = await rs.json().catch(()=>null);
+    renderActivite(d, rs.ok ? ds : null);
     markActiviteSeen(d.virements);
   }catch(e){
     zone.innerHTML = '<p class="empty">Impossible de charger ton activité. Réessaie.</p>';
   }
 }
 
-function renderActivite(d){
+function renderActivite(d, stats){
   const zone = document.getElementById('activite-content');
+  STATE.activiteMissionsCache = d.missions || [];
   const nonVerse = (d.non_verse_euros||0).toFixed(2).replace('.',',');
+  const enAttenteValidation = (d.en_attente_validation_euros||0).toFixed(2).replace('.',',');
   const enCours = (d.virements||[]).some(v => v.statut==='demande');
   zone.innerHTML = `
     <div class="stat-big">
       <div class="amount">${nonVerse} €</div>
-      <div class="caption" style="opacity:1">Solde à verser · virement hebdomadaire automatique</div>
+      <div class="caption" style="opacity:1">Solde validé à verser · virement hebdomadaire automatique</div>
     </div>
+    ${(d.en_attente_validation_euros>0)?`<p style="text-align:center;font-size:12.5px;color:var(--grey);margin-top:-6px">+ ${enAttenteValidation} € pas encore validés par l'administration</p>`:''}
     <div class="stat-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
       <div class="stat-tile"><div class="n">${d.missions_aujourdhui||0}</div><div class="l">Mission${(d.missions_aujourdhui||0)>1?'s':''} aujourd'hui</div></div>
       <div class="stat-tile"><div class="n" style="color:var(--green);font-weight:700">${(d.gain_aujourdhui_euros||0).toFixed(2).replace('.',',')} €</div><div class="l">Gagné aujourd'hui</div></div>
@@ -2293,13 +2455,72 @@ function renderActivite(d){
     <button class="btn btn-green" id="demander-virement-btn" ${(d.non_verse_euros>0 && !enCours)?'':'disabled'} onclick="demanderVirement()">💰 ${enCours?'Demande en cours…':'Demander mon virement'}</button>
     ${(!d.non_verse_euros && !enCours)?`<p style="text-align:center;font-size:12.5px;color:var(--grey);margin-top:-6px">Pas de solde à verser pour l'instant</p>`:''}
     <div class="err" id="activite-err"></div>
-    ${missionsHistoryHtml(d.missions)}
+    ${statsGlobalesHtml(stats)}
+    <div class="section-title">Mes missions</div>
+    <div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:10px" id="mes-missions-filtres">
+      ${Object.entries(MISSIONS_FILTRE_LABEL).map(([key,lbl]) => `
+        <button class="btn ${key==='terminees'?'btn-blue':'btn-grey'}" style="flex-shrink:0;padding:6px 14px;font-size:12.5px" onclick="switchMissionsFiltre('${key}')">${lbl}</button>`).join('')}
+    </div>
+    <div id="mes-missions-content">${missionsHistoryHtml(d.missions)}</div>
     ${(d.virements&&d.virements.length)?`
       <div class="section-title">Historique des virements</div>
       <div class="card vlist">${d.virements.map(v => `
         <div class="vrow"><span>${new Date(v.created_at).toLocaleDateString('fr-FR')}</span><span>${(v.montant_cents/100).toFixed(2).replace('.',',')} €</span><span class="vchip ${v.statut}">${VIREMENT_LABEL[v.statut]||v.statut}</span></div>
       `).join('')}</div>` : ''}
   `;
+}
+// Filtres "Mes missions" (Module 5, Partie 10) — "Terminées" reste affiché
+// par défaut (données déjà chargées avec l'activité) ; les autres filtres
+// vont chercher une liste dédiée (api/transporteur-history.js).
+const MISSIONS_FILTRE_LABEL = {
+  terminees: 'Terminées', en_attente: 'En attente', annulees: 'Annulées', avec_incident: 'Avec incident',
+};
+async function switchMissionsFiltre(filtre){
+  STATE.missionsFiltre = filtre;
+  document.querySelectorAll('#mes-missions-filtres .btn').forEach((b,i) => {
+    b.className = `btn ${Object.keys(MISSIONS_FILTRE_LABEL)[i]===filtre?'btn-blue':'btn-grey'}`;
+  });
+  const zone = document.getElementById('mes-missions-content');
+  if(!zone) return;
+  if(filtre === 'terminees'){
+    zone.innerHTML = missionsHistoryHtml(STATE.activiteMissionsCache || []);
+    return;
+  }
+  zone.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('transporteur-history'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'list', filtre})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    zone.innerHTML = missionsFiltreListHtml(d.missions);
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Impossible de charger cette liste.</p>';
+  }
+}
+function missionsFiltreListHtml(missions){
+  if(!missions || !missions.length) return `<p class="empty">Aucune mission dans cette catégorie.</p>`;
+  return `<div class="card vlist">${missions.map(m => `
+    <div class="vrow" style="align-items:flex-start">
+      <span>
+        <span class="mcard-icon" style="font-size:14px;vertical-align:-2px">${TYPE_ICON[m.type]||'📍'}</span>
+        ${TYPE_LABEL[m.type]||m.type}${m.avec_incident?' · 🧯':''}
+        <div class="mcard-meta" style="margin-top:2px">${m.date_prevue?new Date(m.date_prevue+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
+      </span>
+      <span style="text-align:right;flex-shrink:0;font-weight:700">${((m.montant_cents||0)/100).toFixed(2).replace('.',',')} €</span>
+    </div>`).join('')}</div>`;
+}
+// Statistiques globales d'activité (Module 5, Partie 10) — calculées côté
+// serveur depuis les vraies données (api/transporteur-history.js).
+function statsGlobalesHtml(stats){
+  if(!stats) return '';
+  const taux = Math.round((stats.taux_incidents||0)*100);
+  return `
+    <div class="section-title">Mon activité, en chiffres</div>
+    <div class="stat-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <div class="stat-tile"><div class="n">${stats.missions_realisees||0}</div><div class="l">Missions réalisées</div></div>
+      <div class="stat-tile"><div class="n">${stats.livraisons||0}</div><div class="l">Livraisons</div></div>
+      <div class="stat-tile"><div class="n">${stats.recuperations||0}</div><div class="l">Récupérations</div></div>
+      <div class="stat-tile"><div class="n">${taux}%</div><div class="l">Taux d'incidents</div></div>
+    </div>`;
 }
 // Historique mission par mission, groupé par mois (menu déroulant natif —
 // seul le mois en cours est ouvert par défaut) : retrouver ce qu'on a fait et
@@ -2342,7 +2563,7 @@ function missionsHistoryHtml(missions){
               </span>
               <span style="text-align:right;flex-shrink:0">
                 <div style="font-weight:700">${(m.montant_cents/100).toFixed(2).replace('.',',')} €</div>
-                <span class="vchip ${m.paye?'verse':'demande'}" style="margin-top:4px">${m.paye?'Versé':'À verser'}</span>
+                <span class="vchip ${m.statut_paiement==='paye'?'verse':'demande'}" style="margin-top:4px">${PAIEMENT_MISSION_LABEL[m.statut_paiement]||'—'}</span>
               </span>
             </div>`).join('')}
         </div>
@@ -2624,7 +2845,7 @@ async function geocodeAddress(address){
 // plusieurs jours, indépendamment de la checklist (qui ne bloque que les
 // coordonnées précises/l'appel d'une mission du jour, jamais la carte).
 function allActiveMissionsWithAddress(){
-  return STATE.missions.filter(m => m.client && m.client.adresse && ['a_faire','acceptee','arrivee','probleme'].includes(m.statut));
+  return STATE.missions.filter(m => m.client && m.client.adresse && ['a_faire','acceptee','en_route','arrivee','probleme'].includes(m.statut));
 }
 
 async function openDayMap(){

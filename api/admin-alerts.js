@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
+const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
 // Compte, par onglet, ce qui attend une action de l'admin — affiché en badge
 // sur la barre latérale. Pensé pour être étendu facilement (nouvel onglet =
@@ -69,7 +70,7 @@ module.exports = async (req, res) => {
     // un livreur bloqué ou un client mécontent qui attend un retour de l'admin.
     const { count: incidentsCount } = await supabase
       .from('incidents').select('id', { count: 'exact', head: true })
-      .in('reservation_id', resaIds).eq('statut', 'ouvert');
+      .in('reservation_id', resaIds).in('statut', INCIDENT_OPEN_STATUSES);
     const incidents = incidentsCount || 0;
 
     // Missions en retard, tous types confondus (livraison, récupération,

@@ -5,6 +5,8 @@ const { isValidDate }     = require('./_lib/dates');
 const { checkAdminToken } = require('./_lib/auth');
 const { confirmReservation } = require('./_lib/reservations');
 const { computeOrderStatus } = require('./_lib/orderStatus');
+const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
+const { notifyTransporteur } = require('./_lib/transporteurNotif');
 
 const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
 
@@ -39,7 +41,7 @@ module.exports = async (req, res) => {
       if (ids.length) {
         const [{ data: livs }, { data: incs }] = await Promise.all([
           supabase.from('livraisons').select('reservation_id, type, statut, fait_at').in('reservation_id', ids),
-          supabase.from('incidents').select('reservation_id').in('reservation_id', ids).eq('statut', 'ouvert'),
+          supabase.from('incidents').select('reservation_id').in('reservation_id', ids).in('statut', INCIDENT_OPEN_STATUSES),
         ]);
         for (const l of (livs || [])) {
           if (!livraisonsByResa.has(l.reservation_id)) livraisonsByResa.set(l.reservation_id, []);
@@ -297,9 +299,19 @@ module.exports = async (req, res) => {
       // commande annulée. Les missions déjà "fait" restent intactes (travail réel
       // déjà effectué, le transporteur reste payé).
       if (patch.statut === 'annulee') {
+        const { data: livAAnnuler } = await supabase
+          .from('livraisons').select('id, transporteur_id')
+          .eq('reservation_id', id)
+          .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
         await supabase.from('livraisons').update({ statut: 'annule' })
           .eq('reservation_id', id)
-          .in('statut', ['a_faire', 'acceptee', 'arrivee', 'probleme']);
+          .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
+        const transpAPrevenir = new Set((livAAnnuler || []).filter(l => l.transporteur_id).map(l => l.transporteur_id));
+        for (const tid of transpAPrevenir) {
+          await notifyTransporteur(supabase, tid, {
+            type: 'annulation', message: 'Une mission a été annulée.', tag: 'annulation',
+          });
+        }
       }
 
       // Si la quantité change sur une réservation déjà confirmée, réconcilier les

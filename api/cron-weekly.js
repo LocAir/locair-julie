@@ -1,5 +1,6 @@
 const { getSupabase }    = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
+const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
@@ -43,7 +44,7 @@ async function runWeeklyReport(supabase) {
 
     // Incidents ouverts
     const { count: incidentsOuverts } = await supabase
-      .from('incidents').select('id', { count: 'exact', head: true }).eq('statut', 'ouvert');
+      .from('incidents').select('id', { count: 'exact', head: true }).in('statut', INCIDENT_OPEN_STATUSES);
 
     // Virements en attente
     const { count: virementsEnAttente } = await supabase

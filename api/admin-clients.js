@@ -116,13 +116,13 @@ module.exports = async (req, res) => {
             .from('livraisons')
             .select(`
               id, type, statut, date_prevue, creneau, reservation_id,
-              accepted_at, client_notifie_at, arrivee_at, fait_at,
+              accepted_at, depart_at, client_notifie_at, arrivee_at, fait_at,
               demo_faite, demo_faite_at, vidange_confirmee, vidange_at,
               probleme_type, probleme_description, probleme_at, incident_id,
               photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path
             `)
             .in('reservation_id', resaIds)
-            .in('statut', ['a_faire', 'acceptee', 'arrivee', 'probleme'])
+            .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme'])
             .order('date_prevue', { ascending: true }),
           supabase
             .from('incidents')
@@ -133,7 +133,7 @@ module.exports = async (req, res) => {
         missionsActives = (livsRes.data || []).map(l => ({
           id: l.id, type: l.type, statut: l.statut, date_prevue: l.date_prevue, creneau: l.creneau,
           reservation_id: l.reservation_id,
-          accepted_at: l.accepted_at, client_notifie_at: l.client_notifie_at, arrivee_at: l.arrivee_at, fait_at: l.fait_at,
+          accepted_at: l.accepted_at, depart_at: l.depart_at, client_notifie_at: l.client_notifie_at, arrivee_at: l.arrivee_at, fait_at: l.fait_at,
           demo_faite: l.demo_faite, demo_faite_at: l.demo_faite_at,
           vidange_confirmee: l.vidange_confirmee, vidange_at: l.vidange_at,
           probleme_type: l.probleme_type, probleme_description: l.probleme_description, probleme_at: l.probleme_at,

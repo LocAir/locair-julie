@@ -2,6 +2,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity, listCities } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { checkAdminToken } = require('./_lib/auth');
+const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
 function rangeStartISO(periode) {
   const d = new Date();
@@ -53,7 +54,7 @@ async function computeCityStats(supabase, city, periode, since) {
   const tauxOccupation = flotteTotale > 0 ? occupees / flotteTotale : 0;
 
   const { count: incidentsOuverts } = await supabase
-    .from('incidents').select('id', { count: 'exact', head: true }).eq('city_id', city.id).eq('statut', 'ouvert');
+    .from('incidents').select('id', { count: 'exact', head: true }).eq('city_id', city.id).in('statut', INCIDENT_OPEN_STATUSES);
   const { count: incidentsPeriode } = await supabase
     .from('incidents').select('id', { count: 'exact', head: true }).eq('city_id', city.id).gte('created_at', since);
 

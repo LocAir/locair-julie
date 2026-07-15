@@ -143,7 +143,7 @@ module.exports = async (req, res) => {
           type:                  'retard',
           description:           `${joursRetard}j de retard — prélèvement auto ${(amountCents / 100).toFixed(2)} €`,
           montant_facture_cents: amountCents,
-          statut:                'facture',
+          statut:                'retard_a_facturer',
         });
         console.log('[Cron retard] Prélèvement', intent.id, 'pour reservation', liv.reservation_id);
       } catch (stripeErr) {

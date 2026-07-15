@@ -1,7 +1,8 @@
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
-const { pushToTransporteur } = require('./_lib/push');
+const { notifyTransporteur } = require('./_lib/transporteurNotif');
+const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
 const MEDIA_COLUMN = {
   photo_depart:       'photo_depart_path',
@@ -49,9 +50,10 @@ module.exports = async (req, res) => {
           id, type, statut, date_prevue, creneau, masquee, titre, adresse_libre, montant_du_cents,
           probleme_type, probleme_description, probleme_at, incident_id,
           photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path,
-          accepted_at, client_notifie_at, arrivee_at, fait_at,
+          accepted_at, depart_at, client_notifie_at, arrivee_at, fait_at,
           demo_faite, demo_faite_at,
           vidange_confirmee, vidange_at,
+          valide, valide_at,
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
             id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, instructions_acces, masquee, hors_zone,
@@ -125,10 +127,9 @@ module.exports = async (req, res) => {
         if (error) throw error;
 
         if (transporteurIdAutre) {
-          await pushToTransporteur(supabase, transporteurIdAutre, {
-            title: "Nouvelle mission Loc'Air",
-            body:  `${titre} — ouvre l'app pour l'accepter ou la refuser.`,
-            tag:   'nouvelle-mission',
+          await notifyTransporteur(supabase, transporteurIdAutre, {
+            type: 'nouvelle_mission', message: "Une nouvelle mission vous a été attribuée.",
+            livraisonId: data.id, tag: 'nouvelle-mission',
           });
         }
         return res.status(200).json({ ok: true, livraison: data });
@@ -195,10 +196,9 @@ module.exports = async (req, res) => {
       if (error) throw error;
 
       if (transporteurId) {
-        await pushToTransporteur(supabase, transporteurId, {
-          title: "Nouvelle mission Loc'Air",
-          body:  'Une mission t\'attend — ouvre l\'app pour l\'accepter ou la refuser.',
-          tag:   'nouvelle-mission',
+        await notifyTransporteur(supabase, transporteurId, {
+          type: 'nouvelle_mission', message: "Une nouvelle mission vous a été attribuée.",
+          livraisonId: data.id, tag: 'nouvelle-mission',
         });
       }
 
@@ -220,7 +220,7 @@ module.exports = async (req, res) => {
 
       if (liv.reservation_id) {
         await supabase.from('incidents').update({ statut: 'resolu' })
-          .eq('reservation_id', liv.reservation_id).eq('statut', 'ouvert');
+          .eq('reservation_id', liv.reservation_id).in('statut', INCIDENT_OPEN_STATUSES);
       }
 
       return res.status(200).json({ ok: true });
@@ -253,8 +253,15 @@ module.exports = async (req, res) => {
       }
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
 
+      const { data: liv2 } = await supabase.from('livraisons').select('transporteur_id').eq('id', livraisonId).maybeSingle();
       const { error } = await supabase.from('livraisons').update(patch).eq('id', livraisonId);
       if (error) throw error;
+      if (liv2?.transporteur_id) {
+        await notifyTransporteur(supabase, liv2.transporteur_id, {
+          type: 'modification', message: 'Une mission a été modifiée.',
+          livraisonId, tag: 'modification',
+        });
+      }
       return res.status(200).json({ ok: true });
     }
 
@@ -280,10 +287,10 @@ module.exports = async (req, res) => {
       // route) à un AUTRE transporteur la remet à "à faire" : le nouveau livreur
       // doit repasser par "j'accepte" plutôt que d'hériter d'une étape qu'il n'a
       // pas vécue. Les preuves déjà prises (photo/vidéo) sont conservées.
-      const enCours = liv && ['acceptee', 'arrivee', 'probleme'].includes(liv.statut);
+      const enCours = liv && ['acceptee', 'en_route', 'arrivee', 'probleme'].includes(liv.statut);
       if (enCours && liv.transporteur_id !== transporteurId) {
         Object.assign(patch, {
-          statut: 'a_faire', accepted_at: null, arrivee_at: null,
+          statut: 'a_faire', accepted_at: null, depart_at: null, arrivee_at: null,
           probleme_at: null, probleme_type: null, probleme_description: null,
         });
       }
@@ -293,21 +300,18 @@ module.exports = async (req, res) => {
       // Prévenir les deux côtés d'une réaffectation, même téléphone fermé :
       // le nouveau transporteur (nouvelle mission à traiter) ET l'ancien s'il
       // en avait une (mission qui lui a été retirée — sans ça il continue de
-      // la croire sienne jusqu'à rouvrir l'app). Attendu explicitement : une
-      // fonction serverless peut être coupée juste après la réponse HTTP, un
-      // push "fire-and-forget" risquerait de ne jamais partir.
+      // la croire sienne jusqu'à rouvrir l'app). Persisté dans le centre de
+      // notifications (Partie 11) en plus du push.
       if (transporteurId && transporteurId !== liv.transporteur_id) {
-        await pushToTransporteur(supabase, transporteurId, {
-          title: "Nouvelle mission Loc'Air",
-          body:  'Une mission t\'attend — ouvre l\'app pour l\'accepter ou la refuser.',
-          tag:   'nouvelle-mission',
+        await notifyTransporteur(supabase, transporteurId, {
+          type: 'nouvelle_mission', message: "Une mission vous a été attribuée.",
+          livraisonId, tag: 'nouvelle-mission',
         });
       }
       if (liv.transporteur_id && liv.transporteur_id !== transporteurId) {
-        await pushToTransporteur(supabase, liv.transporteur_id, {
-          title: 'Mission réattribuée',
-          body:  'Une mission qui t\'était assignée a été confiée à quelqu\'un d\'autre.',
-          tag:   'mission-reattribuee',
+        await notifyTransporteur(supabase, liv.transporteur_id, {
+          type: 'modification', message: 'Une mission qui vous était assignée a été confiée à quelqu\'un d\'autre.',
+          livraisonId, tag: 'mission-reattribuee',
         });
       }
 
@@ -326,18 +330,17 @@ module.exports = async (req, res) => {
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
       const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, statut, transporteur_id');
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
-      if (!['acceptee', 'arrivee', 'probleme'].includes(liv.statut)) {
+      if (!['acceptee', 'en_route', 'arrivee', 'probleme'].includes(liv.statut)) {
         return res.status(409).json({ error: 'Cette mission n\'est pas en cours' });
       }
       await supabase.from('livraisons').update({
-        statut: 'a_faire', accepted_at: null, arrivee_at: null,
+        statut: 'a_faire', accepted_at: null, depart_at: null, arrivee_at: null,
         probleme_type: null, probleme_description: null, probleme_at: null,
       }).eq('id', liv.id);
       if (liv.transporteur_id) {
-        await pushToTransporteur(supabase, liv.transporteur_id, {
-          title: 'Mission remise à faire',
-          body:  'Une mission a été remise en attente d\'acceptation — ouvre l\'app pour la revoir.',
-          tag:   'nouvelle-mission',
+        await notifyTransporteur(supabase, liv.transporteur_id, {
+          type: 'nouvelle_mission', message: 'Une mission a été remise en attente d\'acceptation.',
+          livraisonId: liv.id, tag: 'nouvelle-mission',
         });
       }
       return res.status(200).json({ ok: true });

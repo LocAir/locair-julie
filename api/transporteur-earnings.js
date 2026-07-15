@@ -24,7 +24,7 @@ module.exports = async (req, res) => {
       const { data: faites, error } = await supabase
         .from('livraisons')
         .select(`
-          id, type, montant_du_cents, paye, fait_at,
+          id, type, montant_du_cents, paye, valide, fait_at,
           reservation:reservations ( prenom, nom, adresse )
         `)
         .eq('transporteur_id', transporteurId)
@@ -37,13 +37,13 @@ module.exports = async (req, res) => {
       const monthISO = startOfMonthISO();
       let missionsAujourdhui = 0, gainAujourdhui = 0;
       let missionsMois = 0, gainMois = 0;
-      let nonVerse = 0;
+      let enAttenteValidation = 0, valideNonVerse = 0;
 
       for (const f of (faites || [])) {
         const cents = f.montant_du_cents || 0;
         if (f.fait_at >= todayISO) { missionsAujourdhui++; gainAujourdhui += cents; }
         if (f.fait_at >= monthISO) { missionsMois++; gainMois += cents; }
-        if (!f.paye) nonVerse += cents;
+        if (!f.paye) { if (f.valide) valideNonVerse += cents; else enAttenteValidation += cents; }
       }
 
       const { data: virements } = await supabase
@@ -58,13 +58,17 @@ module.exports = async (req, res) => {
         gain_aujourdhui_euros: gainAujourdhui / 100,
         missions_mois: missionsMois,
         gain_mois_euros: gainMois / 100,
-        non_verse_euros: nonVerse / 100,
+        // 3 statuts de paiement (Partie 9) : en attente de validation par
+        // l'administration, validé (payable) mais pas encore versé, et payé.
+        en_attente_validation_euros: enAttenteValidation / 100,
+        non_verse_euros: valideNonVerse / 100,
         virements: virements || [],
         // Historique mission par mission — pour que le livreur retrouve ce
         // qu'il a fait et gagné sur chacune, pas seulement des totaux.
         missions: (faites || []).map(f => ({
           id: f.id, type: f.type, montant_cents: f.montant_du_cents || 0,
-          paye: f.paye, fait_at: f.fait_at,
+          statut_paiement: f.paye ? 'paye' : (f.valide ? 'valide' : 'en_attente'),
+          fait_at: f.fait_at,
           client:  [f.reservation?.prenom, f.reservation?.nom].filter(Boolean).join(' ') || null,
           adresse: f.reservation?.adresse || null,
         })),
@@ -73,7 +77,8 @@ module.exports = async (req, res) => {
 
     if (action === 'demander_virement') {
       const { data: faites } = await supabase
-        .from('livraisons').select('montant_du_cents').eq('transporteur_id', transporteurId).eq('statut', 'fait').eq('paye', false);
+        .from('livraisons').select('montant_du_cents')
+        .eq('transporteur_id', transporteurId).eq('statut', 'fait').eq('paye', false).eq('valide', true);
       const montant = (faites || []).reduce((s, f) => s + (f.montant_du_cents || 0), 0);
       if (montant <= 0) return res.status(400).json({ error: 'Aucun montant à virer pour le moment' });
 

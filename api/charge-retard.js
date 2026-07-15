@@ -98,7 +98,7 @@ module.exports = async (req, res) => {
         type:                   'retard',
         description:            `${jours} jour${jours > 1 ? 's' : ''} de retard — ${(data.nom || '').slice(0, 200)}`,
         montant_facture_cents:  amountCents,
-        statut:                 'facture',
+        statut:                 'retard_a_facturer',
       });
     } catch (e) {
       console.error('[Incident retard]', e.message);

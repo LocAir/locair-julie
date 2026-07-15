@@ -2,17 +2,26 @@ const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
 const { sendBrevoSms } = require('./_lib/brevo');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
-const { pushToAdmin, pushToTransporteur } = require('./_lib/push');
+const { pushToAdmin } = require('./_lib/push');
+const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { pickTransporteurForMission } = require('./_lib/reservations');
 const { EXT_BY_TYPE } = require('./_lib/media');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
+const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
+const { getActiveChecklistItems, validateChecklistReponses } = require('./_lib/checklistItems');
+const { setAppareilsStatutForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
 
 const PROBLEME_LABEL = {
-  client_absent:     'Client absent',
-  appareil_en_panne: 'Appareil en panne',
-  retard:            'Retard',
-  autre:             'Problème',
+  client_absent:       'Client absent',
+  acces_impossible:    'Accès impossible',
+  mauvaise_adresse:    'Mauvaise adresse',
+  materiel_endommage:  'Matériel endommagé',
+  probleme_technique:  'Problème technique',
+  refus_client:        'Refus client',
+  retard:              'Retard',
+  autre:               'Problème',
 };
+const PROBLEME_TYPES = Object.keys(PROBLEME_LABEL);
 
 const MEDIA_COLUMN = {
   photo_depart:        'photo_depart_path',
@@ -23,11 +32,14 @@ const MEDIA_COLUMN = {
 // À quelle(s) étape(s) chaque preuve peut être prise. "arrivee" reste accepté
 // en plus de "acceptee" par compatibilité avec une mission déjà à cette étape
 // au moment du déploiement — le statut n'est plus jamais réémis depuis.
+// "en_route" (étape "Commencer la mission") ouvre les mêmes droits.
 const STAGE_FOR_KIND = {
-  photo_depart:       ['acceptee'],
-  photo_installation: ['acceptee', 'arrivee'],
-  photo_retour:       ['acceptee', 'arrivee'],
+  photo_depart:       ['acceptee', 'en_route'],
+  photo_installation: ['acceptee', 'en_route', 'arrivee'],
+  photo_retour:       ['acceptee', 'en_route', 'arrivee'],
 };
+// Étapes considérées "mission en cours" pour toutes les actions terrain.
+const EN_COURS_STATUTS = ['acceptee', 'en_route', 'arrivee'];
 
 // Accepter une mission n'est pas la démarrer : ça peut se faire n'importe
 // quand, même en avance. Seules les étapes de terrain (photo/vidéo, vidange,
@@ -50,7 +62,7 @@ function checkMediaAllowed(liv, kind) {
   // La preuve de passage "client absent" peut être prise en route (déjà
   // prévenu, personne ne répond) ou une fois sur place — pas d'étape unique.
   if (kind === 'photo_absence') {
-    if (!['acceptee', 'arrivee'].includes(liv.statut)) return 'Cette étape n\'est pas encore accessible';
+    if (!EN_COURS_STATUTS.includes(liv.statut)) return 'Cette étape n\'est pas encore accessible';
     return null;
   }
     const expectsLivraison = kind === 'photo_depart' || kind === 'photo_installation';
@@ -74,7 +86,7 @@ async function loadLivraison(supabase, id) {
 // à un incident déjà facturé ou déjà résolu par ailleurs.
 async function closeMissionIncident(supabase, liv) {
   if (!liv.incident_id) return;
-  await supabase.from('incidents').update({ statut: 'resolu' }).eq('id', liv.incident_id).eq('statut', 'ouvert');
+  await supabase.from('incidents').update({ statut: 'resolu' }).eq('id', liv.incident_id).in('statut', INCIDENT_OPEN_STATUSES);
 }
 
 module.exports = async (req, res) => {
@@ -117,7 +129,7 @@ module.exports = async (req, res) => {
         const { count } = await supabase
           .from('livraisons').select('id', { count: 'exact', head: true })
           .eq('transporteur_id', transporteurId)
-          .in('statut', ['acceptee', 'arrivee'])
+          .in('statut', EN_COURS_STATUTS)
           .lte('date_prevue', todayStr)
           .neq('id', liv.id);
         if (count > 0) {
@@ -159,6 +171,32 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, statut: 'acceptee' });
     }
 
+    // Étape 2 (Partie 4/7) : "Commencer la mission/récupération" — enregistre
+    // l'heure de départ et passe la mission en "En route". Réservé au jour
+    // prévu, comme toute étape de terrain.
+    if (action === 'commencer') {
+      if (liv.statut !== 'acceptee') return res.status(409).json({ error: 'Mission pas encore acceptée' });
+      const dateErr = missionStartDateError(liv);
+      if (dateErr) return res.status(409).json({ error: dateErr });
+      await supabase.from('livraisons').update({ statut: 'en_route', depart_at: new Date().toISOString() }).eq('id', liv.id);
+      await pushToAdmin(supabase, {
+        title: '🚚 Transporteur en route',
+        body:  `${liv.reservation?.adresse || 'Une mission'} — le transporteur vient de partir.`,
+        tag:   'en-route',
+      });
+      return res.status(200).json({ ok: true, statut: 'en_route' });
+    }
+
+    // Étape 3 : "Arrivé sur place" — enregistre l'heure d'arrivée et débloque
+    // les étapes suivantes (checklist, photos, validation).
+    if (action === 'arriver') {
+      if (liv.statut !== 'en_route') return res.status(409).json({ error: 'Mission pas encore en route' });
+      const dateErr = missionStartDateError(liv);
+      if (dateErr) return res.status(409).json({ error: dateErr });
+      await supabase.from('livraisons').update({ statut: 'arrivee', arrivee_at: new Date().toISOString() }).eq('id', liv.id);
+      return res.status(200).json({ ok: true, statut: 'arrivee' });
+    }
+
     // Retour arrière si le livreur a accepté une mission par erreur (mauvais
     // tap) — remise en "à faire" pour lui-même (pas de réassignation à un
     // autre transporteur), sans effacer une éventuelle progression déjà
@@ -168,11 +206,11 @@ module.exports = async (req, res) => {
     // qu'Aly résolve l'incident — la ligne "incidents" créée reste intacte,
     // seuls les champs de statut courant de la mission sont effacés.
     if (action === 'reporter') {
-      if (!['acceptee', 'arrivee', 'probleme'].includes(liv.statut)) {
+      if (![...EN_COURS_STATUTS, 'probleme'].includes(liv.statut)) {
         return res.status(409).json({ error: 'Cette mission n\'est pas en cours' });
       }
       await supabase.from('livraisons').update({
-        statut: 'a_faire', accepted_at: null, arrivee_at: null,
+        statut: 'a_faire', accepted_at: null, depart_at: null, arrivee_at: null,
         probleme_type: null, probleme_description: null, probleme_at: null,
       }).eq('id', liv.id);
       return res.status(200).json({ ok: true, statut: 'a_faire' });
@@ -195,10 +233,10 @@ module.exports = async (req, res) => {
         });
         if (newTid && newTid !== transporteurId) {
           await supabase.from('livraisons').update({ transporteur_id: newTid, statut: 'a_faire' }).eq('id', liv.id);
-          await pushToTransporteur(supabase, newTid, {
-            title: "Nouvelle mission Loc'Air",
-            body:  "Une mission vous a été réassignée — ouvre l'app pour l'accepter.",
-            tag:   'nouvelle-mission',
+          await notifyTransporteur(supabase, newTid, {
+            type: 'nouvelle_mission',
+            message: "Une mission vous a été réassignée — ouvre l'app pour l'accepter.",
+            livraisonId: liv.id, tag: 'nouvelle-mission',
           });
           reassigned = true;
         }
@@ -220,7 +258,7 @@ module.exports = async (req, res) => {
     // téléphone (bouton côté client, ouvre l'app SMS) — cette action se
     // contente d'horodater "client prévenu" pour les stats de performance.
     if (action === 'prevenir_client') {
-      if (!['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Mission pas encore acceptée' });
+      if (!EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Mission pas encore acceptée' });
       if (liv.client_notifie_at) return res.status(200).json({ ok: true });
       await supabase.from('livraisons').update({ client_notifie_at: new Date().toISOString() }).eq('id', liv.id);
       return res.status(200).json({ ok: true });
@@ -251,7 +289,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'confirmer_vidange') {
-      if (liv.type !== 'recuperation' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      if (liv.type !== 'recuperation' || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
       await supabase.from('livraisons').update({ vidange_confirmee: true, vidange_at: new Date().toISOString() }).eq('id', liv.id);
@@ -264,7 +302,7 @@ module.exports = async (req, res) => {
     // fonctionnement au client — même logique de garde-fou serveur que
     // confirmer_vidange.
     if (action === 'confirmer_demo') {
-      if (liv.type !== 'livraison' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      if (liv.type !== 'livraison' || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
       if (!liv.photo_installation_path) {
@@ -276,7 +314,7 @@ module.exports = async (req, res) => {
 
     if (action === 'livraison_ok' || action === 'retour_ok') {
       const expectedType = action === 'livraison_ok' ? 'livraison' : 'recuperation';
-      if (liv.type !== expectedType || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      if (liv.type !== expectedType || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
       if (expectedType === 'livraison' && !liv.demo_faite) {
@@ -289,13 +327,42 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Vérification et vidange requises avant de valider' });
       }
 
+      // Checklist administrable (Parties 5/7) — tous les items actifs doivent
+      // être cochés avant de pouvoir valider la mission.
+      const checklistWorkflow = expectedType === 'livraison' ? 'installation' : 'recuperation';
+      const checklistItems = await getActiveChecklistItems(supabase, checklistWorkflow);
+      const checklistCheck = validateChecklistReponses(checklistItems, body.checklist_reponses);
+      if (checklistCheck.error) return res.status(400).json({ error: checklistCheck.error });
+
+      // Contrôle d'état du matériel (Partie 7), obligatoire à la récupération.
+      const ETAT_MATERIEL_VALUES = Object.keys(ETAT_MATERIEL_TO_APPAREIL_STATUT);
+      if (expectedType === 'recuperation' && !ETAT_MATERIEL_VALUES.includes(body.etat_materiel)) {
+        return res.status(400).json({ error: 'État du matériel requis avant de valider' });
+      }
+
       const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
       const montantDu = computeBareme(liv.type, liv.reservation?.installation, tarifs);
 
-      await supabase.from('livraisons').update({
+      const update = {
         statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,
-      }).eq('id', liv.id);
+      };
+      if (expectedType === 'livraison') {
+        update.checklist_installation_reponses = checklistCheck.snapshot;
+      } else {
+        update.checklist_recuperation_reponses = checklistCheck.snapshot;
+        update.etat_materiel = body.etat_materiel;
+        update.etat_materiel_commentaire = (body.etat_materiel_commentaire || '').slice(0, 1000);
+      }
+
+      await supabase.from('livraisons').update(update).eq('id', liv.id);
       await closeMissionIncident(supabase, liv);
+
+      // Parc matériel (Partie 8) : synchronisation automatique du statut.
+      if (expectedType === 'livraison') {
+        await setAppareilsStatutForReservation(supabase, liv.reservation_id, 'loue');
+      } else {
+        await setAppareilsStatutForReservation(supabase, liv.reservation_id, ETAT_MATERIEL_TO_APPAREIL_STATUT[body.etat_materiel]);
+      }
 
       // Emails de scénario (moteur central _lib/emailEngine.js) — jamais
       // envoyés deux fois, historisés dans email_log. Ne doit jamais faire
@@ -324,7 +391,7 @@ module.exports = async (req, res) => {
     // ramener au box) : pas de photo/vidange à valider, pas de barème — le
     // tarif a déjà été fixé par l'admin à la création, on ne le touche pas.
     if (action === 'autre_ok') {
-      if (liv.type !== 'autre' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      if (liv.type !== 'autre' || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
 
@@ -337,7 +404,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'changement_ok') {
-      if (liv.type !== 'changement' || !['acceptee', 'arrivee'].includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      if (liv.type !== 'changement' || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
       if (!liv.photo_installation_path) return res.status(400).json({ error: 'Vidéo du nouvel appareil installé requise avant de valider' });
@@ -356,10 +423,10 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'probleme') {
-      const problemeType = ['client_absent', 'appareil_en_panne', 'retard', 'autre'].includes(body.probleme_type) ? body.probleme_type : 'autre';
+      const problemeType = PROBLEME_TYPES.includes(body.probleme_type) ? body.probleme_type : 'autre';
       const description  = (body.probleme_description || '').slice(0, 1000);
 
-      if (['acceptee', 'arrivee'].includes(liv.statut)) {
+      if (EN_COURS_STATUTS.includes(liv.statut)) {
         const dateErr = missionStartDateError(liv);
         if (dateErr) return res.status(409).json({ error: dateErr });
       }
@@ -377,7 +444,6 @@ module.exports = async (req, res) => {
         probleme_at:          new Date().toISOString(),
       }).eq('id', liv.id);
 
-      const incidentType = problemeType === 'retard' ? 'retard' : problemeType === 'appareil_en_panne' ? 'materiel' : 'autre';
       // Une mission normale a toujours une réservation d'origine — sa city_id
       // est la source de vérité, jamais une ville devinée (voir
       // charge-retard.js). Une mission "autre" (hors réservation) porte sa
@@ -390,10 +456,12 @@ module.exports = async (req, res) => {
       }
       const { data: incident } = await supabase.from('incidents').insert({
         city_id:         incidentCityId,
-        reservation_id: liv.reservation_id,
-        type:            incidentType,
+        reservation_id:  liv.reservation_id,
+        transporteur_id: transporteurId,
+        livraison_id:    liv.id,
+        type:            problemeType,
         description:     `[${liv.type}] ${description || problemeType}`,
-        statut:          'ouvert',
+        statut:          'nouveau',
       }).select('id').single();
       // Lien précis mission -> incident, pour le refermer automatiquement
       // dès que CETTE mission se termine normalement (voir closeMissionIncident).

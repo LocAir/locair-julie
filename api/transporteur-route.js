@@ -43,7 +43,7 @@ module.exports = async (req, res) => {
       .select('id, type, statut, date_prevue, reservation:reservations(adresse)')
       .eq('transporteur_id', transporteurId)
       .eq('masquee', false)
-      .in('statut', ['a_faire', 'acceptee', 'arrivee'])
+      .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee'])
       .lte('date_prevue', todayStr);
     if (error) throw error;
 
