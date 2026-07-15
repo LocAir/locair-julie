@@ -9,6 +9,7 @@ const { runMonthlyRecap }      = require('./cron-monthly');
 const { calcTieredPrice: calcRetardPrice } = require('./_lib/pricing');
 const { scenariosDueToday } = require('./_lib/emailSchedule');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
+const { recordMouvement } = require('./_lib/stockMouvements');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
@@ -169,7 +170,13 @@ module.exports = async (req, res) => {
         .eq('appareil_id', app.id);
       if ((count || 0) < SEUIL) continue;
 
-      await supabase.from('appareils').update({ statut: 'maintenance' }).eq('id', app.id);
+      // Mouvement de stock (Module 6, Partie 5) : même passage automatique,
+      // toujours journalisé plutôt qu'un update() muet.
+      await recordMouvement(supabase, {
+        appareilId: app.id, typeEvenement: 'passage_maintenance', nouveauStatut: 'maintenance',
+        nouvelleLocalisation: 'maintenance', utilisateur: 'systeme',
+        commentaire: `Maintenance préventive après ${count} locations (seuil ${SEUIL}).`,
+      });
       await pushToAdmin(supabase, {
         title: `🔧 Maintenance — Appareil #${app.numero}`,
         body:  `${count} locations effectuées. L'appareil est passé en maintenance préventive.`,
@@ -180,6 +187,38 @@ module.exports = async (req, res) => {
     if (maintenanceCount) report.maintenance = maintenanceCount;
   } catch (e) {
     console.error('[Cron maintenance]', e.message);
+  }
+
+  // ── 4bis. Maintenance dépassée / appareil bloqué trop longtemps (Module 6,
+  // Partie 12) ─────────────────────────────────────────────────────────────────
+  // Un appareil en panne/maintenance/nettoyage depuis plus de X jours sans
+  // avoir été résolu bloque du stock sans que personne ne s'en aperçoive.
+  try {
+    const SEUIL_JOURS = parseInt(process.env.MAINTENANCE_BLOQUEE_SEUIL_JOURS) || 7;
+    const seuilDate = new Date(Date.now() - SEUIL_JOURS * 86400000).toISOString();
+    const { data: bloques } = await supabase
+      .from('appareils').select('id, numero, statut, city_id')
+      .in('statut', ['panne', 'maintenance', 'nettoyage']);
+
+    let bloqueCount = 0;
+    for (const app of bloques || []) {
+      // Dernier mouvement de CET appareil : depuis quand est-il dans cet état ?
+      const { data: dernier } = await supabase
+        .from('appareil_mouvements').select('created_at')
+        .eq('appareil_id', app.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (!dernier || dernier.created_at > seuilDate) continue;
+
+      const joursBloque = Math.round((Date.now() - new Date(dernier.created_at).getTime()) / 86400000);
+      await pushToAdmin(supabase, {
+        title: `⏳ Appareil #${app.numero} bloqué depuis ${joursBloque}j`,
+        body:  `Statut "${app.statut}" sans changement depuis ${joursBloque} jours — vérifie si une action est nécessaire.`,
+        tag:   `bloque-${app.id}`,
+      });
+      bloqueCount++;
+    }
+    if (bloqueCount) report.appareils_bloques = bloqueCount;
+  } catch (e) {
+    console.error('[Cron appareils bloqués]', e.message);
   }
 
   // ── 5. Alerte stock saturé J+7 ───────────────────────────────────────────────

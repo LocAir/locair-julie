@@ -86,18 +86,22 @@ module.exports = async (req, res) => {
       const statutChange = patch.statut != null;
       if (statutChange) {
         // Changement de statut manuel par l'admin -> mouvement de stock
-        // (Module 6, Partie 5), plutôt qu'un update() muet.
+        // (Module 6, Partie 5) avec justification (Partie 9), plutôt qu'un
+        // update() muet.
         const localisationByStatut = {
           disponible: 'stock_principal', nettoyage: 'stock_principal',
           maintenance: 'maintenance', panne: 'maintenance', loue: 'chez_client',
         };
+        const isMaintenance = ['maintenance', 'panne'].includes(patch.statut);
         await recordMouvement(supabase, {
           appareilId: id,
           typeEvenement: ['disponible'].includes(patch.statut) ? 'remise_disponibilite'
-            : ['maintenance', 'panne'].includes(patch.statut) ? 'passage_maintenance' : 'autre',
+            : isMaintenance ? 'passage_maintenance' : 'autre',
           nouveauStatut: patch.statut,
           nouvelleLocalisation: localisationByStatut[patch.statut] || 'autre',
           utilisateur: 'admin',
+          commentaire: (body.justification || '').trim().slice(0, 1000) || null,
+          coutCents: isMaintenance && body.cout_cents != null ? Math.max(0, parseInt(body.cout_cents) || 0) : null,
         });
         delete patch.statut; // déjà appliqué par recordMouvement
       }
@@ -128,6 +132,164 @@ module.exports = async (req, res) => {
       return res.status(200).json({ mouvements: data || [] });
     }
 
+    // Tableau de bord du parc (Module 6, Partie 9).
+    if (action === 'dashboard') {
+      const { data: appareils } = await supabase.from('appareils').select('id, statut').eq('city_id', city.id);
+      const list = appareils || [];
+      const parStatut = { disponible: 0, panne: 0, maintenance: 0, nettoyage: 0, loue: 0 };
+      list.forEach(a => { if (parStatut[a.statut] != null) parStatut[a.statut]++; });
+
+      const [{ data: liens }, { data: livsEnCours }] = await Promise.all([
+        supabase.from('reservation_appareils').select('appareil_id, reservation_id, reservation:reservations(statut)'),
+        supabase.from('livraisons').select('reservation_id').eq('type', 'livraison').neq('statut', 'fait'),
+      ]);
+      const resaEnPrepIds = new Set((livsEnCours || []).map(l => l.reservation_id));
+      const enPreparation = new Set(
+        (liens || [])
+          .filter(l => l.reservation && l.reservation.statut === 'confirmee' && resaEnPrepIds.has(l.reservation_id))
+          .map(l => l.appareil_id)
+      ).size;
+
+      return res.status(200).json({
+        total: list.length,
+        disponibles: parStatut.disponible,
+        en_location: parStatut.loue,
+        en_preparation: enPreparation,
+        en_maintenance: parStatut.maintenance + parStatut.nettoyage,
+        hors_service: parStatut.panne,
+      });
+    }
+
+    // Fiche administrateur d'un climatiseur (Module 6, Partie 9) : historique,
+    // réservations associées, clients précédents, missions transporteur liées,
+    // incidents, interventions maintenance, état actuel.
+    if (action === 'detail') {
+      const appareilId = parseInt(body.appareil_id);
+      if (!appareilId) return res.status(400).json({ error: 'appareil_id manquant' });
+      const { data: appareil } = await supabase.from('appareils').select('*').eq('id', appareilId).eq('city_id', city.id).maybeSingle();
+      if (!appareil) return res.status(404).json({ error: 'Unité introuvable' });
+
+      const [{ data: mouvements }, { data: liens }] = await Promise.all([
+        supabase.from('appareil_mouvements')
+          .select('id, type_evenement, ancien_statut, nouveau_statut, ancienne_localisation, nouvelle_localisation, utilisateur, commentaire, cout_cents, created_at, livraison_id, reservation_id')
+          .eq('appareil_id', appareilId).order('created_at', { ascending: false }).limit(200),
+        supabase.from('reservation_appareils').select('reservation_id').eq('appareil_id', appareilId),
+      ]);
+      const resaIds = [...new Set((liens || []).map(l => l.reservation_id))];
+
+      let reservations = [], incidents = [], missions = [];
+      if (resaIds.length) {
+        const [{ data: resas }, { data: incs }, { data: livs }] = await Promise.all([
+          supabase.from('reservations').select('id, ref, prenom, nom, tel, email, date_debut, date_fin, statut, prix_total_cents, quantite').in('id', resaIds).order('date_debut', { ascending: false }),
+          supabase.from('incidents').select('id, type, description, statut, created_at, transporteur:transporteurs(nom)').in('reservation_id', resaIds).order('created_at', { ascending: false }),
+          supabase.from('livraisons').select('id, type, statut, date_prevue, fait_at, reservation_id, transporteur:transporteurs(nom)').in('reservation_id', resaIds).order('date_prevue', { ascending: false }),
+        ]);
+        reservations = resas || [];
+        incidents = incs || [];
+        missions = livs || [];
+      }
+      // Clients précédents = clients distincts des réservations associées.
+      const clients = [...new Map(reservations.map(r => [
+        [r.prenom, r.nom, r.tel].join('|'),
+        { prenom: r.prenom, nom: r.nom, tel: r.tel, email: r.email },
+      ])).values()];
+
+      return res.status(200).json({
+        appareil, mouvements: mouvements || [], reservations, clients, missions, incidents,
+        interventions_maintenance: (mouvements || []).filter(m => m.type_evenement === 'passage_maintenance'),
+      });
+    }
+
+    // Rentabilité / statistiques par climatiseur (Module 6, Partie 10).
+    if (action === 'stats') {
+      const appareilId = parseInt(body.appareil_id);
+      if (!appareilId) return res.status(400).json({ error: 'appareil_id manquant' });
+      const { data: appareil } = await supabase.from('appareils').select('id, created_at').eq('id', appareilId).eq('city_id', city.id).maybeSingle();
+      if (!appareil) return res.status(404).json({ error: 'Unité introuvable' });
+
+      const { data: liens } = await supabase.from('reservation_appareils').select('reservation_id').eq('appareil_id', appareilId);
+      const resaIds = [...new Set((liens || []).map(l => l.reservation_id))];
+      let locations = [];
+      if (resaIds.length) {
+        const { data: resas } = await supabase
+          .from('reservations').select('id, date_debut, date_fin, prix_total_cents, quantite, statut')
+          .in('id', resaIds).in('statut', ['confirmee', 'terminee']);
+        locations = resas || [];
+      }
+      const joursLoues = locations.reduce((s, r) => s + Math.max(0, (new Date(r.date_fin) - new Date(r.date_debut)) / 86400000), 0);
+      // CA proraté par appareil si la réservation en couvre plusieurs — une
+      // estimation raisonnable, pas une comptabilité exacte par numéro de série.
+      const caCents = locations.reduce((s, r) => s + Math.round((r.prix_total_cents || 0) / (r.quantite || 1)), 0);
+
+      const { data: maintenances } = await supabase
+        .from('appareil_mouvements').select('cout_cents').eq('appareil_id', appareilId).eq('type_evenement', 'passage_maintenance');
+      const coutMaintenanceCents = (maintenances || []).reduce((s, m) => s + (m.cout_cents || 0), 0);
+
+      const joursDepuisEntree = Math.max(1, (Date.now() - new Date(appareil.created_at).getTime()) / 86400000);
+      const moisDepuisEntree = Math.max(1, joursDepuisEntree / 30);
+
+      return res.status(200).json({
+        nombre_locations: locations.length,
+        jours_loues: Math.round(joursLoues),
+        ca_genere_euros: caCents / 100,
+        cout_maintenance_euros: coutMaintenanceCents / 100,
+        rentabilite_estimee_euros: (caCents - coutMaintenanceCents) / 100,
+        taux_utilisation: Math.min(1, joursLoues / joursDepuisEntree),
+        duree_moyenne_location_jours: locations.length ? Math.round(joursLoues / locations.length) : 0,
+        frequence_rotation_par_mois: Math.round((locations.length / moisDepuisEntree) * 100) / 100,
+      });
+    }
+
+    // Réaffectation manuelle d'un appareil précis à une réservation (Partie 9,
+    // "affecter un appareil") — remplace l'appareil retenu par assign_appareils
+    // sans toucher au reste du parcours (mission déjà créée, statut inchangé).
+    if (action === 'reassign') {
+      const reservationId = parseInt(body.reservation_id);
+      // L'admin raisonne en "n° de climatiseur" (étiquette collée dessus),
+      // jamais en id interne — accepte les deux pour rester flexible.
+      let nouvelAppareilId = parseInt(body.appareil_id) || null;
+      if (!nouvelAppareilId && body.appareil_numero != null) {
+        const { data: parNumero } = await supabase.from('appareils').select('id').eq('city_id', city.id).eq('numero', parseInt(body.appareil_numero)).maybeSingle();
+        nouvelAppareilId = parNumero?.id || null;
+      }
+      if (!reservationId || !nouvelAppareilId) return res.status(400).json({ error: 'Paramètres manquants ou climatiseur introuvable' });
+      const { data: resa } = await supabase.from('reservations').select('id, date_debut, date_fin').eq('id', reservationId).eq('city_id', city.id).maybeSingle();
+      if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
+      const { data: nouvelAppareil } = await supabase.from('appareils').select('id, statut').eq('id', nouvelAppareilId).eq('city_id', city.id).maybeSingle();
+      if (!nouvelAppareil) return res.status(404).json({ error: 'Nouvel appareil introuvable' });
+      if (['panne', 'maintenance', 'nettoyage'].includes(nouvelAppareil.statut)) {
+        return res.status(400).json({ error: 'Cet appareil n\'est pas en état d\'être affecté (panne/maintenance/nettoyage)' });
+      }
+      // Refuse un appareil déjà retenu par une AUTRE réservation confirmée qui chevauche.
+      const { data: conflit } = await supabase
+        .from('reservation_appareils').select('reservation_id, reservation:reservations(statut, date_debut, date_fin)')
+        .eq('appareil_id', nouvelAppareilId).neq('reservation_id', reservationId);
+      const enConflit = (conflit || []).some(c => c.reservation && c.reservation.statut === 'confirmee'
+        && c.reservation.date_debut < resa.date_fin && c.reservation.date_fin > resa.date_debut);
+      if (enConflit) return res.status(409).json({ error: 'Cet appareil est déjà retenu par une autre réservation sur cette période' });
+
+      const { data: ancien } = await supabase.from('reservation_appareils').select('id, appareil_id').eq('reservation_id', reservationId).limit(1).maybeSingle();
+      if (ancien) {
+        await supabase.from('reservation_appareils').delete().eq('id', ancien.id);
+      }
+      await supabase.from('reservation_appareils').insert({ reservation_id: reservationId, appareil_id: nouvelAppareilId, valide: true, valide_at: new Date().toISOString() });
+
+      if (ancien) {
+        await recordMouvement(supabase, {
+          appareilId: ancien.appareil_id, typeEvenement: 'autre', nouveauStatut: 'disponible',
+          nouvelleLocalisation: 'stock_principal', reservationId,
+          utilisateur: 'admin', commentaire: 'Réaffecté à un autre appareil par l\'administration',
+        });
+      }
+      await recordMouvement(supabase, {
+        appareilId: nouvelAppareilId, typeEvenement: 'attribution_reservation', nouveauStatut: nouvelAppareil.statut,
+        nouvelleLocalisation: 'stock_principal', reservationId,
+        utilisateur: 'admin', commentaire: 'Affecté manuellement par l\'administration',
+      });
+
+      return res.status(200).json({ ok: true });
+    }
+
     if (action === 'delete') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
@@ -148,29 +310,82 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // action 'list' (par défaut)
-    const { data: appareils, error } = await supabase
-      .from('appareils').select('*').eq('city_id', city.id).order('numero');
+    // action 'list' (par défaut) — filtres Partie 9 : statut, modèle,
+    // localisation directement sur la requête ; client/transporteur/période
+    // passent par une pré-sélection d'appareil_id (jointure sur l'historique).
+    let query = supabase.from('appareils').select('*').eq('city_id', city.id);
+    if (body.filtre_statut)      query = query.eq('statut', body.filtre_statut);
+    if (body.filtre_modele_id)   query = query.eq('modele_id', parseInt(body.filtre_modele_id));
+    if (body.filtre_localisation) query = query.eq('localisation', body.filtre_localisation);
+    const { data: appareilsRaw, error } = await query.order('numero');
     if (error) throw error;
+    let appareils = appareilsRaw || [];
+
+    if (body.filtre_transporteur_id) {
+      const tid = parseInt(body.filtre_transporteur_id);
+      const { data: livs } = await supabase
+        .from('livraisons').select('reservation_id').eq('transporteur_id', tid);
+      const resaIds = [...new Set((livs || []).map(l => l.reservation_id).filter(Boolean))];
+      const { data: ras } = resaIds.length
+        ? await supabase.from('reservation_appareils').select('appareil_id').in('reservation_id', resaIds)
+        : { data: [] };
+      const ids = new Set((ras || []).map(r => r.appareil_id));
+      appareils = appareils.filter(a => ids.has(a.id));
+    }
+    if (body.filtre_client) {
+      const q = String(body.filtre_client).trim().toLowerCase();
+      const { data: resas } = await supabase
+        .from('reservations').select('id, prenom, nom, tel, email').eq('city_id', city.id);
+      const resaIds = (resas || [])
+        .filter(r => [r.prenom, r.nom, r.tel, r.email].filter(Boolean).join(' ').toLowerCase().includes(q))
+        .map(r => r.id);
+      const { data: ras } = resaIds.length
+        ? await supabase.from('reservation_appareils').select('appareil_id').in('reservation_id', resaIds)
+        : { data: [] };
+      const ids = new Set((ras || []).map(r => r.appareil_id));
+      appareils = appareils.filter(a => ids.has(a.id));
+    }
+    if (body.filtre_periode_debut || body.filtre_periode_fin) {
+      const pDebut = body.filtre_periode_debut || '0001-01-01';
+      const pFin   = body.filtre_periode_fin || '9999-12-31';
+      const { data: resas } = await supabase
+        .from('reservations').select('id').eq('city_id', city.id)
+        .lt('date_debut', pFin).gt('date_fin', pDebut);
+      const resaIds = (resas || []).map(r => r.id);
+      const { data: ras } = resaIds.length
+        ? await supabase.from('reservation_appareils').select('appareil_id').in('reservation_id', resaIds)
+        : { data: [] };
+      const ids = new Set((ras || []).map(r => r.appareil_id));
+      appareils = appareils.filter(a => ids.has(a.id));
+    }
 
     const today    = new Date().toISOString().slice(0, 10);
     const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     const disponibles = Math.max(0, await getAvailability(supabase, city.id, today, tomorrow));
 
     // Un appareil est "chez le client" s'il est lié à une réservation confirmée
-    // dont la période couvre aujourd'hui. Filtré en JS plutôt qu'avec un embed
-    // PostgREST filtré (plus simple à garder correct, volume négligeable à cette échelle).
-    const { data: liens } = await supabase
-      .from('reservation_appareils')
-      .select('appareil_id, reservation:reservations(statut, date_debut, date_fin)');
+    // dont la période couvre aujourd'hui. "En préparation" (Partie 7/9) : lié à
+    // une réservation confirmée dont la mission de livraison n'est pas encore
+    // "fait" — filtré en JS plutôt qu'avec un embed PostgREST filtré (plus
+    // simple à garder correct, volume négligeable à cette échelle).
+    const [{ data: liens }, { data: livsEnCours }] = await Promise.all([
+      supabase.from('reservation_appareils').select('appareil_id, reservation_id, reservation:reservations(statut, date_debut, date_fin)'),
+      supabase.from('livraisons').select('reservation_id').eq('type', 'livraison').neq('statut', 'fait'),
+    ]);
     const enLocationIds = new Set(
       (liens || [])
         .filter(l => l.reservation && l.reservation.statut === 'confirmee'
           && l.reservation.date_debut <= today && l.reservation.date_fin > today)
         .map(l => l.appareil_id)
     );
+    const resaEnPreparationIds = new Set((livsEnCours || []).map(l => l.reservation_id));
+    const enPreparationIds = new Set(
+      (liens || [])
+        .filter(l => l.reservation && l.reservation.statut === 'confirmee' && resaEnPreparationIds.has(l.reservation_id))
+        .map(l => l.appareil_id)
+    );
 
-    const list = (appareils || []).map(a => ({ ...a, en_location: enLocationIds.has(a.id) }));
+    const list = appareils.map(a => ({ ...a, en_location: enLocationIds.has(a.id), en_preparation: enPreparationIds.has(a.id) && !enLocationIds.has(a.id) }));
     const actifs = list.filter(a => !['panne', 'maintenance', 'loue', 'nettoyage'].includes(a.statut)).length;
 
     return res.status(200).json({

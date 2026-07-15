@@ -94,6 +94,9 @@ create table appareil_mouvements (
   nouvelle_localisation text not null,
   utilisateur           text, -- nom du transporteur, "admin", ou "systeme" (automatique)
   commentaire           text,
+  -- Coût de l'intervention si renseigné par l'admin (mouvement "passage
+  -- maintenance") — sert au calcul de rentabilité par appareil (Partie 10).
+  cout_cents            integer check (cout_cents is null or cout_cents >= 0),
   created_at            timestamptz not null default now()
 );
 create index appareil_mouvements_appareil_idx on appareil_mouvements (appareil_id, created_at desc);

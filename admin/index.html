@@ -1290,13 +1290,18 @@ const MOUVEMENT_TYPE_LABEL = {
   remise_disponibilite:'Remise en disponibilité', autre:'Autre',
 };
 
+let STOCK_FILTRES = {};
 async function loadStock(silent){
   const zone = document.getElementById('tab-stock');
   if(!silent) zone.innerHTML = loading();
   try{
-    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:'{}'});
+    const [r, rd] = await Promise.all([
+      fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify(Object.assign({}, STOCK_FILTRES))}),
+      fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'dashboard'})}),
+    ]);
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
+    const dd = await rd.json().catch(()=>null);
     const pctOccupe = d.actifs>0 ? Math.round((d.en_location/d.actifs)*100) : 0;
     const appareils = d.appareils || [];
     zone.innerHTML = `
@@ -1308,6 +1313,40 @@ async function loadStock(silent){
           <span><i class="dot dot-blue"></i> ${d.en_location} en location</span>
         </div>
         <p class="sub" style="margin-top:14px">Se met à jour automatiquement à chaque réservation et à chaque retour confirmé par un transporteur. Chaque appareil a son numéro — le livreur sait exactement lequel récupérer.</p>
+      </div>
+      ${rd.ok && dd ? `
+      <div class="card">
+        <h2>Tableau de bord du parc</h2>
+        <div class="stat-grid">
+          <div class="stat-tile"><div class="n">${dd.total}</div><div class="l">Total</div></div>
+          <div class="stat-tile"><div class="n" style="color:var(--green)">${dd.disponibles}</div><div class="l">Disponibles</div></div>
+          <div class="stat-tile"><div class="n" style="color:var(--blue)">${dd.en_location}</div><div class="l">En location</div></div>
+          <div class="stat-tile"><div class="n" style="color:var(--amber)">${dd.en_preparation}</div><div class="l">En préparation</div></div>
+          <div class="stat-tile"><div class="n" style="color:var(--amber)">${dd.en_maintenance}</div><div class="l">Maintenance / nettoyage</div></div>
+          <div class="stat-tile"><div class="n" style="color:var(--red)">${dd.hors_service}</div><div class="l">Hors service</div></div>
+        </div>
+      </div>` : ''}
+      <div class="card">
+        <h2 style="margin-bottom:10px">Filtrer</h2>
+        <div class="inline-form">
+          <div><label for="stock-f-statut">Statut</label><select id="stock-f-statut" onchange="applyStockFiltres()">
+            <option value="">Tous</option>
+            <option value="disponible" ${STOCK_FILTRES.filtre_statut==='disponible'?'selected':''}>Disponible</option>
+            <option value="loue" ${STOCK_FILTRES.filtre_statut==='loue'?'selected':''}>Loué</option>
+            <option value="nettoyage" ${STOCK_FILTRES.filtre_statut==='nettoyage'?'selected':''}>Nettoyage</option>
+            <option value="panne" ${STOCK_FILTRES.filtre_statut==='panne'?'selected':''}>En panne</option>
+            <option value="maintenance" ${STOCK_FILTRES.filtre_statut==='maintenance'?'selected':''}>Maintenance</option>
+          </select></div>
+          <div><label for="stock-f-localisation">Localisation</label><select id="stock-f-localisation" onchange="applyStockFiltres()">
+            <option value="">Toutes</option>
+            ${Object.entries(LOCALISATION_LABEL).map(([k,l])=>`<option value="${k}" ${STOCK_FILTRES.filtre_localisation===k?'selected':''}>${l}</option>`).join('')}
+          </select></div>
+        </div>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="stock-f-client">Client (nom/tél/email)</label><input type="text" id="stock-f-client" value="${escHtml(STOCK_FILTRES.filtre_client||'')}" onchange="applyStockFiltres()"/></div>
+          <div><label for="stock-f-periode-debut">Période — du</label><input type="date" id="stock-f-periode-debut" value="${STOCK_FILTRES.filtre_periode_debut||''}" onchange="applyStockFiltres()"/></div>
+        </div>
+        ${Object.keys(STOCK_FILTRES).length ? `<button class="btn btn-grey" style="margin-top:8px" onclick="resetStockFiltres()">✕ Réinitialiser les filtres</button>` : ''}
       </div>
       <div class="card">
         <h2>Appareils (${appareils.length})</h2>
@@ -1327,7 +1366,10 @@ async function loadStock(silent){
           <div class="row-item">
             <div class="row-top">
               <span class="row-title">Climatiseur n°${a.numero}</span>
-              <span class="chip ${chipClass}">${chipLabel}</span>
+              <span style="display:flex;gap:6px;align-items:center">
+                ${a.en_preparation?`<span class="chip a_faire">En préparation</span>`:''}
+                <span class="chip ${chipClass}">${chipLabel}</span>
+              </span>
             </div>
             <div class="row-meta">${a.reference?escHtml(a.reference)+' · ':''}${a.en_location?'Actuellement chez un client (réservation confirmée)':a.statut==='loue'?'Loué hors système — marqué manuellement':(a.statut==='disponible'?'Au dépôt':'—')}</div>
             <div class="row-meta">${LOCALISATION_LABEL[a.localisation]||a.localisation||'—'}</div>
@@ -1343,7 +1385,7 @@ async function loadStock(silent){
               ${a.en_location?`<div class="row-meta" style="width:100%">ℹ️ Statut manuel affiché ci-dessus, indépendant de la location en cours — repasse à "Disponible" tout seul au retour.</div>`:''}
               <button class="btn btn-grey" onclick="editAppareilReference(${a.id}, '${escHtml(a.reference||'').replace(/'/g,"\\'")}')">${a.reference?'Modifier':'Ajouter'} la référence</button>
               <button class="btn btn-grey" onclick="editAppareilNote(${a.id}, '${escHtml(a.notes||'').replace(/'/g,"\\'")}')">${a.notes?'Modifier':'Ajouter'} une note</button>
-              <button class="btn btn-grey" onclick="voirMouvementsAppareil(${a.id}, ${a.numero})">🕘 Historique</button>
+              <button class="btn btn-grey" onclick="voirFicheAppareil(${a.id}, ${a.numero})">📋 Fiche complète</button>
               <button class="btn btn-red" onclick="deleteAppareil(${a.id}, ${a.numero})">🗑️ Supprimer</button>
             </div>
           </div>`;
@@ -1379,50 +1421,120 @@ function deleteAppareil(id, numero){
   }, {danger:true, yesLabel:'Supprimer'});
 }
 // Historique des mouvements d'un appareil (Module 6, Partie 5).
-async function voirMouvementsAppareil(id, numero){
+// Fiche administrateur complète d'un climatiseur (Module 6, Partie 9-10) :
+// historique, réservations/clients associés, missions, incidents, entretien,
+// et statistiques de rentabilité — un seul overlay, deux appels en parallèle.
+async function voirFicheAppareil(id, numero){
   closeModal();
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.id = 'modal-overlay-el';
-  overlay.innerHTML = `<div class="modal-box"><h2>🕘 Climatiseur n°${numero} — historique</h2><p class="empty">Chargement…</p></div>`;
+  overlay.innerHTML = `<div class="modal-box" style="max-width:520px"><h2>📋 Climatiseur n°${numero}</h2><p class="empty">Chargement…</p></div>`;
   document.body.appendChild(overlay);
+  const box = overlay.querySelector('.modal-box');
   try{
-    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'mouvements_list', appareil_id:id})});
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.error||'Erreur');
-    const box = overlay.querySelector('.modal-box');
-    const rows = (d.mouvements||[]).map(m => `
-      <div class="row-item" style="padding:10px 12px">
-        <div class="row-top"><span class="row-title" style="font-size:13px">${MOUVEMENT_TYPE_LABEL[m.type_evenement]||m.type_evenement}</span></div>
+    const [rDetail, rStats] = await Promise.all([
+      fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'detail', appareil_id:id})}),
+      fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'stats', appareil_id:id})}),
+    ]);
+    const d = await rDetail.json();
+    if(!rDetail.ok) throw new Error(d.error||'Erreur');
+    const s = await rStats.json().catch(()=>null);
+
+    const statsHtml = (rStats.ok && s) ? `
+      <div class="stat-grid" style="margin-bottom:16px">
+        <div class="stat-tile"><div class="n">${s.nombre_locations}</div><div class="l">Locations</div></div>
+        <div class="stat-tile"><div class="n">${s.jours_loues}</div><div class="l">Jours loués</div></div>
+        <div class="stat-tile"><div class="n">${Math.round(s.taux_utilisation*100)}%</div><div class="l">Taux d'utilisation</div></div>
+        <div class="stat-tile"><div class="n">${euros(s.ca_genere_euros*100)}</div><div class="l">CA généré</div></div>
+        <div class="stat-tile"><div class="n">${euros(s.cout_maintenance_euros*100)}</div><div class="l">Coût maintenance</div></div>
+        <div class="stat-tile"><div class="n" style="${s.rentabilite_estimee_euros<0?'color:var(--red)':'color:var(--green)'}">${euros(s.rentabilite_estimee_euros*100)}</div><div class="l">Rentabilité estimée</div></div>
+      </div>` : '';
+
+    const reservationsHtml = (d.reservations||[]).slice(0,10).map(r => `
+      <div class="row-item" style="padding:8px 10px">
+        <div class="row-top"><span class="row-title" style="font-size:12.5px">${escHtml((r.prenom||'')+' '+(r.nom||''))}</span><span class="chip ${r.statut}">${RESA_LABEL[r.statut]||r.statut}</span></div>
+        <div class="row-meta">${frDate(r.date_debut)} → ${frDate(r.date_fin)}${r.ref?' · '+escHtml(r.ref):''}</div>
+      </div>`).join('') || '<p class="empty">Aucune réservation.</p>';
+
+    const missionsHtml = (d.missions||[]).slice(0,10).map(m => `
+      <div class="row-item" style="padding:8px 10px">
+        <div class="row-top"><span class="row-title" style="font-size:12.5px">${m.type==='livraison'?'📦 Livraison':'🔄 Récupération'}</span><span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span></div>
+        <div class="row-meta">${frDate(m.date_prevue)}${m.transporteur?.nom?' · 🚚 '+escHtml(m.transporteur.nom):''}</div>
+      </div>`).join('') || '<p class="empty">Aucune mission.</p>';
+
+    const incidentsHtml = (d.incidents||[]).slice(0,10).map(i => `
+      <div class="row-item" style="padding:8px 10px">
+        <div class="row-top"><span class="row-title" style="font-size:12.5px">${INCIDENT_TYPE_LABEL[i.type]||i.type}</span><span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span></div>
+        <div class="row-meta">${new Date(i.created_at).toLocaleDateString('fr-FR')}${i.transporteur?.nom?' · 🚚 '+escHtml(i.transporteur.nom):''}</div>
+      </div>`).join('') || '<p class="empty">Aucun incident.</p>';
+
+    const mouvementsHtml = (d.mouvements||[]).slice(0,15).map(m => `
+      <div class="row-item" style="padding:8px 10px">
+        <div class="row-top"><span class="row-title" style="font-size:12.5px">${MOUVEMENT_TYPE_LABEL[m.type_evenement]||m.type_evenement}</span></div>
         <div class="row-meta">${new Date(m.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${m.utilisateur?' · '+escHtml(m.utilisateur):''}</div>
-        <div class="row-meta">${LOCALISATION_LABEL[m.ancienne_localisation]||m.ancienne_localisation||'—'} → ${LOCALISATION_LABEL[m.nouvelle_localisation]||m.nouvelle_localisation}${m.ancien_statut && m.ancien_statut!==m.nouveau_statut?` · ${APPAREIL_STATUT_LABEL[m.ancien_statut]||m.ancien_statut} → ${APPAREIL_STATUT_LABEL[m.nouveau_statut]||m.nouveau_statut}`:''}</div>
-        ${m.commentaire?`<div class="row-meta" style="font-style:italic">📝 ${escHtml(m.commentaire)}</div>`:''}
-      </div>`).join('');
+        ${m.commentaire?`<div class="row-meta" style="font-style:italic">📝 ${escHtml(m.commentaire)}${m.cout_cents?' · '+euros(m.cout_cents):''}</div>`:''}
+      </div>`).join('') || '<p class="empty">Aucun mouvement enregistré.</p>';
+
     box.innerHTML = `
-      <h2>🕘 Climatiseur n°${numero} — historique</h2>
-      <div class="vlist" style="max-height:60vh;overflow-y:auto">${rows || '<p class="empty">Aucun mouvement enregistré.</p>'}</div>
-      <div class="modal-actions"><button class="btn btn-grey btn-block" onclick="closeModal()">Fermer</button></div>`;
+      <h2>📋 Climatiseur n°${numero}</h2>
+      <p class="sub" style="margin-bottom:14px">${escHtml(d.appareil.reference||'Sans référence')} · ${APPAREIL_STATUT_LABEL[d.appareil.statut]||d.appareil.statut} · ${LOCALISATION_LABEL[d.appareil.localisation]||d.appareil.localisation}</p>
+      ${statsHtml}
+      <div class="section-title" style="margin-top:0">Réservations (${(d.reservations||[]).length})</div>
+      <div class="vlist" style="max-height:180px;overflow-y:auto;margin-bottom:14px">${reservationsHtml}</div>
+      <div class="section-title">Missions transporteur (${(d.missions||[]).length})</div>
+      <div class="vlist" style="max-height:180px;overflow-y:auto;margin-bottom:14px">${missionsHtml}</div>
+      <div class="section-title">Incidents (${(d.incidents||[]).length})</div>
+      <div class="vlist" style="max-height:150px;overflow-y:auto;margin-bottom:14px">${incidentsHtml}</div>
+      <div class="section-title">Historique des mouvements</div>
+      <div class="vlist" style="max-height:220px;overflow-y:auto">${mouvementsHtml}</div>
+      <div class="modal-actions" style="margin-top:14px"><button class="btn btn-grey btn-block" onclick="closeModal()">Fermer</button></div>`;
   }catch(e){
-    overlay.querySelector('.modal-box').innerHTML = `<h2>🕘 Climatiseur n°${numero}</h2><p class="empty">Impossible de charger l'historique.</p><div class="modal-actions"><button class="btn btn-grey btn-block" onclick="closeModal()">Fermer</button></div>`;
+    box.innerHTML = `<h2>📋 Climatiseur n°${numero}</h2><p class="empty">Impossible de charger la fiche.</p><div class="modal-actions"><button class="btn btn-grey btn-block" onclick="closeModal()">Fermer</button></div>`;
   }
 }
+function applyStockFiltres(){
+  const statut = document.getElementById('stock-f-statut')?.value;
+  const localisation = document.getElementById('stock-f-localisation')?.value;
+  const client = document.getElementById('stock-f-client')?.value.trim();
+  const periodeDebut = document.getElementById('stock-f-periode-debut')?.value;
+  STOCK_FILTRES = {};
+  if(statut) STOCK_FILTRES.filtre_statut = statut;
+  if(localisation) STOCK_FILTRES.filtre_localisation = localisation;
+  if(client) STOCK_FILTRES.filtre_client = client;
+  if(periodeDebut) STOCK_FILTRES.filtre_periode_debut = periodeDebut;
+  loadStock();
+}
+function resetStockFiltres(){
+  STOCK_FILTRES = {};
+  loadStock();
+}
+async function sendAppareilStatutUpdate(id, statut, justification, coutCents){
+  try{
+    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut, justification, cout_cents:coutCents})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadStock();
+    showToast('Statut mis à jour', 'success');
+  }catch(e){
+    showToast(e.message, 'error');
+    // Sans ça, le menu déroulant reste affiché sur la valeur choisie même si
+    // l'enregistrement a échoué — l'admin croit le changement fait alors que
+    // l'appareil garde son vrai statut côté serveur (ex. contrainte SQL du
+    // statut "loué" pas encore appliquée en prod).
+    loadStock();
+  }
+}
+// Panne/maintenance (Partie 9) : justification demandée, gardée dans
+// l'historique du mouvement — utile pour comprendre plus tard "pourquoi".
 function updateAppareilStatut(id, statut){
-  (async () => {
-    try{
-      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, statut})});
-      const d = await r.json();
-      if(!r.ok) throw new Error(d.error||'Erreur');
-      loadStock();
-      showToast('Statut mis à jour', 'success');
-    }catch(e){
-      showToast(e.message, 'error');
-      // Sans ça, le menu déroulant reste affiché sur la valeur choisie même si
-      // l'enregistrement a échoué — l'admin croit le changement fait alors que
-      // l'appareil garde son vrai statut côté serveur (ex. contrainte SQL du
-      // statut "loué" pas encore appliquée en prod).
-      loadStock();
-    }
-  })();
+  if(['panne','maintenance'].includes(statut)){
+    promptAction({title:'Pourquoi ce changement ?', label:'Justification (optionnelle)', placeholder:'Ex. climatiseur ne refroidit plus'}, (justification) => {
+      sendAppareilStatutUpdate(id, statut, justification, null);
+    });
+    return;
+  }
+  sendAppareilStatutUpdate(id, statut, '', null);
 }
 function editAppareilReference(id, current){
   promptAction({title:'Référence produit', label:'Ex. RWAC10KA+ ou numéro de série', value:current, placeholder:'RWAC10KA+'}, async (reference) => {
@@ -1552,6 +1664,7 @@ function reservationRowHtml(res, readOnly){
           <div class="more-actions-menu">
             <button onclick="openEditReservationModal(${res.id})">✏️ Modifier</button>
             ${res.appareils_en_attente_validation?`<button onclick="validerAppareilsReservation(${res.id})">🔍 Valider l'appareil attribué</button>`:''}
+            ${res.statut==='confirmee'?`<button onclick="reaffecterAppareilReservation(${res.id})">🔄 Réaffecter l'appareil</button>`:''}
             ${res.statut!=='annulee'?`<button class="danger" onclick="cancelReservation(${res.id})">Annuler la réservation</button>`:''}
             <button onclick="deleteReservation(${res.id}, '${res.statut}')">Masquer de l'écran</button>
           </div>
@@ -2174,6 +2287,20 @@ function validerAppareilsReservation(id){
       showToast('Appareil validé', 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {yesLabel:'Valider'});
+}
+// Réaffectation manuelle d'un appareil précis (Module 6, Partie 9) — l'admin
+// pense en "n° de climatiseur" (étiquette collée dessus), pas en id interne.
+function reaffecterAppareilReservation(id){
+  promptAction({title:'Réaffecter l\'appareil', label:'Numéro du climatiseur à attribuer à la place', placeholder:'Ex. 4'}, async (numero) => {
+    const n = parseInt(numero);
+    if(!n) return showToast('Numéro invalide', 'error');
+    try{
+      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'reassign', reservation_id:id, appareil_numero:n})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      showToast(`Climatiseur n°${n} affecté`, 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
 }
 function updateReservationStatut(id, statut, selectEl){
   if(!statut) return;

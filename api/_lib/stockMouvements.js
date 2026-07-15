@@ -4,7 +4,7 @@
 // mouvement matériel ne doit être invisible."
 async function recordMouvement(supabase, {
   appareilId, typeEvenement, nouveauStatut, nouvelleLocalisation,
-  livraisonId = null, reservationId = null, utilisateur = null, commentaire = null,
+  livraisonId = null, reservationId = null, utilisateur = null, commentaire = null, coutCents = null,
 }) {
   if (!appareilId) return;
   const { data: avant } = await supabase
@@ -22,7 +22,7 @@ async function recordMouvement(supabase, {
     ancien_statut: avant?.statut || null, nouveau_statut: statutFinal,
     ancienne_localisation: avant?.localisation || null, nouvelle_localisation: nouvelleLocalisation,
     livraison_id: livraisonId, reservation_id: reservationId,
-    utilisateur, commentaire,
+    utilisateur, commentaire, cout_cents: coutCents,
   });
 }
 
