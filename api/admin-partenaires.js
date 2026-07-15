@@ -1,5 +1,31 @@
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminToken } = require('./_lib/auth');
+const { sendBrevoEmail } = require('./_lib/brevo');
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function partenaireLinkFor(code) { return `https://www.locair.fr/?p=${encodeURIComponent(code)}`; }
+
+// Envoyée à la création ET à chaque changement de code personnel (admin ou
+// "code oublié" côté partenaire) — évite à l'admin de devoir retransmettre le
+// lien/code lui-même à chaque fois (jusqu'ici copié-collé à la main depuis la
+// popup de l'admin). Ne fait jamais échouer l'appelant si l'envoi rate.
+async function notifyPartenaireCredentials({ nom, email, code, pin }) {
+  if (!email) return;
+  await sendBrevoEmail({
+    to:      email,
+    subject: "Ton espace partenaire Loc'Air",
+    html: `
+      <p>Bonjour ${escHtml(nom)},</p>
+      <p>Voici ton lien d'affiliation — mets-le sur ton site pour que tes clients réservent directement chez Loc'Air :</p>
+      <p style="font-size:16px;font-weight:700"><a href="${partenaireLinkFor(code)}">${escHtml(partenaireLinkFor(code))}</a></p>
+      <p>Ton code personnel pour suivre tes gains sur <a href="https://www.locair.fr/partenaire">locair.fr/partenaire</a> :</p>
+      <p style="font-size:28px;font-weight:700;letter-spacing:4px">${escHtml(pin)}</p>
+      <p>Si tu n'es pas à l'origine de cette demande, contacte Aly immédiatement.</p>
+    `,
+  });
+}
 
 // Dérive un code d'affiliation lisible à partir du nom ("Conciergerie Azur"
 // → "conciergerieazur") — pas de garantie d'unicité ici, gérée par la boucle
@@ -56,7 +82,10 @@ module.exports = async (req, res) => {
           iban:                normalizeIban(body.iban),
           bic:                 normalizeBic(body.bic),
         }).select('id, code, pin').single();
-        if (!error) return res.status(200).json({ ok: true, code: created.code, pin: created.pin });
+        if (!error) {
+          await notifyPartenaireCredentials({ nom, email: (body.email || '').trim().toLowerCase(), code: created.code, pin: created.pin });
+          return res.status(200).json({ ok: true, code: created.code, pin: created.pin });
+        }
         if (error.code !== '23505') throw error; // pas un conflit code/pin : autre erreur
         if (pinProvided && attempt > 0) return res.status(409).json({ error: 'Ce code personnel est déjà utilisé, réessaie' });
       }
@@ -84,6 +113,12 @@ module.exports = async (req, res) => {
       if (error) {
         if (error.code === '23505') return res.status(409).json({ error: 'Ce code ou ce PIN est déjà utilisé par un autre partenaire, réessaie' });
         throw error;
+      }
+      // Le code personnel a changé (main ou fiche) : renvoyer automatiquement
+      // le nouveau code par email, comme à la création.
+      if (patch.pin) {
+        const { data: fresh } = await supabase.from('partenaires').select('nom, email, code, pin').eq('id', id).maybeSingle();
+        if (fresh) await notifyPartenaireCredentials(fresh);
       }
       return res.status(200).json({ ok: true });
     }

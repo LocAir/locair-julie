@@ -93,9 +93,17 @@ module.exports = async (req, res) => {
     const { count: partenaireVirementsCount } = await supabase
       .from('partenaire_virements').select('id', { count: 'exact', head: true }).eq('statut', 'demande');
 
+    // Réconciliation : commission déjà versée à un partenaire pour une
+    // réservation ensuite annulée/remboursée — signalé jusqu'à ce que l'admin
+    // marque le litige réglé (voir migration_partenaires_litiges.sql).
+    const { count: partenaireLitigesCount } = await supabase
+      .from('reservations').select('id', { count: 'exact', head: true })
+      .in('statut', ['annulee', 'remboursee']).eq('partenaire_commission_payee', true).eq('partenaire_litige_resolu', false);
+
     return res.status(200).json({
       virements, livraisons, non_assignees: nonAssignees, reservations, incidents, retards,
       partenaire_virements: partenaireVirementsCount || 0,
+      partenaire_litiges: partenaireLitigesCount || 0,
     });
   } catch (err) {
     console.error('[Admin alerts]', err.message);

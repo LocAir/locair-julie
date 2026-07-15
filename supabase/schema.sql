@@ -185,6 +185,10 @@ create table reservations (
   partenaire_id            bigint references partenaires(id),
   partenaire_commission_cents integer not null default 0,
   partenaire_commission_payee boolean not null default false,
+  -- Réconciliation : commission déjà versée mais réservation ensuite annulée
+  -- ou remboursée — l'admin coche une fois que c'est réglé de son côté
+  -- (récupéré auprès du partenaire, ou déduit du prochain virement).
+  partenaire_litige_resolu boolean not null default false,
   logement                 text,
   motifs                   text,
   mkt_consent              boolean not null default false, -- opt-in marketing (RGPD)
@@ -338,6 +342,10 @@ create table partenaire_virements (
   partenaire_id bigint not null references partenaires(id),
   montant_cents integer not null default 0,
   statut        text not null default 'demande' check (statut in ('demande','verse')),
+  -- Pense-bête, ne bloque jamais le virement : une commission versée est une
+  -- prestation entre deux entreprises, qui devrait donner lieu à une facture
+  -- de la part du partenaire.
+  facture_recue boolean not null default false,
   created_at    timestamptz not null default now(),
   verse_at      timestamptz
 );

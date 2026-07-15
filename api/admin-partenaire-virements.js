@@ -38,9 +38,36 @@ module.exports = async (req, res) => {
         .in('partenaire_id', ids).eq('statut', 'confirmee').eq('masquee', false)
         .order('created_at', { ascending: false });
 
-      const { data: demandesEnCours } = await supabase
-        .from('partenaire_virements').select('partenaire_id').in('partenaire_id', ids).eq('statut', 'demande');
-      const enCoursSet = new Set((demandesEnCours || []).map(v => v.partenaire_id));
+      const { data: virements } = await supabase
+        .from('partenaire_virements')
+        .select('id, partenaire_id, montant_cents, statut, facture_recue, created_at, verse_at')
+        .in('partenaire_id', ids).eq('statut', 'demande')
+        .order('created_at', { ascending: false });
+      const enCoursSet = new Set((virements || []).map(v => v.partenaire_id));
+
+      // Historique des virements déjà versés — pour le pense-bête "facture
+      // reçue" (voir migration_partenaires_facture.sql), affiché par partenaire.
+      const { data: virementsVerses } = await supabase
+        .from('partenaire_virements')
+        .select('id, partenaire_id, montant_cents, statut, facture_recue, created_at, verse_at')
+        .in('partenaire_id', ids).eq('statut', 'verse')
+        .order('verse_at', { ascending: false })
+        .limit(200);
+      const virementsByPartenaire = {};
+      (virementsVerses || []).forEach(v => { (virementsByPartenaire[v.partenaire_id] = virementsByPartenaire[v.partenaire_id] || []).push(v); });
+
+      // Réconciliation : réservation dont la commission était déjà versée au
+      // partenaire, mais qui a ensuite été annulée ou remboursée — l'argent
+      // est sorti pour un service qui n'a finalement pas eu lieu. Signalé
+      // jusqu'à ce que l'admin marque le litige réglé (voir migration_partenaires_litiges.sql).
+      const { data: litigesResas } = await supabase
+        .from('reservations')
+        .select('id, partenaire_id, ref, prenom, nom, statut, partenaire_commission_cents, created_at')
+        .in('partenaire_id', ids).in('statut', ['annulee', 'remboursee'])
+        .eq('partenaire_commission_payee', true).eq('partenaire_litige_resolu', false).eq('masquee', false)
+        .order('created_at', { ascending: false });
+      const litigesByPartenaire = {};
+      (litigesResas || []).forEach(r => { (litigesByPartenaire[r.partenaire_id] = litigesByPartenaire[r.partenaire_id] || []).push(r); });
 
       const byPartenaire = {};
       (resas || []).forEach(r => { (byPartenaire[r.partenaire_id] = byPartenaire[r.partenaire_id] || []).push(r); });
@@ -49,6 +76,7 @@ module.exports = async (req, res) => {
         const reservations = byPartenaire[p.id] || [];
         const nonVerse = reservations.filter(r => !r.partenaire_commission_payee).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
         const verse    = reservations.filter(r => r.partenaire_commission_payee).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
+        const litiges  = litigesByPartenaire[p.id] || [];
         return {
           id: p.id, nom: p.nom, code: p.code, actif: p.actif,
           titulaire_compte: p.titulaire_compte, iban: p.iban, bic: p.bic,
@@ -62,9 +90,43 @@ module.exports = async (req, res) => {
             payee: r.partenaire_commission_payee,
             created_at: r.created_at,
           })),
+          virements: (virementsByPartenaire[p.id] || []).map(v => ({
+            id: v.id, montant_cents: v.montant_cents, verse_at: v.verse_at, facture_recue: v.facture_recue,
+          })),
+          a_recuperer_cents: litiges.reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0),
+          litiges: litiges.map(r => ({
+            id: r.id, ref: r.ref, statut: r.statut,
+            client: [r.prenom, r.nom].filter(Boolean).join(' ') || null,
+            commission_cents: r.partenaire_commission_cents || 0,
+            created_at: r.created_at,
+          })),
         };
       });
       return res.status(200).json({ partenaires: result });
+    }
+
+    // Marque un litige de réconciliation comme réglé (récupéré auprès du
+    // partenaire, ou déduit du prochain virement) — ne retouche jamais
+    // l'argent déjà versé, juste ce repère.
+    if (action === 'resoudre_litige') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { error } = await supabase.from('reservations').update({ partenaire_litige_resolu: true }).eq('id', id);
+      if (error) throw error;
+      return res.status(200).json({ ok: true });
+    }
+
+    // Pense-bête "facture reçue" (voir migration_partenaires_facture.sql) —
+    // ne modifie jamais le montant ni le statut du virement, juste ce repère.
+    if (action === 'toggle_facture') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { data: v } = await supabase.from('partenaire_virements').select('id, facture_recue').eq('id', id).maybeSingle();
+      if (!v) return res.status(404).json({ error: 'Virement introuvable' });
+      const nextValue = !v.facture_recue;
+      const { error } = await supabase.from('partenaire_virements').update({ facture_recue: nextValue }).eq('id', id);
+      if (error) throw error;
+      return res.status(200).json({ ok: true, facture_recue: nextValue });
     }
 
     // Verser directement depuis l'admin, sans attendre que le partenaire en

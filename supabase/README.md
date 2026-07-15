@@ -85,6 +85,12 @@ Dans `/admin` → onglet **Partenaires**, ajouter chaque partenaire (nom, contac
 
 Sur `/partenaire`, le partenaire voit : son lien à copier, ses gains du jour et du mois, l'historique des réservations qu'il a apportées, et un bouton pour demander un virement (comme les transporteurs). Le virement réel reste manuel — l'appli suit juste les montants dus et les demandes, elle ne transfère pas d'argent automatiquement. Aucune variable d'environnement supplémentaire n'est nécessaire (réutilise `TRANSPORTEUR_SECRET`, déjà configuré).
 
+Si le partenaire a une adresse email enregistrée, il reçoit automatiquement un email (via Brevo, déjà configuré) avec son lien et son code personnel — à la création, et à chaque fois que le code change (régénéré depuis l'admin, ou "Code oublié ?" sur `/partenaire`, même principe que côté transporteur). Sans email enregistré, l'admin doit toujours transmettre l'info lui-même (affichée dans la popup après création).
+
+Une commission versée à un partenaire est une prestation entre deux entreprises : elle devrait normalement donner lieu à une facture de sa part (question comptable, à voir avec ton comptable). Chaque virement versé affiche un bouton "Facture reçue" dans `/admin` → Partenaires (ou Virements) — un simple pense-bête, ça ne bloque jamais le paiement.
+
+Si une réservation est annulée ou remboursée après que sa commission a déjà été versée au partenaire (rare, mais possible), un bandeau d'alerte rouge apparaît avec le montant concerné — jusqu'à ce que tu cliques "Marquer réglé" une fois que tu as récupéré la commission auprès du partenaire ou déduit du prochain virement. Rien n'est automatique : l'appli signale juste, elle ne retouche jamais l'argent déjà versé.
+
 ## Suivi en direct du livreur (carte)
 
 Pendant qu'une mission est acceptée ou en cours (`acceptee`/`arrivee`), le téléphone du transporteur envoie sa position toutes les ~10-15 secondes (avec son accord — un bandeau "Ta position est partagée avec Aly" s'affiche pendant ce temps). Dans `/admin` → Livraisons, le bouton "🔴 Suivre en direct" ouvre une carte (OpenStreetMap, gratuite, sans clé API) avec la position du livreur, l'adresse du client, et une estimation d'arrivée.

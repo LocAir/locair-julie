@@ -60,6 +60,8 @@ input[readonly]{background:var(--bg);color:var(--black2);font-size:14px}
 .btn+.btn{margin-top:12px}
 .err{background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.5}
 .ok-msg{background:var(--green-bg);color:var(--green);border-radius:var(--r-sm);padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.5}
+.forgot-link{display:block;width:100%;background:none;border:none;color:var(--grey);text-decoration:underline;font-size:13px;font-family:var(--body);cursor:pointer;text-align:center;margin-top:16px;padding:4px}
+.overlay{position:fixed;inset:0;background:rgba(13,24,41,.6);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
 .link-row{display:flex;gap:8px}
 .link-row input{flex:1}
 .link-row button{flex-shrink:0;width:auto;padding:0 18px;min-height:auto;border-radius:var(--r-sm)}
@@ -105,7 +107,7 @@ input[readonly]{background:var(--bg);color:var(--black2);font-size:14px}
       <div style="height:16px"></div>
       <button class="btn btn-blue" id="lg-btn" onclick="doLogin()">Entrer →</button>
       <div class="err" id="lg-err"></div>
-      <p class="sub" style="margin:16px 0 0;text-align:center;font-size:12.5px">Code oublié ? Contacte Loc'Air.</p>
+      <button class="forgot-link" onclick="openForgotPin()">Code oublié ?</button>
     </div>
   </div>
 
@@ -171,6 +173,42 @@ async function doLogin(){
   }
 }
 function authHeaders(){ return {'Content-Type':'application/json','x-partenaire-token':STATE.token}; }
+function openForgotPin(){
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'forgot-overlay';
+  overlay.innerHTML = `
+    <div class="card" style="max-width:380px;width:100%">
+      <h2 style="margin-bottom:6px">Code oublié ?</h2>
+      <p class="sub">Entre l'email connu par Loc'Air, on t'envoie ton code.</p>
+      <label for="forgot-email">Email</label>
+      <input type="text" id="forgot-email" placeholder="ton@email.fr" autocomplete="email"/>
+      <div style="height:14px"></div>
+      <button class="btn btn-blue" id="forgot-send-btn" onclick="sendForgotPin()">Envoyer</button>
+      <button class="forgot-link" onclick="closeForgotPin()">Annuler</button>
+      <p class="ok-msg" id="forgot-ok"></p>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeForgotPin(); });
+}
+function closeForgotPin(){
+  document.getElementById('forgot-overlay')?.remove();
+}
+async function sendForgotPin(){
+  const email = document.getElementById('forgot-email').value.trim();
+  if(!email) return;
+  const okEl = document.getElementById('forgot-ok');
+  const btn = document.getElementById('forgot-send-btn');
+  if(btn.disabled) return;
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try{
+    await fetch(API('partenaire-forgot-pin'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
+  }catch(e){}
+  document.getElementById('forgot-email').style.display = 'none';
+  document.querySelectorAll('#forgot-overlay .btn, #forgot-overlay .forgot-link').forEach(b=>b.style.display='none');
+  okEl.textContent = "Si cet email est connu, ton code vient d'être envoyé. Vérifie ta boîte mail.";
+  okEl.style.display = 'block';
+}
 async function loadDashboard(){
   show('dashboard-screen');
   const zone = document.getElementById('dashboard-content');

@@ -875,7 +875,7 @@ async function loadAlerts(){
     updateTabBadge('livraisons', d.livraisons);
     updateTabBadge('virements', d.virements);
     updateTabBadge('partenaire_virements', d.partenaire_virements);
-    updateTabBadge('virements_total', (d.virements||0) + (d.partenaire_virements||0));
+    updateTabBadge('virements_total', (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0));
     updateTabBadge('incidents', d.incidents);
     renderAlertsBanner(d);
     renderVirementMondayBanner();
@@ -883,7 +883,7 @@ async function loadAlerts(){
     // scrollable, les badges des onglets cachés passaient inaperçus — ce
     // point signale qu'il y a quelque chose à traiter dans le menu sans
     // avoir à l'ouvrir pour le découvrir.
-    const anyAlert = (d.reservations||0) + (d.livraisons||0) + (d.virements||0) + (d.partenaire_virements||0) + (d.incidents||0) > 0;
+    const anyAlert = (d.reservations||0) + (d.livraisons||0) + (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0) + (d.incidents||0) > 0;
     document.getElementById('mobile-menu-dot')?.classList.toggle('hidden', !anyAlert);
   }catch(e){}
 }
@@ -910,6 +910,7 @@ function renderAlertsBanner(d){
   if(d.reservations > 0)  alerts.push({sev:2, msg:`🧾 ${d.reservations} réservation${d.reservations>1?'s':''} à traiter`, fn:"switchAdminTab('reservations')"});
   const totalVirementsDemandes = (d.virements||0) + (d.partenaire_virements||0);
   if(totalVirementsDemandes > 0) alerts.push({sev:2, msg:`💶 ${totalVirementsDemandes} virement${totalVirementsDemandes>1?'s':''} demandé${totalVirementsDemandes>1?'s':''}`, fn:"switchAdminTab('virements')"});
+  if(d.partenaire_litiges > 0) alerts.push({sev:1, msg:`⚠️ ${d.partenaire_litiges} commission${d.partenaire_litiges>1?'s':''} partenaire versée${d.partenaire_litiges>1?'s':''} pour une résa annulée/remboursée`, fn:"switchAdminTab('virements')"});
   alerts.sort((a,b) => a.sev-b.sev);
   zone.innerHTML = alerts.map(a =>
     `<div onclick="${a.fn}" style="background:${a.sev===1?'var(--red)':'var(--amber)'};color:#fff;padding:10px 16px;border-radius:var(--r);font-weight:700;font-size:13px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
@@ -3636,7 +3637,8 @@ async function addPartenaire(){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadPartenairesEquipe();
-    showInfo('Partenaire ajouté', `Lien à lui donner (à mettre sur son site) :\n${partenaireLinkFor(d.code)}\n\nCode personnel pour se connecter sur /partenaire :\n${d.pin}`);
+    const emailNote = email ? `Un email avec ces infos vient de lui être envoyé automatiquement à ${email}.\n\n` : "Pas d'email enregistré — transmets-lui ces infos toi-même :\n\n";
+    showInfo('Partenaire ajouté', `${emailNote}Lien à mettre sur son site :\n${partenaireLinkFor(d.code)}\n\nCode personnel pour se connecter sur /partenaire :\n${d.pin}`);
   }catch(e){
     errEl.textContent = e.message; errEl.style.display='block';
   }
@@ -3665,6 +3667,7 @@ async function togglePartenaire(id, actif, btnEl){
   }
 }
 function resetPartenairePin(id){
+  const p = PARTENAIRES_CACHE.find(x => x.id === id);
   confirmAction('Régénérer le code personnel de connexion ? L\'ancien code cessera de fonctionner immédiatement.', async () => {
     try{
       const newPin = String(Math.floor(100000 + Math.random()*900000));
@@ -3672,7 +3675,8 @@ function resetPartenairePin(id){
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadPartenairesEquipe();
-      showInfo('Code personnel changé', `Nouveau code à communiquer :\n\n${newPin}`);
+      const emailNote = p&&p.email ? `Un email vient de lui être envoyé automatiquement à ${p.email}.\n\n` : "Pas d'email enregistré — communique-le-lui toi-même.\n\n";
+      showInfo('Code personnel changé', `${emailNote}Nouveau code :\n\n${newPin}`);
     }catch(e){ showToast(e.message, 'error'); }
   });
 }
@@ -3751,6 +3755,29 @@ function partenaireRevenusCardHtml(p){
       </div>
       <div class="row-meta">${r.created_at?frDate(r.created_at.slice(0,10)):'—'} · ${euros(r.montant_cents)} réservés → ${euros(r.commission_cents)} de commission</div>
     </div>`).join('') : '';
+  // Rappel qu'un virement à un partenaire est une prestation entre deux
+  // entreprises — une facture de sa part est normalement attendue en face.
+  const virementsHtml = (p.virements||[]).length ? (p.virements||[]).map(v => `
+    <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
+      <div class="row-top">
+        <span class="row-title" style="font-size:13px">${v.verse_at?frDate(v.verse_at.slice(0,10)):'—'} · ${euros(v.montant_cents)}</span>
+        <button class="btn ${v.facture_recue?'btn-green':'btn-grey'}" style="padding:3px 10px;font-size:11px;width:auto;min-height:auto" onclick="toggleFactureRecue(${v.id}, this)">${v.facture_recue?'✅ Facture reçue':'⚠️ Facture à demander'}</button>
+      </div>
+    </div>`).join('') : '';
+  // Réconciliation : commission déjà versée pour une réservation ensuite
+  // annulée/remboursée — l'argent est sorti pour un service qui n'a
+  // finalement pas eu lieu, à régler manuellement (voir migration_partenaires_litiges.sql).
+  const litigesHtml = (p.litiges||[]).length ? `
+    <div class="row-meta" style="background:var(--red-bg);color:var(--red);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-weight:700">
+      ⚠️ ${p.litiges.length} réservation${p.litiges.length>1?'s':''} annulée${p.litiges.length>1?'s':''}/remboursée${p.litiges.length>1?'s':''} après paiement de la commission — ${euros(p.a_recuperer_cents)} à récupérer ou déduire du prochain virement
+      <div style="margin-top:8px;font-weight:400">
+        ${p.litiges.map(l => `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(0,0,0,.08)">
+            <span>${escHtml(l.client||'—')}${l.ref?' · '+escHtml(l.ref):''} · ${euros(l.commission_cents)}</span>
+            <button class="btn btn-grey" style="padding:3px 10px;font-size:11px;width:auto;min-height:auto" onclick="resoudreLitige(${l.id}, this)">Marquer réglé</button>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
   const kpi = partenaireKpi(p.reservations);
   const totalGenere = p.non_verse_cents + p.verse_cents;
   return `
@@ -3769,6 +3796,7 @@ function partenaireRevenusCardHtml(p){
         <span class="resa-sub">${euros(p.verse_cents)} déjà versés</span>
       </div>
       ${p.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par le partenaire</div>':''}
+      ${litigesHtml}
       ${ribBlockHtml(p)}
       ${p.non_verse_cents>0?`<button class="btn btn-green btn-block" onclick="verserPartenaireMaintenant(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}', ${p.non_verse_cents})">✅ Marquer comme versé (${euros(p.non_verse_cents)})</button>`:''}
       ${p.reservations.length?`
@@ -3776,7 +3804,40 @@ function partenaireRevenusCardHtml(p){
         <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Historique complet (${p.reservations.length} réservation${p.reservations.length>1?'s':''})</summary>
         <div style="margin-top:12px">${resasHtml}</div>
       </details>`:'<p class="row-meta" style="margin-top:8px">Aucune réservation confirmée pour l\'instant.</p>'}
+      ${(p.virements||[]).length?`
+      <details style="margin-top:8px">
+        <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Virements déjà versés (${p.virements.length}) — factures</summary>
+        <div style="margin-top:12px">${virementsHtml}</div>
+      </details>`:''}
     </div>`;
+}
+async function toggleFactureRecue(id, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-partenaire-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'toggle_facture', id})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    TAB_AUTO_REFRESH[CURRENT_TAB]?.();
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
+}
+function resoudreLitige(id, btnEl){
+  confirmAction('Marquer ce litige comme réglé ? Ça ne modifie ni la réservation ni l\'argent déjà versé — juste ce repère, une fois que tu as récupéré la commission auprès du partenaire (ou déduit du prochain virement).', async () => {
+    if(btnEl) btnEl.disabled = true;
+    try{
+      const r = await fetch(API('admin-partenaire-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'resoudre_litige', id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      TAB_AUTO_REFRESH[CURRENT_TAB]?.();
+      loadAlerts();
+      showToast('Litige marqué comme réglé', 'success');
+    }catch(e){
+      if(btnEl) btnEl.disabled = false;
+      showToast(e.message, 'error');
+    }
+  });
 }
 async function loadPartenairesRevenus(){
   const zone = document.getElementById('part-view-content');
@@ -3794,7 +3855,7 @@ async function loadPartenairesRevenus(){
   }
 }
 function verserPartenaireMaintenant(id, nom, montantCents){
-  confirmAction(`Confirmer que ${euros(montantCents)} ont bien été versés à ${nom} ? Cette action est irréversible.`, async () => {
+  confirmAction(`Confirmer que ${euros(montantCents)} ont bien été versés à ${nom} ? Cette action est irréversible. Pense à lui demander une facture correspondant à ce montant (tu pourras cocher "Facture reçue" une fois arrivée).`, async () => {
     try{
       const r = await fetch(API('admin-partenaire-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'verser_maintenant', partenaire_id:id})});
       const d = await r.json();
@@ -3829,11 +3890,13 @@ async function loadVirementsTab(){
     const partenaires   = pd.partenaires || [];
     const aVerserTransp = transporteurs.reduce((s,t)=>s+(t.non_verse_cents||0),0);
     const aVerserPart   = partenaires.reduce((s,p)=>s+(p.non_verse_cents||0),0);
+    const aRecuperer    = partenaires.reduce((s,p)=>s+(p.a_recuperer_cents||0),0);
 
     const sommaireHtml = `
       <div class="stat-grid" style="margin-bottom:20px">
         <div class="stat-tile"><div class="n" style="${aVerserTransp>0?'color:var(--red)':''}">${euros(aVerserTransp)}</div><div class="l">À verser · transporteurs</div></div>
         <div class="stat-tile"><div class="n" style="${aVerserPart>0?'color:var(--red)':''}">${euros(aVerserPart)}</div><div class="l">À verser · partenaires</div></div>
+        ${aRecuperer>0?`<div class="stat-tile" style="grid-column:1/-1"><div class="n" style="color:var(--red)">${euros(aRecuperer)}</div><div class="l">⚠️ Commissions versées à récupérer (résas annulées/remboursées)</div></div>`:''}
       </div>`;
 
     const transpSection = `
