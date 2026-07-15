@@ -125,6 +125,19 @@ module.exports = async (req, res) => {
       }
       await supabase.from('livraisons').update({ statut: 'acceptee', accepted_at: new Date().toISOString() }).eq('id', liv.id);
 
+      // Le transporteur est autonome (les appels client passent directement
+      // sur son propre téléphone, pas de bureau intermédiaire) — s'il reprend
+      // une mission qui avait un incident lié (ex. client injoignable), Aly
+      // n'a rien à faire, juste à être notifiée pour suivre l'avancement.
+      if (liv.incident_id) {
+        const { data: t } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
+        await pushToAdmin(supabase, {
+          title: '🔁 Mission injoignable reprise',
+          body: `${t?.nom || 'Un transporteur'} reprend la mission ${liv.reservation?.adresse || ''} — le client était injoignable, il est de nouveau joignable.`,
+          tag: 'client-disponible',
+        });
+      }
+
       // SMS client : prise en charge confirmée
       if (liv.reservation?.tel) {
         const dateStr = new Date(liv.date_prevue + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });

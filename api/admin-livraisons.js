@@ -225,35 +225,6 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // Le client d'une mission "à faire" ayant eu un incident (ex. injoignable,
-    // voir étape Arrivée) a rappelé — prévient le transporteur, qui peut alors
-    // basculer dessus depuis son app (voir transporteur/index.html,
-    // handleClientDisponible). incident_id reste renseigné après un "reporter"
-    // : c'est le seul marqueur "cette mission à faire a eu un problème avant".
-    if (action === 'notifier_client_disponible') {
-      const livraisonId = parseInt(body.livraison_id);
-      if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
-      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, statut, incident_id, transporteur_id, reservation_id, adresse_libre');
-      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
-      if (liv.statut !== 'a_faire' || !liv.incident_id) return res.status(409).json({ error: 'Cette mission n\'a pas d\'incident lié en attente' });
-      if (!liv.transporteur_id) return res.status(409).json({ error: 'Aucun transporteur assigné à cette mission' });
-
-      let adresse = liv.adresse_libre || '';
-      if (liv.reservation_id) {
-        const { data: resa } = await supabase.from('reservations').select('adresse').eq('id', liv.reservation_id).maybeSingle();
-        adresse = resa?.adresse || '';
-      }
-
-      await pushToTransporteur(supabase, liv.transporteur_id, {
-        title: '📞 Client de nouveau joignable',
-        body: adresse ? `Le client de la mission ${adresse} a rappelé — tu peux basculer dessus depuis l'app.` : 'Un client a rappelé — tu peux basculer sur sa mission depuis l\'app.',
-        tag: 'client-disponible',
-        url: `/transporteur/?mission=${liv.id}&notif=disponible`,
-      });
-
-      return res.status(200).json({ ok: true });
-    }
-
     // Modifier une mission déjà créée : date/créneau pour tout type, et en
     // plus titre/adresse/tarif pour une mission "autre" (les champs propres
     // au client d'une mission normale se corrigent via admin-reservations

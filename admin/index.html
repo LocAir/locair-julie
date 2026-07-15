@@ -2573,7 +2573,6 @@ function renderLivraisons(){
           <select onchange="assignTransporteur(${m.id}, this.value, this)" ${reassignLocked?'disabled title="Mission terminée/annulée : transporteur figé (paiement déjà rattaché)"':''} style="${nonAssignee?'border-color:var(--red);border-width:1.5px':''}">${options}</select>
           ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom).replace(/'/g,"\\'")}', '${escHtml(res.adresse||'').replace(/'/g,"\\'")}')">🔴 Suivre en direct</button>`:''}
           ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">✅ Problème résolu</button>`:''}
-          ${m.statut==='a_faire' && m.incident_id?`<button class="btn btn-amber" onclick="notifierClientDisponible(${m.id}, this)">📞 Prévenir le transporteur</button>`:''}
           ${mediaBtns.length===0 && m.statut==='fait' ? '<span class="row-meta" style="align-self:center">Aucune preuve enregistrée</span>' : ''}
           <details class="more-actions" style="margin-left:auto">
             <summary title="Plus d'actions">⋯</summary>
@@ -2746,18 +2745,6 @@ function resolveProbleme(livraisonId){
       showToast('Mission réactivée', 'success');
     }catch(e){ showToast(e.message, 'error'); }
   });
-}
-// Le client a rappelé (téléphone du bureau) — prévient le transporteur par
-// push, qui pourra basculer sur cette mission depuis son app s'il le souhaite.
-async function notifierClientDisponible(livraisonId, btnEl){
-  if(btnEl) btnEl.disabled = true;
-  try{
-    const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'notifier_client_disponible', livraison_id:livraisonId})});
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.error||'Erreur');
-    showToast('Transporteur prévenu', 'success');
-  }catch(e){ showToast(e.message, 'error'); }
-  finally{ if(btnEl) btnEl.disabled = false; }
 }
 // Équivalent admin du bouton "⏪ Faire plus tard" côté transporteur — utile
 // quand une mission a été acceptée par erreur (ou trop en avance pour être

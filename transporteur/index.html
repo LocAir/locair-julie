@@ -526,19 +526,6 @@ function urlBase64ToUint8Array(base64String){
   const rawData = atob(base64);
   return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
-// Cas "app déjà ouverte" : le SW ne fait que .focus() l'onglet existant au
-// clic sur une notif (voir sw.js), sans jamais le dire à la page — sans ce
-// listener, cliquer une notif "client disponible" avec l'app déjà ouverte ne
-// ferait donc rien.
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.addEventListener('message', (event) => {
-    const data = event.data || {};
-    if(data.type === 'notification-click' && data.tag === 'client-disponible'){
-      const missionId = parseInt(new URLSearchParams((data.url||'').split('?')[1]||'').get('mission'));
-      if(missionId) handleClientDisponible(missionId);
-    }
-  });
-}
 async function setupPush(){
   if(!('serviceWorker' in navigator) || !('PushManager' in window)) return;
   try{
@@ -882,7 +869,6 @@ async function loadDashboard(){
   const ok = await fetchMissions();
   if(!ok){ document.getElementById('dashboard-content').innerHTML = '<p class="empty">Impossible de charger tes missions. Réessaie.</p>'; return; }
   maybeAutoOpenMission();
-  checkClientDisponibleDeepLink();
   // Si maybeAutoOpenMission() a basculé directement sur le détail d'une
   // mission (cas fréquent : une seule mission active), inutile de rendre
   // l'Accueil dans le dos de l'utilisateur.
@@ -1379,8 +1365,13 @@ function actionBtnsForMission(m){
     // le livreur peut y revenir plus tard dans la journée.
     const hasMissionEnCours = isAnotherMissionEnCours(m.id, m.date_prevue);
     if(hasMissionEnCours){
+      // Mission "à faire" qui a déjà eu un incident (ex. client injoignable,
+      // voir étape Arrivée) : le client a pu rappeler directement le
+      // transporteur entretemps (pas de bureau intermédiaire) — proposer de
+      // basculer dessus plutôt que de terminer sa mission actuelle d'abord.
       return `
         <div class="info-box"><p>🔒 Termine ta mission en cours avant d'accepter celle-ci.</p></div>
+        ${m.incident_id?`<button class="btn btn-amber btn-block" style="margin-bottom:8px" onclick="handleClientDisponible(${m.id})">📞 Client a rappelé — je m'en occupe</button>`:''}
         <button class="btn btn-red" onclick="doAction('indisponible')">❌ INDISPONIBLE</button>`;
     }
     return `
@@ -1995,10 +1986,13 @@ async function sendForgotPin(){
   okEl.style.display='block';
 }
 
-// ── Client redevenu joignable (notification admin, deep-link) ────────────────
-// Deux chemins convergent ici : le message du service worker (app déjà
-// ouverte, voir listener plus bas) et le paramètre d'URL au boot (app
-// fermée, ouverte via clients.openWindow — voir checkClientDisponibleDeepLink).
+// ── Client redevenu joignable ─────────────────────────────────────────────────
+// Le transporteur est autonome : les appels du client passent directement sur
+// son propre téléphone (pas de bureau intermédiaire) — c'est donc lui qui
+// déclenche cet écran, depuis le bouton "Client a rappelé" d'une mission "à
+// faire" ayant un incident lié (voir actionBtnsForMission). Aly est prévenue
+// côté serveur (pushToAdmin) une fois la mission reprise, pour suivre
+// l'avancement sans avoir à faire quoi que ce soit elle-même.
 async function handleClientDisponible(missionId){
   await fetchMissions();
   const m = STATE.missions.find(x => x.id === missionId);
@@ -2043,15 +2037,6 @@ async function basculerVersMission(missionId){
     await fetchMissions();
     openMission(missionId);
   }catch(e){ alert(e.message || 'Erreur'); }
-}
-// Cas "app fermée" : le clic sur la notif l'a rouverte via clients.openWindow(url)
-// (voir sw.js) — le paramètre reste dans l'URL au premier chargement.
-function checkClientDisponibleDeepLink(){
-  const params = new URLSearchParams(location.search);
-  if(params.get('notif') !== 'disponible') return;
-  const missionId = parseInt(params.get('mission'));
-  history.replaceState({}, '', location.pathname);
-  if(missionId) handleClientDisponible(missionId);
 }
 
 // ── Problème (aucune saisie de texte — juste une catégorie) ──────────────────
