@@ -23,6 +23,13 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
   await supabase.from('offres_privilege')
     .update({ statut: 'acceptee', decidee_at: new Date().toISOString() }).eq('id', offre.id);
 
+  // La location se termine par un achat plutôt qu'une récupération — sans ce
+  // passage à "terminee", le tableau de bord client resterait bloqué sur
+  // "En location" pour toujours (la mission de récupération, désormais
+  // annulée juste en dessous, ne validera plus jamais cette étape).
+  await supabase.from('reservations').update({ statut: 'terminee' })
+    .eq('id', offre.reservation_id).eq('statut', 'confirmee');
+
   const { data: appareil } = await supabase.from('appareils').select('numero, localisation').eq('id', offre.appareil_id).maybeSingle();
   await recordMouvement(supabase, {
     appareilId: offre.appareil_id, typeEvenement: 'autre', nouveauStatut: 'vendu',
