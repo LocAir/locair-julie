@@ -132,6 +132,17 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .city-switcher{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--white);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh-xs)}
 .city-switcher label{margin:0;flex-shrink:0}
 .city-switcher select{width:auto;flex:1;padding:8px 12px;margin:0}
+.a-search{position:relative;margin-bottom:16px}
+.a-search input{width:100%;padding:12px 16px;border:1.5px solid var(--rule);border-radius:var(--r);font-size:14.5px;background:var(--white)}
+.a-search-results{position:absolute;top:100%;left:0;right:0;margin-top:4px;background:var(--white);border:1.5px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh-lg);max-height:60vh;overflow-y:auto;z-index:60}
+.a-search-group-title{font-size:11px;font-weight:800;color:var(--grey);text-transform:uppercase;letter-spacing:.03em;padding:10px 14px 4px}
+.a-search-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;cursor:pointer;border-top:1px solid var(--rule)}
+.a-search-row:hover{background:var(--bg)}
+.a-search-row-main{font-weight:700;font-size:13.5px}
+.a-search-row-sub{font-size:12px;color:var(--grey)}
+.a-search-empty{padding:16px 14px;color:var(--grey);font-size:13px}
+.a-search-recent{padding:6px 14px 10px;display:flex;flex-wrap:wrap;gap:6px}
+.a-search-recent button{font-size:12px;padding:4px 10px;border-radius:100px;border:1px solid var(--rule);background:var(--bg);cursor:pointer;color:var(--grey)}
 
 .periods{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);padding:4px;border-radius:100px}
 .periods button{flex:1;padding:8px;border-radius:100px;border:none;background:transparent;font-weight:600;font-size:12.5px;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
@@ -359,6 +370,10 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
       <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="dismissAdminFaceIdOffer()">Plus tard</button>
       <div class="err" id="a-faceid-err"></div>
     </div>
+    <div class="a-search" id="a-search-wrap">
+      <input type="text" id="a-search-input" placeholder="🔎 Rechercher un client, une commande, un climatiseur…" autocomplete="off" oninput="adminSearchInput(this.value)" onfocus="adminSearchFocus()"/>
+      <div class="a-search-results hidden" id="a-search-results"></div>
+    </div>
     <div class="city-switcher hidden" id="a-city-switcher">
       <label for="a-city-select">🏙️ Ville / zone</label>
       <select id="a-city-select" onchange="setSelectedCityId(this.value)"></select>
@@ -519,6 +534,104 @@ async function loadCitySwitcher(){
     if(showAll && CURRENT_TAB) switchAdminTab(CURRENT_TAB);
   }catch(e){}
 }
+
+// ── Recherche globale (Module 7, Partie 4) : une seule barre pour retrouver
+// un client/une commande/un climatiseur/un transporteur/un partenaire, sans
+// naviguer d'onglet en onglet. "Récentes" gardées en local (pas de nouvelle
+// table pour un simple confort de navigation).
+let SEARCH_DEBOUNCE = null;
+function adminSearchFocus(){
+  if(!document.getElementById('a-search-input').value.trim()) renderSearchRecent();
+}
+function adminSearchInput(val){
+  clearTimeout(SEARCH_DEBOUNCE);
+  const q = val.trim();
+  if(q.length < 2){ renderSearchRecent(); return; }
+  SEARCH_DEBOUNCE = setTimeout(() => runAdminSearch(q), 250);
+}
+function getRecentSearches(){
+  try{ return JSON.parse(localStorage.getItem('a_search_recent') || '[]'); }catch(e){ return []; }
+}
+function saveRecentSearch(q){
+  const recent = [q, ...getRecentSearches().filter(x => x!==q)].slice(0, 5);
+  localStorage.setItem('a_search_recent', JSON.stringify(recent));
+}
+function renderSearchRecent(){
+  const box = document.getElementById('a-search-results');
+  const recent = getRecentSearches();
+  if(!recent.length){ box.classList.add('hidden'); return; }
+  box.innerHTML = `<div class="a-search-group-title">Dernières recherches</div>
+    <div class="a-search-recent">${recent.map(q => `<button onclick="document.getElementById('a-search-input').value='${escHtml(q).replace(/'/g,"\\'")}';runAdminSearch('${escHtml(q).replace(/'/g,"\\'")}')">${escHtml(q)}</button>`).join('')}</div>`;
+  box.classList.remove('hidden');
+}
+async function runAdminSearch(q){
+  try{
+    const r = await fetch(API('admin-search'), {method:'POST', headers:authHeaders(), body:JSON.stringify({q})});
+    const d = await r.json();
+    if(!r.ok) return;
+    renderSearchResults(d, q);
+    saveRecentSearch(q);
+  }catch(e){}
+}
+const SEARCH_GROUPS = [
+  {key:'commandes', title:'Commandes', icon:'🧾'},
+  {key:'clients', title:'Clients', icon:'👤'},
+  {key:'climatiseurs', title:'Climatiseurs', icon:'📦'},
+  {key:'transporteurs', title:'Transporteurs', icon:'👷'},
+  {key:'partenaires', title:'Partenaires', icon:'🤝'},
+];
+function renderSearchResults(d, q){
+  const box = document.getElementById('a-search-results');
+  let html = '', total = 0;
+  for(const g of SEARCH_GROUPS){
+    const items = d[g.key]||[];
+    if(!items.length) continue;
+    total += items.length;
+    html += `<div class="a-search-group-title">${g.icon} ${g.title}</div>` + items.map(it => searchRowHtml(g.key, it)).join('');
+  }
+  box.innerHTML = total ? html : `<div class="a-search-empty">Aucun résultat pour "${escHtml(q)}".</div>`;
+  box.classList.remove('hidden');
+}
+function searchRowHtml(type, it){
+  if(type==='commandes') return `<div class="a-search-row" onclick="goToSearchResult('commandes', ${it.id}, ${it.city_id}, null, '${(it.ref||'').replace(/'/g,"\\'")}')">
+    <span><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${escHtml(it.ref)} · ${frDate(it.date_debut)} → ${frDate(it.date_fin)}</span></span>
+    <span class="chip ${it.statut}">${(typeof RESA_LABEL!=='undefined'&&RESA_LABEL[it.statut])||it.statut}</span></div>`;
+  if(type==='clients') return `<div class="a-search-row" onclick="goToSearchResult('clients', ${it.id}, ${it.city_id})">
+    <span><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${escHtml(it.tel||it.email||'')}</span></span></div>`;
+  if(type==='climatiseurs') return `<div class="a-search-row" onclick="goToSearchResult('climatiseurs', ${it.id}, ${it.city_id}, ${it.numero})">
+    <span><span class="a-search-row-main">Climatiseur n°${it.numero}</span><br><span class="a-search-row-sub">${escHtml(it.reference||'')}</span></span>
+    <span class="chip ${it.statut}">${it.statut}</span></div>`;
+  if(type==='transporteurs') return `<div class="a-search-row" onclick="goToSearchResult('transporteurs', ${it.id}, ${it.city_id})">
+    <span><span class="a-search-row-main">${escHtml(it.nom)}</span><br><span class="a-search-row-sub">${escHtml(it.telephone||'')}</span></span>
+    <span class="chip ${it.actif?'actif':'inactif'}">${it.actif?(it.en_pause?'en pause':'actif'):'désactivé'}</span></div>`;
+  if(type==='partenaires') return `<div class="a-search-row" onclick="goToSearchResult('partenaires', ${it.id})">
+    <span><span class="a-search-row-main">${escHtml(it.nom)}</span></span>
+    <span class="chip ${it.actif?'actif':'inactif'}">${it.actif?'actif':'désactivé'}</span></div>`;
+  return '';
+}
+// Navigation depuis un résultat — vers l'onglet concerné, en filtrant sur le
+// résultat exact quand un filtre texte existe déjà (Réservations, Clients).
+// Pas encore de fiche unique par commande/client (voir Module 7, fiches 360°
+// à venir) : on amène l'admin au bon endroit, filtré, plutôt qu'une fiche
+// dédiée pour l'instant.
+function goToSearchResult(type, id, cityId, numero, ref){
+  document.getElementById('a-search-results').classList.add('hidden');
+  document.getElementById('a-search-input').value = '';
+  if(cityId && String(cityId) !== String(CITY_ID)) setSelectedCityId(String(cityId));
+  const tabByType = {commandes:'reservations', clients:'clients', climatiseurs:'stock', transporteurs:'transporteurs', partenaires:'partenaires'};
+  switchAdminTab(tabByType[type]);
+  setTimeout(() => {
+    if(type==='commandes' && ref){
+      const el = document.getElementById('resa-search');
+      if(el){ el.value = ref; renderReservations(); }
+    }
+    if(type==='climatiseurs' && numero) voirFicheAppareil(id, numero);
+  }, 350);
+}
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('a-search-wrap');
+  if(wrap && !wrap.contains(e.target)) document.getElementById('a-search-results')?.classList.add('hidden');
+});
 
 // ── Notifications push + badge d'app ──────────────────────────────────────
 // Règle générale de l'app (voulue pour tous les espaces, actuels et à venir) :
@@ -1018,6 +1131,7 @@ function renderAlertsBanner(d){
   const totalVirementsDemandes = (d.virements||0) + (d.partenaire_virements||0);
   if(totalVirementsDemandes > 0) alerts.push({sev:2, msg:`💶 ${totalVirementsDemandes} virement${totalVirementsDemandes>1?'s':''} demandé${totalVirementsDemandes>1?'s':''}`, fn:"switchAdminTab('virements')"});
   if(d.partenaire_litiges > 0) alerts.push({sev:1, msg:`⚠️ ${d.partenaire_litiges} commission${d.partenaire_litiges>1?'s':''} ambassadeur versée${d.partenaire_litiges>1?'s':''} pour une résa annulée/remboursée`, fn:"switchAdminTab('virements')"});
+  if(d.stock_indisponible > 0) alerts.push({sev:2, msg:`📦 ${d.stock_indisponible} climatiseur${d.stock_indisponible>1?'s':''} en panne ou en maintenance`, fn:"switchAdminTab('stock')"});
   alerts.sort((a,b) => a.sev-b.sev);
   zone.innerHTML = alerts.map(a =>
     `<div onclick="${a.fn}" style="background:${a.sev===1?'var(--red)':'var(--amber)'};color:#fff;padding:10px 16px;border-radius:var(--r);font-weight:700;font-size:13px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
@@ -1123,15 +1237,62 @@ async function loadDashboard(periode){
       <div class="stat-grid">
         <div class="stat-tile"><div class="n">${(d.ca_euros||0).toFixed(0)} €</div><div class="l">Chiffre d'affaires</div></div>
         <div class="stat-tile"><div class="n">${d.nb_reservations||0}</div><div class="l">Réservations</div></div>
+        <div class="stat-tile"><div class="n">${(d.panier_moyen_euros||0).toFixed(0)} €</div><div class="l">Panier moyen</div></div>
         <div class="stat-tile"><div class="n">${pct}%</div><div class="l">Occupation (${d.unites_occupees}/${d.flotte_totale}${d.agregat?' · toutes villes':' à '+escHtml(d.ville||'')})</div></div>
         <div class="stat-tile ${d.incidents_ouverts>0?'warn':''}"><div class="n">${d.incidents_ouverts||0}</div><div class="l">Incidents ouverts</div></div>
         <div class="stat-tile" style="grid-column:1/-1"><div class="n">${(d.ca_total_euros||0).toFixed(0)} €</div><div class="l">CA total généré (depuis le début)</div></div>
       </div>
+      ${dashboardParcHtml(d.parc)}
+      ${dashboardLogistiqueHtml(d.logistique)}
+      ${dashboardPartenairesHtml(d.partenaires)}
       ${d.agregat ? parVilleTableHtml(d.par_ville||[]) : ''}
     `;
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
+}
+// Blocs 3/5/6 du Module 7 — état du parc, logistique, partenaires. Un simple
+// clic sur le titre amène directement à l'onglet concerné (Stock/Livraisons/
+// Partenaires), même logique que le reste du tableau de bord.
+function dashboardParcHtml(parc){
+  if(!parc) return '';
+  return `
+    <div class="card">
+      <h2 style="cursor:pointer" onclick="switchAdminTab('stock')">📦 État du parc →</h2>
+      <div class="stat-grid" style="margin-top:10px">
+        <div class="stat-tile"><div class="n" style="color:var(--green)">${parc.disponibles}</div><div class="l">Disponibles</div></div>
+        <div class="stat-tile"><div class="n" style="color:var(--blue)">${parc.en_location}</div><div class="l">En location</div></div>
+        <div class="stat-tile"><div class="n" style="color:var(--amber)">${parc.en_preparation}</div><div class="l">En préparation</div></div>
+        <div class="stat-tile"><div class="n" style="color:var(--amber)">${parc.en_maintenance}</div><div class="l">En maintenance</div></div>
+        <div class="stat-tile ${parc.hors_service>0?'warn':''}"><div class="n">${parc.hors_service}</div><div class="l">Indisponibles</div></div>
+      </div>
+    </div>`;
+}
+function dashboardLogistiqueHtml(logistique){
+  if(!logistique) return '';
+  return `
+    <div class="card">
+      <h2 style="cursor:pointer" onclick="switchAdminTab('livraisons')">🚚 Logistique →</h2>
+      <div class="stat-grid" style="margin-top:10px">
+        <div class="stat-tile"><div class="n">${logistique.missions_en_cours}</div><div class="l">Missions en cours</div></div>
+        <div class="stat-tile"><div class="n">${logistique.missions_terminees_periode}</div><div class="l">Terminées (période)</div></div>
+        <div class="stat-tile ${logistique.missions_en_retard>0?'warn':''}"><div class="n">${logistique.missions_en_retard}</div><div class="l">En retard</div></div>
+        <div class="stat-tile ${logistique.problemes_signales>0?'warn':''}"><div class="n">${logistique.problemes_signales}</div><div class="l">Problèmes signalés</div></div>
+      </div>
+    </div>`;
+}
+function dashboardPartenairesHtml(partenaires){
+  if(!partenaires) return '';
+  return `
+    <div class="card">
+      <h2 style="cursor:pointer" onclick="switchAdminTab('partenaires')">🤝 Partenaires →</h2>
+      <div class="stat-grid" style="margin-top:10px">
+        <div class="stat-tile"><div class="n">${partenaires.partenaires_actifs}</div><div class="l">Partenaires actifs</div></div>
+        <div class="stat-tile"><div class="n">${partenaires.commandes_periode}</div><div class="l">Commandes (période)</div></div>
+        <div class="stat-tile ${partenaires.commissions_a_valider>0?'warn':''}"><div class="n">${partenaires.commissions_a_valider}</div><div class="l">Commissions à valider</div></div>
+        <div class="stat-tile"><div class="n">${partenaires.commissions_payees_periode}</div><div class="l">Commissions payées (période)</div></div>
+      </div>
+    </div>`;
 }
 function parVilleTableHtml(parVille){
   if(!parVille.length) return '';

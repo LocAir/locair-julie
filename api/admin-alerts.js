@@ -101,10 +101,20 @@ module.exports = async (req, res) => {
       .from('reservations').select('id', { count: 'exact', head: true })
       .in('statut', ['annulee', 'remboursee']).eq('partenaire_commission_payee', true).eq('partenaire_litige_resolu', false);
 
+    // Catégorie "Stock" (Module 7, Partie 26) : climatiseurs en panne ou en
+    // maintenance — jusqu'ici la seule catégorie du centre d'alertes du
+    // module qui n'avait pas d'équivalent ici (les autres existaient déjà
+    // sous forme de compteurs, voir ci-dessus).
+    const { count: stockIndispoCount } = await supabase
+      .from('appareils').select('id', { count: 'exact', head: true })
+      .eq('city_id', city.id).in('statut', ['panne', 'maintenance']);
+    const stockIndispo = stockIndispoCount || 0;
+
     return res.status(200).json({
       virements, livraisons, non_assignees: nonAssignees, reservations, incidents, retards,
       partenaire_virements: partenaireVirementsCount || 0,
       partenaire_litiges: partenaireLitigesCount || 0,
+      stock_indisponible: stockIndispo,
     });
   } catch (err) {
     console.error('[Admin alerts]', err.message);

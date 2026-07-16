@@ -3,6 +3,7 @@ const { resolveAdminCity, notifyIfSoldOut } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { checkAdminToken } = require('./_lib/auth');
 const { recordMouvement } = require('./_lib/stockMouvements');
+const { computeParcDashboard } = require('./_lib/parcDashboard');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -134,30 +135,7 @@ module.exports = async (req, res) => {
 
     // Tableau de bord du parc (Module 6, Partie 9).
     if (action === 'dashboard') {
-      const { data: appareils } = await supabase.from('appareils').select('id, statut').eq('city_id', city.id);
-      const list = appareils || [];
-      const parStatut = { disponible: 0, panne: 0, maintenance: 0, nettoyage: 0, loue: 0 };
-      list.forEach(a => { if (parStatut[a.statut] != null) parStatut[a.statut]++; });
-
-      const [{ data: liens }, { data: livsEnCours }] = await Promise.all([
-        supabase.from('reservation_appareils').select('appareil_id, reservation_id, reservation:reservations(statut)'),
-        supabase.from('livraisons').select('reservation_id').eq('type', 'livraison').neq('statut', 'fait'),
-      ]);
-      const resaEnPrepIds = new Set((livsEnCours || []).map(l => l.reservation_id));
-      const enPreparation = new Set(
-        (liens || [])
-          .filter(l => l.reservation && l.reservation.statut === 'confirmee' && resaEnPrepIds.has(l.reservation_id))
-          .map(l => l.appareil_id)
-      ).size;
-
-      return res.status(200).json({
-        total: list.length,
-        disponibles: parStatut.disponible,
-        en_location: parStatut.loue,
-        en_preparation: enPreparation,
-        en_maintenance: parStatut.maintenance + parStatut.nettoyage,
-        hors_service: parStatut.panne,
-      });
+      return res.status(200).json(await computeParcDashboard(supabase, city.id));
     }
 
     // Fiche administrateur d'un climatiseur (Module 6, Partie 9) : historique,

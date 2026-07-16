@@ -3,6 +3,7 @@ const { resolveAdminCity, listCities } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { checkAdminToken } = require('./_lib/auth');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
+const { computeParcDashboard } = require('./_lib/parcDashboard');
 
 function rangeStartISO(periode) {
   const d = new Date();
@@ -81,16 +82,47 @@ async function computeCityStats(supabase, city, periode, since) {
     .from('incidents').select('id', { count: 'exact', head: true })
     .eq('city_id', city.id).gte('created_at', hierStart).lt('created_at', hierEnd);
 
+  // Bloc "Logistique" (Module 7, Bloc 5) : au-delà du seul résumé du jour
+  // déjà affiché plus haut — missions en cours, terminées sur la période,
+  // et en retard, tous types confondus (livraison/récupération/changement).
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const { count: missionsEnCours } = await supabase
+    .from('livraisons')
+    .select('id, reservation:reservations!inner(city_id)', { count: 'exact', head: true })
+    .eq('reservation.city_id', city.id)
+    .in('statut', ['en_route', 'arrivee']);
+  const { count: missionsTermineesPeriode } = await supabase
+    .from('livraisons')
+    .select('id, reservation:reservations!inner(city_id)', { count: 'exact', head: true })
+    .eq('reservation.city_id', city.id)
+    .eq('statut', 'fait').gte('fait_at', since);
+  const { count: missionsEnRetard } = await supabase
+    .from('livraisons')
+    .select('id, reservation:reservations!inner(city_id)', { count: 'exact', head: true })
+    .eq('reservation.city_id', city.id)
+    .in('statut', ['a_faire', 'acceptee']).lt('date_prevue', todayStr);
+
+  const parc = await computeParcDashboard(supabase, city.id);
+  const nbResa = (resas || []).length;
+
   return {
     periode,
     ville:              city.name,
     city_id:            city.id,
     ca_euros:           caCents / 100,
     ca_total_euros:     caTotalCents / 100,
-    nb_reservations:    (resas || []).length,
+    nb_reservations:    nbResa,
+    panier_moyen_euros: nbResa > 0 ? (caCents / 100) / nbResa : 0,
     flotte_totale:      flotteTotale || 0,
     unites_occupees:    occupees,
     taux_occupation:    tauxOccupation,
+    parc,
+    logistique: {
+      missions_en_cours:          missionsEnCours || 0,
+      missions_terminees_periode: missionsTermineesPeriode || 0,
+      missions_en_retard:         missionsEnRetard || 0,
+      problemes_signales:         incidentsOuverts || 0,
+    },
     hier: {
       ca_euros:           caHierCents / 100,
       nb_reservations:    (resasHier || []).length,
@@ -99,6 +131,28 @@ async function computeCityStats(supabase, city, periode, since) {
     },
     incidents_ouverts:  incidentsOuverts || 0,
     incidents_periode:  incidentsPeriode || 0,
+  };
+}
+
+// Bloc "Partenaires" (Module 7, Bloc 6) : global, pas par ville — un
+// partenaire (conciergerie...) n'est pas une ressource opérationnelle
+// localisée (voir admin-alerts.js, même choix pour partenaire_virements).
+async function computePartenairesBlock(supabase, since) {
+  const { count: partenairesActifs } = await supabase
+    .from('partenaires').select('id', { count: 'exact', head: true }).eq('actif', true);
+  const { count: commandesPeriode } = await supabase
+    .from('reservations').select('id', { count: 'exact', head: true })
+    .not('partenaire_id', 'is', null).gte('created_at', since);
+  const { count: commissionsAValider } = await supabase
+    .from('partenaire_virements').select('id', { count: 'exact', head: true }).eq('statut', 'demande');
+  const { count: commissionsPayeesPeriode } = await supabase
+    .from('partenaire_virements').select('id', { count: 'exact', head: true })
+    .eq('statut', 'verse').gte('verse_at', since);
+  return {
+    partenaires_actifs:        partenairesActifs || 0,
+    commandes_periode:         commandesPeriode || 0,
+    commissions_a_valider:     commissionsAValider || 0,
+    commissions_payees_periode: commissionsPayeesPeriode || 0,
   };
 }
 
@@ -125,15 +179,35 @@ module.exports = async (req, res) => {
       );
       const sum = (key) => parVille.reduce((s, v) => s + (v[key] || 0), 0);
       const sumHier = (key) => parVille.reduce((s, v) => s + (v.hier[key] || 0), 0);
+      const sumParc = (key) => parVille.reduce((s, v) => s + (v.parc[key] || 0), 0);
+      const sumLog  = (key) => parVille.reduce((s, v) => s + (v.logistique[key] || 0), 0);
+      const nbResaTotal = sum('nb_reservations');
+      const partenaires = await computePartenairesBlock(supabase, since);
       return res.status(200).json({
         periode,
         agregat: true,
         ca_euros:          sum('ca_euros'),
         ca_total_euros:    sum('ca_total_euros'),
-        nb_reservations:   sum('nb_reservations'),
+        nb_reservations:   nbResaTotal,
+        panier_moyen_euros: nbResaTotal > 0 ? sum('ca_euros') / nbResaTotal : 0,
         flotte_totale:     sum('flotte_totale'),
         unites_occupees:   sum('unites_occupees'),
         taux_occupation:   sum('flotte_totale') > 0 ? sum('unites_occupees') / sum('flotte_totale') : 0,
+        parc: {
+          total:          sumParc('total'),
+          disponibles:    sumParc('disponibles'),
+          en_location:    sumParc('en_location'),
+          en_preparation: sumParc('en_preparation'),
+          en_maintenance: sumParc('en_maintenance'),
+          hors_service:   sumParc('hors_service'),
+        },
+        logistique: {
+          missions_en_cours:          sumLog('missions_en_cours'),
+          missions_terminees_periode: sumLog('missions_terminees_periode'),
+          missions_en_retard:         sumLog('missions_en_retard'),
+          problemes_signales:         sumLog('problemes_signales'),
+        },
+        partenaires,
         hier: {
           ca_euros:           sumHier('ca_euros'),
           nb_reservations:    sumHier('nb_reservations'),
@@ -148,7 +222,9 @@ module.exports = async (req, res) => {
 
     const city = await resolveAdminCity(supabase, body);
     if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
-    return res.status(200).json(await computeCityStats(supabase, city, periode, since));
+    const stats = await computeCityStats(supabase, city, periode, since);
+    stats.partenaires = await computePartenairesBlock(supabase, since);
+    return res.status(200).json(stats);
   } catch (err) {
     console.error('[Admin dashboard]', err.message);
     return res.status(500).json({ error: 'Erreur serveur' });
