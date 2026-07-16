@@ -2734,12 +2734,25 @@ async function demanderVirement(){
   }
 }
 
-// ── Checklist box (matériel à récupérer avant de partir en tournée) ─────────
+// ── Checklist box (matériel à prendre avant de partir en tournée) ───────────
 // Synchronisée avec les missions du jour : climatiseurs à emporter (numéros
 // déjà assignés en stock), kits de calfeutrage (universel, sauf Vélux/toit),
-// plus les outils fixes (sac, ciseaux, velcro, bac vidange) qui ne bougent
-// jamais avec le nombre de missions. Validée par le transporteur avant de
-// partir — "↩️ Retour" annule la prise en charge si tapé par erreur.
+// plus le matériel fixe (diable, sacs, bacs de vidange...) qui ne bouge
+// jamais avec le nombre de missions — générique, le transporteur ne part pas
+// forcément du box (souvent directement de chez lui). Chaque item fixe se
+// coche avant de pouvoir valider — juste un pense-bête local (pas
+// administrable, pas de suivi par item côté serveur). Validée par le
+// transporteur avant de partir — "↩️ Retour" annule la prise en charge si
+// tapé par erreur.
+const CHECKLIST_FIXE_LABELS = {
+  diable:              '🛒 Diable',
+  sac_transport:       '🎒 Sac de transport',
+  sac_kit_calfeutrage: '👝 Sac pour kit de calfeutrage',
+  bac_vidange_petit:   '🪣 Bac de vidange (petit)',
+  bac_vidange_grand:   '🪣 Bac de vidange (grand)',
+  microfibre:          '🧽 Microfibre',
+  lingette:            '🧻 Lingette',
+};
 async function loadChecklist(){
   const zone = document.getElementById('checklist-content');
   zone.innerHTML = '<p class="empty">Chargement…</p>';
@@ -2769,30 +2782,39 @@ function renderChecklist(d){
   const climatiseurPills = d.climatiseurs.map(c =>
     `<span class="pill-badge">❄️ Climatiseur n°${c.numero}${c.kit==='velux'?' 🪟':''}</span>`
   ).join('');
-  const items = [];
-  if(d.kits.universel) items.push(`🧰 ${d.kits.universel} kit${d.kits.universel>1?'s':''} de calfeutrage universel`);
-  if(d.kits.velux) items.push(`🪟 ${d.kits.velux} kit${d.kits.velux>1?'s':''} de calfeutrage Vélux`);
-  if(d.fixe){
-    items.push(`🎒 ${d.fixe.sac_transport} sac de transport`);
-    items.push(`✂️ ${d.fixe.ciseaux} paire de ciseaux`);
-    items.push(`🧵 ${d.fixe.velcro_secours} rouleaux de velcro de secours`);
-    items.push(`🪣 ${d.fixe.bac_vidange} bac vidange`);
-  }
-  const itemsHtml = items.map(t => `<div class="info-row" style="font-size:14.5px">${t}</div>`).join('');
+  const kitItems = [];
+  if(d.kits.universel) kitItems.push(`🧰 ${d.kits.universel} kit${d.kits.universel>1?'s':''} de calfeutrage universel`);
+  if(d.kits.velux) kitItems.push(`🪟 ${d.kits.velux} kit${d.kits.velux>1?'s':''} de calfeutrage Vélux`);
+  const kitItemsHtml = kitItems.map(t => `<div class="info-row" style="font-size:14.5px">${t}</div>`).join('');
+  const fixeHtml = (d.fixe && !d.validated) ? `
+    <div class="section-title" style="margin:14px 0 2px 2px">Checklist — coche ce que tu as pris</div>
+    ${Object.keys(d.fixe).map(key => `
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule)">
+        <input type="checkbox" class="checklist-box-cb" onchange="updateChecklistBoxButton()" style="width:20px;height:20px;flex-shrink:0">
+        <span>${CHECKLIST_FIXE_LABELS[key] || key}</span>
+      </label>`).join('')}` : '';
   zone.innerHTML = `
     <div class="card">
       <div class="eyebrow">Avant de partir</div>
-      <h1 style="margin-bottom:4px">🧳 Matériel à récupérer au box</h1>
+      <h1 style="margin-bottom:4px">🧳 Prêt à partir ?</h1>
       <p class="sub" style="margin-bottom:10px">${d.nb_missions} mission${d.nb_missions>1?'s':''} aujourd'hui</p>
       <button class="btn btn-grey" style="margin-bottom:16px" onclick="openTutoVideo('acces_sortie_boxe')">🎥 Voir le tuto : Accès/sortie box</button>
       ${d.climatiseurs.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${climatiseurPills}</div>` : ''}
-      <div style="margin-bottom:16px">${itemsHtml}</div>
+      ${kitItemsHtml ? `<div style="margin-bottom:${fixeHtml?'0':'16px'}">${kitItemsHtml}</div>` : ''}
+      ${fixeHtml}
       ${d.validated
-        ? `<div class="probleme-box" style="background:var(--green-bg);margin-bottom:12px"><p style="color:var(--green);font-weight:700">✅ Checklist prise en charge${d.validated_at?' à '+new Date(d.validated_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):''}</p></div>
+        ? `<div class="probleme-box" style="background:var(--green-bg);margin:16px 0 12px"><p style="color:var(--green);font-weight:700">✅ Checklist prise en charge${d.validated_at?' à '+new Date(d.validated_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):''}</p></div>
            <button class="btn btn-grey" onclick="annulerChecklist()">↩️ Retour — pas encore fait</button>`
-        : `<button class="btn btn-green" onclick="validerChecklist()">✅ Prise en charge — j'ai tout le matériel</button>`
+        : `<button class="btn btn-green" id="checklist-valider-btn" style="margin-top:16px" disabled onclick="validerChecklist()">✅ Prise en charge — j'ai tout le matériel</button>`
       }
     </div>`;
+  updateChecklistBoxButton();
+}
+function updateChecklistBoxButton(){
+  const btn = document.getElementById('checklist-valider-btn');
+  if(!btn) return;
+  const boxes = document.querySelectorAll('.checklist-box-cb');
+  btn.disabled = boxes.length > 0 && Array.from(boxes).some(b => !b.checked);
 }
 async function validerChecklist(){
   try{

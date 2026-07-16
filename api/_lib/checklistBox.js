@@ -7,10 +7,13 @@
 // peu importe leur nombre (le sac de transport et les outils ne se
 // multiplient pas avec le nombre de clients).
 const ITEMS_FIXES = {
-  sac_transport:  1,
-  ciseaux:        1,
-  velcro_secours: 2,
-  bac_vidange:    1,
+  diable:               1,
+  sac_transport:        1,
+  sac_kit_calfeutrage:  1,
+  bac_vidange_petit:    1,
+  bac_vidange_grand:    1,
+  microfibre:           1,
+  lingette:             1,
 };
 
 // Le kit de calfeutrage est universel pour tous les types de fenêtre, sauf
