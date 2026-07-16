@@ -86,6 +86,11 @@ input[readonly]{background:var(--bg);color:var(--black2);font-size:14px}
 .spinner-wrap{display:flex;justify-content:center;padding:60px 0}
 .spinner{width:28px;height:28px;border:3px solid var(--rule);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.fid-screen{text-align:center;padding:48px 0 0}
+.fid-icon{font-size:52px;margin-bottom:20px;line-height:1}
+.fid-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:18px;border:none;border-radius:100px;background:var(--blue);color:#fff;font-family:var(--body);font-size:16px;font-weight:700;cursor:pointer;min-height:58px;margin-top:4px}
+.fid-btn:disabled{opacity:.5;cursor:not-allowed}
+.fid-offer{background:var(--blue-lt);border:1.5px solid rgba(27,58,95,.15);border-radius:var(--r);padding:18px 16px;margin-bottom:14px;text-align:center}
 </style>
 </head>
 <body>
@@ -111,6 +116,22 @@ input[readonly]{background:var(--bg);color:var(--black2);font-size:14px}
     </div>
   </div>
 
+  <!-- Écran Face ID -->
+  <div id="faceid-screen" class="hidden">
+    <div class="fid-screen">
+      <div class="fid-icon">🔒</div>
+      <h1 id="fid-greet" style="margin-bottom:8px">Bonjour 👋</h1>
+      <p class="sub">Authentifie-toi pour accéder à ton espace ambassadeur.</p>
+      <div style="height:8px"></div>
+      <button class="fid-btn" id="fid-login-btn" onclick="doFaceIdLogin()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M6 20v-1a6 6 0 0112 0v1"/><path d="M17 13s1 1.5 1 3"/><path d="M7 13s-1 1.5-1 3"/><path d="M15 9.5a3 3 0 010 5"/><path d="M9 9.5a3 3 0 000 5"/></svg>
+        Face ID / Touch ID
+      </button>
+      <div class="err" id="fid-err" style="margin-top:14px"></div>
+      <button class="forgot-link" onclick="showPinForm()" style="margin-top:18px">Utiliser mon code →</button>
+    </div>
+  </div>
+
   <!-- Écran 2 : tableau de bord -->
   <div id="dashboard-screen" class="hidden">
     <div id="dashboard-content"><div class="spinner-wrap"><div class="spinner"></div></div></div>
@@ -133,7 +154,70 @@ function escHtml(s){
   return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function show(id){
-  ['login-screen','dashboard-screen'].forEach(s => document.getElementById(s).classList.toggle('hidden', s!==id));
+  ['login-screen','faceid-screen','dashboard-screen'].forEach(s => document.getElementById(s).classList.toggle('hidden', s!==id));
+}
+// ── Face ID (WebAuthn plateforme) ──────────────────────────────────
+const FID_KEY = 'p_fid';
+async function fidAvailable(){
+  if(!window.PublicKeyCredential) return false;
+  try{ return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+  catch(e){ return false; }
+}
+function fidB64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''); }
+function fidBytes(s){ return Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0)); }
+async function fidRegister(label){
+  const cred = await navigator.credentials.create({ publicKey:{
+    challenge: crypto.getRandomValues(new Uint8Array(32)),
+    rp:{ name:"Loc'Air", id:location.hostname },
+    user:{ id:crypto.getRandomValues(new Uint8Array(16)), name:label, displayName:label },
+    pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+    authenticatorSelection:{ authenticatorAttachment:'platform', userVerification:'required' },
+    timeout:60000
+  }});
+  localStorage.setItem(FID_KEY, fidB64(cred.rawId));
+}
+async function doFaceIdLogin(){
+  const stored = localStorage.getItem(FID_KEY);
+  if(!stored){ showPinForm(); return; }
+  const btn = document.getElementById('fid-login-btn');
+  const errEl = document.getElementById('fid-err');
+  btn.disabled = true; btn.textContent = 'Authentification…';
+  errEl.style.display = 'none';
+  try{
+    await navigator.credentials.get({ publicKey:{
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials:[{ type:'public-key', id:fidBytes(stored) }],
+      userVerification:'required', timeout:60000
+    }});
+    loadDashboard();
+  }catch(e){
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M6 20v-1a6 6 0 0112 0v1"/><path d="M17 13s1 1.5 1 3"/><path d="M7 13s-1 1.5-1 3"/><path d="M15 9.5a3 3 0 010 5"/><path d="M9 9.5a3 3 0 000 5"/></svg> Face ID / Touch ID';
+    if(e.name==='NotAllowedError'){ errEl.textContent='Annulé — réessaie.'; errEl.style.display='block'; }
+    else{ showPinForm(); }
+  }
+}
+function showPinForm(){ show('login-screen'); }
+async function offerFaceId(){
+  if(!(await fidAvailable()) || localStorage.getItem(FID_KEY)) return;
+  const zone = document.getElementById('dashboard-content');
+  if(!zone) return;
+  zone.insertAdjacentHTML('afterbegin',`
+    <div class="fid-offer" id="fid-offer">
+      <p style="font-size:14px;font-weight:700;margin-bottom:6px">🔒 Activer Face ID / Touch ID</p>
+      <p class="sub" style="font-size:12.5px;margin-bottom:14px">Se connecter d'un coup d'œil la prochaine fois.</p>
+      <button class="btn btn-blue" style="max-width:220px;margin:0 auto 10px" onclick="activateFaceId()">Activer</button>
+      <br><button class="forgot-link" onclick="document.getElementById('fid-offer').remove()">Non merci</button>
+    </div>`);
+}
+async function activateFaceId(){
+  try{
+    await fidRegister(STATE.nom || STATE.code || "Ambassadeur Loc'Air");
+    const offer = document.getElementById('fid-offer');
+    if(offer) offer.outerHTML = '<div class="ok-msg" style="display:block;margin-bottom:14px">✓ Face ID activé — plus besoin de code à la prochaine visite.</div>';
+  }catch(e){
+    if(e.name!=='NotAllowedError') alert("Impossible d'activer Face ID : " + e.message);
+  }
 }
 function updateWhoBadge(){
   const el = document.getElementById('who-badge');
@@ -166,6 +250,7 @@ async function doLogin(){
     localStorage.setItem('p_taux', d.taux_commission_pct);
     updateWhoBadge();
     loadDashboard();
+    setTimeout(offerFaceId, 1200);
   }catch(e){
     errEl.textContent = e.message; errEl.style.display = 'block';
   }finally{
@@ -333,7 +418,19 @@ async function demanderVirement(){
 }
 document.getElementById('lg-code').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
 updateWhoBadge();
-if(STATE.token) loadDashboard(); else show('login-screen');
+if(STATE.token){
+  const fidId = localStorage.getItem(FID_KEY);
+  if(fidId){
+    const first = STATE.nom ? ' ' + STATE.nom.split(' ')[0] : '';
+    document.getElementById('fid-greet').textContent = 'Bonjour' + first + ' 👋';
+    show('faceid-screen');
+    setTimeout(doFaceIdLogin, 350);
+  } else {
+    loadDashboard();
+  }
+} else {
+  show('login-screen');
+}
 </script>
 </body>
 </html>

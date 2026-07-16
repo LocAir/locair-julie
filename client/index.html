@@ -95,6 +95,12 @@ h2:first-of-type{margin-top:0}
 .footer p{font-size:11px;color:rgba(255,255,255,.3)}
 
 @media(max-width:480px){.page-wrap{padding-top:24px}h1{font-size:30px}}
+.fid-screen{text-align:center;padding:40px 0 0}
+.fid-icon{font-size:52px;margin-bottom:18px}
+.fid-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border:none;border-radius:12px;background:var(--blue);color:#fff;font-family:var(--body);font-size:16px;font-weight:600;cursor:pointer;min-height:54px;margin-top:4px}
+.fid-btn:disabled{opacity:.5;cursor:not-allowed}
+.fid-switch{display:block;text-align:center;font-size:13px;color:var(--grey);text-decoration:underline;cursor:pointer;border:none;background:none;font-family:var(--body);margin-top:16px;padding:4px}
+.fid-offer{background:var(--blue-lt);border-radius:12px;padding:18px;margin-bottom:16px;text-align:center}
 </style>
 </head>
 <body>
@@ -124,6 +130,21 @@ h2:first-of-type{margin-top:0}
         <div id="login-error" class="alert-error hidden" role="alert"></div>
         <button type="submit" class="btn-submit" id="btn-login">Accéder à mon espace</button>
       </form>
+    </div>
+
+    <!-- ÉCRAN Face ID -->
+    <div id="screen-faceid" class="hidden">
+      <div class="fid-screen">
+        <div class="fid-icon">🔒</div>
+        <h1 id="c-fid-greet">Bonjour 👋</h1>
+        <p class="page-sub">Authentifie-toi pour accéder à ton espace.</p>
+        <button class="fid-btn" id="c-fid-btn" onclick="clientFidLogin()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M6 20v-1a6 6 0 0112 0v1"/><path d="M17 13s1 1.5 1 3"/><path d="M7 13s-1 1.5-1 3"/><path d="M15 9.5a3 3 0 010 5"/><path d="M9 9.5a3 3 0 000 5"/></svg>
+          Face ID / Touch ID
+        </button>
+        <div id="c-fid-err" class="alert-error hidden" style="margin-top:14px"></div>
+        <button class="fid-switch" onclick="showLoginForm()">Utiliser mon email →</button>
+      </div>
     </div>
 
     <!-- ÉCRAN 2 : tableau de bord -->
@@ -176,6 +197,7 @@ document.getElementById('login-form').addEventListener('submit', async function(
     localStorage.setItem('client_token', d.token);
     localStorage.setItem('client_ref', d.ref);
     showDashboard();
+    setTimeout(offerClientFaceId, 1200);
   }catch(err){
     errEl.textContent = err.message;
     errEl.classList.remove('hidden');
@@ -324,14 +346,86 @@ async function showDashboard(){
     renderDashboard(d);
     document.getElementById('dash-loading').classList.add('hidden');
     document.getElementById('dash-content').classList.remove('hidden');
+    setTimeout(offerClientFaceId, 1200);
   }catch(err){
     document.getElementById('dash-loading').innerHTML = `<div class="alert-error" style="text-align:left">${escHtml(err.message)}</div><button class="btn-outline" onclick="logout()" style="margin-top:12px">Retour</button>`;
   }
 }
 
-// Session déjà ouverte (visite suivante) → tableau de bord directement.
+// ── Face ID (WebAuthn plateforme) ──────────────────────────────────
+const C_FID_KEY = 'c_fid';
+async function cFidAvailable(){
+  if(!window.PublicKeyCredential) return false;
+  try{ return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }
+  catch(e){ return false; }
+}
+function cFidB64(buf){ return btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,''); }
+function cFidBytes(s){ return Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0)); }
+function showLoginForm(){
+  document.getElementById('screen-faceid').classList.add('hidden');
+  document.getElementById('screen-login').classList.remove('hidden');
+}
+async function clientFidLogin(){
+  const stored = localStorage.getItem(C_FID_KEY);
+  if(!stored){ showLoginForm(); return; }
+  const btn = document.getElementById('c-fid-btn');
+  const errEl = document.getElementById('c-fid-err');
+  btn.disabled = true; btn.textContent = 'Authentification…';
+  errEl.classList.add('hidden');
+  try{
+    await navigator.credentials.get({ publicKey:{
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      allowCredentials:[{ type:'public-key', id:cFidBytes(stored) }],
+      userVerification:'required', timeout:60000
+    }});
+    showDashboard();
+  }catch(e){
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M6 20v-1a6 6 0 0112 0v1"/><path d="M17 13s1 1.5 1 3"/><path d="M7 13s-1 1.5-1 3"/><path d="M15 9.5a3 3 0 010 5"/><path d="M9 9.5a3 3 0 000 5"/></svg> Face ID / Touch ID';
+    if(e.name==='NotAllowedError'){ errEl.textContent='Annulé — réessaie.'; errEl.classList.remove('hidden'); }
+    else{ showLoginForm(); }
+  }
+}
+async function offerClientFaceId(){
+  if(!(await cFidAvailable()) || localStorage.getItem(C_FID_KEY)) return;
+  const content = document.getElementById('dash-content');
+  if(!content) return;
+  content.insertAdjacentHTML('afterbegin',`
+    <div class="fid-offer" id="c-fid-offer">
+      <p style="font-size:14px;font-weight:700;margin-bottom:6px">🔒 Activer Face ID / Touch ID</p>
+      <p style="font-size:12.5px;color:var(--grey);margin-bottom:14px">Se connecter d'un coup d'œil la prochaine fois.</p>
+      <button class="btn-submit" style="max-width:220px;margin:0 auto 10px" onclick="activateClientFaceId()">Activer</button>
+      <br><button class="fid-switch" onclick="document.getElementById('c-fid-offer').remove()">Non merci</button>
+    </div>`);
+}
+async function activateClientFaceId(){
+  try{
+    const cred = await navigator.credentials.create({ publicKey:{
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp:{ name:"Loc'Air", id:location.hostname },
+      user:{ id:crypto.getRandomValues(new Uint8Array(16)), name:'client', displayName:'Mon espace Loc\'Air' },
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{ authenticatorAttachment:'platform', userVerification:'required' },
+      timeout:60000
+    }});
+    localStorage.setItem(C_FID_KEY, cFidB64(cred.rawId));
+    const offer = document.getElementById('c-fid-offer');
+    if(offer) offer.outerHTML = '<div class="alert-info" style="margin-bottom:16px">✓ Face ID activé — plus besoin de saisir vos informations à la prochaine visite.</div>';
+  }catch(e){
+    if(e.name!=='NotAllowedError') console.warn('Face ID register error:', e);
+  }
+}
+
+// Session déjà ouverte (visite suivante) → tableau de bord ou écran Face ID.
 if(localStorage.getItem('client_token')){
-  showDashboard();
+  const cFidId = localStorage.getItem(C_FID_KEY);
+  if(cFidId){
+    document.getElementById('screen-login').classList.add('hidden');
+    document.getElementById('screen-faceid').classList.remove('hidden');
+    setTimeout(clientFidLogin, 350);
+  } else {
+    showDashboard();
+  }
 }
 </script>
 </body>
