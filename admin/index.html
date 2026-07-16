@@ -1538,8 +1538,12 @@ function offresPrivilegeHtml(){
         </div>`).join('')}
     </div>`;
 }
+// Tarif standard de l'Offre Privilège, le même pour tous les climatiseurs —
+// pré-rempli pour ne pas avoir à le ressaisir à chaque fois, mais reste
+// modifiable si un cas particulier le justifie.
+const OFFRE_PRIVILEGE_PRIX_DEFAUT_EUROS = 350;
 function genererOffrePrivilege(id, numero){
-  promptAction({title:`Climatiseur n°${numero} — Offre Privilège`, label:'Prix de vente (€)', placeholder:'Ex. 250'}, async (value) => {
+  promptAction({title:`Climatiseur n°${numero} — Offre Privilège`, label:'Prix de vente (€)', value:String(OFFRE_PRIVILEGE_PRIX_DEFAUT_EUROS)}, async (value) => {
     const prix = parseFloat((value||'').replace(',','.'));
     if(!prix || prix<=0) return showToast('Prix invalide', 'error');
     try{
@@ -2647,7 +2651,7 @@ function rembourserReservation(id){
 // L'offre est directement visible côté client (statut "proposee"), pas
 // besoin de repasser par "Fixer un prix" ensuite.
 function proposerOffrePrivilegeManuelle(reservationId){
-  promptAction({title:'⭐ Offre Privilège manuelle', label:'Prix de vente (€)', placeholder:'Ex. 250'}, async (value) => {
+  promptAction({title:'⭐ Offre Privilège manuelle', label:'Prix de vente (€)', value:String(OFFRE_PRIVILEGE_PRIX_DEFAUT_EUROS)}, async (value) => {
     const prix = parseFloat((value||'').replace(',','.'));
     if(!prix || prix<=0) return showToast('Prix invalide', 'error');
     try{
