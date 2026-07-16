@@ -5558,8 +5558,14 @@ async function handleFenetrePhoto(input){
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function buildRecap(){
   const days=parseInt(document.getElementById('f-dur')?.value||'7');
-  if(_promoPct>0){_promoDiscount=Math.round(calcTotal(days)*_promoPct/100);}
   const price=calcPrice(days)*_qty;
+  // Code en % (fidélité/parrainage) : recalculé à chaque rendu à partir du
+  // prix de location courant (hors pose technicien/livraison, comme côté
+  // serveur — voir _lib/promo.js), pour rester juste si la durée/quantité
+  // change après la saisie du code (voir validatePromo()). Les codes fixes
+  // en euros (_promoPct===0) ne sont pas concernés, leur montant ne bouge
+  // jamais.
+  if(_promoPct>0)_promoDiscount=Math.round(price*_promoPct/100);
   const asc=document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—';
   const etage=document.getElementById('f-etage')?.value.trim()||'';
   const _ouvFR=document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—';
@@ -7865,26 +7871,37 @@ function selectInstall(tech){
 let _unit2=false;
 let _qty=1;
 let _promoDiscount=0;
-let _promoCode='';
 let _promoPct=0;
+let _promoCode='';
 const _PROMO_FIXED={'LOCAIR10':10,'LOCA10':10};
-const _PROMO_PCT={'EJAZ10':10,'EJAZ20':20,'EJAZ30':30};
+// Code de fidélité/parrainage envoyé automatiquement à la fin de chaque
+// location (prénom + 30, ex. "ERIK30" pour -30%) — voir api/_lib/promo.js
+// pour la même logique côté serveur (source de vérité pour le montant
+// réellement facturé). _promoDiscount reste en euros pour buildRecap(), mais
+// recalculé à chaque fois à partir de _promoPct pour rester juste si la
+// durée/quantité change après la saisie du code.
+const REFERRAL_PCT=30;
+function normalizePrenomJS(s){return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z]/g,'').toUpperCase();}
 function validatePromo(){
   const inp=document.getElementById('f-parrain');
   const fb=document.getElementById('promo-feedback');
   if(!inp)return;
   const val=inp.value.trim().toUpperCase();
-  const prev=_promoDiscount;
-  if(!val){_promoDiscount=0;_promoPct=0;_promoCode='';if(fb){fb.textContent='';fb.style.display='none';}if(prev!==_promoDiscount){buildRecap();}return;}
+  const prevD=_promoDiscount, prevP=_promoPct;
+  if(!val){
+    _promoDiscount=0;_promoPct=0;_promoCode='';
+    if(fb){fb.textContent='';fb.style.display='none';}
+    if(prevD!==_promoDiscount||prevP!==_promoPct)buildRecap();
+    return;
+  }
   const explicit=_PROMO_FIXED[val];
-  const pct=_PROMO_PCT[val];
-  if(pct!==undefined){
-    _promoPct=pct;_promoCode=val;_promoDiscount=0;
-    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+pct+'% off':'✓ Code valide — '+pct+'% de réduction';fb.style.color='#059669';fb.style.display='block';}
-  }else if(explicit!==undefined){
-    _promoPct=0;_promoDiscount=explicit;
-    _promoCode=val;
+  const normPrenom=normalizePrenomJS(document.getElementById('f-prenom')?.value||'');
+  if(explicit!==undefined){
+    _promoDiscount=explicit;_promoPct=0;_promoCode=val;
     if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+_promoDiscount+' € off':'✓ Code valide — '+_promoDiscount+' € déduits';fb.style.color='#059669';fb.style.display='block';}
+  }else if(normPrenom && val===normPrenom+REFERRAL_PCT){
+    _promoPct=REFERRAL_PCT;_promoCode=val; // _promoDiscount recalculé dans buildRecap()
+    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+REFERRAL_PCT+'% off':'✓ Code valide — '+REFERRAL_PCT+'% déduits';fb.style.color='#059669';fb.style.display='block';}
   }else{
     _promoDiscount=0;_promoPct=0;_promoCode='';
     if(fb){fb.textContent=_lang==='en'?'Code not recognised':'Code non reconnu';fb.style.color='var(--red)';fb.style.display='block';}

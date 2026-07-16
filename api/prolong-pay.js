@@ -3,6 +3,7 @@ const { getSupabase }     = require('./_lib/supabase');
 const { resolveCityById } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate }     = require('./_lib/dates');
+const { matchPromoPct }   = require('./_lib/promo');
 
 function calcBase(days) {
   days = Math.max(1, days);
@@ -78,13 +79,8 @@ module.exports = async (req, res) => {
   }
 
   // Validation code promo : PRENOM_NORMALISE + 10|20|30 (ex. "ERIK20" pour 20% de remise)
-  const promoCode        = ((req.body.promo_code || '')).trim().toUpperCase();
-  const normalizedPrenom = (orig.prenom || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z]/g, '').toUpperCase();
-  let promoPct = 0;
-  if (promoCode && normalizedPrenom && promoCode.startsWith(normalizedPrenom)) {
-    const suffix = parseInt(promoCode.slice(normalizedPrenom.length));
-    if ([10, 20, 30].includes(suffix)) promoPct = suffix;
-  }
+  const promoCode = ((req.body.promo_code || '')).trim().toUpperCase();
+  const promoPct  = matchPromoPct(promoCode, orig.prenom);
 
   const baseCents    = (calcBase(totalDays) - calcBase(origDays)) * (orig.quantite || 1) * 100;
   const promoDiscount = Math.round(baseCents * promoPct / 100);
