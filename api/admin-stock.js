@@ -382,7 +382,7 @@ module.exports = async (req, res) => {
       aAligner.forEach(a => { a.statut = 'loue'; });
     }
 
-    const actifs = list.filter(a => !['panne', 'maintenance', 'loue', 'nettoyage'].includes(a.statut)).length;
+    const actifs = list.filter(a => !['panne', 'maintenance', 'loue', 'nettoyage', 'vendu'].includes(a.statut)).length;
 
     return res.status(200).json({
       ville:        city.name,

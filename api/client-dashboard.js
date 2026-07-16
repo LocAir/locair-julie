@@ -50,6 +50,7 @@ module.exports = async (req, res) => {
       { data: emailLog },
       { data: aideArticles },
       { data: assistance },
+      { data: offrePrivilege },
     ] = await Promise.all([
       supabase.from('livraisons').select('type, statut, date_prevue, creneau, fait_at').eq('reservation_id', reservationId),
       supabase.from('incidents').select('id').eq('reservation_id', reservationId).in('statut', INCIDENT_OPEN_STATUSES),
@@ -59,6 +60,10 @@ module.exports = async (req, res) => {
       supabase.from('email_log').select('scenario, created_at').eq('reservation_id', reservationId).eq('statut', 'envoye').order('created_at', { ascending: false }),
       supabase.from('centre_aide_articles').select('slug, categorie, titre, contenu').eq('actif', true).order('ordre'),
       supabase.from('assistance_config').select('*').eq('id', 1).maybeSingle(),
+      // Offre Privilège (Step 2) : ne remonte au client que si l'admin a
+      // fixé un prix ("proposee") — tant que l'offre reste "eligible", elle
+      // n'existe que côté admin.
+      supabase.from('offres_privilege').select('id, prix_vente_cents').eq('reservation_id', reservationId).eq('statut', 'proposee').maybeSingle(),
     ]);
 
     const progress = computeClientProgress(resa, livraisons || [], (incidentsOuverts || []).length > 0);
@@ -139,6 +144,7 @@ module.exports = async (req, res) => {
       centre_aide: aideArticles || [],
       assistance: assistance || null,
       lien_prolongation: `https://www.locair.fr/prolongation?ref=${encodeURIComponent(resa.ref)}`,
+      offre_privilege: offrePrivilege ? { id: offrePrivilege.id, prix_cents: offrePrivilege.prix_vente_cents } : null,
     });
   } catch (err) {
     console.error('[client-dashboard]', err.message);

@@ -3,9 +3,52 @@ const { getSupabase } = require('./_lib/supabase');
 const { confirmReservationAndCreateLivraisons } = require('./_lib/reservations');
 const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
 const { pushToAdmin } = require('./_lib/push');
+const { notifyTransporteur } = require('./_lib/transporteurNotif');
+const { recordMouvement } = require('./_lib/stockMouvements');
 const { generateAndSendDocuments } = require('./_lib/documents');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
 const { escHtml } = require('./_lib/emailTemplates');
+
+// Offre Privilège (Step 2) : le client vient de payer pour garder son
+// climatiseur actuel. Idempotent (un webhook Stripe peut être redélivré) —
+// si l'offre est déjà "acceptee", ne refait rien. N'annule que la mission
+// de récupération pas encore faite ; une récupération déjà "fait" (rare
+// mais possible si le paiement arrive très tard) reste intacte.
+async function handleOffrePrivilegeAccepted(supabase, offreId) {
+  const { data: offre } = await supabase
+    .from('offres_privilege').select('id, appareil_id, reservation_id, prix_vente_cents, statut')
+    .eq('id', offreId).maybeSingle();
+  if (!offre || offre.statut === 'acceptee') return;
+
+  await supabase.from('offres_privilege')
+    .update({ statut: 'acceptee', decidee_at: new Date().toISOString() }).eq('id', offre.id);
+
+  const { data: appareil } = await supabase.from('appareils').select('numero, localisation').eq('id', offre.appareil_id).maybeSingle();
+  await recordMouvement(supabase, {
+    appareilId: offre.appareil_id, typeEvenement: 'autre', nouveauStatut: 'vendu',
+    nouvelleLocalisation: appareil?.localisation || 'autre', utilisateur: 'systeme',
+    commentaire: `Vendu au client via l'Offre Privilège (${(offre.prix_vente_cents / 100).toFixed(2)} €).`,
+  });
+
+  const { data: recup } = await supabase
+    .from('livraisons').select('id, transporteur_id')
+    .eq('reservation_id', offre.reservation_id).eq('type', 'recuperation')
+    .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']).maybeSingle();
+  if (recup) {
+    await supabase.from('livraisons').update({ statut: 'annule' }).eq('id', recup.id);
+    if (recup.transporteur_id) {
+      await notifyTransporteur(supabase, recup.transporteur_id, {
+        type: 'annulation', message: 'Le client a acheté son climatiseur — récupération annulée.', tag: 'annulation',
+      });
+    }
+  }
+
+  await pushToAdmin(supabase, {
+    title: '🎉 Offre Privilège acceptée',
+    body:  `Climatiseur #${appareil?.numero} vendu — la récupération a été annulée automatiquement.`,
+    tag:   `offre-privilege-acceptee-${offre.id}`,
+  });
+}
 
 // ── Échec de paiement / remboursement / litige ────────────────────────────────
 // Ces trois événements n'ont jamais été écoutés jusqu'ici : une carte refusée,
@@ -199,6 +242,17 @@ const handler = async (req, res) => {
 
     } else {
       return res.json({ received: true, skipped: eventType });
+    }
+
+    // ── Offre Privilège : flux totalement distinct, jamais une réservation ────
+    // (voir api/offre-privilege-pay.js) — ne touche jamais reservations.
+    if (meta.type === 'offre_privilege') {
+      try {
+        await handleOffrePrivilegeAccepted(getSupabase(), parseInt(meta.offre_id));
+      } catch (e) {
+        console.error('[Offre privilège webhook]', e.message);
+      }
+      return res.status(200).json({ received: true, type: 'offre_privilege' });
     }
 
     // ── Réservation en base : confirmation + création des missions terrain ────

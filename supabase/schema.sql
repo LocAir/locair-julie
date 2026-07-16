@@ -64,7 +64,7 @@ create table appareils (
   id          bigint generated always as identity primary key,
   city_id     bigint not null references cities(id),
   numero      integer not null,
-  statut      text not null default 'disponible' check (statut in ('disponible','panne','maintenance','loue','nettoyage')),
+  statut      text not null default 'disponible' check (statut in ('disponible','panne','maintenance','loue','nettoyage','vendu')),
   localisation text not null default 'stock_principal'
                 check (localisation in ('stock_principal','vehicule_transporteur','chez_client','maintenance','autre')),
   reference   text, -- référence produit du fabricant (ex. "RWAC10KA+"), saisie librement par l'admin
@@ -690,7 +690,7 @@ stable
 as $$
   select
     (select count(*)::int from appareils a
-       where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue', 'nettoyage'))
+       where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue', 'nettoyage', 'vendu'))
     - coalesce((
         select sum(r.quantite) from reservations r
         where r.city_id = p_city_id and r.statut = 'en_attente'
@@ -720,7 +720,7 @@ declare
 begin
   select array_agg(id) into v_ids from (
     select a.id from appareils a
-    where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue', 'nettoyage')
+    where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue', 'nettoyage', 'vendu')
       and not exists (
         select 1 from reservation_appareils ra
         join reservations r on r.id = ra.reservation_id

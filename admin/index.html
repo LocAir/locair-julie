@@ -1501,8 +1501,8 @@ function renderChecklistBox(d){
 }
 
 // ── STOCK ─────────────────────────────────────────────────────────────────────
-const APPAREIL_STATUT_LABEL = {disponible:'Disponible', panne:'En panne', maintenance:'Maintenance', nettoyage:'Nettoyage', loue:'Loué'};
-const APPAREIL_STATUT_CHIP  = {disponible:'actif', panne:'annulee', maintenance:'a_faire', nettoyage:'a_faire', loue:'en_location'};
+const APPAREIL_STATUT_LABEL = {disponible:'Disponible', panne:'En panne', maintenance:'Maintenance', nettoyage:'Nettoyage', loue:'Loué', vendu:'Vendu'};
+const APPAREIL_STATUT_CHIP  = {disponible:'actif', panne:'annulee', maintenance:'a_faire', nettoyage:'a_faire', loue:'en_location', vendu:'terminee'};
 const LOCALISATION_LABEL = {stock_principal:'📍 Stock principal', vehicule_transporteur:'🚚 Véhicule transporteur', chez_client:'🏠 Chez le client', maintenance:'🔧 Maintenance', autre:'Autre'};
 const MOUVEMENT_TYPE_LABEL = {
   entree_parc:'Entrée dans le parc', attribution_reservation:'Attribution réservation',
@@ -1513,17 +1513,69 @@ const MOUVEMENT_TYPE_LABEL = {
 };
 
 let STOCK_FILTRES = {};
+// ── Offre Privilège (Step 2) : l'admin fixe le prix d'une offre déjà
+// détectée par le cron quotidien — tant qu'aucun prix n'est fixé, le client
+// ne voit rien. Réservé aux rôles finances, comme les virements.
+let OFFRES_PRIVILEGE_CACHE = [];
+function offresPrivilegeHtml(){
+  if(!OFFRES_PRIVILEGE_CACHE.length) return '';
+  return `
+    <div class="card">
+      <h2>⭐ Offres Privilège</h2>
+      <p class="sub" style="margin-bottom:12px">Ces climatiseurs ont été très loués et sont actuellement chez un client — tu peux leur proposer de les garder au lieu de les rendre.</p>
+      ${OFFRES_PRIVILEGE_CACHE.map(o => `
+        <div class="row-item">
+          <div class="row-top">
+            <span class="row-title">Climatiseur n°${o.appareil?.numero ?? '—'}</span>
+            <span class="chip ${o.statut==='proposee'?'en_location':'a_faire'}">${o.statut==='proposee'?'Proposée au client':'En attente de prix'}</span>
+          </div>
+          <div class="row-meta">${o.nb_locations} locations effectuées${o.reservation?' · '+escHtml((o.reservation.prenom||'')+' '+(o.reservation.nom||''))+' ('+escHtml(o.reservation.ref||'')+')':''}</div>
+          ${o.statut==='proposee'?`<div class="row-meta">Prix proposé : ${euros(o.prix_vente_cents)}</div>`:''}
+          <div class="row-actions">
+            ${o.statut==='eligible'?`<button class="btn btn-blue" onclick="genererOffrePrivilege(${o.id}, ${o.appareil?.numero ?? 0})">Fixer un prix et proposer</button>`:''}
+            <button class="btn btn-grey" onclick="annulerOffrePrivilege(${o.id})">Retirer l'offre</button>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+function genererOffrePrivilege(id, numero){
+  promptAction({title:`Climatiseur n°${numero} — Offre Privilège`, label:'Prix de vente (€)', placeholder:'Ex. 250'}, async (value) => {
+    const prix = parseFloat((value||'').replace(',','.'));
+    if(!prix || prix<=0) return showToast('Prix invalide', 'error');
+    try{
+      const r = await fetch(API('admin-offres-privilege'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'proposer', id, prix_vente_cents:Math.round(prix*100)})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadStock();
+      showToast('Offre proposée au client', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
+}
+function annulerOffrePrivilege(id){
+  confirmAction("Retirer cette offre ? Le client ne la verra plus (ou plus du tout, si elle n'a jamais été proposée).", async () => {
+    try{
+      const r = await fetch(API('admin-offres-privilege'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'annuler', id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadStock();
+      showToast('Offre retirée', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
+}
 async function loadStock(silent){
   const zone = document.getElementById('tab-stock');
   if(!silent) zone.innerHTML = loading();
   try{
-    const [r, rd] = await Promise.all([
+    const [r, rd, ro] = await Promise.all([
       fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify(Object.assign({}, STOCK_FILTRES))}),
       fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'dashboard'})}),
+      fetch(API('admin-offres-privilege'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
     ]);
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     const dd = await rd.json().catch(()=>null);
+    const od = await ro.json().catch(()=>null);
+    OFFRES_PRIVILEGE_CACHE = (ro.ok && od) ? (od.offres||[]) : [];
     const pctOccupe = d.actifs>0 ? Math.round((d.en_location/d.actifs)*100) : 0;
     const appareils = d.appareils || [];
     zone.innerHTML = `
@@ -1536,6 +1588,7 @@ async function loadStock(silent){
         </div>
         <p class="sub" style="margin-top:14px">Se met à jour automatiquement à chaque réservation et à chaque retour confirmé par un transporteur. Chaque appareil a son numéro — le livreur sait exactement lequel récupérer.</p>
       </div>
+      ${offresPrivilegeHtml()}
       ${rd.ok && dd ? `
       <div class="card">
         <h2>Tableau de bord du parc</h2>
@@ -1597,6 +1650,7 @@ async function loadStock(silent){
             <div class="row-meta">${LOCALISATION_LABEL[a.localisation]||a.localisation||'—'}</div>
             ${a.notes?`<div class="row-meta" style="font-style:italic">📝 ${escHtml(a.notes)}</div>`:''}
             <div class="row-actions">
+              ${a.statut==='vendu' ? `<div class="row-meta" style="width:100%">🎉 Vendu au client via l'Offre Privilège — ne fait plus partie du parc de location.</div>` : `
               <select onchange="updateAppareilStatut(${a.id}, this.value)">
                 <option value="disponible" ${a.statut==='disponible'?'selected':''}>Disponible</option>
                 <option value="loue" ${a.statut==='loue'?'selected':''}>Loué</option>
@@ -1604,7 +1658,7 @@ async function loadStock(silent){
                 <option value="panne" ${a.statut==='panne'?'selected':''}>En panne</option>
                 <option value="maintenance" ${a.statut==='maintenance'?'selected':''}>Maintenance</option>
               </select>
-              ${a.en_location?`<div class="row-meta" style="width:100%">ℹ️ Statut manuel affiché ci-dessus, indépendant de la location en cours — repasse à "Disponible" tout seul au retour.</div>`:''}
+              ${a.en_location?`<div class="row-meta" style="width:100%">ℹ️ Statut manuel affiché ci-dessus, indépendant de la location en cours — repasse à "Disponible" tout seul au retour.</div>`:''}`}
               <details class="more-actions" style="margin-left:auto">
                 <summary title="Plus d'actions">⋯</summary>
                 <div class="more-actions-menu">
@@ -1892,6 +1946,7 @@ function reservationRowHtml(res, readOnly){
             <button onclick="openEditReservationModal(${res.id})">✏️ Modifier</button>
             ${res.appareils_en_attente_validation?`<button onclick="validerAppareilsReservation(${res.id})">🔍 Valider l'appareil attribué</button>`:''}
             ${res.statut==='confirmee'?`<button onclick="reaffecterAppareilReservation(${res.id})">🔄 Réaffecter l'appareil</button>`:''}
+            ${res.statut==='confirmee'?`<button onclick="proposerOffrePrivilegeManuelle(${res.id})">⭐ Proposer l'Offre Privilège</button>`:''}
             ${res.statut!=='remboursee' && res.statut!=='en_attente' ? `<button onclick="rembourserReservation(${res.id})">💳 Rembourser</button>` : ''}
             ${res.statut!=='annulee'?`<button class="danger" onclick="cancelReservation(${res.id})">Annuler la réservation</button>`:''}
             <button onclick="deleteReservation(${res.id}, '${res.statut}')">Masquer de l'écran</button>
@@ -2584,6 +2639,26 @@ function rembourserReservation(id){
       }
     }, {danger:true, yesLabel:'Oui, rembourser'});
   };
+}
+// Crée l'offre manuellement pour une réservation précise (un client, un
+// climatiseur en particulier) — sans attendre la détection automatique du
+// cron (seuil de locations, milieu de séjour). Utile quand un client
+// demande lui-même à garder son climatiseur, ou pour un cas particulier.
+// L'offre est directement visible côté client (statut "proposee"), pas
+// besoin de repasser par "Fixer un prix" ensuite.
+function proposerOffrePrivilegeManuelle(reservationId){
+  promptAction({title:'⭐ Offre Privilège manuelle', label:'Prix de vente (€)', placeholder:'Ex. 250'}, async (value) => {
+    const prix = parseFloat((value||'').replace(',','.'));
+    if(!prix || prix<=0) return showToast('Prix invalide', 'error');
+    try{
+      const r = await fetch(API('admin-offres-privilege'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+        action:'creer_manuelle', reservation_id: reservationId, prix_vente_cents: Math.round(prix*100),
+      })});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      showToast('Offre Privilège proposée au client', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
 }
 function updateReservationStatut(id, statut, selectEl){
   if(!statut) return;
