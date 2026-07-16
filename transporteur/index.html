@@ -2078,6 +2078,23 @@ function startUpload(kind, source){
   input.click();
 }
 
+// Envoi direct vers Supabase Storage avec quelques tentatives en cas de
+// coupure réseau (fetch qui échoue sans réponse, ex. "Load failed" — fréquent
+// sur le terrain pour une vidéo un peu lourde) — ne réessaie jamais une vraie
+// erreur HTTP (413 fichier trop lourd, etc.), seulement un échec de connexion.
+async function putFileWithRetry(url, file, contentType, attempts){
+  attempts = attempts || 3;
+  let lastErr;
+  for(let i=0; i<attempts; i++){
+    try{
+      return await fetch(url, {method:'PUT', headers:{'Content-Type': contentType || 'application/octet-stream'}, body: file});
+    }catch(e){
+      lastErr = e;
+      if(i < attempts-1) await new Promise(r => setTimeout(r, 1500));
+    }
+  }
+  throw new Error(`Connexion instable, l'envoi a échoué ${attempts} fois (${lastErr.message}) — réessaie avec un wifi ou une meilleure zone si possible.`);
+}
 document.getElementById('media-input').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if(!file || !STATE.pendingUpload) return;
@@ -2109,7 +2126,7 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
     const d1 = await r1.json();
     if(!r1.ok) throw new Error(d1.error||'Erreur');
 
-    const up = await fetch(d1.signedUrl, {method:'PUT', headers:{'Content-Type': file.type || 'application/octet-stream'}, body: file});
+    const up = await putFileWithRetry(d1.signedUrl, file, file.type);
     if(!up.ok){
       let detail = '';
       try{ detail = (await up.text()).slice(0,200); }catch(_){}
@@ -2284,9 +2301,9 @@ function startClientAbsent(source){
 // "sheet", même mécanique que openProbleme()/closeProbleme() — pas de
 // navigation d'écran, donc rien n'est perdu sous l'overlay.
 const TUTO_CATEGORIES = [
-  {key:'acces_sortie_boxe',    label:'🚪 Accès / sortie boxe',        actif:true},
+  {key:'acces_sortie_boxe',    label:'🚪 Accès / sortie box',        actif:true},
   {key:'recuperation_materiel', label:'📦 Récupération matériel',      actif:true},
-  {key:'fermeture_boxe',       label:'🔒 Fermeture boxe',              actif:true},
+  {key:'fermeture_boxe',       label:'🔒 Fermeture box',              actif:true},
   {key:'entree_sortie_centre', label:'🏢 Entrée / sortie du centre',   actif:true},
   {key:'chargement',           label:'⬆️ Chargement',                 actif:false},
   {key:'dechargement',         label:'⬇️ Déchargement',               actif:false},
@@ -2438,7 +2455,7 @@ async function tutoMarquerVu(videoId){
   document.querySelector('.tuto-progress-track')?.remove();
 }
 // Ouvre directement le lecteur sur la 1ère vidéo active d'une catégorie —
-// utilisé par l'étape BOX (checklist) pour lancer "Accès/sortie boxe" sans
+// utilisé par l'étape BOX (checklist) pour lancer "Accès/sortie box" sans
 // passer par la liste de catégories, et par l'étape Installation avec un
 // 2e paramètre pour filtrer sur le type d'ouverture choisi.
 async function openTutoVideo(categorie, sousCategorie){
@@ -2723,7 +2740,7 @@ function renderChecklist(d){
       <div class="eyebrow">Avant de partir</div>
       <h1 style="margin-bottom:4px">🧳 Matériel à récupérer au box</h1>
       <p class="sub" style="margin-bottom:10px">${d.nb_missions} mission${d.nb_missions>1?'s':''} aujourd'hui</p>
-      <button class="btn btn-grey" style="margin-bottom:16px" onclick="openTutoVideo('acces_sortie_boxe')">🎥 Voir le tuto : Accès/sortie boxe</button>
+      <button class="btn btn-grey" style="margin-bottom:16px" onclick="openTutoVideo('acces_sortie_boxe')">🎥 Voir le tuto : Accès/sortie box</button>
       ${d.climatiseurs.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">${climatiseurPills}</div>` : ''}
       <div style="margin-bottom:16px">${itemsHtml}</div>
       ${d.validated
