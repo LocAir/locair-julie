@@ -433,6 +433,7 @@ let STATE = {
   autoOpenChecked: false, // une seule fois par connexion, voir maybeAutoOpenMission()
   checklist: null, // état du jour, chargé avec les missions — voir checklistBlocksMission()
   returnToMission: null, // mission à rouvrir après validation checklist, voir goToChecklistFromMission()
+  checklistPopupCallback: null, // callback à exécuter une fois la popup "avant de démarrer" validée, voir openChecklistPopup()
   detailArriveeSmsSentFor: null, // id de la mission dont le SMS "merci de descendre" a été envoyé (état "clignotant"), voir wizardStepBodyHtml()
   checklistItems: null, // {installation:[...], recuperation:[...]} — chargé une fois, voir fetchMissions()
   notifications: [], // centre de notifications (Module 5, Partie 11), voir updateNotifBadge()
@@ -910,6 +911,65 @@ function returnFromChecklist(){
   if(id && STATE.missions.find(m => m.id === id)) openMission(id);
   else switchTab('accueil');
 }
+// Popup "avant de démarrer" — le transporteur ne quitte jamais son geste
+// ("ouvrir la mission") : la checklist matériel s'affiche par-dessus, sans
+// changer d'écran, avant que la fiche client/la carte n'apparaissent. Ne
+// s'affiche que si checklistBlocksMission() est vrai (donc une seule fois
+// par jour — validée, elle ne reblocke plus aucune mission de la journée).
+function openChecklistPopup(onValidated){
+  const d = STATE.checklist;
+  if(!d || !d.fixe){ onValidated(); return; }
+  STATE.checklistPopupCallback = onValidated;
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'checklist-popup-overlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h1 style="margin-bottom:4px">🎒 Prêt à partir ?</h1>
+      <p class="sub" style="margin-bottom:10px">Avant ta première mission de la journée — coche ce que tu as pris.</p>
+      <div class="card" style="margin-bottom:16px">
+        ${Object.keys(d.fixe).map(key => `
+          <label style="display:flex;align-items:center;gap:10px;padding:8px 0">
+            <input type="checkbox" class="checklist-popup-cb" onchange="updateChecklistPopupButton()" style="width:20px;height:20px;flex-shrink:0">
+            <span>${CHECKLIST_FIXE_LABELS[key] || key}</span>
+          </label>`).join('')}
+      </div>
+      <button class="btn btn-green btn-block" id="checklist-popup-btn" disabled onclick="validerChecklistPopup()">✅ Prise en charge — j'ai tout le matériel</button>
+      <button class="forgot-link" onclick="closeChecklistPopup()">Annuler</button>
+      <div class="err" id="checklist-popup-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+function closeChecklistPopup(){
+  const overlay = document.getElementById('checklist-popup-overlay');
+  if(overlay) overlay.remove();
+  STATE.checklistPopupCallback = null;
+}
+function updateChecklistPopupButton(){
+  const btn = document.getElementById('checklist-popup-btn');
+  if(!btn) return;
+  const boxes = document.querySelectorAll('.checklist-popup-cb');
+  btn.disabled = boxes.length > 0 && Array.from(boxes).some(b => !b.checked);
+}
+async function validerChecklistPopup(){
+  const btn = document.getElementById('checklist-popup-btn');
+  if(btn) btn.disabled = true;
+  try{
+    const r = await fetch(API('transporteur-checklist'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'valider'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    if(STATE.checklist){ STATE.checklist.validated = true; STATE.checklist.validated_at = new Date().toISOString(); }
+    const overlay = document.getElementById('checklist-popup-overlay');
+    if(overlay) overlay.remove();
+    const cb = STATE.checklistPopupCallback;
+    STATE.checklistPopupCallback = null;
+    if(cb) cb();
+  }catch(e){
+    if(btn) btn.disabled = false;
+    const errEl = document.getElementById('checklist-popup-err');
+    if(errEl){ errEl.textContent = e.message; errEl.style.display='block'; }
+  }
+}
 
 // "En cours" = actif MAINTENANT, pas simplement accepté à l'avance. Une
 // mission peut rester au statut "acceptee" pendant des semaines avant sa
@@ -1041,7 +1101,7 @@ function renderDashboard(){
         <div class="eyebrow">Avant de démarrer</div>
         <h2>🎒 Valider la checklist</h2>
         <p>${enCours.length>1?`${enCours.length} missions t'attendent`:'Une mission t\'attend'} — récupère d'abord ton matériel au box.</p>
-        <button class="btn btn-blue btn-block" onclick="goToChecklistFromMission(${enCours[0].id})">Valider la checklist →</button>
+        <button class="btn btn-blue btn-block" onclick="openMission(${enCours[0].id})">Valider la checklist →</button>
       </div>`;
   } else if(enCours.length){
     heroHtml = heroFor(enCours[0], enCours.length>1?`${enCours.length} missions en cours`:'Mission en cours', `openMission(${enCours[0].id})`, 'Continuer →');
@@ -1220,7 +1280,7 @@ function missionCardActionsHtml(m, mapsUrl, tel){
     // qu'elle n'est pas validée — sans ça le numéro reste joignable en
     // contournant l'écran verrouillé de renderDetail().
     if(checklistBlocksMission(m)){
-      return `<div class="mcard-actions">${mapBtn}<button class="btn btn-grey" style="flex:1;min-width:0" onclick="event.stopPropagation();goToChecklistFromMission(${m.id})">🔒 Checklist requise</button></div>`;
+      return `<div class="mcard-actions">${mapBtn}<button class="btn btn-grey" style="flex:1;min-width:0" onclick="event.stopPropagation();openMission(${m.id})">🔒 Checklist requise</button></div>`;
     }
     const callBtn = tel ? `<a class="mcard-icon-btn" href="tel:${encodeURIComponent(tel)}" onclick="event.stopPropagation()" title="Appeler">📞</a>` : '';
     // Bouton "Démarrer" explicite seulement pour une mission acceptée
@@ -1529,9 +1589,20 @@ function missionsByPostalHtml(items){
     ${groups[cp].map(missionCardHtml).join('')}`).join('');
 }
 
+// Le geste "ouvrir une mission" (carte, bouton Démarrer/Continuer, CTA de
+// l'Accueil) passe toujours par ici — le verrou checklist s'y intercepte une
+// bonne fois pour toutes plutôt que d'être dupliqué à chaque point d'entrée.
+// Tant qu'elle n'est pas validée ce jour-là, une popup s'affiche PAR-DESSUS
+// (le transporteur ne quitte jamais son geste "ouvrir la mission") ; une
+// fois cochée, on enchaîne directement sur la fiche client/la carte — jamais
+// reproposée ensuite pour une autre mission de la même journée.
 function openMission(id){
   STATE.currentMission = STATE.missions.find(m => m.id === id);
   if(!STATE.currentMission) return;
+  if(checklistBlocksMission(STATE.currentMission)){
+    openChecklistPopup(() => { renderDetail(); show('detail-screen'); });
+    return;
+  }
   renderDetail();
   show('detail-screen');
 }
@@ -1849,7 +1920,7 @@ function renderDetail(){
         <div class="eyebrow">Avant de démarrer</div>
         <h1>🔒 Valide ta checklist</h1>
         <p class="sub">Assure-toi d'avoir tout le matériel avant de partir — les coordonnées du client s'affichent une fois la checklist validée.</p>
-        <button class="btn btn-blue btn-block" onclick="goToChecklistFromMission(${m.id})">🎒 Voir la checklist</button>
+        <button class="btn btn-blue btn-block" onclick="openChecklistPopup(renderDetail)">🎒 Voir la checklist</button>
       </div>`;
     return;
   }
