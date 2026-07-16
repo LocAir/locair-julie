@@ -364,6 +364,24 @@ module.exports = async (req, res) => {
     );
 
     const list = appareils.map(a => ({ ...a, en_location: enLocationIds.has(a.id), en_preparation: enPreparationIds.has(a.id) && !enLocationIds.has(a.id) }));
+
+    // Un appareil "en location" (badge bleu, réservation confirmée dont la
+    // période couvre aujourd'hui) doit afficher "Loué" en dessous — sinon le
+    // menu déroulant reste sur "Disponible" jusqu'à ce que le transporteur
+    // valide l'installation plus tard dans la journée, ce qui donnait
+    // l'impression d'un statut manuel désynchronisé de la réalité. Ne touche
+    // pas la localisation (l'appareil n'a pas forcément encore quitté le
+    // dépôt) — seul le statut est aligné, journalisé comme tout changement.
+    const aAligner = list.filter(a => a.en_location && a.statut !== 'loue');
+    if (aAligner.length) {
+      await Promise.all(aAligner.map(a => recordMouvement(supabase, {
+        appareilId: a.id, typeEvenement: 'autre', nouveauStatut: 'loue',
+        nouvelleLocalisation: a.localisation, utilisateur: 'systeme',
+        commentaire: 'Statut aligné automatiquement sur "Loué" — réservation confirmée en cours.',
+      })));
+      aAligner.forEach(a => { a.statut = 'loue'; });
+    }
+
     const actifs = list.filter(a => !['panne', 'maintenance', 'loue', 'nettoyage'].includes(a.statut)).length;
 
     return res.status(200).json({
