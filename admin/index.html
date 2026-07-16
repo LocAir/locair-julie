@@ -1731,6 +1731,7 @@ function reservationRowHtml(res, readOnly){
             <button onclick="openEditReservationModal(${res.id})">✏️ Modifier</button>
             ${res.appareils_en_attente_validation?`<button onclick="validerAppareilsReservation(${res.id})">🔍 Valider l'appareil attribué</button>`:''}
             ${res.statut==='confirmee'?`<button onclick="reaffecterAppareilReservation(${res.id})">🔄 Réaffecter l'appareil</button>`:''}
+            ${res.statut!=='remboursee' && res.statut!=='en_attente' ? `<button onclick="rembourserReservation(${res.id})">💳 Rembourser</button>` : ''}
             ${res.statut!=='annulee'?`<button class="danger" onclick="cancelReservation(${res.id})">Annuler la réservation</button>`:''}
             <button onclick="deleteReservation(${res.id}, '${res.statut}')">Masquer de l'écran</button>
           </div>
@@ -2367,6 +2368,61 @@ function reaffecterAppareilReservation(id){
       showToast(`Climatiseur n°${n} affecté`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
   });
+}
+// Remboursement direct (Module 7, Partie 21) — appelle vraiment Stripe,
+// avec confirmation et raison obligatoires. Le statut "remboursée" se met à
+// jour tout seul juste après (même mécanisme que si le remboursement avait
+// été fait à la main dans Stripe), pas besoin de recharger manuellement ici.
+function rembourserReservation(id){
+  const r = RESERVATIONS_CACHE.find(x => x.id === id);
+  if(!r) return;
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:400px">
+      <h2 style="margin-bottom:6px">💳 Rembourser</h2>
+      <p class="sub" style="margin-bottom:16px">L'argent repart vraiment vers le client via Stripe — vérifie le montant avant de valider.</p>
+      <label for="remb-montant">Montant à rembourser (€)</label>
+      <input type="text" inputmode="decimal" id="remb-montant" value="${(r.prix_total_cents/100).toFixed(2)}"/>
+      <label for="remb-raison" style="margin-top:14px">Raison (obligatoire)</label>
+      <textarea id="remb-raison" rows="3" placeholder="Ex. climatiseur en panne, geste commercial…"></textarea>
+      <div class="modal-actions" style="margin-top:14px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-red">Rembourser</button>
+      </div>
+      <div class="err" id="remb-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = () => {
+    const montant = parseFloat(document.getElementById('remb-montant').value.replace(',','.'));
+    const raison = document.getElementById('remb-raison').value.trim();
+    const errEl = document.getElementById('remb-err');
+    errEl.style.display = 'none';
+    if(!montant || montant <= 0){ errEl.textContent = 'Montant invalide'; errEl.style.display='block'; return; }
+    if(!raison){ errEl.textContent = 'Indique la raison du remboursement'; errEl.style.display='block'; return; }
+    confirmAction(`Confirmer le remboursement de ${montant.toFixed(2)} € ? Cette action est irréversible.`, async () => {
+      okBtn.disabled = true;
+      try{
+        const resp = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+          action:'rembourser', id, montant_cents: Math.round(montant*100), raison,
+        })});
+        const d = await resp.json();
+        if(!resp.ok) throw new Error(d.error||'Erreur');
+        closeModal();
+        loadReservations();
+        loadAlerts();
+        showToast('Remboursement envoyé', 'success');
+      }catch(e){
+        okBtn.disabled = false;
+        showToast(e.message, 'error');
+      }
+    }, {danger:true, yesLabel:'Oui, rembourser'});
+  };
 }
 function updateReservationStatut(id, statut, selectEl){
   if(!statut) return;

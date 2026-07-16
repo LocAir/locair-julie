@@ -631,6 +631,21 @@ create table incidents (
 create index incidents_reservation_idx on incidents (reservation_id);
 create index incidents_city_idx on incidents (city_id, statut);
 
+-- Historique des remboursements déclenchés depuis l'admin (Module 7,
+-- Partie 21) : montant, raison, qui a validé. reservations.statut passe à
+-- 'remboursee' comme avant, via le webhook Stripe existant (charge.refunded),
+-- pas via cette table.
+create table remboursements (
+  id               bigint generated always as identity primary key,
+  reservation_id   bigint not null references reservations(id) on delete cascade,
+  montant_cents    integer not null check (montant_cents > 0),
+  raison           text not null,
+  stripe_refund_id text,
+  demande_par      text,
+  created_at       timestamptz not null default now()
+);
+create index remboursements_resa_idx on remboursements (reservation_id);
+
 -- Dernier incident déclenché par CETTE mission (client absent, retard...),
 -- utilisé pour le refermer automatiquement quand la mission se termine
 -- normalement. Ne remplace pas incidents.reservation_id (toujours utilisé

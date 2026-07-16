@@ -1,8 +1,10 @@
+const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity, notifyIfSoldOut } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate }     = require('./_lib/dates');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 const { confirmReservation } = require('./_lib/reservations');
 const { computeOrderStatus } = require('./_lib/orderStatus');
 const { syncStatutDetaille } = require('./_lib/statutDetaille');
@@ -14,7 +16,8 @@ const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annul
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
 
   const body   = req.body || {};
   const action = body.action || 'list';
@@ -364,6 +367,62 @@ module.exports = async (req, res) => {
         .eq('reservation_id', id).eq('valide', false);
       if (error) throw error;
       return res.status(200).json({ ok: true });
+    }
+
+    // Remboursement direct depuis l'admin (Module 7, Partie 21) — réservé aux
+    // rôles finances (administrateur/comptabilité). N'écrit jamais
+    // reservations.statut ici : le webhook Stripe existant (charge.refunded,
+    // voir webhook.js) s'en charge dès que Stripe confirme le remboursement,
+    // exactement comme pour un remboursement fait à la main dans Stripe —
+    // cette action ne fait qu'appeler Stripe et garder une trace propre de
+    // qui a demandé quoi, au lieu de la noyer dans les incidents.
+    if (action === 'rembourser') {
+      if (!roleHasAccess(admin.role, 'finances')) return res.status(403).json({ error: "Ton compte n'a pas accès aux remboursements." });
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const raison = (body.raison || '').trim().slice(0, 500);
+      if (!raison) return res.status(400).json({ error: 'Indique la raison du remboursement' });
+
+      const { data: resa } = await supabase
+        .from('reservations').select('id, statut, prix_total_cents, stripe_payment_intent_id, ref')
+        .eq('id', id).eq('city_id', city.id).maybeSingle();
+      if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
+      if (!resa.stripe_payment_intent_id) return res.status(400).json({ error: "Cette réservation n'a pas de paiement Stripe associé" });
+      if (resa.statut === 'remboursee') return res.status(400).json({ error: 'Cette réservation est déjà remboursée' });
+
+      const montantCents = body.montant_cents != null ? Math.max(0, parseInt(body.montant_cents) || 0) : resa.prix_total_cents;
+      if (!montantCents) return res.status(400).json({ error: 'Montant invalide' });
+
+      let refund;
+      try {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+        refund = await stripe.refunds.create({
+          payment_intent: resa.stripe_payment_intent_id,
+          amount: montantCents,
+          reason: 'requested_by_customer',
+        });
+      } catch (stripeErr) {
+        return res.status(400).json({ error: `Stripe a refusé le remboursement : ${stripeErr.message}` });
+      }
+
+      await supabase.from('remboursements').insert({
+        reservation_id: id,
+        montant_cents: montantCents,
+        raison,
+        stripe_refund_id: refund.id,
+        demande_par: admin.nom || admin.role,
+      });
+
+      return res.status(200).json({ ok: true, refund_id: refund.id });
+    }
+
+    if (action === 'remboursements_list') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { data, error } = await supabase
+        .from('remboursements').select('*').eq('reservation_id', id).order('created_at', { ascending: false });
+      if (error) throw error;
+      return res.status(200).json({ remboursements: data || [] });
     }
 
     if (action === 'window_photo_url') {
