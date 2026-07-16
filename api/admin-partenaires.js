@@ -15,12 +15,12 @@ async function notifyPartenaireCredentials({ nom, email, code, pin }) {
   if (!email) return;
   await sendBrevoEmail({
     to:      email,
-    subject: "Ton espace partenaire Loc'Air",
+    subject: "Ton espace ambassadeur Loc'Air",
     html: `
       <p>Bonjour ${escHtml(nom)},</p>
       <p>Voici ton lien d'affiliation — mets-le sur ton site pour que tes clients réservent directement chez Loc'Air :</p>
       <p style="font-size:16px;font-weight:700"><a href="${partenaireLinkFor(code)}">${escHtml(partenaireLinkFor(code))}</a></p>
-      <p>Ton code personnel pour suivre tes gains sur <a href="https://www.locair.fr/partenaire">locair.fr/partenaire</a> :</p>
+      <p>Ton code personnel pour suivre tes gains sur ton espace ambassadeur <a href="https://www.locair.fr/partenaire">locair.fr/partenaire</a> :</p>
       <p style="font-size:28px;font-weight:700;letter-spacing:4px">${escHtml(pin)}</p>
       <p>Si tu n'es pas à l'origine de cette demande, contacte Aly immédiatement.</p>
     `,

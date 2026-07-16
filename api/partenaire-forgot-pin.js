@@ -39,7 +39,7 @@ module.exports = async (req, res) => {
           subject: 'Ton nouveau code Loc’Air',
           html: `
             <p>Bonjour ${escHtml(partenaire.nom)},</p>
-            <p>Voici ton nouveau code personnel pour te connecter sur l'espace partenaire Loc'Air :</p>
+            <p>Voici ton nouveau code personnel pour te connecter sur l'espace ambassadeur Loc'Air :</p>
             <p style="font-size:28px;font-weight:700;letter-spacing:4px">${escHtml(newPin)}</p>
             <p>Ton lien d'affiliation ne change pas :</p>
             <p><a href="https://www.locair.fr/?p=${encodeURIComponent(partenaire.code)}">https://www.locair.fr/?p=${escHtml(partenaire.code)}</a></p>
