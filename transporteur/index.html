@@ -211,6 +211,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .stat-big .caption{font-size:13px;opacity:.8;margin-top:8px;font-weight:500;line-height:1.5}
 .stat-row{display:flex;gap:12px;margin-bottom:14px}
 .stat-tile{flex:1;background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:16px;text-align:center;box-shadow:var(--sh-xs)}
+.stat-tile.tap{cursor:pointer}
 .stat-tile .n{font-family:var(--disp);font-size:26px;font-weight:400;color:var(--black);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .stat-tile .l{font-size:11px;color:var(--grey);font-weight:600;margin-top:5px;text-transform:uppercase;letter-spacing:.03em}
 .vlist{margin-top:6px}
@@ -1061,10 +1062,13 @@ function renderDashboard(){
       </div>`;
   }
 
+  // Tuiles cliquables (vers Mes missions / Mes gains) : ressemblaient déjà à
+  // des boutons (fond blanc, ombre) sans rien faire au tap — incohérent avec
+  // le reste de l'app (ex. la carte "Checklist validée" juste en dessous).
   const statsHtml = `
     <div class="stat-row">
-      <div class="stat-tile"><div class="n">📋 ${countJour}</div><div class="l">Missions du jour</div></div>
-      <div class="stat-tile"><div class="n" style="color:var(--green)">💶 ${gainsJour?Math.round(gainsJour/100)+' €':'—'}</div><div class="l">Prévu du jour</div></div>
+      <div class="stat-tile tap" onclick="switchTab('missions')"><div class="n">📋 ${countJour}</div><div class="l">Missions du jour</div></div>
+      <div class="stat-tile tap" onclick="switchTab('activite')"><div class="n" style="color:var(--green)">💶 ${gainsJour?Math.round(gainsJour/100)+' €':'—'}</div><div class="l">Prévu du jour</div></div>
     </div>`;
 
   // Un seul repère checklist sur toute la page : le "cadran bleu" ci-dessus
