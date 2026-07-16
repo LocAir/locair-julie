@@ -720,6 +720,7 @@ async function loginWithFaceId(auto){
     setupPush();
     clearAppBadge();
     maybeOfferFaceId();
+    maybeShowOnboardingGuide();
     updateActiviteBadge();
     startTransporteurAutoRefresh();
   }catch(e){
@@ -757,6 +758,7 @@ async function doLogin(){
     setupPush();
     clearAppBadge();
     maybeOfferFaceId();
+    maybeShowOnboardingGuide();
     updateActiviteBadge();
     startTransporteurAutoRefresh();
   }catch(e){
@@ -1245,6 +1247,48 @@ function isAnotherMissionEnCours(excludeId, forDate){
   const todayStr = new Date().toISOString().slice(0,10);
   if(forDate && forDate > todayStr) return false;
   return STATE.missions.some(x => x.id!==excludeId && ['acceptee','en_route','arrivee'].includes(x.statut) && x.date_prevue<=todayStr);
+}
+// Guide de première utilisation — 4 petites étapes qui expliquent ce que
+// contient chaque partie de l'appli. Ne s'affiche qu'une seule fois par
+// transporteur (flag localStorage, même principe que l'offre Face ID
+// ci-dessus) : que ce soit à la 1re connexion par code ou par Face ID, ou au
+// 1er retour dans l'appli avec un jeton déjà enregistré.
+const ONBOARDING_STEPS = [
+  { icon:'🏠', titre:'Accueil', texte:"C'est ta page d'accueil. Tu y vois en un coup d'œil ce que tu as à faire aujourd'hui, et où tu en es cette semaine." },
+  { icon:'📋', titre:'Mes missions', texte:"Toutes tes livraisons et récupérations sont ici. Tu peux les accepter, les refuser, ou ouvrir une mission pour voir son détail." },
+  { icon:'💶', titre:'Mes gains', texte:"Ici tu vois combien tu as gagné, ce qu'il te reste à toucher, et l'historique de toutes tes missions passées." },
+  { icon:'🎓', titre:'Aide', texte:"Ce bouton reste toujours visible en bas de l'écran. Tu y trouves des vidéos courtes pour t'aider, et tu peux nous signaler un problème." },
+];
+function maybeShowOnboardingGuide(){
+  if(!STATE.transporteurId) return;
+  if(localStorage.getItem('t_onboarding_seen_'+STATE.transporteurId)) return;
+  showOnboardingStep(0);
+}
+function showOnboardingStep(i){
+  const s = ONBOARDING_STEPS[i];
+  const dernier = i === ONBOARDING_STEPS.length - 1;
+  let overlay = document.getElementById('onboarding-overlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    overlay.id = 'onboarding-overlay';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML = `
+    <div class="sheet" style="text-align:center">
+      <div style="font-size:44px;margin-bottom:10px">${s.icon}</div>
+      <h1 style="margin-bottom:8px">${s.titre}</h1>
+      <p class="sub" style="margin-bottom:22px">${s.texte}</p>
+      <div style="display:flex;justify-content:center;gap:6px;margin-bottom:20px">
+        ${ONBOARDING_STEPS.map((_,idx) => `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${idx===i?'var(--blue)':'var(--rule)'}"></span>`).join('')}
+      </div>
+      <button class="btn btn-blue btn-block" onclick="${dernier ? 'closeOnboardingGuide()' : `showOnboardingStep(${i+1})`}">${dernier ? "C'est parti !" : 'Suivant →'}</button>
+      ${!dernier ? `<button class="btn btn-grey btn-block" style="margin-top:8px" onclick="closeOnboardingGuide()">Passer</button>` : ''}
+    </div>`;
+}
+function closeOnboardingGuide(){
+  if(STATE.transporteurId) localStorage.setItem('t_onboarding_seen_'+STATE.transporteurId, '1');
+  document.getElementById('onboarding-overlay')?.remove();
 }
 function acceptFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMission = STATE.missions.find(m=>m.id===id); doAction('accepter'); }
 function refuseFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMission = STATE.missions.find(m=>m.id===id); confirmerIndisponible(); }
@@ -2992,6 +3036,7 @@ function closeDayMap(){
     setupPush();
     clearAppBadge();
     maybeOfferFaceId();
+    maybeShowOnboardingGuide();
     updateActiviteBadge();
     startTransporteurAutoRefresh();
   } else if(STATE.token){
