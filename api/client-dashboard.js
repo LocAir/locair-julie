@@ -1,6 +1,8 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyClientToken } = require('./_lib/auth');
 const { computeClientProgress } = require('./_lib/clientProgress');
+const { syncStatutDetaille } = require('./_lib/statutDetaille');
+const { computeOrderStatus } = require('./_lib/orderStatus');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
 const GENERIC_ERROR = "Nous n'avons pas retrouvé votre réservation. Merci de vérifier votre numéro de commande et votre adresse email.";
@@ -62,6 +64,10 @@ module.exports = async (req, res) => {
     const progress = computeClientProgress(resa, livraisons || [], (incidentsOuverts || []).length > 0);
     // `internal` ne doit jamais quitter le serveur (statut technique).
     delete progress.internal;
+    // Affichage détaillé (Module 7) recalculé sans l'incident (voir
+    // statutDetaille.js) — un incident en cours reste visible par ailleurs,
+    // sans effacer où en est réellement la commande.
+    await syncStatutDetaille(supabase, reservationId, computeOrderStatus(resa, livraisons || [], false));
 
     const livraison    = (livraisons || []).find(l => l.type === 'livraison');
     const recuperation = (livraisons || []).find(l => l.type === 'recuperation');

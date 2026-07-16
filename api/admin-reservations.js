@@ -5,6 +5,7 @@ const { isValidDate }     = require('./_lib/dates');
 const { checkAdminToken } = require('./_lib/auth');
 const { confirmReservation } = require('./_lib/reservations');
 const { computeOrderStatus } = require('./_lib/orderStatus');
+const { syncStatutDetaille } = require('./_lib/statutDetaille');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 
@@ -54,10 +55,16 @@ module.exports = async (req, res) => {
         // au moins un appareil pas encore validé par l'administration.
         appareilsEnAttenteResaIds = new Set((ras || []).filter(r => !r.valide).map(r => r.reservation_id));
       }
+      // L'incident n'est volontairement pas passé ici (voir statutDetaille.js) :
+      // statut_detaille doit refléter où en est vraiment la commande, un
+      // incident en cours restant visible par ailleurs (badge Problèmes).
       for (const r of reservations) {
         r.statut_commande = computeOrderStatus(r, livraisonsByResa.get(r.id) || [], incidentResaIds.has(r.id));
         r.appareils_en_attente_validation = appareilsEnAttenteResaIds.has(r.id);
       }
+      await Promise.all(reservations.map(r =>
+        syncStatutDetaille(supabase, r.id, computeOrderStatus(r, livraisonsByResa.get(r.id) || [], false))
+      ));
 
       return res.status(200).json({ reservations });
     }

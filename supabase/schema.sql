@@ -225,6 +225,15 @@ create table reservations (
   prix_total_cents         integer not null default 0,
   statut                   text not null default 'en_attente'
                              check (statut in ('en_attente','confirmee','annulee','terminee','remboursee')),
+  -- Affichage détaillé (Module 7) : recalculé à partir des mêmes données que
+  -- computeOrderStatus (_lib/orderStatus.js), jamais l'inverse — `statut`
+  -- ci-dessus reste seul à piloter paiement/remboursement/commissions.
+  statut_detaille          text
+                             check (statut_detaille in (
+                               'nouvelle_demande', 'paiement_recu', 'verification_en_cours', 'confirmee',
+                               'preparation', 'livraison_prevue', 'en_location', 'prolongation_demandee',
+                               'retour_prevu', 'terminee', 'annulee', 'remboursee'
+                             )),
   source                   text,
   source_channel           text, -- canal d'acquisition marketing (ex. 'google', 'instagram', 'bouche-a-oreille')
   parrain_code             text, -- code parrain saisi par le client (programme parrainage)
