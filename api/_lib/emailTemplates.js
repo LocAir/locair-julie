@@ -4,6 +4,8 @@
 // fonction reçoit un contexte simple (déjà résolu depuis Supabase par
 // l'appelant — voir _lib/emailEngine.js) et retourne du HTML, sans jamais
 // accéder au réseau ni à la base elle-même.
+const { promoCodeForPrenom, REFERRAL_PCT } = require('./promo');
+
 function escHtml(s) {
   return String(s || '')
     .replace(/&/g, '&amp;')
@@ -142,14 +144,20 @@ function tplRappelRecuperation(ctx) {
   });
 }
 
-// 7. Fin de location (remerciement + avis)
+// 7. Fin de location (remerciement + code de fidélité/parrainage + avis)
 function tplFinLocation(ctx) {
+  const code = promoCodeForPrenom(ctx.prenom);
   return wrap({
     title: '✅ Location terminée',
     bodyHtml: `
       <p style="text-align:center">Bonjour ${escHtml(ctx.prenom)},</p>
       <p style="text-align:center">Notre technicien a récupéré votre climatiseur. Merci d'avoir choisi Loc'Air !</p>
       <p style="text-align:center;font-size:13px;color:#666">Dossier ${escHtml(ctx.ref)}</p>
+      <div class="box" style="text-align:center">
+        <p style="margin:0 0 6px">Pour vous remercier, profitez de <strong>-${REFERRAL_PCT}%</strong> sur votre prochaine réservation avec le code</p>
+        <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
+        <p style="margin:0;font-size:12px;color:#666">Offre valable aussi pour vos amis, avec leur prénom comme code (ex. -${REFERRAL_PCT}% avec le prénom de votre ami).</p>
+      </div>
       <p style="text-align:center;font-size:13px;color:#444">Si vous avez une minute, votre avis aide d'autres familles à nous faire confiance :</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Laisser un avis Google ⭐',
   });

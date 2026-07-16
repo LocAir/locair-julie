@@ -5,6 +5,7 @@ const { getAvailability }     = require('./_lib/stock');
 const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice }      = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
+const { matchPromoPct } = require('./_lib/promo');
 
 const calcBase = calcTieredPrice;
 
@@ -38,7 +39,11 @@ module.exports = async (req, res) => {
   const isTech        = (data.installation || '').startsWith('Technicien');
   const installCents  = isTech ? INSTALL_FEE * 100 : 0;
   const promoCode     = (data.parrain_code || '').trim().toUpperCase();
-  const promoDiscount = (PROMO_CODES[promoCode] || 0) * 100;
+  // Codes fixes (montant flat en euros) + codes "PRENOM10/20/30" personnalisés
+  // (pourcentage du prix de base) envoyés automatiquement à la fin de chaque
+  // location — voir _lib/promo.js.
+  const promoPct       = matchPromoPct(promoCode, data.prenom);
+  const promoDiscount = (PROMO_CODES[promoCode] || 0) * 100 + Math.round(baseCents * promoPct / 100);
 
   const dateDebut = (data.date || '').slice(0, 10);
   if (!isValidDate(dateDebut)) {
