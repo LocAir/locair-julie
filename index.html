@@ -2848,6 +2848,9 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           <button class="lang-opt" id="lopt-en" data-lang="en" onclick="setLang('en');closeLangMenu()" role="option" type="button">
             🇬🇧 &nbsp;English<span class="lck">✓</span>
           </button>
+          <button class="lang-opt" id="lopt-zh" data-lang="zh" onclick="setLang('zh');closeLangMenu()" role="option" type="button">
+            🇨🇳 &nbsp;中文<span class="lck">✓</span>
+          </button>
         </div>
       </div>
     </div>
@@ -4780,8 +4783,10 @@ function initDateShortcuts(){
   const MONTHS_FR=['jan','fév','mars','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
   const DAYS_EN=['Sun.','Mon.','Tue.','Wed.','Thu.','Fri.','Sat.'];
   const MONTHS_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const DAYS=_lang==='en'?DAYS_EN:DAYS_FR;
-  const MONTHS=_lang==='en'?MONTHS_EN:MONTHS_FR;
+  const DAYS_ZH=['日','一','二','三','四','五','六'];
+  const MONTHS_ZH=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const DAYS=_lang==='en'?DAYS_EN:_lang==='zh'?DAYS_ZH:DAYS_FR;
+  const MONTHS=_lang==='en'?MONTHS_EN:_lang==='zh'?MONTHS_ZH:MONTHS_FR;
   const off=_minOff();
   for(let i=0;i<3;i++){
     const dt=_addDays(off+i);
@@ -4810,12 +4815,16 @@ function initDateShortcuts(){
     if(off===2){
       const cutoffLocal=_localCutoffStr();
       const isEn=_lang==='en';
+      const isZh=_lang==='zh';
       const dt2=_addDays(2);
       const MONTHS_LONG_FR=['jan','fév','mars','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
       const MONTHS_LONG_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const dateStr=isEn?(dt2.getDate()+' '+MONTHS_LONG_EN[dt2.getMonth()]):(dt2.getDate()+' '+MONTHS_LONG_FR[dt2.getMonth()]);
+      const MONTHS_LONG_ZH=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+      const dateStr=isEn?(dt2.getDate()+' '+MONTHS_LONG_EN[dt2.getMonth()]):isZh?(MONTHS_LONG_ZH[dt2.getMonth()]+dt2.getDate()+'日'):(dt2.getDate()+' '+MONTHS_LONG_FR[dt2.getMonth()]);
       notice.innerHTML=isEn
         ?'Orders after 8pm are scheduled from the next day. First available date: <strong>'+dateStr+'</strong>.'
+        :isZh
+        ?'20点后下单，从次日早上开始配送。最早可用日期：<strong>'+dateStr+'</strong>。'
         :'Commande après 20h — livraison à partir du lendemain matin. Première date disponible : <strong>'+dateStr+'</strong>.';
       notice.style.display='block';
     } else {
@@ -4841,7 +4850,7 @@ function setDateOffset(offset,btn){
 function _rebuildCustomBtn(){
   const btn=document.getElementById('ds-custom-btn');
   if(!btn)return;
-  btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> '+(_lang==='en'?'Choose another date':'Choisir une autre date');
+  btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> '+(_lang==='en'?'Choose another date':_lang==='zh'?'选择其他日期':'Choisir une autre date');
 }
 function toggleCustomDate(){
   const wrap=document.getElementById('f-date-custom-wrap');
@@ -5394,6 +5403,7 @@ function goTo(n,silent){
 
 const _STEP_NAMES_FR=['Adresse','Durée','Installation','Date','Vos infos','Récapitulatif'];
 const _STEP_NAMES_EN=['Address','Duration','Setup','Date','Your info','Summary'];
+const _STEP_NAMES_ZH=['地址','租期','安装','日期','您的信息','订单确认'];
 function updateStepper(n){
   const checkSvg='<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>';
   for(let i=1;i<=6;i++){
@@ -5424,9 +5434,9 @@ function updateStepper(n){
   const fill=document.getElementById('mob-progress-fill');
   const stepNum=document.getElementById('mob-step-num');
   const stepName=document.getElementById('mob-step-name');
-  const names=_lang==='en'?_STEP_NAMES_EN:_STEP_NAMES_FR;
+  const names=_lang==='en'?_STEP_NAMES_EN:_lang==='zh'?_STEP_NAMES_ZH:_STEP_NAMES_FR;
   if(fill)fill.style.width=(n/6*100)+'%';
-  if(stepNum)stepNum.textContent=(_lang==='en'?'Step ':'Étape ')+n+'/6';
+  if(stepNum)stepNum.textContent=(_lang==='en'?'Step ':_lang==='zh'?'第 ':'Étape ')+n+(_lang==='zh'?'/6 步':'/6');
   if(stepName)stepName.textContent=(names[n-1]||'');
 }
 
@@ -5570,7 +5580,8 @@ function buildRecap(){
   const etage=document.getElementById('f-etage')?.value.trim()||'';
   const _ouvFR=document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—';
   const _ouvEN={'Fenêtre coulissante':'Sliding window','Fenêtre à battant':'Casement window','Oscillo-battant':'Tilt-and-turn','Porte-fenêtre':'French door','Vélux / toit':'Skylight / roof','À confirmer':'Not sure / Our tech will check'};
-  const ouv=_lang==='en'?(_ouvEN[_ouvFR]||_ouvFR):_ouvFR;
+  const _ouvZH={'Fenêtre coulissante':'推拉窗','Fenêtre à battant':'平开窗','Oscillo-battant':'内倒内开窗','Porte-fenêtre':'落地窗/阳台门','Vélux / toit':'天窗','À confirmer':'待确认 / 技术员现场核查'};
+  const ouv=_lang==='en'?(_ouvEN[_ouvFR]||_ouvFR):_lang==='zh'?(_ouvZH[_ouvFR]||_ouvFR):_ouvFR;
   const rawDate=document.getElementById('f-date')?.value||'';
   let dateStr='—';let pickupDateStr='—';
   if(rawDate){
@@ -5589,12 +5600,13 @@ function buildRecap(){
   const creneauRecup=null;
   const recupEl=document.getElementById('recap-date-recup');
   const isEN=_lang==='en';
-  if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (end of your '+days+'-night rental)':'Le '+pickupDateStr+' (fin de votre location de '+days+' jours)';
+  const isZH=_lang==='zh';
+  if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (end of your '+days+'-night rental)':isZH?pickupDateStr+' 归还（'+days+'天租期结束）':'Le '+pickupDateStr+' (fin de votre location de '+days+' jours)';
   const total=Math.max(0,calcTotal(days)-_promoDiscount+DELIVERY_FEE);
-  const installLabel=_techInstall?(isEN?'Technician installation':'Pose technicien — 49 €'):(isEN?'Self-install (free)':'Pose autonome — Kit fourni');
-  const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
-  const durLabel=isEN?days+' days':days+' jours';
-  const priceDisplay=total===0?(isEN?'On quote':'Sur devis'):total+' €';
+  const installLabel=_techInstall?(isEN?'Technician installation':isZH?'技术员安装 — 49 €':'Pose technicien — 49 €'):(isEN?'Self-install (free)':isZH?'自行安装（免费）':'Pose autonome — Kit fourni');
+  const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:isZH?'电梯：'+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
+  const durLabel=isEN?days+' days':isZH?days+' 天':days+' jours';
+  const priceDisplay=total===0?(isEN?'On quote':isZH?'询价':'Sur devis'):total+' €';
 
   // SVG icons
   const icoPin='<svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" stroke="none" fill="var(--blue)" style="opacity:.85"/></svg>';
@@ -5604,16 +5616,16 @@ function buildRecap(){
   const icoFloor='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 3 9 21"/><polyline points="15 3 15 21"/></svg>';
   const icoQty='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="8" width="8" height="10" rx="1.5"/><rect x="14" y="8" width="8" height="10" rx="1.5"/><line x1="10" y1="13" x2="14" y2="13"/></svg>';
 
-  const qtyLabel=isEN?_qty+' unit'+(_qty>1?'s':''):_qty+' climatiseur'+(_qty>1?'s':'');
+  const qtyLabel=isEN?_qty+' unit'+(_qty>1?'s':''):isZH?_qty+' 台空调':_qty+' climatiseur'+(_qty>1?'s':'');
   const instrVal=(document.getElementById('f-instructions')?.value||'').trim();
   const icoNote='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
   const rows=[
-    [isEN?'Address':'Adresse',escHtml(document.getElementById('f-addr')?.value||'—'),icoPin],
-    [isEN?'Delivery':'Livraison',escHtml(dateStr+' · '+creneauLiv),icoCal],
-    [isEN?'Collection':'Récupération',escHtml(pickupDateStr)+' <span style="color:var(--grey2);font-size:11px">· '+(isEN?'coordinated by our team':'coordonnée par notre équipe')+'</span>',icoCal],
-    [isEN?'Window':'Fenêtre',escHtml(ouv),icoWin],
-    [isEN?'Duration':'Durée',escHtml(durLabel),icoDur],
-    [isEN?'Quantity':'Quantité',escHtml(qtyLabel),icoQty],
+    [isEN?'Address':isZH?'地址':'Adresse',escHtml(document.getElementById('f-addr')?.value||'—'),icoPin],
+    [isEN?'Delivery':isZH?'配送':'Livraison',escHtml(dateStr+' · '+creneauLiv),icoCal],
+    [isEN?'Collection':isZH?'归还':'Récupération',escHtml(pickupDateStr)+' <span style="color:var(--grey2);font-size:11px">· '+(isEN?'coordinated by our team':isZH?'由我们团队协调':'coordonnée par notre équipe')+'</span>',icoCal],
+    [isEN?'Window':isZH?'窗型':'Fenêtre',escHtml(ouv),icoWin],
+    [isEN?'Duration':isZH?'租期':'Durée',escHtml(durLabel),icoDur],
+    [isEN?'Quantity':isZH?'数量':'Quantité',escHtml(qtyLabel),icoQty],
     ...(instrVal?[[isEN?'Instructions':'Instructions',escHtml(instrVal),icoNote]]:[])
   ];
 
@@ -5622,14 +5634,14 @@ function buildRecap(){
   box.innerHTML=`
     <div class="rc-card">
       <div class="rc-card-head">
-        <span class="rc-card-label">${isEN?'Your order':'Votre commande'}</span>
+        <span class="rc-card-label">${isEN?'Your order':isZH?'您的订单':'Votre commande'}</span>
         <span class="rc-card-badge">${escHtml(priceDisplay)}</span>
       </div>
       <div class="rc-prod-banner">
         <img src="hero-clim.jpg" alt="" class="rc-prod-banner-img" loading="lazy">
         <div>
-          <div class="rc-prod-banner-name">${isEN?'Professional Mobile AC':'Climatiseur mobile professionnel'}</div>
-          <div class="rc-prod-banner-ref">Rowenta / Frico · jusqu'à 12 000 BTU <span class="rc-energy-badge">${isEN?'A-rated':'Énergie A'}</span></div>
+          <div class="rc-prod-banner-name">${isEN?'Professional Mobile AC':isZH?'专业移动空调':'Climatiseur mobile professionnel'}</div>
+          <div class="rc-prod-banner-ref">Rowenta / Frico · jusqu'à 12 000 BTU <span class="rc-energy-badge">${isEN?'A-rated':isZH?'A级能效':'Énergie A'}</span></div>
         </div>
       </div>
       <dl class="rc-details">
@@ -5644,19 +5656,19 @@ function buildRecap(){
       <div class="rc-price-sep"></div>
       <div class="rc-price-block">
         <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:6px">
-          <span class="rc-total-lbl">${isEN?'Rental':'Location'} (${days} ${isEN?'days':'jours'})</span>
+          <span class="rc-total-lbl">${isEN?'Rental':isZH?'租金':'Location'} (${days} ${isEN?'days':isZH?'天':'jours'})</span>
           <span>${price} €</span>
         </div>
         <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:6px">
-          <span class="rc-total-lbl">${_techInstall?(isEN?'Technician setup':'Pose technicien'):(isEN?'Self-install':'Pose autonome')}</span>
-          <span>${_techInstall?INSTALL_FEE+' €':(isEN?'Kit included':'Kit fourni')}</span>
+          <span class="rc-total-lbl">${_techInstall?(isEN?'Technician setup':isZH?'技术员安装':'Pose technicien'):(isEN?'Self-install':isZH?'自行安装':'Pose autonome')}</span>
+          <span>${_techInstall?INSTALL_FEE+' €':(isEN?'Kit included':isZH?'含配件':'Kit fourni')}</span>
         </div>
         <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:${_promoDiscount>0?'4px':'10px'}">
-          <span class="rc-total-lbl">${isEN?'Delivery & collection':'Livraison & récupération'}${DELIVERY_FEE>35?' <span style="font-size:10px;background:#fff8ee;color:#92400e;padding:1px 6px;border-radius:100px;border:1px solid #e8d5a3">'+(_lang==='en'?'out of zone':'hors zone')+'</span>':''}</span>
+          <span class="rc-total-lbl">${isEN?'Delivery & collection':isZH?'配送 & 取回':'Livraison & récupération'}${DELIVERY_FEE>35?' <span style="font-size:10px;background:#fff8ee;color:#92400e;padding:1px 6px;border-radius:100px;border:1px solid #e8d5a3">'+(_lang==='en'?'out of zone':_lang==='zh'?'超出范围':'hors zone')+'</span>':''}</span>
           <span>${DELIVERY_FEE} €</span>
         </div>
         ${_promoDiscount>0?`<div class="rc-total-row" style="font-size:12px;color:#059669;font-weight:600;margin-bottom:10px">
-          <span class="rc-total-lbl">${isEN?'Promo code':'Code promo'} (${escHtml(_promoCode)}${_promoPct>0?' · −'+_promoPct+'%':''})</span>
+          <span class="rc-total-lbl">${isEN?'Promo code':isZH?'优惠码':'Code promo'} (${escHtml(_promoCode)}${_promoPct>0?' · −'+_promoPct+'%':''})</span>
           <span>−${_promoDiscount} €</span>
         </div>`:''}
         <div class="rc-total-row">
@@ -5672,7 +5684,7 @@ function buildRecap(){
     const _origTotal=calcTotal(days)+DELIVERY_FEE;
     const _btnTotal=Math.max(0,_origTotal-_promoDiscount);
     const _strikeThrough=_promoDiscount>0?' <span style="text-decoration:line-through;opacity:.5;font-weight:400">'+_origTotal+' €</span> ':' ';
-    sbtn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>'+(_lang==='en'?' Proceed to payment'+_btnDate+' —'+_strikeThrough:' Procéder au paiement'+_btnDate+' —'+_strikeThrough)+_btnTotal+' €';
+    sbtn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>'+(_lang==='en'?' Proceed to payment'+_btnDate+' —'+_strikeThrough:_lang==='zh'?' 立即付款'+_btnDate+' —'+_strikeThrough:' Procéder au paiement'+_btnDate+' —'+_strikeThrough)+_btnTotal+' €';
     sbtn.disabled=!(document.getElementById('f-cgv')?.checked && document.getElementById('f-conditions')?.checked && document.getElementById('f-retard')?.checked);
     const hint=document.getElementById('sbtn-hint');
     if(hint)hint.style.display=sbtn.disabled?'block':'none';
@@ -6232,27 +6244,27 @@ let _lang='fr';try{_lang=localStorage.getItem('locair-lang')||'fr';}catch(e){}
 // Single-selector map: [selector, 'text'|'html'|'ph', fr, en]
 const LANG_MAP=[
   /* nav */
-  ['#nav-menu-dd .nav-menu-link:nth-child(1)','text','Comment ça marche','How it works'],
-  ['#nav-menu-dd .nav-menu-link:nth-child(2)','text','Tarifs','Pricing'],
-  ['#nav-menu-dd .nav-menu-link:nth-child(3)','text','Avis clients','Reviews'],
-  ['#nav-menu-dd .nav-menu-link:nth-child(4)','text','FAQ','FAQ'],
-  ['#nav-menu-dd .nav-menu-prolong','text','Mon espace','My account'],
-  ['#nav-menu-dd .nav-menu-secondary','text','Espace ambassadeur','Ambassador area'],
-  ['.nav-menu-cta','text','Réserver →','Book →'],
+  ['#nav-menu-dd .nav-menu-link:nth-child(1)','text','Comment ça marche','How it works','如何运作'],
+  ['#nav-menu-dd .nav-menu-link:nth-child(2)','text','Tarifs','Pricing','价格'],
+  ['#nav-menu-dd .nav-menu-link:nth-child(3)','text','Avis clients','Reviews','客户评价'],
+  ['#nav-menu-dd .nav-menu-link:nth-child(4)','text','FAQ','FAQ','常见问题'],
+  ['#nav-menu-dd .nav-menu-prolong','text','Mon espace','My account','我的账户'],
+  ['#nav-menu-dd .nav-menu-secondary','text','Espace ambassadeur','Ambassador area','大使专区'],
+  ['.nav-menu-cta','text','Réserver →','Book →','立即预订 →'],
   /* ubar */
   /* prolongation CTA card */
-  ['#prolong-cta-h','html','Suivez votre<br>location','Track your<br>rental'],
+  ['#prolong-cta-h','html','Suivez votre<br>location','Track your<br>rental','跟踪您的<br>租赁订单'],
   ['#prolong-cta-p','text','Statut de livraison, documents, assistance et prolongation — tout en un endroit, avec votre numéro de commande.','Delivery status, documents, support and extensions — all in one place, with your order number.'],
-  ['#prolong-cta-btn','text','Accéder à mon espace →','Access my account →'],
+  ['#prolong-cta-btn','text','Accéder à mon espace →','Access my account →','进入我的账户 →'],
   /* partner CTA card */
-  ['#partner-cta-h','html','Vous êtes une<br>conciergerie ?','Run a<br>concierge service?'],
-  ['#partner-cta-sub','text',"Recommandez Loc'Air à vos clients et touchez une commission sur chaque réservation, suivie depuis votre espace ambassadeur.","Recommend Loc'Air to your clients and earn a commission on every booking, tracked from your ambassador area."],
-  ['#partner-cta-btn','text',"Accéder à l'espace ambassadeur →","Access the ambassador area →"],
+  ['#partner-cta-h','html','Vous êtes une<br>conciergerie ?','Run a<br>concierge service?','您经营<br>礼宾服务吗？'],
+  ['#partner-cta-sub','text',"Recommandez Loc'Air à vos clients et touchez une commission sur chaque réservation, suivie depuis votre espace ambassadeur.","Recommend Loc'Air to your clients and earn a commission on every booking, tracked from your ambassador area.",'将Loc\'Air推荐给您的客户，每笔预订均可获得佣金，通过大使专区追踪。'],
+  ['#partner-cta-btn','text',"Accéder à l'espace ambassadeur →","Access the ambassador area →",'进入大使专区 →'],
   /* zone confirm & notice */
-  ['#zone-confirm-txt','text','Adresse enregistrée','Address saved'],
-  ['#zone-notice-txt','html','Livraison hors zone standard : <strong>95 €</strong> — votre adresse est en dehors de Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche ou Beaulieu-sur-Mer.','Delivery outside standard zone: <strong>€95</strong> — your address is outside Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche or Beaulieu-sur-Mer.'],
+  ['#zone-confirm-txt','text','Adresse enregistrée','Address saved','地址已保存'],
+  ['#zone-notice-txt','html','Livraison hors zone standard : <strong>95 €</strong> — votre adresse est en dehors de Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche ou Beaulieu-sur-Mer.','Delivery outside standard zone: <strong>€95</strong> — your address is outside Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche or Beaulieu-sur-Mer.','超出标准配送范围：<strong>95 €</strong>——您的地址不在尼斯或周边城市。'],
   /* prolongation modal — SP1 */
-  ['#sp1 .sp-title','text','Votre location en cours','Your current rental'],
+  ['#sp1 .sp-title','text','Votre location en cours','Your current rental','您当前的租赁'],
   ['#sp1 .sp-sub','text','Renseignez vos coordonnées — nous retrouvons votre dossier et préparons la prolongation.','Enter your details — we\'ll find your file and prepare the extension.'],
   ['label[for="pe-prenom"]','html','Prénom<span class="req">*</span>','First name<span class="req">*</span>'],
   ['label[for="pe-nom"]','html','Nom<span class="req">*</span>','Last name<span class="req">*</span>'],
@@ -6260,142 +6272,142 @@ const LANG_MAP=[
   ['label[for="pe-addr"]','text','Adresse de livraison d\'origine','Original delivery address'],
   ['#pe-addr-hint','text','Facultatif — aide à retrouver votre dossier plus vite','Optional — helps us find your file faster'],
   ['label[for="pe-debut"]','html','Début de location<span class="req">*</span>','Rental start<span class="req">*</span>'],
-  ['#pe-debut-hint','text','Date de livraison','Delivery date'],
+  ['#pe-debut-hint','text','Date de livraison','Delivery date','配送日期'],
   ['label[for="pe-fin-init"]','html','Fin de contrat actuelle<span class="req">*</span>','Current contract end<span class="req">*</span>'],
   ['#pe-fin-hint','text','Avant la prolongation','Before the extension'],
-  ['#sp1 .btn-next','text','Choisir la durée →','Choose duration →'],
+  ['#sp1 .btn-next','text','Choisir la durée →','Choose duration →','选择时长 →'],
   ['#lbl-back-sp1','text','Retour','Back'],
   /* prolongation modal — SP2 */
-  ['#sp2 .sp-title','text','Combien de jours de plus ?','How many more days?'],
-  ['#sp2 .sp-sub','text','Minimum 1 jour — pas de maximum.','Minimum 1 day — no maximum.'],
-  ['.pp-rate','text','Sans frais d\'installation — déjà effectuée','No setup fee — already done'],
-  ['#pp-pricing-note','text','Tarif dégressif selon la durée · Paiement en ligne par carte via Stripe.','Tiered pricing · Online card payment via Stripe.'],
-  ['#lbl-back-sp2','text','Identification','Identification'],
-  ['#sp2 .btn-next','text','Confirmer →','Confirm →'],
+  ['#sp2 .sp-title','text','Combien de jours de plus ?','How many more days?','还需要多少天？'],
+  ['#sp2 .sp-sub','text','Minimum 1 jour — pas de maximum.','Minimum 1 day — no maximum.','最少1天，没有上限。'],
+  ['.pp-rate','text','Sans frais d\'installation — déjà effectuée','No setup fee — already done','无安装费——已完成安装'],
+  ['#pp-pricing-note','text','Tarif dégressif selon la durée · Paiement en ligne par carte via Stripe.','Tiered pricing · Online card payment via Stripe.','阶梯定价 · 在线刷卡支付（Stripe）。'],
+  ['#lbl-back-sp2','text','Identification','身份确认'],
+  ['#sp2 .btn-next','text','Confirmer →','Confirm →','确认 →'],
   /* prolongation modal — SP3 */
-  ['#sp3 .sp-title','text','Date de récupération','Collection date'],
-  ['#sp3 .sp-sub','text','Choisissez quand notre technicien vient reprendre le climatiseur.','Choose when our technician comes to collect the AC.'],
-  ['label[for="pe-date"]','html','Nouvelle date de fin<span class="req">*</span>','New end date<span class="req">*</span>'],
-  ['#lbl-pe-cr','html','Créneau de récupération<span class="req">*</span>','Collection time slot<span class="req">*</span>'],
-  ['#lbl-back-sp3','text','Durée','Duration'],
-  ['#sp3 .btn-next','text','Récapitulatif →','Summary →'],
+  ['#sp3 .sp-title','text','Date de récupération','Collection date','取回日期'],
+  ['#sp3 .sp-sub','text','Choisissez quand notre technicien vient reprendre le climatiseur.','Choose when our technician comes to collect the AC.','请选择技术员上门取回空调的时间。'],
+  ['label[for="pe-date"]','html','Nouvelle date de fin<span class="req">*</span>','New end date<span class="req">*</span>','新结束日期<span class="req">*</span>'],
+  ['#lbl-pe-cr','html','Créneau de récupération<span class="req">*</span>','Collection time slot<span class="req">*</span>','取机时间段<span class="req">*</span>'],
+  ['#lbl-back-sp3','text','Durée','Duration','租期'],
+  ['#sp3 .btn-next','text','Récapitulatif →','Summary →','订单确认 →'],
   /* prolongation modal — SP4 */
-  ['#sp4 .sp-title','text','Confirmer la prolongation','Confirm extension'],
-  ['#sp4 .sp-sub','text','Vérifiez et payez en ligne — confirmation email immédiate.','Review and pay online — instant email confirmation.'],
-  ['#prolong-stripe-loading','text','Chargement du formulaire de paiement…','Loading payment form…'],
-  ['#prolong-pay-pre','text','Payer','Pay'],
-  ['#prolong-pay-post','text',' en toute sécurité',' securely'],
-  ['#prolong-ssl-txt','text','🔒 Paiement sécurisé SSL · Stripe · Aucun stockage de vos données bancaires','🔒 Secure SSL payment · Stripe · Your card details are never stored'],
-  ['#prolong-error','html','Problème de connexion. Appelez-nous au <a href="tel:0663798756" style="color:#b91c1c;font-weight:600">06.63.79.87.56</a>.','Connection issue. Call us at <a href="tel:0663798756" style="color:#b91c1c;font-weight:600">06.63.79.87.56</a>.'],
-  ['#lbl-back-sp4','text','Date','Date'],
+  ['#sp4 .sp-title','text','Confirmer la prolongation','Confirm extension','确认延期'],
+  ['#sp4 .sp-sub','text','Vérifiez et payez en ligne — confirmation email immédiate.','Review and pay online — instant email confirmation.','在线审核并支付——立即发送确认邮件。'],
+  ['#prolong-stripe-loading','text','Chargement du formulaire de paiement…','Loading payment form…','正在加载支付表单…'],
+  ['#prolong-pay-pre','text','Payer','Pay','付款'],
+  ['#prolong-pay-post','text',' en toute sécurité',' securely',' 安全支付'],
+  ['#prolong-ssl-txt','text','🔒 Paiement sécurisé SSL · Stripe · Aucun stockage de vos données bancaires','🔒 Secure SSL payment · Stripe · Your card details are never stored','🔒 SSL安全支付 · Stripe · 银行卡信息绝不存储'],
+  ['#prolong-error','html','Problème de connexion. Appelez-nous au <a href="tel:0663798756" style="color:#b91c1c;font-weight:600">06.63.79.87.56</a>.','Connection issue. Call us at <a href="tel:0663798756" style="color:#b91c1c;font-weight:600">06.63.79.87.56</a>.','连接问题。请致电 <a href="tel:0663798756" style="color:#b91c1c;font-weight:600">06.63.79.87.56</a>。'],
+  ['#lbl-back-sp4','text','Date','Date','日期'],
   /* success screen — timeline static */
-  ['#stl-1 .stl-title','text','Réservation enregistrée','Booking confirmed'],
-  ['#stl-1-sub-prefix','text','Notre équipe vous confirme par email sous 2h — ','Our team confirms by email within 2h — '],
-  ['#stl-2 .stl-title','text','Contrat envoyé par email','Contract sent by email'],
-  ['#stl-2 .stl-sub','text','Notre équipe vous envoie le contrat sous 2h','Our team sends your contract within 2h'],
-  ['#stl-3 .stl-title','text','Technicien sur place','Technician on site'],
-  ['#stl-3 .stl-sub','text','Livraison le lendemain au créneau choisi','Delivery the next day at your chosen time'],
-  ['#copy-ref-btn','text','Copier le n°','Copy ref'],
-  ['#cal-link-txt','text','Ajouter à mon agenda','Add to my calendar'],
-  ['#prochaines-etapes-hdr','text','Prochaines étapes','Next steps'],
-  ['#s-msg-call','text','Notre équipe vous rappelle dans la journée (8h–20h, 7j/7).','Our team will call you back today (8am–8pm, 7d/7).'],
+  ['#stl-1 .stl-title','text','Réservation enregistrée','Booking confirmed','预订已登记'],
+  ['#stl-1-sub-prefix','text','Notre équipe vous confirme par email sous 2h — ','Our team confirms by email within 2h — ','我们的团队将在2小时内通过邮件确认——'],
+  ['#stl-2 .stl-title','text','Contrat envoyé par email','Contract sent by email','合同已发送至邮箱'],
+  ['#stl-2 .stl-sub','text','Notre équipe vous envoie le contrat sous 2h','Our team sends your contract within 2h','我们的团队将在2小时内发送合同'],
+  ['#stl-3 .stl-title','text','Technicien sur place','Technician on site','技术员到场'],
+  ['#stl-3 .stl-sub','text','Livraison le lendemain au créneau choisi','Delivery the next day at your chosen time','次日按所选时间段配送'],
+  ['#copy-ref-btn','text','Copier le n°','Copy ref','复制单号'],
+  ['#cal-link-txt','text','Ajouter à mon agenda','Add to my calendar','添加到日历'],
+  ['#prochaines-etapes-hdr','text','Prochaines étapes','Next steps','下一步'],
+  ['#s-msg-call','text','Notre équipe vous rappelle dans la journée (8h–20h, 7j/7).','Our team will call you back today (8am–8pm, 7d/7).','我们的团队将于当天回电（8:00–20:00，每天）。'],
   /* success — cancel section */
-  ['#cancel-summary','text','Besoin d\'annuler ?','Need to cancel?'],
-  ['#cancel-free-txt','text','Annulation gratuite avant livraison','Free cancellation before delivery'],
-  ['#cancel-sbtn','text','Confirmer l\'annulation','Confirm cancellation'],
-  ['#cancel-msg','html','✓ Annulation enregistrée — vous serez remboursé sous 48h.','✓ Cancellation recorded — refund within 48h.'],
+  ['#cancel-summary','text','Besoin d\'annuler ?','Need to cancel?','需要取消？'],
+  ['#cancel-free-txt','text','Annulation gratuite avant livraison','Free cancellation before delivery','配送前可免费取消'],
+  ['#cancel-sbtn','text','Confirmer l\'annulation','Confirm cancellation','确认取消'],
+  ['#cancel-msg','html','✓ Annulation enregistrée — vous serez remboursé sous 48h.','✓ Cancellation recorded — refund within 48h.','✓ 取消已登记——48小时内退款。'],
   /* success — upsell & referral */
-  ['#upsell-pay .upsell-h','text','Complétez votre confort','Complete your setup'],
-  ['#upsell-pay .upsell-card:first-child .uc-t','text','Prolonger','Extend'],
-  ['#upsell-pay .upsell-card:first-child .uc-p','text','Ajouter des jours','Add days'],
-  ['#upsell-pay .upsell-card:last-child .uc-t','text','2ème clim','2nd unit'],
-  ['#upsell-pay .upsell-card:last-child .uc-p','text','Une autre pièce','Another room'],
-  ['#referral-box .ref-h','text','10€ offerts — à vous et à vos amis','€10 gift — for you and your friends'],
-  ['#referral-box .ref-sub','html','Partagez votre code. Chaque ami qui l\'utilise économise <strong>10€</strong>. Vous aussi, à votre prochaine réservation.','Share your code. Every friend who uses it saves <strong>€10</strong>. So do you, on your next booking.'],
-  ['#ref-copy-btn','text','Copier','Copy'],
-  ['#referral-box .ref-share','text','Partager mon code','Share my code'],
+  ['#upsell-pay .upsell-h','text','Complétez votre confort','Complete your setup','完善您的舒适体验'],
+  ['#upsell-pay .upsell-card:first-child .uc-t','text','Prolonger','Extend','延期'],
+  ['#upsell-pay .upsell-card:first-child .uc-p','text','Ajouter des jours','Add days','增加天数'],
+  ['#upsell-pay .upsell-card:last-child .uc-t','text','2ème clim','2nd unit','第2台空调'],
+  ['#upsell-pay .upsell-card:last-child .uc-p','text','Une autre pièce','Another room','另一个房间'],
+  ['#referral-box .ref-h','text','10€ offerts — à vous et à vos amis','€10 gift — for you and your friends','赠送10欧元——给您和您的朋友'],
+  ['#referral-box .ref-sub','html','Partagez votre code. Chaque ami qui l\'utilise économise <strong>10€</strong>. Vous aussi, à votre prochaine réservation.','Share your code. Every friend who uses it saves <strong>€10</strong>. So do you, on your next booking.','分享您的码。每位使用它的朋友节省<strong>10欧元</strong>。您的下次预订也同样享受优惠。'],
+  ['#ref-copy-btn','text','Copier','Copy','复制'],
+  ['#referral-box .ref-share','text','Partager mon code','Share my code','分享我的码'],
   /* email alert opt-in */
-  ['#ec-optin-lbl','html','J\'accepte de recevoir les alertes canicule de Loc\'Air par email. <a href="/confidentialite" style="color:rgba(255,255,255,.8)">Politique de confidentialité</a>.','I agree to receive heatwave alerts from Loc\'Air by email. <a href="/confidentialite" style="color:rgba(255,255,255,.8)">Privacy policy</a>.'],
-  ['.ubar','html','Loc\'Air · Nice · <strong>Depuis 2019</strong> &nbsp;·&nbsp; Kit fourni &nbsp;·&nbsp; 7j/7 · 8h–20h','Loc\'Air · Nice · <strong>Since 2019</strong> &nbsp;·&nbsp; Kit included &nbsp;·&nbsp; 7d/7 · 8am–8pm'],
+  ['#ec-optin-lbl','html','J\'accepte de recevoir les alertes canicule de Loc\'Air par email. <a href="/confidentialite" style="color:rgba(255,255,255,.8)">Politique de confidentialité</a>.','I agree to receive heatwave alerts from Loc\'Air by email. <a href="/confidentialite" style="color:rgba(255,255,255,.8)">Privacy policy</a>.','我同意通过邮件接收Loc\'Air发出的高温预警。<a href="/confidentialite" style="color:rgba(255,255,255,.8)">隐私政策</a>。'],
+  ['.ubar','html','Loc\'Air · Nice · <strong>Depuis 2019</strong> &nbsp;·&nbsp; Kit fourni &nbsp;·&nbsp; 7j/7 · 8h–20h','Loc\'Air · Nice · <strong>Since 2019</strong> &nbsp;·&nbsp; Kit included &nbsp;·&nbsp; 7d/7 · 8am–8pm','Loc\'Air · 尼斯 · <strong>2019年</strong> &nbsp;·&nbsp; 含套件 &nbsp;·&nbsp; 每天 · 8:00–20:00'],
   /* hero */
-  ['.hero-eye','text','Nice · 7j/7','Nice · 7d/7'],
-  ['.hero-h1','html','Il fait trop chaud<br><em>pour dormir à&nbsp;Nice&nbsp;?</em>','Too hot<br><em>to sleep in&nbsp;Nice?</em>'],
-  ['.hero-desc','text','Demain soir, vous dormez au frais.','Tomorrow night, you sleep cool.'],
-  ['.hero-cta','text','Réserver — dès 20 €/jour','Book — from €20/day'],
-  ['.hero-micro','text','4,8★ · 21 avis Google · Aucune caution','4.8★ · 21 Google reviews · Zero deposit'],
-  ['.sb-btn','text','Réserver →','Book →'],
+  ['.hero-eye','text','Nice · 7j/7','Nice · 7d/7','尼斯 · 每天'],
+  ['.hero-h1','html','Il fait trop chaud<br><em>pour dormir à&nbsp;Nice&nbsp;?</em>','Too hot<br><em>to sleep in&nbsp;Nice?</em>','天气太热<br><em>在尼斯无法入眠？</em>'],
+  ['.hero-desc','text','Demain soir, vous dormez au frais.','Tomorrow night, you sleep cool.','明晚，您将在清凉中入眠。'],
+  ['.hero-cta','text','Réserver — dès 20 €/jour','Book — from €20/day','立即预订——低至每天20欧元'],
+  ['.hero-micro','text','4,8★ · 21 avis Google · Aucune caution','4.8★ · 21 Google reviews · Zero deposit','4.8★ · 21条Google评价 · 零押金'],
+  ['.sb-btn','text','Réserver →','Book →','预订 →'],
   /* howto */
-  ['.howto .sec-eye','text','Comment fonctionne la location','How rental works'],
-  ['#howto-title','html','De la réservation<br><em>à l\'air frais — dès le lendemain matin</em>','From booking<br><em>to cool air — the next morning</em>'],
+  ['.howto .sec-eye','text','Comment fonctionne la location','How rental works','租赁流程介绍'],
+  ['#howto-title','html','De la réservation<br><em>à l\'air frais — dès le lendemain matin</em>','From booking<br><em>to cool air — the next morning</em>','从预订到<br><em>清凉空气——次日上午即到</em>'],
   /* pricing */
-  ['.pricing .sec-eye','text','Location de climatiseur mobile','Mobile AC rental'],
-  ['#pricing-title','html','Tarifs clairs,<br><em>sans mauvaises surprises</em>','Clear pricing,<br><em>no hidden surprises</em>'],
-  ['#pricing-from','text','à partir de','from'],
-  ['#pricing-min','text','Prix dégressif à partir de 7 jours.','Tiered pricing from 7 days.'],
-  ['#pricing-social-proof','html','4,8/5 · <strong style="color:var(--black)">21 avis</strong> Google vérifiés','4.8/5 · <strong style="color:var(--black)">21 reviews</strong> on Google'],
-  ['.plan-btn.pb-s','text','Réserver ma livraison →','Book my delivery →'],
+  ['.pricing .sec-eye','text','Location de climatiseur mobile','Mobile AC rental','移动空调租赁'],
+  ['#pricing-title','html','Tarifs clairs,<br><em>sans mauvaises surprises</em>','Clear pricing,<br><em>no hidden surprises</em>','价格透明，<br><em>无隐藏费用</em>'],
+  ['#pricing-from','text','à partir de','from','低至'],
+  ['#pricing-min','text','Prix dégressif à partir de 7 jours.','Tiered pricing from 7 days.','7天起享阶梯优惠价。'],
+  ['#pricing-social-proof','html','4,8/5 · <strong style="color:var(--black)">21 avis</strong> Google vérifiés','4.8/5 · <strong style="color:var(--black)">21 reviews</strong> on Google','4.8/5 · <strong style="color:var(--black)">21条评价</strong> Google已验证'],
+  ['.plan-btn.pb-s','text','Réserver ma livraison →','Book my delivery →','预订配送 →'],
   /* reviews */
-  ['.reviews .sec-eye','text','Avis clients','Customer reviews'],
-  ['#reviews-title','html','Ils ont loué.<br><em>Voici ce qu\'ils en disent.</em>','They rented.<br><em>Here\'s what they say.</em>'],
-  ['#reviews-aly-note','text','Chaque retour compte pour nous. Merci de faire confiance à Loc\'Air depuis 2019. — Aly','Every review matters to us. Thank you for trusting Loc\'Air since 2019. — Aly'],
-  ['.score-lbl','text','Avis vérifiés Google','Verified Google reviews'],
-  ['.rs-label','text','21 avis Google vérifiés','21 verified Google reviews'],
-  ['.rs-link','text','Voir sur Google →','View on Google →'],
+  ['.reviews .sec-eye','text','Avis clients','Customer reviews','客户评价'],
+  ['#reviews-title','html','Ils ont loué.<br><em>Voici ce qu\'ils en disent.</em>','They rented.<br><em>Here\'s what they say.</em>','他们已租用。<br><em>这是他们的评价。</em>'],
+  ['#reviews-aly-note','text','Chaque retour compte pour nous. Merci de faire confiance à Loc\'Air depuis 2019. — Aly','Every review matters to us. Thank you for trusting Loc\'Air since 2019. — Aly','每一条评价对我们都很重要。感谢自2019年以来对Loc\'Air的信任。— Aly'],
+  ['.score-lbl','text','Avis vérifiés Google','Verified Google reviews','Google验证评价'],
+  ['.rs-label','text','21 avis Google vérifiés','21 verified Google reviews','21条Google验证评价'],
+  ['.rs-link','text','Voir sur Google →','View on Google →','在Google上查看 →'],
   /* pourqui */
-  ['.pourqui .sec-eye','text','Pour qui ?','Who is it for?'],
-  ['#pourqui-title','html','Qui loue<br><em>chez Loc\'Air ?</em>','Who rents<br><em>from Loc\'Air?</em>'],
+  ['.pourqui .sec-eye','text','Pour qui ?','Who is it for?','适合哪些人？'],
+  ['#pourqui-title','html','Qui loue<br><em>chez Loc\'Air ?</em>','Who rents<br><em>from Loc\'Air?</em>','谁在租用<br><em>Loc\'Air？</em>'],
   /* faq */
-  ['.faq .sec-eye','text','Questions fréquentes','Frequently asked questions'],
-  ['#faq-title','html','Ce qu\'il faut<br><em>savoir avant de réserver</em>','What you need<br><em>to know before booking</em>'],
-  ['#faq-cta-title','html','Une question ?<br>On répond le jour même.','A question?<br>We answer the same day.'],
-  ['button.faq-cta-btn','text','Réserver maintenant →','Book now →'],
+  ['.faq .sec-eye','text','Questions fréquentes','Frequently asked questions','常见问题'],
+  ['#faq-title','html','Ce qu\'il faut<br><em>savoir avant de réserver</em>','What you need<br><em>to know before booking</em>','预订前<br><em>您需要了解的</em>'],
+  ['#faq-cta-title','html','Une question ?<br>On répond le jour même.','A question?<br>We answer the same day.','有疑问？<br>当天即可回复。'],
+  ['button.faq-cta-btn','text','Réserver maintenant →','Book now →','立即预订 →'],
   /* pricing badge + reassure */
-  ['.plan-badge-new','html','Location · Disponible à <span data-c="name">Nice</span>','Rental · Available in <span data-c="name">Nice</span>'],
-  ['#pricing-reassure','text','Stripe · Aucune caution · Annulation gratuite','Stripe · Zero deposit · Free cancellation'],
-  ['#hero-dispo-text','text','Disponible maintenant à Nice','Available now in Nice'],
-  ['#pricing-delivery-note','text','Frais de livraison détaillés au récapitulatif.','Delivery fees shown at checkout.'],
+  ['.plan-badge-new','html','Location · Disponible à <span data-c="name">Nice</span>','Rental · Available in <span data-c="name">Nice</span>','租赁 · 现在在<span data-c="name">尼斯</span>可用'],
+  ['#pricing-reassure','text','Stripe · Aucune caution · Annulation gratuite','Stripe · Zero deposit · Free cancellation','Stripe支付 · 零押金 · 免费取消'],
+  ['#hero-dispo-text','text','Disponible maintenant à Nice','Available now in Nice','现在在尼斯可用'],
+  ['#pricing-delivery-note','text','Frais de livraison détaillés au récapitulatif.','Delivery fees shown at checkout.','配送费用在结算时显示。'],
   /* pricing plan items */
-  ['#plan-item-1','html','<strong>Livraison dès demain</strong>','<strong>Delivered tomorrow</strong>'],
-  ['#plan-item-2','html','<strong>Livraison &amp; récupération à domicile</strong>','<strong>Delivery &amp; collection at your door</strong>'],
-  ['#plan-item-3','html','<strong>Panne ?</strong> Remplacement ou remboursement.','<strong>Breakdown?</strong> Replacement or refund.'],
+  ['#plan-item-1','html','<strong>Livraison dès demain</strong>','<strong>Delivered tomorrow</strong>','<strong>次日送达</strong>'],
+  ['#plan-item-2','html','<strong>Livraison &amp; récupération à domicile</strong>','<strong>Delivery &amp; collection at your door</strong>','<strong>送货上门 &amp; 上门取回</strong>'],
+  ['#plan-item-3','html','<strong>Panne ?</strong> Remplacement ou remboursement.','<strong>Breakdown?</strong> Replacement or refund.','<strong>故障？</strong> 更换或退款。'],
   /* garantie */
-  ['.gar-t','text','En panne ? On s\'occupe de tout — remplacement ou remboursement.','Breakdown? We handle everything — replacement or refund.'],
+  ['.gar-t','text','En panne ? On s\'occupe de tout — remplacement ou remboursement.','Breakdown? We handle everything — replacement or refund.','故障？我们全权处理——更换或退款。'],
   /* about */
-  ['#about-title','html','Basés à Nice.<br><em style="font-style:italic;font-weight:400;color:var(--blue)">Depuis 2019.</em>','Based in Nice.<br><em style="font-style:italic;font-weight:400;color:var(--blue)">Since 2019.</em>'],
+  ['#about-title','html','Basés à Nice.<br><em style="font-style:italic;font-weight:400;color:var(--blue)">Depuis 2019.</em>','Based in Nice.<br><em style="font-style:italic;font-weight:400;color:var(--blue)">Since 2019.</em>','总部位于尼斯。<br><em style="font-style:italic;font-weight:400;color:var(--blue)">2019年起。</em>'],
   /* cta final */
-  ['#fcta-title','html','L\'air frais dès demain matin.<br><em>Aucune caution. Aucune surprise.</em>','Fresh air by tomorrow morning.<br><em>No deposit. No surprises.</em>'],
-  ['.fcta .btn-blue','text','Réserver maintenant','Book now'],
+  ['#fcta-title','html','L\'air frais dès demain matin.<br><em>Aucune caution. Aucune surprise.</em>','Fresh air by tomorrow morning.<br><em>No deposit. No surprises.</em>','明天早晨即享清凉。<br><em>无押金。无惊喜。</em>'],
+  ['.fcta .btn-blue','text','Réserver maintenant','Book now','立即预订'],
   ['.anchor-compare','text','La moitié de nos clients prolongent — tarif jusqu\'à 16 €/jour dès 22 jours · Paiement en ligne par carte via Stripe · Annulation gratuite avant livraison','Half our customers extend — rates as low as €16/day from 22 days · Online payment by card via Stripe · Free cancellation before delivery'],
   ['.fcta-in > p:first-of-type','html','<span style="color:#f5c518;letter-spacing:2px">★★★★★</span> · Note 4,8/5 sur Google · Livraison garantie ou remboursé','<span style="color:#f5c518;letter-spacing:2px">★★★★★</span> · 4.8/5 on Google · Delivery guaranteed or refunded'],
   /* footer col titles */
   ['.footer-col-title:nth-of-type(1)','text','Navigation','Navigation'],
   /* mobile bar */
-  ['.m-bar-label','html','Livré chez vous demain · <strong>8h–12h · 7j/7</strong>','Delivered to you tomorrow · <strong>8am–12pm · 7d/7</strong>'],
-  ['#m-btn-book-text','text','Réserver','Book'],
+  ['.m-bar-label','html','Livré chez vous demain · <strong>8h–12h · 7j/7</strong>','Delivered to you tomorrow · <strong>8am–12pm · 7d/7</strong>','明天送到您家 · <strong>8h–12h · 每天</strong>'],
+  ['#m-btn-book-text','text','Réserver','Book','预订'],
   /* modal sidebar */
-  ['.ms-title','text','Votre commande','Your order'],
+  ['.ms-title','text','Votre commande','Your order','您的订单'],
   /* modal step 1 */
-  ['#s1 .sp-title','text','Votre adresse à Nice','Your address in Nice'],
+  ['#s1 .sp-title','text','Votre adresse à Nice','Your address in Nice','您在尼斯的地址'],
   ['#s1 label','html','Adresse<span class="req">*</span>','Address<span class="req">*</span>'],
   ['#f-addr','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice'],
   /* modal step 2 */
-  ['#s2 .sp-title','text','Votre durée','Your duration'],
-  ['#s2 .sp-sub','text','Chaque jour supplémentaire coûte moins cher — sans engagement.','Each extra day costs less — no commitment.'],
+  ['#s2 .sp-title','text','Votre durée','Your duration','您的租期'],
+  ['#s2 .sp-sub','text','Chaque jour supplémentaire coûte moins cher — sans engagement.','Each extra day costs less — no commitment.','每多一天单价更低——随时可取消。'],
 /* modal step 3 */
-  ['#s3 .sp-title','text','Installation','Installation'],
-  ['#s3 .kit-badge strong','text','toujours fourni','always included'],
-  ['.win-card:last-child .win-name','text','Je ne sais pas','Not sure'],
-  ['.win-card:last-child .win-hint','text','Notre technicien vérifiera','Our technician will check'],
+  ['#s3 .sp-title','text','Installation','Installation','安装'],
+  ['#s3 .kit-badge strong','text','toujours fourni','always included','始终包含'],
+  ['.win-card:last-child .win-name','text','Je ne sais pas','Not sure','不确定'],
+  ['.win-card:last-child .win-hint','text','Notre technicien vérifiera','Our technician will check','技术员将到场确认'],
   /* modal step 4 */
-  ['#s4 .sp-title','text','Votre date de livraison','Your delivery date'],
-  ['#btn-demain','text','→ Demain','→ Tomorrow'],
-  ['#s4 label:first-of-type','text','Date de livraison *','Delivery date *'],
+  ['#s4 .sp-title','text','Votre date de livraison','Your delivery date','您的配送日期'],
+  ['#btn-demain','text','→ Demain','→ Tomorrow','→ 明天'],
+  ['#s4 label:first-of-type','text','Date de livraison *','Delivery date *','配送日期 *'],
   ['#date-shortcuts','aria','Date de livraison','Delivery date'],
-  ['#f-date','aria','Date personnalisée','Custom date'],
-  ['#creneau-liv-group','aria','Créneau de livraison','Delivery time slot'],
+  ['#f-date','aria','Date personnalisée','Custom date','自定义日期'],
+  ['#creneau-liv-group','aria','Créneau de livraison','Delivery time slot','配送时间段'],
   /* modal step 5 */
-  ['#s5 .sp-title','text','Vos coordonnées','Your details'],
-  ['#s5 .sp-sub','text','Confirmation par email dès réception.','Email confirmation sent immediately.'],
+  ['#s5 .sp-title','text','Vos coordonnées','Your details','您的联系方式'],
+  ['#s5 .sp-sub','text','Confirmation par email dès réception.','Email confirmation sent immediately.','收到后立即发送确认邮件。'],
   ['#f-etage','ph','Ex. 3ème','E.g. 3rd floor'],
   ['#f-prenom','ph','Jean','John'],
   ['#f-nom','ph','Dupont','Smith'],
@@ -6403,19 +6415,19 @@ const LANG_MAP=[
   ['#f-email','ph','prenom@exemple.fr','firstname@example.com'],
   ['.pay-sub','text','Paiement en ligne par carte via Stripe · Confirmation par email dans quelques minutes','Online payment by card via Stripe · Email confirmation in a few minutes'],
   /* success screens */
-  ['#msuccess-pay .s-h','text','Réservation confirmée !','Booking confirmed!'],
-  ['#s-gratitude-note','text','Toute l\'équipe est mobilisée pour vous accueillir demain. À très vite. — Aly','The whole team is ready to welcome you tomorrow. See you soon. — Aly'],
+  ['#msuccess-pay .s-h','text','Réservation confirmée !','Booking confirmed!','预订已确认！'],
+  ['#s-gratitude-note','text','Toute l\'équipe est mobilisée pour vous accueillir demain. À très vite. — Aly','The whole team is ready to welcome you tomorrow. See you soon. — Aly','全队准备好明天迎接您。很快见！— Aly'],
   ['#msuccess-pay .s-p','html','Votre réservation est confirmée — notre équipe vous contacte d\'ici quelques heures pour confirmer le créneau exact.','Your booking is confirmed — our team will contact you within a few hours to confirm the exact time slot.'],
-  ['#msuccess-pay .s-close','text','Retour au site','Back to site'],
-  ['#msuccess-call .s-h','text','Demande reçue','Request received'],
+  ['#msuccess-pay .s-close','text','Retour au site','Back to site','返回网站'],
+  ['#msuccess-call .s-h','text','Demande reçue','Request received','请求已收到'],
   ['#msuccess-call .s-p','text','Notre équipe vous rappelle dans la journée (8h–20h, 7j/7).','Our team will call you back within the day (8am–8pm, 7d/7).'],
   ['#msuccess-call .s-close','text','Retour au site','Back to site'],
   /* cookie */
-  ['.cookie-btn-refuse','text','Rejeter','Reject'],
-  ['.cookie-btn-accept','text','Accepter','Accept'],
-  ['.cookie-btn-prefs','text','Préférences','Preferences'],
+  ['.cookie-btn-refuse','text','Rejeter','Reject','拒绝'],
+  ['.cookie-btn-accept','text','Accepter','Accept','接受'],
+  ['.cookie-btn-prefs','text','Préférences','Preferences','偏好设置'],
   /* expertise */
-  ['#expertise-eyebrow','text','Notre savoir-faire','Our expertise'],
+  ['#expertise-eyebrow','text','Notre savoir-faire','Our expertise','我们的专业能力'],,
   ['#expertise-title','html','400 installations à Nice.<br><em>Toujours la même équipe.</em>','400 installations in Nice.<br><em>Always the same team.</em>'],
   ['#expertise-lead','text','Depuis 2019, nos techniciens ont réalisé plus de 400 installations à Nice. Matériel entretenu, installation soignée, disponibilité réelle. Aucune sous-traitance — vous avez affaire directement à notre équipe.','Since 2019, our technicians have completed over 400 installations in Nice. Maintained equipment, careful setup, real availability. No subcontracting — you deal directly with our team.'],
   ['#exp-t-1','text','Appareil testé avant chaque livraison','Unit tested before every delivery'],
@@ -6423,7 +6435,7 @@ const LANG_MAP=[
   ['#exp-t-3','text','Panne ? On s\'occupe de tout — remplacement ou remboursement','Breakdown? We handle everything — replacement or refund'],
   ['#exp-t-4','text','Vous parlez directement aux techniciens','You deal directly with the technicians'],
   /* faq cta card */
-  ['.faq-cta-detail','text','7j/7 · 8h–20h · Réponse humaine garantie','7d/7 · 8am–8pm · Human response guaranteed'],
+  ['.faq-cta-detail','text','7j/7 · 8h–20h · Réponse humaine garantie','7d/7 · 8am–8pm · Human response guaranteed','每天 · 8h–20h · 保证人工回复'],
   /* about body */
   ['#about-body-p','text','Loc\'Air est une entreprise niçoise. Nos techniciens livrent, installent et récupèrent à Nice, 7j/7, sans sous-traitance.','Loc\'Air is a Nice-based company. Our technicians deliver, install and collect, 7d/7, with no subcontracting.'],
   /* footer */
@@ -6432,24 +6444,24 @@ const LANG_MAP=[
   ['#label-etage','text','Étage','Floor'],
   ['#label-addr','html','Adresse<span class="req">*</span>','Address<span class="req">*</span>'],
   ['#label-conditions','html','Je reconnais avoir pris connaissance des <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">conditions d\'utilisation du climatiseur et des obligations liées à la location</a> (entretien courant, restitution en bon état).','I acknowledge reading the <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">terms of use for the air conditioner and obligations related to the rental</a> (routine maintenance, return in good condition).'],
-  ['#label-asc','text','Ascenseur','Lift'],
-  ['.asc-yes','text','Oui','Yes'],
-  ['.asc-no','text','Non','No'],
+  ['#label-asc','text','Ascenseur','Lift','电梯'],
+  ['.asc-yes','text','Oui','Yes','是'],
+  ['.asc-no','text','Non','No','否'],
   /* modal step 3 */
-  ['#ouv-err','text','Veuillez sélectionner le type de fenêtre pour continuer.','Please select the window type to continue.'],
+  ['#ouv-err','text','Veuillez sélectionner le type de fenêtre pour continuer.','Please select the window type to continue.','请选择窗型以继续。'],
   /* modal step 4 */
-  ['#lbl-creneau-liv','text','Votre créneau de livraison','Your delivery slot'],
-  ['#delivery-notice','html','Notre technicien vous appelle<br><strong>30 min avant</strong> d\'arriver.','Our technician calls you<br><strong>30 min before</strong> arriving.'],
+  ['#lbl-creneau-liv','text','Votre créneau de livraison','Your delivery slot','您的配送时间段'],
+  ['#delivery-notice','html','Notre technicien vous appelle<br><strong>30 min avant</strong> d\'arriver.','Our technician calls you<br><strong>30 min before</strong> arriving.','我们的技术员将在到达前<br><strong>30分钟</strong>致电您。'],
   ['#fenetre-photo-hdr','html','📸 Photo de votre fenêtre <span style="font-weight:400;color:var(--grey)">(optionnel)</span>','📸 Photo of your window <span style="font-weight:400;color:var(--grey)">(optional)</span>'],
   ['#fenetre-photo-sub','text','Notre technicien la verra avant d\'arriver et apportera le matériel adapté à votre configuration.','Our technician will see it before arriving and bring the right equipment for your setup.'],
-  ['#fenetre-photo-btn-text','text','Prendre une photo / Choisir depuis la galerie','Take a photo / Choose from gallery'],
+  ['#fenetre-photo-btn-text','text','Prendre une photo / Choisir depuis la galerie','Take a photo / Choose from gallery','拍照 / 从相册选择'],
   /* modal step 5 — recap labels */
-  ['#lbl-recup-section','text','Récupération','Collection'],
-  ['#lbl-creneau-recup','text','Créneau de récupération','Collection slot'],
-  ['#lbl-coords','text','Vos coordonnées','Your details'],
-  ['#lbl-type-client','text','Type de client','Customer type'],
-  ['.client-type-perso','text','Particulier','Individual'],
-  ['.client-type-pro','text','Professionnel','Business'],
+  ['#lbl-recup-section','text','Récupération','Collection','归还'],
+  ['#lbl-creneau-recup','text','Créneau de récupération','Collection slot','取回时间段'],
+  ['#lbl-coords','text','Vos coordonnées','Your details','您的联系方式'],
+  ['#lbl-type-client','text','Type de client','Customer type','客户类型'],
+  ['.client-type-perso','text','Particulier','Individual','个人'],
+  ['.client-type-pro','text','Professionnel','Business','商业'],
   ['#required-notice','html','<span style="color:var(--red)">*</span> Champs requis · Vos données ne sont jamais revendues','<span style="color:var(--red)">*</span> Required fields · Your data is never sold'],
   /* form field labels */
   ['#label-prenom','html','Prénom<span class="req">*</span>','First name<span class="req">*</span>'],
@@ -6467,66 +6479,66 @@ const LANG_MAP=[
   ['#label-rgpd','html','J\'accepte que mes coordonnées servent uniquement à organiser ma livraison. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Politique de confidentialité</a>','I agree my details are used solely to organise my delivery. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Privacy policy</a>'],
   ['#label-mkt','html','J\'accepte de recevoir les offres et actualités Loc\'Air par email. <span style="color:var(--grey2);font-size:10px">Optionnel · désinscription en 1 clic</span>','I agree to receive Loc\'Air offers and news by email. <span style="color:var(--grey2);font-size:10px">Optional · unsubscribe in 1 click</span>'],
   /* pay button & next steps */
-  ['#sbtn-lbl','text','Procéder au paiement','Proceed to payment'],
+  ['#sbtn-lbl','text','Procéder au paiement','Proceed to payment','前往支付'],
   ['#prolong-sbtn-lbl','text','Procéder au paiement','Proceed to payment'],
-  ['#ns-header-lbl','text','Après votre réservation','After your booking'],
-  ['#s1 .btn-next','text','Confirmer mon adresse →','Confirm my address →'],
-  ['#s5 .btn-next','text','Voir mon récapitulatif →','View my summary →'],
+  ['#ns-header-lbl','text','Après votre réservation','After your booking','预订后'],
+  ['#s1 .btn-next','text','Confirmer mon adresse →','Confirm my address →','确认我的地址 →'],
+  ['#s5 .btn-next','text','Voir mon récapitulatif →','View my summary →','查看我的订单 →'],
   /* modal step 0 — flow choice */
-  ['#s0 .sp-title','text','Que voulez-vous faire ?','What would you like to do?'],
-  ['.choice-card.choice-primary .choice-title','html','Nouvelle<br>réservation','New<br>booking'],
-  ['.choice-card.choice-primary .choice-desc','text','Livraison demain · Kit complet inclus','Delivered tomorrow · Full kit included'],
+  ['#s0 .sp-title','text','Que voulez-vous faire ?','What would you like to do?','您想做什么？'],
+  ['.choice-card.choice-primary .choice-title','html','Nouvelle<br>réservation','New<br>booking','新建<br>预订'],
+  ['.choice-card.choice-primary .choice-desc','text','Livraison demain · Kit complet inclus','Delivered tomorrow · Full kit included','明天配送 · 含完整配件'],
   ['.choice-price','text','À partir de 20 €/jour','From €20/day'],
-  ['.choice-card:not(.choice-primary) .choice-title','html','Prolonger<br>ma location','Extend<br>my rental'],
-  ['.choice-card:not(.choice-primary) .choice-desc','text','Vous avez déjà un climatiseur — ajouter des jours.','You already have a unit — add more days.'],
+  ['.choice-card:not(.choice-primary) .choice-title','html','Prolonger<br>ma location','Extend<br>my rental','延长<br>我的租期'],
+  ['.choice-card:not(.choice-primary) .choice-desc','text','Vous avez déjà un climatiseur — ajouter des jours.','You already have a unit — add more days.','您已有空调——增加租用天数。'],
   /* step 4 back button — label set by selectInstall() but also needs i18n default */
   ['#lbl-back-s4','text','Installation','Installation'],
   /* promo code label */
-  ['label[for="f-parrain"]','html','Code promo <span style="color:var(--grey2);font-weight:400">(facultatif)</span>','Promo code <span style="color:var(--grey2);font-weight:400">(optional)</span>'],
+  ['label[for="f-parrain"]','html','Code promo <span style="color:var(--grey2);font-weight:400">(facultatif)</span>','Promo code <span style="color:var(--grey2);font-weight:400">(optional)</span>','优惠码 <span style="color:var(--grey2);font-weight:400">（可选）</span>'],
   /* public page — howto + pricing */
-  ['.video-tag','text','Voir l\'installation — 45 secondes','Watch the installation — 45 seconds'],
-  ['.plan-price-unit','text','€ / jour','€ / day'],
+  ['.video-tag','text','Voir l\'installation — 45 secondes','Watch the installation — 45 seconds','观看安装视频——45秒'],
+  ['.plan-price-unit','text','€ / jour','€ / day','€ / 天'],
   /* product section */
   ['#product-eyebrow','text','Sélection Loc’Air','Loc’Air selection'],
   ['#product-brand','text','Climatiseur mobile','Mobile air conditioner'],
   ['#product-title','html','Climatiseur mobile<br><em>Rowenta &amp; Frico</em>','Mobile air conditioner<br><em>Rowenta &amp; Frico</em>'],
   ['#product-lead','text','Deux climatiseurs professionnels testés et maîtrisés. Puissant, économique, efficace : tout ce dont vous avez besoin pour traverser la canicule.','Two professional air conditioners, tested and mastered. Powerful, economical, effective: everything you need to get through the heat wave.'],
-  ['#product-avail-txt','text','Disponible à Nice','Available in Nice'],
+  ['#product-avail-txt','text','Disponible à Nice','Available in Nice','在尼斯可用'],
   ['#ps-lab-1','html','Puissance<br>de froid','Cooling<br>power'],
   ['#ps-lab-2','html','Surface<br>recommandée','Covered<br>area'],
   ['#ps-lab-3','html','Niveau<br>sonore mini','Min. noise<br>level'],
   ['#ps-lab-4','html','Classe<br>énergétique','Energy<br>class'],
-  ['#product-kit-title','text','Kit fourni complet','Full kit included'],
-  ['#kit-chip-1','text','Climatiseur','Air conditioner'],
-  ['#kit-chip-2','text','Télécommande','Remote control'],
-  ['#kit-chip-3','text','Gaine d\'évacuation','Exhaust hose'],
-  ['#kit-chip-4','text','Kit de calfeutrage','Window seal kit'],
-  ['#product-cta','text','Réserver cet appareil →','Book this unit →'],
-  ['#ps-unit-energy','text','Énergie','Energy'],
+  ['#product-kit-title','text','Kit fourni complet','Full kit included','含完整配件'],
+  ['#kit-chip-1','text','Climatiseur','Air conditioner','空调'],
+  ['#kit-chip-2','text','Télécommande','Remote control','遥控器'],
+  ['#kit-chip-3','text','Gaine d\'évacuation','Exhaust hose','排气管'],
+  ['#kit-chip-4','text','Kit de calfeutrage','Window seal kit','密封套件'],
+  ['#product-cta','text','Réserver cet appareil →','Book this unit →','预订此设备 →'],
+  ['#ps-unit-energy','text','Énergie','Energy','能效'],
   ['#prod-guar-1','text','Livraison sous 24h','Delivery within 24h'],
   ['#prod-guar-2','text','Aucune caution','Zero deposit'],
   ['#prod-guar-3','text','Panne remplacée','Free replacement'],
   ['#spec-chip-btu','text','9 000 – 12 000 BTU','9,000–12,000 BTU'],
   /* payment security section */
-  ['#paysec-eyebrow','text','Paiement sécurisé','Secure payment'],
+  ['#paysec-eyebrow','text','Paiement sécurisé','Secure payment','安全支付'],
   ['#paysec-title','html','Votre paiement,<br><em>protégé à chaque étape</em>','Your payment,<br><em>protected at every step</em>'],
   ['#paysec-lead','text','Nous utilisons Stripe, la solution de paiement de référence mondiale. Vos coordonnées bancaires ne nous parviennent jamais — elles vont directement chez Stripe.','We use Stripe, the world\'s leading payment solution. Your card details never reach us — they go straight to Stripe.'],
-  ['#paysec-ct-1','text','Certifié PCI-DSS','PCI-DSS Certified'],
+  ['#paysec-ct-1','text','Certifié PCI-DSS','PCI-DSS Certified','PCI-DSS认证'],
   ['#paysec-cd-1','text','Stripe est audité chaque année par des organismes indépendants. Vos données bancaires sont stockées dans des coffres sécurisés — jamais sur nos serveurs.','Stripe is audited annually by independent bodies. Your banking data is stored in secure vaults — never on our servers.'],
-  ['#paysec-ct-2','text','3D Secure & SSL 256-bit','3D Secure & SSL 256-bit'],
+  ['#paysec-ct-2','text','3D Secure & SSL 256-bit','3D Secure & SSL 256-bit','3D Secure & 256位SSL'],
   ['#paysec-cd-2','text','Chaque transaction est authentifiée en deux étapes par votre banque. La connexion est chiffrée de bout en bout via SSL 256 bits.','Every transaction is authenticated in two steps by your bank. The connection is end-to-end encrypted via SSL 256-bit.'],
-  ['#paysec-ct-3','text','Aucune caution','Zero security deposit'],
+  ['#paysec-ct-3','text','Aucune caution','Zero security deposit','零押金'],
   ['#paysec-cd-3','text','Aucune caution, aucun préautorisé. Vous payez uniquement la location et les frais de livraison — rien de plus, jamais.','No deposit, no pre-authorisation. You pay only for the rental and delivery — nothing more, ever.'],
   /* canicule / email capture */
-  ['.ec-eye','text','Alerte prioritaire','Priority alert'],
-  ['.ec-h','text','Votre climatiseur réservé avant la canicule','Your AC reserved before the heatwave'],
+  ['.ec-eye','text','Alerte prioritaire','Priority alert','优先预警'],
+  ['.ec-h','text','Votre climatiseur réservé avant la canicule','Your AC reserved before the heatwave','在热浪来临前预订您的空调'],
   ['.ec-sub','text','Inscrivez-vous : vous êtes alerté dès qu\'une vague de chaleur est prévue à Nice, et votre appareil est mis de côté avant que le stock soit épuisé.','Sign up: you\'re notified as soon as a heatwave is forecast for Nice, and your unit is set aside before stock runs out.'],
   ['#ec-email','ph','votre@email.fr','your@email.com'],
-  ['label[for="ec-email"]','text','Votre adresse email','Your email address'],
-  ['#ec-btn','text','Recevoir l\'alerte →','Get the alert →'],
-  ['.ec-micro','text','Aucun spam · Résiliable en 1 clic','No spam · Cancel anytime'],
+  ['label[for="ec-email"]','text','Votre adresse email','Your email address','您的邮箱地址'],
+  ['#ec-btn','text','Recevoir l\'alerte →','Get the alert →','接收预警 →'],
+  ['.ec-micro','text','Aucun spam · Résiliable en 1 clic','No spam · Cancel anytime','无垃圾邮件 · 一键取消'],
   /* equipe section */
-  ['.equipe .sec-eye','text','L\'équipe','The team'],
+  ['.equipe .sec-eye','text','L\'équipe','The team','我们的团队'],
   ['#equipe-title','html','Vous n\'avez pas affaire<br><em>à un service, mais à des gens.</em>','You\'re not dealing<br><em>with a service — with real people.</em>'],
   ['.equipe-bio','text','Je m\'appelle Aly. Depuis 2019, je fais la livraison avec mon équipe à Nice — sans sous-traitants, sans intermédiaires. Vous avez mon numéro direct, et c\'est nous qui sonnons à votre porte. C\'est l\'écoute de nos clients qui nous guide pour adapter et élargir notre gamme, toujours au plus près de vos besoins. Merci à chacun d\'entre vous — c\'est votre confiance qui a construit Loc\'Air.','My name is Aly. Since 2019, I\'ve been delivering with my team in Nice — no subcontractors, no middlemen. You have my direct number, and we\'re the ones who ring your doorbell. Listening to our customers is what drives us to adapt and expand our range, always staying as close as possible to your needs. Thank you to every one of you — your trust built Loc\'Air.'],
   /* exit intent */
@@ -6537,77 +6549,77 @@ const LANG_MAP=[
   ['.ei-cta','text','Réserver — livraison demain →','Book — delivery tomorrow →'],
   ['.ei-skip','text','Non merci, je préfère avoir chaud cette nuit','No thanks, I\'d rather stay hot tonight'],
   /* chat widget */
-  ['.cw-st','text','● En ligne','● Online'],
+  ['.cw-st','text','● En ligne','● Online','● 在线'],
   /* cookie bar */
   ['.cookie-bar p','text','Nous utilisons des cookies pour faire fonctionner ce site, mesurer son audience et personnaliser son contenu. Vous pouvez les accepter, les refuser ou gérer vos préférences de confidentialité à tout moment.','We use cookies to operate this site, measure its audience and personalise its content. You can accept, reject or manage your privacy preferences at any time.'],
   /* modal step 2 */
   ['.prod-card-model','text','Climatiseur mobile','Mobile AC unit'],
-  ['#lgt-suggest','text','💡 Pour cette surface, 2 climatiseurs sont recommandés','💡 For this area, 2 AC units are recommended'],
-  ['#stock-notice-txt','text','Plus que 1 appareil disponible','Only 1 unit available'],
-  ['#dur-free-toggle-text','text','Ma durée exacte','My exact duration'],
-  ['.dur-free-days-unit','text','jours','days'],
-  ['#dur-confirm-prefix','text','Confirmer','Confirm'],
-  ['.unit2-t','text','Ajouter un 2ème climatiseur','Add a 2nd AC unit'],
-  ['.unit2-s','text','Pour une autre pièce · même durée · même tarif dégressif','For another room · same duration · same rate'],
-  ['.dur-row-badge-pop','text','Recommandé','Recommended'],
-  ['.dur-row-badge-eco','text','Économique','Budget-friendly'],
-  ['.dur-row-badge-gold','text','Meilleur tarif','Best rate'],
-  ['#lbl-back-s2','text','Adresse','Address'],
-  ['#s2 .btn-next','text','Continuer →','Continue →'],
+  ['#lgt-suggest','text','💡 Pour cette surface, 2 climatiseurs sont recommandés','💡 For this area, 2 AC units are recommended','💡 对于此面积，建议使用2台空调'],
+  ['#stock-notice-txt','text','Plus que 1 appareil disponible','Only 1 unit available','仅剩1台可用'],
+  ['#dur-free-toggle-text','text','Ma durée exacte','My exact duration','我的精确时长'],
+  ['.dur-free-days-unit','text','jours','days','天'],
+  ['#dur-confirm-prefix','text','Confirmer','Confirm','确认'],
+  ['.unit2-t','text','Ajouter un 2ème climatiseur','Add a 2nd AC unit','添加第2台空调'],
+  ['.unit2-s','text','Pour une autre pièce · même durée · même tarif dégressif','For another room · same duration · same rate','用于另一个房间 · 相同时长 · 相同阶梯价'],
+  ['.dur-row-badge-pop','text','Recommandé','Recommended','推荐'],
+  ['.dur-row-badge-eco','text','Économique','Budget-friendly','经济实惠'],
+  ['.dur-row-badge-gold','text','Meilleur tarif','Best rate','最优价格'],
+  ['#lbl-back-s2','text','Adresse','Address','地址'],
+  ['#s2 .btn-next','text','Continuer →','Continue →','继续 →'],
   /* modal step 3 */
-  ['#kit-badge-prefix','text','Kit de calfeutrage ','Weatherstripping kit '],
-  ['#ic-self .install-card-price','text','Gratuit','Free'],
+  ['#kit-badge-prefix','text','Kit de calfeutrage ','Weatherstripping kit ','密封套件 '],
+  ['#ic-self .install-card-price','text','Gratuit','Free','免费'],
   ['.install-kit-note','text','Dans les deux cas, le kit de calfeutrage est fourni. Livraison & récupération : 35 € (Nice et alentours) ou 95 € hors zone.','In both cases, the weatherstripping kit is provided. Delivery & collection: €35 (Nice area) or €95 outside zone.'],
   ['#ouv-group-label','html','Type de fenêtre <span class="req">*</span>','Window type <span class="req">*</span>'],
   ['#lbl-back-s3','text','Durée','Duration'],
   ['#s3 .btn-next','text','Continuer →','Continue →'],
   /* modal step 4 */
-  ['.ds-badge','text','Recommandé','Recommended'],
-  ['#s4 .btn-next','text','C\'est noté →','Got it →'],
+  ['.ds-badge','text','Recommandé','Recommended','推荐'],
+  ['#s4 .btn-next','text','C\'est noté →','Got it →','已记录 →'],
   /* modal step 5 */
-  ['#collect-note','text','Notre équipe vous contactera 48h avant la fin de votre location pour coordonner la récupération.','Our team will contact you 48 hours before the end of your rental to arrange collection.'],
-  ['#label-raison-sociale','text','Raison sociale','Company name'],
+  ['#collect-note','text','Notre équipe vous contactera 48h avant la fin de votre location pour coordonner la récupération.','Our team will contact you 48 hours before the end of your rental to arrange collection.','租期结束前48小时，我们的团队将与您联系以协调取回。'],
+  ['#label-raison-sociale','text','Raison sociale','Company name','公司名称'],
   ['#f-raison-sociale','ph','Nom de l\'entreprise','Company name'],
-  ['#label-siret','html','SIRET <span style="color:var(--grey2);font-weight:400">(facultatif)</span>','SIRET <span style="color:var(--grey2);font-weight:400">(optional)</span>'],
-  ['#lbl-instructions-q','text','Souhaitez-vous laisser des instructions au technicien ?','Would you like to leave instructions for the technician?'],
+  ['#label-siret','html','SIRET <span style="color:var(--grey2);font-weight:400">(facultatif)</span>','SIRET <span style="color:var(--grey2);font-weight:400">(optional)</span>','SIRET <span style="color:var(--grey2);font-weight:400">（可选）</span>'],
+  ['#lbl-instructions-q','text','Souhaitez-vous laisser des instructions au technicien ?','Would you like to leave instructions for the technician?','您是否希望给技术员留下指示？'],
   ['#instructions-no','text','Non','No'],
   ['#instructions-yes','text','Oui','Yes'],
   ['#f-instructions','ph','Ex : Code d\'entrée 1234B, boîte à clefs sur le côté gauche de la porte, appartement au 3e étage, sonner à Dupont…','E.g. Entry code 1234B, key box on the left side of the door, apartment on the 3rd floor, ring Dupont…'],
-  ['#f-parrain','ph','Votre code','Your code'],
+  ['#f-parrain','ph','Votre code','Your code','您的码'],
   /* modal step 6 */
   ['#s6 .sp-title','text','Votre commande','Your order'],
-  ['#s6 .sp-sub','text','Annulation gratuite avant livraison — remboursement intégral.','Free cancellation before delivery — full refund.'],
-  ['.legal-section-sep span','text','Confirmation & autorisations','Confirmation & authorizations'],
+  ['#s6 .sp-sub','text','Annulation gratuite avant livraison — remboursement intégral.','Free cancellation before delivery — full refund.','配送前免费取消——全额退款。'],
+  ['.legal-section-sep span','text','Confirmation & autorisations','Confirmation & authorizations','确认 & 授权'],
   ['#label-cgv','html','J\'accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> et la <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">politique de confidentialité</a>. <span style="color:var(--grey2);font-size:10px">Données personnelles protégées · RGPD.</span>','I accept the <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">T&amp;Cs</a> and the <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">privacy policy</a>. <span style="color:var(--grey2);font-size:10px">Personal data protected · GDPR.</span>'],
   ['#label-retard','html','J\'autorise Loc\'Air à débiter ma carte pour tout jour de retard de restitution (de 16 à 20 €/j selon la durée totale, voir <a href="/cgv#retard" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV art. 10 bis</a>). <span style="color:var(--grey2);font-size:10px">Aucun montant prélevé maintenant — carte enregistrée via Stripe.</span>','I authorise Loc\'Air to charge my card for any late return day (€16–20/d depending on total duration, see <a href="/cgv#retard" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">T&amp;Cs art. 10 bis</a>). <span style="color:var(--grey2);font-size:10px">Nothing charged now — card stored via Stripe.</span>'],
-  ['#sbtn-hint','text','Cochez les cases ci-dessus pour confirmer','Tick the boxes above to confirm'],
-  ['#lbl-back-s6','text','Vos infos','Your info'],
+  ['#sbtn-hint','text','Cochez les cases ci-dessus pour confirmer','Tick the boxes above to confirm','请勾选上方方框以确认'],
+  ['#lbl-back-s6','text','Vos infos','Your info','您的信息'],
   /* hero badge */
   ['#hero-badge-price','html','dès 20€<span class="hero-clim-badge-unit"> /j</span>','from €20<span class="hero-clim-badge-unit"> /d</span>'],
-  ['#hero-badge-info','text','7j min · Transport dès 35€','7d min · Delivery from €35'],
+  ['#hero-badge-info','text','7j min · Transport dès 35€','7d min · Delivery from €35','最少7天 · 配送低至35€'],
   /* aria-labels */
-  ['.modal-close','aria','Fermer le formulaire de réservation','Close the booking form'],
+  ['.modal-close','aria','Fermer le formulaire de réservation','Close the booking form','关闭预订表单'],
   ['#s1 .btn-next','aria','Suivant — Choisir la durée','Next — Choose duration'],
   ['#s2 .btn-next','aria','Suivant — Choisir le type de fenêtre','Next — Choose window type'],
   ['#s3 .btn-next','aria','Suivant — Choisir le créneau','Next — Choose time slot'],
   ['#s4 .btn-next','aria','Suivant — Vos informations','Next — Your details'],
   ['#s5 .btn-next','aria','Suivant — Récapitulatif','Next — Summary'],
-  ['#qty-minus','aria','Retirer un climatiseur','Remove one AC unit'],
-  ['#qty-plus','aria','Ajouter un climatiseur','Add one AC unit'],
+  ['#qty-minus','aria','Retirer un climatiseur','Remove one AC unit','移除一台空调'],
+  ['#qty-plus','aria','Ajouter un climatiseur','Add one AC unit','添加一台空调'],
   ['.whatsapp-cta','aria','Contacter Loc\'Air sur WhatsApp','Contact Loc\'Air on WhatsApp'],
   /* product card */
-  ['#prod-card-name','text','Pack Confort','Comfort Pack'],
+  ['#prod-card-name','text','Pack Confort','Comfort Pack','舒适套餐'],
   /* sold-out overlay */
-  ['#so-h','text','Complet pour le moment','Sold out for now'],
+  ['#so-h','text','Complet pour le moment','Sold out for now','暂时已售罄'],
   ['#so-p','text','Tous nos appareils sont actuellement loués. Écrivez-nous sur WhatsApp — nous vous prévenons dès qu\'un appareil se libère.','All units are currently rented. Write to us on WhatsApp — we\'ll let you know as soon as one becomes available.'],
-  ['#so-wa-txt','text','Me prévenir sur WhatsApp','Notify me on WhatsApp'],
-  ['#so-close','text','Fermer','Close'],
-  ['#so-badge-txt','text','Complet — réouverture prochaine','Sold out — coming back soon'],
+  ['#so-wa-txt','text','Me prévenir sur WhatsApp','Notify me on WhatsApp','WhatsApp通知我'],
+  ['#so-close','text','Fermer','Close','关闭'],
+  ['#so-badge-txt','text','Complet — réouverture prochaine','Sold out — coming back soon','已售罄——即将重新开放'],
   /* spec chips — funnel step 2 */
-  ['#spec-chip-m2','text','Jusqu\'à 15 m²','Up to 15 m²'],
+  ['#spec-chip-m2','text','Jusqu\'à 15 m²','Up to 15 m²','最多15平方米'],
   ['#spec-chip-remote','text','Télécommande','Remote control'],
   /* pay trust badge */
-  ['#pay-badge-cb','text','Carte Bancaire','CB'],
+  ['#pay-badge-cb','text','Carte Bancaire','CB','银行卡'],
   /* stripe pay button text parts */
   ['#stripe-pay-pre','text','Payer','Pay'],
   ['#stripe-pay-post','text',' en toute sécurité',' securely'],
@@ -6617,17 +6629,17 @@ const LANG_MAP=[
   ['#prolong-pay-post','text',' en toute sécurité',' securely'],
   ['#prolong-ssl-txt','text','🔒 Paiement sécurisé SSL · Stripe · Aucun stockage de vos données bancaires','🔒 Secure SSL payment · Stripe · Your card details are never stored'],
   /* WhatsApp question text — reused across multiple steps */
-  ['.wa-q-txt','text','Une question ?','A question?'],
+  ['.wa-q-txt','text','Une question ?','A question?','有问题？'],
   /* prolong success screen */
-  ['#msuccess-prolong .s-h','text','Prolongation confirmée !','Extension confirmed!'],
+  ['#msuccess-prolong .s-h','text','Prolongation confirmée !','Extension confirmed!','延期已确认！'],
   ['#msuccess-prolong .s-close','text','Retour au site','Back to site'],
   /* review link on success screen */
-  ['#review-cta-txt','text','Après votre livraison :','After your delivery:'],
-  ['#review-link-txt','text','laisser un avis Google','leave a Google review'],
+  ['#review-cta-txt','text','Après votre livraison :','After your delivery:','配送后：'],
+  ['#review-link-txt','text','laisser un avis Google','leave a Google review','留下Google评价'],
   /* payment error retry */
-  ['#form-error-retry','text','Réessayer','Try again'],
+  ['#form-error-retry','text','Réessayer','Try again','重试'],
   /* cancel form */
-  ['#cancel-summary','text','Besoin d\'annuler ?','Need to cancel?'],
+  ['#cancel-summary','text','Besoin d\'annuler ?','Need to cancel?','需要取消？'],
   ['#cancel-free-txt','text','Annulation gratuite avant livraison','Free cancellation before delivery'],
   ['#cancel-ref','ph','N° de dossier (LOC-...)','Booking ref (LOC-...)'],
   ['#cancel-email','ph','Votre email','Your email'],
@@ -6639,40 +6651,52 @@ const LANG_MAP=[
 const LANG_SEQ=[
   ['.ri-t','text',
     ['Livraison sous 24h','Aucune caution','Paiement sécurisé','Note 4,8 / 5 Google'],
-    ['Delivery within 24h','Zero security deposit','Secure payment','4.8/5 Google rating']],
+    ['Delivery within 24h','Zero security deposit','Secure payment','4.8/5 Google rating'],
+    ['24小时内配送','零押金','安全支付','Google评分4.8/5']],
   ['.ri-d','html',
     ['7j/7 · Matin 8h–12h · Technicien en personne','Aucun chèque · Aucune empreinte bancaire','100% sécurisé · Carte bancaire','<strong>21 avis</strong> vérifiés · Clients depuis 2019'],
-    ['7d/7 · Morning 8am–12pm · Technician in person','No check · No card hold','100% secure · Credit card','<strong>20 verified reviews</strong> · Customers since 2019']],
+    ['7d/7 · Morning 8am–12pm · Technician in person','No check · No card hold','100% secure · Credit card','<strong>20 verified reviews</strong> · Customers since 2019'],
+    ['每天 · 早上8h–12h · 技术员亲自服务','无支票 · 无银行卡预授权','100%安全 · 银行卡','<strong>21条</strong>验证评价 · 客户自2019年']],
   ['.step-t','text',
     ['2 minutes en ligne','On arrive le lendemain','Posé, testé, expliqué','Récupération offerte'],
-    ['2 minutes online','We arrive next day','Installed, tested, shown','Free pickup']],
+    ['2 minutes online','We arrive next day','Installed, tested, shown','Free pickup'],
+    ['网上2分钟','次日到达','安装、测试、讲解','免费取回']],
   ['.step-d','text',
     ['Adresse, dates, type de fenêtre. C\'est tout.','Créneau 8h–12h · Matériel inclus.','Vous n\'avez rien à préparer ni acheter.','On vient chercher l\'appareil. Vous ne faites rien.'],
-    ['Address, dates, window type. That\'s it.','8am–12pm slot · All equipment included.','Nothing to prepare or buy.','We collect the unit. Nothing to do.']],
+    ['Address, dates, window type. That\'s it.','8am–12pm slot · All equipment included.','Nothing to prepare or buy.','We collect the unit. Nothing to do.'],
+    ['地址、日期、窗型。就这些。','8h–12h时段 · 含所有设备。','无需准备或购买任何物品。','我们来取设备。您无需做任何事。']],
   ['.pq-title','text',
     ['Particuliers & familles','Télétravailleurs','Pros, bureaux & commerces','Locations saisonnières','Événements & réceptions','Seniors & personnes fragiles'],
-    ['Individuals & families','Remote workers','Businesses & offices','Seasonal rentals','Events & receptions','Seniors & vulnerable persons']],
+    ['Individuals & families','Remote workers','Businesses & offices','Seasonal rentals','Events & receptions','Seniors & vulnerable persons'],
+    ['个人 & 家庭','远程办公者','企业、办公室 & 商铺','季节性租赁','活动 & 接待','老年人 & 弱势群体']],
   ['.stat-lbl','text',
     ['avis Google','délai livraison','dépôt','disponible'],
-    ['Google reviews','delivery time','deposit','available']],
+    ['Google reviews','delivery time','deposit','available'],
+    ['Google评价','配送时间','押金','可用']],
   ['.about-item-t','text',
     ['Équipe locale','Entreprise enregistrée','7j/7 · 8h–20h','Entretien inclus, toute la durée'],
-    ['Local team','Registered business','7d/7 · 8am–8pm','Full maintenance included']],
+    ['Local team','Registered business','7d/7 · 8am–8pm','Full maintenance included'],
+    ['本地团队','注册企业','每天 · 8h–20h','全程含维护']],
   ['.about-item-d','text',
     ['Nice · 7j/7 · Sans sous-traitance','SIRET 853 730 562 00024','Réponse immédiate','Panne, filtre, recharge : c\'est nous qui gérons, gratuitement'],
-    ['Nice · 7d/7 · No subcontracting','SIRET 853 730 562 00024','Immediate response','Breakdown, filter, recharge: we handle it, free of charge']],
+    ['Nice · 7d/7 · No subcontracting','SIRET 853 730 562 00024','Immediate response','Breakdown, filter, recharge: we handle it, free of charge'],
+    ['尼斯 · 每天 · 不外包','SIRET 853 730 562 00024','即时回复','故障、滤网、补充：均由我们免费处理']],
   ['.footer-col-title','text',
     ['Navigation','Services','Zones desservies'],
-    ['Navigation','Services','Areas served']],
+    ['Navigation','Services','Areas served'],
+    ['导航','服务','覆盖区域']],
   ['.step-name','text',
     ['Adresse','Durée','Installation','Date','Vos infos','Récapitulatif'],
-    ['Address','Duration','Setup','Date','Your info','Summary']],
+    ['Address','Duration','Setup','Date','Your info','Summary'],
+    ['地址','租期','安装','日期','您的信息','订单确认']],
   ['.win-name','text',
     ['Fenêtre coulissante','Fenêtre à battant','Oscillo-battant','Porte-fenêtre','Vélux'],
-    ['Sliding window','Casement window','Tilt-and-turn','French door','Roof window']],
+    ['Sliding window','Casement window','Tilt-and-turn','French door','Roof window'],
+    ['推拉窗','平开窗','内倒内开窗','落地窗','天窗']],
   ['.win-hint','text',
     ['Glisse sur le côté','Ouvre vers l\'intérieur','S\'incline ou s\'ouvre sur le côté','Du sol au plafond · terrasse','Fenêtre de toit · combles'],
-    ['Slides sideways','Opens inward','Tilts — most common in Nice','Floor to ceiling · terrace','Roof window · attic']],
+    ['Slides sideways','Opens inward','Tilts — most common in Nice','Floor to ceiling · terrace','Roof window · attic'],
+    ['横向滑动','向内开启','可内倒或侧开——尼斯最常见','落地至天花板 · 露台','屋顶窗 · 阁楼']],
   /* pour qui — descriptions */
   ['.pq-desc','text',
     ['Appartement sans clim ? Retrouvez des nuits fraîches sans gros travaux ni achat coûteux.',
@@ -6686,7 +6710,13 @@ const LANG_SEQ=[
      'Open-plan office, shop, waiting room: bring comfort to your team and customers in a few hours.',
      'Airbnb & holiday rental hosts: boost your guest reviews by offering AC with no fixed investment.',
      'Wedding, seminar, evening event: cool down your space for the duration.',
-     'Protect vulnerable loved ones from heat peaks. Fast delivery and setup — no need for them to travel.']],
+     'Protect vulnerable loved ones from heat peaks. Fast delivery and setup — no need for them to travel.'],
+    ['公寓没有空调？无需大装修或昂贵购置，享受清凉夜晚。',
+     '热浪期间保持专注和高效，不让您的家庭办公室变成烤箱。',
+     '开放式办公室、商铺、等候区：几小时内让您的团队和客户感到舒适。',
+     'Airbnb和度假屋房东：无需固定投资提供空调，提升旅客评价。',
+     '婚礼、研讨会、晚会：为活动期间的场所降温。',
+     '保护年长或体弱的亲人免受高温侵害。快速配送和安装，无需他们出行。']],
   /* FAQ answers */
   ['.fi-a','html',
     ['7 jours minimum. Le tarif est dégressif par paliers : 20 €/jour pour 1 à 7 jours, 18 €/jour pour 8 à 14 jours, 17 €/jour pour 15 à 21 jours, et 16 €/jour dès 22 jours. Vous choisissez la durée. L\'installation est facturée une seule fois. Livraison & récupération : 35 € (Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche, Beaulieu) ou 95 € hors zone.',
@@ -6718,7 +6748,22 @@ const LANG_SEQ=[
      'Yes — in fact half our customers extend. A text or call is all it takes. We check availability and extend the contract in 5 minutes. The extension rate is confirmed at the time of your request based on availability. No surprises.',
      'Our units run at 52–62 dB (like a normal conversation at a distance). Power consumption: roughly 1.05 kWh per hour (1,050 W), or about €0.19–0.23 per hour at current EDF rates. An 8-hour night costs around €1.60 in electricity.',
      'The AC collects condensation in an internal tank. Depending on humidity, you\'ll need to empty it every 24–48 hours — your technician shows you how at installation, it takes 30 seconds. A light comes on when the tank is full. The duct exits through the window and vents hot air outside.',
-     'Buying an AC costs €350–600 — not counting installation (€150–300), off-season storage, and the near-impossible resale. Loc\'Air for 7 days: from €175 (rental + delivery), delivered tomorrow, collected at the end. No capital tied up, no clutter for the rest of the year.']],
+     'Buying an AC costs €350–600 — not counting installation (€150–300), off-season storage, and the near-impossible resale. Loc\'Air for 7 days: from €175 (rental + delivery), delivered tomorrow, collected at the end. No capital tied up, no clutter for the rest of the year.'],
+    ['最少7天。按阶梯计费：1至7天每天20€，8至14天每天18€，15至21天每天17€，22天以上每天16€。您自由选择时长。安装费仅收一次。配送 & 取回：35€（尼斯及周边）或95€（范围外）。',
+     '我们的技术员带着设备和所有材料来到您家门口。他在您的窗户上安装套件，连接空调，确认制冷效果——2分钟为您讲解操作。从按门铃到享受凉爽：20至30分钟。无需准备，无需购买任何物品。',
+     '不需要。无支票押金，无银行卡预授权，无任何冻结资金。您仅支付租赁金额——仅此而已。',
+     '预订时通过Stripe在线刷卡支付。确切金额在预订确认邮件中注明。我们永远无法获取您的银行卡信息。',
+     '<span data-c="zoneFaq">整个尼斯市：市中心、英国人漫步大道、老城区、西米埃、利贝拉西翁……</span>如果您住在<span data-c="name">尼斯</span>，我们就送货。对于戛纳、昂蒂布、芒通——请在WhatsApp上发送您的地址。',
+     '预订后，我们的团队将在2小时内通过邮件发送合同。阅读、签署、保留您的副本。无纸张，无需出行。',
+     '请拨打<span data-c="phone">06.63.79.87.56</span>，每天8h至20h均可联系。如果配送时发现故障，我们负责一切——更换或全额退款。',
+     '我们的空调可有效覆盖15平方米——非常适合卧室或客厅。如果是三居室或更大空间：请拨打<span data-c="phone">06.63.79.87.56</span>。我们会诚实告知。',
+     '内倒内开窗其实是我们最容易处理的窗型。技术员会带来合适的密封件并自行安装。如有疑问，在WhatsApp上发送照片。',
+     '可以。配送前取消将全额退款。无条件，无荒谬的处理延迟。',
+     '请联系我们，由我们负责一切。如果无法现场维修，我们将更换设备或退还剩余天数的费用。',
+     '可以——一半的客户都会延期。一条短信或一个电话即可。5分钟内延长合同。',
+     '噪音52至62分贝（相当于正常距离下的普通谈话）。每小时约1.05千瓦时（1050瓦），8小时夜晚电费约1.60欧元。',
+     '空调将冷凝水收集在内部水箱中，每24至48小时排一次水。水箱满时指示灯亮起。排气管通过窗户将热空气排到室外。',
+     '购买一台空调需要350至600欧元——还不包括安装费、存放费。Loc\'Air租7天：低至175欧元，明天即可送到，租期结束时取回。无需占用资金。']],
   /* FAQ CTA USP list */
   ['.faq-cta-usp','html',
     ['<span style="color:#4ade80;font-size:14px">✓</span> Tarif selon votre durée · prix confirmé en 30 s',
@@ -6728,11 +6773,16 @@ const LANG_SEQ=[
     ['<span style="color:#4ade80;font-size:14px">✓</span> Price by duration · quote in 30 s',
      '<span style="color:#4ade80;font-size:14px">✓</span> Zero security deposit',
      '<span style="color:#4ade80;font-size:14px">✓</span> Full refund on cancellation',
-     '<span style="color:#4ade80;font-size:14px">✓</span> Breakdown? We handle it — replacement or refund']],
+     '<span style="color:#4ade80;font-size:14px">✓</span> Breakdown? We handle it — replacement or refund'],
+    ['<span style="color:#4ade80;font-size:14px">✓</span> 按时长定价 · 30秒确认价格',
+     '<span style="color:#4ade80;font-size:14px">✓</span> 零押金',
+     '<span style="color:#4ade80;font-size:14px">✓</span> 取消全额退款',
+     '<span style="color:#4ade80;font-size:14px">✓</span> 故障？由我们处理——更换或退款']],
   /* trust strip — step 5 */
   ['.trust-item span','text',
     ['Livraison garantie — remboursé si panne','Annulation gratuite avant livraison','Confirmation par email dans quelques minutes','SIRET 853 730 562 00024 · Entreprise enregistrée'],
-    ['Delivery guaranteed — refunded if breakdown','Free cancellation before delivery','Email confirmation in a few minutes','SIRET 853 730 562 00024 · Registered business']],
+    ['Delivery guaranteed — refunded if breakdown','Free cancellation before delivery','Email confirmation in a few minutes','SIRET 853 730 562 00024 · Registered business'],
+    ['配送有保障——故障退款','配送前免费取消','几分钟内邮件确认','SIRET 853 730 562 00024 · 注册企业']],
   /* next-steps items */
   ['.ns-text','html',
     ['<strong>Confirmation par email</strong> immédiate avec le récapitulatif',
@@ -6742,38 +6792,51 @@ const LANG_SEQ=[
     ['<strong>Instant email confirmation</strong> with full summary',
      '<strong>Our team</strong> confirms the time slot by phone call on the morning of delivery',
      '<strong>Technician on site</strong>, installation 20–30 min',
-     '<strong>48h before end of rental</strong> — our team calls to coordinate collection']],
+     '<strong>48h before end of rental</strong> — our team calls to coordinate collection'],
+    ['<strong>立即发送邮件确认</strong>含完整订单摘要',
+     '<strong>我们的团队</strong>在配送当天早上电话确认时间段',
+     '<strong>技术员到场</strong>，安装20–30分钟',
+     '<strong>租期结束前48小时</strong>——我们的团队来电协调取回']],
   /* footer navigation links */
   ['#fnav-main a','text',
     ['Comment ça marche','Tarifs','FAQ','À propos','Réserver','Prolonger ma location'],
-    ['How it works','Pricing','FAQ','About','Book now','Extend my rental']],
+    ['How it works','Pricing','FAQ','About','Book now','Extend my rental'],
+    ['如何运作','价格','常见问题','关于我们','立即预订','延长我的租期']],
   ['#fnav-services a','text',
     ['Location clim mobile','Livraison & installation','Entretien inclus','Remboursement si panne','Contrat électronique'],
-    ['Mobile AC rental','Delivery & setup','Maintenance included','Breakdown? Replaced or refunded','Electronic contract']],
+    ['Mobile AC rental','Delivery & setup','Maintenance included','Breakdown? Replaced or refunded','Electronic contract'],
+    ['移动空调租赁','配送 & 安装','含维护','故障？更换或退款','电子合同']],
   ['#fnav-legal a','text',
     ['Mentions légales','CGV','Confidentialité','Médiation : MEDICYS'],
-    ['Legal notice','T&Cs','Privacy','Mediation: MEDICYS']],
+    ['Legal notice','T&Cs','Privacy','Mediation: MEDICYS'],
+    ['法律声明','销售条款','隐私政策','调解：MEDICYS']],
   /* profiling — source options & motif pills */
   ['#f-source option','text',
     ['— Sélectionner','Google','Instagram','Bouche-à-oreille','Vu dans la rue','Autre'],
-    ['— Select','Google','Instagram','Word of mouth','Spotted in the street','Other']],
+    ['— Select','Google','Instagram','Word of mouth','Spotted in the street','Other'],
+    ['— 请选择','Google','Instagram','口耳相传','在街上看到','其他']],
   ['.motif-1,.motif-2,.motif-3,.motif-4','text',
     ['Chaleur','Bébé / Santé','Airbnb / Location','Événement'],
-    ['Heat','Baby / Health','Airbnb / Rental','Event']],
+    ['Heat','Baby / Health','Airbnb / Rental','Event'],
+    ['高温','婴儿 / 健康','Airbnb / 租赁','活动']],
   ['#logement-group button','text',
     ['Studio','T2','T3/T4','Maison'],
-    ['Studio','1-bed','2–3 bed','House']],
+    ['Studio','1-bed','2–3 bed','House'],
+    ['单间公寓','一居室','二三居室','独立屋']],
   /* howto step chips */
   ['.step-chip','text',
     ['~2 min','J+1','~30 min','Date convenue'],
-    ['~2 min','D+1','~30 min','Agreed date']],
+    ['~2 min','D+1','~30 min','Agreed date'],
+    ['~2分钟','次日','~30分钟','约定日期']],
   /* pricing table duration tiers */
   ['.pt-ts-dur','text',
     ['1–7 j','8–14 j','15–21 j','22+ j'],
-    ['1–7 d','8–14 d','15–21 d','22+ d']],
+    ['1–7 d','8–14 d','15–21 d','22+ d'],
+    ['1–7天','8–14天','15–21天','22天以上']],
   ['.pt-ts-price span','text',
     [' €/j',' €/j',' €/j',' €/j'],
-    [' €/d',' €/d',' €/d',' €/d']],
+    [' €/d',' €/d',' €/d',' €/d'],
+    [' €/天',' €/天',' €/天',' €/天']],
   /* pricing notes */
   ['.pt-note','text',
     ['Prix garanti dès la réservation  ·  Kit fourni  ·  Livraison & récupération : à partir de 35 €  ·  Aucune caution',
@@ -6783,19 +6846,23 @@ const LANG_SEQ=[
   /* expertise stats labels */
   ['.exp-stat-l','text',
     ['installations à Nice','pose moyenne','remboursé si panne','21 avis Google'],
-    ['installations in Nice','average setup','refunded if breakdown','21 Google reviews']],
+    ['installations in Nice','average setup','refunded if breakdown','21 Google reviews'],
+    ['尼斯已安装次数','平均安装时间','故障退款','21条Google评价']],
   /* duration row nights labels */
   ['.dur-row-nights','text',
     ['7 jours','14 jours','21 jours','30 jours'],
-    ['7 days','14 days','21 days','30 days']],
+    ['7 days','14 days','21 days','30 days'],
+    ['7天','14天','21天','30天']],
   /* install card titles */
   ['.install-card-title','text',
     ['Pose par le technicien','Je pose moi-même'],
-    ['Installed by technician','Self-install']],
+    ['Installed by technician','Self-install'],
+    ['技术员安装','自行安装']],
   /* install card subtitles */
   ['.install-card-sub','text',
     ['Installé et testé devant vous · 20–30 min','Gaine + joint fournis · Livraison à votre porte'],
-    ['Installed & tested in front of you · 20–30 min','Duct + seal included · Delivered to your door']],
+    ['Installed & tested in front of you · 20–30 min','Duct + seal included · Delivered to your door'],
+    ['当面安装并测试 · 20–30分钟','含排气管 + 密封件 · 送到您家门口']],
   ['.fi-q','html', /* FAQ questions — inject just the text before the SVG icon */
     ['Quelle est la durée minimale ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'Comment se passe la livraison ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
@@ -6826,16 +6893,34 @@ const LANG_SEQ=[
      'Can I extend my rental?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'How noisy is it? How much electricity does it use?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'Where does the condensed water go?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
-     'Why rent instead of buying an air conditioner?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>']],
+     'Why rent instead of buying an air conditioner?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>'],
+    ['最短租用多久？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '配送是怎么进行的？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '有押金吗？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '如何付款？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '<span>你们配送到整个<span data-c="name">尼斯</span>吗？</span><span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '合同签署是怎么进行的？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '如果出现问题怎么办？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '我的住所需要几台？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '内倒内开窗——可以使用吗？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '我可以取消预订吗？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '设备出现故障怎么办？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '可以延长租期吗？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '噪音有多大？耗电量是多少？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '冷凝水去哪里了？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
+     '为什么租赁而不是购买空调？<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>']],
 ];
 
 function setLang(l){
   _lang=l;
   localStorage.setItem('locair-lang',l);
   document.documentElement.lang=l;
+  const _li={fr:0,en:1,zh:2};
+  const idx=_li[l]??0;
   const isEN=l==='en';
-  LANG_MAP.forEach(([sel,mode,fr,en])=>{
-    const val=isEN?en:fr;
+  const isZH=l==='zh';
+  LANG_MAP.forEach(([sel,mode,fr,en,zh])=>{
+    const val=idx===1?en:idx===2?(zh??fr):fr;
     document.querySelectorAll(sel).forEach(el=>{
       if(mode==='text')el.textContent=val;
       else if(mode==='html')el.innerHTML=val;
@@ -6843,8 +6928,8 @@ function setLang(l){
       else if(mode==='aria')el.setAttribute('aria-label',val);
     });
   });
-  LANG_SEQ.forEach(([sel,mode,frs,ens])=>{
-    const vals=isEN?ens:frs;
+  LANG_SEQ.forEach(([sel,mode,frs,ens,zhs])=>{
+    const vals=idx===1?ens:idx===2?(zhs??frs):frs;
     [...document.querySelectorAll(sel)].forEach((el,i)=>{
       if(vals[i]==null)return;
       if(mode==='text')el.textContent=vals[i];
@@ -6853,19 +6938,24 @@ function setLang(l){
   });
   // Sync dropdown
   const lbl=document.getElementById('lang-label');
-  if(lbl)lbl.textContent=l.toUpperCase();
-  ['fr','en'].forEach(code=>{
+  if(lbl)lbl.textContent=l==='zh'?'中文':l.toUpperCase();
+  ['fr','en','zh'].forEach(code=>{
     const opt=document.getElementById('lopt-'+code);
     if(opt)opt.classList.toggle('on',code===l);
   });
-  document.title=isEN?"AC Rental Nice · Delivery within 24h · Zero deposit | Loc'Air":"Location climatiseur Nice · Livraison sous 24h · Aucune caution | Loc'Air";
+  document.title=isEN?"AC Rental Nice · Delivery within 24h · Zero deposit | Loc'Air":isZH?"移动空调租赁 尼斯 · 次日送达 · 无押金 | Loc'Air":"Location climatiseur Nice · Livraison sous 24h · Aucune caution | Loc'Air";
   // Translate month names in review dates
-  const _months={Janvier:'January',Février:'February',Mars:'March',Avril:'April',Mai:'May',Juin:'June',Juillet:'July',Août:'August',Septembre:'September',Octobre:'October',Novembre:'November',Décembre:'December'};
+  const _monthsEN={Janvier:'January',Février:'February',Mars:'March',Avril:'April',Mai:'May',Juin:'June',Juillet:'July',Août:'August',Septembre:'September',Octobre:'October',Novembre:'November',Décembre:'December'};
+  const _monthsZH={Janvier:'一月',Février:'二月',Mars:'三月',Avril:'四月',Mai:'五月',Juin:'六月',Juillet:'七月',Août:'八月',Septembre:'九月',Octobre:'十月',Novembre:'十一月',Décembre:'十二月'};
   document.querySelectorAll('.rv-role').forEach(el=>{
     if(!el.dataset.fr)el.dataset.fr=el.textContent;
     if(isEN){
       let t=el.dataset.fr;
-      Object.entries(_months).forEach(([fr,en])=>{t=t.replace(fr,en);});
+      Object.entries(_monthsEN).forEach(([fr,en])=>{t=t.replace(fr,en);});
+      el.textContent=t;
+    }else if(isZH){
+      let t=el.dataset.fr;
+      Object.entries(_monthsZH).forEach(([fr,zh])=>{t=t.replace(fr,zh);});
       el.textContent=t;
     }else{
       el.textContent=el.dataset.fr;
@@ -6904,6 +6994,8 @@ function _updateStockNoticeText(){
   const n=STOCK_DISPONIBLES;
   el.textContent=_lang==='en'
     ? `Only ${n} unit${n>1?'s':''} available`
+    : _lang==='zh'
+    ? `仅剩 ${n} 台可用`
     : `Plus que ${n} appareil${n>1?'s':''} disponible${n>1?'s':''}`;
 }
 async function _refreshStockAndSoldOut(){
