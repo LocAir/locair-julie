@@ -5250,7 +5250,7 @@ function closeModal(){
   const fmkt=document.getElementById('f-mkt');if(fmkt)fmkt.checked=false;
   const fcond=document.getElementById('f-conditions');if(fcond)fcond.checked=false;
   const fretard=document.getElementById('f-retard');if(fretard)fretard.checked=false;
-  _promoDiscount=0;_promoCode='';const promoInp=document.getElementById('f-parrain');if(promoInp)promoInp.value='';
+  _promoDiscount=0;_promoCode='';_promoPct=0;const promoInp=document.getElementById('f-parrain');if(promoInp)promoInp.value='';
   const instrTa=document.getElementById('f-instructions');if(instrTa)instrTa.value='';
   const instrWrap=document.getElementById('instructions-wrap');if(instrWrap)instrWrap.style.display='none';
   _qty=1;_techInstall=true;
@@ -5558,6 +5558,7 @@ async function handleFenetrePhoto(input){
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function buildRecap(){
   const days=parseInt(document.getElementById('f-dur')?.value||'7');
+  if(_promoPct>0){_promoDiscount=Math.round(calcTotal(days)*_promoPct/100);}
   const price=calcPrice(days)*_qty;
   const asc=document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—';
   const etage=document.getElementById('f-etage')?.value.trim()||'';
@@ -5649,7 +5650,7 @@ function buildRecap(){
           <span>${DELIVERY_FEE} €</span>
         </div>
         ${_promoDiscount>0?`<div class="rc-total-row" style="font-size:12px;color:#059669;font-weight:600;margin-bottom:10px">
-          <span class="rc-total-lbl">${isEN?'Promo code':'Code promo'} (${escHtml(_promoCode)})</span>
+          <span class="rc-total-lbl">${isEN?'Promo code':'Code promo'} (${escHtml(_promoCode)}${_promoPct>0?' · −'+_promoPct+'%':''})</span>
           <span>−${_promoDiscount} €</span>
         </div>`:''}
         <div class="rc-total-row">
@@ -7865,21 +7866,27 @@ let _unit2=false;
 let _qty=1;
 let _promoDiscount=0;
 let _promoCode='';
+let _promoPct=0;
 const _PROMO_FIXED={'LOCAIR10':10,'LOCA10':10};
+const _PROMO_PCT={'EJAZ10':10,'EJAZ20':20,'EJAZ30':30};
 function validatePromo(){
   const inp=document.getElementById('f-parrain');
   const fb=document.getElementById('promo-feedback');
   if(!inp)return;
   const val=inp.value.trim().toUpperCase();
   const prev=_promoDiscount;
-  if(!val){_promoDiscount=0;_promoCode='';if(fb){fb.textContent='';fb.style.display='none';}if(prev!==_promoDiscount){buildRecap();}return;}
+  if(!val){_promoDiscount=0;_promoPct=0;_promoCode='';if(fb){fb.textContent='';fb.style.display='none';}if(prev!==_promoDiscount){buildRecap();}return;}
   const explicit=_PROMO_FIXED[val];
-  if(explicit!==undefined){
-    _promoDiscount=explicit;
+  const pct=_PROMO_PCT[val];
+  if(pct!==undefined){
+    _promoPct=pct;_promoCode=val;_promoDiscount=0;
+    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+pct+'% off':'✓ Code valide — '+pct+'% de réduction';fb.style.color='#059669';fb.style.display='block';}
+  }else if(explicit!==undefined){
+    _promoPct=0;_promoDiscount=explicit;
     _promoCode=val;
     if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+_promoDiscount+' € off':'✓ Code valide — '+_promoDiscount+' € déduits';fb.style.color='#059669';fb.style.display='block';}
   }else{
-    _promoDiscount=0;_promoCode='';
+    _promoDiscount=0;_promoPct=0;_promoCode='';
     if(fb){fb.textContent=_lang==='en'?'Code not recognised':'Code non reconnu';fb.style.color='var(--red)';fb.style.display='block';}
   }
   buildRecap();
