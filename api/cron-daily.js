@@ -247,6 +247,11 @@ module.exports = async (req, res) => {
   // l'achat plutôt que récupéré. Ici : uniquement repérer et prévenir
   // l'admin — aucun prix fixé, aucune offre visible côté client, aucun
   // appareil marqué "vendu" (viendra dans une 2e étape).
+  //
+  // Si un client refuse, l'appareil reste éligible : le client suivant (et
+  // tous les suivants) reçoit la même proposition à son tour, en milieu de
+  // son propre séjour — jusqu'à ce que l'un d'eux accepte. Une fois accepté
+  // une fois pour CET appareil, plus jamais reproposé.
   try {
     const SEUIL_OFFRE = parseInt(process.env.OFFRE_PRIVILEGE_SEUIL) || 30;
     const { data: liens } = await supabase
@@ -256,23 +261,35 @@ module.exports = async (req, res) => {
     for (const l of (liens || [])) {
       if (l.reservation && l.reservation.statut === 'confirmee'
         && l.reservation.date_debut <= todayStr && l.reservation.date_fin > todayStr) {
-        enLocation.set(l.appareil_id, l.reservation_id);
+        enLocation.set(l.appareil_id, {
+          reservationId: l.reservation_id,
+          dateDebut: l.reservation.date_debut,
+          dateFin: l.reservation.date_fin,
+        });
       }
     }
 
     let offreCount = 0;
-    for (const [appareilId, reservationId] of enLocation) {
+    for (const [appareilId, { reservationId, dateDebut, dateFin }] of enLocation) {
+      // Milieu de séjour seulement : ni au tout début (le temps d'en
+      // profiter un peu), ni tout à la fin (le temps de décider avant la
+      // récupération prévue).
+      const milieuStr = new Date((new Date(dateDebut).getTime() + new Date(dateFin).getTime()) / 2)
+        .toISOString().slice(0, 10);
+      if (todayStr < milieuStr) continue;
+
       const { count } = await supabase
         .from('reservation_appareils').select('id', { count: 'exact', head: true })
         .eq('appareil_id', appareilId);
       if ((count || 0) < SEUIL_OFFRE) continue;
 
-      // Une seule offre par location en cours, jamais reposée plusieurs
-      // jours de suite pour la même réservation.
-      const { data: dejaExistante } = await supabase
-        .from('offres_privilege').select('id')
-        .eq('appareil_id', appareilId).eq('reservation_id', reservationId).maybeSingle();
-      if (dejaExistante) continue;
+      const { data: offresAppareil } = await supabase
+        .from('offres_privilege').select('reservation_id, statut').eq('appareil_id', appareilId);
+      // Une fois acceptée par un client, plus jamais reproposée pour cet appareil.
+      if ((offresAppareil || []).some(o => o.statut === 'acceptee')) continue;
+      // Jamais deux fois pour la même location (mais reproposée au client
+      // suivant si celui-ci a refusé — voir commentaire plus haut).
+      if ((offresAppareil || []).some(o => o.reservation_id === reservationId)) continue;
 
       const { data: appareil } = await supabase.from('appareils').select('numero').eq('id', appareilId).maybeSingle();
       await supabase.from('offres_privilege').insert({
@@ -280,8 +297,8 @@ module.exports = async (req, res) => {
       });
       await pushToAdmin(supabase, {
         title: `⭐ Climatiseur #${appareil?.numero} — Offre Privilège`,
-        body:  `${count} locations effectuées, actuellement chez un client. Fixe un prix pour lui proposer de le garder.`,
-        tag:   `offre-privilege-${appareilId}`,
+        body:  `${count} locations effectuées, actuellement chez un client (milieu de séjour). Fixe un prix pour lui proposer de le garder.`,
+        tag:   `offre-privilege-${appareilId}-${reservationId}`,
       });
       offreCount++;
     }
