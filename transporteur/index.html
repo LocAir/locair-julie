@@ -104,7 +104,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 
 .empty{text-align:center;color:var(--grey);font-size:14px;padding:44px 10px}
 
-.detail-back{background:none;border:none;color:var(--blue);font-weight:700;font-size:14px;margin-bottom:14px;cursor:pointer;padding:4px 0}
+.detail-back{background:none;border:none;color:var(--blue);font-weight:700;font-size:14px;margin-bottom:14px;cursor:pointer;padding:10px 4px;min-height:40px}
 .info-row{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--rule);font-size:14.5px}
 .info-row:last-child{border-bottom:none}
 .info-ic{width:22px;flex-shrink:0;text-align:center}
@@ -115,10 +115,16 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .pill-badge{display:inline-flex;align-items:center;gap:4px;background:var(--blue-lt);color:var(--blue);font-weight:700;font-size:13px;padding:6px 12px;border-radius:100px}
 
 .media-btn{display:flex;align-items:center;gap:10px;width:100%;padding:16px 22px;border:1.5px solid var(--rule);border-radius:100px;background:var(--white);font-weight:700;font-size:15px;color:var(--black);margin-bottom:12px;cursor:pointer}
+/* Action pas encore faite : plus de poids visuel qu'un simple bouton
+   secondaire (bordure épaisse + fond teinté), pour ne pas être moins visible
+   qu'un bouton "Suivant" qui n'est qu'une navigation. */
+.media-btn:not(.done){border-width:2px;border-color:var(--blue);background:var(--blue-lt)}
 .media-btn.done{border-color:var(--green);background:var(--green-bg);color:var(--green)}
 .media-btn .ic{font-size:20px}
+/* Pulse en ombre plutôt qu'en opacité : reste lisible en plein soleil au
+   lieu de faire disparaître le texte à moitié du cycle. */
 .media-btn.pulse{animation:media-btn-pulse 1.4s ease-in-out infinite}
-@keyframes media-btn-pulse{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes media-btn-pulse{0%,100%{box-shadow:0 0 0 0 rgba(27,58,95,.3)}50%{box-shadow:0 0 0 7px rgba(27,58,95,0)}}
 
 .step-hint{font-size:14px;font-weight:700;color:var(--blue);background:var(--blue-lt);border-radius:var(--r-sm);padding:11px 14px;margin-bottom:14px}
 .btn-missing-hint{text-align:center;font-size:12.5px;color:var(--grey);margin:-6px 0 12px}
@@ -136,20 +142,22 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .info-box p{font-size:14px;color:var(--blue);line-height:1.55;font-weight:600}
 .probleme-list{display:flex;flex-direction:column;gap:12px}
 .probleme-list .btn{margin-top:0}
-.probleme-list .btn-grey:last-child{margin-top:10px}
 
 .overlay{position:fixed;inset:0;background:rgba(13,24,41,.6);display:flex;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px);animation:fadeInEl .2s ease}
 .sheet{background:var(--white);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:26px 22px 34px;box-shadow:var(--sh-lg);max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:slideUpEl .26s cubic-bezier(.22,.61,.36,1)}
 @keyframes fadeInEl{from{opacity:0}to{opacity:1}}
 @keyframes slideUpEl{from{transform:translateY(18px);opacity:0}to{transform:none;opacity:1}}
 .hidden{display:none !important}
+/* Changement d'écran (show()) : léger fondu plutôt qu'une bascule instantanée,
+   cohérent avec le fade déjà utilisé sur les overlays/sheets. */
+.screen-fade{animation:fadeInEl .2s ease}
 
 /* Bouton tuto : flottant, au-dessus de la tabbar/detail-back, visible sur
    toutes les pages sauf la connexion (voir show()). */
-#tuto-fab{position:fixed;right:16px;bottom:20px;width:52px;height:52px;border-radius:50%;background:var(--navy,#0d1829);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
+#tuto-fab{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--navy,#0d1829);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
 /* Centre de notifications (Module 5) : même principe que #tuto-fab, côté
    gauche pour ne pas se superposer au bouton tuto. */
-#notif-fab{position:fixed;left:16px;bottom:20px;width:52px;height:52px;border-radius:50%;background:var(--navy,#0d1829);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
+#notif-fab{position:fixed;left:16px;bottom:calc(20px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--navy,#0d1829);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
 #notif-fab-badge{position:absolute;top:-2px;right:-2px}
 .tuto-cat-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);margin-bottom:8px}
 .tuto-cat-row.disabled{opacity:.55;box-shadow:none;background:var(--bg)}
@@ -441,7 +449,14 @@ let STATE = {
 
 function show(id){
   ['login-screen','dashboard-screen','checklist-screen','tournee-start-screen','missions-screen','activite-screen','detail-screen','map-screen'].forEach(s=>{
-    document.getElementById(s).classList.toggle('hidden', s!==id);
+    const el = document.getElementById(s);
+    const wasHidden = el.classList.contains('hidden');
+    el.classList.toggle('hidden', s!==id);
+    if(s===id && wasHidden){
+      el.classList.remove('screen-fade');
+      void el.offsetWidth; // relance l'animation même si la classe était déjà passée
+      el.classList.add('screen-fade');
+    }
   });
   // Bouton tuto accessible en permanence, sur toutes les pages sauf la
   // connexion — un seul point de bascule plutôt que de dupliquer un bouton
@@ -1663,7 +1678,7 @@ function etatMaterielHtml(){
           <input type="radio" name="etat-materiel" value="${val}" style="width:20px;height:20px;flex-shrink:0">
           <span>${lbl}</span>
         </label>`).join('')}
-      <textarea id="etat-materiel-commentaire" placeholder="Commentaire (optionnel)" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid var(--border);font-family:inherit;font-size:14px" rows="2"></textarea>
+      <textarea id="etat-materiel-commentaire" placeholder="Commentaire (optionnel)" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid var(--rule);font-family:inherit;font-size:14px" rows="2"></textarea>
     </div>`;
 }
 // Rassemble la checklist cochée (+ état matériel si récupération) et
@@ -1892,9 +1907,11 @@ async function voirPhotoFenetre(livraisonId){
     const r = await fetch(API('transporteur-action'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body:JSON.stringify({action:'fenetre_photo_url', livraison_id:livraisonId})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    // Ouvre la photo dans un overlay léger
+    // Ouvre la photo dans l'overlay standard de l'app (fond bleu-nuit + blur
+    // + fade, comme partout ailleurs) plutôt qu'un fond noir codé à la main.
     const ov = document.createElement('div');
-    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px';
+    ov.className = 'overlay';
+    ov.style.cssText = 'flex-direction:column;align-items:center;padding:16px';
     ov.innerHTML=`<img src="${d.url}" style="max-width:100%;max-height:80vh;border-radius:var(--r);object-fit:contain;box-shadow:var(--sh-lg)"/><button class="btn btn-grey" style="max-width:220px;margin-top:14px" onclick="this.closest('div').remove()">Fermer</button>`;
     ov.onclick = e => { if(e.target===ov) ov.remove(); };
     document.body.appendChild(ov);
@@ -2204,18 +2221,22 @@ function openProbleme(){
   overlay.innerHTML = `
     <div class="sheet">
       <h1 style="margin-bottom:14px">⚠️ Quel est le problème ?</h1>
+      <div class="section-title" style="margin-top:0">Besoin d'aide tout de suite</div>
       <div class="probleme-list">
         <button class="btn btn-amber" onclick="startClientAbsent('camera')">📵 Client absent — photo</button>
         <button class="btn btn-amber" onclick="startClientAbsent('galerie')">📵 Client absent — depuis la galerie</button>
         <button class="btn btn-amber" onclick="sendProbleme('materiel_endommage')">🔧 Matériel endommagé</button>
+      </div>
+      <div class="section-title">Signaler un souci</div>
+      <div class="probleme-list">
         <button class="btn btn-grey" onclick="sendProbleme('acces_impossible')">🚫 Accès impossible</button>
         <button class="btn btn-grey" onclick="sendProbleme('mauvaise_adresse')">📍 Mauvaise adresse</button>
         <button class="btn btn-grey" onclick="sendProbleme('probleme_technique')">⚙️ Problème technique</button>
         <button class="btn btn-grey" onclick="sendProbleme('refus_client')">🙅 Refus client</button>
         <button class="btn btn-grey" onclick="sendProbleme('retard')">⏰ Retard important</button>
         <button class="btn btn-grey" onclick="sendProbleme('autre')">❓ Autre problème</button>
-        <button class="btn btn-grey" onclick="closeProbleme()">Annuler</button>
       </div>
+      <button class="forgot-link" onclick="closeProbleme()">Annuler</button>
     </div>`;
   document.body.appendChild(overlay);
 }
@@ -2312,11 +2333,12 @@ function renderTutoCategoryList(){
               ${sousVideos.length ? sousVideos.map(videoRowHtml).join('') : `<p class="tuto-empty" style="margin-left:12px">Pas encore de vidéo.</p>`}`;
           }).join('')
         : (videos.length ? videos.map(videoRowHtml).join('') : `<p class="tuto-empty">Pas encore de vidéo.</p>`);
+      const nbVideos = cat.sousTypes ? cat.sousTypes.reduce((n,t) => n + videos.filter(v=>v.sous_categorie===t).length, 0) : videos.length;
       return `
-        <div style="margin-bottom:6px">
-          <div class="section-title" style="margin:14px 0 4px 2px">${cat.label}</div>
-          ${bodyHtml}
-        </div>`;
+        <details class="tools-group">
+          <summary><span class="tg-label">${cat.label} · ${nbVideos} vidéo${nbVideos>1?'s':''}</span></summary>
+          <div class="tools-group-body">${bodyHtml}</div>
+        </details>`;
     }).join('')}
     <button class="btn btn-grey btn-block" style="margin-top:14px" onclick="closeTutoLibrary()">Fermer</button>`;
 }
@@ -2559,7 +2581,7 @@ function missionsHistoryHtml(missions){
                 <span class="mcard-icon" style="font-size:14px;vertical-align:-2px">${TYPE_ICON[m.type]||'📍'}</span>
                 ${TYPE_LABEL[m.type]||m.type}
                 <div class="mcard-meta" style="margin-top:2px">${m.fait_at?new Date(m.fait_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
-                ${(m.fait_at && new Date(m.fait_at) >= photoCutoff) ? `<button class="btn btn-grey" style="margin-top:6px;padding:4px 10px;font-size:12px" onclick="openMissionMedia(${m.id})">📷 Photos</button>` : ''}
+                ${(m.fait_at && new Date(m.fait_at) >= photoCutoff) ? `<button class="btn btn-grey" style="margin-top:6px;padding:8px 12px;font-size:12px" onclick="openMissionMedia(${m.id})">📷 Photos</button>` : ''}
               </span>
               <span style="text-align:right;flex-shrink:0">
                 <div style="font-weight:700">${(m.montant_cents/100).toFixed(2).replace('.',',')} €</div>

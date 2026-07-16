@@ -136,6 +136,13 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .periods button{flex:1;padding:8px;border-radius:100px;border:none;background:transparent;font-weight:600;font-size:12.5px;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
 .periods button.on{background:var(--white);color:var(--black);box-shadow:var(--sh-xs)}
 
+/* Rangée de filtres nombreuse (ex. 8 filtres Livraisons) : scroll horizontal
+   plutôt que le flex:1 de .periods qui écrase le texte. Ne réutilise pas
+   .tabs (son bloc mobile en fait un tiroir fixe hors-écran par défaut). */
+.filter-scroll{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent 100%);-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent 100%)}
+.filter-scroll button{flex-shrink:0;padding:8px 14px;border-radius:100px;border:1.5px solid var(--rule);background:var(--white);font-weight:600;font-size:12.5px;color:var(--grey);cursor:pointer;white-space:nowrap;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+.filter-scroll button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+
 .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .stat-tile{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh-xs)}
 .stat-tile .n{font-family:var(--disp);font-size:32px;font-weight:400;color:var(--black);font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.1}
@@ -236,8 +243,10 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .dot-blue{background:var(--blue)}
 
 /* Modales (remplacent confirm()/prompt()/alert() natifs du navigateur) */
-.modal-overlay{position:fixed;inset:0;background:rgba(13,24,41,.6);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px;backdrop-filter:blur(2px)}
-.modal-box{background:var(--white);border-radius:var(--r-lg);padding:26px 24px;max-width:380px;width:100%;box-shadow:var(--sh-lg)}
+@keyframes overlayFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes modalPopIn{from{opacity:0;transform:scale(.96) translateY(6px)}to{opacity:1;transform:none}}
+.modal-overlay{position:fixed;inset:0;background:rgba(13,24,41,.6);display:flex;align-items:center;justify-content:center;z-index:200;padding:20px;backdrop-filter:blur(2px);animation:overlayFadeIn .18s ease}
+.modal-box{background:var(--white);border-radius:var(--r-lg);padding:26px 24px;max-width:380px;width:100%;box-shadow:var(--sh-lg);animation:modalPopIn .2s cubic-bezier(.22,.61,.36,1)}
 .modal-box h2{font-size:18px}
 .modal-msg{font-size:14.5px;line-height:1.55;color:var(--black);margin-bottom:20px}
 .modal-msg strong{color:var(--blue)}
@@ -257,8 +266,8 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .toast.toast-error{background:var(--red)}
 .toast.toast-success{background:var(--green)}
 
-.map-overlay{position:fixed;inset:0;background:rgba(13,24,41,.72);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(2px)}
-.map-modal{background:#fff;border-radius:20px;max-width:560px;width:100%;overflow:hidden;box-shadow:0 24px 64px rgba(13,24,41,.35)}
+.map-overlay{position:fixed;inset:0;background:rgba(13,24,41,.72);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px;backdrop-filter:blur(2px);animation:overlayFadeIn .18s ease}
+.map-modal{background:#fff;border-radius:20px;max-width:560px;width:100%;overflow:hidden;box-shadow:0 24px 64px rgba(13,24,41,.35);animation:modalPopIn .2s cubic-bezier(.22,.61,.36,1)}
 .map-modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px}
 .map-modal-head h2{margin:0;font-family:var(--disp);font-weight:600;font-size:19px}
 .map-modal-head button{background:var(--bg);border:none;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;color:var(--grey);line-height:1}
@@ -1383,10 +1392,15 @@ async function loadStock(silent){
                 <option value="maintenance" ${a.statut==='maintenance'?'selected':''}>Maintenance</option>
               </select>
               ${a.en_location?`<div class="row-meta" style="width:100%">ℹ️ Statut manuel affiché ci-dessus, indépendant de la location en cours — repasse à "Disponible" tout seul au retour.</div>`:''}
-              <button class="btn btn-grey" onclick="editAppareilReference(${a.id}, '${escHtml(a.reference||'').replace(/'/g,"\\'")}')">${a.reference?'Modifier':'Ajouter'} la référence</button>
-              <button class="btn btn-grey" onclick="editAppareilNote(${a.id}, '${escHtml(a.notes||'').replace(/'/g,"\\'")}')">${a.notes?'Modifier':'Ajouter'} une note</button>
-              <button class="btn btn-grey" onclick="voirFicheAppareil(${a.id}, ${a.numero})">📋 Fiche complète</button>
-              <button class="btn btn-red" onclick="deleteAppareil(${a.id}, ${a.numero})">🗑️ Supprimer</button>
+              <details class="more-actions" style="margin-left:auto">
+                <summary title="Plus d'actions">⋯</summary>
+                <div class="more-actions-menu">
+                  <button onclick="editAppareilReference(${a.id}, '${escHtml(a.reference||'').replace(/'/g,"\\'")}')">${a.reference?'Modifier':'Ajouter'} la référence</button>
+                  <button onclick="editAppareilNote(${a.id}, '${escHtml(a.notes||'').replace(/'/g,"\\'")}')">${a.notes?'Modifier':'Ajouter'} une note</button>
+                  <button onclick="voirFicheAppareil(${a.id}, ${a.numero})">📋 Fiche complète</button>
+                  <button class="danger" onclick="deleteAppareil(${a.id}, ${a.numero})">🗑️ Supprimer</button>
+                </div>
+              </details>
             </div>
           </div>`;
         }).join('') || '<p class="empty">Aucun appareil enregistré.</p>'}
@@ -1634,8 +1648,8 @@ function reservationRowHtml(res, readOnly){
       <div class="row-top">
         <span class="row-title">${nom}${entrepriseTag}</span>
         <span style="display:flex;gap:6px;align-items:center">
-          ${res.hors_zone?`<span class="chip" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red)" title="Affectation manuelle requise">⚠️ Hors zone</span>`:''}
-          ${res.source==='site_prolongation'?`<span class="chip" style="background:var(--blue-lt);color:var(--blue);border:1px solid var(--blue)">🔄 Prolongée</span>`:''}
+          ${res.hors_zone?`<span class="chip probleme" title="Affectation manuelle requise">⚠️ Hors zone</span>`:''}
+          ${res.source==='site_prolongation'?`<span class="chip en_location">🔄 Prolongée</span>`:''}
           ${res.appareils_en_attente_validation?`<span class="chip a_faire" title="Appareil(s) pas encore validé(s) par l'administration">🔍 Appareil à valider</span>`:''}
           <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
         </span>
@@ -1649,7 +1663,7 @@ function reservationRowHtml(res, readOnly){
       </div>
       <div class="resa-bottom">
         <span class="resa-price">${euros(res.prix_total_cents)}</span>
-        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+escHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${(()=>{const p=res.parrain_code;if(!p)return '';const m=p.match(/(\d+)$/);const pct=m?parseInt(m[1]):0;return [10,20,30].includes(pct)?' · <span style="background:#fef9c3;color:#92400e;font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid #fde68a">Code promo '+escHtml(p)+' −'+pct+'%</span>':'';})()}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
+        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+escHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${(()=>{const p=res.parrain_code;if(!p)return '';const m=p.match(/(\d+)$/);const pct=m?parseInt(m[1]):0;return [10,20,30].includes(pct)?' · <span style="background:var(--gold-lt);color:#8a6d2f;font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--gold)">Code promo '+escHtml(p)+' −'+pct+'%</span>':'';})()}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
       </div>
       ${res.statut==='confirmee' ? agentLineHtml(res.id) : ''}
       ${readOnly ? '' : `
@@ -2464,7 +2478,7 @@ function renderLivraisonsToolbar(){
     </div>
     <div id="liv-liste-view" class="${LIVRAISONS_VIEW==='affectation'?'hidden':''}">
       <input type="text" id="liv-search" placeholder="🔎 Client, adresse, référence…" oninput="renderLivraisons()"/>
-      <div class="periods" style="margin:16px 0">
+      <div class="filter-scroll" style="margin:16px 0">
         ${filters.map(f => `<button class="${!LIVRAISONS_SHOW_MASQUEES && LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
       </div>
       ${LIVRAISONS_FILTER==='non_assignees'?(LIVRAISONS_NON_ASSIGNEES_ALERT_ONLY?`<div class="affect-hint">💡 Vue filtrée depuis l'alerte du bandeau : uniquement les missions non assignées dues sous 72h (ou déjà en retard) — exactement ce qui a été compté. <a href="#" onclick="event.preventDefault();setLivraisonsFilter('non_assignees')">Voir toutes les non assignées →</a></div>`:`<div class="affect-hint">💡 Les nouvelles missions sont assignées automatiquement selon la zone et la disponibilité du livreur (regroupées par code postal quand possible). Le badge rouge en haut ne compte que ce qui est dû sous 72h — cette liste montre tout, y compris ce qui peut attendre.</div>`):''}
@@ -2813,7 +2827,7 @@ function renderLivraisons(){
         <div class="row-top">
           <span class="row-title">${nonAssignee?'🔔 ':''}${escHtml(displayName)}</span>
           <span style="display:flex;gap:6px;align-items:center">
-            ${res.hors_zone?`<span class="chip" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red)">⚠️ Hors zone</span>`:''}
+            ${res.hors_zone?`<span class="chip probleme">⚠️ Hors zone</span>`:''}
             <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
           </span>
         </div>
@@ -3477,8 +3491,7 @@ async function loadTransporteursEquipe(){
     const list = (d.transporteurs||[]).filter(t => t.nom !== TEST_TRANSPORTEUR_NOM).map(t => {
       const st = statsByT[t.id] || {};
       const score = st.perf_score != null ? st.perf_score : null;
-      const scoreBg = score == null ? 'var(--bg)' : score >= 80 ? 'var(--green-bg)' : score >= 60 ? 'var(--amber-bg)' : 'var(--red-bg)';
-      const scoreColor = score == null ? 'var(--grey)' : score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--amber)' : 'var(--red)';
+      const scoreChip = score == null ? 'inactif' : score >= 80 ? 'actif' : score >= 60 ? 'en_attente' : 'probleme';
       const scoreLabel = score == null ? '—' : score + ' pts';
       const missions30 = st.missions_30j != null ? st.missions_30j : null;
       const enPause = t.en_pause || false;
@@ -3487,7 +3500,7 @@ async function loadTransporteursEquipe(){
         <div class="row-top">
           <span class="row-title">${escHtml(t.nom)}</span>
           <span style="display:flex;gap:6px;align-items:center">
-            ${enPause?`<span class="chip" style="background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber)">⏸ En pause</span>`:''}
+            ${enPause?`<span class="chip en_attente">⏸ En pause</span>`:''}
             <span class="chip ${t.actif?'actif':'inactif'}">${t.actif?'actif':'inactif'}</span>
           </span>
         </div>
@@ -3501,7 +3514,7 @@ async function loadTransporteursEquipe(){
           ${chargeJourHtml(t.id, ld.livraisons)}
           <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule)">
             <span style="font-size:12px;color:var(--grey)">30 jours</span>
-            <span style="padding:2px 10px;border-radius:100px;font-size:12px;font-weight:700;background:${scoreBg};color:${scoreColor}">${scoreLabel}</span>
+            <span class="chip ${scoreChip}" style="font-size:10.5px">${scoreLabel}</span>
             ${missions30!=null?`<span style="font-size:12px;color:var(--grey)">${missions30} mission${missions30>1?'s':''}</span>`:score==null?`<span style="font-size:12px;color:var(--grey)">Pas encore assez de missions</span>`:''}
             <button class="btn btn-grey" style="padding:3px 10px;font-size:12px;margin-left:auto" onclick="openTransporteurStats(${t.id})">📊 Détail</button>
           </div>
@@ -3510,11 +3523,12 @@ async function loadTransporteursEquipe(){
           ${enPause
             ? `<button class="btn btn-green" onclick="pauseTransporteur(${t.id}, false, this)">▶ Reprendre</button>`
             : `<button class="btn btn-grey" onclick="pauseTransporteur(${t.id}, true, this)">⏸ Mettre en pause</button>`}
-          <button class="btn ${t.actif?'btn-grey':'btn-green'}" onclick="toggleTransporteur(${t.id}, ${!t.actif}, this)">${t.actif?'Désactiver':'✅ Réactiver'}</button>
+          ${!t.actif?`<button class="btn btn-green" onclick="toggleTransporteur(${t.id}, true, this)">✅ Réactiver</button>`:''}
           <button class="btn btn-blue" onclick="editFiche(${t.id})">✏️ Modifier la fiche</button>
           <details class="more-actions" style="margin-left:auto">
             <summary title="Plus d'actions">⋯</summary>
             <div class="more-actions-menu">
+              ${t.actif?`<button onclick="toggleTransporteur(${t.id}, false, this)">Désactiver</button>`:''}
               <button onclick="resetPin(${t.id})">Changer le code</button>
               <button class="danger" onclick="deleteTransporteur(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}')">🗑️ Supprimer</button>
             </div>
@@ -4376,7 +4390,7 @@ function renderEmails(emails, sig){
         <div class="row-meta">${escHtml((r.prenom||'')+' '+(r.nom||''))}${e.destinataire?' · '+escHtml(e.destinataire):''}<br/>${new Date(e.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${e.erreur?' · '+escHtml(e.erreur):''}</div>
         <div class="row-actions">
           <button class="btn btn-grey" onclick="viewCommunicationContent(${e.id},this)">👁️ Aperçu</button>
-          ${e.reservation_id?`<button class="btn" onclick="resendEmail(${e.reservation_id},'${e.scenario}',this)">🔁 Renvoyer</button>`:''}
+          ${e.reservation_id?`<button class="btn btn-grey" onclick="resendEmail(${e.reservation_id},'${e.scenario}',this)">🔁 Renvoyer</button>`:''}
         </div>
       </div>`;
   }).join('') : '<p class="empty">Aucun email envoyé pour l\'instant.</p>';
@@ -4386,12 +4400,12 @@ function renderEmails(emails, sig){
       <div class="stat-tile"><div class="n">${nbEnvoyes}</div><div class="l">Envoyés</div></div>
       <div class="stat-tile"><div class="n" style="${nbErreurs?'color:var(--red)':''}">${nbErreurs}</div><div class="l">Erreurs</div></div>
     </div>
-    <h3 style="margin:16px 0 8px;font-size:14px">Scénarios</h3>
+    <div class="section-title" style="margin-top:0">Historique</div>
+    ${logHtml}
+    <div class="section-title">Scénarios</div>
     ${scenariosHtml}
-    <h3 style="margin:20px 0 8px;font-size:14px">Signature email</h3>
-    ${sigHtml}
-    <h3 style="margin:20px 0 8px;font-size:14px">Historique</h3>
-    ${logHtml}`;
+    <div class="section-title">Signature email</div>
+    ${sigHtml}`;
 }
 
 async function toggleEmailScenario(id, actif){
@@ -4469,7 +4483,7 @@ function renderEspaceClient(assistance){
     <div class="row-item">
       <div class="row-top"><span class="row-title">${escHtml(m.marque)} ${escHtml(m.modele)}</span><span class="chip ${m.actif?'actif':'inactif'}">${m.actif?'Actif':'Inactif'}</span></div>
       <div class="row-meta">${escHtml(m.puissance_btu||'—')}${m.surface_max_m2?' · '+escHtml(m.surface_max_m2):''}${m.niveau_sonore_db?' · '+escHtml(m.niveau_sonore_db):''}</div>
-      <div class="row-actions"><button class="btn" onclick="editModele(${m.id})">✏️ Modifier</button></div>
+      <div class="row-actions"><button class="btn btn-grey" onclick="editModele(${m.id})">✏️ Modifier</button></div>
     </div>`).join('') || '<p class="empty">Aucun modèle enregistré.</p>';
 
   const aideHtml = ESPACECLIENT_AIDE.map(a => `
@@ -4477,13 +4491,13 @@ function renderEspaceClient(assistance){
       <div class="row-top"><span class="row-title">${escHtml(a.titre)}</span><span class="chip ${a.actif?'actif':'inactif'}">${a.actif?'Actif':'Inactif'}</span></div>
       <div class="row-meta">${escHtml((a.contenu||'').slice(0,120))}${(a.contenu||'').length>120?'…':''}</div>
       <div class="row-actions">
-        <button class="btn" onclick="editAideArticle('${a.slug}')">✏️ Modifier</button>
+        <button class="btn btn-grey" onclick="editAideArticle('${a.slug}')">✏️ Modifier</button>
         <button class="btn btn-red" onclick="deleteAideArticle(${a.id})">🗑️ Supprimer</button>
       </div>
     </div>`).join('') || '<p class="empty">Aucun article pour l\'instant.</p>';
 
   zone.innerHTML = `
-    <h3 style="font-size:14px;margin-bottom:8px">Modèles de climatiseur</h3>
+    <div class="section-title" style="margin-top:0">Modèles de climatiseur</div>
     <div id="modele-form" style="display:grid;gap:8px;max-width:480px;margin-bottom:12px">
       <input type="hidden" id="modele-id"/>
       <input type="text" id="modele-marque" placeholder="Marque (ex. Rowenta)"/>
@@ -4498,12 +4512,12 @@ function renderEspaceClient(assistance){
       <input type="text" id="modele-doc" placeholder="URL documentation / guide PDF"/>
       <div style="display:flex;gap:8px">
         <button class="btn btn-blue" onclick="saveModele()">Enregistrer</button>
-        <button class="btn" onclick="resetModeleForm()">Nouveau modèle</button>
+        <button class="btn btn-grey" onclick="resetModeleForm()">Nouveau modèle</button>
       </div>
     </div>
     ${modelesHtml}
 
-    <h3 style="font-size:14px;margin:24px 0 8px">Centre d'aide client</h3>
+    <div class="section-title">Centre d'aide client</div>
     <div id="aide-form" style="display:grid;gap:8px;max-width:480px;margin-bottom:12px">
       <input type="hidden" id="aide-id"/>
       <input type="text" id="aide-slug" placeholder="Identifiant unique (ex. vidange-bac-eau)"/>
@@ -4512,12 +4526,12 @@ function renderEspaceClient(assistance){
       <textarea id="aide-contenu" placeholder="Contenu" rows="4"></textarea>
       <div style="display:flex;gap:8px">
         <button class="btn btn-blue" onclick="saveAideArticle()">Enregistrer</button>
-        <button class="btn" onclick="resetAideForm()">Nouvel article</button>
+        <button class="btn btn-grey" onclick="resetAideForm()">Nouvel article</button>
       </div>
     </div>
     ${aideHtml}
 
-    <h3 style="font-size:14px;margin:24px 0 8px">Assistance (espace client)</h3>
+    <div class="section-title">Assistance (espace client)</div>
     <div style="display:grid;gap:8px;max-width:480px">
       <input type="text" id="assist-horaires" placeholder="Horaires" value="${escHtml(assistance.horaires||'')}"/>
       <input type="text" id="assist-tel" placeholder="Téléphone" value="${escHtml(assistance.telephone||'')}"/>
@@ -4773,7 +4787,7 @@ function missionStepsHtml(m){
     ['fait_at', m.fait_at],
   ];
   return `<div style="margin-top:8px;font-size:13px">
-    ${steps.map(([key, at]) => `<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;color:${at?'var(--ink)':'var(--grey2)'}">
+    ${steps.map(([key, at]) => `<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;color:${at?'var(--black)':'var(--grey2)'}">
       <span>${at?'✅':'⬜️'} ${MISSION_STEP_LABEL[key]}</span>${at?`<span style="color:var(--grey)">${frDateHeure(at)}</span>`:''}
     </div>`).join('')}
   </div>`;
