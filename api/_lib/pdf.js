@@ -66,11 +66,24 @@ function drawHeader(doc, title) {
   doc.moveDown(0.8);
 }
 
+// Bug corrigé le 2026-07-16 : cette fonction avançait doc.y d'une hauteur
+// fixe (moveDown(0.35)), correct seulement si label ET valeur tiennent sur
+// une seule ligne. Dès qu'un des deux textes est assez long pour passer à la
+// ligne (ex. les libellés de la section "Acceptation électronique" du
+// contrat), la ligne suivante venait chevaucher la fin de celle-ci — et
+// laissait en plus doc.x bloqué sur la colonne de droite (220), faisant
+// perdre une partie du texte des paragraphes appelés juste après. On mesure
+// désormais la hauteur réelle des deux colonnes et on réinitialise doc.x.
 function drawKeyValueRow(doc, label, value) {
   const y = doc.y;
-  doc.fontSize(10).fillColor('#666').text(label, 50, y, { width: 160 });
-  doc.fontSize(10).fillColor('#111').text(String(value ?? '—'), 220, y, { width: 325 });
-  doc.moveDown(0.35);
+  const labelWidth = 160, valueWidth = 325;
+  const valueStr = String(value ?? '—');
+  const labelHeight = doc.heightOfString(String(label), { width: labelWidth, fontSize: 10 });
+  const valueHeight = doc.heightOfString(valueStr, { width: valueWidth, fontSize: 10 });
+  doc.fontSize(10).fillColor('#666').text(label, 50, y, { width: labelWidth });
+  doc.fontSize(10).fillColor('#111').text(valueStr, 220, y, { width: valueWidth });
+  doc.x = 50;
+  doc.y = y + Math.max(labelHeight, valueHeight) + 5;
 }
 
 function drawSectionTitle(doc, text) {
@@ -81,14 +94,29 @@ function drawSectionTitle(doc, text) {
 
 // Une ligne de prestation facturée — libellé + détail (gris, indenté) à
 // gauche, montant aligné à droite — puis un filet séparateur fin.
+// Mesure la hauteur réelle des 2 colonnes (label à gauche, montant à droite)
+// avant de placer les lignes de détail sous la plus haute des deux — même
+// bug de fond que l'ancien drawKeyValueRow (voir son commentaire) : se fier
+// à doc.y après un simple appel .text() dépend de l'ordre des appels et ne
+// tient pas compte du wrapping, d'où ce calcul explicite.
 function drawInvoiceItem(doc, { label, detailLines = [], amount }) {
   const y = doc.y;
-  doc.fontSize(10.5).fillColor('#111').text(label, 50, y, { width: 375 });
-  doc.fontSize(10.5).fillColor('#111').text(amount, 425, y, { width: 120, align: 'right' });
+  const labelWidth = 375, amountWidth = 120;
+  const labelHeight = doc.heightOfString(label, { width: labelWidth, fontSize: 10.5 });
+  const amountHeight = doc.heightOfString(amount, { width: amountWidth, fontSize: 10.5 });
+  doc.fontSize(10.5).fillColor('#111').text(label, 50, y, { width: labelWidth });
+  doc.fontSize(10.5).fillColor('#111').text(amount, 425, y, { width: amountWidth, align: 'right' });
   doc.x = 50;
+  doc.y = y + Math.max(labelHeight, amountHeight);
+  // Pour les lignes de détail, doc.y avance correctement tout seul après
+  // chaque .text() (pdfkit calcule la hauteur réelle du texte rendu) — pas
+  // besoin de la recalculer nous-mêmes ici, contrairement au tandem
+  // label/montant ci-dessus (2 colonnes indépendantes, doc.y ne reflète que
+  // la dernière des deux sans le correctif au-dessus).
   for (const line of detailLines) {
     doc.fontSize(9).fillColor('#666').text(line, 60, doc.y, { width: 365 });
   }
+  doc.x = 50;
   doc.moveDown(0.3);
   doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#eee').stroke();
   doc.moveDown(0.5);
@@ -181,13 +209,23 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
     doc.fontSize(9.5).fillColor('#111').text(`Fait à Nice, le ${fmtDate(new Date())}`);
     doc.moveDown(1.5);
 
+    // Bloc signatures : les 2 lignes sont positionnées à des coordonnées
+    // absolues (2 colonnes) — sans ce garde-fou, si le bloc tombait près du
+    // bas de page, pdfkit pouvait insérer un saut de page entre les deux
+    // lignes de chaque colonne, éparpillant "Aly THIAM" et la mention du
+    // locataire sur la page suivante (bug observé et corrigé le 2026-07-16).
+    const SIGNATURE_BLOCK_HEIGHT = 90;
+    if (doc.y + SIGNATURE_BLOCK_HEIGHT > doc.page.height - doc.page.margins.bottom) {
+      doc.addPage();
+    }
     const ySign = doc.y;
     doc.fontSize(9.5).fillColor('#111').text('Signature du Bailleur :', 50, ySign);
     doc.text("Aly THIAM (Loc'Air)", 50, ySign + 34);
     doc.fontSize(9.5).text('Signature du Locataire :', 300, ySign);
     doc.text('(Précédée de la mention « Lu et approuvé »)', 300, ySign + 34, { width: 200 });
 
-    doc.moveDown(3);
+    doc.x = 50;
+    doc.y = ySign + SIGNATURE_BLOCK_HEIGHT;
     doc.fontSize(8).fillColor('#888').text(
       `Contrat généré et accepté électroniquement au moment du paiement — dossier ${reservation.ref}. ` +
       `Conditions générales complètes (CGV/CGL v${version}) consultables sur locair.fr/cgv.`,
@@ -209,7 +247,12 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement }) {
     drawHeader(doc, `Facture ${numero}`);
 
     doc.fontSize(9).fillColor('#666').text(`Réservation n° ${reservation.ref}`);
-    doc.text(`Date d'émission : ${fmtDate(datePaiement)} · Échéance : réglée comptant à la réservation`);
+    doc.fontSize(7.5).fillColor('#999').text(
+      "Identifiant unique pour la gestion de votre dossier et l'accès à votre espace personnel.", { width: 495 }
+    );
+    doc.moveDown(0.3);
+    doc.fontSize(9).fillColor('#666').text(`Date d'émission : ${fmtDate(datePaiement)} · Échéance : réglée comptant à la réservation`);
+    doc.text('Type d\'opération : Prestation de services / Location de biens');
     doc.moveDown(0.8);
 
     drawSectionTitle(doc, 'Facturé à');
@@ -273,7 +316,7 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement }) {
     doc.fontSize(12).fillColor('#111').text(`NET À PAYER : ${eur(totalReelCents)}`, { align: 'right' });
 
     doc.moveDown(0.8);
-    doc.fontSize(8).fillColor('#666').text(`Mention légale : ${SELLER.mentionTva}.`, { width: 495 });
+    doc.fontSize(8).fillColor('#666').text(`Mention légale : ${SELLER.mentionTva} (micro-entreprise en franchise de TVA).`, { width: 495 });
 
     drawSectionTitle(doc, 'Moyens de paiement');
     doc.fontSize(9).fillColor('#444').text('Payé en ligne via Stripe (carte bancaire).');
