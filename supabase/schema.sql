@@ -775,6 +775,20 @@ create table admin_webauthn_credentials (
   created_at    timestamptz not null default now()
 );
 
+-- Comptes équipe (Module 7, Partie 31) : en plus du mot de passe historique
+-- partagé (ADMIN_PASSWORD, toujours valide, vaut le rôle "administrateur"),
+-- de vrais comptes nominatifs avec un rôle qui limite ce qu'ils voient.
+create table admin_users (
+  id            serial primary key,
+  nom           text not null,
+  email         text,
+  pin           text not null unique,
+  role          text not null check (role in ('administrateur','operateur','comptabilite','support_client')),
+  actif         boolean not null default true,
+  created_at    timestamptz not null default now(),
+  last_login_at timestamptz
+);
+
 -- Seed pour Nice — ajuster le nombre d'appareils insérés ci-dessous au vrai
 -- parc, et postal_codes à la zone de livraison réelle une fois affinée
 -- (voir onglet Villes de l'admin).

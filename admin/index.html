@@ -40,6 +40,7 @@ body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:1
 .logo{font-family:var(--disp);font-size:23px;font-weight:600;color:var(--blue);margin-bottom:26px;letter-spacing:.01em;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .logout-link{font-family:var(--body);font-size:12.5px;font-weight:700;color:var(--grey);background:none;border:none;cursor:pointer;letter-spacing:normal}
 .logout-link:hover{color:var(--red)}
+.forgot-link{display:block;width:100%;text-align:center;font-family:var(--body);font-size:13px;font-weight:700;color:var(--blue);background:none;border:none;cursor:pointer;padding:6px}
 .logo em{font-style:normal;color:var(--gold)}
 .eyebrow{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.18em;color:var(--grey);margin-bottom:14px;display:flex;align-items:center;gap:10px}
 .eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--blue);flex-shrink:0}
@@ -338,6 +339,13 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
       <input type="password" id="a-pwd" autocomplete="current-password"/>
       <button class="btn btn-blue btn-block" id="a-login-btn" onclick="adminLogin()">Se connecter →</button>
       <div class="err" id="a-login-err"></div>
+      <button class="forgot-link" style="margin-top:16px" onclick="toggleTeamLogin()">Tu as un code personnel ? →</button>
+      <div class="hidden" id="a-team-login" style="margin-top:14px">
+        <label for="a-team-pin">Ton code personnel</label>
+        <input type="password" inputmode="numeric" id="a-team-pin" autocomplete="off"/>
+        <button class="btn btn-blue btn-block" id="a-team-login-btn" onclick="adminTeamLogin()" style="margin-top:10px">Se connecter →</button>
+        <div class="err" id="a-team-login-err"></div>
+      </div>
     </div>
   </div>
 
@@ -381,6 +389,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
             <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
             <button data-tab="partenaires" onclick="switchAdminTab('partenaires')">🤝 Partenaires<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
             <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
+            <button data-tab="equipe" onclick="switchAdminTab('equipe')">🧑‍💼 Équipe</button>
             <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
             <button data-tab="tutoriels" onclick="switchAdminTab('tutoriels')">🎓 Tutoriels</button>
             <button data-tab="emails" onclick="switchAdminTab('emails')">✉️ Emails</button>
@@ -410,6 +419,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-incidents" class="hidden"></div>
         <div id="tab-clients" class="hidden"></div>
         <div id="tab-villes" class="hidden"></div>
+        <div id="tab-equipe" class="hidden"></div>
         <div id="tab-tutoriels" class="hidden"></div>
         <div id="tab-emails" class="hidden"></div>
         <div id="tab-espaceclient" class="hidden"></div>
@@ -429,8 +439,23 @@ const API = (p) => '/api/' + p;
 // jamais côté serveur (comparé tel quel à ADMIN_PASSWORD à chaque requête),
 // donc pas de raison de le redemander à chaque fermeture de l'onglet/app.
 let TOKEN = localStorage.getItem('a_token') || '';
+// Rôle du compte connecté (Module 7, Partie 31) — 'administrateur' par
+// défaut : c'est toujours le rôle du mot de passe historique partagé, donc
+// une session déjà ouverte avant l'ajout des comptes équipe reste correcte
+// sans avoir à se reconnecter.
+let ROLE = localStorage.getItem('a_role') || 'administrateur';
+let NOM_COMPTE = localStorage.getItem('a_nom') || '';
 
 function authHeaders(){ return {'Content-Type':'application/json','x-admin-token':TOKEN}; }
+function setSession(token, role, nom){
+  TOKEN = token; ROLE = role || 'administrateur'; NOM_COMPTE = nom || '';
+  localStorage.setItem('a_token', TOKEN);
+  localStorage.setItem('a_role', ROLE);
+  localStorage.setItem('a_nom', NOM_COMPTE);
+}
+function applyRoleVisibility(){
+  document.querySelectorAll('[data-tab="equipe"]').forEach(b => b.classList.toggle('hidden', ROLE !== 'administrateur'));
+}
 
 // ── Ville/zone sélectionnée (multi-ville) ─────────────────────────────────
 // Plutôt que de retoucher chaque site d'appel fetch(API('admin-...'), ...)
@@ -543,7 +568,9 @@ document.addEventListener('visibilitychange', () => { if(document.visibilityStat
 function adminLogout(){
   confirmAction('Se déconnecter de l\'espace admin sur cet appareil ?', () => {
     localStorage.removeItem('a_token');
-    TOKEN = '';
+    localStorage.removeItem('a_role');
+    localStorage.removeItem('a_nom');
+    TOKEN = ''; ROLE = 'administrateur'; NOM_COMPTE = '';
     if(window._alertsInterval){ clearInterval(window._alertsInterval); window._alertsInterval = null; }
     if(window._autoRefreshInterval){ clearInterval(window._autoRefreshInterval); window._autoRefreshInterval = null; }
     document.getElementById('a-app').classList.add('hidden');
@@ -553,6 +580,45 @@ function adminLogout(){
   });
 }
 
+function toggleTeamLogin(){
+  document.getElementById('a-team-login').classList.toggle('hidden');
+}
+async function adminTeamLogin(){
+  const pin = document.getElementById('a-team-pin').value.trim();
+  const errEl = document.getElementById('a-team-login-err');
+  const btn = document.getElementById('a-team-login-btn');
+  errEl.style.display='none';
+  if(!pin) return;
+  if(btn && btn.disabled) return;
+  if(btn){ btn.disabled = true; btn.textContent = 'Connexion…'; }
+  try{
+    const r = await fetch(API('admin-user-login'), {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({pin})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Code incorrect');
+    onAdminLoginSuccess(d.token, d.role, d.nom);
+  }catch(e){
+    errEl.textContent = e.message;
+    errEl.style.display='block';
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = 'Se connecter →'; }
+  }
+}
+// Suite commune à connexion mot de passe / code personnel / Face ID —
+// affiche l'app et démarre les rafraîchissements périodiques.
+function onAdminLoginSuccess(token, role, nom){
+  setSession(token, role, nom);
+  document.getElementById('a-login').classList.add('hidden');
+  document.getElementById('a-app').classList.remove('hidden');
+  document.getElementById('a-logout-btn').classList.remove('hidden');
+  applyRoleVisibility();
+  switchAdminTab('accueil');
+  loadAlerts();
+  loadCitySwitcher();
+  setupAdminPush();
+  clearAppBadge();
+  if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
+  if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
+}
 async function adminLogin(){
   const pwd = document.getElementById('a-pwd').value.trim();
   const errEl = document.getElementById('a-login-err');
@@ -563,19 +629,9 @@ async function adminLogin(){
   if(btn){ btn.disabled = true; btn.textContent = 'Connexion…'; }
   try{
     const r = await fetch(API('admin-login'), {method:'POST', headers:{'Content-Type':'application/json','x-admin-token':pwd}, body:'{}'});
-    if(!r.ok){ const d=await r.json(); throw new Error(d.error||'Erreur'); }
-    TOKEN = pwd;
-    localStorage.setItem('a_token', pwd);
-    document.getElementById('a-login').classList.add('hidden');
-    document.getElementById('a-app').classList.remove('hidden');
-    document.getElementById('a-logout-btn').classList.remove('hidden');
-    switchAdminTab('accueil');
-    loadAlerts();
-    loadCitySwitcher();
-    setupAdminPush();
-    clearAppBadge();
-    if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
-    if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    onAdminLoginSuccess(pwd, d.role, d.nom);
     maybeOfferAdminFaceId();
   }catch(e){
     errEl.textContent = e.message;
@@ -688,18 +744,10 @@ async function loginWithAdminFaceId(auto){
     const d = await verRes.json();
     if(!verRes.ok) throw new Error(d.error||'Connexion refusée.');
 
-    TOKEN = d.token;
-    localStorage.setItem('a_token', d.token);
-    document.getElementById('a-login').classList.add('hidden');
-    document.getElementById('a-app').classList.remove('hidden');
-    document.getElementById('a-logout-btn').classList.remove('hidden');
-    switchAdminTab('accueil');
-    loadAlerts();
-    loadCitySwitcher();
-    setupAdminPush();
-    clearAppBadge();
-    if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
-    if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
+    // La biométrie ne redonne toujours que le mot de passe historique (voir
+    // admin-webauthn-login-verify.js) — pas encore de Face ID par membre de
+    // l'équipe, donc toujours le rôle "administrateur" ici.
+    onAdminLoginSuccess(d.token, 'administrateur', '');
     maybeOfferAdminFaceId();
   }catch(e){
     // Déclenchement automatique à l'ouverture : un échec/annulation ne doit
@@ -874,7 +922,7 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
+  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
@@ -888,6 +936,7 @@ function switchAdminTab(tab){
   if(tab==='incidents') loadIncidents();
   if(tab==='clients') loadClients();
   if(tab==='villes') loadVilles();
+  if(tab==='equipe') loadEquipe();
   if(tab==='tutoriels') loadTutoriels();
   if(tab==='emails') loadEmails();
   if(tab==='espaceclient') loadEspaceClient();
@@ -5431,6 +5480,157 @@ function renderVilles(){
       <div class="err" id="ville-err"></div>
     </div>`;
 }
+
+// ── Équipe (Module 7, Partie 31) : comptes nominatifs à côté du mot de passe
+// historique partagé — chaque rôle voit uniquement ce dont il a besoin. Onglet
+// réservé au rôle "administrateur" (voir applyRoleVisibility) ; le serveur
+// refuse de toute façon l'accès aux autres rôles, cette page ne fait que ne
+// pas leur proposer un bouton qui échouerait.
+const ROLE_LABEL = {
+  administrateur: '🔑 Administrateur — accès complet',
+  operateur:      '📋 Opérateur — commandes, missions, clients',
+  comptabilite:   '💶 Comptabilité — paiements, commissions',
+  support_client: '🛟 Support client — clients, demandes',
+};
+let EQUIPE_CACHE = [];
+async function loadEquipe(){
+  const zone = document.getElementById('tab-equipe');
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-team'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    EQUIPE_CACHE = d.membres || [];
+    renderEquipe();
+  }catch(e){
+    zone.innerHTML = `<p class="empty">${e.message==='Non autorisé'?'Cette page est réservée au compte administrateur.':'Erreur de chargement. Réessaie.'}</p>`;
+  }
+}
+function renderEquipe(){
+  const zone = document.getElementById('tab-equipe');
+  const list = EQUIPE_CACHE.map(u => `
+    <div class="row-item">
+      <div class="row-top">
+        <span class="row-title">${escHtml(u.nom)}</span>
+        <span class="chip ${u.actif?'actif':'inactif'}">${u.actif?'actif':'désactivé'}</span>
+      </div>
+      <div class="row-meta">${ROLE_LABEL[u.role]||u.role}</div>
+      <div class="row-meta">${u.last_login_at ? 'Dernière connexion : '+new Date(u.last_login_at).toLocaleString('fr-FR') : 'Jamais connecté'}</div>
+      <div class="row-actions">
+        <button class="btn btn-grey" onclick="editEquipeRole(${u.id})">Changer le rôle</button>
+        <button class="btn btn-grey" onclick="resetEquipePin(${u.id})">Réinitialiser le code</button>
+        <button class="btn ${u.actif?'btn-grey':'btn-green'}" onclick="toggleEquipeActif(${u.id}, ${!u.actif})">${u.actif?'Désactiver':'Réactiver'}</button>
+        <button class="btn btn-red" onclick="deleteEquipeMembre(${u.id})">Supprimer</button>
+      </div>
+    </div>`).join('') || '<p class="empty">🧑‍💼 Personne dans l\'équipe pour l\'instant — le mot de passe partagé reste utilisable en plus.</p>';
+  zone.innerHTML = `
+    <p class="sub" style="margin-bottom:16px">Donne à chaque personne de ton équipe son propre code — elle ne verra que ce dont elle a besoin pour son rôle.</p>
+    ${list}
+    <div class="card">
+      <h2>Ajouter un membre</h2>
+      <label for="eq-nom">Nom</label>
+      <input type="text" id="eq-nom" placeholder="Prénom Nom"/>
+      <label for="eq-role" style="margin-top:14px">Rôle</label>
+      <select id="eq-role">
+        ${Object.entries(ROLE_LABEL).filter(([k])=>k!=='administrateur').map(([k,label])=>`<option value="${k}">${label}</option>`).join('')}
+      </select>
+      <button class="btn btn-blue btn-block" style="margin-top:14px" onclick="addEquipeMembre()">Créer le compte</button>
+      <div class="err" id="equipe-err"></div>
+    </div>`;
+}
+async function addEquipeMembre(){
+  const nom = document.getElementById('eq-nom').value.trim();
+  const role = document.getElementById('eq-role').value;
+  const errEl = document.getElementById('equipe-err');
+  errEl.style.display='none';
+  if(!nom){ errEl.textContent='Nom requis'; errEl.style.display='block'; return; }
+  try{
+    const r = await fetch(API('admin-team'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', nom, role})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadEquipe();
+    confirmAction(`Compte créé pour ${nom}. Son code personnel est : ${d.pin}\n\nNote-le maintenant, il ne sera plus jamais affiché en entier.`, ()=>{}, {yesLabel:'Compris'});
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display='block';
+  }
+}
+function editEquipeRole(id){
+  const u = EQUIPE_CACHE.find(x => x.id === id);
+  if(!u) return;
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:380px">
+      <h2 style="margin-bottom:6px">Rôle de ${escHtml(u.nom)}</h2>
+      <select id="eq-role-edit">
+        ${Object.entries(ROLE_LABEL).map(([k,label])=>`<option value="${k}" ${k===u.role?'selected':''}>${label}</option>`).join('')}
+      </select>
+      <div class="modal-actions" style="margin-top:14px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Enregistrer</button>
+      </div>
+      <div class="err" id="equipe-role-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const role = document.getElementById('eq-role-edit').value;
+    try{
+      const r = await fetch(API('admin-team'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, role})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      loadEquipe();
+      showToast('Rôle mis à jour', 'success');
+    }catch(e){
+      const errEl = document.getElementById('equipe-role-err');
+      errEl.textContent = e.message; errEl.style.display='block';
+    }
+  };
+}
+function resetEquipePin(id){
+  const u = EQUIPE_CACHE.find(x => x.id === id);
+  if(!u) return;
+  confirmAction(`Réinitialiser le code personnel de ${u.nom} ? Son ancien code cessera immédiatement de fonctionner.`, async () => {
+    // Contrairement à la création, l'action "update" ne génère pas de code
+    // toute seule si on ne lui en envoie pas — on en tire un ici et on
+    // l'impose au serveur.
+    const pin = String(Math.floor(100000 + Math.random()*900000));
+    try{
+      const r = await fetch(API('admin-team'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, pin})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      confirmAction(`Nouveau code pour ${u.nom} : ${pin}\n\nNote-le maintenant, il ne sera plus jamais affiché en entier.`, ()=>{}, {yesLabel:'Compris'});
+    }catch(e){ showToast(`Non enregistré : ${e.message}`, 'error'); }
+  });
+}
+async function toggleEquipeActif(id, actif){
+  try{
+    const r = await fetch(API('admin-team'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, actif})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadEquipe();
+    showToast(actif?'Compte réactivé':'Compte désactivé', 'success');
+  }catch(e){ showToast(`Non enregistré : ${e.message}`, 'error'); }
+}
+function deleteEquipeMembre(id){
+  const u = EQUIPE_CACHE.find(x => x.id === id);
+  if(!u) return;
+  confirmAction(`Supprimer définitivement le compte de ${u.nom} ?`, async () => {
+    try{
+      const r = await fetch(API('admin-team'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadEquipe();
+      showToast('Compte supprimé', 'success');
+    }catch(e){ showToast(`Non supprimé : ${e.message}`, 'error'); }
+  }, {danger:true, yesLabel:'Supprimer'});
+}
+
 // ── Tutoriels vidéo (prise en main transporteur) ─────────────────────────────
 // Bibliothèque unique pour toutes les villes — 7 catégories fixes, dont 3
 // (chargement/déchargement/installation) sont volontairement des emplacements
@@ -5971,6 +6171,7 @@ function closeLiveMap(){
     document.getElementById('a-login').classList.add('hidden');
     document.getElementById('a-app').classList.remove('hidden');
     document.getElementById('a-logout-btn').classList.remove('hidden');
+    applyRoleVisibility();
     switchAdminTab('accueil');
     // Sans ça, les badges (missions non assignées, virements) et le bandeau
     // permanent ne se remettaient à jour qu'après une saisie de mot de passe —

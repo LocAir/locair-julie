@@ -1,5 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 const { geocodeAddress } = require('./_lib/geo');
 
 // undefined = champ non fourni (ne pas toucher) ; '' ou null = revenir au
@@ -20,17 +21,22 @@ function tarifCentsOrNull(v) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
 
   const body   = req.body || {};
   const action = body.action || 'list';
 
   try {
     if (action === 'list') {
+      // Lecture seule, nécessaire à toute l'admin pour choisir la ville
+      // affichée — accessible à tous les rôles, contrairement à la
+      // modification des tarifs/zones ci-dessous (réservée aux réglages).
       const { data, error } = await supabase.from('cities').select('*').order('name');
       if (error) throw error;
       return res.status(200).json({ cities: data || [] });
     }
+    if (!roleHasAccess(admin.role, 'reglages')) return res.status(403).json({ error: "Ton compte n'a pas accès aux réglages." });
 
     if (action === 'create') {
       const name = (body.name || '').trim();

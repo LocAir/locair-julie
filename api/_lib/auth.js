@@ -5,18 +5,78 @@ function safeEqual(a, b) {
   try { return crypto.timingSafeEqual(Buffer.from(String(a)), Buffer.from(String(b))); } catch { return false; }
 }
 
+// Empreinte d'un code PIN (jamais le PIN en clair) — utilisée pour les
+// transporteurs, les partenaires, et depuis le Module 7 pour les comptes
+// équipe admin. Voir plus bas.
+function pinFingerprint(pin) {
+  return crypto.createHash('sha256').update(String(pin || '')).digest('hex').slice(0, 16);
+}
+
+// Deux façons de s'authentifier en admin, toutes les deux acceptées par le
+// même jeton `x-admin-token` :
+// 1. Le mot de passe historique partagé (ADMIN_PASSWORD) — vaut toujours le
+//    rôle "administrateur" (accès complet). Ne jamais retirer ce chemin : la
+//    session n'a pas accès à Supabase en prod, donc si on cassait cet accès
+//    il n'y aurait plus aucun moyen de se reconnecter tant que le SQL
+//    ci-dessous n'a pas été collé par le propriétaire.
+// 2. Un jeton de compte équipe signé `adminuser:<id>.<empreinte pin>.<signature>`
+//    (même principe que signTransporteurToken plus bas) — résolu en base pour
+//    connaître le rôle et vérifier que le compte est toujours actif.
+async function resolveAdminAuth(token, supabase) {
+  if (Boolean(process.env.ADMIN_PASSWORD) && safeEqual(token, process.env.ADMIN_PASSWORD)) {
+    return { adminUserId: null, role: 'administrateur', nom: null };
+  }
+  const parts = token.split('.');
+  if (parts.length === 3 && parts[0].startsWith('adminuser:')) {
+    const id = parseInt(parts[0].slice('adminuser:'.length), 10);
+    if (Number.isFinite(id) && id > 0) {
+      const secret = process.env.TRANSPORTEUR_SECRET || '';
+      const payload = `${parts[0]}.${parts[1]}`;
+      const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+      if (safeEqual(parts[2], expected)) {
+        const { data: u } = await supabase.from('admin_users').select('role, nom, pin, actif').eq('id', id).maybeSingle();
+        if (u && u.actif && safeEqual(parts[1], pinFingerprint(u.pin))) {
+          return { adminUserId: id, role: u.role, nom: u.nom };
+        }
+      }
+    }
+  }
+  return null;
+}
+
 // Rate-limité ici plutôt que dans le seul endpoint admin-login.js : comme
-// chaque route /api/admin-*.js revalide le mot de passe à chaque appel (pas
-// de session serveur), le blocage doit s'appliquer partout où ce mot de passe
-// est vérifié, pas uniquement à l'écran de connexion.
+// chaque route /api/admin-*.js revalide le jeton à chaque appel (pas de
+// session serveur), le blocage doit s'appliquer partout où ce jeton est
+// vérifié, pas uniquement à l'écran de connexion.
 async function checkAdminToken(req, supabase) {
   const rateKey = `admin:${getClientIp(req)}`;
   if (await isRateLimited(supabase, rateKey)) return false;
 
   const token = ((req.body || {}).token || req.headers['x-admin-token'] || '').trim();
-  const ok = Boolean(process.env.ADMIN_PASSWORD) && safeEqual(token, process.env.ADMIN_PASSWORD);
-  if (!ok) await recordFailedAttempt(supabase, rateKey);
-  return ok;
+  const auth = await resolveAdminAuth(token, supabase);
+  if (!auth) await recordFailedAttempt(supabase, rateKey);
+  return Boolean(auth);
+}
+
+// Même vérification que checkAdminToken, mais renvoie aussi le rôle — pour
+// les quelques rubriques sensibles (finances, réglages, équipe) qui doivent
+// rester fermées à certains rôles. Le compte historique vaut toujours
+// "administrateur" (accès complet), donc jamais bloqué par ce contrôle.
+async function checkAdminRole(req, supabase) {
+  const rateKey = `admin:${getClientIp(req)}`;
+  if (await isRateLimited(supabase, rateKey)) return { ok: false };
+
+  const token = ((req.body || {}).token || req.headers['x-admin-token'] || '').trim();
+  const auth = await resolveAdminAuth(token, supabase);
+  if (!auth) { await recordFailedAttempt(supabase, rateKey); return { ok: false }; }
+  return { ok: true, role: auth.role, adminUserId: auth.adminUserId, nom: auth.nom };
+}
+
+function signAdminUserToken(adminUserId, pin) {
+  const secret  = process.env.TRANSPORTEUR_SECRET || '';
+  const payload = `adminuser:${adminUserId}.${pinFingerprint(pin)}`;
+  const sig     = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+  return `${payload}.${sig}`;
 }
 
 // Un transporteur s'identifie par son PIN personnel (voir transporteur-login.js),
@@ -27,10 +87,6 @@ async function checkAdminToken(req, supabase) {
 // un changement de code. L'id est toujours lu DANS le jeton vérifié, jamais un
 // transporteur_id fourni tel quel par le client, ce qui empêche un livreur
 // d'agir avec l'identité d'un collègue.
-function pinFingerprint(pin) {
-  return crypto.createHash('sha256').update(String(pin || '')).digest('hex').slice(0, 16);
-}
-
 function signTransporteurToken(transporteurId, pin) {
   const secret  = process.env.TRANSPORTEUR_SECRET || '';
   const payload = `${transporteurId}.${pinFingerprint(pin)}`;
@@ -136,7 +192,7 @@ async function verifyClientToken(req, supabase) {
 }
 
 module.exports = {
-  safeEqual, checkAdminToken,
+  safeEqual, checkAdminToken, checkAdminRole, signAdminUserToken,
   signTransporteurToken, verifyTransporteurToken,
   signPartenaireToken, verifyPartenaireToken,
   signClientToken, verifyClientToken,
