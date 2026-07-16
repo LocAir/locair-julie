@@ -1527,13 +1527,14 @@ function offresPrivilegeHtml(){
         <div class="row-item">
           <div class="row-top">
             <span class="row-title">Climatiseur n°${o.appareil?.numero ?? '—'}</span>
-            <span class="chip ${o.statut==='proposee'?'en_location':'a_faire'}">${o.statut==='proposee'?'Proposée au client':'En attente de prix'}</span>
+            <span class="chip ${o.statut==='acceptee'?'terminee':(o.statut==='proposee'?'en_location':'a_faire')}">${o.statut==='acceptee'?'Achetée par le client':(o.statut==='proposee'?'Proposée au client':'En attente de prix')}</span>
           </div>
           <div class="row-meta">${o.nb_locations} locations effectuées${o.reservation?' · '+escHtml((o.reservation.prenom||'')+' '+(o.reservation.nom||''))+' ('+escHtml(o.reservation.ref||'')+')':''}</div>
-          ${o.statut==='proposee'?`<div class="row-meta">Prix proposé : ${euros(o.prix_vente_cents)}</div>`:''}
+          ${o.statut==='proposee'||o.statut==='acceptee'?`<div class="row-meta">Prix ${o.statut==='acceptee'?'payé':'proposé'} : ${euros(o.prix_vente_cents)}</div>`:''}
           <div class="row-actions">
             ${o.statut==='eligible'?`<button class="btn btn-blue" onclick="genererOffrePrivilege(${o.id}, ${o.appareil?.numero ?? 0})">Fixer un prix et proposer</button>`:''}
-            <button class="btn btn-grey" onclick="annulerOffrePrivilege(${o.id})">Retirer l'offre</button>
+            ${o.statut==='eligible'||o.statut==='proposee'?`<button class="btn btn-grey" onclick="annulerOffrePrivilege(${o.id})">Retirer l'offre</button>`:''}
+            ${o.statut==='acceptee'?`<button class="btn btn-red" onclick="rembourserOffrePrivilege(${o.id}, ${o.appareil?.numero ?? 0}, ${o.prix_vente_cents})">💳 Rembourser l'achat</button>`:''}
           </div>
         </div>`).join('')}
     </div>`;
@@ -1565,6 +1566,58 @@ function annulerOffrePrivilege(id){
       showToast('Offre retirée', 'success');
     }catch(e){ showToast(e.message, 'error'); }
   });
+}
+// Rembourse un achat Offre Privilège déjà payé (le client change d'avis).
+// Même logique que rembourserReservation : ne fait que déclencher Stripe +
+// l'historiser ici — c'est le webhook charge.refunded qui remet ensuite le
+// climatiseur "disponible" et l'offre "refusee" une fois confirmé par Stripe.
+function rembourserOffrePrivilege(id, numero, prixCents){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:400px">
+      <h2 style="margin-bottom:6px">💳 Rembourser l'achat</h2>
+      <p class="sub" style="margin-bottom:16px">Climatiseur n°${numero} — l'argent repart vraiment vers le client via Stripe. Une fois confirmé, l'appareil redevient disponible dans le parc.</p>
+      <label for="remb-op-montant">Montant à rembourser (€)</label>
+      <input type="text" inputmode="decimal" id="remb-op-montant" value="${(prixCents/100).toFixed(2)}"/>
+      <label for="remb-op-raison" style="margin-top:14px">Raison (obligatoire)</label>
+      <textarea id="remb-op-raison" rows="3" placeholder="Ex. le client a changé d'avis…"></textarea>
+      <div class="modal-actions" style="margin-top:14px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-red">Rembourser</button>
+      </div>
+      <div class="err" id="remb-op-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = () => {
+    const montant = parseFloat(document.getElementById('remb-op-montant').value.replace(',','.'));
+    const raison = document.getElementById('remb-op-raison').value.trim();
+    const errEl = document.getElementById('remb-op-err');
+    errEl.style.display = 'none';
+    if(!montant || montant <= 0){ errEl.textContent = 'Montant invalide'; errEl.style.display='block'; return; }
+    if(!raison){ errEl.textContent = 'Indique la raison du remboursement'; errEl.style.display='block'; return; }
+    confirmAction(`Confirmer le remboursement de ${montant.toFixed(2)} € ? Cette action est irréversible.`, async () => {
+      okBtn.disabled = true;
+      try{
+        const resp = await fetch(API('admin-offres-privilege'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+          action:'rembourser', id, montant_cents: Math.round(montant*100), raison,
+        })});
+        const d = await resp.json();
+        if(!resp.ok) throw new Error(d.error||'Erreur');
+        closeModal();
+        loadStock();
+        showToast('Remboursement envoyé', 'success');
+      }catch(e){
+        okBtn.disabled = false;
+        showToast(e.message, 'error');
+      }
+    }, {danger:true, yesLabel:'Oui, rembourser'});
+  };
 }
 async function loadStock(silent){
   const zone = document.getElementById('tab-stock');

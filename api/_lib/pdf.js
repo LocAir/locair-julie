@@ -152,4 +152,43 @@ function generateFacturePdf({ reservation, numero, datePaiement }) {
   });
 }
 
-module.exports = { generateContratPdf, generateFacturePdf };
+// ── Facture de vente (Offre Privilège) ──────────────────────────────────────
+// Le client achète le climatiseur qu'il a déjà en location au lieu de le
+// rendre — pas de dates de location ici, juste la vente d'une unité précise.
+function generateFactureVentePdf({ reservation, appareil, numero, montantCents, datePaiement }) {
+  return renderPdf((doc) => {
+    drawHeader(doc, `Facture ${numero}`);
+
+    drawSectionTitle(doc, 'Client');
+    drawKeyValueRow(doc, 'Nom', `${reservation.prenom || ''} ${reservation.nom || ''}`.trim());
+    if (reservation.type_client === 'entreprise' && reservation.raison_sociale) {
+      drawKeyValueRow(doc, 'Raison sociale', reservation.raison_sociale);
+      drawKeyValueRow(doc, 'SIRET client', reservation.siret || '—');
+    }
+    drawKeyValueRow(doc, 'Adresse', reservation.adresse || '—');
+    drawKeyValueRow(doc, 'Email', reservation.email || '—');
+
+    drawSectionTitle(doc, 'Détail');
+    drawKeyValueRow(doc, 'Numéro de facture', numero);
+    drawKeyValueRow(doc, 'Numéro de commande', reservation.ref);
+    drawKeyValueRow(doc, 'Date de paiement', fmtDate(datePaiement));
+    drawKeyValueRow(doc, 'Désignation', `Vente climatiseur mobile — Unité n°${appareil?.numero ?? '—'} (Offre Privilège)`);
+    drawKeyValueRow(doc, 'Quantité', '1 climatiseur');
+
+    doc.moveDown(0.4);
+    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#ddd').stroke();
+    doc.moveDown(0.4);
+    doc.fontSize(12).fillColor('#111').text(`Montant payé (TTC) : ${eur(montantCents)}`, { align: 'right' });
+    doc.fontSize(9).fillColor('#666').text(SELLER.mentionTva, { align: 'right' });
+
+    doc.moveDown(1.2);
+    doc.fontSize(8).fillColor('#888').text(
+      `${SELLER.raisonSociale} (${SELLER.nomCommercial}) · ${SELLER.formeJuridique} · SIRET ${SELLER.siret} · ${SELLER.adresse}. ` +
+      'Facture émise conformément aux articles L441-9 et suivants du Code de commerce. Aucun escompte pour paiement anticipé. ' +
+      "Pénalités de retard : sans objet (paiement comptant préalable à la vente).",
+      { width: 495 }
+    );
+  });
+}
+
+module.exports = { generateContratPdf, generateFacturePdf, generateFactureVentePdf };

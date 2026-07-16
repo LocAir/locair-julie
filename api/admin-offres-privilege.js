@@ -1,3 +1,4 @@
+const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
@@ -20,9 +21,12 @@ module.exports = async (req, res) => {
 
   try {
     if (action === 'list') {
+      // Inclut aussi les offres "acceptee" (climatiseur déjà vendu) pour que
+      // l'admin puisse encore les voir et déclencher un remboursement dessus —
+      // seules les offres refusées/annulées disparaissent de cette liste.
       const { data: offres, error } = await supabase
         .from('offres_privilege').select('*')
-        .in('statut', ['eligible', 'proposee'])
+        .in('statut', ['eligible', 'proposee', 'acceptee'])
         .order('created_at', { ascending: false });
       if (error) throw error;
       const list = offres || [];
@@ -90,6 +94,51 @@ module.exports = async (req, res) => {
       }).select('id').single();
       if (error) throw error;
       return res.status(200).json({ ok: true, id: created.id });
+    }
+
+    // Rembourse un achat déjà accepté (le client change d'avis). Ne fait que
+    // déclencher le remboursement Stripe + l'historiser — ne touche ni au
+    // statut de l'offre ni à celui de l'appareil : c'est le webhook Stripe
+    // (charge.refunded) qui remet l'appareil "disponible" et l'offre
+    // "refusee" une fois le remboursement réellement confirmé par Stripe,
+    // exactement comme pour le bouton "Rembourser" des locations.
+    if (action === 'rembourser') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const raison = (body.raison || '').trim().slice(0, 500);
+      if (!raison) return res.status(400).json({ error: 'Indique la raison du remboursement' });
+
+      const { data: offre } = await supabase
+        .from('offres_privilege').select('id, statut, prix_vente_cents, reservation_id, stripe_payment_intent_id')
+        .eq('id', id).maybeSingle();
+      if (!offre) return res.status(404).json({ error: 'Offre introuvable' });
+      if (offre.statut !== 'acceptee') return res.status(400).json({ error: "Cette offre n'a pas encore été achetée" });
+      if (!offre.stripe_payment_intent_id) return res.status(400).json({ error: 'Aucun paiement Stripe associé à cette offre' });
+
+      const montantCents = body.montant_cents != null ? Math.max(0, parseInt(body.montant_cents) || 0) : offre.prix_vente_cents;
+      if (!montantCents) return res.status(400).json({ error: 'Montant invalide' });
+
+      let refund;
+      try {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+        refund = await stripe.refunds.create({
+          payment_intent: offre.stripe_payment_intent_id,
+          amount: montantCents,
+          reason: 'requested_by_customer',
+        });
+      } catch (stripeErr) {
+        return res.status(400).json({ error: `Stripe a refusé le remboursement : ${stripeErr.message}` });
+      }
+
+      await supabase.from('remboursements').insert({
+        reservation_id:   offre.reservation_id,
+        montant_cents:    montantCents,
+        raison,
+        stripe_refund_id: refund.id,
+        demande_par:      admin.nom || admin.role,
+      });
+
+      return res.status(200).json({ ok: true, refund_id: refund.id });
     }
 
     // Retire une offre sans la proposer (ex. l'admin juge que non, finalement).

@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { generateContratPdf, generateFacturePdf } = require('./pdf');
+const { generateContratPdf, generateFacturePdf, generateFactureVentePdf } = require('./pdf');
 const { sendBrevoEmail } = require('./brevo');
 const { CGV_VERSION } = require('./legal');
 
@@ -133,4 +133,83 @@ async function generateAndSendDocuments(supabase, resa) {
   }
 }
 
-module.exports = { generateAndSendDocuments };
+function factureVenteHtml({ prenom, ref, viewUrlFacture }) {
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;color:#333;max-width:560px;margin:0 auto">
+    <h2 style="color:#1b3a5f">Votre facture d'achat Loc'Air — Dossier ${ref}</h2>
+    <p>Bonjour ${prenom || ''},</p>
+    <p>Merci pour votre achat via l'Offre Privilège ! Voici votre facture, en pièce jointe de cet email (PDF).</p>
+    <p style="margin:20px 0"><a href="${viewUrlFacture}" style="color:#1b3a5f">Consulter la facture en ligne</a></p>
+    <p style="font-size:12px;color:#888">Conservez cet email — ce document reste consultable via le lien ci-dessus.</p>
+  </body></html>`;
+}
+
+// Point d'entrée appelé une seule fois, juste après acceptation d'une Offre
+// Privilège (voir handleOffrePrivilegeAccepted dans api/webhook.js) — jamais
+// pour une location classique (voir generateAndSendDocuments ci-dessus).
+// Réutilise la même numérotation séquentielle FACT-YYYY-NNNNNN que les
+// factures de location (obligation légale de continuité de la série), mais
+// un type de document distinct ("facture_vente") pour ne jamais entrer en
+// conflit avec la facture de location déjà existante sur cette réservation.
+//
+// Même verrou que les autres documents : tant que DOCUMENTS_ENABLED n'est pas
+// explicitement à 'true', cette fonction ne fait rien.
+async function generateAndSendFactureVente(supabase, { reservationId, appareilId, prixCents }) {
+  if (process.env.DOCUMENTS_ENABLED !== 'true') return;
+  if (!reservationId || !appareilId || !prixCents) return;
+
+  const { data: existante } = await supabase
+    .from('documents').select('id').eq('reservation_id', reservationId).eq('type', 'facture_vente').maybeSingle();
+  if (existante) return; // déjà générée — jamais de doublon
+
+  const [{ data: resa }, { data: appareil }] = await Promise.all([
+    supabase.from('reservations').select('*').eq('id', reservationId).maybeSingle(),
+    supabase.from('appareils').select('numero').eq('id', appareilId).maybeSingle(),
+  ]);
+  if (!resa) return;
+
+  const now = new Date();
+  const annee = now.getUTCFullYear();
+  const { data: numeroSeq, error: numeroErr } = await supabase.rpc('next_invoice_number', { p_annee: annee });
+  if (numeroErr) throw numeroErr;
+  const numero = invoiceNumber(annee, numeroSeq);
+
+  const factureBuffer = await generateFactureVentePdf({ reservation: resa, appareil, numero, montantCents: prixCents, datePaiement: now });
+  const facturePath = `documents/factures/${numero}.pdf`;
+  await uploadPdf(supabase, facturePath, factureBuffer);
+  const factureToken = accessToken();
+  const { error: factureErr } = await supabase.from('documents').insert({
+    reservation_id: reservationId,
+    type:           'facture_vente',
+    numero,
+    version:        CGV_VERSION,
+    storage_path:   facturePath,
+    access_token:   factureToken,
+    montant_ttc_cents: prixCents,
+    statut:         'genere',
+    genere_at:      now.toISOString(),
+  });
+  if (factureErr) throw factureErr;
+
+  if (resa.email) {
+    const base = 'https://www.locair.fr';
+    const html = factureVenteHtml({
+      prenom: resa.prenom,
+      ref:    resa.ref,
+      viewUrlFacture: `${base}/api/document-view?token=${factureToken}`,
+    });
+    await sendBrevoEmail({
+      to:      resa.email,
+      subject: `📄 Votre facture d'achat Loc'Air — Dossier ${resa.ref}`,
+      html,
+      attachments: [{ name: `${numero}.pdf`, content: factureBuffer }],
+    });
+    await supabase.from('documents').update({ statut: 'envoye', envoye_at: new Date().toISOString() })
+      .eq('reservation_id', resa.id).eq('type', 'facture_vente');
+    supabase.from('email_log').insert({
+      reservation_id: resa.id, scenario: 'email_facture_vente', canal: 'email',
+      destinataire: resa.email, modele: 'email_facture_vente', statut: 'envoye', contenu: html,
+    }).catch(() => {});
+  }
+}
+
+module.exports = { generateAndSendDocuments, generateAndSendFactureVente };

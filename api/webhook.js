@@ -5,7 +5,7 @@ const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
 const { pushToAdmin } = require('./_lib/push');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { recordMouvement } = require('./_lib/stockMouvements');
-const { generateAndSendDocuments } = require('./_lib/documents');
+const { generateAndSendDocuments, generateAndSendFactureVente } = require('./_lib/documents');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
 const { escHtml } = require('./_lib/emailTemplates');
 
@@ -36,6 +36,14 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
     nouvelleLocalisation: appareil?.localisation || 'autre', utilisateur: 'systeme',
     commentaire: `Vendu au client via l'Offre Privilège (${(offre.prix_vente_cents / 100).toFixed(2)} €).`,
   });
+
+  try {
+    await generateAndSendFactureVente(supabase, {
+      reservationId: offre.reservation_id, appareilId: offre.appareil_id, prixCents: offre.prix_vente_cents,
+    });
+  } catch (e) {
+    console.error('[Offre privilège — facture de vente]', e.message);
+  }
 
   const { data: recup } = await supabase
     .from('livraisons').select('id, transporteur_id')
@@ -104,12 +112,48 @@ async function handlePaymentFailed(supabase, intent) {
   });
 }
 
+// Remboursement d'un achat Offre Privilège (déclenché par le bouton admin
+// dédié — voir api/admin-offres-privilege.js action "rembourser"). Ce
+// paiement n'a jamais de reservation_id sur reservations.stripe_payment_intent_id
+// (l'offre stocke le sien à part), donc jamais trouvé par
+// findReservationByPaymentIntent — c'est ce cas qui distingue un
+// remboursement de location d'un remboursement d'Offre Privilège ci-dessous.
+// Ne fait la bascule (offre "refusee", appareil "disponible") qu'une fois
+// Stripe ayant réellement confirmé le remboursement — jamais de façon
+// optimiste au moment du clic admin.
+async function handleOffrePrivilegeRefunded(supabase, piId, montantCents) {
+  const { data: offre } = await supabase
+    .from('offres_privilege').select('id, appareil_id, reservation_id, statut')
+    .eq('stripe_payment_intent_id', piId).maybeSingle();
+  if (!offre || offre.statut !== 'acceptee') return false;
+
+  await supabase.from('offres_privilege')
+    .update({ statut: 'refusee', decidee_at: new Date().toISOString() }).eq('id', offre.id);
+
+  const { data: appareil } = await supabase.from('appareils').select('numero, localisation').eq('id', offre.appareil_id).maybeSingle();
+  await recordMouvement(supabase, {
+    appareilId: offre.appareil_id, typeEvenement: 'autre', nouveauStatut: 'disponible',
+    nouvelleLocalisation: appareil?.localisation || 'autre', utilisateur: 'systeme',
+    commentaire: 'Achat Offre Privilège remboursé — climatiseur remis disponible.',
+  });
+
+  const montant = (montantCents / 100).toFixed(2) + ' €';
+  await pushToAdmin(supabase, {
+    title: 'Remboursement Offre Privilège confirmé',
+    body:  `Climatiseur #${appareil?.numero} — ${montant} — remis disponible dans le parc.`,
+    tag:   `offre-privilege-remboursement-${offre.id}`,
+  });
+  return true;
+}
+
 async function handleChargeRefunded(supabase, charge) {
   const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : (charge.payment_intent?.id || '');
   const resa = await findReservationByPaymentIntent(supabase, piId);
   const montant = (charge.amount_refunded / 100).toFixed(2) + ' €';
   if (resa) {
     await supabase.from('reservations').update({ statut: 'remboursee' }).eq('id', resa.id);
+  } else if (await handleOffrePrivilegeRefunded(supabase, piId, charge.amount_refunded || 0)) {
+    return; // remboursement Offre Privilège déjà tracé + notifié ci-dessus
   }
   await logPaymentIncident(supabase, {
     cityId: resa?.city_id,
