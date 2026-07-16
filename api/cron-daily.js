@@ -157,11 +157,18 @@ module.exports = async (req, res) => {
   }
 
   // ── 4. Maintenance préventive ─────────────────────────────────────────────────
-  // Appareil ayant dépassé le seuil de locations → passage auto en maintenance.
+  // Appareil ayant dépassé le seuil de locations → on demande à l'admin,
+  // jamais de passage automatique en maintenance (retirer un climatiseur du
+  // stock disponible a un vrai impact, ce n'est pas au cron de décider seul).
+  // Le comptage total de locations d'un appareil ne redescend jamais — sans
+  // garde-fou, la même question reviendrait chaque jour indéfiniment tant que
+  // rien n'a changé : on ne redemande donc que si aucune alerte n'a encore
+  // été envoyée depuis la dernière fois que l'appareil est revenu disponible.
+  const ALERTE_MAINTENANCE_MARQUEUR = 'Seuil de maintenance standard atteint';
   try {
     const SEUIL = parseInt(process.env.MAINTENANCE_SEUIL) || 15;
     const { data: appareils } = await supabase
-      .from('appareils').select('id, numero, city_id').eq('statut', 'disponible');
+      .from('appareils').select('id, numero, city_id, localisation').eq('statut', 'disponible');
 
     let maintenanceCount = 0;
     for (const app of appareils || []) {
@@ -170,16 +177,29 @@ module.exports = async (req, res) => {
         .eq('appareil_id', app.id);
       if ((count || 0) < SEUIL) continue;
 
-      // Mouvement de stock (Module 6, Partie 5) : même passage automatique,
-      // toujours journalisé plutôt qu'un update() muet.
+      const [{ data: derniereAlerte }, { data: dernierRetourDispo }] = await Promise.all([
+        supabase.from('appareil_mouvements').select('created_at')
+          .eq('appareil_id', app.id).eq('type_evenement', 'autre')
+          .like('commentaire', `${ALERTE_MAINTENANCE_MARQUEUR}%`)
+          .order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('appareil_mouvements').select('created_at')
+          .eq('appareil_id', app.id).eq('nouveau_statut', 'disponible')
+          .order('created_at', { ascending: false }).limit(1).maybeSingle(),
+      ]);
+      const dejaAlerte = derniereAlerte && (!dernierRetourDispo || derniereAlerte.created_at > dernierRetourDispo.created_at);
+      if (dejaAlerte) continue;
+
+      // Ne change ni le statut ni la localisation (nouveauStatut/nouvelleLocalisation
+      // repassent la valeur déjà en place) : juste une trace pour ne pas
+      // reposer la même question chaque jour.
       await recordMouvement(supabase, {
-        appareilId: app.id, typeEvenement: 'passage_maintenance', nouveauStatut: 'maintenance',
-        nouvelleLocalisation: 'maintenance', utilisateur: 'systeme',
-        commentaire: `Maintenance préventive après ${count} locations (seuil ${SEUIL}).`,
+        appareilId: app.id, typeEvenement: 'autre', nouvelleLocalisation: app.localisation,
+        utilisateur: 'systeme',
+        commentaire: `${ALERTE_MAINTENANCE_MARQUEUR} (${count} locations, seuil ${SEUIL}).`,
       });
       await pushToAdmin(supabase, {
-        title: `🔧 Maintenance — Appareil #${app.numero}`,
-        body:  `${count} locations effectuées. L'appareil est passé en maintenance préventive.`,
+        title: `🔧 Climatiseur #${app.numero} — maintenance standard ?`,
+        body:  `${count} locations effectuées. Fais la maintenance standard et garde-le disponible, ou passe-le en maintenance depuis le Stock.`,
         tag:   `maintenance-${app.id}`,
       });
       maintenanceCount++;
