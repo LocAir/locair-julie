@@ -2703,19 +2703,67 @@ function rembourserReservation(id){
 // demande lui-même à garder son climatiseur, ou pour un cas particulier.
 // L'offre est directement visible côté client (statut "proposee"), pas
 // besoin de repasser par "Fixer un prix" ensuite.
-function proposerOffrePrivilegeManuelle(reservationId){
-  promptAction({title:'⭐ Offre Privilège manuelle', label:'Prix de vente (€)', value:String(OFFRE_PRIVILEGE_PRIX_DEFAUT_EUROS)}, async (value) => {
-    const prix = parseFloat((value||'').replace(',','.'));
-    if(!prix || prix<=0) return showToast('Prix invalide', 'error');
+// Sur une réservation à plusieurs climatiseurs, l'admin choisit lui-même
+// lesquels proposer (un seul, plusieurs, ou tous) — jamais deviné
+// automatiquement. On récupère d'abord la liste des climatiseurs de cette
+// réservation (ceux qui n'ont pas déjà une offre), puis on affiche une
+// case à cocher par unité.
+async function proposerOffrePrivilegeManuelle(reservationId){
+  let appareils;
+  try{
+    const r = await fetch(API('admin-offres-privilege'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'appareils_reservation', reservation_id: reservationId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    appareils = d.appareils||[];
+  }catch(e){ return showToast(e.message, 'error'); }
+  if(!appareils.length) return showToast('Aucun climatiseur disponible pour une Offre Privilège sur cette réservation', 'error');
+
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px">
+      <h2 style="margin-bottom:6px">⭐ Offre Privilège manuelle</h2>
+      <p class="sub" style="margin-bottom:12px">Choisis le ou les climatiseurs concernés — chacun recevra sa propre offre, visible séparément dans l'espace client.</p>
+      ${appareils.map(a => `
+        <label style="display:flex;align-items:center;gap:8px;padding:6px 0">
+          <input type="checkbox" class="op-appareil-check" value="${a.id}"/>
+          <span>Climatiseur n°${a.numero ?? '—'}${a.reference?' — '+escHtml(a.reference):''}</span>
+        </label>`).join('')}
+      <label for="op-manuel-prix" style="margin-top:10px">Prix de vente par climatiseur (€)</label>
+      <input type="text" inputmode="decimal" id="op-manuel-prix" value="${OFFRE_PRIVILEGE_PRIX_DEFAUT_EUROS}"/>
+      <div class="modal-actions" style="margin-top:14px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Proposer</button>
+      </div>
+      <div class="err" id="op-manuel-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const ids = [...overlay.querySelectorAll('.op-appareil-check:checked')].map(c => parseInt(c.value));
+    const prix = parseFloat(document.getElementById('op-manuel-prix').value.replace(',','.'));
+    const errEl = document.getElementById('op-manuel-err');
+    errEl.style.display = 'none';
+    if(!ids.length){ errEl.textContent = 'Choisis au moins un climatiseur'; errEl.style.display='block'; return; }
+    if(!prix || prix<=0){ errEl.textContent = 'Prix invalide'; errEl.style.display='block'; return; }
+    okBtn.disabled = true;
     try{
       const r = await fetch(API('admin-offres-privilege'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
-        action:'creer_manuelle', reservation_id: reservationId, prix_vente_cents: Math.round(prix*100),
+        action:'creer_manuelle', reservation_id: reservationId, appareil_ids: ids, prix_vente_cents: Math.round(prix*100),
       })});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
-      showToast('Offre Privilège proposée au client', 'success');
-    }catch(e){ showToast(e.message, 'error'); }
-  });
+      closeModal();
+      showToast(ids.length>1 ? 'Offres Privilège proposées au client' : 'Offre Privilège proposée au client', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      showToast(e.message, 'error');
+    }
+  };
 }
 function updateReservationStatut(id, statut, selectEl){
   if(!statut) return;

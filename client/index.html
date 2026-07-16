@@ -169,7 +169,9 @@ document.getElementById('year').textContent = new Date().getFullYear();
 const STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpYcFY8Sj4cL4pK64YO5v49flzW8SWlLek1dr00nJtbX09Y';
 let _stripe = null;
 function _getStripe(){ if(!_stripe && typeof Stripe !== 'undefined') _stripe = Stripe(STRIPE_PK); return _stripe; }
-let _offreElements = null;
+// Indexé par offre_id — une réservation à plusieurs climatiseurs peut avoir
+// plusieurs Offres Privilège en même temps, chacune avec son propre paiement.
+let _offreElements = {};
 
 function escHtml(s){
   return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -297,23 +299,28 @@ function renderDashboard(d){
 
   const a = d.assistance || {};
 
-  const offreHtml = d.offre_privilege ? `
-    <h2>🌟 Offre Privilège</h2>
+  // Une réservation à plusieurs climatiseurs peut recevoir plusieurs Offres
+  // Privilège en même temps (une par appareil) — chacune est indépendante :
+  // le client choisit celles qu'il veut garder, une par une.
+  const offres = d.offres_privilege || [];
+  const offreHtml = offres.length ? `
+    <h2>🌟 Offre${offres.length>1?'s':''} Privilège</h2>
+    ${offres.map(o => `
     <div class="card">
-      <p style="font-size:14px;font-weight:600;margin-bottom:10px">Ce climatiseur vous plaît ? Vous pouvez le garder pour de bon, au lieu de le rendre.</p>
+      <p style="font-size:14px;font-weight:600;margin-bottom:10px">${o.appareil_numero?`Le climatiseur n°${o.appareil_numero} vous`:'Ce climatiseur vous'} plaît ? Vous pouvez le garder pour de bon, au lieu de le rendre.</p>
       <ul style="margin:0 0 14px 18px;font-size:13.5px;line-height:1.8;color:var(--black2)">
-        <li>✅ Plus besoin d'organiser une récupération — il reste chez vous</li>
+        <li>✅ Plus besoin d'organiser sa récupération — il reste chez vous</li>
         <li>✅ Il est à vous pour tous vos prochains étés, sans avoir à relouer</li>
-        <li>Si vous préférez ne pas l'acheter, aucun souci : la récupération aura lieu normalement, comme prévu</li>
+        <li>Si vous préférez ne pas l'acheter, aucun souci : sa récupération aura lieu normalement, comme prévu</li>
       </ul>
-      <div style="font-family:var(--disp);font-size:28px;font-weight:600;margin-bottom:14px">${euros(d.offre_privilege.prix_cents)}</div>
-      <button class="btn-submit" id="offre-privilege-start-btn" onclick="startOffrePrivilegePayment(${d.offre_privilege.id})">Je le garde — payer maintenant</button>
-      <div id="offre-privilege-stripe-section" class="hidden" style="margin-top:16px">
-        <div id="offre-privilege-stripe-element"></div>
-        <button class="btn-submit" id="offre-privilege-pay-btn" style="margin-top:14px" onclick="confirmOffrePrivilegePayment()">Confirmer le paiement</button>
+      <div style="font-family:var(--disp);font-size:28px;font-weight:600;margin-bottom:14px">${euros(o.prix_cents)}</div>
+      <button class="btn-submit" id="offre-privilege-start-btn-${o.id}" onclick="startOffrePrivilegePayment(${o.id})">Je le garde — payer maintenant</button>
+      <div id="offre-privilege-stripe-section-${o.id}" class="hidden" style="margin-top:16px">
+        <div id="offre-privilege-stripe-element-${o.id}"></div>
+        <button class="btn-submit" id="offre-privilege-pay-btn-${o.id}" style="margin-top:14px" onclick="confirmOffrePrivilegePayment(${o.id})">Confirmer le paiement</button>
       </div>
-      <div class="alert-error hidden" id="offre-privilege-error" style="margin-top:12px"></div>
-    </div>` : '';
+      <div class="alert-error hidden" id="offre-privilege-error-${o.id}" style="margin-top:12px"></div>
+    </div>`).join('')}` : '';
 
   document.getElementById('dash-content').innerHTML = `
     <p style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:6px">Dossier ${escHtml(c.ref)}</p>
@@ -364,10 +371,13 @@ function toggleAide(i){
 }
 
 // ── Offre Privilège : achat du climatiseur en cours (Stripe Elements, même
-// intégration que la prolongation sur le site public) ──────────────────────
+// intégration que la prolongation sur le site public) — une réservation à
+// plusieurs climatiseurs peut avoir plusieurs offres en même temps, chacune
+// avec son propre paiement indépendant, donc ses propres éléments Stripe
+// (voir _offreElements, indexé par offre_id, plus bas dans le fichier).
 async function startOffrePrivilegePayment(offreId){
-  const btn = document.getElementById('offre-privilege-start-btn');
-  const errEl = document.getElementById('offre-privilege-error');
+  const btn = document.getElementById('offre-privilege-start-btn-'+offreId);
+  const errEl = document.getElementById('offre-privilege-error-'+offreId);
   errEl.classList.add('hidden');
   btn.disabled = true; btn.textContent = 'Chargement…';
   try{
@@ -377,11 +387,11 @@ async function startOffrePrivilegePayment(offreId){
     if(!d.clientSecret) throw new Error(d.error || 'Erreur');
 
     const appearance = { theme:'stripe', variables:{ colorPrimary:'#1b3a5f', borderRadius:'10px', fontFamily:'Inter,system-ui,sans-serif' } };
-    _offreElements = stripe.elements({ clientSecret: d.clientSecret, appearance, locale:'fr' });
-    const payEl = _offreElements.create('payment', { layout:'tabs' });
-    payEl.mount('#offre-privilege-stripe-element');
+    _offreElements[offreId] = stripe.elements({ clientSecret: d.clientSecret, appearance, locale:'fr' });
+    const payEl = _offreElements[offreId].create('payment', { layout:'tabs' });
+    payEl.mount('#offre-privilege-stripe-element-'+offreId);
 
-    document.getElementById('offre-privilege-stripe-section').classList.remove('hidden');
+    document.getElementById('offre-privilege-stripe-section-'+offreId).classList.remove('hidden');
     btn.classList.add('hidden');
   }catch(e){
     btn.disabled = false; btn.textContent = 'Je le garde — payer maintenant';
@@ -389,14 +399,14 @@ async function startOffrePrivilegePayment(offreId){
     errEl.classList.remove('hidden');
   }
 }
-async function confirmOffrePrivilegePayment(){
-  const payBtn = document.getElementById('offre-privilege-pay-btn');
-  const errEl = document.getElementById('offre-privilege-error');
+async function confirmOffrePrivilegePayment(offreId){
+  const payBtn = document.getElementById('offre-privilege-pay-btn-'+offreId);
+  const errEl = document.getElementById('offre-privilege-error-'+offreId);
   errEl.classList.add('hidden');
   payBtn.disabled = true; payBtn.textContent = 'Paiement en cours…';
   try{
     const { error, paymentIntent } = await _getStripe().confirmPayment({
-      elements: _offreElements, redirect: 'if_required',
+      elements: _offreElements[offreId], redirect: 'if_required',
       confirmParams: { return_url: window.location.origin + '/client/?offre_return=1' },
     });
     if(error){
@@ -404,8 +414,8 @@ async function confirmOffrePrivilegePayment(){
       errEl.classList.remove('hidden');
       payBtn.disabled = false; payBtn.textContent = 'Réessayer le paiement';
     }else if(paymentIntent?.status === 'succeeded'){
-      document.getElementById('offre-privilege-stripe-section').innerHTML =
-        '<div class="alert-info">✅ Merci ! Ton climatiseur est à toi — la récupération a été annulée.</div>';
+      document.getElementById('offre-privilege-stripe-section-'+offreId).innerHTML =
+        '<div class="alert-info">✅ Merci ! Ce climatiseur est à vous.</div>';
     }else{
       errEl.textContent = 'Paiement en attente de confirmation. Vérifie ton email.';
       errEl.classList.remove('hidden');

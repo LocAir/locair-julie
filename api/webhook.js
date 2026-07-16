@@ -23,13 +23,6 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
   await supabase.from('offres_privilege')
     .update({ statut: 'acceptee', decidee_at: new Date().toISOString() }).eq('id', offre.id);
 
-  // La location se termine par un achat plutôt qu'une récupération — sans ce
-  // passage à "terminee", le tableau de bord client resterait bloqué sur
-  // "En location" pour toujours (la mission de récupération, désormais
-  // annulée juste en dessous, ne validera plus jamais cette étape).
-  await supabase.from('reservations').update({ statut: 'terminee' })
-    .eq('id', offre.reservation_id).eq('statut', 'confirmee');
-
   const { data: appareil } = await supabase.from('appareils').select('numero, localisation').eq('id', offre.appareil_id).maybeSingle();
   await recordMouvement(supabase, {
     appareilId: offre.appareil_id, typeEvenement: 'autre', nouveauStatut: 'vendu',
@@ -45,22 +38,55 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
     console.error('[Offre privilège — facture de vente]', e.message);
   }
 
+  // Ce climatiseur sort de la réservation — il n'est plus à récupérer, qu'il
+  // soit seul sur la réservation ou un parmi plusieurs (ex. 3 climatiseurs,
+  // 1 seul acheté). setAppareilsStatutForReservation et l'appli transporteur
+  // relisent toujours reservation_appareils à la volée : le retirer ici
+  // suffit à réduire la mission de récupération aux seules unités restantes,
+  // sans toucher aux colonnes de livraisons (qui ne connaissent pas les
+  // appareils individuellement).
+  await supabase.from('reservation_appareils')
+    .delete().eq('reservation_id', offre.reservation_id).eq('appareil_id', offre.appareil_id);
+
+  const { count: restants } = await supabase
+    .from('reservation_appareils').select('id', { count: 'exact', head: true }).eq('reservation_id', offre.reservation_id);
+
   const { data: recup } = await supabase
     .from('livraisons').select('id, transporteur_id')
     .eq('reservation_id', offre.reservation_id).eq('type', 'recuperation')
     .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']).maybeSingle();
-  if (recup) {
-    await supabase.from('livraisons').update({ statut: 'annule' }).eq('id', recup.id);
-    if (recup.transporteur_id) {
-      await notifyTransporteur(supabase, recup.transporteur_id, {
-        type: 'annulation', message: 'Le client a acheté son climatiseur — récupération annulée.', tag: 'annulation',
-      });
+
+  if (!restants) {
+    // Plus aucun climatiseur à récupérer sur cette réservation — la location
+    // se termine entièrement par une vente. Sans ce passage à "terminee", le
+    // tableau de bord client resterait bloqué sur "En location" pour
+    // toujours (la mission de récupération, annulée juste en dessous, ne
+    // validera plus jamais cette étape).
+    await supabase.from('reservations').update({ statut: 'terminee' })
+      .eq('id', offre.reservation_id).eq('statut', 'confirmee');
+    if (recup) {
+      await supabase.from('livraisons').update({ statut: 'annule' }).eq('id', recup.id);
+      if (recup.transporteur_id) {
+        await notifyTransporteur(supabase, recup.transporteur_id, {
+          type: 'annulation', message: 'Le client a acheté son climatiseur — récupération annulée.', tag: 'annulation',
+        });
+      }
     }
+  } else if (recup && recup.transporteur_id) {
+    // Réservation à plusieurs climatiseurs : la mission reste active pour
+    // les unités restantes, seul le nombre à récupérer diminue.
+    await notifyTransporteur(supabase, recup.transporteur_id, {
+      type: 'modification',
+      message: `Le client a acheté le climatiseur #${appareil?.numero} — il reste ${restants} unité(s) à récupérer sur cette mission.`,
+      tag: 'maj-mission-offre-privilege',
+    });
   }
 
   await pushToAdmin(supabase, {
     title: '🎉 Offre Privilège acceptée',
-    body:  `Climatiseur #${appareil?.numero} vendu — la récupération a été annulée automatiquement.`,
+    body:  restants
+      ? `Climatiseur #${appareil?.numero} vendu — encore ${restants} unité(s) à récupérer sur cette réservation.`
+      : `Climatiseur #${appareil?.numero} vendu — la récupération a été annulée automatiquement.`,
     tag:   `offre-privilege-acceptee-${offre.id}`,
   });
 }

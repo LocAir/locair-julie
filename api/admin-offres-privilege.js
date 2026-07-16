@@ -63,37 +63,60 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // Crée et propose directement une offre pour une réservation précise —
-    // sans attendre la détection automatique du cron (seuil de locations,
-    // milieu de séjour). Pour un cas particulier (le client demande
-    // lui-même à garder son climatiseur, ou décision ponctuelle de l'admin).
+    // Liste les climatiseurs d'une réservation, pour que l'admin choisisse
+    // lui-même lequel (ou lesquels) proposer sur une réservation qui en a
+    // plusieurs — jamais un choix automatique. Exclut ceux qui ont déjà une
+    // offre (peu importe son statut) pour cette réservation précise.
+    if (action === 'appareils_reservation') {
+      const reservationId = parseInt(body.reservation_id);
+      if (!reservationId) return res.status(400).json({ error: 'reservation_id manquant' });
+
+      const [{ data: liens }, { data: offresExistantes }] = await Promise.all([
+        supabase.from('reservation_appareils').select('appareil_id, appareil:appareils(numero, reference)').eq('reservation_id', reservationId),
+        supabase.from('offres_privilege').select('appareil_id').eq('reservation_id', reservationId),
+      ]);
+      const dejaOfferts = new Set((offresExistantes || []).map(o => o.appareil_id));
+      const appareils = (liens || [])
+        .filter(l => !dejaOfferts.has(l.appareil_id))
+        .map(l => ({ id: l.appareil_id, numero: l.appareil?.numero ?? null, reference: l.appareil?.reference ?? null }));
+      return res.status(200).json({ appareils });
+    }
+
+    // Crée et propose directement une ou plusieurs offres pour une réservation
+    // précise — sans attendre la détection automatique du cron (seuil de
+    // locations, milieu de séjour). Pour un cas particulier (le client
+    // demande lui-même à garder un ou plusieurs climatiseurs, ou décision
+    // ponctuelle de l'admin). Sur une réservation à plusieurs climatiseurs,
+    // l'admin choisit explicitement lesquels (appareil_ids) — jamais deviné.
     if (action === 'creer_manuelle') {
       const reservationId = parseInt(body.reservation_id);
       const prixCents = Math.max(1, parseInt(body.prix_vente_cents) || 0);
+      const appareilIds = Array.isArray(body.appareil_ids)
+        ? [...new Set(body.appareil_ids.map(x => parseInt(x)).filter(Boolean))] : [];
       if (!reservationId) return res.status(400).json({ error: 'reservation_id manquant' });
+      if (!appareilIds.length) return res.status(400).json({ error: 'Choisis au moins un climatiseur' });
       if (!prixCents) return res.status(400).json({ error: 'Prix invalide' });
 
       const { data: liens } = await supabase
         .from('reservation_appareils').select('appareil_id').eq('reservation_id', reservationId);
-      const appareilIds = [...new Set((liens || []).map(l => l.appareil_id))];
-      if (!appareilIds.length) return res.status(400).json({ error: 'Aucun climatiseur assigné à cette réservation' });
-      if (appareilIds.length > 1) return res.status(400).json({ error: 'Cette réservation a plusieurs climatiseurs — impossible de savoir lequel proposer' });
-      const appareilId = appareilIds[0];
+      const valides = new Set((liens || []).map(l => l.appareil_id));
+      const inconnu = appareilIds.find(id => !valides.has(id));
+      if (inconnu) return res.status(400).json({ error: "Un des climatiseurs choisis ne fait pas partie de cette réservation" });
 
-      const { data: existante } = await supabase
-        .from('offres_privilege').select('id')
-        .eq('appareil_id', appareilId).eq('reservation_id', reservationId).maybeSingle();
-      if (existante) return res.status(400).json({ error: 'Une offre existe déjà pour ce climatiseur et cette réservation' });
+      const { data: existantes } = await supabase
+        .from('offres_privilege').select('appareil_id').eq('reservation_id', reservationId).in('appareil_id', appareilIds);
+      if ((existantes || []).length) return res.status(400).json({ error: 'Une offre existe déjà pour au moins un des climatiseurs choisis' });
 
-      const { count } = await supabase
-        .from('reservation_appareils').select('id', { count: 'exact', head: true }).eq('appareil_id', appareilId);
+      const rows = [];
+      for (const appareilId of appareilIds) {
+        const { count } = await supabase
+          .from('reservation_appareils').select('id', { count: 'exact', head: true }).eq('appareil_id', appareilId);
+        rows.push({ appareil_id: appareilId, reservation_id: reservationId, nb_locations: count || 0, statut: 'proposee', prix_vente_cents: prixCents });
+      }
 
-      const { data: created, error } = await supabase.from('offres_privilege').insert({
-        appareil_id: appareilId, reservation_id: reservationId,
-        nb_locations: count || 0, statut: 'proposee', prix_vente_cents: prixCents,
-      }).select('id').single();
+      const { data: created, error } = await supabase.from('offres_privilege').insert(rows).select('id');
       if (error) throw error;
-      return res.status(200).json({ ok: true, id: created.id });
+      return res.status(200).json({ ok: true, ids: (created || []).map(c => c.id) });
     }
 
     // Rembourse un achat déjà accepté (le client change d'avis). Ne fait que
