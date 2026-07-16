@@ -1701,11 +1701,42 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   const okAction = m.type==='livraison' ? 'livraison_ok' : m.type==='recuperation' ? 'retour_ok' : 'changement_ok';
   const okLabel = m.type==='livraison' ? '✅ LIVRAISON OK — JE PARS' : m.type==='recuperation' ? '✅ RETOUR OK — JE PARS' : '✅ REMPLACEMENT TERMINÉ — JE PARS';
   const checklistWorkflow = m.type==='livraison' ? 'installation' : m.type==='recuperation' ? 'recuperation' : null;
+  const isLastRecup = isLastRecuperationOfDay(m);
   return `
     <p class="step-hint">🎉 Tout est prêt — vérifie la checklist puis valide pour terminer la mission.</p>
     ${checklistWorkflow ? checklistFinalHtml(checklistWorkflow) : ''}
     ${m.type==='recuperation' ? etatMaterielHtml() : ''}
-    <button class="btn btn-green btn-block" onclick="submitFinalMission('${okAction}')">${okLabel}</button>`;
+    ${isLastRecup ? checklistRestockHtml() : ''}
+    <button class="btn btn-green btn-block" id="mission-final-btn" ${isLastRecup?'disabled':''} onclick="submitFinalMission('${okAction}')">${okLabel}</button>`;
+}
+// Dernière récupération de la journée pour ce transporteur (aucune autre
+// récupération encore active aujourd'hui) : à ce moment, il doit passer par
+// le box pour tout déposer et recharger son sac avant la prochaine tournée.
+// Rappel avant de clôturer la mission — mêmes items que la checklist du
+// matin (CHECKLIST_FIXE_LABELS), pense-bête local qui bloque le bouton final
+// tant que tout n'est pas coché.
+function isLastRecuperationOfDay(m){
+  if(m.type !== 'recuperation') return false;
+  const todayStr = new Date().toISOString().slice(0,10);
+  return !STATE.missions.some(x => x.id !== m.id && x.type === 'recuperation' && x.date_prevue === todayStr && !['fait','annule','refusee'].includes(x.statut));
+}
+function checklistRestockHtml(){
+  return `
+    <div class="section-title" style="margin:14px 0 2px 2px">🎒 Prêt pour la prochaine récupération ?</div>
+    <p class="sub" style="margin:0 0 6px 2px">Dernière récupération de la journée — passe par le box pour tout déposer et recharger ton sac avant la prochaine tournée.</p>
+    <div class="card" style="margin-bottom:12px">
+      ${Object.keys(CHECKLIST_FIXE_LABELS).map(key => `
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 0">
+          <input type="checkbox" class="checklist-restock-cb" onchange="updateRestockButton()" style="width:20px;height:20px;flex-shrink:0">
+          <span>${CHECKLIST_FIXE_LABELS[key]}</span>
+        </label>`).join('')}
+    </div>`;
+}
+function updateRestockButton(){
+  const btn = document.getElementById('mission-final-btn');
+  if(!btn) return;
+  const boxes = document.querySelectorAll('.checklist-restock-cb');
+  btn.disabled = boxes.length > 0 && Array.from(boxes).some(b => !b.checked);
 }
 
 // Checklist administrable (Module 5, Parties 5/7) — cases à cocher avant de
