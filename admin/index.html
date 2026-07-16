@@ -5595,7 +5595,11 @@ document.getElementById('tuto-media-input').addEventListener('change', async (e)
     if(!r1.ok) throw new Error(d1.error||'Erreur');
 
     const up = await fetch(d1.signedUrl, {method:'PUT', headers:{'Content-Type': file.type || 'application/octet-stream'}, body: file});
-    if(!up.ok) throw new Error(`Échec de l'envoi du fichier (${up.status})`);
+    if(!up.ok){
+      let detail = '';
+      try{ detail = (await up.text()).slice(0,200); }catch(_){}
+      throw new Error(`Échec de l'envoi du fichier (${up.status})${detail?' : '+detail:''}`);
+    }
 
     const r2 = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'confirmer_upload', video_id:videoId, path:d1.path})});
     const d2 = await r2.json();
