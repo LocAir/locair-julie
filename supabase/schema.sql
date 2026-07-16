@@ -646,6 +646,25 @@ create table remboursements (
 );
 create index remboursements_resa_idx on remboursements (reservation_id);
 
+-- Offre Privilège — Step 1 : détection d'éligibilité seulement (un
+-- climatiseur très loué, actuellement chez un client, pourra plus tard lui
+-- être proposé à l'achat plutôt que récupéré). Pas de prix ni d'offre
+-- visible côté client à ce stade, ni de valeur "vendu" sur appareils.statut
+-- (viendra avec l'étape 2, une fois cette détection éprouvée).
+create table offres_privilege (
+  id             bigint generated always as identity primary key,
+  appareil_id    bigint not null references appareils(id) on delete cascade,
+  reservation_id bigint references reservations(id) on delete set null,
+  nb_locations   integer not null,
+  statut         text not null default 'eligible'
+                   check (statut in ('eligible', 'proposee', 'acceptee', 'refusee', 'annulee')),
+  prix_vente_cents        integer,
+  stripe_payment_intent_id text,
+  created_at     timestamptz not null default now(),
+  decidee_at     timestamptz
+);
+create index offres_privilege_appareil_idx on offres_privilege (appareil_id);
+
 -- Dernier incident déclenché par CETTE mission (client absent, retard...),
 -- utilisé pour le refermer automatiquement quand la mission se termine
 -- normalement. Ne remplace pas incidents.reservation_id (toujours utilisé

@@ -241,6 +241,55 @@ module.exports = async (req, res) => {
     console.error('[Cron appareils bloqués]', e.message);
   }
 
+  // ── 4ter. Offre Privilège — Step 1 : détection d'éligibilité ─────────────────
+  // Un climatiseur très loué, actuellement chez un client (réservation
+  // confirmée dont la période couvre aujourd'hui), peut lui être proposé à
+  // l'achat plutôt que récupéré. Ici : uniquement repérer et prévenir
+  // l'admin — aucun prix fixé, aucune offre visible côté client, aucun
+  // appareil marqué "vendu" (viendra dans une 2e étape).
+  try {
+    const SEUIL_OFFRE = parseInt(process.env.OFFRE_PRIVILEGE_SEUIL) || 30;
+    const { data: liens } = await supabase
+      .from('reservation_appareils')
+      .select('appareil_id, reservation_id, reservation:reservations(statut, date_debut, date_fin)');
+    const enLocation = new Map();
+    for (const l of (liens || [])) {
+      if (l.reservation && l.reservation.statut === 'confirmee'
+        && l.reservation.date_debut <= todayStr && l.reservation.date_fin > todayStr) {
+        enLocation.set(l.appareil_id, l.reservation_id);
+      }
+    }
+
+    let offreCount = 0;
+    for (const [appareilId, reservationId] of enLocation) {
+      const { count } = await supabase
+        .from('reservation_appareils').select('id', { count: 'exact', head: true })
+        .eq('appareil_id', appareilId);
+      if ((count || 0) < SEUIL_OFFRE) continue;
+
+      // Une seule offre par location en cours, jamais reposée plusieurs
+      // jours de suite pour la même réservation.
+      const { data: dejaExistante } = await supabase
+        .from('offres_privilege').select('id')
+        .eq('appareil_id', appareilId).eq('reservation_id', reservationId).maybeSingle();
+      if (dejaExistante) continue;
+
+      const { data: appareil } = await supabase.from('appareils').select('numero').eq('id', appareilId).maybeSingle();
+      await supabase.from('offres_privilege').insert({
+        appareil_id: appareilId, reservation_id: reservationId, nb_locations: count, statut: 'eligible',
+      });
+      await pushToAdmin(supabase, {
+        title: `⭐ Climatiseur #${appareil?.numero} — Offre Privilège`,
+        body:  `${count} locations effectuées, actuellement chez un client. Fixe un prix pour lui proposer de le garder.`,
+        tag:   `offre-privilege-${appareilId}`,
+      });
+      offreCount++;
+    }
+    if (offreCount) report.offres_privilege = offreCount;
+  } catch (e) {
+    console.error('[Cron offre privilège]', e.message);
+  }
+
   // ── 5. Alerte stock saturé J+7 ───────────────────────────────────────────────
   // Aucun appareil disponible dans 7 jours → push admin.
   try {
