@@ -51,7 +51,7 @@ async function generateAndSendDocuments(supabase, resa) {
   if (existingFacture) return; // déjà généré — ne jamais dupliquer la facture
 
   const [{ data: reservAppareils }, { data: acceptations }] = await Promise.all([
-    supabase.from('reservation_appareils').select('appareil:appareils(numero)').eq('reservation_id', resa.id),
+    supabase.from('reservation_appareils').select('appareil:appareils(numero, modele:modeles_climatiseur(marque, modele))').eq('reservation_id', resa.id),
     supabase.from('cgv_acceptations').select('type, version, accepted_at').eq('reservation_id', resa.id),
   ]);
   const appareils = (reservAppareils || []).map(r => r.appareil).filter(Boolean);
@@ -81,7 +81,7 @@ async function generateAndSendDocuments(supabase, resa) {
   if (numeroErr) throw numeroErr;
   const numero = invoiceNumber(annee, numeroSeq);
 
-  const factureBuffer = await generateFacturePdf({ reservation: resa, numero, datePaiement: now });
+  const factureBuffer = await generateFacturePdf({ reservation: resa, appareils, numero, datePaiement: now });
   const facturePath = `documents/factures/${numero}.pdf`;
   await uploadPdf(supabase, facturePath, factureBuffer);
   const factureToken = accessToken();

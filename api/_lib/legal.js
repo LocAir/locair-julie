@@ -20,7 +20,7 @@ const SELLER = {
   nomCommercial: "Loc'Air",
   formeJuridique: 'Entreprise individuelle (auto-entrepreneur)',
   siret: '853 730 562 00024',
-  adresse: '1 Place de Tende, 06300 Nice, France',
+  adresse: '11 Avenue Chantal, 06100 Nice, France',
   tel: '06 63 79 87 56',
   email: 'contact@locair.fr',
   // TVA non applicable — art. 293 B du CGI (franchise en base, cf. cgv.html §5).

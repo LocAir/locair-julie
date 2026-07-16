@@ -1,5 +1,6 @@
 const PDFDocument = require('pdfkit');
 const { SELLER } = require('./legal');
+const { calcTieredPrice } = require('./pricing');
 
 // Génère un PDF en mémoire (pas de fichier temporaire — la fonction serverless
 // n'a pas de disque persistant garanti) et résout un Buffer une fois le
@@ -38,10 +39,24 @@ function eur(cents) {
   return (Math.round(cents || 0) / 100).toFixed(2).replace('.', ',') + ' €';
 }
 
+// Nombre de jours entre deux dates 'YYYY-MM-DD' (UTC minuit des deux côtés,
+// même convention que addDays dans _lib/dates.js — évite tout décalage lié
+// au fuseau horaire du serveur).
+function nbJours(dateDebut, dateFin) {
+  const d1 = new Date(dateDebut + 'T00:00:00Z');
+  const d2 = new Date(dateFin + 'T00:00:00Z');
+  return Math.max(1, Math.round((d2 - d1) / 86400000));
+}
+
+function modeleLabel(appareils) {
+  const m = appareils && appareils[0] && appareils[0].modele;
+  return m ? `${m.marque} ${m.modele}` : "Rowenta RWAC10KA ou FRICO CLIMOB 12 (9 000 à 12 000 BTU)";
+}
+
 function drawHeader(doc, title) {
   doc.fontSize(18).fillColor('#1b3a5f').text(SELLER.nomCommercial, { continued: false });
   doc.fontSize(9).fillColor('#666')
-    .text(`${SELLER.raisonSociale} — ${SELLER.formeJuridique}`)
+    .text(`Gérant : Aly THIAM — ${SELLER.formeJuridique}`)
     .text(`${SELLER.adresse}`)
     .text(`SIRET ${SELLER.siret} · ${SELLER.tel} · ${SELLER.email}`);
   doc.moveDown(1);
@@ -64,38 +79,97 @@ function drawSectionTitle(doc, text) {
   doc.moveDown(0.2);
 }
 
+// Une ligne de prestation facturée — libellé + détail (gris, indenté) à
+// gauche, montant aligné à droite — puis un filet séparateur fin.
+function drawInvoiceItem(doc, { label, detailLines = [], amount }) {
+  const y = doc.y;
+  doc.fontSize(10.5).fillColor('#111').text(label, 50, y, { width: 375 });
+  doc.fontSize(10.5).fillColor('#111').text(amount, 425, y, { width: 120, align: 'right' });
+  doc.x = 50;
+  for (const line of detailLines) {
+    doc.fontSize(9).fillColor('#666').text(line, 60, doc.y, { width: 365 });
+  }
+  doc.moveDown(0.3);
+  doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#eee').stroke();
+  doc.moveDown(0.5);
+}
+
 // ── Contrat de location ────────────────────────────────────────────────────
-// Contenu exigé : identité + coordonnées client, numéro de commande, dates de
-// location, climatiseur associé si disponible, montant, conditions
-// acceptées + horodatage + version des documents acceptés à l'acceptation.
+// Modèle officiel fourni par le propriétaire (Contrat_de_Location_Climatiseur_
+// Mobile.pdf, reçu le 2026-07-16) — Articles 1 à 7 repris tels quels, seuls
+// les champs entre accolades du modèle sont remplacés par les données réelles
+// de la réservation. Une version avec signature manuscrite scannée doit
+// remplacer celle-ci dès qu'elle sera fournie (voir emplacement Signature du
+// Bailleur ci-dessous, actuellement texte seul).
 function generateContratPdf({ reservation, appareils, acceptations, version }) {
   return renderPdf((doc) => {
-    drawHeader(doc, `Contrat de location — Dossier ${reservation.ref}`);
+    doc.fontSize(16).fillColor('#111').text("CONTRAT DE LOCATION — CLIMATISEUR MOBILE", { align: 'center' });
+    doc.moveDown(1.2);
 
-    drawSectionTitle(doc, 'Client');
-    drawKeyValueRow(doc, 'Nom', `${reservation.prenom || ''} ${reservation.nom || ''}`.trim());
-    drawKeyValueRow(doc, 'Adresse de livraison', reservation.adresse || '—');
-    drawKeyValueRow(doc, 'Téléphone', reservation.tel || '—');
-    drawKeyValueRow(doc, 'Email', reservation.email || '—');
-    if (reservation.type_client === 'entreprise') {
-      drawKeyValueRow(doc, 'Raison sociale', reservation.raison_sociale || '—');
-      drawKeyValueRow(doc, 'SIRET client', reservation.siret || '—');
+    const jours = nbJours(reservation.date_debut, reservation.date_fin);
+    const modele = modeleLabel(appareils);
+    const entreprise = reservation.type_client === 'entreprise' && reservation.raison_sociale
+      ? ` (${reservation.raison_sociale}${reservation.siret ? ', SIRET ' + reservation.siret : ''})` : '';
+
+    function article(titre, texte) {
+      doc.fontSize(11).fillColor('#1b3a5f').text(titre);
+      doc.moveDown(0.3);
+      doc.fontSize(9.5).fillColor('#222').text(texte, { width: 495, align: 'justify', lineGap: 2 });
+      doc.moveDown(0.9);
     }
 
-    drawSectionTitle(doc, 'Location');
-    drawKeyValueRow(doc, 'Numéro de commande', reservation.ref);
-    drawKeyValueRow(doc, 'Début de location', fmtDate(reservation.date_debut));
-    drawKeyValueRow(doc, 'Fin de location', fmtDate(reservation.date_fin));
-    drawKeyValueRow(doc, 'Quantité', `${reservation.quantite} climatiseur${reservation.quantite > 1 ? 's' : ''}`);
-    drawKeyValueRow(doc, 'Climatiseur(s) associé(s)',
-      appareils && appareils.length ? appareils.map(a => `Unité n°${a.numero}`).join(', ') : 'Attribué à la livraison');
-    drawKeyValueRow(doc, 'Montant de la location', eur(reservation.prix_total_cents));
+    article('ARTICLE 1 - PARTIES',
+      `Le Bailleur : ${SELLER.nomCommercial}, exploité par Aly THIAM, ${SELLER.adresse}. SIRET : ${SELLER.siret}.\n` +
+      `Le Locataire : ${(reservation.prenom || '') + ' ' + (reservation.nom || '')}${entreprise}, demeurant au ${reservation.adresse || '—'}.`
+    );
 
-    drawSectionTitle(doc, 'Conditions acceptées électroniquement');
+    article('ARTICLE 2 - OBJET',
+      `Location d'un climatiseur mobile ${modele} (Rowenta RWAC10KA ou FRICO CLIMOB 12 de 9 000 BTU à 12 000 BTU, adapté aux ` +
+      "espaces jusqu'à 20 m²) avec kit d'installation complet (gaine, télécommande, kit de calfeutrage sans perçage)."
+    );
+
+    article('ARTICLE 3 - DURÉE',
+      `La durée minimale de location est de 7 jours. La location débute le ${fmtDate(reservation.date_debut)} et se termine le ` +
+      `${fmtDate(reservation.date_fin)}, pour une durée de ${jours} jours.`
+    );
+
+    article('ARTICLE 4 - TARIFICATION & LIVRAISON',
+      "Tarif journalier (TTC) : 20,00 €/jour (7 jours) · 18,00 €/jour (14 jours) · 17,00 €/jour (21 jours) · 16,00 €/jour (30 jours et plus).\n" +
+      "Frais de livraison et récupération : 35,00 € (Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche-sur-Mer, Beaulieu-sur-Mer) ou 95,00 € (hors zone).\n" +
+      "Option installation par un technicien qualifié : 49,00 € (en option) ou installation en autonomie (gratuite, kit fourni sans perçage).\n" +
+      `TVA : ${SELLER.mentionTva}.`
+    );
+
+    article('ARTICLE 5 - MODALITÉS DE PAIEMENT & AUTORISATION',
+      "Le paiement est exigé à la réservation via la solution de paiement sécurisée Stripe. Aucun dépôt de garantie n'est demandé.\n" +
+      `Le locataire autorise expressément ${SELLER.nomCommercial} à enregistrer sa carte bancaire de façon sécurisée via Stripe afin de ` +
+      "permettre un prélèvement de plein droit en cas de retard de restitution, selon les tarifs de l'article 10 bis des CGV."
+    );
+
+    article('ARTICLE 6 - CONDITIONS GÉNÉRALES & ANNULATION',
+      "Annulation : remboursement intégral pour toute annulation effectuée avant la livraison (prise de contact avant 20h la veille de " +
+      "la livraison prévue). Passé ce délai, aucun remboursement n'est accordé.\n" +
+      "Garantie panne : en cas de défaillance technique non imputable au client, l'appareil est dépanné ou remplacé dans les meilleurs " +
+      "délais. À défaut, les jours de location restants sont intégralement remboursés.\n" +
+      "Responsabilité : le locataire est responsable de l'utilisation normale de l'appareil conformément aux instructions. Il s'engage " +
+      "à ne pas le déplacer ou tenter de le réparer sans accord préalable.\n" +
+      "Rétractation : en signant ce contrat et en demandant la livraison, le locataire renonce expressément à son droit de rétractation " +
+      "de 14 jours pour permettre le début immédiat de la prestation."
+    );
+
+    article('ARTICLE 7 - LITIGES & MÉDIATION',
+      "Contrat soumis au droit français. En cas de litige non résolu à l'amiable, le locataire peut recourir gratuitement au médiateur " +
+      "de la consommation MEDICYS (73 Boulevard de Clichy, 75009 Paris — www.medicys.fr). À défaut, les tribunaux compétents sont ceux de Nice."
+    );
+
+    // Preuve d'acceptation électronique (case à cocher + horodatage) — vient
+    // en complément du texte légal ci-dessus, propre à une location conclue
+    // en ligne plutôt que par signature manuscrite au moment du paiement.
+    drawSectionTitle(doc, 'Acceptation électronique');
     if (acceptations && acceptations.length) {
       for (const a of acceptations) {
         const label = a.type === 'cgv_location'
-          ? "Conditions générales de vente et de location (CGV/CGL)"
+          ? 'Conditions générales de vente et de location (CGV/CGL)'
           : "Conditions d'utilisation du climatiseur et obligations liées à la location";
         drawKeyValueRow(doc, label, `Acceptées le ${fmtDateHeure(a.accepted_at)} — version ${a.version}`);
       }
@@ -103,23 +177,42 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
       drawKeyValueRow(doc, 'Acceptation CGV/CGL', `Le ${fmtDateHeure(reservation.cgv_accepted_at)} — version ${version}`);
     }
 
-    doc.moveDown(1.2);
+    doc.moveDown(0.8);
+    doc.fontSize(9.5).fillColor('#111').text(`Fait à Nice, le ${fmtDate(new Date())}`);
+    doc.moveDown(1.5);
+
+    const ySign = doc.y;
+    doc.fontSize(9.5).fillColor('#111').text('Signature du Bailleur :', 50, ySign);
+    doc.text("Aly THIAM (Loc'Air)", 50, ySign + 34);
+    doc.fontSize(9.5).text('Signature du Locataire :', 300, ySign);
+    doc.text('(Précédée de la mention « Lu et approuvé »)', 300, ySign + 34, { width: 200 });
+
+    doc.moveDown(3);
     doc.fontSize(8).fillColor('#888').text(
-      "Ce contrat est généré et accepté électroniquement au moment du paiement — aucune signature manuscrite n'est requise. " +
-      "Les conditions générales complètes (CGV/CGL) sont consultables à tout moment sur locair.fr/cgv.",
+      `Contrat généré et accepté électroniquement au moment du paiement — dossier ${reservation.ref}. ` +
+      `Conditions générales complètes (CGV/CGL v${version}) consultables sur locair.fr/cgv.`,
       { width: 495 }
     );
   });
 }
 
-// ── Facture ─────────────────────────────────────────────────────────────────
-// Contenu exigé : numéro de facture, numéro de commande, identité client,
-// montant payé, date de paiement, mentions légales obligatoires.
-function generateFacturePdf({ reservation, numero, datePaiement }) {
+// ── Facture de location ──────────────────────────────────────────────────
+// Modèle officiel fourni par le propriétaire (reçu le 2026-07-16, frais
+// d'installation corrigés à 49 € pour rester cohérents avec INSTALL_FEE dans
+// checkout.js/index.html). Le sous-total des prestations (location + livraison
+// + installation) est recalculé avec la même formule que la réservation
+// (_lib/pricing.js) ; un éventuel écart avec le montant réellement encaissé
+// (ex. code promo) apparaît en ligne "Remise commerciale" pour que le total
+// affiché corresponde toujours exactement à ce qui a été payé.
+function generateFacturePdf({ reservation, appareils, numero, datePaiement }) {
   return renderPdf((doc) => {
     drawHeader(doc, `Facture ${numero}`);
 
-    drawSectionTitle(doc, 'Client');
+    doc.fontSize(9).fillColor('#666').text(`Réservation n° ${reservation.ref}`);
+    doc.text(`Date d'émission : ${fmtDate(datePaiement)} · Échéance : réglée comptant à la réservation`);
+    doc.moveDown(0.8);
+
+    drawSectionTitle(doc, 'Facturé à');
     drawKeyValueRow(doc, 'Nom', `${reservation.prenom || ''} ${reservation.nom || ''}`.trim());
     if (reservation.type_client === 'entreprise' && reservation.raison_sociale) {
       drawKeyValueRow(doc, 'Raison sociale', reservation.raison_sociale);
@@ -128,25 +221,78 @@ function generateFacturePdf({ reservation, numero, datePaiement }) {
     drawKeyValueRow(doc, 'Adresse', reservation.adresse || '—');
     drawKeyValueRow(doc, 'Email', reservation.email || '—');
 
-    drawSectionTitle(doc, 'Détail');
-    drawKeyValueRow(doc, 'Numéro de facture', numero);
-    drawKeyValueRow(doc, 'Numéro de commande', reservation.ref);
-    drawKeyValueRow(doc, 'Date de paiement', fmtDate(datePaiement));
-    drawKeyValueRow(doc, 'Désignation',
-      `Location climatiseur mobile — ${fmtDate(reservation.date_debut)} au ${fmtDate(reservation.date_fin)}`);
-    drawKeyValueRow(doc, 'Quantité', `${reservation.quantite} climatiseur${reservation.quantite > 1 ? 's' : ''}`);
+    drawSectionTitle(doc, 'Désignation des prestations');
 
-    doc.moveDown(0.4);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#ddd').stroke();
-    doc.moveDown(0.4);
-    doc.fontSize(12).fillColor('#111').text(`Montant payé (TTC) : ${eur(reservation.prix_total_cents)}`, { align: 'right' });
-    doc.fontSize(9).fillColor('#666').text(SELLER.mentionTva, { align: 'right' });
+    const jours = nbJours(reservation.date_debut, reservation.date_fin);
+    const qty = reservation.quantite || 1;
+    // calcTieredPrice renvoie le total dégressif pour la durée (ex. 266 € pour
+    // 14 jours : 7×20 + 7×18), pas un tarif journalier fixe — le tarif moyen
+    // affiché ci-dessous reprend le même calcul que le simulateur du site
+    // (_baseRate = prix total / nombre de jours, voir index.html).
+    const totalUnClim = calcTieredPrice(jours);
+    const tarifJourMoyen = totalUnClim / jours;
+    const montantLocationCents = Math.round(totalUnClim * qty * 100);
+    const isHorsZone = !!reservation.hors_zone;
+    const montantLivraisonCents = (isHorsZone ? 95 : 35) * 100;
+    const isTech = (reservation.installation || '').startsWith('Technicien');
+    const montantInstallCents = isTech ? 49 * 100 : 0;
+    const modele = modeleLabel(appareils);
 
-    doc.moveDown(1.2);
+    drawInvoiceItem(doc, {
+      label: `Location climatiseur mobile — ${modele}`,
+      detailLines: [
+        `Période : du ${fmtDate(reservation.date_debut)} au ${fmtDate(reservation.date_fin)} (${jours} jours)`,
+        `Quantité : ${qty} climatiseur${qty > 1 ? 's' : ''} — soit ${eur(Math.round(tarifJourMoyen * 100))}/jour en moyenne (tarif dégressif)`,
+      ],
+      amount: eur(montantLocationCents),
+    });
+
+    drawInvoiceItem(doc, {
+      label: `Livraison & récupération (zone : ${isHorsZone ? 'hors zone' : 'Nice et environs'})`,
+      amount: eur(montantLivraisonCents),
+    });
+
+    drawInvoiceItem(doc, {
+      label: isTech ? 'Option installation par technicien qualifié' : 'Installation en autonomie (kit fourni)',
+      amount: eur(montantInstallCents),
+    });
+
+    const totalReelCents = reservation.prix_total_cents || 0;
+    const sousTotalCents = montantLocationCents + montantLivraisonCents + montantInstallCents;
+    const ecartCents = totalReelCents - sousTotalCents;
+    if (Math.abs(ecartCents) >= 1) {
+      drawInvoiceItem(doc, {
+        label: ecartCents < 0 ? 'Remise commerciale' : 'Ajustement',
+        amount: (ecartCents < 0 ? '- ' : '') + eur(Math.abs(ecartCents)),
+      });
+    }
+
+    doc.moveDown(0.2);
+    doc.fontSize(11).fillColor('#111').text(`TOTAL TTC : ${eur(totalReelCents)}`, { align: 'right' });
+    doc.fontSize(9).fillColor('#666').text('TVA (0 %) : 0,00 €', { align: 'right' });
+    doc.fontSize(12).fillColor('#111').text(`NET À PAYER : ${eur(totalReelCents)}`, { align: 'right' });
+
+    doc.moveDown(0.8);
+    doc.fontSize(8).fillColor('#666').text(`Mention légale : ${SELLER.mentionTva}.`, { width: 495 });
+
+    drawSectionTitle(doc, 'Moyens de paiement');
+    doc.fontSize(9).fillColor('#444').text('Payé en ligne via Stripe (carte bancaire).');
+    if (reservation.stripe_payment_intent_id) {
+      doc.text(`Identifiant de transaction Stripe : ${reservation.stripe_payment_intent_id}`);
+    }
+
+    drawSectionTitle(doc, 'Conditions de règlement & retard');
+    doc.fontSize(8).fillColor('#666').text(
+      "Tout retard de paiement entraînera l'application de pénalités de retard calculées sur la base de 3 fois le taux d'intérêt légal, " +
+      "ainsi qu'une indemnité forfaitaire pour frais de recouvrement de 40 €. En cas de retard de restitution de l'appareil à la date " +
+      "d'échéance prévue, les jours supplémentaires seront facturés de plein droit et prélevés sur le moyen de paiement enregistré, " +
+      `conformément à l'article 10 bis des CGV de ${SELLER.nomCommercial}.`,
+      { width: 495 }
+    );
+
+    doc.moveDown(0.8);
     doc.fontSize(8).fillColor('#888').text(
-      `${SELLER.raisonSociale} (${SELLER.nomCommercial}) · ${SELLER.formeJuridique} · SIRET ${SELLER.siret} · ${SELLER.adresse}. ` +
-      'Facture émise conformément aux articles L441-9 et suivants du Code de commerce. Aucun escompte pour paiement anticipé. ' +
-      "Pénalités de retard : sans objet (paiement comptant préalable à la prestation).",
+      `Pour toute question ou pour accéder à votre espace client, munissez-vous de votre numéro de réservation : ${SELLER.email} ou ${SELLER.tel} (7j/7 · 8h-20h).`,
       { width: 495 }
     );
   });
