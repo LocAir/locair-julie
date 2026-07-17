@@ -238,21 +238,52 @@ module.exports = async (req, res) => {
       if (['panne', 'maintenance', 'nettoyage'].includes(nouvelAppareil.statut)) {
         return res.status(400).json({ error: 'Cet appareil n\'est pas en état d\'être affecté (panne/maintenance/nettoyage)' });
       }
-      // Refuse un appareil déjà retenu par une AUTRE réservation confirmée qui chevauche.
+      // Refuse un appareil déjà retenu par une AUTRE réservation confirmée qui
+      // chevauche — sauf si l'admin a explicitement demandé un échange
+      // (swap:true), auquel cas les deux réservations s'échangent leurs
+      // appareils au lieu de bloquer (voir plus bas).
       const { data: conflit } = await supabase
-        .from('reservation_appareils').select('reservation_id, reservation:reservations(statut, date_debut, date_fin)')
+        .from('reservation_appareils')
+        .select('id, reservation_id, reservation:reservations(statut, date_debut, date_fin, ref, prenom, nom)')
         .eq('appareil_id', nouvelAppareilId).neq('reservation_id', reservationId);
-      const enConflit = (conflit || []).some(c => c.reservation && c.reservation.statut === 'confirmee'
+      const conflitActif = (conflit || []).find(c => c.reservation && c.reservation.statut === 'confirmee'
         && c.reservation.date_debut < resa.date_fin && c.reservation.date_fin > resa.date_debut);
-      if (enConflit) return res.status(409).json({ error: 'Cet appareil est déjà retenu par une autre réservation sur cette période' });
 
       const { data: ancien } = await supabase.from('reservation_appareils').select('id, appareil_id').eq('reservation_id', reservationId).limit(1).maybeSingle();
+
+      if (conflitActif && !body.swap) {
+        return res.status(409).json({
+          error: 'Cet appareil est déjà retenu par une autre réservation sur cette période',
+          conflit: {
+            reservation_id: conflitActif.reservation_id,
+            ref: conflitActif.reservation.ref,
+            client: [conflitActif.reservation.prenom, conflitActif.reservation.nom].filter(Boolean).join(' '),
+          },
+        });
+      }
+
+      if (conflitActif && body.swap) {
+        // Échange : la réservation en conflit récupère l'ancien appareil de
+        // celle-ci (si elle en avait un) — sans ça elle se retrouverait sans
+        // aucun climatiseur assigné.
+        if (!ancien) {
+          return res.status(400).json({ error: 'Impossible d\'échanger : cette réservation n\'a pas d\'appareil actuel à donner en retour' });
+        }
+        await supabase.from('reservation_appareils').delete().eq('id', conflitActif.id);
+        await supabase.from('reservation_appareils').insert({ reservation_id: conflitActif.reservation_id, appareil_id: ancien.appareil_id, valide: true, valide_at: new Date().toISOString() });
+        await recordMouvement(supabase, {
+          appareilId: ancien.appareil_id, typeEvenement: 'attribution_reservation', nouveauStatut: 'disponible',
+          nouvelleLocalisation: 'stock_principal', reservationId: conflitActif.reservation_id,
+          utilisateur: 'admin', commentaire: 'Échangé par l\'administration',
+        });
+      }
+
       if (ancien) {
         await supabase.from('reservation_appareils').delete().eq('id', ancien.id);
       }
       await supabase.from('reservation_appareils').insert({ reservation_id: reservationId, appareil_id: nouvelAppareilId, valide: true, valide_at: new Date().toISOString() });
 
-      if (ancien) {
+      if (ancien && !conflitActif) {
         await recordMouvement(supabase, {
           appareilId: ancien.appareil_id, typeEvenement: 'autre', nouveauStatut: 'disponible',
           nouvelleLocalisation: 'stock_principal', reservationId,
@@ -262,10 +293,10 @@ module.exports = async (req, res) => {
       await recordMouvement(supabase, {
         appareilId: nouvelAppareilId, typeEvenement: 'attribution_reservation', nouveauStatut: nouvelAppareil.statut,
         nouvelleLocalisation: 'stock_principal', reservationId,
-        utilisateur: 'admin', commentaire: 'Affecté manuellement par l\'administration',
+        utilisateur: 'admin', commentaire: conflitActif ? 'Échangé par l\'administration' : 'Affecté manuellement par l\'administration',
       });
 
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ ok: true, swapped: Boolean(conflitActif) });
     }
 
     if (action === 'delete') {
