@@ -199,14 +199,19 @@ function tplContratFacture({ prenom, ref, viewUrlContrat, viewUrlFacture }) {
 
 // Facture d'achat Offre Privilège (voir _lib/documents.js) — le client garde
 // définitivement son climatiseur, distinct de la facture de location.
-function tplFactureVente({ prenom, ref, viewUrlFacture }) {
+function tplFactureVente({ prenom, ref, modeleClimatiseur, dateAchatFmt, montantFmt, viewUrlFacture }) {
   return wrap({
     title: '📄 Votre facture d\'achat',
-    intro: `Dossier ${escHtml(ref)}`,
+    intro: `Merci ${escHtml(prenom || '')}, votre paiement de ${escHtml(montantFmt || '')} a bien été reçu !`,
     bodyHtml: `
-      <p>Bonjour ${escHtml(prenom || '')},</p>
-      <p>Merci pour votre achat via l'Offre Privilège ! Voici votre facture, en pièce jointe de cet email (PDF).</p>
-      <div class="box"><p style="margin:0"><a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">Consulter la facture en ligne →</a></p></div>
+      <p>Merci pour votre achat via l'Offre Privilège (dossier ${escHtml(ref)}) ! Voici le récapitulatif :</p>
+      <div class="box">
+        ${modeleClimatiseur ? `<p style="margin:0 0 6px"><strong>Climatiseur :</strong> ${escHtml(modeleClimatiseur)}</p>` : ''}
+        <p style="margin:0 0 6px"><strong>Date d'achat :</strong> ${escHtml(dateAchatFmt || '')}</p>
+        <p style="margin:0"><strong>Montant payé :</strong> ${escHtml(montantFmt || '')}</p>
+      </div>
+      <p>Votre facture est en pièce jointe de cet email (PDF) — vous pouvez aussi la <a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">consulter en ligne</a>.</p>
+      <p>Le climatiseur vous appartient désormais définitivement : aucune autre action n'est nécessaire de votre part. En cas de souci technique (garantie, SAV), notre équipe reste disponible via WhatsApp ci-dessous.</p>
       <p style="font-size:13px;color:#888">Conservez cet email — ce document reste consultable via le lien ci-dessus.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
   });

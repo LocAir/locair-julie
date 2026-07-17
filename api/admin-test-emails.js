@@ -51,7 +51,11 @@ const AD_HOC = {
   facture_vente: {
     libelle: "Facture d'achat Offre Privilège",
     subject: "📄 Votre facture d'achat Loc'Air — Dossier TEST-0001",
-    html: () => tplFactureVente({ prenom: 'Jean', ref: 'TEST-0001', viewUrlFacture: 'https://www.locair.fr/#test' }),
+    html: () => tplFactureVente({
+      prenom: 'Jean', ref: 'TEST-0001',
+      modeleClimatiseur: 'Klarstein WhiteWave 9K', dateAchatFmt: '17/07/2026', montantFmt: '399,00 €',
+      viewUrlFacture: 'https://www.locair.fr/#test',
+    }),
   },
   ambassadeur_credentials: {
     libelle: 'Espace ambassadeur (création / code changé)',

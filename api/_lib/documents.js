@@ -146,7 +146,7 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
 
   const [{ data: resa }, { data: appareil }] = await Promise.all([
     supabase.from('reservations').select('*').eq('id', reservationId).maybeSingle(),
-    supabase.from('appareils').select('numero').eq('id', appareilId).maybeSingle(),
+    supabase.from('appareils').select('numero, modele:modeles_climatiseur(marque, modele)').eq('id', appareilId).maybeSingle(),
   ]);
   if (!resa) return;
 
@@ -176,9 +176,13 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
   if (resa.email) {
     const base = 'https://www.locair.fr';
     const sig = await getSignature(supabase);
+    const modeleClimatiseur = appareil && appareil.modele ? `${appareil.modele.marque} ${appareil.modele.modele}` : '';
     const html = tplFactureVente({
       prenom: resa.prenom,
       ref:    resa.ref,
+      modeleClimatiseur,
+      dateAchatFmt: now.toLocaleDateString('fr-FR'),
+      montantFmt: (prixCents / 100).toFixed(2).replace('.', ',') + ' €',
       viewUrlFacture: `${base}/api/document-view?token=${factureToken}`,
     }) + signatureFooterHtml(sig);
     await sendBrevoEmail({
