@@ -49,21 +49,25 @@ module.exports = async (req, res) => {
     if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
 
     if (action === 'add') {
+      // Ajout en lot (Module 9) : un parc qui grandit vers plusieurs
+      // centaines d'unités ne peut pas être constitué un par un.
+      const quantite = Math.min(500, Math.max(1, parseInt(body.quantite) || 1));
       const { data: maxRow } = await supabase
         .from('appareils').select('numero').eq('city_id', city.id)
         .order('numero', { ascending: false }).limit(1).maybeSingle();
-      const numero = (maxRow?.numero || 0) + 1;
+      const numeroDepart = (maxRow?.numero || 0) + 1;
+      const rows = Array.from({ length: quantite }, (_, i) => ({ city_id: city.id, numero: numeroDepart + i }));
       const { data, error } = await supabase
-        .from('appareils').insert({ city_id: city.id, numero }).select().single();
+        .from('appareils').insert(rows).select();
       if (error) throw error;
       // Mouvement de stock (Module 6, Partie 5) : entrée dans le parc.
-      await supabase.from('appareil_mouvements').insert({
-        appareil_id: data.id, type_evenement: 'entree_parc',
-        ancien_statut: null, nouveau_statut: data.statut,
-        ancienne_localisation: null, nouvelle_localisation: data.localisation,
+      await supabase.from('appareil_mouvements').insert(data.map(a => ({
+        appareil_id: a.id, type_evenement: 'entree_parc',
+        ancien_statut: null, nouveau_statut: a.statut,
+        ancienne_localisation: null, nouvelle_localisation: a.localisation,
         utilisateur: 'admin',
-      });
-      return res.status(200).json({ ok: true, appareil: data });
+      })));
+      return res.status(200).json({ ok: true, appareils: data });
     }
 
     if (action === 'update') {
