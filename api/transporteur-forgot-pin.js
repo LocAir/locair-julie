@@ -1,9 +1,7 @@
 const { getSupabase }    = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
-
-function escHtml(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+const { escHtml, wrap }  = require('./_lib/emailTemplates');
+const { getSignature, signatureFooterHtml } = require('./_lib/emailEngine');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -39,16 +37,18 @@ module.exports = async (req, res) => {
         // Même logique qu'un changement de code depuis l'admin : révoque tout
         // accès biométrique déjà enregistré (probable perte/vol de téléphone).
         await supabase.from('webauthn_credentials').delete().eq('transporteur_id', transp.id);
-        await sendBrevoEmail({
-          to:      transp.email,
-          subject: 'Ton nouveau code Loc’Air',
-          html: `
-            <p>Bonjour ${escHtml(transp.nom)},</p>
+        const sig  = await getSignature(supabase);
+        const html = wrap({
+          title: '🔐 Ton nouveau code',
+          intro: `Bonjour ${escHtml(transp.nom)}`,
+          bodyHtml: `
             <p>Voici ton nouveau code personnel pour te connecter sur l'espace transporteur Loc'Air :</p>
-            <p style="font-size:28px;font-weight:700;letter-spacing:4px">${escHtml(newPin)}</p>
-            <p>Ton ancien code ne fonctionne plus. Si tu n'es pas à l'origine de cette demande, contacte Aly immédiatement.</p>
-          `,
-        });
+            <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(newPin)}</p>
+            <p style="font-size:13px;color:#888">Ton ancien code ne fonctionne plus. Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
+          ctaHref: 'https://www.locair.fr/transporteur', ctaLabel: 'Ouvrir mon espace transporteur',
+        }) + signatureFooterHtml(sig);
+
+        await sendBrevoEmail({ to: transp.email, subject: "🔐 Ton nouveau code Loc'Air", html, senderName: sig.nom_expediteur });
       }
     }
 

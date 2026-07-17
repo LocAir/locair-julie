@@ -2,6 +2,8 @@ const crypto = require('crypto');
 const { generateContratPdf, generateFacturePdf, generateFactureVentePdf } = require('./pdf');
 const { sendBrevoEmail } = require('./brevo');
 const { CGV_VERSION } = require('./legal');
+const { escHtml, wrap } = require('./emailTemplates');
+const { getSignature, signatureFooterHtml } = require('./emailEngine');
 
 function accessToken() {
   return crypto.randomBytes(24).toString('hex');
@@ -20,14 +22,16 @@ function invoiceNumber(annee, n) {
 }
 
 function contratHtml({ prenom, ref, viewUrlContrat, viewUrlFacture }) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;color:#333;max-width:560px;margin:0 auto">
-    <h2 style="color:#1b3a5f">Vos documents Loc'Air — Dossier ${ref}</h2>
-    <p>Bonjour ${prenom || ''},</p>
-    <p>Voici votre contrat de location et votre facture, en pièces jointes de cet email (PDF).</p>
-    <p style="margin:20px 0"><a href="${viewUrlContrat}" style="color:#1b3a5f">Consulter le contrat en ligne</a><br/>
-    <a href="${viewUrlFacture}" style="color:#1b3a5f">Consulter la facture en ligne</a></p>
-    <p style="font-size:12px;color:#888">Conservez cet email — ces documents restent consultables via les liens ci-dessus.</p>
-  </body></html>`;
+  return wrap({
+    title: '📄 Vos documents Loc\'Air',
+    intro: `Dossier ${escHtml(ref)}`,
+    bodyHtml: `
+      <p>Bonjour ${escHtml(prenom || '')},</p>
+      <p>Voici votre contrat de location et votre facture, en pièces jointes de cet email (PDF).</p>
+      <div class="box"><p style="margin:0 0 8px"><a href="${viewUrlContrat}" style="color:#1b3a5f;font-weight:700">Consulter le contrat en ligne →</a></p>
+      <p style="margin:0"><a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">Consulter la facture en ligne →</a></p></div>
+      <p style="font-size:12px;color:#888">Conservez cet email — ces documents restent consultables via les liens ci-dessus.</p>`,
+  });
 }
 
 // Point d'entrée appelé une seule fois, juste après confirmation du paiement
@@ -103,16 +107,18 @@ async function generateAndSendDocuments(supabase, resa) {
   // les documents restent générés et consultables par l'admin dans ce cas.
   if (resa.email) {
     const base = 'https://www.locair.fr';
+    const sig = await getSignature(supabase);
     const contratEmailHtml = contratHtml({
       prenom: resa.prenom,
       ref:    resa.ref,
       viewUrlContrat: `${base}/api/document-view?token=${contratToken}`,
       viewUrlFacture: `${base}/api/document-view?token=${factureToken}`,
-    });
+    }) + signatureFooterHtml(sig);
     await sendBrevoEmail({
       to:      resa.email,
       subject: `📄 Votre contrat et votre facture Loc'Air — Dossier ${resa.ref}`,
       html:    contratEmailHtml,
+      senderName: sig.nom_expediteur,
       attachments: [
         { name: `Contrat-${resa.ref}.pdf`, content: contratBuffer },
         { name: `${numero}.pdf`, content: factureBuffer },
@@ -134,13 +140,15 @@ async function generateAndSendDocuments(supabase, resa) {
 }
 
 function factureVenteHtml({ prenom, ref, viewUrlFacture }) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family:Arial,sans-serif;color:#333;max-width:560px;margin:0 auto">
-    <h2 style="color:#1b3a5f">Votre facture d'achat Loc'Air — Dossier ${ref}</h2>
-    <p>Bonjour ${prenom || ''},</p>
-    <p>Merci pour votre achat via l'Offre Privilège ! Voici votre facture, en pièce jointe de cet email (PDF).</p>
-    <p style="margin:20px 0"><a href="${viewUrlFacture}" style="color:#1b3a5f">Consulter la facture en ligne</a></p>
-    <p style="font-size:12px;color:#888">Conservez cet email — ce document reste consultable via le lien ci-dessus.</p>
-  </body></html>`;
+  return wrap({
+    title: '📄 Votre facture d\'achat',
+    intro: `Dossier ${escHtml(ref)}`,
+    bodyHtml: `
+      <p>Bonjour ${escHtml(prenom || '')},</p>
+      <p>Merci pour votre achat via l'Offre Privilège ! Voici votre facture, en pièce jointe de cet email (PDF).</p>
+      <div class="box"><p style="margin:0"><a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">Consulter la facture en ligne →</a></p></div>
+      <p style="font-size:12px;color:#888">Conservez cet email — ce document reste consultable via le lien ci-dessus.</p>`,
+  });
 }
 
 // Point d'entrée appelé une seule fois, juste après acceptation d'une Offre
@@ -192,15 +200,17 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
 
   if (resa.email) {
     const base = 'https://www.locair.fr';
+    const sig = await getSignature(supabase);
     const html = factureVenteHtml({
       prenom: resa.prenom,
       ref:    resa.ref,
       viewUrlFacture: `${base}/api/document-view?token=${factureToken}`,
-    });
+    }) + signatureFooterHtml(sig);
     await sendBrevoEmail({
       to:      resa.email,
       subject: `📄 Votre facture d'achat Loc'Air — Dossier ${resa.ref}`,
       html,
+      senderName: sig.nom_expediteur,
       attachments: [{ name: `${numero}.pdf`, content: factureBuffer }],
     });
     await supabase.from('documents').update({ statut: 'envoye', envoye_at: new Date().toISOString() })

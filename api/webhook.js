@@ -6,8 +6,8 @@ const { pushToAdmin } = require('./_lib/push');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { generateAndSendDocuments, generateAndSendFactureVente } = require('./_lib/documents');
-const { sendScenarioEmail } = require('./_lib/emailEngine');
-const { escHtml } = require('./_lib/emailTemplates');
+const { sendScenarioEmail, getSignature, signatureFooterHtml } = require('./_lib/emailEngine');
+const { escHtml, wrap } = require('./_lib/emailTemplates');
 
 // Offre Privilège (Step 2) : le client vient de payer pour garder son
 // climatiseur actuel. Idempotent (un webhook Stripe peut être redélivré) —
@@ -219,36 +219,18 @@ async function handleDisputeCreated(supabase, dispute) {
 // email_log pour l'instant (voir rapport de fin de module).
 function tplProlongConfirmation({ prenom, nom, jours, date_recuperation, creneau, amount }) {
   const jNum = Number(jours) || 1;
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
-    body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
-    .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
-    .head{background:#0f766e;padding:32px 32px 24px;text-align:center}
-    .head h1{color:#fff;font-size:22px;margin:0 0 6px}
-    .head p{color:rgba(255,255,255,.75);font-size:14px;margin:0}
-    .body{padding:28px 32px}
-    .row{padding:10px 0;border-bottom:1px solid #f0ede8}
-    .row:last-child{border-bottom:none}
-    .lbl{color:#888;font-size:13px;display:block}
-    .val{color:#1a1a2e;font-size:13px;font-weight:600;display:block}
-    .footer{background:#f4f0ea;padding:20px 32px;text-align:center;font-size:12px;color:#888}
-    .btn{display:inline-block;background:#0f766e;color:#fff;padding:12px 28px;border-radius:100px;text-decoration:none;font-weight:700;font-size:14px;margin:20px 0}
-  </style></head><body>
-  <div class="wrap">
-    <div class="head">
-      <h1>✅ Prolongation confirmée !</h1>
-      <p>Merci ${escHtml(prenom || '')}, votre paiement de ${escHtml(amount)} a bien été reçu.</p>
-    </div>
-    <div class="body">
-      <div class="row"><span class="lbl">Client</span><span class="val">${escHtml(prenom || '')} ${escHtml(nom || '')}</span></div>
-      <div class="row"><span class="lbl">Jours supplémentaires</span><span class="val">${jNum} jour${jNum > 1 ? 's' : ''}</span></div>
-      <div class="row"><span class="lbl">Récupération le</span><span class="val">${escHtml(date_recuperation || '—')}</span></div>
-      <div class="row"><span class="lbl">Créneau</span><span class="val">${escHtml(creneau || '—')}</span></div>
-      <div class="row"><span class="lbl">Montant payé</span><span class="val">${escHtml(amount)}</span></div>
-      <p style="margin:24px 0 8px;font-size:13px;color:#444">Notre technicien vous contactera la veille de la récupération pour confirmer le créneau.</p>
-      <a class="btn" href="https://wa.me/33663798756">Une question ? WhatsApp</a>
-    </div>
-    <div class="footer">© 2026 Loc'Air · Nice · <a href="https://www.locair.fr" style="color:#0f766e">www.locair.fr</a></div>
-  </div></body></html>`;
+  return wrap({
+    title: '✅ Prolongation confirmée !',
+    intro: `Merci ${escHtml(prenom || '')}, votre paiement de ${escHtml(amount)} a bien été reçu.`,
+    bodyHtml: `
+      <p><strong>Client :</strong> ${escHtml(prenom || '')} ${escHtml(nom || '')}<br/>
+      <strong>Jours supplémentaires :</strong> ${jNum} jour${jNum > 1 ? 's' : ''}<br/>
+      <strong>Récupération le :</strong> ${escHtml(date_recuperation || '—')}<br/>
+      <strong>Créneau :</strong> ${escHtml(creneau || '—')}<br/>
+      <strong>Montant payé :</strong> ${escHtml(amount)}</p>
+      <p style="font-size:13px;color:#444">Notre technicien vous contactera la veille de la récupération pour confirmer le créneau.</p>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
+  });
 }
 // ── Webhook principal ─────────────────────────────────────────────────────────
 const handler = async (req, res) => {
@@ -363,6 +345,7 @@ const handler = async (req, res) => {
         }),
       }).catch(e => console.error('[Formspree prolong]', e.message));
 
+      const sigProlong = await getSignature(getSupabase());
       const prolongHtml = tplProlongConfirmation({
         prenom:            meta.prenom            || '',
         nom:               meta.nom               || '',
@@ -370,11 +353,12 @@ const handler = async (req, res) => {
         date_recuperation: meta.date_recuperation || '',
         creneau:           meta.creneau           || '',
         amount,
-      });
+      }) + signatureFooterHtml(sigProlong);
       await sendBrevoEmail({
         to:      email,
         subject: `✅ Prolongation confirmée — ${meta.jours} jour${Number(meta.jours) > 1 ? 's' : ''} ajoutés`,
         html:    prolongHtml,
+        senderName: sigProlong.nom_expediteur,
       });
       // Best-effort : hors moteur de scénarios, juste une trace pour
       // l'historique de la fiche client.
