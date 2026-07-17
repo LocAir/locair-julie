@@ -1678,6 +1678,7 @@ async function loadStock(silent){
       </div>` : ''}
       <div class="card">
         <h2 style="margin-bottom:10px">Filtrer</h2>
+        <input type="text" id="stock-f-numero" placeholder="🔎 N° de climatiseur ou référence" value="${escHtml(STOCK_FILTRES.filtre_numero||'')}" onchange="applyStockFiltres()" style="margin-bottom:8px"/>
         <div class="inline-form">
           <div><label for="stock-f-statut">Statut</label><select id="stock-f-statut" onchange="applyStockFiltres()">
             <option value="">Tous</option>
@@ -1747,7 +1748,7 @@ async function loadStock(silent){
           </div>`;
         }).join('') || '<p class="empty">Aucun appareil enregistré.</p>'}
         </div>
-        <button class="btn btn-blue btn-block" onclick="addAppareil()" style="margin-top:14px">+ Ajouter un appareil (nouvel achat)</button>
+        <button class="btn btn-blue btn-block" onclick="addAppareil()" style="margin-top:14px">+ Ajouter des appareils (nouvel achat)</button>
         <div class="err" id="stock-err"></div>
       </div>`;
   }catch(e){
@@ -1755,13 +1756,16 @@ async function loadStock(silent){
   }
 }
 function addAppareil(){
-  confirmAction('Ajouter un nouvel appareil à la flotte ? Il recevra automatiquement le prochain numéro disponible.', async () => {
+  promptAction({title:'Ajouter des appareils', label:'Combien de climatiseurs veux-tu ajouter d\'un coup ?', value:'1', type:'number'}, async (v) => {
+    const quantite = parseInt(v);
+    if(!quantite || quantite < 1){ showToast('Indique un nombre valide', 'error'); return; }
+    if(quantite > 500){ showToast('Maximum 500 à la fois', 'error'); return; }
     try{
-      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'add'})});
+      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'add', quantite})});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       loadStock();
-      showToast(`Climatiseur n°${d.appareil.numero} ajouté`, 'success');
+      showToast(quantite > 1 ? `${quantite} climatiseurs ajoutés (n°${d.appareils[0].numero} à n°${d.appareils[d.appareils.length-1].numero})` : `Climatiseur n°${d.appareils[0].numero} ajouté`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
   });
 }
@@ -1850,11 +1854,13 @@ async function voirFicheAppareil(id, numero){
   }
 }
 function applyStockFiltres(){
+  const numero = document.getElementById('stock-f-numero')?.value.trim();
   const statut = document.getElementById('stock-f-statut')?.value;
   const localisation = document.getElementById('stock-f-localisation')?.value;
   const client = document.getElementById('stock-f-client')?.value.trim();
   const periodeDebut = document.getElementById('stock-f-periode-debut')?.value;
   STOCK_FILTRES = {};
+  if(numero) STOCK_FILTRES.filtre_numero = numero;
   if(statut) STOCK_FILTRES.filtre_statut = statut;
   if(localisation) STOCK_FILTRES.filtre_localisation = localisation;
   if(client) STOCK_FILTRES.filtre_client = client;
