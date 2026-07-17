@@ -12,16 +12,27 @@ function escHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
+// Habillage visuel unique (identité de marque) — même structure et mêmes
+// paramètres qu'avant (headColor/title/intro/bodyHtml/ctaHref/ctaLabel),
+// seule la mise en forme change : pile de polices système (rendu natif fiable
+// sur tous les clients mail, Inter ne charge presque jamais), profondeur de
+// carte (ombre douce), hiérarchie de couleurs affinée, encarts ".box" avec
+// liseré de marque, bouton avec un léger relief. Passe purement visuelle —
+// aucun contenu, aucun paramètre, aucune logique d'envoi n'est modifié.
 function wrap({ headColor = '#1b3a5f', title, intro, bodyHtml, ctaHref, ctaLabel }) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
-    body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
-    .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
-    .head{background:${headColor};padding:28px 32px;text-align:center}
-    .head h1{color:#fff;font-size:20px;margin:0 0 6px}
-    .head p{color:rgba(255,255,255,.8);font-size:14px;margin:0}
-    .body{padding:28px 32px;font-size:14px;color:#333;line-height:1.6}
-    .box{background:#f4f0ea;border-radius:10px;padding:16px 20px;margin:16px 0}
-    .btn{display:inline-block;background:${headColor};color:#fff;padding:12px 28px;border-radius:100px;text-decoration:none;font-weight:700;font-size:14px;margin:16px 0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#eee8dd;margin:0;padding:0;-webkit-font-smoothing:antialiased}
+    .wrap{max-width:560px;margin:24px auto;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 4px 24px rgba(27,58,95,.10)}
+    .head{background:${headColor};padding:34px 32px 30px;text-align:center}
+    .head h1{color:#fff;font-size:21px;line-height:1.35;margin:0 0 8px;font-weight:700;letter-spacing:-.01em}
+    .head p{color:rgba(255,255,255,.82);font-size:14px;margin:0;font-weight:500}
+    .body{padding:32px 32px 30px;font-size:15px;color:#2b2b2e;line-height:1.65}
+    .body p{margin:0 0 14px}
+    .body p:last-child{margin-bottom:0}
+    .box{background:#f7f3ea;border-left:3px solid ${headColor};border-radius:8px;padding:16px 20px;margin:18px 0}
+    .box a{text-decoration:none}
+    .btn{display:inline-block;background:${headColor};color:#fff;padding:13px 30px;border-radius:100px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.01em;margin:22px 0 4px;box-shadow:0 3px 10px rgba(27,58,95,.28)}
+    .btn:hover{opacity:.92}
   </style></head><body>
   <div class="wrap">
     <div class="head"><h1>${title}</h1>${intro ? `<p>${intro}</p>` : ''}</div>

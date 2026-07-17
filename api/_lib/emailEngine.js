@@ -74,11 +74,15 @@ async function getSignature(supabase) {
   return data || { nom_expediteur: "Loc'Air", fonction: null, logo_url: null, telephone: null, email: 'contact@locair.fr', site_web: 'https://www.locair.fr' };
 }
 
+// Même contenu et mêmes champs qu'avant — seule la mise en forme est
+// affinée (hiérarchie de couleurs, liseré teinté à la couleur de marque
+// plutôt qu'un gris neutre) pour rester cohérente avec le nouvel habillage
+// visuel de wrap() (voir _lib/emailTemplates.js).
 function signatureFooterHtml(sig) {
-  return `<div style="margin-top:24px;padding-top:16px;border-top:1px solid #eee;font-size:12px;color:#888">
-    ${sig.logo_url ? `<img src="${sig.logo_url}" alt="" style="max-height:32px;margin-bottom:8px;display:block"/>` : ''}
-    <strong>${sig.nom_expediteur}</strong>${sig.fonction ? ' · ' + sig.fonction : ''}<br/>
-    ${sig.telephone ? sig.telephone + ' · ' : ''}${sig.email || ''}${sig.site_web ? ' · <a href="' + sig.site_web + '" style="color:#888">' + String(sig.site_web).replace(/^https?:\/\//, '') + '</a>' : ''}
+  return `<div style="margin-top:26px;padding-top:18px;border-top:1px solid rgba(27,58,95,.12);font-size:12.5px;color:#8a8a8f;line-height:1.6">
+    ${sig.logo_url ? `<img src="${sig.logo_url}" alt="" style="max-height:32px;margin-bottom:10px;display:block"/>` : ''}
+    <strong style="color:#3a3a3e;font-weight:700">${sig.nom_expediteur}</strong>${sig.fonction ? ' · ' + sig.fonction : ''}<br/>
+    ${sig.telephone ? sig.telephone + ' · ' : ''}${sig.email || ''}${sig.site_web ? ' · <a href="' + sig.site_web + '" style="color:#8a8a8f">' + String(sig.site_web).replace(/^https?:\/\//, '') + '</a>' : ''}
   </div>`;
 }
 
