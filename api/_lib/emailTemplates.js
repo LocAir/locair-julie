@@ -54,8 +54,8 @@ function tplConfirmation(ctx) {
 // 2. Suivi J-14
 function tplSuiviJ14(ctx) {
   return wrap({
-    headColor: '#0f766e',
     title: 'Votre climatiseur arrive dans 14 jours',
+    intro: `Dossier ${escHtml(ctx.ref)}`,
     bodyHtml: `
       <p>Bonjour ${escHtml(ctx.prenom)},</p>
       <p>Votre réservation Loc'Air (dossier ${escHtml(ctx.ref)}) est bien confirmée pour le <strong>${escHtml(ctx.dateDebutFmt)}</strong>.</p>
@@ -67,8 +67,8 @@ function tplSuiviJ14(ctx) {
 // 3. Préparation J-3
 function tplPreparationJ3(ctx) {
   return wrap({
-    headColor: '#0f766e',
     title: 'Votre livraison approche',
+    intro: `Dossier ${escHtml(ctx.ref)}`,
     bodyHtml: `
       <p>Bonjour ${escHtml(ctx.prenom)},</p>
       <p>Votre climatiseur Loc'Air arrive le <strong>${escHtml(ctx.dateDebutFmt)}</strong>${ctx.creneau ? ' (créneau ' + escHtml(ctx.creneau) + ')' : ''} à l'adresse : ${escHtml(ctx.adresse)}.</p>
@@ -80,9 +80,8 @@ function tplPreparationJ3(ctx) {
 // 4. Rappel J-1 (livraison)
 function tplRappelJ1(ctx) {
   return wrap({
-    headColor: '#0f766e',
     title: 'Demain, livraison de votre climatiseur !',
-    intro: `Dossier ${escHtml(ctx.ref)} — ${escHtml(ctx.prenom)}`,
+    intro: `Dossier ${escHtml(ctx.ref)}`,
     bodyHtml: `
       <p>Bonjour ${escHtml(ctx.prenom)},</p>
       <p>Votre climatiseur mobile Loc'Air est livré <strong>demain</strong>.</p>
@@ -149,16 +148,16 @@ function tplFinLocation(ctx) {
   const code = promoCodeForPrenom(ctx.prenom);
   return wrap({
     title: '✅ Location terminée',
+    intro: `Dossier ${escHtml(ctx.ref)}`,
     bodyHtml: `
-      <p style="text-align:center">Bonjour ${escHtml(ctx.prenom)},</p>
-      <p style="text-align:center">Notre technicien a récupéré votre climatiseur. Merci d'avoir choisi Loc'Air !</p>
-      <p style="text-align:center;font-size:13px;color:#666">Dossier ${escHtml(ctx.ref)}</p>
+      <p>Bonjour ${escHtml(ctx.prenom)},</p>
+      <p>Notre technicien a récupéré votre climatiseur. Merci d'avoir choisi Loc'Air !</p>
       <div class="box" style="text-align:center">
         <p style="margin:0 0 6px">Pour vous remercier, profitez de <strong>-${REFERRAL_PCT}%</strong> sur votre prochaine réservation avec le code</p>
         <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
-        <p style="margin:0;font-size:12px;color:#666">Offre valable aussi pour vos amis, avec leur prénom comme code (ex. -${REFERRAL_PCT}% avec le prénom de votre ami).</p>
+        <p style="margin:0;font-size:13px;color:#666">Offre valable aussi pour vos amis, avec leur prénom comme code (ex. -${REFERRAL_PCT}% avec le prénom de votre ami).</p>
       </div>
-      <p style="text-align:center;font-size:13px;color:#444">Si vous avez une minute, votre avis aide d'autres familles à nous faire confiance :</p>`,
+      <p style="font-size:13px;color:#444">Si vous avez une minute, votre avis aide d'autres familles à nous faire confiance :</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Laisser un avis Google ⭐',
   });
 }
@@ -193,7 +192,8 @@ function tplContratFacture({ prenom, ref, viewUrlContrat, viewUrlFacture }) {
       <p>Voici votre contrat de location et votre facture, en pièces jointes de cet email (PDF).</p>
       <div class="box"><p style="margin:0 0 8px"><a href="${viewUrlContrat}" style="color:#1b3a5f;font-weight:700">Consulter le contrat en ligne →</a></p>
       <p style="margin:0"><a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">Consulter la facture en ligne →</a></p></div>
-      <p style="font-size:12px;color:#888">Conservez cet email — ces documents restent consultables via les liens ci-dessus.</p>`,
+      <p style="font-size:13px;color:#888">Conservez cet email — ces documents restent consultables via les liens ci-dessus.</p>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
   });
 }
 
@@ -207,7 +207,8 @@ function tplFactureVente({ prenom, ref, viewUrlFacture }) {
       <p>Bonjour ${escHtml(prenom || '')},</p>
       <p>Merci pour votre achat via l'Offre Privilège ! Voici votre facture, en pièce jointe de cet email (PDF).</p>
       <div class="box"><p style="margin:0"><a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">Consulter la facture en ligne →</a></p></div>
-      <p style="font-size:12px;color:#888">Conservez cet email — ce document reste consultable via le lien ci-dessus.</p>`,
+      <p style="font-size:13px;color:#888">Conservez cet email — ce document reste consultable via le lien ci-dessus.</p>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
   });
 }
 
