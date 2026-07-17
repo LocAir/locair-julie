@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
       const resaIds = (cityResas || []).map(r => r.id);
 
       const selectCols = `
-          id, type, statut, date_prevue, creneau, masquee, titre, adresse_libre, montant_du_cents,
+          id, type, statut, date_prevue, creneau, masquee, titre, adresse_libre, montant_du_cents, montant_manuel,
           probleme_type, probleme_description, probleme_at, incident_id,
           photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path,
           accepted_at, depart_at, client_notifie_at, arrivee_at, fait_at,
@@ -250,6 +250,13 @@ module.exports = async (req, res) => {
         if (body.titre != null) patch.titre = (body.titre || '').trim().slice(0, 200) || 'Mission libre';
         if (body.adresse_libre != null) patch.adresse_libre = (body.adresse_libre || '').trim().slice(0, 500) || null;
         if (body.montant_du_cents != null) patch.montant_du_cents = Math.max(0, parseInt(body.montant_du_cents) || 0);
+      } else if (body.montant_du_cents != null) {
+        // Tarif transporteur fixé à la main (ex. mission hors zone payée
+        // 95€ au lieu du barème standard) — montant_manuel empêche
+        // computeBareme() d'écraser cette valeur au passage à "fait" (voir
+        // api/transporteur-action.js).
+        patch.montant_du_cents = Math.max(0, parseInt(body.montant_du_cents) || 0);
+        patch.montant_manuel = true;
       }
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
 

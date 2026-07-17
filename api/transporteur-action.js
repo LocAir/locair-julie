@@ -361,8 +361,14 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'État du matériel requis avant de valider' });
       }
 
-      const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
-      const montantDu = computeBareme(liv.type, liv.reservation?.installation, tarifs);
+      // Un tarif fixé à la main par l'admin (ex. mission hors zone, voir
+      // admin-livraisons.js action 'update') ne doit jamais être écrasé par
+      // le barème standard au moment où le transporteur valide la mission.
+      let montantDu = liv.montant_du_cents;
+      if (!liv.montant_manuel) {
+        const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
+        montantDu = computeBareme(liv.type, liv.reservation?.installation, tarifs);
+      }
 
       const update = {
         statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,
@@ -439,8 +445,11 @@ module.exports = async (req, res) => {
       if (!liv.photo_retour_path) return res.status(400).json({ error: 'Vidéo de l\'ancien appareil récupéré requise avant de valider' });
       if (!liv.vidange_confirmee) return res.status(400).json({ error: 'Vidange de l\'ancien appareil requise avant de valider' });
 
-      const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
-      const montantDu = computeBareme('changement', null, tarifs);
+      let montantDu = liv.montant_du_cents;
+      if (!liv.montant_manuel) {
+        const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
+        montantDu = computeBareme('changement', null, tarifs);
+      }
 
       await supabase.from('livraisons').update({
         statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,

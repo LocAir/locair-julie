@@ -350,6 +350,10 @@ create table livraisons (
   -- Rémunération du transporteur pour cette mission (figée au moment du "fait"
   -- pour ne pas bouger rétroactivement si le taux change ensuite)
   montant_du_cents       integer not null default 0,
+  -- Tarif fixé à la main par l'admin (ex. mission hors zone à 95€ au lieu du
+  -- barème standard) — si true, le passage à "fait" (transporteur-action.js)
+  -- ne recalcule plus montant_du_cents automatiquement, il garde cette valeur.
+  montant_manuel         boolean not null default false,
   -- Validation humaine par l'administration, requise avant d'être payable
   -- (voir api/admin-virements.js) — "payé" implique toujours "validé".
   valide                 boolean not null default false,
