@@ -33,9 +33,10 @@ function scenariosDueToday(reservation, todayISO) {
   // rappel après la livraison" (si le cron a manqué ce jour précis, tant pis,
   // on ne l'envoie jamais en retard).
   if (dDebut === 1) due.push('rappel_j1');
-  // Proposition de prolongation : uniquement si la location dure plus de 2
-  // jours (une location de 1-2 jours n'a pas le temps d'en profiter).
-  if (duree > 2 && (dFin === 3 || dFin === 2)) due.push('avant_fin_location');
+  // Proposition de prolongation : uniquement si la location dure plus de 4
+  // jours (évite d'envoyer l'email le jour même ou le lendemain de la livraison
+  // pour les courtes locations 3-4 jours introduites en juillet 2026).
+  if (duree > 4 && (dFin === 3 || dFin === 2)) due.push('avant_fin_location');
   // Rappel récupération (conservé de l'existant, hors des 7 scénarios
   // demandés mais utile opérationnellement — voir rapport de fin de module).
   if (dFin === 1) due.push('rappel_recuperation');
@@ -64,7 +65,7 @@ function upcomingScenariosForReservation(reservation, todayISO) {
     { scenario: 'suivi_j14',           date: scenarioDate(reservation.date_debut, 14) },
     { scenario: 'preparation_j3',      date: scenarioDate(reservation.date_debut, 3) },
     { scenario: 'rappel_j1',           date: scenarioDate(reservation.date_debut, 1) },
-    ...(duree > 2 ? [{ scenario: 'avant_fin_location', date: scenarioDate(reservation.date_fin, 3) }] : []),
+    ...(duree > 4 ? [{ scenario: 'avant_fin_location', date: scenarioDate(reservation.date_fin, 3) }] : []),
     { scenario: 'rappel_recuperation', date: scenarioDate(reservation.date_fin, 1) },
   ];
   return candidats.filter(c => c.date >= todayISO);
