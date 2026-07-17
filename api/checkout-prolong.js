@@ -118,6 +118,7 @@ module.exports = async (req, res) => {
         date_recuperation: (data.date_recuperation || '').slice(0, 500),
         creneau:           (data.creneau           || '').slice(0, 500),
         customer_id:       customerId,
+        lang:              ['fr','en','zh'].includes(data.lang) ? data.lang : 'fr',
       },
     });
 

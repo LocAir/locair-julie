@@ -75,7 +75,7 @@ function checkMediaAllowed(liv, kind) {
 async function loadLivraison(supabase, id) {
   const { data, error } = await supabase
     .from('livraisons')
-    .select('*, reservation:reservations(installation, city_id, prenom, nom, tel, email, ref, adresse, creneau)')
+    .select('*, reservation:reservations(installation, city_id, prenom, nom, tel, email, ref, adresse, creneau, lang)')
     .eq('id', id).maybeSingle();
   if (error || !data) return null;
   return data;
@@ -153,9 +153,23 @@ module.exports = async (req, res) => {
 
       // SMS client : prise en charge confirmée
       if (liv.reservation?.tel) {
-        const dateStr = new Date(liv.date_prevue + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-        const verbe = liv.type === 'recuperation' ? 'récupérer votre climatiseur' : 'vous livrer votre climatiseur';
-        const smsMissionContent = `Loc'Air : votre mission du ${dateStr} est confirmée, notre technicien viendra ${verbe}. Il vous contactera 30 min avant. Questions : 06 63 79 87 56`;
+        const lang = liv.reservation?.lang || 'fr';
+        const d = new Date(liv.date_prevue + 'T12:00:00Z');
+        let dateStr, smsMissionContent;
+        if (lang === 'en') {
+          dateStr = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+          const verbe = liv.type === 'recuperation' ? 'collect your AC' : 'deliver your AC';
+          smsMissionContent = `Loc'Air: your appointment on ${dateStr} is confirmed — our technician will ${verbe}. They will call you 30 min before arriving. Questions: +33 6 63 79 87 56`;
+        } else if (lang === 'zh') {
+          const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+          dateStr = `${months[d.getUTCMonth()]}${d.getUTCDate()}日`;
+          const verbe = liv.type === 'recuperation' ? '取回您的空调' : '配送您的空调';
+          smsMissionContent = `Loc'Air：您${dateStr}的预约已确认，我们的技术员将${verbe}。他将在到达前30分钟致电通知。咨询：+33 6 63 79 87 56`;
+        } else {
+          dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+          const verbe = liv.type === 'recuperation' ? 'récupérer votre climatiseur' : 'vous livrer votre climatiseur';
+          smsMissionContent = `Loc'Air : votre mission du ${dateStr} est confirmée, notre technicien viendra ${verbe}. Il vous contactera 30 min avant. Questions : 06 63 79 87 56`;
+        }
         await sendBrevoSms({ to: liv.reservation.tel, content: smsMissionContent }).catch(() => {});
         // Best-effort : trace pour l'historique de la fiche client admin.
         if (liv.reservation_id) {
@@ -491,10 +505,20 @@ module.exports = async (req, res) => {
 
       if (problemeType === 'client_absent') {
         const { data: resa } = await supabase
-          .from('reservations').select('prenom, tel').eq('id', liv.reservation_id).maybeSingle();
+          .from('reservations').select('prenom, tel, lang').eq('id', liv.reservation_id).maybeSingle();
         if (resa?.tel) {
-          const verbe = liv.type === 'livraison' ? 'livrer' : 'récupérer';
-          const smsAbsentContent = `Loc'Air : notre livreur est passé pour ${verbe} votre climatiseur mais personne ne répondait. Merci de nous rappeler pour reprogrammer.`;
+          const lang = resa.lang || 'fr';
+          let smsAbsentContent;
+          if (lang === 'en') {
+            const verbe = liv.type === 'livraison' ? 'deliver' : 'collect';
+            smsAbsentContent = `Loc'Air: our technician came to ${verbe} your AC but no one answered. Please call us back to reschedule. +33 6 63 79 87 56`;
+          } else if (lang === 'zh') {
+            const verbe = liv.type === 'livraison' ? '配送' : '取回';
+            smsAbsentContent = `Loc'Air：我们的技术员已前来${verbe}您的空调，但无人应答。请回电重新安排时间。+33 6 63 79 87 56`;
+          } else {
+            const verbe = liv.type === 'livraison' ? 'livrer' : 'récupérer';
+            smsAbsentContent = `Loc'Air : notre livreur est passé pour ${verbe} votre climatiseur mais personne ne répondait. Merci de nous rappeler pour reprogrammer.`;
+          }
           await sendBrevoSms({ to: resa.tel, content: smsAbsentContent }).catch(() => {});
           // Best-effort : trace pour l'historique de la fiche client admin.
           supabase.from('email_log').insert({

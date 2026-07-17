@@ -6110,6 +6110,7 @@ function submitForm(btn,mode){
     source:document.getElementById('f-source')?.value||'—',
     logement:document.querySelector('#logement-group .tpill.on')?.textContent.trim()||'—',
     motifs:[...document.querySelectorAll('#motif-group .tpill.on')].map(t=>t.textContent.trim()).join(', ')||'—',
+    lang:_lang||'fr',
     mkt_consent:document.getElementById('f-mkt')?.checked?'Oui':'Non',
     cgv_accepted:true,
     cgv_accepted_at:(()=>{try{return new Date().toISOString();}catch(e){return '';}})(),
@@ -7925,7 +7926,7 @@ async function startProlongPayment(){
     const debutVal=document.getElementById('pe-debut')?.value||'';
     const finInitVal=document.getElementById('pe-fin-init')?.value||'';
     if(!document.getElementById('pe-cgv')?.checked)throw new Error(_lang==='en'?'Please accept the T\u0026Cs before paying.':_lang==='zh'?'请在付款前接受销售条款。':'Merci d\'accepter les CGV avant de payer.');
-    const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,original_days:_prolongOrigDays,prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,date_recuperation_iso:rawDate,creneau,cgv_accepted:true,cgv_accepted_at:new Date().toISOString()})});
+    const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,original_days:_prolongOrigDays,prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,date_recuperation_iso:rawDate,creneau,lang:_lang||'fr',cgv_accepted:true,cgv_accepted_at:new Date().toISOString()})});
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||('API '+r.status));}
     const d=await r.json();
     if(!d.clientSecret)throw new Error(d.error||'No secret');

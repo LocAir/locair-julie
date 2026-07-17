@@ -327,6 +327,7 @@ const handler = async (req, res) => {
       }).catch(e => console.error('[Formspree prolong]', e.message));
 
       const sigProlong = await getSignature(getSupabase());
+      const prolongLang = meta.lang || confirmedResa?.lang || 'fr';
       const prolongHtml = tplProlongConfirmation({
         prenom:            meta.prenom            || '',
         nom:               meta.nom               || '',
@@ -334,10 +335,17 @@ const handler = async (req, res) => {
         date_recuperation: meta.date_recuperation || '',
         creneau:           meta.creneau           || '',
         amount,
+        lang:              prolongLang,
       }) + signatureFooterHtml(sigProlong);
+      const jNum = Number(meta.jours) || 1;
+      const prolongSubject = prolongLang === 'en'
+        ? `✅ Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
+        : prolongLang === 'zh'
+        ? `✅ 续租已确认 — 已延长 ${jNum} 天`
+        : `✅ Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
       await sendBrevoEmail({
         to:      email,
-        subject: `✅ Prolongation confirmée — ${meta.jours} jour${Number(meta.jours) > 1 ? 's' : ''} ajoutés`,
+        subject: prolongSubject,
         html:    prolongHtml,
         senderName: sigProlong.nom_expediteur,
       });
@@ -392,10 +400,20 @@ const handler = async (req, res) => {
 
     // 2a. SMS de confirmation immédiat au client
     if (meta.tel) {
-      const dateStr = meta.date
-        ? new Date(meta.date + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
-        : '';
-      const smsConfirmationContent = `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`;
+      const lang = confirmedResa?.lang || meta.lang || 'fr';
+      const d = meta.date ? new Date(meta.date + 'T12:00:00Z') : null;
+      let smsConfirmationContent;
+      if (lang === 'en') {
+        const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
+        smsConfirmationContent = `Loc'Air: booking confirmed ✅${dateStr ? ' Delivery on ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Your technician will call you 30 min before arriving. Questions: +33 6 63 79 87 56`;
+      } else if (lang === 'zh') {
+        const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+        const dateStr = d ? `${months[d.getUTCMonth()]}${d.getUTCDate()}日` : '';
+        smsConfirmationContent = `Loc'Air：预订已确认 ✅${dateStr ? ' 配送日期：' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}。技术员将在到达前30分钟致电。咨询：+33 6 63 79 87 56`;
+      } else {
+        const dateStr = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
+        smsConfirmationContent = `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`;
+      }
       await sendBrevoSms({ to: meta.tel, content: smsConfirmationContent }).catch(() => {});
       // Best-effort : hors moteur de scénarios (SMS ponctuel, jamais figé à
       // l'avance), juste une trace pour l'historique de la fiche client —

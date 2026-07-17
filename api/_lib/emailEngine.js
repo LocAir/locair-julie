@@ -1,35 +1,55 @@
 const { sendBrevoEmail } = require('./brevo');
 const tpl = require('./emailTemplates');
 
-function fmtDateFR(iso) {
+function fmtDate(iso, lang) {
   if (!iso) return '—';
-  return new Date(String(iso).slice(0, 10) + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  const d = new Date(String(iso).slice(0, 10) + 'T12:00:00Z');
+  if (lang === 'en') return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  if (lang === 'zh') {
+    const days = ['周日','周一','周二','周三','周四','周五','周六'];
+    const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    return `${d.getUTCFullYear()}年${months[d.getUTCMonth()]}${d.getUTCDate()}日（${days[d.getUTCDay()]}）`;
+  }
+  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
+// Alias pour les appelants existants qui utilisent encore fmtDateFR
+function fmtDateFR(iso) { return fmtDate(iso, 'fr'); }
+
 // Registre central des 8 scénarios — seul endroit qui associe un identifiant
-// de scénario à son libellé, son sujet et son gabarit HTML. Le cron
-// (cron-daily.js), le webhook Stripe, les actions transporteur et le renvoi
-// manuel admin (admin-emails.js) passent TOUS par ce registre : aucun de ces
-// appelants ne construit son propre HTML d'email.
+// de scénario à son libellé, son sujet et son gabarit HTML.
 const SCENARIOS = {
-  confirmation:        { libelle: 'Confirmation de réservation',        subject: ctx => `✅ Réservation confirmée — Dossier ${ctx.ref}`,               template: tpl.tplConfirmation },
-  suivi_j14:           { libelle: 'Suivi J-14',                          subject: ctx => `Votre climatiseur arrive dans 14 jours`,                     template: tpl.tplSuiviJ14 },
-  preparation_j3:      { libelle: 'Préparation J-3',                     subject: ctx => `Votre livraison Loc'Air approche`,                           template: tpl.tplPreparationJ3 },
-  rappel_j1:           { libelle: 'Rappel J-1 (livraison)',              subject: ctx => `📦 Demain, livraison de votre climatiseur Loc'Air`,          template: tpl.tplRappelJ1 },
-  post_installation:   { libelle: 'Post-installation',                   subject: ctx => `✅ Votre climatiseur est installé — Dossier ${ctx.ref}`,     template: tpl.tplPostInstallation },
-  avant_fin_location:  { libelle: 'Avant fin de location (prolongation)', subject: ctx => `Votre location Loc'Air se termine bientôt`,                 template: tpl.tplAvantFinLocation },
-  rappel_recuperation: { libelle: 'Rappel J-1 (récupération)',           subject: ctx => `Récupération de votre climatiseur Loc'Air demain`,          template: tpl.tplRappelRecuperation },
-  fin_location:        { libelle: 'Fin de location (avis)',              subject: ctx => `Loc'Air — Location terminée · Merci ${ctx.prenom} !`,       template: tpl.tplFinLocation },
+  confirmation:        { libelle: 'Confirmation de réservation',
+    subject: ctx => ctx.lang === 'en' ? `✅ Booking confirmed — Ref ${ctx.ref}` : ctx.lang === 'zh' ? `✅ 预订已确认 — 订单 ${ctx.ref}` : `✅ Réservation confirmée — Dossier ${ctx.ref}`,
+    template: tpl.tplConfirmation },
+  suivi_j14:           { libelle: 'Suivi J-14',
+    subject: ctx => ctx.lang === 'en' ? 'Your AC arrives in 14 days' : ctx.lang === 'zh' ? '您的空调将在14天后送达' : 'Votre climatiseur arrive dans 14 jours',
+    template: tpl.tplSuiviJ14 },
+  preparation_j3:      { libelle: 'Préparation J-3',
+    subject: ctx => ctx.lang === 'en' ? "Your Loc'Air delivery is coming up" : ctx.lang === 'zh' ? '您的Loc\'Air配送即将到来' : "Votre livraison Loc'Air approche",
+    template: tpl.tplPreparationJ3 },
+  rappel_j1:           { libelle: 'Rappel J-1 (livraison)',
+    subject: ctx => ctx.lang === 'en' ? "📦 Tomorrow — your Loc'Air AC is delivered" : ctx.lang === 'zh' ? "📦 明天——您的Loc'Air空调将送达" : "📦 Demain, livraison de votre climatiseur Loc'Air",
+    template: tpl.tplRappelJ1 },
+  post_installation:   { libelle: 'Post-installation',
+    subject: ctx => ctx.lang === 'en' ? `✅ Your AC is installed — Ref ${ctx.ref}` : ctx.lang === 'zh' ? `✅ 您的空调已安装 — 订单 ${ctx.ref}` : `✅ Votre climatiseur est installé — Dossier ${ctx.ref}`,
+    template: tpl.tplPostInstallation },
+  avant_fin_location:  { libelle: 'Avant fin de location (prolongation)',
+    subject: ctx => ctx.lang === 'en' ? "Your Loc'Air rental is ending soon" : ctx.lang === 'zh' ? "您的Loc'Air租赁即将结束" : "Votre location Loc'Air se termine bientôt",
+    template: tpl.tplAvantFinLocation },
+  rappel_recuperation: { libelle: 'Rappel J-1 (récupération)',
+    subject: ctx => ctx.lang === 'en' ? "Your Loc'Air AC is collected tomorrow" : ctx.lang === 'zh' ? "明天将取回您的Loc'Air空调" : "Récupération de votre climatiseur Loc'Air demain",
+    template: tpl.tplRappelRecuperation },
+  fin_location:        { libelle: 'Fin de location (avis)',
+    subject: ctx => ctx.lang === 'en' ? `Loc'Air — Rental complete · Thank you ${ctx.prenom}!` : ctx.lang === 'zh' ? `Loc'Air — 租赁已完成 · 感谢 ${ctx.prenom}！` : `Loc'Air — Location terminée · Merci ${ctx.prenom} !`,
+    template: tpl.tplFinLocation },
 };
 
-// Contexte de variables dynamiques partagé par tous les scénarios — toujours
-// résolu au moment de l'envoi (jamais figé à la réservation), donc reflète
-// systématiquement les données Supabase les plus récentes (dates modifiées
-// par l'admin, appareil réassigné, etc.).
 async function buildEmailContext(supabase, reservation) {
   const { data: reservAppareils } = await supabase
     .from('reservation_appareils').select('appareil:appareils(reference)').eq('reservation_id', reservation.id).limit(1);
   const appareil = (reservAppareils || [])[0]?.appareil;
+  const lang = reservation.lang || 'fr';
 
   return {
     ref:      reservation.ref,
@@ -38,14 +58,11 @@ async function buildEmailContext(supabase, reservation) {
     adresse:  reservation.adresse || '',
     creneau:  reservation.creneau || '',
     installation: reservation.installation || '',
-    dateDebutFmt: fmtDateFR(reservation.date_debut),
-    dateFinFmt:   fmtDateFR(reservation.date_fin),
+    lang,
+    dateDebutFmt: fmtDate(reservation.date_debut, lang),
+    dateFinFmt:   fmtDate(reservation.date_fin, lang),
     montantFmt:   ((reservation.prix_total_cents || 0) / 100).toFixed(2).replace('.', ',') + ' €',
     modeleClimatiseur: appareil?.reference || "Climatiseur mobile Loc'Air",
-    // Ces deux liens n'ont pas encore de destination dédiée (pas d'espace
-    // client, pas de tutoriel client à ce jour) — voir rapport de fin de
-    // module. Redirigent vers les ressources publiques les plus proches en
-    // attendant.
     lienEspaceClient: 'https://www.locair.fr/#contact',
     lienTutoriel:     'https://www.locair.fr/#faq',
     lienProlongation: `https://www.locair.fr/prolongation?ref=${encodeURIComponent(reservation.ref || '')}`,
@@ -76,20 +93,12 @@ async function wasScenarioSent(supabase, reservationId, scenario) {
   return !!data;
 }
 
-// Exclusion posée depuis la fiche client admin (panneau Communications,
-// "Mettre en pause"/"Supprimer") — contrairement à wasScenarioSent(), n'est
-// JAMAIS contournée par `force` : c'est une décision explicite de l'admin
-// sur cet envoi précis, un renvoi manuel accidentel ne doit pas l'écraser.
 async function wasScenarioSkipped(supabase, reservationId, scenario) {
   const { data } = await supabase
     .from('email_skip').select('reservation_id').eq('reservation_id', reservationId).eq('scenario', scenario).maybeSingle();
   return !!data;
 }
 
-// Point d'entrée unique pour l'envoi d'un email de scénario — garantit :
-// scénario actif, jamais deux fois pour la même réservation (sauf `force`,
-// réservé au renvoi manuel admin), historique complet (email_log) que
-// l'envoi réussisse ou échoue.
 async function sendScenarioEmail(supabase, { reservationId, scenario, force = false }) {
   const scenarioDef = SCENARIOS[scenario];
   if (!scenarioDef) return { sent: false, reason: 'unknown_scenario' };
@@ -125,4 +134,4 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
   }
 }
 
-module.exports = { SCENARIOS, sendScenarioEmail, buildEmailContext, getSignature, signatureFooterHtml, wasScenarioSent, wasScenarioSkipped, isScenarioActive };
+module.exports = { SCENARIOS, sendScenarioEmail, buildEmailContext, getSignature, signatureFooterHtml, wasScenarioSent, wasScenarioSkipped, isScenarioActive, fmtDate, fmtDateFR };
