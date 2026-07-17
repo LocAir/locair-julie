@@ -1678,6 +1678,7 @@ async function loadStock(silent){
       </div>` : ''}
       <div class="card">
         <h2 style="margin-bottom:10px">Filtrer</h2>
+        <input type="text" id="stock-f-numero" placeholder="🔎 N° de climatiseur ou référence" value="${escHtml(STOCK_FILTRES.filtre_numero||'')}" onchange="applyStockFiltres()" style="margin-bottom:8px"/>
         <div class="inline-form">
           <div><label for="stock-f-statut">Statut</label><select id="stock-f-statut" onchange="applyStockFiltres()">
             <option value="">Tous</option>
@@ -1850,11 +1851,13 @@ async function voirFicheAppareil(id, numero){
   }
 }
 function applyStockFiltres(){
+  const numero = document.getElementById('stock-f-numero')?.value.trim();
   const statut = document.getElementById('stock-f-statut')?.value;
   const localisation = document.getElementById('stock-f-localisation')?.value;
   const client = document.getElementById('stock-f-client')?.value.trim();
   const periodeDebut = document.getElementById('stock-f-periode-debut')?.value;
   STOCK_FILTRES = {};
+  if(numero) STOCK_FILTRES.filtre_numero = numero;
   if(statut) STOCK_FILTRES.filtre_statut = statut;
   if(localisation) STOCK_FILTRES.filtre_localisation = localisation;
   if(client) STOCK_FILTRES.filtre_client = client;

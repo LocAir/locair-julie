@@ -333,6 +333,14 @@ module.exports = async (req, res) => {
     if (error) throw error;
     let appareils = appareilsRaw || [];
 
+    // Recherche par n° d'appareil ou référence — indispensable pour retrouver
+    // une unité précise dans un parc de plusieurs centaines de climatiseurs.
+    if (body.filtre_numero) {
+      const q = String(body.filtre_numero).trim().toLowerCase();
+      appareils = appareils.filter(a =>
+        String(a.numero).includes(q) || (a.reference || '').toLowerCase().includes(q));
+    }
+
     if (body.filtre_transporteur_id) {
       const tid = parseInt(body.filtre_transporteur_id);
       const { data: livs } = await supabase
