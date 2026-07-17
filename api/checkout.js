@@ -216,6 +216,20 @@ module.exports = async (req, res) => {
       console.error('[CGV acceptations]', e.message);
     }
 
+    // Répartition par type de fenêtre (ex. 2 porte coulissante + 1 Vélux),
+    // envoyée par le site quand la quantité de climatiseurs est > 1 — voir
+    // reservation_fenetres dans schema.sql. Absente/vide pour une seule
+    // fenêtre : reservations.fenetre suffit alors, rien à écrire ici.
+    try {
+      const detail = JSON.parse(data.fenetre_detail || '{}');
+      const rows = Object.entries(detail)
+        .filter(([type, qty]) => type && Number.isInteger(qty) && qty > 0)
+        .map(([type, qty]) => ({ reservation_id: insertedResa.id, type: String(type).slice(0, 100), quantite: qty }));
+      if (rows.length) await supabase.from('reservation_fenetres').insert(rows);
+    } catch (e) {
+      console.error('[reservation_fenetres insert]', e.message);
+    }
+
     return res.status(200).json({ clientSecret: intent.client_secret, amountCents, customerId });
   } catch (err) {
     console.error('[Stripe intent]', err.message);
