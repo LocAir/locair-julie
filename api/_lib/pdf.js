@@ -164,12 +164,12 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
     );
 
     article('ARTICLE 3 - DURÉE',
-      `La durée minimale de location est de 7 jours. La location débute le ${fmtDate(reservation.date_debut)} et se termine le ` +
+      `La durée minimale de location est de 3 jours. La location débute le ${fmtDate(reservation.date_debut)} et se termine le ` +
       `${fmtDate(reservation.date_fin)}, pour une durée de ${jours} jours.`
     );
 
     article('ARTICLE 4 - TARIFICATION & LIVRAISON',
-      "Tarif journalier (TTC) : 20,00 €/jour (7 jours) · 18,00 €/jour (14 jours) · 17,00 €/jour (21 jours) · 16,00 €/jour (30 jours et plus).\n" +
+      "Tarif journalier (TTC) : 20,00 €/jour (3 à 7 jours) · 18,00 €/jour (8 à 14 jours) · 17,00 €/jour (15 à 21 jours) · 16,00 €/jour (22 jours et plus).\n" +
       "Frais de livraison et récupération : 35,00 € (Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche-sur-Mer, Beaulieu-sur-Mer) ou 95,00 € (hors zone).\n" +
       "Option installation par un technicien qualifié : 49,00 € (en option) ou installation en autonomie (gratuite, kit fourni sans perçage).\n" +
       `TVA : ${SELLER.mentionTva}.`
