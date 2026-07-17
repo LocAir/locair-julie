@@ -23,6 +23,12 @@ function scenarioLibelle(scenario) {
   return SCENARIOS[scenario]?.libelle || AD_HOC_LABEL[scenario] || scenario;
 }
 
+// Sous-ensemble de SCENARIOS déclenché par le code métier (webhook Stripe,
+// actions transporteur) plutôt que par une date calculée — voir
+// emailSchedule.js. N'apparaît donc jamais dans `upcoming` (action
+// 'client_timeline' ci-dessous), qui ne couvre que les scénarios datés.
+const EVENT_SCENARIOS = ['confirmation', 'post_installation', 'fin_location'];
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
@@ -95,7 +101,7 @@ module.exports = async (req, res) => {
       const { data: resas } = await supabase
         .from('reservations').select('id, ref, statut, date_debut, date_fin').eq('client_id', clientId);
       const resaIds = (resas || []).map(r => r.id);
-      if (!resaIds.length) return res.status(200).json({ sent: [], upcoming: [] });
+      if (!resaIds.length) return res.status(200).json({ sent: [], upcoming: [], evenementiels: [] });
 
       const todayISO = new Date().toISOString().slice(0, 10);
       const [logRes, sentRes, skipRes, scenariosRes] = await Promise.all([
@@ -126,8 +132,29 @@ module.exports = async (req, res) => {
       }
       upcoming.sort((a, b) => a.date.localeCompare(b.date));
 
+      // Scénarios événementiels (confirmation, post-installation, fin de
+      // location) : déclenchés par le code métier (webhook Stripe, actions
+      // transporteur), jamais par une date calculée — ils n'apparaissent donc
+      // jamais dans `upcoming` ci-dessus. S'ils n'ont jamais été tentés (email
+      // manquant, erreur avalée), rien ne les distingue nulle part dans la
+      // fiche — cette liste comble ce trou en donnant un bouton d'envoi manuel
+      // même pour un envoi qui n'a jamais eu lieu.
+      const evenementiels = [];
+      for (const resa of resas || []) {
+        for (const scenario of EVENT_SCENARIOS) {
+          const key = `${resa.id}:${scenario}`;
+          if (sentSet.has(key)) continue; // déjà réellement envoyé — visible dans "sent" ci-dessous
+          evenementiels.push({
+            reservation_id: resa.id, ref: resa.ref, scenario,
+            libelle: SCENARIOS[scenario]?.libelle || scenario,
+            actif_globalement: scenarioActif[scenario] !== false,
+            skip: skipByKey[key] || null,
+          });
+        }
+      }
+
       const sent = (logRes.data || []).map(e => ({ ...e, ref: resaById[e.reservation_id]?.ref || null, libelle: scenarioLibelle(e.scenario) }));
-      return res.status(200).json({ sent, upcoming });
+      return res.status(200).json({ sent, upcoming, evenementiels });
     }
 
     // Pose une exclusion sur un envoi précis à venir — bloque
