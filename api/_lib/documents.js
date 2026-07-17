@@ -182,18 +182,25 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
   if (resa.email) {
     const base = 'https://www.locair.fr';
     const sig = await getSignature(supabase);
+    const lang = resa.lang || 'fr';
     const modeleClimatiseur = appareil && appareil.modele ? `${appareil.modele.marque} ${appareil.modele.modele}` : '';
     const html = tplFactureVente({
       prenom: resa.prenom,
       ref:    resa.ref,
+      lang,
       modeleClimatiseur,
       dateAchatFmt: now.toLocaleDateString('fr-FR'),
       montantFmt: (prixCents / 100).toFixed(2).replace('.', ',') + ' €',
       viewUrlFacture: `${base}/api/document-view?token=${factureToken}`,
     }) + signatureFooterHtml(sig);
+    const ventSubject = lang === 'en'
+      ? `📄 Your Loc'Air purchase invoice — Ref ${resa.ref}`
+      : lang === 'zh'
+      ? `📄 您的 Loc'Air 购买发票 — 订单 ${resa.ref}`
+      : `📄 Votre facture d'achat Loc'Air — Dossier ${resa.ref}`;
     await sendBrevoEmail({
       to:      resa.email,
-      subject: `📄 Votre facture d'achat Loc'Air — Dossier ${resa.ref}`,
+      subject: ventSubject,
       html,
       senderName: sig.nom_expediteur,
       attachments: [{ name: `${numero}.pdf`, content: factureBuffer }],
