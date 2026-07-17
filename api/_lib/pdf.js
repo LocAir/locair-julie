@@ -151,9 +151,16 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
       `Le Locataire : ${(reservation.prenom || '') + ' ' + (reservation.nom || '')}${entreprise}, demeurant au ${reservation.adresse || '—'}.`
     );
 
-    article('ARTICLE 2 - OBJET',
-      `Location d'un climatiseur mobile ${modele} (Rowenta RWAC10KA ou FRICO CLIMOB 12 de 9 000 BTU à 12 000 BTU, adapté aux ` +
-      "espaces jusqu'à 20 m²) avec kit d'installation complet (gaine, télécommande, kit de calfeutrage sans perçage)."
+    // Le modèle générique (Rowenta/FRICO) n'est utile qu'en l'absence d'unité
+    // assignée — dès qu'un climatiseur précis est connu, le répéter juste
+    // après son nom est redondant et se lisait mal (ex. "climatiseur mobile
+    // Rowenta RWAC10KA (Rowenta RWAC10KA ou FRICO CLIMOB 12...)").
+    const modeleConnu = !!(appareils && appareils[0] && appareils[0].modele);
+    article('ARTICLE 2 - OBJET', modeleConnu
+      ? `Location d'un climatiseur mobile ${modele} (climatiseur mobile de 9 000 à 12 000 BTU, adapté aux espaces jusqu'à 20 m²) ` +
+        "avec kit d'installation complet (gaine, télécommande, kit de calfeutrage sans perçage)."
+      : "Location d'un climatiseur mobile (Rowenta RWAC10KA ou FRICO CLIMOB 12, de 9 000 BTU à 12 000 BTU, adapté aux espaces " +
+        "jusqu'à 20 m²) avec kit d'installation complet (gaine, télécommande, kit de calfeutrage sans perçage)."
     );
 
     article('ARTICLE 3 - DURÉE',
