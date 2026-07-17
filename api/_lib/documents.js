@@ -95,17 +95,21 @@ async function generateAndSendDocuments(supabase, resa) {
   if (resa.email) {
     const base = 'https://www.locair.fr';
     const sig = await getSignature(supabase);
+    const lang = resa.lang || 'fr';
     const contratEmailHtml = tplContratFacture({
       prenom: resa.prenom,
       ref:    resa.ref,
-      // Un seul lien pour tout consulter (contrat + facture), plutôt que 2
-      // liens séparés — voir api/documents-view.js pour la page qui les
-      // regroupe derrière ce lien unique.
+      lang,
       viewUrlDocuments: `${base}/api/documents-view?contrat=${contratToken}&facture=${factureToken}`,
     }) + signatureFooterHtml(sig);
+    const contratSubject = lang === 'en'
+      ? `📄 Your Loc'Air documents — Ref ${resa.ref}`
+      : lang === 'zh'
+      ? `📄 您的 Loc'Air 文件 — 订单 ${resa.ref}`
+      : `📄 Votre contrat et votre facture Loc'Air — Dossier ${resa.ref}`;
     await sendBrevoEmail({
       to:      resa.email,
-      subject: `📄 Votre contrat et votre facture Loc'Air — Dossier ${resa.ref}`,
+      subject: contratSubject,
       html:    contratEmailHtml,
       senderName: sig.nom_expediteur,
       attachments: [

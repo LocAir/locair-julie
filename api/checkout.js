@@ -186,6 +186,7 @@ module.exports = async (req, res) => {
       prix_total_cents:         amountCents,
       statut:                   'en_attente',
       source:                   'site',
+      lang:                     ['fr','en','zh'].includes(data.lang) ? data.lang : 'fr',
       source_channel:           (data.source || '').slice(0, 100) || null,
       type_client:              (data.type_client || '').toLowerCase().startsWith('pro') ? 'entreprise' : 'particulier',
       siret:                    (data.siret || '').replace(/\s/g, '').slice(0, 14) || null,
