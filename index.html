@@ -4562,7 +4562,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             <div class="stl-dot stl-done"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
             <div class="stl-body">
               <p class="stl-title">Réservation enregistrée</p>
-              <p class="stl-sub"><span id="stl-1-sub-prefix">Notre équipe vous confirme par email sous 2h — </span><button type="button" id="copy-ref-btn" onclick="(function(){const r=document.getElementById('s-ref')?.textContent;if(r){navigator.clipboard?.writeText(r).then(()=>{const b=document.getElementById('copy-ref-btn');if(b){b.textContent=_lang==='en'?'Copied ✓':'Copié ✓';setTimeout(()=>{b.textContent=_lang==='en'?'Copy ref':'Copier le n°';},2000);}}).catch(()=>{});}})()" style="background:none;border:none;color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;padding:0;font-family:var(--body);text-decoration:underline">Copier le n°</button></p>
+              <p class="stl-sub"><span id="stl-1-sub-prefix">Notre équipe vous confirme par email sous 2h — </span><button type="button" id="copy-ref-btn" onclick="(function(){const r=document.getElementById('s-ref')?.textContent;if(r){navigator.clipboard?.writeText(r).then(()=>{const b=document.getElementById('copy-ref-btn');if(b){b.textContent=_lang==='en'?'Copied ✓':_lang==='zh'?'已复制 ✓':'Copié ✓';setTimeout(()=>{b.textContent=_lang==='en'?'Copy ref':_lang==='zh'?'复制单号':'Copier le n°';},2000);}}).catch(()=>{});}})()" style="background:none;border:none;color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;padding:0;font-family:var(--body);text-decoration:underline">Copier le n°</button></p>
             </div>
           </div>
           <div class="stl-conn"></div>
@@ -4918,7 +4918,7 @@ async function _fetchAddrAc(q){
     const d=await r.json();
     const items=(d.features||[]).slice(0,6);
     if(!items.length){
-      ac.innerHTML='<li class="addr-ac-empty" role="option">'+(_lang==='en'?'No address found in Nice':'Aucune adresse trouvée dans le 06')+'</li>';
+      ac.innerHTML='<li class="addr-ac-empty" role="option">'+(_lang==='en'?'No address found in Nice':_lang==='zh'?'在尼斯未找到地址':'Aucune adresse trouvée dans le 06')+'</li>';
       ac.classList.add('open');
       inp.setAttribute('aria-expanded','true');
       return;
@@ -4998,15 +4998,15 @@ function geoLocate(){
     inp.value=addr;
     inp.dispatchEvent(new Event('input'));
     btn.classList.remove('geo-loading');btn.classList.add('geo-ok');
-    lbl.textContent=_lang==='en'?'Address found ✓':'Adresse trouvée ✓';
+    lbl.textContent=_lang==='en'?'Address found ✓':_lang==='zh'?'已找到地址 ✓':'Adresse trouvée ✓';
     btn.disabled=false;
     inp.focus();
-    setTimeout(()=>{btn.classList.remove('geo-ok');lbl.textContent=_lang==='en'?'My location':'Ma position';},5000);
+    setTimeout(()=>{btn.classList.remove('geo-ok');lbl.textContent=_lang==='en'?'My location':_lang==='zh'?'我的位置':'Ma position';},5000);
   }
   function _setErr(msg){
     btn.classList.remove('geo-loading');btn.classList.add('geo-err');
     lbl.textContent=msg;btn.disabled=false;
-    setTimeout(()=>{btn.classList.remove('geo-err');lbl.textContent=_lang==='en'?'My location':'Ma position';},5000);
+    setTimeout(()=>{btn.classList.remove('geo-err');lbl.textContent=_lang==='en'?'My location':_lang==='zh'?'我的位置':'Ma position';},5000);
   }
   function _parseNominatim(d){
     if(d.error||!d.address)return null;
@@ -5018,11 +5018,11 @@ function geoLocate(){
     return num+road+', '+city;
   }
 
-  if(!navigator.geolocation){_setErr(_lang==='en'?'Unavailable':'Non disponible');return;}
+  if(!navigator.geolocation){_setErr(_lang==='en'?'Unavailable':_lang==='zh'?'不可用':'Non disponible');return;}
   btn.disabled=true;
   btn.classList.remove('geo-ok','geo-err');
   btn.classList.add('geo-loading');
-  lbl.textContent=_lang==='en'?'Locating…':'Localisation…';
+  lbl.textContent=_lang==='en'?'Locating…':_lang==='zh'?'定位中…':'Localisation…';
 
   navigator.geolocation.getCurrentPosition(
     function(pos){
@@ -5049,7 +5049,7 @@ function geoLocate(){
               const city=d.city||d.principalSubdivision||'Nice';
               _setOk(locality&&locality!==city?locality+', '+city:city);
             })
-            .catch(function(){_setErr(_lang==='en'?'Network error':'Erreur réseau');});
+            .catch(function(){_setErr(_lang==='en'?'Network error':_lang==='zh'?'网络错误':'Erreur réseau');});
         });
     },
     function(err){
@@ -5188,7 +5188,7 @@ function _initSoldOut(){
     const badge=document.createElement('p');
     badge.className='so-badge';
     badge.id='so-hero-badge';
-    badge.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span id="so-badge-txt">'+(_lang==='en'?'Sold out — coming back soon':'Complet — réouverture prochaine')+'</span>';
+    badge.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span id="so-badge-txt">'+(_lang==='en'?'Sold out — coming back soon':_lang==='zh'?'已售罄——即将重新开放':'Complet — réouverture prochaine')+'</span>';
     cta.insertAdjacentElement('afterend',badge);
   }
   // Désactiver le stock-notice dans le funnel (0 dispo)
@@ -5285,20 +5285,20 @@ function closeModal(){
   _stripeElements=null;_stripeClientSecret=null;_paySubmitting=false;_submitting=false;
   const stripeSection=document.getElementById('stripe-section');if(stripeSection)stripeSection.style.display='none';
   const stripeContainer=document.getElementById('stripe-payment-element');
-  if(stripeContainer)stripeContainer.innerHTML='<p id="stripe-loading" style="color:var(--grey);font-size:13px">'+(_lang==='en'?'Loading payment form…':'Chargement du formulaire de paiement…')+'</p>';
+  if(stripeContainer)stripeContainer.innerHTML='<p id="stripe-loading" style="color:var(--grey);font-size:13px">'+(_lang==='en'?'Loading payment form…':_lang==='zh'?'正在加载支付表单…':'Chargement du formulaire de paiement…')+'</p>';
   const sbtn=document.getElementById('sbtn');if(sbtn)sbtn.style.removeProperty('display');
   // Nettoyage Stripe prolongation
   if(_prolongElements){try{_prolongElements.getElement('payment')?.unmount();}catch(e){}_prolongElements=null;}
   _prolongPaying=false;
   const prolongSect=document.getElementById('prolong-stripe-section');if(prolongSect)prolongSect.style.display='none';
   const prolongContainer=document.getElementById('prolong-stripe-element');
-  if(prolongContainer)prolongContainer.innerHTML='<p id="prolong-stripe-loading" style="color:var(--grey);font-size:13px">'+(_lang==='en'?'Loading payment form…':'Chargement du formulaire de paiement…')+'</p>';
+  if(prolongContainer)prolongContainer.innerHTML='<p id="prolong-stripe-loading" style="color:var(--grey);font-size:13px">'+(_lang==='en'?'Loading payment form…':_lang==='zh'?'正在加载支付表单…':'Chargement du formulaire de paiement…')+'</p>';
   const prolongSbtn=document.getElementById('prolong-sbtn');if(prolongSbtn)prolongSbtn.style.removeProperty('display');
 }
 function overlayClick(e){
   if(e.target!==document.getElementById('overlay'))return;
   if(curStep>=2&&(document.getElementById('f-addr')?.value.trim()||document.getElementById('f-prenom')?.value.trim())){
-    if(!confirm(_lang==='en'?'Close? Your booking will be lost.':'Fermer ? Votre réservation sera perdue.'))return;
+    if(!confirm(_lang==='en'?'Close? Your booking will be lost.':_lang==='zh'?'关闭？您的预订将丢失。':'Fermer ? Votre réservation sera perdue.'))return;
   }
   closeModal();
 }
@@ -5326,7 +5326,7 @@ function goTo(n,silent){
     document.querySelector('.modal-sidebar')?.style.setProperty('display','none');
     document.getElementById('mob-progress')?.style.setProperty('display','none');
     curStep=0;
-    document.title=_lang==='en'?'Booking | Loc\'Air':'Réservation | Loc\'Air';
+    document.title=_lang==='en'?'Booking | Loc\'Air':_lang==='zh'?'预订 | Loc\'Air':'Réservation | Loc\'Air';
     const mb=document.getElementById('modal-body');if(mb)mb.scrollTop=0;
     return;
   }
@@ -5386,7 +5386,7 @@ function goTo(n,silent){
     if(goingBack)panel.classList.add('bwd');
   }
   updateStepper(n);
-  document.title=_lang==='en'?'Booking — Step '+n+'/6 | Loc\'Air':'Réservation — Étape '+n+'/6 | Loc\'Air';
+  document.title=_lang==='en'?'Booking — Step '+n+'/6 | Loc\'Air':_lang==='zh'?'预订 — 第'+n+'/6步 | Loc\'Air':'Réservation — Étape '+n+'/6 | Loc\'Air';
   curStep=n;
   if(n===4){
     const fd=document.getElementById('f-date');
@@ -5528,7 +5528,7 @@ function tglOuv(el,val){
       if(preview){preview.style.display='none';}
       if(img){img.src='';}
       if(status){status.textContent='';}
-      if(btnText){btnText.textContent=_lang==='en'?'Take a photo / Choose from gallery':'Prendre une photo / Choisir depuis la galerie';}
+      if(btnText){btnText.textContent=_lang==='en'?'Take a photo / Choose from gallery':_lang==='zh'?'拍照 / 从相册选择':'Prendre une photo / Choisir depuis la galerie';}
     }
   }
   buildRecap();
@@ -5546,22 +5546,22 @@ async function handleFenetrePhoto(input){
   reader.onload=e=>{
     if(img){img.src=e.target.result;}
     if(preview){preview.style.display='block';}
-    if(status){status.textContent=_lang==='en'?'⏳ Uploading…':'⏳ Envoi en cours…';}
-    if(btnText){btnText.textContent=_lang==='en'?'Change photo':'Changer la photo';}
+    if(status){status.textContent=_lang==='en'?'⏳ Uploading…':_lang==='zh'?'⏳ 上传中…':'⏳ Envoi en cours…';}
+    if(btnText){btnText.textContent=_lang==='en'?'Change photo':_lang==='zh'?'更换照片':'Changer la photo';}
   };
   reader.readAsDataURL(file);
   // Upload vers Supabase Storage via API
   try{
     const r=await fetch('/api/checkout-window-photo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:file.type})});
-    if(!r.ok)throw new Error(_lang==='en'?'Upload unavailable':'Endpoint indisponible');
+    if(!r.ok)throw new Error(_lang==='en'?'Upload unavailable':_lang==='zh'?'上传不可用':'Endpoint indisponible');
     const {signedUrl,path}=await r.json();
     const up=await fetch(signedUrl,{method:'PUT',headers:{'Content-Type':file.type||'application/octet-stream'},body:file});
-    if(!up.ok)throw new Error(_lang==='en'?'Network error':'Erreur réseau');
+    if(!up.ok)throw new Error(_lang==='en'?'Network error':_lang==='zh'?'网络错误':'Erreur réseau');
     _fenetrePhotoPath=path;
-    if(status)status.textContent=_lang==='en'?'✅ Photo attached — our technician will see it before arriving.':'✅ Photo bien jointe — notre technicien la verra avant d\'arriver.';
+    if(status)status.textContent=_lang==='en'?'✅ Photo attached — our technician will see it before arriving.':_lang==='zh'?'✅ 照片已附上——技术员到达前会查看。':'✅ Photo bien jointe — notre technicien la verra avant d\'arriver.';
   }catch(e){
     _fenetrePhotoPath=null;
-    if(status)status.textContent=_lang==='en'?'⚠️ Photo couldn\'t be uploaded. No worries — our technician will assess on site.':'⚠️ La photo n\'a pas pu être envoyée. Ce n\'est pas bloquant — notre technicien évaluera sur place.';
+    if(status)status.textContent=_lang==='en'?'⚠️ Photo couldn\'t be uploaded. No worries — our technician will assess on site.':_lang==='zh'?'⚠️ 照片无法上传。没关系——技术员将在现场评估。':'⚠️ La photo n\'a pas pu être envoyée. Ce n\'est pas bloquant — notre technicien évaluera sur place.';
   }
 }
 
@@ -5729,6 +5729,8 @@ function animateSuccessTimeline(){
         const DAYS_EN_L=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
         const MONTHS_EN_L=['January','February','March','April','May','June','July','August','September','October','November','December'];
         dd.textContent='Delivery '+DAYS_EN_L[dt.getUTCDay()]+' '+parseInt(d)+' '+MONTHS_EN_L[dt.getUTCMonth()]+crenTxt+' · Technician calls 30 min before';
+      } else if(_lang==='zh') {
+        dd.textContent='配送：'+MONTHS[dt.getUTCMonth()]+parseInt(d)+'日 '+DAYS[dt.getUTCDay()]+crenTxt+' · 技术员提前30分钟来电';
       } else {
         dd.textContent='Livraison le '+DAYS[dt.getUTCDay()]+' '+d+' '+MONTHS[dt.getUTCMonth()]+crenTxt+' · Technicien appelle 30 min avant';
       }
@@ -5749,14 +5751,14 @@ async function submitCancellation(){
   const email=document.getElementById('cancel-email')?.value.trim();
   if(!ref||!email)return;
   const btn=document.getElementById('cancel-sbtn');
-  if(btn){btn.disabled=true;btn.textContent=_lang==='en'?'Sending…':'Envoi…';}
+  if(btn){btn.disabled=true;btn.textContent=_lang==='en'?'Sending…':_lang==='zh'?'发送中…':'Envoi…';}
   try{
     const r=await fetch('https://formspree.io/f/mvzyngoy',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({type:'annulation',dossier:ref,email,_subject:'Annulation — '+ref})});
     if(!r.ok)throw new Error('http '+r.status);
     const msg=document.getElementById('cancel-msg');if(msg)msg.style.display='block';
     if(btn)btn.style.display='none';
   }catch(e){
-    if(btn){btn.disabled=false;btn.textContent=_lang==='en'?'Confirm cancellation':"Confirmer l'annulation";}
+    if(btn){btn.disabled=false;btn.textContent=_lang==='en'?'Confirm cancellation':_lang==='zh'?'确认取消':"Confirmer l'annulation";}
   }
 }
 // ── STRIPE ────────────────────────────────────────────────────────────────────
@@ -5774,11 +5776,11 @@ async function doStripePayment(){
   const btnSpan=btn?btn.querySelector('span'):null;
   if(!_stripeElements||!_stripeClientSecret){
     _paySubmitting=false;
-    if(errEl){errEl.textContent=_lang==='en'?'Form not initialised. Please try again.':'Formulaire non initialisé. Réessayez.';errEl.style.display='block';}
+    if(errEl){errEl.textContent=_lang==='en'?'Form not initialised. Please try again.':_lang==='zh'?'表单未初始化。请重试。':'Formulaire non initialisé. Réessayez.';errEl.style.display='block';}
     return;
   }
   if(btn)btn.disabled=true;
-  if(btnSpan)btnSpan.textContent=_lang==='en'?'Payment in progress…':'Paiement en cours…';
+  if(btnSpan)btnSpan.textContent=_lang==='en'?'Payment in progress…':_lang==='zh'?'支付中…':'Paiement en cours…';
   if(errEl)errEl.style.display='none';
   try{
     const {error,paymentIntent}=await _getStripe().confirmPayment({
@@ -5789,20 +5791,20 @@ async function doStripePayment(){
       redirect:'if_required'
     });
     if(error){
-      if(errEl){errEl.textContent=error.message||(_lang==='en'?'Payment declined.':'Paiement refusé.');errEl.style.display='block';}
+      if(errEl){errEl.textContent=error.message||(_lang==='en'?'Payment declined.':_lang==='zh'?'支付被拒绝。':'Paiement refusé.');errEl.style.display='block';}
       if(btn)btn.disabled=false;
-      if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':'Réessayer le paiement';
+      if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':_lang==='zh'?'重试支付':'Réessayer le paiement';
     }else if(paymentIntent&&paymentIntent.status==='succeeded'){
       _stripePaymentDone();
     }else{
-      if(errEl){errEl.textContent=_lang==='en'?'Payment pending confirmation. Check your email.':'Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';}
+      if(errEl){errEl.textContent=_lang==='en'?'Payment pending confirmation. Check your email.':_lang==='zh'?'支付待确认。请查收邮件。':'Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';}
       if(btn)btn.disabled=false;
-      if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':'Réessayer le paiement';
+      if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':_lang==='zh'?'重试支付':'Réessayer le paiement';
     }
   }catch(e){
-    if(errEl){errEl.textContent=_lang==='en'?'Unexpected error. Please try again.':'Erreur inattendue. Réessayez.';errEl.style.display='block';}
+    if(errEl){errEl.textContent=_lang==='en'?'Unexpected error. Please try again.':_lang==='zh'?'意外错误。请重试。':'Erreur inattendue. Réessayez.';errEl.style.display='block';}
     if(btn)btn.disabled=false;
-    if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':'Réessayer le paiement';
+    if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':_lang==='zh'?'重试支付':'Réessayer le paiement';
   }finally{
     _paySubmitting=false;
   }
@@ -5865,8 +5867,8 @@ function _stripePaymentDone(){
           const s=document.getElementById('msuccess-pay');if(s){s.classList.add('show');s.focus();}
           animateSuccessTimeline();
           const msg=document.getElementById('s-msg-pay');
-          if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+'Payment confirmed. Here\'s what happens next.':(prenom?'Merci '+escHtml(prenom)+' ! ':'')+'Paiement confirmé. Voici ce qui se passe maintenant.';
-          const refEl=document.getElementById('s-ref');if(refEl)refEl.textContent=(_lang==='en'?'Booking ref: ':'Dossier ')+_orderRef;
+          if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+'Payment confirmed. Here\'s what happens next.':_lang==='zh'?(prenom?'谢谢 '+escHtml(prenom)+'！':'')+'支付已确认。以下是接下来的步骤。':(prenom?'Merci '+escHtml(prenom)+' ! ':'')+'Paiement confirmé. Voici ce qui se passe maintenant.';
+          const refEl=document.getElementById('s-ref');if(refEl)refEl.textContent=(_lang==='en'?'Booking ref: ':_lang==='zh'?'订单编号：':'Dossier ')+_orderRef;
           const cancelRef=document.getElementById('cancel-ref');if(cancelRef)cancelRef.value=_orderRef;
           const cancelEmail=document.getElementById('cancel-email');if(cancelEmail)cancelEmail.value=pending.email||'';
           initReferralCode(prenom);initReviewLink();
@@ -5908,7 +5910,7 @@ function submitForm(btn,mode){
   _submitting=true;
   const origLabel=btn?btn.innerHTML:'';
   if(btn&&!btn.disabled){
-    btn.innerHTML=_lang==='en'?'Sending…':'Envoi…';
+    btn.innerHTML=_lang==='en'?'Sending…':_lang==='zh'?'发送中…':'Envoi…';
     btn.disabled=true;
   }
   const prenom=document.getElementById('f-prenom')?.value.trim()||'';
@@ -5962,9 +5964,9 @@ function submitForm(btn,mode){
       const s=document.getElementById('msuccess-pay');if(s){s.classList.add('show');s.focus();}
       animateSuccessTimeline();
       const msg=document.getElementById('s-msg-pay');
-      if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+'All good. Here\'s what happens next.':(prenom?'Merci '+escHtml(prenom)+' ! ':'')+"Tout est en ordre. Voici ce qui se passe maintenant.";
+      if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+'All good. Here\'s what happens next.':_lang==='zh'?(prenom?'谢谢 '+escHtml(prenom)+'！':'')+'一切就绪。以下是接下来的步骤。':(prenom?'Merci '+escHtml(prenom)+' ! ':'')+"Tout est en ordre. Voici ce qui se passe maintenant.";
       const refEl=document.getElementById('s-ref');
-      if(refEl)refEl.textContent=(_lang==='en'?'Booking ref: ':'Dossier ')+_orderRef;
+      if(refEl)refEl.textContent=(_lang==='en'?'Booking ref: ':_lang==='zh'?'订单编号：':'Dossier ')+_orderRef;
       const cancelRef=document.getElementById('cancel-ref');if(cancelRef)cancelRef.value=_orderRef;
       const cancelEmail=document.getElementById('cancel-email');const cem=document.getElementById('f-email')?.value;if(cancelEmail&&cem)cancelEmail.value=cem;
       initReferralCode(prenom);
@@ -5983,8 +5985,8 @@ function submitForm(btn,mode){
         const pad=n=>String(n).padStart(2,'0');
         const dtStart=y+m+d+'T'+pad(startH)+'0000';
         const dtEnd=y+m+d+'T'+pad(endH)+'0000';
-        const text=encodeURIComponent(_lang==='en'?"AC delivery Loc'Air":"Livraison climatiseur Loc'Air");
-        const details=encodeURIComponent(_lang==='en'?'Booking '+_orderRef+' · Technician calls 30 min before':'Dossier '+_orderRef+' · Le technicien appelle 30 min avant');
+        const text=encodeURIComponent(_lang==='en'?"AC delivery Loc'Air":_lang==='zh'?"Loc'Air空调配送":"Livraison climatiseur Loc'Air");
+        const details=encodeURIComponent(_lang==='en'?'Booking '+_orderRef+' · Technician calls 30 min before':_lang==='zh'?'订单 '+_orderRef+' · 技术员提前30分钟来电':'Dossier '+_orderRef+' · Le technicien appelle 30 min avant');
         const loc=encodeURIComponent(addr+', Nice');
         if(calEl)calEl.href='https://calendar.google.com/calendar/render?action=TEMPLATE&text='+text+'&dates='+dtStart+'/'+dtEnd+'&details='+details+'&location='+loc;
       })();
@@ -5993,7 +5995,7 @@ function submitForm(btn,mode){
       const s=document.getElementById('msuccess-call');if(s){s.classList.add('show');s.focus();}
       const msg=document.getElementById('s-msg-call');
       const greet=prenom?'Merci '+escHtml(prenom)+' !':'Merci !';
-      if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+"The Loc'Air team will call you back today (8am–20h, 7d/7).":greet+" L'\xE9quipe Loc'Air vous rappelle dans la journ\xE9e (8h–20h, 7j/7).";
+      if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+"The Loc'Air team will call you back today (8am–20h, 7d/7).":_lang==='zh'?(prenom?'谢谢 '+escHtml(prenom)+'！':'')+'Loc\'Air团队将于当天回电（8:00–20:00，每天）。':greet+" L'\xE9quipe Loc'Air vous rappelle dans la journ\xE9e (8h–20h, 7j/7).";
     }
   }
 
@@ -6011,7 +6013,7 @@ function submitForm(btn,mode){
       _submitting=false;
       if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
       const errEl=document.getElementById('form-error-msg');
-      if(errEl){errEl.textContent=_lang==='en'?'The payment module could not load. Check your connection or disable your ad blocker, then reload.':'Le module de paiement n\'a pas pu se charger. Vérifiez votre connexion ou désactivez votre bloqueur de publicités, puis rechargez la page.';errEl.style.display='block';}
+      if(errEl){errEl.textContent=_lang==='en'?'The payment module could not load. Check your connection or disable your ad blocker, then reload.':_lang==='zh'?'支付模块无法加载。请检查您的网络连接或关闭广告拦截器，然后重新加载页面。':'Le module de paiement n\'a pas pu se charger. Vérifiez votre connexion ou désactivez votre bloqueur de publicités, puis rechargez la page.';errEl.style.display='block';}
       return;
     }
     if(_stripeAbortCtrl){_stripeAbortCtrl.abort();}
@@ -6030,10 +6032,10 @@ function submitForm(btn,mode){
         _stripeClientSecret=d.clientSecret;
         // Monter le Payment Element
         const appearance={theme:'stripe',variables:{colorPrimary:'#1b3a5f',borderRadius:'10px',fontFamily:'Inter,system-ui,sans-serif'}};
-        _stripeElements=_getStripe().elements({clientSecret:d.clientSecret,appearance,locale:_lang==='en'?'en':'fr'});
+        _stripeElements=_getStripe().elements({clientSecret:d.clientSecret,appearance,locale:_lang==='en'?'en':_lang==='zh'?'zh':'fr'});
         const payEl=_stripeElements.create('payment',{layout:'tabs'});
         const container=document.getElementById('stripe-payment-element');
-        if(container){container.innerHTML='<p id="stripe-loading" style="color:var(--grey);font-size:13px">'+((_lang==='en')?'Loading payment form…':'Chargement du formulaire de paiement…')+'</p>';payEl.mount('#stripe-payment-element');}
+        if(container){container.innerHTML='<p id="stripe-loading" style="color:var(--grey);font-size:13px">'+(_lang==='en'?'Loading payment form…':_lang==='zh'?'正在加载支付表单…':'Chargement du formulaire de paiement…')+'</p>';payEl.mount('#stripe-payment-element');}
         payEl.on('ready',()=>{const l=document.getElementById('stripe-loading');if(l)l.remove();const mb=document.getElementById('modal-body');if(mb&&container){const top=container.offsetTop-20;mb.scrollTo({top,behavior:'smooth'});}});
         // Utiliser le montant confirmé par le serveur (évite toute divergence)
         const serverEuros=d.amountCents!=null?(d.amountCents/100).toFixed(2).replace('.',',')+' €':prixEuros;
@@ -6052,7 +6054,7 @@ function submitForm(btn,mode){
         if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
         const errEl=document.getElementById('form-error-msg');
         if(errEl){
-          const genericMsg=_lang==='en'?'Something went wrong. Please try again.':'Une erreur est survenue. Réessayez.';
+          const genericMsg=_lang==='en'?'Something went wrong. Please try again.':_lang==='zh'?'出现问题。请重试。':'Une erreur est survenue. Réessayez.';
           const msg=(err&&err.message)||'';
           errEl.textContent=(msg&&!/^API \d+$/.test(msg)&&msg!=='No client secret')?msg:genericMsg;
           errEl.style.display='block';
@@ -6092,9 +6094,9 @@ function submitForm(btn,mode){
   const _mo=new Date().getMonth();
   const _isPreSeason=(_mo===3||_mo===4);
   const _retMsg=_isPreSeason
-    ?(_lang==='en'?'Limited slots this summer — book now':'Créneaux limités cet été — réservez maintenant')
-    :(_lang==='en'?'Welcome back, <strong>'+escHtml(prev.prenom)+'</strong> — your details will be pre-filled.':'Bienvenue, <strong>'+escHtml(prev.prenom)+'</strong> — vos infos seront pré-remplies.');
-  bar.innerHTML=_retMsg+' <button type="button" onclick="openModal()" style="padding:3px 12px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:100px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--body);white-space:nowrap">'+(_lang==='en'?'Book →':'Réserver →')+'</button><button type="button" onclick="document.getElementById(\'return-bar\').remove()" aria-label="Fermer" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;line-height:1;padding:0 0 0 4px">✕</button>';
+    ?(_lang==='en'?'Limited slots this summer — book now':_lang==='zh'?'今夏名额有限——立即预订':'Créneaux limités cet été — réservez maintenant')
+    :(_lang==='en'?'Welcome back, <strong>'+escHtml(prev.prenom)+'</strong> — your details will be pre-filled.':_lang==='zh'?'欢迎回来，<strong>'+escHtml(prev.prenom)+'</strong>——您的信息将自动填写。':'Bienvenue, <strong>'+escHtml(prev.prenom)+'</strong> — vos infos seront pré-remplies.');
+  bar.innerHTML=_retMsg+' <button type="button" onclick="openModal()" style="padding:3px 12px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:100px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--body);white-space:nowrap">'+(_lang==='en'?'Book →':_lang==='zh'?'预订 →':'Réserver →')+'</button><button type="button" onclick="document.getElementById(\'return-bar\').remove()" aria-label="Fermer" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;line-height:1;padding:0 0 0 4px">✕</button>';
   const hero=document.querySelector('.hero');
   if(hero){hero.style.position='relative';hero.appendChild(bar);}
   // Pré-remplir le modal à l'ouverture
@@ -6127,10 +6129,10 @@ function updateHeroSim(days){
   const elN=document.getElementById('hps-nights');
   const elD=document.getElementById('hps-detail');
   if(el){el.setAttribute('aria-live','polite');el.setAttribute('aria-atomic','true');el.textContent=price+'€';}
-  if(elN)elN.textContent=_lang==='en'?'for '+days+' day'+(days>1?'s':''):'pour '+days+' jour'+(days>1?'s':'');
+  if(elN)elN.textContent=_lang==='en'?'for '+days+' day'+(days>1?'s':''):_lang==='zh'?days+' 天':'pour '+days+' jour'+(days>1?'s':'');
   const rate=_baseRate(days);
   const disc=Math.round((20-rate)/20*100);
-  if(elD)elD.textContent=_lang==='en'?(disc>0?'i.e. €'+rate.toFixed(0)+'/day — '+disc+'% off':'Fixed price · Delivery from €35'):(disc>0?'soit '+rate.toFixed(0)+' €/jour — économie de '+disc+'%':'Prix garanti · Livraison dès 35 €');
+  if(elD)elD.textContent=_lang==='en'?(disc>0?'i.e. €'+rate.toFixed(0)+'/day — '+disc+'% off':'Fixed price · Delivery from €35'):_lang==='zh'?(disc>0?'即 '+rate.toFixed(0)+' €/天 — 节省'+disc+'%':'锁定价格 · 配送低至35€'):(disc>0?'soit '+rate.toFixed(0)+' €/jour — économie de '+disc+'%':'Prix garanti · Livraison dès 35 €');
   // sync chips
   document.querySelectorAll('.hps-chip').forEach(c=>{
     const cd=parseInt(c.onclick?.toString().match(/\d+/)?.[0]||'0');
@@ -6254,7 +6256,7 @@ const LANG_MAP=[
   /* ubar */
   /* prolongation CTA card */
   ['#prolong-cta-h','html','Suivez votre<br>location','Track your<br>rental','跟踪您的<br>租赁订单'],
-  ['#prolong-cta-p','text','Statut de livraison, documents, assistance et prolongation — tout en un endroit, avec votre numéro de commande.','Delivery status, documents, support and extensions — all in one place, with your order number.'],
+  ['#prolong-cta-p','text','Statut de livraison, documents, assistance et prolongation — tout en un endroit, avec votre numéro de commande.','Delivery status, documents, support and extensions — all in one place, with your order number.','跟踪配送状态、文件、支持和续租——一切尽在一处，仅需您的订单编号。'],
   ['#prolong-cta-btn','text','Accéder à mon espace →','Access my account →','进入我的账户 →'],
   /* partner CTA card */
   ['#partner-cta-h','html','Vous êtes une<br>conciergerie ?','Run a<br>concierge service?','您经营<br>礼宾服务吗？'],
@@ -6265,18 +6267,18 @@ const LANG_MAP=[
   ['#zone-notice-txt','html','Livraison hors zone standard : <strong>95 €</strong> — votre adresse est en dehors de Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche ou Beaulieu-sur-Mer.','Delivery outside standard zone: <strong>€95</strong> — your address is outside Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche or Beaulieu-sur-Mer.','超出标准配送范围：<strong>95 €</strong>——您的地址不在尼斯或周边城市。'],
   /* prolongation modal — SP1 */
   ['#sp1 .sp-title','text','Votre location en cours','Your current rental','您当前的租赁'],
-  ['#sp1 .sp-sub','text','Renseignez vos coordonnées — nous retrouvons votre dossier et préparons la prolongation.','Enter your details — we\'ll find your file and prepare the extension.'],
-  ['label[for="pe-prenom"]','html','Prénom<span class="req">*</span>','First name<span class="req">*</span>'],
-  ['label[for="pe-nom"]','html','Nom<span class="req">*</span>','Last name<span class="req">*</span>'],
-  ['label[for="pe-tel"]','html','Téléphone<span class="req">*</span>','Phone<span class="req">*</span>'],
-  ['label[for="pe-addr"]','text','Adresse de livraison d\'origine','Original delivery address'],
-  ['#pe-addr-hint','text','Facultatif — aide à retrouver votre dossier plus vite','Optional — helps us find your file faster'],
-  ['label[for="pe-debut"]','html','Début de location<span class="req">*</span>','Rental start<span class="req">*</span>'],
+  ['#sp1 .sp-sub','text','Renseignez vos coordonnées — nous retrouvons votre dossier et préparons la prolongation.','Enter your details — we\'ll find your file and prepare the extension.','请填写您的信息——我们将找到您的档案并准备续租。'],
+  ['label[for="pe-prenom"]','html','Prénom<span class="req">*</span>','First name<span class="req">*</span>','名字<span class="req">*</span>'],
+  ['label[for="pe-nom"]','html','Nom<span class="req">*</span>','Last name<span class="req">*</span>','姓氏<span class="req">*</span>'],
+  ['label[for="pe-tel"]','html','Téléphone<span class="req">*</span>','Phone<span class="req">*</span>','电话<span class="req">*</span>'],
+  ['label[for="pe-addr"]','text','Adresse de livraison d\'origine','Original delivery address','原配送地址'],
+  ['#pe-addr-hint','text','Facultatif — aide à retrouver votre dossier plus vite','Optional — helps us find your file faster','可选——有助于更快找到您的档案'],
+  ['label[for="pe-debut"]','html','Début de location<span class="req">*</span>','Rental start<span class="req">*</span>','租赁开始<span class="req">*</span>'],
   ['#pe-debut-hint','text','Date de livraison','Delivery date','配送日期'],
-  ['label[for="pe-fin-init"]','html','Fin de contrat actuelle<span class="req">*</span>','Current contract end<span class="req">*</span>'],
-  ['#pe-fin-hint','text','Avant la prolongation','Before the extension'],
+  ['label[for="pe-fin-init"]','html','Fin de contrat actuelle<span class="req">*</span>','Current contract end<span class="req">*</span>','当前合同结束<span class="req">*</span>'],
+  ['#pe-fin-hint','text','Avant la prolongation','Before the extension','续租前'],
   ['#sp1 .btn-next','text','Choisir la durée →','Choose duration →','选择时长 →'],
-  ['#lbl-back-sp1','text','Retour','Back'],
+  ['#lbl-back-sp1','text','Retour','Back','返回'],
   /* prolongation modal — SP2 */
   ['#sp2 .sp-title','text','Combien de jours de plus ?','How many more days?','还需要多少天？'],
   ['#sp2 .sp-sub','text','Minimum 1 jour — pas de maximum.','Minimum 1 day — no maximum.','最少1天，没有上限。'],
@@ -6377,8 +6379,8 @@ const LANG_MAP=[
   /* cta final */
   ['#fcta-title','html','L\'air frais dès demain matin.<br><em>Aucune caution. Aucune surprise.</em>','Fresh air by tomorrow morning.<br><em>No deposit. No surprises.</em>','明天早晨即享清凉。<br><em>无押金。无惊喜。</em>'],
   ['.fcta .btn-blue','text','Réserver maintenant','Book now','立即预订'],
-  ['.anchor-compare','text','La moitié de nos clients prolongent — tarif jusqu\'à 16 €/jour dès 22 jours · Paiement en ligne par carte via Stripe · Annulation gratuite avant livraison','Half our customers extend — rates as low as €16/day from 22 days · Online payment by card via Stripe · Free cancellation before delivery'],
-  ['.fcta-in > p:first-of-type','html','<span style="color:#f5c518;letter-spacing:2px">★★★★★</span> · Note 4,8/5 sur Google · Livraison garantie ou remboursé','<span style="color:#f5c518;letter-spacing:2px">★★★★★</span> · 4.8/5 on Google · Delivery guaranteed or refunded'],
+  ['.anchor-compare','text','La moitié de nos clients prolongent — tarif jusqu\'à 16 €/jour dès 22 jours · Paiement en ligne par carte via Stripe · Annulation gratuite avant livraison','Half our customers extend — rates as low as €16/day from 22 days · Online payment by card via Stripe · Free cancellation before delivery','一半的客户会续租——租22天以上每天低至16€ · 在线刷卡支付（Stripe）· 配送前免费取消'],
+  ['.fcta-in > p:first-of-type','html','<span style="color:#f5c518;letter-spacing:2px">★★★★★</span> · Note 4,8/5 sur Google · Livraison garantie ou remboursé','<span style="color:#f5c518;letter-spacing:2px">★★★★★</span> · 4.8/5 on Google · Delivery guaranteed or refunded','<span style="color:#f5c518;letter-spacing:2px">★★★★★</span> · Google 4.8/5 · 配送有保障或退款'],
   /* footer col titles */
   ['.footer-col-title:nth-of-type(1)','text','Navigation','Navigation'],
   /* mobile bar */
@@ -6388,8 +6390,8 @@ const LANG_MAP=[
   ['.ms-title','text','Votre commande','Your order','您的订单'],
   /* modal step 1 */
   ['#s1 .sp-title','text','Votre adresse à Nice','Your address in Nice','您在尼斯的地址'],
-  ['#s1 label','html','Adresse<span class="req">*</span>','Address<span class="req">*</span>'],
-  ['#f-addr','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice'],
+  ['#s1 label','html','Adresse<span class="req">*</span>','Address<span class="req">*</span>','地址<span class="req">*</span>'],
+  ['#f-addr','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice','如：12 rue de France, Nice'],
   /* modal step 2 */
   ['#s2 .sp-title','text','Votre durée','Your duration','您的租期'],
   ['#s2 .sp-sub','text','Chaque jour supplémentaire coûte moins cher — sans engagement.','Each extra day costs less — no commitment.','每多一天单价更低——随时可取消。'],
@@ -6402,48 +6404,48 @@ const LANG_MAP=[
   ['#s4 .sp-title','text','Votre date de livraison','Your delivery date','您的配送日期'],
   ['#btn-demain','text','→ Demain','→ Tomorrow','→ 明天'],
   ['#s4 label:first-of-type','text','Date de livraison *','Delivery date *','配送日期 *'],
-  ['#date-shortcuts','aria','Date de livraison','Delivery date'],
+  ['#date-shortcuts','aria','Date de livraison','Delivery date','配送日期'],
   ['#f-date','aria','Date personnalisée','Custom date','自定义日期'],
   ['#creneau-liv-group','aria','Créneau de livraison','Delivery time slot','配送时间段'],
   /* modal step 5 */
   ['#s5 .sp-title','text','Vos coordonnées','Your details','您的联系方式'],
   ['#s5 .sp-sub','text','Confirmation par email dès réception.','Email confirmation sent immediately.','收到后立即发送确认邮件。'],
-  ['#f-etage','ph','Ex. 3ème','E.g. 3rd floor'],
-  ['#f-prenom','ph','Jean','John'],
-  ['#f-nom','ph','Dupont','Smith'],
-  ['#f-tel','ph','06 12 34 56 78','+33 6 12 34 56 78'],
-  ['#f-email','ph','prenom@exemple.fr','firstname@example.com'],
-  ['.pay-sub','text','Paiement en ligne par carte via Stripe · Confirmation par email dans quelques minutes','Online payment by card via Stripe · Email confirmation in a few minutes'],
+  ['#f-etage','ph','Ex. 3ème','E.g. 3rd floor','如：3楼'],
+  ['#f-prenom','ph','Jean','John','（名）'],
+  ['#f-nom','ph','Dupont','Smith','（姓）'],
+  ['#f-tel','ph','06 12 34 56 78','+33 6 12 34 56 78','+33 6 12 34 56 78'],
+  ['#f-email','ph','prenom@exemple.fr','firstname@example.com','firstname@example.com'],
+  ['.pay-sub','text','Paiement en ligne par carte via Stripe · Confirmation par email dans quelques minutes','Online payment by card via Stripe · Email confirmation in a few minutes','在线刷卡支付（Stripe）· 几分钟内邮件确认'],
   /* success screens */
   ['#msuccess-pay .s-h','text','Réservation confirmée !','Booking confirmed!','预订已确认！'],
   ['#s-gratitude-note','text','Toute l\'équipe est mobilisée pour vous accueillir demain. À très vite. — Aly','The whole team is ready to welcome you tomorrow. See you soon. — Aly','全队准备好明天迎接您。很快见！— Aly'],
-  ['#msuccess-pay .s-p','html','Votre réservation est confirmée — notre équipe vous contacte d\'ici quelques heures pour confirmer le créneau exact.','Your booking is confirmed — our team will contact you within a few hours to confirm the exact time slot.'],
+  ['#msuccess-pay .s-p','html','Votre réservation est confirmée — notre équipe vous contacte d\'ici quelques heures pour confirmer le créneau exact.','Your booking is confirmed — our team will contact you within a few hours to confirm the exact time slot.','您的预订已确认——我们的团队将在几小时内联系您确认准确的时间段。'],
   ['#msuccess-pay .s-close','text','Retour au site','Back to site','返回网站'],
   ['#msuccess-call .s-h','text','Demande reçue','Request received','请求已收到'],
-  ['#msuccess-call .s-p','text','Notre équipe vous rappelle dans la journée (8h–20h, 7j/7).','Our team will call you back within the day (8am–8pm, 7d/7).'],
-  ['#msuccess-call .s-close','text','Retour au site','Back to site'],
+  ['#msuccess-call .s-p','text','Notre équipe vous rappelle dans la journée (8h–20h, 7j/7).','Our team will call you back within the day (8am–8pm, 7d/7).','我们的团队将于当天回电（8:00–20:00，每天）。'],
+  ['#msuccess-call .s-close','text','Retour au site','Back to site','返回网站'],
   /* cookie */
   ['.cookie-btn-refuse','text','Rejeter','Reject','拒绝'],
   ['.cookie-btn-accept','text','Accepter','Accept','接受'],
   ['.cookie-btn-prefs','text','Préférences','Preferences','偏好设置'],
   /* expertise */
   ['#expertise-eyebrow','text','Notre savoir-faire','Our expertise','我们的专业能力'],
-  ['#expertise-title','html','400 installations à Nice.<br><em>Toujours la même équipe.</em>','400 installations in Nice.<br><em>Always the same team.</em>'],
-  ['#expertise-lead','text','Depuis 2019, nos techniciens ont réalisé plus de 400 installations à Nice. Matériel entretenu, installation soignée, disponibilité réelle. Aucune sous-traitance — vous avez affaire directement à notre équipe.','Since 2019, our technicians have completed over 400 installations in Nice. Maintained equipment, careful setup, real availability. No subcontracting — you deal directly with our team.'],
-  ['#exp-t-1','text','Appareil testé avant chaque livraison','Unit tested before every delivery'],
-  ['#exp-t-2','text','De la sonnette à l\'air frais : 20 à 30 minutes','Doorbell to cool air: 20 to 30 minutes'],
-  ['#exp-t-3','text','Panne ? On s\'occupe de tout — remplacement ou remboursement','Breakdown? We handle everything — replacement or refund'],
-  ['#exp-t-4','text','Vous parlez directement aux techniciens','You deal directly with the technicians'],
+  ['#expertise-title','html','400 installations à Nice.<br><em>Toujours la même équipe.</em>','400 installations in Nice.<br><em>Always the same team.</em>','尼斯400次安装。<br><em>始终是同一支团队。</em>'],
+  ['#expertise-lead','text','Depuis 2019, nos techniciens ont réalisé plus de 400 installations à Nice. Matériel entretenu, installation soignée, disponibilité réelle. Aucune sous-traitance — vous avez affaire directement à notre équipe.','Since 2019, our technicians have completed over 400 installations in Nice. Maintained equipment, careful setup, real availability. No subcontracting — you deal directly with our team.','自2019年以来，我们的技术员在尼斯完成了超过400次安装。设备保养良好，安装精心，全程真实响应。无外包——您直接与我们的团队打交道。'],
+  ['#exp-t-1','text','Appareil testé avant chaque livraison','Unit tested before every delivery','每次配送前均经过测试'],
+  ['#exp-t-2','text','De la sonnette à l\'air frais : 20 à 30 minutes','Doorbell to cool air: 20 to 30 minutes','按门铃到享受凉爽：20到30分钟'],
+  ['#exp-t-3','text','Panne ? On s\'occupe de tout — remplacement ou remboursement','Breakdown? We handle everything — replacement or refund','故障？我们全权处理——更换或退款'],
+  ['#exp-t-4','text','Vous parlez directement aux techniciens','You deal directly with the technicians','您直接与技术员沟通'],
   /* faq cta card */
   ['.faq-cta-detail','text','7j/7 · 8h–20h · Réponse humaine garantie','7d/7 · 8am–8pm · Human response guaranteed','每天 · 8h–20h · 保证人工回复'],
   /* about body */
-  ['#about-body-p','text','Loc\'Air est une entreprise niçoise. Nos techniciens livrent, installent et récupèrent à Nice, 7j/7, sans sous-traitance.','Loc\'Air is a Nice-based company. Our technicians deliver, install and collect, 7d/7, with no subcontracting.'],
+  ['#about-body-p','text','Loc\'Air est une entreprise niçoise. Nos techniciens livrent, installent et récupèrent à Nice, 7j/7, sans sous-traitance.','Loc\'Air is a Nice-based company. Our technicians deliver, install and collect, 7d/7, with no subcontracting.','Loc\'Air是一家尼斯本地企业。我们的技术员在尼斯提供配送、安装和取回服务，每天开放，无外包。'],
   /* footer */
-  ['#footer-desc','html','Location de climatiseurs mobiles à <span data-c="name">Nice</span>. Kit fourni. Aucune caution. 7j/7.','Mobile AC rental in <span data-c="name">Nice</span>. Kit included. Zero deposit. 7d/7.'],
+  ['#footer-desc','html','Location de climatiseurs mobiles à <span data-c="name">Nice</span>. Kit fourni. Aucune caution. 7j/7.','Mobile AC rental in <span data-c="name">Nice</span>. Kit included. Zero deposit. 7d/7.','移动空调租赁，<span data-c="name">尼斯</span>。含套件。零押金。每天开放。'],
   /* modal step 1 */
-  ['#label-etage','text','Étage','Floor'],
-  ['#label-addr','html','Adresse<span class="req">*</span>','Address<span class="req">*</span>'],
-  ['#label-conditions','html','Je reconnais avoir pris connaissance des <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">conditions d\'utilisation du climatiseur et des obligations liées à la location</a> (entretien courant, restitution en bon état).','I acknowledge reading the <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">terms of use for the air conditioner and obligations related to the rental</a> (routine maintenance, return in good condition).'],
+  ['#label-etage','text','Étage','Floor','楼层'],
+  ['#label-addr','html','Adresse<span class="req">*</span>','Address<span class="req">*</span>','地址<span class="req">*</span>'],
+  ['#label-conditions','html','Je reconnais avoir pris connaissance des <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">conditions d\'utilisation du climatiseur et des obligations liées à la location</a> (entretien courant, restitution en bon état).','I acknowledge reading the <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">terms of use for the air conditioner and obligations related to the rental</a> (routine maintenance, return in good condition).','我已阅读<a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">空调使用条件及租赁相关义务</a>（日常维护，完好归还）。'],
   ['#label-asc','text','Ascenseur','Lift','电梯'],
   ['.asc-yes','text','Oui','Yes','是'],
   ['.asc-no','text','Non','No','否'],
@@ -6462,26 +6464,26 @@ const LANG_MAP=[
   ['#lbl-type-client','text','Type de client','Customer type','客户类型'],
   ['.client-type-perso','text','Particulier','Individual','个人'],
   ['.client-type-pro','text','Professionnel','Business','商业'],
-  ['#required-notice','html','<span style="color:var(--red)">*</span> Champs requis · Vos données ne sont jamais revendues','<span style="color:var(--red)">*</span> Required fields · Your data is never sold'],
+  ['#required-notice','html','<span style="color:var(--red)">*</span> Champs requis · Vos données ne sont jamais revendues','<span style="color:var(--red)">*</span> Required fields · Your data is never sold','<span style="color:var(--red)">*</span> 必填项 · 您的数据绝不出售'],
   /* form field labels */
-  ['#label-prenom','html','Prénom<span class="req">*</span>','First name<span class="req">*</span>'],
-  ['#label-nom','html','Nom<span class="req">*</span>','Last name<span class="req">*</span>'],
-  ['#label-tel','html','Téléphone<span class="req">*</span>','Phone<span class="req">*</span>'],
-  ['#label-email','html','Email<span class="req">*</span>','Email<span class="req">*</span>'],
-  ['#label-tel2','html','Proche à contacter en cas d\'absence <span style="color:var(--grey2);font-weight:400">(facultatif)</span>','Emergency contact <span style="color:var(--grey2);font-weight:400">(optional)</span>'],
-  ['#f-tel2','ph','Numéro d\'un proche — conjoint, famille…','Relative\'s number — partner, family…'],
+  ['#label-prenom','html','Prénom<span class="req">*</span>','First name<span class="req">*</span>','名字<span class="req">*</span>'],
+  ['#label-nom','html','Nom<span class="req">*</span>','Last name<span class="req">*</span>','姓氏<span class="req">*</span>'],
+  ['#label-tel','html','Téléphone<span class="req">*</span>','Phone<span class="req">*</span>','电话<span class="req">*</span>'],
+  ['#label-email','html','Email<span class="req">*</span>','Email<span class="req">*</span>','邮箱<span class="req">*</span>'],
+  ['#label-tel2','html','Proche à contacter en cas d\'absence <span style="color:var(--grey2);font-weight:400">(facultatif)</span>','Emergency contact <span style="color:var(--grey2);font-weight:400">(optional)</span>','紧急联系人 <span style="color:var(--grey2);font-weight:400">（可选）</span>'],
+  ['#f-tel2','ph','Numéro d\'un proche — conjoint, famille…','Relative\'s number — partner, family…','亲属电话——配偶、家人…'],
   /* profiling */
   ['#profil-summary','html','Pour mieux vous aider <span style="font-size:10px">▸ facultatif</span>','Help us serve you better <span style="font-size:10px">▸ optional</span>'],
   ['#label-source','text','Comment nous avez-vous trouvé ?','How did you find us?'],
   ['#label-logement','text','Type de logement','Type of accommodation'],
   ['#label-motif','text','Pourquoi vous louez ?','Why are you renting?'],
   /* RGPD */
-  ['#label-rgpd','html','J\'accepte que mes coordonnées servent uniquement à organiser ma livraison. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Politique de confidentialité</a>','I agree my details are used solely to organise my delivery. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Privacy policy</a>'],
-  ['#label-mkt','html','J\'accepte de recevoir les offres et actualités Loc\'Air par email. <span style="color:var(--grey2);font-size:10px">Optionnel · désinscription en 1 clic</span>','I agree to receive Loc\'Air offers and news by email. <span style="color:var(--grey2);font-size:10px">Optional · unsubscribe in 1 click</span>'],
+  ['#label-rgpd','html','J\'accepte que mes coordonnées servent uniquement à organiser ma livraison. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Politique de confidentialité</a>','I agree my details are used solely to organise my delivery. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Privacy policy</a>','我同意我的个人信息仅用于安排配送。<a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">隐私政策</a>'],
+  ['#label-mkt','html','J\'accepte de recevoir les offres et actualités Loc\'Air par email. <span style="color:var(--grey2);font-size:10px">Optionnel · désinscription en 1 clic</span>','I agree to receive Loc\'Air offers and news by email. <span style="color:var(--grey2);font-size:10px">Optional · unsubscribe in 1 click</span>','我同意通过邮件接收Loc\'Air的优惠和资讯。<span style="color:var(--grey2);font-size:10px">可选 · 一键退订</span>'],
   /* pay button & next steps */
   ['#sbtn-lbl','text','Procéder au paiement','Proceed to payment','前往支付'],
   ['#pricing-cta','html','Réserver ma livraison &rarr;','Book my delivery &rarr;','预订配送 &rarr;'],
-  ['#prolong-sbtn-lbl','text','Procéder au paiement','Proceed to payment'],
+  ['#prolong-sbtn-lbl','text','Procéder au paiement','Proceed to payment','前往支付'],
   ['#ns-header-lbl','text','Après votre réservation','After your booking','预订后'],
   ['#s1 .btn-next','text','Confirmer mon adresse →','Confirm my address →','确认我的地址 →'],
   ['#s5 .btn-next','text','Voir mon récapitulatif →','View my summary →','查看我的订单 →'],
@@ -6489,11 +6491,11 @@ const LANG_MAP=[
   ['#s0 .sp-title','text','Que voulez-vous faire ?','What would you like to do?','您想做什么？'],
   ['.choice-card.choice-primary .choice-title','html','Nouvelle<br>réservation','New<br>booking','新建<br>预订'],
   ['.choice-card.choice-primary .choice-desc','text','Livraison demain · Kit complet inclus','Delivered tomorrow · Full kit included','明天配送 · 含完整配件'],
-  ['.choice-price','text','À partir de 20 €/jour','From €20/day'],
+  ['.choice-price','text','À partir de 20 €/jour','From €20/day','低至20€/天'],
   ['.choice-card:not(.choice-primary) .choice-title','html','Prolonger<br>ma location','Extend<br>my rental','延长<br>我的租期'],
   ['.choice-card:not(.choice-primary) .choice-desc','text','Vous avez déjà un climatiseur — ajouter des jours.','You already have a unit — add more days.','您已有空调——增加租用天数。'],
   /* step 4 back button — label set by selectInstall() but also needs i18n default */
-  ['#lbl-back-s4','text','Installation','Installation'],
+  ['#lbl-back-s4','text','Installation','Installation','安装'],
   /* promo code label */
   ['label[for="f-parrain"]','html','Code promo <span style="color:var(--grey2);font-weight:400">(facultatif)</span>','Promo code <span style="color:var(--grey2);font-weight:400">(optional)</span>','优惠码 <span style="color:var(--grey2);font-weight:400">（可选）</span>'],
   /* public page — howto + pricing */
@@ -6517,24 +6519,24 @@ const LANG_MAP=[
   ['#product-cta','text','Réserver cet appareil →','Book this unit →','预订此设备 →'],
   ['#ps-unit-energy','text','Énergie','Energy','能效'],
   ['#prod-guar-1','text','Livraison sous 24h','Delivery within 24h','24小时内配送'],
-  ['#prod-guar-2','text','Aucune caution','Zero deposit'],
-  ['#prod-guar-3','text','Panne remplacée','Free replacement'],
-  ['#spec-chip-btu','text','9 000 – 12 000 BTU','9,000–12,000 BTU'],
+  ['#prod-guar-2','text','Aucune caution','Zero deposit','零押金'],
+  ['#prod-guar-3','text','Panne remplacée','Free replacement','故障免费更换'],
+  ['#spec-chip-btu','text','9 000 – 12 000 BTU','9,000–12,000 BTU','9,000–12,000 BTU'],
   /* payment security section */
   ['#paysec-eyebrow','text','Paiement sécurisé','Secure payment','安全支付'],
-  ['#paysec-title','html','Votre paiement,<br><em>protégé à chaque étape</em>','Your payment,<br><em>protected at every step</em>'],
-  ['#paysec-lead','text','Nous utilisons Stripe, la solution de paiement de référence mondiale. Vos coordonnées bancaires ne nous parviennent jamais — elles vont directement chez Stripe.','We use Stripe, the world\'s leading payment solution. Your card details never reach us — they go straight to Stripe.'],
+  ['#paysec-title','html','Votre paiement,<br><em>protégé à chaque étape</em>','Your payment,<br><em>protected at every step</em>','您的支付，<br><em>每个环节均受保护</em>'],
+  ['#paysec-lead','text','Nous utilisons Stripe, la solution de paiement de référence mondiale. Vos coordonnées bancaires ne nous parviennent jamais — elles vont directement chez Stripe.','We use Stripe, the world\'s leading payment solution. Your card details never reach us — they go straight to Stripe.','我们使用Stripe——全球领先的支付解决方案。您的银行卡信息永远不会传到我们这里——直接发送给Stripe。'],
   ['#paysec-ct-1','text','Certifié PCI-DSS','PCI-DSS Certified','PCI-DSS认证'],
-  ['#paysec-cd-1','text','Stripe est audité chaque année par des organismes indépendants. Vos données bancaires sont stockées dans des coffres sécurisés — jamais sur nos serveurs.','Stripe is audited annually by independent bodies. Your banking data is stored in secure vaults — never on our servers.'],
+  ['#paysec-cd-1','text','Stripe est audité chaque année par des organismes indépendants. Vos données bancaires sont stockées dans des coffres sécurisés — jamais sur nos serveurs.','Stripe is audited annually by independent bodies. Your banking data is stored in secure vaults — never on our servers.','Stripe每年由独立机构审计。您的银行数据存储在安全库中——永远不会在我们的服务器上。'],
   ['#paysec-ct-2','text','3D Secure & SSL 256-bit','3D Secure & SSL 256-bit','3D Secure & 256位SSL'],
-  ['#paysec-cd-2','text','Chaque transaction est authentifiée en deux étapes par votre banque. La connexion est chiffrée de bout en bout via SSL 256 bits.','Every transaction is authenticated in two steps by your bank. The connection is end-to-end encrypted via SSL 256-bit.'],
+  ['#paysec-cd-2','text','Chaque transaction est authentifiée en deux étapes par votre banque. La connexion est chiffrée de bout en bout via SSL 256 bits.','Every transaction is authenticated in two steps by your bank. The connection is end-to-end encrypted via SSL 256-bit.','每笔交易均由您的银行两步验证。连接通过256位SSL端到端加密。'],
   ['#paysec-ct-3','text','Aucune caution','Zero security deposit','零押金'],
   ['#paysec-cd-3','text','Aucune caution, aucun préautorisé. Vous payez uniquement la location et les frais de livraison — rien de plus, jamais.','No deposit, no pre-authorisation. You pay only for the rental and delivery — nothing more, ever.','无押金，无预授权。您只需支付租金和配送费——不多，永远如此。'],
   /* canicule / email capture */
   ['.ec-eye','text','Alerte prioritaire','Priority alert','优先预警'],
   ['.ec-h','text','Votre climatiseur réservé avant la canicule','Your AC reserved before the heatwave','在热浪来临前预订您的空调'],
-  ['.ec-sub','text','Inscrivez-vous : vous êtes alerté dès qu\'une vague de chaleur est prévue à Nice, et votre appareil est mis de côté avant que le stock soit épuisé.','Sign up: you\'re notified as soon as a heatwave is forecast for Nice, and your unit is set aside before stock runs out.'],
-  ['#ec-email','ph','votre@email.fr','your@email.com'],
+  ['.ec-sub','text','Inscrivez-vous : vous êtes alerté dès qu\'une vague de chaleur est prévue à Nice, et votre appareil est mis de côté avant que le stock soit épuisé.','Sign up: you\'re notified as soon as a heatwave is forecast for Nice, and your unit is set aside before stock runs out.','注册后，一旦尼斯预报高温，您将立即收到通知，您的设备将在库存耗尽前为您保留。'],
+  ['#ec-email','ph','votre@email.fr','your@email.com','您的邮箱'],
   ['label[for="ec-email"]','text','Votre adresse email','Your email address','您的邮箱地址'],
   ['#ec-btn','text','Recevoir l\'alerte →','Get the alert →','接收预警 →'],
   ['.ec-micro','text','Aucun spam · Résiliable en 1 clic','No spam · Cancel anytime','无垃圾邮件 · 一键取消'],
@@ -6572,64 +6574,64 @@ const LANG_MAP=[
   ['#ic-self .install-card-price','text','Gratuit','Free','免费'],
   ['.install-kit-note','text','Dans les deux cas, le kit de calfeutrage est fourni. Livraison & récupération : 35 € (Nice et alentours) ou 95 € hors zone.','In both cases, the weatherstripping kit is provided. Delivery & collection: €35 (Nice area) or €95 outside zone.'],
   ['#ouv-group-label','html','Type de fenêtre <span class="req">*</span>','Window type <span class="req">*</span>'],
-  ['#lbl-back-s3','text','Durée','Duration'],
-  ['#s3 .btn-next','text','Continuer →','Continue →'],
+  ['#lbl-back-s3','text','Durée','Duration','租期'],
+  ['#s3 .btn-next','text','Continuer →','Continue →','继续 →'],
   /* modal step 4 */
   ['.ds-badge','text','Recommandé','Recommended','推荐'],
   ['#s4 .btn-next','text','C\'est noté →','Got it →','已记录 →'],
   /* modal step 5 */
   ['#collect-note','text','Notre équipe vous contactera 48h avant la fin de votre location pour coordonner la récupération.','Our team will contact you 48 hours before the end of your rental to arrange collection.','租期结束前48小时，我们的团队将与您联系以协调取回。'],
   ['#label-raison-sociale','text','Raison sociale','Company name','公司名称'],
-  ['#f-raison-sociale','ph','Nom de l\'entreprise','Company name'],
+  ['#f-raison-sociale','ph','Nom de l\'entreprise','Company name','公司名称'],
   ['#label-siret','html','SIRET <span style="color:var(--grey2);font-weight:400">(facultatif)</span>','SIRET <span style="color:var(--grey2);font-weight:400">(optional)</span>','SIRET <span style="color:var(--grey2);font-weight:400">（可选）</span>'],
   ['#lbl-instructions-q','text','Souhaitez-vous laisser des instructions au technicien ?','Would you like to leave instructions for the technician?','您是否希望给技术员留下指示？'],
-  ['#instructions-no','text','Non','No'],
-  ['#instructions-yes','text','Oui','Yes'],
-  ['#f-instructions','ph','Ex : Code d\'entrée 1234B, boîte à clefs sur le côté gauche de la porte, appartement au 3e étage, sonner à Dupont…','E.g. Entry code 1234B, key box on the left side of the door, apartment on the 3rd floor, ring Dupont…'],
+  ['#instructions-no','text','Non','No','否'],
+  ['#instructions-yes','text','Oui','Yes','是'],
+  ['#f-instructions','ph','Ex : Code d\'entrée 1234B, boîte à clefs sur le côté gauche de la porte, appartement au 3e étage, sonner à Dupont…','E.g. Entry code 1234B, key box on the left side of the door, apartment on the 3rd floor, ring Dupont…','如：门禁密码1234B，门左侧有钥匙盒，3楼公寓，按杜邦的门铃…'],
   ['#f-parrain','ph','Votre code','Your code','您的码'],
   /* modal step 6 */
-  ['#s6 .sp-title','text','Votre commande','Your order'],
+  ['#s6 .sp-title','text','Votre commande','Your order','您的订单'],
   ['#s6 .sp-sub','text','Annulation gratuite avant livraison — remboursement intégral.','Free cancellation before delivery — full refund.','配送前免费取消——全额退款。'],
   ['.legal-section-sep span','text','Confirmation & autorisations','Confirmation & authorizations','确认 & 授权'],
-  ['#label-cgv','html','J\'accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> et la <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">politique de confidentialité</a>. <span style="color:var(--grey2);font-size:10px">Données personnelles protégées · RGPD.</span>','I accept the <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">T&amp;Cs</a> and the <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">privacy policy</a>. <span style="color:var(--grey2);font-size:10px">Personal data protected · GDPR.</span>'],
-  ['#label-retard','html','J\'autorise Loc\'Air à débiter ma carte pour tout jour de retard de restitution (de 16 à 20 €/j selon la durée totale, voir <a href="/cgv#retard" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV art. 10 bis</a>). <span style="color:var(--grey2);font-size:10px">Aucun montant prélevé maintenant — carte enregistrée via Stripe.</span>','I authorise Loc\'Air to charge my card for any late return day (€16–20/d depending on total duration, see <a href="/cgv#retard" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">T&amp;Cs art. 10 bis</a>). <span style="color:var(--grey2);font-size:10px">Nothing charged now — card stored via Stripe.</span>'],
+  ['#label-cgv','html','J\'accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> et la <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">politique de confidentialité</a>. <span style="color:var(--grey2);font-size:10px">Données personnelles protégées · RGPD.</span>','I accept the <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">T&amp;Cs</a> and the <a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">privacy policy</a>. <span style="color:var(--grey2);font-size:10px">Personal data protected · GDPR.</span>','我接受<a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">销售条款</a>和<a href="/confidentialite" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">隐私政策</a>。<span style="color:var(--grey2);font-size:10px">个人数据受到保护 · GDPR。</span>'],
+  ['#label-retard','html','J\'autorise Loc\'Air à débiter ma carte pour tout jour de retard de restitution (de 16 à 20 €/j selon la durée totale, voir <a href="/cgv#retard" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV art. 10 bis</a>). <span style="color:var(--grey2);font-size:10px">Aucun montant prélevé maintenant — carte enregistrée via Stripe.</span>','I authorise Loc\'Air to charge my card for any late return day (€16–20/d depending on total duration, see <a href="/cgv#retard" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">T&amp;Cs art. 10 bis</a>). <span style="color:var(--grey2);font-size:10px">Nothing charged now — card stored via Stripe.</span>','我授权Loc\'Air就任何逾期归还日扣款（根据总租期为16至20€/天，见<a href="/cgv#retard" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">销售条款第10条bis</a>）。<span style="color:var(--grey2);font-size:10px">现在不扣款——通过Stripe保存银行卡。</span>'],
   ['#sbtn-hint','text','Cochez les cases ci-dessus pour confirmer','Tick the boxes above to confirm','请勾选上方方框以确认'],
   ['#lbl-back-s6','text','Vos infos','Your info','您的信息'],
   /* hero badge */
-  ['#hero-badge-price','html','dès 20€<span class="hero-clim-badge-unit"> /j</span>','from €20<span class="hero-clim-badge-unit"> /d</span>'],
+  ['#hero-badge-price','html','dès 20€<span class="hero-clim-badge-unit"> /j</span>','from €20<span class="hero-clim-badge-unit"> /d</span>','低至20€<span class="hero-clim-badge-unit"> /天</span>'],
   ['#hero-badge-info','text','7j min · Transport dès 35€','7d min · Delivery from €35','最少7天 · 配送低至35€'],
   /* aria-labels */
   ['.modal-close','aria','Fermer le formulaire de réservation','Close the booking form','关闭预订表单'],
-  ['#s1 .btn-next','aria','Suivant — Choisir la durée','Next — Choose duration'],
-  ['#s2 .btn-next','aria','Suivant — Choisir le type de fenêtre','Next — Choose window type'],
-  ['#s3 .btn-next','aria','Suivant — Choisir le créneau','Next — Choose time slot'],
-  ['#s4 .btn-next','aria','Suivant — Vos informations','Next — Your details'],
-  ['#s5 .btn-next','aria','Suivant — Récapitulatif','Next — Summary'],
+  ['#s1 .btn-next','aria','Suivant — Choisir la durée','Next — Choose duration','下一步——选择租期'],
+  ['#s2 .btn-next','aria','Suivant — Choisir le type de fenêtre','Next — Choose window type','下一步——选择窗型'],
+  ['#s3 .btn-next','aria','Suivant — Choisir le créneau','Next — Choose time slot','下一步——选择时间段'],
+  ['#s4 .btn-next','aria','Suivant — Vos informations','Next — Your details','下一步——您的信息'],
+  ['#s5 .btn-next','aria','Suivant — Récapitulatif','Next — Summary','下一步——订单确认'],
   ['#qty-minus','aria','Retirer un climatiseur','Remove one AC unit','移除一台空调'],
   ['#qty-plus','aria','Ajouter un climatiseur','Add one AC unit','添加一台空调'],
-  ['.whatsapp-cta','aria','Contacter Loc\'Air sur WhatsApp','Contact Loc\'Air on WhatsApp'],
+  ['.whatsapp-cta','aria','Contacter Loc\'Air sur WhatsApp','Contact Loc\'Air on WhatsApp','在WhatsApp上联系Loc\'Air'],
   /* product card */
   ['#prod-card-name','text','Pack Confort','Comfort Pack','舒适套餐'],
   /* sold-out overlay */
   ['#so-h','text','Complet pour le moment','Sold out for now','暂时已售罄'],
-  ['#so-p','text','Tous nos appareils sont actuellement loués. Écrivez-nous sur WhatsApp — nous vous prévenons dès qu\'un appareil se libère.','All units are currently rented. Write to us on WhatsApp — we\'ll let you know as soon as one becomes available.'],
+  ['#so-p','text','Tous nos appareils sont actuellement loués. Écrivez-nous sur WhatsApp — nous vous prévenons dès qu\'un appareil se libère.','All units are currently rented. Write to us on WhatsApp — we\'ll let you know as soon as one becomes available.','我们所有设备均已出租。请在WhatsApp上联系我们——一旦有设备空闲，我们会立即通知您。'],
   ['#so-wa-txt','text','Me prévenir sur WhatsApp','Notify me on WhatsApp','WhatsApp通知我'],
   ['#so-close','text','Fermer','Close','关闭'],
   ['#so-badge-txt','text','Complet — réouverture prochaine','Sold out — coming back soon','已售罄——即将重新开放'],
   /* spec chips — funnel step 2 */
   ['#spec-chip-m2','text','Jusqu\'à 15 m²','Up to 15 m²','最多15平方米'],
-  ['#spec-chip-remote','text','Télécommande','Remote control'],
+  ['#spec-chip-remote','text','Télécommande','Remote control','遥控器'],
   /* pay trust badge */
   ['#pay-badge-cb','text','Carte Bancaire','CB','银行卡'],
   /* stripe pay button text parts */
-  ['#stripe-pay-pre','text','Payer','Pay'],
-  ['#stripe-pay-post','text',' en toute sécurité',' securely'],
-  ['#stripe-ssl-txt','text','🔒 Paiement sécurisé SSL · Stripe · Aucun stockage de vos données bancaires','🔒 Secure SSL payment · Stripe · Your card details are never stored'],
+  ['#stripe-pay-pre','text','Payer','Pay','付款'],
+  ['#stripe-pay-post','text',' en toute sécurité',' securely',' 安全支付'],
+  ['#stripe-ssl-txt','text','🔒 Paiement sécurisé SSL · Stripe · Aucun stockage de vos données bancaires','🔒 Secure SSL payment · Stripe · Your card details are never stored','🔒 SSL安全支付 · Stripe · 银行卡信息绝不存储'],
   /* WhatsApp question text — reused across multiple steps */
   ['.wa-q-txt','text','Une question ?','A question?','有问题？'],
   /* prolong success screen */
   ['#msuccess-prolong .s-h','text','Prolongation confirmée !','Extension confirmed!','延期已确认！'],
-  ['#msuccess-prolong .s-close','text','Retour au site','Back to site'],
+  ['#msuccess-prolong .s-close','text','Retour au site','Back to site','返回网站'],
   /* review link on success screen */
   ['#review-cta-txt','text','Après votre livraison :','After your delivery:','配送后：'],
   ['#review-link-txt','text','laisser un avis Google','leave a Google review','留下Google评价'],
@@ -6835,7 +6837,9 @@ const LANG_SEQ=[
     ['Prix garanti dès la réservation  ·  Kit fourni  ·  Livraison & récupération : à partir de 35 €  ·  Aucune caution',
      'Installation par technicien +49 € (unique)  ·  Pose autonome (kit fourni)'],
     ['Price guaranteed at booking  ·  Kit included  ·  Delivery & collection: from €35  ·  Zero deposit',
-     'Technician installation +€25 (one-time)  ·  Self-install (kit included)']],
+     'Technician installation +€25 (one-time)  ·  Self-install (kit included)'],
+    ['预订即锁定价格  ·  含套件  ·  配送 & 取回：低至35€  ·  零押金',
+     '技术员安装 +49€（一次性） ·  自行安装（含套件）']],
   /* expertise stats labels */
   ['.exp-stat-l','text',
     ['installations à Nice','pose moyenne','remboursé si panne','21 avis Google'],
@@ -7352,7 +7356,7 @@ else{_updateChromeH();}
   const cta=document.getElementById('pricing-cta');
   if(cta)cta.innerHTML=_lang==='en'?'Book my delivery &rarr;':_lang==='zh'?'预订配送 &rarr;':'Réserver ma livraison &rarr;';
   const btn=document.getElementById('sbtn-lbl');
-  if(btn)btn.textContent=_lang==='en'?'Proceed to payment':'Procéder au paiement';
+  if(btn)btn.textContent=_lang==='en'?'Proceed to payment':_lang==='zh'?'前往支付':'Procéder au paiement';
 })();
 
 // ── 3. DATES RELATIVES SUR LES AVIS ─────────────────────────────────────────
@@ -7366,7 +7370,7 @@ else{_updateChromeH();}
     const idx=MOIS[m[1].toLowerCase()];
     if(idx===undefined)return;
     const diff=(now.getFullYear()-parseInt(m[2]))*12+(now.getMonth()-idx);
-    const rel=_lang==='en'
+    const rel=_lang==='zh'?d===0?'今天':d===1?'昨天':d<7?d+'天前':d<30?Math.floor(d/7)+'周前':'很久以前':_lang==='en'
       ?(diff<1?'this month':diff===1?'1 month ago':diff<12?diff+' months ago':diff<24?'1 year ago':Math.floor(diff/12)+' years ago')
       :(diff<1?'ce mois-ci':diff===1?'il y a 1 mois':diff<12?'il y a '+diff+' mois':diff<24?'il y a 1 an':'il y a '+Math.floor(diff/12)+' ans');
     el.textContent=el.textContent.replace(/·\s*\S+\s+\d{4}$/i,'· '+rel);
@@ -7397,9 +7401,9 @@ else{_updateChromeH();}
   if(h>=8&&h<20){
     // Business hours: show active delivery count (vary by hour for realism)
     const active=h<12?2:h<16?3:2;
-    el.textContent=_lang==='en'?base+' bookings this month · '+active+' deliveries underway':base+' réservations ce mois · '+active+' livraisons en cours';
+    el.textContent=_lang==='en'?base+' bookings this month · '+active+' deliveries underway':_lang==='zh'?'本月'+base+'笔预订 · '+active+'次配送进行中':base+' réservations ce mois · '+active+' livraisons en cours';
   } else {
-    el.textContent=_lang==='en'?base+' bookings this month in Nice':base+' réservations ce mois à Nice';
+    el.textContent=_lang==='en'?base+' bookings this month in Nice':_lang==='zh'?'尼斯本月'+base+'笔预订':base+' réservations ce mois à Nice';
   }
 })();
 
@@ -7411,9 +7415,9 @@ else{_updateChromeH();}
     el.style.display='flex';
     const txt=document.getElementById('es-text');
     if(txt){
-      if(h>=8&&h<12) txt.textContent=_lang==='en'?'Open · Technician available this morning':'Ligne ouverte · Technicien disponible ce matin';
-      else if(h>=12&&h<16) txt.textContent=_lang==='en'?'Open · Afternoon delivery available':'Ligne ouverte · Livraison cet après-midi disponible';
-      else txt.textContent=_lang==='en'?'Open · Last deliveries of the day':'Ligne ouverte · Dernières livraisons de la journée';
+      if(h>=8&&h<12) txt.textContent=_lang==='en'?'Open · Technician available this morning':_lang==='zh'?'开放 · 今早技术员在岗':'Ligne ouverte · Technicien disponible ce matin';
+      else if(h>=12&&h<16) txt.textContent=_lang==='en'?'Open · Afternoon delivery available':_lang==='zh'?'开放 · 今午可配送':'Ligne ouverte · Livraison cet après-midi disponible';
+      else txt.textContent=_lang==='en'?'Open · Last deliveries of the day':_lang==='zh'?'开放 · 今日最后配送':'Ligne ouverte · Dernières livraisons de la journée';
     }
   }
 })();
@@ -7427,9 +7431,9 @@ else{_updateChromeH();}
   const txt=document.getElementById('hsp-text');
   if(!txt)return;
   if(h>=8&&h<20){
-    txt.textContent=_lang==='en'?'🟢 Available for delivery · Booked 14× this month':'🟢 Disponible à la livraison · Réservé 14× ce mois';
+    txt.textContent=_lang==='en'?'🟢 Available for delivery · Booked 14× this month':_lang==='zh'?'🟢 可配送 · 本月已预订14次':'🟢 Disponible à la livraison · Réservé 14× ce mois';
   } else {
-    txt.textContent=_lang==='en'?'Booked 14× this month · Available from 8am':'Réservé 14× ce mois · Disponible dès 8h';
+    txt.textContent=_lang==='en'?'Booked 14× this month · Available from 8am':_lang==='zh'?'本月已预订14次 · 8:00起可预约':'Réservé 14× ce mois · Disponible dès 8h';
   }
 })();
 
@@ -7621,7 +7625,7 @@ function updateProlongPrice(){
   const el_total=document.getElementById('pp-total');
   const el_minus=document.getElementById('prolong-minus');
   if(el_days)el_days.textContent=_prolongDays;
-  if(el_lbl)el_lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
+  if(el_lbl)el_lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):_lang==='zh'?(_prolongDays===1?'额外天数':'额外天数'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
   if(el_total)el_total.textContent=price+' €';
   if(el_minus)el_minus.style.opacity=_prolongDays<=1?'0.3':'1';
 }
@@ -7647,7 +7651,7 @@ function onProlongNewDateChange(){
       _prolongDays=diff;
       updateProlongPrice();
       const el=document.getElementById('pp-days');if(el)el.textContent=_prolongDays;
-      const lbl=document.getElementById('pp-day-lbl');if(lbl)lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
+      const lbl=document.getElementById('pp-day-lbl');if(lbl)lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):_lang==='zh'?(_prolongDays===1?'额外天数':'额外天数'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
       const minus=document.getElementById('prolong-minus');if(minus)minus.style.opacity=_prolongDays<=1?'0.3':'1';
     }
   }
@@ -7688,16 +7692,16 @@ function buildProlongRecap(){
   const creneau=document.querySelector('#pe-creneau-group .tpill.on')?.textContent.trim()||'—';
   const _e=escHtml;
   box.innerHTML=`
-    <p style="font-weight:700;color:var(--black);font-size:15px;margin-bottom:12px">${_lang==='en'?'Extension summary':'Récapitulatif de prolongation'}</p>
+    <p style="font-weight:700;color:var(--black);font-size:15px;margin-bottom:12px">${_lang==='en'?'Extension summary':_lang==='zh'?'续租摘要':'Récapitulatif de prolongation'}</p>
     <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:13px">
-      <span style="color:var(--grey2)">${_lang==='en'?'Name':'Nom'}</span><span style="font-weight:500">${_e(prenom)} ${_e(nom)}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Name':_lang==='zh'?'姓名':'Nom'}</span><span style="font-weight:500">${_e(prenom)} ${_e(nom)}</span>
       <span style="color:var(--grey2)">Email</span><span>${_e(email)}</span>
-      <span style="color:var(--grey2)">${_lang==='en'?'Phone':'Tél.'}</span><span>${_e(tel)}</span>
-      ${addr!=='—'?`<span style="color:var(--grey2)">${_lang==='en'?'Address':'Adresse'}</span><span>${_e(addr)}</span>`:''}
-      <span style="color:var(--grey2)">${_lang==='en'?'Added duration':'Durée ajoutée'}</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} ${_lang==='en'?'day'+(_prolongDays>1?'s':''):'jour'+(_prolongDays>1?'s':'')}</span>
-      <span style="color:var(--grey2)">${_lang==='en'?'Collection on':'Récupération le'}</span><span style="font-weight:500">${dateLabel}</span>
-      <span style="color:var(--grey2)">${_lang==='en'?'Time slot':'Créneau'}</span><span style="font-weight:500">${escHtml(creneau)}</span>
-      <span style="color:var(--grey2)">${_lang==='en'?'Amount':'Montant'}</span><span style="font-weight:700;font-size:16px;color:var(--black)">${price} €</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Phone':_lang==='zh'?'电话':'Tél.'}</span><span>${_e(tel)}</span>
+      ${addr!=='—'?`<span style="color:var(--grey2)">${_lang==='en'?'Address':_lang==='zh'?'地址':'Adresse'}</span><span>${_e(addr)}</span>`:''}
+      <span style="color:var(--grey2)">${_lang==='en'?'Added duration':_lang==='zh'?'新增时长':'Durée ajoutée'}</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} ${_lang==='en'?'day'+(_prolongDays>1?'s':''):_lang==='zh'?'天':'jour'+(_prolongDays>1?'s':'')}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Collection on':_lang==='zh'?'取回日期':'Récupération le'}</span><span style="font-weight:500">${dateLabel}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Time slot':_lang==='zh'?'时间段':'Créneau'}</span><span style="font-weight:500">${escHtml(creneau)}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Amount':_lang==='zh'?'金额':'Montant'}</span><span style="font-weight:700;font-size:16px;color:var(--black)">${price} €</span>
     </div>
   `;
   // reset checkbox + mettre le prix dans le bouton
@@ -7706,7 +7710,7 @@ function buildProlongRecap(){
   if(cgv)cgv.checked=false;
   if(sbtn)sbtn.disabled=true;
   const sbtlbl=document.getElementById('prolong-sbtn-lbl');
-  if(sbtlbl)sbtlbl.textContent=(_lang==='en'?'Proceed to payment — ':'Procéder au paiement — ')+price+' €';
+  if(sbtlbl)sbtlbl.textContent=(_lang==='en'?'Proceed to payment — ':_lang==='zh'?'前往支付 — ':'Procéder au paiement — ')+price+' €';
   // Réinitialiser Stripe si déjà monté
   if(_prolongElements){try{_prolongElements.getElement('payment')?.unmount();}catch(e){}_prolongElements=null;}
   const sect=document.getElementById('prolong-stripe-section');if(sect)sect.style.display='none';
@@ -7731,7 +7735,7 @@ async function startProlongPayment(){
   const errEl=document.getElementById('prolong-error');
   const origLbl=lbl?.textContent||'Procéder au paiement';
   if(btn)btn.disabled=true;
-  if(lbl)lbl.textContent=_lang==='en'?'Loading…':'Chargement…';
+  if(lbl)lbl.textContent=_lang==='en'?'Loading…':_lang==='zh'?'加载中…':'Chargement…';
   if(errEl)errEl.style.display='none';
 
   const jours=_prolongDays;
@@ -7747,20 +7751,20 @@ async function startProlongPayment(){
 
   try{
     const stripe=_getStripe();
-    if(!stripe)throw new Error(_lang==='en'?'Stripe not loaded — please disable your ad blocker':'Stripe non chargé — désactivez votre bloqueur de publicités');
+    if(!stripe)throw new Error(_lang==='en'?'Stripe not loaded — please disable your ad blocker':_lang==='zh'?'Stripe未加载——请禁用广告拦截器':'Stripe non chargé — désactivez votre bloqueur de publicités');
     const debutVal=document.getElementById('pe-debut')?.value||'';
     const finInitVal=document.getElementById('pe-fin-init')?.value||'';
-    if(!document.getElementById('pe-cgv')?.checked)throw new Error(_lang==='en'?'Please accept the T\u0026Cs before paying.':'Merci d\'accepter les CGV avant de payer.');
+    if(!document.getElementById('pe-cgv')?.checked)throw new Error(_lang==='en'?'Please accept the T\u0026Cs before paying.':_lang==='zh'?'请在付款前接受销售条款。':'Merci d\'accepter les CGV avant de payer.');
     const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,original_days:_prolongOrigDays,prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,date_recuperation_iso:rawDate,creneau,cgv_accepted:true,cgv_accepted_at:new Date().toISOString()})});
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||('API '+r.status));}
     const d=await r.json();
     if(!d.clientSecret)throw new Error(d.error||'No secret');
 
     const appearance={theme:'stripe',variables:{colorPrimary:'#1b3a5f',borderRadius:'10px',fontFamily:'Inter,system-ui,sans-serif'}};
-    _prolongElements=stripe.elements({clientSecret:d.clientSecret,appearance,locale:_lang==='en'?'en':'fr'});
+    _prolongElements=stripe.elements({clientSecret:d.clientSecret,appearance,locale:_lang==='en'?'en':_lang==='zh'?'zh':'fr'});
     const payEl=_prolongElements.create('payment',{layout:'tabs'});
     const container=document.getElementById('prolong-stripe-element');
-    if(container){container.innerHTML='<p id="prolong-stripe-loading" style="color:var(--grey);font-size:13px">'+((_lang==='en')?'Loading payment form…':'Chargement du formulaire de paiement…')+'</p>';payEl.mount('#prolong-stripe-element');}
+    if(container){container.innerHTML='<p id="prolong-stripe-loading" style="color:var(--grey);font-size:13px">'+(_lang==='en'?'Loading payment form…':_lang==='zh'?'正在加载支付表单…':'Chargement du formulaire de paiement…')+'</p>';payEl.mount('#prolong-stripe-element');}
     payEl.on('ready',()=>{const l=document.getElementById('prolong-stripe-loading');if(l)l.remove();const mb=document.getElementById('modal-body');if(mb&&container)mb.scrollTo({top:container.offsetTop-20,behavior:'smooth'});});
     const amtEl=document.getElementById('prolong-pay-amount');
     if(amtEl)amtEl.textContent=(d.amountCents/100).toFixed(2).replace('.',',')+' €';
@@ -7774,7 +7778,7 @@ async function startProlongPayment(){
     if(lbl)lbl.textContent=origLbl;
     if(errEl){
       const msg=(e&&e.message)||'';
-      errEl.textContent=(msg&&!/^API \d+$/.test(msg))?msg:(_lang==='en'?'Connection error. Call us at 06.63.79.87.56.':'Problème de connexion. Appelez-nous au 06.63.79.87.56.');
+      errEl.textContent=(msg&&!/^API \d+$/.test(msg))?msg:(_lang==='en'?'Connection error. Call us at 06.63.79.87.56.':_lang==='zh'?'连接错误。请致电 06.63.79.87.56。':'Problème de connexion. Appelez-nous au 06.63.79.87.56.');
       errEl.style.display='block';
     }
   }
@@ -7787,26 +7791,26 @@ async function doProlongPayment(){
   const errEl=document.getElementById('prolong-stripe-error');
   const btnSpan=payBtn?payBtn.querySelector('span'):null;
   if(payBtn)payBtn.disabled=true;
-  if(btnSpan)btnSpan.textContent=_lang==='en'?'Payment in progress…':'Paiement en cours…';
+  if(btnSpan)btnSpan.textContent=_lang==='en'?'Payment in progress…':_lang==='zh'?'支付中…':'Paiement en cours…';
   if(errEl)errEl.style.display='none';
   try{
     const {error,paymentIntent}=await _getStripe().confirmPayment({elements:_prolongElements,redirect:'if_required',confirmParams:{return_url:window.location.origin+'/?prolong_return=1'}});
     if(error){
-      if(errEl){errEl.textContent=error.message||(_lang==='en'?'Payment declined.':'Paiement refusé.');errEl.style.display='block';}
+      if(errEl){errEl.textContent=error.message||(_lang==='en'?'Payment declined.':_lang==='zh'?'支付被拒绝。':'Paiement refusé.');errEl.style.display='block';}
       if(payBtn)payBtn.disabled=false;
-      if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':'Réessayer le paiement';
+      if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':_lang==='zh'?'重试支付':'Réessayer le paiement';
     }else if(paymentIntent?.status==='succeeded'){
       if(payBtn)payBtn.disabled=true;
       _showProlongSuccess();
     }else{
-      if(errEl){errEl.textContent=_lang==='en'?'Payment pending confirmation. Check your email.':'Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';}
+      if(errEl){errEl.textContent=_lang==='en'?'Payment pending confirmation. Check your email.':_lang==='zh'?'支付待确认。请查收邮件。':'Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';}
       if(payBtn)payBtn.disabled=false;
-      if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':'Réessayer';
+      if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':_lang==='zh'?'重试支付':'Réessayer';
     }
   }catch(e){
-    if(errEl){errEl.textContent=_lang==='en'?'Unexpected error. Please try again.':'Erreur inattendue. Réessayez.';errEl.style.display='block';}
+    if(errEl){errEl.textContent=_lang==='en'?'Unexpected error. Please try again.':_lang==='zh'?'意外错误。请重试。':'Erreur inattendue. Réessayez.';errEl.style.display='block';}
     if(payBtn)payBtn.disabled=false;
-    if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':'Réessayer le paiement';
+    if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':_lang==='zh'?'重试支付':'Réessayer le paiement';
   }finally{
     _prolongPaying=false;
   }
@@ -7824,10 +7828,12 @@ function _showProlongSuccess(){
     const msg=document.getElementById('prolong-success-msg');
     if(msg)msg.textContent=_lang==='en'
       ?'Your rental has been extended by '+_prolongDays+' day'+(_prolongDays>1?'s':'')+'. Collection on '+dateLabel+' between '+creneau+'. Email confirmation in a few minutes.'
+      :_lang==='zh'
+      ?'您的租赁已延长'+_prolongDays+'天。取回日期：'+dateLabel+'，时间段：'+creneau+'。几分钟内发送邮件确认。'
       :'Votre location est prolongée de '+_prolongDays+' jour'+(_prolongDays>1?'s':'')+'. Récupération le '+dateLabel+' entre '+creneau+'. Confirmation par email dans quelques minutes.';
     const prolongRef=_generateOrderRef();
     const refEl2=document.getElementById('prolong-ref');
-    if(refEl2)refEl2.textContent=(_lang==='en'?'Ref ':'Dossier ')+prolongRef;
+    if(refEl2)refEl2.textContent=(_lang==='en'?'Ref ':_lang==='zh'?'编号：':'Dossier ')+prolongRef;
     succ.classList.add('show');
   }
   window.dataLayer=window.dataLayer||[];
@@ -7906,7 +7912,7 @@ function upsellUnit2(){
     // Pre-fill note field with context
     setTimeout(()=>{
       const note=document.getElementById('f-note');
-      if(note&&!note.value)note.value=_lang==='en'?'2nd AC — same address':'2ème climatiseur — même adresse';
+      if(note&&!note.value)note.value=_lang==='en'?'2nd AC — same address':_lang==='zh'?'第2台空调——同一地址':'2ème climatiseur — même adresse';
     },300);
   },80);
 }
@@ -7917,7 +7923,7 @@ function submitAlerte(e){
   const btn=document.getElementById('ec-btn');
   const email=(document.getElementById('ec-email')?.value||'').trim();
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))return;
-  if(btn){btn.disabled=true;btn.textContent=_lang==='en'?'Sending...':'Envoi...';}
+  if(btn){btn.disabled=true;btn.textContent=_lang==='en'?'Sending...':_lang==='zh'?'发送中...':'Envoi...';}
   fetch('https://formspree.io/f/mvzyngoy',{
     method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json'},
@@ -7926,11 +7932,11 @@ function submitAlerte(e){
     if(!r.ok)throw new Error('http '+r.status);
     const ok=document.querySelector('.ec-ok');
     const form=document.getElementById('ec-form');
-    if(ok){ok.style.display='block';ok.textContent=_lang==='en'?'✓ Signed up! We\'ll alert you before the next heatwave.':'✓ Inscrit ! On vous prévient dès la prochaine vague de chaleur.';}
+    if(ok){ok.style.display='block';ok.textContent=_lang==='en'?'✓ Signed up! We\'ll alert you before the next heatwave.':_lang==='zh'?'✓ 已注册！下次热浪来临前我们将提醒您。':'✓ Inscrit ! On vous prévient dès la prochaine vague de chaleur.';}
     if(form)form.style.display='none';
     if(typeof gtag==='function')gtag('event','alerte_signup',{method:'email'});
   }).catch(()=>{
-    if(btn){btn.disabled=false;btn.textContent=_lang==='en'?'Get the alert →':'Recevoir l\'alerte →';}
+    if(btn){btn.disabled=false;btn.textContent=_lang==='en'?'Get the alert →':_lang==='zh'?'接收预警 →':'Recevoir l\'alerte →';}
   });
 }
 
@@ -7950,7 +7956,7 @@ function selectInstall(tech){
   if(icSelf){icSelf.classList.toggle('on',!tech);icSelf.setAttribute('aria-checked',String(!tech));}
 
   const lblBack=document.getElementById('lbl-back-s4');
-  if(lblBack)lblBack.textContent=tech?'Installation':(_lang==='en'?'Window':'Fenêtre');
+  if(lblBack)lblBack.textContent=tech?(_lang==='zh'?'安装':'Installation'):(_lang==='en'?'Window':_lang==='zh'?'窗型':'Fenêtre');
   updateModalRecapPill(3);
   buildRecap();
 }
@@ -7987,13 +7993,13 @@ function validatePromo(){
   const normPrenom=normalizePrenomJS(document.getElementById('f-prenom')?.value||'');
   if(explicit!==undefined){
     _promoDiscount=explicit;_promoPct=0;_promoCode=val;
-    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+_promoDiscount+' € off':'✓ Code valide — '+_promoDiscount+' € déduits';fb.style.color='#059669';fb.style.display='block';}
+    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+_promoDiscount+' € off':_lang==='zh'?'✓ 有效码 — 减'+_promoDiscount+'€':'✓ Code valide — '+_promoDiscount+' € déduits';fb.style.color='#059669';fb.style.display='block';}
   }else if(normPrenom && val===normPrenom+REFERRAL_PCT){
     _promoPct=REFERRAL_PCT;_promoCode=val; // _promoDiscount recalculé dans buildRecap()
-    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+REFERRAL_PCT+'% off':'✓ Code valide — '+REFERRAL_PCT+'% déduits';fb.style.color='#059669';fb.style.display='block';}
+    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+REFERRAL_PCT+'% off':_lang==='zh'?'✓ 有效码 — 折扣'+REFERRAL_PCT+'%':'✓ Code valide — '+REFERRAL_PCT+'% déduits';fb.style.color='#059669';fb.style.display='block';}
   }else{
     _promoDiscount=0;_promoPct=0;_promoCode='';
-    if(fb){fb.textContent=_lang==='en'?'Code not recognised':'Code non reconnu';fb.style.color='var(--red)';fb.style.display='block';}
+    if(fb){fb.textContent=_lang==='en'?'Code not recognised':_lang==='zh'?'无效码':'Code non reconnu';fb.style.color='var(--red)';fb.style.display='block';}
   }
   buildRecap();
 }
@@ -8028,7 +8034,7 @@ function copyReferral(){
   const code=document.getElementById('ref-code')?.textContent||'LOCAIR10';
   navigator.clipboard?.writeText(code).then(()=>{
     const btn=document.getElementById('ref-copy-btn');
-    if(btn){btn.textContent=_lang==='en'?'Copied ✓':'Copié ✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent=_lang==='en'?'Copy':'Copier';btn.classList.remove('copied');},2000);}
+    if(btn){btn.textContent=_lang==='en'?'Copied ✓':_lang==='zh'?'已复制 ✓':'Copié ✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent=_lang==='en'?'Copy':_lang==='zh'?'复制':'Copier';btn.classList.remove('copied');},2000);}
   }).catch(()=>{});
 }
 function shareReferral(){
@@ -8036,7 +8042,7 @@ function shareReferral(){
   const url=window.CITY?.url||'https://www.locair.fr/';
   const text=`J'ai loué un climatiseur chez Loc'Air à Nice — livré et installé en 24h, Aucune caution. Utilisez mon code ${code} pour obtenir 10€ de réduction.`;
   if(navigator.share){navigator.share({title:"Loc'Air — climatiseur Nice",text,url});}
-  else{navigator.clipboard?.writeText(text).then(()=>alert(_lang==='en'?'Message copied!':'Message copié !')).catch(()=>{});}
+  else{navigator.clipboard?.writeText(text).then(()=>alert(_lang==='en'?'Message copied!':_lang==='zh'?'消息已复制！':'Message copié !')).catch(()=>{});}
   if(typeof gtag==='function')gtag('event','referral_share',{code});
 }
 function initReferralCode(prenom){
@@ -8069,8 +8075,8 @@ function openChat(){
   _cwData={date:'',days:7,addr:''};
   const body=document.getElementById('cw-body');
   if(body)body.innerHTML='';
-  _cwBot(_lang==='en'?'Hello! 👋':'Bonjour ! 👋',300);
-  _cwBot(_lang==='en'?'When do you need it?':'C\'est pour quand ?',800);
+  _cwBot(_lang==='en'?'Hello! 👋':_lang==='zh'?'你好！👋':'Bonjour ! 👋',300);
+  _cwBot(_lang==='en'?'When do you need it?':_lang==='zh'?'您什么时候需要？':'C\'est pour quand ?',800);
   setTimeout(()=>_cwShowStep(1),1300);
   (window.dataLayer=window.dataLayer||[]).push({event:'chat_open'});
 }
@@ -8122,19 +8128,19 @@ function _cwShowStep(step){
     const min=new Date();min.setDate(min.getDate()+1);
     const minStr=min.toISOString().split('T')[0];
     const def=minStr;
-    foot.innerHTML=`<div class="cw-row"><input type="date" class="cw-inp" id="cw-date" min="${minStr}" value="${def}" aria-label="${_lang==='en'?'Start date':'Date de début'}"/><button class="cw-send" onclick="cwNextDate()" type="button" aria-label="${_lang==='en'?'Submit':'Valider'}">→</button></div>`;
+    foot.innerHTML=`<div class="cw-row"><input type="date" class="cw-inp" id="cw-date" min="${minStr}" value="${def}" aria-label="${_lang==='en'?'Start date':_lang==='zh'?'开始日期':'Date de début'}"/><button class="cw-send" onclick="cwNextDate()" type="button" aria-label="${_lang==='en'?'Submit':_lang==='zh'?'确认':'Valider'}">→</button></div>`;
     setTimeout(()=>document.getElementById('cw-date')?.focus(),100);
   } else if(step===2){
     // Duration
-    foot.innerHTML=`<div class="cw-chips"><button class="cw-chip on" type="button" onclick="cwSelDays(7,this)">${_lang==='en'?'7 days':'7 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(14,this)">${_lang==='en'?'14 days':'14 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(21,this)">${_lang==='en'?'21 days':'21 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(30,this)">${_lang==='en'?'30 days':'30 jours'}</button></div><button class="cw-send" style="width:100%;border-radius:12px;padding:11px" onclick="cwNextDays()" type="button">${_lang==='en'?'Continue →':'Continuer →'}</button>`;
+    foot.innerHTML=`<div class="cw-chips"><button class="cw-chip on" type="button" onclick="cwSelDays(7,this)">${_lang==='en'?'7 days':_lang==='zh'?'7天':'7 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(14,this)">${_lang==='en'?'14 days':_lang==='zh'?'14天':'14 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(21,this)">${_lang==='en'?'21 days':_lang==='zh'?'21天':'21 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(30,this)">${_lang==='en'?'30 days':_lang==='zh'?'30天':'30 jours'}</button></div><button class="cw-send" style="width:100%;border-radius:12px;padding:11px" onclick="cwNextDays()" type="button">${_lang==='en'?'Continue →':_lang==='zh'?'继续 →':'Continuer →'}</button>`;
   } else if(step===3){
     // Address
-    foot.innerHTML=`<div class="cw-row"><input type="text" class="cw-inp" id="cw-addr" placeholder="${_lang==='en'?'Your address in Nice…':'Votre adresse à Nice…'}" autocomplete="street-address" aria-label="${_lang==='en'?'Delivery address':'Adresse de livraison'}"/><button class="cw-send" onclick="cwNextAddr()" type="button" aria-label="${_lang==='en'?'Submit':'Valider'}">→</button></div>`;
+    foot.innerHTML=`<div class="cw-row"><input type="text" class="cw-inp" id="cw-addr" placeholder="${_lang==='en'?'Your address in Nice…':_lang==='zh'?'您在尼斯的地址…':'Votre adresse à Nice…'}" autocomplete="street-address" aria-label="${_lang==='en'?'Delivery address':_lang==='zh'?'配送地址':'Adresse de livraison'}"/><button class="cw-send" onclick="cwNextAddr()" type="button" aria-label="${_lang==='en'?'Submit':_lang==='zh'?'确认':'Valider'}">→</button></div>`;
     setTimeout(()=>document.getElementById('cw-addr')?.focus(),100);
   } else if(step===4){
     // Recap + CTA
     const price=calcPrice(_cwData.days);
-    foot.innerHTML=`<button class="cw-cta-full" onclick="cwBook()" type="button">${_lang==='en'?'Book — ':'Réserver — '}${price}€ →</button>`;
+    foot.innerHTML=`<button class="cw-cta-full" onclick="cwBook()" type="button">${_lang==='en'?'Book — ':_lang==='zh'?'预订 — ':'Réserver — '}${price}€ →</button>`;
   }
 }
 function cwSelDays(n,btn){
@@ -8147,14 +8153,14 @@ function cwNextDate(){
   if(!v)return;
   _cwData.date=v;
   const d=new Date(v);
-  const fmt=d.toLocaleDateString(_lang==='en'?'en-GB':'fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  const fmt=d.toLocaleDateString(_lang==='en'?'en-GB':_lang==='zh'?'zh-CN':'fr-FR',{weekday:'long',day:'numeric',month:'long'});
   _cwUser(fmt);
-  _cwBot(_lang==='en'?'Great! How many days?':'Super ! Combien de jours ?',600);
+  _cwBot(_lang==='en'?'Great! How many days?':_lang==='zh'?'好的！您需要多少天？':'Super ! Combien de jours ?',600);
   setTimeout(()=>_cwShowStep(2),1200);
 }
 function cwNextDays(){
-  _cwUser(_cwData.days+(_lang==='en'?' day'+(_cwData.days>1?'s':''):'  jour'+(_cwData.days>1?'s':'')));
-  _cwBot(_lang==='en'?'What\'s your address in Nice?':'À quelle adresse à Nice ?',600);
+  _cwUser(_cwData.days+(_lang==='en'?' day'+(_cwData.days>1?'s':''):_lang==='zh'?' 天':' jour'+(_cwData.days>1?'s':'')));
+  _cwBot(_lang==='en'?'What\'s your address in Nice?':_lang==='zh'?'您在尼斯的地址是？':'À quelle adresse à Nice ?',600);
   setTimeout(()=>_cwShowStep(3),1200);
 }
 function cwNextAddr(){
@@ -8163,7 +8169,7 @@ function cwNextAddr(){
   _cwData.addr=v;
   _cwUser(v);
   const price=calcPrice(_cwData.days);
-  _cwBot(_lang==='en'?'Perfect! '+_cwData.days+' days at '+v+' = '+price+'€. Confirm?':'Parfait ! '+_cwData.days+' jours à '+v+' = '+price+'€. On confirme ?',700);
+  _cwBot(_lang==='en'?'Perfect! '+_cwData.days+' days at '+v+' = '+price+'€. Confirm?':_lang==='zh'?'完美！在 '+v+' 租'+_cwData.days+'天 = '+price+'€。确认？':'Parfait ! '+_cwData.days+' jours à '+v+' = '+price+'€. On confirme ?',700);
   setTimeout(()=>_cwShowStep(4),1400);
 }
 function cwBook(){
