@@ -414,7 +414,8 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
       <p>Hello ${p},</p>
       <p>Thank you for your trust. Please find your rental agreement and invoice attached.</p>
       <div class="box"><p style="margin:0"><a href="${viewUrlDocuments}" style="color:#1b3a5f;font-weight:700">View my documents online →</a></p></div>
-      <p style="font-size:13px;color:#888">Keep this email — your documents remain accessible via the link above.</p>`,
+      <p style="font-size:13px;color:#888">Keep this email — your documents remain accessible via the link above.</p>
+      <p style="font-size:13px;color:#444">We'll be in touch again by email as your delivery date approaches.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
   });
   if (l === 'zh') return wrap({
@@ -424,7 +425,8 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
       <p>您好 ${p}，</p>
       <p>感谢您的信任。请查收本邮件附件中的租赁合同和发票。</p>
       <div class="box"><p style="margin:0"><a href="${viewUrlDocuments}" style="color:#1b3a5f;font-weight:700">在线查看我的文件 →</a></p></div>
-      <p style="font-size:13px;color:#888">请保存此邮件——您的文件可随时通过上方链接访问。</p>`,
+      <p style="font-size:13px;color:#888">请保存此邮件——您的文件可随时通过上方链接访问。</p>
+      <p style="font-size:13px;color:#444">随着送货日期临近，我们将再次通过邮件与您联系。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
   });
   return wrap({
@@ -434,7 +436,8 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
       <p>Bonjour ${p},</p>
       <p>Merci pour votre confiance. Vous trouverez ci-joint votre contrat de location ainsi que votre facture.</p>
       <div class="box"><p style="margin:0"><a href="${viewUrlDocuments}" style="color:#1b3a5f;font-weight:700">Consulter mes documents en ligne →</a></p></div>
-      <p style="font-size:13px;color:#888">Conservez cet email : vos documents restent accessibles à tout moment via le lien ci-dessus.</p>`,
+      <p style="font-size:13px;color:#888">Conservez cet email : vos documents restent accessibles à tout moment via le lien ci-dessus.</p>
+      <p style="font-size:13px;color:#444">Nous revenons vers vous par email à l'approche de votre livraison.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
   });
 }
