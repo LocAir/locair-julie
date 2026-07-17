@@ -3278,6 +3278,7 @@ function renderLivraisons(){
     if(m.duree_sur_place_min!=null) detailBits.push(m.duree_sur_place_min+' min sur place');
     if(m.client_notifie_at) detailBits.push('✅ Client notifié '+frDateHeure(m.client_notifie_at));
     if(isAutre) detailBits.push('💰 '+euros(m.montant_du_cents)+' (tarif fixé)');
+    else if(m.montant_manuel) detailBits.push('💰 '+euros(m.montant_du_cents)+' (tarif fixé manuellement)');
     return `
       <div class="row-item" ${nonAssignee?'style="border-left:3px solid var(--red)"':''}>
         <div class="row-top">
@@ -3306,6 +3307,7 @@ function renderLivraisons(){
             <div class="more-actions-menu">
               ${!reassignLocked?`<button onclick="openEditMissionModal(${m.id})">✏️ Modifier</button>`:''}
               ${(!isAutre && !reassignLocked)?`<button onclick="openChangeAppareilModal(${m.id})">🔄 Changer le climatiseur</button>`:''}
+              ${(!isAutre && !reassignLocked)?`<button onclick="fixerTarifTransporteur(${m.id},${m.montant_du_cents||0})">💰 Fixer le tarif transporteur</button>`:''}
               ${['acceptee','en_route','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
               ${mediaBtns.join('')}
               <button class="danger" onclick="maskLivraison(${m.id})">🗑️ Supprimer de l'écran</button>
@@ -3471,6 +3473,29 @@ async function openChangeAppareilModal(livraisonId){
       errEl.textContent = e.message; errEl.style.display = 'block';
     }
   };
+}
+
+// Fixe manuellement le montant payé au transporteur pour cette mission
+// précise (ex. mission hors zone à 95€ au lieu du barème standard de la
+// ville) — empêche le recalcul automatique au passage à "fait" côté
+// transporteur (voir montant_manuel, api/transporteur-action.js).
+function fixerTarifTransporteur(livraisonId, currentCents){
+  promptAction({
+    title: '💰 Tarif transporteur pour cette mission',
+    label: 'Montant payé au transporteur (€) — remplace le barème standard',
+    value: currentCents ? String(currentCents/100) : '',
+    placeholder: 'Ex. 95', type: 'number',
+  }, async (val) => {
+    const cents = Math.round((parseFloat(val)||0)*100);
+    if(!cents) return showToast('Montant invalide', 'error');
+    try{
+      const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', livraison_id:livraisonId, montant_du_cents:cents})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadLivraisons();
+      showToast(`Tarif transporteur fixé à ${euros(cents)}`, 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
 }
 
 async function assignTransporteur(livraisonId, transporteurId, selectEl){
