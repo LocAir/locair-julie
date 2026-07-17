@@ -4861,7 +4861,36 @@ function renderEmails(emails, sig){
     <div class="section-title">Scénarios</div>
     ${scenariosHtml}
     <div class="section-title">Signature email</div>
-    ${sigHtml}`;
+    ${sigHtml}
+    <div class="section-title">Tester les modèles</div>
+    <p class="sub" style="margin:4px 2px 10px">Envoie tous les emails du site (contenu fictif, dossier "TEST-0001") à une adresse pour vérifier leur présentation — n'écrit rien en base, ne touche aucune réservation réelle.</p>
+    <div style="display:flex;gap:8px;max-width:420px">
+      <input type="text" id="test-email-addr" placeholder="ton@email.fr" style="flex:1"/>
+      <button class="btn btn-blue" id="test-email-btn" style="width:auto;padding:0 20px" onclick="sendTestEmails()">Envoyer</button>
+    </div>
+    <div class="err" id="test-email-err"></div>
+    <p id="test-email-ok" style="display:none;color:var(--green);font-size:13px;margin-top:10px;line-height:1.5"></p>`;
+}
+async function sendTestEmails(){
+  const email = document.getElementById('test-email-addr').value.trim();
+  const errEl = document.getElementById('test-email-err');
+  const okEl  = document.getElementById('test-email-ok');
+  const btn   = document.getElementById('test-email-btn');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  if(!email){ errEl.textContent = 'Adresse email requise'; errEl.style.display = 'block'; return; }
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try{
+    const r = await fetch(API('admin-test-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'send_all', email})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    okEl.textContent = `${d.envoyes} email${d.envoyes>1?'s':''} envoyé${d.envoyes>1?'s':''} à ${email}${d.errors&&d.errors.length?` (${d.errors.length} en erreur — voir la console)`:''}`;
+    okEl.style.display = 'block';
+    if(d.errors && d.errors.length) console.error('[Test emails] erreurs', d.errors);
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display = 'block';
+  }finally{
+    btn.disabled = false; btn.textContent = 'Envoyer';
+  }
 }
 
 async function toggleEmailScenario(id, actif){

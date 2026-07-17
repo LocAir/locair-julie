@@ -163,8 +163,102 @@ function tplFinLocation(ctx) {
   });
 }
 
+// Confirmation de prolongation : transaction distincte des 8 scénarios
+// ci-dessus (déclenchée par api/webhook.js, pas par le moteur central) — même
+// gabarit de marque pour autant.
+function tplProlongConfirmation({ prenom, nom, jours, date_recuperation, creneau, amount }) {
+  const jNum = Number(jours) || 1;
+  return wrap({
+    title: '✅ Prolongation confirmée !',
+    intro: `Merci ${escHtml(prenom || '')}, votre paiement de ${escHtml(amount)} a bien été reçu.`,
+    bodyHtml: `
+      <p><strong>Client :</strong> ${escHtml(prenom || '')} ${escHtml(nom || '')}<br/>
+      <strong>Jours supplémentaires :</strong> ${jNum} jour${jNum > 1 ? 's' : ''}<br/>
+      <strong>Récupération le :</strong> ${escHtml(date_recuperation || '—')}<br/>
+      <strong>Créneau :</strong> ${escHtml(creneau || '—')}<br/>
+      <strong>Montant payé :</strong> ${escHtml(amount)}</p>
+      <p style="font-size:13px;color:#444">Notre technicien vous contactera la veille de la récupération pour confirmer le créneau.</p>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
+  });
+}
+
+// Contrat + facture de location (voir _lib/documents.js) — envoyé une seule
+// fois, juste après confirmation du paiement d'une réservation standard.
+function tplContratFacture({ prenom, ref, viewUrlContrat, viewUrlFacture }) {
+  return wrap({
+    title: '📄 Vos documents Loc\'Air',
+    intro: `Dossier ${escHtml(ref)}`,
+    bodyHtml: `
+      <p>Bonjour ${escHtml(prenom || '')},</p>
+      <p>Voici votre contrat de location et votre facture, en pièces jointes de cet email (PDF).</p>
+      <div class="box"><p style="margin:0 0 8px"><a href="${viewUrlContrat}" style="color:#1b3a5f;font-weight:700">Consulter le contrat en ligne →</a></p>
+      <p style="margin:0"><a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">Consulter la facture en ligne →</a></p></div>
+      <p style="font-size:12px;color:#888">Conservez cet email — ces documents restent consultables via les liens ci-dessus.</p>`,
+  });
+}
+
+// Facture d'achat Offre Privilège (voir _lib/documents.js) — le client garde
+// définitivement son climatiseur, distinct de la facture de location.
+function tplFactureVente({ prenom, ref, viewUrlFacture }) {
+  return wrap({
+    title: '📄 Votre facture d\'achat',
+    intro: `Dossier ${escHtml(ref)}`,
+    bodyHtml: `
+      <p>Bonjour ${escHtml(prenom || '')},</p>
+      <p>Merci pour votre achat via l'Offre Privilège ! Voici votre facture, en pièce jointe de cet email (PDF).</p>
+      <div class="box"><p style="margin:0"><a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">Consulter la facture en ligne →</a></p></div>
+      <p style="font-size:12px;color:#888">Conservez cet email — ce document reste consultable via le lien ci-dessus.</p>`,
+  });
+}
+
+// Lien + code personnel d'un partenaire ambassadeur (voir api/admin-partenaires.js)
+// — envoyé à la création ET à chaque changement de code personnel (admin).
+function tplAmbassadeurCredentials({ nom, lien, pin }) {
+  return wrap({
+    title: '🤝 Ton espace ambassadeur',
+    intro: `Bonjour ${escHtml(nom)}`,
+    bodyHtml: `
+      <p>Voici ton lien d'affiliation — mets-le sur ton site pour que tes clients réservent directement chez Loc'Air :</p>
+      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${lien}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
+      <p>Ton code personnel pour suivre tes gains sur ton espace ambassadeur :</p>
+      <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(pin)}</p>
+      <p style="font-size:13px;color:#888">Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
+    ctaHref: 'https://www.locair.fr/partenaire', ctaLabel: 'Ouvrir mon espace ambassadeur',
+  });
+}
+
+// "Code oublié" ambassadeur (voir api/partenaire-forgot-pin.js).
+function tplNouveauCodeAmbassadeur({ nom, lien, pin }) {
+  return wrap({
+    title: '🔐 Ton nouveau code ambassadeur',
+    intro: `Bonjour ${escHtml(nom)}`,
+    bodyHtml: `
+      <p>Voici ton nouveau code personnel pour te connecter sur ton espace ambassadeur Loc'Air :</p>
+      <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(pin)}</p>
+      <p>Ton lien d'affiliation ne change pas :</p>
+      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${lien}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
+      <p style="font-size:13px;color:#888">Ton ancien code ne fonctionne plus. Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
+    ctaHref: 'https://www.locair.fr/partenaire', ctaLabel: 'Ouvrir mon espace ambassadeur',
+  });
+}
+
+// "Code oublié" transporteur (voir api/transporteur-forgot-pin.js).
+function tplNouveauCodeTransporteur({ nom, pin }) {
+  return wrap({
+    title: '🔐 Ton nouveau code',
+    intro: `Bonjour ${escHtml(nom)}`,
+    bodyHtml: `
+      <p>Voici ton nouveau code personnel pour te connecter sur l'espace transporteur Loc'Air :</p>
+      <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(pin)}</p>
+      <p style="font-size:13px;color:#888">Ton ancien code ne fonctionne plus. Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
+    ctaHref: 'https://www.locair.fr/transporteur', ctaLabel: 'Ouvrir mon espace transporteur',
+  });
+}
+
 module.exports = {
   escHtml, wrap,
   tplConfirmation, tplSuiviJ14, tplPreparationJ3, tplRappelJ1,
   tplPostInstallation, tplAvantFinLocation, tplRappelRecuperation, tplFinLocation,
+  tplProlongConfirmation, tplContratFacture, tplFactureVente,
+  tplAmbassadeurCredentials, tplNouveauCodeAmbassadeur, tplNouveauCodeTransporteur,
 };

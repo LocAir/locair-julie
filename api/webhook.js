@@ -7,7 +7,7 @@ const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { generateAndSendDocuments, generateAndSendFactureVente } = require('./_lib/documents');
 const { sendScenarioEmail, getSignature, signatureFooterHtml } = require('./_lib/emailEngine');
-const { escHtml, wrap } = require('./_lib/emailTemplates');
+const { escHtml, tplProlongConfirmation } = require('./_lib/emailTemplates');
 
 // Offre Privilège (Step 2) : le client vient de payer pour garder son
 // climatiseur actuel. Idempotent (un webhook Stripe peut être redélivré) —
@@ -213,25 +213,6 @@ async function handleDisputeCreated(supabase, dispute) {
   });
 }
 
-// Confirmation de prolongation : transaction distincte des 8 scénarios du
-// moteur central (_lib/emailEngine.js), qui couvrent le cycle de vie de la
-// réservation d'origine — reste un envoi immédiat ad hoc, hors historique
-// email_log pour l'instant (voir rapport de fin de module).
-function tplProlongConfirmation({ prenom, nom, jours, date_recuperation, creneau, amount }) {
-  const jNum = Number(jours) || 1;
-  return wrap({
-    title: '✅ Prolongation confirmée !',
-    intro: `Merci ${escHtml(prenom || '')}, votre paiement de ${escHtml(amount)} a bien été reçu.`,
-    bodyHtml: `
-      <p><strong>Client :</strong> ${escHtml(prenom || '')} ${escHtml(nom || '')}<br/>
-      <strong>Jours supplémentaires :</strong> ${jNum} jour${jNum > 1 ? 's' : ''}<br/>
-      <strong>Récupération le :</strong> ${escHtml(date_recuperation || '—')}<br/>
-      <strong>Créneau :</strong> ${escHtml(creneau || '—')}<br/>
-      <strong>Montant payé :</strong> ${escHtml(amount)}</p>
-      <p style="font-size:13px;color:#444">Notre technicien vous contactera la veille de la récupération pour confirmer le créneau.</p>`,
-    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
-  });
-}
 // ── Webhook principal ─────────────────────────────────────────────────────────
 const handler = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();

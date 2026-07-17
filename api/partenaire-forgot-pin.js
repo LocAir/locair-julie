@@ -1,6 +1,6 @@
 const { getSupabase }    = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
-const { escHtml, wrap }  = require('./_lib/emailTemplates');
+const { tplNouveauCodeAmbassadeur } = require('./_lib/emailTemplates');
 const { getSignature, signatureFooterHtml } = require('./_lib/emailEngine');
 
 module.exports = async (req, res) => {
@@ -34,17 +34,7 @@ module.exports = async (req, res) => {
       if (newPin) {
         const lien = `https://www.locair.fr/?p=${encodeURIComponent(partenaire.code)}`;
         const sig  = await getSignature(supabase);
-        const html = wrap({
-          title: '🔐 Ton nouveau code ambassadeur',
-          intro: `Bonjour ${escHtml(partenaire.nom)}`,
-          bodyHtml: `
-            <p>Voici ton nouveau code personnel pour te connecter sur ton espace ambassadeur Loc'Air :</p>
-            <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(newPin)}</p>
-            <p>Ton lien d'affiliation ne change pas :</p>
-            <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${lien}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
-            <p style="font-size:13px;color:#888">Ton ancien code ne fonctionne plus. Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
-          ctaHref: 'https://www.locair.fr/partenaire', ctaLabel: 'Ouvrir mon espace ambassadeur',
-        }) + signatureFooterHtml(sig);
+        const html = tplNouveauCodeAmbassadeur({ nom: partenaire.nom, lien, pin: newPin }) + signatureFooterHtml(sig);
 
         await sendBrevoEmail({ to: partenaire.email, subject: "🔐 Ton nouveau code ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
       }

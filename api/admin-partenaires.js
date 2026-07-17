@@ -2,7 +2,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
 const { sendBrevoEmail } = require('./_lib/brevo');
-const { escHtml, wrap } = require('./_lib/emailTemplates');
+const { tplAmbassadeurCredentials } = require('./_lib/emailTemplates');
 const { getSignature, signatureFooterHtml } = require('./_lib/emailEngine');
 
 function partenaireLinkFor(code) { return `https://www.locair.fr/?p=${encodeURIComponent(code)}`; }
@@ -15,19 +15,8 @@ function partenaireLinkFor(code) { return `https://www.locair.fr/?p=${encodeURIC
 // voir _lib/emailTemplates.js.
 async function notifyPartenaireCredentials(supabase, { nom, email, code, pin }) {
   if (!email) return;
-  const lien = partenaireLinkFor(code);
   const sig  = await getSignature(supabase);
-  const html = wrap({
-    title: '🤝 Ton espace ambassadeur',
-    intro: `Bonjour ${escHtml(nom)}`,
-    bodyHtml: `
-      <p>Voici ton lien d'affiliation — mets-le sur ton site pour que tes clients réservent directement chez Loc'Air :</p>
-      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${lien}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
-      <p>Ton code personnel pour suivre tes gains sur ton espace ambassadeur :</p>
-      <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(pin)}</p>
-      <p style="font-size:13px;color:#888">Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
-    ctaHref: 'https://www.locair.fr/partenaire', ctaLabel: 'Ouvrir mon espace ambassadeur',
-  }) + signatureFooterHtml(sig);
+  const html = tplAmbassadeurCredentials({ nom, lien: partenaireLinkFor(code), pin }) + signatureFooterHtml(sig);
 
   await sendBrevoEmail({ to: email, subject: "🤝 Ton espace ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
 }

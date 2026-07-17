@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const { generateContratPdf, generateFacturePdf, generateFactureVentePdf } = require('./pdf');
 const { sendBrevoEmail } = require('./brevo');
 const { CGV_VERSION } = require('./legal');
-const { escHtml, wrap } = require('./emailTemplates');
+const { tplContratFacture, tplFactureVente } = require('./emailTemplates');
 const { getSignature, signatureFooterHtml } = require('./emailEngine');
 
 function accessToken() {
@@ -19,19 +19,6 @@ async function uploadPdf(supabase, path, buffer) {
 
 function invoiceNumber(annee, n) {
   return `FACT-${annee}-${String(n).padStart(6, '0')}`;
-}
-
-function contratHtml({ prenom, ref, viewUrlContrat, viewUrlFacture }) {
-  return wrap({
-    title: '📄 Vos documents Loc\'Air',
-    intro: `Dossier ${escHtml(ref)}`,
-    bodyHtml: `
-      <p>Bonjour ${escHtml(prenom || '')},</p>
-      <p>Voici votre contrat de location et votre facture, en pièces jointes de cet email (PDF).</p>
-      <div class="box"><p style="margin:0 0 8px"><a href="${viewUrlContrat}" style="color:#1b3a5f;font-weight:700">Consulter le contrat en ligne →</a></p>
-      <p style="margin:0"><a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">Consulter la facture en ligne →</a></p></div>
-      <p style="font-size:12px;color:#888">Conservez cet email — ces documents restent consultables via les liens ci-dessus.</p>`,
-  });
 }
 
 // Point d'entrée appelé une seule fois, juste après confirmation du paiement
@@ -108,7 +95,7 @@ async function generateAndSendDocuments(supabase, resa) {
   if (resa.email) {
     const base = 'https://www.locair.fr';
     const sig = await getSignature(supabase);
-    const contratEmailHtml = contratHtml({
+    const contratEmailHtml = tplContratFacture({
       prenom: resa.prenom,
       ref:    resa.ref,
       viewUrlContrat: `${base}/api/document-view?token=${contratToken}`,
@@ -137,18 +124,6 @@ async function generateAndSendDocuments(supabase, resa) {
       destinataire: resa.email, modele: 'email_contrat_facture', statut: 'envoye', contenu: contratEmailHtml,
     }).catch(() => {});
   }
-}
-
-function factureVenteHtml({ prenom, ref, viewUrlFacture }) {
-  return wrap({
-    title: '📄 Votre facture d\'achat',
-    intro: `Dossier ${escHtml(ref)}`,
-    bodyHtml: `
-      <p>Bonjour ${escHtml(prenom || '')},</p>
-      <p>Merci pour votre achat via l'Offre Privilège ! Voici votre facture, en pièce jointe de cet email (PDF).</p>
-      <div class="box"><p style="margin:0"><a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">Consulter la facture en ligne →</a></p></div>
-      <p style="font-size:12px;color:#888">Conservez cet email — ce document reste consultable via le lien ci-dessus.</p>`,
-  });
 }
 
 // Point d'entrée appelé une seule fois, juste après acceptation d'une Offre
@@ -201,7 +176,7 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
   if (resa.email) {
     const base = 'https://www.locair.fr';
     const sig = await getSignature(supabase);
-    const html = factureVenteHtml({
+    const html = tplFactureVente({
       prenom: resa.prenom,
       ref:    resa.ref,
       viewUrlFacture: `${base}/api/document-view?token=${factureToken}`,

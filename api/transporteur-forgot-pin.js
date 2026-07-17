@@ -1,6 +1,6 @@
 const { getSupabase }    = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
-const { escHtml, wrap }  = require('./_lib/emailTemplates');
+const { tplNouveauCodeTransporteur } = require('./_lib/emailTemplates');
 const { getSignature, signatureFooterHtml } = require('./_lib/emailEngine');
 
 module.exports = async (req, res) => {
@@ -38,15 +38,7 @@ module.exports = async (req, res) => {
         // accès biométrique déjà enregistré (probable perte/vol de téléphone).
         await supabase.from('webauthn_credentials').delete().eq('transporteur_id', transp.id);
         const sig  = await getSignature(supabase);
-        const html = wrap({
-          title: '🔐 Ton nouveau code',
-          intro: `Bonjour ${escHtml(transp.nom)}`,
-          bodyHtml: `
-            <p>Voici ton nouveau code personnel pour te connecter sur l'espace transporteur Loc'Air :</p>
-            <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(newPin)}</p>
-            <p style="font-size:13px;color:#888">Ton ancien code ne fonctionne plus. Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
-          ctaHref: 'https://www.locair.fr/transporteur', ctaLabel: 'Ouvrir mon espace transporteur',
-        }) + signatureFooterHtml(sig);
+        const html = tplNouveauCodeTransporteur({ nom: transp.nom, pin: newPin }) + signatureFooterHtml(sig);
 
         await sendBrevoEmail({ to: transp.email, subject: "🔐 Ton nouveau code Loc'Air", html, senderName: sig.nom_expediteur });
       }
