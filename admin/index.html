@@ -1535,6 +1535,7 @@ let STOCK_FILTRES = {};
 // détectée par le cron quotidien — tant qu'aucun prix n'est fixé, le client
 // ne voit rien. Réservé aux rôles finances, comme les virements.
 let OFFRES_PRIVILEGE_CACHE = [];
+let STOCK_APPAREILS_CACHE = [];
 function offresPrivilegeHtml(){
   if(!OFFRES_PRIVILEGE_CACHE.length) return '';
   return `
@@ -1653,6 +1654,7 @@ async function loadStock(silent){
     OFFRES_PRIVILEGE_CACHE = (ro.ok && od) ? (od.offres||[]) : [];
     const pctOccupe = d.actifs>0 ? Math.round((d.en_location/d.actifs)*100) : 0;
     const appareils = d.appareils || [];
+    STOCK_APPAREILS_CACHE = appareils;
     zone.innerHTML = `
       <div class="card">
         <h2>Flotte — ${escHtml(d.ville)}</h2>
@@ -1701,6 +1703,7 @@ async function loadStock(silent){
       </div>
       <div class="card">
         <h2>Appareils (${appareils.length})</h2>
+        <button class="btn btn-grey btn-block" style="margin-bottom:12px" onclick="exportStockCsv()">⬇️ Exporter en CSV</button>
         <div id="appareils-list">${appareils.map(a => {
           // "En location" (badge bleu) n'est jamais choisi à la main : déduit
           // automatiquement de la réservation confirmée qui couvre aujourd'hui
@@ -1754,6 +1757,16 @@ async function loadStock(silent){
   }catch(e){
     if(!silent) zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
+}
+function exportStockCsv(){
+  if(!STOCK_APPAREILS_CACHE.length){ showToast('Aucun appareil à exporter', 'error'); return; }
+  downloadCsv(`stock-${new Date().toISOString().slice(0,10)}.csv`, STOCK_APPAREILS_CACHE, [
+    {label:'N°', value:'numero'},
+    {label:'Statut', value: a => a.en_location ? 'En location' : (APPAREIL_STATUT_LABEL[a.statut]||a.statut)},
+    {label:'Localisation', value: a => LOCALISATION_LABEL[a.localisation]||a.localisation||''},
+    {label:'Référence', value:'reference'},
+    {label:'Note', value:'notes'},
+  ]);
 }
 function addAppareil(){
   promptAction({title:'Ajouter des appareils', label:'Combien de climatiseurs veux-tu ajouter d\'un coup ?', value:'1', type:'number'}, async (v) => {
