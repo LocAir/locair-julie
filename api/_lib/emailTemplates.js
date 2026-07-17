@@ -164,7 +164,7 @@ function tplFinLocation(ctx) {
 }
 
 module.exports = {
-  escHtml,
+  escHtml, wrap,
   tplConfirmation, tplSuiviJ14, tplPreparationJ3, tplRappelJ1,
   tplPostInstallation, tplAvantFinLocation, tplRappelRecuperation, tplFinLocation,
 };

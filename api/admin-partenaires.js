@@ -1,30 +1,35 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 const { sendBrevoEmail } = require('./_lib/brevo');
+const { escHtml, wrap } = require('./_lib/emailTemplates');
+const { getSignature, signatureFooterHtml } = require('./_lib/emailEngine');
 
-function escHtml(s) {
-  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
 function partenaireLinkFor(code) { return `https://www.locair.fr/?p=${encodeURIComponent(code)}`; }
 
 // Envoyée à la création ET à chaque changement de code personnel (admin ou
-// "code oublié" côté partenaire) — évite à l'admin de devoir retransmettre le
+// "code oublié" côté ambassadeur) — évite à l'admin de devoir retransmettre le
 // lien/code lui-même à chaque fois (jusqu'ici copié-collé à la main depuis la
-// popup de l'admin). Ne fait jamais échouer l'appelant si l'envoi rate.
-async function notifyPartenaireCredentials({ nom, email, code, pin }) {
+// popup de l'admin). Ne fait jamais échouer l'appelant si l'envoi rate. Même
+// gabarit (en-tête + signature du service client) que les emails clients —
+// voir _lib/emailTemplates.js.
+async function notifyPartenaireCredentials(supabase, { nom, email, code, pin }) {
   if (!email) return;
-  await sendBrevoEmail({
-    to:      email,
-    subject: "Ton espace ambassadeur Loc'Air",
-    html: `
-      <p>Bonjour ${escHtml(nom)},</p>
+  const lien = partenaireLinkFor(code);
+  const sig  = await getSignature(supabase);
+  const html = wrap({
+    title: '🤝 Ton espace ambassadeur',
+    intro: `Bonjour ${escHtml(nom)}`,
+    bodyHtml: `
       <p>Voici ton lien d'affiliation — mets-le sur ton site pour que tes clients réservent directement chez Loc'Air :</p>
-      <p style="font-size:16px;font-weight:700"><a href="${partenaireLinkFor(code)}">${escHtml(partenaireLinkFor(code))}</a></p>
-      <p>Ton code personnel pour suivre tes gains sur ton espace ambassadeur <a href="https://www.locair.fr/partenaire">locair.fr/partenaire</a> :</p>
-      <p style="font-size:28px;font-weight:700;letter-spacing:4px">${escHtml(pin)}</p>
-      <p>Si tu n'es pas à l'origine de cette demande, contacte Aly immédiatement.</p>
-    `,
-  });
+      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${lien}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
+      <p>Ton code personnel pour suivre tes gains sur ton espace ambassadeur :</p>
+      <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(pin)}</p>
+      <p style="font-size:13px;color:#888">Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
+    ctaHref: 'https://www.locair.fr/partenaire', ctaLabel: 'Ouvrir mon espace ambassadeur',
+  }) + signatureFooterHtml(sig);
+
+  await sendBrevoEmail({ to: email, subject: "🤝 Ton espace ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
 }
 
 // Dérive un code d'affiliation lisible à partir du nom ("Conciergerie Azur"
@@ -48,7 +53,9 @@ function normalizeBic(v)  { return (v || '').trim().toUpperCase().replace(/\s+/g
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
+  if (!roleHasAccess(admin.role, 'partenaires')) return res.status(403).json({ error: "Ton compte n'a pas accès aux partenaires." });
 
   const body   = req.body || {};
   const action = body.action || 'list';
@@ -83,7 +90,7 @@ module.exports = async (req, res) => {
           bic:                 normalizeBic(body.bic),
         }).select('id, code, pin').single();
         if (!error) {
-          await notifyPartenaireCredentials({ nom, email: (body.email || '').trim().toLowerCase(), code: created.code, pin: created.pin });
+          await notifyPartenaireCredentials(supabase, { nom, email: (body.email || '').trim().toLowerCase(), code: created.code, pin: created.pin });
           return res.status(200).json({ ok: true, code: created.code, pin: created.pin });
         }
         if (error.code !== '23505') throw error; // pas un conflit code/pin : autre erreur
@@ -118,7 +125,7 @@ module.exports = async (req, res) => {
       // le nouveau code par email, comme à la création.
       if (patch.pin) {
         const { data: fresh } = await supabase.from('partenaires').select('nom, email, code, pin').eq('id', id).maybeSingle();
-        if (fresh) await notifyPartenaireCredentials(fresh);
+        if (fresh) await notifyPartenaireCredentials(supabase, fresh);
       }
       return res.status(200).json({ ok: true });
     }
