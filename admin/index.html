@@ -94,6 +94,13 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .tabs-group-body{display:flex;flex-direction:column;gap:5px}
 .tabs-group-dot{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}
 
+.resa-details{margin-top:4px}
+.resa-details summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--grey);padding:3px 0;user-select:none}
+.resa-details summary::-webkit-details-marker{display:none}
+.resa-details summary::after{content:"▾";font-size:9px;transition:transform .15s ease}
+.resa-details[open] summary::after{transform:rotate(180deg)}
+.resa-details-body{padding:4px 0 2px}
+
 /* Menu ☰ mobile : la barre horizontale scrollable cachait des onglets sans
    affordance claire (juste un léger fondu de 28px) — sur mobile elle devient
    un tiroir latéral qu'on ouvre explicitement, avec tous les onglets et
@@ -1957,9 +1964,16 @@ function agentLineHtml(resId){
   if(!missions.length) return '';
   const liv = missions.find(m => m.type==='livraison');
   const rec = missions.find(m => m.type==='recuperation');
+  const nomOf = m => m.transporteur ? escHtml(m.transporteur.nom) : '<span style="color:var(--red);font-weight:700">Non assigné</span>';
+  // Le même livreur fait très souvent les deux — une seule ligne au lieu de
+  // répéter son nom deux fois (utile surtout sur mobile où chaque ligne compte).
   const parts = [];
-  if(liv) parts.push(`📦 Livraison : ${liv.transporteur?escHtml(liv.transporteur.nom):'<span style="color:var(--red);font-weight:700">Non assigné</span>'}`);
-  if(rec) parts.push(`🔄 Récupération : ${rec.transporteur?escHtml(rec.transporteur.nom):'<span style="color:var(--red);font-weight:700">Non assigné</span>'}`);
+  if(liv && rec && liv.transporteur && rec.transporteur && liv.transporteur.id === rec.transporteur.id){
+    parts.push(`🚚 Livraison + récupération : ${nomOf(liv)}`);
+  }else{
+    if(liv) parts.push(`📦 Livraison : ${nomOf(liv)}`);
+    if(rec) parts.push(`🔄 Récupération : ${nomOf(rec)}`);
+  }
   return parts.length ? `<div class="row-meta" style="margin-top:4px">${parts.join(' · ')}</div>` : '';
 }
 function reservationRowHtml(res, readOnly){
@@ -1990,8 +2004,14 @@ function reservationRowHtml(res, readOnly){
         </span>
       </div>
       <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
-      ${res.instructions_acces?`<div class="resa-sub" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
-      ${(res.etage||res.ascenseur||res.fenetre||res.fenetre_photo_path||(res.type_client==='entreprise'&&res.siret))?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):'',(res.type_client==='entreprise'&&res.siret)?'SIRET : '+escHtml(res.siret):''].filter(Boolean).join(' · ')}${res.fenetre_photo_path?` <button class="btn btn-grey" style="padding:2px 8px;font-size:11px;vertical-align:middle" onclick="openFenetrePhoto(${res.id})">📷 Photo</button>`:''}</div>`:''}
+      ${(res.instructions_acces||res.etage||res.ascenseur||res.fenetre||res.fenetre_photo_path||(res.type_client==='entreprise'&&res.siret))?`
+      <details class="resa-details">
+        <summary>📌 Détails d'accès</summary>
+        <div class="resa-details-body">
+          ${res.instructions_acces?`<div class="resa-sub" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
+          ${(res.etage||res.ascenseur||res.fenetre||res.fenetre_photo_path||(res.type_client==='entreprise'&&res.siret))?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):'',(res.type_client==='entreprise'&&res.siret)?'SIRET : '+escHtml(res.siret):''].filter(Boolean).join(' · ')}${res.fenetre_photo_path?` <button class="btn btn-grey" style="padding:2px 8px;font-size:11px;vertical-align:middle" onclick="openFenetrePhoto(${res.id})">📷 Photo</button>`:''}</div>`:''}
+        </div>
+      </details>`:''}
       <div class="resa-dates">
         <span class="resa-date-range">📅 ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
         <span class="resa-rel ${isUrgent(res.date_debut)?'urgent':''}">${nightsLabel(res.date_debut,res.date_fin)} · ${relLabel(res.date_debut)}</span>
