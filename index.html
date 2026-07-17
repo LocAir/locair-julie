@@ -1474,6 +1474,12 @@ body{
 .win-label{padding:12px 14px 14px}
 .win-name{font-size:13.5px;font-weight:600;color:var(--black);margin-bottom:3px;letter-spacing:-.01em}
 .win-hint{font-size:11.5px;font-weight:400;color:var(--grey);line-height:1.35}
+.win-qty{display:none;align-items:center;justify-content:center;gap:0;margin-top:9px;border:1.5px solid var(--rule);border-radius:8px;overflow:hidden;background:#fff;width:fit-content}
+.win-multi .win-qty{display:flex}
+.win-qty-btn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;border:none;background:transparent;cursor:pointer;font-size:15px;font-weight:600;color:var(--blue);line-height:1;transition:background .15s;flex-shrink:0;font-family:var(--body)}
+.win-qty-btn:hover:not(:disabled){background:var(--blue-lt)}
+.win-qty-btn:disabled{color:var(--rule);cursor:not-allowed}
+.win-qty-val{min-width:24px;text-align:center;font-size:13px;font-weight:700;color:var(--black);border-left:1.5px solid var(--rule);border-right:1.5px solid var(--rule);height:22px;line-height:22px}
 
 /* ── RECAP ── */
 .recap{background:var(--bg);border-radius:var(--r);padding:14px 16px;margin:0 24px 0}
@@ -3925,10 +3931,11 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           <div id="ouv-section">
           <p id="ouv-group-label" style="font-size:12px;font-weight:600;color:var(--black2);margin-bottom:8px">Type de fenêtre <span class="req">*</span></p>
           <p id="ouv-err" style="display:none;font-size:12px;color:var(--red);margin-bottom:8px" role="alert">Veuillez sélectionner le type de fenêtre pour continuer.</p>
+          <p id="ouv-remain" style="display:none;font-size:12.5px;font-weight:600;margin-bottom:8px"></p>
           <div class="win-grid" id="ouv-group" role="radiogroup" aria-labelledby="ouv-group-label">
 
             <!-- Fenêtre coulissante -->
-            <div class="win-card" onclick="tglOuv(this,'Fenêtre coulissante')" role="radio" aria-checked="false" tabindex="0">
+            <div class="win-card" onclick="tglOuv(this,'Fenêtre coulissante')" role="radio" aria-checked="false" tabindex="0" data-val="Fenêtre coulissante">
               <div class="win-check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
               <div class="win-photo">
                 <svg viewBox="0 0 200 140" fill="none" style="width:100%;height:100%;display:block">
@@ -3951,11 +3958,16 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               <div class="win-label">
                 <div class="win-name">Fenêtre coulissante</div>
                 <div class="win-hint">Glisse sur le côté</div>
+                <div class="win-qty">
+                  <button type="button" class="win-qty-btn win-qty-minus" onclick="event.stopPropagation();adjOuvCount(this.closest('.win-card').dataset.val,-1)">−</button>
+                  <span class="win-qty-val">0</span>
+                  <button type="button" class="win-qty-btn win-qty-plus" onclick="event.stopPropagation();adjOuvCount(this.closest('.win-card').dataset.val,1)">+</button>
+                </div>
               </div>
             </div>
 
             <!-- 2. Battant -->
-            <div class="win-card" onclick="tglOuv(this,'Fenêtre à battant')" role="radio" aria-checked="false" tabindex="0">
+            <div class="win-card" onclick="tglOuv(this,'Fenêtre à battant')" role="radio" aria-checked="false" tabindex="0" data-val="Fenêtre à battant">
               <div class="win-check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
               <div class="win-photo">
                 <svg viewBox="0 0 200 140" fill="none" style="width:100%;height:100%;display:block">
@@ -3977,11 +3989,16 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               <div class="win-label">
                 <div class="win-name">Fenêtre à battant</div>
                 <div class="win-hint">Ouvre vers l'intérieur</div>
+                <div class="win-qty">
+                  <button type="button" class="win-qty-btn win-qty-minus" onclick="event.stopPropagation();adjOuvCount(this.closest('.win-card').dataset.val,-1)">−</button>
+                  <span class="win-qty-val">0</span>
+                  <button type="button" class="win-qty-btn win-qty-plus" onclick="event.stopPropagation();adjOuvCount(this.closest('.win-card').dataset.val,1)">+</button>
+                </div>
               </div>
             </div>
 
             <!-- 3. Oscillo-battant -->
-            <div class="win-card" onclick="tglOuv(this,'Oscillo-battant')" role="radio" aria-checked="false" tabindex="0">
+            <div class="win-card" onclick="tglOuv(this,'Oscillo-battant')" role="radio" aria-checked="false" tabindex="0" data-val="Oscillo-battant">
               <div class="win-check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
               <div class="win-photo">
                 <svg viewBox="0 0 200 140" fill="none" style="width:100%;height:100%;display:block">
@@ -4004,11 +4021,16 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               <div class="win-label">
                 <div class="win-name">Oscillo-battant</div>
                 <div class="win-hint">S'incline ou s'ouvre sur le côté</div>
+                <div class="win-qty">
+                  <button type="button" class="win-qty-btn win-qty-minus" onclick="event.stopPropagation();adjOuvCount(this.closest('.win-card').dataset.val,-1)">−</button>
+                  <span class="win-qty-val">0</span>
+                  <button type="button" class="win-qty-btn win-qty-plus" onclick="event.stopPropagation();adjOuvCount(this.closest('.win-card').dataset.val,1)">+</button>
+                </div>
               </div>
             </div>
 
             <!-- 4. Porte-fenêtre -->
-            <div class="win-card" onclick="tglOuv(this,'Porte-fenêtre')" role="radio" aria-checked="false" tabindex="0">
+            <div class="win-card" onclick="tglOuv(this,'Porte-fenêtre')" role="radio" aria-checked="false" tabindex="0" data-val="Porte-fenêtre">
               <div class="win-check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
               <div class="win-photo">
                 <svg viewBox="0 0 200 140" fill="none" style="width:100%;height:100%;display:block">
@@ -4035,11 +4057,16 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               <div class="win-label">
                 <div class="win-name">Porte-fenêtre</div>
                 <div class="win-hint">Du sol au plafond · terrasse</div>
+                <div class="win-qty">
+                  <button type="button" class="win-qty-btn win-qty-minus" onclick="event.stopPropagation();adjOuvCount(this.closest('.win-card').dataset.val,-1)">−</button>
+                  <span class="win-qty-val">0</span>
+                  <button type="button" class="win-qty-btn win-qty-plus" onclick="event.stopPropagation();adjOuvCount(this.closest('.win-card').dataset.val,1)">+</button>
+                </div>
               </div>
             </div>
 
             <!-- 5. Vélux -->
-            <div class="win-card" onclick="tglOuv(this,'Vélux / toit')" role="radio" aria-checked="false" tabindex="0">
+            <div class="win-card" onclick="tglOuv(this,'Vélux / toit')" role="radio" aria-checked="false" tabindex="0" data-val="Vélux / toit">
               <div class="win-check"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
               <div class="win-photo">
                 <svg viewBox="0 0 200 140" fill="none" style="width:100%;height:100%;display:block">
@@ -4064,6 +4091,11 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               <div class="win-label">
                 <div class="win-name">Vélux</div>
                 <div class="win-hint">Fenêtre de toit · combles</div>
+                <div class="win-qty">
+                  <button type="button" class="win-qty-btn win-qty-minus" onclick="event.stopPropagation();adjOuvCount(this.closest('.win-card').dataset.val,-1)">−</button>
+                  <span class="win-qty-val">0</span>
+                  <button type="button" class="win-qty-btn win-qty-plus" onclick="event.stopPropagation();adjOuvCount(this.closest('.win-card').dataset.val,1)">+</button>
+                </div>
               </div>
             </div>
 
@@ -4087,6 +4119,11 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
               <div class="win-label">
                 <div class="win-name">Je ne sais pas</div>
                 <div class="win-hint">Notre technicien vérifiera</div>
+                <div class="win-qty">
+                  <button type="button" class="win-qty-btn win-qty-minus" onclick="event.stopPropagation();adjOuvCount(this.closest('.win-card').dataset.val,-1)">−</button>
+                  <span class="win-qty-val">0</span>
+                  <button type="button" class="win-qty-btn win-qty-plus" onclick="event.stopPropagation();adjOuvCount(this.closest('.win-card').dataset.val,1)">+</button>
+                </div>
               </div>
             </div>
 
@@ -5352,11 +5389,17 @@ function goTo(n,silent){
         }
       }
       if(s===3){
-        if(!document.querySelector('#ouv-group .win-card.on')){
+        const ouvTotal=ouvBreakdown().reduce((a,p)=>a+p.qty,0);
+        if(ouvTotal!==_qty){
           const g=document.getElementById('ouv-group');
           if(g){g.style.outline='1.5px solid #dc2626';g.style.borderRadius='10px';}
           const errMsg=document.getElementById('ouv-err');
-          if(errMsg){errMsg.style.display='block';}
+          if(errMsg){
+            errMsg.style.display='block';
+            errMsg.textContent=_qty>1
+              ?(_lang==='en'?`Please assign all ${_qty} units to a window type.`:_lang==='zh'?`请将全部 ${_qty} 台空调分配到窗型。`:`Merci de répartir les ${_qty} climatiseurs sur un type de fenêtre.`)
+              :(_lang==='en'?'Please select the window type to continue.':_lang==='zh'?'请选择窗型以继续。':'Veuillez sélectionner le type de fenêtre pour continuer.');
+          }
           goTo(3,true);return;
         }
       }
@@ -5497,8 +5540,13 @@ document.querySelectorAll('.win-card').forEach(card=>{
   });
 });
 let _fenetrePhotoPath=null;
+// Répartition par type de fenêtre quand plusieurs climatiseurs sont
+// commandés (_qty>1) — {type: nombre}. Vide en mode simple (_qty=1), où le
+// choix reste un simple select via tglOuv() comme avant.
+let _ouvCounts={};
 
 function tglOuv(el,val){
+  if(_qty>1)return; // mode multi : seuls les +/- du stepper choisissent la répartition
   document.querySelectorAll('#ouv-group .win-card').forEach(c=>{
     c.classList.remove('on');
     c.setAttribute('aria-checked','false');
@@ -5532,6 +5580,113 @@ function tglOuv(el,val){
     }
   }
   buildRecap();
+}
+
+// Mode multi (_qty>1) : répartit le nombre de climatiseurs entre plusieurs
+// types de fenêtre via les +/- de chaque carte, au lieu d'un choix unique.
+// adjOuvCount ne laisse jamais le total dépasser _qty (bouton + désactivé).
+function adjOuvCount(type,delta){
+  if(!type)return;
+  const total=Object.values(_ouvCounts).reduce((a,b)=>a+b,0);
+  if(delta>0&&total>=_qty)return;
+  const next=Math.max(0,(_ouvCounts[type]||0)+delta);
+  if(next===(_ouvCounts[type]||0))return;
+  _ouvCounts[type]=next;
+  renderOuvMulti();
+  buildRecap();
+}
+function renderOuvMulti(){
+  const total=Object.values(_ouvCounts).reduce((a,b)=>a+b,0);
+  document.querySelectorAll('#ouv-group .win-card').forEach(card=>{
+    const n=_ouvCounts[card.dataset.val]||0;
+    const valEl=card.querySelector('.win-qty-val');
+    if(valEl)valEl.textContent=n;
+    const minusBtn=card.querySelector('.win-qty-minus');
+    if(minusBtn)minusBtn.disabled=(n<=0);
+    const plusBtn=card.querySelector('.win-qty-plus');
+    if(plusBtn)plusBtn.disabled=(total>=_qty);
+    card.classList.toggle('on',n>0);
+    card.setAttribute('aria-checked',n>0?'true':'false');
+  });
+  const remainEl=document.getElementById('ouv-remain');
+  if(remainEl){
+    const remain=_qty-total;
+    remainEl.textContent=remain<=0
+      ?(_lang==='en'?`${_qty} unit${_qty>1?'s':''} assigned ✓`:_lang==='zh'?`已分配 ${_qty} 台空调 ✓`:`${_qty} climatiseur${_qty>1?'s':''} réparti${_qty>1?'s':''} ✓`)
+      :(_lang==='en'?`${remain} unit${remain>1?'s':''} left to assign`:_lang==='zh'?`还剩 ${remain} 台待分配`:`${remain} climatiseur${remain>1?'s':''} restant${remain>1?'s':''} à répartir`);
+    remainEl.style.color=remain<=0?'var(--green)':'var(--red)';
+  }
+  // Zone photo "je ne sais pas" : visible dès qu'au moins une unité y est affectée.
+  const photoZone=document.getElementById('fenetre-photo-zone');
+  if(photoZone)photoZone.style.display=(_ouvCounts['À confirmer']>0)?'block':'none';
+}
+// Bascule entre sélection simple (1 climatiseur, radio) et répartition
+// multiple (plusieurs climatiseurs, +/- par carte) — appelé à chaque
+// changement de _qty (setQty/toggleUnit2). Garde toujours _ouvCounts
+// cohérent avec _qty pour ne jamais laisser un total invalide.
+function updateOuvMode(){
+  const g=document.getElementById('ouv-group');
+  if(!g)return;
+  const multi=_qty>1;
+  g.classList.toggle('win-multi',multi);
+  const remainEl=document.getElementById('ouv-remain');
+  if(remainEl)remainEl.style.display=multi?'block':'none';
+  if(multi){
+    const total=Object.values(_ouvCounts).reduce((a,b)=>a+b,0);
+    if(total===0){
+      // Amorce avec le choix simple précédent : tout dessus par défaut,
+      // l'utilisateur redistribue ensuite si besoin.
+      const cur=document.querySelector('#ouv-group .win-card.on')?.dataset.val;
+      if(cur)_ouvCounts[cur]=_qty;
+    }else if(total>_qty){
+      let excess=total-_qty;
+      Object.keys(_ouvCounts).sort((a,b)=>_ouvCounts[b]-_ouvCounts[a]).forEach(k=>{
+        if(excess<=0)return;
+        const cut=Math.min(_ouvCounts[k],excess);
+        _ouvCounts[k]-=cut;excess-=cut;
+      });
+    }else if(total<_qty){
+      const top=Object.entries(_ouvCounts).sort((a,b)=>b[1]-a[1])[0];
+      const key=top?top[0]:document.querySelector('#ouv-group .win-card.on')?.dataset.val;
+      if(key)_ouvCounts[key]=(_ouvCounts[key]||0)+(_qty-total);
+    }
+    renderOuvMulti();
+  }else{
+    // Retour à 1 seule unité : garde le type le plus représenté comme choix simple.
+    // tglOuv() gère seule la classe 'on' ici — ne pas appeler renderOuvMulti()
+    // après, elle l'écraserait en repassant tout à "off" (_ouvCounts vidé).
+    const top=Object.entries(_ouvCounts).sort((a,b)=>b[1]-a[1])[0];
+    _ouvCounts={};
+    document.querySelectorAll('#ouv-group .win-qty-val').forEach(el=>el.textContent='0');
+    if(top){
+      const card=[...document.querySelectorAll('#ouv-group .win-card')].find(c=>c.dataset.val===top[0]);
+      if(card)tglOuv(card,top[0]);
+    }
+  }
+}
+// Répartition finale à envoyer/afficher — [{type,qty}]. En mode simple,
+// reflète le seul .win-card.on (comme avant cette fonctionnalité).
+function ouvBreakdown(){
+  if(_qty>1&&Object.values(_ouvCounts).some(n=>n>0)){
+    return Object.entries(_ouvCounts).filter(([,n])=>n>0).map(([type,qty])=>({type,qty}));
+  }
+  const single=document.querySelector('#ouv-group .win-card.on')?.dataset.val;
+  return single?[{type:single,qty:_qty}]:[];
+}
+const _OUV_EN={'Fenêtre coulissante':'Sliding window','Fenêtre à battant':'Casement window','Oscillo-battant':'Tilt-and-turn','Porte-fenêtre':'French door','Vélux / toit':'Skylight / roof','À confirmer':'Not sure / Our tech will check'};
+const _OUV_ZH={'Fenêtre coulissante':'推拉窗','Fenêtre à battant':'平开窗','Oscillo-battant':'内倒内开窗','Porte-fenêtre':'落地窗/阳台门','Vélux / toit':'天窗','À confirmer':'待确认 / 技术员现场核查'};
+function ouvLabel(type,lang){
+  if(lang==='en')return _OUV_EN[type]||type;
+  if(lang==='zh')return _OUV_ZH[type]||type;
+  return type; // brut (français) — ce qui part au serveur, indépendant de la langue affichée
+}
+// lang omis = texte brut français (envoyé au serveur, voir formData plus bas) ;
+// lang='en'/'zh' = traduit pour l'affichage du récap (voir buildRecap).
+function ouvSummaryText(lang){
+  const parts=ouvBreakdown();
+  if(!parts.length)return '—';
+  if(parts.length===1&&parts[0].qty<=1)return ouvLabel(parts[0].type,lang);
+  return parts.map(p=>`${p.qty}× ${ouvLabel(p.type,lang)}`).join(', ');
 }
 
 async function handleFenetrePhoto(input){
@@ -5578,10 +5733,7 @@ function buildRecap(){
   if(_promoPct>0)_promoDiscount=Math.round(price*_promoPct/100);
   const asc=document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—';
   const etage=document.getElementById('f-etage')?.value.trim()||'';
-  const _ouvFR=document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—';
-  const _ouvEN={'Fenêtre coulissante':'Sliding window','Fenêtre à battant':'Casement window','Oscillo-battant':'Tilt-and-turn','Porte-fenêtre':'French door','Vélux / toit':'Skylight / roof','À confirmer':'Not sure / Our tech will check'};
-  const _ouvZH={'Fenêtre coulissante':'推拉窗','Fenêtre à battant':'平开窗','Oscillo-battant':'内倒内开窗','Porte-fenêtre':'落地窗/阳台门','Vélux / toit':'天窗','À confirmer':'待确认 / 技术员现场核查'};
-  const ouv=_lang==='en'?(_ouvEN[_ouvFR]||_ouvFR):_lang==='zh'?(_ouvZH[_ouvFR]||_ouvFR):_ouvFR;
+  const ouv=ouvSummaryText(_lang);
   const rawDate=document.getElementById('f-date')?.value||'';
   let dateStr='—';let pickupDateStr='—';
   if(rawDate){
@@ -5921,7 +6073,8 @@ function submitForm(btn,mode){
     ascenseur:document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—',
     date:document.getElementById('f-date')?.value,
     duree:document.getElementById('f-dur')?.value,
-    fenetre:document.querySelector('#ouv-group .win-card.on')?.dataset.val||'—',
+    fenetre:ouvSummaryText(),
+    fenetre_detail:JSON.stringify(Object.fromEntries(ouvBreakdown().map(p=>[p.type,p.qty]))),
     fenetre_photo_path:_fenetrePhotoPath||'',
     quantite:_qty+'x',
     installation:_techInstall?'Technicien (49€)':'Autonome (kit fourni)',
@@ -8026,8 +8179,9 @@ function setQty(n){
   const dfbTotal=document.getElementById('dfb-total');
   if(dfbTotal){const d=parseInt(document.getElementById('f-dur')?.value||'7');dfbTotal.textContent=calcPrice(d)*n+' €';}
   updateModalRecapPill(curStep);
+  updateOuvMode();
 }
-function toggleUnit2(cb){_unit2=cb.checked;_qty=_unit2?2:1;updateModalRecapPill(2);buildRecap();}
+function toggleUnit2(cb){_unit2=cb.checked;_qty=_unit2?2:1;updateModalRecapPill(2);updateOuvMode();buildRecap();}
 
 // ── PARRAINAGE ────────────────────────────────────────────────────────────────
 function copyReferral(){

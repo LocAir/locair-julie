@@ -911,6 +911,20 @@ function returnFromChecklist(){
   if(id && STATE.missions.find(m => m.id === id)) openMission(id);
   else switchTab('accueil');
 }
+// Composition des missions du jour — détermine quels items de la checklist
+// sont pertinents : bac_vidange_* seulement s'il y a une récupération, kit
+// de calfeutrage/items dynamiques seulement s'il y a une installation
+// (changement compté comme installation, voir computeChecklistBox). Les
+// deux à la fois -> tout s'affiche, fusionné, sans doublon (chaque item
+// n'existe qu'une fois dans les objets source).
+function todayMissionComposition(){
+  const todayStr = new Date().toISOString().slice(0,10);
+  const todays = (STATE.missions || []).filter(m => m.date_prevue === todayStr && !['annule','refusee'].includes(m.statut));
+  return {
+    hasRecup:   todays.some(m => m.type === 'recuperation'),
+    hasInstall: todays.some(m => m.type === 'livraison' || m.type === 'changement'),
+  };
+}
 // Popup "avant de démarrer" — le transporteur ne quitte jamais son geste
 // ("ouvrir la mission") : la checklist matériel s'affiche par-dessus, sans
 // changer d'écran, avant que la fiche client/la carte n'apparaissent. Ne
@@ -920,6 +934,20 @@ function openChecklistPopup(onValidated){
   const d = STATE.checklist;
   if(!d || !d.fixe){ onValidated(); return; }
   STATE.checklistPopupCallback = onValidated;
+  const { hasRecup } = todayMissionComposition();
+  const fixeKeys = Object.keys(d.fixe).filter(k => hasRecup || !CHECKLIST_RECUP_ONLY_KEYS.includes(k));
+  const climatiseurPills = (d.climatiseurs || []).map(c =>
+    `<span class="pill-badge">❄️ Climatiseur n°${c.numero}${c.kit==='velux'?' 🪟':''}</span>`
+  ).join('');
+  const kitLabels = [];
+  if(d.kits?.universel) kitLabels.push(`🧰 ${d.kits.universel} kit${d.kits.universel>1?'s':''} de calfeutrage universel`);
+  if(d.kits?.velux) kitLabels.push(`🪟 ${d.kits.velux} kit${d.kits.velux>1?'s':''} de calfeutrage Vélux`);
+  const dynamiqueLabels = (d.dynamique || []).map(key => `${d.install_count} × ${CHECKLIST_DYNAMIQUE_LABELS[key] || key}`);
+  const checkRow = label => `
+    <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule)">
+      <input type="checkbox" class="checklist-popup-cb" onchange="updateChecklistPopupButton()" style="width:20px;height:20px;flex-shrink:0">
+      <span>${label}</span>
+    </label>`;
   const overlay = document.createElement('div');
   overlay.className = 'overlay';
   overlay.id = 'checklist-popup-overlay';
@@ -927,12 +955,10 @@ function openChecklistPopup(onValidated){
     <div class="sheet">
       <h1 style="margin-bottom:4px">🎒 Prêt à partir ?</h1>
       <p class="sub" style="margin-bottom:10px">Avant ta première mission de la journée — coche ce que tu as pris.</p>
+      ${d.climatiseurs?.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${climatiseurPills}</div>` : ''}
       <div class="card" style="margin-bottom:16px">
-        ${Object.keys(d.fixe).map(key => `
-          <label style="display:flex;align-items:center;gap:10px;padding:8px 0">
-            <input type="checkbox" class="checklist-popup-cb" onchange="updateChecklistPopupButton()" style="width:20px;height:20px;flex-shrink:0">
-            <span>${CHECKLIST_FIXE_LABELS[key] || key}</span>
-          </label>`).join('')}
+        ${[...kitLabels, ...dynamiqueLabels].map(checkRow).join('')}
+        ${fixeKeys.map(key => checkRow(CHECKLIST_FIXE_LABELS[key] || key)).join('')}
       </div>
       <button class="btn btn-green btn-block" id="checklist-popup-btn" disabled onclick="validerChecklistPopup()">✅ Prise en charge — j'ai tout le matériel</button>
       <button class="forgot-link" onclick="closeChecklistPopup()">Annuler</button>
@@ -2850,13 +2876,27 @@ async function demanderVirement(){
 // transporteur avant de partir — "↩️ Retour" annule la prise en charge si
 // tapé par erreur.
 const CHECKLIST_FIXE_LABELS = {
-  diable:                '🛒 Diable',
-  sac_transport:         '🎒 Sac de transport',
-  filet_kit_calfeutrage: '🕸️ Filet pour kit de calfeutrage',
-  bac_vidange_petit:     '🪣 Bac de vidange (petit)',
-  bac_vidange_grand:     '🪣 Bac de vidange (grand)',
-  microfibre:            '🧽 Microfibre',
-  lingette:              '🧻 Lingette',
+  diable:            '🛒 Diable',
+  sac_transport:     '🎒 Sac de transport',
+  bac_vidange_petit: '🪣 Bac de vidange (petit)',
+  bac_vidange_grand: '🪣 Bac de vidange (grand)',
+  velcro_secours:    '🧷 Velcro de secours',
+  boite_piles:       '🔋 Boîte de piles',
+  microfibre:        '🧽 Microfibre',
+  lingette:          '🧻 Boîte de lingettes',
+};
+// bac_vidange_* ne concerne que les jours avec une récupération (vidange à
+// la récupération, voir #31) — masqué de la popup/checklist les jours 100%
+// installation.
+const CHECKLIST_RECUP_ONLY_KEYS = ['bac_vidange_petit', 'bac_vidange_grand'];
+// Un jeu complet par climatiseur installé aujourd'hui (voir
+// ITEMS_DYNAMIQUES côté serveur, api/_lib/checklistBox.js) — le kit de
+// calfeutrage est déjà compté séparément dans d.kits (par type de fenêtre).
+const CHECKLIST_DYNAMIQUE_LABELS = {
+  telecommande:     '📡 Télécommande',
+  rouleau_velcro:   '🧵 Rouleau velcro',
+  notice:           '📘 Notice',
+  enveloppe_locair: "✉️ Enveloppe Loc'Air",
 };
 async function loadChecklist(){
   const zone = document.getElementById('checklist-content');
@@ -2887,13 +2927,16 @@ function renderChecklist(d){
   const climatiseurPills = d.climatiseurs.map(c =>
     `<span class="pill-badge">❄️ Climatiseur n°${c.numero}${c.kit==='velux'?' 🪟':''}</span>`
   ).join('');
+  const { hasRecup } = todayMissionComposition();
   const kitItems = [];
   if(d.kits.universel) kitItems.push(`🧰 ${d.kits.universel} kit${d.kits.universel>1?'s':''} de calfeutrage universel`);
   if(d.kits.velux) kitItems.push(`🪟 ${d.kits.velux} kit${d.kits.velux>1?'s':''} de calfeutrage Vélux`);
+  (d.dynamique || []).forEach(key => kitItems.push(`${d.install_count} × ${CHECKLIST_DYNAMIQUE_LABELS[key] || key}`));
   const kitItemsHtml = kitItems.map(t => `<div class="info-row" style="font-size:14.5px">${t}</div>`).join('');
-  const fixeHtml = (d.fixe && !d.validated) ? `
+  const fixeKeys = (d.fixe ? Object.keys(d.fixe) : []).filter(k => hasRecup || !CHECKLIST_RECUP_ONLY_KEYS.includes(k));
+  const fixeHtml = (fixeKeys.length && !d.validated) ? `
     <div class="section-title" style="margin:14px 0 2px 2px">Checklist — coche ce que tu as pris</div>
-    ${Object.keys(d.fixe).map(key => `
+    ${fixeKeys.map(key => `
       <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule)">
         <input type="checkbox" class="checklist-box-cb" onchange="updateChecklistBoxButton()" style="width:20px;height:20px;flex-shrink:0">
         <span>${CHECKLIST_FIXE_LABELS[key] || key}</span>
