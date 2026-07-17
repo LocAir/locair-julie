@@ -3305,6 +3305,7 @@ function renderLivraisons(){
             <summary title="Plus d'actions">⋯</summary>
             <div class="more-actions-menu">
               ${!reassignLocked?`<button onclick="openEditMissionModal(${m.id})">✏️ Modifier</button>`:''}
+              ${(!isAutre && !reassignLocked)?`<button onclick="openChangeAppareilModal(${m.id})">🔄 Changer le climatiseur</button>`:''}
               ${['acceptee','en_route','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
               ${mediaBtns.join('')}
               <button class="danger" onclick="maskLivraison(${m.id})">🗑️ Supprimer de l'écran</button>
@@ -3406,6 +3407,65 @@ function openEditMissionModal(livraisonId){
       closeModal();
       loadLivraisons();
       showToast('Mission mise à jour', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      errEl.textContent = e.message; errEl.style.display = 'block';
+    }
+  };
+}
+
+// Changer le climatiseur d'une mission — l'admin choisit dans le stock
+// disponible plutôt que de taper un numéro au hasard (reaffecterAppareilReservation
+// existant, plus rapide mais à l'aveugle, reste accessible depuis Réservations).
+// Réaffecte au niveau de la réservation (même mécanisme que admin-stock
+// action 'reassign') — une réservation n'a en pratique qu'un seul appareil
+// dans l'immense majorité des cas.
+async function openChangeAppareilModal(livraisonId){
+  const m = LIVRAISONS_CACHE.find(x => x.id === livraisonId);
+  if(!m || !m.reservation || !m.reservation.id) return;
+  closeModal();
+  let appareilsDispo = [];
+  try{
+    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:'{}'});
+    const d = await r.json();
+    appareilsDispo = (d.appareils||[]).filter(a => a.statut==='disponible' && !a.en_location);
+  }catch(e){}
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  const currentNumeros = (m.appareil_numeros||[]).join(', ') || '—';
+  const appareilOptions = appareilsDispo.map(a =>
+    `<option value="${a.numero}">n°${a.numero}${a.reference?' · '+escHtml(a.reference):''}</option>`
+  ).join('');
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <h2 style="margin-bottom:4px">🔄 Changer le climatiseur</h2>
+      <p class="row-meta" style="margin-bottom:14px">Actuellement n°${escHtml(currentNumeros)} — ${escHtml((m.reservation.prenom||'')+' '+(m.reservation.nom||''))}</p>
+      <label for="ca-appareil">Nouveau climatiseur (disponible en stock)</label>
+      <select id="ca-appareil" ${appareilOptions?'':'disabled'}>${appareilOptions || '<option value="">Aucun climatiseur disponible</option>'}</select>
+      <div class="modal-actions" style="margin-top:18px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue" ${appareilOptions?'':'disabled'}>Changer</button>
+      </div>
+      <div class="err" id="ca-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const errEl = document.getElementById('ca-err');
+    errEl.style.display = 'none';
+    const numero = parseInt(document.getElementById('ca-appareil').value);
+    if(!numero){ errEl.textContent = 'Choisis un climatiseur.'; errEl.style.display = 'block'; return; }
+    okBtn.disabled = true;
+    try{
+      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'reassign', reservation_id:m.reservation.id, appareil_numero:numero})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      loadLivraisons();
+      showToast(`Climatiseur n°${numero} affecté`, 'success');
     }catch(e){
       okBtn.disabled = false;
       errEl.textContent = e.message; errEl.style.display = 'block';
@@ -5381,6 +5441,7 @@ function renderClientCommunications(d){
         const actionsHtml = !u.actif_globalement ? '' : u.skip
           ? `<div class="row-actions"><button class="btn btn-green" onclick="unskipClientEmail(${u.reservation_id},'${u.scenario}',this)">▶️ Reprendre</button></div>`
           : `<div class="row-actions">
+               <button class="btn btn-blue" onclick="sendClientEmailNow(${u.reservation_id},'${u.scenario}',this)">✉️ Envoyer maintenant</button>
                <button class="btn btn-grey" onclick="skipClientEmail(${u.reservation_id},'${u.scenario}','pause',this)">⏸️ Mettre en pause</button>
                <button class="btn btn-red" onclick="skipClientEmail(${u.reservation_id},'${u.scenario}','suppression',this)">🗑️ Supprimer</button>
              </div>`;
@@ -5404,16 +5465,66 @@ function renderClientCommunications(d){
           <span class="chip ${e.statut==='envoye'?'fait':'probleme'}">${e.statut==='envoye'?'Envoyé':'Erreur'}</span>
         </div>
         <div class="row-meta">${new Date(e.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${e.ref?' · '+escHtml(e.ref):''}${e.erreur?' · '+escHtml(e.erreur):''}</div>
-        <div class="row-actions"><button class="btn btn-grey" onclick="viewCommunicationContent(${e.id},this)">👁️ Aperçu</button></div>
+        <div class="row-actions">
+          <button class="btn btn-grey" onclick="viewCommunicationContent(${e.id},this)">👁️ Aperçu</button>
+          ${e.reservation_id?`<button class="btn btn-blue" onclick="sendClientEmailNow(${e.reservation_id},'${e.scenario}',this)">✉️ Renvoyer</button>`:''}
+        </div>
       </div>`).join('')
     : '<p class="empty">Aucun envoi enregistré pour l\'instant.</p>';
+
+  // Emails "événementiels" (confirmation, post-installation, fin de
+  // location) : déclenchés par le code métier, pas par une date — n'existent
+  // ni dans "à venir" ni dans "envoyées" tant qu'ils n'ont jamais réellement
+  // été tentés. Ex. : mail de confirmation jamais parti (email manquant au
+  // moment du paiement, erreur avalée) — sans cette section, rien ne permet
+  // de le voir ni de le rattraper depuis la fiche.
+  const evenementielsHtml = (d.evenementiels||[]).length
+    ? d.evenementiels.map(u => {
+        const statutChip = !u.actif_globalement
+          ? `<span class="chip inactif">Désactivé pour tous les clients</span>`
+          : u.skip
+            ? `<span class="chip ${u.skip==='pause'?'en_attente':'annulee'}">${u.skip==='pause'?'En pause':'Supprimé'}</span>`
+            : `<span class="chip a_faire">Jamais envoyé</span>`;
+        const actionsHtml = !u.actif_globalement ? '' : u.skip
+          ? `<button class="btn btn-green" onclick="unskipClientEmail(${u.reservation_id},'${u.scenario}',this)">▶️ Reprendre</button>`
+          : `<button class="btn btn-blue" onclick="sendClientEmailNow(${u.reservation_id},'${u.scenario}',this)">✉️ Envoyer maintenant</button>`;
+        return `
+        <div class="row-item">
+          <div class="row-top">
+            <span class="row-title">📧 ${escHtml(u.libelle)}</span>
+            ${statutChip}
+          </div>
+          <div class="row-meta">${u.ref?escHtml(u.ref):''}</div>
+          <div class="row-actions">${actionsHtml}</div>
+        </div>`;
+      }).join('')
+    : '';
 
   zone.innerHTML = `
     <div class="section-title">📧 Communications — à venir</div>
     ${upcomingHtml}
+    ${evenementielsHtml ? `<div class="section-title" style="margin-top:18px">✉️ Emails ponctuels (confirmation, installation, fin de location)</div>${evenementielsHtml}` : ''}
     <div class="section-title" style="margin-top:18px">📬 Communications — envoyées</div>
     ${sentHtml}
   `;
+}
+// Envoi manuel immédiat d'un scénario (bypass "jamais deux fois", voir
+// action 'resend' de admin-emails.js) — utilisé pour rattraper un envoi
+// événementiel jamais parti (ex. confirmation) ou renvoyer un email déjà
+// envoyé (client qui l'a perdu). Respecte toujours le scénario
+// désactivé/mis en pause pour ce client.
+async function sendClientEmailNow(reservationId, scenario, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'resend', reservation_id:reservationId, scenario})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadClientCommunications();
+    showToast('Email envoyé', 'success');
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
 }
 
 // action: 'pause' (réversible, l'envoi reste visible avec un bouton
