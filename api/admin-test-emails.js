@@ -1,7 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminToken } = require('./_lib/auth');
 const { sendBrevoEmail } = require('./_lib/brevo');
-const { SCENARIOS, getSignature, signatureFooterHtml } = require('./_lib/emailEngine');
+const { SCENARIOS, getSignature, withSignature } = require('./_lib/emailEngine');
 const {
   tplProlongConfirmation, tplContratFacture, tplFactureVente,
   tplAmbassadeurCredentials, tplNouveauCodeAmbassadeur, tplNouveauCodeTransporteur,
@@ -94,7 +94,7 @@ module.exports = async (req, res) => {
     // ce que reçoit vraiment un client à chaque étape de sa location.
     for (const [key, def] of Object.entries(SCENARIOS)) {
       try {
-        const html = def.template(ctx) + signatureFooterHtml(sig);
+        const html = withSignature(def.template(ctx), sig);
         await sendBrevoEmail({ to: email, subject: `[TEST] ${def.subject(ctx)}`, html, senderName: sig.nom_expediteur });
         sent.push(def.libelle);
       } catch (e) {
@@ -106,7 +106,7 @@ module.exports = async (req, res) => {
     // codes oubliés) — même contenu que ce qui part réellement.
     for (const def of Object.values(AD_HOC)) {
       try {
-        const html = def.html() + signatureFooterHtml(sig);
+        const html = withSignature(def.html(), sig);
         await sendBrevoEmail({ to: email, subject: `[TEST] ${def.subject}`, html, senderName: sig.nom_expediteur });
         sent.push(def.libelle);
       } catch (e) {

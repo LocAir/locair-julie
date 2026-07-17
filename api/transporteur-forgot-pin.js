@@ -1,7 +1,7 @@
 const { getSupabase }    = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
 const { tplNouveauCodeTransporteur } = require('./_lib/emailTemplates');
-const { getSignature, signatureFooterHtml } = require('./_lib/emailEngine');
+const { getSignature, withSignature } = require('./_lib/emailEngine');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -38,7 +38,7 @@ module.exports = async (req, res) => {
         // accès biométrique déjà enregistré (probable perte/vol de téléphone).
         await supabase.from('webauthn_credentials').delete().eq('transporteur_id', transp.id);
         const sig  = await getSignature(supabase);
-        const html = tplNouveauCodeTransporteur({ nom: transp.nom, pin: newPin }) + signatureFooterHtml(sig);
+        const html = withSignature(tplNouveauCodeTransporteur({ nom: transp.nom, pin: newPin }), sig);
 
         await sendBrevoEmail({ to: transp.email, subject: "🔐 Ton nouveau code Loc'Air", html, senderName: sig.nom_expediteur });
       }

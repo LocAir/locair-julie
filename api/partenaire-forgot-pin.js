@@ -1,7 +1,7 @@
 const { getSupabase }    = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
 const { tplNouveauCodeAmbassadeur } = require('./_lib/emailTemplates');
-const { getSignature, signatureFooterHtml } = require('./_lib/emailEngine');
+const { getSignature, withSignature } = require('./_lib/emailEngine');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -34,7 +34,7 @@ module.exports = async (req, res) => {
       if (newPin) {
         const lien = `https://www.locair.fr/?p=${encodeURIComponent(partenaire.code)}`;
         const sig  = await getSignature(supabase);
-        const html = tplNouveauCodeAmbassadeur({ nom: partenaire.nom, lien, pin: newPin }) + signatureFooterHtml(sig);
+        const html = withSignature(tplNouveauCodeAmbassadeur({ nom: partenaire.nom, lien, pin: newPin }), sig);
 
         await sendBrevoEmail({ to: partenaire.email, subject: "🔐 Ton nouveau code ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
       }

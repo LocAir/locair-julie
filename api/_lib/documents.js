@@ -3,7 +3,7 @@ const { generateContratPdf, generateFacturePdf, generateFactureVentePdf } = requ
 const { sendBrevoEmail } = require('./brevo');
 const { CGV_VERSION } = require('./legal');
 const { tplContratFacture, tplFactureVente } = require('./emailTemplates');
-const { getSignature, signatureFooterHtml } = require('./emailEngine');
+const { getSignature, withSignature } = require('./emailEngine');
 
 function accessToken() {
   return crypto.randomBytes(24).toString('hex');
@@ -96,12 +96,12 @@ async function generateAndSendDocuments(supabase, resa) {
     const base = 'https://www.locair.fr';
     const sig = await getSignature(supabase);
     const lang = resa.lang || 'fr';
-    const contratEmailHtml = tplContratFacture({
+    const contratEmailHtml = withSignature(tplContratFacture({
       prenom: resa.prenom,
       ref:    resa.ref,
       lang,
       viewUrlDocuments: `${base}/api/documents-view?contrat=${contratToken}&facture=${factureToken}`,
-    }) + signatureFooterHtml(sig);
+    }), sig);
     const contratSubject = lang === 'en'
       ? `📄 Your Loc'Air documents — Ref ${resa.ref}`
       : lang === 'zh'
@@ -184,7 +184,7 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
     const sig = await getSignature(supabase);
     const lang = resa.lang || 'fr';
     const modeleClimatiseur = appareil && appareil.modele ? `${appareil.modele.marque} ${appareil.modele.modele}` : '';
-    const html = tplFactureVente({
+    const html = withSignature(tplFactureVente({
       prenom: resa.prenom,
       ref:    resa.ref,
       lang,
@@ -192,7 +192,7 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
       dateAchatFmt: now.toLocaleDateString('fr-FR'),
       montantFmt: (prixCents / 100).toFixed(2).replace('.', ',') + ' €',
       viewUrlFacture: `${base}/api/document-view?token=${factureToken}`,
-    }) + signatureFooterHtml(sig);
+    }), sig);
     const ventSubject = lang === 'en'
       ? `📄 Your Loc'Air purchase invoice — Ref ${resa.ref}`
       : lang === 'zh'

@@ -3,7 +3,7 @@ const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
 const { sendBrevoEmail } = require('./_lib/brevo');
 const { tplAmbassadeurCredentials } = require('./_lib/emailTemplates');
-const { getSignature, signatureFooterHtml } = require('./_lib/emailEngine');
+const { getSignature, withSignature } = require('./_lib/emailEngine');
 
 function partenaireLinkFor(code) { return `https://www.locair.fr/?p=${encodeURIComponent(code)}`; }
 
@@ -16,7 +16,7 @@ function partenaireLinkFor(code) { return `https://www.locair.fr/?p=${encodeURIC
 async function notifyPartenaireCredentials(supabase, { nom, email, code, pin }) {
   if (!email) return;
   const sig  = await getSignature(supabase);
-  const html = tplAmbassadeurCredentials({ nom, lien: partenaireLinkFor(code), pin }) + signatureFooterHtml(sig);
+  const html = withSignature(tplAmbassadeurCredentials({ nom, lien: partenaireLinkFor(code), pin }), sig);
 
   await sendBrevoEmail({ to: email, subject: "🤝 Ton espace ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
 }

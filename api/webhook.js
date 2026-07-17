@@ -6,7 +6,7 @@ const { pushToAdmin } = require('./_lib/push');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { generateAndSendDocuments, generateAndSendFactureVente } = require('./_lib/documents');
-const { sendScenarioEmail, getSignature, signatureFooterHtml } = require('./_lib/emailEngine');
+const { sendScenarioEmail, getSignature, withSignature } = require('./_lib/emailEngine');
 const { escHtml, tplProlongConfirmation } = require('./_lib/emailTemplates');
 
 // Offre Privilège (Step 2) : le client vient de payer pour garder son
@@ -328,7 +328,7 @@ const handler = async (req, res) => {
 
       const sigProlong = await getSignature(getSupabase());
       const prolongLang = meta.lang || confirmedResa?.lang || 'fr';
-      const prolongHtml = tplProlongConfirmation({
+      const prolongHtml = withSignature(tplProlongConfirmation({
         prenom:            meta.prenom            || '',
         nom:               meta.nom               || '',
         jours:             meta.jours             || '1',
@@ -336,7 +336,7 @@ const handler = async (req, res) => {
         creneau:           meta.creneau           || '',
         amount,
         lang:              prolongLang,
-      }) + signatureFooterHtml(sigProlong);
+      }), sigProlong);
       const jNum = Number(meta.jours) || 1;
       const prolongSubject = prolongLang === 'en'
         ? `✅ Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`

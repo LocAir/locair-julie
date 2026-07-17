@@ -82,6 +82,19 @@ function signatureFooterHtml(sig) {
   </div>`;
 }
 
+// Insère la signature À L'INTÉRIEUR de la carte email (avant la fermeture de
+// .wrap), au lieu de la coller après le </html> — ce que faisait partout un
+// simple `template(ctx) + signatureFooterHtml(sig)` : la signature atterrissait
+// hors de la carte blanche, sur le fond de page brut, visuellement détachée
+// du reste de l'email. Tous les points d'envoi doivent utiliser cette
+// fonction plutôt que concaténer signatureFooterHtml() directement.
+function withSignature(html, sig) {
+  const footer = signatureFooterHtml(sig);
+  const closing = '</div></body></html>';
+  if (html.includes(closing)) return html.replace(closing, `${footer}${closing}`);
+  return html + footer; // gabarit imprévu sans cette fermeture exacte — filet de sécurité
+}
+
 async function isScenarioActive(supabase, scenario) {
   const { data } = await supabase.from('email_scenarios').select('actif').eq('id', scenario).maybeSingle();
   return data ? data.actif !== false : true;
@@ -113,7 +126,7 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
 
   const ctx = await buildEmailContext(supabase, reservation);
   const sig = await getSignature(supabase);
-  const html = scenarioDef.template(ctx) + signatureFooterHtml(sig);
+  const html = withSignature(scenarioDef.template(ctx), sig);
   const subject = scenarioDef.subject(ctx);
 
   try {
@@ -134,4 +147,4 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
   }
 }
 
-module.exports = { SCENARIOS, sendScenarioEmail, buildEmailContext, getSignature, signatureFooterHtml, wasScenarioSent, wasScenarioSkipped, isScenarioActive, fmtDate, fmtDateFR };
+module.exports = { SCENARIOS, sendScenarioEmail, buildEmailContext, getSignature, signatureFooterHtml, withSignature, wasScenarioSent, wasScenarioSkipped, isScenarioActive, fmtDate, fmtDateFR };
