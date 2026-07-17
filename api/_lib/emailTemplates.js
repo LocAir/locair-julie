@@ -412,7 +412,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     intro: `Booking ref ${escHtml(ref)}`,
     bodyHtml: `
       <p>Hello ${p},</p>
-      <p>Please find your rental agreement and invoice attached to this email (PDF).</p>
+      <p>Thank you for your trust. Please find your rental agreement and invoice attached.</p>
       <div class="box"><p style="margin:0"><a href="${viewUrlDocuments}" style="color:#1b3a5f;font-weight:700">View my documents online →</a></p></div>
       <p style="font-size:13px;color:#888">Keep this email — your documents remain accessible via the link above.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
@@ -422,7 +422,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     intro: `订单编号 ${escHtml(ref)}`,
     bodyHtml: `
       <p>您好 ${p}，</p>
-      <p>请查收本邮件附件中的租赁合同和发票（PDF格式）。</p>
+      <p>感谢您的信任。请查收本邮件附件中的租赁合同和发票。</p>
       <div class="box"><p style="margin:0"><a href="${viewUrlDocuments}" style="color:#1b3a5f;font-weight:700">在线查看我的文件 →</a></p></div>
       <p style="font-size:13px;color:#888">请保存此邮件——您的文件可随时通过上方链接访问。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
@@ -432,9 +432,9 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     intro: `Dossier ${escHtml(ref)}`,
     bodyHtml: `
       <p>Bonjour ${p},</p>
-      <p>Voici votre contrat de location et votre facture, en pièces jointes de cet email (PDF).</p>
+      <p>Merci pour votre confiance. Vous trouverez ci-joint votre contrat de location ainsi que votre facture.</p>
       <div class="box"><p style="margin:0"><a href="${viewUrlDocuments}" style="color:#1b3a5f;font-weight:700">Consulter mes documents en ligne →</a></p></div>
-      <p style="font-size:13px;color:#888">Conservez cet email — ces documents restent consultables via le lien ci-dessus.</p>`,
+      <p style="font-size:13px;color:#888">Conservez cet email : vos documents restent accessibles à tout moment via le lien ci-dessus.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
   });
 }
@@ -445,15 +445,15 @@ function tplFactureVente({ prenom, ref, modeleClimatiseur, dateAchatFmt, montant
     title: '📄 Votre facture d\'achat',
     intro: `Merci ${escHtml(prenom || '')}, votre paiement de ${escHtml(montantFmt || '')} a bien été reçu !`,
     bodyHtml: `
-      <p>Merci pour votre achat via l'Offre Privilège (dossier ${escHtml(ref)}) ! Voici le récapitulatif :</p>
+      <p>Merci pour votre confiance et votre achat via l'Offre Privilège (dossier ${escHtml(ref)}). Voici le récapitulatif :</p>
       <div class="box">
         ${modeleClimatiseur ? `<p style="margin:0 0 6px"><strong>Climatiseur :</strong> ${escHtml(modeleClimatiseur)}</p>` : ''}
         <p style="margin:0 0 6px"><strong>Date d'achat :</strong> ${escHtml(dateAchatFmt || '')}</p>
         <p style="margin:0"><strong>Montant payé :</strong> ${escHtml(montantFmt || '')}</p>
       </div>
-      <p>Votre facture est en pièce jointe de cet email (PDF) — vous pouvez aussi la <a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">consulter en ligne</a>.</p>
+      <p>Vous trouverez votre facture ci-jointe — vous pouvez aussi la <a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">consulter en ligne</a>.</p>
       <p>Le climatiseur vous appartient désormais définitivement : aucune autre action n'est nécessaire de votre part. En cas de souci technique (garantie, SAV), notre équipe reste disponible via WhatsApp ci-dessous.</p>
-      <p style="font-size:13px;color:#888">Conservez cet email — ce document reste consultable via le lien ci-dessus.</p>`,
+      <p style="font-size:13px;color:#888">Conservez cet email : ce document reste accessible à tout moment via le lien ci-dessus.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
   });
 }
