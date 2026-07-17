@@ -269,10 +269,13 @@ module.exports = async (req, res) => {
         if (!ancien) {
           return res.status(400).json({ error: 'Impossible d\'échanger : cette réservation n\'a pas d\'appareil actuel à donner en retour' });
         }
+        const { data: ancienAppareil } = await supabase.from('appareils').select('statut').eq('id', ancien.appareil_id).maybeSingle();
         await supabase.from('reservation_appareils').delete().eq('id', conflitActif.id);
         await supabase.from('reservation_appareils').insert({ reservation_id: conflitActif.reservation_id, appareil_id: ancien.appareil_id, valide: true, valide_at: new Date().toISOString() });
         await recordMouvement(supabase, {
-          appareilId: ancien.appareil_id, typeEvenement: 'attribution_reservation', nouveauStatut: 'disponible',
+          // nouveauStatut = statut réel actuel de l'appareil, PAS "disponible" —
+          // il reste assigné (à l'autre réservation), il ne redevient pas libre.
+          appareilId: ancien.appareil_id, typeEvenement: 'attribution_reservation', nouveauStatut: ancienAppareil?.statut,
           nouvelleLocalisation: 'stock_principal', reservationId: conflitActif.reservation_id,
           utilisateur: 'admin', commentaire: 'Échangé par l\'administration',
         });
