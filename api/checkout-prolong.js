@@ -140,6 +140,7 @@ module.exports = async (req, res) => {
       prix_total_cents:         amountCents,
       statut:                   'en_attente',
       source:                   'site_prolongation',
+      lang:                     ['fr','en','zh'].includes(data.lang) ? data.lang : 'fr',
     }).select('id').single();
 
     if (insertErr) {
