@@ -45,7 +45,7 @@ const AD_HOC = {
     subject: "📄 Votre contrat et votre facture Loc'Air — Dossier TEST-0001",
     html: () => tplContratFacture({
       prenom: 'Jean', ref: 'TEST-0001',
-      viewUrlContrat: 'https://www.locair.fr/#test', viewUrlFacture: 'https://www.locair.fr/#test',
+      viewUrlDocuments: 'https://www.locair.fr/#test',
     }),
   },
   facture_vente: {
