@@ -3278,7 +3278,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
       <a href="https://www.google.com/maps/place/Loc%27Air/@43.7076,7.2793,17z" target="_blank" rel="noopener noreferrer" class="score" data-c-maps aria-label="Voir nos 22 avis Google — Note 4,8 sur 5">
         <p class="score-n" data-count="4.8" data-suffix="" data-decimal=",">4,8</p>
         <div><p class="score-stars" aria-label="4,8 étoiles sur 5">★★★★★</p><p class="score-lbl">Avis vérifiés Google</p>
-        <p style="font-size:11px;color:var(--grey);margin-top:2px">22 avis · Depuis 2019</p>
+        <p id="score-since" style="font-size:11px;color:var(--grey);margin-top:2px">22 avis · Depuis 2019</p>
         </div>
       </a>
     </div>
@@ -5090,8 +5090,8 @@ function geoLocate(){
         });
     },
     function(err){
-      const msgs={1:'Accès refusé',2:'Position indisponible',3:'Délai dépassé'};
-      _setErr(msgs[err.code]||'Erreur GPS');
+      const msgs=_lang==='en'?{1:'Access denied',2:'Position unavailable',3:'Timeout'}:_lang==='zh'?{1:'位置访问被拒绝',2:'位置不可用',3:'请求超时'}:{1:'Accès refusé',2:'Position indisponible',3:'Délai dépassé'};
+      _setErr(msgs[err.code]||(_lang==='en'?'GPS error':_lang==='zh'?'GPS错误':'Erreur GPS'));
     },
     // enableHighAccuracy:false = réseau WiFi/cell (rapide en intérieur)
     // maximumAge:60000 = réutilise la position si < 1 min
@@ -6506,7 +6506,9 @@ const LANG_MAP=[
   ['#reviews-title','html','Ils ont loué.<br><em>Voici ce qu\'ils en disent.</em>','They rented.<br><em>Here\'s what they say.</em>','他们已租用。<br><em>这是他们的评价。</em>'],
   ['#reviews-aly-note','text','Chaque retour compte pour nous. Merci de faire confiance à Loc\'Air depuis 2019. — Aly','Every review matters to us. Thank you for trusting Loc\'Air since 2019. — Aly','每一条评价对我们都很重要。感谢自2019年以来对Loc\'Air的信任。— Aly'],
   ['.score-lbl','text','Avis vérifiés Google','Verified Google reviews','Google验证评价'],
+  ['#score-since','text','22 avis · Depuis 2019','22 reviews · Since 2019','22条评价 · 2019年起'],
   ['.rs-label','text','21 avis Google vérifiés','21 verified Google reviews','21条Google验证评价'],
+  ['.choice-badge','text','Clients Loc\'Air','Existing Loc\'Air clients','Loc\'Air现有客户'],
   ['.rs-link','text','Voir sur Google →','View on Google →','在Google上查看 →'],
   /* pourqui */
   ['.pourqui .sec-eye','text','Pour qui ?','Who is it for?','适合哪些人？'],
@@ -6607,8 +6609,8 @@ const LANG_MAP=[
   /* modal step 4 */
   ['#lbl-creneau-liv','text','Votre créneau de livraison','Your delivery slot','您的配送时间段'],
   ['#delivery-notice','html','Notre technicien vous appelle<br><strong>30 min avant</strong> d\'arriver.','Our technician calls you<br><strong>30 min before</strong> arriving.','我们的技术员将在到达前<br><strong>30分钟</strong>致电您。'],
-  ['#fenetre-photo-hdr','html','📸 Photo de votre fenêtre <span style="font-weight:400;color:var(--grey)">(optionnel)</span>','📸 Photo of your window <span style="font-weight:400;color:var(--grey)">(optional)</span>'],
-  ['#fenetre-photo-sub','text','Notre technicien la verra avant d\'arriver et apportera le matériel adapté à votre configuration.','Our technician will see it before arriving and bring the right equipment for your setup.'],
+  ['#fenetre-photo-hdr','html','📸 Photo de votre fenêtre <span style="font-weight:400;color:var(--grey)">(optionnel)</span>','📸 Photo of your window <span style="font-weight:400;color:var(--grey)">(optional)</span>','📸 您的窗户照片 <span style="font-weight:400;color:var(--grey)">（可选）</span>'],
+  ['#fenetre-photo-sub','text','Notre technicien la verra avant d\'arriver et apportera le matériel adapté à votre configuration.','Our technician will see it before arriving and bring the right equipment for your setup.','技术员到达前会查看照片，并携带适合您情况的设备。'],
   ['#fenetre-photo-btn-text','text','Prendre une photo / Choisir depuis la galerie','Take a photo / Choose from gallery','拍照 / 从相册选择'],
   /* modal step 5 — recap labels */
   ['#lbl-recup-section','text','Récupération','Collection','归还'],
@@ -6626,10 +6628,10 @@ const LANG_MAP=[
   ['#label-tel2','html','Proche à contacter en cas d\'absence <span style="color:var(--grey2);font-weight:400">(facultatif)</span>','Emergency contact <span style="color:var(--grey2);font-weight:400">(optional)</span>','紧急联系人 <span style="color:var(--grey2);font-weight:400">（可选）</span>'],
   ['#f-tel2','ph','Numéro d\'un proche — conjoint, famille…','Relative\'s number — partner, family…','亲属电话——配偶、家人…'],
   /* profiling */
-  ['#profil-summary','html','Pour mieux vous aider <span style="font-size:10px">▸ facultatif</span>','Help us serve you better <span style="font-size:10px">▸ optional</span>'],
-  ['#label-source','text','Comment nous avez-vous trouvé ?','How did you find us?'],
-  ['#label-logement','text','Type de logement','Type of accommodation'],
-  ['#label-motif','text','Pourquoi vous louez ?','Why are you renting?'],
+  ['#profil-summary','html','Pour mieux vous aider <span style="font-size:10px">▸ facultatif</span>','Help us serve you better <span style="font-size:10px">▸ optional</span>','更好地为您服务 <span style="font-size:10px">▸ 可选</span>'],
+  ['#label-source','text','Comment nous avez-vous trouvé ?','How did you find us?','您是如何找到我们的？'],
+  ['#label-logement','text','Type de logement','Type of accommodation','住房类型'],
+  ['#label-motif','text','Pourquoi vous louez ?','Why are you renting?','您为什么租赁？'],
   /* RGPD */
   ['#label-rgpd','html','J\'accepte que mes coordonnées servent uniquement à organiser ma livraison. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Politique de confidentialité</a>','I agree my details are used solely to organise my delivery. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Privacy policy</a>','我同意我的个人信息仅用于安排配送。<a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">隐私政策</a>'],
   ['#label-mkt','html','J\'accepte de recevoir les offres et actualités Loc\'Air par email. <span style="color:var(--grey2);font-size:10px">Optionnel · désinscription en 1 clic</span>','I agree to receive Loc\'Air offers and news by email. <span style="color:var(--grey2);font-size:10px">Optional · unsubscribe in 1 click</span>','我同意通过邮件接收Loc\'Air的优惠和资讯。<span style="color:var(--grey2);font-size:10px">可选 · 一键退订</span>'],
@@ -6707,6 +6709,7 @@ const LANG_MAP=[
   /* chat widget */
   ['.cw-st','text','● En ligne','● Online','● 在线'],
   /* cookie bar */
+  ['.cookie-bar a','text','politique de confidentialité','privacy policy','隐私政策'],
   ['.cookie-bar p','text','Nous utilisons des cookies pour faire fonctionner ce site, mesurer son audience et personnaliser son contenu. Vous pouvez les accepter, les refuser ou gérer vos préférences de confidentialité à tout moment.','We use cookies to operate this site, measure its audience and personalise its content. You can accept, reject or manage your privacy preferences at any time.','我们使用Cookie来运营本网站、衡量其受众并个性化内容。您可以随时接受、拒绝或管理您的隐私偏好。'],
   /* modal step 2 */
   ['.prod-card-model','text','Climatiseur mobile','Mobile AC unit','移动空调'],
@@ -6725,8 +6728,8 @@ const LANG_MAP=[
   /* modal step 3 */
   ['#kit-badge-prefix','text','Kit de calfeutrage ','Weatherstripping kit ','密封套件 '],
   ['#ic-self .install-card-price','text','Gratuit','Free','免费'],
-  ['.install-kit-note','text','Dans les deux cas, le kit de calfeutrage est fourni. Livraison & récupération : 35 € (Nice et alentours) ou 95 € hors zone.','In both cases, the weatherstripping kit is provided. Delivery & collection: €35 (Nice area) or €95 outside zone.'],
-  ['#ouv-group-label','html','Type de fenêtre <span class="req">*</span>','Window type <span class="req">*</span>'],
+  ['.install-kit-note','text','Dans les deux cas, le kit de calfeutrage est fourni. Livraison & récupération : 35 € (Nice et alentours) ou 95 € hors zone.','In both cases, the weatherstripping kit is provided. Delivery & collection: €35 (Nice area) or €95 outside zone.','两种情况均提供密封套件。配送 & 取回：35€（尼斯及周边）或95€（范围外）。'],
+  ['#ouv-group-label','html','Type de fenêtre <span class="req">*</span>','Window type <span class="req">*</span>','窗户类型 <span class="req">*</span>'],
   ['#lbl-back-s3','text','Durée','Duration','租期'],
   ['#s3 .btn-next','text','Continuer →','Continue →','继续 →'],
   /* modal step 4 */
@@ -8194,7 +8197,7 @@ function copyReferral(){
 function shareReferral(){
   const code=document.getElementById('ref-code')?.textContent||'LOCAIR10';
   const url=window.CITY?.url||'https://www.locair.fr/';
-  const text=`J'ai loué un climatiseur chez Loc'Air à Nice — livré et installé en 24h, Aucune caution. Utilisez mon code ${code} pour obtenir 10€ de réduction.`;
+  const text=_lang==='en'?`I rented an AC from Loc'Air in Nice — delivered and installed in 24h, no deposit. Use my code ${code} to get €10 off.`:_lang==='zh'?`我在尼斯Loc'Air租了空调——24小时内送达并安装，零押金。使用我的推荐码 ${code} 可优惠10€。`:`J'ai loué un climatiseur chez Loc'Air à Nice — livré et installé en 24h, Aucune caution. Utilisez mon code ${code} pour obtenir 10€ de réduction.`;
   if(navigator.share){navigator.share({title:"Loc'Air — climatiseur Nice",text,url});}
   else{navigator.clipboard?.writeText(text).then(()=>alert(_lang==='en'?'Message copied!':_lang==='zh'?'消息已复制！':'Message copié !')).catch(()=>{});}
   if(typeof gtag==='function')gtag('event','referral_share',{code});
