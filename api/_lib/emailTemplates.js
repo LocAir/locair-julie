@@ -56,7 +56,7 @@ function tplConfirmation(ctx) {
       <strong>Unit:</strong> ${escHtml(ctx.modeleClimatiseur)}<br/>
       <strong>Installation:</strong> ${escHtml(ctx.installation || 'Self-install')}<br/>
       <strong>Amount:</strong> ${escHtml(ctx.montantFmt)}</p>
-      <p style="font-size:13px;color:#444">Our team will call you on the morning of delivery to confirm the exact time slot. The technician will call you <strong>30 minutes before arriving</strong>.</p>`,
+      <p style="font-size:13px;color:#444">A Loc'Air agent will contact you <strong>30 minutes before arriving</strong>.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
   });
   if (l === 'zh') return wrap({
@@ -71,7 +71,7 @@ function tplConfirmation(ctx) {
       <strong>设备：</strong>${escHtml(ctx.modeleClimatiseur)}<br/>
       <strong>安装方式：</strong>${escHtml(ctx.installation || '自行安装')}<br/>
       <strong>金额：</strong>${escHtml(ctx.montantFmt)}</p>
-      <p style="font-size:13px;color:#444">我们的团队将在配送当天早上致电确认具体时间。技术员将在<strong>到达前30分钟</strong>致电通知您。</p>`,
+      <p style="font-size:13px;color:#444">Loc'Air 工作人员将在<strong>到达前30分钟</strong>联系您。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
   });
   return wrap({
@@ -86,7 +86,7 @@ function tplConfirmation(ctx) {
       <strong>Climatiseur :</strong> ${escHtml(ctx.modeleClimatiseur)}<br/>
       <strong>Installation :</strong> ${escHtml(ctx.installation || 'Autonome')}<br/>
       <strong>Montant :</strong> ${escHtml(ctx.montantFmt)}</p>
-      <p style="font-size:13px;color:#444">Notre équipe vous confirmera le créneau exact par appel téléphonique le matin de la livraison. Le technicien vous appellera <strong>30 min avant d'arriver</strong>.</p>`,
+      <p style="font-size:13px;color:#444">L'agent Loc'Air vous contactera <strong>30 min avant d'arriver</strong>.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
   });
 }
