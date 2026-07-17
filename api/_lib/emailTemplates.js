@@ -183,16 +183,17 @@ function tplProlongConfirmation({ prenom, nom, jours, date_recuperation, creneau
 
 // Contrat + facture de location (voir _lib/documents.js) — envoyé une seule
 // fois, juste après confirmation du paiement d'une réservation standard.
-function tplContratFacture({ prenom, ref, viewUrlContrat, viewUrlFacture }) {
+// Un seul lien de consultation (au lieu d'un lien par document) : il pointe
+// vers /api/documents-view, une page qui regroupe le contrat ET la facture.
+function tplContratFacture({ prenom, ref, viewUrlDocuments }) {
   return wrap({
     title: '📄 Vos documents Loc\'Air',
     intro: `Dossier ${escHtml(ref)}`,
     bodyHtml: `
       <p>Bonjour ${escHtml(prenom || '')},</p>
       <p>Voici votre contrat de location et votre facture, en pièces jointes de cet email (PDF).</p>
-      <div class="box"><p style="margin:0 0 8px"><a href="${viewUrlContrat}" style="color:#1b3a5f;font-weight:700">Consulter le contrat en ligne →</a></p>
-      <p style="margin:0"><a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">Consulter la facture en ligne →</a></p></div>
-      <p style="font-size:13px;color:#888">Conservez cet email — ces documents restent consultables via les liens ci-dessus.</p>`,
+      <div class="box"><p style="margin:0"><a href="${viewUrlDocuments}" style="color:#1b3a5f;font-weight:700">Consulter mes documents en ligne →</a></p></div>
+      <p style="font-size:13px;color:#888">Conservez cet email — ces documents restent consultables via le lien ci-dessus.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
   });
 }

@@ -27,12 +27,12 @@ function invoiceNumber(annee, n) {
 // déjà pour cette réservation, ne régénère ni ne renvoie rien (protège contre
 // une redélivrance du webhook Stripe).
 //
-// Verrou volontaire : la mise en page du contrat/facture (_lib/pdf.js) est
-// encore le modèle générique par défaut, en attente des modèles réels
-// (Contrat de location Loc'Air / Facture Loc'Air) à fournir par le
-// propriétaire. Tant que DOCUMENTS_ENABLED n'est pas explicitement à 'true'
-// dans les variables d'environnement Vercel, cette fonction ne fait rien —
-// aucun document n'est généré ni envoyé, même si le code est en prod.
+// Verrou volontaire : tant que DOCUMENTS_ENABLED n'est pas explicitement à
+// 'true' dans les variables d'environnement Vercel, cette fonction ne fait
+// rien — aucun document n'est généré ni envoyé, même si le code est en prod.
+// (Les modèles réels du contrat et de la facture, fournis par le
+// propriétaire, sont en place dans _lib/pdf.js depuis le 2026-07-16 — ce
+// verrou ne sert plus qu'à activer l'envoi le jour choisi.)
 async function generateAndSendDocuments(supabase, resa) {
   if (process.env.DOCUMENTS_ENABLED !== 'true') return;
   if (!resa || !resa.id) return;
@@ -98,8 +98,10 @@ async function generateAndSendDocuments(supabase, resa) {
     const contratEmailHtml = tplContratFacture({
       prenom: resa.prenom,
       ref:    resa.ref,
-      viewUrlContrat: `${base}/api/document-view?token=${contratToken}`,
-      viewUrlFacture: `${base}/api/document-view?token=${factureToken}`,
+      // Un seul lien pour tout consulter (contrat + facture), plutôt que 2
+      // liens séparés — voir api/documents-view.js pour la page qui les
+      // regroupe derrière ce lien unique.
+      viewUrlDocuments: `${base}/api/documents-view?contrat=${contratToken}&facture=${factureToken}`,
     }) + signatureFooterHtml(sig);
     await sendBrevoEmail({
       to:      resa.email,
