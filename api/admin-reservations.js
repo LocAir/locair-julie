@@ -29,7 +29,7 @@ module.exports = async (req, res) => {
     if (action === 'list') {
       const { data, error } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, logement, parrain_code, partenaire_commission_cents, motifs, mkt_consent, created_at, partenaire:partenaires ( nom )')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, logement, parrain_code, partenaire_commission_cents, motifs, mkt_consent, created_at, partenaire:partenaires ( nom ), reservation_appareils ( appareil:appareils ( numero ) )')
         .eq('city_id', city.id)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -64,6 +64,11 @@ module.exports = async (req, res) => {
       for (const r of reservations) {
         r.statut_commande = computeOrderStatus(r, livraisonsByResa.get(r.id) || [], incidentResaIds.has(r.id));
         r.appareils_en_attente_validation = appareilsEnAttenteResaIds.has(r.id);
+        // Numéros d'appareil assignés — utilisé par la vue "par date" (quel
+        // climatiseur part/revient tel jour), voir renderReservationsCalendrier().
+        r.appareil_numeros = (r.reservation_appareils || [])
+          .map(ra => ra.appareil?.numero).filter(n => n != null).sort((a, b) => a - b);
+        delete r.reservation_appareils;
       }
       await Promise.all(reservations.map(r =>
         syncStatutDetaille(supabase, r.id, computeOrderStatus(r, livraisonsByResa.get(r.id) || [], false))
