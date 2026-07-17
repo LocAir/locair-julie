@@ -3455,6 +3455,16 @@ async function openChangeAppareilModal(livraisonId){
   overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
+  // Si l'appareil demandé est déjà retenu par une autre réservation, l'API
+  // renvoie 409 + les infos du conflit au lieu de bloquer — on repropose
+  // alors un échange (swap:true) après confirmation explicite, plutôt que
+  // de forcer l'admin à repasser par la fiche de l'autre client.
+  async function submitReassign(numero, swap){
+    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'reassign', reservation_id:m.reservation.id, appareil_numero:numero, swap:swap||undefined})});
+    const d = await r.json();
+    if(!r.ok){ const err = new Error(d.error||'Erreur'); err.conflit = d.conflit; throw err; }
+    return d;
+  }
   okBtn.onclick = async () => {
     const errEl = document.getElementById('ca-err');
     errEl.style.display = 'none';
@@ -3462,13 +3472,26 @@ async function openChangeAppareilModal(livraisonId){
     if(!numero){ errEl.textContent = 'Choisis un climatiseur.'; errEl.style.display = 'block'; return; }
     okBtn.disabled = true;
     try{
-      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'reassign', reservation_id:m.reservation.id, appareil_numero:numero})});
-      const d = await r.json();
-      if(!r.ok) throw new Error(d.error||'Erreur');
+      await submitReassign(numero, false);
       closeModal();
       loadLivraisons();
       showToast(`Climatiseur n°${numero} affecté`, 'success');
     }catch(e){
+      if(e.conflit){
+        closeModal();
+        confirmAction(
+          `Le climatiseur n°${numero} est actuellement affecté à ${e.conflit.client||'une autre réservation'} (${e.conflit.ref||'sans réf.'}). Veux-tu échanger les deux climatiseurs ?`,
+          async () => {
+            try{
+              await submitReassign(numero, true);
+              loadLivraisons();
+              showToast(`Climatiseurs échangés — n°${numero} affecté`, 'success');
+            }catch(e2){ showToast(e2.message, 'error'); }
+          },
+          { yesLabel: 'Échanger', onCancel: () => openChangeAppareilModal(livraisonId) }
+        );
+        return;
+      }
       okBtn.disabled = false;
       errEl.textContent = e.message; errEl.style.display = 'block';
     }
