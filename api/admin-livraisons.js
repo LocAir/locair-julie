@@ -3,6 +3,9 @@ const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
+const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
+const { sendScenarioEmail } = require('./_lib/emailEngine');
+const { setAppareilsStatutForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
 
 const MEDIA_COLUMN = {
   photo_depart:       'photo_depart_path',
@@ -323,6 +326,79 @@ module.exports = async (req, res) => {
       }
 
       return res.status(200).json({ ok: true, reset: patch.statut === 'a_faire' });
+    }
+
+    // Clôture forcée par l'admin (Module 9) : le transporteur a fait la
+    // mission sur le terrain mais n'a pas (pu) la clôturer lui-même dans son
+    // appli (oubli, téléphone en panne...). Reproduit les mêmes effets que la
+    // validation normale côté transporteur (transporteur-action.js,
+    // livraison_ok/retour_ok/changement_ok/autre_ok) — paiement au barème,
+    // synchronisation du parc, emails de scénario — mais sans exiger la
+    // checklist ni les photos, puisque l'admin agit sur la base d'un
+    // constat déjà fait (ex. appel client, message du transporteur).
+    if (action === 'force_complete') {
+      const livraisonId    = parseInt(body.livraison_id);
+      const transporteurId = parseInt(body.transporteur_id);
+      if (!livraisonId || !transporteurId) return res.status(400).json({ error: 'Paramètres manquants' });
+
+      const liv = await loadLivraisonScoped(
+        supabase, city.id, livraisonId,
+        'id, type, statut, reservation_id, transporteur_id, montant_manuel, montant_du_cents, incident_id'
+      );
+      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
+      if (['fait', 'annule'].includes(liv.statut)) {
+        return res.status(400).json({ error: 'Mission déjà terminée ou annulée' });
+      }
+      const { data: transp } = await supabase.from('transporteurs').select('id, nom').eq('id', transporteurId).eq('city_id', city.id).maybeSingle();
+      if (!transp) return res.status(400).json({ error: 'Transporteur invalide' });
+
+      const etatMaterielValues = Object.keys(ETAT_MATERIEL_TO_APPAREIL_STATUT);
+      if (liv.type === 'recuperation' && !etatMaterielValues.includes(body.etat_materiel)) {
+        return res.status(400).json({ error: 'État du matériel requis pour clôturer une récupération' });
+      }
+
+      let montantDu = liv.montant_du_cents;
+      if (liv.type !== 'autre' && !liv.montant_manuel) {
+        const { data: resa } = await supabase.from('reservations').select('installation, city_id').eq('id', liv.reservation_id).maybeSingle();
+        const tarifs = await getBaremeForCity(supabase, resa?.city_id || city.id);
+        montantDu = computeBareme(liv.type, resa?.installation, tarifs);
+      }
+
+      const update = {
+        statut: 'fait', fait_at: new Date().toISOString(),
+        montant_du_cents: montantDu, transporteur_id: transporteurId,
+      };
+      if (liv.type === 'recuperation') {
+        update.etat_materiel = body.etat_materiel;
+        update.etat_materiel_commentaire = (body.etat_materiel_commentaire || '').trim().slice(0, 1000) || 'Mission clôturée manuellement par l\'administrateur.';
+      }
+      await supabase.from('livraisons').update(update).eq('id', livraisonId);
+      if (liv.incident_id) {
+        await supabase.from('incidents').update({ statut: 'resolu' }).eq('id', liv.incident_id).in('statut', INCIDENT_OPEN_STATUSES);
+      }
+
+      if (liv.type === 'livraison') {
+        await setAppareilsStatutForReservation(supabase, liv.reservation_id, 'loue', {
+          typeEvenement: 'installation', livraisonId, utilisateur: 'admin',
+        });
+        try { await sendScenarioEmail(supabase, { reservationId: liv.reservation_id, scenario: 'post_installation' }); }
+        catch (e) { console.error('[Email post_installation]', e.message); }
+      } else if (liv.type === 'recuperation') {
+        await setAppareilsStatutForReservation(supabase, liv.reservation_id, ETAT_MATERIEL_TO_APPAREIL_STATUT[body.etat_materiel], {
+          typeEvenement: 'recuperation', livraisonId, utilisateur: 'admin',
+          commentaire: update.etat_materiel_commentaire,
+        });
+        await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id);
+        try { await sendScenarioEmail(supabase, { reservationId: liv.reservation_id, scenario: 'fin_location' }); }
+        catch (e) { console.error('[Email fin_location]', e.message); }
+      }
+
+      await notifyTransporteur(supabase, transporteurId, {
+        type: 'modification', message: 'Une mission a été clôturée pour toi par l\'administrateur.',
+        livraisonId, tag: 'modification',
+      });
+
+      return res.status(200).json({ ok: true, montant_du_cents: montantDu });
     }
 
     // Équivalent admin du bouton "⏪ Faire plus tard" côté transporteur —
