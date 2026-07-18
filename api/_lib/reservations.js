@@ -2,6 +2,7 @@ const { notifyTransporteur } = require('./transporteurNotif');
 const { extractPostalCode } = require('./postal');
 const { notifyIfSoldOut } = require('./city');
 const { recordMouvement } = require('./stockMouvements');
+const { addDays } = require('./dates');
 
 function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
@@ -252,11 +253,16 @@ async function confirmReservation(supabase, resa) {
     // par le client (la récupération reste "coordonnée par l'équipe", jamais
     // choisie côté site — pas de créneau à pré-remplir). Pour une prolongation,
     // resa.creneau = créneau de RÉCUPÉRATION choisi par le client.
+    //
+    // La récupération est toujours programmée le lendemain (J+1) de la fin de
+    // location, jamais le jour même : le client profite de son climatiseur
+    // jusqu'au bout de sa réservation.
+    const dateRecuperation = addDays(resa.date_fin, 1);
     const rows = resa.source === 'site_prolongation'
-      ? [{ reservation_id: resa.id, type: 'recuperation', date_prevue: resa.date_fin, creneau: resa.creneau || null }]
+      ? [{ reservation_id: resa.id, type: 'recuperation', date_prevue: dateRecuperation, creneau: resa.creneau || null }]
       : [
           { reservation_id: resa.id, type: 'livraison',    date_prevue: resa.date_debut, creneau: resa.creneau || null },
-          { reservation_id: resa.id, type: 'recuperation', date_prevue: resa.date_fin },
+          { reservation_id: resa.id, type: 'recuperation', date_prevue: dateRecuperation },
         ];
 
     // Répartition auto uniquement pour ce qui vient vraiment du site (paiement

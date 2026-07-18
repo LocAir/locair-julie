@@ -60,6 +60,7 @@ module.exports = async (req, res) => {
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
             id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, instructions_acces, masquee, hors_zone,
+            date_debut, date_fin,
             reservation_appareils ( appareil:appareils ( numero, reference ) )
           )
         `;

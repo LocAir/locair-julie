@@ -68,6 +68,7 @@ module.exports = async (req, res) => {
         probleme_type, probleme_description,
         reservation:reservations (
           prenom, nom, tel, tel_secondaire, type_client, raison_sociale, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, quantite, instructions_acces, city_id,
+          date_debut, date_fin,
           reservation_appareils ( appareil:appareils ( numero ) ),
           client:clients ( acces_difficile )
         )
