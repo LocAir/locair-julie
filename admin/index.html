@@ -4370,7 +4370,10 @@ function transporteurRevenusCardHtml(t){
         <span class="row-title" style="font-size:13px">${m.type==='livraison'?'📦 Livraison':'🔄 Récupération'} — ${escHtml(m.client||'—')}</span>
         <span class="chip ${PAIEMENT_MISSION_CHIP[m.statut_paiement]||''}">${PAIEMENT_MISSION_LABEL[m.statut_paiement]||m.statut_paiement}</span>
       </div>
-      <div class="row-meta">${m.fait_at?frDate(m.fait_at.slice(0,10)):'—'} · ${euros(m.montant_cents)}</div>
+      <div class="row-meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>${m.fait_at?frDate(m.fait_at.slice(0,10)):'—'} · ${euros(m.montant_cents)}</span>
+        ${m.statut_paiement!=='paye'?`<button class="btn btn-grey" style="padding:2px 9px;font-size:11px" onclick="modifierMontantMission(${m.id},${m.montant_cents})">✏️ Modifier</button>`:''}
+      </div>
     </div>`).join('') : '';
   // Validation humaine obligatoire avant paiement (Partie 9) : ce qui est "à
   // valider" n'est pas encore payable, ce qui est "validé" l'est.
@@ -4393,6 +4396,25 @@ function transporteurRevenusCardHtml(t){
         <div style="margin-top:12px">${missionsHtml}</div>
       </details>`:'<p class="row-meta" style="margin-top:8px">Aucune mission terminée pour l\'instant.</p>'}
     </div>`;
+}
+function modifierMontantMission(livraisonId, currentCents){
+  promptAction({
+    title: '💶 Modifier le montant de cette mission',
+    label: 'Montant payé au transporteur (€)',
+    value: currentCents ? String(currentCents/100) : '',
+    placeholder: 'Ex. 30', type: 'number',
+  }, async (val) => {
+    if(val === '' || val == null) return;
+    const cents = Math.round((parseFloat(val)||0)*100);
+    if(!(cents >= 0)) return showToast('Montant invalide', 'error');
+    try{
+      const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'modifier_montant', livraison_id:livraisonId, montant_cents:cents})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      TAB_AUTO_REFRESH[CURRENT_TAB]?.();
+      showToast(`Montant mis à jour : ${euros(cents)}`, 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
 }
 function validerRemuneration(id, nom, montantCents){
   confirmAction(`Valider ${euros(montantCents)} de missions pour ${nom} ? Elles deviendront payables (versement séparé).`, async () => {
