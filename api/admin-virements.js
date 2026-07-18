@@ -86,10 +86,12 @@ module.exports = async (req, res) => {
     }
 
     // Correction manuelle d'un montant après coup (Module 9) — ex. mission mal
-    // tarifée, oubli d'un supplément. Autorisée tant que ce n'est pas encore
-    // versé (une fois payé, le montant réel du virement fait foi et ne doit
-    // plus bouger silencieusement). montant_manuel évite qu'un recalcul
-    // ultérieur écrase cette correction (voir transporteur-action.js).
+    // tarifée, oubli d'un supplément. Autorisée même sur une mission déjà
+    // versée (voulu explicitement par Aly) : le total "déjà versé" affiché
+    // ici reflète alors la correction, indépendamment du montant réellement
+    // transféré en banque à l'époque — à Aly de recouper si besoin.
+    // montant_manuel évite qu'un recalcul ultérieur écrase cette correction
+    // (voir transporteur-action.js).
     if (action === 'modifier_montant') {
       const livraisonId  = parseInt(body.livraison_id);
       const montantCents = parseInt(body.montant_cents);
@@ -97,11 +99,10 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Paramètres invalides' });
       }
       const { data: liv } = await supabase
-        .from('livraisons').select('id, transporteur_id, statut, paye')
+        .from('livraisons').select('id, transporteur_id, statut')
         .eq('id', livraisonId).maybeSingle();
       if (!liv || !transpIds.includes(liv.transporteur_id)) return res.status(404).json({ error: 'Mission introuvable' });
       if (liv.statut !== 'fait') return res.status(400).json({ error: 'Mission non terminée' });
-      if (liv.paye) return res.status(400).json({ error: 'Déjà versé : montant non modifiable' });
 
       await supabase.from('livraisons').update({ montant_du_cents: montantCents, montant_manuel: true }).eq('id', livraisonId);
       return res.status(200).json({ ok: true, montant_cents: montantCents });

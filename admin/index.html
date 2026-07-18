@@ -4372,7 +4372,7 @@ function transporteurRevenusCardHtml(t){
       </div>
       <div class="row-meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span>${m.fait_at?frDate(m.fait_at.slice(0,10)):'—'} · ${euros(m.montant_cents)}</span>
-        ${m.statut_paiement!=='paye'?`<button class="btn btn-grey" style="padding:2px 9px;font-size:11px" onclick="modifierMontantMission(${m.id},${m.montant_cents})">✏️ Modifier</button>`:''}
+        <button class="btn btn-grey" style="padding:2px 9px;font-size:11px" onclick="modifierMontantMission(${m.id},${m.montant_cents},${m.statut_paiement==='paye'})">✏️ Modifier</button>
       </div>
     </div>`).join('') : '';
   // Validation humaine obligatoire avant paiement (Partie 9) : ce qui est "à
@@ -4397,10 +4397,12 @@ function transporteurRevenusCardHtml(t){
       </details>`:'<p class="row-meta" style="margin-top:8px">Aucune mission terminée pour l\'instant.</p>'}
     </div>`;
 }
-function modifierMontantMission(livraisonId, currentCents){
+function modifierMontantMission(livraisonId, currentCents, dejaVerse){
   promptAction({
     title: '💶 Modifier le montant de cette mission',
-    label: 'Montant payé au transporteur (€)',
+    label: dejaVerse
+      ? 'Montant payé au transporteur (€) — déjà versé : ça ne change pas le virement bancaire déjà fait, juste ce que l\'app affiche.'
+      : 'Montant payé au transporteur (€)',
     value: currentCents ? String(currentCents/100) : '',
     placeholder: 'Ex. 30', type: 'number',
   }, async (val) => {
