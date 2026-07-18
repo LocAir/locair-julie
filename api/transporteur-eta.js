@@ -11,6 +11,12 @@ const { computeEtaMinutes } = require('./_lib/routing');
 // pré-rempli par une estimation réelle. Renvoie toujours 200 (même en cas
 // d'échec, minutes:null) : ne doit jamais empêcher le livreur d'envoyer son
 // SMS, seulement enrichir le message quand c'est possible.
+//
+// Marge de sécurité : le temps Google Routes est une estimation de trajet
+// pur, sans compter le temps de se garer, descendre du véhicule, etc. — on
+// ajoute systématiquement 15 min pour éviter d'annoncer une heure trop
+// optimiste au client.
+const MARGE_SECURITE_MINUTES = 15;
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
@@ -36,7 +42,7 @@ module.exports = async (req, res) => {
     if (!destination) return res.status(200).json({ minutes: null });
 
     const minutes = await computeEtaMinutes({ lat, lng }, destination);
-    return res.status(200).json({ minutes });
+    return res.status(200).json({ minutes: minutes == null ? null : minutes + MARGE_SECURITE_MINUTES });
   } catch (err) {
     console.error('[Transporteur ETA]', err.message);
     return res.status(200).json({ minutes: null });
