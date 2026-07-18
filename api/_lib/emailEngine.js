@@ -1,5 +1,6 @@
 const { sendBrevoEmail } = require('./brevo');
 const tpl = require('./emailTemplates');
+const { addDays } = require('./dates');
 
 function fmtDate(iso, lang) {
   if (!iso) return '—';
@@ -61,6 +62,11 @@ async function buildEmailContext(supabase, reservation) {
     lang,
     dateDebutFmt: fmtDate(reservation.date_debut, lang),
     dateFinFmt:   fmtDate(reservation.date_fin, lang),
+    // La mission de récupération réelle est le lendemain de date_fin (voir
+    // confirmReservation dans _lib/reservations.js) — utilisé par le rappel
+    // rappel_recuperation, qui part le jour de date_fin pour annoncer le
+    // passage du technicien "demain".
+    dateRecupFmt: fmtDate(reservation.date_fin ? addDays(reservation.date_fin, 1) : null, lang),
     montantFmt:   ((reservation.prix_total_cents || 0) / 100).toFixed(2).replace('.', ',') + ' €',
     modeleClimatiseur: appareil?.reference || "Climatiseur mobile Loc'Air",
     lienEspaceClient: 'https://www.locair.fr/#contact',

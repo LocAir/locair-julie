@@ -20,6 +20,7 @@ function fakeReservationCtx() {
     installation: 'Autonome',
     dateDebutFmt: 'lundi 20 juillet',
     dateFinFmt: 'lundi 27 juillet',
+    dateRecupFmt: 'mardi 28 juillet',
     montantFmt: '140,00 €',
     modeleClimatiseur: 'Climatiseur mobile Rowenta 10000 BTU',
     lienEspaceClient: 'https://www.locair.fr/#contact',

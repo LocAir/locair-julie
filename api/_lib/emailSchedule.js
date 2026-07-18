@@ -39,7 +39,11 @@ function scenariosDueToday(reservation, todayISO) {
   if (duree > 4 && (dFin === 3 || dFin === 2)) due.push('avant_fin_location');
   // Rappel récupération (conservé de l'existant, hors des 7 scénarios
   // demandés mais utile opérationnellement — voir rapport de fin de module).
-  if (dFin === 1) due.push('rappel_recuperation');
+  // La mission de récupération elle-même est programmée à date_fin + 1 jour
+  // (jamais le jour même — voir confirmReservation dans _lib/reservations.js),
+  // donc le rappel "la veille de la récupération" part le jour de date_fin
+  // (dFin===0), pas la veille de date_fin.
+  if (dFin === 0) due.push('rappel_recuperation');
   return due;
 }
 
@@ -66,7 +70,7 @@ function upcomingScenariosForReservation(reservation, todayISO) {
     { scenario: 'preparation_j3',      date: scenarioDate(reservation.date_debut, 3) },
     { scenario: 'rappel_j1',           date: scenarioDate(reservation.date_debut, 1) },
     ...(duree > 4 ? [{ scenario: 'avant_fin_location', date: scenarioDate(reservation.date_fin, 3) }] : []),
-    { scenario: 'rappel_recuperation', date: scenarioDate(reservation.date_fin, 1) },
+    { scenario: 'rappel_recuperation', date: scenarioDate(reservation.date_fin, 0) },
   ];
   return candidats.filter(c => c.date >= todayISO);
 }

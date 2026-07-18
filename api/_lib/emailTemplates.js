@@ -295,7 +295,7 @@ function tplRappelRecuperation(ctx) {
     intro: `Booking ref ${ref}`,
     bodyHtml: `
       <p>Hello ${p},</p>
-      <p>Your Loc'Air rental ends tomorrow (<strong>${escHtml(ctx.dateFinFmt)}</strong>). Our technician will come to collect the unit.</p>
+      <p>Your Loc'Air rental ends today (<strong>${escHtml(ctx.dateFinFmt)}</strong>). Our technician will come to collect the unit tomorrow (<strong>${escHtml(ctx.dateRecupFmt)}</strong>).</p>
       <div class="box"><p style="margin:0 0 6px"><strong>Address:</strong> ${escHtml(ctx.adresse)}</p><p style="margin:0">We will call you in the morning to confirm the exact time slot.</p></div>
       <p>Please have the unit unplugged and the duct rolled up if possible.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Contact us',
@@ -305,7 +305,7 @@ function tplRappelRecuperation(ctx) {
     intro: `订单编号 ${ref}`,
     bodyHtml: `
       <p>您好 ${p}，</p>
-      <p>您的 Loc'Air 租赁明天结束（<strong>${escHtml(ctx.dateFinFmt)}</strong>）。我们的技术员将前来取回设备。</p>
+      <p>您的 Loc'Air 租赁今天结束（<strong>${escHtml(ctx.dateFinFmt)}</strong>）。我们的技术员明天（<strong>${escHtml(ctx.dateRecupFmt)}</strong>）将前来取回设备。</p>
       <div class="box"><p style="margin:0 0 6px"><strong>地址：</strong>${escHtml(ctx.adresse)}</p><p style="margin:0">我们将于当天早上来电确认具体时间。</p></div>
       <p>请提前拔掉电源，如可能请将排风管卷好。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '联系我们',
@@ -315,7 +315,7 @@ function tplRappelRecuperation(ctx) {
     intro: `Dossier ${ref}`,
     bodyHtml: `
       <p>Bonjour ${p},</p>
-      <p>Votre location Loc'Air se termine demain (<strong>${escHtml(ctx.dateFinFmt)}</strong>). Notre technicien viendra récupérer l'appareil.</p>
+      <p>Votre location Loc'Air se termine aujourd'hui (<strong>${escHtml(ctx.dateFinFmt)}</strong>). Notre technicien viendra récupérer l'appareil demain (<strong>${escHtml(ctx.dateRecupFmt)}</strong>).</p>
       <div class="box"><p style="margin:0 0 6px"><strong>Adresse :</strong> ${escHtml(ctx.adresse)}</p><p style="margin:0">Nous vous appellerons le matin pour confirmer le créneau.</p></div>
       <p>Merci de préparer l'appareil (débranché, gaine récupérée si possible).</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Nous contacter',
