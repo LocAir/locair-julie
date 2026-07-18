@@ -4129,7 +4129,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
                   <circle cx="100" cy="77" r="11" fill="rgba(27,58,95,.1)" stroke="#1b3a5f" stroke-width="1.5"/>
                   <circle cx="100" cy="77" r="5" fill="#1b3a5f" opacity=".4"/>
                   <circle cx="130" cy="57" r="4" fill="rgba(197,169,108,.7)" stroke="#c5a96c" stroke-width="1"/>
-                  <text x="100" y="126" font-family="Inter,system-ui,sans-serif" font-size="10" fill="#6b7785" text-anchor="middle" font-weight="500">Envoyer une photo</text>
+                  <text id="svg-send-photo" x="100" y="126" font-family="Inter,system-ui,sans-serif" font-size="10" fill="#6b7785" text-anchor="middle" font-weight="500">Envoyer une photo</text>
                 </svg>
               </div>
               <div class="win-label">
@@ -5811,7 +5811,7 @@ function buildRecap(){
         <img src="hero-clim.jpg" alt="" class="rc-prod-banner-img" loading="lazy">
         <div>
           <div class="rc-prod-banner-name">${isEN?'Professional Mobile AC':isZH?'专业移动空调':'Climatiseur mobile professionnel'}</div>
-          <div class="rc-prod-banner-ref">Rowenta / Frico · jusqu'à 12 000 BTU <span class="rc-energy-badge">${isEN?'A-rated':isZH?'A级能效':'Énergie A'}</span></div>
+          <div class="rc-prod-banner-ref">Rowenta / Frico · ${isZH?'最多12 000 BTU':isEN?'up to 12,000 BTU':"jusqu'\u00e0 12\xa0000 BTU"} <span class="rc-energy-badge">${isEN?'A-rated':isZH?'A级能效':'Énergie A'}</span></div>
         </div>
       </div>
       <dl class="rc-details">
@@ -5894,15 +5894,18 @@ function animateSuccessTimeline(){
       const MONTHS=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
       const dt=new Date(Date.UTC(+y,+m-1,+d));
       const cren=document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'';
-      const crenTxt=cren?' entre '+cren:'';
       if(_lang==='en'){
         const DAYS_EN_L=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
         const MONTHS_EN_L=['January','February','March','April','May','June','July','August','September','October','November','December'];
-        dd.textContent='Delivery '+DAYS_EN_L[dt.getUTCDay()]+' '+parseInt(d)+' '+MONTHS_EN_L[dt.getUTCMonth()]+crenTxt+' · Technician calls 30 min before';
+        const crenEN=cren?' · '+cren:'';
+        dd.textContent='Delivery '+DAYS_EN_L[dt.getUTCDay()]+' '+parseInt(d)+' '+MONTHS_EN_L[dt.getUTCMonth()]+crenEN+' · Technician calls 30 min before';
       } else if(_lang==='zh') {
-        dd.textContent='配送：'+MONTHS[dt.getUTCMonth()]+parseInt(d)+'日 '+DAYS[dt.getUTCDay()]+crenTxt+' · 技术员提前30分钟来电';
+        const DAYS_ZH=['周日','周一','周二','周三','周四','周五','周六'];
+        const crenZH=cren?' · '+cren:'';
+        dd.textContent='配送：'+_MONTHS_LONG_ZH[dt.getUTCMonth()]+parseInt(d)+'日 '+DAYS_ZH[dt.getUTCDay()]+crenZH+' · 技术员提前30分钟来电';
       } else {
-        dd.textContent='Livraison le '+DAYS[dt.getUTCDay()]+' '+d+' '+MONTHS[dt.getUTCMonth()]+crenTxt+' · Technicien appelle 30 min avant';
+        const crenFR=cren?' entre '+cren:'';
+        dd.textContent='Livraison le '+DAYS[dt.getUTCDay()]+' '+d+' '+MONTHS[dt.getUTCMonth()]+crenFR+' · Technicien appelle 30 min avant';
       }
     }
   },1800);
@@ -6817,6 +6820,13 @@ const LANG_MAP=[
   /* cancel form */
   ['#cancel-ref','ph','N° de dossier (LOC-...)','Booking ref (LOC-...)','订单编号 (LOC-...)'],
   ['#cancel-email','ph','Votre email','Your email','您的邮箱'],
+  /* SVG fenêtre — texte photo */
+  ['#svg-send-photo','text','Envoyer une photo','Send a photo','发送照片'],
+  /* prolongation — label CGV */
+  ['label[for="pe-cgv"]','html','J\'accepte les <a href="/cgv" style="color:var(--blue);text-decoration:underline;font-size:11px">conditions générales de vente</a> et la durée de prolongation choisie.','I accept the <a href="/cgv" style="color:var(--blue);text-decoration:underline;font-size:11px">T&Cs</a> and the chosen extension duration.','我接受<a href="/cgv" style="color:var(--blue);text-decoration:underline;font-size:11px">销售条款</a>及所选续租时长。'],
+  /* prolongation — aria stepper */
+  ['#prolong-minus','aria','Retirer un jour','Remove one day','减少一天'],
+  ['#prolong-plus','aria','Ajouter un jour','Add one day','增加一天'],
 ];
 
 // Sequences: [selector, 'text'|'html', [fr_vals], [en_vals]]
@@ -7693,10 +7703,16 @@ function confirmDurFree(){
 
 (function addReviewTypes(){
   const types={'Touzé Mike':'Particulier','Yummy g':'Famille','Lino Fabio':'Particulier','Giacomo Alessandro':'Particulier','Antonin Nafati':'Particulier','Noa':'Particulier','Melvyn Schwechler':'Court séjour','Anaïs Adamowicz':'Famille','Sofiane Kaci':'Urgence','Lucas Victor':'Airbnb','Lydie PAYET-LENORMAND':'Urgence','vincent mosca':'Particulier','Daniel Lopez Francia':'Particulier','Badou Thiam':'Urgence','Yassine Mohanito':'Particulier','Lauriane Hagelstein':'Particulier','Laurence Guyard':'Particulier'};
+  const labelsEN={'Particulier':'Individual','Famille':'Family','Court séjour':'Short stay','Urgence':'Emergency','Airbnb':'Airbnb'};
+  const labelsZH={'Particulier':'个人','Famille':'家庭','Court séjour':'短租','Urgence':'紧急','Airbnb':'Airbnb'};
   document.querySelectorAll('.rv-foot').forEach(foot=>{
     const name=foot.querySelector('.rv-name')?.textContent.trim();
-    const type=types[name];
-    if(type&&!foot.querySelector('.rv-type')){const s=document.createElement('span');s.className='rv-type';s.textContent=type;foot.appendChild(s);}
+    const typeFR=types[name];
+    if(typeFR&&!foot.querySelector('.rv-type')){
+      const s=document.createElement('span');s.className='rv-type';
+      s.textContent=_lang==='en'?(labelsEN[typeFR]||typeFR):_lang==='zh'?(labelsZH[typeFR]||typeFR):typeFR;
+      foot.appendChild(s);
+    }
   });
 })();
 
@@ -7772,7 +7788,7 @@ function goProlongStep(n){
   }
   if(n===4)buildProlongRecap();
   const mb=document.getElementById('modal-body');if(mb)mb.scrollTop=0;
-  document.title='Prolongation — Étape '+n+'/4 | Loc\'Air';
+  document.title=(_lang==='en'?'Extension — Step ':_lang==='zh'?'续租 — 第':'Prolongation — Étape ')+n+(_lang==='en'?'/4 | Loc\'Air':_lang==='zh'?'/4步 | Loc\'Air':'/4 | Loc\'Air');
 }
 
 function validateProlongStep3(){
@@ -8063,7 +8079,10 @@ function playInstallVideo(){
     // Placeholder : vidéo pas encore ajoutée
     const msg=document.createElement('div');
     msg.style.cssText='position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:20px';
-    msg.innerHTML='<div style="background:#fff;border-radius:20px;padding:32px 28px;max-width:340px;text-align:center;font-family:var(--body)"><p style="font-size:22px;margin-bottom:10px">🎬</p><h3 style="font-size:18px;font-weight:700;color:var(--black);margin-bottom:8px;font-family:var(--disp)">Vidéo en production</h3><p style="font-size:13px;color:var(--grey);line-height:1.6;margin-bottom:20px">Notre vidéo d\'installation sera disponible très prochainement. En attendant, appelez-nous pour toute question.</p><button onclick="this.closest(\'[style*=fixed]\').remove()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--body)">Fermer</button></div>';
+    const _vt=_lang==='en'?'Video coming soon':_lang==='zh'?'视频制作中':'Vidéo en production';
+    const _vb=_lang==='en'?'Our installation video will be available very soon. In the meantime, call us for any questions.':_lang==='zh'?'我们的安装视频即将上线。如有疑问，欢迎致电。':'Notre vidéo d\'installation sera disponible très prochainement. En attendant, appelez-nous pour toute question.';
+    const _vc=_lang==='en'?'Close':_lang==='zh'?'关闭':'Fermer';
+    msg.innerHTML='<div style="background:#fff;border-radius:20px;padding:32px 28px;max-width:340px;text-align:center;font-family:var(--body)"><p style="font-size:22px;margin-bottom:10px">🎬</p><h3 style="font-size:18px;font-weight:700;color:var(--black);margin-bottom:8px;font-family:var(--disp)">'+_vt+'</h3><p style="font-size:13px;color:var(--grey);line-height:1.6;margin-bottom:20px">'+_vb+'</p><button onclick="this.closest(\'[style*=fixed]\').remove()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--body)">'+_vc+'</button></div>';
     document.body.appendChild(msg);
     return;
   }
