@@ -72,4 +72,45 @@ function nearestNeighborOrder(matrix, startIndex, remainingIndexes) {
   return order;
 }
 
-module.exports = { computeRouteMatrix, nearestNeighborOrder };
+// Durée de trajet (minutes) entre un point de départ et un point d'arrivée
+// uniques — utilisé pour l'ETA envoyée au client ("j'arrive dans X minutes"),
+// contrairement à computeRouteMatrix() qui sert au tri de tournée par
+// distance et ne remonte pas la durée à l'appelant. Même API Google Routes,
+// mais un seul couple origine/destination au lieu d'une matrice N×N.
+async function computeEtaMinutes(origin, destination) {
+  const apiKey = process.env.GOOGLE_ROUTES_API_KEY;
+  if (!apiKey || !origin || !destination) return null;
+
+  const body = {
+    origins:      [{ waypoint: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } } }],
+    destinations: [{ waypoint: { location: { latLng: { latitude: destination.lat, longitude: destination.lng } } } }],
+    travelMode:   'DRIVE',
+    routingPreference: 'TRAFFIC_AWARE',
+  };
+
+  try {
+    const r = await fetch('https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix', {
+      method:  'POST',
+      headers: {
+        'Content-Type':      'application/json',
+        'X-Goog-Api-Key':    apiKey,
+        'X-Goog-FieldMask':  'originIndex,destinationIndex,duration,condition',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) { console.error('[Routes API — ETA]', r.status, await r.text()); return null; }
+    const elements = await r.json();
+    const el = (elements || []).find(e => e.condition === 'ROUTE_EXISTS');
+    if (!el || !el.duration) return null;
+
+    // duration est une chaîne du type "823s" (secondes, suffixe "s").
+    const seconds = parseInt(el.duration, 10);
+    if (!Number.isFinite(seconds)) return null;
+    return Math.max(1, Math.round(seconds / 60));
+  } catch (e) {
+    console.error('[Routes API — ETA]', e.message);
+    return null;
+  }
+}
+
+module.exports = { computeRouteMatrix, nearestNeighborOrder, computeEtaMinutes };

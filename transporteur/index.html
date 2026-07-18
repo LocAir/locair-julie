@@ -2042,8 +2042,8 @@ function prevenirRowHtml(m){
   const done = m.client_notifie;
   return `
     <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="media-btn ${done?'done':'pulse'}" style="margin-bottom:0" onclick="prevenirClientSms()"><span class="ic">📲</span> ${done?'Prévenu ✔':'SMS'}</button>
-      <button class="media-btn ${done?'done':''}" style="margin-bottom:0" onclick="prevenirClientWhatsapp()"><span class="ic">💬</span> WhatsApp</button>
+      <button class="media-btn ${done?'done':'pulse'}" style="margin-bottom:0" onclick="ouvrirPrevenirModal('sms')"><span class="ic">📲</span> ${done?'Prévenu ✔':'SMS'}</button>
+      <button class="media-btn ${done?'done':''}" style="margin-bottom:0" onclick="ouvrirPrevenirModal('whatsapp')"><span class="ic">💬</span> WhatsApp</button>
     </div>`;
 }
 // Ouvre directement l'app SMS ou WhatsApp du livreur avec un message
@@ -2055,14 +2055,95 @@ function prevenirRowHtml(m){
 // Filet de sécurité : si le nom du transporteur n'est pas encore chargé
 // (session tout juste rétablie), le client reçoit quand même un message
 // correct plutôt qu'un "c'est de Loc'Air" bancal sans personne derrière.
-function arrivalMessageText(){
+// `minutes` : temps de trajet, calculé automatiquement (voir
+// ouvrirPrevenirModal/calculerEtaPrevenir) ou modifié à la main par le
+// livreur — 30 min par défaut si absent (position non partagée, API en
+// échec...), jamais bloquant.
+function arrivalMessageText(minutes){
   const prenomLivreur = (STATE.transporteurNom||'').trim().split(' ')[0] || 'votre livreur';
-  return `Bonjour, c'est ${prenomLivreur}, votre livreur Loc'Air — j'arrive chez vous d'ici environ 30 minutes.`;
+  const m = Number.isFinite(minutes) && minutes > 0 ? minutes : 30;
+  return `Bonjour, c'est ${prenomLivreur}, votre livreur Loc'Air — j'arrive chez vous d'ici environ ${m} minutes.`;
 }
-function prevenirClientMessage(){
+function prevenirClientMessage(minutes){
   const m = STATE.currentMission;
   const c = (m && m.client) || {};
-  return { c, msg: arrivalMessageText() };
+  return { c, msg: arrivalMessageText(minutes) };
+}
+// Feuille de confirmation avant d'envoyer le SMS/WhatsApp "j'arrive" — calcule
+// automatiquement le temps de trajet réel (Google Routes) à partir de la
+// position du livreur AU MOMENT où il appuie sur le bouton (position fraîche
+// demandée au navigateur, jamais la dernière position trackée en base qui
+// peut dater de plusieurs secondes) jusqu'à l'adresse du client. Le livreur
+// peut modifier la durée avant d'envoyer. Jamais bloquant : la feuille
+// s'affiche immédiatement avec 30 min par défaut, remplacée dès que le
+// calcul aboutit (position ou réseau indisponibles → reste sur 30 min,
+// toujours modifiable).
+function ouvrirPrevenirModal(canal){
+  const m = STATE.currentMission;
+  const c = (m && m.client) || {};
+  if(!c.tel) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'prevenir-overlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h1 style="margin-bottom:4px">📲 Prévenir le client</h1>
+      <p class="sub" style="margin-bottom:14px">Le temps de trajet est estimé automatiquement — ajuste-le si besoin avant d'envoyer.</p>
+      <label style="display:block;font-size:13px;color:var(--grey);margin-bottom:6px" for="prevenir-minutes">Arrivée dans (minutes)</label>
+      <input type="number" id="prevenir-minutes" value="30" min="1" max="180" inputmode="numeric"
+        style="width:100%;padding:14px;border-radius:var(--r);border:1.5px solid var(--rule);font-size:16px;margin-bottom:6px;font-family:var(--body)"
+        oninput="updatePrevenirPreview()">
+      <p id="prevenir-status" style="font-size:12.5px;color:var(--grey);margin-bottom:14px">📍 Calcul du temps de trajet…</p>
+      <div class="card" style="margin-bottom:18px;font-size:14px;color:var(--black);line-height:1.5" id="prevenir-preview"></div>
+      <button class="btn btn-green" onclick="confirmerPrevenirClient('${canal}')">✅ Envoyer</button>
+      <button class="forgot-link" onclick="closePrevenirModal()">Annuler</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closePrevenirModal(); });
+  updatePrevenirPreview();
+  calculerEtaPrevenir(m.id);
+}
+function closePrevenirModal(){
+  const overlay = document.getElementById('prevenir-overlay');
+  if(overlay) overlay.remove();
+}
+function updatePrevenirPreview(){
+  const input = document.getElementById('prevenir-minutes');
+  const preview = document.getElementById('prevenir-preview');
+  if(!input || !preview) return;
+  preview.textContent = arrivalMessageText(parseInt(input.value));
+}
+async function calculerEtaPrevenir(livraisonId){
+  const setStatus = (text) => { const el = document.getElementById('prevenir-status'); if(el) el.textContent = text; };
+  if(!navigator.geolocation){ setStatus('Position indisponible — durée par défaut, modifiable.'); return; }
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    try{
+      const r = await fetch(API('transporteur-eta'), {
+        method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+        body: JSON.stringify({ livraison_id: livraisonId, lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      });
+      const d = await r.json();
+      const input = document.getElementById('prevenir-minutes');
+      if(r.ok && d && Number.isFinite(d.minutes) && input){
+        input.value = d.minutes;
+        updatePrevenirPreview();
+        setStatus('✅ Temps de trajet calculé automatiquement.');
+      }else{
+        setStatus('Estimation indisponible — durée par défaut, modifiable.');
+      }
+    }catch(e){
+      setStatus('Estimation indisponible — durée par défaut, modifiable.');
+    }
+  }, () => {
+    setStatus('Position non partagée — durée par défaut, modifiable.');
+  }, { timeout: 6000, maximumAge: 0, enableHighAccuracy: false });
+}
+function confirmerPrevenirClient(canal){
+  const input = document.getElementById('prevenir-minutes');
+  const minutes = (input && parseInt(input.value)) || 30;
+  closePrevenirModal();
+  if(canal === 'whatsapp') prevenirClientWhatsapp(minutes);
+  else prevenirClientSms(minutes);
 }
 // Message de l'étape "Arrivée" (devant chez le client) — distinct du message
 // "j'arrive dans 30 min" de l'étape "En route". Toujours en français : rien
@@ -2081,16 +2162,16 @@ function prevenirArriveeSms(){
   STATE.detailArriveeSmsSentFor = m.id;
   renderDetail();
 }
-function prevenirClientSms(){
-  const { c, msg } = prevenirClientMessage();
+function prevenirClientSms(minutes){
+  const { c, msg } = prevenirClientMessage(minutes);
   if(c.tel) window.location.href = `sms:${c.tel.replace(/\s+/g,'')}?body=${encodeURIComponent(msg)}`;
   doAction('prevenir_client');
 }
 // wa.me exige un numéro international sans "0" ni "+" : un 06/07 français
 // devient 336/337 — seul format français géré ici, cohérent avec le reste de
 // l'app (une seule ville/pays par déploiement, voir CLAUDE.md).
-function prevenirClientWhatsapp(){
-  const { c, msg } = prevenirClientMessage();
+function prevenirClientWhatsapp(minutes){
+  const { c, msg } = prevenirClientMessage(minutes);
   const digits = String(c.tel||'').replace(/\D/g,'');
   const waNumber = digits.startsWith('0') ? '33'+digits.slice(1) : digits;
   if(waNumber) window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`, '_blank');
