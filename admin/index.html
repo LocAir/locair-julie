@@ -3338,6 +3338,7 @@ function renderLivraisons(){
               ${(!isAutre && !reassignLocked)?`<button onclick="openChangeAppareilModal(${m.id})">🔄 Changer le climatiseur</button>`:''}
               ${(!isAutre && !reassignLocked)?`<button onclick="fixerTarifTransporteur(${m.id},${m.montant_du_cents||0})">💰 Fixer le tarif transporteur</button>`:''}
               ${['acceptee','en_route','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
+              ${!reassignLocked?`<button onclick="openForceCompleteModal(${m.id})">✅ Forcer terminé</button>`:''}
               ${mediaBtns.join('')}
               <button class="danger" onclick="maskLivraison(${m.id})">🗑️ Supprimer de l'écran</button>
             </div>
@@ -3521,6 +3522,75 @@ async function openChangeAppareilModal(livraisonId){
         );
         return;
       }
+      okBtn.disabled = false;
+      errEl.textContent = e.message; errEl.style.display = 'block';
+    }
+  };
+}
+
+// Clôture forcée (Module 9) : la mission a été faite sur le terrain mais le
+// transporteur n'a pas (pu) la clôturer lui-même dans son appli — l'admin
+// choisit qui l'a réellement faite et force le passage à "Terminée", avec le
+// même calcul de paiement que si le transporteur avait validé normalement.
+const ETAT_MATERIEL_LABEL_ADMIN = {
+  parfait_etat: 'Parfait état', usure_normale: 'Usure normale',
+  nettoyage_necessaire: 'Nettoyage nécessaire', maintenance_necessaire: 'Maintenance nécessaire',
+  hors_service: 'Hors service',
+};
+function openForceCompleteModal(livraisonId){
+  const m = LIVRAISONS_CACHE.find(x => x.id === livraisonId);
+  if(!m) return;
+  closeModal();
+  const isRecuperation = m.type === 'recuperation';
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  const transpOptions = TRANSPORTEURS_CACHE.map(t =>
+    `<option value="${t.id}" ${m.transporteur&&m.transporteur.id===t.id?'selected':''}>${escHtml(t.nom)}</option>`
+  ).join('');
+  const etatOptions = Object.entries(ETAT_MATERIEL_LABEL_ADMIN).map(([k,l]) => `<option value="${k}">${l}</option>`).join('');
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <h2 style="margin-bottom:4px">✅ Forcer terminé</h2>
+      <p class="row-meta" style="margin-bottom:14px">Mission déjà faite sur le terrain mais pas clôturée dans l'appli — choisis qui l'a faite, ça calcule son paiement normalement.</p>
+      <label for="fc-transporteur">Transporteur qui a fait la mission</label>
+      <select id="fc-transporteur" ${transpOptions?'':'disabled'}>${transpOptions || '<option value="">Aucun transporteur</option>'}</select>
+      ${isRecuperation ? `
+        <label for="fc-etat" style="margin-top:10px">État du climatiseur récupéré</label>
+        <select id="fc-etat">${etatOptions}</select>
+        <label for="fc-etat-commentaire" style="margin-top:10px">Commentaire (optionnel)</label>
+        <input type="text" id="fc-etat-commentaire" placeholder="Ex. petite rayure côté droit"/>
+      ` : ''}
+      <div class="modal-actions" style="margin-top:18px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue" ${transpOptions?'':'disabled'}>Forcer terminé</button>
+      </div>
+      <div class="err" id="fc-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const errEl = document.getElementById('fc-err');
+    errEl.style.display = 'none';
+    const transporteurId = parseInt(document.getElementById('fc-transporteur').value);
+    if(!transporteurId){ errEl.textContent = 'Choisis un transporteur.'; errEl.style.display = 'block'; return; }
+    const payload = {action:'force_complete', livraison_id:livraisonId, transporteur_id:transporteurId};
+    if(isRecuperation){
+      payload.etat_materiel = document.getElementById('fc-etat').value;
+      payload.etat_materiel_commentaire = document.getElementById('fc-etat-commentaire').value.trim();
+    }
+    okBtn.disabled = true;
+    try{
+      const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify(payload)});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      loadLivraisons();
+      loadAlerts();
+      showToast(`Mission clôturée — ${euros(d.montant_du_cents||0)} pour ${escHtml(TRANSPORTEURS_CACHE.find(t=>t.id===transporteurId)?.nom||'le transporteur')}`, 'success');
+    }catch(e){
       okBtn.disabled = false;
       errEl.textContent = e.message; errEl.style.display = 'block';
     }
