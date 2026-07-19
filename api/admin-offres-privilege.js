@@ -2,6 +2,7 @@ const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
+const { resolveAdminCity } = require('./_lib/city');
 
 // Offre Privilège (Step 2) — l'admin fixe le prix de vente d'une offre déjà
 // détectée par le cron quotidien (voir cron-daily.js). Tant qu'aucun prix
@@ -18,6 +19,11 @@ module.exports = async (req, res) => {
 
   const body   = req.body || {};
   const action = body.action || 'list';
+  // offres_privilege n'a pas de city_id direct (rattaché via appareil_id) —
+  // chaque action rejoint donc appareils!inner pour cloisonner par ville,
+  // comme le reste de l'admin (voir admin-stock.js, admin-dashboard.js).
+  const city = await resolveAdminCity(supabase, body);
+  if (!city) return res.status(400).json({ error: 'Ville introuvable' });
 
   try {
     if (action === 'list') {
@@ -25,22 +31,19 @@ module.exports = async (req, res) => {
       // l'admin puisse encore les voir et déclencher un remboursement dessus —
       // seules les offres refusées/annulées disparaissent de cette liste.
       const { data: offres, error } = await supabase
-        .from('offres_privilege').select('*')
+        .from('offres_privilege').select('*, appareil:appareils!inner(id, numero, city_id)')
+        .eq('appareil.city_id', city.id)
         .in('statut', ['eligible', 'proposee', 'acceptee'])
         .order('created_at', { ascending: false });
       if (error) throw error;
       const list = offres || [];
-      const appareilIds = [...new Set(list.map(o => o.appareil_id))];
       const reservationIds = [...new Set(list.map(o => o.reservation_id).filter(Boolean))];
-      const [{ data: appareils }, { data: reservations }] = await Promise.all([
-        appareilIds.length ? supabase.from('appareils').select('id, numero').in('id', appareilIds) : { data: [] },
-        reservationIds.length ? supabase.from('reservations').select('id, ref, prenom, nom, date_debut, date_fin').in('id', reservationIds) : { data: [] },
-      ]);
-      const appareilById = new Map((appareils || []).map(a => [a.id, a]));
+      const { data: reservations } = reservationIds.length
+        ? await supabase.from('reservations').select('id, ref, prenom, nom, date_debut, date_fin').in('id', reservationIds)
+        : { data: [] };
       const resaById = new Map((reservations || []).map(r => [r.id, r]));
       const enrichies = list.map(o => ({
         ...o,
-        appareil: appareilById.get(o.appareil_id) || null,
         reservation: resaById.get(o.reservation_id) || null,
       }));
       return res.status(200).json({ offres: enrichies });
@@ -53,7 +56,9 @@ module.exports = async (req, res) => {
       if (!id) return res.status(400).json({ error: 'id manquant' });
       if (!prixCents) return res.status(400).json({ error: 'Prix invalide' });
 
-      const { data: offre } = await supabase.from('offres_privilege').select('id, statut').eq('id', id).maybeSingle();
+      const { data: offre } = await supabase
+        .from('offres_privilege').select('id, statut, appareil:appareils!inner(city_id)')
+        .eq('id', id).eq('appareil.city_id', city.id).maybeSingle();
       if (!offre) return res.status(404).json({ error: 'Offre introuvable' });
       if (offre.statut !== 'eligible') return res.status(400).json({ error: 'Cette offre a déjà été traitée' });
 
@@ -70,6 +75,9 @@ module.exports = async (req, res) => {
     if (action === 'appareils_reservation') {
       const reservationId = parseInt(body.reservation_id);
       if (!reservationId) return res.status(400).json({ error: 'reservation_id manquant' });
+
+      const { data: resa } = await supabase.from('reservations').select('id').eq('id', reservationId).eq('city_id', city.id).maybeSingle();
+      if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
 
       const [{ data: liens }, { data: offresExistantes }] = await Promise.all([
         supabase.from('reservation_appareils').select('appareil_id, appareil:appareils(numero, reference)').eq('reservation_id', reservationId),
@@ -96,6 +104,9 @@ module.exports = async (req, res) => {
       if (!reservationId) return res.status(400).json({ error: 'reservation_id manquant' });
       if (!appareilIds.length) return res.status(400).json({ error: 'Choisis au moins un climatiseur' });
       if (!prixCents) return res.status(400).json({ error: 'Prix invalide' });
+
+      const { data: resaOwned } = await supabase.from('reservations').select('id').eq('id', reservationId).eq('city_id', city.id).maybeSingle();
+      if (!resaOwned) return res.status(404).json({ error: 'Réservation introuvable' });
 
       const { data: liens } = await supabase
         .from('reservation_appareils').select('appareil_id').eq('reservation_id', reservationId);
@@ -132,8 +143,8 @@ module.exports = async (req, res) => {
       if (!raison) return res.status(400).json({ error: 'Indique la raison du remboursement' });
 
       const { data: offre } = await supabase
-        .from('offres_privilege').select('id, statut, prix_vente_cents, reservation_id, stripe_payment_intent_id')
-        .eq('id', id).maybeSingle();
+        .from('offres_privilege').select('id, statut, prix_vente_cents, reservation_id, stripe_payment_intent_id, appareil:appareils!inner(city_id)')
+        .eq('id', id).eq('appareil.city_id', city.id).maybeSingle();
       if (!offre) return res.status(404).json({ error: 'Offre introuvable' });
       if (offre.statut !== 'acceptee') return res.status(400).json({ error: "Cette offre n'a pas encore été achetée" });
       if (!offre.stripe_payment_intent_id) return res.status(400).json({ error: 'Aucun paiement Stripe associé à cette offre' });
@@ -168,6 +179,12 @@ module.exports = async (req, res) => {
     if (action === 'annuler') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
+
+      const { data: offre } = await supabase
+        .from('offres_privilege').select('id, appareil:appareils!inner(city_id)')
+        .eq('id', id).eq('appareil.city_id', city.id).maybeSingle();
+      if (!offre) return res.status(404).json({ error: 'Offre introuvable' });
+
       const { error } = await supabase.from('offres_privilege')
         .update({ statut: 'annulee', decidee_at: new Date().toISOString() })
         .eq('id', id).in('statut', ['eligible', 'proposee']);
