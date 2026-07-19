@@ -33,8 +33,11 @@ function invoiceNumber(annee, n) {
 // (Les modèles réels du contrat et de la facture, fournis par le
 // propriétaire, sont en place dans _lib/pdf.js depuis le 2026-07-16 — ce
 // verrou ne sert plus qu'à activer l'envoi le jour choisi.)
-async function generateAndSendDocuments(supabase, resa) {
-  if (process.env.DOCUMENTS_ENABLED !== 'true') return;
+// { force: true } contourne ce verrou — utilisé uniquement par le bouton
+// "Générer les documents" de la fiche client admin (admin-clients.js),
+// jamais par le webhook Stripe automatique.
+async function generateAndSendDocuments(supabase, resa, { force } = {}) {
+  if (!force && process.env.DOCUMENTS_ENABLED !== 'true') return;
   if (!resa || !resa.id) return;
 
   const { data: existingFacture } = await supabase
@@ -142,8 +145,8 @@ async function generateAndSendDocuments(supabase, resa) {
 //
 // Même verrou que les autres documents : tant que DOCUMENTS_ENABLED n'est pas
 // explicitement à 'true', cette fonction ne fait rien.
-async function generateAndSendFactureVente(supabase, { reservationId, appareilId, prixCents }) {
-  if (process.env.DOCUMENTS_ENABLED !== 'true') return;
+async function generateAndSendFactureVente(supabase, { reservationId, appareilId, prixCents, force }) {
+  if (!force && process.env.DOCUMENTS_ENABLED !== 'true') return;
   if (!reservationId || !appareilId || !prixCents) return;
 
   const { data: existante } = await supabase

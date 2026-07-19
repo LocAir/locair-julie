@@ -2,6 +2,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 const { normalizeTel } = require('./_lib/reservations');
+const { generateAndSendDocuments, generateAndSendFactureVente } = require('./_lib/documents');
 
 // Fiche client persistante — déduplication par téléphone (voir
 // _lib/reservations.js:findOrCreateClient). acces_difficile est une note
@@ -147,6 +148,59 @@ module.exports = async (req, res) => {
       }
 
       return res.status(200).json({ client, reservations: resas || [], missions_actives: missionsActives, incidents });
+    }
+
+    // Génération manuelle des documents d'une réservation, depuis la fiche
+    // client (Module 9) — pour rattraper un cas où la génération automatique
+    // post-paiement (webhook Stripe) n'a pas eu lieu ou pas abouti. Contourne
+    // le verrou DOCUMENTS_ENABLED (voir _lib/documents.js) : ici c'est un
+    // choix explicite de l'admin, pas un envoi silencieux automatique.
+    // L'admin choisit indépendamment "contrat + facture de location" et
+    // "facture d'achat" (Offre Privilège) — ce sont deux documents distincts,
+    // le second n'existant que si le client a effectivement acheté son
+    // climatiseur au lieu de le rendre.
+    if (action === 'generer_documents') {
+      const reservationId = parseInt(body.reservation_id);
+      const wantLocation = Boolean(body.contrat_facture);
+      const wantVente = Boolean(body.facture_vente);
+      if (!reservationId || (!wantLocation && !wantVente)) {
+        return res.status(400).json({ error: 'Paramètres invalides' });
+      }
+      const { data: resa } = await supabase.from('reservations').select('*').eq('id', reservationId).eq('city_id', city.id).maybeSingle();
+      if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
+
+      const resultats = {};
+      if (wantLocation) {
+        const { data: existante } = await supabase
+          .from('documents').select('id').eq('reservation_id', reservationId).eq('type', 'facture').maybeSingle();
+        if (existante) {
+          resultats.contrat_facture = 'deja_genere';
+        } else {
+          await generateAndSendDocuments(supabase, resa, { force: true });
+          resultats.contrat_facture = 'genere';
+        }
+      }
+      if (wantVente) {
+        const { data: offre } = await supabase
+          .from('offres_privilege').select('id, appareil_id, prix_vente_cents')
+          .eq('reservation_id', reservationId).eq('statut', 'acceptee')
+          .order('decidee_at', { ascending: false }).limit(1).maybeSingle();
+        if (!offre) {
+          resultats.facture_vente = 'aucune_offre';
+        } else {
+          const { data: existanteVente } = await supabase
+            .from('documents').select('id').eq('reservation_id', reservationId).eq('type', 'facture_vente').maybeSingle();
+          if (existanteVente) {
+            resultats.facture_vente = 'deja_genere';
+          } else {
+            await generateAndSendFactureVente(supabase, {
+              reservationId, appareilId: offre.appareil_id, prixCents: offre.prix_vente_cents, force: true,
+            });
+            resultats.facture_vente = 'genere';
+          }
+        }
+      }
+      return res.status(200).json({ ok: true, resultats });
     }
 
     if (action === 'update') {
