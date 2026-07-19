@@ -139,15 +139,25 @@ module.exports = async (req, res) => {
         .from('livraisons').select('id, montant_du_cents')
         .eq('transporteur_id', transporteurId).eq('statut', 'fait').eq('paye', false).eq('valide', true);
       const montant = (faites || []).reduce((s, f) => s + (f.montant_du_cents || 0), 0);
-      if (montant <= 0) return res.status(400).json({ error: 'Rien à verser pour ce transporteur (missions pas encore validées ?)' });
       const ids = (faites || []).map(f => f.id);
-
-      await supabase.from('livraisons').update({ paye: true }).in('id', ids);
 
       // Une demande de virement déjà en cours pour ce transporteur est réglée
       // par ce paiement plutôt que dupliquée avec une nouvelle ligne.
       const { data: existante } = await supabase
         .from('virements').select('id').eq('transporteur_id', transporteurId).eq('statut', 'demande').maybeSingle();
+
+      // Rien à verser ET aucune demande à régler : vraiment rien à faire.
+      // Mais s'il y a une demande en cours pour 0 € (ex. missions déjà payées
+      // par ailleurs entre-temps), on la solde quand même — sinon le badge
+      // "virement demandé" reste bloqué pour toujours, sans aucun moyen de
+      // le faire disparaître (le bouton lui-même n'apparaissait qu'à partir
+      // d'un montant positif).
+      if (montant <= 0 && !existante) {
+        return res.status(400).json({ error: 'Rien à verser pour ce transporteur (missions pas encore validées ?)' });
+      }
+
+      if (ids.length) await supabase.from('livraisons').update({ paye: true }).in('id', ids);
+
       if (existante) {
         await supabase.from('virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', existante.id);
       } else {
@@ -155,9 +165,11 @@ module.exports = async (req, res) => {
           transporteur_id: transporteurId, montant_cents: montant, statut: 'verse', verse_at: new Date().toISOString(),
         });
       }
-      await notifyTransporteur(supabase, transporteurId, {
-        type: 'paiement', message: `Votre rémunération a été payée (${(montant / 100).toFixed(2)} €).`, tag: 'paiement',
-      });
+      if (montant > 0) {
+        await notifyTransporteur(supabase, transporteurId, {
+          type: 'paiement', message: `Votre rémunération a été payée (${(montant / 100).toFixed(2)} €).`, tag: 'paiement',
+        });
+      }
 
       return res.status(200).json({ ok: true, montant_cents: montant });
     }

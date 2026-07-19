@@ -4393,7 +4393,9 @@ function transporteurRevenusCardHtml(t){
       </div>
       ${t.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par le livreur</div>':''}
       ${t.en_attente_validation_cents>0?`<button class="btn btn-grey btn-block" style="margin-bottom:8px" onclick="validerRemuneration(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.en_attente_validation_cents})">🔍 Valider les missions (${euros(t.en_attente_validation_cents)})</button>`:''}
-      ${t.non_verse_cents>0?`<button class="btn btn-green btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.non_verse_cents})">✅ Marquer comme versé (${euros(t.non_verse_cents)})</button>`:''}
+      ${t.non_verse_cents>0
+        ?`<button class="btn btn-green btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.non_verse_cents})">✅ Marquer comme versé (${euros(t.non_verse_cents)})</button>`
+        :(t.demande_en_cours?`<button class="btn btn-grey btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', 0)">Marquer la demande comme réglée (rien à verser)</button>`:'')}
       ${t.missions.length?`
       <details style="margin-top:12px">
         <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Voir le détail (${t.missions.length} mission${t.missions.length>1?'s':''})</summary>
@@ -4449,16 +4451,19 @@ async function loadTransporteursRevenus(){
   }
 }
 function verserMaintenant(id, nom, montantCents){
-  confirmAction(`Confirmer que ${euros(montantCents)} ont bien été versés à ${nom} ? Cette action est irréversible.`, async () => {
+  const message = montantCents > 0
+    ? `Confirmer que ${euros(montantCents)} ont bien été versés à ${nom} ? Cette action est irréversible.`
+    : `${nom} a demandé un virement, mais il n'y a plus rien à lui verser (missions déjà réglées entre-temps ?). Marquer sa demande comme réglée pour faire disparaître l'alerte ?`;
+  confirmAction(message, async () => {
     try{
       const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'verser_maintenant', transporteur_id:id})});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       TAB_AUTO_REFRESH[CURRENT_TAB]?.(); // rafraîchit la vue courante, qu'on soit dans Transporteurs ou dans Virements
       loadAlerts();
-      showToast(`${euros(d.montant_cents)} marqués comme versés`, 'success');
+      showToast(d.montant_cents>0 ? `${euros(d.montant_cents)} marqués comme versés` : 'Demande de virement réglée', 'success');
     }catch(e){ showToast(e.message, 'error'); }
-  }, {danger:true, yesLabel:'Confirmer le virement'});
+  }, {danger:true, yesLabel: montantCents>0 ? 'Confirmer le virement' : 'Marquer comme réglée'});
 }
 
 // ── PARTENAIRES (conciergeries, apporteurs d'affaires) ───────────────────────
