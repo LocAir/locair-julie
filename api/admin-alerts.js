@@ -56,15 +56,30 @@ module.exports = async (req, res) => {
     // Réservations nécessitant une action :
     //  — en_attente : paiement reçu mais pas encore confirmé par le webhook
     //    (rare, mais si ça traîne l'admin doit regarder)
-    //  — hors_zone : code postal non couvert, affectation manuelle requise
+    //  — hors_zone : code postal non couvert, affectation manuelle requise —
+    //    mais seulement tant qu'il reste vraiment une mission sans livreur.
+    //    Le drapeau hors_zone ne s'efface jamais une fois posé (c'est un fait
+    //    géographique, pas un statut) : compter juste "hors_zone=true" gonfle
+    //    ce badge pour toujours, même après affectation manuelle du livreur —
+    //    exactement le genre de notification bloquée signalé pour les
+    //    virements. On revérifie donc s'il reste une mission "à faire" sans
+    //    transporteur, comme pour le compteur "non assignées" ci-dessus.
     const { count: enAttenteCount } = await supabase
       .from('reservations').select('id', { count: 'exact', head: true })
       .eq('city_id', city.id).eq('statut', 'en_attente').eq('masquee', false);
-    const { count: horsZoneCount } = await supabase
-      .from('reservations').select('id', { count: 'exact', head: true })
+    const { data: horsZoneResas } = await supabase
+      .from('reservations').select('id')
       .eq('city_id', city.id).eq('hors_zone', true).eq('masquee', false)
       .neq('statut', 'annulee');
-    const reservations = (enAttenteCount || 0) + (horsZoneCount || 0);
+    const horsZoneIds = (horsZoneResas || []).map(r => r.id);
+    let horsZoneCount = 0;
+    if (horsZoneIds.length) {
+      const { data: horsZoneNonAssignees } = await supabase
+        .from('livraisons').select('reservation_id')
+        .in('reservation_id', horsZoneIds).eq('statut', 'a_faire').is('transporteur_id', null);
+      horsZoneCount = new Set((horsZoneNonAssignees || []).map(l => l.reservation_id)).size;
+    }
+    const reservations = (enAttenteCount || 0) + horsZoneCount;
 
     // Incidents ouverts (non résolus) — signal fort : chaque incident signifie
     // un livreur bloqué ou un client mécontent qui attend un retour de l'admin.
