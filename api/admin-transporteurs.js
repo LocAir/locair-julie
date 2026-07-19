@@ -47,21 +47,28 @@ module.exports = async (req, res) => {
 
       // Zones d'intervention + disponibilités — chargées à part et recollées
       // ici plutôt que via un join imbriqué, pour rester lisible côté client.
-      const [{ data: villesRows }, { data: dispoRows }] = ids.length
+      // push_subscriptions : sert uniquement à afficher si un transporteur a
+      // un abonnement notifications enregistré — ne garantit pas que
+      // l'autorisation est toujours valide côté téléphone (seul un envoi
+      // réel raté le révèlerait, voir pushToTransporteur dans _lib/push.js).
+      const [{ data: villesRows }, { data: dispoRows }, { data: pushRows }] = ids.length
         ? await Promise.all([
             supabase.from('transporteur_villes').select('transporteur_id, city_id').in('transporteur_id', ids),
             supabase.from('transporteur_disponibilites').select('transporteur_id, jour, moment').in('transporteur_id', ids),
+            supabase.from('push_subscriptions').select('transporteur_id').in('transporteur_id', ids),
           ])
-        : [{ data: [] }, { data: [] }];
+        : [{ data: [] }, { data: [] }, { data: [] }];
 
       const villesByT = {}; (villesRows || []).forEach(v => (villesByT[v.transporteur_id] = villesByT[v.transporteur_id] || []).push(v.city_id));
       const dispoByT   = {}; (dispoRows   || []).forEach(d => (dispoByT[d.transporteur_id]  = dispoByT[d.transporteur_id]  || []).push({ jour: d.jour, moment: d.moment }));
+      const pushSet    = new Set((pushRows || []).map(p => p.transporteur_id));
 
       return res.status(200).json({
         transporteurs: transporteurs.map(t => ({
           ...t,
-          villes:         villesByT[t.id] || [],
-          disponibilites: dispoByT[t.id]  || [],
+          villes:              villesByT[t.id] || [],
+          disponibilites:      dispoByT[t.id]  || [],
+          notifications_actives: pushSet.has(t.id),
         })),
       });
     }
