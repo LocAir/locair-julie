@@ -6,6 +6,7 @@ const { pushToAdmin } = require('./_lib/push');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { generateAndSendDocuments, generateAndSendFactureVente } = require('./_lib/documents');
+const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { sendScenarioEmail, getSignature, withSignature } = require('./_lib/emailEngine');
 const { escHtml, tplProlongConfirmation } = require('./_lib/emailTemplates');
 
@@ -144,9 +145,17 @@ async function handlePaymentFailed(supabase, intent) {
 // (l'offre stocke le sien à part), donc jamais trouvé par
 // findReservationByPaymentIntent — c'est ce cas qui distingue un
 // remboursement de location d'un remboursement d'Offre Privilège ci-dessous.
-// Ne fait la bascule (offre "refusee", appareil "disponible") qu'une fois
-// Stripe ayant réellement confirmé le remboursement — jamais de façon
-// optimiste au moment du clic admin.
+// Ne fait la bascule (offre "refusee") qu'une fois Stripe ayant réellement
+// confirmé le remboursement — jamais de façon optimiste au moment du clic
+// admin.
+//
+// Le climatiseur est physiquement encore chez le client au moment du
+// remboursement (l'achat annulait sa récupération, voir
+// handleOffrePrivilegeAccepted) — le repasser directement "disponible"
+// ouvrirait la porte à une double réservation avant même qu'il ait été
+// récupéré. On le passe donc "maintenance" (hors parc louable) et on crée
+// une mission de récupération à dispatcher, plutôt que de suivre l'ancien
+// comportement qui le rendait immédiatement réservable.
 async function handleOffrePrivilegeRefunded(supabase, piId, montantCents) {
   const { data: offre } = await supabase
     .from('offres_privilege').select('id, appareil_id, reservation_id, statut')
@@ -156,17 +165,36 @@ async function handleOffrePrivilegeRefunded(supabase, piId, montantCents) {
   await supabase.from('offres_privilege')
     .update({ statut: 'refusee', decidee_at: new Date().toISOString() }).eq('id', offre.id);
 
-  const { data: appareil } = await supabase.from('appareils').select('numero, localisation').eq('id', offre.appareil_id).maybeSingle();
+  const { data: appareil } = await supabase.from('appareils').select('numero, localisation, city_id').eq('id', offre.appareil_id).maybeSingle();
   await recordMouvement(supabase, {
-    appareilId: offre.appareil_id, typeEvenement: 'autre', nouveauStatut: 'disponible',
-    nouvelleLocalisation: appareil?.localisation || 'autre', utilisateur: 'systeme',
-    commentaire: 'Achat Offre Privilège remboursé — climatiseur remis disponible.',
+    appareilId: offre.appareil_id, typeEvenement: 'autre', nouveauStatut: 'maintenance',
+    nouvelleLocalisation: appareil?.localisation || 'chez_client', utilisateur: 'systeme',
+    commentaire: 'Achat Offre Privilège remboursé — climatiseur encore chez le client, à récupérer avant de repasser disponible.',
   });
+
+  let missionCreee = false;
+  if (offre.reservation_id) {
+    const { data: resa } = await supabase
+      .from('reservations').select('prenom, nom, tel, adresse, city_id, hors_zone').eq('id', offre.reservation_id).maybeSingle();
+    const cityId = appareil?.city_id || resa?.city_id;
+    if (resa?.adresse && cityId) {
+      const tarifs = await getBaremeForCity(supabase, cityId);
+      const montantMission = computeBareme('recuperation', null, tarifs, resa.hors_zone);
+      await supabase.from('livraisons').insert({
+        type: 'autre', city_id: cityId,
+        titre: `Récupérer climatiseur n°${appareil?.numero ?? ''} (Offre Privilège remboursée)`,
+        adresse_libre: `${resa.adresse} — ${[resa.prenom, resa.nom].filter(Boolean).join(' ')}${resa.tel ? ' · ' + resa.tel : ''}`,
+        date_prevue: new Date().toISOString().slice(0, 10),
+        statut: 'a_faire', montant_du_cents: montantMission,
+      });
+      missionCreee = true;
+    }
+  }
 
   const montant = (montantCents / 100).toFixed(2) + ' €';
   await pushToAdmin(supabase, {
-    title: 'Remboursement Offre Privilège confirmé',
-    body:  `Climatiseur #${appareil?.numero} — ${montant} — remis disponible dans le parc.`,
+    title: '⚠️ Remboursement Offre Privilège — récupération à organiser',
+    body:  `Climatiseur #${appareil?.numero} — ${montant} remboursés. Il est encore chez le client${missionCreee ? ' — mission de récupération créée dans Livraisons, à assigner à un transporteur.' : ' — aucune adresse retrouvée, organise sa récupération toi-même.'}`,
     tag:   `offre-privilege-remboursement-${offre.id}`,
   });
   return true;
