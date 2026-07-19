@@ -360,9 +360,9 @@ module.exports = async (req, res) => {
 
       let montantDu = liv.montant_du_cents;
       if (liv.type !== 'autre' && !liv.montant_manuel) {
-        const { data: resa } = await supabase.from('reservations').select('installation, city_id').eq('id', liv.reservation_id).maybeSingle();
+        const { data: resa } = await supabase.from('reservations').select('installation, city_id, hors_zone').eq('id', liv.reservation_id).maybeSingle();
         const tarifs = await getBaremeForCity(supabase, resa?.city_id || city.id);
-        montantDu = computeBareme(liv.type, resa?.installation, tarifs);
+        montantDu = computeBareme(liv.type, resa?.installation, tarifs, resa?.hors_zone);
       }
 
       const update = {
