@@ -110,7 +110,7 @@ async function generateAndSendDocuments(supabase, resa, { force } = {}) {
       : lang === 'zh'
       ? `📄 您的 Loc'Air 文件 — 订单 ${resa.ref}`
       : `📄 Votre contrat et votre facture Loc'Air — Dossier ${resa.ref}`;
-    await sendBrevoEmail({
+    const result = await sendBrevoEmail({
       to:      resa.email,
       subject: contratSubject,
       html:    contratEmailHtml,
@@ -121,16 +121,29 @@ async function generateAndSendDocuments(supabase, resa, { force } = {}) {
       ],
     });
 
-    const sentAt = new Date().toISOString();
-    await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt }).eq('id', contratRow.id);
-    await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt })
-      .eq('reservation_id', resa.id).eq('type', 'facture');
+    // Ne marquer 'envoye' que si l'email est réellement parti (sendBrevoEmail
+    // ne jette jamais, voir _lib/brevo.js) — sans quoi un échec Brevo laissait
+    // croire que le document avait été transmis alors qu'aucun mail n'était
+    // réellement délivré. Documents et contrat déjà générés et consultables
+    // par l'admin dans tous les cas, seul le statut d'envoi change.
+    if (result.ok) {
+      const sentAt = new Date().toISOString();
+      await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt }).eq('id', contratRow.id);
+      await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt })
+        .eq('reservation_id', resa.id).eq('type', 'facture');
+    } else {
+      console.error('[Documents] envoi email échoué —', result.error);
+    }
     // Best-effort : trace pour l'historique de la fiche client admin. Le
     // contenu stocké est le corps de l'email (pas les PDF joints, non
-    // affichables dans l'aperçu).
+    // affichables dans l'aperçu). Statut fidèle au résultat réel de l'envoi
+    // (voir plus haut) — jamais "envoye" à tort en cas d'échec Brevo.
     supabase.from('email_log').insert({
       reservation_id: resa.id, scenario: 'email_contrat_facture', canal: 'email',
-      destinataire: resa.email, modele: 'email_contrat_facture', statut: 'envoye', contenu: contratEmailHtml,
+      destinataire: resa.email, modele: 'email_contrat_facture',
+      statut: result.ok ? 'envoye' : 'erreur',
+      erreur: result.ok ? null : String(result.error || '').slice(0, 500),
+      contenu: contratEmailHtml,
     }).catch(() => {});
   }
 }
@@ -201,19 +214,28 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
       : lang === 'zh'
       ? `📄 您的 Loc'Air 购买发票 — 订单 ${resa.ref}`
       : `📄 Votre facture d'achat Loc'Air — Dossier ${resa.ref}`;
-    await sendBrevoEmail({
+    const result = await sendBrevoEmail({
       to:      resa.email,
       subject: ventSubject,
       html,
       senderName: sig.nom_expediteur,
       attachments: [{ name: `${numero}.pdf`, content: factureBuffer }],
     });
-    await supabase.from('documents').update({ statut: 'envoye', envoye_at: new Date().toISOString() })
-      .eq('reservation_id', resa.id).eq('type', 'facture_vente');
-    supabase.from('email_log').insert({
-      reservation_id: resa.id, scenario: 'email_facture_vente', canal: 'email',
-      destinataire: resa.email, modele: 'email_facture_vente', statut: 'envoye', contenu: html,
-    }).catch(() => {});
+    if (result.ok) {
+      await supabase.from('documents').update({ statut: 'envoye', envoye_at: new Date().toISOString() })
+        .eq('reservation_id', resa.id).eq('type', 'facture_vente');
+      supabase.from('email_log').insert({
+        reservation_id: resa.id, scenario: 'email_facture_vente', canal: 'email',
+        destinataire: resa.email, modele: 'email_facture_vente', statut: 'envoye', contenu: html,
+      }).catch(() => {});
+    } else {
+      console.error('[Documents] envoi facture de vente échoué —', result.error);
+      supabase.from('email_log').insert({
+        reservation_id: resa.id, scenario: 'email_facture_vente', canal: 'email',
+        destinataire: resa.email, modele: 'email_facture_vente', statut: 'erreur',
+        erreur: String(result.error || '').slice(0, 500), contenu: html,
+      }).catch(() => {});
+    }
   }
 }
 

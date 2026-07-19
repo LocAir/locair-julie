@@ -5,8 +5,16 @@
 // `senderName` (optionnel) : nom d'expéditeur affiché au destinataire — voir
 // la signature email administrable (_lib/emailEngine.js), qui lit ce nom
 // depuis Supabase au lieu du nom en dur "Loc'Air" par défaut.
+// Renvoie { ok: true } ou { ok: false, error } — ne jette jamais (les appels
+// "best-effort" du reste du code, ex. SMS de confirmation, notifications,
+// peuvent continuer à faire `await sendBrevoEmail(...)` sans se soucier du
+// retour). Mais un appelant qui a besoin de savoir si l'email est VRAIMENT
+// parti (ex. sendScenarioEmail dans emailEngine.js, avant de marquer une
+// réservation comme "email envoyé") doit vérifier `result.ok` — sans quoi
+// un échec Brevo (clé désactivée, adresse invalide, quota, panne API) était
+// jusqu'ici marqué comme un envoi réussi, sans aucune trace de l'échec.
 async function sendBrevoEmail({ to, subject, html, attachments, senderName }) {
-  if (!process.env.BREVO_API_KEY || !to) return;
+  if (!process.env.BREVO_API_KEY || !to) return { ok: false, error: 'BREVO_API_KEY ou destinataire manquant' };
   try {
     const body = {
       sender:      { name: senderName || "Loc'Air", email: 'contact@locair.fr' },
@@ -25,9 +33,15 @@ async function sendBrevoEmail({ to, subject, html, attachments, senderName }) {
       headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
       body:    JSON.stringify(body),
     });
-    if (!r.ok) console.error('[Brevo]', r.status, await r.text());
+    if (!r.ok) {
+      const detail = await r.text();
+      console.error('[Brevo]', r.status, detail);
+      return { ok: false, error: `Brevo ${r.status} : ${detail}`.slice(0, 500) };
+    }
+    return { ok: true };
   } catch (e) {
     console.error('[Brevo]', e.message);
+    return { ok: false, error: e.message };
   }
 }
 

@@ -140,7 +140,14 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
   const subject = scenarioDef.subject(ctx);
 
   try {
-    await sendBrevoEmail({ to: reservation.email, subject, html, senderName: sig.nom_expediteur });
+    const result = await sendBrevoEmail({ to: reservation.email, subject, html, senderName: sig.nom_expediteur });
+    // sendBrevoEmail ne jette jamais (voir _lib/brevo.js) — sans cette
+    // vérification, un échec réel (clé Brevo invalide, adresse rejetée,
+    // quota dépassé, panne API) tombait dans le bloc "succès" ci-dessous :
+    // la réservation était marquée comme "email envoyé" alors qu'aucun mail
+    // n'était réellement parti, sans jamais apparaître comme une erreur ni
+    // être rejouable (wasScenarioSent bloque tout nouvel essai).
+    if (!result.ok) throw new Error(result.error || 'Échec envoi Brevo');
     await supabase.from('email_sent')
       .upsert({ reservation_id: reservationId, scenario, sent_at: new Date().toISOString() }, { onConflict: 'reservation_id,scenario' });
     await supabase.from('email_log').insert({
