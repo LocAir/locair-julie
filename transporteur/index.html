@@ -467,6 +467,17 @@ function show(id){
   document.getElementById('notif-fab')?.classList.toggle('hidden', id==='login-screen');
 }
 
+// Retour depuis le détail d'une mission (bouton "← Retour") : contrairement
+// à switchTab('missions'), ne refait pas d'appel réseau (STATE.missions est
+// déjà à jour — doAction() la rafraîchit après chaque action) mais force
+// quand même un renderMissions() immédiat, sans quoi l'écran réaffiche le
+// HTML généré avant l'ouverture de la mission (potentiellement périmé, ex.
+// une mission qui vient de passer "en_route" et n'apparaît plus au bon
+// endroit tant qu'aucun rendu n'a eu lieu depuis).
+function backToMissions(){
+  show('missions-screen');
+  renderMissions();
+}
 function switchTab(tab){
   if(tab==='checklist'){ show('checklist-screen'); loadChecklist(); }
   else if(tab==='activite'){ show('activite-screen'); loadActivite(); }
@@ -1005,7 +1016,12 @@ async function validerChecklistPopup(){
 // la route aujourd'hui, ce qui n'a pas de sens pour le livreur. Sur place
 // (arrivee) ou en problème compte toujours, quelle que soit la date.
 function missionEstEnCours(m){
-  if(m.statut === 'arrivee' || m.statut === 'probleme') return true;
+  // 'en_route' oublié ici pendant longtemps : dès que le livreur passait à
+  // cette étape (bouton "Suivant →" du wizard), la mission disparaissait de
+  // l'onglet "En cours" au rendu suivant, alors qu'elle est on ne peut plus
+  // active — voir EN_COURS_STATUTS côté API (transporteur-action.js), qui la
+  // traite déjà comme telle.
+  if(m.statut === 'en_route' || m.statut === 'arrivee' || m.statut === 'probleme') return true;
   if(m.statut !== 'acceptee') return false;
   const todayStr = new Date().toISOString().slice(0,10);
   return m.date_prevue <= todayStr;
@@ -1320,6 +1336,14 @@ function missionCardActionsHtml(m, mapsUrl, tel){
     const todayStr = new Date().toISOString().slice(0,10);
     if(m.statut === 'acceptee' && m.date_prevue === todayStr){
       return `<div class="mcard-actions">${mapBtn}${callBtn}<button class="btn btn-blue" style="flex:1;min-width:0" onclick="event.stopPropagation();openMission(${m.id})">▶️ Démarrer</button></div>`;
+    }
+    // Mission déjà démarrée (en route ou sur place) : un bouton explicite
+    // pour y revenir directement, plutôt que de compter uniquement sur le
+    // clic sur la carte entière — sans ça, une mission qu'on vient de
+    // quitter via "← Retour" n'a plus rien qui invite clairement à y
+    // rentrer à nouveau tant qu'elle n'est pas terminée.
+    if(['en_route','arrivee'].includes(m.statut)){
+      return `<div class="mcard-actions">${mapBtn}${callBtn}<button class="btn btn-blue" style="flex:1;min-width:0" onclick="event.stopPropagation();openMission(${m.id})">▶️ Reprendre</button></div>`;
     }
     return (mapBtn||callBtn) ? `<div class="mcard-actions">${mapBtn}${callBtn}</div>` : '';
   }
@@ -1943,7 +1967,7 @@ function renderDetail(){
   if(checklistBlocksMission(m)){
     document.getElementById('detail-screen').innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <button class="detail-back" style="margin-bottom:14px" onclick="show('missions-screen')">← Retour</button>
+        <button class="detail-back" style="margin-bottom:14px" onclick="backToMissions()">← Retour</button>
         <button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>
       </div>
       <div class="card">
@@ -2012,7 +2036,7 @@ function renderDetail(){
     : `${renderStepper(m)}${infoRows}<div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div><div class="err" id="detail-err"></div>`;
   document.getElementById('detail-screen').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <button class="detail-back" style="margin-bottom:14px" onclick="show('missions-screen')">← Retour</button>
+      <button class="detail-back" style="margin-bottom:14px" onclick="backToMissions()">← Retour</button>
       ${canPause ? `<button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>` : ''}
     </div>
     <div class="card">
