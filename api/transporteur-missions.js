@@ -67,7 +67,7 @@ module.exports = async (req, res) => {
         vidange_confirmee,
         probleme_type, probleme_description,
         reservation:reservations (
-          prenom, nom, tel, tel_secondaire, type_client, raison_sociale, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, quantite, instructions_acces, city_id,
+          prenom, nom, tel, tel_secondaire, type_client, raison_sociale, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, quantite, instructions_acces, city_id, hors_zone,
           date_debut, date_fin,
           reservation_appareils ( appareil:appareils ( numero ) ),
           client:clients ( acces_difficile )
@@ -91,7 +91,7 @@ module.exports = async (req, res) => {
       installation:        m.reservation?.installation || null,
       // "autre" : pas de barème, le tarif est fixé une fois pour toutes par
       // l'admin à la création (montant_du_cents), jamais recalculé ici.
-      montant_preview:     m.type === 'autre' ? (m.montant_du_cents || 0) : computeBareme(m.type, m.reservation?.installation, baremeByCity[m.reservation?.city_id]),
+      montant_preview:     m.type === 'autre' ? (m.montant_du_cents || 0) : computeBareme(m.type, m.reservation?.installation, baremeByCity[m.reservation?.city_id], m.reservation?.hors_zone),
       statut:              m.statut,
       date_prevue:         m.date_prevue,
       creneau:             m.creneau,

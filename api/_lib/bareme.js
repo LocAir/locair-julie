@@ -10,6 +10,19 @@ const DEFAULTS = {
   changement:            4000,
 };
 
+// Grille hors zone (Module 9) : fixe, identique pour toutes les villes —
+// remplace le barème normal ci-dessus dès qu'une mission est marquée
+// hors_zone sur sa réservation. Décidé par Aly le jour où Loc'Air a
+// commencé à livrer hors de sa zone habituelle (facturée 95€ au client
+// contre 35€ en zone, cf. index.html) : le transporteur doit être mieux
+// payé pour ces trajets plus longs.
+const HORS_ZONE_TARIFS = {
+  livraison_autonome:   5000,
+  livraison_technicien: 9500,
+  recuperation:          5000,
+  changement:            5000,
+};
+
 async function getBaremeForCity(supabase, cityId) {
   if (!cityId) return DEFAULTS;
   try {
@@ -54,11 +67,11 @@ async function getBaremeByCityIds(supabase, cityIds) {
   return map;
 }
 
-function computeBareme(type, installation, tarifs) {
-  const t = tarifs || DEFAULTS;
+function computeBareme(type, installation, tarifs, horsZone) {
+  const t = horsZone ? HORS_ZONE_TARIFS : (tarifs || DEFAULTS);
   if (type === 'changement')  return t.changement;
   if (type === 'recuperation') return t.recuperation;
   return (installation || '').startsWith('Technicien') ? t.livraison_technicien : t.livraison_autonome;
 }
 
-module.exports = { computeBareme, getBaremeForCity, getBaremeByCityIds, DEFAULTS };
+module.exports = { computeBareme, getBaremeForCity, getBaremeByCityIds, DEFAULTS, HORS_ZONE_TARIFS };

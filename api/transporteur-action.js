@@ -75,7 +75,7 @@ function checkMediaAllowed(liv, kind) {
 async function loadLivraison(supabase, id) {
   const { data, error } = await supabase
     .from('livraisons')
-    .select('*, reservation:reservations(installation, city_id, prenom, nom, tel, email, ref, adresse, creneau, lang)')
+    .select('*, reservation:reservations(installation, city_id, hors_zone, prenom, nom, tel, email, ref, adresse, creneau, lang)')
     .eq('id', id).maybeSingle();
   if (error || !data) return null;
   return data;
@@ -361,13 +361,15 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'État du matériel requis avant de valider' });
       }
 
-      // Un tarif fixé à la main par l'admin (ex. mission hors zone, voir
-      // admin-livraisons.js action 'update') ne doit jamais être écrasé par
-      // le barème standard au moment où le transporteur valide la mission.
+      // Un tarif fixé à la main par l'admin (voir admin-livraisons.js action
+      // 'update') ne doit jamais être écrasé par le barème standard au moment
+      // où le transporteur valide la mission. Une mission hors zone applique
+      // automatiquement la grille hors zone (voir _lib/bareme.js), sans
+      // intervention de l'admin.
       let montantDu = liv.montant_du_cents;
       if (!liv.montant_manuel) {
         const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
-        montantDu = computeBareme(liv.type, liv.reservation?.installation, tarifs);
+        montantDu = computeBareme(liv.type, liv.reservation?.installation, tarifs, liv.reservation?.hors_zone);
       }
 
       const update = {
@@ -448,7 +450,7 @@ module.exports = async (req, res) => {
       let montantDu = liv.montant_du_cents;
       if (!liv.montant_manuel) {
         const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
-        montantDu = computeBareme('changement', null, tarifs);
+        montantDu = computeBareme('changement', null, tarifs, liv.reservation?.hors_zone);
       }
 
       await supabase.from('livraisons').update({
