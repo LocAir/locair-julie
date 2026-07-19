@@ -5887,7 +5887,10 @@ function renderCommunications(){
   if(q) items = items.filter(c => [(c.prenom||'')+' '+(c.nom||''), c.ref].join(' ').toLowerCase().includes(q));
 
   const banner = COMMUNICATIONS_ANOMALIES > 0
-    ? `<div style="background:var(--red);color:#fff;padding:12px 16px;border-radius:var(--r);font-weight:700;margin-bottom:14px">🔴 ${COMMUNICATIONS_ANOMALIES} anomalie${COMMUNICATIONS_ANOMALIES>1?'s':''} de communication à traiter</div>`
+    ? `<div style="background:var(--red);color:#fff;padding:12px 16px;border-radius:var(--r);font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <span>🔴 ${COMMUNICATIONS_ANOMALIES} anomalie${COMMUNICATIONS_ANOMALIES>1?'s':''} de communication à traiter</span>
+        <button class="btn" style="background:#fff;color:var(--red)" onclick="openBulkResendModal()">🔁 Tout renvoyer...</button>
+      </div>`
     : `<div style="background:var(--green-bg);color:var(--green);padding:12px 16px;border-radius:var(--r);font-weight:700;margin-bottom:14px">✅ Toutes les communications sont à jour</div>`;
 
   zone.innerHTML = `
@@ -6000,6 +6003,67 @@ async function commUnskip(reservationId, scenario, btnEl){
     if(btnEl) btnEl.disabled = false;
     showToast(e.message, 'error');
   }
+}
+
+// Renvoi groupé de toutes les anomalies — mais jamais à l'aveugle : la liste
+// exacte de ce qui va partir est affichée avant tout envoi, avec une case à
+// décocher par ligne, pour pouvoir en exclure une avant de confirmer. Cible
+// toujours l'ensemble complet des anomalies (pas seulement ce que le filtre
+// "Anomalies"/la recherche affichent à l'écran à cet instant). Ne concerne
+// que les 8 scénarios du moteur (retard/erreur) — les envois ponctuels et la
+// notification d'arrivée n'ont pas de bouton "renvoyer".
+let BULK_RESEND_ITEMS = [];
+function openBulkResendModal(){
+  const items = [];
+  for(const c of COMMUNICATIONS_CACHE){
+    for(const ch of c.channels){
+      if((ch.etat==='retard' || ch.etat==='erreur') && !ch.ad_hoc){
+        items.push({ reservation_id: c.reservation_id, nom: ((c.prenom||'')+' '+(c.nom||'')).trim()||'Client', ref: c.ref, scenario: ch.scenario, libelle: ch.libelle, etat: ch.etat });
+      }
+    }
+  }
+  if(!items.length){ showToast('Aucun envoi à renvoyer', 'success'); return; }
+  BULK_RESEND_ITEMS = items;
+
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:540px">
+      <h2>🔁 Renvoyer les emails en anomalie</h2>
+      <p class="modal-msg">Vérifie la liste avant de confirmer — décoche ce que tu ne veux pas renvoyer maintenant.</p>
+      <div style="max-height:320px;overflow-y:auto;margin:12px 0;border:1px solid var(--border);border-radius:var(--r);padding:4px 10px">
+        ${items.map((it,i) => `
+          <label style="display:flex;align-items:flex-start;gap:8px;padding:7px 4px;font-size:13px;border-bottom:1px solid var(--bg)">
+            <input type="checkbox" class="bulk-resend-item" data-idx="${i}" checked style="margin-top:3px">
+            <span>${it.etat==='erreur'?'✕':'!'} <strong>${escHtml(it.nom)}</strong>${!isInternalRef(it.ref)?' · '+escHtml(it.ref):''}<br/><span style="color:var(--grey)">${escHtml(it.libelle)}</span></span>
+          </label>`).join('')}
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-grey" onclick="closeModal()">Annuler</button>
+        <button class="btn btn-blue" onclick="confirmBulkResend()">✉️ Renvoyer la sélection</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+}
+async function confirmBulkResend(){
+  const checked = [...document.querySelectorAll('.bulk-resend-item:checked')].map(el => BULK_RESEND_ITEMS[parseInt(el.dataset.idx)]);
+  closeModal();
+  if(!checked.length) return;
+  showToast(`Envoi de ${checked.length} communication${checked.length>1?'s':''}...`, 'success');
+  let okCount = 0, failCount = 0;
+  // Séquentiel, pas en parallèle : évite de bombarder Brevo d'un coup si
+  // beaucoup d'anomalies s'accumulent (ex. panne de plusieurs heures).
+  for(const it of checked){
+    try{
+      const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'resend', reservation_id:it.reservation_id, scenario:it.scenario})});
+      if(r.ok) okCount++; else failCount++;
+    }catch(e){ failCount++; }
+  }
+  showToast(`${okCount} envoyé${okCount>1?'s':''}${failCount?` · ${failCount} échec${failCount>1?'s':''}`:''}`, failCount ? 'error' : 'success');
+  loadCommunications();
 }
 
 // Édition complète de la fiche : les champs client (prenom/nom/tel/email)

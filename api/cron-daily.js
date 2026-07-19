@@ -9,6 +9,7 @@ const { runMonthlyRecap }      = require('./cron-monthly');
 const { calcTieredPrice: calcRetardPrice } = require('./_lib/pricing');
 const { scenariosDueToday } = require('./_lib/emailSchedule');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
+const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
 const { recordMouvement } = require('./_lib/stockMouvements');
 
 function verifyCronAuth(req) {
@@ -371,6 +372,28 @@ module.exports = async (req, res) => {
     if (emailsEnvoyes) report.emailsScenarios = emailsEnvoyes;
   } catch (e) {
     console.error('[Cron emails scénarios]', e.message);
+  }
+
+  // ── 6bis. Panneau Communications : alerte push si des anomalies restent à
+  // traiter (email jamais parti alors que dû, ou dernier envoi en erreur —
+  // même détection que le panneau admin, voir _lib/communicationsCockpit.js).
+  // Tag fixe par ville : cette notification se met à jour à sa place au lieu
+  // de s'empiler chaque jour tant que l'admin n'a pas traité les anomalies.
+  try {
+    const { data: citiesForComms } = await supabase.from('cities').select('id, name').eq('actif', true);
+    for (const city of citiesForComms || []) {
+      const { anomalies } = await buildCommunicationsCockpit(supabase, city.id);
+      if (anomalies > 0) {
+        await pushToAdmin(supabase, {
+          title: `🎛️ ${anomalies} anomalie${anomalies > 1 ? 's' : ''} de communication — ${city.name}`,
+          body:  "Email jamais parti ou en erreur pour au moins un client. Onglet Communications pour les traiter.",
+          tag:   `communications-anomalies-${city.id}`,
+        });
+        report.communicationsAnomalies = (report.communicationsAnomalies || 0) + anomalies;
+      }
+    }
+  } catch (e) {
+    console.error('[Cron communications]', e.message);
   }
 
   // ── 7. Rapport hebdomadaire (lundi) et récap virements mensuel (le 1er) ─────

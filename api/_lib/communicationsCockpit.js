@@ -62,8 +62,13 @@ async function buildCommunicationsCockpit(supabase, cityId) {
     supabase.from('email_sent').select('reservation_id, scenario').in('reservation_id', resaIds),
     supabase.from('email_skip').select('reservation_id, scenario, action').in('reservation_id', resaIds),
     supabase.from('email_scenarios').select('id, actif'),
-    supabase.from('livraisons').select('reservation_id, type, statut, client_notifie_at')
-      .in('reservation_id', resaIds).in('type', ['livraison', 'recuperation']),
+    // 'changement' inclus aussi : la notification d'arrivée (prevenir_client,
+    // voir transporteur-action.js) n'est restreinte à aucun type de mission,
+    // contrairement à post_installation/fin_location ci-dessous qui ne
+    // concernent QUE livraison/recuperation — installationDone/recuperationDone
+    // filtrent explicitement par type, donc 'changement' n'y interfère pas.
+    supabase.from('livraisons').select('reservation_id, type, statut, date_prevue, client_notifie_at')
+      .in('reservation_id', resaIds).in('type', ['livraison', 'recuperation', 'changement']),
   ]);
 
   // Le plus récent par (réservation, scénario) — email_log est déjà trié
@@ -142,8 +147,14 @@ async function buildCommunicationsCockpit(supabase, cityId) {
     // propre téléphone, jamais via Brevo — auto-déclarée par
     // livraisons.client_notifie_at) — affichée seulement quand une mission
     // est réellement en cours maintenant, sans quoi elle encombrerait la
-    // vue toute la durée du séjour pour rien.
-    const missionEnCours = missions.find(m => ['en_route', 'arrivee'].includes(m.statut));
+    // vue toute la durée du séjour pour rien. Même définition de "en cours"
+    // que le serveur (EN_COURS_STATUTS dans transporteur-action.js, qui
+    // autorise prevenir_client dès 'acceptee') : une mission juste acceptée
+    // pour un jour futur n'est PAS "en cours" (voir date_prevue<=todayISO,
+    // même logique que le badge "Programmée" côté admin/transporteur).
+    const missionEnCours = missions.find(m =>
+      ['en_route', 'arrivee'].includes(m.statut) || (m.statut === 'acceptee' && m.date_prevue && m.date_prevue <= todayISO)
+    );
     if (missionEnCours) {
       channels.push({
         scenario: 'notif_arrivee', libelle: "Notification d'arrivée (SMS/WhatsApp du transporteur)",
