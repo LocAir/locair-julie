@@ -143,13 +143,24 @@ module.exports = async (req, res) => {
         .eq('partenaire_id', partenaireId).eq('statut', 'confirmee').eq('masquee', false)
         .eq('partenaire_commission_payee', false);
       const montant = (resas || []).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
-      if (montant <= 0) return res.status(400).json({ error: 'Rien à verser pour ce partenaire' });
       const ids = (resas || []).map(r => r.id);
 
-      await supabase.from('reservations').update({ partenaire_commission_payee: true }).in('id', ids);
-
+      // Une demande de virement déjà en cours pour ce partenaire est réglée
+      // par ce paiement plutôt que dupliquée avec une nouvelle ligne.
       const { data: existante } = await supabase
         .from('partenaire_virements').select('id').eq('partenaire_id', partenaireId).eq('statut', 'demande').maybeSingle();
+
+      // Rien à verser ET aucune demande à régler : vraiment rien à faire. Mais
+      // s'il y a une demande en cours pour 0 € (commissions déjà réglées par
+      // ailleurs entre-temps), on la solde quand même — sinon le badge
+      // "virement demandé" reste bloqué pour toujours (même bug que côté
+      // transporteurs).
+      if (montant <= 0 && !existante) {
+        return res.status(400).json({ error: 'Rien à verser pour ce partenaire' });
+      }
+
+      if (ids.length) await supabase.from('reservations').update({ partenaire_commission_payee: true }).in('id', ids);
+
       if (existante) {
         await supabase.from('partenaire_virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', existante.id);
       } else {

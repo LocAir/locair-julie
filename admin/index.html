@@ -4767,7 +4767,9 @@ function partenaireRevenusCardHtml(p){
       ${p.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par l\'ambassadeur</div>':''}
       ${litigesHtml}
       ${ribBlockHtml(p)}
-      ${p.non_verse_cents>0?`<button class="btn btn-green btn-block" onclick="verserPartenaireMaintenant(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}', ${p.non_verse_cents})">✅ Marquer comme versé (${euros(p.non_verse_cents)})</button>`:''}
+      ${p.non_verse_cents>0
+        ?`<button class="btn btn-green btn-block" onclick="verserPartenaireMaintenant(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}', ${p.non_verse_cents})">✅ Marquer comme versé (${euros(p.non_verse_cents)})</button>`
+        :(p.demande_en_cours?`<button class="btn btn-grey btn-block" onclick="verserPartenaireMaintenant(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}', 0)">Marquer la demande comme réglée (rien à verser)</button>`:'')}
       ${p.reservations.length?`
       <details style="margin-top:12px">
         <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Historique complet (${p.reservations.length} réservation${p.reservations.length>1?'s':''})</summary>
@@ -4824,16 +4826,19 @@ async function loadPartenairesRevenus(){
   }
 }
 function verserPartenaireMaintenant(id, nom, montantCents){
-  confirmAction(`Confirmer que ${euros(montantCents)} ont bien été versés à ${nom} ? Cette action est irréversible. Pense à lui demander une facture correspondant à ce montant (tu pourras cocher "Facture reçue" une fois arrivée).`, async () => {
+  const message = montantCents > 0
+    ? `Confirmer que ${euros(montantCents)} ont bien été versés à ${nom} ? Cette action est irréversible. Pense à lui demander une facture correspondant à ce montant (tu pourras cocher "Facture reçue" une fois arrivée).`
+    : `${nom} a demandé un virement, mais il n'y a plus rien à lui verser (commissions déjà réglées entre-temps ?). Marquer sa demande comme réglée pour faire disparaître l'alerte ?`;
+  confirmAction(message, async () => {
     try{
       const r = await fetch(API('admin-partenaire-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'verser_maintenant', partenaire_id:id})});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
       TAB_AUTO_REFRESH[CURRENT_TAB]?.(); // rafraîchit la vue courante, qu'on soit dans Partenaires ou dans Virements
       loadAlerts();
-      showToast(`${euros(d.montant_cents)} marqués comme versés`, 'success');
+      showToast(d.montant_cents>0 ? `${euros(d.montant_cents)} marqués comme versés` : 'Demande de virement réglée', 'success');
     }catch(e){ showToast(e.message, 'error'); }
-  }, {danger:true, yesLabel:'Confirmer le virement'});
+  }, {danger:true, yesLabel: montantCents>0 ? 'Confirmer le virement' : 'Marquer comme réglée'});
 }
 
 // ── VIREMENTS (vue consolidée) ────────────────────────────────────────────────
