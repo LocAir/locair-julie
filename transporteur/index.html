@@ -437,6 +437,7 @@ let STATE = {
   detailArriveeSmsSentFor: null, // id de la mission dont le SMS "merci de descendre" a été envoyé (état "clignotant"), voir wizardStepBodyHtml()
   checklistItems: null, // {installation:[...], recuperation:[...]} — chargé une fois, voir fetchMissions()
   notifications: [], // centre de notifications (Module 5, Partie 11), voir updateNotifBadge()
+  wizardViewIdx: null, // étape du parcours affichée si différente de l'étape réelle — voir goToPreviousWizardStep()/missionWizardHtml()
   activiteMissionsCache: [], // dernière liste "terminées" reçue, voir switchMissionsFiltre()
   missionsFiltre: 'terminees', // filtre courant de l'onglet "Mes missions"
   // Tournée du jour (plus proche en voiture, api/transporteur-route.js) —
@@ -1653,6 +1654,7 @@ function missionsByPostalHtml(items){
 function openMission(id){
   STATE.currentMission = STATE.missions.find(m => m.id === id);
   if(!STATE.currentMission) return;
+  STATE.wizardViewIdx = null; // toujours ouvrir sur l'étape réelle en cours, jamais celle laissée par une consultation précédente
   if(checklistBlocksMission(STATE.currentMission)){
     openChecklistPopup(() => { renderDetail(); show('detail-screen'); });
     return;
@@ -1756,8 +1758,19 @@ function goToNextStepFromRoute(){
 function goToNextStepFromArrivee(){
   doAction('arriver');
 }
-function missionWizardProgressHtml(steps, idx){
+// `idx` : étape affichée à l'écran (peut être une étape déjà passée, voir
+// goToPreviousWizardStep()). `idxReal` : étape réellement atteinte par la
+// mission (missionStepIndex, dérivée de l'état persisté) — toujours >= idx.
+// Le livreur garde la main pour revoir une étape passée (infos client,
+// photo à refaire, SMS au numéro de secours...) sans perdre le fil de
+// l'étape où il en est vraiment.
+function missionWizardProgressHtml(steps, idx, idxReal){
   const pct = Math.round(((idx+1)/steps.length)*100);
+  // Le bouton "← Retour" en haut de l'écran (handleDetailBack) fait déjà
+  // reculer d'une étape quand on en a consulté une passée — seul un moyen de
+  // revenir en avant manque ici une fois qu'on a fini de regarder.
+  const resumeBtn = idx<idxReal
+    ? `<button class="btn btn-blue" style="flex:1;min-width:0;font-size:12.5px;padding:8px;margin-top:8px" onclick="goToCurrentWizardStep()">↻ Revenir à "${escHtml(steps[idxReal].title)}"</button>` : '';
   return `
     <div class="wiz-progress">
       <div class="wiz-progress-label">
@@ -1765,7 +1778,49 @@ function missionWizardProgressHtml(steps, idx){
         <span class="wiz-progress-name">${escHtml(steps[idx].title)}</span>
       </div>
       <div class="wiz-progress-track"><div class="wiz-progress-fill" style="width:${pct}%"></div></div>
+      ${resumeBtn}
     </div>`;
+}
+// Navigue vers l'étape juste avant celle actuellement affichée — jamais en
+// dessous de 0. Ne modifie rien côté serveur, seulement ce qui est affiché :
+// missionStepIndex() (l'étape réellement atteinte) reste inchangée.
+function goToPreviousWizardStep(){
+  const m = STATE.currentMission;
+  if(!m) return;
+  const steps = missionStepDefs(m);
+  const idxReal = missionStepIndex(m, steps);
+  const cur = STATE.wizardViewIdx==null ? idxReal : STATE.wizardViewIdx;
+  STATE.wizardViewIdx = Math.max(0, cur-1);
+  renderDetail();
+}
+// Abandonne la consultation d'une étape passée et retombe sur l'étape
+// réellement en cours.
+function goToCurrentWizardStep(){
+  STATE.wizardViewIdx = null;
+  renderDetail();
+}
+// Bouton "← Retour" en haut de l'écran détail : à l'intérieur du parcours
+// étape par étape, recule d'abord d'une étape (infos client, photo à
+// refaire, SMS au numéro de secours... — le livreur garde la main pour
+// revoir n'importe quelle étape déjà passée) ; seulement une fois revenu à
+// la toute première étape, "← Retour" quitte réellement la mission vers la
+// liste. Même calcul isWizard/idx que renderDetail() (dupliqué ici plutôt
+// que stocké sur STATE, pour rester une pure fonction de la mission
+// courante — aucun risque de désynchronisation).
+function handleDetailBack(){
+  const m = STATE.currentMission;
+  if(m){
+    const enCours = ['acceptee','en_route','arrivee'].includes(m.statut);
+    const todayStr = new Date().toISOString().slice(0,10);
+    const isWizard = enCours && m.date_prevue<=todayStr && ['livraison','recuperation','changement'].includes(m.type);
+    if(isWizard){
+      const steps = missionStepDefs(m);
+      const idxReal = missionStepIndex(m, steps);
+      const idx = Math.min(STATE.wizardViewIdx==null ? idxReal : STATE.wizardViewIdx, idxReal);
+      if(idx > 0){ goToPreviousWizardStep(); return; }
+    }
+  }
+  backToMissions();
 }
 function wizardProofStepHtml(m, kind, doneLabel, hint){
   return `
@@ -1923,11 +1978,15 @@ function submitFinalMission(okAction){
 }
 function missionWizardHtml(m, infoRows, mapsUrl){
   const steps = missionStepDefs(m);
-  const idx = missionStepIndex(m, steps);
+  const idxReal = missionStepIndex(m, steps);
+  // L'étape affichée peut être antérieure à l'étape réelle si le livreur a
+  // cliqué "← Étape précédente" (voir goToPreviousWizardStep) — jamais plus
+  // avancée : on ne peut pas sauter une étape pas encore atteinte.
+  const idx = Math.min(STATE.wizardViewIdx==null ? idxReal : STATE.wizardViewIdx, idxReal);
   const key = steps[idx].key;
   return `
     ${tourneeBannerHtml(m)}
-    ${missionWizardProgressHtml(steps, idx)}
+    ${missionWizardProgressHtml(steps, idx, idxReal)}
     <div id="action-zone">${wizardStepBodyHtml(m, infoRows, key, mapsUrl)}</div>
     <button class="btn btn-amber" style="margin-top:10px" onclick="openProbleme()">⚠️ PROBLÈME</button>
     <div class="err" id="detail-err"></div>`;
@@ -2036,7 +2095,7 @@ function renderDetail(){
     : `${renderStepper(m)}${infoRows}<div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div><div class="err" id="detail-err"></div>`;
   document.getElementById('detail-screen').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center">
-      <button class="detail-back" style="margin-bottom:14px" onclick="backToMissions()">← Retour</button>
+      <button class="detail-back" style="margin-bottom:14px" onclick="handleDetailBack()">← Retour</button>
       ${canPause ? `<button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>` : ''}
     </div>
     <div class="card">
