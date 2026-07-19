@@ -2,6 +2,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
+const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
 
 // Compte, par onglet, ce qui attend une action de l'admin — affiché en badge
 // sur la barre latérale. Pensé pour être étendu facilement (nouvel onglet =
@@ -125,11 +126,23 @@ module.exports = async (req, res) => {
       .eq('city_id', city.id).in('statut', ['panne', 'maintenance']);
     const stockIndispo = stockIndispoCount || 0;
 
+    // Panneau Communications : email/SMS jamais parti alors qu'il aurait dû,
+    // ou dernier envoi en erreur — même définition d'anomalie que le
+    // panneau détaillé (voir _lib/communicationsCockpit.js), pour que ce
+    // badge ne raconte jamais une histoire différente de celle du panneau.
+    let communications = 0;
+    try {
+      communications = (await buildCommunicationsCockpit(supabase, city.id)).anomalies;
+    } catch (e) {
+      console.error('[Admin alerts] communications', e.message);
+    }
+
     return res.status(200).json({
       virements, livraisons, non_assignees: nonAssignees, reservations, incidents, retards,
       partenaire_virements: partenaireVirementsCount || 0,
       partenaire_litiges: partenaireLitigesCount || 0,
       stock_indisponible: stockIndispo,
+      communications,
     });
   } catch (err) {
     console.error('[Admin alerts]', err.message);

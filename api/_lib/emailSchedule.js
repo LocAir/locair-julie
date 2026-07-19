@@ -75,4 +75,34 @@ function upcomingScenariosForReservation(reservation, todayISO) {
   return candidats.filter(c => c.date >= todayISO);
 }
 
-module.exports = { scenariosDueToday, upcomingScenariosForReservation, daysDiff };
+// Sœur "en retard" de upcomingScenariosForReservation() : mêmes candidats,
+// mais ne garde que les dates déjà passées — pour détecter une anomalie
+// ("ce rappel aurait dû partir il y a 3 jours et n'est jamais parti"), voir
+// le panneau Communications (_lib/communicationsCockpit.js). Ne dit rien
+// sur si l'email a réellement été envoyé ou volontairement sauté — à
+// croiser avec email_sent/email_skip par l'appelant, exactement comme pour
+// upcomingScenariosForReservation().
+//
+// Statut accepté plus large ('confirmee' OU 'terminee') que les 2 fonctions
+// sœurs ci-dessus : une réservation passe à 'terminee' dès la récupération
+// effectuée (voir transporteur-action.js), potentiellement le jour même où
+// rappel_recuperation était dû — une anomalie sur ce rappel doit donc
+// pouvoir être détectée même après ce changement de statut. L'appelant
+// reste responsable de ne jamais passer une réservation annulée/remboursée
+// (pour laquelle aucun email n'était de toute façon prévu).
+function pastScenariosForReservation(reservation, todayISO) {
+  if (!reservation || !['confirmee', 'terminee'].includes(reservation.statut)) return [];
+  if (!reservation.date_debut || !reservation.date_fin) return [];
+  const duree = daysDiff(reservation.date_debut, reservation.date_fin);
+
+  const candidats = [
+    { scenario: 'suivi_j14',           date: scenarioDate(reservation.date_debut, 14) },
+    { scenario: 'preparation_j3',      date: scenarioDate(reservation.date_debut, 3) },
+    { scenario: 'rappel_j1',           date: scenarioDate(reservation.date_debut, 1) },
+    ...(duree > 4 ? [{ scenario: 'avant_fin_location', date: scenarioDate(reservation.date_fin, 3) }] : []),
+    { scenario: 'rappel_recuperation', date: scenarioDate(reservation.date_fin, 0) },
+  ];
+  return candidats.filter(c => c.date < todayISO);
+}
+
+module.exports = { scenariosDueToday, upcomingScenariosForReservation, pastScenariosForReservation, daysDiff };

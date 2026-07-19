@@ -406,6 +406,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
           <div class="tabs-group-body">
             <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
             <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
+            <button data-tab="communications" onclick="switchAdminTab('communications')">🎛️ Communications<span class="tab-badge hidden" id="badge-communications"></span></button>
           </div>
         </details>
         <details class="tabs-group" data-group="gerer">
@@ -437,6 +438,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-accueil"></div>
         <div id="tab-stock" class="hidden"></div>
         <div id="tab-reservations" class="hidden"></div>
+        <div id="tab-communications" class="hidden"></div>
         <div id="tab-checklist" class="hidden"></div>
         <div id="tab-livraisons" class="hidden"></div>
         <div id="tab-virements" class="hidden"></div>
@@ -1046,12 +1048,13 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
+  ['accueil','stock','reservations','communications','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
   if(tab==='stock') loadStock();
   if(tab==='reservations') loadReservations();
+  if(tab==='communications') loadCommunications();
   if(tab==='checklist') loadChecklistBox();
   if(tab==='livraisons') loadLivraisons();
   if(tab==='virements') loadVirementsTab();
@@ -1092,12 +1095,13 @@ async function loadAlerts(){
     updateTabBadge('partenaire_virements', d.partenaire_virements);
     updateTabBadge('virements_total', (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0));
     updateTabBadge('incidents', d.incidents);
+    updateTabBadge('communications', d.communications);
     // Les groupes Piloter/Gérer/Suivre sont des accordéons repliés par
     // défaut (gain de place) — sans ça une alerte cachée dans un groupe
     // fermé passerait inaperçue. On déplie automatiquement le groupe
     // concerné et on pose un point rouge sur son titre, même logique que
     // le point sur le bouton ☰ juste en dessous.
-    updateGroupAlert('piloter', (d.reservations||0) + (d.livraisons||0) > 0);
+    updateGroupAlert('piloter', (d.reservations||0) + (d.livraisons||0) + (d.communications||0) > 0);
     updateGroupAlert('gerer',   (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0) > 0);
     updateGroupAlert('suivre',  (d.incidents||0) > 0);
     renderAlertsBanner(d);
@@ -1106,7 +1110,7 @@ async function loadAlerts(){
     // scrollable, les badges des onglets cachés passaient inaperçus — ce
     // point signale qu'il y a quelque chose à traiter dans le menu sans
     // avoir à l'ouvrir pour le découvrir.
-    const anyAlert = (d.reservations||0) + (d.livraisons||0) + (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0) + (d.incidents||0) > 0;
+    const anyAlert = (d.reservations||0) + (d.livraisons||0) + (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0) + (d.incidents||0) + (d.communications||0) > 0;
     document.getElementById('mobile-menu-dot')?.classList.toggle('hidden', !anyAlert);
   }catch(e){}
 }
@@ -1138,6 +1142,7 @@ function renderAlertsBanner(d){
   if(d.retards > 0)       alerts.push({sev:1, msg:`🚨 ${d.retards} mission${d.retards>1?'s':''} en retard`, fn:"goToRetards()"});
   if(d.non_assignees > 0) alerts.push({sev:1, msg:`⚠️ ${d.non_assignees} mission${d.non_assignees>1?'s':''} non assignée${d.non_assignees>1?'s':''} sous 72h`, fn:"goToUnassigned()"});
   if(d.incidents > 0)     alerts.push({sev:1, msg:`🧯 ${d.incidents} incident${d.incidents>1?'s':''} ouvert${d.incidents>1?'s':''}`, fn:"switchAdminTab('incidents')"});
+  if(d.communications > 0) alerts.push({sev:2, msg:`🎛️ ${d.communications} anomalie${d.communications>1?'s':''} de communication client`, fn:"switchAdminTab('communications')"});
   if(d.reservations > 0)  alerts.push({sev:2, msg:`🧾 ${d.reservations} réservation${d.reservations>1?'s':''} à traiter`, fn:"switchAdminTab('reservations')"});
   const totalVirementsDemandes = (d.virements||0) + (d.partenaire_virements||0);
   if(totalVirementsDemandes > 0) alerts.push({sev:2, msg:`💶 ${totalVirementsDemandes} virement${totalVirementsDemandes>1?'s':''} demandé${totalVirementsDemandes>1?'s':''}`, fn:"switchAdminTab('virements')"});
@@ -1193,6 +1198,7 @@ const TAB_AUTO_REFRESH = {
   stock:         () => loadStock(true),
   reservations:  silentRefreshReservations,
   livraisons:    silentRefreshLivraisons,
+  communications: loadCommunications,
   virements:     loadVirementsTab,
   transporteurs: () => TRANSPORTEURS_VIEW==='equipe' ? loadTransporteursEquipe() : loadTransporteursRevenus(),
   partenaires:   () => PARTENAIRES_VIEW==='equipe' ? loadPartenairesEquipe() : loadPartenairesRevenus(),
@@ -5804,6 +5810,195 @@ async function viewCommunicationContent(id, btnEl){
     showToast(e.message, 'error');
   }finally{
     if(btnEl) btnEl.disabled = false;
+  }
+}
+
+// ── Onglet Communications (cockpit) ──────────────────────────────────────────
+// Vue d'ensemble de TOUS les canaux de communication client (les 8 emails/SMS
+// du moteur de scénarios, les envois ponctuels, et la notification d'arrivée
+// auto-déclarée par le transporteur) pour toutes les réservations actives —
+// façon "tableau de bord cockpit" : un coup d'œil sur tout le monde, avec les
+// anomalies remontées en premier, et un détail dépliable client par client
+// pour agir (renvoyer/pauser/reprendre/voir) sans avoir à ouvrir sa fiche.
+let COMMUNICATIONS_CACHE = [];
+let COMMUNICATIONS_ANOMALIES = 0;
+let COMMUNICATIONS_FILTER = 'anomalies'; // 'anomalies' | 'toutes'
+let COMMUNICATIONS_SEARCH = '';
+let COMMUNICATIONS_OPEN = new Set(); // reservation_id des fiches dépliées
+
+// Libellés courts pour les pastilles (coup d'œil) — le libellé complet reste
+// disponible au survol (title) et dans le détail déplié.
+const COMM_SHORT_LABEL = {
+  confirmation:        'Confirm.',
+  suivi_j14:           'J-14',
+  preparation_j3:      'J-3',
+  rappel_j1:           'J-1',
+  post_installation:   'Install.',
+  avant_fin_location:  'Avant fin',
+  rappel_recuperation: 'Récup.',
+  fin_location:        'Fin loc.',
+  notif_arrivee:       'Arrivée',
+  sms_confirmation:    'SMS conf.',
+  email_contrat_facture: 'Contrat',
+  email_prolongation:  'Prolong.',
+  sms_mission_confirmee: 'SMS mission',
+  sms_client_absent:   'SMS absent',
+  email_facture_vente: 'Facture vente',
+};
+const COMM_ETAT_CHIP = {
+  envoye:    { cls: 'fait',      icon: '✓', label: 'Envoyé' },
+  erreur:    { cls: 'probleme',  icon: '✕', label: 'Erreur' },
+  retard:    { cls: 'probleme',  icon: '!', label: 'En retard' },
+  pause:     { cls: 'en_attente',icon: '⏸', label: 'En pause' },
+  a_venir:   { cls: 'inactif',   icon: '…', label: 'À venir' },
+  desactive: { cls: 'inactif',   icon: '—', label: 'Désactivé' },
+};
+
+async function loadCommunications(){
+  const zone = document.getElementById('tab-communications');
+  if(!zone) return;
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'cockpit'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    COMMUNICATIONS_CACHE = d.clients || [];
+    COMMUNICATIONS_ANOMALIES = d.anomalies || 0;
+    updateTabBadge('communications', COMMUNICATIONS_ANOMALIES);
+    renderCommunications();
+  }catch(e){
+    zone.innerHTML = `<p class="empty">${escHtml(e.message)}</p>`;
+  }
+}
+function setCommFilter(f){ COMMUNICATIONS_FILTER = f; renderCommunications(); }
+function setCommSearch(v){ COMMUNICATIONS_SEARCH = v; renderCommunications(); }
+function toggleCommDetail(reservationId){
+  if(COMMUNICATIONS_OPEN.has(reservationId)) COMMUNICATIONS_OPEN.delete(reservationId);
+  else COMMUNICATIONS_OPEN.add(reservationId);
+  renderCommunications();
+}
+
+function renderCommunications(){
+  const zone = document.getElementById('tab-communications');
+  if(!zone) return;
+
+  let items = COMMUNICATIONS_CACHE;
+  if(COMMUNICATIONS_FILTER === 'anomalies') items = items.filter(c => c.anomalies > 0);
+  const q = COMMUNICATIONS_SEARCH.trim().toLowerCase();
+  if(q) items = items.filter(c => [(c.prenom||'')+' '+(c.nom||''), c.ref].join(' ').toLowerCase().includes(q));
+
+  const banner = COMMUNICATIONS_ANOMALIES > 0
+    ? `<div style="background:var(--red);color:#fff;padding:12px 16px;border-radius:var(--r);font-weight:700;margin-bottom:14px">🔴 ${COMMUNICATIONS_ANOMALIES} anomalie${COMMUNICATIONS_ANOMALIES>1?'s':''} de communication à traiter</div>`
+    : `<div style="background:var(--green-bg);color:var(--green);padding:12px 16px;border-radius:var(--r);font-weight:700;margin-bottom:14px">✅ Toutes les communications sont à jour</div>`;
+
+  zone.innerHTML = `
+    ${banner}
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+      <button class="btn ${COMMUNICATIONS_FILTER==='anomalies'?'btn-blue':'btn-grey'}" onclick="setCommFilter('anomalies')">⚠️ Anomalies</button>
+      <button class="btn ${COMMUNICATIONS_FILTER==='toutes'?'btn-blue':'btn-grey'}" onclick="setCommFilter('toutes')">Tous les clients</button>
+      <input type="text" placeholder="🔎 Chercher un client ou une réf..." value="${escHtml(COMMUNICATIONS_SEARCH)}" oninput="setCommSearch(this.value)" style="flex:1;min-width:180px">
+    </div>
+    ${items.length ? items.map(c => commRowHtml(c)).join('') : `<p class="empty">${COMMUNICATIONS_FILTER==='anomalies' ? '✅ Aucune anomalie — tout est à jour.' : 'Aucun client actif ne correspond.'}</p>`}
+  `;
+}
+
+function commRowHtml(c){
+  const open = COMMUNICATIONS_OPEN.has(c.reservation_id);
+  const pct = c.progress.total ? Math.round(100 * c.progress.done / c.progress.total) : 0;
+  const pillsHtml = c.channels.map(ch => {
+    const chip = COMM_ETAT_CHIP[ch.etat] || { cls: 'inactif', icon: '', label: ch.etat };
+    return `<span class="chip ${chip.cls}" title="${escHtml(ch.libelle)} — ${chip.label}">${chip.icon} ${escHtml(COMM_SHORT_LABEL[ch.scenario] || ch.libelle)}</span>`;
+  }).join('');
+  return `
+    <div class="row-item" ${c.anomalies>0?'style="border-left:3px solid var(--red)"':''}>
+      <div class="row-top" style="cursor:pointer" onclick="toggleCommDetail(${c.reservation_id})">
+        <span class="row-title">${c.anomalies>0?'🔴 ':''}${escHtml((c.prenom||'')+' '+(c.nom||'')) || 'Client'}</span>
+        <span style="display:flex;align-items:center;gap:8px">
+          ${c.anomalies>0?`<span class="chip probleme">${c.anomalies} anomalie${c.anomalies>1?'s':''}</span>`:''}
+          <span style="font-size:13px;color:var(--grey)">${open?'▾':'▸'}</span>
+        </span>
+      </div>
+      <div class="row-meta">${!isInternalRef(c.ref)?escHtml(c.ref)+' · ':''}${frDate(c.date_debut)} → ${frDate(c.date_fin)} · ${c.progress.done}/${c.progress.total} étapes</div>
+      <div style="background:var(--bg);border-radius:100px;height:5px;margin:6px 0 10px;overflow:hidden"><div style="width:${pct}%;height:100%;background:var(--green)"></div></div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px" onclick="toggleCommDetail(${c.reservation_id})">${pillsHtml}</div>
+      ${open ? commDetailHtml(c) : ''}
+    </div>`;
+}
+
+function commDetailHtml(c){
+  return `
+    <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+      ${c.channels.map(ch => commChannelDetailHtml(c, ch)).join('')}
+    </div>`;
+}
+function commChannelDetailHtml(c, ch){
+  const chip = COMM_ETAT_CHIP[ch.etat] || { cls: 'inactif', icon: '', label: ch.etat };
+  const atTxt = ch.at ? new Date(ch.at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'}) : '';
+  const actions = [];
+  if(!ch.ad_hoc){
+    if(ch.etat === 'pause'){
+      actions.push(`<button class="btn btn-green" onclick="commUnskip(${c.reservation_id},'${ch.scenario}',this)">▶️ Reprendre</button>`);
+    } else if(ch.etat !== 'desactive'){
+      actions.push(`<button class="btn btn-blue" onclick="commResend(${c.reservation_id},'${ch.scenario}',this)">✉️ ${ch.etat==='envoye'?'Renvoyer':'Envoyer maintenant'}</button>`);
+      if(ch.etat !== 'envoye'){
+        actions.push(`<button class="btn btn-grey" onclick="commSkip(${c.reservation_id},'${ch.scenario}','pause',this)">⏸️ Mettre en pause</button>`);
+      }
+    }
+  }
+  if(ch.log_id) actions.push(`<button class="btn btn-grey" onclick="viewCommunicationContent(${ch.log_id},this)">👁️ Aperçu</button>`);
+  // Notification d'arrivée en retard : pas d'email/SMS à renvoyer (c'est le
+  // transporteur qui l'envoie depuis son propre téléphone) — juste un accès
+  // rapide pour appeler le client soi-même si besoin.
+  if(ch.scenario === 'notif_arrivee' && ch.etat === 'retard' && c.tel){
+    actions.push(`<a class="btn btn-blue" href="tel:${encodeURIComponent(c.tel)}" style="text-decoration:none">📞 Appeler le client</a>`);
+  }
+  return `
+    <div class="row-item" style="background:var(--bg);margin-bottom:8px">
+      <div class="row-top">
+        <span class="row-title">${CANAL_ICON[ch.canal]||'📧'} ${escHtml(ch.libelle)}</span>
+        <span class="chip ${chip.cls}">${chip.label}</span>
+      </div>
+      ${(atTxt || ch.erreur) ? `<div class="row-meta">${atTxt}${ch.erreur?' · '+escHtml(ch.erreur):''}</div>` : ''}
+      ${actions.length ? `<div class="row-actions">${actions.join('')}</div>` : ''}
+    </div>`;
+}
+
+async function commResend(reservationId, scenario, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'resend', reservation_id:reservationId, scenario})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Email envoyé', 'success');
+    loadCommunications();
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
+}
+async function commSkip(reservationId, scenario, skipAction, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'skip', reservation_id:reservationId, scenario, skip_action:skipAction})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast(skipAction==='pause' ? 'Envoi mis en pause' : 'Envoi supprimé', 'success');
+    loadCommunications();
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
+}
+async function commUnskip(reservationId, scenario, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'unskip', reservation_id:reservationId, scenario})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Envoi repris', 'success');
+    loadCommunications();
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
   }
 }
 

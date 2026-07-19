@@ -3,31 +3,12 @@ const { checkAdminToken } = require('./_lib/auth');
 const { resolveAdminCity } = require('./_lib/city');
 const { SCENARIOS, sendScenarioEmail } = require('./_lib/emailEngine');
 const { upcomingScenariosForReservation } = require('./_lib/emailSchedule');
+const { buildCommunicationsCockpit, scenarioLibelle, EVENT_SCENARIOS } = require('./_lib/communicationsCockpit');
 
 const RESEND_ERROR_LABEL = {
   no_email: "Ce client n'a pas d'email enregistré",
   skipped_by_admin: 'Cet envoi a été mis en pause/supprimé depuis la fiche client — reprends-le avant de le renvoyer',
 };
-
-// Libellés des envois ponctuels hors moteur de scénarios (voir
-// api/webhook.js, api/_lib/documents.js, api/transporteur-action.js) —
-// SCENARIOS (emailEngine.js) ne couvre que les 8 scénarios du moteur.
-const AD_HOC_LABEL = {
-  sms_confirmation:       'SMS confirmation de réservation',
-  email_prolongation:     'Email confirmation de prolongation',
-  email_contrat_facture:  'Email contrat + facture',
-  sms_mission_confirmee:  'SMS mission confirmée',
-  sms_client_absent:      'SMS client absent',
-};
-function scenarioLibelle(scenario) {
-  return SCENARIOS[scenario]?.libelle || AD_HOC_LABEL[scenario] || scenario;
-}
-
-// Sous-ensemble de SCENARIOS déclenché par le code métier (webhook Stripe,
-// actions transporteur) plutôt que par une date calculée — voir
-// emailSchedule.js. N'apparaît donc jamais dans `upcoming` (action
-// 'client_timeline' ci-dessous), qui ne couvre que les scénarios datés.
-const EVENT_SCENARIOS = ['confirmation', 'post_installation', 'fin_location'];
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -52,6 +33,19 @@ module.exports = async (req, res) => {
       const { data, error } = await query;
       if (error) throw error;
       return res.status(200).json({ emails: data || [] });
+    }
+
+    // Panneau "Communications" (cockpit) — vue d'ensemble de TOUS les canaux
+    // de communication client (emails/SMS du moteur de scénarios + envois
+    // ponctuels + notification d'arrivée transporteur) pour toutes les
+    // réservations actives de la ville, avec détection d'anomalie — voir
+    // _lib/communicationsCockpit.js pour la logique complète (partagée avec
+    // le badge de admin-alerts.js).
+    if (action === 'cockpit') {
+      const city = await resolveAdminCity(supabase, body);
+      if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
+      const result = await buildCommunicationsCockpit(supabase, city.id);
+      return res.status(200).json(result);
     }
 
     // Liste des scénarios et de leur état actif/inactif.
