@@ -173,6 +173,22 @@ function _getStripe(){ if(!_stripe && typeof Stripe !== 'undefined') _stripe = S
 // plusieurs Offres Privilège en même temps, chacune avec son propre paiement.
 let _offreElements = {};
 
+// Retour de vérification bancaire (3D Secure) sur le paiement Offre Privilège
+// (confirmPayment est en redirect:'if_required', donc ça n'arrive que si la
+// banque a vraiment forcé une redirection complète hors du site). Stripe
+// ajoute toujours redirect_status à l'URL de retour — même principe que
+// _checkStripeReturn() sur le site public (index.html). Capturé au tout
+// début du script pour ne jamais rater le paramètre au premier rendu, avant
+// même que showDashboard() ait pu tourner.
+let _offreReturnStatus = null;
+(function _captureOffreReturn(){
+  const p = new URLSearchParams(window.location.search);
+  if(p.get('offre_return') === '1'){
+    _offreReturnStatus = p.get('redirect_status') || 'echec';
+    window.history.replaceState({}, '', '/client/');
+  }
+})();
+
 function escHtml(s){
   return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
@@ -438,6 +454,15 @@ async function showDashboard(){
     renderDashboard(d);
     document.getElementById('dash-loading').classList.add('hidden');
     document.getElementById('dash-content').classList.remove('hidden');
+    if(_offreReturnStatus){
+      const status = _offreReturnStatus; _offreReturnStatus = null;
+      const banner = status === 'succeeded'
+        ? '<div class="alert-info">✅ Paiement confirmé après vérification bancaire — ce climatiseur est à vous !</div>'
+        : status === 'processing'
+        ? '<div class="alert-info">⏳ Votre banque valide encore le paiement. Ça peut prendre quelques minutes — revenez un peu plus tard pour confirmer.</div>'
+        : '<div class="alert-error">❌ Le paiement n\'a pas abouti après la vérification bancaire. Vous pouvez réessayer depuis l\'offre ci-dessous.</div>';
+      document.getElementById('dash-content').insertAdjacentHTML('afterbegin', banner);
+    }
     setTimeout(offerClientFaceId, 1200);
   }catch(err){
     document.getElementById('dash-loading').innerHTML = `<div class="alert-error" style="text-align:left">${escHtml(err.message)}</div><button class="btn-outline" onclick="logout()" style="margin-top:12px">Retour</button>`;

@@ -21,6 +21,20 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
     .eq('id', offreId).maybeSingle();
   if (!offre || offre.statut === 'acceptee') return;
 
+  // L'admin a pu retirer l'offre (admin-offres-privilege.js action
+  // "annuler") pile au moment où le client validait son paiement — fenêtre
+  // de course rare mais réelle. Le client a alors été débité par Stripe
+  // alors que l'offre n'est plus "proposee" : surtout ne pas vendre en
+  // aveugle, on prévient l'admin pour qu'il rembourse manuellement.
+  if (offre.statut !== 'proposee') {
+    await pushToAdmin(supabase, {
+      title: '⚠️ Paiement Offre Privilège reçu sur une offre retirée',
+      body:  `Le client a payé ${(offre.prix_vente_cents / 100).toFixed(2)} € pour une offre annulée entre-temps. Aucune vente enregistrée — rembourse le client dans Stripe.`,
+      tag:   `offre-privilege-conflit-${offre.id}`,
+    });
+    return;
+  }
+
   await supabase.from('offres_privilege')
     .update({ statut: 'acceptee', decidee_at: new Date().toISOString() }).eq('id', offre.id);
 

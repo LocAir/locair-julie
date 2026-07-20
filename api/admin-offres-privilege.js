@@ -185,10 +185,17 @@ module.exports = async (req, res) => {
         .eq('id', id).eq('appareil.city_id', city.id).maybeSingle();
       if (!offre) return res.status(404).json({ error: 'Offre introuvable' });
 
-      const { error } = await supabase.from('offres_privilege')
+      // Filtré sur eligible/proposee : si le client vient de payer entre
+      // l'ouverture de cette fiche et le clic ici, le webhook Stripe a déjà
+      // fait passer l'offre à "acceptee" — l'update ne matche alors aucune
+      // ligne, il faut le dire à l'admin plutôt que renvoyer un faux succès.
+      const { data: updated, error } = await supabase.from('offres_privilege')
         .update({ statut: 'annulee', decidee_at: new Date().toISOString() })
-        .eq('id', id).in('statut', ['eligible', 'proposee']);
+        .eq('id', id).in('statut', ['eligible', 'proposee']).select('id');
       if (error) throw error;
+      if (!updated || !updated.length) {
+        return res.status(409).json({ error: "Le client vient de payer cette offre — impossible de l'annuler. Utilise plutôt \"Rembourser\" si besoin." });
+      }
       return res.status(200).json({ ok: true });
     }
 
