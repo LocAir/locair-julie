@@ -120,9 +120,15 @@ module.exports = async (req, res) => {
 
       const rows = [];
       for (const appareilId of appareilIds) {
-        const { count } = await supabase
-          .from('reservation_appareils').select('id', { count: 'exact', head: true }).eq('appareil_id', appareilId);
-        rows.push({ appareil_id: appareilId, reservation_id: reservationId, nb_locations: count || 0, statut: 'proposee', prix_vente_cents: prixCents });
+        // + nb_locations_historique : voir bumpNbLocationsHistorique dans
+        // admin-stock.js (compense les locations perdues par un échange
+        // d'appareil passé, qui supprime la ligne reservation_appareils).
+        const [{ count }, { data: appareilHist }] = await Promise.all([
+          supabase.from('reservation_appareils').select('id', { count: 'exact', head: true }).eq('appareil_id', appareilId),
+          supabase.from('appareils').select('nb_locations_historique').eq('id', appareilId).maybeSingle(),
+        ]);
+        const totalLocations = (count || 0) + (appareilHist?.nb_locations_historique || 0);
+        rows.push({ appareil_id: appareilId, reservation_id: reservationId, nb_locations: totalLocations, statut: 'proposee', prix_vente_cents: prixCents });
       }
 
       const { data: created, error } = await supabase.from('offres_privilege').insert(rows).select('id');
