@@ -279,10 +279,16 @@ module.exports = async (req, res) => {
         .toISOString().slice(0, 10);
       if (todayStr < milieuStr) continue;
 
-      const { count } = await supabase
-        .from('reservation_appareils').select('id', { count: 'exact', head: true })
-        .eq('appareil_id', appareilId);
-      if ((count || 0) < SEUIL_OFFRE) continue;
+      const [{ count }, { data: appareilHist }] = await Promise.all([
+        supabase.from('reservation_appareils').select('id', { count: 'exact', head: true }).eq('appareil_id', appareilId),
+        supabase.from('appareils').select('nb_locations_historique').eq('id', appareilId).maybeSingle(),
+      ]);
+      // + nb_locations_historique : locations perdues du décompte "actuel"
+      // par un échange/réaffectation passé (voir bumpNbLocationsHistorique
+      // dans admin-stock.js) — sans ça un appareil souvent échangé
+      // n'atteignait jamais le seuil malgré un usage réel suffisant.
+      const totalLocations = (count || 0) + (appareilHist?.nb_locations_historique || 0);
+      if (totalLocations < SEUIL_OFFRE) continue;
 
       const { data: offresAppareil } = await supabase
         .from('offres_privilege').select('reservation_id, statut').eq('appareil_id', appareilId);
@@ -294,11 +300,11 @@ module.exports = async (req, res) => {
 
       const { data: appareil } = await supabase.from('appareils').select('numero').eq('id', appareilId).maybeSingle();
       await supabase.from('offres_privilege').insert({
-        appareil_id: appareilId, reservation_id: reservationId, nb_locations: count, statut: 'eligible',
+        appareil_id: appareilId, reservation_id: reservationId, nb_locations: totalLocations, statut: 'eligible',
       });
       await pushToAdmin(supabase, {
         title: `⭐ Climatiseur #${appareil?.numero} — Offre Privilège`,
-        body:  `${count} locations effectuées, actuellement chez un client (milieu de séjour). Fixe un prix pour lui proposer de le garder.`,
+        body:  `${totalLocations} locations effectuées, actuellement chez un client (milieu de séjour). Fixe un prix pour lui proposer de le garder.`,
         tag:   `offre-privilege-${appareilId}-${reservationId}`,
       });
       offreCount++;

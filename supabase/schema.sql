@@ -70,6 +70,12 @@ create table appareils (
   reference   text, -- référence produit du fabricant (ex. "RWAC10KA+"), saisie librement par l'admin
   modele_id   bigint references modeles_climatiseur(id), -- fiche catalogue affichée côté espace client (nullable = description générique)
   notes       text,
+  -- Compteur de secours pour l'Offre Privilège (Module 7) : nb_locations se
+  -- calcule normalement en comptant les lignes reservation_appareils, mais un
+  -- échange/réaffectation (admin-stock.js action "reassign") supprime la
+  -- ligne de l'ancien appareil pour garder l'état "actuel" propre — ce qui
+  -- effacerait silencieusement cette location du décompte sans ce compteur.
+  nb_locations_historique integer not null default 0,
   created_at  timestamptz not null default now(),
   unique (city_id, numero)
 );

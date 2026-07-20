@@ -5,6 +5,18 @@ const { checkAdminToken } = require('./_lib/auth');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { computeParcDashboard } = require('./_lib/parcDashboard');
 
+// Compteur de secours pour l'Offre Privilège (Module 7) : nb_locations se
+// calcule normalement en comptant les lignes reservation_appareils d'un
+// appareil, mais un échange/réaffectation (ci-dessous) supprime la ligne de
+// l'ancien appareil pour garder l'état "actuel" propre — ce qui effaçait
+// silencieusement cette location du décompte. On la garde ici avant de la
+// perdre, pour que le seuil d'éligibilité (SEUIL_OFFRE) reste exact même
+// pour un appareil souvent échangé.
+async function bumpNbLocationsHistorique(supabase, appareilId) {
+  const { data } = await supabase.from('appareils').select('nb_locations_historique').eq('id', appareilId).maybeSingle();
+  await supabase.from('appareils').update({ nb_locations_historique: (data?.nb_locations_historique || 0) + 1 }).eq('id', appareilId);
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
@@ -274,6 +286,7 @@ module.exports = async (req, res) => {
           return res.status(400).json({ error: 'Impossible d\'échanger : cette réservation n\'a pas d\'appareil actuel à donner en retour' });
         }
         const { data: ancienAppareil } = await supabase.from('appareils').select('statut').eq('id', ancien.appareil_id).maybeSingle();
+        await bumpNbLocationsHistorique(supabase, nouvelAppareilId);
         await supabase.from('reservation_appareils').delete().eq('id', conflitActif.id);
         await supabase.from('reservation_appareils').insert({ reservation_id: conflitActif.reservation_id, appareil_id: ancien.appareil_id, valide: true, valide_at: new Date().toISOString() });
         await recordMouvement(supabase, {
@@ -286,6 +299,7 @@ module.exports = async (req, res) => {
       }
 
       if (ancien) {
+        await bumpNbLocationsHistorique(supabase, ancien.appareil_id);
         await supabase.from('reservation_appareils').delete().eq('id', ancien.id);
       }
       await supabase.from('reservation_appareils').insert({ reservation_id: reservationId, appareil_id: nouvelAppareilId, valide: true, valide_at: new Date().toISOString() });
