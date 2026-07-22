@@ -71,9 +71,9 @@ module.exports = async (req, res) => {
           .map(ra => ra.appareil?.numero).filter(n => n != null).sort((a, b) => a - b);
         delete r.reservation_appareils;
       }
-      await Promise.all(reservations.map(r =>
+      Promise.all(reservations.map(r =>
         syncStatutDetaille(supabase, r.id, computeOrderStatus(r, livraisonsByResa.get(r.id) || [], false))
-      ));
+      )).catch(e => console.error('[syncStatutDetaille]', e.message));
 
       return res.status(200).json({ reservations });
     }
@@ -202,6 +202,7 @@ module.exports = async (req, res) => {
         .eq('city_id', city.id)
         .eq('email', email)
         .not('source', 'eq', 'site_prolongation')
+        .in('statut', ['confirmee'])
         .order('created_at', { ascending: false })
         .limit(1);
       if (ref) q = q.ilike('ref', ref.toUpperCase());
@@ -209,7 +210,7 @@ module.exports = async (req, res) => {
       const { data: resa, error } = await q.maybeSingle();
       if (error) throw error;
       if (!resa) {
-        return res.status(404).json({ error: `Aucune réservation trouvée pour cet email${ref ? ' et cette référence' : ''}.` });
+        return res.status(404).json({ error: `Aucune réservation active trouvée pour cet email${ref ? ' et cette référence' : ''}.` });
       }
       if (['annulee', 'remboursee'].includes(resa.statut)) {
         return res.status(422).json({ error: 'Cette réservation ne peut pas être prolongée.' });
@@ -346,8 +347,9 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true });
       }
 
+      const STATUTS_VALIDES = ['en_attente', 'annulee', 'remboursee', 'terminee'];
       const patch = {};
-      if (body.statut != null)   patch.statut   = body.statut;
+      if (body.statut != null && STATUTS_VALIDES.includes(body.statut)) patch.statut = body.statut;
       if (body.quantite != null) patch.quantite = Math.max(1, parseInt(body.quantite) || 1);
       if (body.prix_total_cents != null) patch.prix_total_cents = Math.max(0, parseInt(body.prix_total_cents) || 0);
       // "Masquer" retire juste la réservation de la liste affichée à l'admin (ex.
@@ -505,7 +507,7 @@ module.exports = async (req, res) => {
       const { data: resa } = await supabase
         .from('reservations').select('fenetre_photo_path').eq('id', id).eq('city_id', city.id).maybeSingle();
       if (!resa || !resa.fenetre_photo_path) return res.status(404).json({ error: 'Photo introuvable' });
-      const { data, error } = await supabase.storage.from('missions').createSignedUrl(resa.fenetre_photo_path, 300);
+      const { data, error } = await supabase.storage.from('missions').createSignedUrl(resa.fenetre_photo_path, 3600);
       if (error) throw error;
       return res.status(200).json({ url: data.signedUrl });
     }

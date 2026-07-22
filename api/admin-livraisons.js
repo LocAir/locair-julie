@@ -420,6 +420,7 @@ module.exports = async (req, res) => {
       await supabase.from('livraisons').update({
         statut: 'a_faire', accepted_at: null, depart_at: null, arrivee_at: null,
         probleme_type: null, probleme_description: null, probleme_at: null,
+        client_notifie_at: null,
       }).eq('id', liv.id);
       if (liv.transporteur_id) {
         await notifyTransporteur(supabase, liv.transporteur_id, {
@@ -462,7 +463,7 @@ module.exports = async (req, res) => {
       if (!livraisonId || !column) return res.status(400).json({ error: 'Paramètres invalides' });
       const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, column);
       if (!liv || !liv[column]) return res.status(404).json({ error: 'Média introuvable' });
-      const { data, error } = await supabase.storage.from('missions').createSignedUrl(liv[column], 300);
+      const { data, error } = await supabase.storage.from('missions').createSignedUrl(liv[column], 3600);
       if (error) throw error;
       return res.status(200).json({ url: data.signedUrl });
     }

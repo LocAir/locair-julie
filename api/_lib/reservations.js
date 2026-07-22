@@ -219,6 +219,11 @@ async function sendConfirmationCommunications(supabase, resa) {
   }
 
   if (resa.tel) {
+    const { data: smsDejaEnvoye } = await supabase
+      .from('email_log').select('id')
+      .eq('reservation_id', resa.id).eq('scenario', 'sms_confirmation').eq('statut', 'envoye')
+      .maybeSingle();
+    if (!smsDejaEnvoye) {
     const lang = resa.lang || 'fr';
     const d = resa.date_debut ? new Date(String(resa.date_debut).slice(0, 10) + 'T12:00:00Z') : null;
     let smsConfirmationContent;
@@ -238,6 +243,7 @@ async function sendConfirmationCommunications(supabase, resa) {
       reservation_id: resa.id, scenario: 'sms_confirmation', canal: 'sms',
       destinataire: resa.tel, modele: 'sms_confirmation', statut: 'envoye', contenu: smsConfirmationContent,
     }).catch(() => {});
+    } // end if (!smsDejaEnvoye)
   }
 
   try {
@@ -298,7 +304,7 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, pr
 // sans effet si déjà confirmée, pour tolérer les livraisons en double des
 // webhooks Stripe redélivrés.
 async function confirmReservation(supabase, resa) {
-  if (resa.statut === 'confirmee') return resa; // déjà traité
+  if (['confirmee', 'annulee', 'remboursee'].includes(resa.statut)) return resa;
 
   const clientId = await findOrCreateClient(supabase, resa);
   resa.client_id = clientId;

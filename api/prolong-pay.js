@@ -4,14 +4,7 @@ const { resolveCityById } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays } = require('./_lib/dates');
 const { matchPromoPct }   = require('./_lib/promo');
-
-function calcBase(days) {
-  days = Math.max(1, days);
-  if (days <= 7)  return days * 20;
-  if (days <= 14) return 7 * 20 + (days - 7) * 18;
-  if (days <= 21) return 7 * 20 + 7 * 18 + (days - 14) * 17;
-  return 7 * 20 + 7 * 18 + 7 * 17 + (days - 21) * 16;
-}
+const { calcTieredPrice: calcBase } = require('./_lib/pricing');
 
 function diffDays(startStr, endStr) {
   return Math.round(
@@ -65,6 +58,10 @@ module.exports = async (req, res) => {
   }
   if (['annulee', 'remboursee'].includes(orig.statut)) {
     return res.status(422).json({ error: 'Cette location ne peut pas être prolongée.' });
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  if (orig.date_fin < today) {
+    return res.status(422).json({ error: 'La location est déjà terminée — impossible de prolonger.' });
   }
   if (new_date_fin <= orig.date_fin) {
     return res.status(400).json({ error: `La nouvelle date doit être postérieure au ${orig.date_fin}.` });
@@ -140,6 +137,7 @@ module.exports = async (req, res) => {
         promo:             promoCode || '',
         promo_pct:         promoPct ? String(promoPct) + '%' : '',
         customer_id:       customerId,
+        lang:              ['fr','en','zh'].includes(req.body.lang) ? req.body.lang : 'fr',
       },
     });
 
