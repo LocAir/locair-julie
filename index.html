@@ -5,15 +5,12 @@
 <meta charset="UTF-8"/>
 <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,interactive-widget=resizes-content"/>
-<!-- Google Ads — suivi des conversions -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=AW-18195242550"></script>
 <script>
   if('scrollRestoration' in history)history.scrollRestoration='manual';
   window.scrollTo(0,0);
   window.dataLayer=window.dataLayer||[];
   function gtag(){dataLayer.push(arguments);}
   gtag('js',new Date());
-  gtag('config','AW-18195242550');
 </script>
 
 <!-- ╔══════════════════════════════════════════════════════════════════╗
@@ -129,6 +126,7 @@ window._loadGA4=function(){
   window.gtag=gtag;
   gtag('js',new Date());
   gtag('config',id,{page_location:location.href,page_title:document.title,send_page_view:true});
+  gtag('config','AW-18195242550');
 };
 (function(){
   try{if(localStorage.getItem('locair_cookie_consent')==='accepted')window._loadGA4();}catch(e){}
@@ -5252,7 +5250,7 @@ function _initSoldOut(){
 }
 
 function openModal(dur, flowType){
-  if(SOLD_OUT&&!sessionStorage.getItem('_la')){showSoldOutOverlay();return;}
+  if(SOLD_OUT&&!sessionStorage.getItem('_la')&&flowType!=='extend'){showSoldOutOverlay();return;}
   window.dataLayer=window.dataLayer||[];
   dataLayer.push({event:'open_booking_modal',flow:flowType||'choice'});
   _lastFocused=document.activeElement;
@@ -6050,6 +6048,26 @@ function _stripePaymentDone(){
   }else if(p.get('booking')==='cancelled'){
     window.history.replaceState({},'','/');
     setTimeout(()=>openModal(),100);
+  }else if(p.get('prolong_return')==='1'){
+    window.history.replaceState({},'','/');
+    const rs=p.get('redirect_status')||'';
+    if(rs==='succeeded'){
+      setTimeout(()=>{
+        openModal(undefined,'extend');
+        setTimeout(()=>{
+          document.querySelectorAll('.step-panel').forEach(sp=>sp.classList.remove('active'));
+          document.querySelectorAll('.modal-success').forEach(s=>s.classList.remove('show'));
+          const succ=document.getElementById('msuccess-prolong');
+          if(succ){
+            const msg=document.getElementById('prolong-success-msg');
+            if(msg)msg.textContent=_lang==='en'?'Your extension is confirmed. Email confirmation in a few minutes.':_lang==='zh'?'延期已确认。几分钟内发送邮件确认。':'Prolongation confirmée. Email de confirmation dans quelques minutes.';
+            succ.classList.add('show');succ.focus();
+          }
+        },300);
+      },100);
+    }else{
+      setTimeout(()=>openModal(undefined,'extend'),100);
+    }
   }
 })();
 
@@ -7315,9 +7333,7 @@ if(window.visualViewport){
     const bar=document.getElementById('cookieBar');
     if(!bar)return;
     try{if(localStorage.getItem(KEY))return;}catch(e){}
-    const show=()=>{bar.classList.add('show');window.removeEventListener('scroll',show);clearTimeout(_ct);};
-    window.addEventListener('scroll',show,{passive:true,once:true});
-    const _ct=setTimeout(show,10000);
+    bar.classList.add('show');
   }
   window._cookieAccept=function(){
     const bar=document.getElementById('cookieBar');

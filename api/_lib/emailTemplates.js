@@ -213,7 +213,7 @@ function tplPostInstallation(ctx) {
       <p>Hello ${p},</p>
       <p>Your ${escHtml(ctx.modeleClimatiseur)} is installed and ready to use.</p>
       <p>Any issue or question about how to use it? Our team is reachable at any time.</p>
-      <div class="box"><p style="margin:0">📖 Need a refresher? <a href="${ctx.lienTutoriel}" style="color:#1b3a5f">Check our FAQ guide</a>.</p></div>
+      <div class="box"><p style="margin:0">📖 Need a refresher? <a href="${ctx.lienTutoriel}" style="color:#1b3a5f">Check our FAQ</a>.</p></div>
       <p style="font-size:13px;color:#888">If you have a minute, your review helps other families trust us:</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Leave a Google review ⭐',
   });
@@ -423,7 +423,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     intro: `Booking ref ${escHtml(ref)}`,
     bodyHtml: `
       <p>Hello ${p},</p>
-      <p>Thank you for your trust. Please find your rental agreement and invoice attached.</p>
+      <p>Thank you for choosing Loc'Air. Please find your rental agreement and invoice attached.</p>
       <div class="box"><p style="margin:0"><a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700">View my documents online →</a></p></div>
       <p style="font-size:13px;color:#888">Keep this email — your documents remain accessible via the link above.</p>
       <p style="font-size:13px;color:#444">We'll be in touch again by email as your delivery date approaches.</p>`,
@@ -479,7 +479,7 @@ function tplAmbassadeurCredentials({ nom, lien, pin }) {
     intro: `Bonjour ${escHtml(nom)}`,
     bodyHtml: `
       <p>Voici ton lien d'affiliation — mets-le sur ton site pour que tes clients réservent directement chez Loc'Air :</p>
-      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${lien}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
+      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${escHtml(lien)}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
       <p>Ton code personnel pour suivre tes gains sur ton espace ambassadeur :</p>
       <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(pin)}</p>
       <p style="font-size:13px;color:#888">Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
@@ -496,7 +496,7 @@ function tplNouveauCodeAmbassadeur({ nom, lien, pin }) {
       <p>Voici ton nouveau code personnel pour te connecter sur ton espace ambassadeur Loc'Air :</p>
       <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(pin)}</p>
       <p>Ton lien d'affiliation ne change pas :</p>
-      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${lien}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
+      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${escHtml(lien)}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
       <p style="font-size:13px;color:#888">Ton ancien code ne fonctionne plus. Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
     ctaHref: 'https://www.locair.fr/partenaire', ctaLabel: 'Ouvrir mon espace ambassadeur',
   });
