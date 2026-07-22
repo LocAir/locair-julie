@@ -23,19 +23,18 @@ module.exports = async (req, res) => {
 
   const jours    = Math.max(1, parseInt(data.jours) || 1);
   const origDays = Math.max(0, parseInt(data.original_days) || 0);
+  const qty            = Math.min(5, Math.max(1, parseInt(data.quantite) || 1));
 
   // Incremental pricing: charge only the difference between (origDays+jours) and origDays
   // so that tier transitions are priced correctly (e.g. 7→16 days = calcBase(16)−calcBase(7))
   const totalBase  = origDays > 0
     ? calcBase(origDays + jours) - calcBase(origDays)
     : calcBase(jours);
-  const amountCents = totalBase * 100;
+  const amountCents = Math.max(0, totalBase) * qty * 100;
 
-  if (!amountCents || amountCents < 1900) {
-    return res.status(400).json({ error: 'Montant invalide (min 1 jour)' });
+  if (!amountCents || amountCents <= 0) {
+    return res.status(400).json({ error: 'Montant invalide' });
   }
-
-  const qty            = Math.min(5, Math.max(1, parseInt(data.quantite) || 1));
   const extDateDebut   = (data.date_fin_initiale     || '').slice(0, 10);
   const extDateFin     = (data.date_recuperation_iso || '').slice(0, 10);
   if (!isValidDate(extDateDebut) || !isValidDate(extDateFin) || extDateFin <= extDateDebut) {
@@ -110,7 +109,9 @@ module.exports = async (req, res) => {
         nom:               (data.nom               || '').slice(0, 500),
         tel:               (data.tel               || '').slice(0, 500),
         adresse_origine:   (data.adresse_origine   || '').slice(0, 500),
+        ref:               (data.ref               || '').slice(0, 500),
         jours:             String(jours),
+        quantite:          String(qty),
         original_days:     String(origDays),
         total_days:        String(origDays + jours),
         date_debut:        (data.date_debut        || '').slice(0, 500),

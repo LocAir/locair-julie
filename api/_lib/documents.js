@@ -205,7 +205,7 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
       ref:    resa.ref,
       lang,
       modeleClimatiseur,
-      dateAchatFmt: now.toLocaleDateString('fr-FR'),
+      dateAchatFmt: now.toLocaleDateString(lang === 'zh' ? 'zh-CN' : lang === 'en' ? 'en-GB' : 'fr-FR'),
       montantFmt: (prixCents / 100).toFixed(2).replace('.', ',') + ' €',
       viewUrlFacture: `${base}/api/document-view?token=${factureToken}`,
     }), sig);

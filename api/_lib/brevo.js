@@ -52,6 +52,7 @@ function toE164FR(tel) {
   const digits = String(tel || '').replace(/[^\d+]/g, '');
   if (digits.startsWith('+')) return digits;
   if (digits.startsWith('0') && digits.length === 10) return '+33' + digits.slice(1);
+  if (digits.length === 9 && !digits.startsWith('0')) return '+33' + digits;
   return digits ? '+' + digits : '';
 }
 
