@@ -179,7 +179,11 @@ module.exports = async (req, res) => {
       stripe_customer_id:       customerId || null,
       prenom:                   (data.prenom  || '').slice(0, 200),
       nom:                      (data.nom     || '').slice(0, 200),
-      email:                    (data.email   || '').slice(0, 200),
+      // En minuscules : toutes les recherches ultérieures par email (connexion
+      // espace client, prolongation, rattachement admin) comparent en
+      // minuscules — un email stocké avec des majuscules ne matchait plus
+      // jamais ces recherches (voir client-login.js, prolong-lookup.js).
+      email:                    (data.email   || '').trim().toLowerCase().slice(0, 200),
       tel:                      (data.tel     || '').slice(0, 50),
       tel_secondaire:           (data.tel_secondaire || '').slice(0, 50) || null,
       raison_sociale:           (data.raison_sociale || '').slice(0, 300) || null,

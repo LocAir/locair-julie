@@ -216,7 +216,12 @@ async function confirmReservation(supabase, resa) {
       .from('reservations')
       .select('id')
       .eq('city_id', resa.city_id)
-      .eq('email', resa.email)
+      // ilike plutôt que eq : des réservations plus anciennes ont pu stocker
+      // l'email avec une casse différente (avant que checkout.js/
+      // prolong-pay.js ne le mettent systématiquement en minuscules) — une
+      // comparaison stricte les aurait ratées et laissé leur mission de
+      // récupération obsolète active au calendrier.
+      .ilike('email', resa.email)
       .eq('date_fin', resa.date_debut)
       .neq('id', resa.id);
     if (stale && stale.length) {
