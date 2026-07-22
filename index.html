@@ -3778,7 +3778,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
                   </div>
                   <span class="qty-stepper-lbl" id="qty-stepper-lbl">climatiseur</span>
                 </div>
-                <p id="stock-notice" style="margin:4px 0 6px;font-size:11px;color:#92400e;display:flex;align-items:center;gap:5px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#d97706;flex-shrink:0" aria-hidden="true"></span><span id="stock-notice-txt">Plus que 1 appareil disponible</span></p>
+                <p id="stock-notice" style="margin:4px 0 6px;font-size:11px;color:#92400e;display:none;align-items:center;gap:5px"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#d97706;flex-shrink:0" aria-hidden="true"></span><span id="stock-notice-txt"></span></p>
                 <div class="spec-chips">
                   <span class="spec-chip" id="spec-chip-btu">9 000 – 12 000 BTU</span>
                   <span class="spec-chip" id="spec-chip-m2">Jusqu'à 15 m²</span>
@@ -5251,6 +5251,7 @@ function _initSoldOut(){
 
 function openModal(dur, flowType){
   if(SOLD_OUT&&!sessionStorage.getItem('_la')&&flowType!=='extend'){showSoldOutOverlay();return;}
+  _updateStockNoticeText();
   window.dataLayer=window.dataLayer||[];
   dataLayer.push({event:'open_booking_modal',flow:flowType||'choice'});
   _lastFocused=document.activeElement;
@@ -6753,7 +6754,7 @@ const LANG_MAP=[
   /* modal step 2 */
   ['.prod-card-model','text','Climatiseur mobile','Mobile AC unit','移动空调'],
   ['#lgt-suggest','text','💡 Pour cette surface, 2 climatiseurs sont recommandés','💡 For this area, 2 AC units are recommended','💡 对于此面积，建议使用2台空调'],
-  ['#stock-notice-txt','text','Plus que 1 appareil disponible','Only 1 unit available','仅剩1台可用'],
+  // #stock-notice-txt est mis à jour dynamiquement par _updateStockNoticeText() — pas ici
   ['#dur-free-toggle-text','text','Ma durée exacte','My exact duration','我的精确时长'],
   ['.dur-free-days-unit','text','jours','days','天'],
   ['#dur-confirm-prefix','text','Confirmer','Confirm','确认'],
@@ -7194,13 +7195,15 @@ function _updateStockNoticeText(){
   const sn=document.getElementById('stock-notice');
   if(!el||STOCK_DISPONIBLES==null)return;
   const n=STOCK_DISPONIBLES;
-  // N'afficher l'avertissement de stock que quand le stock est vraiment bas
-  if(sn&&!SOLD_OUT)sn.style.display=n<=3?'flex':'none';
+  // N'afficher l'avertissement que si le stock est bas (≤3) et pas sold-out
+  if(sn)sn.style.display=(!SOLD_OUT&&n>0&&n<=3)?'flex':'none';
   el.textContent=_lang==='en'
     ? `Only ${n} unit${n>1?'s':''} available`
     : _lang==='zh'
     ? `仅剩 ${n} 台可用`
     : `Plus que ${n} appareil${n>1?'s':''} disponible${n>1?'s':''}`;
+  // Reclamper la quantité sélectionnée si elle dépasse le nouveau stock
+  if(typeof _qty!=='undefined')setQty(_qty);
 }
 async function _refreshStockAndSoldOut(){
   try{
@@ -8219,7 +8222,8 @@ function validatePromo(){
   buildRecap();
 }
 function setQty(n){
-  n=Math.min(5,Math.max(1,Math.round(n)));
+  const maxStock=Math.min(5,STOCK_DISPONIBLES!=null&&STOCK_DISPONIBLES>0?STOCK_DISPONIBLES:5);
+  n=Math.min(maxStock,Math.max(1,Math.round(n)));
   _qty=n;_unit2=(n>1);
   const cb=document.getElementById('f-unit2');if(cb)cb.checked=_unit2;
   // Stepper UI
@@ -8229,7 +8233,7 @@ function setQty(n){
   const lblEl=document.getElementById('qty-stepper-lbl');
   if(valEl)valEl.textContent=n;
   if(minusBtn)minusBtn.disabled=(n<=1);
-  if(plusBtn)plusBtn.disabled=(n>=5);
+  if(plusBtn)plusBtn.disabled=(n>=maxStock);
   if(lblEl)lblEl.textContent=_lang==='en'?(n===1?'AC unit':'AC units'):_lang==='zh'?(n+'台空调'):(n===1?'climatiseur':'climatiseurs');
   // Refresh displayed prices in dur-rows
   document.querySelectorAll('.dur-row[data-days]').forEach(card=>{
