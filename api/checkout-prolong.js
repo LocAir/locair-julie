@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Email requis pour retrouver ta réservation' });
     }
     let origQuery = supabase
-      .from('reservations').select('city_id, tel_secondaire, hors_zone, date_debut, date_fin')
+      .from('reservations').select('city_id, tel_secondaire, hors_zone, date_debut, date_fin, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement')
       .ilike('email', String(data.email).trim());
     if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim());
     ({ data: orig } = await origQuery.order('created_at', { ascending: false }).limit(1).maybeSingle());
@@ -145,11 +145,18 @@ module.exports = async (req, res) => {
       email:                    (data.email           || '').trim().toLowerCase().slice(0, 200),
       tel:                      (data.tel             || '').slice(0, 50),
       tel_secondaire:           orig?.tel_secondaire || null,
-      // Reprend le statut hors zone de la réservation d'origine — sinon le
-      // transporteur touche le tarif normal pour une récupération hors zone.
       hors_zone:                orig?.hors_zone || false,
       adresse:                  (data.adresse_origine || '').slice(0, 500),
-      creneau:                  (data.creneau         || '').slice(0, 500),
+      // Champs d'accès copiés depuis la réservation d'origine — nécessaires
+      // pour que le transporteur puisse accéder au logement lors de la récupération.
+      etage:                    orig?.etage               || null,
+      ascenseur:                orig?.ascenseur            || null,
+      fenetre:                  orig?.fenetre              || null,
+      fenetre_photo_path:       orig?.fenetre_photo_path   || null,
+      installation:             orig?.installation         || null,
+      instructions_acces:       orig?.instructions_acces   || null,
+      logement:                 orig?.logement             || null,
+      creneau:                  (data.creneau || orig?.creneau || '').slice(0, 500),
       date_debut:               extDateDebut,
       date_fin:                 extDateFin,
       quantite:                 qty,

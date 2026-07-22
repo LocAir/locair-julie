@@ -367,6 +367,19 @@ const handler = async (req, res) => {
         }),
       }).catch(e => console.error('[Formspree prolong]', e.message));
 
+      // Idempotence : Stripe peut relivrer un webhook — ne pas envoyer deux fois
+      if (confirmedResa) {
+        const { count: alreadySent } = await getSupabase()
+          .from('email_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('reservation_id', confirmedResa.id)
+          .eq('scenario', 'email_prolongation')
+          .eq('statut', 'envoye');
+        if (alreadySent > 0) {
+          return res.status(200).json({ received: true, type: 'prolongation', skipped: 'email_already_sent' });
+        }
+      }
+
       const sigProlong = await getSignature(getSupabase());
       const prolongLang = meta.lang || confirmedResa?.lang || 'fr';
       const prolongHtml = withSignature(tplProlongConfirmation({

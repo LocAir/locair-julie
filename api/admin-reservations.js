@@ -228,7 +228,7 @@ module.exports = async (req, res) => {
 
       const { data: orig, error: origErr } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut, hors_zone')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut, hors_zone, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement')
         .eq('id', origId).eq('city_id', city.id).maybeSingle();
       if (origErr) throw origErr;
       if (!orig) return res.status(404).json({ error: 'Réservation d\'origine introuvable' });
@@ -250,9 +250,16 @@ module.exports = async (req, res) => {
         prenom: orig.prenom, nom: orig.nom, email: orig.email,
         tel: orig.tel, tel_secondaire: orig.tel_secondaire || null,
         adresse: orig.adresse,
-        // Reprend le statut hors zone de la réservation d'origine — sinon le
-        // transporteur touche le tarif normal pour une récupération hors zone.
         hors_zone: orig.hors_zone || false,
+        // Champs d'accès copiés pour que le transporteur ait toutes les infos lors de la récupération
+        etage:              orig.etage              || null,
+        ascenseur:          orig.ascenseur          || null,
+        fenetre:            orig.fenetre            || null,
+        fenetre_photo_path: orig.fenetre_photo_path || null,
+        installation:       orig.installation       || null,
+        instructions_acces: orig.instructions_acces || null,
+        creneau:            orig.creneau            || null,
+        logement:           orig.logement           || null,
         date_debut: orig.date_fin, date_fin: newDateFin, quantite: orig.quantite || 1,
         prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'site_prolongation',
         parrain_code: promoCode || null,
