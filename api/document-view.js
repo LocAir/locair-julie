@@ -20,7 +20,7 @@ module.exports = async (req, res) => {
       await supabase.from('documents').update({ statut: 'consulte', consulte_at: new Date().toISOString() }).eq('id', doc.id);
     }
 
-    const { data: signed, error } = await supabase.storage.from('missions').createSignedUrl(doc.storage_path, 300);
+    const { data: signed, error } = await supabase.storage.from('missions').createSignedUrl(doc.storage_path, 3600);
     if (error || !signed) return res.status(500).send('Document temporairement indisponible.');
 
     res.writeHead(302, { Location: signed.signedUrl });

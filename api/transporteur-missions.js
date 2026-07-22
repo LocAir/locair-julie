@@ -44,7 +44,7 @@ module.exports = async (req, res) => {
       const photos = {};
       await Promise.all(KINDS.map(async ([kind, path]) => {
         if (!path) return;
-        const { data: urlData } = await supabase.storage.from('missions').createSignedUrl(path, 300);
+        const { data: urlData } = await supabase.storage.from('missions').createSignedUrl(path, 3600);
         if (urlData?.signedUrl) photos[kind] = urlData.signedUrl;
       }));
       return res.status(200).json({ photos });

@@ -46,7 +46,7 @@ module.exports = async (req, res) => {
         .eq('id', id).eq('reservation.city_id', city.id).maybeSingle();
       if (!doc) return res.status(404).json({ error: 'Document introuvable' });
 
-      const { data, error } = await supabase.storage.from('missions').createSignedUrl(doc.storage_path, 300);
+      const { data, error } = await supabase.storage.from('missions').createSignedUrl(doc.storage_path, 3600);
       if (error) throw error;
       return res.status(200).json({ url: data.signedUrl });
     }

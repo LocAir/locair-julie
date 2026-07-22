@@ -549,7 +549,7 @@ module.exports = async (req, res) => {
         .eq('id', livraisonId).eq('transporteur_id', transporteurId).maybeSingle();
       if (!liv2?.reservation?.fenetre_photo_path) return res.status(404).json({ error: 'Photo introuvable' });
       const { data: urlData, error: urlErr } = await supabase.storage
-        .from('missions').createSignedUrl(liv2.reservation.fenetre_photo_path, 300);
+        .from('missions').createSignedUrl(liv2.reservation.fenetre_photo_path, 3600);
       if (urlErr) throw urlErr;
       return res.status(200).json({ url: urlData.signedUrl });
     }

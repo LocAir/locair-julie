@@ -890,6 +890,12 @@ async function loginWithAdminFaceId(auto){
 document.getElementById('a-pwd').addEventListener('keydown', e=>{ if(e.key==='Enter') adminLogin(); });
 
 function euros(cents){ return ((cents||0)/100).toFixed(2).replace('.',',') + ' €'; }
+function addDay(isoDate){
+  if(!isoDate) return isoDate;
+  const d = new Date(isoDate+'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate()+1);
+  return d.toISOString().slice(0,10);
+}
 function frDate(iso){
   if(!iso) return '—';
   const d = new Date(iso+'T00:00:00');
@@ -1029,6 +1035,16 @@ function showToast(message, type='info'){
 }
 
 const RESA_LABEL = {en_attente:'En attente', confirmee:'Confirmée', annulee:'Annulée', terminee:'Terminée'};
+const STATUT_COMMANDE_LABEL = {
+  paiement_en_attente:'Paiement en attente', confirmee:'Confirmée', a_preparer:'À préparer',
+  en_livraison:'En livraison', installee:'Installée', en_location:'En location',
+  a_recuperer:'À récupérer', terminee:'Terminée', annulee:'Annulée', remboursee:'Remboursée', incident:'Incident',
+};
+const STATUT_COMMANDE_CSS = {
+  paiement_en_attente:'en_attente', confirmee:'confirmee', a_preparer:'a_faire',
+  en_livraison:'en_route', installee:'confirmee', en_location:'en_location',
+  a_recuperer:'a_faire', terminee:'terminee', annulee:'annulee', remboursee:'annulee', incident:'probleme',
+};
 const LIV_LABEL  = {a_faire:'Nouvelle', acceptee:'Acceptée', en_route:'En route', refusee:'Refusée', arrivee:'Sur place', fait:'Terminée', probleme:'Problème', annule:'Annulée'};
 // Badge type de mission — bien plus visible qu'un simple emoji dans le titre
 // (confondu entre livraison et récupération sinon, notamment sur deux missions
@@ -1974,7 +1990,7 @@ let RESERVATIONS_VIEW = 'liste'; // 'liste' | 'calendrier' — le calendrier vit
 // pour prioriser d'un coup d'œil parmi une longue liste.
 function nightsLabel(dateDebut, dateFin){
   const nights = Math.round((new Date(dateFin+'T00:00:00') - new Date(dateDebut+'T00:00:00')) / 86400000);
-  return nights>0 ? `${nights} nuit${nights>1?'s':''}` : '';
+  return nights>0 ? `${nights} jour${nights>1?'s':''}` : '';
 }
 function relLabel(dateDebut){
   const today = new Date(); today.setHours(0,0,0,0);
@@ -2048,7 +2064,7 @@ function reservationRowHtml(res, readOnly){
           ${res.hors_zone?`<span class="chip probleme" title="Affectation manuelle requise">⚠️ Hors zone</span>`:''}
           ${res.source==='site_prolongation'?`<span class="chip en_location">🔄 Prolongée</span>`:''}
           ${res.appareils_en_attente_validation?`<span class="chip a_faire" title="Appareil(s) pas encore validé(s) par l'administration">🔍 Appareil à valider</span>`:''}
-          <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
+          <span class="chip ${STATUT_COMMANDE_CSS[res.statut_commande]||res.statut}">${STATUT_COMMANDE_LABEL[res.statut_commande]||RESA_LABEL[res.statut]||res.statut}</span>
         </span>
       </div>
       <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
@@ -2062,7 +2078,7 @@ function reservationRowHtml(res, readOnly){
       </details>`:''}
       <div class="resa-dates">
         <span class="resa-date-range">📅 ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
-        <span class="resa-rel ${isUrgent(res.date_debut)?'urgent':''}">${nightsLabel(res.date_debut,res.date_fin)} · ${relLabel(res.date_debut)}</span>
+        <span class="resa-rel ${isUrgent(res.date_debut)||isUrgent(res.date_fin)?'urgent':''}">${nightsLabel(res.date_debut,res.date_fin)} · ${relLabel(res.date_debut)}</span>
       </div>
       <div class="resa-bottom">
         <span class="resa-price">${euros(res.prix_total_cents)}</span>
@@ -2083,7 +2099,7 @@ function reservationRowHtml(res, readOnly){
             ${res.appareils_en_attente_validation?`<button onclick="validerAppareilsReservation(${res.id})">🔍 Valider l'appareil attribué</button>`:''}
             ${res.statut==='confirmee'?`<button onclick="reaffecterAppareilReservation(${res.id})">🔄 Réaffecter l'appareil</button>`:''}
             ${res.statut==='confirmee'?`<button onclick="proposerOffrePrivilegeManuelle(${res.id})">⭐ Proposer l'Offre Privilège</button>`:''}
-            ${res.statut!=='remboursee' && res.statut!=='en_attente' ? `<button onclick="rembourserReservation(${res.id})">💳 Rembourser</button>` : ''}
+            ${res.statut!=='remboursee' && res.statut!=='en_attente' && res.stripe_payment_intent_id ? `<button onclick="rembourserReservation(${res.id})">💳 Rembourser</button>` : ''}
             ${res.statut!=='annulee'?`<button class="danger" onclick="cancelReservation(${res.id})">Annuler la réservation</button>`:''}
             <button onclick="deleteReservation(${res.id}, '${res.statut}')">Masquer de l'écran</button>
           </div>
@@ -2509,9 +2525,11 @@ function renderReservationsCalendrier(){
     const numeros = (res.appareil_numeros||[]).join(', ');
     const refTxt = isInternalRef(res.ref) ? '' : escHtml(res.ref);
     const sub = [numeros?'n°'+escHtml(numeros):'', refTxt].filter(Boolean).join(' · ');
-    pushEvent(res.date_debut, `
-      <div class="cal-day-item">${missionTypeBadge('livraison')}<span class="cal-day-name">${nom}</span>${sub?`<span class="cal-day-sub">${sub}</span>`:''}</div>`);
-    pushEvent(res.date_fin, `
+    if(res.source !== 'site_prolongation') {
+      pushEvent(res.date_debut, `
+        <div class="cal-day-item">${missionTypeBadge('livraison')}<span class="cal-day-name">${nom}</span>${sub?`<span class="cal-day-sub">${sub}</span>`:''}</div>`);
+    }
+    pushEvent(addDay(res.date_fin), `
       <div class="cal-day-item">${missionTypeBadge('recuperation')}<span class="cal-day-name">${nom}</span>${sub?`<span class="cal-day-sub">${sub}</span>`:''}</div>`);
   });
   const dayKeys = Object.keys(days).sort();
