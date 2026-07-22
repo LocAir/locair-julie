@@ -6153,8 +6153,14 @@ function openEditClientFicheModal(){
       if(!r.ok) throw new Error(d.error||'Erreur');
 
       if(latestResa){
+        // L'email n'est utile que sur la réservation (c'est elle, pas la fiche
+        // client, qui pilote la connexion espace client, la prolongation et
+        // l'envoi des emails) — sans ça, "corriger" l'email ici ne change
+        // que l'affichage de la fiche et laisse le client bloqué avec
+        // l'ancienne adresse partout où ça compte réellement.
         const rr = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
           action: 'update', id: latestResa.id,
+          email: document.getElementById('ecf-email').value.trim(),
           adresse: document.getElementById('ecf-adresse').value.trim(),
           etage: document.getElementById('ecf-etage').value.trim(),
           ascenseur: document.getElementById('ecf-ascenseur').value.trim(),
