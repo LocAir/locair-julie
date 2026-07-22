@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
     const { data: resa, error } = await supabase
       .from('reservations')
       .select('id, ref, email')
-      .eq('email', email)
+      .ilike('email', email)
       .ilike('ref', ref)
       .order('created_at', { ascending: false })
       .limit(1)

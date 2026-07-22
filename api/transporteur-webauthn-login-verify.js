@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
 
   const rateKey = `webauthn:${getClientIp(req)}`;
   if (await isRateLimited(supabase, rateKey)) {
-    return res.status(429).json({ error: 'Trop de tentatives, réessaie plus tard' });
+    return res.status(429).json({ error: 'Trop de tentatives. Réessaie dans 15 minutes ou contacte Aly.' });
   }
 
   try {

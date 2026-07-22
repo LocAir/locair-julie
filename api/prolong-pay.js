@@ -37,8 +37,8 @@ module.exports = async (req, res) => {
   // Retrouver la réservation d'origine par email (+ ref si fournie)
   let q = supabase
     .from('reservations')
-    .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire')
-    .eq('email', String(email).trim().toLowerCase())
+    .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email')
+    .ilike('email', String(email).trim())
     .not('source', 'eq', 'site_prolongation')
     .order('created_at', { ascending: false })
     .limit(1);
@@ -46,8 +46,8 @@ module.exports = async (req, res) => {
   if (ref && ref.trim()) {
     q = supabase
       .from('reservations')
-      .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire')
-      .eq('email', String(email).trim().toLowerCase())
+      .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email')
+      .ilike('email', String(email).trim())
       .ilike('ref', ref.trim().toUpperCase())
       .not('source', 'eq', 'site_prolongation')
       .order('created_at', { ascending: false })
@@ -150,10 +150,22 @@ module.exports = async (req, res) => {
       stripe_customer_id:       customerId || null,
       prenom:                   (orig.prenom  || '').slice(0, 200),
       nom:                      (orig.nom     || '').slice(0, 200),
-      email:                    String(email).trim().slice(0, 200),
+      // Reprend l'email tel que stocké sur la réservation d'origine (pas
+      // celui retapé par le client) : confirmReservation() retrouve ensuite
+      // cette réservation d'origine par une comparaison stricte sur ce champ
+      // (pour annuler sa récupération devenue obsolète) — une casse
+      // différente d'une saisie à l'autre lui aurait fait rater le
+      // rattachement, laissant une mission de récupération fantôme au
+      // calendrier.
+      email:                    orig.email,
       tel:                      (orig.tel     || '').slice(0, 50),
       tel_secondaire:           orig.tel_secondaire || null,
       adresse:                  (orig.adresse || '').slice(0, 500),
+      // Reprend le statut hors zone de la réservation d'origine — sans ça la
+      // nouvelle réservation repartait toujours à "false" par défaut, et le
+      // transporteur touchait le tarif normal (au lieu du tarif hors zone)
+      // pour la récupération de cette prolongation.
+      hors_zone:                orig.hors_zone || false,
       date_debut:               orig.date_fin,
       date_fin:                 new_date_fin,
       quantite:                 orig.quantite || 1,

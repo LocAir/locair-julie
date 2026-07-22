@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
       let query = supabase
         .from('livraisons')
         .select(`
-          id, type, statut, date_prevue, creneau, montant_du_cents, incident_id, fait_at,
+          id, type, statut, date_prevue, creneau, montant_du_cents, incident_id, fait_at, probleme_type,
           reservation:reservations ( ref, prenom, nom, adresse ),
           appareils:reservation_appareils ( appareil:appareils ( numero ) )
         `)
@@ -42,6 +42,11 @@ module.exports = async (req, res) => {
         id: l.id, type: l.type, statut: l.statut, date_prevue: l.date_prevue, creneau: l.creneau,
         montant_cents: l.montant_du_cents || 0, fait_at: l.fait_at,
         avec_incident: Boolean(l.incident_id),
+        // Motif du problème signalé, pour que le livreur voie tout de suite
+        // ce qui s'est passé sans avoir à rouvrir une mission qui, une fois
+        // annulée/refusée, ne fait plus forcément partie de ses missions
+        // actives (transporteur-missions.js ne renvoie pas ce statut-là).
+        probleme_type: l.probleme_type || null,
         adresse: l.reservation?.adresse || null,
         client: [l.reservation?.prenom, l.reservation?.nom].filter(Boolean).join(' ') || null,
       }));

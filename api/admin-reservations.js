@@ -88,7 +88,9 @@ module.exports = async (req, res) => {
       const typeClient = body.type_client === 'entreprise' ? 'entreprise' : 'particulier';
       const raisonSociale = (body.raison_sociale || '').trim().slice(0, 300);
       const siret   = (body.siret   || '').trim().slice(0, 50);
-      const email   = (body.email   || '').trim().slice(0, 200);
+      // Minuscules, comme checkout.js — cohérence avec toutes les recherches
+      // par email (connexion espace client, prolongation).
+      const email   = (body.email   || '').trim().toLowerCase().slice(0, 200);
       const adresse = (body.adresse || '').trim().slice(0, 500);
       const etage       = (body.etage       || '').trim().slice(0, 50);
       const ascenseur   = (body.ascenseur   || '').trim().slice(0, 50);
@@ -226,7 +228,7 @@ module.exports = async (req, res) => {
 
       const { data: orig, error: origErr } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut, hors_zone')
         .eq('id', origId).eq('city_id', city.id).maybeSingle();
       if (origErr) throw origErr;
       if (!orig) return res.status(404).json({ error: 'Réservation d\'origine introuvable' });
@@ -248,6 +250,9 @@ module.exports = async (req, res) => {
         prenom: orig.prenom, nom: orig.nom, email: orig.email,
         tel: orig.tel, tel_secondaire: orig.tel_secondaire || null,
         adresse: orig.adresse,
+        // Reprend le statut hors zone de la réservation d'origine — sinon le
+        // transporteur touche le tarif normal pour une récupération hors zone.
+        hors_zone: orig.hors_zone || false,
         date_debut: orig.date_fin, date_fin: newDateFin, quantite: orig.quantite || 1,
         prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'site_prolongation',
         parrain_code: promoCode || null,
@@ -303,7 +308,7 @@ module.exports = async (req, res) => {
       if (body.instructions_acces != null) patch.instructions_acces = body.instructions_acces.trim().slice(0, 1000) || null;
       if (body.creneau_livraison != null)  patch.creneau            = body.creneau_livraison.trim().slice(0, 500) || null;
       if (body.tel_secondaire != null)     patch.tel_secondaire     = body.tel_secondaire.trim().slice(0, 50) || null;
-      if (body.email != null)              patch.email              = body.email.trim().slice(0, 200) || null;
+      if (body.email != null)              patch.email              = body.email.trim().toLowerCase().slice(0, 200) || null;
       if (body.type_client != null)        patch.type_client        = body.type_client === 'entreprise' ? 'entreprise' : 'particulier';
       if (body.raison_sociale != null)     patch.raison_sociale     = body.raison_sociale.trim().slice(0, 300) || null;
       if (body.siret != null)              patch.siret              = body.siret.trim().slice(0, 50) || null;

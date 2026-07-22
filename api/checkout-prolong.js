@@ -55,8 +55,8 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Email requis pour retrouver ta réservation' });
     }
     let origQuery = supabase
-      .from('reservations').select('city_id, tel_secondaire, date_debut, date_fin')
-      .eq('email', String(data.email).trim());
+      .from('reservations').select('city_id, tel_secondaire, hors_zone, date_debut, date_fin')
+      .ilike('email', String(data.email).trim());
     if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim());
     ({ data: orig } = await origQuery.order('created_at', { ascending: false }).limit(1).maybeSingle());
     city = orig ? await resolveCityById(supabase, orig.city_id) : null;
@@ -139,9 +139,15 @@ module.exports = async (req, res) => {
       stripe_customer_id:       customerId || null,
       prenom:                   (data.prenom          || '').slice(0, 200),
       nom:                      (data.nom             || '').slice(0, 200),
-      email:                    (data.email           || '').slice(0, 200),
+      // En minuscules, comme checkout.js — sans ça le rattachement à la
+      // réservation d'origine (confirmReservation, recherche par email) peut
+      // rater si la casse tapée diffère d'une fois sur l'autre.
+      email:                    (data.email           || '').trim().toLowerCase().slice(0, 200),
       tel:                      (data.tel             || '').slice(0, 50),
       tel_secondaire:           orig?.tel_secondaire || null,
+      // Reprend le statut hors zone de la réservation d'origine — sinon le
+      // transporteur touche le tarif normal pour une récupération hors zone.
+      hors_zone:                orig?.hors_zone || false,
       adresse:                  (data.adresse_origine || '').slice(0, 500),
       creneau:                  (data.creneau         || '').slice(0, 500),
       date_debut:               extDateDebut,

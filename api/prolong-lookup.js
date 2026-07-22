@@ -15,7 +15,7 @@ module.exports = async (req, res) => {
   let q = supabase
     .from('reservations')
     .select('ref, prenom, date_debut, date_fin, quantite, statut')
-    .eq('email', String(email).trim().toLowerCase())
+    .ilike('email', String(email).trim())
     .not('source', 'eq', 'site_prolongation')
     .order('created_at', { ascending: false })
     .limit(1);
@@ -24,7 +24,7 @@ module.exports = async (req, res) => {
     q = supabase
       .from('reservations')
       .select('ref, prenom, date_debut, date_fin, quantite, statut')
-      .eq('email', String(email).trim().toLowerCase())
+      .ilike('email', String(email).trim())
       .ilike('ref', ref.trim().toUpperCase())
       .not('source', 'eq', 'site_prolongation')
       .order('created_at', { ascending: false })
