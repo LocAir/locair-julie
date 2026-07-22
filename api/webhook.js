@@ -385,18 +385,22 @@ const handler = async (req, res) => {
         : prolongLang === 'zh'
         ? `✅ 续租已确认 — 已延长 ${jNum} 天`
         : `✅ Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
-      await sendBrevoEmail({
+      const resultProlong = await sendBrevoEmail({
         to:      email,
         subject: prolongSubject,
         html:    prolongHtml,
         senderName: sigProlong.nom_expediteur,
       });
+      if (!resultProlong.ok) console.error('[Webhook] email prolong échoué —', resultProlong.error);
       // Best-effort : hors moteur de scénarios, juste une trace pour
       // l'historique de la fiche client.
       if (confirmedResa) {
         getSupabase().from('email_log').insert({
           reservation_id: confirmedResa.id, scenario: 'email_prolongation', canal: 'email',
-          destinataire: email, modele: 'email_prolongation', statut: 'envoye', contenu: prolongHtml,
+          destinataire: email, modele: 'email_prolongation',
+          statut: resultProlong.ok ? 'envoye' : 'erreur',
+          erreur: resultProlong.ok ? null : String(resultProlong.error || '').slice(0, 500),
+          contenu: prolongHtml,
         }).catch(() => {});
       }
 

@@ -49,6 +49,9 @@ module.exports = async (req, res) => {
   if (!isValidDate(dateDebut)) {
     return res.status(400).json({ error: 'Date de livraison invalide' });
   }
+  if (dateDebut < new Date().toISOString().slice(0, 10)) {
+    return res.status(400).json({ error: 'La date de livraison ne peut pas être dans le passé.' });
+  }
   const dateFin  = addDays(dateDebut, duree);
   const supabase = getSupabase();
   let city;
@@ -91,7 +94,7 @@ module.exports = async (req, res) => {
   const deliveryFeeCents = ZONE_CP.has((data.code_postal || '').trim()) ? 35 * 100 : 95 * 100;
   const amountCents      = Math.max(0, baseCents + installCents + deliveryFeeCents - promoDiscount);
 
-  if (!amountCents || amountCents < 10000) {
+  if (!amountCents || amountCents < 5000) {
     return res.status(400).json({ error: 'Montant invalide' });
   }
 
