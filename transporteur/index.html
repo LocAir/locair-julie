@@ -1546,11 +1546,17 @@ function missionUrgenceRang(m){
   const dueToday = m.date_prevue <= todayStr;
   if(m.statut==='probleme') return 0;
   if(m.statut==='arrivee') return 1;
-  if(m.statut==='acceptee' && dueToday) return 2;
-  if(m.statut==='a_faire' && dueToday) return 3;
-  if(m.statut==='acceptee') return 4;
-  if(m.statut==='a_faire') return 5;
-  return 6; // fait
+  // 'en_route' oublié ici pendant longtemps (même classe de bug que
+  // missionEstEnCours) : sans ce cas, une mission activement en cours de
+  // trajet retombait sur le rang par défaut (6, celui de "fait") et se
+  // retrouvait triée tout en bas de la liste, mélangée aux missions déjà
+  // terminées — alors que c'est la plus urgente après "sur place".
+  if(m.statut==='en_route') return 2;
+  if(m.statut==='acceptee' && dueToday) return 3;
+  if(m.statut==='a_faire' && dueToday) return 4;
+  if(m.statut==='acceptee') return 5;
+  if(m.statut==='a_faire') return 6;
+  return 7; // fait
 }
 function filteredMissions(){
   let list;
