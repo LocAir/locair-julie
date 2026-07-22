@@ -35,10 +35,17 @@ module.exports = async (req, res) => {
       const ids = (partenaires || []).map(p => p.id);
       if (!ids.length) return res.status(200).json({ partenaires: [] });
 
+      // 'confirmee' OU 'terminee' — une réservation passe à 'terminee' dès la
+      // récupération effectuée (voir transporteur-action.js/admin-livraisons.js),
+      // ce qui arrive pour toute location qui va à son terme normalement. En ne
+      // gardant que 'confirmee' ici, la commission d'un partenaire disparaissait
+      // purement et simplement (plus visible, plus payable) dès qu'une location
+      // qu'il avait apportée se terminait sans que le virement ait été fait
+      // avant — même logique déjà suivie par emailSchedule.js pour cette raison.
       const { data: resas } = await supabase
         .from('reservations')
         .select('id, partenaire_id, ref, prenom, nom, prix_total_cents, partenaire_commission_cents, partenaire_commission_payee, created_at')
-        .in('partenaire_id', ids).eq('statut', 'confirmee').eq('masquee', false)
+        .in('partenaire_id', ids).in('statut', ['confirmee', 'terminee']).eq('masquee', false)
         .order('created_at', { ascending: false });
 
       const { data: virements } = await supabase
@@ -140,7 +147,7 @@ module.exports = async (req, res) => {
 
       const { data: resas } = await supabase
         .from('reservations').select('id, partenaire_commission_cents')
-        .eq('partenaire_id', partenaireId).eq('statut', 'confirmee').eq('masquee', false)
+        .eq('partenaire_id', partenaireId).in('statut', ['confirmee', 'terminee']).eq('masquee', false)
         .eq('partenaire_commission_payee', false);
       const montant = (resas || []).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
       const ids = (resas || []).map(r => r.id);
@@ -184,7 +191,7 @@ module.exports = async (req, res) => {
       // demande si d'autres réservations ont été confirmées entre-temps).
       const { data: resas } = await supabase
         .from('reservations').select('id, partenaire_commission_cents')
-        .eq('partenaire_id', virement.partenaire_id).eq('statut', 'confirmee').eq('masquee', false)
+        .eq('partenaire_id', virement.partenaire_id).in('statut', ['confirmee', 'terminee']).eq('masquee', false)
         .eq('partenaire_commission_payee', false);
       const montant = (resas || []).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
       const ids = (resas || []).map(r => r.id);
