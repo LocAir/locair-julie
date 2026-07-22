@@ -4776,7 +4776,7 @@ function updateDuration(days,silent){
   _durDays=days;
   const price=calcPrice(days);
   const rate=_baseRate(days);
-  const discPct=Math.round((20-rate)/20*100);
+  const discPct=Math.max(0,Math.round((24-rate)/24*100));
 
   document.getElementById('f-dur').value=days;
   updateDatePreview();
@@ -4797,7 +4797,7 @@ function updateDatePreview(){
   const en=_lang==='en';
   const start=new Date(Date.UTC(+y,+m-1,+d));
   const end=new Date(start);
-  end.setUTCDate(end.getUTCDate()+days);
+  end.setUTCDate(end.getUTCDate()+days+1); // J+1 : récupération le lendemain de la fin
   if(en){
     const fmtEn=dt=>dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'});
     el.textContent=`Delivery ${fmtEn(start)} · Collection ${fmtEn(end)} (${days} days)`;
@@ -6330,7 +6330,7 @@ function updateHeroSim(days){
   if(el){el.setAttribute('aria-live','polite');el.setAttribute('aria-atomic','true');el.textContent=price+'€';}
   if(elN)elN.textContent=_lang==='en'?'for '+days+' day'+(days>1?'s':''):_lang==='zh'?days+' 天':'pour '+days+' jour'+(days>1?'s':'');
   const rate=_baseRate(days);
-  const disc=Math.round((20-rate)/20*100);
+  const disc=Math.max(0,Math.round((24-rate)/24*100));
   if(elD)elD.textContent=_lang==='en'?(disc>0?'i.e. €'+rate.toFixed(0)+'/day — '+disc+'% off':'Fixed price · Delivery from €35'):_lang==='zh'?(disc>0?'即 '+rate.toFixed(0)+' €/天 — 节省'+disc+'%':'锁定价格 · 配送低至35€'):(disc>0?'soit '+rate.toFixed(0)+' €/jour — économie de '+disc+'%':'Prix garanti · Livraison dès 35 €');
   // sync chips
   document.querySelectorAll('.hps-chip').forEach(c=>{
@@ -7178,6 +7178,7 @@ function setLang(l){
   }
   // Rebuild stepper + recap labels if modal open
   if(document.getElementById('overlay')?.classList.contains('open')){
+    if(curStep===4&&typeof initDateShortcuts==='function')initDateShortcuts();
     updateDuration(_durDays||7,true);
     buildRecap();
   }
@@ -7756,7 +7757,7 @@ function initDurCardPrices(){
     if(rEl)rEl.textContent=Math.round(rate)+dayUnit;
     if(tEl)tEl.textContent=total+' €';
     if(sEl){
-      const pct=Math.round((20-rate)/20*100);
+      const pct=Math.max(0,Math.round((24-rate)/24*100));
       sEl.textContent=pct>0?'−'+pct+'%':'';
     }
   });
@@ -8061,7 +8062,7 @@ function _showProlongSuccess(){
     succ.classList.add('show');
   }
   window.dataLayer=window.dataLayer||[];
-  dataLayer.push({event:'prolongation_paid',days:_prolongDays,value:calcPrice(_prolongDays)});
+  dataLayer.push({event:'prolongation_paid',days:_prolongDays,orig_days:_prolongOrigDays,value:calcProlongIncremental(_prolongOrigDays,_prolongDays)});
 }
 
 // ── EXIT INTENT ──────────────────────────────────────────────────────────────
