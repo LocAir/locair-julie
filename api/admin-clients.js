@@ -213,7 +213,10 @@ module.exports = async (req, res) => {
       if (body.acces_difficile != null) patch.acces_difficile = body.acces_difficile.slice(0, 1000);
       if (body.prenom != null) patch.prenom = body.prenom.trim().slice(0, 200) || 'Client';
       if (body.nom != null)    patch.nom    = body.nom.trim().slice(0, 200) || null;
-      if (body.email != null)  patch.email  = body.email.trim().slice(0, 200) || null;
+      // Minuscules, comme partout ailleurs (checkout.js, admin-reservations.js) —
+      // même si clients.email ne sert pas de clé de recherche aujourd'hui,
+      // mieux vaut rester cohérent plutôt que stocker une casse imprévisible.
+      if (body.email != null)  patch.email  = body.email.trim().toLowerCase().slice(0, 200) || null;
       // tel_normalise sert de clé de déduplication client (voir
       // _lib/reservations.js:findOrCreateClient) — sans recalcul ici, une future
       // réservation avec le nouveau numéro ne retrouverait plus ce client et en
