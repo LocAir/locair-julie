@@ -2,7 +2,7 @@ const Stripe = require('stripe');
 const { getSupabase }     = require('./_lib/supabase');
 const { resolveCityById } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
-const { isValidDate }     = require('./_lib/dates');
+const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 
@@ -125,7 +125,9 @@ module.exports = async (req, res) => {
         total_days:        String(clientOrigDays + jours),
         date_debut:        (data.date_debut        || '').slice(0, 500),
         date_fin_initiale: (data.date_fin_initiale || '').slice(0, 500),
-        date_recuperation: (data.date_recuperation || '').slice(0, 500),
+        // Calculé côté serveur à partir de extDateFin (date_fin) + 1 jour — ne pas
+        // faire confiance au label formaté envoyé par le client.
+        date_recuperation: (()=>{const r=addDays(extDateFin,1);const[ry,rm,rd]=r.split('-');return rd+'/'+rm+'/'+ry;})(),
         creneau:           (data.creneau           || '').slice(0, 500),
         customer_id:       customerId,
         lang:              ['fr','en','zh'].includes(data.lang) ? data.lang : 'fr',

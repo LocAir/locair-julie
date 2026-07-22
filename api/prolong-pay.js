@@ -2,7 +2,7 @@ const Stripe = require('stripe');
 const { getSupabase }     = require('./_lib/supabase');
 const { resolveCityById } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
-const { isValidDate }     = require('./_lib/dates');
+const { isValidDate, addDays } = require('./_lib/dates');
 const { matchPromoPct }   = require('./_lib/promo');
 
 function calcBase(days) {
@@ -136,7 +136,7 @@ module.exports = async (req, res) => {
         total_days:        String(totalDays),
         date_debut:        orig.date_debut,
         date_fin_initiale: orig.date_fin,
-        date_recuperation: new_date_fin,
+        date_recuperation: (()=>{const r=addDays(new_date_fin,1);const[ry,rm,rd]=r.split('-');return rd+'/'+rm+'/'+ry;})(),
         promo:             promoCode || '',
         promo_pct:         promoPct ? String(promoPct) + '%' : '',
         customer_id:       customerId,
