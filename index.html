@@ -7172,8 +7172,11 @@ function setLang(l){
 let STOCK_DISPONIBLES=null;
 function _updateStockNoticeText(){
   const el=document.getElementById('stock-notice-txt');
+  const sn=document.getElementById('stock-notice');
   if(!el||STOCK_DISPONIBLES==null)return;
   const n=STOCK_DISPONIBLES;
+  // N'afficher l'avertissement de stock que quand le stock est vraiment bas
+  if(sn&&!SOLD_OUT)sn.style.display=n<=3?'flex':'none';
   el.textContent=_lang==='en'
     ? `Only ${n} unit${n>1?'s':''} available`
     : _lang==='zh'
@@ -7199,7 +7202,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   await _refreshStockAndSoldOut();
   // Garde le compteur et le mode "complet" synchronisés avec le stock réel
   // pendant toute la visite, sans recharger la page.
-  setInterval(_refreshStockAndSoldOut,60000);
+  setInterval(_refreshStockAndSoldOut,30000);
 });
 
 // Scroll modal-body pour garder le champ actif visible — tous appareils (iOS, Android, desktop)
