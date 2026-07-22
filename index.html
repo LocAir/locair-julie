@@ -5757,7 +5757,7 @@ function buildRecap(){
     if(y&&m&&d){
       dateStr=d+'/'+m+'/'+y;
       const pd=new Date(Date.UTC(+y,+m-1,+d));
-      pd.setUTCDate(pd.getUTCDate()+days);
+      pd.setUTCDate(pd.getUTCDate()+days+1); // J+1 : la récup est TOUJOURS le lendemain de la fin
       const pDay=String(pd.getUTCDate()).padStart(2,'0');
       const pMon=String(pd.getUTCMonth()+1).padStart(2,'0');
       pickupDateStr=pDay+'/'+pMon+'/'+pd.getUTCFullYear();
@@ -5769,7 +5769,7 @@ function buildRecap(){
   const recupEl=document.getElementById('recap-date-recup');
   const isEN=_lang==='en';
   const isZH=_lang==='zh';
-  if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (end of your '+days+'-day rental)':isZH?pickupDateStr+' 归还（'+days+'天租期结束）':'Le '+pickupDateStr+' (fin de votre location de '+days+' jours)';
+  if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (our team will collect the unit)':isZH?pickupDateStr+' 取回（由我们团队上门取回）':'Le '+pickupDateStr+' (récupération par notre équipe)';
   const total=Math.max(0,calcTotal(days)-_promoDiscount+DELIVERY_FEE);
   const installLabel=_techInstall?(isEN?'Technician installation':isZH?'技术员安装 — 49 €':'Pose technicien — 49 €'):(isEN?'Self-install (free)':isZH?'自行安装（免费）':'Pose autonome — Kit fourni');
   const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:isZH?'电梯：'+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
@@ -6143,7 +6143,7 @@ function submitForm(btn,mode){
     conditions_utilisation_accepted_at:(()=>{try{return new Date().toISOString();}catch(e){return '';}})(),
     mode:mode,
     prix:Math.max(0,calcTotal(parseInt(document.getElementById('f-dur')?.value)||7)-_promoDiscount+DELIVERY_FEE)+' €',
-    date_recuperation:(()=>{try{const raw=document.getElementById('f-date')?.value;const dur=parseInt(document.getElementById('f-dur')?.value)||7;if(!raw)return '—';const d=new Date(raw+'T12:00:00');d.setDate(d.getDate()+dur);return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '—';}})()
+    date_recuperation:(()=>{try{const raw=document.getElementById('f-date')?.value;const dur=parseInt(document.getElementById('f-dur')?.value)||7;if(!raw)return '—';const d=new Date(raw+'T12:00:00');d.setDate(d.getDate()+dur+1);return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '—';}})()
   };
 
   const price=calcTotal(parseInt(formData.duree)||7)+DELIVERY_FEE;
@@ -7903,7 +7903,7 @@ function buildProlongRecap(){
   // Format date as DD/MM/YYYY
   const rawDate=document.getElementById('pe-date')?.value||'';
   let dateLabel='—';
-  if(rawDate){const[y,m,d]=rawDate.split('-');dateLabel=d+'/'+m+'/'+y;}
+  if(rawDate){const[y,m,d]=rawDate.split('-');const _dt=new Date(Date.UTC(+y,+m-1,+d));_dt.setUTCDate(_dt.getUTCDate()+1);dateLabel=String(_dt.getUTCDate()).padStart(2,'0')+'/'+String(_dt.getUTCMonth()+1).padStart(2,'0')+'/'+_dt.getUTCFullYear();}
   const creneau=document.querySelector('#pe-creneau-group .tpill.on')?.textContent.trim()||'—';
   const _e=escHtml;
   box.innerHTML=`
@@ -7961,7 +7961,7 @@ async function startProlongPayment(){
   const addr=document.getElementById('pe-addr')?.value.trim()||'';
   const rawDate=document.getElementById('pe-date')?.value||'';
   let dateLabel='—';
-  if(rawDate){const[y,m,d]=rawDate.split('-');dateLabel=d+'/'+m+'/'+y;}
+  if(rawDate){const[y,m,d]=rawDate.split('-');const _dt=new Date(Date.UTC(+y,+m-1,+d));_dt.setUTCDate(_dt.getUTCDate()+1);dateLabel=String(_dt.getUTCDate()).padStart(2,'0')+'/'+String(_dt.getUTCMonth()+1).padStart(2,'0')+'/'+_dt.getUTCFullYear();}
   const creneau=document.querySelector('#pe-creneau-group .tpill.on')?.textContent.trim()||'—';
 
   try{
@@ -8034,7 +8034,7 @@ async function doProlongPayment(){
 function _showProlongSuccess(){
   const rawDate=document.getElementById('pe-date')?.value||'';
   let dateLabel='—';
-  if(rawDate){const[y,m,d]=rawDate.split('-');dateLabel=d+'/'+m+'/'+y;}
+  if(rawDate){const[y,m,d]=rawDate.split('-');const _dt=new Date(Date.UTC(+y,+m-1,+d));_dt.setUTCDate(_dt.getUTCDate()+1);dateLabel=String(_dt.getUTCDate()).padStart(2,'0')+'/'+String(_dt.getUTCMonth()+1).padStart(2,'0')+'/'+_dt.getUTCFullYear();}
   const creneau=document.querySelector('#pe-creneau-group .tpill.on')?.textContent.trim()||'—';
   document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.modal-success').forEach(s=>s.classList.remove('show'));
