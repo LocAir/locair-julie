@@ -108,7 +108,7 @@ module.exports = async (req, res) => {
       receipt_email: data.email || undefined,
       description: [
         `Loc'Air Prolongation — ${jours} jour${jours > 1 ? 's' : ''}`,
-        origDays > 0 ? `(total ${origDays + jours}j)` : '',
+        clientOrigDays > 0 ? `(total ${clientOrigDays + jours}j)` : '',
         data.prenom ? `${data.prenom} ${data.nom || ''}`.trim() : '',
         data.date_recuperation ? `Récup. ${data.date_recuperation}` : '',
       ].filter(Boolean).join(' · ').slice(0, 1000),
