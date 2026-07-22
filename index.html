@@ -2400,7 +2400,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .so-card{background:var(--white);border-radius:20px;max-width:380px;width:100%;padding:36px 28px 28px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.22)}
 .so-icon{width:52px;height:52px;background:#fef3c7;border-radius:50%;margin:0 auto 20px;display:flex;align-items:center;justify-content:center}
 .so-icon svg{width:22px;height:22px;stroke:#d97706;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.so-h{font-family:var(--head);font-size:21px;color:var(--black);margin-bottom:8px;letter-spacing:-.02em;line-height:1.25}
+.so-h{font-family:var(--disp);font-size:21px;color:var(--black);margin-bottom:8px;letter-spacing:-.02em;line-height:1.25}
 .so-p{font-size:13.5px;color:var(--grey2);line-height:1.7;margin-bottom:22px}
 .so-wa{display:inline-flex;align-items:center;gap:8px;background:#25d366;color:#fff;font-size:14px;font-weight:600;border-radius:100px;padding:13px 24px;text-decoration:none;transition:background .15s;font-family:var(--body)}
 .so-wa:hover{background:#1ebe5d}
@@ -3079,6 +3079,12 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
         <div class="pt-ts-col" role="listitem">
           <div class="pt-ts-dur">3–6 j</div>
           <div class="pt-ts-price">24<span> €/j</span></div>
+        </div>
+        <div class="pt-ts-div" aria-hidden="true"></div>
+        <div class="pt-ts-col" role="listitem">
+          <div class="pt-ts-dur">7 j</div>
+          <div class="pt-ts-price">20<span> €/j</span></div>
+          <div class="pt-ts-pct">−17%</div>
         </div>
         <div class="pt-ts-div" aria-hidden="true"></div>
         <div class="pt-ts-col" role="listitem">
@@ -4520,7 +4526,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             style="width:44px;height:44px;border-radius:50%;border:1.5px solid var(--rule);background:#fff;font-size:22px;font-weight:500;color:var(--grey);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s">+</button>
         </div>
         <div class="prolong-price-box">
-          <div class="pp-total" id="pp-total">17 €</div>
+          <div class="pp-total" id="pp-total">—</div>
           <div class="pp-rate">Sans frais d'installation — déjà effectuée</div>
         </div>
         <p id="pp-pricing-note" style="font-size:11px;color:var(--grey2);text-align:center;margin:0 24px 16px;line-height:1.5">Tarif dégressif selon la durée · Paiement en ligne par carte via Stripe.</p>
@@ -5806,7 +5812,7 @@ function buildRecap(){
         <span class="rc-card-badge">${escHtml(priceDisplay)}</span>
       </div>
       <div class="rc-prod-banner">
-        <img src="hero-clim.jpg" alt="" class="rc-prod-banner-img" loading="lazy" alt="Climatiseur mobile Rowenta / Frico">
+        <img src="hero-clim.jpg" alt="Climatiseur mobile Rowenta / Frico" class="rc-prod-banner-img" loading="lazy">
         <div>
           <div class="rc-prod-banner-name">${isEN?'Professional Mobile AC':isZH?'专业移动空调':'Climatiseur mobile professionnel'}</div>
           <div class="rc-prod-banner-ref">Rowenta / Frico · ${isZH?'最多12 000 BTU':isEN?'up to 12,000 BTU':"jusqu'\u00e0 12\xa0000 BTU"} <span class="rc-energy-badge">${isEN?'A-rated':isZH?'A级能效':'Énergie A'}</span></div>
@@ -7829,7 +7835,10 @@ function stepProlongDur(delta){
 }
 
 function calcProlongIncremental(origDays,addDays){
-  if(origDays>0)return calcPrice(origDays+addDays)-calcPrice(origDays);
+  // Le tarif 7j (20€/j) est inférieur au tarif 6j (24€/j) : passer de 6 à 7j
+  // donne un incrément négatif. On clamp à 0 — le jour supplémentaire est offert
+  // quand le palier hebdomadaire rend le total moins cher.
+  if(origDays>0)return Math.max(0,calcPrice(origDays+addDays)-calcPrice(origDays));
   return calcPrice(addDays);
 }
 
@@ -7841,7 +7850,7 @@ function updateProlongPrice(){
   const el_minus=document.getElementById('prolong-minus');
   if(el_days)el_days.textContent=_prolongDays;
   if(el_lbl)el_lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):_lang==='zh'?(_prolongDays===1?'额外天数':'额外天数'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
-  if(el_total)el_total.textContent=price+' €';
+  if(el_total)el_total.textContent=price===0?(_lang==='en'?'Free':_lang==='zh'?'免费':'Offert'):price+' €';
   if(el_minus)el_minus.style.opacity=_prolongDays<=1?'0.3':'1';
 }
 
@@ -7982,7 +7991,7 @@ async function startProlongPayment(){
     if(container){container.innerHTML='<p id="prolong-stripe-loading" style="color:var(--grey);font-size:13px">'+(_lang==='en'?'Loading payment form…':_lang==='zh'?'正在加载支付表单…':'Chargement du formulaire de paiement…')+'</p>';payEl.mount('#prolong-stripe-element');}
     payEl.on('ready',()=>{const l=document.getElementById('prolong-stripe-loading');if(l)l.remove();const mb=document.getElementById('modal-body');if(mb&&container)mb.scrollTo({top:container.offsetTop-20,behavior:'smooth'});});
     const amtEl=document.getElementById('prolong-pay-amount');
-    if(amtEl)amtEl.textContent=(d.amountCents/100).toFixed(2).replace('.',',')+' €';
+    if(amtEl)amtEl.textContent=d.amountCents!=null?(d.amountCents/100).toFixed(2).replace('.',',')+' €':'';
     const sect=document.getElementById('prolong-stripe-section');
     if(sect)sect.style.display='block';
     if(btn)btn.style.display='none';
