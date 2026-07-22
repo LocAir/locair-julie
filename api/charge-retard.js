@@ -123,6 +123,6 @@ module.exports = async (req, res) => {
       });
     }
 
-    return res.status(500).json({ error: err.message || 'Erreur serveur' });
+    return res.status(500).json({ error: 'Erreur serveur paiement' });
   }
 };
