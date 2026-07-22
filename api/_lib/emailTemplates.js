@@ -52,7 +52,7 @@ function tplConfirmation(ctx) {
       <p><strong>Name:</strong> ${p} ${escHtml(ctx.nom)}<br/>
       <strong>Address:</strong> ${escHtml(ctx.adresse)}<br/>
       <strong>Delivery:</strong> ${escHtml(ctx.dateDebutFmt)}${ctx.creneau ? ' · ' + escHtml(ctx.creneau) : ''}<br/>
-      <strong>Collection:</strong> ${escHtml(ctx.dateFinFmt)}<br/>
+      <strong>Collection:</strong> ${escHtml(ctx.dateRecupFmt)}<br/>
       <strong>Unit:</strong> ${escHtml(ctx.modeleClimatiseur)}<br/>
       <strong>Installation:</strong> ${escHtml(ctx.installation || 'Self-install')}<br/>
       <strong>Amount:</strong> ${escHtml(ctx.montantFmt)}</p>
@@ -67,7 +67,7 @@ function tplConfirmation(ctx) {
       <p><strong>姓名：</strong>${p} ${escHtml(ctx.nom)}<br/>
       <strong>地址：</strong>${escHtml(ctx.adresse)}<br/>
       <strong>配送日期：</strong>${escHtml(ctx.dateDebutFmt)}${ctx.creneau ? ' · ' + escHtml(ctx.creneau) : ''}<br/>
-      <strong>取回日期：</strong>${escHtml(ctx.dateFinFmt)}<br/>
+      <strong>取回日期：</strong>${escHtml(ctx.dateRecupFmt)}<br/>
       <strong>设备：</strong>${escHtml(ctx.modeleClimatiseur)}<br/>
       <strong>安装方式：</strong>${escHtml(ctx.installation || '自行安装')}<br/>
       <strong>金额：</strong>${escHtml(ctx.montantFmt)}</p>
@@ -82,7 +82,7 @@ function tplConfirmation(ctx) {
       <p><strong>Client :</strong> ${p} ${escHtml(ctx.nom)}<br/>
       <strong>Adresse :</strong> ${escHtml(ctx.adresse)}<br/>
       <strong>Livraison :</strong> ${escHtml(ctx.dateDebutFmt)}${ctx.creneau ? ' · ' + escHtml(ctx.creneau) : ''}<br/>
-      <strong>Récupération :</strong> ${escHtml(ctx.dateFinFmt)}<br/>
+      <strong>Récupération :</strong> ${escHtml(ctx.dateRecupFmt)}<br/>
       <strong>Climatiseur :</strong> ${escHtml(ctx.modeleClimatiseur)}<br/>
       <strong>Installation :</strong> ${escHtml(ctx.installation || 'Autonome')}<br/>
       <strong>Montant :</strong> ${escHtml(ctx.montantFmt)}</p>
@@ -102,7 +102,7 @@ function tplSuiviJ14(ctx) {
       <p>Hello ${p},</p>
       <p>Your Loc'Air booking (ref ${ref}) is confirmed for <strong>${escHtml(ctx.dateDebutFmt)}</strong>.</p>
       <p>Nothing to do for now — we'll get back to you a few days before delivery to confirm the time slot.</p>`,
-    ctaHref: ctx.lienEspaceClient, ctaLabel: 'View my booking',
+    ctaHref: ctx.lienEspaceClient, ctaLabel: 'Contact us',
   });
   if (l === 'zh') return wrap({
     title: '您的空调将在14天后送达',
@@ -111,7 +111,7 @@ function tplSuiviJ14(ctx) {
       <p>您好 ${p}，</p>
       <p>您的 Loc'Air 预订（订单 ${ref}）已确认，配送日期为 <strong>${escHtml(ctx.dateDebutFmt)}</strong>。</p>
       <p>目前无需任何操作——我们将在配送前几天联系您确认具体时间。</p>`,
-    ctaHref: ctx.lienEspaceClient, ctaLabel: '查看我的订单',
+    ctaHref: ctx.lienEspaceClient, ctaLabel: '联系我们',
   });
   return wrap({
     title: 'Votre climatiseur arrive dans 14 jours',
@@ -120,7 +120,7 @@ function tplSuiviJ14(ctx) {
       <p>Bonjour ${p},</p>
       <p>Votre réservation Loc'Air (dossier ${ref}) est bien confirmée pour le <strong>${escHtml(ctx.dateDebutFmt)}</strong>.</p>
       <p>Rien à faire de votre côté pour l'instant — nous revenons vers vous quelques jours avant la livraison pour finaliser le créneau.</p>`,
-    ctaHref: ctx.lienEspaceClient, ctaLabel: 'Consulter mon dossier',
+    ctaHref: ctx.lienEspaceClient, ctaLabel: 'Nous contacter',
   });
 }
 
@@ -166,7 +166,7 @@ function tplRappelJ1(ctx) {
     intro: `Booking ref ${ref}`,
     bodyHtml: `
       <p>Hello ${p},</p>
-      <p>Your Loc'Air mobile AC is delivered <strong>tomorrow</strong>.</p>
+      <p>Your Loc'Air mobile AC will be delivered <strong>tomorrow</strong>.</p>
       <div class="box">
         <p style="margin:0 0 6px"><strong>Address:</strong> ${escHtml(ctx.adresse)}</p>
         <p style="margin:0 0 6px"><strong>Time slot:</strong> ${escHtml(ctx.creneau || 'to be confirmed (call in the morning)')}</p>
@@ -213,7 +213,7 @@ function tplPostInstallation(ctx) {
       <p>Hello ${p},</p>
       <p>Your ${escHtml(ctx.modeleClimatiseur)} is installed and ready to use.</p>
       <p>Any issue or question about how to use it? Our team is reachable at any time.</p>
-      <div class="box"><p style="margin:0">📖 Need a refresher? <a href="${ctx.lienTutoriel}" style="color:#1b3a5f">Check our FAQ guide</a>.</p></div>
+      <div class="box"><p style="margin:0">📖 Need a refresher? <a href="${ctx.lienTutoriel}" style="color:#1b3a5f">Check our FAQ</a>.</p></div>
       <p style="font-size:13px;color:#888">If you have a minute, your review helps other families trust us:</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Leave a Google review ⭐',
   });
@@ -250,7 +250,7 @@ function tplAvantFinLocation(ctx) {
     intro: `Booking ref ${ref}`,
     bodyHtml: `
       <p>Hello ${p},</p>
-      <p>Your AC will be collected on <strong>${escHtml(ctx.dateFinFmt)}</strong>. Still feeling the heat?</p>
+      <p>Your AC will be collected on <strong>${escHtml(ctx.dateRecupFmt)}</strong>. Still feeling the heat?</p>
       <div class="box" style="text-align:center">
         <p style="margin:0 0 8px;font-weight:700;font-size:15px">Extend your rental</p>
         <p style="margin:0;color:#666">Add days in a few clicks using your booking ref (${escHtml(ctx.ref)})</p>
@@ -263,7 +263,7 @@ function tplAvantFinLocation(ctx) {
     intro: `订单编号 ${ref}`,
     bodyHtml: `
       <p>您好 ${p}，</p>
-      <p>您的空调将于 <strong>${escHtml(ctx.dateFinFmt)}</strong> 取回。天气还是很热吗？</p>
+      <p>您的空调将于 <strong>${escHtml(ctx.dateRecupFmt)}</strong> 取回。天气还是很热吗？</p>
       <div class="box" style="text-align:center">
         <p style="margin:0 0 8px;font-weight:700;font-size:15px">续租延长</p>
         <p style="margin:0;color:#666">使用您的订单编号（${escHtml(ctx.ref)}）几步即可续租</p>
@@ -276,7 +276,7 @@ function tplAvantFinLocation(ctx) {
     intro: `Dossier ${ref}`,
     bodyHtml: `
       <p>Bonjour ${p},</p>
-      <p>Votre climatiseur sera récupéré le <strong>${escHtml(ctx.dateFinFmt)}</strong>. La chaleur est toujours là ?</p>
+      <p>Votre climatiseur sera récupéré le <strong>${escHtml(ctx.dateRecupFmt)}</strong>. La chaleur est toujours là ?</p>
       <div class="box" style="text-align:center">
         <p style="margin:0 0 8px;font-weight:700;font-size:15px">Prolongez votre location</p>
         <p style="margin:0;color:#666">Ajoutez des jours en quelques clics avec votre numéro de commande (${escHtml(ctx.ref)})</p>
@@ -334,9 +334,9 @@ function tplFinLocation(ctx) {
       <p>Hello ${p},</p>
       <p>Our technician has collected your AC. Thank you for choosing Loc'Air!</p>
       <div class="box" style="text-align:center">
-        <p style="margin:0 0 6px">As a thank-you, enjoy <strong>-${REFERRAL_PCT}%</strong> on your next booking with the code</p>
+        <p style="margin:0 0 6px">As a thank-you, enjoy <strong>${REFERRAL_PCT}% off</strong> your next booking with the code</p>
         <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
-        <p style="margin:0;font-size:13px;color:#666">You can also share it with friends — use their first name as the code (e.g. -${REFERRAL_PCT}% with your friend's name).</p>
+        <p style="margin:0;font-size:13px;color:#666">You can also share it with friends — the code is their first name + 30 (e.g. JEAN30).</p>
       </div>
       <p style="font-size:13px;color:#444">If you have a minute, your review helps other families trust us:</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Leave a Google review ⭐',
@@ -350,7 +350,7 @@ function tplFinLocation(ctx) {
       <div class="box" style="text-align:center">
         <p style="margin:0 0 6px">作为感谢，使用以下优惠码可享 <strong>-${REFERRAL_PCT}%</strong> 下次预订折扣</p>
         <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
-        <p style="margin:0;font-size:13px;color:#666">此优惠码也可与朋友分享——使用朋友的名字作为优惠码同样有效（折扣-${REFERRAL_PCT}%）。</p>
+        <p style="margin:0;font-size:13px;color:#666">此优惠码也可与朋友分享——优惠码为朋友姓名加上30（例如：JEAN30）。</p>
       </div>
       <p style="font-size:13px;color:#444">如有时间，您的评价将帮助更多家庭了解我们：</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: '留下 Google 评价 ⭐',
@@ -423,8 +423,8 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     intro: `Booking ref ${escHtml(ref)}`,
     bodyHtml: `
       <p>Hello ${p},</p>
-      <p>Thank you for your trust. Please find your rental agreement and invoice attached.</p>
-      <div class="box"><p style="margin:0"><a href="${viewUrlDocuments}" style="color:#1b3a5f;font-weight:700">View my documents online →</a></p></div>
+      <p>Thank you for choosing Loc'Air. Please find your rental agreement and invoice attached.</p>
+      <div class="box"><p style="margin:0"><a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700">View my documents online →</a></p></div>
       <p style="font-size:13px;color:#888">Keep this email — your documents remain accessible via the link above.</p>
       <p style="font-size:13px;color:#444">We'll be in touch again by email as your delivery date approaches.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
@@ -435,7 +435,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     bodyHtml: `
       <p>您好 ${p}，</p>
       <p>感谢您的信任。请查收本邮件附件中的租赁合同和发票。</p>
-      <div class="box"><p style="margin:0"><a href="${viewUrlDocuments}" style="color:#1b3a5f;font-weight:700">在线查看我的文件 →</a></p></div>
+      <div class="box"><p style="margin:0"><a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700">在线查看我的文件 →</a></p></div>
       <p style="font-size:13px;color:#888">请保存此邮件——您的文件可随时通过上方链接访问。</p>
       <p style="font-size:13px;color:#444">随着送货日期临近，我们将再次通过邮件与您联系。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
@@ -446,7 +446,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     bodyHtml: `
       <p>Bonjour ${p},</p>
       <p>Merci pour votre confiance. Vous trouverez ci-joint votre contrat de location ainsi que votre facture.</p>
-      <div class="box"><p style="margin:0"><a href="${viewUrlDocuments}" style="color:#1b3a5f;font-weight:700">Consulter mes documents en ligne →</a></p></div>
+      <div class="box"><p style="margin:0"><a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700">Consulter mes documents en ligne →</a></p></div>
       <p style="font-size:13px;color:#888">Conservez cet email : vos documents restent accessibles à tout moment via le lien ci-dessus.</p>
       <p style="font-size:13px;color:#444">Nous revenons vers vous par email à l'approche de votre livraison.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
@@ -465,7 +465,7 @@ function tplFactureVente({ prenom, ref, modeleClimatiseur, dateAchatFmt, montant
         <p style="margin:0 0 6px"><strong>Date d'achat :</strong> ${escHtml(dateAchatFmt || '')}</p>
         <p style="margin:0"><strong>Montant payé :</strong> ${escHtml(montantFmt || '')}</p>
       </div>
-      <p>Vous trouverez votre facture ci-jointe — vous pouvez aussi la <a href="${viewUrlFacture}" style="color:#1b3a5f;font-weight:700">consulter en ligne</a>.</p>
+      <p>Vous trouverez votre facture ci-jointe — vous pouvez aussi la <a href="${viewUrlFacture || '#'}" style="color:#1b3a5f;font-weight:700">consulter en ligne</a>.</p>
       <p>Le climatiseur vous appartient désormais définitivement : aucune autre action n'est nécessaire de votre part. En cas de souci technique (garantie, SAV), notre équipe reste disponible via WhatsApp ci-dessous.</p>
       <p style="font-size:13px;color:#888">Conservez cet email : ce document reste accessible à tout moment via le lien ci-dessus.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
@@ -479,7 +479,7 @@ function tplAmbassadeurCredentials({ nom, lien, pin }) {
     intro: `Bonjour ${escHtml(nom)}`,
     bodyHtml: `
       <p>Voici ton lien d'affiliation — mets-le sur ton site pour que tes clients réservent directement chez Loc'Air :</p>
-      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${lien}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
+      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${escHtml(lien)}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
       <p>Ton code personnel pour suivre tes gains sur ton espace ambassadeur :</p>
       <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(pin)}</p>
       <p style="font-size:13px;color:#888">Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
@@ -496,7 +496,7 @@ function tplNouveauCodeAmbassadeur({ nom, lien, pin }) {
       <p>Voici ton nouveau code personnel pour te connecter sur ton espace ambassadeur Loc'Air :</p>
       <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(pin)}</p>
       <p>Ton lien d'affiliation ne change pas :</p>
-      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${lien}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
+      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${escHtml(lien)}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
       <p style="font-size:13px;color:#888">Ton ancien code ne fonctionne plus. Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
     ctaHref: 'https://www.locair.fr/partenaire', ctaLabel: 'Ouvrir mon espace ambassadeur',
   });

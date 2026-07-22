@@ -51,6 +51,7 @@ async function buildEmailContext(supabase, reservation) {
     .from('reservation_appareils').select('appareil:appareils(reference)').eq('reservation_id', reservation.id).limit(1);
   const appareil = (reservAppareils || [])[0]?.appareil;
   const lang = reservation.lang || 'fr';
+  const _prixBase = (reservation.prix_total_cents || 0) / 100;
 
   return {
     ref:      reservation.ref,
@@ -67,7 +68,9 @@ async function buildEmailContext(supabase, reservation) {
     // rappel_recuperation, qui part le jour de date_fin pour annoncer le
     // passage du technicien "demain".
     dateRecupFmt: fmtDate(reservation.date_fin ? addDays(reservation.date_fin, 1) : null, lang),
-    montantFmt:   ((reservation.prix_total_cents || 0) / 100).toFixed(2).replace('.', ',') + ' €',
+    montantFmt:   lang === 'fr'
+      ? _prixBase.toFixed(2).replace('.', ',') + ' €'
+      : '€' + _prixBase.toFixed(2),
     modeleClimatiseur: appareil?.reference || "Climatiseur mobile Loc'Air",
     lienEspaceClient: 'https://www.locair.fr/#contact',
     lienTutoriel:     'https://www.locair.fr/#faq',

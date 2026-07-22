@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({ commandes: [], clients: [], climatiseurs: [], transporteurs: [], partenaires: [] });
   }
 
-  const like = `%${q}%`;
+  const safeLike = `%${q.replace(/[%,()]/g, '')}%`;
   const numero = parseInt(q, 10);
 
   try {
@@ -31,17 +31,17 @@ module.exports = async (req, res) => {
     ] = await Promise.all([
       supabase.from('reservations')
         .select('id, ref, prenom, nom, statut, date_debut, date_fin, city_id')
-        .or(`ref.ilike.${like},prenom.ilike.${like},nom.ilike.${like},email.ilike.${like},tel.ilike.${like}`)
+        .or(`ref.ilike.${safeLike},prenom.ilike.${safeLike},nom.ilike.${safeLike},email.ilike.${safeLike},tel.ilike.${safeLike}`)
         .order('created_at', { ascending: false }).limit(LIMIT),
       supabase.from('clients')
         .select('id, prenom, nom, email, tel, city_id')
-        .or(`prenom.ilike.${like},nom.ilike.${like},email.ilike.${like},tel.ilike.${like}`)
+        .or(`prenom.ilike.${safeLike},nom.ilike.${safeLike},email.ilike.${safeLike},tel.ilike.${safeLike}`)
         .limit(LIMIT),
       Number.isFinite(numero)
-        ? supabase.from('appareils').select('id, numero, statut, reference, city_id').or(`numero.eq.${numero},reference.ilike.${like}`).limit(LIMIT)
-        : supabase.from('appareils').select('id, numero, statut, reference, city_id').ilike('reference', like).limit(LIMIT),
-      supabase.from('transporteurs').select('id, nom, actif, en_pause, telephone, city_id').ilike('nom', like).limit(LIMIT),
-      supabase.from('partenaires').select('id, nom, actif').ilike('nom', like).limit(LIMIT),
+        ? supabase.from('appareils').select('id, numero, statut, reference, city_id').or(`numero.eq.${numero},reference.ilike.${safeLike}`).limit(LIMIT)
+        : supabase.from('appareils').select('id, numero, statut, reference, city_id').ilike('reference', safeLike).limit(LIMIT),
+      supabase.from('transporteurs').select('id, nom, actif, en_pause, telephone, city_id').ilike('nom', safeLike).limit(LIMIT),
+      supabase.from('partenaires').select('id, nom, actif').ilike('nom', safeLike).limit(LIMIT),
     ]);
 
     return res.status(200).json({

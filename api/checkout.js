@@ -6,6 +6,7 @@ const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice }      = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { matchPromoPct } = require('./_lib/promo');
+const { getClientIp, isRateLimited } = require('./_lib/ratelimit');
 
 const calcBase = calcTieredPrice;
 
@@ -21,6 +22,9 @@ const ZONE_CP = new Set(['06000','06100','06200','06300','06700','06800','06230'
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  const ip = getClientIp(req);
+  if (await isRateLimited(getSupabase(), `checkout:${ip}`)) return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
+
   const data   = req.body || {};
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
@@ -31,6 +35,10 @@ module.exports = async (req, res) => {
   // sans qu'aucune des deux acceptations n'ait jamais été donnée.
   if (data.cgv_accepted !== true || data.conditions_utilisation_accepted !== true) {
     return res.status(400).json({ error: 'Vous devez accepter les CGV et les conditions d\'utilisation avant de payer.' });
+  }
+
+  if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+    return res.status(400).json({ error: 'Adresse email invalide' });
   }
 
   const duree = Math.max(3, parseInt(data.duree) || 7);

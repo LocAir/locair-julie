@@ -21,24 +21,23 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Vous devez accepter les CGV avant de payer.' });
   }
 
-  const jours    = Math.max(1, parseInt(data.jours) || 1);
-  const origDays = Math.max(0, parseInt(data.original_days) || 0);
+  const jours          = Math.max(1, parseInt(data.jours) || 1);
+  const clientOrigDays = Math.max(0, parseInt(data.original_days) || 0);
   const qty            = Math.min(5, Math.max(1, parseInt(data.quantite) || 1));
 
-  // Incremental pricing: charge only the difference between (origDays+jours) and origDays
-  // so that tier transitions are priced correctly (e.g. 7→16 days = calcBase(16)−calcBase(7))
-  const totalBase  = origDays > 0
-    ? calcBase(origDays + jours) - calcBase(origDays)
-    : calcBase(jours);
-  const amountCents = Math.max(0, totalBase) * qty * 100;
-
-  if (!amountCents || amountCents <= 0) {
-    return res.status(400).json({ error: 'Montant invalide' });
-  }
+  // Prix calculé avec l'origDays du client pour l'instant — recalculé ci-dessous
+  // à partir des dates réelles en DB pour empêcher toute manipulation du prix.
+  let amountCents = Math.max(0, clientOrigDays > 0
+    ? calcBase(clientOrigDays + jours) - calcBase(clientOrigDays)
+    : calcBase(jours)) * qty * 100;
   const extDateDebut   = (data.date_fin_initiale     || '').slice(0, 10);
   const extDateFin     = (data.date_recuperation_iso || '').slice(0, 10);
   if (!isValidDate(extDateDebut) || !isValidDate(extDateFin) || extDateFin <= extDateDebut) {
     return res.status(400).json({ error: 'Dates de prolongation invalides' });
+  }
+  const today = new Date().toISOString().slice(0, 10);
+  if (extDateDebut < today) {
+    return res.status(422).json({ error: 'La date de fin initiale est déjà passée — impossible de prolonger.' });
   }
 
   const supabase = getSupabase();
@@ -56,13 +55,23 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Email requis pour retrouver ta réservation' });
     }
     let origQuery = supabase
-      .from('reservations').select('city_id, tel_secondaire')
+      .from('reservations').select('city_id, tel_secondaire, date_debut, date_fin')
       .eq('email', String(data.email).trim());
     if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim());
     ({ data: orig } = await origQuery.order('created_at', { ascending: false }).limit(1).maybeSingle());
     city = orig ? await resolveCityById(supabase, orig.city_id) : null;
     if (!city) {
       return res.status(422).json({ error: 'Réservation d\'origine introuvable — contacte-nous directement pour prolonger.' });
+    }
+    // Recalcul du montant avec les dates réelles pour empêcher la manipulation de origDays
+    if (orig?.date_debut && orig?.date_fin) {
+      const dbOrigDays = Math.round((new Date(orig.date_fin) - new Date(orig.date_debut)) / 86400000);
+      if (dbOrigDays > 0) {
+        amountCents = Math.max(0, calcBase(dbOrigDays + jours) - calcBase(dbOrigDays)) * qty * 100;
+      }
+    }
+    if (!amountCents || amountCents <= 0) {
+      return res.status(400).json({ error: 'Montant invalide' });
     }
     const disponibles = await getAvailability(supabase, city.id, extDateDebut, extDateFin);
     if (disponibles < qty) {
@@ -112,8 +121,8 @@ module.exports = async (req, res) => {
         ref:               (data.ref               || '').slice(0, 500),
         jours:             String(jours),
         quantite:          String(qty),
-        original_days:     String(origDays),
-        total_days:        String(origDays + jours),
+        original_days:     String(clientOrigDays),
+        total_days:        String(clientOrigDays + jours),
         date_debut:        (data.date_debut        || '').slice(0, 500),
         date_fin_initiale: (data.date_fin_initiale || '').slice(0, 500),
         date_recuperation: (data.date_recuperation || '').slice(0, 500),

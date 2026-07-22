@@ -1,4 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
+const { getClientIp, isRateLimited } = require('./_lib/ratelimit');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -7,6 +8,9 @@ module.exports = async (req, res) => {
   if (!email) return res.status(400).json({ error: 'Email requis' });
 
   const supabase = getSupabase();
+
+  const ip = getClientIp(req);
+  if (await isRateLimited(supabase, `prolong:${ip}`)) return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
 
   let q = supabase
     .from('reservations')

@@ -280,8 +280,7 @@ const handler = async (req, res) => {
       return res.status(400).json({ error: 'Invalid signature' });
     }
   } else {
-    console.warn('[Webhook] STRIPE_WEBHOOK_SECRET absent — vérification de signature désactivée');
-    body = JSON.parse(rawBody.toString('utf8'));
+    return res.status(400).json({ error: 'STRIPE_WEBHOOK_SECRET non configuré' });
   }
 
   try {
