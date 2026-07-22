@@ -70,6 +70,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
 .banner-warning{background:var(--amber);color:#fff;border-radius:var(--r-sm);padding:10px 14px;margin-bottom:10px;font-weight:700;font-size:13px;line-height:1.4}
 .forgot-link{display:block;width:100%;background:none;border:none;color:var(--grey);text-decoration:underline;font-size:13px;font-family:var(--body);cursor:pointer;text-align:center;margin-top:16px;padding:4px}
 .ok-msg{background:var(--green-bg);color:var(--green);border-radius:var(--r-sm);padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.5}
+.t-toast{position:fixed;left:16px;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));background:var(--red);color:#fff;padding:14px 16px;border-radius:var(--r-sm);font-size:14px;font-weight:600;box-shadow:var(--sh-lg);z-index:200;animation:fadeInEl .2s ease}
 
 .name-btn{width:100%;padding:20px;background:var(--white);border:1.5px solid var(--rule);border-radius:var(--r);font-size:18px;font-weight:700;color:var(--black);margin-bottom:12px;cursor:pointer;text-align:left;box-shadow:var(--sh-xs)}
 .name-btn:active{background:var(--bg)}
@@ -320,6 +321,13 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
       <button onclick="switchTab('activite')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="17" height="12.5" rx="2.2"/><path d="M3.5 10.5h17"/><circle cx="16" cy="14.7" r="1" fill="currentColor" stroke="none"/></svg>Mes gains<span class="tab-badge hidden badge-activite"></span></button>
     </div>
     <div id="dashboard-content"><p class="empty">Chargement…</p></div>
+    <div class="card hidden" id="faceid-offer">
+      <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
+      <p class="sub" style="margin-bottom:16px">Active Face ID / empreinte pour te connecter sans ressaisir ton code la prochaine fois.</p>
+      <button class="btn btn-blue btn-block" id="faceid-setup-btn" onclick="setupFaceId()">Activer</button>
+      <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="dismissFaceIdOffer()">Plus tard</button>
+      <div class="err" id="faceid-err"></div>
+    </div>
   </div>
 
   <!-- Écran 2bis : checklist matériel à récupérer au box — sous-écran de
@@ -369,13 +377,6 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
         <div id="tour-zone"></div>
       </div>
     </details>
-    <div class="card hidden" id="faceid-offer">
-      <h2 style="margin-bottom:8px">🔓 Connexion plus rapide</h2>
-      <p class="sub" style="margin-bottom:16px">Active Face ID / empreinte pour te connecter sans ressaisir ton code la prochaine fois.</p>
-      <button class="btn btn-blue btn-block" id="faceid-setup-btn" onclick="setupFaceId()">Activer</button>
-      <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="dismissFaceIdOffer()">Plus tard</button>
-      <div class="err" id="faceid-err"></div>
-    </div>
     <div id="missions-list"></div>
   </div>
 
@@ -486,6 +487,18 @@ function switchTab(tab){
   else { show('dashboard-screen'); loadDashboard(); }
 }
 
+// Remplace les quelques alert() natifs qui traînaient encore (popup système
+// hors charte, jamais utilisée ailleurs dans l'app) — même principe que les
+// écrans "erreur" existants (.err), en flottant puisque ces cas n'ont pas
+// toujours un bloc .err visible à l'écran au moment où ils se déclenchent.
+function showTToast(msg){
+  document.querySelectorAll('.t-toast').forEach(el => el.remove());
+  const el = document.createElement('div');
+  el.className = 't-toast';
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
 function escHtml(s){
   return String(s==null?'':s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -778,6 +791,12 @@ async function doLogin(){
   }catch(e){
     errEl.textContent = e.message || 'Code incorrect.';
     errEl.style.display='block';
+    // Vide et refocus le champ : retaper 6 chiffres par-dessus l'ancien
+    // code faux (avec des gants, en extérieur) est plus pénible que de
+    // repartir d'un champ propre.
+    const codeEl = document.getElementById('lg-code');
+    codeEl.value = '';
+    codeEl.focus();
   }finally{
     btn.disabled=false; btn.textContent='Entrer →';
   }
@@ -797,8 +816,22 @@ async function fetchMissions(){
     if(!r.ok) throw new Error(d.error||'Erreur');
     STATE.missions = d.missions || [];
     STATE.en_pause = d.en_pause || false;
-    const cd = await cr.json().catch(()=>null);
-    if(cr.ok && cd) STATE.checklist = cd;
+    let cd = await cr.json().catch(()=>null);
+    if(cr.ok && cd){
+      STATE.checklist = cd;
+    }else if(!STATE.checklist){
+      // Échec du tout premier chargement de la checklist (pas juste un
+      // rafraîchissement silencieux qui a déjà une valeur en cache) : sans
+      // ce retry immédiat, une mission pouvait démarrer sans passer par le
+      // verrou checklist juste parce que cet appel précis avait raté une
+      // fois, sans que le livreur en sache rien (voir checklistBlocksMission
+      // ci-dessous, qui traite un checklist inconnu comme "rien à bloquer").
+      try{
+        const cr2 = await fetch(API('transporteur-checklist'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'get'})});
+        const cd2 = await cr2.json().catch(()=>null);
+        if(cr2.ok && cd2) STATE.checklist = cd2;
+      }catch(e){}
+    }
     updatePositionTracking();
     updateMissionsBadge();
     if(!STATE.checklistItems) fetchChecklistItems(); // une seule fois, en tâche de fond
@@ -856,22 +889,26 @@ function openNotifCenter(){
 function renderNotifCenter(){
   const overlay = document.getElementById('notif-overlay');
   if(!overlay) return;
-  const notifs = STATE.notifications || [];
+  // Une notification consultée une fois (clic dessus, ou "Tout marquer lu")
+  // disparaît directement de la liste — inutile de la garder affichée une
+  // fois qu'elle a été vue, contrairement au badge non lu qui, lui, a déjà
+  // fait son travail d'alerte.
+  const notifs = (STATE.notifications || []).filter(n => !n.lu);
   overlay.innerHTML = `
     <div class="sheet">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <h1 style="margin:0">🔔 Notifications</h1>
-        ${notifs.some(n=>!n.lu) ? `<button class="btn btn-grey" style="padding:6px 12px;font-size:12.5px" onclick="marquerToutLu()">Tout marquer lu</button>` : ''}
+        ${notifs.length ? `<button class="btn btn-grey" style="padding:6px 12px;font-size:12.5px" onclick="marquerToutLu()">Tout marquer lu</button>` : ''}
       </div>
       <p class="sub" style="margin-bottom:14px">Tout ce qui te concerne arrive ici : nouvelle mission, changement, paiement validé...</p>
       ${notifs.length ? `<div class="vlist">${notifs.map(n => `
-        <div class="vrow" style="align-items:flex-start;${n.lu?'opacity:.6':''}" ${n.lu?'':`onclick="marquerNotifLu(${n.id})"`}>
+        <div class="vrow" style="align-items:flex-start" onclick="marquerNotifLu(${n.id})">
           <span>
             <span style="font-size:16px;vertical-align:-2px">${NOTIF_ICON[n.type]||'🔔'}</span>
             ${escHtml(n.message)}
             <div class="mcard-meta" style="margin-top:2px">${new Date(n.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
           </span>
-          ${n.lu?'':'<span class="vchip demande">Non lu</span>'}
+          <span class="vchip demande" style="flex-shrink:0" title="Marquer comme lue">✕</span>
         </div>`).join('')}</div>` : `<p class="empty">Aucune notification pour l'instant.</p>`}
       <button class="btn btn-grey btn-block" style="margin-top:14px" onclick="closeNotifCenter()">Fermer</button>
     </div>`;
@@ -1093,7 +1130,7 @@ async function loadDashboard(){
   show('dashboard-screen');
   document.getElementById('dashboard-content').innerHTML = '<p class="empty">Chargement…</p>';
   const ok = await fetchMissions();
-  if(!ok){ document.getElementById('dashboard-content').innerHTML = '<p class="empty">Impossible de charger tes missions. Réessaie.</p>'; return; }
+  if(!ok){ document.getElementById('dashboard-content').innerHTML = '<p class="empty">Impossible de charger tes missions.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="loadDashboard()">↻ Réessayer</button>'; return; }
   maybeAutoOpenMission();
   // Si maybeAutoOpenMission() a basculé directement sur le détail d'une
   // mission (cas fréquent : une seule mission active), inutile de rendre
@@ -1192,7 +1229,7 @@ async function loadMissions(){
   document.getElementById('missions-list').innerHTML = '<p class="empty">Chargement…</p>';
   const ok = await fetchMissions();
   if(ok){ renderMissions(); maybeAutoOpenMission(); }
-  else document.getElementById('missions-list').innerHTML = '<p class="empty">Impossible de charger tes missions. Réessaie.</p>';
+  else document.getElementById('missions-list').innerHTML = '<p class="empty">Impossible de charger tes missions.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="loadMissions()">↻ Réessayer</button>';
 }
 // Une seule fois par connexion : si une seule mission attend une action
 // (à accepter, ou déjà acceptée/en route), on saute directement dessus au
@@ -1245,6 +1282,15 @@ function startTransporteurAutoRefresh(){
 }
 
 const TYPE_LABEL = {livraison:'Livraison', recuperation:'Récupération', changement:'Remplacement'};
+// Mêmes libellés que les boutons de l'écran "Quel est le problème ?"
+// (openProbleme) — réutilisés dans "Mon activité" pour que le livreur voie
+// directement ce qui s'est passé sur une mission annulée/avec incident.
+const PROBLEME_TYPE_LABEL = {
+  client_absent: '📵 Client absent', materiel_endommage: '🔧 Matériel endommagé',
+  acces_impossible: '🚫 Accès impossible', mauvaise_adresse: '📍 Mauvaise adresse',
+  probleme_technique: '⚙️ Problème technique', refus_client: '🙅 Refus client',
+  retard: '⏰ Retard important', autre: '❓ Autre problème',
+};
 const TYPE_ICON  = {livraison:'📦', recuperation:'🔄', changement:'🔁', autre:'🧳'};
 const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', en_route:'En route', arrivee:'Sur place', probleme:'Problème signalé', fait:'Terminée'};
 // Label précis selon type + option d'installation
@@ -1291,7 +1337,11 @@ function missionCardHtml(m){
   const lateBadge = isLate ? `<span class="mcard-late-badge">⏰ En retard</span>` : '';
   const adresse = isAutre ? (m.adresse_libre||'') : (c.adresse||'');
   const mapsUrl = adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(adresse)}` : '';
-  const earn = m.montant_preview ? `<span class="mcard-earn">💶 ${Math.round(m.montant_preview/100)}€</span>` : '';
+  // "hors zone" change le tarif payé au livreur (barème dédié, plus élevé) —
+  // sans ce badge, deux missions du même type affichaient des montants
+  // différents sans explication visible, ce qui pouvait passer pour une
+  // erreur.
+  const earn = m.montant_preview ? `<span class="mcard-earn">💶 ${Math.round(m.montant_preview/100)}€${c.hors_zone?' <span class="mcard-badge" style="background:var(--amber-bg);color:var(--amber)">Hors zone</span>':''}</span>` : '';
   // La récupération est programmée le lendemain de la fin de location (jamais
   // le jour même) — on garde la vraie date de fin visible à côté, pour ne
   // jamais perdre le repère avec la date de la mission elle-même.
@@ -1885,12 +1935,13 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   const okLabel = m.type==='livraison' ? '✅ LIVRAISON OK — JE PARS' : m.type==='recuperation' ? '✅ RETOUR OK — JE PARS' : '✅ REMPLACEMENT TERMINÉ — JE PARS';
   const checklistWorkflow = m.type==='livraison' ? 'installation' : m.type==='recuperation' ? 'recuperation' : null;
   const isLastRecup = isLastRecuperationOfDay(m);
+  const hasFinalChecklist = checklistWorkflow && (STATE.checklistItems && STATE.checklistItems[checklistWorkflow] || []).length > 0;
   return `
     <p class="step-hint">🎉 Tout est prêt — vérifie la checklist puis valide pour terminer la mission.</p>
     ${checklistWorkflow ? checklistFinalHtml(checklistWorkflow) : ''}
     ${m.type==='recuperation' ? etatMaterielHtml() : ''}
     ${isLastRecup ? checklistRestockHtml() : ''}
-    <button class="btn btn-green btn-block" id="mission-final-btn" ${isLastRecup?'disabled':''} onclick="submitFinalMission('${okAction}')">${okLabel}</button>`;
+    <button class="btn btn-green btn-block" id="mission-final-btn" ${(isLastRecup||hasFinalChecklist)?'disabled':''} onclick="submitFinalMission('${okAction}')">${okLabel}</button>`;
 }
 // Dernière récupération de la journée pour ce transporteur (aucune autre
 // récupération encore active aujourd'hui) : à ce moment, il doit passer par
@@ -1910,22 +1961,27 @@ function checklistRestockHtml(){
     <div class="card" style="margin-bottom:12px">
       ${Object.keys(CHECKLIST_FIXE_LABELS).map(key => `
         <label style="display:flex;align-items:center;gap:10px;padding:8px 0">
-          <input type="checkbox" class="checklist-restock-cb" onchange="updateRestockButton()" style="width:20px;height:20px;flex-shrink:0">
+          <input type="checkbox" class="checklist-restock-cb" onchange="updateMissionFinalButton()" style="width:20px;height:20px;flex-shrink:0">
           <span>${CHECKLIST_FIXE_LABELS[key]}</span>
         </label>`).join('')}
     </div>`;
 }
-function updateRestockButton(){
+// Bloque "Terminé" tant qu'il reste une case décochée, que ce soit la
+// checklist administrable (installation/récupération) ou le rappel matériel
+// de fin de journée — avant ce correctif, seule la 2e bloquait vraiment le
+// bouton : la 1re se contentait de compter sur le serveur pour refuser après
+// coup, un aller-retour évitable pour le livreur.
+function updateMissionFinalButton(){
   const btn = document.getElementById('mission-final-btn');
   if(!btn) return;
-  const boxes = document.querySelectorAll('.checklist-restock-cb');
+  const boxes = document.querySelectorAll('.checklist-restock-cb, .checklist-final-cb');
   btn.disabled = boxes.length > 0 && Array.from(boxes).some(b => !b.checked);
 }
 
 // Checklist administrable (Module 5, Parties 5/7) — cases à cocher avant de
-// valider "Installation/Récupération terminée". Lues au clic (voir
-// submitFinalMission), pas de blocage client-side : le serveur revalide et
-// renvoie un message clair si une case manque.
+// valider "Installation/Récupération terminée". Le bouton "Terminé" reste
+// désactivé tant qu'il en manque une (voir updateMissionFinalButton) ; le
+// serveur revalide quand même à la réception (submitFinalMission), au cas où.
 function checklistFinalHtml(workflow){
   const items = (STATE.checklistItems && STATE.checklistItems[workflow]) || [];
   if(!items.length) return '';
@@ -1935,7 +1991,7 @@ function checklistFinalHtml(workflow){
     <div class="card" style="margin-bottom:12px">
       ${items.map(it => `
         <label style="display:flex;align-items:center;gap:10px;padding:8px 0">
-          <input type="checkbox" class="checklist-final-cb" data-item-id="${it.id}" style="width:20px;height:20px;flex-shrink:0">
+          <input type="checkbox" class="checklist-final-cb" data-item-id="${it.id}" onchange="updateMissionFinalButton()" style="width:20px;height:20px;flex-shrink:0">
           <span>${escHtml(it.libelle)}</span>
         </label>`).join('')}
     </div>`;
@@ -2101,7 +2157,7 @@ function renderDetail(){
     <div class="card">
       ${(['acceptee','en_route','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
       <h1>${TYPE_ICON[m.type]||''} ${missionTypeLabel(m)}</h1>
-      <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):'', m.montant_preview?`💶 ${Math.round(m.montant_preview/100)} €`:''].filter(Boolean).join(' · ')}</p>
+      <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):'', m.montant_preview?`💶 ${Math.round(m.montant_preview/100)} €${(m.client||{}).hors_zone?' (tarif hors zone)':''}`:''].filter(Boolean).join(' · ')}</p>
       ${bodyHtml}
     </div>
   `;
@@ -2355,7 +2411,7 @@ async function doAction(action, extra){
     // n'est pas visible à l'écran, un message écrit dedans passerait inaperçu.
     const onListScreen = !document.getElementById('missions-screen')?.classList.contains('hidden');
     if(onListScreen){
-      alert(e.message || 'Erreur');
+      showTToast(e.message || 'Erreur');
       await fetchMissions();
       renderMissions();
     }else{
@@ -2538,9 +2594,19 @@ async function sendForgotPin(){
   if(btn){ btn.disabled = true; btn.textContent = 'Envoi…'; }
   try{
     await fetch(API('transporteur-forgot-pin'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
-  }catch(e){}
+  }catch(e){
+    // Une vraie erreur réseau (pas de réponse du tout) ne doit jamais
+    // afficher le même message que "email envoyé" — sans ça un livreur sans
+    // réseau croit avoir reçu son code alors que rien n'est parti.
+    okEl.style.color = 'var(--red)';
+    okEl.textContent = "Impossible d'envoyer — vérifie ta connexion et réessaie.";
+    okEl.style.display='block';
+    if(btn){ btn.disabled = false; btn.textContent = 'Envoyer'; }
+    return;
+  }
   document.getElementById('forgot-email').style.display='none';
   document.querySelectorAll('#forgot-overlay .btn').forEach(b=>b.style.display='none');
+  okEl.style.color = '';
   okEl.textContent = "Si cet email est connu, ton code vient d'être envoyé. Vérifie ta boîte mail.";
   okEl.style.display='block';
 }
@@ -2595,7 +2661,7 @@ async function basculerVersMission(missionId){
     refreshTournee();
     await fetchMissions();
     openMission(missionId);
-  }catch(e){ alert(e.message || 'Erreur'); }
+  }catch(e){ showTToast(e.message || 'Erreur'); }
 }
 
 // ── Problème (aucune saisie de texte — juste une catégorie) ──────────────────
@@ -2609,7 +2675,6 @@ function openProbleme(){
       <div class="section-title" style="margin-top:0">Besoin d'aide tout de suite</div>
       <div class="probleme-list">
         <button class="btn btn-amber" onclick="startClientAbsent('camera')">📵 Client absent — photo</button>
-        <button class="btn btn-amber" onclick="startClientAbsent('galerie')">📵 Client absent — depuis la galerie</button>
         <button class="btn btn-amber" onclick="sendProbleme('materiel_endommage')">🔧 Matériel endommagé</button>
       </div>
       <div class="section-title">Signaler un souci</div>
@@ -2905,17 +2970,33 @@ async function switchMissionsFiltre(filtre){
     zone.innerHTML = '<p class="empty">Impossible de charger cette liste.</p>';
   }
 }
+// Statuts qu'on retrouve encore dans STATE.missions (le pool "actif" chargé
+// par fetchMissions) — seuls ceux-là peuvent vraiment s'ouvrir via
+// openMission ; une mission annulée/refusée n'y figure plus, on affiche
+// alors directement le motif du problème au lieu d'un lien mort.
+const MISSION_STATUTS_OUVRABLES = ['a_faire','acceptee','en_route','arrivee','probleme'];
+function openMissionFromHistory(id){
+  const m = STATE.missions.find(x => x.id === id);
+  if(!m){ showTToast("Cette mission n'est plus ouvrable — elle est close."); return; }
+  switchTab('missions');
+  openMission(id);
+}
 function missionsFiltreListHtml(missions){
   if(!missions || !missions.length) return `<p class="empty">Aucune mission dans cette catégorie.</p>`;
-  return `<div class="card vlist">${missions.map(m => `
-    <div class="vrow" style="align-items:flex-start">
+  return `<div class="card vlist">${missions.map(m => {
+    const ouvrable = MISSION_STATUTS_OUVRABLES.includes(m.statut);
+    const problemeTxt = m.probleme_type ? (PROBLEME_TYPE_LABEL[m.probleme_type] || m.probleme_type) : '';
+    return `
+    <div class="vrow" style="align-items:flex-start${ouvrable?';cursor:pointer':''}" ${ouvrable?`onclick="openMissionFromHistory(${m.id})"`:''}>
       <span>
         <span class="mcard-icon" style="font-size:14px;vertical-align:-2px">${TYPE_ICON[m.type]||'📍'}</span>
-        ${TYPE_LABEL[m.type]||m.type}${m.avec_incident?' · 🧯':''}
+        ${TYPE_LABEL[m.type]||m.type}
         <div class="mcard-meta" style="margin-top:2px">${m.date_prevue?new Date(m.date_prevue+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
+        ${problemeTxt?`<div class="mcard-meta" style="margin-top:2px">${escHtml(problemeTxt)}</div>`:''}
       </span>
       <span style="text-align:right;flex-shrink:0;font-weight:700">${((m.montant_cents||0)/100).toFixed(2).replace('.',',')} €</span>
-    </div>`).join('')}</div>`;
+    </div>`;
+  }).join('')}</div>`;
 }
 // Statistiques globales d'activité (Module 5, Partie 10) — calculées côté
 // serveur depuis les vraies données (api/transporteur-history.js).
@@ -3146,14 +3227,14 @@ async function validerChecklist(){
     if(r2.ok && d2) STATE.checklist = d2;
     if(STATE.returnToMission) returnFromChecklist();
     else show('tournee-start-screen');
-  }catch(e){ alert(e.message||'Erreur'); }
+  }catch(e){ showTToast(e.message||'Erreur'); }
 }
 async function annulerChecklist(){
   try{
     const r = await fetch(API('transporteur-checklist'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'annuler'})});
     if(!r.ok) throw new Error((await r.json()).error||'Erreur');
     await loadChecklist();
-  }catch(e){ alert(e.message||'Erreur'); }
+  }catch(e){ showTToast(e.message||'Erreur'); }
 }
 
 // ── Tournée du jour (plus proche en voiture) ─────────────────────────────────
@@ -3369,7 +3450,10 @@ function closeDayMap(){
 
 // ── Démarrage ─────────────────────────────────────────────────────────────────
 (function init(){
-  initWebauthnLoginButton();
+  // Uniquement si aucune session valide n'est déjà ouverte — sinon Face ID
+  // se relançait tout seul chaque matin même en arrivant directement sur
+  // l'Accueil avec un jeton encore valide, pour rien.
+  if(!(STATE.token && STATE.transporteurId && STATE.transporteurNom)) initWebauthnLoginButton();
   if(STATE.token && STATE.transporteurId && STATE.transporteurNom){
     updateWhoBadge();
     loadDashboard();

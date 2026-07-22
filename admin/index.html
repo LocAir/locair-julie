@@ -1129,9 +1129,28 @@ function updateGroupAlert(group, hasAlert){
   }
 }
 
+// Mémorise, par clé d'alerte, le dernier compte "consulté" (clic sur le
+// bandeau, ou sur sa croix) — tant que le compte réel ne dépasse pas cette
+// valeur, le bandeau reste caché. Dès qu'un NOUVEAU cas s'ajoute (le compte
+// augmente), le bandeau réapparaît : consulter une alerte une fois ne doit
+// jamais faire disparaître pour toujours un vrai problème qui continue de
+// grossir, seulement celle déjà vue.
+const ALERTS_DISMISSED_KEY = 'a_alerts_dismissed';
+function getAlertsDismissed(){
+  try{ return JSON.parse(localStorage.getItem(ALERTS_DISMISSED_KEY) || '{}'); }catch(e){ return {}; }
+}
+function dismissAlert(key, count){
+  const dismissed = getAlertsDismissed();
+  dismissed[key] = count;
+  localStorage.setItem(ALERTS_DISMISSED_KEY, JSON.stringify(dismissed));
+  renderAlertsBanner(LAST_ALERTS_DATA || {});
+}
+
 // Bandeau permanent multi-alertes — visible sur tous les onglets, se met à jour
 // automatiquement. Chaque alerte est cliquable et redirige vers l'onglet concerné.
+let LAST_ALERTS_DATA = null;
 function renderAlertsBanner(d){
+  LAST_ALERTS_DATA = d;
   const zone = document.getElementById('alerts-banner-zone');
   if(!zone) return;
   // Deux paliers seulement, alignés sur le code couleur déjà utilisé ailleurs
@@ -1139,19 +1158,23 @@ function renderAlertsBanner(d){
   // ambre) plutôt que 4 couleurs inventées à la volée — et triés du plus
   // urgent au moins urgent pour donner une vraie hiérarchie à la pile.
   const alerts = [];
-  if(d.retards > 0)       alerts.push({sev:1, msg:`🚨 ${d.retards} mission${d.retards>1?'s':''} en retard`, fn:"goToRetards()"});
-  if(d.non_assignees > 0) alerts.push({sev:1, msg:`⚠️ ${d.non_assignees} mission${d.non_assignees>1?'s':''} non assignée${d.non_assignees>1?'s':''} sous 72h`, fn:"goToUnassigned()"});
-  if(d.incidents > 0)     alerts.push({sev:1, msg:`🧯 ${d.incidents} incident${d.incidents>1?'s':''} ouvert${d.incidents>1?'s':''}`, fn:"switchAdminTab('incidents')"});
-  if(d.communications > 0) alerts.push({sev:2, msg:`🎛️ ${d.communications} anomalie${d.communications>1?'s':''} de communication client`, fn:"switchAdminTab('communications')"});
-  if(d.reservations > 0)  alerts.push({sev:2, msg:`🧾 ${d.reservations} réservation${d.reservations>1?'s':''} à traiter`, fn:"switchAdminTab('reservations')"});
+  if(d.retards > 0)       alerts.push({key:'retards', count:d.retards, sev:1, msg:`🚨 ${d.retards} mission${d.retards>1?'s':''} en retard`, fn:"goToRetards()"});
+  if(d.non_assignees > 0) alerts.push({key:'non_assignees', count:d.non_assignees, sev:1, msg:`⚠️ ${d.non_assignees} mission${d.non_assignees>1?'s':''} non assignée${d.non_assignees>1?'s':''} sous 72h`, fn:"goToUnassigned()"});
+  if(d.incidents > 0)     alerts.push({key:'incidents', count:d.incidents, sev:1, msg:`🧯 ${d.incidents} incident${d.incidents>1?'s':''} ouvert${d.incidents>1?'s':''}`, fn:"switchAdminTab('incidents')"});
+  if(d.communications > 0) alerts.push({key:'communications', count:d.communications, sev:2, msg:`🎛️ ${d.communications} anomalie${d.communications>1?'s':''} de communication client`, fn:"switchAdminTab('communications')"});
+  if(d.reservations > 0)  alerts.push({key:'reservations', count:d.reservations, sev:2, msg:`🧾 ${d.reservations} réservation${d.reservations>1?'s':''} à traiter`, fn:"switchAdminTab('reservations')"});
   const totalVirementsDemandes = (d.virements||0) + (d.partenaire_virements||0);
-  if(totalVirementsDemandes > 0) alerts.push({sev:2, msg:`💶 ${totalVirementsDemandes} virement${totalVirementsDemandes>1?'s':''} demandé${totalVirementsDemandes>1?'s':''}`, fn:"switchAdminTab('virements')"});
-  if(d.partenaire_litiges > 0) alerts.push({sev:1, msg:`⚠️ ${d.partenaire_litiges} commission${d.partenaire_litiges>1?'s':''} ambassadeur versée${d.partenaire_litiges>1?'s':''} pour une résa annulée/remboursée`, fn:"switchAdminTab('virements')"});
-  if(d.stock_indisponible > 0) alerts.push({sev:2, msg:`📦 ${d.stock_indisponible} climatiseur${d.stock_indisponible>1?'s':''} en panne ou en maintenance`, fn:"switchAdminTab('stock')"});
-  alerts.sort((a,b) => a.sev-b.sev);
-  zone.innerHTML = alerts.map(a =>
-    `<div onclick="${a.fn}" style="background:${a.sev===1?'var(--red)':'var(--amber)'};color:#fff;padding:10px 16px;border-radius:var(--r);font-weight:700;font-size:13px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between">
-      <span>${a.msg}</span><span style="font-size:11px">Voir →</span>
+  if(totalVirementsDemandes > 0) alerts.push({key:'virements', count:totalVirementsDemandes, sev:2, msg:`💶 ${totalVirementsDemandes} virement${totalVirementsDemandes>1?'s':''} demandé${totalVirementsDemandes>1?'s':''}`, fn:"switchAdminTab('virements')"});
+  if(d.partenaire_litiges > 0) alerts.push({key:'partenaire_litiges', count:d.partenaire_litiges, sev:1, msg:`⚠️ ${d.partenaire_litiges} commission${d.partenaire_litiges>1?'s':''} ambassadeur versée${d.partenaire_litiges>1?'s':''} pour une résa annulée/remboursée`, fn:"switchAdminTab('virements')"});
+  if(d.stock_indisponible > 0) alerts.push({key:'stock_indisponible', count:d.stock_indisponible, sev:2, msg:`📦 ${d.stock_indisponible} climatiseur${d.stock_indisponible>1?'s':''} en panne ou en maintenance`, fn:"switchAdminTab('stock')"});
+  const dismissed = getAlertsDismissed();
+  const visible = alerts.filter(a => a.count > (dismissed[a.key] || 0));
+  visible.sort((a,b) => a.sev-b.sev);
+  zone.innerHTML = visible.map(a =>
+    `<div style="background:${a.sev===1?'var(--red)':'var(--amber)'};color:#fff;padding:10px 16px;border-radius:var(--r);font-weight:700;font-size:13px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span onclick="dismissAlert('${a.key}',${a.count});${a.fn}" style="flex:1">${a.msg}</span>
+      <span onclick="dismissAlert('${a.key}',${a.count});${a.fn}" style="font-size:11px;flex-shrink:0">Voir →</span>
+      <span onclick="event.stopPropagation();dismissAlert('${a.key}',${a.count})" title="Marquer comme vu" style="flex-shrink:0;opacity:.7;padding:2px 4px;cursor:pointer">✕</span>
     </div>`
   ).join('');
 }
