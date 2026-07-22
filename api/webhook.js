@@ -1,14 +1,12 @@
 const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
-const { confirmReservationAndCreateLivraisons } = require('./_lib/reservations');
-const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
+const { confirmReservationAndCreateLivraisons, sendConfirmationCommunications, sendProlongationConfirmation } = require('./_lib/reservations');
 const { pushToAdmin } = require('./_lib/push');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { recordMouvement } = require('./_lib/stockMouvements');
-const { generateAndSendDocuments, generateAndSendFactureVente } = require('./_lib/documents');
+const { generateAndSendFactureVente } = require('./_lib/documents');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
-const { sendScenarioEmail, getSignature, withSignature } = require('./_lib/emailEngine');
-const { escHtml, tplProlongConfirmation } = require('./_lib/emailTemplates');
+const { escHtml } = require('./_lib/emailTemplates');
 
 // Offre Privilège (Step 2) : le client vient de payer pour garder son
 // climatiseur actuel. Idempotent (un webhook Stripe peut être redélivré) —
@@ -367,65 +365,19 @@ const handler = async (req, res) => {
         }),
       }).catch(e => console.error('[Formspree prolong]', e.message));
 
-      // Idempotence : Stripe peut relivrer un webhook — ne pas envoyer deux fois
-      if (confirmedResa) {
-        const { count: alreadySent } = await getSupabase()
-          .from('email_log')
-          .select('id', { count: 'exact', head: true })
-          .eq('reservation_id', confirmedResa.id)
-          .eq('scenario', 'email_prolongation')
-          .eq('statut', 'envoye');
-        if (alreadySent > 0) {
-          return res.status(200).json({ received: true, type: 'prolongation', skipped: 'email_already_sent' });
-        }
-      }
-
-      const sigProlong = await getSignature(getSupabase());
-      const prolongLang = meta.lang || confirmedResa?.lang || 'fr';
-      const prolongHtml = withSignature(tplProlongConfirmation({
+      await sendProlongationConfirmation(getSupabase(), {
+        reservationId:     confirmedResa?.id || null,
+        email,
         prenom:            meta.prenom            || '',
         nom:               meta.nom               || '',
         jours:             meta.jours             || '1',
-        date_recuperation: meta.date_recuperation || '',
+        dateRecuperation:  meta.date_recuperation || '',
         creneau:           meta.creneau           || '',
         amount,
-        lang:              prolongLang,
-      }), sigProlong);
-      const jNum = Number(meta.jours) || 1;
-      const prolongSubject = prolongLang === 'en'
-        ? `✅ Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
-        : prolongLang === 'zh'
-        ? `✅ 续租已确认 — 已延长 ${jNum} 天`
-        : `✅ Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
-      const resultProlong = await sendBrevoEmail({
-        to:      email,
-        subject: prolongSubject,
-        html:    prolongHtml,
-        senderName: sigProlong.nom_expediteur,
+        lang:              meta.lang || confirmedResa?.lang || 'fr',
       });
-      if (!resultProlong.ok) console.error('[Webhook] email prolong échoué —', resultProlong.error);
-      // Best-effort : hors moteur de scénarios, juste une trace pour
-      // l'historique de la fiche client.
-      if (confirmedResa) {
-        getSupabase().from('email_log').insert({
-          reservation_id: confirmedResa.id, scenario: 'email_prolongation', canal: 'email',
-          destinataire: email, modele: 'email_prolongation',
-          statut: resultProlong.ok ? 'envoye' : 'erreur',
-          erreur: resultProlong.ok ? null : String(resultProlong.error || '').slice(0, 500),
-          contenu: prolongHtml,
-        }).catch(() => {});
-      }
 
       return res.status(200).json({ received: true, type: 'prolongation' });
-    }
-
-    // ── Contrat + facture PDF (réservation standard uniquement, jamais pour
-    // une prolongation, jamais régénéré si déjà fait — voir _lib/documents.js) ─
-    // Ne doit jamais bloquer les emails de confirmation existants ci-dessous.
-    try {
-      await generateAndSendDocuments(getSupabase(), confirmedResa);
-    } catch (e) {
-      console.error('[Documents]', e.message);
     }
 
     // ── Location standard ─────────────────────────────────────────────────────
@@ -456,48 +408,15 @@ const handler = async (req, res) => {
       }),
     }).catch(e => console.error('[Formspree]', e.message));
 
-    // 2a. SMS de confirmation immédiat au client
-    if (meta.tel) {
-      const lang = confirmedResa?.lang || meta.lang || 'fr';
-      const d = meta.date ? new Date(meta.date + 'T12:00:00Z') : null;
-      let smsConfirmationContent;
-      if (lang === 'en') {
-        const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
-        smsConfirmationContent = `Loc'Air: booking confirmed ✅${dateStr ? ' Delivery on ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Your technician will call you 30 min before arriving. Questions: +33 6 63 79 87 56`;
-      } else if (lang === 'zh') {
-        const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-        const dateStr = d ? `${months[d.getUTCMonth()]}${d.getUTCDate()}日` : '';
-        smsConfirmationContent = `Loc'Air：预订已确认 ✅${dateStr ? ' 配送日期：' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}。技术员将在到达前30分钟致电。咨询：+33 6 63 79 87 56`;
-      } else {
-        const dateStr = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
-        smsConfirmationContent = `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`;
-      }
-      await sendBrevoSms({ to: meta.tel, content: smsConfirmationContent }).catch(() => {});
-      // Best-effort : hors moteur de scénarios (SMS ponctuel, jamais figé à
-      // l'avance), juste une trace pour l'historique de la fiche client —
-      // ne doit jamais faire échouer le webhook Stripe.
-      if (confirmedResa) {
-        getSupabase().from('email_log').insert({
-          reservation_id: confirmedResa.id, scenario: 'sms_confirmation', canal: 'sms',
-          destinataire: meta.tel, modele: 'sms_confirmation', statut: 'envoye', contenu: smsConfirmationContent,
-        }).catch(() => {});
-      }
-    }
-
-    // 2b. Email de confirmation — via le moteur central (scénario
-    // 'confirmation', historisé dans email_log, jamais envoyé deux fois même
-    // en cas de redélivrance du webhook Stripe). Les rappels J-14/J-3/J-1/
-    // avant-fin-location/récupération sont désormais évalués chaque jour par
-    // cron-daily.js à partir des données Supabase du moment (jamais figés à
-    // l'avance comme l'ancien envoi programmé via scheduledAt) — voir
-    // _lib/emailSchedule.js et _lib/emailEngine.js.
-    if (confirmedResa) {
-      try {
-        await sendScenarioEmail(getSupabase(), { reservationId: confirmedResa.id, scenario: 'confirmation' });
-      } catch (e) {
-        console.error('[Email confirmation]', e.message);
-      }
-    }
+    // 2. Contrat + facture PDF, SMS de confirmation immédiat, email de
+    // confirmation (scénario central, historisé dans email_log, jamais
+    // envoyé deux fois même en cas de redélivrance du webhook Stripe) — voir
+    // sendConfirmationCommunications dans _lib/reservations.js, partagée avec
+    // une réservation confirmée manuellement par l'admin. Les rappels
+    // J-14/J-3/J-1/avant-fin-location/récupération sont évalués chaque jour
+    // par cron-daily.js à partir des données Supabase du moment (voir
+    // _lib/emailSchedule.js et _lib/emailEngine.js).
+    await sendConfirmationCommunications(getSupabase(), confirmedResa);
 
     return res.status(200).json({ received: true });
   } catch (err) {

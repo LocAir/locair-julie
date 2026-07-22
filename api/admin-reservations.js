@@ -2,17 +2,15 @@ const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity, notifyIfSoldOut } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
-const { isValidDate }     = require('./_lib/dates');
+const { isValidDate, addDays } = require('./_lib/dates');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
-const { confirmReservation } = require('./_lib/reservations');
+const { confirmReservation, sendConfirmationCommunications, sendProlongationConfirmation } = require('./_lib/reservations');
+const { fmtDate } = require('./_lib/emailEngine');
 const { computeOrderStatus } = require('./_lib/orderStatus');
 const { syncStatutDetaille } = require('./_lib/statutDetaille');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
-const { sendBrevoEmail } = require('./_lib/brevo');
-const { sendScenarioEmail, getSignature, withSignature } = require('./_lib/emailEngine');
-const { tplProlongConfirmation } = require('./_lib/emailTemplates');
 
 const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
 
@@ -175,14 +173,15 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, ref, en_attente: true, reservation: { ...resa, masquee: false } });
       }
       await confirmReservation(supabase, resa);
-      // Une réservation confirmée par paiement Stripe déclenche l'email de
-      // confirmation depuis webhook.js — une réservation créée ici (prise au
-      // téléphone, déjà réglée par un autre moyen) ne passe jamais par ce
-      // webhook et n'avait donc jamais reçu cet email.
+      // Une réservation prise au téléphone doit déclencher exactement les
+      // mêmes communications client qu'un paiement en ligne (contrat+facture,
+      // SMS de confirmation, email de confirmation) — jusqu'ici seul le
+      // webhook Stripe s'en chargeait, laissant une réservation manuelle
+      // sans aucune communication automatique.
       try {
-        await sendScenarioEmail(supabase, { reservationId: resa.id, scenario: 'confirmation' });
+        await sendConfirmationCommunications(supabase, resa);
       } catch (e) {
-        console.error('[Email confirmation manuelle]', e.message);
+        console.error('[Communications confirmation]', e.message);
       }
       return res.status(200).json({ ok: true, ref, reservation: { ...resa, statut: 'confirmee', masquee: false } });
     }
@@ -282,43 +281,27 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, ref, en_attente: true, reservation: { ...resa, masquee: false } });
       }
       await confirmReservation(supabase, resa);
-      // Même trou que pour "create" ci-dessus, côté prolongation : une
-      // prolongation créée à la main ne passe jamais par le webhook Stripe
-      // (voir webhook.js, section "Prolongation : flux distinct") et
-      // n'avait donc jamais reçu son email dédié (gabarit différent d'une
-      // confirmation de réservation classique — pas de livraison, juste une
-      // récupération repoussée).
+      // Même principe qu'une location standard (voir "create" ci-dessus) :
+      // une prolongation prise par téléphone envoie le même email dédié
+      // qu'une prolongation payée en ligne via /prolongation.
       try {
-        const joursProlonges = Math.max(1, Math.round(
-          (new Date(newDateFin + 'T00:00:00Z') - new Date(orig.date_fin + 'T00:00:00Z')) / 86400000
-        ));
-        const dateRecuperation = new Date(newDateFin + 'T00:00:00Z');
-        dateRecuperation.setUTCDate(dateRecuperation.getUTCDate() + 1);
-        const sig = await getSignature(supabase);
-        const lang = resa.lang || 'fr';
-        const html = withSignature(tplProlongConfirmation({
-          prenom: orig.prenom || '', nom: orig.nom || '',
-          jours: String(joursProlonges),
-          date_recuperation: dateRecuperation.toISOString().slice(0, 10),
-          creneau: resa.creneau || '',
-          amount: (prixTotalCents / 100).toFixed(2) + ' €',
-          lang,
-        }), sig);
-        const subject = lang === 'en'
-          ? `✅ Extension confirmed — ${joursProlonges} day${joursProlonges > 1 ? 's' : ''} added`
-          : lang === 'zh'
-          ? `✅ 续租已确认 — 已延长 ${joursProlonges} 天`
-          : `✅ Prolongation confirmée — ${joursProlonges} jour${joursProlonges > 1 ? 's' : ''} ajoutés`;
-        const result = await sendBrevoEmail({ to: resa.email, subject, html, senderName: sig.nom_expediteur });
-        await supabase.from('email_log').insert({
-          reservation_id: resa.id, scenario: 'email_prolongation', canal: 'email',
-          destinataire: resa.email, modele: 'email_prolongation',
-          statut: result.ok ? 'envoye' : 'erreur',
-          erreur: result.ok ? null : String(result.error || '').slice(0, 500),
-          contenu: html,
+        // resa.date_debut = orig.date_fin, resa.date_fin = newDateFin (voir
+        // insert ci-dessus) : la différence donne directement le nombre de
+        // jours ajoutés par cette prolongation.
+        const joursSupplementaires = Math.round((new Date(resa.date_fin + 'T00:00:00Z') - new Date(resa.date_debut + 'T00:00:00Z')) / 86400000);
+        await sendProlongationConfirmation(supabase, {
+          reservationId:    resa.id,
+          email:            resa.email,
+          prenom:           resa.prenom,
+          nom:              resa.nom,
+          jours:            joursSupplementaires,
+          dateRecuperation: fmtDate(addDays(resa.date_fin, 1), resa.lang || 'fr'),
+          creneau:          resa.creneau,
+          amount:           ((resa.prix_total_cents || 0) / 100).toFixed(2) + ' €',
+          lang:             resa.lang || 'fr',
         });
       } catch (e) {
-        console.error('[Email prolongation manuelle]', e.message);
+        console.error('[Communications prolongation]', e.message);
       }
       return res.status(200).json({ ok: true, ref, reservation: { ...resa, statut: 'confirmee', masquee: false } });
     }
@@ -336,6 +319,30 @@ module.exports = async (req, res) => {
       // laisserait la réservation "confirmée" sans aucune mission derrière.
       if (body.statut === 'confirmee') {
         await confirmReservation(supabase, before);
+        // Même communications qu'une confirmation à la création (voir action
+        // "create" ci-dessus) — cette confirmation manuelle (ex. réservation
+        // laissée "en attente" à la création, confirmée plus tard) doit
+        // envoyer les mêmes emails/SMS/documents qu'un paiement en ligne.
+        try {
+          if (before.source === 'site_prolongation') {
+            const joursSupplementaires = Math.round((new Date(before.date_fin + 'T00:00:00Z') - new Date(before.date_debut + 'T00:00:00Z')) / 86400000);
+            await sendProlongationConfirmation(supabase, {
+              reservationId:    before.id,
+              email:            before.email,
+              prenom:           before.prenom,
+              nom:              before.nom,
+              jours:            joursSupplementaires,
+              dateRecuperation: fmtDate(addDays(before.date_fin, 1), before.lang || 'fr'),
+              creneau:          before.creneau,
+              amount:           ((before.prix_total_cents || 0) / 100).toFixed(2) + ' €',
+              lang:             before.lang || 'fr',
+            });
+          } else {
+            await sendConfirmationCommunications(supabase, before);
+          }
+        } catch (e) {
+          console.error('[Communications confirmation]', e.message);
+        }
         return res.status(200).json({ ok: true });
       }
 

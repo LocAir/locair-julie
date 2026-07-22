@@ -3,6 +3,10 @@ const { extractPostalCode } = require('./postal');
 const { notifyIfSoldOut } = require('./city');
 const { recordMouvement } = require('./stockMouvements');
 const { addDays } = require('./dates');
+const { generateAndSendDocuments } = require('./documents');
+const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
+const { sendScenarioEmail, getSignature, withSignature } = require('./emailEngine');
+const { tplProlongConfirmation } = require('./emailTemplates');
 
 function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
@@ -195,6 +199,99 @@ async function assignAppareils(supabase, resa, staleOriginalId) {
   }
 }
 
+// Envoie les 3 communications de confirmation d'une réservation standard
+// (contrat+facture PDF, SMS immédiat, email "confirmation") — jusqu'ici
+// déclenchées uniquement par le webhook Stripe (paiement en ligne), jamais
+// pour une réservation saisie à la main par l'admin (téléphone/WhatsApp),
+// qui restait ainsi sans aucune communication client. Chaque appelant
+// (webhook.js, admin-reservations.js) doit appeler cette fonction juste
+// après confirmReservation() — jamais pour une prolongation, voir
+// sendProlongationConfirmation ci-dessous. Best-effort : une erreur sur un
+// canal ne doit jamais empêcher les autres (chaque étape a son propre
+// try/catch, comme dans webhook.js).
+async function sendConfirmationCommunications(supabase, resa) {
+  if (!resa || !resa.id) return;
+
+  try {
+    await generateAndSendDocuments(supabase, resa);
+  } catch (e) {
+    console.error('[Documents]', e.message);
+  }
+
+  if (resa.tel) {
+    const lang = resa.lang || 'fr';
+    const d = resa.date_debut ? new Date(String(resa.date_debut).slice(0, 10) + 'T12:00:00Z') : null;
+    let smsConfirmationContent;
+    if (lang === 'en') {
+      const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
+      smsConfirmationContent = `Loc'Air: booking confirmed ✅${dateStr ? ' Delivery on ' + dateStr : ''}${resa.creneau ? ' · ' + resa.creneau : ''}. Your technician will call you 30 min before arriving. Questions: +33 6 63 79 87 56`;
+    } else if (lang === 'zh') {
+      const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+      const dateStr = d ? `${months[d.getUTCMonth()]}${d.getUTCDate()}日` : '';
+      smsConfirmationContent = `Loc'Air：预订已确认 ✅${dateStr ? ' 配送日期：' + dateStr : ''}${resa.creneau ? ' · ' + resa.creneau : ''}。技术员将在到达前30分钟致电。咨询：+33 6 63 79 87 56`;
+    } else {
+      const dateStr = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
+      smsConfirmationContent = `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${resa.creneau ? ' · ' + resa.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`;
+    }
+    await sendBrevoSms({ to: resa.tel, content: smsConfirmationContent }).catch(() => {});
+    await supabase.from('email_log').insert({
+      reservation_id: resa.id, scenario: 'sms_confirmation', canal: 'sms',
+      destinataire: resa.tel, modele: 'sms_confirmation', statut: 'envoye', contenu: smsConfirmationContent,
+    }).catch(() => {});
+  }
+
+  try {
+    await sendScenarioEmail(supabase, { reservationId: resa.id, scenario: 'confirmation' });
+  } catch (e) {
+    console.error('[Email confirmation]', e.message);
+  }
+}
+
+// Équivalent de sendConfirmationCommunications, mais pour une prolongation
+// (pas de contrat/facture, pas de SMS — un seul email dédié, historiquement
+// envoyé par webhook.js pour une prolongation payée en ligne via
+// /prolongation). `reservationId` peut être null (best-effort, ex. si
+// confirmReservation a échoué) — l'email part quand même, seule la trace
+// email_log/l'idempotence sont alors sautées.
+// `amount` et `dateRecuperation` sont déjà formatés par l'appelant (chacun
+// a sa propre source : montant Stripe pour un paiement en ligne, prix saisi
+// par l'admin pour une prolongation manuelle) — cette fonction ne fait que
+// construire l'email et l'envoyer, pas de recalcul qui pourrait diverger.
+async function sendProlongationConfirmation(supabase, { reservationId, email, prenom, nom, jours, dateRecuperation, creneau, amount, lang }) {
+  if (!email) return;
+  lang = lang || 'fr';
+
+  // Idempotence : un webhook Stripe peut être redélivré pour le même
+  // paiement — ne jamais renvoyer cet email deux fois pour la même réservation.
+  if (reservationId) {
+    const { count: alreadySent } = await supabase
+      .from('email_log').select('id', { count: 'exact', head: true })
+      .eq('reservation_id', reservationId).eq('scenario', 'email_prolongation').eq('statut', 'envoye');
+    if (alreadySent > 0) return;
+  }
+
+  const sig = await getSignature(supabase);
+  const html = withSignature(tplProlongConfirmation({
+    prenom: prenom || '', nom: nom || '', jours: jours || 1,
+    date_recuperation: dateRecuperation || '', creneau: creneau || '', amount, lang,
+  }), sig);
+  const jNum = Number(jours) || 1;
+  const subject = lang === 'en' ? `✅ Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
+    : lang === 'zh' ? `✅ 续租已确认 — 已延长 ${jNum} 天`
+    : `✅ Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
+  const result = await sendBrevoEmail({ to: email, subject, html, senderName: sig.nom_expediteur });
+  if (!result.ok) console.error('[Prolongation confirmation]', result.error);
+  if (reservationId) {
+    await supabase.from('email_log').insert({
+      reservation_id: reservationId, scenario: 'email_prolongation', canal: 'email',
+      destinataire: email, modele: 'email_prolongation',
+      statut: result.ok ? 'envoye' : 'erreur',
+      erreur: result.ok ? null : String(result.error || '').slice(0, 500),
+      contenu: html,
+    }).catch(() => {});
+  }
+}
+
 // Confirme une réservation (paiement Stripe réussi OU confirmation manuelle par
 // l'admin, ex. réservation prise par téléphone), assigne les appareils
 // numérotés et crée les missions terrain (livraisons) associées. Idempotent :
@@ -340,4 +437,7 @@ async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) 
   return confirmReservation(supabase, resa);
 }
 
-module.exports = { confirmReservationAndCreateLivraisons, confirmReservation, pickTransporteurForMission, normalizeTel };
+module.exports = {
+  confirmReservationAndCreateLivraisons, confirmReservation, pickTransporteurForMission, normalizeTel,
+  sendConfirmationCommunications, sendProlongationConfirmation,
+};
