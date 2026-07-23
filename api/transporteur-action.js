@@ -395,9 +395,16 @@ module.exports = async (req, res) => {
           typeEvenement: 'installation', livraisonId: liv.id, utilisateur: transp?.nom || null,
         });
       } else {
-        await setAppareilsStatutForReservation(supabase, liv.reservation_id, ETAT_MATERIEL_TO_APPAREIL_STATUT[body.etat_materiel], {
+        const statutResultant = ETAT_MATERIEL_TO_APPAREIL_STATUT[body.etat_materiel];
+        // Le transporteur peut garder l'appareil dans son véhicule pour sa
+        // prochaine livraison plutôt que de repasser par le dépôt — proposé
+        // côté app seulement quand l'appareil repart réutilisable tel quel
+        // (statut 'disponible'), donc revalidé ici avant d'appliquer.
+        const conserveVehicule = body.conserve_vehicule === true && statutResultant === 'disponible';
+        await setAppareilsStatutForReservation(supabase, liv.reservation_id, statutResultant, {
           typeEvenement: 'recuperation', livraisonId: liv.id, utilisateur: transp?.nom || null,
           commentaire: (body.etat_materiel_commentaire || '').slice(0, 1000) || null,
+          nouvelleLocalisation: conserveVehicule ? 'vehicule_transporteur' : null,
         });
       }
 
