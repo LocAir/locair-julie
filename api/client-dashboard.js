@@ -52,7 +52,7 @@ module.exports = async (req, res) => {
       { data: assistance },
       { data: offresPrivilege },
     ] = await Promise.all([
-      supabase.from('livraisons').select('type, statut, date_prevue, creneau, fait_at').eq('reservation_id', reservationId),
+      supabase.from('livraisons').select('type, statut, date_prevue, creneau, fait_at').eq('reservation_id', reservationId).not('statut', 'in', '(annulee,annule)').order('date_prevue', { ascending: true }),
       supabase.from('incidents').select('id').eq('reservation_id', reservationId).in('statut', INCIDENT_OPEN_STATUSES),
       supabase.from('reservation_appareils').select('appareil:appareils(numero, reference, modele:modeles_climatiseur(*))').eq('reservation_id', reservationId),
       supabase.from('documents').select('id, type, numero, statut, genere_at, access_token').eq('reservation_id', reservationId),
@@ -88,7 +88,7 @@ module.exports = async (req, res) => {
       client: {
         prenom: resa.prenom || '',
         ref: resa.ref,
-        statut_paiement: resa.statut === 'en_attente' ? 'en_attente' : (['annulee'].includes(resa.statut) ? 'annule' : 'paye'),
+        statut_paiement: resa.statut === 'en_attente' ? 'en_attente' : (resa.statut === 'remboursee' ? 'rembourse' : (['annulee'].includes(resa.statut) ? 'annule' : 'paye')),
         date_debut: resa.date_debut,
         date_fin: resa.date_fin,
         jours_restants: joursRestants(resa.date_fin),

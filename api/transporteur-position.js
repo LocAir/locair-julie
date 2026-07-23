@@ -15,11 +15,12 @@ module.exports = async (req, res) => {
   }
 
   try {
-    await supabase.from('transporteurs').update({
+    const { error } = await supabase.from('transporteurs').update({
       position_lat: lat,
       position_lng: lng,
       position_at:  new Date().toISOString(),
     }).eq('id', transporteurId);
+    if (error) throw error;
     return res.status(200).json({ ok: true });
   } catch (err) {
     console.error('[Transporteur position]', err.message);

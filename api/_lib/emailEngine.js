@@ -151,12 +151,13 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
     // n'était réellement parti, sans jamais apparaître comme une erreur ni
     // être rejouable (wasScenarioSent bloque tout nouvel essai).
     if (!result.ok) throw new Error(result.error || 'Échec envoi Brevo');
-    await supabase.from('email_sent')
+    const { error: upsertErr } = await supabase.from('email_sent')
       .upsert({ reservation_id: reservationId, scenario, sent_at: new Date().toISOString() }, { onConflict: 'reservation_id,scenario' });
-    await supabase.from('email_log').insert({
+    if (upsertErr) throw new Error(`email_sent upsert failed: ${upsertErr.message}`);
+    supabase.from('email_log').insert({
       reservation_id: reservationId, scenario, destinataire: reservation.email, modele: scenario, statut: 'envoye',
       contenu: html,
-    });
+    }).catch(() => {});
     return { sent: true };
   } catch (e) {
     await supabase.from('email_log').insert({

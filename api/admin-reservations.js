@@ -395,9 +395,10 @@ module.exports = async (req, res) => {
           .from('livraisons').select('id, transporteur_id')
           .eq('reservation_id', id)
           .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
-        await supabase.from('livraisons').update({ statut: 'annule' })
+        const { error: livError } = await supabase.from('livraisons').update({ statut: 'annulee' })
           .eq('reservation_id', id)
           .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
+        if (livError) console.error('[annulation missions]', livError.message);
         const transpAPrevenir = new Set((livAAnnuler || []).filter(l => l.transporteur_id).map(l => l.transporteur_id));
         for (const tid of transpAPrevenir) {
           await notifyTransporteur(supabase, tid, {
@@ -495,6 +496,8 @@ module.exports = async (req, res) => {
     if (action === 'remboursements_list') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { data: owned } = await supabase.from('reservations').select('id').eq('id', id).eq('city_id', city.id).maybeSingle();
+      if (!owned) return res.status(404).json({ error: 'Réservation introuvable' });
       const { data, error } = await supabase
         .from('remboursements').select('*').eq('reservation_id', id).order('created_at', { ascending: false });
       if (error) throw error;

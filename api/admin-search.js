@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({ commandes: [], clients: [], climatiseurs: [], transporteurs: [], partenaires: [] });
   }
 
-  const safeLike = `%${q.replace(/[%,()]/g, '')}%`;
+  const safeLike = `%${q.replace(/[%_]/g, '\\$&').replace(/[,()]/g, '')}%`;
   const numero = parseInt(q, 10);
 
   try {

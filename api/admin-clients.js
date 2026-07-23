@@ -65,7 +65,7 @@ module.exports = async (req, res) => {
       const { data: client } = await supabase.from('clients').select('id').eq('id', id).eq('city_id', city.id).maybeSingle();
       if (!client) return res.status(404).json({ error: 'Client introuvable' });
 
-      const { data: resas } = await supabase.from('reservations').select('id').eq('client_id', id);
+      const { data: resas } = await supabase.from('reservations').select('id').eq('client_id', id).eq('city_id', city.id);
       const resaIds = (resas || []).map(r => r.id);
       if (!resaIds.length) return res.status(200).json({ photos: [] });
 
@@ -105,7 +105,7 @@ module.exports = async (req, res) => {
       const { data: resas } = await supabase
         .from('reservations')
         .select('id, ref, adresse, etage, ascenseur, instructions_acces, tel_secondaire, type_client, raison_sociale, siret, date_debut, statut')
-        .eq('client_id', id)
+        .eq('client_id', id).eq('city_id', city.id)
         .order('date_debut', { ascending: false });
       const resaIds = (resas || []).map(r => r.id);
 

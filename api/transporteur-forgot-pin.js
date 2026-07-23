@@ -2,9 +2,17 @@ const { getSupabase }    = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
 const { tplNouveauCodeTransporteur } = require('./_lib/emailTemplates');
 const { getSignature, withSignature } = require('./_lib/emailEngine');
+const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const supabase = getSupabase();
+  const rateKey = `forgot-transporteur:${getClientIp(req)}`;
+  if (await isRateLimited(supabase, rateKey)) {
+    return res.status(429).json({ ok: true, message: "Si ce compte existe, un email vient d'être envoyé." });
+  }
+  await recordFailedAttempt(supabase, rateKey).catch(() => {});
 
   const email = ((req.body || {}).email || '').trim().toLowerCase();
   // Toujours la même réponse, que l'email existe ou non — évite de révéler
@@ -13,7 +21,6 @@ module.exports = async (req, res) => {
   if (!email) return res.status(200).json(genericResponse);
 
   try {
-    const supabase = getSupabase();
     const { data: transp } = await supabase
       .from('transporteurs')
       .select('id, nom, email')

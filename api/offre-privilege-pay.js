@@ -19,18 +19,19 @@ module.exports = async (req, res) => {
   if (!offreId) return res.status(400).json({ error: 'Offre introuvable' });
 
   try {
-    const { data: offre } = await supabase
-      .from('offres_privilege').select('id, statut, prix_vente_cents, reservation_id, appareil_id')
-      .eq('id', offreId).maybeSingle();
-    if (!offre || offre.reservation_id !== reservationId) return res.status(404).json({ error: 'Offre introuvable' });
-    if (offre.statut !== 'proposee') return res.status(400).json({ error: "Cette offre n'est plus disponible." });
+    // Verrouillage atomique : passe statut → 'en_cours' seulement si encore
+    // 'proposee' ET appartient à cette réservation. Empêche le double-clic ou
+    // double-onglet de créer deux PaymentIntents Stripe pour la même offre.
+    const { data: offre, error: lockErr } = await supabase
+      .from('offres_privilege')
+      .update({ statut: 'en_cours' })
+      .eq('id', offreId).eq('statut', 'proposee').eq('reservation_id', reservationId)
+      .select('id, prix_vente_cents, reservation_id, appareil_id')
+      .maybeSingle();
+    if (lockErr) throw lockErr;
+    if (!offre) return res.status(400).json({ error: "Cette offre n'est plus disponible." });
     if (!offre.prix_vente_cents) return res.status(400).json({ error: 'Prix non défini' });
 
-    // Toujours reprendre les vraies infos de la commande et de l'appareil au
-    // moment du paiement (jamais des valeurs mises en cache côté client) :
-    // le paiement Stripe doit pouvoir être relié, à lui seul, à la commande
-    // (ref = numéro utilisé par le client pour accéder à son espace) et au
-    // climatiseur précis vendu.
     const [{ data: resa }, { data: appareil }] = await Promise.all([
       supabase.from('reservations').select('email, tel, prenom, nom, ref').eq('id', reservationId).maybeSingle(),
       supabase.from('appareils').select('numero, reference').eq('id', offre.appareil_id).maybeSingle(),
@@ -61,7 +62,12 @@ module.exports = async (req, res) => {
       },
     });
 
-    await supabase.from('offres_privilege').update({ stripe_payment_intent_id: intent.id }).eq('id', offre.id);
+    const { error: updateErr } = await supabase.from('offres_privilege').update({ stripe_payment_intent_id: intent.id }).eq('id', offre.id);
+    if (updateErr) {
+      console.error('[Offre privilège pay] update intent_id échoué:', updateErr.message);
+      await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel offre]', e.message));
+      return res.status(500).json({ error: 'Erreur serveur' });
+    }
 
     return res.status(200).json({ clientSecret: intent.client_secret, amountCents: offre.prix_vente_cents });
   } catch (err) {
