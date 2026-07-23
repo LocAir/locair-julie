@@ -5122,6 +5122,14 @@ function incidentActionsHtml(i){
   if(i.statut==='resolu') btns.push(`<button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'clos',this)">🗄️ Clore</button>`);
   return btns.length ? `<div class="row-actions">${btns.join('')}</div>` : '';
 }
+let INCIDENTS_CACHE = [];
+let INCIDENTS_STATS_30J = {};
+let INCIDENTS_FILTER = 'actifs';
+// "Actifs" = pas encore réglés — un incident résolu/clos n'a plus besoin
+// d'attention au jour le jour, il se range dans son propre filtre plutôt que
+// de rester mélangé avec ce qui reste vraiment à traiter (même principe que
+// "Actives" sur Réservations/Livraisons).
+const INCIDENTS_ACTIFS_STATUTS = ['nouveau', 'en_analyse', 'retard_a_facturer'];
 async function loadIncidents(){
   const zone = document.getElementById('tab-incidents');
   zone.innerHTML = loading();
@@ -5129,31 +5137,49 @@ async function loadIncidents(){
     const r = await fetch(API('admin-incidents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    const pt = d.par_type_30j || {};
-    const total30j = Object.values(pt).reduce((s,v)=>s+(v||0),0);
-    const statHtml = `
-      <div class="stat-grid" style="margin-bottom:16px">
-        <div class="stat-tile"><div class="n" style="${total30j?'color:var(--amber)':''}">${total30j}</div><div class="l">Incidents (30j)</div></div>
-        <div class="stat-tile"><div class="n" style="${pt.materiel_endommage?'color:var(--red)':''}">${pt.materiel_endommage||0}</div><div class="l">Matériel endommagé (30j)</div></div>
-        <div class="stat-tile" style="grid-column:1/-1"><div class="n" style="${pt.retard?'color:var(--amber)':''}">${pt.retard||0}</div><div class="l">Retards (30j)</div></div>
-      </div>`;
-    if(!d.incidents || !d.incidents.length){ zone.innerHTML = statHtml + '<p class="empty">🧯 Aucun incident enregistré.</p>'; return; }
-    const list = d.incidents.map(i => {
-      const res = i.reservation || {};
-      return `
-        <div class="row-item">
-          <div class="row-top">
-            <span class="row-title">${INCIDENT_TYPE_LABEL[i.type]||i.type}${res.ref?' · '+escHtml(res.ref):''}</span>
-            <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
-          </div>
-          <div class="row-meta">${escHtml((res.prenom||'')+' '+(res.nom||''))}${res.adresse?' · '+escHtml(res.adresse):''}${i.transporteur?.nom?' · 🚚 '+escHtml(i.transporteur.nom):''}<br/>${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
-          ${incidentActionsHtml(i)}
-        </div>`;
-    }).join('');
-    zone.innerHTML = statHtml + list;
+    INCIDENTS_CACHE = d.incidents || [];
+    INCIDENTS_STATS_30J = d.par_type_30j || {};
+    renderIncidents();
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
+}
+function setIncidentsFilter(f){ INCIDENTS_FILTER = f; renderIncidents(); }
+function renderIncidents(){
+  const zone = document.getElementById('tab-incidents');
+  const pt = INCIDENTS_STATS_30J;
+  const total30j = Object.values(pt).reduce((s,v)=>s+(v||0),0);
+  const statHtml = `
+    <div class="stat-grid" style="margin-bottom:16px">
+      <div class="stat-tile"><div class="n" style="${total30j?'color:var(--amber)':''}">${total30j}</div><div class="l">Incidents (30j)</div></div>
+      <div class="stat-tile"><div class="n" style="${pt.materiel_endommage?'color:var(--red)':''}">${pt.materiel_endommage||0}</div><div class="l">Matériel endommagé (30j)</div></div>
+      <div class="stat-tile" style="grid-column:1/-1"><div class="n" style="${pt.retard?'color:var(--amber)':''}">${pt.retard||0}</div><div class="l">Retards (30j)</div></div>
+    </div>`;
+  const actifsCount = INCIDENTS_CACHE.filter(i => INCIDENTS_ACTIFS_STATUTS.includes(i.statut)).length;
+  const filters = [
+    {key:'actifs', label:`À traiter${actifsCount?' ('+actifsCount+')':''}`},
+    {key:'resolu', label:'Résolus'},
+    {key:'clos', label:'Clos'},
+    {key:'tous', label:'Tous'},
+  ];
+  const filterHtml = `<div class="filter-scroll" style="margin-bottom:16px">${filters.map(f => `<button class="${INCIDENTS_FILTER===f.key?'on':''}" onclick="setIncidentsFilter('${f.key}')">${f.label}</button>`).join('')}</div>`;
+  let items = INCIDENTS_CACHE;
+  if(INCIDENTS_FILTER==='actifs') items = items.filter(i => INCIDENTS_ACTIFS_STATUTS.includes(i.statut));
+  else if(INCIDENTS_FILTER!=='tous') items = items.filter(i => i.statut===INCIDENTS_FILTER);
+  if(!items.length){ zone.innerHTML = statHtml + filterHtml + '<p class="empty">🧯 Aucun incident dans ce filtre.</p>'; return; }
+  const list = items.map(i => {
+    const res = i.reservation || {};
+    return `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${INCIDENT_TYPE_LABEL[i.type]||i.type}${res.ref?' · '+escHtml(res.ref):''}</span>
+          <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
+        </div>
+        <div class="row-meta">${escHtml((res.prenom||'')+' '+(res.nom||''))}${res.adresse?' · '+escHtml(res.adresse):''}${i.transporteur?.nom?' · 🚚 '+escHtml(i.transporteur.nom):''}<br/>${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
+        ${incidentActionsHtml(i)}
+      </div>`;
+  }).join('');
+  zone.innerHTML = statHtml + filterHtml + list;
 }
 async function updateIncidentStatut(id, statut, btnEl){
   if(btnEl) btnEl.disabled = true;
