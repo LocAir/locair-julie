@@ -25,11 +25,18 @@ function yesterdayRangeISO() {
 // Calcule les stats d'une seule ville — utilisé à la fois pour la vue
 // "une ville" et pour chaque ligne de l'agrégat "toutes les villes".
 async function computeCityStats(supabase, city, periode, since) {
+  // 'confirmee' OU 'terminee' — une réservation passe à 'terminee' dès la
+  // récupération effectuée (fin de location normale). Sur une période courte
+  // (ex. "jour"/"7j"), une location déjà terminée créée dans la fenêtre
+  // disparaissait purement et simplement du CA et du nombre de réservations
+  // affichés — même défaut que ca_total_ville ci-dessous (voir
+  // supabase/migration_ca_total_terminee.sql, à valider avant d'être collée
+  // en base).
   const { data: resas, error: resaErr } = await supabase
     .from('reservations')
     .select('prix_total_cents')
     .eq('city_id', city.id)
-    .eq('statut', 'confirmee')
+    .in('statut', ['confirmee', 'terminee'])
     .gte('created_at', since);
   if (resaErr) throw resaErr;
 
@@ -62,7 +69,7 @@ async function computeCityStats(supabase, city, periode, since) {
   const [hierStart, hierEnd] = yesterdayRangeISO();
   const { data: resasHier } = await supabase
     .from('reservations').select('prix_total_cents')
-    .eq('city_id', city.id).eq('statut', 'confirmee')
+    .eq('city_id', city.id).in('statut', ['confirmee', 'terminee'])
     .gte('created_at', hierStart).lt('created_at', hierEnd);
   const caHierCents = (resasHier || []).reduce((sum, r) => sum + (r.prix_total_cents || 0), 0);
 
