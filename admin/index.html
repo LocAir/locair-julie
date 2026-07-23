@@ -952,6 +952,67 @@ function downloadCsv(filename, rows, columns){
   URL.revokeObjectURL(url);
 }
 
+// Export comptable (Module 8) — CA net par réservation sur une période
+// choisie, pour l'expert-comptable. Calcul fait côté serveur
+// (api/admin-dashboard.js, action 'export_comptable') pour rester cohérent
+// avec ce que le dashboard affiche déjà (mêmes statuts pris en compte).
+function openExportComptable(){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  const today = new Date().toISOString().slice(0,10);
+  const debutMois = today.slice(0,8) + '01';
+  overlay.innerHTML = `<div class="modal-box" style="max-width:420px">
+    <h2>📊 Export comptable</h2>
+    <label>Du</label>
+    <input type="date" id="ec-debut" value="${debutMois}">
+    <label>Au</label>
+    <input type="date" id="ec-fin" value="${today}">
+    <div class="err" id="ec-err"></div>
+    <div class="modal-actions">
+      <button class="btn btn-grey" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-blue" id="ec-btn" onclick="lancerExportComptable()">Télécharger le CSV</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+async function lancerExportComptable(){
+  const dateDebut = document.getElementById('ec-debut').value;
+  const dateFin = document.getElementById('ec-fin').value;
+  const errEl = document.getElementById('ec-err');
+  const btn = document.getElementById('ec-btn');
+  errEl.style.display = 'none';
+  if(!dateDebut || !dateFin || dateDebut > dateFin){
+    errEl.textContent = 'Période invalide.'; errEl.style.display = 'block'; return;
+  }
+  btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-dashboard'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'export_comptable', date_debut:dateDebut, date_fin:dateFin})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    if(!d.lignes.length){
+      errEl.textContent = 'Aucune réservation confirmée sur cette période.'; errEl.style.display = 'block'; return;
+    }
+    const lignes = d.lignes.concat([{ref:'', date:'', client:'TOTAL', montant_ttc_euros:d.totaux.montant_ttc_euros, rembourse_euros:d.totaux.rembourse_euros, commission_partenaire_euros:d.totaux.commission_partenaire_euros, net_euros:d.totaux.net_euros}]);
+    downloadCsv(`export-comptable_${dateDebut}_${dateFin}.csv`, lignes, [
+      {label:'Référence', value:'ref'},
+      {label:'Date', value:'date'},
+      {label:'Client', value:'client'},
+      {label:'Montant TTC (€)', value:'montant_ttc_euros'},
+      {label:'Remboursé (€)', value:'rembourse_euros'},
+      {label:'Commission partenaire (€)', value:'commission_partenaire_euros'},
+      {label:'Net (€)', value:'net_euros'},
+    ]);
+    closeModal();
+    showToast('Export téléchargé', 'success');
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display = 'block';
+  }finally{
+    btn.disabled = false;
+  }
+}
+
 // ── Modales maison (remplacent confirm()/prompt()/alert() du navigateur) ─────
 function closeModal(){
   const o = document.getElementById('modal-overlay-el');
@@ -1353,6 +1414,7 @@ async function loadDashboard(periode){
         <div class="stat-tile ${d.incidents_ouverts>0?'warn':''}"><div class="n">${d.incidents_ouverts||0}</div><div class="l">Incidents ouverts</div></div>
         <div class="stat-tile" style="grid-column:1/-1"><div class="n">${(d.ca_total_euros||0).toFixed(0)} €</div><div class="l">CA total généré (depuis le début)</div></div>
       </div>
+      <div style="text-align:right;margin-top:-6px"><button class="btn btn-grey" onclick="openExportComptable()">📊 Export comptable</button></div>
       ${dashboardParcHtml(d.parc)}
       ${dashboardLogistiqueHtml(d.logistique)}
       ${dashboardPartenairesHtml(d.partenaires)}

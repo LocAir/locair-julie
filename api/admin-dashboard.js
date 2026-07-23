@@ -4,6 +4,64 @@ const { getAvailability } = require('./_lib/stock');
 const { checkAdminToken } = require('./_lib/auth');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { computeParcDashboard } = require('./_lib/parcDashboard');
+const { isValidDate, addDays } = require('./_lib/dates');
+
+// Export comptable (Module 8) — un CA agrégé n'existe nulle part ailleurs
+// dans le code : ca_total_ville (RPC) et ca_euros (computeCityStats
+// ci-dessus) répondent à des besoins d'affichage ponctuel, pas à un export
+// ligne par ligne pour un comptable. Filtre volontairement identique à
+// computeCityStats ('confirmee'/'terminee') pour rester cohérent avec ce
+// que le dashboard affiche déjà — et volontairement indépendant du RPC
+// ca_total_ville dont on ne sait pas avec certitude quelle version est
+// appliquée en base (voir supabase/migration_ca_total_terminee.sql).
+async function computeExportComptable(supabase, cityIds, dateDebut, dateFin) {
+  const { data: resas, error: resaErr } = await supabase
+    .from('reservations')
+    .select('id, ref, prenom, nom, email, created_at, prix_total_cents, partenaire_commission_cents')
+    .in('city_id', cityIds)
+    .in('statut', ['confirmee', 'terminee'])
+    .gte('created_at', dateDebut + 'T00:00:00.000Z')
+    .lt('created_at', addDays(dateFin, 1) + 'T00:00:00.000Z')
+    .order('created_at', { ascending: true });
+  if (resaErr) throw resaErr;
+
+  const resaIds = (resas || []).map(r => r.id);
+  const { data: rembs, error: rembErr } = resaIds.length
+    ? await supabase.from('remboursements').select('reservation_id, montant_cents').in('reservation_id', resaIds)
+    : { data: [], error: null };
+  if (rembErr) throw rembErr;
+  const rembByResa = {};
+  (rembs || []).forEach(r => { rembByResa[r.reservation_id] = (rembByResa[r.reservation_id] || 0) + (r.montant_cents || 0); });
+
+  const eur = (cents) => (cents / 100).toFixed(2);
+  let totalTtc = 0, totalRembourse = 0, totalCommission = 0, totalNet = 0;
+  const lignes = (resas || []).map(r => {
+    const ttcCents = r.prix_total_cents || 0;
+    const rembCents = rembByResa[r.id] || 0;
+    const commissionCents = r.partenaire_commission_cents || 0;
+    const netCents = ttcCents - rembCents - commissionCents;
+    totalTtc += ttcCents; totalRembourse += rembCents; totalCommission += commissionCents; totalNet += netCents;
+    return {
+      ref: r.ref,
+      date: (r.created_at || '').slice(0, 10),
+      client: [r.prenom, r.nom].filter(Boolean).join(' ') || r.email || '',
+      montant_ttc_euros: eur(ttcCents),
+      rembourse_euros: eur(rembCents),
+      commission_partenaire_euros: eur(commissionCents),
+      net_euros: eur(netCents),
+    };
+  });
+
+  return {
+    lignes,
+    totaux: {
+      montant_ttc_euros: eur(totalTtc),
+      rembourse_euros: eur(totalRembourse),
+      commission_partenaire_euros: eur(totalCommission),
+      net_euros: eur(totalNet),
+    },
+  };
+}
 
 function rangeStartISO(periode) {
   const d = new Date();
@@ -173,6 +231,16 @@ module.exports = async (req, res) => {
   const since   = rangeStartISO(periode);
 
   try {
+    if (body.action === 'export_comptable') {
+      if (!isValidDate(body.date_debut) || !isValidDate(body.date_fin) || body.date_debut > body.date_fin) {
+        return res.status(400).json({ error: 'Période invalide' });
+      }
+      const cities = body.city_id === 'all' ? await listCities(supabase) : [await resolveAdminCity(supabase, body)];
+      if (!cities[0]) return res.status(404).json({ error: 'Aucune ville configurée' });
+      const result = await computeExportComptable(supabase, cities.map(c => c.id), body.date_debut, body.date_fin);
+      return res.status(200).json(result);
+    }
+
     // Tableau de bord principal : agrège toutes les villes actives, avec le
     // détail par ville pour la ligne de tableau — le sélecteur envoie
     // city_id:'all' quand aucune ville précise n'est choisie.
