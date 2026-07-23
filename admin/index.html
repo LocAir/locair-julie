@@ -2340,6 +2340,11 @@ function renderReservationsToolbar(){
   `;
   if(RESERVATIONS_VIEW==='liste') renderReservations();
   else if(RESERVATIONS_VIEW==='calendrier') renderReservationsCalendrier();
+  // logisticsFieldsHtml (partagé avec "Créer une mission"/"Modifier") ne pose
+  // pas d'onchange sur son select Installation — ajouté ici seulement pour
+  // l'instance "nr" (Créer une réservation), pour recalculer l'aperçu de prix.
+  document.getElementById('nr-installation')?.addEventListener('change', nrRecalcPrice);
+  nrRecalcPrice();
 }
 // Formulaire complet de création manuelle — reprend tous les champs du tunnel
 // public (index.html), pour qu'Aly puisse saisir intégralement une réservation
@@ -2373,6 +2378,38 @@ function onNrParrainInput(){
   if(newDiscount){ fb.textContent = `✓ Code valide — ${newDiscount} € déduits`; fb.style.color = 'var(--green)'; fb.style.display = 'block'; }
   else fb.style.display = 'none';
 }
+// Aperçu de prix + pré-remplissage de "Prix total" à partir du même barème
+// que le site (prCalcBase = calcTieredPrice côté serveur) — sans ça, un
+// prix saisi au pif ne matchait pas forcément le tarif affiché ensuite dans
+// l'email/la page de paiement Stripe (voir computeManualBreakdown côté
+// serveur, admin-reservations.js), qui retombait alors sur un simple
+// "montant total" sans détail. Recalculé à chaque changement, comme le
+// récapitulatif du site (qui n'a lui non plus pas de "surcharge manuelle") —
+// modifiable ensuite si besoin (remise commerciale, tarif spécial).
+function nrCalcTotal(){
+  const debut = document.getElementById('nr-debut')?.value;
+  const fin   = document.getElementById('nr-fin')?.value;
+  if(!debut || !fin) return null;
+  const days = Math.round((new Date(fin+'T00:00:00Z') - new Date(debut+'T00:00:00Z')) / 86400000);
+  if(days < 1) return null;
+  const qte = Math.max(1, parseInt(document.getElementById('nr-qte')?.value) || 1);
+  const isTech = (document.getElementById('nr-installation')?.value || '').startsWith('Technicien');
+  const baseCents = Math.round(prCalcBase(days) * qte * 100);
+  const installCents = isTech ? 4900 : 0;
+  const livraisonCents = 3500; // tarif zone standard — ajuster le prix total à la main si hors zone (95 €)
+  return { days, qte, isTech, baseCents, installCents, livraisonCents, totalCents: baseCents + installCents + livraisonCents };
+}
+function nrRecalcPrice(){
+  const r = nrCalcTotal();
+  const preview = document.getElementById('nr-price-preview');
+  const prixEl = document.getElementById('nr-prix');
+  if(!r){ if(preview) preview.style.display = 'none'; return; }
+  if(preview){
+    preview.style.display = 'block';
+    preview.textContent = `Location (${r.days} j${r.qte>1?' × '+r.qte:''}) : ${(r.baseCents/100).toFixed(2)} € · Installation ${r.isTech?'technicien : '+(r.installCents/100).toFixed(2)+' €':'autonome : incluse'} · Livraison : ${(r.livraisonCents/100).toFixed(2)} € (35 € zone standard, à ajuster si hors zone)`;
+  }
+  if(prixEl) prixEl.value = Math.max(0, Math.round(r.totalCents - _nrPromoDiscount*100)) / 100;
+}
 function reservationCreerHtml(){
   _nrPromoDiscount = 0;
   return `
@@ -2393,13 +2430,14 @@ function reservationCreerHtml(){
       <label for="nr-adresse" style="margin-top:8px">Adresse *</label>
       <input type="text" id="nr-adresse"/>
       <div class="inline-form">
-        <div><label for="nr-debut">Date livraison *</label><input type="date" id="nr-debut"/></div>
-        <div><label for="nr-fin">Date récupération *</label><input type="date" id="nr-fin"/></div>
+        <div><label for="nr-debut">Date livraison *</label><input type="date" id="nr-debut" oninput="nrRecalcPrice()"/></div>
+        <div><label for="nr-fin">Date récupération *</label><input type="date" id="nr-fin" oninput="nrRecalcPrice()"/></div>
       </div>
       <div class="inline-form">
-        <div><label for="nr-qte">Quantité</label><input type="number" id="nr-qte" min="1" max="5" value="1"/></div>
+        <div><label for="nr-qte">Quantité</label><input type="number" id="nr-qte" min="1" max="5" value="1" oninput="nrRecalcPrice()"/></div>
         <div><label for="nr-prix">Prix total (€)</label><input type="number" id="nr-prix" min="0" step="0.5"/></div>
       </div>
+      <p id="nr-price-preview" class="sub" style="display:none;margin:-6px 0 10px;font-size:12px;line-height:1.6"></p>
       ${logisticsFieldsHtml('nr')}
       <label for="nr-logement" style="margin-top:8px">Surface à climatiser</label>
       <select id="nr-logement">
@@ -2416,9 +2454,12 @@ function reservationCreerHtml(){
       <label style="margin-top:14px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
         <input type="checkbox" id="nr-mkt" style="width:auto"/> Le client accepte de recevoir les offres et actualités par email
       </label>
+      <label style="margin-top:10px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
+        <input type="checkbox" id="nr-cgv" style="width:auto"/> Le client a été informé et accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> ainsi que les <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">conditions d'utilisation du climatiseur</a> (comme sur le site)
+      </label>
       <button class="btn btn-blue btn-block" style="margin-top:16px" id="nr-submit-attente" onclick="createReservation(false)">📧 Créer — paiement à finaliser par le client</button>
       <button class="btn btn-grey btn-block" style="margin-top:8px" id="nr-submit-confirme" onclick="createReservation(true)">✅ Créer et confirmer (paiement déjà reçu)</button>
-      <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" crée la réservation en attente — l'envoi automatique du lien de paiement par email arrive bientôt. En attendant, confirme-la manuellement depuis la liste dès que le paiement est reçu.</p>
+      <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" envoie tout de suite au client un email avec un lien de paiement Stripe sécurisé.</p>
       <div class="err" id="new-resa-err"></div>
     </div>`;
 }
@@ -2429,7 +2470,10 @@ function reservationCreerHtml(){
 // (PRENOM + 10/20/30) que /prolongation — à tenir synchronisé si la grille
 // ou le format de code changent là-bas.
 let PROLONG_ORIG = null;
-function prCalcBase(d){ d=Math.max(1,d); if(d<=7) return d*20; if(d<=14) return 7*20+(d-7)*18; if(d<=21) return 7*20+7*18+(d-14)*17; return 7*20+7*18+7*17+(d-21)*16; }
+// Doit rester identique à calcTieredPrice (api/_lib/pricing.js) — manquait le
+// palier 3-6 jours (24€/j) ici, ce qui sous-estimait l'aperçu de prix pour
+// une prolongation courte par rapport au tarif réellement appliqué côté serveur.
+function prCalcBase(d){ d=Math.max(1,d); if(d<7) return d*24; if(d<=7) return d*20; if(d<=14) return 7*20+(d-7)*18; if(d<=21) return 7*20+7*18+(d-14)*17; return 7*20+7*18+7*17+(d-21)*16; }
 function prDiffDays(a,b){ return Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000); }
 function prAddDay(iso){ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+1); return d.toISOString().slice(0,10); }
 function prDiscountPct(code, prenom){
@@ -2740,11 +2784,20 @@ async function createReservation(confirmer){
     parrain_code: document.getElementById('nr-parrain').value.trim(),
     motifs,
     mkt_consent: document.getElementById('nr-mkt').checked,
+    cgv_accepted: document.getElementById('nr-cgv').checked,
     ...typeClientPayload('nr'),
     ...logisticsPayload('nr'),
   };
   if(!body.prenom || !body.nom || !body.adresse || !body.date_debut || !body.date_fin){
     errEl.textContent = 'Prénom, nom, adresse et dates sont obligatoires.';
+    errEl.style.display = 'block';
+    return;
+  }
+  // Même exigence que le site (case CGV/CGL cochée avant paiement) — ici
+  // recueillie verbalement par l'admin au téléphone, mais tracée pareil
+  // (cgv_acceptations) pour garder le même dossier légal qu'une commande web.
+  if(!body.cgv_accepted){
+    errEl.textContent = "Confirme que le client accepte les CGV et les conditions d'utilisation avant de créer la réservation.";
     errEl.style.display = 'block';
     return;
   }

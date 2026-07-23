@@ -10,6 +10,7 @@ const { fmtDate, getSignature, withSignature } = require('./_lib/emailEngine');
 const { sendBrevoEmail } = require('./_lib/brevo');
 const { tplLienPaiement } = require('./_lib/emailTemplates');
 const { calcTieredPrice } = require('./_lib/pricing');
+const { ACCEPTANCE_TYPES, CGV_VERSION } = require('./_lib/legal');
 const { computeOrderStatus } = require('./_lib/orderStatus');
 const { syncStatutDetaille } = require('./_lib/statutDetaille');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
@@ -263,6 +264,13 @@ module.exports = async (req, res) => {
       const parrainCode = (body.parrain_code || '').trim().slice(0, 50);
       const motifs      = (body.motifs       || '').trim().slice(0, 300);
       const mktConsent  = Boolean(body.mkt_consent);
+      // Même exigence que checkout.js côté site (case CGV/CGL cochée avant
+      // paiement) — ici recueillie verbalement par l'admin au téléphone.
+      // Sécurité en profondeur : l'UI bloque déjà l'envoi, mais l'API ne doit
+      // jamais dépendre uniquement du JS client.
+      if (body.cgv_accepted !== true) {
+        return res.status(400).json({ error: "Le client doit accepter les CGV et les conditions d'utilisation avant de créer la réservation." });
+      }
       // Une réservation prise par téléphone pour un client qui va payer
       // lui-même via un lien envoyé ensuite (ex. personne âgée pas à l'aise
       // avec le site) reste "en attente" — le circuit de confirmation normal
@@ -310,8 +318,20 @@ module.exports = async (req, res) => {
         prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'manuel',
         logement: logement || null, parrain_code: parrainCode || null,
         motifs: motifs || null, mkt_consent: mktConsent,
+        cgv_accepted_at: new Date().toISOString(),
       }).select().single();
       if (error) throw error;
+
+      // Trace d'audit des deux acceptations, comme sur le site (checkout.js)
+      // — même dossier légal qu'une commande web, jamais bloquant si l'écriture rate.
+      try {
+        await supabase.from('cgv_acceptations').insert([
+          { reservation_id: resa.id, type: ACCEPTANCE_TYPES.CGV_LOCATION,           version: CGV_VERSION, accepted_at: resa.cgv_accepted_at },
+          { reservation_id: resa.id, type: ACCEPTANCE_TYPES.CONDITIONS_UTILISATION, version: CGV_VERSION, accepted_at: resa.cgv_accepted_at },
+        ]);
+      } catch (e) {
+        console.error('[CGV acceptations manuel]', e.message);
+      }
 
       if (!confirmerImmediat) {
         // Client pas présent pour payer tout de suite (pris au téléphone) :
