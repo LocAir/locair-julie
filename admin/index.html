@@ -606,7 +606,7 @@ function renderSearchResults(d, q){
   box.classList.remove('hidden');
 }
 function searchRowHtml(type, it){
-  if(type==='commandes') return `<div class="a-search-row" onclick="goToSearchResult('commandes', ${it.id}, ${it.city_id}, null, '${(it.ref||'').replace(/'/g,"\\'")}')">
+  if(type==='commandes') return `<div class="a-search-row" onclick="goToSearchResult('commandes', ${it.id}, ${it.city_id}, null, '${escHtml((it.ref||'').replace(/'/g,"\\'"))}')">
     <span><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${escHtml(it.ref)} · ${frDate(it.date_debut)} → ${frDate(it.date_fin)}</span></span>
     <span class="chip ${it.statut}">${(typeof RESA_LABEL!=='undefined'&&RESA_LABEL[it.statut])||it.statut}</span></div>`;
   if(type==='clients') return `<div class="a-search-row" onclick="goToSearchResult('clients', ${it.id}, ${it.city_id})">
@@ -1213,8 +1213,7 @@ async function silentRefreshReservations(){
     if(!r.ok) return;
     const d = await r.json();
     RESERVATIONS_CACHE = d.reservations || [];
-    const ld = await lr.json().catch(()=>null);
-    if(ld) LIVRAISONS_CACHE = ld.livraisons || [];
+    if(lr.ok){ const ld = await lr.json().catch(()=>null); if(ld) LIVRAISONS_CACHE = ld.livraisons || []; }
     if(RESERVATIONS_VIEW==='liste') renderReservations(); else renderReservationsCalendrier();
   }catch(e){}
 }

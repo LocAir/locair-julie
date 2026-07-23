@@ -2346,7 +2346,10 @@ async function voirPhotoFenetre(livraisonId){
     if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
   }
 }
+let _actionInProgress = false;
 async function doAction(action, extra){
+  if(_actionInProgress) return;
+  _actionInProgress = true;
   const errEl = document.getElementById('detail-err');
   if(errEl){errEl.style.display='none';}
   // Verrou anti-double-clic : sur le terrain (4G capricieuse), un double-tap
@@ -2425,6 +2428,8 @@ async function doAction(action, extra){
       const errEl2 = document.getElementById('detail-err');
       if(errEl2){errEl2.textContent = e.message; errEl2.style.display='block';}
     }
+  } finally {
+    _actionInProgress = false;
   }
 }
 
