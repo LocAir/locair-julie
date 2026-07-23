@@ -21,11 +21,16 @@ module.exports = async (req, res) => {
 
   try {
     if (action === 'resume') {
+      // 'confirmee' OU 'terminee' — une réservation passe à 'terminee' dès la
+      // récupération effectuée (fin de location normale) ; en ne gardant que
+      // 'confirmee' ici, la commission d'une location menée à son terme
+      // disparaissait purement et simplement du tableau de bord du partenaire
+      // si le virement n'avait pas encore eu lieu.
       const { data: resas, error } = await supabase
         .from('reservations')
         .select('id, ref, prenom, nom, date_debut, date_fin, prix_total_cents, partenaire_commission_cents, partenaire_commission_payee, created_at')
         .eq('partenaire_id', partenaireId)
-        .eq('statut', 'confirmee')
+        .in('statut', ['confirmee', 'terminee'])
         .eq('masquee', false)
         .order('created_at', { ascending: false })
         .limit(300);
@@ -76,7 +81,7 @@ module.exports = async (req, res) => {
       const { data: resas } = await supabase
         .from('reservations')
         .select('partenaire_commission_cents')
-        .eq('partenaire_id', partenaireId).eq('statut', 'confirmee').eq('masquee', false)
+        .eq('partenaire_id', partenaireId).in('statut', ['confirmee', 'terminee']).eq('masquee', false)
         .eq('partenaire_commission_payee', false);
       const montant = (resas || []).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
       if (montant <= 0) return res.status(400).json({ error: 'Aucun montant à virer pour le moment' });
