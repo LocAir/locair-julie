@@ -88,7 +88,8 @@ module.exports = async (req, res) => {
       if (body.sold_out != null) {
         let mode = patch.sold_out_mode;
         if (!mode) {
-          const { data: cur } = await supabase.from('cities').select('sold_out_mode').eq('id', id).maybeSingle();
+          const { data: cur, error: curErr } = await supabase.from('cities').select('sold_out_mode').eq('id', id).maybeSingle();
+          if (curErr) throw curErr;
           mode = cur?.sold_out_mode;
         }
         if (mode !== 'manuel') {
@@ -125,7 +126,8 @@ module.exports = async (req, res) => {
       // En repassant en automatique, resynchroniser tout de suite avec le
       // vrai stock plutôt que d'attendre le prochain mouvement.
       if (patch.sold_out_mode === 'auto') {
-        await supabase.rpc('_auto_sold_out', { p_city_id: id });
+        const { error: rpcErr } = await supabase.rpc('_auto_sold_out', { p_city_id: id });
+        if (rpcErr) console.error('[Admin cities] _auto_sold_out failed:', rpcErr.message);
       }
       return res.status(200).json({ ok: true });
     }

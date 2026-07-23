@@ -29,7 +29,8 @@ module.exports = async (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   try {
     const supabase = getSupabase();
-    const { data: docs } = await supabase.from('documents').select('access_token').in('access_token', tokens);
+    const { data: docs, error: docsErr } = await supabase.from('documents').select('access_token').in('access_token', tokens);
+    if (docsErr) throw docsErr;
     const validTokens = new Set((docs || []).map(d => d.access_token));
 
     const buttons = [];

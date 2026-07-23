@@ -52,9 +52,9 @@ module.exports = async (req, res) => {
     // Fixe le prix et rend l'offre visible côté client ("eligible" -> "proposee").
     if (action === 'proposer') {
       const id = parseInt(body.id);
-      const prixCents = Math.max(1, parseInt(body.prix_vente_cents) || 0);
+      const prixCents = parseInt(body.prix_vente_cents) || 0;
       if (!id) return res.status(400).json({ error: 'id manquant' });
-      if (!prixCents) return res.status(400).json({ error: 'Prix invalide' });
+      if (prixCents < 100) return res.status(400).json({ error: 'Prix invalide (minimum 1 €)' });
 
       const { data: offre } = await supabase
         .from('offres_privilege').select('id, statut, appareil:appareils!inner(city_id)')
@@ -98,12 +98,12 @@ module.exports = async (req, res) => {
     // l'admin choisit explicitement lesquels (appareil_ids) — jamais deviné.
     if (action === 'creer_manuelle') {
       const reservationId = parseInt(body.reservation_id);
-      const prixCents = Math.max(1, parseInt(body.prix_vente_cents) || 0);
+      const prixCents = parseInt(body.prix_vente_cents) || 0;
       const appareilIds = Array.isArray(body.appareil_ids)
         ? [...new Set(body.appareil_ids.map(x => parseInt(x)).filter(Boolean))] : [];
       if (!reservationId) return res.status(400).json({ error: 'reservation_id manquant' });
       if (!appareilIds.length) return res.status(400).json({ error: 'Choisis au moins un climatiseur' });
-      if (!prixCents) return res.status(400).json({ error: 'Prix invalide' });
+      if (prixCents < 100) return res.status(400).json({ error: 'Prix invalide (minimum 1 €)' });
 
       const { data: resaOwned } = await supabase.from('reservations').select('id').eq('id', reservationId).eq('city_id', city.id).maybeSingle();
       if (!resaOwned) return res.status(404).json({ error: 'Réservation introuvable' });
@@ -170,13 +170,14 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: `Stripe a refusé le remboursement : ${stripeErr.message}` });
       }
 
-      await supabase.from('remboursements').insert({
+      const { error: rembErr } = await supabase.from('remboursements').insert({
         reservation_id:   offre.reservation_id,
         montant_cents:    montantCents,
         raison,
         stripe_refund_id: refund.id,
         demande_par:      admin.nom || admin.role,
       });
+      if (rembErr) console.error('[Admin offres privilege] remboursements insert failed:', rembErr.message);
 
       return res.status(200).json({ ok: true, refund_id: refund.id });
     }
