@@ -29,10 +29,11 @@ module.exports = async (req, res) => {
     const checklists = [];
     for (const t of (transporteurs || [])) {
       const checklist = await computeChecklistBox(supabase, t.id, dateISO);
-      if (checklist.nb_missions === 0) continue;
-      const { data: v } = await supabase
+      if (!checklist || checklist.nb_missions === 0) continue;
+      const { data: v, error: vErr } = await supabase
         .from('checklist_box').select('validated_at')
         .eq('transporteur_id', t.id).eq('date', dateISO).maybeSingle();
+      if (vErr) throw vErr;
       checklists.push({
         transporteur_id: t.id, nom: t.nom, ...checklist,
         validated: Boolean(v), validated_at: v?.validated_at || null,
