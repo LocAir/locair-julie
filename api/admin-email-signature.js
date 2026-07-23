@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
       if (body.email          != null) patch.email          = String(body.email).trim().slice(0, 200) || 'contact@locair.fr';
       if (body.site_web       != null) patch.site_web       = String(body.site_web).trim().slice(0, 300) || null;
 
-      const { error } = await supabase.from('email_signature').update(patch).eq('id', 1);
+      const { error } = await supabase.from('email_signature').upsert({ id: 1, ...patch }, { onConflict: 'id' });
       if (error) throw error;
       return res.status(200).json({ ok: true });
     }

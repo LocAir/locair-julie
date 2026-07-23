@@ -24,7 +24,7 @@ module.exports = async (req, res) => {
       if (body.telephone != null) patch.telephone = String(body.telephone).trim().slice(0, 50) || null;
       if (body.email     != null) patch.email     = String(body.email).trim().slice(0, 200) || null;
       if (body.urgence   != null) patch.urgence   = String(body.urgence).trim().slice(0, 500) || null;
-      const { error } = await supabase.from('assistance_config').update(patch).eq('id', 1);
+      const { error } = await supabase.from('assistance_config').upsert({ id: 1, ...patch }, { onConflict: 'id' });
       if (error) throw error;
       return res.status(200).json({ ok: true });
     }

@@ -56,7 +56,8 @@ module.exports = async (req, res) => {
     if (action === 'video_url') {
       const videoId = parseInt(body.video_id);
       if (!videoId) return res.status(400).json({ error: 'video_id manquant' });
-      const { data: v } = await supabase.from('tutoriel_videos').select('storage_path').eq('id', videoId).maybeSingle();
+      const { data: v, error: vErr } = await supabase.from('tutoriel_videos').select('storage_path').eq('id', videoId).maybeSingle();
+      if (vErr) throw vErr;
       if (!v || !v.storage_path) return res.status(404).json({ error: 'Fichier introuvable' });
       const { data: urlData, error } = await supabase.storage.from('missions').createSignedUrl(v.storage_path, 3600);
       if (error) throw error;
@@ -66,7 +67,8 @@ module.exports = async (req, res) => {
     if (action === 'demander_upload') {
       const videoId = parseInt(body.video_id);
       if (!videoId) return res.status(400).json({ error: 'video_id manquant' });
-      const { data: v } = await supabase.from('tutoriel_videos').select('id, categorie').eq('id', videoId).maybeSingle();
+      const { data: v, error: vErr2 } = await supabase.from('tutoriel_videos').select('id, categorie').eq('id', videoId).maybeSingle();
+      if (vErr2) throw vErr2;
       if (!v) return res.status(404).json({ error: 'Vidéo introuvable' });
 
       const ext = EXT_BY_TYPE[body.content_type] || 'mp4';
@@ -80,7 +82,7 @@ module.exports = async (req, res) => {
       const videoId = parseInt(body.video_id);
       const path = (body.path || '').trim();
       if (!videoId) return res.status(400).json({ error: 'video_id manquant' });
-      if (!path || !path.startsWith('tutoriels/')) return res.status(400).json({ error: 'Fichier invalide' });
+      if (!path || !path.startsWith('tutoriels/') || path.includes('..')) return res.status(400).json({ error: 'Fichier invalide' });
       const { error } = await supabase.from('tutoriel_videos').update({ storage_path: path }).eq('id', videoId);
       if (error) throw error;
       return res.status(200).json({ ok: true });
