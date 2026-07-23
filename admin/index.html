@@ -1291,13 +1291,18 @@ async function loadDashboard(periode){
   const zone = document.getElementById('tab-accueil');
   zone.innerHTML = loading();
   try{
-    const [dr, lr] = await Promise.all([
+    const [dr, lr, tr] = await Promise.all([
       fetch(API('admin-dashboard'), {method:'POST', headers:authHeaders(), body:JSON.stringify({periode})}),
       fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
     ]);
     const d = await dr.json();
     if(!dr.ok) throw new Error(d.error||'Erreur');
     const ld = await lr.json().catch(()=>({livraisons:[]}));
+    // Nécessaire pour pouvoir assigner un transporteur directement depuis le
+    // board "Aujourd'hui" (voir boardRowHtml) sans changer d'onglet.
+    const td = await tr.json().catch(()=>null);
+    if(td) TRANSPORTEURS_CACHE = td.transporteurs || TRANSPORTEURS_CACHE;
     const pct = Math.round((d.taux_occupation||0)*100);
     // En vue agrégée ("Toutes les villes"), le board du jour et l'occupation
     // par ville n'ont de sens que ville par ville — remplacés par le tableau
@@ -1403,13 +1408,19 @@ function boardRowHtml(m){
   const nom = isAutre ? (m.titre || 'Mission libre') : ((res.prenom||'')+' '+(res.nom||''));
   const adresse = isAutre ? (m.adresse_libre||'—') : (res.adresse||'—');
   const numeros = (m.appareil_numeros||[]).join(', ');
+  // Le board du matin affichait "Non assigné" en texte figé — vu en premier
+  // chaque jour, c'était pourtant l'écran le plus mal placé pour agir : il
+  // fallait mémoriser la mission, aller dans Livraisons, la retrouver dans
+  // une liste plus longue, puis assigner. Select direct ici, même pattern
+  // que Réservations (agentLineHtml) et Livraisons (renderLivraisons).
+  const transpBit = m.transporteur ? escHtml(m.transporteur.nom) : `<select onchange="assignTransporteur(${m.id}, this.value, this)" style="border-color:var(--red);border-width:1.5px;font-size:11.5px;padding:1px 4px">${['<option value="">Non assigné</option>'].concat((typeof TRANSPORTEURS_CACHE!=='undefined'?TRANSPORTEURS_CACHE:[]).map(t=>`<option value="${t.id}">${escHtml(t.nom)}</option>`)).join('')}</select>`;
   return `
     <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
       <div class="row-top">
         <span class="row-title">${escHtml(m.creneau||'—')} · ${escHtml(nom)}</span>
         <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
       </div>
-      <div class="row-meta">${escHtml(adresse)}${numeros?' · Climatiseur n°'+escHtml(numeros):''}${m.transporteur?' · '+escHtml(m.transporteur.nom):' · Non assigné'}</div>
+      <div class="row-meta" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${escHtml(adresse)}${numeros?' · Climatiseur n°'+escHtml(numeros):''} · ${transpBit}</div>
     </div>`;
 }
 // Le code postal est déjà présent dans l'adresse (le site utilise l'autocomplete
@@ -3739,6 +3750,11 @@ async function assignTransporteur(livraisonId, transporteurId, selectEl){
   // l'assignation qu'on vient de faire resterait affichée comme "Non
   // assigné" jusqu'au prochain chargement complet de l'onglet.
   if(document.getElementById('resa-list')) renderReservations();
+  // Et sur le board "Aujourd'hui" de l'Accueil (boardRowHtml) — pas de
+  // fonction de rendu isolée pour ce bloc, un rechargement complet du
+  // dashboard est la façon dont cet onglet se rafraîchit déjà ailleurs
+  // (voir TAB_AUTO_REFRESH.accueil).
+  if(CURRENT_TAB === 'accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
   loadAlerts();
 }
 function maskLivraison(livraisonId){
