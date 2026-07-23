@@ -574,7 +574,7 @@ function renderSearchRecent(){
   const recent = getRecentSearches();
   if(!recent.length){ box.classList.add('hidden'); return; }
   box.innerHTML = `<div class="a-search-group-title">Dernières recherches</div>
-    <div class="a-search-recent">${recent.map(q => `<button onclick="document.getElementById('a-search-input').value='${escHtml(q).replace(/'/g,"\\'")}';runAdminSearch('${escHtml(q).replace(/'/g,"\\'")}')">${escHtml(q)}</button>`).join('')}</div>`;
+    <div class="a-search-recent">${recent.map(q => `<button onclick="document.getElementById('a-search-input').value='${escHtml(q.replace(/'/g,"\\'"))}';runAdminSearch('${escHtml(q.replace(/'/g,"\\'"))}')">${escHtml(q)}</button>`).join('')}</div>`;
   box.classList.remove('hidden');
 }
 async function runAdminSearch(q){
@@ -1437,7 +1437,7 @@ function morningBannerHtml(hier){
     <div class="morning-banner" id="morning-banner-el">
       <button class="mb-close" onclick="dismissMorningBanner()">✕</button>
       <div class="mb-title">👋 Bonjour Aly</div>
-      <div class="mb-text">Hier : ${hier.ca_euros.toFixed(0)} € de CA, ${hier.nb_reservations} réservation${hier.nb_reservations>1?'s':''}, ${hier.missions_terminees} mission${hier.missions_terminees>1?'s':''} terminée${hier.missions_terminees>1?'s':''}${incidentsTxt}.</div>
+      <div class="mb-text">Hier : ${(hier.ca_euros||0).toFixed(0)} € de CA, ${hier.nb_reservations||0} réservation${(hier.nb_reservations||0)>1?'s':''}, ${hier.missions_terminees||0} mission${(hier.missions_terminees||0)>1?'s':''} terminée${(hier.missions_terminees||0)>1?'s':''}${incidentsTxt}.</div>
     </div>`;
 }
 function dismissMorningBanner(){
@@ -1785,8 +1785,8 @@ async function loadStock(silent){
               <details class="more-actions" style="margin-left:auto">
                 <summary title="Plus d'actions">⋯</summary>
                 <div class="more-actions-menu">
-                  <button onclick="editAppareilReference(${a.id}, '${escHtml(a.reference||'').replace(/'/g,"\\'")}')">${a.reference?'Modifier':'Ajouter'} la référence</button>
-                  <button onclick="editAppareilNote(${a.id}, '${escHtml(a.notes||'').replace(/'/g,"\\'")}')">${a.notes?'Modifier':'Ajouter'} une note</button>
+                  <button onclick="editAppareilReference(${a.id}, '${escHtml((a.reference||'').replace(/'/g,"\\'"))}')">${a.reference?'Modifier':'Ajouter'} la référence</button>
+                  <button onclick="editAppareilNote(${a.id}, '${escHtml((a.notes||'').replace(/'/g,"\\'"))}')">${a.notes?'Modifier':'Ajouter'} une note</button>
                   <button onclick="voirFicheAppareil(${a.id}, ${a.numero})">📋 Fiche complète</button>
                   <button class="danger" onclick="deleteAppareil(${a.id}, ${a.numero})">🗑️ Supprimer</button>
                 </div>
@@ -3378,7 +3378,7 @@ function renderLivraisons(){
           ${contactButtonsHtml(res.tel)}
           ${nonAssignee?`<div style="width:100%;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--red);margin-bottom:-2px">Assigner un transporteur →</div>`:''}
           <select onchange="assignTransporteur(${m.id}, this.value, this)" ${reassignLocked?'disabled title="Mission terminée/annulée : transporteur figé (paiement déjà rattaché)"':''} style="${nonAssignee?'border-color:var(--red);border-width:1.5px':''}">${options}</select>
-          ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom).replace(/'/g,"\\'")}', '${escHtml(res.adresse||'').replace(/'/g,"\\'")}')">🔴 Suivre en direct</button>`:''}
+          ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom.replace(/'/g,"\\'"))}', '${escHtml((res.adresse||'').replace(/'/g,"\\'"))}')">🔴 Suivre en direct</button>`:''}
           ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">✅ Problème résolu</button>`:''}
           ${mediaBtns.length===0 && m.statut==='fait' ? '<span class="row-meta" style="align-self:center">Aucune preuve enregistrée</span>' : ''}
           <details class="more-actions" style="margin-left:auto">
