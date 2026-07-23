@@ -3926,13 +3926,13 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
           <!-- Choix d'installation -->
           <div class="fld">
             <div class="install-choice-grid" role="radiogroup" aria-label="Mode d'installation" id="install-choice-group">
-              <div class="install-card on" id="ic-tech" onclick="selectInstall(true)" role="radio" aria-checked="true" tabindex="0">
+              <div class="install-card on" id="ic-tech" onclick="selectInstall(true)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectInstall(true)}" role="radio" aria-checked="true" tabindex="0">
                 <div class="install-card-ico" aria-hidden="true"></div>
                 <div class="install-card-title">Pose par le technicien</div>
                 <div class="install-card-price">+49 €</div>
                 <div class="install-card-sub">Installé et testé devant vous · 20–30 min</div>
               </div>
-              <div class="install-card" id="ic-self" onclick="selectInstall(false)" role="radio" aria-checked="false" tabindex="0">
+              <div class="install-card" id="ic-self" onclick="selectInstall(false)" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectInstall(false)}" role="radio" aria-checked="false" tabindex="0">
                 <div class="install-card-ico" aria-hidden="true"></div>
                 <div class="install-card-title">Je pose moi-même</div>
                 <div class="install-card-price" style="color:var(--grey)">Gratuit</div>
@@ -4238,8 +4238,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             </div>
             <div id="instructions-wrap" style="display:none;margin-top:10px">
               <label for="f-instructions" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Instructions pour le technicien</label>
-  <textarea id="f-instructions" rows="4" placeholder="Ex : Code d'entrée 1234B, boîte à clefs sur le côté gauche de la porte, appartement au 3e étage, sonner à Dupont…" autocomplete="off" spellcheck="false" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-size:15px;font-family:var(--body);color:var(--black);background:#fff;outline:none;resize:none;line-height:1.55;box-sizing:border-box"
-"></textarea>
+  <textarea id="f-instructions" rows="4" placeholder="Ex : Code d'entrée 1234B, boîte à clefs sur le côté gauche de la porte, appartement au 3e étage, sonner à Dupont…" autocomplete="off" spellcheck="false" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-size:15px;font-family:var(--body);color:var(--black);background:#fff;outline:none;resize:none;line-height:1.55;box-sizing:border-box"></textarea>
             </div>
           </div>
         </div>
@@ -5324,6 +5323,9 @@ function closeModal(){
   document.getElementById('modal')?.querySelectorAll('.tpill.on[role="radio"]').forEach(p=>{p.classList.remove('on');p.setAttribute('aria-checked','false');});
   const instrNo=document.getElementById('instructions-no');if(instrNo){instrNo.classList.add('on');instrNo.setAttribute('aria-checked','true');}
   const instrYes=document.getElementById('instructions-yes');if(instrYes)instrYes.setAttribute('aria-checked','false');
+  const ascYesBtn=document.querySelector('.asc-yes');if(ascYesBtn){ascYesBtn.classList.add('on');ascYesBtn.setAttribute('aria-checked','true');}
+  const clientPerso=document.querySelector('.client-type-perso');if(clientPerso){clientPerso.classList.add('on');clientPerso.setAttribute('aria-checked','true');}
+  const siretWrap=document.getElementById('siret-wrap');if(siretWrap)siretWrap.style.display='none';
   // Reset prolongation form fields
   ['pe-prenom','pe-nom','pe-email','pe-tel','pe-addr','pe-debut','pe-fin-init','pe-date'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
@@ -6417,6 +6419,9 @@ function countUp(el){
   const suffix=el.dataset.suffix||'';
   const decimal=el.dataset.decimal||'.';
   const isFloat=el.dataset.count.includes('.');
+  if(window.matchMedia('(prefers-reduced-motion:reduce)').matches){
+    el.textContent=(isFloat?target.toFixed(1).replace('.',decimal):Math.round(target))+suffix;return;
+  }
   const dur=1400;
   const start=performance.now();
   function frame(now){
@@ -6605,8 +6610,6 @@ const LANG_MAP=[
   ['.win-card:last-child .win-hint','text','Notre technicien vérifiera','Our technician will check','技术员将到场确认'],
   /* modal step 4 */
   ['#s4 .sp-title','text','Votre date de livraison','Your delivery date','您的配送日期'],
-  ['#btn-demain','text','→ Demain','→ Tomorrow','→ 明天'],
-  ['#s4 label:first-of-type','text','Date de livraison *','Delivery date *','配送日期 *'],
   ['#date-shortcuts','aria','Date de livraison','Delivery date','配送日期'],
   ['#f-date','aria','Date personnalisée','Custom date','自定义日期'],
   ['#creneau-liv-group','aria','Créneau de livraison','Delivery time slot','配送时间段'],
@@ -6622,7 +6625,7 @@ const LANG_MAP=[
   /* success screens */
   ['#msuccess-pay .s-h','text','Réservation confirmée !','Booking confirmed!','预订已确认！'],
   ['#s-gratitude-note','text','Toute l\'équipe est mobilisée pour vous accueillir demain. À très vite. — Aly','The whole team is ready to welcome you tomorrow. See you soon. — Aly','全队准备好明天迎接您。很快见！— Aly'],
-  ['#msuccess-pay .s-p','html','Votre réservation est confirmée — notre équipe vous contacte d\'ici quelques heures pour confirmer le créneau exact.','Your booking is confirmed — our team will contact you within a few hours to confirm the exact time slot.','您的预订已确认——我们的团队将在几小时内联系您确认准确的时间段。'],
+  ['#s-msg-pay','html','Votre réservation est confirmée — notre équipe vous contacte d\'ici quelques heures pour confirmer le créneau exact.','Your booking is confirmed — our team will contact you within a few hours to confirm the exact time slot.','您的预订已确认——我们的团队将在几小时内联系您确认准确的时间段。'],
   ['#msuccess-pay .s-close','text','Retour au site','Back to site','返回网站'],
   ['#msuccess-call .s-h','text','Demande reçue','Request received','请求已收到'],
   ['#msuccess-call .s-p','text','Notre équipe vous rappelle dans la journée (8h–20h, 7j/7).','Our team will call you back within the day (8am–8pm, 7 days a week).','我们的团队将于当天回电（8:00–20:00，每天）。'],
@@ -6678,10 +6681,9 @@ const LANG_MAP=[
   /* profiling */
   ['#profil-summary','html','Pour mieux vous aider <span style="font-size:10px">▸ facultatif</span>','Help us serve you better <span style="font-size:10px">▸ optional</span>','更好地为您服务 <span style="font-size:10px">▸ 可选</span>'],
   ['#label-source','text','Comment nous avez-vous trouvé ?','How did you find us?','您是如何找到我们的？'],
-  ['#label-logement','text','Type de logement','Type of accommodation','住房类型'],
+  ['#label-logement','text','Surface à climatiser','Area to cool','需降温面积'],
   ['#label-motif','text','Pourquoi vous louez ?','Why are you renting?','您为什么租赁？'],
   /* RGPD */
-  ['#label-rgpd','html','J\'accepte que mes coordonnées servent uniquement à organiser ma livraison. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Politique de confidentialité</a>','I agree my details are used solely to organise my delivery. <a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">Privacy policy</a>','我同意我的个人信息仅用于安排配送。<a href="/confidentialite" style="color:var(--blue);text-decoration:underline;font-size:11px">隐私政策</a>'],
   ['#label-mkt','html','J\'accepte de recevoir les offres et actualités Loc\'Air par email. <span style="color:var(--grey2);font-size:10px">Optionnel · désinscription en 1 clic</span>','I agree to receive Loc\'Air offers and news by email. <span style="color:var(--grey2);font-size:10px">Optional · unsubscribe in 1 click</span>','我同意通过邮件接收Loc\'Air的优惠和资讯。<span style="color:var(--grey2);font-size:10px">可选 · 一键退订</span>'],
   /* pay button & next steps */
   ['#sbtn-lbl','text','Procéder au paiement','Proceed to payment','前往支付'],
@@ -7569,7 +7571,7 @@ else{_updateChromeH();}
     const idx=MOIS[m[1].toLowerCase()];
     if(idx===undefined)return;
     const diff=(now.getFullYear()-parseInt(m[2]))*12+(now.getMonth()-idx);
-    const rel=_lang==='zh'?d===0?'今天':d===1?'昨天':d<7?d+'天前':d<30?Math.floor(d/7)+'周前':'很久以前':_lang==='en'
+    const rel=_lang==='zh'?diff<1?'ce mois-ci':diff===1?'1个月前':diff<12?diff+'个月前':diff<24?'1年前':Math.floor(diff/12)+'年前':_lang==='en'
       ?(diff<1?'this month':diff===1?'1 month ago':diff<12?diff+' months ago':diff<24?'1 year ago':Math.floor(diff/12)+' years ago')
       :(diff<1?'ce mois-ci':diff===1?'il y a 1 mois':diff<12?'il y a '+diff+' mois':diff<24?'il y a 1 an':'il y a '+Math.floor(diff/12)+' ans');
     el.textContent=el.textContent.replace(/·\s*\S+\s+\d{4}$/i,'· '+rel);
@@ -8085,7 +8087,7 @@ function upsellUnit2(){
     openModal(_heroDays||7);
     // Pre-fill note field with context
     setTimeout(()=>{
-      const note=document.getElementById('f-note');
+      const note=document.getElementById('f-instructions');
       if(note&&!note.value)note.value=_lang==='en'?'2nd AC — same address':_lang==='zh'?'第2台空调——同一地址':'2ème climatiseur — même adresse';
     },300);
   },80);
