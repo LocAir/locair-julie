@@ -21,8 +21,9 @@ module.exports = async (req, res) => {
         .order('ordre', { ascending: true });
       if (error) throw error;
 
-      const { data: vus } = await supabase
+      const { data: vus, error: vusErr } = await supabase
         .from('tutoriel_vus').select('video_id').eq('transporteur_id', transporteurId);
+      if (vusErr) throw vusErr;
       const vuIds = new Set((vus || []).map(v => v.video_id));
 
       const list = (videos || []).map(v => ({
