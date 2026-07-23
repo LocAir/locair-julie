@@ -212,8 +212,7 @@ function tplPostInstallation(ctx) {
     bodyHtml: `
       <p>Hello ${p},</p>
       <p>Your ${escHtml(ctx.modeleClimatiseur)} is installed and ready to use.</p>
-      <p>Any issue or question about how to use it? Our team is reachable at any time.</p>
-      <div class="box"><p style="margin:0">📖 Need a refresher? <a href="${ctx.lienTutoriel}" style="color:#1b3a5f">Check our FAQ</a>.</p></div>
+      <p>Any issue or question? Our team is reachable at any time.</p>
       <p style="font-size:13px;color:#888">If you have a minute, your review helps other families trust us:</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Leave a Google review ⭐',
   });
@@ -223,8 +222,7 @@ function tplPostInstallation(ctx) {
     bodyHtml: `
       <p>您好 ${p}，</p>
       <p>您的 ${escHtml(ctx.modeleClimatiseur)} 已安装完毕，可以使用。</p>
-      <p>如有任何问题或使用疑问，请随时联系我们的团队。</p>
-      <div class="box"><p style="margin:0">📖 需要使用说明？<a href="${ctx.lienTutoriel}" style="color:#1b3a5f">查看我们的常见问题</a>。</p></div>
+      <p>如有任何问题，请随时联系我们的团队。</p>
       <p style="font-size:13px;color:#888">如果您有时间，您的评价将帮助更多家庭了解我们：</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: '留下 Google 评价 ⭐',
   });
@@ -234,8 +232,7 @@ function tplPostInstallation(ctx) {
     bodyHtml: `
       <p>Bonjour ${p},</p>
       <p>Votre ${escHtml(ctx.modeleClimatiseur)} est installé et prêt à l'emploi.</p>
-      <p>Un souci, une question sur l'utilisation ? Notre équipe reste joignable à tout moment.</p>
-      <div class="box"><p style="margin:0">📖 Besoin d'un rappel sur l'utilisation ? <a href="${ctx.lienTutoriel}" style="color:#1b3a5f">Consultez notre guide</a>.</p></div>
+      <p>Un souci, une question ? Notre équipe reste joignable à tout moment.</p>
       <p style="font-size:13px;color:#888">Si vous avez une minute dès maintenant, votre avis nous aide beaucoup :</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Laisser un avis Google ⭐',
   });

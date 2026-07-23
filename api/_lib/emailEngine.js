@@ -73,7 +73,6 @@ async function buildEmailContext(supabase, reservation) {
       : '€' + _prixBase.toFixed(2),
     modeleClimatiseur: appareil?.reference || "Climatiseur mobile Loc'Air",
     lienEspaceClient: 'https://www.locair.fr/#contact',
-    lienTutoriel:     'https://www.locair.fr/#faq',
     lienProlongation: `https://www.locair.fr/prolongation?ref=${encodeURIComponent(reservation.ref || '')}`,
   };
 }

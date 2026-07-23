@@ -24,7 +24,6 @@ function fakeReservationCtx() {
     montantFmt: '140,00 €',
     modeleClimatiseur: 'Climatiseur mobile Rowenta 10000 BTU',
     lienEspaceClient: 'https://www.locair.fr/#contact',
-    lienTutoriel: 'https://www.locair.fr/#faq',
     lienProlongation: 'https://www.locair.fr/prolongation?ref=TEST-0001',
   };
 }
