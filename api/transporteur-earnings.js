@@ -76,14 +76,16 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'demander_virement') {
-      const { data: faites } = await supabase
+      const { data: faites, error: faitesErr } = await supabase
         .from('livraisons').select('montant_du_cents')
         .eq('transporteur_id', transporteurId).eq('statut', 'fait').eq('paye', false).eq('valide', true);
+      if (faitesErr) throw faitesErr;
       const montant = (faites || []).reduce((s, f) => s + (f.montant_du_cents || 0), 0);
       if (montant <= 0) return res.status(400).json({ error: 'Aucun montant à virer pour le moment' });
 
-      const { data: enCours } = await supabase
+      const { data: enCours, error: enCoursErr } = await supabase
         .from('virements').select('id').eq('transporteur_id', transporteurId).eq('statut', 'demande').limit(1);
+      if (enCoursErr) throw enCoursErr;
       if (enCours && enCours.length) return res.status(409).json({ error: 'Une demande est déjà en cours' });
 
       const { error } = await supabase.from('virements').insert({ transporteur_id: transporteurId, montant_cents: montant, statut: 'demande' });

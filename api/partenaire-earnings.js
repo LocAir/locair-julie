@@ -78,16 +78,18 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'demander_virement') {
-      const { data: resas } = await supabase
+      const { data: resas, error: resasErr } = await supabase
         .from('reservations')
         .select('partenaire_commission_cents')
         .eq('partenaire_id', partenaireId).in('statut', ['confirmee', 'terminee']).eq('masquee', false)
         .eq('partenaire_commission_payee', false);
+      if (resasErr) throw resasErr;
       const montant = (resas || []).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
       if (montant <= 0) return res.status(400).json({ error: 'Aucun montant à virer pour le moment' });
 
-      const { data: enCours } = await supabase
+      const { data: enCours, error: enCoursErr } = await supabase
         .from('partenaire_virements').select('id').eq('partenaire_id', partenaireId).eq('statut', 'demande').limit(1);
+      if (enCoursErr) throw enCoursErr;
       if (enCours && enCours.length) return res.status(409).json({ error: 'Une demande est déjà en cours' });
 
       const { error } = await supabase.from('partenaire_virements').insert({ partenaire_id: partenaireId, montant_cents: montant, statut: 'demande' });

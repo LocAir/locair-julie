@@ -15,11 +15,12 @@ function getClientIp(req) {
 // chiffres depuis une seule adresse.
 async function isRateLimited(supabase, key, maxAttempts = 10, windowMinutes = 15) {
   const since = new Date(Date.now() - windowMinutes * 60000).toISOString();
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from('login_attempts')
     .select('id', { count: 'exact', head: true })
     .eq('key', key)
     .gte('created_at', since);
+  if (error) throw error;
   return (count || 0) >= maxAttempts;
 }
 
