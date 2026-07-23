@@ -6,13 +6,157 @@ const { isValidDate, addDays } = require('./_lib/dates');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
 const { confirmReservation, sendConfirmationCommunications, sendProlongationConfirmation } = require('./_lib/reservations');
-const { fmtDate } = require('./_lib/emailEngine');
+const { fmtDate, getSignature, withSignature } = require('./_lib/emailEngine');
+const { sendBrevoEmail } = require('./_lib/brevo');
+const { tplLienPaiement } = require('./_lib/emailTemplates');
+const { calcTieredPrice } = require('./_lib/pricing');
 const { computeOrderStatus } = require('./_lib/orderStatus');
 const { syncStatutDetaille } = require('./_lib/statutDetaille');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 
 const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
+
+// Doit rester synchronisé avec INSTALL_FEE dans checkout.js/index.html — même
+// remarque que là-bas : un écart ferait afficher un détail différent du tarif
+// réel appliqué sur le site.
+const INSTALL_FEE_CENTS = 4900;
+
+function fmtEuros(cents) {
+  return ((cents || 0) / 100).toFixed(2).replace('.', ',') + ' €';
+}
+
+// Détail location/installation/livraison, pour donner au client par email et
+// sur la page de paiement Stripe le même récapitulatif que le site (voir
+// #recap-box dans index.html : "Location (X jours)" / "Pose technicien ou
+// autonome" / "Livraison & récupération"). Le prix total reste celui saisi
+// à la main par l'admin au téléphone (peut inclure une remise) — on retrouve
+// la part "livraison" par différence plutôt que de la recalculer depuis
+// l'adresse (le formulaire manuel ne capture pas de code postal séparé). Si
+// ce reste est négatif (le prix saisi est inférieur au tarif de base attendu
+// — remise plus importante que la livraison ne peut l'absorber), impossible
+// de présenter un détail cohérent : on revient à un montant global simple.
+function computeManualBreakdown(resa) {
+  const days = Math.max(1, Math.round((new Date(resa.date_fin + 'T00:00:00Z') - new Date(resa.date_debut + 'T00:00:00Z')) / 86400000));
+  const qty = Math.max(1, resa.quantite || 1);
+  const baseCents = Math.round(calcTieredPrice(days) * qty * 100);
+  const isTech = (resa.installation || '').startsWith('Technicien');
+  const installCents = isTech ? INSTALL_FEE_CENTS : 0;
+  const livraisonCents = (resa.prix_total_cents || 0) - baseCents - installCents;
+  if (livraisonCents < 0) return null;
+  return { days, qty, baseCents, installCents, livraisonCents, isTech };
+}
+
+// Lien de paiement Stripe pour une réservation manuelle "en attente" (prise
+// par téléphone, client pas présent pour payer tout de suite). Crée une
+// session Stripe Checkout hébergée — aucune page à construire côté site, le
+// client paie directement sur la page Stripe — puis relie son PaymentIntent
+// à la réservation déjà créée (stripe_payment_intent_id) : c'est ce même
+// champ que le webhook Stripe (webhook.js) utilise pour retrouver et
+// confirmer une réservation payée sur le site, donc dès que le client paie,
+// exactement le même circuit se déclenche ici (missions créées, contrat/
+// facture, email de confirmation) — sans rien dupliquer. setup_future_usage
+// crée aussi une carte enregistrable pour le prélèvement automatique en cas
+// de retard de restitution (voir charge-retard.js), comme pour une
+// réservation payée sur le site.
+async function sendReservationPaymentLink(supabase, stripe, resa) {
+  if (!resa.email) return { ok: false, error: 'Aucun email sur cette réservation' };
+  let html = '';
+  try {
+    let customerId = resa.stripe_customer_id || '';
+    if (!customerId) {
+      const existing = await stripe.customers.list({ email: resa.email, limit: 1 });
+      if (existing.data.length > 0) {
+        customerId = existing.data[0].id;
+      } else {
+        const customer = await stripe.customers.create({
+          email: resa.email,
+          name:  [resa.prenom, resa.nom].filter(Boolean).join(' ') || undefined,
+          phone: resa.tel || undefined,
+        });
+        customerId = customer.id;
+      }
+    }
+
+    // Détaillé en plusieurs articles (comme le récapitulatif du site) plutôt
+    // qu'un seul montant global — le client voit sur la page de paiement
+    // Stripe exactement la même décomposition que sur locair.fr.
+    const breakdown = computeManualBreakdown(resa);
+    const lineItem = (name, unit_amount) => ({ price_data: { currency: 'eur', unit_amount, product_data: { name } }, quantity: 1 });
+    const line_items = breakdown ? [
+      lineItem(`Location climatiseur — ${breakdown.days} jour${breakdown.days > 1 ? 's' : ''}${breakdown.qty > 1 ? ' × ' + breakdown.qty : ''}`, breakdown.baseCents),
+      ...(breakdown.installCents > 0 ? [lineItem('Installation par un technicien', breakdown.installCents)] : []),
+      ...(breakdown.livraisonCents > 0 ? [lineItem('Livraison & récupération', breakdown.livraisonCents)] : []),
+    ] : [lineItem(`Loc'Air — Réservation ${resa.ref}`, resa.prix_total_cents)];
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      customer: customerId,
+      payment_intent_data: {
+        setup_future_usage: 'off_session',
+        receipt_email: resa.email,
+        description: `Loc'Air — Réservation ${resa.ref}`,
+      },
+      line_items,
+      success_url: 'https://www.locair.fr/?paiement=confirme',
+      cancel_url:  'https://www.locair.fr/?paiement=annule',
+      // Mêmes clés que checkout.js (site) — c'est ce que lit webhook.js pour
+      // la notification Formspree et le SMS de confirmation.
+      metadata: {
+        ref: resa.ref || '', prenom: resa.prenom || '', nom: resa.nom || '',
+        tel: resa.tel || '', adresse: resa.adresse || '',
+        date: resa.date_debut || '', creneau: resa.creneau || '',
+        installation: resa.installation || '', fenetre: resa.fenetre || '',
+        etage: resa.etage || '', ascenseur: resa.ascenseur || '',
+        customer_id: customerId,
+      },
+    });
+
+    await supabase.from('reservations').update({
+      stripe_payment_intent_id: session.payment_intent,
+      stripe_customer_id: customerId,
+    }).eq('id', resa.id);
+
+    const breakdownRows = breakdown ? [
+      { label: `Location (${breakdown.days} jour${breakdown.days > 1 ? 's' : ''}${breakdown.qty > 1 ? ' × ' + breakdown.qty + ' climatiseurs' : ''})`, value: fmtEuros(breakdown.baseCents) },
+      { label: breakdown.isTech ? 'Installation par un technicien' : 'Installation autonome (kit fourni)', value: breakdown.isTech ? fmtEuros(breakdown.installCents) : 'Inclus' },
+      { label: 'Livraison & récupération', value: fmtEuros(breakdown.livraisonCents) },
+    ] : null;
+
+    const sig = await getSignature(supabase);
+    html = withSignature(tplLienPaiement({
+      prenom: resa.prenom, ref: resa.ref, adresse: resa.adresse,
+      dateDebutFmt: fmtDate(resa.date_debut), dateFinFmt: fmtDate(resa.date_fin),
+      montantFmt: fmtEuros(resa.prix_total_cents),
+      breakdown: breakdownRows,
+      lienPaiement: session.url,
+    }), sig);
+    const result = await sendBrevoEmail({
+      to: resa.email, senderName: sig.nom_expediteur,
+      subject: `💳 Finalisez votre réservation Loc'Air — Dossier ${resa.ref}`,
+      html,
+    });
+    supabase.from('email_log').insert({
+      reservation_id: resa.id, scenario: 'lien_paiement', canal: 'email',
+      destinataire: resa.email, modele: 'lien_paiement',
+      statut: result.ok ? 'envoye' : 'erreur',
+      erreur: result.ok ? null : String(result.error || '').slice(0, 500),
+      contenu: html,
+    }).catch(() => {});
+    if (!result.ok) return { ok: false, error: result.error || 'Échec envoi email' };
+    return { ok: true };
+  } catch (e) {
+    console.error('[Lien paiement]', e.message);
+    if (html) {
+      supabase.from('email_log').insert({
+        reservation_id: resa.id, scenario: 'lien_paiement', canal: 'email',
+        destinataire: resa.email, modele: 'lien_paiement', statut: 'erreur',
+        erreur: String(e.message || e).slice(0, 500), contenu: html,
+      }).catch(() => {});
+    }
+    return { ok: false, error: e.message };
+  }
+}
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -170,7 +314,23 @@ module.exports = async (req, res) => {
       if (error) throw error;
 
       if (!confirmerImmediat) {
-        return res.status(200).json({ ok: true, ref, en_attente: true, reservation: { ...resa, masquee: false } });
+        // Client pas présent pour payer tout de suite (pris au téléphone) :
+        // envoie immédiatement un lien de paiement Stripe par email, pour
+        // qu'il puisse finaliser en quelques instants. Sans email, la
+        // réservation reste créée mais personne ne peut la payer — on le
+        // signale explicitement à l'admin plutôt que de laisser croire que
+        // tout est en ordre (voir lien_envoye dans la réponse).
+        let lienResult = { ok: false, error: 'Aucun email renseigné' };
+        if (resa.email) {
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+          lienResult = await sendReservationPaymentLink(supabase, stripe, resa);
+        }
+        return res.status(200).json({
+          ok: true, ref, en_attente: true,
+          lien_envoye: lienResult.ok,
+          lien_erreur: lienResult.ok ? null : lienResult.error,
+          reservation: { ...resa, masquee: false },
+        });
       }
       await confirmReservation(supabase, resa);
       // Une réservation prise au téléphone doit déclencher exactement les
@@ -184,6 +344,22 @@ module.exports = async (req, res) => {
         console.error('[Communications confirmation]', e.message);
       }
       return res.status(200).json({ ok: true, ref, reservation: { ...resa, statut: 'confirmee', masquee: false } });
+    }
+
+    // Renvoi manuel du lien de paiement (email perdu, lien expiré côté
+    // Stripe après 24h...) — recrée une session à chaque fois plutôt que de
+    // réutiliser l'ancienne, jamais payée de toute façon, qui a pu expirer.
+    if (action === 'renvoyer_lien_paiement') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { data: resa } = await supabase.from('reservations').select('*').eq('id', id).eq('city_id', city.id).maybeSingle();
+      if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
+      if (resa.statut !== 'en_attente') return res.status(422).json({ error: "Cette réservation n'est plus en attente de paiement." });
+      if (!resa.email) return res.status(400).json({ error: 'Aucun email sur cette réservation — ajoutes-en un depuis "Modifier" avant de renvoyer le lien.' });
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      const result = await sendReservationPaymentLink(supabase, stripe, resa);
+      if (!result.ok) return res.status(502).json({ error: `Échec de l'envoi : ${result.error}` });
+      return res.status(200).json({ ok: true });
     }
 
     // Prolongation prise en direct par l'admin (téléphone) — même principe que

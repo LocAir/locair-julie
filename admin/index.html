@@ -2143,6 +2143,7 @@ function reservationRowHtml(res, readOnly){
           <summary title="Plus d'actions">⋯</summary>
           <div class="more-actions-menu">
             <button onclick="openEditReservationModal(${res.id})">✏️ Modifier</button>
+            ${res.statut==='en_attente' && res.source==='manuel' && res.email ? `<button onclick="renvoyerLienPaiement(${res.id})">🔁 Renvoyer le lien de paiement</button>` : ''}
             ${res.appareils_en_attente_validation?`<button onclick="validerAppareilsReservation(${res.id})">🔍 Valider l'appareil attribué</button>`:''}
             ${res.statut==='confirmee'?`<button onclick="reaffecterAppareilReservation(${res.id})">🔄 Réaffecter l'appareil</button>`:''}
             ${res.statut==='confirmee'?`<button onclick="proposerOffrePrivilegeManuelle(${res.id})">⭐ Proposer l'Offre Privilège</button>`:''}
@@ -2657,7 +2658,10 @@ function typeClientPayload(prefix){
 // d'accès/créneau) — sans eux une mission créée à la main dans l'admin arrive
 // chez le transporteur avec des "—" partout, alors que ces infos sont
 // systématiquement collectées sur le site public.
-const INSTALLATION_OPTIONS = ['Autonome (kit fourni)', 'Technicien (25€)'];
+// "49€", pas "25€" — doit rester synchronisé avec INSTALL_FEE (checkout.js/
+// index.html) : c'est ce tarif que sendReservationPaymentLink (admin-
+// reservations.js) facture réellement pour une installation technicien.
+const INSTALLATION_OPTIONS = ['Autonome (kit fourni)', 'Technicien (49€)'];
 const FENETRE_OPTIONS = ['À confirmer', 'Fenêtre coulissante', 'Fenêtre à battant', 'Oscillo-battant', 'Porte-fenêtre', 'Vélux / toit'];
 function logisticsFieldsHtml(prefix, v){
   v = v || {};
@@ -2720,6 +2724,13 @@ async function createReservation(confirmer){
     errEl.style.display = 'block';
     return;
   }
+  // "Paiement à finaliser" envoie tout de suite un lien de paiement Stripe
+  // par email — sans email, personne ne peut payer la réservation créée.
+  if(!confirmer && !body.email){
+    errEl.textContent = 'Email obligatoire pour envoyer le lien de paiement au client.';
+    errEl.style.display = 'block';
+    return;
+  }
   await submitReservation(body, submitBtn, errEl);
 }
 async function submitReservation(body, submitBtn, errEl){
@@ -2741,7 +2752,12 @@ async function submitReservation(body, submitBtn, errEl){
       RESERVATIONS_CACHE.unshift(d.reservation);
     }
     setReservationsView('liste');
-    showToast(d.en_attente ? `Réservation ${d.ref} créée, en attente de paiement` : `Réservation ${d.ref} créée et confirmée`, 'success');
+    if(d.en_attente){
+      if(d.lien_envoye) showToast(`Réservation ${d.ref} créée — lien de paiement envoyé au client`, 'success');
+      else showToast(`Réservation ${d.ref} créée, mais le lien de paiement n'a pas pu être envoyé (${d.lien_erreur || 'erreur'}) — renvoie-le depuis la fiche`, 'error');
+    } else {
+      showToast(`Réservation ${d.ref} créée et confirmée`, 'success');
+    }
   }catch(e){
     errEl.textContent = e.message; errEl.style.display = 'block';
   }finally{
@@ -2763,6 +2779,17 @@ function cancelReservation(id){
       showToast(e.message, 'error');
     }
   }, {danger:true, yesLabel:'Annuler la réservation'});
+}
+// Renvoyer le lien de paiement Stripe (email perdu, lien expiré après 24h) —
+// recrée une session à chaque fois côté serveur, voir admin-reservations.js.
+function renvoyerLienPaiement(id){
+  confirmAction('Renvoyer le lien de paiement au client par email ?', async () => {
+    try{
+      const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'renvoyer_lien_paiement', id})});
+      if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+      showToast('Lien de paiement renvoyé', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {yesLabel:'Renvoyer'});
 }
 // Validation administrative de l'attribution d'un appareil (Module 6, Partie 6).
 function validerAppareilsReservation(id){

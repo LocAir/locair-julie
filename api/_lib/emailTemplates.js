@@ -515,10 +515,43 @@ function tplNouveauCodeTransporteur({ nom, pin }) {
   });
 }
 
+// Lien de paiement Stripe pour une réservation prise par téléphone et encore
+// "en attente" (interne — FR uniquement, même principe que tplContratFacture/
+// tplFactureVente). Une fois payé, le webhook Stripe déclenche exactement le
+// même circuit qu'un paiement fait sur le site (missions, documents, email
+// de confirmation) — d'où le rappel que l'espace client fonctionne déjà avec
+// juste l'email et le numéro de dossier ci-dessous, sans mot de passe.
+function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, montantFmt, lienPaiement, breakdown }) {
+  const p = escHtml(prenom || '');
+  // Même détail que le récapitulatif de commande du site (#recap-box dans
+  // index.html) : location / installation / livraison, plutôt qu'un seul
+  // montant global — pour que le client retrouve les mêmes repères.
+  const breakdownHtml = (breakdown && breakdown.length) ? `
+      <div class="box">
+        ${breakdown.map(r => `<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:6px"><span>${escHtml(r.label)}</span><span>${escHtml(r.value)}</span></div>`).join('')}
+        <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid rgba(27,58,95,.15);font-weight:700;color:#1b3a5f"><span>Total à régler</span><span>${escHtml(montantFmt)}</span></div>
+      </div>` : `<div class="box"><p style="margin:0"><strong>Montant à régler :</strong> ${escHtml(montantFmt || '')}</p></div>`;
+  return wrap({
+    title: '💳 Finalisez votre réservation',
+    intro: `Bonjour ${p}, votre réservation est prête — il ne reste que le paiement à finaliser.`,
+    bodyHtml: `
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">VOTRE DOSSIER</p><strong style="font-size:18px;color:#1b3a5f">${escHtml(ref)}</strong></div>
+      <p><strong>Adresse :</strong> ${escHtml(adresse || '')}<br/>
+      <strong>Livraison :</strong> ${escHtml(dateDebutFmt || '')}<br/>
+      <strong>Récupération :</strong> ${escHtml(dateFinFmt || '')}</p>
+      ${breakdownHtml}
+      <p>Cliquez sur le bouton ci-dessous pour payer en ligne, en toute sécurité (paiement géré par Stripe).</p>
+      <p style="font-size:13px;color:#444">Une fois le paiement reçu, vous recevrez un email de confirmation. Vous pourrez alors suivre votre location à tout moment sur <strong>votre espace client</strong>, avec juste votre email et le numéro de dossier ci-dessus — pas besoin de mot de passe.</p>`,
+    ctaHref: lienPaiement,
+    ctaLabel: 'Payer maintenant →',
+  });
+}
+
 module.exports = {
   escHtml, wrap,
   tplConfirmation, tplSuiviJ14, tplPreparationJ3, tplRappelJ1,
   tplPostInstallation, tplAvantFinLocation, tplRappelRecuperation, tplFinLocation,
   tplProlongConfirmation, tplContratFacture, tplFactureVente,
   tplAmbassadeurCredentials, tplNouveauCodeAmbassadeur, tplNouveauCodeTransporteur,
+  tplLienPaiement,
 };
