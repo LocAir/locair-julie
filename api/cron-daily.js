@@ -5,7 +5,7 @@ const { pushToAdmin, pushToTransporteur } = require('./_lib/push');
 const { getAvailability }      = require('./_lib/stock');
 const { notifyIfSoldOut }      = require('./_lib/city');
 const { runWeeklyReport }      = require('./cron-weekly');
-const { runMonthlyRecap }      = require('./cron-monthly');
+const { runMonthlyRecap, runDormantClientsWinback } = require('./cron-monthly');
 const { calcTieredPrice: calcRetardPrice } = require('./_lib/pricing');
 const { scenariosDueToday } = require('./_lib/emailSchedule');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
@@ -475,6 +475,13 @@ module.exports = async (req, res) => {
     }
   } catch (e) {
     console.error('[Cron monthly via daily]', e.message);
+  }
+  try {
+    if (today.getDate() === 1) { // 1er du mois — même cadence que le récap virements
+      report.dormants = await runDormantClientsWinback(supabase);
+    }
+  } catch (e) {
+    console.error('[Cron dormants via daily]', e.message);
   }
 
   return res.status(200).json({ ok: true, date: todayStr, ...report });
