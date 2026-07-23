@@ -30,7 +30,8 @@ async function resolveAdminAuth(token, supabase) {
   if (parts.length === 3 && parts[0].startsWith('adminuser:')) {
     const id = parseInt(parts[0].slice('adminuser:'.length), 10);
     if (Number.isFinite(id) && id > 0) {
-      const secret = process.env.TRANSPORTEUR_SECRET || '';
+      if (!process.env.TRANSPORTEUR_SECRET) return null;
+      const secret = process.env.TRANSPORTEUR_SECRET;
       const payload = `${parts[0]}.${parts[1]}`;
       const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
       if (safeEqual(parts[2], expected)) {

@@ -56,7 +56,8 @@ module.exports = async (req, res) => {
     }
     let origQuery = supabase
       .from('reservations').select('city_id, tel_secondaire, hors_zone, date_debut, date_fin, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement')
-      .ilike('email', String(data.email).trim());
+      .ilike('email', String(data.email).trim())
+      .not('source', 'eq', 'site_prolongation');
     if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim());
     ({ data: orig } = await origQuery.order('created_at', { ascending: false }).limit(1).maybeSingle());
     city = orig ? await resolveCityById(supabase, orig.city_id) : null;

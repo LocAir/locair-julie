@@ -115,7 +115,7 @@ module.exports = async (req, res) => {
     // marque le litige réglé (voir migration_partenaires_litiges.sql).
     const { count: partenaireLitigesCount } = await supabase
       .from('reservations').select('id', { count: 'exact', head: true })
-      .in('statut', ['annulee', 'remboursee']).eq('partenaire_commission_payee', true).eq('partenaire_litige_resolu', false);
+      .in('statut', ['annulee', 'remboursee']).eq('partenaire_commission_payee', true).eq('partenaire_litige_resolu', false).eq('masquee', false);
 
     // Catégorie "Stock" (Module 7, Partie 26) : climatiseurs en panne ou en
     // maintenance — jusqu'ici la seule catégorie du centre d'alertes du
