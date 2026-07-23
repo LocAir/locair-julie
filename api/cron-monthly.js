@@ -52,12 +52,12 @@ async function runMonthlyRecap(supabase) {
 
     const tids = Object.keys(byTransp).map(Number);
     const { data: transporteurs } = await supabase
-      .from('transporteurs').select('id, nom, tel, email').in('id', tids);
+      .from('transporteurs').select('id, nom, telephone, email').in('id', tids);
 
     const entries = (transporteurs || []).map(t => ({
-      nom:   t.nom,
-      tel:   t.tel,
-      email: t.email,
+      nom:       t.nom,
+      telephone: t.telephone,
+      email:     t.email,
       total: byTransp[t.id]?.total || 0,
       nb:    byTransp[t.id]?.nb    || 0,
     })).sort((a, b) => b.total - a.total);
@@ -108,10 +108,10 @@ ${rows}
 
     // SMS à chaque transporteur avec son total
     for (const entry of entries) {
-      if (!entry.tel) continue;
+      if (!entry.telephone) continue;
       const totalEur = (entry.total / 100).toFixed(2);
       await sendBrevoSms({
-        to:      entry.tel,
+        to:      entry.telephone,
         content: `Loc'Air : récap ${nomMois} ${annee} — ${entry.nb} mission${entry.nb > 1 ? 's' : ''}, total : ${totalEur} €. Virement en cours de préparation. Questions : 06 63 79 87 56`,
       }).catch(() => {});
     }
