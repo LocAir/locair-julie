@@ -3,7 +3,7 @@ const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
+  if (!secret) return false;
   return (req.headers['authorization'] || '') === `Bearer ${secret}`;
 }
 

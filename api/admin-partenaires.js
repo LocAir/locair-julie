@@ -53,7 +53,9 @@ module.exports = async (req, res) => {
     if (action === 'list') {
       const { data, error } = await supabase.from('partenaires').select('*').order('nom');
       if (error) throw error;
-      return res.status(200).json({ partenaires: data || [] });
+      return res.status(200).json({
+        partenaires: (data || []).map(p => { const { pin: _pin, iban: _iban, ...safeP } = p; return safeP; }),
+      });
     }
 
     if (action === 'create') {
