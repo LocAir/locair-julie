@@ -252,25 +252,30 @@ module.exports = async (req, res) => {
       const SEUIL = parseInt(process.env.MAINTENANCE_SEUIL) || 15;
       const seuilDate = new Date(Date.now() - CONTROLE_SEUIL_MOIS * 30 * 86400000).toISOString();
       const { data: appareils } = await supabase
-        .from('appareils').select('id, numero, created_at').eq('city_id', city.id).eq('statut', 'disponible');
+        .from('appareils').select('id, numero, created_at, nb_locations_historique').eq('city_id', city.id).eq('statut', 'disponible');
 
       const items = [];
       for (const app of appareils || []) {
-        const [{ count: nbLocations }, { data: mouvements }] = await Promise.all([
+        const [{ count: nbLocationsActuelles }, { data: mouvements }] = await Promise.all([
           supabase.from('reservation_appareils').select('id', { count: 'exact', head: true }).eq('appareil_id', app.id),
           supabase.from('appareil_mouvements').select('type_evenement, commentaire, created_at')
             .eq('appareil_id', app.id).in('type_evenement', ['passage_maintenance', 'autre'])
             .order('created_at', { ascending: false }).limit(20),
         ]);
+        // + nb_locations_historique : locations perdues du décompte "actuel"
+        // par un échange/réaffectation passé (voir bumpNbLocationsHistorique
+        // plus haut) — même calcul que cron-daily.js et admin-offres-privilege.js,
+        // sinon un appareil souvent échangé n'atteint jamais le seuil d'usage ici.
+        const nbLocations = (nbLocationsActuelles || 0) + (app.nb_locations_historique || 0);
         const dernierControle = (mouvements || []).find(m => m.type_evenement === 'passage_maintenance' || (m.commentaire || '').startsWith(CONTROLE_MARQUEUR));
 
-        const usageDepasse = (nbLocations || 0) >= SEUIL;
+        const usageDepasse = nbLocations >= SEUIL;
         const controleAncien = !dernierControle || dernierControle.created_at < seuilDate;
         if (usageDepasse || controleAncien) {
           items.push({
             appareil_id: app.id,
             numero: app.numero,
-            nombre_locations: nbLocations || 0,
+            nombre_locations: nbLocations,
             dernier_controle: dernierControle ? dernierControle.created_at : null,
             raison: usageDepasse ? 'usage' : 'calendaire',
           });
