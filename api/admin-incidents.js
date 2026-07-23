@@ -51,6 +51,8 @@ module.exports = async (req, res) => {
     if (action === 'update') {
       const id = parseInt(body.id);
       if (!id || !body.statut) return res.status(400).json({ error: 'Paramètres manquants' });
+      const STATUTS_VALIDES = ['nouveau', 'en_analyse', 'resolu', 'clos', 'retard_a_facturer'];
+      if (!STATUTS_VALIDES.includes(body.statut)) return res.status(400).json({ error: 'Statut invalide' });
       const { data: before } = await supabase
         .from('incidents').select('id, city_id, transporteur_id')
         .eq('id', id).maybeSingle();
