@@ -72,7 +72,7 @@ input[readonly]{background:var(--bg);color:var(--black2);font-size:14px}
 .stat-tile{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:16px;text-align:center;box-shadow:var(--sh-xs);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:94px}
 .stat-tile .n{font-family:var(--body);font-size:24px;font-weight:700;color:var(--black);font-variant-numeric:tabular-nums lining-nums;letter-spacing:-.03em}
 .stat-tile .l{font-size:11px;color:var(--grey);font-weight:600;margin-top:6px;text-transform:uppercase;letter-spacing:.03em;line-height:1.4}
-.section-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey-soft);margin:24px 2px 10px}
+.section-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey-soft);margin:24px 0 10px}
 .vlist{margin-top:6px}
 .vrow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule);font-size:14px}
 .vrow:last-child{border-bottom:none}
@@ -318,7 +318,7 @@ function renderDashboard(d){
   const enCours = (d.virements||[]).some(v => v.statut==='demande');
   zone.innerHTML = `
     <div class="card">
-      <h2>🔗 Ton lien d'affiliation</h2>
+      <h2>Ton lien d'affiliation</h2>
       <p class="sub" style="margin-bottom:14px">Mets ce lien sur ton site pour que tes clients réservent directement chez Loc'Air — chaque réservation faite depuis ce lien t'est automatiquement rattachée.</p>
       <div class="link-row">
         <input type="text" id="aff-link" value="${escHtml(link)}" readonly onclick="this.select()"/>
@@ -332,12 +332,12 @@ function renderDashboard(d){
     </div>
     <div class="stat-row">
       <div class="stat-tile"><div class="n">${d.reservations_aujourdhui||0}</div><div class="l">Réservation${(d.reservations_aujourdhui||0)>1?'s':''} aujourd'hui</div></div>
-      <div class="stat-tile"><div class="n" style="color:var(--green);font-weight:700">${euros(d.gain_aujourdhui_euros)}</div><div class="l">Gagné aujourd'hui</div></div>
+      <div class="stat-tile"><div class="n" style="color:var(--blue);font-weight:700">${euros(d.gain_aujourdhui_euros)}</div><div class="l">Gagné aujourd'hui</div></div>
       <div class="stat-tile"><div class="n">${d.reservations_mois||0}</div><div class="l">Réservation${(d.reservations_mois||0)>1?'s':''} ce mois</div></div>
-      <div class="stat-tile"><div class="n" style="color:var(--green);font-weight:700">${euros(d.gain_mois_euros)}</div><div class="l">Gagné ce mois</div></div>
+      <div class="stat-tile"><div class="n" style="color:var(--blue);font-weight:700">${euros(d.gain_mois_euros)}</div><div class="l">Gagné ce mois</div></div>
     </div>
-    <button class="btn btn-green" id="demander-virement-btn" ${(d.non_verse_euros>0 && !enCours)?'':'disabled'} onclick="demanderVirement()">💰 ${enCours?'Demande en cours…':'Demander mon virement'}</button>
-    ${(!d.non_verse_euros && !enCours)?`<p style="text-align:center;font-size:12.5px;color:var(--grey);margin-top:-6px">Pas de commission à verser pour l'instant</p>`:''}
+    <button class="btn btn-green" id="demander-virement-btn" ${(d.non_verse_euros>0 && !enCours)?'':'disabled'} onclick="demanderVirement()">${enCours?'Demande en cours…':'Demander mon virement →'}</button>
+    ${(!d.non_verse_euros && !enCours)?`<p style="text-align:center;font-size:12.5px;color:var(--grey);margin-top:8px">Pas de commission à verser pour l'instant</p>`:''}
     <div class="err" id="dash-err"></div>
     ${reservationsHistoryHtml(d.reservations)}
     ${(d.virements&&d.virements.length)?`
@@ -405,7 +405,7 @@ async function demanderVirement(){
   const errEl = document.getElementById('dash-err');
   const btn = document.getElementById('demander-virement-btn');
   if(errEl) errEl.style.display = 'none';
-  if(btn){ btn.disabled = true; btn.textContent = '💰 Envoi…'; }
+  if(btn){ btn.disabled = true; btn.textContent = 'Envoi…'; }
   try{
     const r = await fetch(API('partenaire-earnings'), {method:'POST', headers: authHeaders(), body: JSON.stringify({action:'demander_virement'})});
     const d = await r.json();
@@ -413,7 +413,7 @@ async function demanderVirement(){
     await loadDashboard(); // reconstruit le bouton avec le bon état ("Demande en cours…")
   }catch(e){
     if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
-    if(btn){ btn.disabled = false; btn.textContent = '💰 Demander mon virement'; }
+    if(btn){ btn.disabled = false; btn.textContent = 'Demander mon virement →'; }
   }
 }
 document.getElementById('lg-code').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
