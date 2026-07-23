@@ -1,5 +1,8 @@
 const { getSupabase }              = require('./_lib/supabase');
 const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
+const { getSignature, withSignature } = require('./_lib/emailEngine');
+const { tplRelanceDormant } = require('./_lib/emailTemplates');
+const { promoCodeForPrenom } = require('./_lib/promo');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
@@ -120,6 +123,65 @@ ${rows}
   }
 }
 
+// Relance commerciale des clients dormants (Module 8) — un client qui a
+// déjà loué mais plus depuis 6 mois ne recevait jusqu'ici jamais de
+// relance. Un seul enregistrement par client (sa réservation la plus
+// récente par date_fin) détermine s'il est dormant. La relance pointe
+// toujours vers CETTE réservation dans email_log (scenario
+// 'relance_dormant') — comme elle reste "la plus récente" tant que le
+// client n'a pas reloué, un simple "jamais encore relancé pour cette
+// réservation précise" suffit à ne jamais spammer deux fois pour la même
+// période de dormance, sans fenêtre de temps à gérer ni colonne
+// supplémentaire.
+async function runDormantClientsWinback(supabase) {
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  const sixMonthsAgoStr = sixMonthsAgo.toISOString().slice(0, 10);
+
+  const { data: resas } = await supabase
+    .from('reservations')
+    .select('id, client_id, statut, date_fin, mkt_consent, prenom, email')
+    .not('client_id', 'is', null);
+
+  const parClient = {};
+  for (const r of resas || []) {
+    const cur = parClient[r.client_id];
+    if (!cur || r.date_fin > cur.date_fin) parClient[r.client_id] = r;
+  }
+
+  let relanceCount = 0;
+  for (const dernier of Object.values(parClient)) {
+    if (dernier.statut !== 'terminee') continue;
+    if (dernier.date_fin >= sixMonthsAgoStr) continue;
+    // RGPD : seuls les clients ayant explicitement consenti au marketing
+    // sur leur dernière réservation reçoivent cette relance.
+    if (!dernier.mkt_consent || !dernier.email) continue;
+
+    const { count: dejaRelance } = await supabase
+      .from('email_log').select('id', { count: 'exact', head: true })
+      .eq('reservation_id', dernier.id).eq('scenario', 'relance_dormant');
+    if (dejaRelance) continue;
+
+    const codePromo = promoCodeForPrenom(dernier.prenom, 20);
+    const sig = await getSignature(supabase);
+    const html = withSignature(tplRelanceDormant({ prenom: dernier.prenom, codePromo }), sig);
+    const result = await sendBrevoEmail({
+      to: dernier.email, senderName: sig.nom_expediteur,
+      subject: `☀️ ${dernier.prenom ? dernier.prenom + ', une' : 'Une'} réduction vous attend chez Loc'Air`,
+      html,
+    });
+    await supabase.from('email_log').insert({
+      reservation_id: dernier.id, scenario: 'relance_dormant', canal: 'email',
+      destinataire: dernier.email, modele: 'relance_dormant',
+      statut: result.ok ? 'envoye' : 'erreur',
+      erreur: result.ok ? null : String(result.error || '').slice(0, 500),
+      contenu: html,
+    }).catch(() => {});
+    if (result.ok) relanceCount++;
+  }
+  return { relancesDormants: relanceCount };
+}
+
 // Conservé comme endpoint indépendant (déclenchable manuellement avec
 // CRON_SECRET) même si non planifié directement — voir cron-daily.js qui
 // l'appelle le 1er de chaque mois.
@@ -135,3 +197,4 @@ module.exports = async (req, res) => {
   }
 };
 module.exports.runMonthlyRecap = runMonthlyRecap;
+module.exports.runDormantClientsWinback = runDormantClientsWinback;

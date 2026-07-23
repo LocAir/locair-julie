@@ -549,11 +549,28 @@ function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, monta
   });
 }
 
+// Relance commerciale d'un client dormant (Module 8) — n'a pas reloué
+// depuis longtemps (voir cron-monthly.js, runDormantClientsWinback).
+// Réutilise le système de code promo déterministe déjà en place
+// (api/_lib/promo.js), aucune nouvelle infrastructure de code.
+function tplRelanceDormant({ prenom, codePromo }) {
+  const p = escHtml(prenom || '');
+  return wrap({
+    title: '☀️ On ne vous a pas oublié !',
+    intro: `Bonjour ${p}, ça fait un moment — voici une réduction pour votre prochaine location.`,
+    bodyHtml: `
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">VOTRE CODE PROMO</p><strong style="font-size:22px;color:#1b3a5f;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
+      <p>Utilisez-le au moment de réserver sur notre site — la réduction s'applique automatiquement.</p>`,
+    ctaHref: 'https://www.locair.fr',
+    ctaLabel: 'Réserver maintenant →',
+  });
+}
+
 module.exports = {
   escHtml, wrap,
   tplConfirmation, tplSuiviJ14, tplPreparationJ3, tplRappelJ1,
   tplPostInstallation, tplAvantFinLocation, tplRappelRecuperation, tplFinLocation,
   tplProlongConfirmation, tplContratFacture, tplFactureVente,
   tplAmbassadeurCredentials, tplNouveauCodeAmbassadeur, tplNouveauCodeTransporteur,
-  tplLienPaiement,
+  tplLienPaiement, tplRelanceDormant,
 };
