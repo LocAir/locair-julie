@@ -137,10 +137,11 @@ module.exports = async (req, res) => {
       if (tErr) throw tErr;
 
       const d30 = new Date(); d30.setDate(d30.getDate()-30);
+      const todayStr = new Date().toISOString().slice(0,10);
       const tIds = (tList||[]).map(t => t.id);
       const { data: livs30 } = tIds.length
         ? await supabase.from('livraisons')
-            .select('transporteur_id, statut, type, client_notifie_at, fait_at, accepted_at, photo_depart_path, photo_installation_path, photo_retour_path, probleme_type')
+            .select('transporteur_id, statut, type, date_prevue, client_notifie_at, fait_at, accepted_at, photo_depart_path, photo_installation_path, photo_retour_path, probleme_type')
             .in('transporteur_id', tIds)
             .gte('date_prevue', d30.toISOString().slice(0,10))
         : { data: [] };
@@ -148,12 +149,23 @@ module.exports = async (req, res) => {
       const byT = {};
       (livs30||[]).forEach(m => { if(!byT[m.transporteur_id])byT[m.transporteur_id]=[]; byT[m.transporteur_id].push(m); });
 
-      const transporteurs = (tList||[]).map(t => ({
-        ...t,
-        en_pause:    t.en_pause || false,
-        missions_30j: (byT[t.id]||[]).length,
-        perf_score:  computePerf(byT[t.id]||[]).score,
-      }));
+      const transporteurs = (tList||[]).map(t => {
+        const missions = byT[t.id] || [];
+        // Le score juge la fiabilité sur ce qui a déjà eu lieu — une mission
+        // programmée dans le futur (pas encore due) n'a pas encore eu la
+        // chance d'être acceptée/terminée. La compter comme "à faire jamais
+        // finie" faisait chuter à tort le taux de complétion d'un
+        // transporteur simplement parce qu'il a des missions à venir la
+        // semaine prochaine, jusqu'à parfois déclencher le badge rouge
+        // "problème" sans qu'il y ait le moindre vrai problème.
+        const missionsDues = missions.filter(m => m.date_prevue <= todayStr);
+        return {
+          ...t,
+          en_pause:    t.en_pause || false,
+          missions_30j: missions.length,
+          perf_score:  computePerf(missionsDues).score,
+        };
+      });
 
       return res.status(200).json({ transporteurs });
     }
@@ -181,6 +193,13 @@ module.exports = async (req, res) => {
         ? Math.round((missions.length - prevCount) / prevCount * 100)
         : (missions.length > 0 ? 100 : null);
 
+      // Même correctif que dans l'action 'list' ci-dessus : le score juge la
+      // fiabilité sur ce qui a déjà eu lieu, jamais sur des missions
+      // programmées dans le futur qui n'ont pas encore eu la chance d'être
+      // acceptées/terminées.
+      const todayStr = new Date().toISOString().slice(0,10);
+      const missionsDues = missions.filter(m => m.date_prevue <= todayStr);
+
       return res.status(200).json({
         total:        missions.length,
         fait:         missions.filter(m => m.statut === 'fait').length,
@@ -189,7 +208,7 @@ module.exports = async (req, res) => {
         lph:          computeLph(missions),
         growth,
         chart:        buildChart(missions, period),
-        perf:         computePerf(missions),
+        perf:         computePerf(missionsDues),
       });
     }
 
