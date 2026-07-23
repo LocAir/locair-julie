@@ -414,6 +414,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
             <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
             <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
             <button data-tab="communications" onclick="switchAdminTab('communications')">🎛️ Communications<span class="tab-badge hidden" id="badge-communications"></span></button>
+            <button data-tab="devis" onclick="switchAdminTab('devis')">📝 Devis</button>
           </div>
         </details>
         <details class="tabs-group" data-group="gerer">
@@ -446,6 +447,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
         <div id="tab-stock" class="hidden"></div>
         <div id="tab-reservations" class="hidden"></div>
         <div id="tab-communications" class="hidden"></div>
+        <div id="tab-devis" class="hidden"></div>
         <div id="tab-checklist" class="hidden"></div>
         <div id="tab-livraisons" class="hidden"></div>
         <div id="tab-virements" class="hidden"></div>
@@ -1164,13 +1166,14 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','communications','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
+  ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
   if(tab==='stock') loadStock();
   if(tab==='reservations') loadReservations();
   if(tab==='communications') loadCommunications();
+  if(tab==='devis') loadDevis();
   if(tab==='checklist') loadChecklistBox();
   if(tab==='livraisons') loadLivraisons();
   if(tab==='virements') loadVirementsTab();
@@ -1890,6 +1893,7 @@ async function loadStock(silent){
         </div>
       </div>` : ''}
       <div id="entretien-zone"></div>
+      <div id="commandes-fournisseur-zone"></div>
       <div class="card">
         <h2 style="margin-bottom:10px">Filtrer</h2>
         <input type="text" id="stock-f-numero" placeholder="🔎 N° de climatiseur ou référence" value="${escHtml(STOCK_FILTRES.filtre_numero||'')}" onchange="applyStockFiltres()" style="margin-bottom:8px"/>
@@ -1969,6 +1973,7 @@ async function loadStock(silent){
     // Chargée à part : complément, pas une donnée critique pour l'écran
     // Stock — inutile de retarder le reste si elle est lente.
     loadEntretienPreventif();
+    loadCommandesFournisseur();
   }catch(e){
     if(!silent) zone.innerHTML = '<p class="empty">Erreur de chargement.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="loadStock()">↻ Réessayer</button>';
   }
@@ -1996,6 +2001,95 @@ async function loadEntretienPreventif(){
     </div>`;
   }catch(e){}
 }
+// Commandes fournisseurs (Module 8) — simple suivi d'achat/budget : la
+// prévision de demande (onglet Accueil) dit "il faut racheter du stock",
+// ceci suit si la commande est passée et quand elle arrive. Ne crée jamais
+// d'appareils automatiquement — l'admin les ajoute via addAppareil() une
+// fois physiquement reçus.
+let COMMANDES_FOURNISSEUR_CACHE = [];
+const COMMANDE_STATUT_LABEL = {commande:'Commandée', en_transit:'En transit', livree:'Livrée', annulee:'Annulée'};
+async function loadCommandesFournisseur(){
+  const zone = document.getElementById('commandes-fournisseur-zone');
+  if(!zone) return;
+  try{
+    const r = await fetch(API('admin-commandes-fournisseur'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) return;
+    COMMANDES_FOURNISSEUR_CACHE = d.commandes || [];
+    renderCommandesFournisseur();
+  }catch(e){}
+}
+function renderCommandesFournisseur(){
+  const zone = document.getElementById('commandes-fournisseur-zone');
+  if(!zone) return;
+  const enCours = COMMANDES_FOURNISSEUR_CACHE.filter(c => !['livree','annulee'].includes(c.statut));
+  zone.innerHTML = `<div class="card">
+    <div class="section-title" style="margin-top:0">🛒 Commandes fournisseurs${enCours.length?' en cours ('+enCours.length+')':''}</div>
+    ${enCours.length ? enCours.map(c => `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${escHtml(c.fournisseur)} · ${c.quantite} appareil${c.quantite>1?'s':''}</span>
+          <span class="chip ${c.statut==='commande'?'a_faire':c.statut==='en_transit'?'en_attente':''}">${COMMANDE_STATUT_LABEL[c.statut]||c.statut}</span>
+        </div>
+        <div class="row-meta">${c.montant_cents?euros(c.montant_cents)+' · ':''}Commandée le ${frDate(c.date_commande)}${c.date_livraison_prevue?' · livraison prévue le '+frDate(c.date_livraison_prevue):''}${c.notes?' · '+escHtml(c.notes):''}</div>
+        <div class="row-actions">
+          ${c.statut==='commande'?`<button class="btn btn-grey" onclick="updateCommandeFournisseurStatut(${c.id},'en_transit',this)">🚚 En transit</button>`:''}
+          ${c.statut!=='livree'?`<button class="btn btn-green" onclick="updateCommandeFournisseurStatut(${c.id},'livree',this)">✅ Marquer livrée</button>`:''}
+          <button class="btn btn-red" onclick="updateCommandeFournisseurStatut(${c.id},'annulee',this)">✕ Annuler</button>
+        </div>
+      </div>`).join('') : '<p class="empty">Aucune commande en cours.</p>'}
+    <div style="margin-top:12px">
+      <label>Fournisseur</label>
+      <input type="text" id="cf-fournisseur" placeholder="Nom du fournisseur">
+      <div class="inline-form" style="margin-top:8px">
+        <div><label for="cf-quantite">Quantité</label><input type="number" id="cf-quantite" min="1" value="1"></div>
+        <div><label for="cf-montant">Montant (€)</label><input type="number" id="cf-montant" min="0" step="0.01"></div>
+      </div>
+      <label>Livraison prévue le</label>
+      <input type="date" id="cf-date-prevue">
+      <label>Notes (optionnel)</label>
+      <input type="text" id="cf-notes">
+      <div class="err" id="cf-err"></div>
+      <button class="btn btn-blue btn-block" style="margin-top:8px" onclick="createCommandeFournisseur()">+ Ajouter la commande</button>
+    </div>
+  </div>`;
+}
+async function createCommandeFournisseur(){
+  const fournisseur = document.getElementById('cf-fournisseur').value.trim();
+  const quantite = parseInt(document.getElementById('cf-quantite').value);
+  const errEl = document.getElementById('cf-err');
+  errEl.style.display = 'none';
+  if(!fournisseur){ errEl.textContent = 'Fournisseur requis.'; errEl.style.display = 'block'; return; }
+  if(!Number.isFinite(quantite) || quantite <= 0){ errEl.textContent = 'Quantité invalide.'; errEl.style.display = 'block'; return; }
+  const montantEuros = parseFloat(document.getElementById('cf-montant').value);
+  try{
+    const r = await fetch(API('admin-commandes-fournisseur'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action:'create', fournisseur, quantite,
+      montant_cents: Number.isFinite(montantEuros) ? Math.round(montantEuros*100) : 0,
+      date_livraison_prevue: document.getElementById('cf-date-prevue').value || null,
+      notes: document.getElementById('cf-notes').value,
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Commande ajoutée', 'success');
+    loadCommandesFournisseur();
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display = 'block';
+  }
+}
+async function updateCommandeFournisseurStatut(id, statut, btn){
+  btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-commandes-fournisseur'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update_statut', id, statut})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadCommandesFournisseur();
+    showToast(statut==='livree'?'Commande marquée livrée — pense à ajouter les appareils au stock':'Commande mise à jour', 'success');
+  }catch(e){
+    showToast(e.message, 'error');
+    btn.disabled = false;
+  }
+}
 async function logControleAppareil(appareilId, btn){
   btn.disabled = true;
   try{
@@ -2008,6 +2102,179 @@ async function logControleAppareil(appareilId, btn){
     showToast(e.message, 'error');
     btn.disabled = false;
   }
+}
+// Devis entreprises (Module 8) — reservations.type_client='entreprise' existe
+// déjà, mais rien ne permet de chiffrer une demande avant qu'elle s'engage.
+// "Accepté" ne crée jamais de réservation automatiquement : le bouton
+// "convertir" pré-remplit juste le formulaire de création manuelle existant
+// (nr-*), l'admin vérifie et valide lui-même — pas de duplication de la
+// logique de création de réservation ici.
+let DEVIS_CACHE = [];
+const DEVIS_STATUT_LABEL = {brouillon:'Brouillon', envoye:'Envoyé', accepte:'Accepté', refuse:'Refusé', expire:'Expiré'};
+async function loadDevis(){
+  const zone = document.getElementById('tab-devis');
+  zone.innerHTML = '<div class="card"><p class="sub">Chargement…</p></div>';
+  try{
+    const r = await fetch(API('admin-devis'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    DEVIS_CACHE = d.devis || [];
+    renderDevis();
+  }catch(e){
+    zone.innerHTML = `<div class="card"><p class="err" style="display:block">${escHtml(e.message)}</p></div>`;
+  }
+}
+function renderDevis(){
+  const zone = document.getElementById('tab-devis');
+  if(!zone) return;
+  const enCours = DEVIS_CACHE.filter(x => !['refuse','expire'].includes(x.statut));
+  zone.innerHTML = `
+    <div class="card">
+      <h2>📝 Devis entreprises</h2>
+      <p class="sub" style="margin-bottom:16px">Chiffrage envoyé à une entreprise avant engagement — n'affecte ni le stock ni le paiement.</p>
+      ${enCours.length ? enCours.map(x => `
+        <div class="row-item">
+          <div class="row-top">
+            <span class="row-title">${escHtml(x.raison_sociale)} · ${x.quantite} appareil${x.quantite>1?'s':''}</span>
+            <span class="chip ${x.statut==='accepte'?'ok':x.statut==='envoye'?'en_attente':'a_faire'}">${DEVIS_STATUT_LABEL[x.statut]||x.statut}</span>
+          </div>
+          <div class="row-meta">${escHtml(x.email)}${x.date_debut&&x.date_fin?' · du '+frDate(x.date_debut)+' au '+frDate(x.date_fin):''} · ${euros(x.prix_propose_cents)}${x.notes?' · '+escHtml(x.notes):''}</div>
+          <div class="row-actions">
+            ${x.statut==='brouillon'?`<button class="btn btn-blue" onclick="sendDevis(${x.id},this)">📧 Envoyer</button>`:''}
+            ${x.statut==='envoye'?`<button class="btn btn-green" onclick="updateDevisStatut(${x.id},'accepte',this)">✅ Accepté</button>`:''}
+            ${['brouillon','envoye'].includes(x.statut)?`<button class="btn btn-red" onclick="updateDevisStatut(${x.id},'refuse',this)">✕ Refusé</button>`:''}
+            ${x.statut==='accepte'?`<button class="btn btn-green" onclick="convertirDevisEnReservation(${x.id})">✅ Convertir en réservation</button>`:''}
+          </div>
+        </div>`).join('') : '<p class="empty">Aucun devis en cours.</p>'}
+      <div style="margin-top:16px">
+        <div class="section-title" style="margin-top:0">Nouveau devis</div>
+        <label>Raison sociale *</label>
+        <input type="text" id="dv-raison"/>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="dv-prenom">Prénom du contact</label><input type="text" id="dv-prenom"/></div>
+          <div><label for="dv-nom">Nom du contact</label><input type="text" id="dv-nom"/></div>
+        </div>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="dv-email">Email *</label><input type="email" id="dv-email"/></div>
+          <div><label for="dv-tel">Téléphone</label><input type="tel" id="dv-tel"/></div>
+        </div>
+        <label style="margin-top:8px">SIRET (optionnel)</label>
+        <input type="text" id="dv-siret"/>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="dv-debut">Date début</label><input type="date" id="dv-debut" oninput="dvRecalcPrice()"/></div>
+          <div><label for="dv-fin">Date fin</label><input type="date" id="dv-fin" oninput="dvRecalcPrice()"/></div>
+        </div>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="dv-qte">Quantité</label><input type="number" id="dv-qte" min="1" value="1" oninput="dvRecalcPrice()"/></div>
+          <div><label for="dv-prix">Prix proposé (€)</label><input type="number" id="dv-prix" min="0" step="0.5"/></div>
+        </div>
+        <p id="dv-price-preview" class="sub" style="display:none;margin:-6px 0 10px;font-size:12px"></p>
+        <label>Installation</label>
+        <select id="dv-installation">${INSTALLATION_OPTIONS.map(o=>`<option value="${o}">${o}</option>`).join('')}</select>
+        <label style="margin-top:8px">Notes (optionnel)</label>
+        <input type="text" id="dv-notes"/>
+        <div class="err" id="dv-err"></div>
+        <button class="btn btn-blue btn-block" style="margin-top:8px" onclick="createDevis()">+ Créer le devis</button>
+      </div>
+    </div>`;
+}
+function dvRecalcPrice(){
+  const debut = document.getElementById('dv-debut')?.value;
+  const fin   = document.getElementById('dv-fin')?.value;
+  const preview = document.getElementById('dv-price-preview');
+  const prixEl = document.getElementById('dv-prix');
+  if(!debut || !fin){ if(preview) preview.style.display = 'none'; return; }
+  const days = Math.round((new Date(fin+'T00:00:00Z') - new Date(debut+'T00:00:00Z')) / 86400000);
+  if(days < 1){ if(preview) preview.style.display = 'none'; return; }
+  const qte = Math.max(1, parseInt(document.getElementById('dv-qte')?.value) || 1);
+  const baseCents = Math.round(prCalcBase(days) * qte * 100);
+  if(preview){
+    preview.style.display = 'block';
+    preview.textContent = `Base location (${days} j${qte>1?' × '+qte:''}) : ${euros(baseCents)} — ajuste le prix proposé pour une remise entreprise.`;
+  }
+  if(prixEl && !prixEl.value) prixEl.value = (baseCents/100).toFixed(2);
+}
+async function createDevis(){
+  const errEl = document.getElementById('dv-err');
+  errEl.style.display = 'none';
+  const raison_sociale = document.getElementById('dv-raison').value.trim();
+  const email = document.getElementById('dv-email').value.trim();
+  if(!raison_sociale || !email){
+    errEl.textContent = 'Raison sociale et email sont obligatoires.';
+    errEl.style.display = 'block';
+    return;
+  }
+  try{
+    const r = await fetch(API('admin-devis'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action:'create', raison_sociale, email,
+      prenom: document.getElementById('dv-prenom').value.trim(),
+      nom: document.getElementById('dv-nom').value.trim(),
+      tel: document.getElementById('dv-tel').value.trim(),
+      siret: document.getElementById('dv-siret').value.trim(),
+      date_debut: document.getElementById('dv-debut').value || null,
+      date_fin: document.getElementById('dv-fin').value || null,
+      quantite: document.getElementById('dv-qte').value,
+      installation: document.getElementById('dv-installation').value,
+      prix_propose_cents: Math.round((parseFloat(document.getElementById('dv-prix').value)||0)*100),
+      notes: document.getElementById('dv-notes').value,
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Devis créé', 'success');
+    loadDevis();
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display = 'block';
+  }
+}
+async function sendDevis(id, btn){
+  btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-devis'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'send', id})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Devis envoyé par email', 'success');
+    loadDevis();
+  }catch(e){
+    showToast(e.message, 'error');
+    btn.disabled = false;
+  }
+}
+async function updateDevisStatut(id, statut, btn){
+  btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-devis'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update_statut', id, statut})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadDevis();
+    showToast('Devis mis à jour', 'success');
+  }catch(e){
+    showToast(e.message, 'error');
+    btn.disabled = false;
+  }
+}
+// Pré-remplit le formulaire de création manuelle existant plutôt que de
+// dupliquer la logique de création de réservation — l'admin garde la main
+// pour vérifier/compléter avant de valider.
+async function convertirDevisEnReservation(id){
+  const x = DEVIS_CACHE.find(v => v.id === id);
+  if(!x) return;
+  switchAdminTab('reservations');
+  // switchAdminTab a déjà déclenché loadReservations() sans l'attendre — on
+  // l'attend nous-même ici pour être sûr que le formulaire (reservationCreerHtml)
+  // est bien dans le DOM avant de le pré-remplir, sinon le second rendu de
+  // loadReservations() écraserait nos valeurs juste après.
+  await loadReservations();
+  setReservationsView('creer');
+  const set = (elId, val) => { const el = document.getElementById(elId); if(el) el.value = val || ''; };
+  set('nr-prenom', x.prenom); set('nr-nom', x.nom);
+  set('nr-tel', x.tel); set('nr-email', x.email);
+  set('nr-debut', x.date_debut); set('nr-fin', x.date_fin);
+  set('nr-qte', x.quantite);
+  set('nr-prix', ((x.prix_propose_cents||0)/100).toFixed(2));
+  const typeSel = document.getElementById('nr-type');
+  if(typeSel){ typeSel.value = 'entreprise'; typeSel.dispatchEvent(new Event('change')); }
+  set('nr-raison', x.raison_sociale); set('nr-siret', x.siret);
+  showToast('Formulaire pré-rempli depuis le devis — vérifie puis valide', 'success');
 }
 function exportStockCsv(){
   if(!STOCK_APPAREILS_CACHE.length){ showToast('Aucun appareil à exporter', 'error'); return; }
@@ -5261,12 +5528,86 @@ const INCIDENT_TYPE_LABEL = {
   materiel_endommage:'Matériel endommagé', probleme_technique:'Problème technique', refus_client:'Refus client',
   retard:'Retard', autre:'Autre',
 };
+// Suivi assurance (Module 8) — indépendant du statut de traitement de
+// l'incident, surtout utile pour "Matériel endommagé" mais accessible sur
+// tous les types (un incident "Autre" peut aussi donner lieu à une
+// déclaration).
+const ASSURANCE_STATUT_LABEL = {
+  declare:'Déclaré', en_attente_reponse:'En attente de réponse', remboursee:'Remboursée', refusee:'Refusée',
+};
 function incidentActionsHtml(i){
   const btns = [];
   if(i.statut==='nouveau') btns.push(`<button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'en_analyse',this)">🔍 En analyse</button>`);
   if(!['resolu','clos'].includes(i.statut)) btns.push(`<button class="btn btn-green" onclick="updateIncidentStatut(${i.id},'resolu',this)">✅ Marquer résolu</button>`);
   if(i.statut==='resolu') btns.push(`<button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'clos',this)">🗄️ Clore</button>`);
+  btns.push(`<button class="btn btn-grey" onclick="openAssuranceModal(${i.id})">🛡️ Assurance</button>`);
   return btns.length ? `<div class="row-actions">${btns.join('')}</div>` : '';
+}
+function assuranceMetaHtml(i){
+  if(!i.assurance_statut || i.assurance_statut==='non_declare') return '';
+  const parts = [`🛡️ ${ASSURANCE_STATUT_LABEL[i.assurance_statut]||i.assurance_statut}`];
+  if(i.assurance_montant_reclame_cents) parts.push(`réclamé ${euros(i.assurance_montant_reclame_cents)}`);
+  if(i.assurance_montant_rembourse_cents) parts.push(`remboursé ${euros(i.assurance_montant_rembourse_cents)}`);
+  return `<div class="row-meta">${parts.join(' · ')}</div>`;
+}
+function openAssuranceModal(id){
+  const i = INCIDENTS_CACHE.find(x => x.id === id);
+  if(!i) return;
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `<div class="modal-box" style="max-width:420px">
+    <h2>🛡️ Dossier assurance</h2>
+    <label>Statut</label>
+    <select id="as-statut">
+      <option value="" ${!i.assurance_statut?'selected':''}>Non déclaré</option>
+      ${Object.entries(ASSURANCE_STATUT_LABEL).map(([v,l])=>`<option value="${v}" ${i.assurance_statut===v?'selected':''}>${l}</option>`).join('')}
+    </select>
+    <label>Montant réclamé (€)</label>
+    <input type="number" id="as-reclame" min="0" step="0.01" value="${i.assurance_montant_reclame_cents?(i.assurance_montant_reclame_cents/100).toFixed(2):''}">
+    <label>Montant remboursé (€)</label>
+    <input type="number" id="as-rembourse" min="0" step="0.01" value="${i.assurance_montant_rembourse_cents?(i.assurance_montant_rembourse_cents/100).toFixed(2):''}">
+    <label>Date de déclaration</label>
+    <input type="date" id="as-date" value="${i.assurance_date_declaration||''}">
+    <label>Notes</label>
+    <textarea id="as-notes" rows="2">${escHtml(i.assurance_notes||'')}</textarea>
+    <div class="err" id="as-err"></div>
+    <div class="modal-actions">
+      <button class="btn btn-grey" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-blue" id="as-btn" onclick="saveAssurance(${i.id})">Enregistrer</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+async function saveAssurance(id){
+  const errEl = document.getElementById('as-err');
+  const btn = document.getElementById('as-btn');
+  errEl.style.display = 'none';
+  const toCents = (v) => { const n = parseFloat(v); return Number.isFinite(n) && n >= 0 ? Math.round(n*100) : null; };
+  btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-incidents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action:'update_assurance', id,
+      assurance_statut: document.getElementById('as-statut').value,
+      assurance_montant_reclame_cents: toCents(document.getElementById('as-reclame').value),
+      assurance_montant_rembourse_cents: toCents(document.getElementById('as-rembourse').value),
+      assurance_date_declaration: document.getElementById('as-date').value || null,
+      assurance_notes: document.getElementById('as-notes').value,
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    closeModal();
+    showToast('Dossier assurance mis à jour', 'success');
+    // Le bouton peut avoir été ouvert depuis l'onglet Incidents ou depuis la
+    // fiche client — on rafraîchit les deux, l'un des deux est un no-op
+    // silencieux si son écran n'est pas affiché.
+    if(document.getElementById('tab-incidents')) loadIncidents();
+    if(CLIENT_FICHE_ID) loadClientFiche();
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display = 'block';
+    btn.disabled = false;
+  }
 }
 let INCIDENTS_CACHE = [];
 let INCIDENTS_STATS_30J = {};
@@ -5322,6 +5663,7 @@ function renderIncidents(){
           <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
         </div>
         <div class="row-meta">${escHtml((res.prenom||'')+' '+(res.nom||''))}${res.adresse?' · '+escHtml(res.adresse):''}${i.transporteur?.nom?' · 🚚 '+escHtml(i.transporteur.nom):''}<br/>${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
+        ${assuranceMetaHtml(i)}
         ${incidentActionsHtml(i)}
       </div>`;
   }).join('');
@@ -5908,6 +6250,13 @@ async function loadClientFiche(){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     CLIENT_FICHE_DATA = d;
+    // Fusionnés dans INCIDENTS_CACHE (pas juste gardés en local à la fiche) :
+    // openAssuranceModal() y cherche l'incident par id quel que soit l'écran
+    // d'où le bouton "🛡️ Assurance" a été cliqué.
+    (d.incidents||[]).forEach(inc => {
+      const idx = INCIDENTS_CACHE.findIndex(x => x.id === inc.id);
+      if(idx >= 0) INCIDENTS_CACHE[idx] = inc; else INCIDENTS_CACHE.push(inc);
+    });
     renderClientFiche(d);
   }catch(e){
     body.innerHTML = `<p class="empty">${escHtml(e.message)}</p>`;
@@ -5962,6 +6311,7 @@ function renderClientFiche(d){
           <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
         </div>
         <div class="row-meta">${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.transporteur?.nom?' · 🚚 '+escHtml(i.transporteur.nom):''}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
+        ${assuranceMetaHtml(i)}
         ${incidentActionsHtml(i).replace(/updateIncidentStatut\(/g,'updateIncidentStatutInFiche(')}
       </div>`).join('')
     : '<p class="empty">Aucun incident enregistré pour ce client.</p>';

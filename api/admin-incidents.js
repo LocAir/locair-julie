@@ -3,6 +3,13 @@ const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 
+const ASSURANCE_STATUTS_VALIDES = ['non_declare', 'declare', 'en_attente_reponse', 'remboursee', 'refusee'];
+
+function sanitizeCents(v) {
+  const n = parseInt(v);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
 // La table incidents est alimentée automatiquement à chaque problème signalé
 // par un livreur (client absent, appareil en panne, retard...) mais n'avait
 // jusqu'ici aucune vue admin pour la consulter dans le temps — seulement des
@@ -27,7 +34,7 @@ module.exports = async (req, res) => {
       // s'affiche dans toutes les vues plutôt que d'être perdu.
       let query = supabase
         .from('incidents')
-        .select('id, type, description, photos, montant_facture_cents, statut, created_at, reservation_id, livraison_id, transporteur:transporteurs ( id, nom ), reservation:reservations ( id, ref, prenom, nom, adresse )')
+        .select('id, type, description, photos, montant_facture_cents, statut, created_at, reservation_id, livraison_id, assurance_statut, assurance_montant_reclame_cents, assurance_montant_rembourse_cents, assurance_date_declaration, assurance_notes, transporteur:transporteurs ( id, nom ), reservation:reservations ( id, ref, prenom, nom, adresse )')
         .or(`city_id.eq.${city.id},city_id.is.null`)
         .order('created_at', { ascending: false })
         .limit(300);
@@ -66,6 +73,34 @@ module.exports = async (req, res) => {
           type: 'incident', message: 'Une action est nécessaire concernant un incident.', tag: 'incident',
         });
       }
+      return res.status(200).json({ ok: true });
+    }
+
+    // Suivi du dossier assurance d'un incident (Module 8) — jusqu'ici un
+    // matériel endommagé était tracé (incident) mais rien ne suivait la
+    // déclaration à l'assurance ni le remboursement, au risque de perdre
+    // de l'argent dû en route. Champs indépendants du statut de
+    // traitement de l'incident lui-même (nouveau/en_analyse/résolu...).
+    if (action === 'update_assurance') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'Paramètres manquants' });
+      if (body.assurance_statut != null && !ASSURANCE_STATUTS_VALIDES.includes(body.assurance_statut)) {
+        return res.status(400).json({ error: 'Statut assurance invalide' });
+      }
+      const { data: before } = await supabase
+        .from('incidents').select('id, city_id')
+        .eq('id', id).maybeSingle();
+      if (!before || (before.city_id !== null && before.city_id !== city.id)) return res.status(404).json({ error: 'Incident introuvable' });
+
+      const patch = {};
+      if (body.assurance_statut !== undefined) patch.assurance_statut = body.assurance_statut || null;
+      if (body.assurance_montant_reclame_cents !== undefined) patch.assurance_montant_reclame_cents = sanitizeCents(body.assurance_montant_reclame_cents);
+      if (body.assurance_montant_rembourse_cents !== undefined) patch.assurance_montant_rembourse_cents = sanitizeCents(body.assurance_montant_rembourse_cents);
+      if (body.assurance_date_declaration !== undefined) patch.assurance_date_declaration = body.assurance_date_declaration || null;
+      if (body.assurance_notes !== undefined) patch.assurance_notes = (body.assurance_notes || '').slice(0, 1000) || null;
+
+      const { error } = await supabase.from('incidents').update(patch).eq('id', id);
+      if (error) throw error;
       return res.status(200).json({ ok: true });
     }
 
