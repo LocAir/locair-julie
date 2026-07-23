@@ -2054,16 +2054,27 @@ function agentLineHtml(resId){
   const liv = missions.find(m => m.type==='livraison');
   const rec = missions.find(m => m.type==='recuperation');
   const nomOf = m => m.transporteur ? escHtml(m.transporteur.nom) : '<span style="color:var(--red);font-weight:700">Non assigné</span>';
+  // Une mission non assignée affichait juste "Non assigné" en texte figé —
+  // pour dispatcher il fallait changer d'onglet vers Livraisons, retrouver la
+  // même mission dans une liste plus longue, puis assigner. Un select direct
+  // ici (même pattern que renderLivraisons) évite ce détour pour l'action la
+  // plus courante sur une réservation qui vient d'être confirmée.
+  const assignSelect = m => {
+    const options = ['<option value="">Non assigné</option>'].concat(
+      (typeof TRANSPORTEURS_CACHE!=='undefined' ? TRANSPORTEURS_CACHE : []).map(t => `<option value="${t.id}">${escHtml(t.nom)}</option>`)
+    ).join('');
+    return `<select onchange="assignTransporteur(${m.id}, this.value, this)" style="border-color:var(--red);border-width:1.5px;font-size:12px;padding:1px 4px">${options}</select>`;
+  };
   // Le même livreur fait très souvent les deux — une seule ligne au lieu de
   // répéter son nom deux fois (utile surtout sur mobile où chaque ligne compte).
   const parts = [];
   if(liv && rec && liv.transporteur && rec.transporteur && liv.transporteur.id === rec.transporteur.id){
-    parts.push(`🚚 Livraison + récupération : ${nomOf(liv)}`);
+    parts.push(`<span>🚚 Livraison + récupération : ${nomOf(liv)}</span>`);
   }else{
-    if(liv) parts.push(`📦 Livraison : ${nomOf(liv)}`);
-    if(rec) parts.push(`🔄 Récupération : ${nomOf(rec)}`);
+    if(liv) parts.push(`<span>📦 Livraison : ${liv.transporteur ? nomOf(liv) : assignSelect(liv)}</span>`);
+    if(rec) parts.push(`<span>🔄 Récupération : ${rec.transporteur ? nomOf(rec) : assignSelect(rec)}</span>`);
   }
-  return parts.length ? `<div class="row-meta" style="margin-top:4px">${parts.join(' · ')}</div>` : '';
+  return parts.length ? `<div class="row-meta" style="margin-top:4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">${parts.join('')}</div>` : '';
 }
 function reservationRowHtml(res, readOnly){
   const nom = escHtml((res.prenom||'')+' '+(res.nom||''))||'—';
@@ -2233,9 +2244,10 @@ async function loadReservations(){
   const zone = document.getElementById('tab-reservations');
   zone.innerHTML = loading();
   try{
-    const [r, lr] = await Promise.all([
+    const [r, lr, tr] = await Promise.all([
       fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
       fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
     ]);
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
@@ -2244,6 +2256,10 @@ async function loadReservations(){
     // pouvoir afficher qui est assigné à chaque réservation ici.
     const ld = await lr.json().catch(()=>null);
     if(ld) LIVRAISONS_CACHE = ld.livraisons || [];
+    // Et TRANSPORTEURS_CACHE, nécessaire pour le select d'assignation directe
+    // dans agentLineHtml (assigner sans changer d'onglet).
+    const td = await tr.json().catch(()=>null);
+    if(td) TRANSPORTEURS_CACHE = td.transporteurs || TRANSPORTEURS_CACHE;
     renderReservationsToolbar();
     renderReservations();
   }catch(e){
@@ -3718,6 +3734,11 @@ async function assignTransporteur(livraisonId, transporteurId, selectEl){
   const searchEl = document.getElementById('liv-search');
   if(searchEl) searchEl.value = searchVal;
   renderLivraisons();
+  // Le select d'assignation existe aussi sur l'écran Réservations
+  // (agentLineHtml) — le réafficher là aussi s'il est visible, sinon
+  // l'assignation qu'on vient de faire resterait affichée comme "Non
+  // assigné" jusqu'au prochain chargement complet de l'onglet.
+  if(document.getElementById('resa-list')) renderReservations();
   loadAlerts();
 }
 function maskLivraison(livraisonId){
