@@ -4,6 +4,7 @@ const { roleHasAccess } = require('./_lib/permissions');
 const { sendBrevoEmail } = require('./_lib/brevo');
 const { tplAmbassadeurCredentials } = require('./_lib/emailTemplates');
 const { getSignature, withSignature } = require('./_lib/emailEngine');
+const { hashPin } = require('./_lib/pinHash');
 
 function partenaireLinkFor(code) { return `https://www.locair.fr/?p=${encodeURIComponent(code)}`; }
 
@@ -66,26 +67,26 @@ module.exports = async (req, res) => {
       const pinProvided = (body.pin || '').trim();
 
       for (let attempt = 0; attempt < 5; attempt++) {
-        const code = attempt === 0 ? base : `${base}${Math.floor(10 + Math.random() * 90)}`;
-        const pin  = pinProvided || String(Math.floor(100000 + Math.random() * 900000));
+        const code     = attempt === 0 ? base : `${base}${Math.floor(10 + Math.random() * 90)}`;
+        const pinPlain = pinProvided || String(Math.floor(100000 + Math.random() * 900000));
         const { data: created, error } = await supabase.from('partenaires').insert({
           nom,
           contact_nom:         (body.contact_nom || '').trim() || null,
           email:               (body.email || '').trim().toLowerCase() || null,
           telephone:           (body.telephone || '').trim() || null,
           code,
-          pin,
+          pin:        hashPin(pinPlain),
+          pin_hashed: true,
           taux_commission_pct: taux,
           titulaire_compte:    (body.titulaire_compte || '').trim() || null,
           iban:                normalizeIban(body.iban),
           bic:                 normalizeBic(body.bic),
-        }).select('id, code, pin').single();
+        }).select('id, code').single();
         if (!error) {
-          await notifyPartenaireCredentials(supabase, { nom, email: (body.email || '').trim().toLowerCase(), code: created.code, pin: created.pin });
-          return res.status(200).json({ ok: true, code: created.code, pin: created.pin });
+          await notifyPartenaireCredentials(supabase, { nom, email: (body.email || '').trim().toLowerCase(), code: created.code, pin: pinPlain });
+          return res.status(200).json({ ok: true, code: created.code, pin: pinPlain });
         }
-        if (error.code !== '23505') throw error; // pas un conflit code/pin : autre erreur
-        if (pinProvided && attempt > 0) return res.status(409).json({ error: 'Ce code personnel est déjà utilisé, réessaie' });
+        if (error.code !== '23505') throw error;
       }
       return res.status(500).json({ error: 'Impossible de générer un code unique, réessaie' });
     }
@@ -101,7 +102,12 @@ module.exports = async (req, res) => {
       if (body.actif != null)       patch.actif       = Boolean(body.actif);
       if (body.taux_commission_pct != null) patch.taux_commission_pct = Math.min(100, Math.max(0, parseInt(body.taux_commission_pct) || 0));
       if (body.code != null && body.code.trim()) patch.code = body.code.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-      if (body.pin != null && body.pin.trim())   patch.pin  = body.pin.trim();
+      let newPinPlain = null;
+      if (body.pin != null && body.pin.trim()) {
+        newPinPlain     = body.pin.trim();
+        patch.pin       = hashPin(newPinPlain);
+        patch.pin_hashed = true;
+      }
       if (body.titulaire_compte != null) patch.titulaire_compte = body.titulaire_compte.trim() || null;
       if (body.iban != null)             patch.iban            = normalizeIban(body.iban);
       if (body.bic != null)              patch.bic             = normalizeBic(body.bic);
@@ -112,11 +118,11 @@ module.exports = async (req, res) => {
         if (error.code === '23505') return res.status(409).json({ error: 'Ce code ou ce PIN est déjà utilisé par un autre partenaire, réessaie' });
         throw error;
       }
-      // Le code personnel a changé (main ou fiche) : renvoyer automatiquement
-      // le nouveau code par email, comme à la création.
-      if (patch.pin) {
-        const { data: fresh } = await supabase.from('partenaires').select('nom, email, code, pin').eq('id', id).maybeSingle();
-        if (fresh) await notifyPartenaireCredentials(supabase, fresh);
+      // Le code personnel a changé : renvoyer automatiquement le nouveau code
+      // par email, comme à la création.
+      if (newPinPlain) {
+        const { data: fresh } = await supabase.from('partenaires').select('nom, email, code').eq('id', id).maybeSingle();
+        if (fresh) await notifyPartenaireCredentials(supabase, { ...fresh, pin: newPinPlain });
       }
       return res.status(200).json({ ok: true });
     }

@@ -1,5 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
 const { safeEqual, signPartenaireToken } = require('./_lib/auth');
+const { hashPin, verifyPin } = require('./_lib/pinHash');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 module.exports = async (req, res) => {
@@ -20,13 +21,21 @@ module.exports = async (req, res) => {
       return res.status(429).json({ error: 'Trop de tentatives. Réessaie dans 15 minutes ou contacte Loc\'Air.' });
     }
 
-    const { data, error } = await supabase.from('partenaires').select('id, nom, code, pin, taux_commission_pct').eq('actif', true);
+    const { data, error } = await supabase.from('partenaires').select('id, nom, code, pin, pin_hashed, taux_commission_pct').eq('actif', true);
     if (error) throw error;
 
-    const match = (data || []).find(p => safeEqual(pin, p.pin || ''));
+    const match = (data || []).find(p =>
+      p.pin_hashed ? verifyPin(pin, p.pin) : safeEqual(pin, p.pin || '')
+    );
     if (!match) {
       await recordFailedAttempt(supabase, rateKey);
       return res.status(401).json({ error: 'Code incorrect' });
+    }
+
+    // Migration progressive : si le PIN était en clair, on le hache maintenant
+    if (!match.pin_hashed) {
+      supabase.from('partenaires').update({ pin: hashPin(pin), pin_hashed: true }).eq('id', match.id)
+        .then(() => {}).catch(e => console.error('[Partenaire PIN migration]', e.message));
     }
 
     return res.status(200).json({
