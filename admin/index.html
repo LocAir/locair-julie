@@ -5261,12 +5261,86 @@ const INCIDENT_TYPE_LABEL = {
   materiel_endommage:'Matériel endommagé', probleme_technique:'Problème technique', refus_client:'Refus client',
   retard:'Retard', autre:'Autre',
 };
+// Suivi assurance (Module 8) — indépendant du statut de traitement de
+// l'incident, surtout utile pour "Matériel endommagé" mais accessible sur
+// tous les types (un incident "Autre" peut aussi donner lieu à une
+// déclaration).
+const ASSURANCE_STATUT_LABEL = {
+  declare:'Déclaré', en_attente_reponse:'En attente de réponse', remboursee:'Remboursée', refusee:'Refusée',
+};
 function incidentActionsHtml(i){
   const btns = [];
   if(i.statut==='nouveau') btns.push(`<button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'en_analyse',this)">🔍 En analyse</button>`);
   if(!['resolu','clos'].includes(i.statut)) btns.push(`<button class="btn btn-green" onclick="updateIncidentStatut(${i.id},'resolu',this)">✅ Marquer résolu</button>`);
   if(i.statut==='resolu') btns.push(`<button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'clos',this)">🗄️ Clore</button>`);
+  btns.push(`<button class="btn btn-grey" onclick="openAssuranceModal(${i.id})">🛡️ Assurance</button>`);
   return btns.length ? `<div class="row-actions">${btns.join('')}</div>` : '';
+}
+function assuranceMetaHtml(i){
+  if(!i.assurance_statut || i.assurance_statut==='non_declare') return '';
+  const parts = [`🛡️ ${ASSURANCE_STATUT_LABEL[i.assurance_statut]||i.assurance_statut}`];
+  if(i.assurance_montant_reclame_cents) parts.push(`réclamé ${euros(i.assurance_montant_reclame_cents)}`);
+  if(i.assurance_montant_rembourse_cents) parts.push(`remboursé ${euros(i.assurance_montant_rembourse_cents)}`);
+  return `<div class="row-meta">${parts.join(' · ')}</div>`;
+}
+function openAssuranceModal(id){
+  const i = INCIDENTS_CACHE.find(x => x.id === id);
+  if(!i) return;
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `<div class="modal-box" style="max-width:420px">
+    <h2>🛡️ Dossier assurance</h2>
+    <label>Statut</label>
+    <select id="as-statut">
+      <option value="" ${!i.assurance_statut?'selected':''}>Non déclaré</option>
+      ${Object.entries(ASSURANCE_STATUT_LABEL).map(([v,l])=>`<option value="${v}" ${i.assurance_statut===v?'selected':''}>${l}</option>`).join('')}
+    </select>
+    <label>Montant réclamé (€)</label>
+    <input type="number" id="as-reclame" min="0" step="0.01" value="${i.assurance_montant_reclame_cents?(i.assurance_montant_reclame_cents/100).toFixed(2):''}">
+    <label>Montant remboursé (€)</label>
+    <input type="number" id="as-rembourse" min="0" step="0.01" value="${i.assurance_montant_rembourse_cents?(i.assurance_montant_rembourse_cents/100).toFixed(2):''}">
+    <label>Date de déclaration</label>
+    <input type="date" id="as-date" value="${i.assurance_date_declaration||''}">
+    <label>Notes</label>
+    <textarea id="as-notes" rows="2">${escHtml(i.assurance_notes||'')}</textarea>
+    <div class="err" id="as-err"></div>
+    <div class="modal-actions">
+      <button class="btn btn-grey" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-blue" id="as-btn" onclick="saveAssurance(${i.id})">Enregistrer</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+}
+async function saveAssurance(id){
+  const errEl = document.getElementById('as-err');
+  const btn = document.getElementById('as-btn');
+  errEl.style.display = 'none';
+  const toCents = (v) => { const n = parseFloat(v); return Number.isFinite(n) && n >= 0 ? Math.round(n*100) : null; };
+  btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-incidents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action:'update_assurance', id,
+      assurance_statut: document.getElementById('as-statut').value,
+      assurance_montant_reclame_cents: toCents(document.getElementById('as-reclame').value),
+      assurance_montant_rembourse_cents: toCents(document.getElementById('as-rembourse').value),
+      assurance_date_declaration: document.getElementById('as-date').value || null,
+      assurance_notes: document.getElementById('as-notes').value,
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    closeModal();
+    showToast('Dossier assurance mis à jour', 'success');
+    // Le bouton peut avoir été ouvert depuis l'onglet Incidents ou depuis la
+    // fiche client — on rafraîchit les deux, l'un des deux est un no-op
+    // silencieux si son écran n'est pas affiché.
+    if(document.getElementById('tab-incidents')) loadIncidents();
+    if(CLIENT_FICHE_ID) loadClientFiche();
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display = 'block';
+    btn.disabled = false;
+  }
 }
 let INCIDENTS_CACHE = [];
 let INCIDENTS_STATS_30J = {};
@@ -5322,6 +5396,7 @@ function renderIncidents(){
           <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
         </div>
         <div class="row-meta">${escHtml((res.prenom||'')+' '+(res.nom||''))}${res.adresse?' · '+escHtml(res.adresse):''}${i.transporteur?.nom?' · 🚚 '+escHtml(i.transporteur.nom):''}<br/>${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
+        ${assuranceMetaHtml(i)}
         ${incidentActionsHtml(i)}
       </div>`;
   }).join('');
@@ -5908,6 +5983,13 @@ async function loadClientFiche(){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     CLIENT_FICHE_DATA = d;
+    // Fusionnés dans INCIDENTS_CACHE (pas juste gardés en local à la fiche) :
+    // openAssuranceModal() y cherche l'incident par id quel que soit l'écran
+    // d'où le bouton "🛡️ Assurance" a été cliqué.
+    (d.incidents||[]).forEach(inc => {
+      const idx = INCIDENTS_CACHE.findIndex(x => x.id === inc.id);
+      if(idx >= 0) INCIDENTS_CACHE[idx] = inc; else INCIDENTS_CACHE.push(inc);
+    });
     renderClientFiche(d);
   }catch(e){
     body.innerHTML = `<p class="empty">${escHtml(e.message)}</p>`;
@@ -5962,6 +6044,7 @@ function renderClientFiche(d){
           <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
         </div>
         <div class="row-meta">${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.transporteur?.nom?' · 🚚 '+escHtml(i.transporteur.nom):''}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
+        ${assuranceMetaHtml(i)}
         ${incidentActionsHtml(i).replace(/updateIncidentStatut\(/g,'updateIncidentStatutInFiche(')}
       </div>`).join('')
     : '<p class="empty">Aucun incident enregistré pour ce client.</p>';
