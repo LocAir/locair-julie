@@ -1890,6 +1890,7 @@ async function loadStock(silent){
         </div>
       </div>` : ''}
       <div id="entretien-zone"></div>
+      <div id="commandes-fournisseur-zone"></div>
       <div class="card">
         <h2 style="margin-bottom:10px">Filtrer</h2>
         <input type="text" id="stock-f-numero" placeholder="🔎 N° de climatiseur ou référence" value="${escHtml(STOCK_FILTRES.filtre_numero||'')}" onchange="applyStockFiltres()" style="margin-bottom:8px"/>
@@ -1969,6 +1970,7 @@ async function loadStock(silent){
     // Chargée à part : complément, pas une donnée critique pour l'écran
     // Stock — inutile de retarder le reste si elle est lente.
     loadEntretienPreventif();
+    loadCommandesFournisseur();
   }catch(e){
     if(!silent) zone.innerHTML = '<p class="empty">Erreur de chargement.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="loadStock()">↻ Réessayer</button>';
   }
@@ -1995,6 +1997,95 @@ async function loadEntretienPreventif(){
         </div>`).join('')}
     </div>`;
   }catch(e){}
+}
+// Commandes fournisseurs (Module 8) — simple suivi d'achat/budget : la
+// prévision de demande (onglet Accueil) dit "il faut racheter du stock",
+// ceci suit si la commande est passée et quand elle arrive. Ne crée jamais
+// d'appareils automatiquement — l'admin les ajoute via addAppareil() une
+// fois physiquement reçus.
+let COMMANDES_FOURNISSEUR_CACHE = [];
+const COMMANDE_STATUT_LABEL = {commande:'Commandée', en_transit:'En transit', livree:'Livrée', annulee:'Annulée'};
+async function loadCommandesFournisseur(){
+  const zone = document.getElementById('commandes-fournisseur-zone');
+  if(!zone) return;
+  try{
+    const r = await fetch(API('admin-commandes-fournisseur'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) return;
+    COMMANDES_FOURNISSEUR_CACHE = d.commandes || [];
+    renderCommandesFournisseur();
+  }catch(e){}
+}
+function renderCommandesFournisseur(){
+  const zone = document.getElementById('commandes-fournisseur-zone');
+  if(!zone) return;
+  const enCours = COMMANDES_FOURNISSEUR_CACHE.filter(c => !['livree','annulee'].includes(c.statut));
+  zone.innerHTML = `<div class="card">
+    <div class="section-title" style="margin-top:0">🛒 Commandes fournisseurs${enCours.length?' en cours ('+enCours.length+')':''}</div>
+    ${enCours.length ? enCours.map(c => `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${escHtml(c.fournisseur)} · ${c.quantite} appareil${c.quantite>1?'s':''}</span>
+          <span class="chip ${c.statut==='commande'?'a_faire':c.statut==='en_transit'?'en_attente':''}">${COMMANDE_STATUT_LABEL[c.statut]||c.statut}</span>
+        </div>
+        <div class="row-meta">${c.montant_cents?euros(c.montant_cents)+' · ':''}Commandée le ${frDate(c.date_commande)}${c.date_livraison_prevue?' · livraison prévue le '+frDate(c.date_livraison_prevue):''}${c.notes?' · '+escHtml(c.notes):''}</div>
+        <div class="row-actions">
+          ${c.statut==='commande'?`<button class="btn btn-grey" onclick="updateCommandeFournisseurStatut(${c.id},'en_transit',this)">🚚 En transit</button>`:''}
+          ${c.statut!=='livree'?`<button class="btn btn-green" onclick="updateCommandeFournisseurStatut(${c.id},'livree',this)">✅ Marquer livrée</button>`:''}
+          <button class="btn btn-red" onclick="updateCommandeFournisseurStatut(${c.id},'annulee',this)">✕ Annuler</button>
+        </div>
+      </div>`).join('') : '<p class="empty">Aucune commande en cours.</p>'}
+    <div style="margin-top:12px">
+      <label>Fournisseur</label>
+      <input type="text" id="cf-fournisseur" placeholder="Nom du fournisseur">
+      <div class="inline-form" style="margin-top:8px">
+        <div><label for="cf-quantite">Quantité</label><input type="number" id="cf-quantite" min="1" value="1"></div>
+        <div><label for="cf-montant">Montant (€)</label><input type="number" id="cf-montant" min="0" step="0.01"></div>
+      </div>
+      <label>Livraison prévue le</label>
+      <input type="date" id="cf-date-prevue">
+      <label>Notes (optionnel)</label>
+      <input type="text" id="cf-notes">
+      <div class="err" id="cf-err"></div>
+      <button class="btn btn-blue btn-block" style="margin-top:8px" onclick="createCommandeFournisseur()">+ Ajouter la commande</button>
+    </div>
+  </div>`;
+}
+async function createCommandeFournisseur(){
+  const fournisseur = document.getElementById('cf-fournisseur').value.trim();
+  const quantite = parseInt(document.getElementById('cf-quantite').value);
+  const errEl = document.getElementById('cf-err');
+  errEl.style.display = 'none';
+  if(!fournisseur){ errEl.textContent = 'Fournisseur requis.'; errEl.style.display = 'block'; return; }
+  if(!Number.isFinite(quantite) || quantite <= 0){ errEl.textContent = 'Quantité invalide.'; errEl.style.display = 'block'; return; }
+  const montantEuros = parseFloat(document.getElementById('cf-montant').value);
+  try{
+    const r = await fetch(API('admin-commandes-fournisseur'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action:'create', fournisseur, quantite,
+      montant_cents: Number.isFinite(montantEuros) ? Math.round(montantEuros*100) : 0,
+      date_livraison_prevue: document.getElementById('cf-date-prevue').value || null,
+      notes: document.getElementById('cf-notes').value,
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Commande ajoutée', 'success');
+    loadCommandesFournisseur();
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display = 'block';
+  }
+}
+async function updateCommandeFournisseurStatut(id, statut, btn){
+  btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-commandes-fournisseur'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update_statut', id, statut})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadCommandesFournisseur();
+    showToast(statut==='livree'?'Commande marquée livrée — pense à ajouter les appareils au stock':'Commande mise à jour', 'success');
+  }catch(e){
+    showToast(e.message, 'error');
+    btn.disabled = false;
+  }
 }
 async function logControleAppareil(appareilId, btn){
   btn.disabled = true;
