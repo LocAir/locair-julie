@@ -1084,6 +1084,7 @@ function switchAdminTab(tab){
   if(tab==='emails') loadEmails();
   if(tab==='espaceclient') loadEspaceClient();
   if(tab==='checklistitems') loadChecklistItemsAdmin();
+  _dismissTabBadges(tab);
   toggleMobileMenu(false);
 }
 // Tiroir latéral mobile (voir .mobile-menu-btn / .tabs.mobile-open en CSS) —
@@ -1130,11 +1131,36 @@ async function loadAlerts(){
     document.getElementById('mobile-menu-dot')?.classList.toggle('hidden', !anyAlert);
   }catch(e){}
 }
+const _BADGE_SEEN_KEY = 'a_badge_seen';
+const _badgeCounts = {};
+function _getBadgeSeen(){ try{ return JSON.parse(localStorage.getItem(_BADGE_SEEN_KEY)||'{}'); }catch(e){ return {}; } }
 function updateTabBadge(tab, count){
   const el = document.getElementById('badge-'+tab);
   if(!el) return;
-  if(count>0){ el.textContent = count; el.classList.remove('hidden'); }
+  _badgeCounts[tab] = count;
+  const seen = _getBadgeSeen()[tab] || 0;
+  if(count > 0 && count > seen){ el.textContent = count; el.classList.remove('hidden'); }
   else{ el.classList.add('hidden'); }
+}
+// Onglet → badges à masquer quand l'onglet est ouvert
+const _TAB_BADGE_MAP = {
+  reservations: ['reservations'],
+  livraisons: ['livraisons'],
+  virements: ['virements_total', 'virements', 'partenaire_virements'],
+  transporteurs: ['virements'],
+  partenaires: ['partenaire_virements'],
+  incidents: ['incidents'],
+  communications: ['communications'],
+};
+function _dismissTabBadges(tab){
+  const keys = _TAB_BADGE_MAP[tab];
+  if(!keys) return;
+  const s = _getBadgeSeen();
+  keys.forEach(b => {
+    s[b] = _badgeCounts[b] || 0;
+    document.getElementById('badge-'+b)?.classList.add('hidden');
+  });
+  localStorage.setItem(_BADGE_SEEN_KEY, JSON.stringify(s));
 }
 function updateGroupAlert(group, hasAlert){
   const dot = document.getElementById('group-dot-'+group);
