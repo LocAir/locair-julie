@@ -320,8 +320,16 @@ module.exports = async (req, res) => {
         });
       }
       if (liv.transporteur_id && liv.transporteur_id !== transporteurId) {
+        // "Confiée à quelqu'un d'autre" n'est vrai que si un nouveau
+        // transporteur remplace l'ancien — l'admin peut aussi juste
+        // désassigner (retour à "Non assigné", transporteurId=null), auquel
+        // cas ce message aurait laissé penser à tort qu'un collègue a repris
+        // la mission alors qu'elle n'est simplement plus attribuée à personne.
+        const message = transporteurId
+          ? 'Une mission qui vous était assignée a été confiée à quelqu\'un d\'autre.'
+          : 'Une mission qui vous était assignée vous a été retirée.';
         await notifyTransporteur(supabase, liv.transporteur_id, {
-          type: 'modification', message: 'Une mission qui vous était assignée a été confiée à quelqu\'un d\'autre.',
+          type: 'modification', message,
           livraisonId, tag: 'mission-reattribuee',
         });
       }
