@@ -1118,9 +1118,9 @@ async function loadAlerts(){
     // fermé passerait inaperçue. On déplie automatiquement le groupe
     // concerné et on pose un point rouge sur son titre, même logique que
     // le point sur le bouton ☰ juste en dessous.
-    updateGroupAlert('piloter', (d.reservations||0) + (d.livraisons||0) + (d.communications||0) > 0);
-    updateGroupAlert('gerer',   (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0) > 0);
-    updateGroupAlert('suivre',  (d.incidents||0) > 0);
+    updateGroupAlert('piloter', _groupTotal('piloter', d));
+    updateGroupAlert('gerer',   _groupTotal('gerer', d));
+    updateGroupAlert('suivre',  _groupTotal('suivre', d));
     renderAlertsBanner(d);
     renderVirementMondayBanner();
     // Point rouge sur le bouton ☰ (mobile) : sur la barre horizontale
@@ -1152,18 +1152,42 @@ const _TAB_BADGE_MAP = {
   incidents: ['incidents'],
   communications: ['communications'],
 };
+// Onglet → groupe (accordéon Piloter/Gérer/Suivre) auquel il appartient —
+// ouvrir un onglet doit aussi faire disparaître le point rouge du groupe
+// parent (ex. ouvrir "Virements" efface le point sur "Gérer"), qui jusqu'ici
+// restait affiché même après avoir consulté tout ce qu'il y avait à voir
+// à l'intérieur.
+const _TAB_GROUP_MAP = {
+  livraisons: 'piloter', reservations: 'piloter', communications: 'piloter',
+  virements: 'gerer', transporteurs: 'gerer', partenaires: 'gerer', villes: 'gerer', equipe: 'gerer',
+  clients: 'gerer', tutoriels: 'gerer', emails: 'gerer', espaceclient: 'gerer', checklistitems: 'gerer',
+  stock: 'suivre', checklist: 'suivre', incidents: 'suivre',
+};
+function _groupTotal(group, d){
+  if(group==='piloter') return (d.reservations||0) + (d.livraisons||0) + (d.communications||0);
+  if(group==='gerer')   return (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0);
+  if(group==='suivre')  return (d.incidents||0);
+  return 0;
+}
 function _dismissTabBadges(tab){
   const keys = _TAB_BADGE_MAP[tab];
-  if(!keys) return;
+  const group = _TAB_GROUP_MAP[tab];
+  if(!keys && !group) return;
   const s = _getBadgeSeen();
-  keys.forEach(b => {
+  (keys||[]).forEach(b => {
     s[b] = _badgeCounts[b] || 0;
     document.getElementById('badge-'+b)?.classList.add('hidden');
   });
+  if(group){
+    s['group_'+group] = _groupTotal(group, LAST_ALERTS_DATA || {});
+    document.getElementById('group-dot-'+group)?.classList.add('hidden');
+  }
   localStorage.setItem(_BADGE_SEEN_KEY, JSON.stringify(s));
 }
-function updateGroupAlert(group, hasAlert){
+function updateGroupAlert(group, total){
   const dot = document.getElementById('group-dot-'+group);
+  const seen = _getBadgeSeen()['group_'+group] || 0;
+  const hasAlert = total > 0 && total > seen;
   dot?.classList.toggle('hidden', !hasAlert);
   if(hasAlert){
     const details = document.querySelector(`.tabs-group[data-group="${group}"]`);
