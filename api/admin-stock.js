@@ -12,6 +12,13 @@ const { computeParcDashboard } = require('./_lib/parcDashboard');
 // silencieusement cette location du décompte. On la garde ici avant de la
 // perdre, pour que le seuil d'éligibilité (SEUIL_OFFRE) reste exact même
 // pour un appareil souvent échangé.
+// Marqueur du mouvement posé par l'action 'log_controle' (entretien
+// préventif, Module 8) — même principe que le marqueur d'alerte de
+// cron-daily.js : un texte identifiable dans commentaire plutôt qu'une
+// nouvelle colonne.
+const CONTROLE_MARQUEUR = 'Contrôle préventif effectué';
+const CONTROLE_SEUIL_MOIS = 6;
+
 async function bumpNbLocationsHistorique(supabase, appareilId) {
   const { data } = await supabase.from('appareils').select('nb_locations_historique').eq('id', appareilId).maybeSingle();
   await supabase.from('appareils').update({ nb_locations_historique: (data?.nb_locations_historique || 0) + 1 }).eq('id', appareilId);
@@ -232,6 +239,60 @@ module.exports = async (req, res) => {
         duree_moyenne_location_jours: locations.length ? Math.round(joursLoues / locations.length) : 0,
         frequence_rotation_par_mois: Math.round((locations.length / moisDepuisEntree) * 100) / 100,
       });
+    }
+
+    // Entretien préventif (Module 8) — le seuil d'usage (MAINTENANCE_SEUIL)
+    // existe déjà côté cron (cron-daily.js) mais seulement en push, jamais
+    // visible dans l'app. On y ajoute ici une notion calendaire ("pas vérifié
+    // depuis 6 mois") en réutilisant appareil_mouvements comme journal des
+    // contrôles — un passage en maintenance compte, ou le marqueur posé par
+    // l'action 'log_controle' ci-dessous quand tout était OK — sans nouvelle
+    // colonne ni nouveau type d'événement.
+    if (action === 'entretien_liste') {
+      const SEUIL = parseInt(process.env.MAINTENANCE_SEUIL) || 15;
+      const seuilDate = new Date(Date.now() - CONTROLE_SEUIL_MOIS * 30 * 86400000).toISOString();
+      const { data: appareils } = await supabase
+        .from('appareils').select('id, numero, created_at').eq('city_id', city.id).eq('statut', 'disponible');
+
+      const items = [];
+      for (const app of appareils || []) {
+        const [{ count: nbLocations }, { data: mouvements }] = await Promise.all([
+          supabase.from('reservation_appareils').select('id', { count: 'exact', head: true }).eq('appareil_id', app.id),
+          supabase.from('appareil_mouvements').select('type_evenement, commentaire, created_at')
+            .eq('appareil_id', app.id).in('type_evenement', ['passage_maintenance', 'autre'])
+            .order('created_at', { ascending: false }).limit(20),
+        ]);
+        const dernierControle = (mouvements || []).find(m => m.type_evenement === 'passage_maintenance' || (m.commentaire || '').startsWith(CONTROLE_MARQUEUR));
+
+        const usageDepasse = (nbLocations || 0) >= SEUIL;
+        const controleAncien = !dernierControle || dernierControle.created_at < seuilDate;
+        if (usageDepasse || controleAncien) {
+          items.push({
+            appareil_id: app.id,
+            numero: app.numero,
+            nombre_locations: nbLocations || 0,
+            dernier_controle: dernierControle ? dernierControle.created_at : null,
+            raison: usageDepasse ? 'usage' : 'calendaire',
+          });
+        }
+      }
+      return res.status(200).json({ items });
+    }
+
+    // Journalise un contrôle préventif effectué (rien à signaler) — ne change
+    // ni le statut ni la localisation, juste une trace datée qui compte comme
+    // "dernier entretien" pour entretien_liste ci-dessus.
+    if (action === 'log_controle') {
+      const appareilId = parseInt(body.appareil_id);
+      if (!appareilId) return res.status(400).json({ error: 'appareil_id manquant' });
+      const { data: appareil } = await supabase.from('appareils').select('id, statut, localisation').eq('id', appareilId).eq('city_id', city.id).maybeSingle();
+      if (!appareil) return res.status(404).json({ error: 'Unité introuvable' });
+      await recordMouvement(supabase, {
+        appareilId, typeEvenement: 'autre',
+        nouveauStatut: appareil.statut, nouvelleLocalisation: appareil.localisation,
+        utilisateur: 'admin', commentaire: CONTROLE_MARQUEUR,
+      });
+      return res.status(200).json({ ok: true });
     }
 
     // Réaffectation manuelle d'un appareil précis à une réservation (Partie 9,
