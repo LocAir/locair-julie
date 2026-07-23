@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
     if (!credentialId) return res.status(400).json({ error: 'Réponse invalide' });
 
     const { data: cred } = await supabase
-      .from('webauthn_credentials').select('id, transporteur_id, public_key, counter')
+      .from('webauthn_credentials').select('id, credential_id, transporteur_id, public_key, counter')
       .eq('credential_id', credentialId).maybeSingle();
     if (!cred) {
       await recordFailedAttempt(supabase, rateKey);
@@ -52,8 +52,9 @@ module.exports = async (req, res) => {
       return res.status(401).json({ error: 'Vérification échouée' });
     }
 
-    await supabase.from('webauthn_credentials')
+    const { error: counterErr } = await supabase.from('webauthn_credentials')
       .update({ counter: verification.authenticationInfo.newCounter }).eq('id', cred.id);
+    if (counterErr) console.error('[Webauthn transporteur] counter update failed:', counterErr.message);
 
     return res.status(200).json({ token: signTransporteurToken(t.id, t.pin), transporteur_id: t.id, nom: t.nom });
   } catch (err) {

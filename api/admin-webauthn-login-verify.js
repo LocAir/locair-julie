@@ -44,8 +44,9 @@ module.exports = async (req, res) => {
       return res.status(401).json({ error: 'Vérification échouée' });
     }
 
-    await supabase.from('admin_webauthn_credentials')
+    const { error: counterErr } = await supabase.from('admin_webauthn_credentials')
       .update({ counter: verification.authenticationInfo.newCounter }).eq('id', cred.id);
+    if (counterErr) console.error('[Admin webauthn] counter update failed:', counterErr.message);
 
     // Le "jeton" admin est le mot de passe lui-même (voir checkAdminToken) —
     // la biométrie ne fait que le redonner au client une fois l'appareil
