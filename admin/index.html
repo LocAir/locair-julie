@@ -1315,13 +1315,18 @@ async function loadDashboard(periode){
   const zone = document.getElementById('tab-accueil');
   zone.innerHTML = loading();
   try{
-    const [dr, lr] = await Promise.all([
+    const [dr, lr, tr] = await Promise.all([
       fetch(API('admin-dashboard'), {method:'POST', headers:authHeaders(), body:JSON.stringify({periode})}),
       fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
     ]);
     const d = await dr.json();
     if(!dr.ok) throw new Error(d.error||'Erreur');
     const ld = await lr.json().catch(()=>({livraisons:[]}));
+    // Nécessaire pour pouvoir assigner un transporteur directement depuis le
+    // board "Aujourd'hui" (voir boardRowHtml) sans changer d'onglet.
+    const td = await tr.json().catch(()=>null);
+    if(td) TRANSPORTEURS_CACHE = td.transporteurs || TRANSPORTEURS_CACHE;
     const pct = Math.round((d.taux_occupation||0)*100);
     // En vue agrégée ("Toutes les villes"), le board du jour et l'occupation
     // par ville n'ont de sens que ville par ville — remplacés par le tableau
@@ -1427,13 +1432,19 @@ function boardRowHtml(m){
   const nom = isAutre ? (m.titre || 'Mission libre') : ((res.prenom||'')+' '+(res.nom||''));
   const adresse = isAutre ? (m.adresse_libre||'—') : (res.adresse||'—');
   const numeros = (m.appareil_numeros||[]).join(', ');
+  // Le board du matin affichait "Non assigné" en texte figé — vu en premier
+  // chaque jour, c'était pourtant l'écran le plus mal placé pour agir : il
+  // fallait mémoriser la mission, aller dans Livraisons, la retrouver dans
+  // une liste plus longue, puis assigner. Select direct ici, même pattern
+  // que Réservations (agentLineHtml) et Livraisons (renderLivraisons).
+  const transpBit = m.transporteur ? escHtml(m.transporteur.nom) : `<select onchange="assignTransporteur(${m.id}, this.value, this)" style="border-color:var(--red);border-width:1.5px;font-size:11.5px;padding:1px 4px">${['<option value="">Non assigné</option>'].concat((typeof TRANSPORTEURS_CACHE!=='undefined'?TRANSPORTEURS_CACHE:[]).map(t=>`<option value="${t.id}">${escHtml(t.nom)}</option>`)).join('')}</select>`;
   return `
     <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
       <div class="row-top">
         <span class="row-title">${escHtml(m.creneau||'—')} · ${escHtml(nom)}</span>
         <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
       </div>
-      <div class="row-meta">${escHtml(adresse)}${numeros?' · Climatiseur n°'+escHtml(numeros):''}${m.transporteur?' · '+escHtml(m.transporteur.nom):' · Non assigné'}</div>
+      <div class="row-meta" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${escHtml(adresse)}${numeros?' · Climatiseur n°'+escHtml(numeros):''} · ${transpBit}</div>
     </div>`;
 }
 // Le code postal est déjà présent dans l'adresse (le site utilise l'autocomplete
@@ -2156,6 +2167,7 @@ function reservationRowHtml(res, readOnly){
           <summary title="Plus d'actions">⋯</summary>
           <div class="more-actions-menu">
             <button onclick="openEditReservationModal(${res.id})">✏️ Modifier</button>
+            ${res.statut==='en_attente' && res.source==='manuel' && res.email ? `<button onclick="renvoyerLienPaiement(${res.id})">🔁 Renvoyer le lien de paiement</button>` : ''}
             ${res.appareils_en_attente_validation?`<button onclick="validerAppareilsReservation(${res.id})">🔍 Valider l'appareil attribué</button>`:''}
             ${res.statut==='confirmee'?`<button onclick="reaffecterAppareilReservation(${res.id})">🔄 Réaffecter l'appareil</button>`:''}
             ${res.statut==='confirmee'?`<button onclick="proposerOffrePrivilegeManuelle(${res.id})">⭐ Proposer l'Offre Privilège</button>`:''}
@@ -2670,6 +2682,9 @@ function typeClientPayload(prefix){
 // d'accès/créneau) — sans eux une mission créée à la main dans l'admin arrive
 // chez le transporteur avec des "—" partout, alors que ces infos sont
 // systématiquement collectées sur le site public.
+// "49€", pas "25€" — doit rester synchronisé avec INSTALL_FEE (checkout.js/
+// index.html) : c'est ce tarif que sendReservationPaymentLink (admin-
+// reservations.js) facture réellement pour une installation technicien.
 const INSTALLATION_OPTIONS = ['Autonome (kit fourni)', 'Technicien (49€)'];
 const FENETRE_OPTIONS = ['À confirmer', 'Fenêtre coulissante', 'Fenêtre à battant', 'Oscillo-battant', 'Porte-fenêtre', 'Vélux / toit'];
 function logisticsFieldsHtml(prefix, v){
@@ -2733,6 +2748,13 @@ async function createReservation(confirmer){
     errEl.style.display = 'block';
     return;
   }
+  // "Paiement à finaliser" envoie tout de suite un lien de paiement Stripe
+  // par email — sans email, personne ne peut payer la réservation créée.
+  if(!confirmer && !body.email){
+    errEl.textContent = 'Email obligatoire pour envoyer le lien de paiement au client.';
+    errEl.style.display = 'block';
+    return;
+  }
   await submitReservation(body, submitBtn, errEl);
 }
 async function submitReservation(body, submitBtn, errEl){
@@ -2754,7 +2776,12 @@ async function submitReservation(body, submitBtn, errEl){
       RESERVATIONS_CACHE.unshift(d.reservation);
     }
     setReservationsView('liste');
-    showToast(d.en_attente ? `Réservation ${d.ref} créée, en attente de paiement` : `Réservation ${d.ref} créée et confirmée`, 'success');
+    if(d.en_attente){
+      if(d.lien_envoye) showToast(`Réservation ${d.ref} créée — lien de paiement envoyé au client`, 'success');
+      else showToast(`Réservation ${d.ref} créée, mais le lien de paiement n'a pas pu être envoyé (${d.lien_erreur || 'erreur'}) — renvoie-le depuis la fiche`, 'error');
+    } else {
+      showToast(`Réservation ${d.ref} créée et confirmée`, 'success');
+    }
   }catch(e){
     errEl.textContent = e.message; errEl.style.display = 'block';
   }finally{
@@ -2776,6 +2803,17 @@ function cancelReservation(id){
       showToast(e.message, 'error');
     }
   }, {danger:true, yesLabel:'Annuler la réservation'});
+}
+// Renvoyer le lien de paiement Stripe (email perdu, lien expiré après 24h) —
+// recrée une session à chaque fois côté serveur, voir admin-reservations.js.
+function renvoyerLienPaiement(id){
+  confirmAction('Renvoyer le lien de paiement au client par email ?', async () => {
+    try{
+      const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'renvoyer_lien_paiement', id})});
+      if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+      showToast('Lien de paiement renvoyé', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {yesLabel:'Renvoyer'});
 }
 // Validation administrative de l'attribution d'un appareil (Module 6, Partie 6).
 function validerAppareilsReservation(id){
@@ -3763,6 +3801,11 @@ async function assignTransporteur(livraisonId, transporteurId, selectEl){
   // l'assignation qu'on vient de faire resterait affichée comme "Non
   // assigné" jusqu'au prochain chargement complet de l'onglet.
   if(document.getElementById('resa-list')) renderReservations();
+  // Et sur le board "Aujourd'hui" de l'Accueil (boardRowHtml) — pas de
+  // fonction de rendu isolée pour ce bloc, un rechargement complet du
+  // dashboard est la façon dont cet onglet se rafraîchit déjà ailleurs
+  // (voir TAB_AUTO_REFRESH.accueil).
+  if(CURRENT_TAB === 'accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
   loadAlerts();
 }
 function maskLivraison(livraisonId){
