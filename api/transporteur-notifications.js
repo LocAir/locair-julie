@@ -32,14 +32,16 @@ module.exports = async (req, res) => {
     if (action === 'marquer_lu') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
-      await supabase.from('transporteur_notifications').update({ lu: true, lu_at: new Date().toISOString() })
+      const { error: luErr } = await supabase.from('transporteur_notifications').update({ lu: true, lu_at: new Date().toISOString() })
         .eq('id', id).eq('transporteur_id', transporteurId);
+      if (luErr) throw luErr;
       return res.status(200).json({ ok: true });
     }
 
     if (action === 'marquer_tout_lu') {
-      await supabase.from('transporteur_notifications').update({ lu: true, lu_at: new Date().toISOString() })
+      const { error: toutLuErr } = await supabase.from('transporteur_notifications').update({ lu: true, lu_at: new Date().toISOString() })
         .eq('transporteur_id', transporteurId).eq('lu', false);
+      if (toutLuErr) throw toutLuErr;
       return res.status(200).json({ ok: true });
     }
 
