@@ -4,7 +4,7 @@ const { recordMouvement, LOCALISATION_PAR_STATUT } = require('./stockMouvements'
 // actions terrain (Module 5 Partie 8, Module 6 Partie 5) — journalise
 // chaque changement via recordMouvement, jamais un simple écrasement.
 async function setAppareilsStatutForReservation(supabase, reservationId, statut, {
-  typeEvenement, livraisonId = null, utilisateur = null, commentaire = null,
+  typeEvenement, livraisonId = null, utilisateur = null, commentaire = null, nouvelleLocalisation = null,
 } = {}) {
   if (!reservationId) return;
   const { data: ras } = await supabase
@@ -13,7 +13,10 @@ async function setAppareilsStatutForReservation(supabase, reservationId, statut,
   if (!ids.length) return;
   await Promise.all(ids.map(appareilId => recordMouvement(supabase, {
     appareilId, typeEvenement, nouveauStatut: statut,
-    nouvelleLocalisation: LOCALISATION_PAR_STATUT[statut] || 'autre',
+    // Override explicite (ex. le transporteur garde l'appareil dans son
+    // véhicule pour la prochaine livraison plutôt que de repasser par le
+    // dépôt) — sinon la localisation standard associée au statut.
+    nouvelleLocalisation: nouvelleLocalisation || LOCALISATION_PAR_STATUT[statut] || 'autre',
     livraisonId, reservationId, utilisateur, commentaire,
   })));
 }

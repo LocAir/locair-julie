@@ -2011,6 +2011,12 @@ const ETAT_MATERIEL_LABEL = {
   nettoyage_necessaire: 'Nettoyage nécessaire', maintenance_necessaire: 'Maintenance nécessaire',
   hors_service: 'Hors service',
 };
+// États qui repartent réutilisables tels quels — seuls ces cas permettent de
+// garder l'appareil dans le véhicule (un appareil à nettoyer/réparer doit de
+// toute façon repasser par le local). Doit rester synchronisé avec
+// ETAT_MATERIEL_TO_APPAREIL_STATUT (api/_lib/appareilSync.js) : ces 2 valeurs
+// sont les seules à donner le statut 'disponible'.
+const ETAT_MATERIEL_REUTILISABLE = ['parfait_etat', 'usure_normale'];
 function etatMaterielHtml(){
   return `
     <div class="section-title" style="margin:10px 0 2px 2px">État du matériel récupéré</div>
@@ -2037,10 +2043,45 @@ function submitFinalMission(okAction){
   }
   if(okAction === 'retour_ok'){
     const etatEl = document.querySelector('input[name="etat-materiel"]:checked');
-    extra.etat_materiel = etatEl ? etatEl.value : null;
+    const etat = etatEl ? etatEl.value : null;
+    extra.etat_materiel = etat;
     extra.etat_materiel_commentaire = (document.getElementById('etat-materiel-commentaire')||{}).value || '';
+    // Un appareil qui repart réutilisable tel quel peut être gardé dans le
+    // véhicule pour la prochaine livraison — on le demande avant de valider,
+    // jamais pour un appareil à nettoyer/réparer (doit repasser par le local).
+    if(ETAT_MATERIEL_REUTILISABLE.includes(etat)){
+      confirmerDepotAppareil(okAction, extra);
+      return;
+    }
   }
   doAction(okAction, extra);
+}
+// Où passe le climatiseur qu'on vient de récupérer ? Évite un aller-retour
+// inutile au local si le transporteur a une livraison qui suit. extra
+// (contient etat_materiel_commentaire, texte libre) est gardé en mémoire
+// plutôt que sérialisé dans l'attribut onclick — jamais de texte libre
+// injecté tel quel dans du HTML.
+function confirmerDepotAppareil(okAction, extra){
+  STATE._pendingFinal = { okAction, extra };
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'confirm-depot-overlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h1 style="margin-bottom:10px">Et ce climatiseur ?</h1>
+      <p class="sub" style="margin-bottom:18px">Tu peux le garder dans ton véhicule pour ta prochaine livraison, plutôt que de repasser par le local.</p>
+      <button class="btn btn-blue btn-block" onclick="finaliserApresRecuperation(true)">🚐 Je le garde avec moi</button>
+      <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="finaliserApresRecuperation(false)">📦 Je le dépose au local</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+function finaliserApresRecuperation(conserve){
+  document.getElementById('confirm-depot-overlay')?.remove();
+  const pending = STATE._pendingFinal;
+  if(!pending) return;
+  STATE._pendingFinal = null;
+  pending.extra.conserve_vehicule = conserve;
+  doAction(pending.okAction, pending.extra);
 }
 function missionWizardHtml(m, infoRows, mapsUrl){
   const steps = missionStepDefs(m);
