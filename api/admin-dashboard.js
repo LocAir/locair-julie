@@ -221,6 +221,38 @@ async function computePartenairesBlock(supabase, since) {
   };
 }
 
+// Anticipation de la demande (Module 8) — jusqu'ici une seule alerte
+// ponctuelle existait (cron-daily.js, "stock saturé J+7"), sans vue
+// d'ensemble sur plusieurs semaines. getAvailability (api/_lib/stock.js,
+// RPC available_units) donne déjà la disponibilité sur une plage de dates ;
+// il suffit de l'appeler une fois par semaine à venir pour obtenir une vraie
+// prévision, sans toucher à la base.
+async function computePrevisions(supabase, cities) {
+  const flottes = await Promise.all(cities.map(async city => {
+    const { count } = await supabase
+      .from('appareils').select('id', { count: 'exact', head: true })
+      .eq('city_id', city.id).not('statut', 'in', '(panne,maintenance)');
+    return count || 0;
+  }));
+  const flotteTotale = flottes.reduce((s, n) => s + n, 0);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const NB_SEMAINES = 8;
+  const semaines = await Promise.all(
+    Array.from({ length: NB_SEMAINES }, (_, i) => {
+      const debut = addDays(today, i * 7);
+      const fin = addDays(debut, 7);
+      return Promise.all(cities.map(city => getAvailability(supabase, city.id, debut, fin)))
+        .then(parVille => ({
+          semaine_debut: debut,
+          dispo: Math.max(0, parVille.reduce((s, n) => s + n, 0)),
+          flotte_totale: flotteTotale,
+        }));
+    })
+  );
+  return semaines;
+}
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
@@ -239,6 +271,13 @@ module.exports = async (req, res) => {
       if (!cities[0]) return res.status(404).json({ error: 'Aucune ville configurée' });
       const result = await computeExportComptable(supabase, cities.map(c => c.id), body.date_debut, body.date_fin);
       return res.status(200).json(result);
+    }
+
+    if (body.action === 'previsions') {
+      const cities = body.city_id === 'all' ? await listCities(supabase) : [await resolveAdminCity(supabase, body)];
+      if (!cities[0]) return res.status(404).json({ error: 'Aucune ville configurée' });
+      const semaines = await computePrevisions(supabase, cities);
+      return res.status(200).json({ semaines });
     }
 
     // Tableau de bord principal : agrège toutes les villes actives, avec le
