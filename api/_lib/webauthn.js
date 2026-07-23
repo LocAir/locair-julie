@@ -26,7 +26,8 @@ function extractChallenge(response) {
 }
 
 async function storeChallenge(supabase, challenge) {
-  await supabase.from('webauthn_challenges').insert({ challenge });
+  const { error } = await supabase.from('webauthn_challenges').insert({ challenge });
+  if (error) throw error;
   // Best-effort : garde la table petite, jamais bloquant.
   supabase.from('webauthn_challenges')
     .delete().lt('created_at', new Date(Date.now() - 10 * 60000).toISOString())
@@ -38,7 +39,8 @@ async function consumeChallenge(supabase, challenge) {
   if (!challenge) return false;
   const { data } = await supabase.from('webauthn_challenges').select('id, created_at').eq('challenge', challenge).maybeSingle();
   if (!data) return false;
-  await supabase.from('webauthn_challenges').delete().eq('id', data.id);
+  const { error: delErr } = await supabase.from('webauthn_challenges').delete().eq('id', data.id);
+  if (delErr) return false;
   const ageMs = Date.now() - new Date(data.created_at).getTime();
   return ageMs <= 5 * 60000;
 }
