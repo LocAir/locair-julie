@@ -11,6 +11,7 @@ const { scenariosDueToday } = require('./_lib/emailSchedule');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
 const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
 const { recordMouvement } = require('./_lib/stockMouvements');
+const { sendReservationPaymentLink } = require('./_lib/paymentLink');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
@@ -155,6 +156,61 @@ module.exports = async (req, res) => {
     if (retardCount) report.retards = retardCount;
   } catch (e) {
     console.error('[Cron retards]', e.message);
+  }
+
+  // ── 3bis. Relance des réservations en_attente jamais payées (Module 8) ──────
+  // Un panier abandonné sur le site, ou un lien de paiement envoyé par
+  // l'admin jamais finalisé, laissait jusqu'ici la réservation en_attente
+  // indéfiniment sans jamais relancer le client. email_log
+  // (scenario='relance_paiement') sert de mémoire du nombre de relances déjà
+  // envoyées à une réservation donnée, sans colonne dédiée — même principe
+  // que le marqueur d'alerte de maintenance préventive plus bas.
+  try {
+    const { data: enAttente } = await supabase
+      .from('reservations')
+      .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, created_at')
+      .eq('statut', 'en_attente')
+      .not('email', 'is', null);
+
+    let relanceCount = 0, annuleCount = 0;
+    if ((enAttente || []).length && process.env.STRIPE_SECRET_KEY) {
+      const stripeRelance = new Stripe(process.env.STRIPE_SECRET_KEY);
+      for (const resa of enAttente) {
+        if (!resa.email) continue;
+        const ageJours = Math.floor((today - new Date(resa.created_at)) / 86400000);
+        if (ageJours < 1) continue;
+
+        // Passé 7 jours sans paiement malgré les relances, on arrête les
+        // frais : la réservation est annulée, plus aucune relance ne suit.
+        if (ageJours >= 7) {
+          await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', resa.id);
+          await pushToAdmin(supabase, {
+            title: `⏳ Réservation annulée (jamais payée) — ${resa.ref || '?'}`,
+            body:  `${resa.prenom || ''} ${resa.nom || ''} — en attente depuis ${ageJours}j sans paiement, annulée automatiquement.`,
+            tag:   `en-attente-annulee-${resa.id}`,
+          });
+          annuleCount++;
+          continue;
+        }
+
+        const { count: nbRelances } = await supabase
+          .from('email_log').select('id', { count: 'exact', head: true })
+          .eq('reservation_id', resa.id).eq('scenario', 'relance_paiement');
+
+        // 1re relance à J+1, 2e à J+3 — jamais plus d'une relance par jour
+        // (le compteur ne progresse qu'après un envoi réussi).
+        const doitRelancer = (nbRelances === 0 && ageJours >= 1) || (nbRelances === 1 && ageJours >= 3);
+        if (!doitRelancer) continue;
+
+        const result = await sendReservationPaymentLink(supabase, stripeRelance, resa, { scenario: 'relance_paiement', rappel: true });
+        if (result.ok) relanceCount++;
+        else console.error('[Cron relance paiement]', result.error, 'reservation', resa.id);
+      }
+    }
+    if (relanceCount) report.relancesPaiement = relanceCount;
+    if (annuleCount) report.enAttenteAnnulees = annuleCount;
+  } catch (e) {
+    console.error('[Cron relances paiement]', e.message);
   }
 
   // ── 4. Maintenance préventive ─────────────────────────────────────────────────
