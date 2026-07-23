@@ -71,7 +71,7 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
     .eq('reservation_id', offre.reservation_id).eq('type', 'recuperation')
     .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']).maybeSingle();
 
-  if (!restants) {
+  if (restants === 0) {
     // Plus aucun climatiseur à récupérer sur cette réservation — la location
     // se termine entièrement par une vente. Sans ce passage à "terminee", le
     // tableau de bord client resterait bloqué sur "En location" pour
@@ -292,6 +292,7 @@ const handler = async (req, res) => {
     let email           = null;
     let customerId      = '';
     let paymentMethodId = '';
+    let piId            = ''; // payment_intent ID canonique (pi_…) pour lookup réservation
 
     if (eventType === 'payment_intent.succeeded') {
       const intent = await stripe.paymentIntents.retrieve(obj.id || '');
@@ -301,6 +302,7 @@ const handler = async (req, res) => {
       email           = intent.receipt_email || meta.email || '';
       customerId      = (typeof intent.customer === 'string' ? intent.customer : '') || meta.customer_id || '';
       paymentMethodId = (typeof intent.payment_method === 'string' ? intent.payment_method : '') || '';
+      piId            = intent.id;
 
     } else if (eventType === 'checkout.session.completed') {
       const session = await stripe.checkout.sessions.retrieve(obj.id || '');
@@ -308,6 +310,11 @@ const handler = async (req, res) => {
       meta   = session.metadata || {};
       amount = (session.amount_total / 100).toFixed(2) + ' €';
       email  = session.customer_email || session.metadata?.email || '';
+      // Extraire le payment_intent (pi_…) lié à la session Checkout — obj.id
+      // vaut cs_… qui n'est jamais stocké dans reservations.stripe_payment_intent_id
+      piId   = typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : (session.payment_intent?.id || '');
 
     } else if (eventType === 'payment_intent.payment_failed') {
       await handlePaymentFailed(getSupabase(), obj);
@@ -340,7 +347,7 @@ const handler = async (req, res) => {
     // Ne doit jamais bloquer les emails existants en cas de souci Supabase.
     let confirmedResa = null;
     try {
-      confirmedResa = await confirmReservationAndCreateLivraisons(getSupabase(), obj.id || '');
+      confirmedResa = await confirmReservationAndCreateLivraisons(getSupabase(), piId || obj.id || '');
     } catch (e) {
       console.error('[Reservation confirm]', e.message);
     }
@@ -479,7 +486,7 @@ const handler = async (req, res) => {
           smsConfirmationContent = `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`;
         }
         await sendBrevoSms({ to: meta.tel, content: smsConfirmationContent }).catch(() => {});
-        getSupabase().from('email_log').insert({
+        await getSupabase().from('email_log').insert({
           reservation_id: confirmedResa.id, scenario: 'sms_confirmation', canal: 'sms',
           destinataire: meta.tel, modele: 'sms_confirmation', statut: 'envoye', contenu: smsConfirmationContent,
         }).catch(() => {});

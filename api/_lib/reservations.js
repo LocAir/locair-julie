@@ -158,9 +158,10 @@ async function findOrCreateClient(supabase, resa) {
 // Idempotent par construction : si des appareils sont déjà liés à cette
 // réservation (webhook Stripe redélivré), ne fait rien.
 async function assignAppareils(supabase, resa, staleOriginalId) {
-  const { data: already } = await supabase
+  const { data: already, error: alreadyErr } = await supabase
     .from('reservation_appareils').select('id').eq('reservation_id', resa.id).limit(1);
-  if (already && already.length) return;
+  if (alreadyErr) throw alreadyErr;
+  if (already.length) return;
 
   // Prolongation : le client garde physiquement le même climatiseur, ce n'est
   // pas un nouvel appareil — on reprend celui (ou ceux) de la réservation
@@ -352,8 +353,9 @@ async function confirmReservation(supabase, resa) {
 
   await assignAppareils(supabase, resa, staleOriginalId);
 
-  const { data: existing } = await supabase.from('livraisons').select('id').eq('reservation_id', resa.id);
-  if (!existing || existing.length === 0) {
+  const { data: existing, error: existingErr } = await supabase.from('livraisons').select('id').eq('reservation_id', resa.id);
+  if (existingErr) throw existingErr;
+  if (existing.length === 0) {
     // Le créneau choisi par le client sur le site (reservations.creneau) doit
     // atteindre la mission opérationnelle — jusqu'ici il finissait seulement
     // dans l'email de confirmation, jamais dans le planning admin/livreur.
