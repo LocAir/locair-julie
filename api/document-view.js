@@ -12,16 +12,17 @@ module.exports = async (req, res) => {
 
   const supabase = getSupabase();
   try {
-    const { data: doc } = await supabase
+    const { data: doc, error: docErr } = await supabase
       .from('documents').select('id, storage_path, statut').eq('access_token', token).maybeSingle();
+    if (docErr) throw docErr;
     if (!doc) return res.status(404).send('Document introuvable ou lien expiré.');
 
-    if (doc.statut !== 'consulte') {
-      await supabase.from('documents').update({ statut: 'consulte', consulte_at: new Date().toISOString() }).eq('id', doc.id);
-    }
-
-    const { data: signed, error } = await supabase.storage.from('missions').createSignedUrl(doc.storage_path, 3600);
+    const { data: signed, error } = await supabase.storage.from('missions').createSignedUrl(doc.storage_path, 300);
     if (error || !signed) return res.status(500).send('Document temporairement indisponible.');
+
+    if (doc.statut !== 'consulte') {
+      await supabase.from('documents').update({ statut: 'consulte', consulte_at: new Date().toISOString() }).eq('id', doc.id).catch(() => {});
+    }
 
     res.writeHead(302, { Location: signed.signedUrl });
     return res.end();
