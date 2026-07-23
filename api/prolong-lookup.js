@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { getClientIp, isRateLimited } = require('./_lib/ratelimit');
+const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -39,10 +39,12 @@ module.exports = async (req, res) => {
   }
 
   if (!resa) {
+    await recordFailedAttempt(supabase, `prolong:${ip}`).catch(() => {});
     return res.status(404).json({ error: 'Aucune location trouvée — vérifiez votre email et référence de commande.' });
   }
 
   if (['annulee', 'remboursee'].includes(resa.statut)) {
+    await recordFailedAttempt(supabase, `prolong:${ip}`).catch(() => {});
     return res.status(422).json({ error: 'Cette location ne peut pas être prolongée.' });
   }
 

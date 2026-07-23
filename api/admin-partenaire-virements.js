@@ -121,7 +121,8 @@ module.exports = async (req, res) => {
     if (action === 'resoudre_litige') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
-      const { error } = await supabase.from('reservations').update({ partenaire_litige_resolu: true }).eq('id', id);
+      const { error } = await supabase.from('reservations').update({ partenaire_litige_resolu: true })
+        .eq('id', id).not('partenaire_id', 'is', null).eq('partenaire_commission_payee', true).eq('partenaire_litige_resolu', false);
       if (error) throw error;
       return res.status(200).json({ ok: true });
     }

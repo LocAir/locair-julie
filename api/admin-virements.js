@@ -104,7 +104,8 @@ module.exports = async (req, res) => {
       if (!liv || !transpIds.includes(liv.transporteur_id)) return res.status(404).json({ error: 'Mission introuvable' });
       if (liv.statut !== 'fait') return res.status(400).json({ error: 'Mission non terminée' });
 
-      await supabase.from('livraisons').update({ montant_du_cents: montantCents, montant_manuel: true }).eq('id', livraisonId);
+      const { error: updMontantErr } = await supabase.from('livraisons').update({ montant_du_cents: montantCents, montant_manuel: true }).eq('id', livraisonId);
+      if (updMontantErr) throw updMontantErr;
       return res.status(200).json({ ok: true, montant_cents: montantCents });
     }
 
@@ -120,7 +121,8 @@ module.exports = async (req, res) => {
       const ids = (aValider || []).map(l => l.id);
       if (!ids.length) return res.status(400).json({ error: 'Rien à valider pour ce transporteur' });
 
-      await supabase.from('livraisons').update({ valide: true, valide_at: new Date().toISOString() }).in('id', ids);
+      const { error: valideErr } = await supabase.from('livraisons').update({ valide: true, valide_at: new Date().toISOString() }).in('id', ids);
+      if (valideErr) throw valideErr;
       await notifyTransporteur(supabase, transporteurId, {
         type: 'validation', message: 'Votre mission a été validée.', tag: 'validation',
       });
@@ -156,7 +158,7 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Rien à verser pour ce transporteur (missions pas encore validées ?)' });
       }
 
-      if (ids.length) await supabase.from('livraisons').update({ paye: true }).in('id', ids);
+      if (ids.length) { const { error: payeErr } = await supabase.from('livraisons').update({ paye: true }).in('id', ids); if (payeErr) throw payeErr; }
 
       if (existante) {
         await supabase.from('virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', existante.id);

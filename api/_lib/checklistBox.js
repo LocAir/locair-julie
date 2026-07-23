@@ -54,7 +54,7 @@ function kitSequenceForReservation(reservation, unitCount) {
   // à la main) — plutôt que de sous-compter le matériel à prendre, on
   // reporte sur le dernier type connu de la répartition.
   while (seq.length < unitCount) seq.push(seq[seq.length - 1] || kitPourFenetre(reservation?.fenetre));
-  return seq;
+  return seq.slice(0, unitCount);
 }
 
 async function computeChecklistBox(supabase, transporteurId, dateISO) {
