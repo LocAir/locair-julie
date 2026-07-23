@@ -414,6 +414,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
             <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
             <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
             <button data-tab="communications" onclick="switchAdminTab('communications')">🎛️ Communications<span class="tab-badge hidden" id="badge-communications"></span></button>
+            <button data-tab="devis" onclick="switchAdminTab('devis')">📝 Devis</button>
           </div>
         </details>
         <details class="tabs-group" data-group="gerer">
@@ -446,6 +447,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
         <div id="tab-stock" class="hidden"></div>
         <div id="tab-reservations" class="hidden"></div>
         <div id="tab-communications" class="hidden"></div>
+        <div id="tab-devis" class="hidden"></div>
         <div id="tab-checklist" class="hidden"></div>
         <div id="tab-livraisons" class="hidden"></div>
         <div id="tab-virements" class="hidden"></div>
@@ -1164,13 +1166,14 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','communications','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
+  ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
   if(tab==='stock') loadStock();
   if(tab==='reservations') loadReservations();
   if(tab==='communications') loadCommunications();
+  if(tab==='devis') loadDevis();
   if(tab==='checklist') loadChecklistBox();
   if(tab==='livraisons') loadLivraisons();
   if(tab==='virements') loadVirementsTab();
@@ -2099,6 +2102,179 @@ async function logControleAppareil(appareilId, btn){
     showToast(e.message, 'error');
     btn.disabled = false;
   }
+}
+// Devis entreprises (Module 8) — reservations.type_client='entreprise' existe
+// déjà, mais rien ne permet de chiffrer une demande avant qu'elle s'engage.
+// "Accepté" ne crée jamais de réservation automatiquement : le bouton
+// "convertir" pré-remplit juste le formulaire de création manuelle existant
+// (nr-*), l'admin vérifie et valide lui-même — pas de duplication de la
+// logique de création de réservation ici.
+let DEVIS_CACHE = [];
+const DEVIS_STATUT_LABEL = {brouillon:'Brouillon', envoye:'Envoyé', accepte:'Accepté', refuse:'Refusé', expire:'Expiré'};
+async function loadDevis(){
+  const zone = document.getElementById('tab-devis');
+  zone.innerHTML = '<div class="card"><p class="sub">Chargement…</p></div>';
+  try{
+    const r = await fetch(API('admin-devis'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    DEVIS_CACHE = d.devis || [];
+    renderDevis();
+  }catch(e){
+    zone.innerHTML = `<div class="card"><p class="err" style="display:block">${escHtml(e.message)}</p></div>`;
+  }
+}
+function renderDevis(){
+  const zone = document.getElementById('tab-devis');
+  if(!zone) return;
+  const enCours = DEVIS_CACHE.filter(x => !['refuse','expire'].includes(x.statut));
+  zone.innerHTML = `
+    <div class="card">
+      <h2>📝 Devis entreprises</h2>
+      <p class="sub" style="margin-bottom:16px">Chiffrage envoyé à une entreprise avant engagement — n'affecte ni le stock ni le paiement.</p>
+      ${enCours.length ? enCours.map(x => `
+        <div class="row-item">
+          <div class="row-top">
+            <span class="row-title">${escHtml(x.raison_sociale)} · ${x.quantite} appareil${x.quantite>1?'s':''}</span>
+            <span class="chip ${x.statut==='accepte'?'ok':x.statut==='envoye'?'en_attente':'a_faire'}">${DEVIS_STATUT_LABEL[x.statut]||x.statut}</span>
+          </div>
+          <div class="row-meta">${escHtml(x.email)}${x.date_debut&&x.date_fin?' · du '+frDate(x.date_debut)+' au '+frDate(x.date_fin):''} · ${euros(x.prix_propose_cents)}${x.notes?' · '+escHtml(x.notes):''}</div>
+          <div class="row-actions">
+            ${x.statut==='brouillon'?`<button class="btn btn-blue" onclick="sendDevis(${x.id},this)">📧 Envoyer</button>`:''}
+            ${x.statut==='envoye'?`<button class="btn btn-green" onclick="updateDevisStatut(${x.id},'accepte',this)">✅ Accepté</button>`:''}
+            ${['brouillon','envoye'].includes(x.statut)?`<button class="btn btn-red" onclick="updateDevisStatut(${x.id},'refuse',this)">✕ Refusé</button>`:''}
+            ${x.statut==='accepte'?`<button class="btn btn-green" onclick="convertirDevisEnReservation(${x.id})">✅ Convertir en réservation</button>`:''}
+          </div>
+        </div>`).join('') : '<p class="empty">Aucun devis en cours.</p>'}
+      <div style="margin-top:16px">
+        <div class="section-title" style="margin-top:0">Nouveau devis</div>
+        <label>Raison sociale *</label>
+        <input type="text" id="dv-raison"/>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="dv-prenom">Prénom du contact</label><input type="text" id="dv-prenom"/></div>
+          <div><label for="dv-nom">Nom du contact</label><input type="text" id="dv-nom"/></div>
+        </div>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="dv-email">Email *</label><input type="email" id="dv-email"/></div>
+          <div><label for="dv-tel">Téléphone</label><input type="tel" id="dv-tel"/></div>
+        </div>
+        <label style="margin-top:8px">SIRET (optionnel)</label>
+        <input type="text" id="dv-siret"/>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="dv-debut">Date début</label><input type="date" id="dv-debut" oninput="dvRecalcPrice()"/></div>
+          <div><label for="dv-fin">Date fin</label><input type="date" id="dv-fin" oninput="dvRecalcPrice()"/></div>
+        </div>
+        <div class="inline-form" style="margin-top:8px">
+          <div><label for="dv-qte">Quantité</label><input type="number" id="dv-qte" min="1" value="1" oninput="dvRecalcPrice()"/></div>
+          <div><label for="dv-prix">Prix proposé (€)</label><input type="number" id="dv-prix" min="0" step="0.5"/></div>
+        </div>
+        <p id="dv-price-preview" class="sub" style="display:none;margin:-6px 0 10px;font-size:12px"></p>
+        <label>Installation</label>
+        <select id="dv-installation">${INSTALLATION_OPTIONS.map(o=>`<option value="${o}">${o}</option>`).join('')}</select>
+        <label style="margin-top:8px">Notes (optionnel)</label>
+        <input type="text" id="dv-notes"/>
+        <div class="err" id="dv-err"></div>
+        <button class="btn btn-blue btn-block" style="margin-top:8px" onclick="createDevis()">+ Créer le devis</button>
+      </div>
+    </div>`;
+}
+function dvRecalcPrice(){
+  const debut = document.getElementById('dv-debut')?.value;
+  const fin   = document.getElementById('dv-fin')?.value;
+  const preview = document.getElementById('dv-price-preview');
+  const prixEl = document.getElementById('dv-prix');
+  if(!debut || !fin){ if(preview) preview.style.display = 'none'; return; }
+  const days = Math.round((new Date(fin+'T00:00:00Z') - new Date(debut+'T00:00:00Z')) / 86400000);
+  if(days < 1){ if(preview) preview.style.display = 'none'; return; }
+  const qte = Math.max(1, parseInt(document.getElementById('dv-qte')?.value) || 1);
+  const baseCents = Math.round(prCalcBase(days) * qte * 100);
+  if(preview){
+    preview.style.display = 'block';
+    preview.textContent = `Base location (${days} j${qte>1?' × '+qte:''}) : ${euros(baseCents)} — ajuste le prix proposé pour une remise entreprise.`;
+  }
+  if(prixEl && !prixEl.value) prixEl.value = (baseCents/100).toFixed(2);
+}
+async function createDevis(){
+  const errEl = document.getElementById('dv-err');
+  errEl.style.display = 'none';
+  const raison_sociale = document.getElementById('dv-raison').value.trim();
+  const email = document.getElementById('dv-email').value.trim();
+  if(!raison_sociale || !email){
+    errEl.textContent = 'Raison sociale et email sont obligatoires.';
+    errEl.style.display = 'block';
+    return;
+  }
+  try{
+    const r = await fetch(API('admin-devis'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action:'create', raison_sociale, email,
+      prenom: document.getElementById('dv-prenom').value.trim(),
+      nom: document.getElementById('dv-nom').value.trim(),
+      tel: document.getElementById('dv-tel').value.trim(),
+      siret: document.getElementById('dv-siret').value.trim(),
+      date_debut: document.getElementById('dv-debut').value || null,
+      date_fin: document.getElementById('dv-fin').value || null,
+      quantite: document.getElementById('dv-qte').value,
+      installation: document.getElementById('dv-installation').value,
+      prix_propose_cents: Math.round((parseFloat(document.getElementById('dv-prix').value)||0)*100),
+      notes: document.getElementById('dv-notes').value,
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Devis créé', 'success');
+    loadDevis();
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display = 'block';
+  }
+}
+async function sendDevis(id, btn){
+  btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-devis'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'send', id})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Devis envoyé par email', 'success');
+    loadDevis();
+  }catch(e){
+    showToast(e.message, 'error');
+    btn.disabled = false;
+  }
+}
+async function updateDevisStatut(id, statut, btn){
+  btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-devis'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update_statut', id, statut})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadDevis();
+    showToast('Devis mis à jour', 'success');
+  }catch(e){
+    showToast(e.message, 'error');
+    btn.disabled = false;
+  }
+}
+// Pré-remplit le formulaire de création manuelle existant plutôt que de
+// dupliquer la logique de création de réservation — l'admin garde la main
+// pour vérifier/compléter avant de valider.
+async function convertirDevisEnReservation(id){
+  const x = DEVIS_CACHE.find(v => v.id === id);
+  if(!x) return;
+  switchAdminTab('reservations');
+  // switchAdminTab a déjà déclenché loadReservations() sans l'attendre — on
+  // l'attend nous-même ici pour être sûr que le formulaire (reservationCreerHtml)
+  // est bien dans le DOM avant de le pré-remplir, sinon le second rendu de
+  // loadReservations() écraserait nos valeurs juste après.
+  await loadReservations();
+  setReservationsView('creer');
+  const set = (elId, val) => { const el = document.getElementById(elId); if(el) el.value = val || ''; };
+  set('nr-prenom', x.prenom); set('nr-nom', x.nom);
+  set('nr-tel', x.tel); set('nr-email', x.email);
+  set('nr-debut', x.date_debut); set('nr-fin', x.date_fin);
+  set('nr-qte', x.quantite);
+  set('nr-prix', ((x.prix_propose_cents||0)/100).toFixed(2));
+  const typeSel = document.getElementById('nr-type');
+  if(typeSel){ typeSel.value = 'entreprise'; typeSel.dispatchEvent(new Event('change')); }
+  set('nr-raison', x.raison_sociale); set('nr-siret', x.siret);
+  showToast('Formulaire pré-rempli depuis le devis — vérifie puis valide', 'success');
 }
 function exportStockCsv(){
   if(!STOCK_APPAREILS_CACHE.length){ showToast('Aucun appareil à exporter', 'error'); return; }
