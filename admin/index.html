@@ -5275,6 +5275,9 @@ function deleteChecklistItem(id){
 
 // ── EMAILS (moteur central de scénarios client, Module 3) ─────────────────────
 let EMAIL_SCENARIOS_CACHE = [];
+let EMAILS_LOG_CACHE = [];
+let EMAIL_SIG_CACHE = {};
+let EMAILS_FILTER = 'tous';
 async function loadEmails(){
   const zone = document.getElementById('tab-emails');
   zone.innerHTML = loading();
@@ -5287,20 +5290,32 @@ async function loadEmails(){
     const dLog = await rLog.json(), dScen = await rScen.json(), dSig = await rSig.json();
     if(!rLog.ok) throw new Error(dLog.error||'Erreur');
     EMAIL_SCENARIOS_CACHE = dScen.scenarios || [];
-    renderEmails(dLog.emails || [], dSig.signature || {});
+    EMAILS_LOG_CACHE = dLog.emails || [];
+    EMAIL_SIG_CACHE = dSig.signature || {};
+    renderEmails();
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
+function setEmailsFilter(f){ EMAILS_FILTER = f; renderEmails(); }
 
 function scenarioLibelle(id){
   return EMAIL_SCENARIOS_CACHE.find(s=>s.id===id)?.libelle || id;
 }
 
-function renderEmails(emails, sig){
+function renderEmails(){
   const zone = document.getElementById('tab-emails');
+  const emails = EMAILS_LOG_CACHE;
+  const sig = EMAIL_SIG_CACHE;
   const nbEnvoyes = emails.filter(e=>e.statut==='envoye').length;
   const nbErreurs = emails.filter(e=>e.statut==='erreur').length;
+  // Sur 200 envois, retrouver les quelques erreurs à traiter noyées dans les
+  // succès obligeait à tout parcourir — même friction que sur Incidents.
+  const filteredEmails = EMAILS_FILTER==='erreur' ? emails.filter(e=>e.statut==='erreur') : emails;
+  const filterHtml = `<div class="filter-scroll" style="margin-bottom:12px">
+    <button class="${EMAILS_FILTER==='tous'?'on':''}" onclick="setEmailsFilter('tous')">Tous</button>
+    <button class="${EMAILS_FILTER==='erreur'?'on':''}" onclick="setEmailsFilter('erreur')">⚠️ Erreurs${nbErreurs?' ('+nbErreurs+')':''}</button>
+  </div>`;
 
   const scenariosHtml = EMAIL_SCENARIOS_CACHE.map(s => `
     <div class="row-item" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
@@ -5322,7 +5337,7 @@ function renderEmails(emails, sig){
       <button class="btn btn-blue" onclick="saveEmailSignature()" style="width:fit-content">Enregistrer la signature</button>
     </div>`;
 
-  const logHtml = emails.length ? emails.map(e => {
+  const logHtml = filteredEmails.length ? filteredEmails.map(e => {
     const r = e.reservation || {};
     return `
       <div class="row-item">
@@ -5336,14 +5351,15 @@ function renderEmails(emails, sig){
           ${e.reservation_id?`<button class="btn btn-grey" onclick="resendEmail(${e.reservation_id},'${e.scenario}',this)">🔁 Renvoyer</button>`:''}
         </div>
       </div>`;
-  }).join('') : '<p class="empty">Aucun email envoyé pour l\'instant.</p>';
+  }).join('') : `<p class="empty">${EMAILS_FILTER==='erreur'?'✅ Aucune erreur.':'Aucun email envoyé pour l\'instant.'}</p>`;
 
   zone.innerHTML = `
     <div class="stat-grid" style="margin-bottom:16px">
       <div class="stat-tile"><div class="n">${nbEnvoyes}</div><div class="l">Envoyés</div></div>
-      <div class="stat-tile"><div class="n" style="${nbErreurs?'color:var(--red)':''}">${nbErreurs}</div><div class="l">Erreurs</div></div>
+      <div class="stat-tile" style="${nbErreurs?'cursor:pointer':''}" ${nbErreurs?`onclick="setEmailsFilter('erreur')"`:''}><div class="n" style="${nbErreurs?'color:var(--red)':''}">${nbErreurs}</div><div class="l">Erreurs</div></div>
     </div>
     <div class="section-title" style="margin-top:0">Historique</div>
+    ${filterHtml}
     ${logHtml}
     <div class="section-title">Scénarios</div>
     ${scenariosHtml}
