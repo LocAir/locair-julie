@@ -335,10 +335,15 @@ const handler = async (req, res) => {
     // ── Offre Privilège : flux totalement distinct, jamais une réservation ────
     // (voir api/offre-privilege-pay.js) — ne touche jamais reservations.
     if (meta.type === 'offre_privilege') {
-      try {
-        await handleOffrePrivilegeAccepted(getSupabase(), parseInt(meta.offre_id));
-      } catch (e) {
-        console.error('[Offre privilège webhook]', e.message);
+      const offreId = parseInt(meta.offre_id);
+      if (!offreId) {
+        console.error('[Offre privilège webhook] offre_id manquant dans metadata Stripe, piId:', piId);
+      } else {
+        try {
+          await handleOffrePrivilegeAccepted(getSupabase(), offreId);
+        } catch (e) {
+          console.error('[Offre privilège webhook]', e.message);
+        }
       }
       return res.status(200).json({ received: true, type: 'offre_privilege' });
     }

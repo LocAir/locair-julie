@@ -80,6 +80,10 @@ module.exports = async (req, res) => {
       if (!reservationId || !SCENARIOS[scenario]) {
         return res.status(400).json({ error: 'reservation_id et scenario valides requis' });
       }
+      const city = await resolveAdminCity(supabase, body);
+      if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
+      const { data: resaOwned } = await supabase.from('reservations').select('id').eq('id', reservationId).eq('city_id', city.id).maybeSingle();
+      if (!resaOwned) return res.status(404).json({ error: 'Réservation introuvable' });
       const result = await sendScenarioEmail(supabase, { reservationId, scenario, force: true });
       if (!result.sent) return res.status(422).json({ error: RESEND_ERROR_LABEL[result.reason] || (result.error || result.reason) });
       return res.status(200).json({ ok: true });
@@ -166,6 +170,10 @@ module.exports = async (req, res) => {
       const scenario = String(body.scenario || '');
       const skipAction = body.skip_action === 'pause' ? 'pause' : 'suppression';
       if (!reservationId || !scenario) return res.status(400).json({ error: 'reservation_id et scenario requis' });
+      const citySkip = await resolveAdminCity(supabase, body);
+      if (!citySkip) return res.status(404).json({ error: 'Aucune ville configurée' });
+      const { data: resaOwnedSkip } = await supabase.from('reservations').select('id').eq('id', reservationId).eq('city_id', citySkip.id).maybeSingle();
+      if (!resaOwnedSkip) return res.status(404).json({ error: 'Réservation introuvable' });
       const { error } = await supabase.from('email_skip')
         .upsert({ reservation_id: reservationId, scenario, action: skipAction }, { onConflict: 'reservation_id,scenario' });
       if (error) throw error;
@@ -195,6 +203,10 @@ module.exports = async (req, res) => {
       const reservationId = parseInt(body.reservation_id);
       const scenario = String(body.scenario || '');
       if (!reservationId || !scenario) return res.status(400).json({ error: 'reservation_id et scenario requis' });
+      const cityUnskip = await resolveAdminCity(supabase, body);
+      if (!cityUnskip) return res.status(404).json({ error: 'Aucune ville configurée' });
+      const { data: resaOwnedUnskip } = await supabase.from('reservations').select('id').eq('id', reservationId).eq('city_id', cityUnskip.id).maybeSingle();
+      if (!resaOwnedUnskip) return res.status(404).json({ error: 'Réservation introuvable' });
       const { error } = await supabase.from('email_skip').delete().eq('reservation_id', reservationId).eq('scenario', scenario);
       if (error) throw error;
       return res.status(200).json({ ok: true });
