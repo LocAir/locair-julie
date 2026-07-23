@@ -381,7 +381,8 @@ module.exports = async (req, res) => {
         update.etat_materiel = body.etat_materiel;
         update.etat_materiel_commentaire = (body.etat_materiel_commentaire || '').trim().slice(0, 1000) || 'Mission clôturée manuellement par l\'administrateur.';
       }
-      await supabase.from('livraisons').update(update).eq('id', livraisonId);
+      const { error: forceErr } = await supabase.from('livraisons').update(update).eq('id', livraisonId);
+      if (forceErr) throw forceErr;
       if (liv.incident_id) {
         await supabase.from('incidents').update({ statut: 'resolu' }).eq('id', liv.incident_id).in('statut', INCIDENT_OPEN_STATUSES);
       }

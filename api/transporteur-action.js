@@ -383,7 +383,8 @@ module.exports = async (req, res) => {
         update.etat_materiel_commentaire = (body.etat_materiel_commentaire || '').slice(0, 1000);
       }
 
-      await supabase.from('livraisons').update(update).eq('id', liv.id);
+      const { error: livUpdErr } = await supabase.from('livraisons').update(update).eq('id', liv.id);
+      if (livUpdErr) throw livUpdErr;
       await closeMissionIncident(supabase, liv);
 
       // Parc matériel (Module 5 Partie 8, Module 6 Partie 5) : synchronisation
