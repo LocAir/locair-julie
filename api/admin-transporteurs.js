@@ -64,12 +64,15 @@ module.exports = async (req, res) => {
       const pushSet    = new Set((pushRows || []).map(p => p.transporteur_id));
 
       return res.status(200).json({
-        transporteurs: transporteurs.map(t => ({
-          ...t,
-          villes:              villesByT[t.id] || [],
-          disponibilites:      dispoByT[t.id]  || [],
-          notifications_actives: pushSet.has(t.id),
-        })),
+        transporteurs: transporteurs.map(t => {
+          const { pin: _pin, ...safeT } = t;
+          return {
+            ...safeT,
+            villes:              villesByT[t.id] || [],
+            disponibilites:      dispoByT[t.id]  || [],
+            notifications_actives: pushSet.has(t.id),
+          };
+        }),
       });
     }
 

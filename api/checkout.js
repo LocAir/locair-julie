@@ -41,7 +41,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Adresse email invalide' });
   }
 
-  const duree = Math.max(3, parseInt(data.duree) || 7);
+  const duree = Math.min(90, Math.max(3, parseInt(data.duree) || 7));
   const qty   = Math.min(5, Math.max(1, parseInt((data.quantite || '1').replace(/[^0-9]/g, '')) || 1));
   const baseCents     = calcBase(duree) * qty * 100;
   const isTech        = (data.installation || '').startsWith('Technicien');
@@ -50,8 +50,9 @@ module.exports = async (req, res) => {
   // Codes fixes (montant flat en euros) + codes "PRENOM10/20/30" personnalisés
   // (pourcentage du prix de base) envoyés automatiquement à la fin de chaque
   // location — voir _lib/promo.js.
-  const promoPct       = matchPromoPct(promoCode, data.prenom);
-  const promoDiscount = (PROMO_CODES[promoCode] || 0) * 100 + Math.round(baseCents * promoPct / 100);
+  const flatDiscount  = PROMO_CODES[promoCode] || 0;
+  const promoPct      = flatDiscount > 0 ? 0 : matchPromoPct(promoCode, data.prenom);
+  const promoDiscount = flatDiscount * 100 + Math.round(baseCents * promoPct / 100);
 
   const dateDebut = (data.date || '').slice(0, 10);
   if (!isValidDate(dateDebut)) {
@@ -171,6 +172,15 @@ module.exports = async (req, res) => {
       },
     });
 
+    // Second vérification de disponibilité juste avant l'INSERT — la première
+    // (ci-dessus) précède la création Stripe (~300-500 ms) pendant laquelle
+    // une commande concurrente peut avoir consommé le dernier appareil.
+    const recheckDispo = await getAvailability(supabase, city.id, dateDebut, dateFin);
+    if (recheckDispo < qty) {
+      await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel recheck]', e.message));
+      return res.status(409).json({ error: 'Plus assez de climatiseurs disponibles (vérification finale)', disponibles: Math.max(0, recheckDispo) });
+    }
+
     const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  city.id,
       hors_zone:                horsZone || false,
@@ -211,7 +221,7 @@ module.exports = async (req, res) => {
       logement:                 (data.logement || '').slice(0, 100) || null,
       motifs:                   (data.motifs || '').slice(0, 500) || null,
       mkt_consent:              data.mkt_consent === 'Oui' || data.mkt_consent === true,
-      cgv_accepted_at:          (data.cgv_accepted_at || null),
+      cgv_accepted_at:          new Date().toISOString(),
     }).select('id').single();
 
     if (insertErr) {

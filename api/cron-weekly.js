@@ -4,7 +4,7 @@ const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
-  if (!secret) return true;
+  if (!secret) return false;
   return (req.headers['authorization'] || '') === `Bearer ${secret}`;
 }
 
