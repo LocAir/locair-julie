@@ -20,8 +20,7 @@ const CONTROLE_MARQUEUR = 'Contrôle préventif effectué';
 const CONTROLE_SEUIL_MOIS = 6;
 
 async function bumpNbLocationsHistorique(supabase, appareilId) {
-  const { data } = await supabase.from('appareils').select('nb_locations_historique').eq('id', appareilId).maybeSingle();
-  await supabase.from('appareils').update({ nb_locations_historique: (data?.nb_locations_historique || 0) + 1 }).eq('id', appareilId);
+  await supabase.rpc('bump_nb_locations_historique', { p_appareil_id: appareilId });
 }
 
 module.exports = async (req, res) => {
