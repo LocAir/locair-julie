@@ -20,11 +20,17 @@ module.exports = async (req, res) => {
 
   try {
     // Historique des emails envoyés/en erreur — optionnellement filtré par
-    // réservation ou par scénario, le plus récent en premier.
+    // réservation ou par scénario, le plus récent en premier. Scopé à la
+    // ville de l'admin via la réservation liée (jointure !inner) — sans ça,
+    // cet historique mélangeait les emails/SMS (et les noms/adresses email
+    // des clients) de TOUTES les villes, contrairement au reste de l'admin.
     if (action === 'list') {
+      const city = await resolveAdminCity(supabase, body);
+      if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
       let query = supabase
         .from('email_log')
-        .select('id, reservation_id, scenario, destinataire, statut, erreur, created_at, reservation:reservations(ref, prenom, nom)')
+        .select('id, reservation_id, scenario, destinataire, statut, erreur, created_at, reservation:reservations!inner(ref, prenom, nom, city_id)')
+        .eq('reservation.city_id', city.id)
         .order('created_at', { ascending: false })
         .limit(200);
       if (body.reservation_id) query = query.eq('reservation_id', parseInt(body.reservation_id));
