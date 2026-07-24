@@ -5459,7 +5459,7 @@ function goTo(n,silent){
     if(fd)fd.min=_fmtDate(_addDays(_minOff()));
     initDateShortcuts();
   }
-  if(n===5||n===6)setTimeout(buildRecap,0);
+  if(n===5||n===6){_updateDeliveryFee();setTimeout(buildRecap,0);}
   updateModalRecapPill(n);
   const mb=document.getElementById('modal-body');
   if(mb)mb.scrollTop=0;
@@ -6240,6 +6240,14 @@ function submitForm(btn,mode){
         // Utiliser le montant confirmé par le serveur (évite toute divergence)
         const serverEuros=d.amountCents!=null?(d.amountCents/100).toFixed(2).replace('.',',')+' €':prixEuros;
         const amtEl=document.getElementById('stripe-pay-amount');if(amtEl)amtEl.textContent=serverEuros;
+        // Si le serveur a calculé un montant différent (ex. livraison hors zone non détectée
+        // côté client faute d'autocomplétion), corriger DELIVERY_FEE et reconstruire le récap
+        // pour que le détail affiché corresponde exactement au débit Stripe.
+        if(d.amountCents!=null&&d.amountCents!==prixCents){
+          const baseHT=Math.round((calcTotal(parseInt(formData.duree)||7)-_promoDiscount)*100);
+          DELIVERY_FEE=Math.max(0,Math.round((d.amountCents-baseHT)/100));
+          buildRecap();
+        }
         const sect=document.getElementById('stripe-section');if(sect)sect.style.display='block';
         if(btn){btn.style.display='none';}
         const hint=document.getElementById('sbtn-hint');if(hint)hint.style.display='none';
