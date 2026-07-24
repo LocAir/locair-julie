@@ -318,10 +318,7 @@ async function confirmReservation(supabase, resa) {
   if (resa.source === 'site_prolongation' && resa.email) {
     const { data: stale } = await supabase
       .from('reservations')
-      // adresse/tel : revérifiés plus bas avant toute suppression d'une
-      // mission déjà acceptée — l'email seul (potentiellement partagé,
-      // ex. compte pro) ne suffit pas pour une action irréversible.
-      .select('id, adresse, tel')
+      .select('id')
       .eq('city_id', resa.city_id)
       // ilike plutôt que eq : des réservations plus anciennes ont pu stocker
       // l'email avec une casse différente (avant que checkout.js/
@@ -333,51 +330,27 @@ async function confirmReservation(supabase, resa) {
       .neq('id', resa.id);
     if (stale && stale.length) {
       staleOriginalId = stale[0].id;
-      // Récupère les transporteurs déjà assignés avant d'annuler/supprimer,
-      // pour pouvoir les prévenir (même téléphone fermé) qu'une mission
-      // qu'on leur avait confiée n'a plus lieu d'être.
+      // Récupère les transporteurs déjà assignés avant d'annuler, pour pouvoir
+      // les prévenir (même téléphone fermé) qu'une mission qu'on leur avait
+      // confiée n'a plus lieu d'être.
       // Toutes les missions encore actives, pas seulement 'a_faire' — sinon
       // une récupération déjà acceptée (voire en route) par un transporteur
-      // au moment où la prolongation est confirmée n'était jamais traitée et
+      // au moment où la prolongation est confirmée n'était jamais annulée et
       // restait affichée en double à côté de la nouvelle mission de
       // récupération. Même liste de statuts "actifs" que l'annulation d'une
       // réservation entière (voir admin-reservations.js, patch.statut==='annulee').
-      const { data: toHandle } = await supabase
-        .from('livraisons').select('id, transporteur_id, statut')
+      // Annulée plutôt que supprimée (choix délibéré) : une mission annulée
+      // reste consultable (historique transporteur, fiche client) sans
+      // polluer les listes actives d'admin/index.html et transporteur/
+      // index.html, qui filtrent déjà 'annule' de leurs vues principales.
+      const { data: toCancel } = await supabase
+        .from('livraisons').select('id, transporteur_id')
         .in('reservation_id', stale.map(r => r.id))
         .eq('type', 'recuperation')
         .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
-      if (toHandle && toHandle.length) {
-        // Pas encore acceptée par un transporteur : personne ne s'est encore
-        // engagé dessus, une simple annulation suffit (rien à "nettoyer").
-        const nonAcceptees = toHandle.filter(l => l.statut === 'a_faire');
-        // Déjà acceptée (ou au-delà : en route, arrivée, problème) : le
-        // transporteur l'a déjà dans son planning — supprimée plutôt que
-        // simplement annulée, pour qu'elle ne traîne plus du tout en double.
-        // Suppression irréversible -> revérifie d'abord que c'est bien le
-        // même client (adresse ET téléphone, en plus de l'email déjà utilisé
-        // pour retrouver la réservation d'origine) avant de la déclencher ;
-        // en cas de doute, on se rabat sur une simple annulation.
-        const dejaAcceptees = toHandle.filter(l => l.statut !== 'a_faire');
-
-        if (nonAcceptees.length) {
-          await supabase.from('livraisons').update({ statut: 'annule' }).in('id', nonAcceptees.map(l => l.id));
-        }
-        if (dejaAcceptees.length) {
-          const origine = stale[0];
-          const memeClient = !!(
-            origine.adresse && resa.adresse && origine.adresse.trim() === resa.adresse.trim() &&
-            normalizeTel(origine.tel) && normalizeTel(origine.tel) === normalizeTel(resa.tel)
-          );
-          if (memeClient) {
-            await supabase.from('livraisons').delete().in('id', dejaAcceptees.map(l => l.id));
-          } else {
-            console.error('[Prolongation] mission déjà acceptée non supprimée (adresse/téléphone différents) — annulée à la place', { reservationOrigine: origine.id, nouvelleReservation: resa.id });
-            await supabase.from('livraisons').update({ statut: 'annule' }).in('id', dejaAcceptees.map(l => l.id));
-          }
-        }
-
-        const transpIds = [...new Set(toHandle.map(l => l.transporteur_id).filter(Boolean))];
+      if (toCancel && toCancel.length) {
+        await supabase.from('livraisons').update({ statut: 'annule' }).in('id', toCancel.map(l => l.id));
+        const transpIds = [...new Set(toCancel.map(l => l.transporteur_id).filter(Boolean))];
         for (const tid of transpIds) {
           await notifyTransporteur(supabase, tid, {
             type: 'annulation', message: 'Une récupération a été annulée — le client a prolongé sa location.',
