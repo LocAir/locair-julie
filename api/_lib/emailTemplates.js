@@ -462,56 +462,66 @@ function tplFinLocation(ctx) {
 }
 
 // Confirmation de prolongation
-function tplProlongConfirmation({ prenom, nom, jours, date_recuperation, creneau, amount, lang }) {
+function tplProlongConfirmation({ ref, ref_origine, prenom, nom, jours, date_recuperation, creneau, adresse, amount, lienEspaceClient, lang }) {
   const l = lang || 'fr';
   const jNum = Number(jours) || 1;
   const p = escHtml(prenom || '');
+  const refBox = ref ? `<div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">${l === 'en' ? 'EXTENSION REF' : l === 'zh' ? '续租编号' : l === 'ru' ? 'НОМЕР ПРОДЛЕНИЯ' : 'DOSSIER PROLONGATION'}</p><strong style="font-size:18px;color:#1b3a5f">${escHtml(ref)}</strong>${ref_origine ? `<p style="margin:6px 0 0;font-size:12px;color:#888">${l === 'en' ? 'Original booking' : l === 'zh' ? '原订单' : l === 'ru' ? 'Исходное бронирование' : 'Dossier d\'origine'} : ${escHtml(ref_origine)}</p>` : ''}</div>` : '';
+  const adresseRow = adresse ? `<strong>${l === 'en' ? 'Address' : l === 'zh' ? '地址' : l === 'ru' ? 'Адрес' : 'Adresse'} :</strong> ${escHtml(adresse)}<br/>` : '';
   if (l === 'en') return wrap({
     title: '✅ Extension confirmed!',
     intro: `Thank you ${p}, your payment of ${escHtml(amount)} has been received.`,
     bodyHtml: `
+      ${refBox}
       <p><strong>Name:</strong> ${p} ${escHtml(nom || '')}<br/>
-      <strong>Extra days:</strong> ${jNum} day${jNum > 1 ? 's' : ''}<br/>
+      ${adresseRow}<strong>Extra days:</strong> ${jNum} day${jNum > 1 ? 's' : ''}<br/>
       <strong>New collection date:</strong> ${escHtml(date_recuperation || '—')}<br/>
       <strong>Time slot:</strong> ${escHtml(creneau || '—')}<br/>
       <strong>Amount paid:</strong> ${escHtml(amount)}</p>
-      <p style="font-size:13px;color:#444">Our technician will contact you the day before collection to confirm the time slot.</p>`,
+      <p style="font-size:13px;color:#444">Our technician will contact you the day before collection to confirm the time slot.</p>
+      ${lienEspaceClient ? `<p style="font-size:13px;color:#444">You can view your updated rental dates at any time in <a href="${lienEspaceClient}" style="color:#1b3a5f;font-weight:700">your account</a>.</p>` : ''}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
   });
   if (l === 'zh') return wrap({
     title: '✅ 续租已确认！',
     intro: `感谢 ${p}，我们已收到您的付款 ${escHtml(amount)}。`,
     bodyHtml: `
+      ${refBox}
       <p><strong>姓名：</strong>${p} ${escHtml(nom || '')}<br/>
-      <strong>续租天数：</strong>${jNum} 天<br/>
+      ${adresseRow}<strong>续租天数：</strong>${jNum} 天<br/>
       <strong>新取回日期：</strong>${escHtml(date_recuperation || '—')}<br/>
       <strong>时间段：</strong>${escHtml(creneau || '—')}<br/>
       <strong>支付金额：</strong>${escHtml(amount)}</p>
-      <p style="font-size:13px;color:#444">我们的技术员将在取回前一天联系您确认具体时间。</p>`,
+      <p style="font-size:13px;color:#444">我们的技术员将在取回前一天联系您确认具体时间。</p>
+      ${lienEspaceClient ? `<p style="font-size:13px;color:#444">您可随时在<a href="${lienEspaceClient}" style="color:#1b3a5f;font-weight:700">我的账户</a>查看更新后的租赁日期。</p>` : ''}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
   });
   if (l === 'ru') return wrap({
     title: '✅ Продление подтверждено!',
     intro: `Спасибо, ${p}! Ваш платёж ${escHtml(amount)} получен.`,
     bodyHtml: `
+      ${refBox}
       <p><strong>Имя:</strong> ${p} ${escHtml(nom || '')}<br/>
-      <strong>Дополнительные дни:</strong> ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}<br/>
+      ${adresseRow}<strong>Дополнительные дни:</strong> ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}<br/>
       <strong>Новая дата возврата:</strong> ${escHtml(date_recuperation || '—')}<br/>
       <strong>Временной слот:</strong> ${escHtml(creneau || '—')}<br/>
       <strong>Уплачено:</strong> ${escHtml(amount)}</p>
-      <p style="font-size:13px;color:#444">Наш мастер свяжется с вами накануне возврата для подтверждения времени.</p>`,
+      <p style="font-size:13px;color:#444">Наш мастер свяжется с вами накануне возврата для подтверждения времени.</p>
+      ${lienEspaceClient ? `<p style="font-size:13px;color:#444">Вы можете проверить обновлённые даты аренды в <a href="${lienEspaceClient}" style="color:#1b3a5f;font-weight:700">личном кабинете</a> в любое время.</p>` : ''}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
   });
   return wrap({
     title: '✅ Prolongation confirmée !',
     intro: `Merci ${p}, votre paiement de ${escHtml(amount)} a bien été reçu.`,
     bodyHtml: `
+      ${refBox}
       <p><strong>Client :</strong> ${p} ${escHtml(nom || '')}<br/>
-      <strong>Jours supplémentaires :</strong> ${jNum} jour${jNum > 1 ? 's' : ''}<br/>
+      ${adresseRow}<strong>Jours supplémentaires :</strong> ${jNum} jour${jNum > 1 ? 's' : ''}<br/>
       <strong>Récupération le :</strong> ${escHtml(date_recuperation || '—')}<br/>
       <strong>Créneau :</strong> ${escHtml(creneau || '—')}<br/>
       <strong>Montant payé :</strong> ${escHtml(amount)}</p>
-      <p style="font-size:13px;color:#444">Notre technicien vous contactera la veille de la récupération pour confirmer le créneau.</p>`,
+      <p style="font-size:13px;color:#444">Notre technicien vous contactera la veille de la récupération pour confirmer le créneau.</p>
+      ${lienEspaceClient ? `<p style="font-size:13px;color:#444">Vous pouvez consulter vos nouvelles dates à tout moment dans <a href="${lienEspaceClient}" style="color:#1b3a5f;font-weight:700">votre espace client</a>.</p>` : ''}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
   });
 }
