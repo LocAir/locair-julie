@@ -333,11 +333,17 @@ async function confirmReservation(supabase, resa) {
       // Récupère les transporteurs déjà assignés avant d'annuler, pour pouvoir
       // les prévenir (même téléphone fermé) qu'une mission qu'on leur avait
       // confiée n'a plus lieu d'être.
+      // Toutes les missions encore actives, pas seulement 'a_faire' — sinon
+      // une récupération déjà acceptée (voire en route) par un transporteur
+      // au moment où la prolongation est confirmée n'était jamais annulée et
+      // restait affichée en double à côté de la nouvelle mission de
+      // récupération. Même liste de statuts "actifs" que l'annulation d'une
+      // réservation entière (voir admin-reservations.js, patch.statut==='annulee').
       const { data: toCancel } = await supabase
         .from('livraisons').select('id, transporteur_id')
         .in('reservation_id', stale.map(r => r.id))
         .eq('type', 'recuperation')
-        .eq('statut', 'a_faire');
+        .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
       if (toCancel && toCancel.length) {
         await supabase.from('livraisons').update({ statut: 'annule' }).in('id', toCancel.map(l => l.id));
         const transpIds = [...new Set(toCancel.map(l => l.transporteur_id).filter(Boolean))];
