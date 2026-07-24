@@ -7617,6 +7617,52 @@ function setLang(l){
   _rebuildCustomBtn();
   if(typeof _renderSmartLine==='function')_renderSmartLine();
   if(typeof _initDynamicText==='function')_initDynamicText();
+  if(typeof applyGoogleRatingDOM==='function')applyGoogleRatingDOM();
+}
+
+// ── Note & avis Google (API Places côté serveur, chiffres uniquement) ──
+let _googleRating=null;
+function _fmtGoogleRating(val){
+  const dec=(_lang==='fr'||_lang==='ru')?',':'.';
+  return val.toFixed(1).replace('.',dec);
+}
+function applyGoogleRatingDOM(){
+  if(!_googleRating)return;
+  const {rating,count}=_googleRating;
+  const ratingStr=_fmtGoogleRating(rating);
+  const countStr=String(count);
+  const swap=txt=>txt.replace(/4[.,]8/,ratingStr).replace(/\b23\b/,countStr);
+  document.querySelectorAll('.hero-micro').forEach(el=>{el.textContent=swap(el.textContent);});
+  const proof=document.getElementById('pricing-social-proof');
+  if(proof)proof.innerHTML=swap(proof.innerHTML);
+  const since=document.getElementById('score-since');
+  if(since)since.textContent=swap(since.textContent);
+  document.querySelectorAll('.rs-label,.exp-stat-l').forEach(el=>{el.textContent=swap(el.textContent);});
+  document.querySelectorAll('.ri-t,.ri-d').forEach(el=>{el.innerHTML=swap(el.innerHTML);});
+  document.querySelectorAll('.exp-stat-n').forEach(el=>{el.innerHTML=swap(el.innerHTML);});
+  const scoreLink=document.querySelector('a.score');
+  if(scoreLink)scoreLink.setAttribute('aria-label',swap(scoreLink.getAttribute('aria-label')||''));
+  const scoreN=document.querySelector('.score-n');
+  if(scoreN){scoreN.dataset.count=String(rating);scoreN.textContent=ratingStr;}
+  const sld=document.getElementById('schema-ld');
+  if(sld){
+    try{
+      const j=JSON.parse(sld.textContent);
+      if(j.aggregateRating){j.aggregateRating.ratingValue=String(rating);j.aggregateRating.reviewCount=String(count);}
+      sld.textContent=JSON.stringify(j);
+    }catch(e){}
+  }
+}
+async function _refreshGoogleRating(){
+  try{
+    const r=await fetch('/api/google-rating');
+    if(!r.ok)return;
+    const d=await r.json();
+    if(d&&d.available&&typeof d.rating==='number'&&typeof d.count==='number'){
+      _googleRating={rating:d.rating,count:d.count};
+      applyGoogleRatingDOM();
+    }
+  }catch(e){}
 }
 
 // Compteur de stock réel — synchronisé avec l'espace admin (et le statut
@@ -7657,6 +7703,7 @@ async function _refreshStockAndSoldOut(){
 // Appliquer la langue mémorisée au chargement
 document.addEventListener('DOMContentLoaded',async()=>{
   setLang(_lang);
+  _refreshGoogleRating();
   await _refreshStockAndSoldOut();
   // Garde le compteur et le mode "complet" synchronisés avec le stock réel
   // pendant toute la visite, sans recharger la page.
