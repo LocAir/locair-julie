@@ -335,6 +335,10 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true, ref, en_attente: true, reservation: { ...resa, masquee: false } });
       }
       await confirmReservation(supabase, resa);
+      // Mettre à jour date_fin de la réservation d'origine pour que l'espace client
+      // et les prolongations suivantes voient toujours la date réelle de fin.
+      await supabase.from('reservations').update({ date_fin: newDateFin }).eq('id', origId)
+        .catch(e => console.error('[Admin prolong] date_fin update:', e.message));
       // Même principe qu'une location standard (voir "create" ci-dessus) :
       // une prolongation prise par téléphone envoie le même email dédié
       // qu'une prolongation payée en ligne via /prolongation.
