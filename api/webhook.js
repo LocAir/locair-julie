@@ -391,13 +391,24 @@ const handler = async (req, res) => {
       }
       const sigProlong = await getSignature(getSupabase());
       const prolongLang = meta.lang || confirmedResa?.lang || 'fr';
+      // Reformater le montant selon la locale du client — `amount` est toujours
+      // "40.00 €" (point comme séparateur), mais le FR et le RU attendent une
+      // virgule ("40,00 €"), et l'EN attend le symbole devant ("€40.00").
+      const rawEuros = parseFloat(amount) || 0;
+      const prolongAmountFmt = prolongLang === 'en' || prolongLang === 'zh'
+        ? '€' + rawEuros.toFixed(2)
+        : rawEuros.toFixed(2).replace('.', ',') + ' €';
       const prolongHtml = withSignature(tplProlongConfirmation({
-        prenom:            meta.prenom            || '',
-        nom:               meta.nom               || '',
-        jours:             meta.jours             || '1',
-        date_recuperation: meta.date_recuperation || '',
-        creneau:           meta.creneau           || '',
-        amount,
+        ref:               confirmedResa?.ref        || '',
+        ref_origine:       (meta.ref || meta.ref_origine || '').trim().toUpperCase(),
+        prenom:            meta.prenom               || '',
+        nom:               meta.nom                  || '',
+        jours:             meta.jours                || '1',
+        date_recuperation: meta.date_recuperation    || '',
+        creneau:           meta.creneau              || '',
+        adresse:           meta.adresse_origine      || '',
+        amount:            prolongAmountFmt,
+        lienEspaceClient:  'https://www.locair.fr/#contact',
         lang:              prolongLang,
       }), sigProlong);
       const jNum = Number(meta.jours) || 1;
@@ -405,6 +416,8 @@ const handler = async (req, res) => {
         ? `✅ Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
         : prolongLang === 'zh'
         ? `✅ 续租已确认 — 已延长 ${jNum} 天`
+        : prolongLang === 'ru'
+        ? `✅ Продление подтверждено — добавлено ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}`
         : `✅ Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
       const resultProlong = await sendBrevoEmail({
         to:      email,
@@ -430,7 +443,8 @@ const handler = async (req, res) => {
       // On identifie la réservation d'origine par son ref (stocké dans les metadata Stripe
       // par checkout-prolong.js) — plus fiable que l'email si le client a plusieurs réservations.
       if (confirmedResa?.date_fin) {
-        const origRef = (meta.ref || '').trim().toUpperCase();
+        // prolong-pay.js stocke la ref d'origine dans meta.ref_origine (pas meta.ref)
+        const origRef = (meta.ref || meta.ref_origine || '').trim().toUpperCase();
         try {
           let lookup = getSupabase().from('reservations').select('id').not('source', 'eq', 'site_prolongation');
           lookup = origRef ? lookup.eq('ref', origRef) : lookup.ilike('email', (email || '').trim()).order('created_at', { ascending: false }).limit(1);
@@ -504,6 +518,9 @@ const handler = async (req, res) => {
           const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
           const dateStr = d ? `${months[d.getUTCMonth()]}${d.getUTCDate()}日` : '';
           smsConfirmationContent = `Loc'Air：预订已确认 ✅${dateStr ? ' 配送日期：' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}。技术员将在到达前30分钟致电。咨询：+33 6 63 79 87 56`;
+        } else if (lang === 'ru') {
+          const dateStr = d ? d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '';
+          smsConfirmationContent = `Loc'Air: бронирование подтверждено ✅${dateStr ? ' Доставка ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Мастер позвонит за 30 мин до приезда. Вопросы: +33 6 63 79 87 56`;
         } else {
           const dateStr = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
           smsConfirmationContent = `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`;
