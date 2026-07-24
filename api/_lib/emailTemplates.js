@@ -1,6 +1,6 @@
 // Templates des scénarios email client — chaque fonction reçoit un ctx
 // (déjà résolu par emailEngine.js) et retourne du HTML prêt à l'envoi.
-// ctx.lang = 'fr' | 'en' | 'zh'  (défaut : 'fr')
+// ctx.lang = 'fr' | 'en' | 'zh' | 'ru'  (défaut : 'fr')
 const { promoCodeForPrenom, REFERRAL_PCT } = require('./promo');
 
 function escHtml(s) {
@@ -74,6 +74,21 @@ function tplConfirmation(ctx) {
       <p style="font-size:13px;color:#444">技术员将在<strong>到达前30分钟</strong>致电通知您。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
   });
+  if (l === 'ru') return wrap({
+    title: '✅ Бронирование подтверждено!',
+    intro: `Спасибо, ${p}! Ваш платёж ${escHtml(ctx.montantFmt)} получен.`,
+    bodyHtml: `
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">ВАШ ЗАКАЗ</p><strong style="font-size:18px;color:#1b3a5f">${ref}</strong></div>
+      <p><strong>Имя:</strong> ${p} ${escHtml(ctx.nom)}<br/>
+      <strong>Адрес:</strong> ${escHtml(ctx.adresse)}<br/>
+      <strong>Доставка:</strong> ${escHtml(ctx.dateDebutFmt)}${ctx.creneau ? ' · ' + escHtml(ctx.creneau) : ''}<br/>
+      <strong>Возврат:</strong> ${escHtml(ctx.dateRecupFmt)}<br/>
+      <strong>Устройство:</strong> ${escHtml(ctx.modeleClimatiseur)}<br/>
+      <strong>Установка:</strong> ${escHtml(ctx.installation || 'Самостоятельно')}<br/>
+      <strong>Сумма:</strong> ${escHtml(ctx.montantFmt)}</p>
+      <p style="font-size:13px;color:#444">Мастер позвонит вам <strong>за 30 минут до приезда</strong>.</p>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
+  });
   return wrap({
     title: '✅ Réservation confirmée !',
     intro: `Merci ${p}, votre paiement de ${escHtml(ctx.montantFmt)} a bien été reçu.`,
@@ -113,6 +128,15 @@ function tplSuiviJ14(ctx) {
       <p>目前无需任何操作——我们将在配送前几天联系您确认具体时间。</p>`,
     ctaHref: ctx.lienEspaceClient, ctaLabel: '联系我们',
   });
+  if (l === 'ru') return wrap({
+    title: 'Ваш кондиционер прибудет через 14 дней',
+    intro: `Заказ ${ref}`,
+    bodyHtml: `
+      <p>Здравствуйте, ${p}!</p>
+      <p>Ваш заказ Loc'Air (номер ${ref}) подтверждён на <strong>${escHtml(ctx.dateDebutFmt)}</strong>.</p>
+      <p>Пока ничего делать не нужно — мы свяжемся с вами за несколько дней до доставки для уточнения времени.</p>`,
+    ctaHref: ctx.lienEspaceClient, ctaLabel: 'Связаться с нами',
+  });
   return wrap({
     title: 'Votre climatiseur arrive dans 14 jours',
     intro: `Dossier ${ref}`,
@@ -145,6 +169,15 @@ function tplPreparationJ3(ctx) {
       <p>您的 Loc'Air 空调将于 <strong>${escHtml(ctx.dateDebutFmt)}</strong>${ctx.creneau ? '（时间段：' + escHtml(ctx.creneau) + '）' : ''} 配送至：${escHtml(ctx.adresse)}。</p>
       <div class="box"><p style="margin:0">请确保您（或受托人）在场接收设备，并确保窗户区域畅通易达。</p></div>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '更改时间段',
+  });
+  if (l === 'ru') return wrap({
+    title: 'Доставка совсем скоро',
+    intro: `Заказ ${ref}`,
+    bodyHtml: `
+      <p>Здравствуйте, ${p}!</p>
+      <p>Ваш кондиционер Loc'Air доставят <strong>${escHtml(ctx.dateDebutFmt)}</strong>${ctx.creneau ? ' (слот ' + escHtml(ctx.creneau) + ')' : ''} по адресу: ${escHtml(ctx.adresse)}.</p>
+      <div class="box"><p style="margin:0">Пожалуйста, убедитесь, что вы (или кто-то из близких) будете дома и доступ к окну свободен.</p></div>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Изменить временной слот',
   });
   return wrap({
     title: 'Votre livraison approche',
@@ -187,6 +220,19 @@ function tplRappelJ1(ctx) {
       </div>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '更改时间段',
   });
+  if (l === 'ru') return wrap({
+    title: 'Завтра — доставка вашего кондиционера!',
+    intro: `Заказ ${ref}`,
+    bodyHtml: `
+      <p>Здравствуйте, ${p}!</p>
+      <p>Ваш мобильный кондиционер Loc'Air будет доставлен <strong>завтра</strong>.</p>
+      <div class="box">
+        <p style="margin:0 0 6px"><strong>Адрес:</strong> ${escHtml(ctx.adresse)}</p>
+        <p style="margin:0 0 6px"><strong>Временной слот:</strong> ${escHtml(ctx.creneau || 'уточним утром')}</p>
+        <p style="margin:0"><strong>Мастер позвонит вам за 30 минут до приезда.</strong></p>
+      </div>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Изменить временной слот',
+  });
   return wrap({
     title: 'Demain, livraison de votre climatiseur !',
     intro: `Dossier ${ref}`,
@@ -225,6 +271,16 @@ function tplPostInstallation(ctx) {
       <p>如有任何问题，请随时联系我们的团队。</p>
       <p style="font-size:13px;color:#888">如果您有时间，您的评价将帮助更多家庭了解我们：</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: '留下 Google 评价 ⭐',
+  });
+  if (l === 'ru') return wrap({
+    title: '✅ Ваш кондиционер установлен!',
+    intro: `Заказ ${ref}`,
+    bodyHtml: `
+      <p>Здравствуйте, ${p}!</p>
+      <p>Ваш ${escHtml(ctx.modeleClimatiseur)} установлен и готов к работе.</p>
+      <p>Есть вопросы или проблемы? Наша команда всегда на связи.</p>
+      <p style="font-size:13px;color:#888">Если есть минутка, ваш отзыв поможет другим семьям нам доверять:</p>`,
+    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Оставить отзыв в Google ⭐',
   });
   return wrap({
     title: '✅ Votre climatiseur est installé !',
@@ -268,6 +324,19 @@ function tplAvantFinLocation(ctx) {
       <p style="font-size:13px;color:#888">如不需要续租，我们的团队将按计划日期取回设备。</p>`,
     ctaHref: ctx.lienProlongation, ctaLabel: '续租延长',
   });
+  if (l === 'ru') return wrap({
+    title: 'Срок аренды скоро истекает',
+    intro: `Заказ ${ref}`,
+    bodyHtml: `
+      <p>Здравствуйте, ${p}!</p>
+      <p>Ваш кондиционер заберут <strong>${escHtml(ctx.dateRecupFmt)}</strong>. Всё ещё жарко?</p>
+      <div class="box" style="text-align:center">
+        <p style="margin:0 0 8px;font-weight:700;font-size:15px">Продлить аренду</p>
+        <p style="margin:0;color:#666">Добавьте дни в несколько кликов, используя номер заказа (${escHtml(ctx.ref)})</p>
+      </div>
+      <p style="font-size:13px;color:#888">Если продление не нужно, наша команда заберёт устройство в запланированную дату.</p>`,
+    ctaHref: ctx.lienProlongation, ctaLabel: 'Продлить аренду',
+  });
   return wrap({
     title: 'Votre location se termine bientôt',
     intro: `Dossier ${ref}`,
@@ -306,6 +375,16 @@ function tplRappelRecuperation(ctx) {
       <div class="box"><p style="margin:0 0 6px"><strong>地址：</strong>${escHtml(ctx.adresse)}</p><p style="margin:0">我们将于当天早上来电确认具体时间。</p></div>
       <p>请提前拔掉电源，如可能请将排风管卷好。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '联系我们',
+  });
+  if (l === 'ru') return wrap({
+    title: 'Завтра — возврат кондиционера',
+    intro: `Заказ ${ref}`,
+    bodyHtml: `
+      <p>Здравствуйте, ${p}!</p>
+      <p>Ваша аренда Loc'Air заканчивается сегодня (<strong>${escHtml(ctx.dateFinFmt)}</strong>). Наш мастер заберёт устройство завтра (<strong>${escHtml(ctx.dateRecupFmt)}</strong>).</p>
+      <div class="box"><p style="margin:0 0 6px"><strong>Адрес:</strong> ${escHtml(ctx.adresse)}</p><p style="margin:0">Мы позвоним утром для уточнения времени.</p></div>
+      <p>Пожалуйста, отключите устройство от розетки и по возможности скатайте гофру.</p>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Связаться с нами',
   });
   return wrap({
     title: 'Récupération de votre climatiseur demain',
@@ -352,6 +431,20 @@ function tplFinLocation(ctx) {
       <p style="font-size:13px;color:#444">如有时间，您的评价将帮助更多家庭了解我们：</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: '留下 Google 评价 ⭐',
   });
+  if (l === 'ru') return wrap({
+    title: '✅ Аренда завершена',
+    intro: `Заказ ${ref}`,
+    bodyHtml: `
+      <p>Здравствуйте, ${p}!</p>
+      <p>Наш мастер забрал кондиционер. Спасибо, что выбрали Loc'Air!</p>
+      <div class="box" style="text-align:center">
+        <p style="margin:0 0 6px">В знак благодарности — <strong>скидка ${REFERRAL_PCT}%</strong> на следующую аренду по коду</p>
+        <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
+        <p style="margin:0;font-size:13px;color:#666">Можете поделиться кодом с друзьями — их имя + 30 (например JEAN30).</p>
+      </div>
+      <p style="font-size:13px;color:#444">Если есть минутка, ваш отзыв поможет другим семьям нам доверять:</p>`,
+    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Оставить отзыв в Google ⭐',
+  });
   return wrap({
     title: '✅ Location terminée',
     intro: `Dossier ${ref}`,
@@ -397,6 +490,18 @@ function tplProlongConfirmation({ prenom, nom, jours, date_recuperation, creneau
       <p style="font-size:13px;color:#444">我们的技术员将在取回前一天联系您确认具体时间。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
   });
+  if (l === 'ru') return wrap({
+    title: '✅ Продление подтверждено!',
+    intro: `Спасибо, ${p}! Ваш платёж ${escHtml(amount)} получен.`,
+    bodyHtml: `
+      <p><strong>Имя:</strong> ${p} ${escHtml(nom || '')}<br/>
+      <strong>Дополнительные дни:</strong> ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}<br/>
+      <strong>Новая дата возврата:</strong> ${escHtml(date_recuperation || '—')}<br/>
+      <strong>Временной слот:</strong> ${escHtml(creneau || '—')}<br/>
+      <strong>Уплачено:</strong> ${escHtml(amount)}</p>
+      <p style="font-size:13px;color:#444">Наш мастер свяжется с вами накануне возврата для подтверждения времени.</p>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
+  });
   return wrap({
     title: '✅ Prolongation confirmée !',
     intro: `Merci ${p}, votre paiement de ${escHtml(amount)} a bien été reçu.`,
@@ -436,6 +541,17 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
       <p style="font-size:13px;color:#888">请保存此邮件——您的文件可随时通过上方链接访问。</p>
       <p style="font-size:13px;color:#444">随着送货日期临近，我们将再次通过邮件与您联系。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
+  });
+  if (l === 'ru') return wrap({
+    title: "📄 Ваши документы Loc'Air",
+    intro: `Заказ ${escHtml(ref)}`,
+    bodyHtml: `
+      <p>Здравствуйте, ${p}!</p>
+      <p>Спасибо за доверие. К этому письму прилагаются ваш договор аренды и счёт.</p>
+      <div class="box"><p style="margin:0"><a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700">Просмотреть документы онлайн →</a></p></div>
+      <p style="font-size:13px;color:#888">Сохраните это письмо — ваши документы доступны по ссылке выше в любое время.</p>
+      <p style="font-size:13px;color:#444">Мы свяжемся с вами по мере приближения даты доставки.</p>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
   });
   return wrap({
     title: '📄 Vos documents Loc\'Air',

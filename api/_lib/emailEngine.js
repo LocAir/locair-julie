@@ -11,6 +11,7 @@ function fmtDate(iso, lang) {
     const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
     return `${d.getUTCFullYear()}年${months[d.getUTCMonth()]}${d.getUTCDate()}日（${days[d.getUTCDay()]}）`;
   }
+  if (lang === 'ru') return d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
   return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
@@ -21,28 +22,28 @@ function fmtDateFR(iso) { return fmtDate(iso, 'fr'); }
 // de scénario à son libellé, son sujet et son gabarit HTML.
 const SCENARIOS = {
   confirmation:        { libelle: 'Confirmation de réservation',
-    subject: ctx => ctx.lang === 'en' ? `✅ Booking confirmed — Ref ${ctx.ref}` : ctx.lang === 'zh' ? `✅ 预订已确认 — 订单 ${ctx.ref}` : `✅ Réservation confirmée — Dossier ${ctx.ref}`,
+    subject: ctx => ctx.lang === 'en' ? `✅ Booking confirmed — Ref ${ctx.ref}` : ctx.lang === 'zh' ? `✅ 预订已确认 — 订单 ${ctx.ref}` : ctx.lang === 'ru' ? `✅ Бронирование подтверждено — Заказ ${ctx.ref}` : `✅ Réservation confirmée — Dossier ${ctx.ref}`,
     template: tpl.tplConfirmation },
   suivi_j14:           { libelle: 'Suivi J-14',
-    subject: ctx => ctx.lang === 'en' ? 'Your AC arrives in 14 days' : ctx.lang === 'zh' ? '您的空调将在14天后送达' : 'Votre climatiseur arrive dans 14 jours',
+    subject: ctx => ctx.lang === 'en' ? 'Your AC arrives in 14 days' : ctx.lang === 'zh' ? '您的空调将在14天后送达' : ctx.lang === 'ru' ? 'Ваш кондиционер прибудет через 14 дней' : 'Votre climatiseur arrive dans 14 jours',
     template: tpl.tplSuiviJ14 },
   preparation_j3:      { libelle: 'Préparation J-3',
-    subject: ctx => ctx.lang === 'en' ? "Your Loc'Air delivery is coming up" : ctx.lang === 'zh' ? '您的Loc\'Air配送即将到来' : "Votre livraison Loc'Air approche",
+    subject: ctx => ctx.lang === 'en' ? "Your Loc'Air delivery is coming up" : ctx.lang === 'zh' ? '您的Loc\'Air配送即将到来' : ctx.lang === 'ru' ? "Доставка Loc'Air совсем скоро" : "Votre livraison Loc'Air approche",
     template: tpl.tplPreparationJ3 },
   rappel_j1:           { libelle: 'Rappel J-1 (livraison)',
-    subject: ctx => ctx.lang === 'en' ? "📦 Tomorrow — your Loc'Air AC is delivered" : ctx.lang === 'zh' ? "📦 明天——您的Loc'Air空调将送达" : "📦 Demain, livraison de votre climatiseur Loc'Air",
+    subject: ctx => ctx.lang === 'en' ? "📦 Tomorrow — your Loc'Air AC is delivered" : ctx.lang === 'zh' ? "📦 明天——您的Loc'Air空调将送达" : ctx.lang === 'ru' ? "📦 Завтра — доставка вашего кондиционера Loc'Air" : "📦 Demain, livraison de votre climatiseur Loc'Air",
     template: tpl.tplRappelJ1 },
   post_installation:   { libelle: 'Post-installation',
-    subject: ctx => ctx.lang === 'en' ? `✅ Your AC is installed — Ref ${ctx.ref}` : ctx.lang === 'zh' ? `✅ 您的空调已安装 — 订单 ${ctx.ref}` : `✅ Votre climatiseur est installé — Dossier ${ctx.ref}`,
+    subject: ctx => ctx.lang === 'en' ? `✅ Your AC is installed — Ref ${ctx.ref}` : ctx.lang === 'zh' ? `✅ 您的空调已安装 — 订单 ${ctx.ref}` : ctx.lang === 'ru' ? `✅ Ваш кондиционер установлен — Заказ ${ctx.ref}` : `✅ Votre climatiseur est installé — Dossier ${ctx.ref}`,
     template: tpl.tplPostInstallation },
   avant_fin_location:  { libelle: 'Avant fin de location (prolongation)',
-    subject: ctx => ctx.lang === 'en' ? "Your Loc'Air rental is ending soon" : ctx.lang === 'zh' ? "您的Loc'Air租赁即将结束" : "Votre location Loc'Air se termine bientôt",
+    subject: ctx => ctx.lang === 'en' ? "Your Loc'Air rental is ending soon" : ctx.lang === 'zh' ? "您的Loc'Air租赁即将结束" : ctx.lang === 'ru' ? "Срок аренды Loc'Air скоро истекает" : "Votre location Loc'Air se termine bientôt",
     template: tpl.tplAvantFinLocation },
   rappel_recuperation: { libelle: 'Rappel J-1 (récupération)',
-    subject: ctx => ctx.lang === 'en' ? "Your Loc'Air AC is collected tomorrow" : ctx.lang === 'zh' ? "明天将取回您的Loc'Air空调" : "Récupération de votre climatiseur Loc'Air demain",
+    subject: ctx => ctx.lang === 'en' ? "Your Loc'Air AC is collected tomorrow" : ctx.lang === 'zh' ? "明天将取回您的Loc'Air空调" : ctx.lang === 'ru' ? "Завтра — возврат кондиционера Loc'Air" : "Récupération de votre climatiseur Loc'Air demain",
     template: tpl.tplRappelRecuperation },
   fin_location:        { libelle: 'Fin de location (avis)',
-    subject: ctx => ctx.lang === 'en' ? `Loc'Air — Rental complete · Thank you ${ctx.prenom}!` : ctx.lang === 'zh' ? `Loc'Air — 租赁已完成 · 感谢 ${ctx.prenom}！` : `Loc'Air — Location terminée · Merci ${ctx.prenom} !`,
+    subject: ctx => ctx.lang === 'en' ? `Loc'Air — Rental complete · Thank you ${ctx.prenom}!` : ctx.lang === 'zh' ? `Loc'Air — 租赁已完成 · 感谢 ${ctx.prenom}！` : ctx.lang === 'ru' ? `Loc'Air — Аренда завершена · Спасибо, ${ctx.prenom}!` : `Loc'Air — Location terminée · Merci ${ctx.prenom} !`,
     template: tpl.tplFinLocation },
 };
 
@@ -69,6 +70,8 @@ async function buildEmailContext(supabase, reservation) {
     // passage du technicien "demain".
     dateRecupFmt: fmtDate(reservation.date_fin ? addDays(reservation.date_fin, 1) : null, lang),
     montantFmt:   lang === 'fr'
+      ? _prixBase.toFixed(2).replace('.', ',') + ' €'
+      : lang === 'ru'
       ? _prixBase.toFixed(2).replace('.', ',') + ' €'
       : '€' + _prixBase.toFixed(2),
     modeleClimatiseur: appareil?.reference || "Climatiseur mobile Loc'Air",

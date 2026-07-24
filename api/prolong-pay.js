@@ -142,7 +142,7 @@ module.exports = async (req, res) => {
         promo:             promoCode || '',
         promo_pct:         promoPct ? String(promoPct) + '%' : '',
         customer_id:       customerId,
-        lang:              ['fr','en','zh'].includes(req.body.lang) ? req.body.lang : 'fr',
+        lang:              ['fr','en','zh','ru'].includes(req.body.lang) ? req.body.lang : 'fr',
       },
     });
 

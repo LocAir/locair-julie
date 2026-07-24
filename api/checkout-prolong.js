@@ -139,7 +139,7 @@ module.exports = async (req, res) => {
         date_recuperation: (()=>{const r=addDays(extDateFin,1);const[ry,rm,rd]=r.split('-');return rd+'/'+rm+'/'+ry;})(),
         creneau:           (data.creneau           || '').slice(0, 500),
         customer_id:       customerId,
-        lang:              ['fr','en','zh'].includes(data.lang) ? data.lang : 'fr',
+        lang:              ['fr','en','zh','ru'].includes(data.lang) ? data.lang : 'fr',
       },
     });
 
@@ -174,7 +174,7 @@ module.exports = async (req, res) => {
       prix_total_cents:         amountCents,
       statut:                   'en_attente',
       source:                   'site_prolongation',
-      lang:                     ['fr','en','zh'].includes(data.lang) ? data.lang : 'fr',
+      lang:                     ['fr','en','zh','ru'].includes(data.lang) ? data.lang : 'fr',
     }).select('id').single();
 
     if (insertErr) {
