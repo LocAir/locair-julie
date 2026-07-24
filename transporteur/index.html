@@ -598,17 +598,54 @@ async function setupPush(){
     const { publicKey } = await keyRes.json();
     if(!publicKey) return; // VAPID pas encore configuré côté serveur
 
+    // Le navigateur ne pose sa question qu'une fois ("default") — sans
+    // contexte, une popup système qui tombe sans prévenir pousse souvent à un
+    // refus réflexe (bloqué pour de bon ensuite). Un petit écran d'explication
+    // d'abord, même pattern .overlay/.sheet que le guide de première
+    // utilisation (showOnboardingStep) juste en dessous.
+    if(Notification.permission === 'default'){
+      promptPushPermission(reg, publicKey);
+      return;
+    }
+    if(Notification.permission !== 'granted') return;
+    await finishPushSubscription(reg, publicKey);
+  }catch(e){ /* pas bloquant : l'app marche très bien sans push */ }
+}
+async function finishPushSubscription(reg, publicKey){
+  let sub = await reg.pushManager.getSubscription();
+  if(!sub){
+    sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
+  }
+  await fetch(API('transporteur-push-subscribe'), {
+    method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+    body: JSON.stringify({ subscription: sub }),
+  });
+}
+function promptPushPermission(reg, publicKey){
+  if(document.getElementById('push-permission-overlay')) return;
+  STATE._pendingPush = { reg, publicKey };
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'push-permission-overlay';
+  overlay.innerHTML = `
+    <div class="sheet" style="text-align:center">
+      <div style="font-size:44px;margin-bottom:10px">🔔</div>
+      <h1 style="margin-bottom:8px">Active les notifications</h1>
+      <p class="sub" style="margin-bottom:22px">Sois prévenu dès qu'une nouvelle mission t'est attribuée, même l'app fermée.</p>
+      <button class="btn btn-blue btn-block" onclick="confirmPushPermission()">🔔 Activer</button>
+      <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="document.getElementById('push-permission-overlay').remove()">Plus tard</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+async function confirmPushPermission(){
+  document.getElementById('push-permission-overlay')?.remove();
+  const pending = STATE._pendingPush;
+  STATE._pendingPush = null;
+  if(!pending) return;
+  try{
     const permission = await Notification.requestPermission();
     if(permission !== 'granted') return;
-
-    let sub = await reg.pushManager.getSubscription();
-    if(!sub){
-      sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey: urlBase64ToUint8Array(publicKey) });
-    }
-    await fetch(API('transporteur-push-subscribe'), {
-      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
-      body: JSON.stringify({ subscription: sub }),
-    });
+    await finishPushSubscription(pending.reg, pending.publicKey);
   }catch(e){ /* pas bloquant : l'app marche très bien sans push */ }
 }
 // Le badge indique juste "il y a du nouveau" (pas de compteur exact) — vidé
