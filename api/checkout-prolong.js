@@ -27,8 +27,16 @@ module.exports = async (req, res) => {
 
   // Prix calculé avec l'origDays du client pour l'instant — recalculé ci-dessous
   // à partir des dates réelles en DB pour empêcher toute manipulation du prix.
-  let amountCents = Math.max(0, clientOrigDays > 0
-    ? calcBase(clientOrigDays + jours) - calcBase(clientOrigDays)
+  // Cas particulier : le palier 7 jours (140€) coûte moins que 6 jours (144€),
+  // ce qui donne un incrément négatif pour une prolongation 6j → 7j. Dans ce cas,
+  // on facture le tarif moyen du nouveau palier (140/7 ≈ 20€/j × jours prolongés).
+  function _safeIncrement(origDays, extra) {
+    const delta = calcBase(origDays + extra) - calcBase(origDays);
+    if (delta > 0) return delta;
+    return Math.round(calcBase(origDays + extra) / (origDays + extra)) * extra;
+  }
+  let amountCents = (clientOrigDays > 0
+    ? _safeIncrement(clientOrigDays, jours)
     : calcBase(jours)) * qty * 100;
   const extDateDebut   = (data.date_fin_initiale     || '').slice(0, 10);
   const extDateFin     = (data.date_recuperation_iso || '').slice(0, 10);
@@ -68,7 +76,7 @@ module.exports = async (req, res) => {
     if (orig?.date_debut && orig?.date_fin) {
       const dbOrigDays = Math.round((new Date(orig.date_fin) - new Date(orig.date_debut)) / 86400000);
       if (dbOrigDays > 0) {
-        amountCents = Math.max(0, calcBase(dbOrigDays + jours) - calcBase(dbOrigDays)) * qty * 100;
+        amountCents = _safeIncrement(dbOrigDays, jours) * qty * 100;
       }
     }
     if (!amountCents || amountCents <= 0) {
