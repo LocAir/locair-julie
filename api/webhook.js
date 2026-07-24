@@ -425,6 +425,24 @@ const handler = async (req, res) => {
         }).catch(() => {});
       }
 
+      // Mettre à jour date_fin de la réservation d'origine pour que l'espace client
+      // et les éventuelles prolongations suivantes voient toujours la date réelle.
+      // On identifie la réservation d'origine par son ref (stocké dans les metadata Stripe
+      // par checkout-prolong.js) — plus fiable que l'email si le client a plusieurs réservations.
+      if (confirmedResa?.date_fin) {
+        const origRef = (meta.ref || '').trim().toUpperCase();
+        try {
+          let lookup = getSupabase().from('reservations').select('id').not('source', 'eq', 'site_prolongation');
+          lookup = origRef ? lookup.eq('ref', origRef) : lookup.ilike('email', (email || '').trim()).order('created_at', { ascending: false }).limit(1);
+          const { data: origResa } = await lookup.maybeSingle();
+          if (origResa?.id) {
+            await getSupabase().from('reservations').update({ date_fin: confirmedResa.date_fin }).eq('id', origResa.id);
+          }
+        } catch (e) {
+          console.error('[Prolong webhook] mise à jour date_fin:', e.message);
+        }
+      }
+
       return res.status(200).json({ received: true, type: 'prolongation' });
     }
 
