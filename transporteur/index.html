@@ -623,6 +623,15 @@ async function finishPushSubscription(reg, publicKey){
 }
 function promptPushPermission(reg, publicKey){
   if(document.getElementById('push-permission-overlay')) return;
+  // Ne jamais s'empiler par-dessus le guide de première utilisation — les
+  // deux se déclenchent au login (l'un attend un aller-retour réseau, pas
+  // l'autre) et pourraient sinon tomber en même temps sur le tout premier
+  // login. Un seul écran à la fois : closeOnboardingGuide() prend le relais
+  // une fois le guide fermé.
+  if(document.getElementById('onboarding-overlay')){
+    STATE._pendingPushAfterOnboarding = { reg, publicKey };
+    return;
+  }
   STATE._pendingPush = { reg, publicKey };
   const overlay = document.createElement('div');
   overlay.className = 'overlay';
@@ -1498,6 +1507,14 @@ function showOnboardingStep(i){
 function closeOnboardingGuide(){
   if(STATE.transporteurId) localStorage.setItem('t_onboarding_seen_'+STATE.transporteurId, '1');
   document.getElementById('onboarding-overlay')?.remove();
+  // Le prompt notifications, reporté pour ne pas s'empiler par-dessus ce
+  // guide (voir promptPushPermission), prend le relais maintenant qu'il
+  // n'y a plus qu'un seul écran à la fois.
+  if(STATE._pendingPushAfterOnboarding){
+    const { reg, publicKey } = STATE._pendingPushAfterOnboarding;
+    STATE._pendingPushAfterOnboarding = null;
+    promptPushPermission(reg, publicKey);
+  }
 }
 function acceptFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMission = STATE.missions.find(m=>m.id===id); doAction('accepter'); }
 function refuseFromList(id, ev){ if(ev)ev.stopPropagation(); STATE.currentMission = STATE.missions.find(m=>m.id===id); confirmerIndisponible(); }
