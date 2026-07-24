@@ -430,7 +430,8 @@ const handler = async (req, res) => {
       // On identifie la réservation d'origine par son ref (stocké dans les metadata Stripe
       // par checkout-prolong.js) — plus fiable que l'email si le client a plusieurs réservations.
       if (confirmedResa?.date_fin) {
-        const origRef = (meta.ref || '').trim().toUpperCase();
+        // prolong-pay.js stocke la ref d'origine dans meta.ref_origine (pas meta.ref)
+        const origRef = (meta.ref || meta.ref_origine || '').trim().toUpperCase();
         try {
           let lookup = getSupabase().from('reservations').select('id').not('source', 'eq', 'site_prolongation');
           lookup = origRef ? lookup.eq('ref', origRef) : lookup.ilike('email', (email || '').trim()).order('created_at', { ascending: false }).limit(1);

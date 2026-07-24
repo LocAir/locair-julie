@@ -4435,6 +4435,15 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
             <p id="stripe-ssl-txt" style="text-align:center;font-size:11px;color:var(--grey);margin-top:8px">🔒 Paiement sécurisé SSL · Stripe · Aucun stockage de vos données bancaires</p>
           </div>
 
+          <div id="cp-gate" role="alert" aria-live="polite" style="display:none;background:#fffbeb;color:#78350f;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;font-size:13px;margin-top:10px">
+            ⚠️ <strong>Adresse non vérifiée</strong> — nous n'avons pas pu détecter votre code postal automatiquement.<br>
+            <span style="color:var(--grey2);font-size:12px">Si vous n'êtes pas dans notre zone standard (06000 · 06100 · 06200 · 06300 · 06700 · 06800 · 06230 · 06310), des frais de livraison de <strong>95 €</strong> s'appliqueront à la place de 35 €.</span>
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+              <button type="button" onclick="document.getElementById('cp-gate').style.display='none'" style="padding:6px 14px;background:#fff;color:#78350f;border:1px solid #f59e0b;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--body)">Corriger l'adresse</button>
+              <button type="button" onclick="_cpGateOk=true;document.getElementById('cp-gate').style.display='none';submitForm(document.getElementById('sbtn'),'pay')" style="padding:6px 14px;background:#f59e0b;color:#fff;border:none;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--body)">Continuer quand même</button>
+            </div>
+          </div>
+
           <p id="form-error-msg" role="alert" aria-live="assertive" style="display:none;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;font-size:13px;text-align:center;margin-top:12px"></p>
           <button id="form-error-retry" type="button" onclick="submitForm(this,'pay')" style="display:none;margin-top:8px;padding:8px 20px;background:var(--blue);color:#fff;border:none;border-radius:100px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--body)">Réessayer</button>
 
@@ -6081,6 +6090,7 @@ function _stripePaymentDone(){
 
 let _submitting=false;
 let _pendingShowSuccess=null;
+let _cpGateOk=false;
 function submitForm(btn,mode){
   if(_submitting)return;
   const missCoords=['f-prenom','f-nom','f-tel','f-email'].filter(id=>!document.getElementById(id)?.value.trim());
@@ -6205,6 +6215,18 @@ function submitForm(btn,mode){
   formData._subject='Réservation '+_orderRef+' — '+(formData.prenom||'')+' '+(formData.nom||'')+' — '+formData.duree+'j — '+(formData.date||'');
 
   if(mode==='pay'){
+    // Gate code postal : si l'adresse n'a pas été sélectionnée via l'autocomplétion
+    // (f-cp vide), on avertit avant d'aller chez Stripe — la zone ne sera connue
+    // qu'après la réponse de l'API, et le client ne doit pas être surpris par 95 €.
+    const _cpVal=(document.getElementById('f-cp')?.value||'').trim();
+    if(!_cpVal&&!_cpGateOk){
+      _submitting=false;
+      if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
+      const gate=document.getElementById('cp-gate');
+      if(gate)gate.style.display='block';
+      return;
+    }
+    _cpGateOk=false;
     // ── Stripe Payment Element (paiement intégré, sans quitter le site) ──
     const prixCents=Math.round(Math.max(0,calcTotal(parseInt(formData.duree)||7)-_promoDiscount+DELIVERY_FEE)*100);
     const prixEuros=(prixCents/100).toFixed(2).replace('.',',')+' €';
@@ -7829,11 +7851,13 @@ function stepProlongDur(delta){
 }
 
 function calcProlongIncremental(origDays,addDays){
-  // Le tarif 7j (20€/j) est inférieur au tarif 6j (24€/j) : passer de 6 à 7j
-  // donne un incrément négatif. On clamp à 0 — le jour supplémentaire est offert
-  // quand le palier hebdomadaire rend le total moins cher.
-  if(origDays>0)return Math.max(0,calcPrice(origDays+addDays)-calcPrice(origDays));
-  return calcPrice(addDays);
+  // Miroir de _safeIncrement (checkout-prolong.js) : le palier 7j (140 €) < 6j (144 €),
+  // donc l'incrément 6→7 serait négatif. On applique le tarif moyen du palier plutôt
+  // que d'afficher "Offert" alors que le backend facture bien 20 €.
+  if(origDays<=0)return calcPrice(addDays);
+  const delta=calcPrice(origDays+addDays)-calcPrice(origDays);
+  if(delta>0)return delta;
+  return Math.round(calcPrice(origDays+addDays)/(origDays+addDays))*addDays;
 }
 
 function updateProlongPrice(){
