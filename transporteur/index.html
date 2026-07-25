@@ -132,6 +132,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 @keyframes media-btn-pulse{0%,100%{box-shadow:0 0 0 0 rgba(27,58,95,.3)}50%{box-shadow:0 0 0 7px rgba(27,58,95,0)}}
 
 .step-hint{font-size:14px;font-weight:700;color:var(--blue);background:var(--blue-lt);border-radius:var(--r-sm);padding:11px 14px;margin-bottom:14px}
+/* Encart mis en avant pour le/les n° d'appareil à récupérer avant de partir
+   (étape "En route") — doit sauter aux yeux, contrairement au reste des
+   infos mission qui restent en texte discret. */
+.pickup-card{display:flex;align-items:center;gap:14px;background:var(--blue);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;box-shadow:var(--sh-sm)}
+.pickup-card-ic{font-size:28px;flex-shrink:0;line-height:1}
+.pickup-card-body{flex:1;min-width:0}
+.pickup-card-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.72)}
+.pickup-card-nums{font-size:23px;font-weight:800;color:#fff;letter-spacing:.01em;line-height:1.2;margin-top:2px}
+.pickup-card-extra{font-size:12.5px;color:rgba(255,255,255,.88);margin-top:5px;line-height:1.4}
 .btn-missing-hint{text-align:center;font-size:12.5px;color:var(--grey);margin:-6px 0 12px}
 .month-details summary::-webkit-details-marker{display:none}
 .month-chevron{display:inline-block;font-size:17px;line-height:1;color:var(--grey-soft);transition:transform .15s ease}
@@ -2128,9 +2137,21 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   if(key === 'route'){
     const numeros = m.appareil_numeros||[];
     const plural = numeros.length>1;
-    const pickupHtml = (m.type==='livraison') ? `<p class="step-hint">📦 ${numeros.length
-      ? `Récupère ${plural?'les Climatiseurs':'le Climatiseur'} n°${numeros.join(', ')}${m.client&&m.client.fenetre?` + ${numeros.length||1} kit${plural?'s':''} de calfeutrage (${escHtml(m.client.fenetre)})`:''} et charge-${plural?'les':'le'}.`
-      : `Charge l'appareil.`}</p>` : '';
+    // Livraison ET remplacement : dans les deux cas, il faut passer par le
+    // stock avant de partir — la récupération, elle, n'a rien à choisir en
+    // stock (on ramène ce qui est déjà chez le client), donc pas d'encart ici.
+    const needsPickup = m.type==='livraison' || m.type==='changement';
+    const pickupHtml = needsPickup ? (numeros.length ? `
+      <div class="pickup-card">
+        <span class="pickup-card-ic">❄️</span>
+        <div class="pickup-card-body">
+          <div class="pickup-card-label">${plural?'Climatiseurs à récupérer':'Climatiseur à récupérer'}</div>
+          <div class="pickup-card-nums">${numeros.map(n=>'N°'+n).join('  ·  ')}</div>
+          ${(m.type==='livraison' && m.client && m.client.fenetre)?`<div class="pickup-card-extra">+ ${numeros.length||1} kit${plural?'s':''} de calfeutrage (${escHtml(m.client.fenetre)})</div>`:''}
+        </div>
+      </div>
+      <p class="step-hint">📦 Charge-${plural?'les':'le'} avant de partir.</p>`
+      : `<p class="step-hint">📦 Charge l'appareil.</p>`) : '';
     return `
       ${infoRows}
       ${pickupHtml}
@@ -2396,7 +2417,7 @@ function renderDetail(){
       <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(m.adresse_libre||'—')}</span></div>
       ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
     ` : started ? `
-      ${(m.appareil_numeros&&m.appareil_numeros.length)?`<div class="info-row"><span class="info-ic">🔢</span><span class="info-label">Climatiseur${m.appareil_numeros.length>1?'s':''}</span><span class="info-val">n°${m.appareil_numeros.join(', ')}</span></div>`:''}
+      ${(m.appareil_numeros&&m.appareil_numeros.length&&!['livraison','changement'].includes(m.type))?`<div class="info-row"><span class="info-ic">🔢</span><span class="info-label">Climatiseur${m.appareil_numeros.length>1?'s':''}</span><span class="info-val">n°${m.appareil_numeros.join(', ')}</span></div>`:''}
       <div class="info-row"><span class="info-ic">👤</span><span class="info-label">Client</span><span class="info-val">${escHtml((c.prenom||'')+' '+(c.nom||''))}${c.raison_sociale?' · 🏢 '+escHtml(c.raison_sociale):''}</span></div>
       <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
       ${m.type==='recuperation'&&c.date_fin?`<div class="info-row"><span class="info-ic">📅</span><span class="info-label">Location</span><span class="info-val">jusqu'au ${new Date(c.date_fin+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</span></div>`:''}
