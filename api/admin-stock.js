@@ -503,7 +503,7 @@ module.exports = async (req, res) => {
         appareilId: a.id, typeEvenement: 'autre', nouveauStatut: 'loue',
         nouvelleLocalisation: a.localisation, utilisateur: 'systeme',
         commentaire: 'Statut aligné automatiquement sur "Loué" — réservation confirmée en cours.',
-      })));
+      }))).catch(e => console.error('[stock list alignement]', e.message));
       aAligner.forEach(a => { a.statut = 'loue'; });
     }
 

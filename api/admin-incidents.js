@@ -99,6 +99,7 @@ module.exports = async (req, res) => {
       if (body.assurance_date_declaration !== undefined) patch.assurance_date_declaration = body.assurance_date_declaration || null;
       if (body.assurance_notes !== undefined) patch.assurance_notes = (body.assurance_notes || '').slice(0, 1000) || null;
 
+      if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('incidents').update(patch).eq('id', id);
       if (error) throw error;
       return res.status(200).json({ ok: true });
