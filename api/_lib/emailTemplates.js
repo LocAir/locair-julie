@@ -660,29 +660,40 @@ function tplNouveauCodeTransporteur({ nom, pin }) {
 // même circuit qu'un paiement fait sur le site (missions, documents, email
 // de confirmation) — d'où le rappel que l'espace client fonctionne déjà avec
 // juste l'email et le numéro de dossier ci-dessous, sans mot de passe.
-function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, montantFmt, lienPaiement, breakdown, rappel }) {
+function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, montantFmt, lienPaiement, breakdown, rappel, isProlongation }) {
   const p = escHtml(prenom || '');
   // Même détail que le récapitulatif de commande du site (#recap-box dans
   // index.html) : location / installation / livraison, plutôt qu'un seul
-  // montant global — pour que le client retrouve les mêmes repères.
+  // montant global — pour que le client retrouve les mêmes repères. Jamais
+  // de décomposition pour une prolongation (pas de livraison/installation).
   const breakdownHtml = (breakdown && breakdown.length) ? `
       <div class="box">
         ${breakdown.map(r => `<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:6px"><span>${escHtml(r.label)}</span><span>${escHtml(r.value)}</span></div>`).join('')}
         <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid rgba(27,58,95,.15);font-weight:700;color:#1b3a5f"><span>Total à régler</span><span>${escHtml(montantFmt)}</span></div>
       </div>` : `<div class="box"><p style="margin:0"><strong>Montant à régler :</strong> ${escHtml(montantFmt || '')}</p></div>`;
+  // Une prolongation n'a ni nouvelle adresse ni nouvelle livraison — montrer
+  // "Livraison"/"Récupération" comme pour une réservation neuve n'aurait pas
+  // de sens (dateDebutFmt vaut ici l'ancienne date de fin de la location,
+  // pas une date de livraison réelle) : on affiche juste la nouvelle date de
+  // fin demandée par le client.
+  const datesHtml = isProlongation
+    ? `<p><strong>Nouvelle date de fin de location :</strong> ${escHtml(dateFinFmt || '')}</p>`
+    : `<p><strong>Adresse :</strong> ${escHtml(adresse || '')}<br/>
+      <strong>Livraison :</strong> ${escHtml(dateDebutFmt || '')}<br/>
+      <strong>Récupération :</strong> ${escHtml(dateFinFmt || '')}</p>`;
   // rappel=true : relance automatique (cron-daily.js) d'une réservation
   // restée en_attente trop longtemps — même contenu, ton différent (on ne
   // redit pas "votre réservation est prête" à un client qui l'a déjà vu).
   return wrap({
-    title: rappel ? '⏰ Il reste un paiement à finaliser' : '💳 Finalisez votre réservation',
-    intro: rappel
+    title: isProlongation ? '⏰ Il reste un paiement à finaliser' : rappel ? '⏰ Il reste un paiement à finaliser' : '💳 Finalisez votre réservation',
+    intro: isProlongation
+      ? `Bonjour ${p}, petit rappel : votre demande de prolongation Loc'Air est toujours en attente de paiement.`
+      : rappel
       ? `Bonjour ${p}, petit rappel : votre réservation Loc'Air est toujours en attente de paiement.`
       : `Bonjour ${p}, votre réservation est prête — il ne reste que le paiement à finaliser.`,
     bodyHtml: `
       <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">VOTRE DOSSIER</p><strong style="font-size:18px;color:#1b3a5f">${escHtml(ref)}</strong></div>
-      <p><strong>Adresse :</strong> ${escHtml(adresse || '')}<br/>
-      <strong>Livraison :</strong> ${escHtml(dateDebutFmt || '')}<br/>
-      <strong>Récupération :</strong> ${escHtml(dateFinFmt || '')}</p>
+      ${datesHtml}
       ${breakdownHtml}
       <p>Cliquez sur le bouton ci-dessous pour payer en ligne, en toute sécurité (paiement géré par Stripe).</p>
       <p style="font-size:13px;color:#444">Une fois le paiement reçu, vous recevrez un email de confirmation. Vous pourrez alors suivre votre location à tout moment sur <strong>votre espace client</strong>, avec juste votre email et le numéro de dossier ci-dessus — pas besoin de mot de passe.</p>`,

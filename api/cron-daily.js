@@ -7,13 +7,12 @@ const { notifyIfSoldOut }      = require('./_lib/city');
 const { runWeeklyReport }      = require('./cron-weekly');
 const { runMonthlyRecap, runDormantClientsWinback } = require('./cron-monthly');
 const { dailyRate } = require('./_lib/pricing');
-const { scenariosDueToday } = require('./_lib/emailSchedule');
+const { scenariosDueToday, daysDiff, isSupersededReservation } = require('./_lib/emailSchedule');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
 const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { sendReservationPaymentLink } = require('./_lib/paymentLink');
 const { sendRelanceProlongationSms } = require('./_lib/reservations');
-const { daysDiff } = require('./_lib/emailSchedule');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
@@ -170,7 +169,7 @@ module.exports = async (req, res) => {
   try {
     const { data: enAttente } = await supabase
       .from('reservations')
-      .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, created_at')
+      .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, created_at, source, lang')
       .eq('statut', 'en_attente')
       .not('email', 'is', null);
 
@@ -421,19 +420,33 @@ module.exports = async (req, res) => {
 
     const { data: candidats } = await supabase
       .from('reservations')
-      .select('id, statut, date_debut, date_fin, prenom, tel, ref, lang')
+      .select('id, statut, date_debut, date_fin, prenom, tel, ref, lang, email, city_id, source')
       .eq('statut', 'confirmee')
       .lte('date_debut', in14dStr)
       .gte('date_fin', todayStr);
 
+    // Regroupe par client (même ville + même email) pour détecter les fiches
+    // supplantées par une prolongation plus récente — voir isSupersededReservation
+    // (_lib/emailSchedule.js). Sans ça, une réservation "d'origine" restée
+    // 'confirmee' pour toujours après une prolongation recevrait les mêmes
+    // rappels une seconde fois, en double de ceux déjà envoyés pour la
+    // prolongation qui la remplace réellement.
+    const peersByKey = {};
+    for (const r of candidats || []) {
+      const key = `${r.city_id}:${String(r.email || '').toLowerCase()}`;
+      (peersByKey[key] = peersByKey[key] || []).push(r);
+    }
+
     let emailsEnvoyes = 0;
     let smsRelanceProlongation = 0;
     for (const resa of candidats || []) {
+      const peers = peersByKey[`${resa.city_id}:${String(resa.email || '').toLowerCase()}`];
+      if (isSupersededReservation(resa, peers)) continue;
       for (const scenario of scenariosDueToday(resa, todayStr)) {
         const result = await sendScenarioEmail(supabase, { reservationId: resa.id, scenario });
         if (result.sent) emailsEnvoyes++;
       }
-      // SMS "prolongez et gagnez 20%" : 4 jours avant la fin de location,
+      // SMS de relance prolongation : 4 jours avant la fin de location,
       // uniquement pour les locations de plus de 4 jours (sinon dFin===4
       // tomberait le jour même de la livraison — même garde que
       // avant_fin_location dans _lib/emailSchedule.js). Idempotent sur son

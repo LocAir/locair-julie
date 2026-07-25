@@ -105,4 +105,23 @@ function pastScenariosForReservation(reservation, todayISO) {
   return candidats.filter(c => c.date < todayISO);
 }
 
-module.exports = { scenariosDueToday, upcomingScenariosForReservation, pastScenariosForReservation, daysDiff };
+// Une réservation "d'origine" (pas une prolongation) reste 'confirmee' pour
+// toujours même après qu'une prolongation ait pris le relais (voir
+// confirmReservation dans _lib/reservations.js — sa date_fin est resynchronisée
+// par webhook.js/admin-reservations.js mais son statut ne bascule jamais tout
+// seul). Sans cette exclusion, les rappels/relances automatiques partiraient
+// deux fois pour la même location (une fois par fiche) — et une prolongation
+// "intermédiaire" (remplacée par une prolongation plus récente qui continue
+// exactement là où elle s'arrête) resterait tout autant à tort dans les listes
+// actives. `peers` : les autres réservations du même client à comparer
+// (même email+ville, ou même client_id selon l'appelant) — à l'appelant de
+// les fournir déjà filtrées sur le bon périmètre.
+function isSupersededReservation(resa, peers) {
+  const others = (peers || []).filter(r => r.id !== resa.id && ['confirmee', 'terminee'].includes(r.statut));
+  if (resa.source !== 'site_prolongation') {
+    return others.some(r => r.source === 'site_prolongation');
+  }
+  return others.some(r => r.date_debut === resa.date_fin);
+}
+
+module.exports = { scenariosDueToday, upcomingScenariosForReservation, pastScenariosForReservation, daysDiff, isSupersededReservation };
