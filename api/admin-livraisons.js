@@ -240,7 +240,7 @@ module.exports = async (req, res) => {
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
       const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, type, statut');
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
-      if (['fait', 'annulee'].includes(liv.statut)) {
+      if (['fait', 'annule'].includes(liv.statut)) {
         return res.status(400).json({ error: 'Mission terminée ou annulée : non modifiable' });
       }
 
@@ -287,7 +287,7 @@ module.exports = async (req, res) => {
       // Une mission terminée ou annulée ne change plus de transporteur : le
       // montant dû lui est déjà rattaché (admin-virements.js) — réaffecter
       // changerait silencieusement qui est payé pour un travail déjà fait.
-      if (['fait', 'annulee'].includes(liv.statut)) {
+      if (['fait', 'annule'].includes(liv.statut)) {
         return res.status(400).json({ error: 'Mission terminée ou annulée : transporteur non modifiable' });
       }
       if (transporteurId) {
