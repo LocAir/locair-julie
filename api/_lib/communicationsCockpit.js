@@ -48,7 +48,7 @@ async function buildCommunicationsCockpit(supabase, cityId) {
 
   const { data: resas, error: resasErr } = await supabase
     .from('reservations')
-    .select('id, ref, prenom, nom, statut, date_debut, date_fin, email, tel, source')
+    .select('id, ref, prenom, nom, statut, date_debut, date_fin, email, tel, source, reservation_origine_id')
     .eq('city_id', cityId)
     .in('statut', ['confirmee', 'terminee'])
     .gte('date_fin', windowStartISO)

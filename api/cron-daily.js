@@ -169,7 +169,7 @@ module.exports = async (req, res) => {
   try {
     const { data: enAttente } = await supabase
       .from('reservations')
-      .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, created_at, source, lang')
+      .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, created_at, source, lang, reservation_origine_id')
       .eq('statut', 'en_attente')
       .not('email', 'is', null);
 
@@ -420,7 +420,7 @@ module.exports = async (req, res) => {
 
     const { data: candidats } = await supabase
       .from('reservations')
-      .select('id, statut, date_debut, date_fin, prenom, tel, ref, lang, email, city_id, source')
+      .select('id, statut, date_debut, date_fin, prenom, tel, ref, lang, email, city_id, source, reservation_origine_id')
       .eq('statut', 'confirmee')
       .lte('date_debut', in14dStr)
       .gte('date_fin', todayStr);

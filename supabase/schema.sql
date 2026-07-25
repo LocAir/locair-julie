@@ -243,6 +243,9 @@ create table reservations (
   source                   text,
   source_channel           text, -- canal d'acquisition marketing (ex. 'google', 'instagram', 'bouche-a-oreille')
   parrain_code             text, -- code parrain saisi par le client (programme parrainage)
+  -- Lien fiable vers la réservation prolongée (posé uniquement quand source =
+  -- 'site_prolongation') — voir migration_reservation_origine.sql.
+  reservation_origine_id   bigint references reservations(id) on delete set null,
   -- Réservation apportée par un partenaire (conciergerie...) via son lien
   -- d'affiliation. Commission figée à la réservation (voir partenaires.taux_commission_pct),
   -- pour ne pas bouger rétroactivement si le taux change ensuite.
@@ -266,6 +269,7 @@ create index reservations_avail_idx on reservations (city_id, date_debut, date_f
   where statut in ('en_attente','confirmee');
 create index reservations_stripe_pi_idx on reservations (stripe_payment_intent_id);
 create index reservations_partenaire_idx on reservations (partenaire_id) where partenaire_id is not null;
+create index idx_reservations_origine on reservations (reservation_origine_id) where reservation_origine_id is not null;
 
 -- Trace d'audit des acceptations légales avant paiement (case CGV/CGL et case
 -- conditions d'utilisation du climatiseur, cochées séparément côté site) — une

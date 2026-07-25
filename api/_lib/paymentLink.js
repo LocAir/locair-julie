@@ -69,10 +69,16 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
   const isProlongation = resa.source === 'site_prolongation';
   let refOrigine = '';
   if (isProlongation) {
-    const { data: origResa } = await supabase
-      .from('reservations').select('ref')
-      .ilike('email', resa.email).not('source', 'eq', 'site_prolongation')
-      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    // Lien fiable (voir migration_reservation_origine.sql) si posé à la
+    // création de cette prolongation ; à défaut (réservation créée avant
+    // cette migration), repli sur la recherche par email — mêmes filtres que
+    // le repli de webhook.js.
+    const { data: origResa } = resa.reservation_origine_id
+      ? await supabase.from('reservations').select('ref').eq('id', resa.reservation_origine_id).maybeSingle()
+      : await supabase
+          .from('reservations').select('ref')
+          .ilike('email', resa.email).not('source', 'eq', 'site_prolongation')
+          .order('created_at', { ascending: false }).limit(1).maybeSingle();
     refOrigine = origResa?.ref || '';
   }
   let html = '';

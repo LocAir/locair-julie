@@ -328,6 +328,9 @@ module.exports = async (req, res) => {
         logement:           orig.logement           || null,
         date_debut: orig.date_fin, date_fin: newDateFin, quantite: orig.quantite || 1,
         prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'site_prolongation',
+        // Lien fiable vers la réservation prolongée — voir isSupersededReservation
+        // (_lib/emailSchedule.js) et migration_reservation_origine.sql.
+        reservation_origine_id: orig.id,
       }).select().single();
       if (error) throw error;
 

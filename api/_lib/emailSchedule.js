@@ -118,19 +118,32 @@ function pastScenariosForReservation(reservation, todayISO) {
 // les fournir déjà filtrées sur le bon périmètre (un client peut avoir
 // plusieurs séjours totalement indépendants dans le temps : `peers` peut
 // donc contenir bien plus que la seule chaîne de prolongation concernée).
+//
+// `reservation_origine_id` (migration_reservation_origine.sql) donne un lien
+// fiable, exempt de toute coïncidence de dates, entre une prolongation et la
+// réservation qu'elle prolonge — posé uniquement à la création (prolong-pay.js,
+// checkout-prolong.js, admin-reservations.js). Les réservations créées avant
+// cette migration n'ont pas cette colonne renseignée : on retombe alors sur
+// l'ancienne méthode par correspondance exacte de date, qui reste correcte
+// dans l'immense majorité des cas (l'invariant est vrai *entre une origine et
+// SA propre prolongation*, seule une coïncidence de calendrier entre deux
+// séjours indépendants du même client pourrait la tromper).
 function isSupersededReservation(resa, peers) {
   const others = (peers || []).filter(r => r.id !== resa.id && ['confirmee', 'terminee'].includes(r.statut));
   if (resa.source !== 'site_prolongation') {
-    // Une prolongation ne "termine" son origine que si elle partage
-    // EXACTEMENT la même date_fin — invariant garanti par la
-    // resynchronisation de date_fin sur la réservation d'origine à chaque
-    // prolongation créée (webhook.js / admin-reservations.js). Sans cette
-    // vérification de date, N'IMPORTE QUELLE prolongation du même client
-    // (même un séjour totalement différent, des années plus tôt) aurait
-    // supplanté à tort CETTE réservation précise.
-    return others.some(r => r.source === 'site_prolongation' && r.date_fin === resa.date_fin);
+    return others.some(r => {
+      if (r.source !== 'site_prolongation') return false;
+      if (r.reservation_origine_id != null) return r.reservation_origine_id === resa.id;
+      return r.date_fin === resa.date_fin;
+    });
   }
-  return others.some(r => r.date_debut === resa.date_fin);
+  return others.some(r => {
+    if (r.source !== 'site_prolongation') return false;
+    if (resa.reservation_origine_id != null && r.reservation_origine_id != null) {
+      return r.reservation_origine_id === resa.reservation_origine_id && r.date_fin > resa.date_fin;
+    }
+    return r.date_debut === resa.date_fin;
+  });
 }
 
 module.exports = { scenariosDueToday, upcomingScenariosForReservation, pastScenariosForReservation, daysDiff, isSupersededReservation };
