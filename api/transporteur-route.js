@@ -49,7 +49,8 @@ module.exports = async (req, res) => {
       .eq('transporteur_id', transporteurId)
       .eq('masquee', false)
       .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee'])
-      .lte('date_prevue', todayStr);
+      .lte('date_prevue', todayStr)
+      .gte('date_prevue', new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10));
     if (error) throw error;
 
     const missions = (livraisons || []).filter(m => m.reservation && m.reservation.adresse);

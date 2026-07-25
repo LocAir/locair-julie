@@ -159,6 +159,12 @@ module.exports = async (req, res) => {
       },
     });
 
+    const recheckDispo = await getAvailability(supabase, city.id, extDateDebut, extDateFin);
+    if (recheckDispo < qty) {
+      await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel recheck prolong]', e.message));
+      return res.status(409).json({ error: 'Plus assez de climatiseurs disponibles (vérification finale)', disponibles: Math.max(0, recheckDispo) });
+    }
+
     const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  city.id,
       ref:                      `PROLONG-${intent.id.slice(-8)}`,

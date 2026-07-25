@@ -47,6 +47,7 @@ function computeOrderStatus(reservation, livraisons = [], incidentOuvert = false
   if (['a_faire', 'acceptee'].includes(livraison.statut)) return 'a_preparer';
   if (['en_route', 'arrivee'].includes(livraison.statut)) return 'en_livraison';
   if (livraison.statut === 'probleme') return 'incident';
+  if (['annule', 'refusee'].includes(livraison.statut)) return 'confirmee'; // livraison avortée
 
   // livraison.statut === 'fait' à partir d'ici : le client a l'appareil.
   if (!recuperation) return 'en_location';

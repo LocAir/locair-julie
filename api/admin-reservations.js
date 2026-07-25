@@ -297,8 +297,8 @@ module.exports = async (req, res) => {
         .eq('id', origId).eq('city_id', city.id).maybeSingle();
       if (origErr) throw origErr;
       if (!orig) return res.status(404).json({ error: 'Réservation d\'origine introuvable' });
-      if (['annulee', 'remboursee'].includes(orig.statut)) {
-        return res.status(422).json({ error: 'Cette réservation ne peut pas être prolongée.' });
+      if (orig.statut !== 'confirmee') {
+        return res.status(422).json({ error: 'Seule une réservation confirmée peut être prolongée.' });
       }
       if (newDateFin <= orig.date_fin) {
         return res.status(400).json({ error: `La nouvelle date doit être postérieure au ${orig.date_fin}.` });
@@ -377,6 +377,9 @@ module.exports = async (req, res) => {
       // numéroté + création des missions terrain. Un simple patch du statut
       // laisserait la réservation "confirmée" sans aucune mission derrière.
       if (body.statut === 'confirmee') {
+        if (before.statut === 'confirmee') {
+          return res.status(422).json({ error: 'Cette réservation est déjà confirmée.' });
+        }
         await confirmReservation(supabase, before);
         // Même communications qu'une confirmation à la création (voir action
         // "create" ci-dessus) — cette confirmation manuelle (ex. réservation
@@ -469,9 +472,14 @@ module.exports = async (req, res) => {
       // Si la quantité change sur une réservation déjà confirmée, réconcilier les
       // appareils assignés : en assigner de nouveaux si elle augmente, en libérer
       // si elle diminue (sans quoi le nombre d'appareils "engagés" resterait faux).
-      if (patch.quantite != null && before.statut === 'confirmee' && patch.quantite !== before.quantite) {
+      const effectifStatut = patch.statut || before.statut;
+      if (patch.quantite != null && effectifStatut === 'confirmee' && patch.quantite !== before.quantite) {
         const diff = patch.quantite - before.quantite;
         if (diff > 0) {
+          const disponibles = await getAvailability(supabase, before.city_id, before.date_debut, before.date_fin);
+          if (disponibles < diff) {
+            return res.status(409).json({ error: `Plus assez d'appareils disponibles pour augmenter la quantité (${Math.max(0, disponibles)} dispo sur ces dates).` });
+          }
           await supabase.rpc('assign_appareils', {
             p_reservation_id: id, p_city_id: before.city_id, p_quantite: diff,
             p_date_debut: before.date_debut, p_date_fin: before.date_fin,
@@ -541,15 +549,18 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: `Stripe a refusé le remboursement : ${stripeErr.message}` });
       }
 
-      await supabase.from('remboursements').insert({
+      const { error: insertErr } = await supabase.from('remboursements').insert({
         reservation_id: id,
         montant_cents: montantCents,
         raison,
         stripe_refund_id: refund.id,
         demande_par: admin.nom || admin.role,
       });
+      if (insertErr) {
+        console.error('[rembourser] CRITIQUE — Stripe OK mais enregistrement DB échoué:', insertErr.message, '| refund_id:', refund.id, '| reservation:', id);
+      }
 
-      return res.status(200).json({ ok: true, refund_id: refund.id });
+      return res.status(200).json({ ok: true, refund_id: refund.id, audit_ok: !insertErr });
     }
 
     if (action === 'remboursements_list') {

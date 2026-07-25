@@ -5,42 +5,30 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const { email, ref } = req.body || {};
-  if (!email) return res.status(400).json({ error: 'Email requis' });
+  if (!email || !ref) return res.status(400).json({ error: 'Email et référence de commande requis' });
 
   const supabase = getSupabase();
 
   const ip = getClientIp(req);
   if (await isRateLimited(supabase, `prolong:${ip}`)) return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
 
-  // .eq('statut','confirmee') est indispensable ici : sans lui, un email ayant
-  // une réservation plus récente mais annulée/en attente (tentative
-  // abandonnée, doublon) passe devant la vraie réservation active à cause du
-  // tri par date de création — la prolongation atterrit alors sur la
-  // mauvaise réservation (mauvaise adresse, mauvais appareil physique, et la
-  // vraie réservation active n'est jamais mise à jour). Même filtre déjà en
-  // place côté admin (admin-reservations.js, action 'lookup_prolongation').
-  let q = supabase
+  const normalizedEmail = String(email).trim().toLowerCase();
+  // .eq('statut','confirmee') indispensable : sans lui, une réservation plus
+  // récente mais annulée/en attente sous le même email (tentative abandonnée,
+  // doublon) pouvait remonter à la place de la vraie réservation active — la
+  // prolongation se rattachait alors à la mauvaise réservation. Même filtre
+  // déjà en place côté admin (admin-reservations.js, action
+  // 'lookup_prolongation').
+  const { data: resa, error } = await supabase
     .from('reservations')
     .select('ref, prenom, date_debut, date_fin, quantite, statut')
-    .ilike('email', String(email).trim())
+    .ilike('email', normalizedEmail)
+    .eq('ref', ref.trim().toUpperCase())
     .not('source', 'eq', 'site_prolongation')
     .eq('statut', 'confirmee')
     .order('created_at', { ascending: false })
-    .limit(1);
-
-  if (ref && ref.trim()) {
-    q = supabase
-      .from('reservations')
-      .select('ref, prenom, date_debut, date_fin, quantite, statut')
-      .ilike('email', String(email).trim())
-      .ilike('ref', ref.trim().toUpperCase())
-      .not('source', 'eq', 'site_prolongation')
-      .eq('statut', 'confirmee')
-      .order('created_at', { ascending: false })
-      .limit(1);
-  }
-
-  const { data: resa, error } = await q.maybeSingle();
+    .limit(1)
+    .maybeSingle();
 
   if (error) {
     console.error('[prolong-lookup]', error.message);
@@ -54,6 +42,7 @@ module.exports = async (req, res) => {
 
   const today = new Date().toISOString().slice(0, 10);
   if (resa.date_fin < today) {
+    await recordFailedAttempt(supabase, `prolong:${ip}`).catch(() => {});
     return res.status(422).json({ error: 'Votre location est déjà terminée — impossible de la prolonger.' });
   }
 

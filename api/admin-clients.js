@@ -36,6 +36,7 @@ module.exports = async (req, res) => {
           .from('reservations')
           .select('client_id, adresse, tel_secondaire, type_client, raison_sociale, siret, date_debut, statut')
           .in('client_id', clientIds)
+          .eq('city_id', city.id)
           .order('date_debut', { ascending: false });
         (resas || []).forEach(r => {
           (resasByClient[r.client_id] = resasByClient[r.client_id] || []).push(r);
@@ -226,7 +227,7 @@ module.exports = async (req, res) => {
         patch.tel_normalise = normalizeTel(patch.tel);
       }
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
-      const { error } = await supabase.from('clients').update(patch).eq('id', id);
+      const { error } = await supabase.from('clients').update(patch).eq('id', id).eq('city_id', city.id);
       if (error) throw error;
       return res.status(200).json({ ok: true });
     }

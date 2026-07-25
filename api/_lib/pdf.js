@@ -169,7 +169,7 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
     );
 
     article('ARTICLE 4 - TARIFICATION & LIVRAISON',
-      "Tarif journalier (TTC) : 12,00 €/jour (7 jours) · 10,00 €/jour (8 à 14 jours) · 9,00 €/jour (15 à 21 jours) · 8,00 €/jour (22 jours et plus). Durée minimale : 7 jours.\n" +
+      "Tarif journalier (TTC) : 12,00 €/jour (1 à 7 jours) · 10,00 €/jour (8 à 14 jours) · 9,00 €/jour (15 à 21 jours) · 8,00 €/jour (22 jours et plus). Durée minimale : 7 jours.\n" +
       "Frais de livraison et récupération : 60,00 € (Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche-sur-Mer, Beaulieu-sur-Mer) ou 120,00 € (hors zone).\n" +
       "Option installation par un technicien qualifié : 80,00 € (en option) ou installation en autonomie (gratuite, kit fourni sans perçage).\n" +
       `TVA : ${SELLER.mentionTva}.`
