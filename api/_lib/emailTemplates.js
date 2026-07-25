@@ -402,18 +402,18 @@ function tplRappelRecuperation(ctx) {
 function tplFinLocation(ctx) {
   const l = ctx.lang || 'fr';
   const p = escHtml(ctx.prenom), ref = escHtml(ctx.ref);
-  const code = promoCodeForPrenom(ctx.prenom);
+  const code = ctx.prenom ? promoCodeForPrenom(ctx.prenom) : null;
   if (l === 'en') return wrap({
     title: '✅ Rental complete',
     intro: `Booking ref ${ref}`,
     bodyHtml: `
       <p>Hello ${p},</p>
       <p>Our technician has collected your AC. Thank you for choosing Loc'Air!</p>
-      <div class="box" style="text-align:center">
+      ${code ? `<div class="box" style="text-align:center">
         <p style="margin:0 0 6px">As a thank-you, enjoy <strong>${REFERRAL_PCT}% off</strong> your next booking with the code</p>
         <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
         <p style="margin:0;font-size:13px;color:#666">You can also share it with friends — the code is their first name + 30 (e.g. JEAN30).</p>
-      </div>
+      </div>` : ''}
       <p style="font-size:13px;color:#444">If you have a minute, your review helps other families trust us:</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Leave a Google review ⭐',
   });
@@ -423,11 +423,11 @@ function tplFinLocation(ctx) {
     bodyHtml: `
       <p>您好 ${p}，</p>
       <p>我们的技术员已取回您的空调。感谢您选择 Loc'Air！</p>
-      <div class="box" style="text-align:center">
+      ${code ? `<div class="box" style="text-align:center">
         <p style="margin:0 0 6px">作为感谢，使用以下优惠码可享 <strong>-${REFERRAL_PCT}%</strong> 下次预订折扣</p>
         <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
         <p style="margin:0;font-size:13px;color:#666">此优惠码也可与朋友分享——优惠码为朋友姓名加上30（例如：JEAN30）。</p>
-      </div>
+      </div>` : ''}
       <p style="font-size:13px;color:#444">如有时间，您的评价将帮助更多家庭了解我们：</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: '留下 Google 评价 ⭐',
   });
@@ -437,11 +437,11 @@ function tplFinLocation(ctx) {
     bodyHtml: `
       <p>Здравствуйте, ${p}!</p>
       <p>Наш мастер забрал кондиционер. Спасибо, что выбрали Loc'Air!</p>
-      <div class="box" style="text-align:center">
+      ${code ? `<div class="box" style="text-align:center">
         <p style="margin:0 0 6px">В знак благодарности — <strong>скидка ${REFERRAL_PCT}%</strong> на следующую аренду по коду</p>
         <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
         <p style="margin:0;font-size:13px;color:#666">Можете поделиться кодом с друзьями — их имя + 30 (например JEAN30).</p>
-      </div>
+      </div>` : ''}
       <p style="font-size:13px;color:#444">Если есть минутка, ваш отзыв поможет другим семьям нам доверять:</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Оставить отзыв в Google ⭐',
   });
@@ -451,11 +451,11 @@ function tplFinLocation(ctx) {
     bodyHtml: `
       <p>Bonjour ${p},</p>
       <p>Notre technicien a récupéré votre climatiseur. Merci d'avoir choisi Loc'Air !</p>
-      <div class="box" style="text-align:center">
+      ${code ? `<div class="box" style="text-align:center">
         <p style="margin:0 0 6px">Pour vous remercier, profitez de <strong>-${REFERRAL_PCT}%</strong> sur votre prochaine réservation avec le code</p>
         <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
         <p style="margin:0;font-size:13px;color:#666">Offre valable aussi pour vos amis, avec leur prénom comme code (ex. -${REFERRAL_PCT}% avec le prénom de votre ami).</p>
-      </div>
+      </div>` : ''}
       <p style="font-size:13px;color:#444">Si vous avez une minute, votre avis aide d'autres familles à nous faire confiance :</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Laisser un avis Google ⭐',
   });

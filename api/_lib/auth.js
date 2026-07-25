@@ -89,7 +89,8 @@ function signAdminUserToken(adminUserId, pin) {
 // transporteur_id fourni tel quel par le client, ce qui empêche un livreur
 // d'agir avec l'identité d'un collègue.
 function signTransporteurToken(transporteurId, pin) {
-  const secret  = process.env.TRANSPORTEUR_SECRET || '';
+  const secret  = process.env.TRANSPORTEUR_SECRET;
+  if (!secret) throw new Error('TRANSPORTEUR_SECRET non configuré');
   const payload = `${transporteurId}.${pinFingerprint(pin)}`;
   const sig     = crypto.createHmac('sha256', secret).update(payload).digest('hex');
   return `${payload}.${sig}`;
@@ -124,7 +125,8 @@ async function verifyTransporteurToken(req, supabase) {
 // "partenaire:" dans le payload signé empêche tout chevauchement avec un
 // jeton transporteur qui aurait par hasard le même id/empreinte de PIN.
 function signPartenaireToken(partenaireId, pin) {
-  const secret  = process.env.TRANSPORTEUR_SECRET || '';
+  const secret  = process.env.TRANSPORTEUR_SECRET;
+  if (!secret) throw new Error('TRANSPORTEUR_SECRET non configuré');
   const payload = `partenaire:${partenaireId}.${pinFingerprint(pin)}`;
   const sig     = crypto.createHmac('sha256', secret).update(payload).digest('hex');
   return `${payload}.${sig}`;
@@ -165,7 +167,8 @@ function refFingerprint(ref) {
 }
 
 function signClientToken(reservationId, ref) {
-  const secret  = process.env.TRANSPORTEUR_SECRET || '';
+  const secret  = process.env.TRANSPORTEUR_SECRET;
+  if (!secret) throw new Error('TRANSPORTEUR_SECRET non configuré');
   const payload = `client:${reservationId}.${refFingerprint(ref)}`;
   const sig     = crypto.createHmac('sha256', secret).update(payload).digest('hex');
   return `${payload}.${sig}`;

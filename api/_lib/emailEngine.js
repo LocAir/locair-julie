@@ -2,6 +2,10 @@ const { sendBrevoEmail } = require('./brevo');
 const tpl = require('./emailTemplates');
 const { addDays } = require('./dates');
 
+function escHtml(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
 function fmtDate(iso, lang) {
   if (!iso) return '—';
   const d = new Date(String(iso).slice(0, 10) + 'T12:00:00Z');
@@ -55,7 +59,7 @@ async function buildEmailContext(supabase, reservation) {
   const _prixBase = (reservation.prix_total_cents || 0) / 100;
 
   return {
-    ref:      reservation.ref,
+    ref:      reservation.ref || '',
     prenom:   reservation.prenom || '',
     nom:      reservation.nom || '',
     adresse:  reservation.adresse || '',
@@ -91,12 +95,13 @@ async function getSignature(supabase) {
 // visuel de wrap() (voir _lib/emailTemplates.js).
 function signatureFooterHtml(sig) {
   const parts = [];
-  if (sig.telephone) parts.push(`<span>${sig.telephone}</span>`);
-  if (sig.email) parts.push(`<a href="mailto:${sig.email}" style="color:#8a8a8f;text-decoration:none">${sig.email}</a>`);
-  if (sig.site_web) parts.push(`<a href="${sig.site_web}" style="color:#8a8a8f;text-decoration:none">${String(sig.site_web).replace(/^https?:\/\//, '')}</a>`);
+  if (sig.telephone) parts.push(`<span>${escHtml(sig.telephone)}</span>`);
+  if (sig.email) parts.push(`<a href="mailto:${escHtml(sig.email)}" style="color:#8a8a8f;text-decoration:none">${escHtml(sig.email)}</a>`);
+  if (sig.site_web) parts.push(`<a href="${escHtml(sig.site_web)}" style="color:#8a8a8f;text-decoration:none">${escHtml(String(sig.site_web).replace(/^https?:\/\//, ''))}</a>`);
+  const safeLogo = sig.logo_url && /^https:\/\//.test(sig.logo_url) ? sig.logo_url : null;
   return `<div style="padding:20px 32px 28px;border-top:1px solid rgba(27,58,95,.12);font-size:12.5px;color:#8a8a8f;line-height:1.65">
-    ${sig.logo_url ? `<img src="${sig.logo_url}" alt="" style="max-height:30px;margin-bottom:10px;display:block"/>` : ''}
-    <strong style="color:#2e3a4a;font-size:13px;font-weight:700">${sig.nom_expediteur}</strong>${sig.fonction ? ` <span style="color:#c8cdd6">·</span> <span style="color:#8a8a8f">${sig.fonction}</span>` : ''}<br/>
+    ${safeLogo ? `<img src="${escHtml(safeLogo)}" alt="" style="max-height:30px;margin-bottom:10px;display:block"/>` : ''}
+    <strong style="color:#2e3a4a;font-size:13px;font-weight:700">${escHtml(sig.nom_expediteur)}</strong>${sig.fonction ? ` <span style="color:#c8cdd6">·</span> <span style="color:#8a8a8f">${escHtml(sig.fonction)}</span>` : ''}<br/>
     <span style="margin-top:3px;display:block">${parts.join(' <span style="color:#c8cdd6">&nbsp;·&nbsp;</span> ')}</span>
   </div>`;
 }
@@ -148,24 +153,29 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
   const html = withSignature(scenarioDef.template(ctx), sig);
   const subject = scenarioDef.subject(ctx);
 
+  // Réserver l'envoi AVANT d'envoyer : si l'insert échoue (contrainte unique),
+  // un autre processus a déjà pris le verrou — on sort sans envoyer.
+  if (!force) {
+    const { error: lockErr } = await supabase.from('email_sent')
+      .insert({ reservation_id: reservationId, scenario, sent_at: new Date().toISOString() });
+    if (lockErr) return { sent: false, reason: 'already_sent' };
+  }
+
   try {
     const result = await sendBrevoEmail({ to: reservation.email, subject, html, senderName: sig.nom_expediteur });
-    // sendBrevoEmail ne jette jamais (voir _lib/brevo.js) — sans cette
-    // vérification, un échec réel (clé Brevo invalide, adresse rejetée,
-    // quota dépassé, panne API) tombait dans le bloc "succès" ci-dessous :
-    // la réservation était marquée comme "email envoyé" alors qu'aucun mail
-    // n'était réellement parti, sans jamais apparaître comme une erreur ni
-    // être rejouable (wasScenarioSent bloque tout nouvel essai).
     if (!result.ok) throw new Error(result.error || 'Échec envoi Brevo');
-    const { error: upsertErr } = await supabase.from('email_sent')
-      .upsert({ reservation_id: reservationId, scenario, sent_at: new Date().toISOString() }, { onConflict: 'reservation_id,scenario' });
-    if (upsertErr) console.error('[email_sent upsert]', upsertErr.message);
+    // email_sent déjà inséré ci-dessus (hors mode force)
     supabase.from('email_log').insert({
       reservation_id: reservationId, scenario, destinataire: reservation.email, modele: scenario, statut: 'envoye',
       contenu: html,
     }).catch(() => {});
     return { sent: true };
   } catch (e) {
+    // Supprimer le verrou pour permettre une relance ultérieure
+    if (!force) {
+      await supabase.from('email_sent').delete()
+        .eq('reservation_id', reservationId).eq('scenario', scenario).catch(() => {});
+    }
     await supabase.from('email_log').insert({
       reservation_id: reservationId, scenario, destinataire: reservation.email, modele: scenario,
       statut: 'erreur', erreur: String(e.message || e).slice(0, 500), contenu: html,

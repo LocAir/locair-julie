@@ -59,7 +59,7 @@ module.exports = async (req, res) => {
       supabase.from('cgv_acceptations').select('type, version, accepted_at').eq('reservation_id', reservationId),
       supabase.from('email_log').select('scenario, created_at').eq('reservation_id', reservationId).eq('statut', 'envoye').order('created_at', { ascending: false }),
       supabase.from('centre_aide_articles').select('slug, categorie, titre, contenu').eq('actif', true).order('ordre'),
-      supabase.from('assistance_config').select('*').eq('id', 1).maybeSingle(),
+      supabase.from('assistance_config').select('telephone, email, horaires, whatsapp_url').eq('id', 1).maybeSingle(),
       // Offre Privilège (Step 2) : ne remonte au client que si l'admin a
       // fixé un prix ("proposee") — tant que l'offre reste "eligible", elle
       // n'existe que côté admin. Une réservation à plusieurs climatiseurs
