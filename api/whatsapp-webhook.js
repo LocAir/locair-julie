@@ -170,15 +170,14 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
 
   const appSecret = process.env.WHATSAPP_APP_SECRET;
-  if (appSecret) {
-    const sig = req.headers['x-hub-signature-256'];
-    if (!sig) return res.status(403).send('Forbidden');
-    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-    const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
-    try {
-      if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return res.status(403).send('Forbidden');
-    } catch { return res.status(403).send('Forbidden'); }
-  }
+  if (!appSecret) return res.status(403).send('Forbidden');
+  const sig = req.headers['x-hub-signature-256'];
+  if (!sig) return res.status(403).send('Forbidden');
+  const rawBody = req.rawBody || (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
+  const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+  try {
+    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return res.status(403).send('Forbidden');
+  } catch { return res.status(403).send('Forbidden'); }
 
   try {
     const payload = req.body;

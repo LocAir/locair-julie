@@ -185,7 +185,7 @@ module.exports = async (req, res) => {
         // Passé 7 jours sans paiement malgré les relances, on arrête les
         // frais : la réservation est annulée, plus aucune relance ne suit.
         if (ageJours >= 7) {
-          await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', resa.id);
+          await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', resa.id).eq('statut', 'en_attente');
           await pushToAdmin(supabase, {
             title: `⏳ Réservation annulée (jamais payée) — ${resa.ref || '?'}`,
             body:  `${resa.prenom || ''} ${resa.nom || ''} — en attente depuis ${ageJours}j sans paiement, annulée automatiquement.`,

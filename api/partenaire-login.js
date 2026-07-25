@@ -33,13 +33,19 @@ module.exports = async (req, res) => {
     }
 
     // Migration progressive : si le PIN était en clair, on le hache maintenant
+    // avant de signer le token — sinon le fingerprint dans le token (hash)
+    // diffère immédiatement de celui en base (plain), invalide toute session.
+    let currentPin = match.pin;
     if (!match.pin_hashed) {
-      supabase.from('partenaires').update({ pin: hashPin(pin), pin_hashed: true }).eq('id', match.id)
-        .then(() => {}).catch(e => console.error('[Partenaire PIN migration]', e.message));
+      const hashed = hashPin(pin);
+      const { error: migErr } = await supabase.from('partenaires')
+        .update({ pin: hashed, pin_hashed: true }).eq('id', match.id);
+      if (!migErr) currentPin = hashed;
+      else console.error('[Partenaire PIN migration]', migErr.message);
     }
 
     return res.status(200).json({
-      token: signPartenaireToken(match.id, match.pin),
+      token: signPartenaireToken(match.id, currentPin),
       partenaire_id: match.id,
       nom: match.nom,
       code: match.code,

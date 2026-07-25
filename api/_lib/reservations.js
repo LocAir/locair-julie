@@ -279,13 +279,13 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
   if (!email) return;
   lang = lang || 'fr';
 
-  // Idempotence : un webhook Stripe peut être redélivré pour le même
-  // paiement — ne jamais renvoyer cet email deux fois pour la même réservation.
+  // Idempotence : un webhook Stripe peut être redélivré pour le même paiement.
+  // On utilise email_sent comme verrou pré-envoi (contrainte unique) pour éviter
+  // deux envois concurrents — même pattern que sendScenarioEmail.
   if (reservationId) {
-    const { count: alreadySent } = await supabase
-      .from('email_log').select('id', { count: 'exact', head: true })
-      .eq('reservation_id', reservationId).eq('scenario', 'email_prolongation').eq('statut', 'envoye');
-    if (alreadySent > 0) return;
+    const { error: lockErr } = await supabase.from('email_sent')
+      .insert({ reservation_id: reservationId, scenario: 'email_prolongation', sent_at: new Date().toISOString() });
+    if (lockErr) return; // verrou déjà pris par un autre processus
   }
 
   const sig = await getSignature(supabase);
@@ -299,7 +299,13 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
     : lang === 'ru' ? `✅ Продление подтверждено — добавлено ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}`
     : `✅ Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
   const result = await sendBrevoEmail({ to: email, subject, html, senderName: sig.nom_expediteur });
-  if (!result.ok) console.error('[Prolongation confirmation]', result.error);
+  if (!result.ok) {
+    console.error('[Prolongation confirmation]', result.error);
+    if (reservationId) {
+      await supabase.from('email_sent').delete()
+        .eq('reservation_id', reservationId).eq('scenario', 'email_prolongation').catch(() => {});
+    }
+  }
   if (reservationId) {
     await supabase.from('email_log').insert({
       reservation_id: reservationId, scenario: 'email_prolongation', canal: 'email',
@@ -386,7 +392,7 @@ async function sendRelanceProlongationSms(supabase, resa) {
 // sans effet si déjà confirmée, pour tolérer les livraisons en double des
 // webhooks Stripe redélivrés.
 async function confirmReservation(supabase, resa) {
-  if (['confirmee', 'annulee', 'remboursee'].includes(resa.statut)) return resa;
+  if (['confirmee', 'annulee', 'remboursee', 'terminee'].includes(resa.statut)) return resa;
 
   const clientId = await findOrCreateClient(supabase, resa);
   resa.client_id = clientId;

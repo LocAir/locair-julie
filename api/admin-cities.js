@@ -70,7 +70,11 @@ module.exports = async (req, res) => {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
       const patch = {};
-      if (body.name != null)  patch.name  = body.name.trim();
+      if (body.name != null) {
+        const name = body.name.trim();
+        if (!name) return res.status(400).json({ error: 'Nom requis' });
+        patch.name = name;
+      }
       if (body.dep != null)   patch.dep   = body.dep.trim() || null;
       if (body.actif     != null) patch.actif     = Boolean(body.actif);
       // Mode "complet" : automatique par défaut (recalculé en base par les

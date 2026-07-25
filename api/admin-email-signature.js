@@ -1,10 +1,12 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
 
   const body   = req.body || {};
   const action = body.action || 'get';
@@ -17,6 +19,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'update') {
+      if (!roleHasAccess(admin.role, 'reglages')) return res.status(403).json({ error: "Ton compte n'a pas accès aux réglages." });
       const patch = { updated_at: new Date().toISOString() };
       if (body.nom_expediteur != null) patch.nom_expediteur = String(body.nom_expediteur).trim().slice(0, 200) || "Loc'Air";
       if (body.fonction       != null) patch.fonction       = String(body.fonction).trim().slice(0, 200) || null;

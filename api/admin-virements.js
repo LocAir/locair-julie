@@ -196,9 +196,11 @@ module.exports = async (req, res) => {
       const ids = (faites || []).map(f => f.id);
 
       if (ids.length) {
-        await supabase.from('livraisons').update({ paye: true }).in('id', ids);
+        const { error: payErr } = await supabase.from('livraisons').update({ paye: true }).in('id', ids);
+        if (payErr) throw payErr;
       }
-      await supabase.from('virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', id);
+      const { error: virErr } = await supabase.from('virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', id);
+      if (virErr) throw virErr;
       await notifyTransporteur(supabase, virement.transporteur_id, {
         type: 'paiement', message: `Votre rémunération a été payée (${(montant / 100).toFixed(2)} €).`, tag: 'paiement',
       });

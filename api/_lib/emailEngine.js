@@ -164,7 +164,13 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
   try {
     const result = await sendBrevoEmail({ to: reservation.email, subject, html, senderName: sig.nom_expediteur });
     if (!result.ok) throw new Error(result.error || 'Échec envoi Brevo');
-    // email_sent déjà inséré ci-dessus (hors mode force)
+    // Pour force=true : poser le verrou post-envoi afin qu'un envoi automatique
+    // ultérieur (non forcé) ne renvoie pas le même email.
+    if (force) {
+      await supabase.from('email_sent')
+        .upsert({ reservation_id: reservationId, scenario, sent_at: new Date().toISOString() },
+                 { onConflict: 'reservation_id,scenario' }).catch(() => {});
+    }
     supabase.from('email_log').insert({
       reservation_id: reservationId, scenario, destinataire: reservation.email, modele: scenario, statut: 'envoye',
       contenu: html,
