@@ -1,5 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 
+function escHtml(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
 const NAV = '#1b3a5f';
 const GOLD = '#c5a96c';
 
@@ -45,16 +47,16 @@ function renderPage(errorMsg, { ref, buttons } = {}) {
     <div class="brand">Loc'Air</div>
     <div class="head-ico">📄</div>
     <h1>Vos documents</h1>
-    ${ref ? `<div class="head-ref">Dossier ${ref}</div>` : ''}
+    ${ref ? `<div class="head-ref">Dossier ${escHtml(ref)}</div>` : ''}
   </div>
   <div class="body">
     ${errorMsg ? `
     <div class="error-wrap">
       <div class="error-ico">⚠️</div>
       <div class="error-msg">${errorMsg}</div>
-      <div class="error-sub">Contactez-nous si le problème persiste.</div>
+      <div class="error-sub">Contactez-nous si le problème persiste : <a href="https://wa.me/33663798756" style="color:${NAV};font-weight:600">WhatsApp</a> · <a href="mailto:contact@locair.fr" style="color:${NAV};font-weight:600">contact@locair.fr</a></div>
     </div>` : `
-    <p class="thanks">Merci pour votre confiance. Vos documents sont disponibles en tout temps — <strong>contrat de location</strong> et <strong>facture</strong> au format PDF.</p>
+    <p class="thanks">Merci pour votre confiance. Vos documents sont disponibles à tout moment — <strong>contrat de location</strong> et <strong>facture</strong> au format PDF.</p>
     <div class="section-lbl">Consulter un document</div>
     ${buttons.map(b => `
     <a href="${b.href}" class="doc-btn">
