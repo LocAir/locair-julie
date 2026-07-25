@@ -165,6 +165,10 @@ module.exports = async (req, res) => {
           dateStr = `${months[d.getUTCMonth()]}${d.getUTCDate()}日`;
           const verbe = liv.type === 'recuperation' ? '取回您的空调' : '配送您的空调';
           smsMissionContent = `Loc'Air - 您${dateStr}的预约已确认，我们的技术员将为您${verbe}。到达前30分钟将发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
+        } else if (lang === 'ru') {
+          dateStr = d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+          const verbe = liv.type === 'recuperation' ? 'забрать ваш кондиционер' : 'доставить ваш кондиционер';
+          smsMissionContent = `Loc'Air - Ваша встреча ${dateStr} подтверждена, наш мастер приедет ${verbe}. Мы отправим SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
         } else {
           dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
           const verbe = liv.type === 'recuperation' ? 'récupérer votre climatiseur' : 'vous livrer votre climatiseur';
@@ -553,6 +557,9 @@ module.exports = async (req, res) => {
           } else if (lang === 'zh') {
             const verbe = liv.type === 'livraison' ? '配送' : '取回';
             smsAbsentContent = `Loc'Air - 技术员已前来为您${verbe}空调，但无人应答。请致电 +33 6 63 79 87 56 重新安排时间。`;
+          } else if (lang === 'ru') {
+            const verbe = liv.type === 'livraison' ? 'доставить' : 'забрать';
+            smsAbsentContent = `Loc'Air - Наш мастер приезжал, чтобы ${verbe} ваш кондиционер, но никто не ответил. Пожалуйста, перезвоните нам по номеру +33 6 63 79 87 56, чтобы перенести встречу.`;
           } else {
             const verbe = liv.type === 'livraison' ? 'livrer' : 'récupérer';
             smsAbsentContent = `Loc'Air - Notre technicien s'est présenté pour ${verbe} votre climatiseur, mais personne n'a répondu. Merci de nous rappeler au 06 63 79 87 56 pour reprogrammer.`;

@@ -235,6 +235,9 @@ async function sendConfirmationCommunications(supabase, resa) {
       const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
       const dateStr = d ? `${months[d.getUTCMonth()]}${d.getUTCDate()}日` : '';
       smsConfirmationContent = `Loc'Air - 您的预订已确认。${dateStr ? '配送日期：' + dateStr : ''}${resa.creneau ? '，时间段：' + resa.creneau : ''}技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
+    } else if (lang === 'ru') {
+      const dateStr = d ? d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '';
+      smsConfirmationContent = `Loc'Air - Ваше бронирование подтверждено.${dateStr ? ' Доставка ' + dateStr : ''}${resa.creneau ? ', интервал ' + resa.creneau : ''} Мастер отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
     } else {
       const dateStr = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
       smsConfirmationContent = `Loc'Air - Votre réservation est confirmée.${dateStr ? ' Livraison prévue le ' + dateStr : ''}${resa.creneau ? ', créneau ' + resa.creneau : ''} Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
@@ -288,6 +291,7 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, pr
   const jNum = Number(jours) || 1;
   const subject = lang === 'en' ? `✅ Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
     : lang === 'zh' ? `✅ 续租已确认 — 已延长 ${jNum} 天`
+    : lang === 'ru' ? `✅ Продление подтверждено — добавлено ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}`
     : `✅ Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
   const result = await sendBrevoEmail({ to: email, subject, html, senderName: sig.nom_expediteur });
   if (!result.ok) console.error('[Prolongation confirmation]', result.error);
