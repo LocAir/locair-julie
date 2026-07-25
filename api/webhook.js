@@ -438,6 +438,37 @@ const handler = async (req, res) => {
         }).catch(() => {});
       }
 
+      // SMS de confirmation, en plus de l'email — jusqu'ici aucune prolongation
+      // n'en envoyait, contrairement à une réservation standard. Idempotent
+      // (son propre scénario, jamais renvoyé deux fois si le webhook est
+      // redélivré par Stripe).
+      if (meta.tel && confirmedResa) {
+        const { data: smsProlongDejaEnvoye } = await getSupabase()
+          .from('email_log').select('id')
+          .eq('reservation_id', confirmedResa.id).eq('scenario', 'sms_prolongation').eq('statut', 'envoye')
+          .maybeSingle();
+        if (!smsProlongDejaEnvoye) {
+          let smsProlongContent;
+          if (prolongLang === 'en') {
+            smsProlongContent = `Loc'Air - Your ${jNum}-day extension is confirmed. Collection scheduled on ${meta.date_recuperation || '—'}${meta.creneau ? ', time slot ' + meta.creneau : ''}. Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
+          } else if (prolongLang === 'zh') {
+            smsProlongContent = `Loc'Air - 您延长${jNum}天的续租已确认。取回日期：${meta.date_recuperation || '—'}${meta.creneau ? '，时间段：' + meta.creneau : ''}。技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
+          } else if (prolongLang === 'ru') {
+            smsProlongContent = `Loc'Air - Продление на ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'} подтверждено. Забор запланирован на ${meta.date_recuperation || '—'}${meta.creneau ? ', интервал ' + meta.creneau : ''}. Мастер отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
+          } else {
+            smsProlongContent = `Loc'Air - Votre prolongation de ${jNum} jour${jNum > 1 ? 's' : ''} est confirmée. Récupération prévue le ${meta.date_recuperation || '—'}${meta.creneau ? ', créneau ' + meta.creneau : ''}. Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
+          }
+          const smsProlongResult = await sendBrevoSms({ to: meta.tel, content: smsProlongContent });
+          await getSupabase().from('email_log').insert({
+            reservation_id: confirmedResa.id, scenario: 'sms_prolongation', canal: 'sms',
+            destinataire: meta.tel, modele: 'sms_prolongation',
+            statut: smsProlongResult.ok ? 'envoye' : 'erreur',
+            erreur: smsProlongResult.ok ? null : String(smsProlongResult.error || '').slice(0, 500),
+            contenu: smsProlongContent,
+          }).catch(() => {});
+        }
+      }
+
       // Mettre à jour date_fin de la réservation d'origine pour que l'espace client
       // et les éventuelles prolongations suivantes voient toujours la date réelle.
       // On identifie la réservation d'origine par son ref (stocké dans les metadata Stripe

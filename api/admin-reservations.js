@@ -350,6 +350,7 @@ module.exports = async (req, res) => {
         await sendProlongationConfirmation(supabase, {
           reservationId:    resa.id,
           email:            resa.email,
+          tel:              resa.tel,
           prenom:           resa.prenom,
           nom:              resa.nom,
           jours:            joursSupplementaires,
@@ -387,6 +388,7 @@ module.exports = async (req, res) => {
             await sendProlongationConfirmation(supabase, {
               reservationId:    before.id,
               email:            before.email,
+              tel:              before.tel,
               prenom:           before.prenom,
               nom:              before.nom,
               jours:            joursSupplementaires,

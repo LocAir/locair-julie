@@ -270,7 +270,7 @@ async function sendConfirmationCommunications(supabase, resa) {
 // a sa propre source : montant Stripe pour un paiement en ligne, prix saisi
 // par l'admin pour une prolongation manuelle) — cette fonction ne fait que
 // construire l'email et l'envoyer, pas de recalcul qui pourrait diverger.
-async function sendProlongationConfirmation(supabase, { reservationId, email, prenom, nom, jours, dateRecuperation, creneau, amount, lang }) {
+async function sendProlongationConfirmation(supabase, { reservationId, email, tel, prenom, nom, jours, dateRecuperation, creneau, amount, lang }) {
   if (!email) return;
   lang = lang || 'fr';
 
@@ -303,6 +303,36 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, pr
       erreur: result.ok ? null : String(result.error || '').slice(0, 500),
       contenu: html,
     }).catch(() => {});
+  }
+
+  // SMS de confirmation, en plus de l'email — jusqu'ici aucune prolongation
+  // n'en envoyait, contrairement à une réservation standard (sms_confirmation).
+  // Idempotence sur son propre scénario (indépendante de l'email ci-dessus,
+  // canal séparé) : jamais renvoyé deux fois pour la même réservation.
+  if (tel && reservationId) {
+    const { count: smsAlreadySent } = await supabase
+      .from('email_log').select('id', { count: 'exact', head: true })
+      .eq('reservation_id', reservationId).eq('scenario', 'sms_prolongation').eq('statut', 'envoye');
+    if (!smsAlreadySent) {
+      let smsProlongContent;
+      if (lang === 'en') {
+        smsProlongContent = `Loc'Air - Your ${jNum}-day extension is confirmed. Collection scheduled on ${dateRecuperation || '—'}${creneau ? ', time slot ' + creneau : ''}. Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
+      } else if (lang === 'zh') {
+        smsProlongContent = `Loc'Air - 您延长${jNum}天的续租已确认。取回日期：${dateRecuperation || '—'}${creneau ? '，时间段：' + creneau : ''}。技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
+      } else if (lang === 'ru') {
+        smsProlongContent = `Loc'Air - Продление на ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'} подтверждено. Забор запланирован на ${dateRecuperation || '—'}${creneau ? ', интервал ' + creneau : ''}. Мастер отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
+      } else {
+        smsProlongContent = `Loc'Air - Votre prolongation de ${jNum} jour${jNum > 1 ? 's' : ''} est confirmée. Récupération prévue le ${dateRecuperation || '—'}${creneau ? ', créneau ' + creneau : ''}. Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
+      }
+      const smsResult = await sendBrevoSms({ to: tel, content: smsProlongContent });
+      await supabase.from('email_log').insert({
+        reservation_id: reservationId, scenario: 'sms_prolongation', canal: 'sms',
+        destinataire: tel, modele: 'sms_prolongation',
+        statut: smsResult.ok ? 'envoye' : 'erreur',
+        erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
+        contenu: smsProlongContent,
+      }).catch(() => {});
+    }
   }
 }
 
