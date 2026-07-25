@@ -164,7 +164,7 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
     );
 
     article('ARTICLE 3 - DURÉE',
-      `La durée minimale de location est de 3 jours. La location débute le ${fmtDate(reservation.date_debut)} et se termine le ` +
+      `La durée minimale de location est de 7 jours. La location débute le ${fmtDate(reservation.date_debut)} et se termine le ` +
       `${fmtDate(reservation.date_fin)}, pour une durée de ${jours} jours.`
     );
 
@@ -176,9 +176,12 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
     );
 
     article('ARTICLE 5 - MODALITÉS DE PAIEMENT & AUTORISATION',
-      "Le paiement est exigé à la réservation via la solution de paiement sécurisée Stripe. Aucun dépôt de garantie n'est demandé.\n" +
-      `Le locataire autorise expressément ${SELLER.nomCommercial} à enregistrer sa carte bancaire de façon sécurisée via Stripe afin de ` +
-      "permettre un prélèvement de plein droit en cas de retard de restitution, selon les tarifs de l'article 10 bis des CGV."
+      (reservation.stripe_payment_intent_id
+        ? `Le paiement est exigé à la réservation via la solution de paiement sécurisée Stripe. Aucun dépôt de garantie n'est demandé.\n` +
+          `Le locataire autorise expressément ${SELLER.nomCommercial} à enregistrer sa carte bancaire de façon sécurisée via Stripe afin de ` +
+          "permettre un prélèvement de plein droit en cas de retard de restitution, selon les tarifs de l'article 10 bis des CGV."
+        : `Le paiement est exigé à la réservation. Aucun dépôt de garantie n'est demandé.\n` +
+          `Le locataire autorise expressément ${SELLER.nomCommercial} à procéder à un prélèvement de plein droit en cas de retard de restitution, selon les tarifs de l'article 10 bis des CGV.`)
     );
 
     article('ARTICLE 6 - CONDITIONS GÉNÉRALES & ANNULATION',
@@ -326,9 +329,11 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement }) {
     doc.fontSize(8).fillColor('#666').text(`Mention légale : ${SELLER.mentionTva} (micro-entreprise en franchise de TVA).`, { width: 495 });
 
     drawSectionTitle(doc, 'Moyens de paiement');
-    doc.fontSize(9).fillColor('#444').text('Payé en ligne via Stripe (carte bancaire).');
     if (reservation.stripe_payment_intent_id) {
+      doc.fontSize(9).fillColor('#444').text('Payé en ligne via Stripe (carte bancaire).');
       doc.text(`Identifiant de transaction Stripe : ${reservation.stripe_payment_intent_id}`);
+    } else {
+      doc.fontSize(9).fillColor('#444').text('Paiement encaissé à la réservation.');
     }
 
     drawSectionTitle(doc, 'Conditions de règlement & retard');
