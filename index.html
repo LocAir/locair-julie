@@ -5543,8 +5543,10 @@ function initDateShortcuts(){
   const MONTHS_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const DAYS_ZH=['日','一','二','三','四','五','六'];
   const MONTHS_ZH=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-  const DAYS=_lang==='en'?DAYS_EN:_lang==='zh'?DAYS_ZH:_lang==='ru'?DAYS_RU??DAYS_FR:DAYS_FR;
-  const MONTHS=_lang==='en'?MONTHS_EN:_lang==='zh'?MONTHS_ZH:_lang==='ru'?MONTHS_RU??MONTHS_FR:MONTHS_FR;
+  const DAYS_RU=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  const MONTHS_RU=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  const DAYS=_lang==='en'?DAYS_EN:_lang==='zh'?DAYS_ZH:_lang==='ru'?DAYS_RU:DAYS_FR;
+  const MONTHS=_lang==='en'?MONTHS_EN:_lang==='zh'?MONTHS_ZH:_lang==='ru'?MONTHS_RU:MONTHS_FR;
   const off=_minOff();
   for(let i=0;i<3;i++){
     const dt=_addDays(off+i);
@@ -6065,7 +6067,13 @@ function overlayClick(e){
   closeModal();
 }
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape')closeModal();
+  if(e.key==='Escape'){
+    if(curStep>=2){
+      if(confirm('Fermer le formulaire ? Votre saisie sera perdue.'))closeModal();
+    } else {
+      closeModal();
+    }
+  }
   // Fermer si clic sur overlay avec Enter
   if(e.key==='Enter'&&document.activeElement===document.getElementById('overlay'))closeModal();
 });
@@ -6172,6 +6180,7 @@ function goTo(n,silent){
 const _STEP_NAMES_FR=['Adresse','Durée','Installation','Date','Vos infos','Récapitulatif'];
 const _STEP_NAMES_EN=['Address','Duration','Setup','Date','Your info','Summary'];
 const _STEP_NAMES_ZH=['地址','租期','安装','日期','您的信息','订单确认'];
+const _STEP_NAMES_RU=['Адрес','Длительность','Установка','Дата','Данные','Итого'];
 function updateStepper(n){
   const checkSvg='<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>';
   for(let i=1;i<=6;i++){

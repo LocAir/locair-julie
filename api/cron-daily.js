@@ -127,7 +127,8 @@ module.exports = async (req, res) => {
         const methods = await stripe.paymentMethods.list({ customer: resa.stripe_customer_id, type: 'card' });
         if (!methods.data.length) continue;
 
-        const amountCents     = (calcRetardPrice(joursRetard) - calcRetardPrice(joursRetard - 1)) * 100;
+        function dailyRetardCents(j){ if(j<=7) return 2400; if(j<=14) return 1800; if(j<=21) return 1700; return 1600; }
+        const amountCents     = dailyRetardCents(joursRetard);
         const idempotencyKey  = `retard-${liv.id}-${joursRetard}j-${todayStr}`;
         const intent = await stripe.paymentIntents.create({
           amount:         amountCents,

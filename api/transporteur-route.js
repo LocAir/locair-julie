@@ -21,6 +21,11 @@ module.exports = async (req, res) => {
   const body = req.body || {};
   let startLat = parseFloat(body.start_lat);
   let startLng = parseFloat(body.start_lng);
+  if (Number.isFinite(startLat) && Number.isFinite(startLng)) {
+    if (startLat < -90 || startLat > 90 || startLng < -180 || startLng > 180) {
+      return res.status(400).json({ error: 'Coordonnées GPS invalides' });
+    }
+  }
 
   try {
     const { data: transporteur } = await supabase.from('transporteurs').select('city_id').eq('id', transporteurId).maybeSingle();
