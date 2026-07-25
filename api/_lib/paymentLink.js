@@ -6,7 +6,7 @@ const { calcTieredPrice } = require('./pricing');
 // Doit rester synchronisé avec INSTALL_FEE dans checkout.js/index.html — même
 // remarque que là-bas : un écart ferait afficher un détail différent du tarif
 // réel appliqué sur le site.
-const INSTALL_FEE_CENTS = 4900;
+const INSTALL_FEE_CENTS = 8000;
 
 function fmtEuros(cents) {
   return ((cents || 0) / 100).toFixed(2).replace('.', ',') + ' €';
