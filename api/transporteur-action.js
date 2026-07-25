@@ -170,12 +170,15 @@ module.exports = async (req, res) => {
           const verbe = liv.type === 'recuperation' ? 'récupérer votre climatiseur' : 'vous livrer votre climatiseur';
           smsMissionContent = `Loc'Air : votre mission du ${dateStr} est confirmée, notre technicien viendra ${verbe}. Il vous contactera 30 min avant. Questions : 06 63 79 87 56`;
         }
-        await sendBrevoSms({ to: liv.reservation.tel, content: smsMissionContent }).catch(() => {});
+        const smsMissionResult = await sendBrevoSms({ to: liv.reservation.tel, content: smsMissionContent });
         // Best-effort : trace pour l'historique de la fiche client admin.
         if (liv.reservation_id) {
           supabase.from('email_log').insert({
             reservation_id: liv.reservation_id, scenario: 'sms_mission_confirmee', canal: 'sms',
-            destinataire: liv.reservation.tel, modele: 'sms_mission_confirmee', statut: 'envoye', contenu: smsMissionContent,
+            destinataire: liv.reservation.tel, modele: 'sms_mission_confirmee',
+            statut: smsMissionResult.ok ? 'envoye' : 'erreur',
+            erreur: smsMissionResult.ok ? null : String(smsMissionResult.error || '').slice(0, 500),
+            contenu: smsMissionContent,
           }).catch(() => {});
         }
       }
@@ -554,11 +557,14 @@ module.exports = async (req, res) => {
             const verbe = liv.type === 'livraison' ? 'livrer' : 'récupérer';
             smsAbsentContent = `Loc'Air : notre livreur est passé pour ${verbe} votre climatiseur mais personne ne répondait. Merci de nous rappeler pour reprogrammer.`;
           }
-          await sendBrevoSms({ to: resa.tel, content: smsAbsentContent }).catch(() => {});
+          const smsAbsentResult = await sendBrevoSms({ to: resa.tel, content: smsAbsentContent });
           // Best-effort : trace pour l'historique de la fiche client admin.
           supabase.from('email_log').insert({
             reservation_id: liv.reservation_id, scenario: 'sms_client_absent', canal: 'sms',
-            destinataire: resa.tel, modele: 'sms_client_absent', statut: 'envoye', contenu: smsAbsentContent,
+            destinataire: resa.tel, modele: 'sms_client_absent',
+            statut: smsAbsentResult.ok ? 'envoye' : 'erreur',
+            erreur: smsAbsentResult.ok ? null : String(smsAbsentResult.error || '').slice(0, 500),
+            contenu: smsAbsentContent,
           }).catch(() => {});
         }
       }

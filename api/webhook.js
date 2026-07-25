@@ -525,10 +525,13 @@ const handler = async (req, res) => {
           const dateStr = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
           smsConfirmationContent = `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`;
         }
-        await sendBrevoSms({ to: meta.tel, content: smsConfirmationContent }).catch(() => {});
+        const smsResult = await sendBrevoSms({ to: meta.tel, content: smsConfirmationContent });
         await getSupabase().from('email_log').insert({
           reservation_id: confirmedResa.id, scenario: 'sms_confirmation', canal: 'sms',
-          destinataire: meta.tel, modele: 'sms_confirmation', statut: 'envoye', contenu: smsConfirmationContent,
+          destinataire: meta.tel, modele: 'sms_confirmation',
+          statut: smsResult.ok ? 'envoye' : 'erreur',
+          erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
+          contenu: smsConfirmationContent,
         }).catch(() => {});
       }
     }

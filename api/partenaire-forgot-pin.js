@@ -43,7 +43,18 @@ module.exports = async (req, res) => {
         const sig  = await getSignature(supabase);
         const html = withSignature(tplNouveauCodeAmbassadeur({ nom: partenaire.nom, lien, pin: newPin }), sig);
 
-        await sendBrevoEmail({ to: partenaire.email, subject: "🔐 Ton nouveau code ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
+        const result = await sendBrevoEmail({ to: partenaire.email, subject: "🔐 Ton nouveau code ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
+        // Jusqu'ici ni vérifié ni tracé nulle part (audit communications,
+        // juillet 2026) — reservation_id:null, pas de réservation associée
+        // à un compte ambassadeur.
+        if (!result.ok) console.error('[Email code ambassadeur]', result.error);
+        await supabase.from('email_log').insert({
+          reservation_id: null, scenario: 'email_code_ambassadeur', canal: 'email',
+          destinataire: partenaire.email, modele: 'email_code_ambassadeur',
+          statut: result.ok ? 'envoye' : 'erreur',
+          erreur: result.ok ? null : String(result.error || '').slice(0, 500),
+          contenu: html,
+        }).catch(() => {});
       }
     }
 

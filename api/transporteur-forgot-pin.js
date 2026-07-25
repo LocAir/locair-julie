@@ -47,7 +47,18 @@ module.exports = async (req, res) => {
         const sig  = await getSignature(supabase);
         const html = withSignature(tplNouveauCodeTransporteur({ nom: transp.nom, pin: newPin }), sig);
 
-        await sendBrevoEmail({ to: transp.email, subject: "🔐 Ton nouveau code Loc'Air", html, senderName: sig.nom_expediteur });
+        const result = await sendBrevoEmail({ to: transp.email, subject: "🔐 Ton nouveau code Loc'Air", html, senderName: sig.nom_expediteur });
+        // Jusqu'ici ni vérifié ni tracé nulle part (audit communications,
+        // juillet 2026) — reservation_id:null, pas de réservation associée
+        // à un compte transporteur.
+        if (!result.ok) console.error('[Email code transporteur]', result.error);
+        await supabase.from('email_log').insert({
+          reservation_id: null, scenario: 'email_code_transporteur', canal: 'email',
+          destinataire: transp.email, modele: 'email_code_transporteur',
+          statut: result.ok ? 'envoye' : 'erreur',
+          erreur: result.ok ? null : String(result.error || '').slice(0, 500),
+          contenu: html,
+        }).catch(() => {});
       }
     }
 
