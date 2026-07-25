@@ -136,7 +136,10 @@ module.exports = async (req, res) => {
           return res.status(409).json({ error: 'Termine ta mission en cours avant d\'en accepter une nouvelle.' });
         }
       }
-      await supabase.from('livraisons').update({ statut: 'acceptee', accepted_at: new Date().toISOString() }).eq('id', liv.id);
+      const { data: accepted } = await supabase.from('livraisons')
+        .update({ statut: 'acceptee', accepted_at: new Date().toISOString() })
+        .eq('id', liv.id).eq('statut', 'a_faire').select('id').maybeSingle();
+      if (!accepted) return res.status(409).json({ error: 'Mission déjà acceptée par quelqu\'un d\'autre' });
 
       // Le transporteur est autonome (les appels client passent directement
       // sur son propre téléphone, pas de bureau intermédiaire) — s'il reprend
@@ -482,6 +485,9 @@ module.exports = async (req, res) => {
         statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,
       }).eq('id', liv.id);
       await closeMissionIncident(supabase, liv);
+      await setAppareilsStatutForReservation(supabase, liv.reservation_id, 'loue', {
+        typeEvenement: 'changement', livraisonId: liv.id, utilisateur: 'transporteur',
+      }).catch(e => console.error('[changement_ok appareilSync]', e.message));
 
       return res.status(200).json({ ok: true, statut: 'fait', montant_du_cents: montantDu });
     }

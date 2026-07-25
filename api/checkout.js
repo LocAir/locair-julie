@@ -6,7 +6,7 @@ const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice }      = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { matchPromoPct } = require('./_lib/promo');
-const { getClientIp, isRateLimited } = require('./_lib/ratelimit');
+const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 const calcBase = calcTieredPrice;
 
@@ -235,8 +235,8 @@ module.exports = async (req, res) => {
     // rate, mais son absence ne doit pas non plus passer inaperçue.
     try {
       await supabase.from('cgv_acceptations').insert([
-        { reservation_id: insertedResa.id, type: ACCEPTANCE_TYPES.CGV_LOCATION,           version: CGV_VERSION, accepted_at: data.cgv_accepted_at || new Date().toISOString() },
-        { reservation_id: insertedResa.id, type: ACCEPTANCE_TYPES.CONDITIONS_UTILISATION, version: CGV_VERSION, accepted_at: data.conditions_utilisation_accepted_at || new Date().toISOString() },
+        { reservation_id: insertedResa.id, type: ACCEPTANCE_TYPES.CGV_LOCATION,           version: CGV_VERSION, accepted_at: new Date().toISOString() },
+        { reservation_id: insertedResa.id, type: ACCEPTANCE_TYPES.CONDITIONS_UTILISATION, version: CGV_VERSION, accepted_at: new Date().toISOString() },
       ]);
     } catch (e) {
       console.error('[CGV acceptations]', e.message);
@@ -259,6 +259,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({ clientSecret: intent.client_secret, amountCents, customerId });
   } catch (err) {
     console.error('[Stripe intent]', err.message);
+    await recordFailedAttempt(supabase, `checkout:${ip}`).catch(() => {});
     return res.status(500).json({ error: 'Erreur serveur paiement' });
   }
 };

@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 
 // Suivi des commandes fournisseurs (Module 8) — la prévision de demande
 // (api/admin-dashboard.js, action 'previsions') dit "il faut racheter du
@@ -14,7 +15,8 @@ const STATUTS_VALIDES = ['commande', 'en_transit', 'livree', 'annulee'];
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
 
   const body   = req.body || {};
   const action = body.action || 'list';
@@ -35,6 +37,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'create') {
+      if (!roleHasAccess(admin.role, 'stock')) return res.status(403).json({ error: "Ton compte n'a pas accès aux commandes fournisseur." });
       const fournisseur = (body.fournisseur || '').trim().slice(0, 200);
       const quantite = parseInt(body.quantite);
       if (!fournisseur) return res.status(400).json({ error: 'Fournisseur requis' });
@@ -58,6 +61,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'update_statut') {
+      if (!roleHasAccess(admin.role, 'stock')) return res.status(403).json({ error: "Ton compte n'a pas accès aux commandes fournisseur." });
       const id = parseInt(body.id);
       if (!id || !body.statut) return res.status(400).json({ error: 'Paramètres manquants' });
       if (!STATUTS_VALIDES.includes(body.statut)) return res.status(400).json({ error: 'Statut invalide' });

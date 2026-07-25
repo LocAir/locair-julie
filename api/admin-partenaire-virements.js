@@ -167,14 +167,19 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Rien à verser pour ce partenaire' });
       }
 
-      if (ids.length) await supabase.from('reservations').update({ partenaire_commission_payee: true }).in('id', ids);
+      if (ids.length) {
+        const { error: commErr } = await supabase.from('reservations').update({ partenaire_commission_payee: true }).in('id', ids);
+        if (commErr) throw commErr;
+      }
 
       if (existante) {
-        await supabase.from('partenaire_virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', existante.id);
+        const { error: virUpdErr } = await supabase.from('partenaire_virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', existante.id);
+        if (virUpdErr) throw virUpdErr;
       } else {
-        await supabase.from('partenaire_virements').insert({
+        const { error: virInsErr } = await supabase.from('partenaire_virements').insert({
           partenaire_id: partenaireId, montant_cents: montant, statut: 'verse', verse_at: new Date().toISOString(),
         });
+        if (virInsErr) throw virInsErr;
       }
 
       return res.status(200).json({ ok: true, montant_cents: montant });
@@ -198,9 +203,11 @@ module.exports = async (req, res) => {
       const ids = (resas || []).map(r => r.id);
 
       if (ids.length) {
-        await supabase.from('reservations').update({ partenaire_commission_payee: true }).in('id', ids);
+        const { error: commErr2 } = await supabase.from('reservations').update({ partenaire_commission_payee: true }).in('id', ids);
+        if (commErr2) throw commErr2;
       }
-      await supabase.from('partenaire_virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', id);
+      const { error: virErr2 } = await supabase.from('partenaire_virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', id);
+      if (virErr2) throw virErr2;
 
       return res.status(200).json({ ok: true, montant_cents: montant });
     }

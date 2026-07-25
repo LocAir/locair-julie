@@ -13,7 +13,7 @@ module.exports = async (req, res) => {
   if (!transporteurId) return res.status(401).json({ error: 'Session invalide' });
 
   const workflow = req.body?.workflow;
-  if (!['installation', 'recuperation'].includes(workflow)) {
+  if (!['installation', 'recuperation', 'changement'].includes(workflow)) {
     return res.status(400).json({ error: 'workflow invalide' });
   }
 

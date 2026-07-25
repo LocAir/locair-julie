@@ -1,5 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 
 // Centre d'aide client (Module 4) — contenu administrable, consommé par
 // l'espace client (api/client-dashboard.js) et potentiellement par un futur
@@ -7,7 +8,8 @@ const { checkAdminToken } = require('./_lib/auth');
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
 
   const body   = req.body || {};
   const action = body.action || 'list';
@@ -20,6 +22,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'upsert') {
+      if (!roleHasAccess(admin.role, 'support')) return res.status(403).json({ error: "Ton compte n'a pas accès à la gestion du contenu." });
       const id = parseInt(body.id) || null;
       const slug = (body.slug || '').trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').slice(0, 100);
       if (!slug) return res.status(400).json({ error: 'Slug requis' });
@@ -40,6 +43,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'delete') {
+      if (!roleHasAccess(admin.role, 'support')) return res.status(403).json({ error: "Ton compte n'a pas accès à la gestion du contenu." });
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
       const { error } = await supabase.from('centre_aide_articles').delete().eq('id', id);

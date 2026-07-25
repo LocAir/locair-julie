@@ -43,10 +43,11 @@ module.exports = async (req, res) => {
       paymentMethodId = methods.data[0].id;
     }
 
-    // Clé d'idempotence : empêche le double-prélèvement sur double-clic ou retry
-    const today = new Date().toISOString().slice(0, 10);
+    // Clé d'idempotence : empêche le double-prélèvement sur double-clic ou retry.
+    // Pas de date : si l'opérateur relance le lendemain (erreur réseau, 3DS
+    // en attente), la même clé retourne le PaymentIntent existant — pas un second.
     const resaRef = (data.reservation_id || data.adresse || 'noid').toString().slice(0, 40);
-    const idempotencyKey = `retard-${customerId}-${resaRef}-${jours}j-${today}`;
+    const idempotencyKey = `retard-${customerId}-${resaRef}-${jours}j`;
 
     const intent = await stripe.paymentIntents.create({
       amount:         amountCents,
