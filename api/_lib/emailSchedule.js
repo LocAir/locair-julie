@@ -115,11 +115,20 @@ function pastScenariosForReservation(reservation, todayISO) {
 // exactement là où elle s'arrête) resterait tout autant à tort dans les listes
 // actives. `peers` : les autres réservations du même client à comparer
 // (même email+ville, ou même client_id selon l'appelant) — à l'appelant de
-// les fournir déjà filtrées sur le bon périmètre.
+// les fournir déjà filtrées sur le bon périmètre (un client peut avoir
+// plusieurs séjours totalement indépendants dans le temps : `peers` peut
+// donc contenir bien plus que la seule chaîne de prolongation concernée).
 function isSupersededReservation(resa, peers) {
   const others = (peers || []).filter(r => r.id !== resa.id && ['confirmee', 'terminee'].includes(r.statut));
   if (resa.source !== 'site_prolongation') {
-    return others.some(r => r.source === 'site_prolongation');
+    // Une prolongation ne "termine" son origine que si elle partage
+    // EXACTEMENT la même date_fin — invariant garanti par la
+    // resynchronisation de date_fin sur la réservation d'origine à chaque
+    // prolongation créée (webhook.js / admin-reservations.js). Sans cette
+    // vérification de date, N'IMPORTE QUELLE prolongation du même client
+    // (même un séjour totalement différent, des années plus tôt) aurait
+    // supplanté à tort CETTE réservation précise.
+    return others.some(r => r.source === 'site_prolongation' && r.date_fin === resa.date_fin);
   }
   return others.some(r => r.date_debut === resa.date_fin);
 }

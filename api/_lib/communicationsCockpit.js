@@ -58,8 +58,16 @@ async function buildCommunicationsCockpit(supabase, cityId) {
   // ne doit pas apparaître comme un dossier client séparé — voir
   // isSupersededReservation (_lib/emailSchedule.js) : sans ce filtre, le même
   // client apparaissait deux fois dans le panneau (une carte par fiche).
+  // Regroupée par email : passer TOUTE la ville en pairs ferait supplanter à
+  // tort les dossiers de n'importe quel autre client dès qu'une seule
+  // prolongation existe quelque part dans la ville.
   const resasRaw = resas || [];
-  const resaList = resasRaw.filter(r => !isSupersededReservation(r, resasRaw));
+  const peersByEmail = {};
+  for (const r of resasRaw) {
+    const key = String(r.email || '').toLowerCase();
+    (peersByEmail[key] = peersByEmail[key] || []).push(r);
+  }
+  const resaList = resasRaw.filter(r => !isSupersededReservation(r, peersByEmail[String(r.email || '').toLowerCase()]));
   const resaIds = resaList.map(r => r.id);
   if (!resaIds.length) return { clients: [], anomalies: 0 };
 
