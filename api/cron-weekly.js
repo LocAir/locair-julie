@@ -22,14 +22,23 @@ async function runWeeklyReport(supabase) {
   const weekAgo  = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
   const weekAgoStr = weekAgo.toISOString().slice(0, 10);
 
+  // Verrou idempotent : si un rapport a deja ete envoye aujourd'hui, on sort.
+  const { data: dejaSent } = await supabase
+    .from('email_log')
+    .select('id')
+    .eq('scenario', 'rapport_hebdo')
+    .gte('sent_at', todayStr + 'T00:00:00Z')
+    .maybeSingle();
+  if (dejaSent) return { skipped: true, reason: 'already_sent_today' };
+
   {
     // Missions effectuées cette semaine
     const { data: livDone } = await supabase
       .from('livraisons')
       .select('montant_du_cents, type, transporteur_id')
       .eq('statut', 'fait')
-      .gte('fait_at', weekAgoStr + 'T00:00:00')
-      .lt('fait_at', todayStr + 'T00:00:00');
+      .gte('fait_at', weekAgoStr + 'T00:00:00Z')
+      .lt('fait_at', todayStr + 'T00:00:00Z');
 
     const totalCA   = (livDone || []).reduce((s, l) => s + (l.montant_du_cents || 0), 0);
     const nbMissions = (livDone || []).length;
@@ -39,7 +48,7 @@ async function runWeeklyReport(supabase) {
     // Nouvelles réservations
     const { count: newResas } = await supabase
       .from('reservations').select('id', { count: 'exact', head: true })
-      .gte('created_at', weekAgoStr + 'T00:00:00').lt('created_at', todayStr + 'T00:00:00')
+      .gte('created_at', weekAgoStr + 'T00:00:00Z').lt('created_at', todayStr + 'T00:00:00Z')
       .neq('statut', 'annulee');
 
     // Incidents ouverts
@@ -94,6 +103,11 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
 <div class="footer">© 2026 Loc'Air · Rapport automatique chaque lundi</div>
 </div></body></html>`,
     });
+
+    await supabase.from('email_log').insert({
+      scenario: 'rapport_hebdo', canal: 'email', destinataire: adminEmail,
+      modele: 'rapport_hebdo', statut: 'envoye', sent_at: new Date().toISOString(),
+    }).catch(e => console.error('[rapport_hebdo log]', e.message));
 
     return { date: todayStr, nbMissions, totalCA, newResas };
   }

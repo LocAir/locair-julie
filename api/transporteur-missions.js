@@ -31,7 +31,10 @@ module.exports = async (req, res) => {
         .select('fait_at, photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path')
         .eq('id', livraisonId).eq('transporteur_id', transporteurId).maybeSingle();
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
-      if (!liv.fait_at || new Date(liv.fait_at) < cutoff90) {
+      if (!liv.fait_at) {
+        return res.status(404).json({ error: 'Mission non terminée' });
+      }
+      if (new Date(liv.fait_at) < cutoff90) {
         return res.status(404).json({ error: 'Photos disponibles seulement pour les 90 derniers jours' });
       }
 
@@ -62,7 +65,7 @@ module.exports = async (req, res) => {
       .from('livraisons')
       .select(`
         id, type, statut, date_prevue, creneau, titre, adresse_libre, montant_du_cents,
-        photo_depart_path, photo_installation_path, photo_retour_path, client_notifie_at,
+        photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path, client_notifie_at,
         demo_faite, incident_id,
         vidange_confirmee,
         probleme_type, probleme_description,
@@ -100,6 +103,7 @@ module.exports = async (req, res) => {
       photo_depart_ok:     Boolean(m.photo_depart_path),
       photo_installation_ok: Boolean(m.photo_installation_path),
       photo_retour_ok:     Boolean(m.photo_retour_path),
+      photo_absence_ok:    Boolean(m.photo_absence_path),
       demo_faite:          Boolean(m.demo_faite),
       vidange_ok:          Boolean(m.vidange_confirmee),
       client_notifie:      Boolean(m.client_notifie_at),
@@ -109,8 +113,8 @@ module.exports = async (req, res) => {
       incident_id:         m.incident_id,
       appareil_numeros: ((m.reservation?.reservation_appareils) || [])
         .map(ra => ra.appareil?.numero).filter(n => n != null).sort((a, b) => a - b),
-      acces_difficile: m.reservation?.client?.acces_difficile || null,
-      client: m.reservation || null,
+      acces_difficile: m.reservation?.client?.acces_difficile ?? null,
+      client: m.reservation ? { ...m.reservation, fenetre_photo_path: undefined } : null,
     }));
 
     return res.status(200).json({ missions, en_pause: tData?.data?.en_pause || false });
