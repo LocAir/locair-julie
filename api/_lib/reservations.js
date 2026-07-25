@@ -78,6 +78,7 @@ async function roundRobinPickFromPool(supabase, pool) {
   const { data: last } = await supabase
     .from('livraisons').select('transporteur_id')
     .in('transporteur_id', sorted)
+    .not('statut', 'in', '(annule,refusee)')
     .order('created_at', { ascending: false })
     .limit(1).maybeSingle();
   let idx = 0;
@@ -161,7 +162,7 @@ async function assignAppareils(supabase, resa, staleOriginalId) {
   const { data: already, error: alreadyErr } = await supabase
     .from('reservation_appareils').select('id').eq('reservation_id', resa.id).limit(1);
   if (alreadyErr) throw alreadyErr;
-  if (already.length) return;
+  if ((already || []).length) return;
 
   // Prolongation : le client garde physiquement le même climatiseur, ce n'est
   // pas un nouvel appareil — on reprend celui (ou ceux) de la réservation
@@ -219,38 +220,42 @@ async function sendConfirmationCommunications(supabase, resa) {
     console.error('[Documents]', e.message);
   }
 
-  if (resa.tel) {
-    const { data: smsDejaEnvoye } = await supabase
-      .from('email_log').select('id')
-      .eq('reservation_id', resa.id).eq('scenario', 'sms_confirmation').eq('statut', 'envoye')
-      .maybeSingle();
-    if (!smsDejaEnvoye) {
-    const lang = resa.lang || 'fr';
-    const d = resa.date_debut ? new Date(String(resa.date_debut).slice(0, 10) + 'T12:00:00Z') : null;
-    let smsConfirmationContent;
-    if (lang === 'en') {
-      const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
-      smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${resa.creneau ? ', time slot ' + resa.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
-    } else if (lang === 'zh') {
-      const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-      const dateStr = d ? `${months[d.getUTCMonth()]}${d.getUTCDate()}日` : '';
-      smsConfirmationContent = `Loc'Air - 您的预订已确认。${dateStr ? '配送日期：' + dateStr : ''}${resa.creneau ? '，时间段：' + resa.creneau : ''}技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
-    } else if (lang === 'ru') {
-      const dateStr = d ? d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '';
-      smsConfirmationContent = `Loc'Air - Ваше бронирование подтверждено.${dateStr ? ' Доставка ' + dateStr : ''}${resa.creneau ? ', интервал ' + resa.creneau : ''} Мастер отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
-    } else {
-      const dateStr = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
-      smsConfirmationContent = `Loc'Air - Votre réservation est confirmée.${dateStr ? ' Livraison prévue le ' + dateStr : ''}${resa.creneau ? ', créneau ' + resa.creneau : ''} Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
+  try {
+    if (resa.tel) {
+      const { data: smsDejaEnvoye } = await supabase
+        .from('email_log').select('id')
+        .eq('reservation_id', resa.id).eq('scenario', 'sms_confirmation').eq('statut', 'envoye')
+        .maybeSingle();
+      if (!smsDejaEnvoye) {
+        const lang = resa.lang || 'fr';
+        const d = resa.date_debut ? new Date(String(resa.date_debut).slice(0, 10) + 'T12:00:00Z') : null;
+        let smsConfirmationContent;
+        if (lang === 'en') {
+          const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
+          smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${resa.creneau ? ', time slot ' + resa.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
+        } else if (lang === 'zh') {
+          const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+          const dateStr = d ? `${months[d.getUTCMonth()]}${d.getUTCDate()}日` : '';
+          smsConfirmationContent = `Loc'Air - 您的预订已确认。${dateStr ? '配送日期：' + dateStr : ''}${resa.creneau ? '，时间段：' + resa.creneau : ''}技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
+        } else if (lang === 'ru') {
+          const dateStr = d ? d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '';
+          smsConfirmationContent = `Loc'Air - Ваше бронирование подтверждено.${dateStr ? ' Доставка ' + dateStr : ''}${resa.creneau ? ', интервал ' + resa.creneau : ''} Мастер отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
+        } else {
+          const dateStr = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
+          smsConfirmationContent = `Loc'Air - Votre réservation est confirmée.${dateStr ? ' Livraison prévue le ' + dateStr : ''}${resa.creneau ? ', créneau ' + resa.creneau : ''} Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
+        }
+        const smsResult = await sendBrevoSms({ to: resa.tel, content: smsConfirmationContent });
+        await supabase.from('email_log').insert({
+          reservation_id: resa.id, scenario: 'sms_confirmation', canal: 'sms',
+          destinataire: resa.tel, modele: 'sms_confirmation',
+          statut: smsResult.ok ? 'envoye' : 'erreur',
+          erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
+          contenu: smsConfirmationContent,
+        }).catch(() => {});
+      } // end if (!smsDejaEnvoye)
     }
-    const smsResult = await sendBrevoSms({ to: resa.tel, content: smsConfirmationContent });
-    await supabase.from('email_log').insert({
-      reservation_id: resa.id, scenario: 'sms_confirmation', canal: 'sms',
-      destinataire: resa.tel, modele: 'sms_confirmation',
-      statut: smsResult.ok ? 'envoye' : 'erreur',
-      erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
-      contenu: smsConfirmationContent,
-    }).catch(() => {});
-    } // end if (!smsDejaEnvoye)
+  } catch (e) {
+    console.error('[SMS confirmation]', e.message);
   }
 
   try {
@@ -441,7 +446,7 @@ async function confirmReservation(supabase, resa) {
 
   const { data: existing, error: existingErr } = await supabase.from('livraisons').select('id').eq('reservation_id', resa.id);
   if (existingErr) throw existingErr;
-  if (existing.length === 0) {
+  if ((existing || []).length === 0) {
     // Le créneau choisi par le client sur le site (reservations.creneau) doit
     // atteindre la mission opérationnelle — jusqu'ici il finissait seulement
     // dans l'email de confirmation, jamais dans le planning admin/livreur.
