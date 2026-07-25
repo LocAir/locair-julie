@@ -3,6 +3,7 @@ const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
 const { getSignature, withSignature } = require('./_lib/emailEngine');
 const { tplRelanceDormant } = require('./_lib/emailTemplates');
 const { promoCodeForPrenom } = require('./_lib/promo');
+const { isSupersededReservation } = require('./_lib/emailSchedule');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
@@ -140,11 +141,23 @@ async function runDormantClientsWinback(supabase) {
 
   const { data: resas } = await supabase
     .from('reservations')
-    .select('id, client_id, statut, date_fin, mkt_consent, prenom, email')
+    .select('id, client_id, statut, date_debut, date_fin, mkt_consent, prenom, email, source')
     .not('client_id', 'is', null);
+
+  // Groupe par client pour pouvoir écarter les fiches supplantées par une
+  // prolongation plus récente (voir isSupersededReservation,
+  // _lib/emailSchedule.js) : une réservation "d'origine" reste 'confirmee'
+  // pour toujours après une prolongation, alors que le vrai dernier séjour
+  // (celui qui compte vraiment pour juger un client "dormant") est la
+  // prolongation elle-même, passée 'terminee' à la récupération réelle. Sans
+  // ce filtre, le client restait à tort exclu de la relance (sa fiche
+  // d'origine ne passe jamais à 'terminee').
+  const parClientId = {};
+  for (const r of (resas || [])) (parClientId[r.client_id] = parClientId[r.client_id] || []).push(r);
 
   const parClient = {};
   for (const r of resas || []) {
+    if (isSupersededReservation(r, parClientId[r.client_id])) continue;
     const cur = parClient[r.client_id];
     if (!cur || r.date_fin > cur.date_fin) parClient[r.client_id] = r;
   }

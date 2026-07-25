@@ -1,5 +1,5 @@
 const { SCENARIOS } = require('./emailEngine');
-const { upcomingScenariosForReservation, pastScenariosForReservation, daysDiff } = require('./emailSchedule');
+const { upcomingScenariosForReservation, pastScenariosForReservation, daysDiff, isSupersededReservation } = require('./emailSchedule');
 
 // Libellés des envois ponctuels hors moteur de scénarios (voir
 // api/webhook.js, api/_lib/documents.js, api/transporteur-action.js) —
@@ -48,13 +48,26 @@ async function buildCommunicationsCockpit(supabase, cityId) {
 
   const { data: resas, error: resasErr } = await supabase
     .from('reservations')
-    .select('id, ref, prenom, nom, statut, date_debut, date_fin, email, tel')
+    .select('id, ref, prenom, nom, statut, date_debut, date_fin, email, tel, source')
     .eq('city_id', cityId)
     .in('statut', ['confirmee', 'terminee'])
     .gte('date_fin', windowStartISO)
     .order('date_debut', { ascending: true });
   if (resasErr) throw resasErr;
-  const resaList = resas || [];
+  // Une réservation "d'origine" supplantée par une prolongation plus récente
+  // ne doit pas apparaître comme un dossier client séparé — voir
+  // isSupersededReservation (_lib/emailSchedule.js) : sans ce filtre, le même
+  // client apparaissait deux fois dans le panneau (une carte par fiche).
+  // Regroupée par email : passer TOUTE la ville en pairs ferait supplanter à
+  // tort les dossiers de n'importe quel autre client dès qu'une seule
+  // prolongation existe quelque part dans la ville.
+  const resasRaw = resas || [];
+  const peersByEmail = {};
+  for (const r of resasRaw) {
+    const key = String(r.email || '').toLowerCase();
+    (peersByEmail[key] = peersByEmail[key] || []).push(r);
+  }
+  const resaList = resasRaw.filter(r => !isSupersededReservation(r, peersByEmail[String(r.email || '').toLowerCase()]));
   const resaIds = resaList.map(r => r.id);
   if (!resaIds.length) return { clients: [], anomalies: 0 };
 

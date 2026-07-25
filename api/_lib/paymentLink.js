@@ -2,6 +2,7 @@ const { fmtDate, getSignature, withSignature } = require('./emailEngine');
 const { sendBrevoEmail } = require('./brevo');
 const { tplLienPaiement } = require('./emailTemplates');
 const { calcTieredPrice } = require('./pricing');
+const { addDays } = require('./dates');
 
 // Doit rester synchronisé avec INSTALL_FEE dans checkout.js/index.html — même
 // remarque que là-bas : un écart ferait afficher un détail différent du tarif
@@ -55,6 +56,25 @@ function computeManualBreakdown(resa) {
 async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) {
   const { scenario = 'lien_paiement', rappel = false } = options;
   if (!resa.email) return { ok: false, error: 'Aucun email sur cette réservation' };
+  // Une prolongation restée "en_attente" (paiement démarré puis abandonné)
+  // passe par ce même lien de relance que n'importe quelle réservation
+  // standard — sans ce distingo, la session Stripe recréée ici ne porterait
+  // pas metadata.type='prolongation', et webhook.js la traiterait comme une
+  // réservation TOUTE NEUVE si le client finit par payer (mauvaise
+  // confirmation, documents contrat/facture générés à tort, et surtout la
+  // date de fin de la réservation d'origine jamais resynchronisée — voir
+  // webhook.js, branche meta.type==='prolongation'). On reconstruit donc ici
+  // les mêmes métadonnées qu'à la création initiale (prolong-pay.js /
+  // checkout-prolong.js), à partir des données déjà en base sur `resa`.
+  const isProlongation = resa.source === 'site_prolongation';
+  let refOrigine = '';
+  if (isProlongation) {
+    const { data: origResa } = await supabase
+      .from('reservations').select('ref')
+      .ilike('email', resa.email).not('source', 'eq', 'site_prolongation')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    refOrigine = origResa?.ref || '';
+  }
   let html = '';
   try {
     let customerId = resa.stripe_customer_id || '';
@@ -74,14 +94,19 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
 
     // Détaillé en plusieurs articles (comme le récapitulatif du site) plutôt
     // qu'un seul montant global — le client voit sur la page de paiement
-    // Stripe exactement la même décomposition que sur locair.fr.
-    const breakdown = computeManualBreakdown(resa);
+    // Stripe exactement la même décomposition que sur locair.fr. Une
+    // prolongation ne facture ni installation ni livraison (voir
+    // prolong-pay.js) : jamais de décomposition pour elle, un seul montant.
+    const breakdown = isProlongation ? null : computeManualBreakdown(resa);
     const lineItem = (name, unit_amount) => ({ price_data: { currency: 'eur', unit_amount, product_data: { name } }, quantity: 1 });
     const line_items = breakdown ? [
       lineItem(`Location climatiseur — ${breakdown.days} jour${breakdown.days > 1 ? 's' : ''}${breakdown.qty > 1 ? ' × ' + breakdown.qty : ''}`, breakdown.baseCents),
       ...(breakdown.installCents > 0 ? [lineItem('Installation par un technicien', breakdown.installCents)] : []),
       ...(breakdown.livraisonCents > 0 ? [lineItem('Livraison & récupération', breakdown.livraisonCents)] : []),
-    ] : [lineItem(`Loc'Air — Réservation ${resa.ref}`, resa.prix_total_cents)];
+    ] : [lineItem(
+      isProlongation ? `Loc'Air — Prolongation ${refOrigine || resa.ref}` : `Loc'Air — Réservation ${resa.ref}`,
+      resa.prix_total_cents,
+    )];
 
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
@@ -89,14 +114,28 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
       payment_intent_data: {
         setup_future_usage: 'off_session',
         receipt_email: resa.email,
-        description: `Loc'Air — Réservation ${resa.ref}`,
+        description: isProlongation ? `Loc'Air — Prolongation ${refOrigine || resa.ref}` : `Loc'Air — Réservation ${resa.ref}`,
       },
       line_items,
       success_url: 'https://www.locair.fr/?paiement=confirme',
       cancel_url:  'https://www.locair.fr/?paiement=annule',
-      // Mêmes clés que checkout.js (site) — c'est ce que lit webhook.js pour
-      // la notification Formspree et le SMS de confirmation.
-      metadata: {
+      // Mêmes clés que checkout.js (site) pour une réservation standard —
+      // c'est ce que lit webhook.js pour la notification Formspree et le SMS
+      // de confirmation. Pour une prolongation, mêmes clés que prolong-pay.js
+      // (type='prolongation' + jours/date_recuperation/ref_origine) pour que
+      // webhook.js emprunte sa branche dédiée au lieu de traiter le paiement
+      // comme une nouvelle réservation.
+      metadata: isProlongation ? {
+        type: 'prolongation',
+        prenom: resa.prenom || '', nom: resa.nom || '', tel: resa.tel || '',
+        adresse_origine: resa.adresse || '',
+        ref_origine: refOrigine,
+        jours: String(Math.max(1, Math.round((new Date(resa.date_fin + 'T00:00:00Z') - new Date(resa.date_debut + 'T00:00:00Z')) / 86400000))),
+        date_recuperation: (() => { const r = addDays(resa.date_fin, 1); const [ry, rm, rd] = r.split('-'); return `${rd}/${rm}/${ry}`; })(),
+        creneau: resa.creneau || '',
+        lang: ['fr', 'en', 'zh', 'ru'].includes(resa.lang) ? resa.lang : 'fr',
+        customer_id: customerId,
+      } : {
         ref: resa.ref || '', prenom: resa.prenom || '', nom: resa.nom || '',
         tel: resa.tel || '', adresse: resa.adresse || '',
         date: resa.date_debut || '', creneau: resa.creneau || '',
@@ -119,14 +158,18 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
 
     const sig = await getSignature(supabase);
     html = withSignature(tplLienPaiement({
-      prenom: resa.prenom, ref: resa.ref, adresse: resa.adresse,
+      prenom: resa.prenom, ref: isProlongation ? (refOrigine || resa.ref) : resa.ref, adresse: resa.adresse,
       dateDebutFmt: fmtDate(resa.date_debut), dateFinFmt: fmtDate(resa.date_fin),
       montantFmt: fmtEuros(resa.prix_total_cents),
       breakdown: breakdownRows,
       lienPaiement: session.url,
       rappel,
+      isProlongation,
     }), sig);
-    const subject = rappel
+    const dossierRef = isProlongation ? (refOrigine || resa.ref) : resa.ref;
+    const subject = isProlongation
+      ? `⏰ Il reste un paiement à finaliser pour votre prolongation — Dossier ${dossierRef}`
+      : rappel
       ? `⏰ Il reste un paiement à finaliser — Dossier ${resa.ref}`
       : `💳 Finalisez votre réservation Loc'Air — Dossier ${resa.ref}`;
     const result = await sendBrevoEmail({
