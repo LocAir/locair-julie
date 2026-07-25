@@ -3673,6 +3673,9 @@ async function openCreateMissionModal(){
           <div><label for="cm-c-qte">Quantité</label><input type="number" id="cm-c-qte" min="1" max="5" value="1"/></div>
           <div><label for="cm-c-prix">Prix total (€)</label><input type="number" id="cm-c-prix" min="0" step="0.5"/></div>
         </div>
+        <label style="margin-top:10px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
+          <input type="checkbox" id="cm-c-cgv" style="width:auto"/> Le client a été informé et accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> ainsi que les <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">conditions d'utilisation du climatiseur</a> (comme sur le site)
+        </label>
       </div>
       <div id="cm-autre" class="hidden" style="margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--r-sm)">
         <p class="sub" style="margin:0 0 10px">Pour une tâche qui ne concerne pas un client (ex. aller chercher du matériel livré par un fournisseur et le ramener au box). Pas de barème ici — tu fixes le tarif toi-même. Aucun champ n'est obligatoire ici : remplis juste ce que tu sais, tu pourras compléter plus tard.</p>
@@ -3734,6 +3737,18 @@ async function openCreateMissionModal(){
       // confirmation crée déjà toute seule les missions livraison/récupération
       // et les dispatche, inutile (et faux) d'en recréer une par-dessus.
       if(document.getElementById('cm-resa').value === '__new__'){
+        // Même exigence que l'onglet Réservations (case CGV/CGL cochée) —
+        // ici recueillie verbalement par l'admin au téléphone, mais tracée
+        // pareil (cgv_acceptations) pour garder le même dossier légal
+        // qu'une commande web. Sans ce contrôle côté client, l'appel serveur
+        // était systématiquement rejeté (400) sans que rien à l'écran
+        // n'explique pourquoi ni ne permette de le confirmer.
+        if(!document.getElementById('cm-c-cgv').checked){
+          errEl.textContent = "Confirme que le client accepte les CGV et les conditions d'utilisation avant de créer la réservation.";
+          errEl.style.display = 'block';
+          okBtn.disabled = false;
+          return;
+        }
         // Aucun champ obligatoire ici : ce qui manque est complété côté
         // serveur avec des valeurs par défaut sûres (voir admin-reservations.js)
         // — utile pour une réservation prise vite au téléphone, à compléter
@@ -3748,6 +3763,7 @@ async function openCreateMissionModal(){
           tel: document.getElementById('cm-c-tel').value.trim(),
           quantite: document.getElementById('cm-c-qte').value,
           prix_total_cents: Math.round((parseFloat(document.getElementById('cm-c-prix').value)||0)*100),
+          cgv_accepted: true,
           ...typeClientPayload('cm-c'),
           ...logisticsPayload('cm-c'),
         })});
