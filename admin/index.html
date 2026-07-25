@@ -186,27 +186,43 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 
 .gantt-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 .gantt-range{font-weight:700;font-size:13.5px;color:var(--black)}
-.gantt-wrap{overflow-x:auto;border:1px solid var(--rule);border-radius:var(--r);background:var(--white)}
-.gantt-grid{min-width:640px}
+.gantt-wrap{border:1px solid var(--rule);border-radius:var(--r);background:var(--white);overflow:hidden;box-shadow:var(--sh-xs)}
+.gantt-table{display:flex}
+.gantt-labels{flex:0 0 auto;border-right:1px solid var(--rule);background:var(--bg)}
+.gantt-label-head{height:40px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--rule);padding:0 14px}
+.gantt-label-row{height:40px;display:flex;align-items:center;gap:6px;padding:0 14px;border-bottom:1px solid var(--rule);font-size:12.5px;font-weight:700;color:var(--black);white-space:nowrap}
+.gantt-label-row:last-child{border-bottom:none}
+.gantt-label-row.gantt-label-out{color:var(--grey-soft)}
+.gantt-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.gantt-status-dot-actif{background:var(--green)}
+.gantt-status-dot-annulee{background:var(--red)}
+.gantt-status-dot-a_faire{background:var(--amber)}
+.gantt-status-dot-en_location{background:var(--blue)}
+.gantt-status-dot-terminee{background:var(--grey-soft)}
+.gantt-scroll{flex:1;overflow-x:auto;min-width:0}
+.gantt-grid{min-width:520px}
 .gantt-header,.gantt-row{display:grid;grid-template-columns:repeat(var(--gantt-days),minmax(30px,1fr))}
-.gantt-header{border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--white);z-index:2}
-.gantt-cell{grid-row:1;border-right:1px solid var(--rule);min-height:38px}
+.gantt-header{height:40px;border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--white);z-index:2}
+.gantt-cell{grid-row:1;border-right:1px solid var(--rule)}
 .gantt-cell:last-child{border-right:none}
-.gantt-head{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 2px;gap:1px;min-height:auto}
-.gantt-dow{font-size:9.5px;color:var(--grey);text-transform:uppercase;font-weight:700}
+.gantt-head{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.gantt-dow{font-size:9px;color:var(--grey);text-transform:uppercase;font-weight:700}
 .gantt-dnum{font-size:12.5px;font-weight:700;color:var(--black)}
 .gantt-today{background:var(--blue-lt)}
-.gantt-row{position:relative;border-bottom:1px solid var(--rule)}
+.gantt-weekend{background:rgba(20,30,48,.05)}
+.gantt-row{height:40px;position:relative;border-bottom:1px solid var(--rule)}
 .gantt-row:last-child{border-bottom:none}
 .gantt-cells{display:contents}
-.gantt-bar{grid-row:1;z-index:1;margin:6px 1px;border-radius:100px;padding:0 10px;display:flex;align-items:center;gap:5px;color:#fff;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;box-shadow:var(--sh-xs)}
+.gantt-bar{grid-row:1;z-index:1;align-self:center;height:26px;margin:0 1px;border-radius:100px;padding:0 10px;display:flex;align-items:center;gap:5px;color:#fff;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;box-shadow:var(--sh-xs);transition:filter .15s ease}
+.gantt-bar:hover{filter:brightness(.92)}
 .gantt-bar-attente{background:var(--amber)}
 .gantt-bar-confirmee{background:var(--green)}
-.gantt-bar-sub{font-weight:400;opacity:.85;font-size:11px}
-.gantt-legend{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--grey)}
+.gantt-bar-sub{font-weight:400;opacity:.85;font-size:10.5px}
+.gantt-legend{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--grey);flex-wrap:wrap}
 .gantt-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .gantt-dot-attente{background:var(--amber)}
 .gantt-dot-confirmee{background:var(--green)}
+.gantt-legend .gantt-status-dot{margin-right:5px}
 @media(max-width:640px){.gantt-nav{justify-content:space-between}}
 
 .section-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey-soft);margin:24px 2px 10px}
@@ -1387,14 +1403,21 @@ function goToRetards(){ LIVRAISONS_FILTER = 'en_retard'; switchAdminTab('livrais
 // en train de taper ou de répondre à une confirmation.
 async function silentRefreshReservations(){
   try{
-    const [r, lr] = await Promise.all([
+    // La 3e requête (appareils) n'alimente que la vue Calendrier (une ligne
+    // par appareil) — inutile de la réveiller toutes les 18s si l'admin est
+    // sur la vue Liste, mais indispensable pour que les numéros/statuts du
+    // planning ne restent pas figés si l'admin reste dessus un moment.
+    const fetches = [
       fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
       fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
-    ]);
+    ];
+    if(RESERVATIONS_VIEW==='calendrier') fetches.push(fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({})}));
+    const [r, lr, sr] = await Promise.all(fetches);
     if(!r.ok) return;
     const d = await r.json();
     RESERVATIONS_CACHE = d.reservations || [];
     if(lr.ok){ const ld = await lr.json().catch(()=>null); if(ld) LIVRAISONS_CACHE = ld.livraisons || []; }
+    if(sr && sr.ok){ const sd = await sr.json().catch(()=>null); if(sd) STOCK_APPAREILS_CACHE = sd.appareils || STOCK_APPAREILS_CACHE; }
     if(RESERVATIONS_VIEW==='liste') renderReservations(); else renderReservationsCalendrier();
   }catch(e){}
 }
@@ -2722,10 +2745,11 @@ async function loadReservations(){
   const zone = document.getElementById('tab-reservations');
   zone.innerHTML = loading();
   try{
-    const [r, lr, tr] = await Promise.all([
+    const [r, lr, tr, sr] = await Promise.all([
       fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
       fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
       fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({})}),
     ]);
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
@@ -2738,6 +2762,11 @@ async function loadReservations(){
     // dans agentLineHtml (assigner sans changer d'onglet).
     const td = await tr.json().catch(()=>null);
     if(td) TRANSPORTEURS_CACHE = td.transporteurs || TRANSPORTEURS_CACHE;
+    // Et STOCK_APPAREILS_CACHE — le calendrier (vue Gantt) affiche une ligne
+    // par appareil du parc, indépendamment de si l'onglet Stock a déjà été
+    // ouvert ou non cette session.
+    const sd = await sr.json().catch(()=>null);
+    if(sr.ok && sd) STOCK_APPAREILS_CACHE = sd.appareils || STOCK_APPAREILS_CACHE;
     renderReservationsToolbar();
     renderReservations();
   }catch(e){
@@ -3072,11 +3101,12 @@ function setReservationsFilter(key){
   renderReservations();
 }
 function toggleMasquees(){ RESERVATIONS_SHOW_MASQUEES = !RESERVATIONS_SHOW_MASQUEES; renderReservationsToolbar(); }
-// Vue calendrier — planning en barres horizontales (une ligne par
-// réservation active/à venir, une barre du jour de livraison au jour de
-// récupération) sur plusieurs semaines glissantes : vue d'ensemble "qui loue
-// quoi, quand" en un coup d'œil, plutôt qu'une liste jour par jour à parcourir
-// pour reconstituer soi-même les durées et les chevauchements.
+// Vue calendrier — planning en barres horizontales, une ligne PAR APPAREIL du
+// parc (numéro fixé dans une colonne à gauche qui ne défile pas), une barre
+// par location active/à venir sur la période où cet appareil précis est
+// loué. Vue d'ensemble "quel climatiseur est loué ou disponible, et quand"
+// en un coup d'œil, plutôt qu'une liste à parcourir pour reconstituer
+// soi-même qui a quel appareil.
 const GANTT_DAYS = 21; // 3 semaines visibles à la fois
 let GANTT_START = null; // ISO date — calculé au premier rendu (= aujourd'hui), ajusté par la nav ◀ ▶
 function _isoAddDays(iso, n){
@@ -3106,27 +3136,53 @@ function renderReservationsCalendrier(){
   if(!GANTT_START) GANTT_START = todayStr;
   const windowEnd = _isoAddDays(GANTT_START, GANTT_DAYS-1);
   const DOW = ['D','L','M','M','J','V','S'];
-  const days = Array.from({length:GANTT_DAYS}, (_,i) => _isoAddDays(GANTT_START, i));
-  const headerCells = days.map(d => {
-    const dt = new Date(d+'T00:00:00Z');
-    return `<div class="gantt-cell gantt-head ${d===todayStr?'gantt-today':''}"><span class="gantt-dow">${DOW[dt.getUTCDay()]}</span><span class="gantt-dnum">${dt.getUTCDate()}</span></div>`;
-  }).join('');
-  const bgCellsHtml = `<div class="gantt-cells">${days.map(d=>`<div class="gantt-cell ${d===todayStr?'gantt-today':''}"></div>`).join('')}</div>`;
-  const resas = RESERVATIONS_CACHE
-    .filter(r => !r.masquee && !['annulee','remboursee'].includes(r.statut) && r.date_fin >= GANTT_START && r.date_debut <= windowEnd)
-    .sort((a,b) => a.date_debut.localeCompare(b.date_debut));
-  const rowsHtml = resas.length ? resas.map(r => {
-    const startIdx = Math.max(0, Math.min(GANTT_DAYS-1, _isoDiffDays(GANTT_START, r.date_debut)));
-    const endIdx   = Math.max(0, Math.min(GANTT_DAYS-1, _isoDiffDays(GANTT_START, r.date_fin)));
-    const nom = escHtml((r.prenom||'')+' '+(r.nom||''))||'—';
-    const numeros = (r.appareil_numeros||[]).join(', ');
-    const cls = r.statut==='en_attente' ? 'gantt-bar-attente' : 'gantt-bar-confirmee';
+  const dayMeta = Array.from({length:GANTT_DAYS}, (_,i) => {
+    const d = _isoAddDays(GANTT_START, i);
+    const dow = new Date(d+'T00:00:00Z').getUTCDay();
+    return {d, dow, isToday: d===todayStr, isWeekend: dow===0||dow===6};
+  });
+  const dayClass = m => m.isToday ? 'gantt-today' : (m.isWeekend ? 'gantt-weekend' : '');
+  const headerCells = dayMeta.map(m => `
+    <div class="gantt-cell gantt-head ${dayClass(m)}"><span class="gantt-dow">${DOW[m.dow]}</span><span class="gantt-dnum">${new Date(m.d+'T00:00:00Z').getUTCDate()}</span></div>`).join('');
+  const bgCellsHtml = `<div class="gantt-cells">${dayMeta.map(m=>`<div class="gantt-cell ${dayClass(m)}"></div>`).join('')}</div>`;
+
+  // Regroupe les réservations actives/à venir par numéro d'appareil (et non
+  // par réservation) : c'est la clé pour afficher une ligne par unité
+  // physique du parc plutôt qu'une ligne par client.
+  const resas = RESERVATIONS_CACHE.filter(r => !r.masquee && !['annulee','remboursee'].includes(r.statut) && r.date_fin >= GANTT_START && r.date_debut <= windowEnd);
+  const barsByNumero = new Map();
+  resas.forEach(r => (r.appareil_numeros||[]).forEach(numero => {
+    if(!barsByNumero.has(numero)) barsByNumero.set(numero, []);
+    barsByNumero.get(numero).push(r);
+  }));
+
+  const appareils = [...STOCK_APPAREILS_CACHE].sort((a,b) => a.numero-b.numero);
+  if(!appareils.length){
+    el.innerHTML = '<p class="empty">📅 Aucun appareil dans le parc.</p>';
+    return;
+  }
+
+  const labelsHtml = appareils.map(a => {
+    const dotCls = APPAREIL_STATUT_CHIP[a.statut] || '';
+    const showDot = a.statut!=='disponible' && a.statut!=='loue';
     return `
-      <div class="gantt-row">
-        ${bgCellsHtml}
-        <div class="gantt-bar ${cls}" style="grid-column:${startIdx+1} / ${endIdx+2}" onclick="openEditReservationModal(${r.id})" title="${nom}${numeros?' · n°'+escHtml(numeros):''} — ${frDate(r.date_debut)} → ${frDate(r.date_fin)}">${nom}${numeros?` <span class="gantt-bar-sub">n°${escHtml(numeros)}</span>`:''}</div>
+      <div class="gantt-label-row" title="Climatiseur n°${a.numero} — ${APPAREIL_STATUT_LABEL[a.statut]||a.statut}">
+        n°${a.numero}${showDot?`<span class="gantt-status-dot gantt-status-dot-${dotCls}"></span>`:''}
       </div>`;
-  }).join('') : '<p class="empty">📅 Aucune location active ou à venir sur cette période.</p>';
+  }).join('');
+
+  const rowsHtml = appareils.map(a => {
+    const bars = (barsByNumero.get(a.numero)||[]).sort((x,y) => x.date_debut.localeCompare(y.date_debut));
+    const barsHtml = bars.map(r => {
+      const startIdx = Math.max(0, Math.min(GANTT_DAYS-1, _isoDiffDays(GANTT_START, r.date_debut)));
+      const endIdx   = Math.max(0, Math.min(GANTT_DAYS-1, _isoDiffDays(GANTT_START, r.date_fin)));
+      const nom = escHtml((r.prenom||'')+' '+(r.nom||''))||'—';
+      const cls = r.statut==='en_attente' ? 'gantt-bar-attente' : 'gantt-bar-confirmee';
+      return `<div class="gantt-bar ${cls}" style="grid-column:${startIdx+1} / ${endIdx+2}" onclick="openEditReservationModal(${r.id})" title="${nom} — ${frDate(r.date_debut)} → ${frDate(r.date_fin)}">${nom}</div>`;
+    }).join('');
+    return `<div class="gantt-row">${bgCellsHtml}${barsHtml}</div>`;
+  }).join('');
+
   el.innerHTML = `
     <div class="gantt-nav">
       <button class="btn btn-grey" style="padding:6px 12px" onclick="shiftGantt(-7)">◀</button>
@@ -3135,14 +3191,25 @@ function renderReservationsCalendrier(){
       ${GANTT_START!==todayStr?`<button class="btn btn-grey" style="padding:6px 12px" onclick="resetGantt()">Aujourd'hui</button>`:''}
     </div>
     <div class="gantt-wrap">
-      <div class="gantt-grid" style="--gantt-days:${GANTT_DAYS}">
-        <div class="gantt-header">${headerCells}</div>
-        ${rowsHtml}
+      <div class="gantt-table">
+        <div class="gantt-labels">
+          <div class="gantt-label-head">N°</div>
+          ${labelsHtml}
+        </div>
+        <div class="gantt-scroll">
+          <div class="gantt-grid" style="--gantt-days:${GANTT_DAYS}">
+            <div class="gantt-header">${headerCells}</div>
+            ${rowsHtml}
+          </div>
+        </div>
       </div>
     </div>
     <div class="gantt-legend">
       <span><i class="gantt-dot gantt-dot-attente"></i>En attente</span>
       <span><i class="gantt-dot gantt-dot-confirmee"></i>Confirmée</span>
+      <span><i class="gantt-status-dot gantt-status-dot-annulee"></i>En panne</span>
+      <span><i class="gantt-status-dot gantt-status-dot-a_faire"></i>Maintenance / nettoyage</span>
+      <span><i class="gantt-status-dot gantt-status-dot-terminee"></i>Vendu</span>
     </div>`;
 }
 // Date qui détermine l'urgence d'une réservation : tant que la livraison n'a
