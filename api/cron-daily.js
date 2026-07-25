@@ -6,7 +6,7 @@ const { getAvailability }      = require('./_lib/stock');
 const { notifyIfSoldOut }      = require('./_lib/city');
 const { runWeeklyReport }      = require('./cron-weekly');
 const { runMonthlyRecap, runDormantClientsWinback } = require('./cron-monthly');
-const { calcTieredPrice: calcRetardPrice } = require('./_lib/pricing');
+const { dailyRate } = require('./_lib/pricing');
 const { scenariosDueToday } = require('./_lib/emailSchedule');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
 const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
@@ -127,7 +127,7 @@ module.exports = async (req, res) => {
         const methods = await stripe.paymentMethods.list({ customer: resa.stripe_customer_id, type: 'card' });
         if (!methods.data.length) continue;
 
-        const amountCents     = (calcRetardPrice(joursRetard) - calcRetardPrice(joursRetard - 1)) * 100;
+        const amountCents     = dailyRate(joursRetard) * 100;
         const idempotencyKey  = `retard-${liv.id}-${joursRetard}j-${todayStr}`;
         const intent = await stripe.paymentIntents.create({
           amount:         amountCents,

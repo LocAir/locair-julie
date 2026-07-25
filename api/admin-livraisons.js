@@ -218,9 +218,10 @@ module.exports = async (req, res) => {
 
       // Remet la mission à l'étape "acceptée" : le livreur doit repasser par "arrivé"
       // (sans reperdre les preuves déjà prises) avant de pouvoir la terminer.
-      await supabase.from('livraisons').update({
+      const { error: updProblemeErr } = await supabase.from('livraisons').update({
         statut: 'acceptee', probleme_type: null, probleme_description: null, probleme_at: null,
       }).eq('id', liv.id);
+      if (updProblemeErr) throw updProblemeErr;
 
       if (liv.reservation_id) {
         await supabase.from('incidents').update({ statut: 'resolu' })
@@ -239,7 +240,7 @@ module.exports = async (req, res) => {
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
       const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, type, statut');
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
-      if (['fait', 'annule'].includes(liv.statut)) {
+      if (['fait', 'annulee'].includes(liv.statut)) {
         return res.status(400).json({ error: 'Mission terminée ou annulée : non modifiable' });
       }
 
@@ -286,7 +287,7 @@ module.exports = async (req, res) => {
       // Une mission terminée ou annulée ne change plus de transporteur : le
       // montant dû lui est déjà rattaché (admin-virements.js) — réaffecter
       // changerait silencieusement qui est payé pour un travail déjà fait.
-      if (['fait', 'annule'].includes(liv.statut)) {
+      if (['fait', 'annulee'].includes(liv.statut)) {
         return res.status(400).json({ error: 'Mission terminée ou annulée : transporteur non modifiable' });
       }
       if (transporteurId) {
@@ -398,7 +399,8 @@ module.exports = async (req, res) => {
           typeEvenement: 'recuperation', livraisonId, utilisateur: 'admin',
           commentaire: update.etat_materiel_commentaire,
         });
-        await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id);
+        const { error: resaTermErr } = await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id);
+        if (resaTermErr) throw resaTermErr;
         try { await sendScenarioEmail(supabase, { reservationId: liv.reservation_id, scenario: 'fin_location' }); }
         catch (e) { console.error('[Email fin_location]', e.message); }
       }

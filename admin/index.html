@@ -2883,10 +2883,11 @@ function reservationCreerHtml(){
 // (PRENOM + 10/20/30) que /prolongation — à tenir synchronisé si la grille
 // ou le format de code changent là-bas.
 let PROLONG_ORIG = null;
-// Doit rester identique à calcTieredPrice (api/_lib/pricing.js) — manquait le
-// palier 3-6 jours (16€/j) ici, ce qui sous-estimait l'aperçu de prix pour
-// une prolongation courte par rapport au tarif réellement appliqué côté serveur.
-function prCalcBase(d){ d=Math.max(1,d); if(d<7) return d*16; if(d<=7) return d*12; if(d<=14) return 7*12+(d-7)*10; if(d<=21) return 7*12+7*10+(d-14)*9; return 7*12+7*10+7*9+(d-21)*8; }
+// Doit rester identique à calcTieredPrice (api/_lib/pricing.js). Durée
+// minimale de location : 7 jours (le palier 3-6 jours n'existe plus) — pas
+// de plancher forcé ici pour laisser l'admin composer une durée plus courte
+// à la main si besoin (ex. geste commercial), au tarif du premier palier.
+function prCalcBase(d){ d=Math.max(1,d); if(d<=7) return d*12; if(d<=14) return 7*12+(d-7)*10; if(d<=21) return 7*12+7*10+(d-14)*9; return 7*12+7*10+7*9+(d-21)*8; }
 function prDiffDays(a,b){ return Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000); }
 function prAddDay(iso){ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+1); return d.toISOString().slice(0,10); }
 function prDiscountPct(code, prenom){

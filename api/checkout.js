@@ -41,7 +41,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Adresse email invalide' });
   }
 
-  const duree = Math.min(90, Math.max(3, parseInt(data.duree) || 7));
+  const duree = Math.min(90, Math.max(7, parseInt(data.duree) || 7));
   const qty   = Math.min(5, Math.max(1, parseInt((data.quantite || '1').replace(/[^0-9]/g, '')) || 1));
   const baseCents     = calcBase(duree) * qty * 100;
   const isTech        = (data.installation || '').startsWith('Technicien');

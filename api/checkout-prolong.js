@@ -21,15 +21,17 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Vous devez accepter les CGV avant de payer.' });
   }
 
-  const jours          = Math.max(1, parseInt(data.jours) || 1);
+  let jours            = Math.max(1, parseInt(data.jours) || 1);
   const clientOrigDays = Math.max(0, parseInt(data.original_days) || 0);
-  const qty            = Math.min(5, Math.max(1, parseInt(data.quantite) || 1));
+  let qty              = Math.min(5, Math.max(1, parseInt(data.quantite) || 1));
 
   // Prix calculé avec l'origDays du client pour l'instant — recalculé ci-dessous
   // à partir des dates réelles en DB pour empêcher toute manipulation du prix.
-  // Cas particulier : le palier 7 jours (84€) coûte moins que 6 jours (96€),
-  // ce qui donne un incrément négatif pour une prolongation 6j → 7j. Dans ce cas,
-  // on facture le tarif moyen du nouveau palier (84/7 = 12€/j × jours prolongés).
+  // Filet de sécurité : depuis la suppression du palier 3-6 jours, un incrément
+  // négatif ne devrait plus survenir pour une nouvelle réservation (7 jours
+  // minimum), mais reste possible pour une prolongation d'une réservation plus
+  // ancienne (avant ce changement) dont origDays < 7. Dans ce cas, on facture
+  // le tarif moyen du nouveau palier plutôt qu'un montant négatif ou nul.
   function _safeIncrement(origDays, extra) {
     const delta = calcBase(origDays + extra) - calcBase(origDays);
     if (delta > 0) return delta;
@@ -43,6 +45,10 @@ module.exports = async (req, res) => {
   if (!isValidDate(extDateDebut) || !isValidDate(extDateFin) || extDateFin <= extDateDebut) {
     return res.status(400).json({ error: 'Dates de prolongation invalides' });
   }
+  const joursCalc = Math.round((new Date(extDateFin+'T00:00:00Z') - new Date(extDateDebut+'T00:00:00Z')) / 86400000);
+  if (joursCalc < 1) return res.status(400).json({ error: 'Durée de prolongation invalide' });
+  jours = joursCalc;
+  amountCents = (clientOrigDays > 0 ? _safeIncrement(clientOrigDays, jours) : calcBase(jours)) * qty * 100;
   const today = new Date().toISOString().slice(0, 10);
   if (extDateDebut < today) {
     return res.status(422).json({ error: 'La date de fin initiale est déjà passée — impossible de prolonger.' });
@@ -63,7 +69,7 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Email requis pour retrouver ta réservation' });
     }
     let origQuery = supabase
-      .from('reservations').select('city_id, tel_secondaire, hors_zone, date_debut, date_fin, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement')
+      .from('reservations').select('city_id, tel_secondaire, hors_zone, date_debut, date_fin, quantite, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement')
       .ilike('email', String(data.email).trim())
       .not('source', 'eq', 'site_prolongation');
     if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim());
@@ -71,6 +77,9 @@ module.exports = async (req, res) => {
     city = orig ? await resolveCityById(supabase, orig.city_id) : null;
     if (!city) {
       return res.status(422).json({ error: 'Réservation d\'origine introuvable — contacte-nous directement pour prolonger.' });
+    }
+    if (orig?.quantite) {
+      qty = Math.min(5, Math.max(1, orig.quantite));
     }
     // Recalcul du montant avec les dates réelles pour empêcher la manipulation de origDays
     if (orig?.date_debut && orig?.date_fin) {
