@@ -9,6 +9,7 @@ const AD_HOC_LABEL = {
   email_prolongation:        'Email confirmation de prolongation',
   sms_prolongation:          'SMS confirmation de prolongation',
   sms_relance_prolongation:  'SMS proposition de prolongation (J-4)',
+  sms_rappel_recuperation:   'SMS rappel récupération (J-1)',
   email_contrat_facture:     'Email contrat + facture',
   sms_mission_confirmee:     'SMS mission confirmée',
   sms_client_absent:         'SMS client absent',
@@ -48,7 +49,7 @@ async function buildCommunicationsCockpit(supabase, cityId) {
 
   const { data: resas, error: resasErr } = await supabase
     .from('reservations')
-    .select('id, ref, prenom, nom, statut, date_debut, date_fin, email, tel, source')
+    .select('id, ref, prenom, nom, statut, date_debut, date_fin, email, tel, source, reservation_origine_id')
     .eq('city_id', cityId)
     .in('statut', ['confirmee', 'terminee'])
     .gte('date_fin', windowStartISO)

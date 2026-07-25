@@ -75,7 +75,7 @@ module.exports = async (req, res) => {
     // et ne se rattache jamais à la bonne réservation. Même filtre déjà en
     // place côté admin (admin-reservations.js, action 'lookup_prolongation').
     let origQuery = supabase
-      .from('reservations').select('city_id, tel_secondaire, hors_zone, date_debut, date_fin, quantite, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement')
+      .from('reservations').select('id, city_id, tel_secondaire, hors_zone, date_debut, date_fin, quantite, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement')
       .ilike('email', String(data.email).trim())
       .not('source', 'eq', 'site_prolongation')
       .eq('statut', 'confirmee');
@@ -196,6 +196,9 @@ module.exports = async (req, res) => {
       prix_total_cents:         amountCents,
       statut:                   'en_attente',
       source:                   'site_prolongation',
+      // Lien fiable vers la réservation prolongée — voir isSupersededReservation
+      // (_lib/emailSchedule.js) et migration_reservation_origine.sql.
+      reservation_origine_id:   orig?.id || null,
       lang:                     ['fr','en','zh','ru'].includes(data.lang) ? data.lang : 'fr',
     }).select('id').single();
 

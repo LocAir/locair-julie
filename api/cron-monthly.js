@@ -141,7 +141,7 @@ async function runDormantClientsWinback(supabase) {
 
   const { data: resas } = await supabase
     .from('reservations')
-    .select('id, client_id, statut, date_debut, date_fin, mkt_consent, prenom, email, source')
+    .select('id, client_id, statut, date_debut, date_fin, mkt_consent, prenom, email, source, reservation_origine_id')
     .not('client_id', 'is', null);
 
   // Groupe par client pour pouvoir écarter les fiches supplantées par une

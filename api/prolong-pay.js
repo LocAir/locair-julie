@@ -176,6 +176,9 @@ module.exports = async (req, res) => {
       prix_total_cents:         amountCents,
       statut:                   'en_attente',
       source:                   'site_prolongation',
+      // Lien fiable vers la réservation prolongée — voir isSupersededReservation
+      // (_lib/emailSchedule.js) et migration_reservation_origine.sql.
+      reservation_origine_id:   orig.id,
     });
 
     if (insertErr) {
