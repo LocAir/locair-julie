@@ -16,9 +16,10 @@ module.exports = async (req, res) => {
       .from('documents').select('id, storage_path, statut').eq('access_token', token).maybeSingle();
     if (docErr) throw docErr;
     if (!doc) return res.status(404).send('Document introuvable ou lien expiré.');
+    if (!doc.storage_path) return res.status(500).send('Document temporairement indisponible.');
 
     const { data: signed, error } = await supabase.storage.from('missions').createSignedUrl(doc.storage_path, 300);
-    if (error || !signed) return res.status(500).send('Document temporairement indisponible.');
+    if (error || !signed?.signedUrl) return res.status(500).send('Document temporairement indisponible.');
 
     if (doc.statut !== 'consulte') {
       await supabase.from('documents').update({ statut: 'consulte', consulte_at: new Date().toISOString() }).eq('id', doc.id).catch(() => {});
