@@ -80,8 +80,8 @@ module.exports = async (req, res) => {
   const promoPct  = matchPromoPct(promoCode, orig.prenom);
 
   // Même logique que checkout-prolong.js (_safeIncrement) : le palier 7j
-  // (140 €) coûte moins que 6j (144 €), donc l'incrément 6→7 est négatif.
-  // Dans ce cas on facture le tarif moyen du palier (140/7 ≈ 20 €/j × jours ajoutés).
+  // (84 €) coûte moins que 6j (96 €), donc l'incrément 6→7 est négatif.
+  // Dans ce cas on facture le tarif moyen du palier (84/7 = 12 €/j × jours ajoutés).
   const rawDelta  = calcBase(totalDays) - calcBase(origDays);
   const safeDelta = rawDelta > 0 ? rawDelta : Math.round(calcBase(totalDays) / totalDays) * jours;
   const baseCents    = safeDelta * (orig.quantite || 1) * 100;

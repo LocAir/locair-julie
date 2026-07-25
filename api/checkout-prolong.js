@@ -27,9 +27,9 @@ module.exports = async (req, res) => {
 
   // Prix calculé avec l'origDays du client pour l'instant — recalculé ci-dessous
   // à partir des dates réelles en DB pour empêcher toute manipulation du prix.
-  // Cas particulier : le palier 7 jours (140€) coûte moins que 6 jours (144€),
+  // Cas particulier : le palier 7 jours (84€) coûte moins que 6 jours (96€),
   // ce qui donne un incrément négatif pour une prolongation 6j → 7j. Dans ce cas,
-  // on facture le tarif moyen du nouveau palier (140/7 ≈ 20€/j × jours prolongés).
+  // on facture le tarif moyen du nouveau palier (84/7 = 12€/j × jours prolongés).
   function _safeIncrement(origDays, extra) {
     const delta = calcBase(origDays + extra) - calcBase(origDays);
     if (delta > 0) return delta;

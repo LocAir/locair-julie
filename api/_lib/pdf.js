@@ -243,8 +243,8 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
 
 // ── Facture de location ──────────────────────────────────────────────────
 // Modèle officiel fourni par le propriétaire (reçu le 2026-07-16, frais
-// d'installation corrigés à 49 € pour rester cohérents avec INSTALL_FEE dans
-// checkout.js/index.html). Le sous-total des prestations (location + livraison
+// d'installation alignés sur INSTALL_FEE dans checkout.js/index.html). Le
+// sous-total des prestations (location + livraison
 // + installation) est recalculé avec la même formule que la réservation
 // (_lib/pricing.js) ; un éventuel écart avec le montant réellement encaissé
 // (ex. code promo) apparaît en ligne "Remise commerciale" pour que le total
@@ -275,17 +275,17 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement }) {
 
     const jours = nbJours(reservation.date_debut, reservation.date_fin);
     const qty = reservation.quantite || 1;
-    // calcTieredPrice renvoie le total dégressif pour la durée (ex. 266 € pour
-    // 14 jours : 7×20 + 7×18), pas un tarif journalier fixe — le tarif moyen
+    // calcTieredPrice renvoie le total dégressif pour la durée (ex. 154 € pour
+    // 14 jours : 7×12 + 7×10), pas un tarif journalier fixe — le tarif moyen
     // affiché ci-dessous reprend le même calcul que le simulateur du site
     // (_baseRate = prix total / nombre de jours, voir index.html).
     const totalUnClim = calcTieredPrice(jours);
     const tarifJourMoyen = totalUnClim / jours;
     const montantLocationCents = Math.round(totalUnClim * qty * 100);
     const isHorsZone = !!reservation.hors_zone;
-    const montantLivraisonCents = (isHorsZone ? 95 : 35) * 100;
+    const montantLivraisonCents = (isHorsZone ? 120 : 60) * 100;
     const isTech = (reservation.installation || '').startsWith('Technicien');
-    const montantInstallCents = isTech ? 49 * 100 : 0;
+    const montantInstallCents = isTech ? 80 * 100 : 0;
     const modele = modeleLabel(appareils);
 
     drawInvoiceItem(doc, {

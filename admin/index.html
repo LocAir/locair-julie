@@ -2808,8 +2808,8 @@ function nrCalcTotal(){
   const qte = Math.max(1, parseInt(document.getElementById('nr-qte')?.value) || 1);
   const isTech = (document.getElementById('nr-installation')?.value || '').startsWith('Technicien');
   const baseCents = Math.round(prCalcBase(days) * qte * 100);
-  const installCents = isTech ? 4900 : 0;
-  const livraisonCents = 3500; // tarif zone standard — ajuster le prix total à la main si hors zone (95 €)
+  const installCents = isTech ? 8000 : 0;
+  const livraisonCents = 6000; // tarif zone standard — ajuster le prix total à la main si hors zone (120 €)
   return { days, qte, isTech, baseCents, installCents, livraisonCents, totalCents: baseCents + installCents + livraisonCents };
 }
 function nrRecalcPrice(){
@@ -2819,7 +2819,7 @@ function nrRecalcPrice(){
   if(!r){ if(preview) preview.style.display = 'none'; return; }
   if(preview){
     preview.style.display = 'block';
-    preview.textContent = `Location (${r.days} j${r.qte>1?' × '+r.qte:''}) : ${(r.baseCents/100).toFixed(2)} € · Installation ${r.isTech?'technicien : '+(r.installCents/100).toFixed(2)+' €':'autonome : incluse'} · Livraison : ${(r.livraisonCents/100).toFixed(2)} € (35 € zone standard, à ajuster si hors zone)`;
+    preview.textContent = `Location (${r.days} j${r.qte>1?' × '+r.qte:''}) : ${(r.baseCents/100).toFixed(2)} € · Installation ${r.isTech?'technicien : '+(r.installCents/100).toFixed(2)+' €':'autonome : incluse'} · Livraison : ${(r.livraisonCents/100).toFixed(2)} € (60 € zone standard, à ajuster si hors zone)`;
   }
   if(prixEl) prixEl.value = Math.max(0, Math.round(r.totalCents - _nrPromoDiscount*100)) / 100;
 }
@@ -2884,9 +2884,9 @@ function reservationCreerHtml(){
 // ou le format de code changent là-bas.
 let PROLONG_ORIG = null;
 // Doit rester identique à calcTieredPrice (api/_lib/pricing.js) — manquait le
-// palier 3-6 jours (24€/j) ici, ce qui sous-estimait l'aperçu de prix pour
+// palier 3-6 jours (16€/j) ici, ce qui sous-estimait l'aperçu de prix pour
 // une prolongation courte par rapport au tarif réellement appliqué côté serveur.
-function prCalcBase(d){ d=Math.max(1,d); if(d<7) return d*24; if(d<=7) return d*20; if(d<=14) return 7*20+(d-7)*18; if(d<=21) return 7*20+7*18+(d-14)*17; return 7*20+7*18+7*17+(d-21)*16; }
+function prCalcBase(d){ d=Math.max(1,d); if(d<7) return d*16; if(d<=7) return d*12; if(d<=14) return 7*12+(d-7)*10; if(d<=21) return 7*12+7*10+(d-14)*9; return 7*12+7*10+7*9+(d-21)*8; }
 function prDiffDays(a,b){ return Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000); }
 function prAddDay(iso){ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+1); return d.toISOString().slice(0,10); }
 function prDiscountPct(code, prenom){
@@ -3139,10 +3139,10 @@ function typeClientPayload(prefix){
 // d'accès/créneau) — sans eux une mission créée à la main dans l'admin arrive
 // chez le transporteur avec des "—" partout, alors que ces infos sont
 // systématiquement collectées sur le site public.
-// "49€", pas "25€" — doit rester synchronisé avec INSTALL_FEE (checkout.js/
+// "80€" — doit rester synchronisé avec INSTALL_FEE (checkout.js/
 // index.html) : c'est ce tarif que sendReservationPaymentLink (admin-
 // reservations.js) facture réellement pour une installation technicien.
-const INSTALLATION_OPTIONS = ['Autonome (kit fourni)', 'Technicien (49€)'];
+const INSTALLATION_OPTIONS = ['Autonome (kit fourni)', 'Technicien (80€)'];
 const FENETRE_OPTIONS = ['À confirmer', 'Fenêtre coulissante', 'Fenêtre à battant', 'Oscillo-battant', 'Porte-fenêtre', 'Vélux / toit'];
 function logisticsFieldsHtml(prefix, v){
   v = v || {};

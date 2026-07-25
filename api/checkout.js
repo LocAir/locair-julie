@@ -14,9 +14,9 @@ const PROMO_CODES  = { LOCAIR10: 10, LOCA10: 10 };
 // Doit rester synchronisé avec INSTALL_FEE dans index.html (prix affiché au
 // client) — un écart entre les deux fait payer un montant différent de celui
 // confirmé pendant la réservation.
-const INSTALL_FEE  = 49;
-// Codes postaux en zone standard (livraison 35 €)
-// Tout autre code postal → tarif hors zone (95 €)
+const INSTALL_FEE  = 80;
+// Codes postaux en zone standard (livraison 60 €)
+// Tout autre code postal → tarif hors zone (120 €)
 const ZONE_CP = new Set(['06000','06100','06200','06300','06700','06800','06230','06310']);
 
 module.exports = async (req, res) => {
@@ -100,7 +100,7 @@ module.exports = async (req, res) => {
   }
 
   // Frais de livraison déterminés après résolution de l'adresse
-  const deliveryFeeCents = ZONE_CP.has((data.code_postal || '').trim()) ? 35 * 100 : 95 * 100;
+  const deliveryFeeCents = ZONE_CP.has((data.code_postal || '').trim()) ? 60 * 100 : 120 * 100;
   const amountCents      = Math.max(0, baseCents + installCents + deliveryFeeCents - promoDiscount);
 
   if (!amountCents || amountCents < 5000) {
