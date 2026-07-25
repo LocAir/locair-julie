@@ -284,7 +284,6 @@ module.exports = async (req, res) => {
     if (action === 'create_prolongation') {
       const origId       = parseInt(body.orig_id);
       const newDateFin    = (body.new_date_fin || '').slice(0, 10);
-      const promoCode     = (body.promo_code || '').trim().toUpperCase().slice(0, 50);
       const prixTotalCents = Math.max(0, parseInt(body.prix_total_cents) || 0);
       const confirmerImmediat = body.confirmer !== false;
 
@@ -329,7 +328,6 @@ module.exports = async (req, res) => {
         logement:           orig.logement           || null,
         date_debut: orig.date_fin, date_fin: newDateFin, quantite: orig.quantite || 1,
         prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'site_prolongation',
-        parrain_code: promoCode || null,
       }).select().single();
       if (error) throw error;
 

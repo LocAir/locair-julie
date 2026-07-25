@@ -7,7 +7,6 @@ const { generateAndSendDocuments } = require('./documents');
 const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
 const { sendScenarioEmail, getSignature, withSignature } = require('./emailEngine');
 const { tplProlongConfirmation } = require('./emailTemplates');
-const { promoCodeForPrenom } = require('./promo');
 
 function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
@@ -337,10 +336,9 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
   }
 }
 
-// SMS envoyé 4 jours avant la fin de location, proposant au client de
-// prolonger avec 20% de réduction (code promo PRENOM+20, même mécanisme
-// que promoCodeForPrenom déjà utilisé pour le parrainage — voir
-// _lib/promo.js et matchPromoPct côté /prolongation). Appelé une fois par
+// SMS envoyé 4 jours avant la fin de location, rappelant au client qu'il
+// peut prolonger facilement (sans code promo — réservé aux nouvelles
+// commandes passées sur le site, voir _lib/promo.js). Appelé une fois par
 // jour par cron-daily.js pour chaque réservation confirmée dont la fin de
 // location tombe dans 4 jours. Idempotent sur son propre scénario
 // (sms_relance_prolongation) : jamais renvoyé deux fois pour la même
@@ -354,18 +352,17 @@ async function sendRelanceProlongationSms(supabase, resa) {
   if (dejaEnvoye > 0) return;
 
   const lang = resa.lang || 'fr';
-  const promoCode = promoCodeForPrenom(resa.prenom, 20);
   const prenom = resa.prenom || '';
   const ref = resa.ref || '';
   let content;
   if (lang === 'en') {
-    content = `Hello ${prenom},\n\nI hope you are doing well.\n\nJust so you know, you can extend your rental and get a 20% discount, regardless of the duration!\n\nOrder Number : ${ref}\nPromo code : ${promoCode}\n\nhttps://www.locair.fr/prolongation\n\nHave a great day.\nAly from Loc'Air`;
+    content = `Hello ${prenom},\n\nI hope you are doing well.\n\nJust so you know, you can extend your rental in a few clicks, regardless of the duration!\n\nOrder Number : ${ref}\n\nhttps://www.locair.fr/prolongation\n\nHave a great day.\nAly from Loc'Air`;
   } else if (lang === 'zh') {
-    content = `您好 ${prenom}，\n\n希望您一切都好。\n\n告诉您一个好消息：无论续租多久，您都可以享受20%的折扣！\n\n订单编号：${ref}\n优惠码：${promoCode}\n\nhttps://www.locair.fr/prolongation\n\n祝您愉快。\nLoc'Air的Aly`;
+    content = `您好 ${prenom}，\n\n希望您一切都好。\n\n提醒您：无论租期多久，您都可以轻松几步完成续租！\n\n订单编号：${ref}\n\nhttps://www.locair.fr/prolongation\n\n祝您愉快。\nLoc'Air的Aly`;
   } else if (lang === 'ru') {
-    content = `Здравствуйте, ${prenom}!\n\nНадеюсь, у вас всё хорошо.\n\nХотим сообщить: вы можете продлить аренду и получить скидку 20%, независимо от срока продления!\n\nНомер заказа: ${ref}\nПромокод: ${promoCode}\n\nhttps://www.locair.fr/prolongation\n\nХорошего дня!\nAly, Loc'Air`;
+    content = `Здравствуйте, ${prenom}!\n\nНадеюсь, у вас всё хорошо.\n\nХотим напомнить: вы можете продлить аренду в несколько кликов, независимо от срока!\n\nНомер заказа: ${ref}\n\nhttps://www.locair.fr/prolongation\n\nХорошего дня!\nAly, Loc'Air`;
   } else {
-    content = `Bonjour ${prenom},\n\nJ'espère que vous allez bien.\n\nPetite info : vous pouvez prolonger votre location et bénéficier de 20% de réduction, quelle que soit la durée !\n\nNuméro de commande : ${ref}\nCode promo : ${promoCode}\n\nhttps://www.locair.fr/prolongation\n\nBonne journée.\nAly de Loc'Air`;
+    content = `Bonjour ${prenom},\n\nJ'espère que vous allez bien.\n\nPetite info : vous pouvez prolonger votre location en quelques clics, quelle que soit la durée !\n\nNuméro de commande : ${ref}\n\nhttps://www.locair.fr/prolongation\n\nBonne journée.\nAly de Loc'Air`;
   }
 
   const result = await sendBrevoSms({ to: resa.tel, content });

@@ -3,7 +3,6 @@ const { getSupabase }     = require('./_lib/supabase');
 const { resolveCityById } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays } = require('./_lib/dates');
-const { matchPromoPct }   = require('./_lib/promo');
 const { calcTieredPrice: calcBase } = require('./_lib/pricing');
 
 function diffDays(startStr, endStr) {
@@ -75,10 +74,6 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Durée minimale : 1 jour.' });
   }
 
-  // Validation code promo : PRENOM_NORMALISE + 10|20|30 (ex. "ERIK20" pour 20% de remise)
-  const promoCode = ((req.body.promo_code || '')).trim().toUpperCase();
-  const promoPct  = matchPromoPct(promoCode, orig.prenom);
-
   // Même logique que checkout-prolong.js (_safeIncrement) : filet de sécurité
   // pour un incrément négatif, qui ne devrait plus survenir pour une nouvelle
   // réservation (7 jours minimum) mais reste possible pour une prolongation
@@ -86,8 +81,9 @@ module.exports = async (req, res) => {
   const rawDelta  = calcBase(totalDays) - calcBase(origDays);
   const safeDelta = rawDelta > 0 ? rawDelta : Math.round(calcBase(totalDays) / totalDays) * jours;
   const baseCents    = safeDelta * (orig.quantite || 1) * 100;
-  const promoDiscount = Math.round(baseCents * promoPct / 100);
-  const amountCents  = Math.max(0, baseCents - promoDiscount);
+  // Pas de code promo sur une prolongation — réservé aux nouvelles commandes
+  // passées sur le site (voir checkout.js, _lib/promo.js).
+  const amountCents  = baseCents;
 
   if (!amountCents || amountCents < 100) {
     return res.status(400).json({ error: 'Montant invalide' });
@@ -140,8 +136,6 @@ module.exports = async (req, res) => {
         date_debut:        orig.date_debut,
         date_fin_initiale: orig.date_fin,
         date_recuperation: (()=>{const r=addDays(new_date_fin,1);const[ry,rm,rd]=r.split('-');return rd+'/'+rm+'/'+ry;})(),
-        promo:             promoCode || '',
-        promo_pct:         promoPct ? String(promoPct) + '%' : '',
         customer_id:       customerId,
         lang:              ['fr','en','zh','ru'].includes(req.body.lang) ? req.body.lang : 'fr',
       },
@@ -176,7 +170,6 @@ module.exports = async (req, res) => {
       prix_total_cents:         amountCents,
       statut:                   'en_attente',
       source:                   'site_prolongation',
-      parrain_code:             promoCode || null,
     });
 
     if (insertErr) {
