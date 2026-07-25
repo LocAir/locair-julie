@@ -84,7 +84,7 @@ module.exports = async (req, res) => {
       if (!resa && data.email) {
         ({ data: resa } = await supabase
           .from('reservations').select('id, city_id')
-          .eq('email', data.email.trim())
+          .eq('email', data.email.trim().toLowerCase())
           .order('created_at', { ascending: false }).limit(1).maybeSingle());
       }
       if (resa) reservationId = resa.id;

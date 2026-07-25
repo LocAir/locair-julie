@@ -70,7 +70,8 @@ module.exports = async (req, res) => {
     }
     let origQuery = supabase
       .from('reservations').select('city_id, tel_secondaire, hors_zone, date_debut, date_fin, quantite, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement')
-      .ilike('email', String(data.email).trim())
+      .eq('email', String(data.email).trim().toLowerCase())
+      .eq('statut', 'confirmee')
       .not('source', 'eq', 'site_prolongation');
     if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim());
     ({ data: orig } = await origQuery.order('created_at', { ascending: false }).limit(1).maybeSingle());
@@ -151,6 +152,12 @@ module.exports = async (req, res) => {
         lang:              ['fr','en','zh','ru'].includes(data.lang) ? data.lang : 'fr',
       },
     });
+
+    const recheckDispo = await getAvailability(supabase, city.id, extDateDebut, extDateFin);
+    if (recheckDispo < qty) {
+      await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel recheck prolong]', e.message));
+      return res.status(409).json({ error: 'Plus assez de climatiseurs disponibles (vérification finale)', disponibles: Math.max(0, recheckDispo) });
+    }
 
     const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  city.id,
