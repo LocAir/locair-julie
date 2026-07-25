@@ -213,10 +213,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .gantt-row{height:40px;position:relative;border-bottom:1px solid var(--rule)}
 .gantt-row:last-child{border-bottom:none}
 .gantt-cells{display:contents}
-.gantt-bar{grid-row:1;z-index:1;align-self:center;height:26px;margin:0 1px;border-radius:100px;padding:0 10px;display:flex;align-items:center;gap:5px;color:#fff;font-size:11.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;box-shadow:var(--sh-xs);transition:filter .15s ease}
+.gantt-bar{grid-row:1;z-index:1;align-self:center;height:26px;margin:0 1px;border-radius:100px;padding:0 10px;display:flex;align-items:center;min-width:0;color:#fff;font-size:11.5px;font-weight:700;cursor:pointer;box-shadow:var(--sh-xs);transition:filter .15s ease}
 .gantt-bar:hover{filter:brightness(.92)}
 .gantt-bar-attente{background:var(--amber)}
 .gantt-bar-confirmee{background:var(--green)}
+.gantt-bar-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gantt-bar-sub{font-weight:400;opacity:.85;font-size:10.5px}
 .gantt-legend{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--grey);flex-wrap:wrap}
 .gantt-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
@@ -3178,7 +3179,7 @@ function renderReservationsCalendrier(){
       const endIdx   = Math.max(0, Math.min(GANTT_DAYS-1, _isoDiffDays(GANTT_START, r.date_fin)));
       const nom = escHtml((r.prenom||'')+' '+(r.nom||''))||'—';
       const cls = r.statut==='en_attente' ? 'gantt-bar-attente' : 'gantt-bar-confirmee';
-      return `<div class="gantt-bar ${cls}" style="grid-column:${startIdx+1} / ${endIdx+2}" onclick="openEditReservationModal(${r.id})" title="${nom} — ${frDate(r.date_debut)} → ${frDate(r.date_fin)}">${nom}</div>`;
+      return `<div class="gantt-bar ${cls}" style="grid-column:${startIdx+1} / ${endIdx+2}" onclick="openEditReservationModal(${r.id})" title="${nom} — ${frDate(r.date_debut)} → ${frDate(r.date_fin)}"><span class="gantt-bar-name">${nom}</span></div>`;
     }).join('');
     return `<div class="gantt-row">${bgCellsHtml}${barsHtml}</div>`;
   }).join('');
