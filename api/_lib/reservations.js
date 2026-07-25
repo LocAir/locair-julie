@@ -7,6 +7,7 @@ const { generateAndSendDocuments } = require('./documents');
 const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
 const { sendScenarioEmail, getSignature, withSignature } = require('./emailEngine');
 const { tplProlongConfirmation } = require('./emailTemplates');
+const { promoCodeForPrenom } = require('./promo');
 
 function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
@@ -230,19 +231,25 @@ async function sendConfirmationCommunications(supabase, resa) {
     let smsConfirmationContent;
     if (lang === 'en') {
       const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
-      smsConfirmationContent = `Loc'Air: booking confirmed ✅${dateStr ? ' Delivery on ' + dateStr : ''}${resa.creneau ? ' · ' + resa.creneau : ''}. Your technician will call you 30 min before arriving. Questions: +33 6 63 79 87 56`;
+      smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${resa.creneau ? ', time slot ' + resa.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
     } else if (lang === 'zh') {
       const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
       const dateStr = d ? `${months[d.getUTCMonth()]}${d.getUTCDate()}日` : '';
-      smsConfirmationContent = `Loc'Air：预订已确认 ✅${dateStr ? ' 配送日期：' + dateStr : ''}${resa.creneau ? ' · ' + resa.creneau : ''}。技术员将在到达前30分钟致电。咨询：+33 6 63 79 87 56`;
+      smsConfirmationContent = `Loc'Air - 您的预订已确认。${dateStr ? '配送日期：' + dateStr : ''}${resa.creneau ? '，时间段：' + resa.creneau : ''}技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
+    } else if (lang === 'ru') {
+      const dateStr = d ? d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '';
+      smsConfirmationContent = `Loc'Air - Ваше бронирование подтверждено.${dateStr ? ' Доставка ' + dateStr : ''}${resa.creneau ? ', интервал ' + resa.creneau : ''} Мастер отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
     } else {
       const dateStr = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
-      smsConfirmationContent = `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${resa.creneau ? ' · ' + resa.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`;
+      smsConfirmationContent = `Loc'Air - Votre réservation est confirmée.${dateStr ? ' Livraison prévue le ' + dateStr : ''}${resa.creneau ? ', créneau ' + resa.creneau : ''} Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
     }
-    await sendBrevoSms({ to: resa.tel, content: smsConfirmationContent }).catch(() => {});
+    const smsResult = await sendBrevoSms({ to: resa.tel, content: smsConfirmationContent });
     await supabase.from('email_log').insert({
       reservation_id: resa.id, scenario: 'sms_confirmation', canal: 'sms',
-      destinataire: resa.tel, modele: 'sms_confirmation', statut: 'envoye', contenu: smsConfirmationContent,
+      destinataire: resa.tel, modele: 'sms_confirmation',
+      statut: smsResult.ok ? 'envoye' : 'erreur',
+      erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
+      contenu: smsConfirmationContent,
     }).catch(() => {});
     } // end if (!smsDejaEnvoye)
   }
@@ -264,7 +271,7 @@ async function sendConfirmationCommunications(supabase, resa) {
 // a sa propre source : montant Stripe pour un paiement en ligne, prix saisi
 // par l'admin pour une prolongation manuelle) — cette fonction ne fait que
 // construire l'email et l'envoyer, pas de recalcul qui pourrait diverger.
-async function sendProlongationConfirmation(supabase, { reservationId, email, prenom, nom, jours, dateRecuperation, creneau, amount, lang }) {
+async function sendProlongationConfirmation(supabase, { reservationId, email, tel, prenom, nom, jours, dateRecuperation, creneau, amount, lang }) {
   if (!email) return;
   lang = lang || 'fr';
 
@@ -285,6 +292,7 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, pr
   const jNum = Number(jours) || 1;
   const subject = lang === 'en' ? `✅ Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
     : lang === 'zh' ? `✅ 续租已确认 — 已延长 ${jNum} 天`
+    : lang === 'ru' ? `✅ Продление подтверждено — добавлено ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}`
     : `✅ Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
   const result = await sendBrevoEmail({ to: email, subject, html, senderName: sig.nom_expediteur });
   if (!result.ok) console.error('[Prolongation confirmation]', result.error);
@@ -297,6 +305,77 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, pr
       contenu: html,
     }).catch(() => {});
   }
+
+  // SMS de confirmation, en plus de l'email — jusqu'ici aucune prolongation
+  // n'en envoyait, contrairement à une réservation standard (sms_confirmation).
+  // Idempotence sur son propre scénario (indépendante de l'email ci-dessus,
+  // canal séparé) : jamais renvoyé deux fois pour la même réservation.
+  if (tel && reservationId) {
+    const { count: smsAlreadySent } = await supabase
+      .from('email_log').select('id', { count: 'exact', head: true })
+      .eq('reservation_id', reservationId).eq('scenario', 'sms_prolongation').eq('statut', 'envoye');
+    if (!smsAlreadySent) {
+      let smsProlongContent;
+      if (lang === 'en') {
+        smsProlongContent = `Loc'Air - Your ${jNum}-day extension is confirmed. Collection scheduled on ${dateRecuperation || '—'}${creneau ? ', time slot ' + creneau : ''}. Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
+      } else if (lang === 'zh') {
+        smsProlongContent = `Loc'Air - 您延长${jNum}天的续租已确认。取回日期：${dateRecuperation || '—'}${creneau ? '，时间段：' + creneau : ''}。技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
+      } else if (lang === 'ru') {
+        smsProlongContent = `Loc'Air - Продление на ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'} подтверждено. Забор запланирован на ${dateRecuperation || '—'}${creneau ? ', интервал ' + creneau : ''}. Мастер отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
+      } else {
+        smsProlongContent = `Loc'Air - Votre prolongation de ${jNum} jour${jNum > 1 ? 's' : ''} est confirmée. Récupération prévue le ${dateRecuperation || '—'}${creneau ? ', créneau ' + creneau : ''}. Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
+      }
+      const smsResult = await sendBrevoSms({ to: tel, content: smsProlongContent });
+      await supabase.from('email_log').insert({
+        reservation_id: reservationId, scenario: 'sms_prolongation', canal: 'sms',
+        destinataire: tel, modele: 'sms_prolongation',
+        statut: smsResult.ok ? 'envoye' : 'erreur',
+        erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
+        contenu: smsProlongContent,
+      }).catch(() => {});
+    }
+  }
+}
+
+// SMS envoyé 4 jours avant la fin de location, proposant au client de
+// prolonger avec 20% de réduction (code promo PRENOM+20, même mécanisme
+// que promoCodeForPrenom déjà utilisé pour le parrainage — voir
+// _lib/promo.js et matchPromoPct côté /prolongation). Appelé une fois par
+// jour par cron-daily.js pour chaque réservation confirmée dont la fin de
+// location tombe dans 4 jours. Idempotent sur son propre scénario
+// (sms_relance_prolongation) : jamais renvoyé deux fois pour la même
+// réservation, même si le cron tourne plusieurs fois le même jour.
+async function sendRelanceProlongationSms(supabase, resa) {
+  if (!resa || !resa.id || !resa.tel) return;
+
+  const { count: dejaEnvoye } = await supabase
+    .from('email_log').select('id', { count: 'exact', head: true })
+    .eq('reservation_id', resa.id).eq('scenario', 'sms_relance_prolongation').eq('statut', 'envoye');
+  if (dejaEnvoye > 0) return;
+
+  const lang = resa.lang || 'fr';
+  const promoCode = promoCodeForPrenom(resa.prenom, 20);
+  const prenom = resa.prenom || '';
+  const ref = resa.ref || '';
+  let content;
+  if (lang === 'en') {
+    content = `Hello ${prenom},\n\nI hope you are doing well.\n\nJust so you know, you can extend your rental and get a 20% discount, regardless of the duration!\n\nOrder Number : ${ref}\nPromo code : ${promoCode}\n\nhttps://www.locair.fr/prolongation\n\nHave a great day.\nAly from Loc'Air`;
+  } else if (lang === 'zh') {
+    content = `您好 ${prenom}，\n\n希望您一切都好。\n\n告诉您一个好消息：无论续租多久，您都可以享受20%的折扣！\n\n订单编号：${ref}\n优惠码：${promoCode}\n\nhttps://www.locair.fr/prolongation\n\n祝您愉快。\nLoc'Air的Aly`;
+  } else if (lang === 'ru') {
+    content = `Здравствуйте, ${prenom}!\n\nНадеюсь, у вас всё хорошо.\n\nХотим сообщить: вы можете продлить аренду и получить скидку 20%, независимо от срока продления!\n\nНомер заказа: ${ref}\nПромокод: ${promoCode}\n\nhttps://www.locair.fr/prolongation\n\nХорошего дня!\nAly, Loc'Air`;
+  } else {
+    content = `Bonjour ${prenom},\n\nJ'espère que vous allez bien.\n\nPetite info : vous pouvez prolonger votre location et bénéficier de 20% de réduction, quelle que soit la durée !\n\nNuméro de commande : ${ref}\nCode promo : ${promoCode}\n\nhttps://www.locair.fr/prolongation\n\nBonne journée.\nAly de Loc'Air`;
+  }
+
+  const result = await sendBrevoSms({ to: resa.tel, content });
+  await supabase.from('email_log').insert({
+    reservation_id: resa.id, scenario: 'sms_relance_prolongation', canal: 'sms',
+    destinataire: resa.tel, modele: 'sms_relance_prolongation',
+    statut: result.ok ? 'envoye' : 'erreur',
+    erreur: result.ok ? null : String(result.error || '').slice(0, 500),
+    contenu: content,
+  }).catch(() => {});
 }
 
 // Confirme une réservation (paiement Stripe réussi OU confirmation manuelle par
@@ -457,5 +536,5 @@ async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) 
 
 module.exports = {
   confirmReservationAndCreateLivraisons, confirmReservation, pickTransporteurForMission, normalizeTel,
-  sendConfirmationCommunications, sendProlongationConfirmation,
+  sendConfirmationCommunications, sendProlongationConfirmation, sendRelanceProlongationSms,
 };

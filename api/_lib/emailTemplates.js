@@ -535,10 +535,14 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     intro: `Booking ref ${escHtml(ref)}`,
     bodyHtml: `
       <p>Hello ${p},</p>
-      <p>Thank you for choosing Loc'Air. Please find your rental agreement and invoice attached.</p>
-      <div class="box"><p style="margin:0"><a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700">View my documents online →</a></p></div>
-      <p style="font-size:13px;color:#888">Keep this email — your documents remain accessible via the link above.</p>
-      <p style="font-size:13px;color:#444">We'll be in touch again by email as your delivery date approaches.</p>`,
+      <p>Thank you for your trust. Your <strong>rental agreement</strong> and <strong>invoice</strong> are now available online.</p>
+      <div class="box">
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Your documents</p>
+        <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">View my documents online →</a>
+        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Rental agreement &nbsp;·&nbsp; Invoice (PDF)</p>
+      </div>
+      <p style="font-size:13px;color:#666">This link is permanent — your documents are accessible at any time.</p>
+      <p style="font-size:13px;color:#666">We'll contact you before your delivery to confirm the time slot.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
   });
   if (l === 'zh') return wrap({
@@ -546,10 +550,14 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     intro: `订单编号 ${escHtml(ref)}`,
     bodyHtml: `
       <p>您好 ${p}，</p>
-      <p>感谢您的信任。请查收本邮件附件中的租赁合同和发票。</p>
-      <div class="box"><p style="margin:0"><a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700">在线查看我的文件 →</a></p></div>
-      <p style="font-size:13px;color:#888">请保存此邮件——您的文件可随时通过上方链接访问。</p>
-      <p style="font-size:13px;color:#444">随着送货日期临近，我们将再次通过邮件与您联系。</p>`,
+      <p>感谢您的信任。您的<strong>租赁合同</strong>和<strong>发票</strong>现已可在线查看。</p>
+      <div class="box">
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">您的文件</p>
+        <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">在线查看我的文件 →</a>
+        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">租赁合同 &nbsp;·&nbsp; 发票（PDF）</p>
+      </div>
+      <p style="font-size:13px;color:#666">此链接为永久链接——您的文件随时可访问。</p>
+      <p style="font-size:13px;color:#666">我们将在配送前与您联系确认时间段。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
   });
   if (l === 'ru') return wrap({
@@ -557,10 +565,14 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     intro: `Заказ ${escHtml(ref)}`,
     bodyHtml: `
       <p>Здравствуйте, ${p}!</p>
-      <p>Спасибо за доверие. К этому письму прилагаются ваш договор аренды и счёт.</p>
-      <div class="box"><p style="margin:0"><a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700">Просмотреть документы онлайн →</a></p></div>
-      <p style="font-size:13px;color:#888">Сохраните это письмо — ваши документы доступны по ссылке выше в любое время.</p>
-      <p style="font-size:13px;color:#444">Мы свяжемся с вами по мере приближения даты доставки.</p>`,
+      <p>Спасибо за доверие. Ваш <strong>договор аренды</strong> и <strong>счёт</strong> доступны онлайн.</p>
+      <div class="box">
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Ваши документы</p>
+        <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">Просмотреть документы онлайн →</a>
+        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Договор аренды &nbsp;·&nbsp; Счёт (PDF)</p>
+      </div>
+      <p style="font-size:13px;color:#666">Ссылка постоянная — ваши документы доступны в любое время.</p>
+      <p style="font-size:13px;color:#666">Мы свяжемся с вами перед доставкой для подтверждения временного окна.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
   });
   return wrap({
@@ -568,10 +580,14 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     intro: `Dossier ${escHtml(ref)}`,
     bodyHtml: `
       <p>Bonjour ${p},</p>
-      <p>Merci pour votre confiance. Vous trouverez ci-joint votre contrat de location ainsi que votre facture.</p>
-      <div class="box"><p style="margin:0"><a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700">Consulter mes documents en ligne →</a></p></div>
-      <p style="font-size:13px;color:#888">Conservez cet email : vos documents restent accessibles à tout moment via le lien ci-dessus.</p>
-      <p style="font-size:13px;color:#444">Nous revenons vers vous par email à l'approche de votre livraison.</p>`,
+      <p>Merci pour votre confiance. Votre <strong>contrat de location</strong> et votre <strong>facture</strong> sont disponibles en ligne.</p>
+      <div class="box">
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Vos documents</p>
+        <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">Consulter mes documents en ligne →</a>
+        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Contrat de location &nbsp;·&nbsp; Facture (PDF)</p>
+      </div>
+      <p style="font-size:13px;color:#666">Ce lien est permanent — vos documents restent accessibles à tout moment.</p>
+      <p style="font-size:13px;color:#666">Nous vous recontactons avant votre livraison pour confirmer le créneau.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
   });
 }

@@ -159,23 +159,30 @@ module.exports = async (req, res) => {
         if (lang === 'en') {
           dateStr = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
           const verbe = liv.type === 'recuperation' ? 'collect your AC' : 'deliver your AC';
-          smsMissionContent = `Loc'Air: your appointment on ${dateStr} is confirmed — our technician will ${verbe}. They will call you 30 min before arriving. Questions: +33 6 63 79 87 56`;
+          smsMissionContent = `Loc'Air - Your appointment on ${dateStr} is confirmed. Our technician will ${verbe}. We will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
         } else if (lang === 'zh') {
           const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
           dateStr = `${months[d.getUTCMonth()]}${d.getUTCDate()}日`;
           const verbe = liv.type === 'recuperation' ? '取回您的空调' : '配送您的空调';
-          smsMissionContent = `Loc'Air：您${dateStr}的预约已确认，我们的技术员将${verbe}。他将在到达前30分钟致电通知。咨询：+33 6 63 79 87 56`;
+          smsMissionContent = `Loc'Air - 您${dateStr}的预约已确认，我们的技术员将为您${verbe}。到达前30分钟将发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
+        } else if (lang === 'ru') {
+          dateStr = d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+          const verbe = liv.type === 'recuperation' ? 'забрать ваш кондиционер' : 'доставить ваш кондиционер';
+          smsMissionContent = `Loc'Air - Ваша встреча ${dateStr} подтверждена, наш мастер приедет ${verbe}. Мы отправим SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
         } else {
           dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
           const verbe = liv.type === 'recuperation' ? 'récupérer votre climatiseur' : 'vous livrer votre climatiseur';
-          smsMissionContent = `Loc'Air : votre mission du ${dateStr} est confirmée, notre technicien viendra ${verbe}. Il vous contactera 30 min avant. Questions : 06 63 79 87 56`;
+          smsMissionContent = `Loc'Air - Votre rendez-vous du ${dateStr} est confirmé, notre technicien va ${verbe}. Nous vous enverrons un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
         }
-        await sendBrevoSms({ to: liv.reservation.tel, content: smsMissionContent }).catch(() => {});
+        const smsMissionResult = await sendBrevoSms({ to: liv.reservation.tel, content: smsMissionContent });
         // Best-effort : trace pour l'historique de la fiche client admin.
         if (liv.reservation_id) {
           supabase.from('email_log').insert({
             reservation_id: liv.reservation_id, scenario: 'sms_mission_confirmee', canal: 'sms',
-            destinataire: liv.reservation.tel, modele: 'sms_mission_confirmee', statut: 'envoye', contenu: smsMissionContent,
+            destinataire: liv.reservation.tel, modele: 'sms_mission_confirmee',
+            statut: smsMissionResult.ok ? 'envoye' : 'erreur',
+            erreur: smsMissionResult.ok ? null : String(smsMissionResult.error || '').slice(0, 500),
+            contenu: smsMissionContent,
           }).catch(() => {});
         }
       }
@@ -546,19 +553,25 @@ module.exports = async (req, res) => {
           let smsAbsentContent;
           if (lang === 'en') {
             const verbe = liv.type === 'livraison' ? 'deliver' : 'collect';
-            smsAbsentContent = `Loc'Air: our technician came to ${verbe} your AC but no one answered. Please call us back to reschedule. +33 6 63 79 87 56`;
+            smsAbsentContent = `Loc'Air - Our technician came to ${verbe} your AC, but no one answered. Please call us back at +33 6 63 79 87 56 to reschedule.`;
           } else if (lang === 'zh') {
             const verbe = liv.type === 'livraison' ? '配送' : '取回';
-            smsAbsentContent = `Loc'Air：我们的技术员已前来${verbe}您的空调，但无人应答。请回电重新安排时间。+33 6 63 79 87 56`;
+            smsAbsentContent = `Loc'Air - 技术员已前来为您${verbe}空调，但无人应答。请致电 +33 6 63 79 87 56 重新安排时间。`;
+          } else if (lang === 'ru') {
+            const verbe = liv.type === 'livraison' ? 'доставить' : 'забрать';
+            smsAbsentContent = `Loc'Air - Наш мастер приезжал, чтобы ${verbe} ваш кондиционер, но никто не ответил. Пожалуйста, перезвоните нам по номеру +33 6 63 79 87 56, чтобы перенести встречу.`;
           } else {
             const verbe = liv.type === 'livraison' ? 'livrer' : 'récupérer';
-            smsAbsentContent = `Loc'Air : notre livreur est passé pour ${verbe} votre climatiseur mais personne ne répondait. Merci de nous rappeler pour reprogrammer.`;
+            smsAbsentContent = `Loc'Air - Notre technicien s'est présenté pour ${verbe} votre climatiseur, mais personne n'a répondu. Merci de nous rappeler au 06 63 79 87 56 pour reprogrammer.`;
           }
-          await sendBrevoSms({ to: resa.tel, content: smsAbsentContent }).catch(() => {});
+          const smsAbsentResult = await sendBrevoSms({ to: resa.tel, content: smsAbsentContent });
           // Best-effort : trace pour l'historique de la fiche client admin.
           supabase.from('email_log').insert({
             reservation_id: liv.reservation_id, scenario: 'sms_client_absent', canal: 'sms',
-            destinataire: resa.tel, modele: 'sms_client_absent', statut: 'envoye', contenu: smsAbsentContent,
+            destinataire: resa.tel, modele: 'sms_client_absent',
+            statut: smsAbsentResult.ok ? 'envoye' : 'erreur',
+            erreur: smsAbsentResult.ok ? null : String(smsAbsentResult.error || '').slice(0, 500),
+            contenu: smsAbsentContent,
           }).catch(() => {});
         }
       }

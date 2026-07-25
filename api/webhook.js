@@ -438,6 +438,37 @@ const handler = async (req, res) => {
         }).catch(() => {});
       }
 
+      // SMS de confirmation, en plus de l'email — jusqu'ici aucune prolongation
+      // n'en envoyait, contrairement à une réservation standard. Idempotent
+      // (son propre scénario, jamais renvoyé deux fois si le webhook est
+      // redélivré par Stripe).
+      if (meta.tel && confirmedResa) {
+        const { data: smsProlongDejaEnvoye } = await getSupabase()
+          .from('email_log').select('id')
+          .eq('reservation_id', confirmedResa.id).eq('scenario', 'sms_prolongation').eq('statut', 'envoye')
+          .maybeSingle();
+        if (!smsProlongDejaEnvoye) {
+          let smsProlongContent;
+          if (prolongLang === 'en') {
+            smsProlongContent = `Loc'Air - Your ${jNum}-day extension is confirmed. Collection scheduled on ${meta.date_recuperation || '—'}${meta.creneau ? ', time slot ' + meta.creneau : ''}. Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
+          } else if (prolongLang === 'zh') {
+            smsProlongContent = `Loc'Air - 您延长${jNum}天的续租已确认。取回日期：${meta.date_recuperation || '—'}${meta.creneau ? '，时间段：' + meta.creneau : ''}。技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
+          } else if (prolongLang === 'ru') {
+            smsProlongContent = `Loc'Air - Продление на ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'} подтверждено. Забор запланирован на ${meta.date_recuperation || '—'}${meta.creneau ? ', интервал ' + meta.creneau : ''}. Мастер отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
+          } else {
+            smsProlongContent = `Loc'Air - Votre prolongation de ${jNum} jour${jNum > 1 ? 's' : ''} est confirmée. Récupération prévue le ${meta.date_recuperation || '—'}${meta.creneau ? ', créneau ' + meta.creneau : ''}. Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
+          }
+          const smsProlongResult = await sendBrevoSms({ to: meta.tel, content: smsProlongContent });
+          await getSupabase().from('email_log').insert({
+            reservation_id: confirmedResa.id, scenario: 'sms_prolongation', canal: 'sms',
+            destinataire: meta.tel, modele: 'sms_prolongation',
+            statut: smsProlongResult.ok ? 'envoye' : 'erreur',
+            erreur: smsProlongResult.ok ? null : String(smsProlongResult.error || '').slice(0, 500),
+            contenu: smsProlongContent,
+          }).catch(() => {});
+        }
+      }
+
       // Mettre à jour date_fin de la réservation d'origine pour que l'espace client
       // et les éventuelles prolongations suivantes voient toujours la date réelle.
       // On identifie la réservation d'origine par son ref (stocké dans les metadata Stripe
@@ -513,22 +544,25 @@ const handler = async (req, res) => {
         let smsConfirmationContent;
         if (lang === 'en') {
           const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
-          smsConfirmationContent = `Loc'Air: booking confirmed ✅${dateStr ? ' Delivery on ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Your technician will call you 30 min before arriving. Questions: +33 6 63 79 87 56`;
+          smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${meta.creneau ? ', time slot ' + meta.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
         } else if (lang === 'zh') {
           const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
           const dateStr = d ? `${months[d.getUTCMonth()]}${d.getUTCDate()}日` : '';
-          smsConfirmationContent = `Loc'Air：预订已确认 ✅${dateStr ? ' 配送日期：' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}。技术员将在到达前30分钟致电。咨询：+33 6 63 79 87 56`;
+          smsConfirmationContent = `Loc'Air - 您的预订已确认。${dateStr ? '配送日期：' + dateStr : ''}${meta.creneau ? '，时间段：' + meta.creneau : ''}技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
         } else if (lang === 'ru') {
           const dateStr = d ? d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '';
-          smsConfirmationContent = `Loc'Air: бронирование подтверждено ✅${dateStr ? ' Доставка ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Мастер позвонит за 30 мин до приезда. Вопросы: +33 6 63 79 87 56`;
+          smsConfirmationContent = `Loc'Air - Ваше бронирование подтверждено.${dateStr ? ' Доставка ' + dateStr : ''}${meta.creneau ? ', интервал ' + meta.creneau : ''} Мастер отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
         } else {
           const dateStr = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
-          smsConfirmationContent = `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`;
+          smsConfirmationContent = `Loc'Air - Votre réservation est confirmée.${dateStr ? ' Livraison prévue le ' + dateStr : ''}${meta.creneau ? ', créneau ' + meta.creneau : ''} Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
         }
-        await sendBrevoSms({ to: meta.tel, content: smsConfirmationContent }).catch(() => {});
+        const smsResult = await sendBrevoSms({ to: meta.tel, content: smsConfirmationContent });
         await getSupabase().from('email_log').insert({
           reservation_id: confirmedResa.id, scenario: 'sms_confirmation', canal: 'sms',
-          destinataire: meta.tel, modele: 'sms_confirmation', statut: 'envoye', contenu: smsConfirmationContent,
+          destinataire: meta.tel, modele: 'sms_confirmation',
+          statut: smsResult.ok ? 'envoye' : 'erreur',
+          erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
+          contenu: smsConfirmationContent,
         }).catch(() => {});
       }
     }

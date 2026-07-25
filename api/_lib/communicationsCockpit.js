@@ -5,12 +5,14 @@ const { upcomingScenariosForReservation, pastScenariosForReservation, daysDiff }
 // api/webhook.js, api/_lib/documents.js, api/transporteur-action.js) —
 // SCENARIOS (emailEngine.js) ne couvre que les 8 scénarios du moteur.
 const AD_HOC_LABEL = {
-  sms_confirmation:       'SMS confirmation de réservation',
-  email_prolongation:     'Email confirmation de prolongation',
-  email_contrat_facture:  'Email contrat + facture',
-  sms_mission_confirmee:  'SMS mission confirmée',
-  sms_client_absent:      'SMS client absent',
-  email_facture_vente:    'Email facture de vente (Offre Privilège)',
+  sms_confirmation:          'SMS confirmation de réservation',
+  email_prolongation:        'Email confirmation de prolongation',
+  sms_prolongation:          'SMS confirmation de prolongation',
+  sms_relance_prolongation:  'SMS proposition de prolongation (J-4, code promo)',
+  email_contrat_facture:     'Email contrat + facture',
+  sms_mission_confirmee:     'SMS mission confirmée',
+  sms_client_absent:         'SMS client absent',
+  email_facture_vente:       'Email facture de vente (Offre Privilège)',
 };
 function scenarioLibelle(scenario) {
   return SCENARIOS[scenario]?.libelle || AD_HOC_LABEL[scenario] || scenario;

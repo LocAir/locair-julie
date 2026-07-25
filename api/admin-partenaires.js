@@ -19,7 +19,20 @@ async function notifyPartenaireCredentials(supabase, { nom, email, code, pin }) 
   const sig  = await getSignature(supabase);
   const html = withSignature(tplAmbassadeurCredentials({ nom, lien: partenaireLinkFor(code), pin }), sig);
 
-  await sendBrevoEmail({ to: email, subject: "🤝 Ton espace ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
+  const result = await sendBrevoEmail({ to: email, subject: "🤝 Ton espace ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
+  // Pas de reservation_id pour un email ambassadeur (email_log est structuré
+  // autour des réservations) — reservation_id:null reste consultable en base
+  // même sans apparaître dans le panneau Communications admin, qui ne liste
+  // que les emails rattachés à une réservation. Jusqu'ici cet envoi n'était
+  // ni vérifié ni tracé nulle part (audit communications, juillet 2026).
+  if (!result.ok) console.error('[Email ambassadeur]', result.error);
+  await supabase.from('email_log').insert({
+    reservation_id: null, scenario: 'email_bienvenue_ambassadeur', canal: 'email',
+    destinataire: email, modele: 'email_bienvenue_ambassadeur',
+    statut: result.ok ? 'envoye' : 'erreur',
+    erreur: result.ok ? null : String(result.error || '').slice(0, 500),
+    contenu: html,
+  }).catch(() => {});
 }
 
 // Dérive un code d'affiliation lisible à partir du nom ("Conciergerie Azur"

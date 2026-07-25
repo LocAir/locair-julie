@@ -163,7 +163,8 @@ module.exports = async (req, res) => {
         }
       }
 
-      const ref = `MANUEL-${Date.now().toString(36).toUpperCase()}`;
+      const _now = new Date();
+      const ref = `LOC-${String(_now.getFullYear()).slice(2)}${String(_now.getMonth()+1).padStart(2,'0')}${String(_now.getDate()).padStart(2,'0')}-${Math.floor(1000+Math.random()*9000)}`;
       const { data: resa, error } = await supabase.from('reservations').insert({
         city_id: city.id, ref, prenom, nom, tel, tel_secondaire: telSecondaire || null,
         type_client: typeClient, raison_sociale: raisonSociale || null, siret: siret || null,
@@ -309,7 +310,8 @@ module.exports = async (req, res) => {
         return res.status(409).json({ error: `Plus assez d'appareils disponibles (${Math.max(0, disponibles)} dispo sur ces dates)` });
       }
 
-      const ref = `PROLONG-MANUEL-${Date.now().toString(36).toUpperCase()}`;
+      const _pnow = new Date();
+      const ref = `LOC-${String(_pnow.getFullYear()).slice(2)}${String(_pnow.getMonth()+1).padStart(2,'0')}${String(_pnow.getDate()).padStart(2,'0')}-P${Math.floor(1000+Math.random()*9000)}`;
       const { data: resa, error } = await supabase.from('reservations').insert({
         city_id: city.id, ref,
         prenom: orig.prenom, nom: orig.nom, email: orig.email,
@@ -350,6 +352,7 @@ module.exports = async (req, res) => {
         await sendProlongationConfirmation(supabase, {
           reservationId:    resa.id,
           email:            resa.email,
+          tel:              resa.tel,
           prenom:           resa.prenom,
           nom:              resa.nom,
           jours:            joursSupplementaires,
@@ -387,6 +390,7 @@ module.exports = async (req, res) => {
             await sendProlongationConfirmation(supabase, {
               reservationId:    before.id,
               email:            before.email,
+              tel:              before.tel,
               prenom:           before.prenom,
               nom:              before.nom,
               jours:            joursSupplementaires,

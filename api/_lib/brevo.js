@@ -59,9 +59,14 @@ function toE164FR(tel) {
 // Canal SMS distinct de l'email chez Brevo : même clé API, mais crédits et
 // expéditeur (nom court, à valider dans Brevo) séparés — ne fonctionne pas
 // tant que ce n'est pas explicitement activé côté compte Brevo.
+// Renvoie { ok: true } ou { ok: false, error } — même contrat que
+// sendBrevoEmail (voir commentaire ci-dessus). Jusqu'ici cette fonction ne
+// renvoyait rien du tout : chaque appelant marquait le SMS "envoyé" sans
+// aucun moyen de savoir si Brevo l'avait réellement accepté (audit
+// communications, juillet 2026).
 async function sendBrevoSms({ to, content }) {
   const recipient = toE164FR(to);
-  if (!process.env.BREVO_API_KEY || !recipient) return;
+  if (!process.env.BREVO_API_KEY || !recipient) return { ok: false, error: 'BREVO_API_KEY ou destinataire manquant' };
   try {
     const r = await fetch('https://api.brevo.com/v3/transactionalSMS/sms', {
       method:  'POST',
@@ -73,9 +78,15 @@ async function sendBrevoSms({ to, content }) {
         type:      'transactional',
       }),
     });
-    if (!r.ok) console.error('[Brevo SMS]', r.status, await r.text());
+    if (!r.ok) {
+      const detail = await r.text();
+      console.error('[Brevo SMS]', r.status, detail);
+      return { ok: false, error: `Brevo ${r.status} : ${detail}`.slice(0, 500) };
+    }
+    return { ok: true };
   } catch (e) {
     console.error('[Brevo SMS]', e.message);
+    return { ok: false, error: e.message };
   }
 }
 
