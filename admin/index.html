@@ -186,12 +186,10 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 
 .gantt-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 .gantt-range{font-weight:700;font-size:13.5px;color:var(--black)}
-.gantt-wrap{border:1px solid var(--rule);border-radius:var(--r);background:var(--white);overflow:hidden;box-shadow:var(--sh-xs)}
-.gantt-table{display:flex}
-.gantt-labels{flex:0 0 auto;border-right:1px solid var(--rule);background:var(--bg)}
-.gantt-label-head{height:40px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--rule);padding:0 14px}
-.gantt-label-row{height:40px;display:flex;align-items:center;gap:6px;padding:0 14px;border-bottom:1px solid var(--rule);font-size:12.5px;font-weight:700;color:var(--black);white-space:nowrap}
-.gantt-label-row:last-child{border-bottom:none}
+.gantt-wrap{border:1px solid var(--rule);border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);max-height:min(60vh,560px);overflow:auto}
+.gantt-table{display:grid;grid-template-columns:60px repeat(var(--gantt-days),minmax(30px,1fr));grid-auto-rows:40px;min-width:max-content}
+.gantt-corner{position:sticky;top:0;left:0;z-index:4;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.05em;background:var(--bg);border-bottom:1px solid var(--rule);border-right:1px solid var(--rule)}
+.gantt-label-row{position:sticky;left:0;z-index:2;display:flex;align-items:center;gap:6px;padding:0 10px;background:var(--bg);border-bottom:1px solid var(--rule);border-right:1px solid var(--rule);font-size:12.5px;font-weight:700;color:var(--black);white-space:nowrap}
 .gantt-label-row.gantt-label-out{color:var(--grey-soft)}
 .gantt-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
 .gantt-status-dot-actif{background:var(--green)}
@@ -199,21 +197,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .gantt-status-dot-a_faire{background:var(--amber)}
 .gantt-status-dot-en_location{background:var(--blue)}
 .gantt-status-dot-terminee{background:var(--grey-soft)}
-.gantt-scroll{flex:1;overflow-x:auto;min-width:0}
-.gantt-grid{min-width:520px}
-.gantt-header,.gantt-row{display:grid;grid-template-columns:repeat(var(--gantt-days),minmax(30px,1fr))}
-.gantt-header{height:40px;border-bottom:1px solid var(--rule);position:sticky;top:0;background:var(--white);z-index:2}
-.gantt-cell{grid-row:1;border-right:1px solid var(--rule)}
-.gantt-cell:last-child{border-right:none}
-.gantt-head{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.gantt-cell{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.gantt-cell.gantt-head{position:sticky;top:0;z-index:3;background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
 .gantt-dow{font-size:9px;color:var(--grey);text-transform:uppercase;font-weight:700}
 .gantt-dnum{font-size:12.5px;font-weight:700;color:var(--black)}
 .gantt-today{background:var(--blue-lt)}
 .gantt-weekend{background:rgba(20,30,48,.05)}
-.gantt-row{height:40px;position:relative;border-bottom:1px solid var(--rule)}
-.gantt-row:last-child{border-bottom:none}
-.gantt-cells{display:contents}
-.gantt-bar{grid-row:1;z-index:1;align-self:center;height:26px;margin:0 1px;border-radius:100px;border:1.5px solid var(--white);padding:0 10px;display:flex;align-items:center;min-width:0;color:#fff;font-size:11.5px;font-weight:700;cursor:pointer;box-shadow:var(--sh-xs);transition:filter .15s ease}
+.gantt-bar{z-index:1;align-self:center;height:26px;margin:0 1px;border-radius:100px;border:1.5px solid var(--white);padding:0 10px;display:flex;align-items:center;min-width:0;color:#fff;font-size:11.5px;font-weight:700;cursor:pointer;box-shadow:var(--sh-xs);transition:filter .15s ease}
 .gantt-bar:hover{filter:brightness(.92)}
 .gantt-bar-attente{background:var(--amber)}
 .gantt-bar-confirmee{background:var(--green)}
@@ -3121,9 +3111,12 @@ function renderReservationsCalendrier(){
     return {d, dow, isToday: d===todayStr, isWeekend: dow===0||dow===6};
   });
   const dayClass = m => m.isToday ? 'gantt-today' : (m.isWeekend ? 'gantt-weekend' : '');
-  const headerCells = dayMeta.map(m => `
-    <div class="gantt-cell gantt-head ${dayClass(m)}"><span class="gantt-dow">${DOW[m.dow]}</span><span class="gantt-dnum">${new Date(m.d+'T00:00:00Z').getUTCDate()}</span></div>`).join('');
-  const bgCellsHtml = `<div class="gantt-cells">${dayMeta.map(m=>`<div class="gantt-cell ${dayClass(m)}"></div>`).join('')}</div>`;
+  // Grille CSS unique (en-tête collé en haut + colonne n° collée à gauche,
+  // .gantt-wrap est le seul conteneur qui scrolle réellement) : la ligne 1
+  // est l'en-tête des jours, les lignes 2+ sont les appareils. La colonne 1
+  // est la colonne des n°, les colonnes 2+ sont les jours.
+  const headerCellsHtml = dayMeta.map((m,i) => `
+    <div class="gantt-cell gantt-head ${dayClass(m)}" style="grid-row:1;grid-column:${i+2}"><span class="gantt-dow">${DOW[m.dow]}</span><span class="gantt-dnum">${new Date(m.d+'T00:00:00Z').getUTCDate()}</span></div>`).join('');
 
   // Regroupe les réservations actives/à venir par numéro d'appareil (et non
   // par réservation) : c'est la clé pour afficher une ligne par unité
@@ -3141,25 +3134,24 @@ function renderReservationsCalendrier(){
     return;
   }
 
-  const labelsHtml = appareils.map(a => {
+  const rowsHtml = appareils.map((a,idx) => {
+    const rowNum = idx+2;
     const dotCls = APPAREIL_STATUT_CHIP[a.statut] || '';
     const showDot = a.statut!=='disponible' && a.statut!=='loue';
-    return `
-      <div class="gantt-label-row" title="Climatiseur n°${a.numero} — ${APPAREIL_STATUT_LABEL[a.statut]||a.statut}">
+    const labelHtml = `
+      <div class="gantt-label-row" style="grid-row:${rowNum}" title="Climatiseur n°${a.numero} — ${APPAREIL_STATUT_LABEL[a.statut]||a.statut}">
         n°${a.numero}${showDot?`<span class="gantt-status-dot gantt-status-dot-${dotCls}"></span>`:''}
       </div>`;
-  }).join('');
-
-  const rowsHtml = appareils.map(a => {
+    const bgCellsHtml = dayMeta.map((m,i) => `<div class="gantt-cell ${dayClass(m)}" style="grid-row:${rowNum};grid-column:${i+2}"></div>`).join('');
     const bars = (barsByNumero.get(a.numero)||[]).sort((x,y) => x.date_debut.localeCompare(y.date_debut));
     const barsHtml = bars.map(r => {
       const startIdx = Math.max(0, Math.min(GANTT_DAYS-1, _isoDiffDays(GANTT_START, r.date_debut)));
       const endIdx   = Math.max(0, Math.min(GANTT_DAYS-1, _isoDiffDays(GANTT_START, r.date_fin)));
       const nom = escHtml((r.prenom||'')+' '+(r.nom||''))||'—';
       const cls = r.statut==='en_attente' ? 'gantt-bar-attente' : 'gantt-bar-confirmee';
-      return `<div class="gantt-bar ${cls}" style="grid-column:${startIdx+1} / ${endIdx+2}" onclick="openEditReservationModal(${r.id})" title="${nom} — ${frDate(r.date_debut)} → ${frDate(r.date_fin)}"><span class="gantt-bar-name">${nom}</span></div>`;
+      return `<div class="gantt-bar ${cls}" style="grid-row:${rowNum};grid-column:${startIdx+2} / ${endIdx+3}" onclick="openEditReservationModal(${r.id})" title="${nom} — ${frDate(r.date_debut)} → ${frDate(r.date_fin)}"><span class="gantt-bar-name">${nom}</span></div>`;
     }).join('');
-    return `<div class="gantt-row">${bgCellsHtml}${barsHtml}</div>`;
+    return labelHtml + bgCellsHtml + barsHtml;
   }).join('');
 
   el.innerHTML = `
@@ -3170,17 +3162,10 @@ function renderReservationsCalendrier(){
       ${GANTT_START!==todayStr?`<button class="btn btn-grey" style="padding:6px 12px" onclick="resetGantt()">Aujourd'hui</button>`:''}
     </div>
     <div class="gantt-wrap">
-      <div class="gantt-table">
-        <div class="gantt-labels">
-          <div class="gantt-label-head">N°</div>
-          ${labelsHtml}
-        </div>
-        <div class="gantt-scroll">
-          <div class="gantt-grid" style="--gantt-days:${GANTT_DAYS}">
-            <div class="gantt-header">${headerCells}</div>
-            ${rowsHtml}
-          </div>
-        </div>
+      <div class="gantt-table" style="--gantt-days:${GANTT_DAYS}">
+        <div class="gantt-corner">N°</div>
+        ${headerCellsHtml}
+        ${rowsHtml}
       </div>
     </div>
     <div class="gantt-legend">
