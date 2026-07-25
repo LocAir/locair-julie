@@ -287,6 +287,43 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .map-pin-teardrop.future{opacity:.55}
 .leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 8px 28px rgba(20,30,48,.22)}
 .leaflet-popup-content{font-family:var(--body);margin:12px 14px;font-size:13.5px;line-height:1.5}
+
+/* Calendrier planning — identique à admin/index.html (même composant, mêmes
+   classes) pour que le transporteur voie la même vue d'ensemble du parc. */
+.gantt-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.gantt-range{font-weight:700;font-size:13.5px;color:var(--black)}
+/* .btn est plein-largeur par défaut ici (gros boutons tactiles mobiles) —
+   inadapté aux petites flèches de nav du calendrier, d'où ce style dédié
+   plutôt que de réutiliser .btn/.btn-grey comme dans admin/index.html. */
+.gantt-nav-btn{width:auto;min-height:auto;padding:7px 16px;border-radius:100px;border:1.5px solid var(--rule);background:var(--white);color:var(--grey);font-family:var(--body);font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:border-color .15s ease,color .15s ease}
+.gantt-nav-btn:hover{border-color:var(--grey-soft);color:var(--black)}
+.gantt-wrap{border:1px solid var(--rule);border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);max-height:min(60vh,560px);overflow:auto}
+.gantt-table{display:grid;grid-template-columns:60px repeat(var(--gantt-days),minmax(30px,1fr));grid-auto-rows:40px;min-width:max-content}
+.gantt-corner{position:sticky;top:0;left:0;z-index:4;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.05em;background:var(--bg);border-bottom:1px solid var(--rule);border-right:1px solid var(--rule)}
+.gantt-label-row{position:sticky;left:0;z-index:2;display:flex;align-items:center;gap:6px;padding:0 10px;background:var(--bg);border-bottom:1px solid var(--rule);border-right:1px solid var(--rule);font-size:12.5px;font-weight:700;color:var(--black);white-space:nowrap}
+.gantt-label-row.gantt-label-out{color:var(--grey-soft)}
+.gantt-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.gantt-status-dot-actif{background:var(--green)}
+.gantt-status-dot-annulee{background:var(--red)}
+.gantt-status-dot-a_faire{background:var(--amber)}
+.gantt-status-dot-en_location{background:var(--blue)}
+.gantt-status-dot-terminee{background:var(--grey-soft)}
+.gantt-cell{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
+.gantt-cell.gantt-head{position:sticky;top:0;z-index:3;background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.gantt-dow{font-size:9px;color:var(--grey);text-transform:uppercase;font-weight:700}
+.gantt-dnum{font-size:12.5px;font-weight:700;color:var(--black)}
+.gantt-today{background:var(--blue-lt)}
+.gantt-weekend{background:rgba(20,30,48,.05)}
+.gantt-bar{z-index:1;align-self:center;height:26px;margin:0 1px;border-radius:100px;border:1.5px solid var(--white);padding:0 10px;display:flex;align-items:center;min-width:0;color:#fff;font-size:11.5px;font-weight:700;box-shadow:var(--sh-xs)}
+.gantt-bar-attente{background:var(--amber)}
+.gantt-bar-confirmee{background:var(--green)}
+.gantt-bar-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gantt-legend{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--grey);flex-wrap:wrap}
+.gantt-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.gantt-dot-attente{background:var(--amber)}
+.gantt-dot-confirmee{background:var(--green)}
+.gantt-legend .gantt-status-dot{margin-right:5px}
+@media(max-width:640px){.gantt-nav{justify-content:space-between}}
 </style>
 </head>
 <body>
@@ -322,6 +359,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
       <button class="on" onclick="switchTab('accueil')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10"/><path d="M10 20.5V15h4v5.5"/></svg>Accueil</button>
       <button onclick="switchTab('missions')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/></svg>Mes missions<span class="tab-badge hidden badge-missions"></span></button>
       <button onclick="switchTab('activite')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="17" height="12.5" rx="2.2"/><path d="M3.5 10.5h17"/><circle cx="16" cy="14.7" r="1" fill="currentColor" stroke="none"/></svg>Mes gains<span class="tab-badge hidden badge-activite"></span></button>
+      <button onclick="switchTab('calendrier')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>Calendrier</button>
     </div>
     <div id="dashboard-content"><p class="empty">Chargement…</p></div>
     <div class="card hidden" id="faceid-offer">
@@ -365,6 +403,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
       <button onclick="switchTab('accueil')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10"/><path d="M10 20.5V15h4v5.5"/></svg>Accueil</button>
       <button class="on" onclick="switchTab('missions')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/></svg>Mes missions<span class="tab-badge hidden badge-missions"></span></button>
       <button onclick="switchTab('activite')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="17" height="12.5" rx="2.2"/><path d="M3.5 10.5h17"/><circle cx="16" cy="14.7" r="1" fill="currentColor" stroke="none"/></svg>Mes gains<span class="tab-badge hidden badge-activite"></span></button>
+      <button onclick="switchTab('calendrier')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>Calendrier</button>
     </div>
     <div id="transp-banner-zone"></div>
     <div class="map-filters" id="mission-filters">
@@ -389,8 +428,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
       <button onclick="switchTab('accueil')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10"/><path d="M10 20.5V15h4v5.5"/></svg>Accueil</button>
       <button onclick="switchTab('missions')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/></svg>Mes missions<span class="tab-badge hidden badge-missions"></span></button>
       <button class="on" onclick="switchTab('activite')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="17" height="12.5" rx="2.2"/><path d="M3.5 10.5h17"/><circle cx="16" cy="14.7" r="1" fill="currentColor" stroke="none"/></svg>Mes gains<span class="tab-badge hidden badge-activite"></span></button>
+      <button onclick="switchTab('calendrier')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>Calendrier</button>
     </div>
     <div id="activite-content"><p class="empty">Chargement…</p></div>
+  </div>
+
+  <!-- Écran 3ter : calendrier planning (même vue que l'admin, lecture seule) -->
+  <div id="calendrier-screen" class="hidden">
+    <div class="tabbar">
+      <button onclick="switchTab('accueil')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10"/><path d="M10 20.5V15h4v5.5"/></svg>Accueil</button>
+      <button onclick="switchTab('missions')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/></svg>Mes missions<span class="tab-badge hidden badge-missions"></span></button>
+      <button onclick="switchTab('activite')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="7" width="17" height="12.5" rx="2.2"/><path d="M3.5 10.5h17"/><circle cx="16" cy="14.7" r="1" fill="currentColor" stroke="none"/></svg>Mes gains<span class="tab-badge hidden badge-activite"></span></button>
+      <button class="on" onclick="switchTab('calendrier')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>Calendrier</button>
+    </div>
+    <div id="calendrier-content"><p class="empty">Chargement…</p></div>
   </div>
 
   <!-- Écran 4 : détail mission -->
@@ -455,7 +506,7 @@ let STATE = {
 };
 
 function show(id){
-  ['login-screen','dashboard-screen','checklist-screen','tournee-start-screen','missions-screen','activite-screen','detail-screen','map-screen'].forEach(s=>{
+  ['login-screen','dashboard-screen','checklist-screen','tournee-start-screen','missions-screen','activite-screen','calendrier-screen','detail-screen','map-screen'].forEach(s=>{
     const el = document.getElementById(s);
     const wasHidden = el.classList.contains('hidden');
     el.classList.toggle('hidden', s!==id);
@@ -487,6 +538,7 @@ function switchTab(tab){
   if(tab==='checklist'){ show('checklist-screen'); loadChecklist(); }
   else if(tab==='activite'){ show('activite-screen'); loadActivite(); }
   else if(tab==='missions'){ show('missions-screen'); loadMissions(); }
+  else if(tab==='calendrier'){ show('calendrier-screen'); loadCalendrier(); }
   else { show('dashboard-screen'); loadDashboard(); }
 }
 
@@ -501,6 +553,12 @@ function showTToast(msg){
   el.textContent = msg;
   document.body.appendChild(el);
   setTimeout(() => el.remove(), 4000);
+}
+function frDate(iso){
+  if(!iso) return '—';
+  const d = new Date(iso+'T00:00:00');
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
 }
 function escHtml(s){
   return String(s==null?'':s)
@@ -1325,9 +1383,135 @@ async function silentRefreshMissions(){
 function transporteurAutoRefreshTick(){
   if(!STATE.token || isTransporteurBusy()) return;
   silentRefreshMissions();
+  if(!document.getElementById('calendrier-screen').classList.contains('hidden')) silentRefreshCalendrier();
 }
 function startTransporteurAutoRefresh(){
   if(!window._transpAutoRefresh) window._transpAutoRefresh = setInterval(transporteurAutoRefreshTick, 18000);
+}
+
+// ── Calendrier planning (lecture seule) ─────────────────────────────────────
+// Même composant visuel que admin/index.html (Réservations → Calendrier),
+// scope à la ville du transporteur côté serveur (transporteur-calendrier.js).
+// Contrairement à l'admin, les barres ne sont pas cliquables (le transporteur
+// n'a pas accès à l'édition d'une réservation) — la vue sert juste à voir
+// d'un coup d'œil quel appareil est loué et quand.
+const APPAREIL_STATUT_LABEL = {disponible:'Disponible', panne:'En panne', maintenance:'Maintenance', nettoyage:'Nettoyage', loue:'Loué', vendu:'Vendu'};
+const APPAREIL_STATUT_CHIP  = {disponible:'actif', panne:'annulee', maintenance:'a_faire', nettoyage:'a_faire', loue:'en_location', vendu:'terminee'};
+let RESERVATIONS_CACHE = [];
+let STOCK_APPAREILS_CACHE = [];
+const GANTT_DAYS = 21; // 3 semaines visibles à la fois
+let GANTT_START = null; // ISO date — calculé au premier rendu (= aujourd'hui), ajusté par la nav ◀ ▶
+function _isoAddDays(iso, n){
+  const d = new Date(iso+'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function _isoDiffDays(a, b){
+  return Math.round((new Date(b+'T00:00:00Z') - new Date(a+'T00:00:00Z')) / 86400000);
+}
+function frDateShort(iso){
+  const d = new Date(iso+'T00:00:00Z');
+  return String(d.getUTCDate()).padStart(2,'0')+'/'+String(d.getUTCMonth()+1).padStart(2,'0');
+}
+function shiftGantt(deltaDays){
+  GANTT_START = _isoAddDays(GANTT_START, deltaDays);
+  renderReservationsCalendrier();
+}
+function resetGantt(){
+  GANTT_START = null;
+  renderReservationsCalendrier();
+}
+function renderReservationsCalendrier(){
+  const el = document.getElementById('calendrier-content');
+  if(!el) return;
+  const todayStr = new Date().toISOString().slice(0,10);
+  if(!GANTT_START) GANTT_START = todayStr;
+  const windowEnd = _isoAddDays(GANTT_START, GANTT_DAYS-1);
+  const DOW = ['D','L','M','M','J','V','S'];
+  const dayMeta = Array.from({length:GANTT_DAYS}, (_,i) => {
+    const d = _isoAddDays(GANTT_START, i);
+    const dow = new Date(d+'T00:00:00Z').getUTCDay();
+    return {d, dow, isToday: d===todayStr, isWeekend: dow===0||dow===6};
+  });
+  const dayClass = m => m.isToday ? 'gantt-today' : (m.isWeekend ? 'gantt-weekend' : '');
+  const headerCellsHtml = dayMeta.map((m,i) => `
+    <div class="gantt-cell gantt-head ${dayClass(m)}" style="grid-row:1;grid-column:${i+2}"><span class="gantt-dow">${DOW[m.dow]}</span><span class="gantt-dnum">${new Date(m.d+'T00:00:00Z').getUTCDate()}</span></div>`).join('');
+
+  const resas = RESERVATIONS_CACHE.filter(r => !r.masquee && !['annulee','remboursee'].includes(r.statut) && r.date_fin >= GANTT_START && r.date_debut <= windowEnd);
+  const barsByNumero = new Map();
+  resas.forEach(r => (r.appareil_numeros||[]).forEach(numero => {
+    if(!barsByNumero.has(numero)) barsByNumero.set(numero, []);
+    barsByNumero.get(numero).push(r);
+  }));
+
+  const appareils = [...STOCK_APPAREILS_CACHE].sort((a,b) => a.numero-b.numero);
+  if(!appareils.length){
+    el.innerHTML = '<p class="empty">📅 Aucun appareil dans le parc.</p>';
+    return;
+  }
+
+  const rowsHtml = appareils.map((a,idx) => {
+    const rowNum = idx+2;
+    const dotCls = APPAREIL_STATUT_CHIP[a.statut] || '';
+    const showDot = a.statut!=='disponible' && a.statut!=='loue';
+    const labelHtml = `
+      <div class="gantt-label-row" style="grid-row:${rowNum}" title="Climatiseur n°${a.numero} — ${APPAREIL_STATUT_LABEL[a.statut]||a.statut}">
+        n°${a.numero}${showDot?`<span class="gantt-status-dot gantt-status-dot-${dotCls}"></span>`:''}
+      </div>`;
+    const bgCellsHtml = dayMeta.map((m,i) => `<div class="gantt-cell ${dayClass(m)}" style="grid-row:${rowNum};grid-column:${i+2}"></div>`).join('');
+    const bars = (barsByNumero.get(a.numero)||[]).sort((x,y) => x.date_debut.localeCompare(y.date_debut));
+    const barsHtml = bars.map(r => {
+      const startIdx = Math.max(0, Math.min(GANTT_DAYS-1, _isoDiffDays(GANTT_START, r.date_debut)));
+      const endIdx   = Math.max(0, Math.min(GANTT_DAYS-1, _isoDiffDays(GANTT_START, r.date_fin)));
+      const nom = escHtml((r.prenom||'')+' '+(r.nom||''))||'—';
+      const cls = r.statut==='en_attente' ? 'gantt-bar-attente' : 'gantt-bar-confirmee';
+      return `<div class="gantt-bar ${cls}" style="grid-row:${rowNum};grid-column:${startIdx+2} / ${endIdx+3}" title="${nom} — ${frDate(r.date_debut)} → ${frDate(r.date_fin)}"><span class="gantt-bar-name">${nom}</span></div>`;
+    }).join('');
+    return labelHtml + bgCellsHtml + barsHtml;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="gantt-nav">
+      <button class="gantt-nav-btn" onclick="shiftGantt(-7)">◀</button>
+      <span class="gantt-range">Du ${frDateShort(GANTT_START)} au ${frDateShort(windowEnd)}</span>
+      <button class="gantt-nav-btn" onclick="shiftGantt(7)">▶</button>
+      ${GANTT_START!==todayStr?`<button class="gantt-nav-btn" onclick="resetGantt()">Aujourd'hui</button>`:''}
+    </div>
+    <div class="gantt-wrap">
+      <div class="gantt-table" style="--gantt-days:${GANTT_DAYS}">
+        <div class="gantt-corner">N°</div>
+        ${headerCellsHtml}
+        ${rowsHtml}
+      </div>
+    </div>
+    <div class="gantt-legend">
+      <span><i class="gantt-dot gantt-dot-attente"></i>En attente</span>
+      <span><i class="gantt-dot gantt-dot-confirmee"></i>Confirmée</span>
+      <span><i class="gantt-status-dot gantt-status-dot-annulee"></i>En panne</span>
+      <span><i class="gantt-status-dot gantt-status-dot-a_faire"></i>Maintenance / nettoyage</span>
+      <span><i class="gantt-status-dot gantt-status-dot-terminee"></i>Vendu</span>
+    </div>`;
+}
+async function fetchCalendrier(){
+  try{
+    const r = await fetch(API('transporteur-calendrier'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body:'{}'});
+    const d = await r.json();
+    if(!r.ok) return false;
+    RESERVATIONS_CACHE = d.reservations || [];
+    STOCK_APPAREILS_CACHE = d.appareils || [];
+    return true;
+  }catch(e){ return false; }
+}
+async function loadCalendrier(){
+  const el = document.getElementById('calendrier-content');
+  el.innerHTML = '<p class="empty">Chargement…</p>';
+  const ok = await fetchCalendrier();
+  if(ok) renderReservationsCalendrier();
+  else el.innerHTML = '<p class="empty">Impossible de charger le calendrier.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="loadCalendrier()">↻ Réessayer</button>';
+}
+async function silentRefreshCalendrier(){
+  const ok = await fetchCalendrier();
+  if(ok) renderReservationsCalendrier();
 }
 
 const TYPE_LABEL = {livraison:'Livraison', recuperation:'Récupération', changement:'Remplacement'};
