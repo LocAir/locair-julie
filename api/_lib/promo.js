@@ -3,8 +3,9 @@
 // valable aussi pour un ami (avec le prénom de l'ami). Volontairement sans
 // enregistrement en base : n'importe quel code de cette forme est accepté,
 // tant que le prénom saisi sur la réservation en cours correspond au préfixe
-// du code — décision explicite du propriétaire (pas de vérification a priori,
-// même logique déjà en place pour les prolongations, voir prolong-pay.js).
+// du code — décision explicite du propriétaire (pas de vérification a priori).
+// Réservé aux nouvelles réservations passées sur le site (checkout.js) — pas
+// de code promo sur une prolongation (voir prolong-pay.js).
 const REFERRAL_PCT = 30;
 
 function normalizePrenom(prenom) {
