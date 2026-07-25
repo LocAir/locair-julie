@@ -13,12 +13,19 @@ module.exports = async (req, res) => {
   if (await isRateLimited(supabase, `prolong:${ip}`)) return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
 
   const normalizedEmail = String(email).trim().toLowerCase();
+  // .eq('statut','confirmee') indispensable : sans lui, une réservation plus
+  // récente mais annulée/en attente sous le même email (tentative abandonnée,
+  // doublon) pouvait remonter à la place de la vraie réservation active — la
+  // prolongation se rattachait alors à la mauvaise réservation. Même filtre
+  // déjà en place côté admin (admin-reservations.js, action
+  // 'lookup_prolongation').
   const { data: resa, error } = await supabase
     .from('reservations')
     .select('ref, prenom, date_debut, date_fin, quantite, statut')
-    .eq('email', normalizedEmail)
+    .ilike('email', normalizedEmail)
     .eq('ref', ref.trim().toUpperCase())
     .not('source', 'eq', 'site_prolongation')
+    .eq('statut', 'confirmee')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -31,11 +38,6 @@ module.exports = async (req, res) => {
   if (!resa) {
     await recordFailedAttempt(supabase, `prolong:${ip}`).catch(() => {});
     return res.status(404).json({ error: 'Aucune location trouvée — vérifiez votre email et référence de commande.' });
-  }
-
-  if (['annulee', 'remboursee'].includes(resa.statut)) {
-    await recordFailedAttempt(supabase, `prolong:${ip}`).catch(() => {});
-    return res.status(422).json({ error: 'Cette location ne peut pas être prolongée.' });
   }
 
   const today = new Date().toISOString().slice(0, 10);

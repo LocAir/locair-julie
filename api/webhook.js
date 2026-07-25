@@ -477,8 +477,14 @@ const handler = async (req, res) => {
         // prolong-pay.js stocke la ref d'origine dans meta.ref_origine (pas meta.ref)
         const origRef = (meta.ref || meta.ref_origine || '').trim().toUpperCase();
         try {
+          // .eq('statut','confirmee') sur le repli email : sans lui, une
+          // réservation plus récente mais annulée/en attente sous le même
+          // email passe devant la vraie réservation active — sa date_fin
+          // n'est alors jamais mise à jour (voir prolong-lookup.js).
           let lookup = getSupabase().from('reservations').select('id').not('source', 'eq', 'site_prolongation');
-          lookup = origRef ? lookup.eq('ref', origRef) : lookup.ilike('email', (email || '').trim()).order('created_at', { ascending: false }).limit(1);
+          lookup = origRef
+            ? lookup.eq('ref', origRef)
+            : lookup.ilike('email', (email || '').trim()).eq('statut', 'confirmee').order('created_at', { ascending: false }).limit(1);
           const { data: origResa } = await lookup.maybeSingle();
           if (origResa?.id) {
             await getSupabase().from('reservations').update({ date_fin: confirmedResa.date_fin }).eq('id', origResa.id);
