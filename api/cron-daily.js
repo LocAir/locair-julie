@@ -12,7 +12,7 @@ const { sendScenarioEmail } = require('./_lib/emailEngine');
 const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { sendReservationPaymentLink } = require('./_lib/paymentLink');
-const { sendRelanceProlongationSms } = require('./_lib/reservations');
+const { sendRelanceProlongationSms, sendRappelRecuperationSms } = require('./_lib/reservations');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
@@ -439,10 +439,12 @@ module.exports = async (req, res) => {
 
     let emailsEnvoyes = 0;
     let smsRelanceProlongation = 0;
+    let smsRappelRecuperation = 0;
     for (const resa of candidats || []) {
       const peers = peersByKey[`${resa.city_id}:${String(resa.email || '').toLowerCase()}`];
       if (isSupersededReservation(resa, peers)) continue;
-      for (const scenario of scenariosDueToday(resa, todayStr)) {
+      const scenariosDus = scenariosDueToday(resa, todayStr);
+      for (const scenario of scenariosDus) {
         const result = await sendScenarioEmail(supabase, { reservationId: resa.id, scenario });
         if (result.sent) emailsEnvoyes++;
       }
@@ -461,9 +463,21 @@ module.exports = async (req, res) => {
       } catch (e) {
         console.error('[Cron SMS relance prolongation]', e.message);
       }
+      // SMS rappel récupération : même jour que l'email rappel_recuperation
+      // (le jour de date_fin, annonçant un passage le lendemain). Idempotent
+      // sur son propre scénario (sms_rappel_recuperation), voir _lib/reservations.js.
+      if (scenariosDus.includes('rappel_recuperation')) {
+        try {
+          await sendRappelRecuperationSms(supabase, resa);
+          smsRappelRecuperation++;
+        } catch (e) {
+          console.error('[Cron SMS rappel récupération]', e.message);
+        }
+      }
     }
     if (emailsEnvoyes) report.emailsScenarios = emailsEnvoyes;
     if (smsRelanceProlongation) report.smsRelanceProlongation = smsRelanceProlongation;
+    if (smsRappelRecuperation) report.smsRappelRecuperation = smsRappelRecuperation;
   } catch (e) {
     console.error('[Cron emails scénarios]', e.message);
   }
