@@ -480,7 +480,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'probleme') {
-      if (['fait', 'annulee'].includes(liv.statut)) {
+      if (['fait', 'annule'].includes(liv.statut)) {
         return res.status(409).json({ error: 'Mission terminée — impossible de signaler un problème' });
       }
       if (liv.statut === 'probleme') {
