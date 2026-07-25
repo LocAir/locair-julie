@@ -230,6 +230,13 @@ module.exports = async (req, res) => {
       if (![...EN_COURS_STATUTS, 'probleme'].includes(liv.statut)) {
         return res.status(409).json({ error: 'Cette mission n\'est pas en cours' });
       }
+      if (liv.type === 'livraison' && ['en_route', 'arrivee', 'probleme'].includes(liv.statut)) {
+        const { data: t } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
+        await moveAppareilsForReservation(supabase, liv.reservation_id, 'entrepot', {
+          typeEvenement: 'autre', livraisonId: liv.id, utilisateur: t?.nom || null,
+          commentaire: 'Mission reportée — appareil remis au dépôt',
+        }).catch(e => console.error('[Reporter stock rollback]', e.message));
+      }
       await supabase.from('livraisons').update({
         statut: 'a_faire', accepted_at: null, depart_at: null, arrivee_at: null,
         probleme_type: null, probleme_description: null, probleme_at: null,
@@ -454,6 +461,9 @@ module.exports = async (req, res) => {
       if (!liv.photo_installation_path) return res.status(400).json({ error: 'Vidéo du nouvel appareil installé requise avant de valider' });
       if (!liv.photo_retour_path) return res.status(400).json({ error: 'Vidéo de l\'ancien appareil récupéré requise avant de valider' });
       if (!liv.vidange_confirmee) return res.status(400).json({ error: 'Vidange de l\'ancien appareil requise avant de valider' });
+      const checklistItems = await getActiveChecklistItems(supabase, 'changement');
+      const checklistCheck = validateChecklistReponses(checklistItems, body.checklist_reponses);
+      if (checklistCheck.error) return res.status(400).json({ error: checklistCheck.error });
 
       let montantDu = liv.montant_du_cents;
       if (!liv.montant_manuel) {
@@ -470,6 +480,12 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'probleme') {
+      if (['fait', 'annulee'].includes(liv.statut)) {
+        return res.status(409).json({ error: 'Mission terminée — impossible de signaler un problème' });
+      }
+      if (liv.statut === 'probleme') {
+        return res.status(409).json({ error: 'Un problème est déjà signalé sur cette mission' });
+      }
       const problemeType = PROBLEME_TYPES.includes(body.probleme_type) ? body.probleme_type : 'autre';
       const description  = (body.probleme_description || '').slice(0, 1000);
 

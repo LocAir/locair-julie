@@ -161,11 +161,13 @@ module.exports = async (req, res) => {
       if (ids.length) { const { error: payeErr } = await supabase.from('livraisons').update({ paye: true }).in('id', ids); if (payeErr) throw payeErr; }
 
       if (existante) {
-        await supabase.from('virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', existante.id);
+        const { error: virUpdErr } = await supabase.from('virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', existante.id);
+        if (virUpdErr) throw virUpdErr;
       } else {
-        await supabase.from('virements').insert({
+        const { error: virInsErr } = await supabase.from('virements').insert({
           transporteur_id: transporteurId, montant_cents: montant, statut: 'verse', verse_at: new Date().toISOString(),
         });
+        if (virInsErr) throw virInsErr;
       }
       if (montant > 0) {
         await notifyTransporteur(supabase, transporteurId, {
