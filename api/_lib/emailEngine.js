@@ -90,10 +90,14 @@ async function getSignature(supabase) {
 // plutôt qu'un gris neutre) pour rester cohérente avec le nouvel habillage
 // visuel de wrap() (voir _lib/emailTemplates.js).
 function signatureFooterHtml(sig) {
-  return `<div style="margin-top:26px;padding-top:18px;border-top:1px solid rgba(27,58,95,.12);font-size:12.5px;color:#8a8a8f;line-height:1.6">
-    ${sig.logo_url ? `<img src="${sig.logo_url}" alt="" style="max-height:32px;margin-bottom:10px;display:block"/>` : ''}
-    <strong style="color:#3a3a3e;font-weight:700">${sig.nom_expediteur}</strong>${sig.fonction ? ' · ' + sig.fonction : ''}<br/>
-    ${sig.telephone ? sig.telephone + ' · ' : ''}${sig.email || ''}${sig.site_web ? ' · <a href="' + sig.site_web + '" style="color:#8a8a8f">' + String(sig.site_web).replace(/^https?:\/\//, '') + '</a>' : ''}
+  const parts = [];
+  if (sig.telephone) parts.push(`<span>${sig.telephone}</span>`);
+  if (sig.email) parts.push(`<a href="mailto:${sig.email}" style="color:#8a8a8f;text-decoration:none">${sig.email}</a>`);
+  if (sig.site_web) parts.push(`<a href="${sig.site_web}" style="color:#8a8a8f;text-decoration:none">${String(sig.site_web).replace(/^https?:\/\//, '')}</a>`);
+  return `<div style="padding:20px 32px 28px;border-top:1px solid rgba(27,58,95,.12);font-size:12.5px;color:#8a8a8f;line-height:1.65">
+    ${sig.logo_url ? `<img src="${sig.logo_url}" alt="" style="max-height:30px;margin-bottom:10px;display:block"/>` : ''}
+    <strong style="color:#2e3a4a;font-size:13px;font-weight:700">${sig.nom_expediteur}</strong>${sig.fonction ? ` <span style="color:#c8cdd6">·</span> <span style="color:#8a8a8f">${sig.fonction}</span>` : ''}<br/>
+    <span style="margin-top:3px;display:block">${parts.join(' <span style="color:#c8cdd6">&nbsp;·&nbsp;</span> ')}</span>
   </div>`;
 }
 
