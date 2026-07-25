@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
@@ -80,8 +81,8 @@ module.exports = async (req, res) => {
       const pinProvided = (body.pin || '').trim();
 
       for (let attempt = 0; attempt < 5; attempt++) {
-        const code     = attempt === 0 ? base : `${base}${Math.floor(10 + Math.random() * 90)}`;
-        const pinPlain = pinProvided || String(Math.floor(100000 + Math.random() * 900000));
+        const code     = attempt === 0 ? base : `${base}${crypto.randomInt(10, 100)}`;
+        const pinPlain = pinProvided || String(crypto.randomInt(100000, 1000000));
         const { data: created, error } = await supabase.from('partenaires').insert({
           nom,
           contact_nom:         (body.contact_nom || '').trim() || null,

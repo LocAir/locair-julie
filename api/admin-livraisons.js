@@ -436,11 +436,12 @@ module.exports = async (req, res) => {
       if (!['acceptee', 'en_route', 'arrivee', 'probleme'].includes(liv.statut)) {
         return res.status(409).json({ error: 'Cette mission n\'est pas en cours' });
       }
-      await supabase.from('livraisons').update({
+      const { error: remettreErr } = await supabase.from('livraisons').update({
         statut: 'a_faire', accepted_at: null, depart_at: null, arrivee_at: null,
         probleme_type: null, probleme_description: null, probleme_at: null,
         client_notifie_at: null,
       }).eq('id', liv.id);
+      if (remettreErr) throw remettreErr;
       if (liv.transporteur_id) {
         await notifyTransporteur(supabase, liv.transporteur_id, {
           type: 'nouvelle_mission', message: 'Une mission a été remise en attente d\'acceptation.',

@@ -1,4 +1,5 @@
 const Stripe = require('stripe');
+const crypto = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity, notifyIfSoldOut } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
@@ -164,7 +165,7 @@ module.exports = async (req, res) => {
       }
 
       const _now = new Date();
-      const ref = `LOC-${String(_now.getFullYear()).slice(2)}${String(_now.getMonth()+1).padStart(2,'0')}${String(_now.getDate()).padStart(2,'0')}-${Math.floor(1000+Math.random()*9000)}`;
+      const ref = `LOC-${String(_now.getFullYear()).slice(2)}${String(_now.getMonth()+1).padStart(2,'0')}${String(_now.getDate()).padStart(2,'0')}-${crypto.randomInt(1000, 9999)}`;
       const { data: resa, error } = await supabase.from('reservations').insert({
         city_id: city.id, ref, prenom, nom, tel, tel_secondaire: telSecondaire || null,
         type_client: typeClient, raison_sociale: raisonSociale || null, siret: siret || null,
@@ -310,7 +311,7 @@ module.exports = async (req, res) => {
       }
 
       const _pnow = new Date();
-      const ref = `LOC-${String(_pnow.getFullYear()).slice(2)}${String(_pnow.getMonth()+1).padStart(2,'0')}${String(_pnow.getDate()).padStart(2,'0')}-P${Math.floor(1000+Math.random()*9000)}`;
+      const ref = `LOC-${String(_pnow.getFullYear()).slice(2)}${String(_pnow.getMonth()+1).padStart(2,'0')}${String(_pnow.getDate()).padStart(2,'0')}-P${crypto.randomInt(1000, 9999)}`;
       const { data: resa, error } = await supabase.from('reservations').insert({
         city_id: city.id, ref,
         prenom: orig.prenom, nom: orig.nom, email: orig.email,
@@ -539,6 +540,9 @@ module.exports = async (req, res) => {
 
       const montantCents = body.montant_cents != null ? Math.max(0, parseInt(body.montant_cents) || 0) : resa.prix_total_cents;
       if (!montantCents) return res.status(400).json({ error: 'Montant invalide' });
+      if (resa.prix_total_cents && montantCents > resa.prix_total_cents) {
+        return res.status(400).json({ error: `Le montant (${(montantCents/100).toFixed(2)} €) dépasse le prix total de la réservation (${(resa.prix_total_cents/100).toFixed(2)} €)` });
+      }
 
       let refund;
       try {
