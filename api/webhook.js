@@ -513,17 +513,17 @@ const handler = async (req, res) => {
         let smsConfirmationContent;
         if (lang === 'en') {
           const dateStr = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : '';
-          smsConfirmationContent = `Loc'Air: booking confirmed ✅${dateStr ? ' Delivery on ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Your technician will call you 30 min before arriving. Questions: +33 6 63 79 87 56`;
+          smsConfirmationContent = `Loc'Air - Your booking is confirmed.${dateStr ? ' Delivery scheduled on ' + dateStr : ''}${meta.creneau ? ', time slot ' + meta.creneau : ''} Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
         } else if (lang === 'zh') {
           const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
           const dateStr = d ? `${months[d.getUTCMonth()]}${d.getUTCDate()}日` : '';
-          smsConfirmationContent = `Loc'Air：预订已确认 ✅${dateStr ? ' 配送日期：' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}。技术员将在到达前30分钟致电。咨询：+33 6 63 79 87 56`;
+          smsConfirmationContent = `Loc'Air - 您的预订已确认。${dateStr ? '配送日期：' + dateStr : ''}${meta.creneau ? '，时间段：' + meta.creneau : ''}技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
         } else if (lang === 'ru') {
           const dateStr = d ? d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : '';
-          smsConfirmationContent = `Loc'Air: бронирование подтверждено ✅${dateStr ? ' Доставка ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Мастер позвонит за 30 мин до приезда. Вопросы: +33 6 63 79 87 56`;
+          smsConfirmationContent = `Loc'Air - Ваше бронирование подтверждено.${dateStr ? ' Доставка ' + dateStr : ''}${meta.creneau ? ', интервал ' + meta.creneau : ''} Мастер отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
         } else {
           const dateStr = d ? d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' }) : '';
-          smsConfirmationContent = `Loc'Air : réservation confirmée ✅${dateStr ? ' Livraison le ' + dateStr : ''}${meta.creneau ? ' · ' + meta.creneau : ''}. Votre technicien vous appellera 30 min avant d'arriver. Questions : 06 63 79 87 56`;
+          smsConfirmationContent = `Loc'Air - Votre réservation est confirmée.${dateStr ? ' Livraison prévue le ' + dateStr : ''}${meta.creneau ? ', créneau ' + meta.creneau : ''} Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
         }
         const smsResult = await sendBrevoSms({ to: meta.tel, content: smsConfirmationContent });
         await getSupabase().from('email_log').insert({
