@@ -26,12 +26,19 @@ module.exports = async (req, res) => {
   const supabase = getSupabase();
   const stripe   = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-  // Retrouver la réservation d'origine par email (+ ref si fournie)
+  // Retrouver la réservation d'origine par email (+ ref si fournie).
+  // .eq('statut','confirmee') indispensable : sans lui, une réservation plus
+  // récente mais annulée/en attente sous le même email (tentative abandonnée,
+  // doublon) passe devant la vraie réservation active dans le tri par date de
+  // création — la prolongation se rattache alors à la mauvaise réservation.
+  // Même filtre déjà en place côté admin (admin-reservations.js, action
+  // 'lookup_prolongation').
   let q = supabase
     .from('reservations')
     .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email')
     .ilike('email', String(email).trim())
     .not('source', 'eq', 'site_prolongation')
+    .eq('statut', 'confirmee')
     .order('created_at', { ascending: false })
     .limit(1);
 
@@ -42,6 +49,7 @@ module.exports = async (req, res) => {
       .ilike('email', String(email).trim())
       .ilike('ref', ref.trim().toUpperCase())
       .not('source', 'eq', 'site_prolongation')
+      .eq('statut', 'confirmee')
       .order('created_at', { ascending: false })
       .limit(1);
   }
@@ -54,9 +62,6 @@ module.exports = async (req, res) => {
   }
   if (!orig) {
     return res.status(404).json({ error: 'Réservation introuvable.' });
-  }
-  if (['annulee', 'remboursee'].includes(orig.statut)) {
-    return res.status(422).json({ error: 'Cette location ne peut pas être prolongée.' });
   }
   const today = new Date().toISOString().slice(0, 10);
   if (orig.date_fin < today) {

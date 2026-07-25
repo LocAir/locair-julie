@@ -68,10 +68,17 @@ module.exports = async (req, res) => {
     if (!data.email) {
       return res.status(400).json({ error: 'Email requis pour retrouver ta réservation' });
     }
+    // .eq('statut','confirmee') indispensable : sans lui, une réservation plus
+    // récente mais annulée/en attente sous le même email (tentative abandonnée,
+    // doublon) passe devant la vraie réservation active dans le tri par date de
+    // création — la prolongation hérite alors de la mauvaise adresse/logistique
+    // et ne se rattache jamais à la bonne réservation. Même filtre déjà en
+    // place côté admin (admin-reservations.js, action 'lookup_prolongation').
     let origQuery = supabase
       .from('reservations').select('city_id, tel_secondaire, hors_zone, date_debut, date_fin, quantite, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement')
       .ilike('email', String(data.email).trim())
-      .not('source', 'eq', 'site_prolongation');
+      .not('source', 'eq', 'site_prolongation')
+      .eq('statut', 'confirmee');
     if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim());
     ({ data: orig } = await origQuery.order('created_at', { ascending: false }).limit(1).maybeSingle());
     city = orig ? await resolveCityById(supabase, orig.city_id) : null;
