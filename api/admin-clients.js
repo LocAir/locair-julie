@@ -26,7 +26,8 @@ module.exports = async (req, res) => {
         .from('clients')
         .select('id, prenom, nom, tel, email, acces_difficile, created_at')
         .eq('city_id', city.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
       if (error) throw error;
 
       const clientIds = (clients || []).map(c => c.id);

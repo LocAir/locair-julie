@@ -200,7 +200,8 @@ module.exports = async (req, res) => {
       if (liv.statut !== 'acceptee') return res.status(409).json({ error: 'Mission pas encore acceptée' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
-      await supabase.from('livraisons').update({ statut: 'en_route', depart_at: new Date().toISOString() }).eq('id', liv.id);
+      const { error: commencerErr } = await supabase.from('livraisons').update({ statut: 'en_route', depart_at: new Date().toISOString() }).eq('id', liv.id);
+      if (commencerErr) throw commencerErr;
       await pushToAdmin(supabase, {
         title: '🚚 Transporteur en route',
         body:  `${liv.reservation?.adresse || 'Une mission'} — le transporteur vient de partir.`,
@@ -224,7 +225,8 @@ module.exports = async (req, res) => {
       if (liv.statut !== 'en_route') return res.status(409).json({ error: 'Mission pas encore en route' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
-      await supabase.from('livraisons').update({ statut: 'arrivee', arrivee_at: new Date().toISOString() }).eq('id', liv.id);
+      const { error: arriverErr } = await supabase.from('livraisons').update({ statut: 'arrivee', arrivee_at: new Date().toISOString() }).eq('id', liv.id);
+      if (arriverErr) throw arriverErr;
       return res.status(200).json({ ok: true, statut: 'arrivee' });
     }
 
@@ -247,10 +249,11 @@ module.exports = async (req, res) => {
           commentaire: 'Mission reportée — appareil remis au dépôt',
         }).catch(e => console.error('[Reporter stock rollback]', e.message));
       }
-      await supabase.from('livraisons').update({
+      const { error: reporterErr } = await supabase.from('livraisons').update({
         statut: 'a_faire', accepted_at: null, depart_at: null, arrivee_at: null,
         probleme_type: null, probleme_description: null, probleme_at: null,
       }).eq('id', liv.id);
+      if (reporterErr) throw reporterErr;
       return res.status(200).json({ ok: true, statut: 'a_faire' });
     }
 
@@ -330,7 +333,8 @@ module.exports = async (req, res) => {
       if (liv.type !== 'recuperation' || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
-      await supabase.from('livraisons').update({ vidange_confirmee: true, vidange_at: new Date().toISOString() }).eq('id', liv.id);
+      const { error: vidangeErr } = await supabase.from('livraisons').update({ vidange_confirmee: true, vidange_at: new Date().toISOString() }).eq('id', liv.id);
+      if (vidangeErr) throw vidangeErr;
       return res.status(200).json({ ok: true });
     }
 
@@ -346,7 +350,8 @@ module.exports = async (req, res) => {
       if (!liv.photo_installation_path) {
         return res.status(400).json({ error: 'Photo requise avant de confirmer la démonstration' });
       }
-      await supabase.from('livraisons').update({ demo_faite: true, demo_faite_at: new Date().toISOString() }).eq('id', liv.id);
+      const { error: demoErr } = await supabase.from('livraisons').update({ demo_faite: true, demo_faite_at: new Date().toISOString() }).eq('id', liv.id);
+      if (demoErr) throw demoErr;
       return res.status(200).json({ ok: true });
     }
 
@@ -437,7 +442,7 @@ module.exports = async (req, res) => {
       }
 
       if (expectedType === 'recuperation') {
-        await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id);
+        await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id).eq('statut', 'confirmee');
         try {
           await sendScenarioEmail(supabase, { reservationId: liv.reservation_id, scenario: 'fin_location' });
         } catch (e) {
@@ -481,9 +486,10 @@ module.exports = async (req, res) => {
         montantDu = computeBareme('changement', null, tarifs, liv.reservation?.hors_zone);
       }
 
-      await supabase.from('livraisons').update({
+      const { error: changementUpdErr } = await supabase.from('livraisons').update({
         statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,
       }).eq('id', liv.id);
+      if (changementUpdErr) throw changementUpdErr;
       await closeMissionIncident(supabase, liv);
       await setAppareilsStatutForReservation(supabase, liv.reservation_id, 'loue', {
         typeEvenement: 'changement', livraisonId: liv.id, utilisateur: 'transporteur',
@@ -513,12 +519,13 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Vidéo de passage requise avant de signaler un client absent' });
       }
 
-      await supabase.from('livraisons').update({
+      const { error: problemeErr } = await supabase.from('livraisons').update({
         statut:               'probleme',
         probleme_type:        problemeType,
         probleme_description: description,
         probleme_at:          new Date().toISOString(),
       }).eq('id', liv.id);
+      if (problemeErr) throw problemeErr;
 
       // Une mission normale a toujours une réservation d'origine — sa city_id
       // est la source de vérité, jamais une ville devinée (voir

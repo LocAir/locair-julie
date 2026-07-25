@@ -219,7 +219,10 @@ async function handleChargeRefunded(supabase, charge) {
   const resa = await findReservationByPaymentIntent(supabase, piId);
   const montant = (charge.amount_refunded / 100).toFixed(2) + ' €';
   if (resa) {
-    await supabase.from('reservations').update({ statut: 'remboursee' }).eq('id', resa.id);
+    // Marquer remboursée seulement si le remboursement couvre la totalité du paiement
+    if (charge.amount > 0 && charge.amount_refunded >= charge.amount) {
+      await supabase.from('reservations').update({ statut: 'remboursee' }).eq('id', resa.id).eq('statut', 'confirmee');
+    }
   } else if (await handleOffrePrivilegeRefunded(supabase, piId, charge.amount_refunded || 0)) {
     return; // remboursement Offre Privilège déjà tracé + notifié ci-dessus
   }

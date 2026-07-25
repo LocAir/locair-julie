@@ -198,7 +198,7 @@ module.exports = async (req, res) => {
     // les deux passer le premier contrôle de stock (TOCTOU). Si le stock devient
     // négatif après notre insert, on annule.
     const recheckDispo = await getAvailability(supabase, city.id, orig.date_fin, new_date_fin);
-    if (recheckDispo < 0) {
+    if (recheckDispo < (orig.quantite || 1)) {
       await supabase.from('reservations').delete().eq('stripe_payment_intent_id', intent.id).catch(() => {});
       await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel recheck prolong]', e.message));
       return res.status(409).json({ error: 'Plus assez de climatiseurs disponibles pour cette prolongation.', disponibles: 0 });
