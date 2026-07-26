@@ -5,7 +5,7 @@ const { recordMouvement } = require('./stockMouvements');
 const { addDays } = require('./dates');
 const { generateAndSendDocuments } = require('./documents');
 const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
-const { sendScenarioEmail, getSignature, withSignature, fmtDate } = require('./emailEngine');
+const { sendScenarioEmail, getSignature, withSignature, fmtDate, wasScenarioSkipped } = require('./emailEngine');
 const { tplProlongConfirmation } = require('./emailTemplates');
 
 function normalizeTel(tel) {
@@ -354,13 +354,22 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
 // location tombe dans 4 jours. Idempotent sur son propre scénario
 // (sms_relance_prolongation) : jamais renvoyé deux fois pour la même
 // réservation, même si le cron tourne plusieurs fois le même jour.
-async function sendRelanceProlongationSms(supabase, resa) {
-  if (!resa || !resa.id || !resa.tel) return;
+async function sendRelanceProlongationSms(supabase, resa, { force = false } = {}) {
+  if (!resa || !resa.id || !resa.tel) return { sent: false, reason: 'no_tel' };
+  // Mis en pause (ou supprimé) depuis le panneau Communications de l'admin —
+  // voir wasScenarioSkipped/email_skip, même mécanisme que les 8 emails
+  // automatisés (sms_relance_prolongation est traité comme un scénario daté,
+  // voir _lib/communicationsCockpit.js). Jamais outrepassé par `force` : un
+  // renvoi manuel doit d'abord reprendre l'envoi (bouton "Reprendre") avant
+  // de pouvoir le déclencher, exactement comme pour les emails.
+  if (await wasScenarioSkipped(supabase, resa.id, 'sms_relance_prolongation')) return { sent: false, reason: 'skipped_by_admin' };
 
-  const { count: dejaEnvoye } = await supabase
-    .from('email_log').select('id', { count: 'exact', head: true })
-    .eq('reservation_id', resa.id).eq('scenario', 'sms_relance_prolongation').eq('statut', 'envoye');
-  if (dejaEnvoye > 0) return;
+  if (!force) {
+    const { count: dejaEnvoye } = await supabase
+      .from('email_log').select('id', { count: 'exact', head: true })
+      .eq('reservation_id', resa.id).eq('scenario', 'sms_relance_prolongation').eq('statut', 'envoye');
+    if (dejaEnvoye > 0) return { sent: false, reason: 'already_sent' };
+  }
 
   const lang = resa.lang || 'fr';
   const prenom = resa.prenom || '';
@@ -384,6 +393,7 @@ async function sendRelanceProlongationSms(supabase, resa) {
     erreur: result.ok ? null : String(result.error || '').slice(0, 500),
     contenu: content,
   }).catch(() => {});
+  return result.ok ? { sent: true } : { sent: false, reason: 'error', error: result.error };
 }
 
 // SMS envoyé le jour de la fin de location, en complément de l'email
@@ -393,13 +403,22 @@ async function sendRelanceProlongationSms(supabase, resa) {
 // Appelé par cron-daily.js en même temps que l'email rappel_recuperation
 // (même fenêtre, voir _lib/emailSchedule.js). Idempotent sur son propre
 // scénario (sms_rappel_recuperation) : jamais renvoyé deux fois.
-async function sendRappelRecuperationSms(supabase, resa) {
-  if (!resa || !resa.id || !resa.tel) return;
+async function sendRappelRecuperationSms(supabase, resa, { force = false } = {}) {
+  if (!resa || !resa.id || !resa.tel) return { sent: false, reason: 'no_tel' };
+  // Mis en pause (ou supprimé) depuis le panneau Communications de l'admin —
+  // voir wasScenarioSkipped/email_skip, même mécanisme que les 8 emails
+  // automatisés (sms_rappel_recuperation est traité comme un scénario daté,
+  // voir _lib/communicationsCockpit.js). Jamais outrepassé par `force` : un
+  // renvoi manuel doit d'abord reprendre l'envoi (bouton "Reprendre") avant
+  // de pouvoir le déclencher, exactement comme pour les emails.
+  if (await wasScenarioSkipped(supabase, resa.id, 'sms_rappel_recuperation')) return { sent: false, reason: 'skipped_by_admin' };
 
-  const { count: dejaEnvoye } = await supabase
-    .from('email_log').select('id', { count: 'exact', head: true })
-    .eq('reservation_id', resa.id).eq('scenario', 'sms_rappel_recuperation').eq('statut', 'envoye');
-  if (dejaEnvoye > 0) return;
+  if (!force) {
+    const { count: dejaEnvoye } = await supabase
+      .from('email_log').select('id', { count: 'exact', head: true })
+      .eq('reservation_id', resa.id).eq('scenario', 'sms_rappel_recuperation').eq('statut', 'envoye');
+    if (dejaEnvoye > 0) return { sent: false, reason: 'already_sent' };
+  }
 
   const lang = resa.lang || 'fr';
   const dateRecup = fmtDate(addDays(resa.date_fin, 1), lang);
@@ -422,6 +441,7 @@ async function sendRappelRecuperationSms(supabase, resa) {
     erreur: result.ok ? null : String(result.error || '').slice(0, 500),
     contenu: content,
   }).catch(() => {});
+  return result.ok ? { sent: true } : { sent: false, reason: 'error', error: result.error };
 }
 
 // Confirme une réservation (paiement Stripe réussi OU confirmation manuelle par

@@ -25,8 +25,20 @@ function scenarioLibelle(scenario) {
 // emailSchedule.js. N'apparaît donc jamais dans upcoming/pastScenariosForReservation.
 const EVENT_SCENARIOS = ['confirmation', 'post_installation', 'fin_location'];
 
-const DATED_SCENARIOS = ['suivi_j14', 'preparation_j3', 'rappel_j1', 'avant_fin_location', 'rappel_recuperation'];
-const AD_HOC_SCENARIOS = Object.keys(AD_HOC_LABEL);
+// sms_relance_prolongation et sms_rappel_recuperation sont des SMS (pas des
+// emails du moteur), mais suivent une fenêtre de date au même titre que
+// avant_fin_location/rappel_recuperation (voir emailSchedule.js et
+// cron-daily.js) — les traiter ici plutôt que comme de simples envois
+// ponctuels leur donne gratuitement le même mécanisme pause/reprendre
+// (email_skip) que les emails automatisés, au lieu de rester des envois
+// "tout ou rien" jamais interrompables.
+const DATED_SCENARIOS = ['suivi_j14', 'preparation_j3', 'rappel_j1', 'avant_fin_location', 'sms_relance_prolongation', 'rappel_recuperation', 'sms_rappel_recuperation'];
+// Envois ponctuels restants (event-driven, sans notion de pause pertinente).
+const AD_HOC_SCENARIOS = Object.keys(AD_HOC_LABEL).filter(s => !DATED_SCENARIOS.includes(s));
+// Sous-ensemble de DATED_SCENARIOS qui sont des SMS (pas des templates email
+// du moteur) — utilisé par admin-emails.js (action 'resend') pour savoir
+// quelle fonction appeler pour un renvoi manuel, voir _lib/reservations.js.
+const SMS_DATED_SCENARIOS = ['sms_relance_prolongation', 'sms_rappel_recuperation'];
 
 // Fenêtre glissante : combien de jours après la fin de location une
 // réservation "terminee" reste visible dans le panneau — assez pour
@@ -134,7 +146,7 @@ async function buildCommunicationsCockpit(supabase, cityId) {
     channels.push(statusFor(resa.id, 'confirmation', true));
 
     for (const scenario of DATED_SCENARIOS) {
-      if (scenario === 'avant_fin_location' && !(duree > 4)) continue; // non applicable, jamais montré
+      if ((scenario === 'avant_fin_location' || scenario === 'sms_relance_prolongation') && !(duree > 4)) continue; // non applicable, jamais montré
       if (pastSet.has(scenario)) channels.push(statusFor(resa.id, scenario, true));
       else if (upcomingSet.has(scenario)) channels.push(statusFor(resa.id, scenario, false));
       // ni passé ni à venir (ex: réservation "terminee" hors fenêtre de ce
@@ -198,4 +210,4 @@ async function buildCommunicationsCockpit(supabase, cityId) {
   return { clients, anomalies: totalAnomalies };
 }
 
-module.exports = { buildCommunicationsCockpit, AD_HOC_LABEL, scenarioLibelle, EVENT_SCENARIOS };
+module.exports = { buildCommunicationsCockpit, AD_HOC_LABEL, scenarioLibelle, EVENT_SCENARIOS, SMS_DATED_SCENARIOS };
