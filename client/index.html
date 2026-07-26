@@ -280,7 +280,7 @@ function renderDashboard(d){
       </ul>
     </div>` : '';
 
-  const docLabels = {contrat:'Contrat de location', facture:'Facture'};
+  const docLabels = {contrat:'Contrat de location', facture:'Facture', facture_vente:'Facture vente'};
   let docsHtml = (d.documents||[]).map(doc => `
     <div class="doc-row"><span>${escHtml(docLabels[doc.type]||doc.type)}${doc.numero?' · '+escHtml(doc.numero):''}</span>
     <a class="doc-btn" href="${doc.url}" target="_blank" rel="noopener">Ouvrir</a></div>`).join('');
@@ -357,7 +357,7 @@ function renderDashboard(d){
     ${livraisonHtml}
     ${recupHtml}
 
-    <a class="btn-prolong" href="${escHtml(d.lien_prolongation)}">Prolonger ma location</a>
+    ${!d.progress.banner ? `<a class="btn-prolong" href="${escHtml(d.lien_prolongation)}">Prolonger ma location</a>` : ''}
 
     <h2>Mes documents</h2>
     <div class="card">${docsHtml}</div>
@@ -374,7 +374,7 @@ function renderDashboard(d){
     <h2>Assistance</h2>
     <div class="card">
       ${a.horaires?`<div class="card-row"><span class="lbl">Horaires</span><span class="val">${escHtml(a.horaires)}</span></div>`:''}
-      ${a.telephone?`<div class="card-row"><span class="lbl">Téléphone</span><span class="val"><a href="tel:${escHtml(a.telephone.replace(/\\s/g,''))}">${escHtml(a.telephone)}</a></span></div>`:''}
+      ${a.telephone?`<div class="card-row"><span class="lbl">Téléphone</span><span class="val"><a href="tel:${escHtml(a.telephone.replace(/\s/g,''))}">${escHtml(a.telephone)}</a></span></div>`:''}
       ${a.email?`<div class="card-row"><span class="lbl">Email</span><span class="val"><a href="mailto:${escHtml(a.email)}">${escHtml(a.email)}</a></span></div>`:''}
       ${a.urgence?`<p style="margin-top:10px;font-size:12.5px;color:var(--grey);line-height:1.6">${escHtml(a.urgence)}</p>`:''}
     </div>
