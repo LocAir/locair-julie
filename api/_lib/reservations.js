@@ -405,13 +405,13 @@ async function sendRappelRecuperationSms(supabase, resa) {
   const dateRecup = fmtDate(addDays(resa.date_fin, 1), lang);
   let content;
   if (lang === 'en') {
-    content = `Loc'Air - Your rental ends today. Our technician will come to collect the unit tomorrow (${dateRecup}). We'll text you 30 minutes before arrival. Please have it unplugged and the duct rolled up if possible. Questions? Call us at +33 6 63 79 87 56.`;
+    content = `Loc'Air - Your rental ends today. Our technician will come to collect the unit tomorrow (${dateRecup}). We'll text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
   } else if (lang === 'zh') {
-    content = `Loc'Air - 您的租赁今天结束。技术员将于明天（${dateRecup}）前来取回设备，到达前30分钟会发短信通知您。请提前拔掉电源，如可能请将排风管卷好。如有疑问，请致电 +33 6 63 79 87 56。`;
+    content = `Loc'Air - 您的租赁今天结束。技术员将于明天（${dateRecup}）前来取回设备，到达前30分钟会发短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
   } else if (lang === 'ru') {
-    content = `Loc'Air - Ваша аренда заканчивается сегодня. Мастер заберёт устройство завтра (${dateRecup}) и отправит SMS за 30 минут до приезда. Пожалуйста, отключите устройство от розетки и по возможности скатайте гофру. Вопросы? Звоните: +33 6 63 79 87 56.`;
+    content = `Loc'Air - Ваша аренда заканчивается сегодня. Мастер заберёт устройство завтра (${dateRecup}) и отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
   } else {
-    content = `Loc'Air - Votre location se termine aujourd'hui. Notre technicien viendra récupérer l'appareil demain (${dateRecup}) et vous enverra un SMS 30 min avant son arrivée. Merci de le débrancher et d'enrouler la gaine si possible. Une question ? Appelez-nous au 06 63 79 87 56.`;
+    content = `Loc'Air - Votre location se termine aujourd'hui. Notre technicien viendra récupérer l'appareil demain (${dateRecup}) et vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
   }
 
   const result = await sendBrevoSms({ to: resa.tel, content });
