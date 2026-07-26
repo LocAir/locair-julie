@@ -2157,13 +2157,13 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
           })():''}
         </div>
       </div>
-      <p class="step-hint">📦 Charge-${plural?'les':'le'} avant de partir.</p>`
-      : `<p class="step-hint">📦 Charge l'appareil.</p>`) : '';
+      ` : ``) : '';
+    // Le bouton "Suivant →" reste indispensable même sans le reste en
+    // dessous du cadre climatiseur : c'est la seule façon d'avancer à
+    // l'étape suivante du parcours.
     return `
       ${infoRows}
       ${pickupHtml}
-      <div class="section-title" style="margin:14px 0 6px 2px">Prévenir le client (optionnel)</div>
-      ${prevenirRowHtml(m)}
       <button class="btn btn-blue btn-block" style="margin-top:6px" onclick="goToNextStepFromRoute()">Suivant →</button>`;
   }
   if(key === 'arrivee'){
@@ -2436,7 +2436,7 @@ function renderDetail(){
       ${c.instructions_acces?`<p class="step-hint" style="margin-top:10px">🔑 ${escHtml(c.instructions_acces)}</p>`:''}
       ${m.acces_difficile?`<p class="step-hint" style="margin-top:10px">📌 ${escHtml(m.acces_difficile)}</p>`:''}
       ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
-      ${c.tel?`<a class="btn btn-blue" href="tel:${encodeURIComponent(c.tel)}" style="margin-bottom:8px;text-decoration:none">📞 Appeler ${escHtml(c.prenom||'le client')}</a>`:''}
+      ${c.tel?`<button class="btn btn-blue" style="margin-bottom:8px" onclick="ouvrirPrevenirModal('sms')">${m.client_notifie?'✔ '+escHtml(c.prenom||'Client')+' prévenu':'🔔 Prévenir '+escHtml(c.prenom||'le client')+' de mon arrivée'}</button>`:''}
       ${c.tel_secondaire?`<a class="btn btn-grey" href="tel:${encodeURIComponent(c.tel_secondaire)}" style="margin-bottom:4px;text-decoration:none">☎️ Appeler le numéro de secours</a>`:''}
       ${c.tel_secondaire?(()=>{const t=encodeURIComponent(c.tel_secondaire.replace(/\s+/g,''));const msg=encodeURIComponent(arrivalMessageText());return `<div style="display:flex;gap:8px;margin-bottom:12px"><a class="media-btn" href="sms:${t}?body=${msg}" style="flex:1;text-decoration:none;text-align:center"><span class="ic">📲</span> SMS secours</a><a class="media-btn" href="https://wa.me/${t}?text=${msg}" target="_blank" rel="noopener" style="flex:1;text-decoration:none;text-align:center"><span class="ic">💬</span> WA secours</a></div>`;})():''}
     ` : `
@@ -2497,14 +2497,6 @@ function proofButtonsHtml(kind, done, doneLabel){
     <div style="display:flex;gap:8px">
       <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','camera')"><span class="ic">📷</span> Photo</button>
       <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','galerie')"><span class="ic">🖼️</span> Depuis la galerie</button>
-    </div>`;
-}
-function prevenirRowHtml(m){
-  const done = m.client_notifie;
-  return `
-    <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="media-btn ${done?'done':'pulse'}" style="margin-bottom:0" onclick="ouvrirPrevenirModal('sms')"><span class="ic">📲</span> ${done?'Prévenu ✔':'SMS'}</button>
-      <button class="media-btn ${done?'done':''}" style="margin-bottom:0" onclick="ouvrirPrevenirModal('whatsapp')"><span class="ic">💬</span> WhatsApp</button>
     </div>`;
 }
 // Ouvre directement l'app SMS ou WhatsApp du livreur avec un message
