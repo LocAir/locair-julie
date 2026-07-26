@@ -2147,7 +2147,14 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
         <div class="pickup-card-body">
           <div class="pickup-card-label">${plural?'Climatiseurs à récupérer':'Climatiseur à récupérer'}</div>
           <div class="pickup-card-nums">${numeros.map(n=>'N°'+n).join('  ·  ')}</div>
-          ${(m.type==='livraison' && m.client && m.client.fenetre)?`<div class="pickup-card-extra">+ ${numeros.length||1} kit${plural?'s':''} de calfeutrage (${escHtml(m.client.fenetre)})</div>`:''}
+          ${(m.type==='livraison' && m.client && m.client.fenetre)?(()=>{
+            // Même détection que côté checklist (api/_lib/checklistBox.js,
+            // isVelux) : le kit universel couvre tous les types de fenêtre
+            // sauf Vélux, qui a son propre kit dédié.
+            const isVelux = String(m.client.fenetre).toLowerCase().includes('lux');
+            const kitLabel = isVelux ? 'de calfeutrage Vélux' : 'de calfeutrage universel';
+            return `<div class="pickup-card-extra">+ ${numeros.length||1} kit${plural?'s':''} ${kitLabel}</div>`;
+          })():''}
         </div>
       </div>
       <p class="step-hint">📦 Charge-${plural?'les':'le'} avant de partir.</p>`
