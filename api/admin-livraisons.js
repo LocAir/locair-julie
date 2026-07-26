@@ -4,7 +4,8 @@ const { checkAdminToken } = require('./_lib/auth');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
-const { sendScenarioEmail } = require('./_lib/emailEngine');
+const { sendScenarioEmail, fmtDate } = require('./_lib/emailEngine');
+const { sendBrevoSms } = require('./_lib/brevo');
 const { setAppareilsStatutForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
 
 const MEDIA_COLUMN = {
@@ -27,6 +28,35 @@ async function loadLivraisonScoped(supabase, cityId, livraisonId, select) {
   if (!belongsToCity) return null;
   delete data.reservation;
   return data;
+}
+
+// SMS envoyé au client quand l'admin reprogramme manuellement la date d'une
+// récupération déjà prévue — à la demande du client (plus tôt ou plus tard
+// que le J+1 standard après la fin de location), jamais automatique. Pas de
+// garde d'idempotence ici (contrairement aux SMS automatisés du cron) :
+// chaque changement de date décidé par l'admin mérite sa propre confirmation.
+async function sendRecuperationReprogrammeeSms(supabase, { reservationId, tel, lang, creneau, datePrevue }) {
+  if (!tel) return;
+  const lg = lang || 'fr';
+  const dateFmt = fmtDate(datePrevue, lg);
+  let content;
+  if (lg === 'en') {
+    content = `Loc'Air - Following your request, we confirm your air conditioner collection is now scheduled for ${dateFmt}${creneau ? ', time slot ' + creneau : ''}. Questions? Call us at +33 6 63 79 87 56.`;
+  } else if (lg === 'zh') {
+    content = `Loc'Air - 根据您的要求，我们确认您的空调取回时间已改为${dateFmt}${creneau ? '，时间段：' + creneau : ''}。如有疑问，请致电 +33 6 63 79 87 56。`;
+  } else if (lg === 'ru') {
+    content = `Loc'Air - В соответствии с вашей просьбой подтверждаем: возврат кондиционера состоится ${dateFmt}${creneau ? ', интервал ' + creneau : ''}. Вопросы? Звоните: +33 6 63 79 87 56.`;
+  } else {
+    content = `Loc'Air - Suite à votre demande, nous vous confirmons que la récupération de votre climatiseur aura bien lieu le ${dateFmt}${creneau ? ', créneau ' + creneau : ''}. Une question ? Appelez-nous au 06 63 79 87 56.`;
+  }
+  const result = await sendBrevoSms({ to: tel, content });
+  await supabase.from('email_log').insert({
+    reservation_id: reservationId, scenario: 'sms_recuperation_reprogrammee', canal: 'sms',
+    destinataire: tel, modele: 'sms_recuperation_reprogrammee',
+    statut: result.ok ? 'envoye' : 'erreur',
+    erreur: result.ok ? null : String(result.error || '').slice(0, 500),
+    contenu: content,
+  }).catch(() => {});
 }
 
 module.exports = async (req, res) => {
@@ -246,7 +276,7 @@ module.exports = async (req, res) => {
     if (action === 'update') {
       const livraisonId = parseInt(body.livraison_id);
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
-      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, type, statut');
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, type, statut, date_prevue, reservation_id');
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
       if (['fait', 'annule'].includes(liv.statut)) {
         return res.status(400).json({ error: 'Mission terminée ou annulée : non modifiable' });
@@ -282,6 +312,26 @@ module.exports = async (req, res) => {
           livraisonId, tag: 'modification',
         });
       }
+
+      // Le client a demandé un autre jour de récupération (avant ou après le
+      // J+1 standard) : on le confirme par SMS dès que l'admin reprogramme
+      // effectivement la date — jamais pour un simple changement de créneau.
+      if (liv.type === 'recuperation' && patch.date_prevue && patch.date_prevue !== liv.date_prevue) {
+        try {
+          const { data: resaForSms } = await supabase
+            .from('reservations').select('tel, lang').eq('id', liv.reservation_id).maybeSingle();
+          if (resaForSms?.tel) {
+            await sendRecuperationReprogrammeeSms(supabase, {
+              reservationId: liv.reservation_id, tel: resaForSms.tel, lang: resaForSms.lang,
+              creneau: patch.creneau !== undefined ? patch.creneau : null,
+              datePrevue: patch.date_prevue,
+            });
+          }
+        } catch (e) {
+          console.error('[SMS récupération reprogrammée]', e.message);
+        }
+      }
+
       return res.status(200).json({ ok: true });
     }
 
@@ -494,3 +544,4 @@ module.exports = async (req, res) => {
     return res.status(500).json({ error: 'Erreur serveur' });
   }
 };
+module.exports.sendRecuperationReprogrammeeSms = sendRecuperationReprogrammeeSms;

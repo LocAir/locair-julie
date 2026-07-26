@@ -10,6 +10,7 @@ const AD_HOC_LABEL = {
   sms_prolongation:          'SMS confirmation de prolongation',
   sms_relance_prolongation:  'SMS proposition de prolongation (J-4)',
   sms_rappel_recuperation:   'SMS rappel récupération (J-1)',
+  sms_recuperation_reprogrammee: 'SMS récupération reprogrammée (date modifiée par l\'admin)',
   email_contrat_facture:     'Email contrat + facture',
   sms_mission_confirmee:     'SMS mission confirmée',
   sms_client_absent:         'SMS client absent',
