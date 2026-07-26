@@ -1,7 +1,8 @@
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity, listCities } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminToken, checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { computeParcDashboard } = require('./_lib/parcDashboard');
 const { isValidDate, addDays } = require('./_lib/dates');
@@ -264,6 +265,10 @@ module.exports = async (req, res) => {
 
   try {
     if (body.action === 'export_comptable') {
+      const adminRole = await checkAdminRole(req, supabase);
+      if (!adminRole.ok || !roleHasAccess(adminRole.role, 'finances')) {
+        return res.status(403).json({ error: "Ton compte n'a pas accès à l'export comptable." });
+      }
       if (!isValidDate(body.date_debut) || !isValidDate(body.date_fin) || body.date_debut > body.date_fin) {
         return res.status(400).json({ error: 'Période invalide' });
       }

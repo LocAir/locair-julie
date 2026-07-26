@@ -103,7 +103,7 @@ module.exports = async (req, res) => {
       if (!client) return res.status(404).json({ error: 'Client introuvable' });
 
       const { data: resas } = await supabase
-        .from('reservations').select('id, ref, statut, date_debut, date_fin').eq('client_id', clientId);
+        .from('reservations').select('id, ref, statut, date_debut, date_fin').eq('client_id', clientId).eq('city_id', city.id);
       const resaIds = (resas || []).map(r => r.id);
       if (!resaIds.length) return res.status(200).json({ sent: [], upcoming: [], evenementiels: [] });
 

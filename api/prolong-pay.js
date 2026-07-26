@@ -4,6 +4,7 @@ const { resolveCityById } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice: calcBase } = require('./_lib/pricing');
+const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 function diffDays(startStr, endStr) {
   return Math.round(
@@ -13,6 +14,12 @@ function diffDays(startStr, endStr) {
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const supabaseRL = getSupabase();
+  const ip = getClientIp(req);
+  if (await isRateLimited(supabaseRL, `prolong-pay:${ip}`)) {
+    return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
+  }
 
   const { email, ref, new_date_fin } = req.body || {};
 
@@ -191,7 +198,7 @@ module.exports = async (req, res) => {
     // les deux passer le premier contrôle de stock (TOCTOU). Si le stock devient
     // négatif après notre insert, on annule.
     const recheckDispo = await getAvailability(supabase, city.id, orig.date_fin, new_date_fin);
-    if (recheckDispo < 0) {
+    if (recheckDispo < (orig.quantite || 1)) {
       await supabase.from('reservations').delete().eq('stripe_payment_intent_id', intent.id).catch(() => {});
       await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel recheck prolong]', e.message));
       return res.status(409).json({ error: 'Plus assez de climatiseurs disponibles pour cette prolongation.', disponibles: 0 });
@@ -205,6 +212,7 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error('[prolong-pay stripe]', err.message);
+    await recordFailedAttempt(supabaseRL, `prolong-pay:${ip}`).catch(() => {});
     return res.status(500).json({ error: 'Erreur serveur paiement' });
   }
 };

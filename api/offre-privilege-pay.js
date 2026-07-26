@@ -72,6 +72,9 @@ module.exports = async (req, res) => {
     return res.status(200).json({ clientSecret: intent.client_secret, amountCents: offre.prix_vente_cents });
   } catch (err) {
     console.error('[Offre privilège pay]', err.message);
+    // Remettre l'offre à 'proposee' si le lock a été posé mais que Stripe a échoué —
+    // sans ça l'offre reste bloquée en 'en_cours' et le client ne peut plus réessayer.
+    await supabase.from('offres_privilege').update({ statut: 'proposee' }).eq('id', offreId).catch(() => {});
     return res.status(500).json({ error: 'Erreur serveur' });
   }
 };

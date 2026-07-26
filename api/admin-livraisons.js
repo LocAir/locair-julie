@@ -180,8 +180,16 @@ module.exports = async (req, res) => {
 
         // Un remplacement libère l'ancienne unité de la réservation (elle redevient
         // disponible au stock) et attache la nouvelle à sa place.
+        // Pour ne pas effacer toutes les unités d'une réservation multi-appareils,
+        // on supprime uniquement la première ligne existante (l'unité remplacée).
         if (type === 'changement') {
-          await supabase.from('reservation_appareils').delete().eq('reservation_id', reservationId);
+          const { data: existing } = await supabase
+            .from('reservation_appareils').select('appareil_id')
+            .eq('reservation_id', reservationId).limit(1);
+          if (existing && existing.length) {
+            await supabase.from('reservation_appareils')
+              .delete().eq('reservation_id', reservationId).eq('appareil_id', existing[0].appareil_id);
+          }
         }
         const { error: raErr } = await supabase
           .from('reservation_appareils')
@@ -399,7 +407,7 @@ module.exports = async (req, res) => {
           typeEvenement: 'recuperation', livraisonId, utilisateur: 'admin',
           commentaire: update.etat_materiel_commentaire,
         });
-        const { error: resaTermErr } = await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id);
+        const { error: resaTermErr } = await supabase.from('reservations').update({ statut: 'terminee' }).eq('id', liv.reservation_id).eq('statut', 'confirmee');
         if (resaTermErr) throw resaTermErr;
         try { await sendScenarioEmail(supabase, { reservationId: liv.reservation_id, scenario: 'fin_location' }); }
         catch (e) { console.error('[Email fin_location]', e.message); }
@@ -428,11 +436,12 @@ module.exports = async (req, res) => {
       if (!['acceptee', 'en_route', 'arrivee', 'probleme'].includes(liv.statut)) {
         return res.status(409).json({ error: 'Cette mission n\'est pas en cours' });
       }
-      await supabase.from('livraisons').update({
+      const { error: remettreErr } = await supabase.from('livraisons').update({
         statut: 'a_faire', accepted_at: null, depart_at: null, arrivee_at: null,
         probleme_type: null, probleme_description: null, probleme_at: null,
         client_notifie_at: null,
       }).eq('id', liv.id);
+      if (remettreErr) throw remettreErr;
       if (liv.transporteur_id) {
         await notifyTransporteur(supabase, liv.transporteur_id, {
           type: 'nouvelle_mission', message: 'Une mission a été remise en attente d\'acceptation.',

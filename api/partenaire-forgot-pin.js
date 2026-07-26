@@ -1,3 +1,4 @@
+const crypto             = require('crypto');
 const { getSupabase }    = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
 const { tplNouveauCodeAmbassadeur } = require('./_lib/emailTemplates');
@@ -32,8 +33,8 @@ module.exports = async (req, res) => {
     if (partenaire && partenaire.email) {
       let newPin = null;
       for (let attempt = 0; attempt < 5; attempt++) {
-        const candidate = String(Math.floor(100000 + Math.random() * 900000));
-        const { error } = await supabase.from('partenaires').update({ pin: candidate }).eq('id', partenaire.id);
+        const candidate = String(crypto.randomInt(100000, 1000000));
+        const { error } = await supabase.from('partenaires').update({ pin: candidate, pin_hashed: false }).eq('id', partenaire.id);
         if (!error) { newPin = candidate; break; }
         if (error.code !== '23505') throw error; // collision de code : réessayer
       }

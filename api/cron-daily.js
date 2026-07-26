@@ -169,7 +169,7 @@ module.exports = async (req, res) => {
   try {
     const { data: enAttente } = await supabase
       .from('reservations')
-      .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, created_at, source, lang, reservation_origine_id')
+      .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, stripe_payment_intent_id, created_at, source, lang, reservation_origine_id')
       .eq('statut', 'en_attente')
       .not('email', 'is', null);
 
@@ -184,7 +184,12 @@ module.exports = async (req, res) => {
         // Passé 7 jours sans paiement malgré les relances, on arrête les
         // frais : la réservation est annulée, plus aucune relance ne suit.
         if (ageJours >= 7) {
-          await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', resa.id);
+          await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', resa.id).eq('statut', 'en_attente');
+          if (resa.stripe_payment_intent_id) {
+            await stripeRelance.paymentIntents.cancel(resa.stripe_payment_intent_id).catch(e =>
+              console.error('[Cron annulation PI cancel]', resa.stripe_payment_intent_id, e.message)
+            );
+          }
           await pushToAdmin(supabase, {
             title: `⏳ Réservation annulée (jamais payée) — ${resa.ref || '?'}`,
             body:  `${resa.prenom || ''} ${resa.nom || ''} — en attente depuis ${ageJours}j sans paiement, annulée automatiquement.`,

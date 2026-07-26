@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
@@ -87,7 +88,7 @@ module.exports = async (req, res) => {
       // Code personnel à 6 chiffres — généré automatiquement si non fourni.
       let pin = (body.pin || '').trim();
       for (let attempt = 0; attempt < 5; attempt++) {
-        const candidate = pin || String(Math.floor(100000 + Math.random() * 900000));
+        const candidate = pin || String(crypto.randomInt(100000, 1000000));
         const typesAutorises = Array.isArray(body.types_autorises) ? body.types_autorises : [];
         const { data: created, error } = await supabase.from('transporteurs').insert({
           city_id:                 city.id,

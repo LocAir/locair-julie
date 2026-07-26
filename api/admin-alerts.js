@@ -16,7 +16,8 @@ module.exports = async (req, res) => {
     const city = await resolveAdminCity(supabase, req.body);
     if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
 
-    const { data: cityTransp } = await supabase.from('transporteurs').select('id').eq('city_id', city.id);
+    const { data: cityTransp, error: transpErr } = await supabase.from('transporteurs').select('id').eq('city_id', city.id);
+    if (transpErr) throw transpErr;
     const transpIds = (cityTransp || []).map(t => t.id);
     let virements = 0;
     if (transpIds.length) {
@@ -28,7 +29,8 @@ module.exports = async (req, res) => {
 
     // Une réservation masquée (doublon retiré de l'écran par l'admin) ne doit
     // gonfler ni le badge "problèmes/non assignées" ni le bandeau permanent.
-    const { data: cityResas } = await supabase.from('reservations').select('id').eq('city_id', city.id).eq('masquee', false);
+    const { data: cityResas, error: resasErr } = await supabase.from('reservations').select('id').eq('city_id', city.id).eq('masquee', false);
+    if (resasErr) throw resasErr;
     const resaIds = (cityResas || []).map(r => r.id);
     let livraisons = 0;
     let nonAssignees = 0;
