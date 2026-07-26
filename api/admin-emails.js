@@ -3,11 +3,18 @@ const { checkAdminToken } = require('./_lib/auth');
 const { resolveAdminCity } = require('./_lib/city');
 const { SCENARIOS, sendScenarioEmail } = require('./_lib/emailEngine');
 const { upcomingScenariosForReservation } = require('./_lib/emailSchedule');
-const { buildCommunicationsCockpit, scenarioLibelle, EVENT_SCENARIOS } = require('./_lib/communicationsCockpit');
+const { buildCommunicationsCockpit, scenarioLibelle, EVENT_SCENARIOS, SMS_DATED_SCENARIOS } = require('./_lib/communicationsCockpit');
+const { sendRelanceProlongationSms, sendRappelRecuperationSms } = require('./_lib/reservations');
 
 const RESEND_ERROR_LABEL = {
   no_email: "Ce client n'a pas d'email enregistré",
+  no_tel: "Ce client n'a pas de téléphone enregistré",
   skipped_by_admin: 'Cet envoi a été mis en pause/supprimé depuis la fiche client — reprends-le avant de le renvoyer',
+};
+
+const SMS_SENDER_BY_SCENARIO = {
+  sms_relance_prolongation: sendRelanceProlongationSms,
+  sms_rappel_recuperation: sendRappelRecuperationSms,
 };
 
 module.exports = async (req, res) => {
@@ -73,15 +80,31 @@ module.exports = async (req, res) => {
     }
 
     // Renvoi manuel d'un email de scénario pour une réservation — contourne
-    // la garde "jamais deux fois" (force:true) mais reste historisé.
+    // la garde "jamais deux fois" (force:true) mais reste historisé. Couvre
+    // aussi les 2 SMS automatisés traités comme des scénarios datés
+    // (sms_relance_prolongation, sms_rappel_recuperation — voir
+    // _lib/communicationsCockpit.js) : même bouton "Envoyer maintenant"/
+    // "Renvoyer" que pour un email, mais délègue à la fonction SMS dédiée.
     if (action === 'resend') {
       const reservationId = parseInt(body.reservation_id);
       const scenario = String(body.scenario || '');
-      if (!reservationId || !SCENARIOS[scenario]) {
+      const isSmsScenario = SMS_DATED_SCENARIOS.includes(scenario);
+      if (!reservationId || (!SCENARIOS[scenario] && !isSmsScenario)) {
         return res.status(400).json({ error: 'reservation_id et scenario valides requis' });
       }
       const city = await resolveAdminCity(supabase, body);
       if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
+
+      if (isSmsScenario) {
+        const { data: resaSms } = await supabase
+          .from('reservations').select('id, tel, lang, prenom, ref, date_fin')
+          .eq('id', reservationId).eq('city_id', city.id).maybeSingle();
+        if (!resaSms) return res.status(404).json({ error: 'Réservation introuvable' });
+        const result = await SMS_SENDER_BY_SCENARIO[scenario](supabase, resaSms, { force: true });
+        if (!result.sent) return res.status(422).json({ error: RESEND_ERROR_LABEL[result.reason] || (result.error || result.reason) });
+        return res.status(200).json({ ok: true });
+      }
+
       const { data: resaOwned } = await supabase.from('reservations').select('id').eq('id', reservationId).eq('city_id', city.id).maybeSingle();
       if (!resaOwned) return res.status(404).json({ error: 'Réservation introuvable' });
       const result = await sendScenarioEmail(supabase, { reservationId, scenario, force: true });

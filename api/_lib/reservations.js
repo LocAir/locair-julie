@@ -5,7 +5,7 @@ const { recordMouvement } = require('./stockMouvements');
 const { addDays } = require('./dates');
 const { generateAndSendDocuments } = require('./documents');
 const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
-const { sendScenarioEmail, getSignature, withSignature, fmtDate } = require('./emailEngine');
+const { sendScenarioEmail, getSignature, withSignature, fmtDate, wasScenarioSkipped } = require('./emailEngine');
 const { tplProlongConfirmation } = require('./emailTemplates');
 
 function normalizeTel(tel) {
@@ -354,13 +354,22 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
 // location tombe dans 4 jours. Idempotent sur son propre scénario
 // (sms_relance_prolongation) : jamais renvoyé deux fois pour la même
 // réservation, même si le cron tourne plusieurs fois le même jour.
-async function sendRelanceProlongationSms(supabase, resa) {
-  if (!resa || !resa.id || !resa.tel) return;
+async function sendRelanceProlongationSms(supabase, resa, { force = false } = {}) {
+  if (!resa || !resa.id || !resa.tel) return { sent: false, reason: 'no_tel' };
+  // Mis en pause (ou supprimé) depuis le panneau Communications de l'admin —
+  // voir wasScenarioSkipped/email_skip, même mécanisme que les 8 emails
+  // automatisés (sms_relance_prolongation est traité comme un scénario daté,
+  // voir _lib/communicationsCockpit.js). Jamais outrepassé par `force` : un
+  // renvoi manuel doit d'abord reprendre l'envoi (bouton "Reprendre") avant
+  // de pouvoir le déclencher, exactement comme pour les emails.
+  if (await wasScenarioSkipped(supabase, resa.id, 'sms_relance_prolongation')) return { sent: false, reason: 'skipped_by_admin' };
 
-  const { count: dejaEnvoye } = await supabase
-    .from('email_log').select('id', { count: 'exact', head: true })
-    .eq('reservation_id', resa.id).eq('scenario', 'sms_relance_prolongation').eq('statut', 'envoye');
-  if (dejaEnvoye > 0) return;
+  if (!force) {
+    const { count: dejaEnvoye } = await supabase
+      .from('email_log').select('id', { count: 'exact', head: true })
+      .eq('reservation_id', resa.id).eq('scenario', 'sms_relance_prolongation').eq('statut', 'envoye');
+    if (dejaEnvoye > 0) return { sent: false, reason: 'already_sent' };
+  }
 
   const lang = resa.lang || 'fr';
   const prenom = resa.prenom || '';
@@ -384,6 +393,7 @@ async function sendRelanceProlongationSms(supabase, resa) {
     erreur: result.ok ? null : String(result.error || '').slice(0, 500),
     contenu: content,
   }).catch(() => {});
+  return result.ok ? { sent: true } : { sent: false, reason: 'error', error: result.error };
 }
 
 // SMS envoyé le jour de la fin de location, en complément de l'email
@@ -393,25 +403,34 @@ async function sendRelanceProlongationSms(supabase, resa) {
 // Appelé par cron-daily.js en même temps que l'email rappel_recuperation
 // (même fenêtre, voir _lib/emailSchedule.js). Idempotent sur son propre
 // scénario (sms_rappel_recuperation) : jamais renvoyé deux fois.
-async function sendRappelRecuperationSms(supabase, resa) {
-  if (!resa || !resa.id || !resa.tel) return;
+async function sendRappelRecuperationSms(supabase, resa, { force = false } = {}) {
+  if (!resa || !resa.id || !resa.tel) return { sent: false, reason: 'no_tel' };
+  // Mis en pause (ou supprimé) depuis le panneau Communications de l'admin —
+  // voir wasScenarioSkipped/email_skip, même mécanisme que les 8 emails
+  // automatisés (sms_rappel_recuperation est traité comme un scénario daté,
+  // voir _lib/communicationsCockpit.js). Jamais outrepassé par `force` : un
+  // renvoi manuel doit d'abord reprendre l'envoi (bouton "Reprendre") avant
+  // de pouvoir le déclencher, exactement comme pour les emails.
+  if (await wasScenarioSkipped(supabase, resa.id, 'sms_rappel_recuperation')) return { sent: false, reason: 'skipped_by_admin' };
 
-  const { count: dejaEnvoye } = await supabase
-    .from('email_log').select('id', { count: 'exact', head: true })
-    .eq('reservation_id', resa.id).eq('scenario', 'sms_rappel_recuperation').eq('statut', 'envoye');
-  if (dejaEnvoye > 0) return;
+  if (!force) {
+    const { count: dejaEnvoye } = await supabase
+      .from('email_log').select('id', { count: 'exact', head: true })
+      .eq('reservation_id', resa.id).eq('scenario', 'sms_rappel_recuperation').eq('statut', 'envoye');
+    if (dejaEnvoye > 0) return { sent: false, reason: 'already_sent' };
+  }
 
   const lang = resa.lang || 'fr';
   const dateRecup = fmtDate(addDays(resa.date_fin, 1), lang);
   let content;
   if (lang === 'en') {
-    content = `Loc'Air - Your rental ends today. Our technician will come to collect the unit tomorrow (${dateRecup}). We'll text you 30 minutes before arrival. Please have it unplugged and the duct rolled up if possible. Questions? Call us at +33 6 63 79 87 56.`;
+    content = `Loc'Air - Your rental ends today. Our technician will come to collect the unit tomorrow (${dateRecup}). We'll text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
   } else if (lang === 'zh') {
-    content = `Loc'Air - 您的租赁今天结束。技术员将于明天（${dateRecup}）前来取回设备，到达前30分钟会发短信通知您。请提前拔掉电源，如可能请将排风管卷好。如有疑问，请致电 +33 6 63 79 87 56。`;
+    content = `Loc'Air - 您的租赁今天结束。技术员将于明天（${dateRecup}）前来取回设备，到达前30分钟会发短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
   } else if (lang === 'ru') {
-    content = `Loc'Air - Ваша аренда заканчивается сегодня. Мастер заберёт устройство завтра (${dateRecup}) и отправит SMS за 30 минут до приезда. Пожалуйста, отключите устройство от розетки и по возможности скатайте гофру. Вопросы? Звоните: +33 6 63 79 87 56.`;
+    content = `Loc'Air - Ваша аренда заканчивается сегодня. Мастер заберёт устройство завтра (${dateRecup}) и отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
   } else {
-    content = `Loc'Air - Votre location se termine aujourd'hui. Notre technicien viendra récupérer l'appareil demain (${dateRecup}) et vous enverra un SMS 30 min avant son arrivée. Merci de le débrancher et d'enrouler la gaine si possible. Une question ? Appelez-nous au 06 63 79 87 56.`;
+    content = `Loc'Air - Votre location se termine aujourd'hui. Notre technicien viendra récupérer l'appareil demain (${dateRecup}) et vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
   }
 
   const result = await sendBrevoSms({ to: resa.tel, content });
@@ -422,6 +441,7 @@ async function sendRappelRecuperationSms(supabase, resa) {
     erreur: result.ok ? null : String(result.error || '').slice(0, 500),
     contenu: content,
   }).catch(() => {});
+  return result.ok ? { sent: true } : { sent: false, reason: 'error', error: result.error };
 }
 
 // Confirme une réservation (paiement Stripe réussi OU confirmation manuelle par
