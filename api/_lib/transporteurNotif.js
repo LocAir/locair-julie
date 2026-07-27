@@ -39,12 +39,21 @@ async function smsNouvelleMission(supabase, transporteurId, { type, livraisonId 
       supabase.from('livraisons').select('type, date_prevue, creneau, reservation:reservations(adresse)').eq('id', livraisonId).maybeSingle(),
     ]);
     if (!transporteur?.telephone || !liv) return;
-    const libelle = liv.type === 'recuperation' ? 'récupération' : 'livraison';
+    // Une ligne par info (type, date/créneau, adresse, lien) plutôt qu'une
+    // seule phrase dense — plus rapide à lire d'un coup d'œil sur le lock
+    // screen d'un téléphone.
+    const libelle = liv.type === 'recuperation' ? 'Récupération' : 'Livraison';
     const dateFmt = fmtDateFR(liv.date_prevue);
     const adresse = liv.reservation?.adresse || '';
-    const content = `Loc'Air - Nouvelle mission : ${libelle} le ${dateFmt}` +
-      `${liv.creneau ? ', créneau ' + liv.creneau : ''}.` +
-      `${adresse ? ' ' + adresse + '.' : ''} Acceptez-la ici : https://www.locair.fr/transporteur/?open=${livraisonId}`;
+    const lignes = [
+      "Loc'Air - Nouvelle mission",
+      '',
+      libelle,
+      `${dateFmt}${liv.creneau ? ', créneau ' + liv.creneau : ''}`,
+    ];
+    if (adresse) lignes.push(adresse);
+    lignes.push('', `Accepter : https://www.locair.fr/transporteur/?open=${livraisonId}`);
+    const content = lignes.join('\n');
     const result = await sendBrevoSms({ to: transporteur.telephone, content });
     if (!result.ok) console.error('[Notif transporteur SMS]', result.error);
   } catch (e) {
