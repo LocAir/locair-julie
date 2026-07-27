@@ -8257,6 +8257,7 @@ const _smartLine=document.getElementById('hero-smart-line');
 const _MONTHS_LONG_FR=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const _MONTHS_LONG_EN=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const _MONTHS_LONG_ZH=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+const _MONTHS_LONG_RU=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 let _urgencyShown=false;
 function _updateMobileBar(){
   const el=document.querySelector('.m-bar-label');
@@ -8275,7 +8276,7 @@ function _renderSmartLine(){
   if(SOLD_OUT){_smartLine.style.display='none';return false;}
   const p=_parisNow();
   const h=p.h,m=p.m;
-  const isEn=_lang==='en';const isZH=_lang==='zh';
+  const isEn=_lang==='en';const isZH=_lang==='zh';const isRU=_lang==='ru';
   const _dot=(color,pulse)=>'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+color+';flex-shrink:0;margin-right:7px;vertical-align:middle'+(pulse?';animation:alertPulse 2.4s ease-in-out infinite':'')+'" aria-hidden="true"></span>';
   if(h>=8&&(h<20||(h===20&&m===0))){
     // Fenêtre 8h–20h : compte à rebours
@@ -8285,14 +8286,15 @@ function _renderSmartLine(){
     _smartLine.innerHTML=_dot('#c5a96c',true)+(isEn
       ?timeStr+' left — guaranteed next-day delivery'
       :isZH?'还剩 '+timeStr+' — 明日送达保证'
+      :isRU?'Осталось '+timeStr.replace('h','ч').replace('min','мин')+' — доставка гарантирована завтра'
       :'Il vous reste '+timeStr+' — livraison garantie demain');
     _smartLine.style.color='rgba(255,255,255,.92)';
     _smartLine.style.display='block';
   }else if(h>=20||(h===20&&m>0)){
     // Après 20h : cutoff dépassé → J+2
     const dt=_addDays(2);
-    const dateStr=isEn?(dt.getDate()+' '+_MONTHS_LONG_EN[dt.getMonth()]):isZH?(dt.getDate()+_MONTHS_LONG_ZH[dt.getMonth()]):(dt.getDate()+' '+_MONTHS_LONG_FR[dt.getMonth()]);
-    _smartLine.innerHTML=_dot('rgba(255,255,255,.4)',false)+(isEn?'Next available: '+dateStr:isZH?'最近可送：'+dateStr:'Livraison le '+dateStr);
+    const dateStr=isEn?(dt.getDate()+' '+_MONTHS_LONG_EN[dt.getMonth()]):isZH?(dt.getDate()+_MONTHS_LONG_ZH[dt.getMonth()]):isRU?(dt.getDate()+' '+_MONTHS_LONG_RU[dt.getMonth()]):(dt.getDate()+' '+_MONTHS_LONG_FR[dt.getMonth()]);
+    _smartLine.innerHTML=_dot('rgba(255,255,255,.4)',false)+(isEn?'Next available: '+dateStr:isZH?'最近可送：'+dateStr:isRU?'Доставка '+dateStr:'Livraison le '+dateStr);
     _smartLine.style.color='rgba(255,255,255,.72)';
     _smartLine.style.display='block';
   }else{
@@ -8300,6 +8302,7 @@ function _renderSmartLine(){
     _smartLine.innerHTML=_dot('rgba(255,255,255,.55)',false)+(isEn
       ?'Next-day delivery · book before 8pm today'
       :isZH?'次日送达 · 今日20点前预订'
+      :isRU?'Доставка с завтрашнего утра · заказ до 20:00'
       :'Livraison dès demain matin · réservez avant 20h');
     _smartLine.style.color='rgba(255,255,255,.72)';
     _smartLine.style.display='block';
