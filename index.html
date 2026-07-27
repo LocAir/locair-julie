@@ -6489,7 +6489,8 @@ function buildRecap(){
   const recupEl=document.getElementById('recap-date-recup');
   const isEN=_lang==='en';
   const isZH=_lang==='zh';
-  if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (our team will collect the unit)':isZH?pickupDateStr+' 取回（由我们团队上门取回）':'Le '+pickupDateStr+' (récupération par notre équipe)';
+  const isRU=_lang==='ru';
+  if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (our team will collect the unit)':isZH?pickupDateStr+' 取回（由我们团队上门取回）':isRU?pickupDateStr+' (наша команда заберёт устройство)':'Le '+pickupDateStr+' (récupération par notre équipe)';
   const total=Math.max(0,calcTotal(days)-_promoDiscount+DELIVERY_FEE);
   const installLabel=_techInstall?(isEN?'Technician installation':isZH?'技术员安装 — 80 €':'Pose technicien — 80 €'):(isEN?'Self-install (free)':isZH?'自行安装（免费）':'Pose autonome — Kit fourni');
   const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:isZH?'电梯：'+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
@@ -8262,13 +8263,13 @@ let _urgencyShown=false;
 function _updateMobileBar(){
   const el=document.querySelector('.m-bar-label');
   if(!el)return;
-  const isEn=_lang==='en';const isZH=_lang==='zh';
+  const isEn=_lang==='en';const isZH=_lang==='zh';const isRU=_lang==='ru';
   if(_cutoffOk()){
-    el.innerHTML=isEn?'Delivered to you tomorrow · <strong>8am–12pm · 7 days a week</strong>':isZH?'明日送货上门 · <strong>8:00–12:00 · 每天</strong>':'Livré chez vous demain · <strong>8h–12h · 7j/7</strong>';
+    el.innerHTML=isEn?'Delivered to you tomorrow · <strong>8am–12pm · 7 days a week</strong>':isZH?'明日送货上门 · <strong>8:00–12:00 · 每天</strong>':isRU?'Доставка на дом завтра · <strong>8:00–12:00 · 7 дней в неделю</strong>':'Livré chez vous demain · <strong>8h–12h · 7j/7</strong>';
   }else{
     const dt=_addDays(2);
-    const mo=isEn?_MONTHS_LONG_EN[dt.getMonth()]:isZH?_MONTHS_LONG_ZH[dt.getMonth()]:_MONTHS_LONG_FR[dt.getMonth()];
-    el.innerHTML=isEn?'Delivery '+dt.getDate()+' '+mo+' · <strong>8am–12pm · 7 days a week</strong>':isZH?dt.getDate()+mo+'配送 · <strong>8:00–12:00 · 每天</strong>':'Livraison le '+dt.getDate()+' '+mo+' · <strong>8h–12h · 7j/7</strong>';
+    const mo=isEn?_MONTHS_LONG_EN[dt.getMonth()]:isZH?_MONTHS_LONG_ZH[dt.getMonth()]:isRU?_MONTHS_LONG_RU[dt.getMonth()]:_MONTHS_LONG_FR[dt.getMonth()];
+    el.innerHTML=isEn?'Delivery '+dt.getDate()+' '+mo+' · <strong>8am–12pm · 7 days a week</strong>':isZH?dt.getDate()+mo+'配送 · <strong>8:00–12:00 · 每天</strong>':isRU?'Доставка '+dt.getDate()+' '+mo+' · <strong>8:00–12:00 · 7 дней в неделю</strong>':'Livraison le '+dt.getDate()+' '+mo+' · <strong>8h–12h · 7j/7</strong>';
   }
 }
 function _renderSmartLine(){
