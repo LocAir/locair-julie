@@ -18,8 +18,8 @@
 :root{
   /* Palette identique à index.html (site vitrine) — voir --root du site pour la référence */
   --blue:#1b3a5f; --blue-d:#142d4a; --blue-lt:#dce8f5;
-  --black:#141e30; --black2:#1e2d45; --bg:#eef1f5; --white:#ffffff;
-  --grey:#5a6577; --grey2:#6b7785; --grey-soft:#707a8a; --rule:#dde3ea; --gold:#c5a96c; --gold-lt:#f3ead9;
+  --black:#141e30; --bg:#eef1f5; --white:#ffffff;
+  --grey:#5a6577; --grey-soft:#707a8a; --rule:#dde3ea; --gold:#c5a96c; --gold-lt:#f3ead9; --gold-d:#8a6d2f;
   --green:#2d6a4f; --green-bg:#e6f0ea;
   --red:#9b2c1a; --red-bg:#f8e9e6;
   --amber:#9c6a17; --amber-bg:#f6eed9;
@@ -117,7 +117,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
     font-family:var(--body);font-weight:700;font-size:14px;color:var(--black);
     cursor:pointer;box-shadow:var(--sh-xs);position:relative;
   }
-  .mobile-menu-dot{width:8px;height:8px;border-radius:50%;background:var(--red);margin-left:2px}
+  .mobile-menu-dot{width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:2px}
   .mobile-menu-backdrop{
     display:none;position:fixed;inset:0;background:rgba(20,30,48,.45);z-index:199;
   }
@@ -210,7 +210,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .gantt-bar-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gantt-bar-sub{font-weight:400;opacity:.85;font-size:10.5px}
 .gantt-legend{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--grey);flex-wrap:wrap}
-.gantt-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.gantt-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .gantt-dot-attente{background:var(--amber)}
 .gantt-dot-confirmee{background:var(--green)}
 .gantt-legend .gantt-status-dot{margin-right:5px}
@@ -222,7 +222,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .row-title{font-family:var(--disp);font-weight:600;font-size:17px;letter-spacing:0}
 .row-meta{font-size:12.5px;color:var(--grey);line-height:1.6}
 .chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:4px 10px 4px 8px;border-radius:100px;background:var(--bg);color:var(--grey)}
-.chip::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0}
+.chip::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
 .chip.confirmee,.chip.fait,.chip.verse,.chip.actif,.chip.terminee{background:var(--green-bg);color:var(--green)}
 .chip.en_attente,.chip.a_faire,.chip.acceptee,.chip.demande,.chip.en_route,.chip.arrivee{background:var(--amber-bg);color:var(--amber)}
 .chip.annulee,.chip.annule,.chip.probleme,.chip.refusee,.chip.remboursee{background:var(--red-bg);color:var(--red)}
@@ -230,7 +230,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .chip.inactif{background:var(--bg);color:var(--grey)}
 .chip.type-livraison{background:var(--blue-lt);color:var(--blue)}
 .chip.type-recuperation{background:var(--amber-bg);color:var(--amber)}
-.chip.type-changement{background:var(--gold-lt);color:#8a6d2f}
+.chip.type-changement{background:var(--gold-lt);color:var(--gold-d)}
 
 /* Carte réservation : hiérarchie client → dates → prix, au lieu d'une seule
    ligne de métadonnées à parser. Le prix reprend le traitement typographique
@@ -300,7 +300,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .day-progress .dp-fill{height:100%;border-radius:100px;background:var(--blue);transition:width .4s ease}
 .day-progress .dp-fill.over{background:var(--red)}
 .stock-legend{display:flex;gap:20px;font-size:13px;color:var(--black);font-weight:600}
-.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:7px}
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:7px}
 .dot-green{background:var(--green)}
 .dot-blue{background:var(--blue)}
 
@@ -654,7 +654,7 @@ function searchRowHtml(type, it){
     <span><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${escHtml(it.tel||it.email||'')}</span></span></div>`;
   if(type==='climatiseurs') return `<div class="a-search-row" onclick="goToSearchResult('climatiseurs', ${it.id}, ${it.city_id}, ${it.numero})">
     <span><span class="a-search-row-main">Climatiseur n°${it.numero}</span><br><span class="a-search-row-sub">${escHtml(it.reference||'')}</span></span>
-    <span class="chip ${it.statut}">${it.statut}</span></div>`;
+    <span class="chip ${APPAREIL_STATUT_CHIP[it.statut]||''}">${APPAREIL_STATUT_LABEL[it.statut]||it.statut}</span></div>`;
   if(type==='transporteurs') return `<div class="a-search-row" onclick="goToSearchResult('transporteurs', ${it.id}, ${it.city_id})">
     <span><span class="a-search-row-main">${escHtml(it.nom)}</span><br><span class="a-search-row-sub">${escHtml(it.telephone||'')}</span></span>
     <span class="chip ${it.actif?'actif':'inactif'}">${it.actif?(it.en_pause?'en pause':'actif'):'désactivé'}</span></div>`;
@@ -680,6 +680,11 @@ function goToSearchResult(type, id, cityId, numero, ref){
       if(el){ el.value = ref; renderReservations(); }
     }
     if(type==='climatiseurs' && numero) voirFicheAppareil(id, numero);
+    // Cliquer un client/transporteur depuis la recherche globale devait
+    // jusqu'ici retaper son nom une 2e fois dans la liste qui vient de
+    // s'ouvrir — ouvre directement sa fiche, comme pour un climatiseur.
+    if(type==='clients') openClientFiche(id);
+    if(type==='transporteurs') editFiche(id);
   }, 350);
 }
 document.addEventListener('click', e => {
@@ -1105,11 +1110,20 @@ function confirmAction(message, onYes, opts={}){
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  const cancel = () => { closeModal(); if(opts.onCancel) opts.onCancel(); };
+  const cancel = () => { document.removeEventListener('keydown', onKey); closeModal(); if(opts.onCancel) opts.onCancel(); };
+  const confirm = () => { document.removeEventListener('keydown', onKey); closeModal(); onYes(); };
   overlay.addEventListener('click', e => { if(e.target===overlay) cancel(); });
   const [cancelBtn, yesBtn] = overlay.querySelectorAll('.btn');
   cancelBtn.onclick = cancel;
-  yesBtn.onclick = () => { closeModal(); onYes(); };
+  yesBtn.onclick = confirm;
+  // Entrée = confirmer, Échap = annuler — ces fenêtres apparaissent des
+  // dizaines de fois par jour (confirmAction est appelée à ~29 endroits du
+  // fichier) ; sans ça il faut systématiquement attraper la souris/le doigt.
+  function onKey(e){
+    if(e.key==='Enter'){ e.preventDefault(); confirm(); }
+    else if(e.key==='Escape'){ e.preventDefault(); cancel(); }
+  }
+  document.addEventListener('keydown', onKey);
 }
 
 function promptAction({title, label, value='', placeholder='', type='text'}, onSubmit){
@@ -2609,7 +2623,7 @@ function reservationRowHtml(res, readOnly){
       </div>
       <div class="resa-bottom">
         <span class="resa-price">${euros(res.prix_total_cents)}</span>
-        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+escHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${(()=>{const p=res.parrain_code;if(!p)return '';const m=p.match(/(\d+)$/);const pct=m?parseInt(m[1]):0;return [10,20,30].includes(pct)?' · <span style="background:var(--gold-lt);color:#8a6d2f;font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--gold)">Code promo '+escHtml(p)+' −'+pct+'%</span>':'';})()}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
+        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+escHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${(()=>{const p=res.parrain_code;if(!p)return '';const m=p.match(/(\d+)$/);const pct=m?parseInt(m[1]):0;return [10,20,30].includes(pct)?' · <span style="background:var(--gold-lt);color:var(--gold-d);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--gold)">Code promo '+escHtml(p)+' −'+pct+'%</span>':'';})()}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
       </div>
       ${res.statut==='confirmee' ? agentLineHtml(res.id) : ''}
       ${readOnly ? '' : `
@@ -2629,7 +2643,7 @@ function reservationRowHtml(res, readOnly){
             ${res.statut==='confirmee'?`<button onclick="proposerOffrePrivilegeManuelle(${res.id})">⭐ Proposer l'Offre Privilège</button>`:''}
             ${res.statut!=='remboursee' && res.statut!=='en_attente' && res.stripe_payment_intent_id ? `<button onclick="rembourserReservation(${res.id})">💳 Rembourser</button>` : ''}
             ${res.statut!=='annulee'?`<button class="danger" onclick="cancelReservation(${res.id})">Annuler la réservation</button>`:''}
-            <button onclick="deleteReservation(${res.id}, '${res.statut}')">Masquer de l'écran</button>
+            <button class="danger" onclick="deleteReservation(${res.id}, '${res.statut}')">🗑️ Supprimer de l'écran</button>
           </div>
         </details>
       </div>`}
@@ -3387,17 +3401,18 @@ function renvoyerLienPaiement(id){
   }, {yesLabel:'Renvoyer'});
 }
 // Validation administrative de l'attribution d'un appareil (Module 6, Partie 6).
-function validerAppareilsReservation(id){
-  confirmAction("Valider l'appareil attribué à cette réservation ? Simple contrôle administratif, ne change rien d'autre.", async () => {
-    try{
-      const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'valider_appareils', id})});
-      if(!r.ok) throw new Error((await r.json()).error||'Erreur');
-      const res = RESERVATIONS_CACHE.find(r => r.id===id);
-      if(res) res.appareils_en_attente_validation = false;
-      renderReservations();
-      showToast('Appareil validé', 'success');
-    }catch(e){ showToast(e.message, 'error'); }
-  }, {yesLabel:'Valider'});
+// Pas de confirmation ici : simple contrôle administratif qui ne change rien
+// d'autre — une fenêtre qui l'admettrait elle-même dans son propre texte
+// n'apporte aucune sécurité, juste un clic en plus (audit UX du 2026-07-27).
+async function validerAppareilsReservation(id){
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'valider_appareils', id})});
+    if(!r.ok) throw new Error((await r.json()).error||'Erreur');
+    const res = RESERVATIONS_CACHE.find(r => r.id===id);
+    if(res) res.appareils_en_attente_validation = false;
+    renderReservations();
+    showToast('Appareil validé', 'success');
+  }catch(e){ showToast(e.message, 'error'); }
 }
 // Réaffectation manuelle d'un appareil précis (Module 6, Partie 9) — l'admin
 // pense en "n° de climatiseur" (étiquette collée dessus), pas en id interne.
@@ -5544,21 +5559,22 @@ async function toggleFactureRecue(id, btnEl){
     showToast(e.message, 'error');
   }
 }
-function resoudreLitige(id, btnEl){
-  confirmAction('Marquer ce litige comme réglé ? Ça ne modifie ni la réservation ni l\'argent déjà versé — juste ce repère, une fois que tu as récupéré la commission auprès de l\'ambassadeur (ou déduit du prochain virement).', async () => {
-    if(btnEl) btnEl.disabled = true;
-    try{
-      const r = await fetch(API('admin-partenaire-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'resoudre_litige', id})});
-      const d = await r.json();
-      if(!r.ok) throw new Error(d.error||'Erreur');
-      TAB_AUTO_REFRESH[CURRENT_TAB]?.();
-      loadAlerts();
-      showToast('Litige marqué comme réglé', 'success');
-    }catch(e){
-      if(btnEl) btnEl.disabled = false;
-      showToast(e.message, 'error');
-    }
-  });
+// Pas de confirmation : simple repère administratif qui ne modifie ni la
+// réservation ni l'argent déjà versé — le disabled sur btnEl protège déjà
+// contre un double-clic (audit UX du 2026-07-27).
+async function resoudreLitige(id, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  try{
+    const r = await fetch(API('admin-partenaire-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'resoudre_litige', id})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    TAB_AUTO_REFRESH[CURRENT_TAB]?.();
+    loadAlerts();
+    showToast('Litige marqué comme réglé', 'success');
+  }catch(e){
+    if(btnEl) btnEl.disabled = false;
+    showToast(e.message, 'error');
+  }
 }
 async function loadPartenairesRevenus(){
   const zone = document.getElementById('part-view-content');
@@ -5930,7 +5946,7 @@ function renderEmails(){
   const scenariosHtml = EMAIL_SCENARIOS_CACHE.map(s => `
     <div class="row-item" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
       <span class="row-title">${escHtml(s.libelle)}</span>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--grey2)">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--grey-soft)">
         <span class="chip ${s.actif?'actif':'inactif'}">${s.actif?'Actif':'Désactivé'}</span>
         <input type="checkbox" ${s.actif?'checked':''} onchange="toggleEmailScenario('${s.id}',this.checked)"/>
       </label>
@@ -6240,15 +6256,16 @@ async function saveAideArticle(){
     loadEspaceClient();
   }catch(e){ showToast(e.message, 'error'); }
 }
-async function deleteAideArticle(id){
-  if(!confirm('Supprimer cet article ?')) return;
-  try{
-    const r = await fetch(API('admin-aide'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.error||'Erreur');
-    showToast('Article supprimé', 'success');
-    loadEspaceClient();
-  }catch(e){ showToast(e.message, 'error'); }
+function deleteAideArticle(id){
+  confirmAction('Supprimer cet article ?', async () => {
+    try{
+      const r = await fetch(API('admin-aide'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      showToast('Article supprimé', 'success');
+      loadEspaceClient();
+    }catch(e){ showToast(e.message, 'error'); }
+  }, {danger:true, yesLabel:'Supprimer'});
 }
 
 async function saveAssistance(){
@@ -6421,7 +6438,7 @@ function missionStepsHtml(m){
     ['fait_at', m.fait_at],
   ];
   return `<div style="margin-top:8px;font-size:13px">
-    ${steps.map(([key, at]) => `<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;color:${at?'var(--black)':'var(--grey2)'}">
+    ${steps.map(([key, at]) => `<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;color:${at?'var(--black)':'var(--grey-soft)'}">
       <span>${at?'✅':'⬜️'} ${MISSION_STEP_LABEL[key]}</span>${at?`<span style="color:var(--grey)">${frDateHeure(at)}</span>`:''}
     </div>`).join('')}
   </div>`;
@@ -6788,7 +6805,7 @@ function renderCommunications(){
   const banner = COMMUNICATIONS_ANOMALIES > 0
     ? `<div style="background:var(--red);color:#fff;padding:12px 16px;border-radius:var(--r);font-weight:700;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
         <span>🔴 ${COMMUNICATIONS_ANOMALIES} anomalie${COMMUNICATIONS_ANOMALIES>1?'s':''} de communication à traiter</span>
-        <button class="btn" style="background:#fff;color:var(--red)" onclick="openBulkResendModal()">🔁 Tout renvoyer...</button>
+        <button class="btn btn-red" onclick="openBulkResendModal()">🔁 Tout renvoyer...</button>
       </div>`
     : `<div style="background:var(--green-bg);color:var(--green);padding:12px 16px;border-radius:var(--r);font-weight:700;margin-bottom:14px">✅ Toutes les communications sont à jour</div>`;
 
