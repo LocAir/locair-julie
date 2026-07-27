@@ -15,7 +15,11 @@ async function notifyTransporteur(supabase, transporteurId, { type, message, liv
   } catch (e) {
     console.error('[Notif transporteur]', e.message);
   }
-  await pushToTransporteur(supabase, transporteurId, { title: "Loc'Air", body: message, tag: tag || type });
+  // Sans l'id de mission dans l'URL, taper la notification ne fait que
+  // ramener l'app au premier plan (voir transporteur/sw.js) — le livreur
+  // devait ensuite chercher lui-même la mission concernée dans la liste.
+  const url = livraisonId ? `/transporteur/?open=${livraisonId}` : '/transporteur/';
+  await pushToTransporteur(supabase, transporteurId, { title: "Loc'Air", body: message, tag: tag || type, url });
   await smsNouvelleMission(supabase, transporteurId, { type, livraisonId });
 }
 
