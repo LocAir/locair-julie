@@ -461,7 +461,13 @@ module.exports = async (req, res) => {
           .from('livraisons').select('id, transporteur_id')
           .eq('reservation_id', id)
           .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
-        const { error: livError } = await supabase.from('livraisons').update({ statut: 'annulee' })
+        // 'annule' (sans "e") : contrainte CHECK propre à livraisons.statut,
+        // différente de reservations.statut ('annulee') — utiliser 'annulee'
+        // ici violait systématiquement la contrainte, l'erreur passait
+        // inaperçue (juste loguée plus bas) et la mission restait active,
+        // laissant un transporteur livrer/récupérer pour une réservation
+        // en réalité annulée.
+        const { error: livError } = await supabase.from('livraisons').update({ statut: 'annule' })
           .eq('reservation_id', id)
           .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
         if (livError) console.error('[annulation missions]', livError.message);
