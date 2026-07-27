@@ -264,6 +264,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .week-day.active .week-day-dow,.week-day.active .week-day-num{color:#fff}
 .week-day.active .week-day-dot{background:#fff;color:var(--blue)}
 .week-day.empty .week-day-dot{visibility:hidden}
+.week-day.has-probleme .week-day-dot{background:var(--red)}
+.week-day.active.has-probleme .week-day-dot{color:var(--red)}
 .week-day-list{margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
 .week-day-item+.week-day-item{border-top:1px solid var(--rule)}
 .week-day-row{display:flex;align-items:center;gap:10px;padding:9px 2px 9px 8px;margin-left:-8px;cursor:pointer;border-left:3px solid transparent}
@@ -1338,7 +1340,12 @@ function weekAheadHtml(){
   const days = Array.from({length:7}, (_,i) => {
     const d = new Date(windowStart); d.setDate(d.getDate()+i);
     const iso = d.toISOString().slice(0,10);
-    return { iso, dow: d.getDay(), num: d.getDate(), month: d.getMonth(), count: activeMissions.filter(m => m.date_prevue===iso).length, isToday: iso===todayStr };
+    const dayMissions = activeMissions.filter(m => m.date_prevue===iso);
+    // Un jour avec un problème signalé n'a rien de visible qui le distingue
+    // d'un jour avec une simple mission normale dans la bande — il fallait
+    // taper sur chaque jour pour le découvrir. Un point rouge au lieu de bleu
+    // permet de repérer d'un coup d'œil le jour qui a besoin d'attention.
+    return { iso, dow: d.getDay(), num: d.getDate(), month: d.getMonth(), count: dayMissions.length, hasProbleme: dayMissions.some(m => m.statut==='probleme'), isToday: iso===todayStr };
   });
   // La sélection doit toujours pointer sur un jour visible dans la fenêtre
   // affichée — sinon le détail resterait figé sur un jour d'une autre
@@ -1351,6 +1358,7 @@ function weekAheadHtml(){
     if(day.isToday) cls.push('today');
     if(day.iso===STATE.weekSelectedDate) cls.push('active');
     if(!day.count) cls.push('empty');
+    if(day.hasProbleme) cls.push('has-probleme');
     return `<button class="${cls.join(' ')}" onclick="selectWeekDay('${day.iso}')">
       <span class="week-day-dow">${WEEK_DOW[day.dow]}</span>
       <span class="week-day-num">${day.num}</span>
