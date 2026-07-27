@@ -266,13 +266,24 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .week-day.empty .week-day-dot{visibility:hidden}
 .week-day-list{margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
 .week-day-item+.week-day-item{border-top:1px solid var(--rule)}
-.week-day-row{display:flex;align-items:center;gap:10px;padding:9px 2px;cursor:pointer}
+.week-day-row{display:flex;align-items:center;gap:10px;padding:9px 2px 9px 8px;margin-left:-8px;cursor:pointer;border-left:3px solid transparent}
+/* Même code couleur que .mcard.st-* (Mes missions) sur la bordure gauche —
+   sans repère de statut, une mission déjà terminée ou en problème se
+   confondait dans la liste avec une mission simplement à venir. */
+.week-day-row.st-a_faire{border-left-color:var(--amber)}
+.week-day-row.st-acceptee{border-left-color:var(--blue)}
+.week-day-row.st-arrivee{border-left-color:var(--green)}
+.week-day-row.st-probleme{border-left-color:var(--red)}
+.week-day-row.st-fait{border-left-color:var(--rule)}
 .week-day-row .ic{font-size:18px;flex-shrink:0}
 .week-day-row .tx{flex:1;min-width:0}
 .week-day-row .name{font-size:13.5px;font-weight:600;color:var(--black);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .week-day-row .meta{font-size:12px;color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .week-day-row .chev{color:var(--grey-soft);font-size:13px;flex-shrink:0;transition:transform .15s ease}
 .week-day-row.expanded .chev{transform:rotate(90deg)}
+.week-day-status{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 8px 3px 6px;border-radius:100px;flex-shrink:0;white-space:nowrap;background:var(--bg);color:var(--grey)}
+.week-day-status::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.week-day-status.st-probleme{background:var(--red-bg);color:var(--red)}
 .week-day-empty{font-size:13px;color:var(--grey);text-align:center;padding:10px 0 2px}
 /* Synthèse dépliée d'une mission de "Ma semaine" : mêmes .info-row/.step-hint
    que la fiche mission détaillée, pour que le livreur retrouve les mêmes
@@ -1295,6 +1306,22 @@ async function loadDashboard(){
 }
 const WEEK_DOW = ['DIM','LUN','MAR','MER','JEU','VEN','SAM'];
 const WEEK_MONTH_SHORT = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+// Le créneau est un champ texte libre côté admin (ex. "8h–10h", "14h–16h") —
+// un tri alphabétique brut classe "10h–12h" avant "8h–10h" (le caractère '1'
+// est avant '8'), ce qui mélangeait l'ordre de la journée dès qu'une mission
+// commençait après 9h. On trie plutôt par l'heure de début si elle est
+// détectable, texte libre sans heure en dernier recours.
+function creneauSortKey(creneau){
+  const m = String(creneau||'').match(/^(\d{1,2})/);
+  return m ? parseInt(m[1], 10) : null;
+}
+function compareByCreneau(a, b){
+  const ka = creneauSortKey(a.creneau), kb = creneauSortKey(b.creneau);
+  if(ka!=null && kb!=null && ka!==kb) return ka-kb;
+  if(ka!=null && kb==null) return -1;
+  if(ka==null && kb!=null) return 1;
+  return (a.creneau||'').localeCompare(b.creneau||'');
+}
 // Vue "Ma semaine" de l'Accueil : 7 jours glissants (pas la semaine
 // calendaire) — un vendredi, voir "le reste de cette semaine" (juste
 // samedi/dimanche) serait presque inutile pour un livreur, alors que 7 jours
@@ -1333,7 +1360,7 @@ function weekAheadHtml(){
 
   const selMissions = activeMissions
     .filter(m => m.date_prevue===STATE.weekSelectedDate)
-    .sort((a,b) => (a.creneau||'').localeCompare(b.creneau||''));
+    .sort(compareByCreneau);
   // Taper sur un jour affiche la liste ; taper sur une mission de cette liste
   // déplie une synthèse sur place (secteur, climatiseurs, accès...) plutôt que
   // de basculer directement dans le parcours de mission — pour que le livreur
@@ -1391,10 +1418,16 @@ function weekMissionItemHtml(m){
         ${missionCardActionsHtml(m, mapsUrl, c.tel)}
       </div>`;
   }
+  // Un statut "Terminée" ou "Problème" change complètement la lecture de la
+  // ligne (ce n'est plus vraiment "à venir") — les autres statuts restent
+  // muets ici (déjà couvert par la seule présence dans la liste) pour ne pas
+  // surcharger une ligne pensée pour rester compacte.
+  const statusLabel = (m.statut==='fait') ? 'Terminée' : (m.statut==='probleme') ? 'Problème' : '';
   return `<div class="week-day-item">
-      <div class="week-day-row${expanded?' expanded':''}" onclick="toggleWeekMission(${m.id})">
+      <div class="week-day-row st-${m.statut}${expanded?' expanded':''}" onclick="toggleWeekMission(${m.id})">
         <span class="ic">${TYPE_ICON[m.type]||'📍'}</span>
         <div class="tx"><div class="name">${nom}</div><div class="meta">${metaParts.join(' · ')||missionTypeLabel(m)}</div></div>
+        ${statusLabel?`<span class="week-day-status st-${m.statut}">${statusLabel}</span>`:''}
         <span class="chev">›</span>
       </div>${detailHtml}
     </div>`;
