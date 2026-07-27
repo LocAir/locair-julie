@@ -248,7 +248,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    que "qu'est-ce qui m'attend cette semaine" tienne en un coup d'œil sans
    quitter l'Accueil. */
 .week-card{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:18px 16px;box-shadow:var(--sh-sm);margin-bottom:14px}
-.week-card-title{font-family:var(--disp);font-size:17px;font-weight:600;color:var(--black);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.week-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.week-card-title{font-family:var(--disp);font-size:17px;font-weight:600;color:var(--black);display:flex;align-items:center;gap:8px}
+.week-nav{display:flex;align-items:center;gap:8px}
+.week-nav-btn{background:var(--bg);border:1px solid var(--rule);border-radius:50%;width:26px;height:26px;line-height:1;font-size:11px;color:var(--blue);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.week-nav-btn:disabled{opacity:.35;cursor:default}
+.week-nav-range{font-size:12px;font-weight:600;color:var(--grey2);white-space:nowrap}
 .week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:4px}
 .week-day{background:none;border:1.5px solid transparent;border-radius:var(--r-sm);padding:8px 2px 7px;text-align:center;cursor:pointer;font-family:var(--body);transition:background .15s ease,border-color .15s ease}
 .week-day-dow{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--grey2);margin-bottom:4px}
@@ -1281,19 +1286,31 @@ async function loadDashboard(){
   renderDashboard();
 }
 const WEEK_DOW = ['DIM','LUN','MAR','MER','JEU','VEN','SAM'];
-// Vue "Ma semaine" de l'Accueil : les 7 prochains jours glissants (pas la
-// semaine calendaire) — un vendredi, voir "le reste de cette semaine" (juste
-// samedi/dimanche) serait presque inutile pour un livreur, alors que les 7
-// prochains jours donnent toujours une vraie visibilité utile.
+const WEEK_MONTH_SHORT = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+// Vue "Ma semaine" de l'Accueil : 7 jours glissants (pas la semaine
+// calendaire) — un vendredi, voir "le reste de cette semaine" (juste
+// samedi/dimanche) serait presque inutile pour un livreur, alors que 7 jours
+// pleins donnent toujours une vraie visibilité utile. Les flèches ◀/▶
+// permettent de naviguer semaine par semaine pour voir venir plus loin (ex.
+// se projeter sur le mois à venir) — jamais avant aujourd'hui : ce widget
+// sert à anticiper, pas à consulter l'historique (déjà couvert par Mon
+// activité).
 function weekAheadHtml(){
   const todayStr = new Date().toISOString().slice(0,10);
-  if(!STATE.weekSelectedDate || STATE.weekSelectedDate < todayStr) STATE.weekSelectedDate = todayStr;
+  STATE.weekOffset = Math.max(0, STATE.weekOffset||0);
+  const windowStart = new Date(); windowStart.setDate(windowStart.getDate() + STATE.weekOffset*7);
   const activeMissions = STATE.missions.filter(m => !['annule','refusee'].includes(m.statut));
   const days = Array.from({length:7}, (_,i) => {
-    const d = new Date(); d.setDate(d.getDate()+i);
+    const d = new Date(windowStart); d.setDate(d.getDate()+i);
     const iso = d.toISOString().slice(0,10);
-    return { iso, dow: d.getDay(), num: d.getDate(), count: activeMissions.filter(m => m.date_prevue===iso).length, isToday: iso===todayStr };
+    return { iso, dow: d.getDay(), num: d.getDate(), month: d.getMonth(), count: activeMissions.filter(m => m.date_prevue===iso).length, isToday: iso===todayStr };
   });
+  // La sélection doit toujours pointer sur un jour visible dans la fenêtre
+  // affichée — sinon le détail resterait figé sur un jour d'une autre
+  // semaine, invisible dans la bande courante.
+  if(!STATE.weekSelectedDate || !days.some(d => d.iso===STATE.weekSelectedDate)){
+    STATE.weekSelectedDate = days[0].iso;
+  }
   const stripHtml = days.map(day => {
     const cls = ['week-day'];
     if(day.isToday) cls.push('today');
@@ -1323,9 +1340,17 @@ function weekAheadHtml(){
   }).join('') : `<p class="week-day-empty">Aucune mission ce jour.</p>`;
 
   const selLabel = STATE.weekSelectedDate===todayStr ? "Aujourd'hui" : new Date(STATE.weekSelectedDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  const rangeLabel = `${days[0].num} ${WEEK_MONTH_SHORT[days[0].month]} – ${days[6].num} ${WEEK_MONTH_SHORT[days[6].month]}`;
   return `
     <div class="week-card">
-      <div class="week-card-title">📅 Ma semaine</div>
+      <div class="week-card-head">
+        <div class="week-card-title">📅 Ma semaine</div>
+        <div class="week-nav">
+          <button class="week-nav-btn" ${STATE.weekOffset<=0?'disabled':''} onclick="shiftWeekAhead(-1)" aria-label="Semaine précédente">◀</button>
+          <span class="week-nav-range">${rangeLabel}</span>
+          <button class="week-nav-btn" onclick="shiftWeekAhead(1)" aria-label="Semaine suivante">▶</button>
+        </div>
+      </div>
       <div class="week-strip">${stripHtml}</div>
       <div class="week-day-list">
         <div class="eyebrow" style="margin-bottom:8px">${selLabel}</div>
@@ -1335,6 +1360,11 @@ function weekAheadHtml(){
 }
 function selectWeekDay(iso){
   STATE.weekSelectedDate = iso;
+  renderDashboard();
+}
+function shiftWeekAhead(delta){
+  STATE.weekOffset = Math.max(0, (STATE.weekOffset||0) + delta);
+  STATE.weekSelectedDate = null; // recalé sur le 1er jour de la nouvelle fenêtre par weekAheadHtml()
   renderDashboard();
 }
 function renderDashboard(){
