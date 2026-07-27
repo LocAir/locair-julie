@@ -7027,7 +7027,7 @@ function submitForm(btn,mode){
         if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
         const errEl=document.getElementById('form-error-msg');
         if(errEl){
-          const genericMsg=_lang==='en'?'Something went wrong. Please try again.':_lang==='zh'?'出现问题。请重试。':'Une erreur est survenue. Réessayez.';
+          const genericMsg=_lang==='en'?'Something went wrong. Please try again.':_lang==='zh'?'出现问题。请重试。':_lang==='ru'?'Произошла ошибка. Попробуйте снова.':'Une erreur est survenue. Réessayez.';
           const msg=(err&&err.message)||'';
           errEl.textContent=(msg&&!/^API \d+$/.test(msg)&&msg!=='No client secret')?msg:genericMsg;
           errEl.style.display='block';
@@ -8409,7 +8409,7 @@ else{_updateChromeH();}
     // Hero-eye : température + ressenti si l'alerte n'est PAS affichée (évite doublon)
     const eyeEl=document.querySelector('.hero-eye');
     if(eyeEl&&cur!==null&&!alertActive){
-      eyeEl.textContent=_lang==='en'?CITY.name+' · '+cur+'°C · feels like '+res+'°C':_lang==='zh'?CITY.name+' · '+cur+'°C · 体感 '+res+'°C':CITY.name+' · '+cur+'°C · ressenti '+res+'°C';
+      eyeEl.textContent=_lang==='en'?CITY.name+' · '+cur+'°C · feels like '+res+'°C':_lang==='zh'?CITY.name+' · '+cur+'°C · 体感 '+res+'°C':_lang==='ru'?CITY.name+' · '+cur+'°C · ощущается '+res+'°C':CITY.name+' · '+cur+'°C · ressenti '+res+'°C';
     }
 
     // Barre d'alerte : afficher si ≥28°C courant ou ≥32°C prévu
@@ -8427,9 +8427,9 @@ else{_updateChromeH();}
     if(alertActive){
       const bar=document.getElementById('alert-canicule');
       if(bar){
-        const ressufix=res!=null?(_lang==='en'?' (feels like '+res+'°C)':_lang==='zh'?' (体感 '+res+'°C)':' (ressenti '+res+'°C)'):'';
-        const _alertTiming=_cutoffOk()?(_lang==='en'?'Delivery within 24h':_lang==='zh'?'24小时内配送':'Livraison sous 24h'):(_lang==='en'?'Delivery within 48h':_lang==='zh'?'48小时内配送':'Livraison sous 48h');
-        if(peakTemp>=35)_setAlertBar(bar,_lang==='en'?'Heatwave — '+peakTemp+'°C expected'+ressufix:_lang==='zh'?'高温预警 — 预计 '+peakTemp+'°C'+ressufix:'Canicule — '+peakTemp+'°C prévus'+ressufix,_alertTiming);
+        const ressufix=res!=null?(_lang==='en'?' (feels like '+res+'°C)':_lang==='zh'?' (体感 '+res+'°C)':_lang==='ru'?' (ощущается '+res+'°C)':' (ressenti '+res+'°C)'):'';
+        const _alertTiming=_cutoffOk()?(_lang==='en'?'Delivery within 24h':_lang==='zh'?'24小时内配送':_lang==='ru'?'Доставка за 24 часа':'Livraison sous 24h'):(_lang==='en'?'Delivery within 48h':_lang==='zh'?'48小时内配送':_lang==='ru'?'Доставка за 48 часов':'Livraison sous 48h');
+        if(peakTemp>=35)_setAlertBar(bar,_lang==='en'?'Heatwave — '+peakTemp+'°C expected'+ressufix:_lang==='zh'?'高温预警 — 预计 '+peakTemp+'°C'+ressufix:_lang==='ru'?'Жара — '+peakTemp+'°C ожидается'+ressufix:'Canicule — '+peakTemp+'°C prévus'+ressufix,_alertTiming);
         else _setAlertBar(bar,cur+'°C'+ressufix,_alertTiming);
         _updateChromeH();
       }
@@ -8439,8 +8439,8 @@ else{_updateChromeH();}
       if(m===6||m===7){
         const bar=document.getElementById('alert-canicule');
         if(bar&&bar.classList.contains('hidden')){
-          const ressufix=cur>0?(_lang==='en'?' · '+cur+'°C (feels like '+res+'°C)':_lang==='zh'?' · '+cur+'°C（体感 '+res+'°C）':' · '+cur+'°C (ressenti '+res+'°C)'):'';
-          _setAlertBar(bar,_lang==='en'?'Peak season'+ressufix:_lang==='zh'?'旺季'+ressufix:'Haute saison'+ressufix,_lang==='en'?'Limited availability — book early':_lang==='zh'?'库存有限——尽早预订':'Disponibilité limitée — réservez tôt');
+          const ressufix=cur>0?(_lang==='en'?' · '+cur+'°C (feels like '+res+'°C)':_lang==='zh'?' · '+cur+'°C（体感 '+res+'°C）':_lang==='ru'?' · '+cur+'°C (ощущается '+res+'°C)':' · '+cur+'°C (ressenti '+res+'°C)'):'';
+          _setAlertBar(bar,_lang==='en'?'Peak season'+ressufix:_lang==='zh'?'旺季'+ressufix:_lang==='ru'?'Высокий сезон'+ressufix:'Haute saison'+ressufix,_lang==='en'?'Limited availability — book early':_lang==='zh'?'库存有限——尽早预订':_lang==='ru'?'Ограниченное наличие — бронируйте заранее':'Disponibilité limitée — réservez tôt');
           _updateChromeH();
         }
       }
@@ -8614,8 +8614,8 @@ function _renderDurFree(){
     if(numEl.tagName==='INPUT'){numEl.value=d;}else{numEl.textContent=d;}
   }
   if(el('dfb-total'))el('dfb-total').textContent=price+' €';
-  if(el('dfb-rate'))el('dfb-rate').textContent=rate+(_lang==='en'?' €/day':_lang==='zh'?' €/天':' €/jour');
-  if(el('dfb-cta-label'))el('dfb-cta-label').textContent=_lang==='en'?d+' day'+(d>1?'s':''):_lang==='zh'?d+' 天':d+' jour'+(d>1?'s':'');
+  if(el('dfb-rate'))el('dfb-rate').textContent=rate+(_lang==='en'?' €/day':_lang==='zh'?' €/天':_lang==='ru'?' €/день':' €/jour');
+  if(el('dfb-cta-label'))el('dfb-cta-label').textContent=_lang==='en'?d+' day'+(d>1?'s':''):_lang==='zh'?d+' 天':_lang==='ru'?d+' дней':d+' jour'+(d>1?'s':'');
   if(el('dfb-minus'))el('dfb-minus').disabled=(d<=7);
 }
 function confirmDurFree(){
@@ -8644,7 +8644,7 @@ function confirmDurFree(){
 })();
 
 function initDurCardPrices(){
-  const dayUnit=_lang==='en'?' €/day':_lang==='zh'?' €/天':' €/jour';
+  const dayUnit=_lang==='en'?' €/day':_lang==='zh'?' €/天':_lang==='ru'?' €/день':' €/jour';
   document.querySelectorAll('.dur-row[data-days]').forEach(card=>{
     const days=parseInt(card.getAttribute('data-days'));
     const total=calcPrice(days);
@@ -8817,16 +8817,16 @@ function buildProlongRecap(){
   const creneau=document.querySelector('#pe-creneau-group .tpill.on')?.textContent.trim()||'—';
   const _e=escHtml;
   box.innerHTML=`
-    <p style="font-weight:700;color:var(--black);font-size:15px;margin-bottom:12px">${_lang==='en'?'Extension summary':_lang==='zh'?'续租摘要':'Récapitulatif de prolongation'}</p>
+    <p style="font-weight:700;color:var(--black);font-size:15px;margin-bottom:12px">${_lang==='en'?'Extension summary':_lang==='zh'?'续租摘要':_lang==='ru'?'Детали продления':'Récapitulatif de prolongation'}</p>
     <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:13px">
-      <span style="color:var(--grey2)">${_lang==='en'?'Name':_lang==='zh'?'姓名':'Nom'}</span><span style="font-weight:500">${_e(prenom)} ${_e(nom)}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Name':_lang==='zh'?'姓名':_lang==='ru'?'Имя':'Nom'}</span><span style="font-weight:500">${_e(prenom)} ${_e(nom)}</span>
       <span style="color:var(--grey2)">Email</span><span>${_e(email)}</span>
-      <span style="color:var(--grey2)">${_lang==='en'?'Phone':_lang==='zh'?'电话':'Tél.'}</span><span>${_e(tel)}</span>
-      ${addr!=='—'?`<span style="color:var(--grey2)">${_lang==='en'?'Address':_lang==='zh'?'地址':'Adresse'}</span><span>${_e(addr)}</span>`:''}
-      <span style="color:var(--grey2)">${_lang==='en'?'Added duration':_lang==='zh'?'新增时长':'Durée ajoutée'}</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} ${_lang==='en'?'day'+(_prolongDays>1?'s':''):_lang==='zh'?'天':'jour'+(_prolongDays>1?'s':'')}</span>
-      <span style="color:var(--grey2)">${_lang==='en'?'Collection on':_lang==='zh'?'取回日期':'Récupération le'}</span><span style="font-weight:500">${dateLabel}</span>
-      <span style="color:var(--grey2)">${_lang==='en'?'Time slot':_lang==='zh'?'时间段':'Créneau'}</span><span style="font-weight:500">${escHtml(creneau)}</span>
-      <span style="color:var(--grey2)">${_lang==='en'?'Amount':_lang==='zh'?'金额':'Montant'}</span><span style="font-weight:700;font-size:16px;color:var(--black)">${price} €</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Phone':_lang==='zh'?'电话':_lang==='ru'?'Тел.':'Tél.'}</span><span>${_e(tel)}</span>
+      ${addr!=='—'?`<span style="color:var(--grey2)">${_lang==='en'?'Address':_lang==='zh'?'地址':_lang==='ru'?'Адрес':'Adresse'}</span><span>${_e(addr)}</span>`:''}
+      <span style="color:var(--grey2)">${_lang==='en'?'Added duration':_lang==='zh'?'新增时长':_lang==='ru'?'Добавленный срок':'Durée ajoutée'}</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} ${_lang==='en'?'day'+(_prolongDays>1?'s':''):_lang==='zh'?'天':_lang==='ru'?'дней':'jour'+(_prolongDays>1?'s':'')}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Collection on':_lang==='zh'?'取回日期':_lang==='ru'?'Возврат':'Récupération le'}</span><span style="font-weight:500">${dateLabel}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Time slot':_lang==='zh'?'时间段':_lang==='ru'?'Временной слот':'Créneau'}</span><span style="font-weight:500">${escHtml(creneau)}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Amount':_lang==='zh'?'金额':_lang==='ru'?'Сумма':'Montant'}</span><span style="font-weight:700;font-size:16px;color:var(--black)">${price} €</span>
     </div>
   `;
   // reset checkbox + mettre le prix dans le bouton
@@ -8981,10 +8981,12 @@ function _showProlongSuccess(){
       ?'Your rental has been extended by '+_prolongDays+' day'+(_prolongDays>1?'s':'')+'. Collection on '+dateLabel+' between '+creneau+'. Email confirmation in a few minutes.'
       :_lang==='zh'
       ?'您的租赁已延长'+_prolongDays+'天。取回日期：'+dateLabel+'，时间段：'+creneau+'。几分钟内发送邮件确认。'
+      :_lang==='ru'
+      ?'Ваша аренда продлена на '+_prolongDays+' дней. Возврат '+dateLabel+', временной слот: '+creneau+'. Подтверждение на email через несколько минут.'
       :'Votre location est prolongée de '+_prolongDays+' jour'+(_prolongDays>1?'s':'')+'. Récupération le '+dateLabel+' entre '+creneau+'. Confirmation par email dans quelques minutes.';
     const prolongRef=_generateOrderRef();
     const refEl2=document.getElementById('prolong-ref');
-    if(refEl2)refEl2.textContent=(_lang==='en'?'Ref ':_lang==='zh'?'编号：':'Dossier ')+prolongRef;
+    if(refEl2)refEl2.textContent=(_lang==='en'?'Ref ':_lang==='zh'?'编号：':_lang==='ru'?'Номер заказа ':'Dossier ')+prolongRef;
     succ.classList.add('show');
   }
   window.dataLayer=window.dataLayer||[];
@@ -9134,7 +9136,7 @@ function setQty(n){
   if(valEl)valEl.textContent=n;
   if(minusBtn)minusBtn.disabled=(n<=1);
   if(plusBtn)plusBtn.disabled=(n>=maxStock);
-  if(lblEl)lblEl.textContent=_lang==='en'?(n===1?'AC unit':'AC units'):_lang==='zh'?(n+'台空调'):(n===1?'climatiseur':'climatiseurs');
+  if(lblEl)lblEl.textContent=_lang==='en'?(n===1?'AC unit':'AC units'):_lang==='zh'?(n+'台空调'):_lang==='ru'?(n===1?'кондиционер':'кондиционера'):(n===1?'climatiseur':'climatiseurs');
   // Refresh displayed prices in dur-rows
   document.querySelectorAll('.dur-row[data-days]').forEach(card=>{
     const days=parseInt(card.getAttribute('data-days'));
