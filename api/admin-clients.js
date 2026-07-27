@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { resolveAdminCity } = require('./_lib/city');
+const { resolveAdminCity, listCities } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 const { normalizeTel } = require('./_lib/reservations');
 const { generateAndSendDocuments, generateAndSendFactureVente } = require('./_lib/documents');
@@ -20,12 +20,18 @@ module.exports = async (req, res) => {
   try {
     const city = await resolveAdminCity(supabase, body);
     if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
+    // resolveAdminCity() retombe sur la 1re ville active pour city_id:'all'
+    // (aucune notion d'agrégat pour un id unique) — cityIds couvre ici
+    // réellement toutes les villes actives dans ce mode, sinon les clients
+    // des autres villes disparaissaient silencieusement de la liste alors
+    // que le sélecteur affiche "Toutes les villes".
+    const cityIds = body.city_id === 'all' ? (await listCities(supabase)).map(c => c.id) : [city.id];
 
     if (action === 'list') {
       const { data: clients, error } = await supabase
         .from('clients')
         .select('id, prenom, nom, tel, email, acces_difficile, created_at')
-        .eq('city_id', city.id)
+        .in('city_id', cityIds)
         .order('created_at', { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -37,7 +43,7 @@ module.exports = async (req, res) => {
           .from('reservations')
           .select('client_id, adresse, tel_secondaire, type_client, raison_sociale, siret, date_debut, statut')
           .in('client_id', clientIds)
-          .eq('city_id', city.id)
+          .in('city_id', cityIds)
           .order('date_debut', { ascending: false });
         (resas || []).forEach(r => {
           (resasByClient[r.client_id] = resasByClient[r.client_id] || []).push(r);
@@ -64,10 +70,10 @@ module.exports = async (req, res) => {
     if (action === 'photos') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
-      const { data: client } = await supabase.from('clients').select('id').eq('id', id).eq('city_id', city.id).maybeSingle();
+      const { data: client } = await supabase.from('clients').select('id').eq('id', id).in('city_id', cityIds).maybeSingle();
       if (!client) return res.status(404).json({ error: 'Client introuvable' });
 
-      const { data: resas } = await supabase.from('reservations').select('id').eq('client_id', id).eq('city_id', city.id);
+      const { data: resas } = await supabase.from('reservations').select('id').eq('client_id', id).in('city_id', cityIds);
       const resaIds = (resas || []).map(r => r.id);
       if (!resaIds.length) return res.status(200).json({ photos: [] });
 
@@ -101,13 +107,13 @@ module.exports = async (req, res) => {
       if (!id) return res.status(400).json({ error: 'id manquant' });
       const { data: client } = await supabase
         .from('clients').select('id, prenom, nom, tel, email, acces_difficile, created_at')
-        .eq('id', id).eq('city_id', city.id).maybeSingle();
+        .eq('id', id).in('city_id', cityIds).maybeSingle();
       if (!client) return res.status(404).json({ error: 'Client introuvable' });
 
       const { data: resas } = await supabase
         .from('reservations')
         .select('id, ref, adresse, etage, ascenseur, instructions_acces, tel_secondaire, type_client, raison_sociale, siret, date_debut, statut')
-        .eq('client_id', id).eq('city_id', city.id)
+        .eq('client_id', id).in('city_id', cityIds)
         .order('date_debut', { ascending: false });
       const resaIds = (resas || []).map(r => r.id);
 
@@ -168,7 +174,7 @@ module.exports = async (req, res) => {
       if (!reservationId || (!wantLocation && !wantVente)) {
         return res.status(400).json({ error: 'Paramètres invalides' });
       }
-      const { data: resa } = await supabase.from('reservations').select('*').eq('id', reservationId).eq('city_id', city.id).maybeSingle();
+      const { data: resa } = await supabase.from('reservations').select('*').eq('id', reservationId).in('city_id', cityIds).maybeSingle();
       if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
 
       const resultats = {};
@@ -208,7 +214,7 @@ module.exports = async (req, res) => {
     if (action === 'update') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
-      const { data: before } = await supabase.from('clients').select('id').eq('id', id).eq('city_id', city.id).maybeSingle();
+      const { data: before } = await supabase.from('clients').select('id').eq('id', id).in('city_id', cityIds).maybeSingle();
       if (!before) return res.status(404).json({ error: 'Client introuvable' });
 
       const patch = {};
@@ -228,7 +234,7 @@ module.exports = async (req, res) => {
         patch.tel_normalise = normalizeTel(patch.tel);
       }
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
-      const { error } = await supabase.from('clients').update(patch).eq('id', id).eq('city_id', city.id);
+      const { error } = await supabase.from('clients').update(patch).eq('id', id).in('city_id', cityIds);
       if (error) throw error;
       return res.status(200).json({ ok: true });
     }

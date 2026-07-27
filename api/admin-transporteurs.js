@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
-const { resolveAdminCity } = require('./_lib/city');
+const { resolveAdminCity, listCities } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 
 // Remplace entièrement les zones d'intervention et/ou les disponibilités
@@ -39,9 +39,14 @@ module.exports = async (req, res) => {
   try {
     const city = await resolveAdminCity(supabase, body);
     if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
+    // Voir admin-clients.js : city_id:'all' ne doit pas retomber sur une
+    // seule ville pour la liste/lecture — cityIds couvre alors toutes les
+    // villes actives, sinon l'équipe des autres villes disparaît de l'écran
+    // "Équipe" sans que rien ne le signale.
+    const cityIds = body.city_id === 'all' ? (await listCities(supabase)).map(c => c.id) : [city.id];
 
     if (action === 'list') {
-      const { data, error } = await supabase.from('transporteurs').select('*').eq('city_id', city.id).order('nom');
+      const { data, error } = await supabase.from('transporteurs').select('*').in('city_id', cityIds).order('nom');
       if (error) throw error;
       const transporteurs = data || [];
       const ids = transporteurs.map(t => t.id);
@@ -129,7 +134,7 @@ module.exports = async (req, res) => {
       if (!hasFieldPatch && !hasVillesPatch) return res.status(400).json({ error: 'Rien à modifier' });
 
       if (hasFieldPatch) {
-        const { error } = await supabase.from('transporteurs').update(patch).eq('id', id).eq('city_id', city.id);
+        const { error } = await supabase.from('transporteurs').update(patch).eq('id', id).in('city_id', cityIds);
         if (error) {
           if (error.code === '23505') return res.status(409).json({ error: 'Ce code est déjà utilisé par un autre transporteur, réessaie' });
           throw error;
@@ -137,7 +142,7 @@ module.exports = async (req, res) => {
       } else {
         // Vérifie quand même l'appartenance à la ville avant de toucher aux
         // zones/disponibilités, même sans modification des champs directs.
-        const { data: owned } = await supabase.from('transporteurs').select('id').eq('id', id).eq('city_id', city.id).maybeSingle();
+        const { data: owned } = await supabase.from('transporteurs').select('id').eq('id', id).in('city_id', cityIds).maybeSingle();
         if (!owned) return res.status(404).json({ error: 'Transporteur introuvable' });
       }
       // Changer le code déconnecte aussi tout accès biométrique déjà enregistré
@@ -154,7 +159,7 @@ module.exports = async (req, res) => {
     if (action === 'delete') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
-      const { data: owned } = await supabase.from('transporteurs').select('id').eq('id', id).eq('city_id', city.id).maybeSingle();
+      const { data: owned } = await supabase.from('transporteurs').select('id').eq('id', id).in('city_id', cityIds).maybeSingle();
       if (!owned) return res.status(404).json({ error: 'Transporteur introuvable' });
 
       const { error } = await supabase.from('transporteurs').delete().eq('id', id);
