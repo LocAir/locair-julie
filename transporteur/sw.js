@@ -24,7 +24,15 @@ self.addEventListener('notificationclick', (event) => {
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
       for (const c of list) {
-        if (c.url.includes('/transporteur') && 'focus' in c) return c.focus();
+        if (c.url.includes('/transporteur') && 'focus' in c) {
+          // navigate() recharge l'onglet déjà ouvert sur l'URL exacte de la
+          // notification (ex. la mission concernée) — avant, un onglet déjà
+          // ouvert (cas courant en journée) se contentait de repasser au
+          // premier plan sans y naviguer, laissant le livreur chercher
+          // lui-même la mission dans la liste.
+          if ('navigate' in c) return c.navigate(url).then((nc) => nc.focus());
+          return c.focus();
+        }
       }
       if (clients.openWindow) return clients.openWindow(url);
     })

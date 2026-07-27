@@ -1299,6 +1299,7 @@ async function loadDashboard(){
   document.getElementById('dashboard-content').innerHTML = '<p class="empty">Chargement…</p>';
   const ok = await fetchMissions();
   if(!ok){ document.getElementById('dashboard-content').innerHTML = '<p class="empty">Impossible de charger tes missions.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="loadDashboard()">↻ Réessayer</button>'; return; }
+  if(maybeOpenFromNotificationLink()) return;
   maybeAutoOpenMission();
   // Si maybeAutoOpenMission() a basculé directement sur le détail d'une
   // mission (cas fréquent : une seule mission active), inutile de rendre
@@ -1560,6 +1561,20 @@ function maybeAutoOpenMission(){
   STATE.autoOpenChecked = true;
   const actives = STATE.missions.filter(m => ['a_faire','acceptee','en_route','arrivee'].includes(m.statut));
   if(actives.length === 1) openMission(actives[0].id);
+}
+// Une notification push pointe désormais vers `?open=<id>` (voir sw.js +
+// api/_lib/transporteurNotif.js) — sans ça, taper la notification ramenait
+// juste l'app au premier plan sans y naviguer, laissant le livreur chercher
+// lui-même la mission concernée dans la liste. Le paramètre est retiré de
+// l'URL dès la lecture pour ne jamais rouvrir la même mission sur un
+// rechargement ultérieur (retour arrière, refresh manuel...).
+function maybeOpenFromNotificationLink(){
+  const id = parseInt(new URLSearchParams(location.search).get('open'), 10);
+  if(!id) return false;
+  history.replaceState(null, '', location.pathname);
+  if(!STATE.missions.some(m => m.id === id)) return false;
+  openMission(id);
+  return true;
 }
 
 // ── Actualisation automatique ─────────────────────────────────────────────────
