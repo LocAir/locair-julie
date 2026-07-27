@@ -6494,7 +6494,7 @@ function buildRecap(){
   const total=Math.max(0,calcTotal(days)-_promoDiscount+DELIVERY_FEE);
   const installLabel=_techInstall?(isEN?'Technician installation':isZH?'技术员安装 — 80 €':'Pose technicien — 80 €'):(isEN?'Self-install (free)':isZH?'自行安装（免费）':'Pose autonome — Kit fourni');
   const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:isZH?'电梯：'+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
-  const durLabel=isEN?days+' days':isZH?days+' 天':days+' jours';
+  const durLabel=isEN?days+' days':isZH?days+' 天':isRU?days+' дней':days+' jours';
   const priceDisplay=total===0?(isEN?'On quote':isZH?'询价':'Sur devis'):total+' €';
 
   // SVG icons
@@ -6505,16 +6505,16 @@ function buildRecap(){
   const icoFloor='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 3 9 21"/><polyline points="15 3 15 21"/></svg>';
   const icoQty='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="8" width="8" height="10" rx="1.5"/><rect x="14" y="8" width="8" height="10" rx="1.5"/><line x1="10" y1="13" x2="14" y2="13"/></svg>';
 
-  const qtyLabel=isEN?_qty+' unit'+(_qty>1?'s':''):isZH?_qty+' 台空调':_qty+' climatiseur'+(_qty>1?'s':'');
+  const qtyLabel=isEN?_qty+' unit'+(_qty>1?'s':''):isZH?_qty+' 台空调':isRU?_qty+' кондиционер'+(_qty>1?'а':''):_qty+' climatiseur'+(_qty>1?'s':'');
   const instrVal=(document.getElementById('f-instructions')?.value||'').trim();
   const icoNote='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
   const rows=[
-    [isEN?'Address':isZH?'地址':'Adresse',escHtml(document.getElementById('f-addr')?.value||'—'),icoPin],
-    [isEN?'Delivery':isZH?'配送':'Livraison',escHtml(dateStr+' · '+creneauLiv),icoCal],
-    [isEN?'Collection':isZH?'归还':'Récupération',escHtml(pickupDateStr)+' <span style="color:var(--grey2);font-size:11px">· '+(isEN?'coordinated by our team':isZH?'由我们团队协调':'coordonnée par notre équipe')+'</span>',icoCal],
-    [isEN?'Window':isZH?'窗型':'Fenêtre',escHtml(ouv),icoWin],
-    [isEN?'Duration':isZH?'租期':'Durée',escHtml(durLabel),icoDur],
-    [isEN?'Quantity':isZH?'数量':'Quantité',escHtml(qtyLabel),icoQty],
+    [isEN?'Address':isZH?'地址':isRU?'Адрес':'Adresse',escHtml(document.getElementById('f-addr')?.value||'—'),icoPin],
+    [isEN?'Delivery':isZH?'配送':isRU?'Доставка':'Livraison',escHtml(dateStr+' · '+creneauLiv),icoCal],
+    [isEN?'Collection':isZH?'归还':isRU?'Возврат':'Récupération',escHtml(pickupDateStr)+' <span style="color:var(--grey2);font-size:11px">· '+(isEN?'coordinated by our team':isZH?'由我们团队协调':isRU?'координируется нашей командой':'coordonnée par notre équipe')+'</span>',icoCal],
+    [isEN?'Window':isZH?'窗型':isRU?'Тип окна':'Fenêtre',escHtml(ouv),icoWin],
+    [isEN?'Duration':isZH?'租期':isRU?'Срок':'Durée',escHtml(durLabel),icoDur],
+    [isEN?'Quantity':isZH?'数量':isRU?'Количество':'Quantité',escHtml(qtyLabel),icoQty],
     ...(instrVal?[[isEN?'Instructions':isZH?'留言指示':'Instructions',escHtml(instrVal),icoNote]]:[])
   ];
 
@@ -6523,14 +6523,14 @@ function buildRecap(){
   box.innerHTML=`
     <div class="rc-card">
       <div class="rc-card-head">
-        <span class="rc-card-label">${isEN?'Your order':isZH?'您的订单':'Votre commande'}</span>
+        <span class="rc-card-label">${isEN?'Your order':isZH?'您的订单':isRU?'Ваш заказ':'Votre commande'}</span>
         <span class="rc-card-badge">${escHtml(priceDisplay)}</span>
       </div>
       <div class="rc-prod-banner">
         <img src="hero-clim.jpg" alt="Climatiseur mobile Rowenta / Frico / Hisense" class="rc-prod-banner-img" loading="lazy">
         <div>
-          <div class="rc-prod-banner-name">${isEN?'Professional Mobile AC':isZH?'专业移动空调':'Climatiseur mobile professionnel'}</div>
-          <div class="rc-prod-banner-ref">Rowenta / Frico / Hisense · ${isZH?'最多12 000 BTU':isEN?'up to 12,000 BTU':"jusqu'\u00e0 12\xa0000 BTU"} <span class="rc-energy-badge">${isEN?'A-rated':isZH?'A级能效':'Énergie A'}</span></div>
+          <div class="rc-prod-banner-name">${isEN?'Professional Mobile AC':isZH?'专业移动空调':isRU?'Профессиональный мобильный кондиционер':'Climatiseur mobile professionnel'}</div>
+          <div class="rc-prod-banner-ref">Rowenta / Frico / Hisense · ${isZH?'最多12 000 BTU':isEN?'up to 12,000 BTU':isRU?'до 12 000 БТЕ':"jusqu'\u00e0 12\xa0000 BTU"} <span class="rc-energy-badge">${isEN?'A-rated':isZH?'A级能效':isRU?'Класс энергии A':'Énergie A'}</span></div>
         </div>
       </div>
       <dl class="rc-details">
@@ -6545,23 +6545,23 @@ function buildRecap(){
       <div class="rc-price-sep"></div>
       <div class="rc-price-block">
         <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:6px">
-          <span class="rc-total-lbl">${isEN?'Rental':isZH?'租金':'Location'} (${days} ${isEN?'days':isZH?'天':'jours'})</span>
+          <span class="rc-total-lbl">${isEN?'Rental':isZH?'租金':isRU?'Аренда':'Location'} (${days} ${isEN?'days':isZH?'天':isRU?'дней':'jours'})</span>
           <span>${price} €</span>
         </div>
         <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:6px">
-          <span class="rc-total-lbl">${_techInstall?(isEN?'Technician installation':isZH?'技术员安装':'Pose technicien'):(isEN?'Self-install':isZH?'自行安装':'Pose autonome')}</span>
-          <span>${_techInstall?INSTALL_FEE+' €':(isEN?'Kit included':isZH?'含配件':'Kit fourni')}</span>
+          <span class="rc-total-lbl">${_techInstall?(isEN?'Technician installation':isZH?'技术员安装':isRU?'Установка техником':'Pose technicien'):(isEN?'Self-install':isZH?'自行安装':isRU?'Самостоятельная установка':'Pose autonome')}</span>
+          <span>${_techInstall?INSTALL_FEE+' €':(isEN?'Kit included':isZH?'含配件':isRU?'Комплект включён':'Kit fourni')}</span>
         </div>
         <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:${_promoDiscount>0?'4px':'10px'}">
           <span class="rc-total-lbl">${isEN?'Delivery & collection':isZH?'配送 & 取回':_lang==='ru'?'Доставка & возврат':'Livraison & récupération'}${DELIVERY_FEE>60?' <span style="font-size:10px;background:#fff8ee;color:#92400e;padding:1px 6px;border-radius:100px;border:1px solid #e8d5a3">'+(_lang==='en'?'out of zone':_lang==='zh'?'超出范围':_lang==='ru'?'вне зоны':'hors zone')+'</span>':''}</span>
           <span>${DELIVERY_FEE} €</span>
         </div>
         ${_promoDiscount>0?`<div class="rc-total-row" style="font-size:12px;color:#059669;font-weight:600;margin-bottom:10px">
-          <span class="rc-total-lbl">${isEN?'Promo code':isZH?'优惠码':'Code promo'} (${escHtml(_promoCode)}${_promoPct>0?' · −'+_promoPct+'%':''})</span>
+          <span class="rc-total-lbl">${isEN?'Promo code':isZH?'优惠码':isRU?'Промокод':'Code promo'} (${escHtml(_promoCode)}${_promoPct>0?' · −'+_promoPct+'%':''})</span>
           <span>−${_promoDiscount} €</span>
         </div>`:''}
         <div class="rc-total-row">
-          <span class="rc-total-lbl">${isZH?'合计（含税）':isEN?'Total (incl. VAT)':'Total TTC'}</span>
+          <span class="rc-total-lbl">${isZH?'合计（含税）':isEN?'Total (incl. VAT)':isRU?'Итого':'Total TTC'}</span>
           <span class="rc-total-price">${priceDisplay}</span>
         </div>
       </div>
@@ -8313,39 +8313,40 @@ function _renderSmartLine(){
   return true;
 }
 function _initDynamicText(){
-  const isEn=_lang==='en';const isZH=_lang==='zh';
+  const isEn=_lang==='en';const isZH=_lang==='zh';const isRU=_lang==='ru';
   const ok=_cutoffOk();
   const MONTHS_S_FR=['jan','fév','mars','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
   const MONTHS_S_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const MONTHS_S_ZH=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const MONTHS_S_RU=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
   const dt2=_addDays(2);
-  const dateShort=(isEn?dt2.getDate()+' '+MONTHS_S_EN[dt2.getMonth()]:isZH?dt2.getDate()+MONTHS_S_ZH[dt2.getMonth()]:dt2.getDate()+' '+MONTHS_S_FR[dt2.getMonth()]);
-  const dateLong=(isEn?dt2.getDate()+' '+_MONTHS_LONG_EN[dt2.getMonth()]:isZH?dt2.getDate()+_MONTHS_LONG_ZH[dt2.getMonth()]:dt2.getDate()+' '+_MONTHS_LONG_FR[dt2.getMonth()]);
+  const dateShort=(isEn?dt2.getDate()+' '+MONTHS_S_EN[dt2.getMonth()]:isZH?dt2.getDate()+MONTHS_S_ZH[dt2.getMonth()]:isRU?dt2.getDate()+' '+MONTHS_S_RU[dt2.getMonth()]:dt2.getDate()+' '+MONTHS_S_FR[dt2.getMonth()]);
+  const dateLong=(isEn?dt2.getDate()+' '+_MONTHS_LONG_EN[dt2.getMonth()]:isZH?dt2.getDate()+_MONTHS_LONG_ZH[dt2.getMonth()]:isRU?dt2.getDate()+' '+_MONTHS_LONG_RU[dt2.getMonth()]:dt2.getDate()+' '+_MONTHS_LONG_FR[dt2.getMonth()]);
   // Choice card
   const cd=document.querySelector('.choice-card.choice-primary .choice-desc');
   if(cd)cd.textContent=ok
-    ?(isEn?'Delivery tomorrow · Full kit included':isZH?'明日配送 · 含完整套件':'Livraison demain · Kit complet inclus')
-    :(isEn?'Delivery '+dateShort+' · Full kit included':isZH?dateShort+'配送 · 含完整套件':'Livraison le '+dateShort+' · Kit complet inclus');
+    ?(isEn?'Delivery tomorrow · Full kit included':isZH?'明日配送 · 含完整套件':isRU?'Доставка завтра · Полный комплект включён':'Livraison demain · Kit complet inclus')
+    :(isEn?'Delivery '+dateShort+' · Full kit included':isZH?dateShort+'配送 · 含完整套件':isRU?'Доставка '+dateShort+' · Полный комплект включён':'Livraison le '+dateShort+' · Kit complet inclus');
   // Trust badge
   const riT=document.getElementById('ri-livraison-t');
   if(riT)riT.textContent=ok
-    ?(isEn?'Delivery within 24h':isZH?'24小时内配送':'Livraison sous 24h')
-    :(isEn?'Delivery within 48h':isZH?'48小时内配送':'Livraison sous 48h');
+    ?(isEn?'Delivery within 24h':isZH?'24小时内配送':isRU?'Доставка за 24 часа':'Livraison sous 24h')
+    :(isEn?'Delivery within 48h':isZH?'48小时内配送':isRU?'Доставка за 48 часов':'Livraison sous 48h');
   // Pricing plan item 1
   const pi1=document.getElementById('plan-item-1');
   if(pi1)pi1.innerHTML=ok
-    ?(isEn?'<strong>Delivered tomorrow</strong>':isZH?'<strong>明日送达</strong>':'<strong>Livraison dès demain</strong>')
-    :(isEn?'<strong>Delivery from '+dateShort+'</strong>':isZH?'<strong>'+dateShort+'送达</strong>':'<strong>Livraison dès le '+dateShort+'</strong>');
+    ?(isEn?'<strong>Delivered tomorrow</strong>':isZH?'<strong>明日送达</strong>':isRU?'<strong>Доставка с завтрашнего дня</strong>':'<strong>Livraison dès demain</strong>')
+    :(isEn?'<strong>Delivery from '+dateShort+'</strong>':isZH?'<strong>'+dateShort+'送达</strong>':isRU?'<strong>Доставка с '+dateShort+'</strong>':'<strong>Livraison dès le '+dateShort+'</strong>');
   // Final CTA title
   const fctaT=document.getElementById('fcta-title');
   if(fctaT)fctaT.innerHTML=ok
-    ?(isEn?'Fresh air by tomorrow morning.<br><em>No deposit. No surprises.</em>':isZH?'明天早晨即享清凉。<br><em>无押金。无隐藏费用。</em>':'L\'air frais dès demain matin.<br><em>Aucune caution. Aucune surprise.</em>')
-    :(isEn?'Fresh air from '+dateShort+'.<br><em>No deposit. No surprises.</em>':isZH?dateShort+'起享清凉。<br><em>无押金。无隐藏费用。</em>':'L\'air frais dès le '+dateShort+'.<br><em>Aucune caution. Aucune surprise.</em>');
+    ?(isEn?'Fresh air by tomorrow morning.<br><em>No deposit. No surprises.</em>':isZH?'明天早晨即享清凉。<br><em>无押金。无隐藏费用。</em>':isRU?'Свежий воздух уже завтра утром.<br><em>Без залога. Без сюрпризов.</em>':'L\'air frais dès demain matin.<br><em>Aucune caution. Aucune surprise.</em>')
+    :(isEn?'Fresh air from '+dateShort+'.<br><em>No deposit. No surprises.</em>':isZH?dateShort+'起享清凉。<br><em>无押金。无隐藏费用。</em>':isRU?'Свежий воздух с '+dateShort+'.<br><em>Без залога. Без сюрпризов.</em>':'L\'air frais dès le '+dateShort+'.<br><em>Aucune caution. Aucune surprise.</em>');
   // Success screen note — use neutral text that's always true
   const gn=document.getElementById('s-gratitude-note');
   if(gn)gn.textContent=ok
-    ?(isEn?'The whole team is ready to welcome you tomorrow. See you soon. — Aly':isZH?'全队已准备好迎接您明天的配送。很快见！— Aly':'Toute l\'équipe est mobilisée pour votre livraison demain. À très vite. — Aly')
-    :(isEn?'The whole team is ready for your delivery on '+dateLong+'. See you soon. — Aly':isZH?'全队已准备好您'+dateLong+'的配送。很快见！— Aly':'Toute l\'équipe est mobilisée pour votre livraison le '+dateLong+'. À très vite. — Aly');
+    ?(isEn?'The whole team is ready to welcome you tomorrow. See you soon. — Aly':isZH?'全队已准备好迎接您明天的配送。很快见！— Aly':isRU?'Вся наша команда работает для вас и ждёт вас завтра. До скорой встречи. — Aly':'Toute l\'équipe est mobilisée pour votre livraison demain. À très vite. — Aly')
+    :(isEn?'The whole team is ready for your delivery on '+dateLong+'. See you soon. — Aly':isZH?'全队已准备好您'+dateLong+'的配送。很快见！— Aly':isRU?'Вся наша команда работает для вас. Доставка '+dateLong+'. До скорой встречи. — Aly':'Toute l\'équipe est mobilisée pour votre livraison le '+dateLong+'. À très vite. — Aly');
 }
 _urgencyShown=_renderSmartLine();
 setInterval(_renderSmartLine,60000);
@@ -8360,7 +8361,7 @@ setInterval(_renderSmartLine,60000);
     const city=d.city||'';
     const isZone06=postal.startsWith(CITY.dep);
     if(!_smartLine||!isZone06)return;
-    const label=_lang==='zh'?(city?city+' — 配送区域 ✓':'配送区域覆盖 ✓'):_lang==='en'?(city?city+' — delivery zone covered ✓':'Delivery zone covered ✓'):(city?city+' — zone de livraison couverte ✓':'Zone de livraison couverte ✓');
+    const label=_lang==='zh'?(city?city+' — 配送区域 ✓':'配送区域覆盖 ✓'):_lang==='en'?(city?city+' — delivery zone covered ✓':'Delivery zone covered ✓'):_lang==='ru'?(city?city+' — зона доставки покрыта ✓':'Зона доставки покрыта ✓'):(city?city+' — zone de livraison couverte ✓':'Zone de livraison couverte ✓');
     _smartLine.textContent='📍 '+label;
     _smartLine.style.color='#4ade80';
     _smartLine.style.display='block';
