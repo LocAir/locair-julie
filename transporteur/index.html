@@ -265,14 +265,22 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .week-day.active .week-day-dot{background:#fff;color:var(--blue)}
 .week-day.empty .week-day-dot{visibility:hidden}
 .week-day-list{margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
+.week-day-item+.week-day-item{border-top:1px solid var(--rule)}
 .week-day-row{display:flex;align-items:center;gap:10px;padding:9px 2px;cursor:pointer}
-.week-day-row+.week-day-row{border-top:1px solid var(--rule)}
 .week-day-row .ic{font-size:18px;flex-shrink:0}
 .week-day-row .tx{flex:1;min-width:0}
 .week-day-row .name{font-size:13.5px;font-weight:600;color:var(--black);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .week-day-row .meta{font-size:12px;color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.week-day-row .chev{color:var(--grey-soft);font-size:13px;flex-shrink:0}
+.week-day-row .chev{color:var(--grey-soft);font-size:13px;flex-shrink:0;transition:transform .15s ease}
+.week-day-row.expanded .chev{transform:rotate(90deg)}
 .week-day-empty{font-size:13px;color:var(--grey);text-align:center;padding:10px 0 2px}
+/* Synthèse dépliée d'une mission de "Ma semaine" : mêmes .info-row/.step-hint
+   que la fiche mission détaillée, pour que le livreur retrouve les mêmes
+   repères visuels — juste indentée sous l'icône de la ligne parente. */
+.week-day-detail{padding:0 2px 14px 28px}
+.week-day-detail .info-row{padding:7px 0;font-size:13.5px}
+.week-day-detail .step-hint{font-size:12.5px;padding:9px 12px;margin-bottom:8px}
+.week-day-detail .mcard-actions{margin-top:6px}
 .dash-link-card .tx .t{font-weight:700;font-size:14px;color:var(--black)}
 .dash-link-card .tx .s{font-size:12px;color:var(--grey);margin-top:2px}
 .dash-link-card .chev{color:var(--grey-soft);font-size:18px;flex-shrink:0}
@@ -1326,18 +1334,12 @@ function weekAheadHtml(){
   const selMissions = activeMissions
     .filter(m => m.date_prevue===STATE.weekSelectedDate)
     .sort((a,b) => (a.creneau||'').localeCompare(b.creneau||''));
-  const listHtml = selMissions.length ? selMissions.map(m => {
-    const c = m.client || {};
-    const isAutre = m.type==='autre';
-    const nom = isAutre ? escHtml(m.titre||'Mission libre') : ((escHtml((c.prenom||'')+' '+(c.nom||'')).trim())||'Client');
-    const adresse = isAutre ? (m.adresse_libre||'') : (c.adresse||'');
-    const metaParts = [m.creneau?escHtml(m.creneau):'', adresse?escHtml(adresse):''].filter(Boolean);
-    return `<div class="week-day-row" onclick="openMission(${m.id})">
-      <span class="ic">${TYPE_ICON[m.type]||'📍'}</span>
-      <div class="tx"><div class="name">${nom}</div><div class="meta">${metaParts.join(' · ')||missionTypeLabel(m)}</div></div>
-      <span class="chev">›</span>
-    </div>`;
-  }).join('') : `<p class="week-day-empty">Aucune mission ce jour.</p>`;
+  // Taper sur un jour affiche la liste ; taper sur une mission de cette liste
+  // déplie une synthèse sur place (secteur, climatiseurs, accès...) plutôt que
+  // de basculer directement dans le parcours de mission — pour que le livreur
+  // puisse s'organiser à l'avance sans quitter l'Accueil, et refuser une
+  // mission trop lointaine directement depuis là.
+  const listHtml = selMissions.length ? selMissions.map(m => weekMissionItemHtml(m)).join('') : `<p class="week-day-empty">Aucune mission ce jour.</p>`;
 
   const selLabel = STATE.weekSelectedDate===todayStr ? "Aujourd'hui" : new Date(STATE.weekSelectedDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   const rangeLabel = `${days[0].num} ${WEEK_MONTH_SHORT[days[0].month]} – ${days[6].num} ${WEEK_MONTH_SHORT[days[6].month]}`;
@@ -1358,13 +1360,58 @@ function weekAheadHtml(){
       </div>
     </div>`;
 }
+// Une ligne de "Ma semaine" : résumé toujours visible + synthèse dépliable
+// (secteur/climatiseurs/étage/gain/accès) et les actions réelles de la
+// mission (mêmes boutons Accepter/Refuser que "Mes missions", via
+// missionCardActionsHtml) — pour décider et refuser une mission trop
+// lointaine sans quitter l'Accueil.
+function weekMissionItemHtml(m){
+  const c = m.client || {};
+  const isAutre = m.type==='autre';
+  const nom = isAutre ? escHtml(m.titre||'Mission libre') : ((escHtml((c.prenom||'')+' '+(c.nom||'')).trim())||'Client');
+  const adresse = isAutre ? (m.adresse_libre||'') : (c.adresse||'');
+  const metaParts = [m.creneau?escHtml(m.creneau):'', adresse?escHtml(adresse):''].filter(Boolean);
+  const expanded = STATE.weekExpandedId === m.id;
+  let detailHtml = '';
+  if(expanded){
+    const cp = postalCode(adresse);
+    const nbClim = (m.appareil_numeros&&m.appareil_numeros.length) ? m.appareil_numeros.length : (c.quantite||(isAutre?0:1));
+    const climTxt = (m.appareil_numeros&&m.appareil_numeros.length) ? `n°${m.appareil_numeros.join(', ')}` : (nbClim?`${nbClim} climatiseur${nbClim>1?'s':''}`:'—');
+    const mapsUrl = adresse ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(adresse)}` : '';
+    detailHtml = `
+      <div class="week-day-detail">
+        ${!isAutre&&cp?`<div class="info-row"><span class="info-ic">📮</span><span class="info-label">Secteur</span><span class="info-val">${escHtml(cp)}</span></div>`:''}
+        <div class="info-row"><span class="info-ic">${TYPE_ICON[m.type]||'📍'}</span><span class="info-label">Type</span><span class="info-val">${missionTypeLabel(m)}</span></div>
+        ${!isAutre?`<div class="info-row"><span class="info-ic">❄️</span><span class="info-label">Climatiseur${nbClim>1?'s':''}</span><span class="info-val">${climTxt}</span></div>`:''}
+        ${!isAutre&&c.etage&&c.etage!=='—'?`<div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${escHtml(c.etage)}${c.ascenseur&&c.ascenseur!=='—'?' · Ascenseur : '+escHtml(c.ascenseur):''}</span></div>`:''}
+        ${adresse?`<div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(adresse)}</span></div>`:''}
+        ${m.montant_preview?`<div class="info-row"><span class="info-ic">💶</span><span class="info-label">Gain estimé</span><span class="info-val">${Math.round(m.montant_preview/100)}€${c.hors_zone?' · Hors zone':''}</span></div>`:''}
+        ${c.instructions_acces?`<p class="step-hint">🔑 ${escHtml(c.instructions_acces)}</p>`:''}
+        ${m.acces_difficile?`<p class="step-hint">📌 ${escHtml(m.acces_difficile)}</p>`:''}
+        ${missionCardActionsHtml(m, mapsUrl, c.tel)}
+      </div>`;
+  }
+  return `<div class="week-day-item">
+      <div class="week-day-row${expanded?' expanded':''}" onclick="toggleWeekMission(${m.id})">
+        <span class="ic">${TYPE_ICON[m.type]||'📍'}</span>
+        <div class="tx"><div class="name">${nom}</div><div class="meta">${metaParts.join(' · ')||missionTypeLabel(m)}</div></div>
+        <span class="chev">›</span>
+      </div>${detailHtml}
+    </div>`;
+}
+function toggleWeekMission(id){
+  STATE.weekExpandedId = STATE.weekExpandedId===id ? null : id;
+  renderDashboard();
+}
 function selectWeekDay(iso){
   STATE.weekSelectedDate = iso;
+  STATE.weekExpandedId = null;
   renderDashboard();
 }
 function shiftWeekAhead(delta){
   STATE.weekOffset = Math.max(0, (STATE.weekOffset||0) + delta);
   STATE.weekSelectedDate = null; // recalé sur le 1er jour de la nouvelle fenêtre par weekAheadHtml()
+  STATE.weekExpandedId = null;
   renderDashboard();
 }
 function renderDashboard(){
