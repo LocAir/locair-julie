@@ -1170,7 +1170,10 @@ function openChecklistPopup(onValidated){
   overlay.id = 'checklist-popup-overlay';
   overlay.innerHTML = `
     <div class="sheet">
-      <h1 style="margin-bottom:4px">🎒 Prêt à partir ?</h1>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+        <h1 style="margin-bottom:4px">🎒 Prêt à partir ?</h1>
+        <button type="button" class="btn-chip" style="flex-shrink:0;white-space:nowrap;margin-top:2px" onclick="checkAllChecklistPopup()">✅ Tout cocher</button>
+      </div>
       <p class="sub" style="margin-bottom:10px">Avant ta première mission de la journée — coche ce que tu as pris.</p>
       ${d.climatiseurs?.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">${climatiseurPills}</div>` : ''}
       <div class="card" style="margin-bottom:16px">
@@ -1193,6 +1196,18 @@ function updateChecklistPopupButton(){
   if(!btn) return;
   const boxes = document.querySelectorAll('.checklist-popup-cb');
   btn.disabled = boxes.length > 0 && Array.from(boxes).some(b => !b.checked);
+}
+// Aucune de ces cases n'est tracée individuellement côté serveur (voir
+// validerChecklistPopup : action:'valider' sans détail par item) — ce ne
+// sont que des repères visuels pour le livreur avant de partir. Cocher
+// chacune une par une (jusqu'à une quinzaine certains jours : kits, items
+// par climatiseur, matériel fixe) n'apporte donc rien de plus qu'un
+// "tout cocher" en 1 tap pour le cas courant où tout est déjà dans le sac
+// — les cases restent modifiables ensuite pour décocher ce qui manque
+// vraiment.
+function checkAllChecklistPopup(){
+  document.querySelectorAll('.checklist-popup-cb').forEach(cb => { cb.checked = true; });
+  updateChecklistPopupButton();
 }
 async function validerChecklistPopup(){
   const btn = document.getElementById('checklist-popup-btn');
