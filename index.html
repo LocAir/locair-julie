@@ -5464,8 +5464,13 @@ let DELIVERY_FEE=60;
 const _ZONE_CP=new Set(['06000','06100','06200','06300','06700','06800','06230','06310']);
 function _updateDeliveryFee(){
   const cp=(document.getElementById('f-cp')?.value||'').trim();
-  DELIVERY_FEE=_ZONE_CP.has(cp)?60:120;
   const notice=document.getElementById('zone-delivery-notice');
+  if(!cp){
+    // CP non détecté (adresse tapée manuellement) : garde le tarif standard par défaut
+    if(notice)notice.style.display='none';
+    return;
+  }
+  DELIVERY_FEE=_ZONE_CP.has(cp)?60:120;
   if(notice)notice.style.display=DELIVERY_FEE>60?'flex':'none';
 }
 let _techInstall=true; // true = technicien 80€ (défaut), false = auto-installation
