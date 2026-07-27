@@ -208,7 +208,12 @@ module.exports = async (req, res) => {
       }
       if (liv.type === 'livraison' && ['en_route', 'arrivee', 'probleme'].includes(liv.statut)) {
         const { data: t } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
-        await moveAppareilsForReservation(supabase, liv.reservation_id, 'entrepot', {
+        // 'stock_principal' : seule valeur "dépôt" acceptée par la contrainte
+        // CHECK sur appareils.localisation — 'entrepot' n'existe pas et
+        // faisait échouer silencieusement la mise à jour (catch plus bas),
+        // laissant l'appareil marqué à tort "dans le véhicule" après un
+        // report de mission.
+        await moveAppareilsForReservation(supabase, liv.reservation_id, 'stock_principal', {
           typeEvenement: 'autre', livraisonId: liv.id, utilisateur: t?.nom || null,
           commentaire: 'Mission reportée — appareil remis au dépôt',
         }).catch(e => console.error('[Reporter stock rollback]', e.message));
