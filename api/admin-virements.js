@@ -201,9 +201,14 @@ module.exports = async (req, res) => {
       }
       const { error: virErr } = await supabase.from('virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', id);
       if (virErr) throw virErr;
-      await notifyTransporteur(supabase, virement.transporteur_id, {
-        type: 'paiement', message: `Votre rémunération a été payée (${(montant / 100).toFixed(2)} €).`, tag: 'paiement',
-      });
+      // Comme verser_maintenant : si les missions sous-jacentes ont déjà été
+      // payées entre-temps par une autre voie, le montant recalculé peut
+      // valoir 0 — pas de notification "payée" trompeuse dans ce cas.
+      if (montant > 0) {
+        await notifyTransporteur(supabase, virement.transporteur_id, {
+          type: 'paiement', message: `Votre rémunération a été payée (${(montant / 100).toFixed(2)} €).`, tag: 'paiement',
+        });
+      }
 
       return res.status(200).json({ ok: true, montant_cents: montant });
     }
