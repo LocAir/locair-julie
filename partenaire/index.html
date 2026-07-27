@@ -287,12 +287,18 @@ async function sendForgotPin(){
   if(btn.disabled) return;
   btn.disabled = true; btn.textContent = 'Envoi…';
   try{
-    await fetch(API('partenaire-forgot-pin'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
-  }catch(e){}
-  document.getElementById('forgot-email').style.display = 'none';
-  document.querySelectorAll('#forgot-overlay .btn, #forgot-overlay .forgot-link').forEach(b=>b.style.display='none');
-  okEl.textContent = "Si cet email est connu, ton code vient d'être envoyé. Vérifie ta boîte mail.";
-  okEl.style.display = 'block';
+    const r = await fetch(API('partenaire-forgot-pin'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
+    if(!r.ok) throw new Error('Erreur serveur');
+    document.getElementById('forgot-email').style.display = 'none';
+    document.querySelectorAll('#forgot-overlay .btn, #forgot-overlay .forgot-link').forEach(b=>b.style.display='none');
+    okEl.textContent = "Si cet email est connu, ton code vient d'être envoyé. Vérifie ta boîte mail.";
+    okEl.style.display = 'block';
+  }catch(e){
+    okEl.textContent = "Erreur réseau — le code n'a pas pu être envoyé. Réessaie.";
+    okEl.style.color = '#c00';
+    okEl.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Envoyer';
+  }
 }
 async function loadDashboard(){
   show('dashboard-screen');
