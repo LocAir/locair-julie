@@ -6,10 +6,16 @@
 const CGV_VERSION = '2026-07-14';
 
 // Types d'acceptation distincts trackés en base (table cgv_acceptations) —
-// deux cases à cocher séparées côté client, deux lignes d'audit séparées.
+// trois cases à cocher séparées côté client (#f-cgv, #f-conditions, #f-retard
+// dans index.html), trois lignes d'audit séparées. AUTORISATION_RETARD est la
+// preuve horodatée du consentement du client au prélèvement automatique de sa
+// carte en cas de retard de restitution (art. 10 bis des CGV, cf. Article 5
+// du contrat) — sans cette trace, impossible de prouver ce consentement
+// précis en cas de litige sur un prélèvement de retard.
 const ACCEPTANCE_TYPES = {
   CGV_LOCATION:           'cgv_location',
   CONDITIONS_UTILISATION: 'conditions_utilisation',
+  AUTORISATION_RETARD:    'autorisation_retard',
 };
 
 // Identité légale du vendeur — reprise telle quelle de mentions-legales.html

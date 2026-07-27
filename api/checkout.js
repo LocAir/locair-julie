@@ -28,13 +28,14 @@ module.exports = async (req, res) => {
   const data   = req.body || {};
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-  // Acceptation obligatoire des CGV/CGL et des conditions d'utilisation du
-  // climatiseur — le bouton de paiement est déjà désactivé côté site tant que
-  // ces deux cases ne sont pas cochées, mais ça ne protège que l'UI : sans ce
-  // contrôle serveur, un appel direct à cette API pourrait créer un paiement
-  // sans qu'aucune des deux acceptations n'ait jamais été donnée.
-  if (data.cgv_accepted !== true || data.conditions_utilisation_accepted !== true) {
-    return res.status(400).json({ error: 'Vous devez accepter les CGV et les conditions d\'utilisation avant de payer.' });
+  // Acceptation obligatoire des CGV/CGL, des conditions d'utilisation du
+  // climatiseur, et de l'autorisation de prélèvement en cas de retard — le
+  // bouton de paiement est déjà désactivé côté site tant que ces trois cases
+  // ne sont pas cochées, mais ça ne protège que l'UI : sans ce contrôle
+  // serveur, un appel direct à cette API pourrait créer un paiement sans
+  // qu'aucune des trois acceptations n'ait jamais été donnée.
+  if (data.cgv_accepted !== true || data.conditions_utilisation_accepted !== true || data.retard_accepted !== true) {
+    return res.status(400).json({ error: 'Vous devez accepter les CGV, les conditions d\'utilisation et l\'autorisation de prélèvement en cas de retard avant de payer.' });
   }
 
   if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
@@ -230,13 +231,15 @@ module.exports = async (req, res) => {
       return res.status(500).json({ error: 'Erreur serveur réservation' });
     }
 
-    // Trace d'audit des deux acceptations (CGV/CGL + conditions d'utilisation) —
-    // ne doit jamais faire échouer une réservation déjà payée si l'écriture
-    // rate, mais son absence ne doit pas non plus passer inaperçue.
+    // Trace d'audit des trois acceptations (CGV/CGL + conditions d'utilisation
+    // + autorisation de prélèvement en cas de retard) — ne doit jamais faire
+    // échouer une réservation déjà payée si l'écriture rate, mais son absence
+    // ne doit pas non plus passer inaperçue.
     try {
       await supabase.from('cgv_acceptations').insert([
         { reservation_id: insertedResa.id, type: ACCEPTANCE_TYPES.CGV_LOCATION,           version: CGV_VERSION, accepted_at: new Date().toISOString() },
         { reservation_id: insertedResa.id, type: ACCEPTANCE_TYPES.CONDITIONS_UTILISATION, version: CGV_VERSION, accepted_at: new Date().toISOString() },
+        { reservation_id: insertedResa.id, type: ACCEPTANCE_TYPES.AUTORISATION_RETARD,    version: CGV_VERSION, accepted_at: new Date().toISOString() },
       ]);
     } catch (e) {
       console.error('[CGV acceptations]', e.message);

@@ -181,12 +181,13 @@ module.exports = async (req, res) => {
       }).select().single();
       if (error) throw error;
 
-      // Trace d'audit des deux acceptations, comme sur le site (checkout.js)
+      // Trace d'audit des trois acceptations, comme sur le site (checkout.js)
       // — même dossier légal qu'une commande web, jamais bloquant si l'écriture rate.
       try {
         await supabase.from('cgv_acceptations').insert([
           { reservation_id: resa.id, type: ACCEPTANCE_TYPES.CGV_LOCATION,           version: CGV_VERSION, accepted_at: resa.cgv_accepted_at },
           { reservation_id: resa.id, type: ACCEPTANCE_TYPES.CONDITIONS_UTILISATION, version: CGV_VERSION, accepted_at: resa.cgv_accepted_at },
+          { reservation_id: resa.id, type: ACCEPTANCE_TYPES.AUTORISATION_RETARD,    version: CGV_VERSION, accepted_at: resa.cgv_accepted_at },
         ]);
       } catch (e) {
         console.error('[CGV acceptations manuel]', e.message);

@@ -205,10 +205,13 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
     // en ligne plutôt que par signature manuscrite au moment du paiement.
     drawSectionTitle(doc, 'Acceptation électronique');
     if (acceptations && acceptations.length) {
+      const LABEL_BY_TYPE = {
+        cgv_location:           'Conditions générales de vente et de location (CGV/CGL)',
+        conditions_utilisation: "Conditions d'utilisation du climatiseur et obligations liées à la location",
+        autorisation_retard:    'Autorisation de prélèvement en cas de retard de restitution (art. 10 bis des CGV)',
+      };
       for (const a of acceptations) {
-        const label = a.type === 'cgv_location'
-          ? 'Conditions générales de vente et de location (CGV/CGL)'
-          : "Conditions d'utilisation du climatiseur et obligations liées à la location";
+        const label = LABEL_BY_TYPE[a.type] || a.type;
         drawKeyValueRow(doc, label, `Acceptées le ${fmtDateHeure(a.accepted_at)} — version ${a.version}`);
       }
     } else {
