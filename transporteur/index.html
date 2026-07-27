@@ -535,6 +535,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const API = (path) => '/api/' + path;
+// Même numéro que le contact public du site (index.html) — c'est la seule
+// ligne de la petite structure, déjà celle par laquelle les transporteurs
+// joignent Aly en pratique (aucun autre canal n'existait dans l'app jusqu'ici :
+// "Contacte Aly" en pause ou "signaler un problème" ne menaient nulle part
+// pour une question générale hors mission).
+const ADMIN_CONTACT_TEL = '0663798756';
 // localStorage plutôt que sessionStorage : le jeton ne périme jamais côté
 // serveur tant que le PIN ne change pas, donc pas de raison de redemander le
 // code à chaque fermeture de l'app.
@@ -1486,7 +1492,7 @@ function renderDashboard(){
     .reduce((s,m) => s + (m.montant_preview||0), 0);
 
   const pauseHtml = STATE.en_pause
-    ? `<div class="banner-warning">⏸ Tu es en pause — tu ne reçois pas de nouvelles missions. Contacte Aly pour reprendre.</div>`
+    ? `<div class="banner-warning">⏸ Tu es en pause — tu ne reçois pas de nouvelles missions. <a href="tel:${ADMIN_CONTACT_TEL}" style="color:#fff;text-decoration:underline">📞 Contacte Aly</a> pour reprendre.</div>`
     : '';
 
   const heroFor = (m, eyebrow, cta, ctaLabel) => {
@@ -1978,7 +1984,7 @@ function renderTranspBanner(){
   const countJour = STATE.missions.filter(m => m.date_prevue===todayStr && !['annule','refusee'].includes(m.statut)).length;
 
   const pauseHtml = STATE.en_pause
-    ? `<div class="banner-warning">⏸ Tu es actuellement en pause — tu ne recevras pas de nouvelles missions. Contacte Aly pour reprendre.</div>`
+    ? `<div class="banner-warning">⏸ Tu es actuellement en pause — tu ne recevras pas de nouvelles missions. <a href="tel:${ADMIN_CONTACT_TEL}" style="color:#fff;text-decoration:underline">📞 Contacte Aly</a> pour reprendre.</div>`
     : '';
 
   const progressHtml = countJour ? (() => {
@@ -3352,7 +3358,8 @@ function renderTutoCategoryList(){
           <div class="tools-group-body">${bodyHtml}</div>
         </details>`;
     }).join('')}
-    <button class="btn btn-grey btn-block" style="margin-top:14px" onclick="closeTutoLibrary()">Fermer</button>`;
+    <a class="btn btn-blue btn-block" style="margin-top:14px;text-decoration:none" href="tel:${ADMIN_CONTACT_TEL}">📞 Contacter Aly</a>
+    <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="closeTutoLibrary()">Fermer</button>`;
 }
 async function openTutoPlayer(videoId){
   const sheet = document.getElementById('tuto-sheet');
