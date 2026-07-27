@@ -87,6 +87,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .mcard:active{box-shadow:var(--sh-sm)}
 .mcard.st-a_faire{border-left-color:var(--amber)}
 .mcard.st-acceptee{border-left-color:var(--blue)}
+.mcard.st-en_route{border-left-color:var(--blue)}
 .mcard.st-arrivee{border-left-color:var(--green)}
 .mcard.st-probleme{border-left-color:var(--red)}
 .mcard.st-fait{border-left-color:var(--rule)}
@@ -108,21 +109,25 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    détail, que la décision se prend réellement. */
 .detail-earn{display:inline-block;font-size:15px;font-weight:800;color:var(--green);background:var(--green-bg);border-radius:100px;padding:6px 14px;margin-bottom:10px}
 .mcard-addr{font-size:13.5px;color:var(--grey);margin-top:7px;line-height:1.4}
-.mcard-meta{font-size:11.5px;color:var(--grey-soft);margin-top:3px}
+.mcard-meta{font-size:12.5px;color:var(--grey);margin-top:3px}
 /* Actions fusionnées : icônes compact (carte/tél) + boutons accept/refuse sur 1 ligne */
 .mcard-actions{display:flex;gap:7px;margin-top:12px;align-items:center;padding-top:12px;border-top:1px solid var(--rule)}
 .mcard-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:12px;border:1.5px solid var(--rule);background:var(--bg);font-size:17px;text-decoration:none;flex-shrink:0;color:var(--black)}
 
 .empty{text-align:center;color:var(--grey);font-size:14px;padding:44px 10px}
 
-.detail-back{background:none;border:none;color:var(--blue);font-weight:700;font-size:14px;margin-bottom:14px;cursor:pointer;padding:10px 4px;min-height:40px}
+.detail-back{background:none;border:none;color:var(--blue);font-weight:700;font-size:14px;margin-bottom:14px;cursor:pointer;padding:10px 4px;min-height:44px}
+/* Couleur de coche cohérente avec le bleu de l'app — sans ça, les cases à
+   cocher gardent le rendu par défaut du téléphone, peu contrasté en plein
+   soleil, sur des actions qui débloquent la suite de la mission. */
+input[type="checkbox"]{accent-color:var(--blue)}
 .info-row{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--rule);font-size:14.5px}
 .info-row:last-child{border-bottom:none}
 .info-ic{width:22px;flex-shrink:0;text-align:center}
 .info-label{color:var(--grey);width:90px;flex-shrink:0}
 .info-val{font-weight:600;flex:1}
 .maps-link{display:block;text-align:center;padding:14px;background:var(--bg);border-radius:100px;font-weight:700;color:var(--blue);text-decoration:none;margin:16px 0}
-.btn-chip{margin-left:6px;font-size:11px;padding:2px 7px;border:1px solid var(--rule);border-radius:var(--r-sm);background:var(--white);cursor:pointer;color:var(--blue)}
+.btn-chip{margin-left:6px;font-size:11px;padding:6px 10px;border:1px solid var(--rule);border-radius:var(--r-sm);background:var(--white);cursor:pointer;color:var(--blue)}
 .pill-badge{display:inline-flex;align-items:center;gap:4px;background:var(--blue-lt);color:var(--blue);font-weight:700;font-size:13px;padding:6px 12px;border-radius:100px}
 
 .media-btn{display:flex;align-items:center;gap:10px;width:100%;padding:16px 22px;border:1.5px solid var(--rule);border-radius:100px;background:var(--white);font-weight:700;font-size:15px;color:var(--black);margin-bottom:12px;cursor:pointer}
@@ -257,7 +262,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .week-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;flex-wrap:wrap}
 .week-card-title{font-family:var(--disp);font-size:17px;font-weight:600;color:var(--black);display:flex;align-items:center;gap:8px}
 .week-nav{display:flex;align-items:center;gap:8px}
-.week-nav-btn{background:var(--bg);border:1px solid var(--rule);border-radius:50%;width:26px;height:26px;line-height:1;font-size:11px;color:var(--blue);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.week-nav-btn{background:var(--bg);border:1px solid var(--rule);border-radius:50%;width:44px;height:44px;line-height:1;font-size:11px;color:var(--blue);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .week-nav-btn:disabled{opacity:.35;cursor:default}
 .week-nav-range{font-size:12px;font-weight:600;color:var(--grey2);white-space:nowrap}
 .week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:4px}
@@ -280,6 +285,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    confondait dans la liste avec une mission simplement à venir. */
 .week-day-row.st-a_faire{border-left-color:var(--amber)}
 .week-day-row.st-acceptee{border-left-color:var(--blue)}
+.week-day-row.st-en_route{border-left-color:var(--blue)}
 .week-day-row.st-arrivee{border-left-color:var(--green)}
 .week-day-row.st-probleme{border-left-color:var(--red)}
 .week-day-row.st-fait{border-left-color:var(--rule)}
@@ -479,11 +485,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
       <button data-f="a_venir" onclick="setMissionFilter('a_venir')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>À venir</button>
       <button data-f="terminee" onclick="setMissionFilter('terminee')"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M8.2 12.3l2.6 2.6 5-5.4"/></svg>Finies<span class="tab-badge hidden badge-sf-terminee"></span></button>
     </div>
+    <!-- "Voir la tournée d'aujourd'hui" / "Voir sur la carte" servent presque
+         tous les jours dès qu'il y a 2 missions — sortis de l'accordéon replié
+         (contrairement au filtre par secteur ci-dessous, moins utilisé) pour
+         épargner un tap quotidien (audit UX du 2026-07-27). -->
+    <div id="tour-zone"></div>
     <details class="tools-group hidden" id="tools-group">
-      <summary><span class="tg-label"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l6-2 6 2 4-1.3v13L16 19l-6-2-6 2V6z"/><path d="M10 4v13M16 6v13"/></svg>Secteurs &amp; tournée du jour</span></summary>
+      <summary><span class="tg-label"><svg class="tab-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l6-2 6 2 4-1.3v13L16 19l-6-2-6 2V6z"/><path d="M10 4v13M16 6v13"/></svg>Secteurs</span></summary>
       <div class="tools-group-body">
         <div class="map-filters hidden" id="postal-filters"></div>
-        <div id="tour-zone"></div>
       </div>
     </details>
     <div id="missions-list"></div>
@@ -1174,7 +1184,7 @@ function openChecklistPopup(onValidated){
   const dynamiqueLabels = (d.dynamique || []).map(key => `${d.install_count} × ${CHECKLIST_DYNAMIQUE_LABELS[key] || key}`);
   const checkRow = label => `
     <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule)">
-      <input type="checkbox" class="checklist-popup-cb" onchange="updateChecklistPopupButton()" style="width:20px;height:20px;flex-shrink:0">
+      <input type="checkbox" class="checklist-popup-cb" onchange="updateChecklistPopupButton()" style="width:22px;height:22px;flex-shrink:0">
       <span>${label}</span>
     </label>`;
   const overlay = document.createElement('div');
@@ -2132,16 +2142,16 @@ function renderMissions(){
   }
   tourZone.innerHTML = zoneHtml;
 
-  // Le tiroir "Secteurs & tournée" range des contrôles utilisés seulement de
-  // temps en temps (plusieurs secteurs, plusieurs missions le même jour) —
-  // même principe que le menu ☰ de l'admin qui range la navigation secondaire
-  // au lieu de tout étaler à l'écran. On le masque entièrement s'il n'a rien
-  // à proposer aujourd'hui, pour ne pas afficher un tiroir vide.
+  // Le tiroir "Secteurs" range un contrôle utilisé seulement de temps en
+  // temps (plusieurs secteurs actifs le même jour) — même principe que le
+  // menu ☰ de l'admin qui range la navigation secondaire au lieu de tout
+  // étaler à l'écran. Les boutons de tournée (#tour-zone), eux, sont hors de
+  // ce tiroir : utiles presque tous les jours, ils restent toujours visibles.
   const toolsGroup = document.getElementById('tools-group');
   if(toolsGroup){
     const postalZone = document.getElementById('postal-filters');
     const hasPostal = postalZone && !postalZone.classList.contains('hidden');
-    toolsGroup.classList.toggle('hidden', !hasPostal && !zoneHtml);
+    toolsGroup.classList.toggle('hidden', !hasPostal);
   }
 
   // Regroupées par date : une mission peut arriver la veille pour le
@@ -2478,8 +2488,8 @@ function checklistRestockHtml(){
     <p class="sub" style="margin:0 0 6px 2px">Dernière récupération de la journée — passe par le box pour tout déposer et recharger ton sac avant la prochaine tournée.</p>
     <div class="card" style="margin-bottom:12px">
       ${Object.keys(CHECKLIST_FIXE_LABELS).map(key => `
-        <label style="display:flex;align-items:center;gap:10px;padding:8px 0">
-          <input type="checkbox" class="checklist-restock-cb" onchange="updateMissionFinalButton()" style="width:20px;height:20px;flex-shrink:0">
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule)">
+          <input type="checkbox" class="checklist-restock-cb" onchange="updateMissionFinalButton()" style="width:22px;height:22px;flex-shrink:0">
           <span>${CHECKLIST_FIXE_LABELS[key]}</span>
         </label>`).join('')}
     </div>`;
@@ -2508,8 +2518,8 @@ function checklistFinalHtml(workflow){
     <p class="sub" style="margin:0 0 6px 2px">Coche chaque point pour confirmer que tout est en ordre — ça protège le client et toi en cas de souci plus tard.</p>
     <div class="card" style="margin-bottom:12px">
       ${items.map(it => `
-        <label style="display:flex;align-items:center;gap:10px;padding:8px 0">
-          <input type="checkbox" class="checklist-final-cb" data-item-id="${it.id}" onchange="updateMissionFinalButton()" style="width:20px;height:20px;flex-shrink:0">
+        <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule)">
+          <input type="checkbox" class="checklist-final-cb" data-item-id="${it.id}" onchange="updateMissionFinalButton()" style="width:22px;height:22px;flex-shrink:0">
           <span>${escHtml(it.libelle)}</span>
         </label>`).join('')}
     </div>`;
@@ -2532,7 +2542,7 @@ function etatMaterielHtml(){
     <div class="card" style="margin-bottom:12px">
       ${Object.entries(ETAT_MATERIEL_LABEL).map(([val,lbl]) => `
         <label style="display:flex;align-items:center;gap:10px;padding:6px 0">
-          <input type="radio" name="etat-materiel" value="${val}" style="width:20px;height:20px;flex-shrink:0">
+          <input type="radio" name="etat-materiel" value="${val}" style="width:22px;height:22px;flex-shrink:0">
           <span>${lbl}</span>
         </label>`).join('')}
       <textarea id="etat-materiel-commentaire" placeholder="Commentaire (optionnel)" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid var(--rule);font-family:inherit;font-size:14px" rows="2"></textarea>
@@ -3146,7 +3156,7 @@ function openForgotPin(){
     <div class="sheet">
       <h1 style="margin-bottom:6px">Code oublié ?</h1>
       <p class="sub">Entre l'email connu par Aly, on t'envoie ton code.</p>
-      <input type="text" id="forgot-email" placeholder="ton@email.fr" autocomplete="email"/>
+      <input type="email" id="forgot-email" placeholder="ton@email.fr" autocomplete="email"/>
       <button class="btn btn-blue" id="forgot-send-btn" onclick="sendForgotPin()">Envoyer</button>
       <button class="forgot-link" onclick="closeForgotPin()">Annuler</button>
       <div class="ok-msg" id="forgot-ok"></div>
@@ -3765,10 +3775,13 @@ function renderChecklist(d){
   const kitItemsHtml = kitItems.map(t => `<div class="info-row" style="font-size:14.5px">${t}</div>`).join('');
   const fixeKeys = (d.fixe ? Object.keys(d.fixe) : []).filter(k => hasRecup || !CHECKLIST_RECUP_ONLY_KEYS.includes(k));
   const fixeHtml = (fixeKeys.length && !d.validated) ? `
-    <div class="section-title" style="margin:14px 0 2px 2px">Checklist — coche ce que tu as pris</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin:14px 0 2px 2px">
+      <div class="section-title" style="margin:0">Checklist — coche ce que tu as pris</div>
+      <button type="button" class="btn-chip" style="flex-shrink:0;white-space:nowrap;margin-top:2px" onclick="checkAllChecklistBox()">✅ Tout cocher</button>
+    </div>
     ${fixeKeys.map(key => `
       <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule)">
-        <input type="checkbox" class="checklist-box-cb" onchange="updateChecklistBoxButton()" style="width:20px;height:20px;flex-shrink:0">
+        <input type="checkbox" class="checklist-box-cb" onchange="updateChecklistBoxButton()" style="width:22px;height:22px;flex-shrink:0">
         <span>${CHECKLIST_FIXE_LABELS[key] || key}</span>
       </label>`).join('')}` : '';
   zone.innerHTML = `
@@ -3793,6 +3806,10 @@ function updateChecklistBoxButton(){
   if(!btn) return;
   const boxes = document.querySelectorAll('.checklist-box-cb');
   btn.disabled = boxes.length > 0 && Array.from(boxes).some(b => !b.checked);
+}
+function checkAllChecklistBox(){
+  document.querySelectorAll('.checklist-box-cb').forEach(cb => { cb.checked = true; });
+  updateChecklistBoxButton();
 }
 async function validerChecklist(){
   try{
