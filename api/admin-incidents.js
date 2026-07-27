@@ -61,7 +61,7 @@ module.exports = async (req, res) => {
       const STATUTS_VALIDES = ['nouveau', 'en_analyse', 'resolu', 'clos', 'retard_a_facturer'];
       if (!STATUTS_VALIDES.includes(body.statut)) return res.status(400).json({ error: 'Statut invalide' });
       const { data: before } = await supabase
-        .from('incidents').select('id, city_id, transporteur_id')
+        .from('incidents').select('id, city_id, transporteur_id, livraison_id')
         .eq('id', id).maybeSingle();
       if (!before || (before.city_id !== null && before.city_id !== city.id)) return res.status(404).json({ error: 'Incident introuvable' });
       const { error } = await supabase.from('incidents').update({ statut: body.statut }).eq('id', id);
@@ -72,6 +72,16 @@ module.exports = async (req, res) => {
         await notifyTransporteur(supabase, before.transporteur_id, {
           type: 'incident', message: 'Une action est nécessaire concernant un incident.', tag: 'incident',
         });
+      }
+      // Clore un incident depuis cet onglet (plutôt que via "Résoudre
+      // problème" côté Livraisons) ne débloquait jamais la mission liée : elle
+      // restait en statut 'probleme' — invisible au transporteur, disparue
+      // des compteurs "Incidents ouverts" tout en étant réellement bloquée.
+      // Même correctif que resolve_probleme (admin-livraisons.js).
+      if ((body.statut === 'resolu' || body.statut === 'clos') && before.livraison_id) {
+        await supabase.from('livraisons').update({
+          statut: 'acceptee', probleme_type: null, probleme_description: null, probleme_at: null,
+        }).eq('id', before.livraison_id).eq('statut', 'probleme');
       }
       return res.status(200).json({ ok: true });
     }
