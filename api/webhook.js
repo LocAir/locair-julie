@@ -5,7 +5,7 @@ const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
 const { pushToAdmin } = require('./_lib/push');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { recordMouvement } = require('./_lib/stockMouvements');
-const { generateAndSendDocuments, generateAndSendFactureVente } = require('./_lib/documents');
+const { generateAndSendDocuments, generateAndSendDocumentsAfterProlongation, generateAndSendFactureVente } = require('./_lib/documents');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { sendScenarioEmail, getSignature, withSignature } = require('./_lib/emailEngine');
 const { escHtml, tplProlongConfirmation } = require('./_lib/emailTemplates');
@@ -484,13 +484,24 @@ const handler = async (req, res) => {
           // réservation plus récente mais annulée/en attente sous le même
           // email passe devant la vraie réservation active — sa date_fin
           // n'est alors jamais mise à jour (voir prolong-lookup.js).
-          let lookup = getSupabase().from('reservations').select('id').not('source', 'eq', 'site_prolongation');
+          let lookup = getSupabase().from('reservations').select('*').not('source', 'eq', 'site_prolongation');
           lookup = origRef
             ? lookup.eq('ref', origRef)
             : lookup.ilike('email', (email || '').trim()).eq('statut', 'confirmee').order('created_at', { ascending: false }).limit(1);
           const { data: origResa } = await lookup.maybeSingle();
           if (origResa?.id) {
             await getSupabase().from('reservations').update({ date_fin: confirmedResa.date_fin }).eq('id', origResa.id);
+            // Contrat mis à jour (nouvelle date de fin) + facture de l'extension —
+            // sans ça, le contrat déjà en possession du client restait figé sur
+            // la durée/le montant de sa réservation initiale (audit du 2026-07-27).
+            try {
+              await generateAndSendDocumentsAfterProlongation(getSupabase(), {
+                origineResa: { ...origResa, date_fin: confirmedResa.date_fin },
+                prolongationResa: confirmedResa,
+              });
+            } catch (e) {
+              console.error('[Prolong webhook] documents mis à jour:', e.message);
+            }
           }
         } catch (e) {
           console.error('[Prolong webhook] mise à jour date_fin:', e.message);

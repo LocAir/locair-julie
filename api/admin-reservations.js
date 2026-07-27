@@ -14,6 +14,7 @@ const { syncStatutDetaille } = require('./_lib/statutDetaille');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { sendReservationPaymentLink } = require('./_lib/paymentLink');
+const { generateAndSendDocumentsAfterProlongation } = require('./_lib/documents');
 
 const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
 
@@ -295,7 +296,7 @@ module.exports = async (req, res) => {
 
       const { data: orig, error: origErr } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut, hors_zone, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut, hors_zone, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement, type_client, raison_sociale, siret, stripe_payment_intent_id, lang, cgv_accepted_at, prix_total_cents')
         .eq('id', origId).eq('city_id', city.id).maybeSingle();
       if (origErr) throw origErr;
       if (!orig) return res.status(404).json({ error: 'Réservation d\'origine introuvable' });
@@ -344,6 +345,18 @@ module.exports = async (req, res) => {
       // et les prolongations suivantes voient toujours la date réelle de fin.
       await supabase.from('reservations').update({ date_fin: newDateFin }).eq('id', origId)
         .catch(e => console.error('[Admin prolong] date_fin update:', e.message));
+      // Contrat mis à jour (nouvelle date de fin) + facture de l'extension —
+      // même correctif que pour une prolongation payée en ligne (voir
+      // webhook.js), sans quoi une prolongation prise par téléphone laissait
+      // elle aussi le client avec un contrat figé sur l'ancienne durée.
+      try {
+        await generateAndSendDocumentsAfterProlongation(supabase, {
+          origineResa: { ...orig, date_fin: newDateFin },
+          prolongationResa: resa,
+        });
+      } catch (e) {
+        console.error('[Admin prolong] documents mis à jour:', e.message);
+      }
       // Même principe qu'une location standard (voir "create" ci-dessus) :
       // une prolongation prise par téléphone envoie le même email dédié
       // qu'une prolongation payée en ligne via /prolongation.
@@ -405,6 +418,29 @@ module.exports = async (req, res) => {
               amount:           ((before.prix_total_cents || 0) / 100).toFixed(2) + ' €',
               lang:             before.lang || 'fr',
             });
+
+            // Mettre à jour date_fin de la réservation d'origine + régénérer son
+            // contrat (nouvelle date de fin) et facturer l'extension — ce chemin
+            // (confirmation manuelle d'une prolongation laissée "en attente")
+            // ne le faisait jusqu'ici jamais, contrairement aux 2 autres chemins
+            // de prolongation (webhook.js, action 'create_prolongation'
+            // ci-dessus) — voir audit du 2026-07-27.
+            try {
+              let origLookup = supabase.from('reservations').select('*').eq('city_id', city.id).not('source', 'eq', 'site_prolongation');
+              origLookup = before.reservation_origine_id
+                ? origLookup.eq('id', before.reservation_origine_id)
+                : origLookup.eq('date_fin', before.date_debut).ilike('email', (before.email || '').trim()).order('created_at', { ascending: false }).limit(1);
+              const { data: origResa } = await origLookup.maybeSingle();
+              if (origResa) {
+                await supabase.from('reservations').update({ date_fin: before.date_fin }).eq('id', origResa.id);
+                await generateAndSendDocumentsAfterProlongation(supabase, {
+                  origineResa: { ...origResa, date_fin: before.date_fin },
+                  prolongationResa: before,
+                });
+              }
+            } catch (e) {
+              console.error('[Admin update] documents prolongation mis à jour:', e.message);
+            }
           } else {
             await sendConfirmationCommunications(supabase, before);
           }
