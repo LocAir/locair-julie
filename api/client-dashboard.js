@@ -52,14 +52,19 @@ module.exports = async (req, res) => {
       { data: assistance },
       { data: offresPrivilege },
     ] = await Promise.all([
-      supabase.from('livraisons').select('type, statut, date_prevue, creneau, fait_at').eq('reservation_id', reservationId).not('statut', 'in', '(annulee,annule)').order('date_prevue', { ascending: true }),
+      // 'refusee' exclu comme 'annule' : une mission refusée par un
+      // transporteur sans réattribution reste dans cet état, et son ancienne
+      // date/créneau ne doit pas s'afficher comme si elle tenait toujours —
+      // computeOrderStatus (orderStatus.js) traite déjà les deux pareil pour
+      // la barre de progression, ce filtre aligne l'affichage détaillé dessus.
+      supabase.from('livraisons').select('type, statut, date_prevue, creneau, fait_at').eq('reservation_id', reservationId).not('statut', 'in', '(annulee,annule,refusee)').order('date_prevue', { ascending: true }),
       supabase.from('incidents').select('id').eq('reservation_id', reservationId).in('statut', INCIDENT_OPEN_STATUSES),
       supabase.from('reservation_appareils').select('appareil:appareils(numero, reference, modele:modeles_climatiseur(*))').eq('reservation_id', reservationId),
       supabase.from('documents').select('id, type, numero, statut, genere_at, access_token').eq('reservation_id', reservationId),
       supabase.from('cgv_acceptations').select('type, version, accepted_at').eq('reservation_id', reservationId),
       supabase.from('email_log').select('scenario, created_at').eq('reservation_id', reservationId).eq('statut', 'envoye').order('created_at', { ascending: false }),
       supabase.from('centre_aide_articles').select('slug, categorie, titre, contenu').eq('actif', true).order('ordre'),
-      supabase.from('assistance_config').select('telephone, email, horaires, whatsapp_url').eq('id', 1).maybeSingle(),
+      supabase.from('assistance_config').select('telephone, email, horaires, whatsapp_url, urgence').eq('id', 1).maybeSingle(),
       // Offre Privilège (Step 2) : ne remonte au client que si l'admin a
       // fixé un prix ("proposee") — tant que l'offre reste "eligible", elle
       // n'existe que côté admin. Une réservation à plusieurs climatiseurs
