@@ -250,7 +250,7 @@ module.exports = async (req, res) => {
     if (action === 'resolve_probleme') {
       const livraisonId = parseInt(body.livraison_id);
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
-      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, statut, reservation_id');
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, statut, reservation_id, incident_id');
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
       if (liv.statut !== 'probleme') return res.status(409).json({ error: 'Cette mission n\'est pas signalée en problème' });
 
@@ -261,9 +261,14 @@ module.exports = async (req, res) => {
       }).eq('id', liv.id);
       if (updProblemeErr) throw updProblemeErr;
 
-      if (liv.reservation_id) {
+      // Uniquement l'incident précis lié à CETTE mission (liv.incident_id) —
+      // filtrer par reservation_id résolvait à tort tout autre incident
+      // ouvert de la même réservation (ex. celui d'une autre mission encore
+      // bloquée, ou un litige de paiement Stripe sans rapport), le faisant
+      // disparaître des compteurs "Incidents ouverts" alors qu'il reste réel.
+      if (liv.incident_id) {
         await supabase.from('incidents').update({ statut: 'resolu' })
-          .eq('reservation_id', liv.reservation_id).in('statut', INCIDENT_OPEN_STATUSES);
+          .eq('id', liv.incident_id).in('statut', INCIDENT_OPEN_STATUSES);
       }
 
       return res.status(200).json({ ok: true });
