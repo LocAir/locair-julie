@@ -6409,9 +6409,11 @@ function ouvBreakdown(){
 }
 const _OUV_EN={'Fenêtre coulissante':'Sliding window','Fenêtre à battant':'Casement window','Oscillo-battant':'Tilt-and-turn','Porte-fenêtre':'French door','Vélux / toit':'Skylight / roof','À confirmer':'Not sure / Our tech will check'};
 const _OUV_ZH={'Fenêtre coulissante':'推拉窗','Fenêtre à battant':'平开窗','Oscillo-battant':'内倒内开窗','Porte-fenêtre':'落地窗/阳台门','Vélux / toit':'天窗','À confirmer':'待确认 / 技术员现场核查'};
+const _OUV_RU={'Fenêtre coulissante':'Раздвижное окно','Fenêtre à battant':'Распашное окно','Oscillo-battant':'Поворотно-откидное окно','Porte-fenêtre':'Балконная дверь','Vélux / toit':'Мансардное окно','À confirmer':'Не уверен(а) — наш мастер проверит на месте'};
 function ouvLabel(type,lang){
   if(lang==='en')return _OUV_EN[type]||type;
   if(lang==='zh')return _OUV_ZH[type]||type;
+  if(lang==='ru')return _OUV_RU[type]||type;
   return type; // brut (français) — ce qui part au serveur, indépendant de la langue affichée
 }
 // lang omis = texte brut français (envoyé au serveur, voir formData plus bas) ;
@@ -6648,7 +6650,7 @@ async function submitCancellation(){
     if(btn)btn.style.display='none';
   }catch(e){
     if(btn){btn.disabled=false;btn.textContent=_lang==='en'?'Confirm cancellation':_lang==='zh'?'确认取消':_lang==='ru'?'Подтвердить отмену':"Confirmer l'annulation";}
-    alert("Erreur réseau — ton message n'a pas été envoyé. Appelle-nous au 06.63.79.87.56.");
+    alert(_lang==='en'?"Network error — your message wasn't sent. Call us at +33 6 63 79 87 56.":_lang==='zh'?'网络错误——您的消息未能发送。请致电 +33 6 63 79 87 56。':_lang==='ru'?'Ошибка сети — сообщение не отправлено. Позвоните нам: +33 6 63 79 87 56.':"Erreur réseau — ton message n'a pas été envoyé. Appelle-nous au 06.63.79.87.56.");
   }
 }
 // ── STRIPE ────────────────────────────────────────────────────────────────────
@@ -8581,7 +8583,7 @@ function setDurFreeInput(inp){
 }
 function _renderDurFree(){
   const d=_durFree;
-  const price=calcPrice(d);
+  const price=calcPrice(d)*(_qty||1);
   const rate=_baseRate(d);
   const el=id=>document.getElementById(id);
   const numEl=el('dfb-num');
@@ -9030,7 +9032,7 @@ function submitAlerte(e){
     if(typeof gtag==='function')gtag('event','alerte_signup',{method:'email'});
   }).catch(()=>{
     if(btn){btn.disabled=false;btn.textContent=_lang==='en'?'Get the alert →':_lang==='zh'?'接收预警 →':'Recevoir l\'alerte →';}
-    alert("Erreur réseau — ton inscription n'a pas été enregistrée. Appelle-nous au 06.63.79.87.56.");
+    alert(_lang==='en'?"Network error — your signup wasn't saved. Call us at +33 6 63 79 87 56.":_lang==='zh'?'网络错误——您的注册未能保存。请致电 +33 6 63 79 87 56。':_lang==='ru'?'Ошибка сети — регистрация не сохранена. Позвоните нам: +33 6 63 79 87 56.':"Erreur réseau — ton inscription n'a pas été enregistrée. Appelle-nous au 06.63.79.87.56.");
   });
 }
 
