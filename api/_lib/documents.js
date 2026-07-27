@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const { generateContratPdf, generateFacturePdf, generateFactureVentePdf } = require('./pdf');
 const { sendBrevoEmail } = require('./brevo');
 const { CGV_VERSION } = require('./legal');
-const { tplContratFacture, tplFactureVente } = require('./emailTemplates');
+const { tplContratFacture, tplContratFactureProlongation, tplFactureVente } = require('./emailTemplates');
 const { getSignature, withSignature } = require('./emailEngine');
 
 function accessToken() {
@@ -148,6 +148,130 @@ async function generateAndSendDocuments(supabase, resa, { force } = {}) {
   }
 }
 
+// Point d'entrée appelé après une prolongation payée (voir api/webhook.js,
+// api/admin-reservations.js) — corrige un vrai trou trouvé lors de l'audit du
+// 2026-07-27 : generateAndSendDocuments ci-dessus n'est jamais appelée pour
+// une prolongation, donc le client ne recevait plus jamais de document
+// contractuel reflétant sa vraie date de fin ni le montant réellement payé
+// après extension — le contrat déjà en sa possession restait figé sur la
+// durée/le prix de sa réservation initiale.
+//
+// `origineResa` : la réservation d'ORIGINE (jamais 'site_prolongation'), avec
+// son date_fin déjà mis à jour par l'appelant AVANT ce call — c'est elle qui
+// porte le contrat (un seul contrat par location, mis à jour à chaque
+// extension, jamais un contrat distinct par prolongation).
+// `prolongationResa` : la réservation de prolongation elle-même (source
+// 'site_prolongation'), qui porte le paiement de l'extension — c'est elle qui
+// reçoit sa propre facture (montant de l'extension seule, jamais cumulé avec
+// la réservation d'origine).
+//
+// Pas de garde d'idempotence sur le contrat : contrairement à la facture
+// (documents_facture_unique_idx interdit plus d'une facture par
+// reservation_id), rien n'empêche plusieurs lignes 'contrat' pour la même
+// réservation d'origine — chaque prolongation ajoute une nouvelle version
+// "à jour", l'historique des versions précédentes reste consultable par
+// l'admin. La facture de prolongation, elle, reste protégée par l'unicité
+// habituelle puisqu'elle est posée sur reservation_id = prolongationResa.id,
+// qui n'en a encore jamais eu.
+async function generateAndSendDocumentsAfterProlongation(supabase, { origineResa, prolongationResa }) {
+  if (process.env.DOCUMENTS_ENABLED !== 'true') return;
+  if (!origineResa || !origineResa.id || !prolongationResa || !prolongationResa.id) return;
+
+  const [{ data: reservAppareils }, { data: acceptations }] = await Promise.all([
+    supabase.from('reservation_appareils').select('appareil:appareils(numero, modele:modeles_climatiseur(marque, modele))').eq('reservation_id', origineResa.id),
+    supabase.from('cgv_acceptations').select('type, version, accepted_at').eq('reservation_id', origineResa.id),
+  ]);
+  const appareils = (reservAppareils || []).map(r => r.appareil).filter(Boolean);
+
+  const now = new Date();
+  const annee = now.getUTCFullYear();
+
+  // ── Contrat mis à jour (nouvelle date de fin, cf. commentaire ci-dessus) ──
+  const contratBuffer = await generateContratPdf({ reservation: origineResa, appareils, acceptations, version: CGV_VERSION });
+  const contratPath = `documents/contrats/${origineResa.ref}-${now.getTime()}.pdf`;
+  await uploadPdf(supabase, contratPath, contratBuffer);
+  const contratToken = accessToken();
+  const { data: contratRow, error: contratErr } = await supabase.from('documents').insert({
+    reservation_id: origineResa.id,
+    type:           'contrat',
+    version:        CGV_VERSION,
+    storage_path:   contratPath,
+    access_token:   contratToken,
+    montant_ttc_cents: origineResa.prix_total_cents || 0,
+    statut:         'genere',
+    genere_at:      now.toISOString(),
+  }).select('id').single();
+  if (contratErr) throw contratErr;
+
+  // ── Facture de la prolongation (montant de l'extension uniquement) ───────
+  const { data: numeroSeq, error: numeroErr } = await supabase.rpc('next_invoice_number', { p_annee: annee });
+  if (numeroErr) throw numeroErr;
+  const numero = invoiceNumber(annee, numeroSeq);
+
+  const factureBuffer = await generateFacturePdf({ reservation: prolongationResa, appareils, numero, datePaiement: now });
+  const facturePath = `documents/factures/${numero}.pdf`;
+  await uploadPdf(supabase, facturePath, factureBuffer);
+  const factureToken = accessToken();
+  const { data: factureRow, error: factureErr } = await supabase.from('documents').insert({
+    reservation_id: prolongationResa.id,
+    type:           'facture',
+    numero,
+    version:        CGV_VERSION,
+    storage_path:   facturePath,
+    access_token:   factureToken,
+    montant_ttc_cents: prolongationResa.prix_total_cents || 0,
+    statut:         'genere',
+    genere_at:      now.toISOString(),
+  }).select('id').single();
+  if (factureErr) throw factureErr;
+
+  // ── Envoi email (contrat mis à jour + facture de prolongation) ───────────
+  // Email envoyé EN PLUS de sendProlongationConfirmation (jamais à la place) —
+  // celui-ci ne fournit qu'une confirmation informelle, pas de document
+  // contractuel en pièce jointe.
+  if (origineResa.email) {
+    const base = 'https://www.locair.fr';
+    const sig = await getSignature(supabase);
+    const lang = origineResa.lang || prolongationResa.lang || 'fr';
+    const html = withSignature(tplContratFactureProlongation({
+      prenom: origineResa.prenom,
+      ref:    origineResa.ref,
+      lang,
+      viewUrlDocuments: `${base}/api/documents-view?contrat=${contratToken}&facture=${factureToken}`,
+    }), sig);
+    const subject = lang === 'en'
+      ? `📄 Your updated Loc'Air documents — Ref ${origineResa.ref}`
+      : lang === 'zh'
+      ? `📄 您更新后的 Loc'Air 文件 — 订单 ${origineResa.ref}`
+      : `📄 Votre contrat mis à jour et votre facture de prolongation — Dossier ${origineResa.ref}`;
+    const result = await sendBrevoEmail({
+      to:      origineResa.email,
+      subject,
+      html,
+      senderName: sig.nom_expediteur,
+      attachments: [
+        { name: `Contrat-${origineResa.ref}.pdf`, content: contratBuffer },
+        { name: `${numero}.pdf`, content: factureBuffer },
+      ],
+    });
+
+    if (result.ok) {
+      const sentAt = new Date().toISOString();
+      await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt }).eq('id', contratRow.id);
+      await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt }).eq('id', factureRow.id);
+    } else {
+      console.error('[Documents prolongation] envoi email échoué —', result.error);
+    }
+    supabase.from('email_log').insert({
+      reservation_id: prolongationResa.id, scenario: 'email_contrat_facture_prolongation', canal: 'email',
+      destinataire: origineResa.email, modele: 'email_contrat_facture_prolongation',
+      statut: result.ok ? 'envoye' : 'erreur',
+      erreur: result.ok ? null : String(result.error || '').slice(0, 500),
+      contenu: html,
+    }).catch(() => {});
+  }
+}
+
 // Point d'entrée appelé une seule fois, juste après acceptation d'une Offre
 // Privilège (voir handleOffrePrivilegeAccepted dans api/webhook.js) — jamais
 // pour une location classique (voir generateAndSendDocuments ci-dessus).
@@ -239,4 +363,4 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
   }
 }
 
-module.exports = { generateAndSendDocuments, generateAndSendFactureVente };
+module.exports = { generateAndSendDocuments, generateAndSendDocumentsAfterProlongation, generateAndSendFactureVente };

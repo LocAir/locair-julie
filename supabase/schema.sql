@@ -278,7 +278,7 @@ create index idx_reservations_origine on reservations (reservation_origine_id) w
 create table cgv_acceptations (
   id             bigint generated always as identity primary key,
   reservation_id bigint not null references reservations(id) on delete cascade,
-  type           text not null check (type in ('cgv_location','conditions_utilisation')),
+  type           text not null check (type in ('cgv_location','conditions_utilisation','autorisation_retard')),
   version        text not null,
   accepted_at    timestamptz not null default now(),
   created_at     timestamptz not null default now(),

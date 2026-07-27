@@ -169,7 +169,7 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
     );
 
     article('ARTICLE 4 - TARIFICATION & LIVRAISON',
-      "Tarif journalier (TTC) : 12,00 €/jour (1 à 7 jours) · 10,00 €/jour (8 à 14 jours) · 9,00 €/jour (15 à 21 jours) · 8,00 €/jour (22 jours et plus). Durée minimale : 7 jours.\n" +
+      "Tarif journalier (TTC) : 12,00 €/jour (7 jours) · 10,00 €/jour (8 à 14 jours) · 9,00 €/jour (15 à 21 jours) · 8,00 €/jour (22 jours et plus). Durée minimale : 7 jours.\n" +
       "Frais de livraison et récupération : 60,00 € (Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche-sur-Mer, Beaulieu-sur-Mer) ou 120,00 € (hors zone).\n" +
       "Option installation par un technicien qualifié : 80,00 € (en option) ou installation en autonomie (gratuite, kit fourni sans perçage).\n" +
       `TVA : ${SELLER.mentionTva}.`
@@ -205,10 +205,13 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
     // en ligne plutôt que par signature manuscrite au moment du paiement.
     drawSectionTitle(doc, 'Acceptation électronique');
     if (acceptations && acceptations.length) {
+      const LABEL_BY_TYPE = {
+        cgv_location:           'Conditions générales de vente et de location (CGV/CGL)',
+        conditions_utilisation: "Conditions d'utilisation du climatiseur et obligations liées à la location",
+        autorisation_retard:    'Autorisation de prélèvement en cas de retard de restitution (art. 10 bis des CGV)',
+      };
       for (const a of acceptations) {
-        const label = a.type === 'cgv_location'
-          ? 'Conditions générales de vente et de location (CGV/CGL)'
-          : "Conditions d'utilisation du climatiseur et obligations liées à la location";
+        const label = LABEL_BY_TYPE[a.type] || a.type;
         drawKeyValueRow(doc, label, `Acceptées le ${fmtDateHeure(a.accepted_at)} — version ${a.version}`);
       }
     } else {

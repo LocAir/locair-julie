@@ -5317,7 +5317,7 @@ input:-webkit-autofill:focus{
             <div class="stl-dot stl-done"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
             <div class="stl-body">
               <p class="stl-title">Réservation enregistrée</p>
-              <p class="stl-sub"><span id="stl-1-sub-prefix">Notre équipe vous confirme par email sous 2h — </span><button type="button" id="copy-ref-btn" onclick="(function(){const r=document.getElementById('s-ref')?.textContent;if(r){navigator.clipboard?.writeText(r).then(()=>{const b=document.getElementById('copy-ref-btn');if(b){b.textContent=_lang==='en'?'Copied ✓':_lang==='zh'?'已复制 ✓':'Copié ✓';setTimeout(()=>{b.textContent=_lang==='en'?'Copy ref':_lang==='zh'?'复制单号':'Copier le n°';},2000);}}).catch(()=>{});}})()" style="background:none;border:none;color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;padding:0;font-family:var(--body);text-decoration:underline">Copier le n°</button></p>
+              <p class="stl-sub"><span id="stl-1-sub-prefix">Notre équipe vous confirme par email sous 2h — </span><button type="button" id="copy-ref-btn" onclick="(function(){const r=document.getElementById('s-ref')?.textContent;if(r){navigator.clipboard?.writeText(r).then(()=>{const b=document.getElementById('copy-ref-btn');if(b){b.textContent=_lang==='en'?'Copied ✓':_lang==='zh'?'已复制 ✓':_lang==='ru'?'Скопировано ✓':'Copié ✓';setTimeout(()=>{b.textContent=_lang==='en'?'Copy ref':_lang==='zh'?'复制单号':_lang==='ru'?'Копировать №':'Copier le n°';},2000);}}).catch(()=>{});}})()" style="background:none;border:none;color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;padding:0;font-family:var(--body);text-decoration:underline">Copier le n°</button></p>
             </div>
           </div>
           <div class="stl-conn"></div>
@@ -5495,6 +5495,7 @@ function updateDatePreview(){
   if(!y||!m||!d){el.classList.remove('show');return;}
   const days=_durDays||7;
   const en=_lang==='en';
+  const isRU=_lang==='ru';
   const start=new Date(Date.UTC(+y,+m-1,+d));
   const end=new Date(start);
   end.setUTCDate(end.getUTCDate()+days+1); // J+1 : récupération le lendemain de la fin
@@ -5504,6 +5505,9 @@ function updateDatePreview(){
   } else if(_lang==='zh'){
     const fmtZh=dt=>(dt.getUTCMonth()+1)+'月'+dt.getUTCDate()+'日';
     el.textContent='配送 '+fmtZh(start)+' · 取回 '+fmtZh(end)+'（'+days+' 天）';
+  } else if(isRU){
+    const fmtRu=dt=>dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long',timeZone:'UTC'});
+    el.textContent='Доставка '+fmtRu(start)+' · Возврат '+fmtRu(end)+' ('+days+' дней)';
   } else {
     const fmtFr=dt=>dt.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'});
     el.textContent=`Livraison ${fmtFr(start)} · Récupération ${fmtFr(end)} (${days} jours)`;
@@ -6489,11 +6493,12 @@ function buildRecap(){
   const recupEl=document.getElementById('recap-date-recup');
   const isEN=_lang==='en';
   const isZH=_lang==='zh';
-  if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (our team will collect the unit)':isZH?pickupDateStr+' 取回（由我们团队上门取回）':'Le '+pickupDateStr+' (récupération par notre équipe)';
+  const isRU=_lang==='ru';
+  if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (our team will collect the unit)':isZH?pickupDateStr+' 取回（由我们团队上门取回）':isRU?pickupDateStr+' (наша команда заберёт устройство)':'Le '+pickupDateStr+' (récupération par notre équipe)';
   const total=Math.max(0,calcTotal(days)-_promoDiscount+DELIVERY_FEE);
   const installLabel=_techInstall?(isEN?'Technician installation':isZH?'技术员安装 — 80 €':'Pose technicien — 80 €'):(isEN?'Self-install (free)':isZH?'自行安装（免费）':'Pose autonome — Kit fourni');
   const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:isZH?'电梯：'+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
-  const durLabel=isEN?days+' days':isZH?days+' 天':days+' jours';
+  const durLabel=isEN?days+' days':isZH?days+' 天':isRU?days+' дней':days+' jours';
   const priceDisplay=total===0?(isEN?'On quote':isZH?'询价':'Sur devis'):total+' €';
 
   // SVG icons
@@ -6504,16 +6509,16 @@ function buildRecap(){
   const icoFloor='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><polyline points="9 3 9 21"/><polyline points="15 3 15 21"/></svg>';
   const icoQty='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="8" width="8" height="10" rx="1.5"/><rect x="14" y="8" width="8" height="10" rx="1.5"/><line x1="10" y1="13" x2="14" y2="13"/></svg>';
 
-  const qtyLabel=isEN?_qty+' unit'+(_qty>1?'s':''):isZH?_qty+' 台空调':_qty+' climatiseur'+(_qty>1?'s':'');
+  const qtyLabel=isEN?_qty+' unit'+(_qty>1?'s':''):isZH?_qty+' 台空调':isRU?_qty+' кондиционер'+(_qty>1?'а':''):_qty+' climatiseur'+(_qty>1?'s':'');
   const instrVal=(document.getElementById('f-instructions')?.value||'').trim();
   const icoNote='<svg viewBox="0 0 24 24" stroke="var(--blue)" fill="none" stroke-width="1.8" stroke-linecap="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>';
   const rows=[
-    [isEN?'Address':isZH?'地址':'Adresse',escHtml(document.getElementById('f-addr')?.value||'—'),icoPin],
-    [isEN?'Delivery':isZH?'配送':'Livraison',escHtml(dateStr+' · '+creneauLiv),icoCal],
-    [isEN?'Collection':isZH?'归还':'Récupération',escHtml(pickupDateStr)+' <span style="color:var(--grey2);font-size:11px">· '+(isEN?'coordinated by our team':isZH?'由我们团队协调':'coordonnée par notre équipe')+'</span>',icoCal],
-    [isEN?'Window':isZH?'窗型':'Fenêtre',escHtml(ouv),icoWin],
-    [isEN?'Duration':isZH?'租期':'Durée',escHtml(durLabel),icoDur],
-    [isEN?'Quantity':isZH?'数量':'Quantité',escHtml(qtyLabel),icoQty],
+    [isEN?'Address':isZH?'地址':isRU?'Адрес':'Adresse',escHtml(document.getElementById('f-addr')?.value||'—'),icoPin],
+    [isEN?'Delivery':isZH?'配送':isRU?'Доставка':'Livraison',escHtml(dateStr+' · '+creneauLiv),icoCal],
+    [isEN?'Collection':isZH?'归还':isRU?'Возврат':'Récupération',escHtml(pickupDateStr)+' <span style="color:var(--grey2);font-size:11px">· '+(isEN?'coordinated by our team':isZH?'由我们团队协调':isRU?'координируется нашей командой':'coordonnée par notre équipe')+'</span>',icoCal],
+    [isEN?'Window':isZH?'窗型':isRU?'Тип окна':'Fenêtre',escHtml(ouv),icoWin],
+    [isEN?'Duration':isZH?'租期':isRU?'Срок':'Durée',escHtml(durLabel),icoDur],
+    [isEN?'Quantity':isZH?'数量':isRU?'Количество':'Quantité',escHtml(qtyLabel),icoQty],
     ...(instrVal?[[isEN?'Instructions':isZH?'留言指示':'Instructions',escHtml(instrVal),icoNote]]:[])
   ];
 
@@ -6522,14 +6527,14 @@ function buildRecap(){
   box.innerHTML=`
     <div class="rc-card">
       <div class="rc-card-head">
-        <span class="rc-card-label">${isEN?'Your order':isZH?'您的订单':'Votre commande'}</span>
+        <span class="rc-card-label">${isEN?'Your order':isZH?'您的订单':isRU?'Ваш заказ':'Votre commande'}</span>
         <span class="rc-card-badge">${escHtml(priceDisplay)}</span>
       </div>
       <div class="rc-prod-banner">
         <img src="hero-clim.jpg" alt="Climatiseur mobile Rowenta / Frico / Hisense" class="rc-prod-banner-img" loading="lazy">
         <div>
-          <div class="rc-prod-banner-name">${isEN?'Professional Mobile AC':isZH?'专业移动空调':'Climatiseur mobile professionnel'}</div>
-          <div class="rc-prod-banner-ref">Rowenta / Frico / Hisense · ${isZH?'最多12 000 BTU':isEN?'up to 12,000 BTU':"jusqu'\u00e0 12\xa0000 BTU"} <span class="rc-energy-badge">${isEN?'A-rated':isZH?'A级能效':'Énergie A'}</span></div>
+          <div class="rc-prod-banner-name">${isEN?'Professional Mobile AC':isZH?'专业移动空调':isRU?'Профессиональный мобильный кондиционер':'Climatiseur mobile professionnel'}</div>
+          <div class="rc-prod-banner-ref">Rowenta / Frico / Hisense · ${isZH?'最多12 000 BTU':isEN?'up to 12,000 BTU':isRU?'до 12 000 БТЕ':"jusqu'\u00e0 12\xa0000 BTU"} <span class="rc-energy-badge">${isEN?'A-rated':isZH?'A级能效':isRU?'Класс энергии A':'Énergie A'}</span></div>
         </div>
       </div>
       <dl class="rc-details">
@@ -6544,23 +6549,23 @@ function buildRecap(){
       <div class="rc-price-sep"></div>
       <div class="rc-price-block">
         <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:6px">
-          <span class="rc-total-lbl">${isEN?'Rental':isZH?'租金':'Location'} (${days} ${isEN?'days':isZH?'天':'jours'})</span>
+          <span class="rc-total-lbl">${isEN?'Rental':isZH?'租金':isRU?'Аренда':'Location'} (${days} ${isEN?'days':isZH?'天':isRU?'дней':'jours'})</span>
           <span>${price} €</span>
         </div>
         <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:6px">
-          <span class="rc-total-lbl">${_techInstall?(isEN?'Technician installation':isZH?'技术员安装':'Pose technicien'):(isEN?'Self-install':isZH?'自行安装':'Pose autonome')}</span>
-          <span>${_techInstall?INSTALL_FEE+' €':(isEN?'Kit included':isZH?'含配件':'Kit fourni')}</span>
+          <span class="rc-total-lbl">${_techInstall?(isEN?'Technician installation':isZH?'技术员安装':isRU?'Установка техником':'Pose technicien'):(isEN?'Self-install':isZH?'自行安装':isRU?'Самостоятельная установка':'Pose autonome')}</span>
+          <span>${_techInstall?INSTALL_FEE+' €':(isEN?'Kit included':isZH?'含配件':isRU?'Комплект включён':'Kit fourni')}</span>
         </div>
         <div class="rc-total-row" style="font-size:12px;opacity:.75;margin-bottom:${_promoDiscount>0?'4px':'10px'}">
           <span class="rc-total-lbl">${isEN?'Delivery & collection':isZH?'配送 & 取回':_lang==='ru'?'Доставка & возврат':'Livraison & récupération'}${DELIVERY_FEE>60?' <span style="font-size:10px;background:#fff8ee;color:#92400e;padding:1px 6px;border-radius:100px;border:1px solid #e8d5a3">'+(_lang==='en'?'out of zone':_lang==='zh'?'超出范围':_lang==='ru'?'вне зоны':'hors zone')+'</span>':''}</span>
           <span>${DELIVERY_FEE} €</span>
         </div>
         ${_promoDiscount>0?`<div class="rc-total-row" style="font-size:12px;color:#059669;font-weight:600;margin-bottom:10px">
-          <span class="rc-total-lbl">${isEN?'Promo code':isZH?'优惠码':'Code promo'} (${escHtml(_promoCode)}${_promoPct>0?' · −'+_promoPct+'%':''})</span>
+          <span class="rc-total-lbl">${isEN?'Promo code':isZH?'优惠码':isRU?'Промокод':'Code promo'} (${escHtml(_promoCode)}${_promoPct>0?' · −'+_promoPct+'%':''})</span>
           <span>−${_promoDiscount} €</span>
         </div>`:''}
         <div class="rc-total-row">
-          <span class="rc-total-lbl">${isZH?'合计（含税）':isEN?'Total (incl. VAT)':'Total TTC'}</span>
+          <span class="rc-total-lbl">${isZH?'合计（含税）':isEN?'Total (incl. VAT)':isRU?'Итого':'Total TTC'}</span>
           <span class="rc-total-price">${priceDisplay}</span>
         </div>
       </div>
@@ -6621,6 +6626,11 @@ function animateSuccessTimeline(){
         const DAYS_ZH=['周日','周一','周二','周三','周四','周五','周六'];
         const crenZH=cren?' · '+cren:'';
         dd.textContent='配送：'+_MONTHS_LONG_ZH[dt.getUTCMonth()]+parseInt(d)+'日 '+DAYS_ZH[dt.getUTCDay()]+crenZH+' · 技术员提前30分钟来电';
+      } else if(_lang==='ru') {
+        const DAYS_RU=['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+        const MONTHS_RU=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+        const crenRU=cren?' · '+cren:'';
+        dd.textContent='Доставка '+parseInt(d)+' '+MONTHS_RU[dt.getUTCMonth()]+' ('+DAYS_RU[dt.getUTCDay()]+')'+crenRU+' · Техник звонит за 30 мин';
       } else {
         const crenFR=cren?' entre '+cren:'';
         dd.textContent='Livraison le '+DAYS[dt.getUTCDay()]+' '+d+' '+MONTHS[dt.getUTCMonth()]+crenFR+' · Technicien appelle 30 min avant';
@@ -6863,6 +6873,8 @@ function submitForm(btn,mode){
     cgv_accepted_at:(()=>{try{return new Date().toISOString();}catch(e){return '';}})(),
     conditions_utilisation_accepted:true,
     conditions_utilisation_accepted_at:(()=>{try{return new Date().toISOString();}catch(e){return '';}})(),
+    retard_accepted:true,
+    retard_accepted_at:(()=>{try{return new Date().toISOString();}catch(e){return '';}})(),
     mode:mode,
     prix:Math.max(0,calcTotal(parseInt(document.getElementById('f-dur')?.value)||7)-_promoDiscount+DELIVERY_FEE)+' €',
     date_recuperation:(()=>{try{const raw=document.getElementById('f-date')?.value;const dur=parseInt(document.getElementById('f-dur')?.value)||7;if(!raw)return '—';const d=new Date(raw+'T12:00:00');d.setDate(d.getDate()+dur+1);return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '—';}})()
@@ -6879,7 +6891,7 @@ function submitForm(btn,mode){
       const s=document.getElementById('msuccess-pay');if(s){s.classList.add('show');s.focus();}
       animateSuccessTimeline();
       const msg=document.getElementById('s-msg-pay');
-      if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+'All good. Here\'s what happens next.':_lang==='zh'?(prenom?'谢谢 '+escHtml(prenom)+'！':'')+'一切就绪。以下是接下来的步骤。':(prenom?'Merci '+escHtml(prenom)+' ! ':'')+"Tout est en ordre. Voici ce qui se passe maintenant.";
+      if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+'All good. Here\'s what happens next.':_lang==='zh'?(prenom?'谢谢 '+escHtml(prenom)+'！':'')+'一切就绪。以下是接下来的步骤。':_lang==='ru'?(prenom?'Спасибо, '+escHtml(prenom)+'! ':'Спасибо! ')+'Всё готово. Вот что будет дальше.':(prenom?'Merci '+escHtml(prenom)+' ! ':'')+"Tout est en ordre. Voici ce qui se passe maintenant.";
       const refEl=document.getElementById('s-ref');
       if(refEl)refEl.textContent=(_lang==='en'?'Booking ref: ':_lang==='zh'?'订单编号：':_lang==='ru'?'Номер заказа: ':'Dossier ')+_orderRef;
       const cancelRef=document.getElementById('cancel-ref');if(cancelRef)cancelRef.value=_orderRef;
@@ -6910,7 +6922,7 @@ function submitForm(btn,mode){
       const s=document.getElementById('msuccess-call');if(s){s.classList.add('show');s.focus();}
       const msg=document.getElementById('s-msg-call');
       const greet=prenom?'Merci '+escHtml(prenom)+' !':'Merci !';
-      if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+"The Loc'Air team will call you back today (8am–20h, 7 days a week).":_lang==='zh'?(prenom?'谢谢 '+escHtml(prenom)+'！':'')+'Loc\'Air团队将于当天回电（8:00–20:00，每天）。':greet+" L'\xE9quipe Loc'Air vous rappelle dans la journ\xE9e (8h–20h, 7j/7).";
+      if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+"The Loc'Air team will call you back today (8am–20h, 7 days a week).":_lang==='zh'?(prenom?'谢谢 '+escHtml(prenom)+'！':'')+'Loc\'Air团队将于当天回电（8:00–20:00，每天）。':_lang==='ru'?(prenom?'Спасибо, '+escHtml(prenom)+'! ':'')+`Команда Loc'Air перезвонит вам сегодня (8:00–20:00, 7 дней в неделю).`:greet+" L'\xE9quipe Loc'Air vous rappelle dans la journ\xE9e (8h–20h, 7j/7).";
     }
   }
 
@@ -7015,7 +7027,7 @@ function submitForm(btn,mode){
         if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
         const errEl=document.getElementById('form-error-msg');
         if(errEl){
-          const genericMsg=_lang==='en'?'Something went wrong. Please try again.':_lang==='zh'?'出现问题。请重试。':'Une erreur est survenue. Réessayez.';
+          const genericMsg=_lang==='en'?'Something went wrong. Please try again.':_lang==='zh'?'出现问题。请重试。':_lang==='ru'?'Произошла ошибка. Попробуйте снова.':'Une erreur est survenue. Réessayez.';
           const msg=(err&&err.message)||'';
           errEl.textContent=(msg&&!/^API \d+$/.test(msg)&&msg!=='No client secret')?msg:genericMsg;
           errEl.style.display='block';
@@ -7039,7 +7051,7 @@ function submitForm(btn,mode){
         console.error('[Formspree]',err);
         if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
         const errEl=document.getElementById('form-error-msg');
-        if(errEl){errEl.textContent='Erreur d\'envoi — réessaie ou appelle le 06.63.79.87.56.';errEl.style.display='block';const retryBtn=document.getElementById('form-error-retry');if(retryBtn)retryBtn.style.display='inline-block';}
+        if(errEl){errEl.textContent=_lang==='ru'?'Ошибка отправки — повтори попытку или позвони: 06.63.79.87.56.':'Erreur d\'envoi — réessaie ou appelle le 06.63.79.87.56.';errEl.style.display='block';const retryBtn=document.getElementById('form-error-retry');if(retryBtn)retryBtn.style.display='inline-block';}
       });
   }
 }
@@ -7055,9 +7067,9 @@ function submitForm(btn,mode){
   const _mo=new Date().getMonth();
   const _isPreSeason=(_mo===3||_mo===4);
   const _retMsg=_isPreSeason
-    ?(_lang==='en'?'Limited slots this summer — book now':_lang==='zh'?'今夏名额有限——立即预订':'Créneaux limités cet été — réservez maintenant')
-    :(_lang==='en'?'Welcome back, <strong>'+escHtml(prev.prenom)+'</strong> — your details will be pre-filled.':_lang==='zh'?'欢迎回来，<strong>'+escHtml(prev.prenom)+'</strong>——您的信息将自动填写。':'Bienvenue, <strong>'+escHtml(prev.prenom)+'</strong> — vos infos seront pré-remplies.');
-  bar.innerHTML=_retMsg+' <button type="button" onclick="openModal()" style="padding:3px 12px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:100px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--body);white-space:nowrap">'+(_lang==='en'?'Book →':_lang==='zh'?'预订 →':'Réserver →')+'</button><button type="button" onclick="document.getElementById(\'return-bar\').remove()" aria-label="Fermer" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;line-height:1;padding:0 0 0 4px">✕</button>';
+    ?(_lang==='en'?'Limited slots this summer — book now':_lang==='zh'?'今夏名额有限——立即预订':_lang==='ru'?'Слоты ограничены этим летом — бронируйте сейчас':'Créneaux limités cet été — réservez maintenant')
+    :(_lang==='en'?'Welcome back, <strong>'+escHtml(prev.prenom)+'</strong> — your details will be pre-filled.':_lang==='zh'?'欢迎回来，<strong>'+escHtml(prev.prenom)+'</strong>——您的信息将自动填写。':_lang==='ru'?'Добро пожаловать снова, <strong>'+escHtml(prev.prenom)+'</strong> — ваши данные будут заполнены автоматически.':'Bienvenue, <strong>'+escHtml(prev.prenom)+'</strong> — vos infos seront pré-remplies.');
+  bar.innerHTML=_retMsg+' <button type="button" onclick="openModal()" style="padding:3px 12px;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:100px;font-size:11px;font-weight:700;cursor:pointer;font-family:var(--body);white-space:nowrap">'+(_lang==='en'?'Book →':_lang==='zh'?'预订 →':_lang==='ru'?'Продолжить →':'Réserver →')+'</button><button type="button" onclick="document.getElementById(\'return-bar\').remove()" aria-label="'+(_lang==='ru'?'Закрыть':'Fermer')+'" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:14px;cursor:pointer;line-height:1;padding:0 0 0 4px">✕</button>';
   const hero=document.querySelector('.hero');
   if(hero){hero.style.position='relative';hero.appendChild(bar);}
   // Pré-remplir le modal à l'ouverture
@@ -7090,10 +7102,11 @@ function updateHeroSim(days){
   const elN=document.getElementById('hps-nights');
   const elD=document.getElementById('hps-detail');
   if(el){el.setAttribute('aria-live','polite');el.setAttribute('aria-atomic','true');el.textContent=price+'€';}
-  if(elN)elN.textContent=_lang==='en'?'for '+days+' day'+(days>1?'s':''):_lang==='zh'?days+' 天':'pour '+days+' jour'+(days>1?'s':'');
+  const isRU=_lang==='ru';
+  if(elN)elN.textContent=_lang==='en'?'for '+days+' day'+(days>1?'s':''):_lang==='zh'?days+' 天':isRU?'на '+days+' дней':'pour '+days+' jour'+(days>1?'s':'');
   const rate=_baseRate(days);
   const disc=Math.max(0,Math.round((12-rate)/12*100));
-  if(elD)elD.textContent=_lang==='en'?(disc>0?'i.e. €'+rate.toFixed(0)+'/day — '+disc+'% off':'Fixed price · Delivery from €60'):_lang==='zh'?(disc>0?'即 '+rate.toFixed(0)+' €/天 — 节省'+disc+'%':'锁定价格 · 配送低至60€'):(disc>0?'soit '+rate.toFixed(0)+' €/jour — économie de '+disc+'%':'Prix garanti · Livraison dès 60 €');
+  if(elD)elD.textContent=_lang==='en'?(disc>0?'i.e. €'+rate.toFixed(0)+'/day — '+disc+'% off':'Fixed price · Delivery from €60'):_lang==='zh'?(disc>0?'即 '+rate.toFixed(0)+' €/天 — 节省'+disc+'%':'锁定价格 · 配送低至60€'):isRU?(disc>0?rate.toFixed(0)+' €/день — скидка '+disc+'%':'Фиксированная цена · Доставка от 60 €'):(disc>0?'soit '+rate.toFixed(0)+' €/jour — économie de '+disc+'%':'Prix garanti · Livraison dès 60 €');
   // sync chips
   document.querySelectorAll('.hps-chip').forEach(c=>{
     const cd=parseInt(c.onclick?.toString().match(/\d+/)?.[0]||'0');
@@ -8255,17 +8268,18 @@ const _smartLine=document.getElementById('hero-smart-line');
 const _MONTHS_LONG_FR=['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 const _MONTHS_LONG_EN=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const _MONTHS_LONG_ZH=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+const _MONTHS_LONG_RU=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 let _urgencyShown=false;
 function _updateMobileBar(){
   const el=document.querySelector('.m-bar-label');
   if(!el)return;
-  const isEn=_lang==='en';const isZH=_lang==='zh';
+  const isEn=_lang==='en';const isZH=_lang==='zh';const isRU=_lang==='ru';
   if(_cutoffOk()){
-    el.innerHTML=isEn?'Delivered to you tomorrow · <strong>8am–12pm · 7 days a week</strong>':isZH?'明日送货上门 · <strong>8:00–12:00 · 每天</strong>':'Livré chez vous demain · <strong>8h–12h · 7j/7</strong>';
+    el.innerHTML=isEn?'Delivered to you tomorrow · <strong>8am–12pm · 7 days a week</strong>':isZH?'明日送货上门 · <strong>8:00–12:00 · 每天</strong>':isRU?'Доставка на дом завтра · <strong>8:00–12:00 · 7 дней в неделю</strong>':'Livré chez vous demain · <strong>8h–12h · 7j/7</strong>';
   }else{
     const dt=_addDays(2);
-    const mo=isEn?_MONTHS_LONG_EN[dt.getMonth()]:isZH?_MONTHS_LONG_ZH[dt.getMonth()]:_MONTHS_LONG_FR[dt.getMonth()];
-    el.innerHTML=isEn?'Delivery '+dt.getDate()+' '+mo+' · <strong>8am–12pm · 7 days a week</strong>':isZH?dt.getDate()+mo+'配送 · <strong>8:00–12:00 · 每天</strong>':'Livraison le '+dt.getDate()+' '+mo+' · <strong>8h–12h · 7j/7</strong>';
+    const mo=isEn?_MONTHS_LONG_EN[dt.getMonth()]:isZH?_MONTHS_LONG_ZH[dt.getMonth()]:isRU?_MONTHS_LONG_RU[dt.getMonth()]:_MONTHS_LONG_FR[dt.getMonth()];
+    el.innerHTML=isEn?'Delivery '+dt.getDate()+' '+mo+' · <strong>8am–12pm · 7 days a week</strong>':isZH?dt.getDate()+mo+'配送 · <strong>8:00–12:00 · 每天</strong>':isRU?'Доставка '+dt.getDate()+' '+mo+' · <strong>8:00–12:00 · 7 дней в неделю</strong>':'Livraison le '+dt.getDate()+' '+mo+' · <strong>8h–12h · 7j/7</strong>';
   }
 }
 function _renderSmartLine(){
@@ -8273,7 +8287,7 @@ function _renderSmartLine(){
   if(SOLD_OUT){_smartLine.style.display='none';return false;}
   const p=_parisNow();
   const h=p.h,m=p.m;
-  const isEn=_lang==='en';const isZH=_lang==='zh';
+  const isEn=_lang==='en';const isZH=_lang==='zh';const isRU=_lang==='ru';
   const _dot=(color,pulse)=>'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:'+color+';flex-shrink:0;margin-right:7px;vertical-align:middle'+(pulse?';animation:alertPulse 2.4s ease-in-out infinite':'')+'" aria-hidden="true"></span>';
   if(h>=8&&(h<20||(h===20&&m===0))){
     // Fenêtre 8h–20h : compte à rebours
@@ -8283,14 +8297,15 @@ function _renderSmartLine(){
     _smartLine.innerHTML=_dot('#c5a96c',true)+(isEn
       ?timeStr+' left — guaranteed next-day delivery'
       :isZH?'还剩 '+timeStr+' — 明日送达保证'
+      :isRU?'Осталось '+timeStr.replace('h','ч').replace('min','мин')+' — доставка гарантирована завтра'
       :'Il vous reste '+timeStr+' — livraison garantie demain');
     _smartLine.style.color='rgba(255,255,255,.92)';
     _smartLine.style.display='block';
   }else if(h>=20||(h===20&&m>0)){
     // Après 20h : cutoff dépassé → J+2
     const dt=_addDays(2);
-    const dateStr=isEn?(dt.getDate()+' '+_MONTHS_LONG_EN[dt.getMonth()]):isZH?(dt.getDate()+_MONTHS_LONG_ZH[dt.getMonth()]):(dt.getDate()+' '+_MONTHS_LONG_FR[dt.getMonth()]);
-    _smartLine.innerHTML=_dot('rgba(255,255,255,.4)',false)+(isEn?'Next available: '+dateStr:isZH?'最近可送：'+dateStr:'Livraison le '+dateStr);
+    const dateStr=isEn?(dt.getDate()+' '+_MONTHS_LONG_EN[dt.getMonth()]):isZH?(dt.getDate()+_MONTHS_LONG_ZH[dt.getMonth()]):isRU?(dt.getDate()+' '+_MONTHS_LONG_RU[dt.getMonth()]):(dt.getDate()+' '+_MONTHS_LONG_FR[dt.getMonth()]);
+    _smartLine.innerHTML=_dot('rgba(255,255,255,.4)',false)+(isEn?'Next available: '+dateStr:isZH?'最近可送：'+dateStr:isRU?'Доставка '+dateStr:'Livraison le '+dateStr);
     _smartLine.style.color='rgba(255,255,255,.72)';
     _smartLine.style.display='block';
   }else{
@@ -8298,6 +8313,7 @@ function _renderSmartLine(){
     _smartLine.innerHTML=_dot('rgba(255,255,255,.55)',false)+(isEn
       ?'Next-day delivery · book before 8pm today'
       :isZH?'次日送达 · 今日20点前预订'
+      :isRU?'Доставка с завтрашнего утра · заказ до 20:00'
       :'Livraison dès demain matin · réservez avant 20h');
     _smartLine.style.color='rgba(255,255,255,.72)';
     _smartLine.style.display='block';
@@ -8307,39 +8323,40 @@ function _renderSmartLine(){
   return true;
 }
 function _initDynamicText(){
-  const isEn=_lang==='en';const isZH=_lang==='zh';
+  const isEn=_lang==='en';const isZH=_lang==='zh';const isRU=_lang==='ru';
   const ok=_cutoffOk();
   const MONTHS_S_FR=['jan','fév','mars','avr','mai','juin','juil','aoû','sep','oct','nov','déc'];
   const MONTHS_S_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const MONTHS_S_ZH=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  const MONTHS_S_RU=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
   const dt2=_addDays(2);
-  const dateShort=(isEn?dt2.getDate()+' '+MONTHS_S_EN[dt2.getMonth()]:isZH?dt2.getDate()+MONTHS_S_ZH[dt2.getMonth()]:dt2.getDate()+' '+MONTHS_S_FR[dt2.getMonth()]);
-  const dateLong=(isEn?dt2.getDate()+' '+_MONTHS_LONG_EN[dt2.getMonth()]:isZH?dt2.getDate()+_MONTHS_LONG_ZH[dt2.getMonth()]:dt2.getDate()+' '+_MONTHS_LONG_FR[dt2.getMonth()]);
+  const dateShort=(isEn?dt2.getDate()+' '+MONTHS_S_EN[dt2.getMonth()]:isZH?dt2.getDate()+MONTHS_S_ZH[dt2.getMonth()]:isRU?dt2.getDate()+' '+MONTHS_S_RU[dt2.getMonth()]:dt2.getDate()+' '+MONTHS_S_FR[dt2.getMonth()]);
+  const dateLong=(isEn?dt2.getDate()+' '+_MONTHS_LONG_EN[dt2.getMonth()]:isZH?dt2.getDate()+_MONTHS_LONG_ZH[dt2.getMonth()]:isRU?dt2.getDate()+' '+_MONTHS_LONG_RU[dt2.getMonth()]:dt2.getDate()+' '+_MONTHS_LONG_FR[dt2.getMonth()]);
   // Choice card
   const cd=document.querySelector('.choice-card.choice-primary .choice-desc');
   if(cd)cd.textContent=ok
-    ?(isEn?'Delivery tomorrow · Full kit included':isZH?'明日配送 · 含完整套件':'Livraison demain · Kit complet inclus')
-    :(isEn?'Delivery '+dateShort+' · Full kit included':isZH?dateShort+'配送 · 含完整套件':'Livraison le '+dateShort+' · Kit complet inclus');
+    ?(isEn?'Delivery tomorrow · Full kit included':isZH?'明日配送 · 含完整套件':isRU?'Доставка завтра · Полный комплект включён':'Livraison demain · Kit complet inclus')
+    :(isEn?'Delivery '+dateShort+' · Full kit included':isZH?dateShort+'配送 · 含完整套件':isRU?'Доставка '+dateShort+' · Полный комплект включён':'Livraison le '+dateShort+' · Kit complet inclus');
   // Trust badge
   const riT=document.getElementById('ri-livraison-t');
   if(riT)riT.textContent=ok
-    ?(isEn?'Delivery within 24h':isZH?'24小时内配送':'Livraison sous 24h')
-    :(isEn?'Delivery within 48h':isZH?'48小时内配送':'Livraison sous 48h');
+    ?(isEn?'Delivery within 24h':isZH?'24小时内配送':isRU?'Доставка за 24 часа':'Livraison sous 24h')
+    :(isEn?'Delivery within 48h':isZH?'48小时内配送':isRU?'Доставка за 48 часов':'Livraison sous 48h');
   // Pricing plan item 1
   const pi1=document.getElementById('plan-item-1');
   if(pi1)pi1.innerHTML=ok
-    ?(isEn?'<strong>Delivered tomorrow</strong>':isZH?'<strong>明日送达</strong>':'<strong>Livraison dès demain</strong>')
-    :(isEn?'<strong>Delivery from '+dateShort+'</strong>':isZH?'<strong>'+dateShort+'送达</strong>':'<strong>Livraison dès le '+dateShort+'</strong>');
+    ?(isEn?'<strong>Delivered tomorrow</strong>':isZH?'<strong>明日送达</strong>':isRU?'<strong>Доставка с завтрашнего дня</strong>':'<strong>Livraison dès demain</strong>')
+    :(isEn?'<strong>Delivery from '+dateShort+'</strong>':isZH?'<strong>'+dateShort+'送达</strong>':isRU?'<strong>Доставка с '+dateShort+'</strong>':'<strong>Livraison dès le '+dateShort+'</strong>');
   // Final CTA title
   const fctaT=document.getElementById('fcta-title');
   if(fctaT)fctaT.innerHTML=ok
-    ?(isEn?'Fresh air by tomorrow morning.<br><em>No deposit. No surprises.</em>':isZH?'明天早晨即享清凉。<br><em>无押金。无隐藏费用。</em>':'L\'air frais dès demain matin.<br><em>Aucune caution. Aucune surprise.</em>')
-    :(isEn?'Fresh air from '+dateShort+'.<br><em>No deposit. No surprises.</em>':isZH?dateShort+'起享清凉。<br><em>无押金。无隐藏费用。</em>':'L\'air frais dès le '+dateShort+'.<br><em>Aucune caution. Aucune surprise.</em>');
+    ?(isEn?'Fresh air by tomorrow morning.<br><em>No deposit. No surprises.</em>':isZH?'明天早晨即享清凉。<br><em>无押金。无隐藏费用。</em>':isRU?'Свежий воздух уже завтра утром.<br><em>Без залога. Без сюрпризов.</em>':'L\'air frais dès demain matin.<br><em>Aucune caution. Aucune surprise.</em>')
+    :(isEn?'Fresh air from '+dateShort+'.<br><em>No deposit. No surprises.</em>':isZH?dateShort+'起享清凉。<br><em>无押金。无隐藏费用。</em>':isRU?'Свежий воздух с '+dateShort+'.<br><em>Без залога. Без сюрпризов.</em>':'L\'air frais dès le '+dateShort+'.<br><em>Aucune caution. Aucune surprise.</em>');
   // Success screen note — use neutral text that's always true
   const gn=document.getElementById('s-gratitude-note');
   if(gn)gn.textContent=ok
-    ?(isEn?'The whole team is ready to welcome you tomorrow. See you soon. — Aly':isZH?'全队已准备好迎接您明天的配送。很快见！— Aly':'Toute l\'équipe est mobilisée pour votre livraison demain. À très vite. — Aly')
-    :(isEn?'The whole team is ready for your delivery on '+dateLong+'. See you soon. — Aly':isZH?'全队已准备好您'+dateLong+'的配送。很快见！— Aly':'Toute l\'équipe est mobilisée pour votre livraison le '+dateLong+'. À très vite. — Aly');
+    ?(isEn?'The whole team is ready to welcome you tomorrow. See you soon. — Aly':isZH?'全队已准备好迎接您明天的配送。很快见！— Aly':isRU?'Вся наша команда работает для вас и ждёт вас завтра. До скорой встречи. — Aly':'Toute l\'équipe est mobilisée pour votre livraison demain. À très vite. — Aly')
+    :(isEn?'The whole team is ready for your delivery on '+dateLong+'. See you soon. — Aly':isZH?'全队已准备好您'+dateLong+'的配送。很快见！— Aly':isRU?'Вся наша команда работает для вас. Доставка '+dateLong+'. До скорой встречи. — Aly':'Toute l\'équipe est mobilisée pour votre livraison le '+dateLong+'. À très vite. — Aly');
 }
 _urgencyShown=_renderSmartLine();
 setInterval(_renderSmartLine,60000);
@@ -8354,7 +8371,7 @@ setInterval(_renderSmartLine,60000);
     const city=d.city||'';
     const isZone06=postal.startsWith(CITY.dep);
     if(!_smartLine||!isZone06)return;
-    const label=_lang==='zh'?(city?city+' — 配送区域 ✓':'配送区域覆盖 ✓'):_lang==='en'?(city?city+' — delivery zone covered ✓':'Delivery zone covered ✓'):(city?city+' — zone de livraison couverte ✓':'Zone de livraison couverte ✓');
+    const label=_lang==='zh'?(city?city+' — 配送区域 ✓':'配送区域覆盖 ✓'):_lang==='en'?(city?city+' — delivery zone covered ✓':'Delivery zone covered ✓'):_lang==='ru'?(city?city+' — зона доставки покрыта ✓':'Зона доставки покрыта ✓'):(city?city+' — zone de livraison couverte ✓':'Zone de livraison couverte ✓');
     _smartLine.textContent='📍 '+label;
     _smartLine.style.color='#4ade80';
     _smartLine.style.display='block';
@@ -8392,7 +8409,7 @@ else{_updateChromeH();}
     // Hero-eye : température + ressenti si l'alerte n'est PAS affichée (évite doublon)
     const eyeEl=document.querySelector('.hero-eye');
     if(eyeEl&&cur!==null&&!alertActive){
-      eyeEl.textContent=_lang==='en'?CITY.name+' · '+cur+'°C · feels like '+res+'°C':_lang==='zh'?CITY.name+' · '+cur+'°C · 体感 '+res+'°C':CITY.name+' · '+cur+'°C · ressenti '+res+'°C';
+      eyeEl.textContent=_lang==='en'?CITY.name+' · '+cur+'°C · feels like '+res+'°C':_lang==='zh'?CITY.name+' · '+cur+'°C · 体感 '+res+'°C':_lang==='ru'?CITY.name+' · '+cur+'°C · ощущается '+res+'°C':CITY.name+' · '+cur+'°C · ressenti '+res+'°C';
     }
 
     // Barre d'alerte : afficher si ≥28°C courant ou ≥32°C prévu
@@ -8410,9 +8427,9 @@ else{_updateChromeH();}
     if(alertActive){
       const bar=document.getElementById('alert-canicule');
       if(bar){
-        const ressufix=res!=null?(_lang==='en'?' (feels like '+res+'°C)':_lang==='zh'?' (体感 '+res+'°C)':' (ressenti '+res+'°C)'):'';
-        const _alertTiming=_cutoffOk()?(_lang==='en'?'Delivery within 24h':_lang==='zh'?'24小时内配送':'Livraison sous 24h'):(_lang==='en'?'Delivery within 48h':_lang==='zh'?'48小时内配送':'Livraison sous 48h');
-        if(peakTemp>=35)_setAlertBar(bar,_lang==='en'?'Heatwave — '+peakTemp+'°C expected'+ressufix:_lang==='zh'?'高温预警 — 预计 '+peakTemp+'°C'+ressufix:'Canicule — '+peakTemp+'°C prévus'+ressufix,_alertTiming);
+        const ressufix=res!=null?(_lang==='en'?' (feels like '+res+'°C)':_lang==='zh'?' (体感 '+res+'°C)':_lang==='ru'?' (ощущается '+res+'°C)':' (ressenti '+res+'°C)'):'';
+        const _alertTiming=_cutoffOk()?(_lang==='en'?'Delivery within 24h':_lang==='zh'?'24小时内配送':_lang==='ru'?'Доставка за 24 часа':'Livraison sous 24h'):(_lang==='en'?'Delivery within 48h':_lang==='zh'?'48小时内配送':_lang==='ru'?'Доставка за 48 часов':'Livraison sous 48h');
+        if(peakTemp>=35)_setAlertBar(bar,_lang==='en'?'Heatwave — '+peakTemp+'°C expected'+ressufix:_lang==='zh'?'高温预警 — 预计 '+peakTemp+'°C'+ressufix:_lang==='ru'?'Жара — '+peakTemp+'°C ожидается'+ressufix:'Canicule — '+peakTemp+'°C prévus'+ressufix,_alertTiming);
         else _setAlertBar(bar,cur+'°C'+ressufix,_alertTiming);
         _updateChromeH();
       }
@@ -8422,8 +8439,8 @@ else{_updateChromeH();}
       if(m===6||m===7){
         const bar=document.getElementById('alert-canicule');
         if(bar&&bar.classList.contains('hidden')){
-          const ressufix=cur>0?(_lang==='en'?' · '+cur+'°C (feels like '+res+'°C)':_lang==='zh'?' · '+cur+'°C（体感 '+res+'°C）':' · '+cur+'°C (ressenti '+res+'°C)'):'';
-          _setAlertBar(bar,_lang==='en'?'Peak season'+ressufix:_lang==='zh'?'旺季'+ressufix:'Haute saison'+ressufix,_lang==='en'?'Limited availability — book early':_lang==='zh'?'库存有限——尽早预订':'Disponibilité limitée — réservez tôt');
+          const ressufix=cur>0?(_lang==='en'?' · '+cur+'°C (feels like '+res+'°C)':_lang==='zh'?' · '+cur+'°C（体感 '+res+'°C）':_lang==='ru'?' · '+cur+'°C (ощущается '+res+'°C)':' · '+cur+'°C (ressenti '+res+'°C)'):'';
+          _setAlertBar(bar,_lang==='en'?'Peak season'+ressufix:_lang==='zh'?'旺季'+ressufix:_lang==='ru'?'Высокий сезон'+ressufix:'Haute saison'+ressufix,_lang==='en'?'Limited availability — book early':_lang==='zh'?'库存有限——尽早预订':_lang==='ru'?'Ограниченное наличие — бронируйте заранее':'Disponibilité limitée — réservez tôt');
           _updateChromeH();
         }
       }
@@ -8436,7 +8453,8 @@ else{_updateChromeH();}
   const h=new Date().getHours();
   const open=h>=8&&h<20;
   const cls=open?'avail-open':'avail-closed';
-  const txt=open?(_lang==='en'?'Available':_lang==='zh'?'在线':'Disponible'):(_lang==='en'?'Opens at 8am':_lang==='zh'?'8:00开放':'Réouvre à 8h');
+  const isRU=_lang==='ru';
+  const txt=open?(_lang==='en'?'Available':_lang==='zh'?'在线':isRU?'Доступно':'Disponible'):(_lang==='en'?'Opens at 8am':_lang==='zh'?'8:00开放':isRU?'Открываемся в 8:00':'Réouvre à 8h');
   document.querySelectorAll('.avail-tag').forEach(el=>{
     el.className='avail-tag '+cls;
     el.textContent=txt;
@@ -8445,10 +8463,11 @@ else{_updateChromeH();}
 
 // ── 2. CTAs GÉNÉRIQUES ───────────────────────────────────────────────────────
 (function initDynamicCTAs(){
+  const isRU=_lang==='ru';
   const cta=document.getElementById('pricing-cta');
-  if(cta)cta.innerHTML=_lang==='en'?'Book my delivery &rarr;':_lang==='zh'?'预订配送 &rarr;':'Réserver ma livraison &rarr;';
+  if(cta)cta.innerHTML=_lang==='en'?'Book my delivery &rarr;':_lang==='zh'?'预订配送 &rarr;':isRU?'Забронировать доставку &rarr;':'Réserver ma livraison &rarr;';
   const btn=document.getElementById('sbtn-lbl');
-  if(btn)btn.textContent=_lang==='en'?'Proceed to payment':_lang==='zh'?'前往支付':'Procéder au paiement';
+  if(btn)btn.textContent=_lang==='en'?'Proceed to payment':_lang==='zh'?'前往支付':isRU?'Перейти к оплате':'Procéder au paiement';
 })();
 
 // ── 3. DATES RELATIVES SUR LES AVIS ─────────────────────────────────────────
@@ -8464,6 +8483,7 @@ else{_updateChromeH();}
     const diff=(now.getFullYear()-parseInt(m[2]))*12+(now.getMonth()-idx);
     const rel=_lang==='zh'?diff<1?'ce mois-ci':diff===1?'1个月前':diff<12?diff+'个月前':diff<24?'1年前':Math.floor(diff/12)+'年前':_lang==='en'
       ?(diff<1?'this month':diff===1?'1 month ago':diff<12?diff+' months ago':diff<24?'1 year ago':Math.floor(diff/12)+' years ago')
+      :_lang==='ru'?(diff<1?'в этом месяце':diff===1?'1 месяц назад':diff<12?diff+' месяцев назад':diff<24?'1 год назад':Math.floor(diff/12)+' лет назад')
       :(diff<1?'ce mois-ci':diff===1?'il y a 1 mois':diff<12?'il y a '+diff+' mois':diff<24?'il y a 1 an':'il y a '+Math.floor(diff/12)+' ans');
     el.textContent=el.textContent.replace(/·\s*\S+\s+\d{4}$/i,'· '+rel);
   });
@@ -8489,13 +8509,14 @@ else{_updateChromeH();}
   const h=new Date().getHours();
   const el=document.getElementById('act-text');
   if(!el)return;
+  const isRU=_lang==='ru';
   const base=14; // réservations ce mois
   if(h>=8&&h<20){
     // Business hours: show active delivery count (vary by hour for realism)
     const active=h<12?2:h<16?3:2;
-    el.textContent=_lang==='en'?base+' bookings this month · '+active+' deliveries underway':_lang==='zh'?'本月'+base+'笔预订 · '+active+'次配送进行中':base+' réservations ce mois · '+active+' livraisons en cours';
+    el.textContent=_lang==='en'?base+' bookings this month · '+active+' deliveries underway':_lang==='zh'?'本月'+base+'笔预订 · '+active+'次配送进行中':isRU?base+' бронирований в этом месяце · '+active+' доставок сегодня':base+' réservations ce mois · '+active+' livraisons en cours';
   } else {
-    el.textContent=_lang==='en'?base+' bookings this month':_lang==='zh'?'本月'+base+'笔预订':base+' réservations ce mois';
+    el.textContent=_lang==='en'?base+' bookings this month':_lang==='zh'?'本月'+base+'笔预订':isRU?base+' бронирований в этом месяце':base+' réservations ce mois';
   }
 })();
 
@@ -8503,13 +8524,14 @@ else{_updateChromeH();}
   const h=new Date().getHours();
   const el=document.getElementById('en-service');
   if(!el)return;
+  const isRU=_lang==='ru';
   if(h>=8&&h<20){
     el.style.display='flex';
     const txt=document.getElementById('es-text');
     if(txt){
-      if(h>=8&&h<12) txt.textContent=_lang==='en'?'Open · Technician available this morning':_lang==='zh'?'开放 · 今早技术员在岗':'Ligne ouverte · Technicien disponible ce matin';
-      else if(h>=12&&h<16) txt.textContent=_lang==='en'?'Open · Afternoon delivery available':_lang==='zh'?'开放 · 今午可配送':'Ligne ouverte · Livraison cet après-midi disponible';
-      else txt.textContent=_lang==='en'?'Open · Last deliveries of the day':_lang==='zh'?'开放 · 今日最后配送':'Ligne ouverte · Dernières livraisons de la journée';
+      if(h>=8&&h<12) txt.textContent=_lang==='en'?'Open · Technician available this morning':_lang==='zh'?'开放 · 今早技术员在岗':isRU?'Линия открыта · Техник доступен':'Ligne ouverte · Technicien disponible ce matin';
+      else if(h>=12&&h<16) txt.textContent=_lang==='en'?'Open · Afternoon delivery available':_lang==='zh'?'开放 · 今午可配送':isRU?'Линия открыта · Техник доступен':'Ligne ouverte · Livraison cet après-midi disponible';
+      else txt.textContent=_lang==='en'?'Open · Last deliveries of the day':_lang==='zh'?'开放 · 今日最后配送':isRU?'Линия открыта · Техник доступен':'Ligne ouverte · Dernières livraisons de la journée';
     }
   }
 })();
@@ -8519,13 +8541,14 @@ else{_updateChromeH();}
   const el=document.getElementById('hero-social-proof');
   if(!el)return;
   const h=new Date().getHours();
+  const isRU=_lang==='ru';
   el.style.display='flex';
   const txt=document.getElementById('hsp-text');
   if(!txt)return;
   if(h>=8&&h<20){
-    txt.textContent=_lang==='en'?'🟢 Available for delivery · Booked 14× this month':_lang==='zh'?'🟢 可配送 · 本月已预订14次':'🟢 Disponible à la livraison · Réservé 14× ce mois';
+    txt.textContent=_lang==='en'?'🟢 Available for delivery · Booked 14× this month':_lang==='zh'?'🟢 可配送 · 本月已预订14次':isRU?'🟢 Доступно для доставки · Забронировано 14 раз':'🟢 Disponible à la livraison · Réservé 14× ce mois';
   } else {
-    txt.textContent=_lang==='en'?'Booked 14× this month · Available from 8am':_lang==='zh'?'本月已预订14次 · 8:00起可预约':'Réservé 14× ce mois · Disponible dès 8h';
+    txt.textContent=_lang==='en'?'Booked 14× this month · Available from 8am':_lang==='zh'?'本月已预订14次 · 8:00起可预约':isRU?'Забронировано 14 раз · Доступно с 8:00':'Réservé 14× ce mois · Disponible dès 8h';
   }
 })();
 
@@ -8592,8 +8615,8 @@ function _renderDurFree(){
     if(numEl.tagName==='INPUT'){numEl.value=d;}else{numEl.textContent=d;}
   }
   if(el('dfb-total'))el('dfb-total').textContent=price+' €';
-  if(el('dfb-rate'))el('dfb-rate').textContent=rate+(_lang==='en'?' €/day':_lang==='zh'?' €/天':' €/jour');
-  if(el('dfb-cta-label'))el('dfb-cta-label').textContent=_lang==='en'?d+' day'+(d>1?'s':''):_lang==='zh'?d+' 天':d+' jour'+(d>1?'s':'');
+  if(el('dfb-rate'))el('dfb-rate').textContent=rate+(_lang==='en'?' €/day':_lang==='zh'?' €/天':_lang==='ru'?' €/день':' €/jour');
+  if(el('dfb-cta-label'))el('dfb-cta-label').textContent=_lang==='en'?d+' day'+(d>1?'s':''):_lang==='zh'?d+' 天':_lang==='ru'?d+' дней':d+' jour'+(d>1?'s':'');
   if(el('dfb-minus'))el('dfb-minus').disabled=(d<=7);
 }
 function confirmDurFree(){
@@ -8610,19 +8633,20 @@ function confirmDurFree(){
   const types={'Touzé Mike':'Particulier','Yummy g':'Famille','Lino Fabio':'Particulier','Giacomo Alessandro':'Particulier','Antonin Nafati':'Particulier','Noa':'Particulier','Melvyn Schwechler':'Court séjour','Anaïs Adamowicz':'Famille','Sofiane Kaci':'Urgence','Lucas Victor':'Airbnb','Lydie PAYET-LENORMAND':'Urgence','vincent mosca':'Particulier','Daniel Lopez Francia':'Particulier','Badou Thiam':'Urgence','Yassine Mohanito':'Particulier','Lauriane Hagelstein':'Particulier','Laurence Guyard':'Particulier'};
   const labelsEN={'Particulier':'Individual','Famille':'Family','Court séjour':'Short stay','Urgence':'Emergency','Airbnb':'Airbnb'};
   const labelsZH={'Particulier':'个人','Famille':'家庭','Court séjour':'短租','Urgence':'紧急','Airbnb':'Airbnb'};
+  const labelsRU={'Particulier':'Частное лицо','Famille':'Семья','Court séjour':'Краткосрочное проживание','Urgence':'Срочно','Airbnb':'Airbnb'};
   document.querySelectorAll('.rv-foot').forEach(foot=>{
     const name=foot.querySelector('.rv-name')?.textContent.trim();
     const typeFR=types[name];
     if(typeFR&&!foot.querySelector('.rv-type')){
       const s=document.createElement('span');s.className='rv-type';
-      s.textContent=_lang==='en'?(labelsEN[typeFR]||typeFR):_lang==='zh'?(labelsZH[typeFR]||typeFR):typeFR;
+      s.textContent=_lang==='en'?(labelsEN[typeFR]||typeFR):_lang==='zh'?(labelsZH[typeFR]||typeFR):_lang==='ru'?(labelsRU[typeFR]||typeFR):typeFR;
       foot.appendChild(s);
     }
   });
 })();
 
 function initDurCardPrices(){
-  const dayUnit=_lang==='en'?' €/day':_lang==='zh'?' €/天':' €/jour';
+  const dayUnit=_lang==='en'?' €/day':_lang==='zh'?' €/天':_lang==='ru'?' €/день':' €/jour';
   document.querySelectorAll('.dur-row[data-days]').forEach(card=>{
     const days=parseInt(card.getAttribute('data-days'));
     const total=calcPrice(days);
@@ -8693,7 +8717,7 @@ function goProlongStep(n){
   }
   if(n===4)buildProlongRecap();
   const mb=document.getElementById('modal-body');if(mb)mb.scrollTop=0;
-  document.title=(_lang==='en'?'Extension — Step ':_lang==='zh'?'续租 — 第':'Prolongation — Étape ')+n+(_lang==='en'?'/4 | Loc\'Air':_lang==='zh'?'/4步 | Loc\'Air':'/4 | Loc\'Air');
+  document.title=(_lang==='en'?'Extension — Step ':_lang==='zh'?'续租 — 第':_lang==='ru'?'Продление — Шаг ':'Prolongation — Étape ')+n+(_lang==='en'?'/4 | Loc\'Air':_lang==='zh'?'/4步 | Loc\'Air':'/4 | Loc\'Air');
 }
 
 function validateProlongStep3(){
@@ -8728,8 +8752,8 @@ function updateProlongPrice(){
   const el_total=document.getElementById('pp-total');
   const el_minus=document.getElementById('prolong-minus');
   if(el_days)el_days.textContent=_prolongDays;
-  if(el_lbl)el_lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):_lang==='zh'?(_prolongDays===1?'额外天数':'额外天数'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
-  if(el_total)el_total.textContent=price===0?(_lang==='en'?'Free':_lang==='zh'?'免费':'Offert'):price+' €';
+  if(el_lbl)el_lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):_lang==='zh'?(_prolongDays===1?'额外天数':'额外天数'):_lang==='ru'?(_prolongDays===1?'дополнительный день':'дополнительных дня'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
+  if(el_total)el_total.textContent=price===0?(_lang==='en'?'Free':_lang==='zh'?'免费':_lang==='ru'?'Бесплатно':'Offert'):price+' €';
   if(el_minus)el_minus.style.opacity=_prolongDays<=1?'0.3':'1';
 }
 
@@ -8754,7 +8778,7 @@ function onProlongNewDateChange(){
       _prolongDays=diff;
       updateProlongPrice();
       const el=document.getElementById('pp-days');if(el)el.textContent=_prolongDays;
-      const lbl=document.getElementById('pp-day-lbl');if(lbl)lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):_lang==='zh'?(_prolongDays===1?'额外天数':'额外天数'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
+      const lbl=document.getElementById('pp-day-lbl');if(lbl)lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):_lang==='zh'?(_prolongDays===1?'额外天数':'额外天数'):_lang==='ru'?(_prolongDays===1?'дополнительный день':'дополнительных дня'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
       const minus=document.getElementById('prolong-minus');if(minus)minus.style.opacity=_prolongDays<=1?'0.3':'1';
     }
   }
@@ -8795,16 +8819,16 @@ function buildProlongRecap(){
   const creneau=document.querySelector('#pe-creneau-group .tpill.on')?.textContent.trim()||'—';
   const _e=escHtml;
   box.innerHTML=`
-    <p style="font-weight:700;color:var(--black);font-size:15px;margin-bottom:12px">${_lang==='en'?'Extension summary':_lang==='zh'?'续租摘要':'Récapitulatif de prolongation'}</p>
+    <p style="font-weight:700;color:var(--black);font-size:15px;margin-bottom:12px">${_lang==='en'?'Extension summary':_lang==='zh'?'续租摘要':_lang==='ru'?'Детали продления':'Récapitulatif de prolongation'}</p>
     <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font-size:13px">
-      <span style="color:var(--grey2)">${_lang==='en'?'Name':_lang==='zh'?'姓名':'Nom'}</span><span style="font-weight:500">${_e(prenom)} ${_e(nom)}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Name':_lang==='zh'?'姓名':_lang==='ru'?'Имя':'Nom'}</span><span style="font-weight:500">${_e(prenom)} ${_e(nom)}</span>
       <span style="color:var(--grey2)">Email</span><span>${_e(email)}</span>
-      <span style="color:var(--grey2)">${_lang==='en'?'Phone':_lang==='zh'?'电话':'Tél.'}</span><span>${_e(tel)}</span>
-      ${addr!=='—'?`<span style="color:var(--grey2)">${_lang==='en'?'Address':_lang==='zh'?'地址':'Adresse'}</span><span>${_e(addr)}</span>`:''}
-      <span style="color:var(--grey2)">${_lang==='en'?'Added duration':_lang==='zh'?'新增时长':'Durée ajoutée'}</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} ${_lang==='en'?'day'+(_prolongDays>1?'s':''):_lang==='zh'?'天':'jour'+(_prolongDays>1?'s':'')}</span>
-      <span style="color:var(--grey2)">${_lang==='en'?'Collection on':_lang==='zh'?'取回日期':'Récupération le'}</span><span style="font-weight:500">${dateLabel}</span>
-      <span style="color:var(--grey2)">${_lang==='en'?'Time slot':_lang==='zh'?'时间段':'Créneau'}</span><span style="font-weight:500">${escHtml(creneau)}</span>
-      <span style="color:var(--grey2)">${_lang==='en'?'Amount':_lang==='zh'?'金额':'Montant'}</span><span style="font-weight:700;font-size:16px;color:var(--black)">${price} €</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Phone':_lang==='zh'?'电话':_lang==='ru'?'Тел.':'Tél.'}</span><span>${_e(tel)}</span>
+      ${addr!=='—'?`<span style="color:var(--grey2)">${_lang==='en'?'Address':_lang==='zh'?'地址':_lang==='ru'?'Адрес':'Adresse'}</span><span>${_e(addr)}</span>`:''}
+      <span style="color:var(--grey2)">${_lang==='en'?'Added duration':_lang==='zh'?'新增时长':_lang==='ru'?'Добавленный срок':'Durée ajoutée'}</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} ${_lang==='en'?'day'+(_prolongDays>1?'s':''):_lang==='zh'?'天':_lang==='ru'?'дней':'jour'+(_prolongDays>1?'s':'')}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Collection on':_lang==='zh'?'取回日期':_lang==='ru'?'Возврат':'Récupération le'}</span><span style="font-weight:500">${dateLabel}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Time slot':_lang==='zh'?'时间段':_lang==='ru'?'Временной слот':'Créneau'}</span><span style="font-weight:500">${escHtml(creneau)}</span>
+      <span style="color:var(--grey2)">${_lang==='en'?'Amount':_lang==='zh'?'金额':_lang==='ru'?'Сумма':'Montant'}</span><span style="font-weight:700;font-size:16px;color:var(--black)">${price} €</span>
     </div>
   `;
   // reset checkbox + mettre le prix dans le bouton
@@ -8813,7 +8837,7 @@ function buildProlongRecap(){
   if(cgv)cgv.checked=false;
   if(sbtn)sbtn.disabled=true;
   const sbtlbl=document.getElementById('prolong-sbtn-lbl');
-  if(sbtlbl)sbtlbl.textContent=(_lang==='en'?'Proceed to payment — ':_lang==='zh'?'前往支付 — ':'Procéder au paiement — ')+price+' €';
+  if(sbtlbl)sbtlbl.textContent=(_lang==='en'?'Proceed to payment — ':_lang==='zh'?'前往支付 — ':_lang==='ru'?'Перейти к оплате — ':'Procéder au paiement — ')+price+' €';
   // Réinitialiser Stripe si déjà monté
   if(_prolongElements){try{_prolongElements.getElement('payment')?.unmount();}catch(e){}_prolongElements=null;}
   const sect=document.getElementById('prolong-stripe-section');if(sect)sect.style.display='none';
@@ -8838,7 +8862,7 @@ async function startProlongPayment(){
   const errEl=document.getElementById('prolong-error');
   const origLbl=lbl?.textContent||'Procéder au paiement';
   if(btn)btn.disabled=true;
-  if(lbl)lbl.textContent=_lang==='en'?'Loading…':_lang==='zh'?'加载中…':'Chargement…';
+  if(lbl)lbl.textContent=_lang==='en'?'Loading…':_lang==='zh'?'加载中…':_lang==='ru'?'Загрузка…':'Chargement…';
   if(errEl)errEl.style.display='none';
 
   const jours=_prolongDays;
@@ -8854,10 +8878,10 @@ async function startProlongPayment(){
 
   try{
     const stripe=_getStripe();
-    if(!stripe)throw new Error(_lang==='en'?'Stripe not loaded — please disable your ad blocker':_lang==='zh'?'Stripe未加载——请禁用广告拦截器':'Stripe non chargé — désactivez votre bloqueur de publicités');
+    if(!stripe)throw new Error(_lang==='en'?'Stripe not loaded — please disable your ad blocker':_lang==='zh'?'Stripe未加载——请禁用广告拦截器':_lang==='ru'?'Ошибка загрузки платёжной системы. Обновите страницу.':'Stripe non chargé — désactivez votre bloqueur de publicités');
     const debutVal=document.getElementById('pe-debut')?.value||'';
     const finInitVal=document.getElementById('pe-fin-init')?.value||'';
-    if(!document.getElementById('pe-cgv')?.checked)throw new Error(_lang==='en'?'Please accept the T\u0026Cs before paying.':_lang==='zh'?'请在付款前接受销售条款。':'Merci d\'accepter les CGV avant de payer.');
+    if(!document.getElementById('pe-cgv')?.checked)throw new Error(_lang==='en'?'Please accept the T\u0026Cs before paying.':_lang==='zh'?'请在付款前接受销售条款。':_lang==='ru'?'Пожалуйста, примите условия.':'Merci d\'accepter les CGV avant de payer.');
     const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,quantite:_qty||1,original_days:_prolongOrigDays,prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,date_recuperation_iso:rawDate,creneau,lang:_lang||'fr',cgv_accepted:true,cgv_accepted_at:new Date().toISOString()})});
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||('API '+r.status));}
     const d=await r.json();
@@ -8907,7 +8931,7 @@ async function startProlongPayment(){
     if(lbl)lbl.textContent=origLbl;
     if(errEl){
       const msg=(e&&e.message)||'';
-      errEl.textContent=(msg&&!/^API \d+$/.test(msg))?msg:(_lang==='en'?'Connection error. Call us at 06.63.79.87.56.':_lang==='zh'?'连接错误。请致电 06.63.79.87.56。':'Problème de connexion. Appelez-nous au 06.63.79.87.56.');
+      errEl.textContent=(msg&&!/^API \d+$/.test(msg))?msg:(_lang==='en'?'Connection error. Call us at 06.63.79.87.56.':_lang==='zh'?'连接错误。请致电 06.63.79.87.56。':_lang==='ru'?'Ошибка соединения. Позвоните нам: 06.63.79.87.56.':'Problème de connexion. Appelez-nous au 06.63.79.87.56.');
       errEl.style.display='block';
     }
   }
@@ -8959,10 +8983,12 @@ function _showProlongSuccess(){
       ?'Your rental has been extended by '+_prolongDays+' day'+(_prolongDays>1?'s':'')+'. Collection on '+dateLabel+' between '+creneau+'. Email confirmation in a few minutes.'
       :_lang==='zh'
       ?'您的租赁已延长'+_prolongDays+'天。取回日期：'+dateLabel+'，时间段：'+creneau+'。几分钟内发送邮件确认。'
+      :_lang==='ru'
+      ?'Ваша аренда продлена на '+_prolongDays+' дней. Возврат '+dateLabel+', временной слот: '+creneau+'. Подтверждение на email через несколько минут.'
       :'Votre location est prolongée de '+_prolongDays+' jour'+(_prolongDays>1?'s':'')+'. Récupération le '+dateLabel+' entre '+creneau+'. Confirmation par email dans quelques minutes.';
     const prolongRef=_generateOrderRef();
     const refEl2=document.getElementById('prolong-ref');
-    if(refEl2)refEl2.textContent=(_lang==='en'?'Ref ':_lang==='zh'?'编号：':'Dossier ')+prolongRef;
+    if(refEl2)refEl2.textContent=(_lang==='en'?'Ref ':_lang==='zh'?'编号：':_lang==='ru'?'Номер заказа ':'Dossier ')+prolongRef;
     succ.classList.add('show');
   }
   window.dataLayer=window.dataLayer||[];
@@ -8978,9 +9004,9 @@ function playInstallVideo(){
     // Placeholder : vidéo pas encore ajoutée
     const msg=document.createElement('div');
     msg.style.cssText='position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;padding:20px';
-    const _vt=_lang==='en'?'Video coming soon':_lang==='zh'?'视频制作中':'Vidéo en production';
-    const _vb=_lang==='en'?'Our installation video will be available very soon. In the meantime, call us for any questions.':_lang==='zh'?'我们的安装视频即将上线。如有疑问，欢迎致电。':'Notre vidéo d\'installation sera disponible très prochainement. En attendant, appelez-nous pour toute question.';
-    const _vc=_lang==='en'?'Close':_lang==='zh'?'关闭':'Fermer';
+    const _vt=_lang==='en'?'Video coming soon':_lang==='zh'?'视频制作中':_lang==='ru'?'Установка кондиционера':'Vidéo en production';
+    const _vb=_lang==='en'?'Our installation video will be available very soon. In the meantime, call us for any questions.':_lang==='zh'?'我们的安装视频即将上线。如有疑问，欢迎致电。':_lang==='ru'?'Видео по установке скоро появится. Пока звоните нам — мы ответим на все вопросы.':'Notre vidéo d\'installation sera disponible très prochainement. En attendant, appelez-nous pour toute question.';
+    const _vc=_lang==='en'?'Close':_lang==='zh'?'关闭':_lang==='ru'?'Закрыть':'Fermer';
     msg.innerHTML='<div style="background:#fff;border-radius:20px;padding:32px 28px;max-width:340px;text-align:center;font-family:var(--body)"><p style="font-size:22px;margin-bottom:10px">🎬</p><h3 style="font-size:18px;font-weight:700;color:var(--black);margin-bottom:8px;font-family:var(--disp)">'+_vt+'</h3><p style="font-size:13px;color:var(--grey);line-height:1.6;margin-bottom:20px">'+_vb+'</p><button onclick="this.closest(\'[style*=fixed]\').remove()" style="background:var(--blue);color:#fff;border:none;border-radius:10px;padding:11px 24px;font-size:14px;font-weight:700;cursor:pointer;font-family:var(--body)">'+_vc+'</button></div>';
     document.body.appendChild(msg);
     return;
@@ -9007,7 +9033,7 @@ function upsellUnit2(){
     // Pre-fill note field with context
     setTimeout(()=>{
       const note=document.getElementById('f-instructions');
-      if(note&&!note.value)note.value=_lang==='en'?'2nd AC — same address':_lang==='zh'?'第2台空调——同一地址':'2ème climatiseur — même adresse';
+      if(note&&!note.value)note.value=_lang==='en'?'2nd AC — same address':_lang==='zh'?'第2台空调——同一地址':_lang==='ru'?'2-й кондиционер — тот же адрес':'2ème climatiseur — même adresse';
     },300);
   },80);
 }
@@ -9018,7 +9044,7 @@ function submitAlerte(e){
   const btn=document.getElementById('ec-btn');
   const email=(document.getElementById('ec-email')?.value||'').trim();
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))return;
-  if(btn){btn.disabled=true;btn.textContent=_lang==='en'?'Sending...':_lang==='zh'?'发送中...':'Envoi...';}
+  if(btn){btn.disabled=true;btn.textContent=_lang==='en'?'Sending...':_lang==='zh'?'发送中...':_lang==='ru'?'Отправка...':'Envoi...';}
   fetch('https://formspree.io/f/mvzyngoy',{
     method:'POST',
     headers:{'Content-Type':'application/json','Accept':'application/json'},
@@ -9027,11 +9053,11 @@ function submitAlerte(e){
     if(!r.ok)throw new Error('http '+r.status);
     const ok=document.querySelector('.ec-ok');
     const form=document.getElementById('ec-form');
-    if(ok){ok.style.display='block';ok.textContent=_lang==='en'?'✓ Signed up! We\'ll alert you before the next heatwave.':_lang==='zh'?'✓ 已注册！下次热浪来临前我们将提醒您。':'✓ Inscrit ! On vous prévient dès la prochaine vague de chaleur.';}
+    if(ok){ok.style.display='block';ok.textContent=_lang==='en'?'✓ Signed up! We\'ll alert you before the next heatwave.':_lang==='zh'?'✓ 已注册！下次热浪来临前我们将提醒您。':_lang==='ru'?'✓ Подписано!':'✓ Inscrit ! On vous prévient dès la prochaine vague de chaleur.';}
     if(form)form.style.display='none';
     if(typeof gtag==='function')gtag('event','alerte_signup',{method:'email'});
   }).catch(()=>{
-    if(btn){btn.disabled=false;btn.textContent=_lang==='en'?'Get the alert →':_lang==='zh'?'接收预警 →':'Recevoir l\'alerte →';}
+    if(btn){btn.disabled=false;btn.textContent=_lang==='en'?'Get the alert →':_lang==='zh'?'接收预警 →':_lang==='ru'?'Получить уведомление →':'Recevoir l\'alerte →';}
     alert(_lang==='en'?"Network error — your signup wasn't saved. Call us at +33 6 63 79 87 56.":_lang==='zh'?'网络错误——您的注册未能保存。请致电 +33 6 63 79 87 56。':_lang==='ru'?'Ошибка сети — регистрация не сохранена. Позвоните нам: +33 6 63 79 87 56.':"Erreur réseau — ton inscription n'a pas été enregistrée. Appelle-nous au 06.63.79.87.56.");
   });
 }
@@ -9052,7 +9078,7 @@ function selectInstall(tech){
   if(icSelf){icSelf.classList.toggle('on',!tech);icSelf.setAttribute('aria-checked',String(!tech));}
 
   const lblBack=document.getElementById('lbl-back-s4');
-  if(lblBack)lblBack.textContent=tech?(_lang==='zh'?'安装':'Installation'):(_lang==='en'?'Window':_lang==='zh'?'窗型':'Fenêtre');
+  if(lblBack)lblBack.textContent=tech?(_lang==='zh'?'安装':_lang==='ru'?'Установка':'Installation'):(_lang==='en'?'Window':_lang==='zh'?'窗型':_lang==='ru'?'Окно':'Fenêtre');
   updateModalRecapPill(3);
   buildRecap();
 }
@@ -9089,13 +9115,13 @@ function validatePromo(){
   const normPrenom=normalizePrenomJS(document.getElementById('f-prenom')?.value||'');
   if(explicit!==undefined){
     _promoDiscount=explicit;_promoPct=0;_promoCode=val;
-    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+_promoDiscount+' € off':_lang==='zh'?'✓ 有效码 — 减'+_promoDiscount+'€':'✓ Code valide — '+_promoDiscount+' € déduits';fb.style.color='#059669';fb.style.display='block';}
+    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+_promoDiscount+' € off':_lang==='zh'?'✓ 有效码 — 减'+_promoDiscount+'€':_lang==='ru'?'Код применён ✓ — −'+_promoDiscount+'€':'✓ Code valide — '+_promoDiscount+' € déduits';fb.style.color='#059669';fb.style.display='block';}
   }else if(normPrenom && val===normPrenom+REFERRAL_PCT){
     _promoPct=REFERRAL_PCT;_promoCode=val; // _promoDiscount recalculé dans buildRecap()
-    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+REFERRAL_PCT+'% off':_lang==='zh'?'✓ 有效码 — 折扣'+REFERRAL_PCT+'%':'✓ Code valide — '+REFERRAL_PCT+'% déduits';fb.style.color='#059669';fb.style.display='block';}
+    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+REFERRAL_PCT+'% off':_lang==='zh'?'✓ 有效码 — 折扣'+REFERRAL_PCT+'%':_lang==='ru'?'Код применён ✓ — −'+REFERRAL_PCT+'%':'✓ Code valide — '+REFERRAL_PCT+'% déduits';fb.style.color='#059669';fb.style.display='block';}
   }else{
     _promoDiscount=0;_promoPct=0;_promoCode='';
-    if(fb){fb.textContent=_lang==='en'?'Code not recognised':_lang==='zh'?'无效码':'Code non reconnu';fb.style.color='var(--red)';fb.style.display='block';}
+    if(fb){fb.textContent=_lang==='en'?'Code not recognised':_lang==='zh'?'无效码':_lang==='ru'?'Код не найден':'Code non reconnu';fb.style.color='var(--red)';fb.style.display='block';}
   }
   buildRecap();
 }
@@ -9112,7 +9138,7 @@ function setQty(n){
   if(valEl)valEl.textContent=n;
   if(minusBtn)minusBtn.disabled=(n<=1);
   if(plusBtn)plusBtn.disabled=(n>=maxStock);
-  if(lblEl)lblEl.textContent=_lang==='en'?(n===1?'AC unit':'AC units'):_lang==='zh'?(n+'台空调'):(n===1?'climatiseur':'climatiseurs');
+  if(lblEl)lblEl.textContent=_lang==='en'?(n===1?'AC unit':'AC units'):_lang==='zh'?(n+'台空调'):_lang==='ru'?(n===1?'кондиционер':'кондиционера'):(n===1?'climatiseur':'climatiseurs');
   // Refresh displayed prices in dur-rows
   document.querySelectorAll('.dur-row[data-days]').forEach(card=>{
     const days=parseInt(card.getAttribute('data-days'));
@@ -9132,15 +9158,15 @@ function copyReferral(){
   const code=document.getElementById('ref-code')?.textContent||'LOCAIR10';
   navigator.clipboard?.writeText(code).then(()=>{
     const btn=document.getElementById('ref-copy-btn');
-    if(btn){btn.textContent=_lang==='en'?'Copied ✓':_lang==='zh'?'已复制 ✓':'Copié ✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent=_lang==='en'?'Copy':_lang==='zh'?'复制':'Copier';btn.classList.remove('copied');},2000);}
+    if(btn){btn.textContent=_lang==='en'?'Copied ✓':_lang==='zh'?'已复制 ✓':_lang==='ru'?'Скопировано ✓':'Copié ✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent=_lang==='en'?'Copy':_lang==='zh'?'复制':_lang==='ru'?'Копировать':'Copier';btn.classList.remove('copied');},2000);}
   }).catch(()=>{});
 }
 function shareReferral(){
   const code=document.getElementById('ref-code')?.textContent||'LOCAIR10';
   const url=window.CITY?.url||'https://www.locair.fr/';
-  const text=_lang==='en'?`I rented an AC from Loc'Air in Nice — delivered and installed in 24h, no deposit. Use my code ${code} to get €10 off.`:_lang==='zh'?`我在尼斯Loc'Air租了空调——24小时内送达并安装，零押金。使用我的推荐码 ${code} 可优惠10€。`:`J'ai loué un climatiseur chez Loc'Air à Nice — livré et installé en 24h, Aucune caution. Utilisez mon code ${code} pour obtenir 10€ de réduction.`;
+  const text=_lang==='en'?`I rented an AC from Loc'Air in Nice — delivered and installed in 24h, no deposit. Use my code ${code} to get €10 off.`:_lang==='zh'?`我在尼斯Loc'Air租了空调——24小时内送达并安装，零押金。使用我的推荐码 ${code} 可优惠10€。`:_lang==='ru'?`Арендуй кондиционер у Loc'Air в Ницце! Используй мой код: ${code}.`:`J'ai loué un climatiseur chez Loc'Air à Nice — livré et installé en 24h, Aucune caution. Utilisez mon code ${code} pour obtenir 10€ de réduction.`;
   if(navigator.share){navigator.share({title:"Loc'Air — climatiseur Nice",text,url});}
-  else{navigator.clipboard?.writeText(text).then(()=>alert(_lang==='en'?'Message copied!':_lang==='zh'?'消息已复制！':'Message copié !')).catch(()=>{});}
+  else{navigator.clipboard?.writeText(text).then(()=>alert(_lang==='en'?'Message copied!':_lang==='zh'?'消息已复制！':_lang==='ru'?'Сообщение скопировано!':'Message copié !')).catch(()=>{});}
   if(typeof gtag==='function')gtag('event','referral_share',{code});
 }
 function initReferralCode(prenom){
@@ -9173,8 +9199,8 @@ function openChat(){
   _cwData={date:'',days:7,addr:''};
   const body=document.getElementById('cw-body');
   if(body)body.innerHTML='';
-  _cwBot(_lang==='en'?'Hello! 👋':_lang==='zh'?'你好！👋':'Bonjour ! 👋',300);
-  _cwBot(_lang==='en'?'When do you need it?':_lang==='zh'?'您什么时候需要？':'C\'est pour quand ?',800);
+  _cwBot(_lang==='en'?'Hello! 👋':_lang==='zh'?'你好！👋':_lang==='ru'?'Привет! 👋':'Bonjour ! 👋',300);
+  _cwBot(_lang==='en'?'When do you need it?':_lang==='zh'?'您什么时候需要？':_lang==='ru'?'Когда вам нужен кондиционер?':'C\'est pour quand ?',800);
   setTimeout(()=>_cwShowStep(1),1300);
   (window.dataLayer=window.dataLayer||[]).push({event:'chat_open'});
 }
@@ -9221,24 +9247,25 @@ function _cwShowStep(step){
   _cwStep=step;
   const foot=document.getElementById('cw-foot');
   if(!foot)return;
+  const isRU=_lang==='ru';
   if(step===1){
     // Date
     const min=new Date();min.setDate(min.getDate()+1);
     const minStr=min.toISOString().split('T')[0];
     const def=minStr;
-    foot.innerHTML=`<div class="cw-row"><input type="date" class="cw-inp" id="cw-date" min="${minStr}" value="${def}" aria-label="${_lang==='en'?'Start date':_lang==='zh'?'开始日期':'Date de début'}"/><button class="cw-send" onclick="cwNextDate()" type="button" aria-label="${_lang==='en'?'Submit':_lang==='zh'?'确认':'Valider'}">→</button></div>`;
+    foot.innerHTML=`<div class="cw-row"><input type="date" class="cw-inp" id="cw-date" min="${minStr}" value="${def}" aria-label="${_lang==='en'?'Start date':_lang==='zh'?'开始日期':isRU?'Когда вам нужен кондиционер?':'Date de début'}"/><button class="cw-send" onclick="cwNextDate()" type="button" aria-label="${_lang==='en'?'Submit':_lang==='zh'?'确认':isRU?'Подтвердить':'Valider'}">→</button></div>`;
     setTimeout(()=>document.getElementById('cw-date')?.focus(),100);
   } else if(step===2){
     // Duration
-    foot.innerHTML=`<div class="cw-chips"><button class="cw-chip on" type="button" onclick="cwSelDays(7,this)">${_lang==='en'?'7 days':_lang==='zh'?'7天':'7 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(14,this)">${_lang==='en'?'14 days':_lang==='zh'?'14天':'14 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(21,this)">${_lang==='en'?'21 days':_lang==='zh'?'21天':'21 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(30,this)">${_lang==='en'?'30 days':_lang==='zh'?'30天':'30 jours'}</button></div><button class="cw-send" style="width:100%;border-radius:12px;padding:11px" onclick="cwNextDays()" type="button">${_lang==='en'?'Continue →':_lang==='zh'?'继续 →':'Continuer →'}</button>`;
+    foot.innerHTML=`<div class="cw-chips"><button class="cw-chip on" type="button" onclick="cwSelDays(7,this)">${_lang==='en'?'7 days':_lang==='zh'?'7天':isRU?'7 дней':'7 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(14,this)">${_lang==='en'?'14 days':_lang==='zh'?'14天':isRU?'14 дней':'14 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(21,this)">${_lang==='en'?'21 days':_lang==='zh'?'21天':isRU?'21 день':'21 jours'}</button><button class="cw-chip" type="button" onclick="cwSelDays(30,this)">${_lang==='en'?'30 days':_lang==='zh'?'30天':isRU?'30 дней':'30 jours'}</button></div><button class="cw-send" style="width:100%;border-radius:12px;padding:11px" onclick="cwNextDays()" type="button">${_lang==='en'?'Continue →':_lang==='zh'?'继续 →':isRU?'Продолжить →':'Continuer →'}</button>`;
   } else if(step===3){
     // Address
-    foot.innerHTML=`<div class="cw-row"><input type="text" class="cw-inp" id="cw-addr" placeholder="${_lang==='en'?'Your delivery address…':_lang==='zh'?'您的配送地址…':'Votre adresse de livraison…'}" autocomplete="street-address" aria-label="${_lang==='en'?'Delivery address':_lang==='zh'?'配送地址':'Adresse de livraison'}"/><button class="cw-send" onclick="cwNextAddr()" type="button" aria-label="${_lang==='en'?'Submit':_lang==='zh'?'确认':'Valider'}">→</button></div>`;
+    foot.innerHTML=`<div class="cw-row"><input type="text" class="cw-inp" id="cw-addr" placeholder="${_lang==='en'?'Your delivery address…':_lang==='zh'?'您的配送地址…':isRU?'Адрес доставки…':'Votre adresse de livraison…'}" autocomplete="street-address" aria-label="${_lang==='en'?'Delivery address':_lang==='zh'?'配送地址':isRU?'Адрес доставки':'Adresse de livraison'}"/><button class="cw-send" onclick="cwNextAddr()" type="button" aria-label="${_lang==='en'?'Submit':_lang==='zh'?'确认':isRU?'Подтвердить':'Valider'}">→</button></div>`;
     setTimeout(()=>document.getElementById('cw-addr')?.focus(),100);
   } else if(step===4){
     // Recap + CTA
     const price=calcPrice(_cwData.days);
-    foot.innerHTML=`<button class="cw-cta-full" onclick="cwBook()" type="button">${_lang==='en'?'Book — ':_lang==='zh'?'预订 — ':'Réserver — '}${price}€ →</button>`;
+    foot.innerHTML=`<button class="cw-cta-full" onclick="cwBook()" type="button">${_lang==='en'?'Book — ':_lang==='zh'?'预订 — ':isRU?'Забронировать — ':'Réserver — '}${price}€ →</button>`;
   }
 }
 function cwSelDays(n,btn){
@@ -9251,14 +9278,14 @@ function cwNextDate(){
   if(!v)return;
   _cwData.date=v;
   const d=new Date(v);
-  const fmt=d.toLocaleDateString(_lang==='en'?'en-GB':_lang==='zh'?'zh-CN':'fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  const fmt=d.toLocaleDateString(_lang==='en'?'en-GB':_lang==='zh'?'zh-CN':_lang==='ru'?'ru-RU':'fr-FR',{weekday:'long',day:'numeric',month:'long'});
   _cwUser(fmt);
-  _cwBot(_lang==='en'?'Great! How many days?':_lang==='zh'?'好的！您需要多少天？':'Super ! Combien de jours ?',600);
+  _cwBot(_lang==='en'?'Great! How many days?':_lang==='zh'?'好的！您需要多少天？':_lang==='ru'?'Отлично! На сколько дней?':'Super ! Combien de jours ?',600);
   setTimeout(()=>_cwShowStep(2),1200);
 }
 function cwNextDays(){
-  _cwUser(_cwData.days+(_lang==='en'?' day'+(_cwData.days>1?'s':''):_lang==='zh'?' 天':' jour'+(_cwData.days>1?'s':'')));
-  _cwBot(_lang==='en'?'What\'s your delivery address?':_lang==='zh'?'您的配送地址是？':'Quelle est votre adresse de livraison ?',600);
+  _cwUser(_cwData.days+(_lang==='en'?' day'+(_cwData.days>1?'s':''):_lang==='zh'?' 天':_lang==='ru'?' дней':' jour'+(_cwData.days>1?'s':'')));
+  _cwBot(_lang==='en'?'What\'s your delivery address?':_lang==='zh'?'您的配送地址是？':_lang==='ru'?'Ваш адрес доставки?':'Quelle est votre adresse de livraison ?',600);
   setTimeout(()=>_cwShowStep(3),1200);
 }
 function cwNextAddr(){
@@ -9267,7 +9294,7 @@ function cwNextAddr(){
   _cwData.addr=v;
   _cwUser(v);
   const price=calcPrice(_cwData.days);
-  _cwBot(_lang==='en'?'Perfect! '+_cwData.days+' days at '+v+' = '+price+'€. Confirm?':_lang==='zh'?'完美！在 '+v+' 租'+_cwData.days+'天 = '+price+'€。确认？':'Parfait ! '+_cwData.days+' jours à '+v+' = '+price+'€. On confirme ?',700);
+  _cwBot(_lang==='en'?'Perfect! '+_cwData.days+' days at '+v+' = '+price+'€. Confirm?':_lang==='zh'?'完美！在 '+v+' 租'+_cwData.days+'天 = '+price+'€。确认？':_lang==='ru'?'Отлично! '+_cwData.days+' дн. по адресу '+v+' = '+price+'€. Подтвердить?':'Parfait ! '+_cwData.days+' jours à '+v+' = '+price+'€. On confirme ?',700);
   setTimeout(()=>_cwShowStep(4),1400);
 }
 function cwBook(){
