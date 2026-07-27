@@ -154,42 +154,6 @@ module.exports = async (req, res) => {
         });
       }
 
-      // SMS client : prise en charge confirmée
-      if (liv.reservation?.tel) {
-        const lang = liv.reservation?.lang || 'fr';
-        const d = new Date(liv.date_prevue + 'T12:00:00Z');
-        let dateStr, smsMissionContent;
-        if (lang === 'en') {
-          dateStr = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-          const verbe = liv.type === 'recuperation' ? 'collect your AC' : 'deliver your AC';
-          smsMissionContent = `Loc'Air - Your appointment on ${dateStr} is confirmed. Our technician will ${verbe}. We will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
-        } else if (lang === 'zh') {
-          const months = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-          dateStr = `${months[d.getUTCMonth()]}${d.getUTCDate()}日`;
-          const verbe = liv.type === 'recuperation' ? '取回您的空调' : '配送您的空调';
-          smsMissionContent = `Loc'Air - 您${dateStr}的预约已确认，我们的技术员将为您${verbe}。到达前30分钟将发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
-        } else if (lang === 'ru') {
-          dateStr = d.toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
-          const verbe = liv.type === 'recuperation' ? 'забрать ваш кондиционер' : 'доставить ваш кондиционер';
-          smsMissionContent = `Loc'Air - Ваша встреча ${dateStr} подтверждена, наш мастер приедет ${verbe}. Мы отправим SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
-        } else {
-          dateStr = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
-          const verbe = liv.type === 'recuperation' ? 'récupérer votre climatiseur' : 'vous livrer votre climatiseur';
-          smsMissionContent = `Loc'Air - Votre rendez-vous du ${dateStr} est confirmé, notre technicien va ${verbe}. Nous vous enverrons un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
-        }
-        const smsMissionResult = await sendBrevoSms({ to: liv.reservation.tel, content: smsMissionContent });
-        // Best-effort : trace pour l'historique de la fiche client admin.
-        if (liv.reservation_id) {
-          supabase.from('email_log').insert({
-            reservation_id: liv.reservation_id, scenario: 'sms_mission_confirmee', canal: 'sms',
-            destinataire: liv.reservation.tel, modele: 'sms_mission_confirmee',
-            statut: smsMissionResult.ok ? 'envoye' : 'erreur',
-            erreur: smsMissionResult.ok ? null : String(smsMissionResult.error || '').slice(0, 500),
-            contenu: smsMissionContent,
-          }).catch(() => {});
-        }
-      }
-
       return res.status(200).json({ ok: true, statut: 'acceptee' });
     }
 
