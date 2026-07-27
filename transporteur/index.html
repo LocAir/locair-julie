@@ -242,6 +242,32 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .dash-link-card{display:flex;align-items:center;gap:12px;background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;box-shadow:var(--sh-xs);cursor:pointer;text-align:left}
 .dash-link-card .ic{font-size:22px;flex-shrink:0}
 .dash-link-card .tx{flex:1;min-width:0}
+
+/* Ma semaine (Accueil) : vue d'ensemble des 7 prochains jours — une bande de
+   jours cliquables + le détail du jour sélectionné juste en dessous, pour
+   que "qu'est-ce qui m'attend cette semaine" tienne en un coup d'œil sans
+   quitter l'Accueil. */
+.week-card{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:18px 16px;box-shadow:var(--sh-sm);margin-bottom:14px}
+.week-card-title{font-family:var(--disp);font-size:17px;font-weight:600;color:var(--black);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:4px}
+.week-day{background:none;border:1.5px solid transparent;border-radius:var(--r-sm);padding:8px 2px 7px;text-align:center;cursor:pointer;font-family:var(--body);transition:background .15s ease,border-color .15s ease}
+.week-day-dow{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--grey2);margin-bottom:4px}
+.week-day-num{display:block;font-size:16px;font-weight:700;color:var(--black);line-height:1}
+.week-day-dot{display:block;width:16px;height:16px;line-height:16px;border-radius:50%;margin:5px auto 0;font-size:9.5px;font-weight:700;color:#fff;background:var(--blue)}
+.week-day.today{border-color:var(--gold)}
+.week-day.active{background:var(--blue);border-color:var(--blue)}
+.week-day.active .week-day-dow,.week-day.active .week-day-num{color:#fff}
+.week-day.active .week-day-dot{background:#fff;color:var(--blue)}
+.week-day.empty .week-day-dot{visibility:hidden}
+.week-day-list{margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
+.week-day-row{display:flex;align-items:center;gap:10px;padding:9px 2px;cursor:pointer}
+.week-day-row+.week-day-row{border-top:1px solid var(--rule)}
+.week-day-row .ic{font-size:18px;flex-shrink:0}
+.week-day-row .tx{flex:1;min-width:0}
+.week-day-row .name{font-size:13.5px;font-weight:600;color:var(--black);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.week-day-row .meta{font-size:12px;color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.week-day-row .chev{color:var(--grey-soft);font-size:13px;flex-shrink:0}
+.week-day-empty{font-size:13px;color:var(--grey);text-align:center;padding:10px 0 2px}
 .dash-link-card .tx .t{font-weight:700;font-size:14px;color:var(--black)}
 .dash-link-card .tx .s{font-size:12px;color:var(--grey);margin-top:2px}
 .dash-link-card .chev{color:var(--grey-soft);font-size:18px;flex-shrink:0}
@@ -1254,6 +1280,63 @@ async function loadDashboard(){
   if(document.getElementById('dashboard-screen').classList.contains('hidden')) return;
   renderDashboard();
 }
+const WEEK_DOW = ['DIM','LUN','MAR','MER','JEU','VEN','SAM'];
+// Vue "Ma semaine" de l'Accueil : les 7 prochains jours glissants (pas la
+// semaine calendaire) — un vendredi, voir "le reste de cette semaine" (juste
+// samedi/dimanche) serait presque inutile pour un livreur, alors que les 7
+// prochains jours donnent toujours une vraie visibilité utile.
+function weekAheadHtml(){
+  const todayStr = new Date().toISOString().slice(0,10);
+  if(!STATE.weekSelectedDate || STATE.weekSelectedDate < todayStr) STATE.weekSelectedDate = todayStr;
+  const activeMissions = STATE.missions.filter(m => !['annule','refusee'].includes(m.statut));
+  const days = Array.from({length:7}, (_,i) => {
+    const d = new Date(); d.setDate(d.getDate()+i);
+    const iso = d.toISOString().slice(0,10);
+    return { iso, dow: d.getDay(), num: d.getDate(), count: activeMissions.filter(m => m.date_prevue===iso).length, isToday: iso===todayStr };
+  });
+  const stripHtml = days.map(day => {
+    const cls = ['week-day'];
+    if(day.isToday) cls.push('today');
+    if(day.iso===STATE.weekSelectedDate) cls.push('active');
+    if(!day.count) cls.push('empty');
+    return `<button class="${cls.join(' ')}" onclick="selectWeekDay('${day.iso}')">
+      <span class="week-day-dow">${WEEK_DOW[day.dow]}</span>
+      <span class="week-day-num">${day.num}</span>
+      <span class="week-day-dot">${day.count||''}</span>
+    </button>`;
+  }).join('');
+
+  const selMissions = activeMissions
+    .filter(m => m.date_prevue===STATE.weekSelectedDate)
+    .sort((a,b) => (a.creneau||'').localeCompare(b.creneau||''));
+  const listHtml = selMissions.length ? selMissions.map(m => {
+    const c = m.client || {};
+    const isAutre = m.type==='autre';
+    const nom = isAutre ? escHtml(m.titre||'Mission libre') : ((escHtml((c.prenom||'')+' '+(c.nom||'')).trim())||'Client');
+    const adresse = isAutre ? (m.adresse_libre||'') : (c.adresse||'');
+    const metaParts = [m.creneau?escHtml(m.creneau):'', adresse?escHtml(adresse):''].filter(Boolean);
+    return `<div class="week-day-row" onclick="openMission(${m.id})">
+      <span class="ic">${TYPE_ICON[m.type]||'📍'}</span>
+      <div class="tx"><div class="name">${nom}</div><div class="meta">${metaParts.join(' · ')||missionTypeLabel(m)}</div></div>
+      <span class="chev">›</span>
+    </div>`;
+  }).join('') : `<p class="week-day-empty">Aucune mission ce jour.</p>`;
+
+  const selLabel = STATE.weekSelectedDate===todayStr ? "Aujourd'hui" : new Date(STATE.weekSelectedDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  return `
+    <div class="week-card">
+      <div class="week-card-title">📅 Ma semaine</div>
+      <div class="week-strip">${stripHtml}</div>
+      <div class="week-day-list">
+        <div class="eyebrow" style="margin-bottom:8px">${selLabel}</div>
+        ${listHtml}
+      </div>
+    </div>`;
+}
+function selectWeekDay(iso){
+  STATE.weekSelectedDate = iso;
+  renderDashboard();
+}
 function renderDashboard(){
   const zone = document.getElementById('dashboard-content');
   const todayStr = new Date().toISOString().slice(0,10);
@@ -1337,7 +1420,7 @@ function renderDashboard(){
       <span class="pill-badge" style="background:var(--green-bg);color:var(--green);cursor:pointer" onclick="STATE.returnToMission=null;switchTab('checklist')">✅ Checklist validée</span>
     </div>` : '';
 
-  zone.innerHTML = pauseHtml + heroHtml + statsHtml + checklistCard;
+  zone.innerHTML = pauseHtml + heroHtml + weekAheadHtml() + statsHtml + checklistCard;
 }
 
 async function loadMissions(){
