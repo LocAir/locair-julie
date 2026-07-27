@@ -6626,6 +6626,11 @@ function animateSuccessTimeline(){
         const DAYS_ZH=['周日','周一','周二','周三','周四','周五','周六'];
         const crenZH=cren?' · '+cren:'';
         dd.textContent='配送：'+_MONTHS_LONG_ZH[dt.getUTCMonth()]+parseInt(d)+'日 '+DAYS_ZH[dt.getUTCDay()]+crenZH+' · 技术员提前30分钟来电';
+      } else if(_lang==='ru') {
+        const DAYS_RU=['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+        const MONTHS_RU=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+        const crenRU=cren?' · '+cren:'';
+        dd.textContent='Доставка '+parseInt(d)+' '+MONTHS_RU[dt.getUTCMonth()]+' ('+DAYS_RU[dt.getUTCDay()]+')'+crenRU+' · Техник звонит за 30 мин';
       } else {
         const crenFR=cren?' entre '+cren:'';
         dd.textContent='Livraison le '+DAYS[dt.getUTCDay()]+' '+d+' '+MONTHS[dt.getUTCMonth()]+crenFR+' · Technicien appelle 30 min avant';
@@ -6917,7 +6922,7 @@ function submitForm(btn,mode){
       const s=document.getElementById('msuccess-call');if(s){s.classList.add('show');s.focus();}
       const msg=document.getElementById('s-msg-call');
       const greet=prenom?'Merci '+escHtml(prenom)+' !':'Merci !';
-      if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+"The Loc'Air team will call you back today (8am–20h, 7 days a week).":_lang==='zh'?(prenom?'谢谢 '+escHtml(prenom)+'！':'')+'Loc\'Air团队将于当天回电（8:00–20:00，每天）。':greet+" L'\xE9quipe Loc'Air vous rappelle dans la journ\xE9e (8h–20h, 7j/7).";
+      if(msg)msg.innerHTML=_lang==='en'?(prenom?'Thank you '+escHtml(prenom)+'! ':'')+"The Loc'Air team will call you back today (8am–20h, 7 days a week).":_lang==='zh'?(prenom?'谢谢 '+escHtml(prenom)+'！':'')+'Loc\'Air团队将于当天回电（8:00–20:00，每天）。':_lang==='ru'?(prenom?'Спасибо, '+escHtml(prenom)+'! ':'')+`Команда Loc'Air перезвонит вам сегодня (8:00–20:00, 7 дней в неделю).`:greet+" L'\xE9quipe Loc'Air vous rappelle dans la journ\xE9e (8h–20h, 7j/7).";
     }
   }
 
@@ -9109,10 +9114,10 @@ function validatePromo(){
     if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+_promoDiscount+' € off':_lang==='zh'?'✓ 有效码 — 减'+_promoDiscount+'€':'✓ Code valide — '+_promoDiscount+' € déduits';fb.style.color='#059669';fb.style.display='block';}
   }else if(normPrenom && val===normPrenom+REFERRAL_PCT){
     _promoPct=REFERRAL_PCT;_promoCode=val; // _promoDiscount recalculé dans buildRecap()
-    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+REFERRAL_PCT+'% off':_lang==='zh'?'✓ 有效码 — 折扣'+REFERRAL_PCT+'%':'✓ Code valide — '+REFERRAL_PCT+'% déduits';fb.style.color='#059669';fb.style.display='block';}
+    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+REFERRAL_PCT+'% off':_lang==='zh'?'✓ 有效码 — 折扣'+REFERRAL_PCT+'%':_lang==='ru'?'Код применён ✓ — −'+REFERRAL_PCT+'%':'✓ Code valide — '+REFERRAL_PCT+'% déduits';fb.style.color='#059669';fb.style.display='block';}
   }else{
     _promoDiscount=0;_promoPct=0;_promoCode='';
-    if(fb){fb.textContent=_lang==='en'?'Code not recognised':_lang==='zh'?'无效码':'Code non reconnu';fb.style.color='var(--red)';fb.style.display='block';}
+    if(fb){fb.textContent=_lang==='en'?'Code not recognised':_lang==='zh'?'无效码':_lang==='ru'?'Код не найден':'Code non reconnu';fb.style.color='var(--red)';fb.style.display='block';}
   }
   buildRecap();
 }
@@ -9149,7 +9154,7 @@ function copyReferral(){
   const code=document.getElementById('ref-code')?.textContent||'LOCAIR10';
   navigator.clipboard?.writeText(code).then(()=>{
     const btn=document.getElementById('ref-copy-btn');
-    if(btn){btn.textContent=_lang==='en'?'Copied ✓':_lang==='zh'?'已复制 ✓':'Copié ✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent=_lang==='en'?'Copy':_lang==='zh'?'复制':'Copier';btn.classList.remove('copied');},2000);}
+    if(btn){btn.textContent=_lang==='en'?'Copied ✓':_lang==='zh'?'已复制 ✓':_lang==='ru'?'Скопировано ✓':'Copié ✓';btn.classList.add('copied');setTimeout(()=>{btn.textContent=_lang==='en'?'Copy':_lang==='zh'?'复制':_lang==='ru'?'Копировать':'Copier';btn.classList.remove('copied');},2000);}
   }).catch(()=>{});
 }
 function shareReferral(){
