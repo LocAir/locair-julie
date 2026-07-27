@@ -2356,9 +2356,24 @@ function missionWizardHtml(m, infoRows, mapsUrl){
   // avancée : on ne peut pas sauter une étape pas encore atteinte.
   const idx = Math.min(STATE.wizardViewIdx==null ? idxReal : STATE.wizardViewIdx, idxReal);
   const key = steps[idx].key;
+  // Le numéro du climatiseur n'était visible qu'à l'étape "En route" (via
+  // infoRows/pickupHtml) — dès l'étape suivante (Arrivée, Installation...) il
+  // disparaissait complètement de l'écran, forçant le livreur à redemander
+  // quel appareil il manipule. Le badge reste maintenant affiché à toutes les
+  // étapes suivantes (pas à "En route", déjà couvert par le cadre existant).
+  const numeros = m.appareil_numeros||[];
+  const climBadgeHtml = (key!=='route' && numeros.length) ? `
+    <div class="pickup-card" style="margin-bottom:12px">
+      <span class="pickup-card-ic">❄️</span>
+      <div class="pickup-card-body">
+        <div class="pickup-card-label">${m.type==='changement'&&key==='nouveau'?'Nouveau climatiseur':(numeros.length>1?'Climatiseurs':'Climatiseur')}</div>
+        <div class="pickup-card-nums">${numeros.map(n=>'N°'+n).join('  ·  ')}</div>
+      </div>
+    </div>` : '';
   return `
     ${tourneeBannerHtml(m)}
     ${missionWizardProgressHtml(steps, idx, idxReal)}
+    ${climBadgeHtml}
     <div id="action-zone">${wizardStepBodyHtml(m, infoRows, key, mapsUrl)}</div>
     <button class="btn btn-amber" style="margin-top:10px" onclick="openProbleme()">⚠️ PROBLÈME</button>
     <div class="err" id="detail-err"></div>`;
