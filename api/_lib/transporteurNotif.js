@@ -44,7 +44,7 @@ async function smsNouvelleMission(supabase, transporteurId, { type, livraisonId 
     const adresse = liv.reservation?.adresse || '';
     const content = `Loc'Air - Nouvelle mission : ${libelle} le ${dateFmt}` +
       `${liv.creneau ? ', créneau ' + liv.creneau : ''}.` +
-      `${adresse ? ' ' + adresse + '.' : ''} Acceptez-la ici : https://www.locair.fr/transporteur`;
+      `${adresse ? ' ' + adresse + '.' : ''} Acceptez-la ici : https://www.locair.fr/transporteur/?open=${livraisonId}`;
     const result = await sendBrevoSms({ to: transporteur.telephone, content });
     if (!result.ok) console.error('[Notif transporteur SMS]', result.error);
   } catch (e) {
