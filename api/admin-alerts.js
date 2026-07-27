@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { resolveAdminCity } = require('./_lib/city');
+const { resolveAdminCity, listCities } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
@@ -15,8 +15,14 @@ module.exports = async (req, res) => {
   try {
     const city = await resolveAdminCity(supabase, req.body);
     if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
+    // Voir admin-clients.js : sans ceci, city_id:'all' retombait sur la 1re
+    // ville active pour tous les compteurs — un incident ou une mission non
+    // assignée dans une autre ville devenait invisible au badge, alors que
+    // le sélecteur affiche "Toutes les villes" et laisse croire à un badge
+    // complet.
+    const cityIds = req.body?.city_id === 'all' ? (await listCities(supabase)).map(c => c.id) : [city.id];
 
-    const { data: cityTransp, error: transpErr } = await supabase.from('transporteurs').select('id').eq('city_id', city.id);
+    const { data: cityTransp, error: transpErr } = await supabase.from('transporteurs').select('id').in('city_id', cityIds);
     if (transpErr) throw transpErr;
     const transpIds = (cityTransp || []).map(t => t.id);
     let virements = 0;
@@ -29,7 +35,7 @@ module.exports = async (req, res) => {
 
     // Une réservation masquée (doublon retiré de l'écran par l'admin) ne doit
     // gonfler ni le badge "problèmes/non assignées" ni le bandeau permanent.
-    const { data: cityResas, error: resasErr } = await supabase.from('reservations').select('id').eq('city_id', city.id).eq('masquee', false);
+    const { data: cityResas, error: resasErr } = await supabase.from('reservations').select('id').in('city_id', cityIds).eq('masquee', false);
     if (resasErr) throw resasErr;
     const resaIds = (cityResas || []).map(r => r.id);
     let livraisons = 0;
@@ -69,10 +75,10 @@ module.exports = async (req, res) => {
     //    transporteur, comme pour le compteur "non assignées" ci-dessus.
     const { count: enAttenteCount } = await supabase
       .from('reservations').select('id', { count: 'exact', head: true })
-      .eq('city_id', city.id).eq('statut', 'en_attente').eq('masquee', false);
+      .in('city_id', cityIds).eq('statut', 'en_attente').eq('masquee', false);
     const { data: horsZoneResas } = await supabase
       .from('reservations').select('id')
-      .eq('city_id', city.id).eq('hors_zone', true).eq('masquee', false)
+      .in('city_id', cityIds).eq('hors_zone', true).eq('masquee', false)
       .neq('statut', 'annulee');
     const horsZoneIds = (horsZoneResas || []).map(r => r.id);
     let horsZoneCount = 0;
@@ -125,16 +131,19 @@ module.exports = async (req, res) => {
     // sous forme de compteurs, voir ci-dessus).
     const { count: stockIndispoCount } = await supabase
       .from('appareils').select('id', { count: 'exact', head: true })
-      .eq('city_id', city.id).in('statut', ['panne', 'maintenance']);
+      .in('city_id', cityIds).in('statut', ['panne', 'maintenance']);
     const stockIndispo = stockIndispoCount || 0;
 
     // Panneau Communications : email/SMS jamais parti alors qu'il aurait dû,
     // ou dernier envoi en erreur — même définition d'anomalie que le
     // panneau détaillé (voir _lib/communicationsCockpit.js), pour que ce
     // badge ne raconte jamais une histoire différente de celle du panneau.
+    // buildCommunicationsCockpit ne prend qu'une seule ville à la fois : en
+    // mode "toutes les villes", on la calcule pour chacune et on somme.
     let communications = 0;
     try {
-      communications = (await buildCommunicationsCockpit(supabase, city.id)).anomalies;
+      const parVille = await Promise.all(cityIds.map(id => buildCommunicationsCockpit(supabase, id)));
+      communications = parVille.reduce((s, r) => s + (r.anomalies || 0), 0);
     } catch (e) {
       console.error('[Admin alerts] communications', e.message);
     }
