@@ -40,7 +40,11 @@ module.exports = async (req, res) => {
   let amountCents = (clientOrigDays > 0
     ? _safeIncrement(clientOrigDays, jours)
     : calcBase(jours)) * qty * 100;
-  const extDateDebut   = (data.date_fin_initiale     || '').slice(0, 10);
+  // Saisie brute du client (simple <input type="date">, jamais pré-remplie
+  // ni verrouillée côté site) — sert uniquement à valider le format avant
+  // la requête DB ci-dessous. Une fois orig retrouvé, orig.date_fin écrase
+  // cette valeur (voir plus bas) : source de vérité unique.
+  let extDateDebut     = (data.date_fin_initiale     || '').slice(0, 10);
   const extDateFin     = (data.date_recuperation_iso || '').slice(0, 10);
   if (!isValidDate(extDateDebut) || !isValidDate(extDateFin) || extDateFin <= extDateDebut) {
     return res.status(400).json({ error: 'Dates de prolongation invalides' });
@@ -87,6 +91,25 @@ module.exports = async (req, res) => {
     }
     if (orig?.quantite) {
       qty = Math.min(5, Math.max(1, orig.quantite));
+    }
+    // La date "fin de contrat actuelle" tapée par le client ne fait jamais foi
+    // une fois la réservation d'origine retrouvée : sans cette correction, une
+    // simple erreur de frappe crée une prolongation décalée par rapport à la
+    // vraie date_fin — la mission de récupération d'origine reste plantée à
+    // l'ancienne date, et confirmReservation() (qui rattache l'appareil via
+    // une recherche sur date_fin=date_debut) ne retrouve jamais la bonne
+    // réservation à transférer, immobilisant un appareil neuf pour rien.
+    if (orig?.date_fin) {
+      extDateDebut = orig.date_fin.slice(0, 10);
+      if (extDateFin <= extDateDebut) {
+        return res.status(400).json({ error: 'Dates de prolongation invalides' });
+      }
+      if (extDateDebut < today) {
+        return res.status(422).json({ error: 'La date de fin initiale est déjà passée — impossible de prolonger.' });
+      }
+      const joursReel = Math.round((new Date(extDateFin+'T00:00:00Z') - new Date(extDateDebut+'T00:00:00Z')) / 86400000);
+      if (joursReel < 1) return res.status(400).json({ error: 'Durée de prolongation invalide' });
+      jours = joursReel;
     }
     // Recalcul du montant avec les dates réelles pour empêcher la manipulation de origDays
     if (orig?.date_debut && orig?.date_fin) {
