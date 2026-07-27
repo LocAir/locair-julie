@@ -4457,10 +4457,18 @@ input:-webkit-autofill:focus{
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <span id="zone-notice-txt">Livraison hors zone standard : <strong>120 €</strong> — votre adresse est en dehors de Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche ou Beaulieu-sur-Mer.</span>
             </div>
+            <div id="cp-gate" role="alert" aria-live="polite" style="display:none;background:#fffbeb;color:#78350f;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;font-size:13px;margin-top:10px">
+              ⚠️ <strong id="cp-gate-title">Adresse non vérifiée</strong> — <span id="cp-gate-msg">nous n'avons pas pu détecter votre code postal automatiquement.</span><br>
+              <span id="cp-gate-sub" style="color:var(--grey2);font-size:12px">Si vous n'êtes pas dans notre zone standard (06000 · 06100 · 06200 · 06300 · 06700 · 06800 · 06230 · 06310), des frais de livraison de <strong>120 €</strong> s'appliqueront à la place de 60 €.</span>
+              <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" id="cp-gate-fix" onclick="document.getElementById('cp-gate').style.display='none';document.getElementById('f-addr').focus()" style="padding:6px 14px;background:#fff;color:#78350f;border:1px solid #f59e0b;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--body)">Corriger l'adresse</button>
+                <button type="button" id="cp-gate-cont" onclick="_cpGateOk=true;document.getElementById('cp-gate').style.display='none';goTo(2)" style="padding:6px 14px;background:#f59e0b;color:#fff;border:none;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--body)">Continuer quand même</button>
+              </div>
+            </div>
           </div>
         </div>
         <div class="modal-nav">
-          <button class="btn-next" onclick="goTo(2)" type="button" aria-label="Suivant — Choisir la durée">
+          <button class="btn-next" onclick="confirmAdresse()" type="button" aria-label="Suivant — Choisir la durée">
             Confirmer mon adresse →
           </button>
         </div>
@@ -5137,15 +5145,6 @@ input:-webkit-autofill:focus{
               <span id="stripe-pay-pre">Payer</span> <span id="stripe-pay-amount"></span><span id="stripe-pay-post"> en toute sécurité</span>
             </button>
             <p id="stripe-ssl-txt" style="text-align:center;font-size:11px;color:var(--grey);margin-top:8px">🔒 Paiement sécurisé SSL · Stripe · Aucun stockage de vos données bancaires</p>
-          </div>
-
-          <div id="cp-gate" role="alert" aria-live="polite" style="display:none;background:#fffbeb;color:#78350f;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;font-size:13px;margin-top:10px">
-            ⚠️ <strong id="cp-gate-title">Adresse non vérifiée</strong> — <span id="cp-gate-msg">nous n'avons pas pu détecter votre code postal automatiquement.</span><br>
-            <span id="cp-gate-sub" style="color:var(--grey2);font-size:12px">Si vous n'êtes pas dans notre zone standard (06000 · 06100 · 06200 · 06300 · 06700 · 06800 · 06230 · 06310), des frais de livraison de <strong>120 €</strong> s'appliqueront à la place de 60 €.</span>
-            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-              <button type="button" id="cp-gate-fix" onclick="document.getElementById('cp-gate').style.display='none'" style="padding:6px 14px;background:#fff;color:#78350f;border:1px solid #f59e0b;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--body)">Corriger l'adresse</button>
-              <button type="button" id="cp-gate-cont" onclick="_cpGateOk=true;document.getElementById('cp-gate').style.display='none';submitForm(document.getElementById('sbtn'),'pay')" style="padding:6px 14px;background:#f59e0b;color:#fff;border:none;border-radius:100px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--body)">Continuer quand même</button>
-            </div>
           </div>
 
           <p id="form-error-msg" role="alert" aria-live="assertive" style="display:none;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;font-size:13px;text-align:center;margin-top:12px"></p>
@@ -6815,6 +6814,15 @@ function _stripePaymentDone(){
 let _submitting=false;
 let _pendingShowSuccess=null;
 let _cpGateOk=false;
+function confirmAdresse(){
+  const cp=(document.getElementById('f-cp')?.value||'').trim();
+  if(!cp&&!_cpGateOk){
+    const gate=document.getElementById('cp-gate');
+    if(gate){gate.style.display='block';gate.scrollIntoView({behavior:'smooth',block:'nearest'});}
+    return;
+  }
+  goTo(2);
+}
 function submitForm(btn,mode){
   if(_submitting)return;
   const missCoords=['f-prenom','f-nom','f-tel','f-email'].filter(id=>!document.getElementById(id)?.value.trim());
@@ -6941,17 +6949,6 @@ function submitForm(btn,mode){
   formData._subject='Réservation '+_orderRef+' — '+(formData.prenom||'')+' '+(formData.nom||'')+' — '+formData.duree+'j — '+(formData.date||'');
 
   if(mode==='pay'){
-    // Gate code postal : si l'adresse n'a pas été sélectionnée via l'autocomplétion
-    // (f-cp vide), on avertit avant d'aller chez Stripe — la zone ne sera connue
-    // qu'après la réponse de l'API, et le client ne doit pas être surpris par 120 €.
-    const _cpVal=(document.getElementById('f-cp')?.value||'').trim();
-    if(!_cpVal&&!_cpGateOk){
-      _submitting=false;
-      if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
-      const gate=document.getElementById('cp-gate');
-      if(gate)gate.style.display='block';
-      return;
-    }
     _cpGateOk=false;
     // ── Stripe Payment Element (paiement intégré, sans quitter le site) ──
     const prixCents=Math.round(Math.max(0,calcTotal(parseInt(formData.duree)||7)-_promoDiscount+DELIVERY_FEE)*100);
