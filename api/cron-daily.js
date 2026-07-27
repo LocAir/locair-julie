@@ -201,10 +201,13 @@ module.exports = async (req, res) => {
 
         const { count: nbRelances } = await supabase
           .from('email_log').select('id', { count: 'exact', head: true })
-          .eq('reservation_id', resa.id).eq('scenario', 'relance_paiement');
+          .eq('reservation_id', resa.id).eq('scenario', 'relance_paiement').eq('statut', 'envoye');
 
         // 1re relance à J+1, 2e à J+3 — jamais plus d'une relance par jour
-        // (le compteur ne progresse qu'après un envoi réussi).
+        // (le compteur ne progresse qu'après un envoi réussi : un échec Brevo
+        // ponctuel — quota, 5xx — ne doit pas bloquer la relance suivante, ni
+        // faire annuler la réservation à J+7 alors qu'aucun lien n'est
+        // jamais arrivé au client).
         const doitRelancer = (nbRelances === 0 && ageJours >= 1) || (nbRelances === 1 && ageJours >= 3);
         if (!doitRelancer) continue;
 

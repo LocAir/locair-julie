@@ -23,6 +23,7 @@ const MOIS_FR = ['janvier','février','mars','avril','mai','juin','juillet','ao�
 // plan Vercel, voir vercel.json).
 async function runMonthlyRecap(supabase) {
   const today    = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
   // Mois précédent
   const firstOfThisMonth  = new Date(today.getFullYear(), today.getMonth(), 1);
   const firstOfLastMonth  = new Date(today.getFullYear(), today.getMonth() - 1, 1);
@@ -31,14 +32,27 @@ async function runMonthlyRecap(supabase) {
   const nomMois  = MOIS_FR[firstOfLastMonth.getMonth()];
   const annee    = firstOfLastMonth.getFullYear();
 
+  // Verrou idempotent (même pattern que runWeeklyReport) : ce cron reste
+  // déclenchable manuellement avec CRON_SECRET en plus de l'appel
+  // automatique du 1er du mois — sans ce verrou, un déclenchement manuel le
+  // même jour renvoie un 2e SMS "montant à virer" à chaque transporteur et
+  // un 2e email récap à l'admin.
+  const { data: dejaSent } = await supabase
+    .from('email_log')
+    .select('id')
+    .eq('scenario', 'recap_mensuel_virements')
+    .gte('sent_at', todayStr + 'T00:00:00Z')
+    .maybeSingle();
+  if (dejaSent) return { skipped: true, reason: 'already_sent_today' };
+
   {
     // Toutes les missions faites le mois dernier avec transporteur
     const { data: livraisons } = await supabase
       .from('livraisons')
       .select('transporteur_id, montant_du_cents, type')
       .eq('statut', 'fait')
-      .gte('fait_at', startStr + 'T00:00:00')
-      .lt('fait_at', endStr + 'T00:00:00')
+      .gte('fait_at', startStr + 'T00:00:00Z')
+      .lt('fait_at', endStr + 'T00:00:00Z')
       .not('transporteur_id', 'is', null)
       .gt('montant_du_cents', 0);
 
@@ -120,6 +134,11 @@ ${rows}
       }).catch(() => {});
     }
 
+    await supabase.from('email_log').insert({
+      scenario: 'recap_mensuel_virements', canal: 'email', destinataire: adminEmail,
+      modele: 'recap_mensuel_virements', statut: 'envoye', sent_at: new Date().toISOString(),
+    }).catch(e => console.error('[recap_mensuel_virements log]', e.message));
+
     return { mois: `${nomMois} ${annee}`, nb: entries.length, grandTotal };
   }
 }
@@ -170,9 +189,12 @@ async function runDormantClientsWinback(supabase) {
     // sur leur dernière réservation reçoivent cette relance.
     if (!dernier.mkt_consent || !dernier.email) continue;
 
+    // Ne compte que les envois réussis : une ligne 'erreur' (Brevo en panne
+    // ou en quota ce jour-là) ne doit pas exclure définitivement ce client
+    // de toute relance commerciale future.
     const { count: dejaRelance } = await supabase
       .from('email_log').select('id', { count: 'exact', head: true })
-      .eq('reservation_id', dernier.id).eq('scenario', 'relance_dormant');
+      .eq('reservation_id', dernier.id).eq('scenario', 'relance_dormant').eq('statut', 'envoye');
     if (dejaRelance) continue;
 
     const codePromo = promoCodeForPrenom(dernier.prenom, 20);
