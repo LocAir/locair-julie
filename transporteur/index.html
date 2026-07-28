@@ -117,6 +117,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .empty{text-align:center;color:var(--grey);font-size:14px;padding:44px 10px}
 
 .detail-back{background:none;border:none;color:var(--blue);font-weight:700;font-size:14px;margin-bottom:14px;cursor:pointer;padding:10px 4px;min-height:44px}
+/* "Faire plus tard" est une vraie action (la mission repart en "à faire",
+   plus seulement de la navigation) — jusqu'ici stylée à l'identique de
+   "← Retour" (même lien texte discret), invisible au milieu de l'écran alors
+   que c'est la porte de sortie utile quand une mission bloque (client
+   injoignable, accès compliqué...). Pilule pleine, même vocabulaire que
+   .btn-amber (ex. "Client injoignable — signaler") pour qu'elle se voie
+   au premier coup d'œil sans dominer l'écran. */
+.detail-postpone{background:var(--amber);color:#fff;border:none;font-weight:700;font-size:13px;margin-bottom:14px;cursor:pointer;padding:10px 16px;min-height:44px;border-radius:100px;box-shadow:var(--sh-xs)}
 /* Couleur de coche cohérente avec le bleu de l'app — sans ça, les cases à
    cocher gardent le rendu par défaut du téléphone, peu contrasté en plein
    soleil, sur des actions qui débloquent la suite de la mission. */
@@ -2675,7 +2683,7 @@ function renderDetail(){
     document.getElementById('detail-screen').innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center">
         <button class="detail-back" style="margin-bottom:14px" onclick="backToMissions()">← Retour</button>
-        <button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>
+        <button class="detail-postpone" onclick="reporterMission()">⏪ Faire plus tard</button>
       </div>
       <div class="card">
         <div class="eyebrow">Avant de démarrer</div>
@@ -2744,7 +2752,7 @@ function renderDetail(){
   document.getElementById('detail-screen').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center">
       <button class="detail-back" style="margin-bottom:14px" onclick="handleDetailBack()">← Retour</button>
-      ${canPause ? `<button class="detail-back" style="margin-bottom:14px" onclick="reporterMission()">⏪ Faire plus tard</button>` : ''}
+      ${canPause ? `<button class="detail-postpone" onclick="reporterMission()">⏪ Faire plus tard</button>` : ''}
     </div>
     <div class="card">
       ${(['acceptee','en_route','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
@@ -2953,6 +2961,18 @@ async function doAction(action, extra){
 
     if(action === 'livraison_ok' || action === 'retour_ok' || action === 'changement_ok' || action === 'autre_ok'){
       showCelebration(d.montant_du_cents || 0);
+      return;
+    }
+
+    // "Faire plus tard" doit ramener directement à la liste des missions du
+    // jour, prête à en démarrer une autre en un tap — sans ça, la mission
+    // reportée (repassée en "à faire") était retrouvée par le code générique
+    // plus bas et rouverte telle quelle : le livreur retombait sur l'écran
+    // "J'accepte" de la mission qu'il venait justement de mettre de côté,
+    // avec un aller-retour en plus pour revenir à la liste.
+    if(action === 'reporter'){
+      await fetchMissions();
+      show('missions-screen'); renderMissions();
       return;
     }
 
