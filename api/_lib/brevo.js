@@ -1,3 +1,10 @@
+// Délai maximum avant d'abandonner un appel Brevo — sans ça, une réponse
+// lente de Brevo un jour donné peut faire traîner le cron quotidien
+// (api/cron-daily.js) jusqu'à la limite de 60s de Vercel, tuant la fonction
+// avant qu'elle n'atteigne les dernières sections (récap mensuel des
+// virements, relance clients dormants) sans aucune trace de l'échec.
+const BREVO_TIMEOUT_MS = 12000;
+
 // `attachments` (optionnel) : tableau de { name, content } où content est un
 // Buffer (converti en base64 ici) — utilisé pour joindre contrat/facture PDF
 // (voir _lib/documents.js). Pas de limite imposée ici : Brevo plafonne à 10 Mo
@@ -32,6 +39,7 @@ async function sendBrevoEmail({ to, subject, html, attachments, senderName }) {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', 'api-key': process.env.BREVO_API_KEY },
       body:    JSON.stringify(body),
+      signal:  AbortSignal.timeout(BREVO_TIMEOUT_MS),
     });
     if (!r.ok) {
       const detail = await r.text();
@@ -77,6 +85,7 @@ async function sendBrevoSms({ to, content }) {
         content,
         type:      'transactional',
       }),
+      signal: AbortSignal.timeout(BREVO_TIMEOUT_MS),
     });
     if (!r.ok) {
       const detail = await r.text();
