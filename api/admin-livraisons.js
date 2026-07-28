@@ -6,7 +6,7 @@ const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { sendScenarioEmail, fmtDate } = require('./_lib/emailEngine');
 const { sendBrevoSms } = require('./_lib/brevo');
-const { setAppareilsStatutForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
+const { setAppareilsStatutForReservation, releaseAppareilFromReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
 
 const MEDIA_COLUMN = {
   photo_depart:       'photo_depart_path',
@@ -228,8 +228,14 @@ module.exports = async (req, res) => {
             .from('reservation_appareils').select('appareil_id')
             .eq('reservation_id', reservationId).limit(1);
           if (existing && existing.length) {
-            await supabase.from('reservation_appareils')
-              .delete().eq('reservation_id', reservationId).eq('appareil_id', existing[0].appareil_id);
+            // Ne repasse "disponible" que si l'ancienne unité n'a en réalité
+            // jamais quitté le dépôt — sinon (déjà chez le client) elle reste
+            // "loué" et un incident est créé pour la récupérer manuellement,
+            // plutôt que de la déclarer disponible pour une double réservation.
+            await releaseAppareilFromReservation(supabase, {
+              appareilId: existing[0].appareil_id, reservationId, cityId: city.id,
+              motif: 'remplacée par une mission de changement',
+            });
           }
         }
         const { error: raErr } = await supabase

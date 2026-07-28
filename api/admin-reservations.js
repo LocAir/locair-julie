@@ -16,6 +16,7 @@ const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { sendReservationPaymentLink } = require('./_lib/paymentLink');
 const { generateAndSendDocumentsAfterProlongation } = require('./_lib/documents');
 const { extractPostalCode } = require('./_lib/postal');
+const { releaseAppareilFromReservation } = require('./_lib/appareilSync');
 
 const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
 
@@ -531,6 +532,19 @@ module.exports = async (req, res) => {
             type: 'annulation', message: 'Une mission a été annulée.', tag: 'annulation',
           });
         }
+
+        // Libère les appareils engagés sur cette réservation — sans quoi un
+        // appareil déjà lié (ex. statut aligné "loué" par l'onglet Stock dès
+        // que la période couvre aujourd'hui, voir admin-stock.js) reste
+        // invisible du stock disponible pour toujours après l'annulation.
+        const { data: liensAAnnuler } = await supabase
+          .from('reservation_appareils').select('appareil_id').eq('reservation_id', id);
+        for (const l of (liensAAnnuler || [])) {
+          await releaseAppareilFromReservation(supabase, {
+            appareilId: l.appareil_id, reservationId: id, cityId: before.city_id,
+            motif: 'réservation annulée',
+          });
+        }
       }
 
       // Si la quantité change sur une réservation déjà confirmée, réconcilier les
@@ -551,10 +565,13 @@ module.exports = async (req, res) => {
           await notifyIfSoldOut(supabase, before.city_id);
         } else {
           const { data: toFree } = await supabase
-            .from('reservation_appareils').select('id').eq('reservation_id', id)
+            .from('reservation_appareils').select('id, appareil_id').eq('reservation_id', id)
             .order('id', { ascending: false }).limit(-diff);
-          if (toFree && toFree.length) {
-            await supabase.from('reservation_appareils').delete().in('id', toFree.map(r => r.id));
+          for (const ra of (toFree || [])) {
+            await releaseAppareilFromReservation(supabase, {
+              appareilId: ra.appareil_id, reservationId: id, cityId: before.city_id,
+              motif: 'quantité de la réservation réduite',
+            });
           }
         }
       }
