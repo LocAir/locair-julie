@@ -7,6 +7,7 @@ const { generateAndSendDocuments } = require('./documents');
 const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
 const { sendScenarioEmail, getSignature, withSignature, fmtDate, wasScenarioSkipped } = require('./emailEngine');
 const { tplProlongConfirmation } = require('./emailTemplates');
+const { pushToAdmin } = require('./push');
 
 function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
@@ -507,6 +508,27 @@ async function confirmReservation(supabase, resa) {
   }
 
   await assignAppareils(supabase, resa, staleOriginalId);
+
+  // assign_appareils peut renvoyer moins d'unités que la quantité payée si le
+  // stock a été pris par une autre réservation entre le paiement et cette
+  // confirmation — sans lever d'erreur. On ne bloque jamais la confirmation
+  // après coup (le client a déjà payé), mais Aly doit être prévenue tout de
+  // suite : sans ça, le manque n'est découvert qu'au moment où le
+  // transporteur arrive chez le client avec moins d'appareils que commandé.
+  const { count: appareilsAssignes } = await supabase
+    .from('reservation_appareils').select('id', { count: 'exact', head: true }).eq('reservation_id', resa.id);
+  if ((appareilsAssignes || 0) < resa.quantite) {
+    const manque = resa.quantite - (appareilsAssignes || 0);
+    const description = `Réservation ${resa.ref || resa.id} (${[resa.prenom, resa.nom].filter(Boolean).join(' ')}) confirmée avec ${manque} climatiseur${manque > 1 ? 's' : ''} de moins que commandé (${appareilsAssignes || 0}/${resa.quantite}) — stock insuffisant au moment de la confirmation.`;
+    await supabase.from('incidents').insert({
+      city_id: resa.city_id, reservation_id: resa.id, type: 'autre', description, statut: 'nouveau',
+    }).catch(() => {});
+    await pushToAdmin(supabase, {
+      title: '⚠️ Réservation confirmée en sous-effectif',
+      body: description,
+      tag: `sous-effectif-${resa.id}`,
+    }).catch(() => {});
+  }
 
   const { data: existing, error: existingErr } = await supabase.from('livraisons').select('id').eq('reservation_id', resa.id);
   if (existingErr) throw existingErr;
