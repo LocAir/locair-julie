@@ -1370,7 +1370,7 @@ function compareByCreneau(a, b){
 // se projeter sur le mois à venir) — jamais avant aujourd'hui : ce widget
 // sert à anticiper, pas à consulter l'historique (déjà couvert par Mon
 // activité).
-function weekAheadHtml(){
+function weekAheadHtml(allCaughtUp){
   const todayStr = new Date().toISOString().slice(0,10);
   STATE.weekOffset = Math.max(0, STATE.weekOffset||0);
   const windowStart = new Date(); windowStart.setDate(windowStart.getDate() + STATE.weekOffset*7);
@@ -1412,7 +1412,15 @@ function weekAheadHtml(){
   // de basculer directement dans le parcours de mission — pour que le livreur
   // puisse s'organiser à l'avance sans quitter l'Accueil, et refuser une
   // mission trop lointaine directement depuis là.
-  const listHtml = selMissions.length ? selMissions.map(m => weekMissionItemHtml(m)).join('') : `<p class="week-day-empty">Aucune mission ce jour.</p>`;
+  // Message "tu es à jour" fusionné ici plutôt que répété dans une carte à
+  // part au-dessus (voir renderDashboard) : la carte du dessus ne s'affiche
+  // que pour une action réelle à faire (accepter, continuer, checklist) —
+  // quand il n'y a vraiment rien, autant le dire une seule fois, à
+  // l'endroit où le livreur regarde déjà pour savoir ce qui l'attend.
+  const emptyTodayMsg = allCaughtUp
+    ? '<p class="week-day-empty">✅ Tu es à jour — aucune mission pour l\'instant.</p>'
+    : '<p class="week-day-empty">Aucune mission ce jour.</p>';
+  const listHtml = selMissions.length ? selMissions.map(m => weekMissionItemHtml(m)).join('') : (STATE.weekSelectedDate===todayStr ? emptyTodayMsg : '<p class="week-day-empty">Aucune mission ce jour.</p>');
 
   const selLabel = STATE.weekSelectedDate===todayStr ? "Aujourd'hui" : new Date(STATE.weekSelectedDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   const rangeLabel = `${days[0].num} ${WEEK_MONTH_SHORT[days[0].month]} – ${days[6].num} ${WEEK_MONTH_SHORT[days[6].month]}`;
@@ -1549,13 +1557,13 @@ function renderDashboard(){
         <button class="btn btn-blue btn-block" onclick="switchTab('missions')">Voir mes missions →</button>
       </div>`;
   } else {
-    heroHtml = `
-      <div class="dash-hero calm">
-        <div class="eyebrow">Aujourd'hui</div>
-        <h2>✅ Tu es à jour</h2>
-        <p>Aucune mission en attente pour l'instant.</p>
-      </div>`;
+    // Pas de carte ici : rien à faire nulle part, donc rien qui mérite sa
+    // propre carte tout en haut — le message "tu es à jour" est intégré
+    // directement dans "Ma semaine" ci-dessous (voir weekAheadHtml), pour ne
+    // pas répéter la même information deux fois d'affilée sur la page.
+    heroHtml = '';
   }
+  const allCaughtUp = !aFaireAujourd.length && !enCours.length && !aFaireTotal.length;
 
   // Tuiles cliquables (vers Mes missions / Mes gains) : ressemblaient déjà à
   // des boutons (fond blanc, ombre) sans rien faire au tap — incohérent avec
@@ -1576,7 +1584,7 @@ function renderDashboard(){
       <span class="pill-badge" style="background:var(--green-bg);color:var(--green);cursor:pointer" onclick="STATE.returnToMission=null;switchTab('checklist')">✅ Checklist validée</span>
     </div>` : '';
 
-  zone.innerHTML = pauseHtml + heroHtml + weekAheadHtml() + statsHtml + checklistCard;
+  zone.innerHTML = pauseHtml + heroHtml + weekAheadHtml(allCaughtUp) + statsHtml + checklistCard;
 }
 
 async function loadMissions(){
