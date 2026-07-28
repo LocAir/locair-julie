@@ -15,6 +15,7 @@ const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { sendReservationPaymentLink } = require('./_lib/paymentLink');
 const { generateAndSendDocumentsAfterProlongation } = require('./_lib/documents');
+const { extractPostalCode } = require('./_lib/postal');
 
 const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
 
@@ -97,6 +98,13 @@ module.exports = async (req, res) => {
       // par email (connexion espace client, prolongation).
       const email   = (body.email   || '').trim().toLowerCase().slice(0, 200);
       const adresse = (body.adresse || '').trim().slice(0, 500);
+      // Détection hors zone comme checkout.js (site) : sans ça, une réservation
+      // créée à la main restait toujours hors_zone=false par défaut, même pour
+      // une adresse clairement hors du secteur couvert — le transporteur
+      // touchait alors le tarif standard (30/40€) au lieu du tarif hors zone
+      // (50/95€) pour une mission plus longue.
+      const cpAdresse = extractPostalCode(adresse);
+      const horsZone  = !(cpAdresse && Array.isArray(city.postal_codes) && city.postal_codes.includes(cpAdresse));
       const etage       = (body.etage       || '').trim().slice(0, 50);
       const ascenseur   = (body.ascenseur   || '').trim().slice(0, 50);
       const fenetre     = (body.fenetre     || '').trim().slice(0, 100);
@@ -175,7 +183,7 @@ module.exports = async (req, res) => {
         installation: installation || null, instructions_acces: instructionsAcces || null,
         creneau: creneau || null,
         date_debut: dateDebut, date_fin: dateFin, quantite,
-        prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'manuel',
+        prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'manuel', hors_zone: horsZone,
         logement: logement || null, parrain_code: parrainCode || null,
         motifs: motifs || null, mkt_consent: mktConsent,
         cgv_accepted_at: new Date().toISOString(),
@@ -465,7 +473,16 @@ module.exports = async (req, res) => {
       if (body.prenom != null) patch.prenom = body.prenom.trim().slice(0, 200) || 'Client';
       if (body.nom != null)    patch.nom    = body.nom.trim().slice(0, 200);
       if (body.tel != null)    patch.tel    = body.tel.trim().slice(0, 50);
-      if (body.adresse != null) patch.adresse = body.adresse.trim().slice(0, 500);
+      if (body.adresse != null) {
+        patch.adresse = body.adresse.trim().slice(0, 500);
+        // Même détection hors zone qu'à la création (voir plus haut) —
+        // recalculée ici pour qu'une adresse corrigée après coup (ex.
+        // réservation créée avec le strict minimum au téléphone) mette bien
+        // à jour hors_zone, plutôt que de la laisser figée sur sa valeur de
+        // création.
+        const cpAdresseMaj = extractPostalCode(patch.adresse);
+        patch.hors_zone = !(cpAdresseMaj && Array.isArray(city.postal_codes) && city.postal_codes.includes(cpAdresseMaj));
+      }
       // Complète/corrige les infos logistiques d'une réservation déjà créée (ex.
       // une réservation manuelle créée sans ces champs, ou une info donnée par
       // téléphone après coup) — ces infos remontent telles quelles à la mission
