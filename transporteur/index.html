@@ -2445,7 +2445,7 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
       <button class="media-btn" onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> Vidange ${m.type==='changement'?"de l'ancien appareil":"de l'appareil"}</button>`;
   }
   if(key === 'installation'){
-    const sousTypes = (TUTO_CATEGORIES.find(c => c.key==='installation') || {}).sousTypes || [];
+    const sousTypes = TUTO_SOUS_TYPES.installation || [];
     return `
       <p class="step-hint">🎬 Montre le fonctionnement au client, puis prends une photo où l'on voit ensemble : le climatiseur en marche, la fenêtre calfeutrée et la télécommande.</p>
       <div class="section-title" style="margin:0 0 6px 2px">Tuto par type d'ouverture</div>
@@ -3302,19 +3302,23 @@ function startClientAbsent(source){
 // Bouton accessible en permanence (voir #tuto-fab + show()). Overlay type
 // "sheet", même mécanique que openProbleme()/closeProbleme() — pas de
 // navigation d'écran, donc rien n'est perdu sous l'overlay.
-const TUTO_CATEGORIES = [
-  {key:'acces_sortie_boxe',    label:'🚪 Accès / sortie box',        actif:true},
-  {key:'recuperation_materiel', label:'📦 Récupération matériel',      actif:true},
-  {key:'fermeture_boxe',       label:'🔒 Fermeture box',              actif:true},
-  {key:'entree_sortie_centre', label:'🏢 Entrée / sortie du centre',   actif:true},
-  {key:'chargement',           label:'⬆️ Chargement',                 actif:false},
-  {key:'dechargement',         label:'⬇️ Déchargement',               actif:true},
-  {key:'installation',         label:"🔧 Installation par type d'ouverture", actif:true,
-    sousTypes:['Porte fenêtre','Fenêtre battante','Porte coulissante','Volet']},
-];
+// Catégories éditables depuis l'admin (Module 10, voir api/admin-tutoriels.js
+// et api/transporteur-tutoriels.js) — chargées à l'ouverture plutôt que
+// figées ici, pour qu'un nouveau sujet créé par Aly apparaisse directement,
+// sans mise à jour du code. "Installation" garde ses sous-types (types
+// d'ouverture) en dur côté affichage, seule catégorie à en avoir besoin.
+const TUTO_SOUS_TYPES = {installation:['Porte fenêtre','Fenêtre battante','Porte coulissante','Volet']};
+let TUTO_CATEGORIES = [];
 let TUTO_LIST_CACHE = null;
 let TUTO_PLAYER = null; // {videoId, furthestTime} — état du visionnage en cours (1er passage)
 
+async function fetchTutoCategories(){
+  const r = await fetch(API('transporteur-tutoriels'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'list_categories'})});
+  const d = await r.json();
+  if(!r.ok) throw new Error(d.error||'Erreur');
+  TUTO_CATEGORIES = (d.categories||[]).map(c => ({...c, sousTypes: TUTO_SOUS_TYPES[c.key]}));
+  return TUTO_CATEGORIES;
+}
 async function fetchTutoList(){
   const r = await fetch(API('transporteur-tutoriels'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'list'})});
   const d = await r.json();
@@ -3342,7 +3346,7 @@ function closeTutoLibrary(){
 async function openTutoLibrary(){
   ensureTutoOverlay();
   try{
-    await fetchTutoList();
+    await Promise.all([fetchTutoCategories(), fetchTutoList()]);
     renderTutoCategoryList();
   }catch(e){
     const sheet = document.getElementById('tuto-sheet');

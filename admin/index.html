@@ -7683,29 +7683,29 @@ function deleteEquipeMembre(id){
 }
 
 // ── Tutoriels vidéo (prise en main transporteur) ─────────────────────────────
-// Bibliothèque unique pour toutes les villes — 7 catégories fixes, dont 3
-// (chargement/déchargement/installation) sont volontairement des emplacements
-// vides/désactivés pour l'instant (contenu pas encore déterminé).
-const TUTO_CATEGORIES = [
-  {key:'acces_sortie_boxe',   label:'🚪 Accès / sortie box',            actif:true},
-  {key:'recuperation_materiel', label:'📦 Récupération matériel',        actif:true},
-  {key:'fermeture_boxe',      label:'🔒 Fermeture box',                 actif:true},
-  {key:'entree_sortie_centre', label:'🏢 Entrée / sortie du centre',     actif:true},
-  {key:'chargement',          label:'⬆️ Chargement',                    actif:false},
-  {key:'dechargement',        label:'⬇️ Déchargement',                  actif:true},
-  {key:'installation',        label:"🔧 Installation par type d'ouverture", actif:true,
-    sousTypes:['Porte fenêtre','Fenêtre battante','Porte coulissante','Volet']},
-];
+// Bibliothèque unique pour toutes les villes — catégories éditables depuis
+// cet onglet (table tuto_categories), plus 3 emplacements vides/désactivés
+// livrés d'origine (chargement/déchargement/installation, contenu pas encore
+// déterminé au départ). "Installation" a des sous-types fixes (types
+// d'ouverture) : gardés ici côté affichage, pas en base, une seule catégorie
+// en a besoin.
+const TUTO_SOUS_TYPES = {installation:['Porte fenêtre','Fenêtre battante','Porte coulissante','Volet']};
+let TUTO_CATEGORIES = [];
 let TUTO_VIDEOS_CACHE = [];
 let TUTO_PENDING_UPLOAD = null;
 async function loadTutoriels(){
   const zone = document.getElementById('tab-tutoriels');
   zone.innerHTML = loading();
   try{
-    const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
-    const d = await r.json();
-    if(!r.ok) throw new Error(d.error||'Erreur');
-    TUTO_VIDEOS_CACHE = d.videos || [];
+    const [rCat, rVid] = await Promise.all([
+      fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list_categories'})}),
+      fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+    ]);
+    const dCat = await rCat.json(), dVid = await rVid.json();
+    if(!rCat.ok) throw new Error(dCat.error||'Erreur');
+    if(!rVid.ok) throw new Error(dVid.error||'Erreur');
+    TUTO_CATEGORIES = (dCat.categories||[]).map(c => ({...c, sousTypes: TUTO_SOUS_TYPES[c.key]}));
+    TUTO_VIDEOS_CACHE = dVid.videos || [];
     renderTutoriels();
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
@@ -7743,7 +7743,10 @@ function renderTutoriels(){
         const sousTypesHtml = cat.sousTypes ? `<div class="row-meta">${cat.sousTypes.join(' · ')}</div>` : '';
         return `
           <div class="card" style="opacity:.55">
-            <h2>${cat.label}</h2>
+            <div class="row-top">
+              <h2 style="margin:0">${cat.label}</h2>
+              ${tutoCatMenuHtml(cat)}
+            </div>
             <p class="sub">Pas encore disponible — structure prête, contenu à venir.</p>
             ${sousTypesHtml}
           </div>`;
@@ -7754,7 +7757,10 @@ function renderTutoriels(){
       if(cat.sousTypes){
         return `
           <div class="card">
-            <h2>${cat.label}</h2>
+            <div class="row-top">
+              <h2 style="margin:0">${cat.label}</h2>
+              ${tutoCatMenuHtml(cat)}
+            </div>
             ${cat.sousTypes.map(t => {
               const sousVideos = videos.filter(v => v.sous_categorie === t);
               return `
@@ -7766,11 +7772,59 @@ function renderTutoriels(){
       }
       return `
         <div class="card">
-          <h2>${cat.label}</h2>
+          <div class="row-top">
+            <h2 style="margin:0">${cat.label}</h2>
+            ${tutoCatMenuHtml(cat)}
+          </div>
           ${videos.map(tutoVideoRowHtml).join('') || '<p class="empty">Aucune vidéo pour l\'instant.</p>'}
           <button class="btn btn-grey btn-block" style="margin-top:10px" onclick="addTutoVideo('${cat.key}')">+ Ajouter une vidéo</button>
         </div>`;
-    }).join('')}`;
+    }).join('')}
+    <button class="btn btn-blue btn-block" style="margin-top:4px" onclick="addTutoCategorie()">+ Nouveau sujet</button>`;
+}
+// Menu ⋯ par catégorie : renommer ou activer/désactiver — pour ne jamais
+// avoir à me redemander d'ajouter/retirer un sujet de tutoriel (Module 10).
+function tutoCatMenuHtml(cat){
+  return `
+    <details class="more-actions" style="margin-left:auto">
+      <summary title="Plus d'actions">⋯</summary>
+      <div class="more-actions-menu">
+        <button onclick="renameTutoCategorie(${cat.id}, '${escHtml(cat.label).replace(/'/g,"\\'")}')">✏️ Renommer</button>
+        <button onclick="toggleTutoCategorieActif(${cat.id}, ${!cat.actif})">${cat.actif?'Désactiver':'Réactiver'}</button>
+      </div>
+    </details>`;
+}
+function addTutoCategorie(){
+  promptAction({title:'Nouveau sujet de tutoriel', label:'Nom du sujet', placeholder:'Ex. 🔑 Clé de secours'}, async (label) => {
+    if(!label) return;
+    try{
+      const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create_categorie', label})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadTutoriels();
+      showToast('Sujet créé — ajoute-lui maintenant une vidéo', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
+}
+function renameTutoCategorie(id, current){
+  promptAction({title:'Renommer le sujet', label:'Nom du sujet', value:current}, async (label) => {
+    if(!label) return;
+    try{
+      const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update_categorie', id, label})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      loadTutoriels();
+      showToast('Sujet renommé', 'success');
+    }catch(e){ showToast(e.message, 'error'); }
+  });
+}
+async function toggleTutoCategorieActif(id, actif){
+  try{
+    const r = await fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update_categorie', id, actif})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    loadTutoriels();
+  }catch(e){ showToast(e.message, 'error'); }
 }
 function addTutoVideo(categorie, sousCategorie){
   promptAction({title:'Nouvelle vidéo', label:'Titre', placeholder:'Ex. Ouvrir le portail du centre'}, async (titre) => {

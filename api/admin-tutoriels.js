@@ -2,10 +2,14 @@ const { getSupabase } = require('./_lib/supabase');
 const { checkAdminToken } = require('./_lib/auth');
 const { EXT_BY_TYPE } = require('./_lib/media');
 
-const CATEGORIES = [
-  'acces_sortie_boxe', 'recuperation_materiel', 'fermeture_boxe',
-  'entree_sortie_centre', 'chargement', 'dechargement', 'installation',
-];
+// Dérive une clé stable (slug) depuis le libellé tapé par l'admin — même
+// logique que le slug de ville (admin-cities.js) : émojis/accents retirés,
+// tout en minuscules, tirets. "🔑 Clé de secours" -> "cle-de-secours".
+function slugifyCategorie(label) {
+  return (label || '').trim().toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+}
 
 // Bibliothèque de tutoriels vidéo — pas de resolveAdminCity : contrairement
 // au reste de l'admin (villes, stock, réservations...), cette bibliothèque
@@ -31,9 +35,54 @@ module.exports = async (req, res) => {
       return res.status(200).json({ videos: data || [] });
     }
 
+    // Catégories éditables (Module 10) — jusqu'ici 7 catégories figées dans
+    // le code, impossible d'en ajouter une nouvelle sans intervention
+    // développeur. "actif:false" garde une catégorie visible (grisée, "Bientôt")
+    // sans vidéo dedans, comme Chargement aujourd'hui — jamais supprimée en
+    // dur pour ne pas casser les vidéos déjà rattachées à sa clé.
+    if (action === 'list_categories') {
+      const { data, error } = await supabase
+        .from('tuto_categories').select('id, key, label, ordre, actif').order('ordre', { ascending: true });
+      if (error) throw error;
+      return res.status(200).json({ categories: data || [] });
+    }
+
+    if (action === 'create_categorie') {
+      const label = (body.label || '').trim().slice(0, 100);
+      if (!label) return res.status(400).json({ error: 'Nom du sujet requis' });
+      const key = slugifyCategorie(label);
+      if (!key) return res.status(400).json({ error: 'Nom invalide' });
+      const { data: existing } = await supabase.from('tuto_categories').select('id').eq('key', key).maybeSingle();
+      if (existing) return res.status(409).json({ error: 'Un sujet avec ce nom existe déjà' });
+      const { data: maxOrdreRow } = await supabase
+        .from('tuto_categories').select('ordre').order('ordre', { ascending: false }).limit(1).maybeSingle();
+      const ordre = (maxOrdreRow?.ordre || 0) + 1;
+      const { data, error } = await supabase
+        .from('tuto_categories').insert({ key, label, ordre, actif: true }).select('id, key, label, ordre, actif').single();
+      if (error) throw error;
+      return res.status(200).json({ ok: true, categorie: data });
+    }
+
+    if (action === 'update_categorie') {
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const patch = {};
+      if (body.label != null) {
+        const label = body.label.trim().slice(0, 100);
+        if (!label) return res.status(400).json({ error: 'Nom du sujet requis' });
+        patch.label = label;
+      }
+      if (body.actif != null) patch.actif = Boolean(body.actif);
+      if (!Object.keys(patch).length) return res.status(400).json({ error: 'Rien à modifier' });
+      const { error } = await supabase.from('tuto_categories').update(patch).eq('id', id);
+      if (error) throw error;
+      return res.status(200).json({ ok: true });
+    }
+
     if (action === 'upsert_meta') {
       const categorie = body.categorie;
-      if (!CATEGORIES.includes(categorie)) return res.status(400).json({ error: 'Catégorie invalide' });
+      const { data: catRow } = await supabase.from('tuto_categories').select('key').eq('key', categorie).maybeSingle();
+      if (!catRow) return res.status(400).json({ error: 'Catégorie invalide' });
       const titre = (body.titre || '').trim().slice(0, 200);
       if (!titre) return res.status(400).json({ error: 'Titre requis' });
       const patch = {
