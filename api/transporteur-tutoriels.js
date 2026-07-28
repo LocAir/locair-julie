@@ -12,6 +12,17 @@ module.exports = async (req, res) => {
   const action = body.action || 'list';
 
   try {
+    // Catégories éditables depuis l'admin (voir api/admin-tutoriels.js) —
+    // toutes renvoyées, actives ou non : une catégorie inactive s'affiche
+    // grisée "Bientôt" côté transporteur, jamais masquée entièrement (même
+    // logique que la catégorie Chargement aujourd'hui).
+    if (action === 'list_categories') {
+      const { data, error } = await supabase
+        .from('tuto_categories').select('key, label, ordre, actif').order('ordre', { ascending: true });
+      if (error) throw error;
+      return res.status(200).json({ categories: data || [] });
+    }
+
     if (action === 'list') {
       const { data: videos, error } = await supabase
         .from('tutoriel_videos')
