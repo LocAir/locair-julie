@@ -218,12 +218,18 @@ async function handleChargeRefunded(supabase, charge) {
   const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : (charge.payment_intent?.id || '');
   const resa = await findReservationByPaymentIntent(supabase, piId);
   const montant = (charge.amount_refunded / 100).toFixed(2) + ' €';
+  // Un remboursement partiel (ex. geste commercial de quelques euros) ne doit
+  // jamais déclencher les effets d'une annulation complète — sans cette
+  // vérification, un petit remboursement sur un achat Offre Privilège
+  // repassait à tort le climatiseur "maintenance" et envoyait un transporteur
+  // le récupérer chez un client qui a pourtant le droit de le garder.
+  const remboursementTotal = charge.amount > 0 && charge.amount_refunded >= charge.amount;
   if (resa) {
     // Marquer remboursée seulement si le remboursement couvre la totalité du paiement
-    if (charge.amount > 0 && charge.amount_refunded >= charge.amount) {
+    if (remboursementTotal) {
       await supabase.from('reservations').update({ statut: 'remboursee' }).eq('id', resa.id).eq('statut', 'confirmee');
     }
-  } else if (await handleOffrePrivilegeRefunded(supabase, piId, charge.amount_refunded || 0)) {
+  } else if (remboursementTotal && await handleOffrePrivilegeRefunded(supabase, piId, charge.amount_refunded || 0)) {
     return; // remboursement Offre Privilège déjà tracé + notifié ci-dessus
   }
   await logPaymentIncident(supabase, {
