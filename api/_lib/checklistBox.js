@@ -15,16 +15,15 @@ const ITEMS_FIXES = {
   bac_vidange_petit: 1,
   bac_vidange_grand: 1,
   velcro_secours:    1,
-  boite_piles:       1,
   microfibre:        1,
   lingette:          1,
 };
 
 // Items dynamiques : un jeu complet par climatiseur installé ce jour-là
-// (télécommande, kit de calfeutrage, rouleau velcro, notice, enveloppe) —
-// le kit de calfeutrage est déjà compté dans `kits` (par type de fenêtre),
-// les autres se multiplient à l'identique par le même total d'appareils.
-const ITEMS_DYNAMIQUES = ['telecommande', 'rouleau_velcro', 'notice', 'enveloppe_locair'];
+// (kit de calfeutrage, rouleau velcro, enveloppe) — le kit de calfeutrage
+// est déjà compté dans `kits` (par type de fenêtre), les autres se
+// multiplient à l'identique par le même total d'appareils.
+const ITEMS_DYNAMIQUES = ['rouleau_velcro', 'enveloppe_locair'];
 
 // Le kit de calfeutrage est universel pour tous les types de fenêtre, sauf
 // Vélux/toit qui exige un kit dédié — seule "Vélux / toit" contient "lux"
