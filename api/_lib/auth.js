@@ -22,27 +22,39 @@ function pinFingerprint(pin) {
 // 2. Un jeton de compte équipe signé `adminuser:<id>.<empreinte pin>.<signature>`
 //    (même principe que signTransporteurToken plus bas) — résolu en base pour
 //    connaître le rôle et vérifier que le compte est toujours actif.
+// Renvoie { auth, signatureValid }. `signatureValid: true` signifie que le
+// jeton `adminuser:...` porte une signature HMAC correcte pour son
+// id+empreinte PIN — la preuve cryptographique qu'il a réellement été émis
+// par ce serveur à un moment donné (impossible à forger sans
+// TRANSPORTEUR_SECRET). Un tel jeton peut quand même échouer à
+// s'authentifier si le compte a depuis été désactivé ou son PIN changé
+// (auth=null) : ce n'est jamais une tentative de devinette, juste une
+// session côté client devenue périmée — l'appelant ne doit pas le compter
+// dans le blocage anti-bruteforce (voir checkAdminToken/checkAdminRole),
+// sans quoi un simple changement de PIN/désactivation de compte peut
+// bloquer toute l'équipe derrière la même IP si un onglet oublié continue
+// d'interroger l'API avec l'ancien jeton.
 async function resolveAdminAuth(token, supabase) {
   if (Boolean(process.env.ADMIN_PASSWORD) && safeEqual(token, process.env.ADMIN_PASSWORD)) {
-    return { adminUserId: null, role: 'administrateur', nom: null };
+    return { auth: { adminUserId: null, role: 'administrateur', nom: null }, signatureValid: true };
   }
   const parts = token.split('.');
   if (parts.length === 3 && parts[0].startsWith('adminuser:')) {
     const id = parseInt(parts[0].slice('adminuser:'.length), 10);
-    if (Number.isFinite(id) && id > 0) {
-      if (!process.env.TRANSPORTEUR_SECRET) return null;
+    if (Number.isFinite(id) && id > 0 && process.env.TRANSPORTEUR_SECRET) {
       const secret = process.env.TRANSPORTEUR_SECRET;
       const payload = `${parts[0]}.${parts[1]}`;
       const expected = crypto.createHmac('sha256', secret).update(payload).digest('hex');
       if (safeEqual(parts[2], expected)) {
         const { data: u } = await supabase.from('admin_users').select('role, nom, pin, actif').eq('id', id).maybeSingle();
         if (u && u.actif && safeEqual(parts[1], pinFingerprint(u.pin))) {
-          return { adminUserId: id, role: u.role, nom: u.nom };
+          return { auth: { adminUserId: id, role: u.role, nom: u.nom }, signatureValid: true };
         }
+        return { auth: null, signatureValid: true };
       }
     }
   }
-  return null;
+  return { auth: null, signatureValid: false };
 }
 
 // Rate-limité ici plutôt que dans le seul endpoint admin-login.js : comme
@@ -54,8 +66,11 @@ async function checkAdminToken(req, supabase) {
   if (await isRateLimited(supabase, rateKey)) return false;
 
   const token = ((req.body || {}).token || req.headers['x-admin-token'] || '').trim();
-  const auth = await resolveAdminAuth(token, supabase);
-  if (!auth) await recordFailedAttempt(supabase, rateKey);
+  const { auth, signatureValid } = await resolveAdminAuth(token, supabase);
+  // Ne compte dans le blocage anti-bruteforce que les jetons qui ne prouvent
+  // rien (mot de passe faux/deviné, jeton malformé/forgé) — jamais un jeton
+  // valablement signé mais simplement périmé (voir resolveAdminAuth).
+  if (!auth && !signatureValid) await recordFailedAttempt(supabase, rateKey);
   return Boolean(auth);
 }
 
@@ -68,8 +83,11 @@ async function checkAdminRole(req, supabase) {
   if (await isRateLimited(supabase, rateKey)) return { ok: false };
 
   const token = ((req.body || {}).token || req.headers['x-admin-token'] || '').trim();
-  const auth = await resolveAdminAuth(token, supabase);
-  if (!auth) { await recordFailedAttempt(supabase, rateKey); return { ok: false }; }
+  const { auth, signatureValid } = await resolveAdminAuth(token, supabase);
+  if (!auth) {
+    if (!signatureValid) await recordFailedAttempt(supabase, rateKey);
+    return { ok: false };
+  }
   return { ok: true, role: auth.role, adminUserId: auth.adminUserId, nom: auth.nom };
 }
 
