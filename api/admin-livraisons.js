@@ -379,7 +379,12 @@ module.exports = async (req, res) => {
       // route) à un AUTRE transporteur la remet à "à faire" : le nouveau livreur
       // doit repasser par "j'accepte" plutôt que d'hériter d'une étape qu'il n'a
       // pas vécue. Les preuves déjà prises (photo/vidéo) sont conservées.
-      const enCours = liv && ['acceptee', 'en_route', 'arrivee', 'probleme'].includes(liv.statut);
+      // 'refusee' est incluse : une mission refusée par un transporteur (voir
+      // action 'indisponible' côté transporteur) et réassignée manuellement à
+      // un autre doit repasser "à faire", sinon elle reste invisible pour le
+      // nouveau transporteur (transporteur-missions.js ne remonte jamais une
+      // mission "refusee") sans qu'aucune erreur ne le signale à l'admin.
+      const enCours = liv && ['acceptee', 'en_route', 'arrivee', 'probleme', 'refusee'].includes(liv.statut);
       if (enCours && liv.transporteur_id !== transporteurId) {
         Object.assign(patch, {
           statut: 'a_faire', accepted_at: null, depart_at: null, arrivee_at: null,
