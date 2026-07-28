@@ -110,14 +110,18 @@ async function computeCityStats(supabase, city, periode, since) {
   if (caTotalErr) throw caTotalErr;
   const caTotalCents = typeof caTotalCentsRaw === 'number' ? caTotalCentsRaw : 0;
 
-  const { count: flotteTotale } = await supabase
-    .from('appareils').select('id', { count: 'exact', head: true })
-    .eq('city_id', city.id).not('statut', 'in', '(panne,maintenance)');
-
-  const today    = new Date().toISOString().slice(0, 10);
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-  const disponibles = Math.max(0, await getAvailability(supabase, city.id, today, tomorrow));
-  const occupees     = Math.max(0, (flotteTotale || 0) - disponibles);
+  // Même source que le bloc "État du parc" juste en dessous sur cet écran
+  // (computeParcDashboard, statut réel de chaque appareil) — la tuile
+  // "Occupation" utilisait avant un calcul indépendant basé sur les
+  // réservations à venir (getAvailability), qui pouvait afficher un
+  // pourcentage différent de "État du parc" au même instant (même défaut
+  // que la barre "Flotte" de l'onglet Stock, corrigé en PR #329) : un
+  // appareil marqué "Loué hors système" sans réservation suivie apparaissait
+  // "disponible" côté réservations mais "occupé" côté statut réel.
+  const parc = await computeParcDashboard(supabase, city.id);
+  const flotteTotale   = Math.max(0, parc.total - parc.hors_service);
+  const disponibles    = parc.disponibles;
+  const occupees        = Math.max(0, flotteTotale - disponibles);
   const tauxOccupation = flotteTotale > 0 ? occupees / flotteTotale : 0;
 
   const { count: incidentsOuverts } = await supabase
@@ -168,7 +172,6 @@ async function computeCityStats(supabase, city, periode, since) {
     .eq('reservation.city_id', city.id)
     .in('statut', ['a_faire', 'acceptee']).lt('date_prevue', todayStr);
 
-  const parc = await computeParcDashboard(supabase, city.id);
   const nbResa = (resas || []).length;
 
   return {
