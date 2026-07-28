@@ -31,8 +31,7 @@ module.exports = async (req, res) => {
       await supabase.from('documents').update({ statut: 'consulte', consulte_at: new Date().toISOString() }).eq('id', doc.id).catch(() => {});
     }
 
-    res.writeHead(302, { Location: signed.signedUrl });
-    return res.end();
+    return res.redirect(302, signed.signedUrl);
   } catch (e) {
     console.error('[document-view] unexpected:', e.message);
     return res.status(500).send('Document temporairement indisponible. Contactez-nous : <a href="https://wa.me/33663798756">WhatsApp</a> ou <a href="mailto:contact@locair.fr">contact@locair.fr</a>');
