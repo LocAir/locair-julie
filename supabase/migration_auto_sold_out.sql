@@ -17,27 +17,31 @@ ALTER TABLE transporteurs ADD COLUMN IF NOT EXISTS en_pause boolean NOT NULL DEF
 CREATE OR REPLACE FUNCTION _auto_sold_out(p_city_id bigint)
 RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
-  v_total       int;
-  v_en_location int;
+  v_disponibles int;
 BEGIN
-  -- Appareils actifs dans cette ville (hors panne/maintenance)
-  SELECT COUNT(*) INTO v_total
+  -- Unités actives dans cette ville (même exclusion que available_units :
+  -- panne/maintenance/loue exclus, nettoyage inclus comme disponible)
+  SELECT COUNT(*)::int INTO v_disponibles
   FROM appareils
-  WHERE city_id = p_city_id AND statut = 'disponible';
+  WHERE city_id = p_city_id
+    AND statut NOT IN ('panne', 'maintenance', 'loue');
 
-  -- Appareils actuellement chez un client
-  -- (réservation confirmée qui couvre aujourd'hui)
-  SELECT COUNT(DISTINCT ra.appareil_id) INTO v_en_location
-  FROM reservation_appareils ra
-  JOIN reservations r ON ra.reservation_id = r.id
-  WHERE r.city_id    = p_city_id
-    AND r.statut     = 'confirmee'
-    AND r.date_debut <= CURRENT_DATE
-    AND r.date_fin   >  CURRENT_DATE;
+  -- Moins celles déjà assignées à une résa confirmée couvrant aujourd'hui.
+  -- Bug corrigé : l'ancienne version comptait v_en_location même si les unités
+  -- assignées avaient statut='panne'/'maintenance', ce qui pouvait donner
+  -- v_en_location >= v_total alors que des unités libres existaient.
+  v_disponibles := v_disponibles - COALESCE((
+    SELECT COUNT(DISTINCT ra.appareil_id)
+    FROM reservation_appareils ra
+    JOIN reservations r ON r.id = ra.reservation_id
+    WHERE r.city_id    = p_city_id
+      AND r.statut     = 'confirmee'
+      AND r.date_debut <= CURRENT_DATE
+      AND r.date_fin   >  CURRENT_DATE
+  ), 0);
 
-  -- 100 % occupé (ou aucun appareil actif) → sold_out
   UPDATE cities
-  SET sold_out = (v_total = 0 OR v_en_location >= v_total)
+  SET sold_out = (v_disponibles <= 0)
   WHERE id = p_city_id;
 END;
 $$;
