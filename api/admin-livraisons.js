@@ -90,7 +90,7 @@ module.exports = async (req, res) => {
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
             id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, instructions_acces, masquee, hors_zone,
-            date_debut, date_fin,
+            installation, date_debut, date_fin,
             reservation_appareils ( appareil:appareils ( numero, reference ) )
           )
         `;
@@ -101,6 +101,13 @@ module.exports = async (req, res) => {
       queries.push(supabase.from('livraisons').select(selectCols).eq('type', 'autre').eq('city_id', city.id).order('date_prevue', { ascending: false }).limit(100));
       const results = await Promise.all(queries);
       for (const r of results) if (r.error) throw r.error;
+      // Montant transporteur affiché sur chaque carte, pour repérage visuel des
+      // erreurs (ex. hors zone non pris en compte) avant même la clôture de la
+      // mission — même calcul que celui réellement appliqué au paiement
+      // (force_complete plus bas, et transporteur-action.js) : tarif figé une
+      // fois la mission "fait" (déjà en base), sinon estimation live depuis le
+      // barème actuel de la ville + hors_zone/installation de la réservation.
+      const bareme = await getBaremeForCity(supabase, city.id);
       const data = results.flatMap(r => r.data || []);
 
       // Une réservation masquée (ex. doublon retiré de l'écran par l'admin) sort
@@ -117,12 +124,16 @@ module.exports = async (req, res) => {
         // vérification/vidange) — utile pour objectiver des hypothèses comme
         // "20-30 min d'installation" avec de la vraie donnée.
         const minsBetween = (a, b) => (a && b) ? Math.round((new Date(b) - new Date(a)) / 60000) : null;
+        const montantTransporteur = (l.statut === 'fait' || l.montant_manuel || l.type === 'autre')
+          ? l.montant_du_cents
+          : computeBareme(l.type, l.reservation?.installation, bareme, l.reservation?.hors_zone);
         return {
           ...l,
           appareil_numeros: ras.map(ra => ra.appareil.numero),
           appareil_references: ras.map(ra => ra.appareil.reference).filter(Boolean),
           duree_trajet_min:    minsBetween(l.accepted_at, l.arrivee_at),
           duree_sur_place_min: minsBetween(l.arrivee_at, l.fait_at),
+          montant_transporteur_cents: montantTransporteur,
         };
       }).sort((a, b) => b.date_prevue.localeCompare(a.date_prevue));
       return res.status(200).json({ livraisons });

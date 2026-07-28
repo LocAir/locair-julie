@@ -4150,8 +4150,11 @@ function renderLivraisons(){
     if(m.duree_trajet_min!=null) detailBits.push(m.duree_trajet_min+' min trajet');
     if(m.duree_sur_place_min!=null) detailBits.push(m.duree_sur_place_min+' min sur place');
     if(m.client_notifie_at) detailBits.push('✅ Client notifié '+frDateHeure(m.client_notifie_at));
-    if(isAutre) detailBits.push('💰 '+euros(m.montant_du_cents)+' (tarif fixé)');
-    else if(m.montant_manuel) detailBits.push('💰 '+euros(m.montant_du_cents)+' (tarif fixé manuellement)');
+    // Montant gagné par le transporteur pour CETTE mission, mis en évidence
+    // dans un cadre à part (demande d'Aly : repérer une erreur de barème —
+    // ex. hors zone non appliqué — d'un coup d'œil, avant même la clôture).
+    const montantLabel = isAutre ? ' (tarif fixé)' : (m.montant_manuel ? ' (tarif fixé manuellement)' : (res.hors_zone ? ' (barème hors zone)' : ''));
+    const montantEstime = m.statut !== 'fait' && !m.montant_manuel && !isAutre;
     return `
       <div class="row-item" ${nonAssignee?'style="border-left:3px solid var(--red)"':''}>
         <div class="row-top">
@@ -4172,6 +4175,7 @@ function renderLivraisons(){
           ${contactButtonsHtml(res.tel)}
           ${nonAssignee?`<div style="width:100%;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--red);margin-bottom:-2px">Assigner un transporteur →</div>`:''}
           <select onchange="assignTransporteur(${m.id}, this.value, this)" ${reassignLocked?'disabled title="Mission terminée/annulée : transporteur figé (paiement déjà rattaché)"':''} style="${nonAssignee?'border-color:var(--red);border-width:1.5px':''}">${options}</select>
+          <div style="width:100%;background:var(--green-bg);color:var(--green);padding:8px 12px;border-radius:var(--r);font-weight:700;font-size:13px">💰 Le transporteur gagne : ${euros(m.montant_transporteur_cents)}${montantLabel}${montantEstime?' <span style="font-weight:600;opacity:.75">(estimation)</span>':''}</div>
           ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom.replace(/'/g,"\\'"))}', '${escHtml((res.adresse||'').replace(/'/g,"\\'"))}')">🔴 Suivre en direct</button>`:''}
           ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">✅ Problème résolu</button>`:''}
           ${mediaBtns.length===0 && m.statut==='fait' ? '<span class="row-meta" style="align-self:center">Aucune preuve enregistrée</span>' : ''}
