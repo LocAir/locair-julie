@@ -2342,6 +2342,11 @@ async function convertirDevisEnReservation(id){
   const typeSel = document.getElementById('nr-type');
   if(typeSel){ typeSel.value = 'entreprise'; typeSel.dispatchEvent(new Event('change')); }
   set('nr-raison', x.raison_sociale); set('nr-siret', x.siret);
+  // Le type d'installation choisi sur le devis (Autonome/Technicien) doit
+  // suivre jusqu'à la réservation — sans ça le formulaire retombe sur
+  // "Autonome" par défaut, et le transporteur est payé au tarif autonome
+  // (30€) même si le devis promettait une installation technicien (40€).
+  if(x.installation) set('nr-installation', x.installation);
   showToast('Formulaire pré-rempli depuis le devis — vérifie puis valide', 'success');
 }
 function exportStockCsv(){
