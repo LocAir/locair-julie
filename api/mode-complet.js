@@ -22,7 +22,10 @@ module.exports = async (req, res) => {
     const today    = new Date().toISOString().slice(0, 10);
     const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     const disponibles = Math.max(0, await getAvailability(supabase, city.id, today, tomorrow));
-    return res.status(200).json({ sold_out: city.sold_out === true, disponibles });
+    // sold_out dérivé directement de disponibles (source temps réel) plutôt que
+    // du champ mis en cache cities.sold_out — évite tout désync si un trigger SQL
+    // rate ou si le statut d'un appareil change sans passer par le bon chemin.
+    return res.status(200).json({ sold_out: disponibles <= 0, disponibles });
   } catch (err) {
     console.error('[mode-complet GET]', err.message);
     return res.status(500).json({ error: 'Erreur serveur' });

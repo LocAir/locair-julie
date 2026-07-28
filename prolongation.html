@@ -257,6 +257,27 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
     }
   })();
 
+  // Auto-connexion depuis l'espace client (client/index.html) : le client y
+  // est déjà identifié (jeton client_token dans l'URL) — on saute l'étape 1
+  // (email + référence) et on passe directement à l'étape 2 avec sa
+  // réservation déjà chargée. Demande explicite du propriétaire : un client
+  // déjà connecté ne doit plus jamais retaper ces informations.
+  (async function(){
+    const tokenFromUrl=(new URLSearchParams(location.search).get('token')||'').trim();
+    if(!tokenFromUrl)return;
+    hide('step-1');
+    try{
+      const r=await fetch('/api/prolong-lookup',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({token:tokenFromUrl})});
+      const d=await r.json();
+      if(!r.ok)throw new Error(d.error||'Erreur serveur');
+      email=d.email;ref=d.ref;resa=d;goStep2();
+    }catch(ex){
+      // Jeton expiré ou invalide — repli silencieux sur le formulaire manuel,
+      // déjà pré-rempli avec la référence s'il y en avait une dans l'URL.
+      show('step-1');
+    }
+  })();
+
   /* ── Étape 1 : lookup ── */
   document.getElementById('lookup-form').addEventListener('submit',async function(e){
     e.preventDefault();

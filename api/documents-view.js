@@ -90,12 +90,15 @@ module.exports = async (req, res) => {
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   try {
-    const supabase = getSupabase();
+    const supabase = getSupabase(); // peut lever si variables d'env manquantes
     const { data: docs, error: docsErr } = await supabase
       .from('documents')
       .select('access_token, reservation:reservations(ref)')
       .in('access_token', tokens);
-    if (docsErr) throw docsErr;
+    if (docsErr) {
+      console.error('[documents-view] DB error:', docsErr.message, docsErr.code);
+      return res.status(500).send(renderPage('Documents temporairement indisponibles. Contactez-nous sur WhatsApp ou par email si le problème persiste.'));
+    }
     const validTokens = new Set((docs || []).map(d => d.access_token));
     const ref = (docs || []).find(d => d.reservation?.ref)?.reservation?.ref || null;
 

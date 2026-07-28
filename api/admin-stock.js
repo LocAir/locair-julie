@@ -385,6 +385,18 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, swapped: Boolean(conflitActif) });
     }
 
+    // Force-synchronisation stock ↔ site — recalcule sold_out depuis le vrai
+    // stock (available_units) et retourne l'état actuel pour que l'admin
+    // puisse vérifier que le site et l'app sont bien alignés.
+    if (action === 'force_sync') {
+      await supabase.rpc('_auto_sold_out', { p_city_id: city.id });
+      const today    = new Date().toISOString().slice(0, 10);
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      const disponibles = Math.max(0, await getAvailability(supabase, city.id, today, tomorrow));
+      const { data: cityRow } = await supabase.from('cities').select('sold_out').eq('id', city.id).maybeSingle();
+      return res.status(200).json({ ok: true, disponibles, sold_out: cityRow?.sold_out ?? null });
+    }
+
     if (action === 'delete') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });

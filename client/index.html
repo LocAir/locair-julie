@@ -45,6 +45,7 @@ input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,58,95,.08)}
 .btn-submit:disabled{opacity:.55;cursor:default}
 .alert-error{background:var(--red-bg);border:1.5px solid var(--red-border);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--red);line-height:1.6;margin-bottom:16px}
 .alert-info{background:var(--amber-bg);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--amber);line-height:1.6;margin-bottom:16px}
+.alert-success{background:var(--green-bg);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--green);line-height:1.6;margin-bottom:16px}
 
 h1{font-family:var(--disp);font-size:clamp(30px,6vw,42px);font-weight:300;letter-spacing:-.02em;margin-bottom:6px}
 h1 em{font-style:italic}
@@ -357,7 +358,7 @@ function renderDashboard(d){
     ${livraisonHtml}
     ${recupHtml}
 
-    ${!d.progress.banner ? `<a class="btn-prolong" href="${escHtml(d.lien_prolongation)}">Prolonger ma location</a>` : ''}
+    ${!d.progress.banner ? `<a class="btn-prolong" href="${escHtml(d.lien_prolongation+'&token='+encodeURIComponent(localStorage.getItem('client_token')||''))}">Prolonger ma location</a>` : ''}
 
     <h2>Mes documents</h2>
     <div class="card">${docsHtml}</div>
@@ -430,7 +431,7 @@ async function confirmOffrePrivilegePayment(offreId){
       payBtn.disabled = false; payBtn.textContent = 'Réessayer le paiement';
     }else if(paymentIntent?.status === 'succeeded'){
       document.getElementById('offre-privilege-stripe-section-'+offreId).innerHTML =
-        '<div class="alert-info">✅ Merci ! Ce climatiseur est à vous.</div>';
+        '<div class="alert-success">✅ Merci ! Ce climatiseur est à vous.</div>';
     }else{
       errEl.textContent = 'Paiement en attente de confirmation. Vérifie ton email.';
       errEl.classList.remove('hidden');
@@ -458,7 +459,7 @@ async function showDashboard(){
     if(_offreReturnStatus){
       const status = _offreReturnStatus; _offreReturnStatus = null;
       const banner = status === 'succeeded'
-        ? '<div class="alert-info">✅ Paiement confirmé après vérification bancaire — ce climatiseur est à vous !</div>'
+        ? '<div class="alert-success">✅ Paiement confirmé après vérification bancaire — ce climatiseur est à vous !</div>'
         : status === 'processing'
         ? '<div class="alert-info">⏳ Votre banque valide encore le paiement. Ça peut prendre quelques minutes — revenez un peu plus tard pour confirmer.</div>'
         : '<div class="alert-error">❌ Le paiement n\'a pas abouti après la vérification bancaire. Vous pouvez réessayer depuis l\'offre ci-dessous.</div>';
