@@ -32,6 +32,11 @@
   --sh-blue:0 6px 24px rgba(27,58,95,.32);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+/* Sans ça, Safari iOS peut agrandir automatiquement les petits textes serrés
+   (ex. badge "TERMINÉE" dans "Ma semaine") pour la lisibilité, ce qui casse
+   la mise en page prévue (retour à la ligne au milieu du mot, invisible en
+   test desktop puisque ce comportement est propre à Safari mobile). */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:15px;-webkit-font-smoothing:antialiased;min-height:100vh}
 .wrap{max-width:520px;margin:0 auto;padding:20px 16px 100px;min-height:100vh}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 20px}
@@ -2479,11 +2484,16 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   if(key === 'installation'){
     const sousTypes = TUTO_SOUS_TYPES.installation || [];
     return `
-      <p class="step-hint">🎬 Montre le fonctionnement au client, puis prends une photo où l'on voit ensemble : le climatiseur en marche, la fenêtre calfeutrée et la télécommande.</p>
-      <div class="section-title" style="margin:0 0 6px 2px">Tuto par type d'ouverture</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-        ${sousTypes.map(t => `<button class="btn btn-grey" style="flex:1 1 auto;min-width:120px" onclick="openTutoVideo('installation','${t}')">🎥 ${t}</button>`).join('')}
-      </div>
+      <p class="step-hint">🎬 Montre le fonctionnement au client, puis prends une photo où l'on voit ensemble le climatiseur en marche et la fenêtre calfeutrée.</p>
+      <details class="month-details" style="margin-bottom:14px">
+        <summary style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;list-style:none;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey-soft)">
+          <span>🎥 Tuto par type d'ouverture</span>
+          <span class="month-chevron">›</span>
+        </summary>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
+          ${sousTypes.map(t => `<button class="btn btn-grey" style="flex:1 1 auto;min-width:120px" onclick="openTutoVideo('installation','${t}')">🎥 ${t}</button>`).join('')}
+        </div>
+      </details>
       ${proofButtonsHtml('photo_installation', m.photo_installation_ok, 'Photo installation')}
       ${m.photo_installation_ok
         ? `<button class="btn btn-green btn-block" style="margin-top:6px" onclick="doAction('confirmer_demo')">✅ Confirmer la démonstration</button>`
@@ -2556,13 +2566,22 @@ function checklistFinalHtml(workflow){
   return `
     <div class="section-title" style="margin:10px 0 2px 2px">Checklist</div>
     <p class="sub" style="margin:0 0 6px 2px">Coche chaque point pour confirmer que tout est en ordre — ça protège le client et toi en cas de souci plus tard.</p>
-    <div class="card" style="margin-bottom:12px">
+    <div class="card" style="margin-bottom:10px">
       ${items.map(it => `
         <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--rule)">
           <input type="checkbox" class="checklist-final-cb" data-item-id="${it.id}" onchange="updateMissionFinalButton()" style="width:22px;height:22px;flex-shrink:0">
           <span>${escHtml(it.libelle)}</span>
         </label>`).join('')}
-    </div>`;
+    </div>
+    <button type="button" class="btn btn-green btn-block" style="margin-bottom:12px" onclick="checkAllFinalChecklist()">✅ Tout cocher</button>`;
+}
+// Bouton "Tout cocher" (checklist finale) : coche chaque case d'un coup
+// plutôt qu'une par une — le livreur a de toute façon vérifié chaque point
+// physiquement avant d'arriver ici, cocher reste une confirmation, pas un
+// contrôle qu'il faut faire ralentir au tap par tap.
+function checkAllFinalChecklist(){
+  document.querySelectorAll('.checklist-final-cb').forEach(cb => { cb.checked = true; });
+  updateMissionFinalButton();
 }
 const ETAT_MATERIEL_LABEL = {
   parfait_etat: 'Parfait état', usure_normale: 'Usure normale',
