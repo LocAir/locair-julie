@@ -6,7 +6,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
   const secret = process.env.SCAN_SECRET;
-  if (secret && req.headers['x-scan-secret'] !== secret) {
+  if (!secret || req.headers['x-scan-secret'] !== secret) {
     return res.status(401).json({ error: 'Non autorisé' });
   }
 

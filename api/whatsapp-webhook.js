@@ -25,17 +25,23 @@ const KEYWORDS = [
   // ZH
   '不工作','漏水','坏了','有问题','噪音','停了','错误','不制冷','不冷','不开机',
   '故障','损坏','太热','制冷','空调',
+  // RU
+  'не работает','не охлаждает','не включается','не холодит','не холодно',
+  'поломка','сломан','сломалась','сломался','течет','течёт','протечка',
+  'шумит','шум','проблема','ошибка','остановился','остановилась',
+  'жарко','горячо','кондиционер','кондей',
 ];
 
 function norm(s) {
   return s.toLowerCase()
-    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .replace(/['']/g, "'");
 }
 
 // Détecte la langue du message entrant pour répondre dans la bonne langue
 function detectLang(text) {
   if (/[一-鿿]/.test(text)) return 'zh';
+  if (/[а-яёА-ЯЁ]/.test(text)) return 'ru';
   const t = text.toLowerCase();
   const enMarkers = ['not working','broken','leaking','too hot','stopped','error','not cool','not cold','problem','issue','air con','ac not'];
   if (enMarkers.some(k => t.includes(k))) return 'en';
@@ -44,11 +50,19 @@ function detectLang(text) {
 
 function hasKeyword(text) {
   const t = norm(text);
-  const tRaw = text; // pour la détection des caractères CJK
+  const tRaw = text; // pour la détection des caractères CJK / cyrilliques
   // Caractères chinois → toujours pertinent
   if (/[一-鿿]/.test(tRaw)) {
     const zhTerms = ['不工作','漏水','坏了','有问题','噪音','停了','错误','不制冷','不冷','不开机','故障','损坏','太热','制冷','空调'];
     if (zhTerms.some(k => tRaw.includes(k))) return true;
+  }
+  // Cyrillique (russe) → match direct sans normalisation
+  if (/[а-яёА-ЯЁ]/.test(tRaw)) {
+    const ruTerms = ['не работает','не охлаждает','не включается','не холодит','не холодно',
+      'поломка','сломан','сломалась','сломался','течет','течёт','протечка',
+      'шумит','шум','проблема','ошибка','остановился','остановилась',
+      'жарко','горячо','кондиционер','кондей'];
+    if (ruTerms.some(k => tRaw.toLowerCase().includes(k))) return true;
   }
   const generalTerms = ['clim','climatiseur','ac not','air con','空调','制冷'];
   const negativeCtx  = ['problème','probleme','ne','plus','pas','panne','fuit','fuite','arrêt','arret','bruit','chaud','cassé','cassee',
@@ -133,6 +147,29 @@ _Automated message — our team is also following up on your request._`,
 如问题*仍未解决*，Loc'Air 技术员将于*明天早上8时至12时致电*联系您 📞
 
 _自动回复 — 我们的团队正在同步跟进您的请求。_`,
+
+  ru: `Здравствуйте 👋
+
+Спасибо за ваше сообщение. Вот несколько быстрых проверок:
+
+🔧 *Руководство по устранению неисправностей Loc'Air*
+
+1️⃣ *Выхлопной шланг* — убедитесь, что он надёжно закреплён и направлен наружу (через окно или вентиляционную решётку).
+
+2️⃣ *Фильтр* — снимите и почистите фильтр на передней панели (откручивается). Загрязнённый фильтр снижает мощность охлаждения вдвое.
+
+3️⃣ *Режим охлаждения* — проверьте, что на пульте выбран символ ❄️ (а не только режим вентиляции).
+
+4️⃣ *Перезапуск* — выключите прибор, отключите его от розетки на 30 секунд, затем включите снова.
+
+5️⃣ *Поддон конденсата* — если прибор выключается сам по себе, поддон, возможно, переполнен. Воспользуйтесь дренажной трубкой сзади.
+
+➡️ Дополнительная помощь: https://locair.fr/#faq
+
+---
+Если проблема *не решена*, техник Loc'Air перезвонит вам *завтра утром с 8:00 до 12:00* 📞
+
+_Автоматическое сообщение — наша команда параллельно следит за вашим запросом._`,
 };
 
 async function sendReply(to, body) {
