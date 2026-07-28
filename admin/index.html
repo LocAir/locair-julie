@@ -1934,7 +1934,16 @@ async function loadStock(silent){
     const dd = await rd.json().catch(()=>null);
     const od = await ro.json().catch(()=>null);
     OFFRES_PRIVILEGE_CACHE = (ro.ok && od) ? (od.offres||[]) : [];
-    const pctOccupe = d.actifs>0 ? Math.round((d.en_location/d.actifs)*100) : 0;
+    // Disponibles/en location de cette barre venaient d'un calcul différent
+    // de celui du "Tableau de bord du parc" juste en dessous (l'un se basait
+    // sur la disponibilité de réservation des prochains jours, l'autre sur
+    // le statut réel de chaque appareil, y compris "Loué hors système"
+    // marqué à la main) — les deux pouvaient afficher des chiffres
+    // différents pour le même parc. Réutilise maintenant le même calcul
+    // (dd, déjà chargé pour le tableau du dessous) comme source unique ;
+    // repli sur l'ancien calcul seulement si ce second appel a échoué.
+    const rd2 = (rd.ok && dd) ? dd : { disponibles: d.disponibles, en_location: d.en_location, total: d.actifs };
+    const pctOccupe = rd2.total>0 ? Math.round((rd2.en_location/rd2.total)*100) : 0;
     const appareils = d.appareils || [];
     STOCK_APPAREILS_CACHE = appareils;
     zone.innerHTML = `
@@ -1942,8 +1951,8 @@ async function loadStock(silent){
         <h2>Flotte — ${escHtml(d.ville)}</h2>
         <div class="stock-gauge"><div class="stock-gauge-fill" style="width:${pctOccupe}%"></div></div>
         <div class="stock-legend">
-          <span><i class="dot dot-green"></i> ${d.disponibles} disponible${d.disponibles>1?'s':''}</span>
-          <span><i class="dot dot-blue"></i> ${d.en_location} en location</span>
+          <span><i class="dot dot-green"></i> ${rd2.disponibles} disponible${rd2.disponibles>1?'s':''}</span>
+          <span><i class="dot dot-blue"></i> ${rd2.en_location} en location</span>
         </div>
         <p class="sub" style="margin-top:14px">Se met à jour automatiquement à chaque réservation et à chaque retour confirmé par un transporteur. Chaque appareil a son numéro — le livreur sait exactement lequel récupérer.</p>
       </div>
