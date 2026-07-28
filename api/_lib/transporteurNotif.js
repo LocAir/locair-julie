@@ -1,6 +1,7 @@
 const { pushToTransporteur } = require('./push');
 const { sendBrevoSms } = require('./brevo');
 const { fmtDateFR } = require('./emailEngine');
+const { computeBareme, getBaremeForCity } = require('./bareme');
 
 // Centre de notifications transporteur (Module 5, Partie 11) : persiste
 // l'événement pour l'onglet "Notifications" (lu/non lu, historique) ET
@@ -35,8 +36,8 @@ async function smsNouvelleMission(supabase, transporteurId, { type, livraisonId 
   if (type !== 'nouvelle_mission' || !livraisonId) return;
   try {
     const [{ data: transporteur }, { data: liv }] = await Promise.all([
-      supabase.from('transporteurs').select('telephone, taux_livraison_cents, taux_recuperation_cents').eq('id', transporteurId).maybeSingle(),
-      supabase.from('livraisons').select('type, date_prevue, creneau, reservation:reservations(adresse, installation)').eq('id', livraisonId).maybeSingle(),
+      supabase.from('transporteurs').select('telephone').eq('id', transporteurId).maybeSingle(),
+      supabase.from('livraisons').select('type, date_prevue, creneau, montant_manuel, montant_du_cents, reservation:reservations(adresse, installation, city_id, hors_zone)').eq('id', livraisonId).maybeSingle(),
     ]);
     if (!transporteur?.telephone || !liv) return;
     // Une ligne par info (type, date/créneau, adresse, installation,
@@ -50,15 +51,26 @@ async function smsNouvelleMission(supabase, transporteurId, { type, livraisonId 
     // simplement repris, quel qu'ait été le mode d'installation initial.
     // "Technicien (80€)" côté reservations.installation est le prix payé par
     // le CLIENT pour ce service — à ne jamais confondre avec la rémunération
-    // du transporteur ci-dessous (taux fixe par mission, indépendant du mode
+    // du transporteur ci-dessous (barème Loc'Air, indépendant du mode
     // d'installation), d'où le libellé volontairement dépouillé de tout prix.
     const estTechnicien = (liv.reservation?.installation || '').startsWith('Technicien');
     const installationLigne = !estRecuperation
       ? (estTechnicien ? 'Installation par vous (technicien)' : 'Installation autonome (client)')
       : null;
-    const remunerationCents = estRecuperation
-      ? (transporteur.taux_recuperation_cents || 0)
-      : (transporteur.taux_livraison_cents || 0);
+    // Même barème (par ville, éditable dans l'admin) et même garde
+    // montant_manuel que ce qui sera réellement versé au transporteur — voir
+    // transporteur-action.js ('terminer') et admin-livraisons.js
+    // ('force_complete'). Avant ce correctif, le SMS lisait
+    // transporteurs.taux_livraison_cents/taux_recuperation_cents : des
+    // colonnes mortes depuis le passage au barème par ville (PR barème
+    // éditable), jamais éditables depuis l'admin et donc toujours à 0 —
+    // le SMS annonçait "Rémunération : 0,00 €" quel que soit le barème
+    // configuré par ville.
+    let remunerationCents = liv.montant_du_cents || 0;
+    if (!liv.montant_manuel) {
+      const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
+      remunerationCents = computeBareme(liv.type, liv.reservation?.installation, tarifs, liv.reservation?.hors_zone);
+    }
     const remunerationFmt = (remunerationCents / 100).toFixed(2).replace('.', ',') + ' €';
     const lignes = [
       "Loc'Air - Nouvelle mission",
