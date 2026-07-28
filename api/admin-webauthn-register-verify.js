@@ -1,12 +1,19 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
 const { getRpConfig, extractChallenge, consumeChallenge } = require('./_lib/webauthn');
 const { verifyRegistrationResponse } = require('@simplewebauthn/server');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
+  // Même garde qu'à l'étape précédente (register-options) — voir ce fichier
+  // pour le détail : tant que admin_webauthn_credentials n'est pas lié à un
+  // compte précis, seul "administrateur" peut enregistrer une empreinte.
+  if (admin.role !== 'administrateur') {
+    return res.status(403).json({ error: 'Face ID réservé au compte administrateur pour le moment.' });
+  }
 
   try {
     const response = (req.body || {}).response;

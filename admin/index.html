@@ -852,6 +852,10 @@ async function initAdminWebauthnLoginButton(){
 }
 async function maybeOfferAdminFaceId(){
   if(localStorage.getItem('a_faceid')) return; // déjà activé ou refusé sur cet appareil
+  // Réservé au rôle administrateur pour le moment : les empreintes Face ID
+  // ne sont pas encore liées à un compte précis côté serveur, donc n'importe
+  // qui l'activant obtiendrait l'accès complet à la prochaine connexion.
+  if(ROLE !== 'administrateur') return;
   if(await hasPlatformAuthenticator()) document.getElementById('a-faceid-offer')?.classList.remove('hidden');
 }
 function dismissAdminFaceIdOffer(){

@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
 const { getRpConfig, storeChallenge } = require('./_lib/webauthn');
 const { generateRegistrationOptions } = require('@simplewebauthn/server');
 
@@ -10,7 +10,19 @@ const ADMIN_USER_ID = Buffer.from('locair-admin');
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
+  // admin_webauthn_credentials est un pool partagé, non lié à un compte précis
+  // (un seul mot de passe admin à l'origine, avant l'ajout des comptes équipe
+  // à rôles limités) — se connecter en Face ID renvoie TOUJOURS le jeton
+  // maître (accès complet), quel que soit le compte qui s'est enregistré.
+  // Tant que ce n'est pas repensé (lier chaque empreinte à un compte précis,
+  // nécessite un changement de schéma), seul le rôle "administrateur" peut
+  // enregistrer une empreinte — sinon un compte à accès limité obtiendrait le
+  // mot de passe maître au premier login Face ID.
+  if (admin.role !== 'administrateur') {
+    return res.status(403).json({ error: 'Face ID réservé au compte administrateur pour le moment.' });
+  }
 
   try {
     const { data: existing } = await supabase.from('admin_webauthn_credentials').select('credential_id');
