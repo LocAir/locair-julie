@@ -6,7 +6,7 @@ const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { sendScenarioEmail, fmtDate } = require('./_lib/emailEngine');
 const { sendBrevoSms } = require('./_lib/brevo');
-const { setAppareilsStatutForReservation, releaseAppareilFromReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
+const { setAppareilsStatutForReservation, releaseAppareilFromReservation, moveAppareilsForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
 
 const MEDIA_COLUMN = {
   photo_depart:       'photo_depart_path',
@@ -362,7 +362,7 @@ module.exports = async (req, res) => {
       const transporteurId = body.transporteur_id ? parseInt(body.transporteur_id) : null;
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
 
-      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'transporteur_id, statut');
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'transporteur_id, statut, reservation_id');
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
       // Une mission terminée ou annulée ne change plus de transporteur : le
       // montant dû lui est déjà rattaché (admin-virements.js) — réaffecter
@@ -389,10 +389,26 @@ module.exports = async (req, res) => {
         Object.assign(patch, {
           statut: 'a_faire', accepted_at: null, depart_at: null, arrivee_at: null,
           probleme_at: null, probleme_type: null, probleme_description: null,
+          // Sans ça, le nouveau transporteur héritait à tort du "client déjà
+          // prévenu" fait par l'ancien (affichage + score de notification côté
+          // admin-transporteur-stats.js) — il n'a pourtant jamais appelé personne.
+          client_notifie_at: null,
         });
       }
       const { error } = await supabase.from('livraisons').update(patch).eq('id', livraisonId);
       if (error) throw error;
+
+      // L'appareil peut avoir été chargé dans le véhicule de l'ancien
+      // transporteur (localisation 'vehicule_transporteur', posée par l'action
+      // 'commencer' côté transporteur) — sans ce retour au dépôt, il reste
+      // affiché "dans le véhicule" alors que la mission recommence de zéro
+      // avec quelqu'un d'autre, jusqu'à la clôture qui finit par corriger ça.
+      if (enCours && liv.transporteur_id !== transporteurId) {
+        await moveAppareilsForReservation(supabase, liv.reservation_id, 'stock_principal', {
+          typeEvenement: 'autre', livraisonId, utilisateur: 'admin',
+          commentaire: 'Réassignée à un autre transporteur — retour au dépôt.',
+        }).catch(e => console.error('[assign moveAppareils]', e.message));
+      }
 
       // Prévenir les deux côtés d'une réaffectation, même téléphone fermé :
       // le nouveau transporteur (nouvelle mission à traiter) ET l'ancien s'il
@@ -508,7 +524,7 @@ module.exports = async (req, res) => {
     if (action === 'remettre_a_faire') {
       const livraisonId = parseInt(body.livraison_id);
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
-      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, statut, transporteur_id');
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, statut, transporteur_id, reservation_id');
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
       if (!['acceptee', 'en_route', 'arrivee', 'probleme'].includes(liv.statut)) {
         return res.status(409).json({ error: 'Cette mission n\'est pas en cours' });
@@ -519,6 +535,14 @@ module.exports = async (req, res) => {
         client_notifie_at: null,
       }).eq('id', liv.id);
       if (remettreErr) throw remettreErr;
+      // Même correctif que l'action 'assign' : l'appareil peut être chargé
+      // dans le véhicule du transporteur (localisation posée par l'action
+      // 'commencer') — sans ce retour au dépôt, il reste affiché "dans le
+      // véhicule" alors que la mission recommence de zéro.
+      await moveAppareilsForReservation(supabase, liv.reservation_id, 'stock_principal', {
+        typeEvenement: 'autre', livraisonId: liv.id, utilisateur: 'admin',
+        commentaire: 'Mission remise en attente — retour au dépôt.',
+      }).catch(e => console.error('[remettre_a_faire moveAppareils]', e.message));
       if (liv.transporteur_id) {
         await notifyTransporteur(supabase, liv.transporteur_id, {
           type: 'nouvelle_mission', message: 'Une mission a été remise en attente d\'acceptation.',
