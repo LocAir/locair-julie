@@ -691,6 +691,18 @@ document.addEventListener('click', e => {
   const wrap = document.getElementById('a-search-wrap');
   if(wrap && !wrap.contains(e.target)) document.getElementById('a-search-results')?.classList.add('hidden');
 });
+// Ouvre la réservation liée à une référence — utilisé depuis Incidents pour
+// remonter au détail complet (dates, adresse, statut) sans devoir retaper la
+// référence à la main dans Réservations (audit organisation du 2026-07-27).
+function voirReservationRef(ref){
+  if(!ref) return;
+  if(CLIENT_FICHE_ID) closeClientFiche();
+  switchAdminTab('reservations');
+  setTimeout(() => {
+    const el = document.getElementById('resa-search');
+    if(el){ el.value = ref; renderReservations(); }
+  }, 350);
+}
 
 // ── Notifications push + badge d'app ──────────────────────────────────────
 // Règle générale de l'app (voulue pour tous les espaces, actuels et à venir) :
@@ -3414,19 +3426,81 @@ async function validerAppareilsReservation(id){
     showToast('Appareil validé', 'success');
   }catch(e){ showToast(e.message, 'error'); }
 }
-// Réaffectation manuelle d'un appareil précis (Module 6, Partie 9) — l'admin
-// pense en "n° de climatiseur" (étiquette collée dessus), pas en id interne.
-function reaffecterAppareilReservation(id){
-  promptAction({title:'Réaffecter l\'appareil', label:'Numéro du climatiseur à attribuer à la place', placeholder:'Ex. 4'}, async (numero) => {
-    const n = parseInt(numero);
-    if(!n) return showToast('Numéro invalide', 'error');
+// Réaffectation manuelle d'un appareil précis (Module 6, Partie 9) — reprend
+// le même parcours que "Changer le climatiseur" côté Livraisons (liste
+// déroulante des appareils dispo + numéro actuellement affecté + proposition
+// d'échange en cas de conflit) au lieu de demander un numéro à taper à
+// l'aveugle sans aucun repère (audit organisation du 2026-07-27).
+async function reaffecterAppareilReservation(id){
+  const res = RESERVATIONS_CACHE.find(x => x.id === id);
+  if(!res) return;
+  closeModal();
+  let appareilsDispo = [];
+  try{
+    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:'{}'});
+    const d = await r.json();
+    appareilsDispo = (d.appareils||[]).filter(a => a.statut==='disponible' && !a.en_location);
+  }catch(e){}
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  const currentNumeros = (res.appareil_numeros||[]).join(', ') || '—';
+  const appareilOptions = appareilsDispo.map(a =>
+    `<option value="${a.numero}">n°${a.numero}${a.reference?' · '+escHtml(a.reference):''}</option>`
+  ).join('');
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <h2 style="margin-bottom:4px">🔄 Réaffecter l'appareil</h2>
+      <p class="row-meta" style="margin-bottom:14px">Actuellement n°${escHtml(currentNumeros)} — ${escHtml((res.prenom||'')+' '+(res.nom||''))}</p>
+      <label for="ra-appareil">Nouveau climatiseur (disponible en stock)</label>
+      <select id="ra-appareil" ${appareilOptions?'':'disabled'}>${appareilOptions || '<option value="">Aucun climatiseur disponible</option>'}</select>
+      <div class="modal-actions" style="margin-top:18px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue" ${appareilOptions?'':'disabled'}>Changer</button>
+      </div>
+      <div class="err" id="ra-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  async function submitReassign(numero, swap){
+    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'reassign', reservation_id:id, appareil_numero:numero, swap:swap||undefined})});
+    const d = await r.json();
+    if(!r.ok){ const err = new Error(d.error||'Erreur'); err.conflit = d.conflit; throw err; }
+    return d;
+  }
+  okBtn.onclick = async () => {
+    const errEl = document.getElementById('ra-err');
+    errEl.style.display = 'none';
+    const numero = parseInt(document.getElementById('ra-appareil').value);
+    if(!numero){ errEl.textContent = 'Choisis un climatiseur.'; errEl.style.display = 'block'; return; }
+    okBtn.disabled = true;
     try{
-      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'reassign', reservation_id:id, appareil_numero:n})});
-      const d = await r.json();
-      if(!r.ok) throw new Error(d.error||'Erreur');
-      showToast(`Climatiseur n°${n} affecté`, 'success');
-    }catch(e){ showToast(e.message, 'error'); }
-  });
+      await submitReassign(numero, false);
+      closeModal();
+      loadReservations();
+      showToast(`Climatiseur n°${numero} affecté`, 'success');
+    }catch(e){
+      if(e.conflit){
+        closeModal();
+        confirmAction(
+          `Le climatiseur n°${numero} est actuellement affecté à ${e.conflit.client||'une autre réservation'} (${e.conflit.ref||'sans réf.'}). Veux-tu échanger les deux climatiseurs ?`,
+          async () => {
+            try{
+              await submitReassign(numero, true);
+              loadReservations();
+              showToast(`Climatiseurs échangés — n°${numero} affecté`, 'success');
+            }catch(e2){ showToast(e2.message, 'error'); }
+          },
+          { yesLabel: 'Échanger', onCancel: () => reaffecterAppareilReservation(id) }
+        );
+        return;
+      }
+      okBtn.disabled = false;
+      errEl.textContent = e.message; errEl.style.display = 'block';
+    }
+  };
 }
 // Remboursement direct (Module 7, Partie 21) — appelle vraiment Stripe,
 // avec confirmation et raison obligatoires. Le statut "remboursée" se met à
@@ -4933,7 +5007,10 @@ async function loadTransporteursEquipe(){
             <span class="chip ${t.actif?'actif':'inactif'}">${t.actif?'actif':'inactif'}</span>
           </span>
         </div>
-        <div class="row-meta">${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''} · Code : <strong>${escHtml(t.pin||'—')}</strong></div>
+        <div class="row-meta" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+          <span>${escHtml(t.telephone||'—')}${t.email?' · '+escHtml(t.email):''} · Code : <strong>${escHtml(t.pin||'—')}</strong></span>
+          ${contactButtonsHtml(t.telephone)}
+        </div>
         <div class="row-meta">
           <span class="chip ${t.notifications_actives?'actif':'inactif'}" title="${t.notifications_actives?'Un abonnement notifications est enregistré pour ce transporteur.':"Aucun abonnement notifications enregistré — l'app le redemande automatiquement à sa prochaine connexion, sauf s'il a déjà bloqué la permission sur son téléphone."}">${t.notifications_actives?'🔔 Notifications activées':'🔕 Notifications pas activées'}</span>
         </div>
@@ -5797,7 +5874,7 @@ function renderIncidents(){
     return `
       <div class="row-item">
         <div class="row-top">
-          <span class="row-title">${INCIDENT_TYPE_LABEL[i.type]||i.type}${res.ref?' · '+escHtml(res.ref):''}</span>
+          <span class="row-title">${INCIDENT_TYPE_LABEL[i.type]||i.type}${res.ref?` · <a href="#" style="color:var(--blue)" onclick="event.preventDefault();voirReservationRef('${escHtml((res.ref||'').replace(/'/g,"\\'"))}')">${escHtml(res.ref)}</a>`:''}</span>
           <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
         </div>
         <div class="row-meta">${escHtml((res.prenom||'')+' '+(res.nom||''))}${res.adresse?' · '+escHtml(res.adresse):''}${i.transporteur?.nom?' · 🚚 '+escHtml(i.transporteur.nom):''}<br/>${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
@@ -6500,9 +6577,12 @@ function renderClientFiche(d){
   ` : '<p class="empty">Aucune réservation.</p>';
 
   body.innerHTML = `
-    <div class="row-meta" style="margin-top:4px">
-      ${escHtml(c.tel||'—')}${c.email?' · '+escHtml(c.email):''}
-      ${latestResa?.adresse?'<br/>'+escHtml(latestResa.adresse):''}
+    <div class="row-meta" style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <span>${escHtml(c.tel||'—')}${c.email?' · '+escHtml(c.email):''}</span>
+      ${contactButtonsHtml(c.tel)}
+    </div>
+    <div class="row-meta">
+      ${latestResa?.adresse?escHtml(latestResa.adresse):''}
       ${latestResa?.instructions_acces?'<br/>📌 '+escHtml(latestResa.instructions_acces):''}
     </div>
     ${c.acces_difficile?`<div class="row-meta" style="color:var(--blue);font-weight:700;margin-top:6px">📌 ${escHtml(c.acces_difficile)}</div>`:''}
@@ -6512,6 +6592,16 @@ function renderClientFiche(d){
 
     <div class="section-title" style="margin-top:18px">🔴 Mission en cours (mise à jour toutes les 8s)</div>
     ${missionsHtml}
+
+    <div class="section-title" style="margin-top:18px">📋 Réservations</div>
+    ${(d.reservations||[]).length ? (d.reservations||[]).map(r => `
+      <div class="row-item" style="cursor:pointer" onclick="voirReservationRef('${escHtml((r.ref||'').replace(/'/g,"\\'"))}')">
+        <div class="row-top">
+          <span class="row-title">${escHtml(r.ref)}</span>
+          <span class="chip ${r.statut}">${RESA_LABEL[r.statut]||r.statut}</span>
+        </div>
+        <div class="row-meta">${frDate(r.date_debut)}${r.adresse?' · '+escHtml(r.adresse):''}</div>
+      </div>`).join('') : '<p class="empty">Aucune réservation.</p>'}
 
     <div class="section-title" style="margin-top:18px">📄 Documents</div>
     <div class="card" style="padding:14px 16px">${docsHtml}</div>
