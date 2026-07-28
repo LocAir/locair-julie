@@ -1920,6 +1920,26 @@ function rembourserOffrePrivilege(id, numero, prixCents){
     }, {danger:true, yesLabel:'Oui, rembourser'});
   };
 }
+async function forceSyncStock(){
+  const btn=document.getElementById('sync-btn');
+  const res=document.getElementById('sync-result');
+  btn.disabled=true; btn.textContent='⏳ Synchronisation…';
+  res.style.display='none';
+  try{
+    const r=await fetch(API('admin-stock'),{method:'POST',headers:authHeaders(),body:JSON.stringify({action:'force_sync'})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const txt=d.disponibles>0
+      ?`✅ Site à jour — ${d.disponibles} appareil${d.disponibles>1?'s':''} disponible${d.disponibles>1?'s':''}`
+      :'✅ Site à jour — aucun appareil disponible (complet)';
+    res.textContent=txt; res.style.color='var(--green)'; res.style.display='inline';
+    loadStock(true);
+  }catch(e){
+    res.textContent='❌ '+e.message; res.style.color='var(--red)'; res.style.display='inline';
+  }finally{
+    btn.disabled=false; btn.textContent='🔄 Forcer la synchronisation avec le site';
+  }
+}
 async function loadStock(silent){
   const zone = document.getElementById('tab-stock');
   if(!silent) zone.innerHTML = loading();
@@ -1955,6 +1975,8 @@ async function loadStock(silent){
           <span><i class="dot dot-blue"></i> ${rd2.en_location} en location</span>
         </div>
         <p class="sub" style="margin-top:14px">Se met à jour automatiquement à chaque réservation et à chaque retour confirmé par un transporteur. Chaque appareil a son numéro — le livreur sait exactement lequel récupérer.</p>
+        <button id="sync-btn" onclick="forceSyncStock()" style="margin-top:12px;padding:8px 16px;background:var(--nav);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">🔄 Forcer la synchronisation avec le site</button>
+        <span id="sync-result" style="margin-left:10px;font-size:13px;display:none"></span>
       </div>
       ${offresPrivilegeHtml()}
       ${rd.ok && dd ? `

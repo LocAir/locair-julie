@@ -10,16 +10,22 @@ module.exports = async (req, res) => {
   const token = String(req.query?.token || '').trim();
   if (!token) return res.status(400).send('Lien invalide.');
 
-  const supabase = getSupabase();
   try {
+    const supabase = getSupabase();
     const { data: doc, error: docErr } = await supabase
       .from('documents').select('id, storage_path, statut').eq('access_token', token).maybeSingle();
-    if (docErr) throw docErr;
+    if (docErr) {
+      console.error('[document-view] DB error:', docErr.message, docErr.code);
+      return res.status(500).send('Document temporairement indisponible. Contactez-nous : <a href="https://wa.me/33663798756">WhatsApp</a> ou <a href="mailto:contact@locair.fr">contact@locair.fr</a>');
+    }
     if (!doc) return res.status(404).send('Document introuvable ou lien expiré.');
     if (!doc.storage_path) return res.status(500).send('Document temporairement indisponible.');
 
-    const { data: signed, error } = await supabase.storage.from('missions').createSignedUrl(doc.storage_path, 300);
-    if (error || !signed?.signedUrl) return res.status(500).send('Document temporairement indisponible.');
+    const { data: signed, error: signErr } = await supabase.storage.from('missions').createSignedUrl(doc.storage_path, 300);
+    if (signErr || !signed?.signedUrl) {
+      console.error('[document-view] Storage error:', signErr?.message, 'path:', doc.storage_path);
+      return res.status(500).send('Document temporairement indisponible. Contactez-nous : <a href="https://wa.me/33663798756">WhatsApp</a> ou <a href="mailto:contact@locair.fr">contact@locair.fr</a>');
+    }
 
     if (doc.statut !== 'consulte') {
       await supabase.from('documents').update({ statut: 'consulte', consulte_at: new Date().toISOString() }).eq('id', doc.id).catch(() => {});
@@ -28,7 +34,7 @@ module.exports = async (req, res) => {
     res.writeHead(302, { Location: signed.signedUrl });
     return res.end();
   } catch (e) {
-    console.error('[document-view]', e.message);
-    return res.status(500).send('Erreur serveur.');
+    console.error('[document-view] unexpected:', e.message);
+    return res.status(500).send('Document temporairement indisponible. Contactez-nous : <a href="https://wa.me/33663798756">WhatsApp</a> ou <a href="mailto:contact@locair.fr">contact@locair.fr</a>');
   }
 };
