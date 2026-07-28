@@ -238,37 +238,46 @@ module.exports = async (req, res) => {
 
     let maintenanceCount = 0;
     for (const app of appareils || []) {
-      const { count } = await supabase
-        .from('reservation_appareils').select('id', { count: 'exact', head: true })
-        .eq('appareil_id', app.id);
-      if ((count || 0) < SEUIL) continue;
+      // Try/catch PAR appareil : recordMouvement relance une exception sur
+      // erreur DB (ex. panne transitoire Supabase) — sans ce filet, un seul
+      // appareil en échec coupait la vérification de TOUS les appareils
+      // suivants de la liste ce jour-là, silencieusement (seul le compteur
+      // 'catch' englobant plus bas aurait loggé, sans jamais reprendre).
+      try {
+        const { count } = await supabase
+          .from('reservation_appareils').select('id', { count: 'exact', head: true })
+          .eq('appareil_id', app.id);
+        if ((count || 0) < SEUIL) continue;
 
-      const [{ data: derniereAlerte }, { data: dernierRetourDispo }] = await Promise.all([
-        supabase.from('appareil_mouvements').select('created_at')
-          .eq('appareil_id', app.id).eq('type_evenement', 'autre')
-          .like('commentaire', `${ALERTE_MAINTENANCE_MARQUEUR}%`)
-          .order('created_at', { ascending: false }).limit(1).maybeSingle(),
-        supabase.from('appareil_mouvements').select('created_at')
-          .eq('appareil_id', app.id).eq('nouveau_statut', 'disponible')
-          .order('created_at', { ascending: false }).limit(1).maybeSingle(),
-      ]);
-      const dejaAlerte = derniereAlerte && (!dernierRetourDispo || derniereAlerte.created_at > dernierRetourDispo.created_at);
-      if (dejaAlerte) continue;
+        const [{ data: derniereAlerte }, { data: dernierRetourDispo }] = await Promise.all([
+          supabase.from('appareil_mouvements').select('created_at')
+            .eq('appareil_id', app.id).eq('type_evenement', 'autre')
+            .like('commentaire', `${ALERTE_MAINTENANCE_MARQUEUR}%`)
+            .order('created_at', { ascending: false }).limit(1).maybeSingle(),
+          supabase.from('appareil_mouvements').select('created_at')
+            .eq('appareil_id', app.id).eq('nouveau_statut', 'disponible')
+            .order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        ]);
+        const dejaAlerte = derniereAlerte && (!dernierRetourDispo || derniereAlerte.created_at > dernierRetourDispo.created_at);
+        if (dejaAlerte) continue;
 
-      // Ne change ni le statut ni la localisation (nouveauStatut/nouvelleLocalisation
-      // repassent la valeur déjà en place) : juste une trace pour ne pas
-      // reposer la même question chaque jour.
-      await recordMouvement(supabase, {
-        appareilId: app.id, typeEvenement: 'autre', nouvelleLocalisation: app.localisation,
-        utilisateur: 'systeme',
-        commentaire: `${ALERTE_MAINTENANCE_MARQUEUR} (${count} locations, seuil ${SEUIL}).`,
-      });
-      await pushToAdmin(supabase, {
-        title: `🔧 Climatiseur #${app.numero} — maintenance standard ?`,
-        body:  `${count} locations effectuées. Fais la maintenance standard et garde-le disponible, ou passe-le en maintenance depuis le Stock.`,
-        tag:   `maintenance-${app.id}`,
-      });
-      maintenanceCount++;
+        // Ne change ni le statut ni la localisation (nouveauStatut/nouvelleLocalisation
+        // repassent la valeur déjà en place) : juste une trace pour ne pas
+        // reposer la même question chaque jour.
+        await recordMouvement(supabase, {
+          appareilId: app.id, typeEvenement: 'autre', nouvelleLocalisation: app.localisation,
+          utilisateur: 'systeme',
+          commentaire: `${ALERTE_MAINTENANCE_MARQUEUR} (${count} locations, seuil ${SEUIL}).`,
+        });
+        await pushToAdmin(supabase, {
+          title: `🔧 Climatiseur #${app.numero} — maintenance standard ?`,
+          body:  `${count} locations effectuées. Fais la maintenance standard et garde-le disponible, ou passe-le en maintenance depuis le Stock.`,
+          tag:   `maintenance-${app.id}`,
+        });
+        maintenanceCount++;
+      } catch (e) {
+        console.error(`[Cron maintenance] appareil #${app.id}`, e.message);
+      }
     }
     if (maintenanceCount) report.maintenance = maintenanceCount;
   } catch (e) {
@@ -384,14 +393,22 @@ module.exports = async (req, res) => {
   try {
     const { data: cities } = await supabase.from('cities').select('id, name').eq('actif', true);
     for (const city of cities || []) {
-      const dispo = await getAvailability(supabase, city.id, in7dStr, in8dStr);
-      if (dispo === 0) {
-        await pushToAdmin(supabase, {
-          title: `📦 Stock saturé dans 7 jours — ${city.name}`,
-          body:  `Aucun appareil libre le ${in7dStr}. Pensez à activer le mode complet si nécessaire.`,
-          tag:   `stock-sature-${city.id}-${in7dStr}`,
-        });
-        report.stockAlerte = (report.stockAlerte || 0) + 1;
+      // Try/catch PAR ville : getAvailability relance une exception sur
+      // erreur DB — sans ce filet, une erreur transitoire sur UNE ville
+      // coupait l'alerte pour toutes les villes suivantes de la liste ce
+      // jour-là (silencieux, l'admin ne voit jamais qu'il en manque).
+      try {
+        const dispo = await getAvailability(supabase, city.id, in7dStr, in8dStr);
+        if (dispo === 0) {
+          await pushToAdmin(supabase, {
+            title: `📦 Stock saturé dans 7 jours — ${city.name}`,
+            body:  `Aucun appareil libre le ${in7dStr}. Pensez à activer le mode complet si nécessaire.`,
+            tag:   `stock-sature-${city.id}-${in7dStr}`,
+          });
+          report.stockAlerte = (report.stockAlerte || 0) + 1;
+        }
+      } catch (e) {
+        console.error(`[Cron stock alerte] ville #${city.id}`, e.message);
       }
     }
   } catch (e) {
