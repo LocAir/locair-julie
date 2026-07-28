@@ -5197,25 +5197,19 @@ input:-webkit-autofill:focus{
             <input id="pe-addr" type="text" placeholder="Ex. 12 rue de France, Nice" autocomplete="street-address"/>
             <p id="pe-addr-hint" style="font-size:11px;color:var(--grey2);margin-top:4px">Facultatif — aide à retrouver votre dossier plus vite</p>
           </div>
-          <div class="fld-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <div class="fld">
-              <label for="pe-debut">Début de location<span class="req">*</span></label>
-              <input id="pe-debut" type="date" required oninput="onProlongDateChange();this.classList.toggle('valid',!!this.value)"/>
-              <p id="pe-debut-hint" style="font-size:11px;color:var(--grey2);margin-top:4px">Date de livraison</p>
-            </div>
-            <div class="fld">
-              <label for="pe-fin-init">Fin de contrat actuelle<span class="req">*</span></label>
-              <input id="pe-fin-init" type="date" required oninput="onProlongDateChange();this.classList.toggle('valid',!!this.value)"/>
-              <p id="pe-fin-hint" style="font-size:11px;color:var(--grey2);margin-top:4px">Avant la prolongation</p>
-            </div>
+          <div class="fld">
+            <label for="pe-ref">Numéro de commande<span class="req">*</span></label>
+            <input id="pe-ref" type="text" placeholder="LOC-260710-8129" required style="text-transform:uppercase" oninput="this.classList.toggle('valid',!!this.value)"/>
+            <p id="pe-ref-hint" style="font-size:11px;color:var(--grey2);margin-top:4px">Sur votre facture ou email de confirmation</p>
           </div>
+          <p id="pe-lookup-err" role="alert" style="display:none;background:#fef2f2;color:#b91c1c;border:1px solid #fecaca;border-radius:10px;padding:12px 16px;font-size:13px;text-align:center;margin-top:12px"></p>
         </div>
         <div class="modal-nav" style="margin:8px 24px 20px">
           <button class="btn-back" onclick="goTo(0,true)" type="button">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
             <span id="lbl-back-sp1">Retour</span>
           </button>
-          <button class="btn-next" onclick="goProlongStep(2)" type="button">Choisir la durée →</button>
+          <button class="btn-next" id="pe-lookup-btn" onclick="goProlongStep(2)" type="button">Choisir la durée →</button>
         </div>
       </div>
 
@@ -6048,10 +6042,11 @@ function closeModal(){
   const clientPerso=document.querySelector('.client-type-perso');if(clientPerso){clientPerso.classList.add('on');clientPerso.setAttribute('aria-checked','true');}
   const siretWrap=document.getElementById('siret-wrap');if(siretWrap)siretWrap.style.display='none';
   // Reset prolongation form fields
-  ['pe-prenom','pe-nom','pe-email','pe-tel','pe-addr','pe-debut','pe-fin-init','pe-date'].forEach(id=>{
+  ['pe-prenom','pe-nom','pe-email','pe-tel','pe-addr','pe-ref','pe-date'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
-  _prolongDays=1;_prolongOrigDays=0;
+  _prolongDays=1;_prolongOrigDays=0;_prolongResa=null;
+  const peLookupErr=document.getElementById('pe-lookup-err');if(peLookupErr)peLookupErr.style.display='none';
   const pecgv=document.getElementById('pe-cgv');if(pecgv)pecgv.checked=false;
   const mc=document.getElementById('main-content');
   if(mc)mc.removeAttribute('inert');
@@ -7265,10 +7260,8 @@ const LANG_MAP=[
   ['label[for="pe-tel"]','html','Téléphone<span class="req">*</span>','Phone<span class="req">*</span>','电话<span class="req">*</span>',`Телефон<span class="req">*</span>`],
   ['label[for="pe-addr"]','text','Adresse de livraison d\'origine','Original delivery address','原配送地址',`Исходный адрес доставки`],
   ['#pe-addr-hint','text','Facultatif — aide à retrouver votre dossier plus vite','Optional — helps us find your file faster','可选——有助于更快找到您的档案',`Необязательно — помогает найти заказ быстрее`],
-  ['label[for="pe-debut"]','html','Début de location<span class="req">*</span>','Rental start<span class="req">*</span>','租赁开始<span class="req">*</span>',`Начало аренды<span class="req">*</span>`],
-  ['#pe-debut-hint','text','Date de livraison','Delivery date','配送日期',`Дата доставки`],
-  ['label[for="pe-fin-init"]','html','Fin de contrat actuelle<span class="req">*</span>','Current contract end<span class="req">*</span>','当前合同结束<span class="req">*</span>',`Текущая дата окончания контракта<span class="req">*</span>`],
-  ['#pe-fin-hint','text','Avant la prolongation','Before the extension','续租前',`До продления`],
+  ['label[for="pe-ref"]','html','Numéro de commande<span class="req">*</span>','Order number<span class="req">*</span>','订单号<span class="req">*</span>',`Номер заказа<span class="req">*</span>`],
+  ['#pe-ref-hint','text','Sur votre facture ou email de confirmation','On your invoice or confirmation email','在您的发票或确认邮件上',`В счёте или письме-подтверждении`],
   ['#sp1 .btn-next','text','Choisir la durée →','Choose duration →','选择时长 →',`Выбрать срок →`],
   ['#lbl-back-sp1','text','Retour','Back','返回',`Назад`],
   /* prolongation modal — SP2 */
@@ -8681,6 +8674,7 @@ let _prolongDays=1;
 let _prolongOrigDays=0;
 let _prolongPaying=false;
 let _prolongElements=null;
+let _prolongResa=null;
 
 function chooseFlow(type){
   _currentFlow=type;
@@ -8706,12 +8700,39 @@ function chooseFlow(type){
         Object.entries(map).forEach(([k,id])=>{if(prev[k]){const el=document.getElementById(id);if(el&&!el.value)el.value=prev[k];}});
       }
     }catch(e){}
+    _prolongResa=null;
     goProlongStep(1);
   }
 }
 
-function goProlongStep(n){
-  if(n===2&&!validateProlongStep1())return;
+async function lookupProlongReservation(){
+  const errEl=document.getElementById('pe-lookup-err');
+  const btn=document.getElementById('pe-lookup-btn');
+  const email=document.getElementById('pe-email')?.value.trim()||'';
+  const ref=document.getElementById('pe-ref')?.value.trim().toUpperCase()||'';
+  if(errEl)errEl.style.display='none';
+  const origLbl=btn?.textContent||'';
+  if(btn){btn.disabled=true;btn.textContent=_lang==='en'?'Searching…':_lang==='zh'?'搜索中…':_lang==='ru'?'Поиск…':'Recherche…';}
+  try{
+    const r=await fetch('/api/prolong-lookup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,ref})});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||('API '+r.status));
+    _prolongResa=d;
+    _prolongOrigDays=d.orig_days;
+    return true;
+  }catch(ex){
+    if(errEl){errEl.textContent=ex.message;errEl.style.display='block';}
+    return false;
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=origLbl;}
+  }
+}
+
+async function goProlongStep(n){
+  if(n===2){
+    if(!validateProlongStep1())return;
+    if(!(await lookupProlongReservation()))return;
+  }
   if(n===4&&!validateProlongStep3())return;
   document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active','bwd'));
   const panel=document.getElementById('sp'+n);
@@ -8719,7 +8740,7 @@ function goProlongStep(n){
   if(n===2)updateProlongPrice();
   if(n===3){
     const fd=document.getElementById('pe-date');
-    const finInit=document.getElementById('pe-fin-init')?.value;
+    const finInit=_prolongResa?.date_fin;
     const base=finInit?new Date(finInit):new Date();
     base.setDate(base.getDate()+1);
     const minDate=[base.getFullYear(),String(base.getMonth()+1).padStart(2,'0'),String(base.getDate()).padStart(2,'0')].join('-');
@@ -8734,7 +8755,7 @@ function goProlongStep(n){
 function validateProlongStep3(){
   const date=document.getElementById('pe-date')?.value;
   if(!date){highlight(['pe-date']);return false;}
-  const finInit=document.getElementById('pe-fin-init')?.value;
+  const finInit=_prolongResa?.date_fin;
   const baseline=finInit?new Date(finInit):new Date();
   baseline.setHours(0,0,0,0);
   if(new Date(date)<=baseline){highlight(['pe-date']);return false;}
@@ -8757,7 +8778,7 @@ function calcProlongIncremental(origDays,addDays){
 }
 
 function updateProlongPrice(){
-  const price=calcProlongIncremental(_prolongOrigDays,_prolongDays);
+  const price=calcProlongIncremental(_prolongOrigDays,_prolongDays)*(_prolongResa?.quantite||1);
   const el_days=document.getElementById('pp-days');
   const el_lbl=document.getElementById('pp-day-lbl');
   const el_total=document.getElementById('pp-total');
@@ -8768,20 +8789,8 @@ function updateProlongPrice(){
   if(el_minus)el_minus.style.opacity=_prolongDays<=1?'0.3':'1';
 }
 
-function onProlongDateChange(){
-  const debut=document.getElementById('pe-debut')?.value;
-  const finInit=document.getElementById('pe-fin-init')?.value;
-  if(debut&&finInit){
-    const diff=Math.round((new Date(finInit)-new Date(debut))/86400000);
-    _prolongOrigDays=Math.max(0,diff);
-  }else{
-    _prolongOrigDays=0;
-  }
-  updateProlongPrice();
-}
-
 function onProlongNewDateChange(){
-  const finInit=document.getElementById('pe-fin-init')?.value;
+  const finInit=_prolongResa?.date_fin;
   const newDate=document.getElementById('pe-date')?.value;
   if(finInit&&newDate){
     const diff=Math.round((new Date(newDate)-new Date(finInit))/86400000);
@@ -8800,17 +8809,14 @@ function validateProlongStep1(){
   const nom=document.getElementById('pe-nom')?.value.trim();
   const email=document.getElementById('pe-email')?.value.trim();
   const tel=document.getElementById('pe-tel')?.value.trim();
-  const debut=document.getElementById('pe-debut')?.value;
-  const finInit=document.getElementById('pe-fin-init')?.value;
+  const ref=document.getElementById('pe-ref')?.value.trim();
   const missing=[];
   if(!prenom)missing.push('pe-prenom');
   if(!nom)missing.push('pe-nom');
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))missing.push('pe-email');
   if(!tel)missing.push('pe-tel');
-  if(!debut)missing.push('pe-debut');
-  if(!finInit)missing.push('pe-fin-init');
+  if(!ref)missing.push('pe-ref');
   if(missing.length){highlight(missing);return false;}
-  if(new Date(finInit)<=new Date(debut)){highlight(['pe-fin-init']);return false;}
   return true;
 }
 
@@ -8822,7 +8828,8 @@ function buildProlongRecap(){
   const email=document.getElementById('pe-email')?.value.trim()||'—';
   const tel=document.getElementById('pe-tel')?.value.trim()||'—';
   const addr=document.getElementById('pe-addr')?.value.trim()||'—';
-  const price=calcProlongIncremental(_prolongOrigDays,_prolongDays);
+  const qte=_prolongResa?.quantite||1;
+  const price=calcProlongIncremental(_prolongOrigDays,_prolongDays)*qte;
   // Format date as DD/MM/YYYY
   const rawDate=document.getElementById('pe-date')?.value||'';
   let dateLabel='—';
@@ -8836,6 +8843,7 @@ function buildProlongRecap(){
       <span style="color:var(--grey2)">Email</span><span>${_e(email)}</span>
       <span style="color:var(--grey2)">${_lang==='en'?'Phone':_lang==='zh'?'电话':_lang==='ru'?'Тел.':'Tél.'}</span><span>${_e(tel)}</span>
       ${addr!=='—'?`<span style="color:var(--grey2)">${_lang==='en'?'Address':_lang==='zh'?'地址':_lang==='ru'?'Адрес':'Adresse'}</span><span>${_e(addr)}</span>`:''}
+      ${qte>1?`<span style="color:var(--grey2)">${_lang==='en'?'Air conditioners':_lang==='zh'?'空调数量':_lang==='ru'?'Кондиционеры':'Climatiseurs'}</span><span>${qte}</span>`:''}
       <span style="color:var(--grey2)">${_lang==='en'?'Added duration':_lang==='zh'?'新增时长':_lang==='ru'?'Добавленный срок':'Durée ajoutée'}</span><span style="font-weight:600;color:var(--blue)">${_prolongDays} ${_lang==='en'?'day'+(_prolongDays>1?'s':''):_lang==='zh'?'天':_lang==='ru'?'дней':'jour'+(_prolongDays>1?'s':'')}</span>
       <span style="color:var(--grey2)">${_lang==='en'?'Collection on':_lang==='zh'?'取回日期':_lang==='ru'?'Возврат':'Récupération le'}</span><span style="font-weight:500">${dateLabel}</span>
       <span style="color:var(--grey2)">${_lang==='en'?'Time slot':_lang==='zh'?'时间段':_lang==='ru'?'Временной слот':'Créneau'}</span><span style="font-weight:500">${escHtml(creneau)}</span>
@@ -8890,10 +8898,10 @@ async function startProlongPayment(){
   try{
     const stripe=_getStripe();
     if(!stripe)throw new Error(_lang==='en'?'Stripe not loaded — please disable your ad blocker':_lang==='zh'?'Stripe未加载——请禁用广告拦截器':_lang==='ru'?'Ошибка загрузки платёжной системы. Обновите страницу.':'Stripe non chargé — désactivez votre bloqueur de publicités');
-    const debutVal=document.getElementById('pe-debut')?.value||'';
-    const finInitVal=document.getElementById('pe-fin-init')?.value||'';
+    const debutVal=_prolongResa?.date_debut||'';
+    const finInitVal=_prolongResa?.date_fin||'';
     if(!document.getElementById('pe-cgv')?.checked)throw new Error(_lang==='en'?'Please accept the T\u0026Cs before paying.':_lang==='zh'?'请在付款前接受销售条款。':_lang==='ru'?'Пожалуйста, примите условия.':'Merci d\'accepter les CGV avant de payer.');
-    const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,quantite:_qty||1,original_days:_prolongOrigDays,prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,date_recuperation_iso:rawDate,creneau,lang:_lang||'fr',cgv_accepted:true,cgv_accepted_at:new Date().toISOString()})});
+    const r=await fetch('/api/checkout-prolong',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jours,quantite:_prolongResa?.quantite||1,original_days:_prolongOrigDays,ref:_prolongResa?.ref||'',prenom,nom,email,tel,adresse_origine:addr,date_debut:debutVal,date_fin_initiale:finInitVal,date_recuperation:dateLabel,date_recuperation_iso:rawDate,creneau,lang:_lang||'fr',cgv_accepted:true,cgv_accepted_at:new Date().toISOString()})});
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||('API '+r.status));}
     const d=await r.json();
     if(!d.clientSecret)throw new Error(d.error||'No secret');
@@ -9003,7 +9011,7 @@ function _showProlongSuccess(){
     succ.classList.add('show');
   }
   window.dataLayer=window.dataLayer||[];
-  dataLayer.push({event:'prolongation_paid',days:_prolongDays,orig_days:_prolongOrigDays,value:calcProlongIncremental(_prolongOrigDays,_prolongDays)});
+  dataLayer.push({event:'prolongation_paid',days:_prolongDays,orig_days:_prolongOrigDays,value:calcProlongIncremental(_prolongOrigDays,_prolongDays)*(_prolongResa?.quantite||1)});
 }
 
 
