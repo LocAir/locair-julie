@@ -65,15 +65,18 @@ module.exports = async (req, res) => {
         virements: virements || [],
         // Historique réservation par réservation — pour que le partenaire
         // retrouve ce qu'il a apporté et gagné sur chacune, pas seulement des totaux.
-        reservations: (resas || []).map(r => ({
+        reservations: (resas || []).map(r => {
+          const fullName = [r.prenom, r.nom].filter(Boolean).join(' ');
+          return {
           id: r.id, ref: r.ref,
-          client: [r.prenom, r.nom].filter(Boolean).join(' ') || null,
+          client: fullName.length > 30 ? fullName.slice(0, 29) + '…' : (fullName || null),
           date_debut: r.date_debut, date_fin: r.date_fin,
           montant_cents: r.prix_total_cents || 0,
           commission_cents: r.partenaire_commission_cents || 0,
           payee: r.partenaire_commission_payee,
           created_at: r.created_at,
-        })),
+          };
+        }),
       });
     }
 

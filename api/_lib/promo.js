@@ -9,7 +9,7 @@
 const REFERRAL_PCT = 30;
 
 function normalizePrenom(prenom) {
-  return (prenom || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Za-z]/g, '').toUpperCase();
+  return (prenom || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z]/g, '').toUpperCase();
 }
 
 function promoCodeForPrenom(prenom, pct) {

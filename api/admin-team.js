@@ -41,7 +41,8 @@ module.exports = async (req, res) => {
           role,
         }).select('id').single();
         if (!error) return res.status(200).json({ ok: true, id: created.id, pin: candidate });
-        if (pin || error.code !== '23505') throw error;
+        if (error.code !== '23505') throw error;
+        if (pin) return res.status(409).json({ error: 'Ce code est déjà utilisé par un autre membre, réessaie' });
       }
       return res.status(500).json({ error: 'Impossible de générer un code unique, réessaie' });
     }
