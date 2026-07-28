@@ -7,9 +7,13 @@ ALTER TABLE appareils DROP CONSTRAINT IF EXISTS appareils_statut_check;
 ALTER TABLE appareils ADD CONSTRAINT appareils_statut_check
   CHECK (statut IN ('disponible', 'panne', 'maintenance', 'loue'));
 
--- Exclut les appareils marqués "loué" du calcul de disponibilité, au même
--- titre que panne/maintenance (sans quoi ils resteraient proposés pour de
--- nouvelles réservations malgré le marquage manuel).
+-- Compte les unités réellement disponibles sur une période donnée.
+-- Bug corrigé : l'ancienne version soustrayait COUNT(DISTINCT ra.appareil_id)
+-- de toutes les réservations confirmées, y compris des unités en panne/maintenance
+-- toujours liées à d'anciennes réservations. Cela faisait tomber le compteur à 0
+-- même si des unités actives étaient libres.
+-- Fix : même logique que assign_appareils — on compte directement les unités
+-- actives qui NE SONT PAS liées à une réservation confirmée sur la période.
 CREATE OR REPLACE FUNCTION available_units(p_city_id bigint, p_date_debut date, p_date_fin date)
 RETURNS integer
 LANGUAGE sql
@@ -17,18 +21,22 @@ STABLE
 AS $$
   select
     (select count(*)::int from appareils a
-       where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue'))
+       where a.city_id = p_city_id
+         and a.statut not in ('panne', 'maintenance', 'loue')
+         and not exists (
+           select 1 from reservation_appareils ra
+           join reservations r on r.id = ra.reservation_id
+           where ra.appareil_id = a.id
+             and r.city_id = p_city_id
+             and r.statut = 'confirmee'
+             and r.date_debut < p_date_fin
+             and r.date_fin   > p_date_debut
+         )
+    )
     - coalesce((
         select sum(r.quantite) from reservations r
         where r.city_id = p_city_id and r.statut = 'en_attente'
           and r.created_at > now() - interval '30 minutes'
-          and r.date_debut < p_date_fin and r.date_fin > p_date_debut
-      ), 0)
-    - coalesce((
-        select count(distinct ra.appareil_id)
-        from reservation_appareils ra
-        join reservations r on r.id = ra.reservation_id
-        where r.city_id = p_city_id and r.statut = 'confirmee'
           and r.date_debut < p_date_fin and r.date_fin > p_date_debut
       ), 0);
 $$;
