@@ -258,6 +258,23 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .chip.type-recuperation{background:var(--amber-bg);color:var(--amber)}
 .chip.type-changement{background:var(--gold-lt);color:var(--gold-d)}
 
+/* ── Livraisons : priorité temporelle, urgence, instructions ────────────── */
+.mission-datetime{font-size:15px;font-weight:700;color:var(--black2);margin:6px 0 4px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.mission-datetime .creneau{font-size:12px;font-weight:600;color:var(--blue);background:var(--blue-lt);border-radius:100px;padding:2px 10px;font-family:var(--body)}
+.row-item.urgence-retard{border-left:3px solid var(--red)}
+.row-item.urgence-aujourd-hui{border-left:3px solid var(--amber)}
+.instructions-block{background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:8px 12px;margin:8px 0 2px;font-size:13px;font-weight:600;color:var(--amber);line-height:1.5}
+.missions-date-header{grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);padding:14px 2px 6px;border-bottom:1px solid var(--rule);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.missions-date-header.today{color:var(--blue)}
+.missions-date-header.overdue{color:var(--red)}
+.missions-date-header .count{font-weight:400;opacity:.65;font-size:10.5px;letter-spacing:.02em;text-transform:none}
+.liv-toolbar-top{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.liv-stat-pill{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:9px 14px;box-shadow:var(--sh-xs);flex:1;min-width:80px}
+.liv-stat-pill .n{font-family:var(--disp);font-size:22px;font-weight:400;line-height:1;font-variant-numeric:tabular-nums}
+.liv-stat-pill .n small{font-size:13px;font-weight:400;font-family:var(--body)}
+.liv-stat-pill .l{font-size:10px;color:var(--grey);font-weight:600;margin-top:4px;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.liv-stat-pill.warn .n{color:var(--red)}
+
 /* Carte réservation : hiérarchie client → dates → prix, au lieu d'une seule
    ligne de métadonnées à parser. Le prix reprend le traitement typographique
    des tuiles chiffrées de l'Accueil (police --disp) pour rester cohérent. */
@@ -3809,31 +3826,26 @@ function renderLivraisonsToolbar(){
   ];
   const avgLiv = avgDureeSurPlace('livraison');
   const avgRec = avgDureeSurPlace('recuperation');
-  const avgHtml = (avgLiv!=null || avgRec!=null) ? `
-    <div class="stat-grid" style="margin-bottom:16px">
-      ${avgLiv!=null?`<div class="stat-tile"><div class="n">${avgLiv} min</div><div class="l">Temps moyen sur place · Livraison</div></div>`:''}
-      ${avgRec!=null?`<div class="stat-tile"><div class="n">${avgRec} min</div><div class="l">Temps moyen sur place · Récupération</div></div>`:''}
-    </div>` : '';
-  // Compteur compact "aujourd'hui" : ce qui reste à faire aujourd'hui même,
-  // et ce qui traîne depuis avant aujourd'hui sans être terminé — les 2
-  // chiffres qu'Aly regarde en premier chaque matin.
   const today = new Date().toISOString().slice(0,10);
   const EN_COURS_STATUTS = ['a_faire','acceptee','en_route','arrivee','probleme'];
   const missionsAujourdhui = visibles.filter(m => m.date_prevue===today && EN_COURS_STATUTS.includes(m.statut)).length;
   const missionsEnRetard = visibles.filter(m => m.date_prevue<today && EN_COURS_STATUTS.includes(m.statut)).length;
-  const todayHtml = (missionsAujourdhui || missionsEnRetard) ? `
-    <div class="stat-grid" style="margin-bottom:16px">
-      <div class="stat-tile"><div class="n">${missionsAujourdhui}</div><div class="l">Restant aujourd'hui</div></div>
-      ${missionsEnRetard?`<div class="stat-tile warn"><div class="n">${missionsEnRetard}</div><div class="l">En retard</div></div>`:''}
+  // Pills compactes : toutes les métriques sur une seule ligne, œil sur l'urgence
+  const statsHtml = (missionsAujourdhui||missionsEnRetard||avgLiv!=null||avgRec!=null) ? `
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <div class="liv-stat-pill"><div class="n">${missionsAujourdhui}</div><div class="l">Aujourd'hui</div></div>
+      ${missionsEnRetard?`<div class="liv-stat-pill warn"><div class="n">${missionsEnRetard}</div><div class="l">En retard</div></div>`:''}
+      ${avgLiv!=null?`<div class="liv-stat-pill"><div class="n">${avgLiv}<small> min</small></div><div class="l">Tps moy. liv.</div></div>`:''}
+      ${avgRec!=null?`<div class="liv-stat-pill"><div class="n">${avgRec}<small> min</small></div><div class="l">Tps moy. récup.</div></div>`:''}
     </div>` : '';
   zone.innerHTML = `
-    ${todayHtml}
-    ${avgHtml}
-    <button class="btn btn-blue btn-block" style="margin-bottom:14px" onclick="openCreateMissionModal()">+ Créer une mission</button>
-    <div class="periods" style="margin-bottom:16px">
-      <button class="${LIVRAISONS_VIEW==='liste'?'on':''}" onclick="setLivraisonsView('liste')">📋 Liste</button>
-      <button class="${LIVRAISONS_VIEW==='affectation'?'on':''}" onclick="setLivraisonsView('affectation')">🖐️ Affectation</button>
-      <button class="${LIVRAISONS_VIEW==='recup_calendrier'?'on':''}" onclick="setLivraisonsView('recup_calendrier')">📅 Récupérations</button>
+    ${statsHtml}
+    <div class="liv-toolbar-top">
+      <button class="btn btn-blue" style="flex:1" onclick="openCreateMissionModal()">+ Créer une mission</button>
+      <div class="periods" style="margin:0;flex-shrink:0">
+        <button class="${LIVRAISONS_VIEW==='liste'?'on':''}" onclick="setLivraisonsView('liste')">📋 Liste</button>
+        <button class="${LIVRAISONS_VIEW==='affectation'?'on':''}" onclick="setLivraisonsView('affectation')">🖐️ Affectation</button>
+      </div>
     </div>
     <div id="liv-liste-view" class="${LIVRAISONS_VIEW!=='liste'?'hidden':''}">
       <input type="text" id="liv-search" placeholder="🔎 Client, adresse, référence…" oninput="renderLivraisons()"/>
@@ -4150,7 +4162,15 @@ function renderLivraisons(){
 
   if(!items.length){ list.innerHTML = '<p class="empty">🚚 Aucune mission ne correspond.</p>'; return; }
 
-  list.innerHTML = items.map(m => {
+  const todayStr = new Date().toISOString().slice(0,10);
+  const tomorrowStr = new Date(Date.now()+86400000).toISOString().slice(0,10);
+
+  // Groupement par date pour les vues opérationnelles
+  const SHOW_GROUPS = !LIVRAISONS_SHOW_MASQUEES && ['toutes','a_venir','non_assignees','en_retard','en_cours'].includes(LIVRAISONS_FILTER);
+  const byDate = {}; const dateOrder = [];
+  if(SHOW_GROUPS){ items.forEach(m => { const d=m.date_prevue||'__'; if(!byDate[d]){byDate[d]=[];dateOrder.push(d);} byDate[d].push(m); }); }
+
+  const renderCard = m => {
     const res = m.reservation || {};
     // Mission "autre" : pas de réservation/client, titre + adresse libres
     // saisis par l'admin à la création (voir openCreateMissionModal).
@@ -4209,19 +4229,27 @@ function renderLivraisons(){
     // ex. hors zone non appliqué — d'un coup d'œil, avant même la clôture).
     const montantLabel = isAutre ? ' (tarif fixé)' : (m.montant_manuel ? ' (tarif fixé manuellement)' : (res.hors_zone ? ' (barème hors zone)' : ''));
     const montantEstime = m.statut !== 'fait' && !m.montant_manuel && !isAutre;
+    // Urgence : retard (rouge) > aujourd'hui (ambre) > à venir (neutre)
+    const isOverdueMission = m.date_prevue < todayStr && !['fait','annule'].includes(m.statut);
+    const isTodayMission = m.date_prevue === todayStr;
+    const urgencyBorder = (nonAssignee || isOverdueMission) ? 'border-left:3px solid var(--red)' : isTodayMission ? 'border-left:3px solid var(--amber)' : '';
     return `
-      <div class="row-item" ${nonAssignee?'style="border-left:3px solid var(--red)"':''}>
-        <div class="row-top">
-          <span class="row-title">${nonAssignee?'🔔 ':''}${escHtml(displayName)}</span>
-          <span style="display:flex;gap:6px;align-items:center">
+      <div class="row-item" ${urgencyBorder?`style="${urgencyBorder}"`:''}">
+        <div class="row-top" style="margin-bottom:4px">
+          <span style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+            ${missionTypeBadge(m.type)}
+            ${nonAssignee?`<span class="chip probleme">🔔 Non assignée</span>`:''}
             ${res.hors_zone?`<span class="chip probleme">⚠️ Hors zone</span>`:''}
-            <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
           </span>
+          <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
         </div>
-        <div style="margin-bottom:6px">${missionTypeBadge(m.type)}</div>
-        <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(displayAddr)}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
-        ${detailBits.length?`<div class="row-meta">${detailBits.join(' · ')}</div>`:''}
-        ${res.instructions_acces?`<div class="row-meta" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
+        <div class="mission-datetime">
+          ${escHtml(frDate(m.date_prevue))}${m.creneau?` <span class="creneau">${escHtml(m.creneau)}</span>`:''}
+        </div>
+        <div style="margin-bottom:3px"><span class="row-title">${escHtml(displayName)}</span></div>
+        <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(displayAddr)}</div>
+        ${detailBits.length?`<div class="row-meta" style="margin-top:2px">${detailBits.join(' · ')}</div>`:''}
+        ${res.instructions_acces?`<div class="instructions-block">📌 ${escHtml(res.instructions_acces)}</div>`:''}
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
         ${m.statut==='a_faire' && m.incident_id?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-top:6px">☎️ A eu un incident — client peut-être de nouveau joignable</div>`:''}
         ${(['recuperation','changement'].includes(m.type) && m.statut==='fait' && !m.vidange_confirmee)?`<div class="row-meta" style="color:var(--amber)">⚠️ Vidange non confirmée</div>`:''}
@@ -4247,7 +4275,26 @@ function renderLivraisons(){
           </details>
         </div>
       </div>`;
-  }).join('');
+  };
+
+  if(SHOW_GROUPS && dateOrder.length > 1){
+    list.innerHTML = dateOrder.map(dateStr => {
+      const missions = byDate[dateStr];
+      const isOvd = dateStr !== '__' && dateStr < todayStr;
+      const isToday = dateStr === todayStr;
+      const isTomorrow = dateStr === tomorrowStr;
+      const dateLabel = dateStr==='__' ? 'Sans date'
+        : isToday ? `Aujourd'hui · ${frDate(dateStr)}`
+        : isTomorrow ? `Demain · ${frDate(dateStr)}`
+        : isOvd ? `En retard · ${frDate(dateStr)}`
+        : frDate(dateStr);
+      const hCls = isToday ? 'missions-date-header today' : isOvd ? 'missions-date-header overdue' : 'missions-date-header';
+      return `<div class="${hCls}">${escHtml(dateLabel)} <span class="count">${missions.length} mission${missions.length>1?'s':''}</span></div>`
+        + missions.map(renderCard).join('');
+    }).join('');
+  } else {
+    list.innerHTML = items.map(renderCard).join('');
+  }
 }
 
 // ── Calendrier des récupérations (Livraisons > 📅 Récupérations) ────────────
