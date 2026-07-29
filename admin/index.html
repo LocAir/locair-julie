@@ -216,6 +216,32 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .gantt-legend .gantt-status-dot{margin-right:5px}
 @media(max-width:640px){.gantt-nav{justify-content:space-between}}
 
+/* Calendrier des récupérations (onglet Livraisons) : même principe que le
+   Gantt du stock ci-dessus (colonne figée à gauche, en-tête figé en haut,
+   seul .recup-cal-wrap défile), mais une ligne PAR TRANSPORTEUR plutôt que
+   par appareil, et des cases à hauteur libre puisqu'une récupération est
+   ponctuelle (1 jour) et non une barre sur plusieurs jours — plusieurs
+   récupérations le même jour pour le même livreur s'empilent simplement. */
+.recup-cal-wrap{border:1px solid var(--rule);border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);max-height:min(65vh,600px);overflow:auto}
+.recup-cal-table{display:grid;grid-template-columns:130px repeat(var(--recup-cal-days),minmax(96px,1fr));min-width:max-content}
+.recup-cal-corner{position:sticky;top:0;left:0;z-index:4;display:flex;align-items:center;padding:0 10px;font-size:10px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.05em;background:var(--bg);border-bottom:1px solid var(--rule);border-right:1px solid var(--rule)}
+.recup-cal-head{position:sticky;top:0;z-index:3;background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;padding:6px 0;border-bottom:1px solid var(--rule);border-right:1px solid var(--rule)}
+.recup-cal-label{position:sticky;left:0;z-index:2;display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--bg);border-bottom:1px solid var(--rule);border-right:1px solid var(--rule);font-size:12.5px;font-weight:700;color:var(--black)}
+.recup-cal-label.out{color:var(--grey-soft)}
+.recup-cal-cell{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:4px;display:flex;flex-direction:column;gap:3px;min-height:48px}
+.recup-cal-today{background:var(--blue-lt)}
+.recup-cal-weekend{background:rgba(20,30,48,.05)}
+.recup-chip{display:block;width:100%;text-align:left;border:none;border-radius:8px;padding:4px 7px;font-size:10.5px;font-weight:700;color:#fff;cursor:pointer;line-height:1.35;box-shadow:var(--sh-xs);transition:filter .15s ease}
+.recup-chip:hover{filter:brightness(.92)}
+.recup-chip-name{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recup-chip-sub{display:block;font-weight:400;opacity:.85;font-size:9.5px}
+.recup-chip-a_faire{background:var(--amber)}
+.recup-chip-encours{background:var(--blue)}
+.recup-chip-fait{background:var(--green)}
+.recup-chip-probleme{background:var(--red)}
+.recup-cal-legend{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--grey);flex-wrap:wrap}
+.recup-cal-legend .gantt-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+
 .section-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey-soft);margin:24px 2px 10px}
 .row-item{padding:16px 18px;border:1px solid var(--rule);border-radius:var(--r);margin-bottom:10px;background:var(--white);box-shadow:var(--sh-xs)}
 .row-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}
@@ -3807,8 +3833,9 @@ function renderLivraisonsToolbar(){
     <div class="periods" style="margin-bottom:16px">
       <button class="${LIVRAISONS_VIEW==='liste'?'on':''}" onclick="setLivraisonsView('liste')">📋 Liste</button>
       <button class="${LIVRAISONS_VIEW==='affectation'?'on':''}" onclick="setLivraisonsView('affectation')">🖐️ Affectation</button>
+      <button class="${LIVRAISONS_VIEW==='recup_calendrier'?'on':''}" onclick="setLivraisonsView('recup_calendrier')">📅 Récupérations</button>
     </div>
-    <div id="liv-liste-view" class="${LIVRAISONS_VIEW==='affectation'?'hidden':''}">
+    <div id="liv-liste-view" class="${LIVRAISONS_VIEW!=='liste'?'hidden':''}">
       <input type="text" id="liv-search" placeholder="🔎 Client, adresse, référence…" oninput="renderLivraisons()"/>
       <div class="filter-scroll" style="margin:16px 0">
         ${filters.map(f => `<button class="${!LIVRAISONS_SHOW_MASQUEES && LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
@@ -3817,16 +3844,20 @@ function renderLivraisonsToolbar(){
       <div id="liv-list" class="row-grid"></div>
       ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleLivraisonsMasquees()">${LIVRAISONS_SHOW_MASQUEES?'← Revenir aux missions':`🙈 Afficher les missions supprimées (${masqueesCount})`}</button>` : ''}
     </div>
-    <div id="liv-affect-view" class="${LIVRAISONS_VIEW==='liste'?'hidden':''}">
+    <div id="liv-affect-view" class="${LIVRAISONS_VIEW!=='affectation'?'hidden':''}">
       <div id="liv-affect-board"></div>
       <div class="affect-confirm-bar hidden" id="affect-confirm-bar">
         <span id="affect-confirm-count"></span>
         <button class="btn btn-grey" onclick="cancelAffectChanges()">Annuler</button>
         <button class="btn btn-blue" id="affect-confirm-btn" onclick="applyAffectChanges()">Mettre à jour</button>
       </div>
+    </div>
+    <div id="liv-recup-cal-view" class="${LIVRAISONS_VIEW!=='recup_calendrier'?'hidden':''}">
+      <div id="liv-recup-cal-content"></div>
     </div>`;
   if(LIVRAISONS_VIEW==='liste') renderLivraisons();
-  else renderAffectBoard();
+  else if(LIVRAISONS_VIEW==='affectation') renderAffectBoard();
+  else renderRecupCalendrier();
 }
 // ── Créer une mission manuellement ─────────────────────────────────────────
 // admin-livraisons.js avait déjà l'action 'create' (type/réservation/
@@ -4217,6 +4248,126 @@ function renderLivraisons(){
         </div>
       </div>`;
   }).join('');
+}
+
+// ── Calendrier des récupérations (Livraisons > 📅 Récupérations) ────────────
+// Un calendrier dédié aux missions de type "récupération" (climatiseur repris
+// chez le client en fin de location), une ligne par transporteur — pour voir
+// d'un coup d'œil qui récupère quoi et quand, sans ouvrir chaque mission une
+// à une dans la liste. Réutilise _isoAddDays/frDateShort déjà définis pour le
+// calendrier Gantt de l'onglet Réservations (même fichier, mêmes helpers).
+const RECUP_CAL_DAYS = 14; // 2 semaines visibles, un vrai planning plutôt qu'un seul jour
+let RECUP_CAL_START = null; // ISO date — calculé au premier rendu (aujourd'hui), ajusté par la nav ◀ ▶
+function shiftRecupCal(deltaDays){
+  RECUP_CAL_START = _isoAddDays(RECUP_CAL_START, deltaDays);
+  renderRecupCalendrier();
+}
+function resetRecupCal(){
+  RECUP_CAL_START = null;
+  renderRecupCalendrier();
+}
+// Pas de fiche détail séparée pour une mission dans cet onglet — la carte de
+// la vue Liste EST le détail. Un clic sur un chip du calendrier bascule donc
+// vers la Liste avec la recherche pré-remplie sur cette mission précise.
+function openRecupFromCalendrier(missionId){
+  const m = LIVRAISONS_CACHE.find(x => x.id === missionId);
+  if(!m) return;
+  LIVRAISONS_VIEW = 'liste';
+  LIVRAISONS_FILTER = 'toutes';
+  LIVRAISONS_SHOW_MASQUEES = false;
+  renderLivraisonsToolbar();
+  requestAnimationFrame(() => {
+    const searchEl = document.getElementById('liv-search');
+    if(!searchEl) return;
+    const res = m.reservation || {};
+    searchEl.value = (res.ref && !isInternalRef(res.ref)) ? res.ref : `${res.prenom||''} ${res.nom||''}`.trim();
+    renderLivraisons();
+    searchEl.scrollIntoView({block:'start', behavior:'smooth'});
+  });
+}
+function renderRecupCalendrier(){
+  const el = document.getElementById('liv-recup-cal-content');
+  if(!el) return;
+  const todayStr = new Date().toISOString().slice(0,10);
+  if(!RECUP_CAL_START) RECUP_CAL_START = todayStr;
+  const windowEnd = _isoAddDays(RECUP_CAL_START, RECUP_CAL_DAYS-1);
+  const DOW = ['D','L','M','M','J','V','S'];
+  const dayMeta = Array.from({length:RECUP_CAL_DAYS}, (_,i) => {
+    const d = _isoAddDays(RECUP_CAL_START, i);
+    const dow = new Date(d+'T00:00:00Z').getUTCDay();
+    return {d, dow, isToday: d===todayStr, isWeekend: dow===0||dow===6};
+  });
+  const dayClass = dm => dm.isToday ? 'recup-cal-today' : (dm.isWeekend ? 'recup-cal-weekend' : '');
+  const headerCellsHtml = dayMeta.map((dm,i) => `
+    <div class="recup-cal-head ${dayClass(dm)}" style="grid-row:1;grid-column:${i+2}"><span class="gantt-dow">${DOW[dm.dow]}</span><span class="gantt-dnum">${new Date(dm.d+'T00:00:00Z').getUTCDate()}</span></div>`).join('');
+
+  const recups = LIVRAISONS_CACHE.filter(m => m.type==='recuperation' && !m.masquee && m.statut!=='annule' && m.date_prevue>=RECUP_CAL_START && m.date_prevue<=windowEnd);
+
+  // Une ligne par transporteur, + une ligne "Non assigné" seulement si au
+  // moins une récupération de la fenêtre affichée n'a personne — sinon elle
+  // resterait vide en permanence et prendrait de la place pour rien.
+  const transporteurs = [...TRANSPORTEURS_CACHE].sort((a,b) => (a.nom||'').localeCompare(b.nom||''));
+  const rowsDef = transporteurs.map(t => ({ id: t.id, nom: t.nom }));
+  if(recups.some(m => !m.transporteur)) rowsDef.push({ id: null, nom: 'Non assigné' });
+
+  if(!rowsDef.length){
+    el.innerHTML = '<p class="empty">📅 Aucun transporteur configuré.</p>';
+    return;
+  }
+
+  const byRow = new Map();
+  recups.forEach(m => {
+    const key = m.transporteur ? m.transporteur.id : null;
+    if(!byRow.has(key)) byRow.set(key, []);
+    byRow.get(key).push(m);
+  });
+
+  const statutClass = m => {
+    if(m.statut==='fait') return 'recup-chip-fait';
+    if(m.statut==='probleme') return 'recup-chip-probleme';
+    if(['acceptee','en_route','arrivee'].includes(m.statut)) return 'recup-chip-encours';
+    return 'recup-chip-a_faire';
+  };
+
+  const rowsHtml = rowsDef.map((row, idx) => {
+    const rowNum = idx+2;
+    const labelHtml = `<div class="recup-cal-label${row.id==null?' out':''}" style="grid-row:${rowNum}">${escHtml(row.nom)}</div>`;
+    const cellsHtml = dayMeta.map((dm, i) => {
+      const items = (byRow.get(row.id)||[]).filter(m => m.date_prevue===dm.d);
+      const chips = items.map(m => {
+        const res = m.reservation || {};
+        const nom = escHtml(((res.prenom||'')+' '+(res.nom||'')).trim() || '—');
+        return `<button type="button" class="recup-chip ${statutClass(m)}" onclick="openRecupFromCalendrier(${m.id})" title="${nom}${m.creneau?' · '+escHtml(m.creneau):''}">
+          <span class="recup-chip-name">${nom}</span>
+          ${m.creneau?`<span class="recup-chip-sub">${escHtml(m.creneau)}</span>`:''}
+        </button>`;
+      }).join('');
+      return `<div class="recup-cal-cell ${dayClass(dm)}" style="grid-row:${rowNum};grid-column:${i+2}">${chips}</div>`;
+    }).join('');
+    return labelHtml + cellsHtml;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="gantt-nav">
+      <button class="btn btn-grey" style="padding:6px 12px" onclick="shiftRecupCal(-7)">◀</button>
+      <span class="gantt-range">Du ${frDateShort(RECUP_CAL_START)} au ${frDateShort(windowEnd)}</span>
+      <button class="btn btn-grey" style="padding:6px 12px" onclick="shiftRecupCal(7)">▶</button>
+      ${RECUP_CAL_START!==todayStr?`<button class="btn btn-grey" style="padding:6px 12px" onclick="resetRecupCal()">Aujourd'hui</button>`:''}
+    </div>
+    ${!recups.length?'<p class="empty" style="margin-bottom:12px">📅 Aucune récupération prévue sur cette période.</p>':''}
+    <div class="recup-cal-wrap">
+      <div class="recup-cal-table" style="--recup-cal-days:${RECUP_CAL_DAYS}">
+        <div class="recup-cal-corner">Transporteur</div>
+        ${headerCellsHtml}
+        ${rowsHtml}
+      </div>
+    </div>
+    <div class="recup-cal-legend">
+      <span><i class="gantt-dot" style="background:var(--amber)"></i>À faire</span>
+      <span><i class="gantt-dot" style="background:var(--blue)"></i>En cours</span>
+      <span><i class="gantt-dot" style="background:var(--green)"></i>Terminée</span>
+      <span><i class="gantt-dot" style="background:var(--red)"></i>Problème</span>
+    </div>`;
 }
 
 // ── Modifier une mission ────────────────────────────────────────────────────
