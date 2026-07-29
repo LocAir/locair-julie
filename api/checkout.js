@@ -1,7 +1,6 @@
 const Stripe = require('stripe');
 const { getSupabase }         = require('./_lib/supabase');
 const { resolveCityByAddress } = require('./_lib/city');
-const { getAvailability }     = require('./_lib/stock');
 const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice }      = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
@@ -88,13 +87,9 @@ module.exports = async (req, res) => {
         return res.status(422).json({ error: 'Aucune ville configurée pour recevoir cette commande — contacte-nous.' });
       }
     }
-    const disponibles = await getAvailability(supabase, city.id, dateDebut, dateFin);
-    if (disponibles < qty) {
-      return res.status(409).json({ error: 'Plus assez de climatiseurs disponibles pour ces dates', disponibles: Math.max(0, disponibles) });
-    }
   } catch (err) {
-    console.error('[Stock check checkout]', err.message);
-    return res.status(500).json({ error: 'Erreur serveur stock' });
+    console.error('[Checkout resolveCity]', err.message);
+    return res.status(500).json({ error: 'Erreur serveur' });
   }
 
   // Frais de livraison : 60 € si le code postal est couvert par la ville résolue
@@ -170,15 +165,6 @@ module.exports = async (req, res) => {
         customer_id:  customerId,
       },
     });
-
-    // Second vérification de disponibilité juste avant l'INSERT — la première
-    // (ci-dessus) précède la création Stripe (~300-500 ms) pendant laquelle
-    // une commande concurrente peut avoir consommé le dernier appareil.
-    const recheckDispo = await getAvailability(supabase, city.id, dateDebut, dateFin);
-    if (recheckDispo < qty) {
-      await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel recheck]', e.message));
-      return res.status(409).json({ error: 'Plus assez de climatiseurs disponibles (vérification finale)', disponibles: Math.max(0, recheckDispo) });
-    }
 
     const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  city.id,
