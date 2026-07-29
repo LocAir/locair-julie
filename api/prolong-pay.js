@@ -1,7 +1,5 @@
 const Stripe = require('stripe');
 const { getSupabase }     = require('./_lib/supabase');
-const { resolveCityById } = require('./_lib/city');
-const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice: calcBase } = require('./_lib/pricing');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
@@ -102,21 +100,6 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Montant invalide' });
   }
 
-  // Vérification des disponibilités sur la période d'extension
-  let city;
-  try {
-    city = await resolveCityById(supabase, orig.city_id);
-    if (!city) return res.status(422).json({ error: 'Zone introuvable — contactez-nous directement.' });
-
-    const disponibles = await getAvailability(supabase, city.id, orig.date_fin, new_date_fin);
-    if (disponibles < (orig.quantite || 1)) {
-      return res.status(409).json({ error: 'Plus assez de climatiseurs disponibles pour cette prolongation.', disponibles: Math.max(0, disponibles) });
-    }
-  } catch (err) {
-    console.error('[prolong-pay stock]', err.message);
-    return res.status(500).json({ error: 'Erreur serveur stock' });
-  }
-
   const dateFinDisplay = new Date(new_date_fin + 'T12:00:00Z').toLocaleDateString('fr-FR', {
     weekday: 'long', day: 'numeric', month: 'long',
   });
@@ -192,16 +175,6 @@ module.exports = async (req, res) => {
       console.error('[prolong-pay insert]', insertErr.message);
       await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel]', e.message));
       return res.status(500).json({ error: 'Erreur serveur réservation' });
-    }
-
-    // Vérification post-insert : deux prolongations concurrentes pouvaient toutes
-    // les deux passer le premier contrôle de stock (TOCTOU). Si le stock devient
-    // négatif après notre insert, on annule.
-    const recheckDispo = await getAvailability(supabase, city.id, orig.date_fin, new_date_fin);
-    if (recheckDispo < (orig.quantite || 1)) {
-      await supabase.from('reservations').delete().eq('stripe_payment_intent_id', intent.id).catch(() => {});
-      await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel recheck prolong]', e.message));
-      return res.status(409).json({ error: 'Plus assez de climatiseurs disponibles pour cette prolongation.', disponibles: 0 });
     }
 
     return res.status(200).json({

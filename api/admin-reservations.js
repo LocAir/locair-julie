@@ -148,11 +148,6 @@ module.exports = async (req, res) => {
 
       if (!prenom) prenom = 'Client';
 
-      const disponibles = await getAvailability(supabase, city.id, dateDebut, dateFin);
-      if (disponibles < quantite) {
-        return res.status(409).json({ error: `Plus assez d'appareils disponibles (${Math.max(0, disponibles)} dispo sur ces dates)` });
-      }
-
       // Détection de doublon : même téléphone, dates qui se chevauchent, réservation
       // encore active (le doublon Maria Loftheim de ce soir venait exactement de là).
       // Contournable explicitement avec force=true une fois l'admin prévenu.
@@ -314,11 +309,6 @@ module.exports = async (req, res) => {
       }
       if (newDateFin <= orig.date_fin) {
         return res.status(400).json({ error: `La nouvelle date doit être postérieure au ${orig.date_fin}.` });
-      }
-
-      const disponibles = await getAvailability(supabase, city.id, orig.date_fin, newDateFin);
-      if (disponibles < (orig.quantite || 1)) {
-        return res.status(409).json({ error: `Plus assez d'appareils disponibles (${Math.max(0, disponibles)} dispo sur ces dates)` });
       }
 
       const _pnow = new Date();
