@@ -3009,6 +3009,19 @@ function onNrParrainInput(){
 // "montant total" sans détail. Recalculé à chaque changement, comme le
 // récapitulatif du site (qui n'a lui non plus pas de "surcharge manuelle") —
 // modifiable ensuite si besoin (remise commerciale, tarif spécial).
+function nrLivraisonCents(){
+  const cp = (document.getElementById('nr-cp')?.value || '').trim();
+  if(!cp) return { cents: 6000, label: '60 € (zone standard)', horsZone: false };
+  const cityId = parseInt(CITY_ID);
+  const city = VILLES_CACHE.find(c => c.id === cityId);
+  if(city && Array.isArray(city.postal_codes)){
+    const enZone = city.postal_codes.includes(cp);
+    return enZone
+      ? { cents: 6000,  label: '60 € (en zone)',   horsZone: false }
+      : { cents: 12000, label: '120 € (hors zone)', horsZone: true  };
+  }
+  return { cents: 6000, label: '60 € (zone standard)', horsZone: false };
+}
 function nrCalcTotal(){
   const debut = document.getElementById('nr-debut')?.value;
   const fin   = document.getElementById('nr-fin')?.value;
@@ -3019,8 +3032,8 @@ function nrCalcTotal(){
   const isTech = (document.getElementById('nr-installation')?.value || '').startsWith('Technicien');
   const baseCents = Math.round(prCalcBase(days) * qte * 100);
   const installCents = isTech ? 8000 : 0;
-  const livraisonCents = 6000; // tarif zone standard — ajuster le prix total à la main si hors zone (120 €)
-  return { days, qte, isTech, baseCents, installCents, livraisonCents, totalCents: baseCents + installCents + livraisonCents };
+  const { cents: livraisonCents, label: livraisonLabel, horsZone } = nrLivraisonCents();
+  return { days, qte, isTech, baseCents, installCents, livraisonCents, livraisonLabel, horsZone, totalCents: baseCents + installCents + livraisonCents };
 }
 function nrRecalcPrice(){
   const r = nrCalcTotal();
@@ -3029,7 +3042,7 @@ function nrRecalcPrice(){
   if(!r){ if(preview) preview.style.display = 'none'; return; }
   if(preview){
     preview.style.display = 'block';
-    preview.textContent = `Location (${r.days} j${r.qte>1?' × '+r.qte:''}) : ${(r.baseCents/100).toFixed(2)} € · Installation ${r.isTech?'technicien : '+(r.installCents/100).toFixed(2)+' €':'autonome : incluse'} · Livraison : ${(r.livraisonCents/100).toFixed(2)} € (60 € zone standard, à ajuster si hors zone)`;
+    preview.innerHTML = `Location (${r.days} j${r.qte>1?' × '+r.qte:''}) : ${(r.baseCents/100).toFixed(2)} € · Installation ${r.isTech?'technicien : '+(r.installCents/100).toFixed(2)+' €':'autonome : incluse'} · Livraison : <strong style="color:${r.horsZone?'var(--amber)':'inherit'}">${r.livraisonLabel}</strong>`;
   }
   if(prixEl) prixEl.value = Math.max(0, Math.round(r.totalCents - _nrPromoDiscount*100)) / 100;
 }
@@ -3052,6 +3065,8 @@ function reservationCreerHtml(){
       ${typeClientFieldsHtml('nr')}
       <label for="nr-adresse" style="margin-top:8px">Adresse *</label>
       <input type="text" id="nr-adresse"/>
+      <label for="nr-cp" style="margin-top:6px">Code postal</label>
+      <input type="text" id="nr-cp" placeholder="ex. 06000" maxlength="5" oninput="nrRecalcPrice()" style="max-width:120px"/>
       <div class="inline-form">
         <div><label for="nr-debut">Date livraison *</label><input type="date" id="nr-debut" oninput="nrRecalcPrice()"/></div>
         <div><label for="nr-fin">Date récupération *</label><input type="date" id="nr-fin" oninput="nrRecalcPrice()"/></div>
@@ -3455,6 +3470,7 @@ async function createReservation(confirmer){
     tel_secondaire: document.getElementById('nr-tel2').value.trim(),
     email: document.getElementById('nr-email').value.trim(),
     adresse: document.getElementById('nr-adresse').value.trim(),
+    code_postal: (document.getElementById('nr-cp').value || '').trim(),
     date_debut: document.getElementById('nr-debut').value,
     date_fin: document.getElementById('nr-fin').value,
     quantite: document.getElementById('nr-qte').value,
