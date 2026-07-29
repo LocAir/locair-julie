@@ -171,13 +171,13 @@ module.exports = async (req, res) => {
       .from('reservations')
       .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, stripe_payment_intent_id, created_at, source, lang, reservation_origine_id')
       .eq('statut', 'en_attente')
-      .not('email', 'is', null);
+      .or('email.not.is.null,tel.not.is.null');
 
     let relanceCount = 0, annuleCount = 0;
     if ((enAttente || []).length && process.env.STRIPE_SECRET_KEY) {
       const stripeRelance = new Stripe(process.env.STRIPE_SECRET_KEY);
       for (const resa of enAttente) {
-        if (!resa.email) continue;
+        if (!resa.email && !resa.tel) continue;
         const ageJours = Math.floor((today - new Date(resa.created_at)) / 86400000);
         if (ageJours < 1) continue;
 
@@ -211,7 +211,7 @@ module.exports = async (req, res) => {
         const doitRelancer = (nbRelances === 0 && ageJours >= 1) || (nbRelances === 1 && ageJours >= 3);
         if (!doitRelancer) continue;
 
-        const result = await sendReservationPaymentLink(supabase, stripeRelance, resa, { scenario: 'relance_paiement', rappel: true });
+        const result = await sendReservationPaymentLink(supabase, stripeRelance, resa, { scenario: 'relance_paiement', rappel: true, preferSms: true });
         if (result.ok) relanceCount++;
         else console.error('[Cron relance paiement]', result.error, 'reservation', resa.id);
       }

@@ -104,7 +104,8 @@ module.exports = async (req, res) => {
       // une adresse clairement hors du secteur couvert — le transporteur
       // touchait alors le tarif standard (30/40€) au lieu du tarif hors zone
       // (50/95€) pour une mission plus longue.
-      const cpAdresse = extractPostalCode(adresse);
+      const cpExplicite = (body.code_postal || '').trim();
+      const cpAdresse = cpExplicite || extractPostalCode(adresse);
       const horsZone  = !(cpAdresse && Array.isArray(city.postal_codes) && city.postal_codes.includes(cpAdresse));
       const etage       = (body.etage       || '').trim().slice(0, 50);
       const ascenseur   = (body.ascenseur   || '').trim().slice(0, 50);
