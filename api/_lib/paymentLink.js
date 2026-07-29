@@ -1,5 +1,5 @@
 const { fmtDate, getSignature, withSignature } = require('./emailEngine');
-const { sendBrevoEmail } = require('./brevo');
+const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
 const { tplLienPaiement } = require('./emailTemplates');
 const { calcTieredPrice } = require('./pricing');
 const { addDays } = require('./dates');
@@ -54,8 +54,10 @@ function computeManualBreakdown(resa) {
 // options.rappel : bascule le ton de l'email (titre/intro) sur un rappel
 // plutôt qu'un "voici votre lien" initial, sans dupliquer le template.
 async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) {
-  const { scenario = 'lien_paiement', rappel = false } = options;
-  if (!resa.email) return { ok: false, error: 'Aucun email sur cette réservation' };
+  const { scenario = 'lien_paiement', rappel = false, preferSms = false } = options;
+  const useSms = preferSms && !!resa.tel;
+  if (!useSms && !resa.email) return { ok: false, error: 'Aucun email sur cette réservation' };
+  if (useSms && !resa.tel) return { ok: false, error: 'Aucun téléphone sur cette réservation' };
   // Une prolongation restée "en_attente" (paiement démarré puis abandonné)
   // passe par ce même lien de relance que n'importe quelle réservation
   // standard — sans ce distingo, la session Stripe recréée ici ne porterait
@@ -161,6 +163,24 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
       { label: breakdown.isTech ? 'Installation par un technicien' : 'Installation autonome (kit fourni)', value: breakdown.isTech ? fmtEuros(breakdown.installCents) : 'Inclus' },
       { label: 'Livraison & récupération', value: fmtEuros(breakdown.livraisonCents) },
     ] : null;
+
+    if (useSms) {
+      // Réservation saisie manuellement par l'admin (prise par téléphone) :
+      // SMS uniquement — lien Stripe + numéro de dossier à conserver pour
+      // l'espace client. Plus rapide à lire qu'un email pour le client.
+      const dossierRef = isProlongation ? (refOrigine || resa.ref) : resa.ref;
+      const smsContent = `Loc'Air – ${resa.prenom ? resa.prenom + ', ' : ''}votre réservation est prête (dossier ${dossierRef}). Payez ici : ${session.url} – Conservez ce n° de dossier : il vous donnera accès à votre espace client sur locair.fr sans mot de passe.`;
+      const smsResult = await sendBrevoSms({ to: resa.tel, content: smsContent });
+      supabase.from('email_log').insert({
+        reservation_id: resa.id, scenario, canal: 'sms',
+        destinataire: resa.tel, modele: 'lien_paiement_sms',
+        statut: smsResult.ok ? 'envoye' : 'erreur',
+        erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
+        contenu: smsContent,
+      }).catch(() => {});
+      if (!smsResult.ok) return { ok: false, error: smsResult.error || 'Échec envoi SMS' };
+      return { ok: true };
+    }
 
     const sig = await getSignature(supabase);
     html = withSignature(tplLienPaiement({
