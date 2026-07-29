@@ -200,15 +200,14 @@ module.exports = async (req, res) => {
 
       if (!confirmerImmediat) {
         // Client pas présent pour payer tout de suite (pris au téléphone) :
-        // envoie immédiatement un lien de paiement Stripe par email, pour
-        // qu'il puisse finaliser en quelques instants. Sans email, la
-        // réservation reste créée mais personne ne peut la payer — on le
-        // signale explicitement à l'admin plutôt que de laisser croire que
-        // tout est en ordre (voir lien_envoye dans la réponse).
-        let lienResult = { ok: false, error: 'Aucun email renseigné' };
-        if (resa.email) {
+        // préférence SMS (numéro de commande + lien Stripe) si le client a un
+        // téléphone — sinon repli sur un email. Sans ni l'un ni l'autre, la
+        // réservation est créée mais le client ne peut pas payer tout seul :
+        // on le signale à l'admin plutôt que de laisser croire que tout est en ordre.
+        let lienResult = { ok: false, error: 'Aucun téléphone ni email renseigné' };
+        if (resa.tel || resa.email) {
           const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-          lienResult = await sendReservationPaymentLink(supabase, stripe, resa);
+          lienResult = await sendReservationPaymentLink(supabase, stripe, resa, { preferSms: true });
         }
         return res.status(200).json({
           ok: true, ref, en_attente: true,

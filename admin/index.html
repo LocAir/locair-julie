@@ -274,6 +274,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .liv-stat-pill .n small{font-size:13px;font-weight:400;font-family:var(--body)}
 .liv-stat-pill .l{font-size:10px;color:var(--grey);font-weight:600;margin-top:4px;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .liv-stat-pill.warn .n{color:var(--red)}
+.btn-resa-rapide{background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.btn-resa-rapide:hover{filter:brightness(1.08)}
+.stock-select-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--black2);color:#fff;border-radius:100px;padding:12px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(0,0,0,.35);font-size:14px;font-weight:600;z-index:900;transition:opacity .15s}
+.stock-select-bar.hidden{display:none}
+.row-item.stock-selected{outline:2px solid var(--blue);background:var(--blue-lt)}
+.stock-select-cb{width:18px;height:18px;accent-color:var(--blue);cursor:pointer;flex-shrink:0}
 
 /* Carte réservation : hiérarchie client → dates → prix, au lieu d'une seule
    ligne de métadonnées à parser. Le prix reprend le traitement typographique
@@ -1857,6 +1863,8 @@ const MOUVEMENT_TYPE_LABEL = {
 };
 
 let STOCK_FILTRES = {};
+let STOCK_SELECTION_MODE = false;
+let STOCK_SELECTION = new Set();
 // ── Offre Privilège (Step 2) : l'admin fixe le prix d'une offre déjà
 // détectée par le cron quotidien — tant qu'aucun prix n'est fixé, le client
 // ne voit rien. Réservé aux rôles finances, comme les virements.
@@ -2061,7 +2069,10 @@ async function loadStock(silent){
         ${Object.keys(STOCK_FILTRES).length ? `<button class="btn btn-grey" style="margin-top:8px" onclick="resetStockFiltres()">✕ Réinitialiser les filtres</button>` : ''}
       </div>
       <div class="card">
-        <h2>Appareils (${appareils.length})</h2>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <h2 style="margin:0;flex:1">Appareils (${appareils.length})</h2>
+          <button class="btn ${STOCK_SELECTION_MODE?'btn-blue':'btn-grey'}" style="padding:7px 14px;font-size:13px" onclick="toggleStockSelectMode()">${STOCK_SELECTION_MODE?'✓ Sélection activée':'☑ Sélectionner'}</button>
+        </div>
         <button class="btn btn-grey btn-block" style="margin-bottom:12px" onclick="exportStockCsv()">⬇️ Exporter en CSV</button>
         <div id="appareils-list">${appareils.map(a => {
           // "En location" (badge bleu) n'est jamais choisi à la main : déduit
@@ -2075,9 +2086,11 @@ async function loadStock(silent){
           const chipLabel = a.en_location
             ? (a.statut==='disponible' ? 'En location' : `En location · ${APPAREIL_STATUT_LABEL[a.statut]||a.statut}`)
             : (APPAREIL_STATUT_LABEL[a.statut]||a.statut);
+          const isSelected = STOCK_SELECTION.has(a.id);
           return `
-          <div class="row-item">
+          <div class="row-item${isSelected?' stock-selected':''}" id="stock-card-${a.id}">
             <div class="row-top">
+              ${STOCK_SELECTION_MODE?`<input type="checkbox" class="stock-select-cb" ${isSelected?'checked':''} onchange="toggleStockItem(${a.id}, this.checked)">`:''}
               <span class="row-title">Climatiseur n°${a.numero}</span>
               <span style="display:flex;gap:6px;align-items:center">
                 ${a.en_preparation?`<span class="chip a_faire">En préparation</span>`:''}
@@ -2112,6 +2125,11 @@ async function loadStock(silent){
         </div>
         <button class="btn btn-blue btn-block" onclick="addAppareil()" style="margin-top:14px">+ Ajouter des appareils (nouvel achat)</button>
         <div class="err" id="stock-err"></div>
+      </div>
+      <div class="stock-select-bar ${STOCK_SELECTION_MODE && STOCK_SELECTION.size>0?'':'hidden'}" id="stock-select-bar">
+        <span>${STOCK_SELECTION.size} appareil${STOCK_SELECTION.size>1?'s':''} sélectionné${STOCK_SELECTION.size>1?'s':''}</span>
+        <button style="background:#fff2;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:100px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer" onclick="cancelStockSelection()">Annuler</button>
+        <button style="background:var(--red);border:none;color:#fff;border-radius:100px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer" onclick="deleteSelectedAppareils()">🗑️ Supprimer (${STOCK_SELECTION.size})</button>
       </div>`;
     // Chargée à part : complément, pas une donnée critique pour l'écran
     // Stock — inutile de retarder le reste si elle est lente.
@@ -2458,6 +2476,43 @@ function deleteAppareil(id, numero){
       showToast(`Climatiseur n°${numero} supprimé`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {danger:true, yesLabel:'Supprimer'});
+}
+function toggleStockSelectMode(){
+  STOCK_SELECTION_MODE = !STOCK_SELECTION_MODE;
+  if(!STOCK_SELECTION_MODE) STOCK_SELECTION.clear();
+  loadStock(true);
+}
+function toggleStockItem(id, checked){
+  if(checked) STOCK_SELECTION.add(id); else STOCK_SELECTION.delete(id);
+  const card = document.getElementById('stock-card-'+id);
+  if(card) card.classList.toggle('stock-selected', checked);
+  const bar = document.getElementById('stock-select-bar');
+  if(bar){
+    bar.classList.toggle('hidden', STOCK_SELECTION.size===0);
+    const count = STOCK_SELECTION.size;
+    bar.querySelector('span').textContent = `${count} appareil${count>1?'s':''} sélectionné${count>1?'s':''}`;
+    const delBtn = bar.querySelector('button:last-child');
+    if(delBtn) delBtn.textContent = `🗑️ Supprimer (${count})`;
+  }
+}
+function cancelStockSelection(){ STOCK_SELECTION.clear(); STOCK_SELECTION_MODE = false; loadStock(true); }
+async function deleteSelectedAppareils(){
+  const ids = [...STOCK_SELECTION];
+  if(!ids.length) return;
+  confirmAction(`Supprimer ${ids.length} appareil${ids.length>1?'s':''} ? Impossible si l'un d'eux a un historique — marque-le "En panne" dans ce cas.`, async () => {
+    let errors = 0;
+    for(const id of ids){
+      try{
+        const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
+        const d = await r.json();
+        if(!r.ok) errors++;
+      }catch(e){ errors++; }
+    }
+    STOCK_SELECTION.clear(); STOCK_SELECTION_MODE = false;
+    loadStock();
+    if(errors) showToast(`${ids.length-errors} supprimé${ids.length-errors>1?'s':''}, ${errors} erreur${errors>1?'s':''}`, 'error');
+    else showToast(`${ids.length} appareil${ids.length>1?'s':''} supprimé${ids.length>1?'s':''}`, 'success');
+  }, {danger:true, yesLabel:`Supprimer (${ids.length})`});
 }
 // Historique des mouvements d'un appareil (Module 6, Partie 5).
 // Fiche administrateur complète d'un climatiseur (Module 6, Partie 9-10) :
@@ -3027,7 +3082,7 @@ function reservationCreerHtml(){
       </label>
       <button class="btn btn-blue btn-block" style="margin-top:16px" id="nr-submit-attente" onclick="createReservation(false)">📧 Créer — paiement à finaliser par le client</button>
       <button class="btn btn-grey btn-block" style="margin-top:8px" id="nr-submit-confirme" onclick="createReservation(true)">✅ Créer et confirmer (paiement déjà reçu)</button>
-      <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" envoie tout de suite au client un email avec un lien de paiement Stripe sécurisé.</p>
+      <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" envoie immédiatement au client un SMS avec son numéro de dossier et son lien de paiement Stripe sécurisé (repli sur email si pas de téléphone).</p>
       <div class="err" id="new-resa-err"></div>
     </div>`;
 }
@@ -3454,8 +3509,8 @@ async function submitReservation(body, submitBtn, errEl){
     }
     setReservationsView('liste');
     if(d.en_attente){
-      if(d.lien_envoye) showToast(`Réservation ${d.ref} créée — lien de paiement envoyé au client`, 'success');
-      else showToast(`Réservation ${d.ref} créée, mais le lien de paiement n'a pas pu être envoyé (${d.lien_erreur || 'erreur'}) — renvoie-le depuis la fiche`, 'error');
+      if(d.lien_envoye) showToast(`Réservation ${d.ref} créée — SMS de paiement envoyé au client`, 'success');
+      else showToast(`Réservation ${d.ref} créée, mais le SMS de paiement n'a pas pu partir (${d.lien_erreur || 'erreur'}) — renvoie le lien depuis la fiche`, 'error');
     } else {
       showToast(`Réservation ${d.ref} créée et confirmée`, 'success');
     }
@@ -3842,6 +3897,7 @@ function renderLivraisonsToolbar(){
     ${statsHtml}
     <div class="liv-toolbar-top">
       <button class="btn btn-blue" style="flex:1" onclick="openCreateMissionModal()">+ Créer une mission</button>
+      <button class="btn-resa-rapide" title="Ouvrir le formulaire de réservation — pour une commande prise par téléphone" onclick="RESERVATIONS_VIEW='creer';switchAdminTab('reservations')">📞 Résa rapide</button>
       <div class="periods" style="margin:0;flex-shrink:0">
         <button class="${LIVRAISONS_VIEW==='liste'?'on':''}" onclick="setLivraisonsView('liste')">📋 Liste</button>
         <button class="${LIVRAISONS_VIEW==='affectation'?'on':''}" onclick="setLivraisonsView('affectation')">🖐️ Affectation</button>
