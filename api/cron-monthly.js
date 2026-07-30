@@ -137,7 +137,7 @@ ${rows}
     await supabase.from('email_log').insert({
       scenario: 'recap_mensuel_virements', canal: 'email', destinataire: adminEmail,
       modele: 'recap_mensuel_virements', statut: 'envoye', sent_at: new Date().toISOString(),
-    }).catch(e => console.error('[recap_mensuel_virements log]', e.message));
+    }).then(() => {}, e => console.error('[recap_mensuel_virements log]', e.message));
 
     return { mois: `${nomMois} ${annee}`, nb: entries.length, grandTotal };
   }
@@ -211,7 +211,7 @@ async function runDormantClientsWinback(supabase) {
       statut: result.ok ? 'envoye' : 'erreur',
       erreur: result.ok ? null : String(result.error || '').slice(0, 500),
       contenu: html,
-    }).catch(() => {});
+    }).then(() => {}, () => {});
     if (result.ok) relanceCount++;
   }
   return { relancesDormants: relanceCount };

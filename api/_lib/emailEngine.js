@@ -169,18 +169,18 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
     if (force) {
       await supabase.from('email_sent')
         .upsert({ reservation_id: reservationId, scenario, sent_at: new Date().toISOString() },
-                 { onConflict: 'reservation_id,scenario' }).catch(() => {});
+                 { onConflict: 'reservation_id,scenario' }).then(() => {}, () => {});
     }
     supabase.from('email_log').insert({
       reservation_id: reservationId, scenario, destinataire: reservation.email, modele: scenario, statut: 'envoye',
       contenu: html,
-    }).catch(() => {});
+    }).then(() => {}, () => {});
     return { sent: true };
   } catch (e) {
     // Supprimer le verrou pour permettre une relance ultérieure
     if (!force) {
       await supabase.from('email_sent').delete()
-        .eq('reservation_id', reservationId).eq('scenario', scenario).catch(() => {});
+        .eq('reservation_id', reservationId).eq('scenario', scenario).then(() => {}, () => {});
     }
     await supabase.from('email_log').insert({
       reservation_id: reservationId, scenario, destinataire: reservation.email, modele: scenario,

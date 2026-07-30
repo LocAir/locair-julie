@@ -554,7 +554,7 @@ module.exports = async (req, res) => {
             statut: smsAbsentResult.ok ? 'envoye' : 'erreur',
             erreur: smsAbsentResult.ok ? null : String(smsAbsentResult.error || '').slice(0, 500),
             contenu: smsAbsentContent,
-          }).catch(() => {});
+          }).then(() => {}, () => {});
         }
       }
 

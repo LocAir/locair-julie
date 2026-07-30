@@ -33,7 +33,7 @@ async function notifyPartenaireCredentials(supabase, { nom, email, code, pin }) 
     statut: result.ok ? 'envoye' : 'erreur',
     erreur: result.ok ? null : String(result.error || '').slice(0, 500),
     contenu: html,
-  }).catch(() => {});
+  }).then(() => {}, () => {});
 }
 
 // Dérive un code d'affiliation lisible à partir du nom ("Conciergerie Azur"

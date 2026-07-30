@@ -372,7 +372,7 @@ module.exports = async (req, res) => {
       // Mettre à jour date_fin de la réservation d'origine pour que l'espace client
       // et les prolongations suivantes voient toujours la date réelle de fin.
       await supabase.from('reservations').update({ date_fin: newDateFin }).eq('id', origId)
-        .catch(e => console.error('[Admin prolong] date_fin update:', e.message));
+        .then(() => {}, e => console.error('[Admin prolong] date_fin update:', e.message));
       // Contrat mis à jour (nouvelle date de fin) + facture de l'extension —
       // même correctif que pour une prolongation payée en ligne (voir
       // webhook.js), sans quoi une prolongation prise par téléphone laissait

@@ -144,7 +144,7 @@ async function generateAndSendDocuments(supabase, resa, { force } = {}) {
       statut: result.ok ? 'envoye' : 'erreur',
       erreur: result.ok ? null : String(result.error || '').slice(0, 500),
       contenu: contratEmailHtml,
-    }).catch(() => {});
+    }).then(() => {}, () => {});
   }
 }
 
@@ -268,7 +268,7 @@ async function generateAndSendDocumentsAfterProlongation(supabase, { origineResa
       statut: result.ok ? 'envoye' : 'erreur',
       erreur: result.ok ? null : String(result.error || '').slice(0, 500),
       contenu: html,
-    }).catch(() => {});
+    }).then(() => {}, () => {});
   }
 }
 
@@ -351,14 +351,14 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
       supabase.from('email_log').insert({
         reservation_id: resa.id, scenario: 'email_facture_vente', canal: 'email',
         destinataire: resa.email, modele: 'email_facture_vente', statut: 'envoye', contenu: html,
-      }).catch(() => {});
+      }).then(() => {}, () => {});
     } else {
       console.error('[Documents] envoi facture de vente échoué —', result.error);
       supabase.from('email_log').insert({
         reservation_id: resa.id, scenario: 'email_facture_vente', canal: 'email',
         destinataire: resa.email, modele: 'email_facture_vente', statut: 'erreur',
         erreur: String(result.error || '').slice(0, 500), contenu: html,
-      }).catch(() => {});
+      }).then(() => {}, () => {});
     }
   }
 }

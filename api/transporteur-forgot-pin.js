@@ -59,7 +59,7 @@ module.exports = async (req, res) => {
           statut: result.ok ? 'envoye' : 'erreur',
           erreur: result.ok ? null : String(result.error || '').slice(0, 500),
           contenu: html,
-        }).catch(() => {});
+        }).then(() => {}, () => {});
       }
     }
 

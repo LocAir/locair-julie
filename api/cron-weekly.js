@@ -107,7 +107,7 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
     await supabase.from('email_log').insert({
       scenario: 'rapport_hebdo', canal: 'email', destinataire: adminEmail,
       modele: 'rapport_hebdo', statut: 'envoye', sent_at: new Date().toISOString(),
-    }).catch(e => console.error('[rapport_hebdo log]', e.message));
+    }).then(() => {}, e => console.error('[rapport_hebdo log]', e.message));
 
     return { date: todayStr, nbMissions, totalCA, newResas };
   }

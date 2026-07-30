@@ -215,7 +215,7 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
         statut: smsResult.ok ? 'envoye' : 'erreur',
         erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
         contenu: smsContent,
-      }).catch(() => {});
+      }).then(() => {}, () => {});
       if (!smsResult.ok) return { ok: false, error: smsResult.error || 'Échec envoi SMS' };
       return { ok: true };
     }
@@ -247,7 +247,7 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
       statut: result.ok ? 'envoye' : 'erreur',
       erreur: result.ok ? null : String(result.error || '').slice(0, 500),
       contenu: html,
-    }).catch(() => {});
+    }).then(() => {}, () => {});
     if (!result.ok) return { ok: false, error: result.error || 'Échec envoi email' };
     return { ok: true };
   } catch (e) {
@@ -257,7 +257,7 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
         reservation_id: resa.id, scenario, canal: 'email',
         destinataire: resa.email, modele: 'lien_paiement', statut: 'erreur',
         erreur: String(e.message || e).slice(0, 500), contenu: html,
-      }).catch(() => {});
+      }).then(() => {}, () => {});
     }
     return { ok: false, error: e.message };
   }

@@ -56,7 +56,7 @@ async function sendRecuperationReprogrammeeSms(supabase, { reservationId, tel, l
     statut: result.ok ? 'envoye' : 'erreur',
     erreur: result.ok ? null : String(result.error || '').slice(0, 500),
     contenu: content,
-  }).catch(() => {});
+  }).then(() => {}, () => {});
 }
 
 module.exports = async (req, res) => {
