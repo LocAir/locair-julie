@@ -7,7 +7,7 @@ const { computeBareme, getBaremeForCity } = require('./bareme');
 // l'événement pour l'onglet "Notifications" (lu/non lu, historique) ET
 // envoie le push navigateur existant — un seul point d'appel pour les deux.
 // Ne fait jamais échouer l'appelant (même contrat que pushToTransporteur).
-async function notifyTransporteur(supabase, transporteurId, { type, message, livraisonId = null, tag = null }) {
+async function notifyTransporteur(supabase, transporteurId, { type, message, livraisonId = null, tag = null, montantCents = null }) {
   if (!transporteurId || !type || !message) return;
   try {
     await supabase.from('transporteur_notifications').insert({
@@ -22,6 +22,7 @@ async function notifyTransporteur(supabase, transporteurId, { type, message, liv
   const url = livraisonId ? `/transporteur/?open=${livraisonId}` : '/transporteur/';
   await pushToTransporteur(supabase, transporteurId, { title: "Loc'Air", body: message, tag: tag || type, url });
   await smsNouvelleMission(supabase, transporteurId, { type, livraisonId });
+  await smsPaiement(supabase, transporteurId, { type, montantCents });
 }
 
 // SMS en plus du push (ajouté le 2026-07-27, à la demande du propriétaire) —
@@ -87,6 +88,29 @@ async function smsNouvelleMission(supabase, transporteurId, { type, livraisonId 
     if (!result.ok) console.error('[Notif transporteur SMS]', result.error);
   } catch (e) {
     console.error('[Notif transporteur SMS]', e.message);
+  }
+}
+
+async function smsPaiement(supabase, transporteurId, { type, montantCents }) {
+  if (type !== 'paiement' || !montantCents || montantCents <= 0) return;
+  try {
+    const { data: t } = await supabase.from('transporteurs').select('telephone, nom').eq('id', transporteurId).maybeSingle();
+    if (!t?.telephone) return;
+    const prenom = (t.nom || '').split(' ')[0];
+    const montantFmt = (montantCents / 100).toFixed(2).replace('.', ',') + ' €';
+    const lignes = [
+      `Bonjour ${prenom},`,
+      '',
+      `Ton virement Loc'Air de ${montantFmt} a été effectué.`,
+      'Il sera sur ton compte dans 1 à 3 jours ouvrés.',
+      '',
+      'Voir le détail de tes missions :',
+      'https://www.locair.fr/transporteur/?tab=activite',
+    ];
+    const result = await sendBrevoSms({ to: t.telephone, content: lignes.join('\n') });
+    if (!result.ok) console.error('[Notif transporteur paiement SMS]', result.error);
+  } catch (e) {
+    console.error('[Notif transporteur paiement SMS]', e.message);
   }
 }
 
