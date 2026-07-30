@@ -38,6 +38,19 @@ module.exports = async (req, res) => {
     if (error) throw error;
     if (!resa) return res.status(404).json({ error: GENERIC_ERROR });
 
+    // Une prolongation crée sa PROPRE ligne reservations (source=
+    // site_prolongation, voir checkout-prolong.js/prolong-pay.js) — sa
+    // mission de récupération, sa facture d'extension et son acceptation
+    // CGV sont enregistrées sous CET id-là, jamais sous celui de la
+    // réservation d'origine (reservationId ici, résolu par client-login.js).
+    // Sans élargir ces requêtes à toute la "famille" de réservations, un
+    // client qui a prolongé perdait purement et simplement sa mission de
+    // récupération à venir (l'ancienne, sur l'origine, est annulée — la
+    // nouvelle vit ailleurs) et ne voyait jamais la facture de son extension.
+    const { data: prolongations } = await supabase
+      .from('reservations').select('id').eq('reservation_origine_id', reservationId);
+    const allResaIds = [reservationId, ...(prolongations || []).map(p => p.id)];
+
     // Tout le reste en parallèle — une seule requête HTTP côté client pour
     // construire l'ensemble du tableau de bord (voir contrainte de
     // performance du Module 4 : limiter le nombre d'allers-retours).
@@ -57,12 +70,12 @@ module.exports = async (req, res) => {
       // date/créneau ne doit pas s'afficher comme si elle tenait toujours —
       // computeOrderStatus (orderStatus.js) traite déjà les deux pareil pour
       // la barre de progression, ce filtre aligne l'affichage détaillé dessus.
-      supabase.from('livraisons').select('type, statut, date_prevue, creneau, fait_at').eq('reservation_id', reservationId).not('statut', 'in', '(annulee,annule,refusee)').order('date_prevue', { ascending: true }),
-      supabase.from('incidents').select('id').eq('reservation_id', reservationId).in('statut', INCIDENT_OPEN_STATUSES),
+      supabase.from('livraisons').select('type, statut, date_prevue, creneau, fait_at').in('reservation_id', allResaIds).not('statut', 'in', '(annulee,annule,refusee)').order('date_prevue', { ascending: true }),
+      supabase.from('incidents').select('id').in('reservation_id', allResaIds).in('statut', INCIDENT_OPEN_STATUSES),
       supabase.from('reservation_appareils').select('appareil:appareils(numero, reference, modele:modeles_climatiseur(*))').eq('reservation_id', reservationId),
-      supabase.from('documents').select('id, type, numero, statut, genere_at, access_token').eq('reservation_id', reservationId),
-      supabase.from('cgv_acceptations').select('type, version, accepted_at').eq('reservation_id', reservationId),
-      supabase.from('email_log').select('scenario, created_at').eq('reservation_id', reservationId).eq('statut', 'envoye').order('created_at', { ascending: false }),
+      supabase.from('documents').select('id, type, numero, statut, genere_at, access_token').in('reservation_id', allResaIds),
+      supabase.from('cgv_acceptations').select('type, version, accepted_at').in('reservation_id', allResaIds),
+      supabase.from('email_log').select('scenario, created_at').in('reservation_id', allResaIds).eq('statut', 'envoye').order('created_at', { ascending: false }),
       supabase.from('centre_aide_articles').select('slug, categorie, titre, contenu').eq('actif', true).order('ordre'),
       supabase.from('assistance_config').select('telephone, email, horaires, whatsapp_url, urgence').eq('id', 1).maybeSingle(),
       // Offre Privilège (Step 2) : ne remonte au client que si l'admin a
