@@ -3154,7 +3154,7 @@ function reservationProlongerHtml(){
       <p class="sub" style="font-size:12px">Calculé automatiquement selon la grille tarifaire du site — modifiable si besoin.</p>
       <button class="btn btn-blue btn-block" style="margin-top:16px" id="pr-submit-attente" onclick="createProlongation(false)">📧 Créer — paiement à finaliser par le client</button>
       <button class="btn btn-grey btn-block" style="margin-top:8px" id="pr-submit-confirme" onclick="createProlongation(true)">✅ Créer et confirmer (paiement déjà reçu)</button>
-      <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" crée la prolongation en attente — l'envoi automatique du lien de paiement par email arrive bientôt. En attendant, confirme-la manuellement depuis la liste dès que le paiement est reçu.</p>
+      <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" envoie immédiatement au client un SMS avec son lien de paiement Stripe sécurisé (repli sur email si pas de téléphone).</p>
       <div class="err" id="new-prolong-err"></div>
     </div>`;
 }
@@ -3215,7 +3215,12 @@ async function createProlongation(confirmer){
     if(d.reservation) RESERVATIONS_CACHE.unshift(d.reservation);
     PROLONG_ORIG = null;
     setReservationsView('liste');
-    showToast(d.en_attente ? `Prolongation ${d.ref} créée, en attente de paiement` : `Prolongation ${d.ref} créée et confirmée`, 'success');
+    if(d.en_attente){
+      if(d.lien_envoye) showToast(`Prolongation ${d.ref} créée — SMS de paiement envoyé au client`, 'success');
+      else showToast(`Prolongation ${d.ref} créée, mais le SMS de paiement n'a pas pu partir (${d.lien_erreur || 'erreur'}) — renvoie le lien depuis la fiche`, 'error');
+    } else {
+      showToast(`Prolongation ${d.ref} créée et confirmée`, 'success');
+    }
   }catch(e){
     errEl.textContent = e.message; errEl.style.display = 'block';
   }finally{
