@@ -244,20 +244,25 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true, ref, reservation: { ...resa, statut: 'confirmee', masquee: false } });
     }
 
-    // Renvoi manuel du lien de paiement (email perdu, lien expiré côté
-    // Stripe après 24h...) — recrée une session à chaque fois plutôt que de
-    // réutiliser l'ancienne, jamais payée de toute façon, qui a pu expirer.
+    // Renvoi manuel du lien de paiement (email perdu, SMS pas parti, lien
+    // expiré côté Stripe après 24h...) — recrée une session à chaque fois
+    // plutôt que de réutiliser l'ancienne, jamais payée de toute façon, qui a
+    // pu expirer. preferSms:true reproduit le même choix de canal qu'à la
+    // création ('create'/'create_prolongation' ci-dessus) : SMS si un
+    // téléphone est renseigné, email sinon — sans ça une réservation prise
+    // par téléphone (SMS, souvent sans email) n'avait aucun moyen de
+    // renvoi depuis la fiche.
     if (action === 'renvoyer_lien_paiement') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
       const { data: resa } = await supabase.from('reservations').select('*').eq('id', id).eq('city_id', city.id).maybeSingle();
       if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
       if (resa.statut !== 'en_attente') return res.status(422).json({ error: "Cette réservation n'est plus en attente de paiement." });
-      if (!resa.email) return res.status(400).json({ error: 'Aucun email sur cette réservation — ajoutes-en un depuis "Modifier" avant de renvoyer le lien.' });
+      if (!resa.email && !resa.tel) return res.status(400).json({ error: 'Aucun email ni téléphone sur cette réservation — ajoutes-en un depuis "Modifier" avant de renvoyer le lien.' });
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-      const result = await sendReservationPaymentLink(supabase, stripe, resa);
+      const result = await sendReservationPaymentLink(supabase, stripe, resa, { preferSms: true });
       if (!result.ok) return res.status(502).json({ error: `Échec de l'envoi : ${result.error}` });
-      return res.status(200).json({ ok: true });
+      return res.status(200).json({ ok: true, canal: resa.tel ? 'sms' : 'email' });
     }
 
     // Prolongation prise en direct par l'admin (téléphone) — même principe que

@@ -2792,7 +2792,7 @@ function reservationRowHtml(res, readOnly){
           <summary title="Plus d'actions">⋯</summary>
           <div class="more-actions-menu">
             <button onclick="openEditReservationModal(${res.id})">✏️ Modifier</button>
-            ${res.statut==='en_attente' && res.source==='manuel' && res.email ? `<button onclick="renvoyerLienPaiement(${res.id})">🔁 Renvoyer le lien de paiement</button>` : ''}
+            ${res.statut==='en_attente' && res.source==='manuel' && (res.email || res.tel) ? `<button onclick="renvoyerLienPaiement(${res.id}, ${res.tel?'true':'false'})">🔁 Renvoyer le lien de paiement</button>` : ''}
             ${res.appareils_en_attente_validation?`<button onclick="validerAppareilsReservation(${res.id})">🔍 Valider l'appareil attribué</button>`:''}
             ${res.statut==='confirmee'?`<button onclick="reaffecterAppareilReservation(${res.id})">🔄 Réaffecter l'appareil</button>`:''}
             ${res.statut==='confirmee'?`<button onclick="proposerOffrePrivilegeManuelle(${res.id})">⭐ Proposer l'Offre Privilège</button>`:''}
@@ -3610,14 +3610,16 @@ function cancelReservation(id){
     }
   }, {danger:true, yesLabel:'Annuler la réservation'});
 }
-// Renvoyer le lien de paiement Stripe (email perdu, lien expiré après 24h) —
-// recrée une session à chaque fois côté serveur, voir admin-reservations.js.
-function renvoyerLienPaiement(id){
-  confirmAction('Renvoyer le lien de paiement au client par email ?', async () => {
+// Renvoyer le lien de paiement Stripe (email perdu, SMS pas parti, lien
+// expiré après 24h) — recrée une session à chaque fois côté serveur, voir
+// admin-reservations.js. Même canal que l'envoi initial : SMS si la
+// réservation a un téléphone, email sinon.
+function renvoyerLienPaiement(id, parSms){
+  confirmAction(`Renvoyer le lien de paiement au client par ${parSms?'SMS':'email'} ?`, async () => {
     try{
       const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'renvoyer_lien_paiement', id})});
       if(!r.ok) throw new Error((await r.json()).error||'Erreur');
-      showToast('Lien de paiement renvoyé', 'success');
+      showToast(`Lien de paiement renvoyé par ${parSms?'SMS':'email'}`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {yesLabel:'Renvoyer'});
 }
