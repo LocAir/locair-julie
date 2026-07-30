@@ -13,6 +13,7 @@ const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { sendReservationPaymentLink } = require('./_lib/paymentLink');
 const { sendRelanceProlongationSms, sendRappelRecuperationSms } = require('./_lib/reservations');
+const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
@@ -97,6 +98,38 @@ module.exports = async (req, res) => {
     console.error('[Cron escalade]', e.message);
   }
 
+  // ── 2bis. Mission assignée à un transporteur, mais jamais acceptée par lui ──
+  // Le bloc 2 ci-dessus ne détecte que l'absence de transporteur. Si Aly a
+  // bien assigné quelqu'un mais que ce transporteur n'ouvre jamais l'app
+  // (mission restée a_faire, jamais acceptée), rien ne le signalait
+  // jusqu'ici — Aly ne l'apprenait que le jour même, parfois trop tard.
+  // Même horizon que le bloc 2 (aujourd'hui/demain) pour ne jamais faire
+  // doublon avec l'alerte "retard" ci-dessous, qui couvre déjà le cas où la
+  // date prévue est passée.
+  try {
+    const { data: nonAcceptees } = await supabase
+      .from('livraisons')
+      .select('id, date_prevue, type, transporteur:transporteurs(nom)')
+      .eq('statut', 'a_faire')
+      .not('transporteur_id', 'is', null)
+      .is('accepted_at', null)
+      .gte('date_prevue', todayStr)
+      .lte('date_prevue', tomorrowStr);
+
+    let nonAccepteeCount = 0;
+    for (const liv of nonAcceptees || []) {
+      await pushToAdmin(supabase, {
+        title: `⏰ Mission non acceptée — ${liv.transporteur?.nom || '?'}`,
+        body:  `Mission du ${liv.date_prevue} assignée mais toujours pas acceptée — vérifie que le transporteur l'a bien vue.`,
+        tag:   `non-acceptee-${liv.id}`,
+      });
+      nonAccepteeCount++;
+    }
+    if (nonAccepteeCount) report.missionsNonAcceptees = nonAccepteeCount;
+  } catch (e) {
+    console.error('[Cron missions non acceptées]', e.message);
+  }
+
   // ── 3. Retards de récupération ───────────────────────────────────────────────
   // Récupérations dont la date prévue est passée et qui ne sont pas encore faites.
   try {
@@ -126,7 +159,17 @@ module.exports = async (req, res) => {
       try {
         const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
         const methods = await stripe.paymentMethods.list({ customer: resa.stripe_customer_id, type: 'card' });
-        if (!methods.data.length) continue;
+        if (!methods.data.length) {
+          // Jusqu'ici silencieux : le système pouvait laisser croire à Aly
+          // qu'il gérait le retard tout seul, alors qu'aucune carte n'est
+          // enregistrée pour ce client — aucun prélèvement ne partira jamais.
+          await pushToAdmin(supabase, {
+            title: `❌ Retard non facturable — ${resa.nom || '?'}`,
+            body:  `Aucune carte enregistrée pour ce client — le prélèvement automatique de retard est impossible. Contacte-le manuellement.`,
+            tag:   `retard-non-facturable-${liv.id}-${todayStr}`,
+          });
+          continue;
+        }
 
         const amountCents     = dailyRate(joursRetard) * 100;
         const idempotencyKey  = `retard-${liv.id}-${joursRetard}j-${todayStr}`;
@@ -152,11 +195,58 @@ module.exports = async (req, res) => {
         console.log('[Cron retard] Prélèvement', intent.id, 'pour reservation', liv.reservation_id);
       } catch (stripeErr) {
         console.error('[Cron retard Stripe]', stripeErr.message, 'reservation', liv.reservation_id);
+        // Jusqu'ici, un prélèvement refusé (carte expirée, plafond atteint...)
+        // ne se voyait que dans les logs Vercel — Aly pouvait croire que le
+        // système avait bien récupéré l'argent alors que rien n'a été
+        // prélevé. Alerte explicite + trace en incident pour un suivi manuel.
+        await pushToAdmin(supabase, {
+          title: `❌ Prélèvement retard échoué — ${resa.nom || '?'}`,
+          body:  `Le prélèvement automatique de ${joursRetard}j de retard a échoué (${(stripeErr.message || 'carte refusée').slice(0, 200)}). Contacte le client pour régulariser manuellement.`,
+          tag:   `retard-stripe-echec-${liv.id}-${todayStr}`,
+        });
+        await supabase.from('incidents').insert({
+          city_id:               resa.city_id || null,
+          reservation_id:        liv.reservation_id,
+          type:                  'retard',
+          description:           `Prélèvement automatique de retard échoué (${joursRetard}j) : ${(stripeErr.message || '').slice(0, 300)}`,
+          montant_facture_cents: dailyRate(joursRetard) * 100,
+          statut:                'nouveau',
+        }).catch(e2 => console.error('[Cron retard Stripe incident]', e2.message));
       }
     }
     if (retardCount) report.retards = retardCount;
   } catch (e) {
     console.error('[Cron retards]', e.message);
+  }
+
+  // ── Retards de livraison (parallèle au bloc 3 ci-dessus) ─────────────
+  // Seule la récupération en retard était détectée — une livraison jamais
+  // effectuée (client sans climatiseur, technicien qui n'y est jamais allé)
+  // n'était jusqu'ici découverte que si le client appelait lui-même. Pas de
+  // prélèvement automatique ici : ça ne concerne que le retard de
+  // restitution à la récupération (voir bloc 3).
+  try {
+    const { data: retardsLivraison } = await supabase
+      .from('livraisons')
+      .select('id, date_prevue, reservation:reservations(ref, nom)')
+      .eq('type', 'livraison')
+      .in('statut', ['a_faire', 'acceptee'])
+      .lt('date_prevue', todayStr);
+
+    let retardLivraisonCount = 0;
+    for (const liv of retardsLivraison || []) {
+      const joursRetard = Math.round((new Date(todayStr) - new Date(liv.date_prevue)) / 86400000);
+      const resa = liv.reservation || {};
+      await pushToAdmin(supabase, {
+        title: `🚨 Retard livraison — ${resa.nom || '?'} (${joursRetard}j)`,
+        body:  `Livraison prévue le ${liv.date_prevue}, non effectuée. Dossier ${resa.ref || '?'}.`,
+        tag:   `retard-livraison-${liv.id}`,
+      });
+      retardLivraisonCount++;
+    }
+    if (retardLivraisonCount) report.retardsLivraison = retardLivraisonCount;
+  } catch (e) {
+    console.error('[Cron retards livraison]', e.message);
   }
 
   // ── 3bis. Relance des réservations en_attente jamais payées (Module 8) ──────
@@ -314,6 +404,66 @@ module.exports = async (req, res) => {
     if (bloqueCount) report.appareils_bloques = bloqueCount;
   } catch (e) {
     console.error('[Cron appareils bloqués]', e.message);
+  }
+
+  // ── 4quater. Incidents ouverts sans suite depuis trop longtemps ────────────
+  // Un incident 'nouveau'/'en_analyse' (y compris celui créé automatiquement
+  // quand un transporteur signale un problème sur une mission — client
+  // absent, accès impossible... voir transporteur-action.js) ne remontait
+  // jusqu'ici que dans un chiffre global du rapport hebdomadaire du lundi :
+  // jamais signalé individuellement. Un incident oublié depuis 3 semaines
+  // pouvait donc rester invisible entre deux lundis.
+  try {
+    const SEUIL_INCIDENT_JOURS = parseInt(process.env.INCIDENT_ANCIEN_SEUIL_JOURS) || 3;
+    const seuilIncidentDate = new Date(Date.now() - SEUIL_INCIDENT_JOURS * 86400000).toISOString();
+    const { data: incidentsAnciens } = await supabase
+      .from('incidents')
+      .select('id, type, created_at, reservation:reservations(ref, nom)')
+      .in('statut', INCIDENT_OPEN_STATUSES)
+      .lt('created_at', seuilIncidentDate);
+
+    let incidentAncienCount = 0;
+    for (const inc of incidentsAnciens || []) {
+      const joursOuvert = Math.round((Date.now() - new Date(inc.created_at).getTime()) / 86400000);
+      const resa = inc.reservation || {};
+      await pushToAdmin(supabase, {
+        title: `🧯 Incident ouvert depuis ${joursOuvert}j — ${resa.nom || '?'}`,
+        body:  `Type "${inc.type}", dossier ${resa.ref || '?'} — toujours sans suite depuis ${joursOuvert} jours.`,
+        tag:   `incident-ancien-${inc.id}`,
+      });
+      incidentAncienCount++;
+    }
+    if (incidentAncienCount) report.incidentsAnciens = incidentAncienCount;
+  } catch (e) {
+    console.error('[Cron incidents anciens]', e.message);
+  }
+
+  // ── 4quinquies. Virements transporteur en attente depuis trop longtemps ────
+  // Visible jusqu'ici seulement en agrégat dans le rapport hebdomadaire du
+  // lundi — un transporteur qui demandait un virement le mardi pouvait
+  // attendre presque une semaine avant qu'Aly ne le remarque.
+  try {
+    const SEUIL_VIREMENT_JOURS = parseInt(process.env.VIREMENT_ANCIEN_SEUIL_JOURS) || 3;
+    const seuilVirementDate = new Date(Date.now() - SEUIL_VIREMENT_JOURS * 86400000).toISOString();
+    const { data: virementsAnciens } = await supabase
+      .from('virements')
+      .select('id, montant_cents, created_at, transporteur:transporteurs(nom)')
+      .eq('statut', 'demande')
+      .lt('created_at', seuilVirementDate);
+
+    let virementAncienCount = 0;
+    for (const v of virementsAnciens || []) {
+      const joursAttente = Math.round((Date.now() - new Date(v.created_at).getTime()) / 86400000);
+      await pushToAdmin(supabase, {
+        title: `💶 Virement en attente depuis ${joursAttente}j — ${v.transporteur?.nom || '?'}`,
+        body:  `Demande de ${(v.montant_cents / 100).toFixed(2)} € toujours pas versée.`,
+        tag:   `virement-ancien-${v.id}`,
+      });
+      virementAncienCount++;
+    }
+    if (virementAncienCount) report.virementsAnciens = virementAncienCount;
+  } catch (e) {
+    console.error('[Cron virements anciens]', e.message);
   }
 
   // ── 4ter. Offre Privilège — Step 1 : détection d'éligibilité ─────────────────
