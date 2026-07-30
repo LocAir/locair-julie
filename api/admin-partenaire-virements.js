@@ -208,7 +208,7 @@ module.exports = async (req, res) => {
         if (virInsErr) throw virInsErr;
       }
 
-      await notifyPartenaireVirementVerse(supabase, partenaireId, montant);
+      if (montant > 0) await notifyPartenaireVirementVerse(supabase, partenaireId, montant);
       return res.status(200).json({ ok: true, montant_cents: montant });
     }
 
