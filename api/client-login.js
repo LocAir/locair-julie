@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
   try {
     const { data: resa, error } = await supabase
       .from('reservations')
-      .select('id, ref, email')
+      .select('id, ref, email, reservation_origine_id')
       .eq('email', email)
       .eq('ref', ref)
       .order('created_at', { ascending: false })
@@ -43,8 +43,25 @@ module.exports = async (req, res) => {
       return res.status(404).json({ error: GENERIC_ERROR });
     }
 
-    const token = signClientToken(resa.id, resa.ref);
-    return res.status(200).json({ ok: true, token, ref: resa.ref });
+    // Une prolongation vit dans sa PROPRE ligne reservations (source
+    // 'site_prolongation', voir prolong-pay.js / admin-reservations.js
+    // action 'create_prolongation') — sans appareil, livraison ni facture
+    // qui lui soient rattachés, tout ça reste sur la réservation d'origine.
+    // Le client ne devrait jamais se connecter avec le numéro de dossier de
+    // la prolongation (email de confirmation, voir tplProlongConfirmation) —
+    // mais s'il le fait quand même, mieux vaut le rediriger silencieusement
+    // vers l'espace client complet de sa réservation d'origine que de lui
+    // montrer un tableau de bord vide (aucun climatiseur, dates tronquées).
+    let target = resa;
+    if (resa.reservation_origine_id) {
+      const { data: origine } = await supabase
+        .from('reservations').select('id, ref')
+        .eq('id', resa.reservation_origine_id).maybeSingle();
+      if (origine) target = origine;
+    }
+
+    const token = signClientToken(target.id, target.ref);
+    return res.status(200).json({ ok: true, token, ref: target.ref });
   } catch (err) {
     // Jamais de détail Supabase/SQL renvoyé au client — journalisé côté
     // serveur uniquement (consultable dans les logs Vercel par l'admin).
