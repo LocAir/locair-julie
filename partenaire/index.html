@@ -213,6 +213,7 @@ input[readonly]{background:var(--bg);color:var(--black);font-size:13.5px;cursor:
 .chip::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
 .chip-verse{background:var(--green-bg);color:var(--green)}
 .chip-pending{background:var(--amber-bg);color:var(--amber)}
+.chip-prolong{background:var(--blue-lt);color:var(--blue-mid);font-size:9px;margin-top:0}
 
 /* Virements historique */
 .vir-row{
@@ -720,8 +721,8 @@ function reservationsHistoryHtml(reservations){
         ${items.map(r => `
           <div class="resa-row">
             <div>
-              <div class="resa-client">${escHtml(r.client||'Client')}</div>
-              <div class="resa-meta">${r.date_debut?new Date(r.date_debut).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''} ${r.ref?'· '+escHtml(r.ref):''}</div>
+              <div class="resa-client">${escHtml(r.client||'Client')}${r.prolongation?'<span class="chip chip-prolong" style="margin-left:6px;vertical-align:middle">Prolongation</span>':''}</div>
+              <div class="resa-meta">${r.date_debut?new Date(r.date_debut).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''} ${r.ref?'· '+escHtml(r.ref):''}${r.prolongation&&r.origine_ref?' · 🔗 '+escHtml(r.origine_ref):''}</div>
             </div>
             <div class="resa-right">
               <div class="resa-amount">${euros(r.commission_cents/100)}</div>
@@ -805,7 +806,7 @@ function exportPdf(){
 
   const rows = (d.reservations||[]).map(r => `
     <tr>
-      <td>${r.ref||'—'}</td>
+      <td>${r.ref||'—'}${r.prolongation?'<br><span style="font-size:9px;color:#5a6577;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Prolongation'+(r.origine_ref?' de '+r.origine_ref:'')+'</span>':''}</td>
       <td>${r.client||'—'}</td>
       <td>${r.date_debut ? new Date(r.date_debut).toLocaleDateString('fr-FR') : '—'}</td>
       <td style="text-align:right">${euros(r.montant_cents/100)}</td>

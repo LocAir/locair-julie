@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
           .in('statut', ['confirmee', 'terminee'])
           .eq('masquee', false),
         supabase.from('reservations')
-          .select('id, ref, prenom, nom, date_debut, date_fin, prix_total_cents, partenaire_commission_cents, partenaire_commission_payee, created_at')
+          .select('id, ref, prenom, nom, date_debut, date_fin, prix_total_cents, partenaire_commission_cents, partenaire_commission_payee, created_at, source, reservation_origine_id')
           .eq('partenaire_id', partenaireId)
           .in('statut', ['confirmee', 'terminee'])
           .eq('masquee', false)
@@ -73,6 +73,18 @@ module.exports = async (req, res) => {
         .eq('masquee', false);
       const previsionAttente = (resasAttente || []).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
 
+      // Résolution des refs d'origine pour les prolongations — une seule
+      // requête pour toutes les prolongations de la liste (pas N requêtes).
+      const origIds = (resas || [])
+        .filter(r => r.source === 'site_prolongation' && r.reservation_origine_id)
+        .map(r => r.reservation_origine_id);
+      const origRefMap = {};
+      if (origIds.length) {
+        const { data: origResas } = await supabase.from('reservations')
+          .select('id, ref').in('id', origIds);
+        (origResas || []).forEach(o => { origRefMap[o.id] = o.ref; });
+      }
+
       const { data: virements } = await supabase
         .from('partenaire_virements')
         .select('id, montant_cents, statut, created_at, verse_at')
@@ -102,6 +114,8 @@ module.exports = async (req, res) => {
           commission_cents: r.partenaire_commission_cents || 0,
           payee: r.partenaire_commission_payee,
           created_at: r.created_at,
+          prolongation: r.source === 'site_prolongation',
+          origine_ref: r.reservation_origine_id ? (origRefMap[r.reservation_origine_id] || null) : null,
           };
         }),
       });

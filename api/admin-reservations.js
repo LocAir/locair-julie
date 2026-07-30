@@ -337,7 +337,7 @@ module.exports = async (req, res) => {
 
       const { data: orig, error: origErr } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut, hors_zone, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement, type_client, raison_sociale, siret, stripe_payment_intent_id, lang, cgv_accepted_at, prix_total_cents')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut, hors_zone, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement, type_client, raison_sociale, siret, stripe_payment_intent_id, lang, cgv_accepted_at, prix_total_cents, partenaire_id')
         .eq('id', origId).eq('city_id', city.id).maybeSingle();
       if (origErr) throw origErr;
       if (!orig) return res.status(404).json({ error: 'Réservation d\'origine introuvable' });
@@ -346,6 +346,13 @@ module.exports = async (req, res) => {
       }
       if (newDateFin <= orig.date_fin) {
         return res.status(400).json({ error: `La nouvelle date doit être postérieure au ${orig.date_fin}.` });
+      }
+
+      let partenaireCommissionCentsProlong = 0;
+      if (orig.partenaire_id) {
+        const { data: pt } = await supabase.from('partenaires')
+          .select('taux_commission_pct').eq('id', orig.partenaire_id).maybeSingle();
+        if (pt) partenaireCommissionCentsProlong = Math.round(prixTotalCents * pt.taux_commission_pct / 100);
       }
 
       const _pnow = new Date();
@@ -370,6 +377,9 @@ module.exports = async (req, res) => {
         // Lien fiable vers la réservation prolongée — voir isSupersededReservation
         // (_lib/emailSchedule.js) et migration_reservation_origine.sql.
         reservation_origine_id: orig.id,
+        // Commission partenaire : héritée du taux de la réservation d'origine.
+        partenaire_id: orig.partenaire_id || null,
+        partenaire_commission_cents: partenaireCommissionCentsProlong,
       }).select().single();
       if (error) throw error;
 
