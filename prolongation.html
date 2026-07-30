@@ -50,6 +50,10 @@ input[type="text"],input[type="email"],input[type="date"]{width:100%;padding:13p
 input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,58,95,.08)}
 input::placeholder{color:#aaa}
 input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
+.cgv-row{display:flex;align-items:flex-start;gap:9px;margin-bottom:16px;font-weight:400;letter-spacing:normal;text-transform:none;cursor:pointer}
+.cgv-row input[type="checkbox"]{width:17px;height:17px;flex-shrink:0;margin-top:1px;accent-color:var(--blue);cursor:pointer}
+.cgv-row span{font-size:12.5px;color:var(--grey);line-height:1.5}
+.cgv-row a{color:var(--blue)}
 
 .btn-submit{width:100%;padding:16px;margin-top:8px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-family:var(--body);font-size:16px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s,transform .1s,box-shadow .15s;box-shadow:0 4px 16px rgba(27,58,95,.25)}
 .btn-submit:hover:not(:disabled){background:var(--blue-d);transform:translateY(-1px);box-shadow:0 6px 22px rgba(27,58,95,.32)}
@@ -162,6 +166,11 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
     </div>
 
     <div id="extend-error" class="alert-error" role="alert" style="display:none"></div>
+
+    <label class="cgv-row" for="f-cgv">
+      <input type="checkbox" id="f-cgv"/>
+      <span>J'accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">conditions générales de vente</a> et la durée de prolongation choisie.</span>
+    </label>
 
     <button class="btn-submit" id="btn-pay" disabled>
       Payer <span id="btn-pay-label">—</span>
@@ -305,15 +314,20 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
     document.getElementById('resa-dates').textContent='Du '+fmtShort(resa.date_debut)+' au '+fmtLong(resa.date_fin)+' inclus ( '+resa.orig_days+' j )';
     const inp=document.getElementById('f-newdate');inp.min=addDay(resa.date_fin);inp.value='';
     hide('price-box');noerr('extend-error');
+    document.getElementById('f-cgv').checked=false;
     document.getElementById('btn-pay').disabled=true;
     document.getElementById('btn-pay-label').textContent='—';
   }
 
   /* ── Calcul prix (date) ── */
+  let priceValid=false;
+  function updateBtnPayState(){
+    document.getElementById('btn-pay').disabled=!(priceValid&&document.getElementById('f-cgv').checked);
+  }
   function updatePrice(){
     newDate=document.getElementById('f-newdate').value;
-    if(!newDate||!resa){hide('price-box');noerr('extend-error');document.getElementById('btn-pay').disabled=true;return;}
-    if(newDate<=resa.date_fin){hide('price-box');err('extend-error','La nouvelle date doit être après le '+fmtLong(resa.date_fin)+' (date de fin actuelle).');document.getElementById('btn-pay').disabled=true;return;}
+    if(!newDate||!resa){hide('price-box');noerr('extend-error');priceValid=false;updateBtnPayState();return;}
+    if(newDate<=resa.date_fin){hide('price-box');err('extend-error','La nouvelle date doit être après le '+fmtLong(resa.date_fin)+' (date de fin actuelle).');priceValid=false;updateBtnPayState();return;}
     noerr('extend-error');
     const ext=diffDays(resa.date_fin,newDate),tot=resa.orig_days+ext;
     const price=(calcBase(tot)-calcBase(resa.orig_days))*(resa.quantite||1);
@@ -324,18 +338,21 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
     document.getElementById('price-note').textContent=note+' · grille depuis le j1 de votre location';
     show('price-box');
     document.getElementById('btn-pay-label').textContent=price+' €';
-    document.getElementById('btn-pay').disabled=false;
+    priceValid=true;
+    updateBtnPayState();
   }
 
   document.getElementById('f-newdate').addEventListener('change',updatePrice);
+  document.getElementById('f-cgv').addEventListener('change',updateBtnPayState);
 
   /* ── Payer → créer PI + afficher Stripe ── */
   document.getElementById('btn-pay').addEventListener('click',async function(){
     if(!resa||!newDate)return;
+    if(!document.getElementById('f-cgv').checked){err('extend-error','Merci d’accepter les CGV avant de payer.');return;}
     this.disabled=true;this.innerHTML=SPIN+' Pr\xe9paration…';noerr('extend-error');
     try{
       const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),15000);
-      const r=await fetch('/api/prolong-pay',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({email,ref,new_date_fin:newDate}),signal:ctrl.signal});
+      const r=await fetch('/api/prolong-pay',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({email,ref,new_date_fin:newDate,cgv_accepted:true,cgv_accepted_at:new Date().toISOString()}),signal:ctrl.signal});
       clearTimeout(t);
       const d=await r.json();
       if(!r.ok)throw new Error(d.error||'Erreur serveur');
