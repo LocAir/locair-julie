@@ -50,11 +50,21 @@ module.exports = async (req, res) => {
       let livraisonsByResa = new Map();
       let incidentResaIds = new Set();
       let appareilsEnAttenteResaIds = new Set();
+      let dernierEnvoiByResa = new Map();
       if (ids.length) {
-        const [{ data: livs }, { data: incs }, { data: ras }] = await Promise.all([
+        // Uniquement les réservations où "Renvoyer le lien" peut apparaître
+        // (voir admin/index.html) — pas la peine d'interroger email_log pour
+        // le reste.
+        const pendingManuelIds = reservations.filter(r => r.statut === 'en_attente' && r.source === 'manuel').map(r => r.id);
+        const [{ data: livs }, { data: incs }, { data: ras }, { data: envois }] = await Promise.all([
           supabase.from('livraisons').select('reservation_id, type, statut, fait_at').in('reservation_id', ids),
           supabase.from('incidents').select('reservation_id').in('reservation_id', ids).in('statut', INCIDENT_OPEN_STATUSES),
           supabase.from('reservation_appareils').select('reservation_id, valide').in('reservation_id', ids),
+          pendingManuelIds.length
+            ? supabase.from('email_log').select('reservation_id, canal, statut, created_at')
+                .in('reservation_id', pendingManuelIds).in('scenario', ['lien_paiement', 'relance_paiement'])
+                .order('created_at', { ascending: false })
+            : Promise.resolve({ data: [] }),
         ]);
         for (const l of (livs || [])) {
           if (!livraisonsByResa.has(l.reservation_id)) livraisonsByResa.set(l.reservation_id, []);
@@ -64,6 +74,11 @@ module.exports = async (req, res) => {
         // Attribution appareil "en attente de validation" (Module 6, Partie 6) :
         // au moins un appareil pas encore validé par l'administration.
         appareilsEnAttenteResaIds = new Set((ras || []).filter(r => !r.valide).map(r => r.reservation_id));
+        // Le plus récent en premier (order desc ci-dessus) — on ne garde que
+        // le premier vu par réservation.
+        for (const e of (envois || [])) {
+          if (!dernierEnvoiByResa.has(e.reservation_id)) dernierEnvoiByResa.set(e.reservation_id, e);
+        }
       }
       // L'incident n'est volontairement pas passé ici (voir statutDetaille.js) :
       // statut_detaille doit refléter où en est vraiment la commande, un
@@ -76,6 +91,10 @@ module.exports = async (req, res) => {
         r.appareil_numeros = (r.reservation_appareils || [])
           .map(ra => ra.appareil?.numero).filter(n => n != null).sort((a, b) => a - b);
         delete r.reservation_appareils;
+        const dernierEnvoi = dernierEnvoiByResa.get(r.id);
+        r.dernier_envoi_lien = dernierEnvoi
+          ? { canal: dernierEnvoi.canal, statut: dernierEnvoi.statut, quand: dernierEnvoi.created_at }
+          : null;
       }
       Promise.all(reservations.map(r =>
         syncStatutDetaille(supabase, r.id, computeOrderStatus(r, livraisonsByResa.get(r.id) || [], false))
