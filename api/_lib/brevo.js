@@ -3,7 +3,14 @@
 // (api/cron-daily.js) jusqu'à la limite de 60s de Vercel, tuant la fonction
 // avant qu'elle n'atteigne les dernières sections (récap mensuel des
 // virements, relance clients dormants) sans aucune trace de l'échec.
-const BREVO_TIMEOUT_MS = 12000;
+// Remonté de 12s à 20s (juillet 2026) : un SMS avec une longue URL Stripe
+// pouvait prendre Brevo plus de 12s à traiter (plusieurs segments SMS), et
+// notre appel abandonnait alors que le SMS finissait par partir quand même
+// — Aly voyait une erreur pour un envoi en réalité réussi. 20s laisse une
+// vraie marge tout en restant très inférieur à la limite de 60s de Vercel
+// (aucune fonction n'appelle Brevo plusieurs fois d'affilée sans autre
+// travail long entre les deux).
+const BREVO_TIMEOUT_MS = 20000;
 
 // `attachments` (optionnel) : tableau de { name, content } où content est un
 // Buffer (converti en base64 ici) — utilisé pour joindre contrat/facture PDF

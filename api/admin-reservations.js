@@ -337,7 +337,23 @@ module.exports = async (req, res) => {
       if (error) throw error;
 
       if (!confirmerImmediat) {
-        return res.status(200).json({ ok: true, ref, en_attente: true, reservation: { ...resa, masquee: false } });
+        // Même envoi immédiat du lien de paiement que pour une nouvelle
+        // réservation manuelle (voir action 'create' ci-dessus) — jusqu'ici
+        // une prolongation prise par téléphone restait "en attente" sans
+        // aucun lien envoyé, obligeant Aly à la confirmer manuellement dès
+        // réception du paiement (voir renvoyer_lien_paiement, resté le seul
+        // rattrapage possible).
+        let lienResult = { ok: false, error: 'Aucun téléphone ni email renseigné' };
+        if (resa.tel || resa.email) {
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+          lienResult = await sendReservationPaymentLink(supabase, stripe, resa, { preferSms: true });
+        }
+        return res.status(200).json({
+          ok: true, ref, en_attente: true,
+          lien_envoye: lienResult.ok,
+          lien_erreur: lienResult.ok ? null : lienResult.error,
+          reservation: { ...resa, masquee: false },
+        });
       }
       await confirmReservation(supabase, resa);
       // Mettre à jour date_fin de la réservation d'origine pour que l'espace client

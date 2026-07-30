@@ -169,7 +169,14 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
       // SMS uniquement — lien Stripe + numéro de dossier à conserver pour
       // l'espace client. Plus rapide à lire qu'un email pour le client.
       const dossierRef = isProlongation ? (refOrigine || resa.ref) : resa.ref;
-      const smsContent = `Loc'Air – ${resa.prenom ? resa.prenom + ', ' : ''}votre réservation est prête (dossier ${dossierRef}). Payez ici : ${session.url} – Conservez ce n° de dossier : il vous donnera accès à votre espace client sur locair.fr sans mot de passe.`;
+      // Lien court (api/pay.js) plutôt que l'URL Stripe Checkout brute
+      // (200-300+ caractères à elle seule) — sans ça le SMS bascule en 3-4
+      // segments facturés séparément, et le temps de traitement supplémentaire
+      // suffit parfois à dépasser BREVO_TIMEOUT_MS (_lib/brevo.js) alors que
+      // le SMS finit quand même par partir : Aly voit une erreur pour un
+      // envoi en réalité réussi.
+      const lienCourt = `https://www.locair.fr/api/pay?pi=${encodeURIComponent(session.payment_intent)}`;
+      const smsContent = `Loc'Air – ${resa.prenom ? resa.prenom + ', ' : ''}votre réservation est prête (dossier ${dossierRef}). Payez ici : ${lienCourt} – Conservez ce n° de dossier : il vous donnera accès à votre espace client sur locair.fr sans mot de passe.`;
       const smsResult = await sendBrevoSms({ to: resa.tel, content: smsContent });
       supabase.from('email_log').insert({
         reservation_id: resa.id, scenario, canal: 'sms',
