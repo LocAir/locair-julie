@@ -2793,6 +2793,7 @@ function reservationRowHtml(res, readOnly){
           <summary title="Plus d'actions">⋯</summary>
           <div class="more-actions-menu">
             <button onclick="openEditReservationModal(${res.id})">✏️ Modifier</button>
+            <button onclick="duplicateReservation(${res.id})">🆕 Réservation similaire (même client)</button>
             ${res.statut==='en_attente' && res.source==='manuel' && (res.email || res.tel) ? `<button onclick="renvoyerLienPaiement(${res.id}, ${res.tel?'true':'false'})">🔁 Renvoyer le lien de paiement</button>` : ''}
             ${res.appareils_en_attente_validation?`<button onclick="validerAppareilsReservation(${res.id})">🔍 Valider l'appareil attribué</button>`:''}
             ${res.statut==='confirmee'?`<button onclick="reaffecterAppareilReservation(${res.id})">🔄 Réaffecter l'appareil</button>`:''}
@@ -2986,6 +2987,21 @@ function renderReservationsToolbar(){
 // api/checkout.js PROMO_CODES) — à tenir synchronisé si un code est ajouté.
 const NR_PROMO_CODES = {'LOCAIR10':10, 'LOCA10':10};
 let _nrPromoDiscount = 0;
+// "Réservation similaire" (même client) : pré-remplit le formulaire avec les
+// infos qui décrivent le CLIENT/le LOGEMENT (identité, adresse, contraintes
+// d'accès) d'une réservation passée, sans jamais recopier ce qui est propre
+// à CETTE réservation-là (dates, quantité, prix, code parrain/partenaire,
+// motif, consentements) — un client récurrent loue rarement les mêmes
+// dates/quantité, et CGV/marketing doivent être redemandés à chaque
+// nouvelle commande, même à un habitué. Lu une seule fois par
+// reservationCreerHtml() puis remis à null (usage unique).
+let NR_DUPLICATE_SOURCE = null;
+function duplicateReservation(id){
+  const res = RESERVATIONS_CACHE.find(r => r.id === id);
+  if(!res) return;
+  NR_DUPLICATE_SOURCE = res;
+  setReservationsView('creer');
+}
 // Applique/retire la remise sur le prix déjà saisi plutôt que de reconstruire
 // tout le calcul à partir de zéro — un prix négocié à la main pour d'autres
 // raisons (geste commercial, tarif spécial) n'est jamais écrasé.
@@ -3085,25 +3101,32 @@ function nrRecalcPrice(){
 }
 function reservationCreerHtml(){
   _nrPromoDiscount = 0;
+  // Usage unique : lu ici puis remis à null, pour qu'un simple retour sur
+  // l'onglet "Créer" (sans repasser par "Réservation similaire") reparte
+  // d'un formulaire vierge comme avant.
+  const d = NR_DUPLICATE_SOURCE;
+  NR_DUPLICATE_SOURCE = null;
+  const cpGuess = d ? (String(d.adresse||'').match(/\b(\d{5})\b/) || [])[1] || '' : '';
   return `
     <div class="card">
       <h2>Nouvelle réservation</h2>
       <p class="sub" style="margin-bottom:16px">Reprend tous les champs du formulaire du site — pour saisir toi-même une réservation prise par téléphone.</p>
+      ${d ? `<div style="background:var(--blue-lt);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.5"><strong>🔁 Infos reprises de ${escHtml(d.ref||'')}</strong> (${escHtml(d.prenom||'')} ${escHtml(d.nom||'')})<br>Dates, quantité, prix et CGV sont à ressaisir — <strong>vérifie que l'adresse et le logement sont toujours d'actualité.</strong></div>` : ''}
       <label for="nr-prenom">Prénom *</label>
-      <input type="text" id="nr-prenom"/>
+      <input type="text" id="nr-prenom" value="${escHtml(d?.prenom||'')}"/>
       <label for="nr-nom">Nom *</label>
-      <input type="text" id="nr-nom"/>
+      <input type="text" id="nr-nom" value="${escHtml(d?.nom||'')}"/>
       <label for="nr-tel">Téléphone</label>
-      <input type="tel" id="nr-tel"/>
+      <input type="tel" id="nr-tel" value="${escHtml(d?.tel||'')}"/>
       <label for="nr-tel2">Téléphone secondaire (secours, optionnel)</label>
-      <input type="tel" id="nr-tel2"/>
+      <input type="tel" id="nr-tel2" value="${escHtml(d?.tel_secondaire||'')}"/>
       <label for="nr-email">Email</label>
-      <input type="text" id="nr-email"/>
-      ${typeClientFieldsHtml('nr')}
-      <label for="nr-adresse" style="margin-top:8px">Adresse *</label>
-      <input type="text" id="nr-adresse"/>
+      <input type="text" id="nr-email" value="${escHtml(d?.email||'')}"/>
+      ${typeClientFieldsHtml('nr', d)}
+      <label for="nr-adresse" style="margin-top:8px">Adresse *${d?' <span style="color:var(--amber);font-weight:700">— à vérifier</span>':''}</label>
+      <input type="text" id="nr-adresse" value="${escHtml(d?.adresse||'')}"/>
       <label for="nr-cp" style="margin-top:6px">Code postal</label>
-      <input type="text" id="nr-cp" placeholder="ex. 06000" maxlength="5" oninput="nrRecalcPrice()" style="max-width:120px"/>
+      <input type="text" id="nr-cp" placeholder="ex. 06000" maxlength="5" oninput="nrRecalcPrice()" style="max-width:120px" value="${escHtml(cpGuess)}"/>
       <div class="inline-form">
         <div>
           <label for="nr-debut">Date livraison *</label>
@@ -3115,7 +3138,7 @@ function reservationCreerHtml(){
         </div>
       </div>
       <div class="periods" style="margin:-4px 0 2px;flex-wrap:wrap;height:auto">
-        ${[7,14,21,28].map(d=>`<button type="button" class="nr-dur-btn" data-days="${d}" onclick="nrSetDuration(${d})" style="flex:none;padding:6px 16px">${d} j</button>`).join('')}
+        ${[7,14,21,28].map(days=>`<button type="button" class="nr-dur-btn" data-days="${days}" onclick="nrSetDuration(${days})" style="flex:none;padding:6px 16px">${days} j</button>`).join('')}
       </div>
       <p class="sub" style="margin:0 0 10px;font-size:11.5px">Durée rapide — ou modifie directement la date de récupération ci-dessus.</p>
       <div class="inline-form">
@@ -3123,11 +3146,11 @@ function reservationCreerHtml(){
         <div><label for="nr-prix">Prix total (€)</label><input type="number" id="nr-prix" min="0" step="0.5"/></div>
       </div>
       <p id="nr-price-preview" class="sub" style="display:none;margin:-6px 0 10px;font-size:12px;line-height:1.6"></p>
-      ${logisticsFieldsHtml('nr')}
-      <label for="nr-logement" style="margin-top:8px">Surface à climatiser</label>
+      ${logisticsFieldsHtml('nr', d)}
+      <label for="nr-logement" style="margin-top:8px">Surface à climatiser${d?' <span style="color:var(--amber);font-weight:700">— à vérifier</span>':''}</label>
       <select id="nr-logement">
-        <option value="">—</option>
-        <option>Studio</option><option>T2</option><option>T3/T4</option><option>Maison</option>
+        <option value="" ${!d?.logement?'selected':''}>—</option>
+        ${['Studio','T2','T3/T4','Maison'].map(o=>`<option ${d?.logement===o?'selected':''}>${o}</option>`).join('')}
       </select>
       <label for="nr-parrain" style="margin-top:8px">Code parrain (optionnel)</label>
       <input type="text" id="nr-parrain" oninput="onNrParrainInput()"/>
