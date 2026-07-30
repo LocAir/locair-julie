@@ -679,6 +679,42 @@ module.exports = async (req, res) => {
     console.error('[Cron communications]', e.message);
   }
 
+  // ── 6ter. Récap quotidien des communications envoyées aux clients (email +
+  // SMS, tous scénarios confondus) — pour que l'admin soit alerté chaque jour
+  // de ce qui est réellement parti, sans avoir à aller vérifier lui-même.
+  // Fenêtre glissante de 24h (le cron ne tourne qu'une fois par jour, voir
+  // vercel.json) ; tag daté (pas comme le tag "anomalies" ci-dessus) car
+  // c'est un événement distinct chaque jour, pas un état à mettre à jour.
+  try {
+    const depuis24h = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    const { data: logsRecap } = await supabase
+      .from('email_log')
+      .select('canal, statut, reservation:reservations!inner(city_id)')
+      .gte('created_at', depuis24h);
+    const parVille = {};
+    for (const log of logsRecap || []) {
+      const cid = log.reservation?.city_id;
+      if (!cid) continue;
+      const s = (parVille[cid] = parVille[cid] || { total: 0, email: 0, sms: 0, erreurs: 0 });
+      s.total++;
+      if (log.canal === 'sms') s.sms++; else s.email++;
+      if (log.statut === 'erreur') s.erreurs++;
+    }
+    const { data: citiesForRecap } = await supabase.from('cities').select('id, name').eq('actif', true);
+    for (const city of citiesForRecap || []) {
+      const s = parVille[city.id];
+      if (!s || !s.total) continue;
+      await pushToAdmin(supabase, {
+        title: `📨 Communications d'hier — ${city.name}`,
+        body:  `${s.total} envoi${s.total > 1 ? 's' : ''} (${s.email} email${s.email > 1 ? 's' : ''}, ${s.sms} SMS)${s.erreurs ? ` · ${s.erreurs} échec${s.erreurs > 1 ? 's' : ''} à vérifier` : ''}.`,
+        tag:   `recap-communications-${city.id}-${todayStr}`,
+      });
+      report.recapCommunications = (report.recapCommunications || 0) + s.total;
+    }
+  } catch (e) {
+    console.error('[Cron récap communications]', e.message);
+  }
+
   // ── 7. Rapport hebdomadaire (lundi) et récap virements mensuel (le 1er) ─────
   // Un seul cron programmé sur ce plan Vercel (voir vercel.json) — ces deux
   // automatisations, jusque-là écrites mais jamais planifiées, se déclenchent

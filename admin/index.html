@@ -7223,6 +7223,8 @@ let COMMUNICATIONS_ANOMALIES = 0;
 let COMMUNICATIONS_FILTER = 'anomalies'; // 'anomalies' | 'toutes'
 let COMMUNICATIONS_SEARCH = '';
 let COMMUNICATIONS_OPEN = new Set(); // reservation_id des fiches dépliées
+let COMMUNICATIONS_JOUR = { items: [], summary: { total: 0, email: 0, sms: 0, erreurs: 0 } };
+let COMMUNICATIONS_JOUR_OPEN = false;
 
 // Libellés courts pour les pastilles (coup d'œil) — le libellé complet reste
 // disponible au survol (title) et dans le détail déplié.
@@ -7256,12 +7258,17 @@ async function loadCommunications(){
   const zone = document.getElementById('tab-communications');
   if(!zone) return;
   try{
-    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'cockpit'})});
+    const [r, rJour] = await Promise.all([
+      fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'cockpit'})}),
+      fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'jour'})}),
+    ]);
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     COMMUNICATIONS_CACHE = d.clients || [];
     COMMUNICATIONS_ANOMALIES = d.anomalies || 0;
     updateTabBadge('communications', COMMUNICATIONS_ANOMALIES);
+    const dJour = await rJour.json();
+    if(rJour.ok) COMMUNICATIONS_JOUR = dJour;
     renderCommunications();
   }catch(e){
     zone.innerHTML = `<p class="empty">${escHtml(e.message)}</p>`;
@@ -7273,6 +7280,34 @@ function toggleCommDetail(reservationId){
   if(COMMUNICATIONS_OPEN.has(reservationId)) COMMUNICATIONS_OPEN.delete(reservationId);
   else COMMUNICATIONS_OPEN.add(reservationId);
   renderCommunications();
+}
+function toggleCommJour(){ COMMUNICATIONS_JOUR_OPEN = !COMMUNICATIONS_JOUR_OPEN; renderCommunications(); }
+function commJourBoxHtml(){
+  const s = COMMUNICATIONS_JOUR.summary || { total: 0, email: 0, sms: 0, erreurs: 0 };
+  const resume = s.total
+    ? `${s.total} envoi${s.total>1?'s':''} (${s.email} email${s.email>1?'s':''}, ${s.sms} SMS)${s.erreurs?` · ${s.erreurs} échec${s.erreurs>1?'s':''}`:''}`
+    : "Aucun envoi pour l'instant aujourd'hui";
+  const liste = (COMMUNICATIONS_JOUR.items||[]).map(it => {
+    const heure = it.created_at ? new Date(it.created_at).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
+    const client = escHtml((it.reservation?.prenom||'')+' '+(it.reservation?.nom||'')) || 'Client';
+    const chip = it.statut==='erreur' ? '<span class="chip probleme">✕ Erreur</span>' : '<span class="chip fait">✓ Envoyé</span>';
+    return `<div class="row-item" style="background:var(--bg);margin-bottom:6px">
+      <div class="row-top">
+        <span class="row-title">${CANAL_ICON[it.canal]||'📧'} ${escHtml(it.libelle||it.scenario)} — ${client}</span>
+        ${chip}
+      </div>
+      <div class="row-meta">${heure}${it.erreur?' · '+escHtml(it.erreur):''}</div>
+    </div>`;
+  }).join('');
+  return `
+    <div class="row-item" style="margin-bottom:14px">
+      <div class="row-top" style="cursor:pointer" onclick="toggleCommJour()">
+        <span class="row-title">📅 Communications du jour</span>
+        <span style="font-size:13px;color:var(--grey)">${COMMUNICATIONS_JOUR_OPEN?'▾':'▸'}</span>
+      </div>
+      <div class="row-meta" style="cursor:pointer" onclick="toggleCommJour()">${resume}</div>
+      ${COMMUNICATIONS_JOUR_OPEN ? `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--rule)">${liste || '<p class="empty">Rien à afficher.</p>'}</div>` : ''}
+    </div>`;
 }
 
 function renderCommunications(){
@@ -7292,6 +7327,7 @@ function renderCommunications(){
     : `<div style="background:var(--green-bg);color:var(--green);padding:12px 16px;border-radius:var(--r);font-weight:700;margin-bottom:14px">✅ Toutes les communications sont à jour</div>`;
 
   zone.innerHTML = `
+    ${commJourBoxHtml()}
     ${banner}
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
       <button class="btn ${COMMUNICATIONS_FILTER==='anomalies'?'btn-blue':'btn-grey'}" onclick="setCommFilter('anomalies')">⚠️ Anomalies</button>

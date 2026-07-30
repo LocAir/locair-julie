@@ -61,6 +61,30 @@ module.exports = async (req, res) => {
       return res.status(200).json(result);
     }
 
+    // Récap "communications du jour" — cadre dédié en haut de l'onglet
+    // Communications : tout ce qui est réellement parti aux clients (email +
+    // SMS, tous scénarios confondus) depuis minuit, pour que l'admin voie
+    // l'activité du jour sans avoir à ouvrir chaque fiche client.
+    if (action === 'jour') {
+      const city = await resolveAdminCity(supabase, body);
+      if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
+      const debutJour = new Date(); debutJour.setUTCHours(0, 0, 0, 0);
+      const { data, error } = await supabase
+        .from('email_log')
+        .select('id, scenario, canal, statut, destinataire, created_at, reservation:reservations!inner(ref, prenom, nom, city_id)')
+        .eq('reservation.city_id', city.id)
+        .gte('created_at', debutJour.toISOString())
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const items = (data || []).map(it => ({ ...it, libelle: scenarioLibelle(it.scenario) }));
+      const summary = { total: items.length, email: 0, sms: 0, erreurs: 0 };
+      for (const it of items) {
+        if (it.canal === 'sms') summary.sms++; else summary.email++;
+        if (it.statut === 'erreur') summary.erreurs++;
+      }
+      return res.status(200).json({ items, summary });
+    }
+
     // Liste des scénarios et de leur état actif/inactif.
     if (action === 'scenarios') {
       const { data, error } = await supabase.from('email_scenarios').select('id, libelle, actif').order('id');
