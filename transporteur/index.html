@@ -1648,12 +1648,19 @@ function maybeAutoOpenMission(){
 // l'URL dès la lecture pour ne jamais rouvrir la même mission sur un
 // rechargement ultérieur (retour arrière, refresh manuel...).
 function maybeOpenFromNotificationLink(){
-  const id = parseInt(new URLSearchParams(location.search).get('open'), 10);
-  if(!id) return false;
-  history.replaceState(null, '', location.pathname);
-  if(!STATE.missions.some(m => m.id === id)) return false;
-  openMission(id);
-  return true;
+  const params = new URLSearchParams(location.search);
+  const id  = parseInt(params.get('open'), 10);
+  const tab = params.get('tab');
+  if(id){
+    history.replaceState(null, '', location.pathname);
+    if(STATE.missions.some(m => m.id === id)){ openMission(id); return true; }
+  }
+  if(tab && ['activite','missions','calendrier'].includes(tab)){
+    history.replaceState(null, '', location.pathname);
+    switchTab(tab);
+    return true;
+  }
+  return false;
 }
 
 // ── Actualisation automatique ─────────────────────────────────────────────────

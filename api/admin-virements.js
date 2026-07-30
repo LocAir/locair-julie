@@ -172,6 +172,7 @@ module.exports = async (req, res) => {
       if (montant > 0) {
         await notifyTransporteur(supabase, transporteurId, {
           type: 'paiement', message: `Votre rémunération a été payée (${(montant / 100).toFixed(2)} €).`, tag: 'paiement',
+          montantCents: montant,
         });
       }
 
@@ -207,6 +208,7 @@ module.exports = async (req, res) => {
       if (montant > 0) {
         await notifyTransporteur(supabase, virement.transporteur_id, {
           type: 'paiement', message: `Votre rémunération a été payée (${(montant / 100).toFixed(2)} €).`, tag: 'paiement',
+          montantCents: montant,
         });
       }
 

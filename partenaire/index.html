@@ -213,6 +213,7 @@ input[readonly]{background:var(--bg);color:var(--black);font-size:13.5px;cursor:
 .chip::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
 .chip-verse{background:var(--green-bg);color:var(--green)}
 .chip-pending{background:var(--amber-bg);color:var(--amber)}
+.chip-prolong{background:var(--blue-lt);color:var(--blue-mid);font-size:9px;margin-top:0}
 
 /* Virements historique */
 .vir-row{
@@ -605,7 +606,7 @@ function renderDashboard(d){
         <div class="bl">En ${annee}</div>
       </div>
       <div class="big-stat">
-        <div class="bn">${(d.reservations||[]).length}</div>
+        <div class="bn">${d.reservations_total||0}</div>
         <div class="bl">Réservations total</div>
       </div>
     </div>
@@ -720,8 +721,8 @@ function reservationsHistoryHtml(reservations){
         ${items.map(r => `
           <div class="resa-row">
             <div>
-              <div class="resa-client">${escHtml(r.client||'Client')}</div>
-              <div class="resa-meta">${r.date_debut?new Date(r.date_debut).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''} ${r.ref?'· '+escHtml(r.ref):''}</div>
+              <div class="resa-client">${escHtml(r.client||'Client')}${r.prolongation?'<span class="chip chip-prolong" style="margin-left:6px;vertical-align:middle">Prolongation</span>':''}</div>
+              <div class="resa-meta">${r.date_debut?new Date(r.date_debut).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''} ${r.ref?'· '+escHtml(r.ref):''}${r.prolongation&&r.origine_ref?' · 🔗 '+escHtml(r.origine_ref):''}</div>
             </div>
             <div class="resa-right">
               <div class="resa-amount">${euros(r.commission_cents/100)}</div>
@@ -776,10 +777,12 @@ async function demanderVirement(){
 
 // ── QR code download ──────────────────────────────────────────────────────────
 async function downloadQR(e, url){
-  // Tentative fetch blob pour forcer le téléchargement (contourne l'ouverture dans l'onglet)
+  // Empêche la navigation par défaut d'abord, puis tente le download blob.
+  // Si le fetch CORS échoue, on ouvre l'URL dans un nouvel onglet (right-click → Enregistrer).
+  e.preventDefault();
   try{
-    e.preventDefault();
     const resp = await fetch(url);
+    if(!resp.ok) throw new Error('fetch failed');
     const blob = await resp.blob();
     const objUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -788,7 +791,8 @@ async function downloadQR(e, url){
     a.click();
     setTimeout(()=>URL.revokeObjectURL(objUrl), 5000);
   }catch(_){
-    // En cas d'erreur CORS, laisse le comportement natif (ouverture dans onglet)
+    // Fallback CORS : ouvre l'image dans un onglet (clic droit → Enregistrer l'image)
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 }
 
@@ -802,7 +806,7 @@ function exportPdf(){
 
   const rows = (d.reservations||[]).map(r => `
     <tr>
-      <td>${r.ref||'—'}</td>
+      <td>${r.ref||'—'}${r.prolongation?'<br><span style="font-size:9px;color:#5a6577;font-weight:700;text-transform:uppercase;letter-spacing:.04em">Prolongation'+(r.origine_ref?' de '+r.origine_ref:'')+'</span>':''}</td>
       <td>${r.client||'—'}</td>
       <td>${r.date_debut ? new Date(r.date_debut).toLocaleDateString('fr-FR') : '—'}</td>
       <td style="text-align:right">${euros(r.montant_cents/100)}</td>
@@ -846,10 +850,10 @@ function exportPdf(){
     <div class="s-item"><div class="s-n">${euros(d.total_verse_euros||0)}</div><div class="s-l">Total versé</div></div>
     <div class="s-item"><div class="s-n">${euros(d.total_annee_euros||0)}</div><div class="s-l">En ${annee}</div></div>
     <div class="s-item"><div class="s-n">${euros(d.non_verse_euros||0)}</div><div class="s-l">Solde disponible</div></div>
-    <div class="s-item"><div class="s-n">${(d.reservations||[]).length}</div><div class="s-l">Réservations</div></div>
+    <div class="s-item"><div class="s-n">${d.reservations_total || (d.reservations||[]).length}</div><div class="s-l">Réservations</div></div>
   </div>
 
-  <div class="section-title">Détail des réservations</div>
+  <div class="section-title">Détail des réservations${d.reservations_total > (d.reservations||[]).length ? ` (${(d.reservations||[]).length} dernières sur ${d.reservations_total})` : ''}</div>
   <table>
     <thead><tr><th>Réf.</th><th>Client</th><th>Date</th><th style="text-align:right">Montant location</th><th style="text-align:right">Commission</th><th style="text-align:center">Statut</th></tr></thead>
     <tbody>${rows||'<tr><td colspan="6" style="text-align:center;color:#8a94a3">Aucune réservation</td></tr>'}</tbody>
