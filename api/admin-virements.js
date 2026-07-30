@@ -138,7 +138,7 @@ module.exports = async (req, res) => {
       if (!transporteurId || !transpIds.includes(transporteurId)) return res.status(404).json({ error: 'Transporteur introuvable' });
 
       const { data: faites } = await supabase
-        .from('livraisons').select('id, montant_du_cents')
+        .from('livraisons').select('id, montant_du_cents, fait_at')
         .eq('transporteur_id', transporteurId).eq('statut', 'fait').eq('paye', false).eq('valide', true);
       const montant = (faites || []).reduce((s, f) => s + (f.montant_du_cents || 0), 0);
       const ids = (faites || []).map(f => f.id);
@@ -172,7 +172,7 @@ module.exports = async (req, res) => {
       if (montant > 0) {
         await notifyTransporteur(supabase, transporteurId, {
           type: 'paiement', message: `Votre rémunération a été payée (${(montant / 100).toFixed(2)} €).`, tag: 'paiement',
-          montantCents: montant,
+          montantCents: montant, missionDates: (faites || []).map(f => f.fait_at).filter(Boolean),
         });
       }
 
@@ -191,7 +191,7 @@ module.exports = async (req, res) => {
       // si d'autres missions ont été terminées entre-temps). Seules les
       // missions validées par l'administration sont payables (Partie 9).
       const { data: faites } = await supabase
-        .from('livraisons').select('id, montant_du_cents')
+        .from('livraisons').select('id, montant_du_cents, fait_at')
         .eq('transporteur_id', virement.transporteur_id).eq('statut', 'fait').eq('paye', false).eq('valide', true);
       const montant = (faites || []).reduce((s, f) => s + (f.montant_du_cents || 0), 0);
       const ids = (faites || []).map(f => f.id);
@@ -208,7 +208,7 @@ module.exports = async (req, res) => {
       if (montant > 0) {
         await notifyTransporteur(supabase, virement.transporteur_id, {
           type: 'paiement', message: `Votre rémunération a été payée (${(montant / 100).toFixed(2)} €).`, tag: 'paiement',
-          montantCents: montant,
+          montantCents: montant, missionDates: (faites || []).map(f => f.fait_at).filter(Boolean),
         });
       }
 

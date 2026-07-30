@@ -7,7 +7,23 @@ const { computeBareme, getBaremeForCity } = require('./bareme');
 // l'événement pour l'onglet "Notifications" (lu/non lu, historique) ET
 // envoie le push navigateur existant — un seul point d'appel pour les deux.
 // Ne fait jamais échouer l'appelant (même contrat que pushToTransporteur).
-async function notifyTransporteur(supabase, transporteurId, { type, message, livraisonId = null, tag = null, montantCents = null }) {
+function periodLabel(dates) {
+  if (!dates || !dates.length) return null;
+  const sorted = dates.map(d => new Date(d)).sort((a, b) => a - b);
+  const ref = sorted[sorted.length - 1]; // mission la plus récente
+  const dow = ref.getDay();
+  const monday = new Date(ref);
+  monday.setDate(ref.getDate() - (dow === 0 ? 6 : dow - 1));
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  const fmt = (d, opts) => d.toLocaleDateString('fr-FR', opts);
+  if (monday.getMonth() === sunday.getMonth()) {
+    return `semaine du ${fmt(monday, { day: 'numeric' })} au ${fmt(sunday, { day: 'numeric', month: 'long' })}`;
+  }
+  return `semaine du ${fmt(monday, { day: 'numeric', month: 'short' })} au ${fmt(sunday, { day: 'numeric', month: 'short' })}`;
+}
+
+async function notifyTransporteur(supabase, transporteurId, { type, message, livraisonId = null, tag = null, montantCents = null, missionDates = null }) {
   if (!transporteurId || !type || !message) return;
   try {
     await supabase.from('transporteur_notifications').insert({
@@ -22,7 +38,7 @@ async function notifyTransporteur(supabase, transporteurId, { type, message, liv
   const url = livraisonId ? `/transporteur/?open=${livraisonId}` : '/transporteur/';
   await pushToTransporteur(supabase, transporteurId, { title: "Loc'Air", body: message, tag: tag || type, url });
   await smsNouvelleMission(supabase, transporteurId, { type, livraisonId });
-  await smsPaiement(supabase, transporteurId, { type, montantCents });
+  await smsPaiement(supabase, transporteurId, { type, montantCents, missionDates });
 }
 
 // SMS en plus du push (ajouté le 2026-07-27, à la demande du propriétaire) —
@@ -91,23 +107,15 @@ async function smsNouvelleMission(supabase, transporteurId, { type, livraisonId 
   }
 }
 
-async function smsPaiement(supabase, transporteurId, { type, montantCents }) {
+async function smsPaiement(supabase, transporteurId, { type, montantCents, missionDates }) {
   if (type !== 'paiement' || !montantCents || montantCents <= 0) return;
   try {
     const { data: t } = await supabase.from('transporteurs').select('telephone, nom').eq('id', transporteurId).maybeSingle();
     if (!t?.telephone) return;
-    const prenom = (t.nom || '').split(' ')[0];
     const montantFmt = (montantCents / 100).toFixed(2).replace('.', ',') + ' €';
-    const lignes = [
-      `Bonjour ${prenom},`,
-      '',
-      `Ton virement Loc'Air de ${montantFmt} a été effectué.`,
-      'Il sera sur ton compte dans 1 à 3 jours ouvrés.',
-      '',
-      'Voir le détail de tes missions :',
-      'https://www.locair.fr/transporteur/?tab=activite',
-    ];
-    const result = await sendBrevoSms({ to: t.telephone, content: lignes.join('\n') });
+    const periode = periodLabel(missionDates);
+    const content = `Loc'Air — Virement de ${montantFmt}${periode ? ', ' + periode : ''} effectué. locair.fr/transporteur/?tab=activite`;
+    const result = await sendBrevoSms({ to: t.telephone, content });
     if (!result.ok) console.error('[Notif transporteur paiement SMS]', result.error);
   } catch (e) {
     console.error('[Notif transporteur paiement SMS]', e.message);
