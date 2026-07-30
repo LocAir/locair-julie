@@ -276,7 +276,7 @@ async function sendConfirmationCommunications(supabase, resa) {
 // a sa propre source : montant Stripe pour un paiement en ligne, prix saisi
 // par l'admin pour une prolongation manuelle) — cette fonction ne fait que
 // construire l'email et l'envoyer, pas de recalcul qui pourrait diverger.
-async function sendProlongationConfirmation(supabase, { reservationId, email, tel, prenom, nom, jours, dateRecuperation, creneau, amount, lang }) {
+async function sendProlongationConfirmation(supabase, { reservationId, email, tel, prenom, nom, jours, dateRecuperation, creneau, amount, lang, refOrigine }) {
   if (!email) return;
   lang = lang || 'fr';
 
@@ -293,6 +293,7 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
   const html = withSignature(tplProlongConfirmation({
     prenom: prenom || '', nom: nom || '', jours: jours || 1,
     date_recuperation: dateRecuperation || '', creneau: creneau || '', amount, lang,
+    ref_origine: refOrigine || '',
   }), sig);
   const jNum = Number(jours) || 1;
   const subject = lang === 'en' ? `✅ Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`

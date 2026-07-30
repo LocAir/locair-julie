@@ -404,6 +404,7 @@ module.exports = async (req, res) => {
           creneau:          resa.creneau,
           amount:           ((resa.prix_total_cents || 0) / 100).toFixed(2) + ' €',
           lang:             resa.lang || 'fr',
+          refOrigine:       orig.ref,
         });
       } catch (e) {
         console.error('[Communications prolongation]', e.message);
@@ -434,6 +435,16 @@ module.exports = async (req, res) => {
         try {
           if (before.source === 'site_prolongation') {
             const joursSupplementaires = Math.round((new Date(before.date_fin + 'T00:00:00Z') - new Date(before.date_debut + 'T00:00:00Z')) / 86400000);
+            // Retrouvée une seule fois, réutilisée pour l'email de confirmation
+            // (dossier à afficher — jamais l'identifiant technique interne de
+            // cette prolongation, voir emailTemplates.js) ET pour la mise à
+            // jour de date_fin ci-dessous.
+            let origLookup = supabase.from('reservations').select('*').eq('city_id', city.id).not('source', 'eq', 'site_prolongation');
+            origLookup = before.reservation_origine_id
+              ? origLookup.eq('id', before.reservation_origine_id)
+              : origLookup.eq('date_fin', before.date_debut).ilike('email', (before.email || '').trim()).order('created_at', { ascending: false }).limit(1);
+            const { data: origResa } = await origLookup.maybeSingle();
+
             await sendProlongationConfirmation(supabase, {
               reservationId:    before.id,
               email:            before.email,
@@ -445,6 +456,7 @@ module.exports = async (req, res) => {
               creneau:          before.creneau,
               amount:           ((before.prix_total_cents || 0) / 100).toFixed(2) + ' €',
               lang:             before.lang || 'fr',
+              refOrigine:       origResa?.ref,
             });
 
             // Mettre à jour date_fin de la réservation d'origine + régénérer son
@@ -454,11 +466,6 @@ module.exports = async (req, res) => {
             // de prolongation (webhook.js, action 'create_prolongation'
             // ci-dessus) — voir audit du 2026-07-27.
             try {
-              let origLookup = supabase.from('reservations').select('*').eq('city_id', city.id).not('source', 'eq', 'site_prolongation');
-              origLookup = before.reservation_origine_id
-                ? origLookup.eq('id', before.reservation_origine_id)
-                : origLookup.eq('date_fin', before.date_debut).ilike('email', (before.email || '').trim()).order('created_at', { ascending: false }).limit(1);
-              const { data: origResa } = await origLookup.maybeSingle();
               if (origResa) {
                 await supabase.from('reservations').update({ date_fin: before.date_fin }).eq('id', origResa.id);
                 await generateAndSendDocumentsAfterProlongation(supabase, {

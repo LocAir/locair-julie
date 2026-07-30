@@ -462,11 +462,16 @@ function tplFinLocation(ctx) {
 }
 
 // Confirmation de prolongation
-function tplProlongConfirmation({ ref, ref_origine, prenom, nom, jours, date_recuperation, creneau, adresse, amount, lienEspaceClient, lang }) {
+// Le paramètre `ref` (identifiant technique interne MANUEL-xxx/PROLONG-xxx —
+// voir isInternalRef côté admin/index.html) n'a jamais existé pour le client
+// et ne doit jamais lui être montré : la seule référence qu'il connaît et
+// dont il a besoin (espace client, appel au support) est celle de sa
+// réservation d'origine, `ref_origine` — c'est elle qui pilote l'affichage.
+function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recuperation, creneau, adresse, amount, lienEspaceClient, lang }) {
   const l = lang || 'fr';
   const jNum = Number(jours) || 1;
   const p = escHtml(prenom || '');
-  const refBox = ref ? `<div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">${l === 'en' ? 'EXTENSION REF' : l === 'zh' ? '续租编号' : l === 'ru' ? 'НОМЕР ПРОДЛЕНИЯ' : 'DOSSIER PROLONGATION'}</p><strong style="font-size:18px;color:#1b3a5f">${escHtml(ref)}</strong>${ref_origine ? `<p style="margin:6px 0 0;font-size:12px;color:#888">${l === 'en' ? 'Original booking' : l === 'zh' ? '原订单' : l === 'ru' ? 'Исходное бронирование' : 'Dossier d\'origine'} : ${escHtml(ref_origine)}</p>` : ''}</div>` : '';
+  const refBox = ref_origine ? `<div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">${l === 'en' ? 'BOOKING REF' : l === 'zh' ? '订单编号' : l === 'ru' ? 'НОМЕР ЗАКАЗА' : 'DOSSIER'}</p><strong style="font-size:18px;color:#1b3a5f">${escHtml(ref_origine)}</strong></div>` : '';
   const adresseRow = adresse ? `<strong>${l === 'en' ? 'Address' : l === 'zh' ? '地址' : l === 'ru' ? 'Адрес' : 'Adresse'} :</strong> ${escHtml(adresse)}<br/>` : '';
   if (l === 'en') return wrap({
     title: '✅ Extension confirmed!',
