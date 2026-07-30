@@ -698,6 +698,12 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Action inconnue' });
   } catch (err) {
     console.error('[Admin reservations]', err.message);
-    return res.status(500).json({ error: 'Erreur serveur' });
+    // Message d'erreur réel plutôt qu'un "Erreur serveur" générique — cet
+    // endpoint est déjà réservé à l'admin authentifié (checkAdminRole
+    // ci-dessus), rien à cacher ici qui ne le soit pas déjà pour lui. Un
+    // "Erreur serveur" muet obligeait jusqu'ici à consulter les logs Vercel
+    // (inaccessibles à Aly) pour la moindre panne — voir l'incident du
+    // 30/07/2026 (bouton "Créer — paiement à finaliser").
+    return res.status(500).json({ error: String(err.message || err).slice(0, 300) });
   }
 };
