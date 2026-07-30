@@ -3,6 +3,7 @@ const { getSupabase }     = require('./_lib/supabase');
 const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice: calcBase } = require('./_lib/pricing');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
+const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 
 function diffDays(startStr, endStr) {
   return Math.round(
@@ -19,13 +20,20 @@ module.exports = async (req, res) => {
     return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
   }
 
-  const { email, ref, new_date_fin } = req.body || {};
+  const { email, ref, new_date_fin, cgv_accepted } = req.body || {};
 
   if (!email || !new_date_fin) {
     return res.status(400).json({ error: 'Email et nouvelle date de fin requis' });
   }
   if (!isValidDate(new_date_fin)) {
     return res.status(400).json({ error: 'Date invalide' });
+  }
+  // Même contrôle serveur que /api/checkout et /api/checkout-prolong — cette
+  // page (prolongation.html, atteinte par le lien envoyé au client) n'avait
+  // jusqu'ici aucune case CGV ni trace d'acceptation, contrairement à toutes
+  // les autres pages de paiement du site.
+  if (cgv_accepted !== true) {
+    return res.status(400).json({ error: 'Vous devez accepter les CGV avant de payer.' });
   }
 
   const supabase = getSupabase();
@@ -145,7 +153,7 @@ module.exports = async (req, res) => {
       },
     });
 
-    const { error: insertErr } = await supabase.from('reservations').insert({
+    const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  orig.city_id,
       ref:                      `PROLONG-${intent.id.slice(-8)}`,
       stripe_payment_intent_id: intent.id,
@@ -180,12 +188,23 @@ module.exports = async (req, res) => {
       // Commission partenaire : héritée du taux de la réservation d'origine.
       partenaire_id:            orig.partenaire_id || null,
       partenaire_commission_cents: partenaireCommissionCents,
-    });
+    }).select('id').single();
 
     if (insertErr) {
       console.error('[prolong-pay insert]', insertErr.message);
       await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel]', e.message));
       return res.status(500).json({ error: 'Erreur serveur réservation' });
+    }
+
+    try {
+      await supabase.from('cgv_acceptations').insert({
+        reservation_id: insertedResa.id,
+        type:           ACCEPTANCE_TYPES.CGV_LOCATION,
+        version:        CGV_VERSION,
+        accepted_at:    req.body.cgv_accepted_at || new Date().toISOString(),
+      });
+    } catch (e) {
+      console.error('[CGV acceptations prolong-pay]', e.message);
     }
 
     return res.status(200).json({
