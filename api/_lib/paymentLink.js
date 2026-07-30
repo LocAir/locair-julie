@@ -13,6 +13,14 @@ function fmtEuros(cents) {
   return ((cents || 0) / 100).toFixed(2).replace('.', ',') + ' €';
 }
 
+// Format court "JJ/MM" pour le SMS — fmtDate (emailEngine.js) donne "lundi
+// 10 août 2026", bien trop long une fois répété deux fois dans un SMS.
+function fmtDateCourt(iso) {
+  if (!iso) return '—';
+  const d = new Date(String(iso).slice(0, 10) + 'T12:00:00Z');
+  return String(d.getUTCDate()).padStart(2, '0') + '/' + String(d.getUTCMonth() + 1).padStart(2, '0');
+}
+
 // Détail location/installation/livraison, pour donner au client par email et
 // sur la page de paiement Stripe le même récapitulatif que le site (voir
 // #recap-box dans index.html : "Location (X jours)" / "Pose technicien ou
@@ -184,7 +192,22 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
       // (GSM 03.38) — certains opérateurs l'affichent en "?" au lieu du
       // caractère attendu (constaté sur un envoi réel). "numéro" en toutes
       // lettres évite complètement le problème.
-      const smsContent = `Loc'Air – ${resa.prenom ? resa.prenom + ', ' : ''}votre réservation est prête (dossier ${dossierRef}). Payez ici : ${lienCourt} – Conservez ce numéro de dossier : il vous donnera accès à votre espace client sur locair.fr sans mot de passe.`;
+      //
+      // Les détails essentiels (dates, quantité, montant) sont donnés
+      // directement dans le SMS — sans ça, le client doit ouvrir le lien de
+      // paiement rien que pour savoir ce qu'il paie et quand est sa
+      // livraison, ce qui n'est jamais évident au téléphone.
+      const prenomTxt = resa.prenom ? resa.prenom + ' : ' : '';
+      const montantTxt = fmtEuros(resa.prix_total_cents);
+      let detailsTxt;
+      if (isProlongation) {
+        const joursAjoutes = Math.max(1, Math.round((new Date(resa.date_fin + 'T00:00:00Z') - new Date(resa.date_debut + 'T00:00:00Z')) / 86400000));
+        detailsTxt = `prolongation de ${joursAjoutes}j jusqu'au ${fmtDateCourt(resa.date_fin)}, ${montantTxt}`;
+      } else {
+        const qteTxt = (resa.quantite || 1) > 1 ? ` (${resa.quantite}x climatiseurs)` : '';
+        detailsTxt = `du ${fmtDateCourt(resa.date_debut)} au ${fmtDateCourt(resa.date_fin)}${qteTxt}, ${montantTxt}`;
+      }
+      const smsContent = `Loc'Air – ${prenomTxt}${detailsTxt}. Dossier ${dossierRef}. Payez ici : ${lienCourt} – Ce numéro donne accès à votre espace client sur locair.fr sans mot de passe.`;
       const smsResult = await sendBrevoSms({ to: resa.tel, content: smsContent });
       supabase.from('email_log').insert({
         reservation_id: resa.id, scenario, canal: 'sms',
