@@ -174,9 +174,17 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
       // segments facturés séparément, et le temps de traitement supplémentaire
       // suffit parfois à dépasser BREVO_TIMEOUT_MS (_lib/brevo.js) alors que
       // le SMS finit quand même par partir : Aly voit une erreur pour un
-      // envoi en réalité réussi.
-      const lienCourt = `https://www.locair.fr/api/pay?pi=${encodeURIComponent(session.payment_intent)}`;
-      const smsContent = `Loc'Air – ${resa.prenom ? resa.prenom + ', ' : ''}votre réservation est prête (dossier ${dossierRef}). Payez ici : ${lienCourt} – Conservez ce n° de dossier : il vous donnera accès à votre espace client sur locair.fr sans mot de passe.`;
+      // envoi en réalité réussi. Stripe ne crée aucun payment_intent pour une
+      // session à 0 € (rien à encaisser) — repli sur l'URL Checkout complète
+      // dans ce cas précis plutôt que d'envoyer un lien cassé (pi=null).
+      const lienCourt = session.payment_intent
+        ? `https://www.locair.fr/api/pay?pi=${encodeURIComponent(session.payment_intent)}`
+        : session.url;
+      // "n°" utilise le symbole degré (°), absent de l'alphabet SMS standard
+      // (GSM 03.38) — certains opérateurs l'affichent en "?" au lieu du
+      // caractère attendu (constaté sur un envoi réel). "numéro" en toutes
+      // lettres évite complètement le problème.
+      const smsContent = `Loc'Air – ${resa.prenom ? resa.prenom + ', ' : ''}votre réservation est prête (dossier ${dossierRef}). Payez ici : ${lienCourt} – Conservez ce numéro de dossier : il vous donnera accès à votre espace client sur locair.fr sans mot de passe.`;
       const smsResult = await sendBrevoSms({ to: resa.tel, content: smsContent });
       supabase.from('email_log').insert({
         reservation_id: resa.id, scenario, canal: 'sms',
