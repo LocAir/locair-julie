@@ -3017,6 +3017,31 @@ function onNrParrainInput(){
 // "montant total" sans détail. Recalculé à chaque changement, comme le
 // récapitulatif du site (qui n'a lui non plus pas de "surcharge manuelle") —
 // modifiable ensuite si besoin (remise commerciale, tarif spécial).
+function nrSetDuration(days){
+  const debutEl = document.getElementById('nr-debut');
+  const finEl   = document.getElementById('nr-fin');
+  if(!debutEl.value){
+    // Aucune date de départ : proposer aujourd'hui par défaut
+    debutEl.value = new Date().toISOString().slice(0,10);
+  }
+  const d = new Date(debutEl.value + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + days);
+  finEl.value = d.toISOString().slice(0,10);
+  // Mettre en valeur le bouton actif
+  document.querySelectorAll('.nr-dur-btn').forEach(b => {
+    const active = parseInt(b.dataset.days) === days;
+    b.style.background = active ? 'var(--blue)' : 'var(--white)';
+    b.style.color      = active ? '#fff'        : 'var(--grey)';
+    b.style.borderColor= active ? 'var(--blue)' : 'var(--rule)';
+  });
+  nrRecalcPrice();
+}
+function nrOnDebutChange(){
+  // Si une durée est déjà sélectionnée (bouton actif), recalculer la fin
+  const activeBtn = document.querySelector('.nr-dur-btn[style*="var(--blue)"]');
+  if(activeBtn) nrSetDuration(parseInt(activeBtn.dataset.days));
+  else nrRecalcPrice();
+}
 function nrLivraisonCents(){
   const cp = (document.getElementById('nr-cp')?.value || '').trim();
   if(!cp) return { cents: 6000, label: '60 € (zone standard)', horsZone: false };
@@ -3082,8 +3107,18 @@ function reservationCreerHtml(){
       <label for="nr-cp" style="margin-top:6px">Code postal</label>
       <input type="text" id="nr-cp" placeholder="ex. 06000" maxlength="5" oninput="nrRecalcPrice()" style="max-width:120px"/>
       <div class="inline-form">
-        <div><label for="nr-debut">Date livraison *</label><input type="date" id="nr-debut" oninput="nrRecalcPrice()"/></div>
-        <div><label for="nr-fin">Date récupération *</label><input type="date" id="nr-fin" oninput="nrRecalcPrice()"/></div>
+        <div>
+          <label for="nr-debut">Date livraison *</label>
+          <input type="date" id="nr-debut" oninput="nrOnDebutChange()"/>
+        </div>
+        <div>
+          <label for="nr-fin">Date récupération *</label>
+          <input type="date" id="nr-fin" oninput="nrRecalcPrice()"/>
+        </div>
+      </div>
+      <div style="margin:-4px 0 10px;display:flex;gap:6px;flex-wrap:wrap">
+        ${[7,14,21,28].map(d=>`<button type="button" class="nr-dur-btn" data-days="${d}" onclick="nrSetDuration(${d})" style="padding:5px 12px;border:1.5px solid var(--rule);background:var(--white);border-radius:100px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--body);color:var(--grey)">${d} j</button>`).join('')}
+        <span style="font-size:12px;color:var(--grey);align-self:center;margin-left:2px">ou saisis la date de récupération manuellement</span>
       </div>
       <div class="inline-form">
         <div><label for="nr-qte">Quantité</label><input type="number" id="nr-qte" min="1" max="5" value="1" oninput="nrRecalcPrice()"/></div>
