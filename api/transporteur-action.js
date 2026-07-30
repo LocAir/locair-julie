@@ -374,8 +374,18 @@ module.exports = async (req, res) => {
         update.etat_materiel_commentaire = (body.etat_materiel_commentaire || '').slice(0, 1000);
       }
 
-      const { error: livUpdErr } = await supabase.from('livraisons').update(update).eq('id', liv.id);
+      // Condition + vérification du nombre de lignes modifiées (même
+      // principe que les autres corrections de course de cette session,
+      // voir admin-virements.js/_lib/reservations.js) : un double-tap sur
+      // "LIVRAISON/RETOUR OK" (réseau lent chez le client, tap impatient)
+      // peut envoyer deux requêtes qui liraient toutes les deux `liv` avant
+      // que l'une des deux n'écrive — sans ce garde-fou, le mouvement de
+      // stock et l'appareil étaient synchronisés deux fois pour la même
+      // étape.
+      const { data: claimed, error: livUpdErr } = await supabase
+        .from('livraisons').update(update).eq('id', liv.id).in('statut', EN_COURS_STATUTS).select('id');
       if (livUpdErr) throw livUpdErr;
+      if (!claimed || !claimed.length) return res.status(409).json({ error: 'Étape déjà validée (double envoi ?)' });
       await closeMissionIncident(supabase, liv);
 
       // Parc matériel (Module 5 Partie 8, Module 6 Partie 5) : synchronisation
