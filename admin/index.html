@@ -3021,7 +3021,13 @@ function nrLivraisonCents(){
   const cp = (document.getElementById('nr-cp')?.value || '').trim();
   if(!cp) return { cents: 6000, label: '60 € (zone standard)', horsZone: false };
   const cityId = parseInt(CITY_ID);
-  const city = VILLES_CACHE.find(c => c.id === cityId);
+  // CITIES_CACHE (pas VILLES_CACHE) : celle-ci n'est peuplée qu'en visitant
+  // l'onglet Villes, donc vide la plupart du temps ici — le hors zone
+  // retombait alors toujours sur "zone standard" (60 €) au lieu de 120 €,
+  // avec le prix total pré-rempli en conséquence, trop bas pour un client
+  // hors zone. CITIES_CACHE, elle, est chargée dès l'ouverture de l'admin
+  // (sélecteur de ville) et porte les mêmes postal_codes.
+  const city = CITIES_CACHE.find(c => c.id === cityId);
   if(city && Array.isArray(city.postal_codes)){
     const enZone = city.postal_codes.includes(cp);
     return enZone
