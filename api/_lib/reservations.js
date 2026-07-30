@@ -456,7 +456,20 @@ async function confirmReservation(supabase, resa) {
 
   const clientId = await findOrCreateClient(supabase, resa);
   resa.client_id = clientId;
-  await supabase.from('reservations').update({ statut: 'confirmee', client_id: clientId }).eq('id', resa.id);
+  // Transition atomique (même famille de course que le double virement
+  // corrigé dans admin-virements.js) : si un autre appel a déjà fait
+  // basculer cette réservation entre notre lecture et cette écriture —
+  // webhook Stripe redélivré en parallèle, ou double clic admin sur
+  // "confirmer" — la mise à jour ne touche alors aucune ligne. On s'arrête
+  // net plutôt que d'assigner des appareils et créer des missions en double.
+  const { data: claimed, error: claimErr } = await supabase
+    .from('reservations')
+    .update({ statut: 'confirmee', client_id: clientId })
+    .eq('id', resa.id)
+    .not('statut', 'in', '(confirmee,annulee,remboursee,terminee)')
+    .select('id');
+  if (claimErr) throw claimErr;
+  if (!claimed || !claimed.length) return resa;
 
   // Prolongation : retrouver la réservation d'origine (même client, même ville,
   // récupération initiale = début de l'extension) — sert à la fois à lui
