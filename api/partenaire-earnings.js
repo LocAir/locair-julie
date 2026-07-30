@@ -8,6 +8,9 @@ function startOfDayISO() {
 function startOfMonthISO() {
   const d = new Date(); d.setUTCDate(1); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
 }
+function startOfYearISO() {
+  const d = new Date(); d.setUTCMonth(0, 1); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
+}
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -38,23 +41,35 @@ module.exports = async (req, res) => {
 
       const todayISO = startOfDayISO();
       const monthISO = startOfMonthISO();
+      const yearISO  = startOfYearISO();
       let reservationsAujourdhui = 0, gainAujourdhui = 0;
       let reservationsMois = 0, gainMois = 0;
-      let nonVerse = 0;
+      let nonVerse = 0, totalVerse = 0, totalAnnee = 0;
 
       for (const r of (resas || [])) {
         const cents = r.partenaire_commission_cents || 0;
         if (r.created_at >= todayISO) { reservationsAujourdhui++; gainAujourdhui += cents; }
         if (r.created_at >= monthISO) { reservationsMois++; gainMois += cents; }
-        if (!r.partenaire_commission_payee) nonVerse += cents;
+        if (r.partenaire_commission_payee) totalVerse += cents;
+        else nonVerse += cents;
+        if (r.created_at >= yearISO) totalAnnee += cents;
       }
+
+      // Réservations en attente de paiement client — la commission n'est pas
+      // encore acquise mais donne une idée du pipeline à venir.
+      const { data: resasAttente } = await supabase
+        .from('reservations')
+        .select('partenaire_commission_cents')
+        .eq('partenaire_id', partenaireId)
+        .eq('statut', 'en_attente')
+        .eq('masquee', false);
+      const previsionAttente = (resasAttente || []).reduce((s, r) => s + (r.partenaire_commission_cents || 0), 0);
 
       const { data: virements } = await supabase
         .from('partenaire_virements')
         .select('id, montant_cents, statut, created_at, verse_at')
         .eq('partenaire_id', partenaireId)
-        .order('created_at', { ascending: false })
-        .limit(10);
+        .order('created_at', { ascending: false });
 
       return res.status(200).json({
         reservations_aujourdhui: reservationsAujourdhui,
@@ -62,6 +77,9 @@ module.exports = async (req, res) => {
         reservations_mois:       reservationsMois,
         gain_mois_euros:         gainMois / 100,
         non_verse_euros:         nonVerse / 100,
+        total_verse_euros:       totalVerse / 100,
+        total_annee_euros:       totalAnnee / 100,
+        prevision_attente_euros: previsionAttente / 100,
         virements: virements || [],
         // Historique réservation par réservation — pour que le partenaire
         // retrouve ce qu'il a apporté et gagné sur chacune, pas seulement des totaux.
