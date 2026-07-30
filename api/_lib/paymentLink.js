@@ -182,12 +182,13 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
       // segments facturés séparément, et le temps de traitement supplémentaire
       // suffit parfois à dépasser BREVO_TIMEOUT_MS (_lib/brevo.js) alors que
       // le SMS finit quand même par partir : Aly voit une erreur pour un
-      // envoi en réalité réussi. Stripe ne crée aucun payment_intent pour une
-      // session à 0 € (rien à encaisser) — repli sur l'URL Checkout complète
-      // dans ce cas précis plutôt que d'envoyer un lien cassé (pi=null).
-      const lienCourt = session.payment_intent
-        ? `https://www.locair.fr/api/pay?pi=${encodeURIComponent(session.payment_intent)}`
-        : session.url;
+      // envoi en réalité réussi. Clé = l'ID de la Checkout Session (cs_…),
+      // toujours présent dès sa création — contrairement à session.payment_intent
+      // (utilisé ici avant ce correctif), qui s'est révélé absent même sur
+      // une session à montant normal (294 €, pas seulement le cas des
+      // sessions à 0 € déjà connu), faisant retomber sur l'URL complète
+      // malgré tout.
+      const lienCourt = `https://www.locair.fr/api/pay?cs=${encodeURIComponent(session.id)}`;
       // "n°" utilise le symbole degré (°), absent de l'alphabet SMS standard
       // (GSM 03.38) — certains opérateurs l'affichent en "?" au lieu du
       // caractère attendu (constaté sur un envoi réel). "numéro" en toutes
