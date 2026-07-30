@@ -274,7 +274,15 @@ module.exports = async (req, res) => {
         // Passé 7 jours sans paiement malgré les relances, on arrête les
         // frais : la réservation est annulée, plus aucune relance ne suit.
         if (ageJours >= 7) {
-          await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', resa.id).eq('statut', 'en_attente');
+          // .select('id') + vérification du nombre de lignes : si un paiement
+          // vient de réussir pile au moment où ce cron tourne (webhook Stripe
+          // concurrent), la réservation n'est déjà plus 'en_attente' et cette
+          // mise à jour ne touche aucune ligne — sans ce contrôle, le code
+          // annulait quand même le PaymentIntent et poussait à Aly une fausse
+          // alerte "jamais payée" pour une réservation qui vient d'être payée.
+          const { data: annulee } = await supabase
+            .from('reservations').update({ statut: 'annulee' }).eq('id', resa.id).eq('statut', 'en_attente').select('id');
+          if (!annulee || !annulee.length) continue;
           if (resa.stripe_payment_intent_id) {
             await stripeRelance.paymentIntents.cancel(resa.stripe_payment_intent_id).catch(e =>
               console.error('[Cron annulation PI cancel]', resa.stripe_payment_intent_id, e.message)
