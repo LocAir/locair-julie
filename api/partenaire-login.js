@@ -8,7 +8,7 @@ module.exports = async (req, res) => {
 
   const pin  = ((req.body || {}).pin  || '').trim();
   const code = ((req.body || {}).code || '').trim().toLowerCase();
-  if (!pin) return res.status(400).json({ error: 'Code manquant' });
+  if (!pin) return res.status(400).json({ error: 'Code secret manquant' });
   if (!process.env.TRANSPORTEUR_SECRET) {
     console.error('[Partenaire login] TRANSPORTEUR_SECRET manquant');
     return res.status(500).json({ error: 'Erreur serveur' });

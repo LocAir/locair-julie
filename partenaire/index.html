@@ -605,7 +605,7 @@ function renderDashboard(d){
         <div class="bl">En ${annee}</div>
       </div>
       <div class="big-stat">
-        <div class="bn">${(d.reservations||[]).length}</div>
+        <div class="bn">${d.reservations_total||0}</div>
         <div class="bl">Réservations total</div>
       </div>
     </div>
@@ -776,10 +776,12 @@ async function demanderVirement(){
 
 // ── QR code download ──────────────────────────────────────────────────────────
 async function downloadQR(e, url){
-  // Tentative fetch blob pour forcer le téléchargement (contourne l'ouverture dans l'onglet)
+  // Empêche la navigation par défaut d'abord, puis tente le download blob.
+  // Si le fetch CORS échoue, on ouvre l'URL dans un nouvel onglet (right-click → Enregistrer).
+  e.preventDefault();
   try{
-    e.preventDefault();
     const resp = await fetch(url);
+    if(!resp.ok) throw new Error('fetch failed');
     const blob = await resp.blob();
     const objUrl = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -788,7 +790,8 @@ async function downloadQR(e, url){
     a.click();
     setTimeout(()=>URL.revokeObjectURL(objUrl), 5000);
   }catch(_){
-    // En cas d'erreur CORS, laisse le comportement natif (ouverture dans onglet)
+    // Fallback CORS : ouvre l'image dans un onglet (clic droit → Enregistrer l'image)
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 }
 

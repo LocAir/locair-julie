@@ -3028,9 +3028,10 @@ function nrSetDuration(days){
   const d = new Date(debutEl.value + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);
   finEl.value = d.toISOString().slice(0,10);
-  // Mettre en valeur le bouton actif
+  // Mettre en valeur le bouton actif via classe (plus fiable qu'un style inline pour la détection)
   document.querySelectorAll('.nr-dur-btn').forEach(b => {
     const active = parseInt(b.dataset.days) === days;
+    b.classList.toggle('nr-dur-active', active);
     b.style.background = active ? 'var(--blue)' : 'var(--white)';
     b.style.color      = active ? '#fff'        : 'var(--grey)';
     b.style.borderColor= active ? 'var(--blue)' : 'var(--rule)';
@@ -3038,8 +3039,8 @@ function nrSetDuration(days){
   nrRecalcPrice();
 }
 function nrOnDebutChange(){
-  // Si une durée est déjà sélectionnée (bouton actif), recalculer la fin
-  const activeBtn = document.querySelector('.nr-dur-btn[style*="var(--blue)"]');
+  // Si une durée est déjà sélectionnée, recalculer la fin via la classe .nr-dur-active
+  const activeBtn = document.querySelector('.nr-dur-btn.nr-dur-active');
   if(activeBtn) nrSetDuration(parseInt(activeBtn.dataset.days));
   else nrRecalcPrice();
 }
