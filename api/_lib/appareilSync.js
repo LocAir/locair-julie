@@ -33,7 +33,7 @@ async function releaseAppareilFromReservation(supabase, { appareilId, reservatio
   await supabase.from('incidents').insert({
     city_id: cityId || null, type: 'autre', statut: 'nouveau',
     description: `Climatiseur n°${appareil.numero ?? appareilId} retiré de la réservation${reservationId ? ' #' + reservationId : ''} (${motif}) mais encore localisé "${appareil.localisation}" — à récupérer et repasser disponible manuellement.`,
-  }).catch(() => {});
+  }).then(() => {}, () => {});
   return { released: false };
 }
 

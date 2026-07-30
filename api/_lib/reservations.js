@@ -252,7 +252,7 @@ async function sendConfirmationCommunications(supabase, resa) {
           statut: smsResult.ok ? 'envoye' : 'erreur',
           erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
           contenu: smsConfirmationContent,
-        }).catch(() => {});
+        }).then(() => {}, () => {});
       } // end if (!smsDejaEnvoye)
     }
   } catch (e) {
@@ -305,7 +305,7 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
     console.error('[Prolongation confirmation]', result.error);
     if (reservationId) {
       await supabase.from('email_sent').delete()
-        .eq('reservation_id', reservationId).eq('scenario', 'email_prolongation').catch(() => {});
+        .eq('reservation_id', reservationId).eq('scenario', 'email_prolongation').then(() => {}, () => {});
     }
   }
   if (reservationId) {
@@ -315,7 +315,7 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
       statut: result.ok ? 'envoye' : 'erreur',
       erreur: result.ok ? null : String(result.error || '').slice(0, 500),
       contenu: html,
-    }).catch(() => {});
+    }).then(() => {}, () => {});
   }
 
   // SMS de confirmation, en plus de l'email — jusqu'ici aucune prolongation
@@ -344,7 +344,7 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
         statut: smsResult.ok ? 'envoye' : 'erreur',
         erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
         contenu: smsProlongContent,
-      }).catch(() => {});
+      }).then(() => {}, () => {});
     }
   }
 }
@@ -394,7 +394,7 @@ async function sendRelanceProlongationSms(supabase, resa, { force = false } = {}
     statut: result.ok ? 'envoye' : 'erreur',
     erreur: result.ok ? null : String(result.error || '').slice(0, 500),
     contenu: content,
-  }).catch(() => {});
+  }).then(() => {}, () => {});
   return result.ok ? { sent: true } : { sent: false, reason: 'error', error: result.error };
 }
 
@@ -442,7 +442,7 @@ async function sendRappelRecuperationSms(supabase, resa, { force = false } = {})
     statut: result.ok ? 'envoye' : 'erreur',
     erreur: result.ok ? null : String(result.error || '').slice(0, 500),
     contenu: content,
-  }).catch(() => {});
+  }).then(() => {}, () => {});
   return result.ok ? { sent: true } : { sent: false, reason: 'error', error: result.error };
 }
 
@@ -523,7 +523,7 @@ async function confirmReservation(supabase, resa) {
     const description = `Réservation ${resa.ref || resa.id} (${[resa.prenom, resa.nom].filter(Boolean).join(' ')}) confirmée avec ${manque} climatiseur${manque > 1 ? 's' : ''} de moins que commandé (${appareilsAssignes || 0}/${resa.quantite}) — stock insuffisant au moment de la confirmation.`;
     await supabase.from('incidents').insert({
       city_id: resa.city_id, reservation_id: resa.id, type: 'autre', description, statut: 'nouveau',
-    }).catch(() => {});
+    }).then(() => {}, () => {});
     await pushToAdmin(supabase, {
       title: '⚠️ Réservation confirmée en sous-effectif',
       body: description,

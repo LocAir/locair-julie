@@ -128,7 +128,7 @@ module.exports = async (req, res) => {
         statut: result.ok ? 'envoye' : 'erreur',
         erreur: result.ok ? null : String(result.error || '').slice(0, 500),
         contenu: html,
-      }).catch(() => {});
+      }).then(() => {}, () => {});
       if (!result.ok) return res.status(500).json({ error: result.error || "Échec de l'envoi" });
 
       await supabase.from('devis').update({ statut: 'envoye' }).eq('id', id);

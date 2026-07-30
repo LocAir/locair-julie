@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
     }
 
     if (doc.statut !== 'consulte') {
-      await supabase.from('documents').update({ statut: 'consulte', consulte_at: new Date().toISOString() }).eq('id', doc.id).catch(() => {});
+      await supabase.from('documents').update({ statut: 'consulte', consulte_at: new Date().toISOString() }).eq('id', doc.id).then(() => {}, () => {});
     }
 
     console.log('[dv] 4-REDIRECT');

@@ -444,7 +444,7 @@ const handler = async (req, res) => {
           statut: resultProlong.ok ? 'envoye' : 'erreur',
           erreur: resultProlong.ok ? null : String(resultProlong.error || '').slice(0, 500),
           contenu: prolongHtml,
-        }).catch(() => {});
+        }).then(() => {}, () => {});
       }
 
       // SMS de confirmation, en plus de l'email — jusqu'ici aucune prolongation
@@ -474,7 +474,7 @@ const handler = async (req, res) => {
             statut: smsProlongResult.ok ? 'envoye' : 'erreur',
             erreur: smsProlongResult.ok ? null : String(smsProlongResult.error || '').slice(0, 500),
             contenu: smsProlongContent,
-          }).catch(() => {});
+          }).then(() => {}, () => {});
         }
       }
 
@@ -589,7 +589,7 @@ const handler = async (req, res) => {
           statut: smsResult.ok ? 'envoye' : 'erreur',
           erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
           contenu: smsConfirmationContent,
-        }).catch(() => {});
+        }).then(() => {}, () => {});
       }
     }
 
