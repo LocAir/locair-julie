@@ -480,20 +480,33 @@ const handler = async (req, res) => {
 
       // Mettre à jour date_fin de la réservation d'origine pour que l'espace client
       // et les éventuelles prolongations suivantes voient toujours la date réelle.
-      // On identifie la réservation d'origine par son ref (stocké dans les metadata Stripe
-      // par checkout-prolong.js) — plus fiable que l'email si le client a plusieurs réservations.
+      // On identifie la réservation d'origine par reservation_origine_id — posé
+      // côté serveur à la création de la prolongation (checkout-prolong.js/
+      // prolong-pay.js), donc fiable et non manipulable, contrairement à
+      // meta.ref (repris tel quel du body JSON envoyé par le navigateur,
+      // voir index.html : ref:_prolongResa?.ref||'') qui servait jusqu'ici de
+      // clé principale. Sans reservation_origine_id (réservation créée avant
+      // la migration qui l'a introduit), repli sur le ref puis sur l'email —
+      // tous deux bornés à la ville de la prolongation, comme _lib/paymentLink.js
+      // et admin-reservations.js le font déjà pour ce même besoin, pour éviter
+      // qu'un client ayant une réservation confirmée dans une autre ville ne
+      // voie sa date_fin/son contrat mis à jour à tort.
       if (confirmedResa?.date_fin) {
         // prolong-pay.js stocke la ref d'origine dans meta.ref_origine (pas meta.ref)
         const origRef = (meta.ref || meta.ref_origine || '').trim().toUpperCase();
         try {
-          // .eq('statut','confirmee') sur le repli email : sans lui, une
-          // réservation plus récente mais annulée/en attente sous le même
-          // email passe devant la vraie réservation active — sa date_fin
-          // n'est alors jamais mise à jour (voir prolong-lookup.js).
           let lookup = getSupabase().from('reservations').select('*').not('source', 'eq', 'site_prolongation');
-          lookup = origRef
-            ? lookup.eq('ref', origRef)
-            : lookup.ilike('email', (email || '').trim()).eq('statut', 'confirmee').order('created_at', { ascending: false }).limit(1);
+          if (confirmedResa.reservation_origine_id) {
+            lookup = lookup.eq('id', confirmedResa.reservation_origine_id);
+          } else if (origRef) {
+            lookup = lookup.eq('ref', origRef).eq('city_id', confirmedResa.city_id);
+          } else {
+            // .eq('statut','confirmee') : sans lui, une réservation plus
+            // récente mais annulée/en attente sous le même email passe devant
+            // la vraie réservation active — sa date_fin n'est alors jamais
+            // mise à jour (voir prolong-lookup.js).
+            lookup = lookup.ilike('email', (email || '').trim()).eq('city_id', confirmedResa.city_id).eq('statut', 'confirmee').order('created_at', { ascending: false }).limit(1);
+          }
           const { data: origResa } = await lookup.maybeSingle();
           if (origResa?.id) {
             await getSupabase().from('reservations').update({ date_fin: confirmedResa.date_fin }).eq('id', origResa.id);
