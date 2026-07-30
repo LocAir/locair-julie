@@ -41,7 +41,7 @@ module.exports = async (req, res) => {
   const normalizedEmail = String(email).trim().toLowerCase();
   let q = supabase
     .from('reservations')
-    .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email')
+    .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id')
     .ilike('email', normalizedEmail)
     .not('source', 'eq', 'site_prolongation')
     .eq('statut', 'confirmee')
@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
   if (ref && ref.trim()) {
     q = supabase
       .from('reservations')
-      .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email')
+      .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id')
       .ilike('email', normalizedEmail)
       .eq('ref', ref.trim().toUpperCase())
       .not('source', 'eq', 'site_prolongation')
@@ -95,6 +95,14 @@ module.exports = async (req, res) => {
   // Pas de code promo sur une prolongation — réservé aux nouvelles commandes
   // passées sur le site (voir checkout.js, _lib/promo.js).
   const amountCents  = baseCents;
+
+  // Commission partenaire : reprend le taux de la réservation d'origine.
+  let partenaireCommissionCents = 0;
+  if (orig.partenaire_id) {
+    const { data: pt } = await supabase.from('partenaires')
+      .select('taux_commission_pct').eq('id', orig.partenaire_id).maybeSingle();
+    if (pt) partenaireCommissionCents = Math.round(amountCents * pt.taux_commission_pct / 100);
+  }
 
   if (!amountCents || amountCents < 100) {
     return res.status(400).json({ error: 'Montant invalide' });
@@ -169,6 +177,9 @@ module.exports = async (req, res) => {
       // Lien fiable vers la réservation prolongée — voir isSupersededReservation
       // (_lib/emailSchedule.js) et migration_reservation_origine.sql.
       reservation_origine_id:   orig.id,
+      // Commission partenaire : héritée du taux de la réservation d'origine.
+      partenaire_id:            orig.partenaire_id || null,
+      partenaire_commission_cents: partenaireCommissionCents,
     });
 
     if (insertErr) {
