@@ -465,10 +465,14 @@ module.exports = async (req, res) => {
         montantDu = computeBareme('changement', null, tarifs, liv.reservation?.hors_zone);
       }
 
-      const { error: changementUpdErr } = await supabase.from('livraisons').update({
+      // Même garde-fou que livraison_ok/retour_ok plus haut (double-tap sur
+      // le bouton) : condition + vérification du nombre de lignes modifiées
+      // avant de synchroniser le parc matériel.
+      const { data: changementClaimed, error: changementUpdErr } = await supabase.from('livraisons').update({
         statut: 'fait', fait_at: new Date().toISOString(), montant_du_cents: montantDu,
-      }).eq('id', liv.id);
+      }).eq('id', liv.id).in('statut', EN_COURS_STATUTS).select('id');
       if (changementUpdErr) throw changementUpdErr;
+      if (!changementClaimed || !changementClaimed.length) return res.status(409).json({ error: 'Étape déjà validée (double envoi ?)' });
       await closeMissionIncident(supabase, liv);
       await setAppareilsStatutForReservation(supabase, liv.reservation_id, 'loue', {
         typeEvenement: 'changement', livraisonId: liv.id, utilisateur: 'transporteur',
@@ -498,13 +502,20 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Vidéo de passage requise avant de signaler un client absent' });
       }
 
-      const { error: problemeErr } = await supabase.from('livraisons').update({
+      // Condition + vérification du nombre de lignes modifiées (même
+      // principe que livraison_ok/retour_ok/changement_ok) : un double-tap
+      // sur "Signaler un problème" lisait tous les deux liv.statut avant
+      // qu'aucun n'écrive, et créait deux incidents pour le même signalement.
+      const { data: problemeClaimed, error: problemeErr } = await supabase.from('livraisons').update({
         statut:               'probleme',
         probleme_type:        problemeType,
         probleme_description: description,
         probleme_at:          new Date().toISOString(),
-      }).eq('id', liv.id);
+      }).eq('id', liv.id).not('statut', 'in', '(fait,annule,probleme)').select('id');
       if (problemeErr) throw problemeErr;
+      if (!problemeClaimed || !problemeClaimed.length) {
+        return res.status(409).json({ error: 'Un problème est déjà signalé sur cette mission' });
+      }
 
       // Une mission normale a toujours une réservation d'origine — sa city_id
       // est la source de vérité, jamais une ville devinée (voir
