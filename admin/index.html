@@ -2781,6 +2781,7 @@ function reservationRowHtml(res, readOnly){
         <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+escHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${(()=>{const p=res.parrain_code;if(!p)return '';const m=p.match(/(\d+)$/);const pct=m?parseInt(m[1]):0;return [10,20,30].includes(pct)?' · <span style="background:var(--gold-lt);color:var(--gold-d);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--gold)">Code promo '+escHtml(p)+' −'+pct+'%</span>':'';})()}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
       </div>
       ${res.statut==='confirmee' ? agentLineHtml(res.id) : ''}
+      ${res.dernier_envoi_lien ? `<div class="resa-sub" style="color:${res.dernier_envoi_lien.statut==='envoye'?'var(--green)':'var(--red)'}">${res.dernier_envoi_lien.statut==='envoye'?'✅':'⚠️'} Lien de paiement par ${res.dernier_envoi_lien.canal==='sms'?'SMS':'email'} le ${frDateHeure(res.dernier_envoi_lien.quand)}${res.dernier_envoi_lien.statut==='envoye'?'':' (échec)'}</div>` : ''}
       ${readOnly ? '' : `
       <div class="row-actions">
         ${contactButtonsHtml(res.tel)}
