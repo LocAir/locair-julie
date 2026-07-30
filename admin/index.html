@@ -258,6 +258,29 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .chip.type-recuperation{background:var(--amber-bg);color:var(--amber)}
 .chip.type-changement{background:var(--gold-lt);color:var(--gold-d)}
 
+/* ── Livraisons : priorité temporelle, urgence, instructions ────────────── */
+.mission-datetime{font-size:15px;font-weight:700;color:var(--black2);margin:6px 0 4px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.mission-datetime .creneau{font-size:12px;font-weight:600;color:var(--blue);background:var(--blue-lt);border-radius:100px;padding:2px 10px;font-family:var(--body)}
+.row-item.urgence-retard{border-left:3px solid var(--red)}
+.row-item.urgence-aujourd-hui{border-left:3px solid var(--amber)}
+.instructions-block{background:var(--amber-bg);border-left:3px solid var(--amber);border-radius:0 var(--r-sm) var(--r-sm) 0;padding:8px 12px;margin:8px 0 2px;font-size:13px;font-weight:600;color:var(--amber);line-height:1.5}
+.missions-date-header{grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);padding:14px 2px 6px;border-bottom:1px solid var(--rule);margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.missions-date-header.today{color:var(--blue)}
+.missions-date-header.overdue{color:var(--red)}
+.missions-date-header .count{font-weight:400;opacity:.65;font-size:10.5px;letter-spacing:.02em;text-transform:none}
+.liv-toolbar-top{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.liv-stat-pill{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:9px 14px;box-shadow:var(--sh-xs);flex:1;min-width:80px}
+.liv-stat-pill .n{font-family:var(--disp);font-size:22px;font-weight:400;line-height:1;font-variant-numeric:tabular-nums}
+.liv-stat-pill .n small{font-size:13px;font-weight:400;font-family:var(--body)}
+.liv-stat-pill .l{font-size:10px;color:var(--grey);font-weight:600;margin-top:4px;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.liv-stat-pill.warn .n{color:var(--red)}
+.btn-resa-rapide{background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.btn-resa-rapide:hover{filter:brightness(1.08)}
+.stock-select-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--black2);color:#fff;border-radius:100px;padding:12px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(0,0,0,.35);font-size:14px;font-weight:600;z-index:900;transition:opacity .15s}
+.stock-select-bar.hidden{display:none}
+.row-item.stock-selected{outline:2px solid var(--blue);background:var(--blue-lt)}
+.stock-select-cb{width:18px;height:18px;accent-color:var(--blue);cursor:pointer;flex-shrink:0}
+
 /* Carte réservation : hiérarchie client → dates → prix, au lieu d'une seule
    ligne de métadonnées à parser. Le prix reprend le traitement typographique
    des tuiles chiffrées de l'Accueil (police --disp) pour rester cohérent. */
@@ -1848,6 +1871,8 @@ const MOUVEMENT_TYPE_LABEL = {
 };
 
 let STOCK_FILTRES = {};
+let STOCK_SELECTION_MODE = false;
+let STOCK_SELECTION = new Set();
 // ── Offre Privilège (Step 2) : l'admin fixe le prix d'une offre déjà
 // détectée par le cron quotidien — tant qu'aucun prix n'est fixé, le client
 // ne voit rien. Réservé aux rôles finances, comme les virements.
@@ -2052,7 +2077,10 @@ async function loadStock(silent){
         ${Object.keys(STOCK_FILTRES).length ? `<button class="btn btn-grey" style="margin-top:8px" onclick="resetStockFiltres()">✕ Réinitialiser les filtres</button>` : ''}
       </div>
       <div class="card">
-        <h2>Appareils (${appareils.length})</h2>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <h2 style="margin:0;flex:1">Appareils (${appareils.length})</h2>
+          <button class="btn ${STOCK_SELECTION_MODE?'btn-blue':'btn-grey'}" style="padding:7px 14px;font-size:13px" onclick="toggleStockSelectMode()">${STOCK_SELECTION_MODE?'✓ Sélection activée':'☑ Sélectionner'}</button>
+        </div>
         <button class="btn btn-grey btn-block" style="margin-bottom:12px" onclick="exportStockCsv()">⬇️ Exporter en CSV</button>
         <div id="appareils-list">${appareils.map(a => {
           // "En location" (badge bleu) n'est jamais choisi à la main : déduit
@@ -2066,9 +2094,11 @@ async function loadStock(silent){
           const chipLabel = a.en_location
             ? (a.statut==='disponible' ? 'En location' : `En location · ${APPAREIL_STATUT_LABEL[a.statut]||a.statut}`)
             : (APPAREIL_STATUT_LABEL[a.statut]||a.statut);
+          const isSelected = STOCK_SELECTION.has(a.id);
           return `
-          <div class="row-item">
+          <div class="row-item${isSelected?' stock-selected':''}" id="stock-card-${a.id}">
             <div class="row-top">
+              ${STOCK_SELECTION_MODE?`<input type="checkbox" class="stock-select-cb" ${isSelected?'checked':''} onchange="toggleStockItem(${a.id}, this.checked)">`:''}
               <span class="row-title">Climatiseur n°${a.numero}</span>
               <span style="display:flex;gap:6px;align-items:center">
                 ${a.en_preparation?`<span class="chip a_faire">En préparation</span>`:''}
@@ -2103,6 +2133,11 @@ async function loadStock(silent){
         </div>
         <button class="btn btn-blue btn-block" onclick="addAppareil()" style="margin-top:14px">+ Ajouter des appareils (nouvel achat)</button>
         <div class="err" id="stock-err"></div>
+      </div>
+      <div class="stock-select-bar ${STOCK_SELECTION_MODE && STOCK_SELECTION.size>0?'':'hidden'}" id="stock-select-bar">
+        <span>${STOCK_SELECTION.size} appareil${STOCK_SELECTION.size>1?'s':''} sélectionné${STOCK_SELECTION.size>1?'s':''}</span>
+        <button style="background:#fff2;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:100px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer" onclick="cancelStockSelection()">Annuler</button>
+        <button style="background:var(--red);border:none;color:#fff;border-radius:100px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer" onclick="deleteSelectedAppareils()">🗑️ Supprimer (${STOCK_SELECTION.size})</button>
       </div>`;
     // Chargée à part : complément, pas une donnée critique pour l'écran
     // Stock — inutile de retarder le reste si elle est lente.
@@ -2449,6 +2484,43 @@ function deleteAppareil(id, numero){
       showToast(`Climatiseur n°${numero} supprimé`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {danger:true, yesLabel:'Supprimer'});
+}
+function toggleStockSelectMode(){
+  STOCK_SELECTION_MODE = !STOCK_SELECTION_MODE;
+  if(!STOCK_SELECTION_MODE) STOCK_SELECTION.clear();
+  loadStock(true);
+}
+function toggleStockItem(id, checked){
+  if(checked) STOCK_SELECTION.add(id); else STOCK_SELECTION.delete(id);
+  const card = document.getElementById('stock-card-'+id);
+  if(card) card.classList.toggle('stock-selected', checked);
+  const bar = document.getElementById('stock-select-bar');
+  if(bar){
+    bar.classList.toggle('hidden', STOCK_SELECTION.size===0);
+    const count = STOCK_SELECTION.size;
+    bar.querySelector('span').textContent = `${count} appareil${count>1?'s':''} sélectionné${count>1?'s':''}`;
+    const delBtn = bar.querySelector('button:last-child');
+    if(delBtn) delBtn.textContent = `🗑️ Supprimer (${count})`;
+  }
+}
+function cancelStockSelection(){ STOCK_SELECTION.clear(); STOCK_SELECTION_MODE = false; loadStock(true); }
+async function deleteSelectedAppareils(){
+  const ids = [...STOCK_SELECTION];
+  if(!ids.length) return;
+  confirmAction(`Supprimer ${ids.length} appareil${ids.length>1?'s':''} ? Impossible si l'un d'eux a un historique — marque-le "En panne" dans ce cas.`, async () => {
+    let errors = 0;
+    for(const id of ids){
+      try{
+        const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
+        const d = await r.json();
+        if(!r.ok) errors++;
+      }catch(e){ errors++; }
+    }
+    STOCK_SELECTION.clear(); STOCK_SELECTION_MODE = false;
+    loadStock();
+    if(errors) showToast(`${ids.length-errors} supprimé${ids.length-errors>1?'s':''}, ${errors} erreur${errors>1?'s':''}`, 'error');
+    else showToast(`${ids.length} appareil${ids.length>1?'s':''} supprimé${ids.length>1?'s':''}`, 'success');
+  }, {danger:true, yesLabel:`Supprimer (${ids.length})`});
 }
 // Historique des mouvements d'un appareil (Module 6, Partie 5).
 // Fiche administrateur complète d'un climatiseur (Module 6, Partie 9-10) :
@@ -2945,6 +3017,19 @@ function onNrParrainInput(){
 // "montant total" sans détail. Recalculé à chaque changement, comme le
 // récapitulatif du site (qui n'a lui non plus pas de "surcharge manuelle") —
 // modifiable ensuite si besoin (remise commerciale, tarif spécial).
+function nrLivraisonCents(){
+  const cp = (document.getElementById('nr-cp')?.value || '').trim();
+  if(!cp) return { cents: 6000, label: '60 € (zone standard)', horsZone: false };
+  const cityId = parseInt(CITY_ID);
+  const city = VILLES_CACHE.find(c => c.id === cityId);
+  if(city && Array.isArray(city.postal_codes)){
+    const enZone = city.postal_codes.includes(cp);
+    return enZone
+      ? { cents: 6000,  label: '60 € (en zone)',   horsZone: false }
+      : { cents: 12000, label: '120 € (hors zone)', horsZone: true  };
+  }
+  return { cents: 6000, label: '60 € (zone standard)', horsZone: false };
+}
 function nrCalcTotal(){
   const debut = document.getElementById('nr-debut')?.value;
   const fin   = document.getElementById('nr-fin')?.value;
@@ -2955,8 +3040,8 @@ function nrCalcTotal(){
   const isTech = (document.getElementById('nr-installation')?.value || '').startsWith('Technicien');
   const baseCents = Math.round(prCalcBase(days) * qte * 100);
   const installCents = isTech ? 8000 : 0;
-  const livraisonCents = 6000; // tarif zone standard — ajuster le prix total à la main si hors zone (120 €)
-  return { days, qte, isTech, baseCents, installCents, livraisonCents, totalCents: baseCents + installCents + livraisonCents };
+  const { cents: livraisonCents, label: livraisonLabel, horsZone } = nrLivraisonCents();
+  return { days, qte, isTech, baseCents, installCents, livraisonCents, livraisonLabel, horsZone, totalCents: baseCents + installCents + livraisonCents };
 }
 function nrRecalcPrice(){
   const r = nrCalcTotal();
@@ -2965,7 +3050,7 @@ function nrRecalcPrice(){
   if(!r){ if(preview) preview.style.display = 'none'; return; }
   if(preview){
     preview.style.display = 'block';
-    preview.textContent = `Location (${r.days} j${r.qte>1?' × '+r.qte:''}) : ${(r.baseCents/100).toFixed(2)} € · Installation ${r.isTech?'technicien : '+(r.installCents/100).toFixed(2)+' €':'autonome : incluse'} · Livraison : ${(r.livraisonCents/100).toFixed(2)} € (60 € zone standard, à ajuster si hors zone)`;
+    preview.innerHTML = `Location (${r.days} j${r.qte>1?' × '+r.qte:''}) : ${(r.baseCents/100).toFixed(2)} € · Installation ${r.isTech?'technicien : '+(r.installCents/100).toFixed(2)+' €':'autonome : incluse'} · Livraison : <strong style="color:${r.horsZone?'var(--amber)':'inherit'}">${r.livraisonLabel}</strong>`;
   }
   if(prixEl) prixEl.value = Math.max(0, Math.round(r.totalCents - _nrPromoDiscount*100)) / 100;
 }
@@ -2988,6 +3073,8 @@ function reservationCreerHtml(){
       ${typeClientFieldsHtml('nr')}
       <label for="nr-adresse" style="margin-top:8px">Adresse *</label>
       <input type="text" id="nr-adresse"/>
+      <label for="nr-cp" style="margin-top:6px">Code postal</label>
+      <input type="text" id="nr-cp" placeholder="ex. 06000" maxlength="5" oninput="nrRecalcPrice()" style="max-width:120px"/>
       <div class="inline-form">
         <div><label for="nr-debut">Date livraison *</label><input type="date" id="nr-debut" oninput="nrRecalcPrice()"/></div>
         <div><label for="nr-fin">Date récupération *</label><input type="date" id="nr-fin" oninput="nrRecalcPrice()"/></div>
@@ -3018,7 +3105,7 @@ function reservationCreerHtml(){
       </label>
       <button class="btn btn-blue btn-block" style="margin-top:16px" id="nr-submit-attente" onclick="createReservation(false)">📧 Créer — paiement à finaliser par le client</button>
       <button class="btn btn-grey btn-block" style="margin-top:8px" id="nr-submit-confirme" onclick="createReservation(true)">✅ Créer et confirmer (paiement déjà reçu)</button>
-      <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" envoie tout de suite au client un email avec un lien de paiement Stripe sécurisé.</p>
+      <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" envoie immédiatement au client un SMS avec son numéro de dossier et son lien de paiement Stripe sécurisé (repli sur email si pas de téléphone).</p>
       <div class="err" id="new-resa-err"></div>
     </div>`;
 }
@@ -3391,6 +3478,7 @@ async function createReservation(confirmer){
     tel_secondaire: document.getElementById('nr-tel2').value.trim(),
     email: document.getElementById('nr-email').value.trim(),
     adresse: document.getElementById('nr-adresse').value.trim(),
+    code_postal: (document.getElementById('nr-cp').value || '').trim(),
     date_debut: document.getElementById('nr-debut').value,
     date_fin: document.getElementById('nr-fin').value,
     quantite: document.getElementById('nr-qte').value,
@@ -3445,8 +3533,8 @@ async function submitReservation(body, submitBtn, errEl){
     }
     setReservationsView('liste');
     if(d.en_attente){
-      if(d.lien_envoye) showToast(`Réservation ${d.ref} créée — lien de paiement envoyé au client`, 'success');
-      else showToast(`Réservation ${d.ref} créée, mais le lien de paiement n'a pas pu être envoyé (${d.lien_erreur || 'erreur'}) — renvoie-le depuis la fiche`, 'error');
+      if(d.lien_envoye) showToast(`Réservation ${d.ref} créée — SMS de paiement envoyé au client`, 'success');
+      else showToast(`Réservation ${d.ref} créée, mais le SMS de paiement n'a pas pu partir (${d.lien_erreur || 'erreur'}) — renvoie le lien depuis la fiche`, 'error');
     } else {
       showToast(`Réservation ${d.ref} créée et confirmée`, 'success');
     }
@@ -3817,31 +3905,27 @@ function renderLivraisonsToolbar(){
   ];
   const avgLiv = avgDureeSurPlace('livraison');
   const avgRec = avgDureeSurPlace('recuperation');
-  const avgHtml = (avgLiv!=null || avgRec!=null) ? `
-    <div class="stat-grid" style="margin-bottom:16px">
-      ${avgLiv!=null?`<div class="stat-tile"><div class="n">${avgLiv} min</div><div class="l">Temps moyen sur place · Livraison</div></div>`:''}
-      ${avgRec!=null?`<div class="stat-tile"><div class="n">${avgRec} min</div><div class="l">Temps moyen sur place · Récupération</div></div>`:''}
-    </div>` : '';
-  // Compteur compact "aujourd'hui" : ce qui reste à faire aujourd'hui même,
-  // et ce qui traîne depuis avant aujourd'hui sans être terminé — les 2
-  // chiffres qu'Aly regarde en premier chaque matin.
   const today = new Date().toISOString().slice(0,10);
   const EN_COURS_STATUTS = ['a_faire','acceptee','en_route','arrivee','probleme'];
   const missionsAujourdhui = visibles.filter(m => m.date_prevue===today && EN_COURS_STATUTS.includes(m.statut)).length;
   const missionsEnRetard = visibles.filter(m => m.date_prevue<today && EN_COURS_STATUTS.includes(m.statut)).length;
-  const todayHtml = (missionsAujourdhui || missionsEnRetard) ? `
-    <div class="stat-grid" style="margin-bottom:16px">
-      <div class="stat-tile"><div class="n">${missionsAujourdhui}</div><div class="l">Restant aujourd'hui</div></div>
-      ${missionsEnRetard?`<div class="stat-tile warn"><div class="n">${missionsEnRetard}</div><div class="l">En retard</div></div>`:''}
+  // Pills compactes : toutes les métriques sur une seule ligne, œil sur l'urgence
+  const statsHtml = (missionsAujourdhui||missionsEnRetard||avgLiv!=null||avgRec!=null) ? `
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <div class="liv-stat-pill"><div class="n">${missionsAujourdhui}</div><div class="l">Aujourd'hui</div></div>
+      ${missionsEnRetard?`<div class="liv-stat-pill warn"><div class="n">${missionsEnRetard}</div><div class="l">En retard</div></div>`:''}
+      ${avgLiv!=null?`<div class="liv-stat-pill"><div class="n">${avgLiv}<small> min</small></div><div class="l">Tps moy. liv.</div></div>`:''}
+      ${avgRec!=null?`<div class="liv-stat-pill"><div class="n">${avgRec}<small> min</small></div><div class="l">Tps moy. récup.</div></div>`:''}
     </div>` : '';
   zone.innerHTML = `
-    ${todayHtml}
-    ${avgHtml}
-    <button class="btn btn-blue btn-block" style="margin-bottom:14px" onclick="openCreateMissionModal()">+ Créer une mission</button>
-    <div class="periods" style="margin-bottom:16px">
-      <button class="${LIVRAISONS_VIEW==='liste'?'on':''}" onclick="setLivraisonsView('liste')">📋 Liste</button>
-      <button class="${LIVRAISONS_VIEW==='affectation'?'on':''}" onclick="setLivraisonsView('affectation')">🖐️ Affectation</button>
-      <button class="${LIVRAISONS_VIEW==='recup_calendrier'?'on':''}" onclick="setLivraisonsView('recup_calendrier')">📅 Récupérations</button>
+    ${statsHtml}
+    <div class="liv-toolbar-top">
+      <button class="btn btn-blue" style="flex:1" onclick="openCreateMissionModal()">+ Créer une mission</button>
+      <button class="btn-resa-rapide" title="Ouvrir le formulaire de réservation — pour une commande prise par téléphone" onclick="RESERVATIONS_VIEW='creer';switchAdminTab('reservations')">📞 Résa rapide</button>
+      <div class="periods" style="margin:0;flex-shrink:0">
+        <button class="${LIVRAISONS_VIEW==='liste'?'on':''}" onclick="setLivraisonsView('liste')">📋 Liste</button>
+        <button class="${LIVRAISONS_VIEW==='affectation'?'on':''}" onclick="setLivraisonsView('affectation')">🖐️ Affectation</button>
+      </div>
     </div>
     <div id="liv-liste-view" class="${LIVRAISONS_VIEW!=='liste'?'hidden':''}">
       <input type="text" id="liv-search" placeholder="🔎 Client, adresse, référence…" oninput="renderLivraisons()"/>
@@ -4158,7 +4242,15 @@ function renderLivraisons(){
 
   if(!items.length){ list.innerHTML = '<p class="empty">🚚 Aucune mission ne correspond.</p>'; return; }
 
-  list.innerHTML = items.map(m => {
+  const todayStr = new Date().toISOString().slice(0,10);
+  const tomorrowStr = new Date(Date.now()+86400000).toISOString().slice(0,10);
+
+  // Groupement par date pour les vues opérationnelles
+  const SHOW_GROUPS = !LIVRAISONS_SHOW_MASQUEES && ['toutes','a_venir','non_assignees','en_retard','en_cours'].includes(LIVRAISONS_FILTER);
+  const byDate = {}; const dateOrder = [];
+  if(SHOW_GROUPS){ items.forEach(m => { const d=m.date_prevue||'__'; if(!byDate[d]){byDate[d]=[];dateOrder.push(d);} byDate[d].push(m); }); }
+
+  const renderCard = m => {
     const res = m.reservation || {};
     // Mission "autre" : pas de réservation/client, titre + adresse libres
     // saisis par l'admin à la création (voir openCreateMissionModal).
@@ -4217,19 +4309,27 @@ function renderLivraisons(){
     // ex. hors zone non appliqué — d'un coup d'œil, avant même la clôture).
     const montantLabel = isAutre ? ' (tarif fixé)' : (m.montant_manuel ? ' (tarif fixé manuellement)' : (res.hors_zone ? ' (barème hors zone)' : ''));
     const montantEstime = m.statut !== 'fait' && !m.montant_manuel && !isAutre;
+    // Urgence : retard (rouge) > aujourd'hui (ambre) > à venir (neutre)
+    const isOverdueMission = m.date_prevue < todayStr && !['fait','annule'].includes(m.statut);
+    const isTodayMission = m.date_prevue === todayStr;
+    const urgencyBorder = (nonAssignee || isOverdueMission) ? 'border-left:3px solid var(--red)' : isTodayMission ? 'border-left:3px solid var(--amber)' : '';
     return `
-      <div class="row-item" ${nonAssignee?'style="border-left:3px solid var(--red)"':''}>
-        <div class="row-top">
-          <span class="row-title">${nonAssignee?'🔔 ':''}${escHtml(displayName)}</span>
-          <span style="display:flex;gap:6px;align-items:center">
+      <div class="row-item" ${urgencyBorder?`style="${urgencyBorder}"`:''}">
+        <div class="row-top" style="margin-bottom:4px">
+          <span style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+            ${missionTypeBadge(m.type)}
+            ${nonAssignee?`<span class="chip probleme">🔔 Non assignée</span>`:''}
             ${res.hors_zone?`<span class="chip probleme">⚠️ Hors zone</span>`:''}
-            <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
           </span>
+          <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
         </div>
-        <div style="margin-bottom:6px">${missionTypeBadge(m.type)}</div>
-        <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(displayAddr)}<br/>${frDate(m.date_prevue)} · ${escHtml(m.creneau||'')}</div>
-        ${detailBits.length?`<div class="row-meta">${detailBits.join(' · ')}</div>`:''}
-        ${res.instructions_acces?`<div class="row-meta" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
+        <div class="mission-datetime">
+          ${escHtml(frDate(m.date_prevue))}${m.creneau?` <span class="creneau">${escHtml(m.creneau)}</span>`:''}
+        </div>
+        <div style="margin-bottom:3px"><span class="row-title">${escHtml(displayName)}</span></div>
+        <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(displayAddr)}</div>
+        ${detailBits.length?`<div class="row-meta" style="margin-top:2px">${detailBits.join(' · ')}</div>`:''}
+        ${res.instructions_acces?`<div class="instructions-block">📌 ${escHtml(res.instructions_acces)}</div>`:''}
         ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
         ${m.statut==='a_faire' && m.incident_id?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-top:6px">☎️ A eu un incident — client peut-être de nouveau joignable</div>`:''}
         ${(['recuperation','changement'].includes(m.type) && m.statut==='fait' && !m.vidange_confirmee)?`<div class="row-meta" style="color:var(--amber)">⚠️ Vidange non confirmée</div>`:''}
@@ -4255,7 +4355,26 @@ function renderLivraisons(){
           </details>
         </div>
       </div>`;
-  }).join('');
+  };
+
+  if(SHOW_GROUPS && dateOrder.length > 1){
+    list.innerHTML = dateOrder.map(dateStr => {
+      const missions = byDate[dateStr];
+      const isOvd = dateStr !== '__' && dateStr < todayStr;
+      const isToday = dateStr === todayStr;
+      const isTomorrow = dateStr === tomorrowStr;
+      const dateLabel = dateStr==='__' ? 'Sans date'
+        : isToday ? `Aujourd'hui · ${frDate(dateStr)}`
+        : isTomorrow ? `Demain · ${frDate(dateStr)}`
+        : isOvd ? `En retard · ${frDate(dateStr)}`
+        : frDate(dateStr);
+      const hCls = isToday ? 'missions-date-header today' : isOvd ? 'missions-date-header overdue' : 'missions-date-header';
+      return `<div class="${hCls}">${escHtml(dateLabel)} <span class="count">${missions.length} mission${missions.length>1?'s':''}</span></div>`
+        + missions.map(renderCard).join('');
+    }).join('');
+  } else {
+    list.innerHTML = items.map(renderCard).join('');
+  }
 }
 
 // ── Calendrier des récupérations (Livraisons > 📅 Récupérations) ────────────
