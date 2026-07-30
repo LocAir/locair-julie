@@ -521,14 +521,19 @@ async function confirmReservation(supabase, resa) {
   if ((appareilsAssignes || 0) < resa.quantite) {
     const manque = resa.quantite - (appareilsAssignes || 0);
     const description = `Réservation ${resa.ref || resa.id} (${[resa.prenom, resa.nom].filter(Boolean).join(' ')}) confirmée avec ${manque} climatiseur${manque > 1 ? 's' : ''} de moins que commandé (${appareilsAssignes || 0}/${resa.quantite}) — stock insuffisant au moment de la confirmation.`;
+    // Contrairement aux logs d'audit ci-dessus (perte silencieuse acceptable,
+    // l'action principale a déjà réussi/échoué ailleurs), cet incident et
+    // cette notif SONT l'unique moyen d'alerter Aly d'un sous-effectif — les
+    // avaler sans trace laisserait le transporteur découvrir le manque sur
+    // place, sans que rien n'ait jamais prévenu personne.
     await supabase.from('incidents').insert({
       city_id: resa.city_id, reservation_id: resa.id, type: 'autre', description, statut: 'nouveau',
-    }).then(() => {}, () => {});
+    }).then(() => {}, e => console.error('[Sous-effectif incident]', e.message));
     await pushToAdmin(supabase, {
       title: '⚠️ Réservation confirmée en sous-effectif',
       body: description,
       tag: `sous-effectif-${resa.id}`,
-    }).catch(() => {});
+    }).catch(e => console.error('[Sous-effectif push]', e.message));
   }
 
   const { data: existing, error: existingErr } = await supabase.from('livraisons').select('id').eq('reservation_id', resa.id);

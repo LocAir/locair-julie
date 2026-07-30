@@ -40,8 +40,9 @@ async function generateAndSendDocuments(supabase, resa, { force } = {}) {
   if (!force && process.env.DOCUMENTS_ENABLED !== 'true') return;
   if (!resa || !resa.id) return;
 
-  const { data: existingFacture } = await supabase
+  const { data: existingFacture, error: existingErr } = await supabase
     .from('documents').select('id').eq('reservation_id', resa.id).eq('type', 'facture').maybeSingle();
+  if (existingErr) console.error('[Documents] vérif facture existante:', existingErr.message);
   if (existingFacture) return; // déjà généré — ne jamais dupliquer la facture
 
   const [{ data: reservAppareils }, { data: acceptations }] = await Promise.all([
