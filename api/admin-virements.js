@@ -145,8 +145,16 @@ module.exports = async (req, res) => {
 
       // Une demande de virement déjà en cours pour ce transporteur est réglée
       // par ce paiement plutôt que dupliquée avec une nouvelle ligne.
-      const { data: existante } = await supabase
-        .from('virements').select('id').eq('transporteur_id', transporteurId).eq('statut', 'demande').maybeSingle();
+      // .limit(1) plutôt que .maybeSingle() : si une course (double clic sur
+      // "demander un virement") a fini par créer 2 lignes 'demande', une
+      // erreur PostgREST "multiple rows" sur .maybeSingle() serait passée
+      // inaperçue faute de vérifier `error` ici, laissant croire à tort
+      // qu'aucune demande n'était en cours et créant un virement 'verse' en
+      // plus (audit du 2026-07-30) — .limit(1) ne peut pas échouer ainsi.
+      const { data: existanteRows, error: existanteErr } = await supabase
+        .from('virements').select('id').eq('transporteur_id', transporteurId).eq('statut', 'demande').limit(1);
+      if (existanteErr) throw existanteErr;
+      const existante = (existanteRows || [])[0] || null;
 
       // Rien à verser ET aucune demande à régler : vraiment rien à faire.
       // Mais s'il y a une demande en cours pour 0 € (ex. missions déjà payées
@@ -158,7 +166,20 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'Rien à verser pour ce transporteur (missions pas encore validées ?)' });
       }
 
-      if (ids.length) { const { error: payeErr } = await supabase.from('livraisons').update({ paye: true }).in('id', ids); if (payeErr) throw payeErr; }
+      if (ids.length) {
+        // .eq('paye', false) rend l'update atomique au niveau de chaque ligne :
+        // si un double-clic (ou un 2e onglet admin) a déjà versé entre notre
+        // lecture et notre écriture, ces lignes ne matchent plus et ne sont
+        // pas mises à jour une 2e fois — comparer la taille du retour à `ids`
+        // permet de détecter la collision plutôt que de créer un 2e virement
+        // 'verse' pour le même montant (audit du 2026-07-30).
+        const { data: updated, error: payeErr } = await supabase
+          .from('livraisons').update({ paye: true }).in('id', ids).eq('paye', false).select('id');
+        if (payeErr) throw payeErr;
+        if ((updated || []).length !== ids.length) {
+          return res.status(409).json({ error: 'Ce virement vient d\'être traité (double clic ?) — vérifie l\'historique avant de réessayer.' });
+        }
+      }
 
       if (existante) {
         const { error: virUpdErr } = await supabase.from('virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', existante.id);

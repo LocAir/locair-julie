@@ -181,8 +181,16 @@ module.exports = async (req, res) => {
 
       // Une demande de virement déjà en cours pour ce partenaire est réglée
       // par ce paiement plutôt que dupliquée avec une nouvelle ligne.
-      const { data: existante } = await supabase
-        .from('partenaire_virements').select('id').eq('partenaire_id', partenaireId).eq('statut', 'demande').maybeSingle();
+      // .limit(1) plutôt que .maybeSingle() : si une course (double clic sur
+      // "demander un virement") a fini par créer 2 lignes 'demande', une
+      // erreur PostgREST "multiple rows" sur .maybeSingle() serait passée
+      // inaperçue faute de vérifier `error` ici, laissant croire à tort
+      // qu'aucune demande n'était en cours et créant un virement 'verse' en
+      // plus (audit du 2026-07-30) — .limit(1) ne peut pas échouer ainsi.
+      const { data: existanteRows, error: existanteErr } = await supabase
+        .from('partenaire_virements').select('id').eq('partenaire_id', partenaireId).eq('statut', 'demande').limit(1);
+      if (existanteErr) throw existanteErr;
+      const existante = (existanteRows || [])[0] || null;
 
       // Rien à verser ET aucune demande à régler : vraiment rien à faire. Mais
       // s'il y a une demande en cours pour 0 € (commissions déjà réglées par
@@ -194,8 +202,18 @@ module.exports = async (req, res) => {
       }
 
       if (ids.length) {
-        const { error: commErr } = await supabase.from('reservations').update({ partenaire_commission_payee: true }).in('id', ids);
+        // .eq('partenaire_commission_payee', false) rend l'update atomique au
+        // niveau de chaque ligne : si un double-clic (ou un 2e onglet admin) a
+        // déjà versé entre notre lecture et notre écriture, ces lignes ne
+        // matchent plus — comparer la taille du retour à `ids` détecte la
+        // collision plutôt que de créer un 2e virement 'verse' pour le même
+        // montant (audit du 2026-07-30, même bug que côté transporteurs).
+        const { data: updated, error: commErr } = await supabase
+          .from('reservations').update({ partenaire_commission_payee: true }).in('id', ids).eq('partenaire_commission_payee', false).select('id');
         if (commErr) throw commErr;
+        if ((updated || []).length !== ids.length) {
+          return res.status(409).json({ error: 'Ce virement vient d\'être traité (double clic ?) — vérifie l\'historique avant de réessayer.' });
+        }
       }
 
       if (existante) {
