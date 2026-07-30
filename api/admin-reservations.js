@@ -130,9 +130,21 @@ module.exports = async (req, res) => {
       const quantite   = Math.min(5, Math.max(1, parseInt(body.quantite) || 1));
       const prixTotalCents = Math.max(0, parseInt(body.prix_total_cents) || 0);
       const logement    = (body.logement     || '').trim().slice(0, 100);
-      const parrainCode = (body.parrain_code || '').trim().slice(0, 50);
+      const parrainCode     = (body.parrain_code    || '').trim().slice(0, 50);
+      const partenaireCode  = (body.partenaire_code || '').trim().toLowerCase().slice(0, 50);
       const motifs      = (body.motifs       || '').trim().slice(0, 300);
       const mktConsent  = Boolean(body.mkt_consent);
+
+      let partenaireId = null;
+      let partenaireCommissionCents = 0;
+      if (partenaireCode) {
+        const { data: partenaire } = await supabase
+          .from('partenaires').select('id, taux_commission_pct').eq('code', partenaireCode).eq('actif', true).maybeSingle();
+        if (partenaire) {
+          partenaireId = partenaire.id;
+          partenaireCommissionCents = Math.round(prixTotalCents * partenaire.taux_commission_pct / 100);
+        }
+      }
       // Même exigence que checkout.js côté site (case CGV/CGL cochée avant
       // paiement) — ici recueillie verbalement par l'admin au téléphone.
       // Sécurité en profondeur : l'UI bloque déjà l'envoi, mais l'API ne doit
@@ -182,6 +194,7 @@ module.exports = async (req, res) => {
         date_debut: dateDebut, date_fin: dateFin, quantite,
         prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'manuel', hors_zone: horsZone,
         logement: logement || null, parrain_code: parrainCode || null,
+        partenaire_id: partenaireId, partenaire_commission_cents: partenaireCommissionCents,
         motifs: motifs || null, mkt_consent: mktConsent,
         cgv_accepted_at: new Date().toISOString(),
       }).select().single();

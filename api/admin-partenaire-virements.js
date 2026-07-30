@@ -1,6 +1,33 @@
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
+const { sendBrevoEmail } = require('./_lib/brevo');
+const { getSignature, withSignature } = require('./_lib/emailEngine');
+const { escHtml } = require('./_lib/emailTemplates');
+
+async function notifyPartenaireVirementVerse(supabase, partenaireId, montantCents) {
+  try {
+    const { data: p } = await supabase.from('partenaires')
+      .select('nom, email').eq('id', partenaireId).maybeSingle();
+    if (!p || !p.email) return;
+    const montantFmt = (montantCents / 100).toFixed(2).replace('.', ',') + ' €';
+    const sig = await getSignature(supabase);
+    const html = withSignature({
+      title: '💶 Ton virement a été effectué',
+      intro: `Bonjour ${escHtml(p.nom || '')}, ton virement de commission Loc'Air vient d'être effectué.`,
+      bodyHtml: `<div style="background:#e6f0ea;border-radius:12px;padding:20px 24px;text-align:center;margin-bottom:16px"><div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:36px;font-weight:700;color:#2d6a4f">${escHtml(montantFmt)}</div><div style="font-size:13px;color:#4a7a5a;margin-top:6px;font-weight:600">Versement effectué</div></div><p>Il sera visible sur ton compte bancaire dans 1 à 3 jours ouvrés. Tu peux vérifier le détail de tes réservations et commissions dans ton espace ambassadeur.</p>`,
+      ctaHref: 'https://www.locair.fr/partenaire',
+      ctaLabel: 'Voir mon espace ambassadeur →',
+    }, sig);
+    await sendBrevoEmail({
+      to: p.email, senderName: sig.nom_expediteur,
+      subject: `💶 Ton virement de ${montantFmt} a été effectué — Loc'Air`,
+      html,
+    });
+  } catch (e) {
+    console.error('[notifyPartenaireVirementVerse]', e.message);
+  }
+}
 
 // Pas de rattachement par ville ici, contrairement à admin-virements.js — un
 // partenaire (conciergerie...) n'est pas une ressource opérationnelle
@@ -20,8 +47,7 @@ module.exports = async (req, res) => {
       const { data, error } = await supabase
         .from('partenaire_virements')
         .select('id, montant_cents, statut, created_at, verse_at, partenaire:partenaires ( id, nom )')
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return res.status(200).json({ virements: data || [] });
     }
@@ -182,6 +208,7 @@ module.exports = async (req, res) => {
         if (virInsErr) throw virInsErr;
       }
 
+      await notifyPartenaireVirementVerse(supabase, partenaireId, montant);
       return res.status(200).json({ ok: true, montant_cents: montant });
     }
 
@@ -209,6 +236,7 @@ module.exports = async (req, res) => {
       const { error: virErr2 } = await supabase.from('partenaire_virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', id);
       if (virErr2) throw virErr2;
 
+      await notifyPartenaireVirementVerse(supabase, virement.partenaire_id, montant);
       return res.status(200).json({ ok: true, montant_cents: montant });
     }
 
