@@ -2764,12 +2764,17 @@ function reservationRowHtml(res, readOnly){
         </span>
       </div>
       <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
-      ${(res.instructions_acces||res.etage||res.ascenseur||res.fenetre||res.fenetre_photo_path||(res.type_client==='entreprise'&&res.siret))?`
+      ${res.fenetre_photo_path?`
+      <button onclick="openFenetrePhoto(${res.id})" title="Le client ne connaissait pas son type de fenêtre — il a envoyé une photo à la place"
+        style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 10px;border:1px solid var(--blue);border-radius:100px;background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:600;cursor:pointer">
+        📷 Photo de la fenêtre envoyée par le client
+      </button>`:''}
+      ${(res.instructions_acces||res.etage||res.ascenseur||res.fenetre||(res.type_client==='entreprise'&&res.siret))?`
       <details class="resa-details">
         <summary>📌 Détails d'accès</summary>
         <div class="resa-details-body">
           ${res.instructions_acces?`<div class="resa-sub" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
-          ${(res.etage||res.ascenseur||res.fenetre||res.fenetre_photo_path||(res.type_client==='entreprise'&&res.siret))?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):'',(res.type_client==='entreprise'&&res.siret)?'SIRET : '+escHtml(res.siret):''].filter(Boolean).join(' · ')}${res.fenetre_photo_path?` <button class="btn btn-grey" style="padding:2px 8px;font-size:11px;vertical-align:middle" onclick="openFenetrePhoto(${res.id})">📷 Photo</button>`:''}</div>`:''}
+          ${(res.etage||res.ascenseur||res.fenetre||(res.type_client==='entreprise'&&res.siret))?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):'',(res.type_client==='entreprise'&&res.siret)?'SIRET : '+escHtml(res.siret):''].filter(Boolean).join(' · ')}</div>`:''}
         </div>
       </details>`:''}
       <div class="resa-dates">

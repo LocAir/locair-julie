@@ -6427,14 +6427,44 @@ function ouvSummaryText(lang){
   return parts.map(p=>`${p.qty}× ${ouvLabel(p.type,lang)}`).join(', ');
 }
 
+// Redimensionne/réencode la photo avant envoi — une photo de smartphone pèse
+// souvent plusieurs Mo, bien plus que nécessaire pour que l'équipe la
+// consulte à l'écran avant d'arriver chez le client. Sans ça, la photo brute
+// mettait du temps à s'ouvrir côté admin/transporteur (même correctif que
+// les photos de mission côté transporteur, voir compressImage dans
+// transporteur/index.html). imageOrientation:'from-image' applique la
+// rotation EXIF (photo prise en portrait) avant de dessiner sur le canvas.
+async function compressWindowPhoto(file, maxDim, quality){
+  maxDim = maxDim || 1600;
+  quality = quality || 0.82;
+  let bitmap;
+  try{
+    bitmap = await createImageBitmap(file, {imageOrientation:'from-image'});
+  }catch(e){
+    bitmap = await createImageBitmap(file);
+  }
+  let {width, height} = bitmap;
+  if(width > maxDim || height > maxDim){
+    if(width > height){ height = Math.round(height * maxDim / width); width = maxDim; }
+    else{ width = Math.round(width * maxDim / height); height = maxDim; }
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width; canvas.height = height;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+  bitmap.close?.();
+  return await new Promise((resolve, reject) => {
+    canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Compression impossible')), 'image/jpeg', quality);
+  });
+}
 async function handleFenetrePhoto(input){
-  const file=input.files[0];
-  if(!file)return;
+  const rawFile=input.files[0];
+  if(!rawFile)return;
   const preview=document.getElementById('fenetre-photo-preview');
   const img=document.getElementById('fenetre-photo-img');
   const status=document.getElementById('fenetre-photo-status');
   const btnText=document.getElementById('fenetre-photo-btn-text');
-  // Aperçu local immédiat
+  // Aperçu local immédiat (fichier d'origine — la compression prend un
+  // instant, pas la peine de faire attendre l'aperçu pour ça)
   const reader=new FileReader();
   reader.onload=e=>{
     if(img){img.src=e.target.result;}
@@ -6442,9 +6472,13 @@ async function handleFenetrePhoto(input){
     if(status){status.textContent=_lang==='en'?'⏳ Uploading…':_lang==='zh'?'⏳ 上传中…':_lang==='ru'?'⏳ Загрузка…':'⏳ Envoi en cours…';}
     if(btnText){btnText.textContent=_lang==='en'?'Change photo':_lang==='zh'?'更换照片':_lang==='ru'?'Изменить фото':'Changer la photo';}
   };
-  reader.readAsDataURL(file);
+  reader.readAsDataURL(rawFile);
   // Upload vers Supabase Storage via API
   try{
+    let file=rawFile;
+    if(rawFile.type.startsWith('image')){
+      try{ file=await compressWindowPhoto(rawFile); }catch(e){ file=rawFile; }
+    }
     const r=await fetch('/api/checkout-window-photo',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({content_type:file.type})});
     if(!r.ok)throw new Error(_lang==='en'?'Upload unavailable':_lang==='zh'?'上传不可用':_lang==='ru'?'Загрузка недоступна':'Endpoint indisponible');
     const {signedUrl,path}=await r.json();
