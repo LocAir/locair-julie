@@ -93,6 +93,29 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
   }
   let html = '';
   try {
+    // Un lien de paiement précédent (email/SMS déjà envoyé) reste valable
+    // ~24h côté Stripe. Si on en génère un second avant que le premier
+    // n'expire (relance automatique du cron pendant qu'un lien manuel est
+    // encore valide, ou double renvoi manuel) et que le client paie via
+    // l'ANCIEN lien, reservations.stripe_payment_intent_id aura déjà été
+    // écrasé par le NOUVEAU (voir plus bas) — webhook.js ne retrouve alors
+    // plus la réservation à confirmer : le client est débité mais son
+    // dossier reste bloqué "en attente" pour toujours. On annule donc le
+    // PaymentIntent précédent (s'il existe et n'est pas encore payé) avant
+    // d'en créer un nouveau, pour qu'un seul lien reste valide à la fois.
+    if (resa.stripe_payment_intent_id) {
+      try {
+        const previous = await stripe.paymentIntents.retrieve(resa.stripe_payment_intent_id);
+        if (['requires_payment_method', 'requires_confirmation', 'requires_action'].includes(previous.status)) {
+          await stripe.paymentIntents.cancel(previous.id);
+        }
+      } catch (e) {
+        // Best-effort : un ancien PI introuvable ou dans un état non
+        // annulable ne doit jamais empêcher l'envoi du nouveau lien.
+        console.error('[Lien paiement] annulation ancien PI:', e.message);
+      }
+    }
+
     let customerId = resa.stripe_customer_id || '';
     if (!customerId) {
       const existing = await stripe.customers.list({ email: resa.email, limit: 1 });
