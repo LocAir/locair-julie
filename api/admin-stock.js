@@ -253,20 +253,38 @@ module.exports = async (req, res) => {
       const { data: appareils } = await supabase
         .from('appareils').select('id, numero, created_at, nb_locations_historique').eq('city_id', city.id).eq('statut', 'disponible');
 
+      const ids = (appareils || []).map(a => a.id);
+      // Un seul aller-retour pour tout le parc plutôt qu'une paire de requêtes
+      // PAR appareil (ça allait jusqu'à des centaines de requêtes séquentielles
+      // — voir le commentaire sur l'ajout en lot plus haut, "add" permet
+      // jusqu'à 500 unités d'un coup — au risque de dépasser le temps limite
+      // d'une fonction Vercel une fois le parc suffisamment grand).
+      const locationsParAppareil = new Map();
+      const mouvementsParAppareil = new Map();
+      if (ids.length) {
+        const [{ data: liens }, { data: mouvements }] = await Promise.all([
+          supabase.from('reservation_appareils').select('appareil_id').in('appareil_id', ids),
+          supabase.from('appareil_mouvements').select('appareil_id, type_evenement, commentaire, created_at')
+            .in('appareil_id', ids).in('type_evenement', ['passage_maintenance', 'autre'])
+            .order('created_at', { ascending: false }),
+        ]);
+        for (const l of liens || []) locationsParAppareil.set(l.appareil_id, (locationsParAppareil.get(l.appareil_id) || 0) + 1);
+        for (const m of mouvements || []) {
+          if (!mouvementsParAppareil.has(m.appareil_id)) mouvementsParAppareil.set(m.appareil_id, []);
+          mouvementsParAppareil.get(m.appareil_id).push(m);
+        }
+      }
+
       const items = [];
       for (const app of appareils || []) {
-        const [{ count: nbLocationsActuelles }, { data: mouvements }] = await Promise.all([
-          supabase.from('reservation_appareils').select('id', { count: 'exact', head: true }).eq('appareil_id', app.id),
-          supabase.from('appareil_mouvements').select('type_evenement, commentaire, created_at')
-            .eq('appareil_id', app.id).in('type_evenement', ['passage_maintenance', 'autre'])
-            .order('created_at', { ascending: false }).limit(20),
-        ]);
+        const nbLocationsActuelles = locationsParAppareil.get(app.id) || 0;
+        const mouvements = mouvementsParAppareil.get(app.id) || [];
         // + nb_locations_historique : locations perdues du décompte "actuel"
         // par un échange/réaffectation passé (voir bumpNbLocationsHistorique
         // plus haut) — même calcul que cron-daily.js et admin-offres-privilege.js,
         // sinon un appareil souvent échangé n'atteint jamais le seuil d'usage ici.
-        const nbLocations = (nbLocationsActuelles || 0) + (app.nb_locations_historique || 0);
-        const dernierControle = (mouvements || []).find(m => m.type_evenement === 'passage_maintenance' || (m.commentaire || '').startsWith(CONTROLE_MARQUEUR));
+        const nbLocations = nbLocationsActuelles + (app.nb_locations_historique || 0);
+        const dernierControle = mouvements.find(m => m.type_evenement === 'passage_maintenance' || (m.commentaire || '').startsWith(CONTROLE_MARQUEUR));
 
         const usageDepasse = nbLocations >= SEUIL;
         const controleAncien = !dernierControle || dernierControle.created_at < seuilDate;
