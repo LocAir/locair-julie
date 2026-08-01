@@ -110,11 +110,11 @@ async function smsNouvelleMission(supabase, transporteurId, { type, livraisonId 
 async function smsPaiement(supabase, transporteurId, { type, montantCents, missionDates }) {
   if (type !== 'paiement' || !montantCents || montantCents <= 0) return;
   try {
-    const { data: t } = await supabase.from('transporteurs').select('telephone, nom').eq('id', transporteurId).maybeSingle();
+    const { data: t } = await supabase.from('transporteurs').select('telephone').eq('id', transporteurId).maybeSingle();
     if (!t?.telephone) return;
     const montantFmt = (montantCents / 100).toFixed(2).replace('.', ',') + ' €';
     const periode = periodLabel(missionDates);
-    const content = `Loc'Air — Virement de ${montantFmt}${periode ? ', ' + periode : ''} effectué. locair.fr/transporteur/?tab=activite`;
+    const content = `Loc'Air — Virement de ${montantFmt}${periode ? ', ' + periode : ''} effectué. https://www.locair.fr/transporteur/?tab=activite`;
     const result = await sendBrevoSms({ to: t.telephone, content });
     if (!result.ok) console.error('[Notif transporteur paiement SMS]', result.error);
   } catch (e) {
