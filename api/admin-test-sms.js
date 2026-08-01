@@ -39,6 +39,10 @@ const SMS = {
     libelle: 'Récupération reprogrammée',
     content: `[TEST] Loc'Air - Suite à votre demande, nous vous confirmons que la récupération de votre climatiseur aura bien lieu le ${DATE_RECUP}, créneau ${CRENEAU}. Une question ? Appelez-nous au 06 63 79 87 56.`,
   },
+  avis_google: {
+    libelle: 'Demande d\'avis Google (fin de location)',
+    content: `[TEST] Loc'Air — Merci ${PRENOM} ! Votre expérience guide les prochains clients — partagez-la en 1 clic : g.page/r/CeJQrt2gLNNrEAE/review`,
+  },
 };
 
 module.exports = async (req, res) => {
