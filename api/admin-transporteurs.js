@@ -133,17 +133,25 @@ module.exports = async (req, res) => {
       const hasVillesPatch = body.villes !== undefined || body.disponibilites !== undefined;
       if (!hasFieldPatch && !hasVillesPatch) return res.status(400).json({ error: 'Rien à modifier' });
 
+      // Vérifie l'appartenance à la ville AVANT toute écriture. Avant ce
+      // correctif, cette vérification n'existait que dans la branche "aucun
+      // champ direct modifié" : dès qu'un champ direct (nom, actif, taux...)
+      // était envoyé EN MÊME TEMPS que villes/disponibilites, le patch de
+      // champs était bien filtré par ville (donc silencieusement sans effet
+      // sur un transporteur d'une autre ville), mais replaceVilles/
+      // replaceDisponibilites ci-dessous s'exécutaient quand même sans
+      // aucune vérification de ville — un admin connecté sur la ville A
+      // pouvait donc écraser les zones/disponibilités d'un transporteur de
+      // la ville B.
+      const { data: owned } = await supabase.from('transporteurs').select('id').eq('id', id).in('city_id', cityIds).maybeSingle();
+      if (!owned) return res.status(404).json({ error: 'Transporteur introuvable' });
+
       if (hasFieldPatch) {
         const { error } = await supabase.from('transporteurs').update(patch).eq('id', id).in('city_id', cityIds);
         if (error) {
           if (error.code === '23505') return res.status(409).json({ error: 'Ce code est déjà utilisé par un autre transporteur, réessaie' });
           throw error;
         }
-      } else {
-        // Vérifie quand même l'appartenance à la ville avant de toucher aux
-        // zones/disponibilités, même sans modification des champs directs.
-        const { data: owned } = await supabase.from('transporteurs').select('id').eq('id', id).in('city_id', cityIds).maybeSingle();
-        if (!owned) return res.status(404).json({ error: 'Transporteur introuvable' });
       }
       // Changer le code déconnecte aussi tout accès biométrique déjà enregistré
       // (même logique que pour les jetons de session) — le transporteur devra le
