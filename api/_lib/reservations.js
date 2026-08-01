@@ -395,6 +395,18 @@ async function sendRelanceProlongationSms(supabase, resa, { force = false } = {}
     erreur: result.ok ? null : String(result.error || '').slice(0, 500),
     contenu: content,
   }).then(() => {}, () => {});
+  // Notification admin (badge + push) à chaque envoi réussi — demandé par Aly
+  // pour voir en temps réel quand un client reçoit la relance de
+  // prolongation, sans avoir à ouvrir l'onglet Communications. Best-effort,
+  // comme tous les autres pushToAdmin : ne doit jamais faire échouer l'envoi
+  // du SMS lui-même.
+  if (result.ok) {
+    await pushToAdmin(supabase, {
+      title: `📩 SMS de prolongation envoyé — ${ref || 'dossier ' + resa.id}`,
+      body:  `${prenom || 'Un client'} a reçu le SMS lui proposant de prolonger sa location.`,
+      tag:   `sms-relance-prolongation-${resa.id}`,
+    });
+  }
   return result.ok ? { sent: true } : { sent: false, reason: 'error', error: result.error };
 }
 
