@@ -18,22 +18,27 @@ module.exports = async (req, res) => {
   const supabase = getSupabase();
   const today = new Date().toISOString().slice(0, 10);
 
-  const { data: recups } = await supabase
+  const { data: recups, error: recupsErr } = await supabase
     .from('livraisons')
     .select('id, reservation_id, reservation:reservations(prenom, tel, lang)')
     .eq('type', 'recuperation')
     .eq('statut', 'fait')
     .gte('fait_at', today + 'T00:00:00.000Z')
     .lt('fait_at', today + 'T23:59:59.999Z');
+  if (recupsErr) {
+    console.error('[cron-sms-avis] Erreur Supabase requête principale:', recupsErr.message);
+    return res.status(500).json({ ok: false, error: recupsErr.message });
+  }
 
   let sent = 0;
   for (const liv of recups || []) {
     const resa = liv.reservation;
     if (!resa?.tel) continue;
 
-    const { data: dejaEnvoye } = await supabase.from('email_log')
+    const { data: dejaEnvoye, error: idempErr } = await supabase.from('email_log')
       .select('id').eq('reservation_id', liv.reservation_id)
       .eq('scenario', 'sms_avis_google').eq('statut', 'envoye').maybeSingle();
+    if (idempErr) { console.error('[cron-sms-avis] Erreur idempotence:', idempErr.message); continue; }
     if (dejaEnvoye) continue;
 
     const lang = resa.lang || 'fr';
