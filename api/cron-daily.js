@@ -7,12 +7,12 @@ const { notifyIfSoldOut }      = require('./_lib/city');
 const { runWeeklyReport }      = require('./cron-weekly');
 const { runMonthlyRecap, runDormantClientsWinback } = require('./cron-monthly');
 const { dailyRate } = require('./_lib/pricing');
-const { scenariosDueToday, daysDiff, isSupersededReservation } = require('./_lib/emailSchedule');
+const { scenariosDueToday, isSupersededReservation } = require('./_lib/emailSchedule');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
 const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { sendReservationPaymentLink } = require('./_lib/paymentLink');
-const { sendRelanceProlongationSms, sendRappelRecuperationSms } = require('./_lib/reservations');
+const { sendRappelRecuperationSms } = require('./_lib/reservations');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
 function verifyCronAuth(req) {
@@ -621,7 +621,6 @@ module.exports = async (req, res) => {
     }
 
     let emailsEnvoyes = 0;
-    let smsRelanceProlongation = 0;
     let smsRappelRecuperation = 0;
     for (const resa of candidats || []) {
       const peers = peersByKey[`${resa.city_id}:${String(resa.email || '').toLowerCase()}`];
@@ -631,24 +630,11 @@ module.exports = async (req, res) => {
         const result = await sendScenarioEmail(supabase, { reservationId: resa.id, scenario });
         if (result.sent) emailsEnvoyes++;
       }
-      // SMS de relance prolongation : 4 jours avant la fin de location,
-      // uniquement pour les locations de plus de 4 jours (sinon dFin===4
-      // tomberait le jour même de la livraison — même garde que
-      // avant_fin_location dans _lib/emailSchedule.js). Idempotent sur son
-      // propre scénario (sms_relance_prolongation), voir _lib/reservations.js.
-      try {
-        const duree = daysDiff(resa.date_debut, resa.date_fin);
-        const dFin = daysDiff(todayStr, resa.date_fin);
-        if (duree > 4 && dFin === 4) {
-          await sendRelanceProlongationSms(supabase, resa);
-          smsRelanceProlongation++;
-        }
-      } catch (e) {
-        console.error('[Cron SMS relance prolongation]', e.message);
-      }
       // SMS rappel récupération : même jour que l'email rappel_recuperation
       // (le jour de date_fin, annonçant un passage le lendemain). Idempotent
       // sur son propre scénario (sms_rappel_recuperation), voir _lib/reservations.js.
+      // Le SMS "relance prolongation" (4 jours avant date_fin) est parti d'ici
+      // — voir cron-sms-avis.js, déplacé le soir (18h30) à la demande d'Aly.
       if (scenariosDus.includes('rappel_recuperation')) {
         try {
           await sendRappelRecuperationSms(supabase, resa);
@@ -659,7 +645,6 @@ module.exports = async (req, res) => {
       }
     }
     if (emailsEnvoyes) report.emailsScenarios = emailsEnvoyes;
-    if (smsRelanceProlongation) report.smsRelanceProlongation = smsRelanceProlongation;
     if (smsRappelRecuperation) report.smsRappelRecuperation = smsRappelRecuperation;
   } catch (e) {
     console.error('[Cron emails scénarios]', e.message);
