@@ -98,8 +98,27 @@ module.exports = async (req, res) => {
     // l'ancienne date, et confirmReservation() (qui rattache l'appareil via
     // une recherche sur date_fin=date_debut) ne retrouve jamais la bonne
     // réservation à transférer, immobilisant un appareil neuf pour rien.
-    if (orig?.date_fin) {
-      extDateDebut = orig.date_fin.slice(0, 10);
+    //
+    // `orig` est TOUJOURS la réservation racine (.not('source','eq',
+    // 'site_prolongation') plus haut — volontaire, pour hériter des vraies
+    // données logistiques). Mais si le client a déjà prolongé au moins une
+    // fois, orig.date_fin reste figée à la fin du contrat D'ORIGINE, pas à la
+    // fin réelle du contrat en cours. Sans ce correctif, une 2e prolongation
+    // repart de cette date figée : elle chevauche la 1re prolongation déjà
+    // confirmée (même période comptée deux fois) et le nombre de jours
+    // facturés explose (calculé jusqu'à une date de fin bien trop ancienne).
+    let finReelleContrat = orig?.date_fin || null;
+    if (orig?.id) {
+      const { data: dernierProlong } = await supabase
+        .from('reservations').select('date_fin')
+        .eq('reservation_origine_id', orig.id).eq('statut', 'confirmee')
+        .order('date_fin', { ascending: false }).limit(1).maybeSingle();
+      if (dernierProlong?.date_fin && dernierProlong.date_fin > finReelleContrat) {
+        finReelleContrat = dernierProlong.date_fin;
+      }
+    }
+    if (finReelleContrat) {
+      extDateDebut = finReelleContrat.slice(0, 10);
       if (extDateFin <= extDateDebut) {
         return res.status(400).json({ error: 'Dates de prolongation invalides' });
       }
@@ -110,9 +129,13 @@ module.exports = async (req, res) => {
       if (joursReel < 1) return res.status(400).json({ error: 'Durée de prolongation invalide' });
       jours = joursReel;
     }
-    // Recalcul du montant avec les dates réelles pour empêcher la manipulation de origDays
-    if (orig?.date_debut && orig?.date_fin) {
-      const dbOrigDays = Math.round((new Date(orig.date_fin) - new Date(orig.date_debut)) / 86400000);
+    // Recalcul du montant avec les dates réelles pour empêcher la manipulation de origDays.
+    // dbOrigDays = durée TOTALE déjà payée à ce jour (origine + prolongations
+    // déjà confirmées), pas seulement la durée du contrat d'origine — sinon le
+    // palier tarifaire appliqué à la nouvelle tranche est calculé sur une base
+    // trop basse (voir plus haut).
+    if (orig?.date_debut && extDateDebut) {
+      const dbOrigDays = Math.round((new Date(extDateDebut+'T00:00:00Z') - new Date(orig.date_debut+'T00:00:00Z')) / 86400000);
       if (dbOrigDays > 0) {
         amountCents = _safeIncrement(dbOrigDays, jours) * qty * 100;
       }
