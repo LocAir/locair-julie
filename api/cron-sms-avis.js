@@ -51,13 +51,13 @@ module.exports = async (req, res) => {
       const lang = resa.lang || 'fr';
       let content;
       if (lang === 'en') {
-        content = `Loc'Air — Thank you ${resa.prenom || ''}! Your experience helps future customers choose with confidence — share it in 1 click: g.page/r/CeJQrt2gLNNrEAE/review`;
+        content = `Loc'Air — Thank you ${resa.prenom || ''}! Help us earn the trust of future customers — share your experience in 1 click: g.page/r/CeJQrt2gLNNrEAE/review`;
       } else if (lang === 'zh') {
-        content = `Loc'Air — 感谢 ${resa.prenom || ''}！您的体验将帮助未来的客户做出明智选择，一键分享：g.page/r/CeJQrt2gLNNrEAE/review`;
+        content = `Loc'Air — 感谢 ${resa.prenom || ''}！帮助我们赢得未来客户的信任——一键分享您的体验：g.page/r/CeJQrt2gLNNrEAE/review`;
       } else if (lang === 'ru') {
-        content = `Loc'Air — Спасибо, ${resa.prenom || ''}! Ваш отзыв поможет будущим клиентам — поделитесь в 1 клик: g.page/r/CeJQrt2gLNNrEAE/review`;
+        content = `Loc'Air — Спасибо, ${resa.prenom || ''}! Помогите нам заслужить доверие будущих клиентов — поделитесь опытом в 1 клик: g.page/r/CeJQrt2gLNNrEAE/review`;
       } else {
-        content = `Loc'Air — Merci ${resa.prenom || ''} ! Votre expérience guide les prochains clients — partagez-la en 1 clic : g.page/r/CeJQrt2gLNNrEAE/review`;
+        content = `Loc'Air — Merci ${resa.prenom || ''} ! Aidez-nous à gagner la confiance des futurs clients : partagez votre expérience en 1 clic : g.page/r/CeJQrt2gLNNrEAE/review`;
       }
 
       const result = await sendBrevoSms({ to: resa.tel, content });
