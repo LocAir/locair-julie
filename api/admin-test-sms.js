@@ -41,7 +41,7 @@ const SMS = {
   },
   avis_google: {
     libelle: 'Demande d\'avis Google (fin de location)',
-    content: `[TEST] Loc'Air — Merci ${PRENOM} ! Votre expérience guide les prochains clients — partagez-la en 1 clic : g.page/r/CeJQrt2gLNNrEAE/review`,
+    content: `[TEST] Loc'Air — Merci ${PRENOM} ! Aidez-nous à gagner la confiance des futurs clients : partagez votre expérience en 1 clic : g.page/r/CeJQrt2gLNNrEAE/review`,
   },
 };
 
