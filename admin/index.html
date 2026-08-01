@@ -436,7 +436,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 </head>
 <body>
 <div class="wrap">
-  <div class="logo"><span>Loc<em>'Air</em> · Admin</span><button class="logout-link hidden" id="a-logout-btn" onclick="adminLogout()">🚪 Déconnexion</button></div>
+  <div class="logo"><span>Loc<em>'Air</em> · Admin</span><span style="display:flex;align-items:baseline;gap:14px"><button class="logout-link hidden" id="a-refresh-btn" onclick="location.reload()" title="Recharger la page">🔄 Actualiser</button><button class="logout-link hidden" id="a-logout-btn" onclick="adminLogout()">🚪 Déconnexion</button></span></div>
 
   <div id="a-login" class="login-screen">
     <div class="card login-card">
@@ -808,6 +808,7 @@ function adminLogout(){
     if(window._autoRefreshInterval){ clearInterval(window._autoRefreshInterval); window._autoRefreshInterval = null; }
     document.getElementById('a-app').classList.add('hidden');
     document.getElementById('a-logout-btn').classList.add('hidden');
+    document.getElementById('a-refresh-btn').classList.add('hidden');
     document.getElementById('a-login').classList.remove('hidden');
     document.getElementById('a-pwd').value = '';
   });
@@ -843,6 +844,7 @@ function onAdminLoginSuccess(token, role, nom){
   document.getElementById('a-login').classList.add('hidden');
   document.getElementById('a-app').classList.remove('hidden');
   document.getElementById('a-logout-btn').classList.remove('hidden');
+  document.getElementById('a-refresh-btn').classList.remove('hidden');
   applyRoleVisibility();
   switchAdminTab('accueil');
   loadAlerts();
@@ -850,7 +852,13 @@ function onAdminLoginSuccess(token, role, nom){
   setupAdminPush();
   clearAppBadge();
   if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
-  if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
+  // Le rafraîchissement automatique de l'onglet affiché passe à 2h (au lieu
+  // de 18s) — retour terrain (2026-07-31) : rechargeait la page en cours de
+  // lecture bien trop souvent. Un bouton "🔄 Actualiser" permanent (voir
+  // #a-refresh-btn ci-dessus) couvre le besoin de rafraîchir à la demande ;
+  // les badges de notification (_alertsInterval, 45s) restent inchangés —
+  // eux ne redessinent jamais le contenu affiché, juste les compteurs.
+  if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 2*60*60*1000);
 }
 async function adminLogin(){
   const pwd = document.getElementById('a-pwd').value.trim();
@@ -8704,6 +8712,7 @@ function closeLiveMap(){
     document.getElementById('a-login').classList.add('hidden');
     document.getElementById('a-app').classList.remove('hidden');
     document.getElementById('a-logout-btn').classList.remove('hidden');
+    document.getElementById('a-refresh-btn').classList.remove('hidden');
     applyRoleVisibility();
     switchAdminTab('accueil');
     // Sans ça, les badges (missions non assignées, virements) et le bandeau
@@ -8715,7 +8724,7 @@ function closeLiveMap(){
     setupAdminPush();
     clearAppBadge();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
-    if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 18000);
+    if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 2*60*60*1000);
     maybeOfferAdminFaceId();
   }
 })();

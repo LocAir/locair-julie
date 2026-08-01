@@ -438,7 +438,10 @@ input[type="checkbox"]{accent-color:var(--blue)}
 
   <div class="topbar">
     <div class="logo">Loc<em>'Air</em> · Transporteur</div>
-    <div class="who hidden" id="who-badge"></div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <button class="who hidden" id="refresh-badge" onclick="location.reload()" style="background:none;border:none;cursor:pointer;padding:0" title="Recharger la page">🔄 Actualiser</button>
+      <div class="who hidden" id="who-badge"></div>
+    </div>
   </div>
 
   <div class="tracking-badge hidden" id="tracking-badge">📍 Ta position est partagée avec Aly pendant cette mission</div>
@@ -688,6 +691,7 @@ function updateWhoBadge(){
   if(STATE.transporteurNom){
     b.classList.remove('hidden');
     b.innerHTML = escHtml(STATE.transporteurNom) + '<button onclick="logout()">changer</button>';
+    document.getElementById('refresh-badge')?.classList.remove('hidden');
   }
 }
 
@@ -699,6 +703,7 @@ function logout(){
     tourneeOrder:[], tourneeTotal:0, tourneeMatrix:null, tourneeMissionIndex:[]};
   stopPositionTracking();
   document.getElementById('who-badge').classList.add('hidden');
+  document.getElementById('refresh-badge')?.classList.add('hidden');
   show('login-screen');
 }
 
@@ -1697,7 +1702,10 @@ function transporteurAutoRefreshTick(){
   if(!document.getElementById('calendrier-screen').classList.contains('hidden')) silentRefreshCalendrier();
 }
 function startTransporteurAutoRefresh(){
-  if(!window._transpAutoRefresh) window._transpAutoRefresh = setInterval(transporteurAutoRefreshTick, 18000);
+  // Passé de 18s à 2h — retour terrain (2026-07-31) : rechargeait l'écran en
+  // cours de lecture bien trop souvent. Le bouton "🔄 Actualiser" permanent
+  // (voir #refresh-badge, topbar) couvre le besoin de rafraîchir à la demande.
+  if(!window._transpAutoRefresh) window._transpAutoRefresh = setInterval(transporteurAutoRefreshTick, 2*60*60*1000);
 }
 
 // ── Calendrier planning (lecture seule) ─────────────────────────────────────
