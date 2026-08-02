@@ -5803,6 +5803,18 @@ function resetPin(id){
 // (voir loadVirementsTab) — un seul rendu, jamais deux versions qui pourraient diverger.
 const PAIEMENT_MISSION_CHIP  = {en_attente:'en_attente', valide:'a_faire', paye:'actif'};
 const PAIEMENT_MISSION_LABEL = {en_attente:'À valider', valide:'Validé — à verser', paye:'Versé'};
+// Sans ça, les cartes transporteurs/ambassadeurs s'affichent dans un ordre
+// arbitraire (ordre base) — celui qui a demandé un virement ou qu'on doit
+// payer se retrouve mélangé avec ceux qui n'ont rien à toucher. Priorité :
+// demande explicite du transporteur > litige à récupérer > à verser > reste.
+function sortParUrgenceVirement(list){
+  const score = x => (x.demande_en_cours?3:0) + ((x.a_recuperer_cents||0)>0?2:0) + ((x.non_verse_cents||0)>0?1:0);
+  return [...list].sort((a,b) => {
+    const sa = score(a), sb = score(b);
+    if(sa !== sb) return sb - sa;
+    return (b.non_verse_cents||0) - (a.non_verse_cents||0);
+  });
+}
 function transporteurRevenusCardHtml(t){
   const missionsHtml = t.missions.length ? t.missions.map(m => `
     <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
@@ -5881,7 +5893,7 @@ async function loadTransporteursRevenus(){
     if(!r.ok) throw new Error(d.error||'Erreur');
     const transporteurs = (d.transporteurs||[]).filter(t => t.nom !== TEST_TRANSPORTEUR_NOM);
     if(!transporteurs.length){ zone.innerHTML = '<p class="empty">Aucun transporteur.</p>'; return; }
-    zone.innerHTML = transporteurs.map(transporteurRevenusCardHtml).join('');
+    zone.innerHTML = sortParUrgenceVirement(transporteurs).map(transporteurRevenusCardHtml).join('');
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
@@ -6257,7 +6269,7 @@ async function loadPartenairesRevenus(){
     if(!r.ok) throw new Error(d.error||'Erreur');
     const partenaires = d.partenaires || [];
     if(!partenaires.length){ zone.innerHTML = '<p class="empty">Aucun ambassadeur.</p>'; return; }
-    zone.innerHTML = partenaires.map(partenaireRevenusCardHtml).join('');
+    zone.innerHTML = sortParUrgenceVirement(partenaires).map(partenaireRevenusCardHtml).join('');
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
@@ -6312,11 +6324,11 @@ async function loadVirementsTab(){
 
     const transpSection = `
       <div class="section-title" style="margin-top:0">🚚 Transporteurs</div>
-      ${transporteurs.length ? transporteurs.map(transporteurRevenusCardHtml).join('') : '<p class="empty">Aucun transporteur.</p>'}`;
+      ${transporteurs.length ? sortParUrgenceVirement(transporteurs).map(transporteurRevenusCardHtml).join('') : '<p class="empty">Aucun transporteur.</p>'}`;
 
     const partSection = `
       <div class="section-title">🤝 Ambassadeurs</div>
-      ${partenaires.length ? partenaires.map(partenaireRevenusCardHtml).join('') : '<p class="empty">Aucun ambassadeur.</p>'}`;
+      ${partenaires.length ? sortParUrgenceVirement(partenaires).map(partenaireRevenusCardHtml).join('') : '<p class="empty">Aucun ambassadeur.</p>'}`;
 
     zone.innerHTML = sommaireHtml + transpSection + partSection;
   }catch(e){
