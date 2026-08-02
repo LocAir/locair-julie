@@ -61,17 +61,23 @@ async function sendBrevoEmail({ to, subject, html, attachments, senderName }) {
 }
 
 // Numéro de téléphone -> E.164, format attendu par l'API SMS de Brevo.
-// Gère : français local 06/07 (10 chiffres), préfixe 00xx, déjà en E.164.
-// Un numéro dans un format inconnu avec un 0 initial (ex. UK local "07xxx")
-// ne peut pas être converti sans connaître l'indicatif pays — on retourne
-// une chaîne vide pour déclencher le garde "destinataire manquant" et éviter
-// d'envoyer un numéro invalide à Brevo (qui répond sinon 400 invalid_parameter).
+// Gère en priorité :
+//   1. Déjà en E.164 (+xx...)
+//   2. Préfixe international 00xx (ex. 0033..., 0044...)
+//   3. Français local 10 chiffres commençant par 0 (06..., 07...)
+//   4. Français 9 chiffres sans 0 initial
+//   5. UK mobile local 11 chiffres commençant par 07 → +44
+//   6. UK géographique 11 chiffres commençant par 01 ou 02 → +44
+//   7. Autres formats sans 0 initial ≥ 10 chiffres (déjà avec indicatif, sans +)
+//   8. Format inconnu → chaîne vide → garde "destinataire manquant" dans sendBrevoSms
 function toE164FR(tel) {
   const digits = String(tel || '').replace(/[^\d+]/g, '');
   if (digits.startsWith('+')) return digits;
   if (digits.startsWith('00')) return '+' + digits.slice(2);
   if (digits.startsWith('0') && digits.length === 10) return '+33' + digits.slice(1);
   if (digits.length === 9 && !digits.startsWith('0')) return '+33' + digits;
+  if (digits.length === 11 && digits.startsWith('07')) return '+44' + digits.slice(1);
+  if (digits.length === 11 && (digits.startsWith('01') || digits.startsWith('02'))) return '+44' + digits.slice(1);
   if (!digits.startsWith('0') && digits.length >= 10) return '+' + digits;
   return '';
 }
@@ -111,4 +117,4 @@ async function sendBrevoSms({ to, content }) {
   }
 }
 
-module.exports = { sendBrevoEmail, sendBrevoSms };
+module.exports = { sendBrevoEmail, sendBrevoSms, toE164FR };
