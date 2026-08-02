@@ -4643,7 +4643,12 @@ function livraisonTableRowHtml(m){
     <td>${missionTransporteurSelectHtml(m, d)}</td>
     <td>${d.nonAssignee?'🔔 ':''}${res.hors_zone?'⚠️ ':''}<span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span></td>
     <td class="num">${euros(m.montant_transporteur_cents)}${d.montantEstime?' <span style="font-weight:400;opacity:.6">(est.)</span>':''}</td>
-    <td><div class="table-actions">${contactButtonsHtml(res.tel)}${missionMoreActionsHtml(m, d, true)}</div></td>
+    <td><div class="table-actions">
+      ${contactButtonsHtml(res.tel)}
+      ${d.enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom.replace(/'/g,"\\'"))}', '${escHtml((res.adresse||'').replace(/'/g,"\\'"))}')" title="Suivre en direct">🔴</button>`:''}
+      ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})" title="Problème résolu">✅</button>`:''}
+      ${missionMoreActionsHtml(m, d, true)}
+    </div></td>
   </tr>`;
 }
 
