@@ -759,6 +759,19 @@ function onPositionUpdate(pos){
   }).catch(()=>{});
 }
 
+// Resynchronisation silencieuse dès qu'un push arrive pendant que l'app est
+// déjà ouverte (voir transporteur/sw.js, qui poste ce message à tous les
+// onglets sur réception) — sans ça, une modification faite côté admin
+// (typiquement un créneau de récupération changé) ne remontait à l'écran
+// que si le livreur tapait la notification lui-même, ou au prochain
+// rafraîchissement automatique (2h). silentRefreshMissions() met déjà à
+// jour la liste ou le détail actuellement affiché sans rien interrompre.
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if(e.data?.type === 'locair-push' && STATE.token && !isTransporteurBusy()) silentRefreshMissions();
+  });
+}
+
 // ── Notifications push (nouvelles missions, annulations) ─────────────────────
 // Fonctionne même l'app fermée : le navigateur réveille le service worker sur
 // réception d'un push. Un seul abonnement suffit tant qu'il n'a pas expiré —

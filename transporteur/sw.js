@@ -15,6 +15,15 @@ self.addEventListener('push', (event) => {
   event.waitUntil(Promise.all([
     self.registration.showNotification(title, options),
     (self.navigator && self.navigator.setAppBadge) ? self.navigator.setAppBadge().catch(() => {}) : Promise.resolve(),
+    // Prévient tout onglet déjà ouvert (app au premier plan ou juste en
+    // arrière-plan) qu'un push vient d'arriver, pour qu'il se resynchronise
+    // tout seul (voir le listener 'message' dans transporteur/index.html) —
+    // sans ça, un changement fait côté admin (ex. créneau de récupération)
+    // ne remontait à l'écran que si le livreur tapait la notification lui-même,
+    // ou au prochain rafraîchissement automatique (toutes les 2h).
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      list.forEach((c) => c.postMessage({ type: 'locair-push' }));
+    }),
   ]));
 });
 
