@@ -116,7 +116,7 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
 async function findReservationByPaymentIntent(supabase, paymentIntentId) {
   if (!paymentIntentId) return null;
   const { data } = await supabase
-    .from('reservations').select('id, city_id, ref, statut, prenom, nom')
+    .from('reservations').select('id, city_id, ref, statut, prenom, nom, partenaire_commission_payee')
     .eq('stripe_payment_intent_id', paymentIntentId).maybeSingle();
   return data || null;
 }
@@ -287,6 +287,16 @@ async function handleChargeRefunded(supabase, charge) {
     body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant}${resa && remboursementTotal && livraisonDejaEffectuee ? ' — le climatiseur est chez le client, vérifie la mission de récupération.' : ''}`.trim(),
     tag:   `remboursement-${resa?.id || piId}`,
   });
+  // Une commission déjà versée à un partenaire pour cette réservation devient
+  // un litige à réconcilier — jusqu'ici visible seulement en badge, jamais
+  // poussé au moment où ça arrive vraiment (audit automatisations, 2026-08-02).
+  if (resa && remboursementTotal && resa.partenaire_commission_payee) {
+    await pushToAdmin(supabase, {
+      title: '⚠️ Litige commission partenaire',
+      body:  `Dossier ${resa.ref || '?'} remboursé — une commission a déjà été versée au partenaire, à réconcilier dans l'onglet Partenaires.`,
+      tag:   `partenaire-litige-${resa.id}`,
+    });
+  }
 }
 
 async function handleDisputeCreated(supabase, dispute) {

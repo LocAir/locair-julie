@@ -407,8 +407,19 @@ module.exports = async (req, res) => {
       await confirmReservation(supabase, resa);
       // Mettre à jour date_fin de la réservation d'origine pour que l'espace client
       // et les prolongations suivantes voient toujours la date réelle de fin.
+      // Filet de sécurité en lecture (getEffectiveDateFin, _lib/reservations.js)
+      // en cas d'échec — mais si Aly regarde directement la fiche réservation,
+      // elle y verrait une date figée sans jamais savoir que cette écriture a
+      // raté (audit automatisations, 2026-08-02) : alerte explicite ici.
       await supabase.from('reservations').update({ date_fin: newDateFin }).eq('id', origId)
-        .then(() => {}, e => console.error('[Admin prolong] date_fin update:', e.message));
+        .then(() => {}, async e => {
+          console.error('[Admin prolong] date_fin update:', e.message);
+          await pushToAdmin(supabase, {
+            title: '⚠️ Mise à jour de la date de fin échouée',
+            body:  `Dossier ${orig.ref || '?'} : la nouvelle date de fin (${newDateFin}) n'a pas pu être enregistrée sur la réservation d'origine — vérifie/corrige manuellement.`,
+            tag:   `prolong-datefin-echec-${origId}`,
+          }).catch(() => {});
+        });
       // Contrat mis à jour (nouvelle date de fin) + facture de l'extension —
       // même correctif que pour une prolongation payée en ligne (voir
       // webhook.js), sans quoi une prolongation prise par téléphone laissait
@@ -576,6 +587,19 @@ module.exports = async (req, res) => {
       // reste payé). Corrigé (audit automatisations, 2026-08-02) : jusqu'ici
       // seule 'annulee' déclenchait ce nettoyage — un remboursement manuel
       // laissait la mission active et l'appareil marqué occupé pour rien.
+      // Une commission déjà versée à un partenaire pour cette réservation
+      // devient un litige à réconcilier dès qu'elle est annulée/remboursée —
+      // jusqu'ici visible seulement en badge (l'admin doit penser à ouvrir
+      // l'onglet Partenaires), jamais poussé au moment où ça arrive
+      // vraiment (audit automatisations, 2026-08-02).
+      if ((patch.statut === 'annulee' || patch.statut === 'remboursee') && before.partenaire_commission_payee) {
+        await pushToAdmin(supabase, {
+          title: '⚠️ Litige commission partenaire',
+          body:  `Dossier ${before.ref || '?'} ${patch.statut === 'remboursee' ? 'remboursé' : 'annulé'} — une commission a déjà été versée au partenaire, à réconcilier dans l'onglet Partenaires.`,
+          tag:   `partenaire-litige-${id}`,
+        });
+      }
+
       if (patch.statut === 'annulee' || patch.statut === 'remboursee') {
         const { data: livMissions } = await supabase
           .from('livraisons').select('id, type, statut, transporteur_id')

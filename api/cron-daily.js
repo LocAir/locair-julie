@@ -382,6 +382,61 @@ module.exports = async (req, res) => {
     console.error('[Cron maintenance]', e.message);
   }
 
+  // ── 4bis (contrôle calendaire). Contrôle préventif non fait depuis plus de
+  // 6 mois — jusqu'ici visible SEULEMENT depuis l'écran "Stock > Entretien",
+  // que l'admin doit ouvrir elle-même. Si personne ne pense à le consulter,
+  // un climatiseur jamais vérifié depuis plus de 6 mois pouvait rester
+  // invisible indéfiniment, contrairement au contrôle par usage ci-dessus,
+  // qui a déjà son rappel automatique quotidien (audit automatisations,
+  // 2026-08-02). Même garde-fou anti-spam (une seule alerte tant que rien
+  // n'a changé depuis).
+  const CONTROLE_CALENDAIRE_MARQUEUR = 'Contrôle calendaire dépassé (6 mois)';
+  const CONTROLE_MARQUEUR = 'Contrôle préventif effectué';
+  const CONTROLE_SEUIL_MOIS = 6;
+  try {
+    const seuilControleDate = new Date(Date.now() - CONTROLE_SEUIL_MOIS * 30 * 86400000).toISOString();
+    const { data: appareilsControle } = await supabase
+      .from('appareils').select('id, numero, localisation').eq('statut', 'disponible');
+
+    let controleCalendaireCount = 0;
+    for (const app of appareilsControle || []) {
+      try {
+        const { data: mouvements } = await supabase
+          .from('appareil_mouvements').select('type_evenement, commentaire, created_at')
+          .eq('appareil_id', app.id).in('type_evenement', ['passage_maintenance', 'autre'])
+          .order('created_at', { ascending: false });
+        const dernierControle = (mouvements || []).find(m => m.type_evenement === 'passage_maintenance' || (m.commentaire || '').startsWith(CONTROLE_MARQUEUR));
+        const controleAncien = !dernierControle || dernierControle.created_at < seuilControleDate;
+        if (!controleAncien) continue;
+
+        const dejaAlerte = (mouvements || []).find(m => (m.commentaire || '').startsWith(CONTROLE_CALENDAIRE_MARQUEUR));
+        // Alerte déjà envoyée depuis le dernier contrôle réel (ou depuis
+        // toujours, si aucun contrôle n'a jamais eu lieu) : ne pas reposer la
+        // même question chaque jour.
+        if (dejaAlerte && (!dernierControle || dejaAlerte.created_at > dernierControle.created_at)) continue;
+
+        await recordMouvement(supabase, {
+          appareilId: app.id, typeEvenement: 'autre', nouvelleLocalisation: app.localisation,
+          utilisateur: 'systeme',
+          commentaire: `${CONTROLE_CALENDAIRE_MARQUEUR}${dernierControle ? ` (dernier contrôle le ${dernierControle.created_at.slice(0, 10)})` : ' (jamais contrôlé)'}.`,
+        });
+        await pushToAdmin(supabase, {
+          title: `🔧 Climatiseur #${app.numero} — contrôle préventif dû`,
+          body:  dernierControle
+            ? `Dernier contrôle le ${dernierControle.created_at.slice(0, 10)}, plus de ${CONTROLE_SEUIL_MOIS} mois. Vérifie-le depuis l'onglet Stock > Entretien.`
+            : `Jamais contrôlé depuis son ajout au parc. Vérifie-le depuis l'onglet Stock > Entretien.`,
+          tag:   `controle-calendaire-${app.id}`,
+        });
+        controleCalendaireCount++;
+      } catch (e) {
+        console.error(`[Cron contrôle calendaire] appareil #${app.id}`, e.message);
+      }
+    }
+    if (controleCalendaireCount) report.controleCalendaire = controleCalendaireCount;
+  } catch (e) {
+    console.error('[Cron contrôle calendaire]', e.message);
+  }
+
   // ── 4bis. Maintenance dépassée / appareil bloqué trop longtemps (Module 6,
   // Partie 12) ─────────────────────────────────────────────────────────────────
   // Un appareil en panne/maintenance/nettoyage depuis plus de X jours sans
@@ -629,6 +684,38 @@ module.exports = async (req, res) => {
     if (offreCount) report.offres_privilege = offreCount;
   } catch (e) {
     console.error('[Cron offre privilège]', e.message);
+  }
+
+  // ── 4quater (bis). Offre Privilège proposée sans réponse depuis trop
+  // longtemps — le client peut ignorer complètement l'offre jusqu'à ce que
+  // son appareil soit récupéré normalement, sans que rien ne prévienne
+  // jamais l'admin qu'il n'a jamais répondu (audit automatisations,
+  // 2026-08-02). created_at n'est pas la date de proposition exacte (posé à
+  // la détection d'éligibilité, potentiellement avant que l'admin ne fixe
+  // un prix), mais reste la meilleure approximation disponible sans nouvelle
+  // colonne dédiée.
+  try {
+    const SEUIL_OFFRE_PROPOSEE_JOURS = parseInt(process.env.OFFRE_PRIVILEGE_PROPOSEE_SEUIL_JOURS) || 5;
+    const seuilOffreDate = new Date(Date.now() - SEUIL_OFFRE_PROPOSEE_JOURS * 86400000).toISOString();
+    const { data: offresSansReponse } = await supabase
+      .from('offres_privilege')
+      .select('id, prix_vente_cents, created_at, appareil:appareils(numero)')
+      .eq('statut', 'proposee')
+      .lt('created_at', seuilOffreDate);
+
+    let offreSansReponseCount = 0;
+    for (const o of offresSansReponse || []) {
+      const joursProposition = Math.round((Date.now() - new Date(o.created_at).getTime()) / 86400000);
+      await pushToAdmin(supabase, {
+        title: `⭐ Offre Privilège sans réponse depuis ${joursProposition}j — climatiseur #${o.appareil?.numero ?? '?'}`,
+        body:  `Proposée à ${(o.prix_vente_cents / 100).toFixed(2)} €, toujours aucune réponse du client.`,
+        tag:   `offre-privilege-sans-reponse-${o.id}`,
+      });
+      offreSansReponseCount++;
+    }
+    if (offreSansReponseCount) report.offresPrivilegeSansReponse = offreSansReponseCount;
+  } catch (e) {
+    console.error('[Cron offre privilège sans réponse]', e.message);
   }
 
   // ── 5. Alerte stock saturé J+7 ───────────────────────────────────────────────
