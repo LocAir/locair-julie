@@ -524,6 +524,13 @@ const handler = async (req, res) => {
           }
         } catch (e) {
           console.error('[Prolong webhook] mise à jour date_fin:', e.message);
+          // Alerte admin : orig.date_fin non mis à jour — la prochaine
+          // prolongation recalculera sur une base obsolète (surfacturation).
+          pushToAdmin(getSupabase(), {
+            title: '⚠️ Prolongation — MAJ date_fin ratée',
+            body: `Réservation origine introuvable ou update Supabase échoué. Vérifier manuellement. Prolongation : ${confirmedResa?.ref || '?'}`,
+            tag: `prolong-datefin-err-${confirmedResa?.id || Date.now()}`,
+          }).catch(() => {});
         }
       }
 

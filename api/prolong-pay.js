@@ -77,6 +77,20 @@ module.exports = async (req, res) => {
   if (!orig) {
     return res.status(404).json({ error: 'Réservation introuvable.' });
   }
+  // Si le client a déjà prolongé au moins une fois et que le webhook a
+  // silencieusement raté la MAJ de orig.date_fin, on risque de recalculer le
+  // prix sur une base obsolète (surfacturation) et de poser date_debut à la
+  // mauvaise date (mission récup fantôme). Même filet que checkout-prolong.js.
+  if (orig.id) {
+    const { data: dernierProlong } = await supabase
+      .from('reservations').select('date_fin')
+      .eq('reservation_origine_id', orig.id).eq('statut', 'confirmee')
+      .order('date_fin', { ascending: false }).limit(1).maybeSingle();
+    if (dernierProlong?.date_fin && dernierProlong.date_fin > orig.date_fin) {
+      orig.date_fin = dernierProlong.date_fin;
+    }
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   if (orig.date_fin < today) {
     return res.status(422).json({ error: 'La location est déjà terminée — impossible de prolonger.' });
