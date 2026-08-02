@@ -1039,6 +1039,10 @@ async function loginWithAdminFaceId(auto){
 document.getElementById('a-pwd').addEventListener('keydown', e=>{ if(e.key==='Enter') adminLogin(); });
 
 function euros(cents){ return ((cents||0)/100).toFixed(2).replace('.',',') + ' €'; }
+// Séparateur de milliers (128000 -> "128 000 €") — sans ça un gros total
+// (CA cumulé depuis le début, CA sur 30 jours...) se lit chiffre par
+// chiffre au lieu d'un coup d'œil.
+function eurosMilliers(n){ return Math.round(n||0).toLocaleString('fr-FR') + ' €'; }
 function addDay(isoDate){
   if(!isoDate) return isoDate;
   const d = new Date(isoDate+'T00:00:00Z');
@@ -1670,12 +1674,12 @@ async function loadDashboard(periode){
         <button class="${periode==='mois'?'on':''}" onclick="loadDashboard('mois')">Ce mois</button>
       </div>
       <div class="stat-grid">
-        <div class="stat-tile"><div class="n">${(d.ca_euros||0).toFixed(0)} €</div><div class="l">Chiffre d'affaires</div></div>
+        <div class="stat-tile"><div class="n">${eurosMilliers(d.ca_euros)}</div><div class="l">Chiffre d'affaires</div></div>
         <div class="stat-tile"><div class="n">${d.nb_reservations||0}</div><div class="l">Réservations</div></div>
-        <div class="stat-tile"><div class="n">${(d.panier_moyen_euros||0).toFixed(0)} €</div><div class="l">Panier moyen</div></div>
+        <div class="stat-tile"><div class="n">${eurosMilliers(d.panier_moyen_euros)}</div><div class="l">Panier moyen</div></div>
         <div class="stat-tile"><div class="n">${pct}%</div><div class="l">Occupation (${d.unites_occupees}/${d.flotte_totale}${d.agregat?' · toutes villes':' à '+escHtml(d.ville||'')})</div></div>
         <div class="stat-tile ${d.incidents_ouverts>0?'warn':''}"><div class="n">${d.incidents_ouverts||0}</div><div class="l">Incidents ouverts</div></div>
-        <div class="stat-tile" style="grid-column:1/-1"><div class="n">${(d.ca_total_euros||0).toFixed(0)} €</div><div class="l">CA total généré (depuis le début)</div></div>
+        <div class="stat-tile" style="grid-column:1/-1"><div class="n">${eurosMilliers(d.ca_total_euros)}</div><div class="l">CA total généré (depuis le début)</div></div>
       </div>
       <div style="text-align:right;margin-top:-6px"><button class="btn btn-grey" onclick="openExportComptable()">📊 Export comptable</button></div>
       <div id="previsions-zone"></div>
@@ -1746,7 +1750,7 @@ function parVilleTableHtml(parVille){
             <span class="row-title">${escHtml(v.ville)}</span>
             <span class="chip ${v.incidents_ouverts>0?'probleme':'actif'}">${Math.round((v.taux_occupation||0)*100)}% occ.</span>
           </div>
-          <div class="row-meta">${(v.ca_euros||0).toFixed(0)} € · ${v.nb_reservations||0} réservation${v.nb_reservations>1?'s':''} · ${v.unites_occupees}/${v.flotte_totale} climatiseurs</div>
+          <div class="row-meta">${eurosMilliers(v.ca_euros)} · ${v.nb_reservations||0} réservation${v.nb_reservations>1?'s':''} · ${v.unites_occupees}/${v.flotte_totale} climatiseurs</div>
           ${v.incidents_ouverts>0?`<div class="row-meta" style="color:var(--red);font-weight:700">🧯 ${v.incidents_ouverts} incident${v.incidents_ouverts>1?'s':''} ouvert${v.incidents_ouverts>1?'s':''}</div>`:''}
         </div>`).join('')}
     </div>`;
@@ -1768,7 +1772,7 @@ function boardRowHtml(m){
   // fallait mémoriser la mission, aller dans Livraisons, la retrouver dans
   // une liste plus longue, puis assigner. Select direct ici, même pattern
   // que Réservations (agentLineHtml) et Livraisons (renderLivraisons).
-  const transpBit = m.transporteur ? escHtml(m.transporteur.nom) : `<select onchange="assignTransporteur(${m.id}, this.value, this)" style="border-color:var(--red);border-width:1.5px;font-size:11.5px;padding:1px 4px">${['<option value="">Non assigné</option>'].concat((typeof TRANSPORTEURS_CACHE!=='undefined'?TRANSPORTEURS_CACHE:[]).map(t=>`<option value="${t.id}">${escHtml(t.nom)}</option>`)).join('')}</select>`;
+  const transpBit = m.transporteur ? escHtml(m.transporteur.nom) : `<select onchange="assignTransporteur(${m.id}, this.value, this)" style="border-color:var(--red);border-width:1.5px;width:auto;min-width:130px;margin-bottom:0;padding:6px 9px;font-size:12.5px">${['<option value="">Non assigné</option>'].concat((typeof TRANSPORTEURS_CACHE!=='undefined'?TRANSPORTEURS_CACHE:[]).map(t=>`<option value="${t.id}">${escHtml(t.nom)}</option>`)).join('')}</select>`;
   return `
     <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
       <div class="row-top">
@@ -1828,7 +1832,7 @@ function morningBannerHtml(hier){
   return `
     <div class="morning-banner" id="morning-banner-el">
       <button class="mb-close" onclick="dismissMorningBanner()">✕</button>
-      <div class="mb-title">👋 Bonjour Aly</div>
+      <div class="mb-title">👋 Bonjour ${escHtml(NOM_COMPTE || 'Aly')}</div>
       <div class="mb-text">Hier : ${(hier.ca_euros||0).toFixed(0)} € de CA, ${hier.nb_reservations||0} réservation${(hier.nb_reservations||0)>1?'s':''}, ${hier.missions_terminees||0} mission${(hier.missions_terminees||0)>1?'s':''} terminée${(hier.missions_terminees||0)>1?'s':''}${incidentsTxt}.</div>
     </div>`;
 }
