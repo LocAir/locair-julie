@@ -6965,14 +6965,8 @@ async function loadClients(){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
-function renderClients(){
-  const zone = document.getElementById('tab-clients');
-  const q = (document.getElementById('cli-search')?.value || '').trim().toLowerCase();
-  let items = CLIENTS_CACHE;
-  if(q){
-    items = items.filter(c => [c.prenom,c.nom,c.tel,c.email].filter(Boolean).join(' ').toLowerCase().includes(q));
-  }
-  const list = items.map(c => `
+function clientCardHtml(c){
+  return `
     <div class="row-item">
       <div class="row-top">
         <span class="row-title">${escHtml((c.prenom||'')+' '+(c.nom||''))}${c.raison_sociale?` <span class="chip a_faire">🏢 ${escHtml(c.raison_sociale)}</span>`:''}</span>
@@ -6985,11 +6979,66 @@ function renderClients(){
         <button class="btn btn-grey" onclick="editAccesDifficile(${c.id}, '${(c.acces_difficile||'').replace(/'/g,"\\'")}')">${c.acces_difficile?'Modifier':'Ajouter'} une note d'accès</button>
         <button class="btn btn-blue" onclick="openClientFiche(${c.id})">👤 Fiche client</button>
       </div>
-    </div>`).join('') || '<p class="empty">👤 Aucun client pour l\'instant.</p>';
+    </div>`;
+}
+let CLI_SORT = {col:null, dir:1};
+function sortClientsTable(col){
+  CLI_SORT = CLI_SORT.col===col ? {col, dir:CLI_SORT.dir*-1} : {col, dir:1};
+  renderClients();
+}
+const CLI_SORT_GETTERS = {
+  nom:         c => ((c.prenom||'')+' '+(c.nom||'')).trim(),
+  tel:         c => c.tel||'',
+  email:       c => c.email||'',
+  derniere:    c => c.derniere_date_debut||'',
+  reservations: c => c.nb_reservations||0,
+};
+// Un clic sur la ligne ouvre la fiche client (comportement identique à
+// l'ancien bouton "👤 Fiche client" de la carte) — sauf clic sur un bouton
+// d'action de la cellule Actions, qui garde son propre comportement.
+function clientsTableHtml(items){
+  let rows = items;
+  const getter = CLI_SORT.col && CLI_SORT_GETTERS[CLI_SORT.col];
+  if(getter){
+    rows = [...items].sort((a,b) => {
+      const va = getter(a), vb = getter(b);
+      const cmp = typeof va==='number' ? va-vb : String(va).localeCompare(String(vb), 'fr');
+      return cmp * CLI_SORT.dir;
+    });
+  }
+  const cols = [
+    {key:'nom', label:'Nom'}, {key:'tel', label:'Téléphone'}, {key:'email', label:'Email'},
+    {key:'derniere', label:'Dernière réservation'}, {key:'reservations', label:'Nb résas'},
+  ];
+  const thHtml = c => `<th onclick="sortClientsTable('${c.key}')" class="${CLI_SORT.col===c.key?'sorted':''}">${c.label}<span class="sort-arrow">${CLI_SORT.col===c.key?(CLI_SORT.dir===1?'▲':'▼'):'▲'}</span></th>`;
+  const rowHtml = c => `<tr onclick="openClientFiche(${c.id})" style="cursor:pointer">
+    <td style="white-space:nowrap">${escHtml((c.prenom||'')+' '+(c.nom||''))}${c.raison_sociale?' 🏢':''}</td>
+    <td style="white-space:nowrap">${escHtml(c.tel||'—')}</td>
+    <td class="ellipsis">${escHtml(c.email||'—')}</td>
+    <td style="white-space:nowrap">${c.derniere_date_debut?frDateCourt(c.derniere_date_debut):'—'}</td>
+    <td class="num">${c.nb_reservations}</td>
+    <td onclick="event.stopPropagation()"><div class="table-actions">${contactButtonsHtml(c.tel)}<button class="btn btn-grey" onclick="editAccesDifficile(${c.id}, '${(c.acces_difficile||'').replace(/'/g,"\\'")}')" title="${c.acces_difficile?'Modifier':'Ajouter'} une note d'accès">📌</button></div></td>
+  </tr>`;
+  return `
+    <div class="admin-table-wrap"><table class="admin-table">
+      <thead><tr>${cols.map(thHtml).join('')}<th>Actions</th></tr></thead>
+      <tbody>${rows.map(rowHtml).join('')}</tbody>
+    </table></div>`;
+}
+function renderClients(){
+  const zone = document.getElementById('tab-clients');
+  const q = (document.getElementById('cli-search')?.value || '').trim().toLowerCase();
+  let items = CLIENTS_CACHE;
+  if(q){
+    items = items.filter(c => [c.prenom,c.nom,c.tel,c.email].filter(Boolean).join(' ').toLowerCase().includes(q));
+  }
+  const listHtml = items.length
+    ? `<div class="table-toggle-zone"><div class="row-grid">${items.map(clientCardHtml).join('')}</div>${clientsTableHtml(items)}</div>`
+    : '<p class="empty">👤 Aucun client pour l\'instant.</p>';
   zone.innerHTML = `
     <button class="btn btn-grey btn-block" style="margin-bottom:12px" onclick="exportClientsCsv()">⬇️ Exporter en CSV</button>
     <input type="text" id="cli-search" placeholder="🔎 Rechercher un client, un téléphone…" oninput="renderClients()" value="${escHtml(document.getElementById('cli-search')?.value||'')}"/>
-    ${list}`;
+    ${listHtml}`;
 }
 function exportClientsCsv(){
   if(!CLIENTS_CACHE.length){ showToast('Aucun client à exporter', 'error'); return; }
