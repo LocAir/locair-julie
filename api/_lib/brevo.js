@@ -60,25 +60,31 @@ async function sendBrevoEmail({ to, subject, html, attachments, senderName }) {
   }
 }
 
-// Numéro de téléphone -> E.164, format attendu par l'API SMS de Brevo.
-// Gère en priorité :
-//   1. Déjà en E.164 (+xx...)
-//   2. Préfixe international 00xx (ex. 0033..., 0044...)
-//   3. Français local 10 chiffres commençant par 0 (06..., 07...)
-//   4. Français 9 chiffres sans 0 initial
-//   5. UK mobile local 11 chiffres commençant par 07 → +44
-//   6. UK géographique 11 chiffres commençant par 01 ou 02 → +44
-//   7. Autres formats sans 0 initial ≥ 10 chiffres (déjà avec indicatif, sans +)
-//   8. Format inconnu → chaîne vide → garde "destinataire manquant" dans sendBrevoSms
+// Numéro de téléphone -> E.164 universel, via libphonenumber-js.
+// Stratégie : tente d'abord de parser le numéro tel quel (fonctionne si le
+// numéro est déjà en format international, ex. "+33612345678" ou "+447890123456").
+// Si le parse échoue (numéro local sans indicatif), retente en supposant que
+// c'est un numéro français — ce qui couvre la grande majorité des clients de
+// Loc'Air. Si les deux échouent, retourne une chaîne vide qui déclenchera le
+// garde "destinataire manquant" dans sendBrevoSms plutôt qu'un appel Brevo
+// inutile (évite le 400 "Invalid telephone number" de Brevo).
+const { parsePhoneNumber } = require('libphonenumber-js');
 function toE164FR(tel) {
-  const digits = String(tel || '').replace(/[^\d+]/g, '');
-  if (digits.startsWith('+')) return digits;
-  if (digits.startsWith('00')) return '+' + digits.slice(2);
-  if (digits.startsWith('0') && digits.length === 10) return '+33' + digits.slice(1);
-  if (digits.length === 9 && !digits.startsWith('0')) return '+33' + digits;
-  if (digits.length === 11 && digits.startsWith('07')) return '+44' + digits.slice(1);
-  if (digits.length === 11 && (digits.startsWith('01') || digits.startsWith('02'))) return '+44' + digits.slice(1);
-  if (!digits.startsWith('0') && digits.length >= 10) return '+' + digits;
+  const raw = String(tel || '').trim().replace(/\s+/g, '');
+  if (!raw) return '';
+  // Normalise le préfixe international 00xx → +xx avant le parse
+  const normalized = raw.startsWith('00') ? '+' + raw.slice(2) : raw;
+  // 1. Tente de parser tel quel (numéros déjà internationaux : +33, +44, +1…)
+  // 2. Sinon tente comme numéro français local (0612345678)
+  // 3. Sinon tente comme numéro britannique local (07890123456) — le pays le
+  //    plus fréquent parmi les touristes non-français à Nice dont le numéro
+  //    peut être stocké sans indicatif.
+  for (const country of [undefined, 'FR', 'GB']) {
+    try {
+      const phone = parsePhoneNumber(normalized, country);
+      if (phone && phone.isValid()) return phone.format('E.164');
+    } catch (_) {}
+  }
   return '';
 }
 
