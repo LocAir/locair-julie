@@ -2149,11 +2149,11 @@ async function loadStock(silent){
         <h2>Tableau de bord du parc</h2>
         <div class="stat-grid">
           <div class="stat-tile"><div class="n">${dd.total}</div><div class="l">Total</div></div>
-          <div class="stat-tile"><div class="n" style="color:var(--green)">${dd.disponibles}</div><div class="l">Disponibles</div></div>
+          <div class="stat-tile" style="cursor:pointer" onclick="filterStockRapide('disponible')"><div class="n" style="color:var(--green)">${dd.disponibles}</div><div class="l">Disponibles</div></div>
           <div class="stat-tile"><div class="n" style="color:var(--blue)">${dd.en_location}</div><div class="l">En location</div></div>
           <div class="stat-tile"><div class="n" style="color:var(--amber)">${dd.en_preparation}</div><div class="l">En préparation</div></div>
           <div class="stat-tile"><div class="n" style="color:var(--amber)">${dd.en_maintenance}</div><div class="l">Maintenance / nettoyage</div></div>
-          <div class="stat-tile"><div class="n" style="color:var(--red)">${dd.hors_service}</div><div class="l">Hors service</div></div>
+          <div class="stat-tile" style="cursor:pointer" onclick="filterStockRapide('panne')"><div class="n" style="color:var(--red)">${dd.hors_service}</div><div class="l">Hors service</div></div>
         </div>
       </div>` : ''}
       <div id="entretien-zone"></div>
@@ -2164,10 +2164,10 @@ async function loadStock(silent){
         <div class="inline-form">
           <div><label for="stock-f-statut">Statut</label><select id="stock-f-statut" onchange="applyStockFiltres()">
             <option value="">Tous</option>
-            <option value="disponible" ${STOCK_FILTRES.filtre_statut==='disponible'?'selected':''}>Disponible</option>
+            <option value="disponible" ${STOCK_FILTRES.filtre_statut==='disponible'?'selected':''}>Disponible${dd?` (${dd.disponibles})`:''}</option>
             <option value="loue" ${STOCK_FILTRES.filtre_statut==='loue'?'selected':''}>Loué</option>
             <option value="nettoyage" ${STOCK_FILTRES.filtre_statut==='nettoyage'?'selected':''}>Nettoyage</option>
-            <option value="panne" ${STOCK_FILTRES.filtre_statut==='panne'?'selected':''}>En panne</option>
+            <option value="panne" ${STOCK_FILTRES.filtre_statut==='panne'?'selected':''}>En panne${dd&&dd.hors_service?` (${dd.hors_service})`:''}</option>
             <option value="maintenance" ${STOCK_FILTRES.filtre_statut==='maintenance'?'selected':''}>Maintenance</option>
           </select></div>
           <div><label for="stock-f-localisation">Localisation</label><select id="stock-f-localisation" onchange="applyStockFiltres()">
@@ -2700,6 +2700,13 @@ async function voirFicheAppareil(id, numero){
   }catch(e){
     box.innerHTML = `<h2>📋 Climatiseur n°${numero}</h2><p class="empty">Impossible de charger la fiche.</p><div class="modal-actions"><button class="btn btn-grey btn-block" onclick="closeModal()">Fermer</button></div>`;
   }
+}
+// Clic direct depuis une tuile du "Tableau de bord du parc" (ex. "Hors
+// service") vers la liste filtrée correspondante — évite de redescendre à
+// la main jusqu'au formulaire de filtres pour reproduire le même chiffre.
+function filterStockRapide(statut){
+  STOCK_FILTRES = { filtre_statut: statut };
+  loadStock();
 }
 function applyStockFiltres(){
   const numero = document.getElementById('stock-f-numero')?.value.trim();
