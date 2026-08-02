@@ -2498,6 +2498,9 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .ds-custom-link:hover{text-decoration-color:var(--blue)}
 .f-date-custom{display:none;margin-top:8px}
 .f-date-custom.show{display:block}
+.f-date-wrap{position:relative}
+.f-date-wrap input[type="date"]{-webkit-text-fill-color:transparent!important;color:transparent!important}
+.f-date-display{position:absolute;inset:0;display:flex;align-items:center;padding:11px 13px;font-size:15px;pointer-events:none;z-index:1;border-radius:10px;color:var(--black)}
 
 /* ── CRÉNEAU GRID ── */
 .cren-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
@@ -3233,6 +3236,11 @@ input:-webkit-autofill:focus{
 #f-raison-sociale:focus,#f-siret:focus,#f-parrain:focus,#f-source:focus{border-color:rgba(255,255,255,.55)!important;box-shadow:0 0 0 3px rgba(255,255,255,.1)!important;outline:none}
 #f-source option{background:#0f2040;color:#f0ece4}
 #cancel-ref,#cancel-email{background:#0f2040!important;color:#f0ece4!important;border-color:rgba(255,255,255,.15)!important}
+
+/* Choose another date + date display overlay */
+.ds-custom-link{color:rgba(255,255,255,.85)!important;text-decoration-color:rgba(255,255,255,.25)!important}
+.ds-custom-link:hover{color:#fff!important;text-decoration-color:rgba(255,255,255,.55)!important}
+.f-date-display{color:#f0ece4!important}
 
 /* ── BOUTON PRINCIPAL : bleu → BLANC ── */
 .btn-next{
@@ -4925,7 +4933,10 @@ input:-webkit-autofill:focus{
               Choisir une autre date
             </button>
             <div class="f-date-custom" id="f-date-custom-wrap">
-              <input id="f-date" type="date" aria-label="Date personnalisée" required oninput="onCustomDate(this)" style="margin-top:0"/>
+              <div class="f-date-wrap">
+                <div id="f-date-display" class="f-date-display" aria-hidden="true"></div>
+                <input id="f-date" type="date" aria-label="Date personnalisée" required oninput="onCustomDate(this)" style="margin-top:0"/>
+              </div>
             </div>
             <div id="date-preview" class="date-preview" aria-live="polite"></div>
             <div id="cutoff-notice" style="display:none;margin-top:10px;padding:10px 13px;background:#f4f6f9;border:1.5px solid #dde3ec;border-radius:9px;font-size:12px;color:#5a6577;line-height:1.55"></div>
@@ -5632,13 +5643,30 @@ function toggleCustomDate(){
   if(open){
     const inp=document.getElementById('f-date');
     if(inp){inp.removeAttribute('style');setTimeout(()=>inp.focus(),50);}
+    _updateCustomDateDisplay();
     // Deselect shortcut chips
     document.querySelectorAll('.ds-chip').forEach(c=>{c.classList.remove('on');c.setAttribute('aria-checked','false');});
   }
 }
+function _updateCustomDateDisplay(){
+  const raw=document.getElementById('f-date')?.value;
+  const display=document.getElementById('f-date-display');
+  if(!display)return;
+  if(!raw){display.textContent='';return;}
+  const[y,m,d]=raw.split('-');
+  if(!y||!m||!d){display.textContent='';return;}
+  const dt=new Date(Date.UTC(+y,+m-1,+d));
+  let fmt;
+  if(_lang==='en') fmt=dt.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+  else if(_lang==='zh') fmt=`${dt.getUTCFullYear()}年${dt.getUTCMonth()+1}月${dt.getUTCDate()}日`;
+  else if(_lang==='ru') fmt=dt.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+  else fmt=dt.toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric',timeZone:'UTC'});
+  display.textContent=fmt;
+}
 function onCustomDate(inp){
   if(!inp?.value)return;
   updateDatePreview();
+  _updateCustomDateDisplay();
   document.querySelectorAll('.ds-chip').forEach(c=>{c.classList.remove('on');c.setAttribute('aria-checked','false');});
 }
 
