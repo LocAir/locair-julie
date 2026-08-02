@@ -48,8 +48,14 @@ module.exports = async (req, res) => {
     // récupération à venir (l'ancienne, sur l'origine, est annulée — la
     // nouvelle vit ailleurs) et ne voyait jamais la facture de son extension.
     const { data: prolongations } = await supabase
-      .from('reservations').select('id').eq('reservation_origine_id', reservationId);
+      .from('reservations').select('id, date_fin, statut').eq('reservation_origine_id', reservationId);
     const allResaIds = [reservationId, ...(prolongations || []).map(p => p.id)];
+    // Vraie date de fin = max(date_fin) sur les prolongations confirmées.
+    // Après une prolongation le webhook met à jour orig.date_fin, mais si ce
+    // write a silencieusement échoué la date affichée serait fausse sans ce filet.
+    const dateFinReelle = (prolongations || [])
+      .filter(p => p.statut === 'confirmee')
+      .reduce((max, p) => (p.date_fin > max ? p.date_fin : max), resa.date_fin);
 
     // Tout le reste en parallèle — une seule requête HTTP côté client pour
     // construire l'ensemble du tableau de bord (voir contrainte de
@@ -88,7 +94,7 @@ module.exports = async (req, res) => {
 
     const progress = computeClientProgress(resa, livraisons || [], (incidentsOuverts || []).length > 0);
     // `internal` ne doit jamais quitter le serveur (statut technique).
-    delete progress.internal;
+    if (progress) delete progress.internal;
     // Affichage détaillé (Module 7) recalculé sans l'incident (voir
     // statutDetaille.js) — un incident en cours reste visible par ailleurs,
     // sans effacer où en est réellement la commande.
@@ -108,8 +114,8 @@ module.exports = async (req, res) => {
         ref: resa.ref,
         statut_paiement: resa.statut === 'en_attente' ? 'en_attente' : (resa.statut === 'remboursee' ? 'rembourse' : (['annulee'].includes(resa.statut) ? 'annule' : 'paye')),
         date_debut: resa.date_debut,
-        date_fin: resa.date_fin,
-        jours_restants: joursRestants(resa.date_fin),
+        date_fin: dateFinReelle,
+        jours_restants: joursRestants(dateFinReelle),
       },
       progress, // { stage, stageLabel, banner, nextStep }
       ma_location: {
@@ -121,7 +127,7 @@ module.exports = async (req, res) => {
           photo_url: appareil.modele?.photo_url || null,
         } : null,
         date_debut: resa.date_debut,
-        date_fin: resa.date_fin,
+        date_fin: dateFinReelle,
         quantite: resa.quantite,
         montant_ttc_cents: resa.prix_total_cents,
       },
