@@ -54,16 +54,21 @@ async function smsNouvelleMission(supabase, transporteurId, { type, livraisonId 
   try {
     const [{ data: transporteur }, { data: liv }] = await Promise.all([
       supabase.from('transporteurs').select('telephone').eq('id', transporteurId).maybeSingle(),
-      supabase.from('livraisons').select('type, date_prevue, creneau, montant_manuel, montant_du_cents, reservation:reservations(adresse, installation, city_id, hors_zone)').eq('id', livraisonId).maybeSingle(),
+      supabase.from('livraisons').select('type, titre, adresse_libre, date_prevue, creneau, montant_manuel, montant_du_cents, reservation:reservations(adresse, installation, city_id, hors_zone)').eq('id', livraisonId).maybeSingle(),
     ]);
     if (!transporteur?.telephone || !liv) return;
     // Une ligne par info (type, date/créneau, adresse, installation,
     // rémunération, lien) plutôt qu'une seule phrase dense — plus rapide à
     // lire d'un coup d'œil sur le lock screen d'un téléphone.
     const estRecuperation = liv.type === 'recuperation';
-    const libelle = estRecuperation ? 'Récupération' : 'Livraison';
+    // Mission "autre" (hors réservation, ex. aller chercher du matériel) :
+    // son propre titre + adresse libre, jamais "Livraison" avec une adresse
+    // vide (audit automatisations, 2026-08-02 — liv.reservation est
+    // toujours null pour ce type, donc liv.reservation?.adresse ne
+    // retrouvait jamais rien).
+    const libelle = liv.type === 'autre' ? (liv.titre || 'Mission') : (estRecuperation ? 'Récupération' : 'Livraison');
     const dateFmt = fmtDateFR(liv.date_prevue);
-    const adresse = liv.reservation?.adresse || '';
+    const adresse = liv.type === 'autre' ? (liv.adresse_libre || '') : (liv.reservation?.adresse || '');
     // Pertinent seulement à la livraison : à la récupération, l'appareil est
     // simplement repris, quel qu'ait été le mode d'installation initial.
     // "Technicien (80€)" côté reservations.installation est le prix payé par
@@ -71,7 +76,7 @@ async function smsNouvelleMission(supabase, transporteurId, { type, livraisonId 
     // du transporteur ci-dessous (barème Loc'Air, indépendant du mode
     // d'installation), d'où le libellé volontairement dépouillé de tout prix.
     const estTechnicien = (liv.reservation?.installation || '').startsWith('Technicien');
-    const installationLigne = !estRecuperation
+    const installationLigne = (!estRecuperation && liv.type !== 'autre')
       ? (estTechnicien ? 'Installation par vous (technicien)' : 'Installation autonome (client)')
       : null;
     // Même barème (par ville, éditable dans l'admin) et même garde

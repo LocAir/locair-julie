@@ -13,6 +13,46 @@ function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
 }
 
+// Date de fin RÉELLE d'un contrat — prolongations payées déjà confirmées ET
+// récupération reprogrammée à la main par l'admin (admin-livraisons.js
+// action 'update', ex. le client demande à garder l'appareil quelques jours
+// de plus sans passer par une prolongation payante) comprises.
+// reservations.date_fin sur la réservation d'ORIGINE est mise à jour à
+// chaque confirmation de prolongation (webhook.js, admin-reservations.js),
+// mais toujours en fire-and-forget (jamais garanti à 100%, voir les .then()
+// qui avalent l'erreur) — sans ce filet de sécurité, une prolongation dont
+// la mise à jour de date_fin aurait raté pour une raison quelconque rejette
+// à tort toute nouvelle prolongation ("déjà terminée") ou affiche une durée
+// figée dans l'espace client. Reprend la date la plus tardive entre : la
+// réservation d'origine, sa dernière prolongation confirmée, et la date de
+// récupération (moins 1 jour, la récup étant toujours programmée en J+1)
+// actuellement planifiée, sur l'origine ou une de ses prolongations.
+async function getEffectiveDateFin(supabase, origId, origDateFin) {
+  if (!origId) return origDateFin;
+  let effective = origDateFin;
+
+  const { data: dernierProlong } = await supabase
+    .from('reservations').select('date_fin')
+    .eq('reservation_origine_id', origId).eq('statut', 'confirmee')
+    .order('date_fin', { ascending: false }).limit(1).maybeSingle();
+  if (dernierProlong?.date_fin && dernierProlong.date_fin > effective) effective = dernierProlong.date_fin;
+
+  const { data: prolongIds } = await supabase
+    .from('reservations').select('id').eq('reservation_origine_id', origId);
+  const allIds = [origId, ...(prolongIds || []).map(p => p.id)];
+  const { data: recup } = await supabase
+    .from('livraisons').select('date_prevue')
+    .in('reservation_id', allIds).eq('type', 'recuperation')
+    .not('statut', 'in', '(annule,annulee)')
+    .order('date_prevue', { ascending: false }).limit(1).maybeSingle();
+  if (recup?.date_prevue) {
+    const recupEnd = addDays(recup.date_prevue, -1);
+    if (recupEnd > effective) effective = recupEnd;
+  }
+
+  return effective;
+}
+
 // Doit rester synchronisé avec TEST_TRANSPORTEUR_NOM dans admin/index.html —
 // ce compte factice (créé pour qu'Aly puisse tester /transporteur lui-même)
 // ne doit jamais recevoir de vraie mission cliente par la répartition auto.
@@ -667,5 +707,5 @@ async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) 
 module.exports = {
   confirmReservationAndCreateLivraisons, confirmReservation, pickTransporteurForMission, normalizeTel,
   sendConfirmationCommunications, sendProlongationConfirmation, sendRelanceProlongationSms,
-  sendRappelRecuperationSms,
+  sendRappelRecuperationSms, getEffectiveDateFin,
 };

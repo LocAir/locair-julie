@@ -45,6 +45,10 @@ module.exports = async (req, res) => {
     if (livErr) throw livErr;
     if (!liv) return res.status(404).json({ error: 'Aucune récupération à venir trouvée' });
 
+    if (liv.statut === 'en_route' || liv.statut === 'arrivee') {
+      return res.status(409).json({ error: 'Un transporteur est déjà en route — la modification de créneau n\'est plus possible.' });
+    }
+
     if (newDate >= liv.date_prevue) {
       return res.status(400).json({ error: 'La nouvelle date doit être antérieure à la date actuelle de récupération' });
     }

@@ -1,5 +1,23 @@
 const { extractPostalCode } = require('./postal');
 const { pushToAdmin } = require('./push');
+const { getAvailability } = require('./stock');
+
+// Source unique de vérité pour "cette ville est-elle en mode complet ?" —
+// partagée entre /api/mode-complet (affichage site) et le blocage serveur
+// d'une nouvelle réservation (api/checkout.js) pour qu'ils ne puissent
+// jamais se désynchroniser. En mode "manuel" (migration_sold_out_mode.sql),
+// l'admin garde la main (bouton "Passer en complet") ; en mode "auto"
+// (par défaut), recalculé en temps réel à partir du stock réel plutôt que
+// du champ mis en cache cities.sold_out, pour ne jamais dépendre d'un
+// trigger SQL qui aurait raté.
+async function isCitySoldOut(supabase, city) {
+  if (!city) return false;
+  if (city.sold_out_mode === 'manuel') return Boolean(city.sold_out);
+  const today    = new Date().toISOString().slice(0, 10);
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const disponibles = Math.max(0, await getAvailability(supabase, city.id, today, tomorrow));
+  return disponibles <= 0;
+}
 
 // Historique : un déploiement = une ville (voir CITY object dans index.html),
 // résolue via CITY_SLUG. Conservé le temps que tous les appelants migrent
@@ -81,4 +99,4 @@ async function notifyIfSoldOut(supabase, cityId) {
   }
 }
 
-module.exports = { getCity, listCities, resolveCityById, resolveCityByAddress, resolveAdminCity, notifyIfSoldOut };
+module.exports = { getCity, listCities, resolveCityById, resolveCityByAddress, resolveAdminCity, notifyIfSoldOut, isCitySoldOut };

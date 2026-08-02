@@ -4,11 +4,19 @@ const { resolveCityById } = require('./_lib/city');
 const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
+const { getEffectiveDateFin } = require('./_lib/reservations');
+const { getClientIp, isRateLimited } = require('./_lib/ratelimit');
 
 const calcBase = calcTieredPrice;
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const supabaseRL = getSupabase();
+  const ip = getClientIp(req);
+  if (await isRateLimited(supabaseRL, `checkout-prolong:${ip}`)) {
+    return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
+  }
 
   const data   = req.body || {};
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -60,6 +68,7 @@ module.exports = async (req, res) => {
   const supabase = getSupabase();
   let city;
   let orig; // récupérée dans le 1er bloc try, réutilisée dans le 2e (insert) plus bas
+  let partenaireCommissionCents = 0;
   try {
     // Une prolongation ne collecte pas une nouvelle adresse — on reprend la
     // même zone que la réservation d'origine du client, retrouvée par email
@@ -78,7 +87,7 @@ module.exports = async (req, res) => {
     // et ne se rattache jamais à la bonne réservation. Même filtre déjà en
     // place côté admin (admin-reservations.js, action 'lookup_prolongation').
     let origQuery = supabase
-      .from('reservations').select('id, city_id, tel_secondaire, hors_zone, date_debut, date_fin, quantite, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement')
+      .from('reservations').select('id, city_id, tel_secondaire, hors_zone, date_debut, date_fin, quantite, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement, partenaire_id')
       .ilike('email', String(data.email).trim())
       .not('source', 'eq', 'site_prolongation')
       .eq('statut', 'confirmee');
@@ -107,16 +116,7 @@ module.exports = async (req, res) => {
     // repart de cette date figée : elle chevauche la 1re prolongation déjà
     // confirmée (même période comptée deux fois) et le nombre de jours
     // facturés explose (calculé jusqu'à une date de fin bien trop ancienne).
-    let finReelleContrat = orig?.date_fin || null;
-    if (orig?.id) {
-      const { data: dernierProlong } = await supabase
-        .from('reservations').select('date_fin')
-        .eq('reservation_origine_id', orig.id).eq('statut', 'confirmee')
-        .order('date_fin', { ascending: false }).limit(1).maybeSingle();
-      if (dernierProlong?.date_fin && dernierProlong.date_fin > finReelleContrat) {
-        finReelleContrat = dernierProlong.date_fin;
-      }
-    }
+    const finReelleContrat = orig?.id ? await getEffectiveDateFin(supabase, orig.id, orig.date_fin) : (orig?.date_fin || null);
     if (finReelleContrat) {
       extDateDebut = finReelleContrat.slice(0, 10);
       if (extDateFin <= extDateDebut) {
@@ -142,6 +142,12 @@ module.exports = async (req, res) => {
     }
     if (!amountCents || amountCents <= 0) {
       return res.status(400).json({ error: 'Montant invalide' });
+    }
+    // Commission partenaire : reprend le taux de la réservation d'origine.
+    if (orig?.partenaire_id) {
+      const { data: pt } = await supabase.from('partenaires')
+        .select('taux_commission_pct').eq('id', orig.partenaire_id).maybeSingle();
+      if (pt) partenaireCommissionCents = Math.round(amountCents * pt.taux_commission_pct / 100);
     }
   } catch (err) {
     console.error('[Checkout-prolong dates]', err.message);
@@ -234,6 +240,9 @@ module.exports = async (req, res) => {
       // Lien fiable vers la réservation prolongée — voir isSupersededReservation
       // (_lib/emailSchedule.js) et migration_reservation_origine.sql.
       reservation_origine_id:   orig?.id || null,
+      // Commission partenaire : héritée du taux de la réservation d'origine.
+      partenaire_id:            orig?.partenaire_id || null,
+      partenaire_commission_cents: partenaireCommissionCents,
       lang:                     ['fr','en','zh','ru'].includes(data.lang) ? data.lang : 'fr',
     }).select('id').single();
 

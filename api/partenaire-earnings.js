@@ -136,14 +136,19 @@ module.exports = async (req, res) => {
       if (enCoursErr) throw enCoursErr;
       if (enCours && enCours.length) return res.status(409).json({ error: 'Une demande est déjà en cours' });
 
-      const { error } = await supabase.from('partenaire_virements').insert({ partenaire_id: partenaireId, montant_cents: montant, statut: 'demande' });
+      const { data: virement, error } = await supabase.from('partenaire_virements')
+        .insert({ partenaire_id: partenaireId, montant_cents: montant, statut: 'demande' })
+        .select('id').single();
       if (error) throw error;
 
       const { data: p } = await supabase.from('partenaires').select('nom').eq('id', partenaireId).maybeSingle();
       await pushToAdmin(supabase, {
         title: '💶 Virement partenaire demandé',
         body:  `${p?.nom || 'Un partenaire'} demande un virement de ${(montant / 100).toFixed(2)} €.`,
-        tag:   'virement-partenaire',
+        // Tag unique par virement — un tag fixe faisait disparaître la
+        // demande d'un partenaire derrière celle d'un autre le même jour
+        // (audit automatisations, 2026-08-02).
+        tag:   `virement-partenaire-${virement?.id || partenaireId}`,
       });
 
       return res.status(200).json({ ok: true });

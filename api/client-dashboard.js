@@ -4,6 +4,7 @@ const { computeClientProgress } = require('./_lib/clientProgress');
 const { syncStatutDetaille } = require('./_lib/statutDetaille');
 const { computeOrderStatus } = require('./_lib/orderStatus');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
+const { addDays } = require('./_lib/dates');
 
 const GENERIC_ERROR = "Nous n'avons pas retrouvé votre réservation. Merci de vérifier votre numéro de commande et votre adresse email.";
 
@@ -48,8 +49,19 @@ module.exports = async (req, res) => {
     // récupération à venir (l'ancienne, sur l'origine, est annulée — la
     // nouvelle vit ailleurs) et ne voyait jamais la facture de son extension.
     const { data: prolongations } = await supabase
-      .from('reservations').select('id').eq('reservation_origine_id', reservationId);
+      .from('reservations').select('id, date_fin, statut').eq('reservation_origine_id', reservationId);
     const allResaIds = [reservationId, ...(prolongations || []).map(p => p.id)];
+    // Vraie date de fin = la plus tardive entre : la fin d'origine, la fin
+    // des prolongations payées déjà confirmées, et la date de récupération
+    // (moins 1 jour) actuellement planifiée — cette dernière peut avoir été
+    // repoussée par l'admin sans passer par une prolongation payante
+    // (admin-livraisons.js action 'update', ex. le client garde l'appareil
+    // quelques jours de plus). Après une prolongation le webhook met à jour
+    // orig.date_fin, mais si ce write a silencieusement échoué la date
+    // affichée serait fausse sans ce filet.
+    let dateFinReelle = (prolongations || [])
+      .filter(p => p.statut === 'confirmee')
+      .reduce((max, p) => (p.date_fin > max ? p.date_fin : max), resa.date_fin);
 
     // Tout le reste en parallèle — une seule requête HTTP côté client pour
     // construire l'ensemble du tableau de bord (voir contrainte de
@@ -88,7 +100,7 @@ module.exports = async (req, res) => {
 
     const progress = computeClientProgress(resa, livraisons || [], (incidentsOuverts || []).length > 0);
     // `internal` ne doit jamais quitter le serveur (statut technique).
-    delete progress.internal;
+    if (progress) delete progress.internal;
     // Affichage détaillé (Module 7) recalculé sans l'incident (voir
     // statutDetaille.js) — un incident en cours reste visible par ailleurs,
     // sans effacer où en est réellement la commande.
@@ -97,6 +109,15 @@ module.exports = async (req, res) => {
     const livraison    = (livraisons || []).find(l => l.type === 'livraison');
     const recuperation = (livraisons || []).find(l => l.type === 'recuperation');
     const appareil = (reservAppareils || [])[0]?.appareil || null;
+
+    // La récupération peut avoir été reprogrammée plus tard sans passer par
+    // une prolongation payante (voir commentaire plus haut) — la date de
+    // récupération (moins 1 jour) prime alors sur date_fin si elle est plus
+    // tardive, pour que le client voie sa vraie date de fin d'utilisation.
+    if (recuperation?.date_prevue) {
+      const recupEnd = addDays(recuperation.date_prevue, -1);
+      if (recupEnd > dateFinReelle) dateFinReelle = recupEnd;
+    }
 
     const notifications = (emailLog || [])
       .filter(e => NOTIFICATION_LABEL[e.scenario])
@@ -108,8 +129,8 @@ module.exports = async (req, res) => {
         ref: resa.ref,
         statut_paiement: resa.statut === 'en_attente' ? 'en_attente' : (resa.statut === 'remboursee' ? 'rembourse' : (['annulee'].includes(resa.statut) ? 'annule' : 'paye')),
         date_debut: resa.date_debut,
-        date_fin: resa.date_fin,
-        jours_restants: joursRestants(resa.date_fin),
+        date_fin: dateFinReelle,
+        jours_restants: joursRestants(dateFinReelle),
       },
       progress, // { stage, stageLabel, banner, nextStep }
       ma_location: {
@@ -121,7 +142,7 @@ module.exports = async (req, res) => {
           photo_url: appareil.modele?.photo_url || null,
         } : null,
         date_debut: resa.date_debut,
-        date_fin: resa.date_fin,
+        date_fin: dateFinReelle,
         quantite: resa.quantite,
         montant_ttc_cents: resa.prix_total_cents,
       },

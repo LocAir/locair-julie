@@ -1,6 +1,6 @@
 const Stripe = require('stripe');
 const { getSupabase }         = require('./_lib/supabase');
-const { resolveCityByAddress } = require('./_lib/city');
+const { resolveCityByAddress, isCitySoldOut } = require('./_lib/city');
 const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice }      = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
@@ -90,6 +90,23 @@ module.exports = async (req, res) => {
   } catch (err) {
     console.error('[Checkout resolveCity]', err.message);
     return res.status(500).json({ error: 'Erreur serveur' });
+  }
+
+  // Blocage serveur d'une NOUVELLE réservation quand la ville est en mode
+  // complet (même règle que le blocage client, index.html openModal) — le
+  // blocage côté site peut être contourné (appel direct à l'API), celui-ci
+  // ne peut pas l'être. Jamais appliqué à une commande hors zone (ville de
+  // secours choisie arbitrairement, sans rapport avec le vrai stock du
+  // secteur non couvert) ni à une prolongation (checkout-prolong.js), qui
+  // ne consomme pas d'appareil supplémentaire.
+  if (!horsZone) {
+    try {
+      if (await isCitySoldOut(supabase, city)) {
+        return res.status(409).json({ error: 'Complet pour le moment — contactez-nous pour être prévenu dès qu\'un appareil se libère.' });
+      }
+    } catch (err) {
+      console.error('[Checkout soldOut]', err.message);
+    }
   }
 
   // Frais de livraison : 60 € si le code postal est couvert par la ville résolue

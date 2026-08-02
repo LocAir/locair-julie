@@ -15,6 +15,12 @@ self.addEventListener('push', (event) => {
   event.waitUntil(Promise.all([
     self.registration.showNotification(title, options),
     (self.navigator && self.navigator.setAppBadge) ? self.navigator.setAppBadge().catch(() => {}) : Promise.resolve(),
+    // Prévient les onglets admin ouverts pour qu'ils rechargent les données
+    // sans que l'admin ait à cliquer sur la notification (même comportement
+    // que transporteur/sw.js — voir listener 'message' dans admin/index.html).
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      list.forEach((c) => c.postMessage({ type: 'locair-push' }));
+    }),
   ]));
 });
 

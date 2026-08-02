@@ -168,6 +168,13 @@ module.exports = async (req, res) => {
           transporteur_id: transporteurIdAutre, date_prevue: datePrevueAutre,
           creneau: (body.creneau || '').trim().slice(0, 100) || null,
           statut: 'a_faire', montant_du_cents: montantCents,
+          // Le tarif d'une mission "autre" est TOUJOURS fixé à la main par
+          // l'admin (pas de barème possible sans réservation) — sans ce
+          // marqueur, le SMS d'assignation (transporteurNotif.js) et le
+          // paiement final recalculaient via le barème standard livraison,
+          // annonçant un montant qui n'a rien à voir avec celui fixé ici
+          // (audit automatisations, 2026-08-02).
+          montant_manuel: true,
         }).select().single();
         if (error) throw error;
 

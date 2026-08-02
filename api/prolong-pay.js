@@ -4,6 +4,7 @@ const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice: calcBase } = require('./_lib/pricing');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
+const { getEffectiveDateFin } = require('./_lib/reservations');
 
 function diffDays(startStr, endStr) {
   return Math.round(
@@ -49,7 +50,7 @@ module.exports = async (req, res) => {
   const normalizedEmail = String(email).trim().toLowerCase();
   let q = supabase
     .from('reservations')
-    .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id')
+    .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
     .ilike('email', normalizedEmail)
     .not('source', 'eq', 'site_prolongation')
     .eq('statut', 'confirmee')
@@ -59,7 +60,7 @@ module.exports = async (req, res) => {
   if (ref && ref.trim()) {
     q = supabase
       .from('reservations')
-      .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id')
+      .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
       .ilike('email', normalizedEmail)
       .eq('ref', ref.trim().toUpperCase())
       .not('source', 'eq', 'site_prolongation')
@@ -80,15 +81,10 @@ module.exports = async (req, res) => {
   // Si le client a déjà prolongé au moins une fois et que le webhook a
   // silencieusement raté la MAJ de orig.date_fin, on risque de recalculer le
   // prix sur une base obsolète (surfacturation) et de poser date_debut à la
-  // mauvaise date (mission récup fantôme). Même filet que checkout-prolong.js.
+  // mauvaise date (mission récup fantôme). Même filet que checkout-prolong.js
+  // (voir getEffectiveDateFin, _lib/reservations.js).
   if (orig.id) {
-    const { data: dernierProlong } = await supabase
-      .from('reservations').select('date_fin')
-      .eq('reservation_origine_id', orig.id).eq('statut', 'confirmee')
-      .order('date_fin', { ascending: false }).limit(1).maybeSingle();
-    if (dernierProlong?.date_fin && dernierProlong.date_fin > orig.date_fin) {
-      orig.date_fin = dernierProlong.date_fin;
-    }
+    orig.date_fin = await getEffectiveDateFin(supabase, orig.id, orig.date_fin);
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -190,6 +186,15 @@ module.exports = async (req, res) => {
       // transporteur touchait le tarif normal (au lieu du tarif hors zone)
       // pour la récupération de cette prolongation.
       hors_zone:                orig.hors_zone || false,
+      // Champs d'accès copiés depuis la réservation d'origine — nécessaires
+      // pour que le transporteur puisse accéder au logement lors de la récupération.
+      etage:                    orig.etage               || null,
+      ascenseur:                orig.ascenseur            || null,
+      fenetre:                  orig.fenetre              || null,
+      fenetre_photo_path:       orig.fenetre_photo_path   || null,
+      installation:             orig.installation         || null,
+      instructions_acces:       orig.instructions_acces   || null,
+      logement:                 orig.logement             || null,
       date_debut:               orig.date_fin,
       date_fin:                 new_date_fin,
       quantite:                 orig.quantite || 1,

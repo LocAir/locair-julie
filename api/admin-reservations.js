@@ -17,6 +17,7 @@ const { sendReservationPaymentLink } = require('./_lib/paymentLink');
 const { generateAndSendDocumentsAfterProlongation } = require('./_lib/documents');
 const { extractPostalCode } = require('./_lib/postal');
 const { releaseAppareilFromReservation } = require('./_lib/appareilSync');
+const { pushToAdmin } = require('./_lib/push');
 const { toE164FR } = require('./_lib/brevo');
 
 const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
@@ -406,8 +407,19 @@ module.exports = async (req, res) => {
       await confirmReservation(supabase, resa);
       // Mettre à jour date_fin de la réservation d'origine pour que l'espace client
       // et les prolongations suivantes voient toujours la date réelle de fin.
+      // Filet de sécurité en lecture (getEffectiveDateFin, _lib/reservations.js)
+      // en cas d'échec — mais si Aly regarde directement la fiche réservation,
+      // elle y verrait une date figée sans jamais savoir que cette écriture a
+      // raté (audit automatisations, 2026-08-02) : alerte explicite ici.
       await supabase.from('reservations').update({ date_fin: newDateFin }).eq('id', origId)
-        .then(() => {}, e => console.error('[Admin prolong] date_fin update:', e.message));
+        .then(() => {}, async e => {
+          console.error('[Admin prolong] date_fin update:', e.message);
+          await pushToAdmin(supabase, {
+            title: '⚠️ Mise à jour de la date de fin échouée',
+            body:  `Dossier ${orig.ref || '?'} : la nouvelle date de fin (${newDateFin}) n'a pas pu être enregistrée sur la réservation d'origine — vérifie/corrige manuellement.`,
+            tag:   `prolong-datefin-echec-${origId}`,
+          }).catch(() => {});
+        });
       // Contrat mis à jour (nouvelle date de fin) + facture de l'extension —
       // même correctif que pour une prolongation payée en ligne (voir
       // webhook.js), sans quoi une prolongation prise par téléphone laissait
@@ -568,42 +580,75 @@ module.exports = async (req, res) => {
       const { error } = await supabase.from('reservations').update(patch).eq('id', id).eq('city_id', city.id);
       if (error) throw error;
 
-      // Annuler une réservation doit aussi annuler ses missions non terminées —
-      // sinon un transporteur peut encore voir/accomplir une livraison pour une
-      // commande annulée. Les missions déjà "fait" restent intactes (travail réel
-      // déjà effectué, le transporteur reste payé).
-      if (patch.statut === 'annulee') {
-        const { data: livAAnnuler } = await supabase
-          .from('livraisons').select('id, transporteur_id')
+      // Annuler OU rembourser une réservation doit aussi annuler ses missions
+      // non terminées — sinon un transporteur peut encore voir/accomplir une
+      // livraison pour une commande annulée/remboursée. Les missions déjà
+      // "fait" restent intactes (travail réel déjà effectué, le transporteur
+      // reste payé). Corrigé (audit automatisations, 2026-08-02) : jusqu'ici
+      // seule 'annulee' déclenchait ce nettoyage — un remboursement manuel
+      // laissait la mission active et l'appareil marqué occupé pour rien.
+      // Une commission déjà versée à un partenaire pour cette réservation
+      // devient un litige à réconcilier dès qu'elle est annulée/remboursée —
+      // jusqu'ici visible seulement en badge (l'admin doit penser à ouvrir
+      // l'onglet Partenaires), jamais poussé au moment où ça arrive
+      // vraiment (audit automatisations, 2026-08-02).
+      if ((patch.statut === 'annulee' || patch.statut === 'remboursee') && before.partenaire_commission_payee) {
+        await pushToAdmin(supabase, {
+          title: '⚠️ Litige commission partenaire',
+          body:  `Dossier ${before.ref || '?'} ${patch.statut === 'remboursee' ? 'remboursé' : 'annulé'} — une commission a déjà été versée au partenaire, à réconcilier dans l'onglet Partenaires.`,
+          tag:   `partenaire-litige-${id}`,
+        });
+      }
+
+      if (patch.statut === 'annulee' || patch.statut === 'remboursee') {
+        const { data: livMissions } = await supabase
+          .from('livraisons').select('id, type, statut, transporteur_id')
           .eq('reservation_id', id)
-          .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
-        // 'annule' (sans "e") : contrainte CHECK propre à livraisons.statut,
-        // différente de reservations.statut ('annulee') — utiliser 'annulee'
-        // ici violait systématiquement la contrainte, l'erreur passait
-        // inaperçue (juste loguée plus bas) et la mission restait active,
-        // laissant un transporteur livrer/récupérer pour une réservation
-        // en réalité annulée.
-        const { error: livError } = await supabase.from('livraisons').update({ statut: 'annule' })
-          .eq('reservation_id', id)
-          .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
-        if (livError) console.error('[annulation missions]', livError.message);
-        const transpAPrevenir = new Set((livAAnnuler || []).filter(l => l.transporteur_id).map(l => l.transporteur_id));
-        for (const tid of transpAPrevenir) {
-          await notifyTransporteur(supabase, tid, {
-            type: 'annulation', message: 'Une mission a été annulée.', tag: 'annulation',
-          });
+          .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme', 'fait']);
+        // Si la livraison a déjà eu lieu (cas typique d'un remboursement en
+        // cours de location, contrairement à une annulation qui survient
+        // presque toujours avant livraison), le climatiseur est encore
+        // physiquement chez le client : sa mission de récupération doit
+        // avoir lieu normalement, jamais être annulée avec le reste.
+        const livraisonDejaFaite = patch.statut === 'remboursee'
+          && (livMissions || []).some(m => m.type === 'livraison' && m.statut === 'fait');
+        const livAAnnuler = (livMissions || []).filter(m => m.statut !== 'fait' && !(livraisonDejaFaite && m.type === 'recuperation'));
+        if (livAAnnuler.length) {
+          // 'annule' (sans "e") : contrainte CHECK propre à livraisons.statut,
+          // différente de reservations.statut ('annulee') — utiliser 'annulee'
+          // ici violait systématiquement la contrainte, l'erreur passait
+          // inaperçue (juste loguée plus bas) et la mission restait active,
+          // laissant un transporteur livrer/récupérer pour une réservation
+          // en réalité annulée.
+          const { error: livError } = await supabase.from('livraisons').update({ statut: 'annule' })
+            .in('id', livAAnnuler.map(l => l.id));
+          if (livError) console.error('[annulation missions]', livError.message);
+          const transpAPrevenir = new Set(livAAnnuler.filter(l => l.transporteur_id).map(l => l.transporteur_id));
+          for (const tid of transpAPrevenir) {
+            await notifyTransporteur(supabase, tid, {
+              type: 'annulation', message: `Une mission a été annulée — la réservation a été ${patch.statut === 'remboursee' ? 'remboursée' : 'annulée'}.`, tag: 'annulation',
+            });
+          }
         }
 
-        // Libère les appareils engagés sur cette réservation — sans quoi un
-        // appareil déjà lié (ex. statut aligné "loué" par l'onglet Stock dès
-        // que la période couvre aujourd'hui, voir admin-stock.js) reste
-        // invisible du stock disponible pour toujours après l'annulation.
-        const { data: liensAAnnuler } = await supabase
-          .from('reservation_appareils').select('appareil_id').eq('reservation_id', id);
-        for (const l of (liensAAnnuler || [])) {
-          await releaseAppareilFromReservation(supabase, {
-            appareilId: l.appareil_id, reservationId: id, cityId: before.city_id,
-            motif: 'réservation annulée',
+        if (!livraisonDejaFaite) {
+          // Libère les appareils engagés sur cette réservation — sans quoi un
+          // appareil déjà lié (ex. statut aligné "loué" par l'onglet Stock dès
+          // que la période couvre aujourd'hui, voir admin-stock.js) reste
+          // invisible du stock disponible pour toujours après l'annulation.
+          const { data: liensAAnnuler } = await supabase
+            .from('reservation_appareils').select('appareil_id').eq('reservation_id', id);
+          for (const l of (liensAAnnuler || [])) {
+            await releaseAppareilFromReservation(supabase, {
+              appareilId: l.appareil_id, reservationId: id, cityId: before.city_id,
+              motif: patch.statut === 'remboursee' ? 'réservation remboursée' : 'réservation annulée',
+            });
+          }
+        } else {
+          await pushToAdmin(supabase, {
+            title: '⚠️ Remboursement — récupération à vérifier',
+            body:  `Dossier ${before.ref || '?'} remboursé, le climatiseur est encore chez le client — vérifie que la mission de récupération est bien planifiée.`,
+            tag:   `remboursement-livraison-faite-${id}`,
           });
         }
       } else {

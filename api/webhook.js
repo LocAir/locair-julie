@@ -5,6 +5,7 @@ const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
 const { pushToAdmin } = require('./_lib/push');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { recordMouvement } = require('./_lib/stockMouvements');
+const { releaseAppareilFromReservation } = require('./_lib/appareilSync');
 const { generateAndSendDocuments, generateAndSendDocumentsAfterProlongation, generateAndSendFactureVente } = require('./_lib/documents');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { sendScenarioEmail, getSignature, withSignature } = require('./_lib/emailEngine');
@@ -115,7 +116,7 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
 async function findReservationByPaymentIntent(supabase, paymentIntentId) {
   if (!paymentIntentId) return null;
   const { data } = await supabase
-    .from('reservations').select('id, city_id, ref, statut, prenom, nom')
+    .from('reservations').select('id, city_id, ref, statut, prenom, nom, partenaire_commission_payee')
     .eq('stripe_payment_intent_id', paymentIntentId).maybeSingle();
   return data || null;
 }
@@ -149,7 +150,10 @@ async function handlePaymentFailed(supabase, intent) {
   await pushToAdmin(supabase, {
     title: 'Paiement échoué',
     body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${raison}`.trim(),
-    tag:   'paiement-echoue',
+    // Tag unique par tentative de paiement — un tag fixe faisait disparaître
+    // silencieusement l'alerte d'un client dès qu'un autre paiement échouait
+    // le même jour (audit automatisations, 2026-08-02).
+    tag:   `paiement-echoue-${resa?.id || intent.id}`,
   });
 }
 
@@ -224,10 +228,50 @@ async function handleChargeRefunded(supabase, charge) {
   // repassait à tort le climatiseur "maintenance" et envoyait un transporteur
   // le récupérer chez un client qui a pourtant le droit de le garder.
   const remboursementTotal = charge.amount > 0 && charge.amount_refunded >= charge.amount;
+  // Un remboursement total ne déclenchait jusqu'ici que le changement de
+  // statut — contrairement à une annulation admin (admin-reservations.js),
+  // rien n'annulait la mission du transporteur ni ne libérait le climatiseur
+  // au stock. Un transporteur pouvait donc encore livrer/récupérer pour une
+  // réservation déjà remboursée, et l'appareil restait marqué "loué" pour
+  // rien (audit automatisations, 2026-08-02).
+  let livraisonDejaEffectuee = false;
   if (resa) {
     // Marquer remboursée seulement si le remboursement couvre la totalité du paiement
     if (remboursementTotal) {
       await supabase.from('reservations').update({ statut: 'remboursee' }).eq('id', resa.id).eq('statut', 'confirmee');
+
+      const { data: missions } = await supabase
+        .from('livraisons').select('id, type, statut, transporteur_id')
+        .eq('reservation_id', resa.id)
+        .not('statut', 'in', '(annule,annulee)');
+      livraisonDejaEffectuee = (missions || []).some(m => m.type === 'livraison' && m.statut === 'fait');
+
+      if (!livraisonDejaEffectuee) {
+        // Le climatiseur n'a jamais quitté le stock : mêmes effets qu'une
+        // annulation classique (voir admin-reservations.js, patch.statut===
+        // 'annulee') — annuler les missions encore actives, prévenir le
+        // transporteur déjà assigné, libérer l'appareil.
+        const aAnnuler = (missions || []).filter(m => m.statut !== 'fait');
+        if (aAnnuler.length) {
+          await supabase.from('livraisons').update({ statut: 'annule' }).in('id', aAnnuler.map(m => m.id));
+          const transpIds = [...new Set(aAnnuler.map(m => m.transporteur_id).filter(Boolean))];
+          for (const tid of transpIds) {
+            await notifyTransporteur(supabase, tid, {
+              type: 'annulation', message: 'Une mission a été annulée — la réservation a été remboursée.', tag: 'annulation',
+            });
+          }
+        }
+        const { data: liens } = await supabase.from('reservation_appareils').select('appareil_id').eq('reservation_id', resa.id);
+        for (const l of (liens || [])) {
+          await releaseAppareilFromReservation(supabase, {
+            appareilId: l.appareil_id, reservationId: resa.id, cityId: resa.city_id, motif: 'réservation remboursée',
+          });
+        }
+      }
+      // Sinon (livraison déjà faite) : le climatiseur est physiquement chez le
+      // client — on ne touche pas à sa mission de récupération existante,
+      // qui doit avoir lieu normalement. L'admin est alertée ci-dessous pour
+      // vérifier elle-même, comme pour un remboursement Offre Privilège.
     }
   } else if (remboursementTotal && await handleOffrePrivilegeRefunded(supabase, piId, charge.amount_refunded || 0)) {
     return; // remboursement Offre Privilège déjà tracé + notifié ci-dessus
@@ -240,9 +284,19 @@ async function handleChargeRefunded(supabase, charge) {
   });
   await pushToAdmin(supabase, {
     title: 'Remboursement Stripe',
-    body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant}`.trim(),
-    tag:   'remboursement',
+    body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant}${resa && remboursementTotal && livraisonDejaEffectuee ? ' — le climatiseur est chez le client, vérifie la mission de récupération.' : ''}`.trim(),
+    tag:   `remboursement-${resa?.id || piId}`,
   });
+  // Une commission déjà versée à un partenaire pour cette réservation devient
+  // un litige à réconcilier — jusqu'ici visible seulement en badge, jamais
+  // poussé au moment où ça arrive vraiment (audit automatisations, 2026-08-02).
+  if (resa && remboursementTotal && resa.partenaire_commission_payee) {
+    await pushToAdmin(supabase, {
+      title: '⚠️ Litige commission partenaire',
+      body:  `Dossier ${resa.ref || '?'} remboursé — une commission a déjà été versée au partenaire, à réconcilier dans l'onglet Partenaires.`,
+      tag:   `partenaire-litige-${resa.id}`,
+    });
+  }
 }
 
 async function handleDisputeCreated(supabase, dispute) {
@@ -260,7 +314,10 @@ async function handleDisputeCreated(supabase, dispute) {
   await pushToAdmin(supabase, {
     title: '⚠️ Litige Stripe (chargeback)',
     body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant} — à traiter dans le dashboard Stripe`.trim(),
-    tag:   'litige-stripe',
+    // Tag unique par litige — un délai de réponse imposé par Stripe rend
+    // critique de ne jamais en perdre un derrière un autre (audit
+    // automatisations, 2026-08-02).
+    tag:   `litige-stripe-${resa?.id || piId}`,
   });
 }
 
@@ -389,12 +446,17 @@ const handler = async (req, res) => {
       }).catch(e => console.error('[Formspree prolong]', e.message));
 
       // Idempotence : ne pas renvoyer l'email si déjà tracé (redélivrance Stripe)
+      // .eq('statut','envoye') indispensable : sans lui, une ligne email_log en
+      // erreur (brevo hors ligne, etc.) bloquerait définitivement le renvoi —
+      // l'email n'arriverait jamais et la MAJ date_fin de l'origine (plus bas)
+      // ne serait plus retentée non plus.
       if (confirmedResa) {
         const { data: dejaSent } = await getSupabase()
           .from('email_log')
           .select('id')
           .eq('reservation_id', confirmedResa.id)
           .eq('scenario', 'email_prolongation')
+          .eq('statut', 'envoye')
           .maybeSingle();
         if (dejaSent) return res.status(200).json({ received: true, type: 'prolongation' });
       }
