@@ -331,7 +331,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .admin-table tbody tr:last-child td:first-child{border-bottom-left-radius:var(--r-lg)}
 .admin-table tbody tr:last-child td:last-child{border-bottom-right-radius:var(--r-lg)}
 .table-actions{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
-.table-actions select{width:auto;margin-bottom:0;padding:7px 10px;font-size:12.5px}
+.admin-table select{width:auto;min-width:110px;margin-bottom:0;padding:7px 10px;font-size:12.5px}
 .table-actions .btn{padding:6px 9px;font-size:12px}
 @media (min-width:1000px){
   .table-toggle-zone > .row-grid{display:none}
@@ -1317,6 +1317,52 @@ const TYPE_BADGE = {
 };
 function missionTypeBadge(type){
   return TYPE_BADGE[type] || TYPE_BADGE.recuperation;
+}
+// Dérive une seule fois les infos calculées d'une mission (nom/adresse
+// affichés, verrous, libellés de montant…) — partagé par la carte
+// (mobile/tablette) et la ligne de tableau (grand écran) pour ne pas
+// recalculer/dupliquer la même logique 2 fois.
+function missionRowData(m){
+  const res = m.reservation || {};
+  const isAutre = m.type === 'autre';
+  const mediaBtns = [];
+  if(m.photo_depart_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_depart')">📷 Voir — Départ</button>`);
+  if(m.photo_installation_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_installation')">📷 Voir — Installation</button>`);
+  if(m.photo_retour_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_retour')">📷 Voir — Retour</button>`);
+  if(m.photo_absence_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_absence')">📵 Voir — Preuve passage</button>`);
+  const todayStr = new Date().toISOString().slice(0,10);
+  return {
+    res, isAutre,
+    displayName: isAutre ? (m.titre || 'Mission libre') : ((res.prenom||'')+' '+(res.nom||'')),
+    displayAddr: isAutre ? (m.adresse_libre || '—') : (res.adresse||'—'),
+    mediaBtns,
+    enRoute: !!(m.transporteur && ['acceptee','en_route','arrivee'].includes(m.statut)),
+    nonAssignee: m.statut==='a_faire' && !m.transporteur,
+    reassignLocked: ['fait','annule'].includes(m.statut),
+    isOverdueMission: m.date_prevue < todayStr && !['fait','annule'].includes(m.statut),
+    montantLabel: isAutre ? ' (tarif fixé)' : (m.montant_manuel ? ' (tarif fixé manuellement)' : (res.hors_zone ? ' (barème hors zone)' : '')),
+    montantEstime: m.statut !== 'fait' && !m.montant_manuel && !isAutre,
+  };
+}
+function missionTransporteurSelectHtml(m, d){
+  const options = ['<option value="">Non assigné</option>'].concat(
+    TRANSPORTEURS_CACHE.map(t => `<option value="${t.id}" ${m.transporteur&&m.transporteur.id===t.id?'selected':''}>${escHtml(t.nom)}</option>`)
+  ).join('');
+  return `<select onchange="assignTransporteur(${m.id}, this.value, this)" ${d.reassignLocked?'disabled title="Mission terminée/annulée : transporteur figé (paiement déjà rattaché)"':''} style="${d.nonAssignee?'border-color:var(--red);border-width:1.5px':''}">${options}</select>`;
+}
+function missionMoreActionsHtml(m, d, compact){
+  return `<details class="more-actions${compact?' compact':''}"${compact?'':' style="margin-left:auto"'}>
+          <summary title="Plus d'actions">⋯</summary>
+          <div class="more-actions-menu">
+            ${!d.reassignLocked?`<button onclick="openEditMissionModal(${m.id})">✏️ Modifier</button>`:''}
+            ${(!d.isAutre && !d.reassignLocked)?`<button onclick="openChangeAppareilModal(${m.id})">🔄 Changer le climatiseur</button>`:''}
+            ${(!d.isAutre && !d.reassignLocked)?`<button onclick="fixerTarifTransporteur(${m.id},${m.montant_du_cents||0})">💰 Fixer le tarif transporteur</button>`:''}
+            ${['acceptee','en_route','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
+            ${!d.reassignLocked?`<button onclick="openForceCompleteModal(${m.id})">✅ Forcer terminé</button>`:''}
+            ${d.mediaBtns.join('')}
+            <button class="danger" onclick="maskLivraison(${m.id})">🗑️ Supprimer de l'écran</button>
+          </div>
+        </details>`;
 }
 // Doit couvrir les mêmes clés que PROBLEME_LABEL (api/transporteur-action.js)
 // — sinon un problème signalé s'affiche en code brut ('acces_impossible') au
@@ -4131,7 +4177,7 @@ function renderLivraisonsToolbar(){
         ${filters.map(f => `<button class="${!LIVRAISONS_SHOW_MASQUEES && LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
       </div>
       ${LIVRAISONS_FILTER==='non_assignees'?(LIVRAISONS_NON_ASSIGNEES_ALERT_ONLY?`<div class="affect-hint">💡 Vue filtrée depuis l'alerte du bandeau : uniquement les missions non assignées dues sous 72h (ou déjà en retard) — exactement ce qui a été compté. <a href="#" onclick="event.preventDefault();setLivraisonsFilter('non_assignees')">Voir toutes les non assignées →</a></div>`:`<div class="affect-hint">💡 Les nouvelles missions sont assignées automatiquement selon la zone et la disponibilité du livreur (regroupées par code postal quand possible). Le badge rouge en haut ne compte que ce qui est dû sous 72h — cette liste montre tout, y compris ce qui peut attendre.</div>`):''}
-      <div id="liv-list" class="row-grid"></div>
+      <div id="liv-list" class="table-toggle-zone"></div>
       ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleLivraisonsMasquees()">${LIVRAISONS_SHOW_MASQUEES?'← Revenir aux missions':`🙈 Afficher les missions supprimées (${masqueesCount})`}</button>` : ''}
     </div>
     <div id="liv-affect-view" class="${LIVRAISONS_VIEW!=='affectation'?'hidden':''}">
@@ -4449,30 +4495,8 @@ function renderLivraisons(){
   if(SHOW_GROUPS){ items.forEach(m => { const d=m.date_prevue||'__'; if(!byDate[d]){byDate[d]=[];dateOrder.push(d);} byDate[d].push(m); }); }
 
   const renderCard = m => {
-    const res = m.reservation || {};
-    // Mission "autre" : pas de réservation/client, titre + adresse libres
-    // saisis par l'admin à la création (voir openCreateMissionModal).
-    const isAutre = m.type === 'autre';
-    const displayName = isAutre ? (m.titre || 'Mission libre') : ((res.prenom||'')+' '+(res.nom||''));
-    const displayAddr = isAutre ? (m.adresse_libre || '—') : (res.adresse||'—');
-    const options = ['<option value="">Non assigné</option>'].concat(
-      TRANSPORTEURS_CACHE.map(t => `<option value="${t.id}" ${m.transporteur&&m.transporteur.id===t.id?'selected':''}>${escHtml(t.nom)}</option>`)
-    ).join('');
-    const mediaBtns = [];
-    if(m.photo_depart_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_depart')">📷 Voir — Départ</button>`);
-    if(m.photo_installation_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_installation')">📷 Voir — Installation</button>`);
-    if(m.photo_retour_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_retour')">📷 Voir — Retour</button>`);
-    if(m.photo_absence_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_absence')">📵 Voir — Preuve passage</button>`);
-    const enRoute = m.transporteur && ['acceptee','en_route','arrivee'].includes(m.statut);
-    // Icône permanente sur les missions sans livreur — visible même en dehors
-    // du filtre "Non assignées", pour qu'une mission non dispatchée ne se
-    // perde jamais visuellement dans la liste "Toutes".
-    const nonAssignee = m.statut==='a_faire' && !m.transporteur;
-    // Une mission déjà terminée ou annulée ne doit plus changer de
-    // transporteur : le montant dû a déjà été rattaché à celui qui l'a
-    // réellement exécutée (voir admin-virements.js) — réaffecter changerait
-    // silencieusement qui est payé pour un travail déjà fait.
-    const reassignLocked = ['fait','annule'].includes(m.statut);
+    const d = missionRowData(m);
+    const { res, isAutre, displayName, displayAddr, mediaBtns, enRoute, nonAssignee, reassignLocked, montantLabel, montantEstime } = d;
     if(m.masquee){
       return `
         <div class="row-item" style="opacity:.6">
@@ -4502,15 +4526,9 @@ function renderLivraisons(){
     if(m.duree_trajet_min!=null) detailBits.push(m.duree_trajet_min+' min trajet');
     if(m.duree_sur_place_min!=null) detailBits.push(m.duree_sur_place_min+' min sur place');
     if(m.client_notifie_at) detailBits.push('✅ Client notifié '+frDateHeure(m.client_notifie_at));
-    // Montant gagné par le transporteur pour CETTE mission, mis en évidence
-    // dans un cadre à part (demande d'Aly : repérer une erreur de barème —
-    // ex. hors zone non appliqué — d'un coup d'œil, avant même la clôture).
-    const montantLabel = isAutre ? ' (tarif fixé)' : (m.montant_manuel ? ' (tarif fixé manuellement)' : (res.hors_zone ? ' (barème hors zone)' : ''));
-    const montantEstime = m.statut !== 'fait' && !m.montant_manuel && !isAutre;
     // Urgence : retard (rouge) > aujourd'hui (ambre) > à venir (neutre)
-    const isOverdueMission = m.date_prevue < todayStr && !['fait','annule'].includes(m.statut);
     const isTodayMission = m.date_prevue === todayStr;
-    const urgencyBorder = (nonAssignee || isOverdueMission) ? 'border-left:3px solid var(--red)' : isTodayMission ? 'border-left:3px solid var(--amber)' : '';
+    const urgencyBorder = (nonAssignee || d.isOverdueMission) ? 'border-left:3px solid var(--red)' : isTodayMission ? 'border-left:3px solid var(--amber)' : '';
     return `
       <div class="row-item" ${urgencyBorder?`style="${urgencyBorder}"`:''}">
         <div class="row-top" style="margin-bottom:4px">
@@ -4534,29 +4552,17 @@ function renderLivraisons(){
         <div class="row-actions">
           ${contactButtonsHtml(res.tel)}
           ${nonAssignee?`<div style="width:100%;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--red);margin-bottom:-2px">Assigner un transporteur →</div>`:''}
-          <select onchange="assignTransporteur(${m.id}, this.value, this)" ${reassignLocked?'disabled title="Mission terminée/annulée : transporteur figé (paiement déjà rattaché)"':''} style="${nonAssignee?'border-color:var(--red);border-width:1.5px':''}">${options}</select>
+          ${missionTransporteurSelectHtml(m, d)}
           <div style="width:100%;background:var(--green-bg);color:var(--green);padding:8px 12px;border-radius:var(--r);font-weight:700;font-size:13px">💰 Le transporteur gagne : ${euros(m.montant_transporteur_cents)}${montantLabel}${montantEstime?' <span style="font-weight:600;opacity:.75">(estimation)</span>':''}</div>
           ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom.replace(/'/g,"\\'"))}', '${escHtml((res.adresse||'').replace(/'/g,"\\'"))}')">🔴 Suivre en direct</button>`:''}
           ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">✅ Problème résolu</button>`:''}
           ${mediaBtns.length===0 && m.statut==='fait' ? '<span class="row-meta" style="align-self:center">Aucune preuve enregistrée</span>' : ''}
-          <details class="more-actions" style="margin-left:auto">
-            <summary title="Plus d'actions">⋯</summary>
-            <div class="more-actions-menu">
-              ${!reassignLocked?`<button onclick="openEditMissionModal(${m.id})">✏️ Modifier</button>`:''}
-              ${(!isAutre && !reassignLocked)?`<button onclick="openChangeAppareilModal(${m.id})">🔄 Changer le climatiseur</button>`:''}
-              ${(!isAutre && !reassignLocked)?`<button onclick="fixerTarifTransporteur(${m.id},${m.montant_du_cents||0})">💰 Fixer le tarif transporteur</button>`:''}
-              ${['acceptee','en_route','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
-              ${!reassignLocked?`<button onclick="openForceCompleteModal(${m.id})">✅ Forcer terminé</button>`:''}
-              ${mediaBtns.join('')}
-              <button class="danger" onclick="maskLivraison(${m.id})">🗑️ Supprimer de l'écran</button>
-            </div>
-          </details>
+          ${missionMoreActionsHtml(m, d)}
         </div>
       </div>`;
   };
 
-  if(SHOW_GROUPS && dateOrder.length > 1){
-    list.innerHTML = dateOrder.map(dateStr => {
+  const cardsHtml = (SHOW_GROUPS && dateOrder.length > 1) ? dateOrder.map(dateStr => {
       const missions = byDate[dateStr];
       const isOvd = dateStr !== '__' && dateStr < todayStr;
       const isToday = dateStr === todayStr;
@@ -4569,10 +4575,72 @@ function renderLivraisons(){
       const hCls = isToday ? 'missions-date-header today' : isOvd ? 'missions-date-header overdue' : 'missions-date-header';
       return `<div class="${hCls}">${escHtml(dateLabel)} <span class="count">${missions.length} mission${missions.length>1?'s':''}</span></div>`
         + missions.map(renderCard).join('');
-    }).join('');
-  } else {
-    list.innerHTML = items.map(renderCard).join('');
+    }).join('') : items.map(renderCard).join('');
+  list.innerHTML = `<div class="row-grid">${cardsHtml}</div>${livraisonsTableHtml(items)}`;
+}
+// ── Tableau (grand écran) — mêmes missions que les cartes ci-dessus, tri au
+// clic sur l'en-tête ; pas de groupement par date ici (le tri fait ce travail
+// sur grand écran, une colonne Date suffit à repérer l'urgence d'un coup d'œil).
+let LIV_SORT = {col:null, dir:1};
+function sortLivraisonsTable(col){
+  LIV_SORT = LIV_SORT.col===col ? {col, dir:LIV_SORT.dir*-1} : {col, dir:1};
+  renderLivraisons();
+}
+const LIV_SORT_GETTERS = {
+  type:         m => MISSION_TYPE_LABEL[m.type]||m.type||'',
+  client:       m => missionRowData(m).displayName,
+  adresse:      m => missionRowData(m).displayAddr,
+  date:         m => m.date_prevue||'',
+  transporteur: m => (m.transporteur?.nom)||'',
+  statut:       m => LIV_LABEL[m.statut]||m.statut||'',
+  montant:      m => m.montant_transporteur_cents||0,
+};
+function livraisonsTableHtml(items){
+  let rows = items;
+  const getter = LIV_SORT.col && LIV_SORT_GETTERS[LIV_SORT.col];
+  if(getter){
+    rows = [...items].sort((a,b) => {
+      const va = getter(a), vb = getter(b);
+      const cmp = typeof va==='number' ? va-vb : String(va).localeCompare(String(vb), 'fr');
+      return cmp * LIV_SORT.dir;
+    });
   }
+  const cols = [
+    {key:'type', label:'Type'}, {key:'client', label:'Client'}, {key:'adresse', label:'Adresse'},
+    {key:'date', label:'Date'}, {key:'transporteur', label:'Transporteur'}, {key:'statut', label:'Statut'}, {key:'montant', label:'Montant'},
+  ];
+  const thHtml = c => `<th onclick="sortLivraisonsTable('${c.key}')" class="${LIV_SORT.col===c.key?'sorted':''}">${c.label}<span class="sort-arrow">${LIV_SORT.col===c.key?(LIV_SORT.dir===1?'▲':'▼'):'▲'}</span></th>`;
+  return `
+    <div class="admin-table-wrap"><table class="admin-table">
+      <thead><tr>${cols.map(thHtml).join('')}<th>Actions</th></tr></thead>
+      <tbody>${rows.map(livraisonTableRowHtml).join('')}</tbody>
+    </table></div>`;
+}
+function livraisonTableRowHtml(m){
+  const d = missionRowData(m);
+  const { res, displayName, displayAddr } = d;
+  if(m.masquee){
+    return `<tr style="opacity:.6">
+      <td>${missionTypeBadge(m.type)}</td>
+      <td style="white-space:nowrap">${escHtml(displayName)}</td>
+      <td class="ellipsis">${escHtml(displayAddr)}</td>
+      <td style="white-space:nowrap">${frDateCourt(m.date_prevue)}</td>
+      <td>—</td>
+      <td><span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span></td>
+      <td class="num">—</td>
+      <td><button class="btn btn-grey" onclick="restoreLivraison(${m.id})">Restaurer</button></td>
+    </tr>`;
+  }
+  return `<tr>
+    <td>${missionTypeBadge(m.type)}</td>
+    <td style="white-space:nowrap">${escHtml(displayName)}${!isInternalRef(res.ref)?` <span class="resa-sub">${escHtml(res.ref)}</span>`:''}</td>
+    <td class="ellipsis" title="${escHtml(displayAddr)}">${escHtml(displayAddr)}</td>
+    <td style="white-space:nowrap;${d.isOverdueMission?'color:var(--red);font-weight:700':''}">${frDateCourt(m.date_prevue)}${m.creneau?` <span class="creneau">${escHtml(m.creneau)}</span>`:''}</td>
+    <td>${missionTransporteurSelectHtml(m, d)}</td>
+    <td>${d.nonAssignee?'🔔 ':''}${res.hors_zone?'⚠️ ':''}<span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span></td>
+    <td class="num">${euros(m.montant_transporteur_cents)}${d.montantEstime?' <span style="font-weight:400;opacity:.6">(est.)</span>':''}</td>
+    <td><div class="table-actions">${contactButtonsHtml(res.tel)}${missionMoreActionsHtml(m, d, true)}</div></td>
+  </tr>`;
 }
 
 // ── Calendrier des récupérations (Livraisons > 📅 Récupérations) ────────────
