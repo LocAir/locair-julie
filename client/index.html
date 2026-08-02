@@ -406,7 +406,7 @@ function renderDashboard(d){
         <div><div class="card-lbl">Récupération de l'appareil</div></div>
       </div>
       <div class="mission-date" id="recup-date-display">${escHtml(fmtDate(d.recuperation.date_prevue))}</div>
-      ${d.recuperation.creneau ? `<div class="mission-creneau">⏰ ${escHtml(d.recuperation.creneau)}</div>` : ''}
+      <div class="mission-creneau" id="recup-creneau-display"${d.recuperation.creneau ? '' : ' style="display:none"'}>⏰ ${escHtml(d.recuperation.creneau||'')}</div>
       <hr class="card-div"/>
       ${(d.recuperation.consignes||[]).map(txt => `
         <div class="consigne">
@@ -712,9 +712,18 @@ async function submitEarlyRecup(){
     dateEl.disabled=true;
     document.getElementById('lbl-creneau-1').style.pointerEvents='none';
     document.getElementById('lbl-creneau-2').style.pointerEvents='none';
-    // Met à jour la date affichée dans la card récupération sans rechargement
+    // Met à jour la date ET le créneau affichés dans la card récupération sans
+    // rechargement — avant ce correctif, seule la date était rafraîchie : le
+    // client qui venait de choisir un créneau (8h-10h / 10h-12h) ne le voyait
+    // jamais apparaître (le chip créneau n'existe même pas dans le DOM tant
+    // qu'aucun créneau n'était déjà défini côté serveur).
     const recupDateDisplay = document.getElementById('recup-date-display');
     if(recupDateDisplay) recupDateDisplay.textContent = fmtDate(date);
+    const recupCreneauDisplay = document.getElementById('recup-creneau-display');
+    if(recupCreneauDisplay){
+      recupCreneauDisplay.textContent = '⏰ ' + _earlyRecupCreneau;
+      recupCreneauDisplay.style.display = '';
+    }
   }catch(err){
     alertEl.className='alert-error';
     alertEl.textContent=err.message||'Erreur. Veuillez réessayer.';
