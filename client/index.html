@@ -12,18 +12,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,700;1,300;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
 :root{
-  --blue:#1b3a5f;--blue-d:#142d4a;--blue-lt:#eef3fa;
+  --blue:#1b3a5f;--blue-d:#142d4a;
   --gold:#c5a96c;--gold-d:#b08c48;
-  --black:#141e30;--black2:#1e2d45;
-  --grey:#5a6577;--rule:#ddd8cf;--rule-lt:#edeae4;
-  --bg:#ede8e0;
-  --green:#3f7d52;--green-bg:#eaf6ee;
-  --amber:#92400e;--amber-bg:#fff8ee;
-  --red:#b91c1c;--red-bg:#fef2f2;--red-border:#fecaca;
+  /* Texte sur fond sombre */
+  --black:#f0ece4;--black2:#d8cebc;
+  --grey:rgba(220,208,184,.62);
+  --rule:rgba(255,255,255,.09);--rule-lt:rgba(255,255,255,.05);
+  /* Surfaces */
+  --bg:#08111e;--card:#0d1d33;
+  /* Status */
+  --green:#4ade80;--green-bg:rgba(74,222,128,.1);
+  --amber:#fbbf24;--amber-bg:rgba(251,191,36,.1);
+  --red:#f87171;--red-bg:rgba(248,113,113,.1);--red-border:rgba(248,113,113,.25);
   --disp:'Cormorant Garamond',Georgia,serif;
   --body:'Inter',system-ui,sans-serif;
-  --radius-card:16px;
-  --shadow-card:0 1px 2px rgba(20,30,48,.04),0 4px 18px rgba(20,30,48,.07);
+  --r:16px;
+  --sh:0 2px 16px rgba(0,0,0,.4),0 1px 4px rgba(0,0,0,.3);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -31,68 +35,129 @@ body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:1
 a{color:var(--blue);text-decoration:none}
 .hidden{display:none!important}
 
-.nav{position:sticky;top:0;z-index:100;min-height:58px;background:rgba(237,232,224,.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;padding:10px clamp(16px,5vw,64px);flex-shrink:0}
+/* ── Navigation ── */
+.nav{position:sticky;top:0;z-index:100;min-height:58px;background:rgba(8,17,30,.96);backdrop-filter:blur(16px);border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;padding:10px clamp(16px,5vw,64px);flex-shrink:0}
 .nav-logo{font-family:var(--disp);font-size:22px;font-weight:700;color:var(--black);letter-spacing:-.01em}
 .nav-logo em{font-style:italic;font-weight:300;color:var(--gold)}
 .nav-logout{font-size:12.5px;color:var(--grey);background:none;border:1.5px solid var(--rule);border-radius:100px;padding:6px 14px;cursor:pointer;font-family:var(--body);transition:border-color .15s,color .15s}
-.nav-logout:hover{border-color:var(--grey);color:var(--black2)}
+.nav-logout:hover{border-color:rgba(197,169,108,.5);color:var(--gold)}
 
+/* ── Layout ── */
 main{flex:1}
 .page-wrap{max-width:640px;margin:0 auto;padding:36px clamp(16px,5vw,32px) 100px}
 
+/* ── Login form ── */
 .form-group{margin-bottom:20px}
 label{display:block;font-size:12.5px;font-weight:600;color:var(--black2);margin-bottom:7px}
-input[type="text"],input[type="email"]{width:100%;padding:13px 15px;border:1.5px solid var(--rule);border-radius:10px;background:#fff;font-family:var(--body);font-size:15px;outline:none;transition:border-color .15s,box-shadow .15s}
-input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(27,58,95,.08)}
-.btn-submit{width:100%;padding:16px;margin-top:8px;background:var(--blue);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;font-family:var(--body);transition:opacity .15s,transform .12s}
+input[type="text"],input[type="email"]{width:100%;padding:13px 15px;border:1.5px solid var(--rule);border-radius:10px;background:rgba(255,255,255,.06);color:var(--black);font-family:var(--body);font-size:15px;outline:none;transition:border-color .15s,box-shadow .15s}
+input::placeholder{color:var(--grey)}
+input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(197,169,108,.12)}
+
+/* ── Boutons ── */
+.btn-submit{width:100%;padding:15px;background:var(--gold);color:#0d1d33;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:var(--body);transition:opacity .15s,transform .12s}
 .btn-submit:hover:not(:disabled){opacity:.87;transform:translateY(-1px)}
 .btn-submit:active:not(:disabled){transform:translateY(0)}
-.btn-submit:disabled{opacity:.5;cursor:default}
-.alert-error{background:var(--red-bg);border:1.5px solid var(--red-border);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--red);line-height:1.6;margin-bottom:16px}
-.alert-info{background:var(--amber-bg);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--amber);line-height:1.6;margin-bottom:16px}
-.alert-success{background:var(--green-bg);border-radius:10px;padding:14px 16px;font-size:13.5px;color:var(--green);line-height:1.6;margin-bottom:16px}
+.btn-submit:disabled{opacity:.4;cursor:default}
+.btn-outline{display:block;width:100%;text-align:center;padding:13px;border:1.5px solid var(--rule);border-radius:12px;font-weight:600;font-size:14px;color:var(--black2)}
+.btn-prolong{display:block;width:100%;text-align:center;padding:16px;border:1.5px solid rgba(197,169,108,.45);border-radius:12px;font-weight:700;font-size:15px;margin:0 0 14px;letter-spacing:.01em;color:var(--gold);background:rgba(197,169,108,.08);transition:opacity .15s,transform .12s,background .15s}
+.btn-prolong:hover{opacity:.9;transform:translateY(-1px);background:rgba(197,169,108,.14)}
+.btn-prolong:active{transform:translateY(0)}
 
+/* ── Actions accordion ── */
+.action-card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);margin-bottom:14px;overflow:hidden;box-shadow:var(--sh)}
+.action-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:18px 20px;background:none;border:none;cursor:pointer;font-family:var(--body);text-align:left;gap:12px;transition:background .15s}
+.action-toggle:hover{background:rgba(255,255,255,.03)}
+.action-toggle-left{display:flex;align-items:center;gap:13px;flex:1;min-width:0}
+.action-ico-wrap{width:38px;height:38px;border-radius:11px;background:rgba(197,169,108,.12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.action-lbl{font-size:14px;font-weight:700;color:var(--black);margin-bottom:2px}
+.action-sub{font-size:11.5px;color:var(--grey);line-height:1.35}
+.action-chevron{font-size:22px;color:rgba(220,208,184,.4);flex-shrink:0;transition:transform .22s;line-height:1}
+.action-chevron.open{transform:rotate(90deg);color:var(--gold)}
+.action-body{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.4,0,.2,1)}
+.action-body.open{max-height:1200px}
+.action-divider{border:none;border-top:1px solid var(--rule);margin:0}
+
+/* ── Alertes ── */
+.alert-error{background:var(--red-bg);border:1px solid var(--red-border);border-radius:10px;padding:13px 15px;font-size:13.5px;color:var(--red);line-height:1.6}
+.alert-info{background:var(--amber-bg);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:13px 15px;font-size:13.5px;color:var(--amber);line-height:1.6}
+.alert-success{background:var(--green-bg);border:1px solid rgba(74,222,128,.2);border-radius:10px;padding:13px 15px;font-size:13.5px;color:var(--green);line-height:1.6}
+
+/* ── Écran login : typo ── */
 h1{font-family:var(--disp);font-size:clamp(30px,6vw,44px);font-weight:300;letter-spacing:-.02em;margin-bottom:8px}
 h1 em{font-style:italic}
 .page-sub{font-size:13.5px;color:var(--grey);margin-bottom:28px;line-height:1.65}
-h2{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.13em;color:var(--gold);margin:38px 0 13px}
-h2:first-of-type{margin-top:0}
 
-.countdown{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--blue);font-weight:600;background:var(--blue-lt);border-radius:100px;padding:5px 14px;margin-bottom:26px}
+/* ── Dashboard : header ── */
+.dash-eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.dash-h1{font-family:var(--disp);font-size:clamp(30px,6vw,42px);font-weight:300;letter-spacing:-.02em;margin-bottom:18px}
+.dash-h1 em{font-style:italic}
 
-.card{background:#fff;border:1px solid var(--rule-lt);border-radius:var(--radius-card);padding:22px 24px;margin-bottom:14px;box-shadow:var(--shadow-card)}
-.card-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #f2efe9;font-size:13.5px}
+/* ── Countdown ── */
+.countdown{display:inline-flex;align-items:center;gap:7px;background:rgba(197,169,108,.12);color:var(--gold);border:1px solid rgba(197,169,108,.3);border-radius:100px;padding:7px 16px;font-size:13px;font-weight:600;margin-bottom:20px;letter-spacing:-.01em}
+
+/* ── Progress barre ── */
+.progress-card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);padding:20px 22px;margin-bottom:14px;box-shadow:var(--sh)}
+.progress-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:10px}
+.progress-stage-lbl{font-size:15px;font-weight:700;color:var(--black);line-height:1.3}
+.progress-counter{font-size:12px;color:var(--grey);white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0}
+.progress-track{height:5px;background:rgba(255,255,255,.08);border-radius:100px;overflow:hidden}
+.progress-fill{height:100%;background:var(--gold);border-radius:100px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.next-step{display:flex;align-items:flex-start;gap:11px;background:rgba(197,169,108,.08);border-left:3px solid var(--gold);border-radius:12px;padding:14px 16px;font-size:14px;font-weight:600;color:var(--black2);margin-bottom:14px;line-height:1.4}
+.banner-cancel{background:var(--red-bg);border-left:3px solid var(--red);border-radius:12px;padding:14px 16px;font-size:14px;font-weight:600;color:var(--red);margin-bottom:14px}
+
+/* ── Cards ── */
+.card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);padding:20px 22px;margin-bottom:14px;box-shadow:var(--sh)}
+.card-div{border:none;border-top:1px solid var(--rule);margin:16px 0}
+
+/* En-tête de card (icône + label) */
+.card-head{display:flex;align-items:flex-start;gap:12px;margin-bottom:18px}
+.card-ico{width:38px;height:38px;border-radius:11px;background:rgba(197,169,108,.12);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.card-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--grey);margin-bottom:2px}
+.card-sublbl{font-size:13.5px;color:var(--black2);font-weight:500;line-height:1.4}
+
+/* Lignes label : valeur */
+.card-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:13.5px}
 .card-row:last-child{border-bottom:none}
 .card-row .lbl{color:var(--grey)}
-.card-row .val{font-weight:600;text-align:right}
+.card-row .val{font-weight:600;text-align:right;color:var(--black2)}
 
-/* Progress steps with connectors */
-.progress{display:flex;flex-direction:column;margin-bottom:20px}
-.progress-step{display:flex;align-items:flex-start;gap:14px}
-.progress-step-track{display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:30px}
-.progress-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;transition:box-shadow .2s}
-.progress-connector{width:2px;height:18px;margin:2px 0;border-radius:2px}
-.progress-step.done .progress-dot{background:var(--green);color:#fff}
-.progress-step.done .progress-connector{background:rgba(63,125,82,.25)}
-.progress-step.current .progress-dot{background:var(--blue);color:#fff;box-shadow:0 0 0 5px rgba(27,58,95,.13)}
-.progress-step.current .progress-connector{background:linear-gradient(to bottom,rgba(27,58,95,.2),var(--rule))}
-.progress-step.todo .progress-dot{background:#fff;border:1.5px solid var(--rule);color:var(--grey)}
-.progress-step.todo .progress-connector{background:var(--rule)}
-.progress-label{font-size:13.5px;padding-top:5px;line-height:1.35}
-.progress-step.done .progress-label{color:var(--green)}
-.progress-step.current .progress-label{font-weight:700;color:var(--blue)}
-.progress-step.todo .progress-label{color:var(--grey)}
+/* Section micro-label (remplace les h2) */
+.sect-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.13em;color:rgba(220,208,184,.45);margin:26px 0 10px}
+.sect-lbl:first-of-type{margin-top:0}
 
-.next-step{background:var(--blue-lt);border-left:3px solid var(--blue);border-radius:12px;padding:16px 18px;font-size:14px;font-weight:600;color:var(--black2);margin-bottom:20px}
-.banner-cancel{background:var(--red-bg);border-left:3px solid var(--red);border-radius:12px;padding:16px 18px;font-size:14px;font-weight:600;color:var(--red);margin-bottom:20px}
+/* ── Mission card : date hero + créneau ── */
+.mission-date{font-family:var(--disp);font-size:27px;font-weight:300;letter-spacing:-.02em;color:var(--black);text-transform:capitalize;line-height:1.15;margin-bottom:9px}
+.mission-creneau{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--gold);background:rgba(197,169,108,.12);border:1px solid rgba(197,169,108,.25);border-radius:100px;padding:5px 13px;margin-bottom:14px}
 
-.doc-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid #f2efe9;font-size:14px}
+/* ── Consignes récupération ── */
+.consigne{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:13px;color:var(--grey);line-height:1.5}
+.consigne:last-child{border-bottom:none}
+.consigne-check{width:20px;height:20px;border-radius:50%;background:var(--green-bg);color:var(--green);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+
+/* ── Créneau selection (avancement) ── */
+.creneau-btns{display:flex;gap:8px;margin-bottom:14px}
+.creneau-opt{flex:1;display:flex;align-items:center;justify-content:center;padding:13px;border:1.5px solid var(--rule);border-radius:11px;cursor:pointer;font-size:14px;font-weight:600;color:var(--black2);background:rgba(255,255,255,.04);transition:border-color .15s,background .15s,color .15s;user-select:none}
+.creneau-opt:hover{border-color:rgba(197,169,108,.4)}
+
+/* ── Ma location ── */
+.clim-name{font-size:15px;font-weight:600;color:var(--black2);margin-bottom:2px}
+.clim-sub{font-size:12.5px;color:var(--grey)}
+.date-range{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--grey);flex-wrap:wrap}
+.date-range strong{color:var(--black2);font-weight:600}
+.price-display{font-family:var(--disp);font-size:28px;font-weight:600;letter-spacing:-.02em;color:var(--black);margin-top:8px}
+
+/* ── Documents ── */
+.doc-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--rule);font-size:14px}
 .doc-row:last-child{border-bottom:none}
-.doc-row>span{flex:1;min-width:0}
-.doc-btn{font-size:12px;font-weight:600;color:var(--blue);border:1.5px solid rgba(27,58,95,.2);border-radius:100px;padding:6px 15px;white-space:nowrap;flex-shrink:0;transition:background .15s,color .15s,border-color .15s}
-.doc-btn:hover{background:var(--blue);color:#fff;border-color:var(--blue)}
+.doc-ico{width:34px;height:34px;border-radius:9px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.doc-info{flex:1;min-width:0}
+.doc-name{font-weight:600;color:var(--black2);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-sub{font-size:12px;color:var(--grey);margin-top:1px}
+.doc-btn{font-size:12px;font-weight:600;color:var(--gold);border:1.5px solid rgba(197,169,108,.3);border-radius:100px;padding:6px 14px;white-space:nowrap;flex-shrink:0;transition:background .15s,border-color .15s}
+.doc-btn:hover{background:rgba(197,169,108,.12);border-color:rgba(197,169,108,.6)}
 
-.aide-item{border-bottom:1px solid #f2efe9}
+/* ── Centre d'aide ── */
+.aide-item{border-bottom:1px solid var(--rule)}
 .aide-item:last-child{border-bottom:none}
 .aide-q{width:100%;text-align:left;background:none;border:none;padding:14px 0;font-size:14px;font-weight:600;color:var(--black);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;font-family:var(--body)}
 .aide-q .aide-icon{font-size:18px;line-height:1;color:var(--grey);flex-shrink:0;transition:transform .2s}
@@ -100,29 +165,41 @@ h2:first-of-type{margin-top:0}
 .aide-a{font-size:13.5px;color:var(--grey);line-height:1.65;padding:0 0 14px;display:none;white-space:pre-line}
 .aide-item.open .aide-a{display:block}
 
-.notif-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #f2efe9;font-size:13.5px}
+/* ── Notifications ── */
+.notif-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--rule);font-size:13.5px}
 .notif-row:last-child{border-bottom:none}
-.notif-date{color:var(--grey);font-size:12px;white-space:nowrap}
+.notif-dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0}
+.notif-date{color:var(--grey);font-size:12px;margin-left:auto;white-space:nowrap}
 
-.btn-prolong{display:block;width:100%;text-align:center;padding:16px;background:linear-gradient(135deg,var(--gold) 0%,var(--gold-d) 100%);color:#fff;border-radius:12px;font-weight:700;font-size:15px;margin:8px 0 16px;letter-spacing:.01em;transition:opacity .15s,transform .12s;box-shadow:0 2px 10px rgba(197,169,108,.35)}
-.btn-prolong:hover{opacity:.9;transform:translateY(-1px)}
-.btn-prolong:active{transform:translateY(0)}
-.btn-outline{display:block;width:100%;text-align:center;padding:13px;border:1.5px solid var(--rule);border-radius:12px;font-weight:600;font-size:14px;color:var(--black2)}
+/* ── Assistance : boutons d'action ── */
+.assist-btn{display:flex;align-items:center;gap:14px;padding:13px 15px;border:1.5px solid var(--rule);border-radius:13px;background:rgba(255,255,255,.03);font-family:var(--body);font-size:14px;font-weight:600;color:var(--black2);text-decoration:none;transition:border-color .15s,background .15s;cursor:pointer}
+.assist-btn+.assist-btn{margin-top:9px}
+.assist-btn:hover{border-color:rgba(197,169,108,.4);background:rgba(197,169,108,.07)}
+.assist-ico{width:40px;height:40px;border-radius:11px;background:rgba(197,169,108,.12);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.assist-txt{flex:1;min-width:0}
+.assist-sub{font-size:12px;font-weight:400;color:var(--grey);margin-top:1px}
+.assist-arrow{color:rgba(220,208,184,.3);font-size:20px;flex-shrink:0;line-height:1}
 
-.spec-chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
-.spec-chip{font-size:11.5px;font-weight:600;background:var(--blue-lt);color:var(--blue);border-radius:100px;padding:5px 13px}
+/* ── Spec chips ── */
+.spec-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.spec-chip{font-size:11.5px;font-weight:600;background:rgba(197,169,108,.1);color:var(--gold);border-radius:100px;padding:5px 13px}
 
-.footer{background:#0e1f35;border-top:1px solid rgba(197,169,108,.12);padding:22px clamp(16px,5vw,64px);text-align:center;flex-shrink:0}
-.footer p{font-size:11px;color:rgba(255,255,255,.3)}
-
-@media(max-width:480px){.page-wrap{padding-top:24px}h1{font-size:30px}.progress-dot{width:26px;height:26px}.progress-step-track{width:26px}}
+/* ── Face ID ── */
 .fid-screen{text-align:center;padding:40px 0 0}
 .fid-icon{font-size:52px;margin-bottom:18px}
-.fid-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border:none;border-radius:12px;background:var(--blue);color:#fff;font-family:var(--body);font-size:16px;font-weight:600;cursor:pointer;min-height:54px;margin-top:4px;transition:opacity .15s}
+.fid-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;border:none;border-radius:12px;background:var(--gold);color:#0d1d33;font-family:var(--body);font-size:16px;font-weight:700;cursor:pointer;min-height:54px;margin-top:4px;transition:opacity .15s}
 .fid-btn:hover:not(:disabled){opacity:.87}
-.fid-btn:disabled{opacity:.5;cursor:not-allowed}
+.fid-btn:disabled{opacity:.4;cursor:not-allowed}
 .fid-switch{display:block;text-align:center;font-size:13px;color:var(--grey);text-decoration:underline;cursor:pointer;border:none;background:none;font-family:var(--body);margin-top:16px;padding:4px}
-.fid-offer{background:var(--blue-lt);border-radius:12px;padding:18px;margin-bottom:16px;text-align:center}
+.fid-offer{background:rgba(197,169,108,.08);border:1px solid rgba(197,169,108,.2);border-radius:12px;padding:18px;margin-bottom:16px;text-align:center}
+@media(min-width:769px){.fid-offer{display:none!important}}
+
+/* ── Footer ── */
+.footer{background:#060e1c;border-top:1px solid rgba(197,169,108,.1);padding:22px clamp(16px,5vw,64px);text-align:center;flex-shrink:0}
+.footer p{font-size:11px;color:rgba(255,255,255,.25)}
+a{color:var(--gold)}
+
+@media(max-width:480px){.page-wrap{padding-top:24px}h1{font-size:30px}.mission-date{font-size:24px}}
 </style>
 </head>
 <body>
@@ -150,7 +227,7 @@ h2:first-of-type{margin-top:0}
           <input type="text" id="f-ref" autocomplete="off" placeholder="LOC-260710-8129" style="text-transform:uppercase" required/>
         </div>
         <div id="login-error" class="alert-error hidden" role="alert"></div>
-        <button type="submit" class="btn-submit" id="btn-login">Accéder à mon espace</button>
+        <button type="submit" class="btn-submit" id="btn-login" style="margin-top:8px">Accéder à mon espace</button>
       </form>
     </div>
 
@@ -186,22 +263,11 @@ h2:first-of-type{margin-top:0}
 <script>
 document.getElementById('year').textContent = new Date().getFullYear();
 
-// Paiement Offre Privilège (Module 7 / Offre Privilège Step 2) — même clé
-// publique et même intégration Stripe Elements que le site public.
 const STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpYcFY8Sj4cL4pK64YO5v49flzW8SWlLek1dr00nJtbX09Y';
 let _stripe = null;
 function _getStripe(){ if(!_stripe && typeof Stripe !== 'undefined') _stripe = Stripe(STRIPE_PK); return _stripe; }
-// Indexé par offre_id — une réservation à plusieurs climatiseurs peut avoir
-// plusieurs Offres Privilège en même temps, chacune avec son propre paiement.
 let _offreElements = {};
 
-// Retour de vérification bancaire (3D Secure) sur le paiement Offre Privilège
-// (confirmPayment est en redirect:'if_required', donc ça n'arrive que si la
-// banque a vraiment forcé une redirection complète hors du site). Stripe
-// ajoute toujours redirect_status à l'URL de retour — même principe que
-// _checkStripeReturn() sur le site public (index.html). Capturé au tout
-// début du script pour ne jamais rater le paramètre au premier rendu, avant
-// même que showDashboard() ait pu tourner.
 let _offreReturnStatus = null;
 (function _captureOffreReturn(){
   const p = new URLSearchParams(window.location.search);
@@ -244,6 +310,10 @@ document.getElementById('login-form').addEventListener('submit', async function(
     if(!r.ok) throw new Error(d.error || 'Erreur');
     localStorage.setItem('client_token', d.token);
     localStorage.setItem('client_ref', d.ref);
+    // Réutilisé par /prolongation (même origine, localStorage partagé) pour
+    // pré-remplir email + référence si jamais l'auto-connexion par jeton y
+    // échoue — le client n'a alors jamais à retaper ces informations.
+    localStorage.setItem('client_email', email);
     showDashboard();
   }catch(err){
     errEl.textContent = err.message;
@@ -256,103 +326,263 @@ document.getElementById('login-form').addEventListener('submit', async function(
 function logout(){
   localStorage.removeItem('client_token');
   localStorage.removeItem('client_ref');
+  localStorage.removeItem('client_email');
   location.reload();
 }
 
-function renderProgress(progress){
-  if(progress.banner){
-    return `<div class="banner-cancel">${escHtml(progress.banner)}</div>`;
-  }
-  const steps = STAGES.map(n => {
-    const cls = progress.stage > n ? 'done' : (progress.stage === n ? 'current' : 'todo');
-    const label = progress.stageLabel && progress.stage === n ? progress.stageLabel : STAGE_LABELS_FALLBACK[n];
-    return `<div class="progress-step ${cls}"><div class="progress-step-track"><div class="progress-dot">${progress.stage > n ? '✓' : n}</div>${n < 7 ? '<div class="progress-connector"></div>' : ''}</div><div class="progress-label">${escHtml(label)}</div></div>`;
-  }).join('');
-  return `<div class="progress">${steps}</div>
-    ${progress.nextStep ? `<div class="next-step">📍 ${escHtml(progress.nextStep)}</div>` : ''}`;
-}
 const STAGE_LABELS_FALLBACK = {
   1:'Réservation confirmée', 2:'Préparation de votre livraison', 3:'Livraison programmée',
   4:'Installation réalisée', 5:'Location en cours', 6:'Retour programmé', 7:'Location terminée',
 };
 
+function renderProgress(progress){
+  if(progress.banner){
+    return `<div class="banner-cancel">${escHtml(progress.banner)}</div>`;
+  }
+  const stage = Math.max(1, Math.min(7, progress.stage));
+  const pct = Math.round((stage / 7) * 100);
+  const stageLabel = progress.stageLabel || STAGE_LABELS_FALLBACK[stage] || '';
+  return `
+    <div class="progress-card">
+      <div class="progress-header">
+        <div class="progress-stage-lbl">${escHtml(stageLabel)}</div>
+        <div class="progress-counter">Étape ${stage} / 7</div>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" style="width:${pct}%"></div>
+      </div>
+    </div>
+    ${progress.nextStep ? `<div class="next-step"><span>📍</span><span>${escHtml(progress.nextStep)}</span></div>` : ''}`;
+}
+
 function renderDashboard(d){
   const c = d.client, ml = d.ma_location;
-  const climHtml = ml.climatiseur ? `
-    <div class="card-row"><span class="lbl">Modèle</span><span class="val">${escHtml(ml.climatiseur.marque||'')} ${escHtml(ml.climatiseur.modele||'')}</span></div>
-    ${ml.climatiseur.puissance_btu?`<div class="card-row"><span class="lbl">Puissance</span><span class="val">${escHtml(ml.climatiseur.puissance_btu)}</span></div>`:''}
-    <div class="card-row"><span class="lbl">Unité</span><span class="val">N°${escHtml(ml.climatiseur.numero)}</span></div>` :
-    `<div class="card-row"><span class="lbl">Climatiseur</span><span class="val">Attribué à la livraison</span></div>`;
 
+  // Climatiseur résumé
+  const climHead = ml.climatiseur
+    ? `<div class="clim-name">${escHtml(ml.climatiseur.marque||'')} ${escHtml(ml.climatiseur.modele||'')}</div>
+       <div class="clim-sub">Unité N°${escHtml(ml.climatiseur.numero)}${ml.climatiseur.puissance_btu?' · '+escHtml(ml.climatiseur.puissance_btu):''}</div>`
+    : `<div class="clim-sub">Climatiseur attribué à la livraison</div>`;
+
+  // Livraison
   const livraisonHtml = d.livraison ? `
-    <h2>Livraison</h2>
+    <div class="sect-lbl">Livraison</div>
     <div class="card">
-      <div class="card-row"><span class="lbl">Date prévue</span><span class="val">${escHtml(fmtDate(d.livraison.date_prevue))}</span></div>
-      ${d.livraison.creneau?`<div class="card-row"><span class="lbl">Créneau</span><span class="val">${escHtml(d.livraison.creneau)}</span></div>`:''}
+      <div class="card-head">
+        <div class="card-ico">🚚</div>
+        <div><div class="card-lbl">Livraison à domicile</div></div>
+      </div>
+      <div class="mission-date">${escHtml(fmtDate(d.livraison.date_prevue))}</div>
+      ${d.livraison.creneau ? `<div class="mission-creneau">⏰ ${escHtml(d.livraison.creneau)}</div>` : ''}
       <div class="card-row"><span class="lbl">Intervention</span><span class="val">${escHtml(d.livraison.type_intervention)}</span></div>
     </div>` : '';
 
+  // Récupération
   const todayIso = new Date().toISOString().slice(0,10);
   const recupEarlyPickerShown = d.recuperation && d.recuperation.statut !== 'fait' && d.recuperation.date_prevue > todayIso;
   const recupMaxDate = recupEarlyPickerShown ? (()=>{const dt=new Date(d.recuperation.date_prevue+'T12:00:00Z');dt.setUTCDate(dt.getUTCDate()-1);return dt.toISOString().slice(0,10);})() : '';
-  const recupHtml = d.recuperation ? `
-    <h2>Récupération</h2>
-    <div class="card">
-      <div class="card-row"><span class="lbl">Date prévue</span><span class="val">${escHtml(fmtDate(d.recuperation.date_prevue))}</span></div>
-      ${d.recuperation.creneau?`<div class="card-row"><span class="lbl">Créneau</span><span class="val">${escHtml(d.recuperation.creneau)}</span></div>`:''}
-      <ul style="margin:10px 0 0 18px;font-size:13px;color:var(--grey);line-height:1.7">
-        ${d.recuperation.consignes.map(c=>`<li>${escHtml(c)}</li>`).join('')}
-      </ul>
-    </div>
-    ${recupEarlyPickerShown ? `
-    <div class="card" id="card-early-recup" style="margin-top:-4px">
-      <p style="font-size:13px;font-weight:600;color:var(--black2);margin-bottom:10px">Avancer la récupération</p>
-      <p style="font-size:12.5px;color:var(--grey);margin-bottom:12px;line-height:1.5">Vous devez libérer le logement avant la date prévue ? Choisissez une date antérieure — le créneau horaire reste inchangé.</p>
-      <div id="early-recup-alert" class="hidden" style="margin-bottom:10px"></div>
-      <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:10px;background:#fff;outline:none"/>
-      <button class="btn-submit" id="early-recup-btn" onclick="submitEarlyRecup()">Confirmer la nouvelle date</button>
-    </div>` : ''}` : '';
 
+  const recupHtml = d.recuperation ? `
+    <div class="sect-lbl">Récupération</div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-ico">📦</div>
+        <div><div class="card-lbl">Récupération de l'appareil</div></div>
+      </div>
+      <div class="mission-date">${escHtml(fmtDate(d.recuperation.date_prevue))}</div>
+      ${d.recuperation.creneau ? `<div class="mission-creneau">⏰ ${escHtml(d.recuperation.creneau)}</div>` : ''}
+      <hr class="card-div"/>
+      ${d.recuperation.consignes.map(txt => `
+        <div class="consigne">
+          <div class="consigne-check">✓</div>
+          <span>${escHtml(txt)}</span>
+        </div>`).join('')}
+    </div>
+    ` : '';
+
+  // ── Actions accordion (Prolongation + Récupération anticipée) ──
+  const _showProlong = !d.progress.banner;
+  const actionsHtml = (_showProlong || recupEarlyPickerShown) ? `<div class="action-card">
+    ${_showProlong ? `<button class="action-toggle" onclick="toggleAction('prolong')">
+      <div class="action-toggle-left">
+        <div class="action-ico-wrap">📅</div>
+        <div>
+          <div class="action-lbl">Prolonger ma location</div>
+          <div class="action-sub">Ajoutez des jours — paiement en ligne immédiat</div>
+        </div>
+      </div>
+      <div class="action-chevron" id="action-chevron-prolong">›</div>
+    </button>
+    <div class="action-body" id="action-body-prolong">
+      <div style="padding:20px 22px">
+        <div id="prolong-loading" style="text-align:center;color:var(--grey);font-size:13.5px;padding:6px 0">Chargement de votre dossier…</div>
+        <div id="prolong-step-2" style="display:none">
+          <div id="prolong-error" class="alert-error hidden" style="margin-bottom:14px"></div>
+          <p id="prolong-dates-lbl" style="font-size:13px;color:var(--grey);margin-bottom:14px"></p>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:8px">Nouvelle date de fin</div>
+          <input type="date" id="prolong-newdate" oninput="updateProlongPrice()" onchange="updateProlongPrice()" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-size:15px;margin-bottom:12px;background:rgba(255,255,255,.06);color:var(--black);font-family:var(--body);outline:none;transition:border-color .15s"/>
+          <div id="prolong-price-box" class="hidden" style="background:rgba(197,169,108,.08);border-left:3px solid var(--gold);border-radius:12px;padding:14px 16px;margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span id="prolong-price-days" style="font-size:14px;font-weight:600;color:var(--black)"></span>
+              <span id="prolong-price-amount" style="font-size:20px;font-weight:700;color:var(--gold)"></span>
+            </div>
+            <div id="prolong-price-note" style="font-size:11.5px;color:var(--grey)"></div>
+          </div>
+          <label style="display:flex;align-items:flex-start;gap:9px;margin-bottom:14px;cursor:pointer">
+            <input type="checkbox" id="prolong-cgv" onchange="updateProlongBtnState()" style="width:17px;height:17px;flex-shrink:0;margin-top:2px;accent-color:var(--gold);cursor:pointer"/>
+            <span style="font-size:12.5px;color:var(--grey);line-height:1.55">J'accepte les <a href="/cgv" target="_blank" rel="noopener" style="color:var(--gold)">conditions générales de vente</a> et la durée choisie.</span>
+          </label>
+          <button class="btn-submit" id="prolong-pay-btn" disabled onclick="submitProlong()">Payer <span id="prolong-pay-label">—</span></button>
+        </div>
+        <div id="prolong-step-3" style="display:none">
+          <div style="background:rgba(197,169,108,.08);border:1px solid rgba(197,169,108,.2);border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div>
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:3px">Prolongation</div>
+              <div id="prolong-summary-detail" style="font-size:13.5px;font-weight:500;color:var(--black2)"></div>
+            </div>
+            <div id="prolong-summary-price" style="font-size:20px;font-weight:700;color:var(--gold);white-space:nowrap;margin-left:16px"></div>
+          </div>
+          <div style="background:rgba(255,255,255,.03);border:1px solid var(--rule);border-radius:12px;padding:18px;margin-bottom:14px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:12px;padding-bottom:11px;border-bottom:1px solid var(--rule)">Paiement sécurisé</div>
+            <div id="prolong-payment-element" style="min-height:180px"><p style="color:var(--grey);font-size:13px;text-align:center;padding:28px 0">Chargement…</p></div>
+          </div>
+          <div id="prolong-payment-error" class="alert-error hidden" style="margin-bottom:12px"></div>
+          <button class="btn-submit" id="prolong-confirm-btn" disabled onclick="confirmProlong()">Confirmer le paiement</button>
+          <p style="text-align:center;font-size:11px;color:var(--grey);margin-top:10px;line-height:1.6">🔒 SSL · Stripe · Aucun stockage des données bancaires</p>
+          <button onclick="backToStep2Prolong()" style="display:block;width:100%;padding:11px;margin-top:8px;background:transparent;color:var(--grey);border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:14px;font-weight:500;cursor:pointer">← Modifier la date</button>
+        </div>
+        <div id="prolong-step-success" style="display:none;text-align:center;padding:14px 0">
+          <div style="font-size:36px;margin-bottom:10px">✅</div>
+          <div style="font-family:var(--disp);font-size:22px;font-weight:300;margin-bottom:8px;color:var(--black)">Prolongation <em>confirmée !</em></div>
+          <div id="prolong-success-msg" style="font-size:13.5px;color:var(--grey);line-height:1.65"></div>
+        </div>
+      </div>
+    </div>` : ''}
+    ${_showProlong && recupEarlyPickerShown ? '<hr class="action-divider"/>' : ''}
+    ${recupEarlyPickerShown ? `<button class="action-toggle" onclick="toggleAction('recup')">
+      <div class="action-toggle-left">
+        <div class="action-ico-wrap">📦</div>
+        <div>
+          <div class="action-lbl">Avancer la récupération</div>
+          <div class="action-sub">Choisissez une nouvelle date et un créneau</div>
+        </div>
+      </div>
+      <div class="action-chevron" id="action-chevron-recup">›</div>
+    </button>
+    <div class="action-body" id="action-body-recup">
+      <div style="padding:20px 22px">
+        <div id="early-recup-alert" class="hidden" style="margin-bottom:10px"></div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:8px">Nouvelle date</div>
+        <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:12px;background:rgba(255,255,255,.06);color:var(--black);outline:none;transition:border-color .15s"/>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:9px">Créneau</div>
+        <div class="creneau-btns">
+          <div id="lbl-creneau-1" class="creneau-opt" onclick="selectCreneau('8h-10h')">8h – 10h</div>
+          <div id="lbl-creneau-2" class="creneau-opt" onclick="selectCreneau('10h-12h')">10h – 12h</div>
+        </div>
+        <button class="btn-submit" id="early-recup-btn" onclick="submitEarlyRecup()">Confirmer</button>
+      </div>
+    </div>` : ''}
+  </div>` : '';
+
+  // Documents
   const docLabels = {contrat:'Contrat de location', facture:'Facture', facture_vente:'Facture vente'};
+  const docIcons  = {contrat:'📄', facture:'🧾', facture_vente:'🧾'};
   let docsHtml = (d.documents||[]).map(doc => `
-    <div class="doc-row"><span>${escHtml(docLabels[doc.type]||doc.type)}${doc.numero?' · '+escHtml(doc.numero):''}</span>
-    <a class="doc-btn" href="${doc.url}" target="_blank" rel="noopener">Ouvrir</a></div>`).join('');
-  if(d.mon_climatiseur?.documentation_url) docsHtml += `<div class="doc-row"><span>Guide utilisateur</span><a class="doc-btn" href="${escHtml(d.mon_climatiseur.documentation_url)}" target="_blank" rel="noopener">Ouvrir</a></div>`;
-  if(d.mon_climatiseur?.video_tutoriel_url) docsHtml += `<div class="doc-row"><span>Tutoriel vidéo</span><a class="doc-btn" href="${escHtml(d.mon_climatiseur.video_tutoriel_url)}" target="_blank" rel="noopener">Voir</a></div>`;
+    <div class="doc-row">
+      <div class="doc-ico">${docIcons[doc.type]||'📄'}</div>
+      <div class="doc-info">
+        <div class="doc-name">${escHtml(docLabels[doc.type]||doc.type)}</div>
+        ${doc.numero ? `<div class="doc-sub">${escHtml(doc.numero)}</div>` : ''}
+      </div>
+      <a class="doc-btn" href="${doc.url}" target="_blank" rel="noopener">Ouvrir</a>
+    </div>`).join('');
+  if(d.mon_climatiseur?.documentation_url) docsHtml += `
+    <div class="doc-row">
+      <div class="doc-ico">📘</div>
+      <div class="doc-info"><div class="doc-name">Guide utilisateur</div></div>
+      <a class="doc-btn" href="${escHtml(d.mon_climatiseur.documentation_url)}" target="_blank" rel="noopener">Ouvrir</a>
+    </div>`;
+  if(d.mon_climatiseur?.video_tutoriel_url) docsHtml += `
+    <div class="doc-row">
+      <div class="doc-ico">▶️</div>
+      <div class="doc-info"><div class="doc-name">Tutoriel vidéo</div></div>
+      <a class="doc-btn" href="${escHtml(d.mon_climatiseur.video_tutoriel_url)}" target="_blank" rel="noopener">Voir</a>
+    </div>`;
   (d.cgv_acceptees||[]).forEach(a => {
     const label = a.type === 'conditions_utilisation' ? "Conditions d'utilisation" : 'CGV / CGL';
-    docsHtml += `<div class="doc-row"><span>${label} <span style="color:var(--grey);font-weight:400">— acceptées le ${escHtml(fmtDate(a.accepted_at))}</span></span><a class="doc-btn" href="${a.lien}" target="_blank" rel="noopener">Voir</a></div>`;
+    docsHtml += `
+    <div class="doc-row">
+      <div class="doc-ico">✅</div>
+      <div class="doc-info">
+        <div class="doc-name">${label}</div>
+        <div class="doc-sub">Acceptées le ${escHtml(fmtDate(a.accepted_at))}</div>
+      </div>
+      <a class="doc-btn" href="${a.lien}" target="_blank" rel="noopener">Voir</a>
+    </div>`;
   });
   if(!docsHtml) docsHtml = '<p style="color:var(--grey);font-size:13.5px">Vos documents apparaîtront ici dès qu\'ils seront disponibles.</p>';
 
+  // Mon climatiseur
   const climInfoHtml = d.mon_climatiseur ? `
     <div class="spec-chips">
-      ${d.mon_climatiseur.puissance_btu?`<span class="spec-chip">${escHtml(d.mon_climatiseur.puissance_btu)}</span>`:''}
-      ${d.mon_climatiseur.surface_max_m2?`<span class="spec-chip">Jusqu'à ${escHtml(d.mon_climatiseur.surface_max_m2)}</span>`:''}
-      ${d.mon_climatiseur.niveau_sonore_db?`<span class="spec-chip">${escHtml(d.mon_climatiseur.niveau_sonore_db)}</span>`:''}
-      ${d.mon_climatiseur.classe_energie?`<span class="spec-chip">Classe ${escHtml(d.mon_climatiseur.classe_energie)}</span>`:''}
+      ${d.mon_climatiseur.puissance_btu ? `<span class="spec-chip">${escHtml(d.mon_climatiseur.puissance_btu)}</span>` : ''}
+      ${d.mon_climatiseur.surface_max_m2 ? `<span class="spec-chip">Jusqu'à ${escHtml(d.mon_climatiseur.surface_max_m2)}</span>` : ''}
+      ${d.mon_climatiseur.niveau_sonore_db ? `<span class="spec-chip">${escHtml(d.mon_climatiseur.niveau_sonore_db)}</span>` : ''}
+      ${d.mon_climatiseur.classe_energie ? `<span class="spec-chip">Classe ${escHtml(d.mon_climatiseur.classe_energie)}</span>` : ''}
     </div>
-    ${d.mon_climatiseur.conseils_utilisation?`<p style="font-size:13.5px;color:var(--grey);line-height:1.6;white-space:pre-line">${escHtml(d.mon_climatiseur.conseils_utilisation)}</p>`:''}
-  ` : '<p style="color:var(--grey);font-size:13.5px">Les informations détaillées de votre climatiseur apparaîtront ici une fois l\'appareil attribué.</p>';
+    ${d.mon_climatiseur.conseils_utilisation ? `<p style="font-size:13.5px;color:var(--grey);line-height:1.65;white-space:pre-line">${escHtml(d.mon_climatiseur.conseils_utilisation)}</p>` : ''}`
+    : '<p style="color:var(--grey);font-size:13.5px">Les informations détaillées de votre climatiseur apparaîtront ici une fois l\'appareil attribué.</p>';
 
+  // FAQ
   const aideHtml = (d.centre_aide||[]).length ? d.centre_aide.map((a,i) => `
     <div class="aide-item" id="aide-${i}">
       <button class="aide-q" onclick="toggleAide(${i})"><span>${escHtml(a.titre)}</span><span class="aide-icon">+</span></button>
       <div class="aide-a">${escHtml(a.contenu)}</div>
     </div>`).join('') : '<p style="color:var(--grey);font-size:13.5px">Aucun article pour l\'instant.</p>';
 
+  // Notifications
   const notifHtml = (d.notifications||[]).length ? d.notifications.map(n => `
-    <div class="notif-row"><span>${escHtml(n.label)}</span><span class="notif-date">${escHtml(fmtDate(n.date))}</span></div>`).join('')
+    <div class="notif-row">
+      <div class="notif-dot"></div>
+      <span>${escHtml(n.label)}</span>
+      <span class="notif-date">${escHtml(fmtDate(n.date))}</span>
+    </div>`).join('')
     : '<p style="color:var(--grey);font-size:13.5px">Aucun événement pour l\'instant.</p>';
 
-  const a = d.assistance || {};
+  // Assistance
+  const as = d.assistance || {};
+  const assistHtml = `
+    ${as.horaires ? `<p style="font-size:13px;color:var(--grey);margin-bottom:14px">${escHtml(as.horaires)}</p>` : ''}
+    ${as.telephone ? `<a class="assist-btn" href="tel:${escHtml(as.telephone.replace(/\s/g,''))}">
+      <div class="assist-ico">📞</div>
+      <div class="assist-txt">
+        <div>${escHtml(as.telephone)}</div>
+        <div class="assist-sub">Appeler maintenant</div>
+      </div>
+      <div class="assist-arrow">›</div>
+    </a>` : ''}
+    ${as.whatsapp_url ? `<a class="assist-btn" href="${escHtml(as.whatsapp_url)}" target="_blank" rel="noopener">
+      <div class="assist-ico">💬</div>
+      <div class="assist-txt">
+        <div>WhatsApp</div>
+        <div class="assist-sub">Réponse rapide</div>
+      </div>
+      <div class="assist-arrow">›</div>
+    </a>` : ''}
+    ${as.email ? `<a class="assist-btn" href="mailto:${escHtml(as.email)}">
+      <div class="assist-ico">✉️</div>
+      <div class="assist-txt">
+        <div>${escHtml(as.email)}</div>
+        <div class="assist-sub">Envoyer un email</div>
+      </div>
+      <div class="assist-arrow">›</div>
+    </a>` : ''}
+    ${as.urgence ? `<p style="font-size:12px;color:var(--grey);margin-top:14px;line-height:1.55">${escHtml(as.urgence)}</p>` : ''}`;
 
-  // Une réservation à plusieurs climatiseurs peut recevoir plusieurs Offres
-  // Privilège en même temps (une par appareil) — chacune est indépendante :
-  // le client choisit celles qu'il veut garder, une par une.
+  // Offres Privilège
   const offres = d.offres_privilege || [];
   const offreHtml = offres.length ? `
-    <h2>🌟 Offre${offres.length>1?'s':''} Privilège</h2>
+    <div class="sect-lbl">🌟 Offre${offres.length>1?'s':''} Privilège</div>
     ${offres.map(o => `
     <div class="card">
       <p style="font-size:14px;font-weight:600;margin-bottom:10px">${o.appareil_numero?`Le climatiseur n°${o.appareil_numero} vous`:'Ce climatiseur vous'} plaît ? Vous pouvez le garder pour de bon, au lieu de le rendre.</p>
@@ -370,47 +600,64 @@ function renderDashboard(d){
       <div class="alert-error hidden" id="offre-privilege-error-${o.id}" style="margin-top:12px"></div>
     </div>`).join('')}` : '';
 
+  // Countdown
+  const countdownHtml = c.jours_restants != null && c.jours_restants > 0
+    ? `<div class="countdown">⏱ ${c.jours_restants} jour${c.jours_restants>1?'s':''} avant récupération</div>`
+    : '';
+
   document.getElementById('dash-content').innerHTML = `
-    <p style="font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:6px">Dossier ${escHtml(c.ref)}</p>
-    <h1>Bonjour ${escHtml(c.prenom)}</h1>
-    ${c.jours_restants!=null && c.jours_restants>0 ? `<p class="countdown">⏱ ${c.jours_restants} jour${c.jours_restants>1?'s':''} avant récupération</p>` : '<p class="page-sub" style="margin-bottom:20px"></p>'}
+    <div class="dash-eyebrow">Dossier ${escHtml(c.ref)}</div>
+    <h1 class="dash-h1">Bonjour, <em>${escHtml(c.prenom)}</em></h1>
+    ${countdownHtml}
 
     ${renderProgress(d.progress)}
 
-    <h2>Ma location</h2>
+    <div class="sect-lbl">Ma location</div>
     <div class="card">
-      ${climHtml}
-      <div class="card-row"><span class="lbl">Livraison</span><span class="val">${escHtml(fmtDate(c.date_debut))}</span></div>
-      <div class="card-row"><span class="lbl">Récupération</span><span class="val">${escHtml(fmtDate(c.date_fin))}</span></div>
-      <div class="card-row"><span class="lbl">Montant</span><span class="val">${euros(ml.montant_ttc_cents)}</span></div>
+      <div class="card-head">
+        <div class="card-ico">❄️</div>
+        <div>
+          <div class="card-lbl">Climatiseur</div>
+          ${climHead}
+        </div>
+      </div>
+      <hr class="card-div" style="margin-top:0"/>
+      <div class="date-range">
+        <strong>${escHtml(fmtDate(c.date_debut))}</strong>
+        <span style="color:var(--rule)">→</span>
+        <strong>${escHtml(fmtDate(c.date_fin))}</strong>
+      </div>
+      <div class="price-display">${euros(ml.montant_ttc_cents)}</div>
     </div>
 
     ${offreHtml}
-
     ${livraisonHtml}
     ${recupHtml}
+    ${actionsHtml}
 
-    ${!d.progress.banner ? `<a class="btn-prolong" href="${escHtml(d.lien_prolongation+'&token='+encodeURIComponent(localStorage.getItem('client_token')||''))}">Prolonger ma location</a>` : ''}
-
-    <h2>Mes documents</h2>
+    <div class="sect-lbl">Mes documents</div>
     <div class="card">${docsHtml}</div>
 
-    <h2>Mon climatiseur</h2>
-    <div class="card">${climInfoHtml}</div>
+    <div class="sect-lbl">Mon climatiseur</div>
+    <div class="card">
+      <div class="card-head">
+        <div class="card-ico">🌡️</div>
+        <div>
+          <div class="card-lbl">Fiche technique</div>
+          ${d.mon_climatiseur ? `<div class="card-sublbl">${escHtml(d.mon_climatiseur.marque||'')} ${escHtml(d.mon_climatiseur.modele||'')}</div>` : ''}
+        </div>
+      </div>
+      ${climInfoHtml}
+    </div>
 
-    <h2>Besoin d'aide ?</h2>
+    <div class="sect-lbl">Questions fréquentes</div>
     <div class="card">${aideHtml}</div>
 
-    <h2>Mes notifications</h2>
+    <div class="sect-lbl">Mes notifications</div>
     <div class="card">${notifHtml}</div>
 
-    <h2>Assistance</h2>
-    <div class="card">
-      ${a.horaires?`<div class="card-row"><span class="lbl">Horaires</span><span class="val">${escHtml(a.horaires)}</span></div>`:''}
-      ${a.telephone?`<div class="card-row"><span class="lbl">Téléphone</span><span class="val"><a href="tel:${escHtml(a.telephone.replace(/\s/g,''))}">${escHtml(a.telephone)}</a></span></div>`:''}
-      ${a.email?`<div class="card-row"><span class="lbl">Email</span><span class="val"><a href="mailto:${escHtml(a.email)}">${escHtml(a.email)}</a></span></div>`:''}
-      ${a.urgence?`<p style="margin-top:10px;font-size:12.5px;color:var(--grey);line-height:1.6">${escHtml(a.urgence)}</p>`:''}
-    </div>
+    <div class="sect-lbl">Assistance</div>
+    <div class="card">${assistHtml}</div>
   `;
 }
 
@@ -418,35 +665,176 @@ function toggleAide(i){
   document.getElementById('aide-'+i).classList.toggle('open');
 }
 
+let _earlyRecupCreneau = '';
+function selectCreneau(val){
+  _earlyRecupCreneau = val;
+  ['1','2'].forEach(n => {
+    const lbl = document.getElementById('lbl-creneau-'+n);
+    if(!lbl) return;
+    const isActive = (n==='1' && val==='8h-10h') || (n==='2' && val==='10h-12h');
+    lbl.style.cssText = lbl.style.cssText.replace(/border-color:[^;]+;background:[^;]*;color:[^;]*/,'') +
+      (isActive ? ';border-color:var(--gold);background:rgba(197,169,108,.15);color:var(--gold)' : ';border-color:var(--rule);background:;color:');
+  });
+}
+
 async function submitEarlyRecup(){
-  const dateEl = document.getElementById('early-recup-date');
-  const btn = document.getElementById('early-recup-btn');
+  const dateEl  = document.getElementById('early-recup-date');
+  const btn     = document.getElementById('early-recup-btn');
   const alertEl = document.getElementById('early-recup-alert');
   if(!dateEl || !btn || !alertEl) return;
   const date = dateEl.value;
   if(!date){ alertEl.className='alert-error'; alertEl.textContent='Veuillez sélectionner une date.'; alertEl.classList.remove('hidden'); return; }
+  if(!_earlyRecupCreneau){ alertEl.className='alert-error'; alertEl.textContent='Veuillez choisir un créneau.'; alertEl.classList.remove('hidden'); return; }
   alertEl.className='hidden'; alertEl.textContent='';
   btn.disabled=true; btn.textContent='Envoi…';
   try{
-    await apiClient('/api/client-recup', { action:'request_early_recup', date });
+    await apiClient('/api/client-recup', { action:'request_early_recup', date, creneau: _earlyRecupCreneau });
     alertEl.className='alert-success';
     alertEl.textContent='Votre demande a été prise en compte. Vous allez recevoir un SMS de confirmation.';
     alertEl.classList.remove('hidden');
-    btn.disabled=true; btn.textContent='Demande envoyée';
+    btn.disabled=true; btn.textContent='Confirmé';
     dateEl.disabled=true;
+    document.getElementById('lbl-creneau-1').style.pointerEvents='none';
+    document.getElementById('lbl-creneau-2').style.pointerEvents='none';
   }catch(err){
     alertEl.className='alert-error';
     alertEl.textContent=err.message||'Erreur. Veuillez réessayer.';
     alertEl.classList.remove('hidden');
-    btn.disabled=false; btn.textContent='Confirmer la nouvelle date';
+    btn.disabled=false; btn.textContent='Confirmer';
   }
 }
 
-// ── Offre Privilège : achat du climatiseur en cours (Stripe Elements, même
-// intégration que la prolongation sur le site public) — une réservation à
-// plusieurs climatiseurs peut avoir plusieurs offres en même temps, chacune
-// avec son propre paiement indépendant, donc ses propres éléments Stripe
-// (voir _offreElements, indexé par offre_id, plus bas dans le fichier).
+// ── Actions accordion ──
+function toggleAction(id){
+  const body=document.getElementById('action-body-'+id);
+  const chev=document.getElementById('action-chevron-'+id);
+  if(!body) return;
+  const open=body.classList.toggle('open');
+  if(chev) chev.classList.toggle('open',open);
+  if(open && id==='prolong') initProlongSection();
+}
+
+// ── Prolongation inline ──
+let _prolongData=null,_prolongStripeEl=null,_prolongNewDate='',_prolongCents=0;
+function _pAddDay(iso){const d=new Date(iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
+function _pBase(d){d=Math.max(1,d);if(d<=7)return d*12;if(d<=14)return 84+(d-7)*10;if(d<=21)return 154+(d-14)*9;return 217+(d-21)*8;}
+function _pDiff(a,b){return Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000);}
+function _pFmtLong(iso){return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}
+
+async function initProlongSection(){
+  if(_prolongData) return;
+  const loadEl=document.getElementById('prolong-loading');
+  const step2=document.getElementById('prolong-step-2');
+  const errEl=document.getElementById('prolong-error');
+  try{
+    const r=await fetch('/api/prolong-lookup',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({token:localStorage.getItem('client_token')})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur serveur');
+    _prolongData=d;
+    if(loadEl) loadEl.style.display='none';
+    const inp=document.getElementById('prolong-newdate');
+    if(inp) inp.min=_pAddDay(_prolongData.date_fin);
+    const dl=document.getElementById('prolong-dates-lbl');
+    if(dl) dl.textContent=`Contrat en cours : ${fmtDate(_prolongData.date_debut)} → ${fmtDate(_prolongData.date_fin)} (${_prolongData.orig_days} j)`;
+    if(step2) step2.style.display='block';
+  }catch(e){
+    if(loadEl) loadEl.style.display='none';
+    if(errEl){errEl.textContent=e.message;errEl.classList.remove('hidden');}
+    if(step2) step2.style.display='block';
+  }
+}
+
+function updateProlongPrice(){
+  if(!_prolongData) return;
+  _prolongNewDate=document.getElementById('prolong-newdate')?.value||'';
+  const priceBox=document.getElementById('prolong-price-box');
+  if(!_prolongNewDate||_prolongNewDate<=_prolongData.date_fin){
+    if(priceBox) priceBox.classList.add('hidden');
+    updateProlongBtnState(); return;
+  }
+  document.getElementById('prolong-error')?.classList.add('hidden');
+  const ext=_pDiff(_prolongData.date_fin,_prolongNewDate);
+  const tot=_prolongData.orig_days+ext;
+  const price=(_pBase(tot)-_pBase(_prolongData.orig_days))*(_prolongData.quantite||1);
+  _prolongCents=price*100;
+  document.getElementById('prolong-price-days').textContent=`+ ${ext} jour${ext>1?'s':''}`;
+  document.getElementById('prolong-price-amount').textContent=`${price} €`;
+  document.getElementById('prolong-price-note').textContent=`Récupération le ${_pFmtLong(_pAddDay(_prolongNewDate))}`;
+  if(priceBox) priceBox.classList.remove('hidden');
+  updateProlongBtnState();
+}
+
+function updateProlongBtnState(){
+  const payBtn=document.getElementById('prolong-pay-btn');
+  const payLbl=document.getElementById('prolong-pay-label');
+  const valid=_prolongData&&_prolongNewDate&&_prolongNewDate>_prolongData.date_fin&&document.getElementById('prolong-cgv')?.checked;
+  if(payBtn) payBtn.disabled=!valid;
+  if(payLbl) payLbl.textContent=_prolongCents>0?`${_prolongCents/100} €`:'—';
+}
+
+async function submitProlong(){
+  if(!_prolongData||!_prolongNewDate) return;
+  const payBtn=document.getElementById('prolong-pay-btn');
+  const errEl=document.getElementById('prolong-error');
+  payBtn.disabled=true; payBtn.textContent='Préparation…';
+  errEl?.classList.add('hidden');
+  try{
+    const r=await fetch('/api/prolong-pay',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({email:_prolongData.email,ref:_prolongData.ref,new_date_fin:_prolongNewDate,cgv_accepted:true,cgv_accepted_at:new Date().toISOString()})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur serveur');
+    _prolongCents=d.amountCents;
+    document.getElementById('prolong-step-2').style.display='none';
+    document.getElementById('prolong-step-3').style.display='block';
+    document.getElementById('prolong-summary-detail').textContent=`+${d.jours} jour${d.jours>1?'s':''} — jusqu'au ${_pFmtLong(d.newDateFin)}`;
+    document.getElementById('prolong-summary-price').textContent=(d.amountCents/100).toLocaleString('fr-FR')+' €';
+    const cb=document.getElementById('prolong-confirm-btn');
+    if(cb) cb.textContent=`Payer ${(d.amountCents/100).toLocaleString('fr-FR')} €`;
+    const stripe=_getStripe();
+    if(!stripe) throw new Error('Module paiement indisponible. Désactivez votre bloqueur de pub.');
+    const app={theme:'night',variables:{colorPrimary:'#c5a96c',colorBackground:'#0d1d33',colorText:'#f0ece4',colorTextSecondary:'#a09880',borderRadius:'10px',fontFamily:'Inter,system-ui,sans-serif'}};
+    _prolongStripeEl=stripe.elements({clientSecret:d.clientSecret,appearance:app,locale:'fr'});
+    const pe=_prolongStripeEl.create('payment');
+    document.getElementById('prolong-payment-element').innerHTML='';
+    pe.mount('#prolong-payment-element');
+    pe.on('ready',()=>{const b=document.getElementById('prolong-confirm-btn');if(b)b.disabled=false;});
+  }catch(e){
+    if(errEl){errEl.textContent=e.message;errEl.classList.remove('hidden');}
+    payBtn.disabled=false;
+    payBtn.innerHTML=`Payer <span id="prolong-pay-label">${_prolongCents>0?_prolongCents/100+' €':'—'}</span>`;
+  }
+}
+
+function backToStep2Prolong(){
+  document.getElementById('prolong-step-2').style.display='block';
+  document.getElementById('prolong-step-3').style.display='none';
+  _prolongStripeEl=null;
+}
+
+async function confirmProlong(){
+  const cb=document.getElementById('prolong-confirm-btn');
+  const errEl=document.getElementById('prolong-payment-error');
+  cb.disabled=true; cb.textContent='Paiement en cours…';
+  errEl?.classList.add('hidden');
+  try{
+    const{error,paymentIntent}=await _getStripe().confirmPayment({elements:_prolongStripeEl,redirect:'if_required',confirmParams:{return_url:window.location.origin+'/client/'}});
+    if(error){
+      if(errEl){errEl.textContent=error.message;errEl.classList.remove('hidden');}
+      cb.disabled=false; cb.textContent='Réessayer le paiement';
+    }else if(paymentIntent?.status==='succeeded'){
+      document.getElementById('prolong-step-3').style.display='none';
+      document.getElementById('prolong-step-success').style.display='block';
+      const msg=document.getElementById('prolong-success-msg');
+      if(msg) msg.textContent=`Votre location est prolongée jusqu'au ${_pFmtLong(_prolongNewDate)}. Un email de confirmation vous a été envoyé.`;
+    }else{
+      if(errEl){errEl.textContent='Paiement en attente de confirmation. Vérifiez votre email.';errEl.classList.remove('hidden');}
+      cb.disabled=false; cb.textContent='Réessayer';
+    }
+  }catch(e){
+    if(errEl){errEl.textContent='Erreur inattendue. Réessayez.';errEl.classList.remove('hidden');}
+    cb.disabled=false; cb.textContent='Réessayer le paiement';
+  }
+}
+
 async function startOffrePrivilegePayment(offreId){
   const btn = document.getElementById('offre-privilege-start-btn-'+offreId);
   const errEl = document.getElementById('offre-privilege-error-'+offreId);
@@ -457,12 +845,10 @@ async function startOffrePrivilegePayment(offreId){
     if(!stripe) throw new Error('Paiement indisponible — désactivez votre bloqueur de publicités et réessayez.');
     const d = await apiClient('/api/offre-privilege-pay', { offre_id: offreId });
     if(!d.clientSecret) throw new Error(d.error || 'Erreur');
-
     const appearance = { theme:'stripe', variables:{ colorPrimary:'#1b3a5f', borderRadius:'10px', fontFamily:'Inter,system-ui,sans-serif' } };
     _offreElements[offreId] = stripe.elements({ clientSecret: d.clientSecret, appearance, locale:'fr' });
     const payEl = _offreElements[offreId].create('payment', { layout:'tabs' });
     payEl.mount('#offre-privilege-stripe-element-'+offreId);
-
     document.getElementById('offre-privilege-stripe-section-'+offreId).classList.remove('hidden');
     btn.classList.add('hidden');
   }catch(e){
@@ -515,10 +901,10 @@ async function showDashboard(){
     if(_offreReturnStatus){
       const status = _offreReturnStatus; _offreReturnStatus = null;
       const banner = status === 'succeeded'
-        ? '<div class="alert-success">✅ Paiement confirmé après vérification bancaire — ce climatiseur est à vous !</div>'
+        ? '<div class="alert-success" style="margin-bottom:14px">✅ Paiement confirmé après vérification bancaire — ce climatiseur est à vous !</div>'
         : status === 'processing'
-        ? '<div class="alert-info">⏳ Votre banque valide encore le paiement. Ça peut prendre quelques minutes — revenez un peu plus tard pour confirmer.</div>'
-        : '<div class="alert-error">❌ Le paiement n\'a pas abouti après la vérification bancaire. Vous pouvez réessayer depuis l\'offre ci-dessous.</div>';
+        ? '<div class="alert-info" style="margin-bottom:14px">⏳ Votre banque valide encore le paiement. Ça peut prendre quelques minutes — revenez un peu plus tard pour confirmer.</div>'
+        : '<div class="alert-error" style="margin-bottom:14px">❌ Le paiement n\'a pas abouti après la vérification bancaire. Vous pouvez réessayer depuis l\'offre ci-dessous.</div>';
       document.getElementById('dash-content').insertAdjacentHTML('afterbegin', banner);
     }
     setTimeout(offerClientFaceId, 1200);
@@ -592,7 +978,6 @@ async function activateClientFaceId(){
   }
 }
 
-// Session déjà ouverte (visite suivante) → tableau de bord ou écran Face ID.
 if(localStorage.getItem('client_token')){
   const cFidId = localStorage.getItem(C_FID_KEY);
   if(cFidId){
