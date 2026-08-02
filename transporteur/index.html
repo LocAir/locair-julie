@@ -1898,7 +1898,15 @@ function missionCardHtml(m){
   // le jour même) — on garde la vraie date de fin visible à côté, pour ne
   // jamais perdre le repère avec la date de la mission elle-même.
   const finLocationTxt = (m.type==='recuperation' && c.date_fin) ? 'Location jusqu\'au '+new Date(c.date_fin+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : '';
-  const metaParts = [m.creneau?escHtml(m.creneau):'', (c.etage&&c.etage!=='—')?'Étage '+escHtml(c.etage):'', finLocationTxt].filter(Boolean);
+  // Créneau de récupération mis en évidence à part (pill bleu, comme côté
+  // admin) plutôt que noyé dans la ligne meta grise — demandé par Aly : un
+  // créneau restreint ("uniquement entre 14h-17h", saisi par l'admin) doit
+  // sauter aux yeux dès la liste, pas seulement une fois la mission ouverte,
+  // sous peine d'un passage hors créneau chez le client. Livraison/autre
+  // gardent l'ancien affichage discret (créneau choisi par le client au
+  // checkout, jamais une contrainte imposée après coup).
+  const creneauEnEvidence = m.type==='recuperation' && m.creneau;
+  const metaParts = [(!creneauEnEvidence && m.creneau)?escHtml(m.creneau):'', (c.etage&&c.etage!=='—')?'Étage '+escHtml(c.etage):'', finLocationTxt].filter(Boolean);
   // Numéro(s) d'unité déjà assignés en stock — pour identifier tout de suite
   // de quel(s) climatiseur(s) il s'agit, sans devoir ouvrir la mission.
   const unitsTxt = (m.appareil_numeros&&m.appareil_numeros.length) ? `n°${m.appareil_numeros.join(', ')}` : '';
@@ -1915,6 +1923,7 @@ function missionCardHtml(m){
         ${earn}
       </div>
       <div class="mcard-addr">📍 ${escHtml(adresse||'Adresse à confirmer')}</div>
+      ${creneauEnEvidence?`<div class="pill-badge" style="margin-top:7px">🕐 ${escHtml(m.creneau)}</div>`:''}
       ${metaParts.length?`<div class="mcard-meta">${metaParts.join(' · ')}</div>`:''}
       ${missionCardActionsHtml(m, mapsUrl, c.tel)}
     </div>`;
