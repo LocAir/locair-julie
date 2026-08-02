@@ -6505,7 +6505,7 @@ function renderIncidents(){
     return `
       <div class="row-item">
         <div class="row-top">
-          <span class="row-title">${INCIDENT_TYPE_LABEL[i.type]||i.type}${res.ref?` · <a href="#" style="color:var(--blue)" onclick="event.preventDefault();voirReservationRef('${escHtml((res.ref||'').replace(/'/g,"\\'"))}')">${escHtml(res.ref)}</a>`:''}</span>
+          <span class="row-title">${INCIDENT_TYPE_LABEL[i.type]||i.type}${(res.ref && !isInternalRef(res.ref))?` · <a href="#" style="color:var(--blue)" onclick="event.preventDefault();voirReservationRef('${escHtml((res.ref||'').replace(/'/g,"\\'"))}')">${escHtml(res.ref)}</a>`:''}</span>
           <span class="chip ${INCIDENT_CHIP[i.statut]||''}">${INCIDENT_STATUT_LABEL[i.statut]||i.statut}</span>
         </div>
         <div class="row-meta">${escHtml((res.prenom||'')+' '+(res.nom||''))}${res.adresse?' · '+escHtml(res.adresse):''}${i.transporteur?.nom?' · 🚚 '+escHtml(i.transporteur.nom):''}<br/>${new Date(i.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${i.description?' · '+escHtml(i.description):''}${i.montant_facture_cents?' · '+euros(i.montant_facture_cents):''}</div>
@@ -7277,7 +7277,7 @@ function renderClientFiche(d){
     ${(d.reservations||[]).length ? (d.reservations||[]).map(r => `
       <div class="row-item" style="cursor:pointer" onclick="voirReservationRef('${escHtml((r.ref||'').replace(/'/g,"\\'"))}')">
         <div class="row-top">
-          <span class="row-title">${escHtml(r.ref)}</span>
+          <span class="row-title">${isInternalRef(r.ref)?'Réservation':escHtml(r.ref)}</span>
           <span class="chip ${r.statut}">${RESA_LABEL[r.statut]||r.statut}</span>
         </div>
         <div class="row-meta">${frDate(r.date_debut)}${r.adresse?' · '+escHtml(r.adresse):''}</div>
