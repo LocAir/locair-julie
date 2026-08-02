@@ -4599,7 +4599,7 @@ input:-webkit-autofill:focus{
                   <div class="dur-free-days">
                     <input class="dur-free-days-num" id="dfb-num" type="number" min="7" max="90" value="7" inputmode="numeric" aria-label="Nombre de jours"
                       oninput="setDurFreeInput(this)"
-                      onblur="if(!this.value||+this.value<7){this.value=7;setDurFreeInput(this);}"/>
+                      onblur="if(!this.value||+this.value<7){this.value=7;setDurFreeInput(this);}else if(+this.value>90){this.value=90;setDurFreeInput(this);}"/>
                     <div class="dur-free-days-unit">jours</div>
                   </div>
                   <button type="button" class="dur-free-btn" id="dfb-plus" onclick="stepDurFree(1)" aria-label="Plus">+</button>
@@ -4961,7 +4961,7 @@ input:-webkit-autofill:focus{
             </div>
             <div id="instructions-wrap" style="display:none;margin-top:10px">
               <label for="f-instructions" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Instructions pour le technicien</label>
-  <textarea id="f-instructions" rows="4" placeholder="Ex : Code d'entrée 1234B, boîte à clefs sur le côté gauche de la porte, appartement au 3e étage, sonner à Dupont…" autocomplete="off" spellcheck="false" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-size:15px;font-family:var(--body);color:var(--black);background:#fff;outline:none;resize:none;line-height:1.55;box-sizing:border-box"></textarea>
+  <textarea id="f-instructions" rows="4" placeholder="Ex : Code d'entrée 1234B, boîte à clefs sur le côté gauche de la porte, appartement au 3e étage, sonner à Dupont…" autocomplete="off" spellcheck="false" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-size:16px;font-family:var(--body);color:var(--black);background:#fff;outline:none;resize:none;line-height:1.55;box-sizing:border-box"></textarea>
             </div>
           </div>
         </div>
@@ -5405,9 +5405,9 @@ input:-webkit-autofill:focus{
           <div id="cancel-form-box" style="margin-top:10px;background:var(--bg);border-radius:10px;padding:14px 16px">
             <p id="cancel-free-txt" style="font-size:12px;color:var(--black2);font-weight:600;margin-bottom:8px">Annulation gratuite avant livraison</p>
             <label for="cancel-ref" class="sr-only">Numéro de dossier</label>
-            <input id="cancel-ref" type="text" placeholder="N° de dossier (LOC-...)" style="width:100%;padding:8px 10px;border:1px solid var(--rule);border-radius:7px;font-size:12px;font-family:var(--body);margin-bottom:8px"/>
+            <input id="cancel-ref" type="text" placeholder="N° de dossier (LOC-...)" style="width:100%;padding:8px 10px;border:1px solid var(--rule);border-radius:7px;font-size:16px;font-family:var(--body);margin-bottom:8px"/>
             <label for="cancel-email" class="sr-only">Email de la réservation</label>
-            <input id="cancel-email" type="email" placeholder="Votre email" style="width:100%;padding:8px 10px;border:1px solid var(--rule);border-radius:7px;font-size:12px;font-family:var(--body);margin-bottom:10px"/>
+            <input id="cancel-email" type="email" placeholder="Votre email" style="width:100%;padding:8px 10px;border:1px solid var(--rule);border-radius:7px;font-size:16px;font-family:var(--body);margin-bottom:10px"/>
             <button type="button" onclick="submitCancellation()" style="width:100%;padding:9px;background:#9b2c1a;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--body)" id="cancel-sbtn">Confirmer l'annulation</button>
             <p id="cancel-msg" style="display:none;font-size:12px;color:#059669;margin-top:8px;font-weight:600;text-align:center">✓ Annulation enregistrée — vous serez remboursé sous 48h.</p>
           </div>
@@ -5490,7 +5490,12 @@ function calcTotal(days){return calcPrice(days)*_qty+(_techInstall?INSTALL_FEE:0
 
 let _durDays=7;
 function updateDuration(days,silent){
-  days=Math.max(7,Math.round(days));
+  // Bornes alignées sur le serveur (checkout.js clamp aussi 7-90) — sans ce
+  // plafond, une durée saisie/incrémentée au-delà de 90 jours afficherait un
+  // prix/durée que le serveur ne facturera jamais réellement (il tronque
+  // toujours à 90 jours), ce qui induirait le client en erreur sur ce qu'il
+  // vient de payer.
+  days=Math.min(90,Math.max(7,Math.round(days)));
   _durDays=days;
   const price=calcPrice(days);
   const rate=_baseRate(days);
@@ -5581,6 +5586,11 @@ function initDateShortcuts(){
   const fd=document.getElementById('f-date');
   const minDateStr=_fmtDate(_addDays(off));
   if(fd){
+    // Empêche le sélecteur de date natif de proposer une date déjà passée
+    // (avant, seule la validation au clic sur "Continuer" l'attrapait —
+    // l'utilisateur pouvait choisir une date invalide dans le calendrier
+    // sans le savoir avant l'étape suivante).
+    fd.min=minDateStr;
     if(!fd.value||fd.value<minDateStr){
       fd.value=minDateStr;
       // Re-select chip 0 (the "Recommandé" card)
@@ -8669,7 +8679,11 @@ function toggleDurFree(){
   }
 }
 function stepDurFree(delta){
-  _durFree=Math.max(7,(_durFree||7)+delta);
+  // Plafond à 90 jours (même limite que le champ numérique et que le
+  // serveur) — sans lui, le bouton "+" pouvait dépasser 90 sans jamais
+  // s'arrêter, affichant un prix/durée que le serveur ne facture jamais
+  // réellement (checkout.js tronque toujours à 90 jours).
+  _durFree=Math.min(90,Math.max(7,(_durFree||7)+delta));
   _renderDurFree();
 }
 function setDurFreeInput(inp){
@@ -8694,6 +8708,7 @@ function _renderDurFree(){
   if(el('dfb-rate'))el('dfb-rate').textContent=rate+(_lang==='en'?' €/day':_lang==='zh'?' €/天':_lang==='ru'?' €/день':' €/jour');
   if(el('dfb-cta-label'))el('dfb-cta-label').textContent=_lang==='en'?d+' day'+(d>1?'s':''):_lang==='zh'?d+' 天':_lang==='ru'?d+' дней':d+' jour'+(d>1?'s':'');
   if(el('dfb-minus'))el('dfb-minus').disabled=(d<=7);
+  if(el('dfb-plus'))el('dfb-plus').disabled=(d>=90);
 }
 function confirmDurFree(){
   updateDuration(_durFree);
