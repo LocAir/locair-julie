@@ -252,8 +252,27 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
 
   let resa=null,email='',ref='',strInst=null,strEl=null,cents=0,newDate='';
 
-  // Retour Stripe après 3DS
-  if(new URLSearchParams(location.search).get('success')){hide('step-1');show('step-success');}
+  // Retour Stripe après 3DS. Stripe ajoute automatiquement redirect_status à
+  // l'URL de retour (succeeded/processing/failed) — jusqu'ici on affichait
+  // "Prolongation confirmée !" dans tous les cas, y compris quand la banque
+  // avait refusé le paiement après vérification : le client croyait sa
+  // location prolongée alors que rien n'avait été débité ni confirmé.
+  const _returnParams = new URLSearchParams(location.search);
+  const _isPaymentReturn = _returnParams.get('success') === '1';
+  if(_isPaymentReturn){
+    hide('step-1');
+    const status = _returnParams.get('redirect_status');
+    if(status === 'succeeded'){
+      show('step-success');
+    }else if(status === 'processing'){
+      show('step-success');
+      const m = document.getElementById('success-msg');
+      if(m) m.textContent = 'Votre banque valide encore le paiement — ça peut prendre quelques minutes. Vous recevrez un email de confirmation dès que ce sera fait.';
+    }else{
+      show('step-1');
+      err('lookup-error', 'Le paiement n’a pas abouti après la vérification bancaire. Vous pouvez réessayer ci-dessous.');
+    }
+  }
 
   // Pré-remplit le numéro de commande et l'email connus à l'avance : depuis
   // le lien reçu par email (?ref=, voir scénario "avant fin de location",
@@ -285,6 +304,12 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
   // chargée. Demande explicite du propriétaire : un client déjà connecté ne
   // doit plus jamais retaper ces informations.
   (async function(){
+    // Ne jamais lancer l'auto-connexion sur un retour de paiement (?success=1) :
+    // sinon elle écrase silencieusement l'écran de résultat (succès ou échec)
+    // affiché juste au-dessus par le formulaire "choisir une nouvelle date",
+    // laissant croire au client que rien ne s'est passé — avec le risque
+    // qu'il relance et paie une seconde prolongation par erreur.
+    if(_isPaymentReturn)return;
     const tokenFromUrl=(new URLSearchParams(location.search).get('token')||'').trim();
     const token=tokenFromUrl||(localStorage.getItem('client_token')||'').trim();
     if(!token)return;
@@ -404,11 +429,18 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
   document.getElementById('btn-confirm').addEventListener('click',async function(){
     if(!strEl)return;
     this.disabled=true;const orig=this.innerHTML;this.innerHTML=SPIN+' Paiement en cours…';noerr('payment-error');
-    const{error}=await strInst.confirmPayment({elements:strEl,redirect:'if_required',confirmParams:{return_url:location.origin+'/prolongation?success=1'}});
-    if(error){err('payment-error',error.message);this.disabled=false;this.innerHTML=orig;}
-    else{
+    const{error,paymentIntent}=await strInst.confirmPayment({elements:strEl,redirect:'if_required',confirmParams:{return_url:location.origin+'/prolongation?success=1'}});
+    if(error){
+      err('payment-error',error.message);this.disabled=false;this.innerHTML=orig;
+    }else if(paymentIntent?.status==='succeeded'){
       hide('step-3');show('step-success');
       document.getElementById('success-msg').textContent='Votre location est prolong\xe9e jusqu’au '+fmtLong(newDate)+'. Un email de confirmation a \xe9t\xe9 envoy\xe9 \xe0 '+email+'.';
+    }else if(paymentIntent?.status==='processing'){
+      hide('step-3');show('step-success');
+      document.getElementById('success-msg').textContent='Votre banque valide encore le paiement — ça peut prendre quelques minutes. Vous recevrez un email de confirmation dès que ce sera fait.';
+    }else{
+      err('payment-error','Paiement en attente de confirmation. Vérifiez votre email dans quelques minutes, ou réessayez.');
+      this.disabled=false;this.innerHTML=orig;
     }
   });
 
