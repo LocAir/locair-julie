@@ -2684,16 +2684,29 @@ function finaliserApresRecuperation(conserve){
 // — demandé par Aly suite à un message envoyé à la main sur WhatsApp aux
 // livreurs. Affiché dès l'étape "En route" (avant même le départ, pas
 // seulement au moment de vidanger — trop tard pour y penser une fois sur
-// place) des missions récupération/changement, les deux seules à
-// comporter une vidange. Une fois par mission et par session (pas de
-// suivi côté serveur, juste un rappel visuel local) pour ne pas harceler
-// le livreur à chaque réouverture de la fiche.
+// place), sur la 1re mission de récupération démarrée chaque jour,
+// pendant 7 jours au total — le temps que la consigne rentre dans les
+// habitudes, puis on l'enlève tout seul. Le décompte vit en localStorage
+// (par transporteur, sur son appareil) plutôt que côté serveur : c'est un
+// simple rappel temporaire, pas une donnée métier à conserver ni à migrer
+// une fois la campagne des 7 jours terminée.
+const VIDANGE_WARNING_MAX_JOURS = 7;
+function vidangeWarningStorageKey(){
+  return 't_vidange_warning_jours_' + (STATE.transporteurId || '0');
+}
+function vidangeWarningJoursDejaVus(){
+  try{ return JSON.parse(localStorage.getItem(vidangeWarningStorageKey()) || '[]'); }
+  catch(e){ return []; }
+}
 function maybeShowVidangeWarning(m){
-  if(!m || !['recuperation','changement'].includes(m.type)) return;
+  if(!m || m.type !== 'recuperation') return;
   if(m.statut !== 'acceptee') return;
-  if(!STATE.vidangeWarningShownFor) STATE.vidangeWarningShownFor = new Set();
-  if(STATE.vidangeWarningShownFor.has(m.id)) return;
-  STATE.vidangeWarningShownFor.add(m.id);
+  const todayStr = new Date().toISOString().slice(0,10);
+  const jours = vidangeWarningJoursDejaVus();
+  if(jours.includes(todayStr)) return; // déjà montré aujourd'hui
+  if(jours.length >= VIDANGE_WARNING_MAX_JOURS) return; // campagne des 7 jours terminée
+  jours.push(todayStr);
+  try{ localStorage.setItem(vidangeWarningStorageKey(), JSON.stringify(jours)); }catch(e){}
   const overlay = document.createElement('div');
   overlay.className = 'overlay';
   overlay.innerHTML = `
