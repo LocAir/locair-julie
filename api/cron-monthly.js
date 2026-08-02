@@ -124,6 +124,12 @@ ${rows}
 </div></body></html>`,
     });
 
+    const { error: logError } = await supabase.from('email_log').insert({
+      scenario: 'recap_mensuel_virements', canal: 'email', destinataire: adminEmail,
+      modele: 'recap_mensuel_virements', statut: 'envoye', sent_at: new Date().toISOString(),
+    });
+    if (logError) throw new Error('[recap_mensuel_virements log] ' + logError.message);
+
     // SMS à chaque transporteur avec son total
     for (const entry of entries) {
       if (!entry.telephone) continue;
@@ -133,11 +139,6 @@ ${rows}
         content: `Loc'Air : récap ${nomMois} ${annee} — ${entry.nb} mission${entry.nb > 1 ? 's' : ''}, total : ${totalEur} €. Virement en cours de préparation. Questions : 06 63 79 87 56`,
       }).catch(() => {});
     }
-
-    await supabase.from('email_log').insert({
-      scenario: 'recap_mensuel_virements', canal: 'email', destinataire: adminEmail,
-      modele: 'recap_mensuel_virements', statut: 'envoye', sent_at: new Date().toISOString(),
-    }).then(() => {}, e => console.error('[recap_mensuel_virements log]', e.message));
 
     return { mois: `${nomMois} ${annee}`, nb: entries.length, grandTotal };
   }
@@ -158,10 +159,19 @@ async function runDormantClientsWinback(supabase) {
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
   const sixMonthsAgoStr = sixMonthsAgo.toISOString().slice(0, 10);
 
-  const { data: resas } = await supabase
-    .from('reservations')
-    .select('id, client_id, statut, date_debut, date_fin, mkt_consent, prenom, email, source, reservation_origine_id')
-    .not('client_id', 'is', null);
+  let resas = [];
+  let offset = 0;
+  while (true) {
+    const { data: batch } = await supabase
+      .from('reservations')
+      .select('id, client_id, statut, date_debut, date_fin, mkt_consent, prenom, email, source, reservation_origine_id, lang')
+      .not('client_id', 'is', null)
+      .range(offset, offset + 999);
+    if (!batch || !batch.length) break;
+    resas = resas.concat(batch);
+    if (batch.length < 1000) break;
+    offset += 1000;
+  }
 
   // Groupe par client pour pouvoir écarter les fiches supplantées par une
   // prolongation plus récente (voir isSupersededReservation,
@@ -199,10 +209,18 @@ async function runDormantClientsWinback(supabase) {
 
     const codePromo = promoCodeForPrenom(dernier.prenom, 20);
     const sig = await getSignature(supabase);
-    const html = withSignature(tplRelanceDormant({ prenom: dernier.prenom, codePromo }), sig);
+    const lang = dernier.lang || 'fr';
+    const html = withSignature(tplRelanceDormant({ prenom: dernier.prenom, codePromo, lang }), sig);
+    const subject = lang === 'en'
+      ? `☀️ ${dernier.prenom ? dernier.prenom + ', a' : 'A'} discount is waiting for you at Loc'Air`
+      : lang === 'zh'
+      ? `☀️ ${dernier.prenom ? dernier.prenom + '，' : ''}Loc'Air 专属优惠等您来领取`
+      : lang === 'ru'
+      ? `☀️ ${dernier.prenom ? dernier.prenom + ', вас' : 'Вас'} ждёт скидка в Loc'Air`
+      : `☀️ ${dernier.prenom ? dernier.prenom + ', une' : 'Une'} réduction vous attend chez Loc'Air`;
     const result = await sendBrevoEmail({
       to: dernier.email, senderName: sig.nom_expediteur,
-      subject: `☀️ ${dernier.prenom ? dernier.prenom + ', une' : 'Une'} réduction vous attend chez Loc'Air`,
+      subject,
       html,
     });
     await supabase.from('email_log').insert({

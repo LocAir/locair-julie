@@ -739,7 +739,7 @@ function updatePositionTracking(){
 function startPositionTracking(){
   document.getElementById('tracking-badge')?.classList.remove('hidden');
   if(_watchId !== null || !navigator.geolocation) return;
-  _watchId = navigator.geolocation.watchPosition(onPositionUpdate, ()=>{}, {
+  _watchId = navigator.geolocation.watchPosition(onPositionUpdate, ()=>{ document.getElementById('tracking-badge')?.classList.add('hidden'); if(_watchId !== null){ navigator.geolocation.clearWatch(_watchId); _watchId = null; } }, {
     enableHighAccuracy: true, maximumAge: 10000, timeout: 20000,
   });
 }
@@ -2555,13 +2555,15 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   const okLabel = m.type==='livraison' ? '✅ LIVRAISON OK — JE PARS' : m.type==='recuperation' ? '✅ RETOUR OK — JE PARS' : '✅ REMPLACEMENT TERMINÉ — JE PARS';
   const checklistWorkflow = m.type==='livraison' ? 'installation' : m.type==='recuperation' ? 'recuperation' : null;
   const isLastRecup = isLastRecuperationOfDay(m);
-  const hasFinalChecklist = checklistWorkflow && (STATE.checklistItems && STATE.checklistItems[checklistWorkflow] || []).length > 0;
+  const checklistLoading = checklistWorkflow && STATE.checklistItems === null;
+  if(checklistLoading) fetchChecklistItems().then(renderDetail);
+  const hasFinalChecklist = checklistWorkflow && !checklistLoading && (STATE.checklistItems[checklistWorkflow] || []).length > 0;
   return `
     <p class="step-hint">🎉 Tout est prêt — vérifie la checklist puis valide pour terminer la mission.</p>
-    ${checklistWorkflow ? checklistFinalHtml(checklistWorkflow) : ''}
+    ${checklistLoading ? '<p class="step-hint" style="color:var(--grey)">Chargement de la checklist…</p>' : (checklistWorkflow ? checklistFinalHtml(checklistWorkflow) : '')}
     ${m.type==='recuperation' ? etatMaterielHtml() : ''}
     ${isLastRecup ? checklistRestockHtml() : ''}
-    <button class="btn btn-green btn-block" id="mission-final-btn" ${(isLastRecup||hasFinalChecklist)?'disabled':''} onclick="submitFinalMission('${okAction}')">${okLabel}</button>`;
+    <button class="btn btn-green btn-block" id="mission-final-btn" ${(isLastRecup||hasFinalChecklist||checklistLoading)?'disabled':''} onclick="submitFinalMission('${okAction}')">${okLabel}</button>`;
 }
 // Dernière récupération de la journée pour ce transporteur (aucune autre
 // récupération encore active aujourd'hui) : à ce moment, il doit passer par
@@ -3399,7 +3401,8 @@ async function sendForgotPin(){
   if(btn && btn.disabled) return;
   if(btn){ btn.disabled = true; btn.textContent = 'Envoi…'; }
   try{
-    await fetch(API('transporteur-forgot-pin'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
+    const r = await fetch(API('transporteur-forgot-pin'), {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email})});
+    if(!r.ok) throw new Error('Erreur serveur');
   }catch(e){
     // Une vraie erreur réseau (pas de réponse du tout) ne doit jamais
     // afficher le même message que "email envoyé" — sans ça un livreur sans
@@ -3472,6 +3475,7 @@ async function basculerVersMission(missionId){
 
 // ── Problème (aucune saisie de texte — juste une catégorie) ──────────────────
 function openProbleme(){
+  if(_actionInProgress){ showTToast('Action en cours, réessaie.'); return; }
   const overlay = document.createElement('div');
   overlay.className = 'overlay';
   overlay.id = 'probleme-overlay';

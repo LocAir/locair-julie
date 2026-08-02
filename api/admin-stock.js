@@ -78,7 +78,12 @@ module.exports = async (req, res) => {
       const rows = Array.from({ length: quantite }, (_, i) => ({ city_id: city.id, numero: numeroDepart + i }));
       const { data, error } = await supabase
         .from('appareils').insert(rows).select();
-      if (error) throw error;
+      if (error) {
+        if (error.code === '23505') {
+          return res.status(409).json({ error: 'Un autre administrateur vient d\'ajouter des unités, actualise la page et recommence.' });
+        }
+        throw error;
+      }
       // Mouvement de stock (Module 6, Partie 5) : entrée dans le parc.
       await supabase.from('appareil_mouvements').insert(data.map(a => ({
         appareil_id: a.id, type_evenement: 'entree_parc',
@@ -388,6 +393,18 @@ module.exports = async (req, res) => {
       }
       await supabase.from('reservation_appareils').insert({ reservation_id: reservationId, appareil_id: nouvelAppareilId, valide: true, valide_at: new Date().toISOString() });
 
+      if (conflitActif && body.swap) {
+        const [{ data: checkResa }, { data: checkConflit }] = await Promise.all([
+          supabase.from('reservation_appareils').select('appareil_id').eq('reservation_id', reservationId),
+          supabase.from('reservation_appareils').select('appareil_id').eq('reservation_id', conflitActif.reservation_id),
+        ]);
+        const resaOk = (checkResa || []).some(r => r.appareil_id === nouvelAppareilId);
+        const conflitOk = (checkConflit || []).some(r => r.appareil_id === ancien.appareil_id);
+        if (!resaOk || !conflitOk) {
+          return res.status(409).json({ error: 'Une modification concurrente a été détectée. Vérifie l\'état des deux réservations et recommence si nécessaire.' });
+        }
+      }
+
       if (ancien && !conflitActif) {
         await recordMouvement(supabase, {
           appareilId: ancien.appareil_id, typeEvenement: 'autre', nouveauStatut: 'disponible',
@@ -521,8 +538,15 @@ module.exports = async (req, res) => {
     // "fait" — filtré en JS plutôt qu'avec un embed PostgREST filtré (plus
     // simple à garder correct, volume négligeable à cette échelle).
     const [{ data: liens }, { data: livsEnCours }] = await Promise.all([
-      supabase.from('reservation_appareils').select('appareil_id, reservation_id, reservation:reservations(statut, date_debut, date_fin)'),
-      supabase.from('livraisons').select('reservation_id').eq('type', 'livraison').neq('statut', 'fait'),
+      supabase.from('reservation_appareils')
+        .select('appareil_id, reservation_id, reservation:reservations!inner(statut, date_debut, date_fin)')
+        .eq('reservations.city_id', city.id)
+        .range(0, 9999),
+      supabase.from('livraisons')
+        .select('reservation_id, reservation:reservations!inner(city_id)')
+        .eq('type', 'livraison').neq('statut', 'fait')
+        .eq('reservations.city_id', city.id)
+        .range(0, 9999),
     ]);
     const enLocationIds = new Set(
       (liens || [])

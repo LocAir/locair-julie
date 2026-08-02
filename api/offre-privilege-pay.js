@@ -66,6 +66,7 @@ module.exports = async (req, res) => {
     if (updateErr) {
       console.error('[Offre privilège pay] update intent_id échoué:', updateErr.message);
       await stripe.paymentIntents.cancel(intent.id).catch(e => console.error('[Stripe cancel offre]', e.message));
+      await supabase.from('offres_privilege').update({ statut: 'proposee' }).eq('id', offre.id).then(() => {}, () => {});
       return res.status(500).json({ error: 'Erreur serveur' });
     }
 

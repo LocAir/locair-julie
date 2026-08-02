@@ -1,6 +1,6 @@
 const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
-const { confirmReservationAndCreateLivraisons } = require('./_lib/reservations');
+const { confirmReservationAndCreateLivraisons, sendProlongationConfirmation } = require('./_lib/reservations');
 const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
 const { pushToAdmin } = require('./_lib/push');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
@@ -8,8 +8,7 @@ const { recordMouvement } = require('./_lib/stockMouvements');
 const { releaseAppareilFromReservation } = require('./_lib/appareilSync');
 const { generateAndSendDocuments, generateAndSendDocumentsAfterProlongation, generateAndSendFactureVente } = require('./_lib/documents');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
-const { sendScenarioEmail, getSignature, withSignature } = require('./_lib/emailEngine');
-const { escHtml, tplProlongConfirmation } = require('./_lib/emailTemplates');
+const { sendScenarioEmail } = require('./_lib/emailEngine');
 
 // Offre Privilège (Step 2) : le client vient de payer pour garder son
 // climatiseur actuel. Idempotent (un webhook Stripe peut être redélivré) —
@@ -36,8 +35,10 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
     return;
   }
 
-  await supabase.from('offres_privilege')
-    .update({ statut: 'acceptee', decidee_at: new Date().toISOString() }).eq('id', offre.id);
+  const { data: claimed } = await supabase.from('offres_privilege')
+    .update({ statut: 'acceptee', decidee_at: new Date().toISOString() })
+    .eq('id', offre.id).eq('statut', 'proposee').select('id');
+  if (!claimed?.length) return;
 
   const { data: appareil } = await supabase.from('appareils').select('numero, localisation').eq('id', offre.appareil_id).maybeSingle();
   await recordMouvement(supabase, {
@@ -445,99 +446,25 @@ const handler = async (req, res) => {
         }),
       }).catch(e => console.error('[Formspree prolong]', e.message));
 
-      // Idempotence : ne pas renvoyer l'email si déjà tracé (redélivrance Stripe)
-      // .eq('statut','envoye') indispensable : sans lui, une ligne email_log en
-      // erreur (brevo hors ligne, etc.) bloquerait définitivement le renvoi —
-      // l'email n'arriverait jamais et la MAJ date_fin de l'origine (plus bas)
-      // ne serait plus retentée non plus.
       if (confirmedResa) {
-        const { data: dejaSent } = await getSupabase()
-          .from('email_log')
-          .select('id')
-          .eq('reservation_id', confirmedResa.id)
-          .eq('scenario', 'email_prolongation')
-          .eq('statut', 'envoye')
-          .maybeSingle();
-        if (dejaSent) return res.status(200).json({ received: true, type: 'prolongation' });
-      }
-      const sigProlong = await getSignature(getSupabase());
-      const prolongLang = meta.lang || confirmedResa?.lang || 'fr';
-      // Reformater le montant selon la locale du client — `amount` est toujours
-      // "40.00 €" (point comme séparateur), mais le FR et le RU attendent une
-      // virgule ("40,00 €"), et l'EN attend le symbole devant ("€40.00").
-      const rawEuros = parseFloat(amount) || 0;
-      const prolongAmountFmt = prolongLang === 'en' || prolongLang === 'zh'
-        ? '€' + rawEuros.toFixed(2)
-        : rawEuros.toFixed(2).replace('.', ',') + ' €';
-      const prolongHtml = withSignature(tplProlongConfirmation({
-        ref:               confirmedResa?.ref        || '',
-        ref_origine:       (meta.ref || meta.ref_origine || '').trim().toUpperCase(),
-        prenom:            meta.prenom               || '',
-        nom:               meta.nom                  || '',
-        jours:             meta.jours                || '1',
-        date_recuperation: meta.date_recuperation    || '',
-        creneau:           meta.creneau              || '',
-        adresse:           meta.adresse_origine      || '',
-        amount:            prolongAmountFmt,
-        lienEspaceClient:  'https://www.locair.fr/#contact',
-        lang:              prolongLang,
-      }), sigProlong);
-      const jNum = Number(meta.jours) || 1;
-      const prolongSubject = prolongLang === 'en'
-        ? `✅ Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
-        : prolongLang === 'zh'
-        ? `✅ 续租已确认 — 已延长 ${jNum} 天`
-        : prolongLang === 'ru'
-        ? `✅ Продление подтверждено — добавлено ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}`
-        : `✅ Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
-      const resultProlong = await sendBrevoEmail({
-        to:      email,
-        subject: prolongSubject,
-        html:    prolongHtml,
-        senderName: sigProlong.nom_expediteur,
-      });
-      if (!resultProlong.ok) console.error('[Webhook] email prolong échoué —', resultProlong.error);
-      // Best-effort : hors moteur de scénarios, juste une trace pour
-      // l'historique de la fiche client.
-      if (confirmedResa) {
-        getSupabase().from('email_log').insert({
-          reservation_id: confirmedResa.id, scenario: 'email_prolongation', canal: 'email',
-          destinataire: email, modele: 'email_prolongation',
-          statut: resultProlong.ok ? 'envoye' : 'erreur',
-          erreur: resultProlong.ok ? null : String(resultProlong.error || '').slice(0, 500),
-          contenu: prolongHtml,
-        }).then(() => {}, () => {});
-      }
-
-      // SMS de confirmation, en plus de l'email — jusqu'ici aucune prolongation
-      // n'en envoyait, contrairement à une réservation standard. Idempotent
-      // (son propre scénario, jamais renvoyé deux fois si le webhook est
-      // redélivré par Stripe).
-      if (meta.tel && confirmedResa) {
-        const { data: smsProlongDejaEnvoye } = await getSupabase()
-          .from('email_log').select('id')
-          .eq('reservation_id', confirmedResa.id).eq('scenario', 'sms_prolongation').eq('statut', 'envoye')
-          .maybeSingle();
-        if (!smsProlongDejaEnvoye) {
-          let smsProlongContent;
-          if (prolongLang === 'en') {
-            smsProlongContent = `Loc'Air - Your ${jNum}-day extension is confirmed. Collection scheduled on ${meta.date_recuperation || '—'}${meta.creneau ? ', time slot ' + meta.creneau : ''}. Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
-          } else if (prolongLang === 'zh') {
-            smsProlongContent = `Loc'Air - 您延长${jNum}天的续租已确认。取回日期：${meta.date_recuperation || '—'}${meta.creneau ? '，时间段：' + meta.creneau : ''}。技术员将在到达前30分钟发送短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
-          } else if (prolongLang === 'ru') {
-            smsProlongContent = `Loc'Air - Продление на ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'} подтверждено. Забор запланирован на ${meta.date_recuperation || '—'}${meta.creneau ? ', интервал ' + meta.creneau : ''}. Мастер отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
-          } else {
-            smsProlongContent = `Loc'Air - Votre prolongation de ${jNum} jour${jNum > 1 ? 's' : ''} est confirmée. Récupération prévue le ${meta.date_recuperation || '—'}${meta.creneau ? ', créneau ' + meta.creneau : ''}. Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
-          }
-          const smsProlongResult = await sendBrevoSms({ to: meta.tel, content: smsProlongContent });
-          await getSupabase().from('email_log').insert({
-            reservation_id: confirmedResa.id, scenario: 'sms_prolongation', canal: 'sms',
-            destinataire: meta.tel, modele: 'sms_prolongation',
-            statut: smsProlongResult.ok ? 'envoye' : 'erreur',
-            erreur: smsProlongResult.ok ? null : String(smsProlongResult.error || '').slice(0, 500),
-            contenu: smsProlongContent,
-          }).then(() => {}, () => {});
-        }
+        const prolongLang = meta.lang || confirmedResa.lang || 'fr';
+        const rawEuros = parseFloat(amount) || 0;
+        const prolongAmountFmt = prolongLang === 'en' || prolongLang === 'zh'
+          ? '€' + rawEuros.toFixed(2)
+          : rawEuros.toFixed(2).replace('.', ',') + ' €';
+        await sendProlongationConfirmation(getSupabase(), {
+          reservationId: confirmedResa.id,
+          email,
+          tel: meta.tel || '',
+          prenom: meta.prenom || '',
+          nom: meta.nom || '',
+          jours: meta.jours || '1',
+          dateRecuperation: meta.date_recuperation || '',
+          creneau: meta.creneau || '',
+          amount: prolongAmountFmt,
+          lang: prolongLang,
+          refOrigine: (meta.ref || meta.ref_origine || '').trim().toUpperCase(),
+        });
       }
 
       // Mettre à jour date_fin de la réservation d'origine pour que l'espace client
@@ -561,7 +488,7 @@ const handler = async (req, res) => {
           if (confirmedResa.reservation_origine_id) {
             lookup = lookup.eq('id', confirmedResa.reservation_origine_id);
           } else if (origRef) {
-            lookup = lookup.eq('ref', origRef).eq('city_id', confirmedResa.city_id);
+            lookup = lookup.eq('ref', origRef).eq('city_id', confirmedResa.city_id).limit(1);
           } else {
             // .eq('statut','confirmee') : sans lui, une réservation plus
             // récente mais annulée/en attente sous le même email passe devant

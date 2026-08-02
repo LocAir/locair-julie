@@ -4,6 +4,7 @@ const { sendBrevoEmail } = require('./_lib/brevo');
 const { tplNouveauCodeTransporteur } = require('./_lib/emailTemplates');
 const { getSignature, withSignature } = require('./_lib/emailEngine');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
+const { hashPin } = require('./_lib/pinHash');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -36,7 +37,8 @@ module.exports = async (req, res) => {
       let newPin = null;
       for (let attempt = 0; attempt < 5; attempt++) {
         const candidate = String(crypto.randomInt(100000, 1000000));
-        const { error } = await supabase.from('transporteurs').update({ pin: candidate }).eq('id', transp.id);
+        const hashed = hashPin(candidate);
+        const { error } = await supabase.from('transporteurs').update({ pin: hashed, pin_hashed: true }).eq('id', transp.id);
         if (!error) { newPin = candidate; break; }
         if (error.code !== '23505') throw error; // collision de code : réessayer
       }

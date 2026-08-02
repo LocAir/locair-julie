@@ -1,6 +1,7 @@
 const Stripe = require('stripe');
 const { getSupabase }         = require('./_lib/supabase');
-const { resolveCityByAddress, isCitySoldOut } = require('./_lib/city');
+const { resolveCityByAddress } = require('./_lib/city');
+const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice }      = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
@@ -101,8 +102,9 @@ module.exports = async (req, res) => {
   // ne consomme pas d'appareil supplémentaire.
   if (!horsZone) {
     try {
-      if (await isCitySoldOut(supabase, city)) {
-        return res.status(409).json({ error: 'Complet pour le moment — contactez-nous pour être prévenu dès qu\'un appareil se libère.' });
+      const dispo = await getAvailability(supabase, city.id, dateDebut, dateFin);
+      if (dispo < qty) {
+        return res.status(409).json({ error: 'Plus assez d\'appareils disponibles pour ce créneau.' });
       }
     } catch (err) {
       console.error('[Checkout soldOut]', err.message);
@@ -127,7 +129,7 @@ module.exports = async (req, res) => {
     // off-session en cas de retard de restitution (empreinte carte, sans blocage de fonds)
     let customerId = '';
     if (data.email) {
-      const email = data.email.trim();
+      const email = data.email.trim().toLowerCase();
       const existing = await stripe.customers.list({ email, limit: 1 });
       if (existing.data.length > 0) {
         customerId = existing.data[0].id;
@@ -255,12 +257,16 @@ module.exports = async (req, res) => {
       const rows = Object.entries(detail)
         .filter(([type, qty]) => type && Number.isInteger(qty) && qty > 0)
         .map(([type, qty]) => ({ reservation_id: insertedResa.id, type: String(type).slice(0, 100), quantite: qty }));
-      if (rows.length) await supabase.from('reservation_fenetres').insert(rows);
+      if (rows.length > 10) {
+        console.error('[reservation_fenetres] trop d\'entrées:', rows.length);
+      } else if (rows.length) {
+        await supabase.from('reservation_fenetres').insert(rows);
+      }
     } catch (e) {
       console.error('[reservation_fenetres insert]', e.message);
     }
 
-    return res.status(200).json({ clientSecret: intent.client_secret, amountCents, customerId });
+    return res.status(200).json({ clientSecret: intent.client_secret, amountCents });
   } catch (err) {
     console.error('[Stripe intent]', err.message);
     await recordFailedAttempt(supabase, `checkout:${ip}`).catch(() => {});

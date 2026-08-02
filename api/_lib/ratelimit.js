@@ -25,7 +25,8 @@ async function isRateLimited(supabase, key, maxAttempts = 10, windowMinutes = 15
 }
 
 async function recordFailedAttempt(supabase, key) {
-  await supabase.from('login_attempts').insert({ key }).then(null, () => {});
+  await supabase.from('login_attempts').insert({ key }).then(null, (e) => console.error('[RateLimit] insert failed:', e.message));
+  supabase.from('login_attempts').delete().lt('created_at', new Date(Date.now() - 86400000).toISOString()).then(null, () => {});
 }
 
 module.exports = { getClientIp, isRateLimited, recordFailedAttempt };

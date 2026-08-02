@@ -357,6 +357,9 @@ module.exports = async (req, res) => {
         if (pt) partenaireCommissionCentsProlong = Math.round(prixTotalCents * pt.taux_commission_pct / 100);
       }
 
+      const { data: existing } = await supabase.from('reservations').select('id').eq('reservation_origine_id', origId).in('statut', ['en_attente', 'confirmee']).maybeSingle();
+      if (existing) return res.status(409).json({ error: 'Une prolongation est déjà en cours pour cette réservation.' });
+
       const _pnow = new Date();
       const ref = `LOC-${String(_pnow.getFullYear()).slice(2)}${String(_pnow.getMonth()+1).padStart(2,'0')}${String(_pnow.getDate()).padStart(2,'0')}-P${crypto.randomInt(1000, 9999)}`;
       const { data: resa, error } = await supabase.from('reservations').insert({
@@ -534,6 +537,9 @@ module.exports = async (req, res) => {
 
       const STATUTS_VALIDES = ['en_attente', 'annulee', 'remboursee', 'terminee'];
       const patch = {};
+      if (body.statut === 'en_attente' && ['terminee', 'remboursee', 'annulee'].includes(before.statut)) {
+        return res.status(422).json({ error: `Impossible de réactiver une réservation ${before.statut}.` });
+      }
       if (body.statut != null && STATUTS_VALIDES.includes(body.statut)) patch.statut = body.statut;
       if (body.quantite != null) patch.quantite = Math.max(1, parseInt(body.quantite) || 1);
       if (body.prix_total_cents != null) patch.prix_total_cents = Math.max(0, parseInt(body.prix_total_cents) || 0);
