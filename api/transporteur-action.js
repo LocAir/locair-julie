@@ -10,6 +10,7 @@ const { sendScenarioEmail } = require('./_lib/emailEngine');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { getActiveChecklistItems, validateChecklistReponses } = require('./_lib/checklistItems');
 const { setAppareilsStatutForReservation, moveAppareilsForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
+const { recordMouvement } = require('./_lib/stockMouvements');
 
 const PROBLEME_LABEL = {
   client_absent:       'Client absent',
@@ -150,7 +151,7 @@ module.exports = async (req, res) => {
         await pushToAdmin(supabase, {
           title: '🔁 Mission injoignable reprise',
           body: `${t?.nom || 'Un transporteur'} reprend la mission ${liv.reservation?.adresse || ''} — le client était injoignable, il est de nouveau joignable.`,
-          tag: 'client-disponible',
+          tag: `client-disponible-${liv.id}`,
         });
       }
 
@@ -169,7 +170,7 @@ module.exports = async (req, res) => {
       await pushToAdmin(supabase, {
         title: '🚚 Transporteur en route',
         body:  `${liv.reservation?.adresse || 'Une mission'} — le transporteur vient de partir.`,
-        tag:   'en-route',
+        tag:   `en-route-${liv.id}`,
       });
       // Mouvement de stock (Module 6, Partie 5) : le climatiseur quitte
       // l'entrepôt dans le véhicule du transporteur — livraison uniquement,
@@ -223,6 +224,16 @@ module.exports = async (req, res) => {
         probleme_type: null, probleme_description: null, probleme_at: null,
       }).eq('id', liv.id);
       if (reporterErr) throw reporterErr;
+      // Rendre une mission déjà acceptée (voire en route/arrivée) ne
+      // remontait jusqu'ici jamais à Aly — un signal utile pourtant ("il a du
+      // mal aujourd'hui"), surtout si ça se reproduit plusieurs fois avec le
+      // même transporteur le même jour (audit automatisations, 2026-08-02).
+      const { data: tRep } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
+      await pushToAdmin(supabase, {
+        title: 'Mission remise "à faire"',
+        body:  `${tRep?.nom || 'Un transporteur'} a remis une mission déjà acceptée "à faire" — vérifie qu'elle est bien reprise.`,
+        tag:   `mission-reportee-${liv.id}`,
+      });
       return res.status(200).json({ ok: true, statut: 'a_faire' });
     }
 
@@ -249,6 +260,19 @@ module.exports = async (req, res) => {
             livraisonId: liv.id, tag: 'nouvelle-mission',
           });
           reassigned = true;
+          // Un refus absorbé par une réassignation automatique ne remontait
+          // jusqu'ici nulle part — un transporteur qui refuse ses missions à
+          // la chaîne pouvait passer inaperçu tant qu'il y a toujours
+          // quelqu'un d'autre de disponible pour le remplacer (audit
+          // automatisations, 2026-08-02). Tag distinct de 'mission-non-
+          // couverte' ci-dessous, qui lui ne se déclenche que si personne
+          // n'a pu prendre le relais.
+          const { data: t } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
+          await pushToAdmin(supabase, {
+            title: 'Mission réassignée',
+            body:  `${t?.nom || 'Un transporteur'} a refusé une mission — réassignée automatiquement à quelqu'un d'autre.`,
+            tag:   `mission-refusee-${liv.id}`,
+          });
         }
       }
 
@@ -257,7 +281,7 @@ module.exports = async (req, res) => {
         await pushToAdmin(supabase, {
           title: '⚠️ Mission sans transporteur',
           body:  'Un transporteur a refusé une mission et aucun remplaçant disponible — assigne manuellement.',
-          tag:   'mission-non-couverte',
+          tag:   `mission-non-couverte-${liv.id}`,
         });
       }
 
@@ -542,10 +566,44 @@ module.exports = async (req, res) => {
         await supabase.from('livraisons').update({ incident_id: incident.id }).eq('id', liv.id);
       }
 
+      // "Matériel endommagé" ne changeait jusqu'ici jamais le statut de
+      // l'appareil au stock — le climatiseur abîmé continuait d'apparaître
+      // "disponible"/"loué" comme si de rien n'était, et pouvait être
+      // reproposé à un prochain client (audit automatisations, 2026-08-02).
+      // Bascule automatique en "maintenance" seulement si un SEUL appareil
+      // est engagé sur cette réservation (aucune ambiguïté possible sans
+      // lien précis incident -> appareil) ; sinon l'admin est prévenue de
+      // vérifier elle-même laquelle des unités est concernée.
+      let materielAmbigu = false;
+      if (problemeType === 'materiel_endommage' && liv.reservation_id) {
+        const { data: appareilsResa } = await supabase
+          .from('reservation_appareils').select('appareil_id').eq('reservation_id', liv.reservation_id);
+        if ((appareilsResa || []).length === 1) {
+          const appareilId = appareilsResa[0].appareil_id;
+          // Seul le statut passe en "maintenance" — la localisation reste
+          // celle où l'appareil se trouve réellement (chez le client, dans
+          // le véhicule...) tant qu'il n'a pas physiquement été récupéré.
+          const { data: appareilAvant } = await supabase
+            .from('appareils').select('localisation').eq('id', appareilId).maybeSingle();
+          await recordMouvement(supabase, {
+            appareilId, typeEvenement: 'autre', nouveauStatut: 'maintenance',
+            nouvelleLocalisation: appareilAvant?.localisation || 'chez_client',
+            livraisonId: liv.id, reservationId: liv.reservation_id, utilisateur: 'transporteur',
+            commentaire: `Signalé endommagé par le transporteur${description ? ' : ' + description : ''}.`,
+          });
+        } else if ((appareilsResa || []).length > 1) {
+          materielAmbigu = true;
+        }
+      }
+
       await pushToAdmin(supabase, {
         title: `🧯 ${PROBLEME_LABEL[problemeType] || 'Problème'} signalé`,
-        body:  description || 'Un livreur a signalé un problème sur une mission — ouvre l\'app pour voir le détail.',
-        tag:   'incident',
+        body:  (description || 'Un livreur a signalé un problème sur une mission — ouvre l\'app pour voir le détail.')
+          + (materielAmbigu ? ' Plusieurs appareils sur cette réservation — vérifie toi-même lequel est abîmé et passe-le en maintenance.' : ''),
+        // Tag unique par mission — un tag fixe faisait disparaître le
+        // signalement d'un livreur derrière celui d'un autre le même jour
+        // (audit automatisations, 2026-08-02).
+        tag:   `incident-${liv.id}`,
       });
 
       if (problemeType === 'client_absent') {

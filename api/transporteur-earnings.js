@@ -88,14 +88,19 @@ module.exports = async (req, res) => {
       if (enCoursErr) throw enCoursErr;
       if (enCours && enCours.length) return res.status(409).json({ error: 'Une demande est déjà en cours' });
 
-      const { error } = await supabase.from('virements').insert({ transporteur_id: transporteurId, montant_cents: montant, statut: 'demande' });
+      const { data: virement, error } = await supabase.from('virements')
+        .insert({ transporteur_id: transporteurId, montant_cents: montant, statut: 'demande' })
+        .select('id').single();
       if (error) throw error;
 
       const { data: t } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
       await pushToAdmin(supabase, {
         title: '💶 Virement demandé',
         body:  `${t?.nom || 'Un transporteur'} demande un virement de ${(montant / 100).toFixed(2)} €.`,
-        tag:   'virement',
+        // Tag unique par virement — un tag fixe faisait disparaître la
+        // demande d'un transporteur derrière celle d'un autre le même jour
+        // (audit automatisations, 2026-08-02).
+        tag:   `virement-${virement?.id || transporteurId}`,
       });
 
       return res.status(200).json({ ok: true });

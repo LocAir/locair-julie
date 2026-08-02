@@ -150,7 +150,10 @@ async function handlePaymentFailed(supabase, intent) {
   await pushToAdmin(supabase, {
     title: 'Paiement échoué',
     body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${raison}`.trim(),
-    tag:   'paiement-echoue',
+    // Tag unique par tentative de paiement — un tag fixe faisait disparaître
+    // silencieusement l'alerte d'un client dès qu'un autre paiement échouait
+    // le même jour (audit automatisations, 2026-08-02).
+    tag:   `paiement-echoue-${resa?.id || intent.id}`,
   });
 }
 
@@ -301,7 +304,10 @@ async function handleDisputeCreated(supabase, dispute) {
   await pushToAdmin(supabase, {
     title: '⚠️ Litige Stripe (chargeback)',
     body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant} — à traiter dans le dashboard Stripe`.trim(),
-    tag:   'litige-stripe',
+    // Tag unique par litige — un délai de réponse imposé par Stripe rend
+    // critique de ne jamais en perdre un derrière un autre (audit
+    // automatisations, 2026-08-02).
+    tag:   `litige-stripe-${resa?.id || piId}`,
   });
 }
 

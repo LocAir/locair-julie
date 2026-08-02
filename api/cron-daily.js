@@ -474,6 +474,91 @@ module.exports = async (req, res) => {
     console.error('[Cron virements anciens]', e.message);
   }
 
+  // ── 4sexies. Virements PARTENAIRE en attente depuis trop longtemps ─────────
+  // Même filet que pour les transporteurs ci-dessus — jusqu'ici totalement
+  // absent côté partenaires, une demande pouvait attendre indéfiniment sans
+  // qu'Aly ne le sache jamais (audit automatisations, 2026-08-02).
+  try {
+    const SEUIL_VIREMENT_JOURS = parseInt(process.env.VIREMENT_ANCIEN_SEUIL_JOURS) || 3;
+    const seuilVirementDate = new Date(Date.now() - SEUIL_VIREMENT_JOURS * 86400000).toISOString();
+    const { data: virementsPartenaireAnciens } = await supabase
+      .from('partenaire_virements')
+      .select('id, montant_cents, created_at, partenaire:partenaires(nom)')
+      .eq('statut', 'demande')
+      .lt('created_at', seuilVirementDate);
+
+    let virementPartenaireAncienCount = 0;
+    for (const v of virementsPartenaireAnciens || []) {
+      const joursAttente = Math.round((Date.now() - new Date(v.created_at).getTime()) / 86400000);
+      await pushToAdmin(supabase, {
+        title: `💶 Virement partenaire en attente depuis ${joursAttente}j — ${v.partenaire?.nom || '?'}`,
+        body:  `Demande de ${(v.montant_cents / 100).toFixed(2)} € toujours pas versée.`,
+        tag:   `virement-partenaire-ancien-${v.id}`,
+      });
+      virementPartenaireAncienCount++;
+    }
+    if (virementPartenaireAncienCount) report.virementsPartenaireAnciens = virementPartenaireAncienCount;
+  } catch (e) {
+    console.error('[Cron virements partenaire anciens]', e.message);
+  }
+
+  // ── 4septies. Devis entreprise envoyé sans réponse depuis trop longtemps ──
+  // Jusqu'ici un devis pouvait rester "envoyé" indéfiniment sans jamais
+  // rappeler à Aly de relancer le client — perte potentielle de revenus B2B
+  // (audit automatisations, 2026-08-02).
+  try {
+    const SEUIL_DEVIS_JOURS = parseInt(process.env.DEVIS_ANCIEN_SEUIL_JOURS) || 5;
+    const seuilDevisDate = new Date(Date.now() - SEUIL_DEVIS_JOURS * 86400000).toISOString();
+    const { data: devisAnciens } = await supabase
+      .from('devis')
+      .select('id, raison_sociale, prix_propose_cents, created_at')
+      .eq('statut', 'envoye')
+      .lt('created_at', seuilDevisDate);
+
+    let devisAncienCount = 0;
+    for (const d of devisAnciens || []) {
+      const joursEnvoi = Math.round((Date.now() - new Date(d.created_at).getTime()) / 86400000);
+      await pushToAdmin(supabase, {
+        title: `📋 Devis sans réponse depuis ${joursEnvoi}j — ${d.raison_sociale || '?'}`,
+        body:  `Devis de ${(d.prix_propose_cents / 100).toFixed(2)} € envoyé, toujours sans réponse — pense à relancer.`,
+        tag:   `devis-ancien-${d.id}`,
+      });
+      devisAncienCount++;
+    }
+    if (devisAncienCount) report.devisAnciens = devisAncienCount;
+  } catch (e) {
+    console.error('[Cron devis anciens]', e.message);
+  }
+
+  // ── 4octies. Dossier assurance déclaré sans suite depuis trop longtemps ───
+  // Rien ne surveillait jusqu'ici si l'assureur répond/rembourse un sinistre
+  // déclaré — de l'argent dû à Loc'Air pouvait rester bloqué sans qu'Aly n'y
+  // repense (audit automatisations, 2026-08-02).
+  try {
+    const SEUIL_ASSURANCE_JOURS = parseInt(process.env.ASSURANCE_ANCIEN_SEUIL_JOURS) || 10;
+    const seuilAssuranceDate = new Date(Date.now() - SEUIL_ASSURANCE_JOURS * 86400000).toISOString().slice(0, 10);
+    const { data: assuranceAnciens } = await supabase
+      .from('incidents')
+      .select('id, assurance_statut, assurance_date_declaration, assurance_montant_reclame_cents, reservation:reservations(ref, nom)')
+      .in('assurance_statut', ['declare', 'en_attente_reponse'])
+      .lt('assurance_date_declaration', seuilAssuranceDate);
+
+    let assuranceAncienCount = 0;
+    for (const inc of assuranceAnciens || []) {
+      const joursDeclare = Math.round((Date.now() - new Date(inc.assurance_date_declaration).getTime()) / 86400000);
+      const resa = inc.reservation || {};
+      await pushToAdmin(supabase, {
+        title: `🛡️ Dossier assurance sans réponse depuis ${joursDeclare}j — ${resa.nom || '?'}`,
+        body:  `Sinistre déclaré (dossier ${resa.ref || '?'}), toujours sans réponse de l'assureur — pense à relancer.`,
+        tag:   `assurance-ancien-${inc.id}`,
+      });
+      assuranceAncienCount++;
+    }
+    if (assuranceAncienCount) report.assuranceAnciens = assuranceAncienCount;
+  } catch (e) {
+    console.error('[Cron assurance anciens]', e.message);
+  }
+
   // ── 4ter. Offre Privilège — Step 1 : détection d'éligibilité ─────────────────
   // Un climatiseur très loué, actuellement chez un client (réservation
   // confirmée dont la période couvre aujourd'hui), peut lui être proposé à
