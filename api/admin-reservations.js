@@ -605,6 +605,27 @@ module.exports = async (req, res) => {
             motif: 'réservation annulée',
           });
         }
+      } else {
+        // Une correction faite ici (mauvaise adresse, étage, instructions
+        // d'accès, téléphone...) doit remonter jusqu'au transporteur déjà en
+        // mission sur cette réservation — sans ça il continue de rouler vers
+        // les anciennes coordonnées jusqu'au prochain rafraîchissement.
+        // Jamais dans la branche 'annulee' ci-dessus : ses missions sont
+        // annulées et déjà notifiées séparément (type 'annulation').
+        const CHAMPS_MISSION = ['adresse', 'etage', 'ascenseur', 'fenetre', 'installation', 'instructions_acces', 'creneau', 'tel', 'tel_secondaire'];
+        if (CHAMPS_MISSION.some(k => patch[k] !== undefined)) {
+          const { data: livAPrevenir } = await supabase
+            .from('livraisons').select('id, transporteur_id')
+            .eq('reservation_id', id)
+            .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
+          for (const liv of (livAPrevenir || [])) {
+            if (!liv.transporteur_id) continue;
+            await notifyTransporteur(supabase, liv.transporteur_id, {
+              type: 'modification', message: 'Les informations d\'une mission ont été mises à jour.',
+              livraisonId: liv.id, tag: 'modification',
+            });
+          }
+        }
       }
 
       // Si la quantité change sur une réservation déjà confirmée, réconcilier les
