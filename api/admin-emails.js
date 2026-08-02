@@ -71,7 +71,7 @@ module.exports = async (req, res) => {
       const debutJour = new Date(); debutJour.setUTCHours(0, 0, 0, 0);
       const { data, error } = await supabase
         .from('email_log')
-        .select('id, scenario, canal, statut, destinataire, created_at, reservation:reservations!inner(ref, prenom, nom, city_id)')
+        .select('id, scenario, canal, statut, erreur, destinataire, created_at, reservation:reservations!inner(ref, prenom, nom, city_id)')
         .eq('reservation.city_id', city.id)
         .gte('created_at', debutJour.toISOString())
         .order('created_at', { ascending: false });
