@@ -35,14 +35,12 @@ async function storeChallenge(supabase, challenge) {
 }
 
 // Consomme (usage unique) un challenge s'il existe et n'a pas expiré (~5 min).
+// DELETE atomique via RPC pour éviter le rejoue en cas de double requête simultanée.
 async function consumeChallenge(supabase, challenge) {
   if (!challenge) return false;
-  const { data } = await supabase.from('webauthn_challenges').select('id, created_at').eq('challenge', challenge).maybeSingle();
-  if (!data) return false;
-  const { error: delErr } = await supabase.from('webauthn_challenges').delete().eq('id', data.id);
-  if (delErr) return false;
-  const ageMs = Date.now() - new Date(data.created_at).getTime();
-  return ageMs <= 5 * 60000;
+  const { data, error } = await supabase.rpc('consume_challenge', { p_challenge: challenge });
+  if (error) return false;
+  return data === true;
 }
 
 module.exports = { getRpConfig, extractChallenge, storeChallenge, consumeChallenge };

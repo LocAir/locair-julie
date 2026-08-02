@@ -315,7 +315,7 @@ module.exports = async (req, res) => {
     if (action === 'update') {
       const livraisonId = parseInt(body.livraison_id);
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
-      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, type, statut, date_prevue, reservation_id');
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, type, statut, date_prevue, creneau, reservation_id');
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
       if (['fait', 'annule'].includes(liv.statut)) {
         return res.status(400).json({ error: 'Mission terminée ou annulée : non modifiable' });
@@ -362,7 +362,7 @@ module.exports = async (req, res) => {
           if (resaForSms?.tel) {
             await sendRecuperationReprogrammeeSms(supabase, {
               reservationId: liv.reservation_id, tel: resaForSms.tel, lang: resaForSms.lang,
-              creneau: patch.creneau !== undefined ? patch.creneau : null,
+              creneau: patch.creneau !== undefined ? patch.creneau : liv.creneau,
               datePrevue: patch.date_prevue,
             });
           }

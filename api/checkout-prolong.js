@@ -5,7 +5,7 @@ const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getEffectiveDateFin } = require('./_lib/reservations');
-const { getClientIp, isRateLimited } = require('./_lib/ratelimit');
+const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 const calcBase = calcTieredPrice;
 
@@ -54,14 +54,19 @@ module.exports = async (req, res) => {
   let extDateDebut     = (data.date_fin_initiale     || '').slice(0, 10);
   const extDateFin     = (data.date_recuperation_iso || '').slice(0, 10);
   if (!isValidDate(extDateDebut) || !isValidDate(extDateFin) || extDateFin <= extDateDebut) {
+    await recordFailedAttempt(supabaseRL, `checkout-prolong:${ip}`).catch(() => {});
     return res.status(400).json({ error: 'Dates de prolongation invalides' });
   }
   const joursCalc = Math.round((new Date(extDateFin+'T00:00:00Z') - new Date(extDateDebut+'T00:00:00Z')) / 86400000);
-  if (joursCalc < 1) return res.status(400).json({ error: 'Durée de prolongation invalide' });
+  if (joursCalc < 1) {
+    await recordFailedAttempt(supabaseRL, `checkout-prolong:${ip}`).catch(() => {});
+    return res.status(400).json({ error: 'Durée de prolongation invalide' });
+  }
   jours = joursCalc;
   amountCents = (clientOrigDays > 0 ? _safeIncrement(clientOrigDays, jours) : calcBase(jours)) * qty * 100;
   const today = new Date().toISOString().slice(0, 10);
   if (extDateDebut < today) {
+    await recordFailedAttempt(supabaseRL, `checkout-prolong:${ip}`).catch(() => {});
     return res.status(422).json({ error: 'La date de fin initiale est déjà passée — impossible de prolonger.' });
   }
 
@@ -91,7 +96,7 @@ module.exports = async (req, res) => {
       .ilike('email', String(data.email).trim())
       .not('source', 'eq', 'site_prolongation')
       .eq('statut', 'confirmee');
-    if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim());
+    if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim().toUpperCase());
     ({ data: orig } = await origQuery.order('created_at', { ascending: false }).limit(1).maybeSingle());
     city = orig ? await resolveCityById(supabase, orig.city_id) : null;
     if (!city) {
@@ -141,6 +146,7 @@ module.exports = async (req, res) => {
       }
     }
     if (!amountCents || amountCents <= 0) {
+      await recordFailedAttempt(supabaseRL, `checkout-prolong:${ip}`).catch(() => {});
       return res.status(400).json({ error: 'Montant invalide' });
     }
     // Commission partenaire : reprend le taux de la réservation d'origine.
@@ -266,6 +272,7 @@ module.exports = async (req, res) => {
     return res.status(200).json({ clientSecret: intent.client_secret, amountCents });
   } catch (err) {
     console.error('[Stripe prolong]', err.message);
+    await recordFailedAttempt(supabaseRL, `checkout-prolong:${ip}`).catch(() => {});
     return res.status(500).json({ error: 'Erreur serveur paiement' });
   }
 };

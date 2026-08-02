@@ -9,7 +9,7 @@ function safeEqual(a, b) {
 // transporteurs, les partenaires, et depuis le Module 7 pour les comptes
 // équipe admin. Voir plus bas.
 function pinFingerprint(pin) {
-  return crypto.createHash('sha256').update(String(pin || '')).digest('hex').slice(0, 16);
+  return crypto.createHmac('sha256', process.env.TRANSPORTEUR_SECRET || '').update(String(pin || '')).digest('hex').slice(0, 16);
 }
 
 // Deux façons de s'authentifier en admin, toutes les deux acceptées par le

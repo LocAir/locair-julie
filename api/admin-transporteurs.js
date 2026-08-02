@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity, listCities } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
+const { hashPin } = require('./_lib/pinHash');
 
 // Remplace entièrement les zones d'intervention et/ou les disponibilités
 // d'un transporteur (delete + insert) — plus simple et plus sûr qu'un diff
@@ -100,7 +101,8 @@ module.exports = async (req, res) => {
           nom,
           telephone:               (body.telephone || '').trim() || null,
           email:                   (body.email || '').trim().toLowerCase() || null,
-          pin:                     candidate,
+          pin:                     hashPin(candidate),
+          pin_hashed:              true,
           taux_livraison_cents:    Math.max(0, parseInt(body.taux_livraison_cents)    || 0),
           taux_recuperation_cents: Math.max(0, parseInt(body.taux_recuperation_cents) || 0),
           types_autorises:         typesAutorises,
@@ -125,7 +127,7 @@ module.exports = async (req, res) => {
       if (body.notes != null)     patch.notes     = body.notes.trim().slice(0, 2000) || null;
       if (body.actif != null)     patch.actif     = Boolean(body.actif);
       if (body.en_pause != null)  patch.en_pause  = Boolean(body.en_pause);
-      if (body.pin != null && body.pin.trim())  patch.pin = body.pin.trim();
+      if (body.pin != null && body.pin.trim())  { patch.pin = hashPin(body.pin.trim()); patch.pin_hashed = true; }
       if (body.taux_livraison_cents != null)    patch.taux_livraison_cents    = Math.max(0, parseInt(body.taux_livraison_cents)    || 0);
       if (body.taux_recuperation_cents != null) patch.taux_recuperation_cents = Math.max(0, parseInt(body.taux_recuperation_cents) || 0);
       if (body.types_autorises !== undefined)   patch.types_autorises = Array.isArray(body.types_autorises) ? body.types_autorises : [];

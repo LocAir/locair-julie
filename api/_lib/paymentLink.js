@@ -253,6 +253,7 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
       lienPaiement: session.url,
       rappel,
       isProlongation,
+      lang: resa.lang || 'fr',
     }), sig);
     const dossierRef = isProlongation ? (refOrigine || resa.ref) : resa.ref;
     const subject = isProlongation

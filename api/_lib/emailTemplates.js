@@ -732,7 +732,8 @@ function tplNouveauCodeTransporteur({ nom, pin }) {
 // même circuit qu'un paiement fait sur le site (missions, documents, email
 // de confirmation) — d'où le rappel que l'espace client fonctionne déjà avec
 // juste l'email et le numéro de dossier ci-dessous, sans mot de passe.
-function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, montantFmt, lienPaiement, breakdown, rappel, isProlongation }) {
+function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, montantFmt, lienPaiement, breakdown, rappel, isProlongation, lang }) {
+  const l = lang || 'fr';
   const p = escHtml(prenom || '');
   // Même détail que le récapitulatif de commande du site (#recap-box dans
   // index.html) : location / installation / livraison, plutôt qu'un seul
@@ -741,21 +742,61 @@ function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, monta
   const breakdownHtml = (breakdown && breakdown.length) ? `
       <div class="box">
         ${breakdown.map(r => `<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:6px"><span>${escHtml(r.label)}</span><span>${escHtml(r.value)}</span></div>`).join('')}
-        <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid rgba(27,58,95,.15);font-weight:700;color:#1b3a5f"><span>Total à régler</span><span>${escHtml(montantFmt)}</span></div>
-      </div>` : `<div class="box"><p style="margin:0"><strong>Montant à régler :</strong> ${escHtml(montantFmt || '')}</p></div>`;
+        <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid rgba(27,58,95,.15);font-weight:700;color:#1b3a5f"><span>${l === 'en' ? 'Total due' : l === 'zh' ? '应付总额' : l === 'ru' ? 'Итого к оплате' : 'Total à régler'}</span><span>${escHtml(montantFmt)}</span></div>
+      </div>` : `<div class="box"><p style="margin:0"><strong>${l === 'en' ? 'Amount due' : l === 'zh' ? '应付金额' : l === 'ru' ? 'Сумма к оплате' : 'Montant à régler'} :</strong> ${escHtml(montantFmt || '')}</p></div>`;
   // Une prolongation n'a ni nouvelle adresse ni nouvelle livraison — montrer
   // "Livraison"/"Récupération" comme pour une réservation neuve n'aurait pas
   // de sens (dateDebutFmt vaut ici l'ancienne date de fin de la location,
   // pas une date de livraison réelle) : on affiche juste la nouvelle date de
   // fin demandée par le client.
   const datesHtml = isProlongation
-    ? `<p><strong>Nouvelle date de fin de location :</strong> ${escHtml(dateFinFmt || '')}</p>`
-    : `<p><strong>Adresse :</strong> ${escHtml(adresse || '')}<br/>
-      <strong>Livraison :</strong> ${escHtml(dateDebutFmt || '')}<br/>
-      <strong>Récupération :</strong> ${escHtml(dateFinFmt || '')}</p>`;
+    ? `<p><strong>${l === 'en' ? 'New end date' : l === 'zh' ? '新结束日期' : l === 'ru' ? 'Новая дата окончания' : 'Nouvelle date de fin de location'} :</strong> ${escHtml(dateFinFmt || '')}</p>`
+    : `<p><strong>${l === 'en' ? 'Address' : l === 'zh' ? '地址' : l === 'ru' ? 'Адрес' : 'Adresse'} :</strong> ${escHtml(adresse || '')}<br/>
+      <strong>${l === 'en' ? 'Delivery' : l === 'zh' ? '配送日期' : l === 'ru' ? 'Доставка' : 'Livraison'} :</strong> ${escHtml(dateDebutFmt || '')}<br/>
+      <strong>${l === 'en' ? 'Collection' : l === 'zh' ? '取回日期' : l === 'ru' ? 'Возврат' : 'Récupération'} :</strong> ${escHtml(dateFinFmt || '')}</p>`;
+  const dossierLabel = l === 'en' ? 'YOUR BOOKING' : l === 'zh' ? '您的订单' : l === 'ru' ? 'ВАШ ЗАКАЗ' : 'VOTRE DOSSIER';
   // rappel=true : relance automatique (cron-daily.js) d'une réservation
   // restée en_attente trop longtemps — même contenu, ton différent (on ne
   // redit pas "votre réservation est prête" à un client qui l'a déjà vu).
+  const bodyHtml = `
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">${dossierLabel}</p><strong style="font-size:18px;color:#1b3a5f">${escHtml(ref)}</strong></div>
+      ${datesHtml}
+      ${breakdownHtml}
+      <p>${l === 'en' ? 'Click the button below to pay securely online (payment processed by Stripe).' : l === 'zh' ? '点击下方按钮在线安全付款（由 Stripe 处理）。' : l === 'ru' ? 'Нажмите кнопку ниже для безопасной онлайн-оплаты (через Stripe).' : 'Cliquez sur le bouton ci-dessous pour payer en ligne, en toute sécurité (paiement géré par Stripe).'}</p>
+      <p style="font-size:13px;color:#444">${l === 'en' ? "Once payment is received, you'll get a confirmation email. You can then track your rental at any time in <strong>your account</strong> using just your email and booking ref above — no password needed." : l === 'zh' ? '付款成功后，您将收到确认邮件。您可随时在<strong>您的账户</strong>中使用邮箱和上方订单编号查看租赁状态，无需密码。' : l === 'ru' ? 'После получения оплаты вы получите письмо с подтверждением. Вы сможете отслеживать аренду в любое время в <strong>личном кабинете</strong>, используя только ваш email и номер заказа выше — без пароля.' : 'Une fois le paiement reçu, vous recevrez un email de confirmation. Vous pourrez alors suivre votre location à tout moment sur <strong>votre espace client</strong>, avec juste votre email et le numéro de dossier ci-dessus — pas besoin de mot de passe.'}</p>`;
+  if (l === 'en') return wrap({
+    title: isProlongation ? '⏰ A payment is still pending' : rappel ? '⏰ A payment is still pending' : '💳 Complete your booking',
+    intro: isProlongation
+      ? `Hello ${p}, a reminder: your Loc'Air extension is still awaiting payment.`
+      : rappel
+      ? `Hello ${p}, a reminder: your Loc'Air booking is still awaiting payment.`
+      : `Hello ${p}, your booking is ready — just the payment left to complete.`,
+    bodyHtml,
+    ctaHref: lienPaiement,
+    ctaLabel: 'Pay now →',
+  });
+  if (l === 'zh') return wrap({
+    title: isProlongation ? '⏰ 仍有待完成的付款' : rappel ? '⏰ 仍有待完成的付款' : '💳 完成您的预订',
+    intro: isProlongation
+      ? `您好 ${p}，提醒您：您的 Loc'Air 续租申请仍等待付款。`
+      : rappel
+      ? `您好 ${p}，提醒您：您的 Loc'Air 预订仍等待付款。`
+      : `您好 ${p}，您的预订已就绪——只需完成付款即可。`,
+    bodyHtml,
+    ctaHref: lienPaiement,
+    ctaLabel: '立即付款 →',
+  });
+  if (l === 'ru') return wrap({
+    title: isProlongation ? '⏰ Ожидается оплата' : rappel ? '⏰ Ожидается оплата' : '💳 Завершите бронирование',
+    intro: isProlongation
+      ? `Здравствуйте, ${p}! Напоминаем: ваше продление аренды Loc'Air ожидает оплаты.`
+      : rappel
+      ? `Здравствуйте, ${p}! Напоминаем: ваша аренда Loc'Air ожидает оплаты.`
+      : `Здравствуйте, ${p}! Ваша заявка готова — осталось только оплатить.`,
+    bodyHtml,
+    ctaHref: lienPaiement,
+    ctaLabel: 'Оплатить →',
+  });
   return wrap({
     title: isProlongation ? '⏰ Il reste un paiement à finaliser' : rappel ? '⏰ Il reste un paiement à finaliser' : '💳 Finalisez votre réservation',
     intro: isProlongation
@@ -763,12 +804,7 @@ function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, monta
       : rappel
       ? `Bonjour ${p}, petit rappel : votre réservation Loc'Air est toujours en attente de paiement.`
       : `Bonjour ${p}, votre réservation est prête — il ne reste que le paiement à finaliser.`,
-    bodyHtml: `
-      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">VOTRE DOSSIER</p><strong style="font-size:18px;color:#1b3a5f">${escHtml(ref)}</strong></div>
-      ${datesHtml}
-      ${breakdownHtml}
-      <p>Cliquez sur le bouton ci-dessous pour payer en ligne, en toute sécurité (paiement géré par Stripe).</p>
-      <p style="font-size:13px;color:#444">Une fois le paiement reçu, vous recevrez un email de confirmation. Vous pourrez alors suivre votre location à tout moment sur <strong>votre espace client</strong>, avec juste votre email et le numéro de dossier ci-dessus — pas besoin de mot de passe.</p>`,
+    bodyHtml,
     ctaHref: lienPaiement,
     ctaLabel: 'Payer maintenant →',
   });
@@ -778,8 +814,36 @@ function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, monta
 // depuis longtemps (voir cron-monthly.js, runDormantClientsWinback).
 // Réutilise le système de code promo déterministe déjà en place
 // (api/_lib/promo.js), aucune nouvelle infrastructure de code.
-function tplRelanceDormant({ prenom, codePromo }) {
+function tplRelanceDormant({ prenom, codePromo, lang }) {
+  const l = lang || 'fr';
   const p = escHtml(prenom || '');
+  if (l === 'en') return wrap({
+    title: "☀️ We haven't forgotten you!",
+    intro: `Hello ${p}, it's been a while — here's a discount for your next rental.`,
+    bodyHtml: `
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">YOUR PROMO CODE</p><strong style="font-size:22px;color:#1b3a5f;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
+      <p>Use it when booking on our website — the discount applies automatically.</p>`,
+    ctaHref: 'https://www.locair.fr',
+    ctaLabel: 'Book now →',
+  });
+  if (l === 'zh') return wrap({
+    title: '☀️ 我们没有忘记您！',
+    intro: `您好 ${p}，好久不见——这是您下次租赁的专属优惠码。`,
+    bodyHtml: `
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">您的优惠码</p><strong style="font-size:22px;color:#1b3a5f;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
+      <p>在我们网站预订时使用——折扣将自动扣除。</p>`,
+    ctaHref: 'https://www.locair.fr',
+    ctaLabel: '立即预订 →',
+  });
+  if (l === 'ru') return wrap({
+    title: '☀️ Мы о вас не забыли!',
+    intro: `Здравствуйте, ${p}! Давно не виделись — вот скидка для вашей следующей аренды.`,
+    bodyHtml: `
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">ВАШ ПРОМОКОД</p><strong style="font-size:22px;color:#1b3a5f;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
+      <p>Используйте его при бронировании на нашем сайте — скидка применится автоматически.</p>`,
+    ctaHref: 'https://www.locair.fr',
+    ctaLabel: 'Забронировать →',
+  });
   return wrap({
     title: '☀️ On ne vous a pas oublié !',
     intro: `Bonjour ${p}, ça fait un moment — voici une réduction pour votre prochaine location.`,

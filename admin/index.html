@@ -1581,6 +1581,8 @@ function goToNouvelleReservation(){ RESERVATIONS_VIEW = 'creer'; switchAdminTab(
 // autres onglets se rechargent normalement, mais seulement si l'admin n'est pas
 // en train de taper ou de répondre à une confirmation.
 async function silentRefreshReservations(){
+  if(window._refreshInProgress) return;
+  window._refreshInProgress = true;
   try{
     // La 3e requête (appareils) n'alimente que la vue Calendrier (une ligne
     // par appareil) — inutile de la réveiller toutes les 18s si l'admin est
@@ -1598,9 +1600,12 @@ async function silentRefreshReservations(){
     if(lr.ok){ const ld = await lr.json().catch(()=>null); if(ld) LIVRAISONS_CACHE = ld.livraisons || []; }
     if(sr && sr.ok){ const sd = await sr.json().catch(()=>null); if(sd) STOCK_APPAREILS_CACHE = sd.appareils || STOCK_APPAREILS_CACHE; }
     if(RESERVATIONS_VIEW==='liste') renderReservations(); else renderReservationsCalendrier();
-  }catch(e){}
+  }catch(e){
+  }finally{ window._refreshInProgress = false; }
 }
 async function silentRefreshLivraisons(){
+  if(window._refreshInProgress) return;
+  window._refreshInProgress = true;
   try{
     const [lr, tr] = await Promise.all([
       fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
@@ -1612,7 +1617,8 @@ async function silentRefreshLivraisons(){
     LIVRAISONS_CACHE = ld.livraisons || [];
     if(td) TRANSPORTEURS_CACHE = td.transporteurs || TRANSPORTEURS_CACHE;
     renderLivraisons();
-  }catch(e){}
+  }catch(e){
+  }finally{ window._refreshInProgress = false; }
 }
 const TAB_AUTO_REFRESH = {
   accueil:       () => loadDashboard(CURRENT_DASHBOARD_PERIODE),
@@ -2057,32 +2063,30 @@ function rembourserOffrePrivilege(id, numero, prixCents){
       <div class="err" id="remb-op-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
-  okBtn.onclick = () => {
+  okBtn.onclick = async () => {
     const montant = parseFloat(document.getElementById('remb-op-montant').value.replace(',','.'));
     const raison = document.getElementById('remb-op-raison').value.trim();
     const errEl = document.getElementById('remb-op-err');
     errEl.style.display = 'none';
     if(!montant || montant <= 0){ errEl.textContent = 'Montant invalide'; errEl.style.display='block'; return; }
     if(!raison){ errEl.textContent = 'Indique la raison du remboursement'; errEl.style.display='block'; return; }
-    confirmAction(`Confirmer le remboursement de ${montant.toFixed(2)} € ? Cette action est irréversible.`, async () => {
-      okBtn.disabled = true;
-      try{
-        const resp = await fetch(API('admin-offres-privilege'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
-          action:'rembourser', id, montant_cents: Math.round(montant*100), raison,
-        })});
-        const d = await resp.json();
-        if(!resp.ok) throw new Error(d.error||'Erreur');
-        closeModal();
-        loadStock();
-        showToast('Remboursement envoyé', 'success');
-      }catch(e){
-        okBtn.disabled = false;
-        showToast(e.message, 'error');
-      }
-    }, {danger:true, yesLabel:'Oui, rembourser'});
+    if(!confirm(`Confirmer le remboursement de ${montant.toFixed(2)} € ? Cette action est irréversible.`)) return;
+    okBtn.disabled = true;
+    try{
+      const resp = await fetch(API('admin-offres-privilege'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+        action:'rembourser', id, montant_cents: Math.round(montant*100), raison,
+      })});
+      const d = await resp.json();
+      if(!resp.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      loadStock();
+      showToast('Remboursement envoyé', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      showToast(e.message, 'error');
+    }
   };
 }
 async function forceSyncStock(){
@@ -2309,7 +2313,7 @@ function renderCommandesFournisseur(){
         <div class="row-actions">
           ${c.statut==='commande'?`<button class="btn btn-grey" onclick="updateCommandeFournisseurStatut(${c.id},'en_transit',this)">🚚 En transit</button>`:''}
           ${c.statut!=='livree'?`<button class="btn btn-green" onclick="updateCommandeFournisseurStatut(${c.id},'livree',this)">✅ Marquer livrée</button>`:''}
-          <button class="btn btn-red" onclick="updateCommandeFournisseurStatut(${c.id},'annulee',this)">✕ Annuler</button>
+          <button class="btn btn-red" onclick="confirmAction('Annuler cette commande fournisseur ?', () => updateCommandeFournisseurStatut(${c.id}, 'annulee'), {danger:true, yesLabel:'Annuler la commande'})">✕ Annuler</button>
         </div>
       </div>`).join('') : '<p class="empty">Aucune commande en cours.</p>'}
     <div style="margin-top:12px">
@@ -2352,7 +2356,7 @@ async function createCommandeFournisseur(){
   }
 }
 async function updateCommandeFournisseurStatut(id, statut, btn){
-  btn.disabled = true;
+  if(btn) btn.disabled = true;
   try{
     const r = await fetch(API('admin-commandes-fournisseur'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update_statut', id, statut})});
     const d = await r.json();
@@ -2361,7 +2365,7 @@ async function updateCommandeFournisseurStatut(id, statut, btn){
     showToast(statut==='livree'?'Commande marquée livrée — pense à ajouter les appareils au stock':'Commande mise à jour', 'success');
   }catch(e){
     showToast(e.message, 'error');
-    btn.disabled = false;
+    if(btn) btn.disabled = false;
   }
 }
 async function logControleAppareil(appareilId, btn){
@@ -2621,7 +2625,7 @@ async function deleteSelectedAppareils(){
         if(!r.ok) errors++;
       }catch(e){ errors++; }
     }
-    STOCK_SELECTION.clear(); STOCK_SELECTION_MODE = false;
+    if(errors < ids.length){ STOCK_SELECTION.clear(); STOCK_SELECTION_MODE = false; }
     loadStock();
     if(errors) showToast(`${ids.length-errors} supprimé${ids.length-errors>1?'s':''}, ${errors} erreur${errors>1?'s':''}`, 'error');
     else showToast(`${ids.length} appareil${ids.length>1?'s':''} supprimé${ids.length>1?'s':''}`, 'success');
@@ -2989,7 +2993,6 @@ function openEditReservationModal(id){
       <div class="err" id="er-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
@@ -3883,7 +3886,6 @@ async function reaffecterAppareilReservation(id){
       <div class="err" id="ra-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   async function submitReassign(numero, swap){
@@ -3950,33 +3952,31 @@ function rembourserReservation(id){
       <div class="err" id="remb-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
-  okBtn.onclick = () => {
+  okBtn.onclick = async () => {
     const montant = parseFloat(document.getElementById('remb-montant').value.replace(',','.'));
     const raison = document.getElementById('remb-raison').value.trim();
     const errEl = document.getElementById('remb-err');
     errEl.style.display = 'none';
     if(!montant || montant <= 0){ errEl.textContent = 'Montant invalide'; errEl.style.display='block'; return; }
     if(!raison){ errEl.textContent = 'Indique la raison du remboursement'; errEl.style.display='block'; return; }
-    confirmAction(`Confirmer le remboursement de ${montant.toFixed(2)} € ? Cette action est irréversible.`, async () => {
-      okBtn.disabled = true;
-      try{
-        const resp = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
-          action:'rembourser', id, montant_cents: Math.round(montant*100), raison,
-        })});
-        const d = await resp.json();
-        if(!resp.ok) throw new Error(d.error||'Erreur');
-        closeModal();
-        loadReservations();
-        loadAlerts();
-        showToast('Remboursement envoyé', 'success');
-      }catch(e){
-        okBtn.disabled = false;
-        showToast(e.message, 'error');
-      }
-    }, {danger:true, yesLabel:'Oui, rembourser'});
+    if(!confirm(`Confirmer le remboursement de ${montant.toFixed(2)} € ? Cette action est irréversible.`)) return;
+    okBtn.disabled = true;
+    try{
+      const resp = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+        action:'rembourser', id, montant_cents: Math.round(montant*100), raison,
+      })});
+      const d = await resp.json();
+      if(!resp.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      loadReservations();
+      loadAlerts();
+      showToast('Remboursement envoyé', 'success');
+    }catch(e){
+      okBtn.disabled = false;
+      showToast(e.message, 'error');
+    }
   };
 }
 // Crée l'offre manuellement pour une réservation précise (un client, un
@@ -4022,7 +4022,6 @@ async function proposerOffrePrivilegeManuelle(reservationId){
       <div class="err" id="op-manuel-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
@@ -4336,7 +4335,6 @@ async function openCreateMissionModal(){
     </div>`;
   document.body.appendChild(overlay);
   toggleCreateMissionMode('__new__');
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
@@ -4838,7 +4836,6 @@ function openEditMissionModal(livraisonId){
       <div class="err" id="em-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
@@ -4921,7 +4918,6 @@ async function openChangeAppareilModal(livraisonId){
       <div class="err" id="ca-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   // Si l'appareil demandé est déjà retenu par une autre réservation, l'API
@@ -5007,7 +5003,6 @@ function openForceCompleteModal(livraisonId){
       <div class="err" id="fc-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
@@ -5065,6 +5060,7 @@ async function assignTransporteur(livraisonId, transporteurId, selectEl){
   if(selectEl) selectEl.disabled = true;
   const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'assign', livraison_id:livraisonId, transporteur_id: transporteurId||null})});
   const d = await r.json().catch(()=>({}));
+  if(!r.ok){ if(selectEl) selectEl.disabled = false; showToast(d.error || 'Erreur lors de l\'affectation', 'error'); return; }
   if(d.reset){
     showToast('Mission remise à "à faire" pour le nouveau livreur', 'success');
     loadLivraisons();
@@ -5538,7 +5534,6 @@ function editFiche(id){
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
@@ -5807,7 +5802,7 @@ async function openTransporteurStats(id){
   }
 }
 function resetPin(id){
-  const suggestion = String(Math.floor(100000 + Math.random() * 900000));
+  const _arr0 = new Uint32Array(1); crypto.getRandomValues(_arr0); const suggestion = String(100000 + (_arr0[0] % 900000));
   promptAction({title:'Nouveau code', label:'Code personnel (6 chiffres)', value:suggestion}, async (pin) => {
     if(!pin) return;
     try{
@@ -6116,7 +6111,7 @@ function resetPartenairePin(id){
   const p = PARTENAIRES_CACHE.find(x => x.id === id);
   confirmAction('Régénérer le code personnel de connexion ? L\'ancien code cessera de fonctionner immédiatement.', async () => {
     try{
-      const newPin = String(Math.floor(100000 + Math.random()*900000));
+      const _arr1 = new Uint32Array(1); crypto.getRandomValues(_arr1); const newPin = String(100000 + (_arr1[0] % 900000));
       const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, pin:newPin})});
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Erreur');
@@ -6159,7 +6154,6 @@ function editPartenaireFiche(id){
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
@@ -6428,7 +6422,6 @@ function openAssuranceModal(id){
     </div>
   </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
 }
 async function saveAssurance(id){
   const errEl = document.getElementById('as-err');
@@ -7772,7 +7765,6 @@ function openBulkResendModal(){
       </div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
 }
 async function confirmBulkResend(){
   const checked = [...document.querySelectorAll('.bulk-resend-item:checked')].map(el => BULK_RESEND_ITEMS[parseInt(el.dataset.idx)]);
@@ -7834,7 +7826,6 @@ function openEditClientFicheModal(){
       <div class="err" id="ecf-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
@@ -8340,7 +8331,6 @@ function editEquipeRole(id){
       <div class="err" id="equipe-role-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
@@ -8365,7 +8355,7 @@ function resetEquipePin(id){
     // Contrairement à la création, l'action "update" ne génère pas de code
     // toute seule si on ne lui en envoie pas — on en tire un ici et on
     // l'impose au serveur.
-    const pin = String(Math.floor(100000 + Math.random()*900000));
+    const _arr2 = new Uint32Array(1); crypto.getRandomValues(_arr2); const pin = String(100000 + (_arr2[0] % 900000));
     try{
       const r = await fetch(API('admin-team'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, pin})});
       const d = await r.json();
@@ -8781,7 +8771,6 @@ function editVilleBareme(id){
       <div class="err" id="bareme-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {

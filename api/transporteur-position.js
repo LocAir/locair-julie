@@ -1,5 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
+const { isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -13,6 +14,12 @@ module.exports = async (req, res) => {
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
     return res.status(400).json({ error: 'Position invalide' });
   }
+
+  const rateKey = 'position:' + transporteurId;
+  if (await isRateLimited(supabase, rateKey, 3, 10 / 60)) {
+    return res.status(429).json({ error: 'Trop de mises à jour' });
+  }
+  await recordFailedAttempt(supabase, rateKey);
 
   try {
     const { error } = await supabase.from('transporteurs').update({

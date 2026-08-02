@@ -106,7 +106,10 @@ module.exports = async (req, res) => {
       if (body.assurance_statut !== undefined) patch.assurance_statut = body.assurance_statut || null;
       if (body.assurance_montant_reclame_cents !== undefined) patch.assurance_montant_reclame_cents = sanitizeCents(body.assurance_montant_reclame_cents);
       if (body.assurance_montant_rembourse_cents !== undefined) patch.assurance_montant_rembourse_cents = sanitizeCents(body.assurance_montant_rembourse_cents);
-      if (body.assurance_date_declaration !== undefined) patch.assurance_date_declaration = body.assurance_date_declaration || null;
+      if (body.assurance_date_declaration !== undefined) {
+        if (body.assurance_date_declaration && !/^\d{4}-\d{2}-\d{2}$/.test(body.assurance_date_declaration)) return res.status(400).json({ error: 'Format de date invalide (YYYY-MM-DD attendu)' });
+        patch.assurance_date_declaration = body.assurance_date_declaration || null;
+      }
       if (body.assurance_notes !== undefined) patch.assurance_notes = (body.assurance_notes || '').slice(0, 1000) || null;
 
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });

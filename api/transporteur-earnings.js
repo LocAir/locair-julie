@@ -83,15 +83,14 @@ module.exports = async (req, res) => {
       const montant = (faites || []).reduce((s, f) => s + (f.montant_du_cents || 0), 0);
       if (montant <= 0) return res.status(400).json({ error: 'Aucun montant à virer pour le moment' });
 
-      const { data: enCours, error: enCoursErr } = await supabase
-        .from('virements').select('id').eq('transporteur_id', transporteurId).eq('statut', 'demande').limit(1);
-      if (enCoursErr) throw enCoursErr;
-      if (enCours && enCours.length) return res.status(409).json({ error: 'Une demande est déjà en cours' });
-
-      const { data: virement, error } = await supabase.from('virements')
-        .insert({ transporteur_id: transporteurId, montant_cents: montant, statut: 'demande' })
-        .select('id').single();
-      if (error) throw error;
+      // Insert-first + catch 23505 : plus robuste que SELECT+INSERT séparés
+      // (TOCTOU), grâce à la contrainte unique partielle sur (transporteur_id)
+      // WHERE statut='demande' (migration_virements_unique_demande.sql).
+      const { data: insertedVirement, error: insertErr } = await supabase.from('virements').insert({ transporteur_id: transporteurId, montant_cents: montant, statut: 'demande' }).select('id').single();
+      if (insertErr) {
+        if (insertErr.code === '23505') return res.status(409).json({ error: 'Une demande est déjà en cours' });
+        throw insertErr;
+      }
 
       const { data: t } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
       await pushToAdmin(supabase, {
@@ -100,7 +99,7 @@ module.exports = async (req, res) => {
         // Tag unique par virement — un tag fixe faisait disparaître la
         // demande d'un transporteur derrière celle d'un autre le même jour
         // (audit automatisations, 2026-08-02).
-        tag:   `virement-${virement?.id || transporteurId}`,
+        tag:   `virement-${insertedVirement?.id || transporteurId}`,
       });
 
       return res.status(200).json({ ok: true });

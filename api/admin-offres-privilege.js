@@ -62,9 +62,12 @@ module.exports = async (req, res) => {
       if (!offre) return res.status(404).json({ error: 'Offre introuvable' });
       if (offre.statut !== 'eligible') return res.status(400).json({ error: 'Cette offre a déjà été traitée' });
 
-      const { error } = await supabase.from('offres_privilege')
-        .update({ statut: 'proposee', prix_vente_cents: prixCents }).eq('id', id);
+      const { data: updated, error } = await supabase.from('offres_privilege')
+        .update({ statut: 'proposee', prix_vente_cents: prixCents }).eq('id', id).eq('statut', 'eligible').select('id');
       if (error) throw error;
+      if (!updated || !updated.length) {
+        return res.status(409).json({ error: "Cette offre vient d'être annulée ou acceptée — actualise la page" });
+      }
       return res.status(200).json({ ok: true });
     }
 

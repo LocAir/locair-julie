@@ -30,8 +30,8 @@ function computeOrderStatus(reservation, livraisons = [], incidentOuvert = false
   // statut === 'confirmee' à partir d'ici : on regarde le détail des missions.
   if (incidentOuvert) return 'incident';
 
-  const livraison    = livraisons.find(l => l.type === 'livraison');
-  const recuperation = livraisons.find(l => l.type === 'recuperation');
+  const livraison    = livraisons.filter(l => l.type === 'livraison'    && !['annule','refusee'].includes(l.statut)).at(-1);
+  const recuperation = livraisons.filter(l => l.type === 'recuperation' && !['annule','refusee'].includes(l.statut)).at(-1);
 
   if (!livraison) {
     // Une prolongation n'a jamais de mission livraison — uniquement une récupération.

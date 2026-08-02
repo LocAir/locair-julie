@@ -1,5 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
 const { safeEqual, signTransporteurToken } = require('./_lib/auth');
+const { hashPin, verifyPin } = require('./_lib/pinHash');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 module.exports = async (req, res) => {
@@ -20,17 +21,28 @@ module.exports = async (req, res) => {
       return res.status(429).json({ error: 'Trop de tentatives. Réessaie dans 15 minutes ou contacte Aly.' });
     }
 
-    const { data, error } = await supabase.from('transporteurs').select('id, nom, pin').eq('actif', true);
+    const { data, error } = await supabase.from('transporteurs').select('id, nom, pin, pin_hashed').eq('actif', true);
     if (error) throw error;
 
-    const match = (data || []).find(t => safeEqual(pin, t.pin || ''));
+    const match = (data || []).find(t =>
+      t.pin_hashed ? verifyPin(pin, t.pin) : safeEqual(pin, t.pin || '')
+    );
     if (!match) {
       await recordFailedAttempt(supabase, rateKey);
       return res.status(401).json({ error: 'Code incorrect' });
     }
 
+    let currentPin = match.pin;
+    if (!match.pin_hashed) {
+      const hashed = hashPin(pin);
+      const { error: migErr } = await supabase.from('transporteurs')
+        .update({ pin: hashed, pin_hashed: true }).eq('id', match.id);
+      if (!migErr) currentPin = hashed;
+      else console.error('[Transporteur PIN migration]', migErr.message);
+    }
+
     return res.status(200).json({
-      token: signTransporteurToken(match.id, match.pin),
+      token: signTransporteurToken(match.id, currentPin),
       transporteur_id: match.id,
       nom: match.nom,
     });

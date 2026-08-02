@@ -1,5 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
 const { safeEqual, signAdminUserToken } = require('./_lib/auth');
+const { hashPin, verifyPin } = require('./_lib/pinHash');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 // Connexion par code personnel pour un membre de l'équipe (Module 7, Partie
@@ -24,10 +25,12 @@ module.exports = async (req, res) => {
       return res.status(429).json({ error: 'Trop de tentatives, réessaie plus tard' });
     }
 
-    const { data, error } = await supabase.from('admin_users').select('id, nom, pin, role').eq('actif', true);
+    const { data, error } = await supabase.from('admin_users').select('id, nom, pin, pin_hashed, role').eq('actif', true);
     if (error) throw error;
 
-    const match = (data || []).find(u => safeEqual(pin, u.pin || ''));
+    const match = (data || []).find(u =>
+      u.pin_hashed ? verifyPin(pin, u.pin) : safeEqual(pin, u.pin || '')
+    );
     if (!match) {
       await recordFailedAttempt(supabase, rateKey);
       return res.status(401).json({ error: 'Code incorrect' });
@@ -35,8 +38,17 @@ module.exports = async (req, res) => {
 
     await supabase.from('admin_users').update({ last_login_at: new Date().toISOString() }).eq('id', match.id);
 
+    let currentPin = match.pin;
+    if (!match.pin_hashed) {
+      const hashed = hashPin(pin);
+      const { error: migErr } = await supabase.from('admin_users')
+        .update({ pin: hashed, pin_hashed: true }).eq('id', match.id);
+      if (!migErr) currentPin = hashed;
+      else console.error('[Admin user PIN migration]', migErr.message);
+    }
+
     return res.status(200).json({
-      token: signAdminUserToken(match.id, match.pin),
+      token: signAdminUserToken(match.id, currentPin),
       nom: match.nom,
       role: match.role,
     });
