@@ -60,15 +60,32 @@ async function sendBrevoEmail({ to, subject, html, attachments, senderName }) {
   }
 }
 
-// Numéro français local ("0612345678") -> E.164 ("+33612345678"), format
-// attendu par l'API SMS de Brevo. Les numéros déjà au format international
-// sont laissés tels quels.
+// Numéro de téléphone -> E.164 universel, via libphonenumber-js.
+// Stratégie : tente d'abord de parser le numéro tel quel (fonctionne si le
+// numéro est déjà en format international, ex. "+33612345678" ou "+447890123456").
+// Si le parse échoue (numéro local sans indicatif), retente en supposant que
+// c'est un numéro français — ce qui couvre la grande majorité des clients de
+// Loc'Air. Si les deux échouent, retourne une chaîne vide qui déclenchera le
+// garde "destinataire manquant" dans sendBrevoSms plutôt qu'un appel Brevo
+// inutile (évite le 400 "Invalid telephone number" de Brevo).
+const { parsePhoneNumber } = require('libphonenumber-js');
 function toE164FR(tel) {
-  const digits = String(tel || '').replace(/[^\d+]/g, '');
-  if (digits.startsWith('+')) return digits;
-  if (digits.startsWith('0') && digits.length === 10) return '+33' + digits.slice(1);
-  if (digits.length === 9 && !digits.startsWith('0')) return '+33' + digits;
-  return digits ? '+' + digits : '';
+  const raw = String(tel || '').trim().replace(/\s+/g, '');
+  if (!raw) return '';
+  // Normalise le préfixe international 00xx → +xx avant le parse
+  const normalized = raw.startsWith('00') ? '+' + raw.slice(2) : raw;
+  // 1. Tente de parser tel quel (numéros déjà internationaux : +33, +44, +1…)
+  // 2. Sinon tente comme numéro français local (0612345678)
+  // 3. Sinon tente comme numéro britannique local (07890123456) — le pays le
+  //    plus fréquent parmi les touristes non-français à Nice dont le numéro
+  //    peut être stocké sans indicatif.
+  for (const country of [undefined, 'FR', 'GB']) {
+    try {
+      const phone = parsePhoneNumber(normalized, country);
+      if (phone && phone.isValid()) return phone.format('E.164');
+    } catch (_) {}
+  }
+  return '';
 }
 
 // Canal SMS distinct de l'email chez Brevo : même clé API, mais crédits et
@@ -106,4 +123,4 @@ async function sendBrevoSms({ to, content }) {
   }
 }
 
-module.exports = { sendBrevoEmail, sendBrevoSms };
+module.exports = { sendBrevoEmail, sendBrevoSms, toE164FR };

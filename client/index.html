@@ -292,6 +292,9 @@ function renderDashboard(d){
       <div class="card-row"><span class="lbl">Intervention</span><span class="val">${escHtml(d.livraison.type_intervention)}</span></div>
     </div>` : '';
 
+  const todayIso = new Date().toISOString().slice(0,10);
+  const recupEarlyPickerShown = d.recuperation && d.recuperation.statut !== 'fait' && d.recuperation.date_prevue > todayIso;
+  const recupMaxDate = recupEarlyPickerShown ? (()=>{const dt=new Date(d.recuperation.date_prevue+'T12:00:00Z');dt.setUTCDate(dt.getUTCDate()-1);return dt.toISOString().slice(0,10);})() : '';
   const recupHtml = d.recuperation ? `
     <h2>Récupération</h2>
     <div class="card">
@@ -300,7 +303,15 @@ function renderDashboard(d){
       <ul style="margin:10px 0 0 18px;font-size:13px;color:var(--grey);line-height:1.7">
         ${d.recuperation.consignes.map(c=>`<li>${escHtml(c)}</li>`).join('')}
       </ul>
-    </div>` : '';
+    </div>
+    ${recupEarlyPickerShown ? `
+    <div class="card" id="card-early-recup" style="margin-top:-4px">
+      <p style="font-size:13px;font-weight:600;color:var(--black2);margin-bottom:10px">Avancer la récupération</p>
+      <p style="font-size:12.5px;color:var(--grey);margin-bottom:12px;line-height:1.5">Vous devez libérer le logement avant la date prévue ? Choisissez une date antérieure — le créneau horaire reste inchangé.</p>
+      <div id="early-recup-alert" class="hidden" style="margin-bottom:10px"></div>
+      <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:10px;background:#fff;outline:none"/>
+      <button class="btn-submit" id="early-recup-btn" onclick="submitEarlyRecup()">Confirmer la nouvelle date</button>
+    </div>` : ''}` : '';
 
   const docLabels = {contrat:'Contrat de location', facture:'Facture', facture_vente:'Facture vente'};
   let docsHtml = (d.documents||[]).map(doc => `
@@ -405,6 +416,30 @@ function renderDashboard(d){
 
 function toggleAide(i){
   document.getElementById('aide-'+i).classList.toggle('open');
+}
+
+async function submitEarlyRecup(){
+  const dateEl = document.getElementById('early-recup-date');
+  const btn = document.getElementById('early-recup-btn');
+  const alertEl = document.getElementById('early-recup-alert');
+  if(!dateEl || !btn || !alertEl) return;
+  const date = dateEl.value;
+  if(!date){ alertEl.className='alert-error'; alertEl.textContent='Veuillez sélectionner une date.'; alertEl.classList.remove('hidden'); return; }
+  alertEl.className='hidden'; alertEl.textContent='';
+  btn.disabled=true; btn.textContent='Envoi…';
+  try{
+    await apiClient('/api/client-recup', { action:'request_early_recup', date });
+    alertEl.className='alert-success';
+    alertEl.textContent='Votre demande a été prise en compte. Vous allez recevoir un SMS de confirmation.';
+    alertEl.classList.remove('hidden');
+    btn.disabled=true; btn.textContent='Demande envoyée';
+    dateEl.disabled=true;
+  }catch(err){
+    alertEl.className='alert-error';
+    alertEl.textContent=err.message||'Erreur. Veuillez réessayer.';
+    alertEl.classList.remove('hidden');
+    btn.disabled=false; btn.textContent='Confirmer la nouvelle date';
+  }
 }
 
 // ── Offre Privilège : achat du climatiseur en cours (Stripe Elements, même
