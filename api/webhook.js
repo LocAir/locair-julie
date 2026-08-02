@@ -5,6 +5,7 @@ const { sendBrevoEmail, sendBrevoSms } = require('./_lib/brevo');
 const { pushToAdmin } = require('./_lib/push');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { recordMouvement } = require('./_lib/stockMouvements');
+const { releaseAppareilFromReservation } = require('./_lib/appareilSync');
 const { generateAndSendDocuments, generateAndSendDocumentsAfterProlongation, generateAndSendFactureVente } = require('./_lib/documents');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { sendScenarioEmail, getSignature, withSignature } = require('./_lib/emailEngine');
@@ -224,10 +225,50 @@ async function handleChargeRefunded(supabase, charge) {
   // repassait à tort le climatiseur "maintenance" et envoyait un transporteur
   // le récupérer chez un client qui a pourtant le droit de le garder.
   const remboursementTotal = charge.amount > 0 && charge.amount_refunded >= charge.amount;
+  // Un remboursement total ne déclenchait jusqu'ici que le changement de
+  // statut — contrairement à une annulation admin (admin-reservations.js),
+  // rien n'annulait la mission du transporteur ni ne libérait le climatiseur
+  // au stock. Un transporteur pouvait donc encore livrer/récupérer pour une
+  // réservation déjà remboursée, et l'appareil restait marqué "loué" pour
+  // rien (audit automatisations, 2026-08-02).
+  let livraisonDejaEffectuee = false;
   if (resa) {
     // Marquer remboursée seulement si le remboursement couvre la totalité du paiement
     if (remboursementTotal) {
       await supabase.from('reservations').update({ statut: 'remboursee' }).eq('id', resa.id).eq('statut', 'confirmee');
+
+      const { data: missions } = await supabase
+        .from('livraisons').select('id, type, statut, transporteur_id')
+        .eq('reservation_id', resa.id)
+        .not('statut', 'in', '(annule,annulee)');
+      livraisonDejaEffectuee = (missions || []).some(m => m.type === 'livraison' && m.statut === 'fait');
+
+      if (!livraisonDejaEffectuee) {
+        // Le climatiseur n'a jamais quitté le stock : mêmes effets qu'une
+        // annulation classique (voir admin-reservations.js, patch.statut===
+        // 'annulee') — annuler les missions encore actives, prévenir le
+        // transporteur déjà assigné, libérer l'appareil.
+        const aAnnuler = (missions || []).filter(m => m.statut !== 'fait');
+        if (aAnnuler.length) {
+          await supabase.from('livraisons').update({ statut: 'annule' }).in('id', aAnnuler.map(m => m.id));
+          const transpIds = [...new Set(aAnnuler.map(m => m.transporteur_id).filter(Boolean))];
+          for (const tid of transpIds) {
+            await notifyTransporteur(supabase, tid, {
+              type: 'annulation', message: 'Une mission a été annulée — la réservation a été remboursée.', tag: 'annulation',
+            });
+          }
+        }
+        const { data: liens } = await supabase.from('reservation_appareils').select('appareil_id').eq('reservation_id', resa.id);
+        for (const l of (liens || [])) {
+          await releaseAppareilFromReservation(supabase, {
+            appareilId: l.appareil_id, reservationId: resa.id, cityId: resa.city_id, motif: 'réservation remboursée',
+          });
+        }
+      }
+      // Sinon (livraison déjà faite) : le climatiseur est physiquement chez le
+      // client — on ne touche pas à sa mission de récupération existante,
+      // qui doit avoir lieu normalement. L'admin est alertée ci-dessous pour
+      // vérifier elle-même, comme pour un remboursement Offre Privilège.
     }
   } else if (remboursementTotal && await handleOffrePrivilegeRefunded(supabase, piId, charge.amount_refunded || 0)) {
     return; // remboursement Offre Privilège déjà tracé + notifié ci-dessus
@@ -240,8 +281,8 @@ async function handleChargeRefunded(supabase, charge) {
   });
   await pushToAdmin(supabase, {
     title: 'Remboursement Stripe',
-    body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant}`.trim(),
-    tag:   'remboursement',
+    body:  `${resa ? resa.ref + ' — ' : ''}${resa?.prenom || ''} ${resa?.nom || ''} — ${montant}${resa && remboursementTotal && livraisonDejaEffectuee ? ' — le climatiseur est chez le client, vérifie la mission de récupération.' : ''}`.trim(),
+    tag:   `remboursement-${resa?.id || piId}`,
   });
 }
 
