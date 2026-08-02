@@ -235,7 +235,7 @@ async function computePrevisions(supabase, cities) {
   const flottes = await Promise.all(cities.map(async city => {
     const { count } = await supabase
       .from('appareils').select('id', { count: 'exact', head: true })
-      .eq('city_id', city.id).not('statut', 'in', '(panne,maintenance)');
+      .eq('city_id', city.id).not('statut', 'in', '(panne,maintenance,vendu)');
     return count || 0;
   }));
   const flotteTotale = flottes.reduce((s, n) => s + n, 0);

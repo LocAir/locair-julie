@@ -263,11 +263,9 @@ async function sendConfirmationCommunications(supabase, resa) {
 
   try {
     if (resa.tel) {
-      const { data: smsDejaEnvoye } = await supabase
-        .from('email_log').select('id')
-        .eq('reservation_id', resa.id).eq('scenario', 'sms_confirmation').eq('statut', 'envoye')
-        .maybeSingle();
-      if (!smsDejaEnvoye) {
+      const { error: smsLockErr } = await supabase.from('email_sent')
+        .insert({ reservation_id: resa.id, scenario: 'sms_confirmation', sent_at: new Date().toISOString() });
+      if (!smsLockErr) {
         const lang = resa.lang || 'fr';
         const d = resa.date_debut ? new Date(String(resa.date_debut).slice(0, 10) + 'T12:00:00Z') : null;
         let smsConfirmationContent;
@@ -286,6 +284,10 @@ async function sendConfirmationCommunications(supabase, resa) {
           smsConfirmationContent = `Loc'Air - Votre réservation est confirmée.${dateStr ? ' Livraison prévue le ' + dateStr : ''}${resa.creneau ? ', créneau ' + resa.creneau : ''} Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
         }
         const smsResult = await sendBrevoSms({ to: resa.tel, content: smsConfirmationContent });
+        if (!smsResult.ok) {
+          await supabase.from('email_sent').delete()
+            .eq('reservation_id', resa.id).eq('scenario', 'sms_confirmation').then(() => {}, () => {});
+        }
         await supabase.from('email_log').insert({
           reservation_id: resa.id, scenario: 'sms_confirmation', canal: 'sms',
           destinataire: resa.tel, modele: 'sms_confirmation',
@@ -293,7 +295,7 @@ async function sendConfirmationCommunications(supabase, resa) {
           erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
           contenu: smsConfirmationContent,
         }).then(() => {}, () => {});
-      } // end if (!smsDejaEnvoye)
+      } // end if (!smsLockErr)
     }
   } catch (e) {
     console.error('[SMS confirmation]', e.message);
@@ -363,10 +365,9 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
   // Idempotence sur son propre scénario (indépendante de l'email ci-dessus,
   // canal séparé) : jamais renvoyé deux fois pour la même réservation.
   if (tel && reservationId) {
-    const { count: smsAlreadySent } = await supabase
-      .from('email_log').select('id', { count: 'exact', head: true })
-      .eq('reservation_id', reservationId).eq('scenario', 'sms_prolongation').eq('statut', 'envoye');
-    if (!smsAlreadySent) {
+    const { error: smsLockErr } = await supabase.from('email_sent')
+      .insert({ reservation_id: reservationId, scenario: 'sms_prolongation', sent_at: new Date().toISOString() });
+    if (!smsLockErr) {
       let smsProlongContent;
       if (lang === 'en') {
         smsProlongContent = `Loc'Air - Your ${jNum}-day extension is confirmed. Collection scheduled on ${dateRecuperation || '—'}${creneau ? ', time slot ' + creneau : ''}. Our technician will text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
@@ -378,6 +379,10 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
         smsProlongContent = `Loc'Air - Votre prolongation de ${jNum} jour${jNum > 1 ? 's' : ''} est confirmée. Récupération prévue le ${dateRecuperation || '—'}${creneau ? ', créneau ' + creneau : ''}. Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
       }
       const smsResult = await sendBrevoSms({ to: tel, content: smsProlongContent });
+      if (!smsResult.ok) {
+        await supabase.from('email_sent').delete()
+          .eq('reservation_id', reservationId).eq('scenario', 'sms_prolongation').then(() => {}, () => {});
+      }
       await supabase.from('email_log').insert({
         reservation_id: reservationId, scenario: 'sms_prolongation', canal: 'sms',
         destinataire: tel, modele: 'sms_prolongation',
@@ -539,7 +544,9 @@ async function confirmReservation(supabase, resa) {
       // récupération obsolète active au calendrier.
       .ilike('email', resa.email)
       .eq('date_fin', resa.date_debut)
-      .neq('id', resa.id);
+      .in('statut', ['confirmee', 'terminee'])
+      .neq('id', resa.id)
+      .order('created_at', { ascending: false });
     if (stale && stale.length) {
       staleOriginalId = stale[0].id;
       // Récupère les transporteurs déjà assignés avant d'annuler, pour pouvoir

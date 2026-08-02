@@ -130,6 +130,7 @@ module.exports = async (req, res) => {
     weekday: 'long', day: 'numeric', month: 'long',
   });
 
+  let intentId = null;
   try {
     let customerId = orig.stripe_customer_id || '';
     if (!customerId) {
@@ -161,7 +162,8 @@ module.exports = async (req, res) => {
         customer_id:       customerId,
         lang:              ['fr','en','zh','ru'].includes(req.body.lang) ? req.body.lang : 'fr',
       },
-    });
+    }, { idempotencyKey: `prolong-pay-${orig.id}-${new_date_fin}` });
+    intentId = intent.id;
 
     const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  orig.city_id,
@@ -220,7 +222,7 @@ module.exports = async (req, res) => {
         reservation_id: insertedResa.id,
         type:           ACCEPTANCE_TYPES.CGV_LOCATION,
         version:        CGV_VERSION,
-        accepted_at:    req.body.cgv_accepted_at || new Date().toISOString(),
+        accepted_at:    new Date().toISOString(),
       });
     } catch (e) {
       console.error('[CGV acceptations prolong-pay]', e.message);
@@ -234,6 +236,7 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error('[prolong-pay stripe]', err.message);
+    if (intentId) await stripe.paymentIntents.cancel(intentId).catch(() => {});
     await recordFailedAttempt(supabaseRL, `prolong-pay:${ip}`).catch(() => {});
     return res.status(500).json({ error: 'Erreur serveur paiement' });
   }

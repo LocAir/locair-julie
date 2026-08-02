@@ -13,11 +13,6 @@ async function recordMouvement(supabase, {
   // change pas, seule la localisation bouge.
   const statutFinal = nouveauStatut || avant?.statut || null;
 
-  const { error: updErr } = await supabase.from('appareils').update({
-    statut: statutFinal, localisation: nouvelleLocalisation,
-  }).eq('id', appareilId);
-  if (updErr) throw updErr;
-
   const { error: insErr } = await supabase.from('appareil_mouvements').insert({
     appareil_id: appareilId, type_evenement: typeEvenement,
     ancien_statut: avant?.statut || null, nouveau_statut: statutFinal,
@@ -26,6 +21,11 @@ async function recordMouvement(supabase, {
     utilisateur, commentaire, cout_cents: coutCents,
   });
   if (insErr) throw insErr;
+
+  const { error: updErr } = await supabase.from('appareils').update({
+    statut: statutFinal, localisation: nouvelleLocalisation,
+  }).eq('id', appareilId);
+  if (updErr) throw updErr;
 }
 
 // Localisation par défaut associée à un statut donné — utile quand seul le

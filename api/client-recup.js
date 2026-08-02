@@ -35,10 +35,14 @@ module.exports = async (req, res) => {
   }
 
   try {
+    const { data: prolongations } = await supabase
+      .from('reservations').select('id').eq('reservation_origine_id', reservationId);
+    const allResaIds = [reservationId, ...(prolongations || []).map(p => p.id)];
+
     const { data: liv, error: livErr } = await supabase
       .from('livraisons')
       .select('id, date_prevue, statut, transporteur_id')
-      .eq('reservation_id', reservationId)
+      .in('reservation_id', allResaIds)
       .eq('type', 'recuperation')
       .not('statut', 'in', '(annulee,annule,refusee,fait)')
       .maybeSingle();
@@ -55,9 +59,11 @@ module.exports = async (req, res) => {
 
     // Met à jour date ET créneau — les espaces admin et transporteur lisent
     // directement ces colonnes via jointure, donc synchronisés automatiquement.
+    const updateFields = { date_prevue: newDate, creneau };
+    if (liv.statut === 'acceptee') updateFields.statut = 'a_faire';
     const { error: updateErr } = await supabase
       .from('livraisons')
-      .update({ date_prevue: newDate, creneau })
+      .update(updateFields)
       .eq('id', liv.id);
     if (updateErr) throw updateErr;
 
@@ -112,7 +118,7 @@ module.exports = async (req, res) => {
     // J-1 et la demande d'avis Google à nouveau sur la nouvelle date.
     await supabase.from('email_log')
       .delete()
-      .eq('reservation_id', reservationId)
+      .in('reservation_id', allResaIds)
       .in('scenario', ['sms_rappel_recuperation', 'sms_avis_google'])
       .then(() => {}, e => console.error('[client-recup reset SMS idempotence]', e.message));
 

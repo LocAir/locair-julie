@@ -39,7 +39,7 @@ self.addEventListener('notificationclick', (event) => {
           // ouvert (cas courant en journée) se contentait de repasser au
           // premier plan sans y naviguer, laissant le livreur chercher
           // lui-même la mission dans la liste.
-          if ('navigate' in c) return c.navigate(url).then((nc) => nc.focus());
+          if ('navigate' in c) return c.navigate(url).then((nc) => nc ? nc.focus() : clients.openWindow(url)).catch(() => {});
           return c.focus();
         }
       }

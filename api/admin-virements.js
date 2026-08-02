@@ -218,8 +218,11 @@ module.exports = async (req, res) => {
       const ids = (faites || []).map(f => f.id);
 
       if (ids.length) {
-        const { error: payErr } = await supabase.from('livraisons').update({ paye: true }).in('id', ids);
+        const { data: updated, error: payErr } = await supabase.from('livraisons').update({ paye: true }).in('id', ids).eq('paye', false).select('id');
         if (payErr) throw payErr;
+        if ((updated || []).length !== ids.length) {
+          return res.status(409).json({ error: 'Ce virement vient d\'être traité (double clic ?) — vérifie l\'historique avant de réessayer.' });
+        }
       }
       const { error: virErr } = await supabase.from('virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', id);
       if (virErr) throw virErr;

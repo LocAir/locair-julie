@@ -165,8 +165,9 @@ module.exports = async (req, res) => {
       if (liv.statut !== 'acceptee') return res.status(409).json({ error: 'Mission pas encore acceptée' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
-      const { error: commencerErr } = await supabase.from('livraisons').update({ statut: 'en_route', depart_at: new Date().toISOString() }).eq('id', liv.id);
+      const { data: commencerClaimed, error: commencerErr } = await supabase.from('livraisons').update({ statut: 'en_route', depart_at: new Date().toISOString() }).eq('id', liv.id).eq('statut', 'acceptee').select('id');
       if (commencerErr) throw commencerErr;
+      if (!commencerClaimed || !commencerClaimed.length) return res.status(409).json({ error: 'Mission déjà démarrée (double envoi ?)' });
       await pushToAdmin(supabase, {
         title: '🚚 Transporteur en route',
         body:  `${liv.reservation?.adresse || 'Une mission'} — le transporteur vient de partir.`,
@@ -207,27 +208,19 @@ module.exports = async (req, res) => {
       if (![...EN_COURS_STATUTS, 'probleme'].includes(liv.statut)) {
         return res.status(409).json({ error: 'Cette mission n\'est pas en cours' });
       }
+      const { data: reporterClaimed, error: reporterErr } = await supabase.from('livraisons').update({
+        statut: 'a_faire', accepted_at: null, depart_at: null, arrivee_at: null,
+        probleme_type: null, probleme_description: null, probleme_at: null,
+      }).eq('id', liv.id).not('statut', 'in', '(a_faire,fait,annule)').select('id');
+      if (reporterErr) throw reporterErr;
+      if (!reporterClaimed || !reporterClaimed.length) return res.status(409).json({ error: 'Cette mission n\'est pas en cours' });
       if (liv.type === 'livraison' && ['en_route', 'arrivee', 'probleme'].includes(liv.statut)) {
         const { data: t } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
-        // 'stock_principal' : seule valeur "dépôt" acceptée par la contrainte
-        // CHECK sur appareils.localisation — 'entrepot' n'existe pas et
-        // faisait échouer silencieusement la mise à jour (catch plus bas),
-        // laissant l'appareil marqué à tort "dans le véhicule" après un
-        // report de mission.
         await moveAppareilsForReservation(supabase, liv.reservation_id, 'stock_principal', {
           typeEvenement: 'autre', livraisonId: liv.id, utilisateur: t?.nom || null,
           commentaire: 'Mission reportée — appareil remis au dépôt',
         }).catch(e => console.error('[Reporter stock rollback]', e.message));
       }
-      const { error: reporterErr } = await supabase.from('livraisons').update({
-        statut: 'a_faire', accepted_at: null, depart_at: null, arrivee_at: null,
-        probleme_type: null, probleme_description: null, probleme_at: null,
-      }).eq('id', liv.id);
-      if (reporterErr) throw reporterErr;
-      // Rendre une mission déjà acceptée (voire en route/arrivée) ne
-      // remontait jusqu'ici jamais à Aly — un signal utile pourtant ("il a du
-      // mal aujourd'hui"), surtout si ça se reproduit plusieurs fois avec le
-      // même transporteur le même jour (audit automatisations, 2026-08-02).
       const { data: tRep } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
       await pushToAdmin(supabase, {
         title: 'Mission remise "à faire"',

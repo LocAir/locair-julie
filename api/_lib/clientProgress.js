@@ -57,7 +57,8 @@ function computeClientProgress(reservation, livraisons = [], incidentOuvert = fa
     return { stage: 0, stageLabel: 'Paiement en attente', banner: null, nextStep: NEXT_STEP_MESSAGE.paiement_en_attente, internal };
   }
 
-  const stage = INTERNAL_TO_STAGE[internal] || 1;
+  if (!(internal in INTERNAL_TO_STAGE)) { console.error('[clientProgress] statut inconnu:', internal); }
+  const stage = INTERNAL_TO_STAGE[internal] ?? 1;
   return { stage, stageLabel: STAGE_LABELS[stage], banner: null, nextStep: NEXT_STEP_MESSAGE[internal], internal };
 }
 

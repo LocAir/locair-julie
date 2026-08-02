@@ -395,7 +395,7 @@ function renderDashboard(d){
 
   // Récupération
   const todayIso = new Date().toISOString().slice(0,10);
-  const recupEarlyPickerShown = d.recuperation && d.recuperation.statut !== 'fait' && d.recuperation.date_prevue > todayIso;
+  const recupEarlyPickerShown = d.recuperation && !['fait','en_route','arrivee'].includes(d.recuperation.statut) && d.recuperation.date_prevue > todayIso;
   const recupMaxDate = recupEarlyPickerShown ? (()=>{const dt=new Date(d.recuperation.date_prevue+'T12:00:00Z');dt.setUTCDate(dt.getUTCDate()-1);return dt.toISOString().slice(0,10);})() : '';
 
   const recupHtml = d.recuperation ? `
@@ -417,7 +417,7 @@ function renderDashboard(d){
     ` : '';
 
   // ── Actions accordion (Prolongation + Récupération anticipée) ──
-  const _showProlong = !(d.progress && d.progress.banner);
+  const _showProlong = !(d.progress?.banner) && d.progress?.stage > 0 && d.progress?.stage < 7;
   const actionsHtml = (_showProlong || recupEarlyPickerShown) ? `<div class="action-card">
     ${_showProlong ? `<button class="action-toggle" onclick="toggleAction('prolong')">
       <div class="action-toggle-left">
@@ -725,6 +725,7 @@ async function submitEarlyRecup(){
       recupCreneauDisplay.style.display = '';
     }
   }catch(err){
+    if(err.message === 'Non autorisé'){ logout(); return; }
     alertEl.className='alert-error';
     alertEl.textContent=err.message||'Erreur. Veuillez réessayer.';
     alertEl.classList.remove('hidden');

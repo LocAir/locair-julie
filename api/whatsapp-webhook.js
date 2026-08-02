@@ -194,8 +194,9 @@ async function sendReply(to, body) {
 }
 
 const crypto = require('crypto');
+const { getSupabase } = require('./_lib/supabase');
 
-module.exports = async (req, res) => {
+const handler = async (req, res) => {
   if (req.method === 'GET') {
     const { 'hub.mode': mode, 'hub.verify_token': token, 'hub.challenge': challenge } = req.query;
     if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
@@ -206,19 +207,27 @@ module.exports = async (req, res) => {
 
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
 
+  const rawBody = await new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end',  () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+
   const appSecret = process.env.WHATSAPP_APP_SECRET;
   if (!appSecret) return res.status(403).send('Forbidden');
   const sig = req.headers['x-hub-signature-256'];
   if (!sig) return res.status(403).send('Forbidden');
-  const rawBody = req.rawBody || (typeof req.body === 'string' ? req.body : JSON.stringify(req.body));
   const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
   try {
     if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return res.status(403).send('Forbidden');
   } catch { return res.status(403).send('Forbidden'); }
 
   try {
-    const payload = req.body;
+    const payload = JSON.parse(rawBody.toString());
     if (payload?.object !== 'whatsapp_business_account') return res.status(200).send('OK');
+
+    const supabase = getSupabase();
 
     for (const entry of payload?.entry || []) {
       for (const change of entry?.changes || []) {
@@ -229,6 +238,11 @@ module.exports = async (req, res) => {
           const from = msg.from;
 
           if (!hasKeyword(text)) continue;
+
+          const { error: insertError } = await supabase
+            .from('whatsapp_messages_vus')
+            .insert({ msg_id: msg.id });
+          if (insertError) continue;
 
           const lang = detectLang(text);
           await sendReply(from, REPLY[lang] || REPLY.fr);
@@ -242,3 +256,6 @@ module.exports = async (req, res) => {
     return res.status(200).send('OK');
   }
 };
+
+handler.config = { api: { bodyParser: false } };
+module.exports = handler;

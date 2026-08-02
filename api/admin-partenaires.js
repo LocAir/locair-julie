@@ -69,8 +69,18 @@ module.exports = async (req, res) => {
       const { data, error } = await supabase.from('partenaires').select('*').order('nom');
       if (error) throw error;
       return res.status(200).json({
-        partenaires: (data || []).map(p => { const { pin: _pin, iban: _iban, ...safeP } = p; return safeP; }),
+        partenaires: (data || []).map(p => { const { pin: _pin, iban: _iban, bic: _bic, titulaire_compte: _tc, ...safeP } = p; return safeP; }),
       });
+    }
+
+    if (action === 'detail') {
+      if (!roleHasAccess(admin.role, 'finances')) return res.status(403).json({ error: "Ton compte n'a pas accès aux coordonnées bancaires." });
+      const id = parseInt(body.id);
+      if (!id) return res.status(400).json({ error: 'id manquant' });
+      const { data, error } = await supabase.from('partenaires').select('id, nom, titulaire_compte, iban, bic').eq('id', id).maybeSingle();
+      if (error) throw error;
+      if (!data) return res.status(404).json({ error: 'Partenaire introuvable' });
+      return res.status(200).json({ partenaire: data });
     }
 
     if (action === 'create') {

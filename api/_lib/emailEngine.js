@@ -177,15 +177,20 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
     }).then(() => {}, () => {});
     return { sent: true };
   } catch (e) {
-    // Supprimer le verrou pour permettre une relance ultérieure
-    if (!force) {
-      await supabase.from('email_sent').delete()
-        .eq('reservation_id', reservationId).eq('scenario', scenario).then(() => {}, () => {});
-    }
     await supabase.from('email_log').insert({
       reservation_id: reservationId, scenario, destinataire: reservation.email, modele: scenario,
       statut: 'erreur', erreur: String(e.message || e).slice(0, 500), contenu: html,
     });
+    if (!force) {
+      const MAX_TENTATIVES = 5;
+      const { count } = await supabase.from('email_log')
+        .select('*', { count: 'exact', head: true })
+        .eq('reservation_id', reservationId).eq('scenario', scenario).eq('statut', 'erreur');
+      if ((count || 0) < MAX_TENTATIVES) {
+        await supabase.from('email_sent').delete()
+          .eq('reservation_id', reservationId).eq('scenario', scenario).then(() => {}, () => {});
+      }
+    }
     return { sent: false, reason: 'error', error: e.message };
   }
 }

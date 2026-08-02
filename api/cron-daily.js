@@ -788,14 +788,17 @@ module.exports = async (req, res) => {
     // prolongation qui la remplace réellement.
     const peersByKey = {};
     for (const r of candidats || []) {
-      const key = `${r.city_id}:${String(r.email || '').toLowerCase()}`;
+      if (!r.email) continue;
+      const key = `${r.city_id}:${r.email.toLowerCase()}`;
       (peersByKey[key] = peersByKey[key] || []).push(r);
     }
 
     let emailsEnvoyes = 0;
     let smsRappelRecuperation = 0;
     for (const resa of candidats || []) {
-      const peers = peersByKey[`${resa.city_id}:${String(resa.email || '').toLowerCase()}`];
+      const peers = resa.email
+        ? peersByKey[`${resa.city_id}:${resa.email.toLowerCase()}`]
+        : [resa];
       if (isSupersededReservation(resa, peers)) continue;
       const scenariosDus = scenariosDueToday(resa, todayStr);
       for (const scenario of scenariosDus) {

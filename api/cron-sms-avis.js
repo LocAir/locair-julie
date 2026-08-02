@@ -25,7 +25,7 @@ module.exports = async (req, res) => {
   if (!verifyCronAuth(req)) return res.status(401).json({ error: 'Non autorisé' });
 
   const supabase = getSupabase();
-  const today = new Date().toISOString().slice(0, 10);
+  const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
 
   let sentAvis = 0;
   try {
@@ -34,19 +34,12 @@ module.exports = async (req, res) => {
       .select('id, reservation_id, reservation:reservations(prenom, tel, lang)')
       .eq('type', 'recuperation')
       .eq('statut', 'fait')
-      .gte('fait_at', today + 'T00:00:00.000Z')
-      .lt('fait_at', today + 'T23:59:59.999Z');
+      .gte('fait_at', since);
     if (recupsErr) throw recupsErr;
 
     for (const liv of recups || []) {
       const resa = liv.reservation;
       if (!resa?.tel) continue;
-
-      const { data: dejaEnvoye, error: idempErr } = await supabase.from('email_log')
-        .select('id').eq('reservation_id', liv.reservation_id)
-        .eq('scenario', 'sms_avis_google').eq('statut', 'envoye').maybeSingle();
-      if (idempErr) { console.error('[cron-sms-avis] Erreur idempotence:', idempErr.message); continue; }
-      if (dejaEnvoye) continue;
 
       const lang = resa.lang || 'fr';
       let content;
@@ -60,16 +53,30 @@ module.exports = async (req, res) => {
         content = `Loc'Air — Merci ${resa.prenom || ''} ! Aidez-nous à gagner la confiance des futurs clients : partagez votre expérience en 1 clic : g.page/r/CeJQrt2gLNNrEAE/review`;
       }
 
+      const { error: lockErr } = await supabase.from('email_sent')
+        .insert({ reservation_id: liv.reservation_id, scenario: 'sms_avis_google', sent_at: new Date().toISOString() });
+      if (lockErr) continue;
+
       const result = await sendBrevoSms({ to: resa.tel, content });
+
+      if (!result.ok) {
+        await supabase.from('email_sent').delete()
+          .eq('reservation_id', liv.reservation_id).eq('scenario', 'sms_avis_google').then(() => {}, () => {});
+        await supabase.from('email_log').insert({
+          reservation_id: liv.reservation_id, scenario: 'sms_avis_google', canal: 'sms',
+          destinataire: resa.tel, modele: 'sms_avis_google',
+          statut: 'erreur', erreur: String(result.error || '').slice(0, 500), contenu: content,
+        }).then(() => {}, () => {});
+        continue;
+      }
+
       await supabase.from('email_log').insert({
         reservation_id: liv.reservation_id, scenario: 'sms_avis_google', canal: 'sms',
         destinataire: resa.tel, modele: 'sms_avis_google',
-        statut: result.ok ? 'envoye' : 'erreur',
-        erreur: result.ok ? null : String(result.error || '').slice(0, 500),
-        contenu: content,
+        statut: 'envoye', erreur: null, contenu: content,
       }).then(() => {}, () => {});
 
-      if (result.ok) sentAvis++;
+      sentAvis++;
     }
   } catch (e) {
     console.error('[cron-sms-avis] Erreur Supabase requête principale:', e.message);
