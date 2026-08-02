@@ -307,10 +307,15 @@ function renderDashboard(d){
     ${recupEarlyPickerShown ? `
     <div class="card" id="card-early-recup" style="margin-top:-4px">
       <p style="font-size:13px;font-weight:600;color:var(--black2);margin-bottom:10px">Avancer la récupération</p>
-      <p style="font-size:12.5px;color:var(--grey);margin-bottom:12px;line-height:1.5">Vous souhaitez que l'appareil soit repris avant la date prévue ? Choisissez une date antérieure — le créneau horaire reste inchangé.</p>
+      <p style="font-size:12.5px;color:var(--grey);margin-bottom:12px;line-height:1.5">Vous souhaitez que l'appareil soit repris avant la date prévue ? Choisissez une nouvelle date et un créneau.</p>
       <div id="early-recup-alert" class="hidden" style="margin-bottom:10px"></div>
       <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:10px;background:#fff;outline:none"/>
-      <button class="btn-submit" id="early-recup-btn" onclick="submitEarlyRecup()">Confirmer la nouvelle date</button>
+      <p style="font-size:12px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Créneau</p>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <label id="lbl-creneau-1" onclick="selectCreneau('8h-10h')" style="flex:1;display:flex;align-items:center;justify-content:center;padding:13px;border:1.5px solid var(--rule);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;transition:border-color .15s,background .15s,color .15s">8h – 10h</label>
+        <label id="lbl-creneau-2" onclick="selectCreneau('10h-12h')" style="flex:1;display:flex;align-items:center;justify-content:center;padding:13px;border:1.5px solid var(--rule);border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;transition:border-color .15s,background .15s,color .15s">10h – 12h</label>
+      </div>
+      <button class="btn-submit" id="early-recup-btn" onclick="submitEarlyRecup()">Confirmer</button>
     </div>` : ''}` : '';
 
   const docLabels = {contrat:'Contrat de location', facture:'Facture', facture_vente:'Facture vente'};
@@ -418,27 +423,44 @@ function toggleAide(i){
   document.getElementById('aide-'+i).classList.toggle('open');
 }
 
+let _earlyRecupCreneau = '';
+function selectCreneau(val){
+  _earlyRecupCreneau = val;
+  const active = 'border-color:var(--blue);background:var(--blue-lt);color:var(--blue)';
+  const idle   = 'border-color:var(--rule);background:;color:';
+  ['1','2'].forEach(n => {
+    const lbl = document.getElementById('lbl-creneau-'+n);
+    if(!lbl) return;
+    const isActive = (n==='1' && val==='8h-10h') || (n==='2' && val==='10h-12h');
+    lbl.style.cssText = lbl.style.cssText.replace(/border-color:[^;]+;background:[^;]*;color:[^;]*/,'') +
+      (isActive ? ';border-color:var(--blue);background:var(--blue-lt);color:var(--blue)' : ';border-color:var(--rule);background:;color:');
+  });
+}
+
 async function submitEarlyRecup(){
-  const dateEl = document.getElementById('early-recup-date');
-  const btn = document.getElementById('early-recup-btn');
+  const dateEl  = document.getElementById('early-recup-date');
+  const btn     = document.getElementById('early-recup-btn');
   const alertEl = document.getElementById('early-recup-alert');
   if(!dateEl || !btn || !alertEl) return;
   const date = dateEl.value;
   if(!date){ alertEl.className='alert-error'; alertEl.textContent='Veuillez sélectionner une date.'; alertEl.classList.remove('hidden'); return; }
+  if(!_earlyRecupCreneau){ alertEl.className='alert-error'; alertEl.textContent='Veuillez choisir un créneau.'; alertEl.classList.remove('hidden'); return; }
   alertEl.className='hidden'; alertEl.textContent='';
   btn.disabled=true; btn.textContent='Envoi…';
   try{
-    await apiClient('/api/client-recup', { action:'request_early_recup', date });
+    await apiClient('/api/client-recup', { action:'request_early_recup', date, creneau: _earlyRecupCreneau });
     alertEl.className='alert-success';
     alertEl.textContent='Votre demande a été prise en compte. Vous allez recevoir un SMS de confirmation.';
     alertEl.classList.remove('hidden');
-    btn.disabled=true; btn.textContent='Demande envoyée';
+    btn.disabled=true; btn.textContent='Confirmé';
     dateEl.disabled=true;
+    document.getElementById('lbl-creneau-1').style.pointerEvents='none';
+    document.getElementById('lbl-creneau-2').style.pointerEvents='none';
   }catch(err){
     alertEl.className='alert-error';
     alertEl.textContent=err.message||'Erreur. Veuillez réessayer.';
     alertEl.classList.remove('hidden');
-    btn.disabled=false; btn.textContent='Confirmer la nouvelle date';
+    btn.disabled=false; btn.textContent='Confirmer';
   }
 }
 
