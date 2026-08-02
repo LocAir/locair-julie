@@ -727,7 +727,7 @@ function renderSearchResults(d, q){
 }
 function searchRowHtml(type, it){
   if(type==='commandes') return `<div class="a-search-row" onclick="goToSearchResult('commandes', ${it.id}, ${it.city_id}, null, '${escHtml((it.ref||'').replace(/'/g,"\\'"))}')">
-    <span><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${escHtml(it.ref)} · ${frDate(it.date_debut)} → ${frDate(it.date_fin)}</span></span>
+    <span><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${isInternalRef(it.ref)?'':escHtml(it.ref)+' · '}${frDate(it.date_debut)} → ${frDate(it.date_fin)}</span></span>
     <span class="chip ${it.statut}">${(typeof RESA_LABEL!=='undefined'&&RESA_LABEL[it.statut])||it.statut}</span></div>`;
   if(type==='clients') return `<div class="a-search-row" onclick="goToSearchResult('clients', ${it.id}, ${it.city_id})">
     <span><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${escHtml(it.tel||it.email||'')}</span></span></div>`;
@@ -2666,7 +2666,7 @@ async function voirFicheAppareil(id, numero){
     const reservationsHtml = (d.reservations||[]).slice(0,10).map(r => `
       <div class="row-item" style="padding:8px 10px">
         <div class="row-top"><span class="row-title" style="font-size:12.5px">${escHtml((r.prenom||'')+' '+(r.nom||''))}</span><span class="chip ${r.statut}">${RESA_LABEL[r.statut]||r.statut}</span></div>
-        <div class="row-meta">${frDate(r.date_debut)} → ${frDate(r.date_fin)}${r.ref?' · '+escHtml(r.ref):''}</div>
+        <div class="row-meta">${frDate(r.date_debut)} → ${frDate(r.date_fin)}${(r.ref && !isInternalRef(r.ref))?' · '+escHtml(r.ref):''}</div>
       </div>`).join('') || '<p class="empty">Aucune réservation.</p>';
 
     const missionsHtml = (d.missions||[]).slice(0,10).map(m => `
@@ -6006,8 +6006,12 @@ async function loadPartenairesEquipe(){
     if(!r.ok) throw new Error(d.error||'Erreur');
     PARTENAIRES_CACHE = d.partenaires || [];
 
-    const list = PARTENAIRES_CACHE.map(p => `
-      <div class="row-item">
+    // Actifs d'abord — même logique que l'onglet Transporteurs (Équipe) :
+    // un ambassadeur désactivé se noyait sinon au milieu de ceux encore
+    // apporteurs d'affaires.
+    const partenairesTries = [...PARTENAIRES_CACHE].sort((a,b) => (a.actif===b.actif) ? 0 : (a.actif ? -1 : 1));
+    const list = partenairesTries.map(p => `
+      <div class="row-item" style="${p.actif?'':'opacity:.6'}">
         <div class="row-top">
           <span class="row-title">${escHtml(p.nom)}</span>
           <span class="chip ${p.actif?'actif':'inactif'}">${p.actif?'actif':'inactif'}</span>
@@ -6186,7 +6190,7 @@ function partenaireRevenusCardHtml(p){
   const resasHtml = p.reservations.length ? p.reservations.map(r => `
     <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
       <div class="row-top">
-        <span class="row-title" style="font-size:13px">${escHtml(r.client||'—')}${r.ref?' · '+escHtml(r.ref):''}</span>
+        <span class="row-title" style="font-size:13px">${escHtml(r.client||'—')}${(r.ref && !isInternalRef(r.ref))?' · '+escHtml(r.ref):''}</span>
         <span class="chip ${r.payee?'actif':'en_attente'}">${r.payee?'Versé':'À verser'}</span>
       </div>
       <div class="row-meta">${r.created_at?frDate(r.created_at.slice(0,10)):'—'} · ${euros(r.montant_cents)} réservés → ${euros(r.commission_cents)} de commission</div>
@@ -6209,7 +6213,7 @@ function partenaireRevenusCardHtml(p){
       <div style="margin-top:8px;font-weight:400">
         ${p.litiges.map(l => `
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(0,0,0,.08)">
-            <span>${escHtml(l.client||'—')}${l.ref?' · '+escHtml(l.ref):''} · ${euros(l.commission_cents)}</span>
+            <span>${escHtml(l.client||'—')}${(l.ref && !isInternalRef(l.ref))?' · '+escHtml(l.ref):''} · ${euros(l.commission_cents)}</span>
             <button class="btn btn-grey" style="padding:3px 10px;font-size:11px;width:auto;min-height:auto" onclick="resoudreLitige(${l.id}, this)">Marquer réglé</button>
           </div>`).join('')}
       </div>
@@ -7364,7 +7368,7 @@ function renderClientCommunications(d){
             <span class="row-title">📧 ${escHtml(u.libelle)}</span>
             ${statutChip}
           </div>
-          <div class="row-meta">${frDate(u.date)}${u.ref?' · '+escHtml(u.ref):''}</div>
+          <div class="row-meta">${frDate(u.date)}${(u.ref && !isInternalRef(u.ref))?' · '+escHtml(u.ref):''}</div>
           ${actionsHtml}
         </div>`;
       }).join('')
@@ -7377,7 +7381,7 @@ function renderClientCommunications(d){
           <span class="row-title">${CANAL_ICON[e.canal]||'📧'} ${escHtml(e.libelle)}</span>
           <span class="chip ${e.statut==='envoye'?'fait':'probleme'}">${e.statut==='envoye'?'Envoyé':'Erreur'}</span>
         </div>
-        <div class="row-meta">${new Date(e.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${e.ref?' · '+escHtml(e.ref):''}${e.erreur?' · '+escHtml(e.erreur):''}</div>
+        <div class="row-meta">${new Date(e.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${(e.ref && !isInternalRef(e.ref))?' · '+escHtml(e.ref):''}${e.erreur?' · '+escHtml(e.erreur):''}</div>
         <div class="row-actions">
           <button class="btn btn-grey" onclick="viewCommunicationContent(${e.id},this)">👁️ Aperçu</button>
           ${e.reservation_id?`<button class="btn btn-blue" onclick="sendClientEmailNow(${e.reservation_id},'${e.scenario}',this)">✉️ Renvoyer</button>`:''}
@@ -7407,7 +7411,7 @@ function renderClientCommunications(d){
             <span class="row-title">📧 ${escHtml(u.libelle)}</span>
             ${statutChip}
           </div>
-          <div class="row-meta">${u.ref?escHtml(u.ref):''}</div>
+          <div class="row-meta">${(u.ref && !isInternalRef(u.ref))?escHtml(u.ref):''}</div>
           <div class="row-actions">${actionsHtml}</div>
         </div>`;
       }).join('')
@@ -8445,7 +8449,7 @@ function renderTutoriels(){
         return `
           <div class="card" style="opacity:.55">
             <div class="row-top">
-              <h2 style="margin:0">${cat.label}</h2>
+              <h2 style="margin:0">${escHtml(cat.label)}</h2>
               ${tutoCatMenuHtml(cat)}
             </div>
             <p class="sub">Pas encore disponible — structure prête, contenu à venir.</p>
@@ -8459,7 +8463,7 @@ function renderTutoriels(){
         return `
           <div class="card">
             <div class="row-top">
-              <h2 style="margin:0">${cat.label}</h2>
+              <h2 style="margin:0">${escHtml(cat.label)}</h2>
               ${tutoCatMenuHtml(cat)}
             </div>
             ${cat.sousTypes.map(t => {
@@ -8474,7 +8478,7 @@ function renderTutoriels(){
       return `
         <div class="card">
           <div class="row-top">
-            <h2 style="margin:0">${cat.label}</h2>
+            <h2 style="margin:0">${escHtml(cat.label)}</h2>
             ${tutoCatMenuHtml(cat)}
           </div>
           ${videos.map(tutoVideoRowHtml).join('') || '<p class="empty">Aucune vidéo pour l\'instant.</p>'}
