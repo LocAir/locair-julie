@@ -57,6 +57,7 @@ module.exports = async (req, res) => {
           ...c,
           nb_reservations:  resas.length,
           derniere_adresse: resas[0]?.adresse || null,
+          derniere_date_debut: resas[0]?.date_debut || null,
           tel_secondaire:   resas.find(r => r.tel_secondaire)?.tel_secondaire || null,
           raison_sociale:   resas.find(r => r.type_client === 'entreprise')?.raison_sociale || null,
           siret:            resas.find(r => r.type_client === 'entreprise')?.siret || null,
