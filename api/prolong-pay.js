@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
   const normalizedEmail = String(email).trim().toLowerCase();
   let q = supabase
     .from('reservations')
-    .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id')
+    .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
     .ilike('email', normalizedEmail)
     .not('source', 'eq', 'site_prolongation')
     .eq('statut', 'confirmee')
@@ -60,7 +60,7 @@ module.exports = async (req, res) => {
   if (ref && ref.trim()) {
     q = supabase
       .from('reservations')
-      .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id')
+      .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
       .ilike('email', normalizedEmail)
       .eq('ref', ref.trim().toUpperCase())
       .not('source', 'eq', 'site_prolongation')
@@ -186,6 +186,15 @@ module.exports = async (req, res) => {
       // transporteur touchait le tarif normal (au lieu du tarif hors zone)
       // pour la récupération de cette prolongation.
       hors_zone:                orig.hors_zone || false,
+      // Champs d'accès copiés depuis la réservation d'origine — nécessaires
+      // pour que le transporteur puisse accéder au logement lors de la récupération.
+      etage:                    orig.etage               || null,
+      ascenseur:                orig.ascenseur            || null,
+      fenetre:                  orig.fenetre              || null,
+      fenetre_photo_path:       orig.fenetre_photo_path   || null,
+      installation:             orig.installation         || null,
+      instructions_acces:       orig.instructions_acces   || null,
+      logement:                 orig.logement             || null,
       date_debut:               orig.date_fin,
       date_fin:                 new_date_fin,
       quantite:                 orig.quantite || 1,

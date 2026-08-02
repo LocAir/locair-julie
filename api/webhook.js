@@ -389,12 +389,17 @@ const handler = async (req, res) => {
       }).catch(e => console.error('[Formspree prolong]', e.message));
 
       // Idempotence : ne pas renvoyer l'email si déjà tracé (redélivrance Stripe)
+      // .eq('statut','envoye') indispensable : sans lui, une ligne email_log en
+      // erreur (brevo hors ligne, etc.) bloquerait définitivement le renvoi —
+      // l'email n'arriverait jamais et la MAJ date_fin de l'origine (plus bas)
+      // ne serait plus retentée non plus.
       if (confirmedResa) {
         const { data: dejaSent } = await getSupabase()
           .from('email_log')
           .select('id')
           .eq('reservation_id', confirmedResa.id)
           .eq('scenario', 'email_prolongation')
+          .eq('statut', 'envoye')
           .maybeSingle();
         if (dejaSent) return res.status(200).json({ received: true, type: 'prolongation' });
       }
