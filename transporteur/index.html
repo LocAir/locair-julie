@@ -2680,6 +2680,30 @@ function finaliserApresRecuperation(conserve){
   pending.extra.conserve_vehicule = conserve;
   doAction(pending.okAction, pending.extra);
 }
+// Rappel "ne pas pencher l'appareil pendant la vidange" (matériel HS sinon)
+// — demandé par Aly suite à un message envoyé à la main sur WhatsApp aux
+// livreurs. Affiché dès l'étape "En route" (avant même le départ, pas
+// seulement au moment de vidanger — trop tard pour y penser une fois sur
+// place) des missions récupération/changement, les deux seules à
+// comporter une vidange. Une fois par mission et par session (pas de
+// suivi côté serveur, juste un rappel visuel local) pour ne pas harceler
+// le livreur à chaque réouverture de la fiche.
+function maybeShowVidangeWarning(m){
+  if(!m || !['recuperation','changement'].includes(m.type)) return;
+  if(m.statut !== 'acceptee') return;
+  if(!STATE.vidangeWarningShownFor) STATE.vidangeWarningShownFor = new Set();
+  if(STATE.vidangeWarningShownFor.has(m.id)) return;
+  STATE.vidangeWarningShownFor.add(m.id);
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h1 style="margin-bottom:4px">⚠️ Important — vidange</h1>
+      <p class="sub" style="margin-bottom:16px">Pendant la vidange, ne penche pas l'appareil : ça peut mettre l'électronique HS. Garde-le bien à la verticale pour laisser l'eau s'écouler.</p>
+      <button class="btn btn-blue btn-block" onclick="this.closest('.overlay').remove()">J'ai compris</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
 function missionWizardHtml(m, infoRows, mapsUrl){
   const steps = missionStepDefs(m);
   const idxReal = missionStepIndex(m, steps);
@@ -2813,6 +2837,7 @@ function renderDetail(){
   // sous peine de faire apparaître le parcours étape par étape à la place
   // du message "Problème signalé".
   const canPause = ['acceptee','en_route','arrivee','probleme'].includes(m.statut);
+  if(isWizard) maybeShowVidangeWarning(m);
   const bodyHtml = isWizard
     ? missionWizardHtml(m, infoRows, mapsUrl)
     : `${renderStepper(m)}${infoRows}<div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div><div class="err" id="detail-err"></div>`;
