@@ -3,6 +3,7 @@ const { resolveAdminCity, listCities } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 const { normalizeTel } = require('./_lib/reservations');
 const { generateAndSendDocuments, generateAndSendFactureVente } = require('./_lib/documents');
+const { notifyTransporteur } = require('./_lib/transporteurNotif');
 
 // Fiche client persistante — déduplication par téléphone (voir
 // _lib/reservations.js:findOrCreateClient). acces_difficile est une note
@@ -236,6 +237,29 @@ module.exports = async (req, res) => {
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('clients').update(patch).eq('id', id).in('city_id', cityIds);
       if (error) throw error;
+
+      // "Accès difficile" est justement l'info qui aide le transporteur à ne
+      // pas se déplacer pour rien (digicode, chien, parking...) — une
+      // correction ici doit remonter jusqu'à sa mission en cours chez ce
+      // client, pas rester invisible jusqu'au prochain rafraîchissement.
+      if (patch.acces_difficile !== undefined) {
+        const { data: resasClient } = await supabase.from('reservations').select('id').eq('client_id', id);
+        const resaIds = (resasClient || []).map(r => r.id);
+        if (resaIds.length) {
+          const { data: livAPrevenir } = await supabase
+            .from('livraisons').select('id, transporteur_id')
+            .in('reservation_id', resaIds)
+            .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
+          for (const liv of (livAPrevenir || [])) {
+            if (!liv.transporteur_id) continue;
+            await notifyTransporteur(supabase, liv.transporteur_id, {
+              type: 'modification', message: 'Les informations d\'une mission ont été mises à jour.',
+              livraisonId: liv.id, tag: 'modification',
+            });
+          }
+        }
+      }
+
       return res.status(200).json({ ok: true });
     }
 

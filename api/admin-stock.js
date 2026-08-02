@@ -4,6 +4,7 @@ const { getAvailability } = require('./_lib/stock');
 const { checkAdminToken } = require('./_lib/auth');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { computeParcDashboard } = require('./_lib/parcDashboard');
+const { notifyTransporteur } = require('./_lib/transporteurNotif');
 
 // Compteur de secours pour l'Offre Privilège (Module 7) : nb_locations se
 // calcule normalement en comptant les lignes reservation_appareils d'un
@@ -399,6 +400,24 @@ module.exports = async (req, res) => {
         nouvelleLocalisation: 'stock_principal', reservationId,
         utilisateur: 'admin', commentaire: conflitActif ? 'Échangé par l\'administration' : 'Affecté manuellement par l\'administration',
       });
+
+      // Le numéro de climatiseur affiché sur la mission vient de changer —
+      // prévient le transporteur déjà en mission sur cette réservation (et
+      // sur celle avec laquelle elle a été échangée, le cas échéant), sans
+      // quoi il continue de voir l'ancien numéro jusqu'au prochain
+      // rafraîchissement.
+      const reservationsAPrevenir = [reservationId, ...(conflitActif ? [conflitActif.reservation_id] : [])];
+      const { data: livAPrevenir } = await supabase
+        .from('livraisons').select('id, transporteur_id')
+        .in('reservation_id', reservationsAPrevenir)
+        .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
+      for (const liv of (livAPrevenir || [])) {
+        if (!liv.transporteur_id) continue;
+        await notifyTransporteur(supabase, liv.transporteur_id, {
+          type: 'modification', message: 'Les informations d\'une mission ont été mises à jour.',
+          livraisonId: liv.id, tag: 'modification',
+        });
+      }
 
       return res.status(200).json({ ok: true, swapped: Boolean(conflitActif) });
     }
