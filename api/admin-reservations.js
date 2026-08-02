@@ -17,6 +17,7 @@ const { sendReservationPaymentLink } = require('./_lib/paymentLink');
 const { generateAndSendDocumentsAfterProlongation } = require('./_lib/documents');
 const { extractPostalCode } = require('./_lib/postal');
 const { releaseAppareilFromReservation } = require('./_lib/appareilSync');
+const { toE164FR } = require('./_lib/brevo');
 
 const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
 
@@ -109,8 +110,8 @@ module.exports = async (req, res) => {
     if (action === 'create') {
       let prenom    = (body.prenom  || '').trim().slice(0, 200);
       const nom     = (body.nom     || '').trim().slice(0, 200);
-      const tel     = (body.tel     || '').trim().slice(0, 50);
-      const telSecondaire = (body.tel_secondaire || '').trim().slice(0, 50);
+      const tel     = toE164FR((body.tel     || '').trim()) || (body.tel     || '').trim().slice(0, 50);
+      const telSecondaire = toE164FR((body.tel_secondaire || '').trim()) || (body.tel_secondaire || '').trim().slice(0, 50);
       const typeClient = body.type_client === 'entreprise' ? 'entreprise' : 'particulier';
       const raisonSociale = (body.raison_sociale || '').trim().slice(0, 300);
       const siret   = (body.siret   || '').trim().slice(0, 50);
@@ -533,7 +534,7 @@ module.exports = async (req, res) => {
       // telle quelle aux missions terrain déjà créées (jointure reservation).
       if (body.prenom != null) patch.prenom = body.prenom.trim().slice(0, 200) || 'Client';
       if (body.nom != null)    patch.nom    = body.nom.trim().slice(0, 200);
-      if (body.tel != null)    patch.tel    = body.tel.trim().slice(0, 50);
+      if (body.tel != null)    patch.tel    = toE164FR(body.tel.trim()) || body.tel.trim().slice(0, 50);
       if (body.adresse != null) {
         patch.adresse = body.adresse.trim().slice(0, 500);
         // Même détection hors zone qu'à la création (voir plus haut) —
@@ -554,7 +555,7 @@ module.exports = async (req, res) => {
       if (body.installation != null)       patch.installation       = body.installation.trim().slice(0, 100) || null;
       if (body.instructions_acces != null) patch.instructions_acces = body.instructions_acces.trim().slice(0, 1000) || null;
       if (body.creneau_livraison != null)  patch.creneau            = body.creneau_livraison.trim().slice(0, 500) || null;
-      if (body.tel_secondaire != null)     patch.tel_secondaire     = body.tel_secondaire.trim().slice(0, 50) || null;
+      if (body.tel_secondaire != null)     patch.tel_secondaire     = toE164FR(body.tel_secondaire.trim()) || body.tel_secondaire.trim().slice(0, 50) || null;
       if (body.email != null)              patch.email              = body.email.trim().toLowerCase().slice(0, 200) || null;
       if (body.type_client != null)        patch.type_client        = body.type_client === 'entreprise' ? 'entreprise' : 'particulier';
       if (body.raison_sociale != null)     patch.raison_sociale     = body.raison_sociale.trim().slice(0, 300) || null;
