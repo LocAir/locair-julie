@@ -5585,15 +5585,25 @@ async function loadTransporteursEquipe(){
           <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="resetPin(${testTransp.id})">Régénérer le code</button>
         ` : `<button class="btn btn-blue btn-block" onclick="createTestTransporteur()">Créer mon compte de test</button>`}
       </div>`;
-    const list = (d.transporteurs||[]).filter(t => t.nom !== TEST_TRANSPORTEUR_NOM).map(t => {
+    // Actifs et disponibles d'abord (ceux à qui on peut réellement confier
+    // une mission maintenant), en pause ensuite, inactifs en dernier — sans
+    // ça, un transporteur qui a quitté l'équipe se noyait au tri alphabétique
+    // au milieu de ceux encore opérationnels.
+    const transpTries = [...(d.transporteurs||[]).filter(t => t.nom !== TEST_TRANSPORTEUR_NOM)]
+      .sort((a,b) => {
+        const rang = t => !t.actif ? 2 : (t.en_pause ? 1 : 0);
+        return rang(a) - rang(b);
+      });
+    const list = transpTries.map(t => {
       const st = statsByT[t.id] || {};
       const score = st.perf_score != null ? st.perf_score : null;
       const scoreChip = score == null ? 'inactif' : score >= 80 ? 'actif' : score >= 60 ? 'en_attente' : 'probleme';
       const scoreLabel = score == null ? '—' : score + ' pts';
       const missions30 = st.missions_30j != null ? st.missions_30j : null;
       const enPause = t.en_pause || false;
+      const rowStyle = !t.actif ? 'opacity:.6' : enPause ? 'opacity:.8;border-left:3px solid var(--amber)' : '';
       return `
-      <div class="row-item" style="${enPause?'opacity:.8;border-left:3px solid var(--amber)':''}">
+      <div class="row-item" style="${rowStyle}">
         <div class="row-top">
           <span class="row-title">${escHtml(t.nom)}</span>
           <span style="display:flex;gap:6px;align-items:center">
