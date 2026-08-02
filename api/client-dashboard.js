@@ -4,6 +4,7 @@ const { computeClientProgress } = require('./_lib/clientProgress');
 const { syncStatutDetaille } = require('./_lib/statutDetaille');
 const { computeOrderStatus } = require('./_lib/orderStatus');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
+const { addDays } = require('./_lib/dates');
 
 const GENERIC_ERROR = "Nous n'avons pas retrouvé votre réservation. Merci de vérifier votre numéro de commande et votre adresse email.";
 
@@ -50,10 +51,15 @@ module.exports = async (req, res) => {
     const { data: prolongations } = await supabase
       .from('reservations').select('id, date_fin, statut').eq('reservation_origine_id', reservationId);
     const allResaIds = [reservationId, ...(prolongations || []).map(p => p.id)];
-    // Vraie date de fin = max(date_fin) sur les prolongations confirmées.
-    // Après une prolongation le webhook met à jour orig.date_fin, mais si ce
-    // write a silencieusement échoué la date affichée serait fausse sans ce filet.
-    const dateFinReelle = (prolongations || [])
+    // Vraie date de fin = la plus tardive entre : la fin d'origine, la fin
+    // des prolongations payées déjà confirmées, et la date de récupération
+    // (moins 1 jour) actuellement planifiée — cette dernière peut avoir été
+    // repoussée par l'admin sans passer par une prolongation payante
+    // (admin-livraisons.js action 'update', ex. le client garde l'appareil
+    // quelques jours de plus). Après une prolongation le webhook met à jour
+    // orig.date_fin, mais si ce write a silencieusement échoué la date
+    // affichée serait fausse sans ce filet.
+    let dateFinReelle = (prolongations || [])
       .filter(p => p.statut === 'confirmee')
       .reduce((max, p) => (p.date_fin > max ? p.date_fin : max), resa.date_fin);
 
@@ -103,6 +109,15 @@ module.exports = async (req, res) => {
     const livraison    = (livraisons || []).find(l => l.type === 'livraison');
     const recuperation = (livraisons || []).find(l => l.type === 'recuperation');
     const appareil = (reservAppareils || [])[0]?.appareil || null;
+
+    // La récupération peut avoir été reprogrammée plus tard sans passer par
+    // une prolongation payante (voir commentaire plus haut) — la date de
+    // récupération (moins 1 jour) prime alors sur date_fin si elle est plus
+    // tardive, pour que le client voie sa vraie date de fin d'utilisation.
+    if (recuperation?.date_prevue) {
+      const recupEnd = addDays(recuperation.date_prevue, -1);
+      if (recupEnd > dateFinReelle) dateFinReelle = recupEnd;
+    }
 
     const notifications = (emailLog || [])
       .filter(e => NOTIFICATION_LABEL[e.scenario])
