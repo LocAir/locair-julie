@@ -277,6 +277,20 @@ let _offreReturnStatus = null;
   }
 })();
 
+// Retour d'un paiement de prolongation ayant nécessité une vérification
+// bancaire (3D Secure) — jusqu'ici ce retour n'était pas capté du tout : le
+// client revenait sur son tableau de bord sans aucune confirmation (ni
+// succès, ni échec), après avoir potentiellement payé. Même mécanisme que
+// _captureOffreReturn juste au-dessus.
+let _prolongReturnStatus = null;
+(function _captureProlongReturn(){
+  const p = new URLSearchParams(window.location.search);
+  if(p.get('prolong_return') === '1'){
+    _prolongReturnStatus = p.get('redirect_status') || 'echec';
+    window.history.replaceState({}, '', '/client/');
+  }
+})();
+
 function escHtml(s){
   return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
@@ -822,7 +836,7 @@ async function confirmProlong(){
   cb.disabled=true; cb.textContent='Paiement en cours…';
   errEl?.classList.add('hidden');
   try{
-    const{error,paymentIntent}=await _getStripe().confirmPayment({elements:_prolongStripeEl,redirect:'if_required',confirmParams:{return_url:window.location.origin+'/client/'}});
+    const{error,paymentIntent}=await _getStripe().confirmPayment({elements:_prolongStripeEl,redirect:'if_required',confirmParams:{return_url:window.location.origin+'/client/?prolong_return=1'}});
     if(error){
       if(errEl){errEl.textContent=error.message;errEl.classList.remove('hidden');}
       cb.disabled=false; cb.textContent='Réessayer le paiement';
@@ -911,6 +925,15 @@ async function showDashboard(){
         : status === 'processing'
         ? '<div class="alert-info" style="margin-bottom:14px">⏳ Votre banque valide encore le paiement. Ça peut prendre quelques minutes — revenez un peu plus tard pour confirmer.</div>'
         : '<div class="alert-error" style="margin-bottom:14px">❌ Le paiement n\'a pas abouti après la vérification bancaire. Vous pouvez réessayer depuis l\'offre ci-dessous.</div>';
+      document.getElementById('dash-content').insertAdjacentHTML('afterbegin', banner);
+    }
+    if(_prolongReturnStatus){
+      const status = _prolongReturnStatus; _prolongReturnStatus = null;
+      const banner = status === 'succeeded'
+        ? '<div class="alert-success" style="margin-bottom:14px">✅ Prolongation confirmée après vérification bancaire — votre location est bien prolongée !</div>'
+        : status === 'processing'
+        ? '<div class="alert-info" style="margin-bottom:14px">⏳ Votre banque valide encore le paiement de votre prolongation. Ça peut prendre quelques minutes — revenez un peu plus tard pour confirmer.</div>'
+        : '<div class="alert-error" style="margin-bottom:14px">❌ Le paiement de votre prolongation n\'a pas abouti après la vérification bancaire. Vous pouvez réessayer depuis « Prolonger ma location » ci-dessous.</div>';
       document.getElementById('dash-content').insertAdjacentHTML('afterbegin', banner);
     }
     setTimeout(offerClientFaceId, 1200);
