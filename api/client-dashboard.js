@@ -133,6 +133,7 @@ module.exports = async (req, res) => {
       recuperation: recuperation ? {
         date_prevue: recuperation.date_prevue,
         creneau: recuperation.creneau || null,
+        statut: recuperation.statut,
         consignes: [
           "Laissez l'accès disponible (digicode, gardien prévenu si besoin)",
           'Éteignez le climatiseur avant le passage du technicien',
