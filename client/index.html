@@ -63,6 +63,20 @@ input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(197,169,108,.12)}
 .btn-prolong:hover{opacity:.9;transform:translateY(-1px);background:rgba(197,169,108,.14)}
 .btn-prolong:active{transform:translateY(0)}
 
+/* ── Actions accordion ── */
+.action-card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);margin-bottom:14px;overflow:hidden;box-shadow:var(--sh)}
+.action-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;padding:18px 20px;background:none;border:none;cursor:pointer;font-family:var(--body);text-align:left;gap:12px;transition:background .15s}
+.action-toggle:hover{background:rgba(255,255,255,.03)}
+.action-toggle-left{display:flex;align-items:center;gap:13px;flex:1;min-width:0}
+.action-ico-wrap{width:38px;height:38px;border-radius:11px;background:rgba(197,169,108,.12);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.action-lbl{font-size:14px;font-weight:700;color:var(--black);margin-bottom:2px}
+.action-sub{font-size:11.5px;color:var(--grey);line-height:1.35}
+.action-chevron{font-size:22px;color:rgba(220,208,184,.4);flex-shrink:0;transition:transform .22s;line-height:1}
+.action-chevron.open{transform:rotate(90deg);color:var(--gold)}
+.action-body{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.4,0,.2,1)}
+.action-body.open{max-height:1200px}
+.action-divider{border:none;border-top:1px solid var(--rule);margin:0}
+
 /* ── Alertes ── */
 .alert-error{background:var(--red-bg);border:1px solid var(--red-border);border-radius:10px;padding:13px 15px;font-size:13.5px;color:var(--red);line-height:1.6}
 .alert-info{background:var(--amber-bg);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:13px 15px;font-size:13.5px;color:var(--amber);line-height:1.6}
@@ -384,24 +398,91 @@ function renderDashboard(d){
           <span>${escHtml(txt)}</span>
         </div>`).join('')}
     </div>
-    ${recupEarlyPickerShown ? `
-    <div class="card" id="card-early-recup">
-      <div class="card-head">
-        <div class="card-ico" style="font-size:17px">📅</div>
+    ` : '';
+
+  // ── Actions accordion (Prolongation + Récupération anticipée) ──
+  const _showProlong = !d.progress.banner;
+  const actionsHtml = (_showProlong || recupEarlyPickerShown) ? `<div class="action-card">
+    ${_showProlong ? `<button class="action-toggle" onclick="toggleAction('prolong')">
+      <div class="action-toggle-left">
+        <div class="action-ico-wrap">📅</div>
         <div>
-          <div class="card-lbl">Avancer la récupération</div>
-          <div class="card-sublbl">Choisissez votre nouvelle date et créneau.</div>
+          <div class="action-lbl">Prolonger ma location</div>
+          <div class="action-sub">Ajoutez des jours — paiement en ligne immédiat</div>
         </div>
       </div>
-      <div id="early-recup-alert" class="hidden" style="margin-bottom:10px"></div>
-      <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:12px;background:rgba(255,255,255,.06);color:var(--black);outline:none;transition:border-color .15s"/>
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:9px">Créneau</div>
-      <div class="creneau-btns">
-        <div id="lbl-creneau-1" class="creneau-opt" onclick="selectCreneau('8h-10h')">8h – 10h</div>
-        <div id="lbl-creneau-2" class="creneau-opt" onclick="selectCreneau('10h-12h')">10h – 12h</div>
+      <div class="action-chevron" id="action-chevron-prolong">›</div>
+    </button>
+    <div class="action-body" id="action-body-prolong">
+      <div style="padding:20px 22px">
+        <div id="prolong-loading" style="text-align:center;color:var(--grey);font-size:13.5px;padding:6px 0">Chargement de votre dossier…</div>
+        <div id="prolong-step-2" style="display:none">
+          <div id="prolong-error" class="alert-error hidden" style="margin-bottom:14px"></div>
+          <p id="prolong-dates-lbl" style="font-size:13px;color:var(--grey);margin-bottom:14px"></p>
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:8px">Nouvelle date de fin</div>
+          <input type="date" id="prolong-newdate" oninput="updateProlongPrice()" onchange="updateProlongPrice()" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-size:15px;margin-bottom:12px;background:rgba(255,255,255,.06);color:var(--black);font-family:var(--body);outline:none;transition:border-color .15s"/>
+          <div id="prolong-price-box" class="hidden" style="background:rgba(197,169,108,.08);border-left:3px solid var(--gold);border-radius:12px;padding:14px 16px;margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span id="prolong-price-days" style="font-size:14px;font-weight:600;color:var(--black)"></span>
+              <span id="prolong-price-amount" style="font-size:20px;font-weight:700;color:var(--gold)"></span>
+            </div>
+            <div id="prolong-price-note" style="font-size:11.5px;color:var(--grey)"></div>
+          </div>
+          <label style="display:flex;align-items:flex-start;gap:9px;margin-bottom:14px;cursor:pointer">
+            <input type="checkbox" id="prolong-cgv" onchange="updateProlongBtnState()" style="width:17px;height:17px;flex-shrink:0;margin-top:2px;accent-color:var(--gold);cursor:pointer"/>
+            <span style="font-size:12.5px;color:var(--grey);line-height:1.55">J'accepte les <a href="/cgv" target="_blank" rel="noopener" style="color:var(--gold)">conditions générales de vente</a> et la durée choisie.</span>
+          </label>
+          <button class="btn-submit" id="prolong-pay-btn" disabled onclick="submitProlong()">Payer <span id="prolong-pay-label">—</span></button>
+        </div>
+        <div id="prolong-step-3" style="display:none">
+          <div style="background:rgba(197,169,108,.08);border:1px solid rgba(197,169,108,.2);border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+            <div>
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:3px">Prolongation</div>
+              <div id="prolong-summary-detail" style="font-size:13.5px;font-weight:500;color:var(--black2)"></div>
+            </div>
+            <div id="prolong-summary-price" style="font-size:20px;font-weight:700;color:var(--gold);white-space:nowrap;margin-left:16px"></div>
+          </div>
+          <div style="background:rgba(255,255,255,.03);border:1px solid var(--rule);border-radius:12px;padding:18px;margin-bottom:14px">
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:12px;padding-bottom:11px;border-bottom:1px solid var(--rule)">Paiement sécurisé</div>
+            <div id="prolong-payment-element" style="min-height:180px"><p style="color:var(--grey);font-size:13px;text-align:center;padding:28px 0">Chargement…</p></div>
+          </div>
+          <div id="prolong-payment-error" class="alert-error hidden" style="margin-bottom:12px"></div>
+          <button class="btn-submit" id="prolong-confirm-btn" disabled onclick="confirmProlong()">Confirmer le paiement</button>
+          <p style="text-align:center;font-size:11px;color:var(--grey);margin-top:10px;line-height:1.6">🔒 SSL · Stripe · Aucun stockage des données bancaires</p>
+          <button onclick="backToStep2Prolong()" style="display:block;width:100%;padding:11px;margin-top:8px;background:transparent;color:var(--grey);border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:14px;font-weight:500;cursor:pointer">← Modifier la date</button>
+        </div>
+        <div id="prolong-step-success" style="display:none;text-align:center;padding:14px 0">
+          <div style="font-size:36px;margin-bottom:10px">✅</div>
+          <div style="font-family:var(--disp);font-size:22px;font-weight:300;margin-bottom:8px;color:var(--black)">Prolongation <em>confirmée !</em></div>
+          <div id="prolong-success-msg" style="font-size:13.5px;color:var(--grey);line-height:1.65"></div>
+        </div>
       </div>
-      <button class="btn-submit" id="early-recup-btn" onclick="submitEarlyRecup()">Confirmer</button>
-    </div>` : ''}` : '';
+    </div>` : ''}
+    ${_showProlong && recupEarlyPickerShown ? '<hr class="action-divider"/>' : ''}
+    ${recupEarlyPickerShown ? `<button class="action-toggle" onclick="toggleAction('recup')">
+      <div class="action-toggle-left">
+        <div class="action-ico-wrap">📦</div>
+        <div>
+          <div class="action-lbl">Avancer la récupération</div>
+          <div class="action-sub">Choisissez une nouvelle date et un créneau</div>
+        </div>
+      </div>
+      <div class="action-chevron" id="action-chevron-recup">›</div>
+    </button>
+    <div class="action-body" id="action-body-recup">
+      <div style="padding:20px 22px">
+        <div id="early-recup-alert" class="hidden" style="margin-bottom:10px"></div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:8px">Nouvelle date</div>
+        <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:12px;background:rgba(255,255,255,.06);color:var(--black);outline:none;transition:border-color .15s"/>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:9px">Créneau</div>
+        <div class="creneau-btns">
+          <div id="lbl-creneau-1" class="creneau-opt" onclick="selectCreneau('8h-10h')">8h – 10h</div>
+          <div id="lbl-creneau-2" class="creneau-opt" onclick="selectCreneau('10h-12h')">10h – 12h</div>
+        </div>
+        <button class="btn-submit" id="early-recup-btn" onclick="submitEarlyRecup()">Confirmer</button>
+      </div>
+    </div>` : ''}
+  </div>` : '';
 
   // Documents
   const docLabels = {contrat:'Contrat de location', facture:'Facture', facture_vente:'Facture vente'};
@@ -552,8 +633,7 @@ function renderDashboard(d){
     ${offreHtml}
     ${livraisonHtml}
     ${recupHtml}
-
-    ${!d.progress.banner ? `<a class="btn-prolong" href="${escHtml(d.lien_prolongation+'&token='+encodeURIComponent(localStorage.getItem('client_token')||''))}">Prolonger ma location →</a>` : ''}
+    ${actionsHtml}
 
     <div class="sect-lbl">Mes documents</div>
     <div class="card">${docsHtml}</div>
@@ -621,6 +701,137 @@ async function submitEarlyRecup(){
     alertEl.textContent=err.message||'Erreur. Veuillez réessayer.';
     alertEl.classList.remove('hidden');
     btn.disabled=false; btn.textContent='Confirmer';
+  }
+}
+
+// ── Actions accordion ──
+function toggleAction(id){
+  const body=document.getElementById('action-body-'+id);
+  const chev=document.getElementById('action-chevron-'+id);
+  if(!body) return;
+  const open=body.classList.toggle('open');
+  if(chev) chev.classList.toggle('open',open);
+  if(open && id==='prolong') initProlongSection();
+}
+
+// ── Prolongation inline ──
+let _prolongData=null,_prolongStripeEl=null,_prolongNewDate='',_prolongCents=0;
+function _pAddDay(iso){const d=new Date(iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);}
+function _pBase(d){d=Math.max(1,d);if(d<=7)return d*12;if(d<=14)return 84+(d-7)*10;if(d<=21)return 154+(d-14)*9;return 217+(d-21)*8;}
+function _pDiff(a,b){return Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000);}
+function _pFmtLong(iso){return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}
+
+async function initProlongSection(){
+  if(_prolongData) return;
+  const loadEl=document.getElementById('prolong-loading');
+  const step2=document.getElementById('prolong-step-2');
+  const errEl=document.getElementById('prolong-error');
+  try{
+    const r=await fetch('/api/prolong-lookup',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({token:localStorage.getItem('client_token')})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur serveur');
+    _prolongData=d;
+    if(loadEl) loadEl.style.display='none';
+    const inp=document.getElementById('prolong-newdate');
+    if(inp) inp.min=_pAddDay(_prolongData.date_fin);
+    const dl=document.getElementById('prolong-dates-lbl');
+    if(dl) dl.textContent=`Contrat en cours : ${fmtDate(_prolongData.date_debut)} → ${fmtDate(_prolongData.date_fin)} (${_prolongData.orig_days} j)`;
+    if(step2) step2.style.display='block';
+  }catch(e){
+    if(loadEl) loadEl.style.display='none';
+    if(errEl){errEl.textContent=e.message;errEl.classList.remove('hidden');}
+    if(step2) step2.style.display='block';
+  }
+}
+
+function updateProlongPrice(){
+  if(!_prolongData) return;
+  _prolongNewDate=document.getElementById('prolong-newdate')?.value||'';
+  const priceBox=document.getElementById('prolong-price-box');
+  if(!_prolongNewDate||_prolongNewDate<=_prolongData.date_fin){
+    if(priceBox) priceBox.classList.add('hidden');
+    updateProlongBtnState(); return;
+  }
+  document.getElementById('prolong-error')?.classList.add('hidden');
+  const ext=_pDiff(_prolongData.date_fin,_prolongNewDate);
+  const tot=_prolongData.orig_days+ext;
+  const price=(_pBase(tot)-_pBase(_prolongData.orig_days))*(_prolongData.quantite||1);
+  _prolongCents=price*100;
+  document.getElementById('prolong-price-days').textContent=`+ ${ext} jour${ext>1?'s':''}`;
+  document.getElementById('prolong-price-amount').textContent=`${price} €`;
+  document.getElementById('prolong-price-note').textContent=`Récupération le ${_pFmtLong(_pAddDay(_prolongNewDate))}`;
+  if(priceBox) priceBox.classList.remove('hidden');
+  updateProlongBtnState();
+}
+
+function updateProlongBtnState(){
+  const payBtn=document.getElementById('prolong-pay-btn');
+  const payLbl=document.getElementById('prolong-pay-label');
+  const valid=_prolongData&&_prolongNewDate&&_prolongNewDate>_prolongData.date_fin&&document.getElementById('prolong-cgv')?.checked;
+  if(payBtn) payBtn.disabled=!valid;
+  if(payLbl) payLbl.textContent=_prolongCents>0?`${_prolongCents/100} €`:'—';
+}
+
+async function submitProlong(){
+  if(!_prolongData||!_prolongNewDate) return;
+  const payBtn=document.getElementById('prolong-pay-btn');
+  const errEl=document.getElementById('prolong-error');
+  payBtn.disabled=true; payBtn.textContent='Préparation…';
+  errEl?.classList.add('hidden');
+  try{
+    const r=await fetch('/api/prolong-pay',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({email:_prolongData.email,ref:_prolongData.ref,new_date_fin:_prolongNewDate,cgv_accepted:true,cgv_accepted_at:new Date().toISOString()})});
+    const d=await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur serveur');
+    _prolongCents=d.amountCents;
+    document.getElementById('prolong-step-2').style.display='none';
+    document.getElementById('prolong-step-3').style.display='block';
+    document.getElementById('prolong-summary-detail').textContent=`+${d.jours} jour${d.jours>1?'s':''} — jusqu'au ${_pFmtLong(d.newDateFin)}`;
+    document.getElementById('prolong-summary-price').textContent=(d.amountCents/100).toLocaleString('fr-FR')+' €';
+    const cb=document.getElementById('prolong-confirm-btn');
+    if(cb) cb.textContent=`Payer ${(d.amountCents/100).toLocaleString('fr-FR')} €`;
+    const stripe=_getStripe();
+    if(!stripe) throw new Error('Module paiement indisponible. Désactivez votre bloqueur de pub.');
+    const app={theme:'night',variables:{colorPrimary:'#c5a96c',colorBackground:'#0d1d33',colorText:'#f0ece4',colorTextSecondary:'#a09880',borderRadius:'10px',fontFamily:'Inter,system-ui,sans-serif'}};
+    _prolongStripeEl=stripe.elements({clientSecret:d.clientSecret,appearance:app,locale:'fr'});
+    const pe=_prolongStripeEl.create('payment');
+    document.getElementById('prolong-payment-element').innerHTML='';
+    pe.mount('#prolong-payment-element');
+    pe.on('ready',()=>{const b=document.getElementById('prolong-confirm-btn');if(b)b.disabled=false;});
+  }catch(e){
+    if(errEl){errEl.textContent=e.message;errEl.classList.remove('hidden');}
+    payBtn.disabled=false;
+    payBtn.innerHTML=`Payer <span id="prolong-pay-label">${_prolongCents>0?_prolongCents/100+' €':'—'}</span>`;
+  }
+}
+
+function backToStep2Prolong(){
+  document.getElementById('prolong-step-2').style.display='block';
+  document.getElementById('prolong-step-3').style.display='none';
+  _prolongStripeEl=null;
+}
+
+async function confirmProlong(){
+  const cb=document.getElementById('prolong-confirm-btn');
+  const errEl=document.getElementById('prolong-payment-error');
+  cb.disabled=true; cb.textContent='Paiement en cours…';
+  errEl?.classList.add('hidden');
+  try{
+    const{error,paymentIntent}=await _getStripe().confirmPayment({elements:_prolongStripeEl,redirect:'if_required',confirmParams:{return_url:window.location.origin+'/client/'}});
+    if(error){
+      if(errEl){errEl.textContent=error.message;errEl.classList.remove('hidden');}
+      cb.disabled=false; cb.textContent='Réessayer le paiement';
+    }else if(paymentIntent?.status==='succeeded'){
+      document.getElementById('prolong-step-3').style.display='none';
+      document.getElementById('prolong-step-success').style.display='block';
+      const msg=document.getElementById('prolong-success-msg');
+      if(msg) msg.textContent=`Votre location est prolongée jusqu'au ${_pFmtLong(_prolongNewDate)}. Un email de confirmation vous a été envoyé.`;
+    }else{
+      if(errEl){errEl.textContent='Paiement en attente de confirmation. Vérifiez votre email.';errEl.classList.remove('hidden');}
+      cb.disabled=false; cb.textContent='Réessayer';
+    }
+  }catch(e){
+    if(errEl){errEl.textContent='Erreur inattendue. Réessayez.';errEl.classList.remove('hidden');}
+    cb.disabled=false; cb.textContent='Réessayer le paiement';
   }
 }
 
