@@ -817,6 +817,14 @@ async function setupAdminPush(){
     });
   }catch(e){ /* pas bloquant : l'app marche très bien sans push */ }
 }
+// Recharge automatique quand un push arrive pendant que la page est ouverte
+// (déclenché par admin/sw.js → postMessage locair-push, même mécanique que
+// transporteur/sw.js + transporteur/index.html).
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', (ev) => {
+    if(ev.data && ev.data.type === 'locair-push' && !isUserBusy()) autoRefreshTick();
+  });
+}
 // Le badge indique juste "il y a du nouveau" (pas de compteur exact) — vidé
 // dès que l'admin ouvre/revient sur l'app, puisqu'il est alors en train de
 // regarder ce qui a changé.
