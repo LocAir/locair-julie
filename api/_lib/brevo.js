@@ -60,15 +60,20 @@ async function sendBrevoEmail({ to, subject, html, attachments, senderName }) {
   }
 }
 
-// Numéro français local ("0612345678") -> E.164 ("+33612345678"), format
-// attendu par l'API SMS de Brevo. Les numéros déjà au format international
-// sont laissés tels quels.
+// Numéro de téléphone -> E.164, format attendu par l'API SMS de Brevo.
+// Gère : français local 06/07 (10 chiffres), préfixe 00xx, déjà en E.164.
+// Un numéro dans un format inconnu avec un 0 initial (ex. UK local "07xxx")
+// ne peut pas être converti sans connaître l'indicatif pays — on retourne
+// une chaîne vide pour déclencher le garde "destinataire manquant" et éviter
+// d'envoyer un numéro invalide à Brevo (qui répond sinon 400 invalid_parameter).
 function toE164FR(tel) {
   const digits = String(tel || '').replace(/[^\d+]/g, '');
   if (digits.startsWith('+')) return digits;
+  if (digits.startsWith('00')) return '+' + digits.slice(2);
   if (digits.startsWith('0') && digits.length === 10) return '+33' + digits.slice(1);
   if (digits.length === 9 && !digits.startsWith('0')) return '+33' + digits;
-  return digits ? '+' + digits : '';
+  if (!digits.startsWith('0') && digits.length >= 10) return '+' + digits;
+  return '';
 }
 
 // Canal SMS distinct de l'email chez Brevo : même clé API, mais crédits et
