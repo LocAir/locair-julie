@@ -307,6 +307,36 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .more-actions-menu button,.more-actions-menu a{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:8px;border:none;background:none;font-family:var(--body);font-size:13.5px;font-weight:600;color:var(--black);cursor:pointer;text-decoration:none}
 .more-actions-menu button:hover,.more-actions-menu a:hover{background:var(--bg)}
 .more-actions-menu button.danger,.more-actions-menu a.danger{color:var(--red)}
+.more-actions.compact summary{width:32px;height:32px;font-size:15px}
+
+/* ── Composant tableau (grand écran) ─────────────────────────────────────
+   Sous 1000px : on garde les cartes (row-grid), déjà optimisées mobile/
+   tablette, inchangées. Au-dessus, un vrai <table> scannable remplace la
+   grille de cartes — mêmes données, même logique de filtre/recherche/
+   actions, juste une autre mise en forme pour lire vite une longue liste. */
+.admin-table-wrap{display:none}
+.admin-table{width:100%;border-collapse:separate;border-spacing:0;background:var(--white);border:1px solid var(--rule);box-shadow:var(--sh-sm);font-size:13px}
+.admin-table th{position:sticky;top:0;z-index:1;text-align:left;padding:11px 14px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);background:var(--bg);border-bottom:1.5px solid var(--rule);white-space:nowrap;cursor:pointer;user-select:none}
+.admin-table th:hover{color:var(--black)}
+.admin-table th.sorted{color:var(--blue)}
+.admin-table th .sort-arrow{font-size:9px;margin-left:3px;opacity:.45}
+.admin-table th.sorted .sort-arrow{opacity:1}
+.admin-table td{padding:10px 14px;border-bottom:1px solid var(--rule);vertical-align:middle}
+.admin-table tbody tr:hover td{background:var(--bg)}
+.admin-table tbody tr:last-child td{border-bottom:none}
+.admin-table td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.admin-table td.ellipsis{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.admin-table thead th:first-child{border-top-left-radius:var(--r-lg)}
+.admin-table thead th:last-child{border-top-right-radius:var(--r-lg)}
+.admin-table tbody tr:last-child td:first-child{border-bottom-left-radius:var(--r-lg)}
+.admin-table tbody tr:last-child td:last-child{border-bottom-right-radius:var(--r-lg)}
+.table-actions{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
+.table-actions select{width:auto;margin-bottom:0;padding:7px 10px;font-size:12.5px}
+.table-actions .btn{padding:6px 9px;font-size:12px}
+@media (min-width:1000px){
+  .table-toggle-zone > .row-grid{display:none}
+  .table-toggle-zone > .admin-table-wrap{display:block}
+}
 .empty{text-align:center;color:var(--grey);padding:44px 20px;font-size:14px}
 .inline-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
@@ -1020,6 +1050,15 @@ function frDate(iso){
   const d = new Date(iso+'T00:00:00');
   if(isNaN(d)) return iso;
   return d.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+}
+// Format compact jj/mm/aa — pour les colonnes de tableau où frDate() (ex.
+// "5 août 2026") prend trop de largeur et force les lignes à passer sur
+// plusieurs lignes.
+function frDateCourt(iso){
+  if(!iso) return '—';
+  const d = new Date(iso+'T00:00:00');
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit', year:'2-digit'});
 }
 function frDateHeure(iso){
   if(!iso) return '—';
@@ -2744,6 +2783,31 @@ function agentLineHtml(resId){
   }
   return parts.length ? `<div class="row-meta" style="margin-top:4px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">${parts.join('')}</div>` : '';
 }
+// Sélecteur de statut + menu "⋯" — partagés par la carte (mobile/tablette)
+// et la ligne de tableau (grand écran) pour ne pas maintenir 2 fois la
+// même liste d'actions.
+function reservationStatutSelectHtml(res){
+  return `<select aria-label="Changer le statut" onchange="updateReservationStatut(${res.id}, this.value, this)">
+        <option value="">Changer statut…</option>
+        ${STATUTS_RESA.map(s=>`<option value="${s}" ${s===res.statut?'selected':''}>${RESA_LABEL[s]}</option>`).join('')}
+      </select>`;
+}
+function reservationMoreActionsHtml(res, compact){
+  return `<details class="more-actions${compact?' compact':''}"${compact?'':' style="margin-left:auto"'}>
+          <summary title="Plus d'actions">⋯</summary>
+          <div class="more-actions-menu">
+            <button onclick="openEditReservationModal(${res.id})">✏️ Modifier</button>
+            <button onclick="duplicateReservation(${res.id})">🆕 Réservation similaire (même client)</button>
+            ${res.statut==='en_attente' && res.source==='manuel' && (res.email || res.tel) ? `<button onclick="renvoyerLienPaiement(${res.id}, ${res.tel?'true':'false'})">🔁 Renvoyer le lien de paiement</button>` : ''}
+            ${res.appareils_en_attente_validation?`<button onclick="validerAppareilsReservation(${res.id})">🔍 Valider l'appareil attribué</button>`:''}
+            ${res.statut==='confirmee'?`<button onclick="reaffecterAppareilReservation(${res.id})">🔄 Réaffecter l'appareil</button>`:''}
+            ${res.statut==='confirmee'?`<button onclick="proposerOffrePrivilegeManuelle(${res.id})">⭐ Proposer l'Offre Privilège</button>`:''}
+            ${res.statut!=='remboursee' && res.statut!=='en_attente' && res.stripe_payment_intent_id ? `<button onclick="rembourserReservation(${res.id})">💳 Rembourser</button>` : ''}
+            ${res.statut!=='annulee'?`<button class="danger" onclick="cancelReservation(${res.id})">Annuler la réservation</button>`:''}
+            <button class="danger" onclick="deleteReservation(${res.id}, '${res.statut}')">🗑️ Supprimer de l'écran</button>
+          </div>
+        </details>`;
+}
 function reservationRowHtml(res, readOnly){
   const nom = escHtml((res.prenom||'')+' '+(res.nom||''))||'—';
   const entrepriseTag = res.type_client==='entreprise' ? ` <span class="chip a_faire">🏢 ${escHtml(res.raison_sociale||'Entreprise')}</span>` : '';
@@ -2798,24 +2862,8 @@ function reservationRowHtml(res, readOnly){
       ${readOnly ? '' : `
       <div class="row-actions">
         ${contactButtonsHtml(res.tel)}
-        <select aria-label="Changer le statut" onchange="updateReservationStatut(${res.id}, this.value, this)">
-          <option value="">Changer statut…</option>
-          ${STATUTS_RESA.map(s=>`<option value="${s}" ${s===res.statut?'selected':''}>${RESA_LABEL[s]}</option>`).join('')}
-        </select>
-        <details class="more-actions" style="margin-left:auto">
-          <summary title="Plus d'actions">⋯</summary>
-          <div class="more-actions-menu">
-            <button onclick="openEditReservationModal(${res.id})">✏️ Modifier</button>
-            <button onclick="duplicateReservation(${res.id})">🆕 Réservation similaire (même client)</button>
-            ${res.statut==='en_attente' && res.source==='manuel' && (res.email || res.tel) ? `<button onclick="renvoyerLienPaiement(${res.id}, ${res.tel?'true':'false'})">🔁 Renvoyer le lien de paiement</button>` : ''}
-            ${res.appareils_en_attente_validation?`<button onclick="validerAppareilsReservation(${res.id})">🔍 Valider l'appareil attribué</button>`:''}
-            ${res.statut==='confirmee'?`<button onclick="reaffecterAppareilReservation(${res.id})">🔄 Réaffecter l'appareil</button>`:''}
-            ${res.statut==='confirmee'?`<button onclick="proposerOffrePrivilegeManuelle(${res.id})">⭐ Proposer l'Offre Privilège</button>`:''}
-            ${res.statut!=='remboursee' && res.statut!=='en_attente' && res.stripe_payment_intent_id ? `<button onclick="rembourserReservation(${res.id})">💳 Rembourser</button>` : ''}
-            ${res.statut!=='annulee'?`<button class="danger" onclick="cancelReservation(${res.id})">Annuler la réservation</button>`:''}
-            <button class="danger" onclick="deleteReservation(${res.id}, '${res.statut}')">🗑️ Supprimer de l'écran</button>
-          </div>
-        </details>
+        ${reservationStatutSelectHtml(res)}
+        ${reservationMoreActionsHtml(res)}
       </div>`}
     </div>`;
 }
@@ -2977,7 +3025,7 @@ function renderReservationsToolbar(){
         ${filters.map(f => `<button class="${!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER===f.key?'on':''}" onclick="setReservationsFilter('${f.key}')">${f.label}</button>`).join('')}
       </div>
       ${RESERVATIONS_FILTER==='hors_zone'?`<div class="affect-hint">💡 Le code postal du client ne correspond à aucune ville configurée — aucun livreur n'est assigné automatiquement, choisis-en un toi-même sur chaque réservation.</div>`:''}
-      <div id="resa-list" class="row-grid"></div>
+      <div id="resa-list" class="table-toggle-zone"></div>
       ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleMasquees()">${RESERVATIONS_SHOW_MASQUEES?'← Revenir aux réservations':`🙈 Afficher les réservations supprimées (${masqueesCount})`}</button>` : ''}
     </div>
     <div id="resa-calendrier-view" class="${RESERVATIONS_VIEW==='calendrier'?'':'hidden'}">
@@ -3479,7 +3527,71 @@ function renderReservations(){
   if(!RESERVATIONS_SHOW_MASQUEES && RESA_URGENCY_FILTERS.includes(RESERVATIONS_FILTER)){
     items = [...items].sort((a,b) => resaUrgencyDate(a).localeCompare(resaUrgencyDate(b)));
   }
-  list.innerHTML = items.map(r => reservationRowHtml(r)).join('') || `<p class="empty">🧾 ${RESERVATIONS_SHOW_MASQUEES?'Aucune réservation supprimée.':'Aucune réservation pour l\'instant.'}</p>`;
+  if(!items.length){
+    list.innerHTML = `<p class="empty">🧾 ${RESERVATIONS_SHOW_MASQUEES?'Aucune réservation supprimée.':'Aucune réservation pour l\'instant.'}</p>`;
+    return;
+  }
+  list.innerHTML = `<div class="row-grid">${items.map(r => reservationRowHtml(r)).join('')}</div>${reservationsTableHtml(items)}`;
+}
+// ── Tableau (grand écran) — mêmes données que les cartes ci-dessus, tri au
+// clic sur l'en-tête. RESA_SORT est repartagé par les 2 vues (liste/calendrier
+// n'y touchent pas), il ne persiste pas entre 2 rechargements de l'onglet.
+let RESA_SORT = {col:null, dir:1};
+function sortReservationsTable(col){
+  RESA_SORT = RESA_SORT.col===col ? {col, dir:RESA_SORT.dir*-1} : {col, dir:1};
+  renderReservations();
+}
+const RESA_SORT_GETTERS = {
+  ref:     r => isInternalRef(r.ref)?'':(r.ref||''),
+  client:  r => ((r.prenom||'')+' '+(r.nom||'')).trim(),
+  adresse: r => r.adresse||'',
+  dates:   r => r.date_debut||'',
+  statut:  r => STATUT_COMMANDE_LABEL[r.statut_commande]||RESA_LABEL[r.statut]||r.statut||'',
+  montant: r => r.prix_total_cents||0,
+};
+function reservationsTableHtml(items){
+  let rows = items;
+  const getter = RESA_SORT.col && RESA_SORT_GETTERS[RESA_SORT.col];
+  if(getter){
+    rows = [...items].sort((a,b) => {
+      const va = getter(a), vb = getter(b);
+      const cmp = typeof va==='number' ? va-vb : String(va).localeCompare(String(vb), 'fr');
+      return cmp * RESA_SORT.dir;
+    });
+  }
+  const cols = [
+    {key:'ref', label:'Réf'}, {key:'client', label:'Client'}, {key:'adresse', label:'Adresse'},
+    {key:'dates', label:'Dates'}, {key:'statut', label:'Statut'}, {key:'montant', label:'Montant'},
+  ];
+  const thHtml = c => `<th onclick="sortReservationsTable('${c.key}')" class="${RESA_SORT.col===c.key?'sorted':''}">${c.label}<span class="sort-arrow">${RESA_SORT.col===c.key?(RESA_SORT.dir===1?'▲':'▼'):'▲'}</span></th>`;
+  return `
+    <div class="admin-table-wrap"><table class="admin-table">
+      <thead><tr>${cols.map(thHtml).join('')}<th>Actions</th></tr></thead>
+      <tbody>${rows.map(reservationTableRowHtml).join('')}</tbody>
+    </table></div>`;
+}
+function reservationTableRowHtml(res){
+  const nom = escHtml((res.prenom||'')+' '+(res.nom||''))||'—';
+  if(res.masquee){
+    return `<tr style="opacity:.6">
+      <td>${isInternalRef(res.ref)?'—':escHtml(res.ref)}</td>
+      <td>${nom}</td>
+      <td class="ellipsis">${escHtml(res.adresse||'—')}</td>
+      <td style="white-space:nowrap">${frDateCourt(res.date_debut)} → ${frDateCourt(res.date_fin)}</td>
+      <td><span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span></td>
+      <td class="num">${euros(res.prix_total_cents)}</td>
+      <td><button class="btn btn-grey" onclick="restoreReservation(${res.id})">Restaurer</button></td>
+    </tr>`;
+  }
+  return `<tr>
+    <td style="white-space:nowrap">${isInternalRef(res.ref)?'—':escHtml(res.ref)}</td>
+    <td style="white-space:nowrap">${nom}${res.type_client==='entreprise'?' 🏢':''}</td>
+    <td class="ellipsis" title="${escHtml(res.adresse||'')}">${escHtml(res.adresse||'—')}</td>
+    <td style="white-space:nowrap">${frDateCourt(res.date_debut)} → ${frDateCourt(res.date_fin)}</td>
+    <td>${res.hors_zone?'⚠️ ':''}<span class="chip ${STATUT_COMMANDE_CSS[res.statut_commande]||res.statut}">${STATUT_COMMANDE_LABEL[res.statut_commande]||RESA_LABEL[res.statut]||res.statut}</span></td>
+    <td class="num">${euros(res.prix_total_cents)}</td>
+    <td><div class="table-actions">${contactButtonsHtml(res.tel)}${reservationStatutSelectHtml(res)}${reservationMoreActionsHtml(res, true)}</div></td>
+  </tr>`;
 }
 // Champs "type de client" (particulier/entreprise) réutilisés dans les 2
 // formulaires de création manuelle (Réservations + "Créer une mission").
