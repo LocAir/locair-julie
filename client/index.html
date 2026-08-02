@@ -289,6 +289,10 @@ document.getElementById('login-form').addEventListener('submit', async function(
     if(!r.ok) throw new Error(d.error || 'Erreur');
     localStorage.setItem('client_token', d.token);
     localStorage.setItem('client_ref', d.ref);
+    // Réutilisé par /prolongation (même origine, localStorage partagé) pour
+    // pré-remplir email + référence si jamais l'auto-connexion par jeton y
+    // échoue — le client n'a alors jamais à retaper ces informations.
+    localStorage.setItem('client_email', email);
     showDashboard();
   }catch(err){
     errEl.textContent = err.message;
@@ -301,6 +305,7 @@ document.getElementById('login-form').addEventListener('submit', async function(
 function logout(){
   localStorage.removeItem('client_token');
   localStorage.removeItem('client_ref');
+  localStorage.removeItem('client_email');
   location.reload();
 }
 

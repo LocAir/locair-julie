@@ -255,34 +255,50 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
   // Retour Stripe après 3DS
   if(new URLSearchParams(location.search).get('success')){hide('step-1');show('step-success');}
 
-  // Pré-remplit le numéro de commande depuis le lien reçu par email (voir
-  // scénario "avant fin de location", api/_lib/emailTemplates.js) — le client
-  // n'a alors plus qu'à saisir son email pour retrouver son dossier.
+  // Pré-remplit le numéro de commande et l'email connus à l'avance : depuis
+  // le lien reçu par email (?ref=, voir scénario "avant fin de location",
+  // api/_lib/emailTemplates.js), ou depuis l'espace client déjà connecté
+  // (client/index.html, même origine -> localStorage partagé). Fait AVANT
+  // la tentative d'auto-connexion ci-dessous, pour que même si celle-ci
+  // échoue (jeton expiré, réservation qui ne correspond plus aux critères),
+  // le client n'ait jamais à retaper ces deux informations — au pire un
+  // simple clic sur "Vérifier ma location" au lieu d'une ressaisie complète.
   (function(){
     const refFromUrl=(new URLSearchParams(location.search).get('ref')||'').trim();
-    if(refFromUrl){
+    const ref=refFromUrl||(localStorage.getItem('client_ref')||'').trim();
+    const emailKnown=(localStorage.getItem('client_email')||'').trim();
+    if(ref){
       const el=document.getElementById('f-ref');
-      if(el){el.value=refFromUrl.toUpperCase();document.getElementById('f-email')?.focus();}
+      if(el)el.value=ref.toUpperCase();
     }
+    if(emailKnown){
+      const el=document.getElementById('f-email');
+      if(el)el.value=emailKnown;
+    }
+    if(ref&&!emailKnown)document.getElementById('f-email')?.focus();
   })();
 
   // Auto-connexion depuis l'espace client (client/index.html) : le client y
-  // est déjà identifié (jeton client_token dans l'URL) — on saute l'étape 1
-  // (email + référence) et on passe directement à l'étape 2 avec sa
-  // réservation déjà chargée. Demande explicite du propriétaire : un client
-  // déjà connecté ne doit plus jamais retaper ces informations.
+  // est déjà identifié (jeton client_token, dans l'URL ou dans le
+  // localStorage partagé — même origine) — on saute l'étape 1 (email +
+  // référence) et on passe directement à l'étape 2 avec sa réservation déjà
+  // chargée. Demande explicite du propriétaire : un client déjà connecté ne
+  // doit plus jamais retaper ces informations.
   (async function(){
     const tokenFromUrl=(new URLSearchParams(location.search).get('token')||'').trim();
-    if(!tokenFromUrl)return;
+    const token=tokenFromUrl||(localStorage.getItem('client_token')||'').trim();
+    if(!token)return;
     hide('step-1');
     try{
-      const r=await fetch('/api/prolong-lookup',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({token:tokenFromUrl})});
+      const r=await fetch('/api/prolong-lookup',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({token})});
       const d=await r.json();
       if(!r.ok)throw new Error(d.error||'Erreur serveur');
       email=d.email;ref=d.ref;resa=d;goStep2();
     }catch(ex){
-      // Jeton expiré ou invalide — repli silencieux sur le formulaire manuel,
-      // déjà pré-rempli avec la référence s'il y en avait une dans l'URL.
+      // Jeton expiré, invalide, ou réservation qui ne correspond plus aux
+      // critères (déjà terminée, etc.) — repli sur le formulaire manuel, mais
+      // email + référence restent déjà pré-remplis (voir ci-dessus) : il
+      // suffit alors d'un clic, jamais d'une ressaisie complète.
       show('step-1');
     }
   })();
