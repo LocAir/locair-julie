@@ -6011,8 +6011,12 @@ async function loadPartenairesEquipe(){
     if(!r.ok) throw new Error(d.error||'Erreur');
     PARTENAIRES_CACHE = d.partenaires || [];
 
-    const list = PARTENAIRES_CACHE.map(p => `
-      <div class="row-item">
+    // Actifs d'abord — même logique que l'onglet Transporteurs (Équipe) :
+    // un ambassadeur désactivé se noyait sinon au milieu de ceux encore
+    // apporteurs d'affaires.
+    const partenairesTries = [...PARTENAIRES_CACHE].sort((a,b) => (a.actif===b.actif) ? 0 : (a.actif ? -1 : 1));
+    const list = partenairesTries.map(p => `
+      <div class="row-item" style="${p.actif?'':'opacity:.6'}">
         <div class="row-top">
           <span class="row-title">${escHtml(p.nom)}</span>
           <span class="chip ${p.actif?'actif':'inactif'}">${p.actif?'actif':'inactif'}</span>
