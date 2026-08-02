@@ -267,7 +267,7 @@ module.exports = async (req, res) => {
     if (action === 'resolve_probleme') {
       const livraisonId = parseInt(body.livraison_id);
       if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
-      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, statut, reservation_id, incident_id');
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, statut, reservation_id, incident_id, transporteur_id');
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
       if (liv.statut !== 'probleme') return res.status(409).json({ error: 'Cette mission n\'est pas signalée en problème' });
 
@@ -286,6 +286,16 @@ module.exports = async (req, res) => {
       if (liv.incident_id) {
         await supabase.from('incidents').update({ statut: 'resolu' })
           .eq('id', liv.incident_id).in('statut', INCIDENT_OPEN_STATUSES);
+      }
+
+      // Sans ce push, le livreur reste bloqué sur l'écran "Problème signalé,
+      // Aly va te recontacter" jusqu'au prochain rafraîchissement — alors
+      // que la mission est de nouveau à traiter dès maintenant.
+      if (liv.transporteur_id) {
+        await notifyTransporteur(supabase, liv.transporteur_id, {
+          type: 'modification', message: 'Le problème signalé a été résolu — la mission est de nouveau à traiter.',
+          livraisonId: liv.id, tag: 'modification',
+        });
       }
 
       return res.status(200).json({ ok: true });
