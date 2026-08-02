@@ -4,6 +4,7 @@ const { resolveCityById } = require('./_lib/city');
 const { isValidDate, addDays } = require('./_lib/dates');
 const { calcTieredPrice } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
+const { getEffectiveDateFin } = require('./_lib/reservations');
 
 const calcBase = calcTieredPrice;
 
@@ -107,16 +108,7 @@ module.exports = async (req, res) => {
     // repart de cette date figée : elle chevauche la 1re prolongation déjà
     // confirmée (même période comptée deux fois) et le nombre de jours
     // facturés explose (calculé jusqu'à une date de fin bien trop ancienne).
-    let finReelleContrat = orig?.date_fin || null;
-    if (orig?.id) {
-      const { data: dernierProlong } = await supabase
-        .from('reservations').select('date_fin')
-        .eq('reservation_origine_id', orig.id).eq('statut', 'confirmee')
-        .order('date_fin', { ascending: false }).limit(1).maybeSingle();
-      if (dernierProlong?.date_fin && dernierProlong.date_fin > finReelleContrat) {
-        finReelleContrat = dernierProlong.date_fin;
-      }
-    }
+    const finReelleContrat = orig?.id ? await getEffectiveDateFin(supabase, orig.id, orig.date_fin) : (orig?.date_fin || null);
     if (finReelleContrat) {
       extDateDebut = finReelleContrat.slice(0, 10);
       if (extDateFin <= extDateDebut) {

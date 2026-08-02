@@ -13,6 +13,26 @@ function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
 }
 
+// Date de fin RÉELLE d'un contrat, prolongations déjà confirmées comprises.
+// reservations.date_fin sur la réservation d'ORIGINE est mise à jour à
+// chaque confirmation de prolongation (webhook.js, admin-reservations.js),
+// mais toujours en fire-and-forget (jamais garanti à 100%, voir les .then()
+// qui avalent l'erreur) — sans ce filet de sécurité, une prolongation dont
+// la mise à jour de date_fin aurait raté pour une raison quelconque rejette
+// à tort toute nouvelle prolongation ("déjà terminée") ou affiche une durée
+// figée dans l'espace client, alors qu'une prolongation confirmée existe
+// bel et bien derrière. Reprend la date la plus tardive entre la réservation
+// d'origine et sa dernière prolongation confirmée.
+async function getEffectiveDateFin(supabase, origId, origDateFin) {
+  if (!origId) return origDateFin;
+  const { data: dernierProlong } = await supabase
+    .from('reservations').select('date_fin')
+    .eq('reservation_origine_id', origId).eq('statut', 'confirmee')
+    .order('date_fin', { ascending: false }).limit(1).maybeSingle();
+  if (dernierProlong?.date_fin && dernierProlong.date_fin > origDateFin) return dernierProlong.date_fin;
+  return origDateFin;
+}
+
 // Doit rester synchronisé avec TEST_TRANSPORTEUR_NOM dans admin/index.html —
 // ce compte factice (créé pour qu'Aly puisse tester /transporteur lui-même)
 // ne doit jamais recevoir de vraie mission cliente par la répartition auto.
@@ -667,5 +687,5 @@ async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) 
 module.exports = {
   confirmReservationAndCreateLivraisons, confirmReservation, pickTransporteurForMission, normalizeTel,
   sendConfirmationCommunications, sendProlongationConfirmation, sendRelanceProlongationSms,
-  sendRappelRecuperationSms,
+  sendRappelRecuperationSms, getEffectiveDateFin,
 };

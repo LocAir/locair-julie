@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { verifyClientToken } = require('./_lib/auth');
+const { getEffectiveDateFin } = require('./_lib/reservations');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -24,7 +25,7 @@ module.exports = async (req, res) => {
     if (!reservationId) return res.status(401).json({ error: 'Session expirée — reconnectez-vous à votre espace client.' });
     ({ data: resa, error } = await supabase
       .from('reservations')
-      .select('ref, prenom, email, date_debut, date_fin, quantite, statut')
+      .select('id, ref, prenom, email, date_debut, date_fin, quantite, statut')
       .eq('id', reservationId)
       .not('source', 'eq', 'site_prolongation')
       .eq('statut', 'confirmee')
@@ -40,7 +41,7 @@ module.exports = async (req, res) => {
     // 'lookup_prolongation').
     ({ data: resa, error } = await supabase
       .from('reservations')
-      .select('ref, prenom, email, date_debut, date_fin, quantite, statut')
+      .select('id, ref, prenom, email, date_debut, date_fin, quantite, statut')
       .ilike('email', normalizedEmail)
       .eq('ref', ref.trim().toUpperCase())
       .not('source', 'eq', 'site_prolongation')
@@ -59,6 +60,13 @@ module.exports = async (req, res) => {
     if (!token) await recordFailedAttempt(supabase, `prolong:${ip}`).catch(() => {});
     return res.status(404).json({ error: 'Aucune location trouvée — vérifiez votre email et référence de commande.' });
   }
+
+  // Si le client a déjà prolongé au moins une fois et que la mise à jour de
+  // date_fin sur l'origine a silencieusement raté (même filet que
+  // checkout-prolong.js/prolong-pay.js, voir getEffectiveDateFin), une
+  // nouvelle prolongation serait ici refusée à tort ("déjà terminée") alors
+  // qu'une prolongation confirmée existe bel et bien derrière.
+  resa.date_fin = await getEffectiveDateFin(supabase, resa.id, resa.date_fin);
 
   const today = new Date().toISOString().slice(0, 10);
   if (resa.date_fin < today) {
