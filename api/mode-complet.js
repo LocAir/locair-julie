@@ -1,10 +1,17 @@
 const { getSupabase }     = require('./_lib/supabase');
-const { getCity }         = require('./_lib/city');
+const { getCity, isCitySoldOut } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 
-// sold_out est recalculé automatiquement en base (triggers de
-// migration_auto_sold_out.sql, à partir du stock réel) — cet endpoint est
-// en lecture seule, il n'y a plus de bascule manuelle.
+// En mode "auto" (par défaut), sold_out est recalculé en base à partir du
+// stock réel (triggers de migration_auto_sold_out.sql) — cet endpoint
+// revérifie quand même en temps réel (disponibles) pour ne jamais dépendre
+// d'un trigger SQL qui aurait raté ou d'un statut d'appareil changé hors
+// circuit. En mode "manuel" (migration_sold_out_mode.sql), l'admin garde
+// la main via le bouton "Passer en complet" côté admin/index.html — ce
+// choix explicite doit toujours l'emporter, même si le stock réel montre
+// encore des appareils disponibles (bug corrigé : jusqu'ici ce mode manuel
+// n'avait aucun effet sur le site, cet endpoint recalculait toujours à
+// partir du stock réel sans jamais lire sold_out_mode).
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -22,10 +29,8 @@ module.exports = async (req, res) => {
     const today    = new Date().toISOString().slice(0, 10);
     const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
     const disponibles = Math.max(0, await getAvailability(supabase, city.id, today, tomorrow));
-    // sold_out dérivé directement de disponibles (source temps réel) plutôt que
-    // du champ mis en cache cities.sold_out — évite tout désync si un trigger SQL
-    // rate ou si le statut d'un appareil change sans passer par le bon chemin.
-    return res.status(200).json({ sold_out: disponibles <= 0, disponibles });
+    const soldOut = await isCitySoldOut(supabase, city);
+    return res.status(200).json({ sold_out: soldOut, disponibles });
   } catch (err) {
     console.error('[mode-complet GET]', err.message);
     return res.status(500).json({ error: 'Erreur serveur' });

@@ -5973,21 +5973,41 @@ document.addEventListener('click',function(e){
 document.addEventListener('keydown',function(e){
   if(e.key==='Escape'&&document.getElementById('so-overlay')?.classList.contains('open'))closeSoldOutOverlay();
 });
-// Le badge "Complet" et le blocage du bouton de réservation ont été retirés
-// (voir openModal) : le stock ne bloque plus le paiement, Aly gère ça
-// manuellement de son côté. Fonction gardée à l'identique pour l'appel
-// existant dans _refreshStockAndSoldOut, mais réduite au nettoyage —
-// SOLD_OUT reste calculé (utilisé par _updateStockNoticeText pour masquer
-// le mini-avertissement "plus que N disponibles" quand il n'y a plus rien).
+// Badge "Complet" sous le CTA hero + désactivation visuelle du bouton de
+// réservation mobile quand SOLD_OUT est vrai (ville passée en mode complet,
+// à la main ou automatiquement à partir du stock réel — voir
+// /api/mode-complet). Rétabli à la demande d'Aly (précédemment retiré, puis
+// redemandé après avoir constaté qu'un "mode complet" manuel n'avait plus
+// aucun effet visible sur le site).
 function _initSoldOut(){
+  // Nettoyage préalable — idempotent pour permettre un re-init après toggle admin
   document.getElementById('so-hero-badge')?.remove();
   const _sn=document.getElementById('stock-notice');
   const _mb=document.querySelector('.m-btn-book');
   if(_sn)_sn.style.display='';
   if(_mb){_mb.style.opacity='';_mb.style.cursor='';}
+  if(!SOLD_OUT)return;
+  // Badge sous le CTA hero
+  const cta=document.querySelector('.hero-cta');
+  if(cta){
+    const badge=document.createElement('p');
+    badge.className='so-badge';
+    badge.id='so-hero-badge';
+    badge.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span id="so-badge-txt">'+(_lang==='en'?'Sold out — coming back soon':_lang==='zh'?'已售罄——即将重新开放':_lang==='ru'?'Нет в наличии — скоро появится':'Complet — réouverture prochaine')+'</span>';
+    cta.insertAdjacentElement('afterend',badge);
+  }
+  // Désactiver le stock-notice dans le funnel (0 dispo)
+  if(_sn)_sn.style.display='none';
+  // Désactiver la mobile bar booking button
+  if(_mb){_mb.style.opacity='.55';_mb.style.cursor='default';}
 }
 
 function openModal(dur, flowType){
+  // Une nouvelle réservation (jamais une prolongation, qui ne consomme pas
+  // d'appareil supplémentaire) est bloquée tant que la ville est en mode
+  // complet — sessionStorage._la ('logged as admin') permet à Aly de
+  // continuer à créer/tester des réservations malgré tout.
+  if(SOLD_OUT&&!sessionStorage.getItem('_la')&&flowType!=='extend'){showSoldOutOverlay();return;}
   _updateStockNoticeText();
   window.dataLayer=window.dataLayer||[];
   dataLayer.push({event:'open_booking_modal',flow:flowType||'choice'});
