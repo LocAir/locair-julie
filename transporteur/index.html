@@ -607,6 +607,7 @@ let STATE = {
   en_pause: false,
   currentMission: null,
   pendingUpload: null, // {livraisonId, kind}
+  lastFailedUpload: null, // {rawFile, kind, missionId} — voir retryFailedUpload()
   autoOpenChecked: false, // une seule fois par connexion, voir maybeAutoOpenMission()
   checklist: null, // état du jour, chargé avec les missions — voir checklistBlocksMission()
   returnToMission: null, // mission à rouvrir après validation checklist, voir goToChecklistFromMission()
@@ -3275,6 +3276,23 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
   if(!rawFile || !STATE.pendingUpload) return;
   const {kind} = STATE.pendingUpload;
   const mission = STATE.currentMission;
+  uploadMedia(rawFile, kind, mission);
+});
+// Relance le tout dernier envoi qui a échoué (voir STATE.lastFailedUpload,
+// posé dans uploadMedia ci-dessous) — sans repasser par l'appareil photo/la
+// galerie. Sur le terrain, en zone blanche, redemander une photo à chaque
+// tentative ratée (3 essais auto déjà faits en interne, voir
+// putFileWithRetry) doublait inutilement l'attente et la frustration : le
+// fichier déjà pris reste en mémoire, seul l'envoi est retenté.
+function retryFailedUpload(){
+  const pending = STATE.lastFailedUpload;
+  if(!pending) return;
+  const mission = STATE.missions.find(m => m.id === pending.missionId);
+  if(!mission) return;
+  STATE.lastFailedUpload = null;
+  uploadMedia(pending.rawFile, pending.kind, mission);
+}
+async function uploadMedia(rawFile, kind, mission){
   const isVideoFile = rawFile.type.startsWith('video');
   const previewUrl = URL.createObjectURL(rawFile);
 
@@ -3362,6 +3380,16 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
         const errEl = document.createElement('div');
         errEl.className='err'; errEl.style.display='block'; errEl.textContent = err.message;
         zone2.appendChild(errEl);
+        // Le fichier déjà capturé reste en mémoire (voir STATE.lastFailedUpload)
+        // pour permettre de relancer l'envoi sans repasser par l'appareil
+        // photo/la galerie — voir retryFailedUpload().
+        STATE.lastFailedUpload = {rawFile, kind, missionId: mission.id};
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'btn btn-blue btn-block';
+        retryBtn.style.marginTop = '8px';
+        retryBtn.textContent = '🔄 Réessayer l\'envoi (même photo)';
+        retryBtn.onclick = retryFailedUpload;
+        zone2.appendChild(retryBtn);
       }
     }else{
       // Le livreur a changé de mission pendant l'envoi en arrière-plan — pas
@@ -3371,7 +3399,7 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
   }finally{
     URL.revokeObjectURL(previewUrl);
   }
-});
+}
 
 
 // ── Code oublié ───────────────────────────────────────────────────────────────
