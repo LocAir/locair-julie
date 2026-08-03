@@ -544,7 +544,13 @@ insert into email_scenarios (id, libelle) values
   ('sms_confirmation',    'SMS de confirmation de réservation'),
   ('email_prolongation',  'Email de confirmation de prolongation'),
   ('sms_prolongation',    'SMS de confirmation de prolongation'),
-  ('sms_avis_google',     'SMS de demande d''avis Google');
+  ('sms_avis_google',     'SMS de demande d''avis Google'),
+  -- sms_relance_prolongation et sms_rappel_recuperation sont traités comme
+  -- des scénarios "datés" par communicationsCockpit.js (même mécanisme
+  -- pause/reprendre email_skip que les scénarios email ci-dessus) — email_skip.scenario
+  -- a une clé étrangère vers cette table, donc ils doivent y exister aussi.
+  ('sms_relance_prolongation', 'SMS proposition de prolongation (J-4)'),
+  ('sms_rappel_recuperation',  'SMS rappel récupération (J-1)');
 
 -- Garantit qu'un scénario n'est jamais envoyé deux fois pour la même
 -- réservation (clé primaire composite).

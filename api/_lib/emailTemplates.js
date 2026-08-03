@@ -12,6 +12,20 @@ function escHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
+// reservations.installation est toujours stocké en français ("Technicien
+// (80€)" / "Autonome (kit fourni)") — utilisé ailleurs dans le code comme
+// valeur machine via .startsWith('Technicien') (checkout.js, pdf.js,
+// transporteurNotif.js...), donc jamais traduit à la source. Cette fonction
+// ne traduit que l'AFFICHAGE dans l'email, sans toucher à la valeur stockée
+// ni à aucune de ces vérifications.
+function installationLabel(lang, raw) {
+  const isTech = String(raw || '').startsWith('Technicien');
+  if (lang === 'en') return isTech ? 'Technician (€80)' : 'Self-install (kit provided)';
+  if (lang === 'zh') return isTech ? '技术员安装（80€）' : '自行安装（提供工具包）';
+  if (lang === 'ru') return isTech ? 'Мастер (80€)' : 'Самостоятельно (комплект предоставлен)';
+  return raw || 'Autonome (kit fourni)';
+}
+
 // Habillage visuel unique (identité de marque) — même structure et mêmes
 // paramètres qu'avant (headColor/title/intro/bodyHtml/ctaHref/ctaLabel),
 // seule la mise en forme change : pile de polices système (rendu natif fiable
@@ -54,7 +68,7 @@ function tplConfirmation(ctx) {
       <strong>Delivery:</strong> ${escHtml(ctx.dateDebutFmt)}${ctx.creneau ? ' · ' + escHtml(ctx.creneau) : ''}<br/>
       <strong>Collection:</strong> ${escHtml(ctx.dateRecupFmt)}<br/>
       <strong>Unit:</strong> ${escHtml(ctx.modeleClimatiseur)}<br/>
-      <strong>Installation:</strong> ${escHtml(ctx.installation || 'Self-install')}<br/>
+      <strong>Installation:</strong> ${escHtml(installationLabel('en', ctx.installation))}<br/>
       <strong>Amount:</strong> ${escHtml(ctx.montantFmt)}</p>
       <p style="font-size:13px;color:#444">The technician will call you <strong>30 minutes before arriving</strong>.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
@@ -69,7 +83,7 @@ function tplConfirmation(ctx) {
       <strong>配送日期：</strong>${escHtml(ctx.dateDebutFmt)}${ctx.creneau ? ' · ' + escHtml(ctx.creneau) : ''}<br/>
       <strong>取回日期：</strong>${escHtml(ctx.dateRecupFmt)}<br/>
       <strong>设备：</strong>${escHtml(ctx.modeleClimatiseur)}<br/>
-      <strong>安装方式：</strong>${escHtml(ctx.installation || '自行安装')}<br/>
+      <strong>安装方式：</strong>${escHtml(installationLabel('zh', ctx.installation))}<br/>
       <strong>金额：</strong>${escHtml(ctx.montantFmt)}</p>
       <p style="font-size:13px;color:#444">技术员将在<strong>到达前30分钟</strong>致电通知您。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
@@ -84,7 +98,7 @@ function tplConfirmation(ctx) {
       <strong>Доставка:</strong> ${escHtml(ctx.dateDebutFmt)}${ctx.creneau ? ' · ' + escHtml(ctx.creneau) : ''}<br/>
       <strong>Возврат:</strong> ${escHtml(ctx.dateRecupFmt)}<br/>
       <strong>Устройство:</strong> ${escHtml(ctx.modeleClimatiseur)}<br/>
-      <strong>Установка:</strong> ${escHtml(ctx.installation || 'Самостоятельно')}<br/>
+      <strong>Установка:</strong> ${escHtml(installationLabel('ru', ctx.installation))}<br/>
       <strong>Сумма:</strong> ${escHtml(ctx.montantFmt)}</p>
       <p style="font-size:13px;color:#444">Мастер позвонит вам <strong>за 30 минут до приезда</strong>.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
