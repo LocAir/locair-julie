@@ -2412,10 +2412,28 @@ async function loadDevis(){
     zone.innerHTML = `<div class="card"><p class="err" style="display:block">${escHtml(e.message)}</p></div>`;
   }
 }
+// Un devis "Envoyé" sans réponse au bout de plusieurs jours est une vente
+// qui risque de se perdre en silence — sans relance, l'entreprise part
+// souvent voir un concurrent. Pas de colonne dédiée en base pour la date
+// d'envoi, mais created_at reste un repère fiable pour l'essentiel des cas
+// (un devis part généralement dans la foulée de sa création).
+function devisAgeHtml(x){
+  if(x.statut !== 'envoye') return '';
+  const days = Math.floor((Date.now() - new Date(x.created_at).getTime()) / 86400000);
+  if(days < 1) return '';
+  const stale = days >= 5;
+  const txt = `en attente de réponse depuis ${days} j`;
+  return stale ? ` · <span style="color:var(--red);font-weight:700">⏳ ${txt}</span>` : ` · <span style="color:var(--grey-soft)">${txt}</span>`;
+}
 function renderDevis(){
   const zone = document.getElementById('tab-devis');
   if(!zone) return;
-  const enCours = DEVIS_CACHE.filter(x => !['refuse','expire'].includes(x.statut));
+  // Les devis en attente de réponse depuis le plus longtemps remontent en
+  // tête — ce sont ceux qu'il faut relancer en priorité, plutôt que de les
+  // laisser se noyer sous les demandes du jour (même logique que la file
+  // d'attente Incidents).
+  const enCours = DEVIS_CACHE.filter(x => !['refuse','expire'].includes(x.statut))
+    .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
   zone.innerHTML = `
     <div class="card">
       <h2>📝 Devis entreprises</h2>
@@ -2426,7 +2444,7 @@ function renderDevis(){
             <span class="row-title">${escHtml(x.raison_sociale)} · ${x.quantite} appareil${x.quantite>1?'s':''}</span>
             <span class="chip ${x.statut==='accepte'?'ok':x.statut==='envoye'?'en_attente':'a_faire'}">${DEVIS_STATUT_LABEL[x.statut]||x.statut}</span>
           </div>
-          <div class="row-meta">${escHtml(x.email)}${x.date_debut&&x.date_fin?' · du '+frDate(x.date_debut)+' au '+frDate(x.date_fin):''} · ${euros(x.prix_propose_cents)}${x.notes?' · '+escHtml(x.notes):''}</div>
+          <div class="row-meta">${escHtml(x.email)}${x.date_debut&&x.date_fin?' · du '+frDate(x.date_debut)+' au '+frDate(x.date_fin):''} · ${euros(x.prix_propose_cents)}${x.notes?' · '+escHtml(x.notes):''}${devisAgeHtml(x)}</div>
           <div class="row-actions">
             ${x.statut==='brouillon'?`<button class="btn btn-blue" onclick="sendDevis(${x.id},this)">📧 Envoyer</button>`:''}
             ${x.statut==='envoye'?`<button class="btn btn-green" onclick="updateDevisStatut(${x.id},'accepte',this)">✅ Accepté</button>`:''}
@@ -8340,8 +8358,13 @@ async function loadEquipe(){
 }
 function renderEquipe(){
   const zone = document.getElementById('tab-equipe');
-  const list = EQUIPE_CACHE.map(u => `
-    <div class="row-item">
+  // Même logique déjà appliquée à Virements/Transporteurs/Ambassadeurs : les
+  // comptes désactivés n'ont plus besoin d'être vus au quotidien — les
+  // remonter au milieu d'une liste triée par date de création forçait à
+  // chercher parmi eux pour retrouver les comptes actifs.
+  const sorted = [...EQUIPE_CACHE].sort((a,b) => (b.actif?1:0)-(a.actif?1:0) || String(a.nom||'').localeCompare(String(b.nom||''),'fr'));
+  const list = sorted.map(u => `
+    <div class="row-item" style="${u.actif?'':'opacity:.6'}">
       <div class="row-top">
         <span class="row-title">${escHtml(u.nom)}</span>
         <span class="chip ${u.actif?'actif':'inactif'}">${u.actif?'actif':'désactivé'}</span>
