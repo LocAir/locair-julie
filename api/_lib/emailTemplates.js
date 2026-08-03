@@ -832,8 +832,7 @@ function tplOffrePrivilege({ prenom, ref, prixFormate, appareilNumero }) {
   const prix = escHtml(prixFormate || '');
   const appareil = appareilNumero ? `climatiseur #${escHtml(String(appareilNumero))}` : 'votre climatiseur';
   return wrap({
-    headColor: '#1a2b4a',
-    title: 'Une offre exclusive pour vous',
+    title: '⭐ Une offre exclusive pour vous',
     intro: `Dossier ${escHtml(ref || '')}`,
     bodyHtml: `
       <p>Bonjour ${p},</p>
