@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { getSupabase }    = require('./_lib/supabase');
 const { sendBrevoEmail } = require('./_lib/brevo');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
@@ -5,7 +6,10 @@ const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
-  return (req.headers['authorization'] || '') === `Bearer ${secret}`;
+  const provided = req.headers['authorization'] || '';
+  const expected = `Bearer ${secret}`;
+  if (provided.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 }
 
 function escHtml(s) {

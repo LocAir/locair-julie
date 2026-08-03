@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const Stripe = require('stripe');
 const { getSupabase }          = require('./_lib/supabase');
 const { sendBrevoSms, sendBrevoEmail } = require('./_lib/brevo');
@@ -19,7 +20,10 @@ const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
-  return (req.headers['authorization'] || '') === `Bearer ${secret}`;
+  const provided = req.headers['authorization'] || '';
+  const expected = `Bearer ${secret}`;
+  if (provided.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 }
 
 module.exports = async (req, res) => {
@@ -172,8 +176,20 @@ module.exports = async (req, res) => {
           continue;
         }
 
-        const amountCents     = dailyRate(joursRetard) * 100;
-        const idempotencyKey  = `retard-${liv.id}-${joursRetard}j-${todayStr}`;
+        const amountCents = dailyRate(joursRetard) * 100;
+        const desc = `${joursRetard}j de retard — prélèvement auto ${(amountCents / 100).toFixed(2)} €`;
+
+        // Vérifier l'existence d'un incident AVANT de créer le PaymentIntent.
+        // Sans ce garde-fou, l'idempotencyKey change chaque jour (joursRetard
+        // s'incrémente) → Stripe crée un nouveau PI chaque matin → double
+        // facturation dès le 2ème jour de retard.
+        const { data: existInc } = await supabase.from('incidents').select('id').eq('reservation_id', liv.reservation_id).eq('type', 'retard').in('statut', ['retard_a_facturer', 'nouveau']).maybeSingle();
+        if (existInc) {
+          await supabase.from('incidents').update({ description: desc, montant_facture_cents: amountCents }).eq('id', existInc.id);
+          continue;
+        }
+
+        const idempotencyKey = `retard-${liv.id}-${todayStr}`;
         const intent = await stripe.paymentIntents.create({
           amount:         amountCents,
           currency:       'eur',
@@ -184,14 +200,7 @@ module.exports = async (req, res) => {
           description:    `Loc'Air — Retard restitution ${joursRetard}j · ${(resa.nom || '').slice(0, 100)}`,
           metadata:       { type: 'retard', jours: String(joursRetard), reservation_id: String(liv.reservation_id) },
         }, { idempotencyKey });
-
-        const desc = `${joursRetard}j de retard — prélèvement auto ${(amountCents / 100).toFixed(2)} €`;
-        const { data: existInc } = await supabase.from('incidents').select('id').eq('reservation_id', liv.reservation_id).eq('type', 'retard').in('statut', ['retard_a_facturer', 'nouveau']).maybeSingle();
-        if (existInc) {
-          await supabase.from('incidents').update({ description: desc, montant_facture_cents: amountCents }).eq('id', existInc.id);
-        } else {
-          await supabase.from('incidents').insert({ city_id: resa.city_id || null, reservation_id: liv.reservation_id, type: 'retard', description: desc, montant_facture_cents: amountCents, statut: 'retard_a_facturer' });
-        }
+        await supabase.from('incidents').insert({ city_id: resa.city_id || null, reservation_id: liv.reservation_id, type: 'retard', description: desc, montant_facture_cents: amountCents, statut: 'retard_a_facturer' });
         console.log('[Cron retard] Prélèvement', intent.id, 'pour reservation', liv.reservation_id);
       } catch (stripeErr) {
         console.error('[Cron retard Stripe]', stripeErr.message, 'reservation', liv.reservation_id);

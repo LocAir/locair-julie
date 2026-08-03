@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
 const { sendBrevoSms } = require('./_lib/brevo');
 const { daysDiff, isSupersededReservation } = require('./_lib/emailSchedule');
@@ -7,7 +8,10 @@ const { wasScenarioSkipped } = require('./_lib/emailEngine');
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
-  return (req.headers['authorization'] || '') === `Bearer ${secret}`;
+  const provided = req.headers['authorization'] || '';
+  const expected = `Bearer ${secret}`;
+  if (provided.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 }
 
 // Cron du soir (18h30 heure de Paris) — regroupe les 2 SMS dont le moment

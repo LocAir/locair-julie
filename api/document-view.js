@@ -8,7 +8,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
   const token = String(req.query?.token || '').trim();
-  if (!token) return res.status(400).send('Lien invalide.');
+  if (!token || token.length < 16) return res.status(400).send('Lien invalide.');
 
   try {
     const supabase = getSupabase();
