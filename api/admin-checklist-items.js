@@ -27,7 +27,11 @@ module.exports = async (req, res) => {
       if (!roleHasAccess(admin.role, 'logistique')) return res.status(403).json({ error: "Ton compte n'a pas accès à la logistique." });
       const workflow = body.workflow;
       const libelle  = (body.libelle || '').trim();
-      if (!['installation', 'recuperation', 'changement'].includes(workflow) || !libelle) {
+      // Doit rester aligné sur la contrainte CHECK de checklist_items en base
+      // (supabase/schema.sql) — 'preparation' existe (section "Préparation
+      // logistique" de l'onglet admin), 'changement' n'est pas un workflow de
+      // checklist_items valide (c'est un type de mission ailleurs).
+      if (!['installation', 'recuperation', 'preparation'].includes(workflow) || !libelle) {
         return res.status(400).json({ error: 'Paramètres manquants' });
       }
       const { error } = await supabase.from('checklist_items').insert({
