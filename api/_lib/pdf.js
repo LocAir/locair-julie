@@ -503,8 +503,12 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement }) {
       amount: eur(locCents),
     });
 
+    // Libelle generique ("zone standard"/"hors zone", meme vocabulaire que
+    // l'admin -- voir admin/index.html) plutot que de nommer une ville : cette
+    // facture est generee pour n'importe quelle ville active, pas seulement
+    // Nice (voir api/_lib/city.js, resolveCityByAddress).
     drawInvoiceItem(doc, {
-      label: `Livraison & récupération — zone : ${horsZone ? 'hors zone' : 'Nice et environs'}`,
+      label: `Livraison & récupération — zone : ${horsZone ? 'hors zone' : 'zone standard'}`,
       amount: eur(livCents),
     });
 
