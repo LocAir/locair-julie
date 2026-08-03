@@ -890,13 +890,16 @@ function onAdminLoginSuccess(token, role, nom){
   setupAdminPush();
   clearAppBadge();
   if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
-  // Le rafraîchissement automatique de l'onglet affiché passe à 2h (au lieu
-  // de 18s) — retour terrain (2026-07-31) : rechargeait la page en cours de
-  // lecture bien trop souvent. Un bouton "🔄 Actualiser" permanent (voir
-  // #a-refresh-btn ci-dessus) couvre le besoin de rafraîchir à la demande ;
-  // les badges de notification (_alertsInterval, 45s) restent inchangés —
-  // eux ne redessinent jamais le contenu affiché, juste les compteurs.
-  if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 2*60*60*1000);
+  // Le rafraîchissement automatique de l'onglet affiché est passé à 1h
+  // (au lieu de 18s, puis 2h) — retour terrain (2026-07-31) : rechargeait
+  // la page en cours de lecture bien trop souvent. Un bouton "🔄 Actualiser"
+  // permanent (voir #a-refresh-btn ci-dessus) couvre le besoin de rafraîchir
+  // à la demande ; les badges de notification (_alertsInterval, 45s) restent
+  // inchangés — eux ne redessinent jamais le contenu affiché, juste les
+  // compteurs. Remonté à 1h (2026-08-03) : sur l'onglet Accueil, les gros
+  // chiffres (ex. "Incidents ouverts") pouvaient rester visiblement faux
+  // pendant 2h alors que le badge correspondant était déjà à jour depuis 45s.
+  if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 60*60*1000);
 }
 async function adminLogin(){
   const pwd = document.getElementById('a-pwd').value.trim();
@@ -8992,7 +8995,7 @@ function closeLiveMap(){
     setupAdminPush();
     clearAppBadge();
     if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
-    if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 2*60*60*1000);
+    if(!window._autoRefreshInterval) window._autoRefreshInterval = setInterval(autoRefreshTick, 60*60*1000);
     maybeOfferAdminFaceId();
   }
 })();
