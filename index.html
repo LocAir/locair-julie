@@ -7300,7 +7300,7 @@ function submitForm(btn,mode){
         console.error('[Formspree]',err);
         if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
         const errEl=document.getElementById('form-error-msg');
-        if(errEl){errEl.textContent=_lang==='ru'?'Ошибка отправки — повтори попытку или позвони: 06.63.79.87.56.':'Erreur d\'envoi — réessaie ou appelle le 06.63.79.87.56.';errEl.style.display='block';const retryBtn=document.getElementById('form-error-retry');if(retryBtn)retryBtn.style.display='inline-block';}
+        if(errEl){errEl.textContent=_lang==='en'?'Sending error — please retry or call us at +33 6 63 79 87 56.':_lang==='zh'?'发送失败——请重试或致电 +33 6 63 79 87 56。':_lang==='ru'?'Ошибка отправки — повтори попытку или позвони: 06.63.79.87.56.':'Erreur d\'envoi — réessaie ou appelle le 06.63.79.87.56.';errEl.style.display='block';const retryBtn=document.getElementById('form-error-retry');if(retryBtn)retryBtn.style.display='inline-block';}
       });
   }
 }
@@ -9415,9 +9415,16 @@ function validatePromo(){
   if(explicit!==undefined){
     _promoDiscount=explicit;_promoPct=0;_promoCode=val;
     if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+_promoDiscount+' € off':_lang==='zh'?'✓ 有效码 — 减'+_promoDiscount+'€':_lang==='ru'?'Код применён ✓ — −'+_promoDiscount+'€':'✓ Code valide — '+_promoDiscount+' € déduits';fb.style.color='#059669';fb.style.display='block';}
-  }else if(normPrenom && val===normPrenom+REFERRAL_PCT){
-    _promoPct=REFERRAL_PCT;_promoCode=val; // _promoDiscount recalculé dans buildRecap()
-    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+REFERRAL_PCT+'% off':_lang==='zh'?'✓ 有效码 — 折扣'+REFERRAL_PCT+'%':_lang==='ru'?'Код применён ✓ — −'+REFERRAL_PCT+'%':'✓ Code valide — '+REFERRAL_PCT+'% déduits';fb.style.color='#059669';fb.style.display='block';}
+  }else if(normPrenom && val.startsWith(normPrenom) && [10,20,30].includes(parseInt(val.slice(normPrenom.length),10))){
+    // Le serveur (api/_lib/promo.js matchPromoPct) accepte aussi les codes
+    // PRENOM10/20 (ex. relance client dormant à -20%, cron-monthly.js), pas
+    // seulement PRENOM30 (code de parrainage envoyé en fin de location) — le
+    // client doit reconnaître les trois, sinon un code pourtant valide
+    // s'affiche comme "non reconnu" et le total affiché avant paiement ne
+    // reflète pas la vraie réduction (déjà appliquée côté serveur).
+    const pct=parseInt(val.slice(normPrenom.length),10);
+    _promoPct=pct;_promoCode=val; // _promoDiscount recalculé dans buildRecap()
+    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+pct+'% off':_lang==='zh'?'✓ 有效码 — 折扣'+pct+'%':_lang==='ru'?'Код применён ✓ — −'+pct+'%':'✓ Code valide — '+pct+'% déduits';fb.style.color='#059669';fb.style.display='block';}
   }else{
     _promoDiscount=0;_promoPct=0;_promoCode='';
     if(fb){fb.textContent=_lang==='en'?'Code not recognised':_lang==='zh'?'无效码':_lang==='ru'?'Код не найден':'Code non reconnu';fb.style.color='var(--red)';fb.style.display='block';}
