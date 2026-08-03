@@ -91,7 +91,18 @@ module.exports = async (req, res) => {
         .eq('partenaire_id', partenaireId)
         .order('created_at', { ascending: false });
 
+      // Taux de commission actuel — renvoyé à chaque chargement du tableau de
+      // bord (pas seulement à la connexion) : un partenaire reste connecté
+      // parfois des semaines (jeton longue durée), et si l'admin ajuste son
+      // taux entre-temps, la légende "X % de chaque réservation confirmée"
+      // affichait un pourcentage obsolète jusqu'à la prochaine reconnexion
+      // manuelle (les montants déjà calculés par réservation restent eux
+      // corrects, seul ce texte explicatif était faux).
+      const { data: partenaireRow } = await supabase
+        .from('partenaires').select('taux_commission_pct').eq('id', partenaireId).maybeSingle();
+
       return res.status(200).json({
+        taux_commission_pct: partenaireRow?.taux_commission_pct ?? null,
         reservations_aujourdhui: reservationsAujourdhui,
         gain_aujourdhui_euros:   gainAujourdhui / 100,
         reservations_mois:       reservationsMois,
