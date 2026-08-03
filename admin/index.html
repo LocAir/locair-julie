@@ -1947,7 +1947,12 @@ function renderChecklistBox(d){
     zone.innerHTML = header + '<p class="empty">Aucune mission ce jour-là.</p>';
     return;
   }
-  zone.innerHTML = header + d.checklists.map(c => {
+  // Les transporteurs pas encore passés au box (rien à vérifier de leur côté)
+  // remontent en premier — c'est sur eux qu'il faut garder l'œil avant leur
+  // départ, pas sur ceux déjà pris en charge et donc déjà réglés pour la
+  // journée.
+  const sorted = [...d.checklists].sort((a,b) => (a.validated?1:0)-(b.validated?1:0));
+  zone.innerHTML = header + sorted.map(c => {
     const climatiseurPills = c.climatiseurs.map(x =>
       `<span class="chip en_location">❄️ n°${x.numero}${x.kit==='velux'?' 🪟':''}</span>`).join('');
     const items = [];
