@@ -257,10 +257,10 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
     }), sig);
     const dossierRef = isProlongation ? (refOrigine || resa.ref) : resa.ref;
     const subject = isProlongation
-      ? `⏰ Il reste un paiement à finaliser pour votre prolongation — Dossier ${dossierRef}`
+      ? `Il reste un paiement à finaliser pour votre prolongation — Dossier ${dossierRef}`
       : rappel
-      ? `⏰ Il reste un paiement à finaliser — Dossier ${resa.ref}`
-      : `💳 Finalisez votre réservation Loc'Air — Dossier ${resa.ref}`;
+      ? `Il reste un paiement à finaliser — Dossier ${resa.ref}`
+      : `Finalisez votre réservation Loc'Air — Dossier ${resa.ref}`;
     const result = await sendBrevoEmail({
       to: resa.email, senderName: sig.nom_expediteur,
       subject,

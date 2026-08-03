@@ -18,7 +18,7 @@ module.exports = async (req, res) => {
 
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">
-      <h2 style="color:#1b3558;margin:0 0 4px">🔍 Scan quotidien Loc'Air</h2>
+      <h2 style="color:#1b3558;margin:0 0 4px">Scan quotidien Loc'Air</h2>
       <p style="color:#6e8599;font-size:13px;margin:0 0 24px">${dateStr}</p>
       <div style="background:#f8f8f8;border-radius:8px;padding:16px 20px;border-left:4px solid #1b3558">
         ${lignes}

@@ -114,12 +114,12 @@ module.exports = async (req, res) => {
         </div>
         <p>N'hésitez pas à nous contacter pour toute question ou pour valider cette proposition.</p>`;
       const html = withSignature(
-        wrap({ title: '📝 Votre devis Loc\'Air', bodyHtml }),
+        wrap({ title: 'Votre devis Loc\'Air', bodyHtml }),
         sig
       );
       const result = await sendBrevoEmail({
         to: d.email, senderName: sig.nom_expediteur,
-        subject: `📝 Votre devis Loc'Air — ${d.raison_sociale}`,
+        subject: `Votre devis Loc'Air — ${d.raison_sociale}`,
         html,
       });
       await supabase.from('email_log').insert({

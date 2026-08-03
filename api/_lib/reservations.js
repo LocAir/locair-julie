@@ -338,10 +338,10 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
     ref_origine: refOrigine || '',
   }), sig);
   const jNum = Number(jours) || 1;
-  const subject = lang === 'en' ? `✅ Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
-    : lang === 'zh' ? `✅ 续租已确认 — 已延长 ${jNum} 天`
-    : lang === 'ru' ? `✅ Продление подтверждено — добавлено ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}`
-    : `✅ Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
+  const subject = lang === 'en' ? `Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
+    : lang === 'zh' ? `续租已确认 — 已延长 ${jNum} 天`
+    : lang === 'ru' ? `Продление подтверждено — добавлено ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}`
+    : `Prolongation confirmée — ${jNum} jour${jNum > 1 ? 's' : ''} ajoutés`;
   const result = await sendBrevoEmail({ to: email, subject, html, senderName: sig.nom_expediteur });
   if (!result.ok) {
     console.error('[Prolongation confirmation]', result.error);

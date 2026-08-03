@@ -13,7 +13,7 @@ async function notifyPartenaireVirementVerse(supabase, partenaireId, montantCent
     const montantFmt = (montantCents / 100).toFixed(2).replace('.', ',') + ' €';
     const sig = await getSignature(supabase);
     const html = withSignature({
-      title: '💶 Ton virement a été effectué',
+      title: 'Ton virement a été effectué',
       intro: `Bonjour ${escHtml(p.nom || '')}, ton virement de commission Loc'Air vient d'être effectué.`,
       bodyHtml: `<div style="background:#e6f0ea;border-radius:12px;padding:20px 24px;text-align:center;margin-bottom:16px"><div style="font-family:'Cormorant Garamond',Georgia,serif;font-size:36px;font-weight:700;color:#2d6a4f">${escHtml(montantFmt)}</div><div style="font-size:13px;color:#4a7a5a;margin-top:6px;font-weight:600">Versement effectué</div></div><p>Il sera visible sur ton compte bancaire dans 1 à 3 jours ouvrés. Tu peux vérifier le détail de tes réservations et commissions dans ton espace ambassadeur.</p>`,
       ctaHref: 'https://www.locair.fr/partenaire',
@@ -21,7 +21,7 @@ async function notifyPartenaireVirementVerse(supabase, partenaireId, montantCent
     }, sig);
     await sendBrevoEmail({
       to: p.email, senderName: sig.nom_expediteur,
-      subject: `💶 Ton virement de ${montantFmt} a été effectué — Loc'Air`,
+      subject: `Ton virement de ${montantFmt} a été effectué — Loc'Air`,
       html,
     });
   } catch (e) {

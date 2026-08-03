@@ -46,7 +46,7 @@ module.exports = async (req, res) => {
         const sig  = await getSignature(supabase);
         const html = withSignature(tplNouveauCodeAmbassadeur({ nom: partenaire.nom, lien, pin: newPin }), sig);
 
-        const result = await sendBrevoEmail({ to: partenaire.email, subject: "🔐 Ton nouveau code ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
+        const result = await sendBrevoEmail({ to: partenaire.email, subject: "Ton nouveau code ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
         // Jusqu'ici ni vérifié ni tracé nulle part (audit communications,
         // juillet 2026) — reservation_id:null, pas de réservation associée
         // à un compte ambassadeur.

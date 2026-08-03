@@ -34,7 +34,7 @@ function fakeReservationCtx() {
 const AD_HOC = {
   prolongation: {
     libelle: 'Confirmation de prolongation',
-    subject: "✅ Prolongation confirmée — 7 jours ajoutés",
+    subject: "Prolongation confirmée — 7 jours ajoutés",
     html: () => tplProlongConfirmation({
       prenom: 'Jean', nom: 'Testeur', jours: '7',
       date_recuperation: 'lundi 27 juillet', creneau: '14h–18h', amount: '98,00 €',
@@ -42,7 +42,7 @@ const AD_HOC = {
   },
   contrat_facture: {
     libelle: 'Contrat + facture de location',
-    subject: "📄 Votre contrat et votre facture Loc'Air — Dossier TEST-0001",
+    subject: "Votre contrat et votre facture Loc'Air — Dossier TEST-0001",
     html: () => tplContratFacture({
       prenom: 'Jean', ref: 'TEST-0001',
       viewUrlDocuments: 'https://www.locair.fr/#test',
@@ -50,7 +50,7 @@ const AD_HOC = {
   },
   facture_vente: {
     libelle: "Facture d'achat Offre Privilège",
-    subject: "📄 Votre facture d'achat Loc'Air — Dossier TEST-0001",
+    subject: "Votre facture d'achat Loc'Air — Dossier TEST-0001",
     html: () => tplFactureVente({
       prenom: 'Jean', ref: 'TEST-0001',
       modeleClimatiseur: 'Klarstein WhiteWave 9K', dateAchatFmt: '17/07/2026', montantFmt: '399,00 €',
@@ -59,17 +59,17 @@ const AD_HOC = {
   },
   ambassadeur_credentials: {
     libelle: 'Espace ambassadeur (création / code changé)',
-    subject: "🤝 Ton espace ambassadeur Loc'Air",
+    subject: "Ton espace ambassadeur Loc'Air",
     html: () => tplAmbassadeurCredentials({ nom: 'Oke', lien: 'https://www.locair.fr/?p=test', pin: '123456' }),
   },
   nouveau_code_ambassadeur: {
     libelle: 'Code oublié — ambassadeur',
-    subject: "🔐 Ton nouveau code ambassadeur Loc'Air",
+    subject: "Ton nouveau code ambassadeur Loc'Air",
     html: () => tplNouveauCodeAmbassadeur({ nom: 'Oke', lien: 'https://www.locair.fr/?p=test', pin: '654321' }),
   },
   nouveau_code_transporteur: {
     libelle: 'Code oublié — transporteur',
-    subject: "🔐 Ton nouveau code Loc'Air",
+    subject: "Ton nouveau code Loc'Air",
     html: () => tplNouveauCodeTransporteur({ nom: 'Sophie', pin: '112233' }),
   },
 };
