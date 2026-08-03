@@ -639,13 +639,13 @@ function renderDashboard(d){
           Récupération prévue le <strong style="color:var(--black2)">${escHtml(fmtDate(d.recuperation.date_prevue))}</strong>
         </div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:8px">Nouvelle date souhaitée</div>
-        <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:12px;background:#fff;color:var(--text);outline:none;transition:border-color .15s"/>
+        <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" oninput="updateEarlyRecupBtnState()" onchange="updateEarlyRecupBtnState()" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:12px;background:#fff;color:var(--text);outline:none;transition:border-color .15s"/>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:9px">Créneau</div>
         <div class="creneau-btns">
           <div id="lbl-creneau-1" class="creneau-opt" onclick="selectCreneau('8h-10h')">8h – 10h</div>
           <div id="lbl-creneau-2" class="creneau-opt" onclick="selectCreneau('10h-12h')">10h – 12h</div>
         </div>
-        <button class="btn-submit" id="early-recup-btn" onclick="submitEarlyRecup()">Confirmer</button>
+        <button class="btn-submit" id="early-recup-btn" onclick="submitEarlyRecup()" disabled>Choisissez une date et un créneau</button>
       </div>
     </div>
   </div>` : '';
@@ -885,6 +885,20 @@ function selectCreneau(val){
   _earlyRecupCreneau = val;
   document.getElementById('lbl-creneau-1')?.classList.toggle('active', val === '8h-10h');
   document.getElementById('lbl-creneau-2')?.classList.toggle('active', val === '10h-12h');
+  updateEarlyRecupBtnState();
+}
+
+// Le bouton reste désactivé (avec un libellé qui dit quoi faire) tant que
+// date + créneau ne sont pas choisis tous les deux — même logique que le
+// bouton de paiement de la prolongation, pour ne jamais laisser le client
+// taper dans le vide puis découvrir l'erreur après coup.
+function updateEarlyRecupBtnState(){
+  const dateEl = document.getElementById('early-recup-date');
+  const btn = document.getElementById('early-recup-btn');
+  if(!dateEl || !btn || btn.textContent === 'Confirmé') return;
+  const valid = !!dateEl.value && !!_earlyRecupCreneau;
+  btn.disabled = !valid;
+  btn.textContent = valid ? 'Confirmer' : 'Choisissez une date et un créneau';
 }
 
 async function submitEarlyRecup(){
