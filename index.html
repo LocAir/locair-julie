@@ -8210,6 +8210,12 @@ async function _refreshStockAndSoldOut(){
   }catch(e){}
   _initSoldOut();
   _updateStockNoticeText();
+  // Sans ceci, le compte à rebours ("Il vous reste Xh...") restait affiché
+  // (ou caché) jusqu'à 60s après un changement de mode complet — le temps
+  // que son propre setInterval(_renderSmartLine,60000) le rattrape tout
+  // seul. Le badge "Complet", lui, changeait immédiatement (_initSoldOut
+  // ci-dessus) → les deux étaient visibles en même temps pendant ce délai.
+  if(typeof _renderSmartLine==='function')_renderSmartLine();
 }
 
 // Appliquer la langue mémorisée au chargement
