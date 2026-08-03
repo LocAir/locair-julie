@@ -188,6 +188,8 @@ h1 em{font-style:italic}
 .doc-btn:active{transform:translateY(0);box-shadow:none}
 
 /* ── Centre d'aide ── */
+.aide-cat-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--text-3);padding:16px 0 6px}
+.aide-cat-lbl:first-child{padding-top:0}
 .aide-item{border-bottom:1px solid var(--rule)}
 .aide-item:last-child{border-bottom:none}
 .aide-q{width:100%;text-align:left;background:none;border:none;padding:14px 0;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;font-family:var(--body)}
@@ -637,13 +639,13 @@ function renderDashboard(d){
           Récupération prévue le <strong style="color:var(--black2)">${escHtml(fmtDate(d.recuperation.date_prevue))}</strong>
         </div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:8px">Nouvelle date souhaitée</div>
-        <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:12px;background:#fff;color:var(--text);outline:none;transition:border-color .15s"/>
+        <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" oninput="updateEarlyRecupBtnState()" onchange="updateEarlyRecupBtnState()" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:12px;background:#fff;color:var(--text);outline:none;transition:border-color .15s"/>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:9px">Créneau</div>
         <div class="creneau-btns">
           <div id="lbl-creneau-1" class="creneau-opt" onclick="selectCreneau('8h-10h')">8h – 10h</div>
           <div id="lbl-creneau-2" class="creneau-opt" onclick="selectCreneau('10h-12h')">10h – 12h</div>
         </div>
-        <button class="btn-submit" id="early-recup-btn" onclick="submitEarlyRecup()">Confirmer</button>
+        <button class="btn-submit" id="early-recup-btn" onclick="submitEarlyRecup()" disabled>Choisissez une date et un créneau</button>
       </div>
     </div>
   </div>` : '';
@@ -704,12 +706,29 @@ function renderDashboard(d){
     ${d.mon_climatiseur.conseils_utilisation ? `<p style="font-size:13.5px;color:var(--grey);line-height:1.65;white-space:pre-line">${escHtml(d.mon_climatiseur.conseils_utilisation)}</p>` : ''}`
     : '<p style="color:var(--grey);font-size:13.5px">Les informations détaillées de votre climatiseur apparaîtront ici une fois l\'appareil attribué.</p>';
 
-  // FAQ
-  const aideHtml = (d.centre_aide||[]).length ? d.centre_aide.map((a,i) => `
-    <div class="aide-item" id="aide-${i}">
-      <button class="aide-q" onclick="toggleAide(${i})"><span>${escHtml(a.titre)}</span><span class="aide-icon">+</span></button>
-      <div class="aide-a">${escHtml(a.contenu)}</div>
-    </div>`).join('') : '<p style="color:var(--grey);font-size:13.5px">Aucun article pour l\'instant.</p>';
+  // FAQ — regroupée par catégorie (donnée déjà renvoyée par le serveur mais
+  // jusqu'ici ignorée côté client) dès qu'il y a plus d'une catégorie, pour
+  // que le client trouve plus vite sa question au milieu de la liste.
+  let aideHtml;
+  if((d.centre_aide||[]).length){
+    const aideGroups = new Map();
+    (d.centre_aide||[]).forEach(a => {
+      const cat = a.categorie || 'Général';
+      if(!aideGroups.has(cat)) aideGroups.set(cat, []);
+      aideGroups.get(cat).push(a);
+    });
+    const multiCat = aideGroups.size > 1;
+    let aideIdx = 0;
+    aideHtml = [...aideGroups.entries()].map(([cat, items]) => `
+      ${multiCat ? `<div class="aide-cat-lbl">${escHtml(cat)}</div>` : ''}
+      ${items.map(a => { const i = aideIdx++; return `
+        <div class="aide-item" id="aide-${i}">
+          <button class="aide-q" onclick="toggleAide(${i})"><span>${escHtml(a.titre)}</span><span class="aide-icon">+</span></button>
+          <div class="aide-a">${escHtml(a.contenu)}</div>
+        </div>`; }).join('')}`).join('');
+  } else {
+    aideHtml = '<p style="color:var(--grey);font-size:13.5px">Aucun article pour l\'instant.</p>';
+  }
 
   // Notifications
   const notifHtml = (d.notifications||[]).length ? d.notifications.map(n => `
@@ -866,6 +885,20 @@ function selectCreneau(val){
   _earlyRecupCreneau = val;
   document.getElementById('lbl-creneau-1')?.classList.toggle('active', val === '8h-10h');
   document.getElementById('lbl-creneau-2')?.classList.toggle('active', val === '10h-12h');
+  updateEarlyRecupBtnState();
+}
+
+// Le bouton reste désactivé (avec un libellé qui dit quoi faire) tant que
+// date + créneau ne sont pas choisis tous les deux — même logique que le
+// bouton de paiement de la prolongation, pour ne jamais laisser le client
+// taper dans le vide puis découvrir l'erreur après coup.
+function updateEarlyRecupBtnState(){
+  const dateEl = document.getElementById('early-recup-date');
+  const btn = document.getElementById('early-recup-btn');
+  if(!dateEl || !btn || btn.textContent === 'Confirmé') return;
+  const valid = !!dateEl.value && !!_earlyRecupCreneau;
+  btn.disabled = !valid;
+  btn.textContent = valid ? 'Confirmer' : 'Choisissez une date et un créneau';
 }
 
 async function submitEarlyRecup(){

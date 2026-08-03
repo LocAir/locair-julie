@@ -446,6 +446,13 @@ input[type="checkbox"]{accent-color:var(--blue)}
     </div>
   </div>
 
+  <!-- Bannière hors-connexion : visible sur TOUS les écrans (y compris la
+       connexion) — sans elle, une coupure réseau en zone blanche ne se voyait
+       qu'après coup, au moment où une action précise échouait, avec un
+       message technique brut (voir friendlyErrorMessage). Ici le livreur
+       comprend tout de suite, avant même de taper quoi que ce soit. -->
+  <div class="banner-warning hidden" id="offline-banner" style="text-align:center">📡 Pas de connexion — reconnecte-toi pour continuer</div>
+
   <div class="tracking-badge hidden" id="tracking-badge">📍 Ta position est partagée avec Aly pendant cette mission</div>
 
   <!-- Écran 1 : code personnel -->
@@ -646,6 +653,21 @@ function show(id){
   document.getElementById('notif-fab')?.classList.toggle('hidden', id==='login-screen');
 }
 
+// Signal fiable de coupure réseau, indépendant de toute action (voir
+// #offline-banner ci-dessus) — 'online'/'offline' se basent sur la
+// connectivité système du téléphone, pas sur la joignabilité réelle de
+// l'API, mais restent le seul repère disponible sans appel réseau
+// supplémentaire, et couvrent le cas le plus fréquent sur le terrain (mode
+// avion, tunnel, cave). Vérifié aussi une fois au chargement : un rechargement
+// de page pendant une coupure ne déclenche ni 'online' ni 'offline' (déjà
+// dans l'état constaté), donc rien à écouter pour l'avoir la 1re fois.
+function updateOfflineBanner(){
+  document.getElementById('offline-banner')?.classList.toggle('hidden', navigator.onLine);
+}
+window.addEventListener('online', updateOfflineBanner);
+window.addEventListener('offline', updateOfflineBanner);
+updateOfflineBanner();
+
 // Retour depuis le détail d'une mission (bouton "← Retour") : contrairement
 // à switchTab('missions'), ne refait pas d'appel réseau (STATE.missions est
 // déjà à jour — doAction() la rafraîchit après chaque action) mais force
@@ -687,6 +709,21 @@ function escHtml(s){
   return String(s==null?'':s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// Un fetch qui échoue avant même d'obtenir une réponse (coupure réseau —
+// "Failed to fetch", "Load failed", "NetworkError"...) ne doit jamais
+// afficher son message technique brut à un livreur sur le terrain : illisible,
+// et rien à en faire. On le distingue d'une vraie erreur métier renvoyée par
+// le serveur (ex. "Mission déjà acceptée par quelqu'un d'autre") — celle-ci
+// reste affichée telle quelle, c'est un message écrit exprès pour lui. Déjà
+// le principe appliqué à sendForgotPin() (voir plus bas) ; centralisé ici
+// pour couvrir aussi doAction() et les autres actions du parcours mission,
+// jusqu'ici moins protégées que l'envoi de photo (putFileWithRetry) contre
+// une coupure en zone de signal faible.
+function friendlyErrorMessage(e){
+  const raw = String((e && e.message) || '');
+  const looksNetwork = (e instanceof TypeError) || /failed to fetch|load failed|network ?error|network request failed/i.test(raw);
+  return looksNetwork ? 'Pas de connexion — vérifie ton réseau et réessaie.' : (raw || 'Erreur');
 }
 
 function updateWhoBadge(){
@@ -1034,7 +1071,7 @@ async function doLogin(){
     updateActiviteBadge();
     startTransporteurAutoRefresh();
   }catch(e){
-    errEl.textContent = e.message || 'Code incorrect.';
+    errEl.textContent = friendlyErrorMessage(e) || 'Code incorrect.';
     errEl.style.display='block';
     // Vide et refocus le champ : retaper 6 chiffres par-dessus l'ancien
     // code faux (avec des gants, en extérieur) est plus pénible que de
@@ -3151,14 +3188,15 @@ async function doAction(action, extra){
     // liste (pas seulement depuis l'écran détail) — dans ce cas #detail-err
     // n'est pas visible à l'écran, un message écrit dedans passerait inaperçu.
     const onListScreen = !document.getElementById('missions-screen')?.classList.contains('hidden');
+    const msg = friendlyErrorMessage(e);
     if(onListScreen){
-      showTToast(e.message || 'Erreur');
+      showTToast(msg);
       await fetchMissions();
       renderMissions();
     }else{
-      renderDetail(); // reconstruit les boutons avec les bons états disabled/actifs
+      renderDetail(); // reconstruit les boutons avec les bons états disabled/actifs — retaper le même bouton relance l'action
       const errEl2 = document.getElementById('detail-err');
-      if(errEl2){errEl2.textContent = e.message; errEl2.style.display='block';}
+      if(errEl2){errEl2.textContent = msg; errEl2.style.display='block';}
     }
   } finally {
     _actionInProgress = false;
@@ -3501,7 +3539,7 @@ async function basculerVersMission(missionId){
     refreshTournee();
     await fetchMissions();
     openMission(missionId);
-  }catch(e){ showTToast(e.message || 'Erreur'); }
+  }catch(e){ showTToast(friendlyErrorMessage(e)); }
 }
 
 // ── Problème (aucune saisie de texte — juste une catégorie) ──────────────────
@@ -3600,8 +3638,12 @@ async function openTutoLibrary(){
     await Promise.all([fetchTutoCategories(), fetchTutoList()]);
     renderTutoCategoryList();
   }catch(e){
+    // Bibliothèque ouverte pendant une coupure réseau (fréquent : le livreur
+    // ouvre le tuto juste avant d'entrer dans un immeuble mal capté) — sans
+    // bouton "Réessayer" ici, la seule issue était de fermer l'overlay et de
+    // rouvrir le bouton 🎓 depuis zéro pour retenter.
     const sheet = document.getElementById('tuto-sheet');
-    if(sheet) sheet.innerHTML = `<p class="empty">Impossible de charger les tutoriels.</p><button class="btn btn-grey btn-block" onclick="closeTutoLibrary()">Fermer</button>`;
+    if(sheet) sheet.innerHTML = `<p class="empty">Impossible de charger les tutoriels — vérifie ta connexion.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="openTutoLibrary()">↻ Réessayer</button><button class="btn btn-grey btn-block" style="margin-top:8px" onclick="closeTutoLibrary()">Fermer</button>`;
   }
 }
 function renderTutoCategoryList(){
@@ -3729,7 +3771,7 @@ async function openTutoVideo(categorie, sousCategorie){
     await openTutoPlayer(v.id);
   }catch(e){
     const sheet = document.getElementById('tuto-sheet');
-    if(sheet) sheet.innerHTML = `<p class="empty">Impossible de charger les tutoriels.</p><button class="btn btn-grey btn-block" onclick="closeTutoLibrary()">Fermer</button>`;
+    if(sheet) sheet.innerHTML = `<p class="empty">Impossible de charger les tutoriels — vérifie ta connexion.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="openTutoVideo('${categorie}'${sousCategorie?`,'${sousCategorie}'`:''})">↻ Réessayer</button><button class="btn btn-grey btn-block" style="margin-top:8px" onclick="closeTutoLibrary()">Fermer</button>`;
   }
 }
 
@@ -3751,7 +3793,7 @@ async function loadActivite(){
     renderActivite(d, rs.ok ? ds : null);
     markActiviteSeen(d.virements);
   }catch(e){
-    zone.innerHTML = '<p class="empty">Impossible de charger ton activité. Réessaie.</p>';
+    zone.innerHTML = '<p class="empty">Impossible de charger ton activité — vérifie ta connexion.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="loadActivite()">↻ Réessayer</button>';
   }
 }
 
@@ -3815,7 +3857,7 @@ async function switchMissionsFiltre(filtre){
     if(!r.ok) throw new Error(d.error||'Erreur');
     zone.innerHTML = missionsFiltreListHtml(d.missions);
   }catch(e){
-    zone.innerHTML = '<p class="empty">Impossible de charger cette liste.</p>';
+    zone.innerHTML = `<p class="empty">Impossible de charger cette liste — vérifie ta connexion.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="switchMissionsFiltre('${filtre}')">↻ Réessayer</button>`;
   }
 }
 // Statuts qu'on retrouve encore dans STATE.missions (le pool "actif" chargé
@@ -3963,7 +4005,7 @@ async function demanderVirement(){
     if(!r.ok) throw new Error(d.error||'Erreur');
     await loadActivite(); // reconstruit le bouton avec le bon état ("Demande en cours…")
   }catch(e){
-    if(errEl){errEl.textContent = e.message; errEl.style.display='block';}
+    if(errEl){errEl.textContent = friendlyErrorMessage(e); errEl.style.display='block';}
     if(btn){ btn.disabled = false; btn.textContent = '💰 Demander mon virement'; }
   }
 }
@@ -4015,7 +4057,11 @@ async function loadChecklist(){
     STATE.checklist = d;
     renderChecklist(d);
   }catch(e){
-    zone.innerHTML = '<p class="empty">Impossible de charger la checklist. Réessaie.</p>';
+    // Avant ce correctif, "Réessaie." n'était qu'un texte — aucun bouton ne
+    // relançait réellement l'appel : en zone blanche (fréquent juste avant
+    // de partir du box), le livreur restait bloqué sur un écran mort, sans
+    // savoir que retaper l'onglet Accueil rechargeait la même chose.
+    zone.innerHTML = '<p class="empty">Impossible de charger la checklist — vérifie ta connexion.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="loadChecklist()">↻ Réessayer</button>';
   }
 }
 function renderChecklist(d){
@@ -4083,7 +4129,7 @@ async function validerChecklist(){
     if(r2.ok && d2) STATE.checklist = d2;
     if(STATE.returnToMission) returnFromChecklist();
     else show('tournee-start-screen');
-  }catch(e){ showTToast(e.message||'Erreur'); }
+  }catch(e){ showTToast(friendlyErrorMessage(e)); }
 }
 // Revenir en arrière re-verrouille toutes les missions du jour
 // (checklistBlocksMission) tant que la checklist n'est pas revalidée — même
@@ -4108,7 +4154,7 @@ async function annulerChecklist(){
     const r = await fetch(API('transporteur-checklist'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'annuler'})});
     if(!r.ok) throw new Error((await r.json()).error||'Erreur');
     await loadChecklist();
-  }catch(e){ showTToast(e.message||'Erreur'); }
+  }catch(e){ showTToast(friendlyErrorMessage(e)); }
 }
 
 // ── Tournée du jour (plus proche en voiture) ─────────────────────────────────
@@ -4144,7 +4190,7 @@ async function startTournee(mode){
   }catch(e){
     // Le GPS refusé/en échec ne doit jamais bloquer la journée du livreur —
     // il reste sur cet écran, peut réessayer ou basculer sur "Je pars du box".
-    if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+    if(errEl){ errEl.textContent = friendlyErrorMessage(e); errEl.style.display = 'block'; }
     btns.forEach(b => b.disabled = false);
   }
 }
