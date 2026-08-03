@@ -122,7 +122,7 @@ h1 em{font-style:italic}
 .card-row .val{font-weight:600;text-align:right;color:var(--black2)}
 
 /* Section micro-label (remplace les h2) */
-.sect-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.13em;color:rgba(220,208,184,.45);margin:26px 0 10px}
+.sect-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:rgba(220,208,184,.52);margin:28px 0 10px}
 .sect-lbl:first-of-type{margin-top:0}
 
 /* ── Mission card : date hero + créneau ── */
@@ -200,6 +200,12 @@ h1 em{font-style:italic}
 a{color:var(--gold)}
 
 @media(max-width:480px){.page-wrap{padding-top:24px}h1{font-size:30px}.mission-date{font-size:24px}}
+/* Icônes SVG — héritent la couleur gold/neutre du conteneur */
+.card-ico,.action-ico-wrap{color:var(--gold)}
+.doc-ico{color:rgba(220,208,184,.5)}
+.card-ico svg,.action-ico-wrap svg,.assist-ico svg,.doc-ico svg{display:block}
+/* Écran FaceID */
+.fid-icon{margin-bottom:22px;color:var(--gold)}
 </style>
 </head>
 <body>
@@ -234,9 +240,9 @@ a{color:var(--gold)}
     <!-- ÉCRAN Face ID -->
     <div id="screen-faceid" class="hidden">
       <div class="fid-screen">
-        <div class="fid-icon">🔒</div>
-        <h1 id="c-fid-greet">Bonjour 👋</h1>
-        <p class="page-sub">Authentifie-toi pour accéder à ton espace.</p>
+        <div class="fid-icon"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <h1 id="c-fid-greet">Bonjour</h1>
+        <p class="page-sub">Authentifiez-vous pour accéder à votre espace.</p>
         <button class="fid-btn" id="c-fid-btn" onclick="clientFidLogin()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M6 20v-1a6 6 0 0112 0v1"/><path d="M17 13s1 1.5 1 3"/><path d="M7 13s-1 1.5-1 3"/><path d="M15 9.5a3 3 0 010 5"/><path d="M9 9.5a3 3 0 000 5"/></svg>
           Face ID / Touch ID
@@ -299,6 +305,25 @@ function fmtDate(iso){
   return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
 }
 function euros(cents){ return ((cents||0)/100).toFixed(2).replace('.',',')+' €'; }
+
+const _ICO = {
+  snowflake: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20M12 2v20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg>`,
+  truck: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
+  package: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>`,
+  calendar: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+  clock: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+  file: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>`,
+  receipt: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
+  book: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>`,
+  play: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+  checkCircle: `<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+  phone: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+  message: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  mail: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>`,
+  thermometer: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>`,
+  lock: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`,
+  checkBig: `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+};
 
 const STAGES = [1,2,3,4,5,6,7];
 
@@ -368,7 +393,7 @@ function renderProgress(progress){
         <div class="progress-fill" style="width:${pct}%"></div>
       </div>
     </div>
-    ${progress.nextStep ? `<div class="next-step"><span>📍</span><span>${escHtml(progress.nextStep)}</span></div>` : ''}`;
+    ${progress.nextStep ? `<div class="next-step">${escHtml(progress.nextStep)}</div>` : ''}`;
 }
 
 function renderDashboard(d){
@@ -385,11 +410,11 @@ function renderDashboard(d){
     <div class="sect-lbl">Livraison</div>
     <div class="card">
       <div class="card-head">
-        <div class="card-ico">🚚</div>
+        <div class="card-ico">${_ICO.truck}</div>
         <div><div class="card-lbl">Livraison à domicile</div></div>
       </div>
       <div class="mission-date">${escHtml(fmtDate(d.livraison.date_prevue))}</div>
-      ${d.livraison.creneau ? `<div class="mission-creneau">⏰ ${escHtml(d.livraison.creneau)}</div>` : ''}
+      ${d.livraison.creneau ? `<div class="mission-creneau">${_ICO.clock} ${escHtml(d.livraison.creneau)}</div>` : ''}
       <div class="card-row"><span class="lbl">Intervention</span><span class="val">${escHtml(d.livraison.type_intervention)}</span></div>
     </div>` : '';
 
@@ -402,11 +427,11 @@ function renderDashboard(d){
     <div class="sect-lbl">Récupération</div>
     <div class="card">
       <div class="card-head">
-        <div class="card-ico">📦</div>
+        <div class="card-ico">${_ICO.package}</div>
         <div><div class="card-lbl">Récupération de l'appareil</div></div>
       </div>
       <div class="mission-date" id="recup-date-display">${escHtml(fmtDate(d.recuperation.date_prevue))}</div>
-      <div class="mission-creneau" id="recup-creneau-display"${d.recuperation.creneau ? '' : ' style="display:none"'}>⏰ ${escHtml(d.recuperation.creneau||'')}</div>
+      <div class="mission-creneau" id="recup-creneau-display"${d.recuperation.creneau ? '' : ' style="display:none"'}>${_ICO.clock} ${escHtml(d.recuperation.creneau||'')}</div>
       <hr class="card-div"/>
       ${(d.recuperation.consignes||[]).map(txt => `
         <div class="consigne">
@@ -421,7 +446,7 @@ function renderDashboard(d){
   const actionsHtml = (_showProlong || recupEarlyPickerShown) ? `<div class="action-card">
     ${_showProlong ? `<button class="action-toggle" onclick="toggleAction('prolong')">
       <div class="action-toggle-left">
-        <div class="action-ico-wrap">📅</div>
+        <div class="action-ico-wrap">${_ICO.calendar}</div>
         <div>
           <div class="action-lbl">Prolonger ma location</div>
           <div class="action-sub">Ajoutez des jours — paiement en ligne immédiat</div>
@@ -464,11 +489,11 @@ function renderDashboard(d){
           </div>
           <div id="prolong-payment-error" class="alert-error hidden" style="margin-bottom:12px"></div>
           <button class="btn-submit" id="prolong-confirm-btn" disabled onclick="confirmProlong()">Confirmer le paiement</button>
-          <p style="text-align:center;font-size:11px;color:var(--grey);margin-top:10px;line-height:1.6">🔒 SSL · Stripe · Aucun stockage des données bancaires</p>
+          <p style="text-align:center;font-size:11px;color:var(--grey);margin-top:10px;line-height:1.6;display:flex;align-items:center;justify-content:center;gap:6px"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> SSL · Stripe · Aucun stockage des données bancaires</p>
           <button onclick="backToStep2Prolong()" style="display:block;width:100%;padding:11px;margin-top:8px;background:transparent;color:var(--grey);border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:14px;font-weight:500;cursor:pointer">← Modifier la date</button>
         </div>
         <div id="prolong-step-success" style="display:none;text-align:center;padding:14px 0">
-          <div style="font-size:36px;margin-bottom:10px">✅</div>
+          <div style="margin-bottom:16px;display:flex;justify-content:center;color:var(--green)"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
           <div style="font-family:var(--disp);font-size:22px;font-weight:300;margin-bottom:8px;color:var(--black)">Prolongation <em>confirmée !</em></div>
           <div id="prolong-success-msg" style="font-size:13.5px;color:var(--grey);line-height:1.65"></div>
         </div>
@@ -477,7 +502,7 @@ function renderDashboard(d){
     ${_showProlong && recupEarlyPickerShown ? '<hr class="action-divider"/>' : ''}
     ${recupEarlyPickerShown ? `<button class="action-toggle" onclick="toggleAction('recup')">
       <div class="action-toggle-left">
-        <div class="action-ico-wrap">📦</div>
+        <div class="action-ico-wrap">${_ICO.package}</div>
         <div>
           <div class="action-lbl">Avancer la récupération</div>
           <div class="action-sub">Choisissez une nouvelle date et un créneau</div>
@@ -502,10 +527,10 @@ function renderDashboard(d){
 
   // Documents
   const docLabels = {contrat:'Contrat de location', facture:'Facture', facture_vente:'Facture vente'};
-  const docIcons  = {contrat:'📄', facture:'🧾', facture_vente:'🧾'};
+  const docIcons  = {contrat:_ICO.file, facture:_ICO.receipt, facture_vente:_ICO.receipt};
   let docsHtml = (d.documents||[]).map(doc => `
     <div class="doc-row">
-      <div class="doc-ico">${docIcons[doc.type]||'📄'}</div>
+      <div class="doc-ico">${docIcons[doc.type]||_ICO.file}</div>
       <div class="doc-info">
         <div class="doc-name">${escHtml(docLabels[doc.type]||doc.type)}</div>
         ${doc.numero ? `<div class="doc-sub">${escHtml(doc.numero)}</div>` : ''}
@@ -514,13 +539,13 @@ function renderDashboard(d){
     </div>`).join('');
   if(d.mon_climatiseur?.documentation_url) docsHtml += `
     <div class="doc-row">
-      <div class="doc-ico">📘</div>
+      <div class="doc-ico">${_ICO.book}</div>
       <div class="doc-info"><div class="doc-name">Guide utilisateur</div></div>
       <a class="doc-btn" href="${escHtml(d.mon_climatiseur.documentation_url)}" target="_blank" rel="noopener">Ouvrir</a>
     </div>`;
   if(d.mon_climatiseur?.video_tutoriel_url) docsHtml += `
     <div class="doc-row">
-      <div class="doc-ico">▶️</div>
+      <div class="doc-ico">${_ICO.play}</div>
       <div class="doc-info"><div class="doc-name">Tutoriel vidéo</div></div>
       <a class="doc-btn" href="${escHtml(d.mon_climatiseur.video_tutoriel_url)}" target="_blank" rel="noopener">Voir</a>
     </div>`;
@@ -528,7 +553,7 @@ function renderDashboard(d){
     const label = a.type === 'conditions_utilisation' ? "Conditions d'utilisation" : 'CGV / CGL';
     docsHtml += `
     <div class="doc-row">
-      <div class="doc-ico">✅</div>
+      <div class="doc-ico" style="color:var(--green)">${_ICO.checkCircle}</div>
       <div class="doc-info">
         <div class="doc-name">${label}</div>
         <div class="doc-sub">Acceptées le ${escHtml(fmtDate(a.accepted_at))}</div>
@@ -570,7 +595,7 @@ function renderDashboard(d){
   const assistHtml = `
     ${as.horaires ? `<p style="font-size:13px;color:var(--grey);margin-bottom:14px">${escHtml(as.horaires)}</p>` : ''}
     ${as.telephone ? `<a class="assist-btn" href="tel:${escHtml(as.telephone.replace(/\s/g,''))}">
-      <div class="assist-ico">📞</div>
+      <div class="assist-ico">${_ICO.phone}</div>
       <div class="assist-txt">
         <div>${escHtml(as.telephone)}</div>
         <div class="assist-sub">Appeler maintenant</div>
@@ -578,7 +603,7 @@ function renderDashboard(d){
       <div class="assist-arrow">›</div>
     </a>` : ''}
     ${as.whatsapp_url ? `<a class="assist-btn" href="${escHtml(as.whatsapp_url)}" target="_blank" rel="noopener">
-      <div class="assist-ico">💬</div>
+      <div class="assist-ico">${_ICO.message}</div>
       <div class="assist-txt">
         <div>WhatsApp</div>
         <div class="assist-sub">Réponse rapide</div>
@@ -586,7 +611,7 @@ function renderDashboard(d){
       <div class="assist-arrow">›</div>
     </a>` : ''}
     ${as.email ? `<a class="assist-btn" href="mailto:${escHtml(as.email)}">
-      <div class="assist-ico">✉️</div>
+      <div class="assist-ico">${_ICO.mail}</div>
       <div class="assist-txt">
         <div>${escHtml(as.email)}</div>
         <div class="assist-sub">Envoyer un email</div>
@@ -598,14 +623,14 @@ function renderDashboard(d){
   // Offres Privilège
   const offres = d.offres_privilege || [];
   const offreHtml = offres.length ? `
-    <div class="sect-lbl">🌟 Offre${offres.length>1?'s':''} Privilège</div>
+    <div class="sect-lbl">Offre${offres.length>1?'s':''} Privilège</div>
     ${offres.map(o => `
     <div class="card">
       <p style="font-size:14px;font-weight:600;margin-bottom:10px">${o.appareil_numero?`Le climatiseur n°${escHtml(String(o.appareil_numero))} vous`:'Ce climatiseur vous'} plaît ? Vous pouvez le garder pour de bon, au lieu de le rendre.</p>
-      <ul style="margin:0 0 14px 18px;font-size:13.5px;line-height:1.8;color:var(--black2)">
-        <li>✅ Plus besoin d'organiser sa récupération — il reste chez vous</li>
-        <li>✅ Il est à vous pour tous vos prochains étés, sans avoir à relouer</li>
-        <li>Si vous préférez ne pas l'acheter, aucun souci : sa récupération aura lieu normalement, comme prévu</li>
+      <ul style="margin:0 0 14px 18px;font-size:13.5px;line-height:1.9;color:var(--black2)">
+        <li>Plus besoin d'organiser sa récupération — il reste chez vous</li>
+        <li>Il est à vous pour tous vos prochains étés, sans avoir à relouer</li>
+        <li style="color:var(--grey);margin-top:4px">Si vous préférez ne pas l'acheter, aucun souci — sa récupération aura lieu normalement.</li>
       </ul>
       <div style="font-family:var(--disp);font-size:28px;font-weight:600;margin-bottom:14px">${euros(o.prix_cents)}</div>
       <button class="btn-submit" id="offre-privilege-start-btn-${o.id}" onclick="startOffrePrivilegePayment(${o.id})">Je le garde — payer maintenant</button>
@@ -618,7 +643,7 @@ function renderDashboard(d){
 
   // Countdown
   const countdownHtml = c.jours_restants != null && c.jours_restants > 0
-    ? `<div class="countdown">⏱ ${c.jours_restants} jour${c.jours_restants>1?'s':''} avant récupération</div>`
+    ? `<div class="countdown">${_ICO.clock} ${c.jours_restants} jour${c.jours_restants>1?'s':''} avant récupération</div>`
     : '';
 
   document.getElementById('dash-content').innerHTML = `
@@ -631,7 +656,7 @@ function renderDashboard(d){
     <div class="sect-lbl">Ma location</div>
     <div class="card">
       <div class="card-head">
-        <div class="card-ico">❄️</div>
+        <div class="card-ico">${_ICO.snowflake}</div>
         <div>
           <div class="card-lbl">Climatiseur</div>
           ${climHead}
@@ -657,7 +682,7 @@ function renderDashboard(d){
     <div class="sect-lbl">Mon climatiseur</div>
     <div class="card">
       <div class="card-head">
-        <div class="card-ico">🌡️</div>
+        <div class="card-ico">${_ICO.thermometer}</div>
         <div>
           <div class="card-lbl">Fiche technique</div>
           ${d.mon_climatiseur ? `<div class="card-sublbl">${escHtml(d.mon_climatiseur.marque||'')} ${escHtml(d.mon_climatiseur.modele||'')}</div>` : ''}
@@ -721,7 +746,7 @@ async function submitEarlyRecup(){
     if(recupDateDisplay) recupDateDisplay.textContent = fmtDate(date);
     const recupCreneauDisplay = document.getElementById('recup-creneau-display');
     if(recupCreneauDisplay){
-      recupCreneauDisplay.textContent = '⏰ ' + _earlyRecupCreneau;
+      recupCreneauDisplay.innerHTML = _ICO.clock + ' ' + _earlyRecupCreneau;
       recupCreneauDisplay.style.display = '';
     }
   }catch(err){
@@ -993,7 +1018,7 @@ async function offerClientFaceId(){
   if(!content) return;
   content.insertAdjacentHTML('afterbegin',`
     <div class="fid-offer" id="c-fid-offer">
-      <p style="font-size:14px;font-weight:700;margin-bottom:6px">🔒 Activer Face ID / Touch ID</p>
+      <p style="font-size:14px;font-weight:700;margin-bottom:6px">Activer Face ID / Touch ID</p>
       <p style="font-size:12.5px;color:var(--grey);margin-bottom:14px">Se connecter d'un coup d'œil la prochaine fois.</p>
       <button class="btn-submit" style="max-width:220px;margin:0 auto 10px" onclick="activateClientFaceId()">Activer</button>
       <br><button class="fid-switch" onclick="document.getElementById('c-fid-offer').remove()">Non merci</button>
