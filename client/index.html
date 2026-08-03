@@ -595,6 +595,19 @@ function renderProgress(progress){
   if(progress.banner){
     return `<div class="banner-cancel">${escHtml(progress.banner)}</div>`;
   }
+  // stage=0 = paiement pas encore reçu (voir clientProgress.js) — rien n'est
+  // encore confirmé, donc pas de barre d'étapes à afficher (le clamp
+  // Math.max(1, ...) ci-dessous la ferait sinon retomber sur l'étape 1
+  // "Réservation confirmée", ce qui serait faux et trompeur).
+  if(progress.stage===0){
+    return `
+    <div class="progress-card">
+      <div class="progress-header">
+        <div class="progress-stage-lbl">${escHtml(progress.stageLabel||'Paiement en attente')}</div>
+      </div>
+    </div>
+    ${progress.nextStep ? `<div class="next-step">${escHtml(progress.nextStep)}</div>` : ''}`;
+  }
   const stage = Math.max(1, Math.min(7, progress.stage));
   const stageLabel = progress.stageLabel || STAGE_LABELS_FALLBACK[stage] || '';
   // Pastilles façon suivi de course : une par étape, remplies pour les étapes
@@ -632,6 +645,12 @@ function toggleStepperDetail(){
 
 function renderStatusBadge(progress){
   if(!progress||progress.banner) return '';
+  // Même correctif que renderProgress ci-dessus : stage=0 (paiement pas
+  // encore reçu) ne doit jamais retomber sur l'étape 1 "Réservation
+  // confirmée" — c'est justement le contraire de ce qui est vrai ici.
+  if(progress.stage===0){
+    return `<div class="status-badge sb-amber">${escHtml(progress.stageLabel||'Paiement en attente')}</div>`;
+  }
   const stage=Math.max(1,Math.min(7,progress.stage||0));
   const labels={1:'Réservation confirmée',2:'En préparation',3:'Livraison programmée',4:'Installation réalisée',5:'Location active',6:'Récupération programmée',7:'Terminée'};
   const cls=stage===5?'sb-green':stage===7?'sb-navy':'sb-amber';

@@ -2522,6 +2522,24 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   if(key === 'route'){
     const numeros = m.appareil_numeros||[];
     const plural = numeros.length>1;
+    // Étage affiché en tout premier, dès cette étape "En route" (donc avant
+    // même d'avoir quitté le box) — demandé par Aly : le livreur doit savoir
+    // à quel étage il va pour s'organiser (diable, renfort...) avant de
+    // partir, pas seulement une fois arrivé chez le client. Repris plus loin
+    // dans infoRows (fiche complète) : redondance volontaire, même logique
+    // que le badge climatiseur déjà dupliqué à travers les étapes.
+    // (Réintégré le 2026-08-03 : ce bloc avait disparu suite à un mauvais
+    // merge/rebase le jour même de son ajout.)
+    const cRoute = m.client || {};
+    const etageHtml = (cRoute.etage && cRoute.etage!=='—') ? `
+      <div class="pickup-card" style="margin-bottom:12px">
+        <span class="pickup-card-ic">🏢</span>
+        <div class="pickup-card-body">
+          <div class="pickup-card-label">Étage chez le client</div>
+          <div class="pickup-card-nums">${escHtml(cRoute.etage)}</div>
+          ${(cRoute.ascenseur && cRoute.ascenseur!=='—')?`<div class="pickup-card-extra">Ascenseur : ${escHtml(cRoute.ascenseur)}</div>`:''}
+        </div>
+      </div>` : '';
     // Livraison ET remplacement : dans les deux cas, il faut passer par le
     // stock avant de partir — la récupération, elle, n'a rien à choisir en
     // stock (on ramène ce qui est déjà chez le client), donc pas d'encart ici.
@@ -2547,6 +2565,7 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
     // dessous du cadre climatiseur : c'est la seule façon d'avancer à
     // l'étape suivante du parcours.
     return `
+      ${etageHtml}
       ${infoRows}
       ${pickupHtml}
       <button class="btn btn-blue btn-block" style="margin-top:6px" onclick="goToNextStepFromRoute()">Suivant →</button>`;
@@ -3436,7 +3455,13 @@ async function uploadMedia(rawFile, kind, mission){
     mission[kind + '_ok'] = true;
     if(STATE.currentMission === mission) renderDetail();
   }catch(err){
-    if(!optimistic) mission[kind + '_ok'] = false;
+    // Régression du jour (commit 56f82aa, "ne plus bloquer le bouton
+    // Confirmer si réseau faible") : cette condition avait été inversée en
+    // `!optimistic`, ce qui faisait l'inverse de ce que le commentaire plus
+    // haut promet — sur un échec réel d'upload (photo/vidéo optimiste), le
+    // flag "_ok" restait à true, et le livreur pouvait valider une étape
+    // sans que la preuve soit jamais arrivée côté serveur.
+    if(optimistic) mission[kind + '_ok'] = false;
     if(STATE.currentMission === mission){
       // renderDetail() reconstruit les boutons avec leurs bons états
       // disabled/actifs (ex. "Livraison OK" doit rester verrouillé tant que

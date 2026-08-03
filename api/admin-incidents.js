@@ -50,7 +50,16 @@ module.exports = async (req, res) => {
         client_absent: 0, acces_impossible: 0, mauvaise_adresse: 0, materiel_endommage: 0,
         probleme_technique: 0, refus_client: 0, retard: 0, autre: 0,
       };
-      (data || []).forEach(i => { if (i.created_at >= since30j && parMois[i.type] != null) parMois[i.type]++; });
+      // Ne compte que les incidents encore actifs (mêmes statuts que
+      // INCIDENTS_ACTIFS_STATUTS côté admin/index.html) — sinon la tuile
+      // affichait un chiffre incluant des tickets déjà résolus/clos, alors
+      // que cliquer dessus (setIncidentsTypeFilter force INCIDENTS_FILTER =
+      // 'actifs') ne montre jamais que les actifs : le nombre annoncé ne
+      // correspondait pas à la liste réellement affichée au clic.
+      const ACTIFS_STATUTS = ['nouveau', 'en_analyse', 'retard_a_facturer'];
+      (data || []).forEach(i => {
+        if (i.created_at >= since30j && parMois[i.type] != null && ACTIFS_STATUTS.includes(i.statut)) parMois[i.type]++;
+      });
 
       return res.status(200).json({ incidents: data || [], par_type_30j: parMois });
     }
