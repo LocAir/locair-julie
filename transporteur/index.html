@@ -2504,20 +2504,20 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   if(key === 'arrivee'){
     const c = m.client || {};
     const smsSent = STATE.detailArriveeSmsSentFor === m.id;
-    // Redesign demandé : sur cet écran, seuls 3 groupes de boutons comptent
-    // (message+appel client côte à côte, appel Aly, "Suivant" pour avancer),
-    // le reste (indice texte, lien itinéraire déjà vu à l'étape "En route")
-    // est retiré. "Suivant →" est gardé malgré "le reste est inutile" : c'est
-    // le seul moyen de faire progresser la mission à l'étape suivante
-    // (goToNextStepFromArrivee -> doAction('arriver')), sans lui le livreur
-    // reste bloqué sur cet écran.
+    // Redesign demandé : sur cet écran, seuls les boutons concernant le
+    // client comptent (message+appel client côte à côte, "Suivant" pour
+    // avancer) — "Appeler Aly" déplacé dans "Signaler un problème" (voir
+    // openProbleme) pour ne pas mélanger contact client et contact interne
+    // sur cette plage de boutons. "Suivant →" est gardé malgré "le reste est
+    // inutile" : c'est le seul moyen de faire progresser la mission à
+    // l'étape suivante (goToNextStepFromArrivee -> doAction('arriver')),
+    // sans lui le livreur reste bloqué sur cet écran.
     return `
       <div style="display:flex;gap:8px;margin-bottom:8px">
         <button class="media-btn ${smsSent?'done':'pulse'}" style="flex:1;margin-bottom:0" onclick="prevenirArriveeSms()"><span class="ic">💬</span> Message client</button>
         ${c.tel?`<a class="btn btn-blue" style="flex:1" href="tel:${encodeURIComponent(c.tel)}">📞 Appeler client</a>`:''}
       </div>
-      <a class="btn btn-grey btn-block" style="margin-top:8px;margin-bottom:8px;text-decoration:none" href="tel:${ADMIN_CONTACT_TEL}">☎️ Appeler Aly</a>
-      <button class="btn btn-blue btn-block" onclick="goToNextStepFromArrivee()">Suivant →</button>
+      <button class="btn btn-blue btn-block" style="margin-top:8px" onclick="goToNextStepFromArrivee()">Suivant →</button>
       <button class="btn-problem-discreet" onclick="openProbleme()">⚠️ Signaler un problème</button>`;
   }
   if(key === 'vidange'){
@@ -3513,6 +3513,7 @@ function openProbleme(){
   overlay.innerHTML = `
     <div class="sheet">
       <h1 style="margin-bottom:14px">⚠️ Quel est le problème ?</h1>
+      <a class="btn btn-grey btn-block" style="margin-bottom:14px;text-decoration:none" href="tel:${ADMIN_CONTACT_TEL}">☎️ Appeler Aly</a>
       <div class="section-title" style="margin-top:0">Besoin d'aide tout de suite</div>
       <div class="probleme-list">
         <button class="btn btn-amber" onclick="startClientAbsent('camera')">📵 Client absent — photo</button>
