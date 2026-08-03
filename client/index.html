@@ -391,6 +391,65 @@ body.vl #screen-faceid .page-sub,body.vl #screen-faceid h1{color:rgba(255,255,25
   box-shadow:inset 0 0 0 0.5px var(--gold);
 }
 
+/* ══ OFFRE PRIVILÈGE — card premium navy/or ══ */
+.card-privilege{
+  background:var(--navy);
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:0 8px 40px rgba(26,43,74,.28),0 2px 8px rgba(26,43,74,.15);
+  border:none;
+  margin-bottom:14px;
+}
+.priv-header{
+  background:linear-gradient(140deg,rgba(197,169,108,.18) 0%,transparent 55%);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  padding:24px 26px 20px;
+}
+.priv-eyebrow{
+  font-size:10.5px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.16em;color:var(--gold);
+  margin-bottom:12px;display:flex;align-items:center;gap:7px;
+}
+.priv-eyebrow::before{content:'✦';font-size:9px}
+.priv-title{
+  font-family:var(--disp);font-size:clamp(19px,4vw,23px);
+  font-weight:300;letter-spacing:-.02em;color:#fff;line-height:1.3;
+}
+.priv-title strong{font-weight:700}
+.priv-body{padding:20px 26px 26px}
+.priv-benefit{
+  display:flex;align-items:flex-start;gap:11px;
+  padding:7px 0;font-size:13.5px;
+  color:rgba(255,255,255,.72);line-height:1.5;
+}
+.priv-dot{
+  width:20px;height:20px;border-radius:50%;flex-shrink:0;margin-top:1px;
+  background:rgba(197,169,108,.18);border:1px solid rgba(197,169,108,.38);
+  color:var(--gold);display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;
+}
+.priv-note{
+  color:rgba(255,255,255,.32);font-size:12.5px;
+  padding:10px 0 0;margin-left:31px;line-height:1.55;
+}
+.priv-price-row{
+  border-top:1px solid rgba(255,255,255,.08);
+  padding-top:18px;margin:18px 0 16px;
+  display:flex;align-items:baseline;gap:8px;
+}
+.priv-price-num{
+  font-family:var(--disp);font-size:38px;font-weight:300;
+  letter-spacing:-.03em;color:var(--gold);line-height:1;
+}
+.priv-price-note{font-size:12px;color:rgba(255,255,255,.35)}
+.priv-stripe-wrap{
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);
+  border-radius:14px;padding:18px;margin-bottom:14px;
+}
+.card-privilege .alert-error{
+  background:rgba(220,38,38,.15);border-color:rgba(220,38,38,.3);color:#fca5a5;
+}
+
 /* ══ CARTES — perception, hiérarchie, lisibilité ══ */
 
 /* Fond dashboard un ton plus foncé pour que les cartes ressortent */
@@ -990,22 +1049,27 @@ function renderDashboard(d){
   // Offres Privilège
   const offres = d.offres_privilege || [];
   const offreHtml = offres.length ? `
-    <div class="sect-lbl">Offre${offres.length>1?'s':''} Privilège</div>
     ${offres.map(o => `
-    <div class="card">
-      <p style="font-size:14px;font-weight:600;margin-bottom:10px">${o.appareil_numero?`Le climatiseur n°${escHtml(String(o.appareil_numero))} vous`:'Ce climatiseur vous'} plaît ? Vous pouvez le garder pour de bon, au lieu de le rendre.</p>
-      <ul style="margin:0 0 14px 18px;font-size:13.5px;line-height:1.9;color:var(--black2)">
-        <li>Plus besoin d'organiser sa récupération — il reste chez vous</li>
-        <li>Il est à vous pour tous vos prochains étés, sans avoir à relouer</li>
-        <li style="color:var(--grey);margin-top:4px">Si vous préférez ne pas l'acheter, aucun souci — sa récupération aura lieu normalement.</li>
-      </ul>
-      <div style="font-family:var(--disp);font-size:28px;font-weight:600;margin-bottom:14px">${euros(o.prix_cents)}</div>
-      <button class="btn-submit" id="offre-privilege-start-btn-${o.id}" onclick="startOffrePrivilegePayment(${o.id})">Je le garde — payer maintenant</button>
-      <div id="offre-privilege-stripe-section-${o.id}" class="hidden" style="margin-top:16px">
-        <div id="offre-privilege-stripe-element-${o.id}"></div>
-        <button class="btn-submit" id="offre-privilege-pay-btn-${o.id}" style="margin-top:14px" onclick="confirmOffrePrivilegePayment(${o.id})">Confirmer le paiement</button>
+    <div class="card-privilege">
+      <div class="priv-header">
+        <div class="priv-eyebrow">Offre Privilège</div>
+        <div class="priv-title">${o.appareil_numero ? `Votre climatiseur n°${escHtml(String(o.appareil_numero))}` : 'Votre climatiseur'} — <strong>à vous pour toujours</strong></div>
       </div>
-      <div class="alert-error hidden" id="offre-privilege-error-${o.id}" style="margin-top:12px"></div>
+      <div class="priv-body">
+        <div class="priv-benefit"><div class="priv-dot">✓</div><span>Plus besoin d'organiser sa récupération — il reste chez vous</span></div>
+        <div class="priv-benefit"><div class="priv-dot">✓</div><span>À vous pour tous vos prochains étés, sans avoir à relouer</span></div>
+        <p class="priv-note">Si vous préférez ne pas l'acheter, aucun souci — sa récupération aura lieu normalement.</p>
+        <div class="priv-price-row">
+          <span class="priv-price-num">${euros(o.prix_cents)}</span>
+          <span class="priv-price-note">paiement unique</span>
+        </div>
+        <button class="btn-submit" id="offre-privilege-start-btn-${o.id}" onclick="startOffrePrivilegePayment(${o.id})">Je le garde — payer maintenant</button>
+        <div id="offre-privilege-stripe-section-${o.id}" class="hidden" style="margin-top:16px">
+          <div class="priv-stripe-wrap"><div id="offre-privilege-stripe-element-${o.id}"></div></div>
+          <button class="btn-submit" id="offre-privilege-pay-btn-${o.id}" onclick="confirmOffrePrivilegePayment(${o.id})">Confirmer le paiement</button>
+        </div>
+        <div class="alert-error hidden" id="offre-privilege-error-${o.id}" style="margin-top:12px"></div>
+      </div>
     </div>`).join('')}` : '';
 
   // Countdown
@@ -1338,7 +1402,7 @@ async function startOffrePrivilegePayment(offreId){
     if(!stripe) throw new Error('Paiement indisponible — désactivez votre bloqueur de publicités et réessayez.');
     const d = await apiClient('/api/offre-privilege-pay', { offre_id: offreId });
     if(!d.clientSecret) throw new Error(d.error || 'Erreur');
-    const appearance = { theme:'stripe', variables:{ colorPrimary:'#1a2b4a', borderRadius:'10px', fontFamily:'Inter,system-ui,sans-serif' } };
+    const appearance = { theme:'night', variables:{ colorPrimary:'#c5a96c', borderRadius:'10px', fontFamily:'Inter,system-ui,sans-serif', colorBackground:'rgba(255,255,255,.03)' } };
     _offreElements[offreId] = stripe.elements({ clientSecret: d.clientSecret, appearance, locale:'fr' });
     const payEl = _offreElements[offreId].create('payment', { layout:'tabs' });
     payEl.mount('#offre-privilege-stripe-element-'+offreId);
