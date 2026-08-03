@@ -373,6 +373,13 @@ function fmtDate(iso){
   return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
 }
 function euros(cents){ return ((cents||0)/100).toFixed(2).replace('.',',')+' €'; }
+// Photo réelle de l'appareil à la place de l'icône générique quand elle est
+// disponible (réassurance visuelle façon fiche Airbnb) — repli silencieux
+// sur l'icône (span voisin, masqué) si l'image ne charge pas.
+function climIco(photoUrl, fallbackIconHtml){
+  if(!photoUrl) return fallbackIconHtml;
+  return `<img src="${escHtml(photoUrl)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:11px" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><span style="display:none;width:100%;height:100%;align-items:center;justify-content:center">${fallbackIconHtml}</span>`;
+}
 function fmtDateShort(iso){
   if(!iso) return '—';
   return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
@@ -649,7 +656,7 @@ function renderDashboard(d){
       <div class="doc-ico">${docIcons[doc.type]||_ICO.file}</div>
       <div class="doc-info">
         <div class="doc-name">${escHtml(docLabels[doc.type]||doc.type)}</div>
-        ${doc.numero ? `<div class="doc-sub">${escHtml(doc.numero)}</div>` : ''}
+        ${doc.numero || doc.genere_at ? `<div class="doc-sub">${[doc.numero ? escHtml(doc.numero) : '', doc.genere_at ? escHtml(fmtDateTime(doc.genere_at)) : ''].filter(Boolean).join(' · ')}</div>` : ''}
       </div>
       <a class="doc-btn" href="${escHtml(doc.url)}" target="_blank" rel="noopener">Ouvrir</a>
     </div>`).join('');
@@ -677,6 +684,13 @@ function renderDashboard(d){
       <a class="doc-btn" href="${escHtml(a.lien)}" target="_blank" rel="noopener">Voir</a>
     </div>`;
   });
+  // Nombre total de pièces disponibles (documents + guide + vidéo + CGV
+  // acceptées) — affiché en sous-titre façon portail client Stripe, pour que
+  // le client sache d'un coup d'œil s'il a "tout ce qu'il faut".
+  const docCount = (d.documents||[]).length
+    + (d.mon_climatiseur?.documentation_url ? 1 : 0)
+    + (d.mon_climatiseur?.video_tutoriel_url ? 1 : 0)
+    + (d.cgv_acceptees||[]).length;
   if(!docsHtml) docsHtml = '<p style="color:var(--grey);font-size:13.5px">Vos documents apparaîtront ici dès qu\'ils seront disponibles.</p>';
 
   // Mon climatiseur
@@ -792,7 +806,7 @@ function renderDashboard(d){
     <div class="sect-lbl">Ma location</div>
     <div class="card">
       <div class="card-head">
-        <div class="card-ico">${_ICO.snowflake}</div>
+        <div class="card-ico"${ml.climatiseur?.photo_url ? ' style="padding:0;overflow:hidden;background:var(--navy-bg2)"' : ''}>${climIco(ml.climatiseur?.photo_url, _ICO.snowflake)}</div>
         <div>
           <div class="card-lbl">Climatiseur</div>
           ${climHead}
@@ -811,12 +825,22 @@ function renderDashboard(d){
     ${offreHtml}
 
     <div class="sect-lbl">Mes documents</div>
-    <div class="card">${docsHtml}</div>
+    <div class="card">
+      ${docCount > 0 ? `<div class="card-head">
+        <div class="card-ico">${_ICO.file}</div>
+        <div>
+          <div class="card-lbl">Contrat, factures &amp; consentements</div>
+          <div class="card-sublbl">${docCount} document${docCount>1?'s':''} disponible${docCount>1?'s':''}</div>
+        </div>
+      </div>
+      <hr class="card-div" style="margin-top:0"/>` : ''}
+      ${docsHtml}
+    </div>
 
     <div class="sect-lbl">Mon climatiseur</div>
     <div class="card">
       <div class="card-head">
-        <div class="card-ico">${_ICO.thermometer}</div>
+        <div class="card-ico"${d.mon_climatiseur?.photo_url ? ' style="padding:0;overflow:hidden;background:var(--navy-bg2)"' : ''}>${climIco(d.mon_climatiseur?.photo_url, _ICO.thermometer)}</div>
         <div>
           <div class="card-lbl">Fiche technique</div>
           ${d.mon_climatiseur ? `<div class="card-sublbl">${escHtml(d.mon_climatiseur.marque||'')} ${escHtml(d.mon_climatiseur.modele||'')}</div>` : ''}
