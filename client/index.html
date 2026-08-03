@@ -175,7 +175,7 @@ h1 em{font-style:italic}
 /* ── Consignes récupération ── */
 .consigne{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);font-size:13px;color:var(--text-3);line-height:1.5}
 .consigne:last-child{border-bottom:none}
-.consigne-check{width:20px;height:20px;border-radius:50%;background:var(--green-bg);color:var(--green);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.consigne-check{width:20px;height:20px;border-radius:50%;background:var(--amber-bg);color:var(--amber);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
 
 /* ── Créneau selection ── */
 .creneau-btns{display:flex;gap:8px;margin-bottom:14px}
@@ -737,12 +737,14 @@ function renderDashboard(d){
     : `<div class="clim-sub">Climatiseur attribué à la livraison</div>`;
 
   // Livraison
+  const livraisonFaite = d.livraison && d.livraison.statut === 'fait';
   const livraisonHtml = d.livraison ? `
     <div class="sect-lbl">Livraison</div>
     <div class="card">
       <div class="card-head">
         <div class="card-ico">${_ICO.truck}</div>
         <div><div class="card-lbl">Livraison à domicile</div></div>
+        ${livraisonFaite ? `<span class="status-badge sb-green" style="margin:0 0 0 auto">✓ Livrée</span>` : ''}
       </div>
       <div class="mission-date">${escHtml(fmtDate(d.livraison.date_prevue))}</div>
       ${d.livraison.creneau ? `<div class="mission-creneau">${_ICO.clock} ${escHtml(d.livraison.creneau)}</div>` : ''}
@@ -764,9 +766,10 @@ function renderDashboard(d){
       <div class="mission-date" id="recup-date-display">${escHtml(fmtDate(d.recuperation.date_prevue))}</div>
       <div class="mission-creneau" id="recup-creneau-display"${d.recuperation.creneau ? '' : ' style="display:none"'}>${_ICO.clock} ${escHtml(d.recuperation.creneau||'')}</div>
       <hr class="card-div"/>
+      ${(d.recuperation.consignes||[]).length ? `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);margin-bottom:4px">À faire avant le passage</div>` : ''}
       ${(d.recuperation.consignes||[]).map(txt => `
         <div class="consigne">
-          <div class="consigne-check">✓</div>
+          <div class="consigne-check">•</div>
           <span>${escHtml(txt)}</span>
         </div>`).join('')}
     </div>
@@ -919,7 +922,7 @@ function renderDashboard(d){
       ${d.mon_climatiseur.classe_energie ? `<span class="spec-chip">Classe ${escHtml(d.mon_climatiseur.classe_energie)}</span>` : ''}
     </div>
     ${d.mon_climatiseur.conseils_utilisation ? `<p style="font-size:13.5px;color:var(--grey);line-height:1.65;white-space:pre-line">${escHtml(d.mon_climatiseur.conseils_utilisation)}</p>` : ''}`
-    : '<p style="color:var(--grey);font-size:13.5px">Les informations détaillées de votre climatiseur apparaîtront ici une fois l\'appareil attribué.</p>';
+    : '<p style="color:var(--grey);font-size:13.5px">La fiche détaillée de ce modèle de climatiseur n\'est pas encore disponible — ça n\'empêche pas votre location de se dérouler normalement.</p>';
 
   // FAQ — regroupée par catégorie (donnée déjà renvoyée par le serveur mais
   // jusqu'ici ignorée côté client) dès qu'il y a plus d'une catégorie, pour
@@ -1189,10 +1192,21 @@ async function initProlongSection(){
     _prolongData=d;
     if(loadEl) loadEl.style.display='none';
     const inp=document.getElementById('prolong-newdate');
-    if(inp) inp.min=_pAddDay(_prolongData.date_fin);
+    if(inp){
+      inp.min=_pAddDay(_prolongData.date_fin);
+      // Champ pré-rempli avec +7 jours par défaut (au lieu de le laisser vide) :
+      // sur iPhone, un champ date vide affiche quand même une date (celle du
+      // jour) dans son état fermé, qui ressemblait à une vraie sélection déjà
+      // plus ancienne que la fin de contrat — de quoi faire croire à une
+      // réduction de la location au lieu d'une prolongation.
+      const dt=new Date(_prolongData.date_fin+'T00:00:00Z');
+      dt.setUTCDate(dt.getUTCDate()+7);
+      inp.value=dt.toISOString().slice(0,10);
+    }
     const dl=document.getElementById('prolong-dates-lbl');
     if(dl) dl.textContent=`Contrat en cours : ${fmtDate(_prolongData.date_debut)} → ${fmtDate(_prolongData.date_fin)} (${_prolongData.orig_days} j)`;
     if(step2) step2.style.display='block';
+    updateProlongPrice();
   }catch(e){
     if(loadEl) loadEl.style.display='none';
     if(errEl){errEl.textContent=e.message;errEl.classList.remove('hidden');}
