@@ -213,6 +213,16 @@ h1 em{font-style:italic}
 .card-ico svg,.action-ico-wrap svg,.assist-ico svg,.doc-ico svg{display:block}
 /* Icône FaceID */
 .fid-icon{margin-bottom:22px;color:var(--navy)}
+/* Status badge */
+.status-badge{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:5px 11px;border-radius:100px;margin-bottom:18px}
+.sb-green{background:var(--green-bg);color:var(--green);border:1px solid rgba(22,163,74,.18)}
+.sb-amber{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(217,119,6,.18)}
+.sb-navy{background:rgba(26,43,74,.08);color:var(--navy);border:1px solid rgba(26,43,74,.15)}
+/* Jours restants hero */
+.days-left{display:flex;align-items:baseline;gap:5px;margin-top:10px}
+.days-left-num{font-family:var(--disp);font-size:32px;font-weight:600;letter-spacing:-.02em;color:var(--navy);line-height:1}
+.days-left-lbl{font-size:13px;color:var(--text-3);margin-left:2px}
+.days-left-urgent .days-left-num{color:var(--amber)}
 </style>
 </head>
 <body>
@@ -241,6 +251,7 @@ h1 em{font-style:italic}
         </div>
         <div id="login-error" class="alert-error hidden" role="alert"></div>
         <button type="submit" class="btn-submit" id="btn-login" style="margin-top:8px">Accéder à mon espace</button>
+        <p style="text-align:center;font-size:11.5px;color:var(--text-3);margin-top:14px;display:flex;align-items:center;justify-content:center;gap:6px"><svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='11' width='18' height='11' rx='2' ry='2'/><path d='M7 11V7a5 5 0 0 1 10 0v4'/></svg> Connexion sécurisée · Vos données restent privées</p>
       </form>
     </div>
 
@@ -312,6 +323,10 @@ function fmtDate(iso){
   return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
 }
 function euros(cents){ return ((cents||0)/100).toFixed(2).replace('.',',')+' €'; }
+function fmtDateShort(iso){
+  if(!iso) return '—';
+  return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
+}
 
 const _ICO = {
   snowflake: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20M12 2v20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg>`,
@@ -404,6 +419,14 @@ function renderProgress(progress){
     ${progress.nextStep ? `<div class="next-step">${escHtml(progress.nextStep)}</div>` : ''}`;
 }
 
+function renderStatusBadge(progress){
+  if(!progress||progress.banner) return '';
+  const stage=Math.max(1,Math.min(7,progress.stage||0));
+  const labels={1:'Réservation confirmée',2:'En préparation',3:'Livraison programmée',4:'Installation réalisée',5:'Location active',6:'Récupération programmée',7:'Terminée'};
+  const cls=stage===5?'sb-green':stage===7?'sb-navy':'sb-amber';
+  return `<div class="status-badge ${cls}">${labels[stage]||''}</div>`;
+}
+
 function renderDashboard(d){
   const c = d.client || {}, ml = d.ma_location || {};
 
@@ -449,10 +472,10 @@ function renderDashboard(d){
     </div>
     ` : '';
 
-  // ── Actions accordion (Prolongation + Récupération anticipée) ──
+  // ── Actions accordion ──
   const _showProlong = !(d.progress?.banner) && d.progress?.stage > 0 && d.progress?.stage < 7;
-  const actionsHtml = (_showProlong || recupEarlyPickerShown) ? `<div class="action-card">
-    ${_showProlong ? `<button class="action-toggle" onclick="toggleAction('prolong')">
+  const prolongHtml = _showProlong ? `<div class="action-card">
+    <button class="action-toggle" onclick="toggleAction('prolong')">
       <div class="action-toggle-left">
         <div class="action-ico-wrap">${_ICO.calendar}</div>
         <div>
@@ -502,13 +525,14 @@ function renderDashboard(d){
         </div>
         <div id="prolong-step-success" style="display:none;text-align:center;padding:14px 0">
           <div style="margin-bottom:16px;display:flex;justify-content:center;color:var(--green)"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
-          <div style="font-family:var(--disp);font-size:22px;font-weight:300;margin-bottom:8px;color:var(--black)">Prolongation <em>confirmée !</em></div>
+          <div style="font-family:var(--disp);font-size:22px;font-weight:300;margin-bottom:8px;color:var(--black)">Prolongation <em>confirmée !</em></div>
           <div id="prolong-success-msg" style="font-size:13.5px;color:var(--grey);line-height:1.65"></div>
         </div>
       </div>
-    </div>` : ''}
-    ${_showProlong && recupEarlyPickerShown ? '<hr class="action-divider"/>' : ''}
-    ${recupEarlyPickerShown ? `<button class="action-toggle" onclick="toggleAction('recup')">
+    </div>
+  </div>` : '';
+  const earlyRecupHtml = recupEarlyPickerShown ? `<div class="action-card">
+    <button class="action-toggle" onclick="toggleAction('recup')">
       <div class="action-toggle-left">
         <div class="action-ico-wrap">${_ICO.package}</div>
         <div>
@@ -525,7 +549,7 @@ function renderDashboard(d){
           Récupération prévue le <strong style="color:var(--black2)">${escHtml(fmtDate(d.recuperation.date_prevue))}</strong>
         </div>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:8px">Nouvelle date souhaitée</div>
-        <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:12px;background:rgba(255,255,255,.06);color:var(--black);outline:none;transition:border-color .15s"/>
+        <input type="date" id="early-recup-date" min="${escHtml(todayIso)}" max="${escHtml(recupMaxDate)}" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-family:var(--body);font-size:15px;margin-bottom:12px;background:#fff;color:var(--text);outline:none;transition:border-color .15s"/>
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:9px">Créneau</div>
         <div class="creneau-btns">
           <div id="lbl-creneau-1" class="creneau-opt" onclick="selectCreneau('8h-10h')">8h – 10h</div>
@@ -533,7 +557,7 @@ function renderDashboard(d){
         </div>
         <button class="btn-submit" id="early-recup-btn" onclick="submitEarlyRecup()">Confirmer</button>
       </div>
-    </div>` : ''}
+    </div>
   </div>` : '';
 
   // Documents
@@ -657,12 +681,32 @@ function renderDashboard(d){
     ? `<div class="countdown">${_ICO.clock} ${c.jours_restants} jour${c.jours_restants>1?'s':''} avant récupération</div>`
     : '';
 
+  // Sections optionnelles — masquées si vides
+  const faqSection = (d.centre_aide||[]).length
+    ? `<div class="sect-lbl">Questions fréquentes</div><div class="card">${aideHtml}</div>` : '';
+  const notifsSection = (d.notifications||[]).length
+    ? `<div class="sect-lbl">Mes notifications</div><div class="card">${notifHtml}</div>` : '';
+  // Jours restants (depuis client object)
+  const joursRestants = c.jours_restants;
+  const daysLeftHtml = joursRestants != null && joursRestants >= 0
+    ? `<div class="days-left${joursRestants<=5?' days-left-urgent':''}">
+        <span class="days-left-num">${joursRestants}</span>
+        <span class="days-left-lbl">jour${joursRestants!==1?'s':''} restant${joursRestants!==1?'s':''}</span>
+       </div>` : '';
+  // Date courte pour la card Ma location
+  const dateDebutShort = fmtDateShort(c.date_debut);
+  const dateFinShort = fmtDateShort(c.date_fin);
+
   document.getElementById('dash-content').innerHTML = `
     <div class="dash-eyebrow">Dossier ${escHtml(c.ref)}</div>
     <h1 class="dash-h1">Bonjour, <em>${escHtml(c.prenom)}</em></h1>
+    ${renderStatusBadge(d.progress)}
     ${countdownHtml}
-
     ${renderProgress(d.progress)}
+
+    ${livraisonHtml}
+    ${recupHtml}
+    ${earlyRecupHtml}
 
     <div class="sect-lbl">Ma location</div>
     <div class="card">
@@ -675,17 +719,15 @@ function renderDashboard(d){
       </div>
       <hr class="card-div" style="margin-top:0"/>
       <div class="date-range">
-        <strong>${escHtml(fmtDate(c.date_debut))}</strong>
-        <span style="color:var(--rule)">→</span>
-        <strong>${escHtml(fmtDate(c.date_fin))}</strong>
+        <strong>${dateDebutShort}</strong>
+        <span style="color:var(--text-3);font-weight:400">→</span>
+        <strong>${dateFinShort}</strong>
       </div>
-      <div class="price-display">${euros(ml.montant_ttc_cents)}</div>
+      ${daysLeftHtml || (ml.montant_ttc_cents != null ? `<div class="price-display">${euros(ml.montant_ttc_cents)}</div>` : '')}
     </div>
 
+    ${prolongHtml}
     ${offreHtml}
-    ${livraisonHtml}
-    ${recupHtml}
-    ${actionsHtml}
 
     <div class="sect-lbl">Mes documents</div>
     <div class="card">${docsHtml}</div>
@@ -702,14 +744,11 @@ function renderDashboard(d){
       ${climInfoHtml}
     </div>
 
-    <div class="sect-lbl">Questions fréquentes</div>
-    <div class="card">${aideHtml}</div>
-
-    <div class="sect-lbl">Mes notifications</div>
-    <div class="card">${notifHtml}</div>
-
     <div class="sect-lbl">Assistance</div>
     <div class="card">${assistHtml}</div>
+
+    ${faqSection}
+    ${notifsSection}
   `;
 }
 
