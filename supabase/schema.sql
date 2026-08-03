@@ -81,6 +81,15 @@ create table appareils (
 );
 create index appareils_city_statut_idx on appareils (city_id, statut);
 
+-- Incrémente nb_locations_historique ci-dessus — voir bumpNbLocationsHistorique
+-- dans api/admin-stock.js (échange/réaffectation manuelle d'un appareil).
+create or replace function bump_nb_locations_historique(p_appareil_id bigint)
+returns void
+language sql
+as $$
+  update appareils set nb_locations_historique = nb_locations_historique + 1 where id = p_appareil_id;
+$$;
+
 -- Historique des mouvements de stock (Module 6) — "aucun mouvement ne doit
 -- être invisible" : chaque changement de statut/localisation d'un
 -- climatiseur crée un événement, jamais un simple écrasement silencieux.

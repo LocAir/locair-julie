@@ -100,7 +100,12 @@ module.exports = async (req, res) => {
         type:                   'retard',
         description:            `${jours} jour${jours > 1 ? 's' : ''} de retard — ${(data.nom || '').slice(0, 200)}`,
         montant_facture_cents:  amountCents,
-        statut:                 intent.status === 'succeeded' ? 'retard_facture' : 'retard_a_facturer',
+        // 'retard_facture' n'existe pas dans la contrainte check de
+        // incidents.statut (seulement 'retard_a_facturer','resolu',...) —
+        // l'insert échouait silencieusement (absorbé par le catch plus bas)
+        // pour tout paiement de retard réussi du premier coup. Une fois
+        // encaissé, il n'y a plus rien à facturer : 'resolu' est le bon état.
+        statut:                 intent.status === 'succeeded' ? 'resolu' : 'retard_a_facturer',
       });
     } catch (e) {
       console.error('[Incident retard]', e.message);
