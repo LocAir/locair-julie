@@ -607,6 +607,7 @@ let STATE = {
   en_pause: false,
   currentMission: null,
   pendingUpload: null, // {livraisonId, kind}
+  lastFailedUpload: null, // {rawFile, kind, missionId} — voir retryFailedUpload()
   autoOpenChecked: false, // une seule fois par connexion, voir maybeAutoOpenMission()
   checklist: null, // état du jour, chargé avec les missions — voir checklistBlocksMission()
   returnToMission: null, // mission à rouvrir après validation checklist, voir goToChecklistFromMission()
@@ -2471,22 +2472,6 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   if(key === 'route'){
     const numeros = m.appareil_numeros||[];
     const plural = numeros.length>1;
-    // Étage affiché en tout premier, dès cette étape "En route" (donc avant
-    // même d'avoir quitté le box) — demandé par Aly : le livreur doit savoir
-    // à quel étage il va pour s'organiser (diable, renfort...) avant de
-    // partir, pas seulement une fois arrivé chez le client. Repris plus loin
-    // dans infoRows (fiche complète) : redondance volontaire, même logique
-    // que le badge climatiseur déjà dupliqué à travers les étapes.
-    const cRoute = m.client || {};
-    const etageHtml = (cRoute.etage && cRoute.etage!=='—') ? `
-      <div class="pickup-card" style="margin-bottom:12px">
-        <span class="pickup-card-ic">🏢</span>
-        <div class="pickup-card-body">
-          <div class="pickup-card-label">Étage chez le client</div>
-          <div class="pickup-card-nums">${escHtml(cRoute.etage)}</div>
-          ${(cRoute.ascenseur && cRoute.ascenseur!=='—')?`<div class="pickup-card-extra">Ascenseur : ${escHtml(cRoute.ascenseur)}</div>`:''}
-        </div>
-      </div>` : '';
     // Livraison ET remplacement : dans les deux cas, il faut passer par le
     // stock avant de partir — la récupération, elle, n'a rien à choisir en
     // stock (on ramène ce qui est déjà chez le client), donc pas d'encart ici.
@@ -2512,7 +2497,6 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
     // dessous du cadre climatiseur : c'est la seule façon d'avancer à
     // l'étape suivante du parcours.
     return `
-      ${etageHtml}
       ${infoRows}
       ${pickupHtml}
       <button class="btn btn-blue btn-block" style="margin-top:6px" onclick="goToNextStepFromRoute()">Suivant →</button>`;
@@ -2520,20 +2504,20 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   if(key === 'arrivee'){
     const c = m.client || {};
     const smsSent = STATE.detailArriveeSmsSentFor === m.id;
-    // Redesign demandé : sur cet écran, seuls 3 groupes de boutons comptent
-    // (message+appel client côte à côte, appel Aly, "Suivant" pour avancer),
-    // le reste (indice texte, lien itinéraire déjà vu à l'étape "En route")
-    // est retiré. "Suivant →" est gardé malgré "le reste est inutile" : c'est
-    // le seul moyen de faire progresser la mission à l'étape suivante
-    // (goToNextStepFromArrivee -> doAction('arriver')), sans lui le livreur
-    // reste bloqué sur cet écran.
+    // Redesign demandé : sur cet écran, seuls les boutons concernant le
+    // client comptent (message+appel client côte à côte, "Suivant" pour
+    // avancer) — "Appeler Aly" déplacé dans "Signaler un problème" (voir
+    // openProbleme) pour ne pas mélanger contact client et contact interne
+    // sur cette plage de boutons. "Suivant →" est gardé malgré "le reste est
+    // inutile" : c'est le seul moyen de faire progresser la mission à
+    // l'étape suivante (goToNextStepFromArrivee -> doAction('arriver')),
+    // sans lui le livreur reste bloqué sur cet écran.
     return `
       <div style="display:flex;gap:8px;margin-bottom:8px">
         <button class="media-btn ${smsSent?'done':'pulse'}" style="flex:1;margin-bottom:0" onclick="prevenirArriveeSms()"><span class="ic">💬</span> Message client</button>
         ${c.tel?`<a class="btn btn-blue" style="flex:1" href="tel:${encodeURIComponent(c.tel)}">📞 Appeler client</a>`:''}
       </div>
-      <a class="btn btn-grey btn-block" style="margin-top:8px;margin-bottom:8px;text-decoration:none" href="tel:${ADMIN_CONTACT_TEL}">☎️ Appeler Aly</a>
-      <button class="btn btn-blue btn-block" onclick="goToNextStepFromArrivee()">Suivant →</button>
+      <button class="btn btn-blue btn-block" style="margin-top:8px" onclick="goToNextStepFromArrivee()">Suivant →</button>
       <button class="btn-problem-discreet" onclick="openProbleme()">⚠️ Signaler un problème</button>`;
   }
   if(key === 'vidange'){
@@ -2872,6 +2856,7 @@ function renderDetail(){
       ${c.tel_secondaire?(()=>{const t=encodeURIComponent(c.tel_secondaire.replace(/\s+/g,''));const msg=encodeURIComponent(arrivalMessageText());return `<div style="display:flex;gap:8px;margin-bottom:12px"><a class="media-btn" href="sms:${t}?body=${msg}" style="flex:1;text-decoration:none;text-align:center"><span class="ic">📲</span> SMS secours</a><a class="media-btn" href="https://wa.me/${t}?text=${msg}" target="_blank" rel="noopener" style="flex:1;text-decoration:none;text-align:center"><span class="ic">💬</span> WA secours</a></div>`;})():''}
     ` : `
       <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
+      ${c.etage&&c.etage!=='—'?`<div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${escHtml(c.etage)}${c.ascenseur&&c.ascenseur!=='—'?' · Ascenseur : '+escHtml(c.ascenseur):''}</span></div>`:''}
       ${m.type==='recuperation'&&c.date_fin?`<div class="info-row"><span class="info-ic">📅</span><span class="info-label">Location</span><span class="info-val">jusqu'au ${new Date(c.date_fin+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'})}</span></div>`:''}
       ${(c.quantite&&c.quantite>1)?`<div class="info-row"><span class="info-ic">❄️</span><span class="info-label">Quantité</span><span class="info-val">${c.quantite} climatiseur${c.quantite>1?'s':''} à ${m.type==='recuperation'?'récupérer':'livrer'}</span></div>`:''}
       ${c.fenetre&&c.fenetre!=='—'?`<div class="info-row"><span class="info-ic">🪟</span><span class="info-label">Fenêtre</span><span class="info-val">${escHtml(c.fenetre)}</span></div>`:''}
@@ -3292,6 +3277,23 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
   if(!rawFile || !STATE.pendingUpload) return;
   const {kind} = STATE.pendingUpload;
   const mission = STATE.currentMission;
+  uploadMedia(rawFile, kind, mission);
+});
+// Relance le tout dernier envoi qui a échoué (voir STATE.lastFailedUpload,
+// posé dans uploadMedia ci-dessous) — sans repasser par l'appareil photo/la
+// galerie. Sur le terrain, en zone blanche, redemander une photo à chaque
+// tentative ratée (3 essais auto déjà faits en interne, voir
+// putFileWithRetry) doublait inutilement l'attente et la frustration : le
+// fichier déjà pris reste en mémoire, seul l'envoi est retenté.
+function retryFailedUpload(){
+  const pending = STATE.lastFailedUpload;
+  if(!pending) return;
+  const mission = STATE.missions.find(m => m.id === pending.missionId);
+  if(!mission) return;
+  STATE.lastFailedUpload = null;
+  uploadMedia(pending.rawFile, pending.kind, mission);
+}
+async function uploadMedia(rawFile, kind, mission){
   const isVideoFile = rawFile.type.startsWith('video');
   const previewUrl = URL.createObjectURL(rawFile);
 
@@ -3379,6 +3381,16 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
         const errEl = document.createElement('div');
         errEl.className='err'; errEl.style.display='block'; errEl.textContent = err.message;
         zone2.appendChild(errEl);
+        // Le fichier déjà capturé reste en mémoire (voir STATE.lastFailedUpload)
+        // pour permettre de relancer l'envoi sans repasser par l'appareil
+        // photo/la galerie — voir retryFailedUpload().
+        STATE.lastFailedUpload = {rawFile, kind, missionId: mission.id};
+        const retryBtn = document.createElement('button');
+        retryBtn.className = 'btn btn-blue btn-block';
+        retryBtn.style.marginTop = '8px';
+        retryBtn.textContent = '🔄 Réessayer l\'envoi (même photo)';
+        retryBtn.onclick = retryFailedUpload;
+        zone2.appendChild(retryBtn);
       }
     }else{
       // Le livreur a changé de mission pendant l'envoi en arrière-plan — pas
@@ -3388,7 +3400,7 @@ document.getElementById('media-input').addEventListener('change', async (e) => {
   }finally{
     URL.revokeObjectURL(previewUrl);
   }
-});
+}
 
 
 // ── Code oublié ───────────────────────────────────────────────────────────────
@@ -3501,6 +3513,7 @@ function openProbleme(){
   overlay.innerHTML = `
     <div class="sheet">
       <h1 style="margin-bottom:14px">⚠️ Quel est le problème ?</h1>
+      <a class="btn btn-grey btn-block" style="margin-bottom:14px;text-decoration:none" href="tel:${ADMIN_CONTACT_TEL}">☎️ Appeler Aly</a>
       <div class="section-title" style="margin-top:0">Besoin d'aide tout de suite</div>
       <div class="probleme-list">
         <button class="btn btn-amber" onclick="startClientAbsent('camera')">📵 Client absent — photo</button>
