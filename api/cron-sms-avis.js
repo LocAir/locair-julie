@@ -2,6 +2,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { sendBrevoSms } = require('./_lib/brevo');
 const { daysDiff, isSupersededReservation } = require('./_lib/emailSchedule');
 const { sendRelanceProlongationSms } = require('./_lib/reservations');
+const { wasScenarioSkipped } = require('./_lib/emailEngine');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
@@ -31,7 +32,7 @@ module.exports = async (req, res) => {
   try {
     const { data: recups, error: recupsErr } = await supabase
       .from('livraisons')
-      .select('id, reservation_id, reservation:reservations(prenom, tel, lang)')
+      .select('id, reservation_id, reservation:reservations(prenom, tel, lang, statut)')
       .eq('type', 'recuperation')
       .eq('statut', 'fait')
       .gte('fait_at', since);
@@ -40,6 +41,13 @@ module.exports = async (req, res) => {
     for (const liv of recups || []) {
       const resa = liv.reservation;
       if (!resa?.tel) continue;
+      // La récupération a bien eu lieu, mais la réservation a pu être
+      // annulée/remboursée après coup (litige — voir livraisonDejaFaite dans
+      // admin-reservations.js, qui gère explicitement ce cas) : pas
+      // opportun de demander un avis Google à un client qu'on vient de
+      // rembourser pour un problème.
+      if (['annulee', 'remboursee'].includes(resa.statut)) continue;
+      if (await wasScenarioSkipped(supabase, liv.reservation_id, 'sms_avis_google')) continue;
 
       const lang = resa.lang || 'fr';
       let content;
@@ -94,7 +102,12 @@ module.exports = async (req, res) => {
 
     const { data: candidats, error: candErr } = await supabase
       .from('reservations')
-      .select('id, statut, date_debut, date_fin, prenom, tel, ref, lang, email, city_id')
+      // source + reservation_origine_id : indispensables à
+      // isSupersededReservation ci-dessous (oubliés lors du déplacement de
+      // ce SMS depuis cron-daily.js, qui les sélectionne bien) — sans eux,
+      // une réservation déjà supplantée par une prolongation plus récente
+      // n'est jamais reconnue comme telle.
+      .select('id, statut, date_debut, date_fin, prenom, tel, ref, lang, email, city_id, source, reservation_origine_id')
       .eq('statut', 'confirmee')
       .eq('date_fin', cibleStr);
     if (candErr) throw candErr;

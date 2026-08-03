@@ -5094,7 +5094,10 @@ input:-webkit-autofill:focus{
             <div class="frow">
               <div class="fld">
                 <label id="label-tel" for="f-tel">Téléphone <span class="req">*</span></label>
-                <input id="f-tel" type="tel" placeholder="06 12 34 56 78" autocomplete="tel" inputmode="tel" required/>
+                <div style="display:flex;gap:6px">
+                  <select id="f-tel-cc" aria-label="Indicatif pays" style="flex:0 0 92px"></select>
+                  <input id="f-tel" type="tel" placeholder="6 12 34 56 78" autocomplete="tel" inputmode="tel" style="flex:1;min-width:0" required/>
+                </div>
               </div>
               <div class="fld">
                 <label id="label-email" for="f-email">Email <span class="req">*</span></label>
@@ -5103,7 +5106,10 @@ input:-webkit-autofill:focus{
             </div>
             <div class="fld">
               <label id="label-tel2" for="f-tel2">Proche à contacter en cas d'absence <span style="color:var(--grey2);font-weight:400">(facultatif)</span></label>
-              <input id="f-tel2" type="tel" placeholder="Numéro d'un proche — conjoint, famille…" autocomplete="tel" inputmode="tel"/>
+              <div style="display:flex;gap:6px">
+                <select id="f-tel2-cc" aria-label="Indicatif pays" style="flex:0 0 92px"></select>
+                <input id="f-tel2" type="tel" placeholder="Numéro d'un proche — conjoint, famille…" autocomplete="tel" inputmode="tel" style="flex:1;min-width:0"/>
+              </div>
             </div>
             <div class="fld">
               <p id="lbl-type-client" style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px">Vous réservez en tant que</p>
@@ -6218,6 +6224,63 @@ const META={
   6:{title:'Récapitulatif',sub:'Vérifiez et confirmez votre commande'},
 };
 
+// Comptage de chiffres = deviner le pays = se tromper (retour terrain,
+// 2026-08-03) : un numéro comme "07823558309" ressemble à une frappe en
+// trop sur un numéro français, mais correspond aussi à un format mobile
+// britannique parfaitement valide — aucune règle sur les chiffres seuls ne
+// peut trancher, et Brevo a fini par le rejeter à l'envoi réel pour un
+// client qui n'était en fait pas français. Au lieu de deviner, le client
+// choisit maintenant lui-même son pays (menu déroulant, sélection
+// automatique par langue du navigateur en pré-remplissage — jamais
+// bloquante) — l'indicatif est donc TOUJOURS connu avec certitude, plus
+// besoin d'heuristique.
+const PHONE_COUNTRIES=[
+  {cc:'33',flag:'🇫🇷'},{cc:'44',flag:'🇬🇧'},{cc:'49',flag:'🇩🇪'},{cc:'39',flag:'🇮🇹'},
+  {cc:'32',flag:'🇧🇪'},{cc:'41',flag:'🇨🇭'},{cc:'31',flag:'🇳🇱'},{cc:'34',flag:'🇪🇸'},
+  {cc:'351',flag:'🇵🇹'},{cc:'377',flag:'🇲🇨'},{cc:'352',flag:'🇱🇺'},{cc:'43',flag:'🇦🇹'},
+  {cc:'46',flag:'🇸🇪'},{cc:'7',flag:'🇷🇺'},{cc:'86',flag:'🇨🇳'},{cc:'1',flag:'🇺🇸'},
+];
+// Devine juste un indicatif de DÉPART raisonnable à partir de la langue du
+// navigateur — un simple gain de confort (un visiteur britannique voit son
+// propre indicatif déjà sélectionné), jamais une vérité : le client peut
+// toujours changer la sélection lui-même, donc aucun risque à se tromper ici.
+function _guessDefaultCC(){
+  const lang=(navigator.language||'').toLowerCase();
+  if(lang.startsWith('en-gb'))return '44';
+  if(lang.startsWith('de'))return '49';
+  if(lang.startsWith('it'))return '39';
+  if(lang.startsWith('nl'))return '31';
+  if(lang.startsWith('ru'))return '7';
+  if(lang.startsWith('zh'))return '86';
+  if(lang==='en-us'||lang==='en-ca')return '1';
+  if(lang.startsWith('es'))return '34';
+  if(lang.startsWith('pt'))return '351';
+  return '33';
+}
+function _initPhoneCountrySelect(selectId){
+  const sel=document.getElementById(selectId);
+  if(!sel||sel.options.length)return; // déjà rempli (changement de langue, etc.)
+  sel.innerHTML=PHONE_COUNTRIES.map(c=>`<option value="${c.cc}">${c.flag} +${c.cc}</option>`).join('');
+  sel.value=_guessDefaultCC();
+}
+// Combine indicatif + numéro local en un format international propre
+// (ex. "+33612345678") — retire un éventuel 0 initial du numéro local
+// (format national français/européen classique) pour ne jamais le dupliquer
+// avec l'indicatif. Numéro vide -> chaîne vide (jamais "+33" tout seul).
+function combinedPhone(inputId,ccId){
+  const cc=document.getElementById(ccId)?.value||'33';
+  const local=(document.getElementById(inputId)?.value||'').replace(/\D/g,'').replace(/^0+/,'');
+  return local?('+'+cc+local):'';
+}
+// Le pays étant désormais toujours connu explicitement (menu déroulant),
+// il ne reste qu'à vérifier une longueur raisonnable du numéro LOCAL —
+// large exprès (4 à 12 chiffres couvre tous les formats nationaux réels),
+// jamais une vraie validation par pays (faite plus tard côté serveur,
+// toE164FR dans api/_lib/brevo.js, au moment de l'envoi réel).
+function isValidPhone(inputId){
+  const local=(document.getElementById(inputId)?.value||'').replace(/\D/g,'').replace(/^0+/,'');
+  return local.length>=4&&local.length<=12;
+}
 function goTo(n,silent){
   if(n===0){
     document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active','bwd'));
@@ -6276,9 +6339,7 @@ function goTo(n,silent){
       if(s===5){
         const miss=['f-prenom','f-nom','f-tel','f-email'].filter(id=>!document.getElementById(id)?.value.trim());
         if(miss.length){highlight(miss);goTo(5,true);return;}
-        const telRaw=document.getElementById('f-tel')?.value||'';
-        const telDigits=telRaw.replace(/[^0-9]/g,'');
-        if(telDigits.length<10){highlight(['f-tel']);goTo(5,true);return;}
+        if(!isValidPhone('f-tel')){highlight(['f-tel']);goTo(5,true);return;}
         const emailVal=document.getElementById('f-email')?.value||'';
         if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailVal)){highlight(['f-email']);goTo(5,true);return;}
       }
@@ -7010,8 +7071,7 @@ function submitForm(btn,mode){
   if(_submitting)return;
   const missCoords=['f-prenom','f-nom','f-tel','f-email'].filter(id=>!document.getElementById(id)?.value.trim());
   if(missCoords.length){highlight(missCoords);return;}
-  const telRaw=document.getElementById('f-tel')?.value||'';
-  if(telRaw.replace(/\D/g,'').length<10){highlight(['f-tel']);return;}
+  if(!isValidPhone('f-tel')){highlight(['f-tel']);return;}
   const emailVal=document.getElementById('f-email')?.value||'';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailVal)){highlight(['f-email']);return;}
   const isPro=document.querySelector('#type-client-group .tpill.on')?.classList.contains('client-type-pro');
@@ -7060,8 +7120,8 @@ function submitForm(btn,mode){
     remise_promo:_promoDiscount>0?'-'+_promoDiscount+' €':'',
     prenom:document.getElementById('f-prenom')?.value,
     nom:document.getElementById('f-nom')?.value,
-    tel:document.getElementById('f-tel')?.value,
-    tel_secondaire:document.getElementById('f-tel2')?.value.trim()||'',
+    tel:combinedPhone('f-tel','f-tel-cc'),
+    tel_secondaire:combinedPhone('f-tel2','f-tel2-cc'),
     email:document.getElementById('f-email')?.value,
     _replyto:document.getElementById('f-email')?.value,
     source:document.getElementById('f-source')?.value||'—',
@@ -7579,7 +7639,9 @@ const LANG_MAP=[
   ['#f-etage','ph','Ex. 3ème','E.g. 3rd floor','如：3楼',`Напр. 3 этаж`],
   ['#f-prenom','ph','Jean','John','（名）',`Иван`],
   ['#f-nom','ph','Dupont','Smith','（姓）',`Иванов`],
-  ['#f-tel','ph','06 12 34 56 78','+33 6 12 34 56 78','+33 6 12 34 56 78',`+33 6 12 34 56 78`],
+  ['#f-tel','ph','6 12 34 56 78','6 12 34 56 78','6 12 34 56 78',`6 12 34 56 78`],
+  ['#f-tel-cc','aria','Indicatif pays','Country code','国家区号',`Код страны`],
+  ['#f-tel2-cc','aria','Indicatif pays','Country code','国家区号',`Код страны`],
   ['#f-email','ph','prenom@exemple.fr','firstname@example.com','firstname@example.com',`имя@example.com`],
   ['.pay-sub','text','Paiement en ligne par carte via Stripe · Confirmation par email dans quelques minutes','Online payment by card via Stripe · Email confirmation in a few minutes','在线刷卡支付（Stripe）· 几分钟内邮件确认',`Оплата картой онлайн через Stripe · Подтверждение по email через несколько минут`],
   /* success screens */
@@ -8322,6 +8384,8 @@ async function _refreshStockAndSoldOut(){
 // Appliquer la langue mémorisée au chargement
 document.addEventListener('DOMContentLoaded',async()=>{
   setLang(_lang);
+  _initPhoneCountrySelect('f-tel-cc');
+  _initPhoneCountrySelect('f-tel2-cc');
   _refreshGoogleRating();
   await _refreshStockAndSoldOut();
   // Garde le compteur et le mode "complet" synchronisés avec le stock réel
