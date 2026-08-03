@@ -778,7 +778,9 @@ function updatePositionTracking(){
 }
 
 function startPositionTracking(){
-  document.getElementById('tracking-badge')?.classList.remove('hidden');
+  // Afficher brièvement (4s) pour confirmer que le tracking est actif, puis retirer
+  const _tb = document.getElementById('tracking-badge');
+  if(_tb){ _tb.classList.remove('hidden'); setTimeout(()=>_tb.classList.add('hidden'), 4000); }
   if(_watchId !== null || !navigator.geolocation) return;
   _watchId = navigator.geolocation.watchPosition(onPositionUpdate, ()=>{ document.getElementById('tracking-badge')?.classList.add('hidden'); if(_watchId !== null){ navigator.geolocation.clearWatch(_watchId); _watchId = null; } }, {
     enableHighAccuracy: true, maximumAge: 10000, timeout: 20000,
