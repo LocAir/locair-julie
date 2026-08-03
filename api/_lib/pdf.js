@@ -103,7 +103,7 @@ function drawContratHeader(doc, ref) {
   }
 
   doc.x = M;
-  doc.y = BH + 18;
+  doc.y = BH + 12;
 }
 
 // ─── En-tête FACTURE : émetteur gauche · boîte infos droite ──────────────────
@@ -167,7 +167,7 @@ function drawKeyValueRow(doc, label, value, lblW) {
   const vh   = doc.heightOfString(String(value ?? '—'), { width: valW, fontSize: 9 });
   doc.font('Helvetica').fontSize(9).fillColor(C.grey)
     .text(String(label), M, y, { width: lblW });
-  doc.font('Helvetica').fontSize(9).fillColor(C.body)
+  doc.font('Helvetica-Bold').fontSize(9).fillColor(C.body)
     .text(String(value ?? '—'), valX, y, { width: valW });
   doc.x = M;
   doc.y = y + Math.max(lh, vh) + 4;
@@ -175,8 +175,8 @@ function drawKeyValueRow(doc, label, value, lblW) {
 
 // ─── Encadré client (fond gris clair) ─────────────────────────────────────────
 function drawClientBox(doc, lines) {
-  const PER_LINE = 15;
-  const PAD      = 11;
+  const PER_LINE = 13;
+  const PAD      = 9;
   const boxH     = lines.length * PER_LINE + 2 * PAD + 4;
   const startY   = doc.y;
   filledRect(doc, M, startY, W, boxH, C.bg, 5);
@@ -404,7 +404,7 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
     doc.moveDown(1.2);
 
     // ── Signatures ────────────────────────────────────────────────────────
-    const SH = 82;
+    const SH = 96;
     if (doc.y + SH > PH - M) doc.addPage();
     const sY   = doc.y;
     const sHW  = (W - 14) / 2;
@@ -414,18 +414,26 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
 
     // Bailleur
     doc.font('Helvetica-Bold').fontSize(7.5).fillColor(C.navy)
-      .text('SIGNATURE DU BAILLEUR', M + 10, sY + 9, { width: sHW - 20, characterSpacing: 0.4 });
+      .text('SIGNATURE DU BAILLEUR', M + 10, sY + 10, { width: sHW - 20, characterSpacing: 0.4 });
     doc.font('Helvetica').fontSize(9).fillColor(C.body)
       .text("Aly THIAM — Loc’Air", M + 10, sY + 22, { width: sHW - 20 });
-    hLine(doc, M + 10, sY + 60, sHW - 20, C.rule, 0.5);
+    doc.font('Helvetica').fontSize(8).fillColor(C.lgrey)
+      .text('Gérant', M + 10, sY + 38, { width: sHW - 20 });
+    hLine(doc, M + 10, sY + 74, sHW - 20, C.rule, 0.5);
+    doc.font('Helvetica').fontSize(7.5).fillColor(C.lgrey)
+      .text('Signature', M + 10, sY + 79, { width: sHW - 20 });
 
     // Locataire
     const lx = M + sHW + 24;
     doc.font('Helvetica-Bold').fontSize(7.5).fillColor(C.navy)
-      .text('SIGNATURE DU LOCATAIRE', lx, sY + 9, { width: sHW - 20, characterSpacing: 0.4 });
-    doc.font('Helvetica').fontSize(8.5).fillColor(C.grey)
-      .text('(Précédée de la mention « Lu et approuvé »)', lx, sY + 22, { width: sHW - 20 });
-    hLine(doc, lx, sY + 60, sHW - 20, C.rule, 0.5);
+      .text('SIGNATURE DU LOCATAIRE', lx, sY + 10, { width: sHW - 20, characterSpacing: 0.4 });
+    doc.font('Helvetica').fontSize(9).fillColor(C.body)
+      .text(locataireNom, lx, sY + 24, { width: sHW - 20 });
+    doc.font('Helvetica').fontSize(8).fillColor(C.grey)
+      .text('(Précédée de la mention « Lu et approuvé »)', lx, sY + 38, { width: sHW - 20 });
+    hLine(doc, lx, sY + 74, sHW - 20, C.rule, 0.5);
+    doc.font('Helvetica').fontSize(7.5).fillColor(C.lgrey)
+      .text('Signature', lx, sY + 79, { width: sHW - 20 });
 
     doc.x = M;
     doc.y = sY + SH + 16;
@@ -606,6 +614,18 @@ function generateFactureVentePdf({ reservation, appareil, numero, montantCents, 
       { label: `TVA (0 % — ${SELLER.mentionTva})`, value: '0,00 €', muted: true },
       { label: 'NET À PAYER', value: eur(montantCents), bold: true, large: true },
     ]);
+
+    // ── Note de vente ─────────────────────────────────────────────────────
+    drawSectionTitle(doc, 'Informations complémentaires');
+    doc.font('Helvetica').fontSize(8.5).fillColor(C.grey)
+      .text(
+        `Cette facture correspond à l'acquisition définitive du climatiseur mobile loué dans le cadre du dossier n° ${reservation.ref}. ` +
+        "L'appareil est vendu avec l'ensemble de ses accessoires d'origine (gaine, télécommande, kit de calfeutrage). " +
+        "La garantie constructeur s'applique dans les conditions prévues par le fabricant.",
+        M, doc.y, { width: W, align: 'justify' }
+      );
+    doc.x = M;
+    doc.moveDown(0.8);
 
     drawFooter(doc,
       `${SELLER.raisonSociale} (${SELLER.nomCommercial}) · ${SELLER.formeJuridique} · SIRET ${SELLER.siret} · ${SELLER.adresse}. ` +
