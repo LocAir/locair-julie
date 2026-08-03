@@ -824,6 +824,32 @@ function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, monta
   });
 }
 
+// Notification d'Offre Privilège au client — envoyée automatiquement par
+// cron-daily.js dès qu'un prix auto est configuré (OFFRE_PRIVILEGE_PRIX_CENTS).
+// Dirige le client vers son espace client pour accepter ou ignorer l'offre.
+function tplOffrePrivilege({ prenom, ref, prixFormate, appareilNumero }) {
+  const p = escHtml(prenom || '');
+  const prix = escHtml(prixFormate || '');
+  const appareil = appareilNumero ? `climatiseur #${escHtml(String(appareilNumero))}` : 'votre climatiseur';
+  return wrap({
+    headColor: '#1a2b4a',
+    title: '⭐ Une offre exclusive pour vous',
+    intro: `Dossier ${escHtml(ref || '')}`,
+    bodyHtml: `
+      <p>Bonjour ${p},</p>
+      <p>Vous avez apprécié votre climatiseur ? Nous vous proposons de le <strong>conserver définitivement</strong>, au prix exceptionnel de <strong>${prix}</strong>.</p>
+      <div class="box">
+        <p style="margin:0 0 4px;color:#888;font-size:12px">OFFRE PRIVILÈGE</p>
+        <p style="margin:0;font-size:17px;font-weight:700;color:#1a2b4a">Achetez votre ${appareil} — ${prix}</p>
+        <p style="margin:6px 0 0;font-size:13px;color:#666">Prix définitif, sans frais supplémentaires. L'appareil est à vous.</p>
+      </div>
+      <p>Pour accepter ou décliner cette offre, rendez-vous dans votre espace client avec votre numéro de dossier (<strong>${escHtml(ref || '')}</strong>).</p>
+      <p style="font-size:13px;color:#888">Cette offre est valable jusqu'à la fin de votre location. Si vous ne faites rien, l'appareil sera récupéré normalement à la date prévue — aucune action requise de votre part.</p>`,
+    ctaHref: `https://www.locair.fr/client`,
+    ctaLabel: 'Voir l\'offre dans mon espace →',
+  });
+}
+
 // Relance commerciale d'un client dormant (Module 8) — n'a pas reloué
 // depuis longtemps (voir cron-monthly.js, runDormantClientsWinback).
 // Réutilise le système de code promo déterministe déjà en place
@@ -875,5 +901,5 @@ module.exports = {
   tplPostInstallation, tplAvantFinLocation, tplRappelRecuperation, tplFinLocation,
   tplProlongConfirmation, tplContratFacture, tplContratFactureProlongation, tplFactureVente,
   tplAmbassadeurCredentials, tplNouveauCodeAmbassadeur, tplNouveauCodeTransporteur,
-  tplLienPaiement, tplRelanceDormant,
+  tplLienPaiement, tplRelanceDormant, tplOffrePrivilege,
 };
