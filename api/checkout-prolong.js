@@ -210,7 +210,7 @@ module.exports = async (req, res) => {
         customer_id:       customerId,
         lang:              ['fr','en','zh','ru'].includes(data.lang) ? data.lang : 'fr',
       },
-    });
+    }, { idempotencyKey: `checkout-prolong-${orig?.id}-${extDateFin}` });
 
     const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  city.id,

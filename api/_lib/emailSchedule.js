@@ -25,7 +25,7 @@ function scenariosDueToday(reservation, todayISO) {
   // J-14 : seules les réservations avec au moins 14 jours de délai peuvent
   // jamais atteindre dDebut===14 un jour donné (sinon la fenêtre n'existe
   // structurellement pas dans leur calendrier) — aucun contrôle séparé requis.
-  if (dDebut === 14) due.push('suivi_j14');
+  if (dDebut === 14 || dDebut === 13) due.push('suivi_j14');
   // J-3 : petite marge [2,3] pour absorber un cron manqué un jour, sans
   // jamais chevaucher la fenêtre J-1 stricte ci-dessous.
   if (dDebut === 3 || dDebut === 2) due.push('preparation_j3');

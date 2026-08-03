@@ -172,13 +172,13 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
                  { onConflict: 'reservation_id,scenario' }).then(() => {}, () => {});
     }
     supabase.from('email_log').insert({
-      reservation_id: reservationId, scenario, destinataire: reservation.email, modele: scenario, statut: 'envoye',
+      reservation_id: reservationId, scenario, canal: 'email', destinataire: reservation.email, modele: scenario, statut: 'envoye',
       contenu: html,
     }).then(() => {}, () => {});
     return { sent: true };
   } catch (e) {
     await supabase.from('email_log').insert({
-      reservation_id: reservationId, scenario, destinataire: reservation.email, modele: scenario,
+      reservation_id: reservationId, scenario, canal: 'email', destinataire: reservation.email, modele: scenario,
       statut: 'erreur', erreur: String(e.message || e).slice(0, 500), contenu: html,
     });
     if (!force) {

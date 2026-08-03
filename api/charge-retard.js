@@ -123,6 +123,26 @@ module.exports = async (req, res) => {
 
     // DSP2 : authentification 3D Secure requise — Stripe envoie un email au client automatiquement
     if (err.code === 'authentication_required' || err.payment_intent?.status === 'requires_action') {
+      // Le PI est créé mais non débité — crée l'incident pour ne pas perdre le cas
+      try {
+        const supabase = getSupabase();
+        let reservationId = null; let resa = null;
+        if (customerId) {
+          ({ data: resa } = await supabase.from('reservations').select('id, city_id').eq('stripe_customer_id', customerId).order('created_at', { ascending: false }).limit(1).maybeSingle());
+        }
+        if (!resa && data.email) {
+          ({ data: resa } = await supabase.from('reservations').select('id, city_id').eq('email', data.email.trim().toLowerCase()).order('created_at', { ascending: false }).limit(1).maybeSingle());
+        }
+        if (resa) reservationId = resa.id;
+        await supabase.from('incidents').insert({
+          city_id: resa?.city_id || null, reservation_id: reservationId,
+          type: 'retard',
+          description: `${jours} jour${jours > 1 ? 's' : ''} de retard — ${(data.nom || '').slice(0, 200)} (3DS requis)`,
+          montant_facture_cents: amountCents, statut: 'retard_a_facturer',
+        });
+      } catch (incidentErr) {
+        console.error('[Incident retard 3DS]', incidentErr.message);
+      }
       return res.status(402).json({
         error:             '3D Secure requis — Stripe a envoyé un email au client pour qu\'il valide le paiement.',
         requires_action:   true,

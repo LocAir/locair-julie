@@ -827,13 +827,72 @@ function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, monta
 // Notification d'Offre Privilège au client — envoyée automatiquement par
 // cron-daily.js dès qu'un prix auto est configuré (OFFRE_PRIVILEGE_PRIX_CENTS).
 // Dirige le client vers son espace client pour accepter ou ignorer l'offre.
-function tplOffrePrivilege({ prenom, ref, prixFormate, appareilNumero }) {
+function tplOffrePrivilege({ prenom, ref, prixFormate, appareilNumero, lang }) {
+  const l = lang || 'fr';
   const p = escHtml(prenom || '');
   const prix = escHtml(prixFormate || '');
+  const r = escHtml(ref || '');
+  if (l === 'en') {
+    const appareil = appareilNumero ? `air conditioner #${escHtml(String(appareilNumero))}` : 'your air conditioner';
+    return wrap({
+      title: '⭐ An exclusive offer for you',
+      intro: `Order ${r}`,
+      bodyHtml: `
+        <p>Hello ${p},</p>
+        <p>Did you enjoy your air conditioner? We'd like to offer you the chance to <strong>keep it permanently</strong>, at the exceptional price of <strong>${prix}</strong>.</p>
+        <div class="box">
+          <p style="margin:0 0 4px;color:#888;font-size:12px">EXCLUSIVE OFFER</p>
+          <p style="margin:0;font-size:17px;font-weight:700;color:#1a2b4a">Buy your ${appareil} — ${prix}</p>
+          <p style="margin:6px 0 0;font-size:13px;color:#666">Final price, no extra fees. The unit is yours.</p>
+        </div>
+        <p>To accept or decline this offer, visit your client portal with your order number (<strong>${r}</strong>).</p>
+        <p style="font-size:13px;color:#888">This offer is valid until the end of your rental. If you do nothing, the unit will be collected normally on the scheduled date — no action required.</p>`,
+      ctaHref: 'https://www.locair.fr/client',
+      ctaLabel: 'View the offer in my account →',
+    });
+  }
+  if (l === 'zh') {
+    const appareil = appareilNumero ? `空调 #${escHtml(String(appareilNumero))}` : '您的空调';
+    return wrap({
+      title: '⭐ 专属优惠，为您而设',
+      intro: `订单 ${r}`,
+      bodyHtml: `
+        <p>您好，${p}，</p>
+        <p>您喜欢这台空调吗？我们为您提供以优惠价 <strong>${prix}</strong> <strong>永久保留</strong>它的机会。</p>
+        <div class="box">
+          <p style="margin:0 0 4px;color:#888;font-size:12px">专属优惠</p>
+          <p style="margin:0;font-size:17px;font-weight:700;color:#1a2b4a">购买您的${appareil} — ${prix}</p>
+          <p style="margin:6px 0 0;font-size:13px;color:#666">最终价格，无附加费用，空调归您所有。</p>
+        </div>
+        <p>如需接受或拒绝此优惠，请使用您的订单号（<strong>${r}</strong>）登录您的客户空间。</p>
+        <p style="font-size:13px;color:#888">该优惠在您的租赁期结束前有效。如果您不采取任何操作，空调将在预定日期正常回收——无需任何操作。</p>`,
+      ctaHref: 'https://www.locair.fr/client',
+      ctaLabel: '查看我的优惠 →',
+    });
+  }
+  if (l === 'ru') {
+    const appareil = appareilNumero ? `кондиционер #${escHtml(String(appareilNumero))}` : 'ваш кондиционер';
+    return wrap({
+      title: '⭐ Эксклюзивное предложение для вас',
+      intro: `Заказ ${r}`,
+      bodyHtml: `
+        <p>Здравствуйте, ${p}!</p>
+        <p>Остались довольны кондиционером? Предлагаем вам <strong>оставить его навсегда</strong> по исключительной цене <strong>${prix}</strong>.</p>
+        <div class="box">
+          <p style="margin:0 0 4px;color:#888;font-size:12px">ПРИВИЛЕГИРОВАННОЕ ПРЕДЛОЖЕНИЕ</p>
+          <p style="margin:0;font-size:17px;font-weight:700;color:#1a2b4a">Купите ${appareil} — ${prix}</p>
+          <p style="margin:6px 0 0;font-size:13px;color:#666">Окончательная цена, без дополнительных расходов. Прибор будет вашим.</p>
+        </div>
+        <p>Чтобы принять или отклонить предложение, зайдите в личный кабинет с номером заказа (<strong>${r}</strong>).</p>
+        <p style="font-size:13px;color:#888">Предложение действительно до окончания аренды. Если вы ничего не предпримете, прибор будет забран в плановую дату — никаких действий не требуется.</p>`,
+      ctaHref: 'https://www.locair.fr/client',
+      ctaLabel: 'Посмотреть предложение →',
+    });
+  }
   const appareil = appareilNumero ? `climatiseur #${escHtml(String(appareilNumero))}` : 'votre climatiseur';
   return wrap({
     title: '⭐ Une offre exclusive pour vous',
-    intro: `Dossier ${escHtml(ref || '')}`,
+    intro: `Dossier ${r}`,
     bodyHtml: `
       <p>Bonjour ${p},</p>
       <p>Vous avez apprécié votre climatiseur ? Nous vous proposons de le <strong>conserver définitivement</strong>, au prix exceptionnel de <strong>${prix}</strong>.</p>
@@ -842,9 +901,9 @@ function tplOffrePrivilege({ prenom, ref, prixFormate, appareilNumero }) {
         <p style="margin:0;font-size:17px;font-weight:700;color:#1a2b4a">Achetez votre ${appareil} — ${prix}</p>
         <p style="margin:6px 0 0;font-size:13px;color:#666">Prix définitif, sans frais supplémentaires. L'appareil est à vous.</p>
       </div>
-      <p>Pour accepter ou décliner cette offre, rendez-vous dans votre espace client avec votre numéro de dossier (<strong>${escHtml(ref || '')}</strong>).</p>
+      <p>Pour accepter ou décliner cette offre, rendez-vous dans votre espace client avec votre numéro de dossier (<strong>${r}</strong>).</p>
       <p style="font-size:13px;color:#888">Cette offre est valable jusqu'à la fin de votre location. Si vous ne faites rien, l'appareil sera récupéré normalement à la date prévue — aucune action requise de votre part.</p>`,
-    ctaHref: `https://www.locair.fr/client`,
+    ctaHref: 'https://www.locair.fr/client',
     ctaLabel: 'Voir l\'offre dans mon espace →',
   });
 }

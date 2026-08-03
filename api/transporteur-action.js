@@ -457,9 +457,11 @@ module.exports = async (req, res) => {
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
 
-      await supabase.from('livraisons').update({
+      const { data: autreClaimed, error: autreUpdErr } = await supabase.from('livraisons').update({
         statut: 'fait', fait_at: new Date().toISOString(),
-      }).eq('id', liv.id);
+      }).eq('id', liv.id).in('statut', EN_COURS_STATUTS).select('id');
+      if (autreUpdErr) throw autreUpdErr;
+      if (!autreClaimed || !autreClaimed.length) return res.status(409).json({ error: 'Mission déjà validée' });
       await closeMissionIncident(supabase, liv);
 
       return res.status(200).json({ ok: true, statut: 'fait', montant_du_cents: liv.montant_du_cents });
