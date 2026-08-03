@@ -333,6 +333,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .table-actions{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
 .admin-table select{width:auto;min-width:110px;margin-bottom:0;padding:7px 10px;font-size:12.5px}
 .table-actions .btn{padding:6px 9px;font-size:12px}
+/* Séparateur de groupe par date (voir livraisonsTableHtml) — repérer d'un
+   coup d'œil les missions d'un même jour sans devoir lire chaque ligne. */
+.admin-table tr.date-group-row td{padding:8px 14px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--grey);background:var(--bg);border-bottom:1px solid var(--rule);cursor:default}
+.admin-table tr.date-group-row:hover td{background:var(--bg)}
+.admin-table tr.date-group-row.today td{color:var(--blue)}
+.admin-table tr.date-group-row.overdue td{color:var(--red)}
+.admin-table tr.date-group-row .count{font-weight:400;opacity:.7;text-transform:none;letter-spacing:0;margin-left:6px}
 @media (min-width:1000px){
   .table-toggle-zone > .row-grid{display:none}
   .table-toggle-zone > .admin-table-wrap{display:block}
@@ -4599,8 +4606,10 @@ function renderLivraisons(){
   list.innerHTML = `<div class="row-grid">${cardsHtml}</div>${livraisonsTableHtml(items)}`;
 }
 // ── Tableau (grand écran) — mêmes missions que les cartes ci-dessus, tri au
-// clic sur l'en-tête ; pas de groupement par date ici (le tri fait ce travail
-// sur grand écran, une colonne Date suffit à repérer l'urgence d'un coup d'œil).
+// clic sur l'en-tête ; regroupement visuel par date tant que l'ordre affiché
+// reste par date (voir livraisonsTableHtml) — sans ça, la simple colonne
+// Date ne suffisait pas à repérer d'un coup d'œil les missions d'un même
+// jour au milieu d'une longue liste.
 let LIV_SORT = {col:null, dir:1};
 function sortLivraisonsTable(col){
   LIV_SORT = LIV_SORT.col===col ? {col, dir:LIV_SORT.dir*-1} : {col, dir:1};
@@ -4630,10 +4639,42 @@ function livraisonsTableHtml(items){
     {key:'date', label:'Date'}, {key:'transporteur', label:'Transporteur'}, {key:'statut', label:'Statut'}, {key:'montant', label:'Montant'},
   ];
   const thHtml = c => `<th onclick="sortLivraisonsTable('${c.key}')" class="${LIV_SORT.col===c.key?'sorted':''}">${c.label}<span class="sort-arrow">${LIV_SORT.col===c.key?(LIV_SORT.dir===1?'▲':'▼'):'▲'}</span></th>`;
+
+  // Séparateur par date — demandé par Aly : sur le tableau desktop, toutes les
+  // missions se suivaient sans repère visuel, impossible de voir d'un coup
+  // d'œil celles d'un même jour. Uniquement quand l'ordre affiché est déjà
+  // par date (tri par défaut, ou tri explicite sur la colonne Date) — sur un
+  // autre tri (client, statut...) les dates ne sont plus contiguës et un
+  // en-tête de groupe induirait en erreur.
+  const groupByDate = !LIV_SORT.col || LIV_SORT.col === 'date';
+  let bodyHtml;
+  if(groupByDate){
+    const todayStr = new Date().toISOString().slice(0,10);
+    const tomorrowStr = new Date(Date.now()+86400000).toISOString().slice(0,10);
+    const byDate = {}; const dateOrder = [];
+    rows.forEach(m => { const d = m.date_prevue || '__'; if(!byDate[d]){byDate[d]=[]; dateOrder.push(d);} byDate[d].push(m); });
+    bodyHtml = dateOrder.map(dateStr => {
+      const missions = byDate[dateStr];
+      const isToday = dateStr === todayStr;
+      const isTomorrow = dateStr === tomorrowStr;
+      const isOvd = dateStr !== '__' && dateStr < todayStr;
+      const label = dateStr==='__' ? 'Sans date'
+        : isToday ? `Aujourd'hui · ${frDate(dateStr)}`
+        : isTomorrow ? `Demain · ${frDate(dateStr)}`
+        : isOvd ? `En retard · ${frDate(dateStr)}`
+        : frDate(dateStr);
+      const cls = isToday ? 'date-group-row today' : isOvd ? 'date-group-row overdue' : 'date-group-row';
+      const groupRow = `<tr class="${cls}"><td colspan="${cols.length+1}">${escHtml(label)} <span class="count">${missions.length} mission${missions.length>1?'s':''}</span></td></tr>`;
+      return groupRow + missions.map(livraisonTableRowHtml).join('');
+    }).join('');
+  }else{
+    bodyHtml = rows.map(livraisonTableRowHtml).join('');
+  }
+
   return `
     <div class="admin-table-wrap"><table class="admin-table">
       <thead><tr>${cols.map(thHtml).join('')}<th>Actions</th></tr></thead>
-      <tbody>${rows.map(livraisonTableRowHtml).join('')}</tbody>
+      <tbody>${bodyHtml}</tbody>
     </table></div>`;
 }
 function livraisonTableRowHtml(m){
