@@ -184,14 +184,13 @@ module.exports = async (req, res) => {
           metadata:       { type: 'retard', jours: String(joursRetard), reservation_id: String(liv.reservation_id) },
         }, { idempotencyKey });
 
-        await supabase.from('incidents').insert({
-          city_id:               resa.city_id || null,
-          reservation_id:        liv.reservation_id,
-          type:                  'retard',
-          description:           `${joursRetard}j de retard — prélèvement auto ${(amountCents / 100).toFixed(2)} €`,
-          montant_facture_cents: amountCents,
-          statut:                'retard_a_facturer',
-        });
+        const desc = `${joursRetard}j de retard — prélèvement auto ${(amountCents / 100).toFixed(2)} €`;
+        const { data: existInc } = await supabase.from('incidents').select('id').eq('reservation_id', liv.reservation_id).eq('type', 'retard').in('statut', ['retard_a_facturer', 'nouveau']).maybeSingle();
+        if (existInc) {
+          await supabase.from('incidents').update({ description: desc, montant_facture_cents: amountCents }).eq('id', existInc.id);
+        } else {
+          await supabase.from('incidents').insert({ city_id: resa.city_id || null, reservation_id: liv.reservation_id, type: 'retard', description: desc, montant_facture_cents: amountCents, statut: 'retard_a_facturer' });
+        }
         console.log('[Cron retard] Prélèvement', intent.id, 'pour reservation', liv.reservation_id);
       } catch (stripeErr) {
         console.error('[Cron retard Stripe]', stripeErr.message, 'reservation', liv.reservation_id);
@@ -204,14 +203,14 @@ module.exports = async (req, res) => {
           body:  `Le prélèvement automatique de ${joursRetard}j de retard a échoué (${(stripeErr.message || 'carte refusée').slice(0, 200)}). Contacte le client pour régulariser manuellement.`,
           tag:   `retard-stripe-echec-${liv.id}-${todayStr}`,
         });
-        await supabase.from('incidents').insert({
-          city_id:               resa.city_id || null,
-          reservation_id:        liv.reservation_id,
-          type:                  'retard',
-          description:           `Prélèvement automatique de retard échoué (${joursRetard}j) : ${(stripeErr.message || '').slice(0, 300)}`,
-          montant_facture_cents: dailyRate(joursRetard) * 100,
-          statut:                'nouveau',
-        }).catch(e2 => console.error('[Cron retard Stripe incident]', e2.message));
+        const failDesc = `Prélèvement automatique de retard échoué (${joursRetard}j) : ${(stripeErr.message || '').slice(0, 300)}`;
+        const failAmt  = dailyRate(joursRetard) * 100;
+        const { data: existIncFail } = await supabase.from('incidents').select('id').eq('reservation_id', liv.reservation_id).eq('type', 'retard').in('statut', ['retard_a_facturer', 'nouveau']).maybeSingle();
+        if (existIncFail) {
+          await supabase.from('incidents').update({ description: failDesc, montant_facture_cents: failAmt }).eq('id', existIncFail.id).catch(e2 => console.error('[Cron retard Stripe incident]', e2.message));
+        } else {
+          await supabase.from('incidents').insert({ city_id: resa.city_id || null, reservation_id: liv.reservation_id, type: 'retard', description: failDesc, montant_facture_cents: failAmt, statut: 'nouveau' }).catch(e2 => console.error('[Cron retard Stripe incident]', e2.message));
+        }
       }
     }
     if (retardCount) report.retards = retardCount;
