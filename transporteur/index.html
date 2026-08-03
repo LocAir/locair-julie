@@ -2937,7 +2937,16 @@ function renderDetail(){
       ${mapsUrl?`<a class="maps-link" href="${mapsUrl}" target="_blank" rel="noopener">🗺️ Ouvrir l'itinéraire dans Google Maps</a>`:''}
       ${c.tel?`<button class="btn btn-blue${m.client_notifie?'':' detail-notify-pulse'}" style="margin-bottom:8px" onclick="ouvrirPrevenirModal('sms')">${m.client_notifie?'✔ '+escHtml(c.prenom||'Client')+' prévenu':'🔔 Prévenir '+escHtml(c.prenom||'le client')+' de mon arrivée'}</button>`:''}
       ${c.tel_secondaire?`<a class="btn btn-grey" href="tel:${encodeURIComponent(c.tel_secondaire)}" style="margin-bottom:4px;text-decoration:none">☎️ Appeler le numéro de secours</a>`:''}
-      ${c.tel_secondaire?(()=>{const t=encodeURIComponent(c.tel_secondaire.replace(/\s+/g,''));const msg=encodeURIComponent(arrivalMessageText());return `<div style="display:flex;gap:8px;margin-bottom:12px"><a class="media-btn" href="sms:${t}?body=${msg}" style="flex:1;text-decoration:none;text-align:center"><span class="ic">📲</span> SMS secours</a><a class="media-btn" href="https://wa.me/${t}?text=${msg}" target="_blank" rel="noopener" style="flex:1;text-decoration:none;text-align:center"><span class="ic">💬</span> WA secours</a></div>`;})():''}
+      ${c.tel_secondaire?(()=>{
+        // "sms:" accepte le numéro tel quel (avec ou sans +), mais "wa.me"
+        // exige un format international sans "0" ni "+" — d'où waNumber()
+        // ici, au lieu du numéro brut utilisé jusqu'ici (jamais valide pour
+        // wa.me sur un numéro français local ou un "+" international).
+        const tSms=encodeURIComponent(c.tel_secondaire.replace(/\s+/g,''));
+        const wWa=waNumber(c.tel_secondaire);
+        const msg=encodeURIComponent(arrivalMessageText());
+        return `<div style="display:flex;gap:8px;margin-bottom:12px"><a class="media-btn" href="sms:${tSms}?body=${msg}" style="flex:1;text-decoration:none;text-align:center"><span class="ic">📲</span> SMS secours</a>${wWa?`<a class="media-btn" href="https://wa.me/${wWa}?text=${msg}" target="_blank" rel="noopener" style="flex:1;text-decoration:none;text-align:center"><span class="ic">💬</span> WA secours</a>`:''}</div>`;
+      })():''}
     ` : `
       <div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(c.adresse||'—')}</span></div>
       ${c.etage&&c.etage!=='—'?`<div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${escHtml(c.etage)}${c.ascenseur&&c.ascenseur!=='—'?' · Ascenseur : '+escHtml(c.ascenseur):''}</span></div>`:''}
@@ -3122,14 +3131,23 @@ function prevenirClientSms(minutes){
   if(c.tel) window.location.href = `sms:${c.tel.replace(/\s+/g,'')}?body=${encodeURIComponent(msg)}`;
   doAction('prevenir_client');
 }
-// wa.me exige un numéro international sans "0" ni "+" : un 06/07 français
-// devient 336/337 — seul format français géré ici, cohérent avec le reste de
-// l'app (une seule ville/pays par déploiement, voir CLAUDE.md).
+// wa.me exige un numéro international sans "0" ni "+". Depuis le sélecteur
+// d'indicatif pays du site public (2026-08-03), un numéro client stocké
+// commence par "+" et porte déjà le vrai indicatif (ex. "+447823558309") —
+// on ne devine plus rien, on retire juste le "+". Les anciennes
+// réservations (avant ce correctif, jamais de "+") retombent sur l'ancienne
+// supposition française, seul comportement possible sans indicatif connu.
+function waNumber(tel){
+  const t = String(tel||'').trim();
+  if(!t) return '';
+  if(t.startsWith('+')) return t.slice(1).replace(/\D/g,'');
+  const digits = t.replace(/\D/g,'');
+  return digits.startsWith('0') ? '33'+digits.slice(1) : digits;
+}
 function prevenirClientWhatsapp(minutes){
   const { c, msg } = prevenirClientMessage(minutes);
-  const digits = String(c.tel||'').replace(/\D/g,'');
-  const waNumber = digits.startsWith('0') ? '33'+digits.slice(1) : digits;
-  if(waNumber) window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`, '_blank');
+  const w = waNumber(c.tel);
+  if(w) window.open(`https://wa.me/${w}?text=${encodeURIComponent(msg)}`, '_blank');
   doAction('prevenir_client');
 }
 async function voirPhotoFenetre(livraisonId){

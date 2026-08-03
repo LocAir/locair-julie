@@ -1095,11 +1095,18 @@ function escHtml(s){
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-// wa.me exige un numéro international sans "0" ni "+" — même conversion que
-// côté transporteur (une seule ville/pays par déploiement, voir CLAUDE.md).
+// wa.me exige un numéro international sans "0" ni "+". Depuis le
+// sélecteur d'indicatif pays du site public (2026-08-03), un numéro client
+// stocké commence par "+" et porte déjà le vrai indicatif (ex.
+// "+447823558309") — on ne devine plus rien, on retire juste le "+". Les
+// anciennes réservations (avant ce correctif, jamais de "+") retombent sur
+// l'ancienne supposition française, seul comportement possible sans
+// indicatif connu.
 function waNumber(tel){
-  const digits = String(tel||'').replace(/\D/g,'');
-  if(!digits) return '';
+  const t = String(tel||'').trim();
+  if(!t) return '';
+  if(t.startsWith('+')) return t.slice(1).replace(/\D/g,'');
+  const digits = t.replace(/\D/g,'');
   return digits.startsWith('0') ? '33'+digits.slice(1) : digits;
 }
 // Boutons Appeler/WhatsApp réutilisés partout où un numéro client est affiché
