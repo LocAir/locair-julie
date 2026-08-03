@@ -117,6 +117,10 @@ create table transporteurs (
   -- Code personnel (4-6 chiffres) : identifie ET authentifie ce transporteur,
   -- pour qu'un livreur ne puisse jamais agir avec l'identifiant d'un collègue.
   pin                      text not null unique,
+  -- true dès que "pin" ci-dessus a été remplacé par son hash (scrypt) au
+  -- lieu du code en clair — bascule progressive à la prochaine connexion
+  -- réussie de ce transporteur, jamais en masse (voir transporteur-login.js).
+  pin_hashed               boolean not null default false,
   actif                    boolean not null default true,
   en_pause                 boolean not null default false, -- mis en pause temporairement, ne reçoit plus de nouvelle mission
   -- Rémunération par mission (définie par le propriétaire)
@@ -522,7 +526,16 @@ insert into email_scenarios (id, libelle) values
   ('post_installation',   'Post-installation'),
   ('avant_fin_location',  'Avant fin de location (prolongation)'),
   ('rappel_recuperation', 'Rappel J-1 (récupération)'),
-  ('fin_location',        'Fin de location (avis)');
+  ('fin_location',        'Fin de location (avis)'),
+  -- Communications ponctuelles hors moteur des 8 scénarios ci-dessus, mais
+  -- qui utilisent quand même email_sent comme verrou anti-doublon (voir
+  -- api/_lib/reservations.js et api/cron-sms-avis.js) — doivent donc aussi
+  -- exister ici pour que l'INSERT de verrouillage ne viole jamais la clé
+  -- étrangère de email_sent.scenario.
+  ('sms_confirmation',    'SMS de confirmation de réservation'),
+  ('email_prolongation',  'Email de confirmation de prolongation'),
+  ('sms_prolongation',    'SMS de confirmation de prolongation'),
+  ('sms_avis_google',     'SMS de demande d''avis Google');
 
 -- Garantit qu'un scénario n'est jamais envoyé deux fois pour la même
 -- réservation (clé primaire composite).
@@ -625,6 +638,13 @@ create table virements (
   verse_at       timestamptz
 );
 create index virements_transporteur_idx on virements (transporteur_id, statut);
+-- Empêche qu'un transporteur soumette deux demandes de virement simultanées
+-- (race condition TOCTOU via double-tap) — une seule ligne 'demande' à la
+-- fois par transporteur ; api/transporteur-earnings.js attrape le code
+-- d'erreur 23505 et renvoie 409 proprement.
+create unique index virements_demande_unique_per_transporteur
+  on virements (transporteur_id)
+  where statut = 'demande';
 
 -- Demandes de virement partenaire — même logique que `virements` ci-dessus,
 -- mais table séparée pour ne rien toucher à ce circuit transporteur déjà en
@@ -835,6 +855,25 @@ create table webauthn_challenges (
   created_at timestamptz not null default now()
 );
 
+-- Consomme (usage unique) un challenge s'il existe et n'a pas expiré
+-- (~5 min) — DELETE atomique via RPC pour éviter le rejeu en cas de double
+-- requête simultanée (voir api/_lib/webauthn.js consumeChallenge).
+create or replace function consume_challenge(p_challenge text)
+returns boolean
+language plpgsql
+security definer
+as $$
+declare
+  v_id bigint;
+begin
+  delete from webauthn_challenges
+  where challenge = p_challenge
+    and created_at > now() - interval '5 minutes'
+  returning id into v_id;
+  return v_id is not null;
+end;
+$$;
+
 -- Face ID / empreinte pour l'espace admin — un seul admin (mot de passe
 -- unique), donc pas de colonne de rattachement comme pour les transporteurs :
 -- chaque ligne est juste un appareil autorisé (téléphone, ordinateur...).
@@ -856,10 +895,21 @@ create table admin_users (
   nom           text not null,
   email         text,
   pin           text not null unique,
+  -- true dès que "pin" ci-dessus a été remplacé par son hash (scrypt) au
+  -- lieu du code en clair — bascule progressive à la prochaine connexion
+  -- réussie (voir admin-user-login.js), jamais en masse.
+  pin_hashed    boolean not null default false,
   role          text not null check (role in ('administrateur','operateur','comptabilite','support_client')),
   actif         boolean not null default true,
   created_at    timestamptz not null default now(),
   last_login_at timestamptz
+);
+
+-- Déduplication des webhooks WhatsApp (Meta peut redélivrer le même message
+-- plusieurs fois) — voir api/whatsapp-webhook.js.
+create table whatsapp_messages_vus (
+  msg_id text primary key,
+  vu_le  timestamptz not null default now()
 );
 
 -- Seed pour Nice — ajuster le nombre d'appareils insérés ci-dessous au vrai
