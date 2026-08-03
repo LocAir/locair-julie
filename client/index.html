@@ -582,6 +582,11 @@ function renderDashboard(d){
           <div id="prolong-error" class="alert-error hidden" style="margin-bottom:14px"></div>
           <p id="prolong-dates-lbl" style="font-size:13px;color:var(--grey);margin-bottom:14px"></p>
           <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--grey);margin-bottom:8px">Nouvelle date de fin</div>
+          <div class="creneau-btns" id="prolong-quick-chips">
+            <div class="creneau-opt" onclick="quickProlong(3,this)">+3 jours</div>
+            <div class="creneau-opt" onclick="quickProlong(7,this)">+7 jours</div>
+            <div class="creneau-opt" onclick="quickProlong(14,this)">+14 jours</div>
+          </div>
           <input type="date" id="prolong-newdate" oninput="updateProlongPrice()" onchange="updateProlongPrice()" style="width:100%;padding:11px 13px;border:1.5px solid var(--rule);border-radius:10px;font-size:15px;margin-bottom:12px;background:#fff;color:var(--text);font-family:var(--body);outline:none;transition:border-color .15s"/>
           <div id="prolong-price-box" class="hidden" style="background:rgba(197,169,108,.08);border-left:3px solid var(--gold);border-radius:12px;padding:14px 16px;margin-bottom:14px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
@@ -982,9 +987,33 @@ async function initProlongSection(){
   }
 }
 
+// Raccourcis "+3 / +7 / +14 jours" — évite d'avoir à ouvrir le sélecteur de
+// date natif pour les prolongations les plus courantes (façon suggestions
+// rapides Airbnb/Uber). La date reste modifiable manuellement ensuite.
+function quickProlong(days, el){
+  if(!_prolongData) return;
+  const dt=new Date(_prolongData.date_fin+'T00:00:00Z');
+  dt.setUTCDate(dt.getUTCDate()+days);
+  const inp=document.getElementById('prolong-newdate');
+  if(inp) inp.value=dt.toISOString().slice(0,10);
+  updateProlongPrice();
+}
+// Met en évidence la puce correspondant à la date actuellement choisie (ou
+// aucune, si le client a tapé une date personnalisée dans le calendrier).
+function syncProlongQuickChips(){
+  if(!_prolongData) return;
+  document.querySelectorAll('#prolong-quick-chips .creneau-opt').forEach((chipEl, idx) => {
+    const days=[3,7,14][idx];
+    const dt=new Date(_prolongData.date_fin+'T00:00:00Z');
+    dt.setUTCDate(dt.getUTCDate()+days);
+    chipEl.classList.toggle('active', dt.toISOString().slice(0,10) === _prolongNewDate);
+  });
+}
+
 function updateProlongPrice(){
   if(!_prolongData) return;
   _prolongNewDate=document.getElementById('prolong-newdate')?.value||'';
+  syncProlongQuickChips();
   const priceBox=document.getElementById('prolong-price-box');
   if(!_prolongNewDate||_prolongNewDate<=_prolongData.date_fin){
     if(priceBox) priceBox.classList.add('hidden');
