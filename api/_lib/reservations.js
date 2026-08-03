@@ -43,7 +43,7 @@ async function getEffectiveDateFin(supabase, origId, origDateFin) {
   const { data: recup } = await supabase
     .from('livraisons').select('date_prevue')
     .in('reservation_id', allIds).eq('type', 'recuperation')
-    .not('statut', 'in', '(annule,annulee)')
+    .not('statut', 'in', '(annule,annulee,refusee)')
     .order('date_prevue', { ascending: false }).limit(1).maybeSingle();
   if (recup?.date_prevue) {
     const recupEnd = addDays(recup.date_prevue, -1);

@@ -11,7 +11,7 @@ async function computeParcDashboard(supabase, cityId) {
   const today = new Date().toISOString().slice(0, 10);
   const [{ data: liens }, { data: livsEnCours }] = await Promise.all([
     supabase.from('reservation_appareils').select('appareil_id, reservation_id, reservation:reservations(statut, date_debut, date_fin)'),
-    supabase.from('livraisons').select('reservation_id').eq('type', 'livraison').neq('statut', 'fait'),
+    supabase.from('livraisons').select('reservation_id').eq('type', 'livraison').not('statut', 'in', '(fait,annule,refusee)'),
   ]);
   // Un appareil peut être physiquement en location (réservation confirmée
   // couvrant aujourd'hui) sans que son statut en base ait déjà été aligné

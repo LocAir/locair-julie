@@ -695,13 +695,18 @@ module.exports = async (req, res) => {
       if (autoPrixCents > 0) {
         // Email au client pour lui annoncer l'offre
         const { data: resa } = await supabase.from('reservations')
-          .select('email, prenom, ref').eq('id', reservationId).maybeSingle();
+          .select('email, prenom, ref, lang').eq('id', reservationId).maybeSingle();
         if (resa?.email) {
           try {
             const sig = await getSignature(supabase);
             const prixFormate = (autoPrixCents / 100).toFixed(2).replace('.', ',') + ' €';
-            const html = withSignature(tplOffrePrivilege({ prenom: resa.prenom, ref: resa.ref, prixFormate, appareilNumero: appareil?.numero }), sig);
-            await sendBrevoEmail({ to: resa.email, subject: `⭐ Une offre exclusive pour vous — Dossier ${resa.ref}`, html, senderName: sig.nom_expediteur });
+            const lang = resa.lang || 'fr';
+            const html = withSignature(tplOffrePrivilege({ prenom: resa.prenom, ref: resa.ref, prixFormate, appareilNumero: appareil?.numero, lang }), sig);
+            const subject = lang === 'en' ? `⭐ An exclusive offer for you — Order ${resa.ref}`
+              : lang === 'zh' ? `⭐ 专属优惠，为您而设 — 订单 ${resa.ref}`
+              : lang === 'ru' ? `⭐ Эксклюзивное предложение для вас — Заказ ${resa.ref}`
+              : `⭐ Une offre exclusive pour vous — Dossier ${resa.ref}`;
+            await sendBrevoEmail({ to: resa.email, subject, html, senderName: sig.nom_expediteur });
             await supabase.from('email_log').insert({
               reservation_id: reservationId, scenario: 'offre_privilege',
               destinataire: resa.email, modele: 'offre_privilege', statut: 'envoye', contenu: html,
