@@ -90,7 +90,7 @@ async function runMonthlyRecap(supabase) {
 
     await sendBrevoEmail({
       to:      adminEmail,
-      subject: `💶 Virements à effectuer — ${nomMois} ${annee}`,
+      subject: `Virements à effectuer — ${nomMois} ${annee}`,
       html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
 body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
 .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
@@ -107,7 +107,7 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
 </style></head><body>
 <div class="wrap">
 <div class="head">
-<h1>💶 Récapitulatif virements</h1>
+<h1>Récapitulatif virements</h1>
 <p>${escHtml(nomMois)} ${annee} · ${escHtml(String(entries.length))} transporteur${entries.length > 1 ? 's' : ''}</p>
 </div>
 <div class="body">
@@ -212,12 +212,12 @@ async function runDormantClientsWinback(supabase) {
     const lang = dernier.lang || 'fr';
     const html = withSignature(tplRelanceDormant({ prenom: dernier.prenom, codePromo, lang }), sig);
     const subject = lang === 'en'
-      ? `☀️ ${dernier.prenom ? dernier.prenom + ', a' : 'A'} discount is waiting for you at Loc'Air`
+      ? `${dernier.prenom ? dernier.prenom + ', a' : 'A'} discount is waiting for you at Loc'Air`
       : lang === 'zh'
-      ? `☀️ ${dernier.prenom ? dernier.prenom + '，' : ''}Loc'Air 专属优惠等您来领取`
+      ? `${dernier.prenom ? dernier.prenom + '，' : ''}Loc'Air 专属优惠等您来领取`
       : lang === 'ru'
-      ? `☀️ ${dernier.prenom ? dernier.prenom + ', вас' : 'Вас'} ждёт скидка в Loc'Air`
-      : `☀️ ${dernier.prenom ? dernier.prenom + ', une' : 'Une'} réduction vous attend chez Loc'Air`;
+      ? `${dernier.prenom ? dernier.prenom + ', вас' : 'Вас'} ждёт скидка в Loc'Air`
+      : `${dernier.prenom ? dernier.prenom + ', une' : 'Une'} réduction vous attend chez Loc'Air`;
     const result = await sendBrevoEmail({
       to: dernier.email, senderName: sig.nom_expediteur,
       subject,

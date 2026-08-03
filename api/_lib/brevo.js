@@ -19,6 +19,10 @@ const BREVO_TIMEOUT_MS = 20000;
 // `senderName` (optionnel) : nom d'expéditeur affiché au destinataire — voir
 // la signature email administrable (_lib/emailEngine.js), qui lit ce nom
 // depuis Supabase au lieu du nom en dur "Loc'Air" par défaut.
+// `scheduledAt` (optionnel) : date ISO future — Brevo retarde l'envoi réel
+// jusqu'à ce moment-là au lieu de partir immédiatement (utilisé pour espacer
+// l'email "documents" du mail de confirmation qui arrive juste avant, voir
+// _lib/documents.js — sans ça les deux tombent à la même minute).
 // Renvoie { ok: true } ou { ok: false, error } — ne jette jamais (les appels
 // "best-effort" du reste du code, ex. SMS de confirmation, notifications,
 // peuvent continuer à faire `await sendBrevoEmail(...)` sans se soucier du
@@ -27,7 +31,7 @@ const BREVO_TIMEOUT_MS = 20000;
 // réservation comme "email envoyé") doit vérifier `result.ok` — sans quoi
 // un échec Brevo (clé désactivée, adresse invalide, quota, panne API) était
 // jusqu'ici marqué comme un envoi réussi, sans aucune trace de l'échec.
-async function sendBrevoEmail({ to, subject, html, attachments, senderName }) {
+async function sendBrevoEmail({ to, subject, html, attachments, senderName, scheduledAt }) {
   if (!process.env.BREVO_API_KEY || !to) return { ok: false, error: 'BREVO_API_KEY ou destinataire manquant' };
   try {
     const body = {
@@ -36,6 +40,7 @@ async function sendBrevoEmail({ to, subject, html, attachments, senderName }) {
       subject,
       htmlContent: html,
     };
+    if (scheduledAt) body.scheduledAt = scheduledAt;
     if (attachments && attachments.length) {
       body.attachment = attachments.map(a => ({
         name:    a.name,

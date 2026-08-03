@@ -26,7 +26,7 @@ function fmtDateFR(iso) { return fmtDate(iso, 'fr'); }
 // de scénario à son libellé, son sujet et son gabarit HTML.
 const SCENARIOS = {
   confirmation:        { libelle: 'Confirmation de réservation',
-    subject: ctx => ctx.lang === 'en' ? `✅ Booking confirmed — Ref ${ctx.ref}` : ctx.lang === 'zh' ? `✅ 预订已确认 — 订单 ${ctx.ref}` : ctx.lang === 'ru' ? `✅ Бронирование подтверждено — Заказ ${ctx.ref}` : `✅ Réservation confirmée — Dossier ${ctx.ref}`,
+    subject: ctx => ctx.lang === 'en' ? `Booking confirmed — Ref ${ctx.ref}` : ctx.lang === 'zh' ? `预订已确认 — 订单 ${ctx.ref}` : ctx.lang === 'ru' ? `Бронирование подтверждено — Заказ ${ctx.ref}` : `Réservation confirmée — Dossier ${ctx.ref}`,
     template: tpl.tplConfirmation },
   suivi_j14:           { libelle: 'Suivi J-14',
     subject: ctx => ctx.lang === 'en' ? 'Your AC arrives in 14 days' : ctx.lang === 'zh' ? '您的空调将在14天后送达' : ctx.lang === 'ru' ? 'Ваш кондиционер прибудет через 14 дней' : 'Votre climatiseur arrive dans 14 jours',
@@ -35,10 +35,10 @@ const SCENARIOS = {
     subject: ctx => ctx.lang === 'en' ? "Your Loc'Air delivery is coming up" : ctx.lang === 'zh' ? '您的Loc\'Air配送即将到来' : ctx.lang === 'ru' ? "Доставка Loc'Air совсем скоро" : "Votre livraison Loc'Air approche",
     template: tpl.tplPreparationJ3 },
   rappel_j1:           { libelle: 'Rappel J-1 (livraison)',
-    subject: ctx => ctx.lang === 'en' ? "📦 Tomorrow — your Loc'Air AC is delivered" : ctx.lang === 'zh' ? "📦 明天——您的Loc'Air空调将送达" : ctx.lang === 'ru' ? "📦 Завтра — доставка вашего кондиционера Loc'Air" : "📦 Demain, livraison de votre climatiseur Loc'Air",
+    subject: ctx => ctx.lang === 'en' ? "Tomorrow — your Loc'Air AC is delivered" : ctx.lang === 'zh' ? "明天——您的Loc'Air空调将送达" : ctx.lang === 'ru' ? "Завтра — доставка вашего кондиционера Loc'Air" : "Demain, livraison de votre climatiseur Loc'Air",
     template: tpl.tplRappelJ1 },
   post_installation:   { libelle: 'Post-installation',
-    subject: ctx => ctx.lang === 'en' ? `✅ Your AC is installed — Ref ${ctx.ref}` : ctx.lang === 'zh' ? `✅ 您的空调已安装 — 订单 ${ctx.ref}` : ctx.lang === 'ru' ? `✅ Ваш кондиционер установлен — Заказ ${ctx.ref}` : `✅ Votre climatiseur est installé — Dossier ${ctx.ref}`,
+    subject: ctx => ctx.lang === 'en' ? `Your AC is installed — Ref ${ctx.ref}` : ctx.lang === 'zh' ? `您的空调已安装 — 订单 ${ctx.ref}` : ctx.lang === 'ru' ? `Ваш кондиционер установлен — Заказ ${ctx.ref}` : `Votre climatiseur est installé — Dossier ${ctx.ref}`,
     template: tpl.tplPostInstallation },
   avant_fin_location:  { libelle: 'Avant fin de location (prolongation)',
     subject: ctx => ctx.lang === 'en' ? "Your Loc'Air rental is ending soon" : ctx.lang === 'zh' ? "您的Loc'Air租赁即将结束" : ctx.lang === 'ru' ? "Срок аренды Loc'Air скоро истекает" : "Votre location Loc'Air se termine bientôt",

@@ -107,15 +107,19 @@ async function generateAndSendDocuments(supabase, resa, { force } = {}) {
       viewUrlDocuments: `${base}/api/documents-view?contrat=${contratToken}&facture=${factureToken}`,
     }), sig);
     const contratSubject = lang === 'en'
-      ? `📄 Your Loc'Air documents — Ref ${resa.ref}`
+      ? `Your Loc'Air documents — Ref ${resa.ref}`
       : lang === 'zh'
-      ? `📄 您的 Loc'Air 文件 — 订单 ${resa.ref}`
-      : `📄 Votre contrat et votre facture Loc'Air — Dossier ${resa.ref}`;
+      ? `您的 Loc'Air 文件 — 订单 ${resa.ref}`
+      : `Votre contrat et votre facture Loc'Air — Dossier ${resa.ref}`;
+    // Décalé de 4 min par rapport au mail de confirmation envoyé juste après
+    // (voir webhook.js) — évite que les deux tombent à la même minute dans
+    // la boîte du client.
     const result = await sendBrevoEmail({
       to:      resa.email,
       subject: contratSubject,
       html:    contratEmailHtml,
       senderName: sig.nom_expediteur,
+      scheduledAt: new Date(Date.now() + 4 * 60 * 1000).toISOString(),
       attachments: [
         { name: `Contrat-${resa.ref}.pdf`, content: contratBuffer },
         { name: `${numero}.pdf`, content: factureBuffer },
@@ -241,15 +245,19 @@ async function generateAndSendDocumentsAfterProlongation(supabase, { origineResa
       viewUrlDocuments: `${base}/api/documents-view?contrat=${contratToken}&facture=${factureToken}`,
     }), sig);
     const subject = lang === 'en'
-      ? `📄 Your updated Loc'Air documents — Ref ${origineResa.ref}`
+      ? `Your updated Loc'Air documents — Ref ${origineResa.ref}`
       : lang === 'zh'
-      ? `📄 您更新后的 Loc'Air 文件 — 订单 ${origineResa.ref}`
-      : `📄 Votre contrat mis à jour et votre facture de prolongation — Dossier ${origineResa.ref}`;
+      ? `您更新后的 Loc'Air 文件 — 订单 ${origineResa.ref}`
+      : `Votre contrat mis à jour et votre facture de prolongation — Dossier ${origineResa.ref}`;
+    // Décalé de 4 min par rapport au mail de confirmation de prolongation
+    // (sendProlongationConfirmation) envoyé au même moment — voir commentaire
+    // équivalent sur generateAndSendDocuments ci-dessus.
     const result = await sendBrevoEmail({
       to:      origineResa.email,
       subject,
       html,
       senderName: sig.nom_expediteur,
+      scheduledAt: new Date(Date.now() + 4 * 60 * 1000).toISOString(),
       attachments: [
         { name: `Contrat-${origineResa.ref}.pdf`, content: contratBuffer },
         { name: `${numero}.pdf`, content: factureBuffer },
@@ -335,10 +343,10 @@ async function generateAndSendFactureVente(supabase, { reservationId, appareilId
       viewUrlFacture: `${base}/api/document-view?token=${factureToken}`,
     }), sig);
     const ventSubject = lang === 'en'
-      ? `📄 Your Loc'Air purchase invoice — Ref ${resa.ref}`
+      ? `Your Loc'Air purchase invoice — Ref ${resa.ref}`
       : lang === 'zh'
-      ? `📄 您的 Loc'Air 购买发票 — 订单 ${resa.ref}`
-      : `📄 Votre facture d'achat Loc'Air — Dossier ${resa.ref}`;
+      ? `您的 Loc'Air 购买发票 — 订单 ${resa.ref}`
+      : `Votre facture d'achat Loc'Air — Dossier ${resa.ref}`;
     const result = await sendBrevoEmail({
       to:      resa.email,
       subject: ventSubject,

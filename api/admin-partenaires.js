@@ -20,7 +20,7 @@ async function notifyPartenaireCredentials(supabase, { nom, email, code, pin }) 
   const sig  = await getSignature(supabase);
   const html = withSignature(tplAmbassadeurCredentials({ nom, lien: partenaireLinkFor(code), pin }), sig);
 
-  const result = await sendBrevoEmail({ to: email, subject: "🤝 Ton espace ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
+  const result = await sendBrevoEmail({ to: email, subject: "Ton espace ambassadeur Loc'Air", html, senderName: sig.nom_expediteur });
   // Pas de reservation_id pour un email ambassadeur (email_log est structuré
   // autour des réservations) — reservation_id:null reste consultable en base
   // même sans apparaître dans le panneau Communications admin, qui ne liste

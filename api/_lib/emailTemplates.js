@@ -59,7 +59,7 @@ function tplConfirmation(ctx) {
   const l = ctx.lang || 'fr';
   const p = escHtml(ctx.prenom), ref = escHtml(ctx.ref);
   if (l === 'en') return wrap({
-    title: '✅ Booking confirmed!',
+    title: 'Booking confirmed!',
     intro: `Thank you ${p}, your payment of ${escHtml(ctx.montantFmt)} has been received.`,
     bodyHtml: `
       <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">YOUR BOOKING</p><strong style="font-size:18px;color:#1b3a5f">${ref}</strong></div>
@@ -74,7 +74,7 @@ function tplConfirmation(ctx) {
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
   });
   if (l === 'zh') return wrap({
-    title: '✅ 预订已确认！',
+    title: '预订已确认！',
     intro: `感谢 ${p}，我们已收到您的付款 ${escHtml(ctx.montantFmt)}。`,
     bodyHtml: `
       <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">您的订单</p><strong style="font-size:18px;color:#1b3a5f">${ref}</strong></div>
@@ -89,7 +89,7 @@ function tplConfirmation(ctx) {
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
   });
   if (l === 'ru') return wrap({
-    title: '✅ Бронирование подтверждено!',
+    title: 'Бронирование подтверждено!',
     intro: `Спасибо, ${p}! Ваш платёж ${escHtml(ctx.montantFmt)} получен.`,
     bodyHtml: `
       <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">ВАШ ЗАКАЗ</p><strong style="font-size:18px;color:#1b3a5f">${ref}</strong></div>
@@ -104,7 +104,7 @@ function tplConfirmation(ctx) {
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
   });
   return wrap({
-    title: '✅ Réservation confirmée !',
+    title: 'Réservation confirmée !',
     intro: `Merci ${p}, votre paiement de ${escHtml(ctx.montantFmt)} a bien été reçu.`,
     bodyHtml: `
       <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">VOTRE DOSSIER</p><strong style="font-size:18px;color:#1b3a5f">${ref}</strong></div>
@@ -267,44 +267,44 @@ function tplPostInstallation(ctx) {
   const l = ctx.lang || 'fr';
   const p = escHtml(ctx.prenom), ref = escHtml(ctx.ref);
   if (l === 'en') return wrap({
-    title: '✅ Your AC is installed!',
+    title: 'Your AC is installed!',
     intro: `Booking ref ${ref}`,
     bodyHtml: `
       <p>Hello ${p},</p>
       <p>Your ${escHtml(ctx.modeleClimatiseur)} is installed and ready to use.</p>
       <p>Any issue or question? Our team is reachable at any time.</p>
       <p style="font-size:13px;color:#888">If you have a minute, your review helps other families trust us:</p>`,
-    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Leave a Google review ⭐',
+    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Leave a Google review',
   });
   if (l === 'zh') return wrap({
-    title: '✅ 您的空调已安装！',
+    title: '您的空调已安装！',
     intro: `订单编号 ${ref}`,
     bodyHtml: `
       <p>您好 ${p}，</p>
       <p>您的 ${escHtml(ctx.modeleClimatiseur)} 已安装完毕，可以使用。</p>
       <p>如有任何问题，请随时联系我们的团队。</p>
       <p style="font-size:13px;color:#888">如果您有时间，您的评价将帮助更多家庭了解我们：</p>`,
-    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: '留下 Google 评价 ⭐',
+    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: '留下 Google 评价',
   });
   if (l === 'ru') return wrap({
-    title: '✅ Ваш кондиционер установлен!',
+    title: 'Ваш кондиционер установлен!',
     intro: `Заказ ${ref}`,
     bodyHtml: `
       <p>Здравствуйте, ${p}!</p>
       <p>Ваш ${escHtml(ctx.modeleClimatiseur)} установлен и готов к работе.</p>
       <p>Есть вопросы или проблемы? Наша команда всегда на связи.</p>
       <p style="font-size:13px;color:#888">Если есть минутка, ваш отзыв поможет другим семьям нам доверять:</p>`,
-    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Оставить отзыв в Google ⭐',
+    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Оставить отзыв в Google',
   });
   return wrap({
-    title: '✅ Votre climatiseur est installé !',
+    title: 'Votre climatiseur est installé !',
     intro: `Dossier ${ref}`,
     bodyHtml: `
       <p>Bonjour ${p},</p>
       <p>Votre ${escHtml(ctx.modeleClimatiseur)} est installé et prêt à l'emploi.</p>
       <p>Un souci, une question ? Notre équipe reste joignable à tout moment — <a href="https://wa.me/33663798756" style="color:#1b3a5f;font-weight:700">WhatsApp</a> ou <a href="mailto:contact@locair.fr" style="color:#1b3a5f">contact@locair.fr</a>.</p>
       <p style="font-size:13px;color:#888">Si vous avez une minute dès maintenant, votre avis nous aide beaucoup :</p>`,
-    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Laisser un avis Google ⭐',
+    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Laisser un avis Google',
   });
 }
 
@@ -418,7 +418,7 @@ function tplFinLocation(ctx) {
   const p = escHtml(ctx.prenom), ref = escHtml(ctx.ref);
   const code = ctx.prenom ? promoCodeForPrenom(ctx.prenom) : null;
   if (l === 'en') return wrap({
-    title: '✅ Rental complete',
+    title: 'Rental complete',
     intro: `Booking ref ${ref}`,
     bodyHtml: `
       <p>Hello ${p},</p>
@@ -429,10 +429,10 @@ function tplFinLocation(ctx) {
         <p style="margin:0;font-size:13px;color:#666">You can also share it with friends — the code is their first name + 30 (e.g. JEAN30).</p>
       </div>` : ''}
       <p style="font-size:13px;color:#444">If you have a minute, your review helps other families trust us:</p>`,
-    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Leave a Google review ⭐',
+    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Leave a Google review',
   });
   if (l === 'zh') return wrap({
-    title: '✅ 租赁已完成',
+    title: '租赁已完成',
     intro: `订单编号 ${ref}`,
     bodyHtml: `
       <p>您好 ${p}，</p>
@@ -443,10 +443,10 @@ function tplFinLocation(ctx) {
         <p style="margin:0;font-size:13px;color:#666">此优惠码也可与朋友分享——优惠码为朋友姓名加上30（例如：JEAN30）。</p>
       </div>` : ''}
       <p style="font-size:13px;color:#444">如有时间，您的评价将帮助更多家庭了解我们：</p>`,
-    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: '留下 Google 评价 ⭐',
+    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: '留下 Google 评价',
   });
   if (l === 'ru') return wrap({
-    title: '✅ Аренда завершена',
+    title: 'Аренда завершена',
     intro: `Заказ ${ref}`,
     bodyHtml: `
       <p>Здравствуйте, ${p}!</p>
@@ -457,10 +457,10 @@ function tplFinLocation(ctx) {
         <p style="margin:0;font-size:13px;color:#666">Можете поделиться кодом с друзьями — их имя + 30 (например JEAN30).</p>
       </div>` : ''}
       <p style="font-size:13px;color:#444">Если есть минутка, ваш отзыв поможет другим семьям нам доверять:</p>`,
-    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Оставить отзыв в Google ⭐',
+    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Оставить отзыв в Google',
   });
   return wrap({
-    title: '✅ Location terminée',
+    title: 'Location terminée',
     intro: `Dossier ${ref}`,
     bodyHtml: `
       <p>Bonjour ${p},</p>
@@ -471,7 +471,7 @@ function tplFinLocation(ctx) {
         <p style="margin:0;font-size:13px;color:#666">Offre valable aussi pour vos amis — le code, c'est leur prénom + ${REFERRAL_PCT} (ex. JEAN${REFERRAL_PCT}).</p>
       </div>` : ''}
       <p style="font-size:13px;color:#444">Si vous avez une minute, votre avis aide d'autres familles à nous faire confiance :</p>`,
-    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Laisser un avis Google ⭐',
+    ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Laisser un avis Google',
   });
 }
 
@@ -488,7 +488,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
   const refBox = ref_origine ? `<div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">${l === 'en' ? 'BOOKING REF' : l === 'zh' ? '订单编号' : l === 'ru' ? 'НОМЕР ЗАКАЗА' : 'DOSSIER'}</p><strong style="font-size:18px;color:#1b3a5f">${escHtml(ref_origine)}</strong></div>` : '';
   const adresseRow = adresse ? `<strong>${l === 'en' ? 'Address' : l === 'zh' ? '地址' : l === 'ru' ? 'Адрес' : 'Adresse'} :</strong> ${escHtml(adresse)}<br/>` : '';
   if (l === 'en') return wrap({
-    title: '✅ Extension confirmed!',
+    title: 'Extension confirmed!',
     intro: `Thank you ${p}, your payment of ${escHtml(amount)} has been received.`,
     bodyHtml: `
       ${refBox}
@@ -502,7 +502,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
   });
   if (l === 'zh') return wrap({
-    title: '✅ 续租已确认！',
+    title: '续租已确认！',
     intro: `感谢 ${p}，我们已收到您的付款 ${escHtml(amount)}。`,
     bodyHtml: `
       ${refBox}
@@ -516,7 +516,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
   });
   if (l === 'ru') return wrap({
-    title: '✅ Продление подтверждено!',
+    title: 'Продление подтверждено!',
     intro: `Спасибо, ${p}! Ваш платёж ${escHtml(amount)} получен.`,
     bodyHtml: `
       ${refBox}
@@ -530,7 +530,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
   });
   return wrap({
-    title: '✅ Prolongation confirmée !',
+    title: 'Prolongation confirmée !',
     intro: `Merci ${p}, votre paiement de ${escHtml(amount)} a bien été reçu.`,
     bodyHtml: `
       ${refBox}
@@ -550,7 +550,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
   const l = lang || 'fr';
   const p = escHtml(prenom || '');
   if (l === 'en') return wrap({
-    title: "📄 Your Loc'Air documents",
+    title: "Your Loc'Air documents",
     intro: `Booking ref ${escHtml(ref)}`,
     bodyHtml: `
       <p>Hello ${p},</p>
@@ -565,7 +565,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
   });
   if (l === 'zh') return wrap({
-    title: "📄 您的 Loc'Air 文件",
+    title: "您的 Loc'Air 文件",
     intro: `订单编号 ${escHtml(ref)}`,
     bodyHtml: `
       <p>您好 ${p}，</p>
@@ -580,7 +580,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
   });
   if (l === 'ru') return wrap({
-    title: "📄 Ваши документы Loc'Air",
+    title: "Ваши документы Loc'Air",
     intro: `Заказ ${escHtml(ref)}`,
     bodyHtml: `
       <p>Здравствуйте, ${p}!</p>
@@ -595,7 +595,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
   });
   return wrap({
-    title: '📄 Vos documents Loc\'Air',
+    title: 'Vos documents Loc\'Air',
     intro: `Dossier ${escHtml(ref)}`,
     bodyHtml: `
       <p>Bonjour ${p},</p>
@@ -621,7 +621,7 @@ function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang }) 
   const l = lang || 'fr';
   const p = escHtml(prenom || '');
   if (l === 'en') return wrap({
-    title: "📄 Your updated Loc'Air documents",
+    title: "Your updated Loc'Air documents",
     intro: `Booking ref ${escHtml(ref)}`,
     bodyHtml: `
       <p>Hello ${p},</p>
@@ -635,7 +635,7 @@ function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang }) 
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
   });
   if (l === 'zh') return wrap({
-    title: "📄 您更新后的 Loc'Air 文件",
+    title: "您更新后的 Loc'Air 文件",
     intro: `订单编号 ${escHtml(ref)}`,
     bodyHtml: `
       <p>您好 ${p}，</p>
@@ -649,7 +649,7 @@ function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang }) 
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
   });
   if (l === 'ru') return wrap({
-    title: "📄 Ваши обновлённые документы Loc'Air",
+    title: "Ваши обновлённые документы Loc'Air",
     intro: `Заказ ${escHtml(ref)}`,
     bodyHtml: `
       <p>Здравствуйте, ${p}!</p>
@@ -663,7 +663,7 @@ function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang }) 
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
   });
   return wrap({
-    title: '📄 Vos documents Loc\'Air mis à jour',
+    title: 'Vos documents Loc\'Air mis à jour',
     intro: `Dossier ${escHtml(ref)}`,
     bodyHtml: `
       <p>Bonjour ${p},</p>
@@ -681,7 +681,7 @@ function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang }) 
 // Facture d'achat Offre Privilège (interne — FR uniquement)
 function tplFactureVente({ prenom, ref, modeleClimatiseur, dateAchatFmt, montantFmt, viewUrlFacture }) {
   return wrap({
-    title: '📄 Votre facture d\'achat',
+    title: 'Votre facture d\'achat',
     intro: `Merci ${escHtml(prenom || '')}, votre paiement de ${escHtml(montantFmt || '')} a bien été reçu !`,
     bodyHtml: `
       <p>Merci pour votre confiance et votre achat via l'Offre Privilège (dossier ${escHtml(ref)}). Voici le récapitulatif :</p>
@@ -700,7 +700,7 @@ function tplFactureVente({ prenom, ref, modeleClimatiseur, dateAchatFmt, montant
 // Credentials ambassadeur (interne — FR uniquement)
 function tplAmbassadeurCredentials({ nom, lien, pin }) {
   return wrap({
-    title: '🤝 Ton espace ambassadeur',
+    title: 'Ton espace ambassadeur',
     intro: `Bonjour ${escHtml(nom)}`,
     bodyHtml: `
       <p>Voici ton lien d'affiliation — mets-le sur ton site pour que tes clients réservent directement chez Loc'Air :</p>
@@ -715,7 +715,7 @@ function tplAmbassadeurCredentials({ nom, lien, pin }) {
 // "Code oublié" ambassadeur (interne — FR uniquement)
 function tplNouveauCodeAmbassadeur({ nom, lien, pin }) {
   return wrap({
-    title: '🔐 Ton nouveau code ambassadeur',
+    title: 'Ton nouveau code ambassadeur',
     intro: `Bonjour ${escHtml(nom)}`,
     bodyHtml: `
       <p>Voici ton nouveau code personnel pour te connecter sur ton espace ambassadeur Loc'Air :</p>
@@ -730,7 +730,7 @@ function tplNouveauCodeAmbassadeur({ nom, lien, pin }) {
 // "Code oublié" transporteur (interne — FR uniquement)
 function tplNouveauCodeTransporteur({ nom, pin }) {
   return wrap({
-    title: '🔐 Ton nouveau code',
+    title: 'Ton nouveau code',
     intro: `Bonjour ${escHtml(nom)}`,
     bodyHtml: `
       <p>Voici ton nouveau code personnel pour te connecter sur l'espace transporteur Loc'Air :</p>
@@ -779,7 +779,7 @@ function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, monta
       <p>${l === 'en' ? 'Click the button below to pay securely online (payment processed by Stripe).' : l === 'zh' ? '点击下方按钮在线安全付款（由 Stripe 处理）。' : l === 'ru' ? 'Нажмите кнопку ниже для безопасной онлайн-оплаты (через Stripe).' : 'Cliquez sur le bouton ci-dessous pour payer en ligne, en toute sécurité (paiement géré par Stripe).'}</p>
       <p style="font-size:13px;color:#444">${l === 'en' ? "Once payment is received, you'll get a confirmation email. You can then track your rental at any time in <strong>your account</strong> using just your email and booking ref above — no password needed." : l === 'zh' ? '付款成功后，您将收到确认邮件。您可随时在<strong>您的账户</strong>中使用邮箱和上方订单编号查看租赁状态，无需密码。' : l === 'ru' ? 'После получения оплаты вы получите письмо с подтверждением. Вы сможете отслеживать аренду в любое время в <strong>личном кабинете</strong>, используя только ваш email и номер заказа выше — без пароля.' : 'Une fois le paiement reçu, vous recevrez un email de confirmation. Vous pourrez alors suivre votre location à tout moment sur <strong>votre espace client</strong>, avec juste votre email et le numéro de dossier ci-dessus — pas besoin de mot de passe.'}</p>`;
   if (l === 'en') return wrap({
-    title: isProlongation ? '⏰ A payment is still pending' : rappel ? '⏰ A payment is still pending' : '💳 Complete your booking',
+    title: isProlongation ? 'A payment is still pending' : rappel ? 'A payment is still pending' : 'Complete your booking',
     intro: isProlongation
       ? `Hello ${p}, a reminder: your Loc'Air extension is still awaiting payment.`
       : rappel
@@ -790,7 +790,7 @@ function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, monta
     ctaLabel: 'Pay now →',
   });
   if (l === 'zh') return wrap({
-    title: isProlongation ? '⏰ 仍有待完成的付款' : rappel ? '⏰ 仍有待完成的付款' : '💳 完成您的预订',
+    title: isProlongation ? '仍有待完成的付款' : rappel ? '仍有待完成的付款' : '完成您的预订',
     intro: isProlongation
       ? `您好 ${p}，提醒您：您的 Loc'Air 续租申请仍等待付款。`
       : rappel
@@ -801,7 +801,7 @@ function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, monta
     ctaLabel: '立即付款 →',
   });
   if (l === 'ru') return wrap({
-    title: isProlongation ? '⏰ Ожидается оплата' : rappel ? '⏰ Ожидается оплата' : '💳 Завершите бронирование',
+    title: isProlongation ? 'Ожидается оплата' : rappel ? 'Ожидается оплата' : 'Завершите бронирование',
     intro: isProlongation
       ? `Здравствуйте, ${p}! Напоминаем: ваше продление аренды Loc'Air ожидает оплаты.`
       : rappel
@@ -812,7 +812,7 @@ function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, monta
     ctaLabel: 'Оплатить →',
   });
   return wrap({
-    title: isProlongation ? '⏰ Il reste un paiement à finaliser' : rappel ? '⏰ Il reste un paiement à finaliser' : '💳 Finalisez votre réservation',
+    title: isProlongation ? 'Il reste un paiement à finaliser' : rappel ? 'Il reste un paiement à finaliser' : 'Finalisez votre réservation',
     intro: isProlongation
       ? `Bonjour ${p}, petit rappel : votre demande de prolongation Loc'Air est toujours en attente de paiement.`
       : rappel
@@ -858,7 +858,7 @@ function tplRelanceDormant({ prenom, codePromo, lang }) {
   const l = lang || 'fr';
   const p = escHtml(prenom || '');
   if (l === 'en') return wrap({
-    title: "☀️ We haven't forgotten you!",
+    title: "We haven't forgotten you!",
     intro: `Hello ${p}, it's been a while — here's a discount for your next rental.`,
     bodyHtml: `
       <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">YOUR PROMO CODE</p><strong style="font-size:22px;color:#1b3a5f;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
@@ -867,7 +867,7 @@ function tplRelanceDormant({ prenom, codePromo, lang }) {
     ctaLabel: 'Book now →',
   });
   if (l === 'zh') return wrap({
-    title: '☀️ 我们没有忘记您！',
+    title: '我们没有忘记您！',
     intro: `您好 ${p}，好久不见——这是您下次租赁的专属优惠码。`,
     bodyHtml: `
       <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">您的优惠码</p><strong style="font-size:22px;color:#1b3a5f;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
@@ -876,7 +876,7 @@ function tplRelanceDormant({ prenom, codePromo, lang }) {
     ctaLabel: '立即预订 →',
   });
   if (l === 'ru') return wrap({
-    title: '☀️ Мы о вас не забыли!',
+    title: 'Мы о вас не забыли!',
     intro: `Здравствуйте, ${p}! Давно не виделись — вот скидка для вашей следующей аренды.`,
     bodyHtml: `
       <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">ВАШ ПРОМОКОД</p><strong style="font-size:22px;color:#1b3a5f;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
@@ -885,7 +885,7 @@ function tplRelanceDormant({ prenom, codePromo, lang }) {
     ctaLabel: 'Забронировать →',
   });
   return wrap({
-    title: '☀️ On ne vous a pas oublié !',
+    title: 'On ne vous a pas oublié !',
     intro: `Bonjour ${p}, ça fait un moment — voici une réduction pour votre prochaine location.`,
     bodyHtml: `
       <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">VOTRE CODE PROMO</p><strong style="font-size:22px;color:#1b3a5f;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>

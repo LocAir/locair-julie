@@ -64,7 +64,7 @@ async function runWeeklyReport(supabase) {
 
     await sendBrevoEmail({
       to:      adminEmail,
-      subject: `📊 Rapport hebdo Loc'Air — semaine du ${weekAgoStr}`,
+      subject: `Rapport hebdo Loc'Air — semaine du ${weekAgoStr}`,
       html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
 body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
 .wrap{max-width:560px;margin:16px auto;background:#fff;border-radius:16px;overflow:hidden}
@@ -83,7 +83,7 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
 </style></head><body>
 <div class="wrap">
 <div class="head">
-<h1>📊 Rapport hebdomadaire</h1>
+<h1>Rapport hebdomadaire</h1>
 <p>Semaine du ${escHtml(weekAgoStr)} au ${escHtml(todayStr)}</p>
 </div>
 <div class="body">
