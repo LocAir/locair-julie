@@ -101,13 +101,34 @@ h1 em{font-style:italic}
 /* ── Countdown ── */
 .countdown{display:inline-flex;align-items:center;gap:7px;background:rgba(197,169,108,.1);color:var(--gold);border:1px solid rgba(197,169,108,.3);border-radius:100px;padding:8px 18px;font-size:13.5px;font-weight:700;margin-bottom:16px;letter-spacing:-.01em}
 
-/* ── Progress barre ── */
+/* ── Progress : stepper visuel (façon suivi de course) ── */
 .progress-card{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);padding:22px 24px;margin-bottom:16px;box-shadow:var(--sh)}
 .progress-header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;margin-bottom:12px;gap:10px}
 .progress-stage-lbl{font-size:15px;font-weight:700;color:var(--text);line-height:1.3}
 .progress-counter{font-size:12px;color:var(--text-3);white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0}
 .progress-track{height:6px;background:var(--navy-bg2);border-radius:100px;overflow:hidden}
 .progress-fill{height:100%;background:linear-gradient(90deg,var(--navy),rgba(26,43,74,.7));border-radius:100px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+/* Barre segmentée : une pastille par étape (1..7), l'étape en cours pulse doucement — inspiré du suivi de course Uber */
+.stepper-track{display:flex;gap:4px;margin:2px 0 4px}
+.stepper-seg{flex:1;height:6px;border-radius:100px;background:var(--navy-bg2);transition:background .3s}
+.stepper-seg.done{background:var(--navy)}
+.stepper-seg.current{background:linear-gradient(90deg,var(--navy),var(--gold));position:relative}
+.stepper-seg.current::after{content:'';position:absolute;top:50%;right:-1px;transform:translate(50%,-50%);width:11px;height:11px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 4px rgba(197,169,108,.25)}
+@media(prefers-reduced-motion:no-preference){.stepper-seg.current::after{animation:stepPulse 1.8s ease-in-out infinite}}
+@keyframes stepPulse{0%,100%{box-shadow:0 0 0 4px rgba(197,169,108,.25)}50%{box-shadow:0 0 0 8px rgba(197,169,108,.08)}}
+/* Bouton qui déplie le détail des 7 étapes (façon suivi de colis DHL/UPS) */
+.progress-detail-toggle{display:flex;align-items:center;gap:3px;background:none;border:none;font-family:var(--body);font-size:12px;color:var(--text-3);cursor:pointer;padding:2px 0;font-variant-numeric:tabular-nums;white-space:nowrap;flex-shrink:0}
+.progress-detail-toggle svg{transition:transform .2s}
+.progress-detail-toggle.open svg{transform:rotate(90deg)}
+.stepper-timeline{margin-top:16px;padding-top:16px;border-top:1px solid var(--rule)}
+.tl-row{display:flex;align-items:center;gap:12px;padding:6px 0;font-size:13px}
+.tl-dot{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;flex-shrink:0;background:var(--navy-bg2);color:var(--text-3)}
+.tl-row.tl-done .tl-dot{background:var(--navy);color:#fff}
+.tl-row.tl-current .tl-dot{background:var(--gold);color:#fff}
+.tl-row.tl-done .tl-lbl{color:var(--text-2)}
+.tl-row.tl-current .tl-lbl{color:var(--navy);font-weight:700}
+.tl-row.tl-upcoming .tl-lbl{color:var(--text-3)}
+.tl-lbl{flex:1}
 .next-step{display:flex;align-items:flex-start;gap:11px;background:rgba(22,163,74,.08);border-left:3px solid var(--green);border-radius:12px;padding:16px 18px;font-size:14px;font-weight:600;color:var(--text);margin-bottom:14px;line-height:1.5}
 .next-step::before{content:'✓';display:flex;align-items:center;justify-content:center;width:20px;height:20px;min-width:20px;background:var(--green);color:#fff;border-radius:50%;font-size:10px;font-weight:700;margin-top:1px}
 .banner-cancel{background:var(--red-bg);border-left:3px solid var(--red);border-radius:12px;padding:14px 16px;font-size:14px;font-weight:600;color:var(--red);margin-bottom:14px}
@@ -266,7 +287,7 @@ h1 em{font-style:italic}
       <form id="login-form">
         <div class="form-group">
           <label for="f-email">Email</label>
-          <input type="email" id="f-email" autocomplete="email" placeholder="marie@exemple.fr" required/>
+          <input type="email" id="f-email" autocomplete="email" autofocus placeholder="marie@exemple.fr" required/>
         </div>
         <div class="form-group">
           <label for="f-ref">Numéro de commande</label>
@@ -356,6 +377,18 @@ function fmtDateShort(iso){
   if(!iso) return '—';
   return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{day:'numeric',month:'long'});
 }
+// Pour les horodatages complets (colonnes timestamptz : accepted_at,
+// email_log.created_at…) — contrairement à fmtDate/fmtDateShort qui
+// attendent une date SANS heure (colonnes date) et lui ajoutent T12:00:00Z,
+// ici la chaîne contient déjà une heure : lui rajouter un second "T…Z"
+// produisait une date invalide (affichée "Invalid Date" à l'écran, ex. sur
+// "Acceptées le…" et les notifications).
+function fmtDateTime(iso){
+  if(!iso) return '—';
+  const dt = new Date(iso);
+  if(isNaN(dt)) return '—';
+  return dt.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+}
 
 const _ICO = {
   snowflake: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20M12 2v20M4.93 4.93l14.14 14.14M19.07 4.93L4.93 19.07"/></svg>`,
@@ -433,19 +466,38 @@ function renderProgress(progress){
     return `<div class="banner-cancel">${escHtml(progress.banner)}</div>`;
   }
   const stage = Math.max(1, Math.min(7, progress.stage));
-  const pct = Math.round((stage / 7) * 100);
   const stageLabel = progress.stageLabel || STAGE_LABELS_FALLBACK[stage] || '';
+  // Pastilles façon suivi de course : une par étape, remplies pour les étapes
+  // passées, l'étape en cours pulse doucement pour sauter aux yeux.
+  const segs = STAGES.map(s => `<div class="stepper-seg${s < stage ? ' done' : s === stage ? ' current' : ''}"></div>`).join('');
+  // Détail dépliable des 7 étapes (façon historique de suivi de colis) —
+  // toujours calculé côté client à partir des libellés officiels (mêmes
+  // valeurs que STAGE_LABELS côté serveur), aucune donnée technique exposée.
+  const timelineRows = STAGES.map(s => {
+    const state = s < stage ? 'done' : s === stage ? 'current' : 'upcoming';
+    return `<div class="tl-row tl-${state}">
+      <div class="tl-dot">${state === 'done' ? '✓' : s}</div>
+      <div class="tl-lbl">${escHtml(STAGE_LABELS_FALLBACK[s] || '')}</div>
+    </div>`;
+  }).join('');
   return `
     <div class="progress-card">
       <div class="progress-header">
         <div class="progress-stage-lbl">${escHtml(stageLabel)}</div>
-        <div class="progress-counter">Étape ${stage} / 7</div>
+        <button type="button" class="progress-detail-toggle" id="progress-detail-toggle" onclick="toggleStepperDetail()">Étape ${stage} / 7 ${_ICO.chevron}</button>
       </div>
-      <div class="progress-track">
-        <div class="progress-fill" style="width:${pct}%"></div>
-      </div>
+      <div class="stepper-track">${segs}</div>
+      <div class="stepper-timeline hidden" id="stepper-timeline">${timelineRows}</div>
     </div>
     ${progress.nextStep ? `<div class="next-step">${escHtml(progress.nextStep)}</div>` : ''}`;
+}
+
+function toggleStepperDetail(){
+  const el = document.getElementById('stepper-timeline');
+  const btn = document.getElementById('progress-detail-toggle');
+  if(!el) return;
+  const nowHidden = el.classList.toggle('hidden');
+  if(btn) btn.classList.toggle('open', !nowHidden);
 }
 
 function renderStatusBadge(progress){
@@ -620,7 +672,7 @@ function renderDashboard(d){
       <div class="doc-ico" style="color:var(--green)">${_ICO.checkCircle}</div>
       <div class="doc-info">
         <div class="doc-name">${label}</div>
-        <div class="doc-sub">Acceptées le ${escHtml(fmtDate(a.accepted_at))}</div>
+        <div class="doc-sub">Acceptées le ${escHtml(fmtDateTime(a.accepted_at))}</div>
       </div>
       <a class="doc-btn" href="${escHtml(a.lien)}" target="_blank" rel="noopener">Voir</a>
     </div>`;
@@ -650,7 +702,7 @@ function renderDashboard(d){
     <div class="notif-row">
       <div class="notif-dot"></div>
       <span>${escHtml(n.label)}</span>
-      <span class="notif-date">${escHtml(fmtDate(n.date))}</span>
+      <span class="notif-date">${escHtml(fmtDateTime(n.date))}</span>
     </div>`).join('')
     : '<p style="color:var(--grey);font-size:13.5px">Aucun événement pour l\'instant.</p>';
 
