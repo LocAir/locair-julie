@@ -692,7 +692,7 @@ module.exports = async (req, res) => {
             const sig = await getSignature(supabase);
             const prixFormate = (autoPrixCents / 100).toFixed(2).replace('.', ',') + ' €';
             const html = withSignature(tplOffrePrivilege({ prenom: resa.prenom, ref: resa.ref, prixFormate, appareilNumero: appareil?.numero }), sig);
-            await sendBrevoEmail({ to: resa.email, subject: `⭐ Une offre exclusive pour vous — Dossier ${resa.ref}`, html });
+            await sendBrevoEmail({ to: resa.email, subject: `Une offre exclusive pour vous — Dossier ${resa.ref}`, html });
             await supabase.from('email_log').insert({
               reservation_id: reservationId, scenario: 'offre_privilege',
               destinataire: resa.email, modele: 'offre_privilege', statut: 'envoye', contenu: html,
