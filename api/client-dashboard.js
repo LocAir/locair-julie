@@ -150,6 +150,7 @@ module.exports = async (req, res) => {
         date_prevue: livraison.date_prevue,
         creneau: livraison.creneau || null,
         type_intervention: resa.installation || 'Autonome',
+        statut: livraison.statut,
       } : null,
       recuperation: recuperation ? {
         date_prevue: recuperation.date_prevue,
