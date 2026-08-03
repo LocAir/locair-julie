@@ -248,13 +248,17 @@ module.exports = async (req, res) => {
       const ids = (resas || []).map(r => r.id);
 
       if (ids.length) {
-        const { error: commErr2 } = await supabase.from('reservations').update({ partenaire_commission_payee: true }).in('id', ids);
+        const { data: updated2, error: commErr2 } = await supabase
+          .from('reservations').update({ partenaire_commission_payee: true }).in('id', ids).eq('partenaire_commission_payee', false).select('id');
         if (commErr2) throw commErr2;
+        if ((updated2 || []).length !== ids.length) {
+          return res.status(409).json({ error: 'Ce virement vient d\'être traité (double clic ?) — vérifie l\'historique avant de réessayer.' });
+        }
       }
       const { error: virErr2 } = await supabase.from('partenaire_virements').update({ statut: 'verse', montant_cents: montant, verse_at: new Date().toISOString() }).eq('id', id);
       if (virErr2) throw virErr2;
 
-      await notifyPartenaireVirementVerse(supabase, virement.partenaire_id, montant);
+      if (montant > 0) await notifyPartenaireVirementVerse(supabase, virement.partenaire_id, montant);
       return res.status(200).json({ ok: true, montant_cents: montant });
     }
 
