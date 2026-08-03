@@ -188,6 +188,8 @@ h1 em{font-style:italic}
 .doc-btn:active{transform:translateY(0);box-shadow:none}
 
 /* ── Centre d'aide ── */
+.aide-cat-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--text-3);padding:16px 0 6px}
+.aide-cat-lbl:first-child{padding-top:0}
 .aide-item{border-bottom:1px solid var(--rule)}
 .aide-item:last-child{border-bottom:none}
 .aide-q{width:100%;text-align:left;background:none;border:none;padding:14px 0;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;font-family:var(--body)}
@@ -704,12 +706,29 @@ function renderDashboard(d){
     ${d.mon_climatiseur.conseils_utilisation ? `<p style="font-size:13.5px;color:var(--grey);line-height:1.65;white-space:pre-line">${escHtml(d.mon_climatiseur.conseils_utilisation)}</p>` : ''}`
     : '<p style="color:var(--grey);font-size:13.5px">Les informations détaillées de votre climatiseur apparaîtront ici une fois l\'appareil attribué.</p>';
 
-  // FAQ
-  const aideHtml = (d.centre_aide||[]).length ? d.centre_aide.map((a,i) => `
-    <div class="aide-item" id="aide-${i}">
-      <button class="aide-q" onclick="toggleAide(${i})"><span>${escHtml(a.titre)}</span><span class="aide-icon">+</span></button>
-      <div class="aide-a">${escHtml(a.contenu)}</div>
-    </div>`).join('') : '<p style="color:var(--grey);font-size:13.5px">Aucun article pour l\'instant.</p>';
+  // FAQ — regroupée par catégorie (donnée déjà renvoyée par le serveur mais
+  // jusqu'ici ignorée côté client) dès qu'il y a plus d'une catégorie, pour
+  // que le client trouve plus vite sa question au milieu de la liste.
+  let aideHtml;
+  if((d.centre_aide||[]).length){
+    const aideGroups = new Map();
+    (d.centre_aide||[]).forEach(a => {
+      const cat = a.categorie || 'Général';
+      if(!aideGroups.has(cat)) aideGroups.set(cat, []);
+      aideGroups.get(cat).push(a);
+    });
+    const multiCat = aideGroups.size > 1;
+    let aideIdx = 0;
+    aideHtml = [...aideGroups.entries()].map(([cat, items]) => `
+      ${multiCat ? `<div class="aide-cat-lbl">${escHtml(cat)}</div>` : ''}
+      ${items.map(a => { const i = aideIdx++; return `
+        <div class="aide-item" id="aide-${i}">
+          <button class="aide-q" onclick="toggleAide(${i})"><span>${escHtml(a.titre)}</span><span class="aide-icon">+</span></button>
+          <div class="aide-a">${escHtml(a.contenu)}</div>
+        </div>`; }).join('')}`).join('');
+  } else {
+    aideHtml = '<p style="color:var(--grey);font-size:13.5px">Aucun article pour l\'instant.</p>';
+  }
 
   // Notifications
   const notifHtml = (d.notifications||[]).length ? d.notifications.map(n => `
