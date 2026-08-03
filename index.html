@@ -8370,6 +8370,30 @@ const _MONTHS_LONG_EN=['January','February','March','April','May','June','July',
 const _MONTHS_LONG_ZH=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
 const _MONTHS_LONG_RU=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
 let _urgencyShown=false;
+// Texte "Livraison sous 24h/48h" de la bannière météo (voir initWeather plus
+// bas) — mémorisé ici pour pouvoir le resynchroniser sur le même ticker de
+// 60s que _renderSmartLine (voir _refreshAlertBarTiming), au lieu de rester
+// figé sur la valeur calculée une seule fois au chargement de la page.
+let _alertBarStrongText=null, _alertBarTimingActive=false;
+function _setAlertBar(bar,strongText,plainText){
+  const closeBtn=bar.querySelector('.alert-close');
+  while(bar.firstChild)bar.removeChild(bar.firstChild);
+  const dot=document.createElement('span');dot.className='alert-dot';dot.setAttribute('aria-hidden','true');
+  bar.appendChild(dot);
+  const strong=document.createElement('strong');strong.textContent=strongText;
+  bar.appendChild(strong);
+  bar.appendChild(document.createTextNode(' · '+plainText));
+  if(closeBtn)bar.appendChild(closeBtn);
+  bar.classList.remove('hidden');
+}
+function _refreshAlertBarTiming(){
+  if(!_alertBarTimingActive)return;
+  const bar=document.getElementById('alert-canicule');
+  if(!bar||bar.classList.contains('hidden')){_alertBarTimingActive=false;return;}
+  const timing=_cutoffOk()?(_lang==='en'?'Delivery within 24h':_lang==='zh'?'24小时内配送':_lang==='ru'?'Доставка за 24 часа':'Livraison sous 24h'):(_lang==='en'?'Delivery within 48h':_lang==='zh'?'48小时内配送':_lang==='ru'?'Доставка за 48 часов':'Livraison sous 48h');
+  _setAlertBar(bar,_alertBarStrongText,timing);
+  _updateChromeH();
+}
 function _updateMobileBar(){
   const el=document.querySelector('.m-bar-label');
   if(!el)return;
@@ -8383,6 +8407,7 @@ function _updateMobileBar(){
   }
 }
 function _renderSmartLine(){
+  _refreshAlertBarTiming();
   if(!_smartLine)return false;
   if(SOLD_OUT){_smartLine.style.display='none';return false;}
   const p=_parisNow();
@@ -8513,24 +8538,18 @@ else{_updateChromeH();}
     }
 
     // Barre d'alerte : afficher si ≥28°C courant ou ≥32°C prévu
-    const _setAlertBar=(bar,strongText,plainText)=>{
-      const closeBtn=bar.querySelector('.alert-close');
-      while(bar.firstChild)bar.removeChild(bar.firstChild);
-      const dot=document.createElement('span');dot.className='alert-dot';dot.setAttribute('aria-hidden','true');
-      bar.appendChild(dot);
-      const strong=document.createElement('strong');strong.textContent=strongText;
-      bar.appendChild(strong);
-      bar.appendChild(document.createTextNode(' · '+plainText));
-      if(closeBtn)bar.appendChild(closeBtn);
-      bar.classList.remove('hidden');
-    };
+    // (_setAlertBar est maintenant une fonction globale — voir plus haut,
+    // partagée avec _refreshAlertBarTiming pour resynchroniser le "sous
+    // 24h/48h" sur le même ticker de 60s que le compte à rebours, au lieu
+    // de rester figé sur la valeur du chargement de page.)
     if(alertActive){
       const bar=document.getElementById('alert-canicule');
       if(bar){
         const ressufix=res!=null?(_lang==='en'?' (feels like '+res+'°C)':_lang==='zh'?' (体感 '+res+'°C)':_lang==='ru'?' (ощущается '+res+'°C)':' (ressenti '+res+'°C)'):'';
         const _alertTiming=_cutoffOk()?(_lang==='en'?'Delivery within 24h':_lang==='zh'?'24小时内配送':_lang==='ru'?'Доставка за 24 часа':'Livraison sous 24h'):(_lang==='en'?'Delivery within 48h':_lang==='zh'?'48小时内配送':_lang==='ru'?'Доставка за 48 часов':'Livraison sous 48h');
-        if(peakTemp>=35)_setAlertBar(bar,_lang==='en'?'Heatwave — '+peakTemp+'°C expected'+ressufix:_lang==='zh'?'高温预警 — 预计 '+peakTemp+'°C'+ressufix:_lang==='ru'?'Жара — '+peakTemp+'°C ожидается'+ressufix:'Canicule — '+peakTemp+'°C prévus'+ressufix,_alertTiming);
-        else _setAlertBar(bar,cur+'°C'+ressufix,_alertTiming);
+        _alertBarStrongText=peakTemp>=35?(_lang==='en'?'Heatwave — '+peakTemp+'°C expected'+ressufix:_lang==='zh'?'高温预警 — 预计 '+peakTemp+'°C'+ressufix:_lang==='ru'?'Жара — '+peakTemp+'°C ожидается'+ressufix:'Canicule — '+peakTemp+'°C prévus'+ressufix):(cur+'°C'+ressufix);
+        _alertBarTimingActive=true;
+        _setAlertBar(bar,_alertBarStrongText,_alertTiming);
         _updateChromeH();
       }
     } else {
