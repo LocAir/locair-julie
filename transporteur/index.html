@@ -9,27 +9,29 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-title" content="Loc'Air Transporteur"/>
-<meta name="theme-color" content="#1b3a5f"/>
+<meta name="theme-color" content="#1a2b4a"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
 :root{
-  /* Palette identique à index.html (site vitrine) et admin/index.html */
-  --blue:#1b3a5f; --blue-d:#142d4a; --blue-lt:#dce8f5;
-  --black:#141e30; --black2:#1e2d45; --bg:#eef1f5; --white:#ffffff;
-  --grey:#5a6577; --grey2:#6b7785; --grey-soft:#707a8a; --rule:#dde3ea; --gold:#c5a96c; --gold-lt:#f3ead9;
-  --green:#2d6a4f; --green-bg:#e6f0ea; --red:#9b2c1a; --red-bg:#f8e9e6; --amber:#9c6a17; --amber-bg:#f6eed9;
-  --navy:#0d1829;
+  /* Palette navy/blanc — Loc'Air rebrand */
+  --navy:#1a2b4a; --navy-d:#12203a; --navy-bg:#f4f6f9; --navy-bg2:#e8ecf2;
+  --text:#1a1a1a; --text-2:#555555; --text-3:#888888; --card:#ffffff;
+  /* Tokens CSS internes mis à jour pour le rebrand */
+  --blue:#1a2b4a; --blue-d:#12203a; --blue-lt:#e8ecf2;
+  --black:#1a1a1a; --black2:#1e2d45; --bg:#f4f6f9; --white:#ffffff;
+  --grey:#555555; --grey2:#666666; --grey-soft:#888888; --rule:#e4e4e4; --gold:#c5a96c; --gold-lt:#f3ead9;
+  --green:#16a34a; --green-bg:#dcfce7; --red:#dc2626; --red-bg:#fee2e2; --amber:#d97706; --amber-bg:#fef3c7;
   --disp:'Cormorant Garamond',Georgia,serif;
   --body:'Inter',system-ui,sans-serif;
   --r-sm:8px; --r:12px; --r-lg:20px;
-  --sh-xs:0 1px 3px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.03);
-  --sh-sm:0 2px 12px rgba(0,0,0,.06),0 1px 4px rgba(0,0,0,.04);
-  --sh-md:0 8px 40px rgba(0,0,0,.09),0 2px 10px rgba(0,0,0,.05);
-  --sh-lg:0 24px 80px rgba(0,0,0,.11),0 6px 24px rgba(0,0,0,.06);
-  --sh-blue:0 6px 24px rgba(27,58,95,.32);
+  --sh-xs:0 1px 3px rgba(26,43,74,.04),0 1px 2px rgba(26,43,74,.03);
+  --sh-sm:0 2px 12px rgba(26,43,74,.06),0 1px 4px rgba(26,43,74,.04);
+  --sh-md:0 8px 40px rgba(26,43,74,.09),0 2px 10px rgba(26,43,74,.05);
+  --sh-lg:0 24px 80px rgba(26,43,74,.11),0 6px 24px rgba(26,43,74,.06);
+  --sh-blue:0 6px 24px rgba(26,43,74,.32);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 /* Sans ça, Safari iOS peut agrandir automatiquement les petits textes serrés
@@ -67,7 +69,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .btn-blue{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
 .btn-blue:hover:not(:disabled){background:var(--blue-d)}
 .btn-green{background:var(--green);color:#fff;box-shadow:var(--sh-xs)}
-.btn-red{background:var(--white);color:var(--red);border:1.5px solid rgba(155,44,26,.2)}
+.btn-red{background:var(--white);color:var(--red);border:1.5px solid rgba(220,38,38,.2)}
 .btn-red:hover:not(:disabled){background:var(--red-bg)}
 .btn-amber{background:var(--amber);color:#fff;box-shadow:var(--sh-xs)}
 .btn-grey{background:var(--white);color:var(--grey);border:1.5px solid var(--rule)}
@@ -153,7 +155,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
 /* Pulse en ombre plutôt qu'en opacité : reste lisible en plein soleil au
    lieu de faire disparaître le texte à moitié du cycle. */
 .media-btn.pulse{animation:media-btn-pulse 1.4s ease-in-out infinite}
-@keyframes media-btn-pulse{0%,100%{box-shadow:0 0 0 0 rgba(27,58,95,.3)}50%{box-shadow:0 0 0 7px rgba(27,58,95,0)}}
+@keyframes media-btn-pulse{0%,100%{box-shadow:0 0 0 0 rgba(26,43,74,.3)}50%{box-shadow:0 0 0 7px rgba(26,43,74,0)}}
 /* "Prévenir de mon arrivée" : geste à faire avant tout le reste (photo,
    installation...) — même logique d'ombre pulsée que .media-btn.pulse
    ci-dessus (jamais d'opacité, reste lisible en plein soleil), plus un léger
@@ -197,7 +199,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .probleme-list{display:flex;flex-direction:column;gap:12px}
 .probleme-list .btn{margin-top:0}
 
-.overlay{position:fixed;inset:0;background:rgba(13,24,41,.6);display:flex;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px);animation:fadeInEl .2s ease}
+.overlay{position:fixed;inset:0;background:rgba(26,43,74,.6);display:flex;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px);animation:fadeInEl .2s ease}
 .sheet{background:var(--white);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:26px 22px 34px;box-shadow:var(--sh-lg);max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:slideUpEl .26s cubic-bezier(.22,.61,.36,1)}
 @keyframes fadeInEl{from{opacity:0}to{opacity:1}}
 @keyframes slideUpEl{from{transform:translateY(18px);opacity:0}to{transform:none;opacity:1}}
@@ -208,10 +210,10 @@ input[type="checkbox"]{accent-color:var(--blue)}
 
 /* Bouton tuto : flottant, au-dessus de la tabbar/detail-back, visible sur
    toutes les pages sauf la connexion (voir show()). */
-#tuto-fab{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--navy,#0d1829);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
+#tuto-fab{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--navy,#1a2b4a);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
 /* Centre de notifications (Module 5) : même principe que #tuto-fab, côté
    gauche pour ne pas se superposer au bouton tuto. */
-#notif-fab{position:fixed;left:16px;bottom:calc(20px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--navy,#0d1829);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
+#notif-fab{position:fixed;left:16px;bottom:calc(20px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--navy,#1a2b4a);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
 #notif-fab-badge{position:absolute;top:-2px;right:-2px}
 .tuto-cat-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);margin-bottom:8px}
 .tuto-cat-row.disabled{opacity:.55;box-shadow:none;background:var(--bg)}
@@ -259,7 +261,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .day-progress .dp-fill.over{background:var(--red)}
 
 /* Activité */
-.stat-big{background:linear-gradient(150deg,var(--blue) 0%,var(--blue-d) 60%,var(--navy) 100%);color:#fff;border-radius:var(--r-lg);padding:26px 22px;margin-bottom:14px;box-shadow:var(--sh-md)}
+.stat-big{background:linear-gradient(150deg,var(--navy) 0%,var(--navy-d) 100%);color:#fff;border-radius:var(--r-lg);padding:26px 22px;margin-bottom:14px;box-shadow:var(--sh-md)}
 .stat-big .amount{font-family:var(--disp);font-size:42px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
 .stat-big .caption{font-size:13px;opacity:.8;margin-top:8px;font-weight:500;line-height:1.5}
 .stat-row{display:flex;gap:12px;margin-bottom:14px}
@@ -272,7 +274,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
 /* Accueil (dashboard) : 1 seule action prioritaire mise en avant, le reste
    en second plan — "qu'est-ce que je fais maintenant" ne doit jamais
    demander de parcourir une liste. */
-.dash-hero{background:linear-gradient(150deg,var(--blue) 0%,var(--blue-d) 60%,var(--navy) 100%);color:#fff;border-radius:var(--r-lg);padding:24px 22px;margin-bottom:14px;box-shadow:var(--sh-md)}
+.dash-hero{background:linear-gradient(150deg,var(--navy) 0%,var(--navy-d) 100%);color:#fff;border-radius:var(--r-lg);padding:24px 22px;margin-bottom:14px;box-shadow:var(--sh-md)}
 .dash-hero .eyebrow{color:rgba(255,255,255,.65);margin-bottom:10px}
 .dash-hero h2{font-family:var(--disp);font-size:22px;font-weight:600;margin-bottom:6px;line-height:1.25}
 .dash-hero p{font-size:13.5px;opacity:.85;margin-bottom:18px;line-height:1.5}
@@ -346,7 +348,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .vchip.verse{background:var(--green-bg);color:var(--green)}
 
 /* Célébration */
-.celebrate{position:fixed;inset:0;background:rgba(13,24,41,.72);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px;backdrop-filter:blur(3px)}
+.celebrate{position:fixed;inset:0;background:rgba(26,43,74,.72);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px;backdrop-filter:blur(3px)}
 .celebrate-card{background:var(--white);border-radius:var(--r-lg);padding:38px 28px;text-align:center;max-width:360px;box-shadow:var(--sh-lg)}
 .celebrate-emoji{font-size:50px;margin-bottom:12px}
 .celebrate-title{font-family:var(--disp);font-size:24px;font-weight:600;margin-bottom:8px}
@@ -380,14 +382,14 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .map-popup-btn{display:block;width:100%;margin-top:8px;padding:9px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--body)}
 .map-pin-teardrop{
   width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
-  box-shadow:0 3px 10px rgba(20,30,48,.35);
+  box-shadow:0 3px 10px rgba(26,43,74,.35);
   display:flex;align-items:center;justify-content:center;
 }
 .map-pin-teardrop span{transform:rotate(45deg);font-size:15px}
 .map-pin-teardrop.livraison{background:var(--blue)}
 .map-pin-teardrop.recuperation{background:var(--amber)}
 .map-pin-teardrop.future{opacity:.55}
-.leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 8px 28px rgba(20,30,48,.22)}
+.leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 8px 28px rgba(26,43,74,.22)}
 .leaflet-popup-content{font-family:var(--body);margin:12px 14px;font-size:13.5px;line-height:1.5}
 
 /* Calendrier planning — identique à admin/index.html (même composant, mêmes
@@ -415,7 +417,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .gantt-dow{font-size:9px;color:var(--grey);text-transform:uppercase;font-weight:700}
 .gantt-dnum{font-size:12.5px;font-weight:700;color:var(--black)}
 .gantt-today{background:var(--blue-lt)}
-.gantt-weekend{background:rgba(20,30,48,.05)}
+.gantt-weekend{background:rgba(26,43,74,.05)}
 /* .gantt-cell.gantt-head (2 classes) est plus spécifique que .gantt-today
    (1 classe) et gagnait toujours sur la case d'en-tête du jour "aujourd'hui"
    — elle restait blanche alors que toute la colonne en dessous était
