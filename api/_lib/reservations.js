@@ -593,6 +593,14 @@ async function confirmReservation(supabase, resa) {
 
   await assignAppareils(supabase, resa, staleOriginalId);
 
+  // Validation automatique immédiate des appareils assignés — supprime l'étape
+  // manuelle "Valider les appareils" dans l'admin (admin-reservations.js action
+  // valider_appareils). L'admin peut encore annuler ou échanger via admin-stock.js.
+  await supabase.from('reservation_appareils')
+    .update({ valide: true, valide_at: new Date().toISOString() })
+    .eq('reservation_id', resa.id).eq('valide', false)
+    .then(() => {}, e => console.error('[Auto-validation appareils]', e.message));
+
   // assign_appareils peut renvoyer moins d'unités que la quantité payée si le
   // stock a été pris par une autre réservation entre le paiement et cette
   // confirmation — sans lever d'erreur. On ne bloque jamais la confirmation
@@ -641,19 +649,18 @@ async function confirmReservation(supabase, resa) {
           { reservation_id: resa.id, type: 'recuperation', date_prevue: dateRecuperation },
         ];
 
-    // Répartition auto uniquement pour ce qui vient vraiment du site (paiement
-    // ou prolongation) — une réservation saisie à la main par l'admin
-    // (téléphone/WhatsApp, source "manuel") reste à assigner soi-même : à ce
-    // moment-là, l'admin a souvent déjà négocié avec un transporteur précis.
-    if (resa.source !== 'manuel') {
-      const usedInBatch = new Set();
-      for (const row of rows) {
-        const tid = await pickTransporteurForMission(supabase, {
-          cityId: resa.city_id, dateISO: row.date_prevue, creneau: row.creneau, adresse: resa.adresse, usedInBatch,
-          type: row.type, installation: resa.installation,
-        });
-        if (tid) { row.transporteur_id = tid; usedInBatch.add(tid); }
-      }
+    // Répartition auto pour toutes les réservations — y compris celles saisies
+    // manuellement par l'admin (source "manuel", ex. téléphone/WhatsApp).
+    // Si aucun transporteur n'est disponible, pickTransporteurForMission renvoie
+    // null (mission créée sans transporteur, incident + push admin déclenchés
+    // par le bloc sous-effectif ci-dessous) — jamais de blocage de la confirmation.
+    const usedInBatch = new Set();
+    for (const row of rows) {
+      const tid = await pickTransporteurForMission(supabase, {
+        cityId: resa.city_id, dateISO: row.date_prevue, creneau: row.creneau, adresse: resa.adresse, usedInBatch,
+        type: row.type, installation: resa.installation,
+      });
+      if (tid) { row.transporteur_id = tid; usedInBatch.add(tid); }
     }
 
     const { data: insertedLivraisons, error: livError } = await supabase

@@ -1,6 +1,6 @@
 const Stripe = require('stripe');
 const { getSupabase }          = require('./_lib/supabase');
-const { sendBrevoSms }         = require('./_lib/brevo');
+const { sendBrevoSms, sendBrevoEmail } = require('./_lib/brevo');
 const { pushToAdmin, pushToTransporteur } = require('./_lib/push');
 const { getAvailability }      = require('./_lib/stock');
 const { notifyIfSoldOut }      = require('./_lib/city');
@@ -8,7 +8,8 @@ const { runWeeklyReport }      = require('./cron-weekly');
 const { runMonthlyRecap, runDormantClientsWinback } = require('./cron-monthly');
 const { dailyRate } = require('./_lib/pricing');
 const { scenariosDueToday, isSupersededReservation } = require('./_lib/emailSchedule');
-const { sendScenarioEmail } = require('./_lib/emailEngine');
+const { sendScenarioEmail, getSignature, withSignature } = require('./_lib/emailEngine');
+const { tplOffrePrivilege } = require('./_lib/emailTemplates');
 const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { sendReservationPaymentLink } = require('./_lib/paymentLink');
@@ -670,14 +671,52 @@ module.exports = async (req, res) => {
       if ((offresAppareil || []).some(o => o.reservation_id === reservationId)) continue;
 
       const { data: appareil } = await supabase.from('appareils').select('numero').eq('id', appareilId).maybeSingle();
+
+      // Si OFFRE_PRIVILEGE_PRIX_CENTS est configuré : auto-tarification et email
+      // client immédiat (offre visible dans son espace dès maintenant). Sinon :
+      // comportement historique (statut "eligible", admin fixe le prix à la main).
+      const autoPrixCents = parseInt(process.env.OFFRE_PRIVILEGE_PRIX_CENTS) || 0;
+      const statut = autoPrixCents > 0 ? 'proposee' : 'eligible';
+
       await supabase.from('offres_privilege').insert({
-        appareil_id: appareilId, reservation_id: reservationId, nb_locations: totalLocations, statut: 'eligible',
+        appareil_id: appareilId, reservation_id: reservationId, nb_locations: totalLocations, statut,
+        ...(autoPrixCents > 0 ? { prix_vente_cents: autoPrixCents } : {}),
       });
-      await pushToAdmin(supabase, {
-        title: `⭐ Climatiseur #${appareil?.numero} — Offre Privilège`,
-        body:  `${totalLocations} locations effectuées, actuellement chez un client (milieu de séjour). Fixe un prix pour lui proposer de le garder.`,
-        tag:   `offre-privilege-${appareilId}-${reservationId}`,
-      });
+
+      if (autoPrixCents > 0) {
+        // Email au client pour lui annoncer l'offre
+        const { data: resa } = await supabase.from('reservations')
+          .select('email, prenom, ref').eq('id', reservationId).maybeSingle();
+        if (resa?.email) {
+          try {
+            const sig = await getSignature(supabase);
+            const prixFormate = (autoPrixCents / 100).toFixed(2).replace('.', ',') + ' €';
+            const html = withSignature(tplOffrePrivilege({ prenom: resa.prenom, ref: resa.ref, prixFormate, appareilNumero: appareil?.numero }), sig);
+            await sendBrevoEmail({ to: resa.email, subject: `⭐ Une offre exclusive pour vous — Dossier ${resa.ref}`, html });
+            await supabase.from('email_log').insert({
+              reservation_id: reservationId, scenario: 'offre_privilege',
+              destinataire: resa.email, modele: 'offre_privilege', statut: 'envoye', contenu: html,
+            }).then(() => {}, () => {});
+          } catch (e) {
+            console.error('[Cron offre privilège email]', e.message);
+            await supabase.from('email_log').insert({
+              reservation_id: reservationId, scenario: 'offre_privilege',
+              modele: 'offre_privilege', statut: 'erreur', erreur: String(e.message).slice(0, 500),
+            }).then(() => {}, () => {});
+          }
+        }
+        await pushToAdmin(supabase, {
+          title: `⭐ Offre Privilège envoyée — climatiseur #${appareil?.numero}`,
+          body:  `${totalLocations} locations. Prix fixé à ${(autoPrixCents / 100).toFixed(0)} € — offre visible dans l'espace client et email envoyé.`,
+          tag:   `offre-privilege-${appareilId}-${reservationId}`,
+        });
+      } else {
+        await pushToAdmin(supabase, {
+          title: `⭐ Climatiseur #${appareil?.numero} — Offre Privilège`,
+          body:  `${totalLocations} locations effectuées, actuellement chez un client (milieu de séjour). Fixe un prix pour lui proposer de le garder.`,
+          tag:   `offre-privilege-${appareilId}-${reservationId}`,
+        });
+      }
       offreCount++;
     }
     if (offreCount) report.offres_privilege = offreCount;
