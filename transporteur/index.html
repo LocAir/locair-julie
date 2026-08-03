@@ -778,7 +778,9 @@ function updatePositionTracking(){
 }
 
 function startPositionTracking(){
-  document.getElementById('tracking-badge')?.classList.remove('hidden');
+  // Afficher brièvement (4s) pour confirmer que le tracking est actif, puis retirer
+  const _tb = document.getElementById('tracking-badge');
+  if(_tb){ _tb.classList.remove('hidden'); setTimeout(()=>_tb.classList.add('hidden'), 4000); }
   if(_watchId !== null || !navigator.geolocation) return;
   _watchId = navigator.geolocation.watchPosition(onPositionUpdate, ()=>{ document.getElementById('tracking-badge')?.classList.add('hidden'); if(_watchId !== null){ navigator.geolocation.clearWatch(_watchId); _watchId = null; } }, {
     enableHighAccuracy: true, maximumAge: 10000, timeout: 20000,
@@ -2575,22 +2577,12 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
       <button class="media-btn" onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> Vidange ${m.type==='changement'?"de l'ancien appareil":"de l'appareil"}</button>`;
   }
   if(key === 'installation'){
-    const sousTypes = TUTO_SOUS_TYPES.installation || [];
     return `
       <p class="step-hint">🎬 Montre le fonctionnement au client, puis prends une photo où l'on voit ensemble le climatiseur en marche et la fenêtre calfeutrée.</p>
-      <details class="month-details" style="margin-bottom:14px">
-        <summary style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;list-style:none;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey-soft)">
-          <span>🎥 Tuto par type d'ouverture</span>
-          <span class="month-chevron">›</span>
-        </summary>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
-          ${sousTypes.map(t => `<button class="btn btn-grey" style="flex:1 1 auto;min-width:120px" onclick="openTutoVideo('installation','${t}')">🎥 ${t}</button>`).join('')}
-        </div>
-      </details>
       ${proofButtonsHtml('photo_installation', m.photo_installation_ok, 'Photo installation')}
       ${m.photo_installation_ok
         ? `<button class="btn btn-green btn-block" style="margin-top:6px" onclick="doAction('confirmer_demo')">✅ Confirmer la démonstration</button>`
-        : `<p class="step-hint" style="margin-top:6px">Prends la photo pour pouvoir confirmer la démonstration.</p>`}`;
+        : ''}`;
   }
   if(key === 'preuve'){
     return wizardProofStepHtml(m, 'photo_retour', 'Photo appareil récupéré', "Prends l'appareil récupéré en photo (ou choisis une photo depuis ta galerie) pour terminer la mission.");
@@ -3334,17 +3326,17 @@ async function compressImage(file, maxDim, quality){
 // sur le terrain pour une vidéo un peu lourde) — ne réessaie jamais une vraie
 // erreur HTTP (413 fichier trop lourd, etc.), seulement un échec de connexion.
 async function putFileWithRetry(url, file, contentType, attempts){
-  attempts = attempts || 3;
+  attempts = attempts || 5;
   let lastErr;
   for(let i=0; i<attempts; i++){
     try{
       return await fetch(url, {method:'PUT', headers:{'Content-Type': contentType || 'application/octet-stream'}, body: file});
     }catch(e){
       lastErr = e;
-      if(i < attempts-1) await new Promise(r => setTimeout(r, 1500));
+      if(i < attempts-1) await new Promise(r => setTimeout(r, 2000));
     }
   }
-  throw new Error(`Connexion instable, l'envoi a échoué ${attempts} fois (${lastErr.message}) — réessaie avec un wifi ou une meilleure zone si possible.`);
+  throw new Error(`Envoi échoué (réseau faible) — reprends la photo pour réessayer.`);
 }
 document.getElementById('media-input').addEventListener('change', async (e) => {
   const rawFile = e.target.files[0];
@@ -3444,7 +3436,7 @@ async function uploadMedia(rawFile, kind, mission){
     mission[kind + '_ok'] = true;
     if(STATE.currentMission === mission) renderDetail();
   }catch(err){
-    if(optimistic) mission[kind + '_ok'] = false;
+    if(!optimistic) mission[kind + '_ok'] = false;
     if(STATE.currentMission === mission){
       // renderDetail() reconstruit les boutons avec leurs bons états
       // disabled/actifs (ex. "Livraison OK" doit rester verrouillé tant que
