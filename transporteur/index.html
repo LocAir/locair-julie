@@ -3326,17 +3326,17 @@ async function compressImage(file, maxDim, quality){
 // sur le terrain pour une vidéo un peu lourde) — ne réessaie jamais une vraie
 // erreur HTTP (413 fichier trop lourd, etc.), seulement un échec de connexion.
 async function putFileWithRetry(url, file, contentType, attempts){
-  attempts = attempts || 3;
+  attempts = attempts || 5;
   let lastErr;
   for(let i=0; i<attempts; i++){
     try{
       return await fetch(url, {method:'PUT', headers:{'Content-Type': contentType || 'application/octet-stream'}, body: file});
     }catch(e){
       lastErr = e;
-      if(i < attempts-1) await new Promise(r => setTimeout(r, 1500));
+      if(i < attempts-1) await new Promise(r => setTimeout(r, 2000));
     }
   }
-  throw new Error(`Connexion instable, l'envoi a échoué ${attempts} fois (${lastErr.message}) — réessaie avec un wifi ou une meilleure zone si possible.`);
+  throw new Error(`Envoi échoué (réseau faible) — reprends la photo pour réessayer.`);
 }
 document.getElementById('media-input').addEventListener('change', async (e) => {
   const rawFile = e.target.files[0];
@@ -3436,7 +3436,7 @@ async function uploadMedia(rawFile, kind, mission){
     mission[kind + '_ok'] = true;
     if(STATE.currentMission === mission) renderDetail();
   }catch(err){
-    if(optimistic) mission[kind + '_ok'] = false;
+    if(!optimistic) mission[kind + '_ok'] = false;
     if(STATE.currentMission === mission){
       // renderDetail() reconstruit les boutons avec leurs bons états
       // disabled/actifs (ex. "Livraison OK" doit rester verrouillé tant que
