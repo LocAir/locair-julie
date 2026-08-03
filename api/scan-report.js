@@ -30,7 +30,7 @@ module.exports = async (req, res) => {
   `;
 
   const result = await sendBrevoEmail({
-    to: 'alythiam95@gmail.com',
+    to: process.env.ADMIN_EMAIL || 'alythiam95@gmail.com',
     subject: `Scan Loc'Air — ${dateStr}`,
     html,
   });

@@ -20,12 +20,17 @@ module.exports = async (req, res) => {
       .from('transporteurs').select('city_id').eq('id', transporteurId).maybeSingle();
     if (!transporteur) return res.status(404).json({ error: 'Transporteur introuvable' });
 
+    const today = new Date();
+    const winStart = new Date(today); winStart.setMonth(winStart.getMonth() - 2);
+    const winEnd   = new Date(today); winEnd.setMonth(winEnd.getMonth() + 4);
     const [{ data: appareilsRaw, error: appErr }, { data: resasRaw, error: resaErr }] = await Promise.all([
       supabase.from('appareils').select('numero, statut').eq('city_id', transporteur.city_id).order('numero'),
       supabase.from('reservations')
         .select('id, prenom, nom, statut, masquee, date_debut, date_fin, reservation_appareils ( appareil:appareils ( numero ) )')
         .eq('city_id', transporteur.city_id)
-        .eq('masquee', false),
+        .eq('masquee', false)
+        .gte('date_fin', winStart.toISOString().slice(0, 10))
+        .lte('date_debut', winEnd.toISOString().slice(0, 10)),
     ]);
     if (appErr) throw appErr;
     if (resaErr) throw resaErr;

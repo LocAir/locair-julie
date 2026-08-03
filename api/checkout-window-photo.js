@@ -18,7 +18,11 @@ module.exports = async (req, res) => {
   await recordFailedAttempt(supabase, `upload:${ip}`);
 
   const { content_type } = req.body || {};
-  const ext = (content_type || '').includes('png') ? 'png' : 'jpg';
+  const ALLOWED = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
+  if (!content_type || !ALLOWED.includes(content_type)) {
+    return res.status(400).json({ error: 'Type de fichier non supporté (jpg, png, webp acceptés)' });
+  }
+  const ext = content_type.includes('png') ? 'png' : content_type.includes('webp') ? 'webp' : 'jpg';
   const rand = Math.random().toString(36).slice(2, 10);
   const ts = Date.now();
   const path = `window-photos/${ts}-${rand}.${ext}`;

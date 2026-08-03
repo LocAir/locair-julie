@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess, ROLES } = require('./_lib/permissions');
+const { hashPin } = require('./_lib/pinHash');
 
 // Gestion des comptes équipe (Module 7, Partie 31) — réservée au rôle
 // "administrateur". Le compte historique (mot de passe partagé) a toujours
@@ -37,7 +38,7 @@ module.exports = async (req, res) => {
         const { data: created, error } = await supabase.from('admin_users').insert({
           nom,
           email: (body.email || '').trim().toLowerCase() || null,
-          pin: candidate,
+          pin: hashPin(candidate),
           role,
         }).select('id').single();
         if (!error) return res.status(200).json({ ok: true, id: created.id, pin: candidate });
@@ -58,7 +59,7 @@ module.exports = async (req, res) => {
         patch.role = body.role;
       }
       if (body.actif != null) patch.actif = Boolean(body.actif);
-      if (body.pin != null && body.pin.trim()) patch.pin = body.pin.trim();
+      if (body.pin != null && body.pin.trim()) patch.pin = hashPin(body.pin.trim());
       if (!Object.keys(patch).length) return res.status(400).json({ error: 'Rien à modifier' });
 
       const { error } = await supabase.from('admin_users').update(patch).eq('id', id);
