@@ -440,7 +440,14 @@ async function doFaceIdLogin(){
     btn.disabled = false;
     btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M6 20v-1a6 6 0 0112 0v1"/></svg> Face ID / Touch ID`;
     if(e.name==='NotAllowedError'){ errEl.textContent='Annulé — réessayez.'; errEl.style.display='block'; }
-    else{ showPinForm(); }
+    else{
+      // Bascule silencieuse vers le code = confusion pour quelqu'un qui vient
+      // de cliquer sur Face ID et se retrouve ailleurs sans explication.
+      // Un mot de contexte sur l'écran d'arrivée suffit à rassurer.
+      showPinForm();
+      const lgErr = document.getElementById('lg-err');
+      if(lgErr){ lgErr.textContent = "Face ID indisponible pour le moment — connectez-vous avec votre code."; lgErr.style.display = 'block'; }
+    }
   }
 }
 function showPinForm(){ show('login-screen'); }
