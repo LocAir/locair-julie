@@ -1339,6 +1339,17 @@ body{
 .step-item.is-cur .step-name{color:var(--black);font-weight:700}
 .step-item.is-done .step-name{color:var(--grey)}
 
+/* ── TOTAL PRIX PERSISTANT (sidebar desktop) ──
+   Affiché dès l'étape 2 (durée choisie) pour qu'aucun coût (pose, livraison)
+   ne soit une surprise en arrivant au paiement — pratique Airbnb/Turo. */
+.ms-total{
+  display:none;flex-direction:column;gap:2px;
+  margin-top:auto;padding-top:18px;border-top:1px solid var(--rule);
+}
+.ms-total-lbl{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--grey2)}
+.ms-total-amt{font-family:var(--disp);font-size:22px;font-weight:700;color:var(--black);letter-spacing:-.01em;transition:opacity .12s}
+.ms-total-amt.flash{opacity:.45}
+
 /* ── MODAL BODY ── */
 .modal-body{
   flex:1;min-height:0;overflow-y:auto;
@@ -1615,8 +1626,10 @@ body{
   display:flex;justify-content:space-between;align-items:center;
   margin-bottom:8px;
 }
-.mob-progress-step{font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.06em;text-transform:uppercase;}
-.mob-progress-name{font-size:11px;color:var(--grey);}
+.mob-progress-left{display:flex;align-items:center;gap:6px;min-width:0}
+.mob-progress-step{font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.06em;text-transform:uppercase;flex-shrink:0}
+.mob-progress-name{font-size:11px;color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mob-progress-total{font-size:12.5px;font-weight:700;color:var(--black);flex-shrink:0;padding-left:8px}
 @media(max-width:640px){.mob-progress{display:block;padding:62px 66px 0 18px;}}
 
 /* ── NAV BUTTONS ── */
@@ -4411,6 +4424,10 @@ input:-webkit-autofill:focus{
           <span class="step-name">Récapitulatif</span>
         </div>
       </div>
+      <div class="ms-total" id="ms-total" aria-live="polite">
+        <span class="ms-total-lbl" id="ms-total-lbl">Total estimé</span>
+        <span class="ms-total-amt" id="ms-total-amt">—</span>
+      </div>
     </aside>
 
     <!-- CORPS DU MODAL -->
@@ -4422,8 +4439,11 @@ input:-webkit-autofill:focus{
       <!-- BARRE DE PROGRESSION MOBILE -->
       <div class="mob-progress" id="mob-progress" aria-hidden="true">
         <div class="mob-progress-label">
-          <span class="mob-progress-step" id="mob-step-num">Étape 1/6</span>
-          <span class="mob-progress-name" id="mob-step-name">Adresse</span>
+          <span class="mob-progress-left">
+            <span class="mob-progress-step" id="mob-step-num">Étape 1/6</span>
+            <span class="mob-progress-name" id="mob-step-name">Adresse</span>
+          </span>
+          <span class="mob-progress-total" id="mob-progress-total" aria-live="polite"></span>
         </div>
         <div class="mob-progress-track">
           <div class="mob-progress-fill" id="mob-progress-fill" style="width:16.7%"></div>
@@ -5501,6 +5521,7 @@ function _updateDeliveryFee(){
   }
   DELIVERY_FEE=_ZONE_CP.has(cp)?60:120;
   if(notice)notice.style.display=DELIVERY_FEE>60?'flex':'none';
+  updateRunningTotal();
 }
 let _techInstall=true; // true = technicien 80€ (défaut), false = auto-installation
 function calcPrice(days){
@@ -5527,6 +5548,7 @@ function updateDuration(days,silent){
 
   document.getElementById('f-dur').value=days;
   updateDatePreview();
+  updateRunningTotal();
   if(!silent){
     window.dataLayer=window.dataLayer||[];
     dataLayer.push({event:'select_duration',days,price,rate,discPct});
@@ -6299,6 +6321,35 @@ function updateStepper(n){
   if(fill)fill.style.width=(n/6*100)+'%';
   if(stepNum)stepNum.textContent=(_lang==='en'?'Step ':_lang==='zh'?'第 ':_lang==='ru'?'Шаг ':'Étape ')+n+(_lang==='zh'?'/6 步':_lang==='ru'?' / 6':'/6');
   if(stepName)stepName.textContent=(names[n-1]||'');
+  updateRunningTotal(n);
+}
+
+// ── TOTAL ESTIMÉ PERSISTANT ──────────────────────────────────────────────────
+// Visible dès l'étape 2 (durée) jusqu'au paiement, en sidebar (desktop) et
+// dans la barre de progression (mobile) : le client voit toujours où en est
+// le prix, pose technicien et livraison compris, avant d'arriver au paiement.
+function updateRunningTotal(stepArg){
+  const n=typeof stepArg==='number'?stepArg:curStep;
+  const sideEl=document.getElementById('ms-total');
+  const mobEl=document.getElementById('mob-progress-total');
+  if(!n||n<2||n>6){
+    if(sideEl)sideEl.style.display='none';
+    if(mobEl)mobEl.textContent='';
+    return;
+  }
+  const days=_durDays||parseInt(document.getElementById('f-dur')?.value||'7')||7;
+  const basePrice=calcPrice(days)*_qty;
+  const disc=_promoPct>0?Math.round(basePrice*_promoPct/100):_promoDiscount;
+  const total=Math.max(0,calcTotal(days)-disc+DELIVERY_FEE);
+  const isEN=_lang==='en',isZH=_lang==='zh',isRU=_lang==='ru';
+  const lbl=isEN?'Estimated total':isZH?'预估总价':isRU?'Примерная сумма':'Total estimé';
+  const amt=total+' €';
+  const lblEl=document.getElementById('ms-total-lbl');
+  const amtEl=document.getElementById('ms-total-amt');
+  if(lblEl)lblEl.textContent=lbl;
+  if(amtEl)amtEl.textContent=amt;
+  if(sideEl)sideEl.style.display='flex';
+  if(mobEl)mobEl.textContent=amt;
 }
 
 function highlight(ids){
@@ -6696,6 +6747,7 @@ function buildRecap(){
     const hint=document.getElementById('sbtn-hint');
     if(hint)hint.style.display=sbtn.disabled?'block':'none';
   }
+  updateRunningTotal();
 }
 
 function updateModalRecapPill(n){}
@@ -9305,6 +9357,7 @@ function setQty(n){
   if(dfbTotal){const d=parseInt(document.getElementById('f-dur')?.value||'7');dfbTotal.textContent=calcPrice(d)*n+' €';}
   updateModalRecapPill(curStep);
   updateOuvMode();
+  updateRunningTotal();
 }
 function toggleUnit2(cb){setQty(cb.checked?2:1);updateOuvMode();}
 
