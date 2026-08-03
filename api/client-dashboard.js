@@ -95,7 +95,10 @@ module.exports = async (req, res) => {
       // n'existe que côté admin. Une réservation à plusieurs climatiseurs
       // peut avoir plusieurs offres en même temps (une par appareil) — le
       // client choisit lui-même lesquelles accepter, indépendamment.
-      supabase.from('offres_privilege').select('id, prix_vente_cents, appareil:appareils(numero)').eq('reservation_id', reservationId).eq('statut', 'proposee'),
+      // Utilise allResaIds (origine + prolongations) et non reservationId
+      // seul : l'admin peut avoir créé l'offre sur l'ID d'une prolongation,
+      // ce qui la rendait invisible si on ne cherchait que sur l'origine.
+      supabase.from('offres_privilege').select('id, prix_vente_cents, appareil:appareils(numero)').in('reservation_id', allResaIds).eq('statut', 'proposee'),
     ]);
 
     const progress = computeClientProgress(resa, livraisons || [], (incidentsOuverts || []).length > 0);
