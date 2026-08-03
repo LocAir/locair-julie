@@ -39,6 +39,7 @@ module.exports = async (req, res) => {
           nom,
           email: (body.email || '').trim().toLowerCase() || null,
           pin: hashPin(candidate),
+          pin_hashed: true,
           role,
         }).select('id').single();
         if (!error) return res.status(200).json({ ok: true, id: created.id, pin: candidate });
@@ -59,7 +60,7 @@ module.exports = async (req, res) => {
         patch.role = body.role;
       }
       if (body.actif != null) patch.actif = Boolean(body.actif);
-      if (body.pin != null && body.pin.trim()) patch.pin = hashPin(body.pin.trim());
+      if (body.pin != null && body.pin.trim()) { patch.pin = hashPin(body.pin.trim()); patch.pin_hashed = true; }
       if (!Object.keys(patch).length) return res.status(400).json({ error: 'Rien à modifier' });
 
       const { error } = await supabase.from('admin_users').update(patch).eq('id', id);

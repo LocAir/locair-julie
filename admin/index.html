@@ -4674,13 +4674,20 @@ function livraisonsTableHtml(items){
   if(groupByDate){
     const todayStr = new Date().toISOString().slice(0,10);
     const tomorrowStr = new Date(Date.now()+86400000).toISOString().slice(0,10);
+    // Même garde que SHOW_GROUPS (vue mobile, ligne ~4543) : une date passée
+    // n'est un vrai "retard" que sur les filtres où les missions affichées
+    // sont encore à traiter. Sur Terminées/Problèmes/Annulées, une mission
+    // d'il y a 3 jours est simplement... d'il y a 3 jours, pas "en retard" —
+    // sans cette garde, ce tableau desktop étiquetait ces dates passées en
+    // rouge "En retard" même pour des missions déjà closes.
+    const showOverdueLabel = ['toutes','a_venir','non_assignees','en_retard','en_cours'].includes(LIVRAISONS_FILTER);
     const byDate = {}; const dateOrder = [];
     rows.forEach(m => { const d = m.date_prevue || '__'; if(!byDate[d]){byDate[d]=[]; dateOrder.push(d);} byDate[d].push(m); });
     bodyHtml = dateOrder.map(dateStr => {
       const missions = byDate[dateStr];
       const isToday = dateStr === todayStr;
       const isTomorrow = dateStr === tomorrowStr;
-      const isOvd = dateStr !== '__' && dateStr < todayStr;
+      const isOvd = showOverdueLabel && dateStr !== '__' && dateStr < todayStr;
       const label = dateStr==='__' ? 'Sans date'
         : isToday ? `Aujourd'hui · ${frDate(dateStr)}`
         : isTomorrow ? `Demain · ${frDate(dateStr)}`

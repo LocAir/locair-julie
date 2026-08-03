@@ -21,12 +21,17 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
     .eq('id', offreId).maybeSingle();
   if (!offre || offre.statut === 'acceptee') return;
 
-  // L'admin a pu retirer l'offre (admin-offres-privilege.js action
-  // "annuler") pile au moment où le client validait son paiement — fenêtre
-  // de course rare mais réelle. Le client a alors été débité par Stripe
-  // alors que l'offre n'est plus "proposee" : surtout ne pas vendre en
-  // aveugle, on prévient l'admin pour qu'il rembourse manuellement.
-  if (offre.statut !== 'proposee') {
+  // offre-privilege-pay.js verrouille l'offre en 'en_cours' dès que le
+  // client lance le paiement (empêche un double-clic de créer deux
+  // PaymentIntents) — c'est donc l'état normal ici, pas seulement
+  // 'proposee'. L'admin a pu malgré tout retirer l'offre entre-temps
+  // (admin-offres-privilege.js action "annuler", qui refuse justement
+  // de toucher une offre 'en_cours' — donc en pratique seulement possible
+  // si elle était encore 'proposee' au moment de l'annulation) : le client
+  // a alors été débité par Stripe sur une offre qui n'est plus valable —
+  // surtout ne pas vendre en aveugle, on prévient l'admin pour qu'il
+  // rembourse manuellement.
+  if (!['proposee', 'en_cours'].includes(offre.statut)) {
     await pushToAdmin(supabase, {
       title: '⚠️ Paiement Offre Privilège reçu sur une offre retirée',
       body:  `Le client a payé ${(offre.prix_vente_cents / 100).toFixed(2)} € pour une offre annulée entre-temps. Aucune vente enregistrée — rembourse le client dans Stripe.`,
@@ -37,7 +42,7 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
 
   const { data: claimed } = await supabase.from('offres_privilege')
     .update({ statut: 'acceptee', decidee_at: new Date().toISOString() })
-    .eq('id', offre.id).eq('statut', 'proposee').select('id');
+    .eq('id', offre.id).in('statut', ['proposee', 'en_cours']).select('id');
   if (!claimed?.length) return;
 
   const { data: appareil } = await supabase.from('appareils').select('numero, localisation').eq('id', offre.appareil_id).maybeSingle();

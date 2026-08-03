@@ -778,7 +778,9 @@ function updatePositionTracking(){
 }
 
 function startPositionTracking(){
-  document.getElementById('tracking-badge')?.classList.remove('hidden');
+  // Afficher brièvement (4s) pour confirmer que le tracking est actif, puis retirer
+  const _tb = document.getElementById('tracking-badge');
+  if(_tb){ _tb.classList.remove('hidden'); setTimeout(()=>_tb.classList.add('hidden'), 4000); }
   if(_watchId !== null || !navigator.geolocation) return;
   _watchId = navigator.geolocation.watchPosition(onPositionUpdate, ()=>{ document.getElementById('tracking-badge')?.classList.add('hidden'); if(_watchId !== null){ navigator.geolocation.clearWatch(_watchId); _watchId = null; } }, {
     enableHighAccuracy: true, maximumAge: 10000, timeout: 20000,
@@ -2520,6 +2522,24 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   if(key === 'route'){
     const numeros = m.appareil_numeros||[];
     const plural = numeros.length>1;
+    // Étage affiché en tout premier, dès cette étape "En route" (donc avant
+    // même d'avoir quitté le box) — demandé par Aly : le livreur doit savoir
+    // à quel étage il va pour s'organiser (diable, renfort...) avant de
+    // partir, pas seulement une fois arrivé chez le client. Repris plus loin
+    // dans infoRows (fiche complète) : redondance volontaire, même logique
+    // que le badge climatiseur déjà dupliqué à travers les étapes.
+    // (Réintégré le 2026-08-03 : ce bloc avait disparu suite à un mauvais
+    // merge/rebase le jour même de son ajout.)
+    const cRoute = m.client || {};
+    const etageHtml = (cRoute.etage && cRoute.etage!=='—') ? `
+      <div class="pickup-card" style="margin-bottom:12px">
+        <span class="pickup-card-ic">🏢</span>
+        <div class="pickup-card-body">
+          <div class="pickup-card-label">Étage chez le client</div>
+          <div class="pickup-card-nums">${escHtml(cRoute.etage)}</div>
+          ${(cRoute.ascenseur && cRoute.ascenseur!=='—')?`<div class="pickup-card-extra">Ascenseur : ${escHtml(cRoute.ascenseur)}</div>`:''}
+        </div>
+      </div>` : '';
     // Livraison ET remplacement : dans les deux cas, il faut passer par le
     // stock avant de partir — la récupération, elle, n'a rien à choisir en
     // stock (on ramène ce qui est déjà chez le client), donc pas d'encart ici.
@@ -2545,6 +2565,7 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
     // dessous du cadre climatiseur : c'est la seule façon d'avancer à
     // l'étape suivante du parcours.
     return `
+      ${etageHtml}
       ${infoRows}
       ${pickupHtml}
       <button class="btn btn-blue btn-block" style="margin-top:6px" onclick="goToNextStepFromRoute()">Suivant →</button>`;
@@ -2575,22 +2596,12 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
       <button class="media-btn" onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> Vidange ${m.type==='changement'?"de l'ancien appareil":"de l'appareil"}</button>`;
   }
   if(key === 'installation'){
-    const sousTypes = TUTO_SOUS_TYPES.installation || [];
     return `
       <p class="step-hint">🎬 Montre le fonctionnement au client, puis prends une photo où l'on voit ensemble le climatiseur en marche et la fenêtre calfeutrée.</p>
-      <details class="month-details" style="margin-bottom:14px">
-        <summary style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;list-style:none;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey-soft)">
-          <span>🎥 Tuto par type d'ouverture</span>
-          <span class="month-chevron">›</span>
-        </summary>
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px">
-          ${sousTypes.map(t => `<button class="btn btn-grey" style="flex:1 1 auto;min-width:120px" onclick="openTutoVideo('installation','${t}')">🎥 ${t}</button>`).join('')}
-        </div>
-      </details>
       ${proofButtonsHtml('photo_installation', m.photo_installation_ok, 'Photo installation')}
       ${m.photo_installation_ok
         ? `<button class="btn btn-green btn-block" style="margin-top:6px" onclick="doAction('confirmer_demo')">✅ Confirmer la démonstration</button>`
-        : `<p class="step-hint" style="margin-top:6px">Prends la photo pour pouvoir confirmer la démonstration.</p>`}`;
+        : ''}`;
   }
   if(key === 'preuve'){
     return wizardProofStepHtml(m, 'photo_retour', 'Photo appareil récupéré', "Prends l'appareil récupéré en photo (ou choisis une photo depuis ta galerie) pour terminer la mission.");
@@ -3334,17 +3345,17 @@ async function compressImage(file, maxDim, quality){
 // sur le terrain pour une vidéo un peu lourde) — ne réessaie jamais une vraie
 // erreur HTTP (413 fichier trop lourd, etc.), seulement un échec de connexion.
 async function putFileWithRetry(url, file, contentType, attempts){
-  attempts = attempts || 3;
+  attempts = attempts || 5;
   let lastErr;
   for(let i=0; i<attempts; i++){
     try{
       return await fetch(url, {method:'PUT', headers:{'Content-Type': contentType || 'application/octet-stream'}, body: file});
     }catch(e){
       lastErr = e;
-      if(i < attempts-1) await new Promise(r => setTimeout(r, 1500));
+      if(i < attempts-1) await new Promise(r => setTimeout(r, 2000));
     }
   }
-  throw new Error(`Connexion instable, l'envoi a échoué ${attempts} fois (${lastErr.message}) — réessaie avec un wifi ou une meilleure zone si possible.`);
+  throw new Error(`Envoi échoué (réseau faible) — reprends la photo pour réessayer.`);
 }
 document.getElementById('media-input').addEventListener('change', async (e) => {
   const rawFile = e.target.files[0];
@@ -3444,6 +3455,12 @@ async function uploadMedia(rawFile, kind, mission){
     mission[kind + '_ok'] = true;
     if(STATE.currentMission === mission) renderDetail();
   }catch(err){
+    // Régression du jour (commit 56f82aa, "ne plus bloquer le bouton
+    // Confirmer si réseau faible") : cette condition avait été inversée en
+    // `!optimistic`, ce qui faisait l'inverse de ce que le commentaire plus
+    // haut promet — sur un échec réel d'upload (photo/vidéo optimiste), le
+    // flag "_ok" restait à true, et le livreur pouvait valider une étape
+    // sans que la preuve soit jamais arrivée côté serveur.
     if(optimistic) mission[kind + '_ok'] = false;
     if(STATE.currentMission === mission){
       // renderDetail() reconstruit les boutons avec leurs bons états
