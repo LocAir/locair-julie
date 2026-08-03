@@ -1597,7 +1597,12 @@ function shiftWeekAhead(delta){
 function renderDashboard(){
   const zone = document.getElementById('dashboard-content');
   const todayStr = new Date().toISOString().slice(0,10);
-  const aFaireAujourd = STATE.missions.filter(m => m.statut==='a_faire' && m.date_prevue===todayStr);
+  // Triée par créneau (même comparateur que "Ma semaine", voir
+  // compareByCreneau) — sans ça, l'ordre venait tel quel de l'API (souvent
+  // l'ordre de création, sans rapport avec l'heure du rendez-vous) : la carte
+  // héros pouvait mettre en avant une mission de 14h et laisser celle de 8h
+  // invisible tant que la 1re n'était pas traitée.
+  const aFaireAujourd = STATE.missions.filter(m => m.statut==='a_faire' && m.date_prevue===todayStr).sort(compareByCreneau);
   const aFaireTotal   = STATE.missions.filter(m => m.statut==='a_faire');
   // missionEstEnCours (plus bas dans le fichier) inclut aussi "probleme" —
   // sans ça, une mission signalée en problème disparaissait de l'Accueil
@@ -2191,8 +2196,13 @@ function filteredMissions(){
     const statuts = MISSION_FILTER_STATUTS[MISSION_FILTER];
     list = statuts ? STATE.missions.filter(m => statuts.includes(m.statut)) : STATE.missions.slice();
   }
+  // Le créneau départage à égalité d'urgence/date — via compareByCreneau
+  // (tri par heure de début détectée, pas alphabétique) : un simple
+  // localeCompare mettait "14h-16h" avant "8h-10h" (le caractère '1' passe
+  // avant '8'), exactement le bug déjà corrigé pour "Ma semaine" mais oublié
+  // ici, sur l'écran le plus consulté de la journée.
   return list.sort((a,b) => missionUrgenceRang(a)-missionUrgenceRang(b)
-    || a.date_prevue.localeCompare(b.date_prevue) || (a.creneau||'').localeCompare(b.creneau||''));
+    || a.date_prevue.localeCompare(b.date_prevue) || compareByCreneau(a,b));
 }
 
 // Filtre secondaire par code postal — pour que le livreur retrouve sa
