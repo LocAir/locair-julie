@@ -269,6 +269,23 @@ input[readonly]{background:var(--bg);color:var(--black);font-size:13.5px;cursor:
 .pipeline-note .pn-amount{font-size:18px;font-weight:800;color:var(--amber);font-variant-numeric:tabular-nums;flex-shrink:0}
 .pipeline-note .pn-text{font-size:12.5px;color:var(--amber);line-height:1.4}
 
+/* Statut de la demande de virement en cours */
+.payout-status{
+  background:var(--amber-bg);border:1px solid rgba(156,106,23,.2);border-radius:var(--r);
+  padding:14px;margin-bottom:12px;display:flex;align-items:flex-start;gap:12px;
+}
+.payout-status .ps-icon{font-size:20px;line-height:1;flex-shrink:0;margin-top:1px}
+.payout-status .ps-title{font-size:13.5px;font-weight:700;color:var(--amber);margin-bottom:2px}
+.payout-status .ps-sub{font-size:12px;color:var(--amber);line-height:1.5;opacity:.9}
+
+/* Note de confiance sur le lien */
+.aff-note{
+  display:flex;align-items:flex-start;gap:8px;
+  background:var(--blue-lt);border:1px solid rgba(26,43,74,.1);border-radius:var(--r-sm);
+  padding:10px 12px;margin-top:14px;font-size:12px;color:var(--blue);line-height:1.5;
+}
+.aff-note .an-icon{flex-shrink:0;line-height:1.4}
+
 /* Export PDF */
 .export-btn{
   width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
@@ -572,11 +589,18 @@ function euros(v){ return (v||0).toFixed(2).replace('.',',') + ' €'; }
 function renderDashboard(d){
   const zone = document.getElementById('dashboard-content');
   const link = location.origin + '/?p=' + encodeURIComponent(STATE.code);
-  const enCours = (d.virements||[]).some(v=>v.statut==='demande');
+  const virementEnCours = (d.virements||[]).find(v=>v.statut==='demande');
+  const enCours = !!virementEnCours;
   const canAsk  = (d.non_verse_euros||0) > 0 && !enCours;
   const annee   = new Date().getFullYear();
   const qrUrl   = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(link)}&size=176x176&color=1a2b4a&bgcolor=ffffff&qzone=1&format=png`;
   const prevision = d.prevision_attente_euros || 0;
+  // Le bouton affiche le montant demandé pour que la personne sache
+  // exactement ce qu'elle valide avant de cliquer (comme Stripe Connect
+  // affiche toujours le montant sur les actions de paiement).
+  const askLabel = enCours
+    ? '⏳ Demande en cours'
+    : canAsk ? `Demander le virement de ${euros(d.non_verse_euros)} →` : 'Aucun solde à verser';
 
   zone.innerHTML = `
     <div class="topnote">Tableau de bord ambassadeur</div>
@@ -589,11 +613,21 @@ function renderDashboard(d){
       <div class="ch-actions">
         <button class="btn btn-gold" id="demander-virement-btn"
           ${canAsk?'':'disabled'} onclick="demanderVirement()">
-          ${enCours ? '⏳ Demande en cours' : canAsk ? 'Demander le virement →' : 'Aucun solde à verser'}
+          ${askLabel}
         </button>
       </div>
     </div>
     <div class="err-msg" id="dash-err"></div>
+
+    ${virementEnCours ? `
+    <!-- Statut de la demande de virement en cours -->
+    <div class="payout-status">
+      <div class="ps-icon">⏳</div>
+      <div>
+        <div class="ps-title">Demande de ${euros(virementEnCours.montant_cents/100)} envoyée le ${virementEnCours.created_at?new Date(virementEnCours.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long'}):''}</div>
+        <div class="ps-sub">Loc'Air traite votre demande sous quelques jours ouvrés. Vous recevrez un e-mail dès que le virement sera effectué.</div>
+      </div>
+    </div>` : ''}
 
     <!-- Vue d'ensemble -->
     <div class="big-stats">
@@ -676,6 +710,14 @@ function renderDashboard(d){
           </a>
         </div>
       </div>
+
+      <!-- Rappel du mécanisme d'attribution : évite les commissions "perdues"
+           par un partenaire qui pense avoir droit à une commission pour un
+           client simplement informé verbalement, sans passer par le lien. -->
+      <div class="aff-note">
+        <span class="an-icon">💡</span>
+        <span>La commission est attribuée automatiquement quand votre client clique sur ce lien ou scanne ce QR code avant de réserver. Une simple mention de Loc'Air ne suffit pas — pensez à toujours partager le lien ou le QR code.</span>
+      </div>
     </div>
 
     ${reservationsHistoryHtml(d.reservations)}
@@ -695,7 +737,9 @@ function renderDashboard(d){
 
 function reservationsHistoryHtml(reservations){
   if(!reservations || !reservations.length){
-    return `<div class="section-hd">Réservations apportées</div><p class="empty" style="padding:24px 0">Aucune réservation apportée pour l'instant.</p>`;
+    // Vide mais motivant : indique la prochaine action plutôt qu'un simple
+    // constat, pour encourager le partage (logique PartnerStack/Rewardful).
+    return `<div class="section-hd">Réservations apportées</div><p class="empty" style="padding:24px 10px">Aucune réservation pour l'instant. Partagez votre lien ou votre QR code ci-dessus : la première réservation apparaîtra ici avec votre commission.</p>`;
   }
   const groups = {};
   reservations.forEach(r => {
@@ -734,19 +778,28 @@ function reservationsHistoryHtml(reservations){
 }
 
 function virementsHistoryHtml(virements){
-  const hist = (virements||[]).filter(v=>v.statut==='verse');
+  // Inclut aussi la demande en cours (statut 'demande'), pas seulement les
+  // virements déjà versés — un partenaire doit pouvoir vérifier à tout
+  // moment que sa demande a bien été enregistrée, sans se fier uniquement
+  // au bouton du haut (traçabilité complète, comme un relevé de paiements).
+  const hist = (virements||[]);
   if(!hist.length) return '';
   return `
-    <div class="section-hd">Virements effectués</div>
+    <div class="section-hd">Virements</div>
     <div class="card" style="padding:4px 18px">
-      ${hist.map(v=>`
+      ${hist.map(v=>{
+        const verse = v.statut==='verse';
+        const dateLabel = verse
+          ? (v.verse_at?new Date(v.verse_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'')
+          : ('Demandé le '+(v.created_at?new Date(v.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):''));
+        return `
         <div class="vir-row">
           <div>
             <div class="vir-amount">${euros(v.montant_cents/100)}</div>
-            <div class="vir-date">${v.verse_at?new Date(v.verse_at).toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):''}</div>
+            <div class="vir-date">${dateLabel}</div>
           </div>
-          <span class="chip chip-verse">Versé</span>
-        </div>`).join('')}
+          <span class="chip ${verse?'chip-verse':'chip-pending'}">${verse?'Versé':'En attente'}</span>
+        </div>`;}).join('')}
     </div>`;
 }
 
