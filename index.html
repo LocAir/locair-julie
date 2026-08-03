@@ -6218,6 +6218,24 @@ const META={
   6:{title:'Récapitulatif',sub:'Vérifiez et confirmez votre commande'},
 };
 
+// Un numéro français local doit faire EXACTEMENT 10 chiffres (jamais plus,
+// jamais moins) — l'ancienne règle (≥10 chiffres) laissait passer des
+// numéros à 11 chiffres ou plus, dont certains se révèlent invalides côté
+// Brevo au moment d'envoyer le SMS (ex. "07823558309" — une frappe en trop
+// sur un numéro français, ou un numéro étranger tapé sans indicatif pays).
+// Un numéro commençant par + ou 00 est traité comme international, avec
+// juste une fourchette large de chiffres (8 à 15, format E.164) — pas de
+// vérification pays précise ici, faite plus tard côté serveur (toE164FR,
+// api/_lib/brevo.js) au moment de l'envoi réel.
+function isValidPhone(raw){
+  const t=String(raw||'').trim();
+  if(!t)return false;
+  if(t.startsWith('+')||t.startsWith('00')){
+    const d=t.replace(/\D/g,'');
+    return d.length>=8&&d.length<=15;
+  }
+  return t.replace(/\D/g,'').length===10;
+}
 function goTo(n,silent){
   if(n===0){
     document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active','bwd'));
@@ -6277,8 +6295,7 @@ function goTo(n,silent){
         const miss=['f-prenom','f-nom','f-tel','f-email'].filter(id=>!document.getElementById(id)?.value.trim());
         if(miss.length){highlight(miss);goTo(5,true);return;}
         const telRaw=document.getElementById('f-tel')?.value||'';
-        const telDigits=telRaw.replace(/[^0-9]/g,'');
-        if(telDigits.length<10){highlight(['f-tel']);goTo(5,true);return;}
+        if(!isValidPhone(telRaw)){highlight(['f-tel']);goTo(5,true);return;}
         const emailVal=document.getElementById('f-email')?.value||'';
         if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailVal)){highlight(['f-email']);goTo(5,true);return;}
       }
@@ -7011,7 +7028,7 @@ function submitForm(btn,mode){
   const missCoords=['f-prenom','f-nom','f-tel','f-email'].filter(id=>!document.getElementById(id)?.value.trim());
   if(missCoords.length){highlight(missCoords);return;}
   const telRaw=document.getElementById('f-tel')?.value||'';
-  if(telRaw.replace(/\D/g,'').length<10){highlight(['f-tel']);return;}
+  if(!isValidPhone(telRaw)){highlight(['f-tel']);return;}
   const emailVal=document.getElementById('f-email')?.value||'';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailVal)){highlight(['f-email']);return;}
   const isPro=document.querySelector('#type-client-group .tpill.on')?.classList.contains('client-type-pro');
