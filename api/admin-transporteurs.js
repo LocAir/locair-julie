@@ -1,7 +1,8 @@
 const crypto = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity, listCities } = require('./_lib/city');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 const { hashPin } = require('./_lib/pinHash');
 
 // Remplace entièrement les zones d'intervention et/ou les disponibilités
@@ -32,7 +33,16 @@ async function replaceDisponibilites(supabase, transporteurId, disponibilites) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
+  // Gère les comptes transporteurs (code personnel, taux de rémunération) —
+  // même rubrique 'transporteurs' que admin-transporteur-stats.js (Module 7,
+  // Partie 31), réservée à l'administrateur et à la comptabilité. Ce contrôle
+  // manquait jusqu'ici (seul checkAdminToken était vérifié) : n'importe quel
+  // compte équipe, y compris support_client, pouvait créer/supprimer des
+  // transporteurs, réinitialiser leur code personnel et changer leur taux de
+  // rémunération.
+  if (!roleHasAccess(admin.role, 'transporteurs')) return res.status(403).json({ error: "Ton compte n'a pas accès aux transporteurs." });
 
   const body   = req.body || {};
   const action = body.action || 'list';
