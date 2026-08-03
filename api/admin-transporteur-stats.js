@@ -1,6 +1,7 @@
 const { getSupabase }    = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 
 // ── Performance score (100 pts) ────────────────────────────────────────────
 // 5 critères pondérés : acceptation (25), complétion (30), notif client (20),
@@ -121,7 +122,11 @@ function periodRange(period) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
+  // Même rubrique 'transporteurs' que admin-transporteurs.js — ce contrôle
+  // manquait ici aussi (voir commentaire dans admin-transporteurs.js).
+  if (!roleHasAccess(admin.role, 'transporteurs')) return res.status(403).json({ error: "Ton compte n'a pas accès aux transporteurs." });
 
   const body   = req.body || {};
   const action = body.action || 'list';
