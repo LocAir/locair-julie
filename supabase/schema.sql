@@ -687,7 +687,7 @@ create table offres_privilege (
   reservation_id bigint references reservations(id) on delete set null,
   nb_locations   integer not null,
   statut         text not null default 'eligible'
-                   check (statut in ('eligible', 'proposee', 'acceptee', 'refusee', 'annulee')),
+                   check (statut in ('eligible', 'proposee', 'en_cours', 'acceptee', 'refusee', 'annulee')),
   prix_vente_cents        integer,
   stripe_payment_intent_id text,
   created_at     timestamptz not null default now(),
