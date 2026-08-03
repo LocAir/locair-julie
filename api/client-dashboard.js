@@ -164,6 +164,11 @@ module.exports = async (req, res) => {
       mon_climatiseur: appareil?.modele ? {
         modele: appareil.modele.modele,
         marque: appareil.modele.marque,
+        // Déjà lu et renvoyé plus haut dans ma_location.climatiseur — repris
+        // ici pour afficher une photo dans la fiche technique (réassurance
+        // visuelle façon détail de réservation Airbnb), aucune colonne
+        // supplémentaire nécessaire.
+        photo_url: appareil.modele.photo_url || null,
         puissance_btu: appareil.modele.puissance_btu,
         surface_max_m2: appareil.modele.surface_max_m2,
         niveau_sonore_db: appareil.modele.niveau_sonore_db,
