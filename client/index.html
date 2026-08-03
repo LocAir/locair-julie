@@ -1018,7 +1018,7 @@ function renderDashboard(d){
 
   // Assistance
   const as = d.assistance || {};
-  const assistHtml = `
+  const assistHtml = (as.telephone || as.whatsapp_url || as.email) ? `
     ${as.horaires ? `<p style="font-size:13px;color:var(--grey);margin-bottom:14px">${escHtml(as.horaires)}</p>` : ''}
     ${as.telephone ? `<a class="assist-btn" href="tel:${escHtml(as.telephone.replace(/\s/g,''))}">
       <div class="assist-ico">${_ICO.phone}</div>
@@ -1044,7 +1044,8 @@ function renderDashboard(d){
       </div>
       <div class="assist-arrow">›</div>
     </a>` : ''}
-    ${as.urgence ? `<p style="font-size:12px;color:var(--grey);margin-top:14px;line-height:1.55">${escHtml(as.urgence)}</p>` : ''}`;
+    ${as.urgence ? `<p style="font-size:12px;color:var(--grey);margin-top:14px;line-height:1.55">${escHtml(as.urgence)}</p>` : ''}`
+  : '<p style="color:var(--grey);font-size:13.5px">Nos coordonnées seront bientôt disponibles.</p>';
 
   // Offres Privilège
   const offres = d.offres_privilege || [];
@@ -1066,7 +1067,7 @@ function renderDashboard(d){
         <button class="btn-submit" id="offre-privilege-start-btn-${o.id}" onclick="startOffrePrivilegePayment(${o.id})">Je le garde — payer maintenant</button>
         <div id="offre-privilege-stripe-section-${o.id}" class="hidden" style="margin-top:16px">
           <div class="priv-stripe-wrap"><div id="offre-privilege-stripe-element-${o.id}"></div></div>
-          <button class="btn-submit" id="offre-privilege-pay-btn-${o.id}" onclick="confirmOffrePrivilegePayment(${o.id})">Confirmer le paiement</button>
+          <button class="btn-submit" id="offre-privilege-pay-btn-${o.id}" disabled onclick="confirmOffrePrivilegePayment(${o.id})">Confirmer le paiement</button>
         </div>
         <div class="alert-error hidden" id="offre-privilege-error-${o.id}" style="margin-top:12px"></div>
       </div>
@@ -1357,7 +1358,7 @@ async function submitProlong(){
   }catch(e){
     if(errEl){errEl.textContent=e.message;errEl.classList.remove('hidden');}
     payBtn.disabled=false;
-    payBtn.innerHTML=`Payer <span id="prolong-pay-label">${_prolongCents>0?_prolongCents/100+' €':'—'}</span>`;
+    payBtn.innerHTML=`Payer <span id="prolong-pay-label">${_prolongCents>0?(_prolongCents/100).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €':'—'}</span>`;
   }
 }
 
@@ -1402,10 +1403,11 @@ async function startOffrePrivilegePayment(offreId){
     if(!stripe) throw new Error('Paiement indisponible — désactivez votre bloqueur de publicités et réessayez.');
     const d = await apiClient('/api/offre-privilege-pay', { offre_id: offreId });
     if(!d.clientSecret) throw new Error(d.error || 'Erreur');
-    const appearance = { theme:'night', variables:{ colorPrimary:'#c5a96c', borderRadius:'10px', fontFamily:'Inter,system-ui,sans-serif', colorBackground:'rgba(255,255,255,.03)' } };
+    const appearance = { theme:'night', variables:{ colorPrimary:'#c5a96c', colorBackground:'#0d1d33', colorText:'#f0ece4', colorTextSecondary:'#a09880', borderRadius:'10px', fontFamily:'Inter,system-ui,sans-serif' } };
     _offreElements[offreId] = stripe.elements({ clientSecret: d.clientSecret, appearance, locale:'fr' });
     const payEl = _offreElements[offreId].create('payment', { layout:'tabs' });
     payEl.mount('#offre-privilege-stripe-element-'+offreId);
+    payEl.on('ready', () => { const b = document.getElementById('offre-privilege-pay-btn-'+offreId); if(b) b.disabled = false; });
     document.getElementById('offre-privilege-stripe-section-'+offreId).classList.remove('hidden');
     btn.classList.add('hidden');
   }catch(e){
@@ -1432,12 +1434,12 @@ async function confirmOffrePrivilegePayment(offreId){
       document.getElementById('offre-privilege-stripe-section-'+offreId).innerHTML =
         '<div class="alert-success">✅ Merci ! Ce climatiseur est à vous.</div>';
     }else{
-      errEl.textContent = 'Paiement en attente de confirmation. Vérifie ton email.';
+      errEl.textContent = 'Paiement en attente de confirmation. Vérifiez votre email.';
       errEl.classList.remove('hidden');
       payBtn.disabled = false; payBtn.textContent = 'Réessayer';
     }
   }catch(e){
-    errEl.textContent = 'Erreur inattendue. Réessaie.';
+    errEl.textContent = 'Erreur inattendue. Réessayez.';
     errEl.classList.remove('hidden');
     payBtn.disabled = false; payBtn.textContent = 'Confirmer le paiement';
   }
@@ -1511,7 +1513,7 @@ async function clientFidLogin(){
   }catch(e){
     btn.disabled = false;
     btn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3"/><path d="M6 20v-1a6 6 0 0112 0v1"/><path d="M17 13s1 1.5 1 3"/><path d="M7 13s-1 1.5-1 3"/><path d="M15 9.5a3 3 0 010 5"/><path d="M9 9.5a3 3 0 000 5"/></svg> Face ID / Touch ID';
-    if(e.name==='NotAllowedError'){ errEl.textContent='Annulé — réessaie.'; errEl.classList.remove('hidden'); }
+    if(e.name==='NotAllowedError'){ errEl.textContent='Annulé — réessayez.'; errEl.classList.remove('hidden'); }
     else{ showLoginForm(); }
   }
 }

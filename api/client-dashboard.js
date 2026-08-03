@@ -61,8 +61,8 @@ module.exports = async (req, res) => {
     // orig.date_fin, mais si ce write a silencieusement échoué la date
     // affichée serait fausse sans ce filet.
     let dateFinReelle = (prolongations || [])
-      .filter(p => p.statut === 'confirmee')
-      .reduce((max, p) => (p.date_fin > max ? p.date_fin : max), resa.date_fin);
+      .filter(p => p.statut === 'confirmee' && p.date_fin)
+      .reduce((max, p) => (!max || p.date_fin > max ? p.date_fin : max), resa.date_fin || null);
 
     // Tout le reste en parallèle — une seule requête HTTP côté client pour
     // construire l'ensemble du tableau de bord (voir contrainte de
@@ -120,7 +120,7 @@ module.exports = async (req, res) => {
     // tardive, pour que le client voie sa vraie date de fin d'utilisation.
     if (recuperation?.date_prevue) {
       const recupEnd = addDays(recuperation.date_prevue, -1);
-      if (recupEnd > dateFinReelle) dateFinReelle = recupEnd;
+      if (!dateFinReelle || recupEnd > dateFinReelle) dateFinReelle = recupEnd;
     }
 
     const notifications = (emailLog || [])

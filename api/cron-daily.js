@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const Stripe = require('stripe');
 const { getSupabase }          = require('./_lib/supabase');
 const { sendBrevoSms, sendBrevoEmail } = require('./_lib/brevo');
@@ -19,7 +20,10 @@ const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
-  return (req.headers['authorization'] || '') === `Bearer ${secret}`;
+  const provided = req.headers['authorization'] || '';
+  const expected = `Bearer ${secret}`;
+  if (provided.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 }
 
 module.exports = async (req, res) => {
@@ -172,8 +176,20 @@ module.exports = async (req, res) => {
           continue;
         }
 
-        const amountCents     = dailyRate(joursRetard) * 100;
-        const idempotencyKey  = `retard-${liv.id}-${joursRetard}j-${todayStr}`;
+        const amountCents = dailyRate(joursRetard) * 100;
+        const desc = `${joursRetard}j de retard — prélèvement auto ${(amountCents / 100).toFixed(2)} €`;
+
+        // Vérifier l'existence d'un incident AVANT de créer le PaymentIntent.
+        // Sans ce garde-fou, l'idempotencyKey change chaque jour (joursRetard
+        // s'incrémente) → Stripe crée un nouveau PI chaque matin → double
+        // facturation dès le 2ème jour de retard.
+        const { data: existInc } = await supabase.from('incidents').select('id').eq('reservation_id', liv.reservation_id).eq('type', 'retard').in('statut', ['retard_a_facturer', 'nouveau']).maybeSingle();
+        if (existInc) {
+          await supabase.from('incidents').update({ description: desc, montant_facture_cents: amountCents }).eq('id', existInc.id);
+          continue;
+        }
+
+        const idempotencyKey = `retard-${liv.id}-${todayStr}`;
         const intent = await stripe.paymentIntents.create({
           amount:         amountCents,
           currency:       'eur',
@@ -184,14 +200,7 @@ module.exports = async (req, res) => {
           description:    `Loc'Air — Retard restitution ${joursRetard}j · ${(resa.nom || '').slice(0, 100)}`,
           metadata:       { type: 'retard', jours: String(joursRetard), reservation_id: String(liv.reservation_id) },
         }, { idempotencyKey });
-
-        const desc = `${joursRetard}j de retard — prélèvement auto ${(amountCents / 100).toFixed(2)} €`;
-        const { data: existInc } = await supabase.from('incidents').select('id').eq('reservation_id', liv.reservation_id).eq('type', 'retard').in('statut', ['retard_a_facturer', 'nouveau']).maybeSingle();
-        if (existInc) {
-          await supabase.from('incidents').update({ description: desc, montant_facture_cents: amountCents }).eq('id', existInc.id);
-        } else {
-          await supabase.from('incidents').insert({ city_id: resa.city_id || null, reservation_id: liv.reservation_id, type: 'retard', description: desc, montant_facture_cents: amountCents, statut: 'retard_a_facturer' });
-        }
+        await supabase.from('incidents').insert({ city_id: resa.city_id || null, reservation_id: liv.reservation_id, type: 'retard', description: desc, montant_facture_cents: amountCents, statut: 'retard_a_facturer' });
         console.log('[Cron retard] Prélèvement', intent.id, 'pour reservation', liv.reservation_id);
       } catch (stripeErr) {
         console.error('[Cron retard Stripe]', stripeErr.message, 'reservation', liv.reservation_id);
@@ -692,7 +701,7 @@ module.exports = async (req, res) => {
             const sig = await getSignature(supabase);
             const prixFormate = (autoPrixCents / 100).toFixed(2).replace('.', ',') + ' €';
             const html = withSignature(tplOffrePrivilege({ prenom: resa.prenom, ref: resa.ref, prixFormate, appareilNumero: appareil?.numero }), sig);
-            await sendBrevoEmail({ to: resa.email, subject: `Une offre exclusive pour vous — Dossier ${resa.ref}`, html });
+            await sendBrevoEmail({ to: resa.email, subject: `⭐ Une offre exclusive pour vous — Dossier ${resa.ref}`, html, senderName: sig.nom_expediteur });
             await supabase.from('email_log').insert({
               reservation_id: reservationId, scenario: 'offre_privilege',
               destinataire: resa.email, modele: 'offre_privilege', statut: 'envoye', contenu: html,
@@ -793,8 +802,12 @@ module.exports = async (req, res) => {
   try {
     const { data: citiesForSoldOut } = await supabase.from('cities').select('id').eq('actif', true);
     for (const city of citiesForSoldOut || []) {
-      await supabase.rpc('_auto_sold_out', { p_city_id: city.id });
-      await notifyIfSoldOut(supabase, city.id);
+      try {
+        await supabase.rpc('_auto_sold_out', { p_city_id: city.id });
+        await notifyIfSoldOut(supabase, city.id);
+      } catch (e) {
+        console.error(`[Cron sold_out refresh city=${city.id}]`, e.message);
+      }
     }
   } catch (e) {
     console.error('[Cron sold_out refresh]', e.message);
@@ -871,14 +884,18 @@ module.exports = async (req, res) => {
   try {
     const { data: citiesForComms } = await supabase.from('cities').select('id, name').eq('actif', true);
     for (const city of citiesForComms || []) {
-      const { anomalies } = await buildCommunicationsCockpit(supabase, city.id);
-      if (anomalies > 0) {
-        await pushToAdmin(supabase, {
-          title: `🎛️ ${anomalies} anomalie${anomalies > 1 ? 's' : ''} de communication — ${city.name}`,
-          body:  "Email jamais parti ou en erreur pour au moins un client. Onglet Communications pour les traiter.",
-          tag:   `communications-anomalies-${city.id}`,
-        });
-        report.communicationsAnomalies = (report.communicationsAnomalies || 0) + anomalies;
+      try {
+        const { anomalies } = await buildCommunicationsCockpit(supabase, city.id);
+        if (anomalies > 0) {
+          await pushToAdmin(supabase, {
+            title: `🎛️ ${anomalies} anomalie${anomalies > 1 ? 's' : ''} de communication — ${city.name}`,
+            body:  "Email jamais parti ou en erreur pour au moins un client. Onglet Communications pour les traiter.",
+            tag:   `communications-anomalies-${city.id}`,
+          });
+          report.communicationsAnomalies = (report.communicationsAnomalies || 0) + anomalies;
+        }
+      } catch (e) {
+        console.error(`[Cron communications city=${city.id}]`, e.message);
       }
     }
   } catch (e) {
@@ -908,6 +925,7 @@ module.exports = async (req, res) => {
     }
     const { data: citiesForRecap } = await supabase.from('cities').select('id, name').eq('actif', true);
     for (const city of citiesForRecap || []) {
+      try {
       const s = parVille[city.id];
       if (!s || !s.total) continue;
       await pushToAdmin(supabase, {
@@ -916,6 +934,9 @@ module.exports = async (req, res) => {
         tag:   `recap-communications-${city.id}-${todayStr}`,
       });
       report.recapCommunications = (report.recapCommunications || 0) + s.total;
+      } catch (e) {
+        console.error(`[Cron récap communications city=${city.id}]`, e.message);
+      }
     }
   } catch (e) {
     console.error('[Cron récap communications]', e.message);

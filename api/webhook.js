@@ -46,11 +46,20 @@ async function handleOffrePrivilegeAccepted(supabase, offreId) {
   if (!claimed?.length) return;
 
   const { data: appareil } = await supabase.from('appareils').select('numero, localisation').eq('id', offre.appareil_id).maybeSingle();
-  await recordMouvement(supabase, {
-    appareilId: offre.appareil_id, typeEvenement: 'autre', nouveauStatut: 'vendu',
-    nouvelleLocalisation: appareil?.localisation || 'autre', utilisateur: 'systeme',
-    commentaire: `Vendu au client via l'Offre Privilège (${(offre.prix_vente_cents / 100).toFixed(2)} €).`,
-  });
+  try {
+    await recordMouvement(supabase, {
+      appareilId: offre.appareil_id, typeEvenement: 'autre', nouveauStatut: 'vendu',
+      nouvelleLocalisation: appareil?.localisation || 'autre', utilisateur: 'systeme',
+      commentaire: `Vendu au client via l'Offre Privilège (${(offre.prix_vente_cents / 100).toFixed(2)} €).`,
+    });
+  } catch (e) {
+    console.error('[Offre privilège — recordMouvement]', e.message);
+    await pushToAdmin(supabase, {
+      title: '⚠️ Offre Privilège — appareil non marqué "vendu"',
+      body: `Offre ${offre.id} : le paiement est confirmé mais le statut de l'appareil #${appareil?.numero} n'a pas pu être mis à jour. Corrige-le manuellement dans le stock.`,
+      tag: `offre-privilege-mouvement-err-${offre.id}`,
+    }).catch(() => {});
+  }
 
   try {
     await generateAndSendFactureVente(supabase, {
@@ -569,16 +578,27 @@ const handler = async (req, res) => {
     }).catch(e => console.error('[Formspree]', e.message));
 
     // 2a. SMS de confirmation immédiat au client — idempotent : non renvoyé
-    // si déjà tracé dans email_log (redélivrance du webhook Stripe).
+    // si déjà tracé dans email_log OU si sendConfirmationCommunications a
+    // déjà posé le verrou dans email_sent (deux tables différentes, d'où ce
+    // double contrôle — sans lui, un SMS partait deux fois si email_log
+    // n'avait pas encore été écrit quand le webhook repassait ici).
     if (meta.tel && confirmedResa) {
-      const { data: smsDejaEnvoye } = await getSupabase()
-        .from('email_log')
-        .select('id')
-        .eq('reservation_id', confirmedResa.id)
-        .eq('scenario', 'sms_confirmation')
-        .eq('statut', 'envoye')
-        .maybeSingle();
-      if (!smsDejaEnvoye) {
+      const [{ data: smsDejaEnvoye }, { data: smsEmailSentLock }] = await Promise.all([
+        getSupabase()
+          .from('email_log')
+          .select('id')
+          .eq('reservation_id', confirmedResa.id)
+          .eq('scenario', 'sms_confirmation')
+          .eq('statut', 'envoye')
+          .maybeSingle(),
+        getSupabase()
+          .from('email_sent')
+          .select('reservation_id')
+          .eq('reservation_id', confirmedResa.id)
+          .eq('scenario', 'sms_confirmation')
+          .maybeSingle(),
+      ]);
+      if (!smsDejaEnvoye && !smsEmailSentLock) {
         const lang = confirmedResa.lang || meta.lang || 'fr';
         const d = meta.date ? new Date(meta.date + 'T12:00:00Z') : null;
         let smsConfirmationContent;
