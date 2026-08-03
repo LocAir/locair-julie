@@ -214,16 +214,19 @@ function drawInvoiceItem(doc, { label, detailLines = [], amount }) {
 }
 
 // ─── Tableau prestations : en-tête ───────────────────────────────────────────
-function drawTableHeader(doc, lblCol, amtCol) {
-  const amtW = amtCol || 92;
-  const lblW = W - amtW - 6;
-  filledRect(doc, M, doc.y, W, 20, C.bgD, 3);
+// Même bug que drawKeyValueRow : capturer startY avant tout appel .text() pour
+// que les deux colonnes soient sur la même ligne, même si la première avance doc.y.
+function drawTableHeader(doc) {
+  const amtW   = 92;
+  const lblW   = W - amtW - 6;
+  const startY = doc.y;
+  filledRect(doc, M, startY, W, 20, C.bgD, 3);
   doc.font('Helvetica-Bold').fontSize(8).fillColor(C.navy)
-    .text((lblCol || 'DÉSIGNATION').toUpperCase(), M + 6, doc.y + 5, { width: lblW, characterSpacing: 0.3 });
+    .text('DÉSIGNATION', M + 6, startY + 6, { width: lblW, characterSpacing: 0.3 });
   doc.font('Helvetica-Bold').fontSize(8).fillColor(C.navy)
-    .text((amtCol ? '' : 'MONTANT TTC'), M + lblW + 6, doc.y + 5, { width: amtW, align: 'right', characterSpacing: 0.3 });
+    .text('MONTANT TTC', M + lblW + 6, startY + 6, { width: amtW, align: 'right', characterSpacing: 0.3 });
   doc.x = M;
-  doc.y += 24;
+  doc.y = startY + 24;
 }
 
 // ─── Bloc total (bandeau navy) ────────────────────────────────────────────────
@@ -297,11 +300,8 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
     doc.font('Helvetica-Bold').fontSize(9.5).fillColor(C.body)
       .text(locataireNom + entreprise, rx, bY + 22, { width: halfW - 20 });
     doc.font('Helvetica').fontSize(8.5).fillColor(C.grey)
-      .text(reservation.adresse || '—', rx, bY + 35, { width: halfW - 20 });
-    if (reservation.email) {
-      doc.font('Helvetica').fontSize(8.5).fillColor(C.grey)
-        .text(reservation.email, rx, bY + 57, { width: halfW - 20 });
-    }
+      .text(reservation.adresse || '—', rx, bY + 35, { width: halfW - 20 })
+      .text(reservation.email || '', rx, bY + 47, { width: halfW - 20 });
 
     doc.x = M;
     doc.y = bY + boxH + 16;
@@ -317,15 +317,16 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
     // ── Articles ──────────────────────────────────────────────────────────
     function article(num, titre, texte) {
       if (doc.y > PH - M - 110) doc.addPage();
-      doc.moveDown(0.5);
+      doc.moveDown(0.7);
       doc.font('Helvetica-Bold').fontSize(9.5).fillColor(C.navy)
         .text(`Article ${num} — ${titre}`, M, doc.y, { width: W });
       doc.moveDown(0.25);
       doc.font('Helvetica').fontSize(9).fillColor(C.body)
         .text(texte, M, doc.y, { width: W, align: 'justify', lineGap: 2.5 });
       doc.x = M;
-      doc.moveDown(0.25);
+      doc.moveDown(0.4);
       hLine(doc, M, doc.y, W, C.ruleL, 0.5);
+      doc.y += 3;
     }
 
     article(1, 'Parties',
@@ -468,7 +469,7 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement }) {
     doc.moveDown(0.3);
 
     // ── Tableau prestations ───────────────────────────────────────────────
-    drawSectionTitle(doc, 'Désignation des prestations');
+    drawSectionTitle(doc, 'Prestations facturées');
     drawTableHeader(doc);
 
     const jours    = nbJours(reservation.date_debut, reservation.date_fin);
@@ -501,7 +502,7 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement }) {
 
     drawInvoiceItem(doc, {
       label: isTech ? 'Option installation par technicien qualifié' : 'Installation en autonomie (kit fourni sans perçage)',
-      amount: eur(instCents),
+      amount: isTech ? eur(instCents) : 'Offert',
     });
 
     if (Math.abs(ecart) >= 1) {
@@ -583,11 +584,11 @@ function generateFactureVentePdf({ reservation, appareil, numero, montantCents, 
     doc.moveDown(0.3);
 
     // ── Tableau ───────────────────────────────────────────────────────────
-    drawSectionTitle(doc, 'Désignation');
+    drawSectionTitle(doc, 'Détail de la vente');
     drawTableHeader(doc);
 
     const modStr = appareil && appareil.modele
-      ? ` · ${(appareil.modele.marque || '')} ${(appareil.modele.modele || '')}`.trim()
+      ? ` · ${[appareil.modele.marque || '', appareil.modele.modele || ''].filter(Boolean).join(' ')}`
       : '';
     drawInvoiceItem(doc, {
       label: 'Vente climatiseur mobile — Offre Privilège',
