@@ -18,6 +18,7 @@ const NOTIFICATION_LABEL = {
   post_installation:   'Installation terminée',
   rappel_recuperation: 'Récupération programmée demain',
   fin_location:        'Location terminée',
+  offre_privilege:     'Offre spéciale : gardez votre climatiseur',
 };
 
 function joursRestants(dateFin) {
