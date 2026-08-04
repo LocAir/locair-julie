@@ -540,6 +540,9 @@ module.exports = async (req, res) => {
       if (body.statut === 'en_attente' && ['terminee', 'remboursee', 'annulee'].includes(before.statut)) {
         return res.status(422).json({ error: `Impossible de réactiver une réservation ${before.statut}.` });
       }
+      if (body.statut === 'remboursee' && !roleHasAccess(admin.role, 'finances')) {
+        return res.status(403).json({ error: "Seul un compte finances peut marquer manuellement une réservation remboursée — utilise l'action de remboursement Stripe." });
+      }
       if (body.statut != null && STATUTS_VALIDES.includes(body.statut)) patch.statut = body.statut;
       if (body.quantite != null) patch.quantite = Math.max(1, parseInt(body.quantite) || 1);
       if (body.prix_total_cents != null) patch.prix_total_cents = Math.max(0, parseInt(body.prix_total_cents) || 0);

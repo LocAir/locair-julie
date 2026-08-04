@@ -20,7 +20,11 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const ip = getClientIp(req);
-  if (await isRateLimited(getSupabase(), `checkout:${ip}`)) return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
+  try {
+    if (await isRateLimited(getSupabase(), `checkout:${ip}`)) return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
+  } catch (rlErr) {
+    console.error('[Checkout rateLimit]', rlErr.message);
+  }
 
   const data   = req.body || {};
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -40,7 +44,7 @@ module.exports = async (req, res) => {
   }
 
   const duree = Math.min(90, Math.max(7, parseInt(data.duree) || 7));
-  const qty   = Math.min(5, Math.max(1, parseInt((data.quantite || '1').replace(/[^0-9]/g, '')) || 1));
+  const qty   = Math.min(5, Math.max(1, parseInt(String(data.quantite ?? '1').replace(/[^0-9]/g, '')) || 1));
   const baseCents     = calcBase(duree) * qty * 100;
   const isTech        = (data.installation || '').startsWith('Technicien');
   const installCents  = isTech ? INSTALL_FEE * 100 : 0;
@@ -183,7 +187,7 @@ module.exports = async (req, res) => {
         promo:        promoCode,
         customer_id:  customerId,
       },
-    });
+    }, { idempotencyKey: `checkout-${(data._ref || '').slice(0, 40)}-${amountCents}` });
 
     const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  city.id,
@@ -253,7 +257,9 @@ module.exports = async (req, res) => {
     // reservation_fenetres dans schema.sql. Absente/vide pour une seule
     // fenêtre : reservations.fenetre suffit alors, rien à écrire ici.
     try {
-      const detail = JSON.parse(data.fenetre_detail || '{}');
+      const detail = typeof data.fenetre_detail === 'object' && data.fenetre_detail !== null
+        ? data.fenetre_detail
+        : JSON.parse(typeof data.fenetre_detail === 'string' ? data.fenetre_detail || '{}' : '{}');
       const rows = Object.entries(detail)
         .filter(([type, qty]) => type && Number.isInteger(qty) && qty > 0)
         .map(([type, qty]) => ({ reservation_id: insertedResa.id, type: String(type).slice(0, 100), quantite: qty }));

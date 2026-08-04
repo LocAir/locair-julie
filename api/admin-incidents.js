@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 
 const ASSURANCE_STATUTS_VALIDES = ['non_declare', 'declare', 'en_attente_reponse', 'remboursee', 'refusee'];
@@ -19,7 +20,8 @@ function sanitizeCents(v) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
 
   const body   = req.body || {};
   const action = body.action || 'list';
@@ -101,6 +103,7 @@ module.exports = async (req, res) => {
     // de l'argent dû en route. Champs indépendants du statut de
     // traitement de l'incident lui-même (nouveau/en_analyse/résolu...).
     if (action === 'update_assurance') {
+      if (!roleHasAccess(admin.role, 'finances')) return res.status(403).json({ error: "Ton compte n'a pas accès aux données financières des incidents." });
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'Paramètres manquants' });
       if (body.assurance_statut != null && !ASSURANCE_STATUTS_VALIDES.includes(body.assurance_statut)) {

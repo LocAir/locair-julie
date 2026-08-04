@@ -155,7 +155,7 @@ async function handlePaymentFailed(supabase, intent) {
   const resa = await findReservationByPaymentIntent(supabase, intent.id);
   const raison = intent.last_payment_error?.message || 'raison inconnue';
   if (resa && resa.statut === 'en_attente') {
-    await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', resa.id);
+    await supabase.from('reservations').update({ statut: 'annulee' }).eq('id', resa.id).eq('statut', 'en_attente');
   }
   await logPaymentIncident(supabase, {
     cityId: resa?.city_id,
@@ -276,11 +276,20 @@ async function handleChargeRefunded(supabase, charge) {
             });
           }
         }
-        const { data: liens } = await supabase.from('reservation_appareils').select('appareil_id').eq('reservation_id', resa.id);
-        for (const l of (liens || [])) {
-          await releaseAppareilFromReservation(supabase, {
-            appareilId: l.appareil_id, reservationId: resa.id, cityId: resa.city_id, motif: 'réservation remboursée',
-          });
+        try {
+          const { data: liens } = await supabase.from('reservation_appareils').select('appareil_id').eq('reservation_id', resa.id);
+          for (const l of (liens || [])) {
+            await releaseAppareilFromReservation(supabase, {
+              appareilId: l.appareil_id, reservationId: resa.id, cityId: resa.city_id, motif: 'réservation remboursée',
+            });
+          }
+        } catch (releaseErr) {
+          console.error('[handleChargeRefunded] releaseAppareil échoué — appareil peut rester loué:', releaseErr.message);
+          await pushToAdmin(supabase, {
+            title: '⚠️ Sync stock échouée après remboursement',
+            body: `Dossier ${resa.ref || resa.id} — vérifier manuellement le statut des appareils.`,
+            tag: `release-failed-${resa.id}`,
+          }).catch(() => {});
         }
       }
       // Sinon (livraison déjà faite) : le climatiseur est physiquement chez le
@@ -419,6 +428,11 @@ const handler = async (req, res) => {
       const offreId = parseInt(meta.offre_id);
       if (!offreId) {
         console.error('[Offre privilège webhook] offre_id manquant dans metadata Stripe, piId:', piId);
+        await pushToAdmin(getSupabase(), {
+          title: '⚠️ Paiement Offre Privilège non traité',
+          body: `offre_id absent dans les metadata Stripe — PI ${piId} — vérifier manuellement dans Stripe.`,
+          tag: `offre-privilege-missing-${piId}`,
+        }).catch(() => {});
       } else {
         try {
           await handleOffrePrivilegeAccepted(getSupabase(), offreId);
@@ -599,6 +613,13 @@ const handler = async (req, res) => {
           .maybeSingle(),
       ]);
       if (!smsDejaEnvoye && !smsEmailSentLock) {
+        // Verrou pré-envoi : si deux instances Stripe traitent le même webhook
+        // en parallèle, seule la première qui réussit l'INSERT envoie le SMS.
+        const { error: smsPreLockErr } = await getSupabase().from('email_sent')
+          .insert({ reservation_id: confirmedResa.id, scenario: 'sms_confirmation', sent_at: new Date().toISOString() });
+        if (smsPreLockErr) {
+          // Une autre instance a déjà acquis le verrou — ne pas envoyer
+        } else {
         const lang = confirmedResa.lang || meta.lang || 'fr';
         const d = meta.date ? new Date(meta.date + 'T12:00:00Z') : null;
         let smsConfirmationContent;
@@ -617,6 +638,10 @@ const handler = async (req, res) => {
           smsConfirmationContent = `Loc'Air - Votre réservation est confirmée.${dateStr ? ' Livraison prévue le ' + dateStr : ''}${meta.creneau ? ', créneau ' + meta.creneau : ''} Notre technicien vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
         }
         const smsResult = await sendBrevoSms({ to: meta.tel, content: smsConfirmationContent });
+        if (!smsResult.ok) {
+          await getSupabase().from('email_sent').delete()
+            .eq('reservation_id', confirmedResa.id).eq('scenario', 'sms_confirmation').then(() => {}, () => {});
+        }
         await getSupabase().from('email_log').insert({
           reservation_id: confirmedResa.id, scenario: 'sms_confirmation', canal: 'sms',
           destinataire: meta.tel, modele: 'sms_confirmation',
@@ -624,6 +649,7 @@ const handler = async (req, res) => {
           erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
           contenu: smsConfirmationContent,
         }).then(() => {}, () => {});
+        } // fin else (verrou acquis)
       }
     }
 

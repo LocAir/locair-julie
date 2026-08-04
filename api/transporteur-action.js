@@ -191,8 +191,9 @@ module.exports = async (req, res) => {
       if (liv.statut !== 'en_route') return res.status(409).json({ error: 'Mission pas encore en route' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
-      const { error: arriverErr } = await supabase.from('livraisons').update({ statut: 'arrivee', arrivee_at: new Date().toISOString() }).eq('id', liv.id);
+      const { data: arriverClaimed, error: arriverErr } = await supabase.from('livraisons').update({ statut: 'arrivee', arrivee_at: new Date().toISOString() }).eq('id', liv.id).eq('statut', 'en_route').select('id');
       if (arriverErr) throw arriverErr;
+      if (!arriverClaimed || !arriverClaimed.length) return res.status(409).json({ error: 'Mission pas encore en route' });
       return res.status(200).json({ ok: true, statut: 'arrivee' });
     }
 
@@ -246,7 +247,7 @@ module.exports = async (req, res) => {
           installation: liv.reservation.installation,
         });
         if (newTid && newTid !== transporteurId) {
-          await supabase.from('livraisons').update({ transporteur_id: newTid, statut: 'a_faire' }).eq('id', liv.id);
+          await supabase.from('livraisons').update({ transporteur_id: newTid, statut: 'a_faire' }).eq('id', liv.id).eq('statut', 'a_faire').eq('transporteur_id', transporteurId);
           await notifyTransporteur(supabase, newTid, {
             type: 'nouvelle_mission',
             message: "Une mission vous a été réassignée — ouvre l'app pour l'accepter.",
@@ -308,7 +309,7 @@ module.exports = async (req, res) => {
       const path = (body.path || '').trim();
       const mediaErr = checkMediaAllowed(liv, kind);
       if (mediaErr) return res.status(400).json({ error: mediaErr });
-      if (!path || !path.startsWith(`${liv.id}/`)) {
+      if (!path || path.includes('..') || !path.startsWith(`${liv.id}/`)) {
         return res.status(400).json({ error: 'Média invalide' });
       }
       await supabase.from('livraisons').update({ [MEDIA_COLUMN[kind]]: path }).eq('id', liv.id);
