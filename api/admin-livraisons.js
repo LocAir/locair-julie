@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
@@ -62,7 +63,8 @@ async function sendRecuperationReprogrammeeSms(supabase, { reservationId, tel, l
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
 
   const body   = req.body || {};
   const action = body.action || 'list';
@@ -333,6 +335,7 @@ module.exports = async (req, res) => {
         if (body.adresse_libre != null) patch.adresse_libre = (body.adresse_libre || '').trim().slice(0, 500) || null;
         if (body.montant_du_cents != null) patch.montant_du_cents = Math.max(0, parseInt(body.montant_du_cents) || 0);
       } else if (body.montant_du_cents != null) {
+        if (!roleHasAccess(admin.role, 'finances')) return res.status(403).json({ error: "Ton compte ne peut pas modifier le montant d'une mission." });
         // Tarif transporteur fixé à la main (ex. mission hors zone payée
         // 95€ au lieu du barème standard) — montant_manuel empêche
         // computeBareme() d'écraser cette valeur au passage à "fait" (voir
