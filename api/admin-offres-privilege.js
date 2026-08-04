@@ -158,7 +158,10 @@ module.exports = async (req, res) => {
       if (offre.statut !== 'acceptee') return res.status(400).json({ error: "Cette offre n'a pas encore été achetée" });
       if (!offre.stripe_payment_intent_id) return res.status(400).json({ error: 'Aucun paiement Stripe associé à cette offre' });
 
-      const montantCents = body.montant_cents != null ? Math.max(0, parseInt(body.montant_cents) || 0) : offre.prix_vente_cents;
+      const montantCents = Math.min(
+        body.montant_cents != null ? Math.max(0, parseInt(body.montant_cents) || 0) : offre.prix_vente_cents,
+        offre.prix_vente_cents,
+      );
       if (!montantCents) return res.status(400).json({ error: 'Montant invalide' });
 
       let refund;
