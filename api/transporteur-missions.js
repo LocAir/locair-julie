@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
     const { data, error } = await supabase
       .from('livraisons')
       .select(`
-        id, type, statut, date_prevue, creneau, titre, adresse_libre, montant_du_cents,
+        id, type, statut, date_prevue, creneau, titre, adresse_libre, montant_du_cents, montant_manuel,
         photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path, client_notifie_at,
         demo_faite, incident_id,
         vidange_confirmee,
@@ -93,8 +93,13 @@ module.exports = async (req, res) => {
       type:                m.type,
       installation:        m.reservation?.installation || null,
       // "autre" : pas de barème, le tarif est fixé une fois pour toutes par
-      // l'admin à la création (montant_du_cents), jamais recalculé ici.
-      montant_preview:     m.type === 'autre' ? (m.montant_du_cents || 0) : computeBareme(m.type, m.reservation?.installation, baremeByCity[m.reservation?.city_id], m.reservation?.hors_zone),
+      // l'admin à la création (montant_du_cents), jamais recalculé ici. Même
+      // règle pour une mission dont l'admin a fixé le montant à la main
+      // (montant_manuel, ex. tarif hors zone négocié à 95€ au lieu du barème
+      // standard — voir admin-livraisons.js) et pour une mission déjà "fait" :
+      // sans ce garde-fou, le transporteur voyait le barème standard recalculé
+      // au lieu du montant réellement fixé/payé (audit du 2026-08-04).
+      montant_preview:     (m.type === 'autre' || m.montant_manuel || m.statut === 'fait') ? (m.montant_du_cents || 0) : computeBareme(m.type, m.reservation?.installation, baremeByCity[m.reservation?.city_id], m.reservation?.hors_zone),
       statut:              m.statut,
       date_prevue:         m.date_prevue,
       creneau:             m.creneau,
