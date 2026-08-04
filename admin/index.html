@@ -8532,13 +8532,20 @@ async function loadTutoriels(){
   }
 }
 function tutoVideoRowHtml(v){
+  // Fichier manquant = seul état qui demande une action tout de suite — un
+  // chip ambre (même code couleur que le reste de l'admin pour "à faire")
+  // au lieu d'une simple ligne de texte discrète, pour que ça saute aux yeux
+  // dans une liste qui peut vite s'allonger.
+  const manque = !v.storage_path;
   return `
-    <div class="row-item">
+    <div class="row-item"${manque?' style="border-left:3px solid var(--amber)"':''}>
       <div class="row-top">
         <span class="row-title">${escHtml(v.titre)}${v.sous_categorie?' · '+escHtml(v.sous_categorie):''}</span>
-        <span class="chip ${v.actif?'actif':'inactif'}">${v.actif?'active':'désactivée'}</span>
+        <span style="display:flex;gap:6px;align-items:center">
+          ${manque?'<span class="chip" style="background:var(--amber-bg);color:var(--amber)">⏳ Fichier à envoyer</span>':''}
+          <span class="chip ${v.actif?'actif':'inactif'}">${v.actif?'active':'désactivée'}</span>
+        </span>
       </div>
-      <div class="row-meta">${v.storage_path?'✅ Fichier envoyé':'⏳ Pas encore de fichier'}</div>
       <div class="row-actions">
         ${v.storage_path?`<button class="btn btn-grey" onclick="viewTutoVideo(${v.id})">▶️ Voir</button>`:''}
         <button class="btn btn-blue" id="tuto-upload-btn-${v.id}" onclick="startTutoUpload(${v.id})">${v.storage_path?'🔄 Remplacer le fichier':'📤 Envoyer le fichier'}</button>
@@ -8555,9 +8562,21 @@ function tutoVideoRowHtml(v){
 }
 function renderTutoriels(){
   const zone = document.getElementById('tab-tutoriels');
+  // Sujets actifs d'abord, désactivés relégués en bas et grisés (même logique
+  // que partout ailleurs dans l'admin — Équipe, Ambassadeurs...) : ce qui est
+  // exploitable aujourd'hui doit sauter aux yeux avant ce qui ne l'est pas.
+  const catsTriees = [...TUTO_CATEGORIES].sort((a,b) => (a.actif===b.actif) ? 0 : (a.actif ? -1 : 1));
+  const nbSujetsActifs = TUTO_CATEGORIES.filter(c => c.actif).length;
+  const nbEnvoyees = TUTO_VIDEOS_CACHE.filter(v => v.storage_path).length;
+  const nbAEnvoyer = TUTO_VIDEOS_CACHE.filter(v => !v.storage_path).length;
   zone.innerHTML = `
-    <div class="affect-hint">💡 Ces vidéos sont partagées par toutes les villes — une seule bibliothèque, pas besoin de les uploader plusieurs fois.</div>
-    ${TUTO_CATEGORIES.map(cat => {
+    <p class="sub" style="margin:-4px 0 14px">Les vidéos ci-dessous s'affichent aux transporteurs dans leur appli, pour leur expliquer chaque étape (accès au box, installation, chargement...). Une seule bibliothèque, partagée par toutes les villes — pas besoin de les envoyer plusieurs fois.</p>
+    <div class="stat-grid">
+      <div class="stat-tile"><div class="n">${nbSujetsActifs}</div><div class="l">Sujets actifs</div></div>
+      <div class="stat-tile"><div class="n" style="color:var(--green)">${nbEnvoyees}</div><div class="l">Vidéos envoyées</div></div>
+      <div class="stat-tile"><div class="n" style="color:${nbAEnvoyer?'var(--amber)':'var(--grey)'}">${nbAEnvoyer}</div><div class="l">À envoyer</div></div>
+    </div>
+    ${catsTriees.map(cat => {
       const videos = TUTO_VIDEOS_CACHE.filter(v => v.categorie === cat.key);
       if(!cat.actif){
         const sousTypesHtml = cat.sousTypes ? `<div class="row-meta">${cat.sousTypes.join(' · ')}</div>` : '';
