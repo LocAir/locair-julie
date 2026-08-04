@@ -178,6 +178,9 @@ module.exports = async (req, res) => {
       }
       const { data: resa } = await supabase.from('reservations').select('*').eq('id', reservationId).in('city_id', cityIds).maybeSingle();
       if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
+      if (!['confirmee', 'terminee'].includes(resa.statut)) {
+        return res.status(400).json({ error: `Impossible de générer les documents pour une réservation en statut "${resa.statut}"` });
+      }
 
       const resultats = {};
       if (wantLocation) {

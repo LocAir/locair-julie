@@ -26,7 +26,7 @@ module.exports = async (req, res) => {
     const [{ data: appareilsRaw, error: appErr }, { data: resasRaw, error: resaErr }] = await Promise.all([
       supabase.from('appareils').select('numero, statut').eq('city_id', transporteur.city_id).order('numero'),
       supabase.from('reservations')
-        .select('id, prenom, nom, statut, masquee, date_debut, date_fin, reservation_appareils ( appareil:appareils ( numero ) )')
+        .select('id, prenom, statut, masquee, date_debut, date_fin, reservation_appareils ( appareil:appareils ( numero ) )')
         .eq('city_id', transporteur.city_id)
         .eq('masquee', false)
         .gte('date_fin', winStart.toISOString().slice(0, 10))
@@ -38,7 +38,6 @@ module.exports = async (req, res) => {
     const reservations = (resasRaw || []).map(r => ({
       id:               r.id,
       prenom:           r.prenom,
-      nom:              r.nom,
       statut:           r.statut,
       masquee:          r.masquee,
       date_debut:       r.date_debut,
