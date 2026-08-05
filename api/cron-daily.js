@@ -343,21 +343,6 @@ module.exports = async (req, res) => {
     const { data: appareils } = await supabase
       .from('appareils').select('id, numero, city_id, localisation').eq('statut', 'disponible');
 
-    // Un seul aller-retour pour tout le parc plutôt qu'une requête "count" PAR
-    // appareil (même correctif que admin-stock.js "entretien_liste") — sans
-    // ça, un parc de plusieurs centaines de climatiseurs déclenchait autant
-    // de requêtes séquentielles, au risque de dépasser le temps limite d'une
-    // fonction Vercel.
-    const idsMaintenance = (appareils || []).map(a => a.id);
-    const locationsParAppareil = new Map();
-    if (idsMaintenance.length) {
-      const { data: liensMaintenance } = await supabase
-        .from('reservation_appareils').select('appareil_id').in('appareil_id', idsMaintenance);
-      for (const l of liensMaintenance || []) {
-        locationsParAppareil.set(l.appareil_id, (locationsParAppareil.get(l.appareil_id) || 0) + 1);
-      }
-    }
-
     let maintenanceCount = 0;
     for (const app of appareils || []) {
       // Try/catch PAR appareil : recordMouvement relance une exception sur
@@ -366,8 +351,10 @@ module.exports = async (req, res) => {
       // suivants de la liste ce jour-là, silencieusement (seul le compteur
       // 'catch' englobant plus bas aurait loggé, sans jamais reprendre).
       try {
-        const count = locationsParAppareil.get(app.id) || 0;
-        if (count < SEUIL) continue;
+        const { count } = await supabase
+          .from('reservation_appareils').select('id', { count: 'exact', head: true })
+          .eq('appareil_id', app.id);
+        if ((count || 0) < SEUIL) continue;
 
         const [{ data: derniereAlerte }, { data: dernierRetourDispo }] = await Promise.all([
           supabase.from('appareil_mouvements').select('created_at')
@@ -420,27 +407,14 @@ module.exports = async (req, res) => {
     const { data: appareilsControle } = await supabase
       .from('appareils').select('id, numero, localisation').eq('statut', 'disponible');
 
-    // Un seul aller-retour pour tout le parc plutôt qu'une requête PAR
-    // appareil (même correctif que admin-stock.js "entretien_liste" et que le
-    // bloc maintenance ci-dessus).
-    const idsControle = (appareilsControle || []).map(a => a.id);
-    const mouvementsParAppareil = new Map();
-    if (idsControle.length) {
-      const { data: tousMouvements } = await supabase
-        .from('appareil_mouvements').select('appareil_id, type_evenement, commentaire, created_at')
-        .in('appareil_id', idsControle).in('type_evenement', ['passage_maintenance', 'autre'])
-        .order('created_at', { ascending: false });
-      for (const m of tousMouvements || []) {
-        if (!mouvementsParAppareil.has(m.appareil_id)) mouvementsParAppareil.set(m.appareil_id, []);
-        mouvementsParAppareil.get(m.appareil_id).push(m);
-      }
-    }
-
     let controleCalendaireCount = 0;
     for (const app of appareilsControle || []) {
       try {
-        const mouvements = mouvementsParAppareil.get(app.id) || [];
-        const dernierControle = mouvements.find(m => m.type_evenement === 'passage_maintenance' || (m.commentaire || '').startsWith(CONTROLE_MARQUEUR));
+        const { data: mouvements } = await supabase
+          .from('appareil_mouvements').select('type_evenement, commentaire, created_at')
+          .eq('appareil_id', app.id).in('type_evenement', ['passage_maintenance', 'autre'])
+          .order('created_at', { ascending: false });
+        const dernierControle = (mouvements || []).find(m => m.type_evenement === 'passage_maintenance' || (m.commentaire || '').startsWith(CONTROLE_MARQUEUR));
         const controleAncien = !dernierControle || dernierControle.created_at < seuilControleDate;
         if (!controleAncien) continue;
 
@@ -483,25 +457,12 @@ module.exports = async (req, res) => {
       .from('appareils').select('id, numero, statut, city_id')
       .in('statut', ['panne', 'maintenance', 'nettoyage']);
 
-    // Un seul aller-retour pour tous les appareils bloqués plutôt qu'une
-    // requête "dernier mouvement" PAR appareil (même correctif que les 2
-    // blocs ci-dessus) — trié une fois, on garde ensuite le premier
-    // (=le plus récent) rencontré pour chaque appareil.
-    const idsBloques = (bloques || []).map(a => a.id);
-    const dernierParAppareil = new Map();
-    if (idsBloques.length) {
-      const { data: tousLesDerniers } = await supabase
-        .from('appareil_mouvements').select('appareil_id, created_at')
-        .in('appareil_id', idsBloques).order('created_at', { ascending: false });
-      for (const m of tousLesDerniers || []) {
-        if (!dernierParAppareil.has(m.appareil_id)) dernierParAppareil.set(m.appareil_id, m);
-      }
-    }
-
     let bloqueCount = 0;
     for (const app of bloques || []) {
       // Dernier mouvement de CET appareil : depuis quand est-il dans cet état ?
-      const dernier = dernierParAppareil.get(app.id);
+      const { data: dernier } = await supabase
+        .from('appareil_mouvements').select('created_at')
+        .eq('appareil_id', app.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
       if (!dernier || dernier.created_at > seuilDate) continue;
 
       const joursBloque = Math.round((Date.now() - new Date(dernier.created_at).getTime()) / 86400000);

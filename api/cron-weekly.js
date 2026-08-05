@@ -36,39 +36,32 @@ async function runWeeklyReport(supabase) {
   if (dejaSent) return { skipped: true, reason: 'already_sent_today' };
 
   {
-    // Les 4 requêtes ci-dessous sont indépendantes (aucune ne dépend du
-    // résultat d'une autre) — un seul aller-retour groupé plutôt que 4 l'un
-    // après l'autre.
-    const [
-      { data: livDone },
-      { count: newResas },
-      { count: incidentsOuverts },
-      { count: virementsEnAttente },
-    ] = await Promise.all([
-      // Missions effectuées cette semaine
-      supabase
-        .from('livraisons')
-        .select('montant_du_cents, type, transporteur_id')
-        .eq('statut', 'fait')
-        .gte('fait_at', weekAgoStr + 'T00:00:00Z')
-        .lt('fait_at', todayStr + 'T00:00:00Z'),
-      // Nouvelles réservations
-      supabase
-        .from('reservations').select('id', { count: 'exact', head: true })
-        .gte('created_at', weekAgoStr + 'T00:00:00Z').lt('created_at', todayStr + 'T00:00:00Z')
-        .neq('statut', 'annulee'),
-      // Incidents ouverts
-      supabase
-        .from('incidents').select('id', { count: 'exact', head: true }).in('statut', INCIDENT_OPEN_STATUSES),
-      // Virements en attente
-      supabase
-        .from('virements').select('id', { count: 'exact', head: true }).eq('statut', 'demande'),
-    ]);
+    // Missions effectuées cette semaine
+    const { data: livDone } = await supabase
+      .from('livraisons')
+      .select('montant_du_cents, type, transporteur_id')
+      .eq('statut', 'fait')
+      .gte('fait_at', weekAgoStr + 'T00:00:00Z')
+      .lt('fait_at', todayStr + 'T00:00:00Z');
 
     const totalCA   = (livDone || []).reduce((s, l) => s + (l.montant_du_cents || 0), 0);
     const nbMissions = (livDone || []).length;
     const nbLiv     = (livDone || []).filter(l => l.type === 'livraison').length;
     const nbRecup   = (livDone || []).filter(l => l.type === 'recuperation').length;
+
+    // Nouvelles réservations
+    const { count: newResas } = await supabase
+      .from('reservations').select('id', { count: 'exact', head: true })
+      .gte('created_at', weekAgoStr + 'T00:00:00Z').lt('created_at', todayStr + 'T00:00:00Z')
+      .neq('statut', 'annulee');
+
+    // Incidents ouverts
+    const { count: incidentsOuverts } = await supabase
+      .from('incidents').select('id', { count: 'exact', head: true }).in('statut', INCIDENT_OPEN_STATUSES);
+
+    // Virements en attente
+    const { count: virementsEnAttente } = await supabase
+      .from('virements').select('id', { count: 'exact', head: true }).eq('statut', 'demande');
 
     const totalEur = (totalCA / 100).toFixed(2);
     const adminEmail = process.env.ADMIN_EMAIL || 'contact@locair.fr';
