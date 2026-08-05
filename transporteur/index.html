@@ -2718,6 +2718,43 @@ function updateMissionFinalButton(){
   btn.disabled = uploadPending || etatMaterielMissing || (boxes.length > 0 && Array.from(boxes).some(b => !b.checked));
 }
 
+// Prend un instantané de tout ce que le livreur a déjà rempli sur l'écran
+// final (checklist cochée, état du matériel, commentaire) avant un
+// renderDetail() qui reconstruit tout le HTML de zéro. Sans ça, la
+// confirmation d'un envoi de photo en arrière-plan (voir uploadMedia) —
+// qui arrive typiquement PENDANT que le livreur remplit cet écran, vu que
+// la photo passe en optimiste et le laisse avancer tout de suite — effaçait
+// silencieusement tout ce qu'il venait de cocher/écrire, sans aucun message :
+// il devait tout refaire sans comprendre pourquoi (bug remonté par Aly,
+// même famille que le souci de course "photo_pending", 2026-08-05).
+function captureFinalFormState(){
+  if(!document.getElementById('mission-final-btn')) return null;
+  const state = { checklist: {}, restock: [] };
+  document.querySelectorAll('.checklist-final-cb').forEach(cb => { state.checklist[cb.dataset.itemId] = cb.checked; });
+  document.querySelectorAll('.checklist-restock-cb').forEach((cb, i) => { state.restock[i] = cb.checked; });
+  const etatEl = document.querySelector('input[name="etat-materiel"]:checked');
+  if(etatEl) state.etatMateriel = etatEl.value;
+  const commentEl = document.getElementById('etat-materiel-commentaire');
+  if(commentEl) state.commentaire = commentEl.value;
+  return state;
+}
+function restoreFinalFormState(state){
+  if(!state) return;
+  document.querySelectorAll('.checklist-final-cb').forEach(cb => {
+    if(state.checklist[cb.dataset.itemId] !== undefined) cb.checked = state.checklist[cb.dataset.itemId];
+  });
+  document.querySelectorAll('.checklist-restock-cb').forEach((cb, i) => {
+    if(state.restock[i] !== undefined) cb.checked = state.restock[i];
+  });
+  if(state.etatMateriel){
+    const el = document.querySelector(`input[name="etat-materiel"][value="${state.etatMateriel}"]`);
+    if(el) el.checked = true;
+  }
+  const commentEl = document.getElementById('etat-materiel-commentaire');
+  if(commentEl && state.commentaire) commentEl.value = state.commentaire;
+  updateMissionFinalButton();
+}
+
 // Checklist administrable (Module 5, Parties 5/7) — cases à cocher avant de
 // valider "Installation/Récupération terminée". Le bouton "Terminé" reste
 // désactivé tant qu'il en manque une (voir updateMissionFinalButton) ; le
@@ -3537,7 +3574,15 @@ async function uploadMedia(rawFile, kind, mission){
     // plus haut, seulement si le livreur regarde toujours cette mission.
     mission[kind + '_ok'] = true;
     mission[kind + '_pending'] = false;
-    if(STATE.currentMission === mission) renderDetail();
+    if(STATE.currentMission === mission){
+      // Voir captureFinalFormState() : cette confirmation arrive typiquement
+      // pendant que le livreur remplit déjà l'écran final (checklist, état du
+      // matériel) — sans cette sauvegarde/restauration, renderDetail() ci-
+      // dessous effacerait tout ce qu'il vient de cocher/écrire.
+      const formState = captureFinalFormState();
+      renderDetail();
+      restoreFinalFormState(formState);
+    }
   }catch(err){
     // Régression du jour (commit 56f82aa, "ne plus bloquer le bouton
     // Confirmer si réseau faible") : cette condition avait été inversée en
@@ -3550,8 +3595,14 @@ async function uploadMedia(rawFile, kind, mission){
     if(STATE.currentMission === mission){
       // renderDetail() reconstruit les boutons avec leurs bons états
       // disabled/actifs (ex. "Livraison OK" doit rester verrouillé tant que
-      // la vidéo n'est pas confirmée) — pas un simple re-enable en bloc.
+      // la vidéo n'est pas confirmée) — pas un simple re-enable en bloc. Même
+      // sauvegarde/restauration qu'au succès ci-dessus (captureFinalFormState) :
+      // un échec d'envoi pendant que le livreur a déjà rempli l'écran final
+      // ne doit pas non plus lui faire tout perdre en plus de devoir reprendre
+      // sa photo.
+      const formState = captureFinalFormState();
       renderDetail();
+      restoreFinalFormState(formState);
       const zone2 = document.getElementById('action-zone');
       if(zone2){
         const errEl = document.createElement('div');
