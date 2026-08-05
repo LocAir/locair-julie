@@ -113,7 +113,7 @@ function tplConfirmation(ctx) {
       <strong>Livraison :</strong> ${escHtml(ctx.dateDebutFmt)}${ctx.creneau ? ' · ' + escHtml(ctx.creneau) : ''}<br/>
       <strong>Récupération :</strong> ${escHtml(ctx.dateRecupFmt)}<br/>
       <strong>Climatiseur :</strong> ${escHtml(ctx.modeleClimatiseur)}<br/>
-      <strong>Installation :</strong> ${escHtml(ctx.installation || 'Autonome')}<br/>
+      <strong>Installation :</strong> ${escHtml(installationLabel('fr', ctx.installation))}<br/>
       <strong>Montant :</strong> ${escHtml(ctx.montantFmt)}</p>
       <p style="font-size:13px;color:#444">Le technicien vous appellera <strong>30 min avant d'arriver</strong>.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
