@@ -3464,13 +3464,16 @@ async function compressImage(file, maxDim, quality){
 // connexion.
 //
 // Bug réel identifié sur le terrain (capture à l'appui, iPhone/Safari,
-// 2026-08-05) : fetch() avec un Blob/File directement comme body échoue de
-// façon SYSTÉMATIQUE sur Safari ("TypeError: Load failed"), même en wifi/4G
-// pleine barre — un bug WebKit connu dans la façon dont Safari streame un
-// Blob en corps de requête, sans rapport avec la qualité du réseau (les 5
-// tentatives échouaient donc toujours, chacune instantanément). Contournement
-// standard : lire le fichier en ArrayBuffer avant l'envoi — Safari n'a pas ce
-// problème avec un corps déjà entièrement en mémoire.
+// 2026-08-05) : "TypeError: Load failed" systématique, en wifi/4G pleine
+// barre, sur les 5 tentatives, à chaque fois instantanément. Vraie cause
+// trouvée après coup : la Content-Security-Policy du site (vercel.json,
+// directive connect-src) n'autorisait pas les requêtes vers le domaine de
+// stockage Supabase (*.supabase.co) — le navigateur bloquait donc le fetch()
+// AVANT même de tenter la connexion réseau, d'où l'échec instantané et
+// identique à chaque tentative, indépendant du réseau. Corrigé en ajoutant
+// https://*.supabase.co à connect-src. La lecture en ArrayBuffer ci-dessous
+// n'était pas la vraie cause mais reste inoffensive et est conservée par
+// prudence (corps de requête entièrement en mémoire avant l'envoi).
 async function putFileWithRetry(url, file, contentType, attempts){
   attempts = attempts || 5;
   let lastErr;
@@ -3485,13 +3488,12 @@ async function putFileWithRetry(url, file, contentType, attempts){
     }
   }
   // Un fetch qui échoue avant toute réponse peut avoir plusieurs causes bien
-  // distinctes (vraie coupure réseau, mais aussi un bug navigateur comme
-  // celui de Safari corrigé ci-dessus, une URL signée expirée, un blocage
-  // CORS...) — le message ne présume donc plus "réseau faible" (ça a induit
-  // un vrai transporteur en erreur alors qu'il avait pourtant du réseau,
-  // 2026-08-05), juste que l'envoi a échoué. Le détail technique réel reste
-  // affiché en petit dessous (voir err.detail dans uploadMedia) pour un vrai
-  // diagnostic si ça se reproduit.
+  // distinctes (vraie coupure réseau, blocage CSP/CORS, URL signée expirée...)
+  // — le message ne présume donc plus "réseau faible" (ça a induit un vrai
+  // transporteur en erreur alors qu'il avait pourtant du réseau, 2026-08-05),
+  // juste que l'envoi a échoué. Le détail technique réel reste affiché en
+  // petit dessous (voir err.detail dans uploadMedia) pour un vrai diagnostic
+  // si ça se reproduit.
   const finalErr = new Error("Envoi échoué — reprends la photo pour réessayer.");
   finalErr.detail = lastErr ? `${lastErr.name || 'Error'}: ${lastErr.message || ''}` : '';
   throw finalErr;
