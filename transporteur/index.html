@@ -3459,15 +3459,26 @@ async function compressImage(file, maxDim, quality){
   });
 }
 // Envoi direct vers Supabase Storage avec quelques tentatives en cas de
-// coupure réseau (fetch qui échoue sans réponse, ex. "Load failed" — fréquent
-// sur le terrain pour une vidéo un peu lourde) — ne réessaie jamais une vraie
-// erreur HTTP (413 fichier trop lourd, etc.), seulement un échec de connexion.
+// coupure réseau (fetch qui échoue sans réponse) — ne réessaie jamais une
+// vraie erreur HTTP (413 fichier trop lourd, etc.), seulement un échec de
+// connexion.
+//
+// Bug réel identifié sur le terrain (capture à l'appui, iPhone/Safari,
+// 2026-08-05) : fetch() avec un Blob/File directement comme body échoue de
+// façon SYSTÉMATIQUE sur Safari ("TypeError: Load failed"), même en wifi/4G
+// pleine barre — un bug WebKit connu dans la façon dont Safari streame un
+// Blob en corps de requête, sans rapport avec la qualité du réseau (les 5
+// tentatives échouaient donc toujours, chacune instantanément). Contournement
+// standard : lire le fichier en ArrayBuffer avant l'envoi — Safari n'a pas ce
+// problème avec un corps déjà entièrement en mémoire.
 async function putFileWithRetry(url, file, contentType, attempts){
   attempts = attempts || 5;
   let lastErr;
+  let body = file;
+  try{ body = await file.arrayBuffer(); }catch(e){ /* repli sur le Blob/File d'origine si arrayBuffer() indisponible */ }
   for(let i=0; i<attempts; i++){
     try{
-      return await fetch(url, {method:'PUT', headers:{'Content-Type': contentType || 'application/octet-stream'}, body: file});
+      return await fetch(url, {method:'PUT', headers:{'Content-Type': contentType || 'application/octet-stream'}, body});
     }catch(e){
       lastErr = e;
       if(i < attempts-1) await new Promise(r => setTimeout(r, 2000));
