@@ -2660,13 +2660,18 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   const checklistErrorHtml = (checklistLoading && STATE.checklistItemsError) ? `
     <p class="step-hint" style="color:var(--red)">⚠️ Impossible de charger la checklist — vérifie ta connexion.</p>
     <button class="btn btn-grey btn-block" style="margin-bottom:10px" onclick="fetchChecklistItems().then(renderDetail)">🔄 Réessayer</button>` : '';
+  // À l'affichage initial, aucune case "état du matériel" n'est jamais
+  // pré-cochée (radio) — le bouton démarre donc désactivé pour une
+  // récupération, et updateMissionFinalButton() le réactive dès qu'un choix
+  // est fait (voir aussi ce commentaire là-bas).
+  const etatMaterielMissing = m.type === 'recuperation';
   return `
     <p class="step-hint">🎉 Tout est prêt — vérifie la checklist puis valide pour terminer la mission.</p>
     ${checklistLoading ? (STATE.checklistItemsError ? checklistErrorHtml : '<p class="step-hint" style="color:var(--grey)">Chargement de la checklist…</p>') : (checklistWorkflow ? checklistFinalHtml(checklistWorkflow) : '')}
     ${m.type==='recuperation' ? etatMaterielHtml() : ''}
     ${isLastRecup ? checklistRestockHtml() : ''}
     ${uploadPending ? '<p class="step-hint" style="color:var(--grey)">⏳ Envoi de la photo en cours…</p>' : ''}
-    <button class="btn btn-green btn-block" id="mission-final-btn" ${(isLastRecup||hasFinalChecklist||checklistLoading||uploadPending)?'disabled':''} onclick="submitFinalMission('${okAction}')">${okLabel}</button>`;
+    <button class="btn btn-green btn-block" id="mission-final-btn" ${(isLastRecup||hasFinalChecklist||checklistLoading||uploadPending||etatMaterielMissing)?'disabled':''} onclick="submitFinalMission('${okAction}')">${okLabel}</button>`;
 }
 // Dernière récupération de la journée pour ce transporteur (aucune autre
 // récupération encore active aujourd'hui) : à ce moment, il doit passer par
@@ -2705,7 +2710,12 @@ function updateMissionFinalButton(){
   // cours (voir wizardStepBodyHtml, cas 'final') — sans ce garde-fou, cocher
   // une case de checklist pendant l'envoi réactivait le bouton trop tôt.
   const uploadPending = m && Boolean(m.photo_retour_pending || m.photo_installation_pending);
-  btn.disabled = uploadPending || (boxes.length > 0 && Array.from(boxes).some(b => !b.checked));
+  // À la récupération, l'état du matériel est obligatoire côté serveur (voir
+  // transporteur-action.js) mais rien ne l'imposait côté écran — le livreur
+  // pouvait taper "RETOUR OK" sans avoir choisi de case, et se prendre un
+  // refus serveur pour une raison pas évidente à deviner depuis le bouton.
+  const etatMaterielMissing = m && m.type === 'recuperation' && !document.querySelector('input[name="etat-materiel"]:checked');
+  btn.disabled = uploadPending || etatMaterielMissing || (boxes.length > 0 && Array.from(boxes).some(b => !b.checked));
 }
 
 // Checklist administrable (Module 5, Parties 5/7) — cases à cocher avant de
@@ -2753,7 +2763,7 @@ function etatMaterielHtml(){
     <div class="card" style="margin-bottom:12px">
       ${Object.entries(ETAT_MATERIEL_LABEL).map(([val,lbl]) => `
         <label style="display:flex;align-items:center;gap:10px;padding:6px 0">
-          <input type="radio" name="etat-materiel" value="${val}" style="width:22px;height:22px;flex-shrink:0">
+          <input type="radio" name="etat-materiel" value="${val}" onchange="updateMissionFinalButton()" style="width:22px;height:22px;flex-shrink:0">
           <span>${lbl}</span>
         </label>`).join('')}
       <textarea id="etat-materiel-commentaire" placeholder="Commentaire (optionnel)" style="width:100%;margin-top:8px;padding:10px;border-radius:10px;border:1px solid var(--rule);font-family:inherit;font-size:14px" rows="2"></textarea>
