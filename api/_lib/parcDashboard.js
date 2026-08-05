@@ -7,14 +7,16 @@ async function computeParcDashboard(supabase, cityId) {
   // Un appareil "vendu" (Offre Privilège) a définitivement quitté le parc de
   // location — il ne doit plus apparaître dans aucun des compteurs ici,
   // exactement comme s'il n'avait jamais existé pour ce tableau de bord.
-  const { data: appareils } = await supabase.from('appareils').select('id, statut').eq('city_id', cityId).neq('statut', 'vendu');
-  const list = appareils || [];
-
+  // Les 3 requêtes ci-dessous ne dépendent pas les unes des autres — un seul
+  // aller-retour groupé plutôt que 3 l'un après l'autre (cette fonction est
+  // appelée à chaque rafraîchissement du tableau de bord admin).
   const today = todayParis();
-  const [{ data: liens }, { data: livsEnCours }] = await Promise.all([
+  const [{ data: appareils }, { data: liens }, { data: livsEnCours }] = await Promise.all([
+    supabase.from('appareils').select('id, statut').eq('city_id', cityId).neq('statut', 'vendu'),
     supabase.from('reservation_appareils').select('appareil_id, reservation_id, reservation:reservations(statut, date_debut, date_fin)'),
     supabase.from('livraisons').select('reservation_id').eq('type', 'livraison').not('statut', 'in', '(fait,annule,refusee)'),
   ]);
+  const list = appareils || [];
   // Un appareil peut être physiquement en location (réservation confirmée
   // couvrant aujourd'hui) sans que son statut en base ait déjà été aligné
   // sur "loué" — cet alignement n'a lieu qu'au moment où l'onglet Stock est
