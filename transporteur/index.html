@@ -3485,14 +3485,14 @@ async function putFileWithRetry(url, file, contentType, attempts){
     }
   }
   // Un fetch qui échoue avant toute réponse peut avoir plusieurs causes bien
-  // distinctes (vraie coupure réseau, mais aussi une URL signée expirée, un
-  // blocage CORS, etc.) — toutes rendent le même symptôme générique côté
-  // navigateur ("Failed to fetch"), donc le message affiché au livreur reste
-  // volontairement simple et actionnable (retenter/signaler). Le détail
-  // technique réel est conservé à part (voir err.detail, affiché en petit
-  // sous le message dans uploadMedia) pour permettre un vrai diagnostic si
-  // ça se reproduit alors que le réseau est pourtant bon.
-  const finalErr = new Error('Envoi échoué (réseau faible) — reprends la photo pour réessayer.');
+  // distinctes (vraie coupure réseau, mais aussi un bug navigateur comme
+  // celui de Safari corrigé ci-dessus, une URL signée expirée, un blocage
+  // CORS...) — le message ne présume donc plus "réseau faible" (ça a induit
+  // un vrai transporteur en erreur alors qu'il avait pourtant du réseau,
+  // 2026-08-05), juste que l'envoi a échoué. Le détail technique réel reste
+  // affiché en petit dessous (voir err.detail dans uploadMedia) pour un vrai
+  // diagnostic si ça se reproduit.
+  const finalErr = new Error("Envoi échoué — reprends la photo pour réessayer.");
   finalErr.detail = lastErr ? `${lastErr.name || 'Error'}: ${lastErr.message || ''}` : '';
   throw finalErr;
 }
