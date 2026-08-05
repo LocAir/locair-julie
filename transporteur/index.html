@@ -2693,7 +2693,10 @@ function isLastRecuperationOfDay(m){
 }
 function checklistRestockHtml(){
   return `
-    <div class="section-title" style="margin:14px 0 2px 2px">🎒 Prêt pour la prochaine récupération ?</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin:14px 0 2px 2px">
+      <div class="section-title" style="margin:0">🎒 Prêt pour la prochaine récupération ?</div>
+      <button type="button" class="btn-chip" style="flex-shrink:0;white-space:nowrap;margin-top:2px" onclick="checkAllRestockChecklist()">✅ Tout cocher</button>
+    </div>
     <p class="sub" style="margin:0 0 6px 2px">Dernière récupération de la journée — passe par le box pour tout déposer et recharger ton sac avant la prochaine tournée.</p>
     <div class="card" style="margin-bottom:12px">
       ${Object.keys(CHECKLIST_FIXE_LABELS).map(key => `
@@ -2702,6 +2705,13 @@ function checklistRestockHtml(){
           <span>${CHECKLIST_FIXE_LABELS[key]}</span>
         </label>`).join('')}
     </div>`;
+}
+// Même geste que checkAllChecklistBox()/checkAllFinalChecklist() : tout cocher
+// d'un coup plutôt que case par case — même liste de matériel fixe que la
+// checklist du matin, autant garder le même bouton pour un geste habituel.
+function checkAllRestockChecklist(){
+  document.querySelectorAll('.checklist-restock-cb').forEach(cb => { cb.checked = true; });
+  updateMissionFinalButton();
 }
 // Bloque "Terminé" tant qu'il reste une case décochée, que ce soit la
 // checklist administrable (installation/récupération) ou le rappel matériel
