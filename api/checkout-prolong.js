@@ -236,7 +236,15 @@ module.exports = async (req, res) => {
       installation:             orig?.installation         || null,
       instructions_acces:       orig?.instructions_acces   || null,
       logement:                 orig?.logement             || null,
-      creneau:                  (data.creneau || orig?.creneau || '').slice(0, 500),
+      // orig?.creneau retiré du repli (audit du 2026-08-05) : c'est le
+      // créneau de LIVRAISON de la réservation d'origine, sans aucun rapport
+      // avec la récupération de cette prolongation — se retrouvait affiché
+      // à tort comme "créneau choisi" dans le mail/SMS de confirmation et
+      // posé sur la mission de récupération elle-même (voir
+      // confirmReservation, _lib/reservations.js). data.creneau (vide
+      // aujourd'hui, aucun parcours client ne le collecte ici) reste géré
+      // au cas où un choix de créneau serait ajouté à ce formulaire un jour.
+      creneau:                  (data.creneau || '').slice(0, 500),
       date_debut:               extDateDebut,
       date_fin:                 extDateFin,
       quantite:                 qty,

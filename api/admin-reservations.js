@@ -375,7 +375,15 @@ module.exports = async (req, res) => {
         fenetre_photo_path: orig.fenetre_photo_path || null,
         installation:       orig.installation       || null,
         instructions_acces: orig.instructions_acces || null,
-        creneau:            orig.creneau            || null,
+        // creneau : PAS copié ici (contrairement aux champs ci-dessus) — audit
+        // du 2026-08-05 : orig.creneau est le créneau de LIVRAISON choisi il y
+        // a des semaines/mois pour l'installation initiale, sans aucun
+        // rapport avec la récupération de cette prolongation. Copié par
+        // erreur jusqu'ici, il se retrouvait affiché comme "créneau" dans le
+        // mail/SMS de confirmation de prolongation ET posé sur la mission de
+        // récupération elle-même (voir confirmReservation, _lib/reservations.js)
+        // — un horaire totalement fictif que ni le client ni le transporteur
+        // n'avaient jamais choisi pour ce rendez-vous.
         logement:           orig.logement           || null,
         date_debut: orig.date_fin, date_fin: newDateFin, quantite: orig.quantite || 1,
         prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'site_prolongation',

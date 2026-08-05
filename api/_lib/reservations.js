@@ -649,8 +649,13 @@ async function confirmReservation(supabase, resa) {
     // dans l'email de confirmation, jamais dans le planning admin/livreur.
     // Pour une réservation normale, resa.creneau = créneau de LIVRAISON choisi
     // par le client (la récupération reste "coordonnée par l'équipe", jamais
-    // choisie côté site — pas de créneau à pré-remplir). Pour une prolongation,
-    // resa.creneau = créneau de RÉCUPÉRATION choisi par le client.
+    // choisie côté site — pas de créneau à pré-remplir). Pour une
+    // prolongation, resa.creneau est vide en pratique (aucun parcours client
+    // ne fait choisir de créneau de récupération au moment de prolonger —
+    // audit du 2026-08-05, corrigé à la source dans admin-reservations.js et
+    // checkout-prolong.js, qui copiaient par erreur le créneau de livraison
+    // de la réservation d'origine) : seul client-recup.js pose un vrai
+    // créneau de récupération, après coup, directement sur cette mission.
     //
     // La récupération est toujours programmée le lendemain (J+1) de la fin de
     // location, jamais le jour même : le client profite de son climatiseur

@@ -308,7 +308,14 @@ function tplPostInstallation(ctx) {
   });
 }
 
-// 6. Avant fin de location (proposition de prolongation)
+// 6. Avant fin de location (2 options : prolonger, ou choisir son créneau de
+// récupération) — aligné sur le SMS sms_relance_prolongation (même sujet,
+// envoyé quelques jours plus tôt, voir _lib/reservations.js) : avant ce
+// correctif (audit du 2026-08-05), cet email ne proposait QUE de prolonger,
+// vers une page à part (/prolongation) différente du lien du SMS — un
+// client qui recevait les deux se retrouvait avec 2 messages incohérents
+// sur le même sujet. Pointe maintenant vers l'espace client, qui propose
+// réellement les deux (client/index.html + api/client-recup.js).
 function tplAvantFinLocation(ctx) {
   const l = ctx.lang || 'fr';
   const p = escHtml(ctx.prenom), ref = escHtml(ctx.ref);
@@ -319,11 +326,11 @@ function tplAvantFinLocation(ctx) {
       <p>Hello ${p},</p>
       <p>Your AC will be collected on <strong>${escHtml(ctx.dateRecupFmt)}</strong>. Still feeling the heat?</p>
       <div class="box" style="text-align:center">
-        <p style="margin:0 0 8px;font-weight:700;font-size:15px">Extend your rental</p>
-        <p style="margin:0;color:#666">Add days in a few clicks using your booking ref (${escHtml(ctx.ref)})</p>
+        <p style="margin:0 0 8px;font-weight:700;font-size:15px">From your client space, in a few clicks:</p>
+        <p style="margin:0;color:#666">Extend your rental, or choose your collection time slot — booking ref ${escHtml(ctx.ref)}</p>
       </div>
       <p style="font-size:13px;color:#888">If you don't need to extend, our team will collect the unit on the scheduled date.</p>`,
-    ctaHref: ctx.lienProlongation, ctaLabel: 'Extend my rental',
+    ctaHref: ctx.lienEspaceClient, ctaLabel: 'My client space',
   });
   if (l === 'zh') return wrap({
     title: '您的租赁即将结束',
@@ -332,11 +339,11 @@ function tplAvantFinLocation(ctx) {
       <p>您好 ${p}，</p>
       <p>您的空调将于 <strong>${escHtml(ctx.dateRecupFmt)}</strong> 取回。天气还是很热吗？</p>
       <div class="box" style="text-align:center">
-        <p style="margin:0 0 8px;font-weight:700;font-size:15px">续租延长</p>
-        <p style="margin:0;color:#666">使用您的订单编号（${escHtml(ctx.ref)}）几步即可续租</p>
+        <p style="margin:0 0 8px;font-weight:700;font-size:15px">在您的客户空间，只需几步：</p>
+        <p style="margin:0;color:#666">续租，或选择取回时间段 — 订单编号 ${escHtml(ctx.ref)}</p>
       </div>
       <p style="font-size:13px;color:#888">如不需要续租，我们的团队将按计划日期取回设备。</p>`,
-    ctaHref: ctx.lienProlongation, ctaLabel: '续租延长',
+    ctaHref: ctx.lienEspaceClient, ctaLabel: '我的客户空间',
   });
   if (l === 'ru') return wrap({
     title: 'Срок аренды скоро истекает',
@@ -345,11 +352,11 @@ function tplAvantFinLocation(ctx) {
       <p>Здравствуйте, ${p}!</p>
       <p>Ваш кондиционер заберут <strong>${escHtml(ctx.dateRecupFmt)}</strong>. Всё ещё жарко?</p>
       <div class="box" style="text-align:center">
-        <p style="margin:0 0 8px;font-weight:700;font-size:15px">Продлить аренду</p>
-        <p style="margin:0;color:#666">Добавьте дни в несколько кликов, используя номер заказа (${escHtml(ctx.ref)})</p>
+        <p style="margin:0 0 8px;font-weight:700;font-size:15px">В личном кабинете, в несколько кликов:</p>
+        <p style="margin:0;color:#666">Продлите аренду или выберите время возврата — номер заказа ${escHtml(ctx.ref)}</p>
       </div>
       <p style="font-size:13px;color:#888">Если продление не нужно, наша команда заберёт устройство в запланированную дату.</p>`,
-    ctaHref: ctx.lienProlongation, ctaLabel: 'Продлить аренду',
+    ctaHref: ctx.lienEspaceClient, ctaLabel: 'Личный кабинет',
   });
   return wrap({
     title: 'Votre location se termine bientôt',
@@ -358,11 +365,11 @@ function tplAvantFinLocation(ctx) {
       <p>Bonjour ${p},</p>
       <p>Votre climatiseur sera récupéré le <strong>${escHtml(ctx.dateRecupFmt)}</strong>. La chaleur est toujours là ?</p>
       <div class="box" style="text-align:center">
-        <p style="margin:0 0 8px;font-weight:700;font-size:15px">Prolongez votre location</p>
-        <p style="margin:0;color:#666">Ajoutez des jours en quelques clics avec votre numéro de commande (${escHtml(ctx.ref)})</p>
+        <p style="margin:0 0 8px;font-weight:700;font-size:15px">Depuis votre espace client, en quelques clics :</p>
+        <p style="margin:0;color:#666">Prolongez votre location, ou choisissez votre créneau de récupération — numéro de commande ${escHtml(ctx.ref)}</p>
       </div>
       <p style="font-size:13px;color:#888">Si vous n'avez pas besoin de prolonger, notre équipe récupérera l'appareil à la date prévue.</p>`,
-    ctaHref: ctx.lienProlongation, ctaLabel: 'Prolonger ma location',
+    ctaHref: ctx.lienEspaceClient, ctaLabel: 'Mon espace client',
   });
 }
 
@@ -489,12 +496,23 @@ function tplFinLocation(ctx) {
 // et ne doit jamais lui être montré : la seule référence qu'il connaît et
 // dont il a besoin (espace client, appel au support) est celle de sa
 // réservation d'origine, `ref_origine` — c'est elle qui pilote l'affichage.
+// `creneau` : jamais fiable à la création d'une prolongation (aucun parcours
+// client — page /prolongation ou espace client — ne fait choisir de créneau
+// de récupération au moment de prolonger ; seul client-recup.js le permet,
+// après coup). Avant le correctif du 2026-08-05 (audit), ce paramètre
+// recevait par erreur le créneau de LIVRAISON de la réservation d'origine
+// (copié dans admin-reservations.js/checkout-prolong.js), affiché ici comme
+// si le client l'avait choisi pour SA récupération — jamais le cas. La
+// ligne "Créneau" ne s'affiche donc que si une vraie valeur est fournie.
 function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recuperation, creneau, adresse, amount, lienEspaceClient, lang }) {
   const l = lang || 'fr';
   const jNum = Number(jours) || 1;
   const p = escHtml(prenom || '');
   const refBox = ref_origine ? `<div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">${l === 'en' ? 'BOOKING REF' : l === 'zh' ? '订单编号' : l === 'ru' ? 'НОМЕР ЗАКАЗА' : 'DOSSIER'}</p><strong style="font-size:18px;color:#1b3a5f">${escHtml(ref_origine)}</strong></div>` : '';
   const adresseRow = adresse ? `<strong>${l === 'en' ? 'Address' : l === 'zh' ? '地址' : l === 'ru' ? 'Адрес' : 'Adresse'} :</strong> ${escHtml(adresse)}<br/>` : '';
+  const creneauRow = creneau
+    ? `<strong>${l === 'en' ? 'Time slot' : l === 'zh' ? '时间段' : l === 'ru' ? 'Временной слот' : 'Créneau'} :</strong> ${escHtml(creneau)}<br/>`
+    : '';
   if (l === 'en') return wrap({
     title: 'Extension confirmed!',
     intro: `Thank you ${p}, your payment of ${escHtml(amount)} has been received.`,
@@ -503,8 +521,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
       <p><strong>Name:</strong> ${p} ${escHtml(nom || '')}<br/>
       ${adresseRow}<strong>Extra days:</strong> ${jNum} day${jNum > 1 ? 's' : ''}<br/>
       <strong>New collection date:</strong> ${escHtml(date_recuperation || '—')}<br/>
-      <strong>Time slot:</strong> ${escHtml(creneau || '—')}<br/>
-      <strong>Amount paid:</strong> ${escHtml(amount)}</p>
+      ${creneauRow}<strong>Amount paid:</strong> ${escHtml(amount)}</p>
       <p style="font-size:13px;color:#444">Our technician will contact you the day before collection to confirm the time slot.</p>
       ${lienEspaceClient ? `<p style="font-size:13px;color:#444">You can view your updated rental dates at any time in <a href="${lienEspaceClient}" style="color:#1b3a5f;font-weight:700">your account</a>.</p>` : ''}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
@@ -517,8 +534,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
       <p><strong>姓名：</strong>${p} ${escHtml(nom || '')}<br/>
       ${adresseRow}<strong>续租天数：</strong>${jNum} 天<br/>
       <strong>新取回日期：</strong>${escHtml(date_recuperation || '—')}<br/>
-      <strong>时间段：</strong>${escHtml(creneau || '—')}<br/>
-      <strong>支付金额：</strong>${escHtml(amount)}</p>
+      ${creneauRow}<strong>支付金额：</strong>${escHtml(amount)}</p>
       <p style="font-size:13px;color:#444">我们的技术员将在取回前一天联系您确认具体时间。</p>
       ${lienEspaceClient ? `<p style="font-size:13px;color:#444">您可随时在<a href="${lienEspaceClient}" style="color:#1b3a5f;font-weight:700">我的账户</a>查看更新后的租赁日期。</p>` : ''}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
@@ -531,8 +547,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
       <p><strong>Имя:</strong> ${p} ${escHtml(nom || '')}<br/>
       ${adresseRow}<strong>Дополнительные дни:</strong> ${jNum} ${jNum === 1 ? 'день' : jNum < 5 ? 'дня' : 'дней'}<br/>
       <strong>Новая дата возврата:</strong> ${escHtml(date_recuperation || '—')}<br/>
-      <strong>Временной слот:</strong> ${escHtml(creneau || '—')}<br/>
-      <strong>Уплачено:</strong> ${escHtml(amount)}</p>
+      ${creneauRow}<strong>Уплачено:</strong> ${escHtml(amount)}</p>
       <p style="font-size:13px;color:#444">Наш мастер свяжется с вами накануне возврата для подтверждения времени.</p>
       ${lienEspaceClient ? `<p style="font-size:13px;color:#444">Вы можете проверить обновлённые даты аренды в <a href="${lienEspaceClient}" style="color:#1b3a5f;font-weight:700">личном кабинете</a> в любое время.</p>` : ''}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
@@ -545,8 +560,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
       <p><strong>Client :</strong> ${p} ${escHtml(nom || '')}<br/>
       ${adresseRow}<strong>Jours supplémentaires :</strong> ${jNum} jour${jNum > 1 ? 's' : ''}<br/>
       <strong>Récupération le :</strong> ${escHtml(date_recuperation || '—')}<br/>
-      <strong>Créneau :</strong> ${escHtml(creneau || '—')}<br/>
-      <strong>Montant payé :</strong> ${escHtml(amount)}</p>
+      ${creneauRow}<strong>Montant payé :</strong> ${escHtml(amount)}</p>
       <p style="font-size:13px;color:#444">Notre technicien vous contactera la veille de la récupération pour confirmer le créneau.</p>
       ${lienEspaceClient ? `<p style="font-size:13px;color:#444">Vous pouvez consulter vos nouvelles dates à tout moment dans <a href="${lienEspaceClient}" style="color:#1b3a5f;font-weight:700">votre espace client</a>.</p>` : ''}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
