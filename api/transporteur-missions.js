@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
 const { computeBareme, getBaremeByCityIds } = require('./_lib/bareme');
+const { getEffectiveDateFin } = require('./_lib/reservations');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -70,6 +71,7 @@ module.exports = async (req, res) => {
         vidange_confirmee,
         probleme_type, probleme_description,
         reservation:reservations (
+          id, reservation_origine_id,
           prenom, nom, tel, tel_secondaire, type_client, raison_sociale, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, quantite, instructions_acces, city_id, hors_zone,
           date_debut, date_fin,
           reservation_appareils ( appareil:appareils ( numero ) ),
@@ -87,6 +89,28 @@ module.exports = async (req, res) => {
       getBaremeByCityIds(supabase, (data || []).map(m => m.reservation?.city_id)),
       supabase.from('transporteurs').select('en_pause').eq('id', transporteurId).maybeSingle(),
     ]);
+
+    // "Location jusqu'au …" (affiché au transporteur sur une récupération)
+    // doit refléter une éventuelle prolongation, sans dépendre des multiples
+    // mises à jour "fire-and-forget" de reservations.date_fin qui peuvent
+    // rater (webhook.js, admin-reservations.js) — même filet de sécurité que
+    // l'espace client (client-dashboard.js) et le parcours d'achat d'une
+    // prolongation (checkout-prolong.js/prolong-pay.js) : on recalcule la
+    // date de fin réelle à partir de la réservation racine (une prolongation
+    // pointe toujours vers la racine, jamais vers la prolongation précédente,
+    // voir checkout-prolong.js) plutôt que de faire confiance à la colonne
+    // telle quelle. Un cache par id de racine évite de refaire le calcul
+    // plusieurs fois pour la même réservation dans la même liste.
+    const effectiveDateFinCache = new Map();
+    await Promise.all((data || []).map(async (m) => {
+      if (m.type !== 'recuperation' || !m.reservation) return;
+      const rootId = m.reservation.reservation_origine_id || m.reservation.id;
+      if (!rootId) return;
+      if (!effectiveDateFinCache.has(rootId)) {
+        effectiveDateFinCache.set(rootId, getEffectiveDateFin(supabase, rootId, m.reservation.date_fin).catch(() => m.reservation.date_fin));
+      }
+      m.reservation.date_fin = await effectiveDateFinCache.get(rootId);
+    }));
 
     const missions = (data || []).map(m => ({
       id:                  m.id,
