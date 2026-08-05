@@ -1,6 +1,7 @@
 const { extractPostalCode } = require('./postal');
 const { pushToAdmin } = require('./push');
 const { getAvailability } = require('./stock');
+const { todayParis, addDays } = require('./dates');
 
 // Source unique de vérité pour "cette ville est-elle en mode complet ?" —
 // partagée entre /api/mode-complet (affichage site) et le blocage serveur
@@ -13,8 +14,8 @@ const { getAvailability } = require('./stock');
 async function isCitySoldOut(supabase, city) {
   if (!city) return false;
   if (city.sold_out_mode === 'manuel') return Boolean(city.sold_out);
-  const today    = new Date().toISOString().slice(0, 10);
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const today    = todayParis();
+  const tomorrow = addDays(today, 1);
   const disponibles = Math.max(0, await getAvailability(supabase, city.id, today, tomorrow));
   return disponibles <= 0;
 }

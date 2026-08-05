@@ -1,3 +1,5 @@
+const { todayParis } = require('./dates');
+
 // Compteurs du parc pour une ville — partagés entre admin-stock.js (onglet
 // Stock) et admin-dashboard.js (Module 7, bloc "État du parc" sur l'écran
 // Accueil), pour ne calculer cette logique qu'à un seul endroit.
@@ -8,7 +10,7 @@ async function computeParcDashboard(supabase, cityId) {
   const { data: appareils } = await supabase.from('appareils').select('id, statut').eq('city_id', cityId).neq('statut', 'vendu');
   const list = appareils || [];
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayParis();
   const [{ data: liens }, { data: livsEnCours }] = await Promise.all([
     supabase.from('reservation_appareils').select('appareil_id, reservation_id, reservation:reservations(statut, date_debut, date_fin)'),
     supabase.from('livraisons').select('reservation_id').eq('type', 'livraison').not('statut', 'in', '(fait,annule,refusee)'),
