@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity, notifyIfSoldOut } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
-const { isValidDate, addDays } = require('./_lib/dates');
+const { isValidDate, addDays, todayParis } = require('./_lib/dates');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
 const { confirmReservation, sendConfirmationCommunications, sendProlongationConfirmation } = require('./_lib/reservations');
@@ -141,7 +141,7 @@ module.exports = async (req, res) => {
       // du stock disponible et la date des missions livraison/récupération),
       // donc jamais laissées vides : à défaut, aujourd'hui → +7 jours.
       let dateDebut = (body.date_debut || '').slice(0, 10);
-      if (!isValidDate(dateDebut)) dateDebut = new Date().toISOString().slice(0, 10);
+      if (!isValidDate(dateDebut)) dateDebut = todayParis();
       let dateFin = (body.date_fin || '').slice(0, 10);
       if (!isValidDate(dateFin) || dateFin <= dateDebut) {
         const d = new Date(dateDebut + 'T12:00:00Z');

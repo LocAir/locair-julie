@@ -2,6 +2,7 @@ const { getSupabase }    = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
+const { todayParis } = require('./_lib/dates');
 
 // ── Performance score (100 pts) ────────────────────────────────────────────
 // 5 critères pondérés : acceptation (25), complétion (30), notif client (20),
@@ -142,7 +143,7 @@ module.exports = async (req, res) => {
       if (tErr) throw tErr;
 
       const d30 = new Date(); d30.setDate(d30.getDate()-30);
-      const todayStr = new Date().toISOString().slice(0,10);
+      const todayStr = todayParis();
       const tIds = (tList||[]).map(t => t.id);
       const { data: livs30 } = tIds.length
         ? await supabase.from('livraisons')
@@ -202,7 +203,7 @@ module.exports = async (req, res) => {
       // fiabilité sur ce qui a déjà eu lieu, jamais sur des missions
       // programmées dans le futur qui n'ont pas encore eu la chance d'être
       // acceptées/terminées.
-      const todayStr = new Date().toISOString().slice(0,10);
+      const todayStr = todayParis();
       const missionsDues = missions.filter(m => m.date_prevue <= todayStr);
 
       return res.status(200).json({

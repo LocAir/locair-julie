@@ -5,7 +5,7 @@ const { checkAdminToken, checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { computeParcDashboard } = require('./_lib/parcDashboard');
-const { isValidDate, addDays } = require('./_lib/dates');
+const { isValidDate, addDays, todayParis } = require('./_lib/dates');
 
 // Export comptable (Module 8) — un CA agrégé n'existe nulle part ailleurs
 // dans le code : ca_total_ville (RPC) et ca_euros (computeCityStats
@@ -155,7 +155,7 @@ async function computeCityStats(supabase, city, periode, since) {
   // Bloc "Logistique" (Module 7, Bloc 5) : au-delà du seul résumé du jour
   // déjà affiché plus haut — missions en cours, terminées sur la période,
   // et en retard, tous types confondus (livraison/récupération/changement).
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayParis();
   const { count: missionsEnCours } = await supabase
     .from('livraisons')
     .select('id, reservation:reservations!inner(city_id)', { count: 'exact', head: true })
@@ -240,7 +240,7 @@ async function computePrevisions(supabase, cities) {
   }));
   const flotteTotale = flottes.reduce((s, n) => s + n, 0);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayParis();
   const NB_SEMAINES = 8;
   const semaines = await Promise.all(
     Array.from({ length: NB_SEMAINES }, (_, i) => {

@@ -8,6 +8,7 @@ const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { sendScenarioEmail, fmtDate } = require('./_lib/emailEngine');
 const { sendBrevoSms } = require('./_lib/brevo');
 const { setAppareilsStatutForReservation, releaseAppareilFromReservation, moveAppareilsForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
+const { todayParis } = require('./_lib/dates');
 
 const MEDIA_COLUMN = {
   photo_depart:       'photo_depart_path',
@@ -157,7 +158,7 @@ module.exports = async (req, res) => {
         const titre = (body.titre || '').trim().slice(0, 200) || 'Mission libre';
         const adresseLibre = (body.adresse_libre || '').trim().slice(0, 500);
         let datePrevueAutre = (body.date_prevue || '').slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(datePrevueAutre)) datePrevueAutre = new Date().toISOString().slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(datePrevueAutre)) datePrevueAutre = todayParis();
         const transporteurIdAutre = body.transporteur_id ? parseInt(body.transporteur_id) : null;
         if (transporteurIdAutre) {
           const { data: t } = await supabase.from('transporteurs').select('id').eq('id', transporteurIdAutre).eq('city_id', city.id).maybeSingle();

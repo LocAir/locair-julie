@@ -5,6 +5,7 @@ const { SCENARIOS, sendScenarioEmail } = require('./_lib/emailEngine');
 const { upcomingScenariosForReservation } = require('./_lib/emailSchedule');
 const { buildCommunicationsCockpit, scenarioLibelle, EVENT_SCENARIOS, SMS_DATED_SCENARIOS } = require('./_lib/communicationsCockpit');
 const { sendRelanceProlongationSms, sendRappelRecuperationSms } = require('./_lib/reservations');
+const { todayParis } = require('./_lib/dates');
 
 const RESEND_ERROR_LABEL = {
   no_email: "Ce client n'a pas d'email enregistré",
@@ -154,7 +155,7 @@ module.exports = async (req, res) => {
       const resaIds = (resas || []).map(r => r.id);
       if (!resaIds.length) return res.status(200).json({ sent: [], upcoming: [], evenementiels: [] });
 
-      const todayISO = new Date().toISOString().slice(0, 10);
+      const todayISO = todayParis();
       const [logRes, sentRes, skipRes, scenariosRes] = await Promise.all([
         supabase.from('email_log').select('id, reservation_id, scenario, canal, destinataire, statut, erreur, created_at')
           .in('reservation_id', resaIds).order('created_at', { ascending: false }).limit(200),

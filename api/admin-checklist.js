@@ -1,7 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
-const { isValidDate } = require('./_lib/dates');
+const { isValidDate, todayParis } = require('./_lib/dates');
 const { computeChecklistBox } = require('./_lib/checklistBox');
 
 // Vue journalière pour l'admin : la checklist box de chaque transporteur actif
@@ -19,7 +19,7 @@ module.exports = async (req, res) => {
     const city = await resolveAdminCity(supabase, body);
     if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
 
-    const dateISO = isValidDate(body.date) ? body.date : new Date().toISOString().slice(0, 10);
+    const dateISO = isValidDate(body.date) ? body.date : todayParis();
 
     const { data: transporteurs, error } = await supabase
       .from('transporteurs').select('id, nom')

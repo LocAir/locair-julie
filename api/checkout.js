@@ -2,7 +2,7 @@ const Stripe = require('stripe');
 const { getSupabase }         = require('./_lib/supabase');
 const { resolveCityByAddress } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
-const { isValidDate, addDays } = require('./_lib/dates');
+const { isValidDate, addDays, todayParis } = require('./_lib/dates');
 const { calcTieredPrice }      = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { matchPromoPct } = require('./_lib/promo');
@@ -60,7 +60,7 @@ module.exports = async (req, res) => {
   if (!isValidDate(dateDebut)) {
     return res.status(400).json({ error: 'Date de livraison invalide' });
   }
-  if (dateDebut < new Date().toISOString().slice(0, 10)) {
+  if (dateDebut < todayParis()) {
     return res.status(400).json({ error: 'La date de livraison ne peut pas être dans le passé.' });
   }
   const dateFin  = addDays(dateDebut, duree);

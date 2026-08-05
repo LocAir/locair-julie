@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
 const { computeChecklistBox } = require('./_lib/checklistBox');
+const { todayParis } = require('./_lib/dates');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -13,7 +14,7 @@ module.exports = async (req, res) => {
   const action = body.action || 'get';
   // Toujours le jour du transporteur qui consulte, jamais une date fournie
   // par le client — cette checklist n'a de sens que pour "aujourd'hui".
-  const dateISO = new Date().toISOString().slice(0, 10);
+  const dateISO = todayParis();
 
   try {
     if (action === 'get') {

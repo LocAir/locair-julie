@@ -2,6 +2,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
+const { todayParis } = require('./_lib/dates');
 
 // Suivi des commandes fournisseurs (Module 8) — la prévision de demande
 // (api/admin-dashboard.js, action 'previsions') dit "il faut racheter du
@@ -71,7 +72,7 @@ module.exports = async (req, res) => {
       if (!before || before.city_id !== city.id) return res.status(404).json({ error: 'Commande introuvable' });
 
       const patch = { statut: body.statut };
-      if (body.statut === 'livree') patch.date_livraison_reelle = new Date().toISOString().slice(0, 10);
+      if (body.statut === 'livree') patch.date_livraison_reelle = todayParis();
       const { error } = await supabase.from('commandes_fournisseur').update(patch).eq('id', id);
       if (error) throw error;
       return res.status(200).json({ ok: true });

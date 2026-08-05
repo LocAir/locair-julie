@@ -3,6 +3,7 @@ const { resolveAdminCity, listCities } = require('./_lib/city');
 const { checkAdminToken } = require('./_lib/auth');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
+const { todayParis } = require('./_lib/dates');
 
 // Compte, par onglet, ce qui attend une action de l'admin — affiché en badge
 // sur la barre latérale. Pensé pour être étendu facilement (nouvel onglet =
@@ -104,7 +105,7 @@ module.exports = async (req, res) => {
     // chez le client) — donc pas de restriction de type ici : l'onglet
     // Livraisons a lui-même un filtre "En retard" tous types confondus,
     // ce compteur doit correspondre exactement à ce qu'il affiche.
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = todayParis();
     const { count: retardsCount } = await supabase
       .from('livraisons').select('id', { count: 'exact', head: true })
       .in('reservation_id', resaIds)

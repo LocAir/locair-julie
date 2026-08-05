@@ -1,6 +1,6 @@
 const Stripe = require('stripe');
 const { getSupabase }     = require('./_lib/supabase');
-const { isValidDate, addDays } = require('./_lib/dates');
+const { isValidDate, addDays, todayParis } = require('./_lib/dates');
 const { calcTieredPrice: calcBase } = require('./_lib/pricing');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
@@ -87,7 +87,7 @@ module.exports = async (req, res) => {
     orig.date_fin = await getEffectiveDateFin(supabase, orig.id, orig.date_fin);
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayParis();
   if (orig.date_fin < today) {
     return res.status(422).json({ error: 'La location est déjà terminée — impossible de prolonger.' });
   }

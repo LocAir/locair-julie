@@ -4,7 +4,7 @@ const { computeClientProgress } = require('./_lib/clientProgress');
 const { syncStatutDetaille } = require('./_lib/statutDetaille');
 const { computeOrderStatus } = require('./_lib/orderStatus');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
-const { addDays } = require('./_lib/dates');
+const { addDays, todayParis } = require('./_lib/dates');
 
 const GENERIC_ERROR = "Nous n'avons pas retrouvé votre réservation. Merci de vérifier votre numéro de commande et votre adresse email.";
 
@@ -23,7 +23,7 @@ const NOTIFICATION_LABEL = {
 
 function joursRestants(dateFin) {
   if (!dateFin) return null;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayParis();
   const diff = Math.round((new Date(dateFin + 'T00:00:00Z') - new Date(today + 'T00:00:00Z')) / 86400000);
   return Math.max(0, diff);
 }
