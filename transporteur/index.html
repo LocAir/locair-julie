@@ -2596,10 +2596,18 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
       <button class="media-btn" onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> Vidange ${m.type==='changement'?"de l'ancien appareil":"de l'appareil"}</button>`;
   }
   if(key === 'installation'){
+    // photo_installation_pending : la coche verte apparaît dès la sélection
+    // de la photo (optimiste), mais l'envoi réel (compression + upload +
+    // confirmation serveur) peut prendre plusieurs secondes — le bouton doit
+    // attendre cette confirmation, sinon le serveur refuse "Photo requise"
+    // alors que la photo est bien prise (voir uploadMedia ci-dessous).
     return `
       <p class="step-hint">🎬 Montre le fonctionnement au client, puis prends une photo où l'on voit ensemble le climatiseur en marche et la fenêtre calfeutrée.</p>
       ${proofButtonsHtml('photo_installation', m.photo_installation_ok, 'Photo installation')}
-      ${m.photo_installation_ok
+      ${m.photo_installation_ok && m.photo_installation_pending
+        ? `<p class="step-hint" style="color:var(--grey)">⏳ Envoi de la photo en cours…</p>`
+        : ''}
+      ${m.photo_installation_ok && !m.photo_installation_pending
         ? `<button class="btn btn-green btn-block" style="margin-top:6px" onclick="doAction('confirmer_demo')">✅ Confirmer la démonstration</button>`
         : ''}`;
   }
@@ -2620,12 +2628,19 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   const checklistLoading = checklistWorkflow && STATE.checklistItems === null;
   if(checklistLoading) fetchChecklistItems().then(renderDetail);
   const hasFinalChecklist = checklistWorkflow && !checklistLoading && (STATE.checklistItems[checklistWorkflow] || []).length > 0;
+  // Même souci de course que sur "Confirmer la démonstration" (voir
+  // uploadMedia) : ce bouton devient cliquable dès que la coche verte de la
+  // photo précédente apparaît, avant même que l'envoi réel soit confirmé
+  // côté serveur — un livreur rapide pouvait donc essuyer un refus serveur
+  // ("Photo requise"/"Vidéo requise") juste après avoir pris sa photo.
+  const uploadPending = Boolean(m.photo_retour_pending || m.photo_installation_pending);
   return `
     <p class="step-hint">🎉 Tout est prêt — vérifie la checklist puis valide pour terminer la mission.</p>
     ${checklistLoading ? '<p class="step-hint" style="color:var(--grey)">Chargement de la checklist…</p>' : (checklistWorkflow ? checklistFinalHtml(checklistWorkflow) : '')}
     ${m.type==='recuperation' ? etatMaterielHtml() : ''}
     ${isLastRecup ? checklistRestockHtml() : ''}
-    <button class="btn btn-green btn-block" id="mission-final-btn" ${(isLastRecup||hasFinalChecklist||checklistLoading)?'disabled':''} onclick="submitFinalMission('${okAction}')">${okLabel}</button>`;
+    ${uploadPending ? '<p class="step-hint" style="color:var(--grey)">⏳ Envoi de la photo en cours…</p>' : ''}
+    <button class="btn btn-green btn-block" id="mission-final-btn" ${(isLastRecup||hasFinalChecklist||checklistLoading||uploadPending)?'disabled':''} onclick="submitFinalMission('${okAction}')">${okLabel}</button>`;
 }
 // Dernière récupération de la journée pour ce transporteur (aucune autre
 // récupération encore active aujourd'hui) : à ce moment, il doit passer par
@@ -2659,7 +2674,12 @@ function updateMissionFinalButton(){
   const btn = document.getElementById('mission-final-btn');
   if(!btn) return;
   const boxes = document.querySelectorAll('.checklist-restock-cb, .checklist-final-cb');
-  btn.disabled = boxes.length > 0 && Array.from(boxes).some(b => !b.checked);
+  const m = STATE.currentMission;
+  // Ne jamais réactiver le bouton par-dessus un envoi de photo encore en
+  // cours (voir wizardStepBodyHtml, cas 'final') — sans ce garde-fou, cocher
+  // une case de checklist pendant l'envoi réactivait le bouton trop tôt.
+  const uploadPending = m && Boolean(m.photo_retour_pending || m.photo_installation_pending);
+  btn.disabled = uploadPending || (boxes.length > 0 && Array.from(boxes).some(b => !b.checked));
 }
 
 // Checklist administrable (Module 5, Parties 5/7) — cases à cocher avant de
@@ -3411,6 +3431,15 @@ async function uploadMedia(rawFile, kind, mission){
   // transporteur est prévenu pour reprendre la photo : cette preuve sert en
   // cas de litige avec le client, jamais de faux "fait" sans confirmation.
   const optimistic = kind !== 'photo_absence';
+  // Distinct de `_ok` (optimiste, flippé tout de suite pour l'UI) : `_pending`
+  // reste vrai tant que l'envoi réel n'est pas confirmé par le serveur.
+  // Sans ça, un livreur rapide pouvait taper "Confirmer la démonstration" (ou
+  // le bouton final "OK — JE PARS") entre le moment où la coche verte
+  // apparaît et celui où la photo est réellement enregistrée en base — le
+  // serveur refusait alors avec "Photo requise" alors que la photo était
+  // bien prise, juste pas encore arrivée (bug remonté par Aly, capture à
+  // l'appui, 2026-08-04).
+  mission[kind + '_pending'] = true;
   if(optimistic){ mission[kind + '_ok'] = true; renderDetail(); }
 
   // L'aperçu (miniature de ce qui vient d'être capturé) confirme que la
@@ -3471,6 +3500,7 @@ async function uploadMedia(rawFile, kind, mission){
     // ça. Un second renderDetail() nettoie l'aperçu temporaire prependé
     // plus haut, seulement si le livreur regarde toujours cette mission.
     mission[kind + '_ok'] = true;
+    mission[kind + '_pending'] = false;
     if(STATE.currentMission === mission) renderDetail();
   }catch(err){
     // Régression du jour (commit 56f82aa, "ne plus bloquer le bouton
@@ -3480,6 +3510,7 @@ async function uploadMedia(rawFile, kind, mission){
     // flag "_ok" restait à true, et le livreur pouvait valider une étape
     // sans que la preuve soit jamais arrivée côté serveur.
     if(optimistic) mission[kind + '_ok'] = false;
+    mission[kind + '_pending'] = false;
     if(STATE.currentMission === mission){
       // renderDetail() reconstruit les boutons avec leurs bons états
       // disabled/actifs (ex. "Livraison OK" doit rester verrouillé tant que
