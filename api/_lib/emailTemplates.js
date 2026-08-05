@@ -700,11 +700,63 @@ function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang }) 
   });
 }
 
-// Facture d'achat Offre Privilège (interne — FR uniquement)
-function tplFactureVente({ prenom, ref, modeleClimatiseur, dateAchatFmt, montantFmt, viewUrlFacture }) {
+// Facture d'achat Offre Privilège — corrige un oubli trouvé lors de l'audit
+// du 2026-08-05 : le champ `lang` était bien calculé et transmis par
+// generateAndSendFactureVente (_lib/documents.js, sujet de l'email déjà
+// traduit), mais silencieusement ignoré ici — un client anglophone/sinophone
+// recevait un sujet dans sa langue puis un corps de mail entièrement en
+// français. Même structure que tplContratFacture ci-dessus.
+function tplFactureVente({ prenom, ref, modeleClimatiseur, dateAchatFmt, montantFmt, viewUrlFacture, lang }) {
+  const l = lang || 'fr';
+  const p = escHtml(prenom || '');
+  if (l === 'en') return wrap({
+    title: 'Your purchase invoice',
+    intro: `Thank you ${p}, your payment of ${escHtml(montantFmt || '')} has been received!`,
+    bodyHtml: `
+      <p>Thank you for your trust and for your purchase via the Offre Privilège (booking ref ${escHtml(ref)}). Here is your summary:</p>
+      <div class="box">
+        ${modeleClimatiseur ? `<p style="margin:0 0 6px"><strong>Air conditioner:</strong> ${escHtml(modeleClimatiseur)}</p>` : ''}
+        <p style="margin:0 0 6px"><strong>Purchase date:</strong> ${escHtml(dateAchatFmt || '')}</p>
+        <p style="margin:0"><strong>Amount paid:</strong> ${escHtml(montantFmt || '')}</p>
+      </div>
+      <p>You'll find your invoice attached — you can also <a href="${viewUrlFacture || '#'}" style="color:#1b3a5f;font-weight:700">view it online</a>.</p>
+      <p>The air conditioner is now yours to keep for good: no further action is needed on your part. For any technical issue (warranty, repair), our team remains available via WhatsApp below.</p>
+      <p style="font-size:13px;color:#888">Keep this email: this document stays accessible at any time via the link above.</p>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
+  });
+  if (l === 'zh') return wrap({
+    title: '您的购买发票',
+    intro: `谢谢您，${p}，我们已收到您 ${escHtml(montantFmt || '')} 的付款！`,
+    bodyHtml: `
+      <p>感谢您的信任，感谢您通过 Offre Privilège 购买（订单 ${escHtml(ref)}）。以下是摘要：</p>
+      <div class="box">
+        ${modeleClimatiseur ? `<p style="margin:0 0 6px"><strong>空调：</strong> ${escHtml(modeleClimatiseur)}</p>` : ''}
+        <p style="margin:0 0 6px"><strong>购买日期：</strong> ${escHtml(dateAchatFmt || '')}</p>
+        <p style="margin:0"><strong>已付金额：</strong> ${escHtml(montantFmt || '')}</p>
+      </div>
+      <p>您的发票已作为附件发送——您也可以<a href="${viewUrlFacture || '#'}" style="color:#1b3a5f;font-weight:700">在线查看</a>。</p>
+      <p>该空调现已完全归您所有，无需任何其他操作。如有技术问题（保修、维修），我们的团队仍可通过下方的 WhatsApp 为您服务。</p>
+      <p style="font-size:13px;color:#888">请保留此邮件：该文件可通过上方链接随时查看。</p>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
+  });
+  if (l === 'ru') return wrap({
+    title: 'Ваш счёт на покупку',
+    intro: `Спасибо, ${p}! Ваш платёж на сумму ${escHtml(montantFmt || '')} получен!`,
+    bodyHtml: `
+      <p>Спасибо за доверие и за покупку по программе Offre Privilège (заказ ${escHtml(ref)}). Вот сводка:</p>
+      <div class="box">
+        ${modeleClimatiseur ? `<p style="margin:0 0 6px"><strong>Кондиционер:</strong> ${escHtml(modeleClimatiseur)}</p>` : ''}
+        <p style="margin:0 0 6px"><strong>Дата покупки:</strong> ${escHtml(dateAchatFmt || '')}</p>
+        <p style="margin:0"><strong>Оплаченная сумма:</strong> ${escHtml(montantFmt || '')}</p>
+      </div>
+      <p>Счёт приложен к письму — вы также можете <a href="${viewUrlFacture || '#'}" style="color:#1b3a5f;font-weight:700">посмотреть его онлайн</a>.</p>
+      <p>Кондиционер теперь окончательно принадлежит вам: никаких дальнейших действий не требуется. При технической проблеме (гарантия, ремонт) наша команда остаётся на связи через WhatsApp ниже.</p>
+      <p style="font-size:13px;color:#888">Сохраните это письмо: документ остаётся доступным в любой момент по ссылке выше.</p>`,
+    ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
+  });
   return wrap({
     title: 'Votre facture d\'achat',
-    intro: `Merci ${escHtml(prenom || '')}, votre paiement de ${escHtml(montantFmt || '')} a bien été reçu !`,
+    intro: `Merci ${p}, votre paiement de ${escHtml(montantFmt || '')} a bien été reçu !`,
     bodyHtml: `
       <p>Merci pour votre confiance et votre achat via l'Offre Privilège (dossier ${escHtml(ref)}). Voici le récapitulatif :</p>
       <div class="box">
