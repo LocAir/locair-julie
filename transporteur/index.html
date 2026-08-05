@@ -712,6 +712,13 @@ function escHtml(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// Date du jour en heure de Paris (pas UTC) — Intl.DateTimeFormat gère tout
+// seul l'heure d'été/hiver. Sans ça, entre minuit et 1h-2h du matin heure de
+// Paris, "aujourd'hui" calculé en UTC renvoyait encore la veille — ce qui
+// pouvait faire refuser à tort une mission pourtant prévue "aujourd'hui".
+function todayParisStr(){
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
 // Un fetch qui échoue avant même d'obtenir une réponse (coupure réseau —
 // "Failed to fetch", "Load failed", "NetworkError"...) ne doit jamais
 // afficher son message technique brut à un livreur sur le terrain : illisible,
@@ -1236,7 +1243,7 @@ async function marquerToutLu(){
 // = "aujourd'hui" uniquement, rien à en dire avant).
 function checklistBlocksMission(m){
   if(!m || m.statut !== 'acceptee') return false;
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   if(m.date_prevue !== todayStr) return false;
   // Le statut reste "acceptee" pendant TOUTE l'exécution sur place (jusqu'à
   // "fait") — sans ce garde-fou, annuler la checklist en cours de route
@@ -1265,7 +1272,7 @@ function returnFromChecklist(){
 // deux à la fois -> tout s'affiche, fusionné, sans doublon (chaque item
 // n'existe qu'une fois dans les objets source).
 function todayMissionComposition(){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   const todays = (STATE.missions || []).filter(m => m.date_prevue === todayStr && !['annule','refusee'].includes(m.statut));
   return {
     hasRecup:   todays.some(m => m.type === 'recuperation'),
@@ -1374,7 +1381,7 @@ function missionEstEnCours(m){
   // traite déjà comme telle.
   if(m.statut === 'en_route' || m.statut === 'arrivee' || m.statut === 'probleme') return true;
   if(m.statut !== 'acceptee') return false;
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   return m.date_prevue <= todayStr;
 }
 // Deux familles de badges, jamais confondues :
@@ -1479,7 +1486,7 @@ function compareByCreneau(a, b){
 // sert à anticiper, pas à consulter l'historique (déjà couvert par Mon
 // activité).
 function weekAheadHtml(allCaughtUp){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   STATE.weekOffset = Math.max(0, STATE.weekOffset||0);
   const windowStart = new Date(); windowStart.setDate(windowStart.getDate() + STATE.weekOffset*7);
   const activeMissions = STATE.missions.filter(m => !['annule','refusee'].includes(m.statut));
@@ -1611,7 +1618,7 @@ function shiftWeekAhead(delta){
 }
 function renderDashboard(){
   const zone = document.getElementById('dashboard-content');
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   // Triée par créneau (même comparateur que "Ma semaine", voir
   // compareByCreneau) — sans ça, l'ordre venait tel quel de l'API (souvent
   // l'ordre de création, sans rapport avec l'heure du rendez-vous) : la carte
@@ -1817,7 +1824,7 @@ function resetGantt(){
 function renderReservationsCalendrier(){
   const el = document.getElementById('calendrier-content');
   if(!el) return;
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   if(!GANTT_START) GANTT_START = todayStr;
   const windowEnd = _isoAddDays(GANTT_START, GANTT_DAYS-1);
   const DOW = ['D','L','M','M','J','V','S'];
@@ -1954,7 +1961,7 @@ function missionCardHtml(m){
   // sinon deux missions au même statut technique ("acceptee") semblent
   // identiques alors que l'une attend son jour et l'autre est vraiment à
   // traiter maintenant.
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   const badge = (m.statut === 'acceptee' && m.date_prevue > todayStr) ? 'Programmée' : (STATUT_LABEL[m.statut] || m.statut);
   // Mission acceptée/sur place dont le jour prévu est déjà passé : elle se
   // fond sinon avec les missions du jour même dans "En cours" — un badge
@@ -2019,7 +2026,7 @@ function missionCardActionsHtml(m, mapsUrl, tel){
     // démarrable aujourd'hui — le geste qui compte dans la journée du
     // livreur. Les autres cas (acceptée pour plus tard, déjà en cours,
     // problème signalé) gardent la simple ligne d'icônes.
-    const todayStr = new Date().toISOString().slice(0,10);
+    const todayStr = todayParisStr();
     if(m.statut === 'acceptee' && m.date_prevue === todayStr){
       return `<div class="mcard-actions">${mapBtn}${callBtn}<button class="btn btn-blue" style="flex:1;min-width:0" onclick="event.stopPropagation();openMission(${m.id})">▶️ Démarrer</button></div>`;
     }
@@ -2047,7 +2054,7 @@ function missionCardActionsHtml(m, mapsUrl, tel){
 // n'est lui-même jamais bloqué par une mission en cours aujourd'hui — ce
 // n'est qu'au jour J que la capacité du livreur compte réellement.
 function isAnotherMissionEnCours(excludeId, forDate){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   if(forDate && forDate > todayStr) return false;
   return STATE.missions.some(x => x.id!==excludeId && ['acceptee','en_route','arrivee'].includes(x.statut) && x.date_prevue<=todayStr);
 }
@@ -2136,7 +2143,7 @@ const MISSIONS_CIBLE_JOUR = 10;
 function renderTranspBanner(){
   const zone = document.getElementById('transp-banner-zone');
   if(!zone) return;
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   const countJour = STATE.missions.filter(m => m.date_prevue===todayStr && !['annule','refusee'].includes(m.statut)).length;
 
   const pauseHtml = STATE.en_pause
@@ -2185,7 +2192,7 @@ function setMissionFilter(f){
 // un problème signalé aujourd'hui avec une livraison tranquille dans 3
 // semaines simplement parce que la date de celle-ci tombe avant en tri texte.
 function missionUrgenceRang(m){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   const dueToday = m.date_prevue <= todayStr;
   if(m.statut==='probleme') return 0;
   if(m.statut==='arrivee') return 1;
@@ -2268,7 +2275,7 @@ function renderMissions(){
   // livreur reste autonome sur l'organisation de sa tournée et doit pouvoir
   // repérer où se trouvent ses prochaines missions bien avant le jour J,
   // indépendamment de la checklist (qui ne bloque jamais la carte).
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   const todayActives = STATE.missions.filter(m => m.date_prevue===todayStr && m.client && m.client.adresse && ['a_faire','acceptee','en_route','arrivee','probleme'].includes(m.statut));
   let zoneHtml = '';
   if(todayActives.length > 1){
@@ -2396,7 +2403,7 @@ function actionBtnsForMission(m){
   // place) que le jour prévu, jamais en avance — le bouton "⏪ Faire plus
   // tard" (en haut de l'écran) reste la seule action possible avant ça.
   if((m.statut === 'acceptee' || m.statut === 'en_route' || m.statut === 'arrivee')){
-    const todayStr = new Date().toISOString().slice(0,10);
+    const todayStr = todayParisStr();
     if(m.date_prevue > todayStr){
       return `<div class="info-box"><p>📅 Tu as accepté cette mission — tu pourras la démarrer ${futureDateText(m.date_prevue)}.</p></div>`;
     }
@@ -2515,7 +2522,7 @@ function handleDetailBack(){
   const m = STATE.currentMission;
   if(m){
     const enCours = ['acceptee','en_route','arrivee'].includes(m.statut);
-    const todayStr = new Date().toISOString().slice(0,10);
+    const todayStr = todayParisStr();
     const isWizard = enCours && m.date_prevue<=todayStr && ['livraison','recuperation','changement'].includes(m.type);
     if(isWizard){
       const steps = missionStepDefs(m);
@@ -2681,7 +2688,7 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
 // tant que tout n'est pas coché.
 function isLastRecuperationOfDay(m){
   if(m.type !== 'recuperation') return false;
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   return !STATE.missions.some(x => x.id !== m.id && x.type === 'recuperation' && x.date_prevue === todayStr && !['fait','annule','refusee'].includes(x.statut));
 }
 function checklistRestockHtml(){
@@ -2880,7 +2887,7 @@ function vidangeWarningJoursDejaVus(){
 function maybeShowVidangeWarning(m){
   if(!m || m.type !== 'recuperation') return;
   if(m.statut !== 'acceptee') return;
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   const jours = vidangeWarningJoursDejaVus();
   if(jours.includes(todayStr)) return; // déjà montré aujourd'hui
   if(jours.length >= VIDANGE_WARNING_MAX_JOURS) return; // campagne des 7 jours terminée
@@ -3056,7 +3063,7 @@ function renderDetail(){
   // actionBtnsForMission) et pour les 3 types de mission qui ont des étapes
   // sur place. Le reste (pas encore acceptée, en attente d'une date future,
   // problème signalé) garde l'écran simple d'avant.
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   const isWizard = enCours && m.date_prevue<=todayStr && ['livraison','recuperation','changement'].includes(m.type);
   // "Faire plus tard" doit rester disponible même en Problème (le
   // transporteur peut se débloquer lui-même sans attendre qu'Aly résolve
@@ -4516,7 +4523,7 @@ function renderDayMapPins(){
   DAY_MAP_MARKERS.forEach(mk => DAY_MAP.removeLayer(mk));
   DAY_MAP_MARKERS = [];
 
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   const missions = allActiveMissionsWithAddress().filter(m => DAY_MAP_FILTER==='toutes' || m.type===DAY_MAP_FILTER);
   const points = [];
 
