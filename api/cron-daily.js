@@ -14,7 +14,7 @@ const { tplOffrePrivilege } = require('./_lib/emailTemplates');
 const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { sendReservationPaymentLink } = require('./_lib/paymentLink');
-const { sendRappelRecuperationSms } = require('./_lib/reservations');
+const { sendRappelRecuperationSms, getEffectiveDateFin } = require('./_lib/reservations');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
 function verifyCronAuth(req) {
@@ -856,7 +856,18 @@ module.exports = async (req, res) => {
         ? peersByKey[`${resa.city_id}:${resa.email.toLowerCase()}`]
         : [resa];
       if (isSupersededReservation(resa, peers)) continue;
-      const scenariosDus = scenariosDueToday(resa, todayStr);
+      // avant_fin_location et rappel_recuperation se déclenchent sur
+      // date_fin — une colonne mise à jour en fire-and-forget à chaque
+      // prolongation (webhook.js, admin-reservations.js), donc jamais
+      // garantie à 100% (capture d'écran à l'appui : un rappel de
+      // récupération reçu plusieurs jours trop tôt par rapport à la vraie
+      // date, après une prolongation, 2026-08-05). Même filet de sécurité
+      // que l'espace client et l'appli transporteur (getEffectiveDateFin) :
+      // ne calcule les fenêtres que sur la date de fin réelle, jamais sur
+      // une colonne qui peut être en retard.
+      const rootId = resa.reservation_origine_id || resa.id;
+      const dateFinEffective = await getEffectiveDateFin(supabase, rootId, resa.date_fin).catch(() => resa.date_fin);
+      const scenariosDus = scenariosDueToday({ ...resa, date_fin: dateFinEffective }, todayStr);
       for (const scenario of scenariosDus) {
         const result = await sendScenarioEmail(supabase, { reservationId: resa.id, scenario });
         if (result.sent) emailsEnvoyes++;

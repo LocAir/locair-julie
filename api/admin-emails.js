@@ -121,8 +121,13 @@ module.exports = async (req, res) => {
       if (!city) return res.status(404).json({ error: 'Aucune ville configurée' });
 
       if (isSmsScenario) {
+        // reservation_origine_id : nécessaire à sendRappelRecuperationSms
+        // pour recalculer la vraie date de fin (getEffectiveDateFin) — sans
+        // lui, un renvoi manuel depuis l'admin afficherait la même date
+        // figée que l'envoi automatique en cas de prolongation mal
+        // synchronisée (voir _lib/reservations.js).
         const { data: resaSms } = await supabase
-          .from('reservations').select('id, tel, lang, prenom, ref, date_fin')
+          .from('reservations').select('id, tel, lang, prenom, ref, date_fin, reservation_origine_id')
           .eq('id', reservationId).eq('city_id', city.id).maybeSingle();
         if (!resaSms) return res.status(404).json({ error: 'Réservation introuvable' });
         const result = await SMS_SENDER_BY_SCENARIO[scenario](supabase, resaSms, { force: true });

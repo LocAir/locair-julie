@@ -8,50 +8,18 @@ const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
 const { sendScenarioEmail, getSignature, withSignature, fmtDate, wasScenarioSkipped } = require('./emailEngine');
 const { tplProlongConfirmation } = require('./emailTemplates');
 const { pushToAdmin } = require('./push');
+const { getEffectiveDateFin } = require('./dateFin');
 
 function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
 }
 
-// Date de fin RÉELLE d'un contrat — prolongations payées déjà confirmées ET
-// récupération reprogrammée à la main par l'admin (admin-livraisons.js
-// action 'update', ex. le client demande à garder l'appareil quelques jours
-// de plus sans passer par une prolongation payante) comprises.
-// reservations.date_fin sur la réservation d'ORIGINE est mise à jour à
-// chaque confirmation de prolongation (webhook.js, admin-reservations.js),
-// mais toujours en fire-and-forget (jamais garanti à 100%, voir les .then()
-// qui avalent l'erreur) — sans ce filet de sécurité, une prolongation dont
-// la mise à jour de date_fin aurait raté pour une raison quelconque rejette
-// à tort toute nouvelle prolongation ("déjà terminée") ou affiche une durée
-// figée dans l'espace client. Reprend la date la plus tardive entre : la
-// réservation d'origine, sa dernière prolongation confirmée, et la date de
-// récupération (moins 1 jour, la récup étant toujours programmée en J+1)
-// actuellement planifiée, sur l'origine ou une de ses prolongations.
-async function getEffectiveDateFin(supabase, origId, origDateFin) {
-  if (!origId) return origDateFin;
-  let effective = origDateFin;
-
-  const { data: dernierProlong } = await supabase
-    .from('reservations').select('date_fin')
-    .eq('reservation_origine_id', origId).eq('statut', 'confirmee')
-    .order('date_fin', { ascending: false }).limit(1).maybeSingle();
-  if (dernierProlong?.date_fin && dernierProlong.date_fin > effective) effective = dernierProlong.date_fin;
-
-  const { data: prolongIds } = await supabase
-    .from('reservations').select('id').eq('reservation_origine_id', origId);
-  const allIds = [origId, ...(prolongIds || []).map(p => p.id)];
-  const { data: recup } = await supabase
-    .from('livraisons').select('date_prevue')
-    .in('reservation_id', allIds).eq('type', 'recuperation')
-    .not('statut', 'in', '(annule,annulee,refusee)')
-    .order('date_prevue', { ascending: false }).limit(1).maybeSingle();
-  if (recup?.date_prevue) {
-    const recupEnd = addDays(recup.date_prevue, -1);
-    if (recupEnd > effective) effective = recupEnd;
-  }
-
-  return effective;
-}
+// getEffectiveDateFin déplacée dans _lib/dateFin.js (2026-08-05) — utilisée
+// aussi par _lib/emailEngine.js, qui require déjà ce fichier-ci ; la garder
+// ici aurait créé une dépendance circulaire. Toujours ré-exportée plus bas
+// pour ne rien casser chez ses appelants existants (checkout-prolong.js,
+// prolong-lookup.js, admin-reservations.js, prolong-pay.js,
+// transporteur-missions.js).
 
 // Doit rester synchronisé avec TEST_TRANSPORTEUR_NOM dans admin/index.html —
 // ce compte factice (créé pour qu'Aly puisse tester /transporteur lui-même)
@@ -479,8 +447,15 @@ async function sendRappelRecuperationSms(supabase, resa, { force = false } = {})
     if (dejaEnvoye > 0) return { sent: false, reason: 'already_sent' };
   }
 
+  // date_fin sur la réservation d'origine est mise à jour en fire-and-forget
+  // à chaque prolongation — jamais garantie à 100% (capture d'écran à
+  // l'appui : ce SMS annonçant "demain" avec plusieurs jours d'avance sur la
+  // vraie date de récupération après une prolongation, 2026-08-05). Même
+  // filet de sécurité que buildEmailContext (_lib/emailEngine.js).
+  const rootId = resa.reservation_origine_id || resa.id;
+  const dateFinEffective = await getEffectiveDateFin(supabase, rootId, resa.date_fin).catch(() => resa.date_fin);
   const lang = resa.lang || 'fr';
-  const dateRecup = fmtDate(addDays(resa.date_fin, 1), lang);
+  const dateRecup = fmtDate(addDays(dateFinEffective, 1), lang);
   let content;
   if (lang === 'en') {
     content = `Loc'Air - Your rental ends today. Our technician will come to collect the unit tomorrow (${dateRecup}). We'll text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;

@@ -1,6 +1,7 @@
 const { sendBrevoEmail } = require('./brevo');
 const tpl = require('./emailTemplates');
 const { addDays } = require('./dates');
+const { getEffectiveDateFin } = require('./dateFin');
 
 function escHtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -55,6 +56,16 @@ async function buildEmailContext(supabase, reservation) {
   const lang = reservation.lang || 'fr';
   const _prixBase = (reservation.prix_total_cents || 0) / 100;
 
+  // date_fin sur la réservation d'origine est mise à jour en fire-and-forget
+  // à chaque prolongation (webhook.js, admin-reservations.js) — jamais
+  // garantie à 100%. Sans ce recalcul, un mail/SMS annonçant la récupération
+  // (rappel_recuperation, avant_fin_location, confirmation) peut afficher une
+  // date de plusieurs jours en avance sur la vraie fin de location après une
+  // prolongation (capture d'écran à l'appui, 2026-08-05) — même filet de
+  // sécurité que l'espace client et l'appli transporteur (voir _lib/dateFin.js).
+  const rootId = reservation.reservation_origine_id || reservation.id;
+  const dateFinEffective = rootId ? await getEffectiveDateFin(supabase, rootId, reservation.date_fin).catch(() => reservation.date_fin) : reservation.date_fin;
+
   return {
     ref:      reservation.ref || '',
     prenom:   reservation.prenom || '',
@@ -64,12 +75,12 @@ async function buildEmailContext(supabase, reservation) {
     installation: reservation.installation || '',
     lang,
     dateDebutFmt: fmtDate(reservation.date_debut, lang),
-    dateFinFmt:   fmtDate(reservation.date_fin, lang),
+    dateFinFmt:   fmtDate(dateFinEffective, lang),
     // La mission de récupération réelle est le lendemain de date_fin (voir
     // confirmReservation dans _lib/reservations.js) — utilisé par le rappel
     // rappel_recuperation, qui part le jour de date_fin pour annoncer le
     // passage du technicien "demain".
-    dateRecupFmt: fmtDate(reservation.date_fin ? addDays(reservation.date_fin, 1) : null, lang),
+    dateRecupFmt: fmtDate(dateFinEffective ? addDays(dateFinEffective, 1) : null, lang),
     montantFmt:   lang === 'fr'
       ? _prixBase.toFixed(2).replace('.', ',') + ' €'
       : lang === 'ru'
