@@ -52,9 +52,6 @@ const SCENARIOS = {
 };
 
 async function buildEmailContext(supabase, reservation) {
-  const { data: reservAppareils } = await supabase
-    .from('reservation_appareils').select('appareil:appareils(reference)').eq('reservation_id', reservation.id).limit(1);
-  const appareil = (reservAppareils || [])[0]?.appareil;
   const lang = reservation.lang || 'fr';
   const _prixBase = (reservation.prix_total_cents || 0) / 100;
 
@@ -78,7 +75,11 @@ async function buildEmailContext(supabase, reservation) {
       : lang === 'ru'
       ? _prixBase.toFixed(2).replace('.', ',') + ' €'
       : '€' + _prixBase.toFixed(2),
-    modeleClimatiseur: appareil?.reference || "Climatiseur mobile Loc'Air",
+    // Volontairement générique — jamais la référence de stock de l'appareil
+    // physique (ex. "SS673KM18.700,71122(FG)"), un code interne illisible et
+    // sans intérêt pour le client, qui s'affichait ici avant ce correctif
+    // (capture d'écran à l'appui, 2026-08-05).
+    modeleClimatiseur: lang === 'en' ? 'Air conditioner' : lang === 'zh' ? '空调' : lang === 'ru' ? 'Кондиционер' : 'Climatiseur',
     lienEspaceClient: 'https://www.locair.fr/client',
     lienProlongation: `https://www.locair.fr/prolongation?ref=${encodeURIComponent(reservation.ref || '')}`,
   };
