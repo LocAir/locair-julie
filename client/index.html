@@ -620,6 +620,12 @@ let _prolongReturnStatus = null;
 function escHtml(s){
   return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// Date du jour en heure de Paris (pas UTC) — Intl.DateTimeFormat gère tout
+// seul l'heure d'été/hiver. Sans ça, entre minuit et 1h-2h du matin heure de
+// Paris, "aujourd'hui" calculé en UTC renvoyait encore la veille.
+function todayParisStr(){
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
 function fmtDate(iso){
   if(!iso) return '—';
   return new Date(iso+'T12:00:00Z').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
@@ -811,7 +817,7 @@ function renderDashboard(d){
     </div>` : '';
 
   // Récupération
-  const todayIso = new Date().toISOString().slice(0,10);
+  const todayIso = todayParisStr();
   const recupEarlyPickerShown = d.recuperation && !['fait','en_route','arrivee'].includes(d.recuperation.statut) && d.recuperation.date_prevue > todayIso;
   const recupMaxDate = recupEarlyPickerShown ? (()=>{const dt=new Date(d.recuperation.date_prevue+'T12:00:00Z');dt.setUTCDate(dt.getUTCDate()-1);return dt.toISOString().slice(0,10);})() : '';
 
