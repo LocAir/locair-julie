@@ -15,6 +15,7 @@ const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { sendReservationPaymentLink } = require('./_lib/paymentLink');
 const { sendRappelRecuperationSms, getEffectiveDateFin } = require('./_lib/reservations');
+const { getActiveRecuperationMission } = require('./_lib/dateFin');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
 function verifyCronAuth(req) {
@@ -867,7 +868,18 @@ module.exports = async (req, res) => {
       // une colonne qui peut être en retard.
       const rootId = resa.reservation_origine_id || resa.id;
       const dateFinEffective = await getEffectiveDateFin(supabase, rootId, resa.date_fin).catch(() => resa.date_fin);
-      const scenariosDus = scenariosDueToday({ ...resa, date_fin: dateFinEffective }, todayStr);
+      // Le rappel de récupération, lui, doit suivre la VRAIE mission
+      // planifiée (livraisons.date_prevue), pas seulement une date_fin
+      // rallongée par une prolongation : un client qui AVANCE sa
+      // récupération (client-recup.js) ou une récupération reprogrammée par
+      // l'admin (date_prevue plus tôt QUE date_fin+1, non couvert par le MAX
+      // de getEffectiveDateFin ci-dessus) doit recevoir son rappel au bon
+      // moment, pas celui calculé sur l'ancien calendrier (2026-08-05).
+      const recupMission = await getActiveRecuperationMission(supabase, rootId).catch(() => null);
+      const scenariosDus = scenariosDueToday(
+        { ...resa, date_fin: dateFinEffective }, todayStr,
+        { recupDatePrevue: recupMission?.date_prevue || null },
+      );
       for (const scenario of scenariosDus) {
         const result = await sendScenarioEmail(supabase, { reservationId: resa.id, scenario });
         if (result.sent) emailsEnvoyes++;

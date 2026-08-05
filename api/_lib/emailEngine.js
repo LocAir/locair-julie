@@ -1,7 +1,7 @@
 const { sendBrevoEmail } = require('./brevo');
 const tpl = require('./emailTemplates');
 const { addDays } = require('./dates');
-const { getEffectiveDateFin } = require('./dateFin');
+const { getEffectiveDateFin, getActiveRecuperationMission } = require('./dateFin');
 
 function escHtml(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -64,7 +64,10 @@ async function buildEmailContext(supabase, reservation) {
   // prolongation (capture d'écran à l'appui, 2026-08-05) — même filet de
   // sécurité que l'espace client et l'appli transporteur (voir _lib/dateFin.js).
   const rootId = reservation.reservation_origine_id || reservation.id;
-  const dateFinEffective = rootId ? await getEffectiveDateFin(supabase, rootId, reservation.date_fin).catch(() => reservation.date_fin) : reservation.date_fin;
+  const [dateFinEffective, recupMission] = await Promise.all([
+    rootId ? getEffectiveDateFin(supabase, rootId, reservation.date_fin).catch(() => reservation.date_fin) : reservation.date_fin,
+    rootId ? getActiveRecuperationMission(supabase, rootId).catch(() => null) : null,
+  ]);
 
   return {
     ref:      reservation.ref || '',
@@ -76,11 +79,18 @@ async function buildEmailContext(supabase, reservation) {
     lang,
     dateDebutFmt: fmtDate(reservation.date_debut, lang),
     dateFinFmt:   fmtDate(dateFinEffective, lang),
-    // La mission de récupération réelle est le lendemain de date_fin (voir
-    // confirmReservation dans _lib/reservations.js) — utilisé par le rappel
-    // rappel_recuperation, qui part le jour de date_fin pour annoncer le
-    // passage du technicien "demain".
-    dateRecupFmt: fmtDate(dateFinEffective ? addDays(dateFinEffective, 1) : null, lang),
+    // Par défaut, la mission de récupération est le lendemain de date_fin
+    // (voir confirmReservation dans _lib/reservations.js). Si la vraie
+    // mission planifiée est connue (livraisons.date_prevue — avancée par le
+    // client via l'espace client, ou reprogrammée par l'admin), c'est elle
+    // qui prime : sans ça, "rappel_recuperation" annonçait encore l'ancienne
+    // date après un changement de créneau (2e correction d'Aly, 2026-08-05).
+    dateRecupFmt: fmtDate(recupMission?.date_prevue || (dateFinEffective ? addDays(dateFinEffective, 1) : null), lang),
+    // Créneau choisi par le client pour SA récupération (client-recup.js) ou
+    // fixé par l'admin — distinct de `creneau` ci-dessus, qui est celui de la
+    // LIVRAISON (choisi à la réservation). Vide si non encore fixé (cas
+    // normal : "coordonné par l'équipe", voir tplRappelRecuperation).
+    creneauRecuperation: recupMission?.creneau || '',
     montantFmt:   lang === 'fr'
       ? _prixBase.toFixed(2).replace('.', ',') + ' €'
       : lang === 'ru'

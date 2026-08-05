@@ -13,7 +13,16 @@ function daysDiff(fromISO, toISO) {
 // `reservation` : { statut, date_debut, date_fin } — le statut doit être
 // 'confirmee' (une réservation en_attente/annulee/remboursee/terminee ne
 // reçoit plus aucun rappel de ce type).
-function scenariosDueToday(reservation, todayISO) {
+// `recupDatePrevue` (optionnel) : date réellement planifiée de la mission de
+// récupération (livraisons.date_prevue, voir getActiveRecuperationMission,
+// _lib/dateFin.js) — quand fournie, PRIME sur le calcul par défaut
+// (date_fin + 1 jour) pour décider si "rappel_recuperation" est dû. Sans
+// elle, un client qui avance sa récupération (client-recup.js) ou une
+// récupération reprogrammée par l'admin (admin-livraisons.js) recevait le
+// rappel au mauvais moment — calculé sur l'ancienne date, jamais sur la
+// vraie date planifiée (capture d'écran à l'appui, 2026-08-05). Repli sur
+// l'ancien calcul si absente (rétrocompatible, tests existants).
+function scenariosDueToday(reservation, todayISO, { recupDatePrevue } = {}) {
   if (!reservation || reservation.statut !== 'confirmee') return [];
   if (!reservation.date_debut || !reservation.date_fin) return [];
 
@@ -39,11 +48,16 @@ function scenariosDueToday(reservation, todayISO) {
   if (duree > 4 && (dFin === 3 || dFin === 2)) due.push('avant_fin_location');
   // Rappel récupération (conservé de l'existant, hors des 7 scénarios
   // demandés mais utile opérationnellement — voir rapport de fin de module).
-  // La mission de récupération elle-même est programmée à date_fin + 1 jour
-  // (jamais le jour même — voir confirmReservation dans _lib/reservations.js),
-  // donc le rappel "la veille de la récupération" part le jour de date_fin
-  // (dFin===0), pas la veille de date_fin.
-  if (dFin === 0) due.push('rappel_recuperation');
+  // Par défaut, la mission de récupération est programmée à date_fin + 1
+  // jour (jamais le jour même — voir confirmReservation dans
+  // _lib/reservations.js), donc le rappel "la veille de la récupération"
+  // part le jour de date_fin (dFin===0). Si la vraie date planifiée est
+  // connue (recupDatePrevue) et diffère de ce calcul par défaut (récupération
+  // avancée ou reprogrammée), c'est elle qui prime.
+  const recupDue = recupDatePrevue
+    ? daysDiff(todayISO, recupDatePrevue) === 1
+    : dFin === 0;
+  if (recupDue) due.push('rappel_recuperation');
   return due;
 }
 
@@ -62,10 +76,12 @@ function scenarioDate(baseISO, offsetDays) {
 // client (panneau Communications). Le jour "pivot" de chaque fenêtre (ex.
 // J-3 plutôt que J-2, le rattrapage de scenariosDueToday) est celui
 // affiché : c'est la date réellement visée, pas la marge de rattrapage.
-function upcomingScenariosForReservation(reservation, todayISO) {
+function upcomingScenariosForReservation(reservation, todayISO, { recupDatePrevue } = {}) {
   if (!reservation || reservation.statut !== 'confirmee') return [];
   if (!reservation.date_debut || !reservation.date_fin) return [];
   const duree = daysDiff(reservation.date_debut, reservation.date_fin);
+  // Voir scenariosDueToday ci-dessus pour le même repli/priorité.
+  const recupDate = recupDatePrevue ? scenarioDate(recupDatePrevue, 1) : scenarioDate(reservation.date_fin, 0);
 
   const candidats = [
     { scenario: 'suivi_j14',           date: scenarioDate(reservation.date_debut, 14) },
@@ -73,8 +89,8 @@ function upcomingScenariosForReservation(reservation, todayISO) {
     { scenario: 'rappel_j1',           date: scenarioDate(reservation.date_debut, 1) },
     ...(duree > 4 ? [{ scenario: 'avant_fin_location', date: scenarioDate(reservation.date_fin, 3) }] : []),
     ...(duree > 4 ? [{ scenario: 'sms_relance_prolongation', date: scenarioDate(reservation.date_fin, 4) }] : []),
-    { scenario: 'rappel_recuperation', date: scenarioDate(reservation.date_fin, 0) },
-    { scenario: 'sms_rappel_recuperation', date: scenarioDate(reservation.date_fin, 0) },
+    { scenario: 'rappel_recuperation', date: recupDate },
+    { scenario: 'sms_rappel_recuperation', date: recupDate },
   ];
   return candidats.filter(c => c.date >= todayISO);
 }
@@ -94,10 +110,12 @@ function upcomingScenariosForReservation(reservation, todayISO) {
 // pouvoir être détectée même après ce changement de statut. L'appelant
 // reste responsable de ne jamais passer une réservation annulée/remboursée
 // (pour laquelle aucun email n'était de toute façon prévu).
-function pastScenariosForReservation(reservation, todayISO) {
+function pastScenariosForReservation(reservation, todayISO, { recupDatePrevue } = {}) {
   if (!reservation || !['confirmee', 'terminee'].includes(reservation.statut)) return [];
   if (!reservation.date_debut || !reservation.date_fin) return [];
   const duree = daysDiff(reservation.date_debut, reservation.date_fin);
+  // Voir scenariosDueToday ci-dessus pour le même repli/priorité.
+  const recupDate = recupDatePrevue ? scenarioDate(recupDatePrevue, 1) : scenarioDate(reservation.date_fin, 0);
 
   const candidats = [
     { scenario: 'suivi_j14',           date: scenarioDate(reservation.date_debut, 14) },
@@ -105,8 +123,8 @@ function pastScenariosForReservation(reservation, todayISO) {
     { scenario: 'rappel_j1',           date: scenarioDate(reservation.date_debut, 1) },
     ...(duree > 4 ? [{ scenario: 'avant_fin_location', date: scenarioDate(reservation.date_fin, 3) }] : []),
     ...(duree > 4 ? [{ scenario: 'sms_relance_prolongation', date: scenarioDate(reservation.date_fin, 4) }] : []),
-    { scenario: 'rappel_recuperation', date: scenarioDate(reservation.date_fin, 0) },
-    { scenario: 'sms_rappel_recuperation', date: scenarioDate(reservation.date_fin, 0) },
+    { scenario: 'rappel_recuperation', date: recupDate },
+    { scenario: 'sms_rappel_recuperation', date: recupDate },
   ];
   return candidats.filter(c => c.date < todayISO);
 }

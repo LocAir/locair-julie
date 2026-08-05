@@ -367,16 +367,24 @@ function tplAvantFinLocation(ctx) {
 }
 
 // 7. Rappel récupération J-1
+// Le 2e paragraphe de l'encart ("box") dépend de si le client a déjà choisi
+// son créneau de récupération (client-recup.js, "avancer la récupération")
+// ou si l'équipe doit encore le confirmer par téléphone — 2e correction
+// d'Aly, 2026-08-05 : le rappel doit refléter le vrai choix du client. Plus
+// de "Votre location se termine aujourd'hui (date_fin)" en intro : cette
+// phrase n'est plus toujours vraie dès qu'une récupération a été avancée ou
+// reprogrammée à une date différente de date_fin.
 function tplRappelRecuperation(ctx) {
   const l = ctx.lang || 'fr';
   const p = escHtml(ctx.prenom), ref = escHtml(ctx.ref);
+  const creneau = escHtml(ctx.creneauRecuperation || '');
   if (l === 'en') return wrap({
     title: 'AC collection tomorrow',
     intro: `Booking ref ${ref}`,
     bodyHtml: `
       <p>Hello ${p},</p>
-      <p>Your Loc'Air rental ends today (<strong>${escHtml(ctx.dateFinFmt)}</strong>). Our technician will come to collect the unit tomorrow (<strong>${escHtml(ctx.dateRecupFmt)}</strong>).</p>
-      <div class="box"><p style="margin:0 0 6px"><strong>Address:</strong> ${escHtml(ctx.adresse)}</p><p style="margin:0">We will call you in the morning to confirm the exact time slot.</p></div>
+      <p>Just a reminder: our technician will come to collect your Loc'Air unit tomorrow (<strong>${escHtml(ctx.dateRecupFmt)}</strong>).</p>
+      <div class="box"><p style="margin:0 0 6px"><strong>Address:</strong> ${escHtml(ctx.adresse)}</p><p style="margin:0">${creneau ? `<strong>Time slot:</strong> ${creneau}` : 'We will call you in the morning to confirm the exact time slot.'}</p></div>
       <p>Please have the unit unplugged and the duct rolled up if possible.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Contact us',
   });
@@ -385,8 +393,8 @@ function tplRappelRecuperation(ctx) {
     intro: `订单编号 ${ref}`,
     bodyHtml: `
       <p>您好 ${p}，</p>
-      <p>您的 Loc'Air 租赁今天结束（<strong>${escHtml(ctx.dateFinFmt)}</strong>）。我们的技术员明天（<strong>${escHtml(ctx.dateRecupFmt)}</strong>）将前来取回设备。</p>
-      <div class="box"><p style="margin:0 0 6px"><strong>地址：</strong>${escHtml(ctx.adresse)}</p><p style="margin:0">我们将于当天早上来电确认具体时间。</p></div>
+      <p>提醒您：我们的技术员明天（<strong>${escHtml(ctx.dateRecupFmt)}</strong>）将前来取回您的Loc'Air设备。</p>
+      <div class="box"><p style="margin:0 0 6px"><strong>地址：</strong>${escHtml(ctx.adresse)}</p><p style="margin:0">${creneau ? `<strong>时间段：</strong>${creneau}` : '我们将于当天早上来电确认具体时间。'}</p></div>
       <p>请提前拔掉电源，如可能请将排风管卷好。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '联系我们',
   });
@@ -395,8 +403,8 @@ function tplRappelRecuperation(ctx) {
     intro: `Заказ ${ref}`,
     bodyHtml: `
       <p>Здравствуйте, ${p}!</p>
-      <p>Ваша аренда Loc'Air заканчивается сегодня (<strong>${escHtml(ctx.dateFinFmt)}</strong>). Наш мастер заберёт устройство завтра (<strong>${escHtml(ctx.dateRecupFmt)}</strong>).</p>
-      <div class="box"><p style="margin:0 0 6px"><strong>Адрес:</strong> ${escHtml(ctx.adresse)}</p><p style="margin:0">Мы позвоним утром для уточнения времени.</p></div>
+      <p>Напоминаем: наш мастер заберёт ваш кондиционер Loc'Air завтра (<strong>${escHtml(ctx.dateRecupFmt)}</strong>).</p>
+      <div class="box"><p style="margin:0 0 6px"><strong>Адрес:</strong> ${escHtml(ctx.adresse)}</p><p style="margin:0">${creneau ? `<strong>Время:</strong> ${creneau}` : 'Мы позвоним утром для уточнения времени.'}</p></div>
       <p>Пожалуйста, отключите устройство от розетки и по возможности скатайте гофру.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Связаться с нами',
   });
@@ -405,8 +413,8 @@ function tplRappelRecuperation(ctx) {
     intro: `Dossier ${ref}`,
     bodyHtml: `
       <p>Bonjour ${p},</p>
-      <p>Votre location Loc'Air se termine aujourd'hui (<strong>${escHtml(ctx.dateFinFmt)}</strong>). Notre technicien viendra récupérer l'appareil demain (<strong>${escHtml(ctx.dateRecupFmt)}</strong>).</p>
-      <div class="box"><p style="margin:0 0 6px"><strong>Adresse :</strong> ${escHtml(ctx.adresse)}</p><p style="margin:0">Nous vous appellerons le matin pour confirmer le créneau.</p></div>
+      <p>Petit rappel : notre technicien viendra récupérer votre climatiseur Loc'Air demain (<strong>${escHtml(ctx.dateRecupFmt)}</strong>).</p>
+      <div class="box"><p style="margin:0 0 6px"><strong>Adresse :</strong> ${escHtml(ctx.adresse)}</p><p style="margin:0">${creneau ? `<strong>Créneau :</strong> ${creneau}` : 'Nous vous appellerons le matin pour confirmer le créneau.'}</p></div>
       <p>Merci de préparer l'appareil (débranché, gaine récupérée si possible).</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Nous contacter',
   });

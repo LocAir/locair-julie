@@ -8,7 +8,7 @@ const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
 const { sendScenarioEmail, getSignature, withSignature, fmtDate, wasScenarioSkipped } = require('./emailEngine');
 const { tplProlongConfirmation } = require('./emailTemplates');
 const { pushToAdmin } = require('./push');
-const { getEffectiveDateFin } = require('./dateFin');
+const { getEffectiveDateFin, getActiveRecuperationMission } = require('./dateFin');
 
 function normalizeTel(tel) {
   return String(tel || '').replace(/\D/g, '');
@@ -469,19 +469,41 @@ async function sendRappelRecuperationSms(supabase, resa, { force = false } = {})
   // l'appui : ce SMS annonçant "demain" avec plusieurs jours d'avance sur la
   // vraie date de récupération après une prolongation, 2026-08-05). Même
   // filet de sécurité que buildEmailContext (_lib/emailEngine.js).
+  //
+  // La vraie mission de récupération (livraisons.date_prevue/creneau) prime
+  // toujours sur ce calcul de repli : un client qui choisit son créneau
+  // depuis l'espace client (client-recup.js — "avancer la récupération")
+  // doit voir SON créneau annoncé ici, pas une date déduite de date_fin
+  // (2e correction d'Aly, 2026-08-05 : "l'envoi dépend de son choix").
+  // Formulation neutre ("petit rappel", jamais "votre location se termine
+  // aujourd'hui") : cette phrase n'est plus toujours vraie dès qu'une
+  // récupération a été avancée ou reprogrammée à une date différente de
+  // date_fin.
   const rootId = resa.reservation_origine_id || resa.id;
-  const dateFinEffective = await getEffectiveDateFin(supabase, rootId, resa.date_fin).catch(() => resa.date_fin);
+  const [dateFinEffective, recupMission] = await Promise.all([
+    getEffectiveDateFin(supabase, rootId, resa.date_fin).catch(() => resa.date_fin),
+    getActiveRecuperationMission(supabase, rootId).catch(() => null),
+  ]);
   const lang = resa.lang || 'fr';
-  const dateRecup = fmtDate(addDays(dateFinEffective, 1), lang);
+  const dateRecup = fmtDate(recupMission?.date_prevue || addDays(dateFinEffective, 1), lang);
+  const creneau = recupMission?.creneau || '';
   let content;
   if (lang === 'en') {
-    content = `Loc'Air - Your rental ends today. Our technician will come to collect the unit tomorrow (${dateRecup}). We'll text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
+    content = creneau
+      ? `Loc'Air - Just a reminder: our technician will come to collect your unit tomorrow (${dateRecup}), time slot ${creneau}. Questions? Call us at +33 6 63 79 87 56.`
+      : `Loc'Air - Just a reminder: our technician will come to collect your unit tomorrow (${dateRecup}). We'll text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
   } else if (lang === 'zh') {
-    content = `Loc'Air - 您的租赁今天结束。技术员将于明天（${dateRecup}）前来取回设备，到达前30分钟会发短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
+    content = creneau
+      ? `Loc'Air - 提醒您：技术员将于明天（${dateRecup}）前来取回设备，时间段：${creneau}。如有疑问，请致电 +33 6 63 79 87 56。`
+      : `Loc'Air - 提醒您：技术员将于明天（${dateRecup}）前来取回设备，到达前30分钟会发短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
   } else if (lang === 'ru') {
-    content = `Loc'Air - Ваша аренда заканчивается сегодня. Мастер заберёт устройство завтра (${dateRecup}) и отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
+    content = creneau
+      ? `Loc'Air - Напоминаем: мастер заберёт устройство завтра (${dateRecup}), время ${creneau}. Вопросы? Звоните: +33 6 63 79 87 56.`
+      : `Loc'Air - Напоминаем: мастер заберёт устройство завтра (${dateRecup}) и отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
   } else {
-    content = `Loc'Air - Votre location se termine aujourd'hui. Notre technicien viendra récupérer l'appareil demain (${dateRecup}) et vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
+    content = creneau
+      ? `Loc'Air - Petit rappel : notre technicien viendra récupérer votre climatiseur demain (${dateRecup}), créneau ${creneau}. Une question ? Appelez-nous au 06 63 79 87 56.`
+      : `Loc'Air - Petit rappel : notre technicien viendra récupérer votre climatiseur demain (${dateRecup}) et vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
   }
 
   const result = await sendBrevoSms({ to: resa.tel, content });
