@@ -8,6 +8,7 @@ const { recordMouvement } = require('./_lib/stockMouvements');
 const { releaseAppareilFromReservation } = require('./_lib/appareilSync');
 const { generateAndSendDocuments, generateAndSendDocumentsAfterProlongation, generateAndSendFactureVente } = require('./_lib/documents');
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
+const { todayParis } = require('./_lib/dates');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
 
 // Offre Privilège (Step 2) : le client vient de payer pour garder son
@@ -217,7 +218,7 @@ async function handleOffrePrivilegeRefunded(supabase, piId, montantCents) {
         type: 'autre', city_id: cityId,
         titre: `Récupérer climatiseur n°${appareil?.numero ?? ''} (Offre Privilège remboursée)`,
         adresse_libre: `${resa.adresse} — ${[resa.prenom, resa.nom].filter(Boolean).join(' ')}${resa.tel ? ' · ' + resa.tel : ''}`,
-        date_prevue: new Date().toISOString().slice(0, 10),
+        date_prevue: todayParis(),
         statut: 'a_faire', montant_du_cents: montantMission,
       });
       missionCreee = true;

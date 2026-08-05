@@ -11,6 +11,7 @@ const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { getActiveChecklistItems, validateChecklistReponses } = require('./_lib/checklistItems');
 const { setAppareilsStatutForReservation, moveAppareilsForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
 const { recordMouvement } = require('./_lib/stockMouvements');
+const { todayParis } = require('./_lib/dates');
 
 const PROBLEME_LABEL = {
   client_absent:       'Client absent',
@@ -47,7 +48,7 @@ const EN_COURS_STATUTS = ['acceptee', 'en_route', 'arrivee'];
 // validation finale, signalement) exigent que le jour prévu soit arrivé —
 // vérifié ici, source de vérité serveur, en plus du gate côté client.
 function missionStartDateError(liv) {
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = todayParis();
   if (liv.date_prevue > todayStr) {
     const dateLabel = new Date(liv.date_prevue + 'T12:00:00Z').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     return `Cette mission ne peut être démarrée que le ${dateLabel}.`;
@@ -125,7 +126,7 @@ module.exports = async (req, res) => {
       // sens : accepter une mission dont la date prévue est future n'est lui-
       // même jamais bloqué par une mission en cours aujourd'hui, seule la
       // capacité du jour J compte réellement.
-      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayStr = todayParis();
       if (liv.date_prevue <= todayStr) {
         const { count } = await supabase
           .from('livraisons').select('id', { count: 'exact', head: true })

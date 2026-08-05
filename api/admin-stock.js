@@ -5,6 +5,7 @@ const { checkAdminToken } = require('./_lib/auth');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { computeParcDashboard } = require('./_lib/parcDashboard');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
+const { todayParis, addDays } = require('./_lib/dates');
 
 // Compteur de secours pour l'Offre Privilège (Module 7) : nb_locations se
 // calcule normalement en comptant les lignes reservation_appareils d'un
@@ -444,8 +445,8 @@ module.exports = async (req, res) => {
     // puisse vérifier que le site et l'app sont bien alignés.
     if (action === 'force_sync') {
       await supabase.rpc('_auto_sold_out', { p_city_id: city.id });
-      const today    = new Date().toISOString().slice(0, 10);
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+      const today    = todayParis();
+      const tomorrow = addDays(today, 1);
       const disponibles = Math.max(0, await getAvailability(supabase, city.id, today, tomorrow));
       const { data: cityRow } = await supabase.from('cities').select('sold_out').eq('id', city.id).maybeSingle();
       return res.status(200).json({ ok: true, disponibles, sold_out: cityRow?.sold_out ?? null });
@@ -528,8 +529,8 @@ module.exports = async (req, res) => {
       appareils = appareils.filter(a => ids.has(a.id));
     }
 
-    const today    = new Date().toISOString().slice(0, 10);
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const today    = todayParis();
+    const tomorrow = addDays(today, 1);
     const disponibles = Math.max(0, await getAvailability(supabase, city.id, today, tomorrow));
 
     // Un appareil est "chez le client" s'il est lié à une réservation confirmée

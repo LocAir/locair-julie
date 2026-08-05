@@ -1,6 +1,7 @@
 const { getSupabase }     = require('./_lib/supabase');
 const { getCity, isCitySoldOut } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
+const { todayParis, addDays } = require('./_lib/dates');
 
 // En mode "auto" (par défaut), sold_out est recalculé en base à partir du
 // stock réel (triggers de migration_auto_sold_out.sql) — cet endpoint
@@ -26,8 +27,8 @@ module.exports = async (req, res) => {
   // vrai stock, y compris les appareils marqués "loué" hors système).
   try {
     const city = await getCity(supabase);
-    const today    = new Date().toISOString().slice(0, 10);
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+    const today    = todayParis();
+    const tomorrow = addDays(today, 1);
     const disponibles = Math.max(0, await getAvailability(supabase, city.id, today, tomorrow));
     const soldOut = await isCitySoldOut(supabase, city);
     return res.status(200).json({ sold_out: soldOut, disponibles });

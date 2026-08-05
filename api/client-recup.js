@@ -4,6 +4,7 @@ const { fmtDate } = require('./_lib/emailEngine');
 const { sendBrevoSms } = require('./_lib/brevo');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { pushToAdmin } = require('./_lib/push');
+const { todayParis } = require('./_lib/dates');
 
 const CRENEAUX_AUTORISES = ['8h-10h', '10h-12h'];
 
@@ -24,7 +25,7 @@ module.exports = async (req, res) => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
     return res.status(400).json({ error: 'Date invalide' });
   }
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayParis();
   if (newDate < today) {
     return res.status(400).json({ error: 'La date ne peut pas être dans le passé' });
   }

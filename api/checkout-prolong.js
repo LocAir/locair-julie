@@ -1,7 +1,7 @@
 const Stripe = require('stripe');
 const { getSupabase }     = require('./_lib/supabase');
 const { resolveCityById } = require('./_lib/city');
-const { isValidDate, addDays } = require('./_lib/dates');
+const { isValidDate, addDays, todayParis } = require('./_lib/dates');
 const { calcTieredPrice } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getEffectiveDateFin } = require('./_lib/reservations');
@@ -64,7 +64,7 @@ module.exports = async (req, res) => {
   }
   jours = joursCalc;
   amountCents = (clientOrigDays > 0 ? _safeIncrement(clientOrigDays, jours) : calcBase(jours)) * qty * 100;
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayParis();
   if (extDateDebut < today) {
     await recordFailedAttempt(supabaseRL, `checkout-prolong:${ip}`).catch(() => {});
     return res.status(422).json({ error: 'La date de fin initiale est déjà passée — impossible de prolonger.' });

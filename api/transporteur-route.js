@@ -2,6 +2,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
 const { geocodeAddress } = require('./_lib/geo');
 const { computeRouteMatrix, nearestNeighborOrder } = require('./_lib/routing');
+const { todayParis } = require('./_lib/dates');
 
 // Calcule l'ordre de tournée du jour (plus proche en voiture, pas à vol
 // d'oiseau) à partir d'un point de départ choisi par le livreur au début de
@@ -42,7 +43,7 @@ module.exports = async (req, res) => {
       startLng = city.depot_lng;
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = todayParis();
     const { data: livraisons, error } = await supabase
       .from('livraisons')
       .select('id, type, statut, date_prevue, reservation:reservations(adresse)')

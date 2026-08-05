@@ -2,6 +2,7 @@ const { getSupabase } = require('./_lib/supabase');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { verifyClientToken } = require('./_lib/auth');
 const { getEffectiveDateFin } = require('./_lib/reservations');
+const { todayParis } = require('./_lib/dates');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -68,7 +69,7 @@ module.exports = async (req, res) => {
   // qu'une prolongation confirmée existe bel et bien derrière.
   resa.date_fin = await getEffectiveDateFin(supabase, resa.id, resa.date_fin);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayParis();
   if (resa.date_fin < today) {
     if (!token) await recordFailedAttempt(supabase, `prolong:${ip}`).catch(() => {});
     return res.status(422).json({ error: 'Votre location est déjà terminée — impossible de la prolonger.' });
