@@ -1,5 +1,6 @@
 const { SCENARIOS } = require('./emailEngine');
 const { upcomingScenariosForReservation, pastScenariosForReservation, daysDiff, isSupersededReservation } = require('./emailSchedule');
+const { todayParis, addDays } = require('./dates');
 
 // Libellés des envois ponctuels hors moteur de scénarios (voir
 // api/webhook.js, api/_lib/documents.js, api/transporteur-action.js) —
@@ -56,10 +57,8 @@ const WINDOW_DAYS = 30;
 // api/admin-alerts.js (badge de comptage) pour n'avoir qu'une seule
 // définition de ce qu'est une anomalie.
 async function buildCommunicationsCockpit(supabase, cityId) {
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const windowStart = new Date();
-  windowStart.setDate(windowStart.getDate() - WINDOW_DAYS);
-  const windowStartISO = windowStart.toISOString().slice(0, 10);
+  const todayISO = todayParis();
+  const windowStartISO = addDays(todayISO, -WINDOW_DAYS);
 
   const { data: resas, error: resasErr } = await supabase
     .from('reservations')
