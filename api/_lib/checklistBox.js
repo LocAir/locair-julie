@@ -56,20 +56,13 @@ function kitSequenceForReservation(reservation, unitCount) {
   return seq.slice(0, unitCount);
 }
 
-async function computeChecklistBox(supabase, transporteurId, dateISO) {
-  const { data: livs, error } = await supabase
-    .from('livraisons')
-    .select(`
-      id, type, statut,
-      reservation:reservations ( quantite, fenetre, reservation_appareils ( appareil:appareils ( numero ) ), reservation_fenetres ( type, quantite ) )
-    `)
-    .eq('transporteur_id', transporteurId)
-    .eq('date_prevue', dateISO)
-    .eq('masquee', false)
-    .not('statut', 'in', '(annule,refusee)');
-  if (error) throw error;
-
-  const missions = livs || [];
+// Calcule la checklist à partir d'une liste de missions déjà chargée (même
+// forme que ce que retourne la requête livraisons ci-dessous) — extrait de
+// computeChecklistBox pour permettre à admin-checklist.js de charger les
+// missions de TOUS les transporteurs d'une ville en une seule requête
+// groupée, plutôt qu'une requête par transporteur (voir computeChecklistBox
+// et admin-checklist.js).
+function computeChecklistBoxFromMissions(missions, dateISO) {
   const climatiseurs = [];
   const kits = { universel: 0, velux: 0 };
 
@@ -103,4 +96,22 @@ async function computeChecklistBox(supabase, transporteurId, dateISO) {
   };
 }
 
-module.exports = { computeChecklistBox, kitPourFenetre, ITEMS_FIXES, ITEMS_DYNAMIQUES };
+const CHECKLIST_BOX_SELECT = `
+      id, type, statut, transporteur_id,
+      reservation:reservations ( quantite, fenetre, reservation_appareils ( appareil:appareils ( numero ) ), reservation_fenetres ( type, quantite ) )
+    `;
+
+async function computeChecklistBox(supabase, transporteurId, dateISO) {
+  const { data: livs, error } = await supabase
+    .from('livraisons')
+    .select(CHECKLIST_BOX_SELECT)
+    .eq('transporteur_id', transporteurId)
+    .eq('date_prevue', dateISO)
+    .eq('masquee', false)
+    .not('statut', 'in', '(annule,refusee)');
+  if (error) throw error;
+
+  return computeChecklistBoxFromMissions(livs || [], dateISO);
+}
+
+module.exports = { computeChecklistBox, computeChecklistBoxFromMissions, CHECKLIST_BOX_SELECT, kitPourFenetre, ITEMS_FIXES, ITEMS_DYNAMIQUES };
