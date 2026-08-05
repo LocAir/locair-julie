@@ -591,15 +591,16 @@ async function confirmReservation(supabase, resa) {
           });
         }
       }
-      // Réinitialise l'idempotence des SMS liés à la récupération de la
-      // réservation d'origine — le rappel J-1 et la demande d'avis doivent
-      // repartir sur la nouvelle date de récupération, pas être bloqués par
-      // l'entrée email_log de l'ancienne date.
+      // Réinitialise l'idempotence du SMS lié à la récupération de la
+      // réservation d'origine — le rappel J-1 doit repartir sur la nouvelle
+      // date de récupération, pas être bloqué par l'entrée email_log de
+      // l'ancienne date (sms_avis_google retiré de cette liste le
+      // 2026-08-05 — ce SMS n'existe plus, voir cron-sms-avis.js).
       for (const r of stale) {
         await supabase.from('email_log')
           .delete()
           .eq('reservation_id', r.id)
-          .in('scenario', ['sms_rappel_recuperation', 'sms_avis_google'])
+          .in('scenario', ['sms_rappel_recuperation'])
           .then(() => {}, e => console.error('[Prolong reset SMS idempotence]', e.message));
       }
     }

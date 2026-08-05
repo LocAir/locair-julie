@@ -373,12 +373,14 @@ module.exports = async (req, res) => {
         } catch (e) {
           console.error('[SMS récupération reprogrammée]', e.message);
         }
-        // Réinitialise l'idempotence du rappel J-1 et de la demande d'avis —
-        // la nouvelle date de récupération doit déclencher ces SMS à nouveau.
+        // Réinitialise l'idempotence du rappel J-1 — la nouvelle date de
+        // récupération doit le déclencher à nouveau (sms_avis_google retiré
+        // de cette liste le 2026-08-05 — ce SMS n'existe plus, voir
+        // cron-sms-avis.js).
         await supabase.from('email_log')
           .delete()
           .eq('reservation_id', liv.reservation_id)
-          .in('scenario', ['sms_rappel_recuperation', 'sms_avis_google'])
+          .in('scenario', ['sms_rappel_recuperation'])
           .then(() => {}, e => console.error('[Report récup reset SMS idempotence]', e.message));
       }
 

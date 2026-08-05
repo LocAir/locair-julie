@@ -116,11 +116,12 @@ module.exports = async (req, res) => {
     });
 
     // Réinitialise l'idempotence : la nouvelle date doit déclencher le rappel
-    // J-1 et la demande d'avis Google à nouveau sur la nouvelle date.
+    // J-1 à nouveau sur la nouvelle date (sms_avis_google retiré de cette
+    // liste le 2026-08-05 — ce SMS n'existe plus, voir cron-sms-avis.js).
     await supabase.from('email_log')
       .delete()
       .in('reservation_id', allResaIds)
-      .in('scenario', ['sms_rappel_recuperation', 'sms_avis_google'])
+      .in('scenario', ['sms_rappel_recuperation'])
       .then(() => {}, e => console.error('[client-recup reset SMS idempotence]', e.message));
 
     return res.status(200).json({ ok: true, date_prevue: newDate, creneau });
