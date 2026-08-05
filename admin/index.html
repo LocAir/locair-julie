@@ -1094,6 +1094,13 @@ function escHtml(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// Date du jour en heure de Paris (pas UTC) — Intl.DateTimeFormat gère tout
+// seul l'heure d'été/hiver. Sans ça, entre minuit et 1h-2h du matin heure de
+// Paris, "aujourd'hui" calculé en UTC renvoyait encore la veille (missions du
+// jour manquantes, statistiques "aujourd'hui" faussées, etc.).
+function todayParisStr(){
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
 
 // wa.me exige un numéro international sans "0" ni "+". Depuis le
 // sélecteur d'indicatif pays du site public (2026-08-03), un numéro client
@@ -1179,7 +1186,7 @@ function openExportComptable(){
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.id = 'modal-overlay-el';
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayParisStr();
   const debutMois = today.slice(0,8) + '01';
   overlay.innerHTML = `<div class="modal-box" style="max-width:420px">
     <h2>📊 Export comptable</h2>
@@ -1359,7 +1366,7 @@ function missionRowData(m){
   if(m.photo_installation_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_installation')">📷 Voir — Installation</button>`);
   if(m.photo_retour_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_retour')">📷 Voir — Retour</button>`);
   if(m.photo_absence_path) mediaBtns.push(`<button onclick="viewMedia(${m.id},'photo_absence')">📵 Voir — Preuve passage</button>`);
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   return {
     res, isAutre,
     displayName: isAutre ? (m.titre || 'Mission libre') : ((res.prenom||'')+' '+(res.nom||'')),
@@ -1835,7 +1842,7 @@ function boardSectionHtml(items){
     ${g.items.map(boardRowHtml).join('')}`).join('');
 }
 function boardHtml(livraisons){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   const today = (livraisons||[]).filter(m => m.date_prevue===todayStr && m.statut!=='annule' && m.statut!=='refusee');
   const installs   = today.filter(m => m.type==='livraison');
   const pickups    = today.filter(m => m.type==='recuperation');
@@ -1857,7 +1864,7 @@ function boardHtml(livraisons){
 // seule fois par jour (marqueur localStorage daté), pas à chaque rechargement.
 function morningBannerHtml(hier){
   if(!hier) return '';
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   if(localStorage.getItem('a_morning_seen') === todayStr) return '';
   const incidentsTxt = hier.incidents>0 ? `, ${hier.incidents} incident${hier.incidents>1?'s':''}` : '';
   return `
@@ -1868,7 +1875,7 @@ function morningBannerHtml(hier){
     </div>`;
 }
 function dismissMorningBanner(){
-  localStorage.setItem('a_morning_seen', new Date().toISOString().slice(0,10));
+  localStorage.setItem('a_morning_seen', todayParisStr());
   const el = document.getElementById('morning-banner-el');
   if(el) el.remove();
 }
@@ -1919,7 +1926,7 @@ function goToVirements(){
 // partir en tournée — même calcul que côté transporteur (api/_lib/checklistBox.js),
 // synchronisé avec les missions du jour sélectionné. Lecture seule ici : la
 // prise en charge (validation) reste un geste du transporteur lui-même.
-let CHECKLIST_DATE = new Date().toISOString().slice(0,10);
+let CHECKLIST_DATE = todayParisStr();
 async function loadChecklistBox(){
   const zone = document.getElementById('tab-checklist');
   zone.innerHTML = loading();
@@ -3207,7 +3214,7 @@ function nrSetDuration(days){
   const finEl   = document.getElementById('nr-fin');
   if(!debutEl.value){
     // Aucune date de départ : proposer aujourd'hui par défaut
-    debutEl.value = new Date().toISOString().slice(0,10);
+    debutEl.value = todayParisStr();
   }
   const d = new Date(debutEl.value + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() + days);
@@ -3523,7 +3530,7 @@ function resetGantt(){
 function renderReservationsCalendrier(){
   const el = document.getElementById('resa-calendrier-content');
   if(!el) return;
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   if(!GANTT_START) GANTT_START = todayStr;
   const windowEnd = _isoAddDays(GANTT_START, GANTT_DAYS-1);
   const DOW = ['D','L','M','M','J','V','S'];
@@ -3605,7 +3612,7 @@ function renderReservationsCalendrier(){
 // cas (livraisons à venir et récupérations à venir) — calculer la bonne date
 // au cas par cas évite de trier la moitié de la liste sur le mauvais champ.
 function resaUrgencyDate(r){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   return (r.date_debut && r.date_debut >= todayStr) ? r.date_debut : (r.date_fin || r.date_debut || '');
 }
 function renderReservations(){
@@ -4205,7 +4212,7 @@ function renderLivraisonsToolbar(){
   ];
   const avgLiv = avgDureeSurPlace('livraison');
   const avgRec = avgDureeSurPlace('recuperation');
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayParisStr();
   const EN_COURS_STATUTS = ['a_faire','acceptee','en_route','arrivee','probleme'];
   const missionsAujourdhui = visibles.filter(m => m.date_prevue===today && EN_COURS_STATUTS.includes(m.statut)).length;
   const missionsEnRetard = visibles.filter(m => m.date_prevue<today && EN_COURS_STATUTS.includes(m.statut)).length;
@@ -4289,7 +4296,7 @@ async function openCreateMissionModal(){
   ).join('');
   const transpOptions = TRANSPORTEURS_CACHE.filter(t => t.actif && t.nom !== TEST_TRANSPORTEUR_NOM)
     .map(t => `<option value="${t.id}">${escHtml(t.nom)}</option>`).join('');
-  const today = new Date().toISOString().slice(0,10);
+  const today = todayParisStr();
   overlay.innerHTML = `
     <div class="modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
       <h2 style="margin-bottom:14px">➕ Créer une mission</h2>
@@ -4481,7 +4488,7 @@ function renderLivraisons(){
     // "À venir" = actives dont la date prévue n'est pas encore arrivée —
     // isole les missions déjà acceptées à l'avance (voir date-gate côté
     // transporteur) de ce qui reste réellement à traiter aujourd'hui.
-    if(LIVRAISONS_FILTER === 'a_venir') items = items.filter(m => m.date_prevue > new Date().toISOString().slice(0,10) && !['fait','annule'].includes(m.statut));
+    if(LIVRAISONS_FILTER === 'a_venir') items = items.filter(m => m.date_prevue > todayParisStr() && !['fait','annule'].includes(m.statut));
     else if(LIVRAISONS_FILTER === 'non_assignees'){
       items = items.filter(m => m.statut==='a_faire' && !m.transporteur);
       // Venue du bandeau d'alerte : le compteur ne compte que ce qui est dû
@@ -4499,14 +4506,14 @@ function renderLivraisons(){
     // retard est au moins aussi urgent qu'une récupération), statut pas
     // encore commencé/terminé, date prévue dépassée.
     else if(LIVRAISONS_FILTER === 'en_retard'){
-      const todayStr = new Date().toISOString().slice(0,10);
+      const todayStr = todayParisStr();
       items = items.filter(m => ['a_faire','acceptee'].includes(m.statut) && m.date_prevue < todayStr);
     }
     // "En cours" = réellement actif maintenant, pas juste accepté à
     // l'avance (voir "À venir" ci-dessus) ni "Nouvelle"/non démarrée
     // (a_faire) — même logique que côté transporteur (missionEstEnCours).
     else if(LIVRAISONS_FILTER === 'en_cours'){
-      const todayStr = new Date().toISOString().slice(0,10);
+      const todayStr = todayParisStr();
       items = items.filter(m => ['arrivee','en_route'].includes(m.statut) || (m.statut==='acceptee' && m.date_prevue<=todayStr));
     }
     else if(LIVRAISONS_FILTER === 'fait') items = items.filter(m => m.statut === 'fait');
@@ -4541,8 +4548,8 @@ function renderLivraisons(){
 
   if(!items.length){ list.innerHTML = '<p class="empty">🚚 Aucune mission ne correspond.</p>'; return; }
 
-  const todayStr = new Date().toISOString().slice(0,10);
-  const tomorrowStr = new Date(Date.now()+86400000).toISOString().slice(0,10);
+  const todayStr = todayParisStr();
+  const tomorrowStr = _isoAddDays(todayStr, 1);
 
   // Groupement par date pour les vues opérationnelles
   const SHOW_GROUPS = !LIVRAISONS_SHOW_MASQUEES && ['toutes','a_venir','non_assignees','en_retard','en_cours'].includes(LIVRAISONS_FILTER);
@@ -4677,8 +4684,8 @@ function livraisonsTableHtml(items){
   const groupByDate = !LIV_SORT.col || LIV_SORT.col === 'date';
   let bodyHtml;
   if(groupByDate){
-    const todayStr = new Date().toISOString().slice(0,10);
-    const tomorrowStr = new Date(Date.now()+86400000).toISOString().slice(0,10);
+    const todayStr = todayParisStr();
+    const tomorrowStr = _isoAddDays(todayStr, 1);
     // Même garde que SHOW_GROUPS (vue mobile, ligne ~4543) : une date passée
     // n'est un vrai "retard" que sur les filtres où les missions affichées
     // sont encore à traiter. Sur Terminées/Problèmes/Annulées, une mission
@@ -4782,7 +4789,7 @@ function openRecupFromCalendrier(missionId){
 function renderRecupCalendrier(){
   const el = document.getElementById('liv-recup-cal-content');
   if(!el) return;
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   if(!RECUP_CAL_START) RECUP_CAL_START = todayStr;
   const windowEnd = _isoAddDays(RECUP_CAL_START, RECUP_CAL_DAYS-1);
   const DOW = ['D','L','M','M','J','V','S'];
@@ -5233,7 +5240,7 @@ let AFFECT_STAGED = null;   // livraison_id -> transporteur_id|null (état en co
 let AFFECT_ORIGINAL = null; // livraison_id -> transporteur_id|null (état réel, pour savoir ce qui a changé)
 
 function affectMissionsToday(){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   return LIVRAISONS_CACHE.filter(m => !m.masquee && m.date_prevue===todayStr && ['a_faire','acceptee','en_route','arrivee','probleme'].includes(m.statut));
 }
 function initAffectStaged(){
@@ -5466,7 +5473,7 @@ let TRANSPORTEURS_VIEW = 'equipe'; // 'equipe' | 'revenus'
 // référence pour la barre de charge du jour, affichée ici et côté livreur.
 const MISSIONS_CIBLE_JOUR = 10;
 function chargeJourHtml(transporteurId, livraisons){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   const count = (livraisons||[]).filter(m =>
     m.date_prevue===todayStr && m.transporteur?.id===transporteurId &&
     !['annule','refusee'].includes(m.statut)
@@ -6049,7 +6056,7 @@ function formatIban(iban){ return (iban||'').replace(/(.{4})/g,'$1 ').trim(); }
 // chaque chargement à partir de l'historique réel, jamais un compteur stocké
 // à part : le total ne peut donc jamais désynchroniser de la réalité.
 function partenaireKpi(reservations){
-  const todayStr = new Date().toISOString().slice(0,10);
+  const todayStr = todayParisStr();
   const monthStr = todayStr.slice(0,7);
   let ajd = 0, mois = 0, ajdN = 0, moisN = 0;
   (reservations||[]).forEach(r => {
