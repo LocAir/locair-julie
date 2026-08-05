@@ -3473,7 +3473,17 @@ async function putFileWithRetry(url, file, contentType, attempts){
       if(i < attempts-1) await new Promise(r => setTimeout(r, 2000));
     }
   }
-  throw new Error(`Envoi échoué (réseau faible) — reprends la photo pour réessayer.`);
+  // Un fetch qui échoue avant toute réponse peut avoir plusieurs causes bien
+  // distinctes (vraie coupure réseau, mais aussi une URL signée expirée, un
+  // blocage CORS, etc.) — toutes rendent le même symptôme générique côté
+  // navigateur ("Failed to fetch"), donc le message affiché au livreur reste
+  // volontairement simple et actionnable (retenter/signaler). Le détail
+  // technique réel est conservé à part (voir err.detail, affiché en petit
+  // sous le message dans uploadMedia) pour permettre un vrai diagnostic si
+  // ça se reproduit alors que le réseau est pourtant bon.
+  const finalErr = new Error('Envoi échoué (réseau faible) — reprends la photo pour réessayer.');
+  finalErr.detail = lastErr ? `${lastErr.name || 'Error'}: ${lastErr.message || ''}` : '';
+  throw finalErr;
 }
 document.getElementById('media-input').addEventListener('change', async (e) => {
   const rawFile = e.target.files[0];
@@ -3614,6 +3624,18 @@ async function uploadMedia(rawFile, kind, mission){
       if(zone2){
         const errEl = document.createElement('div');
         errEl.className='err'; errEl.style.display='block'; errEl.textContent = err.message;
+        // Détail technique réel (voir putFileWithRetry) en petit dessous —
+        // discret, mais lisible sur une capture d'écran envoyée à Aly si
+        // l'échec se reproduit malgré un bon réseau (diagnostic précis
+        // sinon impossible à distance : "réseau faible" peut masquer autre
+        // chose, ex. une URL d'envoi expirée).
+        if(err.detail){
+          const detailEl = document.createElement('div');
+          detailEl.style.cssText='font-size:11px;opacity:.55;margin-top:2px';
+          detailEl.textContent = err.detail;
+          errEl.appendChild(document.createElement('br'));
+          errEl.appendChild(detailEl);
+        }
         zone2.appendChild(errEl);
         // Le fichier déjà capturé reste en mémoire (voir STATE.lastFailedUpload)
         // pour permettre de relancer l'envoi sans repasser par l'appareil

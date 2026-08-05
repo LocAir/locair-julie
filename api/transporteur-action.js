@@ -298,7 +298,13 @@ module.exports = async (req, res) => {
       const mediaErr = checkMediaAllowed(liv, kind);
       if (mediaErr) return res.status(400).json({ error: mediaErr });
 
-      const ext = EXT_BY_TYPE[body.content_type] || 'mp4';
+      // Repli par type large (image/vidéo) avant le repli fixe sur 'mp4' —
+      // sans ça, une photo dont la compression a échoué côté transporteur
+      // (repli sur le fichier d'origine, ex. HEIC iOS non reconnu par
+      // EXT_BY_TYPE) recevait une extension .mp4 en stockage, cohérence
+      // trompeuse même si l'upload en lui-même ne plante pas pour ça.
+      const contentType = body.content_type || '';
+      const ext = EXT_BY_TYPE[contentType] || (contentType.startsWith('image/') ? 'jpg' : 'mp4');
       const path = `${liv.id}/${kind}-${Date.now()}.${ext}`;
       const { data, error } = await supabase.storage.from('missions').createSignedUploadUrl(path, { upsert: true });
       if (error) throw error;
