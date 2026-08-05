@@ -136,8 +136,19 @@ async function buildCommunicationsCockpit(supabase, cityId) {
 
   let totalAnomalies = 0;
   const clients = resaList.map(resa => {
-    const pastSet = new Set(pastScenariosForReservation(resa, todayISO).map(c => c.scenario));
-    const upcomingSet = new Set(upcomingScenariosForReservation(resa, todayISO).map(c => c.scenario));
+    const missions = livByResa[resa.id] || [];
+    // La vraie mission de récupération planifiée (déjà chargée ci-dessus,
+    // aucune requête supplémentaire) doit primer sur le calcul par défaut
+    // (date_fin) pour rappel_recuperation/sms_rappel_recuperation — sans
+    // ça, une récupération avancée par le client (client-recup.js) ou
+    // reprogrammée par l'admin (sans passer par une prolongation) faisait
+    // remonter à tort une anomalie "en retard" ici, alors que le rappel
+    // était déjà correctement parti à la bonne date (audit du 2026-08-05,
+    // même filet de sécurité que cron-daily.js/_lib/emailEngine.js).
+    const recupMission = missions.find(m => m.type === 'recuperation' && !['annule', 'annulee', 'refusee'].includes(m.statut));
+    const recupOpts = { recupDatePrevue: recupMission?.date_prevue || null };
+    const pastSet = new Set(pastScenariosForReservation(resa, todayISO, recupOpts).map(c => c.scenario));
+    const upcomingSet = new Set(upcomingScenariosForReservation(resa, todayISO, recupOpts).map(c => c.scenario));
     const duree = (resa.date_debut && resa.date_fin) ? daysDiff(resa.date_debut, resa.date_fin) : null;
 
     const channels = [];
@@ -153,7 +164,6 @@ async function buildCommunicationsCockpit(supabase, cityId) {
       // scénario) -> pas pertinent, on ne l'affiche pas.
     }
 
-    const missions = livByResa[resa.id] || [];
     const installationDone = missions.some(m => m.type === 'livraison' && m.statut === 'fait');
     const recuperationDone = missions.some(m => m.type === 'recuperation' && m.statut === 'fait');
     channels.push(statusFor(resa.id, 'post_installation', installationDone));
