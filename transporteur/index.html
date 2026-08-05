@@ -621,6 +621,7 @@ let STATE = {
   checklistPopupCallback: null, // callback à exécuter une fois la popup "avant de démarrer" validée, voir openChecklistPopup()
   detailArriveeSmsSentFor: null, // id de la mission dont le SMS "merci de descendre" a été envoyé (état "clignotant"), voir wizardStepBodyHtml()
   checklistItems: null, // {installation:[...], recuperation:[...]} — chargé une fois, voir fetchMissions()
+  checklistItemsError: false, // le dernier chargement a échoué (réseau) — voir fetchChecklistItems()/wizardStepBodyHtml()
   notifications: [], // centre de notifications (Module 5, Partie 11), voir updateNotifBadge()
   wizardViewIdx: null, // étape du parcours affichée si différente de l'étape réelle — voir goToPreviousWizardStep()/missionWizardHtml()
   activiteMissionsCache: [], // dernière liste "terminées" reçue, voir switchMissionsFiltre()
@@ -1129,6 +1130,7 @@ async function fetchMissions(){
 // Checklists administrables "Installation terminée"/"Récupération terminée"
 // (Module 5) — chargées une fois, réutilisées pour toutes les missions.
 async function fetchChecklistItems(){
+  STATE.checklistItemsError = false;
   try{
     const [ri, rr] = await Promise.all([
       fetch(API('transporteur-checklist-items'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({workflow:'installation'})}),
@@ -1137,7 +1139,18 @@ async function fetchChecklistItems(){
     const [di, dr] = await Promise.all([ri.json(), rr.json()]);
     STATE.checklistItems = { installation: (ri.ok && di.items) || [], recuperation: (rr.ok && dr.items) || [] };
     if(STATE.currentMission) renderDetail(); // affiche les cases si l'étape finale était déjà ouverte
-  }catch(e){ /* pas bloquant — le serveur revalidera de toute façon */ }
+  }catch(e){
+    // Le commentaire disait "pas bloquant — le serveur revalidera de toute
+    // façon", mais c'était faux dans les faits : STATE.checklistItems restait
+    // null indéfiniment, et le bouton final de la mission (mission-final-btn)
+    // reste désactivé tant que c'est le cas (voir wizardStepBodyHtml, cas
+    // 'final') — sur le terrain, un réseau qui reste faible bloquait le
+    // livreur sur "Chargement de la checklist…" sans aucune action possible
+    // pour terminer sa mission. Affiche maintenant un vrai bouton "Réessayer"
+    // au lieu d'un chargement muet sans fin.
+    STATE.checklistItemsError = true;
+    if(STATE.currentMission) renderDetail();
+  }
 }
 
 // ── Centre de notifications (Module 5, Partie 11) ────────────────────────────
@@ -2626,7 +2639,11 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   const checklistWorkflow = m.type==='livraison' ? 'installation' : m.type==='recuperation' ? 'recuperation' : null;
   const isLastRecup = isLastRecuperationOfDay(m);
   const checklistLoading = checklistWorkflow && STATE.checklistItems === null;
-  if(checklistLoading) fetchChecklistItems().then(renderDetail);
+  // Ne relance pas tout seul si le dernier essai a déjà échoué (réseau) —
+  // le livreur relance lui-même via le bouton "Réessayer" ci-dessous, sinon
+  // chaque re-rendu de l'écran (fréquent) redéclenchait un appel réseau en
+  // boucle sans jamais y arriver ni le montrer clairement.
+  if(checklistLoading && !STATE.checklistItemsError) fetchChecklistItems().then(renderDetail);
   const hasFinalChecklist = checklistWorkflow && !checklistLoading && (STATE.checklistItems[checklistWorkflow] || []).length > 0;
   // Même souci de course que sur "Confirmer la démonstration" (voir
   // uploadMedia) : ce bouton devient cliquable dès que la coche verte de la
@@ -2634,9 +2651,18 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   // côté serveur — un livreur rapide pouvait donc essuyer un refus serveur
   // ("Photo requise"/"Vidéo requise") juste après avoir pris sa photo.
   const uploadPending = Boolean(m.photo_retour_pending || m.photo_installation_pending);
+  // Si le chargement de la checklist échoue (réseau faible sur le terrain) et
+  // ne se relance jamais, le bouton final restait désactivé pour toujours
+  // sur "Chargement de la checklist…", sans aucune action possible pour
+  // terminer la mission — corrigé avec un vrai bouton "Réessayer" (bug
+  // remonté par Aly le 2026-08-05, même famille que le souci de course
+  // ci-dessus).
+  const checklistErrorHtml = (checklistLoading && STATE.checklistItemsError) ? `
+    <p class="step-hint" style="color:var(--red)">⚠️ Impossible de charger la checklist — vérifie ta connexion.</p>
+    <button class="btn btn-grey btn-block" style="margin-bottom:10px" onclick="fetchChecklistItems().then(renderDetail)">🔄 Réessayer</button>` : '';
   return `
     <p class="step-hint">🎉 Tout est prêt — vérifie la checklist puis valide pour terminer la mission.</p>
-    ${checklistLoading ? '<p class="step-hint" style="color:var(--grey)">Chargement de la checklist…</p>' : (checklistWorkflow ? checklistFinalHtml(checklistWorkflow) : '')}
+    ${checklistLoading ? (STATE.checklistItemsError ? checklistErrorHtml : '<p class="step-hint" style="color:var(--grey)">Chargement de la checklist…</p>') : (checklistWorkflow ? checklistFinalHtml(checklistWorkflow) : '')}
     ${m.type==='recuperation' ? etatMaterielHtml() : ''}
     ${isLastRecup ? checklistRestockHtml() : ''}
     ${uploadPending ? '<p class="step-hint" style="color:var(--grey)">⏳ Envoi de la photo en cours…</p>' : ''}
