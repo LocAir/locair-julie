@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const { generateContratPdf, generateFacturePdf, generateFactureVentePdf } = require('./pdf');
 const { sendBrevoEmail } = require('./brevo');
 const { CGV_VERSION } = require('./legal');
+const { getPricingConfig } = require('./pricing');
 const { tplContratFacture, tplContratFactureProlongation, tplFactureVente } = require('./emailTemplates');
 const { getSignature, withSignature } = require('./emailEngine');
 
@@ -53,9 +54,12 @@ async function generateAndSendDocuments(supabase, resa, { force } = {}) {
 
   const now = new Date();
   const annee = now.getUTCFullYear();
+  // Tarifs (panneau de contrôle admin, voir admin-pricing.js) — jamais
+  // recalculés en dur dans le contrat/la facture.
+  const pricing = await getPricingConfig(supabase);
 
   // ── Contrat ─────────────────────────────────────────────────────────────
-  const contratBuffer = await generateContratPdf({ reservation: resa, appareils, acceptations, version: CGV_VERSION });
+  const contratBuffer = await generateContratPdf({ reservation: resa, appareils, acceptations, version: CGV_VERSION, pricing });
   const contratPath = `documents/contrats/${resa.ref}-${now.getTime()}.pdf`;
   await uploadPdf(supabase, contratPath, contratBuffer);
   const contratToken = accessToken();
@@ -76,7 +80,7 @@ async function generateAndSendDocuments(supabase, resa, { force } = {}) {
   if (numeroErr) throw numeroErr;
   const numero = invoiceNumber(annee, numeroSeq);
 
-  const factureBuffer = await generateFacturePdf({ reservation: resa, appareils, numero, datePaiement: now });
+  const factureBuffer = await generateFacturePdf({ reservation: resa, appareils, numero, datePaiement: now, pricing });
   const facturePath = `documents/factures/${numero}.pdf`;
   await uploadPdf(supabase, facturePath, factureBuffer);
   const factureToken = accessToken();
@@ -190,9 +194,12 @@ async function generateAndSendDocumentsAfterProlongation(supabase, { origineResa
 
   const now = new Date();
   const annee = now.getUTCFullYear();
+  // Tarifs (panneau de contrôle admin, voir admin-pricing.js) — jamais
+  // recalculés en dur dans le contrat/la facture.
+  const pricing = await getPricingConfig(supabase);
 
   // ── Contrat mis à jour (nouvelle date de fin, cf. commentaire ci-dessus) ──
-  const contratBuffer = await generateContratPdf({ reservation: origineResa, appareils, acceptations, version: CGV_VERSION });
+  const contratBuffer = await generateContratPdf({ reservation: origineResa, appareils, acceptations, version: CGV_VERSION, pricing });
   const contratPath = `documents/contrats/${origineResa.ref}-${now.getTime()}.pdf`;
   await uploadPdf(supabase, contratPath, contratBuffer);
   const contratToken = accessToken();
@@ -213,7 +220,7 @@ async function generateAndSendDocumentsAfterProlongation(supabase, { origineResa
   if (numeroErr) throw numeroErr;
   const numero = invoiceNumber(annee, numeroSeq);
 
-  const factureBuffer = await generateFacturePdf({ reservation: prolongationResa, appareils, numero, datePaiement: now });
+  const factureBuffer = await generateFacturePdf({ reservation: prolongationResa, appareils, numero, datePaiement: now, pricing });
   const facturePath = `documents/factures/${numero}.pdf`;
   await uploadPdf(supabase, facturePath, factureBuffer);
   const factureToken = accessToken();

@@ -1,7 +1,7 @@
 const Stripe  = require('stripe');
 const crypto  = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
-const { calcTieredPrice: calcRetardPrice } = require('./_lib/pricing');
+const { calcTieredPrice, getPricingConfig } = require('./_lib/pricing');
 
 function safeEqual(a, b) {
   try { return crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b)); } catch { return false; }
@@ -18,7 +18,10 @@ module.exports = async (req, res) => {
   const data   = req.body || {};
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const jours  = Math.max(1, parseInt(data.jours) || 1);
-  const amountCents = calcRetardPrice(jours) * 100;
+  // Tarifs (panneau de contrôle admin, voir admin-pricing.js) — jamais
+  // recalculés en dur.
+  const pricing     = await getPricingConfig(getSupabase());
+  const amountCents = calcTieredPrice(jours, pricing) * 100;
 
   try {
     let customerId      = (data.customer_id || '').trim();

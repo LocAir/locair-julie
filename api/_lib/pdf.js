@@ -1,6 +1,6 @@
 const PDFDocument = require('pdfkit');
 const { SELLER } = require('./legal');
-const { calcTieredPrice } = require('./pricing');
+const { calcTieredPrice, DEFAULT_PRICING_CONFIG } = require('./pricing');
 
 // Palette
 const C = {
@@ -265,7 +265,8 @@ function drawFooter(doc, text) {
 // Mobile.pdf, reçu le 2026-07-16) — Articles 1 à 7 repris tels quels, seuls
 // les champs sont remplacés par les données réelles de la réservation.
 // ══════════════════════════════════════════════════════════════════════════════
-function generateContratPdf({ reservation, appareils, acceptations, version }) {
+function generateContratPdf({ reservation, appareils, acceptations, version, pricing }) {
+  const p = pricing || DEFAULT_PRICING_CONFIG;
   return renderPdf((doc) => {
     drawContratHeader(doc, reservation.ref);
 
@@ -343,13 +344,13 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
     );
 
     article(3, 'Durée',
-      `La durée minimale de location est de 7 jours. La location débute le ${fmtDate(reservation.date_debut)} et se termine le ` +
+      `La durée minimale de location est de ${p.duree_min_jours} jours. La location débute le ${fmtDate(reservation.date_debut)} et se termine le ` +
       `${fmtDate(reservation.date_fin)}, pour une durée de ${jours} jours.`
     );
 
     article(4, 'Tarification & livraison',
-      'Tarif journalier (TTC) : 12,00 €/jour (7 jours) · 10,00 €/jour (8 à 14 jours) · ' +
-      '9,00 €/jour (15 à 21 jours) · 8,00 €/jour (22 jours et plus). Durée minimale : 7 jours.\n' +
+      `Tarif journalier (TTC) : ${eur(p.palier1_tarif_cents)}/jour (${p.palier1_max_jours} jours) · ${eur(p.palier2_tarif_cents)}/jour (${p.palier1_max_jours + 1} à ${p.palier2_max_jours} jours) · ` +
+      `${eur(p.palier3_tarif_cents)}/jour (${p.palier2_max_jours + 1} à ${p.palier3_max_jours} jours) · ${eur(p.palier4_tarif_cents)}/jour (${p.palier3_max_jours + 1} jours et plus). Durée minimale : ${p.duree_min_jours} jours.\n` +
       'Frais de livraison et récupération : 60,00 € (Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche-sur-Mer, ' +
       'Beaulieu-sur-Mer) ou 120,00 € (hors zone).\n' +
       'Option installation par un technicien qualifié : 80,00 € (en option) ou installation en autonomie (gratuite, kit fourni sans perçage).\n' +
@@ -452,7 +453,7 @@ function generateContratPdf({ reservation, appareils, acceptations, version }) {
 // encaissé apparaît en « Remise commerciale » pour que le total corresponde
 // exactement à ce qui a été payé.
 // ══════════════════════════════════════════════════════════════════════════════
-function generateFacturePdf({ reservation, appareils, numero, datePaiement }) {
+function generateFacturePdf({ reservation, appareils, numero, datePaiement, pricing }) {
   return renderPdf((doc) => {
     drawFactureHeader(doc, numero, datePaiement, reservation.ref);
 
@@ -482,7 +483,13 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement }) {
 
     const jours    = nbJours(reservation.date_debut, reservation.date_fin);
     const qty      = reservation.quantite || 1;
-    const totalUn  = calcTieredPrice(jours);
+    // Barème actuel (panneau de contrôle admin) — sert uniquement à
+    // présenter un détail "tarif moyen/jour" lisible ; le vrai montant facturé
+    // reste toujours totalReel ci-dessous, jamais recalculé. Si la facture
+    // est régénérée après un changement de tarif, un éventuel écart entre
+    // les deux est déjà absorbé par la ligne "Ajustement"/"Remise
+    // commerciale" plus bas (mécanisme préexistant, ex. code promo).
+    const totalUn  = calcTieredPrice(jours, pricing);
     const tarifMoy = totalUn / jours;
     const locCents = Math.round(totalUn * qty * 100);
     const horsZone = !!reservation.hors_zone;

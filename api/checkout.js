@@ -3,12 +3,10 @@ const { getSupabase }         = require('./_lib/supabase');
 const { resolveCityByAddress } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays, todayParis } = require('./_lib/dates');
-const { calcTieredPrice }      = require('./_lib/pricing');
+const { calcTieredPrice, getPricingConfig } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { matchPromoPct } = require('./_lib/promo');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
-
-const calcBase = calcTieredPrice;
 
 const PROMO_CODES  = { LOCAIR10: 10, LOCA10: 10 };
 // Doit rester synchronisé avec INSTALL_FEE dans index.html (prix affiché au
@@ -43,9 +41,13 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Adresse email invalide' });
   }
 
-  const duree = Math.min(90, Math.max(7, parseInt(data.duree) || 7));
+  // Tarifs (panneau de contrôle admin, voir admin-pricing.js) chargés une
+  // seule fois ici, réutilisés pour tout le reste du calcul — jamais
+  // recalculés en dur, jamais désynchronisés du barème réellement affiché.
+  const pricing = await getPricingConfig(getSupabase());
+  const duree = Math.min(90, Math.max(pricing.duree_min_jours, parseInt(data.duree) || pricing.duree_min_jours));
   const qty   = Math.min(5, Math.max(1, parseInt(String(data.quantite ?? '1').replace(/[^0-9]/g, '')) || 1));
-  const baseCents     = calcBase(duree) * qty * 100;
+  const baseCents     = calcTieredPrice(duree, pricing) * qty * 100;
   const isTech        = (data.installation || '').startsWith('Technicien');
   const installCents  = isTech ? INSTALL_FEE * 100 : 0;
   const promoCode     = (data.parrain_code || '').trim().toUpperCase();

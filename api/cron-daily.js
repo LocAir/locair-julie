@@ -7,7 +7,7 @@ const { getAvailability }      = require('./_lib/stock');
 const { notifyIfSoldOut }      = require('./_lib/city');
 const { runWeeklyReport }      = require('./cron-weekly');
 const { runMonthlyRecap, runDormantClientsWinback } = require('./cron-monthly');
-const { dailyRate } = require('./_lib/pricing');
+const { dailyRate, getPricingConfig } = require('./_lib/pricing');
 const { scenariosDueToday, isSupersededReservation } = require('./_lib/emailSchedule');
 const { sendScenarioEmail, getSignature, withSignature } = require('./_lib/emailEngine');
 const { tplOffrePrivilege } = require('./_lib/emailTemplates');
@@ -32,6 +32,9 @@ module.exports = async (req, res) => {
   if (!verifyCronAuth(req)) return res.status(401).json({ error: 'Non autorisé' });
 
   const supabase    = getSupabase();
+  // Tarifs (panneau de contrôle admin, voir admin-pricing.js) chargés une
+  // seule fois pour toute la tâche, jamais recalculés en dur.
+  const pricing     = await getPricingConfig(supabase);
   const today       = new Date();
   const todayStr    = today.toISOString().slice(0, 10);
   const tomorrow    = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -177,7 +180,7 @@ module.exports = async (req, res) => {
           continue;
         }
 
-        const amountCents = dailyRate(joursRetard) * 100;
+        const amountCents = dailyRate(joursRetard, pricing) * 100;
         const desc = `${joursRetard}j de retard — prélèvement auto ${(amountCents / 100).toFixed(2)} €`;
 
         // Vérifier l'existence d'un incident AVANT de créer le PaymentIntent.
@@ -215,7 +218,7 @@ module.exports = async (req, res) => {
           tag:   `retard-stripe-echec-${liv.id}-${todayStr}`,
         });
         const failDesc = `Prélèvement automatique de retard échoué (${joursRetard}j) : ${(stripeErr.message || '').slice(0, 300)}`;
-        const failAmt  = dailyRate(joursRetard) * 100;
+        const failAmt  = dailyRate(joursRetard, pricing) * 100;
         const { data: existIncFail } = await supabase.from('incidents').select('id').eq('reservation_id', liv.reservation_id).eq('type', 'retard').in('statut', ['retard_a_facturer', 'nouveau']).maybeSingle();
         if (existIncFail) {
           await supabase.from('incidents').update({ description: failDesc, montant_facture_cents: failAmt }).eq('id', existIncFail.id).catch(e2 => console.error('[Cron retard Stripe incident]', e2.message));
