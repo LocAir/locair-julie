@@ -6,6 +6,7 @@ const { isValidDate, addDays, todayParis } = require('./_lib/dates');
 const { calcTieredPrice, getPricingConfig } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { resolvePromotion, recordPromotionUsage } = require('./_lib/promotions');
+const { getMatchingForfait } = require('./_lib/forfaits');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 // Doit rester synchronisé avec INSTALL_FEE dans index.html (prix affiché au
@@ -44,9 +45,17 @@ module.exports = async (req, res) => {
   // seule fois ici, réutilisés pour tout le reste du calcul — jamais
   // recalculés en dur, jamais désynchronisés du barème réellement affiché.
   const pricing = await getPricingConfig(getSupabase());
-  const duree = Math.min(90, Math.max(pricing.duree_min_jours, parseInt(data.duree) || pricing.duree_min_jours));
-  const qty   = Math.min(5, Math.max(1, parseInt(String(data.quantite ?? '1').replace(/[^0-9]/g, '')) || 1));
-  const baseCents     = calcTieredPrice(duree, pricing) * qty * 100;
+  const rawDuree = parseInt(data.duree) || pricing.duree_min_jours;
+  const rawQty   = Math.min(5, Math.max(1, parseInt(String(data.quantite ?? '1').replace(/[^0-9]/g, '')) || 1));
+  // Pack à prix fixe (ex. "Pack Sérénité Solo/Duo", voir admin-forfaits.js) —
+  // ne s'applique que si la durée et la quantité demandées correspondent
+  // EXACTEMENT à ce pack ; sinon on retombe silencieusement sur le tarif
+  // dégressif normal ci-dessous. Le prix vient alors directement du forfait
+  // (figé, jamais recalculé), pas de calcTieredPrice.
+  const forfait = await getMatchingForfait(getSupabase(), { forfaitId: data.forfait_id, duree: rawDuree, quantite: rawQty });
+  const duree = forfait ? forfait.duree_jours : Math.min(90, Math.max(pricing.duree_min_jours, rawDuree));
+  const qty   = forfait ? forfait.quantite    : rawQty;
+  const baseCents     = forfait ? forfait.prix_cents : calcTieredPrice(duree, pricing) * qty * 100;
   const isTech        = (data.installation || '').startsWith('Technicien');
   const installCents  = isTech ? INSTALL_FEE * 100 : 0;
   const promoCode     = (data.parrain_code || '').trim().toUpperCase();
@@ -115,11 +124,14 @@ module.exports = async (req, res) => {
   // correspond, retombe sur l'ancien système "PRENOM10/20/30" (parrainage,
   // relance dormants) pour ne jamais casser un code déjà envoyé à un client.
   // Réservé aux nouvelles réservations (pas de code promo sur une
-  // prolongation, voir prolong-pay.js).
-  const promoResult   = await resolvePromotion(supabase, {
-    code: promoCode, prenom: data.prenom, email: data.email,
-    baseCents, days: duree, cityId: city.id, dateDebut,
-  });
+  // prolongation, voir prolong-pay.js) — et jamais combiné à un forfait à
+  // prix fixe (déjà un prix figé, une remise en plus n'aurait pas de sens).
+  const promoResult   = forfait
+    ? { discountCents: 0, promotionId: null, source: null }
+    : await resolvePromotion(supabase, {
+        code: promoCode, prenom: data.prenom, email: data.email,
+        baseCents, days: duree, cityId: city.id, dateDebut,
+      });
   const promoDiscount = promoResult.discountCents;
 
   // Frais de livraison : 60 € si le code postal est couvert par la ville résolue
@@ -192,6 +204,7 @@ module.exports = async (req, res) => {
         frais_livraison: String(deliveryFeeCents / 100) + ' EUR',
         hors_zone:    horsZone ? 'oui' : 'non',
         promo:        promoCode,
+        forfait:      forfait ? forfait.nom.slice(0, 200) : '',
         customer_id:  customerId,
       },
     }, { idempotencyKey: `checkout-${(data._ref || '').slice(0, 40)}-${amountCents}` });
@@ -224,6 +237,7 @@ module.exports = async (req, res) => {
       date_fin:                 dateFin,
       quantite:                 qty,
       prix_total_cents:         amountCents,
+      forfait_id:               forfait ? forfait.id : null,
       statut:                   'en_attente',
       source:                   'site',
       lang:                     ['fr','en','zh','ru'].includes(data.lang) ? data.lang : 'fr',
