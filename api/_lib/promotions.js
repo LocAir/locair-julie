@@ -38,7 +38,15 @@ async function resolvePromotion(supabase, { code, prenom, email, baseCents, days
       .eq('actif', true)
       .ilike('code', normalizedCode)
       .maybeSingle();
-    if (!error && promo) {
+    // Ligne trouvée mais valeur/type invalides (colonne manquante après une
+    // migration partiellement appliquée, donnée corrompue...) : on ignore
+    // cette ligne comme si elle n'existait pas, plutôt que de propager un
+    // NaN jusqu'au montant Stripe — retombe sur le filet de secours legacy
+    // ci-dessous, comme si le code n'était pas dans la table.
+    const promoUsable = promo
+      && ['pourcentage', 'montant_fixe'].includes(promo.type_remise)
+      && Number.isFinite(Number(promo.valeur)) && Number(promo.valeur) > 0;
+    if (!error && promoUsable) {
       const rejection = checkPromotionConditions(promo, { days, cityId, dateDebut });
       if (!rejection) {
         if (promo.max_utilisations != null && promo.nb_utilisations >= promo.max_utilisations) {

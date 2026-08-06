@@ -20,6 +20,23 @@ const DEFAULT_PRICING_CONFIG = {
   palier4_tarif_cents: 800,
 };
 
+const PRICING_NUMERIC_FIELDS = [
+  'duree_min_jours',
+  'palier1_max_jours', 'palier1_tarif_cents',
+  'palier2_max_jours', 'palier2_tarif_cents',
+  'palier3_max_jours', 'palier3_tarif_cents',
+  'palier4_tarif_cents',
+];
+// Une ligne existe mais une colonne manque (migration collée en plusieurs
+// fois, ALTER TABLE interrompu...) : Supabase ne renvoie AUCUNE erreur dans
+// ce cas — `select('*')` renvoie juste la ligne sans le champ manquant. Sans
+// ce contrôle, un palier undefined se propage en NaN dans calcTieredPrice,
+// jusqu'au montant envoyé à Stripe (paiement qui échoue avec une erreur
+// obscure au lieu de simplement utiliser les tarifs par défaut).
+function isCompletePricingRow(row) {
+  return row && PRICING_NUMERIC_FIELDS.every((f) => Number.isFinite(row[f]));
+}
+
 // Lit la config tarifaire en base — à appeler une fois par requête (jamais
 // mise en cache d'un appel serverless à l'autre, chaque invocation Vercel
 // repart de zéro de toute façon) puis passée en paramètre à calcTieredPrice/
@@ -28,7 +45,7 @@ const DEFAULT_PRICING_CONFIG = {
 async function getPricingConfig(supabase) {
   try {
     const { data, error } = await supabase.from('pricing_config').select('*').eq('id', 1).maybeSingle();
-    if (error || !data) return DEFAULT_PRICING_CONFIG;
+    if (error || !isCompletePricingRow(data)) return DEFAULT_PRICING_CONFIG;
     return data;
   } catch (e) {
     console.error('[pricing] getPricingConfig:', e.message);
