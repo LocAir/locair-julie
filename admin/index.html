@@ -552,6 +552,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
             <button data-tab="partenaires" onclick="switchAdminTab('partenaires')">🤝 Ambassadeurs<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
             <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
             <button data-tab="tarifs" onclick="switchAdminTab('tarifs')">💶 Tarifs</button>
+            <button data-tab="promotions" onclick="switchAdminTab('promotions')">🎁 Offres</button>
             <button data-tab="equipe" onclick="switchAdminTab('equipe')">🧑‍💼 Équipe</button>
             <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
             <button data-tab="tutoriels" onclick="switchAdminTab('tutoriels')">🎓 Tutoriels</button>
@@ -585,6 +586,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
         <div id="tab-clients" class="hidden"></div>
         <div id="tab-villes" class="hidden"></div>
         <div id="tab-tarifs" class="hidden"></div>
+        <div id="tab-promotions" class="hidden"></div>
         <div id="tab-equipe" class="hidden"></div>
         <div id="tab-tutoriels" class="hidden"></div>
         <div id="tab-emails" class="hidden"></div>
@@ -1420,7 +1422,7 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
+  ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
@@ -1437,6 +1439,7 @@ function switchAdminTab(tab){
   if(tab==='clients') loadClients();
   if(tab==='villes') loadVilles();
   if(tab==='tarifs') loadTarifs();
+  if(tab==='promotions') loadPromotions();
   if(tab==='equipe') loadEquipe();
   if(tab==='tutoriels') loadTutoriels();
   if(tab==='emails') loadEmails();
@@ -1517,7 +1520,7 @@ const _TAB_BADGE_MAP = {
 // à l'intérieur.
 const _TAB_GROUP_MAP = {
   livraisons: 'piloter', reservations: 'piloter', communications: 'piloter',
-  virements: 'gerer', transporteurs: 'gerer', partenaires: 'gerer', villes: 'gerer', tarifs: 'gerer', equipe: 'gerer',
+  virements: 'gerer', transporteurs: 'gerer', partenaires: 'gerer', villes: 'gerer', tarifs: 'gerer', promotions: 'gerer', equipe: 'gerer',
   clients: 'gerer', tutoriels: 'gerer', emails: 'gerer', espaceclient: 'gerer', checklistitems: 'gerer',
   stock: 'suivre', checklist: 'suivre', incidents: 'suivre',
 };
@@ -8511,6 +8514,226 @@ async function saveTarifs(){
     showToast('Tarifs mis à jour — déjà visibles partout', 'success');
     loadTarifs();
   }catch(e){ errEl.textContent=e.message; errEl.style.display='block'; }
+}
+
+// ── Offres & Promotions (cockpit marketing) ───────────────────────────────
+// Un seul écran pour créer/modifier/couper n'importe quel code promo, sans
+// jamais avoir à modifier le code ni redéployer. Remplace les codes qui
+// étaient écrits en dur (LOCAIR10, LOCA10, et le système "PRENOM10/20/30"
+// utilisé pour le parrainage et la relance des clients dormants — ce
+// dernier continue de fonctionner tel quel tant qu'aucun code équivalent
+// n'est créé ici, voir api/_lib/promotions.js). Lecture ouverte à tout
+// compte connecté, création/modification réservées aux comptes
+// administrateur — même règle que Tarifs et Villes.
+const PROMO_CATEGORIES = {
+  bienvenue:  '👋 Bienvenue',
+  parrainage: '🤝 Parrainage',
+  fidelite:   '⭐ Fidélité',
+  dormant:    '💤 Relance client',
+  saisonnier: '☀️ Saisonnier',
+  flash:      '⚡ Vente flash',
+  partenaire: '🏢 Partenaire',
+  cadeau:     '🎁 Carte cadeau',
+  groupe:     '👥 Groupe / entreprise',
+  autre:      '🏷️ Autre',
+};
+let PROMOTIONS_CACHE = [];
+let PROMO_VILLES_CACHE = [];
+let PROMO_EDIT_ID = null; // null = formulaire en mode création, sinon id de l'offre en cours de modification
+async function loadPromotions(){
+  const zone = document.getElementById('tab-promotions');
+  zone.innerHTML = loading();
+  try{
+    const [rPromos, rVilles] = await Promise.all([
+      fetch(API('admin-promotions'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
+      fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list', city_id:'all'})}),
+    ]);
+    const dPromos = await rPromos.json();
+    if(!rPromos.ok) throw new Error(dPromos.error||'Erreur');
+    PROMOTIONS_CACHE = dPromos.promotions || [];
+    const dVilles = await rVilles.json().catch(()=>({}));
+    PROMO_VILLES_CACHE = (rVilles.ok && dVilles.cities) || [];
+    PROMO_EDIT_ID = null;
+    renderPromotions();
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+function promoVilleName(id){
+  return PROMO_VILLES_CACHE.find(v=>v.id===id)?.name || ('#'+id);
+}
+function promoStatusLabel(p){
+  const today = new Date().toISOString().slice(0,10);
+  if(!p.actif) return {txt:'Désactivée', cls:'inactif'};
+  if(p.date_fin && today > p.date_fin) return {txt:'Expirée', cls:'inactif'};
+  if(p.date_debut && today < p.date_debut) return {txt:'Pas encore active', cls:'inactif'};
+  if(p.max_utilisations!=null && p.nb_utilisations>=p.max_utilisations) return {txt:'Quota atteint', cls:'inactif'};
+  return {txt:'Active', cls:'actif'};
+}
+function renderPromotions(){
+  const zone = document.getElementById('tab-promotions');
+  const list = PROMOTIONS_CACHE.map(p=>{
+    const statut = promoStatusLabel(p);
+    const valeurTxt = p.type_remise==='pourcentage' ? `${p.valeur}%` : `${Number(p.valeur).toFixed(2)}€`;
+    const conditions = [
+      p.date_debut || p.date_fin ? `📅 ${p.date_debut?escHtml(p.date_debut):'…'} → ${p.date_fin?escHtml(p.date_fin):'…'}` : null,
+      (p.duree_min_jours!=null || p.duree_max_jours!=null) ? `⏱️ ${p.duree_min_jours??'…'}–${p.duree_max_jours??'…'} jours` : null,
+      p.premiere_resa_only ? '🆕 1ère réservation uniquement' : null,
+      p.max_utilisations!=null ? `🔢 ${p.nb_utilisations||0}/${p.max_utilisations} utilisations` : (p.nb_utilisations ? `🔢 ${p.nb_utilisations} utilisation${p.nb_utilisations>1?'s':''}` : null),
+      p.max_utilisations_client!=null ? `👤 max ${p.max_utilisations_client}/client` : null,
+      (Array.isArray(p.villes_ids) && p.villes_ids.length) ? `📍 ${p.villes_ids.map(promoVilleName).join(', ')}` : null,
+    ].filter(Boolean).join(' · ') || 'Aucune condition — s\'applique à toute réservation';
+    return `
+    <div class="row-item">
+      <div class="row-top">
+        <span class="row-title">${escHtml(p.nom)} <code style="font-weight:700;color:var(--blue)">${escHtml(p.code)}</code></span>
+        <span style="display:flex;gap:6px;align-items:center">
+          <span class="chip">${valeurTxt}</span>
+          <span class="chip ${statut.cls}">${statut.txt}</span>
+        </span>
+      </div>
+      <div class="row-meta">${PROMO_CATEGORIES[p.categorie]||p.categorie}</div>
+      <div class="row-meta">${conditions}</div>
+      <div class="row-actions">
+        <button class="btn btn-grey" onclick="editPromotion(${p.id})">✏️ Modifier</button>
+        <button class="btn ${p.actif?'btn-grey':'btn-green'}" onclick="togglePromotionActif(${p.id}, ${!p.actif})">${p.actif?'Désactiver':'✅ Réactiver'}</button>
+        <button class="btn btn-red" onclick="deletePromotion(${p.id})" style="margin-left:auto">🗑️</button>
+      </div>
+    </div>`;
+  }).join('') || '<p class="empty">🎁 Aucune offre créée pour l\'instant.</p>';
+
+  const editing = PROMO_EDIT_ID != null ? PROMOTIONS_CACHE.find(p=>p.id===PROMO_EDIT_ID) : null;
+  const v = editing || {};
+  const villesOptions = PROMO_VILLES_CACHE.map(c=>`
+    <label style="display:flex;align-items:center;gap:6px;font-weight:400;text-transform:none;letter-spacing:0;font-size:13.5px;margin:4px 0">
+      <input type="checkbox" class="promo-ville-cb" value="${c.id}" ${(v.villes_ids||[]).includes(c.id)?'checked':''}/> ${escHtml(c.name)}
+    </label>`).join('') || '<p class="sub">Aucune ville configurée.</p>';
+
+  zone.innerHTML = `
+    <p class="sub" style="margin:-4px 0 14px">Crée un code promo, une réduction saisonnière, une offre de bienvenue… tout ce que tu enregistres ici s'applique immédiatement au paiement, sans redéploiement. Un client entre le code au moment de payer.</p>
+    ${list}
+    <div class="card" id="promo-form-card">
+      <h2 style="margin-bottom:2px">${editing?'Modifier l\'offre':'Créer une nouvelle offre'}</h2>
+      <p class="sub" style="margin-bottom:10px">${editing?'Enregistre pour appliquer les changements — les utilisations déjà comptées restent inchangées.':'Un code est obligatoire : le client le saisit lui-même au paiement.'}</p>
+      <label for="p-nom">Nom interne (pour t'y retrouver, pas visible du client)</label>
+      <input type="text" id="p-nom" value="${escHtml(v.nom||'')}" placeholder="Ex. Réduction été 2026"/>
+      <label for="p-categorie" style="margin-top:14px">Catégorie</label>
+      <select id="p-categorie">
+        ${Object.entries(PROMO_CATEGORIES).map(([k,label])=>`<option value="${k}" ${v.categorie===k?'selected':''}>${label}</option>`).join('')}
+      </select>
+      <label for="p-code" style="margin-top:14px">Code promo (le client le saisit à la réservation)</label>
+      <input type="text" id="p-code" value="${escHtml(v.code||'')}" placeholder="ETE2026" style="text-transform:uppercase"/>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px;margin-top:14px">
+        <div>
+          <label for="p-type">Type de remise</label>
+          <select id="p-type">
+            <option value="pourcentage" ${(v.type_remise||'pourcentage')==='pourcentage'?'selected':''}>Pourcentage (%)</option>
+            <option value="montant_fixe" ${v.type_remise==='montant_fixe'?'selected':''}>Montant fixe (€)</option>
+          </select>
+        </div>
+        <div>
+          <label for="p-valeur">Valeur</label>
+          <input type="number" id="p-valeur" value="${v.valeur??''}" min="0" step="0.5"/>
+        </div>
+        <div>
+          <label for="p-date-debut">Valable à partir du (optionnel)</label>
+          <input type="date" id="p-date-debut" value="${v.date_debut||''}"/>
+        </div>
+        <div>
+          <label for="p-date-fin">Valable jusqu'au (optionnel)</label>
+          <input type="date" id="p-date-fin" value="${v.date_fin||''}"/>
+        </div>
+        <div>
+          <label for="p-duree-min">Durée min. de location (optionnel)</label>
+          <input type="number" id="p-duree-min" value="${v.duree_min_jours??''}" min="1" placeholder="Aucun minimum"/>
+        </div>
+        <div>
+          <label for="p-duree-max">Durée max. de location (optionnel)</label>
+          <input type="number" id="p-duree-max" value="${v.duree_max_jours??''}" min="1" placeholder="Aucun maximum"/>
+        </div>
+        <div>
+          <label for="p-max-total">Nombre d'utilisations max (optionnel)</label>
+          <input type="number" id="p-max-total" value="${v.max_utilisations??''}" min="1" placeholder="Illimité"/>
+        </div>
+        <div>
+          <label for="p-max-client">Max par client (optionnel)</label>
+          <input type="number" id="p-max-client" value="${v.max_utilisations_client??''}" min="1" placeholder="Illimité"/>
+        </div>
+      </div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-weight:400;text-transform:none;letter-spacing:0">
+        <input type="checkbox" id="p-premiere-resa" ${v.premiere_resa_only?'checked':''}/> Réservée aux clients qui n'ont jamais réservé chez Loc'Air
+      </label>
+      <label style="margin-top:14px">Villes concernées (aucune case cochée = toutes les villes)</label>
+      <div style="border:1.5px solid var(--rule);border-radius:10px;padding:10px 14px;max-height:160px;overflow-y:auto">${villesOptions}</div>
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn btn-blue" style="flex:1" onclick="savePromotion()">${editing?'Enregistrer les changements':'Créer l\'offre'}</button>
+        ${editing?`<button class="btn btn-grey" onclick="cancelEditPromotion()">Annuler</button>`:''}
+      </div>
+      <div class="err" id="promo-err" style="display:none"></div>
+    </div>`;
+}
+function editPromotion(id){
+  PROMO_EDIT_ID = id;
+  renderPromotions();
+  document.getElementById('promo-form-card')?.scrollIntoView({behavior:'smooth', block:'center'});
+}
+function cancelEditPromotion(){
+  PROMO_EDIT_ID = null;
+  renderPromotions();
+}
+async function savePromotion(){
+  const errEl = document.getElementById('promo-err');
+  errEl.style.display='none';
+  const villesIds = [...document.querySelectorAll('.promo-ville-cb:checked')].map(cb=>parseInt(cb.value,10));
+  const body = {
+    action: PROMO_EDIT_ID!=null ? 'update' : 'create',
+    id: PROMO_EDIT_ID!=null ? PROMO_EDIT_ID : undefined,
+    nom: document.getElementById('p-nom').value.trim(),
+    categorie: document.getElementById('p-categorie').value,
+    code: document.getElementById('p-code').value.trim(),
+    type_remise: document.getElementById('p-type').value,
+    valeur: parseFloat(document.getElementById('p-valeur').value),
+    date_debut: document.getElementById('p-date-debut').value || null,
+    date_fin: document.getElementById('p-date-fin').value || null,
+    duree_min_jours: document.getElementById('p-duree-min').value || null,
+    duree_max_jours: document.getElementById('p-duree-max').value || null,
+    max_utilisations: document.getElementById('p-max-total').value || null,
+    max_utilisations_client: document.getElementById('p-max-client').value || null,
+    premiere_resa_only: document.getElementById('p-premiere-resa').checked,
+    villes_ids: villesIds,
+    actif: true,
+  };
+  if(!body.nom){ errEl.textContent='Le nom interne est requis.'; errEl.style.display='block'; return; }
+  if(!body.code){ errEl.textContent='Le code promo est requis.'; errEl.style.display='block'; return; }
+  if(!Number.isFinite(body.valeur) || body.valeur<=0){ errEl.textContent='La valeur de la remise doit être un nombre positif.'; errEl.style.display='block'; return; }
+  try{
+    const r = await fetch(API('admin-promotions'), {method:'POST', headers:authHeaders(), body:JSON.stringify(body)});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast(PROMO_EDIT_ID!=null ? 'Offre mise à jour' : 'Offre créée — déjà utilisable au paiement', 'success');
+    loadPromotions();
+  }catch(e){ errEl.textContent=e.message; errEl.style.display='block'; }
+}
+async function togglePromotionActif(id, actif){
+  try{
+    const r = await fetch(API('admin-promotions'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'toggle', id, actif})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast(actif ? '✅ Offre réactivée' : 'Offre désactivée', 'success');
+    loadPromotions();
+  }catch(e){ showToast(e.message, 'error'); }
+}
+function deletePromotion(id){
+  const p = PROMOTIONS_CACHE.find(x=>x.id===id);
+  confirmAction(`Supprimer définitivement l'offre "${p?p.nom:''}" ? Préfère "Désactiver" si tu veux juste l'arrêter tout en gardant l'historique.`, async () => {
+    try{
+      const r = await fetch(API('admin-promotions'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      showToast('Offre supprimée', 'success');
+      loadPromotions();
+    }catch(e){ showToast(e.message, 'error'); }
+  });
 }
 
 // ── Équipe (Module 7, Partie 31) : comptes nominatifs à côté du mot de passe
