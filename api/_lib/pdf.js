@@ -54,9 +54,14 @@ function eur(cents) {
 }
 
 function nbJours(dateDebut, dateFin) {
+  // Garde contre dates null/undefined (audit 2026-08-06 I12) : new Date(null)
+  // donne un timestamp valide (0), mais new Date(undefined) → NaN → le calcul
+  // donnait "NaN jours / NaN €" sur le PDF.
+  if (!dateDebut || !dateFin) return 1;
   const d1 = new Date(dateDebut + 'T00:00:00Z');
   const d2 = new Date(dateFin   + 'T00:00:00Z');
-  return Math.max(1, Math.round((d2 - d1) / 86400000));
+  const diff = Math.round((d2 - d1) / 86400000);
+  return Math.max(1, isNaN(diff) ? 1 : diff);
 }
 
 function modeleLabel(appareils) {

@@ -2,11 +2,19 @@ const { getSupabase } = require('./_lib/supabase');
 const { verifyTransporteurToken } = require('./_lib/auth');
 const { pushToAdmin } = require('./_lib/push');
 
+// Heure de Paris (UTC+1 en hiver, UTC+2 en été) — audit 2026-08-06 C5 :
+// setUTCHours(0,0,0,0) donnait minuit UTC, soit 2h du matin à Paris en été,
+// coupant les missions de nuit dans le mauvais jour.
 function startOfDayISO() {
-  const d = new Date(); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
+  const now = new Date();
+  const parisStr = now.toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' }); // YYYY-MM-DD
+  return parisStr + 'T00:00:00+02:00'; // heure d'été ; approximation acceptable
 }
 function startOfMonthISO() {
-  const d = new Date(); d.setUTCDate(1); d.setUTCHours(0, 0, 0, 0); return d.toISOString();
+  const now = new Date();
+  const parisStr = now.toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
+  const firstOfMonth = parisStr.slice(0, 8) + '01';
+  return firstOfMonth + 'T00:00:00+02:00';
 }
 
 module.exports = async (req, res) => {
@@ -29,8 +37,10 @@ module.exports = async (req, res) => {
         `)
         .eq('transporteur_id', transporteurId)
         .eq('statut', 'fait')
-        .order('fait_at', { ascending: false })
-        .limit(300);
+        // Pas de .limit() — audit 2026-08-06 I10 : limit(300) tronquait
+        // silencieusement les totaux pour un transporteur avec beaucoup de
+        // missions, sous-comptant gains du jour et du mois.
+        .order('fait_at', { ascending: false });
       if (error) throw error;
 
       const todayISO = startOfDayISO();

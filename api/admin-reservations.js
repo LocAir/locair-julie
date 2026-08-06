@@ -555,7 +555,17 @@ module.exports = async (req, res) => {
       }
       if (body.statut != null && STATUTS_VALIDES.includes(body.statut)) patch.statut = body.statut;
       if (body.quantite != null) patch.quantite = Math.max(1, parseInt(body.quantite) || 1);
-      if (body.prix_total_cents != null) patch.prix_total_cents = Math.max(0, parseInt(body.prix_total_cents) || 0);
+      if (body.prix_total_cents != null) {
+        patch.prix_total_cents = Math.max(0, parseInt(body.prix_total_cents) || 0);
+        // Audit 2026-08-06 I6 : la commission partenaire n'était pas
+        // recalculée quand le prix était modifié manuellement — le montant
+        // en base restait figé sur l'ancienne valeur.
+        if (before.partenaire_id) {
+          const { data: pt } = await supabase.from('partenaires')
+            .select('taux_commission_pct').eq('id', before.partenaire_id).maybeSingle();
+          if (pt) patch.partenaire_commission_cents = Math.round(patch.prix_total_cents * (pt.taux_commission_pct || 0) / 100);
+        }
+      }
       // "Masquer" retire juste la réservation de la liste affichée à l'admin (ex.
       // doublon créé par erreur) — ça ne touche ni le statut, ni le stock, ni les
       // missions, contrairement à "Annuler". Réversible via "Restaurer".
@@ -596,7 +606,20 @@ module.exports = async (req, res) => {
       if (body.motifs != null)             patch.motifs             = body.motifs.trim().slice(0, 300) || null;
       if (body.mkt_consent != null)        patch.mkt_consent        = !!body.mkt_consent;
       if (body.creneau_recuperation != null)       patch.creneau_recuperation       = ['8h – 10h', '10h – 12h'].includes(body.creneau_recuperation) ? body.creneau_recuperation : null;
-      if (body.date_recuperation_souhaitee != null) { const v = (body.date_recuperation_souhaitee || '').slice(0, 10); patch.date_recuperation_souhaitee = /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; }
+      if (body.date_recuperation_souhaitee != null) {
+        const v = (body.date_recuperation_souhaitee || '').slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+          // Audit 2026-08-06 I4 : pas de validation contre date_fin — on
+          // pouvait poser une récupération le jour même ou avant la fin de loc.
+          const dateFin = patch.date_fin || before.date_fin;
+          if (dateFin && v <= dateFin) {
+            return res.status(400).json({ error: `La date de récupération doit être postérieure à la fin de location (${dateFin}).` });
+          }
+          patch.date_recuperation_souhaitee = v;
+        } else {
+          patch.date_recuperation_souhaitee = null;
+        }
+      }
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('reservations').update(patch).eq('id', id).eq('city_id', city.id);
       if (error) throw error;
@@ -619,6 +642,43 @@ module.exports = async (req, res) => {
           body:  `Dossier ${before.ref || '?'} ${patch.statut === 'remboursee' ? 'remboursé' : 'annulé'} — une commission a déjà été versée au partenaire, à réconcilier dans l'onglet Partenaires.`,
           tag:   `partenaire-litige-${id}`,
         });
+      }
+
+      // Audit 2026-08-06 C3 : marquer manuellement 'terminee' ne déclenchait
+      // aucun effet de bord (missions encore ouvertes, stock non libéré).
+      // Même logique qu'annulee mais sans exception pour la récupération :
+      // si on force terminee, on veut tout clore et libérer le stock.
+      if (patch.statut === 'terminee') {
+        const { data: livTerminee } = await supabase
+          .from('livraisons').select('id, type, statut, transporteur_id')
+          .eq('reservation_id', id)
+          .in('statut', ['a_faire', 'acceptee', 'en_route', 'arrivee', 'probleme']);
+        if ((livTerminee || []).length) {
+          await supabase.from('livraisons').update({ statut: 'annule' })
+            .in('id', (livTerminee || []).map(l => l.id))
+            .then(() => {}, e => console.error('[terminee missions]', e.message));
+          const tids = new Set((livTerminee || []).filter(l => l.transporteur_id).map(l => l.transporteur_id));
+          for (const tid of tids) {
+            await notifyTransporteur(supabase, tid, {
+              type: 'annulation', message: 'Une mission a été annulée — la réservation est clôturée manuellement.', tag: 'annulation',
+            });
+          }
+        }
+        // Vérifier si la récupération est déjà faite (stock libéré) ou si
+        // l'appareil est encore engagé.
+        const { data: livFaites } = await supabase.from('livraisons')
+          .select('id, type').eq('reservation_id', id).eq('statut', 'fait');
+        const recupFaite = (livFaites || []).some(l => l.type === 'recuperation');
+        if (!recupFaite) {
+          const { data: liensTerminee } = await supabase
+            .from('reservation_appareils').select('appareil_id').eq('reservation_id', id);
+          for (const l of (liensTerminee || [])) {
+            await releaseAppareilFromReservation(supabase, {
+              appareilId: l.appareil_id, reservationId: id, cityId: before.city_id,
+              motif: 'réservation clôturée manuellement (terminee)',
+            }).catch(e => console.error('[terminee stock]', e.message));
+          }
+        }
       }
 
       if (patch.statut === 'annulee' || patch.statut === 'remboursee') {

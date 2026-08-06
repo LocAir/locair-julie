@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity, listCities } = require('./_lib/city');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 const { normalizeTel } = require('./_lib/reservations');
 const { generateAndSendDocuments, generateAndSendFactureVente } = require('./_lib/documents');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
@@ -13,7 +14,12 @@ const { notifyTransporteur } = require('./_lib/transporteurNotif');
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  // RBAC (audit 2026-08-06 C2) : checkAdminToken ne vérifie que la session,
+  // pas le rôle — un compte sans accès "clients" pouvait lire/modifier toutes
+  // les fiches client. Remplacé par checkAdminRole + roleHasAccess.
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
+  if (!roleHasAccess(admin.role, 'clients')) return res.status(403).json({ error: "Ton compte n'a pas accès aux fiches clients." });
 
   const body   = req.body || {};
   const action = body.action || 'list';

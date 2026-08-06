@@ -163,26 +163,36 @@ module.exports = async (req, res) => {
 
       const { data: resas } = await supabase
         .from('reservations').select('id, ref, statut, date_debut, date_fin').eq('client_id', clientId).eq('city_id', city.id);
+      // Audit 2026-08-06 I1 cron : upcomingScenariosForReservation() utilise
+      // date_fin+0 pour la date du rappel récupération quand recupDatePrevue
+      // est absent — si le client a avancé sa récupération via client-recup.js,
+      // la date affichée dans le panneau Communications serait fausse.
+      // On récupère la date réelle de la mission de récupération active.
       const resaIds = (resas || []).map(r => r.id);
       if (!resaIds.length) return res.status(200).json({ sent: [], upcoming: [], evenementiels: [] });
 
       const todayISO = todayParis();
-      const [logRes, sentRes, skipRes, scenariosRes] = await Promise.all([
+      const [logRes, sentRes, skipRes, scenariosRes, recupMissionsRes] = await Promise.all([
         supabase.from('email_log').select('id, reservation_id, scenario, canal, destinataire, statut, erreur, created_at')
           .in('reservation_id', resaIds).order('created_at', { ascending: false }).limit(200),
         supabase.from('email_sent').select('reservation_id, scenario').in('reservation_id', resaIds),
         supabase.from('email_skip').select('reservation_id, scenario, action').in('reservation_id', resaIds),
         supabase.from('email_scenarios').select('id, actif'),
+        // Date réelle de la mission de récupération active pour ce client
+        supabase.from('livraisons').select('reservation_id, date_prevue')
+          .in('reservation_id', resaIds).eq('type', 'recuperation')
+          .not('statut', 'in', '("annule","annulee","refusee")'),
       ]);
 
       const resaById = Object.fromEntries((resas || []).map(r => [r.id, r]));
       const sentSet = new Set((sentRes.data || []).map(s => `${s.reservation_id}:${s.scenario}`));
       const skipByKey = Object.fromEntries((skipRes.data || []).map(s => [`${s.reservation_id}:${s.scenario}`, s.action]));
       const scenarioActif = Object.fromEntries((scenariosRes.data || []).map(s => [s.id, s.actif !== false]));
+      const recupDateByResaId = Object.fromEntries((recupMissionsRes.data || []).map(l => [l.reservation_id, l.date_prevue]));
 
       const upcoming = [];
       for (const resa of resas || []) {
-        for (const { scenario, date } of upcomingScenariosForReservation(resa, todayISO)) {
+        for (const { scenario, date } of upcomingScenariosForReservation(resa, todayISO, { recupDatePrevue: recupDateByResaId[resa.id] })) {
           const key = `${resa.id}:${scenario}`;
           if (sentSet.has(key)) continue; // déjà parti (cron passé aujourd'hui même)
           upcoming.push({

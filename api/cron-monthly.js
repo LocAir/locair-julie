@@ -211,6 +211,11 @@ async function runDormantClientsWinback(supabase) {
       .eq('reservation_id', dernier.id).eq('scenario', 'relance_dormant').eq('statut', 'envoye');
     if (dejaRelance) continue;
 
+    // Audit 2026-08-06 I13 : promoCodeForPrenom(null, 20) retournait '20',
+    // créant un code générique utilisable par n'importe qui avec -20%.
+    // On ne devrait jamais arriver ici sans prenom (filtre plus haut) mais
+    // double garde par précaution.
+    if (!dernier.prenom) continue;
     const codePromo = promoCodeForPrenom(dernier.prenom, 20);
     const sig = await getSignature(supabase);
     const lang = dernier.lang || 'fr';

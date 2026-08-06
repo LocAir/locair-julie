@@ -6,7 +6,10 @@ const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { pushToAdmin } = require('./_lib/push');
 const { todayParis } = require('./_lib/dates');
 
-const CRENEAUX_AUTORISES = ['8h-10h', '10h-12h'];
+// Tiret long + espaces — même format que partout ailleurs dans la base
+// (audit 2026-08-06 C4 : tiret court sans espaces ne correspondait jamais
+// aux valeurs stockées et validait tout créneau comme invalide).
+const CRENEAUX_AUTORISES = ['8h – 10h', '10h – 12h'];
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -65,7 +68,12 @@ module.exports = async (req, res) => {
     // modifiée et updated sera vide — évite d'envoyer un SMS de confirmation
     // pour un changement qui n'a pas eu lieu.
     const updateFields = { date_prevue: newDate, creneau };
-    if (liv.statut === 'acceptee') updateFields.statut = 'a_faire';
+    if (liv.statut === 'acceptee') {
+      updateFields.statut = 'a_faire';
+      // Réinitialise le timestamp d'acceptation : le transporteur devra
+      // accepter à nouveau la mission sur la nouvelle date (audit 2026-08-06 I8).
+      updateFields.accepted_at = null;
+    }
     const { data: updated, error: updateErr } = await supabase
       .from('livraisons')
       .update(updateFields)
@@ -130,7 +138,9 @@ module.exports = async (req, res) => {
     await supabase.from('email_log')
       .delete()
       .in('reservation_id', allResaIds)
-      .in('scenario', ['sms_rappel_recuperation'])
+      // Inclure aussi 'rappel_recuperation' (email J-1) — audit 2026-08-06 I8 :
+      // seul le SMS était réinitialisé, l'email restait bloqué sur l'ancienne date.
+      .in('scenario', ['sms_rappel_recuperation', 'rappel_recuperation'])
       .then(() => {}, e => console.error('[client-recup reset SMS idempotence]', e.message));
 
     return res.status(200).json({ ok: true, date_prevue: newDate, creneau });

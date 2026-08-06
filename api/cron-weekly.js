@@ -108,10 +108,15 @@ body{font-family:Inter,Arial,sans-serif;background:#f4f0ea;margin:0;padding:0}
 </div></body></html>`,
     });
 
-    await supabase.from('email_log').insert({
+    // Audit 2026-08-06 I3 : l'erreur était silencieusement avalée avec .then().
+    // email_log sert de trace de déduplication (prochain passage du cron) —
+    // si l'insert échoue, on log clairement mais on ne bloque pas (l'email
+    // est déjà parti ; pas de retry possible sans double-envoi).
+    const { error: logErr } = await supabase.from('email_log').insert({
       scenario: 'rapport_hebdo', canal: 'email', destinataire: adminEmail,
       modele: 'rapport_hebdo', statut: 'envoye', sent_at: new Date().toISOString(),
-    }).then(() => {}, e => console.error('[rapport_hebdo log]', e.message));
+    });
+    if (logErr) console.error('[rapport_hebdo log CRITIQUE]', logErr.message);
 
     return { date: todayStr, nbMissions, totalCA, newResas };
   }

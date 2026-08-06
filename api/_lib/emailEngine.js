@@ -199,10 +199,15 @@ async function sendScenarioEmail(supabase, { reservationId, scenario, force = fa
     }).then(() => {}, () => {});
     return { sent: true };
   } catch (e) {
+    // Trace d'erreur (best-effort, sans relancer une exception) — si ce
+    // insert lui-même échoue, il ne doit pas empêcher la libération du verrou
+    // email_sent ci-dessous (audit 2026-08-06 C10 : un throw dans le catch
+    // laissait email_sent verrouillé définitivement, bloquant tout renvoi
+    // futur de ce scénario pour cette réservation).
     await supabase.from('email_log').insert({
       reservation_id: reservationId, scenario, canal: 'email', destinataire: reservation.email, modele: scenario,
       statut: 'erreur', erreur: String(e.message || e).slice(0, 500), contenu: html,
-    });
+    }).then(() => {}, logErr => console.error('[emailEngine] email_log insert error:', logErr.message));
     if (!force) {
       const MAX_TENTATIVES = 5;
       const { count } = await supabase.from('email_log')

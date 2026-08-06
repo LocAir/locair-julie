@@ -30,8 +30,11 @@ function computeOrderStatus(reservation, livraisons = [], incidentOuvert = false
   // statut === 'confirmee' à partir d'ici : on regarde le détail des missions.
   if (incidentOuvert) return 'incident';
 
-  const livraison    = livraisons.filter(l => l.type === 'livraison'    && !['annule','refusee'].includes(l.statut)).at(-1);
-  const recuperation = livraisons.filter(l => l.type === 'recuperation' && !['annule','refusee'].includes(l.statut)).at(-1);
+  // 'annulee' (double e) ajouté par précaution (audit 2026-08-06 I11) : la
+  // contrainte CHECK sur livraisons.statut n'autorise que 'annule' (sans e),
+  // mais des enregistrements historiques incorrects pourraient exister.
+  const livraison    = livraisons.filter(l => l.type === 'livraison'    && !['annule','annulee','refusee'].includes(l.statut)).at(-1);
+  const recuperation = livraisons.filter(l => l.type === 'recuperation' && !['annule','annulee','refusee'].includes(l.statut)).at(-1);
 
   if (!livraison) {
     // Une prolongation n'a jamais de mission livraison — uniquement une récupération.
@@ -47,7 +50,10 @@ function computeOrderStatus(reservation, livraisons = [], incidentOuvert = false
   if (['a_faire', 'acceptee'].includes(livraison.statut)) return 'a_preparer';
   if (['en_route', 'arrivee'].includes(livraison.statut)) return 'en_livraison';
   if (livraison.statut === 'probleme') return 'incident';
-  if (['annule', 'refusee'].includes(livraison.statut)) return 'confirmee'; // livraison avortée
+  // Code mort (audit 2026-08-06 I11) : le filtre ligne 33 exclut déjà
+  // 'annule'/'refusee', donc livraison ne peut jamais avoir ces statuts ici.
+  // Conservé comme garde défensive au cas où le filtre évoluerait.
+  if (['annule', 'annulee', 'refusee'].includes(livraison.statut)) return 'confirmee'; // livraison avortée
 
   // livraison.statut === 'fait' à partir d'ici : le client a l'appareil.
   if (!recuperation) return 'en_location';

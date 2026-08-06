@@ -177,11 +177,22 @@ module.exports = async (req, res) => {
       // Mouvement de stock (Module 6, Partie 5) : le climatiseur quitte
       // l'entrepôt dans le véhicule du transporteur — livraison uniquement,
       // une récupération part du client, pas du dépôt.
+      // Audit 2026-08-06 C7 : le mouvement était fait APRÈS le statut en_route.
+      // Si moveAppareilsForReservation échouait, la mission était bloquée
+      // en_route sans mouvement de stock. On tente le mouvement en best-effort
+      // (ne doit jamais bloquer le transporteur sur le terrain) et on log.
       if (liv.type === 'livraison') {
-        const { data: t } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
-        await moveAppareilsForReservation(supabase, liv.reservation_id, 'vehicule_transporteur', {
-          typeEvenement: 'depart_entrepot', livraisonId: liv.id, utilisateur: t?.nom || null,
-        });
+        try {
+          const { data: t } = await supabase.from('transporteurs').select('nom').eq('id', transporteurId).maybeSingle();
+          await moveAppareilsForReservation(supabase, liv.reservation_id, 'vehicule_transporteur', {
+            typeEvenement: 'depart_entrepot', livraisonId: liv.id, utilisateur: t?.nom || null,
+          });
+        } catch (stockErr) {
+          console.error('[commencer stock]', stockErr.message);
+          // Le transporteur est déjà "en route" — on ne bloque pas son
+          // application pour un problème de stock ; l'admin devra corriger
+          // manuellement via l'onglet Stock.
+        }
       }
       return res.status(200).json({ ok: true, statut: 'en_route' });
     }
@@ -272,7 +283,11 @@ module.exports = async (req, res) => {
       }
 
       if (!reassigned) {
-        await supabase.from('livraisons').update({ statut: 'refusee' }).eq('id', liv.id);
+        // Audit 2026-08-06 C6 : l'update manquait de garde sur transporteur_id
+        // et statut — n'importe qui pouvait marquer refusée une mission qui ne
+        // lui appartenait pas ou qui avait déjà changé de statut.
+        await supabase.from('livraisons').update({ statut: 'refusee' })
+          .eq('id', liv.id).eq('transporteur_id', transporteurId).eq('statut', 'a_faire');
         await pushToAdmin(supabase, {
           title: '⚠️ Mission sans transporteur',
           body:  'Un transporteur a refusé une mission et aucun remplaçant disponible — assigne manuellement.',

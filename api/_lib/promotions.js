@@ -78,16 +78,27 @@ async function resolvePromotion(supabase, { code, prenom, email, baseCents, days
 
 // Best-effort — n'échoue jamais la réservation si l'écriture rate (base
 // indisponible, migration pas encore collée...).
+// Audit 2026-08-06 C9 : les deux opérations n'étaient pas atomiques — si
+// l'une réussissait et l'autre échouait, le compteur et la table d'usages
+// divergeaient silencieusement. Maintenant chaque étape logue son erreur
+// séparément pour faciliter le diagnostic.
+// Note C8 : il reste une fenêtre TOCTOU entre la lecture dans resolvePromotion
+// et cet enregistrement (deux checkouts simultanés peuvent passer le contrôle).
+// Le seul remède complet est un SELECT FOR UPDATE côté SQL (RPC Supabase) ;
+// à date c'est accepté comme risque très faible sur des offres limitées.
 async function recordPromotionUsage(supabase, { promotionId, reservationId, email, montantRemiseCents }) {
   if (!promotionId) return;
   try {
-    await supabase.from('promotions_utilisations').insert({
+    const { error: insertErr } = await supabase.from('promotions_utilisations').insert({
       promotion_id: promotionId,
       reservation_id: reservationId || null,
       client_email: (email || '').trim().toLowerCase() || null,
       montant_remise_cents: montantRemiseCents || 0,
     });
-    await supabase.rpc('increment_promotion_usage', { p_promotion_id: promotionId });
+    if (insertErr) console.error('[promotions] recordPromotionUsage insert:', insertErr.message);
+
+    const { error: rpcErr } = await supabase.rpc('increment_promotion_usage', { p_promotion_id: promotionId });
+    if (rpcErr) console.error('[promotions] recordPromotionUsage increment:', rpcErr.message);
   } catch (e) {
     console.error('[promotions] recordPromotionUsage:', e.message);
   }
