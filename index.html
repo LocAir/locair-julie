@@ -2630,6 +2630,19 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .pt-ts-pct{font-size:10px;font-weight:700;color:#16a34a;margin-top:1px}
 .pt-note{font-size:12px;color:rgba(0,0,0,.4);text-align:center;margin-top:14px;letter-spacing:.01em}
 
+/* ── PACKS À PRIX FIXE (forfaits, ex. "Pack Sérénité") ── */
+.forfaits-section{margin-top:28px;padding-top:24px;border-top:1px solid var(--rule);text-align:center}
+.forfaits-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--grey2);font-weight:600;margin-bottom:14px}
+.forfaits-grid{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;max-width:520px;margin:0 auto}
+.forfait-card{flex:1;min-width:200px;max-width:240px;border:1.5px solid var(--rule);border-radius:14px;padding:18px 16px;background:#fff;text-align:center;transition:border-color .18s,box-shadow .18s}
+.forfait-card:hover{border-color:var(--blue);box-shadow:0 4px 20px rgba(26,43,74,.08)}
+.forfait-name{font-size:14px;font-weight:700;color:var(--black);margin-bottom:4px}
+.forfait-meta{font-size:11.5px;color:var(--grey);margin-bottom:10px}
+.forfait-price{font-size:24px;font-weight:700;color:var(--blue);line-height:1.1}
+.forfait-price span{font-size:11px;font-weight:500;color:var(--grey)}
+.forfait-btn{display:inline-block;margin-top:12px;padding:9px 18px;background:var(--blue);color:#fff;border:none;border-radius:100px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:var(--body);transition:background .15s}
+.forfait-btn:hover{background:var(--blue-d)}
+
 /* ── EMAIL CAPTURE ── */
 .email-capture{background:linear-gradient(135deg,#091c38 0%,var(--blue) 50%,#1e4a7a 100%);padding:52px 24px}
 .ec-in{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:40px;flex-wrap:wrap}
@@ -3868,6 +3881,13 @@ input:-webkit-autofill:focus{
       </div>
       <p class="pt-note">Prix garanti dès la réservation &nbsp;·&nbsp; Kit fourni &nbsp;·&nbsp; Livraison &amp; récupération : à partir de 60 € &nbsp;·&nbsp; Aucune caution</p>
       <p class="pt-note" style="margin-top:6px;color:rgba(0,0,0,.35)">Installation par technicien +80 € (unique) &nbsp;·&nbsp; Pose autonome (kit fourni)</p>
+    </div>
+    <!-- Packs à prix fixe (ex. "Pack Sérénité Solo/Duo") — masqué tant
+         qu'aucun pack actif n'est chargé depuis /api/forfaits (voir
+         loadForfaits) : rien à afficher plutôt qu'une section vide. -->
+    <div class="forfaits-section" id="forfaits-section" style="display:none">
+      <p class="forfaits-title">Nos packs à prix fixe</p>
+      <div class="forfaits-grid" id="forfaits-grid" role="list"></div>
     </div>
   </div>
 </section>
@@ -5582,7 +5602,16 @@ function calcPrice(days){
   if(days<=p.palier3_max_jours)return p.palier1_max_jours*r1+(p.palier2_max_jours-p.palier1_max_jours)*r2+(days-p.palier2_max_jours)*r3;
   return p.palier1_max_jours*r1+(p.palier2_max_jours-p.palier1_max_jours)*r2+(p.palier3_max_jours-p.palier2_max_jours)*r3+(days-p.palier3_max_jours)*r4;
 }
-function calcTotal(days){return calcPrice(days)*_qty+(_techInstall?INSTALL_FEE:0);}
+function calcTotal(days){
+  // Pack à prix fixe actif ET toujours cohérent avec la durée/quantité en
+  // cours (voir déclaration de _selectedForfait) → son prix figé remplace
+  // le calcul dégressif, partout où calcTotal() est appelé (total affiché,
+  // montant Stripe, récap) — un seul point de vérité, rien à dupliquer.
+  if(_selectedForfait && _selectedForfait.duree_jours===days && _selectedForfait.quantite===_qty){
+    return _selectedForfait.prix_cents/100 + (_techInstall?INSTALL_FEE:0);
+  }
+  return calcPrice(days)*_qty+(_techInstall?INSTALL_FEE:0);
+}
 
 // Charge les vrais tarifs (panneau de contrôle admin) au premier affichage
 // de la page — avant ça, PRICING contient juste les valeurs par défaut
@@ -5645,6 +5674,40 @@ function syncPricingTexts(){
       svcLd.textContent=JSON.stringify(obj);
     }
   }catch(e){ /* SEO uniquement — jamais bloquant */ }
+}
+
+// Packs à prix fixe (ex. "Pack Sérénité Solo/Duo", panneau de contrôle
+// admin — voir admin-forfaits.js) — chargés une fois au démarrage. Section
+// masquée s'il n'y en a aucun d'actif : jamais de carte vide affichée.
+async function loadForfaits(){
+  try{
+    const r=await fetch('/api/forfaits');
+    const d=await r.json();
+    if(r.ok&&Array.isArray(d.forfaits)&&d.forfaits.length)renderForfaitCards(d.forfaits);
+  }catch(e){ /* pas de pack affiché — jamais bloquant pour le reste du site */ }
+}
+function renderForfaitCards(forfaits){
+  const section=document.getElementById('forfaits-section');
+  const grid=document.getElementById('forfaits-grid');
+  if(!section||!grid)return;
+  grid.innerHTML=forfaits.map(f=>`
+    <div class="forfait-card" role="listitem">
+      <div class="forfait-name">${escHtml(f.nom)}</div>
+      <div class="forfait-meta">${f.quantite} climatiseur${f.quantite>1?'s':''} · ${f.duree_jours} jours</div>
+      <div class="forfait-price">${(f.prix_cents/100).toFixed(0)}<span> €</span></div>
+      <button type="button" class="forfait-btn" onclick='selectForfait(${JSON.stringify(f)})'>Choisir ce pack →</button>
+    </div>`).join('');
+  section.style.display='block';
+}
+function selectForfait(f){
+  _selectedForfait=f;
+  window.dataLayer=window.dataLayer||[];
+  dataLayer.push({event:'select_forfait',forfait:f.nom,price:f.prix_cents/100});
+  openModal(f.duree_jours,'new');
+  // openModal appelle déjà updateDuration (durée), il reste à aligner la
+  // quantité — setQty n'existe qu'une fois le modal ouvert car elle touche
+  // des éléments du formulaire, donc appelée juste après, pas avant.
+  if(typeof setQty==='function')setQty(f.quantite);
 }
 
 let _durDays=7;
@@ -6240,7 +6303,7 @@ function closeModal(){
   _promoDiscount=0;_promoCode='';_promoPct=0;const promoInp=document.getElementById('f-parrain');if(promoInp)promoInp.value='';
   const instrTa=document.getElementById('f-instructions');if(instrTa)instrTa.value='';
   const instrWrap=document.getElementById('instructions-wrap');if(instrWrap)instrWrap.style.display='none';
-  _qty=1;_techInstall=true;
+  _qty=1;_techInstall=true;_selectedForfait=null;
   document.getElementById('modal')?.querySelectorAll('.tpill.on[role="radio"]').forEach(p=>{p.classList.remove('on');p.setAttribute('aria-checked','false');});
   const instrNo=document.getElementById('instructions-no');if(instrNo){instrNo.classList.add('on');instrNo.setAttribute('aria-checked','true');}
   const instrYes=document.getElementById('instructions-yes');if(instrYes)instrYes.setAttribute('aria-checked','false');
@@ -7196,6 +7259,11 @@ function submitForm(btn,mode){
     raison_sociale:document.getElementById('f-raison-sociale')?.value.trim()||'',
     siret:document.getElementById('f-siret')?.value.trim()||'',
     parrain_code:_promoCode||document.getElementById('f-parrain')?.value.trim()||'',
+    // Pack à prix fixe — envoyé seulement si la durée/quantité en cours
+    // correspondent encore exactement au pack choisi (même garde que
+    // calcTotal ci-dessus) ; le serveur revérifie de toute façon cette
+    // correspondance avant d'appliquer le prix figé (voir checkout.js).
+    forfait_id:(_selectedForfait&&_selectedForfait.duree_jours===parseInt(document.getElementById('f-dur')?.value)&&_selectedForfait.quantite===_qty)?_selectedForfait.id:'',
     partenaire_code:localStorage.getItem('_la_p')||'',
     instructions_acces:document.getElementById('f-instructions')?.value.trim()||'',
     remise_promo:_promoDiscount>0?'-'+_promoDiscount+' €':'',
@@ -8582,6 +8650,7 @@ function initCity(){
 }
 initCity();
 loadPricingConfig(); // récupère les vrais tarifs (panneau de contrôle admin) — jamais bloquant, voir commentaire plus haut
+loadForfaits(); // récupère les packs à prix fixe actifs (ex. Pack Sérénité) — jamais bloquant
 
 // ── COOKIE CONSENT ──
 (function(){
@@ -9474,6 +9543,13 @@ function selectInstall(tech){
 
 let _unit2=false;
 let _qty=1;
+// Pack à prix fixe sélectionné (ex. "Pack Sérénité Solo/Duo", voir
+// admin-forfaits.js) — null en réservation normale. Ne s'applique dans
+// calcTotal() QUE si la durée/quantité en cours correspondent encore
+// exactement au pack choisi : changer la durée ou la quantité après coup
+// fait retomber automatiquement sur le tarif dégressif normal, sans state
+// à nettoyer à la main (voir calcTotal ci-dessous).
+let _selectedForfait=null;
 let _promoDiscount=0;
 let _promoPct=0;
 let _promoCode='';
