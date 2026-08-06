@@ -38,7 +38,7 @@ module.exports = async (req, res) => {
     if (action === 'list') {
       const { data, error } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, logement, parrain_code, partenaire_commission_cents, motifs, mkt_consent, created_at, forfait_id, forfait:forfaits ( nom ), partenaire:partenaires ( nom ), reservation_appareils ( appareil:appareils ( numero ) )')
+        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, date_debut, date_fin, quantite, prix_total_cents, statut, source, masquee, hors_zone, type_client, raison_sociale, siret, logement, parrain_code, partenaire_commission_cents, motifs, mkt_consent, creneau_recuperation, date_recuperation_souhaitee, created_at, forfait_id, forfait:forfaits ( nom ), partenaire:partenaires ( nom ), reservation_appareils ( appareil:appareils ( numero ) )')
         .eq('city_id', city.id)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -217,6 +217,8 @@ module.exports = async (req, res) => {
         logement: logement || null, parrain_code: parrainCode || null,
         partenaire_id: partenaireId, partenaire_commission_cents: partenaireCommissionCents,
         motifs: motifs || null, mkt_consent: mktConsent,
+        creneau_recuperation: ['8h – 10h', '10h – 12h'].includes(body.creneau_recuperation) ? body.creneau_recuperation : null,
+        date_recuperation_souhaitee: (() => { const v = (body.date_recuperation_souhaitee || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; })(),
         cgv_accepted_at: new Date().toISOString(),
       }).select().single();
       if (error) throw error;
@@ -593,6 +595,8 @@ module.exports = async (req, res) => {
       if (body.parrain_code != null)       patch.parrain_code       = body.parrain_code.trim().slice(0, 50) || null;
       if (body.motifs != null)             patch.motifs             = body.motifs.trim().slice(0, 300) || null;
       if (body.mkt_consent != null)        patch.mkt_consent        = !!body.mkt_consent;
+      if (body.creneau_recuperation != null)       patch.creneau_recuperation       = ['8h – 10h', '10h – 12h'].includes(body.creneau_recuperation) ? body.creneau_recuperation : null;
+      if (body.date_recuperation_souhaitee != null) { const v = (body.date_recuperation_souhaitee || '').slice(0, 10); patch.date_recuperation_souhaitee = /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; }
       if (Object.keys(patch).length === 0) return res.status(400).json({ error: 'Rien à modifier' });
       const { error } = await supabase.from('reservations').update(patch).eq('id', id).eq('city_id', city.id);
       if (error) throw error;
