@@ -14,7 +14,8 @@ module.exports = async (req, res) => {
   if (!rapport) return res.status(400).json({ error: 'rapport manquant' });
 
   const dateStr = date || new Date().toLocaleDateString('fr-FR');
-  const lignes = rapport.split('\n').map(l => `<p style="margin:4px 0;font-family:monospace;font-size:13px">${l.replace(/</g,'&lt;')}</p>`).join('');
+  const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const lignes = rapport.split('\n').map(l => `<p style="margin:4px 0;font-family:monospace;font-size:13px">${esc(l)}</p>`).join('');
 
   const html = `
     <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:24px">

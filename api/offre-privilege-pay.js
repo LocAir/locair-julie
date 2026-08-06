@@ -19,13 +19,21 @@ module.exports = async (req, res) => {
   if (!offreId) return res.status(400).json({ error: 'Offre introuvable' });
 
   try {
+    // Élargit la vérification à toute la "famille" de réservations (origine +
+    // prolongations) — l'admin peut créer une offre sur l'une ou l'autre, et le
+    // client doit toujours pouvoir la payer depuis son dashboard même si l'offre
+    // est rattachée à la prolongation plutôt qu'à la réservation d'origine.
+    const { data: prolongations } = await supabase
+      .from('reservations').select('id').eq('reservation_origine_id', reservationId);
+    const allResaIds = [reservationId, ...(prolongations || []).map(p => p.id)];
+
     // Verrouillage atomique : passe statut → 'en_cours' seulement si encore
-    // 'proposee' ET appartient à cette réservation. Empêche le double-clic ou
-    // double-onglet de créer deux PaymentIntents Stripe pour la même offre.
+    // 'proposee' ET appartient à cette famille de réservations. Empêche le
+    // double-clic ou double-onglet de créer deux PaymentIntents Stripe.
     const { data: offre, error: lockErr } = await supabase
       .from('offres_privilege')
       .update({ statut: 'en_cours' })
-      .eq('id', offreId).eq('statut', 'proposee').eq('reservation_id', reservationId)
+      .eq('id', offreId).eq('statut', 'proposee').in('reservation_id', allResaIds)
       .select('id, prix_vente_cents, reservation_id, appareil_id')
       .maybeSingle();
     if (lockErr) throw lockErr;

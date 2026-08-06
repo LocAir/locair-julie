@@ -60,13 +60,22 @@ module.exports = async (req, res) => {
 
     // Met à jour date ET créneau — les espaces admin et transporteur lisent
     // directement ces colonnes via jointure, donc synchronisés automatiquement.
+    // La clause .not() est une garde atomique : si un transporteur est passé
+    // en_route entre le SELECT ci-dessus et cet UPDATE, la ligne n'est plus
+    // modifiée et updated sera vide — évite d'envoyer un SMS de confirmation
+    // pour un changement qui n'a pas eu lieu.
     const updateFields = { date_prevue: newDate, creneau };
     if (liv.statut === 'acceptee') updateFields.statut = 'a_faire';
-    const { error: updateErr } = await supabase
+    const { data: updated, error: updateErr } = await supabase
       .from('livraisons')
       .update(updateFields)
-      .eq('id', liv.id);
+      .eq('id', liv.id)
+      .not('statut', 'in', '(en_route,arrivee,fait)')
+      .select('id');
     if (updateErr) throw updateErr;
+    if (!updated || !updated.length) {
+      return res.status(409).json({ error: 'Un transporteur est déjà en route — la modification n\'est plus possible.' });
+    }
 
     const { data: resa } = await supabase
       .from('reservations')
