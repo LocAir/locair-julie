@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
     return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
   }
 
-  const { email, ref, new_date_fin, cgv_accepted } = req.body || {};
+  const { email, ref, new_date_fin, cgv_accepted, client_token } = req.body || {};
 
   if (!email || !new_date_fin) {
     return res.status(400).json({ error: 'Email et nouvelle date de fin requis' });
@@ -52,6 +52,23 @@ module.exports = async (req, res) => {
   // Même filtre déjà en place côté admin (admin-reservations.js, action
   // 'lookup_prolongation').
   const normalizedEmail = String(email).trim().toLowerCase();
+
+  // Si un token de session est fourni (espace client connecté), vérifier que
+  // la session appartient bien à cet email — empêche un client connecté de
+  // prolonger la réservation d'un autre en changeant le champ email.
+  // Sans token (lien SMS /prolongation.html), le contrôle est contourné
+  // intentionnellement : le lien est à usage unique et rate-limité.
+  if (client_token) {
+    const { data: sess } = await supabase
+      .from('client_sessions')
+      .select('email, expires_at')
+      .eq('token', client_token)
+      .maybeSingle();
+    if (!sess || sess.expires_at < new Date().toISOString() || sess.email !== normalizedEmail) {
+      return res.status(401).json({ error: 'Session invalide.' });
+    }
+  }
+
   let q = supabase
     .from('reservations')
     .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
