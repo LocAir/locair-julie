@@ -31,4 +31,21 @@ async function getMatchingForfait(supabase, { forfaitId, duree, quantite }) {
   }
 }
 
-module.exports = { getActiveForfaits, getMatchingForfait };
+// Relit un forfait par id tel qu'il était (pas de filtre "actif" : sert à
+// documenter après coup — contrat/facture — une réservation déjà payée,
+// même si le pack a depuis été désactivé ou supprimé côté admin). Ne jette
+// jamais : un document généré sans le détail du pack reste préférable à un
+// document qui ne se génère pas du tout.
+async function getForfaitById(supabase, id) {
+  if (!id) return null;
+  try {
+    const { data, error } = await supabase.from('forfaits').select('*').eq('id', id).maybeSingle();
+    if (error) return null;
+    return data || null;
+  } catch (e) {
+    console.error('[forfaits] getForfaitById:', e.message);
+    return null;
+  }
+}
+
+module.exports = { getActiveForfaits, getMatchingForfait, getForfaitById };

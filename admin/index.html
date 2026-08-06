@@ -2895,6 +2895,28 @@ function isUrgent(dateDebut){
 function isInternalRef(ref){
   return !ref || /^(MANUEL|PROLONG)-/.test(ref);
 }
+// Badge "code promo" sur une réservation — affiché dès que parrain_code est
+// rempli, quelle que soit son origine (ancien système "PRENOM10/20/30" ou
+// nouveau panneau Offres, voir admin-promotions.js). Corrige un bug trouvé à
+// l'audit : l'ancienne version devinait le pourcentage par une regex sur le
+// code (ex. "ETE2026" → lu à tort comme "2026%"), donc n'affichait le badge
+// que pour les codes historiques et jamais pour un code créé dans l'onglet
+// Offres. On affiche maintenant juste le code, sans deviner de pourcentage —
+// le montant réellement facturé reste de toute façon visible juste à côté.
+function resaPromoBadgeHtml(res){
+  if(!res.parrain_code)return '';
+  return ' · <span style="background:var(--gold-lt);color:var(--gold-d);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--gold)">Code promo : '+escHtml(res.parrain_code)+'</span>';
+}
+// Badge "pack à prix fixe" — affiché si la réservation vient d'un Pack
+// Sérénité (voir admin-forfaits.js). res.forfait vient de la jointure
+// forfait:forfaits(nom) côté serveur (admin-reservations.js) ; si le pack a
+// depuis été supprimé (jointure vide), on retombe sur "Pack (supprimé)"
+// plutôt que de ne rien afficher — la réservation reste marquée comme telle.
+function resaForfaitBadgeHtml(res){
+  if(!res.forfait_id)return '';
+  const nom=res.forfait?.nom||'Pack (supprimé)';
+  return ' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🎁 '+escHtml(nom)+'</span>';
+}
 // Qui s'occupe de la livraison / récupération d'une réservation — lit le
 // cache Livraisons déjà chargé (LIVRAISONS_CACHE), quelle que soit la
 // dernière page qui l'a alimenté (Livraisons, Réservations ou Calendrier
@@ -3001,7 +3023,7 @@ function reservationRowHtml(res, readOnly){
       </div>
       <div class="resa-bottom">
         <span class="resa-price">${euros(res.prix_total_cents)}</span>
-        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+escHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${(()=>{const p=res.parrain_code;if(!p)return '';const m=p.match(/(\d+)$/);const pct=m?parseInt(m[1]):0;return [10,20,30].includes(pct)?' · <span style="background:var(--gold-lt);color:var(--gold-d);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--gold)">Code promo '+escHtml(p)+' −'+pct+'%</span>':'';})()}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
+        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+escHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${resaForfaitBadgeHtml(res)}${resaPromoBadgeHtml(res)}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
       </div>
       ${res.statut==='confirmee' ? agentLineHtml(res.id) : ''}
       ${res.dernier_envoi_lien ? `<div class="resa-sub" style="color:${res.dernier_envoi_lien.statut==='envoye'?'var(--green)':'var(--red)'}">${res.dernier_envoi_lien.statut==='envoye'?'✅':'⚠️'} Lien de paiement par ${res.dernier_envoi_lien.canal==='sms'?'SMS':'email'} le ${frDateHeure(res.dernier_envoi_lien.quand)}${res.dernier_envoi_lien.statut==='envoye'?'':' (échec)'}</div>` : ''}
