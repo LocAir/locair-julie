@@ -620,6 +620,12 @@ let _prolongReturnStatus = null;
 function escHtml(s){
   return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+function safeHref(url) {
+  if (!url) return '#';
+  const u = String(url).trim();
+  if (/^https?:\/\//i.test(u) || /^tel:/i.test(u) || /^mailto:/i.test(u)) return escHtml(u);
+  return '#';
+}
 // Date du jour en heure de Paris (pas UTC) — Intl.DateTimeFormat gère tout
 // seul l'heure d'été/hiver. Sans ça, entre minuit et 1h-2h du matin heure de
 // Paris, "aujourd'hui" calculé en UTC renvoyait encore la veille.
@@ -703,6 +709,7 @@ document.getElementById('login-form').addEventListener('submit', async function(
     // pré-remplir email + référence si jamais l'auto-connexion par jeton y
     // échoue — le client n'a alors jamais à retaper ces informations.
     localStorage.setItem('client_email', email);
+    localStorage.removeItem('c_fid');
     showDashboard();
   }catch(err){
     errEl.textContent = err.message;
@@ -943,19 +950,19 @@ function renderDashboard(d){
         <div class="doc-name">${escHtml(docLabels[doc.type]||doc.type)}</div>
         ${doc.numero || doc.genere_at ? `<div class="doc-sub">${[doc.numero ? escHtml(doc.numero) : '', doc.genere_at ? escHtml(fmtDateTime(doc.genere_at)) : ''].filter(Boolean).join(' · ')}</div>` : ''}
       </div>
-      <a class="doc-btn" href="${escHtml(doc.url)}" target="_blank" rel="noopener">Ouvrir</a>
+      <a class="doc-btn" href="${safeHref(doc.url)}" target="_blank" rel="noopener">Ouvrir</a>
     </div>`).join('');
   if(d.mon_climatiseur?.documentation_url) docsHtml += `
     <div class="doc-row">
       <div class="doc-ico">${_ICO.book}</div>
       <div class="doc-info"><div class="doc-name">Guide utilisateur</div></div>
-      <a class="doc-btn" href="${escHtml(d.mon_climatiseur.documentation_url)}" target="_blank" rel="noopener">Ouvrir</a>
+      <a class="doc-btn" href="${safeHref(d.mon_climatiseur.documentation_url)}" target="_blank" rel="noopener">Ouvrir</a>
     </div>`;
   if(d.mon_climatiseur?.video_tutoriel_url) docsHtml += `
     <div class="doc-row">
       <div class="doc-ico">${_ICO.play}</div>
       <div class="doc-info"><div class="doc-name">Tutoriel vidéo</div></div>
-      <a class="doc-btn" href="${escHtml(d.mon_climatiseur.video_tutoriel_url)}" target="_blank" rel="noopener">Voir</a>
+      <a class="doc-btn" href="${safeHref(d.mon_climatiseur.video_tutoriel_url)}" target="_blank" rel="noopener">Voir</a>
     </div>`;
   (d.cgv_acceptees||[]).forEach(a => {
     const label = a.type === 'conditions_utilisation' ? "Conditions d'utilisation" : 'CGV / CGL';
@@ -966,7 +973,7 @@ function renderDashboard(d){
         <div class="doc-name">${label}</div>
         <div class="doc-sub">Acceptées le ${escHtml(fmtDateTime(a.accepted_at))}</div>
       </div>
-      <a class="doc-btn" href="${escHtml(a.lien)}" target="_blank" rel="noopener">Voir</a>
+      <a class="doc-btn" href="${safeHref(a.lien)}" target="_blank" rel="noopener">Voir</a>
     </div>`;
   });
   // Nombre total de pièces disponibles (documents + guide + vidéo + CGV
@@ -1034,7 +1041,7 @@ function renderDashboard(d){
       </div>
       <div class="assist-arrow">›</div>
     </a>` : ''}
-    ${as.whatsapp_url ? `<a class="assist-btn" href="${escHtml(as.whatsapp_url)}" target="_blank" rel="noopener">
+    ${as.whatsapp_url ? `<a class="assist-btn" href="${safeHref(as.whatsapp_url)}" target="_blank" rel="noopener">
       <div class="assist-ico">${_ICO.message}</div>
       <div class="assist-txt">
         <div>WhatsApp</div>
@@ -1186,7 +1193,7 @@ function selectCreneau(val){
 function updateEarlyRecupBtnState(){
   const dateEl = document.getElementById('early-recup-date');
   const btn = document.getElementById('early-recup-btn');
-  if(!dateEl || !btn || btn.textContent === 'Confirmé') return;
+  if(!dateEl || !btn || btn.dataset.confirmed === '1') return;
   const valid = !!dateEl.value && !!_earlyRecupCreneau;
   btn.disabled = !valid;
   btn.textContent = valid ? 'Confirmer' : 'Choisissez une date et un créneau';
@@ -1207,7 +1214,7 @@ async function submitEarlyRecup(){
     alertEl.className='alert-success';
     alertEl.textContent='Votre demande a été prise en compte. Vous allez recevoir un SMS de confirmation.';
     alertEl.classList.remove('hidden');
-    btn.disabled=true; btn.textContent='Confirmé';
+    btn.disabled=true; btn.textContent='Confirmé'; btn.dataset.confirmed='1';
     dateEl.disabled=true;
     document.getElementById('lbl-creneau-1').style.pointerEvents='none';
     document.getElementById('lbl-creneau-2').style.pointerEvents='none';

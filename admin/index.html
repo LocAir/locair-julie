@@ -714,9 +714,18 @@ function renderSearchRecent(){
   const recent = getRecentSearches();
   if(!recent.length){ box.classList.add('hidden'); return; }
   box.innerHTML = `<div class="a-search-group-title">Dernières recherches</div>
-    <div class="a-search-recent">${recent.map(q => `<button onclick="document.getElementById('a-search-input').value='${escHtml(q.replace(/'/g,"\\'"))}';runAdminSearch('${escHtml(q.replace(/'/g,"\\'"))}')">${escHtml(q)}</button>`).join('')}</div>`;
+    <div class="a-search-recent">${recent.map(q => `<button data-search-query="${escHtml(q)}">${escHtml(q)}</button>`).join('')}</div>`;
   box.classList.remove('hidden');
 }
+// Listener centralisé pour les boutons de recherche récente (data-search-query)
+// — évite d'interpoler la valeur directement dans un onclick (XSS potentiel).
+document.getElementById('a-search-results').addEventListener('click', function(e){
+  const btn = e.target.closest('[data-search-query]');
+  if(!btn) return;
+  const q = btn.dataset.searchQuery;
+  document.getElementById('a-search-input').value = q;
+  runAdminSearch(q);
+});
 async function runAdminSearch(q){
   try{
     const r = await fetch(API('admin-search'), {method:'POST', headers:authHeaders(), body:JSON.stringify({q})});
@@ -746,7 +755,7 @@ function renderSearchResults(d, q){
   box.classList.remove('hidden');
 }
 function searchRowHtml(type, it){
-  if(type==='commandes') return `<div class="a-search-row" onclick="goToSearchResult('commandes', ${it.id}, ${it.city_id}, null, '${escHtml((it.ref||'').replace(/'/g,"\\'"))}')">
+  if(type==='commandes') return `<div class="a-search-row" data-ref="${escHtml(it.ref||'')}" onclick="goToSearchResult('commandes', ${it.id}, ${it.city_id}, null, this.dataset.ref)">
     <span><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${isInternalRef(it.ref)?'':escHtml(it.ref)+' · '}${frDate(it.date_debut)} → ${frDate(it.date_fin)}</span></span>
     <span class="chip ${it.statut}">${(typeof RESA_LABEL!=='undefined'&&RESA_LABEL[it.statut])||it.statut}</span></div>`;
   if(type==='clients') return `<div class="a-search-row" onclick="goToSearchResult('clients', ${it.id}, ${it.city_id})">
@@ -1106,6 +1115,12 @@ function escHtml(s){
   return String(s==null?'':s)
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function safeHref(url) {
+  if (!url) return '#';
+  const u = String(url).trim();
+  if (/^https?:\/\//i.test(u) || /^tel:/i.test(u) || /^mailto:/i.test(u)) return escHtml(u);
+  return '#';
 }
 // Date du jour en heure de Paris (pas UTC) — Intl.DateTimeFormat gère tout
 // seul l'heure d'été/hiver. Sans ça, entre minuit et 1h-2h du matin heure de
@@ -1676,6 +1691,7 @@ function isUserBusy(){
   if(document.querySelector('#tab-transporteurs details[open]')) return true; // détail des missions ouvert
   if(document.querySelector('#tab-partenaires details[open]')) return true; // détail des réservations ouvert
   if(document.querySelector('#tab-virements details[open]')) return true; // détail ouvert dans la vue consolidée
+  if(document.querySelector('#tab-livraisons details[open]')) return true; // détail ouvert dans la vue Livraisons
   const tag = (document.activeElement && document.activeElement.tagName || '').toLowerCase();
   return tag==='input' || tag==='textarea' || tag==='select';
 }
@@ -1885,7 +1901,7 @@ function morningBannerHtml(hier){
   return `
     <div class="morning-banner" id="morning-banner-el">
       <button class="mb-close" onclick="dismissMorningBanner()">✕</button>
-      <div class="mb-title">👋 Bonjour ${escHtml(NOM_COMPTE || 'Aly')}</div>
+      <div class="mb-title">👋 Bonjour ${escHtml(NOM_COMPTE || "l'équipe")}</div>
       <div class="mb-text">Hier : ${(hier.ca_euros||0).toFixed(0)} € de CA, ${hier.nb_reservations||0} réservation${(hier.nb_reservations||0)>1?'s':''}, ${hier.missions_terminees||0} mission${(hier.missions_terminees||0)>1?'s':''} terminée${(hier.missions_terminees||0)>1?'s':''}${incidentsTxt}.</div>
     </div>`;
 }
@@ -2678,17 +2694,17 @@ async function deleteSelectedAppareils(){
   const ids = [...STOCK_SELECTION];
   if(!ids.length) return;
   confirmAction(`Supprimer ${ids.length} appareil${ids.length>1?'s':''} ? Impossible si l'un d'eux a un historique — marque-le "En panne" dans ce cas.`, async () => {
-    let errors = 0;
+    const failedIds = [];
     for(const id of ids){
       try{
         const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'delete', id})});
         const d = await r.json();
-        if(!r.ok) errors++;
-      }catch(e){ errors++; }
+        if(!r.ok) failedIds.push(id);
+      }catch(e){ failedIds.push(id); }
     }
-    if(errors < ids.length){ STOCK_SELECTION.clear(); STOCK_SELECTION_MODE = false; }
+    if(failedIds.length < ids.length){ STOCK_SELECTION.clear(); STOCK_SELECTION_MODE = false; }
     loadStock();
-    if(errors) showToast(`${ids.length-errors} supprimé${ids.length-errors>1?'s':''}, ${errors} erreur${errors>1?'s':''}`, 'error');
+    if(failedIds.length) showToast(`Erreur sur les appareils : ${failedIds.join(', ')}`, 'error');
     else showToast(`${ids.length} appareil${ids.length>1?'s':''} supprimé${ids.length>1?'s':''}`, 'success');
   }, {danger:true, yesLabel:`Supprimer (${ids.length})`});
 }
@@ -5455,7 +5471,7 @@ function openMediaViewer(url, kind){
   // capturée avant ce changement (vidéo, ancien format) doit rester lisible
   // correctement même si le type attendu aujourd'hui est une photo.
   const isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url);
-  const safeUrl = escHtml(url);
+  const safeUrl = safeHref(url);
   const overlay = document.createElement('div');
   overlay.className = 'map-overlay';
   overlay.id = 'media-overlay-el';
