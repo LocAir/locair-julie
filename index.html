@@ -9573,6 +9573,16 @@ let _selectedForfait=null;
 let _promoDiscount=0;
 let _promoPct=0;
 let _promoCode='';
+// ⚠️ Ces deux codes doivent AUSSI exister comme lignes actives dans la
+// table `promotions` (admin → 🎁 Offres, montant fixe 10€) pour que le
+// serveur les reconnaisse vraiment (voir _lib/promotions.js) — cet aperçu
+// client n'est qu'une INDICATION, jamais la source de vérité. Trouvé lors
+// d'un audit (2026-08-06) : le passage au nouveau système de promotions a
+// supprimé le PROMO_CODES codé en dur côté serveur sans recréer ces deux
+// codes dans la nouvelle table, laissant ce message promettre une
+// réduction que le serveur n'appliquait plus (le client ne payait pas
+// plus cher que prévu — le vrai montant Stripe reste toujours calculé
+// côté serveur — mais voyait une réduction annoncée puis non appliquée).
 const _PROMO_FIXED={'LOCAIR10':10,'LOCA10':10};
 // Code de fidélité/parrainage envoyé automatiquement à la fin de chaque
 // location (prénom + 30, ex. "ERIK30" pour -30%) — voir api/_lib/promo.js
