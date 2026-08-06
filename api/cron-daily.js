@@ -175,7 +175,9 @@ module.exports = async (req, res) => {
           await pushToAdmin(supabase, {
             title: `❌ Retard non facturable — ${resa.nom || '?'}`,
             body:  `Aucune carte enregistrée pour ce client — le prélèvement automatique de retard est impossible. Contacte-le manuellement.`,
-            tag:   `retard-non-facturable-${liv.id}-${todayStr}`,
+            // Audit 2026-08-06 M2 : todayStr dans le tag créait une nouvelle
+            // notification chaque jour pour le même problème non résolu.
+            tag:   `retard-non-facturable-${liv.id}`,
           });
           continue;
         }
@@ -228,7 +230,9 @@ module.exports = async (req, res) => {
         await pushToAdmin(supabase, {
           title: `❌ Prélèvement retard échoué — ${resa.nom || '?'}`,
           body:  `Le prélèvement automatique de ${joursRetard}j de retard a échoué (${(stripeErr.message || 'carte refusée').slice(0, 200)}). Contacte le client pour régulariser manuellement.`,
-          tag:   `retard-stripe-echec-${liv.id}-${todayStr}`,
+          // Audit 2026-08-06 M2 : même correction que retard-non-facturable —
+          // sans todayStr, la même notification est mise à jour (badge stable).
+          tag:   `retard-stripe-echec-${liv.id}`,
         });
         const failDesc = `Prélèvement automatique de retard échoué (${joursRetard}j) : ${(stripeErr.message || '').slice(0, 300)}`;
         const failAmt  = dailyRate(joursRetard, pricing) * 100;

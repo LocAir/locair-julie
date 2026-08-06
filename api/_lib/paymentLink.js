@@ -187,8 +187,14 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
       },
     });
 
+    // Ne pas toucher à stripe_payment_intent_id ici : session.payment_intent
+    // est TOUJOURS null au moment de stripe.checkout.sessions.create() — le
+    // PaymentIntent n'existe que quand le client commence à saisir sa carte.
+    // Écraser la valeur avec null effaçait l'id enregistré par le webhook de
+    // confirmation, rendant impossible la réconciliation Stripe ↔ Supabase
+    // (audit 2026-08-06 C1). La mise à jour est faite par webhook.js dès
+    // réception de l'événement checkout.session.completed.
     await supabase.from('reservations').update({
-      stripe_payment_intent_id: session.payment_intent,
       stripe_customer_id: customerId,
     }).eq('id', resa.id);
 

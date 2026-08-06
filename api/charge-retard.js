@@ -18,10 +18,13 @@ module.exports = async (req, res) => {
   const data   = req.body || {};
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   const jours  = Math.max(1, parseInt(data.jours) || 1);
+  // Audit 2026-08-06 I1 : manquait * qty pour les locations multi-appareils.
+  // La facturation de retard ne portait que sur 1 appareil, même pour 2 ou 3.
+  const qty    = Math.max(1, parseInt(data.quantite) || 1);
   // Tarifs (panneau de contrôle admin, voir admin-pricing.js) — jamais
   // recalculés en dur.
   const pricing     = await getPricingConfig(getSupabase());
-  const amountCents = calcTieredPrice(jours, pricing) * 100;
+  const amountCents = calcTieredPrice(jours, pricing) * qty * 100;
 
   try {
     let customerId      = (data.customer_id || '').trim();
@@ -97,19 +100,30 @@ module.exports = async (req, res) => {
       // supposition fausse une fois plusieurs zones actives.
       const cityId = resa?.city_id || null;
 
-      await supabase.from('incidents').insert({
-        city_id:                cityId,
-        reservation_id:        reservationId,
-        type:                   'retard',
-        description:            `${jours} jour${jours > 1 ? 's' : ''} de retard — ${(data.nom || '').slice(0, 200)}`,
-        montant_facture_cents:  amountCents,
-        // 'retard_facture' n'existe pas dans la contrainte check de
-        // incidents.statut (seulement 'retard_a_facturer','resolu',...) —
-        // l'insert échouait silencieusement (absorbé par le catch plus bas)
-        // pour tout paiement de retard réussi du premier coup. Une fois
-        // encaissé, il n'y a plus rien à facturer : 'resolu' est le bon état.
-        statut:                 intent.status === 'succeeded' ? 'resolu' : 'retard_a_facturer',
-      });
+      // Audit 2026-08-06 I2 : un double-clic créait deux incidents pour la
+      // même facturation Stripe (qui, elle, est idempotente via idempotencyKey).
+      // Vérification avant insert : si un incident de ce montant existe déjà
+      // pour cette réservation dans les 10 dernières minutes, on ne double pas.
+      let alreadyLogged = false;
+      if (reservationId) {
+        const tenMinAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+        const { count: existingCount } = await supabase.from('incidents')
+          .select('id', { count: 'exact', head: true })
+          .eq('reservation_id', reservationId).eq('type', 'retard')
+          .eq('montant_facture_cents', amountCents)
+          .gte('created_at', tenMinAgo);
+        alreadyLogged = (existingCount || 0) > 0;
+      }
+      if (!alreadyLogged) {
+        await supabase.from('incidents').insert({
+          city_id:                cityId,
+          reservation_id:        reservationId,
+          type:                   'retard',
+          description:            `${jours} jour${jours > 1 ? 's' : ''}${qty > 1 ? ' × ' + qty + ' appareils' : ''} de retard — ${(data.nom || '').slice(0, 200)}`,
+          montant_facture_cents:  amountCents,
+          statut:                 intent.status === 'succeeded' ? 'resolu' : 'retard_a_facturer',
+        });
+      }
     } catch (e) {
       console.error('[Incident retard]', e.message);
     }

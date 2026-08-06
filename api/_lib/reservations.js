@@ -663,10 +663,12 @@ async function confirmReservation(supabase, resa) {
     // jusqu'au bout de sa réservation.
     const dateRecuperation = addDays(resa.date_fin, 1);
     const rows = resa.source === 'site_prolongation'
-      ? [{ reservation_id: resa.id, type: 'recuperation', date_prevue: dateRecuperation, creneau: resa.creneau || null }]
+      ? [{ reservation_id: resa.id, type: 'recuperation', date_prevue: dateRecuperation, creneau: null }]
       : [
           { reservation_id: resa.id, type: 'livraison',    date_prevue: resa.date_debut, creneau: resa.creneau || null },
-          { reservation_id: resa.id, type: 'recuperation', date_prevue: (resa.date_recuperation_souhaitee && resa.date_recuperation_souhaitee >= resa.date_fin ? resa.date_recuperation_souhaitee : dateRecuperation), creneau: resa.creneau_recuperation || null },
+          // Audit 2026-08-06 I3 : >= date_fin permettait la récupération le
+          // jour même de fin de location. Corrigé en > date_fin (J+1 minimum).
+          { reservation_id: resa.id, type: 'recuperation', date_prevue: (resa.date_recuperation_souhaitee && resa.date_recuperation_souhaitee > resa.date_fin ? resa.date_recuperation_souhaitee : dateRecuperation), creneau: resa.creneau_recuperation || null },
         ];
 
     // Répartition auto pour toutes les réservations — y compris celles saisies

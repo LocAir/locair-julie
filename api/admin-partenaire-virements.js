@@ -233,9 +233,15 @@ module.exports = async (req, res) => {
     if (action === 'marquer_verse') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
+      // Audit 2026-08-06 I7 : aucun contrôle de propriété — n'importe quel
+      // admin finances pouvait marquer le virement d'un autre partenaire comme
+      // versé. partenaire_id obligatoire dans le body pour la vérification.
+      const partenaireIdPourVerif = parseInt(body.partenaire_id);
+      if (!partenaireIdPourVerif) return res.status(400).json({ error: 'partenaire_id manquant' });
 
       const { data: virement } = await supabase.from('partenaire_virements').select('*').eq('id', id).maybeSingle();
       if (!virement) return res.status(404).json({ error: 'Virement introuvable' });
+      if (virement.partenaire_id !== partenaireIdPourVerif) return res.status(403).json({ error: 'Ce virement n\'appartient pas à ce partenaire.' });
       if (virement.statut === 'verse') return res.status(409).json({ error: 'Déjà marqué comme versé' });
 
       // Recalcul du montant réel au moment du virement (peut différer de la

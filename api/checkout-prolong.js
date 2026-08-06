@@ -273,7 +273,10 @@ module.exports = async (req, res) => {
         reservation_id: insertedResa.id,
         type:           ACCEPTANCE_TYPES.CGV_LOCATION,
         version:        CGV_VERSION,
-        accepted_at:    data.cgv_accepted_at || new Date().toISOString(),
+        // accepted_at toujours généré côté serveur — ne jamais laisser le
+        // client fournir son propre horodatage CGV (audit 2026-08-06 I15 :
+        // data.cgv_accepted_at venait du body et pouvait être antidaté).
+        accepted_at:    new Date().toISOString(),
       });
     } catch (e) {
       console.error('[CGV acceptations prolong]', e.message);

@@ -112,6 +112,10 @@ module.exports = async (req, res) => {
 
     const livraison    = (livraisons || []).find(l => l.type === 'livraison');
     const recuperation = (livraisons || []).find(l => l.type === 'recuperation');
+    // Missions de changement (échange d'appareil) — audit 2026-08-06 I9 :
+    // absentes de la réponse, le client ne voyait aucun rendez-vous de
+    // remplacement dans son espace perso.
+    const changements  = (livraisons || []).filter(l => l.type === 'changement' && !['annule','annulee','refusee'].includes(l.statut));
     const appareil = (reservAppareils || [])[0]?.appareil || null;
 
     // La récupération peut avoir été reprogrammée plus tard sans passer par
@@ -166,6 +170,11 @@ module.exports = async (req, res) => {
           'Conservez les accessoires (télécommande, kit de calfeutrage)',
         ],
       } : null,
+      changements: changements.map(c => ({
+        date_prevue: c.date_prevue,
+        creneau: c.creneau || null,
+        statut: c.statut,
+      })),
       mon_climatiseur: appareil?.modele ? {
         modele: appareil.modele.modele,
         marque: appareil.modele.marque,

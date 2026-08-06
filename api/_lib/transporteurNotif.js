@@ -11,11 +11,15 @@ function periodLabel(dates) {
   if (!dates || !dates.length) return null;
   const sorted = dates.map(d => new Date(d)).sort((a, b) => a - b);
   const ref = sorted[sorted.length - 1]; // mission la plus récente
-  const dow = ref.getDay();
+  // Audit 2026-08-06 I9 : getDay()/setDate() utilisaient le fuseau local du
+  // serveur (UTC en prod Vercel) — le libellé "semaine du lundi X" pouvait
+  // décaler d'un jour. Remplacé par getUTCDay()/setUTCDate() pour cohérence.
+  const dow = ref.getUTCDay();
   const monday = new Date(ref);
-  monday.setDate(ref.getDate() - (dow === 0 ? 6 : dow - 1));
+  monday.setUTCDate(ref.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+  monday.setUTCHours(0, 0, 0, 0);
   const sunday = new Date(monday);
-  sunday.setDate(monday.getDate() + 6);
+  sunday.setUTCDate(monday.getUTCDate() + 6);
   const fmt = (d, opts) => d.toLocaleDateString('fr-FR', opts);
   if (monday.getMonth() === sunday.getMonth()) {
     return `semaine du ${fmt(monday, { day: 'numeric' })} au ${fmt(sunday, { day: 'numeric', month: 'long' })}`;
