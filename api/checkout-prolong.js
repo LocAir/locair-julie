@@ -2,12 +2,10 @@ const Stripe = require('stripe');
 const { getSupabase }     = require('./_lib/supabase');
 const { resolveCityById } = require('./_lib/city');
 const { isValidDate, addDays, todayParis } = require('./_lib/dates');
-const { calcTieredPrice } = require('./_lib/pricing');
+const { calcTieredPrice, getPricingConfig } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getEffectiveDateFin } = require('./_lib/reservations');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
-
-const calcBase = calcTieredPrice;
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -17,6 +15,10 @@ module.exports = async (req, res) => {
   if (await isRateLimited(supabaseRL, `checkout-prolong:${ip}`)) {
     return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
   }
+  // Tarifs (panneau de contrôle admin, voir admin-pricing.js) chargés une
+  // seule fois pour toute la requête, jamais recalculés en dur.
+  const pricing = await getPricingConfig(supabaseRL);
+  const calcBase = (days) => calcTieredPrice(days, pricing);
 
   const data   = req.body || {};
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);

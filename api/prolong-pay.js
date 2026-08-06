@@ -1,7 +1,7 @@
 const Stripe = require('stripe');
 const { getSupabase }     = require('./_lib/supabase');
 const { isValidDate, addDays, todayParis } = require('./_lib/dates');
-const { calcTieredPrice: calcBase } = require('./_lib/pricing');
+const { calcTieredPrice, getPricingConfig } = require('./_lib/pricing');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getEffectiveDateFin } = require('./_lib/reservations');
@@ -39,6 +39,10 @@ module.exports = async (req, res) => {
 
   const supabase = getSupabase();
   const stripe   = new Stripe(process.env.STRIPE_SECRET_KEY);
+  // Tarifs (panneau de contrôle admin, voir admin-pricing.js) chargés une
+  // seule fois pour toute la requête, jamais recalculés en dur.
+  const pricing  = await getPricingConfig(supabase);
+  const calcBase = (days) => calcTieredPrice(days, pricing);
 
   // Retrouver la réservation d'origine par email (+ ref si fournie).
   // .eq('statut','confirmee') indispensable : sans lui, une réservation plus

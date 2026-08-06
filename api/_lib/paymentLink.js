@@ -1,7 +1,7 @@
 const { fmtDate, getSignature, withSignature } = require('./emailEngine');
 const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
 const { tplLienPaiement } = require('./emailTemplates');
-const { calcTieredPrice } = require('./pricing');
+const { calcTieredPrice, getPricingConfig } = require('./pricing');
 const { addDays } = require('./dates');
 
 // Doit rester synchronisé avec INSTALL_FEE dans checkout.js/index.html — même
@@ -31,10 +31,10 @@ function fmtDateCourt(iso) {
 // ce reste est négatif (le prix saisi est inférieur au tarif de base attendu
 // — remise plus importante que la livraison ne peut l'absorber), impossible
 // de présenter un détail cohérent : on revient à un montant global simple.
-function computeManualBreakdown(resa) {
+function computeManualBreakdown(resa, pricing) {
   const days = Math.max(1, Math.round((new Date(resa.date_fin + 'T00:00:00Z') - new Date(resa.date_debut + 'T00:00:00Z')) / 86400000));
   const qty = Math.max(1, resa.quantite || 1);
-  const baseCents = Math.round(calcTieredPrice(days) * qty * 100);
+  const baseCents = Math.round(calcTieredPrice(days, pricing) * qty * 100);
   const isTech = (resa.installation || '').startsWith('Technicien');
   const installCents = isTech ? INSTALL_FEE_CENTS : 0;
   const livraisonCents = (resa.prix_total_cents || 0) - baseCents - installCents;
@@ -63,6 +63,9 @@ function computeManualBreakdown(resa) {
 // plutôt qu'un "voici votre lien" initial, sans dupliquer le template.
 async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) {
   const { scenario = 'lien_paiement', rappel = false, preferSms = false } = options;
+  // Tarifs (panneau de contrôle admin, voir admin-pricing.js) — jamais
+  // recalculés en dur.
+  const pricing = await getPricingConfig(supabase);
   const useSms = preferSms && !!resa.tel;
   if (!useSms && !resa.email) return { ok: false, error: 'Aucun email sur cette réservation' };
   if (useSms && !resa.tel) return { ok: false, error: 'Aucun téléphone sur cette réservation' };
@@ -136,7 +139,7 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
     // Stripe exactement la même décomposition que sur locair.fr. Une
     // prolongation ne facture ni installation ni livraison (voir
     // prolong-pay.js) : jamais de décomposition pour elle, un seul montant.
-    const breakdown = isProlongation ? null : computeManualBreakdown(resa);
+    const breakdown = isProlongation ? null : computeManualBreakdown(resa, pricing);
     const lineItem = (name, unit_amount) => ({ price_data: { currency: 'eur', unit_amount, product_data: { name } }, quantity: 1 });
     const line_items = breakdown ? [
       lineItem(`Location climatiseur — ${breakdown.days} jour${breakdown.days > 1 ? 's' : ''}${breakdown.qty > 1 ? ' × ' + breakdown.qty : ''}`, breakdown.baseCents),
