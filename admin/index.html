@@ -551,6 +551,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
             <button data-tab="transporteurs" onclick="switchAdminTab('transporteurs')">👷 Transporteurs<span class="tab-badge hidden" id="badge-virements"></span></button>
             <button data-tab="partenaires" onclick="switchAdminTab('partenaires')">🤝 Ambassadeurs<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
             <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
+            <button data-tab="tarifs" onclick="switchAdminTab('tarifs')">💶 Tarifs</button>
             <button data-tab="equipe" onclick="switchAdminTab('equipe')">🧑‍💼 Équipe</button>
             <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
             <button data-tab="tutoriels" onclick="switchAdminTab('tutoriels')">🎓 Tutoriels</button>
@@ -583,6 +584,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
         <div id="tab-incidents" class="hidden"></div>
         <div id="tab-clients" class="hidden"></div>
         <div id="tab-villes" class="hidden"></div>
+        <div id="tab-tarifs" class="hidden"></div>
         <div id="tab-equipe" class="hidden"></div>
         <div id="tab-tutoriels" class="hidden"></div>
         <div id="tab-emails" class="hidden"></div>
@@ -1418,7 +1420,7 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
+  ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
@@ -1434,6 +1436,7 @@ function switchAdminTab(tab){
   if(tab==='incidents') loadIncidents();
   if(tab==='clients') loadClients();
   if(tab==='villes') loadVilles();
+  if(tab==='tarifs') loadTarifs();
   if(tab==='equipe') loadEquipe();
   if(tab==='tutoriels') loadTutoriels();
   if(tab==='emails') loadEmails();
@@ -1514,7 +1517,7 @@ const _TAB_BADGE_MAP = {
 // à l'intérieur.
 const _TAB_GROUP_MAP = {
   livraisons: 'piloter', reservations: 'piloter', communications: 'piloter',
-  virements: 'gerer', transporteurs: 'gerer', partenaires: 'gerer', villes: 'gerer', equipe: 'gerer',
+  virements: 'gerer', transporteurs: 'gerer', partenaires: 'gerer', villes: 'gerer', tarifs: 'gerer', equipe: 'gerer',
   clients: 'gerer', tutoriels: 'gerer', emails: 'gerer', espaceclient: 'gerer', checklistitems: 'gerer',
   stock: 'suivre', checklist: 'suivre', incidents: 'suivre',
 };
@@ -8362,6 +8365,152 @@ function renderVilles(){
       <button class="btn btn-blue btn-block" style="margin-top:14px" onclick="addVille()">Créer la ville</button>
       <div class="err" id="ville-err"></div>
     </div>`;
+}
+
+// ── Tarifs (panneau de contrôle du prix de location) ─────────────────────
+// Un seul écran pour changer le prix journalier dégressif — jusqu'ici
+// écrit en dur dans le code, recopié à la main à ~37 endroits (site,
+// contrat, CGV, page retard). Ce que tu changes ici se répercute
+// automatiquement partout, sans redéploiement. Lecture ouverte à tout
+// compte connecté (comme l'onglet Villes), modification réservée aux
+// comptes administrateur — le serveur refuse de toute façon aux autres
+// rôles (admin-pricing.js), ce formulaire se contente de rester
+// modifiable pour tout le monde et de relayer l'éventuel refus serveur.
+let TARIFS_CACHE = null;
+async function loadTarifs(){
+  const zone = document.getElementById('tab-tarifs');
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-pricing'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'get'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    TARIFS_CACHE = d.pricing;
+    renderTarifs();
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+// Simule le prix final pour quelques durées repères, à partir des valeurs
+// actuellement dans le formulaire (pas encore enregistrées) — pour qu'Aly
+// voie tout de suite l'effet concret d'un changement avant de valider,
+// plutôt que de deviner le résultat d'un calcul par palier dans sa tête.
+function tarifsPreviewCalc(c, jours){
+  jours = Math.max(1, jours);
+  if(jours <= c.palier1_max_jours) return jours * c.palier1_tarif_cents;
+  if(jours <= c.palier2_max_jours) return c.palier1_max_jours*c.palier1_tarif_cents + (jours-c.palier1_max_jours)*c.palier2_tarif_cents;
+  if(jours <= c.palier3_max_jours) return c.palier1_max_jours*c.palier1_tarif_cents + (c.palier2_max_jours-c.palier1_max_jours)*c.palier2_tarif_cents + (jours-c.palier2_max_jours)*c.palier3_tarif_cents;
+  return c.palier1_max_jours*c.palier1_tarif_cents + (c.palier2_max_jours-c.palier1_max_jours)*c.palier2_tarif_cents + (c.palier3_max_jours-c.palier2_max_jours)*c.palier3_tarif_cents + (jours-c.palier3_max_jours)*c.palier4_tarif_cents;
+}
+function readTarifsForm(){
+  const num = (id) => parseFloat(document.getElementById(id).value);
+  return {
+    duree_min_jours:     Math.round(num('t-duree-min')),
+    palier1_max_jours:   Math.round(num('t-p1-max')),
+    palier1_tarif_cents: Math.round(num('t-p1-tarif')*100),
+    palier2_max_jours:   Math.round(num('t-p2-max')),
+    palier2_tarif_cents: Math.round(num('t-p2-tarif')*100),
+    palier3_max_jours:   Math.round(num('t-p3-max')),
+    palier3_tarif_cents: Math.round(num('t-p3-tarif')*100),
+    palier4_tarif_cents: Math.round(num('t-p4-tarif')*100),
+  };
+}
+function updateTarifsPreview(){
+  const errEl = document.getElementById('tarifs-err');
+  if(errEl) errEl.style.display='none';
+  let c;
+  try{ c = readTarifsForm(); }catch(e){ return; }
+  if(Object.values(c).some(v => !Number.isFinite(v) || v < 0)) return;
+  const prevEl = document.getElementById('tarifs-preview');
+  if(!prevEl) return;
+  const exemples = [c.palier1_max_jours, c.palier2_max_jours, c.palier3_max_jours, c.palier3_max_jours + 7];
+  prevEl.innerHTML = exemples.map(j => `
+    <div class="stat-tile"><div class="n">${(tarifsPreviewCalc(c,j)/100).toFixed(0)}€</div><div class="l">${j} jours</div></div>`).join('');
+}
+function renderTarifs(){
+  const zone = document.getElementById('tab-tarifs');
+  const c = TARIFS_CACHE;
+  const euros = (cents) => (cents/100).toFixed(2);
+  zone.innerHTML = `
+    <p class="sub" style="margin:-4px 0 14px">Le prix de location est dégressif par palier de durée. Change les valeurs ci-dessous, vérifie l'aperçu, puis enregistre — ça change le vrai prix affiché sur le site, dans le contrat, la facture, les CGV et la page retard, immédiatement, partout.</p>
+    <div class="card">
+      <h2 style="margin-bottom:2px">Durée minimale</h2>
+      <p class="sub" style="margin-bottom:10px">En dessous, une réservation n'est pas acceptée.</p>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="number" id="t-duree-min" value="${c.duree_min_jours}" min="1" style="max-width:100px" oninput="updateTarifsPreview()"/>
+        <span class="sub" style="margin:0">jours</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:10px">Paliers de tarif journalier</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px 16px">
+        <div>
+          <label>Jusqu'à quel jour (palier 1)</label>
+          <input type="number" id="t-p1-max" value="${c.palier1_max_jours}" min="1" oninput="updateTarifsPreview()"/>
+        </div>
+        <div>
+          <label>Tarif palier 1 (€/jour)</label>
+          <input type="number" id="t-p1-tarif" value="${euros(c.palier1_tarif_cents)}" min="0" step="0.5" oninput="updateTarifsPreview()"/>
+        </div>
+        <div>
+          <label>Jusqu'à quel jour (palier 2)</label>
+          <input type="number" id="t-p2-max" value="${c.palier2_max_jours}" min="1" oninput="updateTarifsPreview()"/>
+        </div>
+        <div>
+          <label>Tarif palier 2 (€/jour)</label>
+          <input type="number" id="t-p2-tarif" value="${euros(c.palier2_tarif_cents)}" min="0" step="0.5" oninput="updateTarifsPreview()"/>
+        </div>
+        <div>
+          <label>Jusqu'à quel jour (palier 3)</label>
+          <input type="number" id="t-p3-max" value="${c.palier3_max_jours}" min="1" oninput="updateTarifsPreview()"/>
+        </div>
+        <div>
+          <label>Tarif palier 3 (€/jour)</label>
+          <input type="number" id="t-p3-tarif" value="${euros(c.palier3_tarif_cents)}" min="0" step="0.5" oninput="updateTarifsPreview()"/>
+        </div>
+        <div>
+          <label>Au-delà (palier 4)</label>
+          <p class="sub" style="margin:8px 0 0;font-size:12.5px">Sans limite de durée</p>
+        </div>
+        <div>
+          <label>Tarif palier 4 (€/jour)</label>
+          <input type="number" id="t-p4-tarif" value="${euros(c.palier4_tarif_cents)}" min="0" step="0.5" oninput="updateTarifsPreview()"/>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2 style="margin-bottom:2px">Aperçu du prix final</h2>
+      <p class="sub" style="margin-bottom:10px">Pour une location d'un seul climatiseur, avant frais de livraison/installation.</p>
+      <div class="stat-grid" id="tarifs-preview"></div>
+    </div>
+    <button class="btn btn-blue btn-block" onclick="saveTarifs()">Enregistrer les tarifs</button>
+    <div class="err" id="tarifs-err" style="display:none"></div>`;
+  updateTarifsPreview();
+}
+async function saveTarifs(){
+  const errEl = document.getElementById('tarifs-err');
+  errEl.style.display='none';
+  let c;
+  try{ c = readTarifsForm(); }catch(e){ errEl.textContent='Valeurs invalides'; errEl.style.display='block'; return; }
+  if(Object.values(c).some(v => !Number.isFinite(v) || v < 0)){
+    errEl.textContent='Toutes les valeurs doivent être des nombres positifs.'; errEl.style.display='block'; return;
+  }
+  if(!(c.palier1_max_jours < c.palier2_max_jours && c.palier2_max_jours < c.palier3_max_jours)){
+    errEl.textContent='Les paliers doivent être croissants (ex. 7 puis 14 puis 21 jours).'; errEl.style.display='block'; return;
+  }
+  try{
+    const r = await fetch(API('admin-pricing'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action: 'update',
+      duree_min_jours: c.duree_min_jours,
+      palier1_max_jours: c.palier1_max_jours, palier1_tarif: c.palier1_tarif_cents/100,
+      palier2_max_jours: c.palier2_max_jours, palier2_tarif: c.palier2_tarif_cents/100,
+      palier3_max_jours: c.palier3_max_jours, palier3_tarif: c.palier3_tarif_cents/100,
+      palier4_tarif: c.palier4_tarif_cents/100,
+    })});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast('Tarifs mis à jour — déjà visibles partout', 'success');
+    loadTarifs();
+  }catch(e){ errEl.textContent=e.message; errEl.style.display='block'; }
 }
 
 // ── Équipe (Module 7, Partie 31) : comptes nominatifs à côté du mot de passe
