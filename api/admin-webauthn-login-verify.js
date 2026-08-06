@@ -46,7 +46,13 @@ module.exports = async (req, res) => {
 
     const { error: counterErr } = await supabase.from('admin_webauthn_credentials')
       .update({ counter: verification.authenticationInfo.newCounter }).eq('id', cred.id);
-    if (counterErr) console.error('[Admin webauthn] counter update failed:', counterErr.message);
+    if (counterErr) {
+      // Ne pas retourner le token si le counter n'est pas mis à jour : le
+      // mécanisme anti-clonage d'authenticateur ne fonctionnerait plus
+      // (counter resterait bas → une clé dupliquée passerait indéfiniment).
+      console.error('[Admin webauthn] counter update failed:', counterErr.message);
+      return res.status(500).json({ error: 'Erreur interne — réessaie' });
+    }
 
     // Le "jeton" admin est le mot de passe lui-même (voir checkAdminToken) —
     // la biométrie ne fait que le redonner au client une fois l'appareil

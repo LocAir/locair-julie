@@ -1,12 +1,14 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 
 // Coordonnées d'assistance affichées dans l'espace client (Module 4) — une
 // seule ligne administrable, jamais codée en dur côté front.
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
 
   const body   = req.body || {};
   const action = body.action || 'get';
@@ -19,6 +21,7 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'update') {
+      if (!roleHasAccess(admin.role, 'support')) return res.status(403).json({ error: "Ton compte n'a pas accès à la configuration de l'assistance." });
       const patch = { updated_at: new Date().toISOString() };
       if (body.horaires  != null) patch.horaires  = String(body.horaires).trim().slice(0, 200) || null;
       if (body.telephone != null) patch.telephone = String(body.telephone).trim().slice(0, 50) || null;

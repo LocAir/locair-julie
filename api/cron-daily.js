@@ -204,7 +204,20 @@ module.exports = async (req, res) => {
           description:    `Loc'Air — Retard restitution ${joursRetard}j · ${(resa.nom || '').slice(0, 100)}`,
           metadata:       { type: 'retard', jours: String(joursRetard), reservation_id: String(liv.reservation_id) },
         }, { idempotencyKey });
-        await supabase.from('incidents').insert({ city_id: resa.city_id || null, reservation_id: liv.reservation_id, type: 'retard', description: desc, montant_facture_cents: amountCents, statut: 'retard_a_facturer' });
+        // CRITIQUE : vérifier l'insert avant de continuer — si la DB échoue
+        // après que Stripe a débité, le prochain passage du cron recrée un PI
+        // (idempotencyKey change chaque jour) et double-prélève le client.
+        const { error: incInsertErr } = await supabase.from('incidents').insert({ city_id: resa.city_id || null, reservation_id: liv.reservation_id, type: 'retard', description: desc, montant_facture_cents: amountCents, statut: 'retard_a_facturer' });
+        if (incInsertErr) {
+          console.error('[Cron retard] CRITIQUE — PI prélevé mais incident non enregistré', intent.id, incInsertErr.message);
+          await stripe.paymentIntents.cancel(intent.id).catch(e3 => console.error('[Cron retard cancel]', e3.message));
+          await pushToAdmin(supabase, {
+            title: '🚨 Erreur critique — prélèvement retard non tracé',
+            body: `PI ${intent.id} (résa ${liv.reservation_id}) annulé car non enregistrable en base. Vérifie immédiatement.`,
+            tag: `retard-critique-${liv.id}`,
+          }).catch(() => {});
+          continue;
+        }
         console.log('[Cron retard] Prélèvement', intent.id, 'pour reservation', liv.reservation_id);
       } catch (stripeErr) {
         console.error('[Cron retard Stripe]', stripeErr.message, 'reservation', liv.reservation_id);
@@ -691,10 +704,16 @@ module.exports = async (req, res) => {
       const autoPrixCents = parseInt(process.env.OFFRE_PRIVILEGE_PRIX_CENTS) || 0;
       const statut = autoPrixCents > 0 ? 'proposee' : 'eligible';
 
-      await supabase.from('offres_privilege').insert({
+      const { error: offInsertErr } = await supabase.from('offres_privilege').insert({
         appareil_id: appareilId, reservation_id: reservationId, nb_locations: totalLocations, statut,
         ...(autoPrixCents > 0 ? { prix_vente_cents: autoPrixCents } : {}),
       });
+      // Si l'insert échoue, on n'envoie pas l'email : le prochain passage du
+      // cron ne verrait pas d'offre en base et enverrait un double email.
+      if (offInsertErr) {
+        console.error('[Cron offre privilège insert]', offInsertErr.message, 'appareil', appareilId);
+        continue;
+      }
 
       if (autoPrixCents > 0) {
         // Email au client pour lui annoncer l'offre
