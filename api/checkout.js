@@ -5,10 +5,9 @@ const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays, todayParis } = require('./_lib/dates');
 const { calcTieredPrice, getPricingConfig } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
-const { matchPromoPct } = require('./_lib/promo');
+const { resolvePromotion, recordPromotionUsage } = require('./_lib/promotions');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
-const PROMO_CODES  = { LOCAIR10: 10, LOCA10: 10 };
 // Doit rester synchronisé avec INSTALL_FEE dans index.html (prix affiché au
 // client) — un écart entre les deux fait payer un montant différent de celui
 // confirmé pendant la réservation.
@@ -51,12 +50,6 @@ module.exports = async (req, res) => {
   const isTech        = (data.installation || '').startsWith('Technicien');
   const installCents  = isTech ? INSTALL_FEE * 100 : 0;
   const promoCode     = (data.parrain_code || '').trim().toUpperCase();
-  // Codes fixes (montant flat en euros) + codes "PRENOM10/20/30" personnalisés
-  // (pourcentage du prix de base) envoyés automatiquement à la fin de chaque
-  // location — voir _lib/promo.js.
-  const flatDiscount  = PROMO_CODES[promoCode] || 0;
-  const promoPct      = flatDiscount > 0 ? 0 : matchPromoPct(promoCode, data.prenom);
-  const promoDiscount = flatDiscount * 100 + Math.round(baseCents * promoPct / 100);
 
   const dateDebut = (data.date || '').slice(0, 10);
   if (!isValidDate(dateDebut)) {
@@ -116,6 +109,18 @@ module.exports = async (req, res) => {
       console.error('[Checkout soldOut]', err.message);
     }
   }
+
+  // Offres/codes promo (panneau de contrôle admin, voir admin-promotions.js)
+  // — cherche d'abord une offre configurée en base ; si aucune ne
+  // correspond, retombe sur l'ancien système "PRENOM10/20/30" (parrainage,
+  // relance dormants) pour ne jamais casser un code déjà envoyé à un client.
+  // Réservé aux nouvelles réservations (pas de code promo sur une
+  // prolongation, voir prolong-pay.js).
+  const promoResult   = await resolvePromotion(supabase, {
+    code: promoCode, prenom: data.prenom, email: data.email,
+    baseCents, days: duree, cityId: city.id, dateDebut,
+  });
+  const promoDiscount = promoResult.discountCents;
 
   // Frais de livraison : 60 € si le code postal est couvert par la ville résolue
   // (city.postal_codes en base), 120 € sinon — y compris pour les commandes hors zone.
@@ -252,6 +257,17 @@ module.exports = async (req, res) => {
       ]);
     } catch (e) {
       console.error('[CGV acceptations]', e.message);
+    }
+
+    // Compte l'utilisation de l'offre (pour le suivi "X fois par client" et
+    // le nombre d'utilisations restant) — uniquement pour un code réellement
+    // géré par le panneau admin (promoResult.promotionId), pas pour un code
+    // "PRENOM10/20/30" du filet de secours qui n'est pas suivi en base.
+    if (promoResult.promotionId) {
+      await recordPromotionUsage(supabase, {
+        promotionId: promoResult.promotionId, reservationId: insertedResa.id,
+        email: data.email, montantRemiseCents: promoResult.discountCents,
+      });
     }
 
     // Répartition par type de fenêtre (ex. 2 porte coulissante + 1 Vélux),
