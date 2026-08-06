@@ -3021,6 +3021,7 @@ function reservationRowHtml(res, readOnly){
         <span class="resa-date-range">📅 ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
         <span class="resa-rel ${isUrgent(res.date_debut)||isUrgent(res.date_fin)?'urgent':''}">${nightsLabel(res.date_debut,res.date_fin)} · ${relLabel(res.date_debut)}</span>
       </div>
+      ${res.date_recuperation_souhaitee?`<div class="resa-sub" style="color:var(--grey);margin-top:2px">🔄 Récup. souhaitée le ${frDate(res.date_recuperation_souhaitee)}${res.creneau_recuperation?' · '+escHtml(res.creneau_recuperation):''}</div>`:''}
       <div class="resa-bottom">
         <span class="resa-price">${euros(res.prix_total_cents)}</span>
         <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+escHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${resaForfaitBadgeHtml(res)}${resaPromoBadgeHtml(res)}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
@@ -3081,6 +3082,14 @@ function openEditReservationModal(id){
       <div class="periods" id="er-motifs" style="margin:0;flex-wrap:wrap;height:auto">
         ${MOTIFS_OPTIONS.map(m => `<button type="button" data-motif="${m}" class="${motifsList.includes(m)?'on':''}" onclick="this.classList.toggle('on')" style="flex:none;padding:8px 14px">${m}</button>`).join('')}
       </div>
+      <label for="er-date-recup" style="margin-top:10px">Date de récupération souhaitée (optionnelle)</label>
+      <input type="date" id="er-date-recup" value="${escHtml(r.date_recuperation_souhaitee||'')}"/>
+      <label for="er-cren-recup" style="margin-top:6px">Créneau de récupération</label>
+      <select id="er-cren-recup">
+        <option value="" ${!r.creneau_recuperation?'selected':''}>—</option>
+        <option value="8h – 10h" ${r.creneau_recuperation==='8h – 10h'?'selected':''}>8h – 10h</option>
+        <option value="10h – 12h" ${r.creneau_recuperation==='10h – 12h'?'selected':''}>10h – 12h</option>
+      </select>
       <label style="margin-top:14px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
         <input type="checkbox" id="er-mkt" style="width:auto" ${r.mkt_consent?'checked':''}/> Le client accepte de recevoir les offres et actualités par email
       </label>
@@ -3114,6 +3123,8 @@ function openEditReservationModal(id){
         parrain_code: document.getElementById('er-parrain').value.trim(),
         motifs,
         mkt_consent: document.getElementById('er-mkt').checked,
+        creneau_recuperation: document.getElementById('er-cren-recup').value || null,
+        date_recuperation_souhaitee: document.getElementById('er-date-recup').value || null,
         ...typeClientPayload('er'),
         ...logisticsPayload('er'),
       };
@@ -3380,6 +3391,20 @@ function reservationCreerHtml(){
         <option value="" ${!d?.logement?'selected':''}>—</option>
         ${['Studio','T2','T3/T4','Maison'].map(o=>`<option ${d?.logement===o?'selected':''}>${o}</option>`).join('')}
       </select>
+      <div class="inline-form" style="margin-top:8px">
+        <div>
+          <label for="nr-date-recup">Date récup. souhaitée (optionnelle)</label>
+          <input type="date" id="nr-date-recup"/>
+        </div>
+        <div>
+          <label for="nr-cren-recup">Créneau récup.</label>
+          <select id="nr-cren-recup">
+            <option value="">—</option>
+            <option value="8h – 10h">8h – 10h</option>
+            <option value="10h – 12h">10h – 12h</option>
+          </select>
+        </div>
+      </div>
       <label for="nr-parrain" style="margin-top:8px">Code parrain (optionnel)</label>
       <input type="text" id="nr-parrain" oninput="onNrParrainInput()"/>
       <p id="nr-parrain-fb" style="display:none;font-size:12px;font-weight:600;margin-top:4px"></p>
@@ -3535,6 +3560,8 @@ function exportReservationsCsv(){
     {label:'Adresse', value:'adresse'},
     {label:'Date début', value:'date_debut'},
     {label:'Date fin', value:'date_fin'},
+    {label:'Date récup. souhaitée', value:'date_recuperation_souhaitee'},
+    {label:'Créneau récup.', value:'creneau_recuperation'},
     {label:'Quantité', value:'quantite'},
     {label:'Prix total (€)', value: r => ((r.prix_total_cents||0)/100).toFixed(2)},
     {label:'Statut', value: r => RESA_LABEL[r.statut]||r.statut},
@@ -3850,6 +3877,8 @@ async function createReservation(confirmer){
     partenaire_code: (document.getElementById('nr-partenaire')?.value || '').trim().toLowerCase(),
     motifs,
     mkt_consent: document.getElementById('nr-mkt').checked,
+    creneau_recuperation: document.getElementById('nr-cren-recup')?.value || null,
+    date_recuperation_souhaitee: document.getElementById('nr-date-recup')?.value || null,
     cgv_accepted: document.getElementById('nr-cgv').checked,
     ...typeClientPayload('nr'),
     ...logisticsPayload('nr'),
@@ -4634,6 +4663,7 @@ function renderLivraisons(){
     // (jamais le jour même) — on garde toujours la vraie date de fin sous les
     // yeux à côté de la date de mission, pour ne jamais perdre le repère.
     if(m.type==='recuperation' && res.date_fin) detailBits.push('📅 Location jusqu\'au '+frDate(res.date_fin));
+    if(m.type==='recuperation' && res.date_recuperation_souhaitee) detailBits.push('📌 Client souhaitait le '+frDate(res.date_recuperation_souhaitee)+(res.creneau_recuperation?' · '+escHtml(res.creneau_recuperation):''));
     if(res.etage) detailBits.push('Étage '+escHtml(res.etage));
     if(res.ascenseur && res.ascenseur!=='—') detailBits.push('Ascenseur : '+escHtml(res.ascenseur));
     if(res.fenetre) detailBits.push('🪟 '+escHtml(res.fenetre));

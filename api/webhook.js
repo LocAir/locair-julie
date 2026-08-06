@@ -584,6 +584,8 @@ const handler = async (req, res) => {
         date_livraison:   meta.date         || '',
         creneau:          meta.creneau      || '',
         installation:     meta.installation || '',
+        date_recup_souhaitee: (confirmedResa?.date_recuperation_souhaitee || ''),
+        creneau_recup:        (confirmedResa?.creneau_recuperation        || ''),
         fenetre:          meta.fenetre      || '',
         etage:            meta.etage        || '',
         ascenseur:        meta.ascenseur    || '',

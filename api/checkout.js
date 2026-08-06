@@ -206,6 +206,8 @@ module.exports = async (req, res) => {
         promo:        promoCode,
         forfait:      forfait ? forfait.nom.slice(0, 200) : '',
         customer_id:  customerId,
+        date_recup_souhaitee: (data.date_recuperation_souhaitee || '').slice(0, 10),
+        creneau_recup:        (data.creneau_recuperation        || '').slice(0, 50),
       },
     }, { idempotencyKey: `checkout-${(data._ref || '').slice(0, 40)}-${amountCents}` });
 

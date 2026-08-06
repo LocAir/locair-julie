@@ -666,7 +666,7 @@ async function confirmReservation(supabase, resa) {
       ? [{ reservation_id: resa.id, type: 'recuperation', date_prevue: dateRecuperation, creneau: resa.creneau || null }]
       : [
           { reservation_id: resa.id, type: 'livraison',    date_prevue: resa.date_debut, creneau: resa.creneau || null },
-          { reservation_id: resa.id, type: 'recuperation', date_prevue: dateRecuperation },
+          { reservation_id: resa.id, type: 'recuperation', date_prevue: (resa.date_recuperation_souhaitee && resa.date_recuperation_souhaitee >= resa.date_fin ? resa.date_recuperation_souhaitee : dateRecuperation), creneau: resa.creneau_recuperation || null },
         ];
 
     // Répartition auto pour toutes les réservations — y compris celles saisies
