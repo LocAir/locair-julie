@@ -1,5 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 const { EXT_BY_TYPE } = require('./_lib/media');
 
 // Dérive une clé stable (slug) depuis le libellé tapé par l'admin — même
@@ -19,7 +20,8 @@ function slugifyCategorie(label) {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
 
   const body   = req.body || {};
   const action = body.action || 'list';
@@ -45,6 +47,14 @@ module.exports = async (req, res) => {
         .from('tuto_categories').select('id, key, label, ordre, actif').order('ordre', { ascending: true });
       if (error) throw error;
       return res.status(200).json({ categories: data || [] });
+    }
+
+    // Actions d'écriture réservées aux comptes avec accès 'support' —
+    // un compte comptabilité ne doit pas pouvoir uploader dans le bucket
+    // missions ni supprimer des tutoriels opérationnels.
+    const isWriteAction = ['create_categorie', 'update_categorie', 'upsert_meta', 'demander_upload', 'confirmer_upload', 'delete'].includes(action);
+    if (isWriteAction && !roleHasAccess(admin.role, 'support')) {
+      return res.status(403).json({ error: "Ton compte n'a pas accès à la gestion des tutoriels." });
     }
 
     if (action === 'create_categorie') {

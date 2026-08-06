@@ -1,5 +1,6 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
+const { roleHasAccess } = require('./_lib/permissions');
 const { resolveAdminCity } = require('./_lib/city');
 const { SCENARIOS, sendScenarioEmail } = require('./_lib/emailEngine');
 const { upcomingScenariosForReservation } = require('./_lib/emailSchedule');
@@ -21,7 +22,8 @@ const SMS_SENDER_BY_SCENARIO = {
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
 
   const body   = req.body || {};
   const action = body.action || 'list';
@@ -97,6 +99,10 @@ module.exports = async (req, res) => {
     // (n'annule rien de déjà programmé, puisque tout est réévalué chaque
     // jour à partir de Supabase, jamais figé à l'avance).
     if (action === 'toggle_scenario') {
+      // Désactiver un scénario coupe des communications pour TOUS les clients —
+      // réservé aux comptes avec accès support (ne pas laisser un compte
+      // comptabilité couper les rappels de récupération par erreur).
+      if (!roleHasAccess(admin.role, 'support')) return res.status(403).json({ error: "Ton compte n'a pas accès à la gestion des scénarios d'envoi." });
       const id = String(body.id || '');
       if (!SCENARIOS[id] && id !== 'confirmation') return res.status(400).json({ error: 'Scénario inconnu' });
       const { error } = await supabase.from('email_scenarios').update({ actif: !!body.actif }).eq('id', id);
