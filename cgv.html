@@ -113,7 +113,7 @@ strong{color:var(--black);font-weight:600}
   </ul>
 
   <h2>3. Durée et tarification</h2>
-  <p>La durée minimale de location est de <strong>7 jours</strong>. Les tarifs sont dégressifs selon la durée :</p>
+  <p>La durée minimale de location est de <strong id="cgv-duree-min">7 jours</strong>. Les tarifs sont dégressifs selon la durée :</p>
 
   <table class="price-table" aria-label="Grille tarifaire Loc'Air">
     <thead>
@@ -124,7 +124,7 @@ strong{color:var(--black);font-weight:600}
         <th>Remise</th>
       </tr>
     </thead>
-    <tbody>
+    <tbody id="cgv-price-table-body">
       <tr><td>7 jours</td><td class="rate">12,00 €/j</td><td class="total">84 €</td><td class="disc">Tarif de base</td></tr>
       <tr><td>14 jours</td><td class="rate">11,00 €/j</td><td class="total">154 €</td><td class="disc">−8 %</td></tr>
       <tr><td>21 jours</td><td class="rate">10,33 €/j</td><td class="total">217 €</td><td class="disc">−14 %</td></tr>
@@ -132,7 +132,7 @@ strong{color:var(--black);font-weight:600}
       <tr style="font-size:.9em;color:#555"><td colspan="2">Livraison &amp; récupération</td><td class="total">+60 € / +120 €</td><td class="disc">Selon zone</td></tr>
     </tbody>
   </table>
-  <p style="font-size:.82em;color:#888;margin:.6em 0 0;padding:0 4px">Tarif dégressif par palier : 12 €/j (j 1–7) · 10 €/j (j 8–14) · 9 €/j (j 15–21) · 8 €/j (j 22+). Le "tarif moyen" et la "remise" sont calculés sur le total réel par rapport à 7 jours à 12 €/j.</p>
+  <p id="cgv-tarif-footnote" style="font-size:.82em;color:#888;margin:.6em 0 0;padding:0 4px">Tarif dégressif par palier : 12 €/j (j 1–7) · 10 €/j (j 8–14) · 9 €/j (j 15–21) · 8 €/j (j 22+). Le "tarif moyen" et la "remise" sont calculés sur le total réel par rapport à 7 jours à 12 €/j.</p>
 
   <div class="callout">
     <p>Le total de location correspond à la seule location de l'appareil. Des frais forfaitaires de <strong>livraison et récupération de 60 €</strong> (Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche-sur-Mer, Beaulieu-sur-Mer) ou <strong>120 €</strong> (hors zone) s'ajoutent au total et sont facturés séparément. L'installation par technicien est optionnelle (<strong>+80 €</strong>) ou réalisable en autonomie (kit fourni, sans perçage). <strong>Aucun dépôt de garantie ni empreinte bancaire</strong> n'est exigé. TVA non applicable — art. 293 B du CGI.</p>
@@ -180,7 +180,7 @@ strong{color:var(--black);font-weight:600}
 
   <h2 id="retard">10 bis. Retard de restitution</h2>
   <p>La date de récupération de l'appareil est fixée lors de la réservation. Tout jour de retard de restitution au-delà de cette date est facturé selon la grille tarifaire en vigueur :</p>
-  <ul>
+  <ul id="cgv-retard-list">
     <li>Jours 1 à 7 : 12,00 €/jour</li>
     <li>Jours 8 à 14 : 10,00 €/jour</li>
     <li>Jours 15 à 21 : 9,00 €/jour</li>
@@ -219,6 +219,52 @@ strong{color:var(--black);font-weight:600}
 <footer class="footer">
   <p>© <span id="yr"></span> Loc'Air · Nice &nbsp;·&nbsp; <a href="/mentions-legales">Mentions légales</a> &nbsp;·&nbsp; <a href="/cgv">CGV</a> &nbsp;·&nbsp; <a href="/confidentialite">Confidentialité</a></p>
 </footer>
-<script>document.getElementById('yr').textContent=new Date().getFullYear();</script>
+<script>
+document.getElementById('yr').textContent=new Date().getFullYear();
+
+// Tarifs — synchronisés avec le panneau de contrôle admin (voir
+// admin-pricing.js / pricing-config.js). Tant que /api/pricing-config n'a
+// pas répondu (ou en cas d'échec réseau), les valeurs écrites en dur
+// ci-dessus restent affichées : cette page ne casse jamais, au pire elle
+// montre le tarif d'avant le tout dernier changement pendant une fraction
+// de seconde.
+(function(){
+  function calcTieredPrice(days,p){
+    const r1=p.palier1_tarif_cents/100,r2=p.palier2_tarif_cents/100,r3=p.palier3_tarif_cents/100,r4=p.palier4_tarif_cents/100;
+    if(days<=p.palier1_max_jours)return days*r1;
+    if(days<=p.palier2_max_jours)return p.palier1_max_jours*r1+(days-p.palier1_max_jours)*r2;
+    if(days<=p.palier3_max_jours)return p.palier1_max_jours*r1+(p.palier2_max_jours-p.palier1_max_jours)*r2+(days-p.palier2_max_jours)*r3;
+    return p.palier1_max_jours*r1+(p.palier2_max_jours-p.palier1_max_jours)*r2+(p.palier3_max_jours-p.palier2_max_jours)*r3+(days-p.palier3_max_jours)*r4;
+  }
+  function fmt(n){return n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+  function syncCgvPricing(p){
+    const r1=p.palier1_tarif_cents/100, r2=p.palier2_tarif_cents/100, r3=p.palier3_tarif_cents/100, r4=p.palier4_tarif_cents/100;
+    const dmin=document.getElementById('cgv-duree-min');
+    if(dmin)dmin.textContent=p.duree_min_jours+' jours';
+    const rows=[
+      {days:p.duree_min_jours, label:'Tarif de base'},
+      {days:p.palier2_max_jours, label:null},
+      {days:p.palier3_max_jours, label:null},
+      {days:p.palier3_max_jours+9, label:null, best:true},
+    ];
+    const baseTotal=rows[0].days*r1;
+    const tbody=document.getElementById('cgv-price-table-body');
+    if(tbody){
+      const rowsHtml=rows.map(row=>{
+        const total=calcTieredPrice(row.days,p);
+        const avg=total/row.days;
+        const disc=row.label||('−'+Math.round((1-total/(row.days*r1))*100)+' %');
+        return `<tr${row.best?' class="best"':''}><td>${row.days} jours</td><td class="rate">${fmt(avg)} €/j</td><td class="total">${Math.round(total)} €</td><td class="disc">${disc}</td></tr>`;
+      }).join('');
+      tbody.innerHTML=rowsHtml+'<tr style="font-size:.9em;color:#555"><td colspan="2">Livraison &amp; récupération</td><td class="total">+60 € / +120 €</td><td class="disc">Selon zone</td></tr>';
+    }
+    const foot=document.getElementById('cgv-tarif-footnote');
+    if(foot)foot.textContent=`Tarif dégressif par palier : ${r1} €/j (j 1–${p.palier1_max_jours}) · ${r2} €/j (j ${p.palier1_max_jours+1}–${p.palier2_max_jours}) · ${r3} €/j (j ${p.palier2_max_jours+1}–${p.palier3_max_jours}) · ${r4} €/j (j ${p.palier3_max_jours+1}+). Le "tarif moyen" et la "remise" sont calculés sur le total réel par rapport à ${p.duree_min_jours} jours à ${r1} €/j.`;
+    const list=document.getElementById('cgv-retard-list');
+    if(list)list.innerHTML=`<li>Jours 1 à ${p.palier1_max_jours} : ${fmt(r1)} €/jour</li><li>Jours ${p.palier1_max_jours+1} à ${p.palier2_max_jours} : ${fmt(r2)} €/jour</li><li>Jours ${p.palier2_max_jours+1} à ${p.palier3_max_jours} : ${fmt(r3)} €/jour</li><li>Au-delà de ${p.palier3_max_jours} jours : ${fmt(r4)} €/jour</li>`;
+  }
+  fetch('/api/pricing-config').then(r=>r.json()).then(d=>{ if(d&&d.pricing)syncCgvPricing(d.pricing); }).catch(function(){ /* valeurs par défaut déjà affichées — jamais bloquant */ });
+})();
+</script>
 </body>
 </html>

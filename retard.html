@@ -88,12 +88,31 @@ input:focus{border-color:var(--black);box-shadow:0 0 0 3px rgba(26,43,74,.12);}
 <script>
 let _token = '';
 
+// Tarifs — synchronisés avec le panneau de contrôle admin (mêmes valeurs
+// par défaut que api/_lib/pricing.js). Ce n'est qu'un APERÇU pour
+// l'opérateur avant de prélever : le montant réellement facturé est
+// toujours recalculé côté serveur par api/charge-retard.js à partir de la
+// config en base — mais autant que l'aperçu affiché ici ne diverge jamais
+// de ce qui sera vraiment prélevé, pour ne pas surprendre l'opérateur.
+let PRICING = {
+  duree_min_jours: 7,
+  palier1_max_jours: 7,  palier1_tarif_cents: 1200,
+  palier2_max_jours: 14, palier2_tarif_cents: 1000,
+  palier3_max_jours: 21, palier3_tarif_cents: 900,
+  palier4_tarif_cents: 800,
+};
+fetch('/api/pricing-config').then(r => r.json()).then(d => {
+  if (d && d.pricing) { PRICING = d.pricing; updatePreview(); }
+}).catch(function(){ /* valeurs par défaut déjà en place — jamais bloquant */ });
+
 function calcRetardPrice(days) {
   days = Math.max(1, days);
-  if (days <= 7)  return days * 12;
-  if (days <= 14) return 7 * 12 + (days - 7) * 10;
-  if (days <= 21) return 7 * 12 + 7 * 10 + (days - 14) * 9;
-  return 7 * 12 + 7 * 10 + 7 * 9 + (days - 21) * 8;
+  const p = PRICING;
+  const r1 = p.palier1_tarif_cents / 100, r2 = p.palier2_tarif_cents / 100, r3 = p.palier3_tarif_cents / 100, r4 = p.palier4_tarif_cents / 100;
+  if (days <= p.palier1_max_jours) return days * r1;
+  if (days <= p.palier2_max_jours) return p.palier1_max_jours * r1 + (days - p.palier1_max_jours) * r2;
+  if (days <= p.palier3_max_jours) return p.palier1_max_jours * r1 + (p.palier2_max_jours - p.palier1_max_jours) * r2 + (days - p.palier2_max_jours) * r3;
+  return p.palier1_max_jours * r1 + (p.palier2_max_jours - p.palier1_max_jours) * r2 + (p.palier3_max_jours - p.palier2_max_jours) * r3 + (days - p.palier3_max_jours) * r4;
 }
 
 function checkAuth() {
