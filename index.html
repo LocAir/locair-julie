@@ -5083,11 +5083,15 @@ input:-webkit-autofill:focus{
               <p id="recap-date-recup" style="font-size:12px;color:var(--grey);margin-top:2px">—</p>
             </div>
           </div>
-          <p id="lbl-creneau-recup" style="font-size:13px;font-weight:600;color:var(--black);margin-bottom:6px">Récupération</p>
-          <p style="font-size:13px;color:var(--grey);line-height:1.55;display:flex;align-items:flex-start;gap:8px">
-            <svg style="flex-shrink:0;margin-top:2px" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span id="collect-note">Notre équipe vous contactera 48h avant la fin de votre location pour coordonner la récupération.</span>
-          </p>
+          <p id="lbl-creneau-recup" style="font-size:13px;font-weight:600;color:var(--black);margin-bottom:10px">Créneau de récupération</p>
+          <div style="margin-bottom:10px">
+            <label for="f-date-recup" id="lbl-date-recup" style="font-size:12px;color:var(--grey);font-weight:500;display:block;margin-bottom:6px">Date de récupération</label>
+            <input type="date" id="f-date-recup" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:15px;font-family:var(--body);color:var(--black);background:#fff;outline:none;box-sizing:border-box" oninput="buildRecap()" required/>
+          </div>
+          <div id="creneau-recup-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <button type="button" class="cren-card on" onclick="tgl(this,'cren-recup');buildRecap()" role="radio" aria-checked="true"><span class="cren-time">8h – 10h</span></button>
+            <button type="button" class="cren-card" onclick="tgl(this,'cren-recup');buildRecap()" role="radio" aria-checked="false"><span class="cren-time">10h – 12h</span></button>
+          </div>
         </div>
 
         <!-- COORDONNÉES -->
@@ -6884,12 +6888,26 @@ function buildRecap(){
   }
   const _getCrenText=sel=>{const el=document.querySelector(sel);if(!el)return null;const t=(el.querySelector('.cren-time')?.textContent||'').trim();return t||el.textContent.trim();};
   const creneauLiv=_getCrenText('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')||'8h–12h';
-  const creneauRecup=null;
+  const creneauRecup=_getCrenText('#creneau-recup-group .cren-card.on')||'8h – 10h';
+  // Pré-remplir la date de récupération (J+1 après fin) si l'input est
+  // vide ou antérieur au minimum — se met à jour quand la durée/date change.
+  const recupInput=document.getElementById('f-date-recup');
+  if(recupInput&&rawDate){
+    const pd2=new Date(Date.UTC(+rawDate.split('-')[0],+rawDate.split('-')[1]-1,+rawDate.split('-')[2]));
+    pd2.setUTCDate(pd2.getUTCDate()+days+1);
+    const defaultRecup=pd2.toISOString().slice(0,10);
+    recupInput.min=defaultRecup;
+    if(!recupInput.value||recupInput.value<defaultRecup)recupInput.value=defaultRecup;
+  }
   const recupEl=document.getElementById('recap-date-recup');
   const isEN=_lang==='en';
   const isZH=_lang==='zh';
   const isRU=_lang==='ru';
-  if(recupEl)recupEl.textContent=isEN?'On '+pickupDateStr+' (our team will collect the unit)':isZH?pickupDateStr+' 取回（由我们团队上门取回）':isRU?pickupDateStr+' (наша команда заберёт устройство)':'Le '+pickupDateStr+' (récupération par notre équipe)';
+  // Date de récup affichée : préférer la date choisie dans f-date-recup
+  const recupDateVal=document.getElementById('f-date-recup')?.value;
+  let recupDateDisplay=pickupDateStr;
+  if(recupDateVal){const[ry,rm,rd]=recupDateVal.split('-');recupDateDisplay=rd+'/'+rm+'/'+ry;}
+  if(recupEl)recupEl.textContent=isEN?'On '+recupDateDisplay+' · '+creneauRecup:isZH?recupDateDisplay+' 取回 · '+creneauRecup:isRU?recupDateDisplay+' · '+creneauRecup:'Le '+recupDateDisplay+' · '+creneauRecup;
   const total=Math.max(0,calcTotal(days)-_promoDiscount+DELIVERY_FEE);
   const installLabel=_techInstall?(isEN?'Technician installation':isZH?'技术员安装 — 80 €':'Pose technicien — 80 €'):(isEN?'Self-install (free)':isZH?'自行安装（免费）':'Pose autonome — Kit fourni');
   const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:isZH?'电梯：'+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
@@ -7254,7 +7272,7 @@ function submitForm(btn,mode){
     quantite:_qty+'x',
     installation:_techInstall?'Technicien (80€)':'Autonome (kit fourni)',
     creneau_livraison:document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–12h',
-    creneau_recuperation:'Coordonné par notre équipe (48h avant fin de location)',
+    creneau_recuperation:creneauRecup||'8h – 10h',
     type_client:document.querySelector('#type-client-group .tpill.on')?.textContent.trim()||'Particulier',
     raison_sociale:document.getElementById('f-raison-sociale')?.value.trim()||'',
     siret:document.getElementById('f-siret')?.value.trim()||'',
@@ -7286,7 +7304,8 @@ function submitForm(btn,mode){
     retard_accepted_at:(()=>{try{return new Date().toISOString();}catch(e){return '';}})(),
     mode:mode,
     prix:Math.max(0,calcTotal(parseInt(document.getElementById('f-dur')?.value)||7)-_promoDiscount+DELIVERY_FEE)+' €',
-    date_recuperation:(()=>{try{const raw=document.getElementById('f-date')?.value;const dur=parseInt(document.getElementById('f-dur')?.value)||7;if(!raw)return '—';const d=new Date(raw+'T12:00:00');d.setDate(d.getDate()+dur+1);return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '—';}})()
+    date_recuperation_souhaitee:document.getElementById('f-date-recup')?.value||'',
+    date_recuperation:(()=>{try{const v=document.getElementById('f-date-recup')?.value;if(!v)return '—';const[y,m,d]=v.split('-');return new Date(Date.UTC(+y,+m-1,+d)).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '—';}})()
   };
 
   const price=Math.max(0,calcTotal(parseInt(formData.duree)||7)-_promoDiscount+DELIVERY_FEE);
@@ -7836,7 +7855,8 @@ const LANG_MAP=[
   ['#fenetre-photo-btn-text','text','Prendre une photo / Choisir depuis la galerie','Take a photo / Choose from gallery','拍照 / 从相册选择',`Сделать фото / Выбрать из галереи`],
   /* modal step 5 — recap labels */
   ['#lbl-recup-section','text','Récupération','Collection','归还',`Возврат`],
-  ['#lbl-creneau-recup','text','Créneau de récupération','Collection slot','取回时间段',`Временной слот возврата`],
+  ['#lbl-creneau-recup','text','Créneau de récupération','Collection slot','取回时间段','Временной слот возврата'],
+  ['#lbl-date-recup','text','Date de récupération','Collection date','取回日期','Дата возврата'],
   ['#lbl-coords','text','Vos coordonnées','Your details','您的联系方式',`Ваши контактные данные`],
   ['#lbl-type-client','text','Type de client','Customer type','客户类型',`Тип клиента`],
   ['.client-type-perso','text','Particulier','Individual','个人',`Частное лицо`],

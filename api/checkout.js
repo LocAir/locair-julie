@@ -249,6 +249,8 @@ module.exports = async (req, res) => {
       partenaire_commission_cents: partenaireCommissionCents,
       logement:                 (data.logement || '').slice(0, 100) || null,
       motifs:                   (data.motifs || '').slice(0, 500) || null,
+      creneau_recuperation:     ['8h – 10h', '10h – 12h'].includes(data.creneau_recuperation) ? data.creneau_recuperation : null,
+      date_recuperation_souhaitee: (() => { const v = (data.date_recuperation_souhaitee || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(v) && v >= dateFin ? v : null; })(),
       mkt_consent:              data.mkt_consent === 'Oui' || data.mkt_consent === true,
       cgv_accepted_at:          new Date().toISOString(),
     }).select('id').single();

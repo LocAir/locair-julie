@@ -271,6 +271,8 @@ create table reservations (
   partenaire_litige_resolu boolean not null default false,
   logement                 text,
   motifs                   text,
+  creneau_recuperation     text,              -- créneau choisi par le client : '8h – 10h' ou '10h – 12h'
+  date_recuperation_souhaitee date,           -- date souhaitée de récupération de l'appareil
   mkt_consent              boolean not null default false, -- opt-in marketing (RGPD)
   cgv_accepted_at          timestamptz, -- horodatage acceptation CGV (preuve légale)
   masquee                  boolean not null default false, -- retirée de la liste admin (ex. doublon), sans toucher au statut/stock
