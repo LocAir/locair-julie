@@ -1,5 +1,5 @@
 const { getSupabase } = require('./_lib/supabase');
-const { checkAdminToken } = require('./_lib/auth');
+const { checkAdminRole } = require('./_lib/auth');
 
 const LIMIT = 8;
 
@@ -11,7 +11,8 @@ const LIMIT = 8;
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  const admin = await checkAdminRole(req, supabase);
+  if (!admin.ok) return res.status(401).json({ error: 'Non autorisé' });
 
   const q = ((req.body || {}).q || '').trim().slice(0, 100);
   if (q.length < 2) {

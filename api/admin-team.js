@@ -57,6 +57,11 @@ module.exports = async (req, res) => {
       if (body.email != null) patch.email = body.email.trim().toLowerCase() || null;
       if (body.role != null) {
         if (!ROLES.includes(body.role)) return res.status(400).json({ error: 'Rôle invalide' });
+        // Un admin ne peut pas changer son propre rôle — risque de se bloquer
+        // lui-même (ex. passer à 'support_client' sans accès à 'equipe').
+        if (admin.adminUserId && id === admin.adminUserId) {
+          return res.status(403).json({ error: 'Tu ne peux pas modifier ton propre rôle.' });
+        }
         patch.role = body.role;
       }
       if (body.actif != null) patch.actif = Boolean(body.actif);
@@ -74,6 +79,13 @@ module.exports = async (req, res) => {
     if (action === 'delete') {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'id manquant' });
+      // Empêche de supprimer le dernier compte nominatif — sans ça l'équipe
+      // n'aurait plus que le mot de passe partagé historique pour se connecter.
+      const { count } = await supabase
+        .from('admin_users').select('id', { count: 'exact', head: true });
+      if ((count || 0) <= 1) {
+        return res.status(409).json({ error: 'Impossible de supprimer le dernier compte — l\'équipe n\'aurait plus d\'accès nominatif.' });
+      }
       const { error } = await supabase.from('admin_users').delete().eq('id', id);
       if (error) throw error;
       return res.status(200).json({ ok: true });
