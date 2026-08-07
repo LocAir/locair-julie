@@ -19,7 +19,22 @@ module.exports = async (req, res) => {
     if (action === 'list') {
       const { data, error } = await supabase.from('forfaits').select('*').order('quantite');
       if (error) throw error;
-      return res.status(200).json({ forfaits: data || [] });
+      const forfaits = data || [];
+      // Nombre de réservations réelles par pack — pour qu'Aly voie tout de
+      // suite si un pack est utilisé ou totalement ignoré, sans avoir à
+      // recouper l'onglet Réservations à la main. Best-effort : une erreur
+      // ici n'empêche jamais d'afficher la liste des packs elle-même.
+      if (forfaits.length) {
+        try {
+          const { data: resas } = await supabase.from('reservations').select('forfait_id').not('forfait_id', 'is', null);
+          const counts = {};
+          for (const r of (resas || [])) counts[r.forfait_id] = (counts[r.forfait_id] || 0) + 1;
+          forfaits.forEach((f) => { f.nb_reservations = counts[f.id] || 0; });
+        } catch (e) {
+          console.error('[Admin forfaits] comptage réservations:', e.message);
+        }
+      }
+      return res.status(200).json({ forfaits });
     }
 
     if (!roleHasAccess(admin.role, 'reglages')) return res.status(403).json({ error: "Ton compte n'a pas accès aux réglages." });
