@@ -517,6 +517,51 @@ async function sendRappelRecuperationSms(supabase, resa, { force = false } = {})
   return result.ok ? { sent: true } : { sent: false, reason: 'error', error: result.error };
 }
 
+// SMS « petite attention » envoyé le lendemain de l'installation (demande
+// d'Aly, 2026-08-07) : on espère que tout se passe bien, on est ravis de sa
+// confiance, et on rappelle qu'on est joignables en cas de besoin. Rien n'est
+// demandé au client ici (pas d'avis Google — celui-ci arrive déjà à
+// l'installation et à la fin de location, voir tplPostInstallation/
+// tplFinLocation) : uniquement un mot chaleureux, pour rester distinct de ces
+// deux autres messages. Appelé par cron-daily.js le lendemain du jour où
+// livraisons.fait_at (type 'livraison') a été posé. Idempotent sur son propre
+// scénario (sms_suivi_installation), pausable depuis le panneau
+// Communications — même mécanisme que les autres SMS automatisés ci-dessus.
+async function sendSuiviInstallationSms(supabase, resa, { force = false } = {}) {
+  if (!resa || !resa.id || !resa.tel) return { sent: false, reason: 'no_tel' };
+  if (await wasScenarioSkipped(supabase, resa.id, 'sms_suivi_installation')) return { sent: false, reason: 'skipped_by_admin' };
+
+  if (!force) {
+    const { count: dejaEnvoye } = await supabase
+      .from('email_log').select('id', { count: 'exact', head: true })
+      .eq('reservation_id', resa.id).eq('scenario', 'sms_suivi_installation').eq('statut', 'envoye');
+    if (dejaEnvoye > 0) return { sent: false, reason: 'already_sent' };
+  }
+
+  const lang = resa.lang || 'fr';
+  const prenom = resa.prenom || '';
+  let content;
+  if (lang === 'en') {
+    content = `Loc'Air - Hi ${prenom}, we hope everything is going well with your air conditioner! We're delighted you chose us — thank you for your trust. Need any help? Call us at +33 6 63 79 87 56.`;
+  } else if (lang === 'zh') {
+    content = `Loc'Air - ${prenom}您好，希望您的空调使用一切顺利！很高兴获得您的信任，感谢您选择Loc'Air。如需帮助，请致电 +33 6 63 79 87 56。`;
+  } else if (lang === 'ru') {
+    content = `Loc'Air - Здравствуйте, ${prenom}! Надеемся, что всё идёт хорошо с вашим кондиционером. Мы рады вашему доверию, спасибо, что выбрали нас. Нужна помощь? Звоните: +33 6 63 79 87 56.`;
+  } else {
+    content = `Loc'Air - Bonjour ${prenom}, on espère que tout se passe bien avec votre climatiseur ! Merci de votre confiance, on en est ravis. Besoin d'aide ? Appelez-nous au 06 63 79 87 56.`;
+  }
+
+  const result = await sendBrevoSms({ to: resa.tel, content });
+  await supabase.from('email_log').insert({
+    reservation_id: resa.id, scenario: 'sms_suivi_installation', canal: 'sms',
+    destinataire: resa.tel, modele: 'sms_suivi_installation',
+    statut: result.ok ? 'envoye' : 'erreur',
+    erreur: result.ok ? null : String(result.error || '').slice(0, 500),
+    contenu: content,
+  }).then(() => {}, () => {});
+  return result.ok ? { sent: true } : { sent: false, reason: 'error', error: result.error };
+}
+
 // Confirme une réservation (paiement Stripe réussi OU confirmation manuelle par
 // l'admin, ex. réservation prise par téléphone), assigne les appareils
 // numérotés et crée les missions terrain (livraisons) associées. Idempotent :
@@ -743,5 +788,5 @@ async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) 
 module.exports = {
   confirmReservationAndCreateLivraisons, confirmReservation, pickTransporteurForMission, normalizeTel,
   sendConfirmationCommunications, sendProlongationConfirmation, sendRelanceProlongationSms,
-  sendRappelRecuperationSms, getEffectiveDateFin,
+  sendRappelRecuperationSms, sendSuiviInstallationSms, getEffectiveDateFin,
 };

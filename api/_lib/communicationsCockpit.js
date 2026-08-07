@@ -11,6 +11,7 @@ const AD_HOC_LABEL = {
   sms_prolongation:          'SMS confirmation de prolongation',
   sms_relance_prolongation:  'SMS proposition de prolongation (J-4)',
   sms_rappel_recuperation:   'SMS rappel récupération (J-1)',
+  sms_suivi_installation:    'SMS suivi J+1 (après installation)',
   // sms_avis_google supprimé de cette liste le 2026-08-05 (le SMS n'existe
   // plus) — audit 2026-08-06 M1 : l'entrée orpheline apparaissait dans le
   // panneau Communications comme "envoi à faire" alors que rien ne l'envoie.

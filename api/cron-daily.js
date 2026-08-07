@@ -14,7 +14,7 @@ const { tplOffrePrivilege } = require('./_lib/emailTemplates');
 const { buildCommunicationsCockpit } = require('./_lib/communicationsCockpit');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { sendReservationPaymentLink } = require('./_lib/paymentLink');
-const { sendRappelRecuperationSms, getEffectiveDateFin } = require('./_lib/reservations');
+const { sendRappelRecuperationSms, sendSuiviInstallationSms, getEffectiveDateFin } = require('./_lib/reservations');
 const { getActiveRecuperationMission } = require('./_lib/dateFin');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 
@@ -994,6 +994,43 @@ module.exports = async (req, res) => {
     }
   } catch (e) {
     console.error('[Cron récap communications]', e.message);
+  }
+
+  // ── 6quater. SMS « on espère que tout se passe bien » — le lendemain de
+  // l'installation (demande d'Aly, 2026-08-07). Simple attention, sans rien
+  // demander au client (pas d'avis Google ici, ça a déjà sa place ailleurs
+  // dans le parcours) : juste un mot chaleureux + le rappel qu'on est
+  // joignables. Se base sur livraisons.fait_at (l'instant réel où le livreur
+  // a validé l'installation), pas sur date_debut — un livreur en retard d'un
+  // jour ne doit pas décaler ce message d'autant.
+  // Bornes [hier 00h, aujourd'hui 00h) en UTC — même convention que
+  // yesterdayRangeISO (admin-dashboard.js) : les installations ont lieu en
+  // journée, jamais près de minuit, donc la marge UTC/Paris ne fait jamais
+  // basculer ce SMS sur le mauvais jour.
+  try {
+    const hierStart = new Date(today); hierStart.setUTCHours(0, 0, 0, 0); hierStart.setUTCDate(hierStart.getUTCDate() - 1);
+    const hierEnd = new Date(hierStart); hierEnd.setUTCDate(hierEnd.getUTCDate() + 1);
+    const { data: installsHier } = await supabase
+      .from('livraisons')
+      .select('reservation:reservations!inner(id, statut, prenom, tel, lang, ref)')
+      .eq('type', 'livraison').eq('statut', 'fait')
+      .eq('reservation.statut', 'confirmee')
+      .gte('fait_at', hierStart.toISOString()).lt('fait_at', hierEnd.toISOString());
+
+    let smsSuiviInstallation = 0;
+    for (const row of installsHier || []) {
+      const resa = row.reservation;
+      if (!resa) continue;
+      try {
+        const result = await sendSuiviInstallationSms(supabase, resa);
+        if (result.sent) smsSuiviInstallation++;
+      } catch (e) {
+        console.error('[Cron SMS suivi installation]', e.message);
+      }
+    }
+    if (smsSuiviInstallation) report.smsSuiviInstallation = smsSuiviInstallation;
+  } catch (e) {
+    console.error('[Cron SMS suivi installation]', e.message);
   }
 
   // ── 7. Rapport hebdomadaire (lundi) et récap virements mensuel (le 1er) ─────
