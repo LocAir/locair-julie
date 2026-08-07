@@ -5,6 +5,7 @@ const { calcTieredPrice, getPricingConfig } = require('./_lib/pricing');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getEffectiveDateFin } = require('./_lib/reservations');
+const { verifyClientToken } = require('./_lib/auth');
 
 function diffDays(startStr, endStr) {
   return Math.round(
@@ -58,13 +59,22 @@ module.exports = async (req, res) => {
   // prolonger la réservation d'un autre en changeant le champ email.
   // Sans token (lien SMS /prolongation.html), le contrôle est contourné
   // intentionnellement : le lien est à usage unique et rate-limité.
+  //
+  // CORRECTIF (2026-08-07) : l'ancienne implémentation cherchait le token dans
+  // une table `client_sessions` qui n'existe plus (remplacée par le système
+  // HMAC signClientToken/verifyClientToken de _lib/auth.js). Le lookup DB
+  // retournait toujours sess=null → "Session invalide." pour tout paiement
+  // depuis l'espace client. Remplacé par verifyClientToken.
   if (client_token) {
-    const { data: sess } = await supabase
-      .from('client_sessions')
-      .select('email, expires_at')
-      .eq('token', client_token)
-      .maybeSingle();
-    if (!sess || sess.expires_at < new Date().toISOString() || sess.email !== normalizedEmail) {
+    const fakeReq = { body: { token: client_token }, headers: {} };
+    const verifiedResaId = await verifyClientToken(fakeReq, supabase);
+    if (!verifiedResaId) {
+      return res.status(401).json({ error: 'Session invalide.' });
+    }
+    // Vérifier que la réservation du token correspond bien à cet email
+    const { data: sesResa } = await supabase
+      .from('reservations').select('email').eq('id', verifiedResaId).maybeSingle();
+    if (!sesResa || sesResa.email.toLowerCase() !== normalizedEmail) {
       return res.status(401).json({ error: 'Session invalide.' });
     }
   }
