@@ -750,6 +750,11 @@ alter table appareil_mouvements add column reservation_id bigint references rese
 --    la période demandée.
 -- Compte par quantité (pas par appareil précis) côté 'en_attente' car on ne
 -- veut pas réserver un numéro précis pour un panier qui peut être abandonné.
+-- available_units : calcule les appareils libres pour une période.
+-- Prend en compte la date de récupération réelle (mission livraisons.date_prevue,
+-- type 'recuperation') plutôt que la date_fin brute — l'appareil est occupé
+-- jusqu'au jour de récupération inclus, libre à compter du lendemain (J+1).
+-- Mise à jour 2026-08-07 : voir migration_disponibilite_calendrier.sql
 create or replace function available_units(p_city_id bigint, p_date_debut date, p_date_fin date)
 returns integer
 language sql
@@ -769,15 +774,23 @@ as $$
         from reservation_appareils ra
         join reservations r on r.id = ra.reservation_id
         where r.city_id = p_city_id and r.statut = 'confirmee'
-          and r.date_debut < p_date_fin and r.date_fin > p_date_debut
+          and r.date_debut < p_date_fin
+          and (
+            coalesce(
+              (select max(l.date_prevue)::date
+               from livraisons l
+               where l.reservation_id = ra.reservation_id
+                 and l.type = 'recuperation'
+                 and l.statut not in ('annule', 'refusee')
+              ),
+              (r.date_fin + interval '1 day')::date
+            ) + interval '1 day'
+          )::date > p_date_debut
       ), 0);
 $$;
 
--- Assigne p_quantite appareils (les plus petits numéros libres d'abord) à une
--- réservation confirmée : exclut panne/maintenance et les appareils déjà
--- retenus par une AUTRE réservation confirmée qui chevauche la même période.
--- "for update skip locked" évite qu'un webhook Stripe redélivré en parallèle
--- assigne deux fois le même appareil.
+-- assign_appareils : même logique J+1 que available_units pour l'assignation physique.
+-- Mise à jour 2026-08-07 : voir migration_disponibilite_calendrier.sql
 create or replace function assign_appareils(p_reservation_id bigint, p_city_id bigint, p_quantite integer, p_date_debut date, p_date_fin date)
 returns setof appareils
 language plpgsql
@@ -792,7 +805,18 @@ begin
         select 1 from reservation_appareils ra
         join reservations r on r.id = ra.reservation_id
         where ra.appareil_id = a.id and r.statut = 'confirmee'
-          and r.date_debut < p_date_fin and r.date_fin > p_date_debut
+          and r.date_debut < p_date_fin
+          and (
+            coalesce(
+              (select max(l.date_prevue)::date
+               from livraisons l
+               where l.reservation_id = ra.reservation_id
+                 and l.type = 'recuperation'
+                 and l.statut not in ('annule', 'refusee')
+              ),
+              (r.date_fin + interval '1 day')::date
+            ) + interval '1 day'
+          )::date > p_date_debut
       )
     order by a.numero
     limit p_quantite
