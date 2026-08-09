@@ -277,6 +277,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .chip.type-recuperation{background:var(--amber-bg);color:var(--amber)}
 .chip.type-changement{background:var(--gold-lt);color:var(--gold-d)}
 
+/* Référence de commande cliquable (copie dans le presse-papiers, voir
+   copyText()) — un simple soulignement en pointillés suffit à indiquer que
+   ce n'est pas juste du texte, sans faire croire à un lien qui navigue. */
+.ref-copy{cursor:pointer;border-bottom:1px dashed var(--rule);transition:color .15s ease,border-color .15s ease}
+.ref-copy:hover{color:var(--blue);border-color:var(--blue)}
+
 /* ── Livraisons : priorité temporelle, urgence, instructions ────────────── */
 .mission-datetime{font-size:15px;font-weight:700;color:var(--black2);margin:6px 0 4px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .mission-datetime .creneau{font-size:12px;font-weight:600;color:var(--blue);background:var(--blue-lt);border-radius:100px;padding:2px 10px;font-family:var(--body)}
@@ -3021,6 +3027,15 @@ function isUrgent(dateDebut){
 function isInternalRef(ref){
   return !ref || /^(MANUEL|PROLONG)-/.test(ref);
 }
+// Numéro de commande cliquable → copié dans le presse-papiers (voir
+// copyText()), au lieu de forcer une sélection manuelle du texte pour le
+// copier. '—' si la référence est un identifiant technique interne (voir
+// isInternalRef) : rien d'utile à copier dans ce cas.
+function refCopyHtml(ref){
+  if(isInternalRef(ref)) return '—';
+  const safe = escHtml(ref).replace(/'/g, "\\'");
+  return `<span class="ref-copy" title="Copier le numéro de commande" onclick="copyText('Référence','${safe}')">${escHtml(ref)}</span>`;
+}
 // Badge "code promo" sur une réservation — affiché dès que parrain_code est
 // rempli, quelle que soit son origine (ancien système "PRENOM10/20/30" ou
 // nouveau panneau Offres, voir admin-promotions.js). Corrige un bug trouvé à
@@ -3114,7 +3129,7 @@ function reservationRowHtml(res, readOnly){
         </div>
         <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
         <div class="resa-dates"><span class="resa-date-range">${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span></div>
-        <div class="resa-bottom"><span class="resa-price">${euros(res.prix_total_cents)}</span>${isInternalRef(res.ref)?'':`<span class="resa-sub">${escHtml(res.ref)}</span>`}</div>
+        <div class="resa-bottom"><span class="resa-price">${euros(res.prix_total_cents)}</span>${isInternalRef(res.ref)?'':`<span class="resa-sub">${refCopyHtml(res.ref)}</span>`}</div>
         ${readOnly ? '' : `<div class="row-actions"><button class="btn btn-grey" onclick="restoreReservation(${res.id})">Restaurer</button></div>`}
       </div>`;
   }
@@ -3150,7 +3165,7 @@ function reservationRowHtml(res, readOnly){
       ${res.date_recuperation_souhaitee?`<div class="resa-sub" style="color:var(--grey);margin-top:2px">🔄 Récup. souhaitée le ${frDate(res.date_recuperation_souhaitee)}${res.creneau_recuperation?' · '+escHtml(res.creneau_recuperation):''}</div>`:''}
       <div class="resa-bottom">
         <span class="resa-price">${euros(res.prix_total_cents)}</span>
-        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+escHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${resaForfaitBadgeHtml(res)}${resaPromoBadgeHtml(res)}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
+        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+refCopyHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${resaForfaitBadgeHtml(res)}${resaPromoBadgeHtml(res)}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
       </div>
       ${res.statut==='confirmee' ? agentLineHtml(res.id) : ''}
       ${res.dernier_envoi_lien ? `<div class="resa-sub" style="color:${res.dernier_envoi_lien.statut==='envoye'?'var(--green)':'var(--red)'}">${res.dernier_envoi_lien.statut==='envoye'?'✅':'⚠️'} Lien de paiement par ${res.dernier_envoi_lien.canal==='sms'?'SMS':'email'} le ${frDateHeure(res.dernier_envoi_lien.quand)}${res.dernier_envoi_lien.statut==='envoye'?'':' (échec)'}</div>` : ''}
@@ -3896,7 +3911,7 @@ function reservationTableRowHtml(res){
   const nom = escHtml((res.prenom||'')+' '+(res.nom||''))||'—';
   if(res.masquee){
     return `<tr style="opacity:.6">
-      <td>${isInternalRef(res.ref)?'—':escHtml(res.ref)}</td>
+      <td>${refCopyHtml(res.ref)}</td>
       <td>${nom}</td>
       <td class="ellipsis">${escHtml(res.adresse||'—')}</td>
       <td style="white-space:nowrap">${frDateCourt(res.date_debut)} → ${frDateCourt(res.date_fin)}</td>
@@ -3906,7 +3921,7 @@ function reservationTableRowHtml(res){
     </tr>`;
   }
   return `<tr>
-    <td style="white-space:nowrap">${isInternalRef(res.ref)?'—':escHtml(res.ref)}</td>
+    <td style="white-space:nowrap">${refCopyHtml(res.ref)}</td>
     <td style="white-space:nowrap">${nom}${res.type_client==='entreprise'?' 🏢':''}</td>
     <td class="ellipsis" title="${escHtml(res.adresse||'')}">${escHtml(res.adresse||'—')}</td>
     <td style="white-space:nowrap">${frDateCourt(res.date_debut)} → ${frDateCourt(res.date_fin)}</td>
