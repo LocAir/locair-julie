@@ -5980,11 +5980,33 @@ async function doStripePayment(){
   }
 }
 
+function _normPhoneE164(tel){
+  const d=(tel||'').replace(/\D/g,'');
+  if(!d)return '';
+  if(d.startsWith('33')&&d.length===11)return '+'+d;
+  if(d.startsWith('0')&&d.length===10)return '+33'+d.slice(1);
+  return '+'+d;
+}
+
 function _fireGadsConversion(pending){
   try{
     if(typeof gtag!=='function')return;
+    // Valeur réelle facturée (confirmée par le serveur) ; repli sur une
+    // estimation seulement si amount_cents est absent (vieux panier en localStorage).
     const days=parseInt(pending.duree)||7;
-    const value=calcPrice(days);
+    const value=pending.amount_cents!=null?pending.amount_cents/100:calcPrice(days);
+    // Conversions améliorées : email/tél. transmis à Google qui les hache
+    // lui-même côté client — récupère des conversions perdues à cause des
+    // bloqueurs de pub / navigateurs qui coupent les cookies tiers.
+    // Envoyé seulement si le visiteur a accepté les cookies.
+    try{
+      if(localStorage.getItem('locair_cookie_consent')==='accepted'&&(pending.email||pending.tel)){
+        gtag('set','user_data',{
+          email:(pending.email||'').trim().toLowerCase()||undefined,
+          phone_number:_normPhoneE164(pending.tel)||undefined
+        });
+      }
+    }catch(e){}
     gtag('event','conversion',{
       send_to:'AW-18195242550/biPuCK7S1MkcELa8leRD',
       value:value,
@@ -6212,6 +6234,15 @@ function submitForm(btn,mode){
         // Utiliser le montant confirmé par le serveur (évite toute divergence)
         const serverEuros=d.amountCents!=null?(d.amountCents/100).toFixed(2).replace('.',',')+' €':prixEuros;
         const amtEl=document.getElementById('stripe-pay-amount');if(amtEl)amtEl.textContent=serverEuros;
+        // Mémoriser le montant confirmé serveur pour le suivi de conversion Google Ads
+        // (sinon la conversion enverrait un prix théorique qui ignore remise/livraison/quantité)
+        if(d.amountCents!=null){
+          try{
+            const p=JSON.parse(localStorage.getItem('locair_pending')||'{}');
+            p.amount_cents=d.amountCents;
+            localStorage.setItem('locair_pending',JSON.stringify(p));
+          }catch(e){}
+        }
         const sect=document.getElementById('stripe-section');if(sect)sect.style.display='block';
         if(btn){btn.style.display='none';}
         const hint=document.getElementById('sbtn-hint');if(hint)hint.style.display='none';
