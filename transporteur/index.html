@@ -262,6 +262,26 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .wiz-progress-track{height:4px;background:var(--rule);border-radius:2px;overflow:hidden}
 .wiz-progress-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .35s cubic-bezier(.25,.46,.45,.94)}
 
+/* Toutes les étapes nommées, listées d'un coup à la verticale — même langage
+   visuel que la sidebar du tunnel de réservation du site (index.html,
+   .modal-sidebar/.stepper), adapté en pleine largeur pour l'app mobile
+   (max-width:520px, pas de place pour une colonne à côté). Le livreur voit
+   d'emblée toutes les étapes à venir, pas juste "Étape 3/6". Remplace
+   l'ancienne barre de progression horizontale (.wiz-progress ci-dessus,
+   conservée mais plus utilisée par le wizard — voir missionWizardProgressHtml). */
+.wiz-steps{display:flex;flex-direction:column;margin:2px 0 14px}
+.wiz-step-item{display:flex;align-items:center;gap:12px}
+.wiz-step-item.wsi-clickable{cursor:pointer}
+.wiz-step-conn{width:2px;height:16px;background:var(--rule);margin-left:13px;flex-shrink:0}
+.wiz-step-conn.wsc-done{background:var(--blue)}
+.wiz-step-dot{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;transition:background-color .2s ease}
+.wiz-step-dot.wsd-done{background:var(--blue);color:#fff}
+.wiz-step-dot.wsd-cur{background:var(--navy);color:#fff;box-shadow:0 0 0 4px var(--blue-lt)}
+.wiz-step-dot.wsd-pnd{background:var(--rule);color:var(--grey2)}
+.wiz-step-name{font-size:13px;color:var(--grey-soft);font-weight:500;line-height:1.2;transition:color .15s ease}
+.wiz-step-item.wsi-cur .wiz-step-name{color:var(--black);font-weight:700}
+.wiz-step-item.wsi-done .wiz-step-name{color:var(--grey)}
+
 /* Nav bas Missions / Activité */
 .tabbar{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);border:1px solid var(--rule);padding:4px;border-radius:100px}
 .tabbar button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 8px;border-radius:100px;border:none;background:transparent;font-family:var(--body);font-weight:600;font-size:13.5px;letter-spacing:-.005em;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
@@ -2491,22 +2511,45 @@ function goToNextStepFromArrivee(){
 // Le livreur garde la main pour revoir une étape passée (infos client,
 // photo à refaire, SMS au numéro de secours...) sans perdre le fil de
 // l'étape où il en est vraiment.
+const WIZ_CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><polyline points="20 6 9 17 4 12"/></svg>';
 function missionWizardProgressHtml(steps, idx, idxReal){
-  const pct = Math.round(((idx+1)/steps.length)*100);
+  // Toutes les étapes sont listées d'un coup (comme .modal-sidebar du site) :
+  // done = coche bleue, en cours = pastille navy, à venir = pastille grise.
+  // Les étapes déjà passées (i<=idxReal) restent cliquables pour les revoir
+  // (infos client, photo à refaire...) sans jamais pouvoir sauter en avant
+  // vers une étape pas encore atteinte.
+  const itemsHtml = steps.map((s, i) => {
+    const state = i < idx ? 'done' : (i === idx ? 'cur' : 'pnd');
+    const clickable = i <= idxReal && i !== idx;
+    const dotContent = state === 'done' ? WIZ_CHECK_SVG : String(i + 1);
+    const connHtml = i > 0 ? `<div class="wiz-step-conn${i <= idx ? ' wsc-done' : ''}"></div>` : '';
+    return `${connHtml}
+      <div class="wiz-step-item wsi-${state}${clickable ? ' wsi-clickable' : ''}"${clickable ? ` onclick="goToWizardStep(${i})"` : ''}${state === 'cur' ? ' aria-current="step"' : ''}>
+        <div class="wiz-step-dot wsd-${state}">${dotContent}</div>
+        <span class="wiz-step-name">${escHtml(s.title)}</span>
+      </div>`;
+  }).join('');
   // Le bouton "← Retour" en haut de l'écran (handleDetailBack) fait déjà
-  // reculer d'une étape quand on en a consulté une passée — seul un moyen de
-  // revenir en avant manque ici une fois qu'on a fini de regarder.
-  const resumeBtn = idx<idxReal
-    ? `<button class="btn btn-blue" style="flex:1;min-width:0;font-size:12.5px;padding:8px;margin-top:8px" onclick="goToCurrentWizardStep()">↻ Revenir à "${escHtml(steps[idxReal].title)}"</button>` : '';
+  // reculer d'une étape quand on en a consulté une passée — cliquer sur
+  // l'étape réelle dans la liste ci-dessus fait pareil directement, ce
+  // bouton reste pour le cas où elle n'est pas visible à l'écran (liste
+  // longue) sans avoir à remonter.
+  const resumeBtn = idx < idxReal
+    ? `<button class="btn btn-blue" style="width:100%;font-size:12.5px;padding:8px;margin-top:6px" onclick="goToCurrentWizardStep()">↻ Revenir à "${escHtml(steps[idxReal].title)}"</button>` : '';
   return `
-    <div class="wiz-progress">
-      <div class="wiz-progress-label">
-        <span class="wiz-progress-step">Étape ${idx+1}/${steps.length}</span>
-        <span class="wiz-progress-name">${escHtml(steps[idx].title)}</span>
-      </div>
-      <div class="wiz-progress-track"><div class="wiz-progress-fill" style="width:${pct}%"></div></div>
-      ${resumeBtn}
-    </div>`;
+    <div class="wiz-steps">${itemsHtml}</div>
+    ${resumeBtn}`;
+}
+// Saute directement à une étape déjà atteinte (clic sur la liste des étapes
+// ci-dessus) — jamais au-delà de idxReal, même logique de garde-fou que
+// goToPreviousWizardStep/goToCurrentWizardStep.
+function goToWizardStep(i){
+  const m = STATE.currentMission;
+  if(!m) return;
+  const steps = missionStepDefs(m);
+  const idxReal = missionStepIndex(m, steps);
+  STATE.wizardViewIdx = Math.max(0, Math.min(i, idxReal));
+  renderDetail();
 }
 // Navigue vers l'étape juste avant celle actuellement affichée — jamais en
 // dessous de 0. Ne modifie rien côté serveur, seulement ce qui est affiché :
