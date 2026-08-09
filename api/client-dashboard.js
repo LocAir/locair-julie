@@ -167,7 +167,6 @@ module.exports = async (req, res) => {
         consignes: [
           "Laissez l'accès disponible (digicode, gardien prévenu si besoin)",
           'Éteignez le climatiseur avant le passage du technicien',
-          'Conservez les accessoires (télécommande, kit de calfeutrage)',
         ],
       } : null,
       changements: changements.map(c => ({
