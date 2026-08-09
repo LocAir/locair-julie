@@ -1,3 +1,4 @@
+const https   = require('https');
 const { getSupabase } = require('./_lib/supabase');
 
 // Lien de consultation envoyé par email au client — jamais le chemin de
@@ -14,7 +15,7 @@ module.exports = async (req, res) => {
     const supabase = getSupabase();
 
     const { data: doc, error: docErr } = await supabase
-      .from('documents').select('id, storage_path, statut').eq('access_token', token).maybeSingle();
+      .from('documents').select('id, storage_path, statut, type, numero').eq('access_token', token).maybeSingle();
     if (docErr) {
       console.error('[dv] 1-DB-ERR', docErr.code, docErr.message);
       return res.status(500).send('Document temporairement indisponible. Contactez-nous : <a href="https://wa.me/33663798756">WhatsApp</a> ou <a href="mailto:contact@locair.fr">contact@locair.fr</a>');
@@ -32,6 +33,31 @@ module.exports = async (req, res) => {
 
     if (doc.statut !== 'consulte') {
       await supabase.from('documents').update({ statut: 'consulte', consulte_at: new Date().toISOString() }).eq('id', doc.id).then(() => {}, () => {});
+    }
+
+    // Mode téléchargement (?dl=1) — proxy le PDF avec Content-Disposition attachment
+    // pour déclencher le téléchargement natif du navigateur (la redirection 302
+    // vers Supabase ne permet pas de forcer le nom de fichier côté serveur).
+    if (req.query.dl === '1') {
+      const fname = doc.numero
+        ? `${doc.numero}.pdf`
+        : (doc.type === 'contrat' ? 'contrat-location.pdf' : 'facture.pdf');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
+      res.setHeader('Cache-Control', 'no-store');
+      console.log('[dv] 4-DOWNLOAD', fname);
+      await new Promise((resolve) => {
+        https.get(signed.signedUrl, (upstream) => {
+          upstream.pipe(res);
+          upstream.on('end', resolve);
+          upstream.on('error', (e) => { console.error('[dv] DL-PIPE', e.message); resolve(); });
+        }).on('error', (e) => {
+          console.error('[dv] DL-GET', e.message);
+          if (!res.headersSent) res.status(500).end('Erreur de téléchargement.');
+          resolve();
+        });
+      });
+      return;
     }
 
     console.log('[dv] 4-REDIRECT');

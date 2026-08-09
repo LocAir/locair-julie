@@ -198,9 +198,20 @@ h1 em{font-style:italic}
 .doc-info{flex:1;min-width:0}
 .doc-name{font-weight:600;color:var(--text-2);font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .doc-sub{font-size:12px;color:var(--text-3);margin-top:1px}
-.doc-btn{font-size:12.5px;font-weight:600;color:var(--navy);border:1.5px solid rgba(26,43,74,.2);border-radius:100px;padding:7px 16px;white-space:nowrap;flex-shrink:0;transition:background .18s cubic-bezier(.4,0,.2,1),border-color .18s,transform .18s cubic-bezier(.4,0,.2,1),box-shadow .18s cubic-bezier(.4,0,.2,1);display:inline-flex;align-items:center;gap:5px}
+.doc-actions{display:flex;gap:6px;flex-shrink:0}
+.doc-btn{font-size:12.5px;font-weight:600;color:var(--navy);border:1.5px solid rgba(26,43,74,.2);border-radius:100px;padding:7px 14px;white-space:nowrap;flex-shrink:0;transition:background .18s cubic-bezier(.4,0,.2,1),border-color .18s,transform .18s cubic-bezier(.4,0,.2,1),box-shadow .18s cubic-bezier(.4,0,.2,1);display:inline-flex;align-items:center;gap:5px;cursor:pointer;background:none;font-family:var(--body)}
 .doc-btn:hover{background:var(--navy);color:#fff;border-color:var(--navy);transform:translateY(-1px);box-shadow:0 3px 10px rgba(26,43,74,.2)}
 .doc-btn:active{transform:translateY(0);box-shadow:none}
+.doc-btn-dl{background:rgba(26,43,74,.05);border-color:transparent;color:var(--text-3);padding:7px 10px}
+.doc-btn-dl:hover{background:var(--navy);color:#fff;border-color:var(--navy)}
+/* ── Modal aperçu PDF ── */
+.doc-modal{position:fixed;inset:0;z-index:900;display:flex;flex-direction:column;background:#000}
+.doc-modal.hidden{display:none!important}
+.doc-modal-head{background:var(--navy);color:#fff;display:flex;align-items:center;gap:10px;padding:10px 14px;flex-shrink:0;min-height:50px}
+.doc-modal-lbl{flex:1;font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.doc-modal-btn{background:rgba(255,255,255,.12);border:none;color:#fff;border-radius:8px;padding:7px 13px;cursor:pointer;font-size:12.5px;font-weight:600;font-family:var(--body);white-space:nowrap;transition:background .15s;text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+.doc-modal-btn:hover{background:rgba(255,255,255,.25);color:#fff}
+.doc-modal-frame{flex:1;border:none;width:100%;background:#525659}
 
 /* ── Centre d'aide ── */
 .aide-cat-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--text-3);padding:16px 0 6px}
@@ -624,7 +635,9 @@ function escHtml(s){
 function safeHref(url) {
   if (!url) return '#';
   const u = String(url).trim();
-  if (/^https?:\/\//i.test(u) || /^tel:/i.test(u) || /^mailto:/i.test(u)) return escHtml(u);
+  // Accepte http(s)://, tel:, mailto: ET les chemins internes /api/... /cgv...
+  // Un chemin relatif commençant par / ne peut pas être javascript: ni data:
+  if (/^https?:\/\//i.test(u) || /^tel:/i.test(u) || /^mailto:/i.test(u) || /^\//i.test(u)) return escHtml(u);
   return '#';
 }
 // Date du jour en heure de Paris (pas UTC) — Intl.DateTimeFormat gère tout
@@ -937,15 +950,26 @@ function renderDashboard(d){
   // Documents
   const docLabels = {contrat:'Contrat de location', facture:'Facture', facture_vente:'Facture vente'};
   const docIcons  = {contrat:_ICO.file, facture:_ICO.receipt, facture_vente:_ICO.receipt};
-  let docsHtml = (d.documents||[]).map(doc => `
+  let docsHtml = (d.documents||[]).map(doc => {
+    const lbl = escHtml(docLabels[doc.type]||doc.type);
+    const dlUrl = escHtml(doc.url + '&dl=1');
+    return `
     <div class="doc-row">
       <div class="doc-ico">${docIcons[doc.type]||_ICO.file}</div>
       <div class="doc-info">
-        <div class="doc-name">${escHtml(docLabels[doc.type]||doc.type)}</div>
+        <div class="doc-name">${lbl}</div>
         ${doc.numero || doc.genere_at ? `<div class="doc-sub">${[doc.numero ? escHtml(doc.numero) : '', doc.genere_at ? escHtml(fmtDateTime(doc.genere_at)) : ''].filter(Boolean).join(' · ')}</div>` : ''}
       </div>
-      <a class="doc-btn" href="${safeHref(doc.url)}" target="_blank" rel="noopener">Ouvrir</a>
-    </div>`).join('');
+      <div class="doc-actions">
+        <button class="doc-btn" onclick="openDocModal('${escHtml(doc.url)}','${lbl}','${dlUrl}')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Aperçu
+        </button>
+        <a class="doc-btn doc-btn-dl" href="${dlUrl}" download title="Télécharger">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </a>
+      </div>
+    </div>`;
+  }).join('');
   if(d.mon_climatiseur?.documentation_url) docsHtml += `
     <div class="doc-row">
       <div class="doc-ico">${_ICO.book}</div>
@@ -1552,6 +1576,29 @@ async function activateClientFaceId(){
   }
 }
 
+// ── Aperçu PDF ────────────────────────────────────────────────────────────
+function openDocModal(url, title, dlUrl) {
+  const m  = document.getElementById('doc-modal');
+  const fr = document.getElementById('doc-modal-frame');
+  const lb = document.getElementById('doc-modal-lbl');
+  const dl = document.getElementById('doc-modal-dl');
+  if (!m || !fr) return;
+  lb.textContent = title || 'Document';
+  fr.src = url;
+  if (dl) dl.href = dlUrl || (url + '&dl=1');
+  m.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function closeDocModal() {
+  const m  = document.getElementById('doc-modal');
+  const fr = document.getElementById('doc-modal-frame');
+  if (m) m.classList.add('hidden');
+  if (fr) fr.src = 'about:blank'; // libère la mémoire
+  document.body.style.overflow = '';
+}
+// Fermeture avec Échap
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDocModal(); });
+
 // Vue initiale : connexion (fond navy) — retiré quand showDashboard() est appelé
 document.body.classList.add('vl');
 
@@ -1566,5 +1613,19 @@ if(localStorage.getItem('client_token')){
   }
 }
 </script>
+
+<!-- ── Modal aperçu document PDF ── -->
+<div id="doc-modal" class="doc-modal hidden" role="dialog" aria-modal="true" aria-label="Aperçu du document">
+  <div class="doc-modal-head">
+    <span id="doc-modal-lbl" class="doc-modal-lbl">Document</span>
+    <a id="doc-modal-dl" class="doc-modal-btn" download>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Télécharger
+    </a>
+    <button class="doc-modal-btn" onclick="closeDocModal()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Fermer
+    </button>
+  </div>
+  <iframe id="doc-modal-frame" class="doc-modal-frame" src="about:blank" title="Aperçu du document"></iframe>
+</div>
 </body>
 </html>
