@@ -925,8 +925,11 @@ function onAdminLoginSuccess(token, role, nom){
   // (déconnexion ne recharge jamais la page) — sans ce nettoyage, revenir
   // sur un onglet déjà ouvert par le compte précédent afficherait un instant
   // ses données à lui avant leur remplacement silencieux (voir switchAdminTab
-  // / _TAB_LOADED).
+  // / _TAB_LOADED). Le cache local par onglet (_tabCacheGet/Set) n'est pas
+  // scindé par compte — un compte différent verrait sinon, un instant, le
+  // dernier contenu affiché par le compte précédent.
   _TAB_LOADED.clear();
+  _tabCacheClearAll();
   switchAdminTab('accueil');
   loadAlerts();
   loadCitySwitcher();
@@ -1455,6 +1458,50 @@ let CURRENT_TAB = 'accueil';
 // derrière, et prend sa place dès qu'elle est prête. Un premier passage sur
 // un onglet reste normal (rien à montrer tant que rien n'est chargé).
 const _TAB_LOADED = new Set();
+// Mémoire locale (localStorage) du dernier contenu affiché par onglet+ville
+// — pour que même le TOUT PREMIER clic sur un onglet, sur une page tout
+// juste rechargée, affiche quelque chose instantanément au lieu d'un écran
+// vide + roue qui tourne, pendant qu'une vraie version à jour se charge en
+// silence derrière (retour Aly, 2026-08-09 : "je veux que l'écran s'affiche
+// directement, sans rafraîchissement"). Les données peuvent être
+// légèrement périmées le temps du rafraîchissement silencieux (en général
+// une fraction de seconde) — jamais plus de 15 minutes, passé ce délai on
+// préfère un vrai chargement plutôt qu'un contenu trop vieux. Jamais
+// bloquant : une erreur d'écriture (quota localStorage plein, navigation
+// privée) ne doit jamais empêcher l'onglet de fonctionner normalement.
+const _TAB_CACHE_MAX_AGE_MS = 15*60*1000;
+function _tabCacheKey(tab){ return 'a_tabcache_'+tab+'_'+(CITY_ID||'all'); }
+function _tabCacheGet(tab){
+  try{
+    const raw = localStorage.getItem(_tabCacheKey(tab));
+    if(!raw) return null;
+    const {html, at} = JSON.parse(raw);
+    if(!html || Date.now()-at > _TAB_CACHE_MAX_AGE_MS) return null;
+    return html;
+  }catch(e){ return null; }
+}
+function _tabCacheSet(tab, html){
+  try{
+    // Ne met jamais en cache un état d'erreur ("Erreur de chargement…",
+    // accès refusé) — sinon un souci réseau ponctuel s'afficherait à
+    // nouveau au prochain chargement de page, avant même d'avoir réessayé.
+    if(!html || /^\s*<p class="empty">(Erreur|Cette page est réservée)/.test(html)) return;
+    // Un onglet dont le contenu dépasse ~200 Ko (ex. une très longue liste)
+    // n'est pas mis en cache — évite de saturer le quota localStorage
+    // (partagé avec le reste du site) pour un gain marginal sur un onglet
+    // déjà volumineux à afficher de toute façon.
+    if(html.length > 200000) return;
+    localStorage.setItem(_tabCacheKey(tab), JSON.stringify({html, at: Date.now()}));
+  }catch(e){ /* quota dépassé ou navigation privée — jamais bloquant */ }
+}
+// Appelé aux mêmes moments que _TAB_LOADED.clear() (changement de ville,
+// nouvelle connexion) — sans ça, revenir sur un onglet après un changement
+// de contexte afficherait un instant les données de l'ancien contexte.
+function _tabCacheClearAll(){
+  try{
+    Object.keys(localStorage).filter(k=>k.startsWith('a_tabcache_')).forEach(k=>localStorage.removeItem(k));
+  }catch(e){}
+}
 // Un chargeur par onglet — reçoit `silent` (true dès le 2e passage sur cet
 // onglet, voir _TAB_LOADED) : les fonctions loadXxx gardent alors le contenu
 // déjà affiché à l'écran pendant qu'elles vont chercher une version à jour,
@@ -1491,8 +1538,23 @@ function switchAdminTab(tab){
   ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
+  const zone = document.getElementById('tab-'+tab);
+  const alreadyLoadedThisSession = _TAB_LOADED.has(tab);
+  // Rien encore chargé cette session (page tout juste ouverte/rechargée) ?
+  // Affiche tout de suite la dernière version connue de cet onglet (voir
+  // _tabCacheGet ci-dessus) au lieu d'un écran vide — le vrai chargement,
+  // lancé juste en dessous, la remplace dès qu'il est prêt.
+  let usedCache = false;
+  if(zone && !alreadyLoadedThisSession){
+    const cached = _tabCacheGet(tab);
+    if(cached){ zone.innerHTML = cached; usedCache = true; }
+  }
   const loader = _TAB_LOADERS[tab];
-  if(loader) loader(_TAB_LOADED.has(tab));
+  if(loader){
+    Promise.resolve(loader(alreadyLoadedThisSession || usedCache))
+      .then(() => { if(zone) _tabCacheSet(tab, zone.innerHTML); })
+      .catch(() => {});
+  }
   _TAB_LOADED.add(tab);
   _dismissTabBadges(tab);
   toggleMobileMenu(false);
