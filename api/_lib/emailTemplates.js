@@ -643,57 +643,57 @@ function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang }) 
   const l = lang || 'fr';
   const p = escHtml(prenom || '');
   if (l === 'en') return wrap({
-    title: "Your updated Loc'Air documents",
+    title: "Your Loc'Air prolongation amendment",
     intro: `Booking ref ${escHtml(ref)}`,
     bodyHtml: `
       <p>Hello ${p},</p>
-      <p>Following your rental extension, your <strong>rental agreement</strong> has been updated with your new end date, and the <strong>invoice</strong> for your extension is now available online.</p>
+      <p>Following your rental extension, an <strong>amendment</strong> to your rental agreement (documenting your new end date) and the <strong>invoice</strong> for your extension are now available online.</p>
       <div class="box">
-        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Your updated documents</p>
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Your documents</p>
         <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">View my documents online →</a>
-        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Updated rental agreement &nbsp;·&nbsp; Extension invoice (PDF)</p>
+        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Prolongation amendment &nbsp;·&nbsp; Extension invoice (PDF)</p>
       </div>
       <p style="font-size:13px;color:#666">This link is permanent — your documents are accessible at any time.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
   });
   if (l === 'zh') return wrap({
-    title: "您更新后的 Loc'Air 文件",
+    title: "您的 Loc'Air 续租合同附加协议",
     intro: `订单编号 ${escHtml(ref)}`,
     bodyHtml: `
       <p>您好 ${p}，</p>
-      <p>由于您延长了租期，您的<strong>租赁合同</strong>已更新为新的结束日期，续租<strong>发票</strong>现已可在线查看。</p>
+      <p>由于您延长了租期，记录您新结束日期的<strong>合同附加协议</strong>及续租<strong>发票</strong>现已可在线查看。</p>
       <div class="box">
-        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">您更新后的文件</p>
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">您的文件</p>
         <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">在线查看我的文件 →</a>
-        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">更新后的租赁合同 &nbsp;·&nbsp; 续租发票（PDF）</p>
+        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">续租合同附加协议 &nbsp;·&nbsp; 续租发票（PDF）</p>
       </div>
       <p style="font-size:13px;color:#666">此链接为永久链接——您的文件随时可访问。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
   });
   if (l === 'ru') return wrap({
-    title: "Ваши обновлённые документы Loc'Air",
+    title: "Ваш акт о продлении Loc'Air",
     intro: `Заказ ${escHtml(ref)}`,
     bodyHtml: `
       <p>Здравствуйте, ${p}!</p>
-      <p>После продления вашей аренды ваш <strong>договор аренды</strong> обновлён с новой датой окончания, а <strong>счёт</strong> за продление теперь доступен онлайн.</p>
+      <p>После продления вашей аренды <strong>дополнительное соглашение</strong> к договору аренды (с новой датой окончания) и <strong>счёт</strong> за продление теперь доступны онлайн.</p>
       <div class="box">
-        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Ваши обновлённые документы</p>
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Ваши документы</p>
         <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">Просмотреть документы онлайн →</a>
-        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Обновлённый договор аренды &nbsp;·&nbsp; Счёт за продление (PDF)</p>
+        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Дополнительное соглашение о продлении &nbsp;·&nbsp; Счёт за продление (PDF)</p>
       </div>
       <p style="font-size:13px;color:#666">Ссылка постоянная — ваши документы доступны в любое время.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
   });
   return wrap({
-    title: 'Vos documents Loc\'Air mis à jour',
+    title: 'Votre avenant de prolongation Loc\'Air',
     intro: `Dossier ${escHtml(ref)}`,
     bodyHtml: `
       <p>Bonjour ${p},</p>
-      <p>Suite à votre prolongation, votre <strong>contrat de location</strong> a été mis à jour avec votre nouvelle date de fin, et la <strong>facture</strong> de votre prolongation est disponible en ligne.</p>
+      <p>Suite à votre prolongation, l'<strong>avenant</strong> qui modifie la date de fin de votre contrat de location et la <strong>facture</strong> de votre prolongation sont disponibles en ligne.</p>
       <div class="box">
-        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Vos documents mis à jour</p>
+        <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Vos documents</p>
         <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">Consulter mes documents en ligne →</a>
-        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Contrat de location mis à jour &nbsp;·&nbsp; Facture de prolongation (PDF)</p>
+        <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Avenant de prolongation &nbsp;·&nbsp; Facture de prolongation (PDF)</p>
       </div>
       <p style="font-size:13px;color:#666">Ce lien est permanent — vos documents restent accessibles à tout moment.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',

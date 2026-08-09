@@ -85,7 +85,9 @@ function filledRect(doc, x, y, w, h, fill, r) {
 }
 
 // ─── En-tête CONTRAT : bandeau navy plein-bord ────────────────────────────────
-function drawContratHeader(doc, ref) {
+function drawContratHeader(doc, ref, opts) {
+  const titre     = (opts && opts.titre)     || 'CONTRAT DE LOCATION';
+  const sousTitre = (opts && opts.sousTitre) || 'Climatiseur mobile';
   const BH = 76; // hauteur bandeau
   filledRect(doc, 0, 0, PW, BH, C.navy);
 
@@ -99,9 +101,9 @@ function drawContratHeader(doc, ref) {
 
   // Droite — titre document
   doc.font('Helvetica-Bold').fontSize(12).fillColor(C.white)
-    .text('CONTRAT DE LOCATION', 310, 16, { width: 235, align: 'right' });
+    .text(titre, 310, 16, { width: 235, align: 'right' });
   doc.font('Helvetica').fontSize(9).fillColor(C.wSec)
-    .text('Climatiseur mobile', 310, 32, { width: 235, align: 'right' });
+    .text(sousTitre, 310, 32, { width: 235, align: 'right' });
   if (ref) {
     doc.font('Helvetica').fontSize(8).fillColor(C.wTer)
       .text(`Dossier n° ${ref}`, 310, 52, { width: 235, align: 'right' });
@@ -669,4 +671,161 @@ function generateFactureVentePdf({ reservation, appareil, numero, montantCents, 
   });
 }
 
-module.exports = { generateContratPdf, generateFacturePdf, generateFactureVentePdf };
+// ══════════════════════════════════════════════════════════════════════════════
+// AVENANT DE PROLONGATION
+// Document court (1 page) qui modifie l'Article 3 (Durée) du contrat de
+// location initial, plutôt que de réémettre le contrat entier à chaque
+// prolongation — c'est la pratique standard pour amender un contrat déjà
+// signé : on documente précisément ce qui change (la nouvelle date de fin,
+// le supplément payé), le reste du contrat d'origine reste inchangé et
+// continue de s'appliquer. Réutilise le même style que generateContratPdf
+// (bandeau navy, encadrés bailleur/locataire, tableau, signatures).
+//
+// `origineResa` : la réservation d'ORIGINE (jamais 'site_prolongation') —
+// c'est son contrat qui est amendé.
+// `prolongationResa` : la réservation de prolongation elle-même — porte le
+// montant payé et les nouvelles dates (date_debut = ancienne date de fin,
+// date_fin = nouvelle date de fin, voir _lib/documents.js).
+// `avenantNumero` : 1 pour la 1ère prolongation de ce dossier, 2 pour la
+// 2e, etc. (compté côté appelant — voir generateAndSendDocumentsAfterProlongation).
+// ══════════════════════════════════════════════════════════════════════════════
+function generateAvenantProlongationPdf({ origineResa, prolongationResa, appareils, avenantNumero }) {
+  return renderPdf((doc) => {
+    drawContratHeader(doc, origineResa.ref, {
+      titre: 'AVENANT DE PROLONGATION',
+      sousTitre: `Avenant n° ${avenantNumero} au contrat`,
+    });
+
+    const ancienneDateFin = prolongationResa.date_debut;
+    const nouvelleDateFin = prolongationResa.date_fin;
+    const joursAjoutes = nbJours(ancienneDateFin, nouvelleDateFin);
+    const modele = modeleLabel(appareils);
+    const entreprise = origineResa.type_client === 'entreprise' && origineResa.raison_sociale
+      ? ` (${origineResa.raison_sociale}${origineResa.siret ? ', SIRET ' + origineResa.siret : ''})` : '';
+    const locataireNom = `${origineResa.prenom || ''} ${origineResa.nom || ''}`.trim();
+
+    // ── Bloc Bailleur / Locataire côte à côte (identique au contrat) ───────
+    const halfW = (W - 12) / 2;
+    const boxH  = 74;
+    const bY    = doc.y;
+
+    filledRect(doc, M,              bY, halfW, boxH, C.bg, 5);
+    filledRect(doc, M + halfW + 12, bY, halfW, boxH, C.bg, 5);
+
+    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(C.navy)
+      .text('BAILLEUR', M + 10, bY + 9, { width: halfW - 20, characterSpacing: 0.5 });
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(C.body)
+      .text(SELLER.nomCommercial, M + 10, bY + 22, { width: halfW - 20 });
+    doc.font('Helvetica').fontSize(8.5).fillColor(C.grey)
+      .text(`Gérant : Aly THIAM`, M + 10, bY + 35, { width: halfW - 20 })
+      .text(SELLER.adresse,                 M + 10, bY + 46, { width: halfW - 20 })
+      .text(`SIRET ${SELLER.siret}`,   M + 10, bY + 57, { width: halfW - 20 });
+
+    const rx = M + halfW + 22;
+    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(C.navy)
+      .text('LOCATAIRE', rx, bY + 9, { width: halfW - 20, characterSpacing: 0.5 });
+    doc.font('Helvetica-Bold').fontSize(9.5).fillColor(C.body)
+      .text(locataireNom + entreprise, rx, bY + 22, { width: halfW - 20 });
+    doc.font('Helvetica').fontSize(8.5).fillColor(C.grey)
+      .text(origineResa.adresse || '—', rx, bY + 35, { width: halfW - 20 })
+      .text(origineResa.email || '', rx, bY + 47, { width: halfW - 20 });
+
+    doc.x = M;
+    doc.y = bY + boxH + 16;
+
+    // ── Contrat concerné ─────────────────────────────────────────────────
+    drawSectionTitle(doc, 'Contrat concerné');
+    drawKeyValueRow(doc, 'Dossier',        origineResa.ref);
+    drawKeyValueRow(doc, 'Équipement',     modele);
+    drawKeyValueRow(doc, 'Durée initiale', `Du ${fmtDate(origineResa.date_debut)} au ${fmtDate(ancienneDateFin)}`);
+    doc.moveDown(0.4);
+
+    // ── Objet de l'avenant ───────────────────────────────────────────────
+    drawSectionTitle(doc, "Objet de l'avenant");
+    doc.font('Helvetica').fontSize(9).fillColor(C.body)
+      .text(
+        `Le présent avenant modifie l'Article 3 (Durée) du contrat de location visé ci-dessus. ` +
+        `La date de fin de location, initialement fixée au ${fmtDate(ancienneDateFin)}, est prolongée au ${fmtDate(nouvelleDateFin)}, ` +
+        `soit ${joursAjoutes} jour${joursAjoutes > 1 ? 's' : ''} supplémentaire${joursAjoutes > 1 ? 's' : ''}. ` +
+        `Toutes les autres clauses du contrat initial demeurent inchangées et continuent de s'appliquer sans restriction.`,
+        M, doc.y, { width: W, align: 'justify', lineGap: 2.5 }
+      );
+    doc.x = M;
+    doc.moveDown(0.8);
+
+    // ── Récapitulatif de la prolongation ─────────────────────────────────
+    drawSectionTitle(doc, 'Récapitulatif de la prolongation');
+    drawTableHeader(doc);
+    drawInvoiceItem(doc, {
+      label: `Prolongation de la location — ${modele}`,
+      detailLines: [
+        `Nouvelle période : du ${fmtDate(ancienneDateFin)} au ${fmtDate(nouvelleDateFin)} (${joursAjoutes} jour${joursAjoutes > 1 ? 's' : ''})`,
+      ],
+      amount: eur(prolongationResa.prix_total_cents || 0),
+    });
+    doc.moveDown(0.3);
+    drawTotalBox(doc, [
+      { label: 'MONTANT RÉGLÉ', value: eur(prolongationResa.prix_total_cents || 0), bold: true, large: true },
+    ]);
+
+    // ── Paiement ──────────────────────────────────────────────────────────
+    drawSectionTitle(doc, 'Paiement');
+    doc.font('Helvetica').fontSize(9).fillColor(C.body)
+      .text(
+        prolongationResa.stripe_payment_intent_id
+          ? 'Ce montant a été réglé en ligne via Stripe (carte bancaire) — voir la facture de prolongation jointe pour le détail.'
+          : 'Ce montant a été réglé au moment de la prolongation — voir la facture de prolongation jointe pour le détail.',
+        M, doc.y, { width: W }
+      );
+    doc.x = M;
+    doc.moveDown(0.8);
+
+    // ── Acceptation électronique ─────────────────────────────────────────
+    drawSectionTitle(doc, 'Acceptation électronique');
+    drawKeyValueRow(doc, 'Accepté le', fmtDateHeure(prolongationResa.created_at || new Date()));
+    doc.moveDown(0.3);
+    doc.font('Helvetica').fontSize(9).fillColor(C.body)
+      .text(`Fait à Nice, le ${fmtDate(new Date())}`, M, doc.y);
+    doc.moveDown(1.2);
+
+    // ── Signatures (identique au contrat) ────────────────────────────────
+    const SH = 96;
+    if (doc.y + SH > PH - M) doc.addPage();
+    const sY   = doc.y;
+    const sHW  = (W - 14) / 2;
+
+    filledRect(doc, M,           sY, sHW, SH, C.bg, 5);
+    filledRect(doc, M + sHW + 14, sY, sHW, SH, C.bg, 5);
+
+    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(C.navy)
+      .text('SIGNATURE DU BAILLEUR', M + 10, sY + 10, { width: sHW - 20, characterSpacing: 0.4 });
+    doc.font('Helvetica').fontSize(9).fillColor(C.body)
+      .text("Aly THIAM — Loc’Air", M + 10, sY + 22, { width: sHW - 20 });
+    doc.font('Helvetica').fontSize(8).fillColor(C.lgrey)
+      .text('Gérant', M + 10, sY + 38, { width: sHW - 20 });
+    hLine(doc, M + 10, sY + 74, sHW - 20, C.rule, 0.5);
+    doc.font('Helvetica').fontSize(7.5).fillColor(C.lgrey)
+      .text('Signature', M + 10, sY + 79, { width: sHW - 20 });
+
+    const lx = M + sHW + 24;
+    doc.font('Helvetica-Bold').fontSize(7.5).fillColor(C.navy)
+      .text('SIGNATURE DU LOCATAIRE', lx, sY + 10, { width: sHW - 20, characterSpacing: 0.4 });
+    doc.font('Helvetica').fontSize(9).fillColor(C.body)
+      .text(locataireNom, lx, sY + 24, { width: sHW - 20 });
+    doc.font('Helvetica').fontSize(8).fillColor(C.grey)
+      .text('(Précédée de la mention « Lu et approuvé »)', lx, sY + 38, { width: sHW - 20 });
+    hLine(doc, lx, sY + 74, sHW - 20, C.rule, 0.5);
+    doc.font('Helvetica').fontSize(7.5).fillColor(C.lgrey)
+      .text('Signature', lx, sY + 79, { width: sHW - 20 });
+
+    doc.x = M;
+    doc.y = sY + SH + 16;
+
+    drawFooter(doc,
+      `Avenant généré et accepté électroniquement au moment du paiement de la prolongation — dossier ${origineResa.ref}. ` +
+      `Ce document complète le contrat de location initial, consultable dans votre espace client.`
+    );
+  });
+}
+
+module.exports = { generateContratPdf, generateFacturePdf, generateFactureVentePdf, generateAvenantProlongationPdf };

@@ -56,7 +56,7 @@ function renderPage(errorMsg, { ref, buttons } = {}) {
       <div class="error-msg">${errorMsg}</div>
       <div class="error-sub">Contactez-nous si le problème persiste : <a href="https://wa.me/33663798756" style="color:${NAV};font-weight:600">WhatsApp</a> · <a href="mailto:contact@locair.fr" style="color:${NAV};font-weight:600">contact@locair.fr</a></div>
     </div>` : `
-    <p class="thanks">Merci pour votre confiance. Vos documents sont disponibles à tout moment — <strong>contrat de location</strong> et <strong>facture</strong> au format PDF.</p>
+    <p class="thanks">Merci pour votre confiance. Vos documents sont disponibles à tout moment au format PDF.</p>
     <div class="section-lbl">Consulter un document</div>
     ${buttons.map(b => `
     <a href="${b.href}" class="doc-btn">
@@ -84,8 +84,9 @@ module.exports = async (req, res) => {
   if (req.method !== 'GET') return res.status(405).send('Method not allowed');
 
   const contratToken = String(req.query?.contrat || '').trim();
+  const avenantToken = String(req.query?.avenant || '').trim();
   const factureToken = String(req.query?.facture || '').trim();
-  const tokens = [contratToken, factureToken].filter(Boolean);
+  const tokens = [contratToken, avenantToken, factureToken].filter(Boolean);
   if (!tokens.length) return res.status(400).send(renderPage('Lien invalide.'));
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -108,6 +109,13 @@ module.exports = async (req, res) => {
         icon: '📄', label: 'Contrat de location',
         desc: 'Conditions, durée et modalités de votre location',
         href: `/api/document-view?token=${contratToken}`,
+      });
+    }
+    if (avenantToken && validTokens.has(avenantToken)) {
+      buttons.push({
+        icon: '📝', label: 'Avenant de prolongation',
+        desc: 'Modification de la durée de votre contrat',
+        href: `/api/document-view?token=${avenantToken}`,
       });
     }
     if (factureToken && validTokens.has(factureToken)) {

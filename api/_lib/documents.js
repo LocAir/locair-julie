@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { generateContratPdf, generateFacturePdf, generateFactureVentePdf } = require('./pdf');
+const { generateContratPdf, generateFacturePdf, generateFactureVentePdf, generateAvenantProlongationPdf } = require('./pdf');
 const { sendBrevoEmail } = require('./brevo');
 const { CGV_VERSION } = require('./legal');
 const { getPricingConfig } = require('./pricing');
@@ -167,62 +167,66 @@ async function generateAndSendDocuments(supabase, resa, { force } = {}) {
 // 2026-07-27 : generateAndSendDocuments ci-dessus n'est jamais appelée pour
 // une prolongation, donc le client ne recevait plus jamais de document
 // contractuel reflétant sa vraie date de fin ni le montant réellement payé
-// après extension — le contrat déjà en sa possession restait figé sur la
-// durée/le prix de sa réservation initiale.
+// après extension.
+//
+// Générait au départ un contrat ENTIER réédité à chaque prolongation — corrigé
+// (demande explicite du 2026-08-09) au profit d'un avenant, la pratique
+// standard pour amender un contrat déjà signé sans le réémettre en entier :
+// un document court qui dit précisément ce qui change (nouvelle date de fin,
+// montant payé), le contrat d'origine reste la seule référence pour tout le
+// reste (voir generateAvenantProlongationPdf, _lib/pdf.js).
 //
 // `origineResa` : la réservation d'ORIGINE (jamais 'site_prolongation'), avec
-// son date_fin déjà mis à jour par l'appelant AVANT ce call — c'est elle qui
-// porte le contrat (un seul contrat par location, mis à jour à chaque
-// extension, jamais un contrat distinct par prolongation).
+// son date_fin déjà mis à jour par l'appelant AVANT ce call — c'est son
+// contrat que l'avenant amende.
 // `prolongationResa` : la réservation de prolongation elle-même (source
 // 'site_prolongation'), qui porte le paiement de l'extension — c'est elle qui
 // reçoit sa propre facture (montant de l'extension seule, jamais cumulé avec
-// la réservation d'origine).
+// la réservation d'origine) et dont les dates servent à l'avenant (date_debut
+// = ancienne date de fin, date_fin = nouvelle date de fin).
 //
-// Pas de garde d'idempotence sur le contrat : contrairement à la facture
-// (documents_facture_unique_idx interdit plus d'une facture par
-// reservation_id), rien n'empêche plusieurs lignes 'contrat' pour la même
-// réservation d'origine — chaque prolongation ajoute une nouvelle version
-// "à jour", l'historique des versions précédentes reste consultable par
-// l'admin. La facture de prolongation, elle, reste protégée par l'unicité
-// habituelle puisqu'elle est posée sur reservation_id = prolongationResa.id,
-// qui n'en a encore jamais eu.
+// Pas de garde d'idempotence sur l'avenant : plusieurs prolongations
+// successives du même dossier créent chacune leur propre avenant numéroté
+// (1, 2, 3...), tous consultables par l'admin — jamais de doublon puisque
+// chaque webhook Stripe de prolongation ne peut correspondre qu'à une seule
+// prolongationResa, jamais rejouée deux fois pour la même. La facture de
+// prolongation, elle, reste protégée par l'unicité habituelle puisqu'elle est
+// posée sur reservation_id = prolongationResa.id, qui n'en a encore jamais eu.
 async function generateAndSendDocumentsAfterProlongation(supabase, { origineResa, prolongationResa }) {
   if (process.env.DOCUMENTS_ENABLED !== 'true') return;
   if (!origineResa || !origineResa.id || !prolongationResa || !prolongationResa.id) return;
 
-  const [{ data: reservAppareils }, { data: acceptations }] = await Promise.all([
+  const [{ data: reservAppareils }, { data: avenantsExistants }] = await Promise.all([
     supabase.from('reservation_appareils').select('appareil:appareils(numero, modele:modeles_climatiseur(marque, modele))').eq('reservation_id', origineResa.id),
-    supabase.from('cgv_acceptations').select('type, version, accepted_at').eq('reservation_id', origineResa.id),
+    supabase.from('documents').select('id').eq('reservation_id', origineResa.id).eq('type', 'avenant'),
   ]);
   const appareils = (reservAppareils || []).map(r => r.appareil).filter(Boolean);
+  const avenantNumero = (avenantsExistants || []).length + 1;
 
   const now = new Date();
   const annee = now.getUTCFullYear();
   // Tarifs (panneau de contrôle admin, voir admin-pricing.js) — jamais
-  // recalculés en dur dans le contrat/la facture.
+  // recalculés en dur dans l'avenant/la facture.
   const pricing = await getPricingConfig(supabase);
-  // Pack à prix fixe éventuel de la réservation D'ORIGINE (jamais de la
-  // prolongation elle-même : un forfait ne s'applique qu'aux nouvelles
-  // réservations, jamais aux extensions — voir checkout-prolong.js).
-  const forfait = await getForfaitById(supabase, origineResa.forfait_id);
 
-  // ── Contrat mis à jour (nouvelle date de fin, cf. commentaire ci-dessus) ──
-  const contratBuffer = await generateContratPdf({ reservation: origineResa, appareils, acceptations, version: CGV_VERSION, pricing, forfait });
-  const contratPath = `documents/contrats/${origineResa.ref}-${now.getTime()}.pdf`;
-  await uploadPdf(supabase, contratPath, contratBuffer);
-  const contratToken = accessToken();
-  const { data: contratRow, error: contratErr } = await supabase.from('documents').insert({
+  // ── Avenant de prolongation (amende le contrat d'origine, cf. commentaire
+  //    ci-dessus) ────────────────────────────────────────────────────────
+  const avenantBuffer = await generateAvenantProlongationPdf({ origineResa, prolongationResa, appareils, avenantNumero });
+  const avenantPath = `documents/avenants/${origineResa.ref}-${now.getTime()}.pdf`;
+  await uploadPdf(supabase, avenantPath, avenantBuffer);
+  const avenantToken = accessToken();
+  const { data: avenantRow, error: avenantErr } = await supabase.from('documents').insert({
     reservation_id: origineResa.id,
-    type:           'contrat',
+    type:           'avenant',
+    numero:         `AVENANT-${origineResa.ref}-${avenantNumero}`,
     version:        CGV_VERSION,
-    storage_path:   contratPath,
-    access_token:   contratToken,
-    montant_ttc_cents: origineResa.prix_total_cents || 0,
+    storage_path:   avenantPath,
+    access_token:   avenantToken,
+    montant_ttc_cents: prolongationResa.prix_total_cents || 0,
     statut:         'genere',
     genere_at:      now.toISOString(),
   }).select('id').single();
-  if (contratErr) throw contratErr;
+  if (avenantErr) throw avenantErr;
 
   // ── Facture de la prolongation (montant de l'extension uniquement) ───────
   const { data: numeroSeq, error: numeroErr } = await supabase.rpc('next_invoice_number', { p_annee: annee });
@@ -246,7 +250,7 @@ async function generateAndSendDocumentsAfterProlongation(supabase, { origineResa
   }).select('id').single();
   if (factureErr) throw factureErr;
 
-  // ── Envoi email (contrat mis à jour + facture de prolongation) ───────────
+  // ── Envoi email (avenant + facture de prolongation) ───────────────────────
   // Email envoyé EN PLUS de sendProlongationConfirmation (jamais à la place) —
   // celui-ci ne fournit qu'une confirmation informelle, pas de document
   // contractuel en pièce jointe.
@@ -258,13 +262,13 @@ async function generateAndSendDocumentsAfterProlongation(supabase, { origineResa
       prenom: origineResa.prenom,
       ref:    origineResa.ref,
       lang,
-      viewUrlDocuments: `${base}/api/documents-view?contrat=${contratToken}&facture=${factureToken}`,
+      viewUrlDocuments: `${base}/api/documents-view?avenant=${avenantToken}&facture=${factureToken}`,
     }), sig);
     const subject = lang === 'en'
-      ? `Your updated Loc'Air documents — Ref ${origineResa.ref}`
+      ? `Your prolongation amendment — Ref ${origineResa.ref}`
       : lang === 'zh'
-      ? `您更新后的 Loc'Air 文件 — 订单 ${origineResa.ref}`
-      : `Votre contrat mis à jour et votre facture de prolongation — Dossier ${origineResa.ref}`;
+      ? `您的续租合同附加协议 — 订单 ${origineResa.ref}`
+      : `Votre avenant de prolongation et votre facture — Dossier ${origineResa.ref}`;
     // Décalé de 4 min par rapport au mail de confirmation de prolongation
     // (sendProlongationConfirmation) envoyé au même moment — voir commentaire
     // équivalent sur generateAndSendDocuments ci-dessus.
@@ -275,21 +279,21 @@ async function generateAndSendDocumentsAfterProlongation(supabase, { origineResa
       senderName: sig.nom_expediteur,
       scheduledAt: new Date(Date.now() + 4 * 60 * 1000).toISOString(),
       attachments: [
-        { name: `Contrat-${origineResa.ref}.pdf`, content: contratBuffer },
+        { name: `Avenant-${avenantNumero}-${origineResa.ref}.pdf`, content: avenantBuffer },
         { name: `${numero}.pdf`, content: factureBuffer },
       ],
     });
 
     if (result.ok) {
       const sentAt = new Date().toISOString();
-      await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt }).eq('id', contratRow.id);
+      await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt }).eq('id', avenantRow.id);
       await supabase.from('documents').update({ statut: 'envoye', envoye_at: sentAt }).eq('id', factureRow.id);
     } else {
       console.error('[Documents prolongation] envoi email échoué —', result.error);
     }
     supabase.from('email_log').insert({
-      reservation_id: prolongationResa.id, scenario: 'email_contrat_facture_prolongation', canal: 'email',
-      destinataire: origineResa.email, modele: 'email_contrat_facture_prolongation',
+      reservation_id: prolongationResa.id, scenario: 'email_avenant_facture_prolongation', canal: 'email',
+      destinataire: origineResa.email, modele: 'email_avenant_facture_prolongation',
       statut: result.ok ? 'envoye' : 'erreur',
       erreur: result.ok ? null : String(result.error || '').slice(0, 500),
       contenu: html,
