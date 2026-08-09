@@ -424,7 +424,14 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
     const pe=strEl.create('payment');
     document.getElementById('prolong-payment-element').innerHTML='';
     pe.mount('#prolong-payment-element');
-    pe.on('ready',function(){document.getElementById('btn-confirm').disabled=false;});
+    pe.on('ready',function(){
+      const b=document.getElementById('btn-confirm');
+      if(b)b.disabled=false;
+      // Sur mobile, Stripe (notamment la section Link) peut dépasser la hauteur
+      // de l'écran et cacher le bouton confirmer — même correctif que sur
+      // l'espace client (client/index.html, PR #504).
+      setTimeout(()=>b?.scrollIntoView({behavior:'smooth',block:'end'}),200);
+    });
   }
 
   document.getElementById('btn-confirm').addEventListener('click',async function(){

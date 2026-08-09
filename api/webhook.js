@@ -455,25 +455,35 @@ const handler = async (req, res) => {
 
     // ── Prolongation : flux distinct ─────────────────────────────────────────
     if (meta.type === 'prolongation') {
-      await fetch('https://formspree.io/f/mvzyngoy', {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({
-          _subject:          `✅ PROLONGATION — ${meta.prenom || ''} ${meta.nom || ''} — ${meta.jours}j — récup. ${meta.date_recuperation || ''}`,
-          type:              'prolongation',
-          stripe_id:         obj.id || '',
-          prenom:            meta.prenom            || '',
-          nom:               meta.nom               || '',
-          tel:               meta.tel               || '',
-          email,
-          adresse_origine:   meta.adresse_origine   || '',
-          jours:             meta.jours             || '',
-          date_recuperation: meta.date_recuperation || '',
-          creneau:           meta.creneau           || '',
-          montant:           amount,
-          statut:            '✅ Stripe confirmé',
-        }),
-      }).catch(e => console.error('[Formspree prolong]', e.message));
+      // AbortController à 8 s : sans timeout, un Formspree lent bloquerait
+      // tout le handler Stripe (Stripe réessaie après 30 s de silence) et
+      // pourrait déclencher une double confirmation. Même garde sur les deux
+      // appels Formspree de ce fichier.
+      {
+        const _fsCtrl = new AbortController();
+        const _fsTimer = setTimeout(() => _fsCtrl.abort(), 8000);
+        await fetch('https://formspree.io/f/mvzyngoy', {
+          signal:  _fsCtrl.signal,
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            _subject:          `✅ PROLONGATION — ${meta.prenom || ''} ${meta.nom || ''} — ${meta.jours}j — récup. ${meta.date_recuperation || ''}`,
+            type:              'prolongation',
+            stripe_id:         obj.id || '',
+            prenom:            meta.prenom            || '',
+            nom:               meta.nom               || '',
+            tel:               meta.tel               || '',
+            email,
+            adresse_origine:   meta.adresse_origine   || '',
+            jours:             meta.jours             || '',
+            date_recuperation: meta.date_recuperation || '',
+            creneau:           meta.creneau           || '',
+            montant:           amount,
+            statut:            '✅ Stripe confirmé',
+          }),
+        }).catch(e => console.error('[Formspree prolong]', e.message));
+        clearTimeout(_fsTimer);
+      }
 
       if (confirmedResa) {
         const prolongLang = meta.lang || confirmedResa.lang || 'fr';
@@ -565,8 +575,12 @@ const handler = async (req, res) => {
     }
 
     // ── Location standard ─────────────────────────────────────────────────────
-    // 1. Notifier l'opérateur via Formspree
+    // 1. Notifier l'opérateur via Formspree (8 s de timeout — cf. bloc prolong)
+    {
+      const _fsCtrl2 = new AbortController();
+      const _fsTimer2 = setTimeout(() => _fsCtrl2.abort(), 8000);
     await fetch('https://formspree.io/f/mvzyngoy', {
+      signal:  _fsCtrl2.signal,
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({
@@ -593,6 +607,8 @@ const handler = async (req, res) => {
         payment_method:   paymentMethodId,
       }),
     }).catch(e => console.error('[Formspree]', e.message));
+    clearTimeout(_fsTimer2);
+    } // fin bloc Formspree location standard
 
     // 2a. SMS de confirmation immédiat au client — idempotent : non renvoyé
     // si déjà tracé dans email_log OU si sendConfirmationCommunications a
