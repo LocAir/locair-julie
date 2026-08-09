@@ -658,6 +658,14 @@ window.fetch = function(url, opts){
 function setSelectedCityId(id){
   CITY_ID = id;
   localStorage.setItem('a_city_id', id);
+  // Toutes les données déjà en mémoire (les autres onglets, non visibles en
+  // ce moment) sont désormais celles de l'ancienne ville — sans ça, revenir
+  // sur un onglet déjà visité afficherait un instant les chiffres de
+  // l'ancienne ville avant leur remplacement silencieux (voir switchAdminTab
+  // / _TAB_LOADED). Seul l'onglet courant est rechargé tout de suite ;
+  // les autres repartent simplement d'un premier chargement à leur prochaine
+  // ouverture.
+  _TAB_LOADED.clear();
   if(CURRENT_TAB) switchAdminTab(CURRENT_TAB);
 }
 async function loadCitySwitcher(){
@@ -684,7 +692,7 @@ async function loadCitySwitcher(){
     // La ville n'était pas encore connue au moment du premier chargement de
     // l'onglet (ce fetch est asynchrone, lancé en parallèle) — on rejoue le
     // chargement maintenant qu'elle l'est, seulement si elle a changé.
-    if(showAll && CURRENT_TAB) switchAdminTab(CURRENT_TAB);
+    if(showAll && CURRENT_TAB){ _TAB_LOADED.clear(); switchAdminTab(CURRENT_TAB); }
   }catch(e){}
 }
 
@@ -913,6 +921,12 @@ function onAdminLoginSuccess(token, role, nom){
   document.getElementById('a-logout-btn').classList.remove('hidden');
   document.getElementById('a-refresh-btn').classList.remove('hidden');
   applyRoleVisibility();
+  // Un autre compte a pu se connecter entre-temps sur le même appareil
+  // (déconnexion ne recharge jamais la page) — sans ce nettoyage, revenir
+  // sur un onglet déjà ouvert par le compte précédent afficherait un instant
+  // ses données à lui avant leur remplacement silencieux (voir switchAdminTab
+  // / _TAB_LOADED).
+  _TAB_LOADED.clear();
   switchAdminTab('accueil');
   loadAlerts();
   loadCitySwitcher();
@@ -1434,32 +1448,52 @@ function missionMoreActionsHtml(m, d, compact){
 const PROBLEME_LABEL = {client_absent:'Client absent', acces_impossible:'Accès impossible', mauvaise_adresse:'Mauvaise adresse', materiel_endommage:'Matériel endommagé', probleme_technique:'Problème technique', refus_client:'Refus client', retard:'Retard important', autre:'Autre problème'};
 
 let CURRENT_TAB = 'accueil';
+// Onglets déjà ouverts au moins une fois cette session — permet de changer
+// d'onglet instantanément au 2e passage (voir switchAdminTab) : le contenu
+// précédent reste affiché tel quel (jamais effacé/remplacé par un
+// "Chargement…") pendant qu'une nouvelle version se charge en silence
+// derrière, et prend sa place dès qu'elle est prête. Un premier passage sur
+// un onglet reste normal (rien à montrer tant que rien n'est chargé).
+const _TAB_LOADED = new Set();
+// Un chargeur par onglet — reçoit `silent` (true dès le 2e passage sur cet
+// onglet, voir _TAB_LOADED) : les fonctions loadXxx gardent alors le contenu
+// déjà affiché à l'écran pendant qu'elles vont chercher une version à jour,
+// au lieu de tout effacer d'abord (voir "if(!silent) zone.innerHTML=…" dans
+// chacune). Le changement d'onglet lui-même (classes .hidden ci-dessous) est
+// déjà instantané ; c'était le rechargement systématique à chaque clic, avec
+// écran vidé le temps de la requête, qui donnait l'impression d'un
+// rafraîchissement de page (retour signalé par Aly, 2026-08-09).
+const _TAB_LOADERS = {
+  accueil:        silent => loadDashboard(CURRENT_DASHBOARD_PERIODE, silent),
+  stock:          silent => loadStock(silent),
+  reservations:   silent => loadReservations(silent),
+  communications: () => loadCommunications(),
+  devis:          silent => loadDevis(silent),
+  checklist:      silent => loadChecklistBox(silent),
+  livraisons:     silent => loadLivraisons(silent),
+  virements:      silent => loadVirementsTab(silent),
+  transporteurs:  silent => loadTransporteursTab(silent),
+  partenaires:    silent => loadPartenairesTab(silent),
+  incidents:      silent => loadIncidents(silent),
+  clients:        silent => loadClients(silent),
+  villes:         silent => loadVilles(silent),
+  tarifs:         silent => loadTarifs(silent),
+  promotions:     silent => loadPromotions(silent),
+  equipe:         silent => loadEquipe(silent),
+  tutoriels:      silent => loadTutoriels(silent),
+  emails:         silent => loadEmails(silent),
+  espaceclient:   silent => loadEspaceClient(silent),
+  checklistitems: silent => loadChecklistItemsAdmin(silent),
+};
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
   ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
-  if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
-  if(tab==='stock') loadStock();
-  if(tab==='reservations') loadReservations();
-  if(tab==='communications') loadCommunications();
-  if(tab==='devis') loadDevis();
-  if(tab==='checklist') loadChecklistBox();
-  if(tab==='livraisons') loadLivraisons();
-  if(tab==='virements') loadVirementsTab();
-  if(tab==='transporteurs') loadTransporteursTab();
-  if(tab==='partenaires') loadPartenairesTab();
-  if(tab==='incidents') loadIncidents();
-  if(tab==='clients') loadClients();
-  if(tab==='villes') loadVilles();
-  if(tab==='tarifs') loadTarifs();
-  if(tab==='promotions') loadPromotions();
-  if(tab==='equipe') loadEquipe();
-  if(tab==='tutoriels') loadTutoriels();
-  if(tab==='emails') loadEmails();
-  if(tab==='espaceclient') loadEspaceClient();
-  if(tab==='checklistitems') loadChecklistItemsAdmin();
+  const loader = _TAB_LOADERS[tab];
+  if(loader) loader(_TAB_LOADED.has(tab));
+  _TAB_LOADED.add(tab);
   _dismissTabBadges(tab);
   toggleMobileMenu(false);
 }
@@ -1675,16 +1709,16 @@ async function silentRefreshLivraisons(){
   }finally{ window._refreshInProgress = false; }
 }
 const TAB_AUTO_REFRESH = {
-  accueil:       () => loadDashboard(CURRENT_DASHBOARD_PERIODE),
+  accueil:       () => loadDashboard(CURRENT_DASHBOARD_PERIODE, true),
   stock:         () => loadStock(true),
   reservations:  silentRefreshReservations,
   livraisons:    silentRefreshLivraisons,
   communications: loadCommunications,
-  virements:     loadVirementsTab,
-  transporteurs: () => TRANSPORTEURS_VIEW==='equipe' ? loadTransporteursEquipe() : loadTransporteursRevenus(),
-  partenaires:   () => PARTENAIRES_VIEW==='equipe' ? loadPartenairesEquipe() : loadPartenairesRevenus(),
-  incidents:     loadIncidents,
-  clients:       loadClients,
+  virements:     () => loadVirementsTab(true),
+  transporteurs: () => TRANSPORTEURS_VIEW==='equipe' ? loadTransporteursEquipe(true) : loadTransporteursRevenus(true),
+  partenaires:   () => PARTENAIRES_VIEW==='equipe' ? loadPartenairesEquipe(true) : loadPartenairesRevenus(true),
+  incidents:     () => loadIncidents(true),
+  clients:       () => loadClients(true),
 };
 function isUserBusy(){
   if(document.getElementById('modal-overlay-el')) return true; // confirmation/prompt en cours
@@ -1704,10 +1738,10 @@ async function autoRefreshTick(){
 
 // ── ACCUEIL / CHIFFRES ────────────────────────────────────────────────────────
 let CURRENT_DASHBOARD_PERIODE = '7j';
-async function loadDashboard(periode){
+async function loadDashboard(periode, silent){
   CURRENT_DASHBOARD_PERIODE = periode;
   const zone = document.getElementById('tab-accueil');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const [dr, lr, tr] = await Promise.all([
       fetch(API('admin-dashboard'), {method:'POST', headers:authHeaders(), body:JSON.stringify({periode})}),
@@ -1958,9 +1992,9 @@ function goToVirements(){
 // synchronisé avec les missions du jour sélectionné. Lecture seule ici : la
 // prise en charge (validation) reste un geste du transporteur lui-même.
 let CHECKLIST_DATE = todayParisStr();
-async function loadChecklistBox(){
+async function loadChecklistBox(silent){
   const zone = document.getElementById('tab-checklist');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-checklist'), {method:'POST', headers:authHeaders(), body:JSON.stringify({date:CHECKLIST_DATE})});
     const d = await r.json();
@@ -2448,9 +2482,9 @@ async function logControleAppareil(appareilId, btn){
 // logique de création de réservation ici.
 let DEVIS_CACHE = [];
 const DEVIS_STATUT_LABEL = {brouillon:'Brouillon', envoye:'Envoyé', accepte:'Accepté', refuse:'Refusé', expire:'Expiré'};
-async function loadDevis(){
+async function loadDevis(silent){
   const zone = document.getElementById('tab-devis');
-  zone.innerHTML = '<div class="card"><p class="sub">Chargement…</p></div>';
+  if(!silent) zone.innerHTML = '<div class="card"><p class="sub">Chargement…</p></div>';
   try{
     const r = await fetch(API('admin-devis'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();
@@ -3142,9 +3176,9 @@ function openEditReservationModal(id){
     }
   };
 }
-async function loadReservations(){
+async function loadReservations(silent){
   const zone = document.getElementById('tab-reservations');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const [r, lr, tr, sr] = await Promise.all([
       fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
@@ -4236,9 +4270,9 @@ let LIVRAISONS_VIEW = 'liste';
 // comme avant (voir setLivraisonsFilter).
 let LIVRAISONS_NON_ASSIGNEES_ALERT_ONLY = false;
 
-async function loadLivraisons(){
+async function loadLivraisons(silent){
   const zone = document.getElementById('tab-livraisons');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   AFFECT_STAGED = null; // données fraîches à chaque ouverture de l'onglet -> brouillon d'affectation repart de zéro
   try{
     const [lr, tr] = await Promise.all([
@@ -5582,15 +5616,20 @@ async function createTestTransporteur(){
     showInfo('Environnement de test créé', `Code : ${d.pin}\n\nOuvre /transporteur dans un nouvel onglet et connecte-toi avec ce code pour voir/tester l'espace livreur comme un vrai transporteur.`);
   }catch(e){ showToast(e.message, 'error'); }
 }
-function loadTransporteursTab(){
+function loadTransporteursTab(silent){
   const zone = document.getElementById('tab-transporteurs');
-  zone.innerHTML = `
-    <div class="periods" style="margin-bottom:16px">
-      <button class="${TRANSPORTEURS_VIEW==='equipe'?'on':''}" onclick="setTransporteursView('equipe')">👷 Équipe</button>
-      <button class="${TRANSPORTEURS_VIEW==='revenus'?'on':''}" onclick="setTransporteursView('revenus')">💶 Revenus</button>
-    </div>
-    <div id="transp-view-content">${loading()}</div>`;
-  if(TRANSPORTEURS_VIEW==='equipe') loadTransporteursEquipe(); else loadTransporteursRevenus();
+  // silent (retour sur l'onglet déjà visité) : le sous-contenu existe déjà
+  // (transp-view-content) — inutile de reconstruire la coquille (barre de
+  // vue + placeholder), seul le rechargement du sous-contenu suffit.
+  if(!silent || !document.getElementById('transp-view-content')){
+    zone.innerHTML = `
+      <div class="periods" style="margin-bottom:16px">
+        <button class="${TRANSPORTEURS_VIEW==='equipe'?'on':''}" onclick="setTransporteursView('equipe')">👷 Équipe</button>
+        <button class="${TRANSPORTEURS_VIEW==='revenus'?'on':''}" onclick="setTransporteursView('revenus')">💶 Revenus</button>
+      </div>
+      <div id="transp-view-content">${loading()}</div>`;
+  }
+  if(TRANSPORTEURS_VIEW==='equipe') loadTransporteursEquipe(silent); else loadTransporteursRevenus(silent);
 }
 function setTransporteursView(view){ TRANSPORTEURS_VIEW = view; loadTransporteursTab(); }
 // ── Zones d'intervention + disponibilité (multi-ville) ────────────────────
@@ -5735,10 +5774,10 @@ function editFiche(id){
   };
 }
 
-async function loadTransporteursEquipe(){
+async function loadTransporteursEquipe(silent){
   const zone = document.getElementById('transp-view-content');
   if(!zone) return;
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const [tr, lr, sr] = await Promise.all([
       fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
@@ -6072,10 +6111,10 @@ function validerRemuneration(id, nom, montantCents){
     }catch(e){ showToast(e.message, 'error'); }
   }, {yesLabel:'Valider'});
 }
-async function loadTransporteursRevenus(){
+async function loadTransporteursRevenus(silent){
   const zone = document.getElementById('transp-view-content');
   if(!zone) return;
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'summary'})});
     const d = await r.json();
@@ -6109,15 +6148,19 @@ function verserMaintenant(id, nom, montantCents){
 // et touchent une commission (voir api/admin-partenaires.js, migration_partenaires.sql).
 let PARTENAIRES_VIEW = 'equipe';
 let PARTENAIRES_CACHE = [];
-function loadPartenairesTab(){
+function loadPartenairesTab(silent){
   const zone = document.getElementById('tab-partenaires');
-  zone.innerHTML = `
-    <div class="periods" style="margin-bottom:16px">
-      <button class="${PARTENAIRES_VIEW==='equipe'?'on':''}" onclick="setPartenairesView('equipe')">🤝 Ambassadeurs</button>
-      <button class="${PARTENAIRES_VIEW==='revenus'?'on':''}" onclick="setPartenairesView('revenus')">💶 Revenus</button>
-    </div>
-    <div id="part-view-content">${loading()}</div>`;
-  if(PARTENAIRES_VIEW==='equipe') loadPartenairesEquipe(); else loadPartenairesRevenus();
+  // silent (retour sur l'onglet déjà visité) : même principe que
+  // loadTransporteursTab ci-dessus — la coquille existe déjà.
+  if(!silent || !document.getElementById('part-view-content')){
+    zone.innerHTML = `
+      <div class="periods" style="margin-bottom:16px">
+        <button class="${PARTENAIRES_VIEW==='equipe'?'on':''}" onclick="setPartenairesView('equipe')">🤝 Ambassadeurs</button>
+        <button class="${PARTENAIRES_VIEW==='revenus'?'on':''}" onclick="setPartenairesView('revenus')">💶 Revenus</button>
+      </div>
+      <div id="part-view-content">${loading()}</div>`;
+  }
+  if(PARTENAIRES_VIEW==='equipe') loadPartenairesEquipe(silent); else loadPartenairesRevenus(silent);
 }
 function setPartenairesView(view){ PARTENAIRES_VIEW = view; loadPartenairesTab(); }
 
@@ -6165,10 +6208,10 @@ function ribBlockHtml(p){
     </div>`;
 }
 
-async function loadPartenairesEquipe(){
+async function loadPartenairesEquipe(silent){
   const zone = document.getElementById('part-view-content');
   if(!zone) return;
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-partenaires'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();
@@ -6451,10 +6494,10 @@ async function resoudreLitige(id, btnEl){
     showToast(e.message, 'error');
   }
 }
-async function loadPartenairesRevenus(){
+async function loadPartenairesRevenus(silent){
   const zone = document.getElementById('part-view-content');
   if(!zone) return;
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-partenaire-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'summary'})});
     const d = await r.json();
@@ -6488,9 +6531,9 @@ function verserPartenaireMaintenant(id, nom, montantCents){
 // Réutilise exactement les mêmes cartes que Transporteurs→Revenus et
 // Partenaires→Revenus (transporteurRevenusCardHtml / partenaireRevenusCardHtml)
 // pour ne jamais afficher deux versions différentes du même chiffre.
-async function loadVirementsTab(){
+async function loadVirementsTab(silent){
   const zone = document.getElementById('tab-virements');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const [tr, pr] = await Promise.all([
       fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'summary'})}),
@@ -6630,9 +6673,9 @@ let INCIDENTS_TYPE_FILTER = null;
 // de rester mélangé avec ce qui reste vraiment à traiter (même principe que
 // "Actives" sur Réservations/Livraisons).
 const INCIDENTS_ACTIFS_STATUTS = ['nouveau', 'en_analyse', 'retard_a_facturer'];
-async function loadIncidents(){
+async function loadIncidents(silent){
   const zone = document.getElementById('tab-incidents');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-incidents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();
@@ -6732,9 +6775,9 @@ async function updateIncidentStatut(id, statut, btnEl){
 // terminée"/"Récupération terminée" — distinctes de "Checklist box" (matériel
 // à prendre au box avant de partir), qui reste inchangée.
 const CHECKLIST_WORKFLOW_LABEL = {preparation:'🧰 Préparation logistique', installation:'📦 Installation', recuperation:'🔄 Récupération'};
-async function loadChecklistItemsAdmin(){
+async function loadChecklistItemsAdmin(silent){
   const zone = document.getElementById('tab-checklistitems');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-checklist-items'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();
@@ -6809,9 +6852,9 @@ let EMAIL_SCENARIOS_CACHE = [];
 let EMAILS_LOG_CACHE = [];
 let EMAIL_SIG_CACHE = {};
 let EMAILS_FILTER = 'tous';
-async function loadEmails(){
+async function loadEmails(silent){
   const zone = document.getElementById('tab-emails');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const [rLog, rScen, rSig] = await Promise.all([
       fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
@@ -7005,9 +7048,9 @@ async function saveEmailSignature(){
 // ── ESPACE CLIENT (Module 4) — catalogue climatiseurs, centre d'aide, assistance ──
 let ESPACECLIENT_MODELES = [], ESPACECLIENT_AIDE = [];
 
-async function loadEspaceClient(){
+async function loadEspaceClient(silent){
   const zone = document.getElementById('tab-espaceclient');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const [rMod, rAide, rAssist] = await Promise.all([
       fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'modeles_list'})}),
@@ -7195,9 +7238,9 @@ async function saveAssistance(){
 // rattachée au client, pas à une réservation ni à un appareil, pour profiter
 // à toute visite future — jamais un blocage, juste une info.
 let CLIENTS_CACHE = [];
-async function loadClients(){
+async function loadClients(silent){
   const zone = document.getElementById('tab-clients');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-clients'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();
@@ -8368,9 +8411,9 @@ const FR_VILLES = [
   {nom:'Melun',dep:'77',cps:['77000']},
   {nom:'Chelles',dep:'77',cps:['77500']},
 ];
-async function loadVilles(){
+async function loadVilles(silent){
   const zone = document.getElementById('tab-villes');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list', city_id:'all'})});
     const d = await r.json();
@@ -8450,9 +8493,9 @@ function renderVilles(){
 let TARIFS_CACHE = null;
 let FORFAITS_CACHE = [];
 let FORFAIT_EDIT_ID = null; // null = formulaire en mode création
-async function loadTarifs(){
+async function loadTarifs(silent){
   const zone = document.getElementById('tab-tarifs');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const [rPricing, rForfaits] = await Promise.all([
       fetch(API('admin-pricing'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'get'})}),
@@ -8720,9 +8763,9 @@ const PROMO_CATEGORIES = {
 let PROMOTIONS_CACHE = [];
 let PROMO_VILLES_CACHE = [];
 let PROMO_EDIT_ID = null; // null = formulaire en mode création, sinon id de l'offre en cours de modification
-async function loadPromotions(){
+async function loadPromotions(silent){
   const zone = document.getElementById('tab-promotions');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const [rPromos, rVilles] = await Promise.all([
       fetch(API('admin-promotions'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
@@ -8929,9 +8972,9 @@ const ROLE_LABEL = {
   support_client: '🛟 Support client — clients, demandes',
 };
 let EQUIPE_CACHE = [];
-async function loadEquipe(){
+async function loadEquipe(silent){
   const zone = document.getElementById('tab-equipe');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const r = await fetch(API('admin-team'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
     const d = await r.json();
@@ -9082,9 +9125,9 @@ const TUTO_SOUS_TYPES = {installation:['Porte fenêtre','Fenêtre battante','Por
 let TUTO_CATEGORIES = [];
 let TUTO_VIDEOS_CACHE = [];
 let TUTO_PENDING_UPLOAD = null;
-async function loadTutoriels(){
+async function loadTutoriels(silent){
   const zone = document.getElementById('tab-tutoriels');
-  zone.innerHTML = loading();
+  if(!silent) zone.innerHTML = loading();
   try{
     const [rCat, rVid] = await Promise.all([
       fetch(API('admin-tutoriels'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list_categories'})}),
