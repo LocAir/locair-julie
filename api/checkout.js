@@ -116,6 +116,8 @@ module.exports = async (req, res) => {
       }
     } catch (err) {
       console.error('[Checkout soldOut]', err.message);
+      // Ne pas continuer en cas d'erreur DB : risque de surréservation silencieuse.
+      return res.status(503).json({ error: 'Impossible de vérifier la disponibilité pour le moment. Réessayez dans quelques instants.' });
     }
   }
 

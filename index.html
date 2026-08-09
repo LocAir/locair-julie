@@ -5936,7 +5936,10 @@ async function _fetchDispo(){
 }
 function _isDateDispo(dateStr){
   if(!_DISPO?.dates) return true; // fallback optimiste
-  return (_DISPO.dates[dateStr]||0)>0;
+  // Si la date est absente du dictionnaire (hors horizon ~90j), on considère
+  // disponible plutôt que d'afficher "Complet" à tort pour les dates lointaines.
+  if(!(dateStr in _DISPO.dates)) return true;
+  return _DISPO.dates[dateStr]>0;
 }
 function _fmtDispoDate(dateStr){
   if(!dateStr) return '';
@@ -7332,6 +7335,12 @@ function submitForm(btn,mode){
   if(!condCb?.checked){highlightCb(condCb,'f-conditions');return;}
   const retardCb=document.getElementById('f-retard');
   if(!retardCb?.checked){highlightCb(retardCb,'f-retard');return;}
+  // Validation date de récupération — le champ HTML 'required' ne suffit pas
+  // dans une SPA sans soumission native. Une date vide ou antérieure à la
+  // livraison doit être bloquée ici avant de créer un PaymentIntent Stripe.
+  const _recupVal=document.getElementById('f-date-recup')?.value;
+  const _livVal=document.getElementById('f-date')?.value;
+  if(!_recupVal||(_livVal&&_recupVal<=_livVal)){highlight(['f-date-recup']);return;}
   _submitting=true;
   const origLabel=btn?btn.innerHTML:'';
   if(btn&&!btn.disabled){
@@ -9316,7 +9325,7 @@ function calcProlongIncremental(origDays,addDays){
   // que d'afficher "Offert" alors que le backend facture bien 12 €.
   if(origDays<=0)return calcPrice(addDays);
   const delta=calcPrice(origDays+addDays)-calcPrice(origDays);
-  if(delta>0)return delta;
+  if(delta>=0)return delta; // 0 inclus : passer de 6→7j coûte 0 de delta mais reste correct
   return Math.round(calcPrice(origDays+addDays)/(origDays+addDays))*addDays;
 }
 

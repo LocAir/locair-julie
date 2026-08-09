@@ -523,7 +523,10 @@ const handler = async (req, res) => {
         // prolong-pay.js stocke la ref d'origine dans meta.ref_origine (pas meta.ref)
         const origRef = (meta.ref || meta.ref_origine || '').trim().toUpperCase();
         try {
-          let lookup = getSupabase().from('reservations').select('*').not('source', 'eq', 'site_prolongation');
+          // .not('source','eq','site_prolongation') exclut silencieusement les lignes
+          // où source IS NULL (PostgREST : NOT x = y → NULL quand x est NULL).
+          // On utilise .or() pour inclure explicitement les lignes sans source.
+          let lookup = getSupabase().from('reservations').select('*').or('source.is.null,source.neq.site_prolongation');
           if (confirmedResa.reservation_origine_id) {
             lookup = lookup.eq('id', confirmedResa.reservation_origine_id);
           } else if (origRef) {
