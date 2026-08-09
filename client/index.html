@@ -748,17 +748,11 @@ function renderProgress(progress){
       <div class="progress-header">
         <div class="progress-stage-lbl">${escHtml(progress.stageLabel||'Paiement en attente')}</div>
       </div>
-    </div>
-    ${progress.nextStep ? `<div class="next-step">${escHtml(progress.nextStep)}</div>` : ''}`;
+    </div>`;
   }
   const stage = Math.max(1, Math.min(7, progress.stage));
   const stageLabel = progress.stageLabel || STAGE_LABELS_FALLBACK[stage] || '';
-  // Pastilles façon suivi de course : une par étape, remplies pour les étapes
-  // passées, l'étape en cours pulse doucement pour sauter aux yeux.
   const segs = STAGES.map(s => `<div class="stepper-seg${s < stage ? ' done' : s === stage ? ' current' : ''}"></div>`).join('');
-  // Détail dépliable des 7 étapes (façon historique de suivi de colis) —
-  // toujours calculé côté client à partir des libellés officiels (mêmes
-  // valeurs que STAGE_LABELS côté serveur), aucune donnée technique exposée.
   const timelineRows = STAGES.map(s => {
     const state = s < stage ? 'done' : s === stage ? 'current' : 'upcoming';
     return `<div class="tl-row tl-${state}">
@@ -774,8 +768,7 @@ function renderProgress(progress){
       </div>
       <div class="stepper-track">${segs}</div>
       <div class="stepper-timeline hidden" id="stepper-timeline">${timelineRows}</div>
-    </div>
-    ${progress.nextStep ? `<div class="next-step">${escHtml(progress.nextStep)}</div>` : ''}`;
+    </div>`;
 }
 
 function toggleStepperDetail(){
@@ -1156,18 +1149,6 @@ function renderDashboard(d){
       ${docsHtml}
     </div>
 
-    <div class="sect-lbl">Mon climatiseur</div>
-    <div class="card">
-      <div class="card-head">
-        <div class="card-ico"${d.mon_climatiseur?.photo_url ? ' style="padding:0;overflow:hidden;background:var(--navy-bg2)"' : ''}>${climIco(d.mon_climatiseur?.photo_url, _ICO.thermometer)}</div>
-        <div>
-          <div class="card-lbl">Fiche technique</div>
-          ${d.mon_climatiseur ? `<div class="card-sublbl">${escHtml(d.mon_climatiseur.marque||'')} ${escHtml(d.mon_climatiseur.modele||'')}</div>` : ''}
-        </div>
-      </div>
-      ${climInfoHtml}
-    </div>
-
     <div class="sect-lbl">Assistance</div>
     <div class="card">${assistHtml}</div>
 
@@ -1364,7 +1345,7 @@ async function submitProlong(){
     if(cb) cb.textContent=`Payer ${(d.amountCents/100).toLocaleString('fr-FR')} €`;
     const stripe=_getStripe();
     if(!stripe) throw new Error('Module paiement indisponible. Désactivez votre bloqueur de pub.');
-    const app={theme:'night',variables:{colorPrimary:'#c5a96c',colorBackground:'#0d1d33',colorText:'#f0ece4',colorTextSecondary:'#a09880',borderRadius:'10px',fontFamily:'Inter,system-ui,sans-serif'}};
+    const app={theme:'stripe',variables:{colorPrimary:'#1a2b4a',colorBackground:'#ffffff',colorText:'#1a2b4a',colorDanger:'#dc2626',colorTextPlaceholder:'#aaaaaa',colorIcon:'#c5a96c',borderRadius:'10px',fontFamily:'Inter,system-ui,sans-serif'},rules:{'.Input':{border:'1.5px solid #e4e4e4',color:'#1a2b4a',padding:'12px 14px'},'.Input:focus':{border:'1.5px solid #1a2b4a',boxShadow:'0 0 0 3px rgba(26,43,74,.08)'},'.Label':{color:'#555555',fontWeight:'600',fontSize:'10.5px',letterSpacing:'.09em',textTransform:'uppercase'},'.Tab':{border:'1.5px solid #e4e4e4',color:'#888888'},'.Tab--selected':{border:'1.5px solid #1a2b4a',color:'#1a2b4a',boxShadow:'none'},'.Error':{color:'#dc2626'}}};
     _prolongStripeEl=stripe.elements({clientSecret:d.clientSecret,appearance:app,locale:'fr'});
     const pe=_prolongStripeEl.create('payment');
     document.getElementById('prolong-payment-element').innerHTML='';
@@ -1425,7 +1406,7 @@ async function startOffrePrivilegePayment(offreId){
     if(!stripe) throw new Error('Paiement indisponible — désactivez votre bloqueur de publicités et réessayez.');
     const d = await apiClient('/api/offre-privilege-pay', { offre_id: offreId });
     if(!d.clientSecret) throw new Error(d.error || 'Erreur');
-    const appearance = { theme:'night', variables:{ colorPrimary:'#c5a96c', colorBackground:'#0d1d33', colorText:'#f0ece4', colorTextSecondary:'#a09880', borderRadius:'10px', fontFamily:'Inter,system-ui,sans-serif' } };
+    const appearance = { theme:'stripe', variables:{ colorPrimary:'#1a2b4a', colorBackground:'#ffffff', colorText:'#1a2b4a', colorDanger:'#dc2626', colorTextPlaceholder:'#aaaaaa', colorIcon:'#c5a96c', borderRadius:'10px', fontFamily:'Inter,system-ui,sans-serif' }, rules:{ '.Input':{border:'1.5px solid #e4e4e4',color:'#1a2b4a',padding:'12px 14px'}, '.Input:focus':{border:'1.5px solid #1a2b4a',boxShadow:'0 0 0 3px rgba(26,43,74,.08)'}, '.Label':{color:'#555555',fontWeight:'600',fontSize:'10.5px',letterSpacing:'.09em',textTransform:'uppercase'}, '.Tab':{border:'1.5px solid #e4e4e4',color:'#888888'}, '.Tab--selected':{border:'1.5px solid #1a2b4a',color:'#1a2b4a',boxShadow:'none'}, '.Error':{color:'#dc2626'} } };
     _offreElements[offreId] = stripe.elements({ clientSecret: d.clientSecret, appearance, locale:'fr' });
     const payEl = _offreElements[offreId].create('payment', { layout:'tabs' });
     payEl.mount('#offre-privilege-stripe-element-'+offreId);
