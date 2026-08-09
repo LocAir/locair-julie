@@ -94,7 +94,9 @@ module.exports = async (req, res) => {
       }
       const available = Math.max(0, total - blocked);
       dates[d] = available;
-      if (available > 0 && !nextAvailable) nextAvailable = d;
+      // Exclure aujourd'hui : la réservation minimale est J+1, afficher aujourd'hui
+      // comme "prochaine dispo" orienterait l'utilisateur vers une date impossible.
+      if (available > 0 && !nextAvailable && d > today) nextAvailable = d;
     }
 
     return res.status(200).json({
