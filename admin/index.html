@@ -662,10 +662,13 @@ function setSelectedCityId(id){
   // ce moment) sont désormais celles de l'ancienne ville — sans ça, revenir
   // sur un onglet déjà visité afficherait un instant les chiffres de
   // l'ancienne ville avant leur remplacement silencieux (voir switchAdminTab
-  // / _TAB_LOADED). Seul l'onglet courant est rechargé tout de suite ;
-  // les autres repartent simplement d'un premier chargement à leur prochaine
-  // ouverture.
+  // / _TAB_LOADED). Le cache local par onglet (_tabCacheGet/Set) est déjà
+  // scindé par ville (voir _tabCacheKey), mais autant le vider aussi : pas
+  // besoin de garder en mémoire le contenu d'une ville qu'on vient de
+  // quitter. Seul l'onglet courant est rechargé tout de suite ; les autres
+  // repartent simplement d'un premier chargement à leur prochaine ouverture.
   _TAB_LOADED.clear();
+  _tabCacheClearAll();
   if(CURRENT_TAB) switchAdminTab(CURRENT_TAB);
 }
 async function loadCitySwitcher(){
@@ -692,7 +695,7 @@ async function loadCitySwitcher(){
     // La ville n'était pas encore connue au moment du premier chargement de
     // l'onglet (ce fetch est asynchrone, lancé en parallèle) — on rejoue le
     // chargement maintenant qu'elle l'est, seulement si elle a changé.
-    if(showAll && CURRENT_TAB){ _TAB_LOADED.clear(); switchAdminTab(CURRENT_TAB); }
+    if(showAll && CURRENT_TAB){ _TAB_LOADED.clear(); _tabCacheClearAll(); switchAdminTab(CURRENT_TAB); }
   }catch(e){}
 }
 
@@ -1451,24 +1454,31 @@ function missionMoreActionsHtml(m, d, compact){
 const PROBLEME_LABEL = {client_absent:'Client absent', acces_impossible:'Accès impossible', mauvaise_adresse:'Mauvaise adresse', materiel_endommage:'Matériel endommagé', probleme_technique:'Problème technique', refus_client:'Refus client', retard:'Retard important', autre:'Autre problème'};
 
 let CURRENT_TAB = 'accueil';
-// Onglets déjà ouverts au moins une fois cette session — permet de changer
-// d'onglet instantanément au 2e passage (voir switchAdminTab) : le contenu
-// précédent reste affiché tel quel (jamais effacé/remplacé par un
-// "Chargement…") pendant qu'une nouvelle version se charge en silence
-// derrière, et prend sa place dès qu'elle est prête. Un premier passage sur
-// un onglet reste normal (rien à montrer tant que rien n'est chargé).
-const _TAB_LOADED = new Set();
+// Onglets déjà ouverts cette session, avec la date du dernier chargement.
+// Deux niveaux de fluidité, combinés dans switchAdminTab ci-dessous :
+//  1. En dessous de _TAB_FRESH_MS depuis le dernier chargement : AUCUN appel
+//     réseau, l'écran garde tel quel ce qui y était déjà — un aller-retour
+//     rapide entre 2 onglets (ex. Réservations → Livraisons → retour sur
+//     Réservations quelques secondes après) devient sans le moindre temps de
+//     latence. Seuil aligné sur les 45s du polling des alertes (loadAlerts).
+//  2. Au-delà (ou 1er passage cette session), la donnée est encore rechargée,
+//     mais en silence dès qu'un contenu (même périmé) est déjà affiché — le
+//     contenu précédent reste visible pendant qu'une version à jour se
+//     charge derrière, jamais de "Chargement…" qui efface tout.
+// Retour "encore de la latence" d'Aly, 2026-08-09 (2 passes de correctif).
+const _TAB_FRESH_MS = 45000;
+const _TAB_LOADED = new Map();
 // Mémoire locale (localStorage) du dernier contenu affiché par onglet+ville
 // — pour que même le TOUT PREMIER clic sur un onglet, sur une page tout
-// juste rechargée, affiche quelque chose instantanément au lieu d'un écran
-// vide + roue qui tourne, pendant qu'une vraie version à jour se charge en
-// silence derrière (retour Aly, 2026-08-09 : "je veux que l'écran s'affiche
-// directement, sans rafraîchissement"). Les données peuvent être
-// légèrement périmées le temps du rafraîchissement silencieux (en général
-// une fraction de seconde) — jamais plus de 15 minutes, passé ce délai on
-// préfère un vrai chargement plutôt qu'un contenu trop vieux. Jamais
-// bloquant : une erreur d'écriture (quota localStorage plein, navigation
-// privée) ne doit jamais empêcher l'onglet de fonctionner normalement.
+// juste rechargée (donc absent de _TAB_LOADED), affiche quelque chose
+// instantanément au lieu d'un écran vide + roue qui tourne, pendant qu'une
+// vraie version à jour se charge en silence derrière. Les données peuvent
+// être légèrement périmées le temps du rafraîchissement silencieux (en
+// général une fraction de seconde) — jamais plus de 15 minutes, passé ce
+// délai on préfère un vrai chargement plutôt qu'un contenu trop vieux.
+// Jamais bloquant : une erreur d'écriture (quota localStorage plein,
+// navigation privée) ne doit jamais empêcher l'onglet de fonctionner
+// normalement.
 const _TAB_CACHE_MAX_AGE_MS = 15*60*1000;
 function _tabCacheKey(tab){ return 'a_tabcache_'+tab+'_'+(CITY_ID||'all'); }
 function _tabCacheGet(tab){
@@ -1539,23 +1549,33 @@ function switchAdminTab(tab){
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   const zone = document.getElementById('tab-'+tab);
-  const alreadyLoadedThisSession = _TAB_LOADED.has(tab);
-  // Rien encore chargé cette session (page tout juste ouverte/rechargée) ?
-  // Affiche tout de suite la dernière version connue de cet onglet (voir
-  // _tabCacheGet ci-dessus) au lieu d'un écran vide — le vrai chargement,
-  // lancé juste en dessous, la remplace dès qu'il est prêt.
-  let usedCache = false;
-  if(zone && !alreadyLoadedThisSession){
-    const cached = _tabCacheGet(tab);
-    if(cached){ zone.innerHTML = cached; usedCache = true; }
+  const lastLoad = _TAB_LOADED.get(tab);
+  const now = Date.now();
+  if(lastLoad == null || (now - lastLoad) > _TAB_FRESH_MS){
+    // Rien chargé cette session (page tout juste ouverte/rechargée) ? Affiche
+    // tout de suite la dernière version connue de cet onglet (voir
+    // _tabCacheGet ci-dessus) au lieu d'un écran vide — le vrai chargement,
+    // lancé juste en dessous, la remplace dès qu'il est prêt.
+    let usedCache = false;
+    if(zone && lastLoad == null){
+      const cached = _tabCacheGet(tab);
+      if(cached){ zone.innerHTML = cached; usedCache = true; }
+    }
+    // Jamais chargé, ou chargé il y a plus de _TAB_FRESH_MS : on relance —
+    // en silence (contenu déjà affiché conservé, qu'il vienne d'un
+    // chargement précédent ou du cache local ci-dessus) si ce n'est pas la
+    // toute 1re fois sans rien à montrer.
+    const loader = _TAB_LOADERS[tab];
+    if(loader){
+      Promise.resolve(loader(lastLoad != null || usedCache))
+        .then(() => { if(zone) _tabCacheSet(tab, zone.innerHTML); })
+        .catch(() => {});
+    }
+    _TAB_LOADED.set(tab, now);
   }
-  const loader = _TAB_LOADERS[tab];
-  if(loader){
-    Promise.resolve(loader(alreadyLoadedThisSession || usedCache))
-      .then(() => { if(zone) _tabCacheSet(tab, zone.innerHTML); })
-      .catch(() => {});
-  }
-  _TAB_LOADED.add(tab);
+  // Sinon (moins de _TAB_FRESH_MS depuis le dernier chargement) : rien à
+  // faire, l'écran affiche déjà une version assez récente — aucun appel
+  // réseau, changement d'onglet instantané.
   _dismissTabBadges(tab);
   toggleMobileMenu(false);
 }
