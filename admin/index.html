@@ -406,6 +406,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
           <div class="tabs-group-body">
             <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Livraisons<span class="tab-badge hidden" id="badge-livraisons"></span></button>
             <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
+            <button data-tab="pubs" onclick="switchAdminTab('pubs')">📣 Publicité</button>
           </div>
         </details>
         <details class="tabs-group" data-group="gerer">
@@ -439,6 +440,7 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
         <div id="tab-reservations" class="hidden"></div>
         <div id="tab-checklist" class="hidden"></div>
         <div id="tab-livraisons" class="hidden"></div>
+        <div id="tab-pubs" class="hidden"></div>
         <div id="tab-virements" class="hidden"></div>
         <div id="tab-transporteurs" class="hidden"></div>
         <div id="tab-partenaires" class="hidden"></div>
@@ -1046,7 +1048,7 @@ let CURRENT_TAB = 'accueil';
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
-  ['accueil','stock','reservations','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
+  ['accueil','stock','reservations','checklist','livraisons','pubs','virements','transporteurs','partenaires','incidents','clients','villes','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   if(tab==='accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
@@ -1054,6 +1056,7 @@ function switchAdminTab(tab){
   if(tab==='reservations') loadReservations();
   if(tab==='checklist') loadChecklistBox();
   if(tab==='livraisons') loadLivraisons();
+  if(tab==='pubs') loadGoogleAds(CURRENT_ADS_PERIODE);
   if(tab==='virements') loadVirementsTab();
   if(tab==='transporteurs') loadTransporteursTab();
   if(tab==='partenaires') loadPartenairesTab();
@@ -1216,6 +1219,7 @@ async function autoRefreshTick(){
 
 // ── ACCUEIL / CHIFFRES ────────────────────────────────────────────────────────
 let CURRENT_DASHBOARD_PERIODE = '7j';
+let CURRENT_ADS_PERIODE = '7j';
 async function loadDashboard(periode){
   CURRENT_DASHBOARD_PERIODE = periode;
   const zone = document.getElementById('tab-accueil');
@@ -1319,6 +1323,78 @@ function parVilleTableHtml(parVille){
           <div class="row-meta">${(v.ca_euros||0).toFixed(0)} € · ${v.nb_reservations||0} réservation${v.nb_reservations>1?'s':''} · ${v.unites_occupees}/${v.flotte_totale} climatiseurs</div>
           ${v.incidents_ouverts>0?`<div class="row-meta" style="color:var(--red);font-weight:700">🧯 ${v.incidents_ouverts} incident${v.incidents_ouverts>1?'s':''} ouvert${v.incidents_ouverts>1?'s':''}</div>`:''}
         </div>`).join('')}
+    </div>`;
+}
+
+// ── PUBLICITÉ — vraies statistiques Google Ads ────────────────────────────────
+// Lecture seule : on affiche ce que Google Ads mesure déjà lui-même (dépense,
+// clics, conversions et leur valeur — la conversion Google Ads envoie le
+// montant réellement facturé, voir _fireGadsConversion côté site public).
+// Pas de retraitement compliqué : le "retour sur pub" affiché ici est
+// exactement ce que dirait Google Ads (revenu généré ÷ dépense), pour que ça
+// corresponde toujours à ce que le propriétaire verrait dans son compte Ads.
+async function loadGoogleAds(periode){
+  CURRENT_ADS_PERIODE = periode = periode || CURRENT_ADS_PERIODE;
+  const zone = document.getElementById('tab-pubs');
+  zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-google-ads'), {method:'POST', headers:authHeaders(), body:JSON.stringify({periode})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    if(!d.configured){ zone.innerHTML = googleAdsSetupHtml(); return; }
+    if(d.error){
+      zone.innerHTML = `
+        <div class="periods">
+          <button class="${periode==='jour'?'on':''}" onclick="loadGoogleAds('jour')">Jour</button>
+          <button class="${periode==='7j'?'on':''}" onclick="loadGoogleAds('7j')">7 jours</button>
+          <button class="${periode==='30j'?'on':''}" onclick="loadGoogleAds('30j')">30 jours</button>
+          <button class="${periode==='mois'?'on':''}" onclick="loadGoogleAds('mois')">Ce mois</button>
+        </div>
+        <p class="empty">⚠️ ${escHtml(d.error)}</p>`;
+      return;
+    }
+    const roas = d.cost_euros>0 ? d.conversions_value_euros/d.cost_euros : null;
+    zone.innerHTML = `
+      <div class="periods">
+        <button class="${periode==='jour'?'on':''}" onclick="loadGoogleAds('jour')">Jour</button>
+        <button class="${periode==='7j'?'on':''}" onclick="loadGoogleAds('7j')">7 jours</button>
+        <button class="${periode==='30j'?'on':''}" onclick="loadGoogleAds('30j')">30 jours</button>
+        <button class="${periode==='mois'?'on':''}" onclick="loadGoogleAds('mois')">Ce mois</button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-tile"><div class="n">${(d.cost_euros||0).toFixed(0)} €</div><div class="l">Dépensé en pub</div></div>
+        <div class="stat-tile"><div class="n">${(d.conversions_value_euros||0).toFixed(0)} €</div><div class="l">Revenu généré</div></div>
+        <div class="stat-tile ${roas!=null&&roas<1?'warn':''}"><div class="n">${roas!=null?roas.toFixed(1)+'x':'—'}</div><div class="l">Retour sur pub (revenu ÷ dépense)</div></div>
+        <div class="stat-tile"><div class="n">${Math.round(d.conversions||0)}</div><div class="l">Réservations générées</div></div>
+        <div class="stat-tile"><div class="n">${d.clicks||0}</div><div class="l">Clics</div></div>
+        <div class="stat-tile"><div class="n">${d.impressions||0}</div><div class="l">Impressions</div></div>
+        <div class="stat-tile"><div class="n">${(d.ctr_pct||0).toFixed(1)}%</div><div class="l">Taux de clic</div></div>
+        <div class="stat-tile"><div class="n">${(d.cpc_euros||0).toFixed(2)} €</div><div class="l">Coût moyen par clic</div></div>
+        <div class="stat-tile"><div class="n">${d.cost_per_conversion_euros!=null?d.cost_per_conversion_euros.toFixed(0)+' €':'—'}</div><div class="l">Coût par réservation</div></div>
+      </div>
+      <div class="card">
+        <h2>Par campagne</h2>
+        ${(d.campaigns||[]).length ? d.campaigns.map(c => `
+          <div class="row-item">
+            <div class="row-top">
+              <span class="row-title">${escHtml(c.name)}</span>
+              <span class="chip ${c.status==='ENABLED'?'actif':'probleme'}">${c.status==='ENABLED'?'Active':'En pause'}</span>
+            </div>
+            <div class="row-meta">${c.cost_euros.toFixed(0)} € dépensés · ${c.clicks} clics · ${c.conversions} réservation${c.conversions>1?'s':''} · ${c.conversions_value_euros.toFixed(0)} € générés</div>
+          </div>`).join('') : '<p class="empty">Aucune donnée sur cette période.</p>'}
+      </div>
+      <p style="font-size:12px;color:var(--grey);margin-top:10px">Chiffres Google Ads, actualisés toutes les 10 minutes environ.</p>
+    `;
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+function googleAdsSetupHtml(){
+  return `
+    <div class="card">
+      <h2>📣 Publicité — pas encore connecté</h2>
+      <p style="margin-top:8px;line-height:1.6">Cet écran affichera les vraies statistiques du compte Google Ads (dépense, clics, réservations générées, retour sur investissement) dès qu'un accès technique aura été branché une seule fois.</p>
+      <p style="margin-top:8px;color:var(--grey);font-size:13px">La personne qui gère le site doit finir cette configuration (clés d'accès Google Ads côté serveur) — une fois faite, cet écran s'active tout seul, rien d'autre à faire ici.</p>
     </div>`;
 }
 
