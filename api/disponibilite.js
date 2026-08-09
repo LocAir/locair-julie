@@ -6,7 +6,7 @@
 // Cache HTTP public 120 s — rafraîchi au maximum toutes les 2 minutes côté client.
 const { getSupabase } = require('./_lib/supabase');
 const { getCity }     = require('./_lib/city');
-const { todayParis, addDays } = require('./_lib/dates');
+const { todayParis, addDays, dateInParis } = require('./_lib/dates');
 
 const HORIZON = 90; // jours
 
@@ -21,11 +21,20 @@ module.exports = async (req, res) => {
     const endDate  = addDays(today, HORIZON);
 
     // ── 1. Total appareils opérationnels ───────────────────────────────────
+    // 'loue' N'EST PAS exclu ici, volontairement : un appareil actuellement
+    // en location redevient disponible à une date connue (la récupération,
+    // gérée plus bas via les blocs date_debut/récupération) — l'exclure du
+    // total le ferait disparaître du calcul pour tout le calendrier des 90
+    // jours, y compris pour les dates APRÈS sa récupération (bug trouvé le
+    // 2026-08-09 : "j'ai des récupérations demain donc des appareils
+    // disponibles, et pourtant le calendrier affiche complet"). Seuls les
+    // statuts sans date de retour connue (panne, maintenance, nettoyage en
+    // attente, vendu) sont exclus du total.
     const { count: totalCount } = await supabase
       .from('appareils')
       .select('id', { count: 'exact', head: true })
       .eq('city_id', city.id)
-      .not('statut', 'in', '("panne","maintenance","loue","nettoyage","vendu")');
+      .not('statut', 'in', '("panne","maintenance","nettoyage","vendu")');
     const total = totalCount || 0;
 
     // ── 2. Réservations confirmées actives ou à venir ──────────────────────
@@ -42,21 +51,36 @@ module.exports = async (req, res) => {
     const resaIds = (reservations || []).map(r => r.id);
 
     // ── 3. Missions de récupération actives pour ces réservations ──────────
-    // "annule" et "refusee" exclus — comme dans available_units.
+    // Priorité à la vraie date de complétion (statut 'fait', date réelle
+    // fait_at) sur la date simplement prévue (date_prevue) — un climatiseur
+    // récupéré aujourd'hui doit être disponible dès demain, même si la
+    // récupération a eu lieu plus tôt ou plus tard que prévu au départ.
+    // Une tentative ratée ('probleme') n'est jamais retenue comme date
+    // fiable : le climatiseur n'est objectivement pas revenu ce jour-là,
+    // et une date_prevue déjà dépassée sans succès ne veut plus rien dire.
     let recupByResaId = {};
     if (resaIds.length > 0) {
       const { data: recups } = await supabase
         .from('livraisons')
-        .select('reservation_id, date_prevue')
+        .select('reservation_id, date_prevue, statut, fait_at')
         .in('reservation_id', resaIds)
         .eq('type', 'recuperation')
         .not('statut', 'in', '("annule","refusee")');
 
+      const faitByResa = {};
+      const prevueByResa = {};
       for (const m of (recups || [])) {
-        // Si plusieurs missions (prolongation annulée puis recréée), prendre la plus tardive
-        if (!recupByResaId[m.reservation_id] || m.date_prevue > recupByResaId[m.reservation_id]) {
-          recupByResaId[m.reservation_id] = m.date_prevue.slice(0, 10);
+        const resaId = m.reservation_id;
+        if (m.statut === 'fait' && m.fait_at) {
+          const d = dateInParis(m.fait_at);
+          if (!faitByResa[resaId] || d > faitByResa[resaId]) faitByResa[resaId] = d;
+        } else if (m.statut !== 'probleme') {
+          const d = m.date_prevue.slice(0, 10);
+          if (!prevueByResa[resaId] || d > prevueByResa[resaId]) prevueByResa[resaId] = d;
         }
+      }
+      for (const resaId of new Set([...Object.keys(faitByResa), ...Object.keys(prevueByResa)])) {
+        recupByResaId[resaId] = faitByResa[resaId] || prevueByResa[resaId];
       }
     }
 

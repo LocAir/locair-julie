@@ -751,10 +751,18 @@ alter table appareil_mouvements add column reservation_id bigint references rese
 -- Compte par quantité (pas par appareil précis) côté 'en_attente' car on ne
 -- veut pas réserver un numéro précis pour un panier qui peut être abandonné.
 -- available_units : calcule les appareils libres pour une période.
--- Prend en compte la date de récupération réelle (mission livraisons.date_prevue,
--- type 'recuperation') plutôt que la date_fin brute — l'appareil est occupé
--- jusqu'au jour de récupération inclus, libre à compter du lendemain (J+1).
--- Mise à jour 2026-08-07 : voir migration_disponibilite_calendrier.sql
+-- Le total de flotte n'exclut PAS les appareils actuellement en location
+-- (statut='loue') : leur fenêtre d'occupation réelle est déjà gérée par le
+-- calcul par date ci-dessous (via la date de récupération), les exclure du
+-- total les ferait disparaître du calcul pour tout le calendrier, y compris
+-- après leur récupération — seuls les statuts sans date de retour connue
+-- (panne, maintenance, nettoyage en attente, vendu) restent exclus.
+-- Prend en compte la vraie date de récupération (fait_at si la mission est
+-- 'fait', sinon date_prevue si elle est encore valide) plutôt que la
+-- date_fin brute — l'appareil est occupé jusqu'au jour de récupération
+-- inclus, libre à compter du lendemain (J+1). Une tentative ratée
+-- ('probleme') n'est jamais retenue comme date fiable.
+-- Mise à jour 2026-08-09 : voir migration_dispo_loue_et_recuperation_reelle.sql
 create or replace function available_units(p_city_id bigint, p_date_debut date, p_date_fin date)
 returns integer
 language sql
@@ -762,7 +770,7 @@ stable
 as $$
   select
     (select count(*)::int from appareils a
-       where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue', 'nettoyage', 'vendu'))
+       where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'nettoyage', 'vendu'))
     - coalesce((
         select sum(r.quantite) from reservations r
         where r.city_id = p_city_id and r.statut = 'en_attente'
@@ -777,20 +785,23 @@ as $$
           and r.date_debut < p_date_fin
           and (
             coalesce(
+              (select max(l.fait_at at time zone 'Europe/Paris')::date
+               from livraisons l
+               where l.reservation_id = ra.reservation_id
+                 and l.type = 'recuperation' and l.statut = 'fait'),
               (select max(l.date_prevue)::date
                from livraisons l
                where l.reservation_id = ra.reservation_id
                  and l.type = 'recuperation'
-                 and l.statut not in ('annule', 'refusee')
-              ),
+                 and l.statut not in ('annule', 'refusee', 'probleme')),
               (r.date_fin + interval '1 day')::date
             ) + interval '1 day'
           )::date > p_date_debut
       ), 0);
 $$;
 
--- assign_appareils : même logique J+1 que available_units pour l'assignation physique.
--- Mise à jour 2026-08-07 : voir migration_disponibilite_calendrier.sql
+-- assign_appareils : même logique que available_units pour l'assignation physique.
+-- Mise à jour 2026-08-09 : voir migration_dispo_loue_et_recuperation_reelle.sql
 create or replace function assign_appareils(p_reservation_id bigint, p_city_id bigint, p_quantite integer, p_date_debut date, p_date_fin date)
 returns setof appareils
 language plpgsql
@@ -800,7 +811,7 @@ declare
 begin
   select array_agg(id) into v_ids from (
     select a.id from appareils a
-    where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'loue', 'nettoyage', 'vendu')
+    where a.city_id = p_city_id and a.statut not in ('panne', 'maintenance', 'nettoyage', 'vendu')
       and not exists (
         select 1 from reservation_appareils ra
         join reservations r on r.id = ra.reservation_id
@@ -808,12 +819,15 @@ begin
           and r.date_debut < p_date_fin
           and (
             coalesce(
+              (select max(l.fait_at at time zone 'Europe/Paris')::date
+               from livraisons l
+               where l.reservation_id = ra.reservation_id
+                 and l.type = 'recuperation' and l.statut = 'fait'),
               (select max(l.date_prevue)::date
                from livraisons l
                where l.reservation_id = ra.reservation_id
                  and l.type = 'recuperation'
-                 and l.statut not in ('annule', 'refusee')
-              ),
+                 and l.statut not in ('annule', 'refusee', 'probleme')),
               (r.date_fin + interval '1 day')::date
             ) + interval '1 day'
           )::date > p_date_debut

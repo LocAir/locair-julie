@@ -8,10 +8,15 @@ function addDays(dateStr, days) {
   return d.toISOString().slice(0, 10);
 }
 
-function todayParis() {
-  // Intl.DateTimeFormat avec timeZone 'Europe/Paris' gère automatiquement
-  // l'heure d'été/hiver — pas besoin de calculer l'offset à la main.
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+// Intl.DateTimeFormat avec timeZone 'Europe/Paris' gère automatiquement
+// l'heure d'été/hiver — pas besoin de calculer l'offset à la main.
+function dateInParis(d) {
+  const date = d instanceof Date ? d : new Date(d);
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
 }
 
-module.exports = { isValidDate, addDays, todayParis };
+function todayParis() {
+  return dateInParis(new Date());
+}
+
+module.exports = { isValidDate, addDays, todayParis, dateInParis };
