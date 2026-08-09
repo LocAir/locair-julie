@@ -81,7 +81,7 @@ module.exports = async (req, res) => {
 
   let q = supabase
     .from('reservations')
-    .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
+    .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, lang, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
     .ilike('email', normalizedEmail)
     .not('source', 'eq', 'site_prolongation')
     .eq('statut', 'confirmee')
@@ -91,7 +91,7 @@ module.exports = async (req, res) => {
   if (ref && ref.trim()) {
     q = supabase
       .from('reservations')
-      .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
+      .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, lang, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
       .ilike('email', normalizedEmail)
       .eq('ref', ref.trim().toUpperCase())
       .not('source', 'eq', 'site_prolongation')
@@ -125,6 +125,14 @@ module.exports = async (req, res) => {
   if (new_date_fin <= orig.date_fin) {
     return res.status(400).json({ error: `La nouvelle date doit être postérieure au ${orig.date_fin}.` });
   }
+
+  // Langue : priorité à la préférence explicite de la session en cours (espace
+  // client multilingue), sinon héritage de la langue de la réservation d'origine
+  // — sans ça, toutes les communications de prolongation depuis /prolongation.html
+  // et l'espace client partaient toujours en français, même pour les clients
+  // anglais/chinois/russes (req.body.lang absent de prolongation.html, et `lang`
+  // absent du SELECT et de l'INSERT).
+  const lang = ['fr','en','zh','ru'].includes(req.body?.lang) ? req.body.lang : (orig.lang || 'fr');
 
   const origDays  = diffDays(orig.date_debut, orig.date_fin);
   const totalDays = diffDays(orig.date_debut, new_date_fin);
@@ -191,7 +199,7 @@ module.exports = async (req, res) => {
         date_fin_initiale: orig.date_fin,
         date_recuperation: (()=>{const r=addDays(new_date_fin,1);const[ry,rm,rd]=r.split('-');return rd+'/'+rm+'/'+ry;})(),
         customer_id:       customerId,
-        lang:              ['fr','en','zh','ru'].includes(req.body.lang) ? req.body.lang : 'fr',
+        lang:              lang,
       },
     }, { idempotencyKey: `prolong-pay-${orig.id}-${new_date_fin}` });
     intentId = intent.id;
@@ -237,6 +245,10 @@ module.exports = async (req, res) => {
       // Lien fiable vers la réservation prolongée — voir isSupersededReservation
       // (_lib/emailSchedule.js) et migration_reservation_origine.sql.
       reservation_origine_id:   orig.id,
+      // Langue héritée de l'origine (ou de la session en cours si fournie) —
+      // nécessaire pour que sendProlongationConfirmation (webhook.js) et les
+      // futurs SMS automatisés (cron) utilisent la bonne langue.
+      lang:                     lang,
       // Commission partenaire : héritée du taux de la réservation d'origine.
       partenaire_id:            orig.partenaire_id || null,
       partenaire_commission_cents: partenaireCommissionCents,
