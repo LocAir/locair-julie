@@ -3,8 +3,11 @@ const { getSupabase } = require('./_lib/supabase');
 
 // Lien de consultation envoyé par email au client — jamais le chemin de
 // stockage brut, toujours ce token opaque (voir _lib/documents.js). Marque le
-// document "consulté" au premier accès, puis redirige vers une URL signée
-// Supabase Storage de courte durée (5 min, comme les autres accès du dépôt).
+// document "consulté" au premier accès, puis PROXY le contenu directement
+// (plus de redirection 302 vers Supabase : les iframes bloquent les réponses
+// cross-origin avec X-Frame-Options, ce qui donnait une icône "fichier cassé").
+// ?dl=1 → Content-Disposition: attachment (téléchargement avec bon nom de fichier)
+// sans ?dl  → Content-Disposition: inline  (affichage dans l'iframe ou le navigateur)
 module.exports = async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -35,35 +38,29 @@ module.exports = async (req, res) => {
       await supabase.from('documents').update({ statut: 'consulte', consulte_at: new Date().toISOString() }).eq('id', doc.id).then(() => {}, () => {});
     }
 
-    // Mode téléchargement (?dl=1) — proxy le PDF avec Content-Disposition attachment
-    // pour déclencher le téléchargement natif du navigateur (la redirection 302
-    // vers Supabase ne permet pas de forcer le nom de fichier côté serveur).
-    if (req.query.dl === '1') {
-      const fname = doc.numero
-        ? `${doc.numero}.pdf`
-        : (doc.type === 'contrat' ? 'contrat-location.pdf' : 'facture.pdf');
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
-      res.setHeader('Cache-Control', 'no-store');
-      console.log('[dv] 4-DOWNLOAD', fname);
-      await new Promise((resolve) => {
-        https.get(signed.signedUrl, (upstream) => {
-          upstream.pipe(res);
-          upstream.on('end', resolve);
-          upstream.on('error', (e) => { console.error('[dv] DL-PIPE', e.message); resolve(); });
-        }).on('error', (e) => {
-          console.error('[dv] DL-GET', e.message);
-          if (!res.headersSent) res.status(500).end('Erreur de téléchargement.');
-          resolve();
-        });
+    // Proxy le PDF depuis notre serveur dans les deux modes :
+    // - ?dl=1  → attachment (déclenche le téléchargement)
+    // - défaut → inline (affiche dans l'iframe, sans X-Frame-Options Supabase)
+    const fname = doc.numero
+      ? `${doc.numero}.pdf`
+      : (doc.type === 'contrat' ? 'contrat-location.pdf' : 'facture.pdf');
+    const disposition = req.query.dl === '1' ? 'attachment' : 'inline';
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `${disposition}; filename="${fname}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN'); // autorise l'iframe sur notre domaine
+    console.log('[dv] 4-PROXY', disposition, fname);
+    await new Promise((resolve) => {
+      https.get(signed.signedUrl, (upstream) => {
+        upstream.pipe(res);
+        upstream.on('end', resolve);
+        upstream.on('error', (e) => { console.error('[dv] PIPE-ERR', e.message); resolve(); });
+      }).on('error', (e) => {
+        console.error('[dv] GET-ERR', e.message);
+        if (!res.headersSent) res.status(500).end('Erreur de chargement du document.');
+        resolve();
       });
-      return;
-    }
-
-    console.log('[dv] 4-REDIRECT');
-    res.setHeader('Location', signed.signedUrl);
-    res.statusCode = 302;
-    return res.end();
+    });
   } catch (e) {
     console.error('[dv] CATCH', e.message, e.stack?.split('\n')[1]?.trim() ?? '');
     return res.status(500).send('Document temporairement indisponible. Contactez-nous : <a href="https://wa.me/33663798756">WhatsApp</a> ou <a href="mailto:contact@locair.fr">contact@locair.fr</a>');
