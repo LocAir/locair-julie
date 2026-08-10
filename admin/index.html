@@ -2347,6 +2347,8 @@ let SCAN_MODE = 'recherche';
 let SCAN_STATUT_CIBLE = null;
 let SCAN_LOG = [];
 let SCAN_LAST_RESULT = null;
+let SCAN_MOUVEMENT_SENS = null;
+let SCAN_MOUVEMENT_LOG = [];
 let SCAN_INVENTAIRE_ACTIVE = false;
 let SCAN_INVENTAIRE_SET = new Set();
 let SCAN_INVENTAIRE_RESULT = null;
@@ -2354,6 +2356,7 @@ let SCAN_INVENTAIRE_RESULT = null;
 function openScannerModal(){
   closeModal();
   SCAN_MODE = 'recherche'; SCAN_STATUT_CIBLE = null; SCAN_LOG = []; SCAN_LAST_RESULT = null;
+  SCAN_MOUVEMENT_SENS = null; SCAN_MOUVEMENT_LOG = [];
   SCAN_INVENTAIRE_ACTIVE = false; SCAN_INVENTAIRE_SET = new Set(); SCAN_INVENTAIRE_RESULT = null;
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -2396,12 +2399,13 @@ function renderScannerModal(){
   if(!tabs) return; // modale déjà fermée
   const modes = [
     {key:'recherche', label:'🔍 Rechercher'},
+    {key:'mouvement', label:'📦 Entrée/Sortie'},
     {key:'statut', label:'🔄 Statut'},
     {key:'inventaire', label:'📋 Inventaire'},
   ];
   tabs.innerHTML = modes.map(m => `<button class="${SCAN_MODE===m.key?'on':''}" onclick="setScanMode('${m.key}')">${m.label}</button>`).join('');
   const body = document.getElementById('scan-body');
-  body.innerHTML = SCAN_MODE==='recherche' ? scanRechercheHtml() : SCAN_MODE==='statut' ? scanStatutHtml() : scanInventaireHtml();
+  body.innerHTML = SCAN_MODE==='recherche' ? scanRechercheHtml() : SCAN_MODE==='mouvement' ? scanMouvementHtml() : SCAN_MODE==='statut' ? scanStatutHtml() : scanInventaireHtml();
 }
 function setScanMode(mode){
   SCAN_MODE = mode;
@@ -2429,6 +2433,17 @@ async function processScan(raw){
       SCAN_LAST_RESULT = r.ok ? d : { error: d.error || 'Erreur' };
     }catch(e){ SCAN_LAST_RESULT = { error: e.message }; }
     renderScannerModal();
+  }else if(SCAN_MODE === 'mouvement'){
+    if(!SCAN_MOUVEMENT_SENS){ showToast("Choisis d'abord Sortie ou Entrée ci-dessus", 'error'); }
+    else{
+      try{
+        const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'scan_mouvement', numero, sens:SCAN_MOUVEMENT_SENS})});
+        const d = await r.json();
+        if(!r.ok) SCAN_MOUVEMENT_LOG.unshift({ok:false, numero, message:d.error || 'Erreur'});
+        else SCAN_MOUVEMENT_LOG.unshift({ok:true, numero:d.numero, sens:SCAN_MOUVEMENT_SENS});
+      }catch(e){ SCAN_MOUVEMENT_LOG.unshift({ok:false, numero, message:e.message}); }
+      renderScannerModal();
+    }
   }else if(SCAN_MODE === 'statut'){
     if(!SCAN_STATUT_CIBLE){ showToast("Choisis d'abord un statut ci-dessus", 'error'); }
     else{
@@ -2463,6 +2478,29 @@ function scanRechercheHtml(){
         <button class="btn btn-blue" onclick="closeScannerModal();voirFicheAppareil(${a.id}, ${a.numero})">Voir la fiche complète</button>
       </div>
     </div>`;
+}
+// "Entrée/Sortie" — distinct de "Statut" ci-dessous : ici on ne bouge que
+// l'EMPLACEMENT physique de l'appareil (dépôt <-> véhicule), jamais son
+// statut (un appareil chargé dans une camionnette pour la tournée du jour
+// reste "disponible" tant qu'il n'est pas affecté à une réservation précise
+// — voir scan_mouvement dans api/admin-stock.js).
+function scanMouvementHtml(){
+  const sortieBtn = `<button class="btn ${SCAN_MOUVEMENT_SENS==='sortie'?'btn-blue':'btn-grey'}" onclick="setScanMouvementSens('sortie')" style="margin:0 6px 6px 0">📤 Sortie du dépôt</button>`;
+  const entreeBtn = `<button class="btn ${SCAN_MOUVEMENT_SENS==='entree'?'btn-blue':'btn-grey'}" onclick="setScanMouvementSens('entree')" style="margin:0 6px 6px 0">📥 Retour au dépôt</button>`;
+  const logHtml = SCAN_MOUVEMENT_LOG.length ? SCAN_MOUVEMENT_LOG.slice(0,10).map(l => l.ok
+    ? `<div class="row-meta">✅ n°${l.numero} : ${l.sens==='sortie'?'sorti du dépôt (véhicule)':'de retour au dépôt'}</div>`
+    : `<div class="row-meta" style="color:var(--red)">⚠️ n°${l.numero} — ${escHtml(l.message)}</div>`
+  ).join('') : `<p class="empty" style="margin-top:10px">Aucun scan pour l'instant.</p>`;
+  return `
+    <p class="sub" style="margin-bottom:8px">1. L'appareil quitte le dépôt, ou y revient ?</p>
+    <div>${sortieBtn}${entreeBtn}</div>
+    <p class="sub" style="margin:14px 0 4px">2. ${SCAN_MOUVEMENT_SENS ? 'Scanne chaque appareil, un par un — son emplacement est mis à jour immédiatement, son statut ne change pas.' : 'Choisis d\'abord un sens ci-dessus.'}</p>
+    <div style="margin-top:10px">${logHtml}</div>`;
+}
+function setScanMouvementSens(sens){
+  SCAN_MOUVEMENT_SENS = sens;
+  renderScannerModal();
+  document.getElementById('scan-input')?.focus();
 }
 function scanStatutHtml(){
   const chips = SCAN_STATUT_OPTIONS.map(o =>

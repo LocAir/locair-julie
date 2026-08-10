@@ -154,9 +154,10 @@ module.exports = async (req, res) => {
     // suivi d'Entrée dans un champ de saisie côté admin/index.html, sans
     // intégration matérielle particulière à prévoir ici. Seule différence
     // avec 'detail'/'update' ci-dessus : l'appareil est retrouvé par son
-    // numéro (imprimé sur l'étiquette collée dessus, voir 'scan_label_url'),
-    // pas par son id interne. 3 usages (demande d'Aly, 2026-08-10) :
-    // recherche instantanée, changement de statut en série, inventaire.
+    // numéro (imprimé sur l'étiquette collée dessus), pas par son id interne.
+    // 4 usages (demande d'Aly, 2026-08-10, en 2 temps) : recherche
+    // instantanée, entrée/sortie du dépôt, changement de statut en série,
+    // inventaire.
     if (action === 'scan_lookup') {
       const numero = parseInt(body.numero);
       if (!numero) return res.status(400).json({ error: 'Numéro manquant' });
@@ -167,6 +168,37 @@ module.exports = async (req, res) => {
         .from('appareil_mouvements').select('type_evenement, created_at')
         .eq('appareil_id', appareil.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
       return res.status(200).json({ appareil, dernier_mouvement: dernierMouvement || null });
+    }
+
+    // Entrée/sortie du dépôt physique, un scan = un mouvement — précision
+    // demandée par Aly après coup ("c'est à dire scanner les entrées/
+    // sorties") : distinct de 'scan_set_statut' ci-dessous, qui change l'ÉTAT
+    // d'un appareil (disponible/panne/...). Ici on ne bouge QUE
+    // l'emplacement physique, jamais le statut (recordMouvement avec
+    // nouveauStatut omis = déplacement pur, voir _lib/stockMouvements.js) —
+    // un appareil qui part au dépôt dans une camionnette pour la tournée du
+    // jour reste "disponible" tant qu'il n'est pas affecté à une réservation
+    // précise. Réutilise le même vocabulaire que le départ/retour automatique
+    // déjà posé par l'appli transporteur (depart_entrepot/retour_stockage,
+    // voir transporteur-action.js) — jamais un type d'événement à part.
+    if (action === 'scan_mouvement') {
+      const numero = parseInt(body.numero);
+      const sens = body.sens;
+      if (!numero) return res.status(400).json({ error: 'Numéro manquant' });
+      if (!['sortie', 'entree'].includes(sens)) return res.status(400).json({ error: 'Sens invalide (sortie ou entree attendu)' });
+      const { data: appareil } = await supabase
+        .from('appareils').select('id, numero, localisation').eq('city_id', city.id).eq('numero', numero).maybeSingle();
+      if (!appareil) return res.status(404).json({ error: `Aucun appareil n°${numero} dans cette ville` });
+      const ancienneLocalisation = appareil.localisation;
+      const nouvelleLocalisation = sens === 'sortie' ? 'vehicule_transporteur' : 'stock_principal';
+      await recordMouvement(supabase, {
+        appareilId: appareil.id,
+        typeEvenement: sens === 'sortie' ? 'depart_entrepot' : 'retour_stockage',
+        nouvelleLocalisation,
+        utilisateur: 'admin',
+        commentaire: 'Mouvement dépôt via scan (pistolet)',
+      });
+      return res.status(200).json({ ok: true, numero: appareil.numero, ancienne_localisation: ancienneLocalisation, nouvelle_localisation: nouvelleLocalisation });
     }
 
     // Changement de statut en série, un scan = un changement — restreint aux
