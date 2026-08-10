@@ -339,7 +339,20 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .more-actions.city-quick summary{width:auto;height:auto;padding:7px 13px;border-radius:100px;gap:5px;font-size:12.5px;font-weight:700;color:var(--grey)}
 .more-actions.city-quick[open] summary,.more-actions.city-quick summary:hover{color:var(--black)}
 .more-actions.city-quick .more-actions-menu{min-width:225px}
+/* Une ligne par ville dans le menu : le nom (change la vue affichée) +
+   un petit bouton séparé pour bloquer/débloquer les réservations de CETTE
+   ville en 1 clic, sans devoir d'abord passer par l'onglet Villes ni
+   changer la vue affichée pour la ville qu'on bloque. */
+.city-quick-row{display:flex;align-items:center;gap:2px}
+/* Sélecteurs alignés sur .more-actions-menu button (specificité 0,1,1) pour
+   pouvoir la surcharger de façon fiable — un simple .city-quick-block{...}
+   perdait face à elle (largeur/affichage du bouton "⋯" par défaut), le
+   bouton bloquer prenait alors toute la ligne au lieu du nom de la ville. */
 .more-actions-menu button.city-quick-item{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.more-actions-menu .city-quick-row button.city-quick-item{flex:1;width:auto;min-width:0}
+.more-actions-menu button.city-quick-block{flex:0 0 30px;width:30px;height:30px;display:flex;align-items:center;justify-content:center;padding:0;border-radius:8px;background:none;font-size:14px;opacity:.55;transition:opacity .15s ease,background-color .15s ease}
+.more-actions-menu button.city-quick-block:hover{opacity:1;background:var(--bg)}
+.more-actions-menu button.city-quick-block.is-blocked{opacity:1;background:var(--red-bg)}
 .more-actions-menu button.city-quick-item.current{color:var(--blue)}
 .more-actions-menu .chk{color:var(--blue);font-weight:800;flex-shrink:0;visibility:hidden}
 .more-actions-menu button.city-quick-item.current .chk{visibility:visible}
@@ -726,13 +739,46 @@ function renderCityQuickMenu(){
   const menu = document.getElementById('a-city-quick-menu');
   const lbl  = document.getElementById('a-city-quick-label');
   if(!menu || !lbl) return;
-  const items = [{ id: 'all', name: 'Toutes les villes' }, ...CITIES_CACHE.map(c => ({ id: String(c.id), name: c.name }))];
-  menu.innerHTML = items.map(it => `
-    <button class="city-quick-item${String(CITY_ID)===it.id?' current':''}" onclick="setSelectedCityId('${it.id}')">
-      <span>${it.id==='all'?'🌍 ':''}${escHtml(it.name)}</span><span class="chk">✓</span>
-    </button>`).join('');
-  const current = items.find(it => it.id === String(CITY_ID));
-  lbl.textContent = current ? (current.id==='all' ? 'Toutes' : current.name) : 'Ville';
+  // Chaque ville a son propre bouton "🚫 Bloquer le stock" à côté du nom
+  // (pas seulement la ville actuellement affichée) — bloquer Cannes en
+  // regardant le tableau de bord de Nice doit être possible sans changer
+  // de vue. Force sold_out_mode='manuel' en même temps que sold_out dans
+  // le même appel (voir quickToggleSoldOut) : un vrai geste en 1 clic,
+  // jamais besoin de d'abord passer la ville en mode manuel séparément.
+  menu.innerHTML = `
+    <button class="city-quick-item${CITY_ID==='all'?' current':''}" onclick="setSelectedCityId('all')">
+      <span>🌍 Toutes les villes</span><span class="chk">✓</span>
+    </button>` + CITIES_CACHE.map(c => {
+      const id = String(c.id);
+      const blocked = !!c.sold_out;
+      return `
+    <div class="city-quick-row">
+      <button class="city-quick-item${String(CITY_ID)===id?' current':''}" onclick="setSelectedCityId('${id}')">
+        <span>${escHtml(c.name)}</span><span class="chk">✓</span>
+      </button>
+      <button class="city-quick-block${blocked?' is-blocked':''}" onclick="quickToggleSoldOut(${c.id}, ${!blocked})" title="${blocked?'Rouvrir aux réservations':'Bloquer le stock — passer en complet'}">${blocked?'🔓':'🚫'}</button>
+    </div>`;
+    }).join('');
+  lbl.textContent = CITY_ID==='all' ? 'Toutes' : (CITIES_CACHE.find(c => String(c.id)===String(CITY_ID))?.name || 'Ville');
+}
+// Bloque/débloque le stock d'une ville en un clic, depuis le menu "🌍" de
+// l'en-tête — sans passer par l'onglet Villes. Force le mode manuel en
+// même temps que sold_out (voir garde-fou côté serveur, admin-cities.js) :
+// sinon le prochain mouvement de stock écraserait silencieusement ce choix.
+async function quickToggleSoldOut(id, sold_out){
+  try{
+    const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, sold_out_mode:'manuel', sold_out, city_id:'all'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const c = CITIES_CACHE.find(c => c.id === id);
+    if(c){ c.sold_out = sold_out; c.sold_out_mode = 'manuel'; }
+    renderCityQuickMenu();
+    showToast(sold_out ? '🔒 Ville passée en mode complet' : '🔓 Ville rouverte aux réservations', sold_out ? 'error' : 'success');
+    // L'onglet Villes (s'il a déjà été ouvert) affiche aussi ce statut —
+    // sans ça il resterait périmé jusqu'au prochain rechargement complet.
+    _tabCacheClearAll();
+    if(CURRENT_TAB === 'villes') loadVilles();
+  }catch(e){ showToast(e.message, 'error'); }
 }
 async function loadCitySwitcher(){
   try{
