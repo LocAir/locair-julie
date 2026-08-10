@@ -408,13 +408,13 @@ async function sendRelanceProlongationSms(supabase, resa, { force = false } = {}
   const ref = resa.ref || '';
   let content;
   if (lang === 'en') {
-    content = `Hello ${prenom},\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n- extend your rental, or\n- choose your collection time slot\n\nYour order number (to log in, starts with LOC-): ${ref}\n\nhttps://www.locair.fr/client\n\nHave a great day.\nAly from Loc'Air`;
+    content = `Hello ${prenom},\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n- extend your rental, or\n- choose your collection time slot\n\nYour order number: ${ref}\n\nhttps://www.locair.fr/client\n\nHave a great day.\nAly from Loc'Air`;
   } else if (lang === 'zh') {
-    content = `您好 ${prenom}，\n\n您的Loc'Air租赁即将结束。在您的客户空间，只需几步即可：\n- 续租，或\n- 选择取回时间段\n\n您的订单编号（登录时需要，以LOC-开头）：${ref}\n\nhttps://www.locair.fr/client\n\n祝您愉快。\nLoc'Air的Aly`;
+    content = `您好 ${prenom}，\n\n您的Loc'Air租赁即将结束。在您的客户空间，只需几步即可：\n- 续租，或\n- 选择取回时间段\n\n您的订单编号：${ref}\n\nhttps://www.locair.fr/client\n\n祝您愉快。\nLoc'Air的Aly`;
   } else if (lang === 'ru') {
-    content = `Здравствуйте, ${prenom}!\n\nСрок аренды Loc'Air скоро истекает. В личном кабинете в несколько кликов вы можете:\n- продлить аренду, или\n- выбрать время возврата\n\nВаш номер заказа (для входа, начинается с LOC-): ${ref}\n\nhttps://www.locair.fr/client\n\nХорошего дня!\nAly, Loc'Air`;
+    content = `Здравствуйте, ${prenom}!\n\nСрок аренды Loc'Air скоро истекает. В личном кабинете в несколько кликов вы можете:\n- продлить аренду, или\n- выбрать время возврата\n\nВаш номер заказа: ${ref}\n\nhttps://www.locair.fr/client\n\nХорошего дня!\nAly, Loc'Air`;
   } else {
-    content = `Bonjour ${prenom},\n\nVotre location Loc'Air touche à sa fin. Depuis votre espace client, en quelques clics vous pouvez :\n- prolonger la location, ou\n- choisir votre créneau de récupération\n\nVotre numéro de commande (pour vous connecter, commence par LOC-) : ${ref}\n\nhttps://www.locair.fr/client\n\nBonne journée.\nAly de Loc'Air`;
+    content = `Bonjour ${prenom},\n\nVotre location Loc'Air touche à sa fin. Depuis votre espace client, en quelques clics vous pouvez :\n- prolonger la location, ou\n- choisir votre créneau de récupération\n\nVotre numéro de commande : ${ref}\n\nhttps://www.locair.fr/client\n\nBonne journée.\nAly de Loc'Air`;
   }
 
   const result = await sendBrevoSms({ to: resa.tel, content });
