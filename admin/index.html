@@ -145,11 +145,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   .tabs-group{display:block}
 }
 
-/* Sélecteur de ville/zone — visible seulement dès 2 villes actives (voir
-   loadCitySwitcher), sinon inutile pour une exploitation mono-ville. */
-.city-switcher{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--white);border:1px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh-xs)}
-.city-switcher label{margin:0;flex-shrink:0}
-.city-switcher select{width:auto;flex:1;padding:8px 12px;margin:0}
 .a-search{position:relative;margin-bottom:16px}
 .a-search input{width:100%;padding:12px 16px;border:1.5px solid var(--rule);border-radius:var(--r);font-size:14.5px;background:var(--white)}
 .a-search-results{position:absolute;top:100%;left:0;right:0;margin-top:4px;background:var(--white);border:1.5px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh-lg);max-height:60vh;overflow-y:auto;z-index:60}
@@ -334,6 +329,21 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .more-actions-menu button.danger,.more-actions-menu a.danger{color:var(--red)}
 .more-actions.compact summary{width:32px;height:32px;font-size:15px}
 
+/* Raccourci ville/zone dans l'en-tête (remplace l'ancienne barre
+   "🏙️ Ville / zone" toujours affichée en pleine largeur, cachée tant qu'il
+   n'y avait qu'une seule ville active) — même mécanique de menu déroulant
+   que .more-actions (ouverture/fermeture au clic extérieur déjà gérées par
+   le listener global, voir plus bas dans le fichier), juste un habillage en
+   pastille avec le nom de la ville courante au lieu d'un simple symbole,
+   pour rester lisible d'un coup d'œil sans avoir à l'ouvrir. */
+.more-actions.city-quick summary{width:auto;height:auto;padding:7px 13px;border-radius:100px;gap:5px;font-size:12.5px;font-weight:700;color:var(--grey)}
+.more-actions.city-quick[open] summary,.more-actions.city-quick summary:hover{color:var(--black)}
+.more-actions.city-quick .more-actions-menu{min-width:225px}
+.more-actions-menu button.city-quick-item{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.more-actions-menu button.city-quick-item.current{color:var(--blue)}
+.more-actions-menu .chk{color:var(--blue);font-weight:800;flex-shrink:0;visibility:hidden}
+.more-actions-menu button.city-quick-item.current .chk{visibility:visible}
+
 /* ── Composant tableau (grand écran) ─────────────────────────────────────
    Sous 1000px : on garde les cartes (row-grid), déjà optimisées mobile/
    tablette, inchangées. Au-dessus, un vrai <table> scannable remplace la
@@ -516,7 +526,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 </head>
 <body>
 <div class="wrap">
-  <div class="logo"><span>Loc<em>'Air</em> · Admin</span><span style="display:flex;align-items:baseline;gap:14px"><button class="logout-link hidden" id="a-refresh-btn" onclick="location.reload()" title="Recharger la page">🔄 Actualiser</button><button class="logout-link hidden" id="a-logout-btn" onclick="adminLogout()">🚪 Déconnexion</button></span></div>
+  <div class="logo"><span>Loc<em>'Air</em> · Admin</span><span style="display:flex;align-items:center;gap:14px">
+    <details class="more-actions city-quick hidden" id="a-city-quick">
+      <summary title="Changer de ville / zone">🌍 <span id="a-city-quick-label">Ville</span></summary>
+      <div class="more-actions-menu" id="a-city-quick-menu"></div>
+    </details>
+    <button class="logout-link hidden" id="a-refresh-btn" onclick="location.reload()" title="Recharger la page">🔄 Actualiser</button><button class="logout-link hidden" id="a-logout-btn" onclick="adminLogout()">🚪 Déconnexion</button></span></div>
 
   <div id="a-login" class="login-screen">
     <div class="card login-card">
@@ -552,10 +567,6 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
     <div class="a-search" id="a-search-wrap">
       <input type="text" id="a-search-input" placeholder="🔎 Rechercher un client, une commande, un climatiseur…" autocomplete="off" oninput="adminSearchInput(this.value)" onfocus="adminSearchFocus()"/>
       <div class="a-search-results hidden" id="a-search-results"></div>
-    </div>
-    <div class="city-switcher hidden" id="a-city-switcher">
-      <label for="a-city-select">🏙️ Ville / zone</label>
-      <select id="a-city-select" onchange="setSelectedCityId(this.value)"></select>
     </div>
     <div class="a-layout">
       <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu<span class="mobile-menu-dot hidden" id="mobile-menu-dot"></span></button>
@@ -692,6 +703,8 @@ window.fetch = function(url, opts){
 function setSelectedCityId(id){
   CITY_ID = id;
   localStorage.setItem('a_city_id', id);
+  renderCityQuickMenu();
+  document.querySelectorAll('details.more-actions[open]').forEach(el => { el.open = false; });
   // Toutes les données déjà en mémoire (les autres onglets, non visibles en
   // ce moment) sont désormais celles de l'ancienne ville — sans ça, revenir
   // sur un onglet déjà visité afficherait un instant les chiffres de
@@ -705,27 +718,39 @@ function setSelectedCityId(id){
   _tabCacheClearAll();
   if(CURRENT_TAB) switchAdminTab(CURRENT_TAB);
 }
+// Construit la liste des choix du menu déroulant "🌍 Ville" de l'en-tête —
+// "Toutes les villes" est toujours proposée (même avec une seule ville
+// active pour l'instant) : c'est le raccourci lui-même, pas la peine
+// d'attendre qu'une 2e ville existe pour le rendre accessible.
+function renderCityQuickMenu(){
+  const menu = document.getElementById('a-city-quick-menu');
+  const lbl  = document.getElementById('a-city-quick-label');
+  if(!menu || !lbl) return;
+  const items = [{ id: 'all', name: 'Toutes les villes' }, ...CITIES_CACHE.map(c => ({ id: String(c.id), name: c.name }))];
+  menu.innerHTML = items.map(it => `
+    <button class="city-quick-item${String(CITY_ID)===it.id?' current':''}" onclick="setSelectedCityId('${it.id}')">
+      <span>${it.id==='all'?'🌍 ':''}${escHtml(it.name)}</span><span class="chk">✓</span>
+    </button>`).join('');
+  const current = items.find(it => it.id === String(CITY_ID));
+  lbl.textContent = current ? (current.id==='all' ? 'Toutes' : current.name) : 'Ville';
+}
 async function loadCitySwitcher(){
   try{
     const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list', city_id:'all'})});
     const d = await r.json();
     if(!r.ok) return;
     CITIES_CACHE = (d.cities||[]).filter(c => c.actif);
-    const sel = document.getElementById('a-city-select');
-    if(!sel) return;
     const showAll = CITIES_CACHE.length > 1;
-    sel.innerHTML = (showAll ? `<option value="all">🌍 Toutes les villes</option>` : '')
-      + CITIES_CACHE.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
     const knownIds = new Set(CITIES_CACHE.map(c => String(c.id)));
-    const storedValid = CITY_ID === 'all' ? showAll : knownIds.has(CITY_ID);
+    const storedValid = CITY_ID === 'all' ? true : knownIds.has(CITY_ID);
     if(!storedValid){
       // Pas de préférence connue/valide : une seule ville → la sélectionner
       // silencieusement (comportement inchangé) ; plusieurs → vue agrégée.
       CITY_ID = showAll ? 'all' : (CITIES_CACHE[0] ? String(CITIES_CACHE[0].id) : '');
     }
-    sel.value = CITY_ID;
-    document.getElementById('a-city-switcher').classList.toggle('hidden', CITIES_CACHE.length < 2);
     localStorage.setItem('a_city_id', CITY_ID);
+    document.getElementById('a-city-quick').classList.toggle('hidden', CITIES_CACHE.length < 1);
+    renderCityQuickMenu();
     // La ville n'était pas encore connue au moment du premier chargement de
     // l'onglet (ce fetch est asynchrone, lancé en parallèle) — on rejoue le
     // chargement maintenant qu'elle l'est, seulement si elle a changé.
