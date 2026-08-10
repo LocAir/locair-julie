@@ -1131,6 +1131,16 @@ function frDate(iso){
   if(isNaN(d)) return iso;
   return d.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
 }
+// Même chose avec le jour de la semaine devant (ex. "jeudi 13 août 2026") —
+// utilisée pour les en-têtes de regroupement par date des missions
+// (Livraisons), pour repérer d'un coup d'œil lundi/mardi/etc. sans avoir à
+// ouvrir un calendrier à côté (demande d'Aly, 2026-08-10).
+function frDateAvecJour(iso){
+  if(!iso) return '—';
+  const d = new Date(iso+'T00:00:00');
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+}
 // Format compact jj/mm/aa — pour les colonnes de tableau où frDate() (ex.
 // "5 août 2026") prend trop de largeur et force les lignes à passer sur
 // plusieurs lignes.
@@ -4856,10 +4866,10 @@ function renderLivraisons(){
       const isToday = dateStr === todayStr;
       const isTomorrow = dateStr === tomorrowStr;
       const dateLabel = dateStr==='__' ? 'Sans date'
-        : isToday ? `Aujourd'hui · ${frDate(dateStr)}`
-        : isTomorrow ? `Demain · ${frDate(dateStr)}`
-        : isOvd ? `En retard · ${frDate(dateStr)}`
-        : frDate(dateStr);
+        : isToday ? `Aujourd'hui · ${frDateAvecJour(dateStr)}`
+        : isTomorrow ? `Demain · ${frDateAvecJour(dateStr)}`
+        : isOvd ? `En retard · ${frDateAvecJour(dateStr)}`
+        : frDateAvecJour(dateStr);
       const hCls = isToday ? 'missions-date-header today' : isOvd ? 'missions-date-header overdue' : 'missions-date-header';
       return `<div class="${hCls}">${escHtml(dateLabel)} <span class="count">${missions.length} mission${missions.length>1?'s':''}</span></div>`
         + missions.map(renderCard).join('');
@@ -4927,10 +4937,10 @@ function livraisonsTableHtml(items){
       const isTomorrow = dateStr === tomorrowStr;
       const isOvd = showOverdueLabel && dateStr !== '__' && dateStr < todayStr;
       const label = dateStr==='__' ? 'Sans date'
-        : isToday ? `Aujourd'hui · ${frDate(dateStr)}`
-        : isTomorrow ? `Demain · ${frDate(dateStr)}`
-        : isOvd ? `En retard · ${frDate(dateStr)}`
-        : frDate(dateStr);
+        : isToday ? `Aujourd'hui · ${frDateAvecJour(dateStr)}`
+        : isTomorrow ? `Demain · ${frDateAvecJour(dateStr)}`
+        : isOvd ? `En retard · ${frDateAvecJour(dateStr)}`
+        : frDateAvecJour(dateStr);
       const cls = isToday ? 'date-group-row today' : isOvd ? 'date-group-row overdue' : 'date-group-row';
       const groupRow = `<tr class="${cls}"><td colspan="${cols.length+1}">${escHtml(label)} <span class="count">${missions.length} mission${missions.length>1?'s':''}</span></td></tr>`;
       return groupRow + missions.map(livraisonTableRowHtml).join('');
