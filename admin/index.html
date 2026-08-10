@@ -494,6 +494,24 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   .row-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;align-items:start}
   .row-grid .row-item{margin-bottom:0}
 }
+
+/* Étiquettes de scan (Stock) — invisible à l'écran, n'apparaît qu'à
+   l'impression (voir printStockLabels() dans le script). */
+#print-labels-area{display:none}
+@media print{
+  body > *:not(#print-labels-area){display:none !important}
+  #print-labels-area{
+    display:grid !important;
+    grid-template-columns:repeat(3, 1fr);
+    gap:14px;
+    padding:16px;
+  }
+  .print-label-note{grid-column:1/-1;font-size:12px;color:#555;margin-bottom:6px}
+  .print-label{border:1px dashed #999;border-radius:6px;padding:10px;text-align:center;break-inside:avoid}
+  .print-label img{width:100%;max-width:140px;height:auto}
+  .print-label-num{font-size:18px;font-weight:800;margin-top:6px}
+  .print-label-brand{font-size:11px;color:#777;margin-top:2px}
+}
 </style>
 </head>
 <body>
@@ -2310,6 +2328,230 @@ async function forceSyncStock(){
     btn.disabled=false; btn.textContent='🔄 Forcer la synchronisation avec le site';
   }
 }
+// ── Scanner (pistolet code-barres/QR au dépôt, Module 9) — demande d'Aly,
+// 2026-08-10 : "au lieu de tout cette gestion de stock [à la main], je peux
+// utiliser un pistolet scan stock et gérer sur mon app ?". Un pistolet
+// scanner (Bluetooth/USB) se comporte comme un clavier (norme HID) : il
+// "tape" le code scanné suivi d'Entrée dans le champ ci-dessous — rien à
+// configurer côté app, il suffit d'écouter la touche Entrée sur ce champ.
+// 3 usages choisis par Aly : recherche instantanée, changement de statut en
+// série, inventaire physique du parc (voir api/admin-stock.js pour la
+// logique serveur — scan_lookup/scan_set_statut/scan_inventaire).
+const SCAN_STATUT_OPTIONS = [
+  { key: 'disponible', label: '✅ Disponible' },
+  { key: 'nettoyage',  label: '🧽 Nettoyage' },
+  { key: 'maintenance', label: '🔧 Maintenance' },
+  { key: 'panne',      label: '❌ En panne' },
+];
+let SCAN_MODE = 'recherche';
+let SCAN_STATUT_CIBLE = null;
+let SCAN_LOG = [];
+let SCAN_LAST_RESULT = null;
+let SCAN_INVENTAIRE_ACTIVE = false;
+let SCAN_INVENTAIRE_SET = new Set();
+let SCAN_INVENTAIRE_RESULT = null;
+
+function openScannerModal(){
+  closeModal();
+  SCAN_MODE = 'recherche'; SCAN_STATUT_CIBLE = null; SCAN_LOG = []; SCAN_LAST_RESULT = null;
+  SCAN_INVENTAIRE_ACTIVE = false; SCAN_INVENTAIRE_SET = new Set(); SCAN_INVENTAIRE_RESULT = null;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:520px">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+        <h2 style="margin:0">🔫 Scanner le stock</h2>
+        <button class="btn btn-grey" style="padding:6px 12px" onclick="printStockLabels()">🏷️ Étiquettes à imprimer</button>
+      </div>
+      <p class="sub" style="margin-bottom:14px">Branche ton pistolet scanner (ou tape le numéro à la main puis Entrée) — il se comporte comme un clavier, rien à configurer.</p>
+      <div class="periods" id="scan-mode-tabs" style="margin-bottom:14px"></div>
+      <input type="text" id="scan-input" inputmode="numeric" autocomplete="off" placeholder="Scanne ou tape un numéro…" style="font-size:20px;text-align:center;font-weight:700;letter-spacing:.02em"/>
+      <div id="scan-body" style="margin-top:14px"></div>
+      <div class="modal-actions" style="margin-top:16px">
+        <button class="btn btn-grey">Fermer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeScannerModal(); });
+  overlay.querySelector('.modal-actions .btn').onclick = closeScannerModal;
+  document.getElementById('scan-input').addEventListener('keydown', handleScanKeydown);
+  renderScannerModal();
+  document.getElementById('scan-input').focus();
+}
+function closeScannerModal(){
+  // Un inventaire en cours contient des scans jamais envoyés au serveur —
+  // fermer sans prévenir les ferait disparaître silencieusement.
+  if(SCAN_INVENTAIRE_ACTIVE && SCAN_INVENTAIRE_SET.size){
+    confirmAction(`Un inventaire est en cours (${SCAN_INVENTAIRE_SET.size} scan${SCAN_INVENTAIRE_SET.size>1?'s':''}) — fermer maintenant abandonne ces scans, rien n'est enregistré. Continuer ?`, () => closeModal(), {danger:true, yesLabel:'Fermer quand même'});
+    return;
+  }
+  closeModal();
+}
+// Ne remplace QUE les onglets + le corps, jamais le champ #scan-input lui-
+// même (entre les deux dans le DOM) — sans ça, il perdrait le focus à
+// chaque scan et le pistolet suivant taperait dans le vide.
+function renderScannerModal(){
+  const tabs = document.getElementById('scan-mode-tabs');
+  if(!tabs) return; // modale déjà fermée
+  const modes = [
+    {key:'recherche', label:'🔍 Rechercher'},
+    {key:'statut', label:'🔄 Statut'},
+    {key:'inventaire', label:'📋 Inventaire'},
+  ];
+  tabs.innerHTML = modes.map(m => `<button class="${SCAN_MODE===m.key?'on':''}" onclick="setScanMode('${m.key}')">${m.label}</button>`).join('');
+  const body = document.getElementById('scan-body');
+  body.innerHTML = SCAN_MODE==='recherche' ? scanRechercheHtml() : SCAN_MODE==='statut' ? scanStatutHtml() : scanInventaireHtml();
+}
+function setScanMode(mode){
+  SCAN_MODE = mode;
+  renderScannerModal();
+  document.getElementById('scan-input')?.focus();
+}
+function handleScanKeydown(e){
+  if(e.key !== 'Enter') return;
+  e.preventDefault();
+  const raw = e.target.value.trim();
+  e.target.value = '';
+  if(raw) processScan(raw);
+}
+async function processScan(raw){
+  // Un pistolet peut encoder/préfixer le code différemment selon le modèle —
+  // un numéro d'appareil Loc'Air est toujours un entier simple, on ne garde
+  // que les chiffres reçus.
+  const numero = parseInt(String(raw).replace(/\D/g, ''), 10);
+  if(!numero){ showToast('Code non reconnu : ' + raw, 'error'); return; }
+
+  if(SCAN_MODE === 'recherche'){
+    try{
+      const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'scan_lookup', numero})});
+      const d = await r.json();
+      SCAN_LAST_RESULT = r.ok ? d : { error: d.error || 'Erreur' };
+    }catch(e){ SCAN_LAST_RESULT = { error: e.message }; }
+    renderScannerModal();
+  }else if(SCAN_MODE === 'statut'){
+    if(!SCAN_STATUT_CIBLE){ showToast("Choisis d'abord un statut ci-dessus", 'error'); }
+    else{
+      try{
+        const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'scan_set_statut', numero, statut:SCAN_STATUT_CIBLE})});
+        const d = await r.json();
+        if(!r.ok) SCAN_LOG.unshift({ok:false, numero, message:d.error || 'Erreur'});
+        else{ SCAN_LOG.unshift({ok:true, numero:d.numero, ancien:d.ancien_statut, nouveau:d.nouveau_statut}); STOCK_APPAREILS_CACHE = STOCK_APPAREILS_CACHE.map(a => a.numero===d.numero ? {...a, statut:d.nouveau_statut} : a); }
+      }catch(e){ SCAN_LOG.unshift({ok:false, numero, message:e.message}); }
+      renderScannerModal();
+    }
+  }else{ // inventaire
+    if(!SCAN_INVENTAIRE_ACTIVE) showToast('Clique sur "Démarrer l\'inventaire" d\'abord', 'error');
+    else{ SCAN_INVENTAIRE_SET.add(numero); renderScannerModal(); }
+  }
+  document.getElementById('scan-input')?.focus();
+}
+function scanRechercheHtml(){
+  if(!SCAN_LAST_RESULT) return `<p class="empty">Scanne un appareil pour voir sa fiche.</p>`;
+  if(SCAN_LAST_RESULT.error) return `<div class="row-meta" style="color:var(--red);font-weight:700">⚠️ ${escHtml(SCAN_LAST_RESULT.error)}</div>`;
+  const a = SCAN_LAST_RESULT.appareil;
+  const dm = SCAN_LAST_RESULT.dernier_mouvement;
+  return `
+    <div class="row-item">
+      <div class="row-top">
+        <span class="row-title">Climatiseur n°${a.numero}</span>
+        <span class="chip ${APPAREIL_STATUT_CHIP[a.statut]||''}">${APPAREIL_STATUT_LABEL[a.statut]||a.statut}</span>
+      </div>
+      <div class="row-meta">${LOCALISATION_LABEL[a.localisation]||a.localisation||'—'}${a.reference?' · '+escHtml(a.reference):''}</div>
+      ${dm?`<div class="row-meta">Dernier mouvement : ${MOUVEMENT_TYPE_LABEL[dm.type_evenement]||dm.type_evenement} (${frDateCourt(dm.created_at.slice(0,10))})</div>`:''}
+      <div class="row-actions">
+        <button class="btn btn-blue" onclick="closeScannerModal();voirFicheAppareil(${a.id}, ${a.numero})">Voir la fiche complète</button>
+      </div>
+    </div>`;
+}
+function scanStatutHtml(){
+  const chips = SCAN_STATUT_OPTIONS.map(o =>
+    `<button class="btn ${SCAN_STATUT_CIBLE===o.key?'btn-blue':'btn-grey'}" onclick="setScanStatutCible('${o.key}')" style="margin:0 6px 6px 0">${o.label}</button>`
+  ).join('');
+  const logHtml = SCAN_LOG.length ? SCAN_LOG.slice(0,10).map(l => l.ok
+    ? `<div class="row-meta">✅ n°${l.numero} : ${APPAREIL_STATUT_LABEL[l.ancien]||l.ancien} → ${APPAREIL_STATUT_LABEL[l.nouveau]||l.nouveau}</div>`
+    : `<div class="row-meta" style="color:var(--red)">⚠️ n°${l.numero} — ${escHtml(l.message)}</div>`
+  ).join('') : `<p class="empty" style="margin-top:10px">Aucun scan pour l'instant.</p>`;
+  return `
+    <p class="sub" style="margin-bottom:8px">1. Choisis le statut à appliquer :</p>
+    <div>${chips}</div>
+    <p class="sub" style="margin:14px 0 4px">2. ${SCAN_STATUT_CIBLE ? 'Scanne chaque appareil, un par un — le statut ci-dessus lui est appliqué immédiatement.' : "Choisis d'abord un statut ci-dessus."}</p>
+    <div style="margin-top:10px">${logHtml}</div>`;
+}
+function setScanStatutCible(statut){
+  SCAN_STATUT_CIBLE = statut;
+  renderScannerModal();
+  document.getElementById('scan-input')?.focus();
+}
+function scanInventaireHtml(){
+  if(SCAN_INVENTAIRE_RESULT) return scanInventaireResultHtml(SCAN_INVENTAIRE_RESULT);
+  if(!SCAN_INVENTAIRE_ACTIVE){
+    return `
+      <p class="sub" style="margin-bottom:10px">Scanne tous les climatiseurs présents au dépôt, les uns après les autres, puis termine l'inventaire — l'app te dira ce qui manque et ce qui est incohérent.</p>
+      <button class="btn btn-blue btn-block" onclick="startScanInventaire()">▶️ Démarrer l'inventaire</button>`;
+  }
+  const recents = [...SCAN_INVENTAIRE_SET].slice(-8).reverse();
+  return `
+    <div class="stat-tile" style="margin-bottom:10px"><div class="n">${SCAN_INVENTAIRE_SET.size}</div><div class="l">scanné${SCAN_INVENTAIRE_SET.size>1?'s':''}</div></div>
+    <div class="row-meta">Derniers scans : ${recents.length?recents.map(n=>'n°'+n).join(', '):'—'}</div>
+    <button class="btn btn-blue btn-block" style="margin-top:14px" onclick="finishScanInventaire()">✅ Terminer l'inventaire (${SCAN_INVENTAIRE_SET.size})</button>`;
+}
+function scanInventaireResultHtml(r){
+  const liste = items => items.length ? items.map(i => `<div class="row-meta">n°${i.numero}${i.statut?' — '+(APPAREIL_STATUT_LABEL[i.statut]||i.statut):''}</div>`).join('') : '';
+  return `
+    <div class="stat-grid" style="margin-bottom:14px">
+      <div class="stat-tile"><div class="n">${r.conformes.length}</div><div class="l">Conformes</div></div>
+      <div class="stat-tile ${r.manquants.length?'warn':''}"><div class="n">${r.manquants.length}</div><div class="l">Manquants</div></div>
+      <div class="stat-tile ${r.incoherents.length?'warn':''}"><div class="n">${r.incoherents.length}</div><div class="l">Retour non enregistré</div></div>
+      <div class="stat-tile ${r.inconnus.length?'warn':''}"><div class="n">${r.inconnus.length}</div><div class="l">Codes inconnus</div></div>
+    </div>
+    ${r.manquants.length?`<h3 style="margin:10px 0 4px;font-size:14px">⚠️ Manquants (jamais scannés, censés être au dépôt)</h3>${liste(r.manquants)}`:''}
+    ${r.incoherents.length?`<h3 style="margin:14px 0 4px;font-size:14px">⚠️ Marqués "loué" mais scannés au dépôt</h3>${liste(r.incoherents)}<p class="sub" style="margin-top:4px">Probablement revenus sans que ça ait été enregistré — pense à corriger leur statut (onglet "Statut" ci-dessus).</p>`:''}
+    ${r.inconnus.length?`<h3 style="margin:14px 0 4px;font-size:14px">❓ Codes scannés inconnus</h3><div class="row-meta">${r.inconnus.join(', ')}</div>`:''}
+    ${(!r.manquants.length && !r.incoherents.length && !r.inconnus.length)?`<p class="row-meta" style="color:var(--green)">✅ Tout correspond, rien à signaler.</p>`:''}
+    <button class="btn btn-grey btn-block" style="margin-top:16px" onclick="SCAN_INVENTAIRE_RESULT=null;renderScannerModal()">Recommencer un inventaire</button>`;
+}
+async function startScanInventaire(){
+  SCAN_INVENTAIRE_ACTIVE = true;
+  SCAN_INVENTAIRE_SET = new Set();
+  SCAN_INVENTAIRE_RESULT = null;
+  renderScannerModal();
+  document.getElementById('scan-input')?.focus();
+}
+async function finishScanInventaire(){
+  try{
+    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'scan_inventaire', numeros:[...SCAN_INVENTAIRE_SET]})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || 'Erreur');
+    SCAN_INVENTAIRE_ACTIVE = false;
+    SCAN_INVENTAIRE_RESULT = d;
+    renderScannerModal();
+  }catch(e){ showToast(e.message, 'error'); }
+}
+// Étiquettes imprimables (QR + numéro géant) pour coller sur chaque
+// climatiseur — pas de nouvelle bibliothèque : réutilise api.qrserver.com,
+// déjà utilisé (et déjà autorisé par la CSP) pour le QR de parrainage côté
+// partenaire/index.html. Imprimé via une zone dédiée + @media print (voir
+// <style>), plutôt qu'une popup séparée qui aurait pu se heurter à la CSP.
+function printStockLabels(){
+  const appareils = STOCK_APPAREILS_CACHE || [];
+  if(!appareils.length){ showToast('Aucun appareil à imprimer pour cette ville', 'error'); return; }
+  let area = document.getElementById('print-labels-area');
+  if(!area){ area = document.createElement('div'); area.id = 'print-labels-area'; document.body.appendChild(area); }
+  // Le numéro d'appareil n'est unique QUE dans sa ville — une étiquette
+  // imprimée pour Nice n°12 et une pour Paris n°12 porteraient le même code.
+  // Rappel visible sur la feuille plutôt qu'un encodage plus complexe (qui
+  // casserait la saisie manuelle "au clavier", explicitement demandée).
+  const ville = (document.querySelector('#tab-stock h2')?.textContent || '').replace('Flotte — ', '');
+  area.innerHTML = `<div class="print-label-note">Étiquettes valables uniquement pour : ${escHtml(ville)}</div>`
+    + appareils.map(a => `
+      <div class="print-label">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?data=${a.numero}&size=140x140&margin=0" alt="QR n°${a.numero}"/>
+        <div class="print-label-num">N° ${a.numero}</div>
+        <div class="print-label-brand">Loc'Air</div>
+      </div>`).join('');
+  window.print();
+}
 async function loadStock(silent){
   const zone = document.getElementById('tab-stock');
   if(!silent) zone.innerHTML = loading();
@@ -2347,6 +2589,7 @@ async function loadStock(silent){
         <p class="sub" style="margin-top:14px">Se met à jour automatiquement à chaque réservation et à chaque retour confirmé par un transporteur. Chaque appareil a son numéro — le livreur sait exactement lequel récupérer.</p>
         <button id="sync-btn" class="btn btn-blue" onclick="forceSyncStock()" style="margin-top:12px">🔄 Forcer la synchronisation avec le site</button>
         <span id="sync-result" style="margin-left:10px;font-size:13px;display:none"></span>
+        <button class="btn btn-grey" style="margin-top:12px;margin-left:8px" onclick="openScannerModal()">🔫 Scanner le stock</button>
       </div>
       ${offresPrivilegeHtml()}
       ${rd.ok && dd ? `

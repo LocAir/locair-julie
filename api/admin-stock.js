@@ -3,7 +3,7 @@ const { resolveAdminCity, notifyIfSoldOut } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
-const { recordMouvement } = require('./_lib/stockMouvements');
+const { recordMouvement, LOCALISATION_PAR_STATUT } = require('./_lib/stockMouvements');
 const { computeParcDashboard } = require('./_lib/parcDashboard');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { todayParis, addDays } = require('./_lib/dates');
@@ -147,6 +147,92 @@ module.exports = async (req, res) => {
       // reste à alerter Aly si ça vient de faire passer la ville à "complet".
       if (statutChange) await notifyIfSoldOut(supabase, city.id);
       return res.status(200).json({ ok: true });
+    }
+
+    // ── Scanner (pistolet code-barres/QR au dépôt) — un pistolet scanner se
+    // comporte comme un clavier (norme HID) : il "tape" le numéro scanné
+    // suivi d'Entrée dans un champ de saisie côté admin/index.html, sans
+    // intégration matérielle particulière à prévoir ici. Seule différence
+    // avec 'detail'/'update' ci-dessus : l'appareil est retrouvé par son
+    // numéro (imprimé sur l'étiquette collée dessus, voir 'scan_label_url'),
+    // pas par son id interne. 3 usages (demande d'Aly, 2026-08-10) :
+    // recherche instantanée, changement de statut en série, inventaire.
+    if (action === 'scan_lookup') {
+      const numero = parseInt(body.numero);
+      if (!numero) return res.status(400).json({ error: 'Numéro manquant' });
+      const { data: appareil } = await supabase
+        .from('appareils').select('*').eq('city_id', city.id).eq('numero', numero).maybeSingle();
+      if (!appareil) return res.status(404).json({ error: `Aucun appareil n°${numero} dans cette ville` });
+      const { data: dernierMouvement } = await supabase
+        .from('appareil_mouvements').select('type_evenement, created_at')
+        .eq('appareil_id', appareil.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      return res.status(200).json({ appareil, dernier_mouvement: dernierMouvement || null });
+    }
+
+    // Changement de statut en série, un scan = un changement — restreint aux
+    // 4 statuts qu'on gère physiquement depuis le dépôt (jamais "loué" :
+    // c'est la confirmation d'une réservation qui pose ce statut-là, jamais
+    // un scan manuel). Même journalisation (recordMouvement) que l'action
+    // 'update' ci-dessus, pour ne jamais avoir un changement de statut
+    // invisible dans l'historique selon qu'il vient du menu ou du scanner.
+    if (action === 'scan_set_statut') {
+      const numero = parseInt(body.numero);
+      const statut = body.statut;
+      if (!numero) return res.status(400).json({ error: 'Numéro manquant' });
+      if (!['disponible', 'panne', 'maintenance', 'nettoyage'].includes(statut)) {
+        return res.status(400).json({ error: 'Statut invalide pour un changement par scan' });
+      }
+      const { data: appareil } = await supabase
+        .from('appareils').select('id, numero, statut').eq('city_id', city.id).eq('numero', numero).maybeSingle();
+      if (!appareil) return res.status(404).json({ error: `Aucun appareil n°${numero} dans cette ville` });
+      const ancienStatut = appareil.statut;
+      const isMaintenance = ['maintenance', 'panne'].includes(statut);
+      await recordMouvement(supabase, {
+        appareilId: appareil.id,
+        typeEvenement: statut === 'disponible' ? 'remise_disponibilite' : isMaintenance ? 'passage_maintenance' : 'autre',
+        nouveauStatut: statut,
+        nouvelleLocalisation: LOCALISATION_PAR_STATUT[statut] || 'autre',
+        utilisateur: 'admin',
+        commentaire: 'Changement de statut via scan (pistolet dépôt)',
+      });
+      await notifyIfSoldOut(supabase, city.id);
+      return res.status(200).json({ ok: true, numero: appareil.numero, ancien_statut: ancienStatut, nouveau_statut: statut });
+    }
+
+    // Inventaire physique : compare la liste des numéros scannés au dépôt à
+    // ce que le système croit savoir. 3 écarts utiles à Aly, jamais visibles
+    // autrement :
+    //  - manquants : un appareil censé être au dépôt (disponible/maintenance/
+    //    panne/nettoyage) n'a jamais été scanné — perdu, égaré, ou statut
+    //    resté "disponible" alors qu'il est en réalité ailleurs.
+    //  - incoherents : un appareil marqué "loué" (donc censé être chez un
+    //    client) a pourtant été scanné au dépôt — signe qu'un retour client
+    //    n'a jamais été enregistré dans le système, il reste donc à tort
+    //    exclu du parc louable.
+    //  - inconnus : un code scanné qui ne correspond à aucun appareil de
+    //    cette ville (étiquette illisible/erronée, ou appareil d'une autre
+    //    ville scanné par erreur).
+    if (action === 'scan_inventaire') {
+      const numerosScannes = new Set((body.numeros || []).map(n => parseInt(n)).filter(Boolean));
+      const { data: appareilsRaw, error } = await supabase
+        .from('appareils').select('numero, statut, reference').eq('city_id', city.id).order('numero');
+      if (error) throw error;
+      const appareils = appareilsRaw || [];
+      const numerosConnus = new Set(appareils.map(a => a.numero));
+      const STATUTS_ATTENDUS_AU_DEPOT = ['disponible', 'maintenance', 'panne', 'nettoyage'];
+
+      const manquants   = appareils.filter(a => STATUTS_ATTENDUS_AU_DEPOT.includes(a.statut) && !numerosScannes.has(a.numero));
+      const conformes   = appareils.filter(a => STATUTS_ATTENDUS_AU_DEPOT.includes(a.statut) && numerosScannes.has(a.numero));
+      const incoherents = appareils.filter(a => a.statut === 'loue' && numerosScannes.has(a.numero));
+      const inconnus    = [...numerosScannes].filter(n => !numerosConnus.has(n)).sort((a, b) => a - b);
+
+      return res.status(200).json({
+        total_scannes: numerosScannes.size,
+        conformes: conformes.map(a => ({ numero: a.numero, statut: a.statut })),
+        manquants: manquants.map(a => ({ numero: a.numero, statut: a.statut, reference: a.reference })),
+        incoherents: incoherents.map(a => ({ numero: a.numero })),
+        inconnus,
+      });
     }
 
     // Historique des mouvements d'un appareil précis (Module 6, Partie 5).
