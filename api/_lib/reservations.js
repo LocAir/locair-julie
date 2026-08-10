@@ -485,25 +485,31 @@ async function sendRappelRecuperationSms(supabase, resa, { force = false } = {})
     getActiveRecuperationMission(supabase, rootId).catch(() => null),
   ]);
   const lang = resa.lang || 'fr';
+  const prenom = resa.prenom || '';
   const dateRecup = fmtDate(recupMission?.date_prevue || addDays(dateFinEffective, 1), lang);
   const creneau = recupMission?.creneau || '';
+  // Reformulé de façon plus chaleureuse (demande d'Aly, 2026-08-10) : prénom
+  // du client + un mot de remerciement pour sa confiance durant la location,
+  // en plus du rappel pratique — reste professionnel (pas d'emoji, pas de
+  // familiarité excessive), simplement plus humain qu'un message purement
+  // logistique.
   let content;
   if (lang === 'en') {
     content = creneau
-      ? `Loc'Air - Just a reminder: our technician will come to collect your unit tomorrow (${dateRecup}), time slot ${creneau}. Questions? Call us at +33 6 63 79 87 56.`
-      : `Loc'Air - Just a reminder: our technician will come to collect your unit tomorrow (${dateRecup}). We'll text you 30 minutes before arrival. Questions? Call us at +33 6 63 79 87 56.`;
+      ? `Loc'Air - Hi ${prenom}, just a reminder: our technician will come by tomorrow (${dateRecup}) to collect your unit, time slot ${creneau}. Thank you for trusting Loc'Air during your rental. Questions? Call us at +33 6 63 79 87 56.`
+      : `Loc'Air - Hi ${prenom}, just a reminder: our technician will come by tomorrow (${dateRecup}) to collect your unit — we'll text you 30 minutes before arrival. Thank you for trusting Loc'Air during your rental. Questions? Call us at +33 6 63 79 87 56.`;
   } else if (lang === 'zh') {
     content = creneau
-      ? `Loc'Air - 提醒您：技术员将于明天（${dateRecup}）前来取回设备，时间段：${creneau}。如有疑问，请致电 +33 6 63 79 87 56。`
-      : `Loc'Air - 提醒您：技术员将于明天（${dateRecup}）前来取回设备，到达前30分钟会发短信通知您。如有疑问，请致电 +33 6 63 79 87 56。`;
+      ? `Loc'Air - ${prenom}您好，提醒您：技术员将于明天（${dateRecup}）前来取回设备，时间段：${creneau}。感谢您在租赁期间对Loc'Air的信任。如有疑问，请致电 +33 6 63 79 87 56。`
+      : `Loc'Air - ${prenom}您好，提醒您：技术员将于明天（${dateRecup}）前来取回设备，到达前30分钟会发短信通知您。感谢您在租赁期间对Loc'Air的信任。如有疑问，请致电 +33 6 63 79 87 56。`;
   } else if (lang === 'ru') {
     content = creneau
-      ? `Loc'Air - Напоминаем: мастер заберёт устройство завтра (${dateRecup}), время ${creneau}. Вопросы? Звоните: +33 6 63 79 87 56.`
-      : `Loc'Air - Напоминаем: мастер заберёт устройство завтра (${dateRecup}) и отправит SMS за 30 минут до приезда. Вопросы? Звоните: +33 6 63 79 87 56.`;
+      ? `Loc'Air - Здравствуйте, ${prenom}! Напоминаем: мастер заберёт устройство завтра (${dateRecup}), время ${creneau}. Спасибо за доверие к Loc'Air во время аренды. Вопросы? Звоните: +33 6 63 79 87 56.`
+      : `Loc'Air - Здравствуйте, ${prenom}! Напоминаем: мастер заберёт устройство завтра (${dateRecup}) и отправит SMS за 30 минут до приезда. Спасибо за доверие к Loc'Air во время аренды. Вопросы? Звоните: +33 6 63 79 87 56.`;
   } else {
     content = creneau
-      ? `Loc'Air - Petit rappel : notre technicien viendra récupérer votre climatiseur demain (${dateRecup}), créneau ${creneau}. Une question ? Appelez-nous au 06 63 79 87 56.`
-      : `Loc'Air - Petit rappel : notre technicien viendra récupérer votre climatiseur demain (${dateRecup}) et vous enverra un SMS 30 min avant son arrivée. Une question ? Appelez-nous au 06 63 79 87 56.`;
+      ? `Loc'Air - Bonjour ${prenom}, petit rappel : notre technicien passera demain (${dateRecup}) récupérer votre climatiseur, créneau ${creneau}. Merci pour votre confiance durant cette location. Une question ? Appelez-nous au 06 63 79 87 56.`
+      : `Loc'Air - Bonjour ${prenom}, petit rappel : notre technicien passera demain (${dateRecup}) récupérer votre climatiseur — il vous enverra un SMS 30 min avant son arrivée. Merci pour votre confiance durant cette location. Une question ? Appelez-nous au 06 63 79 87 56.`;
   }
 
   const result = await sendBrevoSms({ to: resa.tel, content });
