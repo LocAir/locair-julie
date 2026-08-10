@@ -484,7 +484,7 @@ create table tutoriel_vus (
 create table documents (
   id                bigint generated always as identity primary key,
   reservation_id    bigint not null references reservations(id) on delete cascade,
-  type              text not null check (type in ('contrat','facture','facture_vente')),
+  type              text not null check (type in ('contrat','facture','facture_vente','avenant')),
   numero            text,
   version           text not null,
   storage_path      text not null,
