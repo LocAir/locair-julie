@@ -3777,6 +3777,7 @@ function renderReservationsToolbar(){
   // état propre) — le select Installation a son propre onchange="nrRecalcPrice()"
   // posé par logisticsFieldsHtml (voir son paramètre onInstallChange).
   nrRecalcPrice();
+  nrUpdateCpZone();
   // Le formulaire "Créer" vient d'être (re)affiché avec un champ vide en
   // premier : focus tout de suite dessus pour pouvoir taper sans un clic
   // de plus — c'est le champ par lequel commence un devis au téléphone.
@@ -3882,7 +3883,7 @@ function nrOnInstallChange(){
 }
 function nrLivraisonCents(){
   const cp = (document.getElementById('nr-cp')?.value || '').trim();
-  if(!cp) return { cents: 6000, label: '60 € (zone standard)', horsZone: false };
+  if(!cp) return { cents: 6000, label: '60 € (zone standard)', horsZone: false, zoneKnown: false };
   const cityId = parseInt(CITY_ID);
   // CITIES_CACHE (pas VILLES_CACHE) : celle-ci n'est peuplée qu'en visitant
   // l'onglet Villes, donc vide la plupart du temps ici — le hors zone
@@ -3894,10 +3895,33 @@ function nrLivraisonCents(){
   if(city && Array.isArray(city.postal_codes)){
     const enZone = city.postal_codes.includes(cp);
     return enZone
-      ? { cents: 6000,  label: '60 € (en zone)',   horsZone: false }
-      : { cents: 12000, label: '120 € (hors zone)', horsZone: true  };
+      ? { cents: 6000,  label: '60 € (en zone)',   horsZone: false, zoneKnown: true }
+      : { cents: 12000, label: '120 € (hors zone)', horsZone: true,  zoneKnown: true };
   }
-  return { cents: 6000, label: '60 € (zone standard)', horsZone: false };
+  return { cents: 6000, label: '60 € (zone standard)', horsZone: false, zoneKnown: false };
+}
+// Retour visuel immédiat sur le code postal, indépendant des dates : avant,
+// il fallait aussi remplir les dates pour voir "hors zone" apparaître (caché
+// dans le détail du prix) — risque de l'annoncer au client avant de s'en
+// rendre compte. Ici dès que le code postal a ses 5 chiffres.
+function nrUpdateCpZone(){
+  const el = document.getElementById('nr-cp-zone');
+  if(!el) return;
+  const cp = (document.getElementById('nr-cp')?.value || '').trim();
+  if(cp.length !== 5){ el.style.display = 'none'; return; }
+  const { label, horsZone, zoneKnown } = nrLivraisonCents();
+  const montant = label.replace(/\s*\(.*\)$/, '');
+  if(!zoneKnown){
+    el.textContent = `Livraison : ${montant} (zone non reconnue pour cette ville — à vérifier)`;
+    el.style.color = 'var(--grey)'; el.style.fontWeight = '400';
+  } else if(horsZone){
+    el.textContent = `⚠️ Hors zone — livraison ${montant}`;
+    el.style.color = 'var(--amber)'; el.style.fontWeight = '600';
+  } else {
+    el.textContent = `✅ En zone — livraison ${montant}`;
+    el.style.color = 'var(--green)'; el.style.fontWeight = '600';
+  }
+  el.style.display = 'block';
 }
 function nrCalcTotal(){
   const debut = document.getElementById('nr-debut')?.value;
@@ -3963,7 +3987,8 @@ function reservationCreerHtml(){
       <div class="section-title">💶 Devis rapide</div>
       <div class="devis-box">
         <label for="nr-cp">Code postal</label>
-        <input type="text" id="nr-cp" placeholder="ex. 06000" maxlength="5" oninput="nrRecalcPrice()" style="max-width:130px" value="${escHtml(cpGuess)}"/>
+        <input type="text" id="nr-cp" placeholder="ex. 06000" maxlength="5" oninput="nrRecalcPrice();nrUpdateCpZone()" style="max-width:130px" value="${escHtml(cpGuess)}"/>
+        <p id="nr-cp-zone" class="sub" style="margin:4px 0 0;font-size:12px;display:none"></p>
         <div class="inline-form" style="margin-top:8px">
           <div>
             <label for="nr-debut">Date livraison *</label>
