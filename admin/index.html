@@ -3703,7 +3703,17 @@ async function loadReservations(silent){
     // ouvert ou non cette session.
     const sd = await sr.json().catch(()=>null);
     if(sr.ok && sd) STOCK_APPAREILS_CACHE = sd.appareils || STOCK_APPAREILS_CACHE;
-    renderReservationsToolbar();
+    // Un rafraîchissement silencieux (auto-refresh toutes les heures, voir
+    // window._alertsInterval — pas celui-ci, mais le même principe
+    // s'applique à tout rechargement en arrière-plan de cet onglet) ne doit
+    // JAMAIS effacer le formulaire "Créer" en cours de saisie —
+    // renderReservationsToolbar() reconstruit reservationCreerHtml() de
+    // zéro, un formulaire vierge. Un admin au téléphone en train de saisir
+    // une réservation perdrait tout ce qu'il a déjà tapé sans même s'en
+    // rendre compte. Le formulaire ne dépend d'aucune donnée rafraîchie ici
+    // (RESERVATIONS_CACHE etc. ne servent qu'aux vues Liste/Calendrier) —
+    // rien à resynchroniser pour lui, sans risque à sauter ce rendu.
+    if(!(silent && RESERVATIONS_VIEW === 'creer')) renderReservationsToolbar();
     renderReservations();
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="loadReservations()">↻ Réessayer</button>';
