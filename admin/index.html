@@ -3812,6 +3812,7 @@ function duplicateReservation(id){
 function onNrParrainInput(){
   const inp = document.getElementById('nr-parrain');
   const prixEl = document.getElementById('nr-prix');
+  const totalEl = document.getElementById('nr-total-display');
   const fb = document.getElementById('nr-parrain-fb');
   if(!inp || !prixEl || !fb) return;
   const val = inp.value.trim().toUpperCase();
@@ -3826,6 +3827,10 @@ function onNrParrainInput(){
     const applied  = Math.max(0, restored - newDiscount);
     prixEl.value = applied ? (Math.round(applied*100)/100) : '';
     _nrPromoDiscount = newDiscount;
+    // Le gros total du devis (en haut du formulaire) doit refléter la même
+    // remise que ce champ — sinon deux montants différents restent affichés
+    // en même temps à l'écran (le prix modifiable ici, l'ancien total en haut).
+    if(totalEl) totalEl.textContent = (Math.round(applied*100)/100).toFixed(2).replace('.', ',') + ' €';
   }
   if(newDiscount){ fb.textContent = `✓ Code valide — ${newDiscount} € déduits`; fb.style.color = 'var(--green)'; fb.style.display = 'block'; }
   else fb.style.display = 'none';
