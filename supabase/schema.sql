@@ -23,6 +23,11 @@ create table cities (
   -- du client (voir api/_lib/city.js, resolveCityByAddress).
   postal_codes  text[] not null default '{}',
   sold_out      boolean not null default false, -- mode "complet" affiché sur le site (api/mode-complet.js)
+  -- 'auto' (par défaut, recalculé par _auto_sold_out à partir du stock réel)
+  -- ou 'manuel' (l'admin garde la main sur sold_out via l'onglet Villes/le
+  -- raccourci "🌍" de l'en-tête — voir migration_sold_out_mode.sql).
+  sold_out_mode     text not null default 'auto' check (sold_out_mode in ('auto', 'manuel')),
+  sold_out_notified boolean not null default false,
   actif         boolean not null default true,
   created_at    timestamptz not null default now(),
   -- Barème payé au transporteur par mission, éditable dans l'admin (onglet
@@ -33,6 +38,60 @@ create table cities (
   tarif_recuperation_cents         integer,
   tarif_changement_cents           integer
 );
+
+-- Recalcule sold_out pour une ville à partir du stock réel — ne touche rien
+-- si la ville est en mode 'manuel' (l'admin garde la main). Version finale
+-- (voir migration_auto_sold_out.sql puis correctif migration_fix_auto_sold_out.sql,
+-- 2026-08-02) : v_total inclut les appareils déjà loués (hors panne/
+-- maintenance/vendu), sans quoi un appareil loué était soustrait deux fois.
+create or replace function _auto_sold_out(p_city_id bigint)
+returns void language plpgsql security definer as $$
+declare
+  v_total       int;
+  v_en_location int;
+  v_mode        text;
+begin
+  select sold_out_mode into v_mode from cities where id = p_city_id;
+  if v_mode = 'manuel' then
+    return;
+  end if;
+
+  select count(*) into v_total
+  from appareils
+  where city_id = p_city_id and statut not in ('panne', 'maintenance', 'vendu');
+
+  select count(distinct ra.appareil_id) into v_en_location
+  from reservation_appareils ra
+  join reservations r on ra.reservation_id = r.id
+  where r.city_id    = p_city_id
+    and r.statut     = 'confirmee'
+    and r.date_debut <= current_date
+    and r.date_fin   >  current_date;
+
+  update cities
+  set sold_out = (v_total = 0 or v_en_location >= v_total)
+  where id = p_city_id;
+end;
+$$;
+
+-- Réinitialise l'alerte "ville complète" (notifyIfSoldOut, api/_lib/city.js)
+-- dès que la ville redevient disponible, pour que la prochaine fermeture
+-- déclenche une nouvelle alerte plutôt que de rester silencieuse pour
+-- toujours après la première.
+create or replace function _reset_sold_out_notified()
+returns trigger language plpgsql as $$
+begin
+  if new.sold_out = false then
+    new.sold_out_notified := false;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_reset_sold_out_notified on cities;
+create trigger trg_reset_sold_out_notified
+  before update of sold_out on cities
+  for each row execute function _reset_sold_out_notified();
 
 -- Catalogue des modèles de climatiseur (Rowenta, Frico...) — une fiche par
 -- modèle, réutilisée par tous les appareils physiques de ce modèle (jamais
