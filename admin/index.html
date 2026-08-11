@@ -70,6 +70,11 @@ input[type=text],input[type=password],input[type=number],input[type=tel],select,
 }
 textarea{resize:vertical;min-height:70px;line-height:1.5}
 input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-lt)}
+/* Champ obligatoire manquant à la validation — pointé directement plutôt que
+   de laisser l'admin deviner lequel parmi tous les champs de "Nouvelle
+   réservation" a été oublié. Retiré au premier caractère retapé. */
+.field-err{border-color:var(--red) !important;background:var(--red-bg)}
+.field-err:focus{box-shadow:0 0 0 3px rgba(155,44,26,.15)}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
 .btn{padding:12px 22px;border:none;border-radius:100px;font-family:var(--body);font-size:13.5px;font-weight:700;letter-spacing:.005em;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease,box-shadow .18s ease,transform .18s ease,opacity .15s ease}
 .btn-blue{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
@@ -3940,11 +3945,11 @@ function reservationCreerHtml(){
         <div class="inline-form" style="margin-top:8px">
           <div>
             <label for="nr-debut">Date livraison *</label>
-            <input type="date" id="nr-debut" oninput="nrOnDebutChange()"/>
+            <input type="date" id="nr-debut" oninput="this.classList.remove('field-err');nrOnDebutChange()"/>
           </div>
           <div>
             <label for="nr-fin">Date récupération *</label>
-            <input type="date" id="nr-fin" oninput="nrRecalcPrice()"/>
+            <input type="date" id="nr-fin" oninput="this.classList.remove('field-err');nrRecalcPrice()"/>
           </div>
         </div>
         <div class="periods" style="margin:8px 0 2px;flex-wrap:wrap;height:auto;background:transparent;padding:0">
@@ -3968,15 +3973,15 @@ function reservationCreerHtml(){
 
       <div class="section-title">👤 Client</div>
       <div class="inline-form">
-        <div><label for="nr-prenom">Prénom *</label><input type="text" id="nr-prenom" value="${escHtml(d?.prenom||'')}"/></div>
-        <div><label for="nr-nom">Nom *</label><input type="text" id="nr-nom" value="${escHtml(d?.nom||'')}"/></div>
+        <div><label for="nr-prenom">Prénom *</label><input type="text" id="nr-prenom" oninput="this.classList.remove('field-err')" value="${escHtml(d?.prenom||'')}"/></div>
+        <div><label for="nr-nom">Nom *</label><input type="text" id="nr-nom" oninput="this.classList.remove('field-err')" value="${escHtml(d?.nom||'')}"/></div>
       </div>
       <div class="inline-form" style="margin-top:8px">
         <div><label for="nr-tel">Téléphone</label><input type="tel" id="nr-tel" value="${escHtml(d?.tel||'')}"/></div>
-        <div><label for="nr-email">Email</label><input type="text" id="nr-email" value="${escHtml(d?.email||'')}"/></div>
+        <div><label for="nr-email">Email</label><input type="text" id="nr-email" oninput="this.classList.remove('field-err')" value="${escHtml(d?.email||'')}"/></div>
       </div>
       <label for="nr-adresse" style="margin-top:8px">Adresse *${d?' <span style="color:var(--amber);font-weight:700">— à vérifier</span>':''}</label>
-      <input type="text" id="nr-adresse" value="${escHtml(d?.adresse||'')}"/>
+      <input type="text" id="nr-adresse" oninput="this.classList.remove('field-err')" value="${escHtml(d?.adresse||'')}"/>
 
       <div class="section-title">📍 Logement &amp; accès</div>
       ${logisticsFieldsHtml('nr', d, 'nrRecalcPrice()')}
@@ -4494,9 +4499,21 @@ async function createReservation(confirmer){
     ...typeClientPayload('nr'),
     ...logisticsPayload('nr'),
   };
-  if(!body.prenom || !body.nom || !body.adresse || !body.date_debut || !body.date_fin){
-    errEl.textContent = 'Prénom, nom, adresse et dates sont obligatoires.';
+  // Champs manquants pointés directement en rouge + focus sur le premier —
+  // sur un formulaire de cette longueur, un message générique en bas de page
+  // oblige à tout relire soi-même pour deviner ce qui a été oublié.
+  ['nr-prenom','nr-nom','nr-adresse','nr-debut','nr-fin','nr-email'].forEach(id => document.getElementById(id)?.classList.remove('field-err'));
+  const missing = [
+    ['nr-prenom', !body.prenom], ['nr-nom', !body.nom], ['nr-adresse', !body.adresse],
+    ['nr-debut', !body.date_debut], ['nr-fin', !body.date_fin],
+  ].filter(([,bad]) => bad).map(([id]) => id);
+  if(missing.length){
+    missing.forEach(id => document.getElementById(id)?.classList.add('field-err'));
+    errEl.textContent = 'Prénom, nom, adresse et dates sont obligatoires — les champs en rouge sont à compléter.';
     errEl.style.display = 'block';
+    const first = document.getElementById(missing[0]);
+    first?.scrollIntoView({behavior:'smooth', block:'center'});
+    first?.focus();
     return;
   }
   // Même exigence que le site (case CGV/CGL cochée avant paiement) — ici
@@ -4510,8 +4527,12 @@ async function createReservation(confirmer){
   // "Paiement à finaliser" envoie tout de suite un lien de paiement Stripe
   // par email — sans email, personne ne peut payer la réservation créée.
   if(!confirmer && !body.email){
+    document.getElementById('nr-email')?.classList.add('field-err');
     errEl.textContent = 'Email obligatoire pour envoyer le lien de paiement au client.';
     errEl.style.display = 'block';
+    const emailEl = document.getElementById('nr-email');
+    emailEl?.scrollIntoView({behavior:'smooth', block:'center'});
+    emailEl?.focus();
     return;
   }
   await submitReservation(body, submitBtn, errEl);
