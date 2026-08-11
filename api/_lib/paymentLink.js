@@ -66,9 +66,16 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
   // Tarifs (panneau de contrôle admin, voir admin-pricing.js) — jamais
   // recalculés en dur.
   const pricing = await getPricingConfig(supabase);
-  const useSms = preferSms && !!resa.tel;
-  if (!useSms && !resa.email) return { ok: false, error: 'Aucun email sur cette réservation' };
-  if (useSms && !resa.tel) return { ok: false, error: 'Aucun téléphone sur cette réservation' };
+  // Avant (audit 2026-08-11, demande d'Aly) : SMS OU email, jamais les deux —
+  // un client qui rate son SMS (numéro erroné, message filtré comme spam,
+  // téléphone perdu) n'avait alors AUCUN autre moyen de retrouver son lien de
+  // paiement tant qu'il n'appelait pas Aly. Le SMS reste privilégié dès qu'il
+  // y a un téléphone (plus rapide à lire au téléphone), mais l'email part
+  // maintenant EN PLUS dès qu'une adresse est renseignée — les deux canaux
+  // pointent vers la même session Stripe, payer sur l'un invalide l'autre.
+  const wantSms   = preferSms && !!resa.tel;
+  const wantEmail = !!resa.email;
+  if (!wantSms && !wantEmail) return { ok: false, error: 'Aucun téléphone ni email sur cette réservation' };
   // Une prolongation restée "en_attente" (paiement démarré puis abandonné)
   // passe par ce même lien de relance que n'importe quelle réservation
   // standard — sans ce distingo, la session Stripe recréée ici ne porterait
@@ -204,11 +211,13 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
       { label: 'Livraison & récupération', value: fmtEuros(breakdown.livraisonCents) },
     ] : null;
 
-    if (useSms) {
-      // Réservation saisie manuellement par l'admin (prise par téléphone) :
-      // SMS uniquement — lien Stripe + numéro de dossier à conserver pour
-      // l'espace client. Plus rapide à lire qu'un email pour le client.
-      const dossierRef = isProlongation ? (refOrigine || resa.ref) : resa.ref;
+    const dossierRef = isProlongation ? (refOrigine || resa.ref) : resa.ref;
+    let smsResult = null;
+    let emailResult = null;
+
+    if (wantSms) {
+      // Lien Stripe + numéro de dossier à conserver pour l'espace client —
+      // plus rapide à lire qu'un email pour un client qui vient de raccrocher.
       // Lien court (api/pay.js) plutôt que l'URL Stripe Checkout brute
       // (200-300+ caractères à elle seule) — sans ça le SMS bascule en 3-4
       // segments facturés séparément, et le temps de traitement supplémentaire
@@ -241,7 +250,7 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
         detailsTxt = `du ${fmtDateCourt(resa.date_debut)} au ${fmtDateCourt(resa.date_fin)}${qteTxt}, ${montantTxt}`;
       }
       const smsContent = `Loc'Air – ${prenomTxt}${detailsTxt}. Dossier ${dossierRef}. Payez ici : ${lienCourt} – Ce numéro donne accès à votre espace client sur locair.fr sans mot de passe.`;
-      const smsResult = await sendBrevoSms({ to: resa.tel, content: smsContent });
+      smsResult = await sendBrevoSms({ to: resa.tel, content: smsContent });
       supabase.from('email_log').insert({
         reservation_id: resa.id, scenario, canal: 'sms',
         destinataire: resa.tel, modele: 'lien_paiement_sms',
@@ -249,41 +258,50 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
         erreur: smsResult.ok ? null : String(smsResult.error || '').slice(0, 500),
         contenu: smsContent,
       }).then(() => {}, () => {});
-      if (!smsResult.ok) return { ok: false, error: smsResult.error || 'Échec envoi SMS' };
-      return { ok: true };
     }
 
-    const sig = await getSignature(supabase);
-    html = withSignature(tplLienPaiement({
-      prenom: resa.prenom, ref: isProlongation ? (refOrigine || resa.ref) : resa.ref, adresse: resa.adresse,
-      dateDebutFmt: fmtDate(resa.date_debut), dateFinFmt: fmtDate(resa.date_fin),
-      montantFmt: fmtEuros(resa.prix_total_cents),
-      breakdown: breakdownRows,
-      lienPaiement: session.url,
-      rappel,
-      isProlongation,
-      lang: resa.lang || 'fr',
-    }), sig);
-    const dossierRef = isProlongation ? (refOrigine || resa.ref) : resa.ref;
-    const subject = isProlongation
-      ? `Il reste un paiement à finaliser pour votre prolongation — Dossier ${dossierRef}`
-      : rappel
-      ? `Il reste un paiement à finaliser — Dossier ${resa.ref}`
-      : `Finalisez votre réservation Loc'Air — Dossier ${resa.ref}`;
-    const result = await sendBrevoEmail({
-      to: resa.email, senderName: sig.nom_expediteur,
-      subject,
-      html,
-    });
-    supabase.from('email_log').insert({
-      reservation_id: resa.id, scenario, canal: 'email',
-      destinataire: resa.email, modele: 'lien_paiement',
-      statut: result.ok ? 'envoye' : 'erreur',
-      erreur: result.ok ? null : String(result.error || '').slice(0, 500),
-      contenu: html,
-    }).then(() => {}, () => {});
-    if (!result.ok) return { ok: false, error: result.error || 'Échec envoi email' };
-    return { ok: true };
+    if (wantEmail) {
+      const sig = await getSignature(supabase);
+      html = withSignature(tplLienPaiement({
+        prenom: resa.prenom, ref: dossierRef, adresse: resa.adresse,
+        dateDebutFmt: fmtDate(resa.date_debut), dateFinFmt: fmtDate(resa.date_fin),
+        montantFmt: fmtEuros(resa.prix_total_cents),
+        breakdown: breakdownRows,
+        lienPaiement: session.url,
+        rappel,
+        isProlongation,
+        lang: resa.lang || 'fr',
+      }), sig);
+      const subject = isProlongation
+        ? `Il reste un paiement à finaliser pour votre prolongation — Dossier ${dossierRef}`
+        : rappel
+        ? `Il reste un paiement à finaliser — Dossier ${resa.ref}`
+        : `Finalisez votre réservation Loc'Air — Dossier ${resa.ref}`;
+      emailResult = await sendBrevoEmail({
+        to: resa.email, senderName: sig.nom_expediteur,
+        subject,
+        html,
+      });
+      supabase.from('email_log').insert({
+        reservation_id: resa.id, scenario, canal: 'email',
+        destinataire: resa.email, modele: 'lien_paiement',
+        statut: emailResult.ok ? 'envoye' : 'erreur',
+        erreur: emailResult.ok ? null : String(emailResult.error || '').slice(0, 500),
+        contenu: html,
+      }).then(() => {}, () => {});
+    }
+
+    // "ok" dès qu'AU MOINS UN des deux canaux tentés est parti — un client
+    // qui a reçu l'email même si le SMS a échoué (numéro invalide, etc.)
+    // peut quand même payer, inutile de le signaler comme un échec complet.
+    // Le détail par canal (smsSent/emailSent) reste disponible pour
+    // l'appelant (admin-reservations.js) qui l'affiche dans son message.
+    const smsSent   = smsResult   ? smsResult.ok   : null;
+    const emailSent = emailResult ? emailResult.ok : null;
+    const ok = smsSent === true || emailSent === true;
+    const errors = [smsResult && !smsResult.ok ? `SMS : ${smsResult.error || 'échec'}` : null,
+                    emailResult && !emailResult.ok ? `Email : ${emailResult.error || 'échec'}` : null].filter(Boolean);
+    return { ok, error: errors.length ? errors.join(' · ') : null, smsSent, emailSent };
   } catch (e) {
     console.error('[Lien paiement]', e.message);
     if (html) {
@@ -293,7 +311,7 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
         erreur: String(e.message || e).slice(0, 500), contenu: html,
       }).then(() => {}, () => {});
     }
-    return { ok: false, error: e.message };
+    return { ok: false, error: e.message, smsSent: null, emailSent: null };
   }
 }
 

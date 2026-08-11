@@ -237,11 +237,13 @@ module.exports = async (req, res) => {
 
       if (!confirmerImmediat) {
         // Client pas présent pour payer tout de suite (pris au téléphone) :
-        // préférence SMS (numéro de commande + lien Stripe) si le client a un
-        // téléphone — sinon repli sur un email. Sans ni l'un ni l'autre, la
-        // réservation est créée mais le client ne peut pas payer tout seul :
-        // on le signale à l'admin plutôt que de laisser croire que tout est en ordre.
-        let lienResult = { ok: false, error: 'Aucun téléphone ni email renseigné' };
+        // SMS (numéro de commande + lien Stripe) si le client a un téléphone
+        // ET email si une adresse est renseignée — les deux canaux dès qu'ils
+        // sont disponibles (voir _lib/paymentLink.js), plus seulement l'un OU
+        // l'autre. Sans aucun des deux, la réservation est créée mais le
+        // client ne peut pas payer tout seul : on le signale à l'admin
+        // plutôt que de laisser croire que tout est en ordre.
+        let lienResult = { ok: false, error: 'Aucun téléphone ni email renseigné', smsSent: null, emailSent: null };
         if (resa.tel || resa.email) {
           const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
           lienResult = await sendReservationPaymentLink(supabase, stripe, resa, { preferSms: true });
@@ -250,6 +252,8 @@ module.exports = async (req, res) => {
           ok: true, ref, en_attente: true,
           lien_envoye: lienResult.ok,
           lien_erreur: lienResult.ok ? null : lienResult.error,
+          lien_sms_envoye: lienResult.smsSent,
+          lien_email_envoye: lienResult.emailSent,
           reservation: { ...resa, masquee: false },
         });
       }
@@ -285,7 +289,11 @@ module.exports = async (req, res) => {
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
       const result = await sendReservationPaymentLink(supabase, stripe, resa, { preferSms: true });
       if (!result.ok) return res.status(502).json({ error: `Échec de l'envoi : ${result.error}` });
-      return res.status(200).json({ ok: true, canal: resa.tel ? 'sms' : 'email' });
+      // Reflète les canaux réellement partis (les deux si tel + email sont
+      // renseignés, voir _lib/paymentLink.js) — plus une simple devinette
+      // basée sur la présence d'un téléphone.
+      const canaux = [result.smsSent ? 'sms' : null, result.emailSent ? 'email' : null].filter(Boolean);
+      return res.status(200).json({ ok: true, canal: canaux.join('+') || (resa.tel ? 'sms' : 'email') });
     }
 
     // Prolongation prise en direct par l'admin (téléphone) — même principe que
@@ -405,7 +413,7 @@ module.exports = async (req, res) => {
         // aucun lien envoyé, obligeant Aly à la confirmer manuellement dès
         // réception du paiement (voir renvoyer_lien_paiement, resté le seul
         // rattrapage possible).
-        let lienResult = { ok: false, error: 'Aucun téléphone ni email renseigné' };
+        let lienResult = { ok: false, error: 'Aucun téléphone ni email renseigné', smsSent: null, emailSent: null };
         if (resa.tel || resa.email) {
           const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
           lienResult = await sendReservationPaymentLink(supabase, stripe, resa, { preferSms: true });
@@ -414,6 +422,8 @@ module.exports = async (req, res) => {
           ok: true, ref, en_attente: true,
           lien_envoye: lienResult.ok,
           lien_erreur: lienResult.ok ? null : lienResult.error,
+          lien_sms_envoye: lienResult.smsSent,
+          lien_email_envoye: lienResult.emailSent,
           reservation: { ...resa, masquee: false },
         });
       }
