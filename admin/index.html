@@ -257,6 +257,31 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .recup-cal-legend .gantt-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
 
 .section-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey-soft);margin:24px 2px 10px}
+.section-title:first-child{margin-top:0}
+/* Formulaire "Nouvelle réservation" (admin) — le devis (zone, dates,
+   quantité, installation) passe en premier et reste visuellement à part
+   (fond teinté) : c'est ce qu'un admin au téléphone doit pouvoir donner en
+   quelques secondes, avant même d'avoir demandé le nom du client. Le total
+   en gros chiffre (même traitement typographique --disp que .resa-price/
+   .stat-tile) se met à jour en direct à chaque champ touché. */
+.devis-box{background:var(--blue-lt);border:1.5px solid var(--blue);border-radius:var(--r-lg);padding:18px 20px 20px;margin-bottom:6px}
+.devis-box label:first-child{margin-top:0}
+.devis-total-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:14px;padding-top:14px;border-top:1px dashed rgba(26,43,74,.25)}
+.devis-total-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--blue)}
+.devis-total-amt{font-family:var(--disp);font-size:30px;font-weight:600;color:var(--black);letter-spacing:-.01em;line-height:1}
+.devis-box .nr-price-detail{font-size:12px;color:var(--grey);line-height:1.6;margin-top:6px}
+.devis-box input[type=number]#nr-prix{max-width:140px;margin-bottom:0}
+/* Section repliable pour les champs secondaires (utilisés occasionnellement :
+   parrainage, motif, tél. secours...) — même principe que .resa-details
+   (déjà utilisé pour "Détails d'accès" sur les cartes réservation), un peu
+   plus visible ici car c'est un vrai contrôle de formulaire, pas juste un
+   repli d'infos. */
+.nr-advanced{margin-top:20px;border-top:1px solid var(--rule);padding-top:4px}
+.nr-advanced summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:6px;padding:10px 2px;font-size:12.5px;font-weight:700;color:var(--grey);user-select:none}
+.nr-advanced summary::-webkit-details-marker{display:none}
+.nr-advanced summary::after{content:"▾";font-size:10px;margin-left:auto;transition:transform .15s ease}
+.nr-advanced[open] summary::after{transform:rotate(180deg)}
+.nr-advanced-body{padding:2px 0 4px}
 .row-item{padding:18px 20px;border:1px solid var(--rule);border-radius:var(--r);margin-bottom:12px;background:var(--white);box-shadow:var(--sh-xs)}
 .row-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}
 .row-title{font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:0}
@@ -3836,13 +3861,35 @@ function nrRecalcPrice(){
   const r = nrCalcTotal();
   const preview = document.getElementById('nr-price-preview');
   const prixEl = document.getElementById('nr-prix');
-  if(!r){ if(preview) preview.style.display = 'none'; return; }
+  const totalEl = document.getElementById('nr-total-display');
+  if(!r){
+    if(preview) preview.style.display = 'none';
+    if(totalEl) totalEl.textContent = '—';
+    return;
+  }
   if(preview){
     preview.style.display = 'block';
     preview.innerHTML = `Location (${r.days} j${r.qte>1?' × '+r.qte:''}) : ${(r.baseCents/100).toFixed(2)} € · Installation ${r.isTech?'technicien : '+(r.installCents/100).toFixed(2)+' €':'autonome : incluse'} · Livraison : <strong style="color:${r.horsZone?'var(--amber)':'inherit'}">${r.livraisonLabel}</strong>`;
   }
-  if(prixEl) prixEl.value = Math.max(0, Math.round(r.totalCents - _nrPromoDiscount*100)) / 100;
+  const total = Math.max(0, Math.round(r.totalCents - _nrPromoDiscount*100)) / 100;
+  if(prixEl) prixEl.value = total;
+  // Gros chiffre au-dessus du champ éditable — voir .devis-total-amt (le
+  // devis doit se lire d'un coup d'œil pendant un appel, pas seulement dans
+  // un petit champ de saisie).
+  if(totalEl) totalEl.textContent = total.toFixed(2).replace('.', ',') + ' €';
 }
+// Réorganisé (audit ergonomie 2026-08-11, demande d'Aly : "un devis en 15
+// secondes") — même formulaire, mêmes champs, mêmes id (createReservation/
+// typeClientPayload/logisticsPayload n'ont pas changé), mais réordonné en
+// 4 blocs au lieu d'une longue liste séquentielle :
+//   1. Devis rapide (zone, dates, quantité) — ce qu'on demande en premier
+//      au téléphone, avec un gros total qui se met à jour en direct.
+//   2. Client (identité + coordonnées + adresse).
+//   3. Logement & accès (étage, fenêtre, installation, instructions).
+//   4. Options avancées, repliées par défaut (tél. secours, entreprise,
+//      parrainage, motif, marketing) — utilisées occasionnellement, pas à
+//      chaque appel, inutile de les imposer entre le devis et la validation.
+// Les CGV restent hors du repli : jamais optionnelles, jamais à chercher.
 function reservationCreerHtml(){
   _nrPromoDiscount = 0;
   // Usage unique : lu ici puis remis à null, pour qu'un simple retour sur
@@ -3856,79 +3903,102 @@ function reservationCreerHtml(){
       <h2>Nouvelle réservation</h2>
       <p class="sub" style="margin-bottom:16px">Reprend tous les champs du formulaire du site — pour saisir toi-même une réservation prise par téléphone.</p>
       ${d ? `<div style="background:var(--blue-lt);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.5"><strong>🔁 Infos reprises de ${escHtml(d.ref||'')}</strong> (${escHtml(d.prenom||'')} ${escHtml(d.nom||'')})<br>Dates, quantité, prix et CGV sont à ressaisir — <strong>vérifie que l'adresse et le logement sont toujours d'actualité.</strong></div>` : ''}
-      <label for="nr-prenom">Prénom *</label>
-      <input type="text" id="nr-prenom" value="${escHtml(d?.prenom||'')}"/>
-      <label for="nr-nom">Nom *</label>
-      <input type="text" id="nr-nom" value="${escHtml(d?.nom||'')}"/>
-      <label for="nr-tel">Téléphone</label>
-      <input type="tel" id="nr-tel" value="${escHtml(d?.tel||'')}"/>
-      <label for="nr-tel2">Téléphone secondaire (secours, optionnel)</label>
-      <input type="tel" id="nr-tel2" value="${escHtml(d?.tel_secondaire||'')}"/>
-      <label for="nr-email">Email</label>
-      <input type="text" id="nr-email" value="${escHtml(d?.email||'')}"/>
-      ${typeClientFieldsHtml('nr', d)}
+
+      <div class="section-title">💶 Devis rapide</div>
+      <div class="devis-box">
+        <label for="nr-cp">Code postal</label>
+        <input type="text" id="nr-cp" placeholder="ex. 06000" maxlength="5" oninput="nrRecalcPrice()" style="max-width:130px" value="${escHtml(cpGuess)}"/>
+        <div class="inline-form" style="margin-top:8px">
+          <div>
+            <label for="nr-debut">Date livraison *</label>
+            <input type="date" id="nr-debut" oninput="nrOnDebutChange()"/>
+          </div>
+          <div>
+            <label for="nr-fin">Date récupération *</label>
+            <input type="date" id="nr-fin" oninput="nrRecalcPrice()"/>
+          </div>
+        </div>
+        <div class="periods" style="margin:8px 0 2px;flex-wrap:wrap;height:auto;background:transparent;padding:0">
+          ${[7,14,21,28].map(days=>`<button type="button" class="nr-dur-btn" data-days="${days}" onclick="nrSetDuration(${days})" style="flex:none;padding:7px 16px;background:var(--white);border:1.5px solid var(--rule)">${days} j</button>`).join('')}
+        </div>
+        <p class="sub" style="margin:4px 0 10px;font-size:11.5px">Durée rapide — ou modifie directement la date de récupération ci-dessus.</p>
+        <label for="nr-qte" style="margin-top:0">Quantité</label>
+        <input type="number" id="nr-qte" min="1" max="5" value="1" oninput="nrRecalcPrice()" style="max-width:100px"/>
+        <div class="devis-total-row">
+          <div>
+            <div class="devis-total-lbl">Total estimé</div>
+            <div class="devis-total-amt" id="nr-total-display">—</div>
+          </div>
+          <div style="text-align:right">
+            <label for="nr-prix" style="margin:0 0 4px">Prix total (€, modifiable)</label>
+            <input type="number" id="nr-prix" min="0" step="0.5"/>
+          </div>
+        </div>
+        <p id="nr-price-preview" class="nr-price-detail" style="display:none"></p>
+      </div>
+
+      <div class="section-title">👤 Client</div>
+      <div class="inline-form">
+        <div><label for="nr-prenom">Prénom *</label><input type="text" id="nr-prenom" value="${escHtml(d?.prenom||'')}"/></div>
+        <div><label for="nr-nom">Nom *</label><input type="text" id="nr-nom" value="${escHtml(d?.nom||'')}"/></div>
+      </div>
+      <div class="inline-form" style="margin-top:8px">
+        <div><label for="nr-tel">Téléphone</label><input type="tel" id="nr-tel" value="${escHtml(d?.tel||'')}"/></div>
+        <div><label for="nr-email">Email</label><input type="text" id="nr-email" value="${escHtml(d?.email||'')}"/></div>
+      </div>
       <label for="nr-adresse" style="margin-top:8px">Adresse *${d?' <span style="color:var(--amber);font-weight:700">— à vérifier</span>':''}</label>
       <input type="text" id="nr-adresse" value="${escHtml(d?.adresse||'')}"/>
-      <label for="nr-cp" style="margin-top:6px">Code postal</label>
-      <input type="text" id="nr-cp" placeholder="ex. 06000" maxlength="5" oninput="nrRecalcPrice()" style="max-width:120px" value="${escHtml(cpGuess)}"/>
-      <div class="inline-form">
-        <div>
-          <label for="nr-debut">Date livraison *</label>
-          <input type="date" id="nr-debut" oninput="nrOnDebutChange()"/>
-        </div>
-        <div>
-          <label for="nr-fin">Date récupération *</label>
-          <input type="date" id="nr-fin" oninput="nrRecalcPrice()"/>
-        </div>
-      </div>
-      <div class="periods" style="margin:-4px 0 2px;flex-wrap:wrap;height:auto">
-        ${[7,14,21,28].map(days=>`<button type="button" class="nr-dur-btn" data-days="${days}" onclick="nrSetDuration(${days})" style="flex:none;padding:6px 16px">${days} j</button>`).join('')}
-      </div>
-      <p class="sub" style="margin:0 0 10px;font-size:11.5px">Durée rapide — ou modifie directement la date de récupération ci-dessus.</p>
-      <div class="inline-form">
-        <div><label for="nr-qte">Quantité</label><input type="number" id="nr-qte" min="1" max="5" value="1" oninput="nrRecalcPrice()"/></div>
-        <div><label for="nr-prix">Prix total (€)</label><input type="number" id="nr-prix" min="0" step="0.5"/></div>
-      </div>
-      <p id="nr-price-preview" class="sub" style="display:none;margin:-6px 0 10px;font-size:12px;line-height:1.6"></p>
-      ${logisticsFieldsHtml('nr', d)}
+
+      <div class="section-title">📍 Logement &amp; accès</div>
+      ${logisticsFieldsHtml('nr', d, 'nrRecalcPrice()')}
       <label for="nr-logement" style="margin-top:8px">Surface à climatiser${d?' <span style="color:var(--amber);font-weight:700">— à vérifier</span>':''}</label>
       <select id="nr-logement">
         <option value="" ${!d?.logement?'selected':''}>—</option>
         ${['Studio','T2','T3/T4','Maison'].map(o=>`<option ${d?.logement===o?'selected':''}>${o}</option>`).join('')}
       </select>
-      <div class="inline-form" style="margin-top:8px">
-        <div>
-          <label for="nr-date-recup">Date récup. souhaitée (optionnelle)</label>
-          <input type="date" id="nr-date-recup"/>
+
+      <details class="nr-advanced">
+        <summary><span style="white-space:nowrap">Options avancées</span> <span style="font-weight:400;color:var(--grey-soft);text-transform:none;letter-spacing:0">(optionnel)</span></summary>
+        <div class="nr-advanced-body">
+          <label for="nr-tel2">Téléphone secondaire (secours, optionnel)</label>
+          <input type="tel" id="nr-tel2" value="${escHtml(d?.tel_secondaire||'')}"/>
+          ${typeClientFieldsHtml('nr', d)}
+          <div class="inline-form" style="margin-top:8px">
+            <div>
+              <label for="nr-date-recup">Date récup. souhaitée (optionnelle)</label>
+              <input type="date" id="nr-date-recup"/>
+            </div>
+            <div>
+              <label for="nr-cren-recup">Créneau récup.</label>
+              <select id="nr-cren-recup">
+                <option value="">—</option>
+                <option value="8h – 10h">8h – 10h</option>
+                <option value="10h – 12h">10h – 12h</option>
+              </select>
+            </div>
+          </div>
+          <label for="nr-parrain" style="margin-top:8px">Code parrain (optionnel)</label>
+          <input type="text" id="nr-parrain" oninput="onNrParrainInput()"/>
+          <p id="nr-parrain-fb" style="display:none;font-size:12px;font-weight:600;margin-top:4px"></p>
+          <label for="nr-partenaire" style="margin-top:8px">Code ambassadeur / partenaire (optionnel)</label>
+          <input type="text" id="nr-partenaire" placeholder="ex : dupont" autocapitalize="none" spellcheck="false"/>
+          <p style="font-size:11.5px;color:var(--grey);margin-top:3px">Si cette réservation a été apportée par une conciergerie ou un ambassadeur, entre son code pour lui attribuer la commission automatiquement.</p>
+          <label style="margin-top:8px">Motif de location (optionnel)</label>
+          <div class="periods" id="nr-motifs" style="margin:0;flex-wrap:wrap;height:auto">
+            ${['Chaleur','Bébé / Santé','Airbnb / Location','Événement'].map(m => `<button type="button" data-motif="${m}" onclick="this.classList.toggle('on')" style="flex:none;padding:8px 14px">${m}</button>`).join('')}
+          </div>
+          <label style="margin-top:14px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
+            <input type="checkbox" id="nr-mkt" style="width:auto"/> Le client accepte de recevoir les offres et actualités par email
+          </label>
         </div>
-        <div>
-          <label for="nr-cren-recup">Créneau récup.</label>
-          <select id="nr-cren-recup">
-            <option value="">—</option>
-            <option value="8h – 10h">8h – 10h</option>
-            <option value="10h – 12h">10h – 12h</option>
-          </select>
-        </div>
-      </div>
-      <label for="nr-parrain" style="margin-top:8px">Code parrain (optionnel)</label>
-      <input type="text" id="nr-parrain" oninput="onNrParrainInput()"/>
-      <p id="nr-parrain-fb" style="display:none;font-size:12px;font-weight:600;margin-top:4px"></p>
-      <label for="nr-partenaire" style="margin-top:8px">Code ambassadeur / partenaire (optionnel)</label>
-      <input type="text" id="nr-partenaire" placeholder="ex : dupont" autocapitalize="none" spellcheck="false"/>
-      <p style="font-size:11.5px;color:var(--grey);margin-top:3px">Si cette réservation a été apportée par une conciergerie ou un ambassadeur, entre son code pour lui attribuer la commission automatiquement.</p>
-      <label style="margin-top:8px">Motif de location (optionnel)</label>
-      <div class="periods" id="nr-motifs" style="margin:0;flex-wrap:wrap;height:auto">
-        ${['Chaleur','Bébé / Santé','Airbnb / Location','Événement'].map(m => `<button type="button" data-motif="${m}" onclick="this.classList.toggle('on')" style="flex:none;padding:8px 14px">${m}</button>`).join('')}
-      </div>
-      <label style="margin-top:14px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
-        <input type="checkbox" id="nr-mkt" style="width:auto"/> Le client accepte de recevoir les offres et actualités par email
-      </label>
-      <label style="margin-top:10px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
+      </details>
+
+      <label style="margin-top:16px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
         <input type="checkbox" id="nr-cgv" style="width:auto"/> Le client a été informé et accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> ainsi que les <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">conditions d'utilisation du climatiseur</a> (comme sur le site)
       </label>
       <button class="btn btn-blue btn-block" style="margin-top:16px" id="nr-submit-attente" onclick="createReservation(false)">📧 Créer — paiement à finaliser par le client</button>
       <button class="btn btn-grey btn-block" style="margin-top:8px" id="nr-submit-confirme" onclick="createReservation(true)">✅ Créer et confirmer (paiement déjà reçu)</button>
-      <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" envoie immédiatement au client un SMS avec son numéro de dossier et son lien de paiement Stripe sécurisé (repli sur email si pas de téléphone).</p>
+      <p class="sub" style="margin-top:10px;font-size:12px">"Paiement à finaliser" envoie immédiatement au client son numéro de dossier et son lien de paiement Stripe sécurisé, par SMS et par email.</p>
       <div class="err" id="new-resa-err"></div>
     </div>`;
 }
@@ -4327,7 +4397,13 @@ function typeClientPayload(prefix){
 // reservations.js) facture réellement pour une installation technicien.
 const INSTALLATION_OPTIONS = ['Autonome (kit fourni)', 'Technicien (80€)'];
 const FENETRE_OPTIONS = ['À confirmer', 'Fenêtre coulissante', 'Fenêtre à battant', 'Oscillo-battant', 'Porte-fenêtre', 'Vélux / toit'];
-function logisticsFieldsHtml(prefix, v){
+// `onInstallChange` (optionnel) : expression JS à déclencher quand
+// l'installation change (ex. 'nrRecalcPrice()') — l'installation technicien
+// ajoute 80€ au prix, un formulaire avec un devis en direct doit s'actualiser
+// tout de suite, sans attendre qu'un autre champ (dates/quantité) le fasse à
+// sa place. Vide par défaut : aucun changement pour les formulaires sans
+// calcul de prix en direct (fiche réservation, "Créer une mission").
+function logisticsFieldsHtml(prefix, v, onInstallChange){
   v = v || {};
   return `
       <div class="inline-form" style="margin-top:8px">
@@ -4336,7 +4412,7 @@ function logisticsFieldsHtml(prefix, v){
       </div>
       <div class="inline-form" style="margin-top:8px">
         <div><label for="${prefix}-fenetre">Type de fenêtre</label><select id="${prefix}-fenetre">${FENETRE_OPTIONS.map(f=>`<option value="${f}" ${v.fenetre===f?'selected':''}>${f}</option>`).join('')}</select></div>
-        <div><label for="${prefix}-installation">Installation</label><select id="${prefix}-installation">${INSTALLATION_OPTIONS.map(o=>`<option value="${o}" ${v.installation===o?'selected':''}>${o}</option>`).join('')}</select></div>
+        <div><label for="${prefix}-installation">Installation</label><select id="${prefix}-installation" ${onInstallChange?`onchange="${onInstallChange}"`:''}>${INSTALLATION_OPTIONS.map(o=>`<option value="${o}" ${v.installation===o?'selected':''}>${o}</option>`).join('')}</select></div>
       </div>
       <label for="${prefix}-instructions" style="margin-top:8px">Instructions d'accès (digicode…)</label>
       <input type="text" id="${prefix}-instructions" value="${escHtml(v.instructions_acces||'')}"/>`;
