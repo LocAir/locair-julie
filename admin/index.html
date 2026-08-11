@@ -3928,6 +3928,23 @@ function nrUpdateCpZone(){
   }
   el.style.display = 'block';
 }
+// Le serveur plafonne toujours la quantité à 5 à l'enregistrement
+// (admin-reservations.js : Math.min(5, Math.max(1, ...))), mais sans ce
+// garde-fou ici, taper "10" par erreur (mal barré derrière "1") faisait
+// calculer et afficher un devis pour 10 appareils — alors que la
+// réservation, elle, serait bien créée pour 5. Le client se serait vu
+// annoncer/facturer un prix qui ne correspond à aucune réservation réelle.
+// Même limite des deux côtés, pour que le devis affiché soit toujours celui
+// qui sera vraiment créé.
+function nrClampQte(){
+  const el = document.getElementById('nr-qte');
+  if(!el) return;
+  const v = parseInt(el.value);
+  if(Number.isFinite(v)){
+    const clamped = Math.min(5, Math.max(1, v));
+    if(clamped !== v) el.value = clamped;
+  }
+}
 function nrCalcTotal(){
   const debut = document.getElementById('nr-debut')?.value;
   const fin   = document.getElementById('nr-fin')?.value;
@@ -4008,8 +4025,8 @@ function reservationCreerHtml(){
           ${[7,14,21,28].map(days=>`<button type="button" class="nr-dur-btn" data-days="${days}" onclick="nrSetDuration(${days})" style="flex:none;padding:7px 16px">${days} j</button>`).join('')}
         </div>
         <p class="sub" style="margin:4px 0 10px;font-size:11.5px">Durée rapide — ou modifie directement la date de récupération ci-dessus.</p>
-        <label for="nr-qte" style="margin-top:0">Quantité</label>
-        <input type="number" id="nr-qte" min="1" max="5" value="1" oninput="nrRecalcPrice()" style="max-width:100px"/>
+        <label for="nr-qte" style="margin-top:0">Quantité <span style="text-transform:none;font-weight:400;color:var(--grey-soft)">(max 5)</span></label>
+        <input type="number" id="nr-qte" min="1" max="5" value="1" oninput="nrClampQte();nrRecalcPrice()" style="max-width:100px"/>
         <label style="margin-top:8px">Installation<span style="text-transform:none;font-weight:400;color:var(--grey-soft)"> — impacte le prix</span></label>
         <div class="periods" style="margin:0 0 2px;flex-wrap:wrap;height:auto;background:transparent;padding:0">
           <button type="button" class="nr-install-btn${installVal===INSTALLATION_OPTIONS[0]?' on':''}" data-val="${escHtml(INSTALLATION_OPTIONS[0])}" onclick="nrSetInstall('${INSTALLATION_OPTIONS[0]}')" style="flex:none;padding:7px 16px">Autonome</button>
