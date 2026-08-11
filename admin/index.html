@@ -3759,11 +3759,15 @@ function renderReservationsToolbar(){
   `;
   if(RESERVATIONS_VIEW==='liste') renderReservations();
   else if(RESERVATIONS_VIEW==='calendrier') renderReservationsCalendrier();
-  // logisticsFieldsHtml (partagé avec "Créer une mission"/"Modifier") ne pose
-  // pas d'onchange sur son select Installation — ajouté ici seulement pour
-  // l'instance "nr" (Créer une réservation), pour recalculer l'aperçu de prix.
-  document.getElementById('nr-installation')?.addEventListener('change', nrRecalcPrice);
+  // L'aperçu de prix se recalcule tout seul dès l'affichage (dates/quantité
+  // déjà saisies via "Réservation similaire", ou juste pour repartir d'un
+  // état propre) — le select Installation a son propre onchange="nrRecalcPrice()"
+  // posé par logisticsFieldsHtml (voir son paramètre onInstallChange).
   nrRecalcPrice();
+  // Le formulaire "Créer" vient d'être (re)affiché avec un champ vide en
+  // premier : focus tout de suite dessus pour pouvoir taper sans un clic
+  // de plus — c'est le champ par lequel commence un devis au téléphone.
+  if(RESERVATIONS_VIEW==='creer') document.getElementById('nr-cp')?.focus();
 }
 // Formulaire complet de création manuelle — reprend tous les champs du tunnel
 // public (index.html), pour qu'Aly puisse saisir intégralement une réservation
