@@ -266,7 +266,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    .stat-tile) se met à jour en direct à chaque champ touché. */
 .devis-box{background:var(--blue-lt);border:1.5px solid var(--blue);border-radius:var(--r-lg);padding:18px 20px 20px;margin-bottom:6px}
 .devis-box label:first-child{margin-top:0}
-.devis-total-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-top:14px;padding-top:14px;border-top:1px dashed rgba(26,43,74,.25)}
+/* flex-wrap + min-width : à largeur mobile étroite (~375px), sans ça les
+   deux blocs se partageaient la ligne à égalité et le total lui-même
+   ("144,00 €") se retrouvait coupé au milieu, "€" tombant seul à la ligne
+   suivante — illisible pour le chiffre qu'on veut justement lire d'un coup
+   d'œil au téléphone. Avec le wrap, chaque bloc garde assez de place pour
+   son propre contenu, quitte à passer sur 2 lignes au lieu de 2 colonnes. */
+.devis-total-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:10px 16px;margin-top:14px;padding-top:14px;border-top:1px dashed rgba(26,43,74,.25)}
+.devis-total-row>div{min-width:130px}
 .devis-total-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--blue)}
 .devis-total-amt{font-family:var(--disp);font-size:30px;font-weight:600;color:var(--black);letter-spacing:-.01em;line-height:1}
 .devis-box .nr-price-detail{font-size:12px;color:var(--grey);line-height:1.6;margin-top:6px}
@@ -3930,7 +3937,7 @@ function reservationCreerHtml(){
             <div class="devis-total-amt" id="nr-total-display">—</div>
           </div>
           <div style="text-align:right">
-            <label for="nr-prix" style="margin:0 0 4px">Prix total (€, modifiable)</label>
+            <label for="nr-prix" style="margin:0 0 4px">Prix (modifiable)</label>
             <input type="number" id="nr-prix" min="0" step="0.5"/>
           </div>
         </div>
