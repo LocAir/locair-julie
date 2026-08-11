@@ -3963,9 +3963,11 @@ function nrRecalcPrice(){
   const preview = document.getElementById('nr-price-preview');
   const prixEl = document.getElementById('nr-prix');
   const totalEl = document.getElementById('nr-total-display');
+  const hint = document.getElementById('nr-prix-manual-hint');
   if(!r){
     if(preview) preview.style.display = 'none';
     if(totalEl) totalEl.textContent = '—';
+    if(hint) hint.style.display = 'none';
     return;
   }
   if(preview){
@@ -3978,6 +3980,25 @@ function nrRecalcPrice(){
   // devis doit se lire d'un coup d'œil pendant un appel, pas seulement dans
   // un petit champ de saisie).
   if(totalEl) totalEl.textContent = total.toFixed(2).replace('.', ',') + ' €';
+  // Ce recalcul vient d'écraser toute modification manuelle du prix (dates,
+  // quantité, CP ou installation qui viennent de changer) — l'avertissement
+  // n'a plus lieu d'être tant qu'on n'a pas retapé le prix à la main.
+  if(hint) hint.style.display = 'none';
+}
+// Avertit quand le prix est modifié à la main (ex. geste commercial) : ce
+// champ est entièrement réécrit par nrRecalcPrice() au moindre changement de
+// dates/quantité/code postal/installation, sans confirmation — sans cet
+// avertissement, une remise négociée au téléphone pouvait disparaître en
+// silence dès qu'on touchait un autre champ du devis.
+function nrOnPrixInput(){
+  const prixEl = document.getElementById('nr-prix');
+  const hint = document.getElementById('nr-prix-manual-hint');
+  if(!prixEl || !hint) return;
+  const r = nrCalcTotal();
+  if(!r){ hint.style.display = 'none'; return; }
+  const autoTotal = Math.max(0, Math.round(r.totalCents - _nrPromoDiscount*100)) / 100;
+  const current = parseFloat(prixEl.value);
+  hint.style.display = (Number.isFinite(current) && Math.abs(current - autoTotal) > 0.01) ? 'block' : 'none';
 }
 // Réorganisé (audit ergonomie 2026-08-11, demande d'Aly : "un devis en 15
 // secondes") — même formulaire, mêmes champs, mêmes id (createReservation/
@@ -4039,9 +4060,10 @@ function reservationCreerHtml(){
           </div>
           <div style="text-align:right">
             <label for="nr-prix" style="margin:0 0 4px">Prix (modifiable)</label>
-            <input type="number" id="nr-prix" min="0" step="0.5"/>
+            <input type="number" id="nr-prix" min="0" step="0.5" oninput="nrOnPrixInput()"/>
           </div>
         </div>
+        <p id="nr-prix-manual-hint" style="display:none;margin:0 0 6px;font-size:11px;color:var(--amber);text-align:right;line-height:1.4">⚠️ Prix modifié à la main — sera remplacé si tu retouches les dates, la quantité, le code postal ou l'installation ci-dessus.</p>
         <p id="nr-price-preview" class="nr-price-detail" style="display:none"></p>
       </div>
 
