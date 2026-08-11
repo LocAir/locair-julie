@@ -160,6 +160,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .periods{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);padding:4px;border-radius:100px}
 .periods button{flex:1;padding:8px;border-radius:100px;border:none;background:transparent;font-weight:600;font-size:12.5px;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
 .periods button.on{background:var(--white);color:var(--black);box-shadow:var(--sh-xs)}
+/* Boutons "Durée rapide" du devis (fond transparent posé sur .devis-box,
+   pas la piste grise habituelle de .periods) — la sélection doit se voir
+   d'un coup d'œil, un simple texte plus foncé (ancien état, cf. audit
+   2026-08-11) se fondait presque dans le fond bleu clair de la boîte.
+   Sélecteur à 2 classes pour battre la spécificité de .periods button
+   ci-dessus sans !important. */
+.periods .nr-dur-btn{background:var(--white);border:1.5px solid var(--rule);color:var(--grey)}
+.periods .nr-dur-btn.on{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
 
 /* Rangée de filtres nombreuse (ex. 8 filtres Livraisons) : scroll horizontal
    plutôt que le flex:1 de .periods qui écrase le texte. Ne réutilise pas
@@ -3940,7 +3948,7 @@ function reservationCreerHtml(){
           </div>
         </div>
         <div class="periods" style="margin:8px 0 2px;flex-wrap:wrap;height:auto;background:transparent;padding:0">
-          ${[7,14,21,28].map(days=>`<button type="button" class="nr-dur-btn" data-days="${days}" onclick="nrSetDuration(${days})" style="flex:none;padding:7px 16px;background:var(--white);border:1.5px solid var(--rule)">${days} j</button>`).join('')}
+          ${[7,14,21,28].map(days=>`<button type="button" class="nr-dur-btn" data-days="${days}" onclick="nrSetDuration(${days})" style="flex:none;padding:7px 16px">${days} j</button>`).join('')}
         </div>
         <p class="sub" style="margin:4px 0 10px;font-size:11.5px">Durée rapide — ou modifie directement la date de récupération ci-dessus.</p>
         <label for="nr-qte" style="margin-top:0">Quantité</label>
