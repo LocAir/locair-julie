@@ -4039,8 +4039,8 @@ async function createProlongation(confirmer){
     PROLONG_ORIG = null;
     setReservationsView('liste');
     if(d.en_attente){
-      if(d.lien_envoye) showToast(`Prolongation ${d.ref} créée — SMS de paiement envoyé au client`, 'success');
-      else showToast(`Prolongation ${d.ref} créée, mais le SMS de paiement n'a pas pu partir (${d.lien_erreur || 'erreur'}) — renvoie le lien depuis la fiche`, 'error');
+      if(d.lien_envoye) showToast(`Prolongation ${d.ref} créée — lien de paiement envoyé au client par ${lienPaiementCanalTxt(d)}`, 'success');
+      else showToast(`Prolongation ${d.ref} créée, mais le lien de paiement n'a pas pu partir (${d.lien_erreur || 'erreur'}) — renvoie-le depuis la fiche`, 'error');
     } else {
       showToast(`Prolongation ${d.ref} créée et confirmée`, 'success');
     }
@@ -4410,6 +4410,16 @@ async function createReservation(confirmer){
   }
   await submitReservation(body, submitBtn, errEl);
 }
+// Le lien de paiement part maintenant par SMS ET par email dès que les deux
+// coordonnées sont disponibles (plus seulement l'un ou l'autre — voir
+// _lib/paymentLink.js) — reflète ici quel(s) canal/canaux est/sont réellement
+// parti(s), à partir des champs renvoyés par admin-reservations.js.
+function lienPaiementCanalTxt(d){
+  if(d.lien_sms_envoye && d.lien_email_envoye) return 'SMS et email';
+  if(d.lien_sms_envoye) return 'SMS';
+  if(d.lien_email_envoye) return 'email';
+  return 'SMS/email'; // repli si l'info détaillée manque (ne devrait pas arriver quand lien_envoye est vrai)
+}
 async function submitReservation(body, submitBtn, errEl){
   // Verrou anti-double-clic : une réservation manuelle engage un vrai paiement
   // et un vrai appareil — un double-clic (ou un clic pendant que la requête
@@ -4430,8 +4440,8 @@ async function submitReservation(body, submitBtn, errEl){
     }
     setReservationsView('liste');
     if(d.en_attente){
-      if(d.lien_envoye) showToast(`Réservation ${d.ref} créée — SMS de paiement envoyé au client`, 'success');
-      else showToast(`Réservation ${d.ref} créée, mais le SMS de paiement n'a pas pu partir (${d.lien_erreur || 'erreur'}) — renvoie le lien depuis la fiche`, 'error');
+      if(d.lien_envoye) showToast(`Réservation ${d.ref} créée — lien de paiement envoyé au client par ${lienPaiementCanalTxt(d)}`, 'success');
+      else showToast(`Réservation ${d.ref} créée, mais le lien de paiement n'a pas pu partir (${d.lien_erreur || 'erreur'}) — renvoie-le depuis la fiche`, 'error');
     } else {
       showToast(`Réservation ${d.ref} créée et confirmée`, 'success');
     }
@@ -4462,11 +4472,18 @@ function cancelReservation(id){
 // admin-reservations.js. Même canal que l'envoi initial : SMS si la
 // réservation a un téléphone, email sinon.
 function renvoyerLienPaiement(id, parSms){
+  // parSms ne sert plus qu'à formuler la question de confirmation avant
+  // l'envoi (le client a-t-il un téléphone ?) — le message de succès, lui,
+  // reflète les canaux réellement partis (SMS et email dès que les deux
+  // coordonnées sont disponibles, voir _lib/paymentLink.js), pas une
+  // simple devinette.
   confirmAction(`Renvoyer le lien de paiement au client par ${parSms?'SMS':'email'} ?`, async () => {
     try{
       const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'renvoyer_lien_paiement', id})});
-      if(!r.ok) throw new Error((await r.json()).error||'Erreur');
-      showToast(`Lien de paiement renvoyé par ${parSms?'SMS':'email'}`, 'success');
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      const canalTxt = {sms:'SMS', email:'email', 'sms+email':'SMS et email'}[d.canal] || (parSms?'SMS':'email');
+      showToast(`Lien de paiement renvoyé par ${canalTxt}`, 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {yesLabel:'Renvoyer'});
 }
