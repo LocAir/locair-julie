@@ -6298,6 +6298,7 @@ function _addrSetValid(on){
 }
 
 function onAddrInput(inp){
+  _cpGateOk=false; // L'utilisateur modifie l'adresse → invalider le bypass CP précédent
   const v=inp.value.trim();
   _addrSetValid(v.length>4);
   const clr=document.getElementById('addr-clear');
@@ -6308,6 +6309,7 @@ function onAddrInput(inp){
 }
 
 function clearAddr(){
+  _cpGateOk=false; // Effacement → invalider le bypass CP précédent
   const inp=document.getElementById('f-addr');
   if(!inp)return;
   inp.value='';
@@ -6836,6 +6838,12 @@ function goTo(n,silent){
         if(!addr){highlight(['f-addr']);goTo(1,true);return;}
       }
       if(s===2){
+        // Si le panneau de durée libre est ouvert mais non confirmé, forcer la
+        // confirmation — sinon la durée en formData serait l'ancienne valeur
+        // (ex. 7j) même si l'utilisateur a tapé 30 dans le stepper.
+        if(document.getElementById('dur-free-wrap')?.classList.contains('open')){
+          if(typeof confirmDurFree==='function')confirmDurFree();
+        }
         const hasDurCard=!!document.querySelector('.dur-row.on');
         const hasDurFree=document.getElementById('dur-free-wrap')?.classList.contains('open')===false||!!document.getElementById('f-dur')?.value;
         if(!hasDurCard && !hasDurFree){
