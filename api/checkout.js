@@ -221,6 +221,7 @@ module.exports = async (req, res) => {
     const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  city.id,
       hors_zone:                horsZone || false,
+      express:                  expressCents > 0,
       ref:                      (data._ref || '').slice(0, 100),
       stripe_payment_intent_id: intent.id,
       stripe_customer_id:       customerId || null,
