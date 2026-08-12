@@ -18,8 +18,13 @@ module.exports = async (req, res) => {
 
   const supabaseRL = getSupabase();
   const ip = getClientIp(req);
-  if (await isRateLimited(supabaseRL, `prolong-pay:${ip}`)) {
-    return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
+  try {
+    if (await isRateLimited(supabaseRL, `prolong-pay:${ip}`)) {
+      return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
+    }
+  } catch (e) {
+    // Supabase momentanément indisponible — on laisse passer (même comportement que checkout.js).
+    console.error('[ratelimit] prolong-pay:', e.message);
   }
 
   const { email, ref, new_date_fin, cgv_accepted, client_token } = req.body || {};
