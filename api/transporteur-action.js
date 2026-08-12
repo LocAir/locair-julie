@@ -77,7 +77,7 @@ function checkMediaAllowed(liv, kind) {
 async function loadLivraison(supabase, id) {
   const { data, error } = await supabase
     .from('livraisons')
-    .select('*, reservation:reservations(installation, city_id, hors_zone, prenom, nom, tel, email, ref, adresse, creneau, lang)')
+    .select('*, reservation:reservations(installation, city_id, hors_zone, express, prenom, nom, tel, email, ref, adresse, creneau, lang)')
     .eq('id', id).maybeSingle();
   if (error || !data) return null;
   return data;
@@ -400,7 +400,7 @@ module.exports = async (req, res) => {
       let montantDu = liv.montant_du_cents;
       if (!liv.montant_manuel) {
         const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
-        montantDu = computeBareme(liv.type, liv.reservation?.installation, tarifs, liv.reservation?.hors_zone, liv.express);
+        montantDu = computeBareme(liv.type, liv.reservation?.installation, tarifs, liv.reservation?.hors_zone, liv.reservation?.express);
       }
 
       const update = {

@@ -65,14 +65,14 @@ module.exports = async (req, res) => {
     const { data, error } = await supabase
       .from('livraisons')
       .select(`
-        id, type, statut, date_prevue, creneau, titre, adresse_libre, montant_du_cents, montant_manuel, express,
+        id, type, statut, date_prevue, creneau, titre, adresse_libre, montant_du_cents, montant_manuel,
         photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path, client_notifie_at,
         demo_faite, incident_id,
         vidange_confirmee,
         probleme_type, probleme_description,
         reservation:reservations (
           id, reservation_origine_id,
-          prenom, nom, tel, tel_secondaire, type_client, raison_sociale, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, quantite, instructions_acces, city_id, hors_zone,
+          prenom, nom, tel, tel_secondaire, type_client, raison_sociale, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, quantite, instructions_acces, city_id, hors_zone, express,
           date_debut, date_fin,
           reservation_appareils ( appareil:appareils ( numero ) ),
           client:clients ( acces_difficile )
@@ -123,8 +123,7 @@ module.exports = async (req, res) => {
       // standard — voir admin-livraisons.js) et pour une mission déjà "fait" :
       // sans ce garde-fou, le transporteur voyait le barème standard recalculé
       // au lieu du montant réellement fixé/payé (audit du 2026-08-04).
-      montant_preview:     (m.type === 'autre' || m.montant_manuel || m.statut === 'fait') ? (m.montant_du_cents || 0) : computeBareme(m.type, m.reservation?.installation, baremeByCity[m.reservation?.city_id], m.reservation?.hors_zone, m.express),
-      express:             Boolean(m.express),
+      montant_preview:     (m.type === 'autre' || m.montant_manuel || m.statut === 'fait') ? (m.montant_du_cents || 0) : computeBareme(m.type, m.reservation?.installation, baremeByCity[m.reservation?.city_id], m.reservation?.hors_zone, m.reservation?.express),
       statut:              m.statut,
       date_prevue:         m.date_prevue,
       creneau:             m.creneau,

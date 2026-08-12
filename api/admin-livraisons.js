@@ -83,7 +83,7 @@ module.exports = async (req, res) => {
       const resaIds = (cityResas || []).map(r => r.id);
 
       const selectCols = `
-          id, type, statut, date_prevue, creneau, masquee, titre, adresse_libre, montant_du_cents, montant_manuel, express,
+          id, type, statut, date_prevue, creneau, masquee, titre, adresse_libre, montant_du_cents, montant_manuel,
           probleme_type, probleme_description, probleme_at, incident_id,
           photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path,
           accepted_at, depart_at, client_notifie_at, arrivee_at, fait_at,
@@ -92,7 +92,7 @@ module.exports = async (req, res) => {
           valide, valide_at,
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
-            id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, instructions_acces, masquee, hors_zone,
+            id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, instructions_acces, masquee, hors_zone, express,
             installation, date_debut, date_fin,
             reservation_appareils ( appareil:appareils ( numero, reference ) )
           )
@@ -129,7 +129,7 @@ module.exports = async (req, res) => {
         const minsBetween = (a, b) => (a && b) ? Math.round((new Date(b) - new Date(a)) / 60000) : null;
         const montantTransporteur = (l.statut === 'fait' || l.montant_manuel || l.type === 'autre')
           ? l.montant_du_cents
-          : computeBareme(l.type, l.reservation?.installation, bareme, l.reservation?.hors_zone, l.express);
+          : computeBareme(l.type, l.reservation?.installation, bareme, l.reservation?.hors_zone, l.reservation?.express);
         return {
           ...l,
           appareil_numeros: ras.map(ra => ra.appareil.numero),
@@ -264,8 +264,6 @@ module.exports = async (req, res) => {
         date_prevue:     datePrevue,
         creneau,
         statut:          'a_faire',
-        // Livraison express (sous 2h) : jamais pour une récupération/changement.
-        express: type === 'livraison' ? !!body.express : false,
       }).select().single();
       if (error) throw error;
 
@@ -336,9 +334,6 @@ module.exports = async (req, res) => {
         patch.date_prevue = d;
       }
       if (body.creneau != null) patch.creneau = (body.creneau || '').trim().slice(0, 100) || null;
-      // Livraison express (sous 2h) : uniquement pour une mission 'livraison'
-      // — ignoré pour récupération/changement/autre (voir _lib/bareme.js).
-      if (body.express != null && liv.type === 'livraison') patch.express = !!body.express;
       if (liv.type === 'autre') {
         if (body.titre != null) patch.titre = (body.titre || '').trim().slice(0, 200) || 'Mission libre';
         if (body.adresse_libre != null) patch.adresse_libre = (body.adresse_libre || '').trim().slice(0, 500) || null;
@@ -492,7 +487,7 @@ module.exports = async (req, res) => {
 
       const liv = await loadLivraisonScoped(
         supabase, city.id, livraisonId,
-        'id, type, statut, reservation_id, transporteur_id, montant_manuel, montant_du_cents, incident_id, express'
+        'id, type, statut, reservation_id, transporteur_id, montant_manuel, montant_du_cents, incident_id'
       );
       if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
       if (['fait', 'annule'].includes(liv.statut)) {
@@ -508,9 +503,9 @@ module.exports = async (req, res) => {
 
       let montantDu = liv.montant_du_cents;
       if (liv.type !== 'autre' && !liv.montant_manuel) {
-        const { data: resa } = await supabase.from('reservations').select('installation, city_id, hors_zone').eq('id', liv.reservation_id).maybeSingle();
+        const { data: resa } = await supabase.from('reservations').select('installation, city_id, hors_zone, express').eq('id', liv.reservation_id).maybeSingle();
         const tarifs = await getBaremeForCity(supabase, resa?.city_id || city.id);
-        montantDu = computeBareme(liv.type, resa?.installation, tarifs, resa?.hors_zone, liv.express);
+        montantDu = computeBareme(liv.type, resa?.installation, tarifs, resa?.hors_zone, resa?.express);
       }
 
       const update = {

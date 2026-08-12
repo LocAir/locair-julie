@@ -1647,7 +1647,7 @@ function weekMissionItemHtml(m){
         ${!isAutre?`<div class="info-row"><span class="info-ic">❄️</span><span class="info-label">Climatiseur${nbClim>1?'s':''}</span><span class="info-val">${climTxt}</span></div>`:''}
         ${!isAutre&&c.etage&&c.etage!=='—'?`<div class="info-row"><span class="info-ic">🏢</span><span class="info-label">Étage</span><span class="info-val">${escHtml(c.etage)}${c.ascenseur&&c.ascenseur!=='—'?' · Ascenseur : '+escHtml(c.ascenseur):''}</span></div>`:''}
         ${adresse?`<div class="info-row"><span class="info-ic">📍</span><span class="info-label">Adresse</span><span class="info-val">${escHtml(adresse)}</span></div>`:''}
-        ${m.montant_preview?`<div class="info-row"><span class="info-ic">💶</span><span class="info-label">Gain estimé</span><span class="info-val">${Math.round(m.montant_preview/100)}€${c.hors_zone?' · Hors zone':''}${m.express?' · 🚀 Express':''}</span></div>`:''}
+        ${m.montant_preview?`<div class="info-row"><span class="info-ic">💶</span><span class="info-label">Gain estimé</span><span class="info-val">${Math.round(m.montant_preview/100)}€${c.hors_zone?' · Hors zone':''}${c.express?' · 🚀 Express':''}</span></div>`:''}
         ${c.instructions_acces?`<p class="step-hint">🔑 ${escHtml(c.instructions_acces)}</p>`:''}
         ${m.acces_difficile?`<p class="step-hint">📌 ${escHtml(m.acces_difficile)}</p>`:''}
         ${missionCardActionsHtml(m, mapsUrl, c.tel)}
@@ -2040,7 +2040,7 @@ function missionCardHtml(m){
   // sans ce badge, deux missions du même type affichaient des montants
   // différents sans explication visible, ce qui pouvait passer pour une
   // erreur.
-  const earn = m.montant_preview ? `<span class="mcard-earn">💶 ${Math.round(m.montant_preview/100)}€${c.hors_zone?' <span class="mcard-badge" style="background:var(--amber-bg);color:var(--amber)">Hors zone</span>':''}${m.express?' <span class="mcard-badge" style="background:var(--blue-lt);color:var(--blue)">🚀 Express</span>':''}</span>` : '';
+  const earn = m.montant_preview ? `<span class="mcard-earn">💶 ${Math.round(m.montant_preview/100)}€${c.hors_zone?' <span class="mcard-badge" style="background:var(--amber-bg);color:var(--amber)">Hors zone</span>':''}${c.express?' <span class="mcard-badge" style="background:var(--blue-lt);color:var(--blue)">🚀 Express</span>':''}</span>` : '';
   // La récupération est programmée le lendemain de la fin de location (jamais
   // le jour même) — on garde la vraie date de fin visible à côté, pour ne
   // jamais perdre le repère avec la date de la mission elle-même.
@@ -3182,7 +3182,7 @@ function renderDetail(){
     <div class="card">
       ${(['acceptee','en_route','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
       <h1>${TYPE_ICON[m.type]||''} ${missionTypeLabel(m)}</h1>
-      ${m.montant_preview?`<div class="detail-earn">💶 ${Math.round(m.montant_preview/100)} €${(m.client||{}).hors_zone?' · Hors zone':''}${m.express?' · 🚀 Express':''}</div>`:''}
+      ${m.montant_preview?`<div class="detail-earn">💶 ${Math.round(m.montant_preview/100)} €${(m.client||{}).hors_zone?' · Hors zone':''}${(m.client||{}).express?' · 🚀 Express':''}</div>`:''}
       <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):''].filter(Boolean).join(' · ')}</p>
       ${bodyHtml}
     </div>

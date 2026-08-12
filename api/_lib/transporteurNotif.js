@@ -58,7 +58,7 @@ async function smsNouvelleMission(supabase, transporteurId, { type, livraisonId 
   try {
     const [{ data: transporteur }, { data: liv }] = await Promise.all([
       supabase.from('transporteurs').select('telephone').eq('id', transporteurId).maybeSingle(),
-      supabase.from('livraisons').select('type, titre, adresse_libre, date_prevue, creneau, montant_manuel, montant_du_cents, express, reservation:reservations(adresse, installation, city_id, hors_zone)').eq('id', livraisonId).maybeSingle(),
+      supabase.from('livraisons').select('type, titre, adresse_libre, date_prevue, creneau, montant_manuel, montant_du_cents, reservation:reservations(adresse, installation, city_id, hors_zone, express)').eq('id', livraisonId).maybeSingle(),
     ]);
     if (!transporteur?.telephone || !liv) return;
     // Une ligne par info (type, date/créneau, adresse, installation,
@@ -95,7 +95,7 @@ async function smsNouvelleMission(supabase, transporteurId, { type, livraisonId 
     let remunerationCents = liv.montant_du_cents || 0;
     if (!liv.montant_manuel) {
       const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
-      remunerationCents = computeBareme(liv.type, liv.reservation?.installation, tarifs, liv.reservation?.hors_zone, liv.express);
+      remunerationCents = computeBareme(liv.type, liv.reservation?.installation, tarifs, liv.reservation?.hors_zone, liv.reservation?.express);
     }
     const remunerationFmt = (remunerationCents / 100).toFixed(2).replace('.', ',') + ' €';
     const lignes = [
@@ -106,7 +106,7 @@ async function smsNouvelleMission(supabase, transporteurId, { type, livraisonId 
     ];
     if (adresse) lignes.push(adresse);
     if (installationLigne) lignes.push(installationLigne);
-    if (liv.express) lignes.push('🚀 Livraison express (sous 2h)');
+    if (liv.type === 'livraison' && liv.reservation?.express) lignes.push('🚀 Livraison express (sous 2h)');
     lignes.push(`Rémunération : ${remunerationFmt}`);
     lignes.push('', `Accepter : https://www.locair.fr/transporteur/?open=${livraisonId}`);
     const content = lignes.join('\n');

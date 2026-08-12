@@ -67,9 +67,12 @@ async function getBaremeByCityIds(supabase, cityIds) {
   return map;
 }
 
-// Bonus livraison express (sous 2h) — s'ajoute au barème normal (zone ou
-// hors zone), peu importe la ville. Ne s'applique jamais à une récupération
-// ou un changement, seulement à une 'livraison' (demandé par Aly, 12/08/2026).
+// Bonus livraison express (client a payé +60€ pour être livré sous 2h le
+// jour même, reservations.express — voir index.html carte "Express" et
+// api/checkout.js) — s'ajoute au barème normal du transporteur (zone ou hors
+// zone), peu importe la ville. Ne s'applique jamais à une récupération ou un
+// changement, seulement à la mission de type 'livraison' (demandé par Aly,
+// 12/08/2026 : le livreur doit être mieux payé pour une course urgente).
 const EXPRESS_BONUS_CENTS = 3000;
 
 function computeBareme(type, installation, tarifs, horsZone, express) {

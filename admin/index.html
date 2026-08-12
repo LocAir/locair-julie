@@ -1659,7 +1659,7 @@ function missionRowData(m){
     nonAssignee: m.statut==='a_faire' && !m.transporteur,
     reassignLocked: ['fait','annule'].includes(m.statut),
     isOverdueMission: m.date_prevue < todayStr && !['fait','annule'].includes(m.statut),
-    montantLabel: isAutre ? ' (tarif fixé)' : (m.montant_manuel ? ' (tarif fixé manuellement)' : ((res.hors_zone ? ' (barème hors zone)' : '') + (m.express ? ' + 30€ express' : ''))),
+    montantLabel: isAutre ? ' (tarif fixé)' : (m.montant_manuel ? ' (tarif fixé manuellement)' : ((res.hors_zone ? ' (barème hors zone)' : '') + ((m.type==='livraison' && res.express) ? ' + 30€ express' : ''))),
     montantEstime: m.statut !== 'fait' && !m.montant_manuel && !isAutre,
   };
 }
@@ -5557,7 +5557,7 @@ function renderLivraisons(){
             ${missionTypeBadge(m.type)}
             ${nonAssignee?`<span class="chip probleme">🔔 Non assignée</span>`:''}
             ${res.hors_zone?`<span class="chip probleme">⚠️ Hors zone</span>`:''}
-            ${m.express?`<span class="chip probleme">🚀 Express</span>`:''}
+            ${(m.type==='livraison' && res.express)?`<span class="chip probleme">🚀 Express</span>`:''}
           </span>
           <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
         </div>
@@ -5700,7 +5700,7 @@ function livraisonTableRowHtml(m){
     <td class="ellipsis" title="${escHtml(displayAddr)}">${escHtml(displayAddr)}</td>
     <td style="white-space:nowrap;${d.isOverdueMission?'color:var(--red);font-weight:700':''}">${frDateCourt(m.date_prevue)}${m.creneau?` <span class="creneau">${escHtml(m.creneau)}</span>`:''}</td>
     <td>${missionTransporteurSelectHtml(m, d)}</td>
-    <td>${d.nonAssignee?'🔔 ':''}${res.hors_zone?'⚠️ ':''}${m.express?'🚀 ':''}<span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span></td>
+    <td>${d.nonAssignee?'🔔 ':''}${res.hors_zone?'⚠️ ':''}${(m.type==='livraison' && res.express)?'🚀 ':''}<span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span></td>
     <td class="num">${euros(m.montant_transporteur_cents)}${d.montantEstime?' <span style="font-weight:400;opacity:.6">(est.)</span>':''}</td>
     <td><div class="table-actions">
       ${contactButtonsHtml(res.tel)}
@@ -5875,11 +5875,8 @@ function openEditMissionModal(livraisonId){
         <div><label for="em-date">Date</label><input type="date" id="em-date" value="${m.date_prevue||''}"/></div>
         <div><label for="em-creneau">Créneau</label><input type="text" id="em-creneau" value="${escHtml(m.creneau||'')}" placeholder="8h–10h"/></div>
       </div>
-      ${m.type==='livraison' ? `
-        <label style="margin-top:12px;display:flex;align-items:center;gap:8px;font-weight:400">
-          <input type="checkbox" id="em-express" ${m.express?'checked':''}/>
-          🚀 Livraison express (sous 2h) — +30€ au livreur
-        </label>
+      ${(m.type==='livraison' && res.express) ? `
+        <div style="margin-top:12px;background:#fef3c7;color:#92400e;border-radius:var(--r);padding:8px 12px;font-size:12.5px;font-weight:600">🚀 Livraison Express choisie par le client — +30€ pour le transporteur, calculé automatiquement.</div>
       ` : ''}
       <div class="modal-actions" style="margin-top:18px">
         <button class="btn btn-grey">Annuler</button>
@@ -5904,9 +5901,6 @@ function openEditMissionModal(livraisonId){
         missionPatch.titre = document.getElementById('em-titre').value.trim();
         missionPatch.adresse_libre = document.getElementById('em-adresse').value.trim();
         missionPatch.montant_du_cents = Math.round((parseFloat(document.getElementById('em-tarif').value)||0)*100);
-      }
-      if(m.type==='livraison'){
-        missionPatch.express = document.getElementById('em-express').checked;
       }
       const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify(missionPatch)});
       const d = await r.json();

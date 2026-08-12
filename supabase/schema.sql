@@ -438,11 +438,6 @@ create table livraisons (
   -- barème standard) — si true, le passage à "fait" (transporteur-action.js)
   -- ne recalcule plus montant_du_cents automatiquement, il garde cette valeur.
   montant_manuel         boolean not null default false,
-  -- Livraison express (sous 2h) — coché par l'admin sur une mission de type
-  -- 'livraison' uniquement (jamais récupération/changement). Ajoute
-  -- automatiquement 30€ au tarif du transporteur, en plus du barème normal
-  -- (zone ou hors zone) — voir api/_lib/bareme.js computeBareme().
-  express                boolean not null default false,
   -- Validation humaine par l'administration, requise avant d'être payable
   -- (voir api/admin-virements.js) — "payé" implique toujours "validé".
   valide                 boolean not null default false,
