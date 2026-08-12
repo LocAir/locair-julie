@@ -4,7 +4,7 @@ const { fmtDate } = require('./_lib/emailEngine');
 const { sendBrevoSms } = require('./_lib/brevo');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
 const { pushToAdmin } = require('./_lib/push');
-const { todayParis } = require('./_lib/dates');
+const { todayParis, isValidDate } = require('./_lib/dates');
 
 // Tiret long + espaces — même format que partout ailleurs dans la base
 // (audit 2026-08-06 C4 : tiret court sans espaces ne correspondait jamais
@@ -25,7 +25,12 @@ module.exports = async (req, res) => {
   }
 
   const newDate = (body.date || '').slice(0, 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+  // isValidDate() (pas juste la forme AAAA-MM-JJ) : sans ça, une date de
+  // calendrier qui n'existe pas (ex. "2026-02-30") passait comme valide et
+  // s'enregistrait telle quelle dans livraisons.date_prevue — la même faille
+  // que celle corrigée dans isValidDate() elle-même, mais ce point d'entrée
+  // ne l'appelait jamais.
+  if (!isValidDate(newDate)) {
     return res.status(400).json({ error: 'Date invalide' });
   }
   const today = todayParis();
