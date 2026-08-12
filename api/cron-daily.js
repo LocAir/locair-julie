@@ -327,9 +327,19 @@ module.exports = async (req, res) => {
           continue;
         }
 
-        const { count: nbRelances } = await supabase
-          .from('email_log').select('id', { count: 'exact', head: true })
+        // sendReservationPaymentLink écrit une ligne email_log PAR CANAL
+        // (sms + email) dès que la réservation a les deux (cas normal —
+        // email obligatoire à la réservation, tel presque toujours renseigné
+        // aussi) : compter les lignes brutes comptait donc 2 pour une seule
+        // relance envoyée, et nbRelances passait direct à 2 sans jamais valoir
+        // 1 — la 2e relance (condition nbRelances===1) ne se déclenchait
+        // alors plus jamais. On compte le nombre de JOURS distincts où une
+        // relance a réussi (le cron n'en envoie qu'une par jour) plutôt que
+        // le nombre de lignes.
+        const { data: relanceLogs } = await supabase
+          .from('email_log').select('created_at')
           .eq('reservation_id', resa.id).eq('scenario', 'relance_paiement').eq('statut', 'envoye');
+        const nbRelances = new Set((relanceLogs || []).map(l => String(l.created_at).slice(0, 10))).size;
 
         // 1re relance à J+1, 2e à J+3 — jamais plus d'une relance par jour
         // (le compteur ne progresse qu'après un envoi réussi : un échec Brevo
