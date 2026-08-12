@@ -67,11 +67,17 @@ async function getBaremeByCityIds(supabase, cityIds) {
   return map;
 }
 
-function computeBareme(type, installation, tarifs, horsZone) {
+// Bonus livraison express (sous 2h) — s'ajoute au barème normal (zone ou
+// hors zone), peu importe la ville. Ne s'applique jamais à une récupération
+// ou un changement, seulement à une 'livraison' (demandé par Aly, 12/08/2026).
+const EXPRESS_BONUS_CENTS = 3000;
+
+function computeBareme(type, installation, tarifs, horsZone, express) {
   const t = horsZone ? HORS_ZONE_TARIFS : (tarifs || DEFAULTS);
   if (type === 'changement')  return t.changement;
   if (type === 'recuperation') return t.recuperation;
-  return (installation || '').startsWith('Technicien') ? t.livraison_technicien : t.livraison_autonome;
+  const montant = (installation || '').startsWith('Technicien') ? t.livraison_technicien : t.livraison_autonome;
+  return express ? montant + EXPRESS_BONUS_CENTS : montant;
 }
 
-module.exports = { computeBareme, getBaremeForCity, getBaremeByCityIds, DEFAULTS, HORS_ZONE_TARIFS };
+module.exports = { computeBareme, getBaremeForCity, getBaremeByCityIds, DEFAULTS, HORS_ZONE_TARIFS, EXPRESS_BONUS_CENTS };

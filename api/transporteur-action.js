@@ -400,7 +400,7 @@ module.exports = async (req, res) => {
       let montantDu = liv.montant_du_cents;
       if (!liv.montant_manuel) {
         const tarifs = await getBaremeForCity(supabase, liv.reservation?.city_id);
-        montantDu = computeBareme(liv.type, liv.reservation?.installation, tarifs, liv.reservation?.hors_zone);
+        montantDu = computeBareme(liv.type, liv.reservation?.installation, tarifs, liv.reservation?.hors_zone, liv.express);
       }
 
       const update = {
