@@ -7818,7 +7818,7 @@ function submitForm(btn,mode){
         const payEl=_stripeElements.create('payment',{layout:'tabs'});
         const container=document.getElementById('stripe-payment-element');
         if(container){container.innerHTML='<p id="stripe-loading" style="color:var(--grey);font-size:13px">'+(_lang==='en'?'Loading payment form…':_lang==='zh'?'正在加载支付表单…':_lang==='ru'?'Загрузка формы оплаты…':'Chargement du formulaire de paiement…')+'</p>';payEl.mount('#stripe-payment-element');}
-        payEl.on('ready',()=>{const l=document.getElementById('stripe-loading');if(l)l.remove();const mb=document.getElementById('modal-body');if(mb&&container){const top=container.offsetTop-20;mb.scrollTo({top,behavior:'smooth'});}});
+        payEl.on('ready',()=>{const l=document.getElementById('stripe-loading');if(l)l.remove();if(container)container.scrollIntoView({behavior:'smooth',block:'nearest'});});
         // Utiliser le montant confirmé par le serveur (évite toute divergence)
         const serverEuros=d.amountCents!=null?(d.amountCents/100).toFixed(2).replace('.',',')+' €':prixEuros;
         const amtEl=document.getElementById('stripe-pay-amount');if(amtEl)amtEl.textContent=serverEuros;
@@ -7838,8 +7838,8 @@ function submitForm(btn,mode){
         const hint=document.getElementById('sbtn-hint');if(hint)hint.style.display='none';
         const sub=document.querySelector('.pay-sub');if(sub)sub.style.display='none';
         _submitting=false;
-        // Scroll initial pour montrer que quelque chose charge
-        setTimeout(()=>{const mb=document.getElementById('modal-body');if(mb&&container)mb.scrollTo({top:container.offsetTop-20,behavior:'smooth'});},100);
+        // Scroll vers le formulaire Stripe dès qu'il apparaît
+        setTimeout(()=>{if(container)container.scrollIntoView({behavior:'smooth',block:'nearest'});},80);
       })
       .catch(err=>{
         _submitting=false;
@@ -7852,6 +7852,8 @@ function submitForm(btn,mode){
           errEl.textContent=(msg&&!/^API \d+$/.test(msg)&&msg!=='No client secret')?msg:genericMsg;
           errEl.style.display='block';
           const retryBtn=document.getElementById('form-error-retry');if(retryBtn)retryBtn.style.display='inline-block';
+          // Scroll pour que l'erreur soit toujours visible (peut passer sous le fold)
+          setTimeout(()=>errEl.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
         }
       });
   }else{
