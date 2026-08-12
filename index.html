@@ -6334,7 +6334,17 @@ function _addrSetValid(on){
 function onAddrInput(inp){
   _cpGateOk=false; // L'utilisateur modifie l'adresse → invalider le bypass CP précédent
   const v=inp.value.trim();
-  _addrSetValid(v.length>4);
+  // La confirmation verte ("Adresse enregistrée") ne doit apparaître qu'une
+  // fois une suggestion réellement choisie dans la liste (voir _pickAddrAc)
+  // — avant ça, on n'a ni adresse fiable ni code postal, donc on invalide
+  // à chaque frappe plutôt que de valider dès 5 caractères tapés.
+  _addrSetValid(false);
+  // Le code postal d'une sélection précédente ne doit pas rester valable si
+  // le texte est ensuite modifié à la main sans repasser par une suggestion
+  // — sinon "Confirmer mon adresse" pourrait laisser passer une adresse
+  // jamais vérifiée avec le code postal d'une adresse différente.
+  const cpInp0=document.getElementById('f-cp');
+  if(cpInp0)cpInp0.value='';
   const clr=document.getElementById('addr-clear');
   if(clr)clr.style.display=v?'flex':'none';
   clearTimeout(_acTimer);
