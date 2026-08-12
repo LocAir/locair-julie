@@ -155,6 +155,11 @@ module.exports = async (req, res) => {
       const partenaireCode  = (body.partenaire_code || '').trim().toLowerCase().slice(0, 50);
       const motifs      = (body.motifs       || '').trim().slice(0, 300);
       const mktConsent  = Boolean(body.mkt_consent);
+      // Livraison Express (+60€, aujourd'hui sous 2h) — même flag que le site
+      // (index.html carte "⚡ Express" → api/checkout.js data.express). Colonne
+      // déjà utilisée partout ailleurs (badges admin, barème transporteur,
+      // contrat PDF) ; seule la création manuelle ne la renseignait pas encore.
+      const express = Boolean(body.express);
 
       let partenaireId = null;
       let partenaireCommissionCents = 0;
@@ -218,7 +223,7 @@ module.exports = async (req, res) => {
         etage: etage || null, ascenseur: ascenseur || null, fenetre: fenetre || null,
         installation: installation || null, instructions_acces: instructionsAcces || null,
         creneau: creneau || null,
-        date_debut: dateDebut, date_fin: dateFin, quantite,
+        date_debut: dateDebut, date_fin: dateFin, quantite, express,
         prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'manuel', hors_zone: horsZone,
         logement: logement || null, parrain_code: parrainCode || null,
         partenaire_id: partenaireId, partenaire_commission_cents: partenaireCommissionCents,

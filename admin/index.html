@@ -324,6 +324,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .qty-btn-minus:hover{border-color:var(--blue)}
 .qty-btn:disabled{opacity:.35;cursor:not-allowed}
 .qty-val{min-width:26px;text-align:center;font-family:var(--disp);font-size:22px;font-weight:600;color:var(--black)}
+/* Livraison Express (comme la carte "⚡ Express" du site, index.html) —
+   +60€, livraison aujourd'hui sous 2h. Toggle simple : au clic, force la
+   date de livraison à aujourd'hui (nrToggleExpress), comme selectExpress()
+   côté site. */
+.nr-express-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid var(--green);border-radius:var(--r-sm);padding:12px 16px;background:var(--green-bg);cursor:pointer;font-family:var(--body);margin:10px 0 2px;transition:box-shadow .15s ease}
+.nr-express-card.on{box-shadow:0 0 0 2.5px rgba(45,106,79,.22)}
+.nr-express-left{display:flex;flex-direction:column;gap:3px;text-align:left}
+.nr-express-badge{display:inline-flex;align-items:center;gap:4px;background:var(--green);color:#fff;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:100px}
+.nr-express-title{font-size:12.5px;font-weight:700;color:var(--green)}
+.nr-express-price{font-size:14px;font-weight:800;color:var(--green);white-space:nowrap;flex-shrink:0}
 /* Récap façon "Sous-total / Livraison / Remise / Total" d'un panier d'achat
    — remplace la ligne de détail texte unique par des lignes structurées,
    plus proche de la lecture d'un ticket que d'une phrase à parser. */
@@ -3873,6 +3883,14 @@ function renderReservationsToolbar(){
 // api/checkout.js PROMO_CODES) — à tenir synchronisé si un code est ajouté.
 const NR_PROMO_CODES = {'LOCAIR10':10, 'LOCA10':10};
 let _nrPromoDiscount = 0;
+// Livraison Express (+60€, aujourd'hui sous 2h) — même bascule que la carte
+// "⚡ Express" du site (index.html selectExpress/EXPRESS_FEE), reprise ici
+// pour qu'une demande express prise par téléphone soit possible sans passer
+// par le site. Transmis à admin-reservations.js (action 'create') qui
+// l'enregistre dans reservations.express, colonne déjà utilisée partout
+// ailleurs dans l'admin (badges, barème transporteur, contrat PDF) — aucune
+// migration nécessaire, seule la création manuelle ne la renseignait pas.
+let _nrExpress = false;
 // "Réservation similaire" (même client) : pré-remplit le formulaire avec les
 // infos qui décrivent le CLIENT/le LOGEMENT (identité, adresse, contraintes
 // d'accès) d'une réservation passée, sans jamais recopier ce qui est propre
@@ -3946,6 +3964,23 @@ function nrOnDebutChange(){
   const activeBtn = document.querySelector('.nr-dur-btn.on');
   if(activeBtn) nrSetDuration(parseInt(activeBtn.dataset.days));
   else nrRecalcPrice();
+}
+// Livraison Express (+60€) : même comportement que selectExpress() côté site
+// — l'activer force la date de livraison à aujourd'hui (une livraison
+// "sous 2h" n'a de sens que pour aujourd'hui), en gardant la durée déjà
+// choisie pour recalculer la date de récupération. La désactiver ne touche
+// pas aux dates : contrairement au site (un seul chip de date "recommandé"
+// à réappliquer), ici les dates sont des champs libres qu'on ne veut pas
+// réécrire à l'aveugle par-dessus une saisie déjà faite au téléphone.
+function nrToggleExpress(){
+  _nrExpress = !_nrExpress;
+  document.getElementById('nr-express-btn')?.classList.toggle('on', _nrExpress);
+  document.getElementById('nr-express-btn')?.setAttribute('aria-pressed', String(_nrExpress));
+  if(_nrExpress){
+    const debutEl = document.getElementById('nr-debut');
+    if(debutEl){ debutEl.value = todayParisStr(); nrOnDebutChange(); return; }
+  }
+  nrRecalcPrice();
 }
 // Raccourci "Installation" dans le bloc Devis rapide (nr-install-btn) : un
 // devis se compose au téléphone, et le type d'installation change le prix de
@@ -4052,7 +4087,9 @@ function nrCalcTotal(){
   const baseCents = Math.round(prCalcBase(days) * qte * 100);
   const installCents = isTech ? 8000 : 0;
   const { cents: livraisonCents, label: livraisonLabel, horsZone } = nrLivraisonCents();
-  return { days, qte, isTech, baseCents, installCents, livraisonCents, livraisonLabel, horsZone, totalCents: baseCents + installCents + livraisonCents };
+  // +60€, même montant que EXPRESS_FEE côté site (index.html) et api/checkout.js.
+  const expressCents = _nrExpress ? 6000 : 0;
+  return { days, qte, isTech, baseCents, installCents, livraisonCents, livraisonLabel, horsZone, expressCents, totalCents: baseCents + installCents + livraisonCents + expressCents };
 }
 function nrRecalcPrice(){
   const r = nrCalcTotal();
@@ -4079,6 +4116,16 @@ function nrRecalcPrice(){
     if(livrEl){
       livrEl.textContent = r.livraisonLabel;
       livrEl.style.color = r.horsZone ? 'var(--amber)' : '';
+    }
+    const expressRow = document.getElementById('nr-sum-express-row');
+    const expressEl = document.getElementById('nr-sum-express');
+    if(expressRow && expressEl){
+      if(r.expressCents > 0){
+        expressRow.classList.remove('hidden');
+        expressEl.textContent = `${(r.expressCents/100).toFixed(2).replace('.', ',')} €`;
+      } else {
+        expressRow.classList.add('hidden');
+      }
     }
     const discountRow = document.getElementById('nr-sum-discount-row');
     const discountEl = document.getElementById('nr-sum-discount');
@@ -4131,6 +4178,7 @@ function nrOnPrixInput(){
 // Les CGV restent hors du repli : jamais optionnelles, jamais à chercher.
 function reservationCreerHtml(){
   _nrPromoDiscount = 0;
+  _nrExpress = false;
   // Usage unique : lu ici puis remis à null, pour qu'un simple retour sur
   // l'onglet "Créer" (sans repasser par "Réservation similaire") reparte
   // d'un formulaire vierge comme avant.
@@ -4159,6 +4207,13 @@ function reservationCreerHtml(){
             <input type="date" id="nr-fin" oninput="this.classList.remove('field-err');nrRecalcPrice()"/>
           </div>
         </div>
+        <button type="button" class="nr-express-card" id="nr-express-btn" onclick="nrToggleExpress()" aria-pressed="false">
+          <span class="nr-express-left">
+            <span class="nr-express-badge">⚡ Express</span>
+            <span class="nr-express-title">Livraison aujourd'hui · sous 2h</span>
+          </span>
+          <span class="nr-express-price">+60 €</span>
+        </button>
         <div class="periods" style="margin:8px 0 2px;flex-wrap:wrap;height:auto;background:transparent;padding:0">
           ${[7,14,21,28].map(days=>`<button type="button" class="nr-dur-btn" data-days="${days}" onclick="nrSetDuration(${days})" style="flex:none;padding:7px 16px">${days} j</button>`).join('')}
         </div>
@@ -4183,6 +4238,7 @@ function reservationCreerHtml(){
           <div class="cart-summary-row"><span>Location</span><span id="nr-sum-location">—</span></div>
           <div class="cart-summary-row"><span>Installation</span><span id="nr-sum-install">—</span></div>
           <div class="cart-summary-row"><span>Livraison</span><span id="nr-sum-livraison">—</span></div>
+          <div class="cart-summary-row hidden" id="nr-sum-express-row"><span>⚡ Livraison express</span><span id="nr-sum-express">—</span></div>
           <div class="cart-summary-row cart-summary-discount hidden" id="nr-sum-discount-row"><span>Remise</span><span id="nr-sum-discount">—</span></div>
           <div class="cart-summary-row cart-summary-total"><span>Total</span><span id="nr-total-display">—</span></div>
         </div>
@@ -4710,6 +4766,7 @@ async function createReservation(confirmer){
     code_postal: (document.getElementById('nr-cp').value || '').trim(),
     date_debut: document.getElementById('nr-debut').value,
     date_fin: document.getElementById('nr-fin').value,
+    express: _nrExpress,
     quantite: document.getElementById('nr-qte').value,
     prix_total_cents: Math.round((parseFloat(document.getElementById('nr-prix').value)||0)*100),
     logement: document.getElementById('nr-logement').value,
