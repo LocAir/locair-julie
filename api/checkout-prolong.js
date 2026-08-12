@@ -12,8 +12,14 @@ module.exports = async (req, res) => {
 
   const supabaseRL = getSupabase();
   const ip = getClientIp(req);
-  if (await isRateLimited(supabaseRL, `checkout-prolong:${ip}`)) {
-    return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
+  try {
+    if (await isRateLimited(supabaseRL, `checkout-prolong:${ip}`)) {
+      return res.status(429).json({ error: 'Trop de tentatives, réessayez dans 15 minutes.' });
+    }
+  } catch (e) {
+    // Supabase momentanément indisponible — on laisse passer plutôt que de bloquer
+    // la prolongation pour une erreur de rate-limiting (même comportement que checkout.js).
+    console.error('[ratelimit] checkout-prolong:', e.message);
   }
   // Tarifs (panneau de contrôle admin, voir admin-pricing.js) chargés une
   // seule fois pour toute la requête, jamais recalculés en dur.

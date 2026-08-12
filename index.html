@@ -7206,7 +7206,11 @@ function buildRecap(){
   // change après la saisie du code (voir validatePromo()). Les codes fixes
   // en euros (_promoPct===0) ne sont pas concernés, leur montant ne bouge
   // jamais.
-  if(_promoPct>0)_promoDiscount=Math.round(price*_promoPct/100);
+  // Arrondi au centime (Math.round sur les centimes puis /100) pour coller
+  // exactement au calcul serveur (api/_lib/promotions.js:discountCents).
+  // L'ancien arrondi à l'euro entier créait un écart persistant de 0–50 ct
+  // entre le récap affiché et le montant Stripe.
+  if(_promoPct>0)_promoDiscount=Math.round(price*100*_promoPct/100)/100;
   const asc=document.querySelector('#asc-group .tpill.on')?.textContent.trim()||'—';
   const etage=document.getElementById('f-etage')?.value.trim()||'';
   const ouv=ouvSummaryText(_lang);
@@ -7400,7 +7404,9 @@ function _generateOrderRef(){
   const d=String(now.getDate()).padStart(2,'0');
   const m=String(now.getMonth()+1).padStart(2,'0');
   const y=String(now.getFullYear()).slice(2);
-  return 'LOC-'+y+m+d+'-'+Math.floor(1000+Math.random()*9000);
+  // 7 chiffres (1 000 000 valeurs/jour) pour éviter les collisions de clé
+  // d'idempotence Stripe quand deux clients commandent le même montant le même jour.
+  return 'LOC-'+y+m+d+'-'+Math.floor(1000000+Math.random()*9000000);
 }
 async function submitCancellation(){
   const ref=document.getElementById('cancel-ref')?.value.trim();
@@ -7775,9 +7781,12 @@ function submitForm(btn,mode){
         // Si le serveur a calculé un montant différent (ex. livraison hors zone non détectée
         // côté client faute d'autocomplétion), corriger DELIVERY_FEE et reconstruire le récap
         // pour que le détail affiché corresponde exactement au débit Stripe.
+        // Important : on soustrait EXPRESS_FEE avant de déduire DELIVERY_FEE,
+        // sinon l'express serait compté deux fois (une fois ici, une fois dans buildRecap).
         if(d.amountCents!=null&&d.amountCents!==prixCents){
           const baseHT=Math.round((calcTotal(parseInt(formData.duree)||7)-_promoDiscount)*100);
-          DELIVERY_FEE=Math.max(0,Math.round((d.amountCents-baseHT)/100));
+          const expressCts=EXPRESS_FEE*100;
+          DELIVERY_FEE=Math.max(0,Math.round((d.amountCents-baseHT-expressCts)/100));
           buildRecap();
         }
         const sect=document.getElementById('stripe-section');if(sect)sect.style.display='block';
@@ -9973,6 +9982,14 @@ function validatePromo(){
   const inp=document.getElementById('f-parrain');
   const fb=document.getElementById('promo-feedback');
   if(!inp)return;
+  // Les codes promo ne sont pas cumulables avec un forfait à prix fixe
+  // (le serveur rejette aussi le code dans ce cas, voir api/checkout.js).
+  if(_selectedForfait){
+    _promoDiscount=0;_promoPct=0;_promoCode='';
+    if(fb){fb.textContent=_lang==='en'?'Promo codes cannot be combined with fixed-price packs':_lang==='zh'?'促销码不能与固定价格套餐组合使用':_lang==='ru'?'Промокоды не суммируются с пакетными тарифами':'Code promo non cumulable avec un forfait à prix fixe';fb.style.color='var(--red)';fb.style.display='block';}
+    buildRecap();
+    return;
+  }
   const val=inp.value.trim().toUpperCase();
   const prevD=_promoDiscount, prevP=_promoPct;
   if(!val){
