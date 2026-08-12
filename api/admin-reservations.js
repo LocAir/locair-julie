@@ -6,7 +6,7 @@ const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays, todayParis } = require('./_lib/dates');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
-const { confirmReservation, sendConfirmationCommunications, sendProlongationConfirmation } = require('./_lib/reservations');
+const { confirmReservation, sendConfirmationCommunications, sendProlongationConfirmation, normalizeTel } = require('./_lib/reservations');
 const { fmtDate } = require('./_lib/emailEngine');
 const { ACCEPTANCE_TYPES, CGV_VERSION } = require('./_lib/legal');
 const { computeOrderStatus } = require('./_lib/orderStatus');
@@ -185,7 +185,13 @@ module.exports = async (req, res) => {
       // Détection de doublon : même téléphone, dates qui se chevauchent, réservation
       // encore active (le doublon Maria Loftheim de ce soir venait exactement de là).
       // Contournable explicitement avec force=true une fois l'admin prévenu.
-      const telNorm = tel.replace(/\D/g, '');
+      // normalizeTel (et non un simple replace(/\D/g,'') local) : sans
+      // l'équivalence national/international qu'elle gère maintenant, une
+      // réservation prise sur le site ("+33...") et une créée ici à la main
+      // ("0...") pour le même client ne se reconnaissaient jamais comme le
+      // même numéro — exactement le trou par lequel Maria Loftheim était
+      // passée.
+      const telNorm = normalizeTel(tel);
       if (telNorm && !body.force) {
         const { data: candidates } = await supabase
           .from('reservations')
@@ -194,7 +200,7 @@ module.exports = async (req, res) => {
           .in('statut', ['en_attente', 'confirmee'])
           .lt('date_debut', dateFin)
           .gt('date_fin', dateDebut);
-        const dup = (candidates || []).find(c => c.tel && c.tel.replace(/\D/g, '') === telNorm);
+        const dup = (candidates || []).find(c => c.tel && normalizeTel(c.tel) === telNorm);
         if (dup) {
           return res.status(409).json({
             duplicate: true,
