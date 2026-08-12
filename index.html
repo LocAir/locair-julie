@@ -6171,7 +6171,9 @@ function selectExpress(btn){
     document.querySelectorAll('.ds-chip').forEach(c=>{c.classList.remove('on');c.setAttribute('aria-checked','false');});
     // Mettre aujourd'hui dans le champ date
     const fd=document.getElementById('f-date');
-    if(fd){const t=new Date();const p=n=>String(n).padStart(2,'0');fd.value=t.getFullYear()+'-'+p(t.getMonth()+1)+'-'+p(t.getDate());if(typeof updateDatePreview==='function')updateDatePreview();}
+    // _addDays(0) utilise _parisNow() → date correcte même pour un client en
+    // fuseau UTC-1/UTC-2 (sinon new Date() donnait la veille côté serveur).
+    if(fd){fd.value=_fmtDate(_addDays(0));if(typeof updateDatePreview==='function')updateDatePreview();}
   }else{
     // Re-sélectionner demain (recommandé)
     setDateOffset(1,document.getElementById('ds-0'));
