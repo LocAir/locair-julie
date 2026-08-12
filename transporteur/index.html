@@ -21,28 +21,28 @@
 <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/></noscript>
 <style>
 :root{
-  /* Palette navy/blanc — Loc'Air rebrand */
-  --navy:#1a2b4a; --navy-d:#12203a; --navy-bg:#f4f6f9; --navy-bg2:#e8ecf2;
-  --text:#1a1a1a; --text-2:#555555; --text-3:#888888; --card:#ffffff;
-  /* Tokens CSS internes mis à jour pour le rebrand */
-  --blue:#1a2b4a; --blue-d:#12203a; --blue-lt:#e8ecf2;
-  --black:#1a1a1a; --black2:#1e2d45; --bg:#f4f6f9; --white:#ffffff;
-  /* --grey-soft assombri de #888 à #767676 (audit ergonomie, 2026-08-05) :
-     3.54:1 sur fond blanc, sous le seuil de lisibilité WCAG (4.5:1) pour du
-     texte — or utilisé sur des libellés bien réels (titres de section,
-     "Départ/Chez le client/Terminé" sous le stepper), pas juste des icônes
-     décoratives. Repassé à 4.54:1, en plein soleil sur le terrain ça change
-     la lisibilité, pas juste un détail. */
-  --grey:#555555; --grey2:#666666; --grey-soft:#767676; --rule:#e4e4e4; --gold:#c5a96c; --gold-lt:#f3ead9;
-  --green:#16a34a; --green-bg:#dcfce7; --red:#dc2626; --red-bg:#fee2e2; --amber:#d97706; --amber-bg:#fef3c7;
+  /* ── Refonte noir & blanc (2026-08-12, même ligne directrice que
+     admin/index.html — cohérence entre les deux apps demandée par Aly) ──
+     Les NOMS de variables restent identiques pour ne toucher aucune ligne
+     de JS/HTML ailleurs dans ce fichier, seules leurs valeurs changent.
+     Statuts (rouge/vert/orange) recodés en nuances de gris/noir/blanc,
+     distingués par le texte/les icônes plutôt que par la couleur — même
+     principe qu'en admin, essentiel ici en plus vu l'usage en plein
+     soleil sur le terrain (contraste fort recherché partout). */
+  --navy:#000000; --navy-d:#000000; --navy-bg:#0a0a0b; --navy-bg2:#141416;
+  --text:#f3f3f4; --text-2:#9d9da5; --text-3:#84848c; --card:#18181b;
+  --blue:#e7e7ea; --blue-d:#c7c7cd; --blue-lt:#1c1c20;
+  --black:#f3f3f4; --black2:#000000; --bg:#0a0a0b; --white:#18181b;
+  --grey:#9d9da5; --grey2:#9d9da5; --grey-soft:#84848c; --rule:#2a2a2e; --gold:#d8d8dc; --gold-lt:#242428;
+  --green:#ffffff; --green-bg:#141416; --red:#ffffff; --red-bg:#000000; --amber:#d4d4d9; --amber-bg:#232326;
   --disp:'Cormorant Garamond',Georgia,serif;
   --body:'Inter',system-ui,sans-serif;
-  --r-sm:8px; --r:14px; --r-lg:20px;
-  --sh-xs:0 1px 3px rgba(26,43,74,.04),0 1px 2px rgba(26,43,74,.03);
-  --sh-sm:0 2px 12px rgba(26,43,74,.06),0 1px 4px rgba(26,43,74,.04);
-  --sh-md:0 8px 40px rgba(26,43,74,.09),0 2px 10px rgba(26,43,74,.05);
-  --sh-lg:0 24px 80px rgba(26,43,74,.11),0 6px 24px rgba(26,43,74,.06);
-  --sh-blue:0 6px 24px rgba(26,43,74,.32);
+  --r-sm:10px; --r:14px; --r-lg:22px;
+  --sh-xs:0 1px 3px rgba(0,0,0,.5),0 1px 2px rgba(0,0,0,.4);
+  --sh-sm:0 2px 14px rgba(0,0,0,.45),0 1px 4px rgba(0,0,0,.35);
+  --sh-md:0 10px 40px rgba(0,0,0,.55),0 2px 10px rgba(0,0,0,.4);
+  --sh-lg:0 26px 80px rgba(0,0,0,.6),0 6px 24px rgba(0,0,0,.4);
+  --sh-blue:0 6px 24px rgba(0,0,0,.5);
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 /* Sans ça, Safari iOS peut agrandir automatiquement les petits textes serrés
@@ -51,63 +51,64 @@
    test desktop puisque ce comportement est propre à Safari mobile). */
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:15px;-webkit-font-smoothing:antialiased;min-height:100vh}
+a{color:inherit;text-decoration-color:var(--grey-soft)}
 .wrap{max-width:520px;margin:0 auto;padding:20px 16px 100px;min-height:100vh}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 20px}
-.logo{font-family:var(--disp);font-size:21px;font-weight:600;color:var(--blue)}
+.logo{font-family:var(--disp);font-size:21px;font-weight:600;color:var(--black)}
 .logo em{font-style:normal;color:var(--gold)}
 .eyebrow{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;color:var(--grey);margin-bottom:14px;display:flex;align-items:center;gap:10px}
-.eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--blue);flex-shrink:0}
+.eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--grey-soft);flex-shrink:0}
 .who{font-size:12px;color:var(--grey);font-weight:600}
 .who button{background:none;border:none;color:var(--grey);text-decoration:underline;font-size:12px;font-family:var(--body);cursor:pointer;padding:0;margin-left:8px}
-.tracking-badge{background:var(--green-bg);color:var(--green);font-size:12.5px;font-weight:700;text-align:center;padding:9px 12px;border-radius:var(--r-sm);margin-bottom:14px}
+.tracking-badge{background:#141416;color:#fff;border:1px solid var(--rule);font-size:12.5px;font-weight:700;text-align:center;padding:9px 12px;border-radius:var(--r-sm);margin-bottom:14px}
 
 .card{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:26px 22px;box-shadow:var(--sh-sm);margin-bottom:14px}
-h1{font-family:var(--disp);font-size:25px;font-weight:600;margin-bottom:6px}
+h1{font-family:var(--disp);font-size:25px;font-weight:600;margin-bottom:6px;color:var(--black)}
 .sub{font-size:14px;color:var(--grey);margin-bottom:20px;line-height:1.55}
 label{display:block;font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);margin-bottom:7px}
 input[type=text],input[type=password],input[type=tel]{
   width:100%;padding:16px;border:1.5px solid var(--rule);border-radius:var(--r-sm);font-size:17px;
-  font-family:var(--body);background:var(--white);color:var(--black);outline:none;
+  font-family:var(--body);background:#1e1e22;color:var(--black);outline:none;
   transition:border-color .15s ease, box-shadow .15s ease;
 }
-input:focus{border-color:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+input:focus{border-color:var(--black);box-shadow:0 0 0 4px rgba(255,255,255,.1)}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--black);outline-offset:2px}
 .btn{
   width:100%;padding:18px;border:none;border-radius:12px;font-family:var(--body);
   font-size:16.5px;font-weight:700;letter-spacing:-.005em;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;
   min-height:58px;text-align:center;transition:transform .1s ease, opacity .15s ease, background-color .15s ease, border-color .15s ease, color .15s ease;
 }
-.btn-blue{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
+.btn-blue{background:var(--blue);color:#0a0a0b;box-shadow:var(--sh-xs)}
 .btn-blue:hover:not(:disabled){background:var(--blue-d)}
-.btn-green{background:var(--green);color:#fff;box-shadow:var(--sh-xs)}
-.btn-red{background:var(--white);color:var(--red);border:1.5px solid rgba(220,38,38,.2)}
-.btn-red:hover:not(:disabled){background:var(--red-bg)}
-.btn-amber{background:var(--amber);color:#fff;box-shadow:var(--sh-xs)}
-.btn-grey{background:transparent;color:var(--blue);border:1.5px solid rgba(26,43,74,.2)}
+.btn-green{background:#ffffff;color:#0a0a0b;box-shadow:var(--sh-xs)}
+.btn-red{background:var(--white);color:var(--black);border:1.5px solid rgba(255,255,255,.35)}
+.btn-red:hover:not(:disabled){background:#000}
+.btn-amber{background:#d4d4d9;color:#0a0a0b;box-shadow:var(--sh-xs)}
+.btn-grey{background:transparent;color:var(--black);border:1.5px solid rgba(255,255,255,.25)}
 .btn-grey:hover:not(:disabled){border-color:var(--grey-soft);color:var(--black)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn:active:not(:disabled){transform:scale(.98)}
 .btn+.btn{margin-top:12px}
-.err{background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.5}
-.banner-warning{background:var(--amber);color:#fff;border-radius:var(--r-sm);padding:10px 14px;margin-bottom:10px;font-weight:700;font-size:13px;line-height:1.4}
+.err{background:#1c1c1e;color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:var(--r-sm);padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.5}
+.banner-warning{background:#232326;color:#fff;border:1px solid var(--rule);border-radius:var(--r-sm);padding:10px 14px;margin-bottom:10px;font-weight:700;font-size:13px;line-height:1.4}
 .forgot-link{display:block;width:100%;background:none;border:none;color:var(--grey);text-decoration:underline;font-size:13px;font-family:var(--body);cursor:pointer;text-align:center;margin-top:16px;padding:4px}
-.ok-msg{background:var(--green-bg);color:var(--green);border-radius:var(--r-sm);padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.5}
-.t-toast{position:fixed;left:16px;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));background:var(--red);color:#fff;padding:14px 16px;border-radius:var(--r-sm);font-size:14px;font-weight:600;box-shadow:var(--sh-lg);z-index:200;animation:fadeInEl .2s ease}
+.ok-msg{background:#141416;color:#fff;border:1px solid var(--rule);border-radius:var(--r-sm);padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.5}
+.t-toast{position:fixed;left:16px;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));background:#000;color:#fff;border:1px solid var(--rule);padding:14px 16px;border-radius:var(--r-sm);font-size:14px;font-weight:600;box-shadow:var(--sh-lg);z-index:200;animation:fadeInEl .2s ease}
 
 .name-btn{width:100%;padding:20px;background:var(--white);border:1.5px solid var(--rule);border-radius:var(--r);font-size:18px;font-weight:700;color:var(--black);margin-bottom:12px;cursor:pointer;text-align:left;box-shadow:var(--sh-xs);transition:background-color .15s ease,border-color .15s ease}
 .name-btn:active{background:var(--bg)}
 
-.tour-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:var(--blue);color:#fff;border:none;border-radius:100px;font-weight:700;font-size:14px;margin-bottom:12px;cursor:pointer;text-decoration:none;box-shadow:var(--sh-xs)}
-.tour-btn-alt{background:var(--white);color:var(--blue);border:1.5px solid var(--blue);box-shadow:none}
+.tour-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:var(--blue);color:#0a0a0b;border:none;border-radius:100px;font-weight:700;font-size:14px;margin-bottom:12px;cursor:pointer;text-decoration:none;box-shadow:var(--sh-xs)}
+.tour-btn-alt{background:var(--white);color:var(--black);border:1.5px solid var(--rule);box-shadow:none}
 .section-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey-soft);margin:24px 2px 10px}
 
 .mcard{background:var(--white);border-radius:var(--r);padding:16px 18px;margin-bottom:10px;box-shadow:var(--sh-xs);cursor:pointer;border-left:5px solid var(--rule);transition:box-shadow .15s ease}
 .mcard:active{box-shadow:var(--sh-sm)}
 .mcard.st-a_faire{border-left-color:var(--amber)}
-.mcard.st-acceptee{border-left-color:var(--blue)}
-.mcard.st-en_route{border-left-color:var(--blue)}
-.mcard.st-arrivee{border-left-color:var(--green)}
-.mcard.st-probleme{border-left-color:var(--red)}
+.mcard.st-acceptee{border-left-color:var(--grey-soft)}
+.mcard.st-en_route{border-left-color:var(--grey-soft)}
+.mcard.st-arrivee{border-left-color:#fff}
+.mcard.st-probleme{border-left-color:#000}
 .mcard.st-fait{border-left-color:var(--rule)}
 /* Priorité de lecture : le nom du client d'abord (le plus gros repère visuel),
    type/statut/prix relégués en une ligne de méta secondaire juste dessous. */
@@ -115,8 +116,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .mcard-top{display:flex;align-items:center;gap:7px;margin-top:6px;flex-wrap:wrap}
 .mcard-icon{font-size:14px}
 .mcard-type{font-weight:600;font-size:12.5px;color:var(--grey);letter-spacing:-.005em}
-.mcard-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 9px 3px 7px;border-radius:100px;background:var(--bg);color:var(--grey)}
-.mcard-earn{display:inline-flex;align-items:center;font-size:11px;font-weight:800;color:var(--green);background:var(--green-bg);padding:3px 9px;border-radius:100px}
+.mcard-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 9px 3px 7px;border-radius:100px;background:var(--bg);color:var(--grey);border:1px solid var(--rule)}
+.mcard-earn{display:inline-flex;align-items:center;font-size:11px;font-weight:800;color:#0a0a0b;background:#fff;padding:3px 9px;border-radius:100px}
 .mcard-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
 .mcard-late-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:3px 9px;border-radius:100px;background:var(--amber-bg);color:var(--amber)}
 .detail-late-badge{display:inline-block;font-size:12px;font-weight:800;color:var(--amber);background:var(--amber-bg);border-radius:100px;padding:4px 12px;margin-bottom:10px}
@@ -125,7 +126,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    créneau — pourtant l'info la plus utile pour décider. Même code couleur
    que .mcard-earn (liste), en plus visible vu que c'est ici, sur l'écran
    détail, que la décision se prend réellement. */
-.detail-earn{display:inline-block;font-size:15px;font-weight:800;color:var(--green);background:var(--green-bg);border-radius:100px;padding:6px 14px;margin-bottom:10px}
+.detail-earn{display:inline-block;font-size:15px;font-weight:800;color:#0a0a0b;background:#fff;border-radius:100px;padding:6px 14px;margin-bottom:10px}
 .mcard-addr{font-size:13.5px;color:var(--grey);margin-top:7px;line-height:1.4}
 .mcard-meta{font-size:12.5px;color:var(--grey);margin-top:3px}
 /* Actions fusionnées : icônes compact (carte/tél) + boutons accept/refuse sur 1 ligne */
@@ -134,7 +135,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 
 .empty{text-align:center;color:var(--grey);font-size:14px;padding:44px 10px}
 
-.detail-back{background:none;border:none;color:var(--blue);font-weight:700;font-size:14px;margin-bottom:14px;cursor:pointer;padding:10px 4px;min-height:44px}
+.detail-back{background:none;border:none;color:var(--black);font-weight:700;font-size:14px;margin-bottom:14px;cursor:pointer;padding:10px 4px;min-height:44px}
 /* "Faire plus tard" est une vraie action (la mission repart en "à faire",
    plus seulement de la navigation) — jusqu'ici stylée à l'identique de
    "← Retour" (même lien texte discret), invisible au milieu de l'écran alors
@@ -142,44 +143,43 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    injoignable, accès compliqué...). Pilule pleine, même vocabulaire que
    .btn-amber (ex. "PROBLÈME") pour qu'elle se voie au premier coup d'œil
    sans dominer l'écran. */
-.detail-postpone{background:var(--amber);color:#fff;border:none;font-weight:700;font-size:13px;margin-bottom:14px;cursor:pointer;padding:10px 16px;min-height:44px;border-radius:100px;box-shadow:var(--sh-xs)}
-/* Couleur de coche cohérente avec le bleu de l'app — sans ça, les cases à
-   cocher gardent le rendu par défaut du téléphone, peu contrasté en plein
-   soleil, sur des actions qui débloquent la suite de la mission. */
-input[type="checkbox"]{accent-color:var(--blue)}
+.detail-postpone{background:#d4d4d9;color:#0a0a0b;border:none;font-weight:700;font-size:13px;margin-bottom:14px;cursor:pointer;padding:10px 16px;min-height:44px;border-radius:100px;box-shadow:var(--sh-xs)}
+/* Couleur de coche cohérente avec l'app — sans ça, les cases à cocher
+   gardent le rendu par défaut du téléphone, peu contrasté en plein soleil,
+   sur des actions qui débloquent la suite de la mission. */
+input[type="checkbox"]{accent-color:var(--black)}
 .info-row{display:flex;gap:10px;padding:11px 0;border-bottom:1px solid var(--rule);font-size:14.5px}
 .info-row:last-child{border-bottom:none}
 .info-ic{width:22px;flex-shrink:0;text-align:center}
 .info-label{color:var(--grey);width:90px;flex-shrink:0}
-.info-val{font-weight:600;flex:1}
-.maps-link{display:block;text-align:center;padding:14px;background:var(--bg);border-radius:100px;font-weight:700;color:var(--blue);text-decoration:none;margin:16px 0}
+.info-val{font-weight:600;flex:1;color:var(--black)}
+.maps-link{display:block;text-align:center;padding:14px;background:var(--bg);border:1px solid var(--rule);border-radius:100px;font-weight:700;color:var(--black);text-decoration:none;margin:16px 0}
 /* Zone de tap agrandie (audit ergonomie, 2026-08-05) : ~24px de haut avant
    ce correctif, sous les 40-44px déjà appliqués partout ailleurs dans
    l'appli (mcard-icon-btn, detail-back, btn-problem-discreet…) — utilisé
    pour de vraies actions ("Tout cocher", "Voir photo"), pas juste un détail
    visuel, donc doit rester facile à taper d'un geste rapide sur le terrain. */
-.btn-chip{margin-left:6px;font-size:12.5px;font-weight:700;padding:9px 14px;min-height:40px;border:1px solid var(--rule);border-radius:var(--r-sm);background:var(--white);cursor:pointer;color:var(--blue)}
-.pill-badge{display:inline-flex;align-items:center;gap:4px;background:var(--blue-lt);color:var(--blue);font-weight:700;font-size:13px;padding:6px 12px;border-radius:100px}
+.btn-chip{margin-left:6px;font-size:12.5px;font-weight:700;padding:9px 14px;min-height:40px;border:1px solid var(--rule);border-radius:var(--r-sm);background:var(--white);cursor:pointer;color:var(--black)}
+.pill-badge{display:inline-flex;align-items:center;gap:4px;background:var(--blue-lt);color:var(--black);border:1px solid var(--rule);font-weight:700;font-size:13px;padding:6px 12px;border-radius:100px}
 
 .media-btn{display:flex;align-items:center;gap:10px;width:100%;padding:16px 22px;border:1.5px solid var(--rule);border-radius:100px;background:var(--white);font-weight:700;font-size:15px;color:var(--black);margin-bottom:12px;cursor:pointer}
 /* Action pas encore faite : plus de poids visuel qu'un simple bouton
    secondaire (bordure épaisse + fond teinté), pour ne pas être moins visible
    qu'un bouton "Suivant" qui n'est qu'une navigation. */
-.media-btn:not(.done){border-width:2px;border-color:var(--blue);background:var(--blue-lt)}
-.media-btn.done{border-color:var(--green);background:var(--green-bg);color:var(--green)}
+.media-btn:not(.done){border-width:2px;border-color:#fff;background:#1c1c1e}
+.media-btn.done{border-color:var(--rule);background:#141416;color:var(--black)}
 .media-btn .ic{font-size:20px}
 /* Pulse en ombre plutôt qu'en opacité : reste lisible en plein soleil au
    lieu de faire disparaître le texte à moitié du cycle. */
 .media-btn.pulse{animation:media-btn-pulse 1.4s ease-in-out infinite}
-@keyframes media-btn-pulse{0%,100%{box-shadow:0 0 0 0 rgba(26,43,74,.3)}50%{box-shadow:0 0 0 7px rgba(26,43,74,0)}}
+@keyframes media-btn-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.3)}50%{box-shadow:0 0 0 7px rgba(255,255,255,0)}}
 /* "Prévenir de mon arrivée" : geste à faire avant tout le reste (photo,
    installation...) — même logique d'ombre pulsée que .media-btn.pulse
    ci-dessus (jamais d'opacité, reste lisible en plein soleil), plus un léger
-   grossissement pour que ça "bouge" vraiment à l'œil, comme demandé. Anneau
-   doré plutôt que bleu : doit se détacher du bouton bleu lui-même. S'arrête
+   grossissement pour que ça "bouge" vraiment à l'œil, comme demandé. S'arrête
    dès que le client est prévenu (classe retirée côté rendu).*/
 .detail-notify-pulse{animation:detail-notify-pulse 1.6s ease-in-out infinite}
-@keyframes detail-notify-pulse{0%,100%{box-shadow:0 0 0 0 rgba(197,169,108,.6);transform:scale(1)}50%{box-shadow:0 0 0 9px rgba(197,169,108,0);transform:scale(1.02)}}
+@keyframes detail-notify-pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.6);transform:scale(1)}50%{box-shadow:0 0 0 9px rgba(255,255,255,0);transform:scale(1.02)}}
 @media (prefers-reduced-motion: reduce){
   .detail-notify-pulse{animation:none}
 }
@@ -189,34 +189,34 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .btn-problem-discreet{display:block;width:100%;background:none;border:1.5px solid var(--amber);color:var(--amber);font-weight:700;font-size:12.5px;padding:9px 14px;border-radius:100px;cursor:pointer;text-align:center;margin-top:14px;min-height:40px;font-family:var(--body)}
 .btn-problem-discreet:active{background:var(--amber-bg)}
 
-.step-hint{font-size:14px;font-weight:700;color:var(--blue);background:var(--blue-lt);border-radius:var(--r-sm);padding:11px 14px;margin-bottom:14px}
+.step-hint{font-size:14px;font-weight:700;color:var(--black);background:#141416;border:1px solid var(--rule);border-radius:var(--r-sm);padding:11px 14px;margin-bottom:14px}
 /* Encart mis en avant pour le/les n° d'appareil à récupérer avant de partir
    (étape "En route") — doit sauter aux yeux, contrairement au reste des
    infos mission qui restent en texte discret. */
-.pickup-card{display:flex;align-items:center;gap:14px;background:var(--blue);border-radius:var(--r);padding:14px 16px;margin-bottom:12px;box-shadow:var(--sh-sm)}
+.pickup-card{display:flex;align-items:center;gap:14px;background:#fff;border-radius:var(--r);padding:14px 16px;margin-bottom:12px;box-shadow:var(--sh-sm)}
 .pickup-card-ic{font-size:28px;flex-shrink:0;line-height:1}
 .pickup-card-body{flex:1;min-width:0}
-.pickup-card-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.72)}
-.pickup-card-nums{font-size:23px;font-weight:800;color:#fff;letter-spacing:.01em;line-height:1.2;margin-top:2px}
-.pickup-card-extra{font-size:12.5px;color:rgba(255,255,255,.88);margin-top:5px;line-height:1.4}
+.pickup-card-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(10,10,11,.6)}
+.pickup-card-nums{font-size:23px;font-weight:800;color:#0a0a0b;letter-spacing:.01em;line-height:1.2;margin-top:2px}
+.pickup-card-extra{font-size:12.5px;color:rgba(10,10,11,.75);margin-top:5px;line-height:1.4}
 .btn-missing-hint{text-align:center;font-size:12.5px;color:var(--grey);margin:-6px 0 12px}
 .month-details summary::-webkit-details-marker{display:none}
 .month-chevron{display:inline-block;font-size:17px;line-height:1;color:var(--grey-soft);transition:transform .15s ease}
 .month-details[open] .month-chevron{transform:rotate(90deg)}
 .upload-preview{margin-bottom:14px}
 .upload-preview img,.upload-preview video{width:100%;max-height:240px;object-fit:cover;border-radius:var(--r);display:block;box-shadow:var(--sh-xs);background:#000}
-.probleme-box{background:var(--red-bg);border-radius:var(--r);padding:16px}
-.probleme-box p{font-size:14px;color:var(--red);line-height:1.55;font-weight:600}
+.probleme-box{background:#000;border:1px solid var(--rule);border-radius:var(--r);padding:16px}
+.probleme-box p{font-size:14px;color:#fff;line-height:1.55;font-weight:600}
 /* Contrainte de planning normale (mission pas encore démarrable, mission en
    cours à terminer d'abord) — pas une urgence, ne doit pas emprunter le
-   rouge des vrais signalements de problème. */
-.info-box{background:var(--blue-lt);border-radius:var(--r);padding:16px}
-.info-box p{font-size:14px;color:var(--blue);line-height:1.55;font-weight:600}
+   même traitement que les vrais signalements de problème. */
+.info-box{background:#141416;border:1px solid var(--rule);border-radius:var(--r);padding:16px}
+.info-box p{font-size:14px;color:var(--black);line-height:1.55;font-weight:600}
 .probleme-list{display:flex;flex-direction:column;gap:12px}
 .probleme-list .btn{margin-top:0}
 
-.overlay{position:fixed;inset:0;background:rgba(26,43,74,.6);display:flex;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px);animation:fadeInEl .2s ease}
-.sheet{background:var(--white);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:26px 22px 34px;box-shadow:var(--sh-lg);max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:slideUpEl .26s cubic-bezier(.22,.61,.36,1)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px);animation:fadeInEl .2s ease}
+.sheet{background:var(--white);border:1px solid var(--rule);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:26px 22px 34px;box-shadow:var(--sh-lg);max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:slideUpEl .26s cubic-bezier(.22,.61,.36,1)}
 @keyframes fadeInEl{from{opacity:0}to{opacity:1}}
 @keyframes slideUpEl{from{transform:translateY(18px);opacity:0}to{transform:none;opacity:1}}
 .hidden{display:none !important}
@@ -226,41 +226,41 @@ input[type="checkbox"]{accent-color:var(--blue)}
 
 /* Bouton tuto : flottant, au-dessus de la tabbar/detail-back, visible sur
    toutes les pages sauf la connexion (voir show()). */
-#tuto-fab{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--navy,#1a2b4a);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
+#tuto-fab{position:fixed;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:#fff;color:#0a0a0b;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
 /* Centre de notifications (Module 5) : même principe que #tuto-fab, côté
    gauche pour ne pas se superposer au bouton tuto. */
-#notif-fab{position:fixed;left:16px;bottom:calc(20px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--navy,#1a2b4a);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
+#notif-fab{position:fixed;left:16px;bottom:calc(20px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:#fff;color:#0a0a0b;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
 #notif-fab-badge{position:absolute;top:-2px;right:-2px}
-.tuto-cat-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);margin-bottom:8px}
+.tuto-cat-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);background:var(--white);border:1px solid var(--rule);box-shadow:var(--sh-xs);margin-bottom:8px}
 .tuto-cat-row.disabled{opacity:.55;box-shadow:none;background:var(--bg)}
-.tuto-video-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;gap:10px;border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);margin-bottom:8px}
-.tuto-video-row .done{color:var(--green,#1a7f4b);font-weight:700;font-size:12px}
+.tuto-video-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;gap:10px;border-radius:var(--r);background:var(--white);border:1px solid var(--rule);box-shadow:var(--sh-xs);margin-bottom:8px}
+.tuto-video-row .done{color:#fff;font-weight:700;font-size:12px}
 .tuto-empty{font-size:13px;color:var(--grey);margin:2px 0 8px}
 #tuto-player-wrap{position:relative;background:#000;border-radius:var(--r);overflow:hidden}
 #tuto-player-wrap video{width:100%;display:block;max-height:60vh}
-.tuto-progress-track{height:5px;background:rgba(255,255,255,.25);border-radius:100px;margin-top:10px;overflow:hidden}
-.tuto-progress-fill{height:100%;background:var(--blue);width:0%}
+.tuto-progress-track{height:5px;background:rgba(255,255,255,.15);border-radius:100px;margin-top:10px;overflow:hidden}
+.tuto-progress-fill{height:100%;background:#fff;width:0%}
 
 /* Stepper de progression mission */
 .stepper{display:flex;align-items:flex-start;margin:4px 0 24px}
 .step{flex:1;display:flex;flex-direction:column;align-items:center;position:relative}
-.step-dot{width:30px;height:30px;border-radius:50%;background:var(--rule);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;z-index:1;transition:background-color .2s ease}
-.step.done .step-dot{background:var(--green)}
-.step.active .step-dot{background:var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
+.step-dot{width:30px;height:30px;border-radius:50%;background:var(--rule);color:var(--grey);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;z-index:1;transition:background-color .2s ease,color .2s ease}
+.step.done .step-dot{background:#fff;color:#0a0a0b}
+.step.active .step-dot{background:var(--grey);color:#0a0a0b;box-shadow:0 0 0 4px rgba(255,255,255,.12)}
 .step-label{font-size:10.5px;color:var(--grey-soft);margin-top:7px;text-align:center;font-weight:700;line-height:1.2}
 .step.done .step-label,.step.active .step-label{color:var(--black)}
 .step-line{position:absolute;top:15px;left:-50%;width:100%;height:2px;background:var(--rule);z-index:0}
-.step.done .step-line{background:var(--green)}
+.step.done .step-line{background:#fff}
 .step:first-child .step-line{display:none}
 
 /* Parcours mission étape par étape — une action par écran, même principe que
    le tunnel de réservation du site public (index.html, .mob-progress). */
 .wiz-progress{margin:2px 0 18px}
 .wiz-progress-label{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
-.wiz-progress-step{font-size:11px;font-weight:800;color:var(--blue);letter-spacing:.06em;text-transform:uppercase}
+.wiz-progress-step{font-size:11px;font-weight:800;color:var(--black);letter-spacing:.06em;text-transform:uppercase}
 .wiz-progress-name{font-size:12.5px;color:var(--grey);font-weight:600}
 .wiz-progress-track{height:4px;background:var(--rule);border-radius:2px;overflow:hidden}
-.wiz-progress-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .35s cubic-bezier(.25,.46,.45,.94)}
+.wiz-progress-fill{height:100%;background:#fff;border-radius:2px;transition:width .35s cubic-bezier(.25,.46,.45,.94)}
 
 /* Toutes les étapes nommées, listées d'un coup à la verticale — même langage
    visuel que la sidebar du tunnel de réservation du site (index.html,
@@ -273,11 +273,11 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .wiz-step-item{display:flex;align-items:center;gap:12px}
 .wiz-step-item.wsi-clickable{cursor:pointer}
 .wiz-step-conn{width:2px;height:16px;background:var(--rule);margin-left:13px;flex-shrink:0}
-.wiz-step-conn.wsc-done{background:var(--blue)}
+.wiz-step-conn.wsc-done{background:#fff}
 .wiz-step-dot{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;transition:background-color .2s ease}
-.wiz-step-dot.wsd-done{background:var(--blue);color:#fff}
-.wiz-step-dot.wsd-cur{background:var(--navy);color:#fff;box-shadow:0 0 0 4px var(--blue-lt)}
-.wiz-step-dot.wsd-pnd{background:var(--rule);color:var(--grey2)}
+.wiz-step-dot.wsd-done{background:#fff;color:#0a0a0b}
+.wiz-step-dot.wsd-cur{background:var(--grey);color:#0a0a0b;box-shadow:0 0 0 4px rgba(255,255,255,.12)}
+.wiz-step-dot.wsd-pnd{background:var(--rule);color:var(--grey-soft)}
 .wiz-step-name{font-size:13px;color:var(--grey-soft);font-weight:500;line-height:1.2;transition:color .15s ease}
 .wiz-step-item.wsi-cur .wiz-step-name{color:var(--black);font-weight:700}
 .wiz-step-item.wsi-done .wiz-step-name{color:var(--grey)}
@@ -286,20 +286,20 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .tabbar{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);border:1px solid var(--rule);padding:4px;border-radius:100px}
 .tabbar button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:11px 8px;border-radius:100px;border:none;background:transparent;font-family:var(--body);font-weight:600;font-size:13.5px;letter-spacing:-.005em;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
 .tabbar button .tab-ic{width:16px;height:16px;flex-shrink:0;opacity:.7;transition:opacity .15s ease}
-.tabbar button.on{background:var(--white);color:var(--blue);font-weight:700;box-shadow:var(--sh-xs)}
+.tabbar button.on{background:var(--blue);color:#0a0a0b;font-weight:700;box-shadow:var(--sh-xs)}
 .tabbar button.on .tab-ic{opacity:1}
-.tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:100px;background:var(--red);color:#fff;font-size:10px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+.tab-badge{display:inline-flex;align-items:center;justify-content:center;min-width:16px;height:16px;padding:0 4px;border-radius:100px;background:#fff;color:#0a0a0b;font-size:10px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
 
 .day-progress{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;box-shadow:var(--sh-xs)}
-.day-progress .dp-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;font-size:13px;font-weight:700}
+.day-progress .dp-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--black)}
 .day-progress .dp-bar{height:10px;border-radius:100px;background:var(--bg);overflow:hidden}
-.day-progress .dp-fill{height:100%;border-radius:100px;background:var(--blue);transition:width .4s ease}
-.day-progress .dp-fill.over{background:var(--red)}
+.day-progress .dp-fill{height:100%;border-radius:100px;background:#fff;transition:width .4s ease}
+.day-progress .dp-fill.over{background:#8a8a90}
 
 /* Activité */
-.stat-big{background:linear-gradient(150deg,var(--navy) 0%,var(--navy-d) 100%);color:#fff;border-radius:var(--r-lg);padding:26px 22px;margin-bottom:14px;box-shadow:var(--sh-md)}
+.stat-big{background:var(--white);border:1px solid var(--rule);color:var(--black);border-radius:var(--r-lg);padding:26px 22px;margin-bottom:14px;box-shadow:var(--sh-md)}
 .stat-big .amount{font-family:var(--disp);font-size:42px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
-.stat-big .caption{font-size:13px;opacity:.8;margin-top:8px;font-weight:500;line-height:1.5}
+.stat-big .caption{font-size:13px;opacity:.75;margin-top:8px;font-weight:500;line-height:1.5}
 .stat-row{display:flex;gap:12px;margin-bottom:14px}
 .stat-tile{flex:1;background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:16px;text-align:center;box-shadow:var(--sh-xs)}
 .stat-tile.tap{cursor:pointer}
@@ -310,8 +310,8 @@ input[type="checkbox"]{accent-color:var(--blue)}
 /* Accueil (dashboard) : 1 seule action prioritaire mise en avant, le reste
    en second plan — "qu'est-ce que je fais maintenant" ne doit jamais
    demander de parcourir une liste. */
-.dash-hero{background:linear-gradient(150deg,var(--navy) 0%,var(--navy-d) 100%);color:#fff;border-radius:var(--r-lg);padding:24px 22px;margin-bottom:14px;box-shadow:var(--sh-md)}
-.dash-hero .eyebrow{color:rgba(255,255,255,.65);margin-bottom:10px}
+.dash-hero{background:var(--white);border:1px solid var(--rule);color:var(--black);border-radius:var(--r-lg);padding:24px 22px;margin-bottom:14px;box-shadow:var(--sh-md)}
+.dash-hero .eyebrow{color:var(--grey);margin-bottom:10px}
 .dash-hero h2{font-family:var(--disp);font-size:22px;font-weight:600;margin-bottom:6px;line-height:1.25}
 .dash-hero p{font-size:13.5px;opacity:.85;margin-bottom:18px;line-height:1.5}
 .dash-hero.calm{background:var(--white);color:var(--black);border:1px solid var(--rule);box-shadow:var(--sh-xs)}
@@ -329,21 +329,21 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .week-card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px;flex-wrap:wrap}
 .week-card-title{font-family:var(--disp);font-size:17px;font-weight:600;color:var(--black);display:flex;align-items:center;gap:8px}
 .week-nav{display:flex;align-items:center;gap:8px}
-.week-nav-btn{background:var(--bg);border:1px solid var(--rule);border-radius:50%;width:44px;height:44px;line-height:1;font-size:11px;color:var(--blue);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.week-nav-btn{background:var(--bg);border:1px solid var(--rule);border-radius:50%;width:44px;height:44px;line-height:1;font-size:11px;color:var(--black);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .week-nav-btn:disabled{opacity:.35;cursor:default}
-.week-nav-range{font-size:12px;font-weight:600;color:var(--grey2);white-space:nowrap}
+.week-nav-range{font-size:12px;font-weight:600;color:var(--grey);white-space:nowrap}
 .week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:4px}
 .week-day{background:none;border:1.5px solid transparent;border-radius:var(--r-sm);padding:8px 2px 7px;text-align:center;cursor:pointer;font-family:var(--body);transition:background .15s ease,border-color .15s ease}
-.week-day-dow{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--grey2);margin-bottom:4px}
+.week-day-dow{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--grey);margin-bottom:4px}
 .week-day-num{display:block;font-size:16px;font-weight:700;color:var(--black);line-height:1}
-.week-day-dot{display:block;width:16px;height:16px;line-height:16px;border-radius:50%;margin:5px auto 0;font-size:9.5px;font-weight:700;color:#fff;background:var(--blue)}
+.week-day-dot{display:block;width:16px;height:16px;line-height:16px;border-radius:50%;margin:5px auto 0;font-size:9.5px;font-weight:700;color:#0a0a0b;background:var(--grey-soft)}
 .week-day.today{border-color:var(--gold)}
 .week-day.active{background:var(--blue);border-color:var(--blue)}
-.week-day.active .week-day-dow,.week-day.active .week-day-num{color:#fff}
-.week-day.active .week-day-dot{background:#fff;color:var(--blue)}
+.week-day.active .week-day-dow,.week-day.active .week-day-num{color:#0a0a0b}
+.week-day.active .week-day-dot{background:#0a0a0b;color:#fff}
 .week-day.empty .week-day-dot{visibility:hidden}
-.week-day.has-probleme .week-day-dot{background:var(--red)}
-.week-day.active.has-probleme .week-day-dot{color:var(--red)}
+.week-day.has-probleme .week-day-dot{background:#000;color:#fff}
+.week-day.active.has-probleme .week-day-dot{background:#000;color:#fff}
 .week-day-list{margin-top:12px;padding-top:12px;border-top:1px solid var(--rule)}
 .week-day-item+.week-day-item{border-top:1px solid var(--rule)}
 .week-day-row{display:flex;align-items:center;gap:10px;padding:9px 2px 9px 8px;margin-left:-8px;cursor:pointer;border-left:3px solid transparent}
@@ -351,10 +351,10 @@ input[type="checkbox"]{accent-color:var(--blue)}
    sans repère de statut, une mission déjà terminée ou en problème se
    confondait dans la liste avec une mission simplement à venir. */
 .week-day-row.st-a_faire{border-left-color:var(--amber)}
-.week-day-row.st-acceptee{border-left-color:var(--blue)}
-.week-day-row.st-en_route{border-left-color:var(--blue)}
-.week-day-row.st-arrivee{border-left-color:var(--green)}
-.week-day-row.st-probleme{border-left-color:var(--red)}
+.week-day-row.st-acceptee{border-left-color:var(--grey-soft)}
+.week-day-row.st-en_route{border-left-color:var(--grey-soft)}
+.week-day-row.st-arrivee{border-left-color:#fff}
+.week-day-row.st-probleme{border-left-color:#000}
 .week-day-row.st-fait{border-left-color:var(--rule)}
 .week-day-row .ic{font-size:18px;flex-shrink:0}
 .week-day-row .tx{flex:1;min-width:0}
@@ -362,9 +362,9 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .week-day-row .meta{font-size:12px;color:var(--grey);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .week-day-row .chev{color:var(--grey-soft);font-size:13px;flex-shrink:0;transition:transform .15s ease}
 .week-day-row.expanded .chev{transform:rotate(90deg)}
-.week-day-status{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 8px 3px 6px;border-radius:100px;flex-shrink:0;white-space:nowrap;background:var(--bg);color:var(--grey)}
+.week-day-status{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:3px 8px 3px 6px;border-radius:100px;flex-shrink:0;white-space:nowrap;background:var(--bg);color:var(--grey);border:1px solid var(--rule)}
 .week-day-status::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
-.week-day-status.st-probleme{background:var(--red-bg);color:var(--red)}
+.week-day-status.st-probleme{background:#000;color:#fff;border-color:#000}
 .week-day-empty{font-size:13px;color:var(--grey);text-align:center;padding:10px 0 2px}
 /* Synthèse dépliée d'une mission de "Ma semaine" : mêmes .info-row/.step-hint
    que la fiche mission détaillée, pour que le livreur retrouve les mêmes
@@ -381,15 +381,15 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .vchip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:4px 10px 4px 8px;border-radius:100px}
 .vchip::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
 .vchip.demande{background:var(--amber-bg);color:var(--amber)}
-.vchip.verse{background:var(--green-bg);color:var(--green)}
+.vchip.verse{background:#fff;color:#0a0a0b}
 
 /* Célébration */
-.celebrate{position:fixed;inset:0;background:rgba(26,43,74,.72);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px;backdrop-filter:blur(3px)}
-.celebrate-card{background:var(--white);border-radius:var(--r-lg);padding:38px 28px;text-align:center;max-width:360px;box-shadow:var(--sh-lg)}
+.celebrate{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px;backdrop-filter:blur(3px)}
+.celebrate-card{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:38px 28px;text-align:center;max-width:360px;box-shadow:var(--sh-lg)}
 .celebrate-emoji{font-size:50px;margin-bottom:12px}
-.celebrate-title{font-family:var(--disp);font-size:24px;font-weight:600;margin-bottom:8px}
+.celebrate-title{font-family:var(--disp);font-size:24px;font-weight:600;margin-bottom:8px;color:var(--black)}
 .celebrate-sub{font-size:15px;color:var(--grey);margin-bottom:22px;line-height:1.55}
-.celebrate-amount{display:inline-block;font-family:var(--disp);font-size:34px;font-weight:600;color:var(--blue);background:var(--gold-lt);padding:6px 24px;border-radius:100px;margin-bottom:22px}
+.celebrate-amount{display:inline-block;font-family:var(--disp);font-size:34px;font-weight:600;color:#0a0a0b;background:#fff;padding:6px 24px;border-radius:100px;margin-bottom:22px}
 
 /* Carte du jour */
 .tools-group{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);margin:0 0 14px;overflow:hidden}
@@ -412,20 +412,20 @@ input[type="checkbox"]{accent-color:var(--blue)}
 #postal-filters{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 #postal-filters::-webkit-scrollbar{display:none}
 #postal-filters button{flex:none}
-.map-filters button.on{background:var(--white);color:var(--blue);font-weight:700;box-shadow:var(--sh-xs)}
+.map-filters button.on{background:var(--blue);color:#0a0a0b;font-weight:700;box-shadow:var(--sh-xs)}
 .map-filters button.on .tab-ic{opacity:1}
-#day-map{height:calc(100vh - 180px);border-radius:var(--r-lg);overflow:hidden;background:#e8e6e0;box-shadow:var(--sh-sm)}
-.map-popup-btn{display:block;width:100%;margin-top:8px;padding:9px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--body)}
+#day-map{height:calc(100vh - 180px);border-radius:var(--r-lg);overflow:hidden;background:#1a1a1d;box-shadow:var(--sh-sm)}
+.map-popup-btn{display:block;width:100%;margin-top:8px;padding:9px;background:#fff;color:#0a0a0b;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--body)}
 .map-pin-teardrop{
   width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
-  box-shadow:0 3px 10px rgba(26,43,74,.35);
+  box-shadow:0 3px 10px rgba(0,0,0,.55);
   display:flex;align-items:center;justify-content:center;
 }
 .map-pin-teardrop span{transform:rotate(45deg);font-size:15px}
-.map-pin-teardrop.livraison{background:var(--blue)}
+.map-pin-teardrop.livraison{background:#fff}
 .map-pin-teardrop.recuperation{background:var(--amber)}
 .map-pin-teardrop.future{opacity:.55}
-.leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 8px 28px rgba(26,43,74,.22)}
+.leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.5);background:var(--white);color:var(--black)}
 .leaflet-popup-content{font-family:var(--body);margin:12px 14px;font-size:13.5px;line-height:1.5}
 
 /* Calendrier planning — identique à admin/index.html (même composant, mêmes
@@ -443,30 +443,30 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .gantt-label-row{position:sticky;left:0;z-index:2;display:flex;align-items:center;gap:6px;padding:0 10px;background:var(--bg);border-bottom:1px solid var(--rule);border-right:1px solid var(--rule);font-size:12.5px;font-weight:700;color:var(--black);white-space:nowrap}
 .gantt-label-row.gantt-label-out{color:var(--grey-soft)}
 .gantt-status-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
-.gantt-status-dot-actif{background:var(--green)}
-.gantt-status-dot-annulee{background:var(--red)}
+.gantt-status-dot-actif{background:#fff}
+.gantt-status-dot-annulee{background:#fff;opacity:.35}
 .gantt-status-dot-a_faire{background:var(--amber)}
-.gantt-status-dot-en_location{background:var(--blue)}
+.gantt-status-dot-en_location{background:var(--grey)}
 .gantt-status-dot-terminee{background:var(--grey-soft)}
 .gantt-cell{border-right:1px solid var(--rule);border-bottom:1px solid var(--rule)}
 .gantt-cell.gantt-head{position:sticky;top:0;z-index:3;background:var(--white);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
 .gantt-dow{font-size:9px;color:var(--grey);text-transform:uppercase;font-weight:700}
 .gantt-dnum{font-size:12.5px;font-weight:700;color:var(--black)}
-.gantt-today{background:var(--blue-lt)}
-.gantt-weekend{background:rgba(26,43,74,.05)}
+.gantt-today{background:#232326}
+.gantt-weekend{background:rgba(255,255,255,.03)}
 /* .gantt-cell.gantt-head (2 classes) est plus spécifique que .gantt-today
    (1 classe) et gagnait toujours sur la case d'en-tête du jour "aujourd'hui"
    — elle restait blanche alors que toute la colonne en dessous était
    surlignée en bleu, cassant le repère visuel du jour actuel. */
-.gantt-cell.gantt-head.gantt-today{background:var(--blue-lt)}
-.gantt-bar{z-index:1;align-self:center;height:26px;margin:0 1px;border-radius:100px;border:1.5px solid var(--white);padding:0 10px;display:flex;align-items:center;min-width:0;color:#fff;font-size:11.5px;font-weight:700;box-shadow:var(--sh-xs)}
+.gantt-cell.gantt-head.gantt-today{background:#232326}
+.gantt-bar{z-index:1;align-self:center;height:26px;margin:0 1px;border-radius:100px;border:1.5px solid var(--bg);padding:0 10px;display:flex;align-items:center;min-width:0;color:#0a0a0b;font-size:11.5px;font-weight:700;box-shadow:var(--sh-xs)}
 .gantt-bar-attente{background:var(--amber)}
-.gantt-bar-confirmee{background:var(--green)}
+.gantt-bar-confirmee{background:#fff}
 .gantt-bar-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .gantt-legend{display:flex;gap:16px;margin-top:10px;font-size:12px;color:var(--grey);flex-wrap:wrap}
 .gantt-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
 .gantt-dot-attente{background:var(--amber)}
-.gantt-dot-confirmee{background:var(--green)}
+.gantt-dot-confirmee{background:#fff}
 .gantt-legend .gantt-status-dot{margin-right:5px}
 @media(max-width:640px){.gantt-nav{justify-content:space-between}}
 </style>
