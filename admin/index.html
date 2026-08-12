@@ -311,6 +311,34 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .devis-total-amt{font-family:var(--disp);font-size:30px;font-weight:600;color:var(--black);letter-spacing:-.01em;line-height:1}
 .devis-box .nr-price-detail{font-size:12px;color:var(--grey);line-height:1.6;margin-top:6px}
 .devis-box input[type=number]#nr-prix{max-width:140px;margin-bottom:0}
+/* Compteur +/- façon panier d'achat (chantier structurel, 2026-08-12,
+   maquette fournie par Aly) — remplace le simple champ numérique de la
+   quantité, mêmes id/valeur en dessous (masqué) pour ne rien changer à la
+   logique existante (nrClampQte/nrCalcTotal/createReservation). */
+.qty-stepper{display:inline-flex;align-items:center;gap:14px;margin-top:4px}
+.qty-btn{width:38px;height:38px;border-radius:11px;border:none;font-size:19px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;transition:filter .15s ease,transform .1s ease}
+.qty-btn:active{transform:scale(.94)}
+.qty-btn-plus{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
+.qty-btn-plus:hover{background:var(--blue-d)}
+.qty-btn-minus{background:var(--white);color:var(--blue);border:1.5px solid var(--rule)}
+.qty-btn-minus:hover{border-color:var(--blue)}
+.qty-btn:disabled{opacity:.35;cursor:not-allowed}
+.qty-val{min-width:26px;text-align:center;font-family:var(--disp);font-size:22px;font-weight:600;color:var(--black)}
+/* Récap façon "Sous-total / Livraison / Remise / Total" d'un panier d'achat
+   — remplace la ligne de détail texte unique par des lignes structurées,
+   plus proche de la lecture d'un ticket que d'une phrase à parser. */
+.cart-summary{margin-top:14px;padding-top:14px;border-top:1px dashed rgba(26,43,74,.25);display:flex;flex-direction:column;gap:7px}
+.cart-summary-row{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;color:var(--grey)}
+.cart-summary-row span:last-child{font-weight:600;color:var(--black);font-variant-numeric:tabular-nums}
+.cart-summary-row.cart-summary-discount span:last-child{color:var(--green)}
+.cart-summary-total{margin-top:5px;padding-top:11px;border-top:1px solid var(--blue)}
+.cart-summary-total span:first-child{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--blue)}
+.cart-summary-total span:last-child{font-family:var(--disp);font-size:30px;font-weight:600;color:var(--black);letter-spacing:-.01em}
+/* Code promo façon "Bike30 [Apply]" de la maquette : champ + bouton collés
+   sur la même ligne plutôt qu'empilés. */
+.promo-row{display:flex;gap:8px;margin-top:8px}
+.promo-row input{flex:1;margin-bottom:0}
+.promo-row .btn{flex-shrink:0;padding:0 20px;height:44px}
 /* Section repliable pour les champs secondaires (utilisés occasionnellement :
    parrainage, motif, tél. secours...) — même principe que .resa-details
    (déjà utilisé pour "Détails d'accès" sur les cartes réservation), un peu
@@ -3984,6 +4012,20 @@ function nrClampQte(){
     const clamped = Math.min(5, Math.max(1, v));
     if(clamped !== v) el.value = clamped;
   }
+  const disp = document.getElementById('nr-qte-val');
+  if(disp) disp.textContent = el.value;
+}
+// Compteur +/- (chantier structurel, maquette Aly) : pilote le même champ
+// #nr-qte que toujours (nrClampQte/nrCalcTotal/createReservation
+// inchangés), juste un habillage visuel différent du <input type=number>
+// natif — un seul appareil "de moins" que le max n'a jamais de sens
+// négatif, donc bornes 1/5 déjà appliquées par nrClampQte.
+function nrQtyStep(delta){
+  const el = document.getElementById('nr-qte');
+  if(!el) return;
+  el.value = Math.max(1, Math.min(5, (parseInt(el.value)||1) + delta));
+  nrClampQte();
+  nrRecalcPrice();
 }
 function nrCalcTotal(){
   const debut = document.getElementById('nr-debut')?.value;
@@ -4000,23 +4042,44 @@ function nrCalcTotal(){
 }
 function nrRecalcPrice(){
   const r = nrCalcTotal();
-  const preview = document.getElementById('nr-price-preview');
+  const summary = document.getElementById('nr-cart-summary');
   const prixEl = document.getElementById('nr-prix');
   const totalEl = document.getElementById('nr-total-display');
   const hint = document.getElementById('nr-prix-manual-hint');
   if(!r){
-    if(preview) preview.style.display = 'none';
+    if(summary) summary.style.display = 'none';
     if(totalEl) totalEl.textContent = '—';
     if(hint) hint.style.display = 'none';
     return;
   }
-  if(preview){
-    preview.style.display = 'block';
-    preview.innerHTML = `Location (${r.days} j${r.qte>1?' × '+r.qte:''}) : ${(r.baseCents/100).toFixed(2)} € · Installation ${r.isTech?'technicien : '+(r.installCents/100).toFixed(2)+' €':'autonome : incluse'} · Livraison : <strong style="color:${r.horsZone?'var(--amber)':'inherit'}">${r.livraisonLabel}</strong>`;
+  // Devis façon "panier" : une ligne par poste (Location/Installation/
+  // Livraison/Remise) puis le total — même logique de calcul que l'ancien
+  // paragraphe, juste présentée en liste au lieu d'une phrase compacte.
+  if(summary){
+    summary.style.display = 'flex';
+    const locEl = document.getElementById('nr-sum-location');
+    if(locEl) locEl.textContent = `${(r.baseCents/100).toFixed(2).replace('.', ',')} € (${r.days} j${r.qte>1?' × '+r.qte:''})`;
+    const installEl = document.getElementById('nr-sum-install');
+    if(installEl) installEl.textContent = r.isTech ? `${(r.installCents/100).toFixed(2).replace('.', ',')} €` : 'Incluse';
+    const livrEl = document.getElementById('nr-sum-livraison');
+    if(livrEl){
+      livrEl.textContent = r.livraisonLabel;
+      livrEl.style.color = r.horsZone ? 'var(--amber)' : '';
+    }
+    const discountRow = document.getElementById('nr-sum-discount-row');
+    const discountEl = document.getElementById('nr-sum-discount');
+    if(discountRow && discountEl){
+      if(_nrPromoDiscount > 0){
+        discountRow.classList.remove('hidden');
+        discountEl.textContent = `−${_nrPromoDiscount.toFixed(2).replace('.', ',')} €`;
+      } else {
+        discountRow.classList.add('hidden');
+      }
+    }
   }
   const total = Math.max(0, Math.round(r.totalCents - _nrPromoDiscount*100)) / 100;
   if(prixEl) prixEl.value = total;
-  // Gros chiffre au-dessus du champ éditable — voir .devis-total-amt (le
+  // Gros chiffre au-dessus du champ éditable — voir .cart-summary-total (le
   // devis doit se lire d'un coup d'œil pendant un appel, pas seulement dans
   // un petit champ de saisie).
   if(totalEl) totalEl.textContent = total.toFixed(2).replace('.', ',') + ' €';
@@ -4086,25 +4149,36 @@ function reservationCreerHtml(){
           ${[7,14,21,28].map(days=>`<button type="button" class="nr-dur-btn" data-days="${days}" onclick="nrSetDuration(${days})" style="flex:none;padding:7px 16px">${days} j</button>`).join('')}
         </div>
         <p class="sub" style="margin:4px 0 10px;font-size:11.5px">Durée rapide — ou modifie directement la date de récupération ci-dessus.</p>
-        <label for="nr-qte" style="margin-top:0">Quantité <span style="text-transform:none;font-weight:400;color:var(--grey-soft)">(max 5)</span></label>
-        <input type="number" id="nr-qte" min="1" max="5" value="1" oninput="nrClampQte();nrRecalcPrice()" style="max-width:100px"/>
+        <label style="margin-top:0">Quantité de climatiseurs <span style="text-transform:none;font-weight:400;color:var(--grey-soft)">(max 5)</span></label>
+        <div class="qty-stepper">
+          <button type="button" class="qty-btn qty-btn-minus" onclick="nrQtyStep(-1)" aria-label="Retirer un climatiseur">−</button>
+          <span class="qty-val" id="nr-qte-val">1</span>
+          <button type="button" class="qty-btn qty-btn-plus" onclick="nrQtyStep(1)" aria-label="Ajouter un climatiseur">+</button>
+        </div>
+        <input type="number" id="nr-qte" min="1" max="5" value="1" class="hidden" oninput="nrClampQte();nrRecalcPrice()"/>
         <label style="margin-top:8px">Installation<span style="text-transform:none;font-weight:400;color:var(--grey-soft)"> — impacte le prix</span></label>
         <div class="periods" style="margin:0 0 2px;flex-wrap:wrap;height:auto;background:transparent;padding:0">
           <button type="button" class="nr-install-btn${installVal===INSTALLATION_OPTIONS[0]?' on':''}" data-val="${escHtml(INSTALLATION_OPTIONS[0])}" onclick="nrSetInstall('${INSTALLATION_OPTIONS[0]}')" style="flex:none;padding:7px 16px">Autonome</button>
           <button type="button" class="nr-install-btn${installVal===INSTALLATION_OPTIONS[1]?' on':''}" data-val="${escHtml(INSTALLATION_OPTIONS[1])}" onclick="nrSetInstall('${INSTALLATION_OPTIONS[1]}')" style="flex:none;padding:7px 16px">Technicien +80€</button>
         </div>
-        <div class="devis-total-row">
-          <div>
-            <div class="devis-total-lbl">Total estimé</div>
-            <div class="devis-total-amt" id="nr-total-display">—</div>
-          </div>
+        <!-- Récap façon ticket de panier (chantier structurel, maquette Aly) :
+             lignes Location/Installation/Livraison/Remise, puis Total —
+             remplace l'ancienne phrase de détail à parser + le bloc total
+             séparé, même données (nrCalcTotal), juste réparties en lignes. -->
+        <div class="cart-summary" id="nr-cart-summary" style="display:none">
+          <div class="cart-summary-row"><span>Location</span><span id="nr-sum-location">—</span></div>
+          <div class="cart-summary-row"><span>Installation</span><span id="nr-sum-install">—</span></div>
+          <div class="cart-summary-row"><span>Livraison</span><span id="nr-sum-livraison">—</span></div>
+          <div class="cart-summary-row cart-summary-discount hidden" id="nr-sum-discount-row"><span>Remise</span><span id="nr-sum-discount">—</span></div>
+          <div class="cart-summary-row cart-summary-total"><span>Total</span><span id="nr-total-display">—</span></div>
+        </div>
+        <div style="margin-top:12px;display:flex;justify-content:flex-end">
           <div style="text-align:right">
             <label for="nr-prix" style="margin:0 0 4px">Prix (modifiable)</label>
-            <input type="number" id="nr-prix" min="0" step="0.5" oninput="nrOnPrixInput()"/>
+            <input type="number" id="nr-prix" min="0" step="0.5" oninput="nrOnPrixInput()" style="max-width:140px"/>
           </div>
         </div>
         <p id="nr-prix-manual-hint" style="display:none;margin:0 0 6px;font-size:11px;color:var(--amber);text-align:right;line-height:1.4">⚠️ Prix modifié à la main — sera remplacé si tu retouches les dates, la quantité, le code postal ou l'installation ci-dessus.</p>
-        <p id="nr-price-preview" class="nr-price-detail" style="display:none"></p>
       </div>
 
       <div class="section-title">👤 Client</div>
