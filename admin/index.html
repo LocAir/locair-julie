@@ -117,22 +117,22 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .resa-details[open] summary::after{transform:rotate(180deg)}
 .resa-details-body{padding:4px 0 2px}
 
-/* Menu ☰ mobile : la barre horizontale scrollable cachait des onglets sans
+/* Menu mobile : la barre horizontale scrollable cachait des onglets sans
    affordance claire (juste un léger fondu de 28px) — sur mobile elle devient
    un tiroir latéral qu'on ouvre explicitement, avec tous les onglets et
    labels de groupe visibles d'un coup, plutôt que de compter sur un scroll
-   qu'une bonne partie des utilisateurs ne découvre jamais. */
+   qu'une bonne partie des utilisateurs ne découvre jamais.
+   Refonte structurelle (2026-08-12, demande d'Aly : "une vraie appli
+   mobile") : le vieux bouton "☰ Menu" en haut de page est remplacé par une
+   barre de navigation fixe en bas d'écran (.bottom-nav, 4 destinations les
+   plus utilisées + "Plus"), pattern standard des applis mobiles. "Plus"
+   ouvre exactement le même tiroir qu'avant (.tabs.mobile-open) — aucune
+   logique de navigation dupliquée, juste un nouveau déclencheur. */
 .mobile-menu-btn{display:none}
 .mobile-menu-backdrop{display:none}
+.bottom-nav{display:none}
 @media (max-width:859px){
-  .mobile-menu-btn{
-    display:flex;align-items:center;gap:9px;width:100%;
-    padding:11px 16px;margin-bottom:16px;
-    border-radius:var(--r);border:1.5px solid var(--rule);background:var(--white);
-    font-family:var(--body);font-weight:700;font-size:14px;color:var(--black);
-    cursor:pointer;box-shadow:var(--sh-xs);position:relative;
-  }
-  .mobile-menu-dot{width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:2px}
+  .mobile-menu-btn{display:none !important}
   .mobile-menu-backdrop{
     display:none;position:fixed;inset:0;background:rgba(20,30,48,.45);z-index:199;
   }
@@ -148,6 +148,21 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   .tabs.mobile-open{transform:translateX(0)}
   .tabs button{width:100%;text-align:left;padding:12px 16px;border-radius:12px}
   .tabs-group{display:block}
+  .wrap{padding-bottom:104px}
+  .bottom-nav{
+    display:flex;position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));
+    z-index:150;background:var(--white);border:1px solid var(--rule);border-radius:100px;
+    padding:6px;gap:2px;box-shadow:var(--sh-lg);
+  }
+  .bottom-nav button{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    padding:9px 2px 8px;border:none;background:transparent;border-radius:100px;position:relative;
+    font-family:var(--body);font-size:9.5px;font-weight:700;color:var(--grey);cursor:pointer;
+    transition:background-color .15s ease,color .15s ease;
+  }
+  .bottom-nav button .bn-ic{font-size:19px;line-height:1}
+  .bottom-nav button.on{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
+  .bottom-nav .bn-dot{position:absolute;top:6px;right:calc(50% - 15px);width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid var(--white)}
 }
 
 .a-search{position:relative;margin-bottom:16px}
@@ -190,10 +205,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .list-toolbar-export{flex-shrink:0;background:var(--white);border:1.5px solid var(--rule);color:var(--grey);border-radius:var(--r-sm);padding:0 14px;height:44px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;transition:border-color .15s ease,color .15s ease}
 .list-toolbar-export:hover{border-color:var(--grey-soft);color:var(--black)}
 
-.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.stat-tile{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh-xs)}
-.stat-tile .n{font-family:var(--disp);font-size:32px;font-weight:400;color:var(--black);font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.1}
-.stat-tile .l{font-size:11px;color:var(--grey);font-weight:600;margin-top:8px;letter-spacing:.03em;text-transform:uppercase}
+/* Cartes agrandies (2026-08-12, chantier structurel demandé par Aly) : plus
+   d'air (padding, gap), chiffre plus grand, coin plus arrondi (--r-lg au
+   lieu de --r) — moins de tuiles visibles d'un coup mais chacune se lit
+   d'un vrai coup d'œil, plutôt qu'une mosaïque dense de petits chiffres. */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.stat-tile{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:22px 22px 20px;box-shadow:var(--sh-sm)}
+.stat-tile .ic{font-size:20px;line-height:1;margin-bottom:10px;opacity:.85}
+.stat-tile .n{font-family:var(--disp);font-size:36px;font-weight:400;color:var(--black);font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.1}
+.stat-tile .l{font-size:11.5px;color:var(--grey);font-weight:600;margin-top:9px;letter-spacing:.03em;text-transform:uppercase}
 .stat-tile.warn .n{color:var(--red)}
 
 .morning-banner{background:var(--blue);color:#fff;border-radius:var(--r-lg);padding:18px 44px 18px 20px;margin-bottom:16px;box-shadow:var(--sh-blue);position:relative}
@@ -699,6 +719,19 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
     </div>
   </div>
 </div>
+
+<!-- Navigation mobile en bas d'écran (invisible sur desktop, où .tabs reste
+     la barre latérale) — les 4 destinations les plus utilisées au quotidien
+     (mêmes libellés que le groupe "Piloter" + Accueil), "Plus" ouvre le
+     tiroir complet existant (toggleMobileMenu), tous les autres onglets y
+     restent accessibles sans être dupliqués ici. -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bn-item on" data-tab="accueil" onclick="switchAdminTab('accueil')"><span class="bn-ic">🏠</span>Accueil</button>
+  <button class="bn-item" data-tab="livraisons" onclick="switchAdminTab('livraisons')"><span class="bn-ic">🚚</span>Missions</button>
+  <button class="bn-item" data-tab="reservations" onclick="switchAdminTab('reservations')"><span class="bn-ic">🧾</span>Résa.</button>
+  <button class="bn-item" data-tab="stock" onclick="switchAdminTab('stock')"><span class="bn-ic">📦</span>Stock</button>
+  <button class="bn-item" onclick="toggleMobileMenu()"><span class="bn-ic">☰</span>Plus<span class="bn-dot hidden" id="bn-plus-dot"></span></button>
+</nav>
 
 <!-- input caché pour l'upload des fichiers vidéo tutoriel (onglet Tutoriels) -->
 <input type="file" id="tuto-media-input" accept="video/*" class="hidden"/>
@@ -1705,6 +1738,13 @@ const _TAB_LOADERS = {
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
+  // Barre du bas (mobile) : 4 destinations directes + "Plus" (sans data-tab)
+  // qui reste allumé pour tout le reste — jamais les deux à vide en même
+  // temps, sinon on perd le repère "où je suis" en changeant d'onglet.
+  const bnDirect = ['accueil','livraisons','reservations','stock'];
+  document.querySelectorAll('.bottom-nav .bn-item').forEach(b => {
+    b.classList.toggle('on', b.dataset.tab ? b.dataset.tab===tab : !bnDirect.includes(tab));
+  });
   ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
@@ -1780,7 +1820,7 @@ async function loadAlerts(){
     // point signale qu'il y a quelque chose à traiter dans le menu sans
     // avoir à l'ouvrir pour le découvrir.
     const anyAlert = (d.reservations||0) + (d.livraisons||0) + (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0) + (d.incidents||0) + (d.communications||0) > 0;
-    document.getElementById('mobile-menu-dot')?.classList.toggle('hidden', !anyAlert);
+    document.getElementById('bn-plus-dot')?.classList.toggle('hidden', !anyAlert);
   }catch(e){}
 }
 const _BADGE_SEEN_KEY = 'a_badge_seen';
@@ -2007,8 +2047,8 @@ async function loadDashboard(periode, silent){
     // qu'il y a à faire maintenant, les chiffres de la veille viennent après.
     zone.innerHTML = `
       <div style="display:flex;gap:10px;margin-bottom:16px">
-        <button class="btn btn-blue" style="flex:1" onclick="goToNouvelleReservation()">🆕 Nouvelle réservation</button>
-        <button class="btn btn-blue" style="flex:1" onclick="openCreateMissionModal()">🚚 Créer une mission</button>
+        <button class="btn btn-blue" style="flex:1;padding:16px 20px;font-size:14.5px" onclick="goToNouvelleReservation()">🆕 Nouvelle réservation</button>
+        <button class="btn btn-blue" style="flex:1;padding:16px 20px;font-size:14.5px" onclick="openCreateMissionModal()">🚚 Créer une mission</button>
       </div>
       ${d.agregat ? '' : boardHtml(ld.livraisons||[])}
       ${morningBannerHtml(d.hier)}
@@ -2019,12 +2059,12 @@ async function loadDashboard(periode, silent){
         <button class="${periode==='mois'?'on':''}" onclick="loadDashboard('mois')">Ce mois</button>
       </div>
       <div class="stat-grid">
-        <div class="stat-tile"><div class="n">${eurosMilliers(d.ca_euros)}</div><div class="l">Chiffre d'affaires</div></div>
-        <div class="stat-tile"><div class="n">${d.nb_reservations||0}</div><div class="l">Réservations</div></div>
-        <div class="stat-tile"><div class="n">${eurosMilliers(d.panier_moyen_euros)}</div><div class="l">Panier moyen</div></div>
-        <div class="stat-tile"><div class="n">${pct}%</div><div class="l">Occupation (${d.unites_occupees}/${d.flotte_totale}${d.agregat?' · toutes villes':' à '+escHtml(d.ville||'')})</div></div>
-        <div class="stat-tile ${d.incidents_ouverts>0?'warn':''}"><div class="n">${d.incidents_ouverts||0}</div><div class="l">Incidents ouverts</div></div>
-        <div class="stat-tile" style="grid-column:1/-1"><div class="n">${eurosMilliers(d.ca_total_euros)}</div><div class="l">CA total généré (depuis le début)</div></div>
+        <div class="stat-tile"><div class="ic">💶</div><div class="n">${eurosMilliers(d.ca_euros)}</div><div class="l">Chiffre d'affaires</div></div>
+        <div class="stat-tile"><div class="ic">🧾</div><div class="n">${d.nb_reservations||0}</div><div class="l">Réservations</div></div>
+        <div class="stat-tile"><div class="ic">🛒</div><div class="n">${eurosMilliers(d.panier_moyen_euros)}</div><div class="l">Panier moyen</div></div>
+        <div class="stat-tile"><div class="ic">📊</div><div class="n">${pct}%</div><div class="l">Occupation (${d.unites_occupees}/${d.flotte_totale}${d.agregat?' · toutes villes':' à '+escHtml(d.ville||'')})</div></div>
+        <div class="stat-tile ${d.incidents_ouverts>0?'warn':''}"><div class="ic">🧯</div><div class="n">${d.incidents_ouverts||0}</div><div class="l">Incidents ouverts</div></div>
+        <div class="stat-tile" style="grid-column:1/-1"><div class="ic">📈</div><div class="n">${eurosMilliers(d.ca_total_euros)}</div><div class="l">CA total généré (depuis le début)</div></div>
       </div>
       <div style="text-align:right;margin-top:-6px"><button class="btn btn-grey" onclick="openExportComptable()">📊 Export comptable</button></div>
       <div id="previsions-zone"></div>
