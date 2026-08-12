@@ -26,6 +26,11 @@ module.exports = async (req, res) => {
   }
 
   const data   = req.body || {};
+  // Guard : sans clé Stripe, new Stripe(undefined) lèverait une erreur synchrone
+  // hors try-catch → réponse HTML 500 non-JSON → crash côté client.
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return res.status(500).json({ error: 'Configuration serveur manquante — contactez-nous.' });
+  }
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
   // Acceptation obligatoire des CGV/CGL, des conditions d'utilisation du

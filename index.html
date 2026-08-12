@@ -3544,7 +3544,7 @@ input:-webkit-autofill:focus{
 .recap-v{color:var(--text)!important}
 
 /* ── CHECKBOX RGPD ── */
-.rgpd-row input[type="checkbox"],#f-cgv,#f-conditions,#f-retrat{accent-color:var(--navy)!important}
+.rgpd-row input[type="checkbox"],#f-cgv,#f-conditions,#f-retard{accent-color:var(--navy)!important}
 
 /* ── BTN RETOUR ── */
 .btn-back{color:var(--text-3)!important}
@@ -6863,7 +6863,11 @@ function goTo(n,silent){
         const date=document.getElementById('f-date')?.value;
         if(!date){document.getElementById('f-date-custom-wrap')?.classList.add('show');highlight(['f-date']);goTo(4,true);return;}
         const minDate=_fmtDate(_addDays(_minOff()));
-        if(date<minDate){document.getElementById('f-date-custom-wrap')?.classList.add('show');highlight(['f-date']);goTo(4,true);return;}
+        // Ne pas bloquer si Express est actif (date = aujourd'hui est normale)
+        if(EXPRESS_FEE===0&&date<minDate){document.getElementById('f-date-custom-wrap')?.classList.add('show');highlight(['f-date']);goTo(4,true);return;}
+        // Bloquer si la date est complète (stock à 0) — la bannière s'affiche mais
+        // ne posait pas de return, l'utilisateur pouvait quand même avancer.
+        if(_DISPO&&!_isDateDispo(date)){_showDispoAlert(date);goTo(4,true);return;}
       }
       if(s===5){
         const miss=['f-prenom','f-nom','f-tel','f-email'].filter(id=>!document.getElementById(id)?.value.trim());
@@ -7498,18 +7502,18 @@ async function doStripePayment(){
       redirect:'if_required'
     });
     if(error){
-      if(errEl){errEl.textContent=error.message||(_lang==='en'?'Payment declined.':_lang==='zh'?'支付被拒绝。':_lang==='ru'?'Оплата отклонена.':'Paiement refusé.');errEl.style.display='block';}
+      if(errEl){errEl.textContent=error.message||(_lang==='en'?'Payment declined.':_lang==='zh'?'支付被拒绝。':_lang==='ru'?'Оплата отклонена.':'Paiement refusé.');errEl.style.display='block';setTimeout(()=>errEl.scrollIntoView({behavior:'smooth',block:'nearest'}),50);}
       if(btn)btn.disabled=false;
       if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':_lang==='zh'?'重试支付':_lang==='ru'?'Повторить оплату':'Réessayer le paiement';
     }else if(paymentIntent&&paymentIntent.status==='succeeded'){
       _stripePaymentDone();
     }else{
-      if(errEl){errEl.textContent=_lang==='en'?'Payment pending confirmation. Check your email.':_lang==='zh'?'支付待确认。请查收邮件。':_lang==='ru'?'Оплата ожидает подтверждения. Проверьте почту.':'Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';}
+      if(errEl){errEl.textContent=_lang==='en'?'Payment pending confirmation. Check your email.':_lang==='zh'?'支付待确认。请查收邮件。':_lang==='ru'?'Оплата ожидает подтверждения. Проверьте почту.':'Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';setTimeout(()=>errEl.scrollIntoView({behavior:'smooth',block:'nearest'}),50);}
       if(btn)btn.disabled=false;
       if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':_lang==='zh'?'重试支付':_lang==='ru'?'Повторить оплату':'Réessayer le paiement';
     }
   }catch(e){
-    if(errEl){errEl.textContent=_lang==='en'?'Unexpected error. Please try again.':_lang==='zh'?'意外错误。请重试。':_lang==='ru'?'Непредвиденная ошибка. Повторите попытку.':'Erreur inattendue. Réessayez.';errEl.style.display='block';}
+    if(errEl){errEl.textContent=_lang==='en'?'Unexpected error. Please try again.':_lang==='zh'?'意外错误。请重试。':_lang==='ru'?'Непредвиденная ошибка. Повторите попытку.':'Erreur inattendue. Réessayez.';errEl.style.display='block';setTimeout(()=>errEl.scrollIntoView({behavior:'smooth',block:'nearest'}),50);}
     if(btn)btn.disabled=false;
     if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':_lang==='zh'?'重试支付':_lang==='ru'?'Повторить оплату':'Réessayer le paiement';
   }finally{
@@ -7669,7 +7673,7 @@ function submitForm(btn,mode){
     quantite:_qty+'x',
     installation:_techInstall?'Technicien (80€)':'Autonome (kit fourni)',
     creneau_livraison:document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–12h',
-    creneau_recuperation:creneauRecup||'8h – 10h',
+    creneau_recuperation:document.querySelector('#creneau-recup-group .cren-card.on')?.textContent?.trim()||'8h – 10h',
     type_client:document.querySelector('#type-client-group .tpill.on')?.textContent.trim()||'Particulier',
     raison_sociale:document.getElementById('f-raison-sociale')?.value.trim()||'',
     siret:document.getElementById('f-siret')?.value.trim()||'',
@@ -7706,8 +7710,7 @@ function submitForm(btn,mode){
   };
 
   const price=Math.max(0,calcTotal(parseInt(formData.duree)||7)-_promoDiscount+DELIVERY_FEE+EXPRESS_FEE);
-  window.dataLayer=window.dataLayer||[];
-  dataLayer.push({event:'begin_checkout',mode:mode,value:price,currency:'EUR',days:parseInt(formData.duree)||0,install:_techInstall?'tech':'self'});
+  try{window.dataLayer=window.dataLayer||[];dataLayer.push({event:'begin_checkout',mode:mode,value:price,currency:'EUR',days:parseInt(formData.duree)||0,install:_techInstall?'tech':'self'});}catch(e){}
 
   function showSuccess(){
     document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
@@ -7842,14 +7845,19 @@ function submitForm(btn,mode){
         setTimeout(()=>{if(container)container.scrollIntoView({behavior:'smooth',block:'nearest'});},80);
       })
       .catch(err=>{
+        // Stopper le timer 15 s — sans ça, un échec rapide laisse le timer
+        // actif ; si l'utilisateur retente, le vieux timer abort le nouveau fetch.
+        clearTimeout(_timer);
         _submitting=false;
         console.error('[Stripe]',err);
         if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
         const errEl=document.getElementById('form-error-msg');
         if(errEl){
           const genericMsg=_lang==='en'?'Something went wrong. Please try again.':_lang==='zh'?'出现问题。请重试。':_lang==='ru'?'Произошла ошибка. Попробуйте снова.':'Une erreur est survenue. Réessayez.';
+          const timeoutMsg=_lang==='en'?'Request timed out. Check your connection and try again.':_lang==='zh'?'请求超时，请检查网络后重试。':_lang==='ru'?'Превышено время ожидания. Проверьте соединение и повторите.':'La réservation a pris trop de temps. Vérifiez votre connexion et réessayez.';
           const msg=(err&&err.message)||'';
-          errEl.textContent=(msg&&!/^API \d+$/.test(msg)&&msg!=='No client secret')?msg:genericMsg;
+          // AbortError = timeout réseau → message humain, pas le message brut du navigateur
+          errEl.textContent=(err&&err.name==='AbortError')?timeoutMsg:(msg&&!/^API \d+$/.test(msg)&&msg!=='No client secret')?msg:genericMsg;
           errEl.style.display='block';
           const retryBtn=document.getElementById('form-error-retry');if(retryBtn)retryBtn.style.display='inline-block';
           // Scroll pour que l'erreur soit toujours visible (peut passer sous le fold)
