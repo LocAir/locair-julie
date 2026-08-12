@@ -117,22 +117,22 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .resa-details[open] summary::after{transform:rotate(180deg)}
 .resa-details-body{padding:4px 0 2px}
 
-/* Menu ☰ mobile : la barre horizontale scrollable cachait des onglets sans
+/* Menu mobile : la barre horizontale scrollable cachait des onglets sans
    affordance claire (juste un léger fondu de 28px) — sur mobile elle devient
    un tiroir latéral qu'on ouvre explicitement, avec tous les onglets et
    labels de groupe visibles d'un coup, plutôt que de compter sur un scroll
-   qu'une bonne partie des utilisateurs ne découvre jamais. */
+   qu'une bonne partie des utilisateurs ne découvre jamais.
+   Refonte structurelle (2026-08-12, demande d'Aly : "une vraie appli
+   mobile") : le vieux bouton "☰ Menu" en haut de page est remplacé par une
+   barre de navigation fixe en bas d'écran (.bottom-nav, 4 destinations les
+   plus utilisées + "Plus"), pattern standard des applis mobiles. "Plus"
+   ouvre exactement le même tiroir qu'avant (.tabs.mobile-open) — aucune
+   logique de navigation dupliquée, juste un nouveau déclencheur. */
 .mobile-menu-btn{display:none}
 .mobile-menu-backdrop{display:none}
+.bottom-nav{display:none}
 @media (max-width:859px){
-  .mobile-menu-btn{
-    display:flex;align-items:center;gap:9px;width:100%;
-    padding:11px 16px;margin-bottom:16px;
-    border-radius:var(--r);border:1.5px solid var(--rule);background:var(--white);
-    font-family:var(--body);font-weight:700;font-size:14px;color:var(--black);
-    cursor:pointer;box-shadow:var(--sh-xs);position:relative;
-  }
-  .mobile-menu-dot{width:7px;height:7px;border-radius:50%;background:var(--red);margin-left:2px}
+  .mobile-menu-btn{display:none !important}
   .mobile-menu-backdrop{
     display:none;position:fixed;inset:0;background:rgba(20,30,48,.45);z-index:199;
   }
@@ -148,6 +148,21 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   .tabs.mobile-open{transform:translateX(0)}
   .tabs button{width:100%;text-align:left;padding:12px 16px;border-radius:12px}
   .tabs-group{display:block}
+  .wrap{padding-bottom:104px}
+  .bottom-nav{
+    display:flex;position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));
+    z-index:150;background:var(--white);border:1px solid var(--rule);border-radius:100px;
+    padding:6px;gap:2px;box-shadow:var(--sh-lg);
+  }
+  .bottom-nav button{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+    padding:9px 2px 8px;border:none;background:transparent;border-radius:100px;position:relative;
+    font-family:var(--body);font-size:9.5px;font-weight:700;color:var(--grey);cursor:pointer;
+    transition:background-color .15s ease,color .15s ease;
+  }
+  .bottom-nav button .bn-ic{font-size:19px;line-height:1}
+  .bottom-nav button.on{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
+  .bottom-nav .bn-dot{position:absolute;top:6px;right:calc(50% - 15px);width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid var(--white)}
 }
 
 .a-search{position:relative;margin-bottom:16px}
@@ -190,10 +205,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .list-toolbar-export{flex-shrink:0;background:var(--white);border:1.5px solid var(--rule);color:var(--grey);border-radius:var(--r-sm);padding:0 14px;height:44px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;transition:border-color .15s ease,color .15s ease}
 .list-toolbar-export:hover{border-color:var(--grey-soft);color:var(--black)}
 
-.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.stat-tile{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:18px 20px;box-shadow:var(--sh-xs)}
-.stat-tile .n{font-family:var(--disp);font-size:32px;font-weight:400;color:var(--black);font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.1}
-.stat-tile .l{font-size:11px;color:var(--grey);font-weight:600;margin-top:8px;letter-spacing:.03em;text-transform:uppercase}
+/* Cartes agrandies (2026-08-12, chantier structurel demandé par Aly) : plus
+   d'air (padding, gap), chiffre plus grand, coin plus arrondi (--r-lg au
+   lieu de --r) — moins de tuiles visibles d'un coup mais chacune se lit
+   d'un vrai coup d'œil, plutôt qu'une mosaïque dense de petits chiffres. */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.stat-tile{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:22px 22px 20px;box-shadow:var(--sh-sm)}
+.stat-tile .ic{font-size:20px;line-height:1;margin-bottom:10px;opacity:.85}
+.stat-tile .n{font-family:var(--disp);font-size:36px;font-weight:400;color:var(--black);font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.1}
+.stat-tile .l{font-size:11.5px;color:var(--grey);font-weight:600;margin-top:9px;letter-spacing:.03em;text-transform:uppercase}
 .stat-tile.warn .n{color:var(--red)}
 
 .morning-banner{background:var(--blue);color:#fff;border-radius:var(--r-lg);padding:18px 44px 18px 20px;margin-bottom:16px;box-shadow:var(--sh-blue);position:relative}
@@ -291,6 +311,34 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .devis-total-amt{font-family:var(--disp);font-size:30px;font-weight:600;color:var(--black);letter-spacing:-.01em;line-height:1}
 .devis-box .nr-price-detail{font-size:12px;color:var(--grey);line-height:1.6;margin-top:6px}
 .devis-box input[type=number]#nr-prix{max-width:140px;margin-bottom:0}
+/* Compteur +/- façon panier d'achat (chantier structurel, 2026-08-12,
+   maquette fournie par Aly) — remplace le simple champ numérique de la
+   quantité, mêmes id/valeur en dessous (masqué) pour ne rien changer à la
+   logique existante (nrClampQte/nrCalcTotal/createReservation). */
+.qty-stepper{display:inline-flex;align-items:center;gap:14px;margin-top:4px}
+.qty-btn{width:38px;height:38px;border-radius:11px;border:none;font-size:19px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;transition:filter .15s ease,transform .1s ease}
+.qty-btn:active{transform:scale(.94)}
+.qty-btn-plus{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
+.qty-btn-plus:hover{background:var(--blue-d)}
+.qty-btn-minus{background:var(--white);color:var(--blue);border:1.5px solid var(--rule)}
+.qty-btn-minus:hover{border-color:var(--blue)}
+.qty-btn:disabled{opacity:.35;cursor:not-allowed}
+.qty-val{min-width:26px;text-align:center;font-family:var(--disp);font-size:22px;font-weight:600;color:var(--black)}
+/* Récap façon "Sous-total / Livraison / Remise / Total" d'un panier d'achat
+   — remplace la ligne de détail texte unique par des lignes structurées,
+   plus proche de la lecture d'un ticket que d'une phrase à parser. */
+.cart-summary{margin-top:14px;padding-top:14px;border-top:1px dashed rgba(26,43,74,.25);display:flex;flex-direction:column;gap:7px}
+.cart-summary-row{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;color:var(--grey)}
+.cart-summary-row span:last-child{font-weight:600;color:var(--black);font-variant-numeric:tabular-nums}
+.cart-summary-row.cart-summary-discount span:last-child{color:var(--green)}
+.cart-summary-total{margin-top:5px;padding-top:11px;border-top:1px solid var(--blue)}
+.cart-summary-total span:first-child{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--blue)}
+.cart-summary-total span:last-child{font-family:var(--disp);font-size:30px;font-weight:600;color:var(--black);letter-spacing:-.01em}
+/* Code promo façon "Bike30 [Apply]" de la maquette : champ + bouton collés
+   sur la même ligne plutôt qu'empilés. */
+.promo-row{display:flex;gap:8px;margin-top:8px}
+.promo-row input{flex:1;margin-bottom:0}
+.promo-row .btn{flex-shrink:0;padding:0 20px;height:44px}
 /* Section repliable pour les champs secondaires (utilisés occasionnellement :
    parrainage, motif, tél. secours...) — même principe que .resa-details
    (déjà utilisé pour "Détails d'accès" sur les cartes réservation), un peu
@@ -302,11 +350,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .nr-advanced summary::after{content:"▾";font-size:10px;margin-left:auto;transition:transform .15s ease}
 .nr-advanced[open] summary::after{transform:rotate(180deg)}
 .nr-advanced-body{padding:2px 0 4px}
-.row-item{padding:18px 20px;border:1px solid var(--rule);border-radius:var(--r);margin-bottom:12px;background:var(--white);box-shadow:var(--sh-xs)}
-.row-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:7px}
-.row-title{font-family:var(--disp);font-weight:600;font-size:18px;letter-spacing:0}
+/* Fiche/carte partagée par toutes les listes (Réservations, Stock, Missions,
+   Clients…) — un seul point de réglage. Coin plus arrondi (--r-lg, même
+   traitement que les cartes du tableau de bord) + plus d'air, pour des
+   fiches "grandes et visuelles" au lieu de lignes compactes (chantier
+   structurel demandé par Aly, maquette catalogue/fiche). */
+.row-item{padding:20px 22px;border:1px solid var(--rule);border-radius:var(--r-lg);margin-bottom:14px;background:var(--white);box-shadow:var(--sh-sm)}
+.row-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+.row-title{font-family:var(--disp);font-weight:600;font-size:19px;letter-spacing:0}
 .row-meta{font-size:12.5px;color:var(--grey);line-height:1.6}
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:5px 11px 5px 9px;border-radius:100px;background:var(--bg);color:var(--grey)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:6px 12px 6px 10px;border-radius:100px;background:var(--bg);color:var(--grey)}
 .chip::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
 .chip.confirmee,.chip.fait,.chip.verse,.chip.actif,.chip.terminee{background:var(--green-bg);color:var(--green)}
 .chip.en_attente,.chip.a_faire,.chip.acceptee,.chip.demande,.chip.en_route,.chip.arrivee{background:var(--amber-bg);color:var(--amber)}
@@ -334,10 +387,19 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .missions-date-header.overdue{color:var(--red)}
 .missions-date-header .count{font-weight:400;opacity:.65;font-size:10.5px;letter-spacing:.02em;text-transform:none}
 .liv-toolbar-top{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
-.liv-stat-pill{background:var(--white);border:1px solid var(--rule);border-radius:var(--r);padding:9px 14px;box-shadow:var(--sh-xs);flex:1;min-width:80px}
-.liv-stat-pill .n{font-family:var(--disp);font-size:22px;font-weight:400;line-height:1;font-variant-numeric:tabular-nums}
-.liv-stat-pill .n small{font-size:13px;font-weight:400;font-family:var(--body)}
-.liv-stat-pill .l{font-size:10px;color:var(--grey);font-weight:600;margin-top:4px;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Même traitement que .stat-tile (Accueil) : coin plus arrondi, plus d'air —
+   ces pastilles étaient volontairement compactes, mais le chantier
+   structurel demande des tuiles "grandes et visuelles" partout, tableau de
+   bord Missions/Livraisons compris. */
+/* 2 colonnes en dessous de 480px (téléphone) : 4 pastilles sur une seule
+   ligne n'ont pas la place d'un libellé complet à cette taille — au-delà,
+   assez de place pour les 4 côte à côte. */
+.liv-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+@media (max-width:479px){.liv-stats-row{grid-template-columns:repeat(2,1fr)}}
+.liv-stat-pill{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:14px 16px;box-shadow:var(--sh-sm);min-width:0}
+.liv-stat-pill .n{font-family:var(--disp);font-size:26px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}
+.liv-stat-pill .n small{font-size:14px;font-weight:400;font-family:var(--body)}
+.liv-stat-pill .l{font-size:10.5px;color:var(--grey);font-weight:600;margin-top:5px;letter-spacing:.03em;text-transform:uppercase;line-height:1.3}
 .liv-stat-pill.warn .n{color:var(--red)}
 .btn-resa-rapide{background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px}
 .btn-resa-rapide:hover{filter:brightness(1.08)}
@@ -547,7 +609,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 
 .btn,.tabs button,.periods button,.row-item,.stat-tile{transition:box-shadow .15s ease, transform .1s ease, background-color .15s ease, border-color .15s ease}
 .btn:active:not(:disabled){transform:scale(.98)}
-.row-item:hover{box-shadow:var(--sh-sm);border-color:var(--rule)}
+.row-item:hover{box-shadow:var(--sh-md);border-color:var(--rule)}
 
 /* ── Version ordinateur : barre latérale fixe + contenu plus large ── */
 @media (min-width:860px){
@@ -559,7 +621,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   .a-content{flex:1;min-width:0}
   .stat-grid{grid-template-columns:repeat(4,1fr)}
   .card{padding:28px}
-  .row-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;align-items:start}
+  .row-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px;align-items:start}
   .row-grid .row-item{margin-bottom:0}
 }
 
@@ -699,6 +761,19 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
     </div>
   </div>
 </div>
+
+<!-- Navigation mobile en bas d'écran (invisible sur desktop, où .tabs reste
+     la barre latérale) — les 4 destinations les plus utilisées au quotidien
+     (mêmes libellés que le groupe "Piloter" + Accueil), "Plus" ouvre le
+     tiroir complet existant (toggleMobileMenu), tous les autres onglets y
+     restent accessibles sans être dupliqués ici. -->
+<nav class="bottom-nav" id="bottom-nav">
+  <button class="bn-item on" data-tab="accueil" onclick="switchAdminTab('accueil')"><span class="bn-ic">🏠</span>Accueil</button>
+  <button class="bn-item" data-tab="livraisons" onclick="switchAdminTab('livraisons')"><span class="bn-ic">🚚</span>Missions</button>
+  <button class="bn-item" data-tab="reservations" onclick="switchAdminTab('reservations')"><span class="bn-ic">🧾</span>Résa.</button>
+  <button class="bn-item" data-tab="stock" onclick="switchAdminTab('stock')"><span class="bn-ic">📦</span>Stock</button>
+  <button class="bn-item" onclick="toggleMobileMenu()"><span class="bn-ic">☰</span>Plus<span class="bn-dot hidden" id="bn-plus-dot"></span></button>
+</nav>
 
 <!-- input caché pour l'upload des fichiers vidéo tutoriel (onglet Tutoriels) -->
 <input type="file" id="tuto-media-input" accept="video/*" class="hidden"/>
@@ -1705,6 +1780,13 @@ const _TAB_LOADERS = {
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
   document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.tab===tab));
+  // Barre du bas (mobile) : 4 destinations directes + "Plus" (sans data-tab)
+  // qui reste allumé pour tout le reste — jamais les deux à vide en même
+  // temps, sinon on perd le repère "où je suis" en changeant d'onglet.
+  const bnDirect = ['accueil','livraisons','reservations','stock'];
+  document.querySelectorAll('.bottom-nav .bn-item').forEach(b => {
+    b.classList.toggle('on', b.dataset.tab ? b.dataset.tab===tab : !bnDirect.includes(tab));
+  });
   ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
@@ -1780,7 +1862,7 @@ async function loadAlerts(){
     // point signale qu'il y a quelque chose à traiter dans le menu sans
     // avoir à l'ouvrir pour le découvrir.
     const anyAlert = (d.reservations||0) + (d.livraisons||0) + (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0) + (d.incidents||0) + (d.communications||0) > 0;
-    document.getElementById('mobile-menu-dot')?.classList.toggle('hidden', !anyAlert);
+    document.getElementById('bn-plus-dot')?.classList.toggle('hidden', !anyAlert);
   }catch(e){}
 }
 const _BADGE_SEEN_KEY = 'a_badge_seen';
@@ -2007,8 +2089,8 @@ async function loadDashboard(periode, silent){
     // qu'il y a à faire maintenant, les chiffres de la veille viennent après.
     zone.innerHTML = `
       <div style="display:flex;gap:10px;margin-bottom:16px">
-        <button class="btn btn-blue" style="flex:1" onclick="goToNouvelleReservation()">🆕 Nouvelle réservation</button>
-        <button class="btn btn-blue" style="flex:1" onclick="openCreateMissionModal()">🚚 Créer une mission</button>
+        <button class="btn btn-blue" style="flex:1;padding:16px 20px;font-size:14.5px" onclick="goToNouvelleReservation()">🆕 Nouvelle réservation</button>
+        <button class="btn btn-blue" style="flex:1;padding:16px 20px;font-size:14.5px" onclick="openCreateMissionModal()">🚚 Créer une mission</button>
       </div>
       ${d.agregat ? '' : boardHtml(ld.livraisons||[])}
       ${morningBannerHtml(d.hier)}
@@ -2019,12 +2101,12 @@ async function loadDashboard(periode, silent){
         <button class="${periode==='mois'?'on':''}" onclick="loadDashboard('mois')">Ce mois</button>
       </div>
       <div class="stat-grid">
-        <div class="stat-tile"><div class="n">${eurosMilliers(d.ca_euros)}</div><div class="l">Chiffre d'affaires</div></div>
-        <div class="stat-tile"><div class="n">${d.nb_reservations||0}</div><div class="l">Réservations</div></div>
-        <div class="stat-tile"><div class="n">${eurosMilliers(d.panier_moyen_euros)}</div><div class="l">Panier moyen</div></div>
-        <div class="stat-tile"><div class="n">${pct}%</div><div class="l">Occupation (${d.unites_occupees}/${d.flotte_totale}${d.agregat?' · toutes villes':' à '+escHtml(d.ville||'')})</div></div>
-        <div class="stat-tile ${d.incidents_ouverts>0?'warn':''}"><div class="n">${d.incidents_ouverts||0}</div><div class="l">Incidents ouverts</div></div>
-        <div class="stat-tile" style="grid-column:1/-1"><div class="n">${eurosMilliers(d.ca_total_euros)}</div><div class="l">CA total généré (depuis le début)</div></div>
+        <div class="stat-tile"><div class="ic">💶</div><div class="n">${eurosMilliers(d.ca_euros)}</div><div class="l">Chiffre d'affaires</div></div>
+        <div class="stat-tile"><div class="ic">🧾</div><div class="n">${d.nb_reservations||0}</div><div class="l">Réservations</div></div>
+        <div class="stat-tile"><div class="ic">🛒</div><div class="n">${eurosMilliers(d.panier_moyen_euros)}</div><div class="l">Panier moyen</div></div>
+        <div class="stat-tile"><div class="ic">📊</div><div class="n">${pct}%</div><div class="l">Occupation (${d.unites_occupees}/${d.flotte_totale}${d.agregat?' · toutes villes':' à '+escHtml(d.ville||'')})</div></div>
+        <div class="stat-tile ${d.incidents_ouverts>0?'warn':''}"><div class="ic">🧯</div><div class="n">${d.incidents_ouverts||0}</div><div class="l">Incidents ouverts</div></div>
+        <div class="stat-tile" style="grid-column:1/-1"><div class="ic">📈</div><div class="n">${eurosMilliers(d.ca_total_euros)}</div><div class="l">CA total généré (depuis le début)</div></div>
       </div>
       <div style="text-align:right;margin-top:-6px"><button class="btn btn-grey" onclick="openExportComptable()">📊 Export comptable</button></div>
       <div id="previsions-zone"></div>
@@ -3571,7 +3653,7 @@ function reservationRowHtml(res, readOnly){
       </div>
       ${res.date_recuperation_souhaitee?`<div class="resa-sub" style="color:var(--grey);margin-top:2px">🔄 Récup. souhaitée le ${frDate(res.date_recuperation_souhaitee)}${res.creneau_recuperation?' · '+escHtml(res.creneau_recuperation):''}</div>`:''}
       <div class="resa-bottom">
-        <span class="resa-price">${euros(res.prix_total_cents)}</span>
+        <span class="resa-price">${euros(res.prix_total_cents)}${res.express?' <span style="background:#fef3c7;color:#d97706;font-size:11px;font-weight:700;padding:1px 7px;border-radius:100px;border:1px solid rgba(217,119,6,.4);vertical-align:middle;margin-left:4px">⚡ Express</span>':''}</span>
         <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+refCopyHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${resaForfaitBadgeHtml(res)}${resaPromoBadgeHtml(res)}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
       </div>
       ${res.statut==='confirmee' ? agentLineHtml(res.id) : ''}
@@ -3944,6 +4026,20 @@ function nrClampQte(){
     const clamped = Math.min(5, Math.max(1, v));
     if(clamped !== v) el.value = clamped;
   }
+  const disp = document.getElementById('nr-qte-val');
+  if(disp) disp.textContent = el.value;
+}
+// Compteur +/- (chantier structurel, maquette Aly) : pilote le même champ
+// #nr-qte que toujours (nrClampQte/nrCalcTotal/createReservation
+// inchangés), juste un habillage visuel différent du <input type=number>
+// natif — un seul appareil "de moins" que le max n'a jamais de sens
+// négatif, donc bornes 1/5 déjà appliquées par nrClampQte.
+function nrQtyStep(delta){
+  const el = document.getElementById('nr-qte');
+  if(!el) return;
+  el.value = Math.max(1, Math.min(5, (parseInt(el.value)||1) + delta));
+  nrClampQte();
+  nrRecalcPrice();
 }
 function nrCalcTotal(){
   const debut = document.getElementById('nr-debut')?.value;
@@ -3960,23 +4056,44 @@ function nrCalcTotal(){
 }
 function nrRecalcPrice(){
   const r = nrCalcTotal();
-  const preview = document.getElementById('nr-price-preview');
+  const summary = document.getElementById('nr-cart-summary');
   const prixEl = document.getElementById('nr-prix');
   const totalEl = document.getElementById('nr-total-display');
   const hint = document.getElementById('nr-prix-manual-hint');
   if(!r){
-    if(preview) preview.style.display = 'none';
+    if(summary) summary.style.display = 'none';
     if(totalEl) totalEl.textContent = '—';
     if(hint) hint.style.display = 'none';
     return;
   }
-  if(preview){
-    preview.style.display = 'block';
-    preview.innerHTML = `Location (${r.days} j${r.qte>1?' × '+r.qte:''}) : ${(r.baseCents/100).toFixed(2)} € · Installation ${r.isTech?'technicien : '+(r.installCents/100).toFixed(2)+' €':'autonome : incluse'} · Livraison : <strong style="color:${r.horsZone?'var(--amber)':'inherit'}">${r.livraisonLabel}</strong>`;
+  // Devis façon "panier" : une ligne par poste (Location/Installation/
+  // Livraison/Remise) puis le total — même logique de calcul que l'ancien
+  // paragraphe, juste présentée en liste au lieu d'une phrase compacte.
+  if(summary){
+    summary.style.display = 'flex';
+    const locEl = document.getElementById('nr-sum-location');
+    if(locEl) locEl.textContent = `${(r.baseCents/100).toFixed(2).replace('.', ',')} € (${r.days} j${r.qte>1?' × '+r.qte:''})`;
+    const installEl = document.getElementById('nr-sum-install');
+    if(installEl) installEl.textContent = r.isTech ? `${(r.installCents/100).toFixed(2).replace('.', ',')} €` : 'Incluse';
+    const livrEl = document.getElementById('nr-sum-livraison');
+    if(livrEl){
+      livrEl.textContent = r.livraisonLabel;
+      livrEl.style.color = r.horsZone ? 'var(--amber)' : '';
+    }
+    const discountRow = document.getElementById('nr-sum-discount-row');
+    const discountEl = document.getElementById('nr-sum-discount');
+    if(discountRow && discountEl){
+      if(_nrPromoDiscount > 0){
+        discountRow.classList.remove('hidden');
+        discountEl.textContent = `−${_nrPromoDiscount.toFixed(2).replace('.', ',')} €`;
+      } else {
+        discountRow.classList.add('hidden');
+      }
+    }
   }
   const total = Math.max(0, Math.round(r.totalCents - _nrPromoDiscount*100)) / 100;
   if(prixEl) prixEl.value = total;
-  // Gros chiffre au-dessus du champ éditable — voir .devis-total-amt (le
+  // Gros chiffre au-dessus du champ éditable — voir .cart-summary-total (le
   // devis doit se lire d'un coup d'œil pendant un appel, pas seulement dans
   // un petit champ de saisie).
   if(totalEl) totalEl.textContent = total.toFixed(2).replace('.', ',') + ' €';
@@ -4046,25 +4163,36 @@ function reservationCreerHtml(){
           ${[7,14,21,28].map(days=>`<button type="button" class="nr-dur-btn" data-days="${days}" onclick="nrSetDuration(${days})" style="flex:none;padding:7px 16px">${days} j</button>`).join('')}
         </div>
         <p class="sub" style="margin:4px 0 10px;font-size:11.5px">Durée rapide — ou modifie directement la date de récupération ci-dessus.</p>
-        <label for="nr-qte" style="margin-top:0">Quantité <span style="text-transform:none;font-weight:400;color:var(--grey-soft)">(max 5)</span></label>
-        <input type="number" id="nr-qte" min="1" max="5" value="1" oninput="nrClampQte();nrRecalcPrice()" style="max-width:100px"/>
+        <label style="margin-top:0">Quantité de climatiseurs <span style="text-transform:none;font-weight:400;color:var(--grey-soft)">(max 5)</span></label>
+        <div class="qty-stepper">
+          <button type="button" class="qty-btn qty-btn-minus" onclick="nrQtyStep(-1)" aria-label="Retirer un climatiseur">−</button>
+          <span class="qty-val" id="nr-qte-val">1</span>
+          <button type="button" class="qty-btn qty-btn-plus" onclick="nrQtyStep(1)" aria-label="Ajouter un climatiseur">+</button>
+        </div>
+        <input type="number" id="nr-qte" min="1" max="5" value="1" class="hidden" oninput="nrClampQte();nrRecalcPrice()"/>
         <label style="margin-top:8px">Installation<span style="text-transform:none;font-weight:400;color:var(--grey-soft)"> — impacte le prix</span></label>
         <div class="periods" style="margin:0 0 2px;flex-wrap:wrap;height:auto;background:transparent;padding:0">
           <button type="button" class="nr-install-btn${installVal===INSTALLATION_OPTIONS[0]?' on':''}" data-val="${escHtml(INSTALLATION_OPTIONS[0])}" onclick="nrSetInstall('${INSTALLATION_OPTIONS[0]}')" style="flex:none;padding:7px 16px">Autonome</button>
           <button type="button" class="nr-install-btn${installVal===INSTALLATION_OPTIONS[1]?' on':''}" data-val="${escHtml(INSTALLATION_OPTIONS[1])}" onclick="nrSetInstall('${INSTALLATION_OPTIONS[1]}')" style="flex:none;padding:7px 16px">Technicien +80€</button>
         </div>
-        <div class="devis-total-row">
-          <div>
-            <div class="devis-total-lbl">Total estimé</div>
-            <div class="devis-total-amt" id="nr-total-display">—</div>
-          </div>
+        <!-- Récap façon ticket de panier (chantier structurel, maquette Aly) :
+             lignes Location/Installation/Livraison/Remise, puis Total —
+             remplace l'ancienne phrase de détail à parser + le bloc total
+             séparé, même données (nrCalcTotal), juste réparties en lignes. -->
+        <div class="cart-summary" id="nr-cart-summary" style="display:none">
+          <div class="cart-summary-row"><span>Location</span><span id="nr-sum-location">—</span></div>
+          <div class="cart-summary-row"><span>Installation</span><span id="nr-sum-install">—</span></div>
+          <div class="cart-summary-row"><span>Livraison</span><span id="nr-sum-livraison">—</span></div>
+          <div class="cart-summary-row cart-summary-discount hidden" id="nr-sum-discount-row"><span>Remise</span><span id="nr-sum-discount">—</span></div>
+          <div class="cart-summary-row cart-summary-total"><span>Total</span><span id="nr-total-display">—</span></div>
+        </div>
+        <div style="margin-top:12px;display:flex;justify-content:flex-end">
           <div style="text-align:right">
             <label for="nr-prix" style="margin:0 0 4px">Prix (modifiable)</label>
-            <input type="number" id="nr-prix" min="0" step="0.5" oninput="nrOnPrixInput()"/>
+            <input type="number" id="nr-prix" min="0" step="0.5" oninput="nrOnPrixInput()" style="max-width:140px"/>
           </div>
         </div>
         <p id="nr-prix-manual-hint" style="display:none;margin:0 0 6px;font-size:11px;color:var(--amber);text-align:right;line-height:1.4">⚠️ Prix modifié à la main — sera remplacé si tu retouches les dates, la quantité, le code postal ou l'installation ci-dessus.</p>
-        <p id="nr-price-preview" class="nr-price-detail" style="display:none"></p>
       </div>
 
       <div class="section-title">👤 Client</div>
@@ -5043,9 +5171,12 @@ function renderLivraisonsToolbar(){
   const EN_COURS_STATUTS = ['a_faire','acceptee','en_route','arrivee','probleme'];
   const missionsAujourdhui = visibles.filter(m => m.date_prevue===today && EN_COURS_STATUTS.includes(m.statut)).length;
   const missionsEnRetard = visibles.filter(m => m.date_prevue<today && EN_COURS_STATUTS.includes(m.statut)).length;
-  // Pills compactes : toutes les métriques sur une seule ligne, œil sur l'urgence
+  // 2 colonnes sur mobile (voir .liv-stats-row) : forcées sur une seule ligne,
+  // ces 4 pastilles n'avaient pas la place d'écrire leur libellé en entier
+  // ("Aujourd'hui" tronqué en "AUJOUR…") — repéré en agrandissant les
+  // pastilles pour le chantier structurel (même trait. que .stat-tile).
   const statsHtml = (missionsAujourdhui||missionsEnRetard||avgLiv!=null||avgRec!=null) ? `
-    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+    <div class="liv-stats-row">
       <div class="liv-stat-pill"><div class="n">${missionsAujourdhui}</div><div class="l">Aujourd'hui</div></div>
       ${missionsEnRetard?`<div class="liv-stat-pill warn"><div class="n">${missionsEnRetard}</div><div class="l">En retard</div></div>`:''}
       ${avgLiv!=null?`<div class="liv-stat-pill"><div class="n">${avgLiv}<small> min</small></div><div class="l">Tps moy. liv.</div></div>`:''}

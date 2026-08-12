@@ -8,7 +8,7 @@ const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { sendScenarioEmail, fmtDate } = require('./_lib/emailEngine');
 const { sendBrevoSms } = require('./_lib/brevo');
 const { setAppareilsStatutForReservation, releaseAppareilFromReservation, moveAppareilsForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
-const { todayParis } = require('./_lib/dates');
+const { todayParis, isValidDate } = require('./_lib/dates');
 
 const MEDIA_COLUMN = {
   photo_depart:       'photo_depart_path',
@@ -158,7 +158,10 @@ module.exports = async (req, res) => {
         const titre = (body.titre || '').trim().slice(0, 200) || 'Mission libre';
         const adresseLibre = (body.adresse_libre || '').trim().slice(0, 500);
         let datePrevueAutre = (body.date_prevue || '').slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(datePrevueAutre)) datePrevueAutre = todayParis();
+        // isValidDate() ici aussi (pas juste la forme) — même faille que
+        // client-recup.js : une date de calendrier inexistante (ex.
+        // "2026-02-30") passait la regex et s'enregistrait telle quelle.
+        if (!isValidDate(datePrevueAutre)) datePrevueAutre = todayParis();
         const transporteurIdAutre = body.transporteur_id ? parseInt(body.transporteur_id) : null;
         if (transporteurIdAutre) {
           const { data: t } = await supabase.from('transporteurs').select('id').eq('id', transporteurIdAutre).eq('city_id', city.id).maybeSingle();
@@ -196,7 +199,7 @@ module.exports = async (req, res) => {
       const creneau        = (body.creneau || '').trim().slice(0, 100) || null;
 
       if (!reservationId) return res.status(400).json({ error: 'reservation_id manquant' });
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(datePrevue)) return res.status(400).json({ error: 'date_prevue invalide (YYYY-MM-DD)' });
+      if (!isValidDate(datePrevue)) return res.status(400).json({ error: 'date_prevue invalide (YYYY-MM-DD)' });
 
       const { data: resa } = await supabase
         .from('reservations').select('id, city_id, date_debut, date_fin').eq('id', reservationId).maybeSingle();
@@ -329,7 +332,7 @@ module.exports = async (req, res) => {
       const patch = {};
       if (body.date_prevue != null) {
         const d = (body.date_prevue || '').slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return res.status(400).json({ error: 'date_prevue invalide (YYYY-MM-DD)' });
+        if (!isValidDate(d)) return res.status(400).json({ error: 'date_prevue invalide (YYYY-MM-DD)' });
         patch.date_prevue = d;
       }
       if (body.creneau != null) patch.creneau = (body.creneau || '').trim().slice(0, 100) || null;

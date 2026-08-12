@@ -9,10 +9,11 @@ const { resolvePromotion, recordPromotionUsage } = require('./_lib/promotions');
 const { getMatchingForfait } = require('./_lib/forfaits');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
-// Doit rester synchronisé avec INSTALL_FEE dans index.html (prix affiché au
-// client) — un écart entre les deux fait payer un montant différent de celui
-// confirmé pendant la réservation.
+// Doit rester synchronisé avec INSTALL_FEE / EXPRESS_FEE dans index.html
+// (prix affiché au client) — un écart entre les deux fait payer un montant
+// différent de celui confirmé pendant la réservation.
 const INSTALL_FEE  = 80;
+const EXPRESS_FEE  = 60; // surcoût livraison express J0 sous 2h
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -25,6 +26,11 @@ module.exports = async (req, res) => {
   }
 
   const data   = req.body || {};
+  // Guard : sans clé Stripe, new Stripe(undefined) lèverait une erreur synchrone
+  // hors try-catch → réponse HTML 500 non-JSON → crash côté client.
+  if (!process.env.STRIPE_SECRET_KEY) {
+    return res.status(500).json({ error: 'Configuration serveur manquante — contactez-nous.' });
+  }
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
   // Acceptation obligatoire des CGV/CGL, des conditions d'utilisation du
@@ -37,8 +43,10 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Vous devez accepter les CGV, les conditions d\'utilisation et l\'autorisation de prélèvement en cas de retard avant de payer.' });
   }
 
-  if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
-    return res.status(400).json({ error: 'Adresse email invalide' });
+  // data.email && ... court-circuitait la validation si email vide →
+  // une réservation sans email passait, aucun email de confirmation envoyé.
+  if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+    return res.status(400).json({ error: 'Adresse email requise et doit être valide' });
   }
 
   // Tarifs (panneau de contrôle admin, voir admin-pricing.js) chargés une
@@ -139,7 +147,10 @@ module.exports = async (req, res) => {
   // Frais de livraison : 60 € si le code postal est couvert par la ville résolue
   // (city.postal_codes en base), 120 € sinon — y compris pour les commandes hors zone.
   const deliveryFeeCents = (city.postal_codes || []).includes((data.code_postal || '').trim()) ? 60 * 100 : 120 * 100;
-  const amountCents      = Math.max(0, baseCents + installCents + deliveryFeeCents - promoDiscount);
+  // Surcoût livraison express J0 sous 2h (+60 €) — activé côté client par la
+  // carte "Express" dans le modal, transmis via data.express === true.
+  const expressCents     = data.express === true ? EXPRESS_FEE * 100 : 0;
+  const amountCents      = Math.max(0, baseCents + installCents + deliveryFeeCents + expressCents - promoDiscount);
 
   if (!amountCents || amountCents < 5000) {
     return res.status(400).json({ error: 'Montant invalide' });
@@ -204,6 +215,7 @@ module.exports = async (req, res) => {
         etage:        (data.etage             || '').slice(0, 500),
         ascenseur:    (data.ascenseur         || '').slice(0, 500),
         frais_livraison: String(deliveryFeeCents / 100) + ' EUR',
+        express:      expressCents > 0 ? 'oui' : 'non',
         hors_zone:    horsZone ? 'oui' : 'non',
         promo:        promoCode,
         forfait:      forfait ? forfait.nom.slice(0, 200) : '',
@@ -216,6 +228,7 @@ module.exports = async (req, res) => {
     const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  city.id,
       hors_zone:                horsZone || false,
+      express:                  expressCents > 0,
       ref:                      (data._ref || '').slice(0, 100),
       stripe_payment_intent_id: intent.id,
       stripe_customer_id:       customerId || null,

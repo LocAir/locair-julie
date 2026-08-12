@@ -1,6 +1,7 @@
 const { getSupabase } = require('./_lib/supabase');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
+const { isValidDate } = require('./_lib/dates');
 
 const CATEGORIES = ['bienvenue', 'parrainage', 'fidelite', 'dormant', 'saisonnier', 'flash', 'partenaire', 'cadeau', 'groupe', 'autre'];
 
@@ -17,7 +18,11 @@ function toIntOrNull(v) {
 }
 function toDateOrNull(v) {
   const s = (v || '').trim();
-  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null;
+  // isValidDate() (calendrier réel, pas juste la forme AAAA-MM-JJ) — sinon
+  // une date de début/fin d'offre invalide (ex. "2026-02-30") s'enregistrait
+  // telle quelle, avec un effet de bord imprévisible sur la fenêtre
+  // d'activation réellement appliquée par checkPromotionConditions.
+  return isValidDate(s) ? s : null;
 }
 
 module.exports = async (req, res) => {

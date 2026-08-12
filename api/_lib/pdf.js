@@ -516,12 +516,14 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
     const locCents = forfait ? forfait.prix_cents : Math.round(totalUn * qty * 100);
     const horsZone = !!reservation.hors_zone;
     const livCents = (horsZone ? 120 : 60) * 100;
-    const isTech   = (reservation.installation || '').startsWith('Technicien');
+    const isTech    = (reservation.installation || '').startsWith('Technicien');
     const instCents = isTech ? 80 * 100 : 0;
-    const modele   = modeleLabel(appareils);
+    const isExpress = !!reservation.express;
+    const expCents  = isExpress ? 60 * 100 : 0;
+    const modele    = modeleLabel(appareils);
     const totalReel = reservation.prix_total_cents || 0;
-    const sousTotal = locCents + livCents + instCents;
-    const ecart    = totalReel - sousTotal;
+    const sousTotal = locCents + livCents + instCents + expCents;
+    const ecart     = totalReel - sousTotal;
 
     drawInvoiceItem(doc, {
       label: forfait ? `${forfait.nom} — ${modele}` : `Location climatiseur mobile — ${modele}`,
@@ -548,6 +550,13 @@ function generateFacturePdf({ reservation, appareils, numero, datePaiement, pric
       label: isTech ? 'Option installation par technicien qualifié' : 'Installation en autonomie (kit fourni sans perçage)',
       amount: isTech ? eur(instCents) : 'Offert',
     });
+
+    if (isExpress) {
+      drawInvoiceItem(doc, {
+        label: 'Livraison Express J0 — sous 2h',
+        amount: eur(expCents),
+      });
+    }
 
     if (Math.abs(ecart) >= 1) {
       drawInvoiceItem(doc, {

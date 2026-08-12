@@ -10,8 +10,23 @@ const { tplProlongConfirmation } = require('./emailTemplates');
 const { pushToAdmin } = require('./push');
 const { getEffectiveDateFin, getActiveRecuperationMission } = require('./dateFin');
 
+// Bug trouvé le 2026-08-12 : un même numéro français peut arriver en format
+// national ("0663798756", saisi à la main par l'admin au téléphone) ou
+// international ("+33663798756", produit par le sélecteur pays du site
+// public — voir combinedPhone() dans index.html). Sans cette équivalence,
+// ces deux chaînes de chiffres ne matchaient jamais : le même client se
+// dédoublait silencieusement en 2 fiches (findOrCreateClient ci-dessous), et
+// la détection de doublon de réservation (admin-reservations.js, même
+// numéro sur des dates qui se chevauchent) pouvait manquer un vrai doublon
+// selon par où chaque réservation était passée — exactement le type
+// d'incident qui avait déjà touché une cliente (voir commentaire "doublon
+// Maria Loftheim" dans admin-reservations.js).
 function normalizeTel(tel) {
-  return String(tel || '').replace(/\D/g, '');
+  let digits = String(tel || '').replace(/\D/g, '');
+  if (digits.startsWith('33') && digits.length === 11) {
+    digits = '0' + digits.slice(2);
+  }
+  return digits;
 }
 
 // getEffectiveDateFin déplacée dans _lib/dateFin.js (2026-08-05) — utilisée
@@ -304,6 +319,7 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
     prenom: prenom || '', nom: nom || '', jours: jours || 1,
     date_recuperation: dateRecuperation || '', creneau: creneau || '', amount, lang,
     ref_origine: refOrigine || '',
+    lienEspaceClient: 'https://www.locair.fr/client',
   }), sig);
   const jNum = Number(jours) || 1;
   const subject = lang === 'en' ? `Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`
