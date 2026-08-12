@@ -3827,6 +3827,14 @@ input:-webkit-autofill:focus{
 <noscript><style>.m-bar,.modal-overlay{display:none!important}</style><div style="background:#fff3cd;color:#856404;padding:12px 20px;text-align:center;font-family:Arial,sans-serif;font-size:13px">JavaScript est désactivé. Pour réserver, appelez le <a href="tel:0663798756" style="color:#856404;font-weight:bold">06.63.79.87.56</a> ou écrivez à <a href="mailto:contact@locair.fr" style="color:#856404;font-weight:bold">contact@locair.fr</a></div></noscript>
 
 
+<!-- TOP BAR EXPRESS — visible automatiquement avant 20h Paris si non rejeté -->
+<div class="top-bar" id="top-bar" style="display:none" role="status" aria-label="Information livraison express">
+  <span class="top-bar-dot" aria-hidden="true"></span>
+  <p id="top-bar-msg" style="font-size:12.5px;color:rgba(255,255,255,.85);font-weight:500;margin:0"></p>
+  <button id="top-bar-cta" onclick="openModal();_dismissTopBar();" type="button" style="font-size:11px;font-weight:700;padding:3px 10px;background:var(--gold);color:#0d1d33;border:none;border-radius:100px;cursor:pointer;white-space:nowrap;flex-shrink:0;margin-left:4px">Réserver →</button>
+  <button class="top-bar-close" onclick="_dismissTopBar()" aria-label="Fermer" type="button">×</button>
+</div>
+
 <div class="alert-bar hidden" id="alert-canicule" role="alert" aria-live="polite">
   <span class="alert-dot" aria-hidden="true"></span><strong>Canicule prévue cette semaine</strong> · Livraison sous 24h
   <button class="alert-close" onclick="this.closest('.alert-bar').classList.add('hidden');localStorage.setItem('alertDismissed','1');if(typeof _updateChromeH==='function')_updateChromeH();" aria-label="Fermer" type="button">×</button>
@@ -9108,6 +9116,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
   setLang(_lang);
   _initPhoneCountrySelect('f-tel-cc');
   _initPhoneCountrySelect('f-tel2-cc');
+  _initTopBar();
   _refreshGoogleRating();
   await _refreshStockAndSoldOut();
   // Calendrier de disponibilité : chargé en parallèle, appliqué aux chips
@@ -9402,12 +9411,42 @@ setInterval(_renderSmartLine,60000);
 function _updateChromeH(){
   var nav=document.querySelector('header.nav');
   var ab=document.getElementById('alert-canicule');
-  var h=(nav?nav.offsetHeight:56)+((ab&&!ab.classList.contains('hidden'))?ab.offsetHeight:0);
+  var tb=document.getElementById('top-bar');
+  var h=(nav?nav.offsetHeight:56)
+    +((ab&&!ab.classList.contains('hidden'))?ab.offsetHeight:0)
+    +((tb&&tb.style.display!=='none')?tb.offsetHeight:0);
   document.documentElement.style.setProperty('--chrome-h',h+'px');
 }
 // Calcul initial dès que le DOM est prêt (alerte encore cachée → juste la nav)
 if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',_updateChromeH);}
 else{_updateChromeH();}
+
+// ── TOP BAR EXPRESS — s'affiche automatiquement avant 20h Paris ─────────────
+function _initTopBar(){
+  // Réinitialiser le rejet chaque nouveau jour (format YYYY-MM-DD Paris)
+  const todayParis=new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).split('/').reverse().join('-');
+  if(localStorage.getItem('_tb_dismiss')===todayParis)return;
+  localStorage.removeItem('_tb_dismiss'); // rejet d'un autre jour → effacer
+  if(!_cutoffOk())return; // après 20h Paris, pas de livraison express aujourd'hui
+  const msg=document.getElementById('top-bar-msg');
+  const bar=document.getElementById('top-bar');
+  if(!msg||!bar)return;
+  const isEn=_lang==='en',isZH=_lang==='zh',isRU=_lang==='ru';
+  msg.innerHTML=isEn
+    ?'⚡ Same-day delivery available — order before 8pm to be delivered <strong>today</strong>'
+    :isZH?'⚡ 当日送达服务开放 — 20时前下单即可<strong>今天</strong>收到'
+    :isRU?'⚡ Экспресс-доставка доступна — закажите до 20:00, чтобы получить <strong>сегодня</strong>'
+    :'⚡ Livraison express disponible — commandez avant 20h pour être livré <strong>aujourd\'hui</strong>';
+  bar.style.display='';
+  _updateChromeH();
+}
+function _dismissTopBar(){
+  const bar=document.getElementById('top-bar');
+  if(bar)bar.style.display='none';
+  const _todayParis=new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()).split('/').reverse().join('-');
+  localStorage.setItem('_tb_dismiss',_todayParis);
+  _updateChromeH();
+}
 
 // ── MÉTÉO EN DIRECT (Open-Meteo, sans clé API) ──────────────────────────────
 (async function initWeather(){
