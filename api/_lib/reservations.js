@@ -319,6 +319,7 @@ async function sendProlongationConfirmation(supabase, { reservationId, email, te
     prenom: prenom || '', nom: nom || '', jours: jours || 1,
     date_recuperation: dateRecuperation || '', creneau: creneau || '', amount, lang,
     ref_origine: refOrigine || '',
+    lienEspaceClient: 'https://www.locair.fr/client',
   }), sig);
   const jNum = Number(jours) || 1;
   const subject = lang === 'en' ? `Extension confirmed — ${jNum} day${jNum > 1 ? 's' : ''} added`

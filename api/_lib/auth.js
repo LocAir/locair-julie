@@ -181,7 +181,12 @@ async function verifyPartenaireToken(req, supabase) {
 // il n'y a rien d'autre à invalider ce jeton, hormis la suppression de la
 // réservation elle-même, revérifiée en base à chaque appel.
 function refFingerprint(ref) {
-  return crypto.createHash('sha256').update(String(ref || '')).digest('hex').slice(0, 16);
+  // HMAC plutôt que hash simple : avec createHash, l'empreinte d'une ref
+  // LOC-YYMMDD-XXXX (9000 valeurs/jour) est trouvable par brute-force sans
+  // accès serveur si le token client est volé. TRANSPORTEUR_SECRET déjà
+  // utilisé par tous les autres HMAC de ce fichier.
+  const secret = process.env.TRANSPORTEUR_SECRET || '';
+  return crypto.createHmac('sha256', secret).update(String(ref || '')).digest('hex').slice(0, 16);
 }
 
 function signClientToken(reservationId, ref) {

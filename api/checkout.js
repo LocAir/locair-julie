@@ -38,8 +38,10 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Vous devez accepter les CGV, les conditions d\'utilisation et l\'autorisation de prélèvement en cas de retard avant de payer.' });
   }
 
-  if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
-    return res.status(400).json({ error: 'Adresse email invalide' });
+  // data.email && ... court-circuitait la validation si email vide →
+  // une réservation sans email passait, aucun email de confirmation envoyé.
+  if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
+    return res.status(400).json({ error: 'Adresse email requise et doit être valide' });
   }
 
   // Tarifs (panneau de contrôle admin, voir admin-pricing.js) chargés une
