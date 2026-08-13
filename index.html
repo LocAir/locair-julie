@@ -4911,6 +4911,11 @@ input:-webkit-autofill:focus{
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
               <span id="zone-notice-txt">Livraison hors zone standard : <strong>120 €</strong> — votre adresse est en dehors de Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche ou Beaulieu-sur-Mer.</span>
             </div>
+            <div id="cp-hors-zone" role="alert" aria-live="assertive" style="display:none;margin-top:8px;padding:12px 16px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;font-size:13px;color:#7f1d1d;line-height:1.55">
+              <strong>⛔ Loc'Air ne livre pas dans votre région</strong><br>
+              <span style="font-size:12px;color:#991b1b">Nous intervenons uniquement sur Nice et ses environs (Alpes-Maritimes · Var). Votre code postal indique une adresse trop éloignée de nos équipes.<br>
+              Une question ? <a href="https://wa.me/33663798756?text=Bonjour%2C+je+souhaite+louer+un+climatiseur+mais+mon+adresse+est+hors+zone.+Pouvez-vous+m%27aider+%3F" target="_blank" rel="noopener" style="color:#7f1d1d;font-weight:700;text-decoration:underline">Écrivez-nous sur WhatsApp →</a></span>
+            </div>
             <div id="cp-gate" role="alert" aria-live="polite" style="display:none;background:#fffbeb;color:#78350f;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;font-size:13px;margin-top:10px">
               ⚠️ <strong id="cp-gate-title">Adresse non vérifiée</strong> — <span id="cp-gate-msg">nous n'avons pas pu détecter votre code postal automatiquement.</span><br>
               <span id="cp-gate-sub" style="color:var(--grey2);font-size:12px">Si vous n'êtes pas dans notre zone standard (06000 · 06100 · 06200 · 06300 · 06700 · 06800 · 06230 · 06310), des frais de livraison de <strong>120 €</strong> s'appliqueront à la place de 60 €.</span>
@@ -5953,11 +5958,25 @@ const _ZONE_CP=new Set(['06000','06100','06200','06300','06700','06800','06230',
 function _updateDeliveryFee(){
   const cp=(document.getElementById('f-cp')?.value||'').trim();
   const notice=document.getElementById('zone-delivery-notice');
+  const block=document.getElementById('cp-hors-zone');
   if(!cp){
     // CP non détecté (adresse tapée manuellement) : garde le tarif standard par défaut
     if(notice)notice.style.display='none';
+    if(block)block.style.display='none';
+    _cpOutOfZone=false;
     return;
   }
+  // Blocage dur : hors Alpes-Maritimes (06) et Var (83) — zones impossibles à livrer
+  if(!cp.startsWith('06')&&!cp.startsWith('83')){
+    _cpOutOfZone=true;
+    DELIVERY_FEE=0;
+    if(notice)notice.style.display='none';
+    if(block)block.style.display='block';
+    updateRunningTotal();
+    return;
+  }
+  _cpOutOfZone=false;
+  if(block)block.style.display='none';
   DELIVERY_FEE=_ZONE_CP.has(cp)?60:120;
   if(notice)notice.style.display=DELIVERY_FEE>60?'flex':'none';
   updateRunningTotal();
@@ -7733,8 +7752,15 @@ function _stripePaymentDone(){
 let _submitting=false;
 let _pendingShowSuccess=null;
 let _cpGateOk=false;
+let _cpOutOfZone=false;
 function confirmAdresse(){
   const cp=(document.getElementById('f-cp')?.value||'').trim();
+  // Blocage dur : adresse clairement hors zone de service (ni 06xxx ni 83xxx)
+  if(_cpOutOfZone){
+    const block=document.getElementById('cp-hors-zone');
+    if(block){block.style.display='block';block.scrollIntoView({behavior:'smooth',block:'nearest'});}
+    return;
+  }
   if(!cp&&!_cpGateOk){
     const gate=document.getElementById('cp-gate');
     if(gate){gate.style.display='block';gate.scrollIntoView({behavior:'smooth',block:'nearest'});}
