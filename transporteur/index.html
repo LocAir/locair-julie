@@ -56,13 +56,30 @@
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:15px;-webkit-font-smoothing:antialiased;min-height:100vh}
 .wrap{max-width:520px;margin:0 auto;padding:20px 16px calc(var(--tabbar-h) + env(safe-area-inset-bottom));min-height:100vh}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 20px}
-.logo{font-family:var(--disp);font-size:21px;font-weight:600;color:var(--blue)}
+/* Barre supérieure retravaillée (chantier structurel, demande d'Aly :
+   "les meilleurs apps") : plus de bloc "Prénom NOM · changer" en texte —
+   juste des icônes d'action à droite (actualiser/aide/notifications/
+   déconnexion) et un message de bienvenue centré en dessous, comme la
+   plupart des apps mobiles pro (barre d'action épurée + salutation
+   personnalisée, pas un nom d'utilisateur qui traîne en petit texte). */
+.topbar{display:flex;flex-direction:column;gap:8px;padding:6px 2px 18px}
+.topbar-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.logo{font-family:var(--disp);font-size:21px;font-weight:600;color:var(--blue);flex-shrink:0}
 .logo em{font-style:normal;color:var(--gold)}
+.topbar-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.logo-tag{font-size:12px;font-weight:500;color:var(--grey);font-family:var(--body);letter-spacing:.06em;text-transform:uppercase;vertical-align:middle;margin-left:4px}
+/* 4 icônes + logo tiennent large, mais sur un petit écran (iPhone SE et
+   plus étroit) ça dépassait de quelques pixels — l'étiquette "Transporteur"
+   est décorative (le message "Bonjour, ..." juste en dessous donne déjà le
+   contexte), elle cède la place en premier plutôt que de laisser les
+   boutons d'action se faire couper. */
+@media (max-width:370px){.logo-tag{display:none}}
+.tb-icon-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;border:none;background:var(--navy-bg2);color:var(--blue);font-size:15px;line-height:1;cursor:pointer;transition:background-color .15s ease}
+.tb-icon-btn:active{background-color:rgba(26,43,74,.16)}
+.tb-icon-btn .tab-badge{position:absolute;top:-4px;right:-4px}
+.topbar-greeting{font-family:var(--disp);font-size:16px;font-weight:600;color:var(--black);text-align:center}
 .eyebrow{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;color:var(--grey);margin-bottom:14px;display:flex;align-items:center;gap:10px}
 .eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--blue);flex-shrink:0}
-.who{font-size:12px;color:var(--grey);font-weight:600}
-.who button{background:none;border:none;color:var(--grey);text-decoration:underline;font-size:12px;font-family:var(--body);cursor:pointer;padding:0;margin-left:8px}
 .tracking-badge{background:var(--green-bg);color:var(--green);font-size:12.5px;font-weight:700;text-align:center;padding:9px 12px;border-radius:var(--r-sm);margin-bottom:14px}
 
 .card{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:26px 22px;box-shadow:var(--sh-sm);margin-bottom:14px}
@@ -230,13 +247,10 @@ input[type="checkbox"]{accent-color:var(--blue)}
    cohérent avec le fade déjà utilisé sur les overlays/sheets. */
 .screen-fade{animation:fadeInEl .2s ease}
 
-/* Bouton tuto : flottant, au-dessus de la tabbar/detail-back, visible sur
-   toutes les pages sauf la connexion (voir show()). */
-#tuto-fab{position:fixed;right:16px;bottom:calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--navy,#1a2b4a);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
-/* Centre de notifications (Module 5) : même principe que #tuto-fab, côté
-   gauche pour ne pas se superposer au bouton tuto. */
-#notif-fab{position:fixed;left:16px;bottom:calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--navy,#1a2b4a);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
-#notif-fab-badge{position:absolute;top:-2px;right:-2px}
+/* #tuto-fab / #notif-fab : avant flottants en bas d'écran (voir git blame),
+   remontés dans la barre supérieure (.tb-icon-btn, voir plus haut) —
+   chantier structurel, demande d'Aly. show()/updateWhoBadge() continuent de
+   les afficher/masquer par leurs mêmes id, aucune autre logique à changer. */
 .tuto-cat-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);margin-bottom:8px}
 .tuto-cat-row.disabled{opacity:.55;box-shadow:none;background:var(--bg)}
 .tuto-video-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;gap:10px;border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);margin-bottom:8px}
@@ -512,11 +526,23 @@ input[type="checkbox"]{accent-color:var(--blue)}
 <div class="wrap">
 
   <div class="topbar">
-    <div class="logo">Loc<em>'Air</em> <span style="font-size:12px;font-weight:500;color:var(--grey);font-family:var(--body);letter-spacing:.06em;text-transform:uppercase;vertical-align:middle;margin-left:4px">Transporteur</span></div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <button class="who hidden" id="refresh-badge" onclick="location.reload()" style="background:none;border:none;cursor:pointer;padding:0" title="Recharger la page">🔄 Actualiser</button>
-      <div class="who hidden" id="who-badge"></div>
+    <div class="topbar-row">
+      <div class="logo">Loc<em>'Air</em> <span class="logo-tag">Transporteur</span></div>
+      <div class="topbar-actions">
+        <button class="tb-icon-btn hidden" id="refresh-badge" onclick="location.reload()" title="Actualiser" aria-label="Actualiser">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+        </button>
+        <!-- Tutoriel/notifications : avant flottants en bas d'écran, remontés
+             ici (chantier structurel, demande d'Aly) — mêmes id/onclick,
+             show() les cache/affiche toujours pareil (voir plus bas). -->
+        <button id="tuto-fab" class="tb-icon-btn hidden" onclick="openTutoLibrary()" title="Aide" aria-label="Aide">🎓</button>
+        <button id="notif-fab" class="tb-icon-btn hidden" onclick="openNotifCenter()" title="Notifications" aria-label="Notifications">🔔<span class="tab-badge hidden" id="notif-fab-badge"></span></button>
+        <button class="tb-icon-btn hidden" id="logout-btn" onclick="logout()" title="Se déconnecter" aria-label="Se déconnecter">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
     </div>
+    <div class="topbar-greeting hidden" id="topbar-greeting"></div>
   </div>
 
   <!-- Bannière hors-connexion : visible sur TOUS les écrans (y compris la
@@ -659,14 +685,6 @@ input[type="checkbox"]{accent-color:var(--blue)}
 <!-- input caché pour la preuve de mission obligatoire (photo, caméra live) -->
 <input type="file" id="media-input" accept="image/*" capture="environment" class="hidden"/>
 
-<!-- Bouton "Tutoriel prise en main", accessible en permanence (voir show()) —
-     un seul élément hors des écrans plutôt que dupliqué dans chacun d'eux. -->
-<button id="tuto-fab" class="hidden" onclick="openTutoLibrary()" title="Aide">🎓</button>
-
-<!-- Centre de notifications (Module 5, Partie 11), même principe que le
-     bouton tuto ci-dessus. -->
-<button id="notif-fab" class="hidden" onclick="openNotifCenter()" title="Notifications">🔔<span class="tab-badge hidden" id="notif-fab-badge"></span></button>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script>
 const API = (path) => '/api/' + path;
@@ -808,12 +826,20 @@ function friendlyErrorMessage(e){
   return looksNetwork ? 'Pas de connexion — vérifie ton réseau et réessaie.' : (raw || 'Erreur');
 }
 
+// Remplace l'ancien bloc "Prénom NOM · changer" par une salutation centrée
+// ("Bonjour, Tom 👋") — le prénom suffit, pas besoin du nom de famille pour
+// se reconnaître. Le bouton de déconnexion devient une icône dans la barre
+// d'actions (logout-btn) plutôt qu'un lien texte "changer" à côté du nom.
 function updateWhoBadge(){
-  const b=document.getElementById('who-badge');
+  const greeting = document.getElementById('topbar-greeting');
   if(STATE.transporteurNom){
-    b.classList.remove('hidden');
-    b.innerHTML = escHtml(STATE.transporteurNom) + '<button onclick="logout()">changer</button>';
+    const prenom = STATE.transporteurNom.trim().split(/\s+/)[0] || '';
+    if(greeting){
+      greeting.textContent = prenom ? `Bonjour, ${prenom} 👋` : '';
+      greeting.classList.toggle('hidden', !prenom);
+    }
     document.getElementById('refresh-badge')?.classList.remove('hidden');
+    document.getElementById('logout-btn')?.classList.remove('hidden');
   }
 }
 
@@ -824,8 +850,9 @@ function logout(){
   STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],en_pause:false,currentMission:null,pendingUpload:null,autoOpenChecked:false,
     tourneeOrder:[], tourneeTotal:0, tourneeMatrix:null, tourneeMissionIndex:[], tourneeCurrentIdx:null};
   stopPositionTracking();
-  document.getElementById('who-badge').classList.add('hidden');
+  document.getElementById('topbar-greeting')?.classList.add('hidden');
   document.getElementById('refresh-badge')?.classList.add('hidden');
+  document.getElementById('logout-btn')?.classList.add('hidden');
   show('login-screen');
 }
 
