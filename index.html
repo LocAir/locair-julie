@@ -5499,7 +5499,8 @@ input:-webkit-autofill:focus{
             </div>
             <div class="fld">
               <label id="label-email" for="f-email">Email <span class="req">*</span></label>
-              <input id="f-email" type="email" placeholder="prenom@exemple.fr" autocomplete="email" autocapitalize="off" spellcheck="false" inputmode="email" required/>
+              <input id="f-email" type="email" placeholder="prenom@exemple.fr" autocomplete="email" autocapitalize="off" spellcheck="false" inputmode="email" required
+                onblur="if(document.getElementById('f-parrain')?.value.trim())validatePromo()"/>
             </div>
             <div class="fld">
               <label id="label-tel2" for="f-tel2">Proche à contacter en cas d'absence <span style="color:var(--grey2);font-weight:400">(facultatif)</span></label>
@@ -5522,7 +5523,7 @@ input:-webkit-autofill:focus{
               </div>
               <div style="margin-top:10px">
                 <label for="f-parrain" style="font-size:12px;font-weight:500;color:var(--black2);display:block;margin-bottom:6px">Code promo <span style="color:var(--grey2);font-weight:400">(facultatif)</span></label>
-                <input id="f-parrain" type="text" placeholder="Votre code" autocomplete="off" oninput="validatePromo()" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:16px;font-family:var(--body);color:var(--black);background:#fff;outline:none"/>
+                <input id="f-parrain" type="text" placeholder="Votre code" autocomplete="off" oninput="validatePromoDebounced()" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:16px;font-family:var(--body);color:var(--black);background:#fff;outline:none"/>
                 <p id="promo-feedback" style="display:none;font-size:12px;font-weight:600;margin-top:5px"></p>
               </div>
             </div>
@@ -10234,26 +10235,19 @@ let _selectedForfait=null;
 let _promoDiscount=0;
 let _promoPct=0;
 let _promoCode='';
-// ⚠️ Ces deux codes doivent AUSSI exister comme lignes actives dans la
-// table `promotions` (admin → 🎁 Offres, montant fixe 10€) pour que le
-// serveur les reconnaisse vraiment (voir _lib/promotions.js) — cet aperçu
-// client n'est qu'une INDICATION, jamais la source de vérité. Trouvé lors
-// d'un audit (2026-08-06) : le passage au nouveau système de promotions a
-// supprimé le PROMO_CODES codé en dur côté serveur sans recréer ces deux
-// codes dans la nouvelle table, laissant ce message promettre une
-// réduction que le serveur n'appliquait plus (le client ne payait pas
-// plus cher que prévu — le vrai montant Stripe reste toujours calculé
-// côté serveur — mais voyait une réduction annoncée puis non appliquée).
-const _PROMO_FIXED={'LOCAIR10':10,'LOCA10':10};
-// Code de fidélité/parrainage envoyé automatiquement à la fin de chaque
-// location (prénom + 30, ex. "ERIK30" pour -30%) — voir api/_lib/promo.js
-// pour la même logique côté serveur (source de vérité pour le montant
-// réellement facturé). _promoDiscount reste en euros pour buildRecap(), mais
-// recalculé à chaque fois à partir de _promoPct pour rester juste si la
-// durée/quantité change après la saisie du code.
+// Normalise un prénom pour comparer aux codes parrainage (ex. "Élodie" → "ELODIE")
+// — même logique que matchPromoPct côté serveur (api/_lib/promo.js).
 const REFERRAL_PCT=30;
 function normalizePrenomJS(s){return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z]/g,'').toUpperCase();}
-function validatePromo(){
+
+// Debounce pour éviter un appel API à chaque frappe dans le champ code promo
+let _promoDebounce=null;
+function validatePromoDebounced(){clearTimeout(_promoDebounce);_promoDebounce=setTimeout(validatePromo,450);}
+
+// Vérifie le code promo via l'API /api/check-promo (source de vérité = serveur).
+// Règle : codes admin (table `promotions`) → valides pour tous.
+//         codes fidélité PRENOM10/20/30 → uniquement clients existants (email connu).
+async function validatePromo(){
   const inp=document.getElementById('f-parrain');
   const fb=document.getElementById('promo-feedback');
   if(!inp)return;
@@ -10266,42 +10260,59 @@ function validatePromo(){
     return;
   }
   const val=inp.value.trim().toUpperCase();
-  const prevD=_promoDiscount, prevP=_promoPct;
+  const prevD=_promoDiscount,prevP=_promoPct;
   if(!val){
     _promoDiscount=0;_promoPct=0;_promoCode='';
     if(fb){fb.textContent='';fb.style.display='none';}
     if(prevD!==_promoDiscount||prevP!==_promoPct)buildRecap();
     return;
   }
-  const explicit=_PROMO_FIXED[val];
   const normPrenom=normalizePrenomJS(document.getElementById('f-prenom')?.value||'');
-  if(explicit!==undefined){
-    _promoDiscount=explicit;_promoPct=0;_promoCode=val;
-    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+_promoDiscount+' € off':_lang==='zh'?'✓ 有效码 — 减'+_promoDiscount+'€':_lang==='ru'?'Код применён ✓ — −'+_promoDiscount+'€':'✓ Code valide — '+_promoDiscount+' € déduits';fb.style.color='#059669';fb.style.display='block';}
-  }else if(normPrenom && val.startsWith(normPrenom) && [10,20,30].includes(parseInt(val.slice(normPrenom.length),10))){
-    // Le serveur (api/_lib/promo.js matchPromoPct) accepte aussi les codes
-    // PRENOM10/20 (ex. relance client dormant à -20%, cron-monthly.js), pas
-    // seulement PRENOM30 (code de parrainage envoyé en fin de location) — le
-    // client doit reconnaître les trois, sinon un code pourtant valide
-    // s'affiche comme "non reconnu" et le total affiché avant paiement ne
-    // reflète pas la vraie réduction (déjà appliquée côté serveur).
-    const pct=parseInt(val.slice(normPrenom.length),10);
-    _promoPct=pct;_promoCode=val; // _promoDiscount recalculé dans buildRecap()
-    if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+pct+'% off':_lang==='zh'?'✓ 有效码 — 折扣'+pct+'%':_lang==='ru'?'Код применён ✓ — −'+pct+'%':'✓ Code valide — '+pct+'% déduits';fb.style.color='#059669';fb.style.display='block';}
-  }else{
+  const emailVal=(document.getElementById('f-email')?.value||'').trim().toLowerCase();
+  // L'email est requis pour valider n'importe quel code (le serveur en a besoin
+  // pour vérifier si l'adresse est connue dans la base).
+  if(!emailVal||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailVal)){
     _promoDiscount=0;_promoPct=0;_promoCode='';
-    if(fb){
-      // Si le code ressemble à PRENOM10/20/30 mais le prénom ne correspond pas encore,
-      // afficher un message d'aide plutôt qu'un simple "Code non reconnu"
-      const looksLikeParrain=/^[A-Z]{2,}(10|20|30)$/.test(val);
-      const prenomEmpty=!normPrenom;
-      let msg;
-      if(looksLikeParrain&&prenomEmpty)
-        msg=_lang==='en'?'Referral code — fill in your first name first':_lang==='zh'?'推荐码 — 请先填写您的名字':_lang==='ru'?'Реферальный код — сначала введите имя':'Code parrainage — remplissez votre prénom d\'abord';
-      else
-        msg=_lang==='en'?'Code not recognised':_lang==='zh'?'无效码':_lang==='ru'?'Код не найден':'Code non reconnu';
-      fb.textContent=msg;fb.style.color='var(--red)';fb.style.display='block';
+    if(fb&&val.length>=3){
+      const looksLikeParrain=/^[A-Z]{2,}(10|20|30)$/.test(val)&&normPrenom&&val.startsWith(normPrenom);
+      fb.textContent=looksLikeParrain
+        ?(_lang==='en'?'Loyalty code — enter your email first':_lang==='zh'?'忠诚码 — 请先填写您的电子邮件':_lang==='ru'?'Код лояльности — сначала введите email':'Code fidélité — entrez votre email d\'abord')
+        :(_lang==='en'?'Enter your email to validate the code':_lang==='zh'?'请填写您的电子邮件以验证代码':_lang==='ru'?'Введите email для проверки кода':'Entrez votre email pour valider le code');
+      fb.style.color='var(--grey)';fb.style.display='block';
     }
+    if(prevD!==_promoDiscount||prevP!==_promoPct)buildRecap();
+    return;
+  }
+  // Appel API — affiche "Vérification..." pendant la requête
+  if(fb){fb.textContent=_lang==='en'?'Checking…':_lang==='zh'?'验证中…':_lang==='ru'?'Проверка…':'Vérification…';fb.style.color='var(--grey)';fb.style.display='block';}
+  try{
+    const r=await fetch(`/api/check-promo?code=${encodeURIComponent(val)}&email=${encodeURIComponent(emailVal)}&prenom=${encodeURIComponent(normPrenom)}`);
+    const d=await r.json();
+    if(d.eligible){
+      if((d.pct||0)>0){
+        _promoPct=d.pct;_promoDiscount=0;_promoCode=val; // _promoDiscount recalculé dans buildRecap()
+        if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+d.pct+'% off':_lang==='zh'?'✓ 有效码 — 折扣'+d.pct+'%':_lang==='ru'?'Код применён ✓ — −'+d.pct+'%':'✓ Code valide — '+d.pct+'% déduits';fb.style.color='#059669';fb.style.display='block';}
+      }else if((d.fixedEuros||0)>0){
+        _promoDiscount=d.fixedEuros;_promoPct=0;_promoCode=val;
+        if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+d.fixedEuros+' € off':_lang==='zh'?'✓ 有效码 — 减'+d.fixedEuros+'€':_lang==='ru'?'Код применён ✓ — −'+d.fixedEuros+'€':'✓ Code valide — '+d.fixedEuros+' € déduits';fb.style.color='#059669';fb.style.display='block';}
+      }else{
+        _promoDiscount=0;_promoPct=0;_promoCode=val;
+        if(fb){fb.textContent=_lang==='en'?'✓ Valid code':_lang==='zh'?'✓ 有效码':_lang==='ru'?'Код применён ✓':'✓ Code valide';fb.style.color='#059669';fb.style.display='block';}
+      }
+    }else if(d.reason==='nouveau_client'){
+      _promoDiscount=0;_promoPct=0;_promoCode='';
+      if(fb){fb.textContent=_lang==='en'?'This code is for returning customers only':_lang==='zh'?'此码仅适用于老客户':_lang==='ru'?'Этот код только для постоянных клиентов':'Ce code est réservé aux clients fidèles';fb.style.color='var(--red)';fb.style.display='block';}
+    }else if(d.reason==='email_required'){
+      _promoDiscount=0;_promoPct=0;_promoCode='';
+      if(fb){fb.textContent=_lang==='en'?'Enter your email to validate the code':_lang==='zh'?'请填写您的电子邮件以验证代码':_lang==='ru'?'Введите email для проверки кода':'Entrez votre email pour valider le code';fb.style.color='var(--grey)';fb.style.display='block';}
+    }else{
+      _promoDiscount=0;_promoPct=0;_promoCode='';
+      if(fb){fb.textContent=_lang==='en'?'Code not recognised':_lang==='zh'?'无效码':_lang==='ru'?'Код не найден':'Code non reconnu';fb.style.color='var(--red)';fb.style.display='block';}
+    }
+  }catch(e){
+    // Erreur réseau — on efface silencieusement, le serveur tranchera à l'étape paiement
+    _promoDiscount=0;_promoPct=0;_promoCode='';
+    if(fb){fb.textContent='';fb.style.display='none';}
   }
   buildRecap();
 }

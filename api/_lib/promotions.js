@@ -78,9 +78,30 @@ async function resolvePromotion(supabase, { code, prenom, email, baseCents, days
     console.error('[promotions] resolvePromotion:', e.message);
   }
 
-  // Filet de secours : ancien système "PRENOM10/20/30" en dur, inchangé.
+  // Filet de secours : codes de fidélité/parrainage "PRENOM10/20/30"
+  // — uniquement pour les clients existants (au moins une réservation non
+  // annulée). Un nouveau client ne peut pas utiliser ces codes. L'admin peut
+  // toujours accorder une remise en créant un code dans la table `promotions`
+  // ci-dessus (traitée en première priorité, sans restriction de client).
   const pct = matchPromoPct(normalizedCode, prenom);
-  if (pct > 0) return { discountCents: Math.round(baseCents * pct / 100), promotionId: null, source: 'legacy' };
+  if (pct > 0) {
+    if (!email) return { discountCents: 0, promotionId: null, source: 'email_requis' };
+    try {
+      const { count } = await supabase
+        .from('reservations')
+        .select('id', { count: 'exact', head: true })
+        .eq('email', email.trim().toLowerCase())
+        .neq('statut', 'annulé');
+      if ((count || 0) === 0) {
+        return { discountCents: 0, promotionId: null, source: 'nouveau_client' };
+      }
+    } catch (e) {
+      console.error('[promotions] returning customer check:', e.message);
+      // Fail closed : en cas d'erreur DB, refuser plutôt que d'accorder par défaut
+      return { discountCents: 0, promotionId: null, source: 'error' };
+    }
+    return { discountCents: Math.round(baseCents * pct / 100), promotionId: null, source: 'legacy' };
+  }
   return { discountCents: 0, promotionId: null, source: null };
 }
 
