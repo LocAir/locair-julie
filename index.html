@@ -6079,24 +6079,36 @@ function syncPricingTexts(){
 // Packs à prix fixe (ex. "Pack Sérénité Solo/Duo", panneau de contrôle
 // admin — voir admin-forfaits.js) — chargés une fois au démarrage. Section
 // masquée s'il n'y en a aucun d'actif : jamais de carte vide affichée.
+let _forfaits=null; // stocké pour re-rendu au changement de langue
 async function loadForfaits(){
   try{
     const r=await fetch('/api/forfaits');
     const d=await r.json();
-    if(r.ok&&Array.isArray(d.forfaits)&&d.forfaits.length)renderForfaitCards(d.forfaits);
+    if(r.ok&&Array.isArray(d.forfaits)&&d.forfaits.length){_forfaits=d.forfaits;renderForfaitCards(d.forfaits);}
   }catch(e){ /* pas de pack affiché — jamais bloquant pour le reste du site */ }
 }
 function renderForfaitCards(forfaits){
   const section=document.getElementById('forfaits-section');
   const grid=document.getElementById('forfaits-grid');
   if(!section||!grid)return;
-  grid.innerHTML=forfaits.map(f=>`
+  const isEN=_lang==='en',isZH=_lang==='zh',isRU=_lang==='ru';
+  grid.innerHTML=forfaits.map(f=>{
+    const meta=isEN
+      ?`${f.quantite} unit${f.quantite>1?'s':''} · ${f.duree_jours} days`
+      :isZH
+      ?`${f.quantite}台空调 · ${f.duree_jours}天`
+      :isRU
+      ?`${f.quantite} кондиционер${f.quantite>1?'а':'} · ${f.duree_jours} дней`
+      :`${f.quantite} climatiseur${f.quantite>1?'s':''} · ${f.duree_jours} jours`;
+    const btn=isEN?'Choose this pack →':isZH?'选择此套餐 →':isRU?'Выбрать пакет →':'Choisir ce pack →';
+    return `
     <div class="forfait-card" role="listitem">
       <div class="forfait-name">${escHtml(f.nom)}</div>
-      <div class="forfait-meta">${f.quantite} climatiseur${f.quantite>1?'s':''} · ${f.duree_jours} jours</div>
+      <div class="forfait-meta">${meta}</div>
       <div class="forfait-price">${(f.prix_cents/100).toFixed(0)}<span> €</span></div>
-      <button type="button" class="forfait-btn" onclick='selectForfait(${JSON.stringify(f)})'>Choisir ce pack →</button>
-    </div>`).join('');
+      <button type="button" class="forfait-btn" onclick='selectForfait(${JSON.stringify(f)})'>${btn}</button>
+    </div>`;
+  }).join('');
   section.style.display='block';
 }
 function selectForfait(f){
@@ -6231,15 +6243,19 @@ function initDateShortcuts(){
       const cutoffLocal=_localCutoffStr();
       const isEn=_lang==='en';
       const isZh=_lang==='zh';
+      const isRU=_lang==='ru';
       const dt2=_addDays(2);
       const MONTHS_LONG_FR=['jan','fév','mars','avr','mai','juin','juil','août','sep','oct','nov','déc'];
       const MONTHS_LONG_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
       const MONTHS_LONG_ZH=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-      const dateStr=isEn?(dt2.getDate()+' '+MONTHS_LONG_EN[dt2.getMonth()]):isZh?(MONTHS_LONG_ZH[dt2.getMonth()]+dt2.getDate()+'日'):(dt2.getDate()+' '+MONTHS_LONG_FR[dt2.getMonth()]);
+      const MONTHS_LONG_RU=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+      const dateStr=isEn?(dt2.getDate()+' '+MONTHS_LONG_EN[dt2.getMonth()]):isZh?(MONTHS_LONG_ZH[dt2.getMonth()]+dt2.getDate()+'日'):isRU?(dt2.getDate()+' '+MONTHS_LONG_RU[dt2.getMonth()]):(dt2.getDate()+' '+MONTHS_LONG_FR[dt2.getMonth()]);
       notice.innerHTML=isEn
         ?'Orders after 8pm are scheduled from the next day. First available date: <strong>'+dateStr+'</strong>.'
         :isZh
         ?'20点后下单，从次日早上开始配送。最早可用日期：<strong>'+dateStr+'</strong>。'
+        :isRU
+        ?'Заказы после 20:00 доставляются со следующего дня. Ближайшая доступная дата: <strong>'+dateStr+'</strong>.'
         :'Commande après 20h — livraison à partir du lendemain matin. Première date disponible : <strong>'+dateStr+'</strong>.';
       notice.style.display='block';
     } else {
@@ -8212,6 +8228,10 @@ const LANG_MAP=[
   /* prolongation modal — SP1 */
   ['#sp1 .sp-title','text','Votre location en cours','Your current rental','您当前的租赁',`Ваша текущая аренда`],
   ['#sp1 .sp-sub','text','Renseignez vos coordonnées — nous retrouvons votre dossier et préparons la prolongation.','Enter your details — we\'ll locate your booking and prepare the extension.','请填写您的信息——我们将找到您的档案并准备续租。',`Введите ваши данные — мы найдём ваш заказ и подготовим продление.`],
+  ['#pe-prenom','ph','Ex. Marie','E.g. Marie','（名）',`Мария`],
+  ['#pe-nom','ph','Ex. Dupont','E.g. Smith','（姓）',`Иванов`],
+  ['#pe-tel','ph','06 XX XX XX XX','+33 6 XX XX XX XX','手机号码',`+7 9XX XXX XX XX`],
+  ['#pe-addr','ph','Ex. 12 rue de France, Nice','E.g. 12 rue de France, Nice','如：12 rue de France, 尼斯',`Напр. 12 rue de France, Ницца`],
   ['label[for="pe-prenom"]','html','Prénom<span class="req">*</span>','First name<span class="req">*</span>','名字<span class="req">*</span>',`Имя<span class="req">*</span>`],
   ['label[for="pe-nom"]','html','Nom<span class="req">*</span>','Last name<span class="req">*</span>','姓氏<span class="req">*</span>',`Фамилия<span class="req">*</span>`],
   ['label[for="pe-tel"]','html','Téléphone<span class="req">*</span>','Phone<span class="req">*</span>','电话<span class="req">*</span>',`Телефон<span class="req">*</span>`],
@@ -8539,6 +8559,7 @@ const LANG_MAP=[
   ['#lbl-instructions-q','text','Souhaitez-vous laisser des instructions au technicien ?','Would you like to leave instructions for the technician?','您是否希望给技术员留下指示？',`Хотите оставить инструкции технику?`],
   ['#instructions-no','text','Non','No','否',`Нет`],
   ['#instructions-yes','text','Oui','Yes','是',`Да`],
+  ['label[for="f-instructions"]','text','Instructions pour le technicien','Instructions for the technician','给技术员的说明',`Инструкции для техника`],
   ['#f-instructions','ph','Ex : Code d\'entrée 1234B, boîte à clefs sur le côté gauche de la porte, appartement au 3e étage, sonner à Dupont…','E.g. Entry code 1234B, key box on the left side of the door, apartment on the 3rd floor, ring Dupont…','如：门禁密码1234B，门左侧有钥匙盒，3楼公寓，按杜邦的门铃…',`Напр.: Код входа 1234B, ключница слева от двери, 3 этаж, позвоните Ивановым…`],
   ['#f-parrain','ph','Votre code','Your code','您的优惠码',`Ваш код`],
   /* modal step 6 */
@@ -9056,6 +9077,7 @@ function setLang(l){
   }
   // Re-render JS-driven dynamic content
   if(typeof syncPricingTexts==='function')syncPricingTexts(); // relocalise hero/carte/FAQ avec les tarifs déjà chargés (pas de re-fetch ici)
+  if(typeof renderForfaitCards==='function'&&_forfaits)renderForfaitCards(_forfaits); // re-rendu avec nouvelle langue
   if(typeof initDurCardPrices==='function')initDurCardPrices();
   if(typeof _qty!=='undefined')setQty(_qty||1);
   if(typeof _durFree!=='undefined'&&_durFree)_renderDurFree();
