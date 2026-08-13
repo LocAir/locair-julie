@@ -5478,7 +5478,7 @@ input:-webkit-autofill:focus{
             <div class="frow">
               <div class="fld">
                 <label id="label-prenom" for="f-prenom">Prénom <span class="req">*</span></label>
-                <input id="f-prenom" type="text" placeholder="Jean" autocomplete="given-name" spellcheck="false" required/>
+                <input id="f-prenom" type="text" placeholder="Jean" autocomplete="given-name" spellcheck="false" required onblur="if(document.getElementById('f-parrain')?.value.trim())validatePromo()"/>
               </div>
               <div class="fld">
                 <label id="label-nom" for="f-nom">Nom <span class="req">*</span></label>
@@ -10264,7 +10264,18 @@ function validatePromo(){
     if(fb){fb.textContent=_lang==='en'?'✓ Valid code — '+pct+'% off':_lang==='zh'?'✓ 有效码 — 折扣'+pct+'%':_lang==='ru'?'Код применён ✓ — −'+pct+'%':'✓ Code valide — '+pct+'% déduits';fb.style.color='#059669';fb.style.display='block';}
   }else{
     _promoDiscount=0;_promoPct=0;_promoCode='';
-    if(fb){fb.textContent=_lang==='en'?'Code not recognised':_lang==='zh'?'无效码':_lang==='ru'?'Код не найден':'Code non reconnu';fb.style.color='var(--red)';fb.style.display='block';}
+    if(fb){
+      // Si le code ressemble à PRENOM10/20/30 mais le prénom ne correspond pas encore,
+      // afficher un message d'aide plutôt qu'un simple "Code non reconnu"
+      const looksLikeParrain=/^[A-Z]{2,}(10|20|30)$/.test(val);
+      const prenomEmpty=!normPrenom;
+      let msg;
+      if(looksLikeParrain&&prenomEmpty)
+        msg=_lang==='en'?'Referral code — fill in your first name first':_lang==='zh'?'推荐码 — 请先填写您的名字':_lang==='ru'?'Реферальный код — сначала введите имя':'Code parrainage — remplissez votre prénom d\'abord';
+      else
+        msg=_lang==='en'?'Code not recognised':_lang==='zh'?'无效码':_lang==='ru'?'Код не найден':'Code non reconnu';
+      fb.textContent=msg;fb.style.color='var(--red)';fb.style.display='block';
+    }
   }
   buildRecap();
 }
