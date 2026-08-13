@@ -1706,7 +1706,7 @@ function weekMissionItemHtml(m){
   return `<div class="week-day-item">
       <div class="week-day-row st-${m.statut}${expanded?' expanded':''}" onclick="toggleWeekMission(${m.id})">
         ${m.creneau?`<span class="week-day-cren">${escHtml(m.creneau)}</span>`:''}
-        <span class="ic">${TYPE_ICON[m.type]||'📍'}</span>
+        <span class="ic">${typeIconSvg(m.type,18)}</span>
         <div class="tx"><div class="name">${nom}</div><div class="meta">${metaParts.join(' · ')||missionTypeLabel(m)}</div></div>
         ${statusLabel?`<span class="week-day-status st-${m.statut}">${statusLabel}</span>`:''}
         <span class="chev">›</span>
@@ -1785,7 +1785,7 @@ function renderDashboard(){
       <div class="dash-hero">
         <div class="eyebrow">${eyebrow}</div>
         <h2>${m.type==='autre'?escHtml(nom):nom}</h2>
-        <p>${TYPE_ICON[m.type]||'📍'} ${missionTypeLabel(m)} · 📍 ${escHtml(adresse)}</p>
+        <p>${typeIconSvg(m.type,14)} ${missionTypeLabel(m)} · 📍 ${escHtml(adresse)}</p>
         <button class="btn btn-blue btn-block" onclick="${cta}">${ctaLabel}</button>
       </div>`;
   };
@@ -2063,6 +2063,23 @@ const PROBLEME_TYPE_LABEL = {
   retard: '⏰ Retard important', autre: '❓ Autre problème',
 };
 const TYPE_ICON  = {livraison:'📦', recuperation:'🔄', changement:'🔁', autre:'🧳'};
+// Icônes vectorielles du type de mission — remplace TYPE_ICON (emoji, rendu
+// inégal d'un téléphone à l'autre) dans les endroits les plus visibles
+// (chantier structurel, demande d'Aly : "les emojis doivent être
+// qualitatifs"). TYPE_ICON reste utilisé tel quel là où un simple emoji
+// suffit encore (ex. libellés de select, textes d'email) — seul ce qui
+// s'affiche en gros dans l'app passe au vectoriel.
+const TYPE_ICON_PATHS = {
+  livraison:    '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/>',
+  recuperation: '<polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>',
+  changement:   '<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+  autre:        '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+};
+const TYPE_ICON_FALLBACK_PATH = '<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/>';
+function typeIconSvg(type, size){
+  size = size || 16;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-3px">${TYPE_ICON_PATHS[type]||TYPE_ICON_FALLBACK_PATH}</svg>`;
+}
 const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', en_route:'En route', arrivee:'Sur place', probleme:'Problème signalé', fait:'Terminée'};
 // Label précis selon type + option d'installation
 function missionTypeLabel(m){
@@ -2134,7 +2151,7 @@ function missionCardHtml(m){
     <div class="mcard st-${m.statut}" onclick="openMission(${m.id})">
       <div class="mcard-name">${isAutre?escHtml(nom):nom}</div>
       <div class="mcard-top">
-        <span class="mcard-icon">${TYPE_ICON[m.type]||'📍'}</span>
+        <span class="mcard-icon">${typeIconSvg(m.type,15)}</span>
         <span class="mcard-type">${missionTypeLabel(m)}${unitsTxt?` · 🔢 ${unitsTxt}`:''}</span>
         <span class="mcard-badge">${badge}</span>
         ${lateBadge}
@@ -3253,7 +3270,7 @@ function renderDetail(){
     </div>
     <div class="card">
       ${(['acceptee','en_route','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
-      <h1>${TYPE_ICON[m.type]||''} ${missionTypeLabel(m)}</h1>
+      <h1 style="display:flex;align-items:center;gap:8px">${typeIconSvg(m.type,22)}${missionTypeLabel(m)}</h1>
       ${m.montant_preview?`<div class="detail-earn">💶 ${Math.round(m.montant_preview/100)} €${(m.client||{}).hors_zone?' · Hors zone':''}${(m.client||{}).express?' · 🚀 Express':''}</div>`:''}
       <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):''].filter(Boolean).join(' · ')}</p>
       ${bodyHtml}
@@ -4281,7 +4298,7 @@ function missionsFiltreListHtml(missions){
     return `
     <div class="vrow" style="align-items:flex-start${ouvrable?';cursor:pointer':''}" ${ouvrable?`onclick="openMissionFromHistory(${m.id})"`:''}>
       <span>
-        <span class="mcard-icon" style="font-size:14px;vertical-align:-2px">${TYPE_ICON[m.type]||'📍'}</span>
+        <span class="mcard-icon">${typeIconSvg(m.type,14)}</span>
         ${TYPE_LABEL[m.type]||m.type}
         <div class="mcard-meta" style="margin-top:2px">${m.date_prevue?new Date(m.date_prevue+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
         ${problemeTxt?`<div class="mcard-meta" style="margin-top:2px">${escHtml(problemeTxt)}</div>`:''}
@@ -4342,7 +4359,7 @@ function missionsHistoryHtml(missions){
           ${items.map(m => `
             <div class="vrow" style="align-items:flex-start">
               <span>
-                <span class="mcard-icon" style="font-size:14px;vertical-align:-2px">${TYPE_ICON[m.type]||'📍'}</span>
+                <span class="mcard-icon">${typeIconSvg(m.type,14)}</span>
                 ${TYPE_LABEL[m.type]||m.type}
                 <div class="mcard-meta" style="margin-top:2px">${m.fait_at?new Date(m.fait_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
                 ${(m.fait_at && new Date(m.fait_at) >= photoCutoff) ? `<button class="btn btn-grey" style="margin-top:6px;padding:8px 12px;font-size:12px" onclick="openMissionMedia(${m.id})">📷 Photos</button>` : ''}
