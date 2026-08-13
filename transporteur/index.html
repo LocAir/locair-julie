@@ -386,6 +386,13 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .week-day-row.st-arrivee{border-left-color:var(--green)}
 .week-day-row.st-probleme{border-left-color:var(--red)}
 .week-day-row.st-fait{border-left-color:var(--rule)}
+/* Créneau affiché devant la mission (icône type + nom), comme une colonne
+   d'horaire d'agenda — demandé par Aly : jusqu'ici le créneau était noyé
+   dans la ligne grise du dessous, avec l'adresse, pas assez visible pour
+   repérer d'un coup d'œil l'ordre de la journée. Absent (la plupart des
+   récupérations, jamais choisies par le client) : pas de badge, pas
+   d'espace vide réservé. */
+.week-day-cren{flex-shrink:0;font-size:10.5px;font-weight:800;color:var(--blue);background:var(--blue-lt);border-radius:100px;padding:3px 8px;white-space:nowrap}
 .week-day-row .ic{font-size:18px;flex-shrink:0}
 .week-day-row .tx{flex:1;min-width:0}
 .week-day-row .name{font-size:13.5px;font-weight:600;color:var(--black);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1632,7 +1639,9 @@ function weekMissionItemHtml(m){
   const isAutre = m.type==='autre';
   const nom = isAutre ? escHtml(m.titre||'Mission libre') : ((escHtml((c.prenom||'')+' '+(c.nom||'')).trim())||'Client');
   const adresse = isAutre ? (m.adresse_libre||'') : (c.adresse||'');
-  const metaParts = [m.creneau?escHtml(m.creneau):'', adresse?escHtml(adresse):''].filter(Boolean);
+  // Le créneau part maintenant devant la mission (badge avant l'icône, voir
+  // plus bas) plutôt que noyé ici avec l'adresse.
+  const metaParts = [adresse?escHtml(adresse):''].filter(Boolean);
   const expanded = STATE.weekExpandedId === m.id;
   let detailHtml = '';
   if(expanded){
@@ -1660,6 +1669,7 @@ function weekMissionItemHtml(m){
   const statusLabel = (m.statut==='fait') ? 'Terminée' : (m.statut==='probleme') ? 'Problème' : '';
   return `<div class="week-day-item">
       <div class="week-day-row st-${m.statut}${expanded?' expanded':''}" onclick="toggleWeekMission(${m.id})">
+        ${m.creneau?`<span class="week-day-cren">${escHtml(m.creneau)}</span>`:''}
         <span class="ic">${TYPE_ICON[m.type]||'📍'}</span>
         <div class="tx"><div class="name">${nom}</div><div class="meta">${metaParts.join(' · ')||missionTypeLabel(m)}</div></div>
         ${statusLabel?`<span class="week-day-status st-${m.statut}">${statusLabel}</span>`:''}
