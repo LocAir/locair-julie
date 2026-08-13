@@ -3883,6 +3883,30 @@ function renderReservationsToolbar(){
 // api/checkout.js PROMO_CODES) — à tenir synchronisé si un code est ajouté.
 const NR_PROMO_CODES = {'LOCAIR10':10, 'LOCA10':10};
 let _nrPromoDiscount = 0;
+// % du prix de location (baseCents) quand le code promo est un code
+// personnel "PRENOM10/20/30" plutôt qu'un montant fixe — 0 sinon. Sert à
+// recalculer _nrPromoDiscount en euros à chaque changement de durée/
+// quantité (nrRecalcPrice), le pourcentage portant sur le prix de
+// location, pas sur le total (même règle que côté site).
+let _nrPromoPct = 0;
+// Code personnel "PRENOM10/20/30" (ex. FLORIAN30) — chaque client reçoit ce
+// genre de code à la fin de sa location (parrainage/relance), valable aussi
+// pour un ami. Même règle que le site (api/_lib/promo.js matchPromoPct,
+// utilisée par checkout.js) : valable seulement si le prénom tapé sur CETTE
+// réservation correspond au préfixe du code, une fois normalisé (majuscules,
+// accents retirés, lettres uniquement) — sans vérification en base, comme
+// côté site. Manquait ici jusqu'ici : le devis rapide de l'admin ne
+// reconnaissait que les 2 codes fixes de NR_PROMO_CODES, pas ce système.
+function nrNormalizePrenom(p){
+  return (p||'').normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]','g'),'').replace(/[^A-Za-z]/g,'').toUpperCase();
+}
+function nrMatchPromoPct(code, prenom){
+  code = (code||'').trim().toUpperCase();
+  const norm = nrNormalizePrenom(prenom);
+  if(!code || !norm || !code.startsWith(norm)) return 0;
+  const suffix = parseInt(code.slice(norm.length), 10);
+  return [10,20,30].includes(suffix) ? suffix : 0;
+}
 // Livraison Express (+60€, aujourd'hui sous 2h) — même bascule que la carte
 // "⚡ Express" du site (index.html selectExpress/EXPRESS_FEE), reprise ici
 // pour qu'une demande express prise par téléphone soit possible sans passer
@@ -3909,6 +3933,11 @@ function duplicateReservation(id){
 // Applique/retire la remise sur le prix déjà saisi plutôt que de reconstruire
 // tout le calcul à partir de zéro — un prix négocié à la main pour d'autres
 // raisons (geste commercial, tarif spécial) n'est jamais écrasé.
+// Reconnaît 2 familles de codes, comme le site : un montant fixe
+// (NR_PROMO_CODES, ex. LOCAIR10) ou un code personnel "PRENOM10/20/30" (ex.
+// FLORIAN30, voir nrMatchPromoPct) valable seulement si le prénom du client
+// correspond — d'où l'appel aussi depuis le champ Prénom plus bas (voir sa
+// définition), au cas où le code soit tapé avant le prénom.
 function onNrParrainInput(){
   const inp = document.getElementById('nr-parrain');
   const prixEl = document.getElementById('nr-prix');
@@ -3917,11 +3946,18 @@ function onNrParrainInput(){
   if(!inp || !prixEl || !fb) return;
   const val = inp.value.trim().toUpperCase();
   const prevDiscount = _nrPromoDiscount;
-  const newDiscount = NR_PROMO_CODES[val] || 0;
-  if(val && !newDiscount){
-    fb.textContent = 'Code non reconnu'; fb.style.color = 'var(--red)'; fb.style.display = 'block';
-    return;
+  let newDiscount = 0, newPct = 0;
+  if(val && NR_PROMO_CODES[val] != null){
+    newDiscount = NR_PROMO_CODES[val];
+  } else if(val){
+    const prenom = document.getElementById('nr-prenom')?.value || '';
+    newPct = nrMatchPromoPct(val, prenom);
+    if(newPct > 0){
+      const r = nrCalcTotal();
+      newDiscount = r ? Math.round(r.baseCents * newPct / 100) / 100 : 0;
+    }
   }
+  _nrPromoPct = newPct;
   if(newDiscount !== prevDiscount){
     const restored = (parseFloat(prixEl.value)||0) + prevDiscount;
     const applied  = Math.max(0, restored - newDiscount);
@@ -3945,8 +3981,30 @@ function onNrParrainInput(){
       }
     }
   }
-  if(newDiscount){ fb.textContent = `✓ Code valide — ${newDiscount} € déduits`; fb.style.color = 'var(--green)'; fb.style.display = 'block'; }
-  else fb.style.display = 'none';
+  if(!val){
+    fb.style.display = 'none';
+  } else if(newDiscount > 0){
+    fb.textContent = `✓ Code valide — ${_nrPromoDiscount.toFixed(2).replace('.', ',')} € déduits${newPct?' ('+newPct+'%)':''}`;
+    fb.style.color = 'var(--green)'; fb.style.display = 'block';
+  } else {
+    // "FLORIAN30" ressemble à un code personnel (PRENOM+10/20/30) mais ne
+    // correspond à aucun prénom pour l'instant — message différent d'un
+    // code invalide, pour ne pas faire chercher le problème ailleurs alors
+    // qu'il suffit de vérifier/compléter le prénom du client ci-dessous.
+    const looksPersonal = /^[A-Z]{2,}(10|20|30)$/.test(val);
+    fb.textContent = looksPersonal
+      ? 'Code personnel — vérifie que le prénom du client (ci-dessous) correspond'
+      : 'Code non reconnu';
+    fb.style.color = 'var(--red)'; fb.style.display = 'block';
+  }
+}
+// Un code personnel type FLORIAN30 peut être tapé avant même que le prénom
+// du client soit rempli plus bas dans le formulaire (l'ordre naturel d'un
+// appel n'est pas toujours devis d'abord, identité ensuite) — revalide dès
+// que le prénom change, mais seulement si un code est déjà présent, pour ne
+// pas recalculer à chaque frappe du nom pour rien.
+function nrRevalidatePromoOnPrenomChange(){
+  if(document.getElementById('nr-parrain')?.value.trim()) onNrParrainInput();
 }
 // Aperçu de prix + pré-remplissage de "Prix total" à partir du même barème
 // que le site (prCalcBase = calcTieredPrice côté serveur) — sans ça, un
@@ -4116,6 +4174,11 @@ function nrRecalcPrice(){
     if(hint) hint.style.display = 'none';
     return;
   }
+  // Un code personnel "PRENOM10/20/30" porte sur un %, pas un montant fixe
+  // — si la durée ou la quantité change après coup, la remise en euros doit
+  // suivre le nouveau prix de location plutôt que de rester figée au
+  // montant calculé la première fois.
+  if(_nrPromoPct > 0) _nrPromoDiscount = Math.round(r.baseCents * _nrPromoPct / 100) / 100;
   // Devis façon "panier" : une ligne par poste (Location/Installation/
   // Livraison/Remise) puis le total — même logique de calcul que l'ancien
   // paragraphe, juste présentée en liste au lieu d'une phrase compacte.
@@ -4191,6 +4254,7 @@ function nrOnPrixInput(){
 // Les CGV restent hors du repli : jamais optionnelles, jamais à chercher.
 function reservationCreerHtml(){
   _nrPromoDiscount = 0;
+  _nrPromoPct = 0;
   _nrExpress = false;
   // Usage unique : lu ici puis remis à null, pour qu'un simple retour sur
   // l'onglet "Créer" (sans repasser par "Réservation similaire") reparte
@@ -4280,7 +4344,7 @@ function reservationCreerHtml(){
 
       <div class="section-title">👤 Client</div>
       <div class="inline-form">
-        <div><label for="nr-prenom">Prénom *</label><input type="text" id="nr-prenom" oninput="this.classList.remove('field-err')" value="${escHtml(d?.prenom||'')}"/></div>
+        <div><label for="nr-prenom">Prénom *</label><input type="text" id="nr-prenom" oninput="this.classList.remove('field-err');nrRevalidatePromoOnPrenomChange()" value="${escHtml(d?.prenom||'')}"/></div>
         <div><label for="nr-nom">Nom *</label><input type="text" id="nr-nom" oninput="this.classList.remove('field-err')" value="${escHtml(d?.nom||'')}"/></div>
       </div>
       <div class="inline-form" style="margin-top:8px">
