@@ -217,7 +217,11 @@ input[type="checkbox"]{accent-color:var(--blue)}
    (étape "En route") — doit sauter aux yeux, contrairement au reste des
    infos mission qui restent en texte discret. */
 .pickup-card{display:flex;align-items:center;gap:14px;background:var(--blue);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:14px;box-shadow:var(--sh-md)}
-.pickup-card-ic{font-size:32px;flex-shrink:0;line-height:1}
+/* color:#fff explicite : les icônes sont maintenant vectorielles
+   (stroke="currentColor") plutôt que des emojis en couleur — sans ce
+   réglage, currentColor retombait sur le texte noir par défaut, invisible
+   sur le fond bleu foncé de la carte. */
+.pickup-card-ic{color:#fff;flex-shrink:0;line-height:1}
 .pickup-card-body{flex:1;min-width:0}
 .pickup-card-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.72)}
 .pickup-card-nums{font-size:26px;font-weight:800;color:#fff;letter-spacing:.01em;line-height:1.2;margin-top:2px}
@@ -1417,7 +1421,7 @@ function openChecklistPopup(onValidated){
   overlay.innerHTML = `
     <div class="sheet">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-        <h1 style="margin-bottom:4px">🎒 Prêt à partir ?</h1>
+        <h1 style="margin-bottom:4px;display:flex;align-items:center;gap:8px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="m9 13 2 2 4-4"/></svg>Prêt à partir ?</h1>
         <button type="button" class="btn-chip" style="flex-shrink:0;white-space:nowrap;margin-top:2px" onclick="checkAllChecklistPopup()">✅ Tout cocher</button>
       </div>
       <p class="sub" style="margin-bottom:10px">Avant ta première mission de la journée — coche ce que tu as pris.</p>
@@ -2731,7 +2735,7 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
     const cRoute = m.client || {};
     const etageHtml = (cRoute.etage && cRoute.etage!=='—') ? `
       <div class="pickup-card" style="margin-bottom:12px">
-        <span class="pickup-card-ic">🏢</span>
+        <span class="pickup-card-ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v18"/><path d="M3 22h18"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1"/></svg></span>
         <div class="pickup-card-body">
           <div class="pickup-card-label">Étage chez le client</div>
           <div class="pickup-card-nums">${escHtml(cRoute.etage)}</div>
@@ -2744,7 +2748,7 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
     const needsPickup = m.type==='livraison' || m.type==='changement';
     const pickupHtml = needsPickup ? (numeros.length ? `
       <div class="pickup-card">
-        <span class="pickup-card-ic">❄️</span>
+        <span class="pickup-card-ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="4.5" y1="7" x2="19.5" y2="17"/><line x1="19.5" y1="7" x2="4.5" y2="17"/></svg></span>
         <div class="pickup-card-body">
           <div class="pickup-card-label">${plural?'Climatiseurs à récupérer':'Climatiseur à récupérer'}</div>
           <div class="pickup-card-nums">${numeros.map(n=>'N°'+n).join('  ·  ')}</div>
@@ -3107,7 +3111,7 @@ function missionWizardHtml(m, infoRows, mapsUrl){
   const numeros = m.appareil_numeros||[];
   const climBadgeHtml = (key!=='route' && numeros.length) ? `
     <div class="pickup-card" style="margin-bottom:12px">
-      <span class="pickup-card-ic">❄️</span>
+      <span class="pickup-card-ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="4.5" y1="7" x2="19.5" y2="17"/><line x1="19.5" y1="7" x2="4.5" y2="17"/></svg></span>
       <div class="pickup-card-body">
         <div class="pickup-card-label">${m.type==='changement'&&key==='nouveau'?'Nouveau climatiseur':(numeros.length>1?'Climatiseurs':'Climatiseur')}</div>
         <div class="pickup-card-nums">${numeros.map(n=>'N°'+n).join('  ·  ')}</div>
