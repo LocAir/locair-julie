@@ -3931,6 +3931,19 @@ function onNrParrainInput(){
     // remise que ce champ — sinon deux montants différents restent affichés
     // en même temps à l'écran (le prix modifiable ici, l'ancien total en haut).
     if(totalEl) totalEl.textContent = (Math.round(applied*100)/100).toFixed(2).replace('.', ',') + ' €';
+    // Idem pour la ligne "Remise" du récap façon panier, juste en dessous —
+    // sans ça le code promo changeait le total affiché sans jamais faire
+    // apparaître la ligne qui l'explique.
+    const discountRow = document.getElementById('nr-sum-discount-row');
+    const discountEl = document.getElementById('nr-sum-discount');
+    if(discountRow && discountEl){
+      if(_nrPromoDiscount > 0){
+        discountRow.classList.remove('hidden');
+        discountEl.textContent = `−${_nrPromoDiscount.toFixed(2).replace('.', ',')} €`;
+      } else {
+        discountRow.classList.add('hidden');
+      }
+    }
   }
   if(newDiscount){ fb.textContent = `✓ Code valide — ${newDiscount} € déduits`; fb.style.color = 'var(--green)'; fb.style.display = 'block'; }
   else fb.style.display = 'none';
@@ -4230,6 +4243,20 @@ function reservationCreerHtml(){
           <button type="button" class="nr-install-btn${installVal===INSTALLATION_OPTIONS[0]?' on':''}" data-val="${escHtml(INSTALLATION_OPTIONS[0])}" onclick="nrSetInstall('${INSTALLATION_OPTIONS[0]}')" style="flex:none;padding:7px 16px">Autonome</button>
           <button type="button" class="nr-install-btn${installVal===INSTALLATION_OPTIONS[1]?' on':''}" data-val="${escHtml(INSTALLATION_OPTIONS[1])}" onclick="nrSetInstall('${INSTALLATION_OPTIONS[1]}')" style="flex:none;padding:7px 16px">Technicien +80€</button>
         </div>
+        <!-- Code promo remonté ici (chantier structurel, demande d'Aly :
+             visible directement dans le devis, plus caché dans "Options
+             avancées") — même champ/id/logique qu'avant (nr-parrain,
+             onNrParrainInput, NR_PROMO_CODES), juste déplacé et relabellisé
+             "Code promo" pour matcher ce que voit le client sur le site
+             (index.html #f-parrain — même id interne "parrain" en base,
+             mais le champ accepte aussi bien un vrai code promo qu'un code
+             de parrainage type "PRENOM10", voir checkout.js). -->
+        <label for="nr-parrain" style="margin-top:8px">Code promo <span style="text-transform:none;font-weight:400;color:var(--grey-soft)">(optionnel)</span></label>
+        <div class="promo-row">
+          <input type="text" id="nr-parrain" oninput="onNrParrainInput()" placeholder="ex. LOCAIR10"/>
+          <button type="button" class="btn btn-blue" onclick="onNrParrainInput()">Appliquer</button>
+        </div>
+        <p id="nr-parrain-fb" style="display:none;font-size:12px;font-weight:600;margin:4px 0 0"></p>
         <!-- Récap façon ticket de panier (chantier structurel, maquette Aly) :
              lignes Location/Installation/Livraison/Remise, puis Total —
              remplace l'ancienne phrase de détail à parser + le bloc total
@@ -4291,9 +4318,6 @@ function reservationCreerHtml(){
               </select>
             </div>
           </div>
-          <label for="nr-parrain" style="margin-top:8px">Code parrain (optionnel)</label>
-          <input type="text" id="nr-parrain" oninput="onNrParrainInput()"/>
-          <p id="nr-parrain-fb" style="display:none;font-size:12px;font-weight:600;margin-top:4px"></p>
           <label for="nr-partenaire" style="margin-top:8px">Code ambassadeur / partenaire (optionnel)</label>
           <input type="text" id="nr-partenaire" placeholder="ex : dupont" autocapitalize="none" spellcheck="false"/>
           <p style="font-size:11.5px;color:var(--grey);margin-top:3px">Si cette réservation a été apportée par une conciergerie ou un ambassadeur, entre son code pour lui attribuer la commission automatiquement.</p>
