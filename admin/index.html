@@ -8327,12 +8327,20 @@ async function loadClients(silent){
   }
 }
 function clientCardHtml(c){
+  // La raison sociale n'a plus sa place dans une pastille .chip (pensée pour
+  // un mot-clé court et fixe genre "Confirmée") : un nom d'entreprise long
+  // ("Société Immobilière et Commerciale de la Côte d'Azur — Établissements
+  // Réunis SARL...") avec le nowrap hérité des pastilles ne pouvait ni
+  // rétrécir ni passer à la ligne — la carte débordait de 300px+ hors de
+  // l'écran sur mobile. Affichée en texte normal dans .row-meta comme le
+  // reste des coordonnées, elle passe à la ligne comme n'importe quel texte.
   return `
     <div class="row-item">
       <div class="row-top">
-        <span class="row-title">${escHtml((c.prenom||'')+' '+(c.nom||''))}${c.raison_sociale?` <span class="chip a_faire">🏢 ${escHtml(c.raison_sociale)}</span>`:''}</span>
+        <span class="row-title">${escHtml((c.prenom||'')+' '+(c.nom||''))}</span>
         <span class="chip inactif">${c.nb_reservations} réservation${c.nb_reservations>1?'s':''}</span>
       </div>
+      ${c.raison_sociale?`<div class="row-meta">🏢 ${escHtml(c.raison_sociale)}</div>`:''}
       <div class="row-meta">${escHtml(c.tel||'—')}${c.email?' · '+escHtml(c.email):''}${c.tel_secondaire?' · ☎️ Secours : '+escHtml(c.tel_secondaire):''}${c.siret?' · SIRET : '+escHtml(c.siret):''}${c.derniere_adresse?'<br/>Dernière adresse : '+escHtml(c.derniere_adresse):''}</div>
       ${c.acces_difficile?`<div class="row-meta" style="color:var(--blue);font-weight:700;margin-top:6px">📌 ${escHtml(c.acces_difficile)}</div>`:''}
       <div class="row-actions">
