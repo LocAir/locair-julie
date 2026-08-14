@@ -96,6 +96,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .btn-grey:hover:not(:disabled){border-color:var(--grey-soft);color:var(--black);transform:translateY(-1px)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn-block{width:100%}
+/* Tuile d'action (Accueil : "Nouvelle réservation" / "Créer une mission") —
+   icône au-dessus du libellé plutôt qu'à côté : un libellé de 2 mots à
+   côté d'une icône dans un bouton à moitié de la largeur de l'écran finit
+   presque toujours par passer à la ligne, avec un rendu bancal (icône
+   collée au premier mot, le reste esseulé en dessous). Empilé et centré,
+   le passage à la ligne du libellé reste propre quelle que soit la
+   largeur (amélioration UX, demande d'Aly). */
+.a-cta-tile{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 10px;font-size:13px;line-height:1.25;text-align:center}
+.a-cta-tile svg{flex-shrink:0}
 .err{background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:11px 14px;font-size:13px;margin-top:10px;display:none;line-height:1.5}
 .hidden{display:none !important}
 
@@ -2114,8 +2123,14 @@ async function loadDashboard(periode, silent){
     // qu'il y a à faire maintenant, les chiffres de la veille viennent après.
     zone.innerHTML = `
       <div style="display:flex;gap:10px;margin-bottom:16px">
-        <button class="btn btn-blue" style="flex:1;padding:16px 20px;font-size:14.5px" onclick="goToNouvelleReservation()">🆕 Nouvelle réservation</button>
-        <button class="btn btn-blue" style="flex:1;padding:16px 20px;font-size:14.5px" onclick="openCreateMissionModal()">🚚 Créer une mission</button>
+        <button class="btn btn-blue a-cta-tile" onclick="goToNouvelleReservation()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 13h6M12 10v6"/></svg>
+          <span>Nouvelle réservation</span>
+        </button>
+        <button class="btn btn-blue a-cta-tile" onclick="openCreateMissionModal()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg>
+          <span>Créer une mission</span>
+        </button>
       </div>
       ${d.agregat ? '' : boardHtml(ld.livraisons||[])}
       ${morningBannerHtml(d.hier)}
@@ -2213,6 +2228,13 @@ function parVilleTableHtml(parVille){
 // journée (créneau, client, adresse, unité, livreur assigné, statut). Pas la
 // durée de location, pas l'email, pas le prix : ça, c'est le rôle de l'onglet
 // Réservations, pas celui d'un board logistique du jour.
+// Petites icônes vectorielles pour les métadonnées du board (adresse/
+// climatiseur/transporteur) — remplace la phrase unique "adresse · climatiseur
+// · transporteur" qui s'effondrait en 2-3 lignes illisibles sur mobile
+// (amélioration UX, demande d'Aly) par une ligne par info, plus scannable.
+const BOARD_IC_PIN = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;flex-shrink:0;opacity:.6"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+const BOARD_IC_SNOW = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;flex-shrink:0;opacity:.6"><line x1="12" y1="2" x2="12" y2="22"/><line x1="4.5" y1="7" x2="19.5" y2="17"/><line x1="19.5" y1="7" x2="4.5" y2="17"/></svg>';
+const BOARD_IC_PERSON = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;flex-shrink:0;opacity:.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
 function boardRowHtml(m){
   const res = m.reservation || {};
   const isAutre = m.type === 'autre';
@@ -2231,7 +2253,11 @@ function boardRowHtml(m){
         <span class="row-title">${escHtml(m.creneau||'—')} · ${escHtml(nom)}</span>
         <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
       </div>
-      <div class="row-meta" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${escHtml(adresse)}${numeros?' · Climatiseur n°'+escHtml(numeros):''} · ${transpBit}</div>
+      <div class="row-meta">${BOARD_IC_PIN} ${escHtml(adresse)}</div>
+      <div class="row-meta" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:2px">
+        ${numeros?`<span>${BOARD_IC_SNOW} N°${escHtml(numeros)}</span>`:''}
+        <span style="display:flex;align-items:center;gap:4px">${BOARD_IC_PERSON} ${transpBit}</span>
+      </div>
     </div>`;
 }
 // Le code postal est déjà présent dans l'adresse (le site utilise l'autocomplete
