@@ -385,10 +385,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    fiches "grandes et visuelles" au lieu de lignes compactes (chantier
    structurel demandé par Aly, maquette catalogue/fiche). */
 .row-item{padding:20px 22px;border:1px solid var(--rule);border-radius:var(--r-lg);margin-bottom:14px;background:var(--white);box-shadow:var(--sh-sm)}
-.row-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+/* flex-wrap : avec 2 chips (ex. "Hors zone" + "Confirmée") à côté d'un nom
+   sur un écran étroit, les deux se disputaient la même ligne et le nom
+   finissait écrasé, forcé à passer à la ligne au milieu d'un mot — les
+   chips passent maintenant proprement à la ligne suivante s'il manque de
+   place, plutôt que de comprimer le titre (amélioration UX, demande d'Aly,
+   partagé par tous les écrans qui utilisent .row-item). */
+.row-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
 .row-title{font-family:var(--disp);font-weight:600;font-size:19px;letter-spacing:0}
 .row-meta{font-size:12.5px;color:var(--grey);line-height:1.6}
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:6px 12px 6px 10px;border-radius:100px;background:var(--bg);color:var(--grey)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:6px 12px 6px 10px;border-radius:100px;background:var(--bg);color:var(--grey);white-space:nowrap;flex-shrink:0}
 .chip::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
 .chip.confirmee,.chip.fait,.chip.verse,.chip.actif,.chip.terminee{background:var(--green-bg);color:var(--green)}
 .chip.en_attente,.chip.a_faire,.chip.acceptee,.chip.demande,.chip.en_route,.chip.arrivee{background:var(--amber-bg);color:var(--amber)}
@@ -440,7 +446,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 /* Carte réservation : hiérarchie client → dates → prix, au lieu d'une seule
    ligne de métadonnées à parser. Le prix reprend le traitement typographique
    des tuiles chiffrées de l'Accueil (police --disp) pour rester cohérent. */
-.resa-addr{font-size:12.5px;color:var(--grey);margin-bottom:8px;display:flex;align-items:baseline;gap:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resa-addr{font-size:12.5px;color:var(--grey);margin-bottom:8px;display:flex;align-items:baseline;gap:5px;white-space:nowrap}
+/* L'ellipse doit s'appliquer au TEXTE de l'adresse, pas au conteneur flex
+   dans son ensemble — depuis que l'icône est un <svg> (élément à part, plus
+   un simple emoji dans le flux de texte), .resa-addr a 2 enfants flex ;
+   sans ce sous-conteneur dédié, l'ellipse ne coupait plus correctement une
+   adresse trop longue. */
+.resa-addr-txt{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
 .resa-dates{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px;font-size:13px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px dashed var(--rule)}
 .resa-date-range{font-family:var(--disp);font-size:17px;font-weight:600;color:var(--black);letter-spacing:-.01em;white-space:nowrap}
 .resa-rel{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--grey);white-space:nowrap;flex-shrink:0}
@@ -448,6 +460,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .resa-bottom{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:2px}
 .resa-price{font-family:var(--disp);font-size:23px;font-weight:600;color:var(--black);letter-spacing:-.01em;white-space:nowrap;flex-shrink:0}
 .resa-sub{font-size:11px;color:var(--grey-soft);text-align:right;min-width:0;line-height:1.5}
+/* Badges "extra" (forfait/code promo/partenaire) — chacun sur son propre
+   pill, en rangée qui passe à la ligne si besoin, plutôt que concaténés en
+   une seule phrase à droite qui pouvait déborder de la carte (amélioration
+   UX, demande d'Aly). */
+.resa-badges-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-top:8px}
+.resa-badge{font-size:11px;padding:3px 9px;border-radius:100px;border:1px solid;white-space:nowrap}
 
 .row-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .row-actions .btn{padding:8px 13px;font-size:12.5px}
@@ -2229,13 +2247,14 @@ function parVilleTableHtml(parVille){
 // journée (créneau, client, adresse, unité, livreur assigné, statut). Pas la
 // durée de location, pas l'email, pas le prix : ça, c'est le rôle de l'onglet
 // Réservations, pas celui d'un board logistique du jour.
-// Petites icônes vectorielles pour les métadonnées du board (adresse/
-// climatiseur/transporteur) — remplace la phrase unique "adresse · climatiseur
-// · transporteur" qui s'effondrait en 2-3 lignes illisibles sur mobile
-// (amélioration UX, demande d'Aly) par une ligne par info, plus scannable.
+// Petites icônes vectorielles réutilisées pour les métadonnées de plusieurs
+// écrans (board du jour, fiches réservation...) — remplace les emojis
+// (📍❄️👤📅) au fil du chantier UX, demande d'Aly. Un seul point de réglage
+// par icône plutôt qu'un SVG dupliqué à chaque endroit.
 const BOARD_IC_PIN = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;flex-shrink:0;opacity:.6"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
 const BOARD_IC_SNOW = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;flex-shrink:0;opacity:.6"><line x1="12" y1="2" x2="12" y2="22"/><line x1="4.5" y1="7" x2="19.5" y2="17"/><line x1="19.5" y1="7" x2="4.5" y2="17"/></svg>';
 const BOARD_IC_PERSON = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;flex-shrink:0;opacity:.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+const BOARD_IC_CAL = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.7"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>';
 function boardRowHtml(m){
   const res = m.reservation || {};
   const isAutre = m.type === 'autre';
@@ -3585,9 +3604,14 @@ function refCopyHtml(ref){
 // que pour les codes historiques et jamais pour un code créé dans l'onglet
 // Offres. On affiche maintenant juste le code, sans deviner de pourcentage —
 // le montant réellement facturé reste de toute façon visible juste à côté.
+// Badges "extra" de la fiche réservation (forfait/promo/partenaire) — pas de
+// séparateur " · " en dur ici : ils sont posés côte à côte dans une rangée à
+// eux (.resa-badges-row, flex-wrap) plutôt que concaténés dans une seule
+// phrase, pour ne jamais déborder de la carte quand plusieurs badges
+// s'appliquent en même temps (amélioration UX, demande d'Aly).
 function resaPromoBadgeHtml(res){
   if(!res.parrain_code)return '';
-  return ' · <span style="background:var(--gold-lt);color:var(--gold-d);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--gold)">Code promo : '+escHtml(res.parrain_code)+'</span>';
+  return '<span class="resa-badge" style="background:var(--gold-lt);color:var(--gold-d);border-color:var(--gold)">Code promo : '+escHtml(res.parrain_code)+'</span>';
 }
 // Badge "pack à prix fixe" — affiché si la réservation vient d'un Pack
 // Sérénité (voir admin-forfaits.js). res.forfait vient de la jointure
@@ -3597,7 +3621,11 @@ function resaPromoBadgeHtml(res){
 function resaForfaitBadgeHtml(res){
   if(!res.forfait_id)return '';
   const nom=res.forfait?.nom||'Pack (supprimé)';
-  return ' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🎁 '+escHtml(nom)+'</span>';
+  return '<span class="resa-badge" style="background:var(--blue-lt);color:var(--blue);border-color:var(--blue)">🎁 '+escHtml(nom)+'</span>';
+}
+function resaPartenaireBadgeHtml(res){
+  if(!res.partenaire)return '';
+  return '<span class="resa-badge" style="background:var(--blue-lt);color:var(--blue);border-color:var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>';
 }
 // Qui s'occupe de la livraison / récupération d'une réservation — lit le
 // cache Livraisons déjà chargé (LIVRAISONS_CACHE), quelle que soit la
@@ -3668,7 +3696,7 @@ function reservationRowHtml(res, readOnly){
           <span class="row-title">${nom}</span>
           <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
         </div>
-        <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
+        <div class="resa-addr">${BOARD_IC_PIN} <span class="resa-addr-txt">${escHtml(res.adresse||'—')}</span></div>
         <div class="resa-dates"><span class="resa-date-range">${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span></div>
         <div class="resa-bottom"><span class="resa-price">${euros(res.prix_total_cents)}</span>${isInternalRef(res.ref)?'':`<span class="resa-sub">${refCopyHtml(res.ref)}</span>`}</div>
         ${readOnly ? '' : `<div class="row-actions"><button class="btn btn-grey" onclick="restoreReservation(${res.id})">Restaurer</button></div>`}
@@ -3685,7 +3713,7 @@ function reservationRowHtml(res, readOnly){
           <span class="chip ${STATUT_COMMANDE_CSS[res.statut_commande]||res.statut}">${STATUT_COMMANDE_LABEL[res.statut_commande]||RESA_LABEL[res.statut]||res.statut}</span>
         </span>
       </div>
-      <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
+      <div class="resa-addr">${BOARD_IC_PIN} <span class="resa-addr-txt">${escHtml(res.adresse||'—')}</span></div>
       ${res.fenetre_photo_path?`
       <button onclick="openFenetrePhoto(${res.id})" title="Le client ne connaissait pas son type de fenêtre — il a envoyé une photo à la place"
         style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 10px;border:1px solid var(--blue);border-radius:100px;background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:600;cursor:pointer">
@@ -3700,14 +3728,15 @@ function reservationRowHtml(res, readOnly){
         </div>
       </details>`:''}
       <div class="resa-dates">
-        <span class="resa-date-range">📅 ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
+        <span class="resa-date-range">${BOARD_IC_CAL} ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
         <span class="resa-rel ${isUrgent(res.date_debut)||isUrgent(res.date_fin)?'urgent':''}">${nightsLabel(res.date_debut,res.date_fin)} · ${relLabel(res.date_debut)}</span>
       </div>
       ${res.date_recuperation_souhaitee?`<div class="resa-sub" style="color:var(--grey);margin-top:2px">🔄 Récup. souhaitée le ${frDate(res.date_recuperation_souhaitee)}${res.creneau_recuperation?' · '+escHtml(res.creneau_recuperation):''}</div>`:''}
       <div class="resa-bottom">
         <span class="resa-price">${euros(res.prix_total_cents)}${res.express?' <span style="background:#fef3c7;color:#d97706;font-size:11px;font-weight:700;padding:1px 7px;border-radius:100px;border:1px solid rgba(217,119,6,.4);vertical-align:middle;margin-left:4px">⚡ Express</span>':''}</span>
-        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+refCopyHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${resaForfaitBadgeHtml(res)}${resaPromoBadgeHtml(res)}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
+        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+refCopyHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}</span>
       </div>
+      ${(res.forfait_id||res.parrain_code||res.partenaire)?`<div class="resa-badges-row">${resaForfaitBadgeHtml(res)}${resaPromoBadgeHtml(res)}${resaPartenaireBadgeHtml(res)}</div>`:''}
       ${res.statut==='confirmee' ? agentLineHtml(res.id) : ''}
       ${res.dernier_envoi_lien ? `<div class="resa-sub" style="color:${res.dernier_envoi_lien.statut==='envoye'?'var(--green)':'var(--red)'}">${res.dernier_envoi_lien.statut==='envoye'?'✅':'⚠️'} Lien de paiement par ${res.dernier_envoi_lien.canal==='sms'?'SMS':'email'} le ${frDateHeure(res.dernier_envoi_lien.quand)}${res.dernier_envoi_lien.statut==='envoye'?'':' (échec)'}</div>` : ''}
       ${readOnly ? '' : `
