@@ -3701,7 +3701,12 @@ function reservationMoreActionsHtml(res, compact){
 }
 function reservationRowHtml(res, readOnly){
   const nom = escHtml((res.prenom||'')+' '+(res.nom||''))||'—';
-  const entrepriseTag = res.type_client==='entreprise' ? ` <span class="chip a_faire">🏢 ${escHtml(res.raison_sociale||'Entreprise')}</span>` : '';
+  // Texte libre (raison sociale saisie par le client), pas un mot-clé fixe :
+  // dans une pastille .chip (nowrap), un nom d'entreprise un peu long fait
+  // déborder la carte hors de l'écran au lieu de rétrécir/passer à la ligne
+  // (même bug que sur les fiches client, corrigé juste avant). Affiché en
+  // texte normal sur sa propre ligne à la place.
+  const entrepriseTag = res.type_client==='entreprise' ? `<div class="row-meta">🏢 ${escHtml(res.raison_sociale||'Entreprise')}</div>` : '';
   if(res.masquee){
     return `
       <div class="row-item" style="opacity:.6">
@@ -3718,14 +3723,15 @@ function reservationRowHtml(res, readOnly){
   return `
     <div class="row-item">
       <div class="row-top">
-        <span class="row-title">${nom}${entrepriseTag}</span>
-        <span style="display:flex;gap:6px;align-items:center">
+        <span class="row-title">${nom}</span>
+        <span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end">
           ${res.hors_zone?`<span class="chip probleme" title="Affectation manuelle requise">⚠️ Hors zone</span>`:''}
           ${res.source==='site_prolongation'?`<span class="chip en_location">🔄 Prolongée</span>`:''}
           ${res.appareils_en_attente_validation?`<span class="chip a_faire" title="Appareil(s) pas encore validé(s) par l'administration">🔍 Appareil à valider</span>`:''}
           <span class="chip ${STATUT_COMMANDE_CSS[res.statut_commande]||res.statut}">${STATUT_COMMANDE_LABEL[res.statut_commande]||RESA_LABEL[res.statut]||res.statut}</span>
         </span>
       </div>
+      ${entrepriseTag}
       <div class="resa-addr">${BOARD_IC_PIN} <span class="resa-addr-txt">${escHtml(res.adresse||'—')}</span></div>
       ${res.fenetre_photo_path?`
       <button onclick="openFenetrePhoto(${res.id})" title="Le client ne connaissait pas son type de fenêtre — il a envoyé une photo à la place"
