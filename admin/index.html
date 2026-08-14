@@ -182,6 +182,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   .bottom-nav button .bn-ic svg{width:19px;height:19px}
   .bottom-nav button.on{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
   .bottom-nav .bn-dot{position:absolute;top:6px;right:calc(50% - 15px);width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid var(--white)}
+  /* Sans ce décalage, la barre "N sélectionné(s) / Supprimer" (Stock, mode
+     sélection) se posait pile sur la barre de navigation du bas — les deux
+     fixed en bas d'écran se chevauchaient, "Supprimer" recouvrant Stock/Plus
+     et rendant la nav illisible/inutilisable tant qu'une sélection était en
+     cours. Remonte la barre de sélection au-dessus du bottom-nav. */
+  .stock-select-bar{bottom:calc(84px + env(safe-area-inset-bottom))}
 }
 
 .a-search{position:relative;margin-bottom:16px}
@@ -2894,9 +2900,9 @@ async function loadStock(silent){
           <span><i class="dot dot-blue"></i> ${rd2.en_location} en location</span>
         </div>
         <p class="sub" style="margin-top:14px">Se met à jour automatiquement à chaque réservation et à chaque retour confirmé par un transporteur. Chaque appareil a son numéro — le livreur sait exactement lequel récupérer.</p>
-        <button id="sync-btn" class="btn btn-blue" onclick="forceSyncStock()" style="margin-top:12px">🔄 Forcer la synchronisation avec le site</button>
+        <button id="sync-btn" class="btn btn-blue" onclick="forceSyncStock()" style="margin-top:12px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>Forcer la synchronisation avec le site</button>
         <span id="sync-result" style="margin-left:10px;font-size:13px;display:none"></span>
-        <button class="btn btn-grey" style="margin-top:12px;margin-left:8px" onclick="openScannerModal()">🔫 Scanner le stock</button>
+        <button class="btn btn-grey" style="margin-top:12px;margin-left:8px" onclick="openScannerModal()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>Scanner le stock</button>
       </div>
       ${offresPrivilegeHtml()}
       ${rd.ok && dd ? `
