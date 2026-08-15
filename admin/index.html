@@ -1450,6 +1450,26 @@ function safeHref(url) {
 function todayParisStr(){
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
+// Heure de Paris (h/m) — même logique que _parisNow() du site (index.html),
+// nécessaire pour calculer le créneau d'une réservation Express créée à la
+// main (voir nrToggleExpress ci-dessous).
+function parisNowHM(){
+  const p={};
+  new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',hour:'2-digit',minute:'2-digit',hour12:false})
+    .formatToParts(new Date()).forEach(({type,value})=>{p[type]=value;});
+  return {h:+p.hour, m:+p.minute};
+}
+// Créneau Express = heure de la commande + 2h (livraison "sous 2h"), même
+// calcul que sur le site (index.html _expressCreneauStr) — sinon une
+// réservation Express prise par téléphone à 16h partait encore avec un
+// créneau vide (ni "8h-12h" ni l'heure réelle), aussi bien pour le client
+// que pour le transporteur qui reçoit la mission.
+function nrExpressCreneauStr(sep){
+  const {h,m}=parisNowHM();
+  const fmt=(hh,mm)=>hh+'h'+(mm>0?String(mm).padStart(2,'0'):'');
+  let h2=h+2; if(h2>=24)h2-=24;
+  return fmt(h,m)+sep+fmt(h2,m);
+}
 
 // wa.me exige un numéro international sans "0" ni "+". Depuis le
 // sélecteur d'indicatif pays du site public (2026-08-03), un numéro client
@@ -4007,6 +4027,10 @@ function nrMatchPromoPct(code, prenom){
 // ailleurs dans l'admin (badges, barème transporteur, contrat PDF) — aucune
 // migration nécessaire, seule la création manuelle ne la renseignait pas.
 let _nrExpress = false;
+// Créneau calculé (heure de la commande + 2h) quand _nrExpress est actif —
+// null sinon (aucune valeur transmise à la création, comportement inchangé
+// pour une réservation normale). Voir nrToggleExpress().
+let _nrCreneauLivraison = null;
 // "Réservation similaire" (même client) : pré-remplit le formulaire avec les
 // infos qui décrivent le CLIENT/le LOGEMENT (identité, adresse, contraintes
 // d'accès) d'une réservation passée, sans jamais recopier ce qui est propre
@@ -4139,11 +4163,28 @@ function nrToggleExpress(){
   _nrExpress = !_nrExpress;
   document.getElementById('nr-express-btn')?.classList.toggle('on', _nrExpress);
   document.getElementById('nr-express-btn')?.setAttribute('aria-pressed', String(_nrExpress));
+  nrUpdateExpressCreneauDisplay();
   if(_nrExpress){
     const debutEl = document.getElementById('nr-debut');
     if(debutEl){ debutEl.value = todayParisStr(); nrOnDebutChange(); return; }
   }
   nrRecalcPrice();
+}
+// Affiche (et mémorise dans _nrCreneauLivraison, transmis à la création) le
+// créneau réel du client/transporteur en Express — sans ça la réservation
+// partait sans aucun créneau de livraison, contrairement au site (corrigé
+// juste avant, voir index.html _applyCreneauLivDisplay).
+function nrUpdateExpressCreneauDisplay(){
+  const el = document.getElementById('nr-express-creneau');
+  if(!el) return;
+  if(_nrExpress){
+    _nrCreneauLivraison = nrExpressCreneauStr('–');
+    el.textContent = 'Créneau annoncé au client (et au transporteur) : ' + nrExpressCreneauStr(' – ');
+    el.classList.remove('hidden');
+  }else{
+    _nrCreneauLivraison = null;
+    el.classList.add('hidden');
+  }
 }
 // Raccourci "Installation" dans le bloc Devis rapide (nr-install-btn) : un
 // devis se compose au téléphone, et le type d'installation change le prix de
@@ -4348,6 +4389,7 @@ function reservationCreerHtml(){
   _nrPromoDiscount = 0;
   _nrPromoPct = 0;
   _nrExpress = false;
+  _nrCreneauLivraison = null;
   // Usage unique : lu ici puis remis à null, pour qu'un simple retour sur
   // l'onglet "Créer" (sans repasser par "Réservation similaire") reparte
   // d'un formulaire vierge comme avant.
@@ -4383,6 +4425,7 @@ function reservationCreerHtml(){
           </span>
           <span class="nr-express-price">+60 €</span>
         </button>
+        <div class="sub hidden" id="nr-express-creneau" style="margin:-4px 0 10px;font-weight:600;color:var(--gold-d)"></div>
         <div class="periods" style="margin:8px 0 2px;flex-wrap:wrap;height:auto;background:transparent;padding:0">
           ${[7,14,21,28].map(days=>`<button type="button" class="nr-dur-btn" data-days="${days}" onclick="nrSetDuration(${days})" style="flex:none;padding:7px 16px">${days} j</button>`).join('')}
         </div>
@@ -5025,6 +5068,11 @@ async function createReservation(confirmer){
     date_debut: document.getElementById('nr-debut').value,
     date_fin: document.getElementById('nr-fin').value,
     express: _nrExpress,
+    // Champ lu par admin-reservations.js (action 'create') sous le nom
+    // creneau_livraison — sans lui, une réservation créée à la main partait
+    // sans aucun créneau de livraison (ni "8h-12h" ni l'heure réelle), pour
+    // le client comme pour le transporteur.
+    creneau_livraison: _nrCreneauLivraison || undefined,
     quantite: document.getElementById('nr-qte').value,
     prix_total_cents: Math.round((parseFloat(document.getElementById('nr-prix').value)||0)*100),
     logement: document.getElementById('nr-logement').value,
