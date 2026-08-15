@@ -5430,12 +5430,19 @@ input:-webkit-autofill:focus{
             <div id="cutoff-notice" style="display:none;margin-top:10px;padding:10px 13px;background:#f4f6f9;border:1.5px solid #dde3ec;border-radius:9px;font-size:12px;color:#5a6577;line-height:1.55"></div>
           </div>
 
-          <!-- Éléments requis par le JS (LANG_SEQ, récap, checkout) — visuellement absorbés dans #date-preview -->
+          <!-- Éléments requis par le JS (LANG_SEQ, récap, checkout, calcul du
+               créneau Express) — visuellement absorbés dans #date-preview
+               (voir updateDatePreview) depuis la refonte de la carte livraison.
+               ds-slot-badge-lbl/ds-slot-time-lbl : texte source relu par
+               updateDatePreview() pour construire .dp-slot-badge/.dp-slot-time.
+               creneau-liv-data : valeur réellement envoyée au paiement/
+               transporteur (lue par buildRecap()/le submit). -->
           <div style="display:none" aria-hidden="true">
             <p id="lbl-creneau-liv">Votre créneau de livraison</p>
             <span id="ds-slot-badge-lbl">Matin · 7j/7</span>
+            <span id="ds-slot-time-lbl">8h – 12h</span>
             <span id="delivery-notice">Notre technicien vous appelle<br><strong>30 min avant</strong> d'arriver.</span>
-            <div id="creneau-liv-group"><span class="cren-card on">8h–12h</span></div>
+            <div id="creneau-liv-group"><span class="cren-card on" id="creneau-liv-data">8h–12h</span></div>
           </div>
           <!-- INSTRUCTIONS D'ACCÈS -->
           <div style="margin-top:22px;padding-top:22px;border-top:1.5px solid var(--rule)">
@@ -6190,9 +6197,10 @@ function updateDatePreview(){
     line2=`Récupération <strong>${fmtFr(end)}</strong> · <span style="color:var(--blue);font-weight:700">${days} jours</span>`;
   }
   const _slotBadge=document.getElementById('ds-slot-badge-lbl')?.textContent||'Matin · 7j/7';
+  const _slotTime=document.getElementById('ds-slot-time-lbl')?.textContent||'8h – 12h';
   const _noticeHtml=document.getElementById('delivery-notice')?.innerHTML||'Notre technicien vous appelle<br><strong>30 min avant</strong> d\'arriver.';
   const phoneIco='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.69 15.5a19.79 19.79 0 01-3.07-8.67A2 2 0 013.44 4.72h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.91 12.1a16 16 0 006 6l.91-.91a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7a2 2 0 011.72 2.03z"/></svg>';
-  el.innerHTML=`<div class="dp-date-row">${calIco}<div class="dp-date-info"><div class="dp-date-line1">${line1}</div><div class="dp-date-line2">${line2}</div></div></div><div class="dp-sep"></div><div class="dp-slot-row"><div class="dp-slot-lgroup"><span class="dp-slot-badge">${_slotBadge}</span><span class="dp-slot-time">8h – 12h</span></div><div class="dp-slot-note">${phoneIco}<span>${_noticeHtml}</span></div></div>`;
+  el.innerHTML=`<div class="dp-date-row">${calIco}<div class="dp-date-info"><div class="dp-date-line1">${line1}</div><div class="dp-date-line2">${line2}</div></div></div><div class="dp-sep"></div><div class="dp-slot-row"><div class="dp-slot-lgroup"><span class="dp-slot-badge">${_slotBadge}</span><span class="dp-slot-time">${_slotTime}</span></div><div class="dp-slot-note">${phoneIco}<span>${_noticeHtml}</span></div></div>`;
   el.classList.add('show');
 }
 
@@ -6217,6 +6225,45 @@ function _localCutoffStr(){
     const lh=cutoffLocal.getHours(),lm=cutoffLocal.getMinutes();
     return lh+'h'+(lm>0?String(lm).padStart(2,'0'):'');
   }catch(e){return '20h';}
+}
+
+// ── CRÉNEAU LIVRAISON — Express (2026-08-15, demandé par Aly) ───────────────
+// Le bloc "Votre créneau de livraison" affichait toujours "Matin · 8h-12h",
+// y compris en Express (livraison sous 2h) : un client qui réserve à 16h se
+// voyait promettre un créneau du matin déjà passé depuis longtemps. En
+// Express, le créneau doit refléter l'heure réelle de la commande (heure de
+// Paris) + 2h, pas un horaire fixe.
+function _fmtHeureParis(h,m){return h+'h'+(m>0?String(m).padStart(2,'0'):'');}
+function _expressCreneauStr(sep){
+  const{h,m}=_parisNow();
+  let h2=h+2;
+  if(h2>=24)h2-=24; // filet de sécurité (l'Express est de toute façon coupé à 20h, _cutoffOk)
+  return _fmtHeureParis(h,m)+sep+_fmtHeureParis(h2,m);
+}
+// Recalcule et applique le créneau affiché (bloc visible) + la valeur cachée
+// lue par buildRecap()/checkout (#creneau-liv-data) selon l'état Express en
+// cours — à rappeler à chaque fois que EXPRESS_FEE ou _lang change.
+function _applyCreneauLivDisplay(){
+  const badge=document.getElementById('ds-slot-badge-lbl');
+  const time=document.getElementById('ds-slot-time-lbl');
+  const data=document.getElementById('creneau-liv-data');
+  const isEN=_lang==='en',isZH=_lang==='zh',isRU=_lang==='ru';
+  if(typeof EXPRESS_FEE!=='undefined'&&EXPRESS_FEE>0){
+    if(badge)badge.textContent='Express · '+(isEN?'Within 2h':isZH?'2小时内':isRU?'В течение 2ч':'Sous 2h');
+    const range=_expressCreneauStr(' – ');
+    if(time)time.textContent=range;
+    if(data)data.textContent=_expressCreneauStr('–');
+  }else{
+    if(badge)badge.textContent=isEN?'Morning · 7 days':isZH?'早上 · 每天':isRU?'Утро · 7 дней':'Matin · 7j/7';
+    if(time)time.textContent='8h – 12h';
+    if(data)data.textContent='8h–12h';
+  }
+  // La carte visible (#date-preview, depuis la refonte "carte livraison
+  // unifiée") relit ds-slot-badge-lbl/ds-slot-time-lbl pour se construire —
+  // sans ce rappel ici, l'ordre d'appel comptait (il fallait que
+  // updateDatePreview() soit appelée APRÈS ce texte mis à jour, pas avant),
+  // ce qui est fragile. Se rafraîchit donc elle-même à chaque changement.
+  if(document.getElementById('date-preview')?.classList.contains('show') && typeof updateDatePreview==='function') updateDatePreview();
 }
 
 // ── DATE SHORTCUTS ─────────────────────────────────────────────────────────────
@@ -6310,6 +6357,9 @@ function setDateOffset(offset,btn){
   _showDispoAlert(dateStr);
   // Reset express si actif
   EXPRESS_FEE=0;const _exBtn=document.getElementById('ds-express');if(_exBtn)_exBtn.classList.remove('on');
+  // Créneau du matin fixe : plus le "16h-18h" express resté affiché par erreur
+  // si le client change d'avis et repart sur une date normale.
+  _applyCreneauLivDisplay();
   // Mettre à jour le total affiché (supprime le +60 € express si on revient sur un créneau normal)
   updateRunningTotal();
 }
@@ -6324,8 +6374,13 @@ function selectExpress(btn){
     // _addDays(0) utilise _parisNow() → date correcte même pour un client en
     // fuseau UTC-1/UTC-2 (sinon new Date() donnait la veille côté serveur).
     if(fd){fd.value=_fmtDate(_addDays(0));if(typeof updateDatePreview==='function')updateDatePreview();}
+    // Créneau = heure de la commande + 2h (livraison sous 2h), pas le créneau
+    // du matin fixe — sans ça un client qui commande à 16h se voyait proposer
+    // "8h-12h", déjà passé depuis longtemps.
+    _applyCreneauLivDisplay();
   }else{
-    // Re-sélectionner demain (recommandé)
+    // Re-sélectionner demain (recommandé) — remet aussi le créneau du matin
+    // via _applyCreneauLivDisplay() appelé dans setDateOffset.
     setDateOffset(1,document.getElementById('ds-0'));
   }
   if(typeof buildRecap==='function')buildRecap();
@@ -6370,6 +6425,16 @@ function onCustomDate(inp){
   _updateCustomDateDisplay();
   document.querySelectorAll('.ds-chip').forEach(c=>{c.classList.remove('on');c.setAttribute('aria-checked','false');});
   _showDispoAlert(inp.value);
+  // Une date choisie à la main n'est plus "aujourd'hui sous 2h" — annule
+  // l'Express et son créneau s'ils étaient encore actifs (même logique que
+  // setDateOffset), sinon le client garderait le supplément +60€ et un
+  // créneau du type "16h-18h" sur une date qui n'a plus rien d'urgent.
+  if(typeof EXPRESS_FEE!=='undefined'&&EXPRESS_FEE>0){
+    EXPRESS_FEE=0;
+    document.getElementById('ds-express')?.classList.remove('on');
+    _applyCreneauLivDisplay();
+    if(typeof updateRunningTotal==='function')updateRunningTotal();
+  }
 }
 
 // ── CALENDRIER DE DISPONIBILITÉ (/api/disponibilite) ─────────────────────────
@@ -9108,6 +9173,7 @@ function setLang(l){
   if(typeof _qty!=='undefined')setQty(_qty||1);
   if(typeof _durFree!=='undefined'&&_durFree)_renderDurFree();
   if(typeof _updateStockNoticeText==='function')_updateStockNoticeText(); // le texte statique du LANG_MAP ci-dessus vient d'écraser le compteur réel
+  if(typeof _applyCreneauLivDisplay==='function')_applyCreneauLivDisplay(); // idem pour le créneau Express (#ds-slot-badge-lbl) : LANG_MAP vient de le repasser en "Matin"
   _rebuildCustomBtn();
   if(typeof _renderSmartLine==='function')_renderSmartLine();
   if(typeof _initDynamicText==='function')_initDynamicText();
