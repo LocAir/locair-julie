@@ -3843,9 +3843,11 @@ function renderReservationsToolbar(){
       <button class="${RESERVATIONS_VIEW==='calendrier'?'on':''}" onclick="setReservationsView('calendrier')">📅 Calendrier</button>
       <button class="${RESERVATIONS_VIEW==='creer'?'on':''}" onclick="setReservationsView('creer')">🆕 Créer</button>
       <button class="${RESERVATIONS_VIEW==='prolonger'?'on':''}" onclick="PROLONG_ORIG=null;setReservationsView('prolonger')">🔄 Prolonger</button>
+      <button class="${RESERVATIONS_VIEW==='prolongation_masse'?'on':''}" onclick="setReservationsView('prolongation_masse')">📢 Offre en masse</button>
     </div>
     <div id="resa-creer-view" class="${RESERVATIONS_VIEW==='creer'?'':'hidden'}">${reservationCreerHtml()}</div>
     <div id="resa-prolonger-view" class="${RESERVATIONS_VIEW==='prolonger'?'':'hidden'}">${reservationProlongerHtml()}</div>
+    <div id="resa-prolongation-masse-view" class="${RESERVATIONS_VIEW==='prolongation_masse'?'':'hidden'}">${reservationProlongationMasseHtml()}</div>
     <div id="resa-liste-view" class="${RESERVATIONS_VIEW==='liste'?'':'hidden'}">
       <div class="list-toolbar">
         <input type="text" id="resa-search" placeholder="🔎 Client, adresse, référence…" oninput="renderReservations()"/>
@@ -4434,6 +4436,84 @@ async function createProlongation(confirmer){
   }finally{
     document.querySelectorAll('#pr-submit-attente, #pr-submit-confirme').forEach(b => b.disabled = false);
   }
+}
+// Offre de prolongation en masse (SMS+lien Stripe personnel à tous les
+// clients actifs qui ont accepté les offres) — deux temps volontairement
+// séparés : un aperçu qui ne touche à rien (juste un compte + une liste),
+// puis un envoi réel confirmé explicitement, jamais l'inverse.
+let BULK_PROLONG_PREVIEW = null;
+function reservationProlongationMasseHtml(){
+  return `
+    <div class="card">
+      <h2>📢 Offre de prolongation en masse</h2>
+      <p class="sub" style="margin-bottom:16px">Envoie un SMS (+ email si le client en a un) avec un lien de paiement Stripe personnel à tous les clients qui ont une location active en ce moment, qui ont coché "j'accepte de recevoir des offres" à leur réservation, et pour qui cette nouvelle date apporte vraiment quelque chose. Jamais 2 fois pour la même personne, jamais à quelqu'un déjà prolongé.</p>
+      <label for="bpm-date">Nouvelle date de fin *</label>
+      <input type="date" id="bpm-date" oninput="bulkProlongReset()"/>
+      <label for="bpm-prix" style="margin-top:8px">Prix de l'offre (€, identique pour tous) *</label>
+      <input type="number" id="bpm-prix" min="0" step="0.01" placeholder="ex. 149.99" oninput="bulkProlongReset()"/>
+      <button class="btn btn-blue btn-block" style="margin-top:16px" id="bpm-preview-btn" onclick="bulkProlongPreview()">👀 Voir qui est concerné</button>
+      <div id="bpm-preview-result"></div>
+      <div class="err" id="bpm-err"></div>
+    </div>`;
+}
+function bulkProlongReset(){
+  BULK_PROLONG_PREVIEW = null;
+  const r = document.getElementById('bpm-preview-result');
+  if(r) r.innerHTML = '';
+}
+async function bulkProlongPreview(){
+  const errEl = document.getElementById('bpm-err');
+  errEl.style.display = 'none';
+  const newDateFin = document.getElementById('bpm-date').value;
+  const prix = parseFloat(document.getElementById('bpm-prix').value) || 0;
+  if(!newDateFin || !prix){ errEl.textContent = 'Date et prix requis.'; errEl.style.display = 'block'; return; }
+  const btn = document.getElementById('bpm-preview-btn');
+  btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'bulk_prolongation_preview', new_date_fin:newDateFin})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    BULK_PROLONG_PREVIEW = { new_date_fin: newDateFin, prix_total_cents: Math.round(prix*100) };
+    const listHtml = d.clients.slice(0,20).map(c => `<li>${escHtml(c.prenom||'')} ${escHtml(c.nom||'')} — fin actuelle ${frDate(c.date_fin)} (${c.canal})</li>`).join('');
+    document.getElementById('bpm-preview-result').innerHTML = `
+      <div style="background:var(--blue-lt);border-radius:12px;padding:14px 16px;margin-top:16px">
+        <p style="font-weight:700">${d.count} client${d.count>1?'s':''} concerné${d.count>1?'s':''}</p>
+        ${d.count ? `<ul style="margin:8px 0 0;padding-left:18px;font-size:13px">${listHtml}</ul>${d.count>20?`<p class="sub" style="margin-top:6px">+ ${d.count-20} autre${d.count-20>1?'s':''}…</p>`:''}` : `<p class="sub" style="margin-top:4px">Personne ne correspond à ces critères pour l'instant.</p>`}
+      </div>
+      ${d.count ? `<button class="btn btn-red btn-block" style="margin-top:12px" id="bpm-send-btn" onclick="bulkProlongSend()">🚀 Envoyer à ces ${d.count} client${d.count>1?'s':''}</button>` : ''}
+    `;
+  }catch(e){
+    errEl.textContent = e.message; errEl.style.display = 'block';
+  }finally{
+    btn.disabled = false;
+  }
+}
+function bulkProlongSend(){
+  if(!BULK_PROLONG_PREVIEW) return;
+  confirmAction(
+    `Cette action envoie un vrai SMS (et email) à chaque client concerné, avec un lien de paiement réel de ${(BULK_PROLONG_PREVIEW.prix_total_cents/100).toFixed(2)} €. Impossible à annuler une fois parti. Envoyer maintenant ?`,
+    async () => {
+      const btn = document.getElementById('bpm-send-btn');
+      if(btn) btn.disabled = true;
+      const errEl = document.getElementById('bpm-err');
+      errEl.style.display = 'none';
+      try{
+        const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'bulk_prolongation_send', ...BULK_PROLONG_PREVIEW})});
+        const d = await r.json();
+        if(!r.ok) throw new Error(d.error||'Erreur');
+        showToast(`${d.envoyes}/${d.total} offre${d.total>1?'s':''} envoyée${d.envoyes>1?'s':''}${d.echecs.length?` — ${d.echecs.length} échec(s)`:''}`, d.echecs.length ? 'error' : 'success');
+        BULK_PROLONG_PREVIEW = null;
+        document.getElementById('bpm-preview-result').innerHTML = d.echecs.length
+          ? `<p class="err" style="display:block">Échecs : ${d.echecs.map(e => escHtml(`${e.prenom||''} ${e.nom||''} (${e.ref}) : ${e.erreur}`)).join(' · ')}</p>`
+          : '';
+      }catch(e){
+        errEl.textContent = e.message; errEl.style.display = 'block';
+      }finally{
+        if(btn) btn.disabled = false;
+      }
+    },
+    { danger: true, yesLabel: 'Oui, envoyer' }
+  );
 }
 function exportReservationsCsv(){
   const rows = RESERVATIONS_CACHE.filter(r => !r.masquee);
