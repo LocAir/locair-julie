@@ -56,13 +56,30 @@
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:15px;-webkit-font-smoothing:antialiased;min-height:100vh}
 .wrap{max-width:520px;margin:0 auto;padding:20px 16px calc(var(--tabbar-h) + env(safe-area-inset-bottom));min-height:100vh}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 20px}
-.logo{font-family:var(--disp);font-size:21px;font-weight:600;color:var(--blue)}
+/* Barre supérieure retravaillée (chantier structurel, demande d'Aly :
+   "les meilleurs apps") : plus de bloc "Prénom NOM · changer" en texte —
+   juste des icônes d'action à droite (actualiser/aide/notifications/
+   déconnexion) et un message de bienvenue centré en dessous, comme la
+   plupart des apps mobiles pro (barre d'action épurée + salutation
+   personnalisée, pas un nom d'utilisateur qui traîne en petit texte). */
+.topbar{display:flex;flex-direction:column;gap:8px;padding:6px 2px 18px}
+.topbar-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.logo{font-family:var(--disp);font-size:21px;font-weight:600;color:var(--blue);flex-shrink:0}
 .logo em{font-style:normal;color:var(--gold)}
+.topbar-actions{display:flex;align-items:center;gap:5px;flex-shrink:0}
+.logo-tag{font-size:12px;font-weight:500;color:var(--grey);font-family:var(--body);letter-spacing:.06em;text-transform:uppercase;vertical-align:middle;margin-left:4px}
+/* 4 icônes + logo tiennent large, mais sur un petit écran (iPhone SE et
+   plus étroit) ça dépassait de quelques pixels — l'étiquette "Transporteur"
+   est décorative (le message "Bonjour, ..." juste en dessous donne déjà le
+   contexte), elle cède la place en premier plutôt que de laisser les
+   boutons d'action se faire couper. */
+@media (max-width:370px){.logo-tag{display:none}}
+.tb-icon-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;border:none;background:var(--navy-bg2);color:var(--blue);font-size:15px;line-height:1;cursor:pointer;transition:background-color .15s ease}
+.tb-icon-btn:active{background-color:rgba(26,43,74,.16)}
+.tb-icon-btn .tab-badge{position:absolute;top:-4px;right:-4px}
+.topbar-greeting{font-family:var(--disp);font-size:16px;font-weight:600;color:var(--black);text-align:center}
 .eyebrow{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;color:var(--grey);margin-bottom:14px;display:flex;align-items:center;gap:10px}
 .eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--blue);flex-shrink:0}
-.who{font-size:12px;color:var(--grey);font-weight:600}
-.who button{background:none;border:none;color:var(--grey);text-decoration:underline;font-size:12px;font-family:var(--body);cursor:pointer;padding:0;margin-left:8px}
 .tracking-badge{background:var(--green-bg);color:var(--green);font-size:12.5px;font-weight:700;text-align:center;padding:9px 12px;border-radius:var(--r-sm);margin-bottom:14px}
 
 .card{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:26px 22px;box-shadow:var(--sh-sm);margin-bottom:14px}
@@ -200,7 +217,11 @@ input[type="checkbox"]{accent-color:var(--blue)}
    (étape "En route") — doit sauter aux yeux, contrairement au reste des
    infos mission qui restent en texte discret. */
 .pickup-card{display:flex;align-items:center;gap:14px;background:var(--blue);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:14px;box-shadow:var(--sh-md)}
-.pickup-card-ic{font-size:32px;flex-shrink:0;line-height:1}
+/* color:#fff explicite : les icônes sont maintenant vectorielles
+   (stroke="currentColor") plutôt que des emojis en couleur — sans ce
+   réglage, currentColor retombait sur le texte noir par défaut, invisible
+   sur le fond bleu foncé de la carte. */
+.pickup-card-ic{color:#fff;flex-shrink:0;line-height:1}
 .pickup-card-body{flex:1;min-width:0}
 .pickup-card-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.72)}
 .pickup-card-nums{font-size:26px;font-weight:800;color:#fff;letter-spacing:.01em;line-height:1.2;margin-top:2px}
@@ -230,13 +251,10 @@ input[type="checkbox"]{accent-color:var(--blue)}
    cohérent avec le fade déjà utilisé sur les overlays/sheets. */
 .screen-fade{animation:fadeInEl .2s ease}
 
-/* Bouton tuto : flottant, au-dessus de la tabbar/detail-back, visible sur
-   toutes les pages sauf la connexion (voir show()). */
-#tuto-fab{position:fixed;right:16px;bottom:calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--navy,#1a2b4a);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
-/* Centre de notifications (Module 5) : même principe que #tuto-fab, côté
-   gauche pour ne pas se superposer au bouton tuto. */
-#notif-fab{position:fixed;left:16px;bottom:calc(var(--tabbar-h) + 12px + env(safe-area-inset-bottom));width:52px;height:52px;border-radius:50%;background:var(--navy,#1a2b4a);color:#fff;border:none;font-size:22px;box-shadow:var(--sh-lg);z-index:40;cursor:pointer}
-#notif-fab-badge{position:absolute;top:-2px;right:-2px}
+/* #tuto-fab / #notif-fab : avant flottants en bas d'écran (voir git blame),
+   remontés dans la barre supérieure (.tb-icon-btn, voir plus haut) —
+   chantier structurel, demande d'Aly. show()/updateWhoBadge() continuent de
+   les afficher/masquer par leurs mêmes id, aucune autre logique à changer. */
 .tuto-cat-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);margin-bottom:8px}
 .tuto-cat-row.disabled{opacity:.55;box-shadow:none;background:var(--bg)}
 .tuto-video-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;gap:10px;border-radius:var(--r);background:var(--white);box-shadow:var(--sh-xs);margin-bottom:8px}
@@ -333,7 +351,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
    arrondi, plus d'air — ces tuiles étaient restées à l'ancien format compact. */
 .stat-tile{flex:1;background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:18px 16px;text-align:center;box-shadow:var(--sh-sm)}
 .stat-tile.tap{cursor:pointer}
-.stat-tile .n{font-family:var(--disp);font-size:28px;font-weight:600;color:var(--black);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.stat-tile .n{font-family:var(--disp);font-size:28px;font-weight:600;color:var(--black);font-variant-numeric:tabular-nums;letter-spacing:-.02em;display:flex;align-items:center;justify-content:center;gap:7px}
 .stat-tile .l{font-size:11px;color:var(--grey);font-weight:600;margin-top:6px;text-transform:uppercase;letter-spacing:.03em}
 .vlist{margin-top:6px}
 
@@ -386,6 +404,13 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .week-day-row.st-arrivee{border-left-color:var(--green)}
 .week-day-row.st-probleme{border-left-color:var(--red)}
 .week-day-row.st-fait{border-left-color:var(--rule)}
+/* Créneau affiché devant la mission (icône type + nom), comme une colonne
+   d'horaire d'agenda — demandé par Aly : jusqu'ici le créneau était noyé
+   dans la ligne grise du dessous, avec l'adresse, pas assez visible pour
+   repérer d'un coup d'œil l'ordre de la journée. Absent (la plupart des
+   récupérations, jamais choisies par le client) : pas de badge, pas
+   d'espace vide réservé. */
+.week-day-cren{flex-shrink:0;font-size:10.5px;font-weight:800;color:var(--blue);background:var(--blue-lt);border-radius:100px;padding:3px 8px;white-space:nowrap}
 .week-day-row .ic{font-size:18px;flex-shrink:0}
 .week-day-row .tx{flex:1;min-width:0}
 .week-day-row .name{font-size:13.5px;font-weight:600;color:var(--black);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -505,11 +530,32 @@ input[type="checkbox"]{accent-color:var(--blue)}
 <div class="wrap">
 
   <div class="topbar">
-    <div class="logo">Loc<em>'Air</em> <span style="font-size:12px;font-weight:500;color:var(--grey);font-family:var(--body);letter-spacing:.06em;text-transform:uppercase;vertical-align:middle;margin-left:4px">Transporteur</span></div>
-    <div style="display:flex;align-items:center;gap:12px">
-      <button class="who hidden" id="refresh-badge" onclick="location.reload()" style="background:none;border:none;cursor:pointer;padding:0" title="Recharger la page">🔄 Actualiser</button>
-      <div class="who hidden" id="who-badge"></div>
+    <div class="topbar-row">
+      <div class="logo">Loc<em>'Air</em> <span class="logo-tag">Transporteur</span></div>
+      <div class="topbar-actions">
+        <button class="tb-icon-btn hidden" id="refresh-badge" onclick="location.reload()" title="Actualiser" aria-label="Actualiser">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+        </button>
+        <!-- Tutoriel/notifications : avant flottants en bas d'écran, remontés
+             ici (chantier structurel, demande d'Aly) — mêmes id/onclick,
+             show() les cache/affiche toujours pareil (voir plus bas). Icônes
+             vectorielles (même style que la barre du bas) plutôt que des
+             emojis, dont le rendu varie d'un téléphone à l'autre et jure
+             avec le reste de l'interface — demande d'Aly : "les emojis
+             doivent être qualitatifs". -->
+        <button id="tuto-fab" class="tb-icon-btn hidden" onclick="openTutoLibrary()" title="Aide" aria-label="Aide">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m22 10-10-5L2 10l10 5 10-5Z"/><path d="M6 12v5c0 1 3 2.5 6 2.5s6-1.5 6-2.5v-5"/></svg>
+        </button>
+        <button id="notif-fab" class="tb-icon-btn hidden" onclick="openNotifCenter()" title="Notifications" aria-label="Notifications">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="tab-badge hidden" id="notif-fab-badge"></span>
+        </button>
+        <button class="tb-icon-btn hidden" id="logout-btn" onclick="logout()" title="Se déconnecter" aria-label="Se déconnecter">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
     </div>
+    <div class="topbar-greeting hidden" id="topbar-greeting"></div>
   </div>
 
   <!-- Bannière hors-connexion : visible sur TOUS les écrans (y compris la
@@ -652,14 +698,6 @@ input[type="checkbox"]{accent-color:var(--blue)}
 <!-- input caché pour la preuve de mission obligatoire (photo, caméra live) -->
 <input type="file" id="media-input" accept="image/*" capture="environment" class="hidden"/>
 
-<!-- Bouton "Tutoriel prise en main", accessible en permanence (voir show()) —
-     un seul élément hors des écrans plutôt que dupliqué dans chacun d'eux. -->
-<button id="tuto-fab" class="hidden" onclick="openTutoLibrary()" title="Aide">🎓</button>
-
-<!-- Centre de notifications (Module 5, Partie 11), même principe que le
-     bouton tuto ci-dessus. -->
-<button id="notif-fab" class="hidden" onclick="openNotifCenter()" title="Notifications">🔔<span class="tab-badge hidden" id="notif-fab-badge"></span></button>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script>
 const API = (path) => '/api/' + path;
@@ -801,12 +839,20 @@ function friendlyErrorMessage(e){
   return looksNetwork ? 'Pas de connexion — vérifie ton réseau et réessaie.' : (raw || 'Erreur');
 }
 
+// Remplace l'ancien bloc "Prénom NOM · changer" par une salutation centrée
+// ("Bonjour, Tom 👋") — le prénom suffit, pas besoin du nom de famille pour
+// se reconnaître. Le bouton de déconnexion devient une icône dans la barre
+// d'actions (logout-btn) plutôt qu'un lien texte "changer" à côté du nom.
 function updateWhoBadge(){
-  const b=document.getElementById('who-badge');
+  const greeting = document.getElementById('topbar-greeting');
   if(STATE.transporteurNom){
-    b.classList.remove('hidden');
-    b.innerHTML = escHtml(STATE.transporteurNom) + '<button onclick="logout()">changer</button>';
+    const prenom = STATE.transporteurNom.trim().split(/\s+/)[0] || '';
+    if(greeting){
+      greeting.textContent = prenom ? `Bonjour, ${prenom} 👋` : '';
+      greeting.classList.toggle('hidden', !prenom);
+    }
     document.getElementById('refresh-badge')?.classList.remove('hidden');
+    document.getElementById('logout-btn')?.classList.remove('hidden');
   }
 }
 
@@ -817,8 +863,9 @@ function logout(){
   STATE = {token:'',transporteurId:null,transporteurNom:'',missions:[],en_pause:false,currentMission:null,pendingUpload:null,autoOpenChecked:false,
     tourneeOrder:[], tourneeTotal:0, tourneeMatrix:null, tourneeMissionIndex:[], tourneeCurrentIdx:null};
   stopPositionTracking();
-  document.getElementById('who-badge').classList.add('hidden');
+  document.getElementById('topbar-greeting')?.classList.add('hidden');
   document.getElementById('refresh-badge')?.classList.add('hidden');
+  document.getElementById('logout-btn')?.classList.add('hidden');
   show('login-screen');
 }
 
@@ -1374,7 +1421,7 @@ function openChecklistPopup(onValidated){
   overlay.innerHTML = `
     <div class="sheet">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-        <h1 style="margin-bottom:4px">🎒 Prêt à partir ?</h1>
+        <h1 style="margin-bottom:4px;display:flex;align-items:center;gap:8px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="m9 13 2 2 4-4"/></svg>Prêt à partir ?</h1>
         <button type="button" class="btn-chip" style="flex-shrink:0;white-space:nowrap;margin-top:2px" onclick="checkAllChecklistPopup()">✅ Tout cocher</button>
       </div>
       <p class="sub" style="margin-bottom:10px">Avant ta première mission de la journée — coche ce que tu as pris.</p>
@@ -1608,7 +1655,7 @@ function weekAheadHtml(allCaughtUp){
   return `
     <div class="week-card">
       <div class="week-card-head">
-        <div class="week-card-title">📅 Ma semaine</div>
+        <div class="week-card-title"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>Ma semaine</div>
         <div class="week-nav">
           <button class="week-nav-btn" ${STATE.weekOffset<=0?'disabled':''} onclick="shiftWeekAhead(-1)" aria-label="Semaine précédente">◀</button>
           <span class="week-nav-range">${rangeLabel}</span>
@@ -1632,7 +1679,9 @@ function weekMissionItemHtml(m){
   const isAutre = m.type==='autre';
   const nom = isAutre ? escHtml(m.titre||'Mission libre') : ((escHtml((c.prenom||'')+' '+(c.nom||'')).trim())||'Client');
   const adresse = isAutre ? (m.adresse_libre||'') : (c.adresse||'');
-  const metaParts = [m.creneau?escHtml(m.creneau):'', adresse?escHtml(adresse):''].filter(Boolean);
+  // Le créneau part maintenant devant la mission (badge avant l'icône, voir
+  // plus bas) plutôt que noyé ici avec l'adresse.
+  const metaParts = [adresse?escHtml(adresse):''].filter(Boolean);
   const expanded = STATE.weekExpandedId === m.id;
   let detailHtml = '';
   if(expanded){
@@ -1660,7 +1709,8 @@ function weekMissionItemHtml(m){
   const statusLabel = (m.statut==='fait') ? 'Terminée' : (m.statut==='probleme') ? 'Problème' : '';
   return `<div class="week-day-item">
       <div class="week-day-row st-${m.statut}${expanded?' expanded':''}" onclick="toggleWeekMission(${m.id})">
-        <span class="ic">${TYPE_ICON[m.type]||'📍'}</span>
+        ${m.creneau?`<span class="week-day-cren">${escHtml(m.creneau)}</span>`:''}
+        <span class="ic">${typeIconSvg(m.type,18)}</span>
         <div class="tx"><div class="name">${nom}</div><div class="meta">${metaParts.join(' · ')||missionTypeLabel(m)}</div></div>
         ${statusLabel?`<span class="week-day-status st-${m.statut}">${statusLabel}</span>`:''}
         <span class="chev">›</span>
@@ -1682,6 +1732,32 @@ function shiftWeekAhead(delta){
   STATE.weekExpandedId = null;
   renderDashboard();
 }
+// Glisser du doigt sur la bande de jours pour changer de semaine, au lieu de
+// devoir viser les flèches ◀▶ — demande d'Aly. Le widget "Ma semaine" est
+// réinjecté en entier à chaque rendu (renderDashboard réécrit son HTML), donc
+// un addEventListener posé directement dessus serait perdu à chaque
+// rafraîchissement ; posé une seule fois sur le document, avec délégation
+// (closest('.week-strip')), il survit à tous les rendus suivants.
+let _weekSwipeX = null, _weekSwipeY = null;
+document.addEventListener('touchstart', e => {
+  const strip = e.target.closest('.week-strip');
+  if(!strip){ _weekSwipeX = null; return; }
+  const t = e.touches[0];
+  _weekSwipeX = t.clientX; _weekSwipeY = t.clientY;
+}, {passive:true});
+document.addEventListener('touchend', e => {
+  if(_weekSwipeX == null) return;
+  const t = e.changedTouches[0];
+  const dx = t.clientX - _weekSwipeX, dy = t.clientY - _weekSwipeY;
+  _weekSwipeX = null;
+  // Geste net et surtout horizontal (pas un scroll vertical qui a juste
+  // dérivé un peu) — 45px minimum pour ne pas confondre avec un tapotement
+  // sur un jour de la bande.
+  if(Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5){
+    if(dx < 0) shiftWeekAhead(1);
+    else if((STATE.weekOffset||0) > 0) shiftWeekAhead(-1);
+  }
+}, {passive:true});
 function renderDashboard(){
   const zone = document.getElementById('dashboard-content');
   const todayStr = todayParisStr();
@@ -1713,7 +1789,7 @@ function renderDashboard(){
       <div class="dash-hero">
         <div class="eyebrow">${eyebrow}</div>
         <h2>${m.type==='autre'?escHtml(nom):nom}</h2>
-        <p>${TYPE_ICON[m.type]||'📍'} ${missionTypeLabel(m)} · 📍 ${escHtml(adresse)}</p>
+        <p>${typeIconSvg(m.type,14)} ${missionTypeLabel(m)} · 📍 ${escHtml(adresse)}</p>
         <button class="btn btn-blue btn-block" onclick="${cta}">${ctaLabel}</button>
       </div>`;
   };
@@ -1728,7 +1804,7 @@ function renderDashboard(){
     heroHtml = `
       <div class="dash-hero">
         <div class="eyebrow">Avant de démarrer</div>
-        <h2>🎒 Valider la checklist</h2>
+        <h2 style="display:flex;align-items:center;gap:8px"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="m9 13 2 2 4-4"/></svg>Valider la checklist</h2>
         <p>${enCours.length>1?`${enCours.length} missions t'attendent`:'Une mission t\'attend'} — récupère d'abord ton matériel au box.</p>
         <button class="btn btn-blue btn-block" onclick="openMission(${enCours[0].id})">Valider la checklist →</button>
       </div>`;
@@ -1756,8 +1832,8 @@ function renderDashboard(){
   // le reste de l'app (ex. la carte "Checklist validée" juste en dessous).
   const statsHtml = `
     <div class="stat-row">
-      <div class="stat-tile tap" onclick="switchTab('missions')"><div class="n">📋 ${countJour}</div><div class="l">Missions du jour</div></div>
-      <div class="stat-tile tap" onclick="switchTab('activite')"><div class="n" style="color:var(--green)">💶 ${gainsJour?Math.round(gainsJour/100)+' €':'—'}</div><div class="l">Prévu du jour</div></div>
+      <div class="stat-tile tap" onclick="switchTab('missions')"><div class="n"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.5"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/></svg>${countJour}</div><div class="l">Missions du jour</div></div>
+      <div class="stat-tile tap" onclick="switchTab('activite')"><div class="n" style="color:var(--green)"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.6"><rect x="3.5" y="7" width="17" height="12.5" rx="2.2"/><path d="M3.5 10.5h17"/><circle cx="16" cy="14.7" r="1" fill="currentColor" stroke="none"/></svg>${gainsJour?Math.round(gainsJour/100)+' €':'—'}</div><div class="l">Prévu du jour</div></div>
     </div>`;
 
   // Un seul repère checklist sur toute la page : le "cadran bleu" ci-dessus
@@ -1991,6 +2067,23 @@ const PROBLEME_TYPE_LABEL = {
   retard: '⏰ Retard important', autre: '❓ Autre problème',
 };
 const TYPE_ICON  = {livraison:'📦', recuperation:'🔄', changement:'🔁', autre:'🧳'};
+// Icônes vectorielles du type de mission — remplace TYPE_ICON (emoji, rendu
+// inégal d'un téléphone à l'autre) dans les endroits les plus visibles
+// (chantier structurel, demande d'Aly : "les emojis doivent être
+// qualitatifs"). TYPE_ICON reste utilisé tel quel là où un simple emoji
+// suffit encore (ex. libellés de select, textes d'email) — seul ce qui
+// s'affiche en gros dans l'app passe au vectoriel.
+const TYPE_ICON_PATHS = {
+  livraison:    '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/>',
+  recuperation: '<polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>',
+  changement:   '<polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/>',
+  autre:        '<rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>',
+};
+const TYPE_ICON_FALLBACK_PATH = '<path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/>';
+function typeIconSvg(type, size){
+  size = size || 16;
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-3px">${TYPE_ICON_PATHS[type]||TYPE_ICON_FALLBACK_PATH}</svg>`;
+}
 const STATUT_LABEL = {a_faire:'Nouvelle', acceptee:'Acceptée', en_route:'En route', arrivee:'Sur place', probleme:'Problème signalé', fait:'Terminée'};
 // Label précis selon type + option d'installation
 function missionTypeLabel(m){
@@ -2062,7 +2155,7 @@ function missionCardHtml(m){
     <div class="mcard st-${m.statut}" onclick="openMission(${m.id})">
       <div class="mcard-name">${isAutre?escHtml(nom):nom}</div>
       <div class="mcard-top">
-        <span class="mcard-icon">${TYPE_ICON[m.type]||'📍'}</span>
+        <span class="mcard-icon">${typeIconSvg(m.type,15)}</span>
         <span class="mcard-type">${missionTypeLabel(m)}${unitsTxt?` · 🔢 ${unitsTxt}`:''}</span>
         <span class="mcard-badge">${badge}</span>
         ${lateBadge}
@@ -2642,7 +2735,7 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
     const cRoute = m.client || {};
     const etageHtml = (cRoute.etage && cRoute.etage!=='—') ? `
       <div class="pickup-card" style="margin-bottom:12px">
-        <span class="pickup-card-ic">🏢</span>
+        <span class="pickup-card-ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v18"/><path d="M3 22h18"/><path d="M9 8h1M14 8h1M9 12h1M14 12h1M9 16h1M14 16h1"/></svg></span>
         <div class="pickup-card-body">
           <div class="pickup-card-label">Étage chez le client</div>
           <div class="pickup-card-nums">${escHtml(cRoute.etage)}</div>
@@ -2655,7 +2748,7 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
     const needsPickup = m.type==='livraison' || m.type==='changement';
     const pickupHtml = needsPickup ? (numeros.length ? `
       <div class="pickup-card">
-        <span class="pickup-card-ic">❄️</span>
+        <span class="pickup-card-ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="4.5" y1="7" x2="19.5" y2="17"/><line x1="19.5" y1="7" x2="4.5" y2="17"/></svg></span>
         <div class="pickup-card-body">
           <div class="pickup-card-label">${plural?'Climatiseurs à récupérer':'Climatiseur à récupérer'}</div>
           <div class="pickup-card-nums">${numeros.map(n=>'N°'+n).join('  ·  ')}</div>
@@ -3018,7 +3111,7 @@ function missionWizardHtml(m, infoRows, mapsUrl){
   const numeros = m.appareil_numeros||[];
   const climBadgeHtml = (key!=='route' && numeros.length) ? `
     <div class="pickup-card" style="margin-bottom:12px">
-      <span class="pickup-card-ic">❄️</span>
+      <span class="pickup-card-ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="4.5" y1="7" x2="19.5" y2="17"/><line x1="19.5" y1="7" x2="4.5" y2="17"/></svg></span>
       <div class="pickup-card-body">
         <div class="pickup-card-label">${m.type==='changement'&&key==='nouveau'?'Nouveau climatiseur':(numeros.length>1?'Climatiseurs':'Climatiseur')}</div>
         <div class="pickup-card-nums">${numeros.map(n=>'N°'+n).join('  ·  ')}</div>
@@ -3181,7 +3274,7 @@ function renderDetail(){
     </div>
     <div class="card">
       ${(['acceptee','en_route','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
-      <h1>${TYPE_ICON[m.type]||''} ${missionTypeLabel(m)}</h1>
+      <h1 style="display:flex;align-items:center;gap:8px">${typeIconSvg(m.type,22)}${missionTypeLabel(m)}</h1>
       ${m.montant_preview?`<div class="detail-earn">💶 ${Math.round(m.montant_preview/100)} €${(m.client||{}).hors_zone?' · Hors zone':''}${(m.client||{}).express?' · 🚀 Express':''}</div>`:''}
       <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):''].filter(Boolean).join(' · ')}</p>
       ${bodyHtml}
@@ -4209,7 +4302,7 @@ function missionsFiltreListHtml(missions){
     return `
     <div class="vrow" style="align-items:flex-start${ouvrable?';cursor:pointer':''}" ${ouvrable?`onclick="openMissionFromHistory(${m.id})"`:''}>
       <span>
-        <span class="mcard-icon" style="font-size:14px;vertical-align:-2px">${TYPE_ICON[m.type]||'📍'}</span>
+        <span class="mcard-icon">${typeIconSvg(m.type,14)}</span>
         ${TYPE_LABEL[m.type]||m.type}
         <div class="mcard-meta" style="margin-top:2px">${m.date_prevue?new Date(m.date_prevue+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
         ${problemeTxt?`<div class="mcard-meta" style="margin-top:2px">${escHtml(problemeTxt)}</div>`:''}
@@ -4270,7 +4363,7 @@ function missionsHistoryHtml(missions){
           ${items.map(m => `
             <div class="vrow" style="align-items:flex-start">
               <span>
-                <span class="mcard-icon" style="font-size:14px;vertical-align:-2px">${TYPE_ICON[m.type]||'📍'}</span>
+                <span class="mcard-icon">${typeIconSvg(m.type,14)}</span>
                 ${TYPE_LABEL[m.type]||m.type}
                 <div class="mcard-meta" style="margin-top:2px">${m.fait_at?new Date(m.fait_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
                 ${(m.fait_at && new Date(m.fait_at) >= photoCutoff) ? `<button class="btn btn-grey" style="margin-top:6px;padding:8px 12px;font-size:12px" onclick="openMissionMedia(${m.id})">📷 Photos</button>` : ''}

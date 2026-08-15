@@ -46,7 +46,16 @@
 body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:14.5px;-webkit-font-smoothing:antialiased;min-height:100vh;letter-spacing:-.005em}
 ::selection{background:var(--gold-lt);color:var(--black)}
 .wrap{max-width:760px;margin:0 auto;padding:32px 18px 80px}
-.logo{font-family:var(--disp);font-size:23px;font-weight:600;color:var(--blue);margin-bottom:26px;letter-spacing:.01em;display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+/* Barre supérieure retravaillée (amélioration UX, demande d'Aly) : même
+   principe que le chantier structurel déjà fait côté transporteur — icônes
+   d'action compactes plutôt que des boutons texte+emoji ("🔄 Actualiser",
+   "🚪 Déconnexion") qui, avec "Loc'Air · Admin" à côté, passaient à la
+   ligne sur mobile et donnaient un rendu bancal. */
+.logo{font-family:var(--disp);font-size:23px;font-weight:600;color:var(--blue);margin-bottom:26px;letter-spacing:.01em;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.logo-tag{font-size:11px;font-weight:600;color:var(--grey-soft);font-family:var(--body);letter-spacing:.06em;text-transform:uppercase;margin-left:6px;vertical-align:middle}
+.a-topbar-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.tb-icon-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:none;background:var(--bg);color:var(--blue);font-size:16px;line-height:1;cursor:pointer;transition:background-color .15s ease}
+.tb-icon-btn:active{background-color:var(--blue-lt)}
 .logout-link{font-family:var(--body);font-size:12.5px;font-weight:700;color:var(--grey);background:none;border:none;cursor:pointer;letter-spacing:normal}
 .logout-link:hover{color:var(--red)}
 .forgot-link{display:block;width:100%;text-align:center;font-family:var(--body);font-size:13px;font-weight:700;color:var(--blue);background:none;border:none;cursor:pointer;padding:6px}
@@ -87,6 +96,15 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .btn-grey:hover:not(:disabled){border-color:var(--grey-soft);color:var(--black);transform:translateY(-1px)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn-block{width:100%}
+/* Tuile d'action (Accueil : "Nouvelle réservation" / "Créer une mission") —
+   icône au-dessus du libellé plutôt qu'à côté : un libellé de 2 mots à
+   côté d'une icône dans un bouton à moitié de la largeur de l'écran finit
+   presque toujours par passer à la ligne, avec un rendu bancal (icône
+   collée au premier mot, le reste esseulé en dessous). Empilé et centré,
+   le passage à la ligne du libellé reste propre quelle que soit la
+   largeur (amélioration UX, demande d'Aly). */
+.a-cta-tile{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 10px;font-size:13px;line-height:1.25;text-align:center}
+.a-cta-tile svg{flex-shrink:0}
 .err{background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:11px 14px;font-size:13px;margin-top:10px;display:none;line-height:1.5}
 .hidden{display:none !important}
 
@@ -160,9 +178,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
     font-family:var(--body);font-size:9.5px;font-weight:700;color:var(--grey);cursor:pointer;
     transition:background-color .15s ease,color .15s ease;
   }
-  .bottom-nav button .bn-ic{font-size:19px;line-height:1}
+  .bottom-nav button .bn-ic{font-size:19px;line-height:1;display:flex}
+  .bottom-nav button .bn-ic svg{width:19px;height:19px}
   .bottom-nav button.on{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
   .bottom-nav .bn-dot{position:absolute;top:6px;right:calc(50% - 15px);width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid var(--white)}
+  /* Sans ce décalage, la barre "N sélectionné(s) / Supprimer" (Stock, mode
+     sélection) se posait pile sur la barre de navigation du bas — les deux
+     fixed en bas d'écran se chevauchaient, "Supprimer" recouvrant Stock/Plus
+     et rendant la nav illisible/inutilisable tant qu'une sélection était en
+     cours. Remonte la barre de sélection au-dessus du bottom-nav. */
+  .stock-select-bar{bottom:calc(84px + env(safe-area-inset-bottom))}
 }
 
 .a-search{position:relative;margin-bottom:16px}
@@ -366,10 +391,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    fiches "grandes et visuelles" au lieu de lignes compactes (chantier
    structurel demandé par Aly, maquette catalogue/fiche). */
 .row-item{padding:20px 22px;border:1px solid var(--rule);border-radius:var(--r-lg);margin-bottom:14px;background:var(--white);box-shadow:var(--sh-sm)}
-.row-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
+/* flex-wrap : avec 2 chips (ex. "Hors zone" + "Confirmée") à côté d'un nom
+   sur un écran étroit, les deux se disputaient la même ligne et le nom
+   finissait écrasé, forcé à passer à la ligne au milieu d'un mot — les
+   chips passent maintenant proprement à la ligne suivante s'il manque de
+   place, plutôt que de comprimer le titre (amélioration UX, demande d'Aly,
+   partagé par tous les écrans qui utilisent .row-item). */
+.row-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
 .row-title{font-family:var(--disp);font-weight:600;font-size:19px;letter-spacing:0}
 .row-meta{font-size:12.5px;color:var(--grey);line-height:1.6}
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:6px 12px 6px 10px;border-radius:100px;background:var(--bg);color:var(--grey)}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:6px 12px 6px 10px;border-radius:100px;background:var(--bg);color:var(--grey);white-space:nowrap;flex-shrink:0}
 .chip::before{content:'';width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
 .chip.confirmee,.chip.fait,.chip.verse,.chip.actif,.chip.terminee{background:var(--green-bg);color:var(--green)}
 .chip.en_attente,.chip.a_faire,.chip.acceptee,.chip.demande,.chip.en_route,.chip.arrivee{background:var(--amber-bg);color:var(--amber)}
@@ -421,7 +452,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 /* Carte réservation : hiérarchie client → dates → prix, au lieu d'une seule
    ligne de métadonnées à parser. Le prix reprend le traitement typographique
    des tuiles chiffrées de l'Accueil (police --disp) pour rester cohérent. */
-.resa-addr{font-size:12.5px;color:var(--grey);margin-bottom:8px;display:flex;align-items:baseline;gap:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.resa-addr{font-size:12.5px;color:var(--grey);margin-bottom:8px;display:flex;align-items:baseline;gap:5px;white-space:nowrap}
+/* L'ellipse doit s'appliquer au TEXTE de l'adresse, pas au conteneur flex
+   dans son ensemble — depuis que l'icône est un <svg> (élément à part, plus
+   un simple emoji dans le flux de texte), .resa-addr a 2 enfants flex ;
+   sans ce sous-conteneur dédié, l'ellipse ne coupait plus correctement une
+   adresse trop longue. */
+.resa-addr-txt{overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
 .resa-dates{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:4px 10px;font-size:13px;padding-bottom:8px;margin-bottom:8px;border-bottom:1px dashed var(--rule)}
 .resa-date-range{font-family:var(--disp);font-size:17px;font-weight:600;color:var(--black);letter-spacing:-.01em;white-space:nowrap}
 .resa-rel{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--grey);white-space:nowrap;flex-shrink:0}
@@ -429,6 +466,12 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .resa-bottom{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:2px}
 .resa-price{font-family:var(--disp);font-size:23px;font-weight:600;color:var(--black);letter-spacing:-.01em;white-space:nowrap;flex-shrink:0}
 .resa-sub{font-size:11px;color:var(--grey-soft);text-align:right;min-width:0;line-height:1.5}
+/* Badges "extra" (forfait/code promo/partenaire) — chacun sur son propre
+   pill, en rangée qui passe à la ligne si besoin, plutôt que concaténés en
+   une seule phrase à droite qui pouvait déborder de la carte (amélioration
+   UX, demande d'Aly). */
+.resa-badges-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-top:8px}
+.resa-badge{font-size:11px;padding:3px 9px;border-radius:100px;border:1px solid;white-space:nowrap}
 
 .row-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
 .row-actions .btn{padding:8px 13px;font-size:12.5px}
@@ -544,7 +587,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .previsions-bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
 .previsions-bar-track{width:100%;height:52px;background:var(--bg);border-radius:var(--r-sm);display:flex;align-items:flex-end;overflow:hidden}
 .previsions-bar-fill{width:100%;border-radius:var(--r-sm) var(--r-sm) 0 0;transition:height .3s ease}
-.previsions-bar-lbl{font-size:9px;color:var(--grey-soft);font-weight:700;text-align:center;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%}
+/* Pas de nowrap/ellipsis : sur 8 colonnes serrées (mobile), une étiquette
+   d'1-2 caractères plus large que ses voisines ("26 sept." vs "3 oct.")
+   suffisait à se faire tronquer toute seule ("26 se..."), illisible et
+   arbitraire vu que les autres semaines s'affichaient en entier juste à
+   côté. Laisser le texte passer sur 2 lignes avec une hauteur réservée
+   fixe (min-height) affiche toujours la date complète, sans désaligner les
+   barres entre elles. */
+.previsions-bar-lbl{font-size:9px;color:var(--grey-soft);font-weight:700;text-align:center;line-height:1.25;width:100%;min-height:23px}
 
 .day-progress .dp-top{display:flex;justify-content:space-between;font-size:11.5px;color:var(--grey);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
 .day-progress .dp-bar{height:8px;border-radius:100px;background:var(--bg);overflow:hidden}
@@ -656,12 +706,18 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 </head>
 <body>
 <div class="wrap">
-  <div class="logo"><span>Loc<em>'Air</em> · Admin</span><span style="display:flex;align-items:center;gap:14px">
+  <div class="logo"><span>Loc<em>'Air</em><span class="logo-tag">Admin</span></span><span class="a-topbar-actions">
     <details class="more-actions city-quick hidden" id="a-city-quick">
       <summary title="Changer de ville / zone">🌍 <span id="a-city-quick-label">Ville</span></summary>
       <div class="more-actions-menu" id="a-city-quick-menu"></div>
     </details>
-    <button class="logout-link hidden" id="a-refresh-btn" onclick="location.reload()" title="Recharger la page">🔄 Actualiser</button><button class="logout-link hidden" id="a-logout-btn" onclick="adminLogout()">🚪 Déconnexion</button></span></div>
+    <button class="tb-icon-btn hidden" id="a-refresh-btn" onclick="location.reload()" title="Actualiser" aria-label="Actualiser">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+    </button>
+    <button class="tb-icon-btn hidden" id="a-logout-btn" onclick="adminLogout()" title="Se déconnecter" aria-label="Se déconnecter">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </button>
+  </span></div>
 
   <div id="a-login" class="login-screen">
     <div class="card login-card">
@@ -778,11 +834,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
      tiroir complet existant (toggleMobileMenu), tous les autres onglets y
      restent accessibles sans être dupliqués ici. -->
 <nav class="bottom-nav" id="bottom-nav">
-  <button class="bn-item on" data-tab="accueil" onclick="switchAdminTab('accueil')"><span class="bn-ic">🏠</span>Accueil</button>
-  <button class="bn-item" data-tab="livraisons" onclick="switchAdminTab('livraisons')"><span class="bn-ic">🚚</span>Missions</button>
-  <button class="bn-item" data-tab="reservations" onclick="switchAdminTab('reservations')"><span class="bn-ic">🧾</span>Résa.</button>
-  <button class="bn-item" data-tab="stock" onclick="switchAdminTab('stock')"><span class="bn-ic">📦</span>Stock</button>
-  <button class="bn-item" onclick="toggleMobileMenu()"><span class="bn-ic">☰</span>Plus<span class="bn-dot hidden" id="bn-plus-dot"></span></button>
+  <button class="bn-item on" data-tab="accueil" onclick="switchAdminTab('accueil')"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10"/><path d="M10 20.5V15h4v5.5"/></svg></span>Accueil</button>
+  <button class="bn-item" data-tab="livraisons" onclick="switchAdminTab('livraisons')"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg></span>Missions</button>
+  <button class="bn-item" data-tab="reservations" onclick="switchAdminTab('reservations')"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 11h6M9 14.5h6M9 18h3.5"/></svg></span>Résa.</button>
+  <button class="bn-item" data-tab="stock" onclick="switchAdminTab('stock')"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg></span>Stock</button>
+  <button class="bn-item" onclick="toggleMobileMenu()"><span class="bn-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg></span>Plus<span class="bn-dot hidden" id="bn-plus-dot"></span></button>
 </nav>
 
 <!-- input caché pour l'upload des fichiers vidéo tutoriel (onglet Tutoriels) -->
@@ -2099,8 +2155,14 @@ async function loadDashboard(periode, silent){
     // qu'il y a à faire maintenant, les chiffres de la veille viennent après.
     zone.innerHTML = `
       <div style="display:flex;gap:10px;margin-bottom:16px">
-        <button class="btn btn-blue" style="flex:1;padding:16px 20px;font-size:14.5px" onclick="goToNouvelleReservation()">🆕 Nouvelle réservation</button>
-        <button class="btn btn-blue" style="flex:1;padding:16px 20px;font-size:14.5px" onclick="openCreateMissionModal()">🚚 Créer une mission</button>
+        <button class="btn btn-blue a-cta-tile" onclick="goToNouvelleReservation()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 13h6M12 10v6"/></svg>
+          <span>Nouvelle réservation</span>
+        </button>
+        <button class="btn btn-blue a-cta-tile" onclick="openCreateMissionModal()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg>
+          <span>Créer une mission</span>
+        </button>
       </div>
       ${d.agregat ? '' : boardHtml(ld.livraisons||[])}
       ${morningBannerHtml(d.hier)}
@@ -2198,6 +2260,14 @@ function parVilleTableHtml(parVille){
 // journée (créneau, client, adresse, unité, livreur assigné, statut). Pas la
 // durée de location, pas l'email, pas le prix : ça, c'est le rôle de l'onglet
 // Réservations, pas celui d'un board logistique du jour.
+// Petites icônes vectorielles réutilisées pour les métadonnées de plusieurs
+// écrans (board du jour, fiches réservation...) — remplace les emojis
+// (📍❄️👤📅) au fil du chantier UX, demande d'Aly. Un seul point de réglage
+// par icône plutôt qu'un SVG dupliqué à chaque endroit.
+const BOARD_IC_PIN = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;flex-shrink:0;opacity:.6"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0Z"/><circle cx="12" cy="10" r="3"/></svg>';
+const BOARD_IC_SNOW = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;flex-shrink:0;opacity:.6"><line x1="12" y1="2" x2="12" y2="22"/><line x1="4.5" y1="7" x2="19.5" y2="17"/><line x1="19.5" y1="7" x2="4.5" y2="17"/></svg>';
+const BOARD_IC_PERSON = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;flex-shrink:0;opacity:.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>';
+const BOARD_IC_CAL = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.7"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>';
 function boardRowHtml(m){
   const res = m.reservation || {};
   const isAutre = m.type === 'autre';
@@ -2216,7 +2286,11 @@ function boardRowHtml(m){
         <span class="row-title">${escHtml(m.creneau||'—')} · ${escHtml(nom)}</span>
         <span class="chip ${m.statut}">${LIV_LABEL[m.statut]||m.statut}</span>
       </div>
-      <div class="row-meta" style="display:flex;flex-wrap:wrap;align-items:center;gap:4px">${escHtml(adresse)}${numeros?' · Climatiseur n°'+escHtml(numeros):''} · ${transpBit}</div>
+      <div class="row-meta">${BOARD_IC_PIN} ${escHtml(adresse)}</div>
+      <div class="row-meta" style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:2px">
+        ${numeros?`<span>${BOARD_IC_SNOW} N°${escHtml(numeros)}</span>`:''}
+        <span style="display:flex;align-items:center;gap:4px">${BOARD_IC_PERSON} ${transpBit}</span>
+      </div>
     </div>`;
 }
 // Le code postal est déjà présent dans l'adresse (le site utilise l'autocomplete
@@ -2833,9 +2907,9 @@ async function loadStock(silent){
           <span><i class="dot dot-blue"></i> ${rd2.en_location} en location</span>
         </div>
         <p class="sub" style="margin-top:14px">Se met à jour automatiquement à chaque réservation et à chaque retour confirmé par un transporteur. Chaque appareil a son numéro — le livreur sait exactement lequel récupérer.</p>
-        <button id="sync-btn" class="btn btn-blue" onclick="forceSyncStock()" style="margin-top:12px">🔄 Forcer la synchronisation avec le site</button>
+        <button id="sync-btn" class="btn btn-blue" onclick="forceSyncStock()" style="margin-top:12px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>Forcer la synchronisation avec le site</button>
         <span id="sync-result" style="margin-left:10px;font-size:13px;display:none"></span>
-        <button class="btn btn-grey" style="margin-top:12px;margin-left:8px" onclick="openScannerModal()">🔫 Scanner le stock</button>
+        <button class="btn btn-grey" style="margin-top:12px;margin-left:8px" onclick="openScannerModal()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>Scanner le stock</button>
       </div>
       ${offresPrivilegeHtml()}
       ${rd.ok && dd ? `
@@ -3366,9 +3440,9 @@ async function voirFicheAppareil(id, numero){
         <div class="stat-tile"><div class="n">${s.nombre_locations}</div><div class="l">Locations</div></div>
         <div class="stat-tile"><div class="n">${s.jours_loues}</div><div class="l">Jours loués</div></div>
         <div class="stat-tile"><div class="n">${Math.round(s.taux_utilisation*100)}%</div><div class="l">Taux d'utilisation</div></div>
-        <div class="stat-tile"><div class="n">${euros(s.ca_genere_euros*100)}</div><div class="l">CA généré</div></div>
-        <div class="stat-tile"><div class="n">${euros(s.cout_maintenance_euros*100)}</div><div class="l">Coût maintenance</div></div>
-        <div class="stat-tile"><div class="n" style="${s.rentabilite_estimee_euros<0?'color:var(--red)':'color:var(--green)'}">${euros(s.rentabilite_estimee_euros*100)}</div><div class="l">Rentabilité estimée</div></div>
+        <div class="stat-tile"><div class="n">${eurosMilliers(s.ca_genere_euros)}</div><div class="l">CA généré</div></div>
+        <div class="stat-tile"><div class="n">${eurosMilliers(s.cout_maintenance_euros)}</div><div class="l">Coût maintenance</div></div>
+        <div class="stat-tile"><div class="n" style="${s.rentabilite_estimee_euros<0?'color:var(--red)':'color:var(--green)'}">${eurosMilliers(s.rentabilite_estimee_euros)}</div><div class="l">Rentabilité estimée</div></div>
       </div>` : '';
 
     const reservationsHtml = (d.reservations||[]).slice(0,10).map(r => `
@@ -3543,9 +3617,14 @@ function refCopyHtml(ref){
 // que pour les codes historiques et jamais pour un code créé dans l'onglet
 // Offres. On affiche maintenant juste le code, sans deviner de pourcentage —
 // le montant réellement facturé reste de toute façon visible juste à côté.
+// Badges "extra" de la fiche réservation (forfait/promo/partenaire) — pas de
+// séparateur " · " en dur ici : ils sont posés côte à côte dans une rangée à
+// eux (.resa-badges-row, flex-wrap) plutôt que concaténés dans une seule
+// phrase, pour ne jamais déborder de la carte quand plusieurs badges
+// s'appliquent en même temps (amélioration UX, demande d'Aly).
 function resaPromoBadgeHtml(res){
   if(!res.parrain_code)return '';
-  return ' · <span style="background:var(--gold-lt);color:var(--gold-d);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--gold)">Code promo : '+escHtml(res.parrain_code)+'</span>';
+  return '<span class="resa-badge" style="background:var(--gold-lt);color:var(--gold-d);border-color:var(--gold)">Code promo : '+escHtml(res.parrain_code)+'</span>';
 }
 // Badge "pack à prix fixe" — affiché si la réservation vient d'un Pack
 // Sérénité (voir admin-forfaits.js). res.forfait vient de la jointure
@@ -3555,7 +3634,11 @@ function resaPromoBadgeHtml(res){
 function resaForfaitBadgeHtml(res){
   if(!res.forfait_id)return '';
   const nom=res.forfait?.nom||'Pack (supprimé)';
-  return ' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🎁 '+escHtml(nom)+'</span>';
+  return '<span class="resa-badge" style="background:var(--blue-lt);color:var(--blue);border-color:var(--blue)">🎁 '+escHtml(nom)+'</span>';
+}
+function resaPartenaireBadgeHtml(res){
+  if(!res.partenaire)return '';
+  return '<span class="resa-badge" style="background:var(--blue-lt);color:var(--blue);border-color:var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>';
 }
 // Qui s'occupe de la livraison / récupération d'une réservation — lit le
 // cache Livraisons déjà chargé (LIVRAISONS_CACHE), quelle que soit la
@@ -3618,7 +3701,12 @@ function reservationMoreActionsHtml(res, compact){
 }
 function reservationRowHtml(res, readOnly){
   const nom = escHtml((res.prenom||'')+' '+(res.nom||''))||'—';
-  const entrepriseTag = res.type_client==='entreprise' ? ` <span class="chip a_faire">🏢 ${escHtml(res.raison_sociale||'Entreprise')}</span>` : '';
+  // Texte libre (raison sociale saisie par le client), pas un mot-clé fixe :
+  // dans une pastille .chip (nowrap), un nom d'entreprise un peu long fait
+  // déborder la carte hors de l'écran au lieu de rétrécir/passer à la ligne
+  // (même bug que sur les fiches client, corrigé juste avant). Affiché en
+  // texte normal sur sa propre ligne à la place.
+  const entrepriseTag = res.type_client==='entreprise' ? `<div class="row-meta">🏢 ${escHtml(res.raison_sociale||'Entreprise')}</div>` : '';
   if(res.masquee){
     return `
       <div class="row-item" style="opacity:.6">
@@ -3626,7 +3714,7 @@ function reservationRowHtml(res, readOnly){
           <span class="row-title">${nom}</span>
           <span class="chip ${res.statut}">${RESA_LABEL[res.statut]||res.statut}</span>
         </div>
-        <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
+        <div class="resa-addr">${BOARD_IC_PIN} <span class="resa-addr-txt">${escHtml(res.adresse||'—')}</span></div>
         <div class="resa-dates"><span class="resa-date-range">${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span></div>
         <div class="resa-bottom"><span class="resa-price">${euros(res.prix_total_cents)}</span>${isInternalRef(res.ref)?'':`<span class="resa-sub">${refCopyHtml(res.ref)}</span>`}</div>
         ${readOnly ? '' : `<div class="row-actions"><button class="btn btn-grey" onclick="restoreReservation(${res.id})">Restaurer</button></div>`}
@@ -3635,15 +3723,16 @@ function reservationRowHtml(res, readOnly){
   return `
     <div class="row-item">
       <div class="row-top">
-        <span class="row-title">${nom}${entrepriseTag}</span>
-        <span style="display:flex;gap:6px;align-items:center">
+        <span class="row-title">${nom}</span>
+        <span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end">
           ${res.hors_zone?`<span class="chip probleme" title="Affectation manuelle requise">⚠️ Hors zone</span>`:''}
           ${res.source==='site_prolongation'?`<span class="chip en_location">🔄 Prolongée</span>`:''}
           ${res.appareils_en_attente_validation?`<span class="chip a_faire" title="Appareil(s) pas encore validé(s) par l'administration">🔍 Appareil à valider</span>`:''}
           <span class="chip ${STATUT_COMMANDE_CSS[res.statut_commande]||res.statut}">${STATUT_COMMANDE_LABEL[res.statut_commande]||RESA_LABEL[res.statut]||res.statut}</span>
         </span>
       </div>
-      <div class="resa-addr">📍 ${escHtml(res.adresse||'—')}</div>
+      ${entrepriseTag}
+      <div class="resa-addr">${BOARD_IC_PIN} <span class="resa-addr-txt">${escHtml(res.adresse||'—')}</span></div>
       ${res.fenetre_photo_path?`
       <button onclick="openFenetrePhoto(${res.id})" title="Le client ne connaissait pas son type de fenêtre — il a envoyé une photo à la place"
         style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 10px;border:1px solid var(--blue);border-radius:100px;background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:600;cursor:pointer">
@@ -3658,14 +3747,15 @@ function reservationRowHtml(res, readOnly){
         </div>
       </details>`:''}
       <div class="resa-dates">
-        <span class="resa-date-range">📅 ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
+        <span class="resa-date-range">${BOARD_IC_CAL} ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
         <span class="resa-rel ${isUrgent(res.date_debut)||isUrgent(res.date_fin)?'urgent':''}">${nightsLabel(res.date_debut,res.date_fin)} · ${relLabel(res.date_debut)}</span>
       </div>
       ${res.date_recuperation_souhaitee?`<div class="resa-sub" style="color:var(--grey);margin-top:2px">🔄 Récup. souhaitée le ${frDate(res.date_recuperation_souhaitee)}${res.creneau_recuperation?' · '+escHtml(res.creneau_recuperation):''}</div>`:''}
       <div class="resa-bottom">
         <span class="resa-price">${euros(res.prix_total_cents)}${res.express?' <span style="background:#fef3c7;color:#d97706;font-size:11px;font-weight:700;padding:1px 7px;border-radius:100px;border:1px solid rgba(217,119,6,.4);vertical-align:middle;margin-left:4px">⚡ Express</span>':''}</span>
-        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+refCopyHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}${resaForfaitBadgeHtml(res)}${resaPromoBadgeHtml(res)}${res.partenaire?' · <span style="background:var(--blue-lt);color:var(--blue);font-size:11px;padding:1px 6px;border-radius:100px;border:1px solid var(--blue)">🤝 '+escHtml(res.partenaire.nom)+' ('+euros(res.partenaire_commission_cents)+')</span>':''}</span>
+        <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+refCopyHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}</span>
       </div>
+      ${(res.forfait_id||res.parrain_code||res.partenaire)?`<div class="resa-badges-row">${resaForfaitBadgeHtml(res)}${resaPromoBadgeHtml(res)}${resaPartenaireBadgeHtml(res)}</div>`:''}
       ${res.statut==='confirmee' ? agentLineHtml(res.id) : ''}
       ${res.dernier_envoi_lien ? `<div class="resa-sub" style="color:${res.dernier_envoi_lien.statut==='envoye'?'var(--green)':'var(--red)'}">${res.dernier_envoi_lien.statut==='envoye'?'✅':'⚠️'} Lien de paiement par ${res.dernier_envoi_lien.canal==='sms'?'SMS':'email'} le ${frDateHeure(res.dernier_envoi_lien.quand)}${res.dernier_envoi_lien.statut==='envoye'?'':' (échec)'}</div>` : ''}
       ${readOnly ? '' : `
@@ -3885,6 +3975,30 @@ function renderReservationsToolbar(){
 // api/checkout.js PROMO_CODES) — à tenir synchronisé si un code est ajouté.
 const NR_PROMO_CODES = {'LOCAIR10':10, 'LOCA10':10};
 let _nrPromoDiscount = 0;
+// % du prix de location (baseCents) quand le code promo est un code
+// personnel "PRENOM10/20/30" plutôt qu'un montant fixe — 0 sinon. Sert à
+// recalculer _nrPromoDiscount en euros à chaque changement de durée/
+// quantité (nrRecalcPrice), le pourcentage portant sur le prix de
+// location, pas sur le total (même règle que côté site).
+let _nrPromoPct = 0;
+// Code personnel "PRENOM10/20/30" (ex. FLORIAN30) — chaque client reçoit ce
+// genre de code à la fin de sa location (parrainage/relance), valable aussi
+// pour un ami. Même règle que le site (api/_lib/promo.js matchPromoPct,
+// utilisée par checkout.js) : valable seulement si le prénom tapé sur CETTE
+// réservation correspond au préfixe du code, une fois normalisé (majuscules,
+// accents retirés, lettres uniquement) — sans vérification en base, comme
+// côté site. Manquait ici jusqu'ici : le devis rapide de l'admin ne
+// reconnaissait que les 2 codes fixes de NR_PROMO_CODES, pas ce système.
+function nrNormalizePrenom(p){
+  return (p||'').normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]','g'),'').replace(/[^A-Za-z]/g,'').toUpperCase();
+}
+function nrMatchPromoPct(code, prenom){
+  code = (code||'').trim().toUpperCase();
+  const norm = nrNormalizePrenom(prenom);
+  if(!code || !norm || !code.startsWith(norm)) return 0;
+  const suffix = parseInt(code.slice(norm.length), 10);
+  return [10,20,30].includes(suffix) ? suffix : 0;
+}
 // Livraison Express (+60€, aujourd'hui sous 2h) — même bascule que la carte
 // "⚡ Express" du site (index.html selectExpress/EXPRESS_FEE), reprise ici
 // pour qu'une demande express prise par téléphone soit possible sans passer
@@ -3911,6 +4025,11 @@ function duplicateReservation(id){
 // Applique/retire la remise sur le prix déjà saisi plutôt que de reconstruire
 // tout le calcul à partir de zéro — un prix négocié à la main pour d'autres
 // raisons (geste commercial, tarif spécial) n'est jamais écrasé.
+// Reconnaît 2 familles de codes, comme le site : un montant fixe
+// (NR_PROMO_CODES, ex. LOCAIR10) ou un code personnel "PRENOM10/20/30" (ex.
+// FLORIAN30, voir nrMatchPromoPct) valable seulement si le prénom du client
+// correspond — d'où l'appel aussi depuis le champ Prénom plus bas (voir sa
+// définition), au cas où le code soit tapé avant le prénom.
 function onNrParrainInput(){
   const inp = document.getElementById('nr-parrain');
   const prixEl = document.getElementById('nr-prix');
@@ -3919,11 +4038,18 @@ function onNrParrainInput(){
   if(!inp || !prixEl || !fb) return;
   const val = inp.value.trim().toUpperCase();
   const prevDiscount = _nrPromoDiscount;
-  const newDiscount = NR_PROMO_CODES[val] || 0;
-  if(val && !newDiscount){
-    fb.textContent = 'Code non reconnu'; fb.style.color = 'var(--red)'; fb.style.display = 'block';
-    return;
+  let newDiscount = 0, newPct = 0;
+  if(val && NR_PROMO_CODES[val] != null){
+    newDiscount = NR_PROMO_CODES[val];
+  } else if(val){
+    const prenom = document.getElementById('nr-prenom')?.value || '';
+    newPct = nrMatchPromoPct(val, prenom);
+    if(newPct > 0){
+      const r = nrCalcTotal();
+      newDiscount = r ? Math.round(r.baseCents * newPct / 100) / 100 : 0;
+    }
   }
+  _nrPromoPct = newPct;
   if(newDiscount !== prevDiscount){
     const restored = (parseFloat(prixEl.value)||0) + prevDiscount;
     const applied  = Math.max(0, restored - newDiscount);
@@ -3933,9 +4059,44 @@ function onNrParrainInput(){
     // remise que ce champ — sinon deux montants différents restent affichés
     // en même temps à l'écran (le prix modifiable ici, l'ancien total en haut).
     if(totalEl) totalEl.textContent = (Math.round(applied*100)/100).toFixed(2).replace('.', ',') + ' €';
+    // Idem pour la ligne "Remise" du récap façon panier, juste en dessous —
+    // sans ça le code promo changeait le total affiché sans jamais faire
+    // apparaître la ligne qui l'explique.
+    const discountRow = document.getElementById('nr-sum-discount-row');
+    const discountEl = document.getElementById('nr-sum-discount');
+    if(discountRow && discountEl){
+      if(_nrPromoDiscount > 0){
+        discountRow.classList.remove('hidden');
+        discountEl.textContent = `−${_nrPromoDiscount.toFixed(2).replace('.', ',')} €`;
+      } else {
+        discountRow.classList.add('hidden');
+      }
+    }
   }
-  if(newDiscount){ fb.textContent = `✓ Code valide — ${newDiscount} € déduits`; fb.style.color = 'var(--green)'; fb.style.display = 'block'; }
-  else fb.style.display = 'none';
+  if(!val){
+    fb.style.display = 'none';
+  } else if(newDiscount > 0){
+    fb.textContent = `✓ Code valide — ${_nrPromoDiscount.toFixed(2).replace('.', ',')} € déduits${newPct?' ('+newPct+'%)':''}`;
+    fb.style.color = 'var(--green)'; fb.style.display = 'block';
+  } else {
+    // "FLORIAN30" ressemble à un code personnel (PRENOM+10/20/30) mais ne
+    // correspond à aucun prénom pour l'instant — message différent d'un
+    // code invalide, pour ne pas faire chercher le problème ailleurs alors
+    // qu'il suffit de vérifier/compléter le prénom du client ci-dessous.
+    const looksPersonal = /^[A-Z]{2,}(10|20|30)$/.test(val);
+    fb.textContent = looksPersonal
+      ? 'Code personnel — vérifie que le prénom du client (ci-dessous) correspond'
+      : 'Code non reconnu';
+    fb.style.color = 'var(--red)'; fb.style.display = 'block';
+  }
+}
+// Un code personnel type FLORIAN30 peut être tapé avant même que le prénom
+// du client soit rempli plus bas dans le formulaire (l'ordre naturel d'un
+// appel n'est pas toujours devis d'abord, identité ensuite) — revalide dès
+// que le prénom change, mais seulement si un code est déjà présent, pour ne
+// pas recalculer à chaque frappe du nom pour rien.
+function nrRevalidatePromoOnPrenomChange(){
+  if(document.getElementById('nr-parrain')?.value.trim()) onNrParrainInput();
 }
 // Aperçu de prix + pré-remplissage de "Prix total" à partir du même barème
 // que le site (prCalcBase = calcTieredPrice côté serveur) — sans ça, un
@@ -4105,6 +4266,11 @@ function nrRecalcPrice(){
     if(hint) hint.style.display = 'none';
     return;
   }
+  // Un code personnel "PRENOM10/20/30" porte sur un %, pas un montant fixe
+  // — si la durée ou la quantité change après coup, la remise en euros doit
+  // suivre le nouveau prix de location plutôt que de rester figée au
+  // montant calculé la première fois.
+  if(_nrPromoPct > 0) _nrPromoDiscount = Math.round(r.baseCents * _nrPromoPct / 100) / 100;
   // Devis façon "panier" : une ligne par poste (Location/Installation/
   // Livraison/Remise) puis le total — même logique de calcul que l'ancien
   // paragraphe, juste présentée en liste au lieu d'une phrase compacte.
@@ -4180,6 +4346,7 @@ function nrOnPrixInput(){
 // Les CGV restent hors du repli : jamais optionnelles, jamais à chercher.
 function reservationCreerHtml(){
   _nrPromoDiscount = 0;
+  _nrPromoPct = 0;
   _nrExpress = false;
   // Usage unique : lu ici puis remis à null, pour qu'un simple retour sur
   // l'onglet "Créer" (sans repasser par "Réservation similaire") reparte
@@ -4232,6 +4399,20 @@ function reservationCreerHtml(){
           <button type="button" class="nr-install-btn${installVal===INSTALLATION_OPTIONS[0]?' on':''}" data-val="${escHtml(INSTALLATION_OPTIONS[0])}" onclick="nrSetInstall('${INSTALLATION_OPTIONS[0]}')" style="flex:none;padding:7px 16px">Autonome</button>
           <button type="button" class="nr-install-btn${installVal===INSTALLATION_OPTIONS[1]?' on':''}" data-val="${escHtml(INSTALLATION_OPTIONS[1])}" onclick="nrSetInstall('${INSTALLATION_OPTIONS[1]}')" style="flex:none;padding:7px 16px">Technicien +80€</button>
         </div>
+        <!-- Code promo remonté ici (chantier structurel, demande d'Aly :
+             visible directement dans le devis, plus caché dans "Options
+             avancées") — même champ/id/logique qu'avant (nr-parrain,
+             onNrParrainInput, NR_PROMO_CODES), juste déplacé et relabellisé
+             "Code promo" pour matcher ce que voit le client sur le site
+             (index.html #f-parrain — même id interne "parrain" en base,
+             mais le champ accepte aussi bien un vrai code promo qu'un code
+             de parrainage type "PRENOM10", voir checkout.js). -->
+        <label for="nr-parrain" style="margin-top:8px">Code promo <span style="text-transform:none;font-weight:400;color:var(--grey-soft)">(optionnel)</span></label>
+        <div class="promo-row">
+          <input type="text" id="nr-parrain" oninput="onNrParrainInput()" placeholder="ex. LOCAIR10"/>
+          <button type="button" class="btn btn-blue" onclick="onNrParrainInput()">Appliquer</button>
+        </div>
+        <p id="nr-parrain-fb" style="display:none;font-size:12px;font-weight:600;margin:4px 0 0"></p>
         <!-- Récap façon ticket de panier (chantier structurel, maquette Aly) :
              lignes Location/Installation/Livraison/Remise, puis Total —
              remplace l'ancienne phrase de détail à parser + le bloc total
@@ -4255,7 +4436,7 @@ function reservationCreerHtml(){
 
       <div class="section-title">👤 Client</div>
       <div class="inline-form">
-        <div><label for="nr-prenom">Prénom *</label><input type="text" id="nr-prenom" oninput="this.classList.remove('field-err')" value="${escHtml(d?.prenom||'')}"/></div>
+        <div><label for="nr-prenom">Prénom *</label><input type="text" id="nr-prenom" oninput="this.classList.remove('field-err');nrRevalidatePromoOnPrenomChange()" value="${escHtml(d?.prenom||'')}"/></div>
         <div><label for="nr-nom">Nom *</label><input type="text" id="nr-nom" oninput="this.classList.remove('field-err')" value="${escHtml(d?.nom||'')}"/></div>
       </div>
       <div class="inline-form" style="margin-top:8px">
@@ -4293,9 +4474,6 @@ function reservationCreerHtml(){
               </select>
             </div>
           </div>
-          <label for="nr-parrain" style="margin-top:8px">Code parrain (optionnel)</label>
-          <input type="text" id="nr-parrain" oninput="onNrParrainInput()"/>
-          <p id="nr-parrain-fb" style="display:none;font-size:12px;font-weight:600;margin-top:4px"></p>
           <label for="nr-partenaire" style="margin-top:8px">Code ambassadeur / partenaire (optionnel)</label>
           <input type="text" id="nr-partenaire" placeholder="ex : dupont" autocapitalize="none" spellcheck="false"/>
           <p style="font-size:11.5px;color:var(--grey);margin-top:3px">Si cette réservation a été apportée par une conciergerie ou un ambassadeur, entre son code pour lui attribuer la commission automatiquement.</p>
@@ -8235,12 +8413,20 @@ async function loadClients(silent){
   }
 }
 function clientCardHtml(c){
+  // La raison sociale n'a plus sa place dans une pastille .chip (pensée pour
+  // un mot-clé court et fixe genre "Confirmée") : un nom d'entreprise long
+  // ("Société Immobilière et Commerciale de la Côte d'Azur — Établissements
+  // Réunis SARL...") avec le nowrap hérité des pastilles ne pouvait ni
+  // rétrécir ni passer à la ligne — la carte débordait de 300px+ hors de
+  // l'écran sur mobile. Affichée en texte normal dans .row-meta comme le
+  // reste des coordonnées, elle passe à la ligne comme n'importe quel texte.
   return `
     <div class="row-item">
       <div class="row-top">
-        <span class="row-title">${escHtml((c.prenom||'')+' '+(c.nom||''))}${c.raison_sociale?` <span class="chip a_faire">🏢 ${escHtml(c.raison_sociale)}</span>`:''}</span>
+        <span class="row-title">${escHtml((c.prenom||'')+' '+(c.nom||''))}</span>
         <span class="chip inactif">${c.nb_reservations} réservation${c.nb_reservations>1?'s':''}</span>
       </div>
+      ${c.raison_sociale?`<div class="row-meta">🏢 ${escHtml(c.raison_sociale)}</div>`:''}
       <div class="row-meta">${escHtml(c.tel||'—')}${c.email?' · '+escHtml(c.email):''}${c.tel_secondaire?' · ☎️ Secours : '+escHtml(c.tel_secondaire):''}${c.siret?' · SIRET : '+escHtml(c.siret):''}${c.derniere_adresse?'<br/>Dernière adresse : '+escHtml(c.derniere_adresse):''}</div>
       ${c.acces_difficile?`<div class="row-meta" style="color:var(--blue);font-weight:700;margin-top:6px">📌 ${escHtml(c.acces_difficile)}</div>`:''}
       <div class="row-actions">

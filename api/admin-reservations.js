@@ -6,7 +6,7 @@ const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays, todayParis } = require('./_lib/dates');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
-const { confirmReservation, sendConfirmationCommunications, sendProlongationConfirmation, normalizeTel } = require('./_lib/reservations');
+const { confirmReservation, sendConfirmationCommunications, sendProlongationConfirmation, normalizeTel, getEffectiveDateFin } = require('./_lib/reservations');
 const { fmtDate } = require('./_lib/emailEngine');
 const { ACCEPTANCE_TYPES, CGV_VERSION } = require('./_lib/legal');
 const { computeOrderStatus } = require('./_lib/orderStatus');
@@ -400,6 +400,14 @@ module.exports = async (req, res) => {
       if (['annulee', 'remboursee'].includes(resa.statut)) {
         return res.status(422).json({ error: 'Cette réservation ne peut pas être prolongée.' });
       }
+      // resa.date_fin reste la date de fin d'ORIGINE pour toujours (chaque
+      // prolongation crée une ligne séparée, source 'site_prolongation',
+      // jamais une mise à jour de celle-ci) — sans ce filet, une réservation
+      // déjà prolongée une fois affichait encore sa toute première date de
+      // fin, et calculait le prix de la nouvelle prolongation sur une durée
+      // trop courte. Même filet de secours que prolong-lookup.js/
+      // prolong-pay.js côté site (getEffectiveDateFin, _lib/reservations.js).
+      resa.date_fin = await getEffectiveDateFin(supabase, resa.id, resa.date_fin);
       const origDays = Math.round((new Date(resa.date_fin + 'T00:00:00Z') - new Date(resa.date_debut + 'T00:00:00Z')) / 86400000);
       return res.status(200).json({ ...resa, orig_days: origDays });
     }
@@ -431,6 +439,13 @@ module.exports = async (req, res) => {
       if (orig.statut !== 'confirmee') {
         return res.status(422).json({ error: 'Seule une réservation confirmée peut être prolongée.' });
       }
+      // Même filet que lookup_prolongation ci-dessus (voir son commentaire) —
+      // orig.date_fin reste celle d'origine pour toujours ; sans ce
+      // recalcul, une 2e prolongation partirait de la mauvaise date
+      // (date_debut ci-dessous, chevauchement avec la 1re prolongation déjà
+      // confirmée) et pourrait même être refusée à tort par la comparaison
+      // juste en dessous.
+      orig.date_fin = await getEffectiveDateFin(supabase, orig.id, orig.date_fin);
       if (newDateFin <= orig.date_fin) {
         return res.status(400).json({ error: `La nouvelle date doit être postérieure au ${orig.date_fin}.` });
       }
@@ -442,8 +457,14 @@ module.exports = async (req, res) => {
         if (pt) partenaireCommissionCentsProlong = Math.round(prixTotalCents * pt.taux_commission_pct / 100);
       }
 
-      const { data: existing } = await supabase.from('reservations').select('id').eq('reservation_origine_id', origId).in('statut', ['en_attente', 'confirmee']).maybeSingle();
-      if (existing) return res.status(409).json({ error: 'Une prolongation est déjà en cours pour cette réservation.' });
+      // Seul un statut 'en_attente' (paiement pas encore finalisé par le
+      // client) doit bloquer une nouvelle prolongation — sans cette
+      // distinction, une prolongation déjà CONFIRMÉE (donc réglée, aucune
+      // ambiguïté) empêchait pour toujours la moindre prolongation
+      // suivante : "en prolonger une 2e fois" était tout simplement
+      // impossible dès que la 1re était payée.
+      const { data: existing } = await supabase.from('reservations').select('id').eq('reservation_origine_id', origId).eq('statut', 'en_attente').maybeSingle();
+      if (existing) return res.status(409).json({ error: 'Une prolongation est déjà en attente de paiement pour cette réservation — finalise-la ou annule-la avant d\'en créer une nouvelle.' });
 
       const _pnow = new Date();
       const ref = `LOC-${String(_pnow.getFullYear()).slice(2)}${String(_pnow.getMonth()+1).padStart(2,'0')}${String(_pnow.getDate()).padStart(2,'0')}-P${crypto.randomInt(1000, 9999)}`;
