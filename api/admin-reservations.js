@@ -19,8 +19,72 @@ const { extractPostalCode } = require('./_lib/postal');
 const { releaseAppareilFromReservation } = require('./_lib/appareilSync');
 const { pushToAdmin } = require('./_lib/push');
 const { toE164FR } = require('./_lib/brevo');
+const { isSupersededReservation } = require('./_lib/emailSchedule');
 
 const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
+
+// Offre de prolongation en masse (bouton "📢 Offre en masse" de l'onglet
+// Prolonger) — trouve tous les clients qui ont VRAIMENT une location active
+// en ce moment (climatiseur chez eux aujourd'hui), un par client (jamais 2
+// fois pour la même personne même si plusieurs réservations), qui ont coché
+// "j'accepte de recevoir des offres" à leur réservation, et pour qui la
+// nouvelle date proposée apporte vraiment quelque chose (leur location se
+// termine avant cette date). Partagé entre l'aperçu (compte seulement) et
+// l'envoi réel (mêmes critères, recalculés à chaque fois pour ne jamais
+// envoyer à quelqu'un qui a payé/annulé entre les deux).
+async function findEligibleActiveClients(supabase, cityId, newDateFin) {
+  const today = todayParis();
+
+  let resas = [];
+  let offset = 0;
+  while (true) {
+    const { data: batch } = await supabase
+      .from('reservations')
+      .select('id, client_id, statut, date_debut, date_fin, mkt_consent, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement, hors_zone, partenaire_id, source, reservation_origine_id, lang, ref')
+      .eq('city_id', cityId)
+      .not('client_id', 'is', null)
+      .range(offset, offset + 999);
+    if (!batch || !batch.length) break;
+    resas = resas.concat(batch);
+    if (batch.length < 1000) break;
+    offset += 1000;
+  }
+
+  // Un seul enregistrement par client : celui qui reflète vraiment sa
+  // situation actuelle (une prolongation confirmée plus récente "remplace"
+  // la réservation d'origine) — même logique que la relance des clients
+  // dormants (cron-monthly.js), réutilisée ici pour ne jamais compter deux
+  // fois le même client ni se baser sur une fiche périmée.
+  const parClientId = {};
+  for (const r of resas) (parClientId[r.client_id] = parClientId[r.client_id] || []).push(r);
+  const parClient = {};
+  for (const r of resas) {
+    if (isSupersededReservation(r, parClientId[r.client_id])) continue;
+    const cur = parClient[r.client_id];
+    if (!cur || r.date_fin > cur.date_fin) parClient[r.client_id] = r;
+  }
+
+  const candidats = Object.values(parClient).filter(r =>
+    r.statut === 'confirmee' &&
+    r.date_fin >= today &&
+    r.date_fin < newDateFin &&
+    r.mkt_consent === true &&
+    (r.tel || r.email)
+  );
+  if (!candidats.length) return [];
+
+  // Écarte un client qui a déjà une prolongation en cours (payée ou en
+  // attente de paiement) — sans ça, un envoi relancé après une première
+  // vague déjà partielle (ou un client déjà prolongé entre-temps via l'outil
+  // "Prolonger" classique) recevrait une 2e offre en doublon.
+  const { data: dejaProlonge } = await supabase
+    .from('reservations').select('reservation_origine_id')
+    .in('reservation_origine_id', candidats.map(c => c.id))
+    .in('statut', ['en_attente', 'confirmee']);
+  const dejaProlongeIds = new Set((dejaProlonge || []).map(p => p.reservation_origine_id));
+
+  return candidats.filter(c => !dejaProlongeIds.has(c.id));
+}
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -512,6 +576,83 @@ module.exports = async (req, res) => {
         console.error('[Communications prolongation]', e.message);
       }
       return res.status(200).json({ ok: true, ref, reservation: { ...resa, statut: 'confirmee', masquee: false } });
+    }
+
+    // Aperçu de l'offre de prolongation en masse — ne touche à rien, montre
+    // juste qui serait concerné avant d'envoyer le moindre SMS.
+    if (action === 'bulk_prolongation_preview') {
+      const newDateFin = (body.new_date_fin || '').slice(0, 10);
+      if (!isValidDate(newDateFin)) return res.status(400).json({ error: 'Nouvelle date de fin invalide' });
+      const eligibles = await findEligibleActiveClients(supabase, city.id, newDateFin);
+      return res.status(200).json({
+        ok: true, count: eligibles.length,
+        clients: eligibles.slice(0, 200).map(c => ({
+          ref: c.ref, prenom: c.prenom, nom: c.nom, date_fin: c.date_fin,
+          canal: c.tel ? (c.email ? 'sms+email' : 'sms') : 'email',
+        })),
+      });
+    }
+
+    // Envoi réel de l'offre de prolongation en masse : recrée EXACTEMENT la
+    // même liste (jamais celle envoyée par le client au moment de l'aperçu,
+    // qui peut être périmée de plusieurs minutes) puis, pour chacun, crée une
+    // prolongation "en attente" au tarif fixe donné et envoie son lien de
+    // paiement Stripe personnel par SMS (+ email si disponible) — même
+    // fonction que l'outil "Prolonger" un par un (sendReservationPaymentLink),
+    // simplement rejouée pour toute la liste. Volontairement séquentiel (pas
+    // de Promise.all) pour ne jamais taper trop vite sur l'API Brevo/Stripe,
+    // et parce que le prochain clic sur "Envoyer" après un timeout reprend
+    // tout seul là où ça s'est arrêté : un client déjà traité a désormais une
+    // prolongation en cours et sort automatiquement de la liste (voir
+    // findEligibleActiveClients ci-dessus) — aucun risque de double envoi.
+    if (action === 'bulk_prolongation_send') {
+      if (!roleHasAccess(admin.role, 'finances')) {
+        return res.status(403).json({ error: "Ton compte ne peut pas envoyer d'offre en masse." });
+      }
+      const newDateFin = (body.new_date_fin || '').slice(0, 10);
+      const prixTotalCents = Math.max(0, parseInt(body.prix_total_cents) || 0);
+      if (!isValidDate(newDateFin)) return res.status(400).json({ error: 'Nouvelle date de fin invalide' });
+      if (!prixTotalCents) return res.status(400).json({ error: 'Prix manquant' });
+
+      const eligibles = (await findEligibleActiveClients(supabase, city.id, newDateFin)).slice(0, 200);
+      const stripe = eligibles.length ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+      let envoyes = 0;
+      const echecs = [];
+      for (const orig of eligibles) {
+        try {
+          const _bnow = new Date();
+          const ref = `LOC-${String(_bnow.getFullYear()).slice(2)}${String(_bnow.getMonth()+1).padStart(2,'0')}${String(_bnow.getDate()).padStart(2,'0')}-P${crypto.randomInt(1000, 9999)}`;
+          let partenaireCommissionCents = 0;
+          if (orig.partenaire_id) {
+            const { data: pt } = await supabase.from('partenaires')
+              .select('taux_commission_pct').eq('id', orig.partenaire_id).maybeSingle();
+            if (pt) partenaireCommissionCents = Math.round(prixTotalCents * pt.taux_commission_pct / 100);
+          }
+          const { data: resa, error } = await supabase.from('reservations').insert({
+            city_id: city.id, ref,
+            prenom: orig.prenom, nom: orig.nom, email: orig.email,
+            tel: orig.tel, tel_secondaire: orig.tel_secondaire || null,
+            adresse: orig.adresse, hors_zone: orig.hors_zone || false,
+            etage: orig.etage || null, ascenseur: orig.ascenseur || null,
+            fenetre: orig.fenetre || null, fenetre_photo_path: orig.fenetre_photo_path || null,
+            installation: orig.installation || null, instructions_acces: orig.instructions_acces || null,
+            logement: orig.logement || null,
+            date_debut: orig.date_fin, date_fin: newDateFin, quantite: 1,
+            prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'site_prolongation',
+            reservation_origine_id: orig.id, lang: orig.lang || 'fr',
+            partenaire_id: orig.partenaire_id || null, partenaire_commission_cents: partenaireCommissionCents,
+          }).select().single();
+          if (error) throw error;
+          const lienResult = await sendReservationPaymentLink(supabase, stripe, resa, {
+            scenario: 'offre_prolongation_masse', preferSms: true,
+          });
+          if (lienResult.ok) envoyes++;
+          else echecs.push({ ref: orig.ref, prenom: orig.prenom, nom: orig.nom, erreur: lienResult.error });
+        } catch (e) {
+          echecs.push({ ref: orig.ref, prenom: orig.prenom, nom: orig.nom, erreur: e.message });
+        }
+      }
+      return res.status(200).json({ ok: true, envoyes, echecs, total: eligibles.length });
     }
 
     if (action === 'update') {
