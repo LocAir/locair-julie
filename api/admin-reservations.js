@@ -23,6 +23,16 @@ const { isSupersededReservation } = require('./_lib/emailSchedule');
 
 const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
 
+// reservation_origine_id pointe TOUJOURS vers la réservation RACINE, jamais
+// vers une prolongation intermédiaire (structure plate, voir
+// getFamilyReservationIds dans _lib/dateFin.js) — un client déjà à sa 2e/3e
+// prolongation a sa ligne "actuelle" qui est elle-même une prolongation
+// (source 'site_prolongation'), dont il faut alors reprendre la
+// reservation_origine_id (déjà la racine), jamais son propre id.
+function prolongationRootId(r) {
+  return r.source === 'site_prolongation' ? r.reservation_origine_id : r.id;
+}
+
 // Offre de prolongation en masse (bouton "📢 Offre en masse" de l'onglet
 // Prolonger) — trouve tous les clients qui ont VRAIMENT une location active
 // en ce moment (climatiseur chez eux aujourd'hui), un par client (jamais 2
@@ -73,17 +83,19 @@ async function findEligibleActiveClients(supabase, cityId, newDateFin) {
   );
   if (!candidats.length) return [];
 
-  // Écarte un client qui a déjà une prolongation en cours (payée ou en
-  // attente de paiement) — sans ça, un envoi relancé après une première
-  // vague déjà partielle (ou un client déjà prolongé entre-temps via l'outil
-  // "Prolonger" classique) recevrait une 2e offre en doublon.
+  // Écarte un client qui a déjà une prolongation EN ATTENTE de paiement en
+  // ce moment (même règle que create_prolongation ci-dessus depuis le
+  // correctif #624 : une prolongation déjà payée n'empêche plus une
+  // suivante, seule une en_attente doit bloquer) — sans ça, un envoi relancé
+  // après une première vague déjà partielle recevrait une 2e offre en
+  // doublon pour quelqu'un qui n'a pas encore payé la première.
   const { data: dejaProlonge } = await supabase
     .from('reservations').select('reservation_origine_id')
-    .in('reservation_origine_id', candidats.map(c => c.id))
-    .in('statut', ['en_attente', 'confirmee']);
-  const dejaProlongeIds = new Set((dejaProlonge || []).map(p => p.reservation_origine_id));
+    .in('reservation_origine_id', candidats.map(prolongationRootId))
+    .eq('statut', 'en_attente');
+  const dejaProlongeRootIds = new Set((dejaProlonge || []).map(p => p.reservation_origine_id));
 
-  return candidats.filter(c => !dejaProlongeIds.has(c.id));
+  return candidats.filter(c => !dejaProlongeRootIds.has(prolongationRootId(c)));
 }
 
 module.exports = async (req, res) => {
@@ -639,7 +651,8 @@ module.exports = async (req, res) => {
             logement: orig.logement || null,
             date_debut: orig.date_fin, date_fin: newDateFin, quantite: 1,
             prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'site_prolongation',
-            reservation_origine_id: orig.id, lang: orig.lang || 'fr',
+            reservation_origine_id: prolongationRootId(orig),
+            lang: orig.lang || 'fr',
             partenaire_id: orig.partenaire_id || null, partenaire_commission_cents: partenaireCommissionCents,
           }).select().single();
           if (error) throw error;
