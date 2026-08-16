@@ -2609,7 +2609,7 @@ function actionBtnsForMission(m){
 // automatiquement sur la bonne étape.
 function missionStepDefs(m){
   const steps = [{key:'route', title:'En route'}, {key:'arrivee', title:'Arrivée'}];
-  if(m.type === 'livraison') steps.push({key:'installation', title:'Installation'});
+  if(m.type === 'livraison') steps.push({key:'installation', title:'Installation'}, {key:'signature', title:'Signature'});
   else if(m.type === 'recuperation') steps.push({key:'preuve', title:'Photo appareil'}, {key:'vidange', title:'Vidange'});
   else if(m.type === 'changement') steps.push({key:'vidange', title:'Vidange'}, {key:'ancien', title:'Ancien appareil'}, {key:'nouveau', title:'Nouvel appareil'});
   steps.push({key:'final', title:'Terminer'});
@@ -2618,6 +2618,7 @@ function missionStepDefs(m){
 function missionStepDoneFlag(m, key){
   if(key==='vidange') return Boolean(m.vidange_ok);
   if(key==='installation') return Boolean(m.demo_faite);
+  if(key==='signature') return Boolean(m.signature_client_ok);
   if(key==='preuve' || key==='ancien') return Boolean(m.photo_retour_ok);
   if(key==='nouveau') return Boolean(m.photo_installation_ok);
   return false;
@@ -2822,6 +2823,25 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
       ${m.photo_installation_ok && !m.photo_installation_pending
         ? `<button class="btn btn-green btn-block" style="margin-top:6px" onclick="doAction('confirmer_demo')">✅ Confirmer la démonstration</button>`
         : ''}`;
+  }
+  if(key === 'signature'){
+    if(m.signature_client_ok){
+      return `<div style="text-align:center;padding:20px 0">
+        <div style="font-size:48px;margin-bottom:10px">✅</div>
+        <p style="font-weight:700;font-size:16px;color:var(--green)">Signature enregistrée</p>
+        <p style="font-size:13px;color:var(--grey);margin-top:6px">Le client a signé le contrat.</p>
+      </div>`;
+    }
+    return `
+      <p class="step-hint">✍️ Montrez le contrat sur votre téléphone et faites signer le client avec son doigt.</p>
+      <div id="sig-wrap" style="position:relative;margin:14px 0;background:#fff;border:2px solid var(--blue);border-radius:12px;overflow:hidden;touch-action:none">
+        <canvas id="sig-canvas" style="display:block;width:100%;height:190px"></canvas>
+        <span id="sig-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#bbb;pointer-events:none">← Signer ici →</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-grey" style="flex:1" onclick="clearSigPad()">🗑 Effacer</button>
+        <button class="btn btn-blue" style="flex:1" id="sig-submit-btn" disabled onclick="submitClientSig(${m.id})">✅ Valider</button>
+      </div>`;
   }
   if(key === 'preuve'){
     return wizardProofStepHtml(m, 'photo_retour', 'Photo appareil récupéré', "Prends l'appareil récupéré en photo (ou choisis une photo depuis ta galerie) pour terminer la mission.");
@@ -3188,6 +3208,100 @@ function renderStepper(m){
   }).join('')+'</div>';
 }
 
+// ── Signature client (étape "Signature" du wizard livraison) ────────────────
+// Canvas tactile sur lequel le client signe avec son doigt.
+// initSigCanvas()   : appelé après rendu du DOM (setTimeout 60ms)
+// clearSigPad()     : efface la signature en cours
+// submitClientSig() : encode en PNG base64 et envoie au serveur
+let _sigCtx = null, _sigDrawing = false, _sigHasStroke = false;
+
+function initSigCanvas(){
+  const canvas = document.getElementById('sig-canvas');
+  if(!canvas) return;
+  // Résolution hi-DPI pour que la signature soit nette sur les écrans Retina
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width  = Math.round(rect.width  * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  _sigCtx = canvas.getContext('2d');
+  _sigCtx.scale(dpr, dpr);
+  _sigCtx.strokeStyle = '#1a2b4a';
+  _sigCtx.lineWidth   = 2.5;
+  _sigCtx.lineCap     = 'round';
+  _sigCtx.lineJoin    = 'round';
+  _sigDrawing = false; _sigHasStroke = false;
+
+  function xyFrom(e){
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return {x: src.clientX - r.left, y: src.clientY - r.top};
+  }
+  function start(e){
+    e.preventDefault();
+    _sigDrawing = true;
+    const {x,y} = xyFrom(e);
+    _sigCtx.beginPath(); _sigCtx.moveTo(x,y);
+  }
+  function move(e){
+    e.preventDefault();
+    if(!_sigDrawing) return;
+    const {x,y} = xyFrom(e);
+    _sigCtx.lineTo(x,y); _sigCtx.stroke();
+    if(!_sigHasStroke){
+      _sigHasStroke = true;
+      const hint = document.getElementById('sig-hint');
+      if(hint) hint.style.display = 'none';
+      const btn = document.getElementById('sig-submit-btn');
+      if(btn) btn.disabled = false;
+    }
+  }
+  function stop(){ _sigDrawing = false; }
+
+  canvas.addEventListener('mousedown',  start);
+  canvas.addEventListener('mousemove',  move);
+  canvas.addEventListener('mouseup',    stop);
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove',  move,  {passive:false});
+  canvas.addEventListener('touchend',   stop);
+}
+
+function clearSigPad(){
+  if(!_sigCtx) return;
+  const canvas = document.getElementById('sig-canvas');
+  if(!canvas) return;
+  _sigCtx.clearRect(0, 0, canvas.width, canvas.height);
+  _sigHasStroke = false;
+  const hint = document.getElementById('sig-hint');
+  if(hint) hint.style.display = '';
+  const btn = document.getElementById('sig-submit-btn');
+  if(btn) btn.disabled = true;
+}
+
+async function submitClientSig(missionId){
+  const canvas = document.getElementById('sig-canvas');
+  if(!canvas || !_sigHasStroke){ return; }
+  const btn = document.getElementById('sig-submit-btn');
+  if(btn) btn.disabled = true;
+  try{
+    const signature = canvas.toDataURL('image/png');
+    const r = await fetch(API('transporteur-action'), {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify({action:'sauvegarder_signature', id:missionId, signature}),
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    // Mise à jour locale optimiste
+    const m = STATE.missions.find(x => x.id === missionId);
+    if(m){ m.signature_client_ok = true; STATE.currentMission = m; }
+    renderDetail();
+  }catch(e){
+    showToast(e.message, 'error');
+    if(btn) btn.disabled = false;
+  }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 // Page 1 (avant "J'accepte") : juste de quoi juger la mission — type, créneau,
 // zone. Page 2 (une fois démarrée) : la fiche client complète s'ouvre, avec un
 // bouton d'appel direct et toutes les actions propres à l'étape en cours.
@@ -3291,6 +3405,12 @@ function renderDetail(){
       ${bodyHtml}
     </div>
   `;
+  // Lance le canvas de signature si on vient d'afficher l'étape signature
+  if(isWizard && m.type === 'livraison' && !m.signature_client_ok){
+    const _steps = missionStepDefs(m);
+    const _idx = Math.min(STATE.wizardViewIdx == null ? missionStepIndex(m, _steps) : STATE.wizardViewIdx, missionStepIndex(m, _steps));
+    if(_steps[_idx]?.key === 'signature') setTimeout(initSigCanvas, 60);
+  }
 }
 
 // Preuve de mission obligatoire : prendre une photo en direct (caméra) ou
