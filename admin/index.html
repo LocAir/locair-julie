@@ -8705,14 +8705,20 @@ function renderClientFiche(d){
   const resaOptionsHtml = (d.reservations||[])
     .map(r => `<option value="${r.id}">${escHtml(r.ref)} — ${frDate(r.date_debut)}</option>`).join('');
   const docsHtml = (d.reservations||[]).length ? `
-    <select id="doc-gen-resa">${resaOptionsHtml}</select>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:13.5px">
-      <input type="checkbox" id="doc-gen-location" checked/> Contrat + facture de location
-    </label>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer;font-size:13.5px">
-      <input type="checkbox" id="doc-gen-vente"/> Facture d'achat (Offre Privilège)
-    </label>
-    <button class="btn btn-blue" style="margin-top:12px" onclick="genererDocumentsClient(this)">Générer et envoyer</button>
+    <select id="doc-gen-resa" onchange="loadDocsForResa(this.value)">${resaOptionsHtml}</select>
+    <div id="docs-list" style="margin-top:12px"><p class="empty" style="font-size:13px">Chargement…</p></div>
+    <details id="doc-gen-form" style="margin-top:12px">
+      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--blue)">➕ Générer de nouveaux documents</summary>
+      <div style="margin-top:10px">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer;font-size:13.5px">
+          <input type="checkbox" id="doc-gen-location" checked/> Contrat + facture de location
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer;font-size:13.5px">
+          <input type="checkbox" id="doc-gen-vente"/> Facture d'achat (Offre Privilège)
+        </label>
+        <button class="btn btn-blue" style="margin-top:12px" onclick="genererDocumentsClient(this)">Générer et envoyer</button>
+      </div>
+    </details>
   ` : '<p class="empty">Aucune réservation.</p>';
 
   body.innerHTML = `
@@ -8748,7 +8754,60 @@ function renderClientFiche(d){
     <div class="section-title" style="margin-top:18px">🧯 Incidents</div>
     ${incidentsHtml}
   `;
+  // Charge automatiquement les documents de la première réservation dès l'ouverture
+  const firstResaId = (d.reservations||[])[0]?.id;
+  if(firstResaId) setTimeout(() => loadDocsForResa(firstResaId), 0);
 }
+// Charge et affiche la liste des documents d'une réservation dans la fiche client.
+// Appelé automatiquement quand on change la réservation dans le select.
+async function loadDocsForResa(resaId){
+  resaId = parseInt(resaId);
+  const zone = document.getElementById('docs-list');
+  if(!zone || !resaId) return;
+  zone.innerHTML = '<p class="empty" style="font-size:13px">Chargement…</p>';
+  try{
+    const r = await fetch(API('admin-documents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list', reservation_id:resaId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const docs = d.documents || [];
+    if(!docs.length){
+      zone.innerHTML = '<p class="empty" style="font-size:13px">Aucun document généré pour cette réservation.</p>';
+      return;
+    }
+    const DOC_LABEL = {contrat:'Contrat de location', facture:'Facture', facture_vente:'Facture d\'achat', avenant:'Avenant de prolongation'};
+    const DOC_ICON  = {contrat:'📄', facture:'🧾', facture_vente:'🧾', avenant:'📝'};
+    const STATUT_CHIP = {genere:'chip inactif', envoye:'chip a_faire', consulte:'chip fait'};
+    const STATUT_LABEL = {genere:'Généré', envoye:'Envoyé', consulte:'Consulté'};
+    zone.innerHTML = docs.map(doc => `
+      <div class="row-item" style="padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">${DOC_ICON[doc.type]||'📄'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13.5px">${DOC_LABEL[doc.type]||doc.type}${doc.numero?' · <span style="font-size:12px;color:var(--grey)">'+escHtml(doc.numero)+'</span>':''}</div>
+          <div style="font-size:12px;color:var(--grey)">${new Date(doc.genere_at).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})}</div>
+        </div>
+        <span class="${STATUT_CHIP[doc.statut]||'chip inactif'}" style="font-size:11px">${STATUT_LABEL[doc.statut]||doc.statut}</span>
+        <button class="btn btn-grey" style="padding:3px 10px;font-size:11px;width:auto;min-height:auto" onclick="voirDocumentAdmin(${doc.id},this)">Voir</button>
+      </div>`).join('');
+  }catch(e){
+    zone.innerHTML = `<p class="empty" style="font-size:13px">${escHtml(e.message)}</p>`;
+  }
+}
+
+// Ouvre un document dans un nouvel onglet via une URL signée (valide 1h).
+async function voirDocumentAdmin(docId, btn){
+  if(btn) btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-documents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'view_url', id:docId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    window.open(d.url, '_blank');
+  }catch(e){
+    showToast(e.message, 'error');
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
+
 async function genererDocumentsClient(btn){
   const resaId = parseInt(document.getElementById('doc-gen-resa')?.value);
   const contratFacture = document.getElementById('doc-gen-location')?.checked;
@@ -8770,6 +8829,7 @@ async function genererDocumentsClient(btn){
     }
     showToast(messages.join(' · '), 'success');
     loadClientCommunications();
+    loadDocsForResa(resaId); // rafraîchit la liste après génération
   }catch(e){
     showToast(e.message, 'error');
   }finally{
