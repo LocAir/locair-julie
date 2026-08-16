@@ -183,6 +183,10 @@ input[type="checkbox"]{accent-color:var(--blue)}
    visuel, donc doit rester facile à taper d'un geste rapide sur le terrain. */
 .btn-chip{margin-left:6px;font-size:12.5px;font-weight:700;padding:9px 14px;min-height:40px;border:1px solid var(--rule);border-radius:var(--r-sm);background:var(--white);cursor:pointer;color:var(--blue)}
 .pill-badge{display:inline-flex;align-items:center;gap:4px;background:var(--blue-lt);color:var(--blue);font-weight:700;font-size:13px;padding:6px 12px;border-radius:100px}
+/* Livraison Express : heure limite (pas une simple préférence client comme le
+   créneau normal) — ambre plutôt que bleu pour que ça saute aux yeux comme
+   une vraie urgence, cohérent avec le badge "⏰ En retard" (mcard-late-badge). */
+.pill-badge-urgent{background:var(--amber-bg);color:var(--amber)}
 
 .media-btn{display:flex;align-items:center;gap:10px;width:100%;padding:16px 22px;border:1.5px solid var(--rule);border-radius:100px;background:var(--white);font-weight:700;font-size:15px;color:var(--black);margin-bottom:12px;cursor:pointer}
 /* Action pas encore faite : plus de poids visuel qu'un simple bouton
@@ -2144,8 +2148,12 @@ function missionCardHtml(m){
   // sauter aux yeux dès la liste, pas seulement une fois la mission ouverte,
   // sous peine d'un passage hors créneau chez le client. Livraison/autre
   // gardent l'ancien affichage discret (créneau choisi par le client au
-  // checkout, jamais une contrainte imposée après coup).
-  const creneauEnEvidence = m.type==='recuperation' && m.creneau;
+  // checkout, jamais une contrainte imposée après coup) — SAUF Express : le
+  // créneau y est un vrai engagement (livraison sous 2h, pas juste une
+  // préférence client) et mérite la même mise en évidence, en version
+  // "urgente" (pill ambre + heure limite plutôt que la plage complète).
+  const creneauEnEvidence = (m.type==='recuperation' || c.express) && m.creneau;
+  const expressDeadline = c.express ? String(m.creneau||'').split(/[–-]/).pop().trim() : '';
   const metaParts = [(!creneauEnEvidence && m.creneau)?escHtml(m.creneau):'', (c.etage&&c.etage!=='—')?'Étage '+escHtml(c.etage):'', finLocationTxt].filter(Boolean);
   // Numéro(s) d'unité déjà assignés en stock — pour identifier tout de suite
   // de quel(s) climatiseur(s) il s'agit, sans devoir ouvrir la mission.
@@ -2163,7 +2171,9 @@ function missionCardHtml(m){
         ${earn}
       </div>
       <div class="mcard-addr">📍 ${escHtml(adresse||'Adresse à confirmer')}</div>
-      ${creneauEnEvidence?`<div class="pill-badge" style="margin-top:7px">🕐 ${escHtml(m.creneau)}</div>`:''}
+      ${creneauEnEvidence?(c.express
+        ?`<div class="pill-badge pill-badge-urgent" style="margin-top:7px">🚀 À livrer avant ${escHtml(expressDeadline||m.creneau)}</div>`
+        :`<div class="pill-badge" style="margin-top:7px">🕐 ${escHtml(m.creneau)}</div>`):''}
       ${metaParts.length?`<div class="mcard-meta">${metaParts.join(' · ')}</div>`:''}
       ${missionCardActionsHtml(m, mapsUrl, c.tel)}
     </div>`;
@@ -3274,6 +3284,7 @@ function renderDetail(){
     </div>
     <div class="card">
       ${(['acceptee','en_route','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
+      ${((m.client||{}).express && m.creneau) ? `<div class="detail-late-badge">🚀 À livrer avant ${escHtml(String(m.creneau).split(/[–-]/).pop().trim())}</div>` : ''}
       <h1 style="display:flex;align-items:center;gap:8px">${typeIconSvg(m.type,22)}${missionTypeLabel(m)}</h1>
       ${m.montant_preview?`<div class="detail-earn">💶 ${Math.round(m.montant_preview/100)} €${(m.client||{}).hors_zone?' · Hors zone':''}${(m.client||{}).express?' · 🚀 Express':''}</div>`:''}
       <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):''].filter(Boolean).join(' · ')}</p>
