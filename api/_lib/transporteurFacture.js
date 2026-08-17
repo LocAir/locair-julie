@@ -1,7 +1,8 @@
 const crypto = require('crypto');
 const { generateFactureTransporteurPdf, fmtDate, eur } = require('./pdf');
 const { sendBrevoEmail } = require('./brevo');
-const { tplFactureTransporteurAdmin } = require('./emailTemplates');
+const { tplFactureTransporteurAdmin, tplRecapFactureHebdoAdmin } = require('./emailTemplates');
+const { notifyTransporteur } = require('./transporteurNotif');
 
 // Même bucket que les autres documents (contrats, factures client, avenants)
 // — aucun nouveau bucket/policy Supabase Storage nécessaire.
@@ -177,4 +178,118 @@ async function genererFactureTransporteur(supabase, { transporteurId, periodeDeb
   return { ...inserted, envoyee_admin: envoyeeAdmin, envoyee_erreur: envoyeeErreur, deja_generee: false };
 }
 
-module.exports = { genererFactureTransporteur, resumePeriode };
+// ── Automatisation du lundi (demande d'Aly, 2026-08-17) ─────────────────────
+// Appelée depuis cron-daily.js, seulement le lundi (today.getDay() === 1) —
+// même schéma que runWeeklyReport/runMonthlyRecap : un seul cron programmé
+// sur ce plan Vercel (voir vercel.json), toute logique "hebdomadaire" se
+// déclenche depuis le cron quotidien plutôt que sur sa propre entrée. Tourne
+// donc dans la même fenêtre que le reste du cron quotidien (~8h30 heure de
+// Paris en été, 6h30 UTC — vercel.json), pas pile 8h00.
+//
+// Pour chaque transporteur actif :
+//  1. RAPPEL — la semaine qui vient de se terminer (lundi dernier→dimanche)
+//     a des missions mais pas encore de facture : notification pour qu'il la
+//     valide lui-même dans "Mes gains" (aucun envoi automatique cette
+//     semaine-là, il a jusqu'au lundi suivant pour agir).
+//  2. FILET DE SÉCURITÉ — la semaine d'il y a 2 semaines (donc déjà passée
+//     par l'étape 1 il y a une semaine) est TOUJOURS sans facture : générée
+//     et envoyée à sa place, pour que rien ne se perde même en cas d'oubli.
+// Heure de Paris ignorée ici (semaines entières, UTC suffit — même logique
+// que periodLabel dans transporteurNotif.js, déjà en UTC pour cette raison).
+function mondayUTC(d) {
+  const dow = d.getUTCDay(); // 0=dimanche..6=samedi
+  const monday = new Date(d);
+  monday.setUTCDate(d.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+  monday.setUTCHours(0, 0, 0, 0);
+  return monday;
+}
+function addDaysUTC(d, n) {
+  const r = new Date(d);
+  r.setUTCDate(r.getUTCDate() + n);
+  return r;
+}
+function isoDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+async function runFactureTransporteurHebdo(supabase, now = new Date()) {
+  const mondayThisWeek    = mondayUTC(now);
+  const mondayLastWeek    = addDaysUTC(mondayThisWeek, -7);
+  const sundayLastWeek    = addDaysUTC(mondayLastWeek, 6);
+  const mondayTwoWeeksAgo = addDaysUTC(mondayThisWeek, -14);
+  const sundayTwoWeeksAgo = addDaysUTC(mondayTwoWeeksAgo, 6);
+
+  const { data: transporteurs } = await supabase.from('transporteurs').select('id, nom').eq('actif', true);
+  const result = { rappels: 0, generees_auto: 0, erreurs: [], recap_lignes: [] };
+
+  for (const t of transporteurs || []) {
+    // 1) Rappel — semaine qui vient de finir
+    try {
+      const pDebut = isoDate(mondayLastWeek), pFin = isoDate(sundayLastWeek);
+      const { data: existante } = await supabase.from('transporteur_factures').select('id')
+        .eq('transporteur_id', t.id).eq('periode_debut', pDebut).eq('periode_fin', pFin).maybeSingle();
+      if (!existante) {
+        const resume = await resumePeriode(supabase, t.id, pDebut, pFin);
+        if (resume.nb_missions > 0) {
+          const montantFmt = eur(resume.montant_total_cents);
+          await notifyTransporteur(supabase, t.id, {
+            type: 'facture', tag: 'facture_rappel',
+            message: `🧾 Ta facture de la semaine passée t'attend : ${resume.nb_missions} mission${resume.nb_missions > 1 ? 's' : ''}, ${montantFmt} — valide-la en 1 clic dans "Mes gains".`,
+          });
+          result.rappels++;
+          result.recap_lignes.push({ nom: t.nom, auto: false, montantFmt, cents: resume.montant_total_cents });
+        }
+      }
+    } catch (e) {
+      result.erreurs.push(`rappel #${t.id}: ${e.message}`);
+      console.error('[Facture hebdo — rappel]', t.id, e.message);
+    }
+
+    // 2) Filet de sécurité — semaine d'il y a 2 semaines, toujours sans facture
+    try {
+      const pDebut2 = isoDate(mondayTwoWeeksAgo), pFin2 = isoDate(sundayTwoWeeksAgo);
+      const { data: existante2 } = await supabase.from('transporteur_factures').select('id')
+        .eq('transporteur_id', t.id).eq('periode_debut', pDebut2).eq('periode_fin', pFin2).maybeSingle();
+      if (!existante2) {
+        const genResult = await genererFactureTransporteur(supabase, { transporteurId: t.id, periodeDebut: pDebut2, periodeFin: pFin2 });
+        if (!genResult.deja_generee) {
+          result.generees_auto++;
+          const montantFmt = eur(genResult.montant_total_cents);
+          await notifyTransporteur(supabase, t.id, {
+            type: 'facture', tag: 'facture_auto',
+            message: `🧾 Ta facture de la semaine du ${fmtDate(pDebut2)} a été générée et envoyée automatiquement (tu n'avais pas encore validé) — tu la retrouves dans "Mes factures".`,
+          });
+          result.recap_lignes.push({ nom: t.nom, auto: true, montantFmt, cents: genResult.montant_total_cents });
+        }
+      }
+    } catch (e) {
+      // EMPTY = aucune mission sur cette période, rien à générer — normal,
+      // pas une erreur à signaler.
+      if (e.code !== 'EMPTY') {
+        result.erreurs.push(`auto #${t.id}: ${e.message}`);
+        console.error('[Facture hebdo — auto]', t.id, e.message);
+      }
+    }
+  }
+
+  // Récap admin : le total d'abord (demande d'Aly), le détail par
+  // transporteur ensuite. Envoyé une seule fois, seulement s'il y a quelque
+  // chose à signaler — pas de mail vide chaque lundi sans activité.
+  if (result.recap_lignes.length) {
+    try {
+      const totalCents = result.recap_lignes.reduce((s, l) => s + l.cents, 0);
+      const adminEmail = process.env.ADMIN_EMAIL || 'alythiam95@gmail.com';
+      const html = tplRecapFactureHebdoAdmin({
+        totalFmt: eur(totalCents), nbTransporteurs: result.recap_lignes.length, lignes: result.recap_lignes,
+      });
+      const recapResult = await sendBrevoEmail({ to: adminEmail, subject: `🧾 Récap hebdo factures transporteurs — ${eur(totalCents)}`, html });
+      if (!recapResult.ok) console.error('[Facture hebdo — récap email]', recapResult.error);
+    } catch (e) {
+      console.error('[Facture hebdo — récap email]', e.message);
+    }
+  }
+
+  return result;
+}
+
+module.exports = { genererFactureTransporteur, resumePeriode, runFactureTransporteurHebdo };

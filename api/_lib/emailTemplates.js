@@ -879,6 +879,30 @@ function tplFactureTransporteurAdmin({ transporteurNom, numero, periodeDebutFmt,
   });
 }
 
+// Récap hebdo de l'automatisation du lundi (rappel + génération auto si
+// oublié, voir _lib/transporteurFacture.js runFactureTransporteurHebdo) —
+// interne, envoyé une fois par semaine seulement s'il y a quelque chose à
+// signaler. Le TOTAL d'abord (demande explicite d'Aly), le détail par
+// transporteur ensuite — jamais l'inverse.
+function tplRecapFactureHebdoAdmin({ totalFmt, nbTransporteurs, lignes }) {
+  const rows = (lignes || []).map(l => `
+    <tr>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:13px;color:#1a1a1a">${escHtml(l.nom)}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:12px;color:#888;text-align:center">${l.auto ? '✅ Générée auto' : '🔔 Rappel envoyé'}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:13px;font-weight:700;color:#1a1a1a;text-align:right">${escHtml(l.montantFmt)}</td>
+    </tr>`).join('');
+  return wrap({
+    title: 'Récap hebdo — factures transporteurs 🧾',
+    intro: `Automatisation du lundi : rappels envoyés et factures générées pour toi.`,
+    bodyHtml: `
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">TOTAL CONCERNÉ CETTE SEMAINE</p><strong style="font-size:26px;color:#1a2b4a">${escHtml(totalFmt)}</strong></div>
+      <p style="font-size:13px;color:#444">${nbTransporteurs} transporteur${nbTransporteurs > 1 ? 's' : ''} concerné${nbTransporteurs > 1 ? 's' : ''} — détail ci-dessous.</p>
+      <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:8px">${rows}</table>
+      <p style="font-size:13px;color:#444;margin-top:14px">"✅ Générée auto" = le transporteur n'avait pas validé sa facture après le rappel de la semaine précédente, elle a donc été générée et envoyée à sa place. "🔔 Rappel envoyé" = à lui de valider dans son espace.</p>`,
+    ctaHref: 'https://www.locair.fr/admin', ctaLabel: "Voir les factures transporteurs",
+  });
+}
+
 // Lien de paiement Stripe pour une réservation prise par téléphone et encore
 // "en attente" (interne — FR uniquement, même principe que tplContratFacture/
 // tplFactureVente). Une fois payé, le webhook Stripe déclenche exactement le
@@ -1098,6 +1122,6 @@ module.exports = {
   tplPostInstallation, tplAvantFinLocation, tplRappelRecuperation, tplFinLocation,
   tplProlongConfirmation, tplContratFacture, tplContratFactureProlongation, tplFactureVente,
   tplAmbassadeurCredentials, tplNouveauCodeAmbassadeur, tplNouveauCodeTransporteur,
-  tplPrimeTransporteur, tplFactureTransporteurAdmin,
+  tplPrimeTransporteur, tplFactureTransporteurAdmin, tplRecapFactureHebdoAdmin,
   tplLienPaiement, tplRelanceDormant, tplOffrePrivilege,
 };
