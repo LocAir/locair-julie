@@ -1923,8 +1923,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .hero-trust-item svg{
   width:12px;height:12px;stroke:var(--gold);stroke-width:2.2;fill:none;flex-shrink:0;opacity:.9;
 }
-/* Smart line masqué (date non voulue dans le hero) */
-#hero-smart-line{display:none!important}
+/* Smart line : visible uniquement 8h–20h (compte à rebours livraison) */
 /* "Prochain disponible" masqué — non voulu dans l'overlay sold-out */
 #so-next-dispo{display:none!important}
 
@@ -9674,22 +9673,12 @@ function _renderSmartLine(){
       :'Il vous reste '+timeStr+' — livraison garantie demain');
     _smartLine.style.color='rgba(255,255,255,.92)';
     _smartLine.style.display='block';
-  }else if(h>=20||(h===20&&m>0)){
-    // Après 20h : cutoff dépassé → J+2
-    const dt=_addDays(2);
-    const dateStr=isEn?(dt.getDate()+' '+_MONTHS_LONG_EN[dt.getMonth()]):isZH?(dt.getDate()+_MONTHS_LONG_ZH[dt.getMonth()]):isRU?(dt.getDate()+' '+_MONTHS_LONG_RU[dt.getMonth()]):(dt.getDate()+' '+_MONTHS_LONG_FR[dt.getMonth()]);
-    _smartLine.innerHTML=_dot('rgba(255,255,255,.4)',false)+(isEn?'Next available: '+dateStr:isZH?'最近可送：'+dateStr:isRU?'Доставка '+dateStr:'Livraison le '+dateStr);
-    _smartLine.style.color='rgba(255,255,255,.72)';
-    _smartLine.style.display='block';
   }else{
-    // 0h–7h59 : J+1 encore valide, livraison demain — pas d'urgence, pas de compte à rebours
-    _smartLine.innerHTML=_dot('rgba(255,255,255,.55)',false)+(isEn
-      ?'Next-day delivery · book before 8pm today'
-      :isZH?'次日送达 · 今日20点前预订'
-      :isRU?'Доставка с завтрашнего утра · заказ до 20:00'
-      :'Livraison dès demain matin · réservez avant 20h');
-    _smartLine.style.color='rgba(255,255,255,.72)';
-    _smartLine.style.display='block';
+    // En dehors de 8h–20h : on cache la ligne (pas de date, pas de texte superflu)
+    _smartLine.style.display='none';
+    _updateMobileBar();
+    _initDynamicText();
+    return false;
   }
   _updateMobileBar();
   _initDynamicText();
@@ -9744,7 +9733,7 @@ setInterval(_renderSmartLine,60000);
     if(!_smartLine||!isZone06)return;
     const label=_lang==='zh'?(city?city+' — 配送区域 ✓':'配送区域覆盖 ✓'):_lang==='en'?(city?city+' — delivery zone covered ✓':'Delivery zone covered ✓'):_lang==='ru'?(city?city+' — зона доставки покрыта ✓':'Зона доставки покрыта ✓'):(city?city+' — zone de livraison couverte ✓':'Zone de livraison couverte ✓');
     _smartLine.textContent='📍 '+label;
-    _smartLine.style.color='#4ade80';
+    _smartLine.style.color='rgba(255,255,255,.85)';
     _smartLine.style.display='block';
     const spEl=document.getElementById('hero-social-proof');
     if(spEl)spEl.style.display='none';
