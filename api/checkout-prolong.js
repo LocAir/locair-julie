@@ -266,7 +266,7 @@ module.exports = async (req, res) => {
       partenaire_id:            orig?.partenaire_id || null,
       partenaire_commission_cents: partenaireCommissionCents,
       lang:                     ['fr','en','zh','ru'].includes(data.lang) ? data.lang : 'fr',
-    }).select('id').single();
+    }).select('id, ref').single();
 
     if (insertErr) {
       console.error('[Reservation prolong insert]', insertErr.message);
@@ -288,7 +288,7 @@ module.exports = async (req, res) => {
       console.error('[CGV acceptations prolong]', e.message);
     }
 
-    return res.status(200).json({ clientSecret: intent.client_secret, amountCents });
+    return res.status(200).json({ clientSecret: intent.client_secret, amountCents, ref: insertedResa.ref || '' });
   } catch (err) {
     console.error('[Stripe prolong]', err.message);
     await recordFailedAttempt(supabaseRL, `checkout-prolong:${ip}`).catch(() => {});

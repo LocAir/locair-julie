@@ -104,7 +104,6 @@ let _DISPO = null, _DISPO_AT = 0;
 <!-- ╚══════════════════════════════════════════════════════════════════╝ -->
 
 <script id="schema-ld" type="application/ld+json">{"@context":"https://schema.org","@type":"LocalBusiness","@id":"https://www.locair.fr/#business","name":"Loc'Air","url":"https://www.locair.fr/","telephone":"+33663798756","image":"https://www.locair.fr/hero-clim.jpg","logo":{"@type":"ImageObject","url":"https://www.locair.fr/apple-touch-icon.png"},"geo":{"@type":"GeoCoordinates","latitude":43.7102,"longitude":7.262},"address":{"@type":"PostalAddress","streetAddress":"11 Avenue Chantal","addressLocality":"Nice","postalCode":"06100","addressCountry":"FR"},"openingHours":"Mo-Su 08:00-20:00","priceRange":"€€","paymentAccepted":"Credit Card","currenciesAccepted":"EUR","aggregateRating":{"@type":"AggregateRating","ratingValue":"4.9","reviewCount":"32","bestRating":"5","worstRating":"1"},"legalName":"THIAM ALY","foundingDate":"2019","identifier":{"@type":"PropertyValue","name":"SIRET","value":"85373056200024"},"serviceType":"Location de climatiseur mobile","areaServed":[{"@type":"City","name":"Nice"},{"@type":"City","name":"Villefranche-sur-Mer"},{"@type":"City","name":"Saint-Laurent-du-Var"},{"@type":"City","name":"Cagnes-sur-Mer"},{"@type":"City","name":"Beaulieu-sur-Mer"}],"contactPoint":{"@type":"ContactPoint","telephone":"+33663798756","contactType":"customer support","availableLanguage":"French","hoursAvailable":{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],"opens":"08:00","closes":"20:00"}},"hasMap":"https://www.google.com/maps/place/Loc%27Air/@43.7076,7.2793,17z","sameAs":["https://www.google.com/maps/place/Loc%27Air/@43.7076,7.2793,17z","https://g.page/r/CeJQrt2gLNNrEAE"],"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],"opens":"08:00","closes":"20:00"}],"description":"Location climatiseur mobile à Nice — Côte d'Azur. Livraison et installation sous 24h. Aucune caution. Rowenta, Frico ou Hisense · jusqu’à 12 000 BTU. Tarif dégressif dès 7 jours — de 12 €/jour à 8 €/jour. Paiement en ligne par carte via Stripe.","hasOfferCatalog":{"@type":"OfferCatalog","name":"Location climatiseur","itemListElement":[{"@type":"Offer","name":"Location climatiseur mobile Nice","description":"de 12 €/jour à 8 €/jour selon la durée","price":"12","priceCurrency":"EUR","availability":"https://schema.org/InStock","priceValidUntil":"2027-09-30"}]}}</script>
-<script type="application/ld+json">{"@context":"https://schema.org","@type":"Service","name":"Location de climatiseur mobile à Nice","description":"Location climatiseur mobile livré et installé à Nice sous 24h. Sans caution. Tarif dégressif de 12 €/j à 8 €/j.","provider":{"@id":"https://www.locair.fr/#business"},"areaServed":{"@type":"City","name":"Nice"},"serviceType":"Location de climatiseur","offers":{"@type":"Offer","price":"12","priceCurrency":"EUR","priceValidUntil":"2027-09-30","availability":"https://schema.org/InStock"}}</script>
 <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 <link rel="manifest" href="/manifest.json"/>
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png"/>
@@ -7060,7 +7059,7 @@ function closeModal(){
   ['pe-prenom','pe-nom','pe-email','pe-tel','pe-addr','pe-ref','pe-date'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
-  _prolongDays=1;_prolongOrigDays=0;_prolongResa=null;
+  _prolongDays=1;_prolongOrigDays=0;_prolongResa=null;_prolongServerRef=null;
   const peLookupErr=document.getElementById('pe-lookup-err');if(peLookupErr)peLookupErr.style.display='none';
   const pecgv=document.getElementById('pe-cgv');if(pecgv)pecgv.checked=false;
   const mc=document.getElementById('main-content');
@@ -9830,7 +9829,7 @@ function _dismissTopBar(){
 
 // ── 1. STATUT DISPONIBILITÉ ──────────────────────────────────────────────────
 (function initAvail(){
-  const h=new Date().getHours();
+  const h=_parisNow().h;
   const open=h>=8&&h<20;
   const cls=open?'avail-open':'avail-closed';
   const isRU=_lang==='ru';
@@ -9886,7 +9885,7 @@ function _dismissTopBar(){
 // ── 5. COMPTEUR 500 — observé par countObs existant (data-count déjà en HTML) ─
 
 (function initActivityTicker(){
-  const h=new Date().getHours();
+  const h=_parisNow().h;
   const el=document.getElementById('act-text');
   if(!el)return;
   const isRU=_lang==='ru';
@@ -10056,6 +10055,7 @@ let _prolongOrigDays=0;
 let _prolongPaying=false;
 let _prolongElements=null;
 let _prolongResa=null;
+let _prolongServerRef=null;
 
 function chooseFlow(type){
   _currentFlow=type;
@@ -10284,6 +10284,7 @@ async function startProlongPayment(){
     if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||('API '+r.status));}
     const d=await r.json();
     if(!d.clientSecret)throw new Error(d.error||'No secret');
+    _prolongServerRef=d.ref||null;
 
     const appearance={
       theme:'stripe',
@@ -10387,7 +10388,7 @@ function _showProlongSuccess(){
       :_lang==='ru'
       ?'Ваша аренда продлена на '+_prolongDays+' дней. Возврат '+dateLabel+', временной слот: '+creneau+'. Подтверждение на email через несколько минут.'
       :'Votre location est prolongée de '+_prolongDays+' jour'+(_prolongDays>1?'s':'')+'. Récupération le '+dateLabel+' entre '+creneau+'. Confirmation par email dans quelques minutes.';
-    const prolongRef=_generateOrderRef();
+    const prolongRef=_prolongServerRef||_generateOrderRef();
     const refEl2=document.getElementById('prolong-ref');
     if(refEl2)refEl2.textContent=(_lang==='en'?'Ref ':_lang==='zh'?'编号：':_lang==='ru'?'Номер заказа ':'Dossier ')+prolongRef;
     succ.classList.add('show');
