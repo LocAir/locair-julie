@@ -5020,6 +5020,21 @@ const FENETRE_OPTIONS = ['À confirmer', 'Fenêtre coulissante', 'Fenêtre à ba
 // tout de suite, sans attendre qu'un autre champ (dates/quantité) le fasse à
 // sa place. Vide par défaut : aucun changement pour les formulaires sans
 // calcul de prix en direct (fiche réservation, "Créer une mission").
+// Choix simple plutôt qu'un texte libre à taper de zéro (demande d'Aly :
+// "créer une mission doit être très simple") — mêmes créneaux que ceux déjà
+// utilisés ailleurs dans l'app (créneau de récupération du formulaire de
+// réservation, créneau standard du site). "14h – 17h" gardé pour les rares
+// cas où le client n'est disponible que sur une plage restreinte.
+function creneauSelectHtml(id, label){
+  return `<label for="${id}">${label}</label>
+  <select id="${id}">
+    <option value="">— Non précisé —</option>
+    <option value="8h – 12h">8h – 12h (matin)</option>
+    <option value="8h – 10h">8h – 10h</option>
+    <option value="10h – 12h">10h – 12h</option>
+    <option value="14h – 17h">14h – 17h</option>
+  </select>`;
+}
 function logisticsFieldsHtml(prefix, v, onInstallChange){
   v = v || {};
   return `
@@ -5069,11 +5084,6 @@ async function createReservation(confirmer){
     date_debut: document.getElementById('nr-debut').value,
     date_fin: document.getElementById('nr-fin').value,
     express: _nrExpress,
-    // Champ lu par admin-reservations.js (action 'create') sous le nom
-    // creneau_livraison — sans lui, une réservation créée à la main partait
-    // sans aucun créneau de livraison (ni "8h-12h" ni l'heure réelle), pour
-    // le client comme pour le transporteur.
-    creneau_livraison: _nrCreneauLivraison || undefined,
     quantite: document.getElementById('nr-qte').value,
     prix_total_cents: Math.round((parseFloat(document.getElementById('nr-prix').value)||0)*100),
     logement: document.getElementById('nr-logement').value,
@@ -5086,6 +5096,17 @@ async function createReservation(confirmer){
     cgv_accepted: document.getElementById('nr-cgv').checked,
     ...typeClientPayload('nr'),
     ...logisticsPayload('nr'),
+    // Doit rester APRÈS le spread de logisticsPayload('nr') ci-dessus : ce
+    // dernier renvoie un creneau_livraison fixe ('8h–12h') qui écraserait
+    // silencieusement le créneau Express calculé (ex. "16h30–18h30") si ce
+    // champ passait avant lui dans l'objet — même piège déjà connu et
+    // contourné pour la modification d'une réservation (voir "delete
+    // body.creneau_livraison" plus haut dans ce fichier). Sans lui, une
+    // réservation Express créée à la main partait avec le mauvais créneau,
+    // pour le client comme pour le transporteur. Hors Express, on garde le
+    // même repli fixe '8h–12h' que logisticsPayload() renvoyait déjà avant
+    // ce correctif — seul le cas Express change de comportement ici.
+    creneau_livraison: _nrCreneauLivraison || '8h–12h',
   };
   // Champs manquants pointés directement en rouge + focus sur le premier —
   // sur un formulaire de cette longueur, un message générique en bas de page
@@ -5587,10 +5608,8 @@ function renderLivraisonsToolbar(){
 // coup, correction d'un oubli de dispatch).
 const MISSION_TYPE_LABEL = { livraison: '📦 Livraison', recuperation: '🔄 Récupération', changement: '🔁 Remplacement', autre: '🧳 Mission libre' };
 function toggleCreateMissionMode(value){
-  const isNew = value === '__new__';
   const isAutre = value === '__autre__';
-  document.getElementById('cm-new-client')?.classList.toggle('hidden', !isNew);
-  document.getElementById('cm-existing-resa')?.classList.toggle('hidden', isNew || isAutre);
+  document.getElementById('cm-existing-resa')?.classList.toggle('hidden', isAutre);
   document.getElementById('cm-autre')?.classList.toggle('hidden', !isAutre);
 }
 async function openCreateMissionModal(){
@@ -5624,37 +5643,17 @@ async function openCreateMissionModal(){
       <h2 style="margin-bottom:14px">➕ Créer une mission</h2>
       <label for="cm-resa">Réservation</label>
       <select id="cm-resa" onchange="toggleCreateMissionMode(this.value)">
-        <option value="__new__">+ Nouveau client…</option>
-        <option value="__autre__">🧳 Mission libre (hors réservation)</option>
         ${resaOptions}
+        <option value="__autre__">🧳 Mission libre (hors réservation)</option>
       </select>
-      <div id="cm-new-client" style="margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--r-sm)">
-        <p class="sub" style="margin:0 0 10px">Crée le client, sa réservation, et ses missions de livraison/récupération automatiquement — comme dans l'onglet Réservations.</p>
-        <div class="eyebrow" style="margin-bottom:8px">Client</div>
-        <label for="cm-c-prenom">Prénom *</label>
-        <input type="text" id="cm-c-prenom"/>
-        <label for="cm-c-nom" style="margin-top:8px">Nom *</label>
-        <input type="text" id="cm-c-nom"/>
-        <label for="cm-c-tel" style="margin-top:8px">Téléphone</label>
-        <input type="tel" id="cm-c-tel"/>
-        <div style="margin-top:8px">${typeClientFieldsHtml('cm-c')}</div>
-        <div class="eyebrow" style="margin:14px 0 8px">Logement</div>
-        <label for="cm-c-adresse">Adresse *</label>
-        <input type="text" id="cm-c-adresse"/>
-        ${logisticsFieldsHtml('cm-c')}
-        <div class="eyebrow" style="margin:14px 0 8px">Dates &amp; quantité</div>
-        <div class="inline-form">
-          <div><label for="cm-c-debut">Date livraison *</label><input type="date" id="cm-c-debut" value="${today}" oninput="document.getElementById('cm-c-debut-preview').textContent = this.value ? frDate(this.value) : ''"/><div id="cm-c-debut-preview" style="font-size:11.5px;color:var(--grey);margin-top:3px">${frDate(today)}</div></div>
-          <div><label for="cm-c-fin">Date récupération *</label><input type="date" id="cm-c-fin" oninput="document.getElementById('cm-c-fin-preview').textContent = this.value ? frDate(this.value) : ''"/><div id="cm-c-fin-preview" style="font-size:11.5px;color:var(--grey);margin-top:3px"></div></div>
-        </div>
-        <div class="inline-form" style="margin-top:8px">
-          <div><label for="cm-c-qte">Quantité</label><input type="number" id="cm-c-qte" min="1" max="5" value="1"/></div>
-          <div><label for="cm-c-prix">Prix total (€)</label><input type="number" id="cm-c-prix" min="0" step="0.5"/></div>
-        </div>
-        <label style="margin-top:10px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
-          <input type="checkbox" id="cm-c-cgv" style="width:auto"/> Le client a été informé et accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> ainsi que les <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">conditions d'utilisation du climatiseur</a> (comme sur le site)
-        </label>
-      </div>
+      <!-- Raccourci "+ Nouveau client…" supprimé (demande d'Aly, 2026-08-17) :
+           ce mini-formulaire dupliquait la création de réservation de l'onglet
+           "Nouvelle réservation", mais sans son calcul automatique du prix
+           (code postal, durée, express...) — le prix devait être tapé à la
+           main ici, un vrai risque d'erreur. Un seul chemin maintenant :
+           l'onglet "Nouvelle réservation", qui génère déjà les missions
+           livraison/récupération automatiquement à la confirmation. -->
+      <p class="sub" style="margin-top:6px;font-size:12px">Le client n'est pas dans la liste ? Crée d'abord sa réservation depuis l'onglet <strong>Réservations → Nouvelle réservation</strong> — les missions de livraison/récupération sont générées automatiquement.</p>
       <div id="cm-autre" class="hidden" style="margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--r-sm)">
         <p class="sub" style="margin:0 0 10px">Pour une tâche qui ne concerne pas un client (ex. aller chercher du matériel livré par un fournisseur et le ramener au box). Pas de barème ici — tu fixes le tarif toi-même. Aucun champ n'est obligatoire ici : remplis juste ce que tu sais, tu pourras compléter plus tard.</p>
         <label for="cm-a-titre">Instructions (optionnel)</label>
@@ -5668,7 +5667,7 @@ async function openCreateMissionModal(){
         </select>
         <div class="inline-form" style="margin-top:8px">
           <div><label for="cm-a-date">Date</label><input type="date" id="cm-a-date" value="${today}"/></div>
-          <div><label for="cm-a-creneau">Créneau</label><input type="text" id="cm-a-creneau" placeholder="8h–10h"/></div>
+          <div>${creneauSelectHtml('cm-a-creneau','Créneau')}</div>
         </div>
         <label for="cm-a-tarif" style="margin-top:8px">Tarif payé au transporteur (€)</label>
         <input type="number" id="cm-a-tarif" min="0" step="0.5" placeholder="0"/>
@@ -5685,7 +5684,7 @@ async function openCreateMissionModal(){
         </select>
         <div class="inline-form" style="margin-top:12px">
           <div><label for="cm-date">Date</label><input type="date" id="cm-date" value="${today}"/></div>
-          <div><label for="cm-creneau">Créneau</label><input type="text" id="cm-creneau" placeholder="8h–10h"/></div>
+          <div>${creneauSelectHtml('cm-creneau','Créneau')}</div>
         </div>
         <label for="cm-appareil" style="margin-top:12px">Climatiseur (optionnel)</label>
         <select id="cm-appareil">
@@ -5701,7 +5700,9 @@ async function openCreateMissionModal(){
       <div class="err" id="cm-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  toggleCreateMissionMode('__new__');
+  // Sélection par défaut du menu (1re réservation confirmée s'il y en a,
+  // sinon "Mission libre") — reflète l'état réel affiché par le <select>.
+  toggleCreateMissionMode(document.getElementById('cm-resa')?.value || '__autre__');
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
@@ -5709,49 +5710,6 @@ async function openCreateMissionModal(){
     errEl.style.display = 'none';
     okBtn.disabled = true;
     try{
-      // "+ Nouveau client" : crée le client + sa réservation, confirmée
-      // immédiatement (comme dans l'onglet Réservations) — ça suffit, la
-      // confirmation crée déjà toute seule les missions livraison/récupération
-      // et les dispatche, inutile (et faux) d'en recréer une par-dessus.
-      if(document.getElementById('cm-resa').value === '__new__'){
-        // Même exigence que l'onglet Réservations (case CGV/CGL cochée) —
-        // ici recueillie verbalement par l'admin au téléphone, mais tracée
-        // pareil (cgv_acceptations) pour garder le même dossier légal
-        // qu'une commande web. Sans ce contrôle côté client, l'appel serveur
-        // était systématiquement rejeté (400) sans que rien à l'écran
-        // n'explique pourquoi ni ne permette de le confirmer.
-        if(!document.getElementById('cm-c-cgv').checked){
-          errEl.textContent = "Confirme que le client accepte les CGV et les conditions d'utilisation avant de créer la réservation.";
-          errEl.style.display = 'block';
-          okBtn.disabled = false;
-          return;
-        }
-        // Aucun champ obligatoire ici : ce qui manque est complété côté
-        // serveur avec des valeurs par défaut sûres (voir admin-reservations.js)
-        // — utile pour une réservation prise vite au téléphone, à compléter
-        // plus tard depuis la fiche client.
-        const prenom = document.getElementById('cm-c-prenom').value.trim();
-        const nom = document.getElementById('cm-c-nom').value.trim();
-        const adresse = document.getElementById('cm-c-adresse').value.trim();
-        const date_debut = document.getElementById('cm-c-debut').value;
-        const date_fin = document.getElementById('cm-c-fin').value;
-        const rr = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
-          action: 'create', prenom, nom, adresse, date_debut, date_fin,
-          tel: document.getElementById('cm-c-tel').value.trim(),
-          quantite: document.getElementById('cm-c-qte').value,
-          prix_total_cents: Math.round((parseFloat(document.getElementById('cm-c-prix').value)||0)*100),
-          cgv_accepted: true,
-          ...typeClientPayload('cm-c'),
-          ...logisticsPayload('cm-c'),
-        })});
-        const rd = await rr.json();
-        if(!rr.ok) throw new Error(rd.error||'Erreur lors de la création du client');
-        if(rd.reservation) RESERVATIONS_CACHE.unshift(rd.reservation);
-        closeModal();
-        loadLivraisons();
-        showToast('Client et réservation créés — missions générées automatiquement', 'success');
-        return;
-      }
       if(document.getElementById('cm-resa').value === '__autre__'){
         // Aucun champ obligatoire ici non plus — un tarif vide part à 0€,
         // à corriger plus tard depuis la liste si besoin.
