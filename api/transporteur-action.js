@@ -400,6 +400,9 @@ module.exports = async (req, res) => {
       if (expectedType === 'livraison' && !liv.demo_faite) {
         return res.status(400).json({ error: 'Démonstration au client requise avant de valider' });
       }
+      if (expectedType === 'livraison' && !liv.signature_client_path) {
+        return res.status(400).json({ error: 'Signature du client requise avant de valider' });
+      }
       if (expectedType === 'recuperation' && !liv.photo_retour_path) {
         return res.status(400).json({ error: 'Vidéo de l\'appareil récupéré requise avant de valider' });
       }

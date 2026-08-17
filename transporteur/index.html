@@ -3287,13 +3287,17 @@ async function submitClientSig(missionId){
     const r = await fetch(API('transporteur-action'), {
       method:'POST',
       headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
-      body: JSON.stringify({action:'sauvegarder_signature', id:missionId, signature}),
+      body: JSON.stringify({action:'sauvegarder_signature', livraison_id:missionId, signature}),
     });
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    // Mise à jour locale optimiste
+    // Mise à jour locale optimiste — réinitialise wizardViewIdx pour que
+    // renderDetail() avance automatiquement à l'étape Final (sans ça, si le
+    // transporteur avait navigué en arrière avant de signer, l'écran restait
+    // bloqué sur "Signature enregistrée" au lieu de passer à Terminer).
     const m = STATE.missions.find(x => x.id === missionId);
     if(m){ m.signature_client_ok = true; STATE.currentMission = m; }
+    STATE.wizardViewIdx = null;
     renderDetail();
   }catch(e){
     showToast(e.message, 'error');
