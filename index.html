@@ -9374,14 +9374,15 @@ function applyGoogleRatingDOM(){
   if(scoreLink)scoreLink.setAttribute('aria-label',swap(scoreLink.getAttribute('aria-label')||''));
   const scoreN=document.querySelector('.score-n');
   if(scoreN){scoreN.dataset.count=String(rating);scoreN.textContent=ratingStr;}
-  const sld=document.getElementById('schema-ld');
-  if(sld){
+  ['schema-ld','schema-service-ld'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
     try{
-      const j=JSON.parse(sld.textContent);
+      const j=JSON.parse(el.textContent);
       if(j.aggregateRating){j.aggregateRating.ratingValue=String(rating);j.aggregateRating.reviewCount=String(count);}
-      sld.textContent=JSON.stringify(j);
+      el.textContent=JSON.stringify(j);
     }catch(e){}
-  }
+  });
 }
 async function _refreshGoogleRating(){
   try{
