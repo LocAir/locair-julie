@@ -7047,20 +7047,12 @@ function openModal(dur, flowType){
     chooseFlow('extend');
   } else if(flowType==='new'){
     chooseFlow('new');
-    requestAnimationFrame(()=>{
-      const h=document.getElementById('addr-init')?.value.trim();
-      if(h){const f=document.getElementById('f-addr');if(f&&!f.value)f.value=h;}
-    });
   } else {
     // Nouveaux visiteurs (pas de localStorage) → aller direct à la réservation
     // Clients existants → afficher le choix prolongation/nouvelle résa
     let _hasClient=false;try{_hasClient=!!localStorage.getItem('locair_client');}catch(e){}
     if(!_hasClient){
       chooseFlow('new');
-      requestAnimationFrame(()=>{
-        const h=document.getElementById('addr-init')?.value.trim();
-        if(h){const f=document.getElementById('f-addr');if(f&&!f.value)f.value=h;}
-      });
     } else {
       goTo(0,true);
     }
@@ -8416,11 +8408,10 @@ function setHeroSlider(days){
   (window.dataLayer=window.dataLayer||[]).push({event:'hero_sim_preset',days});
 }
 function startBooking(){
-  const a=document.getElementById('addr-init')?.value.trim();
   openModal(_heroDays);
   setTimeout(()=>{
     const f=document.getElementById('f-addr');
-    if(f){if(a)f.value=a;f.focus();}
+    if(f)f.focus();
   },150);
 }
 
@@ -10142,8 +10133,6 @@ function chooseFlow(type){
     document.querySelector('.ms-title') && (document.querySelector('.ms-title').style.display='');
     goTo(1,true);
     setTimeout(()=>{
-      const h=document.getElementById('addr-init')?.value.trim();
-      if(h){const f=document.getElementById('f-addr');if(f&&!f.value)f.value=h;}
       document.getElementById('f-addr')?.focus();
     },100);
   } else {
