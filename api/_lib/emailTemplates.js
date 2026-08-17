@@ -38,7 +38,7 @@ function installationLabel(lang, raw) {
 // (table + <a> entièrement stylé en ligne, bgcolor en attribut) : même
 // sans aucun CSS, il reste un vrai bouton coloré avec un texte blanc
 // lisible. Couleurs alignées sur l'identité de marque exacte du site
-// (navy #1a2b4a, or #c5a96c — avant : #1b3a5f, un navy approchant mais pas
+// (navy #1a2b4a, or #c5a96c — avant : #1a2b4a, un navy approchant mais pas
 // identique). Wordmark "Loc'Air" ajouté en en-tête pour que chaque email
 // soit immédiatement identifiable, même sans lire le sujet.
 function wrap({ headColor = '#1a2b4a', title, intro, bodyHtml, ctaHref, ctaLabel }) {
@@ -87,7 +87,7 @@ function tplConfirmation(ctx) {
     title: 'Booking confirmed!',
     intro: `Thank you ${p}, your payment of ${escHtml(ctx.montantFmt)} has been received.`,
     bodyHtml: `
-      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">YOUR BOOKING</p><strong style="font-size:18px;color:#1b3a5f">${ref}</strong></div>
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">YOUR BOOKING</p><strong style="font-size:18px;color:#1a2b4a">${ref}</strong></div>
       <p><strong>Name:</strong> ${p} ${escHtml(ctx.nom)}<br/>
       <strong>Address:</strong> ${escHtml(ctx.adresse)}<br/>
       <strong>Delivery:</strong> ${escHtml(ctx.dateDebutFmt)}${ctx.creneau ? ' · ' + escHtml(ctx.creneau) : ''}<br/>
@@ -102,7 +102,7 @@ function tplConfirmation(ctx) {
     title: '预订已确认！',
     intro: `感谢 ${p}，我们已收到您的付款 ${escHtml(ctx.montantFmt)}。`,
     bodyHtml: `
-      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">您的订单</p><strong style="font-size:18px;color:#1b3a5f">${ref}</strong></div>
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">您的订单</p><strong style="font-size:18px;color:#1a2b4a">${ref}</strong></div>
       <p><strong>姓名：</strong>${p} ${escHtml(ctx.nom)}<br/>
       <strong>地址：</strong>${escHtml(ctx.adresse)}<br/>
       <strong>配送日期：</strong>${escHtml(ctx.dateDebutFmt)}${ctx.creneau ? ' · ' + escHtml(ctx.creneau) : ''}<br/>
@@ -117,7 +117,7 @@ function tplConfirmation(ctx) {
     title: 'Бронирование подтверждено!',
     intro: `Спасибо, ${p}! Ваш платёж ${escHtml(ctx.montantFmt)} получен.`,
     bodyHtml: `
-      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">ВАШ ЗАКАЗ</p><strong style="font-size:18px;color:#1b3a5f">${ref}</strong></div>
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">ВАШ ЗАКАЗ</p><strong style="font-size:18px;color:#1a2b4a">${ref}</strong></div>
       <p><strong>Имя:</strong> ${p} ${escHtml(ctx.nom)}<br/>
       <strong>Адрес:</strong> ${escHtml(ctx.adresse)}<br/>
       <strong>Доставка:</strong> ${escHtml(ctx.dateDebutFmt)}${ctx.creneau ? ' · ' + escHtml(ctx.creneau) : ''}<br/>
@@ -132,7 +132,7 @@ function tplConfirmation(ctx) {
     title: 'Réservation confirmée !',
     intro: `Merci ${p}, votre paiement de ${escHtml(ctx.montantFmt)} a bien été reçu.`,
     bodyHtml: `
-      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">VOTRE DOSSIER</p><strong style="font-size:18px;color:#1b3a5f">${ref}</strong></div>
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">VOTRE DOSSIER</p><strong style="font-size:18px;color:#1a2b4a">${ref}</strong></div>
       <p><strong>Client :</strong> ${p} ${escHtml(ctx.nom)}<br/>
       <strong>Adresse :</strong> ${escHtml(ctx.adresse)}<br/>
       <strong>Livraison :</strong> ${escHtml(ctx.dateDebutFmt)}${ctx.creneau ? ' · ' + escHtml(ctx.creneau) : ''}<br/>
@@ -327,7 +327,7 @@ function tplPostInstallation(ctx) {
     bodyHtml: `
       <p>Bonjour ${p},</p>
       <p>Votre ${escHtml(ctx.modeleClimatiseur)} est installé et prêt à l'emploi.</p>
-      <p>Un souci, une question ? Notre équipe reste joignable à tout moment — <a href="https://wa.me/33663798756" style="color:#1b3a5f;font-weight:700">WhatsApp</a> ou <a href="mailto:contact@locair.fr" style="color:#1b3a5f">contact@locair.fr</a>.</p>
+      <p>Un souci, une question ? Notre équipe reste joignable à tout moment — <a href="https://wa.me/33663798756" style="color:#1a2b4a;font-weight:700">WhatsApp</a> ou <a href="mailto:contact@locair.fr" style="color:#1a2b4a">contact@locair.fr</a>.</p>
       <p style="font-size:13px;color:#888">Si vous avez une minute dès maintenant, votre avis nous aide beaucoup :</p>`,
     ctaHref: 'https://g.page/r/CeJQrt2gLNNrEAE/review', ctaLabel: 'Laisser un avis Google',
   });
@@ -465,7 +465,7 @@ function tplFinLocation(ctx) {
       <p>Our technician has collected your AC. Thank you for choosing Loc'Air!</p>
       ${code ? `<div class="box" style="text-align:center">
         <p style="margin:0 0 6px">As a thank-you, enjoy <strong>${REFERRAL_PCT}% off</strong> your next booking with the code</p>
-        <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
+        <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1a2b4a">${escHtml(code)}</p>
         <p style="margin:0;font-size:13px;color:#666">You can also share it with friends — the code is their first name + 30 (e.g. JEAN30).</p>
       </div>` : ''}
       <p style="font-size:13px;color:#444">If you have a minute, your review helps other families trust us:</p>`,
@@ -479,7 +479,7 @@ function tplFinLocation(ctx) {
       <p>我们的技术员已取回您的空调。感谢您选择 Loc'Air！</p>
       ${code ? `<div class="box" style="text-align:center">
         <p style="margin:0 0 6px">作为感谢，使用以下优惠码可享 <strong>-${REFERRAL_PCT}%</strong> 下次预订折扣</p>
-        <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
+        <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1a2b4a">${escHtml(code)}</p>
         <p style="margin:0;font-size:13px;color:#666">此优惠码也可与朋友分享——优惠码为朋友姓名加上30（例如：JEAN30）。</p>
       </div>` : ''}
       <p style="font-size:13px;color:#444">如有时间，您的评价将帮助更多家庭了解我们：</p>`,
@@ -493,7 +493,7 @@ function tplFinLocation(ctx) {
       <p>Наш мастер забрал кондиционер. Спасибо, что выбрали Loc'Air!</p>
       ${code ? `<div class="box" style="text-align:center">
         <p style="margin:0 0 6px">В знак благодарности — <strong>скидка ${REFERRAL_PCT}%</strong> на следующую аренду по коду</p>
-        <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
+        <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1a2b4a">${escHtml(code)}</p>
         <p style="margin:0;font-size:13px;color:#666">Можете поделиться кодом с друзьями — их имя + 30 (например JEAN30).</p>
       </div>` : ''}
       <p style="font-size:13px;color:#444">Если есть минутка, ваш отзыв поможет другим семьям нам доверять:</p>`,
@@ -507,7 +507,7 @@ function tplFinLocation(ctx) {
       <p>Notre technicien a récupéré votre climatiseur. Merci d'avoir choisi Loc'Air !</p>
       ${code ? `<div class="box" style="text-align:center">
         <p style="margin:0 0 6px">Pour vous remercier, profitez de <strong>-${REFERRAL_PCT}%</strong> sur votre prochaine réservation avec le code</p>
-        <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1b3a5f">${escHtml(code)}</p>
+        <p style="margin:0 0 6px;font-size:20px;font-weight:800;letter-spacing:.05em;color:#1a2b4a">${escHtml(code)}</p>
         <p style="margin:0;font-size:13px;color:#666">Offre valable aussi pour vos amis — le code, c'est leur prénom + ${REFERRAL_PCT} (ex. JEAN${REFERRAL_PCT}).</p>
       </div>` : ''}
       <p style="font-size:13px;color:#444">Si vous avez une minute, votre avis aide d'autres familles à nous faire confiance :</p>`,
@@ -533,7 +533,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
   const l = lang || 'fr';
   const jNum = Number(jours) || 1;
   const p = escHtml(prenom || '');
-  const refBox = ref_origine ? `<div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">${l === 'en' ? 'BOOKING REF' : l === 'zh' ? '订单编号' : l === 'ru' ? 'НОМЕР ЗАКАЗА' : 'DOSSIER'}</p><strong style="font-size:18px;color:#1b3a5f">${escHtml(ref_origine)}</strong></div>` : '';
+  const refBox = ref_origine ? `<div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">${l === 'en' ? 'BOOKING REF' : l === 'zh' ? '订单编号' : l === 'ru' ? 'НОМЕР ЗАКАЗА' : 'DOSSIER'}</p><strong style="font-size:18px;color:#1a2b4a">${escHtml(ref_origine)}</strong></div>` : '';
   const adresseRow = adresse ? `<strong>${l === 'en' ? 'Address' : l === 'zh' ? '地址' : l === 'ru' ? 'Адрес' : 'Adresse'} :</strong> ${escHtml(adresse)}<br/>` : '';
   const creneauRow = creneau
     ? `<strong>${l === 'en' ? 'Time slot' : l === 'zh' ? '时间段' : l === 'ru' ? 'Временной слот' : 'Créneau'} :</strong> ${escHtml(creneau)}<br/>`
@@ -548,7 +548,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
       <strong>New collection date:</strong> ${escHtml(date_recuperation || '—')}<br/>
       ${creneauRow}<strong>Amount paid:</strong> ${escHtml(amount)}</p>
       <p style="font-size:13px;color:#444">Our technician will contact you the day before collection to confirm the time slot.</p>
-      ${lienEspaceClient ? `<p style="font-size:13px;color:#444">You can view your updated rental dates at any time in <a href="${lienEspaceClient}" style="color:#1b3a5f;font-weight:700">your account</a>.</p>` : ''}`,
+      ${lienEspaceClient ? `<p style="font-size:13px;color:#444">You can view your updated rental dates at any time in <a href="${lienEspaceClient}" style="color:#1a2b4a;font-weight:700">your account</a>.</p>` : ''}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
   });
   if (l === 'zh') return wrap({
@@ -561,7 +561,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
       <strong>新取回日期：</strong>${escHtml(date_recuperation || '—')}<br/>
       ${creneauRow}<strong>支付金额：</strong>${escHtml(amount)}</p>
       <p style="font-size:13px;color:#444">我们的技术员将在取回前一天联系您确认具体时间。</p>
-      ${lienEspaceClient ? `<p style="font-size:13px;color:#444">您可随时在<a href="${lienEspaceClient}" style="color:#1b3a5f;font-weight:700">我的账户</a>查看更新后的租赁日期。</p>` : ''}`,
+      ${lienEspaceClient ? `<p style="font-size:13px;color:#444">您可随时在<a href="${lienEspaceClient}" style="color:#1a2b4a;font-weight:700">我的账户</a>查看更新后的租赁日期。</p>` : ''}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
   });
   if (l === 'ru') return wrap({
@@ -574,7 +574,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
       <strong>Новая дата возврата:</strong> ${escHtml(date_recuperation || '—')}<br/>
       ${creneauRow}<strong>Уплачено:</strong> ${escHtml(amount)}</p>
       <p style="font-size:13px;color:#444">Наш мастер свяжется с вами накануне возврата для подтверждения времени.</p>
-      ${lienEspaceClient ? `<p style="font-size:13px;color:#444">Вы можете проверить обновлённые даты аренды в <a href="${lienEspaceClient}" style="color:#1b3a5f;font-weight:700">личном кабинете</a> в любое время.</p>` : ''}`,
+      ${lienEspaceClient ? `<p style="font-size:13px;color:#444">Вы можете проверить обновлённые даты аренды в <a href="${lienEspaceClient}" style="color:#1a2b4a;font-weight:700">личном кабинете</a> в любое время.</p>` : ''}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
   });
   return wrap({
@@ -587,7 +587,7 @@ function tplProlongConfirmation({ ref_origine, prenom, nom, jours, date_recupera
       <strong>Récupération le :</strong> ${escHtml(date_recuperation || '—')}<br/>
       ${creneauRow}<strong>Montant payé :</strong> ${escHtml(amount)}</p>
       <p style="font-size:13px;color:#444">Notre technicien vous contactera la veille de la récupération pour confirmer le créneau.</p>
-      ${lienEspaceClient ? `<p style="font-size:13px;color:#444">Vous pouvez consulter vos nouvelles dates à tout moment dans <a href="${lienEspaceClient}" style="color:#1b3a5f;font-weight:700">votre espace client</a>.</p>` : ''}`,
+      ${lienEspaceClient ? `<p style="font-size:13px;color:#444">Vous pouvez consulter vos nouvelles dates à tout moment dans <a href="${lienEspaceClient}" style="color:#1a2b4a;font-weight:700">votre espace client</a>.</p>` : ''}`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
   });
 }
@@ -604,7 +604,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
       <p>Thank you for your trust. Your <strong>rental agreement</strong> and <strong>invoice</strong> are now available online.</p>
       <div class="box">
         <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Your documents</p>
-        <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">View my documents online →</a>
+        <a href="${viewUrlDocuments || '#'}" style="color:#1a2b4a;font-weight:700;font-size:15px;text-decoration:none">View my documents online →</a>
         <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Rental agreement &nbsp;·&nbsp; Invoice (PDF)</p>
       </div>
       <p style="font-size:13px;color:#666">This link is permanent — your documents are accessible at any time.</p>
@@ -619,7 +619,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
       <p>感谢您的信任。您的<strong>租赁合同</strong>和<strong>发票</strong>现已可在线查看。</p>
       <div class="box">
         <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">您的文件</p>
-        <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">在线查看我的文件 →</a>
+        <a href="${viewUrlDocuments || '#'}" style="color:#1a2b4a;font-weight:700;font-size:15px;text-decoration:none">在线查看我的文件 →</a>
         <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">租赁合同 &nbsp;·&nbsp; 发票（PDF）</p>
       </div>
       <p style="font-size:13px;color:#666">此链接为永久链接——您的文件随时可访问。</p>
@@ -634,7 +634,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
       <p>Спасибо за доверие. Ваш <strong>договор аренды</strong> и <strong>счёт</strong> доступны онлайн.</p>
       <div class="box">
         <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Ваши документы</p>
-        <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">Просмотреть документы онлайн →</a>
+        <a href="${viewUrlDocuments || '#'}" style="color:#1a2b4a;font-weight:700;font-size:15px;text-decoration:none">Просмотреть документы онлайн →</a>
         <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Договор аренды &nbsp;·&nbsp; Счёт (PDF)</p>
       </div>
       <p style="font-size:13px;color:#666">Ссылка постоянная — ваши документы доступны в любое время.</p>
@@ -649,7 +649,7 @@ function tplContratFacture({ prenom, ref, viewUrlDocuments, lang }) {
       <p>Merci pour votre confiance. Votre <strong>contrat de location</strong> et votre <strong>facture</strong> sont disponibles en ligne.</p>
       <div class="box">
         <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Vos documents</p>
-        <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">Consulter mes documents en ligne →</a>
+        <a href="${viewUrlDocuments || '#'}" style="color:#1a2b4a;font-weight:700;font-size:15px;text-decoration:none">Consulter mes documents en ligne →</a>
         <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Contrat de location &nbsp;·&nbsp; Facture (PDF)</p>
       </div>
       <p style="font-size:13px;color:#666">Ce lien est permanent — vos documents restent accessibles à tout moment.</p>
@@ -675,7 +675,7 @@ function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang }) 
       <p>Following your rental extension, an <strong>amendment</strong> to your rental agreement (documenting your new end date) and the <strong>invoice</strong> for your extension are now available online.</p>
       <div class="box">
         <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Your documents</p>
-        <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">View my documents online →</a>
+        <a href="${viewUrlDocuments || '#'}" style="color:#1a2b4a;font-weight:700;font-size:15px;text-decoration:none">View my documents online →</a>
         <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Prolongation amendment &nbsp;·&nbsp; Extension invoice (PDF)</p>
       </div>
       <p style="font-size:13px;color:#666">This link is permanent — your documents are accessible at any time.</p>`,
@@ -689,7 +689,7 @@ function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang }) 
       <p>由于您延长了租期，记录您新结束日期的<strong>合同附加协议</strong>及续租<strong>发票</strong>现已可在线查看。</p>
       <div class="box">
         <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">您的文件</p>
-        <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">在线查看我的文件 →</a>
+        <a href="${viewUrlDocuments || '#'}" style="color:#1a2b4a;font-weight:700;font-size:15px;text-decoration:none">在线查看我的文件 →</a>
         <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">续租合同附加协议 &nbsp;·&nbsp; 续租发票（PDF）</p>
       </div>
       <p style="font-size:13px;color:#666">此链接为永久链接——您的文件随时可访问。</p>`,
@@ -703,7 +703,7 @@ function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang }) 
       <p>После продления вашей аренды <strong>дополнительное соглашение</strong> к договору аренды (с новой датой окончания) и <strong>счёт</strong> за продление теперь доступны онлайн.</p>
       <div class="box">
         <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Ваши документы</p>
-        <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">Просмотреть документы онлайн →</a>
+        <a href="${viewUrlDocuments || '#'}" style="color:#1a2b4a;font-weight:700;font-size:15px;text-decoration:none">Просмотреть документы онлайн →</a>
         <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Дополнительное соглашение о продлении &nbsp;·&nbsp; Счёт за продление (PDF)</p>
       </div>
       <p style="font-size:13px;color:#666">Ссылка постоянная — ваши документы доступны в любое время.</p>`,
@@ -717,7 +717,7 @@ function tplContratFactureProlongation({ prenom, ref, viewUrlDocuments, lang }) 
       <p>Suite à votre prolongation, l'<strong>avenant</strong> qui modifie la date de fin de votre contrat de location et la <strong>facture</strong> de votre prolongation sont disponibles en ligne.</p>
       <div class="box">
         <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.09em;color:#9aa0ab;text-transform:uppercase">Vos documents</p>
-        <a href="${viewUrlDocuments || '#'}" style="color:#1b3a5f;font-weight:700;font-size:15px;text-decoration:none">Consulter mes documents en ligne →</a>
+        <a href="${viewUrlDocuments || '#'}" style="color:#1a2b4a;font-weight:700;font-size:15px;text-decoration:none">Consulter mes documents en ligne →</a>
         <p style="margin:8px 0 0;font-size:12px;color:#9aa0ab">Avenant de prolongation &nbsp;·&nbsp; Facture de prolongation (PDF)</p>
       </div>
       <p style="font-size:13px;color:#666">Ce lien est permanent — vos documents restent accessibles à tout moment.</p>`,
@@ -744,7 +744,7 @@ function tplFactureVente({ prenom, ref, modeleClimatiseur, dateAchatFmt, montant
         <p style="margin:0 0 6px"><strong>Purchase date:</strong> ${escHtml(dateAchatFmt || '')}</p>
         <p style="margin:0"><strong>Amount paid:</strong> ${escHtml(montantFmt || '')}</p>
       </div>
-      <p>You'll find your invoice attached — you can also <a href="${viewUrlFacture || '#'}" style="color:#1b3a5f;font-weight:700">view it online</a>.</p>
+      <p>You'll find your invoice attached — you can also <a href="${viewUrlFacture || '#'}" style="color:#1a2b4a;font-weight:700">view it online</a>.</p>
       <p>The air conditioner is now yours to keep for good: no further action is needed on your part. For any technical issue (warranty, repair), our team remains available via WhatsApp below.</p>
       <p style="font-size:13px;color:#888">Keep this email: this document stays accessible at any time via the link above.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'A question? WhatsApp',
@@ -759,7 +759,7 @@ function tplFactureVente({ prenom, ref, modeleClimatiseur, dateAchatFmt, montant
         <p style="margin:0 0 6px"><strong>购买日期：</strong> ${escHtml(dateAchatFmt || '')}</p>
         <p style="margin:0"><strong>已付金额：</strong> ${escHtml(montantFmt || '')}</p>
       </div>
-      <p>您的发票已作为附件发送——您也可以<a href="${viewUrlFacture || '#'}" style="color:#1b3a5f;font-weight:700">在线查看</a>。</p>
+      <p>您的发票已作为附件发送——您也可以<a href="${viewUrlFacture || '#'}" style="color:#1a2b4a;font-weight:700">在线查看</a>。</p>
       <p>该空调现已完全归您所有，无需任何其他操作。如有技术问题（保修、维修），我们的团队仍可通过下方的 WhatsApp 为您服务。</p>
       <p style="font-size:13px;color:#888">请保留此邮件：该文件可通过上方链接随时查看。</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: '有疑问？WhatsApp',
@@ -774,7 +774,7 @@ function tplFactureVente({ prenom, ref, modeleClimatiseur, dateAchatFmt, montant
         <p style="margin:0 0 6px"><strong>Дата покупки:</strong> ${escHtml(dateAchatFmt || '')}</p>
         <p style="margin:0"><strong>Оплаченная сумма:</strong> ${escHtml(montantFmt || '')}</p>
       </div>
-      <p>Счёт приложен к письму — вы также можете <a href="${viewUrlFacture || '#'}" style="color:#1b3a5f;font-weight:700">посмотреть его онлайн</a>.</p>
+      <p>Счёт приложен к письму — вы также можете <a href="${viewUrlFacture || '#'}" style="color:#1a2b4a;font-weight:700">посмотреть его онлайн</a>.</p>
       <p>Кондиционер теперь окончательно принадлежит вам: никаких дальнейших действий не требуется. При технической проблеме (гарантия, ремонт) наша команда остаётся на связи через WhatsApp ниже.</p>
       <p style="font-size:13px;color:#888">Сохраните это письмо: документ остаётся доступным в любой момент по ссылке выше.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Вопрос? WhatsApp',
@@ -789,7 +789,7 @@ function tplFactureVente({ prenom, ref, modeleClimatiseur, dateAchatFmt, montant
         <p style="margin:0 0 6px"><strong>Date d'achat :</strong> ${escHtml(dateAchatFmt || '')}</p>
         <p style="margin:0"><strong>Montant payé :</strong> ${escHtml(montantFmt || '')}</p>
       </div>
-      <p>Vous trouverez votre facture ci-jointe — vous pouvez aussi la <a href="${viewUrlFacture || '#'}" style="color:#1b3a5f;font-weight:700">consulter en ligne</a>.</p>
+      <p>Vous trouverez votre facture ci-jointe — vous pouvez aussi la <a href="${viewUrlFacture || '#'}" style="color:#1a2b4a;font-weight:700">consulter en ligne</a>.</p>
       <p>Le climatiseur vous appartient désormais définitivement : aucune autre action n'est nécessaire de votre part. En cas de souci technique (garantie, SAV), notre équipe reste disponible via WhatsApp ci-dessous.</p>
       <p style="font-size:13px;color:#888">Conservez cet email : ce document reste accessible à tout moment via le lien ci-dessus.</p>`,
     ctaHref: 'https://wa.me/33663798756', ctaLabel: 'Une question ? WhatsApp',
@@ -803,9 +803,9 @@ function tplAmbassadeurCredentials({ nom, lien, pin }) {
     intro: `Bonjour ${escHtml(nom)}`,
     bodyHtml: `
       <p>Voici ton lien d'affiliation — mets-le sur ton site pour que tes clients réservent directement chez Loc'Air :</p>
-      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${escHtml(lien)}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
+      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${escHtml(lien)}" style="color:#1a2b4a">${escHtml(lien)}</a></p></div>
       <p>Ton code personnel pour suivre tes gains sur ton espace ambassadeur :</p>
-      <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(pin)}</p>
+      <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1a2b4a">${escHtml(pin)}</p>
       <p style="font-size:13px;color:#888">Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
     ctaHref: 'https://www.locair.fr/partenaire', ctaLabel: 'Ouvrir mon espace ambassadeur',
   });
@@ -818,9 +818,9 @@ function tplNouveauCodeAmbassadeur({ nom, lien, pin }) {
     intro: `Bonjour ${escHtml(nom)}`,
     bodyHtml: `
       <p>Voici ton nouveau code personnel pour te connecter sur ton espace ambassadeur Loc'Air :</p>
-      <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(pin)}</p>
+      <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1a2b4a">${escHtml(pin)}</p>
       <p>Ton lien d'affiliation ne change pas :</p>
-      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${escHtml(lien)}" style="color:#1b3a5f">${escHtml(lien)}</a></p></div>
+      <div class="box"><p style="margin:0;font-size:15px;font-weight:700;word-break:break-all"><a href="${escHtml(lien)}" style="color:#1a2b4a">${escHtml(lien)}</a></p></div>
       <p style="font-size:13px;color:#888">Ton ancien code ne fonctionne plus. Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
     ctaHref: 'https://www.locair.fr/partenaire', ctaLabel: 'Ouvrir mon espace ambassadeur',
   });
@@ -833,9 +833,31 @@ function tplNouveauCodeTransporteur({ nom, pin }) {
     intro: `Bonjour ${escHtml(nom)}`,
     bodyHtml: `
       <p>Voici ton nouveau code personnel pour te connecter sur l'espace transporteur Loc'Air :</p>
-      <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1b3a5f">${escHtml(pin)}</p>
+      <p style="font-size:28px;font-weight:800;letter-spacing:4px;text-align:center;color:#1a2b4a">${escHtml(pin)}</p>
       <p style="font-size:13px;color:#888">Ton ancien code ne fonctionne plus. Si tu n'es pas à l'origine de cette demande, contacte-nous immédiatement.</p>`,
     ctaHref: 'https://www.locair.fr/transporteur', ctaLabel: 'Ouvrir mon espace transporteur',
+  });
+}
+
+// Prime de fin de saison (interne — FR uniquement, comme les autres emails
+// transporteur) : envoyée quand l'admin crédite un bonus ponctuel pour un
+// mois donné (voir admin-virements.js, action 'creer_prime'). nbMissions/
+// totalGagneFmt = activité RÉELLE du transporteur ce mois-là (hors la prime
+// elle-même) — pour que le mail reste crédible et personnel plutôt qu'un
+// simple "vous avez gagné de l'argent" générique.
+function tplPrimeTransporteur({ nom, moisLabel, montantFmt, nbMissions, totalGagneFmt }) {
+  const statsLigne = nbMissions > 0
+    ? `<strong>${nbMissions}</strong> mission${nbMissions > 1 ? 's' : ''} effectuée${nbMissions > 1 ? 's' : ''} · <strong>${escHtml(totalGagneFmt)}</strong> gagnés au barème`
+    : `Merci pour votre disponibilité ce mois-ci`;
+  return wrap({
+    title: 'Bravo, et merci ! 🏆',
+    intro: `Bonjour ${escHtml(nom)}, votre prime de fin de saison est arrivée.`,
+    bodyHtml: `
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">PRIME — ${escHtml((moisLabel || '').toUpperCase())}</p><strong style="font-size:26px;color:#1a2b4a">${escHtml(montantFmt)}</strong></div>
+      <p>${statsLigne}</p>
+      <p>Cette prime a été ajoutée directement à votre solde — vous la retrouvez avec le reste de vos gains dans votre espace transporteur, prête à être versée avec le prochain virement.</p>
+      <p style="font-size:13px;color:#444">Merci pour votre sérieux et votre engagement cette saison — c'est grâce à des livreurs comme vous que Loc'Air tient ses promesses auprès des clients.</p>`,
+    ctaHref: 'https://www.locair.fr/transporteur', ctaLabel: 'Voir mon espace transporteur',
   });
 }
 
@@ -855,7 +877,7 @@ function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, monta
   const breakdownHtml = (breakdown && breakdown.length) ? `
       <div class="box">
         ${breakdown.map(r => `<div style="display:flex;justify-content:space-between;font-size:13px;color:#555;margin-bottom:6px"><span>${escHtml(r.label)}</span><span>${escHtml(r.value)}</span></div>`).join('')}
-        <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid rgba(27,58,95,.15);font-weight:700;color:#1b3a5f"><span>${l === 'en' ? 'Total due' : l === 'zh' ? '应付总额' : l === 'ru' ? 'Итого к оплате' : 'Total à régler'}</span><span>${escHtml(montantFmt)}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid rgba(27,58,95,.15);font-weight:700;color:#1a2b4a"><span>${l === 'en' ? 'Total due' : l === 'zh' ? '应付总额' : l === 'ru' ? 'Итого к оплате' : 'Total à régler'}</span><span>${escHtml(montantFmt)}</span></div>
       </div>` : `<div class="box"><p style="margin:0"><strong>${l === 'en' ? 'Amount due' : l === 'zh' ? '应付金额' : l === 'ru' ? 'Сумма к оплате' : 'Montant à régler'} :</strong> ${escHtml(montantFmt || '')}</p></div>`;
   // Une prolongation n'a ni nouvelle adresse ni nouvelle livraison — montrer
   // "Livraison"/"Récupération" comme pour une réservation neuve n'aurait pas
@@ -872,7 +894,7 @@ function tplLienPaiement({ prenom, ref, adresse, dateDebutFmt, dateFinFmt, monta
   // restée en_attente trop longtemps — même contenu, ton différent (on ne
   // redit pas "votre réservation est prête" à un client qui l'a déjà vu).
   const bodyHtml = `
-      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">${dossierLabel}</p><strong style="font-size:18px;color:#1b3a5f">${escHtml(ref)}</strong></div>
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">${dossierLabel}</p><strong style="font-size:18px;color:#1a2b4a">${escHtml(ref)}</strong></div>
       ${datesHtml}
       ${breakdownHtml}
       <p>${l === 'en' ? 'Click the button below to pay securely online (payment processed by Stripe).' : l === 'zh' ? '点击下方按钮在线安全付款（由 Stripe 处理）。' : l === 'ru' ? 'Нажмите кнопку ниже для безопасной онлайн-оплаты (через Stripe).' : 'Cliquez sur le bouton ci-dessous pour payer en ligne, en toute sécurité (paiement géré par Stripe).'}</p>
@@ -1018,7 +1040,7 @@ function tplRelanceDormant({ prenom, codePromo, lang }) {
     title: "We haven't forgotten you!",
     intro: `Hello ${p}, it's been a while — here's a discount for your next rental.`,
     bodyHtml: `
-      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">YOUR PROMO CODE</p><strong style="font-size:22px;color:#1b3a5f;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">YOUR PROMO CODE</p><strong style="font-size:22px;color:#1a2b4a;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
       <p>Use it when booking on our website — the discount applies automatically.</p>`,
     ctaHref: 'https://www.locair.fr',
     ctaLabel: 'Book now →',
@@ -1027,7 +1049,7 @@ function tplRelanceDormant({ prenom, codePromo, lang }) {
     title: '我们没有忘记您！',
     intro: `您好 ${p}，好久不见——这是您下次租赁的专属优惠码。`,
     bodyHtml: `
-      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">您的优惠码</p><strong style="font-size:22px;color:#1b3a5f;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">您的优惠码</p><strong style="font-size:22px;color:#1a2b4a;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
       <p>在我们网站预订时使用——折扣将自动扣除。</p>`,
     ctaHref: 'https://www.locair.fr',
     ctaLabel: '立即预订 →',
@@ -1036,7 +1058,7 @@ function tplRelanceDormant({ prenom, codePromo, lang }) {
     title: 'Мы о вас не забыли!',
     intro: `Здравствуйте, ${p}! Давно не виделись — вот скидка для вашей следующей аренды.`,
     bodyHtml: `
-      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">ВАШ ПРОМОКОД</p><strong style="font-size:22px;color:#1b3a5f;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">ВАШ ПРОМОКОД</p><strong style="font-size:22px;color:#1a2b4a;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
       <p>Используйте его при бронировании на нашем сайте — скидка применится автоматически.</p>`,
     ctaHref: 'https://www.locair.fr',
     ctaLabel: 'Забронировать →',
@@ -1045,7 +1067,7 @@ function tplRelanceDormant({ prenom, codePromo, lang }) {
     title: 'On ne vous a pas oublié !',
     intro: `Bonjour ${p}, ça fait un moment — voici une réduction pour votre prochaine location.`,
     bodyHtml: `
-      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">VOTRE CODE PROMO</p><strong style="font-size:22px;color:#1b3a5f;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">VOTRE CODE PROMO</p><strong style="font-size:22px;color:#1a2b4a;letter-spacing:.05em">${escHtml(codePromo)}</strong></div>
       <p>Utilisez-le au moment de réserver sur notre site — la réduction s'applique automatiquement.</p>`,
     ctaHref: 'https://www.locair.fr',
     ctaLabel: 'Réserver maintenant →',
@@ -1058,5 +1080,6 @@ module.exports = {
   tplPostInstallation, tplAvantFinLocation, tplRappelRecuperation, tplFinLocation,
   tplProlongConfirmation, tplContratFacture, tplContratFactureProlongation, tplFactureVente,
   tplAmbassadeurCredentials, tplNouveauCodeAmbassadeur, tplNouveauCodeTransporteur,
+  tplPrimeTransporteur,
   tplLienPaiement, tplRelanceDormant, tplOffrePrivilege,
 };
