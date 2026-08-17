@@ -3,6 +3,9 @@ const { resolveAdminCity } = require('./_lib/city');
 const { checkAdminRole } = require('./_lib/auth');
 const { roleHasAccess } = require('./_lib/permissions');
 const { notifyTransporteur } = require('./_lib/transporteurNotif');
+const { sendBrevoEmail } = require('./_lib/brevo');
+const { getSignature, withSignature } = require('./_lib/emailEngine');
+const { tplPrimeTransporteur } = require('./_lib/emailTemplates');
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -237,6 +240,92 @@ module.exports = async (req, res) => {
       }
 
       return res.status(200).json({ ok: true, montant_cents: montant });
+    }
+
+    // Prime de fin de saison (demande d'Aly, 2026-08-17) : un bonus ponctuel
+    // décidé par l'admin pour un mois donné, distinct de la rémunération au
+    // barème par mission. Réutilise le mécanisme "mission autre" déjà
+    // existant (type='autre', voir migration_mission_libre.sql — aucune
+    // nouvelle colonne nécessaire) au lieu d'une nouvelle table : une prime
+    // est une ligne livraisons de plus, elle rentre donc automatiquement
+    // dans le calcul de "non_verse_cents" ci-dessus comme n'importe quelle
+    // mission. Contrairement à une mission "autre" normale (créée 'a_faire',
+    // à accepter/terminer par le transporteur), celle-ci est créée
+    // directement 'fait' + validée : ce n'est pas une tâche à effectuer,
+    // juste un montant déjà acquis à créditer.
+    if (action === 'creer_prime') {
+      const transporteurId = parseInt(body.transporteur_id);
+      if (!transporteurId || !transpIds.includes(transporteurId)) return res.status(404).json({ error: 'Transporteur introuvable' });
+      const moisStr = (body.mois || '').slice(0, 7);
+      if (!/^\d{4}-\d{2}$/.test(moisStr)) return res.status(400).json({ error: 'Mois invalide (format AAAA-MM)' });
+      const montantCents = parseInt(body.montant_cents);
+      if (!Number.isFinite(montantCents) || montantCents <= 0) return res.status(400).json({ error: 'Montant invalide' });
+
+      const { data: transp } = await supabase.from('transporteurs').select('id, nom, email, city_id').eq('id', transporteurId).maybeSingle();
+      if (!transp) return res.status(404).json({ error: 'Transporteur introuvable' });
+
+      const [y, m] = moisStr.split('-').map(Number);
+      const moisDebut   = `${moisStr}-01`;
+      const moisSuivant = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);   // 1er du mois suivant (borne exclusive)
+      const moisFin     = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);   // dernier jour du mois ciblé
+      const MOIS_LABEL = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+      const moisLabel = `${MOIS_LABEL[m - 1]} ${y}`;
+
+      // Stats du mois ciblé, pour l'email de félicitations (nombre de
+      // missions terminées + montant gagné au barème ce mois-là — avant la
+      // prime, qui n'existe pas encore à ce stade de la requête).
+      const { data: missionsMois } = await supabase
+        .from('livraisons').select('montant_du_cents')
+        .eq('transporteur_id', transporteurId).eq('statut', 'fait')
+        .gte('fait_at', moisDebut).lt('fait_at', moisSuivant);
+      const nbMissions = (missionsMois || []).length;
+      const totalGagneCents = (missionsMois || []).reduce((s, x) => s + (x.montant_du_cents || 0), 0);
+
+      const { data: prime, error: primeErr } = await supabase.from('livraisons').insert({
+        type: 'autre', city_id: transp.city_id,
+        titre: `🏆 Prime de fin de saison — ${moisLabel}`,
+        adresse_libre: 'Prime créditée directement — aucun déplacement.',
+        transporteur_id: transporteurId, date_prevue: moisFin,
+        statut: 'fait', fait_at: new Date().toISOString(),
+        montant_du_cents: montantCents, montant_manuel: true, valide: true,
+      }).select().single();
+      if (primeErr) throw primeErr;
+
+      // Email "best effort" : le champ email n'est pas obligatoire sur une
+      // fiche transporteur (utilisé jusqu'ici seulement pour "code oublié")
+      // — la prime est déjà créditée dans tous les cas, l'admin est
+      // prévenue si l'email n'a pas pu partir plutôt que de le supposer.
+      let emailEnvoye = false, emailErreur = null;
+      if (transp.email) {
+        try {
+          const sig = await getSignature(supabase);
+          const html = withSignature(tplPrimeTransporteur({
+            nom: transp.nom, moisLabel,
+            montantFmt: (montantCents / 100).toFixed(2).replace('.', ',') + ' €',
+            nbMissions,
+            totalGagneFmt: (totalGagneCents / 100).toFixed(2).replace('.', ',') + ' €',
+          }), sig);
+          const result = await sendBrevoEmail({ to: transp.email, subject: `Votre prime de fin de saison — ${moisLabel}`, html, senderName: sig.nom_expediteur });
+          emailEnvoye = !!result.ok;
+          if (!result.ok) emailErreur = String(result.error || '').slice(0, 300);
+          await supabase.from('email_log').insert({
+            reservation_id: null, scenario: 'prime_transporteur', canal: 'email',
+            destinataire: transp.email, modele: 'prime_transporteur',
+            statut: result.ok ? 'envoye' : 'erreur',
+            erreur: result.ok ? null : emailErreur,
+            contenu: html,
+          }).then(() => {}, () => {});
+        } catch (e) {
+          emailErreur = e.message;
+          console.error('[Prime transporteur email]', e.message);
+        }
+      }
+
+      return res.status(200).json({
+        ok: true, livraison: prime, mois_label: moisLabel,
+        nb_missions_mois: nbMissions, total_gagne_cents: totalGagneCents,
+        a_email: !!transp.email, email_envoye: emailEnvoye, email_erreur: emailErreur,
+      });
     }
 
     return res.status(400).json({ error: 'Action inconnue' });
