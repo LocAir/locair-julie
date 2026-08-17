@@ -5556,6 +5556,7 @@ async function restoreReservation(id){
 // Historique complet (pas seulement les missions en cours) pour qu'un manager
 // puisse retrouver n'importe quelle mission passée et revoir ses preuves.
 let TRANSPORTEURS_CACHE = [];
+let FACTURES_TRANSPORTEUR_CACHE = [];
 let LIVRAISONS_CACHE = [];
 let LIVRAISONS_FILTER = 'toutes';
 let LIVRAISONS_SHOW_MASQUEES = false;
@@ -6970,6 +6971,11 @@ function editFiche(id){
       <input type="text" id="fiche-email" value="${escHtml(t.email||'')}" placeholder="osama@email.fr"/>
       <label for="fiche-notes" style="margin-top:12px">Informations supplémentaires</label>
       <textarea id="fiche-notes" placeholder="Véhicule, remarques, préférences…">${escHtml(t.notes||'')}</textarea>
+      <label for="fiche-siret" style="margin-top:12px">SIRET (pour sa facture hebdomadaire)</label>
+      <input type="text" id="fiche-siret" value="${escHtml(t.siret||'')}" placeholder="123 456 789 00012"/>
+      <label for="fiche-adresse-fact" style="margin-top:12px">Adresse de facturation</label>
+      <input type="text" id="fiche-adresse-fact" value="${escHtml(t.adresse_facturation||'')}" placeholder="12 rue Exemple, 06000 Nice"/>
+      <p class="sub" style="margin-top:2px">Facultatif — utilisé sur la facture PDF qu'il envoie à Loc'Air (bouton "Facture de la semaine", onglet Mes gains).</p>
       <label style="margin-top:16px">Types de mission autorisés</label>
       <p class="sub" style="margin:4px 0 10px;font-size:12px">Cocher tout = aucune restriction</p>
       ${missionTypesHtml('fiche', activeKeys)}
@@ -6991,6 +6997,8 @@ function editFiche(id){
     const telephone = document.getElementById('fiche-tel').value.trim();
     const email = document.getElementById('fiche-email').value.trim();
     const notes = document.getElementById('fiche-notes').value.trim();
+    const siret = document.getElementById('fiche-siret').value.trim();
+    const adresse_facturation = document.getElementById('fiche-adresse-fact').value.trim();
     const types = collectMissionTypes('fiche');
     const allChecked = types.length === MISSION_TYPES_DEF.length;
     const villes = collectVillesForm('fiche');
@@ -6999,7 +7007,7 @@ function editFiche(id){
     try{
       const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
         action:'update', id:t.id,
-        nom, telephone, email, notes,
+        nom, telephone, email, notes, siret, adresse_facturation,
         types_autorises: allChecked ? [] : types,
         villes, disponibilites,
       })});
@@ -7315,6 +7323,7 @@ function transporteurRevenusCardHtml(t){
         ?`<button class="btn btn-green btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.non_verse_cents})">✅ Marquer comme versé (${euros(t.non_verse_cents)})</button>`
         :(t.demande_en_cours?`<button class="btn btn-grey btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', 0)">Marquer la demande comme réglée (rien à verser)</button>`:'')}
       <button class="btn btn-block" style="margin-top:8px;background:var(--gold-lt);color:var(--gold-d);border:1.5px solid var(--gold)" onclick="openPrimeModal(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}')">🏆 Prime de fin de saison</button>
+      <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="openFacturesTransporteursModal(${t.id})">🧾 Voir ses factures</button>
       ${t.missions.length?`
       <details style="margin-top:12px">
         <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Voir le détail (${t.missions.length} mission${t.missions.length>1?'s':''})</summary>
@@ -7855,7 +7864,8 @@ async function loadVirementsTab(silent){
         <div class="stat-tile"><div class="n" style="${aVerserTransp>0?'color:var(--red)':''}">${euros(aVerserTransp)}</div><div class="l">À verser · transporteurs</div></div>
         <div class="stat-tile"><div class="n" style="${aVerserPart>0?'color:var(--red)':''}">${euros(aVerserPart)}</div><div class="l">À verser · ambassadeurs</div></div>
         ${aRecuperer>0?`<div class="stat-tile" style="grid-column:1/-1"><div class="n" style="color:var(--red)">${euros(aRecuperer)}</div><div class="l">⚠️ Commissions versées à récupérer (résas annulées/remboursées)</div></div>`:''}
-      </div>`;
+      </div>
+      <button class="btn btn-grey" style="margin-bottom:20px" onclick="openFacturesTransporteursModal()">🧾 Factures transporteurs</button>`;
 
     const transpSection = `
       <div class="section-title" style="margin-top:0">🚚 Transporteurs</div>
@@ -7869,6 +7879,68 @@ async function loadVirementsTab(silent){
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
+}
+
+// ── Factures transporteurs (Module facture hebdomadaire, 2026-08-17) ──────────
+// Espace dédié où l'admin retrouve chaque facture qu'un transporteur a
+// générée depuis son propre espace ("Facture de la semaine") — en PDF
+// téléchargeable instantanément, filtrable par transporteur. Ouvrable soit
+// globalement (bouton en haut de l'onglet Virements), soit pré-filtré depuis
+// la carte d'un transporteur précis ("🧾 Voir ses factures").
+async function openFacturesTransporteursModal(preselectTransporteurId){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `<div class="modal-box" style="max-width:580px;max-height:90vh;overflow-y:auto">
+    <h2 style="margin-bottom:4px">🧾 Factures transporteurs</h2>
+    <p class="sub" style="margin-bottom:14px">Générées automatiquement par les transporteurs, une par semaine.</p>
+    <select id="factt-filtre" style="margin-bottom:14px"></select>
+    <div id="factt-body">${loading()}</div>
+    <div class="modal-actions" style="margin-top:18px"><button class="btn btn-grey">Fermer</button></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  overlay.querySelector('.modal-actions .btn').onclick = closeModal;
+  try{
+    const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list_factures_transporteur'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    FACTURES_TRANSPORTEUR_CACHE = d.factures || [];
+    const noms = [...new Set(FACTURES_TRANSPORTEUR_CACHE.map(f => f.transporteur?.nom).filter(Boolean))].sort();
+    const preselectNom = preselectTransporteurId
+      ? FACTURES_TRANSPORTEUR_CACHE.find(f => f.transporteur_id===preselectTransporteurId)?.transporteur?.nom
+      : null;
+    const sel = document.getElementById('factt-filtre');
+    if(sel){
+      sel.innerHTML = `<option value="">Tous les transporteurs</option>` +
+        noms.map(n => `<option value="${escHtml(n)}" ${n===preselectNom?'selected':''}>${escHtml(n)}</option>`).join('');
+      sel.onchange = () => renderFacturesTransporteurList(sel.value);
+      renderFacturesTransporteurList(sel.value);
+    }
+  }catch(e){
+    const body = document.getElementById('factt-body');
+    if(body) body.innerHTML = `<p class="empty">Erreur : ${escHtml(e.message)}</p>`;
+  }
+}
+function renderFacturesTransporteurList(filtreNom){
+  const zone = document.getElementById('factt-body');
+  if(!zone) return;
+  const list = FACTURES_TRANSPORTEUR_CACHE.filter(f => !filtreNom || f.transporteur?.nom === filtreNom);
+  if(!list.length){ zone.innerHTML = '<p class="empty">Aucune facture pour l\'instant.</p>'; return; }
+  const frDateCourte = iso => new Date(iso+'T12:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
+  zone.innerHTML = `<div class="card vlist">${list.map(f => `
+    <div class="vrow" style="align-items:flex-start">
+      <span>
+        <div style="font-weight:700">${escHtml(f.transporteur?.nom||'—')} · ${escHtml(f.numero)}</div>
+        <div class="row-meta" style="margin-top:2px">Semaine du ${frDateCourte(f.periode_debut)} au ${frDateCourte(f.periode_fin)} · ${f.nb_missions} mission${f.nb_missions>1?'s':''}</div>
+        ${!f.envoyee_admin?'<div class="row-meta" style="color:var(--red)">⚠️ Email non envoyé — PDF quand même disponible ci-contre</div>':''}
+      </span>
+      <span style="text-align:right;flex-shrink:0">
+        <div style="font-weight:700">${euros(f.montant_total_cents)}</div>
+        <a class="btn btn-grey" style="margin-top:4px;padding:5px 10px;font-size:11.5px" href="${API('transporteur-facture-view')}?token=${f.access_token}&dl=1" target="_blank" rel="noopener">⬇️ PDF</a>
+      </span>
+    </div>`).join('')}</div>`;
 }
 
 // ── INCIDENTS ─────────────────────────────────────────────────────────────────

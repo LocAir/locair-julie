@@ -4346,13 +4346,21 @@ async function loadActivite(){
   const zone = document.getElementById('activite-content');
   zone.innerHTML = '<p class="empty">Chargement…</p>';
   try{
-    const [r, rs] = await Promise.all([
+    const [r, rs, rf] = await Promise.all([
       fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'resume'})}),
       fetch(API('transporteur-history'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'stats'})}),
+      fetch(API('transporteur-facture'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'list'})}),
     ]);
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     const ds = await rs.json().catch(()=>null);
+    const df = await rf.json().catch(()=>null);
+    // Factures de la semaine déjà générées (Module facture hebdomadaire) —
+    // indexées par période pour que missionsHistoryHtml sache, sans nouvel
+    // appel réseau, si une semaine donnée a déjà sa facture ou non.
+    STATE.activiteFacturesCache = (df && df.factures) || [];
+    STATE.facturesByPeriode = {};
+    STATE.activiteFacturesCache.forEach(f => { STATE.facturesByPeriode[f.periode_debut+'_'+f.periode_fin] = f; });
     renderActivite(d, rs.ok ? ds : null);
     markActiviteSeen(d.virements);
   }catch(e){
@@ -4368,6 +4376,7 @@ function renderActivite(d, stats){
   const enCours = (d.virements||[]).some(v => v.statut==='demande');
   zone.innerHTML = `
     <p class="sub" style="margin-bottom:14px">Retrouve ici ce que tu as gagné, ce qui reste à te verser, et l'historique de tes missions.</p>
+    <button class="btn btn-grey" style="margin-bottom:14px;padding:8px 14px;font-size:12.5px" onclick="openMesFacturesSheet()">📄 Mes factures</button>
     <div class="stat-big">
       <div class="amount">${nonVerse} €</div>
       <div class="caption" style="opacity:1">Solde validé à verser · demande-le avec le bouton ci-dessous</div>
@@ -4465,9 +4474,55 @@ function statsGlobalesHtml(stats){
       <div class="stat-tile"><div class="n">${taux}%</div><div class="l">Taux d'incidents</div></div>
     </div>`;
 }
-// Historique mission par mission, groupé par mois (menu déroulant natif —
-// seul le mois en cours est ouvert par défaut) : retrouver ce qu'on a fait et
-// gagné sur chaque mission, pas seulement des totaux agrégés.
+// Historique mission par mission, groupé par mois PUIS par semaine (menus
+// déroulants natifs imbriqués — seuls le mois et la semaine en cours sont
+// ouverts par défaut) : retrouver vite un montant sur une semaine précise
+// (déclarations URSSAF) sans encombrer l'écran de filtres ou de menus
+// supplémentaires — juste un niveau de détail en plus au même geste (taper
+// pour déplier), et chaque mission garde sa date exacte visible pour
+// retrouver "un jour en particulier" sans 3e niveau de menu.
+// Regroupement en heure de Paris (parisDateKey ci-dessous), cohérent avec le
+// découpage jour/semaine utilisé côté serveur pour générer les factures
+// (voir _lib/transporteurFacture.js) — sans ça, une mission faite tard le
+// soir pourrait apparaître dans une semaine différente à l'écran et sur la
+// facture PDF réellement générée.
+function parisDateKey(iso){
+  if(!iso) return '';
+  return new Date(iso).toLocaleDateString('fr-CA', {timeZone:'Europe/Paris'}); // YYYY-MM-DD
+}
+function mondayOfWeek(dateKey){
+  const d = new Date(dateKey+'T12:00:00'); // midi : évite qu'un changement d'heure fasse basculer le jour
+  const day = d.getDay(); // 0=dimanche..6=samedi
+  d.setDate(d.getDate() + (day===0 ? -6 : 1-day));
+  return d.toISOString().slice(0,10);
+}
+function addDaysKey(dateKey, n){
+  const d = new Date(dateKey+'T12:00:00');
+  d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function weekLabel(mondayKey){
+  const sundayKey = addDaysKey(mondayKey, 6);
+  const d1 = new Date(mondayKey+'T12:00:00');
+  const d2 = new Date(sundayKey+'T12:00:00');
+  const sameMonth = d1.getMonth()===d2.getMonth();
+  const d1s = d1.toLocaleDateString('fr-FR', sameMonth?{day:'numeric'}:{day:'numeric',month:'short'});
+  const d2s = d2.toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
+  return `Semaine du ${d1s} au ${d2s}`;
+}
+// Bouton "Générer la facture" ou badge "déjà envoyée", selon STATE.facturesByPeriode
+// (chargé une fois par loadActivite, voir plus haut) — pas de nouvel appel
+// réseau pour chaque semaine affichée.
+function factureWeekActionHtml(periodeDebut, periodeFin){
+  const f = (STATE.facturesByPeriode||{})[periodeDebut+'_'+periodeFin];
+  if(f){
+    return `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <span style="font-size:12.5px;color:var(--green);font-weight:600">✅ Facture envoyée · ${escHtml(f.numero)}</span>
+      <a class="btn btn-grey" style="padding:6px 12px;font-size:12px" href="${API('transporteur-facture-view')}?token=${f.access_token}&dl=1" target="_blank" rel="noopener">⬇️ Télécharger</a>
+    </div>`;
+  }
+  return `<button class="btn btn-blue" style="margin-top:10px;padding:8px 14px;font-size:12.5px" onclick="openFactureSemaineSheet('${periodeDebut}','${periodeFin}')">🧾 Générer la facture de cette semaine</button>`;
+}
 function missionsHistoryHtml(missions){
   // Même message d'état vide que missionsFiltreListHtml (les 3 autres
   // filtres "Mes missions") — un simple retour vide laissait la zone sous
@@ -4478,45 +4533,158 @@ function missionsHistoryHtml(missions){
   // que api/transporteur-missions.js action 'past_photos') — pas la peine
   // d'afficher un bouton qui échouera pour une mission plus ancienne.
   const photoCutoff = new Date(); photoCutoff.setDate(photoCutoff.getDate() - 90);
-  const groups = {};
+  const months = {};
   missions.forEach(m => {
-    const key = (m.fait_at||'').slice(0,7); // YYYY-MM
-    (groups[key] = groups[key] || []).push(m);
+    const dayKey = parisDateKey(m.fait_at);
+    if(!dayKey) return;
+    const monthKey = dayKey.slice(0,7);
+    const weekKey = mondayOfWeek(dayKey);
+    const mg = (months[monthKey] = months[monthKey] || {});
+    (mg[weekKey] = mg[weekKey] || []).push(m);
   });
-  const keys = Object.keys(groups).sort().reverse();
+  const monthKeys = Object.keys(months).sort().reverse();
   const monthLabel = key => {
     const [y,mo] = key.split('-').map(Number);
     return new Date(y, mo-1, 1).toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
   };
   return `
     <div class="section-title">Historique des missions</div>
-    ${keys.map((key,i) => {
-      const items = groups[key];
-      const total = items.reduce((s,m)=>s+(m.montant_cents||0),0);
+    ${monthKeys.map((mkey,mi) => {
+      const weekKeys = Object.keys(months[mkey]).sort().reverse();
+      const monthItems = weekKeys.flatMap(wk => months[mkey][wk]);
+      const monthTotal = monthItems.reduce((s,m)=>s+(m.montant_cents||0),0);
       return `
-      <details class="card month-details" ${i===0?'open':''} style="margin-bottom:10px;padding:16px 18px">
+      <details class="card month-details" ${mi===0?'open':''} style="margin-bottom:10px;padding:16px 18px">
         <summary style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;list-style:none">
-          <span style="text-transform:capitalize">${monthLabel(key)}</span>
-          <span style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--grey)">${items.length} mission${items.length>1?'s':''} · ${(total/100).toFixed(2).replace('.',',')} €<span class="month-chevron">›</span></span>
+          <span style="text-transform:capitalize">${monthLabel(mkey)}</span>
+          <span style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--grey)">${monthItems.length} mission${monthItems.length>1?'s':''} · ${(monthTotal/100).toFixed(2).replace('.',',')} €<span class="month-chevron">›</span></span>
         </summary>
-        <div class="vlist">
-          ${items.map(m => `
-            <div class="vrow" style="align-items:flex-start">
-              <span>
-                <span class="mcard-icon">${typeIconSvg(m.type,14)}</span>
-                ${TYPE_LABEL[m.type]||m.type}
-                <div class="mcard-meta" style="margin-top:2px">${m.fait_at?new Date(m.fait_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
-                ${(m.fait_at && new Date(m.fait_at) >= photoCutoff) ? `<button class="btn btn-grey" style="margin-top:6px;padding:8px 12px;font-size:12px" onclick="openMissionMedia(${m.id})">📷 Photos</button>` : ''}
-              </span>
-              <span style="text-align:right;flex-shrink:0">
-                <div style="font-weight:700">${(m.montant_cents/100).toFixed(2).replace('.',',')} €</div>
-                <span class="vchip ${m.statut_paiement==='paye'?'verse':'demande'}" style="margin-top:4px">${PAIEMENT_MISSION_LABEL[m.statut_paiement]||'—'}</span>
-              </span>
-            </div>`).join('')}
+        <div>
+          ${weekKeys.map((wk,wi) => {
+            const items = months[mkey][wk];
+            const weekTotal = items.reduce((s,m)=>s+(m.montant_cents||0),0);
+            const sunday = addDaysKey(wk,6);
+            return `
+            <details class="card month-details week-details" ${(mi===0&&wi===0)?'open':''} style="margin:10px 0 0;padding:12px 14px;box-shadow:none;border:1px solid var(--rule)">
+              <summary style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:600;font-size:13.5px;list-style:none">
+                <span>${weekLabel(wk)}</span>
+                <span style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--grey);font-size:12.5px">${items.length} mission${items.length>1?'s':''} · ${(weekTotal/100).toFixed(2).replace('.',',')} €<span class="month-chevron">›</span></span>
+              </summary>
+              <div class="vlist">
+                ${items.map(m => `
+                  <div class="vrow" style="align-items:flex-start">
+                    <span>
+                      <span class="mcard-icon">${typeIconSvg(m.type,14)}</span>
+                      ${TYPE_LABEL[m.type]||m.type}
+                      <div class="mcard-meta" style="margin-top:2px">${m.fait_at?new Date(m.fait_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
+                      ${(m.fait_at && new Date(m.fait_at) >= photoCutoff) ? `<button class="btn btn-grey" style="margin-top:6px;padding:8px 12px;font-size:12px" onclick="openMissionMedia(${m.id})">📷 Photos</button>` : ''}
+                    </span>
+                    <span style="text-align:right;flex-shrink:0">
+                      <div style="font-weight:700">${(m.montant_cents/100).toFixed(2).replace('.',',')} €</div>
+                      <span class="vchip ${m.statut_paiement==='paye'?'verse':'demande'}" style="margin-top:4px">${PAIEMENT_MISSION_LABEL[m.statut_paiement]||'—'}</span>
+                    </span>
+                  </div>`).join('')}
+              </div>
+              ${factureWeekActionHtml(wk, sunday)}
+            </details>`;
+          }).join('')}
         </div>
       </details>`;
     }).join('')}
   `;
+}
+
+// ── Facture hebdomadaire (Module facture hebdomadaire, 2026-08-17) ──────────
+// Sheet réutilisé pour 2 écrans : "Générer la facture de cette semaine"
+// (aperçu → validation → envoi) et "Mes factures" (liste flat de tout
+// l'historique) — même overlay/sheet que les tutoriels (#tuto-overlay),
+// aucune nouvelle classe CSS nécessaire.
+function ensureFactureOverlay(){
+  let overlay = document.getElementById('facture-overlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    overlay.id = 'facture-overlay';
+    overlay.innerHTML = `<div class="sheet" id="facture-sheet"><p class="empty">Chargement…</p></div>`;
+    overlay.addEventListener('click', e => { if(e.target===overlay) closeFactureOverlay(); });
+    document.body.appendChild(overlay);
+  }
+  return overlay;
+}
+function closeFactureOverlay(){
+  document.getElementById('facture-overlay')?.remove();
+}
+async function openFactureSemaineSheet(periodeDebut, periodeFin){
+  ensureFactureOverlay();
+  const sheet = document.getElementById('facture-sheet');
+  sheet.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('transporteur-facture'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'resume_semaine', periode_debut:periodeDebut, periode_fin:periodeFin})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    if(d.deja_generee){
+      const f = d.facture;
+      sheet.innerHTML = `
+        <h2 style="margin-bottom:6px">🧾 Facture déjà envoyée</h2>
+        <p class="sub" style="margin-bottom:16px">${weekLabel(periodeDebut)}</p>
+        <div class="stat-tile" style="margin-bottom:16px"><div class="n">${(f.montant_total_cents/100).toFixed(2).replace('.',',')} €</div><div class="l">${escHtml(f.numero)}</div></div>
+        <a class="btn btn-blue btn-block" href="${API('transporteur-facture-view')}?token=${f.access_token}&dl=1" target="_blank" rel="noopener">⬇️ Télécharger le PDF</a>
+        <button class="btn btn-grey btn-block" style="margin-top:10px" onclick="closeFactureOverlay()">Fermer</button>`;
+      return;
+    }
+    if(!d.nb_missions){
+      sheet.innerHTML = `<h2 style="margin-bottom:6px">🧾 Facture de la semaine</h2><p class="empty">Aucune mission terminée sur cette semaine — rien à facturer.</p><button class="btn btn-grey btn-block" style="margin-top:10px" onclick="closeFactureOverlay()">Fermer</button>`;
+      return;
+    }
+    sheet.innerHTML = `
+      <h2 style="margin-bottom:6px">🧾 Facture de la semaine</h2>
+      <p class="sub" style="margin-bottom:16px">${weekLabel(periodeDebut)}</p>
+      <div class="stat-tile" style="margin-bottom:8px"><div class="n">${(d.montant_total_cents/100).toFixed(2).replace('.',',')} €</div><div class="l">${d.nb_missions} mission${d.nb_missions>1?'s':''} terminée${d.nb_missions>1?'s':''}</div></div>
+      <p class="sub" style="margin-bottom:16px">Elle sera envoyée automatiquement par email à Loc'Air, et restera consultable ici et dans "Mes factures".</p>
+      <div class="err" id="facture-sheet-err"></div>
+      <button class="btn btn-blue btn-block" id="facture-confirm-btn" onclick="confirmerFactureSemaine('${periodeDebut}','${periodeFin}')">✅ Valider et envoyer</button>
+      <button class="btn btn-grey btn-block" style="margin-top:10px" onclick="closeFactureOverlay()">Annuler</button>`;
+  }catch(e){
+    sheet.innerHTML = `<p class="empty">Impossible de charger — vérifie ta connexion.</p><button class="btn btn-grey btn-block" style="margin-top:10px" onclick="closeFactureOverlay()">Fermer</button>`;
+  }
+}
+async function confirmerFactureSemaine(periodeDebut, periodeFin){
+  const btn = document.getElementById('facture-confirm-btn');
+  const errEl = document.getElementById('facture-sheet-err');
+  if(errEl) errEl.style.display = 'none';
+  if(btn){ btn.disabled = true; btn.textContent = 'Envoi…'; }
+  try{
+    const r = await fetch(API('transporteur-facture'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'generer', periode_debut:periodeDebut, periode_fin:periodeFin})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showTToast("Facture envoyée à Loc'Air ✅");
+    closeFactureOverlay();
+    loadActivite(); // recharge la liste + le statut de la semaine (bouton → badge "envoyée")
+  }catch(e){
+    if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+    if(btn){ btn.disabled = false; btn.textContent = '✅ Valider et envoyer'; }
+  }
+}
+// "Mes documents — Mes factures" : liste flat de tout l'historique, déjà en
+// cache (chargée par loadActivite) — pas de nouvel appel réseau à l'ouverture.
+function openMesFacturesSheet(){
+  ensureFactureOverlay();
+  const sheet = document.getElementById('facture-sheet');
+  const list = STATE.activiteFacturesCache || [];
+  sheet.innerHTML = `
+    <h2 style="margin-bottom:14px">📄 Mes factures</h2>
+    ${!list.length ? '<p class="empty">Aucune facture générée pour l\'instant — dépliue une semaine dans "Mes missions" pour en créer une.</p>' : `<div class="vlist">${list.map(f => `
+      <div class="vrow" style="align-items:flex-start">
+        <span>
+          <div style="font-weight:700">${escHtml(f.numero)}</div>
+          <div class="mcard-meta" style="margin-top:2px">${weekLabel(f.periode_debut)} · ${f.nb_missions} mission${f.nb_missions>1?'s':''}</div>
+        </span>
+        <span style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700">${(f.montant_total_cents/100).toFixed(2).replace('.',',')} €</div>
+          <a class="btn btn-grey" style="margin-top:4px;padding:5px 10px;font-size:11.5px" href="${API('transporteur-facture-view')}?token=${f.access_token}&dl=1" target="_blank" rel="noopener">⬇️ PDF</a>
+        </span>
+      </div>`).join('')}</div>`}
+    <button class="btn btn-grey btn-block" style="margin-top:16px" onclick="closeFactureOverlay()">Fermer</button>`;
 }
 
 const MISSION_PHOTO_LABEL = {
