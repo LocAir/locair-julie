@@ -610,6 +610,7 @@ body:not(.vl) .footer p,body:not(.vl) .footer a{color:rgba(255,255,255,.22)!impo
 
 <nav class="nav">
   <a href="/" class="nav-logo">Loc<em>'Air</em></a>
+  <a class="nav-logout hidden" id="btn-aide" href="https://wa.me/33663798756" target="_blank" rel="noopener noreferrer" style="margin-right:8px;font-size:13px;text-decoration:none">💬 Aide</a>
   <button class="nav-logout hidden" id="btn-logout" onclick="logout()">Se déconnecter</button>
 </nav>
 
@@ -1188,7 +1189,7 @@ function renderDashboard(d){
 
   // Countdown
   const countdownHtml = c.jours_restants != null && c.jours_restants > 0
-    ? `<div class="countdown">${_ICO.clock} ${c.jours_restants} jour${c.jours_restants>1?'s':''} avant récupération</div>`
+    ? `<div class="countdown">${_ICO.clock} ${c.jours_restants} jour${c.jours_restants>1?'s':''} · fin le ${fmtDateShort(c.date_fin)}</div>`
     : '';
 
   // Sections optionnelles — masquées si vides
@@ -1204,6 +1205,7 @@ function renderDashboard(d){
       : `<div class="days-left${joursRestants<=5?' days-left-urgent':''}">
           <span class="days-left-num">${joursRestants}</span>
           <span class="days-left-lbl">jour${joursRestants!==1?'s':''} restant${joursRestants!==1?'s':''}</span>
+          ${joursRestants<=5?`<button onclick="toggleAction('prolong')" style="margin-left:10px;font-size:12px;font-weight:700;color:var(--gold);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0">Prolonger →</button>`:''}
          </div>`
     : '';
   // Date courte pour la card Ma location
@@ -1566,6 +1568,7 @@ async function showDashboard(){
   document.getElementById('dash-loading').classList.remove('hidden');
   document.getElementById('dash-content').classList.add('hidden');
   document.getElementById('btn-logout').classList.remove('hidden');
+  document.getElementById('btn-aide').classList.remove('hidden');
   try{
     const d = await apiClient('/api/client-dashboard', {});
     renderDashboard(d);
