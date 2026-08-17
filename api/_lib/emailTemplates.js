@@ -27,17 +27,42 @@ function installationLabel(lang, raw) {
 }
 
 // Habillage visuel unique (identité de marque) — même structure et mêmes
-// paramètres qu'avant (headColor/title/intro/bodyHtml/ctaHref/ctaLabel),
-// seule la mise en forme change : pile de polices système (rendu natif fiable
-// sur tous les clients mail, Inter ne charge presque jamais), profondeur de
-// carte (ombre douce), hiérarchie de couleurs affinée, encarts ".box" avec
-// liseré de marque, bouton avec un léger relief. Passe purement visuelle —
-// aucun contenu, aucun paramètre, aucune logique d'envoi n'est modifié.
-function wrap({ headColor = '#1b3a5f', title, intro, bodyHtml, ctaHref, ctaLabel }) {
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+// paramètres qu'avant (headColor/title/intro/bodyHtml/ctaHref/ctaLabel).
+//
+// 2026-08-17 (demande d'Aly, capture d'écran à l'appui) : le bouton
+// "Payer maintenant" s'affichait comme un simple lien bleu souligné,
+// illisible sur le fond foncé — de nombreux clients mail (Outlook.com,
+// Yahoo, certaines applis mobiles) ignorent purement et simplement la
+// balise <style>, ou réappliquent leur propre couleur de lien par-dessus
+// la classe .btn. Le bouton est donc reconstruit en "bulletproof button"
+// (table + <a> entièrement stylé en ligne, bgcolor en attribut) : même
+// sans aucun CSS, il reste un vrai bouton coloré avec un texte blanc
+// lisible. Couleurs alignées sur l'identité de marque exacte du site
+// (navy #1a2b4a, or #c5a96c — avant : #1b3a5f, un navy approchant mais pas
+// identique). Wordmark "Loc'Air" ajouté en en-tête pour que chaque email
+// soit immédiatement identifiable, même sans lire le sujet.
+function wrap({ headColor = '#1a2b4a', title, intro, bodyHtml, ctaHref, ctaLabel }) {
+  const preheader = intro ? String(intro).replace(/<[^>]+>/g, '').slice(0, 140) : '';
+  const btnHtml = ctaHref ? `
+    <!--[if mso]>
+    <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${ctaHref}" style="height:46px;v-text-anchor:middle;width:260px;" arcsize="50%" stroke="f" fillcolor="${headColor}">
+    <w:anchorlock/>
+    <center style="color:#ffffff;font-family:Arial,sans-serif;font-size:14px;font-weight:bold;">${ctaLabel}</center>
+    </v:roundrect>
+    <![endif]-->
+    <!--[if !mso]><!-->
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:22px 0 4px"><tr>
+      <td align="center" bgcolor="${headColor}" style="border-radius:100px;background-color:${headColor}">
+        <a href="${ctaHref}" target="_blank" style="display:inline-block;padding:14px 32px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;letter-spacing:.01em;line-height:1;color:#ffffff!important;text-decoration:none!important;border-radius:100px;mso-hide:all">${ctaLabel}</a>
+      </td>
+    </tr></table>
+    <!--<![endif]-->` : '';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><style>
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#eee8dd;margin:0;padding:0;-webkit-font-smoothing:antialiased}
-    .wrap{max-width:560px;margin:24px auto;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 4px 24px rgba(27,58,95,.10)}
-    .head{background:${headColor};padding:34px 32px 30px;text-align:center}
+    .wrap{max-width:560px;margin:24px auto;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 4px 24px rgba(26,43,74,.10)}
+    .brand{color:#ffffff;font-family:Georgia,'Times New Roman',serif;font-size:19px;font-weight:700;letter-spacing:-.01em;margin:0 0 16px}
+    .brand em{font-style:italic;font-weight:400;color:#c5a96c}
+    .head{background:${headColor};padding:30px 32px 30px;text-align:center}
     .head h1{color:#fff;font-size:21px;line-height:1.35;margin:0 0 8px;font-weight:700;letter-spacing:-.01em}
     .head p{color:rgba(255,255,255,.82);font-size:14px;margin:0;font-weight:500}
     .body{padding:32px 32px 30px;font-size:15px;color:#2b2b2e;line-height:1.65}
@@ -45,12 +70,12 @@ function wrap({ headColor = '#1b3a5f', title, intro, bodyHtml, ctaHref, ctaLabel
     .body p:last-child{margin-bottom:0}
     .box{background:#f7f3ea;border-left:3px solid ${headColor};border-radius:8px;padding:16px 20px;margin:18px 0}
     .box a{text-decoration:none}
-    .btn{display:inline-block;background:${headColor};color:#fff;padding:13px 30px;border-radius:100px;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.01em;margin:22px 0 4px;box-shadow:0 3px 10px rgba(27,58,95,.28)}
-    .btn:hover{opacity:.92}
+    @media (max-width:480px){ .wrap{margin:0;border-radius:0} .head{padding:26px 22px 24px} .body{padding:24px 22px 26px} }
   </style></head><body>
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">${preheader}</div>
   <div class="wrap">
-    <div class="head"><h1>${title}</h1>${intro ? `<p>${intro}</p>` : ''}</div>
-    <div class="body">${bodyHtml}${ctaHref ? `<a class="btn" href="${ctaHref}">${ctaLabel}</a>` : ''}</div>
+    <div class="head"><p class="brand">Loc<em>'Air</em></p><h1>${title}</h1>${intro ? `<p>${intro}</p>` : ''}</div>
+    <div class="body">${bodyHtml}${btnHtml}</div>
   </div></body></html>`;
 }
 
