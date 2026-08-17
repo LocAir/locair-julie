@@ -7234,9 +7234,13 @@ function goTo(n,silent){
           document.getElementById('f-date-custom-wrap')?.classList.add('show');
           const _da=document.getElementById('dispo-alert');
           if(_da){
-            const _minFmt=new Date(minDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+            const _loc=_lang==='en'?'en-GB':_lang==='zh'?'zh-CN':_lang==='ru'?'ru-RU':'fr-FR';
+            const _minFmt=new Date(minDate+'T00:00:00').toLocaleDateString(_loc,{weekday:'long',day:'numeric',month:'long'});
             _da.style.cssText='display:block;margin-top:10px;padding:10px 13px;background:#fef2f2;border:1.5px solid #fecaca;border-radius:9px;font-size:12px;color:#b91c1c;line-height:1.55';
-            _da.textContent='Date trop proche ou déjà passée. La première date disponible est le '+_minFmt+'.';
+            _da.textContent=_lang==='en'?'Date too early or already passed. First available date: '+_minFmt+'.'
+              :_lang==='zh'?'日期太近或已过。最早可选日期：'+_minFmt+'。'
+              :_lang==='ru'?'Дата слишком близко или уже прошла. Ближайшая доступная дата: '+_minFmt+'.'
+              :'Date trop proche ou déjà passée. La première date disponible est le '+_minFmt+'.';
           }
           highlight(['f-date']);goTo(4,true);return;
         }
@@ -9765,6 +9769,10 @@ function _initTopBar(){
     :isZH?'当日送达服务开放 — 18时前下单即可<strong>今天</strong>收到'
     :isRU?'Экспресс-доставка доступна — закажите до 18:00, чтобы получить <strong>сегодня</strong>'
     :'Livraison express disponible — commandez avant 18h pour être livré <strong>aujourd\'hui</strong>';
+  const ctaBtn=document.getElementById('top-bar-cta');
+  if(ctaBtn)ctaBtn.textContent=isEn?'Book →':isZH?'预订 →':isRU?'Заказать →':'Réserver →';
+  const closeBtn=bar.querySelector('.top-bar-close');
+  if(closeBtn)closeBtn.setAttribute('aria-label',isEn?'Close':isZH?'关闭':isRU?'Закрыть':'Fermer');
   bar.style.display='';
   _updateChromeH();
 }
@@ -9900,7 +9908,8 @@ function _dismissTopBar(){
 })();
 
 (function initEnService(){
-  const h=new Date().getHours();
+  // _parisNow() → heure correcte même pour un visiteur en Chine ou Russie.
+  const h=_parisNow().h;
   const el=document.getElementById('en-service');
   if(!el)return;
   const isRU=_lang==='ru';
@@ -9919,7 +9928,8 @@ function _dismissTopBar(){
   if(_urgencyShown)return;
   const el=document.getElementById('hero-social-proof');
   if(!el)return;
-  const h=new Date().getHours();
+  // _parisNow() → heure correcte même pour un visiteur en Chine ou Russie.
+  const h=_parisNow().h;
   const isRU=_lang==='ru';
   el.style.display='flex';
   const txt=document.getElementById('hsp-text');
