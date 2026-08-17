@@ -1473,11 +1473,13 @@ function parisNowHM(){
 // réservation Express prise par téléphone à 16h partait encore avec un
 // créneau vide (ni "8h-12h" ni l'heure réelle), aussi bien pour le client
 // que pour le transporteur qui reçoit la mission.
+// Toujours arrondi à l'heure pile (demande d'Aly, 2026-08-17, même correctif
+// que _expressCreneauStr côté site) — "00h" pour minuit plutôt que "0h".
 function nrExpressCreneauStr(sep){
-  const {h,m}=parisNowHM();
-  const fmt=(hh,mm)=>hh+'h'+(mm>0?String(mm).padStart(2,'0'):'');
+  const {h}=parisNowHM();
+  const fmt=hh=>(hh===0?'00':hh)+'h';
   let h2=h+2; if(h2>=24)h2-=24;
-  return fmt(h,m)+sep+fmt(h2,m);
+  return fmt(h)+sep+fmt(h2);
 }
 
 // wa.me exige un numéro international sans "0" ni "+". Depuis le
@@ -8014,16 +8016,18 @@ async function openFacturesTransporteursModal(preselectTransporteurId){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     FACTURES_TRANSPORTEUR_CACHE = d.factures || [];
-    const noms = [...new Set(FACTURES_TRANSPORTEUR_CACHE.map(f => f.transporteur?.nom).filter(Boolean))].sort();
-    const preselectNom = preselectTransporteurId
-      ? FACTURES_TRANSPORTEUR_CACHE.find(f => f.transporteur_id===preselectTransporteurId)?.transporteur?.nom
-      : null;
+    // Par id, jamais par nom (deux transporteurs peuvent porter le même
+    // prénom/nom — filtrer par chaîne mélangerait alors leurs factures,
+    // trouvé en revue de code du 2026-08-17).
+    const transpById = new Map();
+    FACTURES_TRANSPORTEUR_CACHE.forEach(f => { if(f.transporteur_id!=null) transpById.set(f.transporteur_id, f.transporteur?.nom||'—'); });
     const filtreSel = document.getElementById('factt-filtre');
     const vueSel = document.getElementById('factt-vue');
     const periodeSel = document.getElementById('factt-periode');
     if(filtreSel){
+      const entries = [...transpById.entries()].sort((a,b) => a[1].localeCompare(b[1]));
       filtreSel.innerHTML = `<option value="">Tous les transporteurs</option>` +
-        noms.map(n => `<option value="${escHtml(n)}" ${n===preselectNom?'selected':''}>${escHtml(n)}</option>`).join('');
+        entries.map(([id,nom]) => `<option value="${id}" ${id===preselectTransporteurId?'selected':''}>${escHtml(nom)}</option>`).join('');
     }
     const renderCurrent = () => {
       if(vueSel.value === 'recap') renderFacturesRecap(periodeSel.value);
@@ -8043,10 +8047,11 @@ async function openFacturesTransporteursModal(preselectTransporteurId){
     if(body) body.innerHTML = `<p class="empty">Erreur : ${escHtml(e.message)}</p>`;
   }
 }
-function renderFacturesTransporteurList(filtreNom){
+function renderFacturesTransporteurList(filtreId){
   const zone = document.getElementById('factt-body');
   if(!zone) return;
-  const list = FACTURES_TRANSPORTEUR_CACHE.filter(f => !filtreNom || f.transporteur?.nom === filtreNom);
+  const filtreIdNum = filtreId ? parseInt(filtreId) : null;
+  const list = FACTURES_TRANSPORTEUR_CACHE.filter(f => !filtreIdNum || f.transporteur_id === filtreIdNum);
   if(!list.length){ zone.innerHTML = '<p class="empty">Aucune facture pour l\'instant.</p>'; return; }
   const frDateCourte = iso => new Date(iso+'T12:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
   zone.innerHTML = `<div class="card vlist">${list.map(f => `
@@ -8095,10 +8100,11 @@ function renderFacturesRecap(periodeKey){
   const list = FACTURES_TRANSPORTEUR_CACHE.filter(f => f.periode_debut >= debut && f.periode_debut <= fin);
   if(!list.length){ zone.innerHTML = `<p class="empty">Aucune facture sur ${escHtml(label)}.</p>`; return; }
   const total = list.reduce((s,f)=>s+(f.montant_total_cents||0),0);
+  // Regroupé par transporteur_id, jamais par nom (voir openFacturesTransporteursModal).
   const parTransp = {};
   list.forEach(f => {
-    const nom = f.transporteur?.nom || '—';
-    const g = (parTransp[nom] = parTransp[nom] || {nom, cents:0, nb:0});
+    const id = f.transporteur_id;
+    const g = (parTransp[id] = parTransp[id] || {nom: f.transporteur?.nom||'—', cents:0, nb:0});
     g.cents += f.montant_total_cents||0;
     g.nb += 1;
   });

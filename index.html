@@ -6370,12 +6370,17 @@ function _localCutoffStr(){
 // voyait promettre un créneau du matin déjà passé depuis longtemps. En
 // Express, le créneau doit refléter l'heure réelle de la commande (heure de
 // Paris) + 2h, pas un horaire fixe.
-function _fmtHeureParis(h,m){return h+'h'+(m>0?String(m).padStart(2,'0'):'');}
+// Toujours arrondi à l'heure pile (demande d'Aly, 2026-08-17) : afficher les
+// minutes réelles de la commande ("22h17 – 0h17") est illisible et a l'air
+// d'un bug — un créneau se lit d'un coup d'œil en heures rondes. "00h" pour
+// minuit plutôt que "0h" (moins ambigu, ne se confond pas avec un chiffre
+// tronqué). Les minutes ne sont plus utilisées du tout ici.
+function _fmtHeureParis(h){return (h===0?'00':h)+'h';}
 function _expressCreneauStr(sep){
-  const{h,m}=_parisNow();
+  const{h}=_parisNow();
   let h2=h+2;
   if(h2>=24)h2-=24; // filet de sécurité (l'Express est de toute façon coupé à 18h, _expressCutoffOk — le "+2h" ne dépasse donc jamais 20h)
-  return _fmtHeureParis(h,m)+sep+_fmtHeureParis(h2,m);
+  return _fmtHeureParis(h)+sep+_fmtHeureParis(h2);
 }
 // Recalcule et applique le créneau affiché (bloc visible) + la valeur cachée
 // lue par buildRecap()/checkout (#creneau-liv-data) selon l'état Express en
