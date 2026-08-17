@@ -1101,6 +1101,15 @@ document.addEventListener('click', e => {
   const wrap = document.getElementById('a-search-wrap');
   if(wrap && !wrap.contains(e.target)) document.getElementById('a-search-results')?.classList.add('hidden');
 });
+// Même comportement pour la recherche client de "Nouvelle réservation"
+// (nr-client-search) — pas de conteneur .a-search-wrap dédié ici, on
+// compare directement au champ + au menu de résultats.
+document.addEventListener('click', e => {
+  const input = document.getElementById('nr-client-search');
+  const results = document.getElementById('nr-client-results');
+  if(!input || !results) return;
+  if(e.target !== input && !results.contains(e.target)) results.classList.add('hidden');
+});
 // Ouvre la réservation liée à une référence — utilisé depuis Incidents pour
 // remonter au détail complet (dates, adresse, statut) sans devoir retaper la
 // référence à la main dans Réservations (audit organisation du 2026-07-27).
@@ -4047,6 +4056,59 @@ function duplicateReservation(id){
   NR_DUPLICATE_SOURCE = res;
   setReservationsView('creer');
 }
+// Recherche client existant depuis "Nouvelle réservation" (demande d'Aly,
+// 2026-08-17) : évite de tout retaper à la main pour un client qui rappelle.
+// Cherche dans RESERVATIONS_CACHE (déjà en mémoire, pas de nouvel appel
+// réseau) par nom ou téléphone, dédoublonné par téléphone (garde la
+// réservation la plus récente de chaque client) — puis réutilise
+// duplicateReservation() pour pré-remplir, exactement comme "Réservation
+// similaire".
+function nrSearchClient(query){
+  const box = document.getElementById('nr-client-results');
+  if(!box) return;
+  const q = query.trim().toLowerCase();
+  if(q.length < 2){ box.classList.add('hidden'); box.innerHTML = ''; return; }
+  const seenTel = new Set();
+  const matches = [];
+  // RESERVATIONS_CACHE est déjà trié le plus récent en premier (voir
+  // loadReservations/admin-reservations.js) — garder la 1re occurrence par
+  // téléphone suffit à obtenir la plus récente.
+  for(const r of RESERVATIONS_CACHE){
+    const nom = ((r.prenom||'')+' '+(r.nom||'')).trim().toLowerCase();
+    const tel = (r.tel||'').replace(/\s/g,'');
+    const telNorm = tel.replace(/\D/g,'');
+    // qDigits vide (recherche par nom, aucun chiffre tapé) : ne jamais tenter
+    // le match téléphone dans ce cas — sinon telNorm.includes('') est
+    // toujours vrai (une chaîne "contient" toujours la chaîne vide) et fait
+    // remonter TOUS les clients dès qu'on tape juste un nom.
+    const qDigits = q.replace(/\D/g,'');
+    const matchNom = nom.includes(q);
+    const matchTel = qDigits.length >= 2 && telNorm.includes(qDigits);
+    if(!matchNom && !matchTel) continue;
+    const dedupeKey = telNorm || nom;
+    if(!dedupeKey || seenTel.has(dedupeKey)) continue;
+    seenTel.add(dedupeKey);
+    matches.push(r);
+    if(matches.length >= 8) break;
+  }
+  if(!matches.length){
+    box.innerHTML = '<div class="a-search-empty">Aucun client trouvé.</div>';
+    box.classList.remove('hidden');
+    return;
+  }
+  box.innerHTML = matches.map(r => `
+    <div class="a-search-row" onclick="nrPickClient(${r.id})">
+      <div>
+        <div class="a-search-row-main">${escHtml((r.prenom||'')+' '+(r.nom||''))}</div>
+        <div class="a-search-row-sub">${escHtml(r.tel||'—')}${r.adresse?' · '+escHtml(r.adresse):''}</div>
+      </div>
+    </div>`).join('');
+  box.classList.remove('hidden');
+}
+function nrPickClient(id){
+  document.getElementById('nr-client-results')?.classList.add('hidden');
+  duplicateReservation(id);
+}
 // Applique/retire la remise sur le prix déjà saisi plutôt que de reconstruire
 // tout le calcul à partir de zéro — un prix négocié à la main pour d'autres
 // raisons (geste commercial, tarif spécial) n'est jamais écrasé.
@@ -4402,7 +4464,18 @@ function reservationCreerHtml(){
     <div class="card">
       <h2>Nouvelle réservation</h2>
       <p class="sub" style="margin-bottom:16px">Reprend tous les champs du formulaire du site — pour saisir toi-même une réservation prise par téléphone.</p>
-      ${d ? `<div style="background:var(--blue-lt);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.5"><strong>🔁 Infos reprises de ${escHtml(d.ref||'')}</strong> (${escHtml(d.prenom||'')} ${escHtml(d.nom||'')})<br>Dates, quantité, prix et CGV sont à ressaisir — <strong>vérifie que l'adresse et le logement sont toujours d'actualité.</strong></div>` : ''}
+      <!-- Recherche client existant (demande d'Aly, 2026-08-17) : pour un
+           client qui rappelle, retrouver ses coordonnées/adresse au lieu de
+           tout retaper à la main. Cherche dans RESERVATIONS_CACHE (déjà
+           chargé par l'onglet Réservations) et réutilise exactement le même
+           mécanisme de pré-remplissage que "Réservation similaire"
+           (duplicateReservation) — un seul système à maintenir, déjà testé. -->
+      <label for="nr-client-search">Client déjà connu ? <span style="text-transform:none;font-weight:400;color:var(--grey-soft)">(optionnel)</span></label>
+      <div style="position:relative">
+        <input type="text" id="nr-client-search" placeholder="Nom ou téléphone…" autocomplete="off" oninput="nrSearchClient(this.value)" onfocus="nrSearchClient(this.value)"/>
+        <div id="nr-client-results" class="a-search-results hidden"></div>
+      </div>
+      ${d ? `<div style="background:var(--blue-lt);border-radius:12px;padding:12px 14px;margin:12px 0 16px;font-size:13px;line-height:1.5"><strong>🔁 Infos reprises de ${escHtml(d.ref||'')}</strong> (${escHtml(d.prenom||'')} ${escHtml(d.nom||'')})<br>Dates, quantité, prix et CGV sont à ressaisir — <strong>vérifie que l'adresse et le logement sont toujours d'actualité.</strong></div>` : '<div style="margin-bottom:16px"></div>'}
 
       <div class="section-title">💶 Devis rapide</div>
       <div class="devis-box">
