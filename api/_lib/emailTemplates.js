@@ -861,6 +861,24 @@ function tplPrimeTransporteur({ nom, moisLabel, montantFmt, nbMissions, totalGag
   });
 }
 
+// Facture hebdomadaire d'un transporteur (interne, à destination d'Aly
+// uniquement) : envoyée automatiquement quand le transporteur valide sa
+// facture de la semaine (voir _lib/transporteurFacture.js). Pas de
+// withSignature() ici — c'est une notification opérationnelle pour Aly
+// lui-même, pas un email client (pas de footer WhatsApp/réseaux sociaux).
+function tplFactureTransporteurAdmin({ transporteurNom, numero, periodeDebutFmt, periodeFinFmt, nbMissions, totalFmt }) {
+  return wrap({
+    title: 'Nouvelle facture transporteur 🧾',
+    intro: `${escHtml(transporteurNom)} vient d'envoyer sa facture de la semaine.`,
+    bodyHtml: `
+      <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">${escHtml(numero)}</p><strong style="font-size:24px;color:#1a2b4a">${escHtml(totalFmt)}</strong></div>
+      <p><strong>Période :</strong> du ${escHtml(periodeDebutFmt)} au ${escHtml(periodeFinFmt)}<br/>
+      <strong>Missions :</strong> ${nbMissions}</p>
+      <p style="font-size:13px;color:#444">Le PDF est en pièce jointe. Retrouve aussi toutes les factures transporteurs dans l'admin, onglet Virements → 🧾 Factures transporteurs.</p>`,
+    ctaHref: 'https://www.locair.fr/admin', ctaLabel: "Ouvrir l'admin",
+  });
+}
+
 // Lien de paiement Stripe pour une réservation prise par téléphone et encore
 // "en attente" (interne — FR uniquement, même principe que tplContratFacture/
 // tplFactureVente). Une fois payé, le webhook Stripe déclenche exactement le
@@ -1080,6 +1098,6 @@ module.exports = {
   tplPostInstallation, tplAvantFinLocation, tplRappelRecuperation, tplFinLocation,
   tplProlongConfirmation, tplContratFacture, tplContratFactureProlongation, tplFactureVente,
   tplAmbassadeurCredentials, tplNouveauCodeAmbassadeur, tplNouveauCodeTransporteur,
-  tplPrimeTransporteur,
+  tplPrimeTransporteur, tplFactureTransporteurAdmin,
   tplLienPaiement, tplRelanceDormant, tplOffrePrivilege,
 };

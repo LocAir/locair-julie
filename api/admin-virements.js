@@ -88,6 +88,24 @@ module.exports = async (req, res) => {
       return res.status(200).json({ transporteurs: result });
     }
 
+    // Espace dédié "Factures transporteurs" (Module facture hebdomadaire,
+    // 2026-08-17) : liste toutes les factures que les transporteurs de cette
+    // ville ont générées eux-mêmes depuis leur espace (bouton "Facture de la
+    // semaine") — l'admin les retrouve ici en PDF téléchargeable, sans avoir
+    // à aller les chercher dans sa boîte mail (voir aussi
+    // transporteur-facture-view.js, même lien de téléchargement des 2 côtés).
+    if (action === 'list_factures_transporteur') {
+      if (!transpIds.length) return res.status(200).json({ factures: [] });
+      const { data, error } = await supabase
+        .from('transporteur_factures')
+        .select('id, transporteur_id, numero, periode_debut, periode_fin, nb_missions, montant_total_cents, envoyee_admin, access_token, created_at, transporteur:transporteurs ( id, nom )')
+        .in('transporteur_id', transpIds)
+        .order('periode_debut', { ascending: false })
+        .limit(300);
+      if (error) throw error;
+      return res.status(200).json({ factures: data || [] });
+    }
+
     // Correction manuelle d'un montant après coup (Module 9) — ex. mission mal
     // tarifée, oubli d'un supplément. Autorisée même sur une mission déjà
     // versée (voulu explicitement par Aly) : le total "déjà versé" affiché

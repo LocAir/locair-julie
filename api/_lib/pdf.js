@@ -237,6 +237,15 @@ function drawTableHeader(doc) {
 }
 
 // ─── Bloc total (bandeau navy) ────────────────────────────────────────────────
+// Bug trouvé en générant la facture transporteur (2026-08-17) : le séparateur
+// entre label et valeur de la ligne "large" (le vrai total, en gros) était un
+// espace U+2002 au lieu d'un espace ASCII normal — invisible à l'œil dans le
+// code, mais pdfkit sous-estime sa largeur avec {width, align:'right'}, ce qui
+// décale tout le texte vers la droite et coupe le "€" final hors du cadre dès
+// que le libellé est un peu long ("MONTANT TOTAL DÛ" le montrait, "NET À
+// PAYER", plus court, masquait le même bug). Un espace ASCII normal suffit à
+// corriger — jamais utiliser d'espace "typographique" (U+2002 etc.) dans un
+// texte pdfkit mesuré/aligné automatiquement.
 function drawTotalBox(doc, rows) {
   // rows : [{ label, value, bold, large }]
   const ROW_H = 14;
@@ -250,7 +259,7 @@ function drawTotalBox(doc, rows) {
     const col = row.muted ? C.wTer : (row.large ? C.white : C.wSec);
     doc.font(row.bold || row.large ? 'Helvetica-Bold' : 'Helvetica')
       .fontSize(fs).fillColor(col)
-      .text(row.label + (row.large ? '  ' : '  ') + row.value,
+      .text(row.label + '  ' + row.value,
             M + 10, ty, { width: W - 20, align: 'right' });
     ty += row.large ? ROW_H + 2 : ROW_H;
   }
@@ -837,4 +846,109 @@ function generateAvenantProlongationPdf({ origineResa, prolongationResa, apparei
   });
 }
 
-module.exports = { generateContratPdf, generateFacturePdf, generateFactureVentePdf, generateAvenantProlongationPdf };
+// ══════════════════════════════════════════════════════════════════════════════
+// FACTURE TRANSPORTEUR (auto-entrepreneur → Loc'Air)
+// Générée depuis l'espace transporteur (bouton "Facture de la semaine", voir
+// _lib/transporteurFacture.js) — sens INVERSÉ des factures ci-dessus : ici le
+// transporteur est l'ÉMETTEUR (il facture sa prestation à Loc'Air), Loc'Air
+// est le client facturé. Détail volontairement condensé PAR JOUR (pas
+// mission par mission) — demande explicite d'Aly ("le détail de façon
+// concise"), le détail mission par mission reste consultable dans "Mes
+// gains" côté transporteur.
+// ══════════════════════════════════════════════════════════════════════════════
+function drawFactureTransporteurHeader(doc, { transporteur, numero, periodeDebut, periodeFin }) {
+  const topY  = M;
+  const colW  = 245;
+  const boxW  = 205;
+  const boxX  = PW - M - boxW;
+  const boxH  = 80;
+
+  // Colonne gauche — émetteur (le transporteur, prestataire indépendant)
+  doc.font('Helvetica-Bold').fontSize(17).fillColor(C.navy)
+    .text(transporteur.nom, M, topY, { width: colW });
+  doc.font('Helvetica').fontSize(8.5).fillColor(C.grey)
+    .text('Auto-entrepreneur (prestataire indépendant)', M, topY + 23, { width: colW })
+    .text(transporteur.adresse_facturation || 'Adresse non renseignée', M, topY + 34, { width: colW })
+    .text(transporteur.siret ? `SIRET ${transporteur.siret}` : 'SIRET non renseigné', M, topY + 45, { width: colW })
+    .text(transporteur.telephone || '', M, topY + 56, { width: colW });
+
+  // Colonne droite — boîte infos document
+  filledRect(doc, boxX, topY - 4, boxW, boxH, C.bg, 6);
+  doc.font('Helvetica-Bold').fontSize(15).fillColor(C.navy)
+    .text('FACTURE', boxX + 14, topY + 5, { width: boxW - 28 });
+  doc.font('Helvetica-Bold').fontSize(9.5).fillColor(C.body)
+    .text(numero, boxX + 14, topY + 24, { width: boxW - 28 });
+  doc.font('Helvetica').fontSize(8.5).fillColor(C.grey)
+    .text(`Semaine du ${fmtDate(periodeDebut)}`, boxX + 14, topY + 38, { width: boxW - 28 })
+    .text(`au ${fmtDate(periodeFin)}`,           boxX + 14, topY + 49, { width: boxW - 28 });
+
+  doc.x = M;
+  doc.y = topY + boxH + 10;
+  hLine(doc, M, doc.y, W, C.rule, 0.75);
+  doc.y += 14;
+}
+
+// `joursGroupes` : [{ dateLabel, count, totalCents, detailLabel }], déjà
+// regroupé par jour (heure de Paris) par l'appelant — voir
+// _lib/transporteurFacture.js pour le regroupement.
+function generateFactureTransporteurPdf({ transporteur, numero, periodeDebut, periodeFin, joursGroupes, totalCents, nbMissions }) {
+  return renderPdf((doc) => {
+    drawFactureTransporteurHeader(doc, { transporteur, numero, periodeDebut, periodeFin });
+
+    drawSectionTitle(doc, 'Facturé à');
+    drawClientBox(doc, [
+      ['Client',  SELLER.nomCommercial],
+      ['Adresse', SELLER.adresse],
+      ['SIRET',   SELLER.siret],
+    ]);
+
+    drawKeyValueRow(doc, 'N° de facture',     numero);
+    drawKeyValueRow(doc, "Date d'émission",   fmtDate(new Date()));
+    drawKeyValueRow(doc, 'Période facturée',  `Du ${fmtDate(periodeDebut)} au ${fmtDate(periodeFin)}`);
+    doc.moveDown(0.3);
+
+    drawSectionTitle(doc, 'Détail des missions');
+    drawTableHeader(doc);
+    for (const j of joursGroupes) {
+      // Une semaine chargée peut dépasser la page — même garde que
+      // drawSectionTitle, avec ré-affichage de l'en-tête de tableau sur la
+      // page suivante pour rester lisible.
+      if (doc.y > PH - M - 60) { doc.addPage(); drawTableHeader(doc); }
+      drawInvoiceItem(doc, {
+        label: `${j.dateLabel} — ${j.count} mission${j.count > 1 ? 's' : ''}`,
+        detailLines: [j.detailLabel],
+        amount: eur(j.totalCents),
+      });
+    }
+    doc.moveDown(0.3);
+
+    drawTotalBox(doc, [
+      { label: 'NOMBRE DE MISSIONS', value: String(nbMissions), muted: true },
+      { label: 'MONTANT TOTAL DÛ',   value: eur(totalCents), bold: true, large: true },
+    ]);
+
+    drawSectionTitle(doc, 'Modalités de règlement');
+    doc.font('Helvetica').fontSize(9).fillColor(C.body)
+      .text(
+        `Réglé par virement ${SELLER.nomCommercial} selon le rythme habituel des versements — historique et statut de paiement ` +
+        'consultables à tout moment dans l\'espace transporteur, onglet "Mes gains".',
+        M, doc.y, { width: W }
+      );
+    doc.x = M;
+    doc.moveDown(0.8);
+
+    drawFooter(doc,
+      `Facture émise par ${transporteur.nom}, prestataire indépendant, à destination de ${SELLER.nomCommercial} (${SELLER.siret}). ` +
+      'Auto-entrepreneur — TVA non applicable, art. 293 B du CGI, sauf régime différent du prestataire. ' +
+      'Document généré automatiquement depuis l\'espace transporteur Loc\'Air.'
+    );
+  });
+}
+
+module.exports = {
+  generateContratPdf, generateFacturePdf, generateFactureVentePdf, generateAvenantProlongationPdf,
+  generateFactureTransporteurPdf,
+  // Réutilisés par _lib/transporteurFacture.js pour le regroupement par jour
+  // et l'email admin, plutôt que de dupliquer ces petits formateurs.
+  fmtDate, eur,
+};
