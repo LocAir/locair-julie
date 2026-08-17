@@ -39,9 +39,9 @@ const NEXT_STEP_MESSAGE = {
 // Remplace la progression numérotée par un message ponctuel pour les statuts
 // qui ne représentent pas une étape du cycle de vie normal.
 const BANNER_MESSAGE = {
-  annulee:    'Cette réservation a été annulée.',
-  remboursee: 'Cette réservation a été remboursée.',
-  incident:   'Un point est en cours de traitement sur votre dossier — notre équipe vous contactera si besoin.',
+  annulee:    "Cette réservation a été annulée. Si vous n'êtes pas à l'origine de cette annulation ou si vous avez des questions, appelez-nous au 06.63.79.87.56 (8h–20h, 7j/7) ou écrivez sur WhatsApp.",
+  remboursee: 'Votre remboursement a été traité. Les fonds arrivent sur votre compte sous 3 à 5 jours ouvrés selon votre banque. Une question ? Appelez le 06.63.79.87.56 ou écrivez sur WhatsApp.',
+  incident:   "Un point est en cours de traitement sur votre dossier — notre équipe vous contactera très rapidement. En cas d'urgence, appelez le 06.63.79.87.56 (8h–20h, 7j/7).",
 };
 
 // Ne renvoie JAMAIS `internal` au client — uniquement pour usage serveur

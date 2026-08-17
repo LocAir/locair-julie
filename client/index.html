@@ -1491,7 +1491,7 @@ async function confirmProlong(){
   try{
     const{error,paymentIntent}=await _getStripe().confirmPayment({elements:_prolongStripeEl,redirect:'if_required',confirmParams:{return_url:window.location.origin+'/client/?prolong_return=1'}});
     if(error){
-      if(errEl){errEl.textContent=error.message;errEl.classList.remove('hidden');}
+      if(errEl){errEl.textContent='Paiement refusé. Vérifiez vos informations bancaires ou essayez une autre carte. Si le problème persiste, appelez le 06.63.79.87.56.';errEl.classList.remove('hidden');}
       cb.disabled=false; cb.textContent='Réessayer le paiement';
     }else if(paymentIntent?.status==='succeeded'){
       document.getElementById('prolong-step-3').style.display='none';
@@ -1594,7 +1594,7 @@ async function showDashboard(){
     }
     setTimeout(offerClientFaceId, 1200);
   }catch(err){
-    document.getElementById('dash-loading').innerHTML = `<div class="alert-error" style="text-align:left">${escHtml(err.message)}</div><button class="btn-outline" onclick="logout()" style="margin-top:12px">Retour</button>`;
+    document.getElementById('dash-loading').innerHTML = `<div class="alert-error" style="text-align:left">Impossible de charger vos informations pour le moment. Vérifiez votre connexion internet et réessayez. Si le problème continue, appelez le <a href="tel:0663798756" style="color:inherit;font-weight:700">06.63.79.87.56</a>.</div><button class="btn-outline" onclick="location.reload()" style="margin-top:12px">Réessayer</button><button class="btn-outline" onclick="logout()" style="margin-top:8px;margin-left:8px">Changer de compte</button>`;
   }
 }
 
