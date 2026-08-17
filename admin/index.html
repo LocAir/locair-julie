@@ -5019,6 +5019,21 @@ const FENETRE_OPTIONS = ['À confirmer', 'Fenêtre coulissante', 'Fenêtre à ba
 // tout de suite, sans attendre qu'un autre champ (dates/quantité) le fasse à
 // sa place. Vide par défaut : aucun changement pour les formulaires sans
 // calcul de prix en direct (fiche réservation, "Créer une mission").
+// Choix simple plutôt qu'un texte libre à taper de zéro (demande d'Aly :
+// "créer une mission doit être très simple") — mêmes créneaux que ceux déjà
+// utilisés ailleurs dans l'app (créneau de récupération du formulaire de
+// réservation, créneau standard du site). "14h – 17h" gardé pour les rares
+// cas où le client n'est disponible que sur une plage restreinte.
+function creneauSelectHtml(id, label){
+  return `<label for="${id}">${label}</label>
+  <select id="${id}">
+    <option value="">— Non précisé —</option>
+    <option value="8h – 12h">8h – 12h (matin)</option>
+    <option value="8h – 10h">8h – 10h</option>
+    <option value="10h – 12h">10h – 12h</option>
+    <option value="14h – 17h">14h – 17h</option>
+  </select>`;
+}
 function logisticsFieldsHtml(prefix, v, onInstallChange){
   v = v || {};
   return `
@@ -5673,7 +5688,7 @@ async function openCreateMissionModal(){
         </select>
         <div class="inline-form" style="margin-top:8px">
           <div><label for="cm-a-date">Date</label><input type="date" id="cm-a-date" value="${today}"/></div>
-          <div><label for="cm-a-creneau">Créneau</label><input type="text" id="cm-a-creneau" placeholder="8h–10h"/></div>
+          <div>${creneauSelectHtml('cm-a-creneau','Créneau')}</div>
         </div>
         <label for="cm-a-tarif" style="margin-top:8px">Tarif payé au transporteur (€)</label>
         <input type="number" id="cm-a-tarif" min="0" step="0.5" placeholder="0"/>
@@ -5690,7 +5705,7 @@ async function openCreateMissionModal(){
         </select>
         <div class="inline-form" style="margin-top:12px">
           <div><label for="cm-date">Date</label><input type="date" id="cm-date" value="${today}"/></div>
-          <div><label for="cm-creneau">Créneau</label><input type="text" id="cm-creneau" placeholder="8h–10h"/></div>
+          <div>${creneauSelectHtml('cm-creneau','Créneau')}</div>
         </div>
         <label for="cm-appareil" style="margin-top:12px">Climatiseur (optionnel)</label>
         <select id="cm-appareil">
