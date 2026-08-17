@@ -7959,7 +7959,7 @@ function _fireGadsConversion(pending){
 function _stripePaymentDone(){
   try{
     const pending=JSON.parse(localStorage.getItem('locair_pending')||'{}');
-    localStorage.setItem('locair_client',JSON.stringify({prenom:pending.prenom||'',nom:pending.nom||'',email:pending.email||'',tel:(pending.tel||'').replace(/\D/g,''),last_booked:new Date().toISOString(),last_duration:pending.duree}));
+    localStorage.setItem('locair_client',JSON.stringify({prenom:pending.prenom||'',nom:pending.nom||'',email:pending.email||'',tel:(pending.tel||'').replace(/\D/g,''),addr:pending.adresse||'',cp:pending.code_postal||'',last_booked:new Date().toISOString(),last_duration:pending.duree}));
     localStorage.setItem('locair_booked','1');
     _fireGadsConversion(pending);
     localStorage.removeItem('locair_pending');
@@ -7985,7 +7985,7 @@ function _stripePaymentDone(){
     if(ref||pending._ref){
       _orderRef=pending._ref||ref;
       try{
-        localStorage.setItem('locair_client',JSON.stringify({prenom:pending.prenom||'',nom:pending.nom||'',email:pending.email||'',tel:(pending.tel||'').replace(/\D/g,''),last_booked:new Date().toISOString(),last_duration:pending.duree}));
+        localStorage.setItem('locair_client',JSON.stringify({prenom:pending.prenom||'',nom:pending.nom||'',email:pending.email||'',tel:(pending.tel||'').replace(/\D/g,''),addr:pending.adresse||'',cp:pending.code_postal||'',last_booked:new Date().toISOString(),last_duration:pending.duree}));
         localStorage.setItem('locair_booked','1');
         _fireGadsConversion(pending);
         localStorage.removeItem('locair_pending');
@@ -8325,7 +8325,7 @@ function submitForm(btn,mode){
         clearTimeout(_fsTimer);
         if(!r.ok)throw new Error('Formspree '+r.status);
         if(CITY.sheetsWebhook){const sp=Object.assign({},formData,{prix:formData.prix});fetch(CITY.sheetsWebhook,{method:'POST',body:JSON.stringify(sp),mode:'no-cors'}).catch(()=>{});}
-        try{localStorage.setItem('locair_client',JSON.stringify({prenom:formData.prenom,nom:formData.nom,email:formData.email,tel:(formData.tel||'').replace(/\D/g,''),last_booked:new Date().toISOString(),last_duration:formData.duree}));localStorage.setItem('locair_booked','1');}catch(e){}
+        try{localStorage.setItem('locair_client',JSON.stringify({prenom:formData.prenom,nom:formData.nom,email:formData.email,tel:(formData.tel||'').replace(/\D/g,''),addr:formData.adresse||'',cp:formData.code_postal||'',last_booked:new Date().toISOString(),last_duration:formData.duree}));localStorage.setItem('locair_booked','1');}catch(e){}
         _submitting=false;
         showSuccess();
       }).catch(err=>{
@@ -8364,6 +8364,19 @@ function submitForm(btn,mode){
       if(fn&&!fn.value&&prev.nom)fn.value=prev.nom;
       if(fe&&!fe.value&&prev.email)fe.value=prev.email;
       if(ft&&!ft.value&&prev.tel)ft.value=prev.tel;
+      // Pré-remplir l'adresse de livraison pour les clients de retour
+      if(prev.addr){
+        const fa=document.getElementById('f-addr');
+        const fcp=document.getElementById('f-cp');
+        if(fa&&!fa.value){
+          fa.value=prev.addr;
+          if(fcp&&prev.cp)fcp.value=prev.cp;
+          _addrSetValid(true);
+          _updateDeliveryFee();
+          const clr=document.getElementById('addr-clear');
+          if(clr)clr.style.display='flex';
+        }
+      }
     },200);
   };
 })();
