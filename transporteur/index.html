@@ -3260,6 +3260,7 @@ function initSigCanvas(){
   canvas.addEventListener('mousedown',  start);
   canvas.addEventListener('mousemove',  move);
   canvas.addEventListener('mouseup',    stop);
+  canvas.addEventListener('mouseleave', stop); // évite trait parasite sur tablette/stylet si sortie hors canvas sans mouseup
   canvas.addEventListener('touchstart', start, {passive:false});
   canvas.addEventListener('touchmove',  move,  {passive:false});
   canvas.addEventListener('touchend',   stop);
@@ -3673,7 +3674,11 @@ async function doAction(action, extra){
 
     await fetchMissions();
     const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
-    if(m){ STATE.currentMission = m; renderDetail(); show('detail-screen'); }
+    // Réinitialise wizardViewIdx pour que le wizard avance à la bonne étape
+    // après une action (ex: confirmer_demo depuis l'étape 'installation' après
+    // navigation arrière depuis 'signature') — sans ce reset, idx=2 (installation)
+    // restait bloqué même si l'étape était terminée.
+    if(m){ STATE.wizardViewIdx = null; STATE.currentMission = m; renderDetail(); show('detail-screen'); }
     else { show('missions-screen'); renderMissions(); }
   }catch(e){
     // Accepter/refuser peut être déclenché directement depuis une carte de la
