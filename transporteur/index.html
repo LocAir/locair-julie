@@ -4672,7 +4672,8 @@ function openMesFacturesSheet(){
   const sheet = document.getElementById('facture-sheet');
   const list = STATE.activiteFacturesCache || [];
   sheet.innerHTML = `
-    <h2 style="margin-bottom:14px">📄 Mes factures</h2>
+    <h2 style="margin-bottom:6px">📄 Mes factures</h2>
+    <button class="btn btn-grey" style="margin-bottom:14px;padding:7px 12px;font-size:12.5px" onclick="openInfosFacturationSheet()">✏️ Mes informations de facturation</button>
     ${!list.length ? '<p class="empty">Aucune facture générée pour l\'instant — dépliue une semaine dans "Mes missions" pour en créer une.</p>' : `<div class="vlist">${list.map(f => `
       <div class="vrow" style="align-items:flex-start">
         <span>
@@ -4685,6 +4686,49 @@ function openMesFacturesSheet(){
         </span>
       </div>`).join('')}</div>`}
     <button class="btn btn-grey btn-block" style="margin-top:16px" onclick="closeFactureOverlay()">Fermer</button>`;
+}
+// SIRET/adresse facultatifs, utilisés en en-tête de la facture PDF — jusqu'ici
+// seul l'admin pouvait les saisir depuis la fiche transporteur (demande
+// d'Aly, 2026-08-17 : que chacun renseigne les siennes soi-même).
+async function openInfosFacturationSheet(){
+  ensureFactureOverlay();
+  const sheet = document.getElementById('facture-sheet');
+  sheet.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('transporteur-facture'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'get_profil'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    sheet.innerHTML = `
+      <h2 style="margin-bottom:6px">✏️ Mes informations de facturation</h2>
+      <p class="sub" style="margin-bottom:16px">Facultatif — affichées en en-tête de tes factures PDF. Laisse vide si tu ne sais pas encore.</p>
+      <label for="if-siret">SIRET</label>
+      <input type="text" id="if-siret" value="${escHtml(d.siret||'')}" placeholder="123 456 789 00012"/>
+      <label for="if-adresse" style="margin-top:12px">Adresse</label>
+      <input type="text" id="if-adresse" value="${escHtml(d.adresse_facturation||'')}" placeholder="12 rue Exemple, 06000 Nice"/>
+      <div class="err" id="if-err"></div>
+      <button class="btn btn-blue btn-block" style="margin-top:16px" id="if-save-btn" onclick="saveInfosFacturation()">Enregistrer</button>
+      <button class="btn btn-grey btn-block" style="margin-top:10px" onclick="openMesFacturesSheet()">← Retour à mes factures</button>`;
+  }catch(e){
+    sheet.innerHTML = `<p class="empty">Impossible de charger — vérifie ta connexion.</p><button class="btn btn-grey btn-block" style="margin-top:10px" onclick="openMesFacturesSheet()">← Retour</button>`;
+  }
+}
+async function saveInfosFacturation(){
+  const btn = document.getElementById('if-save-btn');
+  const errEl = document.getElementById('if-err');
+  if(errEl) errEl.style.display = 'none';
+  if(btn){ btn.disabled = true; btn.textContent = 'Enregistrement…'; }
+  try{
+    const siret = document.getElementById('if-siret').value;
+    const adresse_facturation = document.getElementById('if-adresse').value;
+    const r = await fetch(API('transporteur-facture'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'update_profil', siret, adresse_facturation})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showTToast('Informations enregistrées ✅');
+    openMesFacturesSheet();
+  }catch(e){
+    if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+    if(btn){ btn.disabled = false; btn.textContent = 'Enregistrer'; }
+  }
 }
 
 const MISSION_PHOTO_LABEL = {

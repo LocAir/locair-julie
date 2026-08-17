@@ -6,6 +6,7 @@ const { pushToAdmin, pushToTransporteur } = require('./_lib/push');
 const { getAvailability }      = require('./_lib/stock');
 const { notifyIfSoldOut }      = require('./_lib/city');
 const { runWeeklyReport }      = require('./cron-weekly');
+const { runFactureTransporteurHebdo } = require('./_lib/transporteurFacture');
 const { runMonthlyRecap, runDormantClientsWinback } = require('./cron-monthly');
 const { dailyRate, getPricingConfig } = require('./_lib/pricing');
 const { scenariosDueToday, isSupersededReservation } = require('./_lib/emailSchedule');
@@ -1053,6 +1054,13 @@ module.exports = async (req, res) => {
     }
   } catch (e) {
     console.error('[Cron weekly via daily]', e.message);
+  }
+  try {
+    if (today.getDay() === 1) { // lundi — rappel + génération auto si oublié, voir _lib/transporteurFacture.js
+      report.facturesHebdo = await runFactureTransporteurHebdo(supabase);
+    }
+  } catch (e) {
+    console.error('[Cron factures hebdo via daily]', e.message);
   }
   try {
     if (today.getDate() === 1) { // 1er du mois

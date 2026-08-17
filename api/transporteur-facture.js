@@ -33,6 +33,27 @@ module.exports = async (req, res) => {
       return res.status(200).json({ factures: data || [] });
     }
 
+    // Le transporteur renseigne lui-même son SIRET/adresse de facturation
+    // (demande d'Aly, 2026-08-17) — jusqu'ici seul l'admin pouvait les
+    // saisir depuis la fiche transporteur ; ça lui évite d'avoir à le faire
+    // à sa place pour chacun. Facultatif : laissé vide, la facture PDF
+    // affiche juste "non renseigné" (voir _lib/pdf.js).
+    if (action === 'get_profil') {
+      const { data, error } = await supabase
+        .from('transporteurs').select('siret, adresse_facturation').eq('id', transporteurId).maybeSingle();
+      if (error) throw error;
+      return res.status(200).json({ siret: data?.siret || '', adresse_facturation: data?.adresse_facturation || '' });
+    }
+    if (action === 'update_profil') {
+      const patch = {
+        siret:               String(body.siret || '').trim().slice(0, 30) || null,
+        adresse_facturation: String(body.adresse_facturation || '').trim().slice(0, 300) || null,
+      };
+      const { error } = await supabase.from('transporteurs').update(patch).eq('id', transporteurId);
+      if (error) throw error;
+      return res.status(200).json({ ok: true });
+    }
+
     if (action === 'resume_semaine' || action === 'generer') {
       const periodeDebut = String(body.periode_debut || '');
       const periodeFin   = String(body.periode_fin   || '');

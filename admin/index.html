@@ -7895,7 +7895,16 @@ async function openFacturesTransporteursModal(preselectTransporteurId){
   overlay.innerHTML = `<div class="modal-box" style="max-width:580px;max-height:90vh;overflow-y:auto">
     <h2 style="margin-bottom:4px">🧾 Factures transporteurs</h2>
     <p class="sub" style="margin-bottom:14px">Générées automatiquement par les transporteurs, une par semaine.</p>
-    <select id="factt-filtre" style="margin-bottom:14px"></select>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <select id="factt-vue" style="flex:1"><option value="liste">Par facture</option><option value="recap">Récap par période</option></select>
+      <select id="factt-filtre" style="flex:1"></select>
+      <select id="factt-periode" class="hidden" style="flex:1">
+        <option value="mois_actuel">Ce mois-ci</option>
+        <option value="mois_dernier">Mois dernier</option>
+        <option value="trimestre_actuel">Ce trimestre</option>
+        <option value="trimestre_dernier">Trimestre dernier</option>
+      </select>
+    </div>
     <div id="factt-body">${loading()}</div>
     <div class="modal-actions" style="margin-top:18px"><button class="btn btn-grey">Fermer</button></div>
   </div>`;
@@ -7911,13 +7920,26 @@ async function openFacturesTransporteursModal(preselectTransporteurId){
     const preselectNom = preselectTransporteurId
       ? FACTURES_TRANSPORTEUR_CACHE.find(f => f.transporteur_id===preselectTransporteurId)?.transporteur?.nom
       : null;
-    const sel = document.getElementById('factt-filtre');
-    if(sel){
-      sel.innerHTML = `<option value="">Tous les transporteurs</option>` +
+    const filtreSel = document.getElementById('factt-filtre');
+    const vueSel = document.getElementById('factt-vue');
+    const periodeSel = document.getElementById('factt-periode');
+    if(filtreSel){
+      filtreSel.innerHTML = `<option value="">Tous les transporteurs</option>` +
         noms.map(n => `<option value="${escHtml(n)}" ${n===preselectNom?'selected':''}>${escHtml(n)}</option>`).join('');
-      sel.onchange = () => renderFacturesTransporteurList(sel.value);
-      renderFacturesTransporteurList(sel.value);
     }
+    const renderCurrent = () => {
+      if(vueSel.value === 'recap') renderFacturesRecap(periodeSel.value);
+      else renderFacturesTransporteurList(filtreSel.value);
+    };
+    vueSel.onchange = () => {
+      const isRecap = vueSel.value === 'recap';
+      filtreSel.classList.toggle('hidden', isRecap);
+      periodeSel.classList.toggle('hidden', !isRecap);
+      renderCurrent();
+    };
+    filtreSel.onchange = renderCurrent;
+    periodeSel.onchange = renderCurrent;
+    renderCurrent();
   }catch(e){
     const body = document.getElementById('factt-body');
     if(body) body.innerHTML = `<p class="empty">Erreur : ${escHtml(e.message)}</p>`;
@@ -7941,6 +7963,61 @@ function renderFacturesTransporteurList(filtreNom){
         <a class="btn btn-grey" style="margin-top:4px;padding:5px 10px;font-size:11.5px" href="${API('transporteur-facture-view')}?token=${f.access_token}&dl=1" target="_blank" rel="noopener">⬇️ PDF</a>
       </span>
     </div>`).join('')}</div>`;
+}
+// Bornes [debut, fin] (inclusives, format YYYY-MM-DD — comparables
+// directement en chaîne avec periode_debut) pour chaque période du récap.
+function periodeBoundsRecap(key){
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const isoD = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(key === 'mois_dernier'){
+    const debut = new Date(y,m-1,1), fin = new Date(y,m,0);
+    return { debut: isoD(debut), fin: isoD(fin), label: debut.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}) };
+  }
+  const q = Math.floor(m/3);
+  if(key === 'trimestre_actuel'){
+    const debut = new Date(y,q*3,1), fin = new Date(y,q*3+3,0);
+    return { debut: isoD(debut), fin: isoD(fin), label: `T${q+1} ${y}` };
+  }
+  if(key === 'trimestre_dernier'){
+    const debut = new Date(y,q*3-3,1), fin = new Date(y,q*3,0);
+    return { debut: isoD(debut), fin: isoD(fin), label: `T${Math.floor(debut.getMonth()/3)+1} ${debut.getFullYear()}` };
+  }
+  // 'mois_actuel' par défaut
+  const debut = new Date(y,m,1), fin = new Date(y,m+1,0);
+  return { debut: isoD(debut), fin: isoD(fin), label: now.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}) };
+}
+// Récap : le TOTAL d'abord (demande d'Aly), le détail par transporteur
+// ensuite — jamais l'inverse. Calculé côté client depuis FACTURES_TRANSPORTEUR_CACHE
+// déjà chargé (pas de nouvel appel réseau par changement de période).
+function renderFacturesRecap(periodeKey){
+  const zone = document.getElementById('factt-body');
+  if(!zone) return;
+  const {debut, fin, label} = periodeBoundsRecap(periodeKey);
+  const list = FACTURES_TRANSPORTEUR_CACHE.filter(f => f.periode_debut >= debut && f.periode_debut <= fin);
+  if(!list.length){ zone.innerHTML = `<p class="empty">Aucune facture sur ${escHtml(label)}.</p>`; return; }
+  const total = list.reduce((s,f)=>s+(f.montant_total_cents||0),0);
+  const parTransp = {};
+  list.forEach(f => {
+    const nom = f.transporteur?.nom || '—';
+    const g = (parTransp[nom] = parTransp[nom] || {nom, cents:0, nb:0});
+    g.cents += f.montant_total_cents||0;
+    g.nb += 1;
+  });
+  const rows = Object.values(parTransp).sort((a,b) => b.cents-a.cents);
+  zone.innerHTML = `
+    <div class="stat-tile" style="margin-bottom:16px;text-align:center">
+      <div class="n">${euros(total)}</div>
+      <div class="l">Total facturé — ${escHtml(label)} · ${list.length} facture${list.length>1?'s':''}</div>
+    </div>
+    <div class="card vlist">${rows.map(g => `
+      <div class="vrow">
+        <span>${escHtml(g.nom)}</span>
+        <span style="text-align:right">
+          <div style="font-weight:700">${euros(g.cents)}</div>
+          <div class="row-meta">${g.nb} facture${g.nb>1?'s':''}</div>
+        </span>
+      </div>`).join('')}</div>`;
 }
 
 // ── INCIDENTS ─────────────────────────────────────────────────────────────────
