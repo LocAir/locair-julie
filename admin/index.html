@@ -5068,11 +5068,6 @@ async function createReservation(confirmer){
     date_debut: document.getElementById('nr-debut').value,
     date_fin: document.getElementById('nr-fin').value,
     express: _nrExpress,
-    // Champ lu par admin-reservations.js (action 'create') sous le nom
-    // creneau_livraison — sans lui, une réservation créée à la main partait
-    // sans aucun créneau de livraison (ni "8h-12h" ni l'heure réelle), pour
-    // le client comme pour le transporteur.
-    creneau_livraison: _nrCreneauLivraison || undefined,
     quantite: document.getElementById('nr-qte').value,
     prix_total_cents: Math.round((parseFloat(document.getElementById('nr-prix').value)||0)*100),
     logement: document.getElementById('nr-logement').value,
@@ -5085,6 +5080,17 @@ async function createReservation(confirmer){
     cgv_accepted: document.getElementById('nr-cgv').checked,
     ...typeClientPayload('nr'),
     ...logisticsPayload('nr'),
+    // Doit rester APRÈS le spread de logisticsPayload('nr') ci-dessus : ce
+    // dernier renvoie un creneau_livraison fixe ('8h–12h') qui écraserait
+    // silencieusement le créneau Express calculé (ex. "16h30–18h30") si ce
+    // champ passait avant lui dans l'objet — même piège déjà connu et
+    // contourné pour la modification d'une réservation (voir "delete
+    // body.creneau_livraison" plus haut dans ce fichier). Sans lui, une
+    // réservation Express créée à la main partait avec le mauvais créneau,
+    // pour le client comme pour le transporteur. Hors Express, on garde le
+    // même repli fixe '8h–12h' que logisticsPayload() renvoyait déjà avant
+    // ce correctif — seul le cas Express change de comportement ici.
+    creneau_livraison: _nrCreneauLivraison || '8h–12h',
   };
   // Champs manquants pointés directement en rouge + focus sur le premier —
   // sur un formulaire de cette longueur, un message générique en bas de page
