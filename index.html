@@ -2167,27 +2167,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   animation:actPulse 2.2s ease-in-out infinite;
 }
 
-/* ── HERO DUR BAR ── */
-.hero-dur-bar{
-  display:flex;gap:7px;justify-content:center;flex-wrap:wrap;
-  margin-top:14px;
-}
-.hdb-opt{
-  padding:7px 13px;border-radius:100px;
-  border:1px solid rgba(255,255,255,.2);
-  background:rgba(255,255,255,.07);
-  color:rgba(255,255,255,.65);
-  font-size:12px;font-weight:600;cursor:pointer;font-family:var(--body);
-  transition:all .15s;white-space:nowrap;
-}
-.hdb-opt span{color:rgba(255,255,255,.58);margin-left:5px;font-weight:500;font-size:11.5px}
-.hdb-opt.on{
-  background:rgba(255,255,255,.18);
-  border-color:rgba(255,255,255,.6);
-  color:#fff;
-}
-.hdb-opt.on span{color:#c5a96c;font-weight:700}
-.hdb-opt:hover:not(.on){background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.35);color:rgba(255,255,255,.85)}
 
 /* ── ZONE CONFIRM BADGE ── */
 .zone-confirm{
@@ -2521,22 +2500,6 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .stepper-hidden{display:none!important}
 .ms-title-prolong{display:none}
 
-/* ── HERO SIMULATOR ── */
-.hero-simulator{margin:20px auto 0;max-width:360px;background:rgba(6,9,15,.38);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.14);border-radius:22px;padding:20px 24px 18px;text-align:center}
-.hps-lbl{display:none}
-.hps-price-line{display:flex;align-items:baseline;justify-content:center;gap:8px;margin-bottom:14px}
-.hps-price{font-family:var(--disp);font-size:52px;font-weight:400;color:#fff;line-height:1;letter-spacing:-.02em}
-.hps-nights{font-size:15px;color:rgba(255,255,255,.55);font-weight:300;letter-spacing:.01em}
-.hps-detail{display:none}
-.hps-track{position:relative;padding:0 2px;margin-bottom:16px}
-.hps-slider{width:100%;appearance:none;-webkit-appearance:none;height:3px;border-radius:2px;background:rgba(255,255,255,.15);outline:none;cursor:pointer;display:block}
-.hps-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:44px;height:44px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.4);border:2px solid rgba(255,255,255,.7)}
-.hps-slider::-moz-range-thumb{width:44px;height:44px;border-radius:50%;background:var(--gold);cursor:pointer;border:2px solid rgba(255,255,255,.7);box-shadow:0 2px 10px rgba(0,0,0,.4)}
-.hps-range-labels{display:none}
-.hps-chips{display:flex;gap:8px;justify-content:center}
-.hps-chip{padding:6px 16px;border:1px solid rgba(255,255,255,.2);border-radius:100px;font-size:12px;font-weight:400;color:rgba(255,255,255,.6);background:none;cursor:pointer;font-family:var(--body);transition:all .18s;letter-spacing:.03em}
-.hps-chip.on{border-color:var(--gold);color:var(--gold);background:rgba(197,169,108,.1);font-weight:500}
-.hps-chip:hover:not(.on){border-color:rgba(255,255,255,.4);color:rgba(255,255,255,.85)}
 
 /* ── SOLD OUT OVERLAY ── */
 .so-overlay{position:fixed;inset:0;z-index:2100;background:rgba(6,9,15,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:20px}
@@ -4534,9 +4497,9 @@ input:-webkit-autofill:focus{
         <p style="font-size:13px;color:var(--grey);display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:0">
           <span id="lva-buy" style="text-decoration:line-through;color:rgba(0,0,0,.28)">Acheter : 500 à 900 €</span>
           <span style="color:rgba(0,0,0,.25);font-size:15px">→</span>
-          <span id="lva-locair" style="color:var(--navy);font-weight:700">Loc'Air 7 j : 204 € tout compris</span>
+          <span id="lva-locair" style="color:var(--navy);font-weight:700">Loc'Air 7 j : à partir de 144 €</span>
         </p>
-        <p id="lva-perks" style="font-size:11px;color:rgba(0,0,0,.28);margin-top:5px">144 € de location + 60 € livraison/récupération · Aucune caution · Aucun stockage</p>
+        <p id="lva-perks" style="font-size:11px;color:rgba(0,0,0,.28);margin-top:5px">Livré demain · Récupéré en fin de location · Aucun stockage</p>
       </div>
     </div>
     <p class="anchor-compare sr">La moitié de nos clients prolongent — tarif jusqu'à 8 €/jour dès 22 jours · Paiement en ligne par carte via Stripe · Annulation gratuite avant livraison</p>
@@ -8374,39 +8337,6 @@ function submitForm(btn,mode){
 })();
 
 let _heroDays=7;
-function heroSelectDur(btn){
-  document.querySelectorAll('.hdb-opt').forEach(b=>{b.classList.remove('on');b.setAttribute('aria-checked','false');});
-  btn.classList.add('on');btn.setAttribute('aria-checked','true');
-  _heroDays=parseInt(btn.dataset.days)||7;
-}
-
-// ── HERO PRICE SIMULATOR ────────────────────────────────────────────────────
-function updateHeroSim(days){
-  days=Math.max(7,Math.min(60,parseInt(days)||7));
-  _heroDays=days;
-  const price=calcPrice(days);
-  const el=document.getElementById('hps-price');
-  const elN=document.getElementById('hps-nights');
-  const elD=document.getElementById('hps-detail');
-  if(el){el.setAttribute('aria-live','polite');el.setAttribute('aria-atomic','true');el.textContent=price+'€';}
-  const isRU=_lang==='ru';
-  if(elN)elN.textContent=_lang==='en'?'for '+days+' day'+(days>1?'s':''):_lang==='zh'?days+' 天':isRU?'на '+days+' дней':'pour '+days+' jour'+(days>1?'s':'');
-  const rate=_baseRate(days);
-  const disc=Math.max(0,Math.round((PRICING.palier1_tarif_cents/100-rate)/(PRICING.palier1_tarif_cents/100)*100));
-  if(elD)elD.textContent=_lang==='en'?(disc>0?'i.e. €'+rate.toFixed(0)+'/day — '+disc+'% off':'Fixed price · Delivery from €60'):_lang==='zh'?(disc>0?'即 '+rate.toFixed(0)+' €/天 — 节省'+disc+'%':'锁定价格 · 配送低至60€'):isRU?(disc>0?rate.toFixed(0)+' €/день — скидка '+disc+'%':'Фиксированная цена · Доставка от 60 €'):(disc>0?'soit '+rate.toFixed(0)+' €/jour — économie de '+disc+'%':'Prix garanti · Livraison dès 60 €');
-  // sync chips
-  document.querySelectorAll('.hps-chip').forEach(c=>{
-    const cd=parseInt(c.onclick?.toString().match(/\d+/)?.[0]||'0');
-    c.classList.toggle('on',cd===days);
-  });
-  // sync slider
-  const sl=document.getElementById('hps-slider');
-  if(sl&&parseInt(sl.value)!==days)sl.value=days;
-}
-function setHeroSlider(days){
-  updateHeroSim(days);
-  (window.dataLayer=window.dataLayer||[]).push({event:'hero_sim_preset',days});
-}
 function startBooking(){
   openModal(_heroDays);
   setTimeout(()=>{
