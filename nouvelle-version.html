@@ -247,6 +247,57 @@ h3{font-size:20px;line-height:1.25;letter-spacing:-.012em}
 .res-card p a{color:rgba(255,255,255,.85);text-decoration:underline;text-underline-offset:3px}
 @media(max-width:860px){.res{grid-template-columns:1fr}}
 
+/* ══ CALCULATEUR DE PRIX ══
+   Le barème est MARGINAL : les 7 premiers jours restent à 12 €, les jours 8
+   à 14 passent à 10 €, etc. Écrire "10 €/jour de 8 à 14 jours" laisse croire
+   que 14 jours coûtent 140 € alors qu'ils en coûtent 154. Ce calculateur
+   affiche le vrai total, en reprenant exactement la fonction calcPrice() du
+   tunnel — et en chargeant les tarifs réels via /api/pricing-config, comme
+   le fait le site officiel. Si un tarif change dans l'admin, il suit. */
+.calc{
+  display:grid;grid-template-columns:1.05fr .95fr;gap:0;margin-top:44px;
+  background:var(--white);border:1px solid var(--rule);border-radius:var(--r-xl);
+  overflow:hidden;box-shadow:var(--sh);
+}
+.calc-in{padding:clamp(26px,3.4vw,38px)}
+.calc-out{padding:clamp(26px,3.4vw,38px);background:var(--blue);color:#fff;display:flex;flex-direction:column;justify-content:center}
+.calc-lbl{font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--txt-3);margin-bottom:13px}
+.calc-field{margin-bottom:28px}
+.calc-field:last-child{margin-bottom:0}
+.step-row{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.step-btn{
+  width:46px;height:46px;border-radius:50%;border:1.5px solid var(--rule);
+  color:var(--blue);font-size:21px;font-weight:600;line-height:1;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:border-color .15s,background .15s;
+}
+.step-btn:hover:not(:disabled){border-color:var(--blue);background:var(--bg)}
+.step-btn:disabled{opacity:.35;cursor:not-allowed}
+.step-val{flex:1;text-align:center}
+.step-val b{display:block;font-family:var(--disp);font-size:34px;font-weight:700;color:var(--blue);line-height:1;letter-spacing:-.03em}
+.step-val span{font-size:12.5px;color:var(--txt-3)}
+.presets{display:flex;gap:8px;flex-wrap:wrap}
+.chip{
+  border:1.5px solid var(--rule);border-radius:100px;padding:8px 16px;
+  font-size:13.5px;font-weight:600;color:var(--txt-2);transition:all .15s;
+}
+.chip:hover{border-color:var(--blue);color:var(--blue)}
+.chip[aria-pressed="true"]{background:var(--blue);border-color:var(--blue);color:#fff}
+.calc-note{font-size:12.5px;color:var(--txt-3);margin-top:11px;line-height:1.5}
+.calc-lines{display:grid;gap:0;margin-bottom:22px}
+.calc-line{display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.11);font-size:14.5px}
+.calc-line span{color:rgba(255,255,255,.62)}
+.calc-line b{color:#fff;font-weight:600;white-space:nowrap}
+.calc-line.off span,.calc-line.off b{opacity:.35;text-decoration:line-through}
+.calc-total{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin-bottom:6px}
+.calc-total span{font-size:14px;color:rgba(255,255,255,.62)}
+.calc-total b{font-family:var(--disp);font-size:clamp(38px,5vw,52px);font-weight:700;letter-spacing:-.04em;line-height:1}
+.calc-day{font-size:13.5px;color:rgba(255,255,255,.6);font-weight:500;margin-bottom:24px;line-height:1.5}
+.calc-day b{color:var(--gold);font-weight:700}
+.calc-out .btn{width:100%}
+.calc-legal{font-size:11.5px;color:rgba(255,255,255,.38);margin-top:14px;line-height:1.5;text-align:center}
+@media(max-width:860px){.calc{grid-template-columns:1fr}}
+
 /* ══ COMPARATIF 3 COLONNES ══ */
 .compare thead th:nth-child(2){background:var(--blue-d)}
 .compare .mid{background:var(--gold-lt)}
@@ -565,7 +616,7 @@ h3{font-size:20px;line-height:1.25;letter-spacing:-.012em}
     <nav class="hdr-nav" aria-label="Navigation principale">
       <a href="#pour-qui">Pour qui</a>
       <a href="#temoignages">Témoignages</a>
-      <a href="#tarifs">Tarifs</a>
+      <a href="#calculateur">Calculer mon prix</a>
       <a href="#comparatif">Comparatif</a>
       <a href="#equipe">Qui on est</a>
       <a href="#zone">Zone livrée</a>
@@ -954,6 +1005,89 @@ h3{font-size:20px;line-height:1.25;letter-spacing:-.012em}
   </div>
 </section>
 
+<!-- ══ CALCULATEUR ═══════════════════════════════════════════════════════════
+     Différenciation : le concurrent affiche "à partir de 12,50 €/jour" et ne
+     donne jamais de total. Ici on donne le montant exact, décomposé, avant
+     même de demander une adresse. Ça sert aussi à corriger une ambiguïté du
+     barème : "10 €/jour de 8 à 14 jours" laisse croire que 14 jours coûtent
+     140 €, alors que les 7 premiers jours restent facturés 12 € — le vrai
+     total est 154 € de location.
+══════════════════════════════════════════════════════════════════════════ -->
+<section class="sec" id="calculateur">
+  <div class="wrap">
+    <p class="eyebrow">Calculez votre prix</p>
+    <h2>Combien ça va vous coûter,<br>exactement.</h2>
+    <hr class="hr-gold">
+    <p class="lead">
+      Pas de « à partir de ». Déplacez la durée, le total se met à jour —
+      c'est le montant que vous verrez au paiement.
+    </p>
+
+    <div class="calc">
+      <div class="calc-in">
+
+        <div class="calc-field">
+          <p class="calc-lbl" id="lbl-duree">Durée de location</p>
+          <div class="step-row" role="group" aria-labelledby="lbl-duree">
+            <button class="step-btn" type="button" id="c-moins" aria-label="Un jour de moins">−</button>
+            <span class="step-val">
+              <b id="c-jours" aria-live="polite">14</b>
+              <span>jours</span>
+            </span>
+            <button class="step-btn" type="button" id="c-plus" aria-label="Un jour de plus">+</button>
+          </div>
+          <div class="presets" id="c-presets">
+            <button class="chip" type="button" data-j="7" aria-pressed="false">1 semaine</button>
+            <button class="chip" type="button" data-j="14" aria-pressed="true">2 semaines</button>
+            <button class="chip" type="button" data-j="21" aria-pressed="false">3 semaines</button>
+            <button class="chip" type="button" data-j="30" aria-pressed="false">1 mois</button>
+          </div>
+          <p class="calc-note">7 jours minimum. Plus c'est long, moins la journée coûte cher.</p>
+        </div>
+
+        <div class="calc-field">
+          <p class="calc-lbl" id="lbl-zone">Où doit-on livrer&nbsp;?</p>
+          <div class="presets" id="c-zone" role="group" aria-labelledby="lbl-zone">
+            <button class="chip" type="button" data-z="60" aria-pressed="true">Nice et communes proches</button>
+            <button class="chip" type="button" data-z="120" aria-pressed="false">Hors zone</button>
+          </div>
+          <p class="calc-note">Zone standard&nbsp;: Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche, Beaulieu.</p>
+        </div>
+
+        <div class="calc-field">
+          <p class="calc-lbl" id="lbl-pose">Qui pose l'appareil&nbsp;?</p>
+          <div class="presets" id="c-pose" role="group" aria-labelledby="lbl-pose">
+            <button class="chip" type="button" data-i="1" aria-pressed="true">Un technicien vient</button>
+            <button class="chip" type="button" data-i="0" aria-pressed="false">Je pose moi-même</button>
+          </div>
+          <p class="calc-note">La pose par un technicien prend 20 à 30 minutes, kit compris.</p>
+        </div>
+
+      </div>
+
+      <div class="calc-out">
+        <div class="calc-lines">
+          <div class="calc-line"><span id="c-l-loc">Location, 14 jours</span><b id="c-v-loc">154 €</b></div>
+          <div class="calc-line"><span>Livraison &amp; récupération</span><b id="c-v-liv">60 €</b></div>
+          <div class="calc-line" id="c-line-pose"><span>Installation par technicien</span><b id="c-v-pose">80 €</b></div>
+          <div class="calc-line"><span>Kit de calfeutrage</span><b>Inclus</b></div>
+          <div class="calc-line"><span>Caution</span><b>0 €</b></div>
+        </div>
+        <div class="calc-total">
+          <span>Total à payer</span>
+          <b id="c-total">294 €</b>
+        </div>
+        <p class="calc-day" id="c-jour">soit <b>11 € par jour</b> de location, + 140 € de frais — une seule fois</p>
+        <a class="btn btn-gold" href="/">Réserver à ce prix →</a>
+        <p class="calc-legal">
+          Tarifs à jour. Le montant exact est reconfirmé avant le paiement.
+          Option Express (livraison le jour même) non comprise.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══ COMPARATIF ═══════════════════════════════════════════════════════════
      ⚠️ AVANT MISE EN LIGNE : chaque case de la colonne du milieu doit être
      vérifiée. En France la publicité comparative est autorisée, mais elle doit
@@ -970,7 +1104,7 @@ h3{font-size:20px;line-height:1.25;letter-spacing:-.012em}
     <hr class="hr-gold">
     <p class="lead">
       Un climatiseur mobile, on peut se le procurer de trois façons. Voilà ce que
-      ça change concrètement, pour deux semaines d'utilisation.
+      ça change concrètement, pour 14 jours d'utilisation, livraison comprise.
     </p>
     <div class="compare-scroll">
       <table class="compare">
@@ -985,7 +1119,7 @@ h3{font-size:20px;line-height:1.25;letter-spacing:-.012em}
         <tbody>
           <tr>
             <th scope="row">Coût pour 2 semaines</th>
-            <td class="win mid">200 € tout compris</td>
+            <td class="win mid">214 € tout compris</td>
             <td class="neutral">Variable, hors transport</td>
             <td class="lose">500 à 900 € (appareil seul)</td>
           </tr>
@@ -1379,6 +1513,92 @@ h3{font-size:20px;line-height:1.25;letter-spacing:-.012em}
       card.classList.remove('is-playing');
     }
   });
+})();
+
+/* ══ Calculateur de prix ══════════════════════════════════════════════════
+   Reprend EXACTEMENT calcPrice() du tunnel (index.html) : barème marginal,
+   chaque tranche ne s'applique qu'aux jours supplémentaires. Recopier une
+   autre formule ici afficherait un prix différent de celui du paiement —
+   c'est précisément ce que cette section promet de ne pas faire.
+   Les tarifs sont chargés depuis /api/pricing-config (même source que le
+   site officiel, modifiable depuis l'admin). En cas d'échec réseau, les
+   valeurs par défaut ci-dessous prennent le relais : jamais bloquant.     */
+(function(){
+  var out = document.getElementById('c-total');
+  if(!out) return;
+
+  var P = { duree_min_jours:7,
+            palier1_max_jours:7,  palier1_tarif_cents:1200,
+            palier2_max_jours:14, palier2_tarif_cents:1000,
+            palier3_max_jours:21, palier3_tarif_cents:900,
+            palier4_tarif_cents:800 };
+  var INSTALL = 80, MAX_J = 90;
+  var jours = 14, zone = 60, pose = 1;
+
+  function calcPrice(d){
+    var r1=P.palier1_tarif_cents/100, r2=P.palier2_tarif_cents/100,
+        r3=P.palier3_tarif_cents/100, r4=P.palier4_tarif_cents/100,
+        m1=P.palier1_max_jours, m2=P.palier2_max_jours, m3=P.palier3_max_jours;
+    if(d<=m1) return d*r1;
+    if(d<=m2) return m1*r1+(d-m1)*r2;
+    if(d<=m3) return m1*r1+(m2-m1)*r2+(d-m2)*r3;
+    return m1*r1+(m2-m1)*r2+(m3-m2)*r3+(d-m3)*r4;
+  }
+  var eur = function(n){
+    return (Math.round(n*100)/100).toLocaleString('fr-FR',
+      {minimumFractionDigits:0, maximumFractionDigits:2}) + ' €';
+  };
+
+  function render(){
+    var loc = calcPrice(jours), inst = pose ? INSTALL : 0, total = loc + zone + inst;
+    document.getElementById('c-jours').textContent   = jours;
+    document.getElementById('c-l-loc').textContent   = 'Location, ' + jours + ' jours';
+    document.getElementById('c-v-loc').textContent   = eur(loc);
+    document.getElementById('c-v-liv').textContent   = eur(zone);
+    document.getElementById('c-v-pose').textContent  = pose ? eur(INSTALL) : '0 €';
+    document.getElementById('c-line-pose').classList.toggle('off', !pose);
+    out.textContent = eur(total);
+    document.getElementById('c-jour').innerHTML =
+      'soit <b>' + eur(loc/jours) + ' par jour</b> de location, '
+      + '+ ' + eur(zone + inst) + ' de frais — une seule fois';
+    document.getElementById('c-moins').disabled = jours <= P.duree_min_jours;
+    document.getElementById('c-plus').disabled  = jours >= MAX_J;
+    document.querySelectorAll('#c-presets .chip').forEach(function(c){
+      c.setAttribute('aria-pressed', String(+c.dataset.j === jours));
+    });
+  }
+  function press(container, attr, val){
+    document.querySelectorAll(container + ' .chip').forEach(function(c){
+      c.setAttribute('aria-pressed', String(+c.dataset[attr] === val));
+    });
+  }
+
+  document.getElementById('c-moins').addEventListener('click', function(){
+    if(jours > P.duree_min_jours){ jours--; render(); }
+  });
+  document.getElementById('c-plus').addEventListener('click', function(){
+    if(jours < MAX_J){ jours++; render(); }
+  });
+  document.getElementById('c-presets').addEventListener('click', function(e){
+    var c = e.target.closest('.chip'); if(!c) return;
+    jours = +c.dataset.j; render();
+  });
+  document.getElementById('c-zone').addEventListener('click', function(e){
+    var c = e.target.closest('.chip'); if(!c) return;
+    zone = +c.dataset.z; press('#c-zone','z',zone); render();
+  });
+  document.getElementById('c-pose').addEventListener('click', function(e){
+    var c = e.target.closest('.chip'); if(!c) return;
+    pose = +c.dataset.i; press('#c-pose','i',pose); render();
+  });
+
+  render();
+
+  /* Tarifs réels — si l'admin les a changés, le calculateur suit. */
+  fetch('/api/pricing-config')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ if(d && d.pricing){ P = d.pricing; render(); } })
+    .catch(function(){ /* valeurs par défaut conservées */ });
 })();
 </script>
 
