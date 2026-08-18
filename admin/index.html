@@ -2115,8 +2115,13 @@ async function prolongerDepuisRecherche(data){
   document.getElementById('a-search-input').value = '';
   PROLONG_ORIG = null; RESERVATIONS_VIEW = 'prolonger';
   switchAdminTab('reservations');
-  // Laisser le temps au tab de rendre la toolbar + le formulaire
-  await new Promise(r => setTimeout(r, 400));
+  // Attend que le formulaire prolongation soit dans le DOM (4 fetches parallèles
+  // au premier chargement peuvent prendre > 400ms sur réseau lent). Polling
+  // 100ms × 20 = max 2s, puis on pré-remplit sans lancer le lookup automatique.
+  for(let i = 0; i < 20; i++){
+    if(document.getElementById('pr-lookup-err')) break;
+    await new Promise(r => setTimeout(r, 100));
+  }
   const emailEl = document.getElementById('pr-email');
   const refEl   = document.getElementById('pr-ref');
   if(emailEl) emailEl.value = data.email || '';
@@ -4731,6 +4736,11 @@ function reservationProlongerHtml(){
 async function lookupProlongation(){
   const btn = document.getElementById('pr-lookup-btn');
   const errEl = document.getElementById('pr-lookup-err');
+  // Garde : si l'onglet Réservations n'est pas encore rendu (chargement lent),
+  // les éléments DOM n'existent pas. On sort proprement — le formulaire est
+  // déjà pré-rempli par prolongerDepuisRecherche, l'admin peut cliquer
+  // "Rechercher" manuellement.
+  if(!errEl) return;
   errEl.style.display = 'none';
   const email = document.getElementById('pr-email').value.trim();
   const ref = document.getElementById('pr-ref').value.trim();
@@ -6646,7 +6656,10 @@ function openProlongFromMissionModal(livraisonId){
   const origId = res.reservation_origine_id || res.id;
   const dateFin = res.date_fin;
   const qte = res.quantite || 1;
-  const origDays = prDiffDays(res.date_debut, dateFin);
+  // date_debut peut être null sur des données migrées — sans garde, prDiffDays
+  // renvoie NaN et le prix affiché serait "NaN €". On prend 0 (prix plein
+  // calculé sur la durée totale) comme fallback conservateur.
+  const origDays = res.date_debut ? prDiffDays(res.date_debut, dateFin) : 0;
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
@@ -6753,6 +6766,7 @@ async function assignTransporteur(livraisonId, transporteurId, selectEl){
   // Verrou anti-double-clic : bloque le select le temps de la requête pour
   // éviter deux assignations qui se chevauchent sur la même mission.
   if(selectEl) selectEl.disabled = true;
+  try{
   const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'assign', livraison_id:livraisonId, transporteur_id: transporteurId||null})});
   const d = await r.json().catch(()=>({}));
   if(!r.ok){ if(selectEl) selectEl.disabled = false; showToast(d.error || 'Erreur lors de l\'affectation', 'error'); return; }
@@ -6783,6 +6797,7 @@ async function assignTransporteur(livraisonId, transporteurId, selectEl){
   // (voir TAB_AUTO_REFRESH.accueil).
   if(CURRENT_TAB === 'accueil') loadDashboard(CURRENT_DASHBOARD_PERIODE);
   loadAlerts();
+  }catch(e){ if(selectEl) selectEl.disabled = false; showToast('Erreur réseau lors de l\'affectation', 'error'); }
 }
 function maskLivraison(livraisonId){
   confirmAction('Supprimer cette mission de l\'écran ? Ça ne touche ni son statut ni les données réelles — juste le fait qu\'elle s\'affiche ici. Récupérable via "Afficher les missions supprimées" en bas de page.', async () => {
