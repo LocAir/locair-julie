@@ -105,6 +105,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    largeur (amélioration UX, demande d'Aly). */
 .a-cta-tile{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 10px;font-size:13px;line-height:1.25;text-align:center}
 .a-cta-tile svg{flex-shrink:0}
+/* Bouton "+" accueil — accès rapide mission / prolongation */
+.a-quick-wrap{position:relative;flex-shrink:0}
+.a-quick-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:16px 18px;font-size:13px;font-weight:700;border-radius:var(--r);background:var(--navy);color:#fff;border:none;cursor:pointer;transition:background-color .15s ease;line-height:1;height:100%}
+.a-quick-btn:hover{background:var(--blue)}
+.a-quick-btn .a-quick-plus{font-size:22px;line-height:1;font-weight:300}
+.a-quick-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:220px;background:var(--card);border:1.5px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh-md);z-index:200;overflow:hidden;display:none}
+.a-quick-menu.open{display:block}
+.a-quick-menu button{display:flex;align-items:center;gap:10px;width:100%;padding:13px 16px;background:none;border:none;font-size:14px;font-weight:500;color:var(--black);cursor:pointer;text-align:left;transition:background-color .1s ease;border-bottom:1px solid var(--rule)}
+.a-quick-menu button:last-child{border-bottom:none}
+.a-quick-menu button:hover{background:var(--blue-lt)}
 .err{background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:11px 14px;font-size:13px;margin-top:10px;display:none;line-height:1.5}
 .hidden{display:none !important}
 
@@ -2082,6 +2092,12 @@ function goToRetards(){ LIVRAISONS_FILTER = 'en_retard'; switchAdminTab('livrais
 // "🆕 Créer" déjà présent dans l'onglet Réservations, accessible directement
 // depuis le tableau de bord pour une réservation prise par téléphone.
 function goToNouvelleReservation(){ RESERVATIONS_VIEW = 'creer'; switchAdminTab('reservations'); }
+function toggleQuickMenu(e){ e.stopPropagation(); document.getElementById('a-quick-menu')?.classList.toggle('open'); }
+function closeQuickMenu(){ document.getElementById('a-quick-menu')?.classList.remove('open'); }
+// Accès rapide prolongation depuis l'accueil — ouvre l'onglet Réservations
+// directement sur le formulaire de lookup prolongation (même parcours que
+// l'onglet Réservations → bouton "Prolonger", mais en 1 tap depuis l'accueil).
+function goToProlongation(){ PROLONG_ORIG = null; RESERVATIONS_VIEW = 'prolonger'; switchAdminTab('reservations'); }
 
 // ── Actualisation automatique de l'onglet ouvert ──────────────────────────────
 // Ce que voit l'admin ne doit pas se figer pendant qu'un livreur avance sur le
@@ -2186,15 +2202,27 @@ async function loadDashboard(periode, silent){
     // avant le rétroviseur d'hier — un centre de pilotage montre d'abord ce
     // qu'il y a à faire maintenant, les chiffres de la veille viennent après.
     zone.innerHTML = `
-      <div style="display:flex;gap:10px;margin-bottom:16px">
-        <button class="btn btn-blue a-cta-tile" onclick="goToNouvelleReservation()">
+      <div style="display:flex;gap:10px;margin-bottom:16px;align-items:stretch">
+        <button class="btn btn-blue a-cta-tile" onclick="goToNouvelleReservation()" style="flex:1">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 13h6M12 10v6"/></svg>
           <span>Nouvelle réservation</span>
         </button>
-        <button class="btn btn-blue a-cta-tile" onclick="openCreateMissionModal()">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg>
-          <span>Créer une mission</span>
-        </button>
+        <div class="a-quick-wrap">
+          <button class="a-quick-btn" onclick="toggleQuickMenu(event)" title="Mission · Prolongation">
+            <span class="a-quick-plus">+</span>
+            <span style="font-size:11px;opacity:.8">Actions</span>
+          </button>
+          <div class="a-quick-menu" id="a-quick-menu">
+            <button onclick="closeQuickMenu();openCreateMissionModal()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg>
+              Créer une mission
+            </button>
+            <button onclick="closeQuickMenu();goToProlongation()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg>
+              Prolonger une location
+            </button>
+          </div>
+        </div>
       </div>
       ${d.agregat ? '' : boardHtml(ld.livraisons||[])}
       ${morningBannerHtml(d.hier)}
@@ -11173,6 +11201,9 @@ document.addEventListener('click', e => {
   document.querySelectorAll('details.more-actions[open]').forEach(el => {
     if(!el.contains(e.target)) el.open = false;
   });
+  // Ferme le menu "+ Actions" de l'accueil si clic en dehors
+  const qm = document.getElementById('a-quick-menu');
+  if(qm && !qm.closest('.a-quick-wrap')?.contains(e.target)) qm.classList.remove('open');
 });
 function cpSearch(q){
   const sug = document.getElementById('v-cp-suggest');
