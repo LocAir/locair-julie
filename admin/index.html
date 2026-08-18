@@ -1773,6 +1773,7 @@ function missionMoreActionsHtml(m, d, compact){
             ${!d.reassignLocked?`<button onclick="openEditMissionModal(${m.id})">✏️ Modifier</button>`:''}
             ${(!d.isAutre && !d.reassignLocked)?`<button onclick="openChangeAppareilModal(${m.id})">🔄 Changer le climatiseur</button>`:''}
             ${(!d.isAutre && !d.reassignLocked)?`<button onclick="fixerTarifTransporteur(${m.id},${m.montant_du_cents||0})">💰 Fixer le tarif transporteur</button>`:''}
+            ${(!d.isAutre && !d.reassignLocked && m.type==='recuperation')?`<button onclick="openProlongFromMissionModal(${m.id})">📅 Prolonger la location</button>`:''}
             ${['acceptee','en_route','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
             ${!d.reassignLocked?`<button onclick="openForceCompleteModal(${m.id})">✅ Forcer terminé</button>`:''}
             ${d.mediaBtns.join('')}
@@ -6574,6 +6575,99 @@ function openForceCompleteModal(livraisonId){
       errEl.textContent = e.message; errEl.style.display = 'block';
     }
   };
+}
+
+// Prolongation manuelle depuis la carte mission (menu ⋯ › 📅 Prolonger).
+// Conçue pour être utilisée en 20 secondes pendant un appel téléphonique :
+// l'admin choisit la nouvelle date, le prix se calcule seul, et le client
+// reçoit un SMS avec son lien de paiement Stripe sécurisé. Option "Déjà
+// payé" si le règlement est immédiat (CB par téléphone, virement, espèces).
+function openProlongFromMissionModal(livraisonId){
+  const m = LIVRAISONS_CACHE.find(x => x.id === livraisonId);
+  if(!m || !m.reservation){ return showToast('Mission introuvable', 'error'); }
+  const res = m.reservation;
+  // orig_id = réservation d'origine (pas une prolongation intermédiaire)
+  const origId = res.reservation_origine_id || res.id;
+  const dateFin = res.date_fin;
+  const qte = res.quantite || 1;
+  const origDays = prDiffDays(res.date_debut, dateFin);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <h2 style="margin-bottom:4px">📅 Prolonger la location</h2>
+      <div style="background:var(--blue-lt);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <p style="font-weight:700;margin:0">${escHtml((res.prenom||'')+' '+(res.nom||''))}</p>
+        <p class="sub" style="margin:2px 0 0">Fin actuelle : ${frDate(dateFin)} · ${qte} clim${qte>1?'s':''}</p>
+      </div>
+      <label for="pm-newdate">Nouvelle date de fin *</label>
+      <input type="date" id="pm-newdate" min="${prAddDay(dateFin)}" style="margin-bottom:6px"/>
+      <p id="pm-price-note" class="sub" style="margin-bottom:6px;display:none;color:var(--blue)"></p>
+      <label for="pm-prix">Prix de la prolongation (€)</label>
+      <input type="number" id="pm-prix" min="0" step="0.5" placeholder="Calculé auto"/>
+      <p class="sub" style="font-size:12px;margin-top:4px">Grille tarifaire automatique — modifiable si arrangement téléphonique différent.</p>
+      <div class="modal-actions" style="margin-top:16px;flex-direction:column;gap:8px">
+        <button class="btn btn-blue" id="pm-btn-sms">📱 Envoyer lien de paiement par SMS</button>
+        <button class="btn btn-grey" id="pm-btn-confirme">✅ Confirmer (paiement déjà reçu)</button>
+        <button class="btn btn-grey">Annuler</button>
+      </div>
+      <div class="err" id="pm-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const dateInput = overlay.querySelector('#pm-newdate');
+  const prixInput = overlay.querySelector('#pm-prix');
+  const priceNote = overlay.querySelector('#pm-price-note');
+  const errEl     = overlay.querySelector('#pm-err');
+
+  dateInput.oninput = () => {
+    const nd = dateInput.value;
+    if(!nd || nd <= dateFin){ priceNote.style.display='none'; return; }
+    const ext = prDiffDays(dateFin, nd);
+    const totalDays = origDays + ext;
+    const price = (prCalcBase(totalDays) - prCalcBase(origDays)) * qte;
+    prixInput.value = price;
+    priceNote.textContent = `+ ${ext} jour${ext>1?'s':''} → ${price} €`;
+    priceNote.style.display = 'block';
+  };
+
+  async function submitProlong(confirmer){
+    errEl.style.display = 'none';
+    const newDateFin = dateInput.value;
+    if(!newDateFin || newDateFin <= dateFin){
+      errEl.textContent = 'Choisis une date postérieure à la fin actuelle.';
+      errEl.style.display = 'block'; return;
+    }
+    const prixCents = Math.round((parseFloat(prixInput.value)||0)*100);
+    overlay.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    try{
+      const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+        action:'create_prolongation', orig_id:origId, new_date_fin:newDateFin,
+        prix_total_cents:prixCents, confirmer,
+      })});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      if(d.reservation) RESERVATIONS_CACHE.unshift(d.reservation);
+      if(confirmer){
+        showToast(`✅ Prolongation confirmée — fin repoussée`, 'success');
+      } else {
+        const via = d.lien_sms_envoye ? 'SMS' : (d.lien_email_envoye ? 'email' : null);
+        showToast(via ? `📱 Lien de paiement envoyé par ${via} à ${escHtml(res.prenom||'le client')}` : `Prolongation créée — lien à envoyer manuellement`, d.lien_envoye?'success':'warning');
+      }
+      loadLivraisons();
+    }catch(e){
+      overlay.querySelectorAll('.btn').forEach(b => b.disabled = false);
+      errEl.textContent = e.message; errEl.style.display = 'block';
+    }
+  }
+
+  const [smsBtn, confirmeBtn, cancelBtn] = overlay.querySelectorAll('.btn');
+  smsBtn.onclick      = () => submitProlong(false);
+  confirmeBtn.onclick = () => submitProlong(true);
+  cancelBtn.onclick   = closeModal;
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
 }
 
 // Fixe manuellement le montant payé au transporteur pour cette mission
