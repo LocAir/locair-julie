@@ -537,6 +537,15 @@ module.exports = async (req, res) => {
         if (resaTermErr) throw resaTermErr;
         try { await sendScenarioEmail(supabase, { reservationId: liv.reservation_id, scenario: 'fin_location' }); }
         catch (e) { console.error('[Email fin_location]', e.message); }
+      } else if (liv.type === 'changement') {
+        // Après un échange d'appareil clôturé manuellement : le nouvel appareil
+        // (déjà réaffecté à la réservation via admin-stock avant la mission) doit
+        // passer à 'loue' — même logique que transporteur-action.js pour le flux
+        // normal (référence audit 2026-08-18 : cette branche était absente, le
+        // statut appareil restait 'disponible' après un changement forcé).
+        await setAppareilsStatutForReservation(supabase, liv.reservation_id, 'loue', {
+          typeEvenement: 'changement', livraisonId, utilisateur: 'admin',
+        });
       }
 
       await notifyTransporteur(supabase, transporteurId, {
