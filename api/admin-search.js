@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
       { data: partenaires },
     ] = await Promise.all([
       supabase.from('reservations')
-        .select('id, ref, prenom, nom, statut, date_debut, date_fin, city_id')
+        .select('id, ref, prenom, nom, email, statut, date_debut, date_fin, city_id')
         .or(`ref.ilike.${safeLike},prenom.ilike.${safeLike},nom.ilike.${safeLike},email.ilike.${safeLike},tel.ilike.${safeLike}`)
         .order('created_at', { ascending: false }).limit(LIMIT),
       supabase.from('clients')

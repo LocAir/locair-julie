@@ -1067,9 +1067,15 @@ function renderSearchResults(d, q){
   box.classList.remove('hidden');
 }
 function searchRowHtml(type, it){
-  if(type==='commandes') return `<div class="a-search-row" data-ref="${escHtml(it.ref||'')}" onclick="goToSearchResult('commandes', ${it.id}, ${it.city_id}, null, this.dataset.ref)">
-    <span><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${isInternalRef(it.ref)?'':escHtml(it.ref)+' · '}${frDate(it.date_debut)} → ${frDate(it.date_fin)}</span></span>
-    <span class="chip ${it.statut}">${(typeof RESA_LABEL!=='undefined'&&RESA_LABEL[it.statut])||it.statut}</span></div>`;
+  if(type==='commandes'){
+    const prolongBtn = it.statut==='confirmee' && it.email
+      ? `<button class="btn btn-grey" style="font-size:11px;padding:4px 9px;flex-shrink:0" onclick="event.stopPropagation();prolongerDepuisRecherche(${escAttr(JSON.stringify({email:it.email,ref:it.ref,prenom:it.prenom,nom:it.nom}))})">📅 Prolonger</button>`
+      : '';
+    return `<div class="a-search-row" data-ref="${escHtml(it.ref||'')}" onclick="goToSearchResult('commandes', ${it.id}, ${it.city_id}, null, this.dataset.ref)" style="gap:8px">
+    <span style="flex:1;min-width:0"><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${isInternalRef(it.ref)?'':escHtml(it.ref)+' · '}${frDate(it.date_debut)} → ${frDate(it.date_fin)}</span></span>
+    <span class="chip ${it.statut}" style="flex-shrink:0">${(typeof RESA_LABEL!=='undefined'&&RESA_LABEL[it.statut])||it.statut}</span>
+    ${prolongBtn}</div>`;
+  }
   if(type==='clients') return `<div class="a-search-row" onclick="goToSearchResult('clients', ${it.id}, ${it.city_id})">
     <span><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${escHtml(it.tel||it.email||'')}</span></span></div>`;
   if(type==='climatiseurs') return `<div class="a-search-row" onclick="goToSearchResult('climatiseurs', ${it.id}, ${it.city_id}, ${it.numero})">
@@ -1456,6 +1462,10 @@ function escHtml(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// Échappe une valeur pour l'attribut onclick="fn('...')" — différent de
+// escHtml : les apostrophes et les antislashes doivent être échappés
+// en premier pour ne pas casser l'argument JS inline.
+function escAttr(s){ return escHtml(String(s==null?'':s)); }
 function safeHref(url) {
   if (!url) return '#';
   const u = String(url).trim();
@@ -2098,6 +2108,24 @@ function closeQuickMenu(){ document.getElementById('a-quick-menu')?.classList.re
 // directement sur le formulaire de lookup prolongation (même parcours que
 // l'onglet Réservations → bouton "Prolonger", mais en 1 tap depuis l'accueil).
 function goToProlongation(){ PROLONG_ORIG = null; RESERVATIONS_VIEW = 'prolonger'; switchAdminTab('reservations'); }
+// Prolongation directe depuis un résultat de recherche globale — ferme la
+// recherche, navigue vers l'onglet Réservations → Prolonger, pré-remplit
+// email + ref et lance le lookup automatiquement pour sauter l'étape de saisie.
+async function prolongerDepuisRecherche(data){
+  document.getElementById('a-search-results')?.classList.add('hidden');
+  document.getElementById('a-search-input').value = '';
+  PROLONG_ORIG = null; RESERVATIONS_VIEW = 'prolonger';
+  switchAdminTab('reservations');
+  // Laisser le temps au tab de rendre la toolbar + le formulaire
+  await new Promise(r => setTimeout(r, 400));
+  const emailEl = document.getElementById('pr-email');
+  const refEl   = document.getElementById('pr-ref');
+  if(emailEl) emailEl.value = data.email || '';
+  if(refEl)   refEl.value   = data.ref   || '';
+  // Lance le lookup directement — le client voit sa fiche prolongation sans
+  // avoir à cliquer sur "Rechercher".
+  lookupProlongation();
+}
 
 // ── Actualisation automatique de l'onglet ouvert ──────────────────────────────
 // Ce que voit l'admin ne doit pas se figer pendant qu'un livreur avance sur le
