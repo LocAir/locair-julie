@@ -464,7 +464,7 @@ module.exports = async (req, res) => {
 
       const { data: orig, error: origErr } = await supabase
         .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut, hors_zone, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement, type_client, raison_sociale, siret, stripe_payment_intent_id, lang, cgv_accepted_at, prix_total_cents, partenaire_id')
+        .select('id, source, reservation_origine_id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut, hors_zone, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement, type_client, raison_sociale, siret, stripe_payment_intent_id, lang, cgv_accepted_at, prix_total_cents, partenaire_id')
         .eq('id', origId).eq('city_id', city.id).maybeSingle();
       if (origErr) throw origErr;
       if (!orig) return res.status(404).json({ error: 'Réservation d\'origine introuvable' });
@@ -525,9 +525,11 @@ module.exports = async (req, res) => {
         logement:           orig.logement           || null,
         date_debut: orig.date_fin, date_fin: newDateFin, quantite: orig.quantite || 1,
         prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'site_prolongation',
-        // Lien fiable vers la réservation prolongée — voir isSupersededReservation
-        // (_lib/emailSchedule.js) et migration_reservation_origine.sql.
-        reservation_origine_id: orig.id,
+        // Lien fiable vers la réservation RACINE — prolongationRootId remonte
+        // la chaîne si orig est lui-même une prolongation (source='site_prolongation').
+        // Sans ça, prolonger une prolongation crée un lien vers un maillon
+        // intermédiaire, cassant l'idempotence et getEffectiveDateFin.
+        reservation_origine_id: prolongationRootId(orig),
         // Commission partenaire : héritée du taux de la réservation d'origine.
         partenaire_id: orig.partenaire_id || null,
         partenaire_commission_cents: partenaireCommissionCentsProlong,
@@ -982,10 +984,11 @@ module.exports = async (req, res) => {
           if (disponibles < diff) {
             return res.status(409).json({ error: `Plus assez d'appareils disponibles pour augmenter la quantité (${Math.max(0, disponibles)} dispo sur ces dates).` });
           }
-          await supabase.rpc('assign_appareils', {
+          const { error: rpcErr } = await supabase.rpc('assign_appareils', {
             p_reservation_id: id, p_city_id: before.city_id, p_quantite: diff,
             p_date_debut: before.date_debut, p_date_fin: before.date_fin,
           });
+          if (rpcErr) throw rpcErr;
           await notifyIfSoldOut(supabase, before.city_id);
         } else {
           const { data: toFree } = await supabase
