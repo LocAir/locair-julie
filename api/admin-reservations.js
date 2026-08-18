@@ -23,6 +23,26 @@ const { isSupersededReservation } = require('./_lib/emailSchedule');
 
 const RESA_LABEL_FR = { en_attente: 'en attente', confirmee: 'confirmée', annulee: 'annulée', terminee: 'terminée', remboursee: 'remboursée' };
 
+// Un numéro que toE164FR n'arrive pas à comprendre (le cas le plus courant :
+// un numéro étranger tapé sans le + et l'indicatif international, ex. un
+// numéro allemand collé tel quel) était jusqu'ici enregistré TEL QUEL, sans
+// jamais prévenir personne — puis Brevo refusait l'envoi au moment réel du
+// SMS, silencieusement pour tout rappel automatique (juste une ligne dans
+// les logs serveur, jamais vue par Aly). Résultat : l'impression trompeuse
+// que "les SMS ne partent pas sur les numéros étrangers", alors que c'est un
+// numéro que le système n'a jamais pu comprendre. Refuse maintenant tout de
+// suite, à la saisie, avec un message qui dit quoi corriger — jamais un
+// échec silencieux découvert des jours plus tard.
+function parseTelOrThrow(raw, label) {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) return '';
+  const parsed = toE164FR(trimmed);
+  if (!parsed) {
+    throw new Error(`${label} invalide : "${trimmed.slice(0, 30)}". Pour un numéro étranger, fais-le commencer par + et l'indicatif du pays (ex. +49 pour l'Allemagne, +44 pour le Royaume-Uni, +41 pour la Suisse).`);
+  }
+  return parsed;
+}
+
 // reservation_origine_id pointe TOUJOURS vers la réservation RACINE, jamais
 // vers une prolongation intermédiaire (structure plate, voir
 // getFamilyReservationIds dans _lib/dateFin.js) — un client déjà à sa 2e/3e
@@ -187,8 +207,8 @@ module.exports = async (req, res) => {
     if (action === 'create') {
       let prenom    = (body.prenom  || '').trim().slice(0, 200);
       const nom     = (body.nom     || '').trim().slice(0, 200);
-      const tel     = toE164FR((body.tel     || '').trim()) || (body.tel     || '').trim().slice(0, 50);
-      const telSecondaire = toE164FR((body.tel_secondaire || '').trim()) || (body.tel_secondaire || '').trim().slice(0, 50);
+      const tel     = parseTelOrThrow(body.tel, 'Téléphone');
+      const telSecondaire = parseTelOrThrow(body.tel_secondaire, 'Téléphone secondaire');
       const typeClient = body.type_client === 'entreprise' ? 'entreprise' : 'particulier';
       const raisonSociale = (body.raison_sociale || '').trim().slice(0, 300);
       const siret   = (body.siret   || '').trim().slice(0, 50);
@@ -771,7 +791,7 @@ module.exports = async (req, res) => {
       // telle quelle aux missions terrain déjà créées (jointure reservation).
       if (body.prenom != null) patch.prenom = body.prenom.trim().slice(0, 200) || 'Client';
       if (body.nom != null)    patch.nom    = body.nom.trim().slice(0, 200);
-      if (body.tel != null)    patch.tel    = toE164FR(body.tel.trim()) || body.tel.trim().slice(0, 50);
+      if (body.tel != null)    patch.tel    = parseTelOrThrow(body.tel, 'Téléphone');
       if (body.adresse != null) {
         patch.adresse = body.adresse.trim().slice(0, 500);
         // Même détection hors zone qu'à la création (voir plus haut) —
@@ -792,7 +812,7 @@ module.exports = async (req, res) => {
       if (body.installation != null)       patch.installation       = body.installation.trim().slice(0, 100) || null;
       if (body.instructions_acces != null) patch.instructions_acces = body.instructions_acces.trim().slice(0, 1000) || null;
       if (body.creneau_livraison != null)  patch.creneau            = body.creneau_livraison.trim().slice(0, 500) || null;
-      if (body.tel_secondaire != null)     patch.tel_secondaire     = toE164FR(body.tel_secondaire.trim()) || body.tel_secondaire.trim().slice(0, 50) || null;
+      if (body.tel_secondaire != null)     patch.tel_secondaire     = parseTelOrThrow(body.tel_secondaire, 'Téléphone secondaire') || null;
       if (body.email != null)              patch.email              = body.email.trim().toLowerCase().slice(0, 200) || null;
       if (body.type_client != null)        patch.type_client        = body.type_client === 'entreprise' ? 'entreprise' : 'particulier';
       if (body.raison_sociale != null)     patch.raison_sociale     = body.raison_sociale.trim().slice(0, 300) || null;
