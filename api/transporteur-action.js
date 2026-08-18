@@ -364,6 +364,34 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
+    // Signature client : reçoit un PNG en base64, stocke dans le bucket
+    // "missions", enregistre le chemin dans livraisons. Appelé depuis l'étape
+    // "Signature" du wizard transporteur (entre Installation et Terminer).
+    if (action === 'sauvegarder_signature') {
+      if (liv.type !== 'livraison' || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      const dateErr = missionStartDateError(liv);
+      if (dateErr) return res.status(409).json({ error: dateErr });
+      if (!liv.demo_faite) return res.status(400).json({ error: 'Démonstration requise avant la signature' });
+
+      const sig = String(body.signature || '');
+      if (!sig.startsWith('data:image/png;base64,')) return res.status(400).json({ error: 'Signature invalide' });
+      const buffer = Buffer.from(sig.replace('data:image/png;base64,', ''), 'base64');
+      if (buffer.length > 2 * 1024 * 1024) return res.status(400).json({ error: 'Signature trop grande (max 2 Mo)' });
+
+      const ref = liv.reservation?.ref || String(liv.id);
+      const sigPath = `documents/signatures/${ref}-${Date.now()}.png`;
+      const { error: upErr } = await supabase.storage.from('missions').upload(sigPath, buffer, { contentType: 'image/png', upsert: true });
+      if (upErr) throw upErr;
+
+      const { error: updErr } = await supabase.from('livraisons').update({
+        signature_client_path: sigPath,
+        signature_client_at:   new Date().toISOString(),
+      }).eq('id', liv.id);
+      if (updErr) throw updErr;
+
+      return res.status(200).json({ ok: true });
+    }
+
     if (action === 'livraison_ok' || action === 'retour_ok') {
       const expectedType = action === 'livraison_ok' ? 'livraison' : 'recuperation';
       if (liv.type !== expectedType || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
@@ -371,6 +399,9 @@ module.exports = async (req, res) => {
       if (dateErr) return res.status(409).json({ error: dateErr });
       if (expectedType === 'livraison' && !liv.demo_faite) {
         return res.status(400).json({ error: 'Démonstration au client requise avant de valider' });
+      }
+      if (expectedType === 'livraison' && !liv.signature_client_path) {
+        return res.status(400).json({ error: 'Signature du client requise avant de valider' });
       }
       if (expectedType === 'recuperation' && !liv.photo_retour_path) {
         return res.status(400).json({ error: 'Vidéo de l\'appareil récupéré requise avant de valider' });

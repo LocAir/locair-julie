@@ -166,6 +166,13 @@ async function computeCityStats(supabase, city, periode, since) {
     .select('id, reservation:reservations!inner(city_id)', { count: 'exact', head: true })
     .eq('reservation.city_id', city.id)
     .eq('statut', 'fait').gte('fait_at', since);
+  // Compteur total toutes périodes confondues (affiché dans le dashboard pour
+  // alimenter le "+X clients livrés" du site public — pas de filtre de date)
+  const { count: missionsFaitTotal } = await supabase
+    .from('livraisons')
+    .select('id, reservation:reservations!inner(city_id)', { count: 'exact', head: true })
+    .eq('reservation.city_id', city.id)
+    .eq('statut', 'fait');
   const { count: missionsEnRetard } = await supabase
     .from('livraisons')
     .select('id, reservation:reservations!inner(city_id)', { count: 'exact', head: true })
@@ -191,6 +198,7 @@ async function computeCityStats(supabase, city, periode, since) {
       missions_terminees_periode: missionsTermineesPeriode || 0,
       missions_en_retard:         missionsEnRetard || 0,
       problemes_signales:         incidentsOuverts || 0,
+      missions_fait_total:        missionsFaitTotal || 0,
     },
     hier: {
       ca_euros:           caHierCents / 100,

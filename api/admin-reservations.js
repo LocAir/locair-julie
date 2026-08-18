@@ -70,7 +70,7 @@ async function findEligibleActiveClients(supabase, cityId, newDateFin) {
   while (true) {
     const { data: batch } = await supabase
       .from('reservations')
-      .select('id, client_id, statut, date_debut, date_fin, mkt_consent, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement, hors_zone, partenaire_id, source, reservation_origine_id, lang, ref')
+      .select('id, client_id, statut, date_debut, date_fin, quantite, mkt_consent, prenom, nom, tel, tel_secondaire, email, adresse, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement, hors_zone, partenaire_id, source, reservation_origine_id, lang, ref')
       .eq('city_id', cityId)
       .not('client_id', 'is', null)
       .range(offset, offset + 999);
@@ -325,7 +325,7 @@ module.exports = async (req, res) => {
         partenaire_id: partenaireId, partenaire_commission_cents: partenaireCommissionCents,
         motifs: motifs || null, mkt_consent: mktConsent,
         creneau_recuperation: ['8h – 10h', '10h – 12h'].includes(body.creneau_recuperation) ? body.creneau_recuperation : null,
-        date_recuperation_souhaitee: (() => { const v = (body.date_recuperation_souhaitee || '').slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; })(),
+        date_recuperation_souhaitee: (() => { const v = (body.date_recuperation_souhaitee || '').slice(0, 10); return isValidDate(v) ? v : null; })(),
         cgv_accepted_at: new Date().toISOString(),
       }).select().single();
       if (error) throw error;
@@ -669,7 +669,7 @@ module.exports = async (req, res) => {
             fenetre: orig.fenetre || null, fenetre_photo_path: orig.fenetre_photo_path || null,
             installation: orig.installation || null, instructions_acces: orig.instructions_acces || null,
             logement: orig.logement || null,
-            date_debut: orig.date_fin, date_fin: newDateFin, quantite: 1,
+            date_debut: orig.date_fin, date_fin: newDateFin, quantite: orig.quantite || 1,
             prix_total_cents: prixTotalCents, statut: 'en_attente', source: 'site_prolongation',
             reservation_origine_id: prolongationRootId(orig),
             lang: orig.lang || 'fr',
@@ -824,10 +824,10 @@ module.exports = async (req, res) => {
       if (body.creneau_recuperation != null)       patch.creneau_recuperation       = ['8h – 10h', '10h – 12h'].includes(body.creneau_recuperation) ? body.creneau_recuperation : null;
       if (body.date_recuperation_souhaitee != null) {
         const v = (body.date_recuperation_souhaitee || '').slice(0, 10);
-        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+        if (isValidDate(v)) {
           // Audit 2026-08-06 I4 : pas de validation contre date_fin — on
           // pouvait poser une récupération le jour même ou avant la fin de loc.
-          const dateFin = patch.date_fin || before.date_fin;
+          const dateFin = before.date_fin;
           if (dateFin && v <= dateFin) {
             return res.status(400).json({ error: `La date de récupération doit être postérieure à la fin de location (${dateFin}).` });
           }

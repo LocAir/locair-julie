@@ -92,8 +92,8 @@ module.exports = async (req, res) => {
           valide, valide_at,
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
-            id, ref, prenom, nom, tel, adresse, etage, ascenseur, fenetre, instructions_acces, masquee, hors_zone, express,
-            installation, date_debut, date_fin,
+            id, ref, prenom, nom, tel, email, adresse, etage, ascenseur, fenetre, instructions_acces, masquee, hors_zone, express,
+            installation, date_debut, date_fin, quantite, lang, reservation_origine_id,
             reservation_appareils ( appareil:appareils ( numero, reference ) )
           )
         `;

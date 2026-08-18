@@ -183,6 +183,10 @@ input[type="checkbox"]{accent-color:var(--blue)}
    visuel, donc doit rester facile à taper d'un geste rapide sur le terrain. */
 .btn-chip{margin-left:6px;font-size:12.5px;font-weight:700;padding:9px 14px;min-height:40px;border:1px solid var(--rule);border-radius:var(--r-sm);background:var(--white);cursor:pointer;color:var(--blue)}
 .pill-badge{display:inline-flex;align-items:center;gap:4px;background:var(--blue-lt);color:var(--blue);font-weight:700;font-size:13px;padding:6px 12px;border-radius:100px}
+/* Livraison Express : heure limite (pas une simple préférence client comme le
+   créneau normal) — ambre plutôt que bleu pour que ça saute aux yeux comme
+   une vraie urgence, cohérent avec le badge "⏰ En retard" (mcard-late-badge). */
+.pill-badge-urgent{background:var(--amber-bg);color:var(--amber)}
 
 .media-btn{display:flex;align-items:center;gap:10px;width:100%;padding:16px 22px;border:1.5px solid var(--rule);border-radius:100px;background:var(--white);font-weight:700;font-size:15px;color:var(--black);margin-bottom:12px;cursor:pointer}
 /* Action pas encore faite : plus de poids visuel qu'un simple bouton
@@ -2144,8 +2148,12 @@ function missionCardHtml(m){
   // sauter aux yeux dès la liste, pas seulement une fois la mission ouverte,
   // sous peine d'un passage hors créneau chez le client. Livraison/autre
   // gardent l'ancien affichage discret (créneau choisi par le client au
-  // checkout, jamais une contrainte imposée après coup).
-  const creneauEnEvidence = m.type==='recuperation' && m.creneau;
+  // checkout, jamais une contrainte imposée après coup) — SAUF Express : le
+  // créneau y est un vrai engagement (livraison sous 2h, pas juste une
+  // préférence client) et mérite la même mise en évidence, en version
+  // "urgente" (pill ambre + heure limite plutôt que la plage complète).
+  const creneauEnEvidence = (m.type==='recuperation' || c.express) && m.creneau;
+  const expressDeadline = c.express ? String(m.creneau||'').split(/[–-]/).pop().trim() : '';
   const metaParts = [(!creneauEnEvidence && m.creneau)?escHtml(m.creneau):'', (c.etage&&c.etage!=='—')?'Étage '+escHtml(c.etage):'', finLocationTxt].filter(Boolean);
   // Numéro(s) d'unité déjà assignés en stock — pour identifier tout de suite
   // de quel(s) climatiseur(s) il s'agit, sans devoir ouvrir la mission.
@@ -2163,7 +2171,9 @@ function missionCardHtml(m){
         ${earn}
       </div>
       <div class="mcard-addr">📍 ${escHtml(adresse||'Adresse à confirmer')}</div>
-      ${creneauEnEvidence?`<div class="pill-badge" style="margin-top:7px">🕐 ${escHtml(m.creneau)}</div>`:''}
+      ${creneauEnEvidence?(c.express
+        ?`<div class="pill-badge pill-badge-urgent" style="margin-top:7px">🚀 À livrer avant ${escHtml(expressDeadline||m.creneau)}</div>`
+        :`<div class="pill-badge" style="margin-top:7px">🕐 ${escHtml(m.creneau)}</div>`):''}
       ${metaParts.length?`<div class="mcard-meta">${metaParts.join(' · ')}</div>`:''}
       ${missionCardActionsHtml(m, mapsUrl, c.tel)}
     </div>`;
@@ -2599,7 +2609,7 @@ function actionBtnsForMission(m){
 // automatiquement sur la bonne étape.
 function missionStepDefs(m){
   const steps = [{key:'route', title:'En route'}, {key:'arrivee', title:'Arrivée'}];
-  if(m.type === 'livraison') steps.push({key:'installation', title:'Installation'});
+  if(m.type === 'livraison') steps.push({key:'installation', title:'Installation'}, {key:'signature', title:'Signature'});
   else if(m.type === 'recuperation') steps.push({key:'preuve', title:'Photo appareil'}, {key:'vidange', title:'Vidange'});
   else if(m.type === 'changement') steps.push({key:'vidange', title:'Vidange'}, {key:'ancien', title:'Ancien appareil'}, {key:'nouveau', title:'Nouvel appareil'});
   steps.push({key:'final', title:'Terminer'});
@@ -2608,6 +2618,7 @@ function missionStepDefs(m){
 function missionStepDoneFlag(m, key){
   if(key==='vidange') return Boolean(m.vidange_ok);
   if(key==='installation') return Boolean(m.demo_faite);
+  if(key==='signature') return Boolean(m.signature_client_ok);
   if(key==='preuve' || key==='ancien') return Boolean(m.photo_retour_ok);
   if(key==='nouveau') return Boolean(m.photo_installation_ok);
   return false;
@@ -2812,6 +2823,25 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
       ${m.photo_installation_ok && !m.photo_installation_pending
         ? `<button class="btn btn-green btn-block" style="margin-top:6px" onclick="doAction('confirmer_demo')">✅ Confirmer la démonstration</button>`
         : ''}`;
+  }
+  if(key === 'signature'){
+    if(m.signature_client_ok){
+      return `<div style="text-align:center;padding:20px 0">
+        <div style="font-size:48px;margin-bottom:10px">✅</div>
+        <p style="font-weight:700;font-size:16px;color:var(--green)">Signature enregistrée</p>
+        <p style="font-size:13px;color:var(--grey);margin-top:6px">Le client a signé le contrat.</p>
+      </div>`;
+    }
+    return `
+      <p class="step-hint">✍️ Montrez le contrat sur votre téléphone et faites signer le client avec son doigt.</p>
+      <div id="sig-wrap" style="position:relative;margin:14px 0;background:#fff;border:2px solid var(--blue);border-radius:12px;overflow:hidden;touch-action:none">
+        <canvas id="sig-canvas" style="display:block;width:100%;height:190px"></canvas>
+        <span id="sig-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#bbb;pointer-events:none">← Signer ici →</span>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-grey" style="flex:1" onclick="clearSigPad()">🗑 Effacer</button>
+        <button class="btn btn-blue" style="flex:1" id="sig-submit-btn" disabled onclick="submitClientSig(${m.id})">✅ Valider</button>
+      </div>`;
   }
   if(key === 'preuve'){
     return wizardProofStepHtml(m, 'photo_retour', 'Photo appareil récupéré', "Prends l'appareil récupéré en photo (ou choisis une photo depuis ta galerie) pour terminer la mission.");
@@ -3178,6 +3208,105 @@ function renderStepper(m){
   }).join('')+'</div>';
 }
 
+// ── Signature client (étape "Signature" du wizard livraison) ────────────────
+// Canvas tactile sur lequel le client signe avec son doigt.
+// initSigCanvas()   : appelé après rendu du DOM (setTimeout 60ms)
+// clearSigPad()     : efface la signature en cours
+// submitClientSig() : encode en PNG base64 et envoie au serveur
+let _sigCtx = null, _sigDrawing = false, _sigHasStroke = false;
+
+function initSigCanvas(){
+  const canvas = document.getElementById('sig-canvas');
+  if(!canvas) return;
+  // Résolution hi-DPI pour que la signature soit nette sur les écrans Retina
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width  = Math.round(rect.width  * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  _sigCtx = canvas.getContext('2d');
+  _sigCtx.scale(dpr, dpr);
+  _sigCtx.strokeStyle = '#1a2b4a';
+  _sigCtx.lineWidth   = 2.5;
+  _sigCtx.lineCap     = 'round';
+  _sigCtx.lineJoin    = 'round';
+  _sigDrawing = false; _sigHasStroke = false;
+
+  function xyFrom(e){
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return {x: src.clientX - r.left, y: src.clientY - r.top};
+  }
+  function start(e){
+    e.preventDefault();
+    _sigDrawing = true;
+    const {x,y} = xyFrom(e);
+    _sigCtx.beginPath(); _sigCtx.moveTo(x,y);
+  }
+  function move(e){
+    e.preventDefault();
+    if(!_sigDrawing) return;
+    const {x,y} = xyFrom(e);
+    _sigCtx.lineTo(x,y); _sigCtx.stroke();
+    if(!_sigHasStroke){
+      _sigHasStroke = true;
+      const hint = document.getElementById('sig-hint');
+      if(hint) hint.style.display = 'none';
+      const btn = document.getElementById('sig-submit-btn');
+      if(btn) btn.disabled = false;
+    }
+  }
+  function stop(){ _sigDrawing = false; }
+
+  canvas.addEventListener('mousedown',  start);
+  canvas.addEventListener('mousemove',  move);
+  canvas.addEventListener('mouseup',    stop);
+  canvas.addEventListener('mouseleave', stop); // évite trait parasite sur tablette/stylet si sortie hors canvas sans mouseup
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove',  move,  {passive:false});
+  canvas.addEventListener('touchend',   stop);
+}
+
+function clearSigPad(){
+  if(!_sigCtx) return;
+  const canvas = document.getElementById('sig-canvas');
+  if(!canvas) return;
+  _sigCtx.clearRect(0, 0, canvas.width, canvas.height);
+  _sigHasStroke = false;
+  const hint = document.getElementById('sig-hint');
+  if(hint) hint.style.display = '';
+  const btn = document.getElementById('sig-submit-btn');
+  if(btn) btn.disabled = true;
+}
+
+async function submitClientSig(missionId){
+  const canvas = document.getElementById('sig-canvas');
+  if(!canvas || !_sigHasStroke){ return; }
+  const btn = document.getElementById('sig-submit-btn');
+  if(btn) btn.disabled = true;
+  try{
+    const signature = canvas.toDataURL('image/png');
+    const r = await fetch(API('transporteur-action'), {
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify({action:'sauvegarder_signature', livraison_id:missionId, signature}),
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    // Mise à jour locale optimiste — réinitialise wizardViewIdx pour que
+    // renderDetail() avance automatiquement à l'étape Final (sans ça, si le
+    // transporteur avait navigué en arrière avant de signer, l'écran restait
+    // bloqué sur "Signature enregistrée" au lieu de passer à Terminer).
+    const m = STATE.missions.find(x => x.id === missionId);
+    if(m){ m.signature_client_ok = true; STATE.currentMission = m; }
+    STATE.wizardViewIdx = null;
+    renderDetail();
+  }catch(e){
+    showToast(e.message, 'error');
+    if(btn) btn.disabled = false;
+  }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 // Page 1 (avant "J'accepte") : juste de quoi juger la mission — type, créneau,
 // zone. Page 2 (une fois démarrée) : la fiche client complète s'ouvre, avec un
 // bouton d'appel direct et toutes les actions propres à l'étape en cours.
@@ -3274,12 +3403,19 @@ function renderDetail(){
     </div>
     <div class="card">
       ${(['acceptee','en_route','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
+      ${((m.client||{}).express && m.creneau) ? `<div class="detail-late-badge">🚀 À livrer avant ${escHtml(String(m.creneau).split(/[–-]/).pop().trim())}</div>` : ''}
       <h1 style="display:flex;align-items:center;gap:8px">${typeIconSvg(m.type,22)}${missionTypeLabel(m)}</h1>
       ${m.montant_preview?`<div class="detail-earn">💶 ${Math.round(m.montant_preview/100)} €${(m.client||{}).hors_zone?' · Hors zone':''}${(m.client||{}).express?' · 🚀 Express':''}</div>`:''}
       <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):''].filter(Boolean).join(' · ')}</p>
       ${bodyHtml}
     </div>
   `;
+  // Lance le canvas de signature si on vient d'afficher l'étape signature
+  if(isWizard && m.type === 'livraison' && !m.signature_client_ok){
+    const _steps = missionStepDefs(m);
+    const _idx = Math.min(STATE.wizardViewIdx == null ? missionStepIndex(m, _steps) : STATE.wizardViewIdx, missionStepIndex(m, _steps));
+    if(_steps[_idx]?.key === 'signature') setTimeout(initSigCanvas, 60);
+  }
 }
 
 // Preuve de mission obligatoire : prendre une photo en direct (caméra) ou
@@ -3538,7 +3674,11 @@ async function doAction(action, extra){
 
     await fetchMissions();
     const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
-    if(m){ STATE.currentMission = m; renderDetail(); show('detail-screen'); }
+    // Réinitialise wizardViewIdx pour que le wizard avance à la bonne étape
+    // après une action (ex: confirmer_demo depuis l'étape 'installation' après
+    // navigation arrière depuis 'signature') — sans ce reset, idx=2 (installation)
+    // restait bloqué même si l'étape était terminée.
+    if(m){ STATE.wizardViewIdx = null; STATE.currentMission = m; renderDetail(); show('detail-screen'); }
     else { show('missions-screen'); renderMissions(); }
   }catch(e){
     // Accepter/refuser peut être déclenché directement depuis une carte de la
@@ -3553,7 +3693,7 @@ async function doAction(action, extra){
     }else{
       renderDetail(); // reconstruit les boutons avec les bons états disabled/actifs — retaper le même bouton relance l'action
       const errEl2 = document.getElementById('detail-err');
-      if(errEl2){errEl2.textContent = msg; errEl2.style.display='block';}
+      if(errEl2){errEl2.textContent = msg + ' — Appuyez à nouveau sur le bouton pour réessayer.'; errEl2.style.display='block';}
     }
   } finally {
     _actionInProgress = false;
@@ -4206,13 +4346,21 @@ async function loadActivite(){
   const zone = document.getElementById('activite-content');
   zone.innerHTML = '<p class="empty">Chargement…</p>';
   try{
-    const [r, rs] = await Promise.all([
+    const [r, rs, rf] = await Promise.all([
       fetch(API('transporteur-earnings'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'resume'})}),
       fetch(API('transporteur-history'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'stats'})}),
+      fetch(API('transporteur-facture'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'list'})}),
     ]);
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     const ds = await rs.json().catch(()=>null);
+    const df = await rf.json().catch(()=>null);
+    // Factures de la semaine déjà générées (Module facture hebdomadaire) —
+    // indexées par période pour que missionsHistoryHtml sache, sans nouvel
+    // appel réseau, si une semaine donnée a déjà sa facture ou non.
+    STATE.activiteFacturesCache = (df && df.factures) || [];
+    STATE.facturesByPeriode = {};
+    STATE.activiteFacturesCache.forEach(f => { STATE.facturesByPeriode[f.periode_debut+'_'+f.periode_fin] = f; });
     renderActivite(d, rs.ok ? ds : null);
     markActiviteSeen(d.virements);
   }catch(e){
@@ -4228,6 +4376,7 @@ function renderActivite(d, stats){
   const enCours = (d.virements||[]).some(v => v.statut==='demande');
   zone.innerHTML = `
     <p class="sub" style="margin-bottom:14px">Retrouve ici ce que tu as gagné, ce qui reste à te verser, et l'historique de tes missions.</p>
+    <button class="btn btn-grey" style="margin-bottom:14px;padding:8px 14px;font-size:12.5px" onclick="openMesFacturesSheet()">📄 Mes factures</button>
     <div class="stat-big">
       <div class="amount">${nonVerse} €</div>
       <div class="caption" style="opacity:1">Solde validé à verser · demande-le avec le bouton ci-dessous</div>
@@ -4325,9 +4474,55 @@ function statsGlobalesHtml(stats){
       <div class="stat-tile"><div class="n">${taux}%</div><div class="l">Taux d'incidents</div></div>
     </div>`;
 }
-// Historique mission par mission, groupé par mois (menu déroulant natif —
-// seul le mois en cours est ouvert par défaut) : retrouver ce qu'on a fait et
-// gagné sur chaque mission, pas seulement des totaux agrégés.
+// Historique mission par mission, groupé par mois PUIS par semaine (menus
+// déroulants natifs imbriqués — seuls le mois et la semaine en cours sont
+// ouverts par défaut) : retrouver vite un montant sur une semaine précise
+// (déclarations URSSAF) sans encombrer l'écran de filtres ou de menus
+// supplémentaires — juste un niveau de détail en plus au même geste (taper
+// pour déplier), et chaque mission garde sa date exacte visible pour
+// retrouver "un jour en particulier" sans 3e niveau de menu.
+// Regroupement en heure de Paris (parisDateKey ci-dessous), cohérent avec le
+// découpage jour/semaine utilisé côté serveur pour générer les factures
+// (voir _lib/transporteurFacture.js) — sans ça, une mission faite tard le
+// soir pourrait apparaître dans une semaine différente à l'écran et sur la
+// facture PDF réellement générée.
+function parisDateKey(iso){
+  if(!iso) return '';
+  return new Date(iso).toLocaleDateString('fr-CA', {timeZone:'Europe/Paris'}); // YYYY-MM-DD
+}
+function mondayOfWeek(dateKey){
+  const d = new Date(dateKey+'T12:00:00'); // midi : évite qu'un changement d'heure fasse basculer le jour
+  const day = d.getDay(); // 0=dimanche..6=samedi
+  d.setDate(d.getDate() + (day===0 ? -6 : 1-day));
+  return d.toISOString().slice(0,10);
+}
+function addDaysKey(dateKey, n){
+  const d = new Date(dateKey+'T12:00:00');
+  d.setDate(d.getDate()+n);
+  return d.toISOString().slice(0,10);
+}
+function weekLabel(mondayKey){
+  const sundayKey = addDaysKey(mondayKey, 6);
+  const d1 = new Date(mondayKey+'T12:00:00');
+  const d2 = new Date(sundayKey+'T12:00:00');
+  const sameMonth = d1.getMonth()===d2.getMonth();
+  const d1s = d1.toLocaleDateString('fr-FR', sameMonth?{day:'numeric'}:{day:'numeric',month:'short'});
+  const d2s = d2.toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
+  return `Semaine du ${d1s} au ${d2s}`;
+}
+// Bouton "Générer la facture" ou badge "déjà envoyée", selon STATE.facturesByPeriode
+// (chargé une fois par loadActivite, voir plus haut) — pas de nouvel appel
+// réseau pour chaque semaine affichée.
+function factureWeekActionHtml(periodeDebut, periodeFin){
+  const f = (STATE.facturesByPeriode||{})[periodeDebut+'_'+periodeFin];
+  if(f){
+    return `<div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <span style="font-size:12.5px;color:var(--green);font-weight:600">✅ Facture envoyée · ${escHtml(f.numero)}</span>
+      <a class="btn btn-grey" style="padding:6px 12px;font-size:12px" href="${API('transporteur-facture-view')}?token=${f.access_token}&dl=1" target="_blank" rel="noopener">⬇️ Télécharger</a>
+    </div>`;
+  }
+  return `<button class="btn btn-blue" style="margin-top:10px;padding:8px 14px;font-size:12.5px" onclick="openFactureSemaineSheet('${periodeDebut}','${periodeFin}')">🧾 Générer la facture de cette semaine</button>`;
+}
 function missionsHistoryHtml(missions){
   // Même message d'état vide que missionsFiltreListHtml (les 3 autres
   // filtres "Mes missions") — un simple retour vide laissait la zone sous
@@ -4338,45 +4533,202 @@ function missionsHistoryHtml(missions){
   // que api/transporteur-missions.js action 'past_photos') — pas la peine
   // d'afficher un bouton qui échouera pour une mission plus ancienne.
   const photoCutoff = new Date(); photoCutoff.setDate(photoCutoff.getDate() - 90);
-  const groups = {};
+  const months = {};
   missions.forEach(m => {
-    const key = (m.fait_at||'').slice(0,7); // YYYY-MM
-    (groups[key] = groups[key] || []).push(m);
+    const dayKey = parisDateKey(m.fait_at);
+    if(!dayKey) return;
+    const monthKey = dayKey.slice(0,7);
+    const weekKey = mondayOfWeek(dayKey);
+    const mg = (months[monthKey] = months[monthKey] || {});
+    (mg[weekKey] = mg[weekKey] || []).push(m);
   });
-  const keys = Object.keys(groups).sort().reverse();
+  const monthKeys = Object.keys(months).sort().reverse();
   const monthLabel = key => {
     const [y,mo] = key.split('-').map(Number);
     return new Date(y, mo-1, 1).toLocaleDateString('fr-FR', {month:'long', year:'numeric'});
   };
   return `
     <div class="section-title">Historique des missions</div>
-    ${keys.map((key,i) => {
-      const items = groups[key];
-      const total = items.reduce((s,m)=>s+(m.montant_cents||0),0);
+    ${monthKeys.map((mkey,mi) => {
+      const weekKeys = Object.keys(months[mkey]).sort().reverse();
+      const monthItems = weekKeys.flatMap(wk => months[mkey][wk]);
+      const monthTotal = monthItems.reduce((s,m)=>s+(m.montant_cents||0),0);
       return `
-      <details class="card month-details" ${i===0?'open':''} style="margin-bottom:10px;padding:16px 18px">
+      <details class="card month-details" ${mi===0?'open':''} style="margin-bottom:10px;padding:16px 18px">
         <summary style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:700;list-style:none">
-          <span style="text-transform:capitalize">${monthLabel(key)}</span>
-          <span style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--grey)">${items.length} mission${items.length>1?'s':''} · ${(total/100).toFixed(2).replace('.',',')} €<span class="month-chevron">›</span></span>
+          <span style="text-transform:capitalize">${monthLabel(mkey)}</span>
+          <span style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--grey)">${monthItems.length} mission${monthItems.length>1?'s':''} · ${(monthTotal/100).toFixed(2).replace('.',',')} €<span class="month-chevron">›</span></span>
         </summary>
-        <div class="vlist">
-          ${items.map(m => `
-            <div class="vrow" style="align-items:flex-start">
-              <span>
-                <span class="mcard-icon">${typeIconSvg(m.type,14)}</span>
-                ${TYPE_LABEL[m.type]||m.type}
-                <div class="mcard-meta" style="margin-top:2px">${m.fait_at?new Date(m.fait_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
-                ${(m.fait_at && new Date(m.fait_at) >= photoCutoff) ? `<button class="btn btn-grey" style="margin-top:6px;padding:8px 12px;font-size:12px" onclick="openMissionMedia(${m.id})">📷 Photos</button>` : ''}
-              </span>
-              <span style="text-align:right;flex-shrink:0">
-                <div style="font-weight:700">${(m.montant_cents/100).toFixed(2).replace('.',',')} €</div>
-                <span class="vchip ${m.statut_paiement==='paye'?'verse':'demande'}" style="margin-top:4px">${PAIEMENT_MISSION_LABEL[m.statut_paiement]||'—'}</span>
-              </span>
-            </div>`).join('')}
+        <div>
+          ${weekKeys.map((wk,wi) => {
+            const items = months[mkey][wk];
+            const weekTotal = items.reduce((s,m)=>s+(m.montant_cents||0),0);
+            const sunday = addDaysKey(wk,6);
+            return `
+            <details class="card month-details week-details" ${(mi===0&&wi===0)?'open':''} style="margin:10px 0 0;padding:12px 14px;box-shadow:none;border:1px solid var(--rule)">
+              <summary style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:600;font-size:13.5px;list-style:none">
+                <span>${weekLabel(wk)}</span>
+                <span style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--grey);font-size:12.5px">${items.length} mission${items.length>1?'s':''} · ${(weekTotal/100).toFixed(2).replace('.',',')} €<span class="month-chevron">›</span></span>
+              </summary>
+              <div class="vlist">
+                ${items.map(m => `
+                  <div class="vrow" style="align-items:flex-start">
+                    <span>
+                      <span class="mcard-icon">${typeIconSvg(m.type,14)}</span>
+                      ${TYPE_LABEL[m.type]||m.type}
+                      <div class="mcard-meta" style="margin-top:2px">${m.fait_at?new Date(m.fait_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):''}${m.client?' · '+escHtml(m.client):''}</div>
+                      ${(m.fait_at && new Date(m.fait_at) >= photoCutoff) ? `<button class="btn btn-grey" style="margin-top:6px;padding:8px 12px;font-size:12px" onclick="openMissionMedia(${m.id})">📷 Photos</button>` : ''}
+                    </span>
+                    <span style="text-align:right;flex-shrink:0">
+                      <div style="font-weight:700">${(m.montant_cents/100).toFixed(2).replace('.',',')} €</div>
+                      <span class="vchip ${m.statut_paiement==='paye'?'verse':'demande'}" style="margin-top:4px">${PAIEMENT_MISSION_LABEL[m.statut_paiement]||'—'}</span>
+                    </span>
+                  </div>`).join('')}
+              </div>
+              ${factureWeekActionHtml(wk, sunday)}
+            </details>`;
+          }).join('')}
         </div>
       </details>`;
     }).join('')}
   `;
+}
+
+// ── Facture hebdomadaire (Module facture hebdomadaire, 2026-08-17) ──────────
+// Sheet réutilisé pour 2 écrans : "Générer la facture de cette semaine"
+// (aperçu → validation → envoi) et "Mes factures" (liste flat de tout
+// l'historique) — même overlay/sheet que les tutoriels (#tuto-overlay),
+// aucune nouvelle classe CSS nécessaire.
+function ensureFactureOverlay(){
+  let overlay = document.getElementById('facture-overlay');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    overlay.id = 'facture-overlay';
+    overlay.innerHTML = `<div class="sheet" id="facture-sheet"><p class="empty">Chargement…</p></div>`;
+    overlay.addEventListener('click', e => { if(e.target===overlay) closeFactureOverlay(); });
+    document.body.appendChild(overlay);
+  }
+  return overlay;
+}
+function closeFactureOverlay(){
+  document.getElementById('facture-overlay')?.remove();
+}
+async function openFactureSemaineSheet(periodeDebut, periodeFin){
+  ensureFactureOverlay();
+  const sheet = document.getElementById('facture-sheet');
+  sheet.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('transporteur-facture'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'resume_semaine', periode_debut:periodeDebut, periode_fin:periodeFin})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    if(d.deja_generee){
+      const f = d.facture;
+      sheet.innerHTML = `
+        <h2 style="margin-bottom:6px">🧾 Facture déjà envoyée</h2>
+        <p class="sub" style="margin-bottom:16px">${weekLabel(periodeDebut)}</p>
+        <div class="stat-tile" style="margin-bottom:16px"><div class="n">${(f.montant_total_cents/100).toFixed(2).replace('.',',')} €</div><div class="l">${escHtml(f.numero)}</div></div>
+        <a class="btn btn-blue btn-block" href="${API('transporteur-facture-view')}?token=${f.access_token}&dl=1" target="_blank" rel="noopener">⬇️ Télécharger le PDF</a>
+        <button class="btn btn-grey btn-block" style="margin-top:10px" onclick="closeFactureOverlay()">Fermer</button>`;
+      return;
+    }
+    if(!d.nb_missions){
+      sheet.innerHTML = `<h2 style="margin-bottom:6px">🧾 Facture de la semaine</h2><p class="empty">Aucune mission terminée sur cette semaine — rien à facturer.</p><button class="btn btn-grey btn-block" style="margin-top:10px" onclick="closeFactureOverlay()">Fermer</button>`;
+      return;
+    }
+    sheet.innerHTML = `
+      <h2 style="margin-bottom:6px">🧾 Facture de la semaine</h2>
+      <p class="sub" style="margin-bottom:16px">${weekLabel(periodeDebut)}</p>
+      <div class="stat-tile" style="margin-bottom:8px"><div class="n">${(d.montant_total_cents/100).toFixed(2).replace('.',',')} €</div><div class="l">${d.nb_missions} mission${d.nb_missions>1?'s':''} terminée${d.nb_missions>1?'s':''}</div></div>
+      <p class="sub" style="margin-bottom:16px">Elle sera envoyée automatiquement par email à Loc'Air, et restera consultable ici et dans "Mes factures".</p>
+      <div class="err" id="facture-sheet-err"></div>
+      <button class="btn btn-blue btn-block" id="facture-confirm-btn" onclick="confirmerFactureSemaine('${periodeDebut}','${periodeFin}')">✅ Valider et envoyer</button>
+      <button class="btn btn-grey btn-block" style="margin-top:10px" onclick="closeFactureOverlay()">Annuler</button>`;
+  }catch(e){
+    sheet.innerHTML = `<p class="empty">Impossible de charger — vérifie ta connexion.</p><button class="btn btn-grey btn-block" style="margin-top:10px" onclick="closeFactureOverlay()">Fermer</button>`;
+  }
+}
+async function confirmerFactureSemaine(periodeDebut, periodeFin){
+  const btn = document.getElementById('facture-confirm-btn');
+  const errEl = document.getElementById('facture-sheet-err');
+  if(errEl) errEl.style.display = 'none';
+  if(btn){ btn.disabled = true; btn.textContent = 'Envoi…'; }
+  try{
+    const r = await fetch(API('transporteur-facture'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'generer', periode_debut:periodeDebut, periode_fin:periodeFin})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showTToast("Facture envoyée à Loc'Air ✅");
+    closeFactureOverlay();
+    loadActivite(); // recharge la liste + le statut de la semaine (bouton → badge "envoyée")
+  }catch(e){
+    if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+    if(btn){ btn.disabled = false; btn.textContent = '✅ Valider et envoyer'; }
+  }
+}
+// "Mes documents — Mes factures" : liste flat de tout l'historique, déjà en
+// cache (chargée par loadActivite) — pas de nouvel appel réseau à l'ouverture.
+function openMesFacturesSheet(){
+  ensureFactureOverlay();
+  const sheet = document.getElementById('facture-sheet');
+  const list = STATE.activiteFacturesCache || [];
+  sheet.innerHTML = `
+    <h2 style="margin-bottom:6px">📄 Mes factures</h2>
+    <button class="btn btn-grey" style="margin-bottom:14px;padding:7px 12px;font-size:12.5px" onclick="openInfosFacturationSheet()">✏️ Mes informations de facturation</button>
+    ${!list.length ? '<p class="empty">Aucune facture générée pour l\'instant — dépliue une semaine dans "Mes missions" pour en créer une.</p>' : `<div class="vlist">${list.map(f => `
+      <div class="vrow" style="align-items:flex-start">
+        <span>
+          <div style="font-weight:700">${escHtml(f.numero)}</div>
+          <div class="mcard-meta" style="margin-top:2px">${weekLabel(f.periode_debut)} · ${f.nb_missions} mission${f.nb_missions>1?'s':''}</div>
+        </span>
+        <span style="text-align:right;flex-shrink:0">
+          <div style="font-weight:700">${(f.montant_total_cents/100).toFixed(2).replace('.',',')} €</div>
+          <a class="btn btn-grey" style="margin-top:4px;padding:5px 10px;font-size:11.5px" href="${API('transporteur-facture-view')}?token=${f.access_token}&dl=1" target="_blank" rel="noopener">⬇️ PDF</a>
+        </span>
+      </div>`).join('')}</div>`}
+    <button class="btn btn-grey btn-block" style="margin-top:16px" onclick="closeFactureOverlay()">Fermer</button>`;
+}
+// SIRET/adresse facultatifs, utilisés en en-tête de la facture PDF — jusqu'ici
+// seul l'admin pouvait les saisir depuis la fiche transporteur (demande
+// d'Aly, 2026-08-17 : que chacun renseigne les siennes soi-même).
+async function openInfosFacturationSheet(){
+  ensureFactureOverlay();
+  const sheet = document.getElementById('facture-sheet');
+  sheet.innerHTML = '<p class="empty">Chargement…</p>';
+  try{
+    const r = await fetch(API('transporteur-facture'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'get_profil'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    sheet.innerHTML = `
+      <h2 style="margin-bottom:6px">✏️ Mes informations de facturation</h2>
+      <p class="sub" style="margin-bottom:16px">Facultatif — affichées en en-tête de tes factures PDF. Laisse vide si tu ne sais pas encore.</p>
+      <label for="if-siret">SIRET</label>
+      <input type="text" id="if-siret" value="${escHtml(d.siret||'')}" placeholder="123 456 789 00012"/>
+      <label for="if-adresse" style="margin-top:12px">Adresse</label>
+      <input type="text" id="if-adresse" value="${escHtml(d.adresse_facturation||'')}" placeholder="12 rue Exemple, 06000 Nice"/>
+      <div class="err" id="if-err"></div>
+      <button class="btn btn-blue btn-block" style="margin-top:16px" id="if-save-btn" onclick="saveInfosFacturation()">Enregistrer</button>
+      <button class="btn btn-grey btn-block" style="margin-top:10px" onclick="openMesFacturesSheet()">← Retour à mes factures</button>`;
+  }catch(e){
+    sheet.innerHTML = `<p class="empty">Impossible de charger — vérifie ta connexion.</p><button class="btn btn-grey btn-block" style="margin-top:10px" onclick="openMesFacturesSheet()">← Retour</button>`;
+  }
+}
+async function saveInfosFacturation(){
+  const btn = document.getElementById('if-save-btn');
+  const errEl = document.getElementById('if-err');
+  if(errEl) errEl.style.display = 'none';
+  if(btn){ btn.disabled = true; btn.textContent = 'Enregistrement…'; }
+  try{
+    const siret = document.getElementById('if-siret').value;
+    const adresse_facturation = document.getElementById('if-adresse').value;
+    const r = await fetch(API('transporteur-facture'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'update_profil', siret, adresse_facturation})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showTToast('Informations enregistrées ✅');
+    openMesFacturesSheet();
+  }catch(e){
+    if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+    if(btn){ btn.disabled = false; btn.textContent = 'Enregistrer'; }
+  }
 }
 
 const MISSION_PHOTO_LABEL = {

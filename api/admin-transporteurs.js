@@ -135,6 +135,11 @@ module.exports = async (req, res) => {
       if (body.telephone != null) patch.telephone = body.telephone.trim() || null;
       if (body.email != null)     patch.email     = body.email.trim().toLowerCase() || null;
       if (body.notes != null)     patch.notes     = body.notes.trim().slice(0, 2000) || null;
+      // SIRET/adresse de facturation (Module facture hebdomadaire, 2026-08-17)
+      // — facultatifs, utilisés uniquement pour l'en-tête de la facture PDF
+      // que le transporteur envoie à Loc'Air (voir _lib/transporteurFacture.js).
+      if (body.siret != null)                patch.siret                = body.siret.trim() || null;
+      if (body.adresse_facturation != null)  patch.adresse_facturation  = body.adresse_facturation.trim() || null;
       if (body.actif != null)     patch.actif     = Boolean(body.actif);
       if (body.en_pause != null)  patch.en_pause  = Boolean(body.en_pause);
       if (body.pin != null && body.pin.trim())  { patch.pin = hashPin(body.pin.trim()); patch.pin_hashed = true; }

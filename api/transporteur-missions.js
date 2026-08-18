@@ -69,6 +69,7 @@ module.exports = async (req, res) => {
         photo_depart_path, photo_installation_path, photo_retour_path, photo_absence_path, client_notifie_at,
         demo_faite, incident_id,
         vidange_confirmee,
+        signature_client_path,
         probleme_type, probleme_description,
         reservation:reservations (
           id, reservation_origine_id,
@@ -135,6 +136,7 @@ module.exports = async (req, res) => {
       photo_absence_ok:    Boolean(m.photo_absence_path),
       demo_faite:          Boolean(m.demo_faite),
       vidange_ok:          Boolean(m.vidange_confirmee),
+      signature_client_ok: Boolean(m.signature_client_path),
       client_notifie:      Boolean(m.client_notifie_at),
       fenetre_photo_ok:    Boolean(m.reservation?.fenetre_photo_path),
       probleme_type:       m.probleme_type,

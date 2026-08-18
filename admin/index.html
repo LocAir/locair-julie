@@ -105,6 +105,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    largeur (amélioration UX, demande d'Aly). */
 .a-cta-tile{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 10px;font-size:13px;line-height:1.25;text-align:center}
 .a-cta-tile svg{flex-shrink:0}
+/* Bouton "+" accueil — accès rapide mission / prolongation */
+.a-quick-wrap{position:relative;flex-shrink:0}
+.a-quick-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:16px 18px;font-size:13px;font-weight:700;border-radius:var(--r);background:var(--navy);color:#fff;border:none;cursor:pointer;transition:background-color .15s ease;line-height:1;height:100%}
+.a-quick-btn:hover{background:var(--blue)}
+.a-quick-btn .a-quick-plus{font-size:22px;line-height:1;font-weight:300}
+.a-quick-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:220px;background:var(--card);border:1.5px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh-md);z-index:200;overflow:hidden;display:none}
+.a-quick-menu.open{display:block}
+.a-quick-menu button{display:flex;align-items:center;gap:10px;width:100%;padding:13px 16px;background:none;border:none;font-size:14px;font-weight:500;color:var(--black);cursor:pointer;text-align:left;transition:background-color .1s ease;border-bottom:1px solid var(--rule)}
+.a-quick-menu button:last-child{border-bottom:none}
+.a-quick-menu button:hover{background:var(--blue-lt)}
 .err{background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:11px 14px;font-size:13px;margin-top:10px;display:none;line-height:1.5}
 .hidden{display:none !important}
 
@@ -1057,9 +1067,15 @@ function renderSearchResults(d, q){
   box.classList.remove('hidden');
 }
 function searchRowHtml(type, it){
-  if(type==='commandes') return `<div class="a-search-row" data-ref="${escHtml(it.ref||'')}" onclick="goToSearchResult('commandes', ${it.id}, ${it.city_id}, null, this.dataset.ref)">
-    <span><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${isInternalRef(it.ref)?'':escHtml(it.ref)+' · '}${frDate(it.date_debut)} → ${frDate(it.date_fin)}</span></span>
-    <span class="chip ${it.statut}">${(typeof RESA_LABEL!=='undefined'&&RESA_LABEL[it.statut])||it.statut}</span></div>`;
+  if(type==='commandes'){
+    const prolongBtn = it.statut==='confirmee' && it.email
+      ? `<button class="btn btn-grey" style="font-size:11px;padding:4px 9px;flex-shrink:0" onclick="event.stopPropagation();prolongerDepuisRecherche(${escAttr(JSON.stringify({email:it.email,ref:it.ref,prenom:it.prenom,nom:it.nom}))})">📅 Prolonger</button>`
+      : '';
+    return `<div class="a-search-row" data-ref="${escHtml(it.ref||'')}" onclick="goToSearchResult('commandes', ${it.id}, ${it.city_id}, null, this.dataset.ref)" style="gap:8px">
+    <span style="flex:1;min-width:0"><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${isInternalRef(it.ref)?'':escHtml(it.ref)+' · '}${frDate(it.date_debut)} → ${frDate(it.date_fin)}</span></span>
+    <span class="chip ${it.statut}" style="flex-shrink:0">${(typeof RESA_LABEL!=='undefined'&&RESA_LABEL[it.statut])||it.statut}</span>
+    ${prolongBtn}</div>`;
+  }
   if(type==='clients') return `<div class="a-search-row" onclick="goToSearchResult('clients', ${it.id}, ${it.city_id})">
     <span><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${escHtml(it.tel||it.email||'')}</span></span></div>`;
   if(type==='climatiseurs') return `<div class="a-search-row" onclick="goToSearchResult('climatiseurs', ${it.id}, ${it.city_id}, ${it.numero})">
@@ -1100,6 +1116,15 @@ function goToSearchResult(type, id, cityId, numero, ref){
 document.addEventListener('click', e => {
   const wrap = document.getElementById('a-search-wrap');
   if(wrap && !wrap.contains(e.target)) document.getElementById('a-search-results')?.classList.add('hidden');
+});
+// Même comportement pour la recherche client de "Nouvelle réservation"
+// (nr-client-search) — pas de conteneur .a-search-wrap dédié ici, on
+// compare directement au champ + au menu de résultats.
+document.addEventListener('click', e => {
+  const input = document.getElementById('nr-client-search');
+  const results = document.getElementById('nr-client-results');
+  if(!input || !results) return;
+  if(e.target !== input && !results.contains(e.target)) results.classList.add('hidden');
 });
 // Ouvre la réservation liée à une référence — utilisé depuis Incidents pour
 // remonter au détail complet (dates, adresse, statut) sans devoir retaper la
@@ -1437,6 +1462,10 @@ function escHtml(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// Échappe une valeur pour l'attribut onclick="fn('...')" — différent de
+// escHtml : les apostrophes et les antislashes doivent être échappés
+// en premier pour ne pas casser l'argument JS inline.
+function escAttr(s){ return escHtml(String(s==null?'':s)); }
 function safeHref(url) {
   if (!url) return '#';
   const u = String(url).trim();
@@ -1449,6 +1478,28 @@ function safeHref(url) {
 // jour manquantes, statistiques "aujourd'hui" faussées, etc.).
 function todayParisStr(){
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
+// Heure de Paris (h/m) — même logique que _parisNow() du site (index.html),
+// nécessaire pour calculer le créneau d'une réservation Express créée à la
+// main (voir nrToggleExpress ci-dessous).
+function parisNowHM(){
+  const p={};
+  new Intl.DateTimeFormat('fr-FR',{timeZone:'Europe/Paris',hour:'2-digit',minute:'2-digit',hour12:false})
+    .formatToParts(new Date()).forEach(({type,value})=>{p[type]=value;});
+  return {h:+p.hour, m:+p.minute};
+}
+// Créneau Express = heure de la commande + 2h (livraison "sous 2h"), même
+// calcul que sur le site (index.html _expressCreneauStr) — sinon une
+// réservation Express prise par téléphone à 16h partait encore avec un
+// créneau vide (ni "8h-12h" ni l'heure réelle), aussi bien pour le client
+// que pour le transporteur qui reçoit la mission.
+// Toujours arrondi à l'heure pile (demande d'Aly, 2026-08-17, même correctif
+// que _expressCreneauStr côté site) — "00h" pour minuit plutôt que "0h".
+function nrExpressCreneauStr(sep){
+  const {h}=parisNowHM();
+  const fmt=hh=>(hh===0?'00':hh)+'h';
+  let h2=h+2; if(h2>=24)h2-=24;
+  return fmt(h)+sep+fmt(h2);
 }
 
 // wa.me exige un numéro international sans "0" ni "+". Depuis le
@@ -1742,6 +1793,7 @@ function missionMoreActionsHtml(m, d, compact){
             ${!d.reassignLocked?`<button onclick="openEditMissionModal(${m.id})">✏️ Modifier</button>`:''}
             ${(!d.isAutre && !d.reassignLocked)?`<button onclick="openChangeAppareilModal(${m.id})">🔄 Changer le climatiseur</button>`:''}
             ${(!d.isAutre && !d.reassignLocked)?`<button onclick="fixerTarifTransporteur(${m.id},${m.montant_du_cents||0})">💰 Fixer le tarif transporteur</button>`:''}
+            ${(!d.isAutre && !d.reassignLocked && m.type==='recuperation')?`<button onclick="openProlongFromMissionModal(${m.id})">📅 Prolonger la location</button>`:''}
             ${['acceptee','en_route','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
             ${!d.reassignLocked?`<button onclick="openForceCompleteModal(${m.id})">✅ Forcer terminé</button>`:''}
             ${d.mediaBtns.join('')}
@@ -2050,6 +2102,30 @@ function goToRetards(){ LIVRAISONS_FILTER = 'en_retard'; switchAdminTab('livrais
 // "🆕 Créer" déjà présent dans l'onglet Réservations, accessible directement
 // depuis le tableau de bord pour une réservation prise par téléphone.
 function goToNouvelleReservation(){ RESERVATIONS_VIEW = 'creer'; switchAdminTab('reservations'); }
+function toggleQuickMenu(e){ e.stopPropagation(); document.getElementById('a-quick-menu')?.classList.toggle('open'); }
+function closeQuickMenu(){ document.getElementById('a-quick-menu')?.classList.remove('open'); }
+// Accès rapide prolongation depuis l'accueil — ouvre l'onglet Réservations
+// directement sur le formulaire de lookup prolongation (même parcours que
+// l'onglet Réservations → bouton "Prolonger", mais en 1 tap depuis l'accueil).
+function goToProlongation(){ PROLONG_ORIG = null; RESERVATIONS_VIEW = 'prolonger'; switchAdminTab('reservations'); }
+// Prolongation directe depuis un résultat de recherche globale — ferme la
+// recherche, navigue vers l'onglet Réservations → Prolonger, pré-remplit
+// email + ref et lance le lookup automatiquement pour sauter l'étape de saisie.
+async function prolongerDepuisRecherche(data){
+  document.getElementById('a-search-results')?.classList.add('hidden');
+  document.getElementById('a-search-input').value = '';
+  PROLONG_ORIG = null; RESERVATIONS_VIEW = 'prolonger';
+  switchAdminTab('reservations');
+  // Laisser le temps au tab de rendre la toolbar + le formulaire
+  await new Promise(r => setTimeout(r, 400));
+  const emailEl = document.getElementById('pr-email');
+  const refEl   = document.getElementById('pr-ref');
+  if(emailEl) emailEl.value = data.email || '';
+  if(refEl)   refEl.value   = data.ref   || '';
+  // Lance le lookup directement — le client voit sa fiche prolongation sans
+  // avoir à cliquer sur "Rechercher".
+  lookupProlongation();
+}
 
 // ── Actualisation automatique de l'onglet ouvert ──────────────────────────────
 // Ce que voit l'admin ne doit pas se figer pendant qu'un livreur avance sur le
@@ -2154,15 +2230,27 @@ async function loadDashboard(periode, silent){
     // avant le rétroviseur d'hier — un centre de pilotage montre d'abord ce
     // qu'il y a à faire maintenant, les chiffres de la veille viennent après.
     zone.innerHTML = `
-      <div style="display:flex;gap:10px;margin-bottom:16px">
-        <button class="btn btn-blue a-cta-tile" onclick="goToNouvelleReservation()">
+      <div style="display:flex;gap:10px;margin-bottom:16px;align-items:stretch">
+        <button class="btn btn-blue a-cta-tile" onclick="goToNouvelleReservation()" style="flex:1">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5.5" y="4.5" width="13" height="16" rx="2"/><path d="M9 4.5V4a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 4v.5"/><path d="M9 13h6M12 10v6"/></svg>
           <span>Nouvelle réservation</span>
         </button>
-        <button class="btn btn-blue a-cta-tile" onclick="openCreateMissionModal()">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg>
-          <span>Créer une mission</span>
-        </button>
+        <div class="a-quick-wrap">
+          <button class="a-quick-btn" onclick="toggleQuickMenu(event)" title="Mission · Prolongation">
+            <span class="a-quick-plus">+</span>
+            <span style="font-size:11px;opacity:.8">Actions</span>
+          </button>
+          <div class="a-quick-menu" id="a-quick-menu">
+            <button onclick="closeQuickMenu();openCreateMissionModal()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg>
+              Créer une mission
+            </button>
+            <button onclick="closeQuickMenu();goToProlongation()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M12 14v4M10 16h4"/></svg>
+              Prolonger une location
+            </button>
+          </div>
+        </div>
       </div>
       ${d.agregat ? '' : boardHtml(ld.livraisons||[])}
       ${morningBannerHtml(d.hier)}
@@ -2222,6 +2310,7 @@ function dashboardLogistiqueHtml(logistique){
         <div class="stat-tile"><div class="n">${logistique.missions_terminees_periode}</div><div class="l">Terminées (période)</div></div>
         <div class="stat-tile ${logistique.missions_en_retard>0?'warn':''}"><div class="n">${logistique.missions_en_retard}</div><div class="l">En retard</div></div>
         <div class="stat-tile ${logistique.problemes_signales>0?'warn':''}"><div class="n">${logistique.problemes_signales}</div><div class="l">Problèmes signalés</div></div>
+        ${logistique.missions_fait_total!=null?`<div class="stat-tile" title="Chiffre à utiliser pour '+ X clients livrés' sur le site public"><div class="n">${logistique.missions_fait_total}</div><div class="l">Missions total (site)</div></div>`:''}
       </div>
     </div>`;
 }
@@ -4007,6 +4096,10 @@ function nrMatchPromoPct(code, prenom){
 // ailleurs dans l'admin (badges, barème transporteur, contrat PDF) — aucune
 // migration nécessaire, seule la création manuelle ne la renseignait pas.
 let _nrExpress = false;
+// Créneau calculé (heure de la commande + 2h) quand _nrExpress est actif —
+// null sinon (aucune valeur transmise à la création, comportement inchangé
+// pour une réservation normale). Voir nrToggleExpress().
+let _nrCreneauLivraison = null;
 // "Réservation similaire" (même client) : pré-remplit le formulaire avec les
 // infos qui décrivent le CLIENT/le LOGEMENT (identité, adresse, contraintes
 // d'accès) d'une réservation passée, sans jamais recopier ce qui est propre
@@ -4021,6 +4114,59 @@ function duplicateReservation(id){
   if(!res) return;
   NR_DUPLICATE_SOURCE = res;
   setReservationsView('creer');
+}
+// Recherche client existant depuis "Nouvelle réservation" (demande d'Aly,
+// 2026-08-17) : évite de tout retaper à la main pour un client qui rappelle.
+// Cherche dans RESERVATIONS_CACHE (déjà en mémoire, pas de nouvel appel
+// réseau) par nom ou téléphone, dédoublonné par téléphone (garde la
+// réservation la plus récente de chaque client) — puis réutilise
+// duplicateReservation() pour pré-remplir, exactement comme "Réservation
+// similaire".
+function nrSearchClient(query){
+  const box = document.getElementById('nr-client-results');
+  if(!box) return;
+  const q = query.trim().toLowerCase();
+  if(q.length < 2){ box.classList.add('hidden'); box.innerHTML = ''; return; }
+  const seenTel = new Set();
+  const matches = [];
+  // RESERVATIONS_CACHE est déjà trié le plus récent en premier (voir
+  // loadReservations/admin-reservations.js) — garder la 1re occurrence par
+  // téléphone suffit à obtenir la plus récente.
+  for(const r of RESERVATIONS_CACHE){
+    const nom = ((r.prenom||'')+' '+(r.nom||'')).trim().toLowerCase();
+    const tel = (r.tel||'').replace(/\s/g,'');
+    const telNorm = tel.replace(/\D/g,'');
+    // qDigits vide (recherche par nom, aucun chiffre tapé) : ne jamais tenter
+    // le match téléphone dans ce cas — sinon telNorm.includes('') est
+    // toujours vrai (une chaîne "contient" toujours la chaîne vide) et fait
+    // remonter TOUS les clients dès qu'on tape juste un nom.
+    const qDigits = q.replace(/\D/g,'');
+    const matchNom = nom.includes(q);
+    const matchTel = qDigits.length >= 2 && telNorm.includes(qDigits);
+    if(!matchNom && !matchTel) continue;
+    const dedupeKey = telNorm || nom;
+    if(!dedupeKey || seenTel.has(dedupeKey)) continue;
+    seenTel.add(dedupeKey);
+    matches.push(r);
+    if(matches.length >= 8) break;
+  }
+  if(!matches.length){
+    box.innerHTML = '<div class="a-search-empty">Aucun client trouvé.</div>';
+    box.classList.remove('hidden');
+    return;
+  }
+  box.innerHTML = matches.map(r => `
+    <div class="a-search-row" onclick="nrPickClient(${r.id})">
+      <div>
+        <div class="a-search-row-main">${escHtml((r.prenom||'')+' '+(r.nom||''))}</div>
+        <div class="a-search-row-sub">${escHtml(r.tel||'—')}${r.adresse?' · '+escHtml(r.adresse):''}</div>
+      </div>
+    </div>`).join('');
+  box.classList.remove('hidden');
+}
+function nrPickClient(id){
+  document.getElementById('nr-client-results')?.classList.add('hidden');
+  duplicateReservation(id);
 }
 // Applique/retire la remise sur le prix déjà saisi plutôt que de reconstruire
 // tout le calcul à partir de zéro — un prix négocié à la main pour d'autres
@@ -4139,11 +4285,28 @@ function nrToggleExpress(){
   _nrExpress = !_nrExpress;
   document.getElementById('nr-express-btn')?.classList.toggle('on', _nrExpress);
   document.getElementById('nr-express-btn')?.setAttribute('aria-pressed', String(_nrExpress));
+  nrUpdateExpressCreneauDisplay();
   if(_nrExpress){
     const debutEl = document.getElementById('nr-debut');
     if(debutEl){ debutEl.value = todayParisStr(); nrOnDebutChange(); return; }
   }
   nrRecalcPrice();
+}
+// Affiche (et mémorise dans _nrCreneauLivraison, transmis à la création) le
+// créneau réel du client/transporteur en Express — sans ça la réservation
+// partait sans aucun créneau de livraison, contrairement au site (corrigé
+// juste avant, voir index.html _applyCreneauLivDisplay).
+function nrUpdateExpressCreneauDisplay(){
+  const el = document.getElementById('nr-express-creneau');
+  if(!el) return;
+  if(_nrExpress){
+    _nrCreneauLivraison = nrExpressCreneauStr('–');
+    el.textContent = 'Créneau annoncé au client (et au transporteur) : ' + nrExpressCreneauStr(' – ');
+    el.classList.remove('hidden');
+  }else{
+    _nrCreneauLivraison = null;
+    el.classList.add('hidden');
+  }
 }
 // Raccourci "Installation" dans le bloc Devis rapide (nr-install-btn) : un
 // devis se compose au téléphone, et le type d'installation change le prix de
@@ -4348,6 +4511,7 @@ function reservationCreerHtml(){
   _nrPromoDiscount = 0;
   _nrPromoPct = 0;
   _nrExpress = false;
+  _nrCreneauLivraison = null;
   // Usage unique : lu ici puis remis à null, pour qu'un simple retour sur
   // l'onglet "Créer" (sans repasser par "Réservation similaire") reparte
   // d'un formulaire vierge comme avant.
@@ -4359,7 +4523,18 @@ function reservationCreerHtml(){
     <div class="card">
       <h2>Nouvelle réservation</h2>
       <p class="sub" style="margin-bottom:16px">Reprend tous les champs du formulaire du site — pour saisir toi-même une réservation prise par téléphone.</p>
-      ${d ? `<div style="background:var(--blue-lt);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.5"><strong>🔁 Infos reprises de ${escHtml(d.ref||'')}</strong> (${escHtml(d.prenom||'')} ${escHtml(d.nom||'')})<br>Dates, quantité, prix et CGV sont à ressaisir — <strong>vérifie que l'adresse et le logement sont toujours d'actualité.</strong></div>` : ''}
+      <!-- Recherche client existant (demande d'Aly, 2026-08-17) : pour un
+           client qui rappelle, retrouver ses coordonnées/adresse au lieu de
+           tout retaper à la main. Cherche dans RESERVATIONS_CACHE (déjà
+           chargé par l'onglet Réservations) et réutilise exactement le même
+           mécanisme de pré-remplissage que "Réservation similaire"
+           (duplicateReservation) — un seul système à maintenir, déjà testé. -->
+      <label for="nr-client-search">Client déjà connu ? <span style="text-transform:none;font-weight:400;color:var(--grey-soft)">(optionnel)</span></label>
+      <div style="position:relative">
+        <input type="text" id="nr-client-search" placeholder="Nom ou téléphone…" autocomplete="off" oninput="nrSearchClient(this.value)" onfocus="nrSearchClient(this.value)"/>
+        <div id="nr-client-results" class="a-search-results hidden"></div>
+      </div>
+      ${d ? `<div style="background:var(--blue-lt);border-radius:12px;padding:12px 14px;margin:12px 0 16px;font-size:13px;line-height:1.5"><strong>🔁 Infos reprises de ${escHtml(d.ref||'')}</strong> (${escHtml(d.prenom||'')} ${escHtml(d.nom||'')})<br>Dates, quantité, prix et CGV sont à ressaisir — <strong>vérifie que l'adresse et le logement sont toujours d'actualité.</strong></div>` : '<div style="margin-bottom:16px"></div>'}
 
       <div class="section-title">💶 Devis rapide</div>
       <div class="devis-box">
@@ -4383,6 +4558,7 @@ function reservationCreerHtml(){
           </span>
           <span class="nr-express-price">+60 €</span>
         </button>
+        <div class="sub hidden" id="nr-express-creneau" style="margin:-4px 0 10px;font-weight:600;color:var(--gold-d)"></div>
         <div class="periods" style="margin:8px 0 2px;flex-wrap:wrap;height:auto;background:transparent;padding:0">
           ${[7,14,21,28].map(days=>`<button type="button" class="nr-dur-btn" data-days="${days}" onclick="nrSetDuration(${days})" style="flex:none;padding:7px 16px">${days} j</button>`).join('')}
         </div>
@@ -4460,7 +4636,13 @@ function reservationCreerHtml(){
       <details class="nr-advanced">
         <summary><span style="white-space:nowrap">Options avancées</span> <span style="font-weight:400;color:var(--grey-soft);text-transform:none;letter-spacing:0">(optionnel)</span></summary>
         <div class="nr-advanced-body">
-          ${typeClientFieldsHtml('nr', d)}
+          ${typeClientFieldsHtml('nr', d, `
+            <button type="button" class="btn btn-grey btn-block" style="margin-top:12px" id="nr-devis-btn" onclick="nrEnvoyerDevis()">📨 Envoyer un devis par email</button>
+            <p class="sub" style="margin-top:4px;font-size:11.5px">Utilise le client, les dates, la quantité et le prix déjà saisis ci-dessus — part immédiatement par email (Brevo), sans créer de réservation.</p>
+          `)}
+          <button type="button" class="btn btn-grey btn-block" style="margin-top:12px" id="nr-apercu-btn" onclick="nrApercuFacture()">📄 Aperçu de facture</button>
+          <p class="sub" style="margin:4px 0 0;font-size:11.5px">Ouvre un PDF avec le détail des montants tel qu'il apparaîtrait sur la vraie facture — pour vérifier avant de créer la réservation.</p>
+          <div class="err" id="nr-devis-err"></div>
           <div class="inline-form" style="margin-top:8px">
             <div>
               <label for="nr-date-recup">Date récup. souhaitée (optionnelle)</label>
@@ -4938,7 +5120,11 @@ function reservationTableRowHtml(res){
 }
 // Champs "type de client" (particulier/entreprise) réutilisés dans les 2
 // formulaires de création manuelle (Réservations + "Créer une mission").
-function typeClientFieldsHtml(prefix, v){
+// `extraHtml` (optionnel) : contenu additionnel affiché uniquement en mode
+// Entreprise, sous les champs facturation — utilisé par "Nouvelle
+// réservation" pour le bouton "Envoyer un devis" (voir reservationCreerHtml),
+// jamais par "Créer une mission" qui n'en a pas besoin.
+function typeClientFieldsHtml(prefix, v, extraHtml){
   v = v || {};
   const isEnt = v.type_client === 'entreprise';
   return `
@@ -4952,6 +5138,7 @@ function typeClientFieldsHtml(prefix, v){
         <input type="text" id="${prefix}-raison" value="${escHtml(v.raison_sociale||'')}"/>
         <label for="${prefix}-siret" style="margin-top:8px">SIRET (optionnel)</label>
         <input type="text" id="${prefix}-siret" value="${escHtml(v.siret||'')}"/>
+        ${extraHtml||''}
       </div>`;
 }
 function typeClientPayload(prefix){
@@ -4961,6 +5148,93 @@ function typeClientPayload(prefix){
     raison_sociale: type_client==='entreprise' ? (document.getElementById(`${prefix}-raison`)?.value.trim()||'') : '',
     siret:          type_client==='entreprise' ? (document.getElementById(`${prefix}-siret`)?.value.trim()||'') : '',
   };
+}
+// Champs communs à "Aperçu de facture" et "Envoyer un devis" — lus
+// directement depuis le formulaire "Nouvelle réservation" tel qu'il est
+// rempli à cet instant, jamais recalculés indépendamment (même prix que
+// celui affiché à l'admin dans le récap panier ci-dessus).
+function nrCollectDevisFields(){
+  return {
+    prenom: document.getElementById('nr-prenom').value.trim(),
+    nom: document.getElementById('nr-nom').value.trim(),
+    email: document.getElementById('nr-email').value.trim(),
+    tel: document.getElementById('nr-tel').value.trim(),
+    adresse: document.getElementById('nr-adresse').value.trim(),
+    code_postal: (document.getElementById('nr-cp').value||'').trim(),
+    date_debut: document.getElementById('nr-debut').value,
+    date_fin: document.getElementById('nr-fin').value,
+    quantite: parseInt(document.getElementById('nr-qte').value)||1,
+    installation: document.getElementById('nr-installation')?.value || '',
+    express: _nrExpress,
+    prix_total_cents: Math.round((parseFloat(document.getElementById('nr-prix').value)||0)*100),
+    ...typeClientPayload('nr'),
+  };
+}
+// "Aperçu de facture" (demande d'Aly, 2026-08-17) : génère le PDF tel qu'il
+// sortirait réellement, sans rien créer ni sauvegarder — pour vérifier le
+// détail des montants avant de créer la réservation pour de vrai.
+async function nrApercuFacture(){
+  const btn = document.getElementById('nr-apercu-btn');
+  const errEl = document.getElementById('nr-devis-err');
+  if(errEl) errEl.style.display = 'none';
+  const f = nrCollectDevisFields();
+  if(!f.date_debut || !f.date_fin){
+    if(errEl){ errEl.textContent = "Renseigne les dates de livraison et de récupération avant l'aperçu."; errEl.style.display = 'block'; }
+    return;
+  }
+  if(btn){ btn.disabled = true; btn.textContent = 'Génération…'; }
+  try{
+    const r = await fetch(API('admin-facture-preview'), {method:'POST', headers:authHeaders(), body:JSON.stringify(f)});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const bin = atob(d.pdf_base64);
+    const bytes = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+    window.open(URL.createObjectURL(new Blob([bytes], {type:'application/pdf'})), '_blank');
+  }catch(e){
+    if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = '📄 Aperçu de facture'; }
+  }
+}
+// "Envoyer un devis par email" (demande d'Aly, 2026-08-17) : réutilise le
+// module Devis déjà existant (onglet 📝 Devis, api/admin-devis.js) plutôt
+// que d'inventer un 2e circuit d'envoi — crée un devis à partir des
+// informations déjà saisies ici, puis l'envoie immédiatement. Le devis
+// reste ensuite consultable/relançable comme n'importe quel autre depuis
+// l'onglet Devis (aucune double gestion).
+async function nrEnvoyerDevis(){
+  const btn = document.getElementById('nr-devis-btn');
+  const errEl = document.getElementById('nr-devis-err');
+  if(errEl) errEl.style.display = 'none';
+  const f = nrCollectDevisFields();
+  if(!f.raison_sociale){
+    if(errEl){ errEl.textContent = 'Raison sociale requise pour envoyer un devis (mode Entreprise).'; errEl.style.display = 'block'; }
+    return;
+  }
+  if(!f.email){
+    document.getElementById('nr-email')?.classList.add('field-err');
+    if(errEl){ errEl.textContent = 'Email du client requis pour envoyer un devis.'; errEl.style.display = 'block'; }
+    return;
+  }
+  if(btn){ btn.disabled = true; btn.textContent = 'Envoi…'; }
+  try{
+    const createR = await fetch(API('admin-devis'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+      action: 'create', prenom: f.prenom, nom: f.nom, raison_sociale: f.raison_sociale, siret: f.siret,
+      email: f.email, tel: f.tel, date_debut: f.date_debut, date_fin: f.date_fin,
+      quantite: f.quantite, installation: f.installation, prix_propose_cents: f.prix_total_cents,
+    })});
+    const createD = await createR.json();
+    if(!createR.ok) throw new Error(createD.error||'Erreur');
+    const sendR = await fetch(API('admin-devis'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'send', id:createD.devis.id})});
+    const sendD = await sendR.json();
+    if(!sendR.ok) throw new Error(sendD.error||"Échec de l'envoi");
+    showToast(`Devis envoyé par email à ${f.email} ✅`, 'success');
+  }catch(e){
+    if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+  }finally{
+    if(btn){ btn.disabled = false; btn.textContent = '📨 Envoyer un devis par email'; }
+  }
 }
 // Champs logistiques (étage/ascenseur/fenêtre/installation/instructions
 // d'accès/créneau) — sans eux une mission créée à la main dans l'admin arrive
@@ -4977,6 +5251,21 @@ const FENETRE_OPTIONS = ['À confirmer', 'Fenêtre coulissante', 'Fenêtre à ba
 // tout de suite, sans attendre qu'un autre champ (dates/quantité) le fasse à
 // sa place. Vide par défaut : aucun changement pour les formulaires sans
 // calcul de prix en direct (fiche réservation, "Créer une mission").
+// Choix simple plutôt qu'un texte libre à taper de zéro (demande d'Aly :
+// "créer une mission doit être très simple") — mêmes créneaux que ceux déjà
+// utilisés ailleurs dans l'app (créneau de récupération du formulaire de
+// réservation, créneau standard du site). "14h – 17h" gardé pour les rares
+// cas où le client n'est disponible que sur une plage restreinte.
+function creneauSelectHtml(id, label){
+  return `<label for="${id}">${label}</label>
+  <select id="${id}">
+    <option value="">— Non précisé —</option>
+    <option value="8h – 12h">8h – 12h (matin)</option>
+    <option value="8h – 10h">8h – 10h</option>
+    <option value="10h – 12h">10h – 12h</option>
+    <option value="14h – 17h">14h – 17h</option>
+  </select>`;
+}
 function logisticsFieldsHtml(prefix, v, onInstallChange){
   v = v || {};
   return `
@@ -5038,6 +5327,17 @@ async function createReservation(confirmer){
     cgv_accepted: document.getElementById('nr-cgv').checked,
     ...typeClientPayload('nr'),
     ...logisticsPayload('nr'),
+    // Doit rester APRÈS le spread de logisticsPayload('nr') ci-dessus : ce
+    // dernier renvoie un creneau_livraison fixe ('8h–12h') qui écraserait
+    // silencieusement le créneau Express calculé (ex. "16h30–18h30") si ce
+    // champ passait avant lui dans l'objet — même piège déjà connu et
+    // contourné pour la modification d'une réservation (voir "delete
+    // body.creneau_livraison" plus haut dans ce fichier). Sans lui, une
+    // réservation Express créée à la main partait avec le mauvais créneau,
+    // pour le client comme pour le transporteur. Hors Express, on garde le
+    // même repli fixe '8h–12h' que logisticsPayload() renvoyait déjà avant
+    // ce correctif — seul le cas Express change de comportement ici.
+    creneau_livraison: _nrCreneauLivraison || '8h–12h',
   };
   // Champs manquants pointés directement en rouge + focus sur le premier —
   // sur un formulaire de cette longueur, un message générique en bas de page
@@ -5414,6 +5714,7 @@ async function restoreReservation(id){
 // Historique complet (pas seulement les missions en cours) pour qu'un manager
 // puisse retrouver n'importe quelle mission passée et revoir ses preuves.
 let TRANSPORTEURS_CACHE = [];
+let FACTURES_TRANSPORTEUR_CACHE = [];
 let LIVRAISONS_CACHE = [];
 let LIVRAISONS_FILTER = 'toutes';
 let LIVRAISONS_SHOW_MASQUEES = false;
@@ -5539,10 +5840,8 @@ function renderLivraisonsToolbar(){
 // coup, correction d'un oubli de dispatch).
 const MISSION_TYPE_LABEL = { livraison: '📦 Livraison', recuperation: '🔄 Récupération', changement: '🔁 Remplacement', autre: '🧳 Mission libre' };
 function toggleCreateMissionMode(value){
-  const isNew = value === '__new__';
   const isAutre = value === '__autre__';
-  document.getElementById('cm-new-client')?.classList.toggle('hidden', !isNew);
-  document.getElementById('cm-existing-resa')?.classList.toggle('hidden', isNew || isAutre);
+  document.getElementById('cm-existing-resa')?.classList.toggle('hidden', isAutre);
   document.getElementById('cm-autre')?.classList.toggle('hidden', !isAutre);
 }
 async function openCreateMissionModal(){
@@ -5576,37 +5875,17 @@ async function openCreateMissionModal(){
       <h2 style="margin-bottom:14px">➕ Créer une mission</h2>
       <label for="cm-resa">Réservation</label>
       <select id="cm-resa" onchange="toggleCreateMissionMode(this.value)">
-        <option value="__new__">+ Nouveau client…</option>
-        <option value="__autre__">🧳 Mission libre (hors réservation)</option>
         ${resaOptions}
+        <option value="__autre__">🧳 Mission libre (hors réservation)</option>
       </select>
-      <div id="cm-new-client" style="margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--r-sm)">
-        <p class="sub" style="margin:0 0 10px">Crée le client, sa réservation, et ses missions de livraison/récupération automatiquement — comme dans l'onglet Réservations.</p>
-        <div class="eyebrow" style="margin-bottom:8px">Client</div>
-        <label for="cm-c-prenom">Prénom *</label>
-        <input type="text" id="cm-c-prenom"/>
-        <label for="cm-c-nom" style="margin-top:8px">Nom *</label>
-        <input type="text" id="cm-c-nom"/>
-        <label for="cm-c-tel" style="margin-top:8px">Téléphone</label>
-        <input type="tel" id="cm-c-tel"/>
-        <div style="margin-top:8px">${typeClientFieldsHtml('cm-c')}</div>
-        <div class="eyebrow" style="margin:14px 0 8px">Logement</div>
-        <label for="cm-c-adresse">Adresse *</label>
-        <input type="text" id="cm-c-adresse"/>
-        ${logisticsFieldsHtml('cm-c')}
-        <div class="eyebrow" style="margin:14px 0 8px">Dates &amp; quantité</div>
-        <div class="inline-form">
-          <div><label for="cm-c-debut">Date livraison *</label><input type="date" id="cm-c-debut" value="${today}" oninput="document.getElementById('cm-c-debut-preview').textContent = this.value ? frDate(this.value) : ''"/><div id="cm-c-debut-preview" style="font-size:11.5px;color:var(--grey);margin-top:3px">${frDate(today)}</div></div>
-          <div><label for="cm-c-fin">Date récupération *</label><input type="date" id="cm-c-fin" oninput="document.getElementById('cm-c-fin-preview').textContent = this.value ? frDate(this.value) : ''"/><div id="cm-c-fin-preview" style="font-size:11.5px;color:var(--grey);margin-top:3px"></div></div>
-        </div>
-        <div class="inline-form" style="margin-top:8px">
-          <div><label for="cm-c-qte">Quantité</label><input type="number" id="cm-c-qte" min="1" max="5" value="1"/></div>
-          <div><label for="cm-c-prix">Prix total (€)</label><input type="number" id="cm-c-prix" min="0" step="0.5"/></div>
-        </div>
-        <label style="margin-top:10px;display:flex;align-items:center;gap:8px;text-transform:none;font-weight:500;font-size:13.5px;color:var(--black)">
-          <input type="checkbox" id="cm-c-cgv" style="width:auto"/> Le client a été informé et accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">CGV</a> ainsi que les <a href="/cgv#obligations" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">conditions d'utilisation du climatiseur</a> (comme sur le site)
-        </label>
-      </div>
+      <!-- Raccourci "+ Nouveau client…" supprimé (demande d'Aly, 2026-08-17) :
+           ce mini-formulaire dupliquait la création de réservation de l'onglet
+           "Nouvelle réservation", mais sans son calcul automatique du prix
+           (code postal, durée, express...) — le prix devait être tapé à la
+           main ici, un vrai risque d'erreur. Un seul chemin maintenant :
+           l'onglet "Nouvelle réservation", qui génère déjà les missions
+           livraison/récupération automatiquement à la confirmation. -->
+      <p class="sub" style="margin-top:6px;font-size:12px">Le client n'est pas dans la liste ? Crée d'abord sa réservation depuis l'onglet <strong>Réservations → Nouvelle réservation</strong> — les missions de livraison/récupération sont générées automatiquement.</p>
       <div id="cm-autre" class="hidden" style="margin-top:10px;padding:12px;background:var(--bg);border-radius:var(--r-sm)">
         <p class="sub" style="margin:0 0 10px">Pour une tâche qui ne concerne pas un client (ex. aller chercher du matériel livré par un fournisseur et le ramener au box). Pas de barème ici — tu fixes le tarif toi-même. Aucun champ n'est obligatoire ici : remplis juste ce que tu sais, tu pourras compléter plus tard.</p>
         <label for="cm-a-titre">Instructions (optionnel)</label>
@@ -5620,7 +5899,7 @@ async function openCreateMissionModal(){
         </select>
         <div class="inline-form" style="margin-top:8px">
           <div><label for="cm-a-date">Date</label><input type="date" id="cm-a-date" value="${today}"/></div>
-          <div><label for="cm-a-creneau">Créneau</label><input type="text" id="cm-a-creneau" placeholder="8h–10h"/></div>
+          <div>${creneauSelectHtml('cm-a-creneau','Créneau')}</div>
         </div>
         <label for="cm-a-tarif" style="margin-top:8px">Tarif payé au transporteur (€)</label>
         <input type="number" id="cm-a-tarif" min="0" step="0.5" placeholder="0"/>
@@ -5637,7 +5916,7 @@ async function openCreateMissionModal(){
         </select>
         <div class="inline-form" style="margin-top:12px">
           <div><label for="cm-date">Date</label><input type="date" id="cm-date" value="${today}"/></div>
-          <div><label for="cm-creneau">Créneau</label><input type="text" id="cm-creneau" placeholder="8h–10h"/></div>
+          <div>${creneauSelectHtml('cm-creneau','Créneau')}</div>
         </div>
         <label for="cm-appareil" style="margin-top:12px">Climatiseur (optionnel)</label>
         <select id="cm-appareil">
@@ -5653,7 +5932,9 @@ async function openCreateMissionModal(){
       <div class="err" id="cm-err"></div>
     </div>`;
   document.body.appendChild(overlay);
-  toggleCreateMissionMode('__new__');
+  // Sélection par défaut du menu (1re réservation confirmée s'il y en a,
+  // sinon "Mission libre") — reflète l'état réel affiché par le <select>.
+  toggleCreateMissionMode(document.getElementById('cm-resa')?.value || '__autre__');
   const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
   cancelBtn.onclick = closeModal;
   okBtn.onclick = async () => {
@@ -5661,49 +5942,6 @@ async function openCreateMissionModal(){
     errEl.style.display = 'none';
     okBtn.disabled = true;
     try{
-      // "+ Nouveau client" : crée le client + sa réservation, confirmée
-      // immédiatement (comme dans l'onglet Réservations) — ça suffit, la
-      // confirmation crée déjà toute seule les missions livraison/récupération
-      // et les dispatche, inutile (et faux) d'en recréer une par-dessus.
-      if(document.getElementById('cm-resa').value === '__new__'){
-        // Même exigence que l'onglet Réservations (case CGV/CGL cochée) —
-        // ici recueillie verbalement par l'admin au téléphone, mais tracée
-        // pareil (cgv_acceptations) pour garder le même dossier légal
-        // qu'une commande web. Sans ce contrôle côté client, l'appel serveur
-        // était systématiquement rejeté (400) sans que rien à l'écran
-        // n'explique pourquoi ni ne permette de le confirmer.
-        if(!document.getElementById('cm-c-cgv').checked){
-          errEl.textContent = "Confirme que le client accepte les CGV et les conditions d'utilisation avant de créer la réservation.";
-          errEl.style.display = 'block';
-          okBtn.disabled = false;
-          return;
-        }
-        // Aucun champ obligatoire ici : ce qui manque est complété côté
-        // serveur avec des valeurs par défaut sûres (voir admin-reservations.js)
-        // — utile pour une réservation prise vite au téléphone, à compléter
-        // plus tard depuis la fiche client.
-        const prenom = document.getElementById('cm-c-prenom').value.trim();
-        const nom = document.getElementById('cm-c-nom').value.trim();
-        const adresse = document.getElementById('cm-c-adresse').value.trim();
-        const date_debut = document.getElementById('cm-c-debut').value;
-        const date_fin = document.getElementById('cm-c-fin').value;
-        const rr = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
-          action: 'create', prenom, nom, adresse, date_debut, date_fin,
-          tel: document.getElementById('cm-c-tel').value.trim(),
-          quantite: document.getElementById('cm-c-qte').value,
-          prix_total_cents: Math.round((parseFloat(document.getElementById('cm-c-prix').value)||0)*100),
-          cgv_accepted: true,
-          ...typeClientPayload('cm-c'),
-          ...logisticsPayload('cm-c'),
-        })});
-        const rd = await rr.json();
-        if(!rr.ok) throw new Error(rd.error||'Erreur lors de la création du client');
-        if(rd.reservation) RESERVATIONS_CACHE.unshift(rd.reservation);
-        closeModal();
-        loadLivraisons();
-        showToast('Client et réservation créés — missions générées automatiquement', 'success');
-        return;
-      }
       if(document.getElementById('cm-resa').value === '__autre__'){
         // Aucun champ obligatoire ici non plus — un tarif vide part à 0€,
         // à corriger plus tard depuis la liste si besoin.
@@ -6396,6 +6634,99 @@ function openForceCompleteModal(livraisonId){
   };
 }
 
+// Prolongation manuelle depuis la carte mission (menu ⋯ › 📅 Prolonger).
+// Conçue pour être utilisée en 20 secondes pendant un appel téléphonique :
+// l'admin choisit la nouvelle date, le prix se calcule seul, et le client
+// reçoit un SMS avec son lien de paiement Stripe sécurisé. Option "Déjà
+// payé" si le règlement est immédiat (CB par téléphone, virement, espèces).
+function openProlongFromMissionModal(livraisonId){
+  const m = LIVRAISONS_CACHE.find(x => x.id === livraisonId);
+  if(!m || !m.reservation){ return showToast('Mission introuvable', 'error'); }
+  const res = m.reservation;
+  // orig_id = réservation d'origine (pas une prolongation intermédiaire)
+  const origId = res.reservation_origine_id || res.id;
+  const dateFin = res.date_fin;
+  const qte = res.quantite || 1;
+  const origDays = prDiffDays(res.date_debut, dateFin);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <h2 style="margin-bottom:4px">📅 Prolonger la location</h2>
+      <div style="background:var(--blue-lt);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <p style="font-weight:700;margin:0">${escHtml((res.prenom||'')+' '+(res.nom||''))}</p>
+        <p class="sub" style="margin:2px 0 0">Fin actuelle : ${frDate(dateFin)} · ${qte} clim${qte>1?'s':''}</p>
+      </div>
+      <label for="pm-newdate">Nouvelle date de fin *</label>
+      <input type="date" id="pm-newdate" min="${prAddDay(dateFin)}" style="margin-bottom:6px"/>
+      <p id="pm-price-note" class="sub" style="margin-bottom:6px;display:none;color:var(--blue)"></p>
+      <label for="pm-prix">Prix de la prolongation (€)</label>
+      <input type="number" id="pm-prix" min="0" step="0.5" placeholder="Calculé auto"/>
+      <p class="sub" style="font-size:12px;margin-top:4px">Grille tarifaire automatique — modifiable si arrangement téléphonique différent.</p>
+      <div class="modal-actions" style="margin-top:16px;flex-direction:column;gap:8px">
+        <button class="btn btn-blue" id="pm-btn-sms">📱 Envoyer lien de paiement par SMS</button>
+        <button class="btn btn-grey" id="pm-btn-confirme">✅ Confirmer (paiement déjà reçu)</button>
+        <button class="btn btn-grey">Annuler</button>
+      </div>
+      <div class="err" id="pm-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  const dateInput = overlay.querySelector('#pm-newdate');
+  const prixInput = overlay.querySelector('#pm-prix');
+  const priceNote = overlay.querySelector('#pm-price-note');
+  const errEl     = overlay.querySelector('#pm-err');
+
+  dateInput.oninput = () => {
+    const nd = dateInput.value;
+    if(!nd || nd <= dateFin){ priceNote.style.display='none'; return; }
+    const ext = prDiffDays(dateFin, nd);
+    const totalDays = origDays + ext;
+    const price = (prCalcBase(totalDays) - prCalcBase(origDays)) * qte;
+    prixInput.value = price;
+    priceNote.textContent = `+ ${ext} jour${ext>1?'s':''} → ${price} €`;
+    priceNote.style.display = 'block';
+  };
+
+  async function submitProlong(confirmer){
+    errEl.style.display = 'none';
+    const newDateFin = dateInput.value;
+    if(!newDateFin || newDateFin <= dateFin){
+      errEl.textContent = 'Choisis une date postérieure à la fin actuelle.';
+      errEl.style.display = 'block'; return;
+    }
+    const prixCents = Math.round((parseFloat(prixInput.value)||0)*100);
+    overlay.querySelectorAll('.btn').forEach(b => b.disabled = true);
+    try{
+      const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+        action:'create_prolongation', orig_id:origId, new_date_fin:newDateFin,
+        prix_total_cents:prixCents, confirmer,
+      })});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      if(d.reservation) RESERVATIONS_CACHE.unshift(d.reservation);
+      if(confirmer){
+        showToast(`✅ Prolongation confirmée — fin repoussée`, 'success');
+      } else {
+        const via = d.lien_sms_envoye ? 'SMS' : (d.lien_email_envoye ? 'email' : null);
+        showToast(via ? `📱 Lien de paiement envoyé par ${via} à ${escHtml(res.prenom||'le client')}` : `Prolongation créée — lien à envoyer manuellement`, d.lien_envoye?'success':'warning');
+      }
+      loadLivraisons();
+    }catch(e){
+      overlay.querySelectorAll('.btn').forEach(b => b.disabled = false);
+      errEl.textContent = e.message; errEl.style.display = 'block';
+    }
+  }
+
+  const [smsBtn, confirmeBtn, cancelBtn] = overlay.querySelectorAll('.btn');
+  smsBtn.onclick      = () => submitProlong(false);
+  confirmeBtn.onclick = () => submitProlong(true);
+  cancelBtn.onclick   = closeModal;
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+}
+
 // Fixe manuellement le montant payé au transporteur pour cette mission
 // précise (ex. mission hors zone à 95€ au lieu du barème standard de la
 // ville) — empêche le recalcul automatique au passage à "fait" côté
@@ -6891,6 +7222,11 @@ function editFiche(id){
       <input type="text" id="fiche-email" value="${escHtml(t.email||'')}" placeholder="osama@email.fr"/>
       <label for="fiche-notes" style="margin-top:12px">Informations supplémentaires</label>
       <textarea id="fiche-notes" placeholder="Véhicule, remarques, préférences…">${escHtml(t.notes||'')}</textarea>
+      <label for="fiche-siret" style="margin-top:12px">SIRET (pour sa facture hebdomadaire)</label>
+      <input type="text" id="fiche-siret" value="${escHtml(t.siret||'')}" placeholder="123 456 789 00012"/>
+      <label for="fiche-adresse-fact" style="margin-top:12px">Adresse de facturation</label>
+      <input type="text" id="fiche-adresse-fact" value="${escHtml(t.adresse_facturation||'')}" placeholder="12 rue Exemple, 06000 Nice"/>
+      <p class="sub" style="margin-top:2px">Facultatif — utilisé sur la facture PDF qu'il envoie à Loc'Air (bouton "Facture de la semaine", onglet Mes gains).</p>
       <label style="margin-top:16px">Types de mission autorisés</label>
       <p class="sub" style="margin:4px 0 10px;font-size:12px">Cocher tout = aucune restriction</p>
       ${missionTypesHtml('fiche', activeKeys)}
@@ -6912,6 +7248,8 @@ function editFiche(id){
     const telephone = document.getElementById('fiche-tel').value.trim();
     const email = document.getElementById('fiche-email').value.trim();
     const notes = document.getElementById('fiche-notes').value.trim();
+    const siret = document.getElementById('fiche-siret').value.trim();
+    const adresse_facturation = document.getElementById('fiche-adresse-fact').value.trim();
     const types = collectMissionTypes('fiche');
     const allChecked = types.length === MISSION_TYPES_DEF.length;
     const villes = collectVillesForm('fiche');
@@ -6920,7 +7258,7 @@ function editFiche(id){
     try{
       const r = await fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
         action:'update', id:t.id,
-        nom, telephone, email, notes,
+        nom, telephone, email, notes, siret, adresse_facturation,
         types_autorises: allChecked ? [] : types,
         villes, disponibilites,
       })});
@@ -7212,9 +7550,10 @@ function transporteurRevenusCardHtml(t){
         <span class="row-title" style="font-size:13px">${m.type==='livraison'?'📦 Livraison':'🔄 Récupération'} — ${escHtml(m.client||'—')}</span>
         <span class="chip ${PAIEMENT_MISSION_CHIP[m.statut_paiement]||''}">${PAIEMENT_MISSION_LABEL[m.statut_paiement]||m.statut_paiement}</span>
       </div>
-      <div class="row-meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span>${m.fait_at?frDate(m.fait_at.slice(0,10)):'—'} · ${euros(m.montant_cents)}</span>
-        <button class="btn btn-grey" style="padding:2px 9px;font-size:11px" onclick="modifierMontantMission(${m.id},${m.montant_cents},${m.statut_paiement==='paye'})">✏️ Modifier</button>
+      <div class="row-meta" style="margin-top:2px;font-weight:600;color:var(--black2)">${m.fait_at?frDateAvecJour(m.fait_at.slice(0,10)):'—'}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <span style="font-family:var(--disp);font-size:18px;font-weight:600;color:var(--black)">${euros(m.montant_cents)}</span>
+        <button class="btn btn-grey" style="padding:5px 11px;font-size:11.5px" onclick="modifierMontantMission(${m.id},${m.montant_cents},${m.statut_paiement==='paye'})">✏️ Modifier</button>
       </div>
     </div>`).join('') : '';
   // Validation humaine obligatoire avant paiement (Partie 9) : ce qui est "à
@@ -7234,6 +7573,8 @@ function transporteurRevenusCardHtml(t){
       ${t.non_verse_cents>0
         ?`<button class="btn btn-green btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.non_verse_cents})">✅ Marquer comme versé (${euros(t.non_verse_cents)})</button>`
         :(t.demande_en_cours?`<button class="btn btn-grey btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', 0)">Marquer la demande comme réglée (rien à verser)</button>`:'')}
+      <button class="btn btn-block" style="margin-top:8px;background:var(--gold-lt);color:var(--gold-d);border:1.5px solid var(--gold)" onclick="openPrimeModal(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}')">🏆 Prime de fin de saison</button>
+      <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="openFacturesTransporteursModal(${t.id})">🧾 Voir ses factures</button>
       ${t.missions.length?`
       <details style="margin-top:12px">
         <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Voir le détail (${t.missions.length} mission${t.missions.length>1?'s':''})</summary>
@@ -7302,6 +7643,63 @@ function verserMaintenant(id, nom, montantCents){
       showToast(d.montant_cents>0 ? `${euros(d.montant_cents)} marqués comme versés` : 'Demande de virement réglée', 'success');
     }catch(e){ showToast(e.message, 'error'); }
   }, {danger:true, yesLabel: montantCents>0 ? 'Confirmer le virement' : 'Marquer comme réglée'});
+}
+// Prime de fin de saison (demande d'Aly, 2026-08-17) : bonus ponctuel pour un
+// mois donné, distinct de la rémunération au barème par mission — s'ajoute
+// simplement au montant "à verser" (même mécanique que "Mission libre",
+// voir admin-virements.js action 'creer_prime'). Envoie automatiquement un
+// email de félicitations au transporteur avec ses stats du mois, s'il a une
+// adresse email enregistrée sur sa fiche.
+function openPrimeModal(transporteurId, transporteurNom){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  const now = new Date();
+  const defaultMois = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:420px">
+      <h2 style="margin-bottom:6px">🏆 Prime de fin de saison</h2>
+      <p class="sub" style="margin-bottom:16px">Pour ${escHtml(transporteurNom)}. S'ajoute automatiquement à son solde à verser. Un email de félicitations avec ses statistiques du mois lui est envoyé s'il a une adresse email enregistrée.</p>
+      <label for="prime-mois">Mois concerné</label>
+      <input type="month" id="prime-mois" value="${defaultMois}"/>
+      <label for="prime-montant" style="margin-top:10px">Montant de la prime (€)</label>
+      <input type="number" id="prime-montant" min="0" step="1" placeholder="ex. 150"/>
+      <div class="err" id="prime-err"></div>
+      <div class="modal-actions" style="margin-top:16px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Créditer la prime</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const errEl = document.getElementById('prime-err');
+    errEl.style.display = 'none';
+    const mois = document.getElementById('prime-mois').value;
+    const montant = parseFloat(document.getElementById('prime-montant').value);
+    if(!mois){ errEl.textContent = 'Choisis le mois concerné.'; errEl.style.display = 'block'; return; }
+    if(!Number.isFinite(montant) || montant <= 0){ errEl.textContent = 'Montant invalide.'; errEl.style.display = 'block'; return; }
+    okBtn.disabled = true;
+    try{
+      const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({
+        action: 'creer_prime', transporteur_id: transporteurId, mois, montant_cents: Math.round(montant*100),
+      })});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      TAB_AUTO_REFRESH[CURRENT_TAB]?.();
+      const emailTxt = !d.a_email
+        ? " — ce transporteur n'a pas d'adresse email enregistrée, aucun mail envoyé."
+        : (d.email_envoye ? ' — email de félicitations envoyé.' : ' — le mail de félicitations n\'a pas pu partir, vérifie son adresse email.');
+      showToast(`Prime de ${euros(Math.round(montant*100))} créditée pour ${d.mois_label}${emailTxt}`, (d.a_email && !d.email_envoye) ? 'error' : 'success');
+    }catch(e){
+      errEl.textContent = e.message; errEl.style.display = 'block';
+      okBtn.disabled = false;
+    }
+  };
 }
 
 // ── PARTENAIRES (conciergeries, apporteurs d'affaires) ───────────────────────
@@ -7717,7 +8115,8 @@ async function loadVirementsTab(silent){
         <div class="stat-tile"><div class="n" style="${aVerserTransp>0?'color:var(--red)':''}">${euros(aVerserTransp)}</div><div class="l">À verser · transporteurs</div></div>
         <div class="stat-tile"><div class="n" style="${aVerserPart>0?'color:var(--red)':''}">${euros(aVerserPart)}</div><div class="l">À verser · ambassadeurs</div></div>
         ${aRecuperer>0?`<div class="stat-tile" style="grid-column:1/-1"><div class="n" style="color:var(--red)">${euros(aRecuperer)}</div><div class="l">⚠️ Commissions versées à récupérer (résas annulées/remboursées)</div></div>`:''}
-      </div>`;
+      </div>
+      <button class="btn btn-grey" style="margin-bottom:20px" onclick="openFacturesTransporteursModal()">🧾 Factures transporteurs</button>`;
 
     const transpSection = `
       <div class="section-title" style="margin-top:0">🚚 Transporteurs</div>
@@ -7731,6 +8130,149 @@ async function loadVirementsTab(silent){
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
+}
+
+// ── Factures transporteurs (Module facture hebdomadaire, 2026-08-17) ──────────
+// Espace dédié où l'admin retrouve chaque facture qu'un transporteur a
+// générée depuis son propre espace ("Facture de la semaine") — en PDF
+// téléchargeable instantanément, filtrable par transporteur. Ouvrable soit
+// globalement (bouton en haut de l'onglet Virements), soit pré-filtré depuis
+// la carte d'un transporteur précis ("🧾 Voir ses factures").
+async function openFacturesTransporteursModal(preselectTransporteurId){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `<div class="modal-box" style="max-width:580px;max-height:90vh;overflow-y:auto">
+    <h2 style="margin-bottom:4px">🧾 Factures transporteurs</h2>
+    <p class="sub" style="margin-bottom:14px">Générées automatiquement par les transporteurs, une par semaine.</p>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <select id="factt-vue" style="flex:1"><option value="liste">Par facture</option><option value="recap">Récap par période</option></select>
+      <select id="factt-filtre" style="flex:1"></select>
+      <select id="factt-periode" class="hidden" style="flex:1">
+        <option value="mois_actuel">Ce mois-ci</option>
+        <option value="mois_dernier">Mois dernier</option>
+        <option value="trimestre_actuel">Ce trimestre</option>
+        <option value="trimestre_dernier">Trimestre dernier</option>
+      </select>
+    </div>
+    <div id="factt-body">${loading()}</div>
+    <div class="modal-actions" style="margin-top:18px"><button class="btn btn-grey">Fermer</button></div>
+  </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  overlay.querySelector('.modal-actions .btn').onclick = closeModal;
+  try{
+    const r = await fetch(API('admin-virements'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list_factures_transporteur'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    FACTURES_TRANSPORTEUR_CACHE = d.factures || [];
+    // Par id, jamais par nom (deux transporteurs peuvent porter le même
+    // prénom/nom — filtrer par chaîne mélangerait alors leurs factures,
+    // trouvé en revue de code du 2026-08-17).
+    const transpById = new Map();
+    FACTURES_TRANSPORTEUR_CACHE.forEach(f => { if(f.transporteur_id!=null) transpById.set(f.transporteur_id, f.transporteur?.nom||'—'); });
+    const filtreSel = document.getElementById('factt-filtre');
+    const vueSel = document.getElementById('factt-vue');
+    const periodeSel = document.getElementById('factt-periode');
+    if(filtreSel){
+      const entries = [...transpById.entries()].sort((a,b) => a[1].localeCompare(b[1]));
+      filtreSel.innerHTML = `<option value="">Tous les transporteurs</option>` +
+        entries.map(([id,nom]) => `<option value="${id}" ${id===preselectTransporteurId?'selected':''}>${escHtml(nom)}</option>`).join('');
+    }
+    const renderCurrent = () => {
+      if(vueSel.value === 'recap') renderFacturesRecap(periodeSel.value);
+      else renderFacturesTransporteurList(filtreSel.value);
+    };
+    vueSel.onchange = () => {
+      const isRecap = vueSel.value === 'recap';
+      filtreSel.classList.toggle('hidden', isRecap);
+      periodeSel.classList.toggle('hidden', !isRecap);
+      renderCurrent();
+    };
+    filtreSel.onchange = renderCurrent;
+    periodeSel.onchange = renderCurrent;
+    renderCurrent();
+  }catch(e){
+    const body = document.getElementById('factt-body');
+    if(body) body.innerHTML = `<p class="empty">Erreur : ${escHtml(e.message)}</p>`;
+  }
+}
+function renderFacturesTransporteurList(filtreId){
+  const zone = document.getElementById('factt-body');
+  if(!zone) return;
+  const filtreIdNum = filtreId ? parseInt(filtreId) : null;
+  const list = FACTURES_TRANSPORTEUR_CACHE.filter(f => !filtreIdNum || f.transporteur_id === filtreIdNum);
+  if(!list.length){ zone.innerHTML = '<p class="empty">Aucune facture pour l\'instant.</p>'; return; }
+  const frDateCourte = iso => new Date(iso+'T12:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
+  zone.innerHTML = `<div class="card vlist">${list.map(f => `
+    <div class="vrow" style="align-items:flex-start">
+      <span>
+        <div style="font-weight:700">${escHtml(f.transporteur?.nom||'—')} · ${escHtml(f.numero)}</div>
+        <div class="row-meta" style="margin-top:2px">Semaine du ${frDateCourte(f.periode_debut)} au ${frDateCourte(f.periode_fin)} · ${f.nb_missions} mission${f.nb_missions>1?'s':''}</div>
+        ${!f.envoyee_admin?'<div class="row-meta" style="color:var(--red)">⚠️ Email non envoyé — PDF quand même disponible ci-contre</div>':''}
+      </span>
+      <span style="text-align:right;flex-shrink:0">
+        <div style="font-weight:700">${euros(f.montant_total_cents)}</div>
+        <a class="btn btn-grey" style="margin-top:4px;padding:5px 10px;font-size:11.5px" href="${API('transporteur-facture-view')}?token=${f.access_token}&dl=1" target="_blank" rel="noopener">⬇️ PDF</a>
+      </span>
+    </div>`).join('')}</div>`;
+}
+// Bornes [debut, fin] (inclusives, format YYYY-MM-DD — comparables
+// directement en chaîne avec periode_debut) pour chaque période du récap.
+function periodeBoundsRecap(key){
+  const now = new Date();
+  const y = now.getFullYear(), m = now.getMonth();
+  const isoD = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(key === 'mois_dernier'){
+    const debut = new Date(y,m-1,1), fin = new Date(y,m,0);
+    return { debut: isoD(debut), fin: isoD(fin), label: debut.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}) };
+  }
+  const q = Math.floor(m/3);
+  if(key === 'trimestre_actuel'){
+    const debut = new Date(y,q*3,1), fin = new Date(y,q*3+3,0);
+    return { debut: isoD(debut), fin: isoD(fin), label: `T${q+1} ${y}` };
+  }
+  if(key === 'trimestre_dernier'){
+    const debut = new Date(y,q*3-3,1), fin = new Date(y,q*3,0);
+    return { debut: isoD(debut), fin: isoD(fin), label: `T${Math.floor(debut.getMonth()/3)+1} ${debut.getFullYear()}` };
+  }
+  // 'mois_actuel' par défaut
+  const debut = new Date(y,m,1), fin = new Date(y,m+1,0);
+  return { debut: isoD(debut), fin: isoD(fin), label: now.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}) };
+}
+// Récap : le TOTAL d'abord (demande d'Aly), le détail par transporteur
+// ensuite — jamais l'inverse. Calculé côté client depuis FACTURES_TRANSPORTEUR_CACHE
+// déjà chargé (pas de nouvel appel réseau par changement de période).
+function renderFacturesRecap(periodeKey){
+  const zone = document.getElementById('factt-body');
+  if(!zone) return;
+  const {debut, fin, label} = periodeBoundsRecap(periodeKey);
+  const list = FACTURES_TRANSPORTEUR_CACHE.filter(f => f.periode_debut >= debut && f.periode_debut <= fin);
+  if(!list.length){ zone.innerHTML = `<p class="empty">Aucune facture sur ${escHtml(label)}.</p>`; return; }
+  const total = list.reduce((s,f)=>s+(f.montant_total_cents||0),0);
+  // Regroupé par transporteur_id, jamais par nom (voir openFacturesTransporteursModal).
+  const parTransp = {};
+  list.forEach(f => {
+    const id = f.transporteur_id;
+    const g = (parTransp[id] = parTransp[id] || {nom: f.transporteur?.nom||'—', cents:0, nb:0});
+    g.cents += f.montant_total_cents||0;
+    g.nb += 1;
+  });
+  const rows = Object.values(parTransp).sort((a,b) => b.cents-a.cents);
+  zone.innerHTML = `
+    <div class="stat-tile" style="margin-bottom:16px;text-align:center">
+      <div class="n">${euros(total)}</div>
+      <div class="l">Total facturé — ${escHtml(label)} · ${list.length} facture${list.length>1?'s':''}</div>
+    </div>
+    <div class="card vlist">${rows.map(g => `
+      <div class="vrow">
+        <span>${escHtml(g.nom)}</span>
+        <span style="text-align:right">
+          <div style="font-weight:700">${euros(g.cents)}</div>
+          <div class="row-meta">${g.nb} facture${g.nb>1?'s':''}</div>
+        </span>
+      </div>`).join('')}</div>`;
 }
 
 // ── INCIDENTS ─────────────────────────────────────────────────────────────────
@@ -8658,14 +9200,20 @@ function renderClientFiche(d){
   const resaOptionsHtml = (d.reservations||[])
     .map(r => `<option value="${r.id}">${escHtml(r.ref)} — ${frDate(r.date_debut)}</option>`).join('');
   const docsHtml = (d.reservations||[]).length ? `
-    <select id="doc-gen-resa">${resaOptionsHtml}</select>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:13.5px">
-      <input type="checkbox" id="doc-gen-location" checked/> Contrat + facture de location
-    </label>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer;font-size:13.5px">
-      <input type="checkbox" id="doc-gen-vente"/> Facture d'achat (Offre Privilège)
-    </label>
-    <button class="btn btn-blue" style="margin-top:12px" onclick="genererDocumentsClient(this)">Générer et envoyer</button>
+    <select id="doc-gen-resa" onchange="loadDocsForResa(this.value)">${resaOptionsHtml}</select>
+    <div id="docs-list" style="margin-top:12px"><p class="empty" style="font-size:13px">Chargement…</p></div>
+    <details id="doc-gen-form" style="margin-top:12px">
+      <summary style="cursor:pointer;font-size:13px;font-weight:600;color:var(--blue)">➕ Générer de nouveaux documents</summary>
+      <div style="margin-top:10px">
+        <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer;font-size:13.5px">
+          <input type="checkbox" id="doc-gen-location" checked/> Contrat + facture de location
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer;font-size:13.5px">
+          <input type="checkbox" id="doc-gen-vente"/> Facture d'achat (Offre Privilège)
+        </label>
+        <button class="btn btn-blue" style="margin-top:12px" onclick="genererDocumentsClient(this)">Générer et envoyer</button>
+      </div>
+    </details>
   ` : '<p class="empty">Aucune réservation.</p>';
 
   body.innerHTML = `
@@ -8701,7 +9249,60 @@ function renderClientFiche(d){
     <div class="section-title" style="margin-top:18px">🧯 Incidents</div>
     ${incidentsHtml}
   `;
+  // Charge automatiquement les documents de la première réservation dès l'ouverture
+  const firstResaId = (d.reservations||[])[0]?.id;
+  if(firstResaId) setTimeout(() => loadDocsForResa(firstResaId), 0);
 }
+// Charge et affiche la liste des documents d'une réservation dans la fiche client.
+// Appelé automatiquement quand on change la réservation dans le select.
+async function loadDocsForResa(resaId){
+  resaId = parseInt(resaId);
+  const zone = document.getElementById('docs-list');
+  if(!zone || !resaId) return;
+  zone.innerHTML = '<p class="empty" style="font-size:13px">Chargement…</p>';
+  try{
+    const r = await fetch(API('admin-documents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list', reservation_id:resaId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const docs = d.documents || [];
+    if(!docs.length){
+      zone.innerHTML = '<p class="empty" style="font-size:13px">Aucun document généré pour cette réservation.</p>';
+      return;
+    }
+    const DOC_LABEL = {contrat:'Contrat de location', facture:'Facture', facture_vente:'Facture d\'achat', avenant:'Avenant de prolongation'};
+    const DOC_ICON  = {contrat:'📄', facture:'🧾', facture_vente:'🧾', avenant:'📝'};
+    const STATUT_CHIP = {genere:'chip inactif', envoye:'chip a_faire', consulte:'chip fait'};
+    const STATUT_LABEL = {genere:'Généré', envoye:'Envoyé', consulte:'Consulté'};
+    zone.innerHTML = docs.map(doc => `
+      <div class="row-item" style="padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">${DOC_ICON[doc.type]||'📄'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13.5px">${DOC_LABEL[doc.type]||doc.type}${doc.numero?' · <span style="font-size:12px;color:var(--grey)">'+escHtml(doc.numero)+'</span>':''}</div>
+          <div style="font-size:12px;color:var(--grey)">${new Date(doc.genere_at).toLocaleString('fr-FR',{dateStyle:'short',timeStyle:'short'})}</div>
+        </div>
+        <span class="${STATUT_CHIP[doc.statut]||'chip inactif'}" style="font-size:11px">${STATUT_LABEL[doc.statut]||doc.statut}</span>
+        <button class="btn btn-grey" style="padding:3px 10px;font-size:11px;width:auto;min-height:auto" onclick="voirDocumentAdmin(${doc.id},this)">Voir</button>
+      </div>`).join('');
+  }catch(e){
+    zone.innerHTML = `<p class="empty" style="font-size:13px">${escHtml(e.message)}</p>`;
+  }
+}
+
+// Ouvre un document dans un nouvel onglet via une URL signée (valide 1h).
+async function voirDocumentAdmin(docId, btn){
+  if(btn) btn.disabled = true;
+  try{
+    const r = await fetch(API('admin-documents'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'view_url', id:docId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    window.open(d.url, '_blank');
+  }catch(e){
+    showToast(e.message, 'error');
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
+
 async function genererDocumentsClient(btn){
   const resaId = parseInt(document.getElementById('doc-gen-resa')?.value);
   const contratFacture = document.getElementById('doc-gen-location')?.checked;
@@ -8723,6 +9324,7 @@ async function genererDocumentsClient(btn){
     }
     showToast(messages.join(' · '), 'success');
     loadClientCommunications();
+    loadDocsForResa(resaId); // rafraîchit la liste après génération
   }catch(e){
     showToast(e.message, 'error');
   }finally{
@@ -10628,6 +11230,9 @@ document.addEventListener('click', e => {
   document.querySelectorAll('details.more-actions[open]').forEach(el => {
     if(!el.contains(e.target)) el.open = false;
   });
+  // Ferme le menu "+ Actions" de l'accueil si clic en dehors
+  const qm = document.getElementById('a-quick-menu');
+  if(qm && !qm.closest('.a-quick-wrap')?.contains(e.target)) qm.classList.remove('open');
 });
 function cpSearch(q){
   const sug = document.getElementById('v-cp-suggest');

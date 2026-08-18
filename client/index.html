@@ -610,6 +610,7 @@ body:not(.vl) .footer p,body:not(.vl) .footer a{color:rgba(255,255,255,.22)!impo
 
 <nav class="nav">
   <a href="/" class="nav-logo">Loc<em>'Air</em></a>
+  <a class="nav-logout hidden" id="btn-aide" href="https://wa.me/33663798756" target="_blank" rel="noopener noreferrer" style="margin-right:8px;font-size:13px;text-decoration:none">💬 Aide</a>
   <button class="nav-logout hidden" id="btn-logout" onclick="logout()">Se déconnecter</button>
 </nav>
 
@@ -629,6 +630,7 @@ body:not(.vl) .footer p,body:not(.vl) .footer a{color:rgba(255,255,255,.22)!impo
         <div class="form-group">
           <label for="f-ref">Numéro de commande</label>
           <input type="text" id="f-ref" autocomplete="off" placeholder="LOC-260710-8129" style="text-transform:uppercase" required/>
+          <p style="font-size:12px;color:var(--text-3,#888);margin-top:6px;line-height:1.5">Reçu par email après votre réservation. Vous ne le trouvez pas ? <a href="https://wa.me/33663798756" target="_blank" rel="noopener noreferrer" style="color:var(--gold,#c5a96c);text-decoration:underline;font-weight:600">Contactez-nous →</a></p>
         </div>
         <div id="login-error" class="alert-error hidden" role="alert"></div>
         <button type="submit" class="btn-submit" id="btn-login" style="margin-top:8px">Accéder à mon espace</button>
@@ -774,7 +776,7 @@ async function apiClient(path, body){
   const token = localStorage.getItem('client_token');
   const r = await fetch(path, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({...body, token})});
   const d = await r.json().catch(()=>({}));
-  if(!r.ok) throw new Error(d.error || 'Erreur');
+  if(!r.ok){const err=new Error(d.error||'Erreur');err.status=r.status;throw err;}
   return d;
 }
 
@@ -1187,7 +1189,7 @@ function renderDashboard(d){
 
   // Countdown
   const countdownHtml = c.jours_restants != null && c.jours_restants > 0
-    ? `<div class="countdown">${_ICO.clock} ${c.jours_restants} jour${c.jours_restants>1?'s':''} avant récupération</div>`
+    ? `<div class="countdown">${_ICO.clock} ${c.jours_restants} jour${c.jours_restants>1?'s':''} · fin le ${fmtDateShort(c.date_fin)}</div>`
     : '';
 
   // Sections optionnelles — masquées si vides
@@ -1203,6 +1205,7 @@ function renderDashboard(d){
       : `<div class="days-left${joursRestants<=5?' days-left-urgent':''}">
           <span class="days-left-num">${joursRestants}</span>
           <span class="days-left-lbl">jour${joursRestants!==1?'s':''} restant${joursRestants!==1?'s':''}</span>
+          ${joursRestants<=5?`<button onclick="toggleAction('prolong')" style="margin-left:10px;font-size:12px;font-weight:700;color:var(--gold);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0">Prolonger →</button>`:''}
          </div>`
     : '';
   // Date courte pour la card Ma location
@@ -1488,7 +1491,7 @@ async function confirmProlong(){
   try{
     const{error,paymentIntent}=await _getStripe().confirmPayment({elements:_prolongStripeEl,redirect:'if_required',confirmParams:{return_url:window.location.origin+'/client/?prolong_return=1'}});
     if(error){
-      if(errEl){errEl.textContent=error.message;errEl.classList.remove('hidden');}
+      if(errEl){errEl.textContent='Paiement refusé. Vérifiez vos informations bancaires ou essayez une autre carte. Si le problème persiste, appelez le 06.63.79.87.56.';errEl.classList.remove('hidden');}
       cb.disabled=false; cb.textContent='Réessayer le paiement';
     }else if(paymentIntent?.status==='succeeded'){
       document.getElementById('prolong-step-3').style.display='none';
@@ -1565,6 +1568,7 @@ async function showDashboard(){
   document.getElementById('dash-loading').classList.remove('hidden');
   document.getElementById('dash-content').classList.add('hidden');
   document.getElementById('btn-logout').classList.remove('hidden');
+  document.getElementById('btn-aide').classList.remove('hidden');
   try{
     const d = await apiClient('/api/client-dashboard', {});
     renderDashboard(d);
@@ -1590,7 +1594,9 @@ async function showDashboard(){
     }
     setTimeout(offerClientFaceId, 1200);
   }catch(err){
-    document.getElementById('dash-loading').innerHTML = `<div class="alert-error" style="text-align:left">${escHtml(err.message)}</div><button class="btn-outline" onclick="logout()" style="margin-top:12px">Retour</button>`;
+    // Session expirée (401) → retour automatique au login sans écran d'erreur
+    if(err.status===401){logout();return;}
+    document.getElementById('dash-loading').innerHTML = `<div class="alert-error" style="text-align:left">Impossible de charger vos informations pour le moment. Vérifiez votre connexion internet et réessayez. Si le problème continue, appelez le <a href="tel:0663798756" style="color:inherit;font-weight:700">06.63.79.87.56</a>.</div><button class="btn-outline" onclick="location.reload()" style="margin-top:12px">Réessayer</button><button class="btn-outline" onclick="logout()" style="margin-top:8px;margin-left:8px">Changer de compte</button>`;
   }
 }
 
