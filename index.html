@@ -5960,7 +5960,7 @@ input:-webkit-autofill:focus{
             <div class="stl-dot stl-done"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
             <div class="stl-body">
               <p class="stl-title">Réservation enregistrée</p>
-              <p class="stl-sub"><span id="stl-1-sub-prefix">Notre équipe vous confirme par email sous 2h — </span><button type="button" id="copy-ref-btn" onclick="(function(){const r=document.getElementById('s-ref')?.textContent;if(r){navigator.clipboard?.writeText(r).then(()=>{const b=document.getElementById('copy-ref-btn');if(b){b.textContent=_lang==='en'?'Copied ✓':_lang==='zh'?'已复制 ✓':_lang==='ru'?'Скопировано ✓':'Copié ✓';setTimeout(()=>{b.textContent=_lang==='en'?'Copy ref':_lang==='zh'?'复制单号':_lang==='ru'?'Копировать №':'Copier le n°';},2000);}}).catch(()=>{});}})()" style="background:none;border:none;color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;padding:0;font-family:var(--body);text-decoration:underline">Copier le n°</button></p>
+              <p class="stl-sub"><span id="stl-1-sub-prefix">Confirmation envoyée à votre adresse email — </span><button type="button" id="copy-ref-btn" onclick="(function(){const r=document.getElementById('s-ref')?.textContent;if(r){navigator.clipboard?.writeText(r).then(()=>{const b=document.getElementById('copy-ref-btn');if(b){b.textContent=_lang==='en'?'Copied ✓':_lang==='zh'?'已复制 ✓':_lang==='ru'?'Скопировано ✓':'Copié ✓';setTimeout(()=>{b.textContent=_lang==='en'?'Copy ref':_lang==='zh'?'复制单号':_lang==='ru'?'Копировать №':'Copier le n°';},2000);}}).catch(()=>{});}})()" style="background:none;border:none;color:var(--blue);font-size:11px;font-weight:600;cursor:pointer;padding:0;font-family:var(--body);text-decoration:underline">Copier le n°</button></p>
             </div>
           </div>
           <div class="stl-conn"></div>
@@ -5968,7 +5968,7 @@ input:-webkit-autofill:focus{
             <div class="stl-dot stl-pnd"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
             <div class="stl-body">
               <p class="stl-title">Contrat envoyé par email</p>
-              <p class="stl-sub">Notre équipe vous envoie le contrat sous 2h</p>
+              <p class="stl-sub">Contrat généré automatiquement, envoyé dans les minutes qui suivent</p>
             </div>
           </div>
           <div class="stl-conn"></div>
@@ -8275,7 +8275,7 @@ function submitForm(btn,mode){
         // Important : on soustrait EXPRESS_FEE avant de déduire DELIVERY_FEE,
         // sinon l'express serait compté deux fois (une fois ici, une fois dans buildRecap).
         if(d.amountCents!=null&&d.amountCents!==prixCents){
-          const baseHT=Math.round((calcTotal(parseInt(formData.duree)||7)-_promoDiscount)*100);
+          const baseHT=Math.max(0,Math.round((calcTotal(parseInt(formData.duree)||7)-_promoDiscount)*100));
           const expressCts=EXPRESS_FEE*100;
           DELIVERY_FEE=Math.max(0,Math.round((d.amountCents-baseHT-expressCts)/100));
           buildRecap();
@@ -8545,9 +8545,9 @@ const LANG_MAP=[
   ['#lbl-back-sp4','text','Date','Date','日期',`Дата`],
   /* success screen — timeline static */
   ['#stl-1 .stl-title','text','Réservation enregistrée','Booking confirmed','预订已收到',`Бронирование принято`],
-  ['#stl-1-sub-prefix','text','Notre équipe vous confirme par email sous 2h — ','Our team confirms by email within 2h — ','我们的团队将在2小时内通过邮件确认——',`Наша команда подтвердит по email в течение 2ч — `],
+  ['#stl-1-sub-prefix','text','Confirmation envoyée à votre adresse email — ','Confirmation sent to your email — ','确认邮件已发送至您的邮箱 — ','Подтверждение отправлено на ваш email — '],
   ['#stl-2 .stl-title','text','Contrat envoyé par email','Contract sent by email','合同已发送至邮箱',`Контракт отправлен по email`],
-  ['#stl-2 .stl-sub','text','Notre équipe vous envoie le contrat sous 2h','Our team sends your contract within 2h','我们的团队将在2小时内发送合同',`Наша команда пришлёт контракт в течение 2ч`],
+  ['#stl-2 .stl-sub','text','Contrat généré automatiquement, envoyé dans les minutes qui suivent','Contract generated automatically and sent within minutes','合同自动生成，将在数分钟内发送','Договор создаётся автоматически и отправляется в течение нескольких минут'],
   ['#stl-3 .stl-title','text','Technicien sur place','Technician on site','技术员到场',`Техник на месте`],
   ['#stl-3 .stl-sub','text','Livraison le lendemain au créneau choisi','Delivery the next day at your chosen time','次日按所选时间段配送',`Доставка на следующий день в выбранный слот`],
   ['#copy-ref-btn','text','Copier le n°','Copy ref','复制单号',`Скопировать №`],
@@ -8943,10 +8943,10 @@ const LANG_SEQ=[
     ['地址、日期、窗型。就这些。','8h–12h时段 · 含所有设备。','无需准备或购买任何物品。','租期结束前一天我们预约取回时间，上门收取设备。您无需移动。'],
     ["Адрес, даты, тип окна. Это всё.","Слот 8:00–12:00 · Всё оборудование включено.","Ничего не нужно готовить или покупать.","Накануне окончания согласуем время и заберём устройство. Вам ничего делать не нужно."]],
   ['.pq-title','text',
-    ['Particuliers & familles','Télétravailleurs','Pros, bureaux & commerces','Locations saisonnières','Événements & réceptions','Seniors & personnes fragiles'],
-    ['Individuals & families','Remote workers','Businesses & offices','Seasonal rentals','Events & receptions','Seniors & vulnerable persons'],
-    ['个人 & 家庭','远程办公者','企业、办公室 & 商铺','季节性租赁','活动 & 接待','老年人 & 弱势群体'],
-    ['Частные лица & семьи','Удалённая работа','Компании, офисы & магазины','Сезонная аренда','Мероприятия & приёмы','Пожилые & уязвимые люди']],
+    ['Particuliers & familles','Télétravailleurs','Pros, bureaux & commerces','Locations saisonnières','Événements & réceptions','Seniors & personnes fragiles','Hôtels, EHPAD & cabinets'],
+    ['Individuals & families','Remote workers','Businesses & offices','Seasonal rentals','Events & receptions','Seniors & vulnerable persons','Hotels, care homes & clinics'],
+    ['个人 & 家庭','远程办公者','企业、办公室 & 商铺','季节性租赁','活动 & 接待','老年人 & 弱势群体','酒店、养老院 & 诊所'],
+    ['Частные лица & семьи','Удалённая работа','Компании, офисы & магазины','Сезонная аренда','Мероприятия & приёмы','Пожилые & уязвимые люди','Отели, дома престарелых & клиники']],
   ['.stat-lbl','text',
     ['avis Google','délai livraison','dépôt','disponible'],
     ['Google reviews','delivery time','deposit','available'],
@@ -8995,19 +8995,22 @@ const LANG_SEQ=[
      'Open-plan office, shop, waiting room: bring comfort to your team and customers in a few hours.',
      'Airbnb & holiday rental hosts: boost your guest reviews by offering AC with no fixed investment.',
      'Wedding, seminar, evening event: cool down your space for the duration.',
-     'Protect vulnerable loved ones from heat peaks. Fast delivery and setup — no need for them to travel.'],
+     'Protect vulnerable loved ones from heat peaks. Fast delivery and setup — no need for them to travel.',
+     'AC down, room overheating? We deliver multiple units within hours. Multi-unit quote on WhatsApp.'],
     ['公寓没有空调？无需大装修或昂贵购置，享受清凉夜晚。',
      '热浪期间保持专注和高效，不让您的家庭办公室变成烤箱。',
      '开放式办公室、商铺、等候区：几小时内让您的团队和客户感到舒适。',
      'Airbnb和度假屋房东：无需固定投资提供空调，提升旅客评价。',
      '婚礼、研讨会、晚会：为活动期间的场所降温。',
-     '保护年长或体弱的亲人免受高温侵害。快速配送和安装，无需他们出行。'],
+     '保护年长或体弱的亲人免受高温侵害。快速配送和安装，无需他们出行。',
+     '空调故障，房间过热？我们可在数小时内送达多台设备。WhatsApp提供多台报价。'],
     ['Квартира без кондиционера? Проведите прохладные ночи без капитального ремонта и дорогостоящих покупок.',
      'Оставайтесь сосредоточенным и продуктивным во время жары, не превращая домашний офис в духовку.',
      'Открытое пространство, магазин, зал ожидания: обеспечьте комфорт своим сотрудникам и клиентам за несколько часов.',
      'Хозяева Airbnb и гостевых домов: улучшайте отзывы гостей, предлагая кондиционер без постоянных вложений.',
      'Свадьба, семинар, вечер: охладите пространство на время мероприятия.',
-     'Защитите пожилых близких от пиков жары. Быстрая доставка и установка — без необходимости им выходить из дома.']],
+     'Защитите пожилых близких от пиков жары. Быстрая доставка и установка — без необходимости им выходить из дома.',
+     'Кондиционер сломался, номер перегрелся? Доставим несколько приборов за несколько часов. Мультиблочное предложение в WhatsApp.']],
   /* FAQ answers */
   ['.fi-a','html',
     /* FR answers — 21 items matching HTML order */
@@ -9148,7 +9151,7 @@ const LANG_SEQ=[
     ['如何运作','价格','评价','常见问题','关于我们','立即预订','延长我的租期'],
     ['Как это работает','Цены','Отзывы','FAQ','О нас','Забронировать','Продлить аренду']],
   ['#fnav-services a','text',
-    ['Location clim mobile','Livraison & installation','Entretien inclus','Remboursement si panne','Contrat électronique'],
+    ['Location clim mobile','Livraison & installation','Entretien inclus','Garantie panne','Contrat électronique'],
     ['Mobile AC rental','Delivery & setup','Maintenance included','Breakdown? Replaced or refunded','Electronic contract'],
     ['移动空调租赁','配送 & 安装','含维护','故障？更换或退款','电子合同'],
     ['Аренда мобильного кондиционера','Доставка & установка','Техобслуживание включено','Поломка? Замена или возврат','Электронный контракт']],
