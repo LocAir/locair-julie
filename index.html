@@ -7020,7 +7020,9 @@ function openModal(dur, flowType){
   // d'appareil supplémentaire) est bloquée tant que la ville est en mode
   // complet — sessionStorage._la ('logged as admin') permet à Aly de
   // continuer à créer/tester des réservations malgré tout.
-  if(SOLD_OUT&&!sessionStorage.getItem('_la')&&flowType!=='extend'){showSoldOutOverlay();return;}
+  // 'extend' = prolongation (pas de nouvel appareil), 'stripe_return' = retour
+  // après 3DS — dans les deux cas, on ne bloque pas même si le stock est épuisé.
+  if(SOLD_OUT&&!sessionStorage.getItem('_la')&&flowType!=='extend'&&flowType!=='stripe_return'){showSoldOutOverlay();return;}
   _updateStockNoticeText();
   window.dataLayer=window.dataLayer||[];
   dataLayer.push({event:'open_booking_modal',flow:flowType||'choice'});
@@ -7373,7 +7375,7 @@ function updateRunningTotal(stepArg){
   const total=Math.max(0,calcTotal(days)-disc+DELIVERY_FEE+EXPRESS_FEE);
   const isEN=_lang==='en',isZH=_lang==='zh',isRU=_lang==='ru';
   const lbl=isEN?'Estimated total':isZH?'预估总价':isRU?'Примерная сумма':'Total estimé';
-  const amt=total+' €';
+  const amt=Math.round(total)+' €';
   const lblEl=document.getElementById('ms-total-lbl');
   const amtEl=document.getElementById('ms-total-amt');
   if(lblEl)lblEl.textContent=lbl;
@@ -7712,7 +7714,7 @@ function buildRecap(){
   const installLabel=_techInstall?(isEN?'Technician installation':isZH?'技术员安装 — 80 €':'Pose technicien — 80 €'):(isEN?'Self-install (free)':isZH?'自行安装（免费）':'Pose autonome — Kit fourni');
   const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:isZH?'电梯：'+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
   const durLabel=isEN?days+' days':isZH?days+' 天':isRU?days+' дней':days+' jours';
-  const priceDisplay=total===0?(isEN?'On quote':isZH?'询价':'Sur devis'):total+' €';
+  const priceDisplay=total===0?(isEN?'On quote':isZH?'询价':'Sur devis'):Math.round(total)+' €';
 
   // SVG icons
   const icoPin='<svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" stroke="none" fill="var(--blue)" style="opacity:.85"/></svg>';
@@ -7916,7 +7918,11 @@ async function doStripePayment(){
       if(errEl){errEl.textContent=_lang==='en'?(error.message||'Payment declined. Please check your card details or try another card.'):_lang==='zh'?'支付被拒绝，请检查您的银行卡信息。':_lang==='ru'?'Оплата отклонена. Проверьте данные карты или свяжитесь с банком.':'Paiement refusé. Vérifiez vos informations bancaires ou essayez avec une autre carte. Si le problème persiste, appelez-nous au 06.63.79.87.56.';errEl.style.display='block';setTimeout(()=>errEl.scrollIntoView({behavior:'smooth',block:'nearest'}),50);}
       if(btn)btn.disabled=false;
       if(btnSpan)btnSpan.textContent=_lang==='en'?'Retry payment':_lang==='zh'?'重试支付':_lang==='ru'?'Повторить оплату':'Réessayer le paiement';
-    }else if(paymentIntent&&paymentIntent.status==='succeeded'){
+    }else if(paymentIntent&&(paymentIntent.status==='succeeded'||paymentIntent.status==='processing')){
+      // 'processing' = méthode asynchrone (SEPA, etc.) : le paiement est en
+      // cours de capture côté Stripe. On déclenche quand même _stripePaymentDone()
+      // pour notifier l'admin et afficher l'écran de succès — sans ça, le client
+      // voit un bouton "Réessayer" alors que son argent est déjà parti.
       _stripePaymentDone();
     }else{
       if(errEl){errEl.textContent=_lang==='en'?'Payment pending confirmation. Check your email.':_lang==='zh'?'支付待确认。请查收邮件。':_lang==='ru'?'Оплата ожидает подтверждения. Проверьте почту.':'Paiement en attente de confirmation. Vérifiez votre email.';errEl.style.display='block';setTimeout(()=>errEl.scrollIntoView({behavior:'smooth',block:'nearest'}),50);}
@@ -7938,7 +7944,9 @@ function _fireGadsConversion(pending){
     // Utilise le montant réellement débité (livraison + express + promo inclus,
     // stocké dans _prix_cents au moment du paiement) — fallback sur la location
     // seule pour les anciennes sessions sans _prix_cents.
-    const value=pending._prix_cents ? pending._prix_cents/100 : calcPrice(parseInt(pending.duree)||7);
+    // calcTotal inclut frais d'installation (+80 €) — ne pas utiliser calcPrice
+    // seul qui sous-déclarerait 80 € sur chaque commande avec technicien.
+    const value=pending._prix_cents ? pending._prix_cents/100 : calcTotal(parseInt(pending.duree)||7);
     gtag('event','conversion',{
       send_to:'AW-18195242550/biPuCK7S1MkcELa8leRD',
       value:value,
@@ -7983,7 +7991,9 @@ function _stripePaymentDone(){
         localStorage.removeItem('locair_pending');
       }catch(e){}
       setTimeout(()=>{
-        openModal();
+        // 'stripe_return' contourne le guard SOLD_OUT — le client a déjà payé,
+        // il doit voir sa confirmation même si le stock s'est épuisé pendant le 3DS.
+        openModal(undefined,'stripe_return');
         setTimeout(()=>{
           document.querySelectorAll('.step-panel').forEach(p=>p.classList.remove('active'));
           document.querySelectorAll('.modal-success').forEach(s=>s.classList.remove('show'));
