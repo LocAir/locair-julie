@@ -7935,8 +7935,10 @@ async function doStripePayment(){
 function _fireGadsConversion(pending){
   try{
     if(typeof gtag!=='function')return;
-    const days=parseInt(pending.duree)||7;
-    const value=calcPrice(days);
+    // Utilise le montant réellement débité (livraison + express + promo inclus,
+    // stocké dans _prix_cents au moment du paiement) — fallback sur la location
+    // seule pour les anciennes sessions sans _prix_cents.
+    const value=pending._prix_cents ? pending._prix_cents/100 : calcPrice(parseInt(pending.duree)||7);
     gtag('event','conversion',{
       send_to:'AW-18195242550/biPuCK7S1MkcELa8leRD',
       value:value,
@@ -8206,7 +8208,7 @@ function submitForm(btn,mode){
     // ── Stripe Payment Element (paiement intégré, sans quitter le site) ──
     const prixCents=Math.round(Math.max(0,calcTotal(parseInt(formData.duree)||7)-_promoDiscount+DELIVERY_FEE+EXPRESS_FEE)*100);
     const prixEuros=(prixCents/100).toFixed(2).replace('.',',')+' €';
-    try{localStorage.setItem('locair_pending',JSON.stringify({...formData,_ref:_orderRef}));}catch(e){}
+    try{localStorage.setItem('locair_pending',JSON.stringify({...formData,_ref:_orderRef,_prix_cents:prixCents}));}catch(e){}
     if(!_getStripe()){
       _submitting=false;
       if(btn){btn.innerHTML=origLabel;btn.disabled=false;}
