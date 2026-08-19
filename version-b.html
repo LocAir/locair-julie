@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     LOC'AIR — VITRINE, VERSION B : UNE IDÉE PAR ÉCRAN
+     ─────────────────────────────────────────────────────────────────────────
+     Autre forme de présentation, à comparer avec nouvelle-version.html.
+     Même palette, même police : seule la structure change.
+
+     Le principe : chaque écran ne dit qu'UNE chose, en grand, avec le moins
+     de mots possible. On avance en faisant défiler. Rien n'est empilé.
+
+     Trois règles que ce format impose :
+       · le défilement n'est JAMAIS détourné — l'accrochage est en "proximity",
+         le doigt garde la main. Détourner le défilement rend une page
+         inutilisable au clavier et sur beaucoup de téléphones ;
+       · le bouton de commande reste visible en permanence, sinon un format
+         long fait perdre les gens ;
+       · 100svh et non 100vh : sur iPhone, 100vh compte la barre du navigateur
+         et coupe le bas de chaque écran.
+══════════════════════════════════════════════════════════════════════════ -->
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Loc'Air — version B (aperçu)</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+
+<style>
+/* ══ COULEURS — identiques à la version A ══ */
+:root{
+  --ink:#0E1F35; --ink-2:#57687C; --ink-3:#95A3B3;
+  --blue:#1D5BBF; --blue-d:#17489A; --blue-soft:#EEF3FC;
+  --gold:#C9A227; --paper:#FFFFFF; --mist:#F5F7FA; --line:#E6EBF1; --green:#0F7A3D;
+  --pad:24px; --max:1000px; --r:12px; --r-l:20px;
+  --font:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{
+  font-family:var(--font);background:var(--paper);color:var(--ink);
+  font-size:17px;line-height:1.6;letter-spacing:-.005em;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+img,video{max-width:100%;height:auto;display:block}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+:focus-visible{outline:2.5px solid var(--blue);outline-offset:4px;border-radius:6px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+
+/* ══ L'ÉCRAN ══
+   Chaque section occupe au moins la hauteur de l'écran et centre son contenu.
+   min-height (et non height) : si un écran contient plus que prévu — le
+   calculateur, la FAQ — il s'étire au lieu de couper le texte. */
+.ecran{
+  min-height:100svh;display:flex;flex-direction:column;justify-content:center;
+  padding:76px 0 max(76px, env(safe-area-inset-bottom));position:relative;
+  scroll-snap-align:center;
+}
+@supports not (height:100svh){.ecran{min-height:100vh}}
+.in{max-width:var(--max);margin:0 auto;padding:0 var(--pad);width:100%}
+.snap{scroll-snap-type:y proximity}   /* "proximity" et jamais "mandatory" */
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.snap{scroll-snap-type:none}}
+
+/* fonds */
+.e-ink{background:var(--ink);color:var(--paper)}
+.e-blue{background:var(--blue);color:var(--paper)}
+.e-mist{background:var(--mist)}
+
+/* ══ TYPOGRAPHIE ══
+   Un écran, une phrase. Les tailles sont donc beaucoup plus grandes que sur
+   une page classique — c'est ce qui rend le format lisible d'un coup d'œil. */
+.kicker{
+  display:block;font-size:12px;font-weight:700;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--blue);margin-bottom:28px;
+}
+.e-ink .kicker,.e-blue .kicker{color:var(--gold)}
+.e-blue .kicker{color:rgba(255,255,255,.65)}
+.titre{
+  font-size:clamp(38px,7.4vw,86px);font-weight:700;letter-spacing:-.042em;
+  line-height:1.02;max-width:16ch;
+}
+.titre em{font-style:normal;color:var(--blue)}
+.e-ink .titre em{color:var(--gold)}
+.e-blue .titre em,.e-ink.e-alt .titre em{color:#fff}
+.dire{font-size:clamp(18px,2.1vw,23px);color:var(--ink-2);line-height:1.5;max-width:44ch;margin-top:28px;letter-spacing:-.012em}
+.e-ink .dire{color:rgba(255,255,255,.6)}
+.e-blue .dire{color:rgba(255,255,255,.78)}
+.geant{
+  font-size:clamp(90px,20vw,250px);font-weight:700;letter-spacing:-.06em;
+  line-height:.86;display:block;
+}
+.geant small{font-size:.24em;letter-spacing:-.02em;font-weight:700}
+.mini{font-size:15px;color:var(--ink-3);margin-top:22px;line-height:1.55;max-width:40ch}
+.e-ink .mini,.e-blue .mini{color:rgba(255,255,255,.45)}
+
+/* ══ BOUTONS ══ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  padding:18px 32px;border-radius:100px;font-weight:700;font-size:17px;
+  letter-spacing:-.012em;transition:background .16s,transform .16s,border-color .16s;
+}
+.btn-1{background:var(--blue);color:#fff}
+.btn-1:hover{background:var(--blue-d);transform:translateY(-2px)}
+.btn-light{background:#fff;color:var(--ink)}
+.btn-light:hover{transform:translateY(-2px)}
+.btn-out{border:1.5px solid var(--line);color:var(--ink)}
+.btn-out:hover{border-color:var(--ink);transform:translateY(-2px)}
+.btn-ghost{border:1.5px solid rgba(255,255,255,.3);color:#fff}
+.btn-ghost:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.6)}
+.btn-s{padding:12px 22px;font-size:15px}
+
+/* ══ APPARITION ══
+   Sur un format "un écran = une idée", le contenu doit arriver APRÈS que
+   l'écran soit en place, sinon tout est déjà lu avant d'arriver. */
+.rv{opacity:0;transform:translateY(24px);transition:opacity .75s cubic-bezier(.2,.7,.3,1),transform .75s cubic-bezier(.2,.7,.3,1)}
+.rv.on{opacity:1;transform:none}
+.rv:nth-child(2){transition-delay:.08s}
+.rv:nth-child(3){transition-delay:.16s}
+.rv:nth-child(4){transition-delay:.24s}
+@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
+
+/* ══ REPÈRE DE PROGRESSION ══
+   Sur un format long, il faut savoir où l'on en est et pouvoir sauter.
+   Masqué sur téléphone : la place manque et le pouce l'accrocherait. */
+.dots{position:fixed;right:26px;top:50%;transform:translateY(-50%);z-index:800;display:flex;flex-direction:column;gap:14px}
+.dots a{width:9px;height:9px;border-radius:50%;background:var(--ink);opacity:.18;transition:opacity .2s,transform .2s}
+.dots a:hover{opacity:.5}
+.dots a.on{opacity:1;transform:scale(1.35)}
+.dots.sur-fonce a{background:#fff}
+@media(max-width:1180px){.dots{display:none}}
+
+/* ══ EN-TÊTE ET BARRE DE COMMANDE ══ */
+.bar{
+  position:sticky;top:0;z-index:900;display:flex;align-items:center;
+  gap:16px;padding:16px var(--pad);transition:background .25s,box-shadow .25s;
+}
+.bar.pose{background:rgba(255,255,255,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--line)}
+.bar .logo{font-weight:700;font-size:21px;letter-spacing:-.04em;margin-right:auto}
+.bar .logo span{color:var(--blue)}
+.bar.sur-fonce{color:#fff}
+.bar.sur-fonce .logo span{color:var(--gold)}
+.bar.sur-fonce .btn-out{border-color:rgba(255,255,255,.35);color:#fff}
+.bar-tel{font-weight:700;font-size:15px}
+@media(max-width:900px){
+  /* la barre du bas porte déjà le bouton : inutile de le doubler en haut */
+  .bar-tel,.bar .btn{display:none}
+  .bar{padding:12px var(--pad)}
+}
+
+/* ══ BANDEAU APERÇU ══ */
+.preview-bar{position:relative;z-index:901;background:var(--ink);color:rgba(255,255,255,.68);font-size:13px;text-align:center;padding:10px var(--pad)}
+.preview-bar strong{color:var(--gold);font-weight:700}
+.preview-bar a{color:#fff;border-bottom:1px solid rgba(255,255,255,.4)}
+@media(max-width:640px){.preview-bar{font-size:12px}.preview-bar .long{display:none}}
+
+/* ══ ÉCRAN 1 : OUVERTURE ══ */
+.e1{padding-top:32px;min-height:calc(100svh - 72px)}
+@supports not (height:100svh){.e1{min-height:calc(100vh - 72px)}}
+.e1-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(30px,5vw,64px);align-items:center}
+.urg{
+  display:inline-flex;align-items:flex-start;gap:9px;background:var(--blue-soft);
+  border-radius:100px;padding:9px 18px;margin-bottom:26px;
+  font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);
+}
+.urg i{width:7px;height:7px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:6px;animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@media(prefers-reduced-motion:reduce){.urg i{animation:none}}
+.e1 .titre{max-width:15ch;font-size:clamp(33px,4.4vw,56px)}
+.addr{background:#fff;border-radius:var(--r-l);padding:22px;margin-top:28px;max-width:460px;box-shadow:0 1px 3px rgba(14,31,53,.05),0 18px 46px rgba(14,31,53,.1)}
+.addr label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:13px}
+.addr-row{display:flex;align-items:center;gap:12px;background:var(--mist);border-radius:var(--r);padding:15px 17px;transition:box-shadow .15s}
+.addr-row:focus-within{box-shadow:inset 0 0 0 2px var(--blue)}
+.addr-row svg{flex-shrink:0;color:var(--ink-3)}
+.addr-row input{flex:1;min-width:0;border:none;outline:none;font:inherit;font-size:16px;color:var(--ink);background:none}
+.addr-row input::placeholder{color:var(--ink-3)}
+.addr .btn{width:100%;margin-top:12px}
+.addr-note{font-size:13px;color:var(--ink-3);margin-top:13px;text-align:center}
+.preuve1{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:26px;font-size:15px;color:var(--ink-2)}
+.preuve1 b{color:var(--ink);font-weight:700}
+.stars{color:var(--gold);letter-spacing:1.5px;font-size:14px}
+.e1-img{width:100%;aspect-ratio:4/5;max-height:62svh;object-fit:cover;border-radius:var(--r-l)}
+@media(max-width:900px){
+  .e1-grid{grid-template-columns:1fr;gap:30px}
+  .e1-img{display:none}          /* sur téléphone, l'écran 1 doit tenir : le texte prime */
+  .addr{max-width:none}
+}
+
+/* ══ ÉCRAN CHIFFRE ══ (aucune caution, note, délai…) */
+.chiffre{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,70px);align-items:center}
+@media(max-width:820px){.chiffre{grid-template-columns:1fr;gap:22px}}
+
+/* ══ ÉCRAN LIVRAISON : le créneau ══ */
+.creneau{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;margin-top:34px}
+.creneau b{font-size:clamp(40px,6vw,72px);font-weight:700;letter-spacing:-.05em;line-height:1}
+.creneau span{font-size:17px;color:rgba(255,255,255,.55)}
+
+/* ══ ÉCRAN PRIX ══ */
+.prix-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:clamp(28px,4vw,52px);align-items:start}
+.tiers{display:grid;border-top:1px solid var(--line)}
+.tier{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}
+.tier-dur{font-size:16px;color:var(--ink-2)}
+.tier-p{font-size:21px;font-weight:700;letter-spacing:-.03em;white-space:nowrap}
+.tier-p i{font-style:normal;font-size:13.5px;font-weight:500;color:var(--ink-3)}
+.tier.best .tier-dur,.tier.best .tier-p{color:var(--blue)}
+.tier-off{font-size:13px;font-weight:700;color:var(--blue);margin-left:8px}
+@media(max-width:900px){.prix-grid{grid-template-columns:1fr;gap:28px}}
+
+/* ══ CALCULATEUR ══ */
+.calc{background:var(--ink);color:#fff;border-radius:var(--r-l);padding:clamp(22px,2.4vw,30px)}
+.calc-lbl{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:13px}
+.calc-field{margin-bottom:20px}
+.step-row{display:flex;align-items:center;gap:14px;margin-bottom:13px}
+.step-btn{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(255,255,255,.24);color:#fff;font-size:21px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,border-color .15s}
+.step-btn:hover:not(:disabled){background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.5)}
+.step-btn:disabled{opacity:.28;cursor:not-allowed}
+.step-val{flex:1;text-align:center}
+.step-val b{display:block;font-size:34px;font-weight:700;line-height:1;letter-spacing:-.04em}
+.step-val span{font-size:13px;color:rgba(255,255,255,.45)}
+.presets{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1.5px solid rgba(255,255,255,.2);border-radius:100px;padding:9px 16px;font-size:14px;font-weight:500;color:rgba(255,255,255,.75);transition:all .15s}
+.chip:hover{border-color:rgba(255,255,255,.55);color:#fff}
+.chip[aria-pressed="true"]{background:#fff;border-color:#fff;color:var(--ink);font-weight:700}
+.calc-sep{height:1px;background:rgba(255,255,255,.13);margin:22px 0 18px}
+.calc-line{display:flex;justify-content:space-between;gap:16px;padding:8px 0;font-size:15px}
+.calc-line span{color:rgba(255,255,255,.58)}
+.calc-line b{font-weight:700;white-space:nowrap}
+.calc-line.off span,.calc-line.off b{opacity:.3;text-decoration:line-through}
+.calc-total{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:18px 0 6px;padding-top:18px;border-top:1px solid rgba(255,255,255,.13)}
+.calc-total span{font-size:15px;color:rgba(255,255,255,.58)}
+.calc-total b{font-size:clamp(36px,4.4vw,48px);font-weight:700;letter-spacing:-.045em;line-height:1}
+.calc-day{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:22px;line-height:1.5}
+.calc-day b{color:#fff;font-weight:700}
+.calc .btn{width:100%}
+.calc-legal{font-size:12.5px;color:rgba(255,255,255,.34);margin-top:14px;line-height:1.5;text-align:center}
+
+/* ══ MUR DE VIDÉOS ══ */
+.rail{display:flex;gap:14px;margin-top:32px;padding:2px 0 16px;overflow-x:auto;scroll-snap-type:x proximity;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent}
+.rail::-webkit-scrollbar{height:5px}
+.rail::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:100px}
+.vcard{position:relative;flex:0 0 auto;width:clamp(176px,17vw,206px);aspect-ratio:9/16;border-radius:var(--r-l);overflow:hidden;scroll-snap-align:start;background:#183253}
+.vcard video,.vcard>img{width:100%;height:100%;object-fit:cover}
+.vcard::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(8,18,32,.88) 0%,rgba(8,18,32,.1) 44%,transparent 66%)}
+.vplay{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;width:100%;color:#fff}
+.vplay span{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1.5px solid rgba(255,255,255,.42);display:flex;align-items:center;justify-content:center;transition:transform .18s,background .18s}
+.vplay:hover span{transform:scale(1.08);background:rgba(255,255,255,.3)}
+.vcard.is-playing .vplay span{opacity:0}
+.vmeta{position:absolute;left:16px;right:16px;bottom:15px;z-index:3;pointer-events:none}
+.vmeta b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.015em}
+.vmeta span{font-size:12px;color:rgba(255,255,255,.58)}
+.vmeta .stars{font-size:11.5px;display:block;margin-bottom:4px}
+.vide{display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:none;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
+.vide p{font-size:13px;color:rgba(255,255,255,.5);line-height:1.55}
+.vide b{display:block;color:rgba(255,255,255,.85);font-size:14px;margin-bottom:6px}
+@media(max-width:640px){.vcard{width:min(62vw,220px)}}
+
+/* ══ ÉCRAN ALY ══ */
+.aly{display:grid;grid-template-columns:.8fr 1.2fr;gap:clamp(30px,5vw,64px);align-items:center}
+.aly-photo{aspect-ratio:4/5;max-height:62svh;border-radius:var(--r-l);overflow:hidden;position:relative;background:#183253;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px}
+.aly-photo img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
+.aly-photo b{font-size:15px;color:rgba(255,255,255,.85);margin-bottom:6px}
+.aly-photo span{font-size:13px;color:rgba(255,255,255,.48);line-height:1.55}
+.aly-tel{display:inline-flex;align-items:center;gap:14px;margin-top:32px;transition:opacity .15s}
+.aly-tel:hover{opacity:.75}
+.aly-av{width:46px;height:46px;border-radius:50%;background:var(--gold);color:var(--ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0}
+.aly-tel b{display:block;font-size:19px;color:#fff;font-weight:700;letter-spacing:-.02em}
+.aly-tel span{font-size:13.5px;color:rgba(255,255,255,.45)}
+@media(max-width:880px){.aly{grid-template-columns:1fr;gap:28px}.aly-photo{aspect-ratio:16/10;max-height:none}}
+
+/* ══ ÉCRAN ZONE ══ */
+.villes{display:grid;grid-template-columns:repeat(2,1fr);gap:0 clamp(30px,5vw,60px);margin-top:36px}
+.ville{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:17px 0;border-bottom:1px solid var(--line)}
+.ville b{font-size:19px;font-weight:700;letter-spacing:-.025em}
+.ville span{font-size:13.5px;color:var(--ink-3);display:block;margin-top:2px}
+.tag{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green);white-space:nowrap;flex-shrink:0}
+.tag-ask{color:var(--ink-3)}
+@media(max-width:700px){.villes{grid-template-columns:1fr}}
+
+/* ══ ÉCRAN QUESTIONS ══ */
+.faq{max-width:720px;margin-top:36px}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{padding:20px 44px 20px 0;font-size:17.5px;font-weight:700;letter-spacing:-.022em;cursor:pointer;list-style:none;position:relative;line-height:1.4}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:'';position:absolute;right:6px;top:50%;width:10px;height:10px;border-right:2px solid var(--blue);border-bottom:2px solid var(--blue);transform:translateY(-70%) rotate(45deg);transition:transform .22s}
+.faq details[open] summary::after{transform:translateY(-30%) rotate(-135deg)}
+.faq details[open] summary{color:var(--blue)}
+.faq p{padding:0 36px 24px 0;font-size:16px;color:var(--ink-2);line-height:1.68}
+
+/* ══ ÉCRAN FINAL ══ */
+.fin{text-align:center}
+.fin .titre{max-width:none;margin:0 auto}
+.fin .dire{margin:26px auto 0}
+.fin-cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:40px}
+.fin-q{border-left:2px solid var(--gold);padding:4px 0 4px 22px;margin:56px auto 0;text-align:left;max-width:560px}
+.fin-q p{font-size:16.5px;color:rgba(255,255,255,.85);margin-bottom:11px;line-height:1.6}
+.fin-q cite{font-style:normal;font-size:13.5px;color:rgba(255,255,255,.42)}
+.pied{font-size:13.5px;color:rgba(255,255,255,.34);line-height:1.7;margin-top:56px}
+.pied a{border-bottom:1px solid rgba(255,255,255,.28)}
+
+/* ══ BARRE MOBILE ══ */
+.mbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:950;display:none;
+  background:rgba(255,255,255,.97);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);padding:11px var(--pad) calc(11px + env(safe-area-inset-bottom));
+  gap:10px;align-items:center;
+}
+.mbar .btn{flex:1;padding:15px 18px;font-size:15.5px}
+.mbar-tel{width:50px;height:50px;border-radius:50%;background:var(--mist);color:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+@media(max-width:900px){
+  .mbar{display:flex}
+  .ecran{padding-bottom:calc(76px + 76px)}   /* la barre ne doit rien recouvrir */
+}
+</style>
+</head>
+<body class="snap">
+
+<a class="sr-only" href="#e2">Aller au contenu</a>
+
+<div class="preview-bar">
+  <strong>Aperçu · version B</strong> — une idée par écran.<span class="long"> L'autre version est sur</span>
+  <a href="/nouvelle-version">/nouvelle-version</a><span class="long">, le site officiel sur <a href="/">locair.fr</a>.</span>
+</div>
+
+<header class="bar" id="bar">
+  <a class="logo" href="#e1">Loc<span>'</span>Air</a>
+  <a class="bar-tel" href="tel:+33663798756">06.63.79.87.56</a>
+  <a class="btn btn-1 btn-s" href="/">Réserver</a>
+</header>
+
+<nav class="dots" id="dots" aria-label="Progression"></nav>
+
+<main>
+
+<!-- ══ 1 · L'ACCROCHE ══════════════════════════════════════════════════════ -->
+<section class="ecran e1" id="e1" data-titre="Accueil">
+  <div class="in e1-grid">
+    <div>
+      <p class="urg rv"><i aria-hidden="true"></i>Livraison demain · Express aujourd'hui</p>
+      <h1 class="titre rv">Il fait trop chaud pour dormir&nbsp;?<em> Plus pour longtemps.</em></h1>
+      <form class="addr rv" action="/" method="get">
+        <label for="addr-input">Adresse de livraison</label>
+        <div class="addr-row">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <input id="addr-input" name="adresse" type="text" autocomplete="street-address" placeholder="Ex. 12 av. Jean Médecin, Nice">
+        </div>
+        <button class="btn btn-1" type="submit">Voir les disponibilités →</button>
+        <p class="addr-note">Prix affiché avant de payer · Annulation gratuite</p>
+      </form>
+      <p class="preuve1 rv">
+        <span class="stars" aria-hidden="true">★★★★★</span>
+        <span><b>4,9</b> · 32 avis Google · <b>+500</b> clients livrés depuis 2019</span>
+      </p>
+    </div>
+    <img class="e1-img rv" src="/hero-clim.jpg" width="800" height="1000" fetchpriority="high"
+         alt="Climatiseur mobile Loc'Air installé dans un appartement à Nice">
+  </div>
+</section>
+
+<!-- ══ 2 · LA PROMESSE ═════════════════════════════════════════════════════ -->
+<section class="ecran e-ink" id="e2" data-titre="La promesse">
+  <div class="in">
+    <span class="kicker rv">La promesse</span>
+    <h2 class="titre rv">Demain matin,<em> quelqu'un sonne chez vous.</em></h2>
+    <div class="creneau rv">
+      <b>8h – 12h</b>
+      <span>7 jours sur 7, week-ends et jours fériés compris</span>
+    </div>
+    <p class="dire rv">
+      Il monte l'appareil, pose le kit sur votre fenêtre, vérifie que ça refroidit
+      et vous montre les réglages. Vingt à trente minutes. Vous n'avez rien à préparer.
+    </p>
+  </div>
+</section>
+
+<!-- ══ 3 · LA CAUTION ══════════════════════════════════════════════════════ -->
+<section class="ecran e-mist" id="e3" data-titre="Aucune caution">
+  <div class="in chiffre">
+    <div>
+      <span class="kicker rv">Ce que vous ne payez pas</span>
+      <span class="geant rv" style="color:var(--blue)">0<small> €</small></span>
+    </div>
+    <div>
+      <h2 class="titre rv" style="font-size:clamp(30px,4.4vw,52px)">De caution.</h2>
+      <p class="dire rv">
+        Aucun chèque, aucune empreinte bancaire, aucun blocage sur votre carte.
+        Vous payez la location. Rien d'autre, jamais.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 4 · LE BARÈME ══════════════════════════════════════════════════════ -->
+<section class="ecran" id="e4" data-titre="Le prix">
+  <div class="in">
+    <span class="kicker rv">Le prix</span>
+    <h2 class="titre rv" style="max-width:18ch">Le prix affiché<em> est le prix payé.</em></h2>
+    <div class="tiers rv" style="margin-top:40px;max-width:620px">
+      <div class="tier"><span class="tier-dur">7 jours</span><span class="tier-p">12 €<i>/jour</i></span></div>
+      <div class="tier"><span class="tier-dur">8 à 14 jours</span><span class="tier-p">10 €<i>/jour</i><span class="tier-off">−17 %</span></span></div>
+      <div class="tier"><span class="tier-dur">15 à 21 jours</span><span class="tier-p">9 €<i>/jour</i><span class="tier-off">−25 %</span></span></div>
+      <div class="tier best"><span class="tier-dur">22 jours et plus</span><span class="tier-p">8 €<i>/jour</i><span class="tier-off">−33 %</span></span></div>
+    </div>
+    <p class="mini rv" style="max-width:620px">
+      Le barème est par tranches : les 7 premiers jours restent à 12 €, seuls les
+      suivants passent au tarif inférieur. Kit fourni · Récupération incluse ·
+      Livraison 60 € en zone standard, 120 € hors zone.
+    </p>
+  </div>
+</section>
+
+<!-- ══ 5 · VOTRE PRIX ══════════════════════════════════════════════════════ -->
+<section class="ecran e-mist" id="e5" data-titre="Votre prix">
+  <div class="in">
+    <span class="kicker rv">Votre prix</span>
+    <h2 class="titre rv" style="font-size:clamp(27px,3.2vw,40px);max-width:22ch">Combien&nbsp;? Vous le savez<em> avant de donner votre adresse.</em></h2>
+    <div style="max-width:560px;margin-top:32px">
+      <div class="calc rv">
+        <div class="calc-field">
+          <p class="calc-lbl" id="lbl-duree">Durée de location</p>
+          <div class="step-row" role="group" aria-labelledby="lbl-duree">
+            <button class="step-btn" type="button" id="c-moins" aria-label="Un jour de moins">−</button>
+            <span class="step-val"><b id="c-jours" aria-live="polite">14</b><span>jours</span></span>
+            <button class="step-btn" type="button" id="c-plus" aria-label="Un jour de plus">+</button>
+          </div>
+          <div class="presets" id="c-presets">
+            <button class="chip" type="button" data-j="7" aria-pressed="false">1 semaine</button>
+            <button class="chip" type="button" data-j="14" aria-pressed="true">2 semaines</button>
+            <button class="chip" type="button" data-j="21" aria-pressed="false">3 semaines</button>
+            <button class="chip" type="button" data-j="30" aria-pressed="false">1 mois</button>
+          </div>
+        </div>
+        <div class="calc-field">
+          <p class="calc-lbl" id="lbl-zone">Où doit-on livrer&nbsp;?</p>
+          <div class="presets" id="c-zone" role="group" aria-labelledby="lbl-zone">
+            <button class="chip" type="button" data-z="60" aria-pressed="true">Nice et communes proches</button>
+            <button class="chip" type="button" data-z="120" aria-pressed="false">Hors zone</button>
+          </div>
+        </div>
+        <div class="calc-field" style="margin-bottom:0">
+          <p class="calc-lbl" id="lbl-pose">Qui pose l'appareil&nbsp;?</p>
+          <div class="presets" id="c-pose" role="group" aria-labelledby="lbl-pose">
+            <button class="chip" type="button" data-i="1" aria-pressed="true">Un technicien vient</button>
+            <button class="chip" type="button" data-i="0" aria-pressed="false">Je pose moi-même</button>
+          </div>
+        </div>
+        <div class="calc-sep"></div>
+        <div class="calc-line"><span id="c-l-loc">Location, 14 jours</span><b id="c-v-loc">154 €</b></div>
+        <div class="calc-line"><span>Livraison &amp; récupération</span><b id="c-v-liv">60 €</b></div>
+        <div class="calc-line" id="c-line-pose"><span>Installation par technicien</span><b id="c-v-pose">80 €</b></div>
+        <div class="calc-total"><span>Total à payer</span><b id="c-total">294 €</b></div>
+        <p class="calc-day" id="c-jour">soit <b>11 € par jour</b> de location, + 140 € de frais — une seule fois</p>
+        <a class="btn btn-light" href="/">Réserver à ce prix →</a>
+        <p class="calc-legal">Montant reconfirmé avant paiement · Express non compris</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 5 · LA PANNE ════════════════════════════════════════════════════════ -->
+<section class="ecran e-blue" id="e6" data-titre="En cas de panne">
+  <div class="in">
+    <span class="kicker rv">La garantie</span>
+    <h2 class="titre rv">Une panne&nbsp;?<em> Remplacé le jour même.</em></h2>
+    <p class="dire rv">
+      Vous appelez, on vient. Si la réparation sur place n'est pas possible, on
+      échange l'appareil ou on rembourse les jours restants. C'est écrit dans
+      votre contrat, pas dans un slogan.
+    </p>
+  </div>
+</section>
+
+<!-- ══ 6 · LES CLIENTS ═════════════════════════════════════════════════════ -->
+<section class="ecran e-ink" id="e7" data-titre="Les clients">
+  <div class="in">
+    <span class="kicker rv">Ils l'ont fait</span>
+    <h2 class="titre rv" style="max-width:20ch;font-size:clamp(30px,4.2vw,54px)">Nos clients,<em> filmés chez eux.</em></h2>
+    <p class="dire rv">Pas d'acteurs, pas de studio. Des vidéos prises au téléphone.</p>
+
+    <!-- Pour brancher une vraie vidéo, remplacer le contenu d'une carte par :
+           <video class="vid-el" preload="none" playsinline muted loop poster="/videos/x.jpg">
+             <source src="/videos/x.webm" type="video/webm">
+             <source src="/videos/x.mp4"  type="video/mp4">
+           </video>
+           <button class="vplay" type="button" aria-label="Lire le témoignage"><span>▶</span></button>
+         preload="none" + poster : rien ne se télécharge avant le clic. -->
+    <div class="rail" id="rail" tabindex="0" role="region" aria-label="Témoignages vidéo">
+      <article class="vcard rv"><div class="vplay" style="cursor:default"><span style="width:auto;height:auto;padding:8px 15px;border-radius:100px;font-size:11.5px;font-weight:700">VIDÉO À AJOUTER</span></div><div class="vmeta"><span class="stars" aria-hidden="true">★★★★★</span><b>Yassine</b><span>Nice · Juin 2026</span></div></article>
+      <article class="vcard rv"><div class="vplay" style="cursor:default"><span style="width:auto;height:auto;padding:8px 15px;border-radius:100px;font-size:11.5px;font-weight:700">VIDÉO À AJOUTER</span></div><div class="vmeta"><span class="stars" aria-hidden="true">★★★★★</span><b>Lauriane</b><span>Nice · Juin 2026</span></div></article>
+      <article class="vcard rv"><div class="vplay" style="cursor:default"><span style="width:auto;height:auto;padding:8px 15px;border-radius:100px;font-size:11.5px;font-weight:700">VIDÉO À AJOUTER</span></div><div class="vmeta"><span class="stars" aria-hidden="true">★★★★★</span><b>Mike</b><span>Nice · Juin 2026</span></div></article>
+      <article class="vcard rv"><div class="vplay" style="cursor:default"><span style="width:auto;height:auto;padding:8px 15px;border-radius:100px;font-size:11.5px;font-weight:700">VIDÉO À AJOUTER</span></div><div class="vmeta"><span class="stars" aria-hidden="true">★★★★★</span><b>Fabio</b><span>Nice · Juin 2026</span></div></article>
+      <article class="vcard vide rv"><p><b>Vous avez loué chez nous&nbsp;?</b>Filmez 20 secondes et envoyez-les sur WhatsApp. On offre une journée.</p></article>
+    </div>
+    <p class="mini">Vidéos non retouchées, publiées avec l'accord des clients.</p>
+  </div>
+</section>
+
+<!-- ══ 7 · ALY ═════════════════════════════════════════════════════════════ -->
+<section class="ecran e-ink" id="e8" data-titre="Qui vient chez vous">
+  <div class="in aly">
+    <div class="aly-photo rv">
+      <!-- Remplacer par : <img src="/aly.jpg" width="600" height="750" loading="lazy"
+             alt="Aly, fondateur de Loc'Air, devant sa camionnette à Nice">
+           Une vraie photo. Pas une image de banque : elle contredirait
+           exactement ce que cet écran affirme. -->
+      <b>Photo d'Aly à ajouter</b>
+      <span>Devant la camionnette, ou en train de poser un kit.</span>
+    </div>
+    <div>
+      <span class="kicker rv">Qui vient chez vous</span>
+      <h2 class="titre rv" style="font-size:clamp(32px,5vw,62px)">Ce n'est pas une plateforme.<em> C'est Aly.</em></h2>
+      <p class="dire rv">
+        «&nbsp;Depuis 2019, je livre à Nice avec mon équipe. Pas de sous-traitant,
+        pas de centre d'appel. Quand vous appelez, c'est moi. Quand on sonne à
+        votre porte, c'est nous.&nbsp;»
+      </p>
+      <a class="aly-tel rv" href="tel:+33663798756">
+        <span class="aly-av" aria-hidden="true">AT</span>
+        <span><b>06.63.79.87.56</b><span>Aly, fondateur · 7j/7 de 8h à 20h</span></span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 8 · LA ZONE ═════════════════════════════════════════════════════════ -->
+<section class="ecran e-mist" id="e9" data-titre="Zone de livraison">
+  <div class="in">
+    <span class="kicker rv">Zone de livraison</span>
+    <h2 class="titre rv">On livre ici.<em> Vraiment ici.</em></h2>
+    <p class="dire rv">
+      Pas de transporteur. C'est notre camionnette et notre technicien.
+      Ce qui limite la zone — mais garantit l'heure.
+    </p>
+    <div class="villes rv">
+      <div class="ville"><div><b>Nice</b><span>Tous quartiers · 60 €</span></div><span class="tag">Livré 7j/7</span></div>
+      <div class="ville"><div><b>Saint-Laurent-du-Var</b><span>Zone standard · 60 €</span></div><span class="tag">Livré 7j/7</span></div>
+      <div class="ville"><div><b>Cagnes-sur-Mer</b><span>Zone standard · 60 €</span></div><span class="tag">Livré 7j/7</span></div>
+      <div class="ville"><div><b>Villefranche-sur-Mer</b><span>Zone standard · 60 €</span></div><span class="tag">Livré 7j/7</span></div>
+      <div class="ville"><div><b>Beaulieu-sur-Mer</b><span>Zone standard · 60 €</span></div><span class="tag">Livré 7j/7</span></div>
+      <div class="ville"><div><b>Cannes · Antibes · Menton</b><span>Hors zone · 120 €</span></div><span class="tag tag-ask">Sur demande</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 9 · LES QUESTIONS ═══════════════════════════════════════════════════ -->
+<section class="ecran" id="e10" data-titre="Questions">
+  <div class="in">
+    <span class="kicker rv">Avant de réserver</span>
+    <h2 class="titre rv">Les questions<em> qu'on nous pose.</em></h2>
+    <div class="faq rv">
+      <details>
+        <summary>Quelle est la durée minimale&nbsp;?</summary>
+        <p>7 jours. Le tarif est dégressif par tranches : les 7 premiers jours sont à 12 €, les jours 8 à 14 à 10 €, 15 à 21 à 9 €, et 8 € à partir du 22ᵉ. Deux semaines reviennent donc à 154 € de location, plus 60 € de livraison.</p>
+      </details>
+      <details>
+        <summary>Puis-je être livré aujourd'hui&nbsp;?</summary>
+        <p>Oui. L'option Express est proposée pendant la réservation : livraison le jour même sous 2h, pour 60 € de supplément, si vous commandez avant 18h. En urgence, appelez le 06.63.79.87.56.</p>
+      </details>
+      <details>
+        <summary>Y a-t-il un dépôt de garantie&nbsp;?</summary>
+        <p>Non. Aucun chèque de caution, aucune empreinte bancaire. Vous payez la location — rien d'autre.</p>
+      </details>
+      <details>
+        <summary>Je suis en Airbnb — c'est possible&nbsp;?</summary>
+        <p>Oui, vous n'avez pas besoin d'être propriétaire. Il faut être présent le matin de la livraison et avoir une fenêtre accessible. Le kit se pose et se retire sans perçage ni trace.</p>
+      </details>
+      <details>
+        <summary>Quel type de fenêtre est compatible&nbsp;?</summary>
+        <p>Oscillo-battante, coulissante, guillotine, Velux : dans la quasi-totalité des cas, oui. Baie vitrée avec grille : au cas par cas, une photo sur WhatsApp suffit et on répond en 5 minutes. Le technicien apporte toujours le matériel adapté.</p>
+      </details>
+      <details>
+        <summary>Ça consomme combien&nbsp;? Ça fait quel bruit&nbsp;?</summary>
+        <p>Entre 700 et 1 200 W selon le réglage, soit 1,00 € à 1,70 € d'électricité par nuit de 8h. Côté bruit : 52 à 62 dB à pleine puissance, jusqu'à 48 dB en mode nuit sur certains modèles.</p>
+      </details>
+      <details>
+        <summary>Puis-je prolonger&nbsp;?</summary>
+        <p>Oui, en quelques clics depuis votre espace client, sans nous appeler. Le tarif s'ajuste tout seul. La moitié de nos clients prolongent au moins une fois.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 10 · LA FIN ═════════════════════════════════════════════════════════ -->
+<section class="ecran e-ink fin" id="e11" data-titre="Réserver">
+  <div class="in">
+    <h2 class="titre rv">L'air frais<em> dès demain matin.</em></h2>
+    <p class="dire rv">Aucune caution. Aucune surprise. Annulation gratuite avant la livraison.</p>
+    <div class="fin-cta rv">
+      <a class="btn btn-light" href="/">Réserver maintenant</a>
+      <a class="btn btn-ghost" href="tel:+33663798756">Être rappelé</a>
+    </div>
+    <div class="fin-q rv">
+      <p>«&nbsp;Prix clair, technicien ponctuel, clim efficace dès le premier soir. Le fait que tout soit inclus, c'est ce qui m'a convaincu.&nbsp;»</p>
+      <cite>Daniel Lopez Francia · Nice · <span class="stars" aria-hidden="true">★★★★★</span></cite>
+    </div>
+    <p class="pied rv">
+      THIAM ALY · SIRET 853 730 562 00024 · 11 Avenue Chantal, 06100 Nice · 7j/7 de 8h à 20h<br>
+      <a href="/cgv">Conditions générales</a> · <a href="/mentions-legales">Mentions légales</a> ·
+      <a href="/confidentialite">Confidentialité</a> · <a href="/client">Espace client</a><br>
+      <span style="color:var(--gold)">Page d'aperçu, non indexée.</span> Le site officiel est <a href="/">locair.fr</a>.
+    </p>
+  </div>
+</section>
+
+</main>
+
+<div class="mbar">
+  <a class="mbar-tel" href="tel:+33663798756" aria-label="Appeler Loc'Air">
+    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 1.9.7 2.8a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.8.7a2 2 0 011.7 2z"/></svg>
+  </a>
+  <a class="btn btn-1" href="/">Réserver — dès 12 €/jour</a>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   Quatre comportements, rien de plus. Sans JavaScript, la page reste
+   entièrement lisible et utilisable : tout est déjà dans le HTML.
+══════════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Apparition du contenu, une fois par bloc ────────────────────────── */
+(function(){
+  var blocs = document.querySelectorAll('.rv');
+  if(!blocs.length) return;
+  if(!('IntersectionObserver' in window)){
+    blocs.forEach(function(b){ b.classList.add('on'); });
+    return;
+  }
+  var obs = new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting) return;
+      e.target.classList.add('on');
+      obs.unobserve(e.target);
+    });
+  }, { rootMargin:'0px 0px -10% 0px', threshold:0.08 });
+  blocs.forEach(function(b){ obs.observe(b); });
+})();
+
+/* ── 2. Repère de progression, et couleur de la barre selon l'écran ──────
+   Sur un fond sombre, un logo sombre disparaît. La barre et les points
+   changent donc de couleur en fonction de l'écran traversé.            */
+(function(){
+  var ecrans = [].slice.call(document.querySelectorAll('.ecran'));
+  var dots = document.getElementById('dots');
+  var bar  = document.getElementById('bar');
+  if(!ecrans.length || !dots || !bar) return;
+
+  ecrans.forEach(function(s){
+    var a = document.createElement('a');
+    a.href = '#' + s.id;
+    a.setAttribute('aria-label', s.dataset.titre || s.id);
+    dots.appendChild(a);
+  });
+  var liens = dots.querySelectorAll('a');
+
+  function sombre(el){ return el.classList.contains('e-ink') || el.classList.contains('e-blue'); }
+
+  function maj(){
+    var milieu = window.innerHeight / 2, actif = 0;
+    ecrans.forEach(function(s, i){
+      var r = s.getBoundingClientRect();
+      if(r.top <= milieu && r.bottom >= milieu) actif = i;
+    });
+    liens.forEach(function(a, i){ a.classList.toggle('on', i === actif); });
+    var fonce = sombre(ecrans[actif]);
+    dots.classList.toggle('sur-fonce', fonce);
+    bar.classList.toggle('sur-fonce', fonce);
+    bar.classList.toggle('pose', window.scrollY > 40 && !fonce);
+  }
+
+  var tick = false;
+  window.addEventListener('scroll', function(){
+    if(tick) return;
+    tick = true;
+    requestAnimationFrame(function(){ maj(); tick = false; });
+  }, { passive:true });
+  window.addEventListener('resize', maj, { passive:true });
+  maj();
+})();
+
+/* ── 3. Lecture des vidéos ──────────────────────────────────────────────── */
+(function(){
+  var rail = document.getElementById('rail');
+  if(!rail) return;
+  rail.addEventListener('click', function(e){
+    var btn = e.target.closest('.vplay');
+    if(!btn) return;
+    var carte = btn.closest('.vcard'), video = carte && carte.querySelector('video');
+    if(!video) return;                       /* emplacement encore vide */
+    rail.querySelectorAll('video').forEach(function(v){
+      if(v !== video){ v.pause(); v.closest('.vcard').classList.remove('is-playing'); }
+    });
+    if(video.paused){ video.muted = false; video.play(); carte.classList.add('is-playing'); }
+    else { video.pause(); carte.classList.remove('is-playing'); }
+  });
+})();
+
+/* ── 4. Calculateur ─────────────────────────────────────────────────────
+   Reprend calcPrice() du tunnel à l'identique : barème MARGINAL, chaque
+   tranche ne s'applique qu'aux jours supplémentaires. Les tarifs viennent de
+   /api/pricing-config, comme sur le site officiel ; en cas d'échec réseau,
+   les valeurs par défaut ci-dessous prennent le relais.                  */
+(function(){
+  var out = document.getElementById('c-total');
+  if(!out) return;
+  var P = { duree_min_jours:7,
+            palier1_max_jours:7,  palier1_tarif_cents:1200,
+            palier2_max_jours:14, palier2_tarif_cents:1000,
+            palier3_max_jours:21, palier3_tarif_cents:900,
+            palier4_tarif_cents:800 };
+  var INSTALL = 80, MAX_J = 90, jours = 14, zone = 60, pose = 1;
+
+  function calcPrice(d){
+    var r1=P.palier1_tarif_cents/100, r2=P.palier2_tarif_cents/100,
+        r3=P.palier3_tarif_cents/100, r4=P.palier4_tarif_cents/100,
+        m1=P.palier1_max_jours, m2=P.palier2_max_jours, m3=P.palier3_max_jours;
+    if(d<=m1) return d*r1;
+    if(d<=m2) return m1*r1+(d-m1)*r2;
+    if(d<=m3) return m1*r1+(m2-m1)*r2+(d-m2)*r3;
+    return m1*r1+(m2-m1)*r2+(m3-m2)*r3+(d-m3)*r4;
+  }
+  function eur(n){
+    return (Math.round(n*100)/100).toLocaleString('fr-FR',
+      {minimumFractionDigits:0, maximumFractionDigits:2}) + ' €';
+  }
+  function render(){
+    var loc = calcPrice(jours), inst = pose ? INSTALL : 0, total = loc + zone + inst;
+    document.getElementById('c-jours').textContent  = jours;
+    document.getElementById('c-l-loc').textContent  = 'Location, ' + jours + ' jours';
+    document.getElementById('c-v-loc').textContent  = eur(loc);
+    document.getElementById('c-v-liv').textContent  = eur(zone);
+    document.getElementById('c-v-pose').textContent = pose ? eur(INSTALL) : '0 €';
+    document.getElementById('c-line-pose').classList.toggle('off', !pose);
+    out.textContent = eur(total);
+    document.getElementById('c-jour').innerHTML =
+      'soit <b>' + eur(loc/jours) + ' par jour</b> de location, + ' + eur(zone + inst)
+      + ' de frais — une seule fois';
+    document.getElementById('c-moins').disabled = jours <= P.duree_min_jours;
+    document.getElementById('c-plus').disabled  = jours >= MAX_J;
+    document.querySelectorAll('#c-presets .chip').forEach(function(c){
+      c.setAttribute('aria-pressed', String(+c.dataset.j === jours));
+    });
+  }
+  function press(sel, attr, val){
+    document.querySelectorAll(sel + ' .chip').forEach(function(c){
+      c.setAttribute('aria-pressed', String(+c.dataset[attr] === val));
+    });
+  }
+  document.getElementById('c-moins').addEventListener('click', function(){ if(jours>P.duree_min_jours){jours--;render();} });
+  document.getElementById('c-plus').addEventListener('click',  function(){ if(jours<MAX_J){jours++;render();} });
+  document.getElementById('c-presets').addEventListener('click', function(e){
+    var c=e.target.closest('.chip'); if(!c) return; jours=+c.dataset.j; render();
+  });
+  document.getElementById('c-zone').addEventListener('click', function(e){
+    var c=e.target.closest('.chip'); if(!c) return; zone=+c.dataset.z; press('#c-zone','z',zone); render();
+  });
+  document.getElementById('c-pose').addEventListener('click', function(e){
+    var c=e.target.closest('.chip'); if(!c) return; pose=+c.dataset.i; press('#c-pose','i',pose); render();
+  });
+  render();
+  fetch('/api/pricing-config')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){ if(d && d.pricing){ P = d.pricing; render(); } })
+    .catch(function(){ /* valeurs par défaut conservées */ });
+})();
+</script>
+
+</body>
+</html>
