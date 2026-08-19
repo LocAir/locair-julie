@@ -20,6 +20,25 @@ const AD_HOC_LABEL = {
   sms_mission_confirmee:     'SMS mission confirmée',
   sms_client_absent:         'SMS client absent',
   email_facture_vente:       'Email facture de vente (Offre Privilège)',
+  // Complétés le 2026-08-19 (audit "board communications" demandé par Aly) —
+  // ces scénarios existaient déjà dans email_log mais n'avaient jamais eu de
+  // libellé ici, donc s'affichaient sous leur nom technique brut partout où
+  // scenarioLibelle() est utilisé (onglet Emails, fiche client, board).
+  email_avenant_facture_prolongation: 'Email avenant + facture (prolongation)',
+  devis_envoye:                'Email devis (entreprise)',
+  lien_paiement:                'Lien de paiement (email/SMS)',
+  relance_paiement:             'Relance de paiement (email/SMS)',
+  offre_prolongation_masse:     'Offre de prolongation (envoi groupé admin)',
+  offre_privilege:              'Email Offre Privilège',
+  relance_dormant:              'Email relance client inactif',
+  recap_mensuel_virements:      'Récap mensuel/trimestriel virements (admin)',
+  rapport_hebdo:                'Rapport hebdomadaire (admin)',
+  prime_transporteur:           'Email prime de fin de saison (transporteur)',
+  email_facture_transporteur_admin: 'Email facture transporteur (admin)',
+  recap_facture_hebdo_admin:    'Récap hebdo factures transporteurs (admin)',
+  email_code_transporteur:      'Email code de connexion (transporteur)',
+  email_code_ambassadeur:       'Email code de connexion (ambassadeur)',
+  email_bienvenue_ambassadeur:  'Email bienvenue ambassadeur',
 };
 function scenarioLibelle(scenario) {
   return SCENARIOS[scenario]?.libelle || AD_HOC_LABEL[scenario] || scenario;
