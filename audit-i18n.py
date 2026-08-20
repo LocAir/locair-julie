@@ -67,6 +67,23 @@ class Audit(HTMLParser):
         # un marqueur sur un ancêtre couvre le texte qu'il contient
         (self.couverts if any(self.marque) else self.manquants).append(t[:70])
 
+def verifier_entites(src):
+    """Une valeur du dictionnaire ne doit pas contenir d'entité HTML.
+
+    data-t écrit du texte brut : "&nbsp;" s'afficherait tel quel à l'écran.
+    Ce contrôle existe parce que le cas s'est produit — le titre "Vous êtes une
+    conciergerie&nbsp;?" s'affichait avec le code visible.
+    """
+    if 'var T = {}' not in src:
+        return []
+    bloc = src[src.index('var T = {}'):src.index('window.setLangue')]
+    fautifs = []
+    for m in re.finditer(r"'([\w.]+)'\s*:\s*\{(.*?)\}", bloc, re.S):
+        ents = set(re.findall(r'&(?:nbsp|amp|lt|gt|#\d+);', m.group(2)))
+        if ents:
+            fautifs.append((m.group(1), sorted(ents)))
+    return fautifs
+
 src = open(sys.argv[1] if len(sys.argv) > 1 else 'version-b.html', encoding='utf-8').read()
 corps = src[src.index('<body'):] if '<body' in src else src
 corps = re.sub(r'<!--.*?-->', '', corps, flags=re.S)      # commentaires exclus
@@ -78,6 +95,14 @@ print(f'Textes traduisibles : {total}')
 print(f'  couverts   : {len(a.couverts)}')
 print(f'  manquants  : {len(a.manquants)}')
 print(f'  COUVERTURE : {pct:.1f} %')
+fautifs = verifier_entites(src)
+if fautifs:
+    print(f'\n⚠ {len(fautifs)} traduction(s) contiennent du code HTML au lieu du caractère :')
+    for cle, ents in fautifs:
+        print('  ✗', cle, ' '.join(ents))
+else:
+    print('  entités HTML : aucune ✓')
+
 if '-v' in sys.argv:
     print('\n── Restants ──')
     for m in a.manquants:
