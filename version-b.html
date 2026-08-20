@@ -170,6 +170,11 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .bar.sur-fonce{color:#fff}
 .bar.sur-fonce .logo span{color:var(--gold)}
 .bar.sur-fonce .btn-out{border-color:rgba(255,255,255,.35);color:#fff}
+/* Sur l'écran bleu, un bouton bleu disparaît dans le fond : sur tout fond
+   sombre le bouton principal passe en blanc, ce qui marche aussi bien sur
+   l'encre que sur le bleu. */
+.bar.sur-fonce .btn-1{background:#fff;color:var(--ink)}
+.bar.sur-fonce .btn-1:hover{background:rgba(255,255,255,.88)}
 .bar-tel{font-weight:700;font-size:15px}
 .bar-lien{font-size:15px;font-weight:500;opacity:.68;transition:opacity .15s}
 .bar-lien:hover{opacity:1}
@@ -227,6 +232,29 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .metier p{font-size:15px;color:var(--ink-2);line-height:1.55}
 @media(max-width:900px){.metier{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:540px){.metier{grid-template-columns:1fr;gap:24px}}
+
+/* ══ NUMÉROTATION DES ÉCRANS ══
+   Sur un format "une idée par écran", le lecteur doit savoir où il en est.
+   Le numéro est posé en CSS via une variable renseignée par le script — et
+   non dans le texte de l'élément, que le moteur de traduction remplace à
+   chaque changement de langue. */
+.kicker{position:relative;padding-left:0}
+.kicker::before{
+  content:var(--n,'');margin-right:14px;color:var(--ink-3);
+  font-variant-numeric:tabular-nums;letter-spacing:.14em;
+}
+.e-ink .kicker::before,.e-blue .kicker::before{color:rgba(255,255,255,.32)}
+
+/* ══ ÉCRANS CENTRÉS ══
+   Douze écrans sur treize étaient alignés à gauche, avec la même ossature.
+   Les écrans qui n'énoncent qu'une affirmation — la promesse, la garantie —
+   passent au centre : ils deviennent des respirations dans le défilement au
+   lieu d'une douzième variation du même bloc. */
+.centre .in{text-align:center}
+.centre .titre{max-width:22ch;margin-left:auto;margin-right:auto}
+.centre .dire{margin-left:auto;margin-right:auto}
+.centre .creneau{justify-content:center}
+@media(max-width:700px){.centre .in{text-align:left}.centre .titre,.centre .dire{margin-left:0}.centre .creneau{justify-content:flex-start}}
 
 /* ══ ÉCRAN CHIFFRE ══ (aucune caution, note, délai…) */
 .chiffre{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,70px);align-items:center}
@@ -601,7 +629,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 </section>
 
 <!-- ══ 2 · LA PROMESSE ═════════════════════════════════════════════════════ -->
-<section class="ecran e-ink" id="e2" data-titre="La promesse">
+<section class="ecran e-ink centre" id="e2" data-titre="La promesse">
   <div class="in">
     <span class="kicker rv" data-t="e2.kicker">La promesse</span>
     <h2 class="titre rv" data-th="e2.titre">Demain matin,<em> quelqu'un sonne chez vous.</em></h2>
@@ -621,7 +649,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
      vérifiables. Aucune enseigne n'est nommée et la seule phrase qui évoque
      les autres reste factuelle : chez un loueur généraliste, la clim mobile
      est effectivement une référence parmi des centaines. -->
-<section class="ecran e-mist" id="e2b" data-titre="Notre métier">
+<section class="ecran" id="e2b" data-titre="Notre métier">
   <div class="in">
     <span class="kicker rv" data-t="e2b.kicker">Notre métier</span>
     <h2 class="titre rv" data-th="e2b.titre">Pensé pour la canicule,<em> pas pour le chantier.</em></h2>
@@ -728,7 +756,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 </section>
 
 <!-- ══ 5 · LA PANNE ════════════════════════════════════════════════════════ -->
-<section class="ecran e-blue" id="e6" data-titre="En cas de panne">
+<section class="ecran e-blue centre" id="e6" data-titre="En cas de panne">
   <div class="in">
     <span class="kicker rv" data-t="e6.kicker">La garantie</span>
     <h2 class="titre rv" data-th="e6.titre">Une panne&nbsp;?<em> Remplacé le jour même.</em></h2>
@@ -840,7 +868,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 </section>
 
 <!-- ══ 11 · LES QUESTIONS ═══════════════════════════════════════════════════ -->
-<section class="ecran" id="e11" data-titre="Questions">
+<section class="ecran e-mist" id="e11" data-titre="Questions">
   <div class="in">
     <span class="kicker rv" data-t="e11.kicker">Avant de réserver</span>
     <h2 class="titre rv" data-th="e11.titre">Les questions<em> qu'on nous pose.</em></h2>
@@ -1722,6 +1750,20 @@ Object.assign(T, {
   document.getElementById('infobar-x').addEventListener('click', function(){
     bar.classList.remove('on');
     try{ localStorage.setItem('lb_infobar', jourParis); }catch(e){}
+  });
+})();
+
+/* ── Numérotation des écrans ────────────────────────────────────────────────
+   Le numéro passe par une variable CSS et non par le texte de l'élément : le
+   moteur de traduction remplace le contenu des éléments marqués, un numéro
+   écrit dedans disparaîtrait au premier changement de langue. */
+(function(){
+  var ecrans = document.querySelectorAll('.ecran');
+  var total = ecrans.length;
+  ecrans.forEach(function(s, i){
+    var k = s.querySelector('.kicker');
+    if(!k) return;                       /* premier et dernier écran : pas de surtitre */
+    k.style.setProperty('--n', '"' + String(i + 1).padStart(2, '0') + ' /' + total + '"');
   });
 })();
 </script>
