@@ -4636,10 +4636,17 @@ async function openFactureSemaineSheet(periodeDebut, periodeFin){
       sheet.innerHTML = `<h2 style="margin-bottom:6px">🧾 Facture de la semaine</h2><p class="empty">Aucune mission terminée sur cette semaine — rien à facturer.</p><button class="btn btn-grey btn-block" style="margin-top:10px" onclick="closeFactureOverlay()">Fermer</button>`;
       return;
     }
+    // Profil incomplet (SIRET/adresse) : la facture partira quand même (pas
+    // question de bloquer un revenu pour ça), mais elle ne sera pas
+    // légalement complète — mieux vaut le dire ici, au moment où ça compte,
+    // plutôt que de laisser un "SIRET non renseigné" silencieux sur un
+    // document déjà envoyé (audit facturation, 2026-08-20).
+    const profilIncomplet = !d.siret || !d.adresse_facturation;
     sheet.innerHTML = `
       <h2 style="margin-bottom:6px">🧾 Facture de la semaine</h2>
       <p class="sub" style="margin-bottom:16px">${weekLabel(periodeDebut)}</p>
       <div class="stat-tile" style="margin-bottom:8px"><div class="n">${(d.montant_total_cents/100).toFixed(2).replace('.',',')} €</div><div class="l">${d.nb_missions} mission${d.nb_missions>1?'s':''} terminée${d.nb_missions>1?'s':''}</div></div>
+      ${profilIncomplet ? `<p class="sub" style="margin-bottom:12px;color:var(--red,#9b2c1a)">⚠️ ${!d.siret&&!d.adresse_facturation?'SIRET et adresse non renseignés':!d.siret?'SIRET non renseigné':'Adresse non renseignée'} — ta facture partira quand même, mais elle ne sera pas complète. <a href="#" onclick="event.preventDefault();openInfosFacturationSheet()" style="font-weight:700">Compléter avant d'envoyer →</a></p>` : ''}
       <p class="sub" style="margin-bottom:16px">Elle sera envoyée automatiquement par email à Loc'Air, et restera consultable ici et dans "Mes factures".</p>
       <div class="err" id="facture-sheet-err"></div>
       <button class="btn btn-blue btn-block" id="facture-confirm-btn" onclick="confirmerFactureSemaine('${periodeDebut}','${periodeFin}')">✅ Valider et envoyer</button>
@@ -4700,7 +4707,7 @@ async function openInfosFacturationSheet(){
     if(!r.ok) throw new Error(d.error||'Erreur');
     sheet.innerHTML = `
       <h2 style="margin-bottom:6px">✏️ Mes informations de facturation</h2>
-      <p class="sub" style="margin-bottom:16px">Facultatif — affichées en en-tête de tes factures PDF. Laisse vide si tu ne sais pas encore.</p>
+      <p class="sub" style="margin-bottom:16px">Nécessaires pour que tes factures soient légalement complètes (elles partent quand même sans, mais incomplètes). Laisse vide si tu ne sais pas encore, tu pourras revenir plus tard.</p>
       <label for="if-siret">SIRET</label>
       <input type="text" id="if-siret" value="${escHtml(d.siret||'')}" placeholder="123 456 789 00012"/>
       <label for="if-adresse" style="margin-top:12px">Adresse</label>

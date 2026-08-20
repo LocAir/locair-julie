@@ -159,6 +159,7 @@ async function genererFactureTransporteur(supabase, { transporteurId, periodeDeb
       transporteurNom: transp.nom, numero,
       periodeDebutFmt: fmtDate(periodeDebut), periodeFinFmt: fmtDate(periodeFin),
       nbMissions, totalFmt: eur(totalCents),
+      profilIncomplet: !transp.siret || !transp.adresse_facturation,
     });
     const result = await sendBrevoEmail({
       to: adminEmail,
@@ -228,7 +229,7 @@ async function runFactureTransporteurHebdo(supabase, now = new Date()) {
   const mondayTwoWeeksAgo = addDaysUTC(mondayThisWeek, -14);
   const sundayTwoWeeksAgo = addDaysUTC(mondayTwoWeeksAgo, 6);
 
-  const { data: transporteurs } = await supabase.from('transporteurs').select('id, nom').eq('actif', true);
+  const { data: transporteurs } = await supabase.from('transporteurs').select('id, nom, siret, adresse_facturation').eq('actif', true);
   const result = { rappels: 0, generees_auto: 0, erreurs: [], recap_lignes: [] };
 
   for (const t of transporteurs || []) {
@@ -246,7 +247,7 @@ async function runFactureTransporteurHebdo(supabase, now = new Date()) {
             message: `🧾 Ta facture de la semaine passée t'attend : ${resume.nb_missions} mission${resume.nb_missions > 1 ? 's' : ''}, ${montantFmt} — valide-la en 1 clic dans "Mes gains".`,
           });
           result.rappels++;
-          result.recap_lignes.push({ nom: t.nom, auto: false, montantFmt, cents: resume.montant_total_cents });
+          result.recap_lignes.push({ nom: t.nom, auto: false, montantFmt, cents: resume.montant_total_cents, profilIncomplet: !t.siret || !t.adresse_facturation });
         }
       }
     } catch (e) {
@@ -268,7 +269,7 @@ async function runFactureTransporteurHebdo(supabase, now = new Date()) {
             type: 'facture', tag: 'facture_auto',
             message: `🧾 Ta facture de la semaine du ${fmtDate(pDebut2)} a été générée et envoyée automatiquement (tu n'avais pas encore validé) — tu la retrouves dans "Mes factures".`,
           });
-          result.recap_lignes.push({ nom: t.nom, auto: true, montantFmt, cents: genResult.montant_total_cents });
+          result.recap_lignes.push({ nom: t.nom, auto: true, montantFmt, cents: genResult.montant_total_cents, profilIncomplet: !t.siret || !t.adresse_facturation });
         }
       }
     } catch (e) {

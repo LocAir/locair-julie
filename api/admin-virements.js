@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
     // (montant à verser, déjà versé, détail mission par mission).
     if (action === 'summary') {
       const { data: transporteurs } = await supabase
-        .from('transporteurs').select('id, nom, actif').eq('city_id', city.id).order('nom');
+        .from('transporteurs').select('id, nom, actif, siret, adresse_facturation').eq('city_id', city.id).order('nom');
       const ids = (transporteurs || []).map(t => t.id);
       if (!ids.length) return res.status(200).json({ transporteurs: [] });
 
@@ -75,6 +75,7 @@ module.exports = async (req, res) => {
         const verse    = missions.filter(m => m.paye).reduce((s, m) => s + (m.montant_du_cents || 0), 0);
         return {
           id: t.id, nom: t.nom, actif: t.actif,
+          profil_incomplet: !t.siret || !t.adresse_facturation,
           en_attente_validation_cents: enAttenteValidation, non_verse_cents: nonVerse, verse_cents: verse,
           demande_en_cours: enCoursSet.has(t.id),
           missions: missions.map(m => ({
@@ -98,7 +99,7 @@ module.exports = async (req, res) => {
       if (!transpIds.length) return res.status(200).json({ factures: [] });
       const { data, error } = await supabase
         .from('transporteur_factures')
-        .select('id, transporteur_id, numero, periode_debut, periode_fin, nb_missions, montant_total_cents, envoyee_admin, access_token, created_at, transporteur:transporteurs ( id, nom )')
+        .select('id, transporteur_id, numero, periode_debut, periode_fin, nb_missions, montant_total_cents, envoyee_admin, access_token, created_at, transporteur:transporteurs ( id, nom, siret, adresse_facturation )')
         .in('transporteur_id', transpIds)
         .order('periode_debut', { ascending: false })
         .limit(300);

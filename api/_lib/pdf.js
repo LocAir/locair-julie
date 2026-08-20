@@ -931,7 +931,13 @@ function generateFactureTransporteurPdf({ transporteur, numero, periodeDebut, pe
     doc.font('Helvetica').fontSize(9).fillColor(C.body)
       .text(
         `Réglé par virement ${SELLER.nomCommercial} selon le rythme habituel des versements — historique et statut de paiement ` +
-        'consultables à tout moment dans l\'espace transporteur, onglet "Mes gains".',
+        'consultables à tout moment dans l\'espace transporteur, onglet "Mes gains". ' +
+        // Mentions obligatoires sur toute facture entre professionnels (Code
+        // de commerce, art. L441-9 et L441-10) — absentes jusqu'ici. Sans
+        // elles la facture n'est pas complète juridiquement, même si le
+        // montant et les parties sont corrects (audit facturation, 2026-08-20).
+        "Pas d'escompte pour paiement anticipé. En cas de retard de paiement : indemnité forfaitaire pour frais de " +
+        'recouvrement de 40 € et pénalités au taux de 3 fois le taux d\'intérêt légal (art. L441-10 du Code de commerce).',
         M, doc.y, { width: W }
       );
     doc.x = M;
