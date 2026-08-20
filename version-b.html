@@ -98,7 +98,16 @@ body{
   font-size:17px;line-height:1.6;letter-spacing:-.005em;
   -webkit-font-smoothing:antialiased;overflow-x:hidden;
 }
-img,video{max-width:100%;height:auto;display:block}
+img,video,picture{max-width:100%;height:auto;display:block}
+/* ── Tenir dans 320px ──────────────────────────────────────────────────────
+   Mesuré : à 320px de large — un vieil iPhone SE, ou n'importe quel écran
+   zoomé à 200 %, ce que les règles d'accessibilité imposent de supporter —
+   la page débordait de 13px en français et de 28px en russe.
+   Deux causes. Une colonne de grille refuse par défaut de devenir plus
+   étroite que son contenu ; et un mot russe très long ne se coupe jamais.
+   Les deux se règlent ici, une fois pour toutes les grilles de la page. */
+.e1-grid>*,.chiffre>*,.prix-grid>*,.aly>*,.specs>*,.metier>*,.conseils>*{min-width:0}
+.titre,.dire,.conseil b,.conseil span{overflow-wrap:break-word}
 a{color:inherit;text-decoration:none}
 button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 :focus-visible{outline:2.5px solid var(--blue);outline-offset:4px;border-radius:6px}
@@ -125,7 +134,38 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* ══ TYPOGRAPHIE ══
    Un écran, une phrase. Les tailles sont donc beaucoup plus grandes que sur
-   une page classique — c'est ce qui rend le format lisible d'un coup d'œil. */
+   une page classique — c'est ce qui rend le format lisible d'un coup d'œil.
+
+   ── L'échelle ──────────────────────────────────────────────────────────────
+   Mesuré : la page utilisait 24 formules de taille différentes, dont 5
+   écrites à la main dans le HTML, écran par écran. Vingt-quatre tailles de
+   titre, ce n'est pas une marque, c'est une accumulation de décisions prises
+   séparément — et ça se voit : deux écrans voisins n'ont aucune raison
+   d'avoir des titres à 52 et 54 pixels.
+
+   Six marches pour les textes, trois pour les chiffres, quatre pour les
+   écarts. Chaque marche est ~1,2 fois la précédente : c'est le rapport qui
+   se lit comme une progression et pas comme un accident.
+
+   Toutes les valeurs sont fluides : la première borne est la taille sur
+   téléphone, la dernière la taille sur grand écran. */
+:root{
+  --t-1: clamp(38px, 7.4vw, 86px);   /* le titre le plus court d'un écran   */
+  --t-2: clamp(33px, 5vw,   60px);   /* titre d'accueil, titre à deux temps */
+  --t-3: clamp(29px, 4.2vw, 50px);   /* titre d'écran standard              */
+  --t-4: clamp(26px, 3.5vw, 42px);   /* titre long, qui doit tenir          */
+  --t-5: clamp(22px, 2.4vw, 29px);   /* titre de carte                      */
+  --t-6: clamp(18px, 2.1vw, 23px);   /* le paragraphe d'intro               */
+
+  --n-1: clamp(90px, 20vw,  250px);  /* le chiffre spectacle : 0 €          */
+  --n-2: clamp(38px, 5.4vw, 68px);   /* un chiffre qui porte l'écran        */
+  --n-3: clamp(34px, 4.4vw, 50px);   /* un chiffre dans un bloc             */
+
+  --e-1: clamp(22px, 2.4vw, 32px);   /* écart serré : marge intérieure      */
+  --e-2: clamp(24px, 2.9vw, 40px);   /* écart moyen : entre colonnes        */
+  --e-3: clamp(28px, 3.8vw, 52px);   /* écart large : au-dessus d'un bloc   */
+  --e-4: clamp(30px, 4.8vw, 64px);   /* écart de respiration : deux moitiés */
+}
 .kicker{
   display:block;font-size:12px;font-weight:700;letter-spacing:.2em;
   text-transform:uppercase;color:var(--blue);margin-bottom:28px;
@@ -133,17 +173,22 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .e-ink .kicker,.e-blue .kicker{color:var(--gold)}
 .e-blue .kicker{color:rgba(255,255,255,.65)}
 .titre{
-  font-size:clamp(38px,7.4vw,86px);font-weight:700;letter-spacing:-.042em;
+  font-size:var(--t-1);font-weight:700;letter-spacing:-.042em;
   line-height:1.02;max-width:16ch;
 }
+/* Une marche de l'échelle, choisie selon la longueur du titre. Avant, la
+   taille était écrite à la main dans le HTML de chaque écran. */
+.titre.t-2{font-size:var(--t-2)}
+.titre.t-3{font-size:var(--t-3)}
+.titre.t-4{font-size:var(--t-4)}
 .titre em{font-style:normal;color:var(--blue)}
 .e-ink .titre em{color:var(--gold)}
 .e-blue .titre em,.e-ink.e-alt .titre em{color:#fff}
-.dire{font-size:clamp(18px,2.1vw,23px);color:var(--ink-2);line-height:1.5;max-width:44ch;margin-top:28px;letter-spacing:-.012em}
+.dire{font-size:var(--t-6);color:var(--ink-2);line-height:1.5;max-width:44ch;margin-top:28px;letter-spacing:-.012em}
 .e-ink .dire{color:rgba(255,255,255,.6)}
 .e-blue .dire{color:rgba(255,255,255,.78)}
 .geant{
-  font-size:clamp(90px,20vw,250px);font-weight:700;letter-spacing:-.06em;
+  font-size:var(--n-1);font-weight:700;letter-spacing:-.06em;
   line-height:.86;display:block;
 }
 .geant small{font-size:.24em;letter-spacing:-.02em;font-weight:700}
@@ -245,7 +290,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* ══ ÉCRAN 1 : OUVERTURE ══ */
 .e1{padding-top:32px;min-height:calc(100svh - 72px)}
 @supports not (height:100svh){.e1{min-height:calc(100vh - 72px)}}
-.e1-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(30px,5vw,64px);align-items:center}
+.e1-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:var(--e-4);align-items:center}
 /* ══ LIGNE D'ÉTAT DE LIVRAISON ══
    Remplace une pastille en capitales qui portait deux messages à la fois et
    débordait sur deux lignes. Elle était le premier élément vu de la page et
@@ -314,7 +359,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .conseil b{font-size:17px}
   .conseil .gtt{margin-bottom:10px}
 }
-.e1 .titre{max-width:15ch;font-size:clamp(33px,4.4vw,56px)}
+.e1 .titre{max-width:15ch;font-size:var(--t-2)}
 .addr{background:#fff;border-radius:var(--r-l);padding:22px;margin-top:28px;max-width:460px;box-shadow:0 1px 3px rgba(14,31,53,.05),0 18px 46px rgba(14,31,53,.1)}
 .addr label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:13px}
 .addr-row{display:flex;align-items:center;gap:12px;background:var(--mist);border-radius:var(--r);padding:15px 17px;transition:box-shadow .15s}
@@ -347,11 +392,11 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    Chiffres en grand, sans cadre : même langage que l'écran "0 € de caution".
    La photo n'est pas reprise ici — elle est déjà dans le premier écran, la
    remontrer affaiblirait les deux. */
-.specs{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(24px,3vw,44px);margin-top:clamp(34px,4vw,52px);border-top:1px solid var(--line);padding-top:clamp(26px,3vw,38px)}
-.spec b{display:block;font-size:clamp(36px,4.4vw,52px);font-weight:700;letter-spacing:-.045em;line-height:1}
+.specs{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--e-2);margin-top:var(--e-3);border-top:1px solid var(--line);padding-top:var(--e-1)}
+.spec b{display:block;font-size:var(--n-3);font-weight:700;letter-spacing:-.045em;line-height:1}
 .spec i{font-style:normal;font-size:13px;font-weight:700;color:var(--blue);display:block;margin-top:6px}
 .spec span{font-size:14px;color:var(--ink-2);display:block;margin-top:10px;line-height:1.45}
-.kit{display:flex;gap:22px;flex-wrap:wrap;margin-top:clamp(28px,3vw,40px);font-size:15.5px;color:var(--ink-2)}
+.kit{display:flex;gap:22px;flex-wrap:wrap;margin-top:var(--e-1);font-size:15.5px;color:var(--ink-2)}
 .kit li{list-style:none;display:flex;align-items:center;gap:9px}
 .kit li::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--blue);flex-shrink:0}
 @media(max-width:820px){.specs{grid-template-columns:repeat(2,1fr)}}
@@ -359,7 +404,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* ══ ÉCRAN MÉTIER ══
    Quatre points en colonnes, sans cadre : c'est le vide qui sépare. */
-.metier{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(26px,3.4vw,44px);margin-top:clamp(34px,4vw,52px)}
+.metier{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--e-2);margin-top:var(--e-3)}
 .mt-ic{width:40px;height:40px;border-radius:11px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
 .metier h3{font-size:18px;letter-spacing:-.02em;margin-bottom:9px;line-height:1.25}
 .metier p{font-size:15px;color:var(--ink-2);line-height:1.55}
@@ -404,16 +449,16 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .sugg small{display:block;font-size:12.5px;color:var(--ink-3);margin-top:2px}
 
 /* ══ ÉCRAN CHIFFRE ══ (aucune caution, note, délai…) */
-.chiffre{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,70px);align-items:center}
+.chiffre{display:grid;grid-template-columns:1fr 1fr;gap:var(--e-4);align-items:center}
 @media(max-width:820px){.chiffre{grid-template-columns:1fr;gap:22px}}
 
 /* ══ ÉCRAN LIVRAISON : le créneau ══ */
 .creneau{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;margin-top:34px}
-.creneau b{font-size:clamp(40px,6vw,72px);font-weight:700;letter-spacing:-.05em;line-height:1}
+.creneau b{font-size:var(--n-2);font-weight:700;letter-spacing:-.05em;line-height:1}
 .creneau span{font-size:17px;color:rgba(255,255,255,.55)}
 
 /* ══ ÉCRAN PRIX ══ */
-.prix-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:clamp(28px,4vw,52px);align-items:start}
+.prix-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:var(--e-3);align-items:start}
 .tiers{display:grid;border-top:1px solid var(--line)}
 .tier{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}
 .tier-dur{font-size:16px;color:var(--ink-2)}
@@ -424,7 +469,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 @media(max-width:900px){.prix-grid{grid-template-columns:1fr;gap:28px}}
 
 /* ══ CALCULATEUR ══ */
-.calc{background:var(--ink);color:#fff;border-radius:var(--r-l);padding:clamp(22px,2.4vw,30px)}
+.calc{background:var(--ink);color:#fff;border-radius:var(--r-l);padding:var(--e-1)}
 .calc-lbl{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:13px}
 .calc-field{margin-bottom:20px}
 .step-row{display:flex;align-items:center;gap:14px;margin-bottom:13px}
@@ -445,7 +490,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .calc-line.off span,.calc-line.off b{opacity:.3;text-decoration:line-through}
 .calc-total{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:18px 0 6px;padding-top:18px;border-top:1px solid rgba(255,255,255,.13)}
 .calc-total span{font-size:15px;color:rgba(255,255,255,.58)}
-.calc-total b{font-size:clamp(36px,4.4vw,48px);font-weight:700;letter-spacing:-.045em;line-height:1}
+.calc-total b{font-size:var(--n-3);font-weight:700;letter-spacing:-.045em;line-height:1}
 .calc-day{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:22px;line-height:1.5}
 .calc-day b{color:#fff;font-weight:700}
 .calc .btn{width:100%}
@@ -472,7 +517,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 @media(max-width:640px){.vcard{width:min(62vw,220px)}}
 
 /* ══ ÉCRAN ALY ══ */
-.aly{display:grid;grid-template-columns:.8fr 1.2fr;gap:clamp(30px,5vw,64px);align-items:center}
+.aly{display:grid;grid-template-columns:.8fr 1.2fr;gap:var(--e-4);align-items:center}
 .aly-photo{aspect-ratio:4/5;max-height:62svh;border-radius:var(--r-l);overflow:hidden;position:relative;background:#183253;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px}
 .aly-photo img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
 .aly-photo b{font-size:15px;color:rgba(255,255,255,.85);margin-bottom:6px}
@@ -485,13 +530,23 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 @media(max-width:880px){.aly{grid-template-columns:1fr;gap:28px}.aly-photo{aspect-ratio:16/10;max-height:none}}
 
 /* ══ ÉCRAN ZONE ══ */
-.villes{display:grid;grid-template-columns:repeat(2,1fr);gap:0 clamp(30px,5vw,60px);margin-top:36px}
-.ville{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:17px 0;border-bottom:1px solid var(--line)}
+.villes{display:grid;grid-template-columns:repeat(2,1fr);gap:0 var(--e-4);margin-top:36px}
+/* Mesuré : en anglais la page débordait de 18px sur le côté d'un téléphone,
+   en russe de 49px — et de 89px sur une tablette de 768px. Cause :
+   l'étiquette « Livré 7j/7 » devient « Доставка 7 дней в неделю », deux fois
+   plus longue, et refusait à la fois de se réduire et de passer à la ligne.
+   Elle a maintenant le droit de descendre en dessous. Sur un grand écran,
+   où tout tient sur une ligne, rien ne change. */
+.ville{display:flex;align-items:baseline;justify-content:space-between;
+  flex-wrap:wrap;gap:4px 16px;padding:17px 0;border-bottom:1px solid var(--line)}
+.ville>div{min-width:0}
 .ville b{font-size:19px;font-weight:700;letter-spacing:-.025em}
 .ville span{font-size:13.5px;color:var(--ink-3);display:block;margin-top:2px}
-.tag{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green);white-space:nowrap;flex-shrink:0}
+.tag{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green);flex-shrink:0}
 .tag-ask{color:var(--ink-3)}
-@media(max-width:700px){.villes{grid-template-columns:1fr}}
+@media(max-width:700px){
+  .villes{grid-template-columns:1fr}
+}
 
 /* ══ ÉCRAN QUESTIONS ══ */
 .faq{max-width:720px;margin-top:36px}
@@ -596,14 +651,14 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* ══ ÉCRAN ESPACES ══ */
 .portes{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:38px}
 .porte{
-  background:var(--ink);color:#fff;border-radius:var(--r-l);padding:clamp(24px,3vw,34px);
+  background:var(--ink);color:#fff;border-radius:var(--r-l);padding:var(--e-1);
   display:flex;flex-direction:column;transition:transform .18s ease;
 }
 .porte:hover{transform:translateY(-3px)}
 .porte.or{background:var(--gold);color:var(--ink)}
 .porte-k{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
 .porte.or .porte-k{color:rgba(14,31,53,.6)}
-.porte h3{font-size:clamp(22px,2.4vw,28px);letter-spacing:-.03em;margin-bottom:12px;line-height:1.15}
+.porte h3{font-size:var(--t-5);letter-spacing:-.03em;margin-bottom:12px;line-height:1.15}
 .porte>p{font-size:15px;color:rgba(255,255,255,.6);line-height:1.55;margin-bottom:20px}
 .porte.or>p{color:rgba(14,31,53,.72)}
 .porte ul{list-style:none;display:grid;gap:9px;margin-bottom:26px}
@@ -888,7 +943,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
       <span class="geant rv" style="color:var(--blue)">0<small> €</small></span>
     </div>
     <div>
-      <h2 class="titre rv" style="font-size:clamp(30px,4.4vw,52px)" data-t="e3.titre">De caution.</h2>
+      <h2 class="titre rv t-3" data-t="e3.titre">De caution.</h2>
       <p class="dire rv" data-t="e3.dire">Aucun chèque, aucune empreinte bancaire, aucun blocage sur votre carte. Vous payez la location. Rien d'autre, jamais.</p>
       <div class="signe rv">
         <span class="gtt" aria-hidden="true"></span>
@@ -949,7 +1004,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 <section class="ecran e-mist" id="e5" data-titre="Votre prix">
   <div class="in">
     <span class="kicker rv" data-t="e5.kicker">Votre prix</span>
-    <h2 class="titre rv" style="font-size:clamp(27px,3.2vw,40px);max-width:22ch" data-th="e5.titre">Combien&nbsp;? Vous le savez<em> avant de donner votre adresse.</em></h2>
+    <h2 class="titre rv t-4" style="max-width:22ch" data-th="e5.titre">Combien&nbsp;? Vous le savez<em> avant de donner votre adresse.</em></h2>
     <div style="max-width:560px;margin-top:32px">
       <div class="calc rv">
         <div class="calc-field">
@@ -1009,7 +1064,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 <section class="ecran e-ink" id="e7" data-titre="Les clients">
   <div class="in">
     <span class="kicker rv" data-t="e7.kicker">Ils l'ont fait</span>
-    <h2 class="titre rv" style="max-width:20ch;font-size:clamp(30px,4.2vw,54px)" data-th="e7.titre">Nos clients,<em> filmés chez eux.</em></h2>
+    <h2 class="titre rv t-3" style="max-width:20ch" data-th="e7.titre">Nos clients,<em> filmés chez eux.</em></h2>
     <p class="dire rv" data-t="e7.dire">Pas d'acteurs, pas de studio. Des vidéos prises au téléphone.</p>
 
     <!-- Pour brancher une vraie vidéo, remplacer le contenu d'une carte par :
@@ -1043,7 +1098,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
     </div>
     <div>
       <span class="kicker rv" data-t="e8.kicker">Qui vient chez vous</span>
-      <h2 class="titre rv" style="font-size:clamp(32px,5vw,62px)" data-th="e8.titre">Ce n'est pas une plateforme.<em> C'est Aly.</em></h2>
+      <h2 class="titre rv t-2" data-th="e8.titre">Ce n'est pas une plateforme.<em> C'est Aly.</em></h2>
       <p class="dire rv" data-t="e8.dire">«&nbsp;Depuis 2019, je livre à Nice avec mon équipe. Pas de sous-traitant, pas de centre d'appel. Quand vous appelez, c'est moi. Quand on sonne à votre porte, c'est nous.&nbsp;»</p>
       <a class="aly-tel rv" href="tel:+33663798756">
         <span class="aly-av" aria-hidden="true">AT</span>
@@ -1060,7 +1115,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 <section class="ecran e-mist" id="e8b" data-titre="Nos conseils">
   <div class="in">
     <span class="kicker rv" data-t="e8b.kicker">Nos conseils</span>
-    <h2 class="titre rv" style="font-size:clamp(27px,3.7vw,45px)" data-th="e8b.titre">On préfère que vous ayez moins chaud.<em> Même sans nous.</em></h2>
+    <h2 class="titre rv t-4" data-th="e8b.titre">On préfère que vous ayez moins chaud.<em> Même sans nous.</em></h2>
     <p class="dire rv" data-t="e8b.dire">Ces quatre gestes font vraiment baisser la température. Ils ne coûtent rien, et ils marchent que vous louiez chez nous ou pas.</p>
     <div class="conseils">
       <div class="conseil rv">
