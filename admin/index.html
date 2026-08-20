@@ -110,7 +110,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .a-quick-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:16px 18px;font-size:13px;font-weight:700;border-radius:var(--r);background:var(--navy);color:#fff;border:none;cursor:pointer;transition:background-color .15s ease;line-height:1;height:100%}
 .a-quick-btn:hover{background:var(--blue)}
 .a-quick-btn .a-quick-plus{font-size:22px;line-height:1;font-weight:300}
-.a-quick-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:220px;background:var(--card);border:1.5px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh-md);z-index:200;overflow:hidden;display:none}
+.a-quick-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:220px;background:var(--white);border:1.5px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh-md);z-index:200;overflow:hidden;display:none}
 .a-quick-menu.open{display:block}
 .a-quick-menu button{display:flex;align-items:center;gap:10px;width:100%;padding:13px 16px;background:none;border:none;font-size:14px;font-weight:500;color:var(--black);cursor:pointer;text-align:left;transition:background-color .1s ease;border-bottom:1px solid var(--rule)}
 .a-quick-menu button:last-child{border-bottom:none}
@@ -444,7 +444,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .ref-copy:hover{color:var(--blue);border-color:var(--blue)}
 
 /* ── Livraisons : priorité temporelle, urgence, instructions ────────────── */
-.mission-datetime{font-size:15px;font-weight:700;color:var(--black2);margin:6px 0 4px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.mission-datetime{font-size:15px;font-weight:700;color:var(--black);margin:6px 0 4px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .mission-datetime .creneau{font-size:12px;font-weight:600;color:var(--blue);background:var(--blue-lt);border-radius:100px;padding:2px 10px;font-family:var(--body)}
 .row-item.urgence-retard{border-left:3px solid var(--red)}
 .row-item.urgence-aujourd-hui{border-left:3px solid var(--amber)}
@@ -470,7 +470,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .liv-stat-pill.warn .n{color:var(--red)}
 .btn-resa-rapide{background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px}
 .btn-resa-rapide:hover{filter:brightness(1.08)}
-.stock-select-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--black2);color:#fff;border-radius:100px;padding:12px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(0,0,0,.35);font-size:14px;font-weight:600;z-index:900;transition:opacity .15s}
+.stock-select-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--blue-d);color:#fff;border-radius:100px;padding:12px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(0,0,0,.35);font-size:14px;font-weight:600;z-index:900;transition:opacity .15s}
 .stock-select-bar.hidden{display:none}
 .row-item.stock-selected{outline:2px solid var(--blue);background:var(--blue-lt)}
 .stock-select-cb{width:18px;height:18px;accent-color:var(--blue);cursor:pointer;flex-shrink:0}
@@ -548,7 +548,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    tablette, inchangées. Au-dessus, un vrai <table> scannable remplace la
    grille de cartes — mêmes données, même logique de filtre/recherche/
    actions, juste une autre mise en forme pour lire vite une longue liste. */
-.admin-table-wrap{display:none}
+/* overflow-x:auto — sans lui, un tableau plus large que l'écran (beaucoup de
+   colonnes : type/client/adresse/date/transporteur/actions...) coupait
+   simplement les dernières colonnes hors champ, sans aucun moyen de les voir
+   (signalé par Aly, 2026-08-20 — écran Missions). */
+.admin-table-wrap{display:none;overflow-x:auto}
 .admin-table{width:100%;border-collapse:separate;border-spacing:0;background:var(--white);border:1px solid var(--rule);box-shadow:var(--sh-sm);font-size:13px}
 .admin-table th{position:sticky;top:0;z-index:1;text-align:left;padding:11px 14px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--grey);background:var(--bg);border-bottom:1.5px solid var(--rule);white-space:nowrap;cursor:pointer;user-select:none}
 .admin-table th:hover{color:var(--black)}
@@ -7580,7 +7584,7 @@ function transporteurRevenusCardHtml(t){
         <span class="row-title" style="font-size:13px">${m.type==='livraison'?'📦 Livraison':'🔄 Récupération'} — ${escHtml(m.client||'—')}</span>
         <span class="chip ${PAIEMENT_MISSION_CHIP[m.statut_paiement]||''}">${PAIEMENT_MISSION_LABEL[m.statut_paiement]||m.statut_paiement}</span>
       </div>
-      <div class="row-meta" style="margin-top:2px;font-weight:600;color:var(--black2)">${m.fait_at?frDateAvecJour(m.fait_at.slice(0,10)):'—'}</div>
+      <div class="row-meta" style="margin-top:2px;font-weight:600;color:var(--black)">${m.fait_at?frDateAvecJour(m.fait_at.slice(0,10)):'—'}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px">
         <span style="font-family:var(--disp);font-size:18px;font-weight:600;color:var(--black)">${euros(m.montant_cents)}</span>
         <button class="btn btn-grey" style="padding:5px 11px;font-size:11.5px" onclick="modifierMontantMission(${m.id},${m.montant_cents},${m.statut_paiement==='paye'})">✏️ Modifier</button>
@@ -11274,7 +11278,7 @@ function villeAutocomplete(q){
   if(!matches.length){ dd.style.display='none'; return; }
   dd.innerHTML = matches.map(v => {
     const cpPreview = v.cps.slice(0,4).join(', ')+(v.cps.length>4?'…':'');
-    return `<div onclick="selectVilleRef(${JSON.stringify(JSON.stringify(v))})" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border-soft)" onmousedown="event.preventDefault()">
+    return `<div onclick="selectVilleRef(${JSON.stringify(JSON.stringify(v))})" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--rule)" onmousedown="event.preventDefault()">
       <strong>${escHtml(v.nom)}</strong> <span style="color:var(--grey-soft);font-size:11.5px">— Dép. ${escHtml(v.dep)}</span><br>
       <span style="font-size:12px;color:var(--grey)">${escHtml(cpPreview)}</span>
     </div>`;
