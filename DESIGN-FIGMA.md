@@ -84,10 +84,24 @@ Fichier : `apercu-landify.html` → `https://www.locair.fr/apercu-landify.html`
 habillée en style Landify : navigation, hero, **grille bento**, 4 étapes,
 produit, tarifs, avis, FAQ dépliable, gros bloc final, pied de page.
 
-La grille bento remplace l'ancienne bande de chiffres + les 4 cartes
-identiques : une grande tuile sombre avec photo (2×2), des tuiles chiffres
-(24h, 0 €, +500), la note Google en tuile large, le paiement, et les paliers
-de prix en tuile large. Sur mobile la grille passe à 2 colonnes.
+Toute la page est construite sur la même grille bento : 4 colonnes sur
+ordinateur, 2 sur téléphone, avec des tuiles de tailles différentes
+(1×1, 2×1, 2×2).
+
+- **Engagements** : grande tuile sombre avec photo, tuiles chiffres
+  (24h, 0 €, +500), note Google en tuile large, paiement, paliers de prix
+- **Étapes** : étapes 1 et 4 en tuiles larges, 2 et 3 en petites, plus une
+  tuile sombre « Prêt à dormir au frais ? » avec le bouton de réservation
+- **Produit** : photo en grande tuile 2×2, texte en tuile large, les 4
+  caractéristiques (BTU, m², dB, classe A) en petites tuiles chiffres,
+  le kit fourni en tuile large
+- **Tarifs** : le prix en grande tuile 2×2 avec le bouton, les paliers et
+  « louer plutôt qu'acheter » en tuiles larges, et 4 petites tuiles
+  conditions (caution, livraison, installation, annulation)
+- **Avis** : l'avis vedette en grande tuile sombre 2×2, 5 avis en tuiles,
+  la note 4,9 en tuile large
+- **FAQ** : la liste dépliable sur 3 colonnes, plus une tuile contact
+  (téléphone + WhatsApp) à droite
 
 Si le rendu convient, l'étape suivante est de reporter ces styles dans
 `index.html` (le vrai site).
