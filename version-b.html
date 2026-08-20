@@ -187,9 +187,15 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 @media(max-width:1180px){.dots{display:none}}
 
 /* ══ EN-TÊTE ET BARRE DE COMMANDE ══ */
+/* L'en-tête occupait toute la largeur alors que le contenu est centré dans
+   1000 px : sur grand écran le logo se retrouvait seul contre le bord, très
+   loin de la colonne de texte. Il suit maintenant la même colonne. */
 .bar{
-  position:sticky;top:0;z-index:900;display:flex;align-items:center;
-  gap:16px;padding:16px var(--pad);transition:background .25s,box-shadow .25s;
+  position:sticky;top:0;z-index:900;transition:background .25s,box-shadow .25s;
+}
+.bar-in{
+  display:flex;align-items:center;gap:16px;
+  max-width:var(--max);margin:0 auto;padding:16px var(--pad);
 }
 .bar.pose{background:rgba(255,255,255,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--line)}
 .bar .logo{font-weight:700;font-size:21px;letter-spacing:-.04em;margin-right:auto}
@@ -209,7 +215,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   /* la barre du bas porte déjà le bouton : inutile de le doubler en haut.
      Le menu ☰, lui, devient le SEUL accès aux espaces : il reste. */
   .bar-tel,.bar-lien,.bar .btn{display:none}
-  .bar{padding:12px var(--pad)}
+  .bar-in{padding:12px var(--pad)}
 }
 @media(min-width:901px){.burger{display:none}}
 
@@ -223,14 +229,25 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .e1{padding-top:32px;min-height:calc(100svh - 72px)}
 @supports not (height:100svh){.e1{min-height:calc(100vh - 72px)}}
 .e1-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:clamp(30px,5vw,64px);align-items:center}
-.urg{
-  display:inline-flex;align-items:flex-start;gap:9px;background:var(--blue-soft);
-  border-radius:100px;padding:9px 18px;margin-bottom:26px;
-  font-size:12.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--blue);
+/* ══ LIGNE D'ÉTAT DE LIVRAISON ══
+   Remplace une pastille en capitales qui portait deux messages à la fois et
+   débordait sur deux lignes. Elle était le premier élément vu de la page et
+   ressemblait à un bandeau technique.
+   Une phrase, en casse normale, une seule information. Le point coloré porte
+   l'urgence ; le texte n'a pas à crier. */
+.etat{
+  display:flex;align-items:baseline;gap:11px;margin-bottom:22px;
+  font-size:16px;color:var(--ink-2);line-height:1.5;max-width:48ch;
 }
-.urg i{width:7px;height:7px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:6px;animation:pulse 2.4s ease-in-out infinite}
+.etat b{color:var(--ink);font-weight:700}
+.etat-pt{
+  width:8px;height:8px;border-radius:50%;background:var(--blue);
+  flex-shrink:0;transform:translateY(-2px);
+  animation:pulse 2.4s ease-in-out infinite;
+}
+.etat.complet .etat-pt{background:#B8860B;animation:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-@media(prefers-reduced-motion:reduce){.urg i{animation:none}}
+@media(prefers-reduced-motion:reduce){.etat-pt{animation:none}}
 .e1 .titre{max-width:15ch;font-size:clamp(33px,4.4vw,56px)}
 .addr{background:#fff;border-radius:var(--r-l);padding:22px;margin-top:28px;max-width:460px;box-shadow:0 1px 3px rgba(14,31,53,.05),0 18px 46px rgba(14,31,53,.1)}
 .addr label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:13px}
@@ -254,8 +271,6 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 }
 
 /* ── Pastille de disponibilité et packs ── */
-.urg-complet{background:var(--warn-bg,#FBF3E3);color:#8A5D00}
-#dispo-l{font-weight:700}
 .forfaits-l{display:grid;gap:8px;margin-top:12px}
 .forfait{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
   padding:12px 0;border-bottom:1px solid var(--line)}
@@ -605,6 +620,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 </div>
 
 <header class="bar" id="bar">
+  <div class="bar-in">
   <a class="logo" href="#e1">Loc<span>'</span>Air</a>
   <a class="bar-lien" href="/client" data-t="b.espace">Mon espace →</a>
   <a class="bar-tel" href="tel:+33663798756">06.63.79.87.56</a>
@@ -623,6 +639,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   </div>
   <button class="burger" type="button" id="burger" data-ta="b.menu" aria-label="Ouvrir le menu"
           aria-expanded="false" aria-controls="menu"><span></span></button>
+  </div>
 </header>
 
 <!-- ══ MENU ═══════════════════════════════════════════════════════════════════
@@ -682,7 +699,10 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 <section class="ecran e1" id="e1" data-titre="Accueil">
   <div class="in e1-grid">
     <div>
-      <p class="urg rv"><i aria-hidden="true"></i><span data-t="e1.urg">Livraison demain · Express aujourd'hui</span><span id="dispo-l"></span></p>
+      <p class="etat rv" id="etat">
+        <span class="etat-pt" aria-hidden="true"></span>
+        <span id="etat-txt" data-th="e1.etat">Livré <b>demain matin</b>, entre 8h et 12h.</span>
+      </p>
       <h1 class="titre rv" data-th="e1.titre">Il fait trop chaud pour dormir&nbsp;?<em> Plus pour longtemps.</em></h1>
       <form class="addr rv" action="/" method="get">
         <label for="addr-input" data-t="e1.adresse">Adresse de livraison</label>
@@ -1164,6 +1184,40 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 ══════════════════════════════════════════════════════════════════════════ */
 var T = {};   /* rempli plus bas, écran par écran */
 
+/* ══════════════════════════════════════════════════════════════════════════
+   ÉTAT DE LIVRAISON — SOURCE UNIQUE
+   ─────────────────────────────────────────────────────────────────────────
+   Deux endroits annoncent le délai : la barre d'information en haut et la
+   ligne sous le titre. Tant qu'ils calculaient chacun de leur côté, la barre
+   affichait "Livraison sous 24h" au-dessus d'un "Complet pour demain".
+   Tout passe désormais par cet objet. Le stock, quand il a répondu, prime
+   sur la règle horaire : l'un est une donnée, l'autre une généralité.
+══════════════════════════════════════════════════════════════════════════ */
+var Livraison = (function(){
+  var abonnes = [];
+  var etat = { avant20h:true, avant18h:true, complet:false, stock:null, prochaine:null };
+
+  var o = {};
+  new Intl.DateTimeFormat('fr-FR', { timeZone:'Europe/Paris', hour:'2-digit',
+    minute:'2-digit', hour12:false }).formatToParts(new Date())
+    .forEach(function(x){ o[x.type] = parseInt(x.value, 10); });
+  etat.avant20h = o.hour < 20 || (o.hour === 20 && o.minute === 0);
+  etat.avant18h = o.hour < 18 || (o.hour === 18 && o.minute === 0);
+
+  function prevenir(){ abonnes.forEach(function(f){ try{ f(etat); }catch(e){} }); }
+  return {
+    lire:      function(){ return etat; },
+    ecouter:   function(f){ abonnes.push(f); f(etat); },
+    majStock:  function(d){
+      if(!d || typeof d.sold_out !== 'boolean') return;
+      etat.complet = d.sold_out;
+      etat.stock   = (typeof d.disponibles === 'number') ? d.disponibles : null;
+      prevenir();
+    },
+    majProchaine: function(iso){ if(iso){ etat.prochaine = iso; prevenir(); } }
+  };
+})();
+
 Object.assign(T, {
   'a.sugg': {fr:"Suggestions d'adresse", en:"Address suggestions", zh:"地址建议", ru:"Подсказки адреса"}
 });
@@ -1243,13 +1297,41 @@ Object.assign(T, {
   'c.non'  : {fr:"Refuser", en:"Refuse", zh:"拒绝", ru:"Отказаться"}
 });
 
+/* ── Ligne d'état de livraison ─────────────────────────────────────────── */
+Object.assign(T, {
+  'e1.etat'      : {fr:"Livré <b>demain matin</b>, entre 8h et 12h.",
+                    en:"Delivered <b>tomorrow morning</b>, between 8am and 12pm.",
+                    zh:"<b>明天上午</b>送达，8:00 至 12:00 之间。",
+                    ru:"Привезём <b>завтра утром</b>, с 8:00 до 12:00."},
+  'e1.etatSoir'  : {fr:"Livré <b>demain matin</b>. L'Express du jour même est terminé.",
+                    en:"Delivered <b>tomorrow morning</b>. Same-day Express has closed for today.",
+                    zh:"<b>明天上午</b>送达。今日的急速配送已截止。",
+                    ru:"Привезём <b>завтра утром</b>. Экспресс на сегодня уже закрыт."},
+  'e1.etatTard'  : {fr:"Commandé maintenant, livré <b>après-demain matin</b>.",
+                    en:"Order now, delivered <b>the morning after next</b>.",
+                    zh:"现在下单，<b>后天上午</b>送达。",
+                    ru:"Закажете сейчас — привезём <b>послезавтра утром</b>."},
+  'e1.etatStock' : {fr:"Il reste {n} {mot} pour demain matin.",
+                    en:"{n} {mot} left for tomorrow morning.",
+                    zh:"明天上午还剩 {n} {mot}。",
+                    ru:"На завтра утром осталось {n} {mot}."},
+  'e1.etatComplet': {fr:"Complet pour demain. Prochaine livraison le {date}.",
+                     en:"Fully booked for tomorrow. Next delivery on {date}.",
+                     zh:"明天已订满。下一次配送：{date}。",
+                     ru:"На завтра всё занято. Ближайшая доставка {date}."},
+  'e1.etatCompletSeul': {fr:"Complet pour demain. Appelez-nous, on cherche une solution.",
+                         en:"Fully booked for tomorrow. Call us and we'll find a way.",
+                         zh:"明天已订满。请致电我们，我们会想办法。",
+                         ru:"На завтра всё занято. Позвоните — что-нибудь придумаем."}
+});
+
 /* ── Libellés des données en direct ────────────────────────────────────── */
 Object.assign(T, {
   'e1.avisMot'  : {fr:"avis Google", en:"Google reviews", zh:"条谷歌评价", ru:"отзыва в Google"},
   'e1.clients'  : {fr:"clients livrés depuis 2019", en:"customers delivered since 2019", zh:"位客户（自2019年起）", ru:"клиентов с 2019 года"},
   'd.restant'   : {fr:"appareil disponible", en:"unit available", zh:"台可用", ru:"аппарат в наличии"},
   'd.restants'  : {fr:"appareils disponibles", en:"units available", zh:"台可用", ru:"аппарата в наличии"},
-  'd.complet'   : {fr:" · Complet — prochaine date le", en:" · Fully booked — next date", zh:" · 已订满 — 下一个可选日期", ru:" · Всё занято — ближайшая дата"},
+  'd.prochaine' : {fr:"Prochaine livraison le", en:"Next delivery on", zh:"下一次可配送日期：", ru:"Ближайшая доставка"},
   'd.completSeul':{fr:" · Complet aujourd'hui", en:" · Fully booked today", zh:" · 今日已订满", ru:" · Сегодня всё занято"},
   'f.titre'     : {fr:"Nos packs à prix fixe", en:"Our fixed-price packs", zh:"我们的固定价格套餐", ru:"Наши пакеты с фиксированной ценой"}
 });
@@ -1596,6 +1678,7 @@ Object.assign(T, {
                   en:" · <strong>Express within 2h</strong> still available",
                   zh:" · 仍可选<strong>2小时急速送达</strong>",
                   ru:" · <strong>Экспресс за 2 часа</strong> ещё доступен"},
+  'i.complet' : {fr:"Complet pour demain", en:"Fully booked for tomorrow", zh:"明天已订满", ru:"На завтра всё занято"},
   'i.aNice'    : {fr:"à Nice", en:"in Nice", zh:"尼斯", ru:"в Ницце"},
   'i.ressenti' : {fr:"ressenti", en:"feels like", zh:"体感", ru:"ощущается как"},
 
@@ -1650,27 +1733,17 @@ Object.assign(T, {
    JavaScript ne tourne pas, le texte par défaut (le cas le plus fréquent,
    la journée) reste affiché — jamais de page vide. */
 (function(){
-  function heureParis(){
-    var o = {};
-    new Intl.DateTimeFormat('fr-FR', { timeZone:'Europe/Paris', hour:'2-digit',
-      minute:'2-digit', hour12:false }).formatToParts(new Date())
-      .forEach(function(x){ o[x.type] = parseInt(x.value, 10); });
-    return o;
-  }
-  var t = heureParis();
-  var avant20h = t.hour < 20 || (t.hour === 20 && t.minute === 0);
-  var avant18h = t.hour < 18 || (t.hour === 18 && t.minute === 0);
-
+  var e = Livraison.lire();          /* même source que la barre d'info */
   function cle(sel, valeur){
     var el = document.querySelector(sel);
     if(el) el.setAttribute(el.hasAttribute('data-th') ? 'data-th' : 'data-t', valeur);
   }
-  if(!avant20h){                        /* commande passée après 20h */
-    cle('[data-t="e1.urg"]',      'e1.urgTard');
+  if(!e.avant20h){                   /* commande passée après 20h */
+    cle('[data-th="e1.etat"]',    'e1.etatTard');
     cle('[data-th="e2.titre"]',   'e2.titreTard');
     cle('[data-th="e12.titre"]',  'e12.titreTard');
-  } else if(!avant18h){                 /* entre 18h et 20h : plus d'Express */
-    cle('[data-t="e1.urg"]',      'e1.urgSoir');
+  } else if(!e.avant18h){            /* entre 18h et 20h : plus d'Express */
+    cle('[data-th="e1.etat"]',    'e1.etatSoir');
   }
 })();
 
@@ -1958,10 +2031,6 @@ Object.assign(T, {
     p.forEach(function(x){ o[x.type] = parseInt(x.value, 10); });
     return o;
   }
-  var t = heureParis();
-  var avant20h = t.hour < 20 || (t.hour === 20 && t.minute === 0);
-  var avant18h = t.hour < 18 || (t.hour === 18 && t.minute === 0);
-
   /* Cette barre est recomposée par le script : ses morceaux passent donc par
      le dictionnaire, et elle se réécrit à chaque changement de langue. */
   var temperature = null;
@@ -1973,16 +2042,24 @@ Object.assign(T, {
     return e[l] != null ? e[l] : e.fr;
   }
   function afficher(){
-    var delai   = mot(avant20h ? 'i.24h' : 'i.48h');
-    var express = avant18h ? mot('i.express') : '';
-    var tete    = temperature
+    var e = Livraison.lire();
+    var tete = temperature
       ? '<strong>' + temperature + '</strong> ' + mot('i.aNice') + ' · '
       : '';
-    msg.innerHTML = tete + delai + express;
+    var corps;
+    if(e.complet){
+      /* Le stock prime : annoncer "sous 24h" alors que tout est pris
+         contredirait la ligne affichée juste en dessous. */
+      corps = mot('i.complet');
+    } else {
+      corps = mot(e.avant20h ? 'i.24h' : 'i.48h')
+            + (e.avant18h ? mot('i.express') : '');
+    }
+    msg.innerHTML = tete + corps;
     bar.classList.add('on');
   }
   document.addEventListener('langue', afficher);
-  afficher();
+  Livraison.ecouter(afficher);
 
   fetch('https://api.open-meteo.com/v1/forecast?latitude=43.7102&longitude=7.262'
       + '&current=temperature_2m,apparent_temperature&timezone=Europe%2FParis')
@@ -2068,26 +2145,34 @@ Object.assign(T, {
      seulement quand il n'y a plus rien. */
   var stock = null, prochaine = null;
 
+  /* Une seule phrase, choisie dans cet ordre de priorité :
+       1. le stock dit "complet"      → on annonce la prochaine livraison ;
+       2. le stock est bas            → on le dit, sans crier ;
+       3. rien de particulier         → la promesse horaire habituelle.
+     La règle horaire ne s'affiche jamais À CÔTÉ de la disponibilité réelle :
+     l'une dit "après-demain" pendant que l'autre dit "le 21", et la page se
+     contredit. La donnée l'emporte sur la règle. */
   function poserDispo(){
-    var pastille = document.getElementById('dispo-l');
-    if(!pastille) return;
-    if(stock === null) return;                    /* rien de fiable à dire */
+    var ligne = document.getElementById('etat');
+    var txt   = document.getElementById('etat-txt');
+    if(!ligne || !txt || stock === null) return;
 
-    var urg = document.querySelector('.urg');
     if(stock.sold_out){
-      pastille.textContent = prochaine
-        ? mot('d.complet') + ' ' + formatDate(prochaine)
-        : mot('d.completSeul');
-      if(urg) urg.classList.add('urg-complet');
-    } else if(typeof stock.disponibles === 'number' && stock.disponibles > 0 && stock.disponibles <= 5){
-      /* On ne montre le compteur que s'il est bas : au-dessus de 5 il ne
-         dit rien d'utile et ressemble à une fausse urgence. */
-      pastille.textContent = ' · ' + stock.disponibles + ' ' +
-        (stock.disponibles > 1 ? mot('d.restants') : mot('d.restant'));
-      if(urg) urg.classList.remove('urg-complet');
+      ligne.classList.add('complet');
+      txt.innerHTML = prochaine
+        ? mot('e1.etatComplet').replace('{date}', '<b>' + formatDate(prochaine) + '</b>')
+        : mot('e1.etatCompletSeul');
+      return;
+    }
+    ligne.classList.remove('complet');
+    if(typeof stock.disponibles === 'number' && stock.disponibles > 0 && stock.disponibles <= 3){
+      /* Seuil bas : au-dessus de trois, un compteur ne renseigne pas, il
+         fabrique une urgence. */
+      txt.innerHTML = mot('e1.etatStock')
+        .replace('{n}', '<b>' + stock.disponibles + '</b>')
+        .replace('{mot}', stock.disponibles > 1 ? mot('d.restants') : mot('d.restant'));
     } else {
-      pastille.textContent = '';
-      if(urg) urg.classList.remove('urg-complet');
+      txt.innerHTML = mot(txt.getAttribute('data-th') || 'e1.etat');
     }
   }
   function formatDate(iso){
@@ -2099,10 +2184,10 @@ Object.assign(T, {
   }
 
   json('/api/mode-complet').then(function(d){
-    if(d && typeof d.sold_out === 'boolean'){ stock = d; poserDispo(); }
+    if(d && typeof d.sold_out === 'boolean'){ stock = d; Livraison.majStock(d); poserDispo(); }
   });
   json('/api/disponibilite').then(function(d){
-    if(d && d.next_available){ prochaine = d.next_available; poserDispo(); }
+    if(d && d.next_available){ prochaine = d.next_available; Livraison.majProchaine(d.next_available); poserDispo(); }
   });
 
   /* ── Packs à prix fixe ────────────────────────────────────────────────
