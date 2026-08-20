@@ -8569,27 +8569,32 @@ function deleteChecklistItem(id){
 let EMAIL_SCENARIOS_CACHE = [];
 let EMAILS_LOG_CACHE = [];
 let EMAIL_SIG_CACHE = {};
+let EMAILS_BOARD_CACHE = [];
 let EMAILS_FILTER = 'tous';
+let EMAILS_BOARD_OPEN = false;
 async function loadEmails(silent){
   const zone = document.getElementById('tab-emails');
   if(!silent) zone.innerHTML = loading();
   try{
-    const [rLog, rScen, rSig] = await Promise.all([
+    const [rLog, rScen, rSig, rBoard] = await Promise.all([
       fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
       fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'scenarios'})}),
       fetch(API('admin-email-signature'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'get'})}),
+      fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'board'})}),
     ]);
-    const dLog = await rLog.json(), dScen = await rScen.json(), dSig = await rSig.json();
+    const dLog = await rLog.json(), dScen = await rScen.json(), dSig = await rSig.json(), dBoard = await rBoard.json();
     if(!rLog.ok) throw new Error(dLog.error||'Erreur');
     EMAIL_SCENARIOS_CACHE = dScen.scenarios || [];
     EMAILS_LOG_CACHE = dLog.emails || [];
     EMAIL_SIG_CACHE = dSig.signature || {};
+    EMAILS_BOARD_CACHE = rBoard.ok ? (dBoard.items || []) : [];
     renderEmails();
   }catch(e){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
 function setEmailsFilter(f){ EMAILS_FILTER = f; renderEmails(); }
+function toggleEmailsBoard(){ EMAILS_BOARD_OPEN = !EMAILS_BOARD_OPEN; renderEmails(); }
 
 function scenarioLibelle(id){
   return EMAIL_SCENARIOS_CACHE.find(s=>s.id===id)?.libelle || id;
@@ -8609,14 +8614,48 @@ function renderEmails(){
     <button class="${EMAILS_FILTER==='erreur'?'on':''}" onclick="setEmailsFilter('erreur')">⚠️ Erreurs${nbErreurs?' ('+nbErreurs+')':''}</button>
   </div>`;
 
-  const scenariosHtml = EMAIL_SCENARIOS_CACHE.map(s => `
-    <div class="row-item" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
-      <span class="row-title">${escHtml(s.libelle)}</span>
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--grey-soft)">
-        <span class="chip ${s.actif?'actif':'inactif'}">${s.actif?'Actif':'Désactivé'}</span>
-        <input type="checkbox" ${s.actif?'checked':''} onchange="toggleEmailScenario('${s.id}',this.checked)"/>
-      </label>
-    </div>`).join('');
+  // Board "emails et SMS actifs" — une ligne par TYPE d'envoi (moteur des 8
+  // scénarios + tous les envois ponctuels ad hoc : devis, factures
+  // transporteur, rappels de paiement…), avec statut actif/inactif
+  // (désactivable seulement pour les 14 lignes du moteur/ad-hoc "verrouillé",
+  // les autres sont déclenchées par le code et toujours "automatique"),
+  // dernière modification, et volume/erreurs des 30 derniers jours.
+  const board = EMAILS_BOARD_CACHE;
+  const boardActifs = board.filter(b=>b.togglable && b.actif).length;
+  const boardInactifs = board.filter(b=>b.togglable && !b.actif).length;
+  const boardErreurs = board.filter(b=>b.erreurs_30j>0).length;
+  const boardRows = (EMAILS_BOARD_OPEN ? board : board.slice(0, 8));
+  const boardHtml = !board.length ? `<p class="empty">Board indisponible pour l'instant.</p>` : `
+    <div class="stat-grid" style="margin-bottom:12px">
+      <div class="stat-tile"><div class="n">${boardActifs}</div><div class="l">Actifs</div></div>
+      <div class="stat-tile"><div class="n">${boardInactifs}</div><div class="l">Désactivés</div></div>
+      <div class="stat-tile"><div class="n" style="${boardErreurs?'color:var(--red)':''}">${boardErreurs}</div><div class="l">En erreur (30j)</div></div>
+    </div>
+    ${boardRows.map(b => {
+      const canalIcone = b.canal.includes('sms') && b.canal.includes('email') ? '📧📱' : b.canal.includes('sms') ? '📱' : '📧';
+      const statutChip = b.togglable
+        ? `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--grey-soft)">
+             <span class="chip ${b.actif?'actif':'inactif'}">${b.actif?'Actif':'Désactivé'}</span>
+             <input type="checkbox" ${b.actif?'checked':''} onchange="toggleEmailScenario('${b.id}',this.checked)"/>
+           </label>`
+        : `<span class="chip" style="opacity:.7">Automatique</span>`;
+      const modifLigne = b.updated_at
+        ? `Modifié le ${new Date(b.updated_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${b.updated_by?' par '+escHtml(b.updated_by):''}<br/>`
+        : '';
+      const volLigne = b.volume_30j || b.erreurs_30j
+        ? `30j : ${b.volume_30j} envoyé${b.volume_30j>1?'s':''}${b.erreurs_30j?` · <span style="color:var(--red)">${b.erreurs_30j} erreur${b.erreurs_30j>1?'s':''}</span>`:''}${b.dernier_envoi?' · dernier '+new Date(b.dernier_envoi).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'}):''}`
+        : `Aucun envoi sur les 30 derniers jours`;
+      return `
+      <div class="row-item">
+        <div class="row-top">
+          <span class="row-title">${canalIcone} ${escHtml(b.libelle)}</span>
+          ${statutChip}
+        </div>
+        <div class="row-meta">${modifLigne}${volLigne}</div>
+      </div>`;
+    }).join('')}
+    ${board.length>8 ? `<button class="btn btn-grey" style="width:100%;margin-top:8px" onclick="toggleEmailsBoard()">${EMAILS_BOARD_OPEN?'Voir moins':'Voir les '+board.length+' types'}</button>` : ''}
+  `;
 
   const sigHtml = `
     <div style="display:grid;gap:8px;max-width:420px">
@@ -8653,8 +8692,9 @@ function renderEmails(){
     <div class="section-title" style="margin-top:0">Historique</div>
     ${filterHtml}
     ${logHtml}
-    <div class="section-title">Scénarios</div>
-    ${scenariosHtml}
+    <div class="section-title">Board — emails et SMS actifs</div>
+    <p class="sub" style="margin:4px 2px 10px">Tous les types d'email/SMS que Loc'Air envoie automatiquement : actif ou non, dernière modification, et combien sont partis (ou en erreur) sur les 30 derniers jours.</p>
+    ${boardHtml}
     <div class="section-title">Signature email</div>
     ${sigHtml}
     <div class="section-title">Tester les modèles</div>

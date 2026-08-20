@@ -168,6 +168,15 @@ async function genererFactureTransporteur(supabase, { transporteurId, periodeDeb
     });
     envoyeeAdmin = !!result.ok;
     if (!result.ok) envoyeeErreur = String(result.error || '').slice(0, 300);
+    // Traçage dans email_log — sans ça, cet envoi (comme le récap hebdo
+    // ci-dessous) restait invisible de l'onglet Emails et de tout board de
+    // suivi, contrairement à tous les autres envois Brevo de l'app (audit
+    // communications, 2026-08-19).
+    supabase.from('email_log').insert({
+      reservation_id: null, scenario: 'email_facture_transporteur_admin', canal: 'email',
+      destinataire: adminEmail, modele: 'facture_transporteur_admin',
+      statut: envoyeeAdmin ? 'envoye' : 'erreur', erreur: envoyeeAdmin ? null : envoyeeErreur, contenu: html,
+    }).then(() => {}, () => {});
   } catch (e) {
     envoyeeErreur = e.message;
     console.error('[Facture transporteur email]', e.message);
@@ -284,6 +293,12 @@ async function runFactureTransporteurHebdo(supabase, now = new Date()) {
       });
       const recapResult = await sendBrevoEmail({ to: adminEmail, subject: `🧾 Récap hebdo factures transporteurs — ${eur(totalCents)}`, html });
       if (!recapResult.ok) console.error('[Facture hebdo — récap email]', recapResult.error);
+      supabase.from('email_log').insert({
+        reservation_id: null, scenario: 'recap_facture_hebdo_admin', canal: 'email',
+        destinataire: adminEmail, modele: 'recap_facture_hebdo_admin',
+        statut: recapResult.ok ? 'envoye' : 'erreur',
+        erreur: recapResult.ok ? null : String(recapResult.error || '').slice(0, 300), contenu: html,
+      }).then(() => {}, () => {});
     } catch (e) {
       console.error('[Facture hebdo — récap email]', e.message);
     }

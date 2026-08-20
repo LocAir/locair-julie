@@ -88,11 +88,77 @@ module.exports = async (req, res) => {
       return res.status(200).json({ items, summary });
     }
 
-    // Liste des scénarios et de leur état actif/inactif.
+    // Liste des scénarios et de leur état actif/inactif (+ dernière
+    // modification si la migration_2026-08-19_email_scenarios_board.sql est
+    // passée — repli silencieux sur l'ancienne forme sinon).
     if (action === 'scenarios') {
-      const { data, error } = await supabase.from('email_scenarios').select('id, libelle, actif').order('id');
+      let { data, error } = await supabase.from('email_scenarios').select('id, libelle, actif, updated_at, updated_by').order('id');
+      if (error) ({ data, error } = await supabase.from('email_scenarios').select('id, libelle, actif').order('id'));
       if (error) throw error;
       return res.status(200).json({ scenarios: data || [] });
+    }
+
+    // Board "emails et SMS actifs" (demande d'Aly, 2026-08-19) — contrairement
+    // au cockpit ci-dessus (une ligne par réservation), ici une ligne par
+    // TYPE d'envoi : tous les scénarios connus du système (les 8 du moteur +
+    // tous les envois ponctuels ad hoc — devis, factures transporteur,
+    // rappels de paiement…), avec statut actif/inactif, qui/quand pour le
+    // dernier changement, et volume/erreurs des 30 derniers jours. Pas de
+    // scope ville : c'est une vue globale de santé du système de
+    // communication, pas une vue client (comme 'scenarios' ci-dessus).
+    if (action === 'board') {
+      let { data: scenarios, error: scenErr } = await supabase.from('email_scenarios').select('id, libelle, actif, updated_at, updated_by').order('id');
+      if (scenErr) ({ data: scenarios, error: scenErr } = await supabase.from('email_scenarios').select('id, libelle, actif').order('id'));
+      if (scenErr) throw scenErr;
+
+      const since = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
+      const { data: logs30, error: logErr } = await supabase
+        .from('email_log').select('scenario, canal, statut, created_at').gte('created_at', since);
+      if (logErr) throw logErr;
+
+      // Catalogue complet : email_scenarios (seuls togglables) puis complété
+      // par les libellés connus (SCENARIOS + AD_HOC_LABEL), puis par tout
+      // scénario observé dans les 30 derniers jours mais absent des deux
+      // (filet de sécurité si un futur envoi oublie de se déclarer quelque part).
+      const catalogue = new Map();
+      for (const s of scenarios || []) {
+        catalogue.set(s.id, { id: s.id, libelle: s.libelle, togglable: true, actif: s.actif !== false, updated_at: s.updated_at || null, updated_by: s.updated_by || null });
+      }
+      for (const id of Object.keys(SCENARIOS)) {
+        if (!catalogue.has(id)) catalogue.set(id, { id, libelle: SCENARIOS[id].libelle, togglable: false, actif: true, updated_at: null, updated_by: null });
+      }
+      for (const id of Object.keys(AD_HOC_LABEL)) {
+        if (!catalogue.has(id)) catalogue.set(id, { id, libelle: AD_HOC_LABEL[id], togglable: false, actif: true, updated_at: null, updated_by: null });
+      }
+      for (const l of logs30 || []) {
+        if (!catalogue.has(l.scenario)) catalogue.set(l.scenario, { id: l.scenario, libelle: scenarioLibelle(l.scenario), togglable: false, actif: true, updated_at: null, updated_by: null });
+      }
+
+      const logsByScenario = new Map();
+      for (const l of logs30 || []) {
+        if (!logsByScenario.has(l.scenario)) logsByScenario.set(l.scenario, []);
+        logsByScenario.get(l.scenario).push(l);
+      }
+
+      const items = Array.from(catalogue.values()).map(item => {
+        const mine = logsByScenario.get(item.id) || [];
+        const envoyes = mine.filter(l => l.statut === 'envoye').length;
+        const erreurs = mine.filter(l => l.statut === 'erreur').length;
+        const canaux = Array.from(new Set(mine.map(l => l.canal).filter(Boolean)));
+        const canal = canaux.length ? canaux.join('+') : (item.id.startsWith('sms_') ? 'sms' : 'email');
+        let dernier = null;
+        for (const l of mine) { if (!dernier || l.created_at > dernier.created_at) dernier = l; }
+        return {
+          ...item, canal,
+          volume_30j: envoyes, erreurs_30j: erreurs,
+          dernier_envoi: dernier ? dernier.created_at : null,
+          dernier_statut: dernier ? dernier.statut : null,
+        };
+      });
+      // Priorité visuelle : erreurs d'abord, puis ordre alphabétique.
+      items.sort((a, b) => (b.erreurs_30j - a.erreurs_30j) || a.libelle.localeCompare(b.libelle, 'fr'));
+
+      return res.status(200).json({ items });
     }
 
     // Active/désactive un scénario — n'affecte que les envois futurs
@@ -104,9 +170,26 @@ module.exports = async (req, res) => {
       // comptabilité couper les rappels de récupération par erreur).
       if (!roleHasAccess(admin.role, 'support')) return res.status(403).json({ error: "Ton compte n'a pas accès à la gestion des scénarios d'envoi." });
       const id = String(body.id || '');
-      if (!SCENARIOS[id] && id !== 'confirmation') return res.status(400).json({ error: 'Scénario inconnu' });
-      const { error } = await supabase.from('email_scenarios').update({ actif: !!body.actif }).eq('id', id);
+      // Avant : rejetait tout id absent des 8 scénarios du moteur (SCENARIOS),
+      // alors que email_scenarios contient aussi 6 lignes "ad hoc" (SMS
+      // confirmation, prolongation…) — leur case à cocher dans l'onglet Emails
+      // renvoyait donc systématiquement "Scénario inconnu" (bug trouvé lors de
+      // l'audit "board communications", 2026-08-19). On vérifie maintenant
+      // l'existence via l'UPDATE lui-même (id présent en base), plus fiable
+      // qu'une liste en dur à maintenir à la main.
+      //
+      // updated_at/updated_by (migration_2026-08-19_email_scenarios_board.sql) —
+      // tant que la migration n'est pas passée en prod, l'UPDATE avec ces
+      // colonnes échoue (colonne inconnue) : on retombe alors sur l'ancien
+      // comportement (actif seul) pour ne jamais casser le toggle existant.
+      let { data, error } = await supabase.from('email_scenarios')
+        .update({ actif: !!body.actif, updated_at: new Date().toISOString(), updated_by: admin.nom || admin.role || 'admin' })
+        .eq('id', id).select('id');
+      if (error) {
+        ({ data, error } = await supabase.from('email_scenarios').update({ actif: !!body.actif }).eq('id', id).select('id'));
+      }
       if (error) throw error;
+      if (!data || !data.length) return res.status(400).json({ error: 'Scénario inconnu' });
       return res.status(200).json({ ok: true });
     }
 
