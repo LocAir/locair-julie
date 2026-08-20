@@ -30,6 +30,26 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>Loc'Air — version B (aperçu)</title>
+<link rel="manifest" href="/manifest.json">
+
+<!-- Données structurées : la fiche entreprise et les questions que Google
+     affiche directement dans ses résultats. Inertes tant que cette page est
+     en noindex — elles prennent effet le jour où elle remplace index.html.
+     Ne JAMAIS laisser les deux pages indexées avec ces blocs en même temps :
+     deux fiches identiques sur un même domaine se concurrencent. -->
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"LocalBusiness","@id":"https://www.locair.fr/#business",
+"name":"Loc'Air","url":"https://www.locair.fr/","telephone":"+33663798756",
+"image":"https://www.locair.fr/hero-clim.jpg",
+"address":{"@type":"PostalAddress","streetAddress":"11 Avenue Chantal","addressLocality":"Nice","postalCode":"06100","addressCountry":"FR"},
+"geo":{"@type":"GeoCoordinates","latitude":43.7102,"longitude":7.262},
+"openingHours":"Mo-Su 08:00-20:00","priceRange":"€€","currenciesAccepted":"EUR","paymentAccepted":"Credit Card",
+"legalName":"THIAM ALY","foundingDate":"2019",
+"identifier":{"@type":"PropertyValue","name":"SIRET","value":"85373056200024"},
+"serviceType":"Location de climatiseur mobile",
+"areaServed":[{"@type":"City","name":"Nice"},{"@type":"City","name":"Villefranche-sur-Mer"},{"@type":"City","name":"Saint-Laurent-du-Var"},{"@type":"City","name":"Cagnes-sur-Mer"},{"@type":"City","name":"Beaulieu-sur-Mer"}],
+"description":"Location de climatiseur mobile à Nice. Livré, installé et récupéré chez vous dès 12 €/jour. Aucune caution."}
+</script>
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -224,6 +244,15 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .addr{max-width:none}
 }
 
+/* ── Pastille de disponibilité et packs ── */
+.urg-complet{background:var(--warn-bg,#FBF3E3);color:#8A5D00}
+#dispo-l{font-weight:700}
+.forfaits-l{display:grid;gap:8px;margin-top:12px}
+.forfait{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+  padding:12px 0;border-bottom:1px solid var(--line)}
+.forfait b{font-size:16px;font-weight:700}
+.forfait span{font-size:14px;color:var(--ink-2);white-space:nowrap}
+
 /* ══ ÉCRAN MÉTIER ══
    Quatre points en colonnes, sans cadre : c'est le vide qui sépare. */
 .metier{display:grid;grid-template-columns:repeat(4,1fr);gap:clamp(26px,3.4vw,44px);margin-top:clamp(34px,4vw,52px)}
@@ -255,6 +284,20 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .centre .dire{margin-left:auto;margin-right:auto}
 .centre .creneau{justify-content:center}
 @media(max-width:700px){.centre .in{text-align:left}.centre .titre,.centre .dire{margin-left:0}.centre .creneau{justify-content:flex-start}}
+
+/* ── Suggestions d'adresse ── */
+.addr-row{position:relative}
+.sugg{
+  position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:30;
+  background:#fff;border-radius:var(--r);padding:6px;
+  box-shadow:0 2px 8px rgba(14,31,53,.07),0 16px 40px rgba(14,31,53,.16);
+  display:none;max-height:262px;overflow-y:auto;
+}
+.sugg.on{display:block}
+.sugg button{display:block;width:100%;text-align:left;padding:11px 13px;border-radius:8px;
+  font-size:15px;color:var(--ink);line-height:1.35;transition:background .12s}
+.sugg button:hover,.sugg button[aria-selected="true"]{background:var(--mist)}
+.sugg small{display:block;font-size:12.5px;color:var(--ink-3);margin-top:2px}
 
 /* ══ ÉCRAN CHIFFRE ══ (aucune caution, note, délai…) */
 .chiffre{display:grid;grid-template-columns:1fr 1fr;gap:clamp(28px,5vw,70px);align-items:center}
@@ -481,6 +524,32 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   background:rgba(255,255,255,.06);font-size:14.5px;color:rgba(255,255,255,.6)}
 .reunion strong{color:#fff;font-weight:700}
 
+/* ══ CONSENTEMENT AUX COOKIES ══
+   Obligatoire avant tout dépôt de traceur publicitaire (CNIL). Refuser doit
+   être aussi simple qu'accepter : les deux boutons ont donc le même poids
+   visuel. Même clé de stockage que le site officiel, un choix fait là-bas
+   vaut ici. */
+.cook{
+  position:fixed;left:14px;right:14px;bottom:14px;z-index:980;
+  background:var(--ink);color:rgba(255,255,255,.82);border-radius:var(--r-l);
+  padding:20px 22px;max-width:520px;
+  box-shadow:0 8px 40px rgba(0,0,0,.28);
+  display:none;
+}
+.cook.on{display:block}
+.cook p{font-size:14.5px;line-height:1.55;margin-bottom:16px}
+.cook a{color:#fff;border-bottom:1px solid rgba(255,255,255,.4)}
+.cook-b{display:flex;gap:10px;flex-wrap:wrap}
+.cook-b button{
+  flex:1;min-width:120px;padding:12px 18px;border-radius:100px;
+  font-size:15px;font-weight:700;transition:background .15s,border-color .15s;
+}
+.cook-oui{background:#fff;color:var(--ink)}
+.cook-oui:hover{background:rgba(255,255,255,.86)}
+.cook-non{border:1.5px solid rgba(255,255,255,.3);color:#fff}
+.cook-non:hover{border-color:rgba(255,255,255,.65)}
+@media(max-width:900px){.cook{bottom:calc(14px + 76px)}}
+
 /* ══ BARRE MOBILE ══ */
 .mbar{
   position:fixed;left:0;right:0;bottom:0;z-index:950;display:none;
@@ -590,20 +659,24 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 <section class="ecran e1" id="e1" data-titre="Accueil">
   <div class="in e1-grid">
     <div>
-      <p class="urg rv"><i aria-hidden="true"></i><span data-t="e1.urg">Livraison demain · Express aujourd'hui</span></p>
+      <p class="urg rv"><i aria-hidden="true"></i><span data-t="e1.urg">Livraison demain · Express aujourd'hui</span><span id="dispo-l"></span></p>
       <h1 class="titre rv" data-th="e1.titre">Il fait trop chaud pour dormir&nbsp;?<em> Plus pour longtemps.</em></h1>
       <form class="addr rv" action="/" method="get">
         <label for="addr-input" data-t="e1.adresse">Adresse de livraison</label>
         <div class="addr-row">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <input id="addr-input" name="adresse" type="text" autocomplete="street-address" data-tp="e1.ex" placeholder="Ex. 12 av. Jean Médecin, Nice">
+          <input id="addr-input" name="adresse" type="text" autocomplete="off"
+                 role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sugg"
+                 data-tp="e1.ex" placeholder="Ex. 12 av. Jean Médecin, Nice">
+          <div class="sugg" id="sugg" role="listbox" data-ta="a.sugg" aria-label="Suggestions d'adresse"></div>
+          <input type="hidden" name="cp" id="addr-cp">
         </div>
         <button class="btn btn-1" type="submit" data-t="e1.voir">Voir les disponibilités →</button>
         <p class="addr-note" data-t="e1.note">Prix affiché avant de payer · Annulation gratuite</p>
       </form>
       <p class="preuve1 rv">
         <span class="stars" aria-hidden="true">★★★★★</span>
-        <span data-th="e1.preuve"><b>4,9</b> · 32 avis Google · <b>+500</b> clients livrés depuis 2019</span>
+        <span><b data-note>4,9</b> · <span data-avis>32</span> <span data-t="e1.avisMot">avis Google</span> · <b>+500</b> <span data-t="e1.clients">clients livrés depuis 2019</span></span>
       </p>
     </div>
     <!-- La photo d'origine fait 1400x2100 (160 Ko) pour un affichage de
@@ -704,6 +777,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
       <div class="tier"><span class="tier-dur" data-t="e4.d21">15 à 21 jours</span><span class="tier-p">9 €<i data-t="e4.parJour">/jour</i><span class="tier-off">−25 %</span></span></div>
       <div class="tier best"><span class="tier-dur" data-t="e4.d22">22 jours et plus</span><span class="tier-p">8 €<i data-t="e4.parJour">/jour</i><span class="tier-off">−33 %</span></span></div>
     </div>
+    <!-- Packs à prix fixe activés depuis l'admin. Reste caché tant que
+         /api/forfaits n'en renvoie aucun : mieux vaut rien qu'un bloc vide. -->
+    <div id="forfaits" class="rv" hidden style="max-width:620px;margin-top:26px">
+      <p class="kicker" style="margin-bottom:4px" data-t="f.titre">Nos packs à prix fixe</p>
+      <div class="forfaits-l"></div>
+    </div>
+
     <p class="mini rv" style="max-width:620px" data-th="e4.note">Le barème est par tranches&nbsp;: les 7 premiers jours restent à 12&nbsp;€, seuls les suivants passent au tarif inférieur. Kit fourni · Récupération incluse · Livraison 60&nbsp;€ en zone standard, 120&nbsp;€ hors zone.</p>
   </div>
 </section>
@@ -970,6 +1050,14 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 </main>
 
+<div class="cook" id="cook" role="dialog" aria-live="polite" data-ta="c.titre" aria-label="Cookies">
+  <p data-th="c.texte">Nous utilisons des cookies pour mesurer l'audience de ce site. Vous pouvez les accepter ou les refuser — et changer d'avis à tout moment depuis la <a href="/confidentialite">politique de confidentialité</a>.</p>
+  <div class="cook-b">
+    <button class="cook-oui" type="button" id="cook-oui" data-t="c.oui">Accepter</button>
+    <button class="cook-non" type="button" id="cook-non" data-t="c.non">Refuser</button>
+  </div>
+</div>
+
 <div class="mbar">
   <a class="mbar-tel" href="tel:+33663798756" data-ta="p.appeler" aria-label="Appeler Loc'Air">
     <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 1.9.7 2.8a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.8.7a2 2 0 011.7 2z"/></svg>
@@ -1004,6 +1092,32 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    retrouve ici.
 ══════════════════════════════════════════════════════════════════════════ */
 var T = {};   /* rempli plus bas, écran par écran */
+
+Object.assign(T, {
+  'a.sugg': {fr:"Suggestions d'adresse", en:"Address suggestions", zh:"地址建议", ru:"Подсказки адреса"}
+});
+
+/* ── Consentement ──────────────────────────────────────────────────────── */
+Object.assign(T, {
+  'c.titre': {fr:"Cookies", en:"Cookies", zh:"Cookie", ru:"Файлы cookie"},
+  'c.texte': {fr:"Nous utilisons des cookies pour mesurer l'audience de ce site. Vous pouvez les accepter ou les refuser — et changer d'avis à tout moment depuis la <a href=\"/confidentialite\">politique de confidentialité</a>.",
+              en:"We use cookies to measure this site's audience. You can accept or refuse them — and change your mind at any time from the <a href=\"/confidentialite\">privacy policy</a>.",
+              zh:"我们使用 Cookie 来统计本站访问量。您可以接受或拒绝，并可随时在<a href=\"/confidentialite\">隐私政策</a>中更改选择。",
+              ru:"Мы используем файлы cookie для измерения аудитории сайта. Вы можете принять их или отказаться — и в любой момент изменить решение в <a href=\"/confidentialite\">политике конфиденциальности</a>."},
+  'c.oui'  : {fr:"Accepter", en:"Accept", zh:"接受", ru:"Принять"},
+  'c.non'  : {fr:"Refuser", en:"Refuse", zh:"拒绝", ru:"Отказаться"}
+});
+
+/* ── Libellés des données en direct ────────────────────────────────────── */
+Object.assign(T, {
+  'e1.avisMot'  : {fr:"avis Google", en:"Google reviews", zh:"条谷歌评价", ru:"отзыва в Google"},
+  'e1.clients'  : {fr:"clients livrés depuis 2019", en:"customers delivered since 2019", zh:"位客户（自2019年起）", ru:"клиентов с 2019 года"},
+  'd.restant'   : {fr:"appareil disponible", en:"unit available", zh:"台可用", ru:"аппарат в наличии"},
+  'd.restants'  : {fr:"appareils disponibles", en:"units available", zh:"台可用", ru:"аппарата в наличии"},
+  'd.complet'   : {fr:" · Complet — prochaine date le", en:" · Fully booked — next date", zh:" · 已订满 — 下一个可选日期", ru:" · Всё занято — ближайшая дата"},
+  'd.completSeul':{fr:" · Complet aujourd'hui", en:" · Fully booked today", zh:" · 今日已订满", ru:" · Сегодня всё занято"},
+  'f.titre'     : {fr:"Nos packs à prix fixe", en:"Our fixed-price packs", zh:"我们的固定价格套餐", ru:"Наши пакеты с фиксированной ценой"}
+});
 
 /* ── Écran "notre métier" ──────────────────────────────────────────────── */
 Object.assign(T, {
@@ -1764,6 +1878,285 @@ Object.assign(T, {
     var k = s.querySelector('.kicker');
     if(!k) return;                       /* premier et dernier écran : pas de surtitre */
     k.style.setProperty('--n', '"' + String(i + 1).padStart(2, '0') + ' /' + total + '"');
+  });
+})();
+
+/* ══════════════════════════════════════════════════════════════════════════
+   BRANCHEMENT AU BACK-END
+   ─────────────────────────────────────────────────────────────────────────
+   Quatre appels, tous facultatifs : si l'un échoue, la page garde la valeur
+   écrite en dur et rien ne casse. Aucun n'est attendu avant l'affichage.
+     /api/google-rating  → note et nombre d'avis réels
+     /api/mode-complet   → stock disponible, bascule "complet"
+     /api/disponibilite  → prochaine date libre
+     /api/forfaits       → packs à prix fixe activés depuis l'admin
+══════════════════════════════════════════════════════════════════════════ */
+(function(){
+  function mot(cle){
+    var e = (typeof T !== 'undefined') && T[cle];
+    if(!e) return '';
+    var l = (typeof langueActuelle === 'function') ? langueActuelle() : 'fr';
+    return e[l] != null ? e[l] : e.fr;
+  }
+  function json(url){
+    return fetch(url, {cache:'no-store'})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; });
+  }
+
+  /* ── Note Google réelle ───────────────────────────────────────────────
+     La page affichait "4,9 · 32 avis" en dur : le jour où le nombre d'avis
+     change, le chiffre ment. */
+  var noteReelle = null;
+  function poserNote(){
+    if(!noteReelle) return;
+    var n = noteReelle.rating.toLocaleString(
+      (typeof langueActuelle === 'function' && langueActuelle() === 'fr') ? 'fr-FR' : 'en-US',
+      {minimumFractionDigits:1, maximumFractionDigits:1});
+    document.querySelectorAll('[data-note]').forEach(function(el){
+      el.textContent = n;
+    });
+    document.querySelectorAll('[data-avis]').forEach(function(el){
+      el.textContent = noteReelle.count;
+    });
+  }
+  json('/api/google-rating').then(function(d){
+    if(d && d.available && typeof d.rating === 'number' && typeof d.count === 'number'){
+      noteReelle = d;
+      poserNote();
+    }
+  });
+
+  /* ── Stock et disponibilité ───────────────────────────────────────────
+     mode-complet donne le nombre d'appareils libres aujourd'hui et l'état
+     "complet". disponibilite donne la prochaine date libre, utile
+     seulement quand il n'y a plus rien. */
+  var stock = null, prochaine = null;
+
+  function poserDispo(){
+    var pastille = document.getElementById('dispo-l');
+    if(!pastille) return;
+    if(stock === null) return;                    /* rien de fiable à dire */
+
+    var urg = document.querySelector('.urg');
+    if(stock.sold_out){
+      pastille.textContent = prochaine
+        ? mot('d.complet') + ' ' + formatDate(prochaine)
+        : mot('d.completSeul');
+      if(urg) urg.classList.add('urg-complet');
+    } else if(typeof stock.disponibles === 'number' && stock.disponibles > 0 && stock.disponibles <= 5){
+      /* On ne montre le compteur que s'il est bas : au-dessus de 5 il ne
+         dit rien d'utile et ressemble à une fausse urgence. */
+      pastille.textContent = ' · ' + stock.disponibles + ' ' +
+        (stock.disponibles > 1 ? mot('d.restants') : mot('d.restant'));
+      if(urg) urg.classList.remove('urg-complet');
+    } else {
+      pastille.textContent = '';
+      if(urg) urg.classList.remove('urg-complet');
+    }
+  }
+  function formatDate(iso){
+    var l = (typeof langueActuelle === 'function') ? langueActuelle() : 'fr';
+    var loc = {fr:'fr-FR', en:'en-GB', zh:'zh-CN', ru:'ru-RU'}[l] || 'fr-FR';
+    try{
+      return new Date(iso + 'T12:00:00').toLocaleDateString(loc, {day:'numeric', month:'long'});
+    }catch(e){ return iso; }
+  }
+
+  json('/api/mode-complet').then(function(d){
+    if(d && typeof d.sold_out === 'boolean'){ stock = d; poserDispo(); }
+  });
+  json('/api/disponibilite').then(function(d){
+    if(d && d.next_available){ prochaine = d.next_available; poserDispo(); }
+  });
+
+  /* ── Packs à prix fixe ────────────────────────────────────────────────
+     Activés depuis l'admin. Sans cet appel, on les active et rien ne
+     s'affiche. Le bloc reste caché tant qu'il n'y a rien à montrer. */
+  json('/api/forfaits').then(function(d){
+    var zone = document.getElementById('forfaits');
+    if(!zone || !d || !Array.isArray(d.forfaits) || !d.forfaits.length) return;
+    var liste = zone.querySelector('.forfaits-l');
+    d.forfaits.slice(0, 3).forEach(function(f){
+      var el = document.createElement('div');
+      el.className = 'forfait';
+      var prix = (f.prix_cents / 100).toLocaleString('fr-FR',
+        {minimumFractionDigits:0, maximumFractionDigits:2}) + ' €';
+      el.innerHTML = '<b></b><span></span>';
+      el.querySelector('b').textContent = f.nom || '';
+      el.querySelector('span').textContent =
+        prix + ' · ' + f.duree_jours + ' ' + mot('e5.jours') +
+        (f.quantite > 1 ? ' · ×' + f.quantite : '');
+      liste.appendChild(el);
+    });
+    zone.hidden = false;
+  });
+
+  /* Les libellés ci-dessus changent avec la langue. */
+  document.addEventListener('langue', function(){ poserNote(); poserDispo(); });
+})();
+
+/* ══════════════════════════════════════════════════════════════════════════
+   CONSENTEMENT, MESURE D'AUDIENCE ET ATTRIBUTION DES CAMPAGNES
+   ─────────────────────────────────────────────────────────────────────────
+   Trois choses distinctes, souvent confondues :
+
+   1. Le CONSENTEMENT. Aucun traceur publicitaire ne se charge avant un accord
+      explicite (CNIL). Même clé que le site officiel — un choix fait là-bas
+      vaut ici, et inversement.
+
+   2. La MESURE. Google Analytics et Google Ads, chargés seulement après
+      accord. Aucune conversion n'est déclarée ici : la vraie conversion part
+      après le paiement, dans le tunnel, avec le montant réellement débité.
+      En déclarer une au clic sur "Réserver" créerait des ventes fantômes et
+      fausserait tout le pilotage des campagnes.
+
+   3. L'ATTRIBUTION. C'est le point qui protège vraiment le budget publicitaire.
+      Quand un visiteur arrive d'une annonce, Google ajoute un identifiant de
+      clic (gclid) à l'URL. Si cet identifiant est perdu au passage de cette
+      page vers le tunnel, Google ne peut plus relier la vente à l'annonce et
+      pilote à l'aveugle. Tous les liens vers "/" le transportent donc, avec
+      les paramètres utm_*.
+══════════════════════════════════════════════════════════════════════════ */
+(function(){
+  var CLE = 'locair_cookie_consent';
+  var MESURE = 'AW-18195242550';
+
+  function chargerMesure(){
+    if(window._mesureChargee) return;
+    window._mesureChargee = true;
+    var sc = document.createElement('script');
+    sc.async = true;
+    sc.src = 'https://www.googletagmanager.com/gtag/js?id=' + MESURE;
+    document.head.appendChild(sc);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function(){ window.dataLayer.push(arguments); };
+    window.gtag('js', new Date());
+    window.gtag('config', MESURE);
+  }
+
+  var banniere = document.getElementById('cook');
+  var choix = null;
+  try { choix = localStorage.getItem(CLE); } catch(e){}
+
+  if(choix === 'accepted'){
+    chargerMesure();
+  } else if(choix !== 'refused' && banniere){
+    banniere.classList.add('on');
+  }
+  function repondre(valeur){
+    try { localStorage.setItem(CLE, valeur); } catch(e){}
+    if(banniere) banniere.classList.remove('on');
+    if(valeur === 'accepted') chargerMesure();
+  }
+  var oui = document.getElementById('cook-oui'), non = document.getElementById('cook-non');
+  if(oui) oui.addEventListener('click', function(){ repondre('accepted'); });
+  if(non) non.addEventListener('click', function(){ repondre('refused'); });
+
+  /* ── Report des paramètres de campagne vers le tunnel ─────────────────── */
+  var GARDES = ['gclid','gbraid','wbraid','utm_source','utm_medium','utm_campaign','utm_term','utm_content','msclkid','fbclid'];
+  var entrants = new URLSearchParams(location.search);
+  var aReporter = new URLSearchParams();
+  GARDES.forEach(function(k){ if(entrants.get(k)) aReporter.set(k, entrants.get(k)); });
+
+  function completer(){
+    var suffixe = aReporter.toString();
+    document.querySelectorAll('a[href="/"], a[href^="/?"]').forEach(function(a){
+      var u = new URL(a.getAttribute('href'), location.origin);
+      aReporter.forEach(function(v, k){ u.searchParams.set(k, v); });
+      a.setAttribute('href', u.pathname + (u.search || ''));
+    });
+    /* Le formulaire d'adresse : ses champs cachés portent les mêmes valeurs */
+    var f = document.querySelector('form.addr');
+    if(f && suffixe){
+      aReporter.forEach(function(v, k){
+        if(f.querySelector('[name="' + k + '"]')) return;
+        var i = document.createElement('input');
+        i.type = 'hidden'; i.name = k; i.value = v;
+        f.appendChild(i);
+      });
+    }
+  }
+  if(aReporter.toString()) completer();
+})();
+
+/* ══ Autocomplétion d'adresse ═══════════════════════════════════════════════
+   Base Adresse Nationale (api-adresse.data.gouv.fr), sans clé ni compte.
+   Sert à deux choses : éviter les fautes de frappe, et surtout récupérer le
+   code postal — c'est lui qui détermine la zone de livraison, donc 60 € ou
+   120 €. Sans JavaScript, le champ reste un champ texte ordinaire. */
+(function(){
+  var champ = document.getElementById('addr-input');
+  var liste = document.getElementById('sugg');
+  var cp    = document.getElementById('addr-cp');
+  if(!champ || !liste) return;
+
+  var minuteur = null, resultats = [], actif = -1;
+
+  function fermer(){
+    liste.classList.remove('on');
+    champ.setAttribute('aria-expanded','false');
+    actif = -1;
+  }
+  function choisir(i){
+    var r = resultats[i];
+    if(!r) return;
+    champ.value = r.properties.label;
+    if(cp) cp.value = r.properties.postcode || '';
+    fermer();
+  }
+  function afficher(){
+    liste.innerHTML = '';
+    resultats.forEach(function(r, i){
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('role','option');
+      b.setAttribute('aria-selected','false');
+      b.textContent = r.properties.name || r.properties.label;
+      var pt = document.createElement('small');
+      pt.textContent = (r.properties.postcode || '') + ' ' + (r.properties.city || '');
+      b.appendChild(pt);
+      b.addEventListener('click', function(){ choisir(i); });
+      liste.appendChild(b);
+    });
+    liste.classList.toggle('on', resultats.length > 0);
+    champ.setAttribute('aria-expanded', String(resultats.length > 0));
+  }
+  function surligner(){
+    liste.querySelectorAll('button').forEach(function(b, i){
+      b.setAttribute('aria-selected', String(i === actif));
+      if(i === actif) b.scrollIntoView({block:'nearest'});
+    });
+  }
+
+  champ.addEventListener('input', function(){
+    clearTimeout(minuteur);
+    var q = champ.value.trim();
+    if(cp) cp.value = '';
+    if(q.length < 4){ resultats = []; fermer(); return; }
+    /* 250 ms d'attente : on interroge quand la frappe s'arrête, pas à chaque
+       lettre — sinon dix appels réseau pour une seule adresse. */
+    minuteur = setTimeout(function(){
+      fetch('https://api-adresse.data.gouv.fr/search/?limit=5&autocomplete=1&lat=43.7102&lon=7.262&q='
+            + encodeURIComponent(q))
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(d){
+          resultats = (d && d.features) ? d.features : [];
+          afficher();
+        })
+        .catch(function(){ resultats = []; fermer(); });
+    }, 250);
+  });
+
+  champ.addEventListener('keydown', function(e){
+    if(!liste.classList.contains('on')) return;
+    if(e.key === 'ArrowDown'){ e.preventDefault(); actif = Math.min(actif + 1, resultats.length - 1); surligner(); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); actif = Math.max(actif - 1, 0); surligner(); }
+    else if(e.key === 'Enter' && actif >= 0){ e.preventDefault(); choisir(actif); }
+    else if(e.key === 'Escape'){ fermer(); }
+  });
+  document.addEventListener('click', function(e){
+    if(!e.target.closest('.addr-row')) fermer();
   });
 })();
 </script>
