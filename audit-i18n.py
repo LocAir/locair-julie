@@ -31,7 +31,11 @@ NON_TRADUISIBLE = re.compile(
     r'|^(Saint-Laurent-du-Var|Cagnes-sur-Mer|Villefranche-sur-Mer|Beaulieu-sur-Mer)$'
     r'|^Cannes · Antibes · Menton$'
     r'|^Nice Centre · Promenade des Anglais$|^Vieux-Nice · Cimiez · Libération$'
-    r'|^Magnan · Riquier · Caucade$|^Saint-Isidore · Moulins$',
+    r'|^Magnan · Riquier · Caucade$|^Saint-Isidore · Moulins$'
+    # Unités et notations internationales : BTU, m², dB s'écrivent pareil dans
+    # toutes les langues, et "A" est la classe énergie de l'étiquette
+    # européenne. Les traduire serait une faute, pas une amélioration.
+    r'|^(BTU|m²|dB|kWh|W|A|°C|€)$|^\d+[–-]\d+k$',
     re.I)
 
 class Audit(HTMLParser):
