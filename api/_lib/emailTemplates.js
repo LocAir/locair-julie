@@ -866,7 +866,7 @@ function tplPrimeTransporteur({ nom, moisLabel, montantFmt, nbMissions, totalGag
 // facture de la semaine (voir _lib/transporteurFacture.js). Pas de
 // withSignature() ici — c'est une notification opérationnelle pour Aly
 // lui-même, pas un email client (pas de footer WhatsApp/réseaux sociaux).
-function tplFactureTransporteurAdmin({ transporteurNom, numero, periodeDebutFmt, periodeFinFmt, nbMissions, totalFmt }) {
+function tplFactureTransporteurAdmin({ transporteurNom, numero, periodeDebutFmt, periodeFinFmt, nbMissions, totalFmt, profilIncomplet }) {
   return wrap({
     title: 'Nouvelle facture transporteur 🧾',
     intro: `${escHtml(transporteurNom)} vient d'envoyer sa facture de la semaine.`,
@@ -874,6 +874,7 @@ function tplFactureTransporteurAdmin({ transporteurNom, numero, periodeDebutFmt,
       <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">${escHtml(numero)}</p><strong style="font-size:24px;color:#1a2b4a">${escHtml(totalFmt)}</strong></div>
       <p><strong>Période :</strong> du ${escHtml(periodeDebutFmt)} au ${escHtml(periodeFinFmt)}<br/>
       <strong>Missions :</strong> ${nbMissions}</p>
+      ${profilIncomplet ? `<p style="font-size:13px;color:#9b2c1a">⚠️ SIRET et/ou adresse non renseignés par ${escHtml(transporteurNom)} — cette facture n'est pas légalement complète.</p>` : ''}
       <p style="font-size:13px;color:#444">Le PDF est en pièce jointe. Retrouve aussi toutes les factures transporteurs dans l'admin, onglet Virements → 🧾 Factures transporteurs.</p>`,
     ctaHref: 'https://www.locair.fr/admin', ctaLabel: "Ouvrir l'admin",
   });
@@ -887,10 +888,14 @@ function tplFactureTransporteurAdmin({ transporteurNom, numero, periodeDebutFmt,
 function tplRecapFactureHebdoAdmin({ totalFmt, nbTransporteurs, lignes }) {
   const rows = (lignes || []).map(l => `
     <tr>
-      <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:13px;color:#1a1a1a">${escHtml(l.nom)}</td>
+      <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:13px;color:#1a1a1a">${escHtml(l.nom)}${l.profilIncomplet ? ' ⚠️' : ''}</td>
       <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:12px;color:#888;text-align:center">${l.auto ? '✅ Générée auto' : '🔔 Rappel envoyé'}</td>
       <td style="padding:8px 0;border-bottom:1px solid #eee;font-size:13px;font-weight:700;color:#1a1a1a;text-align:right">${escHtml(l.montantFmt)}</td>
     </tr>`).join('');
+  // Compte les profils SIRET/adresse incomplets (audit facturation, 2026-08-20)
+  // — sans ce rappel proactif, ces trous ne se voyaient qu'en ouvrant chaque
+  // PDF un par un dans l'admin.
+  const nbIncomplets = (lignes || []).filter(l => l.profilIncomplet).length;
   return wrap({
     title: 'Récap hebdo — factures transporteurs 🧾',
     intro: `Automatisation du lundi : rappels envoyés et factures générées pour toi.`,
@@ -898,7 +903,8 @@ function tplRecapFactureHebdoAdmin({ totalFmt, nbTransporteurs, lignes }) {
       <div class="box"><p style="margin:0 0 4px;color:#888;font-size:12px">TOTAL CONCERNÉ CETTE SEMAINE</p><strong style="font-size:26px;color:#1a2b4a">${escHtml(totalFmt)}</strong></div>
       <p style="font-size:13px;color:#444">${nbTransporteurs} transporteur${nbTransporteurs > 1 ? 's' : ''} concerné${nbTransporteurs > 1 ? 's' : ''} — détail ci-dessous.</p>
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin-top:8px">${rows}</table>
-      <p style="font-size:13px;color:#444;margin-top:14px">"✅ Générée auto" = le transporteur n'avait pas validé sa facture après le rappel de la semaine précédente, elle a donc été générée et envoyée à sa place. "🔔 Rappel envoyé" = à lui de valider dans son espace.</p>`,
+      <p style="font-size:13px;color:#444;margin-top:14px">"✅ Générée auto" = le transporteur n'avait pas validé sa facture après le rappel de la semaine précédente, elle a donc été générée et envoyée à sa place. "🔔 Rappel envoyé" = à lui de valider dans son espace.</p>
+      ${nbIncomplets ? `<p style="font-size:13px;color:#9b2c1a;margin-top:10px">⚠️ ${nbIncomplets} facture${nbIncomplets > 1 ? 's' : ''} ci-dessus sans SIRET et/ou adresse renseigné${nbIncomplets > 1 ? 's' : ''} par le transporteur — pas légalement complète${nbIncomplets > 1 ? 's' : ''}, à relancer.</p>` : ''}`,
     ctaHref: 'https://www.locair.fr/admin', ctaLabel: "Voir les factures transporteurs",
   });
 }

@@ -7603,6 +7603,7 @@ function transporteurRevenusCardHtml(t){
         <span class="resa-sub">${t.en_attente_validation_cents>0?euros(t.en_attente_validation_cents)+' à valider · ':''}${euros(t.verse_cents)} déjà versés</span>
       </div>
       ${t.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par le livreur</div>':''}
+      ${t.profil_incomplet?'<div class="row-meta" style="color:var(--red);font-weight:700;margin-bottom:10px">⚠️ SIRET/adresse non renseignés — ses factures ne sont pas légalement complètes</div>':''}
       ${t.en_attente_validation_cents>0?`<button class="btn btn-grey btn-block" style="margin-bottom:8px" onclick="validerRemuneration(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.en_attente_validation_cents})">🔍 Valider les missions (${euros(t.en_attente_validation_cents)})</button>`:''}
       ${t.non_verse_cents>0
         ?`<button class="btn btn-green btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.non_verse_cents})">✅ Marquer comme versé (${euros(t.non_verse_cents)})</button>`
@@ -8245,6 +8246,7 @@ function renderFacturesTransporteurList(filtreId){
         <div style="font-weight:700">${escHtml(f.transporteur?.nom||'—')} · ${escHtml(f.numero)}</div>
         <div class="row-meta" style="margin-top:2px">Semaine du ${frDateCourte(f.periode_debut)} au ${frDateCourte(f.periode_fin)} · ${f.nb_missions} mission${f.nb_missions>1?'s':''}</div>
         ${!f.envoyee_admin?'<div class="row-meta" style="color:var(--red)">⚠️ Email non envoyé — PDF quand même disponible ci-contre</div>':''}
+        ${(!f.transporteur?.siret||!f.transporteur?.adresse_facturation)?`<div class="row-meta" style="color:var(--red)">⚠️ ${!f.transporteur?.siret&&!f.transporteur?.adresse_facturation?'SIRET et adresse':!f.transporteur?.siret?'SIRET':'Adresse'} non renseigné${!f.transporteur?.siret&&!f.transporteur?.adresse_facturation?'s':''} — facture pas légalement complète, à relancer</div>`:''}
       </span>
       <span style="text-align:right;flex-shrink:0">
         <div style="font-weight:700">${euros(f.montant_total_cents)}</div>

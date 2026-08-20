@@ -70,7 +70,16 @@ module.exports = async (req, res) => {
         if (existante) return res.status(200).json({ deja_generee: true, facture: existante });
 
         const resume = await resumePeriode(supabase, transporteurId, periodeDebut, periodeFin);
-        return res.status(200).json({ deja_generee: false, ...resume });
+        // siret/adresse_facturation : pour que l'appli puisse prévenir avant
+        // l'envoi si le profil est incomplet (facture pas légalement complète
+        // sans ça — voir "Mes informations de facturation" et l'audit
+        // facturation, 2026-08-20), sans appel réseau supplémentaire.
+        const { data: profil } = await supabase
+          .from('transporteurs').select('siret, adresse_facturation').eq('id', transporteurId).maybeSingle();
+        return res.status(200).json({
+          deja_generee: false, ...resume,
+          siret: profil?.siret || '', adresse_facturation: profil?.adresse_facturation || '',
+        });
       }
 
       // action === 'generer'
