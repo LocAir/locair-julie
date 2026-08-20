@@ -924,6 +924,27 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 ══════════════════════════════════════════════════════════════════════════ */
 var T = {};   /* rempli plus bas, écran par écran */
 
+/* ── Variantes horaires des promesses de livraison ─────────────────────────
+   Les trois promesses de la page étaient écrites en dur : "demain matin",
+   "Express aujourd'hui". Or la règle du site officiel est horaire :
+     · commande avant 20h (Paris) → livraison le lendemain, sinon le
+       surlendemain (_cutoffOk) ;
+     · l'Express promet 2h et s'arrête donc à 18h (_expressCutoffOk).
+   Un client qui commandait à 22h lisait "livré demain matin" et recevait le
+   surlendemain. Ces variantes sont choisies à l'ouverture de la page. */
+Object.assign(T, {
+  'e1.urgSoir'  : {fr:"Livraison demain matin", en:"Delivered tomorrow morning", zh:"明日上午送达", ru:"Доставка завтра утром"},
+  'e1.urgTard'  : {fr:"Livraison après-demain matin", en:"Delivered the morning after next", zh:"后天上午送达", ru:"Доставка послезавтра утром"},
+  'e2.titreTard': {fr:"Après-demain matin,<em> quelqu'un sonne chez vous.</em>",
+                   en:"The morning after next,<em> someone rings your doorbell.</em>",
+                   zh:"后天早上，<em>有人按响您的门铃。</em>",
+                   ru:"Послезавтра утром<em> к вам позвонят в дверь.</em>"},
+  'e12.titreTard':{fr:"L'air frais<em> dès après-demain matin.</em>",
+                   en:"Cool air<em> from the morning after next.</em>",
+                   zh:"清凉，<em>从后天早上开始。</em>",
+                   ru:"Прохлада<em> уже послезавтра утром.</em>"}
+});
+
 /* ── Lot 5 : derniers libellés ─────────────────────────────────────────── */
 Object.assign(T, {
   'c.locInit' : {fr:"Location, 14 jours", en:"Rental, 14 days", zh:"租金，14天", ru:"Аренда, 14 дней"},
@@ -1259,6 +1280,36 @@ Object.assign(T, {
                   ru:"Ни чека, ни преавторизации, ни блокировки средств на карте. Вы платите только за аренду. Больше ничего, никогда."}
 });
 
+
+/* ── Promesse de livraison ajustée à l'heure ────────────────────────────────
+   Ce bloc s'exécute AVANT la première application des traductions : il
+   remplace la clé portée par l'élément, le moteur fait le reste. Si le
+   JavaScript ne tourne pas, le texte par défaut (le cas le plus fréquent,
+   la journée) reste affiché — jamais de page vide. */
+(function(){
+  function heureParis(){
+    var o = {};
+    new Intl.DateTimeFormat('fr-FR', { timeZone:'Europe/Paris', hour:'2-digit',
+      minute:'2-digit', hour12:false }).formatToParts(new Date())
+      .forEach(function(x){ o[x.type] = parseInt(x.value, 10); });
+    return o;
+  }
+  var t = heureParis();
+  var avant20h = t.hour < 20 || (t.hour === 20 && t.minute === 0);
+  var avant18h = t.hour < 18 || (t.hour === 18 && t.minute === 0);
+
+  function cle(sel, valeur){
+    var el = document.querySelector(sel);
+    if(el) el.setAttribute(el.hasAttribute('data-th') ? 'data-th' : 'data-t', valeur);
+  }
+  if(!avant20h){                        /* commande passée après 20h */
+    cle('[data-t="e1.urg"]',      'e1.urgTard');
+    cle('[data-th="e2.titre"]',   'e2.titreTard');
+    cle('[data-th="e12.titre"]',  'e12.titreTard');
+  } else if(!avant18h){                 /* entre 18h et 20h : plus d'Express */
+    cle('[data-t="e1.urg"]',      'e1.urgSoir');
+  }
+})();
 
 (function(){
   var LANGUES = ['fr','en','zh','ru'];
