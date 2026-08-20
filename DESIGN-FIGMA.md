@@ -65,6 +65,28 @@ d'actions automatiques par jour. La limite a été atteinte — il faut soit
 attendre le renouvellement du quota, soit passer sur un plan payant pour
 finir les 4 dernières sections automatiquement.
 
+## Direction graphique retenue : Landify
+
+Template de référence :
+https://www.figma.com/community/file/894552273937682724/landify-landing-page-ui-kit-v2
+
+Ce qu'on lui prend : les formes et les espacements (grandes cartes arrondies,
+bordures fines gris clair, ombres douces, boutons pilule, gros titres Inter en
+gras, beaucoup de blanc). Ce qu'on garde de Loc'Air : le marine `#1a2b4a` et
+l'or `#c5a96c`.
+
+Changement notable : les titres passent du serif (Cormorant Garamond) au sans
+serif Inter en très gras. C'est ce qui donne le côté moderne / pro.
+
+### Aperçu en vrai
+Fichier : `apercu-landify.html` → `https://www.locair.fr/apercu-landify.html`
+(page non indexée, elle ne remplace rien). C'est la page d'accueil complète
+habillée en style Landify : navigation, hero, bande de chiffres, engagements,
+4 étapes, produit, tarifs, avis, FAQ dépliable, gros bloc final, pied de page.
+
+Si le rendu convient, l'étape suivante est de reporter ces styles dans
+`index.html` (le vrai site).
+
 ## Comment on travaille ensuite
 1. Tu modifies dans Figma (couleurs, typos, espacements, mise en page).
 2. On relit le fichier Figma et on reporte les changements dans
