@@ -15,8 +15,23 @@ IGNORE_BALISES = {'script', 'style'}
 # Textes qui ne se traduisent pas : numéros, symboles, noms propres, montants.
 NON_TRADUISIBLE = re.compile(
     r'^[\s\d\W_]*$'                       # que des chiffres/ponctuation
+    # noms propres, marques, personnes
     r'|^(Loc|Air|Nice|Aly|AT|WhatsApp|Stripe|MEDICYS|SIRET|Rowenta|Frico|Hisense'
-    r'|Yassine|Lauriane|Mike|Fabio|Daniel Lopez Francia|locair\.fr|THIAM ALY)$',
+    r'|Yassine|Lauriane|Mike|Fabio|Daniel Lopez Francia|locair\.fr|THIAM ALY)$'
+    # noms de langues : dans un sélecteur, chaque langue s'écrit dans SA langue.
+    # Traduire "English" en français serait une faute d'usage, pas une omission.
+    r'|^(🇫🇷\s*)?Français$|^(🇬🇧\s*)?English$|^(🇨🇳\s*)?中文$|^(🇷🇺\s*)?Русский$'
+    r'|^(FR|EN|ZH|RU)$'
+    # chemins d'URL et adresses e-mail affichés tels quels
+    r'|^/[a-z0-9-]+$'
+    r'|^[\w.+-]+@[\w.-]+$'
+    # Communes et quartiers : ce sont des ADRESSES. Un visiteur russe ou
+    # chinois doit lire "Saint-Laurent-du-Var" pour retrouver le lieu sur une
+    # carte ou le dicter à un chauffeur. Les traduire le desservirait.
+    r'|^(Saint-Laurent-du-Var|Cagnes-sur-Mer|Villefranche-sur-Mer|Beaulieu-sur-Mer)$'
+    r'|^Cannes · Antibes · Menton$'
+    r'|^Nice Centre · Promenade des Anglais$|^Vieux-Nice · Cimiez · Libération$'
+    r'|^Magnan · Riquier · Caucade$|^Saint-Isidore · Moulins$',
     re.I)
 
 class Audit(HTMLParser):
