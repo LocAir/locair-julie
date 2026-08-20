@@ -250,6 +250,22 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .stat-tile .n{font-family:var(--disp);font-size:36px;font-weight:400;color:var(--black);font-variant-numeric:tabular-nums;letter-spacing:-.02em;line-height:1.1}
 .stat-tile .l{font-size:11.5px;color:var(--grey);font-weight:600;margin-top:9px;letter-spacing:.03em;text-transform:uppercase}
 .stat-tile.warn .n{color:var(--red)}
+/* Grille bento (demande d'Aly, 2026-08-19 — même traitement que la section
+   "En un coup d'œil" du site public) : au lieu d'une mosaïque uniforme, une
+   tuile "vedette" (le chiffre le plus important de l'écran) ressort en bleu
+   nuit ou or, prend plus de place, avec une icône décorative en filigrane —
+   les autres tuiles restent blanches, discrètes. .feat/.gold sont facultatifs
+   à poser au cas par cas ; le reste (les 81 grilles existantes) hérite déjà
+   du style de base sans rien changer.*/
+.stat-tile{position:relative;overflow:hidden}
+.stat-tile.feat,.stat-tile.gold{border:none;color:#fff}
+.stat-tile.feat{background:var(--blue-d)}
+.stat-tile.gold{background:var(--gold)}
+.stat-tile.feat .n,.stat-tile.gold .n{color:#fff}
+.stat-tile.feat .l,.stat-tile.gold .l{color:#fff;opacity:.7}
+.stat-tile.feat .ic,.stat-tile.gold .ic{opacity:.9}
+.stat-tile .deco{position:absolute;right:14px;bottom:6px;font-size:44px;opacity:.14;line-height:1;pointer-events:none;user-select:none}
+@media(max-width:520px){.stat-tile .deco{font-size:34px}}
 
 .morning-banner{background:var(--blue);color:#fff;border-radius:var(--r-lg);padding:18px 44px 18px 20px;margin-bottom:16px;box-shadow:var(--sh-blue);position:relative}
 .morning-banner .mb-title{font-family:var(--disp);font-size:17px;font-weight:600;margin-bottom:6px}
@@ -2265,12 +2281,12 @@ async function loadDashboard(periode, silent){
         <button class="${periode==='mois'?'on':''}" onclick="loadDashboard('mois')">Ce mois</button>
       </div>
       <div class="stat-grid">
-        <div class="stat-tile"><div class="ic">💶</div><div class="n">${eurosMilliers(d.ca_euros)}</div><div class="l">Chiffre d'affaires</div></div>
+        <div class="stat-tile feat" style="grid-column:span 2"><div class="ic">💶</div><div class="n">${eurosMilliers(d.ca_euros)}</div><div class="l">Chiffre d'affaires</div><span class="deco" aria-hidden="true">💶</span></div>
         <div class="stat-tile"><div class="ic">🧾</div><div class="n">${d.nb_reservations||0}</div><div class="l">Réservations</div></div>
         <div class="stat-tile"><div class="ic">🛒</div><div class="n">${eurosMilliers(d.panier_moyen_euros)}</div><div class="l">Panier moyen</div></div>
         <div class="stat-tile"><div class="ic">📊</div><div class="n">${pct}%</div><div class="l">Occupation (${d.unites_occupees}/${d.flotte_totale}${d.agregat?' · toutes villes':' à '+escHtml(d.ville||'')})</div></div>
         <div class="stat-tile ${d.incidents_ouverts>0?'warn':''}"><div class="ic">🧯</div><div class="n">${d.incidents_ouverts||0}</div><div class="l">Incidents ouverts</div></div>
-        <div class="stat-tile" style="grid-column:1/-1"><div class="ic">📈</div><div class="n">${eurosMilliers(d.ca_total_euros)}</div><div class="l">CA total généré (depuis le début)</div></div>
+        <div class="stat-tile gold" style="grid-column:1/-1"><div class="ic">📈</div><div class="n">${eurosMilliers(d.ca_total_euros)}</div><div class="l">CA total généré (depuis le début)</div><span class="deco" aria-hidden="true">📈</span></div>
       </div>
       <div style="text-align:right;margin-top:-6px"><button class="btn btn-grey" onclick="openExportComptable()">📊 Export comptable</button></div>
       <div id="previsions-zone"></div>
