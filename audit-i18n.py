@@ -88,6 +88,36 @@ def verifier_entites(src):
             fautifs.append((m.group(1), sorted(ents)))
     return fautifs
 
+def verifier_cles(src, corps):
+    """Chaque marqueur doit pointer vers une clé qui existe, dans les 4 langues.
+
+    Ce contrôle existe parce que le cas s'est produit : un écran entier a été
+    ajouté avec ses marqueurs data-t, le dictionnaire n'a pas suivi, et
+    l'audit affichait quand même 100 %. Un marqueur orphelin ne casse rien à
+    l'écran — le texte français reste en place — mais un visiteur anglais,
+    chinois ou russe lit du français sans que personne s'en aperçoive.
+    """
+    if 'var T = {}' not in src:
+        return [], []
+    bloc = src[src.index('var T = {}'):src.index('window.setLangue')]
+    dico = {}
+    for m in re.finditer(r"'([\w.]+)'\s*:\s*\{(.*?)\}(?=\s*,\s*\n|\s*\n\s*\}|\s*\})",
+                         bloc, re.S):
+        dico[m.group(1)] = m.group(2)
+    utilisees = set()
+    for attr in ('data-t', 'data-th', 'data-tp', 'data-ta', 'data-talt'):
+        utilisees |= set(re.findall(attr + r'="([\w.]+)"', corps))
+    # 'clé' n'est pas une clé : c'est le mot employé dans la documentation
+    # des marqueurs, en haut du script de traduction.
+    utilisees.discard('clé')
+    orphelines = sorted(k for k in utilisees if k not in dico)
+    incompletes = sorted(
+        k for k in utilisees
+        if k in dico and not all(re.search(r'\b' + L + r'\s*:', dico[k])
+                                 for L in ('fr', 'en', 'zh', 'ru')))
+    return orphelines, incompletes
+
+
 src = open(sys.argv[1] if len(sys.argv) > 1 else 'version-b.html', encoding='utf-8').read()
 corps = src[src.index('<body'):] if '<body' in src else src
 corps = re.sub(r'<!--.*?-->', '', corps, flags=re.S)      # commentaires exclus
@@ -106,6 +136,18 @@ if fautifs:
         print('  ✗', cle, ' '.join(ents))
 else:
     print('  entités HTML : aucune ✓')
+
+orphelines, incompletes = verifier_cles(src, corps)
+if orphelines:
+    print(f'\n⚠ {len(orphelines)} marqueur(s) sans traduction dans le dictionnaire :')
+    for cle in orphelines:
+        print('  ✗', cle)
+elif incompletes:
+    print(f'\n⚠ {len(incompletes)} clé(s) auxquelles il manque une langue :')
+    for cle in incompletes:
+        print('  ✗', cle)
+else:
+    print('  clés du dictionnaire : toutes présentes en 4 langues ✓')
 
 if '-v' in sys.argv:
     print('\n── Restants ──')
