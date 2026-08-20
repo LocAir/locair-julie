@@ -20,6 +20,13 @@
 <html lang="fr" dir="ltr">
 <head>
 <meta charset="UTF-8">
+<!-- Ce marqueur conditionne l'animation d'apparition. Il est posé ici, avant
+     tout affichage, pour éviter que le contenu clignote. S'il n'est jamais
+     posé — JavaScript coupé, erreur, extension bloquante — le contenu reste
+     simplement visible : une page qui ne bouge pas vaut mieux qu'une page
+     blanche. Ce détail comptait aussi pour Google, qui ne mesurait aucun
+     "plus gros élément affiché" tant que tout était à opacité zéro. -->
+<script>document.documentElement.className += ' js';</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <title>Loc'Air — version B (aperçu)</title>
@@ -27,7 +34,19 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<!-- Police chargée SANS bloquer l'affichage.
+     Un <link rel="stylesheet"> classique met la page en attente tant que le
+     fichier n'est pas arrivé. Mesuré : 12 820 ms d'attente quand
+     fonts.googleapis.com est injoignable, contre 97 ms sans lui.
+     Or Google Fonts est bloqué en Chine — et cette page existe en chinois.
+     media="print" fait charger la feuille en arrière-plan ; onload la
+     réactive dès qu'elle est là. Sans JavaScript, le <noscript> prend le
+     relais. Dans tous les cas la page s'affiche tout de suite avec la police
+     de secours du système. -->
+<link rel="stylesheet" media="print" onload="this.media='all';this.onload=null"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
+<noscript><link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap"></noscript>
 
 <style>
 /* ══ COULEURS — identiques à la version A ══ */
@@ -36,7 +55,13 @@
   --blue:#1D5BBF; --blue-d:#17489A; --blue-soft:#EEF3FC;
   --gold:#C9A227; --paper:#FFFFFF; --mist:#F5F7FA; --line:#E6EBF1; --green:#0F7A3D;
   --pad:24px; --max:1000px; --r:12px; --r-l:20px;
-  --font:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  /* DM Sans couvre le latin et le cyrillique, mais PAS les idéogrammes :
+     le chinois tombait donc sur une police système au hasard. La pile ci-
+     dessous nomme explicitement les polices chinoises de chaque système, et
+     sert aussi de secours immédiat si Google Fonts n'arrive jamais. */
+  --font:'DM Sans',system-ui,-apple-system,'Segoe UI',
+         'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC',
+         sans-serif;
 }
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -117,12 +142,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* ══ APPARITION ══
    Sur un format "un écran = une idée", le contenu doit arriver APRÈS que
    l'écran soit en place, sinon tout est déjà lu avant d'arriver. */
-.rv{opacity:0;transform:translateY(24px);transition:opacity .75s cubic-bezier(.2,.7,.3,1),transform .75s cubic-bezier(.2,.7,.3,1)}
-.rv.on{opacity:1;transform:none}
-.rv:nth-child(2){transition-delay:.08s}
-.rv:nth-child(3){transition-delay:.16s}
-.rv:nth-child(4){transition-delay:.24s}
-@media(prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}}
+.js .rv{opacity:0;transform:translateY(24px);transition:opacity .75s cubic-bezier(.2,.7,.3,1),transform .75s cubic-bezier(.2,.7,.3,1)}
+.js .rv.on{opacity:1;transform:none}
+.js .rv:nth-child(2){transition-delay:.08s}
+.js .rv:nth-child(3){transition-delay:.16s}
+.js .rv:nth-child(4){transition-delay:.24s}
+@media(prefers-reduced-motion:reduce){.js .rv{opacity:1;transform:none;transition:none}}
 
 /* ══ REPÈRE DE PROGRESSION ══
    Sur un format long, il faut savoir où l'on en est et pouvoir sauter.
@@ -544,8 +569,25 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
         <span data-th="e1.preuve"><b>4,9</b> · 32 avis Google · <b>+500</b> clients livrés depuis 2019</span>
       </p>
     </div>
-    <img class="e1-img rv" src="/hero-clim.jpg" width="800" height="1000" fetchpriority="high"
-         data-talt="e1.alt" alt="Climatiseur mobile Loc'Air installé dans un appartement à Nice">
+    <!-- La photo d'origine fait 1400x2100 (160 Ko) pour un affichage de
+         400x500 : douze fois trop de pixels, payés par le forfait mobile du
+         visiteur. Trois versions plus légères sont fournies, le navigateur
+         choisit celle qui correspond à son écran.
+         WebP d'abord (55 Ko au lieu de 109), JPEG en secours pour les vieux
+         navigateurs.
+         Le "1px" dans sizes n'est pas une erreur : sous 900 px cette image est
+         masquée (.e1-img{display:none}), on demande donc la plus petite
+         plutôt que de faire télécharger une photo qui ne s'affichera pas. -->
+    <picture>
+      <source type="image/webp"
+              srcset="/hero-clim-560.webp 560w, /hero-clim-900.webp 900w"
+              sizes="(max-width:900px) 1px, 42vw">
+      <img class="e1-img rv" src="/hero-clim-900.jpg"
+           srcset="/hero-clim-560.jpg 560w, /hero-clim-900.jpg 900w"
+           sizes="(max-width:900px) 1px, 42vw"
+           width="900" height="1350" fetchpriority="high"
+           data-talt="e1.alt" alt="Climatiseur mobile Loc'Air installé dans un appartement à Nice">
+    </picture>
   </div>
 </section>
 
