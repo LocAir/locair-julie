@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""Mesure la couverture de traduction de version-b.html.
+
+Compte tout ce qu'un visiteur peut lire — texte visible, textes d'exemple des
+champs, libellés d'accessibilité — et regarde si chacun porte un marqueur de
+traduction (data-t / data-th / data-tp / data-ta).
+
+Sert de juge de paix pour la boucle : tant que le pourcentage n'est pas à
+100 %, il reste du travail.
+"""
+import re, sys
+from html.parser import HTMLParser
+
+IGNORE_BALISES = {'script', 'style'}
+# Textes qui ne se traduisent pas : numéros, symboles, noms propres, montants.
+NON_TRADUISIBLE = re.compile(
+    r'^[\s\d\W_]*$'                       # que des chiffres/ponctuation
+    r'|^(Loc|Air|Nice|Aly|AT|WhatsApp|Stripe|MEDICYS|SIRET|Rowenta|Frico|Hisense'
+    r'|Yassine|Lauriane|Mike|Fabio|Daniel Lopez Francia|locair\.fr|THIAM ALY)$',
+    re.I)
+
+class Audit(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.pile = []
+        self.marque = []          # marqueur de traduction de l'élément courant
+        self.couverts, self.manquants = [], []
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        self.pile.append(tag)
+        marque = any(k in a for k in ('data-t', 'data-th'))
+        self.marque.append(marque)
+        for attr, cle in (('placeholder', 'data-tp'), ('aria-label', 'data-ta')):
+            if a.get(attr) and not NON_TRADUISIBLE.match(a[attr].strip()):
+                (self.couverts if cle in a else self.manquants).append(
+                    f'[{attr}] {a[attr][:60]}')
+        if tag in ('img',) and a.get('alt') and not NON_TRADUISIBLE.match(a['alt']):
+            (self.couverts if 'data-talt' in a else self.manquants).append(
+                f'[alt] {a["alt"][:60]}')
+
+    def handle_endtag(self, tag):
+        if self.pile and self.pile[-1] == tag:
+            self.pile.pop(); self.marque.pop()
+
+    def handle_data(self, texte):
+        t = texte.strip()
+        if not t or NON_TRADUISIBLE.match(t):
+            return
+        if any(b in IGNORE_BALISES for b in self.pile):
+            return
+        # un marqueur sur un ancêtre couvre le texte qu'il contient
+        (self.couverts if any(self.marque) else self.manquants).append(t[:70])
+
+src = open(sys.argv[1] if len(sys.argv) > 1 else 'version-b.html', encoding='utf-8').read()
+corps = src[src.index('<body'):] if '<body' in src else src
+corps = re.sub(r'<!--.*?-->', '', corps, flags=re.S)      # commentaires exclus
+
+a = Audit(); a.feed(corps)
+total = len(a.couverts) + len(a.manquants)
+pct = (len(a.couverts) / total * 100) if total else 100
+print(f'Textes traduisibles : {total}')
+print(f'  couverts   : {len(a.couverts)}')
+print(f'  manquants  : {len(a.manquants)}')
+print(f'  COUVERTURE : {pct:.1f} %')
+if '-v' in sys.argv:
+    print('\n── Restants ──')
+    for m in a.manquants:
+        print('  ·', m)

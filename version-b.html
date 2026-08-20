@@ -322,6 +322,37 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .infobar-x:hover{color:#fff;background:rgba(255,255,255,.1)}
 @media(max-width:560px){.infobar{font-size:12.5px;padding:10px 40px 10px 14px}.infobar .sec{display:none}}
 
+/* ══ SÉLECTEUR DE LANGUE ══
+   Même clé de mémorisation que le site officiel ('locair-lang') : un visiteur
+   qui a choisi l'anglais sur locair.fr retrouve l'anglais ici. */
+.lang{position:relative;flex-shrink:0}
+.lang-b{display:flex;align-items:center;gap:7px;padding:9px 14px;border:1.5px solid var(--line);border-radius:100px;font-size:14px;font-weight:700;transition:border-color .15s}
+.lang-b:hover{border-color:var(--ink)}
+.bar.sur-fonce .lang-b{border-color:rgba(255,255,255,.28)}
+.bar.sur-fonce .lang-b:hover{border-color:rgba(255,255,255,.6)}
+.lang-b svg{opacity:.55}
+.lang-l{
+  position:absolute;top:calc(100% + 8px);right:0;min-width:184px;z-index:20;
+  background:#fff;border-radius:var(--r);padding:7px;
+  box-shadow:0 2px 8px rgba(14,31,53,.08),0 18px 44px rgba(14,31,53,.16);
+  opacity:0;visibility:hidden;transform:translateY(-6px);
+  transition:opacity .16s,transform .16s,visibility .16s;
+}
+.lang-l.on{opacity:1;visibility:visible;transform:none}
+.lang-l button{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border-radius:8px;font-size:15px;color:var(--ink);text-align:left;transition:background .12s}
+.lang-l button:hover{background:var(--mist)}
+.lang-l button[aria-selected="true"]{font-weight:700;background:var(--blue-soft);color:var(--blue)}
+.lang-l b{font-size:16px;line-height:1}
+/* dans le menu plein écran, la même liste mais à plat */
+.menu-lang{display:flex;gap:8px;flex-wrap:wrap}
+.menu-lang button{
+  border:1.5px solid rgba(255,255,255,.2);border-radius:100px;padding:10px 17px;
+  font-size:15px;color:rgba(255,255,255,.75);transition:all .15s;
+}
+.menu-lang button:hover{border-color:rgba(255,255,255,.55);color:#fff}
+.menu-lang button[aria-selected="true"]{background:#fff;border-color:#fff;color:var(--ink);font-weight:700}
+@media(max-width:1000px){.bar .lang{display:none}}
+
 /* ══ MENU ══
    La version B n'avait aucun menu sur téléphone : les espaces client et
    ambassadeur étaient donc inaccessibles. C'est le manque le plus grave. */
@@ -417,15 +448,27 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 <div class="infobar" id="infobar" role="status">
   <span class="pt" aria-hidden="true"></span>
   <span id="infobar-msg"></span>
-  <button class="infobar-x" type="button" id="infobar-x" aria-label="Fermer">×</button>
+  <button class="infobar-x" type="button" id="infobar-x" data-ta="b.fermer" aria-label="Fermer">×</button>
 </div>
 
 <header class="bar" id="bar">
   <a class="logo" href="#e1">Loc<span>'</span>Air</a>
-  <a class="bar-lien" href="/client">Mon espace →</a>
+  <a class="bar-lien" href="/client" data-t="b.espace">Mon espace →</a>
   <a class="bar-tel" href="tel:+33663798756">06.63.79.87.56</a>
-  <a class="btn btn-1 btn-s" href="/">Réserver</a>
-  <button class="burger" type="button" id="burger" aria-label="Ouvrir le menu"
+  <a class="btn btn-1 btn-s" href="/" data-t="b.reserver">Réserver</a>
+  <div class="lang">
+    <button class="lang-b" type="button" id="lang-b" aria-haspopup="listbox" aria-expanded="false">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20 15 15 0 010-20"/></svg>
+      <span id="lang-cur">FR</span>
+    </button>
+    <div class="lang-l" id="lang-l" role="listbox" aria-label="Choisir la langue">
+      <button type="button" data-l="fr" role="option" aria-selected="true"><b>🇫🇷</b> Français</button>
+      <button type="button" data-l="en" role="option" aria-selected="false"><b>🇬🇧</b> English</button>
+      <button type="button" data-l="zh" role="option" aria-selected="false"><b>🇨🇳</b> 中文</button>
+      <button type="button" data-l="ru" role="option" aria-selected="false"><b>🇷🇺</b> Русский</button>
+    </div>
+  </div>
+  <button class="burger" type="button" id="burger" data-ta="b.menu" aria-label="Ouvrir le menu"
           aria-expanded="false" aria-controls="menu"><span></span></button>
 </header>
 
@@ -435,36 +478,46 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 <div class="menu" id="menu" role="dialog" aria-modal="true" aria-label="Menu">
   <div class="menu-top">
     <span class="logo">Loc<span>'</span>Air</span>
-    <button class="menu-x" type="button" id="menu-x" aria-label="Fermer le menu">×</button>
+    <button class="menu-x" type="button" id="menu-x" data-ta="m.fermerMenu" aria-label="Fermer le menu">×</button>
   </div>
 
   <div class="menu-grp">
-    <p class="menu-t">La page</p>
-    <a class="ml" href="#e2">Comment ça marche</a>
-    <a class="ml" href="#e4">Tarifs</a>
-    <a class="ml" href="#e7">Avis clients</a>
-    <a class="ml" href="#e11">Questions fréquentes</a>
+    <p class="menu-t" data-t="m.page">La page</p>
+    <a class="ml" href="#e2" data-t="m.comment">Comment ça marche</a>
+    <a class="ml" href="#e4" data-t="m.tarifs">Tarifs</a>
+    <a class="ml" href="#e7" data-t="m.avis">Avis clients</a>
+    <a class="ml" href="#e11" data-t="m.questions">Questions fréquentes</a>
   </div>
 
   <div class="menu-grp">
-    <p class="menu-t">Vos espaces</p>
-    <a class="ms" href="/client">Espace client <i>Suivi, factures, prolongation</i></a>
-    <a class="ms" href="/partenaire">Espace ambassadeur <i>Conciergeries</i></a>
-    <a class="ms" href="/prolongation">Prolonger ma location <i>En quelques clics</i></a>
+    <p class="menu-t" data-t="m.espaces">Vos espaces</p>
+    <a class="ms" href="/client"><span data-t="m.client">Espace client</span> <i data-t="m.clientS">Suivi, factures, prolongation</i></a>
+    <a class="ms" href="/partenaire"><span data-t="m.amb">Espace ambassadeur</span> <i data-t="m.ambS">Conciergeries</i></a>
+    <a class="ms" href="/prolongation"><span data-t="m.prolong">Prolonger ma location</span> <i data-t="m.prolongS">En quelques clics</i></a>
   </div>
 
   <div class="menu-grp">
-    <p class="menu-t">Informations</p>
-    <a class="ms" href="/cgv">Conditions générales</a>
-    <a class="ms" href="/mentions-legales">Mentions légales</a>
-    <a class="ms" href="/confidentialite">Confidentialité</a>
-    <a class="ms" href="https://www.medicys.fr" target="_blank" rel="noopener noreferrer">Médiation : MEDICYS <i>Litiges consommateurs</i></a>
-    <a class="ms" href="/reunion">Loc'Air à La Réunion <i>Ouverture 2026</i></a>
+    <p class="menu-t" data-t="m.infos">Informations</p>
+    <a class="ms" href="/cgv" data-t="m.cgv">Conditions générales</a>
+    <a class="ms" href="/mentions-legales" data-t="m.legal">Mentions légales</a>
+    <a class="ms" href="/confidentialite" data-t="m.conf">Confidentialité</a>
+    <a class="ms" href="https://www.medicys.fr" target="_blank" rel="noopener noreferrer"><span data-t="m.medi">Médiation : MEDICYS</span> <i data-t="m.mediS">Litiges consommateurs</i></a>
+    <a class="ms" href="/reunion"><span data-t="m.reunion">Loc'Air à La Réunion</span> <i data-t="m.reunionS">Ouverture 2026</i></a>
+  </div>
+
+  <div class="menu-grp">
+    <p class="menu-t" data-t="m.langue">Langue</p>
+    <div class="menu-lang" id="menu-lang">
+      <button type="button" data-l="fr" aria-selected="true">🇫🇷 Français</button>
+      <button type="button" data-l="en" aria-selected="false">🇬🇧 English</button>
+      <button type="button" data-l="zh" aria-selected="false">🇨🇳 中文</button>
+      <button type="button" data-l="ru" aria-selected="false">🇷🇺 Русский</button>
+    </div>
   </div>
 
   <div class="menu-cta">
-    <a class="btn btn-1" href="/">Réserver — dès 12 €/jour</a>
-    <a class="btn btn-ghost" href="tel:+33663798756">Appelez-nous · 06.63.79.87.56</a>
+    <a class="btn btn-1" href="/" data-t="m.cta">Réserver — dès 12 €/jour</a>
+    <a class="btn btn-ghost" href="tel:+33663798756" data-t="m.appel">Appelez-nous · 06.63.79.87.56</a>
   </div>
 </div>
 
@@ -476,40 +529,37 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 <section class="ecran e1" id="e1" data-titre="Accueil">
   <div class="in e1-grid">
     <div>
-      <p class="urg rv"><i aria-hidden="true"></i>Livraison demain · Express aujourd'hui</p>
-      <h1 class="titre rv">Il fait trop chaud pour dormir&nbsp;?<em> Plus pour longtemps.</em></h1>
+      <p class="urg rv"><i aria-hidden="true"></i><span data-t="e1.urg">Livraison demain · Express aujourd'hui</span></p>
+      <h1 class="titre rv" data-th="e1.titre">Il fait trop chaud pour dormir&nbsp;?<em> Plus pour longtemps.</em></h1>
       <form class="addr rv" action="/" method="get">
-        <label for="addr-input">Adresse de livraison</label>
+        <label for="addr-input" data-t="e1.adresse">Adresse de livraison</label>
         <div class="addr-row">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <input id="addr-input" name="adresse" type="text" autocomplete="street-address" placeholder="Ex. 12 av. Jean Médecin, Nice">
+          <input id="addr-input" name="adresse" type="text" autocomplete="street-address" data-tp="e1.ex" placeholder="Ex. 12 av. Jean Médecin, Nice">
         </div>
-        <button class="btn btn-1" type="submit">Voir les disponibilités →</button>
-        <p class="addr-note">Prix affiché avant de payer · Annulation gratuite</p>
+        <button class="btn btn-1" type="submit" data-t="e1.voir">Voir les disponibilités →</button>
+        <p class="addr-note" data-t="e1.note">Prix affiché avant de payer · Annulation gratuite</p>
       </form>
       <p class="preuve1 rv">
         <span class="stars" aria-hidden="true">★★★★★</span>
-        <span><b>4,9</b> · 32 avis Google · <b>+500</b> clients livrés depuis 2019</span>
+        <span data-th="e1.preuve"><b>4,9</b> · 32 avis Google · <b>+500</b> clients livrés depuis 2019</span>
       </p>
     </div>
     <img class="e1-img rv" src="/hero-clim.jpg" width="800" height="1000" fetchpriority="high"
-         alt="Climatiseur mobile Loc'Air installé dans un appartement à Nice">
+         data-talt="e1.alt" alt="Climatiseur mobile Loc'Air installé dans un appartement à Nice">
   </div>
 </section>
 
 <!-- ══ 2 · LA PROMESSE ═════════════════════════════════════════════════════ -->
 <section class="ecran e-ink" id="e2" data-titre="La promesse">
   <div class="in">
-    <span class="kicker rv">La promesse</span>
-    <h2 class="titre rv">Demain matin,<em> quelqu'un sonne chez vous.</em></h2>
+    <span class="kicker rv" data-t="e2.kicker">La promesse</span>
+    <h2 class="titre rv" data-th="e2.titre">Demain matin,<em> quelqu'un sonne chez vous.</em></h2>
     <div class="creneau rv">
-      <b>8h – 12h</b>
-      <span>7 jours sur 7, week-ends et jours fériés compris</span>
+      <b data-t="e2.creneau">8h – 12h</b>
+      <span data-t="e2.jours">7 jours sur 7, week-ends et jours fériés compris</span>
     </div>
-    <p class="dire rv">
-      Il monte l'appareil, pose le kit sur votre fenêtre, vérifie que ça refroidit
-      et vous montre les réglages. Vingt à trente minutes. Vous n'avez rien à préparer.
-    </p>
+    <p class="dire rv" data-t="e2.dire">Il monte l'appareil, pose le kit sur votre fenêtre, vérifie que ça refroidit et vous montre les réglages. Vingt à trente minutes. Vous n'avez rien à préparer.</p>
   </div>
 </section>
 
@@ -517,15 +567,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 <section class="ecran e-mist" id="e3" data-titre="Aucune caution">
   <div class="in chiffre">
     <div>
-      <span class="kicker rv">Ce que vous ne payez pas</span>
+      <span class="kicker rv" data-t="e3.kicker">Ce que vous ne payez pas</span>
       <span class="geant rv" style="color:var(--blue)">0<small> €</small></span>
     </div>
     <div>
-      <h2 class="titre rv" style="font-size:clamp(30px,4.4vw,52px)">De caution.</h2>
-      <p class="dire rv">
-        Aucun chèque, aucune empreinte bancaire, aucun blocage sur votre carte.
-        Vous payez la location. Rien d'autre, jamais.
-      </p>
+      <h2 class="titre rv" style="font-size:clamp(30px,4.4vw,52px)" data-t="e3.titre">De caution.</h2>
+      <p class="dire rv" data-t="e3.dire">Aucun chèque, aucune empreinte bancaire, aucun blocage sur votre carte. Vous payez la location. Rien d'autre, jamais.</p>
     </div>
   </div>
 </section>
@@ -833,6 +880,191 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 <script>
 /* ══════════════════════════════════════════════════════════════════════════
+   TRADUCTION — français, anglais, chinois, russe
+   ─────────────────────────────────────────────────────────────────────────
+   Chaque élément traduisible porte un marqueur :
+     data-t="clé"    → remplace le texte
+     data-th="clé"   → remplace le contenu HTML (textes contenant <strong>/<em>)
+     data-tp="clé"   → texte d'exemple d'un champ (placeholder)
+     data-ta="clé"   → libellé d'accessibilité (aria-label)
+     data-talt="clé" → texte alternatif d'une image
+
+   Pourquoi des marqueurs plutôt que des sélecteurs CSS (comme sur le site
+   officiel) : un sélecteur casse en silence dès qu'on retouche la mise en
+   page, et rien ne le signale. Un marqueur, lui, est vérifiable
+   automatiquement — le script d'audit compte ce qui est couvert.
+
+   La langue est mémorisée sous la MÊME clé que le site officiel
+   ('locair-lang') : un visiteur qui a choisi l'anglais sur locair.fr le
+   retrouve ici.
+══════════════════════════════════════════════════════════════════════════ */
+var T = {};   /* rempli plus bas, écran par écran */
+
+/* ── Lot 1 : barre, menu, écrans 1 à 3 ─────────────────────────────────── */
+Object.assign(T, {
+  /* barre */
+  'b.espace'   : {fr:"Mon espace →", en:"My account →", zh:"我的账户 →", ru:"Мой кабинет →"},
+  'b.reserver' : {fr:"Réserver", en:"Book", zh:"预订", ru:"Забронировать"},
+  'b.menu'     : {fr:"Ouvrir le menu", en:"Open menu", zh:"打开菜单", ru:"Открыть меню"},
+  'b.fermer'   : {fr:"Fermer", en:"Close", zh:"关闭", ru:"Закрыть"},
+
+  /* menu */
+  'm.page'     : {fr:"La page", en:"This page", zh:"本页", ru:"Страница"},
+  'm.comment'  : {fr:"Comment ça marche", en:"How it works", zh:"服务流程", ru:"Как это работает"},
+  'm.tarifs'   : {fr:"Tarifs", en:"Pricing", zh:"价格", ru:"Цены"},
+  'm.avis'     : {fr:"Avis clients", en:"Customer reviews", zh:"客户评价", ru:"Отзывы клиентов"},
+  'm.questions': {fr:"Questions fréquentes", en:"Frequently asked questions", zh:"常见问题", ru:"Частые вопросы"},
+  'm.espaces'  : {fr:"Vos espaces", en:"Your accounts", zh:"您的账户", ru:"Ваши кабинеты"},
+  'm.client'   : {fr:"Espace client", en:"Client area", zh:"客户中心", ru:"Личный кабинет"},
+  'm.clientS'  : {fr:"Suivi, factures, prolongation", en:"Tracking, invoices, extension", zh:"追踪、发票、续租", ru:"Отслеживание, счета, продление"},
+  'm.amb'      : {fr:"Espace ambassadeur", en:"Partner area", zh:"合作伙伴中心", ru:"Кабинет партнёра"},
+  'm.ambS'     : {fr:"Conciergeries", en:"Property managers", zh:"民宿托管公司", ru:"Управляющие компании"},
+  'm.prolong'  : {fr:"Prolonger ma location", en:"Extend my rental", zh:"续租", ru:"Продлить аренду"},
+  'm.prolongS' : {fr:"En quelques clics", en:"In a few clicks", zh:"几步即可完成", ru:"В несколько кликов"},
+  'm.infos'    : {fr:"Informations", en:"Information", zh:"信息", ru:"Информация"},
+  'm.cgv'      : {fr:"Conditions générales", en:"Terms and conditions", zh:"条款与条件", ru:"Условия использования"},
+  'm.legal'    : {fr:"Mentions légales", en:"Legal notice", zh:"法律声明", ru:"Правовая информация"},
+  'm.conf'     : {fr:"Confidentialité", en:"Privacy policy", zh:"隐私政策", ru:"Конфиденциальность"},
+  'm.medi'     : {fr:"Médiation : MEDICYS", en:"Mediation: MEDICYS", zh:"消费调解：MEDICYS", ru:"Медиация: MEDICYS"},
+  'm.mediS'    : {fr:"Litiges consommateurs", en:"Consumer disputes", zh:"消费者纠纷", ru:"Споры с потребителями"},
+  'm.reunion'  : {fr:"Loc'Air à La Réunion", en:"Loc'Air in Réunion", zh:"留尼汪岛的 Loc'Air", ru:"Loc'Air на Реюньоне"},
+  'm.reunionS' : {fr:"Ouverture 2026", en:"Opening 2026", zh:"2026年开业", ru:"Открытие в 2026"},
+  'm.langue'   : {fr:"Langue", en:"Language", zh:"语言", ru:"Язык"},
+  'm.cta'      : {fr:"Réserver — dès 12 €/jour", en:"Book — from €12/day", zh:"预订 — 每天12欧元起", ru:"Забронировать — от 12 €/день"},
+  'm.appel'    : {fr:"Appelez-nous · 06.63.79.87.56", en:"Call us · +33 6 63 79 87 56", zh:"致电我们 · +33 6 63 79 87 56", ru:"Позвоните нам · +33 6 63 79 87 56"},
+  'm.fermerMenu':{fr:"Fermer le menu", en:"Close menu", zh:"关闭菜单", ru:"Закрыть меню"},
+
+  /* barre d'info : morceaux recomposés par le script */
+  'i.24h'      : {fr:"Livraison sous 24h", en:"Delivery within 24h", zh:"24小时内送达", ru:"Доставка за 24 часа"},
+  'i.48h'      : {fr:"Livraison sous 48h", en:"Delivery within 48h", zh:"48小时内送达", ru:"Доставка за 48 часов"},
+  'i.express'  : {fr:" · <strong>Express sous 2h</strong> encore possible",
+                  en:" · <strong>Express within 2h</strong> still available",
+                  zh:" · 仍可选<strong>2小时急速送达</strong>",
+                  ru:" · <strong>Экспресс за 2 часа</strong> ещё доступен"},
+  'i.aNice'    : {fr:"à Nice", en:"in Nice", zh:"尼斯", ru:"в Ницце"},
+  'i.ressenti' : {fr:"ressenti", en:"feels like", zh:"体感", ru:"ощущается как"},
+
+  /* écran 1 */
+  'e1.urg'     : {fr:"Livraison demain · Express aujourd'hui", en:"Delivered tomorrow · Express today", zh:"明日送达 · 今日急速", ru:"Доставка завтра · Экспресс сегодня"},
+  'e1.titre'   : {fr:"Il fait trop chaud pour dormir&nbsp;?<em> Plus pour longtemps.</em>",
+                  en:"Too hot to sleep?<em> Not for much longer.</em>",
+                  zh:"热得睡不着？<em>很快就不会了。</em>",
+                  ru:"Слишком жарко, чтобы спать?<em> Уже ненадолго.</em>"},
+  'e1.adresse' : {fr:"Adresse de livraison", en:"Delivery address", zh:"配送地址", ru:"Адрес доставки"},
+  'e1.ex'      : {fr:"Ex. 12 av. Jean Médecin, Nice", en:"e.g. 12 av. Jean Médecin, Nice", zh:"例：Nice, 12 av. Jean Médecin", ru:"напр. 12 av. Jean Médecin, Nice"},
+  'e1.voir'    : {fr:"Voir les disponibilités →", en:"Check availability →", zh:"查看可预订日期 →", ru:"Посмотреть наличие →"},
+  'e1.note'    : {fr:"Prix affiché avant de payer · Annulation gratuite", en:"Price shown before payment · Free cancellation", zh:"付款前显示价格 · 免费取消", ru:"Цена видна до оплаты · Бесплатная отмена"},
+  'e1.preuve'  : {fr:"<b>4,9</b> · 32 avis Google · <b>+500</b> clients livrés depuis 2019",
+                  en:"<b>4.9</b> · 32 Google reviews · <b>500+</b> customers delivered since 2019",
+                  zh:"<b>4.9</b> · 32条谷歌评价 · 自2019年起已服务<b>500+</b>位客户",
+                  ru:"<b>4,9</b> · 32 отзыва в Google · <b>500+</b> клиентов с 2019 года"},
+  'e1.alt'     : {fr:"Climatiseur mobile Loc'Air installé dans un appartement à Nice",
+                  en:"Loc'Air portable air conditioner installed in a flat in Nice",
+                  zh:"安装在尼斯公寓内的 Loc'Air 移动空调",
+                  ru:"Мобильный кондиционер Loc'Air, установленный в квартире в Ницце"},
+
+  /* écran 2 */
+  'e2.kicker'  : {fr:"La promesse", en:"Our promise", zh:"我们的承诺", ru:"Наше обещание"},
+  'e2.titre'   : {fr:"Demain matin,<em> quelqu'un sonne chez vous.</em>",
+                  en:"Tomorrow morning,<em> someone rings your doorbell.</em>",
+                  zh:"明天早上，<em>有人按响您的门铃。</em>",
+                  ru:"Завтра утром<em> к вам позвонят в дверь.</em>"},
+  'e2.creneau' : {fr:"8h – 12h", en:"8am – 12pm", zh:"8:00 – 12:00", ru:"8:00 – 12:00"},
+  'e2.jours'   : {fr:"7 jours sur 7, week-ends et jours fériés compris",
+                  en:"7 days a week, weekends and public holidays included",
+                  zh:"每周7天，含周末和节假日",
+                  ru:"7 дней в неделю, включая выходные и праздники"},
+  'e2.dire'    : {fr:"Il monte l'appareil, pose le kit sur votre fenêtre, vérifie que ça refroidit et vous montre les réglages. Vingt à trente minutes. Vous n'avez rien à préparer.",
+                  en:"He brings the unit up, fits the window kit, checks that it cools properly and shows you the settings. Twenty to thirty minutes. You have nothing to prepare.",
+                  zh:"技师把机器搬上来，在窗户上安装密封套件，确认制冷正常，并演示如何操作。约二十到三十分钟。您无需做任何准备。",
+                  ru:"Мастер поднимает аппарат, устанавливает комплект на окно, проверяет охлаждение и показывает настройки. Двадцать-тридцать минут. Готовить ничего не нужно."},
+
+  /* écran 3 */
+  'e3.kicker'  : {fr:"Ce que vous ne payez pas", en:"What you don't pay", zh:"您无需支付的", ru:"Чего вы не платите"},
+  'e3.titre'   : {fr:"De caution.", en:"Deposit.", zh:"押金。", ru:"Залога."},
+  'e3.dire'    : {fr:"Aucun chèque, aucune empreinte bancaire, aucun blocage sur votre carte. Vous payez la location. Rien d'autre, jamais.",
+                  en:"No cheque, no card imprint, no hold on your card. You pay for the rental. Nothing else, ever.",
+                  zh:"无需支票，无需预授权，不冻结您的银行卡。您只支付租金，绝无其他费用。",
+                  ru:"Ни чека, ни преавторизации, ни блокировки средств на карте. Вы платите только за аренду. Больше ничего, никогда."}
+});
+
+
+(function(){
+  var LANGUES = ['fr','en','zh','ru'];
+  var lang = 'fr';
+  try { lang = localStorage.getItem('locair-lang') || 'fr'; } catch(e){}
+  if (LANGUES.indexOf(lang) === -1) lang = 'fr';
+
+  function texte(cle){
+    var e = T[cle];
+    if(!e) return null;
+    return e[lang] != null ? e[lang] : e.fr;   /* repli sur le français */
+  }
+
+  function appliquer(){
+    document.documentElement.lang = lang;
+    var paires = [['data-t','text'],['data-th','html'],
+                  ['data-tp','placeholder'],['data-ta','aria-label'],['data-talt','alt']];
+    paires.forEach(function(pr){
+      document.querySelectorAll('[' + pr[0] + ']').forEach(function(el){
+        var v = texte(el.getAttribute(pr[0]));
+        if(v == null) return;                  /* clé absente : on ne touche à rien */
+        if(pr[1] === 'text') el.textContent = v;
+        else if(pr[1] === 'html') el.innerHTML = v;
+        else el.setAttribute(pr[1], v);
+      });
+    });
+    document.querySelectorAll('[data-l]').forEach(function(b){
+      b.setAttribute('aria-selected', String(b.dataset.l === lang));
+    });
+    var cur = document.getElementById('lang-cur');
+    if(cur) cur.textContent = lang.toUpperCase();
+    document.dispatchEvent(new CustomEvent('langue', { detail:{ lang:lang } }));
+  }
+
+  window.setLangue = function(l){
+    if(LANGUES.indexOf(l) === -1) return;
+    lang = l;
+    try { localStorage.setItem('locair-lang', l); } catch(e){}
+    appliquer();
+  };
+  window.langueActuelle = function(){ return lang; };
+
+  document.querySelectorAll('[data-l]').forEach(function(b){
+    b.addEventListener('click', function(){
+      window.setLangue(b.dataset.l);
+      var liste = document.getElementById('lang-l');
+      if(liste) liste.classList.remove('on');
+      var menu = document.getElementById('menu');
+      if(menu && menu.classList.contains('on') && b.closest('#menu-lang')){
+        /* on garde le menu ouvert : le visiteur voit la traduction s'appliquer */
+      }
+    });
+  });
+
+  var bouton = document.getElementById('lang-b'), liste = document.getElementById('lang-l');
+  if(bouton && liste){
+    bouton.addEventListener('click', function(e){
+      e.stopPropagation();
+      var ouvert = liste.classList.toggle('on');
+      bouton.setAttribute('aria-expanded', String(ouvert));
+    });
+    document.addEventListener('click', function(e){
+      if(!e.target.closest('.lang')){
+        liste.classList.remove('on');
+        bouton.setAttribute('aria-expanded','false');
+      }
+    });
+    document.addEventListener('keydown', function(e){
+      if(e.key === 'Escape'){ liste.classList.remove('on'); bouton.setAttribute('aria-expanded','false'); }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', appliquer);
+  if(document.readyState !== 'loading') appliquer();
+})();
+
+/* ══════════════════════════════════════════════════════════════════════════
    Quatre comportements, rien de plus. Sans JavaScript, la page reste
    entièrement lisible et utilisable : tout est déjà dans le HTML.
 ══════════════════════════════════════════════════════════════════════════ */
@@ -1034,14 +1266,27 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   var avant20h = t.hour < 20 || (t.hour === 20 && t.minute === 0);
   var avant18h = t.hour < 18 || (t.hour === 18 && t.minute === 0);
 
-  var delai = avant20h ? 'Livraison sous 24h' : 'Livraison sous 48h';
-  var express = avant18h ? ' · <strong>Express sous 2h</strong> encore possible' : '';
+  /* Cette barre est recomposée par le script : ses morceaux passent donc par
+     le dictionnaire, et elle se réécrit à chaque changement de langue. */
+  var temperature = null;
 
-  function afficher(temp){
-    msg.innerHTML = (temp ? '<strong>' + temp + '</strong> à Nice · ' : '') + delai + express;
+  function mot(cle){
+    var e = (typeof T !== 'undefined') && T[cle];
+    if(!e) return '';
+    var l = (typeof langueActuelle === 'function') ? langueActuelle() : 'fr';
+    return e[l] != null ? e[l] : e.fr;
+  }
+  function afficher(){
+    var delai   = mot(avant20h ? 'i.24h' : 'i.48h');
+    var express = avant18h ? mot('i.express') : '';
+    var tete    = temperature
+      ? '<strong>' + temperature + '</strong> ' + mot('i.aNice') + ' · '
+      : '';
+    msg.innerHTML = tete + delai + express;
     bar.classList.add('on');
   }
-  afficher(null);
+  document.addEventListener('langue', afficher);
+  afficher();
 
   fetch('https://api.open-meteo.com/v1/forecast?latitude=43.7102&longitude=7.262'
       + '&current=temperature_2m,apparent_temperature&timezone=Europe%2FParis')
@@ -1050,7 +1295,8 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
       if(!d || !d.current) return;
       var reel = Math.round(d.current.temperature_2m);
       var res  = Math.round(d.current.apparent_temperature);
-      afficher(reel + '°C' + (res !== reel ? ' (ressenti ' + res + '°C)' : ''));
+      temperature = reel + '°C' + (res !== reel ? ' (' + mot('i.ressenti') + ' ' + res + '°C)' : '');
+      afficher();
     })
     .catch(function(){ /* la barre reste affichée avec le délai seul */ });
 
