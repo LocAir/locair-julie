@@ -146,11 +146,15 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .bar.sur-fonce .logo span{color:var(--gold)}
 .bar.sur-fonce .btn-out{border-color:rgba(255,255,255,.35);color:#fff}
 .bar-tel{font-weight:700;font-size:15px}
+.bar-lien{font-size:15px;font-weight:500;opacity:.68;transition:opacity .15s}
+.bar-lien:hover{opacity:1}
 @media(max-width:900px){
-  /* la barre du bas porte déjà le bouton : inutile de le doubler en haut */
-  .bar-tel,.bar .btn{display:none}
+  /* la barre du bas porte déjà le bouton : inutile de le doubler en haut.
+     Le menu ☰, lui, devient le SEUL accès aux espaces : il reste. */
+  .bar-tel,.bar-lien,.bar .btn{display:none}
   .bar{padding:12px var(--pad)}
 }
+@media(min-width:901px){.burger{display:none}}
 
 /* ══ BANDEAU APERÇU ══ */
 .preview-bar{position:relative;z-index:901;background:var(--ink);color:rgba(255,255,255,.68);font-size:13px;text-align:center;padding:10px var(--pad)}
@@ -301,6 +305,89 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .pied{font-size:13.5px;color:rgba(255,255,255,.34);line-height:1.7;margin-top:56px}
 .pied a{border-bottom:1px solid rgba(255,255,255,.28)}
 
+/* ══ BARRE D'INFO DU HAUT ══
+   Reprise du site officiel. Elle affiche la température réelle à Nice et le
+   délai de livraison, qui dépend de l'heure : commande avant 20h → livré
+   demain, sinon après-demain ; Express (sous 2h) seulement avant 18h.
+   Ces deux coupures viennent du code du site, elles ne sont pas inventées. */
+.infobar{
+  background:var(--ink);color:rgba(255,255,255,.82);font-size:13.5px;
+  display:none;align-items:center;justify-content:center;gap:10px;
+  padding:11px 44px 11px var(--pad);position:relative;text-align:center;
+}
+.infobar.on{display:flex}
+.infobar strong{color:#fff;font-weight:700}
+.infobar .pt{width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;animation:pulse 2s ease-in-out infinite}
+.infobar-x{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;color:rgba(255,255,255,.5);font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center}
+.infobar-x:hover{color:#fff;background:rgba(255,255,255,.1)}
+@media(max-width:560px){.infobar{font-size:12.5px;padding:10px 40px 10px 14px}.infobar .sec{display:none}}
+
+/* ══ MENU ══
+   La version B n'avait aucun menu sur téléphone : les espaces client et
+   ambassadeur étaient donc inaccessibles. C'est le manque le plus grave. */
+.burger{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
+.burger:hover{background:rgba(0,0,0,.06)}
+.bar.sur-fonce .burger:hover{background:rgba(255,255,255,.12)}
+.burger span{display:block;width:19px;height:1.8px;background:currentColor;position:relative}
+.burger span::before,.burger span::after{content:'';position:absolute;left:0;width:19px;height:1.8px;background:currentColor}
+.burger span::before{top:-6px}
+.burger span::after{top:6px}
+.menu{
+  position:fixed;inset:0;z-index:960;background:var(--ink);color:#fff;
+  display:flex;flex-direction:column;padding:24px var(--pad) max(28px,env(safe-area-inset-bottom));
+  opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s;
+  overflow-y:auto;
+}
+.menu.on{opacity:1;visibility:visible}
+.menu-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:34px}
+.menu-top .logo{color:#fff}
+.menu-x{width:44px;height:44px;border-radius:50%;color:rgba(255,255,255,.7);font-size:26px;line-height:1;display:flex;align-items:center;justify-content:center}
+.menu-x:hover{background:rgba(255,255,255,.12);color:#fff}
+.menu-grp{margin-bottom:30px}
+.menu-t{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:14px}
+.menu a.ml{display:block;font-size:23px;font-weight:700;letter-spacing:-.03em;padding:9px 0;transition:color .15s}
+.menu a.ml:hover{color:var(--gold)}
+.menu a.ms{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:16.5px;font-weight:500;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.11);transition:color .15s}
+.menu a.ms:hover{color:var(--gold)}
+.menu a.ms i{font-style:normal;font-size:13px;color:rgba(255,255,255,.4)}
+.menu-cta{margin-top:auto;padding-top:26px;display:grid;gap:10px}
+.menu-cta .btn{width:100%}
+
+/* ══ ÉCRAN ESPACES ══ */
+.portes{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:38px}
+.porte{
+  background:var(--ink);color:#fff;border-radius:var(--r-l);padding:clamp(24px,3vw,34px);
+  display:flex;flex-direction:column;transition:transform .18s ease;
+}
+.porte:hover{transform:translateY(-3px)}
+.porte.or{background:var(--gold);color:var(--ink)}
+.porte-k{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
+.porte.or .porte-k{color:rgba(14,31,53,.6)}
+.porte h3{font-size:clamp(22px,2.4vw,28px);letter-spacing:-.03em;margin-bottom:12px;line-height:1.15}
+.porte>p{font-size:15px;color:rgba(255,255,255,.6);line-height:1.55;margin-bottom:20px}
+.porte.or>p{color:rgba(14,31,53,.72)}
+.porte ul{list-style:none;display:grid;gap:9px;margin-bottom:26px}
+.porte li{font-size:14.5px;color:rgba(255,255,255,.78);display:flex;gap:10px;line-height:1.5}
+.porte li::before{content:'→';color:var(--gold);flex-shrink:0}
+.porte.or li{color:rgba(14,31,53,.85)}
+.porte.or li::before{color:rgba(14,31,53,.55)}
+.porte .btn{margin-top:auto;width:100%}
+@media(max-width:820px){.portes{grid-template-columns:1fr}}
+
+/* ══ PIED DE PAGE ══ */
+.pied-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:30px;margin-top:52px;padding-top:36px;border-top:1px solid rgba(255,255,255,.14);text-align:left}
+.pied-grid h4{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:14px}
+.pied-grid li{list-style:none;margin-bottom:9px}
+.pied-grid a{font-size:14.5px;color:rgba(255,255,255,.6);transition:color .15s}
+.pied-grid a:hover{color:#fff}
+@media(max-width:880px){.pied-grid{grid-template-columns:repeat(2,1fr);gap:26px}}
+@media(max-width:520px){.pied-grid{grid-template-columns:1fr;gap:24px}}
+.pied-grid li{font-size:14.5px;color:rgba(255,255,255,.6);line-height:1.5}
+.reunion{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  text-align:left;margin-top:30px;padding:20px 24px;border-radius:var(--r);
+  background:rgba(255,255,255,.06);font-size:14.5px;color:rgba(255,255,255,.6)}
+.reunion strong{color:#fff;font-weight:700}
+
 /* ══ BARRE MOBILE ══ */
 .mbar{
   position:fixed;left:0;right:0;bottom:0;z-index:950;display:none;
@@ -325,11 +412,61 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   <a href="/nouvelle-version">/nouvelle-version</a><span class="long">, le site officiel sur <a href="/">locair.fr</a>.</span>
 </div>
 
+<!-- Barre d'info : température réelle à Nice + délai de livraison, qui dépend
+     de l'heure. Masquée tant que rien n'est chargé (voir le script). -->
+<div class="infobar" id="infobar" role="status">
+  <span class="pt" aria-hidden="true"></span>
+  <span id="infobar-msg"></span>
+  <button class="infobar-x" type="button" id="infobar-x" aria-label="Fermer">×</button>
+</div>
+
 <header class="bar" id="bar">
   <a class="logo" href="#e1">Loc<span>'</span>Air</a>
+  <a class="bar-lien" href="/client">Mon espace →</a>
   <a class="bar-tel" href="tel:+33663798756">06.63.79.87.56</a>
   <a class="btn btn-1 btn-s" href="/">Réserver</a>
+  <button class="burger" type="button" id="burger" aria-label="Ouvrir le menu"
+          aria-expanded="false" aria-controls="menu"><span></span></button>
 </header>
+
+<!-- ══ MENU ═══════════════════════════════════════════════════════════════════
+     Reprend les accès du site officiel. Sans lui, la version B n'offrait aucun
+     chemin vers l'espace client ni vers l'espace ambassadeur sur téléphone. -->
+<div class="menu" id="menu" role="dialog" aria-modal="true" aria-label="Menu">
+  <div class="menu-top">
+    <span class="logo">Loc<span>'</span>Air</span>
+    <button class="menu-x" type="button" id="menu-x" aria-label="Fermer le menu">×</button>
+  </div>
+
+  <div class="menu-grp">
+    <p class="menu-t">La page</p>
+    <a class="ml" href="#e2">Comment ça marche</a>
+    <a class="ml" href="#e4">Tarifs</a>
+    <a class="ml" href="#e7">Avis clients</a>
+    <a class="ml" href="#e11">Questions fréquentes</a>
+  </div>
+
+  <div class="menu-grp">
+    <p class="menu-t">Vos espaces</p>
+    <a class="ms" href="/client">Espace client <i>Suivi, factures, prolongation</i></a>
+    <a class="ms" href="/partenaire">Espace ambassadeur <i>Conciergeries</i></a>
+    <a class="ms" href="/prolongation">Prolonger ma location <i>En quelques clics</i></a>
+  </div>
+
+  <div class="menu-grp">
+    <p class="menu-t">Informations</p>
+    <a class="ms" href="/cgv">Conditions générales</a>
+    <a class="ms" href="/mentions-legales">Mentions légales</a>
+    <a class="ms" href="/confidentialite">Confidentialité</a>
+    <a class="ms" href="https://www.medicys.fr" target="_blank" rel="noopener noreferrer">Médiation : MEDICYS <i>Litiges consommateurs</i></a>
+    <a class="ms" href="/reunion">Loc'Air à La Réunion <i>Ouverture 2026</i></a>
+  </div>
+
+  <div class="menu-cta">
+    <a class="btn btn-1" href="/">Réserver — dès 12 €/jour</a>
+    <a class="btn btn-ghost" href="tel:+33663798756">Appelez-nous · 06.63.79.87.56</a>
+  </div>
+</div>
 
 <nav class="dots" id="dots" aria-label="Progression"></nav>
 
@@ -544,8 +681,48 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   </div>
 </section>
 
-<!-- ══ 9 · LES QUESTIONS ═══════════════════════════════════════════════════ -->
-<section class="ecran" id="e10" data-titre="Questions">
+<!-- ══ 10 · VOS ESPACES ═══════════════════════════════════════════════════
+     Repris du site officiel. Ce sont deux accès au back-end, pas du décor :
+     l'espace client sert au suivi et à la prolongation, l'espace ambassadeur
+     au suivi des commissions des conciergeries. -->
+<section class="ecran" id="e10" data-titre="Vos espaces">
+  <div class="in">
+    <span class="kicker rv">Déjà chez nous</span>
+    <h2 class="titre rv" style="max-width:20ch">Vous avez<em> votre espace.</em></h2>
+    <div class="portes">
+
+      <a class="porte rv" href="/client">
+        <p class="porte-k">Espace client</p>
+        <h3>Suivez votre location</h3>
+        <p>Statut de livraison, documents, assistance et prolongation — tout au
+           même endroit, avec votre numéro de commande.</p>
+        <ul>
+          <li>Statut et créneau de livraison en temps réel</li>
+          <li>Prolongation de location en un clic</li>
+          <li>Documents, factures et assistance directe</li>
+        </ul>
+        <span class="btn btn-light">Accéder à mon espace →</span>
+      </a>
+
+      <a class="porte or rv" href="/partenaire">
+        <p class="porte-k">Programme ambassadeur</p>
+        <h3>Vous êtes une conciergerie&nbsp;?</h3>
+        <p>Recommandez Loc'Air à vos clients et touchez une commission sur
+           chaque réservation, suivie depuis votre espace ambassadeur.</p>
+        <ul>
+          <li>Commission sur chaque réservation</li>
+          <li>Tableau de bord ambassadeur en temps réel</li>
+          <li>Inscription et accès 100 % gratuits</li>
+        </ul>
+        <span class="btn btn-2">Accéder à l'espace ambassadeur →</span>
+      </a>
+
+    </div>
+  </div>
+</section>
+
+<!-- ══ 11 · LES QUESTIONS ═══════════════════════════════════════════════════ -->
+<section class="ecran" id="e11" data-titre="Questions">
   <div class="in">
     <span class="kicker rv">Avant de réserver</span>
     <h2 class="titre rv">Les questions<em> qu'on nous pose.</em></h2>
@@ -582,8 +759,8 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   </div>
 </section>
 
-<!-- ══ 10 · LA FIN ═════════════════════════════════════════════════════════ -->
-<section class="ecran e-ink fin" id="e11" data-titre="Réserver">
+<!-- ══ 12 · LA FIN ═════════════════════════════════════════════════════════ -->
+<section class="ecran e-ink fin" id="e12" data-titre="Réserver">
   <div class="in">
     <h2 class="titre rv">L'air frais<em> dès demain matin.</em></h2>
     <p class="dire rv">Aucune caution. Aucune surprise. Annulation gratuite avant la livraison.</p>
@@ -595,10 +772,51 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
       <p>«&nbsp;Prix clair, technicien ponctuel, clim efficace dès le premier soir. Le fait que tout soit inclus, c'est ce qui m'a convaincu.&nbsp;»</p>
       <cite>Daniel Lopez Francia · Nice · <span class="stars" aria-hidden="true">★★★★★</span></cite>
     </div>
-    <p class="pied rv">
+    <div class="pied-grid rv">
+      <div>
+        <h4>Vos espaces</h4>
+        <ul>
+          <li><a href="/client">Espace client</a></li>
+          <li><a href="/partenaire">Espace ambassadeur</a></li>
+          <li><a href="/prolongation">Prolonger ma location</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Informations</h4>
+        <ul>
+          <li><a href="/cgv">Conditions générales</a></li>
+          <li><a href="/mentions-legales">Mentions légales</a></li>
+          <li><a href="/confidentialite">Confidentialité</a></li>
+          <li><a href="https://www.medicys.fr" target="_blank" rel="noopener noreferrer">Médiation&nbsp;: MEDICYS</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Nous joindre</h4>
+        <ul>
+          <li><a href="tel:+33663798756">06.63.79.87.56</a></li>
+          <li><a href="https://wa.me/33663798756" target="_blank" rel="noopener">WhatsApp</a></li>
+          <li><a href="mailto:contact@locair.fr">contact@locair.fr</a></li>
+        </ul>
+      </div>
+      <div>
+        <!-- Quartiers nommés un par un : les gens cherchent "location
+             climatiseur + leur quartier". Repris du pied de page officiel. -->
+        <h4>Zones desservies</h4>
+        <ul>
+          <li>Nice Centre · Promenade des Anglais</li>
+          <li>Vieux-Nice · Cimiez · Libération</li>
+          <li>Magnan · Riquier · Caucade</li>
+          <li>Saint-Isidore · Moulins</li>
+        </ul>
+      </div>
+    </div>
+
+    <p class="reunion rv">
+      <span><strong>Loc'Air arrive à La Réunion</strong> — ouverture novembre 2026 · Livraison + installation · Sans caution</span>
+      <a class="btn btn-ghost btn-s" href="/reunion">Rejoindre la liste →</a>
+    </p>
+    <p class="pied rv" style="margin-top:30px">
       THIAM ALY · SIRET 853 730 562 00024 · 11 Avenue Chantal, 06100 Nice · 7j/7 de 8h à 20h<br>
-      <a href="/cgv">Conditions générales</a> · <a href="/mentions-legales">Mentions légales</a> ·
-      <a href="/confidentialite">Confidentialité</a> · <a href="/client">Espace client</a><br>
       <span style="color:var(--gold)">Page d'aperçu, non indexée.</span> Le site officiel est <a href="/">locair.fr</a>.
     </p>
   </div>
@@ -763,6 +981,83 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(d){ if(d && d.pricing){ P = d.pricing; render(); } })
     .catch(function(){ /* valeurs par défaut conservées */ });
+})();
+
+/* ── 5. Menu ────────────────────────────────────────────────────────────────
+   Verrouille le défilement de la page pendant qu'il est ouvert, se ferme à
+   l'Échap et rend le focus au bouton. Sans lui, la version B n'offrait aucun
+   chemin vers l'espace client ni l'espace ambassadeur sur téléphone.      */
+(function(){
+  var menu = document.getElementById('menu'), btn = document.getElementById('burger');
+  if(!menu || !btn) return;
+  function ouvrir(v){
+    menu.classList.toggle('on', v);
+    btn.setAttribute('aria-expanded', String(v));
+    document.body.style.overflow = v ? 'hidden' : '';
+    if(!v) btn.focus();
+  }
+  btn.addEventListener('click', function(){ ouvrir(!menu.classList.contains('on')); });
+  document.getElementById('menu-x').addEventListener('click', function(){ ouvrir(false); });
+  menu.addEventListener('click', function(e){ if(e.target.closest('a')) ouvrir(false); });
+  document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape' && menu.classList.contains('on')) ouvrir(false);
+  });
+})();
+
+/* ── 6. Barre d'info : délai de livraison et température ────────────────────
+   Les deux coupures horaires viennent du site officiel, elles ne sont pas
+   inventées ici :
+     · commande passée avant 20h (heure de Paris) → livraison le lendemain,
+       sinon le surlendemain ;
+     · l'Express promet une livraison sous 2h : il s'arrête à 18h pour que
+       18h + 2h = 20h ne dépasse jamais les horaires annoncés.
+   La température vient d'Open-Meteo (sans clé). Si l'appel échoue, la barre
+   s'affiche quand même avec le délai seul — jamais bloquant.
+   Fermeture mémorisée pour la journée en cours seulement.               */
+(function(){
+  var bar = document.getElementById('infobar'), msg = document.getElementById('infobar-msg');
+  if(!bar || !msg) return;
+
+  var jourParis = new Intl.DateTimeFormat('fr-FR', { timeZone:'Europe/Paris',
+        year:'numeric', month:'2-digit', day:'2-digit' }).format(new Date())
+        .split('/').reverse().join('-');
+  try{ if(localStorage.getItem('lb_infobar') === jourParis) return; }catch(e){}
+
+  function heureParis(){
+    var p = new Intl.DateTimeFormat('fr-FR', { timeZone:'Europe/Paris',
+      hour:'2-digit', minute:'2-digit', hour12:false }).formatToParts(new Date());
+    var o = {};
+    p.forEach(function(x){ o[x.type] = parseInt(x.value, 10); });
+    return o;
+  }
+  var t = heureParis();
+  var avant20h = t.hour < 20 || (t.hour === 20 && t.minute === 0);
+  var avant18h = t.hour < 18 || (t.hour === 18 && t.minute === 0);
+
+  var delai = avant20h ? 'Livraison sous 24h' : 'Livraison sous 48h';
+  var express = avant18h ? ' · <strong>Express sous 2h</strong> encore possible' : '';
+
+  function afficher(temp){
+    msg.innerHTML = (temp ? '<strong>' + temp + '</strong> à Nice · ' : '') + delai + express;
+    bar.classList.add('on');
+  }
+  afficher(null);
+
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=43.7102&longitude=7.262'
+      + '&current=temperature_2m,apparent_temperature&timezone=Europe%2FParis')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      if(!d || !d.current) return;
+      var reel = Math.round(d.current.temperature_2m);
+      var res  = Math.round(d.current.apparent_temperature);
+      afficher(reel + '°C' + (res !== reel ? ' (ressenti ' + res + '°C)' : ''));
+    })
+    .catch(function(){ /* la barre reste affichée avec le délai seul */ });
+
+  document.getElementById('infobar-x').addEventListener('click', function(){
+    bar.classList.remove('on');
+    try{ localStorage.setItem('lb_infobar', jourParis); }catch(e){}
+  });
 })();
 </script>
 
