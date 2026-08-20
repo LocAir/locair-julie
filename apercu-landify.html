@@ -118,7 +118,8 @@ h2{font-size:clamp(30px,3.9vw,46px);line-height:1.12}
 h3{font-size:19px;letter-spacing:-.02em;line-height:1.35;font-weight:700}
 .lead{font-size:clamp(16px,1.4vw,19px);color:var(--ink-2);line-height:1.65}
 
-.section-head{max-width:660px;margin:0 auto 56px;text-align:center}
+.section-head{max-width:780px;margin:0 auto 56px;text-align:center}
+.section-head h2{text-wrap:balance}
 .section-head .lead{margin-top:16px}
 
 /* ══ HERO ══ */
@@ -157,12 +158,69 @@ h3{font-size:19px;letter-spacing:-.02em;line-height:1.35;font-weight:700}
   display:grid;place-items:center;font-size:16px;flex-shrink:0;
 }
 
-/* ══ BANDE CONFIANCE ══ */
-.trust{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface)}
-.trust-in{padding:34px 0;display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
-.trust-item{text-align:center;padding:0 12px}
-.trust-item .n{font-size:26px;font-weight:800;color:var(--navy);letter-spacing:-.03em;line-height:1.2}
-.trust-item .l{font-size:13.5px;color:var(--ink-2);margin-top:3px}
+/* ══ GRILLE BENTO ══ */
+.bento{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  grid-auto-rows:minmax(178px,auto);gap:16px;
+}
+.tile{
+  position:relative;overflow:hidden;
+  background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:26px;box-shadow:var(--sh-sm);
+  display:flex;flex-direction:column;
+  transition:box-shadow .22s,transform .22s,border-color .22s;
+}
+.tile:hover{box-shadow:var(--sh);transform:translateY(-3px);border-color:#cbd5e1}
+.tile .ic{
+  width:42px;height:42px;border-radius:12px;background:var(--gold-soft);
+  display:grid;place-items:center;font-size:19px;margin-bottom:14px;flex-shrink:0;
+}
+.tile h3{margin-bottom:7px}
+.tile p{font-size:14.5px;color:var(--ink-2);line-height:1.55}
+.tile .big{
+  font-size:clamp(38px,4.4vw,54px);font-weight:800;color:var(--navy);
+  letter-spacing:-.045em;line-height:1;
+}
+.tile .cap{font-size:14px;color:var(--ink-2);margin-top:8px;font-weight:500}
+.tile .spacer{flex:1}
+
+/* Tailles */
+.t-2x2{grid-column:span 2;grid-row:span 2}
+.t-2x1{grid-column:span 2}
+
+/* Tuile sombre avec photo */
+.tile-dark{
+  background:linear-gradient(160deg,var(--navy) 0%,var(--navy-d) 100%);
+  border-color:transparent;color:#fff;padding:0;justify-content:flex-end;
+}
+.tile-dark .tile-photo{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;opacity:.5;
+}
+.tile-dark .tile-body{
+  position:relative;z-index:1;padding:28px;
+  background:linear-gradient(to top,rgba(18,32,58,.96) 30%,rgba(18,32,58,.72) 70%,transparent 100%);
+}
+.tile-dark h3{color:#fff;font-size:24px;letter-spacing:-.03em}
+.tile-dark p{color:rgba(255,255,255,.72);margin-top:8px;font-size:15px}
+.tile-dark .pill{
+  display:inline-flex;align-items:center;gap:7px;margin-bottom:14px;
+  font-size:12.5px;font-weight:600;color:var(--gold);
+  background:rgba(197,169,108,.16);padding:6px 12px;border-radius:999px;
+}
+
+/* Tuile note Google */
+.tile-note{background:var(--surface)}
+.tile-note .row{display:flex;align-items:center;gap:16px}
+.tile-note .score{font-size:46px;font-weight:800;color:var(--navy);letter-spacing:-.045em;line-height:1}
+
+/* Tuile paliers */
+.mini-tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:auto}
+.mini-tier{background:var(--surface);border-radius:11px;padding:11px 6px;text-align:center}
+.mini-tier .d{font-size:11px;color:var(--ink-3)}
+.mini-tier .p{font-size:16px;font-weight:800;color:var(--navy);letter-spacing:-.03em;margin-top:2px}
+.mini-tier .o{font-size:11px;font-weight:600;color:var(--green);margin-top:1px}
+.mini-tier.base .o{color:var(--ink-3);font-weight:500}
 
 /* ══ CARTES / GRILLES ══ */
 .card{
@@ -293,6 +351,9 @@ footer{border-top:1px solid var(--line);background:#fff;padding:56px 0 32px}
 
 /* ══ RESPONSIVE ══ */
 @media(max-width:960px){
+  .bento{grid-template-columns:repeat(2,1fr)}
+  .t-2x2{grid-column:span 2;grid-row:span 2}
+  .t-2x1{grid-column:span 2}
   .hero-grid,.product-grid{grid-template-columns:1fr}
   .hero-visual{order:-1}
   .hero-photo{aspect-ratio:16/11}
@@ -303,7 +364,10 @@ footer{border-top:1px solid var(--line);background:#fff;padding:56px 0 32px}
   .nav-links{display:none}
 }
 @media(max-width:600px){
-  .grid-3,.grid-4,.trust-in,.tiers,.specs{grid-template-columns:1fr 1fr}
+  .bento{grid-auto-rows:minmax(150px,auto);gap:12px}
+  .tile{padding:20px}
+  .grid-3,.grid-4,.tiers,.specs{grid-template-columns:1fr 1fr}
+  .mini-tiers{grid-template-columns:repeat(4,1fr)}
   .foot-grid{grid-template-columns:1fr}
   .hero-cta .btn{width:100%}
 }
@@ -367,45 +431,79 @@ footer{border-top:1px solid var(--line);background:#fff;padding:56px 0 32px}
     </div>
   </section>
 
-  <!-- BANDE CONFIANCE -->
-  <div class="trust">
-    <div class="wrap trust-in">
-      <div class="trust-item"><div class="n">24h</div><div class="l">Livraison, 7j/7</div></div>
-      <div class="trust-item"><div class="n">0 €</div><div class="l">Aucune caution</div></div>
-      <div class="trust-item"><div class="n">4,9/5</div><div class="l">32 avis Google</div></div>
-      <div class="trust-item"><div class="n">+500</div><div class="l">Clients depuis 2019</div></div>
-    </div>
-  </div>
-
-  <!-- RÉASSURANCE -->
-  <section>
+  <!-- GRILLE BENTO -->
+  <section id="engagements">
     <div class="wrap">
       <div class="section-head">
         <span class="eyebrow"><span class="dot"></span>Nos engagements</span>
         <h2>Tout est inclus, rien n'est caché</h2>
         <p class="lead">Le prix affiché est le prix payé. Pas de caution, pas de dépôt, pas de mauvaise surprise à la fin.</p>
       </div>
-      <div class="grid-4">
-        <div class="card">
+
+      <div class="bento">
+
+        <!-- Grande tuile -->
+        <div class="tile tile-dark t-2x2">
+          <img src="hero-clim.jpg" alt="Climatiseur mobile installé à Nice" class="tile-photo">
+          <div class="tile-body">
+            <span class="pill">Service complet</span>
+            <h3>Livré, installé, repris</h3>
+            <p>Notre technicien pose le kit sur votre fenêtre, branche l'appareil, vérifie que ça refroidit et vous explique les réglages. En fin de location, on revient tout chercher.</p>
+          </div>
+        </div>
+
+        <!-- 24h -->
+        <div class="tile">
           <div class="ic">⚡</div>
-          <h3>Livraison sous 24h</h3>
-          <p>7j/7 · créneau J+1 le matin. Express le jour même disponible.</p>
+          <div class="big">24h</div>
+          <div class="cap">Livraison 7j/7, créneau du matin</div>
         </div>
-        <div class="card">
+
+        <!-- Caution -->
+        <div class="tile">
           <div class="ic">🔓</div>
-          <h3>Aucune caution</h3>
-          <p>Aucun chèque, aucune empreinte bancaire. Vous payez la location, rien d'autre.</p>
+          <div class="big">0 €</div>
+          <div class="cap">Aucune caution, aucune empreinte bancaire</div>
         </div>
-        <div class="card">
+
+        <!-- Note Google -->
+        <div class="tile tile-note t-2x1">
+          <div class="row">
+            <div class="score">4,9</div>
+            <div>
+              <div class="stars">★★★★★</div>
+              <h3 style="margin-top:6px">32 avis Google vérifiés</h3>
+              <p>Clients depuis 2019 · entreprise déclarée, SIRET 853 730 562 00024.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Clients -->
+        <div class="tile">
+          <div class="ic">👥</div>
+          <div class="big">+500</div>
+          <div class="cap">Clients livrés depuis 2019</div>
+        </div>
+
+        <!-- Paiement -->
+        <div class="tile">
           <div class="ic">🔒</div>
           <h3>Paiement sécurisé</h3>
-          <p>Stripe · 3D Secure · données chiffrées. Nous n'avons jamais accès à votre carte.</p>
+          <p>Stripe · 3D Secure. Nous n'avons jamais accès à votre carte.</p>
         </div>
-        <div class="card">
-          <div class="ic">★</div>
-          <h3>Note 4,9 / 5 Google</h3>
-          <p>32 avis vérifiés, clients depuis 2019. Entreprise déclarée.</p>
+
+        <!-- Paliers -->
+        <div class="tile t-2x1">
+          <h3>Plus vous gardez, moins c'est cher</h3>
+          <p style="margin-bottom:16px">Le tarif baisse tout seul selon la durée. Kit de calfeutrage toujours fourni.</p>
+          <div class="mini-tiers">
+            <div class="mini-tier base"><div class="d">7 j</div><div class="p">12 €</div><div class="o">de base</div></div>
+            <div class="mini-tier"><div class="d">8–14 j</div><div class="p">10 €</div><div class="o">−17 %</div></div>
+            <div class="mini-tier"><div class="d">15–21 j</div><div class="p">9 €</div><div class="o">−25 %</div></div>
+            <div class="mini-tier"><div class="d">22+ j</div><div class="p">8 €</div><div class="o">−33 %</div></div>
+          </div>
         </div>
+
       </div>
     </div>
   </section>

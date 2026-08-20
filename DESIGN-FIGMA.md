@@ -81,8 +81,13 @@ serif Inter en très gras. C'est ce qui donne le côté moderne / pro.
 ### Aperçu en vrai
 Fichier : `apercu-landify.html` → `https://www.locair.fr/apercu-landify.html`
 (page non indexée, elle ne remplace rien). C'est la page d'accueil complète
-habillée en style Landify : navigation, hero, bande de chiffres, engagements,
-4 étapes, produit, tarifs, avis, FAQ dépliable, gros bloc final, pied de page.
+habillée en style Landify : navigation, hero, **grille bento**, 4 étapes,
+produit, tarifs, avis, FAQ dépliable, gros bloc final, pied de page.
+
+La grille bento remplace l'ancienne bande de chiffres + les 4 cartes
+identiques : une grande tuile sombre avec photo (2×2), des tuiles chiffres
+(24h, 0 €, +500), la note Google en tuile large, le paiement, et les paliers
+de prix en tuile large. Sur mobile la grille passe à 2 colonnes.
 
 Si le rendu convient, l'étape suivante est de reporter ces styles dans
 `index.html` (le vrai site).
