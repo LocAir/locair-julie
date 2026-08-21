@@ -1,0 +1,27 @@
+<body style="margin:0;background:#fff">
+<pre id="out" style="font:12px monospace;padding:8px;white-space:pre-wrap"></pre>
+<iframe id="f" src="/version-b.html" style="width:320px;height:700px;border:0;position:absolute;left:-3000px"></iframe>
+<script>
+try{localStorage.setItem('locair_cookie_consent','refused')}catch(e){}
+document.getElementById('f').onload=function(){
+  var d=this.contentDocument,w=this.contentWindow,r=[];
+  setTimeout(function(){
+    ['fr','ru'].forEach(function(L){
+      try{w.setLangue(L)}catch(e){}
+      var c=[];
+      [].forEach.call(d.querySelectorAll('body *'),function(el){
+        var b=el.getBoundingClientRect();
+        if(b.right>321 && b.width<420 && b.width>4){
+          var p=el.parentElement, pb=p?p.getBoundingClientRect():null;
+          if(!pb||pb.right<=321)
+            c.push((el.className||el.tagName).toString().split(' ').slice(0,2).join('.')
+              +' r'+Math.round(b.right)+' w'+Math.round(b.width)
+              +' «'+(el.textContent||'').trim().slice(0,22)+'»');
+        }
+      });
+      r.push('['+L+'] W='+d.documentElement.scrollWidth+'  '+(c.slice(0,4).join('  |  ')||'rien'));
+    });
+    document.getElementById('out').textContent=r.join('\n');
+  },1600);
+};
+</script></body>
