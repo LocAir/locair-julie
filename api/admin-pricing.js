@@ -62,14 +62,37 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: 'La durée minimale doit être comprise entre 1 jour et la fin du 1er palier.' });
       }
 
-      const { error } = await supabase.from('pricing_config').update({
+      const maj = {
         duree_min_jours:     dureeMin,
         palier1_max_jours:   p1Max, palier1_tarif_cents: p1Cents,
         palier2_max_jours:   p2Max, palier2_tarif_cents: p2Cents,
         palier3_max_jours:   p3Max, palier3_tarif_cents: p3Cents,
         palier4_tarif_cents: p4Cents,
         updated_at: new Date().toISOString(),
-      }).eq('id', 1);
+      };
+
+      // ── Grille pro (rafraîchisseurs) ────────────────────────────────────
+      // Facultative et indépendante : ces champs ne sont écrits QUE si
+      // l'admin les envoie. Un enregistrement fait depuis l'écran actuel,
+      // qui ne les connaît pas, laisse donc la grille pro intacte au lieu
+      // de l'effacer.
+      const proChamps = {
+        pro_duree_min_jours:     toInt(body.pro_duree_min_jours),
+        pro_palier1_tarif_cents: toCents(body.pro_palier1_tarif),
+        pro_palier2_tarif_cents: toCents(body.pro_palier2_tarif),
+        pro_palier3_tarif_cents: toCents(body.pro_palier3_tarif),
+        pro_palier4_tarif_cents: toCents(body.pro_palier4_tarif),
+        pro_forfait_cents:       toCents(body.pro_forfait),
+      };
+      const proFournis = Object.entries(proChamps).filter(([, v]) => v !== null);
+      if (proFournis.length) {
+        if (proFournis.some(([, v]) => v < 0)) {
+          return res.status(400).json({ error: 'Les tarifs pro doivent être positifs.' });
+        }
+        proFournis.forEach(([k, v]) => { maj[k] = v; });
+      }
+
+      const { error } = await supabase.from('pricing_config').update(maj).eq('id', 1);
       if (error) throw error;
       return res.status(200).json({ ok: true });
     }
