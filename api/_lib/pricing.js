@@ -68,12 +68,21 @@ function getProForfaitCents(config) {
   return Number.isFinite(v) ? v : DEFAULT_PRO_FORFAIT_CENTS;
 }
 
-// Une commande est « pro » dès que le tunnel a coché entreprise. Même test
-// que celui déjà utilisé pour enregistrer type_client en base, pour qu'il
-// n'y ait jamais deux définitions du mot « pro ».
-function isPro(typeClient) {
-  return String(typeClient || '').toLowerCase().startsWith('pro')
-      || String(typeClient || '').toLowerCase().startsWith('entrep');
+// Quelle grille appliquer ? Celle du PRODUIT loué, jamais celle du statut du
+// client.
+//
+// Le piège, et il a bien failli coûter cher : le tunnel des particuliers a
+// depuis toujours un bouton « Particulier / Professionnel », et il envoie le
+// libellé tel quel dans type_client. Ce bouton veut dire « je veux une
+// facture au nom de ma société », pas « je loue un rafraîchisseur ». Une
+// conciergerie qui loue un climatiseur mobile et coche Professionnel pour
+// avoir sa facture doit payer le tarif particulier — c'est le même appareil.
+//
+// La grille pro ne s'applique donc QUE si la commande vient de l'offre pro,
+// qui l'annonce explicitement (data.offre === 'pro', envoyé par pro.html).
+// Aucun libellé, aucune devinette.
+function isOffrePro(data) {
+  return String((data && data.offre) || '').toLowerCase() === 'pro';
 }
 
 const PRICING_NUMERIC_FIELDS = [
@@ -146,6 +155,6 @@ function dailyRate(day, config) {
 
 module.exports = {
   calcTieredPrice, dailyRate, getPricingConfig, DEFAULT_PRICING_CONFIG,
-  getProPricing, getProForfaitCents, isPro,
+  getProPricing, getProForfaitCents, isOffrePro,
   DEFAULT_PRO_PRICING, DEFAULT_PRO_FORFAIT_CENTS,
 };
