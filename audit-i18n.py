@@ -34,8 +34,9 @@ NON_TRADUISIBLE = re.compile(
     r'|^Magnan · Riquier · Caucade$|^Saint-Isidore · Moulins$'
     # Unités et notations internationales : BTU, m², dB s'écrivent pareil dans
     # toutes les langues, et "A" est la classe énergie de l'étiquette
-    # européenne. Les traduire serait une faute, pas une amélioration.
-    r'|^(BTU|m²|dB|kWh|W|A|°C|€)$|^\d+[–-]\d+k$',
+    # européenne — A, A+, A++ et A+++ s'écrivent pareil partout.
+    # Les traduire serait une faute, pas une amélioration.
+    r'|^(BTU|m²|dB|kWh|W|°C|€)$|^A\+{0,3}$|^\d+[–-]\d+k$',
     re.I)
 
 class Audit(HTMLParser):
