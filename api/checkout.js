@@ -3,7 +3,8 @@ const { getSupabase }         = require('./_lib/supabase');
 const { resolveCityByAddress } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays, todayParis } = require('./_lib/dates');
-const { calcTieredPrice, getPricingConfig } = require('./_lib/pricing');
+const { calcTieredPrice, getPricingConfig,
+        getProPricing, getProForfaitCents, isPro } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { resolvePromotion, recordPromotionUsage } = require('./_lib/promotions');
 const { getMatchingForfait } = require('./_lib/forfaits');
@@ -61,11 +62,21 @@ module.exports = async (req, res) => {
   // dégressif normal ci-dessous. Le prix vient alors directement du forfait
   // (figé, jamais recalculé), pas de calcTieredPrice.
   const forfait = await getMatchingForfait(getSupabase(), { forfaitId: data.forfait_id, duree: rawDuree, quantite: rawQty });
-  const duree = forfait ? forfait.duree_jours : Math.min(90, Math.max(pricing.duree_min_jours, rawDuree));
+
+  // Deux offres, deux grilles. Un rafraîchisseur adiabatique loué à un
+  // restaurant n'a rien à voir avec un climatiseur mobile loué à un
+  // particulier : ni le tarif, ni la durée minimale, ni les frais.
+  // getProPricing() retombe sur des valeurs par défaut tant que les colonnes
+  // pro_* n'existent pas en base — le code peut donc être déployé AVANT la
+  // migration sans rien casser.
+  const pro     = isPro(data.type_client);
+  const grille  = pro ? getProPricing(pricing) : pricing;
+
+  const duree = forfait ? forfait.duree_jours : Math.min(90, Math.max(grille.duree_min_jours, rawDuree));
   const qty   = forfait ? forfait.quantite    : rawQty;
-  const baseCents     = forfait ? forfait.prix_cents : calcTieredPrice(duree, pricing) * qty * 100;
+  const baseCents     = forfait ? forfait.prix_cents : calcTieredPrice(duree, grille) * qty * 100;
   const isTech        = (data.installation || '').startsWith('Technicien');
-  const installCents  = isTech ? INSTALL_FEE * 100 : 0;
+  const installCents  = (pro || !isTech) ? 0 : INSTALL_FEE * 100;
   const promoCode     = (data.parrain_code || '').trim().toUpperCase();
 
   const dateDebut = (data.date || '').slice(0, 10);
@@ -146,7 +157,12 @@ module.exports = async (req, res) => {
 
   // Frais de livraison : 60 € si le code postal est couvert par la ville résolue
   // (city.postal_codes en base), 120 € sinon — y compris pour les commandes hors zone.
-  const deliveryFeeCents = (city.postal_codes || []).includes((data.code_postal || '').trim()) ? 60 * 100 : 120 * 100;
+  // Côté pro, un forfait unique (livraison + installation + reprise) REMPLACE
+  // les frais de livraison et d'installation : un déplacement, un technicien,
+  // quel que soit le nombre d'appareils. Il ne s'y ajoute pas.
+  const deliveryFeeCents = pro
+    ? getProForfaitCents(pricing)
+    : ((city.postal_codes || []).includes((data.code_postal || '').trim()) ? 60 * 100 : 120 * 100);
   // Surcoût livraison express J0 sous 2h (+60 €) — activé côté client par la
   // carte "Express" dans le modal, transmis via data.express === true.
   const expressCents     = data.express === true ? EXPRESS_FEE * 100 : 0;

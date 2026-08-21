@@ -48,7 +48,7 @@
 "identifier":{"@type":"PropertyValue","name":"SIRET","value":"85373056200024"},
 "serviceType":"Location de climatiseur mobile",
 "areaServed":[{"@type":"City","name":"Nice"},{"@type":"City","name":"Villefranche-sur-Mer"},{"@type":"City","name":"Saint-Laurent-du-Var"},{"@type":"City","name":"Cagnes-sur-Mer"},{"@type":"City","name":"Beaulieu-sur-Mer"}],
-"description":"Location de climatiseur mobile à Nice. Livré, installé et récupéré chez vous dès 12 €/jour. Aucune caution."}
+"description":"Location de matériel de refroidissement à Nice et sur la Côte d'Azur. Climatiseurs mobiles pour les particuliers, rafraîchisseurs d'air adiabatiques pour les magasins, restaurants, entrepôts et événements. Livraison, installation et reprise incluses. Aucune caution."}
 </script>
 <link rel="icon" href="/favicon-b.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -2413,7 +2413,10 @@ Object.assign(T, {
   var out = document.getElementById('q-total');
   if(!out) return;
 
-  /* Barème pro. Une seule place à modifier le jour où les tarifs bougent. */
+  /* Barème pro. Ces valeurs ne servent que si /api/pricing-config est
+     injoignable : la vraie grille vient de la base, comme celle des
+     particuliers, pour que le prix affiché soit exactement celui qui sera
+     facturé. Voir api/_lib/pricing.js (getProPricing). */
   var P = { p1:{max:7,  tarif:40},
             p2:{max:14, tarif:34},
             p3:{max:21, tarif:30},
@@ -2534,6 +2537,31 @@ Object.assign(T, {
 
   render();
   document.addEventListener('langue', render);
+
+  /* Les tarifs réels, depuis la base. Si l'appel échoue, les valeurs
+     ci-dessus restent : un prix affiché vaut mieux qu'un écran vide. */
+  fetch('/api/pricing-config')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      if(!d || !d.pro) return;
+      var x = d.pro;
+      if(!Number.isFinite(x.palier1_tarif_cents)) return;
+      P.p1 = { max:x.palier1_max_jours, tarif:x.palier1_tarif_cents/100 };
+      P.p2 = { max:x.palier2_max_jours, tarif:x.palier2_tarif_cents/100 };
+      P.p3 = { max:x.palier3_max_jours, tarif:x.palier3_tarif_cents/100 };
+      P.p4 = {                          tarif:x.palier4_tarif_cents/100 };
+      if(Number.isFinite(x.forfait_cents)) FORFAIT = x.forfait_cents/100;
+      /* Le barème affiché plus haut sur la page suit aussi. */
+      var g = document.querySelectorAll('.ptier b');
+      if(g.length === 4){
+        g[0].textContent = P.p1.tarif + ' €';
+        g[1].textContent = P.p2.tarif + ' €';
+        g[2].textContent = P.p3.tarif + ' €';
+        g[3].textContent = P.p4.tarif + ' €';
+      }
+      render();
+    })
+    .catch(function(){ /* valeurs par défaut conservées */ });
 })();
 </script>
 </body>
