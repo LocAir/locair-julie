@@ -118,6 +118,43 @@ def verifier_cles(src, corps):
     return orphelines, incompletes
 
 
+def verifier_derive(src, corps):
+    """Le texte écrit dans le HTML doit dire la même chose que le français du
+    dictionnaire.
+
+    Le HTML porte une version française de secours, que le script remplace au
+    chargement par la valeur du dictionnaire. Si on ne corrige que l'un des
+    deux, la page ment : un visiteur sans JavaScript — ou pendant la fraction
+    de seconde avant que le script tourne — lit l'ancienne phrase.
+    Ce contrôle existe parce que le cas s'est produit trois fois.
+    """
+    if 'var T = {}' not in src:
+        return []
+    bloc = src[src.index('var T = {}'):src.index('window.setLangue')]
+    dico = {}
+    for m in re.finditer(r"'([\w.]+)'\s*:\s*\{\s*fr\s*:\s*\"((?:[^\"\\\\]|\\\\.)*)\"", bloc):
+        dico[m.group(1)] = m.group(2)
+
+    def normaliser(t):
+        t = t.replace('&nbsp;', '\u00a0').replace('&amp;', '&')
+        return re.sub(r'\s+', ' ', t).strip()
+
+    ecarts = []
+    for attr in ('data-t', 'data-th'):
+        motif = r'<(\w+)[^>]*\b' + attr + r'="([\w.]+)"[^>]*>(.*?)</\1>'
+        for m in re.finditer(motif, corps, re.S):
+            cle, html = m.group(2), m.group(3)
+            if cle not in dico:
+                continue
+            attendu = dico[cle]
+            if attr == 'data-t':                 # data-t écrit du texte brut
+                html = re.sub(r'<[^>]+>', '', html)
+                attendu = re.sub(r'<[^>]+>', '', attendu)
+            if normaliser(html) != normaliser(attendu):
+                ecarts.append((cle, normaliser(html)[:52], normaliser(attendu)[:52]))
+    return ecarts
+
+
 src = open(sys.argv[1] if len(sys.argv) > 1 else 'version-b.html', encoding='utf-8').read()
 corps = src[src.index('<body'):] if '<body' in src else src
 corps = re.sub(r'<!--.*?-->', '', corps, flags=re.S)      # commentaires exclus
@@ -148,6 +185,16 @@ elif incompletes:
         print('  ✗', cle)
 else:
     print('  clés du dictionnaire : toutes présentes en 4 langues ✓')
+
+ecarts = verifier_derive(src, corps)
+if ecarts:
+    print(f'\n⚠ {len(ecarts)} texte(s) du HTML ne disent pas la même chose que le dictionnaire :')
+    for cle, html, dico_v in ecarts:
+        print('  ✗', cle)
+        print('      HTML        :', html)
+        print('      dictionnaire:', dico_v)
+else:
+    print('  HTML et dictionnaire : identiques ✓')
 
 if '-v' in sys.argv:
     print('\n── Restants ──')
