@@ -2531,8 +2531,20 @@ Object.assign(T, {
     l.push(qte + ' × ' + mot('p7.appareil') + ' — ' + jours + ' ' + mot('c.jours'));
     l.push(mot('p7.total') + ' : ' + out.textContent + ' ' + mot('p7.htCourt'));
 
+    /* Le tunnel de Loc'Air encaisse déjà par carte, gère les CGV, les
+       créneaux et la facture. Plutôt que d'en construire un second — deux
+       caisses à maintenir, deux endroits où un bug de prix peut se glisser —
+       on l'ouvre avec l'offre, la durée et la quantité déjà réglées. C'est
+       le paramètre « offre=pro » qui fait appliquer la grille des
+       rafraîchisseurs, à l'affichage comme au débit. */
+    var url = '/?offre=pro&duree=' + jours + '&quantite=' + qte;
+
+    /* Le récapitulatif du site part quand même sur WhatsApp : le tunnel ne
+       demande ni la surface ni la hauteur sous plafond, et c'est ce qui nous
+       dit combien d'appareils il faut vraiment. */
     window.open('https://wa.me/33663798756?text=' + encodeURIComponent(l.join('\n')),
                 '_blank', 'noopener');
+    window.location.href = url;
   });
 
   render();

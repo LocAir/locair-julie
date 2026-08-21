@@ -6247,6 +6247,35 @@ function trapFocus(modal){
 // arrivée (ou en cas d'échec réseau), ces valeurs par défaut restent
 // utilisées : la page ne casse jamais, au pire elle affiche le tarif
 // d'avant le tout dernier changement pendant une fraction de seconde.
+// ── OFFRE PRO ─────────────────────────────────────────────────────────────
+// Le même tunnel sert les deux offres. Arrivé avec ?offre=pro (depuis
+// /pro), il bascule sur la grille des rafraîchisseurs : tarifs, durée
+// minimale et frais. Sans ce paramètre, PAS UNE LIGNE ne change — tout ce
+// qui suit est conditionné à _offrePro.
+//
+// Attention au piège : le bouton « Particulier / Professionnel » de ce
+// formulaire ne décide de RIEN ici. Il veut dire « facture au nom de ma
+// société » ; une conciergerie qui loue un climatiseur mobile paie le tarif
+// particulier. C'est le produit loué qui choisit la grille, pas le client.
+const _offrePro = (new URLSearchParams(location.search).get('offre')||'').toLowerCase()==='pro';
+let PRO_FORFAIT = 120;   // livraison + pose + reprise, une seule fois
+
+// Le visiteur a déjà réglé sa durée et son nombre d'appareils sur /pro : on
+// ouvre le formulaire exactement là où il l'a laissé, plutôt que de lui
+// faire tout recommencer. openModal() et setQty() existent déjà, on ne fait
+// que les appeler. Rien de tout ceci ne s'exécute hors mode pro.
+if(_offrePro){
+  window.addEventListener('load',function(){
+    setTimeout(function(){
+      const p=new URLSearchParams(location.search);
+      const q=parseInt(p.get('quantite')||'',10);
+      const d=parseInt(p.get('duree')||'',10);
+      try{ if(Number.isFinite(q)&&typeof setQty==='function') setQty(q); }catch(e){}
+      try{ if(typeof openModal==='function') openModal(Number.isFinite(d)?d:undefined); }catch(e){}
+    },400);
+  });
+}
+
 let PRICING={
   duree_min_jours:7,
   palier1_max_jours:7,  palier1_tarif_cents:1200,
@@ -6288,8 +6317,8 @@ function _updateDeliveryFee(){
   }
   _cpOutOfZone=false;
   if(block)block.style.display='none';
-  DELIVERY_FEE=_ZONE_CP.has(cp)?60:120;
-  if(notice)notice.style.display=DELIVERY_FEE>60?'flex':'none';
+  DELIVERY_FEE=_offrePro?PRO_FORFAIT:(_ZONE_CP.has(cp)?60:120);
+  if(notice)notice.style.display=(!_offrePro&&DELIVERY_FEE>60)?'flex':'none';
   updateRunningTotal();
 }
 let _techInstall=true; // true = technicien 80€ (défaut), false = auto-installation
@@ -6311,9 +6340,11 @@ function calcTotal(days){
   // le calcul dégressif, partout où calcTotal() est appelé (total affiché,
   // montant Stripe, récap) — un seul point de vérité, rien à dupliquer.
   if(_selectedForfait && _selectedForfait.duree_jours===days && _selectedForfait.quantite===_qty){
-    return _selectedForfait.prix_cents/100 + (_techInstall?INSTALL_FEE:0);
+    return _selectedForfait.prix_cents/100 + ((_techInstall&&!_offrePro)?INSTALL_FEE:0);
   }
-  return calcPrice(days)*_qty+(_techInstall?INSTALL_FEE:0);
+  // En mode pro, la pose est déjà dans le forfait unique : la facturer une
+  // seconde fois ferait payer deux fois le même déplacement.
+  return calcPrice(days)*_qty+((_techInstall&&!_offrePro)?INSTALL_FEE:0);
 }
 
 // Charge les vrais tarifs (panneau de contrôle admin) au premier affichage
@@ -6326,6 +6357,14 @@ async function loadPricingConfig(){
     const r=await fetch('/api/pricing-config');
     const d=await r.json();
     if(r.ok&&d.pricing)PRICING=d.pricing;
+    // En mode pro, la grille des rafraîchisseurs remplace celle des
+    // particuliers dans PRICING. Tout le reste du tunnel — simulateur,
+    // textes, FAQ, total, montant Stripe — en découle sans autre changement.
+    if(_offrePro&&r.ok&&d.pro&&Number.isFinite(d.pro.palier1_tarif_cents)){
+      PRICING=d.pro;
+      if(Number.isFinite(d.pro.forfait_cents))PRO_FORFAIT=d.pro.forfait_cents/100;
+      DELIVERY_FEE=PRO_FORFAIT;   // le forfait REMPLACE livraison + pose
+    }
   }catch(e){ /* PRICING garde ses valeurs par défaut — jamais bloquant */ }
   syncPricingTexts();
 }
@@ -6870,7 +6909,7 @@ function clearAddr(){
   inp.focus();
   const cpInp=document.getElementById('f-cp');
   if(cpInp)cpInp.value='';
-  DELIVERY_FEE=60;
+  DELIVERY_FEE=_offrePro?PRO_FORFAIT:60;
   const _zn=document.getElementById('zone-delivery-notice');
   if(_zn)_zn.style.display='none';
 }
@@ -8284,6 +8323,9 @@ function submitForm(btn,mode){
     creneau_livraison:document.querySelector('#creneau-liv-group .cren-card.on,#creneau-liv-group .tpill.on')?.textContent.trim()||'8h–12h',
     creneau_recuperation:document.querySelector('#creneau-recup-group .cren-card.on')?.textContent?.trim()||'8h – 10h',
     type_client:document.querySelector('#type-client-group .tpill.on')?.textContent.trim()||'Particulier',
+    // C'est CE champ, et lui seul, qui fait appliquer la grille pro côté
+    // serveur (api/_lib/pricing.js, isOffrePro).
+    offre:_offrePro?'pro':'',
     raison_sociale:document.getElementById('f-raison-sociale')?.value.trim()||'',
     siret:document.getElementById('f-siret')?.value.trim()||'',
     parrain_code:_promoCode||document.getElementById('f-parrain')?.value.trim()||'',
