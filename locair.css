@@ -1,0 +1,1071 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   LOC'AIR — LA FEUILLE DE STYLE COMMUNE
+
+   Partagée par la page particuliers (version-b.html) et la page entreprises
+   (pro.html). Une seule source : sans ça, les deux pages se seraient
+   séparées au premier changement de couleur, et Loc'Air aurait eu deux
+   identités au lieu d'une.
+
+   Tout ce qui est propre à une seule page reste dans cette page.
+══════════════════════════════════════════════════════════════════════════ */
+
+/* ══ COULEURS — identiques à la version A ══ */
+:root{
+  --ink:#0E1F35; --ink-2:#57687C;
+  /* Mesuré : l'ancien #95A3B3 donnait 2,57 pour 1 sur blanc, très en
+     dessous du minimum lisible (4,5 selon WCAG AA). Assombri jusqu'à passer aussi sur le gris clair : 4,86. */
+  --ink-3:#5F6E80;
+  --blue:#1D5BBF; --blue-d:#17489A; --blue-soft:#EEF3FC;
+  --gold:#C9A227;       /* accent — sur fond SOMBRE uniquement */
+  /* Le même or sur blanc ne donne que 2,42 pour 1. Sur fond clair on
+     utilise cette version assombrie (4,76), qui garde la teinte. */
+  --gold-txt:#8A7016;
+  --paper:#FFFFFF; --mist:#F5F7FA; --line:#E6EBF1; --green:#0F7A3D;
+  --pad:24px; --max:1000px; --r:12px; --r-l:20px;
+  /* DM Sans couvre le latin et le cyrillique, mais PAS les idéogrammes :
+     le chinois tombait donc sur une police système au hasard. La pile ci-
+     dessous nomme explicitement les polices chinoises de chaque système, et
+     sert aussi de secours immédiat si Google Fonts n'arrive jamais. */
+  --font:'DM Sans',system-ui,-apple-system,'Segoe UI',
+         'PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC',
+         sans-serif;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{
+  font-family:var(--font);background:var(--paper);color:var(--ink);
+  font-size:17px;line-height:1.6;letter-spacing:-.005em;
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;
+}
+img,video,picture{max-width:100%;height:auto;display:block}
+/* ── Tenir dans 320px ──────────────────────────────────────────────────────
+   Mesuré : à 320px de large — un vieil iPhone SE, ou n'importe quel écran
+   zoomé à 200 %, ce que les règles d'accessibilité imposent de supporter —
+   la page débordait de 13px en français et de 28px en russe.
+   Deux causes. Une colonne de grille refuse par défaut de devenir plus
+   étroite que son contenu ; et un mot russe très long ne se coupe jamais.
+   Les deux se règlent ici, une fois pour toutes les grilles de la page. */
+.e1-grid>*,.chiffre>*,.prix-grid>*,.specs>*,.metier>*,.conseils>*{min-width:0}
+.titre,.dire,.conseil b,.conseil span{overflow-wrap:break-word}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+/* ── L'anneau de focus ─────────────────────────────────────────────────────
+   C'est le cadre qui montre où on se trouve quand on navigue au clavier,
+   sans souris. Il était bleu partout. Mesuré : bleu sur le fond marine,
+   2,61 pour 1 — sous le minimum de 3 exigé ; et bleu sur l'écran bleu,
+   1,00 pour 1, c'est-à-dire rien du tout. Sur cet écran, quelqu'un qui
+   navigue au clavier ne savait plus où il était.
+   L'anneau prend donc la couleur qui se voit sur son fond. Sur le marine
+   c'est l'or de la marque : le repère d'accessibilité devient un signe
+   de la marque au lieu d'un réglage de navigateur. */
+:root{--focus:var(--blue)}                    /* blanc, brume  → 6,36:1 */
+.e-ink,.menu,.cook,.infobar{--focus:var(--gold)}  /* marine    → 6,86:1 */
+.e-blue,.bar.sur-fonce{--focus:#fff}          /* bleu, barre   → 6,36:1 */
+:focus-visible{outline:2.5px solid var(--focus);outline-offset:4px;border-radius:6px}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+
+/* ══ L'ÉCRAN ══
+   Chaque section occupe au moins la hauteur de l'écran et centre son contenu.
+   min-height (et non height) : si un écran contient plus que prévu — le
+   calculateur, la FAQ — il s'étire au lieu de couper le texte. */
+.ecran{
+  min-height:100svh;display:flex;flex-direction:column;justify-content:center;
+  padding:76px 0 max(76px, env(safe-area-inset-bottom));position:relative;
+  scroll-snap-align:center;
+}
+@supports not (height:100svh){.ecran{min-height:100vh}}
+.in{max-width:var(--max);margin:0 auto;padding:0 var(--pad);width:100%}
+.snap{scroll-snap-type:y proximity}   /* "proximity" et jamais "mandatory" */
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}.snap{scroll-snap-type:none}}
+
+/* fonds */
+.e-ink{background:var(--ink);color:var(--paper)}
+.e-blue{background:var(--blue);color:var(--paper)}
+.e-mist{background:var(--mist)}
+
+/* ══ TYPOGRAPHIE ══
+   Un écran, une phrase. Les tailles sont donc beaucoup plus grandes que sur
+   une page classique — c'est ce qui rend le format lisible d'un coup d'œil.
+
+   ── L'échelle ──────────────────────────────────────────────────────────────
+   Mesuré : la page utilisait 24 formules de taille différentes, dont 5
+   écrites à la main dans le HTML, écran par écran. Vingt-quatre tailles de
+   titre, ce n'est pas une marque, c'est une accumulation de décisions prises
+   séparément — et ça se voit : deux écrans voisins n'ont aucune raison
+   d'avoir des titres à 52 et 54 pixels.
+
+   Six marches pour les textes, trois pour les chiffres, quatre pour les
+   écarts. Chaque marche est ~1,2 fois la précédente : c'est le rapport qui
+   se lit comme une progression et pas comme un accident.
+
+   Toutes les valeurs sont fluides : la première borne est la taille sur
+   téléphone, la dernière la taille sur grand écran. */
+:root{
+  --t-1: clamp(38px, 7.4vw, 86px);   /* le titre le plus court d'un écran   */
+  --t-2: clamp(33px, 5vw,   60px);   /* titre d'accueil, titre à deux temps */
+  --t-3: clamp(29px, 4.2vw, 50px);   /* titre d'écran standard              */
+  --t-4: clamp(26px, 3.5vw, 42px);   /* titre long, qui doit tenir          */
+  --t-5: clamp(22px, 2.4vw, 29px);   /* titre de carte                      */
+  --t-6: clamp(18px, 2.1vw, 23px);   /* le paragraphe d'intro               */
+
+  --n-1: clamp(90px, 20vw,  250px);  /* le chiffre spectacle : 0 €          */
+  --n-2: clamp(38px, 5.4vw, 68px);   /* un chiffre qui porte l'écran        */
+  --n-3: clamp(34px, 4.4vw, 50px);   /* un chiffre dans un bloc             */
+
+  /* ── Le mouvement ────────────────────────────────────────────────────────
+     Mesuré : dix durées différentes (.12s, .15s, .16s, .18s, .2s, .22s,
+     .25s…) et presque aucune courbe déclarée, donc la courbe par défaut du
+     navigateur. Une marque bouge d'une seule façon.
+     Trois durées, une seule courbe : elle démarre vite et finit doucement,
+     comme un objet qui se pose. */
+  --mv: cubic-bezier(.32,.72,.28,1);
+  --mv-1: .14s;   /* réaction immédiate : survol, couleur   */
+  --mv-2: .24s;   /* déplacement : panneau, menu, bandeau   */
+  --mv-3: .68s;   /* l'apparition au défilement             */
+
+  --e-1: clamp(22px, 2.4vw, 32px);   /* écart serré : marge intérieure      */
+  --e-2: clamp(24px, 2.9vw, 40px);   /* écart moyen : entre colonnes        */
+  --e-3: clamp(28px, 3.8vw, 52px);   /* écart large : au-dessus d'un bloc   */
+  --e-4: clamp(30px, 4.8vw, 64px);   /* écart de respiration : deux moitiés */
+}
+.kicker{
+  display:block;font-size:12px;font-weight:700;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--blue);margin-bottom:28px;
+}
+.e-ink .kicker,.e-blue .kicker{color:var(--gold)}
+.e-blue .kicker{color:rgba(255,255,255,.82)}
+.titre{
+  font-size:var(--t-1);font-weight:700;letter-spacing:-.042em;
+  line-height:1.02;max-width:16ch;
+}
+/* Une marche de l'échelle, choisie selon la longueur du titre. Avant, la
+   taille était écrite à la main dans le HTML de chaque écran. */
+.titre.t-2{font-size:var(--t-2)}
+.titre.t-3{font-size:var(--t-3)}
+.titre.t-4{font-size:var(--t-4)}
+.titre em{font-style:normal;color:var(--blue)}
+.e-ink .titre em{color:var(--gold)}
+.e-blue .titre em,.e-ink.e-alt .titre em{color:#fff}
+.dire{font-size:var(--t-6);color:var(--ink-2);line-height:1.5;max-width:44ch;margin-top:28px;letter-spacing:-.012em}
+.e-ink .dire{color:rgba(255,255,255,.6)}
+.e-blue .dire{color:rgba(255,255,255,.78)}
+.geant{
+  font-size:var(--n-1);font-weight:700;letter-spacing:-.06em;
+  line-height:.86;display:block;
+}
+.geant small{font-size:.24em;letter-spacing:-.02em;font-weight:700}
+.mini{font-size:15px;color:var(--ink-3);margin-top:22px;line-height:1.55;max-width:40ch}
+.e-ink .mini,.e-blue .mini{color:rgba(255,255,255,.55)}
+
+/* ══ BOUTONS ══ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  padding:18px 32px;border-radius:100px;font-weight:700;font-size:17px;
+  letter-spacing:-.012em;transition:background var(--mv-1) var(--mv),transform var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
+}
+.btn-1{background:var(--blue);color:#fff}
+.btn-1:hover{background:var(--blue-d);transform:translateY(-2px)}
+.btn-light{background:#fff;color:var(--ink)}
+/* Le bouton de la carte ambassadeur portait une classe qui n'existait
+   nulle part : il s'affichait en texte nu, sans forme de bouton. Sur
+   fond or, l'encre est ce qui se détache le mieux (6,86 pour 1). */
+.btn-2{background:var(--ink);color:#fff}
+.btn-2:hover{background:#1A3050}
+.btn-light:hover{transform:translateY(-2px)}
+.btn-out{border:1.5px solid var(--line);color:var(--ink)}
+.btn-out:hover{border-color:var(--ink);transform:translateY(-2px)}
+.btn-ghost{border:1.5px solid rgba(255,255,255,.3);color:#fff}
+.btn-ghost:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.6)}
+.btn-s{padding:12px 22px;font-size:15px}
+
+/* ══ APPARITION ══
+   Sur un format "un écran = une idée", le contenu doit arriver APRÈS que
+   l'écran soit en place, sinon tout est déjà lu avant d'arriver. */
+.js .rv{opacity:0;transform:translateY(24px);transition:opacity var(--mv-3) var(--mv),transform var(--mv-3) var(--mv)}
+.js .rv.on{opacity:1;transform:none}
+.js .rv:nth-child(2){transition-delay:.08s}
+.js .rv:nth-child(3){transition-delay:.16s}
+.js .rv:nth-child(4){transition-delay:.24s}
+@media(prefers-reduced-motion:reduce){.js .rv{opacity:1;transform:none;transition:none}}
+
+/* ══ REPÈRE DE PROGRESSION ══
+   Sur un format long, il faut savoir où l'on en est et pouvoir sauter.
+   Masqué sur téléphone : la place manque et le pouce l'accrocherait. */
+.dots{position:fixed;right:26px;top:50%;transform:translateY(-50%);z-index:800;display:flex;flex-direction:column;gap:14px}
+.dots a{width:9px;height:9px;border-radius:50%;background:var(--ink);opacity:.18;transition:opacity var(--mv-2) var(--mv),transform var(--mv-2) var(--mv)}
+.dots a:hover{opacity:.5}
+.dots a.on{opacity:1;transform:scale(1.35)}
+.dots.sur-fonce a{background:#fff}
+@media(max-width:1180px){.dots{display:none}}
+
+/* ══ EN-TÊTE ET BARRE DE COMMANDE ══ */
+/* L'en-tête occupait toute la largeur alors que le contenu est centré dans
+   1000 px : sur grand écran le logo se retrouvait seul contre le bord, très
+   loin de la colonne de texte. Il suit maintenant la même colonne. */
+.bar{
+  position:sticky;top:0;z-index:900;transition:background var(--mv-2) var(--mv),box-shadow var(--mv-2) var(--mv);
+}
+.bar-in{
+  display:flex;align-items:center;gap:16px;
+  max-width:var(--max);margin:0 auto;padding:16px var(--pad);
+}
+.bar.pose{background:rgba(255,255,255,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--line)}
+/* ── La signature ───────────────────────────────────────────────────────────
+   « Loc'Air » était composé dans la même police que le reste de la page, avec
+   une apostrophe bleue : c'était de la typographie, pas une marque.
+   L'apostrophe devient une goutte dorée — elle se lit à la fois comme
+   l'apostrophe du nom et comme une goutte d'air frais. La même forme sert de
+   point d'état sur l'écran d'accueil : un signe qui revient fait une
+   identité, un signe unique ne fait qu'une décoration.
+   La lettre reste dans le texte, seulement rendue transparente : le
+   copier-coller et les lecteurs d'écran lisent toujours « Loc'Air ». */
+.gt{position:relative;color:transparent;margin:0 .06em}
+.gt::before{
+  content:"";position:absolute;left:50%;top:.21em;
+  width:.30em;height:.30em;margin-left:-.15em;
+  background:var(--gold-txt);
+  /* trois coins ronds, un coin vif : la goutte. Inclinée à -25°, la pointe
+     part vers le bas-gauche — exactement le geste d'une apostrophe. */
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);
+}
+.sur-fonce .gt::before,.menu .gt::before{background:var(--gold)}
+.bar .logo{font-weight:700;font-size:21px;letter-spacing:-.04em;margin-right:auto}
+.bar.sur-fonce{color:#fff}
+.bar.sur-fonce .btn-out{border-color:rgba(255,255,255,.35);color:#fff}
+/* Sur l'écran bleu, un bouton bleu disparaît dans le fond : sur tout fond
+   sombre le bouton principal passe en blanc, ce qui marche aussi bien sur
+   l'encre que sur le bleu. */
+.bar.sur-fonce .btn-1{background:#fff;color:var(--ink)}
+.bar.sur-fonce .btn-1:hover{background:rgba(255,255,255,.88)}
+.bar-tel{font-weight:700;font-size:15px}
+/* ── Le sélecteur d'offre ──────────────────────────────────────────────────
+   Deux pastilles dans une gouttière, comme un interrupteur : on voit
+   immédiatement qu'il existe deux offres et laquelle on regarde. Il tient
+   dans la barre, donc il ne coûte aucune hauteur. */
+.offre{
+  display:inline-flex;gap:2px;padding:3px;border-radius:100px;
+  background:rgba(14,31,53,.07);margin-right:auto;
+}
+.bar.sur-fonce .offre{background:rgba(255,255,255,.12)}
+.offre-o{
+  padding:6px 14px;border-radius:100px;font-size:13.5px;font-weight:700;
+  letter-spacing:-.005em;color:var(--ink-2);white-space:nowrap;
+  transition:background var(--mv-1) var(--mv),color var(--mv-1) var(--mv);
+}
+.offre-o:hover{color:var(--ink)}
+.offre-o.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(14,31,53,.12)}
+.bar.sur-fonce .offre-o{color:rgba(255,255,255,.72)}
+.bar.sur-fonce .offre-o:hover{color:#fff}
+.bar.sur-fonce .offre-o.on{background:rgba(255,255,255,.94);color:var(--ink)}
+@media(max-width:900px){
+  .offre-o{padding:6px 11px;font-size:12.5px}
+}
+@media(max-width:560px){
+  /* Mesuré : à 320px, « Частным лицам / Бизнесу » faisait déborder la barre
+     de 69 pixels. Plutôt que de rogner les mots — le sélecteur est le choix
+     le plus structurant de la page et doit rester lisible —, la barre passe
+     sur deux lignes et le sélecteur prend toute la largeur, comme un vrai
+     interrupteur. */
+  .bar-in{flex-wrap:wrap;row-gap:10px}
+  .logo{margin-right:auto}
+  .offre{order:3;flex:0 0 100%;margin-right:0;display:flex}
+  .offre-o{flex:1 1 0;text-align:center;padding:8px 10px;font-size:13px}
+}
+.bar-lien{font-size:15px;font-weight:500;opacity:.68;transition:opacity var(--mv-1) var(--mv)}
+.bar-lien:hover{opacity:1}
+@media(max-width:900px){
+  /* la barre du bas porte déjà le bouton : inutile de le doubler en haut.
+     Le menu ☰, lui, devient le SEUL accès aux espaces : il reste. */
+  .bar-tel,.bar-lien,.bar .btn{display:none}
+  .bar-in{padding:12px var(--pad)}
+}
+@media(min-width:901px){.burger{display:none}}
+
+/* ══ BANDEAU APERÇU ══ */
+.preview-bar{position:relative;z-index:901;background:var(--ink);color:rgba(255,255,255,.68);font-size:13px;text-align:center;padding:10px var(--pad)}
+.preview-bar strong{color:var(--gold);font-weight:700}
+.preview-bar a{color:#fff;border-bottom:1px solid rgba(255,255,255,.4)}
+@media(max-width:640px){.preview-bar{font-size:12px}.preview-bar .long{display:none}}
+
+/* ══ ÉCRAN 1 : OUVERTURE ══ */
+.e1{padding-top:32px;min-height:calc(100svh - 72px)}
+@supports not (height:100svh){.e1{min-height:calc(100vh - 72px)}}
+.e1-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:var(--e-4);align-items:center}
+/* ══ LIGNE D'ÉTAT DE LIVRAISON ══
+   Remplace une pastille en capitales qui portait deux messages à la fois et
+   débordait sur deux lignes. Elle était le premier élément vu de la page et
+   ressemblait à un bandeau technique.
+   Une phrase, en casse normale, une seule information. Le point coloré porte
+   l'urgence ; le texte n'a pas à crier. */
+.etat{
+  display:flex;align-items:baseline;gap:11px;margin-bottom:22px;
+  font-size:16px;color:var(--ink-2);line-height:1.5;max-width:48ch;
+}
+.etat b{color:var(--ink);font-weight:700}
+.etat-pt{
+  /* même goutte que l'apostrophe du nom, en petit */
+  width:9px;height:9px;border-radius:50% 50% 50% 0;background:var(--blue);
+  flex-shrink:0;transform:translateY(-1px) rotate(-25deg);
+  animation:pulse 2.4s ease-in-out infinite;
+}
+.etat.complet .etat-pt{background:#B8860B;animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@media(prefers-reduced-motion:reduce){.etat-pt{animation:none}}
+/* ── Les prochaines ouvertures ─────────────────────────────────────────────
+   Un troisième état, à côté de « livré 7j/7 » et « sur demande » : bientôt.
+   En ligne plutôt qu'empilées — trois villes tiennent alors dans la hauteur
+   qu'en prenait une seule. */
+.ouvertures{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.ouv-t{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 11px}
+.ouv-l{display:flex;flex-wrap:wrap;gap:9px}
+.ouv{
+  display:flex;align-items:baseline;gap:9px;
+  padding:9px 15px;border-radius:100px;
+  background:rgba(201,162,39,.10);border:1px solid rgba(201,162,39,.34);
+}
+.ouv .gtt{flex-shrink:0;width:9px;height:9px;align-self:center;
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold-txt)}
+.ouv b{font-size:15.5px;font-weight:700;letter-spacing:-.015em;color:var(--ink)}
+.ouv em{font-style:normal;font-size:13.5px;color:var(--ink-2)}
+.ouv.lien em{color:var(--gold-txt);font-weight:700}
+.ouv.lien{transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv)}
+.ouv.lien:hover{background:rgba(201,162,39,.18);border-color:var(--gold-txt)}
+@media(max-width:520px){
+  .ouv-l{flex-direction:column}
+  .ouv{justify-content:flex-start}
+}
+
+/* ── La liste d'attente des villes ─────────────────────────────────────────
+   Le visiteur d'une autre ville n'avait rien à faire ici : il repartait.
+   Maintenant il dit sa ville, et cette demande sert vraiment — elle décide
+   de la prochaine ouverture. Le message part sur WhatsApp, donc aucun
+   serveur à ajouter et aucune donnée stockée ici. */
+.attente{margin-top:18px;padding-top:17px;border-top:1px solid var(--line);max-width:520px}
+.attente-l{display:block;font-size:15.5px;font-weight:700;color:var(--ink);margin-bottom:10px}
+.attente-row{display:flex;gap:10px}
+.attente-i{
+  /* L'écran est passé sur fond blanc : un champ blanc y disparaissait. */
+  flex:1 1 auto;min-width:0;background:var(--mist);border:1px solid var(--line);
+  border-radius:var(--r);padding:13px 15px;font:inherit;font-size:15.5px;color:var(--ink);
+  transition:box-shadow var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
+}
+.attente-i::placeholder{color:var(--ink-3)}
+.attente-i:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,91,191,.16)}
+.attente-b{flex:0 0 auto}
+.attente-m{font-size:13.5px;line-height:1.55;color:var(--ink-3);margin-top:11px}
+.attente-ok{color:var(--green);font-weight:700}
+@media(max-width:520px){
+  .attente-row{flex-wrap:wrap}
+  .attente-b{flex:1 1 100%}
+}
+/* ── Le socle technique ────────────────────────────────────────────────────
+   Quatre briques, pas une liste à puces : chacune est une capacité qui
+   existe déjà dans le code. Même goutte dorée que le reste de la marque. */
+.socle{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:24px}
+.soc{padding:17px 19px 19px;border-radius:var(--r-l);
+  background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.12)}
+.soc .gtt{display:block;width:10px;height:10px;margin-bottom:10px;
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold)}
+.soc b{display:block;font-size:16.5px;line-height:1.3;letter-spacing:-.012em;
+  color:#fff;margin-bottom:7px}
+.soc span{font-size:14px;line-height:1.5;color:rgba(255,255,255,.64)}
+@media(max-width:760px){
+  .socle{grid-template-columns:1fr;gap:12px}
+  .soc{padding:16px 18px 18px}
+  .soc b{font-size:16.5px}
+  .soc .gtt{margin-bottom:10px}
+}
+/* Emplacement de photo, en attendant la vraie. Mieux vaut un cadre honnête
+   qu'une image de banque : la page entière repose sur le fait qu'on dit ce
+   qui est. */
+.photo-vide{
+  aspect-ratio:4/5;max-height:62svh;border-radius:var(--r-l);
+  background:var(--mist);border:1.5px dashed var(--line);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:7px;text-align:center;padding:28px;
+}
+.photo-vide b{font-size:16px;font-weight:700;color:var(--ink-2)}
+.photo-vide span{font-size:14px;line-height:1.5;color:var(--ink-3);max-width:28ch}
+@media(max-width:880px){.photo-vide{display:none}}
+
+/* ── Les étapes numérotées (page pro) ──────────────────────────────────────
+   Un déroulé est une suite : la numérotation dit quelque chose de vrai sur
+   le contenu, elle ne décore pas. */
+.etapes{list-style:none;margin:26px 0 0;padding:0;display:grid;
+  grid-template-columns:repeat(3,1fr);gap:18px;counter-reset:et}
+.etapes li{display:flex;flex-direction:column;gap:6px}
+.etape-n{
+  display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;border-radius:50%;margin-bottom:6px;
+  font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;
+  background:var(--blue);color:#fff;
+}
+.etapes b{font-size:17.5px;line-height:1.3;letter-spacing:-.015em;color:var(--ink)}
+.etapes span:not(.etape-n){font-size:14.5px;line-height:1.5;color:var(--ink-2)}
+.etapes.sombre{grid-template-columns:repeat(4,1fr)}
+.etapes.sombre .etape-n{background:var(--gold);color:var(--ink)}
+.etapes.sombre b{color:#fff}
+.etapes.sombre span:not(.etape-n){color:rgba(255,255,255,.64)}
+@media(max-width:820px){
+  .etapes,.etapes.sombre{grid-template-columns:1fr 1fr;gap:16px}
+}
+@media(max-width:520px){
+  .etapes,.etapes.sombre{grid-template-columns:1fr;gap:14px}
+}
+
+/* ── Les limites annoncées (page pro) ──────────────────────────────────────
+   Traitées comme un contenu positif, pas comme un avertissement : même
+   carte, même goutte, même soin que le reste. Une limite qu'on assume ne se
+   met pas en petit en bas de page. */
+.limites{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:22px}
+.lim{padding:16px 18px 18px;border-radius:var(--r-l);
+  background:var(--mist);border:1px solid var(--line)}
+.lim .gtt{display:block;width:10px;height:10px;margin-bottom:10px;
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold-txt)}
+.lim b{display:block;font-size:16.5px;line-height:1.3;letter-spacing:-.012em;
+  color:var(--ink);margin-bottom:6px}
+.lim span{font-size:14px;line-height:1.5;color:var(--ink-2)}
+@media(max-width:760px){.limites{grid-template-columns:1fr;gap:11px}}
+
+/* Les cartes d'usage, version fond clair */
+.pro.clair{background:var(--paper);border-color:var(--line)}
+.pro.clair .gtt{background:var(--gold-txt)}
+.pro.clair b{color:var(--ink)}
+.pro.clair span{color:var(--ink-2)}
+
+/* Les deux boutons de l'accroche pro */
+.p-cta{display:flex;gap:11px;flex-wrap:wrap;margin-top:26px}
+@media(max-width:520px){.p-cta .btn{width:100%;justify-content:center}}
+
+/* ── Loc'Air Pro ───────────────────────────────────────────────────────────
+   Quatre usages sur deux colonnes, sur fond marine comme l'écran plateforme :
+   les deux écrans qui parlent de l'entreprise plutôt que du particulier
+   partagent le même fond, ce qui les relie sans qu'on ait à l'écrire. */
+.pro-l{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.pro{padding:15px 18px 17px;border-radius:var(--r-l);
+  background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.12)}
+.pro .gtt{display:block;width:10px;height:10px;margin-bottom:10px;
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold)}
+.pro b{display:block;font-size:16.5px;line-height:1.3;letter-spacing:-.012em;
+  color:#fff;margin-bottom:7px}
+.pro span{font-size:14px;line-height:1.5;color:rgba(255,255,255,.64)}
+.pro-cta{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:18px}
+.pro-note{font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.6);max-width:42ch}
+@media(max-width:760px){
+  .pro-l{grid-template-columns:1fr;gap:11px}
+  .pro{padding:15px 17px 17px}
+  .pro b{font-size:16px}
+  .pro-cta{gap:13px}
+  .pro-cta .btn{width:100%;justify-content:center}
+}
+
+/* ── La signature de fermeture ─────────────────────────────────────────────
+   Le site se terminait sur un numéro de SIRET. Il se termine sur son nom et
+   sur sa promesse — celle-là même que l'engagement garantit. */
+.signature{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
+  margin-top:var(--e-2);padding-top:24px;border-top:1px solid rgba(255,255,255,.14)}
+.signature-n{font-size:27px;font-weight:700;letter-spacing:-.04em;color:#fff}
+.signature-b{font-size:17px;color:var(--gold);letter-spacing:-.01em}
+@media(max-width:520px){
+  .signature{gap:6px}
+  .signature-n{font-size:24px}
+  .signature-b{font-size:16px}
+}
+
+/* ── Le pied de page ───────────────────────────────────────────────────────
+   Sorti de l'écran de réservation, où il pesait pour moitié dans une hauteur
+   de 933 px. Il garde le fond marine pour que la page finisse sombre, mais
+   il n'est plus un écran : ni hauteur minimale, ni point de progression. */
+.pied-bloc{
+  background:var(--ink);color:#fff;
+  padding:44px 0 max(38px, env(safe-area-inset-bottom));
+  text-align:left;
+}
+.pied-bloc .in{max-width:var(--max);margin:0 auto;padding:0 var(--pad)}
+.pied-bloc .pied-grid{margin-top:0;border-top:0;padding-top:0}
+
+/* ── Le bandeau de réassurance ─────────────────────────────────────────────
+   Cinq garanties en ligne, juste après l'accroche. Ce n'est pas un écran :
+   pas de min-height, pas de point de progression — du mobilier entre deux
+   idées. Les pictogrammes sont dessinés au même trait (1,7px, bouts ronds) :
+   c'est la famille d'icônes qui manquait à la marque, et elle commence ici. */
+.rassure{background:var(--mist);border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);padding:30px 0 32px}
+.rassure-in{
+  max-width:var(--max);margin:0 auto;padding:0 var(--pad);
+  display:grid;grid-template-columns:repeat(5,1fr);gap:14px;
+}
+.ras{display:flex;flex-direction:column;align-items:center;text-align:center;gap:3px}
+.ras-i{
+  width:38px;height:38px;margin-bottom:9px;color:var(--blue);
+  display:flex;align-items:center;justify-content:center;
+}
+.ras-i svg{width:100%;height:100%}
+.ras b{font-size:12px;font-weight:700;letter-spacing:.085em;text-transform:uppercase;
+  color:var(--ink);line-height:1.3;text-wrap:balance}
+.ras span{font-size:13.5px;line-height:1.45;color:var(--ink-2);max-width:22ch}
+.ras i{font-style:normal;font-weight:700;color:var(--gold-txt);white-space:nowrap}
+
+@media(max-width:900px){
+  .rassure-in{grid-template-columns:repeat(3,1fr);gap:24px 14px}
+  /* Trois puis deux : à cinq colonnes sur une tablette, les libellés se
+     coupent en trois lignes. Les deux derniers se centrent sous les trois
+     premiers plutôt que de laisser un trou à droite. */
+  .ras:nth-child(4){grid-column:1/2}
+  .ras:nth-child(5){grid-column:2/4}
+}
+@media(max-width:620px){
+  .rassure{padding:24px 0 26px}
+  .rassure-in{grid-template-columns:1fr 1fr;gap:22px 12px}
+  .ras:nth-child(4),.ras:nth-child(5){grid-column:auto}
+  .ras:nth-child(5){grid-column:1/3}
+  .ras-i{width:32px;height:32px;margin-bottom:7px}
+  .ras b{font-size:11.5px;letter-spacing:.09em}
+  .ras span{font-size:13px}
+}
+
+/* ── L'engagement ──────────────────────────────────────────────────────────
+   La page faisait beaucoup de promesses — pas de caution, panne remplacée le
+   jour même, annulation gratuite — mais aucune ne disait ce que Loc'Air donne
+   quand elle ne tient pas. C'est ça qui sépare un slogan d'un engagement.
+   Les conditions sont écrites juste en dessous, en clair et à la même place :
+   une garantie dont on voit les limites est plus crédible qu'une garantie
+   dont on les devine. */
+.engage{
+  margin-top:var(--e-1);padding:22px 24px;max-width:56ch;text-align:left;
+  border-radius:var(--r-l);background:rgba(201,162,39,.10);
+  border:1px solid rgba(201,162,39,.34);
+}
+.centre .engage{margin-left:auto;margin-right:auto}
+.engage-t{display:flex;align-items:baseline;gap:11px;font-size:17.5px;
+  line-height:1.5;color:var(--ink);font-weight:500}
+.engage-t b{font-weight:700}
+.engage .gtt{flex-shrink:0;width:11px;height:11px;margin-top:6px;
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold-txt)}
+.engage-c{font-size:13.5px;line-height:1.6;color:var(--ink-3);
+  margin:12px 0 0 22px}
+.e-ink .engage,.e-blue .engage{background:rgba(201,162,39,.13);
+  border-color:rgba(201,162,39,.42)}
+.e-ink .engage .gtt,.e-blue .engage .gtt{background:var(--gold)}
+.e-ink .engage-t,.e-blue .engage-t{color:#fff}
+.e-ink .engage-c,.e-blue .engage-c{color:rgba(255,255,255,.62)}
+@media(max-width:600px){
+  /* Sur téléphone, l'engagement doit rester sur le même écran que la
+     promesse qu'il garantit : sans ça, on lit la promesse et on ne voit
+     jamais ce qui se passe si elle n'est pas tenue. */
+  .engage{padding:16px 17px;margin-top:20px}
+  .engage-t{font-size:16px;gap:9px;line-height:1.45}
+  .engage-c{margin:10px 0 0 20px;font-size:12.5px;line-height:1.5}
+  .engage .gtt{width:10px;height:10px;margin-top:5px}
+}
+/* ── La phrase de la maison ────────────────────────────────────────────────
+   Une marque a une voix. Ces deux phrases disent une décision, pas un
+   argument — là où le visiteur doute le plus : la caution et la panne.
+   Elles ne sont signées de personne : Loc'Air se présente comme une
+   entreprise, pas comme un individu. */
+.signe{
+  display:flex;gap:13px;margin-top:26px;max-width:52ch;
+  padding-top:20px;border-top:1px solid var(--line);
+}
+.signe .gtt{
+  flex-shrink:0;width:11px;height:11px;margin-top:6px;
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold-txt);
+}
+.signe p{font-size:17px;line-height:1.6;color:var(--ink-2);font-style:italic;margin:0}
+.signe b{display:block;font-style:normal;font-weight:700;font-size:13.5px;
+  letter-spacing:.02em;color:var(--ink-3);margin-top:9px}
+.e-ink .signe,.e-blue .signe{border-top-color:rgba(255,255,255,.18)}
+.e-ink .signe .gtt,.e-blue .signe .gtt{background:var(--gold)}
+.e-ink .signe p,.e-blue .signe p{color:rgba(255,255,255,.86)}
+.e-ink .signe b{color:rgba(255,255,255,.62)}
+.e-blue .signe b{color:rgba(255,255,255,.84)}
+.e-blue .signe .gtt{background:#fff}
+.centre .signe{justify-content:center;text-align:left;margin-left:auto;margin-right:auto}
+
+/* ── L'écran conseils ───────────────────────────────────────────────────────
+   Le seul écran de la page qui ne vend rien. Ces quatre gestes marchent que
+   le visiteur loue ici, ailleurs, ou nulle part. C'est le prix d'entrée pour
+   qu'une marque soit crue quand elle parle d'elle. */
+.conseils{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:26px}
+.conseil{
+  background:var(--paper);border-radius:var(--r-l);padding:20px 22px 22px;
+  border:1px solid var(--line);
+}
+.conseil .gtt{
+  display:block;width:11px;height:11px;margin-bottom:13px;
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold-txt);
+}
+.conseil b{display:block;font-size:18px;line-height:1.32;letter-spacing:-.01em;
+  color:var(--ink);margin-bottom:8px}
+.conseil span{font-size:15px;line-height:1.55;color:var(--ink-2)}
+/* L'écran doit tenir en entier : « une idée par écran » ne marche que si on
+   voit l'idée entière sans faire défiler. */
+#e8b .dire{max-width:58ch;margin-bottom:0}
+@media(max-width:760px){
+  .conseils{grid-template-columns:1fr;gap:12px}
+  .conseil{padding:17px 18px 18px}
+  .conseil b{font-size:17px}
+  .conseil .gtt{margin-bottom:10px}
+}
+.e1 .titre{max-width:15ch;font-size:var(--t-2)}
+.addr{background:#fff;border-radius:var(--r-l);padding:22px;margin-top:28px;max-width:460px;box-shadow:0 1px 3px rgba(14,31,53,.05),0 18px 46px rgba(14,31,53,.1)}
+.addr label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:13px}
+.addr-row{display:flex;align-items:center;gap:12px;background:var(--mist);border-radius:var(--r);padding:15px 17px;transition:box-shadow var(--mv-1) var(--mv)}
+.addr-row:focus-within{box-shadow:inset 0 0 0 2px var(--blue)}
+.addr-row svg{flex-shrink:0;color:var(--ink-3)}
+.addr-row input{flex:1;min-width:0;border:none;outline:none;font:inherit;font-size:16px;color:var(--ink);background:none}
+.addr-row input::placeholder{color:var(--ink-3)}
+.addr .btn{width:100%;margin-top:12px}
+.addr-note{font-size:13px;color:var(--ink-3);margin-top:13px;text-align:center}
+.preuve1{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:26px;font-size:15px;color:var(--ink-2)}
+.preuve1 b{color:var(--ink);font-weight:700}
+.stars{color:var(--gold-txt);letter-spacing:1.5px;font-size:14px}
+/* sur fond sombre, l'or clair reprend sa place */
+.e-ink .stars,.e-blue .stars,.vcard .stars,.fin-q .stars{color:var(--gold)}
+.e1-img{width:100%;aspect-ratio:4/5;max-height:62svh;object-fit:cover;border-radius:var(--r-l)}
+@media(max-width:900px){
+  .e1-grid{grid-template-columns:1fr;gap:30px}
+  .e1-img{display:none}          /* sur téléphone, l'écran 1 doit tenir : le texte prime */
+  .addr{max-width:none}
+}
+
+/* ── Pastille de disponibilité et packs ── */
+.forfaits-l{display:grid;gap:8px;margin-top:12px}
+.forfait{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+  padding:12px 0;border-bottom:1px solid var(--line)}
+.forfait b{font-size:16px;font-weight:700}
+.forfait span{font-size:14px;color:var(--ink-2);white-space:nowrap}
+
+/* ══ ÉCRAN MATÉRIEL ══
+   Chiffres en grand, sans cadre : même langage que l'écran "0 € de caution".
+   La photo n'est pas reprise ici — elle est déjà dans le premier écran, la
+   remontrer affaiblirait les deux. */
+.specs{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--e-2);margin-top:var(--e-3);border-top:1px solid var(--line);padding-top:var(--e-1)}
+.spec b{display:block;font-size:var(--n-3);font-weight:700;letter-spacing:-.045em;line-height:1}
+.spec i{font-style:normal;font-size:13px;font-weight:700;color:var(--blue);display:block;margin-top:6px}
+.spec span{font-size:14px;color:var(--ink-2);display:block;margin-top:10px;line-height:1.45}
+.kit{display:flex;gap:22px;flex-wrap:wrap;margin-top:var(--e-1);font-size:15.5px;color:var(--ink-2)}
+.kit li{list-style:none;display:flex;align-items:center;gap:9px}
+.kit li::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--blue);flex-shrink:0}
+@media(max-width:820px){.specs{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:460px){.specs{grid-template-columns:1fr;gap:22px}}
+
+/* ══ ÉCRAN MÉTIER ══
+   Quatre points en colonnes, sans cadre : c'est le vide qui sépare. */
+.metier{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--e-2);margin-top:var(--e-3)}
+.mt-ic{width:40px;height:40px;border-radius:11px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.metier h3{font-size:18px;letter-spacing:-.02em;margin-bottom:9px;line-height:1.25}
+.metier p{font-size:15px;color:var(--ink-2);line-height:1.55}
+@media(max-width:900px){.metier{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:540px){.metier{grid-template-columns:1fr;gap:24px}}
+
+/* ══ NUMÉROTATION DES ÉCRANS ══
+   Sur un format "une idée par écran", le lecteur doit savoir où il en est.
+   Le numéro est posé en CSS via une variable renseignée par le script — et
+   non dans le texte de l'élément, que le moteur de traduction remplace à
+   chaque changement de langue. */
+.kicker{position:relative;padding-left:0}
+.kicker::before{
+  content:var(--n,'');margin-right:14px;color:var(--ink-3);
+  font-variant-numeric:tabular-nums;letter-spacing:.14em;
+}
+.e-ink .kicker::before,.e-blue .kicker::before{color:rgba(255,255,255,.32)}
+
+/* ══ ÉCRANS CENTRÉS ══
+   Douze écrans sur treize étaient alignés à gauche, avec la même ossature.
+   Les écrans qui n'énoncent qu'une affirmation — la promesse, la garantie —
+   passent au centre : ils deviennent des respirations dans le défilement au
+   lieu d'une douzième variation du même bloc. */
+.centre .in{text-align:center}
+.centre .titre{max-width:22ch;margin-left:auto;margin-right:auto}
+.centre .dire{margin-left:auto;margin-right:auto}
+.centre .creneau{justify-content:center}
+@media(max-width:700px){.centre .in{text-align:left}.centre .titre,.centre .dire{margin-left:0}.centre .creneau{justify-content:flex-start}}
+
+/* ── Suggestions d'adresse ── */
+.addr-row{position:relative}
+.sugg{
+  position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:30;
+  background:#fff;border-radius:var(--r);padding:6px;
+  box-shadow:0 2px 8px rgba(14,31,53,.07),0 16px 40px rgba(14,31,53,.16);
+  display:none;max-height:262px;overflow-y:auto;
+}
+.sugg.on{display:block}
+.sugg button{display:block;width:100%;text-align:left;padding:11px 13px;border-radius:8px;
+  font-size:15px;color:var(--ink);line-height:1.35;transition:background var(--mv-1) var(--mv)}
+.sugg button:hover,.sugg button[aria-selected="true"]{background:var(--mist)}
+.sugg small{display:block;font-size:12.5px;color:var(--ink-3);margin-top:2px}
+
+/* ══ ÉCRAN CHIFFRE ══ (aucune caution, note, délai…) */
+.chiffre{display:grid;grid-template-columns:1fr 1fr;gap:var(--e-4);align-items:center}
+@media(max-width:820px){.chiffre{grid-template-columns:1fr;gap:22px}}
+
+/* ══ ÉCRAN LIVRAISON : le créneau ══ */
+.creneau{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;margin-top:34px}
+.creneau b{font-size:var(--n-3);font-weight:700;letter-spacing:-.05em;line-height:1}
+.creneau span{font-size:17px;color:rgba(255,255,255,.55)}
+
+/* ══ ÉCRAN PRIX ══ */
+.prix-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:var(--e-3);align-items:start}
+.tiers{display:grid;border-top:1px solid var(--line)}
+.tier{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}
+.tier-dur{font-size:16px;color:var(--ink-2)}
+.tier-p{font-size:21px;font-weight:700;letter-spacing:-.03em;white-space:nowrap}
+.tier-p i{font-style:normal;font-size:13.5px;font-weight:500;color:var(--ink-3)}
+.tier.best .tier-dur,.tier.best .tier-p{color:var(--blue)}
+.tier-off{font-size:13px;font-weight:700;color:var(--blue);margin-left:8px}
+@media(max-width:900px){.prix-grid{grid-template-columns:1fr;gap:28px}}
+
+/* ══ CALCULATEUR ══ */
+.calc{
+  /* Deux colonnes : réglages à gauche, prix à droite. La grille bascule en
+     une colonne sous 860px — sur téléphone le prix passe alors juste sous
+     les réglages, jamais à six écrans de distance. */
+  display:grid;grid-template-columns:1.05fr .95fr;gap:0;
+  background:var(--ink);color:#fff;border-radius:var(--r-l);overflow:hidden;
+  margin-top:26px;
+}
+.calc-g{padding:22px 26px}
+.calc-p{
+  padding:24px 26px;background:rgba(255,255,255,.05);
+  border-left:1px solid rgba(255,255,255,.1);
+  display:flex;flex-direction:column;
+}
+.calc-lbl{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:9px}
+.calc-field{margin-bottom:16px}
+
+/* ── La durée ──────────────────────────────────────────────────────────────
+   Avant : un « − » et un « + » aux deux bords opposés de la carte, avec le
+   nombre au milieu — l'œil et la main devaient traverser toute la largeur à
+   chaque jour ajouté. Les deux boutons sont maintenant côte à côte, et la
+   barre coulissante fait le gros du chemin d'un seul geste. */
+.duree{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:11px}
+.duree-n{display:flex;align-items:baseline;gap:9px}
+.duree-n b{font-size:44px;font-weight:700;line-height:.9;letter-spacing:-.045em;
+  font-variant-numeric:tabular-nums}
+.duree-n i{font-style:normal;font-size:14.5px;color:rgba(255,255,255,.6)}
+.duree-pm{display:flex;gap:8px}
+.step-btn{width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.28);
+  color:#fff;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv)}
+.step-btn:hover:not(:disabled){background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.6)}
+.step-btn:disabled{opacity:.28;cursor:not-allowed}
+
+.gliss{
+  -webkit-appearance:none;appearance:none;width:100%;height:26px;
+  background:transparent;cursor:pointer;display:block;margin:0;
+}
+.gliss::-webkit-slider-runnable-track{height:6px;border-radius:100px;
+  background:rgba(255,255,255,.18)}
+.gliss::-moz-range-track{height:6px;border-radius:100px;background:rgba(255,255,255,.18)}
+.gliss::-moz-range-progress{height:6px;border-radius:100px;background:var(--gold)}
+.gliss::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:24px;height:24px;border-radius:50%;background:#fff;margin-top:-9px;
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+  transition:transform var(--mv-1) var(--mv)}
+.gliss::-moz-range-thumb{width:24px;height:24px;border:0;border-radius:50%;background:#fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.gliss:hover::-webkit-slider-thumb{transform:scale(1.12)}
+.gliss:active::-webkit-slider-thumb{transform:scale(1.2)}
+
+/* Le prix du jour suivant. Le barème est dégressif : savoir ce que coûte le
+   jour d'après est l'information la plus utile au moment de choisir. */
+.duree-suiv{font-size:13.5px;color:rgba(255,255,255,.58);margin:1px 0 11px;line-height:1.45}
+.duree-suiv b{color:var(--gold);font-weight:700}
+.duree-suiv sup{font-size:.7em}
+
+.presets{display:flex;gap:8px;flex-wrap:wrap}
+.presets.deux{display:grid;grid-template-columns:1fr 1fr}
+.chip{border:1.5px solid rgba(255,255,255,.22);border-radius:100px;padding:9px 16px;
+  font-size:14px;font-weight:500;color:rgba(255,255,255,.78);
+  transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv),color var(--mv-1) var(--mv)}
+.chip:hover{border-color:rgba(255,255,255,.6);color:#fff}
+.chip[aria-pressed="true"]{background:#fff;border-color:#fff;color:var(--ink);font-weight:700}
+.chip-s{padding:7px 13px;font-size:13.5px;flex:1 1 auto;text-align:center}
+/* Cinq cases carrées : c'est le maximum accepté par le tunnel de paiement
+   (api/checkout.js), inutile d'en proposer plus. */
+.presets.qte{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.chip-q{padding:8px 0;font-size:16px;font-weight:700;text-align:center;border-radius:var(--r);
+  font-variant-numeric:tabular-nums}
+.qte-note{font-size:13px;line-height:1.45;color:rgba(255,255,255,.62);margin:8px 0 0}
+.qte-note b{color:var(--gold);font-weight:700}
+
+/* Le prix de l'option est écrit sur l'option. Avant, il fallait choisir puis
+   descendre lire le détail pour savoir ce que le choix coûtait. */
+.chip-p{display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+  border-radius:var(--r);padding:10px 14px;text-align:left;line-height:1.28}
+.chip-p i{font-style:normal;font-size:13px;font-weight:700;color:var(--gold)}
+.chip-p[aria-pressed="true"] i{color:var(--blue-d)}
+
+/* ── Le panneau du prix ────────────────────────────────────────────────── */
+.calc-somme{display:block;font-size:clamp(40px,4.6vw,58px);font-weight:700;
+  letter-spacing:-.05em;line-height:1;margin-bottom:10px;font-variant-numeric:tabular-nums}
+.calc-day{font-size:13.5px;color:rgba(255,255,255,.6);line-height:1.5;
+  padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,.13)}
+.calc-day b{color:#fff;font-weight:700}
+.calc-detail{margin-bottom:18px}
+.calc-line{display:flex;justify-content:space-between;gap:14px;padding:6px 0;font-size:14.5px}
+.calc-line span{color:rgba(255,255,255,.6)}
+.calc-line b{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.calc-line.off span,.calc-line.off b{opacity:.34;text-decoration:line-through}
+.calc .btn{width:100%;margin-top:auto}
+.calc-legal{font-size:12.5px;color:rgba(255,255,255,.52);margin-top:12px;line-height:1.5;text-align:center}
+
+/* Rien sur grand écran : le total y est déjà à hauteur des yeux. */
+.calc-fixe{display:none}
+
+@media(max-width:860px){
+  .calc{grid-template-columns:1fr}
+  .calc-fixe{
+    display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+    /* 68px : la hauteur de l'en-tête du site, mesurée. En dessous, le
+       rappel se glisserait derrière lui. */
+    position:sticky;top:76px;z-index:3;margin:-20px -20px 16px;padding:13px 20px;
+    background:rgba(14,31,53,.94);backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid rgba(255,255,255,.13);
+  }
+  .calc-fixe span{font-size:11.5px;font-weight:700;letter-spacing:.16em;
+    text-transform:uppercase;color:rgba(255,255,255,.52)}
+  .calc-fixe b{font-size:27px;font-weight:700;letter-spacing:-.04em;
+    font-variant-numeric:tabular-nums}
+  .calc-p{border-left:0;border-top:1px solid rgba(255,255,255,.1)}
+  .calc-g,.calc-p{padding:20px}
+  .duree-n b{font-size:38px}
+  .presets.deux{grid-template-columns:1fr}
+}
+@media(max-width:420px){
+  .chip-s{font-size:13px;padding:7px 10px}
+}
+
+/* ══ MUR DE VIDÉOS ══ */
+/* La couleur de la barre de défilement suivait le fond sombre en dur.
+   L'écran des clients est passé sur fond clair : elle y aurait été
+   invisible. Elle prend maintenant la couleur du trait courant. */
+.rail{display:flex;gap:14px;margin-top:32px;padding:2px 0 16px;overflow-x:auto;scroll-snap-type:x proximity;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--line-2, rgba(14,31,53,.22)) transparent}
+.e-ink .rail,.e-blue .rail{scrollbar-color:rgba(255,255,255,.22) transparent}
+.rail::-webkit-scrollbar{height:5px}
+.rail::-webkit-scrollbar-thumb{background:rgba(14,31,53,.22);border-radius:100px}
+.e-ink .rail::-webkit-scrollbar-thumb,.e-blue .rail::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2)}
+.vcard{position:relative;flex:0 0 auto;width:clamp(176px,17vw,206px);aspect-ratio:9/16;border-radius:var(--r-l);overflow:hidden;scroll-snap-align:start;background:#183253}
+.vcard video,.vcard>img{width:100%;height:100%;object-fit:cover}
+.vcard::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(8,18,32,.88) 0%,rgba(8,18,32,.1) 44%,transparent 66%)}
+.vplay{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;width:100%;color:#fff}
+.vplay span{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1.5px solid rgba(255,255,255,.42);display:flex;align-items:center;justify-content:center;transition:transform var(--mv-2) var(--mv),background var(--mv-2) var(--mv)}
+.vplay:hover span{transform:scale(1.08);background:rgba(255,255,255,.3)}
+.vcard.is-playing .vplay span{opacity:0}
+.vmeta{position:absolute;left:16px;right:16px;bottom:15px;z-index:3;pointer-events:none}
+/* Sans couleur déclarée, le prénom héritait de celle de l'écran : blanc
+   tant que l'écran était sombre, invisible dès qu'il est devenu clair.
+   La carte est sombre en toutes circonstances, le blanc l'est aussi. */
+.vmeta b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.015em;color:#fff}
+.vmeta span{font-size:12px;color:rgba(255,255,255,.58)}
+.vmeta .stars{font-size:11.5px;display:block;margin-bottom:4px}
+/* « background:none » laissait voir l'écran à travers : sur fond sombre
+   c'était une carte creuse, sur fond clair c'était un trou blanc. Elle
+   porte maintenant son propre fond, un ton plus clair que les autres
+   pour rester lisible comme un emplacement libre. */
+.vide{display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#132840;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
+.vide::after{display:none}   /* pas de dégradé : aucun texte à détacher */
+.vide p{font-size:13px;color:rgba(255,255,255,.5);line-height:1.55}
+.vide b{display:block;color:rgba(255,255,255,.85);font-size:14px;margin-bottom:6px}
+@media(max-width:640px){.vcard{width:min(62vw,220px)}}
+
+
+/* ══ ÉCRAN ZONE ══ */
+.villes{display:grid;grid-template-columns:repeat(2,1fr);gap:0 var(--e-4);margin-top:22px}
+/* Mesuré : en anglais la page débordait de 18px sur le côté d'un téléphone,
+   en russe de 49px — et de 89px sur une tablette de 768px. Cause :
+   l'étiquette « Livré 7j/7 » devient « Доставка 7 дней в неделю », deux fois
+   plus longue, et refusait à la fois de se réduire et de passer à la ligne.
+   Elle a maintenant le droit de descendre en dessous. Sur un grand écran,
+   où tout tient sur une ligne, rien ne change. */
+.ville{display:flex;align-items:baseline;justify-content:space-between;
+  flex-wrap:wrap;gap:4px 16px;padding:11px 0;border-bottom:1px solid var(--line)}
+.ville>div{min-width:0}
+.ville b{font-size:19px;font-weight:700;letter-spacing:-.025em}
+.ville span{font-size:13.5px;color:var(--ink-3);display:block;margin-top:2px}
+.tag{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green);flex-shrink:0}
+.tag-ask{color:var(--ink-3)}
+@media(max-width:700px){
+  .villes{grid-template-columns:1fr}
+}
+
+/* ══ ÉCRAN QUESTIONS ══ */
+.faq{max-width:720px;margin-top:36px}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{padding:20px 44px 20px 0;font-size:17.5px;font-weight:700;letter-spacing:-.022em;cursor:pointer;list-style:none;position:relative;line-height:1.4}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:'';position:absolute;right:6px;top:50%;width:10px;height:10px;border-right:2px solid var(--blue);border-bottom:2px solid var(--blue);transform:translateY(-70%) rotate(45deg);transition:transform var(--mv-2) var(--mv)}
+.faq details[open] summary::after{transform:translateY(-30%) rotate(-135deg)}
+.faq details[open] summary{color:var(--blue)}
+.faq p{padding:0 36px 24px 0;font-size:16px;color:var(--ink-2);line-height:1.68}
+
+/* ══ ÉCRAN FINAL ══ */
+.fin{text-align:center}
+.fin .titre{max-width:none;margin:0 auto}
+.fin .dire{margin:26px auto 0}
+.fin-cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:40px}
+.fin-q{border-left:2px solid var(--gold);padding:4px 0 4px 22px;margin:56px auto 0;text-align:left;max-width:560px}
+.fin-q p{font-size:16.5px;color:rgba(255,255,255,.85);margin-bottom:11px;line-height:1.6}
+.fin-q cite{font-style:normal;font-size:13.5px;color:rgba(255,255,255,.55)}
+/* Les colonnes du pied et la signature sont alignées à gauche ; la ligne
+   légale était centrée toute seule au milieu. Elle rentre dans le rang. */
+.pied{font-size:13.5px;color:rgba(255,255,255,.52);line-height:1.7;
+  margin-top:18px;text-align:left}
+.pied a{border-bottom:1px solid rgba(255,255,255,.28)}
+
+/* ══ BARRE D'INFO DU HAUT ══
+   Reprise du site officiel. Elle affiche la température réelle à Nice et le
+   délai de livraison, qui dépend de l'heure : commande avant 20h → livré
+   demain, sinon après-demain ; Express (sous 2h) seulement avant 18h.
+   Ces deux coupures viennent du code du site, elles ne sont pas inventées. */
+.infobar{
+  background:var(--ink);color:rgba(255,255,255,.82);font-size:13.5px;
+  display:none;align-items:center;justify-content:center;gap:10px;
+  padding:11px 44px 11px var(--pad);position:relative;text-align:center;
+}
+.infobar.on{display:flex}
+.infobar strong{color:#fff;font-weight:700}
+.infobar .pt{width:8px;height:8px;border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold);flex-shrink:0;animation:pulse 2s ease-in-out infinite}
+.infobar-x{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;color:rgba(255,255,255,.5);font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center}
+.infobar-x:hover{color:#fff;background:rgba(255,255,255,.1)}
+@media(max-width:560px){.infobar{font-size:12.5px;padding:10px 40px 10px 14px}.infobar .sec{display:none}}
+
+/* ══ SÉLECTEUR DE LANGUE ══
+   Même clé de mémorisation que le site officiel ('locair-lang') : un visiteur
+   qui a choisi l'anglais sur locair.fr retrouve l'anglais ici. */
+.lang{position:relative;flex-shrink:0}
+.lang-b{display:flex;align-items:center;gap:7px;padding:9px 14px;border:1.5px solid var(--line);border-radius:100px;font-size:14px;font-weight:700;transition:border-color var(--mv-1) var(--mv)}
+.lang-b:hover{border-color:var(--ink)}
+.bar.sur-fonce .lang-b{border-color:rgba(255,255,255,.28)}
+.bar.sur-fonce .lang-b:hover{border-color:rgba(255,255,255,.6)}
+.lang-b svg{opacity:.55}
+.lang-l{
+  position:absolute;top:calc(100% + 8px);right:0;min-width:184px;z-index:20;
+  background:#fff;border-radius:var(--r);padding:7px;
+  box-shadow:0 2px 8px rgba(14,31,53,.08),0 18px 44px rgba(14,31,53,.16);
+  opacity:0;visibility:hidden;transform:translateY(-6px);
+  transition:opacity var(--mv-1) var(--mv),transform var(--mv-1) var(--mv),visibility var(--mv-1) var(--mv);
+}
+.lang-l.on{opacity:1;visibility:visible;transform:none}
+.lang-l button{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border-radius:8px;font-size:15px;color:var(--ink);text-align:left;transition:background var(--mv-1) var(--mv)}
+.lang-l button:hover{background:var(--mist)}
+.lang-l button[aria-selected="true"]{font-weight:700;background:var(--blue-soft);color:var(--blue)}
+.lang-l b{font-size:16px;line-height:1}
+/* dans le menu plein écran, la même liste mais à plat */
+.menu-lang{display:flex;gap:8px;flex-wrap:wrap}
+.menu-lang button{
+  border:1.5px solid rgba(255,255,255,.2);border-radius:100px;padding:10px 17px;
+  font-size:15px;color:rgba(255,255,255,.75);transition:all var(--mv-1) var(--mv);
+}
+.menu-lang button:hover{border-color:rgba(255,255,255,.55);color:#fff}
+.menu-lang button[aria-selected="true"]{background:#fff;border-color:#fff;color:var(--ink);font-weight:700}
+@media(max-width:1000px){.bar .lang{display:none}}
+
+/* ══ MENU ══
+   La version B n'avait aucun menu sur téléphone : les espaces client et
+   ambassadeur étaient donc inaccessibles. C'est le manque le plus grave. */
+.burger{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background var(--mv-1) var(--mv)}
+.burger:hover{background:rgba(0,0,0,.06)}
+.bar.sur-fonce .burger:hover{background:rgba(255,255,255,.12)}
+.burger span{display:block;width:19px;height:1.8px;background:currentColor;position:relative}
+.burger span::before,.burger span::after{content:'';position:absolute;left:0;width:19px;height:1.8px;background:currentColor}
+.burger span::before{top:-6px}
+.burger span::after{top:6px}
+.menu{
+  position:fixed;inset:0;z-index:960;background:var(--ink);color:#fff;
+  display:flex;flex-direction:column;padding:24px var(--pad) max(28px,env(safe-area-inset-bottom));
+  opacity:0;visibility:hidden;transition:opacity var(--mv-2) var(--mv),visibility var(--mv-2) var(--mv);
+  overflow-y:auto;
+}
+.menu.on{opacity:1;visibility:visible}
+.menu-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:34px}
+.menu-top .logo{color:#fff}
+.menu-x{width:44px;height:44px;border-radius:50%;color:rgba(255,255,255,.7);font-size:26px;line-height:1;display:flex;align-items:center;justify-content:center}
+.menu-x:hover{background:rgba(255,255,255,.12);color:#fff}
+.menu-grp{margin-bottom:30px}
+/* Mesuré : .35 de blanc sur le marine ne donne que 3,17 pour 1, sous le
+   minimum de 4,5 exigé pour du petit texte. .52 donne 5,37. */
+.menu-t{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:14px}
+.menu a.ml{display:block;font-size:23px;font-weight:700;letter-spacing:-.03em;padding:9px 0;transition:color var(--mv-1) var(--mv)}
+.menu a.ml:hover{color:var(--gold)}
+.menu a.ms{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:16.5px;font-weight:500;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.11);transition:color var(--mv-1) var(--mv)}
+.menu a.ms:hover{color:var(--gold)}
+/* 3,73 pour 1 auparavant : les descriptions du menu étaient sous le seuil. */
+.menu a.ms i{font-style:normal;font-size:13px;color:rgba(255,255,255,.55)}
+.menu-cta{margin-top:auto;padding-top:26px;display:grid;gap:10px}
+.menu-cta .btn{width:100%}
+
+/* ══ ÉCRAN ESPACES ══ */
+.portes{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:38px}
+.porte{
+  background:var(--ink);color:#fff;border-radius:var(--r-l);padding:var(--e-1);
+  display:flex;flex-direction:column;transition:transform var(--mv-2) var(--mv);
+}
+.porte:hover{transform:translateY(-3px)}
+.porte.or{background:var(--gold);color:var(--ink)}
+.porte-k{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
+.porte.or .porte-k{color:rgba(14,31,53,.82)}
+.porte h3{font-size:var(--t-5);letter-spacing:-.03em;margin-bottom:12px;line-height:1.15}
+.porte>p{font-size:15px;color:rgba(255,255,255,.6);line-height:1.55;margin-bottom:20px}
+.porte.or>p{color:rgba(14,31,53,.84)}
+.porte ul{list-style:none;display:grid;gap:9px;margin-bottom:26px}
+.porte li{font-size:14.5px;color:rgba(255,255,255,.78);display:flex;gap:10px;line-height:1.5}
+.porte li::before{content:'→';color:var(--gold);flex-shrink:0}
+.porte.or li{color:rgba(14,31,53,.85)}
+.porte.or li::before{color:rgba(14,31,53,.55)}
+.porte .btn{margin-top:auto;width:100%}
+@media(max-width:820px){.portes{grid-template-columns:1fr}}
+
+/* ══ PIED DE PAGE ══ */
+.pied-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:30px;margin-top:52px;padding-top:36px;border-top:1px solid rgba(255,255,255,.14);text-align:left}
+.pied-grid h4{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:14px}
+.pied-grid li{list-style:none;margin-bottom:9px}
+.pied-grid a{font-size:14.5px;color:rgba(255,255,255,.6);transition:color var(--mv-1) var(--mv)}
+.pied-grid a:hover{color:#fff}
+@media(max-width:880px){.pied-grid{grid-template-columns:repeat(2,1fr);gap:26px}}
+@media(max-width:520px){.pied-grid{grid-template-columns:1fr;gap:24px}}
+.pied-grid li{font-size:14.5px;color:rgba(255,255,255,.6);line-height:1.5}
+
+/* ══ CONSENTEMENT AUX COOKIES ══
+   Obligatoire avant tout dépôt de traceur publicitaire (CNIL). Refuser doit
+   être aussi simple qu'accepter : les deux boutons ont donc le même poids
+   visuel. Même clé de stockage que le site officiel, un choix fait là-bas
+   vaut ici. */
+.cook{
+  position:fixed;left:14px;right:14px;bottom:14px;z-index:980;
+  background:var(--ink);color:rgba(255,255,255,.82);border-radius:var(--r-l);
+  padding:20px 22px;max-width:520px;
+  box-shadow:0 8px 40px rgba(0,0,0,.28);
+  display:none;
+}
+.cook.on{display:block}
+.cook p{font-size:14.5px;line-height:1.55;margin-bottom:16px}
+.cook a{color:#fff;border-bottom:1px solid rgba(255,255,255,.4)}
+.cook-b{display:flex;gap:10px;flex-wrap:wrap}
+.cook-b button{
+  flex:1;min-width:120px;padding:12px 18px;border-radius:100px;
+  font-size:15px;font-weight:700;transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
+}
+.cook-oui{background:#fff;color:var(--ink)}
+.cook-oui:hover{background:rgba(255,255,255,.86)}
+.cook-non{border:1.5px solid rgba(255,255,255,.3);color:#fff}
+.cook-non:hover{border-color:rgba(255,255,255,.65)}
+@media(max-width:900px){.cook{bottom:calc(14px + 76px)}}
+
+/* ══ BARRE MOBILE ══ */
+.mbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:950;display:none;
+  background:rgba(255,255,255,.97);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);padding:11px var(--pad) calc(11px + env(safe-area-inset-bottom));
+  gap:10px;align-items:center;
+}
+.mbar .btn{flex:1;padding:15px 18px;font-size:15.5px}
+.mbar-tel{width:50px;height:50px;border-radius:50%;background:var(--mist);color:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+@media(max-width:900px){
+  .mbar{display:flex}
+  .ecran{padding-bottom:calc(76px + 76px)}   /* la barre ne doit rien recouvrir */
+}
