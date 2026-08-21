@@ -4,7 +4,7 @@ const { resolveCityByAddress } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays, todayParis } = require('./_lib/dates');
 const { calcTieredPrice, getPricingConfig,
-        getProPricing, getProForfaitCents, isPro } = require('./_lib/pricing');
+        getProPricing, getProForfaitCents, isOffrePro } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { resolvePromotion, recordPromotionUsage } = require('./_lib/promotions');
 const { getMatchingForfait } = require('./_lib/forfaits');
@@ -66,10 +66,16 @@ module.exports = async (req, res) => {
   // Deux offres, deux grilles. Un rafraîchisseur adiabatique loué à un
   // restaurant n'a rien à voir avec un climatiseur mobile loué à un
   // particulier : ni le tarif, ni la durée minimale, ni les frais.
+  //
+  // Le test porte sur l'OFFRE, pas sur type_client : le tunnel des
+  // particuliers envoie « Professionnel » dès qu'un client veut une facture
+  // à sa société, et ce client loue quand même un climatiseur mobile au
+  // tarif particulier. Voir isOffrePro() dans _lib/pricing.js.
+  //
   // getProPricing() retombe sur des valeurs par défaut tant que les colonnes
   // pro_* n'existent pas en base — le code peut donc être déployé AVANT la
   // migration sans rien casser.
-  const pro     = isPro(data.type_client);
+  const pro     = isOffrePro(data);
   const grille  = pro ? getProPricing(pricing) : pricing;
 
   const duree = forfait ? forfait.duree_jours : Math.min(90, Math.max(grille.duree_min_jours, rawDuree));
