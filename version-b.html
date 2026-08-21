@@ -605,21 +605,21 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   background:var(--ink);color:#fff;border-radius:var(--r-l);overflow:hidden;
   margin-top:26px;
 }
-.calc-g{padding:24px 26px}
+.calc-g{padding:22px 26px}
 .calc-p{
   padding:24px 26px;background:rgba(255,255,255,.05);
   border-left:1px solid rgba(255,255,255,.1);
   display:flex;flex-direction:column;
 }
-.calc-lbl{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:12px}
-.calc-field{margin-bottom:22px}
+.calc-lbl{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:9px}
+.calc-field{margin-bottom:16px}
 
 /* ── La durée ──────────────────────────────────────────────────────────────
    Avant : un « − » et un « + » aux deux bords opposés de la carte, avec le
    nombre au milieu — l'œil et la main devaient traverser toute la largeur à
    chaque jour ajouté. Les deux boutons sont maintenant côte à côte, et la
    barre coulissante fait le gros du chemin d'un seul geste. */
-.duree{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px}
+.duree{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:11px}
 .duree-n{display:flex;align-items:baseline;gap:9px}
 .duree-n b{font-size:44px;font-weight:700;line-height:.9;letter-spacing:-.045em;
   font-variant-numeric:tabular-nums}
@@ -650,7 +650,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* Le prix du jour suivant. Le barème est dégressif : savoir ce que coûte le
    jour d'après est l'information la plus utile au moment de choisir. */
-.duree-suiv{font-size:13.5px;color:rgba(255,255,255,.58);margin:2px 0 14px;line-height:1.5}
+.duree-suiv{font-size:13.5px;color:rgba(255,255,255,.58);margin:1px 0 11px;line-height:1.45}
 .duree-suiv b{color:var(--gold);font-weight:700}
 .duree-suiv sup{font-size:.7em}
 
@@ -662,11 +662,18 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .chip:hover{border-color:rgba(255,255,255,.6);color:#fff}
 .chip[aria-pressed="true"]{background:#fff;border-color:#fff;color:var(--ink);font-weight:700}
 .chip-s{padding:7px 13px;font-size:13.5px;flex:1 1 auto;text-align:center}
+/* Cinq cases carrées : c'est le maximum accepté par le tunnel de paiement
+   (api/checkout.js), inutile d'en proposer plus. */
+.presets.qte{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.chip-q{padding:8px 0;font-size:16px;font-weight:700;text-align:center;border-radius:var(--r);
+  font-variant-numeric:tabular-nums}
+.qte-note{font-size:13px;line-height:1.45;color:rgba(255,255,255,.62);margin:8px 0 0}
+.qte-note b{color:var(--gold);font-weight:700}
 
 /* Le prix de l'option est écrit sur l'option. Avant, il fallait choisir puis
    descendre lire le détail pour savoir ce que le choix coûtait. */
-.chip-p{display:flex;flex-direction:column;align-items:flex-start;gap:3px;
-  border-radius:var(--r);padding:12px 14px;text-align:left;line-height:1.3}
+.chip-p{display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+  border-radius:var(--r);padding:10px 14px;text-align:left;line-height:1.28}
 .chip-p i{font-style:normal;font-size:13px;font-weight:700;color:var(--gold)}
 .chip-p[aria-pressed="true"] i{color:var(--blue-d)}
 
@@ -1253,6 +1260,18 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
             <button class="chip chip-s" type="button" data-j="21" aria-pressed="false" data-t="e5.s3">3 semaines</button>
             <button class="chip chip-s" type="button" data-j="30" aria-pressed="false" data-t="e5.m1">1 mois</button>
           </div>
+        </div>
+
+        <div class="calc-field">
+          <p class="calc-lbl" id="lbl-qte" data-t="e5.combien">Combien d'appareils&nbsp;?</p>
+          <div class="presets qte" id="c-qte" role="group" aria-labelledby="lbl-qte">
+            <button class="chip chip-q" type="button" data-q="1" aria-pressed="true">1</button>
+            <button class="chip chip-q" type="button" data-q="2" aria-pressed="false">2</button>
+            <button class="chip chip-q" type="button" data-q="3" aria-pressed="false">3</button>
+            <button class="chip chip-q" type="button" data-q="4" aria-pressed="false">4</button>
+            <button class="chip chip-q" type="button" data-q="5" aria-pressed="false">5</button>
+          </div>
+          <p class="qte-note" id="c-qte-note" hidden data-t="e5.qteNote">La livraison et la pose ne sont comptées qu'une fois, quel que soit le nombre d'appareils.</p>
         </div>
 
         <div class="calc-field">
@@ -2172,6 +2191,12 @@ Object.assign(T, {
   'e5.s2'      : {fr:"2 semaines", en:"2 weeks", zh:"2周", ru:"2 недели"},
   'e5.s3'      : {fr:"3 semaines", en:"3 weeks", zh:"3周", ru:"3 недели"},
   'e5.m1'      : {fr:"1 mois", en:"1 month", zh:"1个月", ru:"1 месяц"},
+  'e5.combien' : {fr:"Combien d'appareils ?", en:"How many units?",
+                  zh:"需要几台？", ru:"Сколько аппаратов?"},
+  'e5.qteNote' : {fr:"La livraison et la pose ne sont comptées qu'une fois, quel que soit le nombre d'appareils.",
+                  en:"Delivery and installation are charged once, however many units you take.",
+                  zh:"无论租几台，配送费和安装费都只收一次。",
+                  ru:"Доставка и установка считаются один раз, сколько бы аппаратов вы ни взяли."},
   'e5.ou'      : {fr:"Où devons-nous livrer ?", en:"Where should we deliver?", zh:"送到哪里？", ru:"Куда доставить?"},
   'e5.zone1'   : {fr:"Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer",
                   en:"Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer",
@@ -2500,7 +2525,11 @@ Object.assign(T, {
             palier2_max_jours:14, palier2_tarif_cents:1000,
             palier3_max_jours:21, palier3_tarif_cents:900,
             palier4_tarif_cents:800 };
-  var INSTALL = 80, MAX_J = 90, jours = 14, zone = 60, pose = 1;
+  /* MAX_Q = 5 : c'est la limite du tunnel de paiement (api/checkout.js,
+     Math.min(5, ...)). Proposer plus ici ferait une promesse que la
+     caisse refuserait. */
+  var INSTALL = 80, MAX_J = 90, MAX_Q = 5;
+  var jours = 14, zone = 60, pose = 1, qte = 1;
 
   /* Les libellés recomposés ici passent par le dictionnaire, et le bloc est
      réécrit à chaque changement de langue. */
@@ -2525,10 +2554,16 @@ Object.assign(T, {
       {minimumFractionDigits:0, maximumFractionDigits:2}) + ' €';
   }
   function render(){
-    var loc = calcPrice(jours), inst = pose ? INSTALL : 0, total = loc + zone + inst;
+    /* Règle reprise à l'identique du tunnel (api/checkout.js) :
+         location × quantité + installation + livraison
+       La livraison et la pose NE sont PAS multipliées — un seul
+       déplacement, un seul technicien, quel que soit le nombre. */
+    var loc = calcPrice(jours) * qte, inst = pose ? INSTALL : 0,
+        total = loc + zone + inst;
     document.getElementById('c-jours').textContent  = jours;
     document.getElementById('c-l-loc').textContent  =
-      mot('c.location') + ', ' + jours + ' ' + mot('c.jours');
+      mot('c.location') + ', ' + jours + ' ' + mot('c.jours')
+      + (qte > 1 ? ' × ' + qte : '');
     document.getElementById('c-v-loc').textContent  = eur(loc);
     document.getElementById('c-v-liv').textContent  = eur(zone);
     document.getElementById('c-v-pose').textContent = pose ? eur(INSTALL) : '0 €';
@@ -2544,6 +2579,10 @@ Object.assign(T, {
     document.querySelectorAll('#c-presets .chip').forEach(function(c){
       c.setAttribute('aria-pressed', String(+c.dataset.j === jours));
     });
+    /* La note n'apparaît que quand elle sert : à un seul appareil, elle
+       n'apprend rien. À partir de deux, c'est l'argument principal. */
+    var note = document.getElementById('c-qte-note');
+    if(note) note.hidden = qte < 2;
 
     /* La barre coulissante suit le nombre, d'où qu'il vienne (boutons,
        raccourcis, clavier), et annonce à voix haute une valeur lisible :
@@ -2573,7 +2612,7 @@ Object.assign(T, {
       if(jours >= MAX_J){
         suiv.textContent = '';
       } else {
-        var delta = calcPrice(jours + 1) - calcPrice(jours);
+        var delta = (calcPrice(jours + 1) - calcPrice(jours)) * qte;
         suiv.innerHTML = mot('c.suivAv') + ' ' + (jours + 1) + mot('c.suivE')
                        + ' ' + mot('c.suivAp') + ' <b>' + eur(delta) + '</b>.';
       }
@@ -2590,6 +2629,11 @@ Object.assign(T, {
   if(gliss) gliss.addEventListener('input', function(){ jours = +this.value; render(); });
   document.getElementById('c-presets').addEventListener('click', function(e){
     var c=e.target.closest('.chip'); if(!c) return; jours=+c.dataset.j; render();
+  });
+  document.getElementById('c-qte').addEventListener('click', function(e){
+    var c = e.target.closest('.chip'); if(!c) return;
+    qte = Math.min(MAX_Q, Math.max(1, +c.dataset.q));
+    press('#c-qte','q',qte); render();
   });
   document.getElementById('c-zone').addEventListener('click', function(e){
     var c=e.target.closest('.chip'); if(!c) return; zone=+c.dataset.z; press('#c-zone','z',zone); render();
