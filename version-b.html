@@ -334,37 +334,31 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .etat.complet .etat-pt{background:#B8860B;animation:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media(prefers-reduced-motion:reduce){.etat-pt{animation:none}}
-/* ── La ville suivante ─────────────────────────────────────────────────────
-   Un troisième état, à côté de « livré 7j/7 » et « sur demande » : ouvert
-   bientôt, avec une date. C'est ce qui rend l'expansion croyable. */
-.ouverture{
-  display:flex;align-items:flex-start;gap:13px;margin-top:18px;
-  padding:15px 18px;border-radius:var(--r-l);
+/* ── Les prochaines ouvertures ─────────────────────────────────────────────
+   Un troisième état, à côté de « livré 7j/7 » et « sur demande » : bientôt.
+   En ligne plutôt qu'empilées — trois villes tiennent alors dans la hauteur
+   qu'en prenait une seule. */
+.ouvertures{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.ouv-t{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink-3);margin:0 0 11px}
+.ouv-l{display:flex;flex-wrap:wrap;gap:9px}
+.ouv{
+  display:flex;align-items:baseline;gap:9px;
+  padding:9px 15px;border-radius:100px;
   background:rgba(201,162,39,.10);border:1px solid rgba(201,162,39,.34);
 }
-.ouverture .gtt{flex-shrink:0;width:11px;height:11px;margin-top:6px;
+.ouv .gtt{flex-shrink:0;width:9px;height:9px;align-self:center;
   border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold-txt)}
-.ouverture>div{flex:1 1 auto;min-width:0}
-.ouverture b{display:block;font-size:17.5px;letter-spacing:-.02em;color:var(--ink);margin-bottom:4px}
-.ouverture span{font-size:14.5px;line-height:1.5;color:var(--ink-2)}
-.ouverture .btn{flex-shrink:0;margin-top:2px}
-@media(max-width:640px){
-  .ouverture{flex-wrap:wrap;padding:16px 17px}
-  .ouverture .btn{width:100%;margin-top:12px;text-align:center;justify-content:center}
+.ouv b{font-size:15.5px;font-weight:700;letter-spacing:-.015em;color:var(--ink)}
+.ouv em{font-style:normal;font-size:13.5px;color:var(--ink-2)}
+.ouv.lien em{color:var(--gold-txt);font-weight:700}
+.ouv.lien{transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv)}
+.ouv.lien:hover{background:rgba(201,162,39,.18);border-color:var(--gold-txt)}
+@media(max-width:520px){
+  .ouv-l{flex-direction:column}
+  .ouv{justify-content:flex-start}
 }
 
-/* ── La signature de fermeture ─────────────────────────────────────────────
-   Le site se terminait sur un numéro de SIRET. Il se termine maintenant sur
-   son nom et sur sa promesse — celle-là même que l'engagement garantit. */
-.signature{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
-  margin-top:var(--e-2);padding-top:24px;border-top:1px solid rgba(255,255,255,.14)}
-.signature-n{font-size:27px;font-weight:700;letter-spacing:-.04em;color:#fff}
-.signature-b{font-size:17px;color:var(--gold);letter-spacing:-.01em}
-@media(max-width:520px){
-  .signature{gap:6px}
-  .signature-n{font-size:24px}
-  .signature-b{font-size:16px}
-}
 /* ── La liste d'attente des villes ─────────────────────────────────────────
    Le visiteur d'une autre ville n'avait rien à faire ici : il repartait.
    Maintenant il dit sa ville, et cette demande sert vraiment — elle décide
@@ -1439,13 +1433,17 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
          tout en bas du pied de page, sous les mentions légales : c'est
          pourtant la seule preuve que « la liste s'allonge » n'est pas un
          slogan. Elle remonte ici, à sa place. -->
-    <div class="ouverture rv">
-      <span class="gtt" aria-hidden="true"></span>
-      <div>
-        <b data-t="e9.ouvT">La Réunion</b>
-        <span data-t="e9.ouvD">Ouverture en novembre 2026. Livraison et installation, sans caution, comme à Nice.</span>
+    <div class="ouvertures rv">
+      <p class="ouv-t" data-t="e9.ouvT">Prochaines ouvertures</p>
+      <div class="ouv-l">
+        <!-- Deux villes sans date, une avec. On n'invente pas de calendrier :
+             une ville annoncée qui n'ouvre pas coûte plus cher que le silence.
+             La Réunion garde sa date parce qu'elle est déjà publiée, avec sa
+             propre page. -->
+        <span class="ouv"><i class="gtt" aria-hidden="true"></i><b data-t="e9.lyon">Lyon</b><em data-t="e9.prep">en préparation</em></span>
+        <span class="ouv"><i class="gtt" aria-hidden="true"></i><b data-t="e9.geneve">Genève</b><em data-t="e9.prep">en préparation</em></span>
+        <a class="ouv lien" href="/reunion"><i class="gtt" aria-hidden="true"></i><b data-t="e9.reunion">La Réunion</b><em data-t="e9.nov">novembre 2026 →</em></a>
       </div>
-      <a class="btn btn-out btn-s" href="/reunion" data-t="e9.ouvB">Rejoindre la liste →</a>
     </div>
 
     <!-- La liste d'attente. Pas de promesse de date : le visiteur dit sa
@@ -1456,7 +1454,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
       <label class="attente-l" for="ville-a" data-t="e9.attenteL">Votre ville n'est pas dans la liste&nbsp;?</label>
       <div class="attente-row">
         <input id="ville-a" class="attente-i" type="text" autocomplete="address-level2"
-               data-tp="e9.attenteP" placeholder="Marseille, Lyon, Bordeaux…">
+               data-tp="e9.attenteP" placeholder="Marseille, Toulouse, Bordeaux…">
         <button class="btn btn-1 btn-s attente-b" type="button" id="ville-b" data-t="e9.attenteB">Nous le dire</button>
       </div>
       <p class="attente-m" data-t="e9.attenteM">Nous ouvrons les villes dans l'ordre des demandes. Merci de nous aider à choisir la prochaine.</p>
@@ -2093,20 +2091,25 @@ Object.assign(T, {
                 en:"We open a city when we can keep the morning delivery window there — not before. These are the ones where we can.",
                 zh:"只有当我们能在一座城市守住上午的送达时段时，才会开通它——绝不提前。以下是已经做到的城市。",
                 ru:"Мы открываем город тогда, когда можем выдержать там утреннее окно доставки, — и не раньше. Вот те, где это уже так."},
-  'e9.ouvT'   : {fr:"La Réunion", en:"Réunion", zh:"留尼汪岛", ru:"Реюньон"},
-  'e9.ouvD'   : {fr:"Ouverture en novembre 2026. Livraison et installation, sans caution, comme à Nice.",
-                 en:"Opening November 2026. Delivery and installation, no deposit, just like in Nice.",
-                 zh:"2026年11月开业。配送加安装，无需押金，和尼斯一样。",
-                 ru:"Открытие в ноябре 2026 года. Доставка и установка, без залога — как в Ницце."},
-  'e9.ouvB'   : {fr:"Rejoindre la liste →", en:"Join the list →", zh:"加入名单 →", ru:"В список →"},
+  'e9.ouvT'   : {fr:"Prochaines ouvertures",
+                 en:"Opening next",
+                 zh:"即将开通",
+                 ru:"Скоро открываем"},
+  /* Villes annoncées, pas adresses à saisir : contrairement aux communes de
+     la zone de livraison, on les écrit dans la langue du lecteur. */
+  'e9.lyon'   : {fr:"Lyon", en:"Lyon", zh:"里昂", ru:"Лион"},
+  'e9.geneve' : {fr:"Genève", en:"Geneva", zh:"日内瓦", ru:"Женева"},
+  'e9.reunion': {fr:"La Réunion", en:"Réunion", zh:"留尼汪岛", ru:"Реюньон"},
+  'e9.prep'   : {fr:"en préparation", en:"in preparation", zh:"筹备中", ru:"в подготовке"},
+  'e9.nov'    : {fr:"novembre 2026 →", en:"November 2026 →", zh:"2026年11月 →", ru:"ноябрь 2026 →"},
   'e9.attenteL': {fr:"Votre ville n'est pas dans la liste ?",
                   en:"Your city isn't on the list?",
                   zh:"名单里没有你的城市？",
                   ru:"Вашего города нет в списке?"},
-  'e9.attenteP': {fr:"Marseille, Lyon, Bordeaux…",
-                  en:"Marseille, Lyon, Bordeaux…",
-                  zh:"马赛、里昂、波尔多……",
-                  ru:"Марсель, Лион, Бордо…"},
+  'e9.attenteP'  : {fr:"Marseille, Toulouse, Bordeaux…",
+                    en:"Marseille, Toulouse, Bordeaux…",
+                    zh:"马赛、图卢兹、波尔多……",
+                    ru:"Марсель, Тулуза, Бордо…"},
   'e9.attenteB': {fr:"Nous le dire", en:"Tell us", zh:"告诉我们", ru:"Сообщить нам"},
   'e9.attenteM': {fr:"Nous ouvrons les villes dans l'ordre des demandes. Merci de nous aider à choisir la prochaine.",
                   en:"We open cities in the order they are asked for. Thank you for helping us pick the next one.",
