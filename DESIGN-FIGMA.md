@@ -110,3 +110,26 @@ Si le rendu convient, l'étape suivante est de reporter ces styles dans
 1. Tu modifies dans Figma (couleurs, typos, espacements, mise en page).
 2. On relit le fichier Figma et on reporte les changements dans
    `index.html` (les variables CSS en haut du fichier, autour de la ligne 178).
+
+
+## Version B — communication retravaillée
+
+Direction retenue par le propriétaire : la **version B** (`version-b.html`),
+« une idée par écran ». La mise en page n'a pas bougé — seuls les textes ont
+été réécrits, dans un ton **service, efficace et sympa**.
+
+Le principe de la réécriture :
+- on parle de ce qu'**on fait pour le client**, pas de ce qu'on vend
+  (« quelqu'un sonne chez vous » → « on sonne chez vous »)
+- on remplace les formules défensives par des formules d'accueil
+  (« C'est écrit dans votre contrat, pas dans un slogan » → « C'est écrit
+  noir sur blanc dans votre contrat »)
+- les questions sont posées comme au téléphone (« Qui pose l'appareil ? » →
+  « On vous la pose ? », « Un technicien vient » → « Oui, venez la poser »)
+- phrases courtes, aucune formule commerciale
+
+46 textes réécrits, du titre d'accueil au pied de page.
+
+Note : la photo du hero utilise le chemin absolu `/hero-clim.jpg`. Elle
+s'affiche correctement sur le serveur ; elle apparaît vide uniquement si on
+ouvre le fichier en local depuis le disque.
