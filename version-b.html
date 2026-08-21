@@ -597,33 +597,119 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 @media(max-width:900px){.prix-grid{grid-template-columns:1fr;gap:28px}}
 
 /* ══ CALCULATEUR ══ */
-.calc{background:var(--ink);color:#fff;border-radius:var(--r-l);padding:var(--e-1)}
-/* 4,36 pour 1 : il s'en fallait de peu, mais un seuil ne s'arrondit pas. */
-.calc-lbl{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:13px}
-.calc-field{margin-bottom:20px}
-.step-row{display:flex;align-items:center;gap:14px;margin-bottom:13px}
-.step-btn{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(255,255,255,.24);color:#fff;font-size:21px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv)}
-.step-btn:hover:not(:disabled){background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.5)}
+.calc{
+  /* Deux colonnes : réglages à gauche, prix à droite. La grille bascule en
+     une colonne sous 860px — sur téléphone le prix passe alors juste sous
+     les réglages, jamais à six écrans de distance. */
+  display:grid;grid-template-columns:1.05fr .95fr;gap:0;
+  background:var(--ink);color:#fff;border-radius:var(--r-l);overflow:hidden;
+  margin-top:26px;
+}
+.calc-g{padding:24px 26px}
+.calc-p{
+  padding:24px 26px;background:rgba(255,255,255,.05);
+  border-left:1px solid rgba(255,255,255,.1);
+  display:flex;flex-direction:column;
+}
+.calc-lbl{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:12px}
+.calc-field{margin-bottom:22px}
+
+/* ── La durée ──────────────────────────────────────────────────────────────
+   Avant : un « − » et un « + » aux deux bords opposés de la carte, avec le
+   nombre au milieu — l'œil et la main devaient traverser toute la largeur à
+   chaque jour ajouté. Les deux boutons sont maintenant côte à côte, et la
+   barre coulissante fait le gros du chemin d'un seul geste. */
+.duree{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px}
+.duree-n{display:flex;align-items:baseline;gap:9px}
+.duree-n b{font-size:44px;font-weight:700;line-height:.9;letter-spacing:-.045em;
+  font-variant-numeric:tabular-nums}
+.duree-n i{font-style:normal;font-size:14.5px;color:rgba(255,255,255,.6)}
+.duree-pm{display:flex;gap:8px}
+.step-btn{width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.28);
+  color:#fff;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv)}
+.step-btn:hover:not(:disabled){background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.6)}
 .step-btn:disabled{opacity:.28;cursor:not-allowed}
-.step-val{flex:1;text-align:center}
-.step-val b{display:block;font-size:34px;font-weight:700;line-height:1;letter-spacing:-.04em}
-.step-val span{font-size:13px;color:rgba(255,255,255,.55)}
+
+.gliss{
+  -webkit-appearance:none;appearance:none;width:100%;height:26px;
+  background:transparent;cursor:pointer;display:block;margin:0;
+}
+.gliss::-webkit-slider-runnable-track{height:6px;border-radius:100px;
+  background:rgba(255,255,255,.18)}
+.gliss::-moz-range-track{height:6px;border-radius:100px;background:rgba(255,255,255,.18)}
+.gliss::-moz-range-progress{height:6px;border-radius:100px;background:var(--gold)}
+.gliss::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
+  width:24px;height:24px;border-radius:50%;background:#fff;margin-top:-9px;
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+  transition:transform var(--mv-1) var(--mv)}
+.gliss::-moz-range-thumb{width:24px;height:24px;border:0;border-radius:50%;background:#fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.4)}
+.gliss:hover::-webkit-slider-thumb{transform:scale(1.12)}
+.gliss:active::-webkit-slider-thumb{transform:scale(1.2)}
+
+/* Le prix du jour suivant. Le barème est dégressif : savoir ce que coûte le
+   jour d'après est l'information la plus utile au moment de choisir. */
+.duree-suiv{font-size:13.5px;color:rgba(255,255,255,.58);margin:2px 0 14px;line-height:1.5}
+.duree-suiv b{color:var(--gold);font-weight:700}
+.duree-suiv sup{font-size:.7em}
+
 .presets{display:flex;gap:8px;flex-wrap:wrap}
-.chip{border:1.5px solid rgba(255,255,255,.2);border-radius:100px;padding:9px 16px;font-size:14px;font-weight:500;color:rgba(255,255,255,.75);transition:all var(--mv-1) var(--mv)}
-.chip:hover{border-color:rgba(255,255,255,.55);color:#fff}
+.presets.deux{display:grid;grid-template-columns:1fr 1fr}
+.chip{border:1.5px solid rgba(255,255,255,.22);border-radius:100px;padding:9px 16px;
+  font-size:14px;font-weight:500;color:rgba(255,255,255,.78);
+  transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv),color var(--mv-1) var(--mv)}
+.chip:hover{border-color:rgba(255,255,255,.6);color:#fff}
 .chip[aria-pressed="true"]{background:#fff;border-color:#fff;color:var(--ink);font-weight:700}
-.calc-sep{height:1px;background:rgba(255,255,255,.13);margin:22px 0 18px}
-.calc-line{display:flex;justify-content:space-between;gap:16px;padding:8px 0;font-size:15px}
-.calc-line span{color:rgba(255,255,255,.58)}
-.calc-line b{font-weight:700;white-space:nowrap}
-.calc-line.off span,.calc-line.off b{opacity:.3;text-decoration:line-through}
-.calc-total{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:18px 0 6px;padding-top:18px;border-top:1px solid rgba(255,255,255,.13)}
-.calc-total span{font-size:15px;color:rgba(255,255,255,.58)}
-.calc-total b{font-size:var(--n-3);font-weight:700;letter-spacing:-.045em;line-height:1}
-.calc-day{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:22px;line-height:1.5}
+.chip-s{padding:7px 13px;font-size:13.5px;flex:1 1 auto;text-align:center}
+
+/* Le prix de l'option est écrit sur l'option. Avant, il fallait choisir puis
+   descendre lire le détail pour savoir ce que le choix coûtait. */
+.chip-p{display:flex;flex-direction:column;align-items:flex-start;gap:3px;
+  border-radius:var(--r);padding:12px 14px;text-align:left;line-height:1.3}
+.chip-p i{font-style:normal;font-size:13px;font-weight:700;color:var(--gold)}
+.chip-p[aria-pressed="true"] i{color:var(--blue-d)}
+
+/* ── Le panneau du prix ────────────────────────────────────────────────── */
+.calc-somme{display:block;font-size:clamp(40px,4.6vw,58px);font-weight:700;
+  letter-spacing:-.05em;line-height:1;margin-bottom:10px;font-variant-numeric:tabular-nums}
+.calc-day{font-size:13.5px;color:rgba(255,255,255,.6);line-height:1.5;
+  padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,.13)}
 .calc-day b{color:#fff;font-weight:700}
-.calc .btn{width:100%}
-.calc-legal{font-size:12.5px;color:rgba(255,255,255,.52);margin-top:14px;line-height:1.5;text-align:center}
+.calc-detail{margin-bottom:18px}
+.calc-line{display:flex;justify-content:space-between;gap:14px;padding:6px 0;font-size:14.5px}
+.calc-line span{color:rgba(255,255,255,.6)}
+.calc-line b{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.calc-line.off span,.calc-line.off b{opacity:.34;text-decoration:line-through}
+.calc .btn{width:100%;margin-top:auto}
+.calc-legal{font-size:12.5px;color:rgba(255,255,255,.52);margin-top:12px;line-height:1.5;text-align:center}
+
+/* Rien sur grand écran : le total y est déjà à hauteur des yeux. */
+.calc-fixe{display:none}
+
+@media(max-width:860px){
+  .calc{grid-template-columns:1fr}
+  .calc-fixe{
+    display:flex;align-items:baseline;justify-content:space-between;gap:14px;
+    /* 68px : la hauteur de l'en-tête du site, mesurée. En dessous, le
+       rappel se glisserait derrière lui. */
+    position:sticky;top:76px;z-index:3;margin:-20px -20px 16px;padding:13px 20px;
+    background:rgba(14,31,53,.94);backdrop-filter:blur(10px);
+    -webkit-backdrop-filter:blur(10px);
+    border-bottom:1px solid rgba(255,255,255,.13);
+  }
+  .calc-fixe span{font-size:11.5px;font-weight:700;letter-spacing:.16em;
+    text-transform:uppercase;color:rgba(255,255,255,.52)}
+  .calc-fixe b{font-size:27px;font-weight:700;letter-spacing:-.04em;
+    font-variant-numeric:tabular-nums}
+  .calc-p{border-left:0;border-top:1px solid rgba(255,255,255,.1)}
+  .calc-g,.calc-p{padding:20px}
+  .duree-n b{font-size:38px}
+  .presets.deux{grid-template-columns:1fr}
+}
+@media(max-width:420px){
+  .chip-s{font-size:13px;padding:7px 10px}
+}
 
 /* ══ MUR DE VIDÉOS ══ */
 .rail{display:flex;gap:14px;margin-top:32px;padding:2px 0 16px;overflow-x:auto;scroll-snap-type:x proximity;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent}
@@ -1130,45 +1216,78 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 <section class="ecran e-mist" id="e5" data-titre="Votre prix">
   <div class="in">
     <span class="kicker rv" data-t="e5.kicker">Votre prix</span>
-    <h2 class="titre rv t-4" style="max-width:22ch" data-th="e5.titre">Combien&nbsp;? Vous le savez<em> avant de donner votre adresse.</em></h2>
-    <div style="max-width:560px;margin-top:32px">
-      <div class="calc rv">
+    <h2 class="titre rv t-4" style="max-width:24ch" data-th="e5.titre">Combien&nbsp;? Vous le savez<em> avant de donner votre adresse.</em></h2>
+
+    <!-- Deux colonnes : les réglages à gauche, le prix à droite. Avant, le
+         total était 600px sous les boutons, donc hors de l'écran : on
+         réglait sans jamais voir l'effet de ce qu'on faisait. Maintenant le
+         grand chiffre est à hauteur des yeux, à côté de la main. -->
+    <div class="calc rv">
+      <div class="calc-g">
+
+        <!-- Sur téléphone les deux colonnes s'empilent, et le total repasse
+             sous l'écran pendant qu'on règle : exactement le défaut corrigé
+             sur ordinateur. Ce rappel reste collé en haut pendant tout le
+             réglage. Il est masqué aux lecteurs d'écran, qui entendent déjà
+             le total du panneau (aria-live) : l'annoncer deux fois serait
+             pénible. -->
+        <div class="calc-fixe" aria-hidden="true">
+          <span data-t="e5.total">Total à payer</span><b id="c-total-m">294 €</b>
+        </div>
+
         <div class="calc-field">
           <p class="calc-lbl" id="lbl-duree" data-t="e5.duree">Durée de location</p>
-          <div class="step-row" role="group" aria-labelledby="lbl-duree">
-            <button class="step-btn" type="button" id="c-moins" data-ta="e5.moins" aria-label="Un jour de moins">−</button>
-            <span class="step-val"><b id="c-jours" aria-live="polite">14</b><span data-t="e5.jours">jours</span></span>
-            <button class="step-btn" type="button" id="c-plus" data-ta="e5.plus" aria-label="Un jour de plus">+</button>
+          <div class="duree">
+            <span class="duree-n"><b id="c-jours">14</b><i data-t="e5.jours">jours</i></span>
+            <div class="duree-pm">
+              <button class="step-btn" type="button" id="c-moins" data-ta="e5.moins" aria-label="Un jour de moins">−</button>
+              <button class="step-btn" type="button" id="c-plus" data-ta="e5.plus" aria-label="Un jour de plus">+</button>
+            </div>
           </div>
+          <input class="gliss" type="range" id="c-range" min="7" max="90" step="1" value="14"
+                 aria-labelledby="lbl-duree" aria-valuetext="14 jours">
+          <p class="duree-suiv" id="c-suiv" data-th="e5.suivInit">Le 15<sup>e</sup> jour vous coûterait <b>9&nbsp;€</b>.</p>
           <div class="presets" id="c-presets">
-            <button class="chip" type="button" data-j="7" aria-pressed="false" data-t="e5.s1">1 semaine</button>
-            <button class="chip" type="button" data-j="14" aria-pressed="true" data-t="e5.s2">2 semaines</button>
-            <button class="chip" type="button" data-j="21" aria-pressed="false" data-t="e5.s3">3 semaines</button>
-            <button class="chip" type="button" data-j="30" aria-pressed="false" data-t="e5.m1">1 mois</button>
+            <button class="chip chip-s" type="button" data-j="7" aria-pressed="false" data-t="e5.s1">1 semaine</button>
+            <button class="chip chip-s" type="button" data-j="14" aria-pressed="true" data-t="e5.s2">2 semaines</button>
+            <button class="chip chip-s" type="button" data-j="21" aria-pressed="false" data-t="e5.s3">3 semaines</button>
+            <button class="chip chip-s" type="button" data-j="30" aria-pressed="false" data-t="e5.m1">1 mois</button>
           </div>
         </div>
+
         <div class="calc-field">
           <p class="calc-lbl" id="lbl-zone" data-t="e5.ou">Où devons-nous livrer&nbsp;?</p>
-          <div class="presets" id="c-zone" role="group" aria-labelledby="lbl-zone">
-            <button class="chip" type="button" data-z="60" aria-pressed="true" data-t="e5.zone1">Nice et communes proches</button>
-            <button class="chip" type="button" data-z="120" aria-pressed="false" data-t="e5.zone2">Hors zone</button>
+          <div class="presets deux" id="c-zone" role="group" aria-labelledby="lbl-zone">
+            <button class="chip chip-p" type="button" data-z="60" aria-pressed="true">
+              <span data-t="e5.zone1">Nice et communes proches</span><i>60&nbsp;€</i></button>
+            <button class="chip chip-p" type="button" data-z="120" aria-pressed="false">
+              <span data-t="e5.zone2">Hors zone</span><i>120&nbsp;€</i></button>
           </div>
         </div>
+
         <div class="calc-field" style="margin-bottom:0">
           <p class="calc-lbl" id="lbl-pose" data-t="e5.qui">Qui pose l'appareil&nbsp;?</p>
-          <div class="presets" id="c-pose" role="group" aria-labelledby="lbl-pose">
-            <button class="chip" type="button" data-i="1" aria-pressed="true" data-t="e5.tech">Un technicien vient</button>
-            <button class="chip" type="button" data-i="0" aria-pressed="false" data-t="e5.moi">Je pose moi-même</button>
+          <div class="presets deux" id="c-pose" role="group" aria-labelledby="lbl-pose">
+            <button class="chip chip-p" type="button" data-i="1" aria-pressed="true">
+              <span data-t="e5.tech">Un technicien vient</span><i>80&nbsp;€</i></button>
+            <button class="chip chip-p" type="button" data-i="0" aria-pressed="false">
+              <span data-t="e5.moi">Je pose moi-même</span><i data-t="e5.gratuit">offert</i></button>
           </div>
         </div>
-        <div class="calc-sep"></div>
-        <div class="calc-line"><span id="c-l-loc" data-t="c.locInit">Location, 14 jours</span><b id="c-v-loc">154 €</b></div>
-        <div class="calc-line"><span data-t="e5.livraison">Livraison &amp; récupération</span><b id="c-v-liv">60 €</b></div>
-        <div class="calc-line" id="c-line-pose"><span data-t="e5.install">Installation par technicien</span><b id="c-v-pose">80 €</b></div>
-        <div class="calc-total"><span data-t="e5.total">Total à payer</span><b id="c-total">294 €</b></div>
+      </div>
+
+      <div class="calc-p">
+        <p class="calc-lbl" data-t="e5.total">Total à payer</p>
+        <b class="calc-somme" id="c-total" aria-live="polite">294 €</b>
         <p class="calc-day" id="c-jour" data-th="c.jourInit">soit <b>11 € par jour</b> de location, + 140 € de frais — une seule fois</p>
+        <div class="calc-detail">
+          <div class="calc-line"><span id="c-l-loc" data-t="c.locInit">Location, 14 jours</span><b id="c-v-loc">154 €</b></div>
+          <div class="calc-line"><span data-t="e5.livraison">Livraison &amp; récupération</span><b id="c-v-liv">60 €</b></div>
+          <div class="calc-line" id="c-line-pose"><span data-t="e5.install">Installation par technicien</span><b id="c-v-pose">80 €</b></div>
+        </div>
         <a class="btn btn-light" href="/" data-t="e5.reserver">Réserver à ce prix →</a>
         <p class="calc-legal" data-t="e5.legal">Montant reconfirmé avant paiement · Express non compris</p>
+      </div>
     </div>
   </div>
 </section>
@@ -2061,6 +2180,16 @@ Object.assign(T, {
   'e5.moi'     : {fr:"Je pose moi-même", en:"I'll install it myself", zh:"我自己安装", ru:"Установлю сам"},
   'e5.livraison':{fr:"Livraison & récupération", en:"Delivery & collection", zh:"配送与回收", ru:"Доставка и вывоз"},
   'e5.install' : {fr:"Installation par technicien", en:"Installation by a technician", zh:"技师安装", ru:"Установка мастером"},
+  'e5.gratuit' : {fr:"offert", en:"free", zh:"免费", ru:"бесплатно"},
+  'e5.suivInit': {fr:"Le 15<sup>e</sup> jour vous coûterait <b>9 €</b>.",
+                  en:"Day 15 would cost you <b>€9</b>.",
+                  zh:"第15天的价格是 <b>9欧元</b>。",
+                  ru:"15-й день обойдётся в <b>9 €</b>."},
+  /* Le prix du jour suivant, recomposé à chaque mouvement. Découpé en trois
+     morceaux parce que l'ordre des mots change d'une langue à l'autre. */
+  'c.suivAv'   : {fr:"Le", en:"Day", zh:"第", ru:""},
+  'c.suivE'    : {fr:"<sup>e</sup> jour", en:"", zh:"天", ru:"-й день"},
+  'c.suivAp'   : {fr:"vous coûterait", en:"would cost you", zh:"的价格是", ru:"обойдётся в"},
   'e5.total'   : {fr:"Total à payer", en:"Total to pay", zh:"应付总额", ru:"Итого к оплате"},
   'e5.reserver': {fr:"Réserver à ce prix →", en:"Book at this price →", zh:"按此价格预订 →", ru:"Забронировать по этой цене →"},
   'e5.legal'   : {fr:"Montant reconfirmé avant paiement · Express non compris",
@@ -2402,6 +2531,8 @@ Object.assign(T, {
     document.getElementById('c-v-pose').textContent = pose ? eur(INSTALL) : '0 €';
     document.getElementById('c-line-pose').classList.toggle('off', !pose);
     out.textContent = eur(total);
+    var mini = document.getElementById('c-total-m');
+    if(mini) mini.textContent = eur(total);
     document.getElementById('c-jour').innerHTML =
       mot('c.soit') + ' <b>' + eur(loc/jours) + ' ' + mot('c.parJourDe') + ' '
       + eur(zone + inst) + ' ' + mot('c.frais');
@@ -2410,6 +2541,40 @@ Object.assign(T, {
     document.querySelectorAll('#c-presets .chip').forEach(function(c){
       c.setAttribute('aria-pressed', String(+c.dataset.j === jours));
     });
+
+    /* La barre coulissante suit le nombre, d'où qu'il vienne (boutons,
+       raccourcis, clavier), et annonce à voix haute une valeur lisible :
+       « 14 jours » et non « 14 ». */
+    var g = document.getElementById('c-range');
+    if(g){
+      g.min = P.duree_min_jours; g.max = MAX_J;
+      if(+g.value !== jours) g.value = jours;
+      g.setAttribute('aria-valuetext', jours + ' ' + mot('c.jours'));
+      /* Firefox colore la partie parcourue tout seul ; les autres non. On la
+         peint donc à la main, en or, pour que la progression se voie. */
+      var pc = (jours - g.min) / (g.max - g.min) * 100;
+      g.style.background =
+        'linear-gradient(to right, var(--gold) 0 ' + pc + '%,'
+        + ' rgba(255,255,255,.18) ' + pc + '% 100%)';
+      g.style.backgroundSize = '100% 6px';
+      g.style.backgroundPosition = '0 center';
+      g.style.backgroundRepeat = 'no-repeat';
+      g.style.borderRadius = '100px';
+    }
+
+    /* Le prix du jour suivant. Le barème est dégressif : au moment de choisir
+       une durée, c'est l'information la plus utile — et elle est honnête,
+       puisqu'elle sort du même calcul que le total. */
+    var suiv = document.getElementById('c-suiv');
+    if(suiv){
+      if(jours >= MAX_J){
+        suiv.textContent = '';
+      } else {
+        var delta = calcPrice(jours + 1) - calcPrice(jours);
+        suiv.innerHTML = mot('c.suivAv') + ' ' + (jours + 1) + mot('c.suivE')
+                       + ' ' + mot('c.suivAp') + ' <b>' + eur(delta) + '</b>.';
+      }
+    }
   }
   function press(sel, attr, val){
     document.querySelectorAll(sel + ' .chip').forEach(function(c){
@@ -2418,6 +2583,8 @@ Object.assign(T, {
   }
   document.getElementById('c-moins').addEventListener('click', function(){ if(jours>P.duree_min_jours){jours--;render();} });
   document.getElementById('c-plus').addEventListener('click',  function(){ if(jours<MAX_J){jours++;render();} });
+  var gliss = document.getElementById('c-range');
+  if(gliss) gliss.addEventListener('input', function(){ jours = +this.value; render(); });
   document.getElementById('c-presets').addEventListener('click', function(e){
     var c=e.target.closest('.chip'); if(!c) return; jours=+c.dataset.j; render();
   });
