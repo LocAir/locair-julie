@@ -20,6 +20,62 @@ const DEFAULT_PRICING_CONFIG = {
   palier4_tarif_cents: 800,
 };
 
+// ── Grille PRO ────────────────────────────────────────────────────────────
+// Loc'Air loue deux choses très différentes : un climatiseur mobile à un
+// particulier, et un rafraîchisseur adiabatique à une entreprise. Même
+// mécanique dégressive, tarifs sans rapport. Les colonnes pro_* sont
+// OPTIONNELLES en base : tant qu'elles n'existent pas, on retombe sur les
+// valeurs ci-dessous, et rien ne casse entre le déploiement du code et le
+// moment où la migration est collée. C'est volontaire — le site a déjà été
+// cassé une fois par une colonne utilisée avant d'exister.
+const DEFAULT_PRO_PRICING = {
+  duree_min_jours:     1,      // un événement peut durer un seul jour
+  palier1_max_jours:   7,  palier1_tarif_cents: 4000,
+  palier2_max_jours:   14, palier2_tarif_cents: 3400,
+  palier3_max_jours:   21, palier3_tarif_cents: 3000,
+  palier4_tarif_cents: 2700,
+};
+// Forfait unique côté pro : livraison + installation + reprise, compté une
+// seule fois quel que soit le nombre d'appareils. Il REMPLACE les frais de
+// livraison et d'installation des particuliers, il ne s'y ajoute pas.
+const DEFAULT_PRO_FORFAIT_CENTS = 12000;
+
+const PRO_FIELDS = [
+  'pro_duree_min_jours',
+  'pro_palier1_tarif_cents', 'pro_palier2_tarif_cents',
+  'pro_palier3_tarif_cents', 'pro_palier4_tarif_cents',
+  'pro_forfait_cents',
+];
+
+// Fabrique une config au MÊME format que la grille particuliers, pour que
+// calcTieredPrice() n'ait pas à savoir de quelle offre il s'agit. Les seuils
+// de jours (7/14/21) sont partagés : seuls les tarifs changent.
+function getProPricing(config) {
+  const c = config || {};
+  const ok = PRO_FIELDS.every((f) => Number.isFinite(c[f]));
+  if (!ok) return DEFAULT_PRO_PRICING;
+  return {
+    duree_min_jours:     c.pro_duree_min_jours,
+    palier1_max_jours:   c.palier1_max_jours,  palier1_tarif_cents: c.pro_palier1_tarif_cents,
+    palier2_max_jours:   c.palier2_max_jours,  palier2_tarif_cents: c.pro_palier2_tarif_cents,
+    palier3_max_jours:   c.palier3_max_jours,  palier3_tarif_cents: c.pro_palier3_tarif_cents,
+    palier4_tarif_cents: c.pro_palier4_tarif_cents,
+  };
+}
+
+function getProForfaitCents(config) {
+  const v = config && config.pro_forfait_cents;
+  return Number.isFinite(v) ? v : DEFAULT_PRO_FORFAIT_CENTS;
+}
+
+// Une commande est « pro » dès que le tunnel a coché entreprise. Même test
+// que celui déjà utilisé pour enregistrer type_client en base, pour qu'il
+// n'y ait jamais deux définitions du mot « pro ».
+function isPro(typeClient) {
+  return String(typeClient || '').toLowerCase().startsWith('pro')
+      || String(typeClient || '').toLowerCase().startsWith('entrep');
+}
+
 const PRICING_NUMERIC_FIELDS = [
   'duree_min_jours',
   'palier1_max_jours', 'palier1_tarif_cents',
@@ -88,4 +144,8 @@ function dailyRate(day, config) {
   return c.palier4_tarif_cents / 100;
 }
 
-module.exports = { calcTieredPrice, dailyRate, getPricingConfig, DEFAULT_PRICING_CONFIG };
+module.exports = {
+  calcTieredPrice, dailyRate, getPricingConfig, DEFAULT_PRICING_CONFIG,
+  getProPricing, getProForfaitCents, isPro,
+  DEFAULT_PRO_PRICING, DEFAULT_PRO_FORFAIT_CENTS,
+};
