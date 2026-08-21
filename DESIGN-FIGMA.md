@@ -133,3 +133,37 @@ Le principe de la réécriture :
 Note : la photo du hero utilise le chemin absolu `/hero-clim.jpg`. Elle
 s'affiche correctement sur le serveur ; elle apparaît vide uniquement si on
 ouvre le fichier en local depuis le disque.
+
+
+## Version B — fonds des écrans réorganisés
+
+Mêmes couleurs qu'avant, mais réparties autrement entre les écrans.
+
+Deux problèmes réglés :
+- les écrans 7 et 8 étaient tous les deux marine, collés l'un à l'autre —
+  aucune respiration entre les deux ;
+- le bleu, la couleur la plus forte, servait sur « En cas de souci » alors
+  que le message le plus vendeur est « 0 € de caution ».
+
+| Écran | Avant | Après |
+|---|---|---|
+| 1 · Accueil | blanc | blanc |
+| 2 · Chez vous | marine | marine |
+| 3 · Aucune caution | gris clair | **bleu** |
+| 4 · Le prix | blanc | **gris clair** |
+| 5 · Votre devis | gris clair | **blanc** |
+| 6 · En cas de souci | bleu | **marine** |
+| 7 · Nos clients | marine | **gris clair** |
+| 8 · Qui vient chez vous | marine | marine |
+| 9 · Zone de livraison | gris clair | **blanc** |
+| 10 · Questions | blanc | **gris clair** |
+| 11 · Réserver | marine | marine |
+
+Plus aucun écran ne touche un écran de la même couleur, et le bleu ne sert
+qu'une seule fois — sur la promesse la plus forte.
+
+Corrections rendues nécessaires par le déplacement du mur de vidéos sur fond
+clair : le nom des clients héritait de la couleur du texte de l'écran et
+devenait invisible sur les cartes sombres ; la carte « Vous avez loué chez
+nous ? » était en blanc sur blanc ; et la barre de défilement du mur était
+blanche.
