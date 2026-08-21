@@ -368,7 +368,8 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .attente-l{display:block;font-size:15.5px;font-weight:700;color:var(--ink);margin-bottom:10px}
 .attente-row{display:flex;gap:10px}
 .attente-i{
-  flex:1 1 auto;min-width:0;background:var(--paper);border:1px solid var(--line);
+  /* L'écran est passé sur fond blanc : un champ blanc y disparaissait. */
+  flex:1 1 auto;min-width:0;background:var(--mist);border:1px solid var(--line);
   border-radius:var(--r);padding:13px 15px;font:inherit;font-size:15.5px;color:var(--ink);
   transition:box-shadow var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
 }
@@ -398,6 +399,28 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .soc b{font-size:16.5px}
   .soc .gtt{margin-bottom:10px}
 }
+/* ── Loc'Air Pro ───────────────────────────────────────────────────────────
+   Quatre usages sur deux colonnes, sur fond marine comme l'écran plateforme :
+   les deux écrans qui parlent de l'entreprise plutôt que du particulier
+   partagent le même fond, ce qui les relie sans qu'on ait à l'écrire. */
+.pro-l{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.pro{padding:15px 18px 17px;border-radius:var(--r-l);
+  background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.12)}
+.pro .gtt{display:block;width:10px;height:10px;margin-bottom:10px;
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold)}
+.pro b{display:block;font-size:16.5px;line-height:1.3;letter-spacing:-.012em;
+  color:#fff;margin-bottom:7px}
+.pro span{font-size:14px;line-height:1.5;color:rgba(255,255,255,.64)}
+.pro-cta{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:18px}
+.pro-note{font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.6);max-width:42ch}
+@media(max-width:760px){
+  .pro-l{grid-template-columns:1fr;gap:11px}
+  .pro{padding:15px 17px 17px}
+  .pro b{font-size:16px}
+  .pro-cta{gap:13px}
+  .pro-cta .btn{width:100%;justify-content:center}
+}
+
 /* ── Le bandeau de réassurance ─────────────────────────────────────────────
    Cinq garanties en ligne, juste après l'accroche. Ce n'est pas un écran :
    pas de min-height, pas de point de progression — du mobilier entre deux
@@ -753,9 +776,14 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 }
 
 /* ══ MUR DE VIDÉOS ══ */
-.rail{display:flex;gap:14px;margin-top:32px;padding:2px 0 16px;overflow-x:auto;scroll-snap-type:x proximity;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent}
+/* La couleur de la barre de défilement suivait le fond sombre en dur.
+   L'écran des clients est passé sur fond clair : elle y aurait été
+   invisible. Elle prend maintenant la couleur du trait courant. */
+.rail{display:flex;gap:14px;margin-top:32px;padding:2px 0 16px;overflow-x:auto;scroll-snap-type:x proximity;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--line-2, rgba(14,31,53,.22)) transparent}
+.e-ink .rail,.e-blue .rail{scrollbar-color:rgba(255,255,255,.22) transparent}
 .rail::-webkit-scrollbar{height:5px}
-.rail::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:100px}
+.rail::-webkit-scrollbar-thumb{background:rgba(14,31,53,.22);border-radius:100px}
+.e-ink .rail::-webkit-scrollbar-thumb,.e-blue .rail::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2)}
 .vcard{position:relative;flex:0 0 auto;width:clamp(176px,17vw,206px);aspect-ratio:9/16;border-radius:var(--r-l);overflow:hidden;scroll-snap-align:start;background:#183253}
 .vcard video,.vcard>img{width:100%;height:100%;object-fit:cover}
 .vcard::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(8,18,32,.88) 0%,rgba(8,18,32,.1) 44%,transparent 66%)}
@@ -764,10 +792,18 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .vplay:hover span{transform:scale(1.08);background:rgba(255,255,255,.3)}
 .vcard.is-playing .vplay span{opacity:0}
 .vmeta{position:absolute;left:16px;right:16px;bottom:15px;z-index:3;pointer-events:none}
-.vmeta b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.015em}
+/* Sans couleur déclarée, le prénom héritait de celle de l'écran : blanc
+   tant que l'écran était sombre, invisible dès qu'il est devenu clair.
+   La carte est sombre en toutes circonstances, le blanc l'est aussi. */
+.vmeta b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.015em;color:#fff}
 .vmeta span{font-size:12px;color:rgba(255,255,255,.58)}
 .vmeta .stars{font-size:11.5px;display:block;margin-bottom:4px}
-.vide{display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:none;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
+/* « background:none » laissait voir l'écran à travers : sur fond sombre
+   c'était une carte creuse, sur fond clair c'était un trou blanc. Elle
+   porte maintenant son propre fond, un ton plus clair que les autres
+   pour rester lisible comme un emplacement libre. */
+.vide{display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#132840;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
+.vide::after{display:none}   /* pas de dégradé : aucun texte à détacher */
 .vide p{font-size:13px;color:rgba(255,255,255,.5);line-height:1.55}
 .vide b{display:block;color:rgba(255,255,255,.85);font-size:14px;margin-bottom:6px}
 @media(max-width:640px){.vcard{width:min(62vw,220px)}}
@@ -1023,6 +1059,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
     <a class="ml" href="#e2" data-t="m.comment">Comment ça marche</a>
     <a class="ml" href="#e4" data-t="m.tarifs">Tarifs</a>
     <a class="ml" href="#e7" data-t="m.avis">Avis clients</a>
+    <a class="ml" href="#e9b" data-t="m.pro">Loc'Air Pro · entreprises</a>
     <a class="ml" href="#e11" data-t="m.questions">Questions fréquentes</a>
   </div>
 
@@ -1235,11 +1272,11 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 </section>
 
 <!-- ══ 3 · LA CAUTION ══════════════════════════════════════════════════════ -->
-<section class="ecran e-mist" id="e3" data-titre="Aucune caution">
+<section class="ecran e-ink" id="e3" data-titre="Aucune caution">
   <div class="in chiffre">
     <div>
       <span class="kicker rv" data-t="e3.kicker">Ce que vous ne payez pas</span>
-      <span class="geant rv" style="color:var(--blue)">0<small> €</small></span>
+      <span class="geant rv" style="color:var(--gold)">0<small> €</small></span>
     </div>
     <div>
       <h2 class="titre rv t-3" data-t="e3.titre">De caution.</h2>
@@ -1257,7 +1294,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
      l'objection technique la plus fréquente ; la version B n'y répondait
      nulle part. Chiffres en grand plutôt qu'un tableau : même langage que
      l'écran "0 € de caution". -->
-<section class="ecran" id="e3b" data-titre="Le matériel">
+<section class="ecran e-mist" id="e3b" data-titre="Le matériel">
   <div class="in">
     <span class="kicker rv" data-t="e3b.kicker">Le matériel</span>
     <h2 class="titre rv t-3" data-th="e3b.titre">Il va rester des semaines chez vous.<em> Autant qu'il soit beau.</em></h2>
@@ -1405,7 +1442,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 </section>
 
 <!-- ══ 6 · LES CLIENTS ═════════════════════════════════════════════════════ -->
-<section class="ecran e-ink" id="e7" data-titre="Les clients">
+<section class="ecran" id="e7" data-titre="Les clients">
   <div class="in">
     <span class="kicker rv" data-t="e7.kicker">Ils l'ont fait</span>
     <h2 class="titre rv t-3" style="max-width:20ch" data-th="e7.titre">Nos clients,<em> filmés chez eux.</em></h2>
@@ -1501,7 +1538,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 </section>
 
 <!-- ══ 8 · LA ZONE ═════════════════════════════════════════════════════════ -->
-<section class="ecran e-mist" id="e9" data-titre="Zone de livraison">
+<section class="ecran" id="e9" data-titre="Zone de livraison">
   <div class="in">
     <span class="kicker rv" data-t="e9.kicker">Où nous opérons</span>
     <h2 class="titre rv t-4" data-th="e9.titre">Nice, aujourd'hui.<em> La liste s'allonge.</em></h2>
@@ -1544,6 +1581,57 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
         <button class="btn btn-1 btn-s attente-b" type="button" id="ville-b" data-t="e9.attenteB">Nous le dire</button>
       </div>
       <p class="attente-m" data-t="e9.attenteM">Nous ouvrons les villes dans l'ordre des demandes. Merci de nous aider à choisir la prochaine.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ 9b · LOC'AIR PRO ════════════════════════════════════════════════════
+     Offre entreprises. Le back-end sait déjà la traiter : la base porte
+     reservations.type_client='entreprise' et l'admin contient un module de
+     devis complet (api/admin-devis.js) — mais rien sur le site ne demandait
+     jamais un devis. C'est l'écran qui manquait, pas la mécanique.
+
+     Le rafraîchisseur adiabatique n'est PAS un climatiseur : il refroidit en
+     faisant s'évaporer de l'eau. Il lui faut de l'air qui se renouvelle,
+     donc il est fait pour les grands volumes ouverts — et inutile dans une
+     chambre fermée. C'est cette différence qui justifie deux offres, et
+     c'est elle qu'on explique ici plutôt que de l'esquiver.
+
+     Rien n'est chiffré : ni modèle, ni débit, ni tarif. Ces valeurs
+     n'existent pas encore, et un chiffre inventé sur une offre B2B se paie
+     au premier rendez-vous. -->
+<section class="ecran e-ink" id="e9b" data-titre="Loc'Air Pro">
+  <div class="in">
+    <span class="kicker rv" data-t="e9b.kicker">Loc'Air Pro</span>
+    <h2 class="titre rv t-4" style="max-width:27ch" data-th="e9b.titre">Un entrepôt ne se climatise pas.<em> Il se rafraîchit.</em></h2>
+    <p class="dire rv" style="max-width:76ch" data-t="e9b.dire">Un climatiseur mobile refroidit une pièce fermée. Dans un atelier, sur une terrasse, sous un chapiteau, il ne sert à rien. Le rafraîchisseur adiabatique fait passer l'air sur de l'eau : l'air ressort plus frais, sans gaz réfrigérant, sans gaine à la fenêtre, et pour une fraction de l'électricité d'un climatiseur.</p>
+
+    <div class="pro-l">
+      <div class="pro rv">
+        <span class="gtt" aria-hidden="true"></span>
+        <b data-t="e9b.u1t">Magasins</b>
+        <span data-t="e9b.u1d">Une entrée ouverte toute la journée, impossible à climatiser. Un rafraîchisseur tient la surface de vente sans porte fermée.</span>
+      </div>
+      <div class="pro rv">
+        <span class="gtt" aria-hidden="true"></span>
+        <b data-t="e9b.u2t">Restaurants et terrasses</b>
+        <span data-t="e9b.u2d">La terrasse en plein soleil et la cuisine à 40°. Deux endroits où un climatiseur ne peut rien, et où le personnel tient mal la journée.</span>
+      </div>
+      <div class="pro rv">
+        <span class="gtt" aria-hidden="true"></span>
+        <b data-t="e9b.u3t">Entrepôts et ateliers</b>
+        <span data-t="e9b.u3d">Des volumes que personne ne climatise. On rafraîchit les postes de travail, pas le bâtiment entier — c'est ce qui rend l'opération possible.</span>
+      </div>
+      <div class="pro rv">
+        <span class="gtt" aria-hidden="true"></span>
+        <b data-t="e9b.u4t">Événements</b>
+        <span data-t="e9b.u4d">Chapiteau, salon, mariage, tournage. Sur quelques jours, avec livraison, installation et reprise — comme le reste de nos locations.</span>
+      </div>
+    </div>
+
+    <div class="pro-cta rv">
+      <a class="btn btn-light" href="tel:+33663798756" data-t="e9b.devis">Demander un devis →</a>
+      <span class="pro-note" data-t="e9b.note">Chaque site est différent : nous chiffrons après avoir vu le volume et les ouvertures.</span>
     </div>
   </div>
 </section>
@@ -2212,6 +2300,45 @@ Object.assign(T, {
   'e9.demande':{fr:"Sur demande", en:"On request", zh:"可询问", ru:"По запросу"},
 
   /* écran 10 — vos espaces */
+  /* ── Loc'Air Pro : l'offre entreprises ───────────────────────────────── */
+  'e9b.kicker': {fr:"Loc'Air Pro", en:"Loc'Air Pro", zh:"Loc'Air Pro", ru:"Loc'Air Pro"},
+  'e9b.titre' : {fr:"Un entrepôt ne se climatise pas.<em> Il se rafraîchit.</em>",
+                 en:"You don't air-condition a warehouse.<em> You cool it.</em>",
+                 zh:"仓库没法装空调。<em>但可以降温。</em>",
+                 ru:"Склад не кондиционируют.<em> Его охлаждают иначе.</em>"},
+  'e9b.dire'  : {fr:"Un climatiseur mobile refroidit une pièce fermée. Dans un atelier, sur une terrasse, sous un chapiteau, il ne sert à rien. Le rafraîchisseur adiabatique fait passer l'air sur de l'eau : l'air ressort plus frais, sans gaz réfrigérant, sans gaine à la fenêtre, et pour une fraction de l'électricité d'un climatiseur.",
+                 en:"A portable air conditioner cools a closed room. In a workshop, on a terrace, under a marquee, it does nothing at all. An evaporative cooler passes air over water: the air comes out cooler, with no refrigerant gas, no window duct, and for a fraction of the electricity an air conditioner needs.",
+                 zh:"移动空调只能冷却封闭房间。在车间、露台、帐篷下，它毫无作用。蒸发式冷风机让空气经过水面：出来的风更凉，不用制冷剂，不用窗口排管，耗电只是空调的一小部分。",
+                 ru:"Мобильный кондиционер охлаждает закрытую комнату. В цеху, на террасе, под шатром он бесполезен. Адиабатический охладитель прогоняет воздух над водой: воздух выходит прохладнее — без хладагента, без трубы в окно и за долю того электричества, которое нужно кондиционеру."},
+  'e9b.u1t'   : {fr:"Magasins", en:"Shops", zh:"店铺", ru:"Магазины"},
+  'e9b.u1d'   : {fr:"Une entrée ouverte toute la journée, impossible à climatiser. Un rafraîchisseur tient la surface de vente sans porte fermée.",
+                 en:"A doorway open all day, impossible to air-condition. A cooler holds the shop floor with the door still open.",
+                 zh:"入口整天敞开，根本没法装空调。冷风机能在门开着的情况下照顾整个卖场。",
+                 ru:"Вход открыт весь день — кондиционировать невозможно. Охладитель держит торговый зал при открытой двери."},
+  'e9b.u2t'   : {fr:"Restaurants et terrasses", en:"Restaurants and terraces",
+                 zh:"餐厅与露台", ru:"Рестораны и террасы"},
+  'e9b.u2d'   : {fr:"La terrasse en plein soleil et la cuisine à 40°. Deux endroits où un climatiseur ne peut rien, et où le personnel tient mal la journée.",
+                 en:"The terrace in full sun and the kitchen at 40°. Two places an air conditioner can do nothing about, and where staff struggle to get through the day.",
+                 zh:"烈日下的露台，40度的后厨。这两个地方空调都无能为力，员工却要熬一整天。",
+                 ru:"Терраса под солнцем и кухня при 40°. Два места, где кондиционер бессилен, а персоналу тяжело выстоять смену."},
+  'e9b.u3t'   : {fr:"Entrepôts et ateliers", en:"Warehouses and workshops",
+                 zh:"仓库与车间", ru:"Склады и цеха"},
+  'e9b.u3d'   : {fr:"Des volumes que personne ne climatise. On rafraîchit les postes de travail, pas le bâtiment entier — c'est ce qui rend l'opération possible.",
+                 en:"Volumes nobody air-conditions. We cool the workstations, not the whole building — which is what makes it feasible at all.",
+                 zh:"没人会给这么大的空间装空调。我们只给工位降温，而不是整栋楼——这才让方案可行。",
+                 ru:"Объёмы, которые никто не кондиционирует. Мы охлаждаем рабочие места, а не всё здание, — именно это делает задачу выполнимой."},
+  'e9b.u4t'   : {fr:"Événements", en:"Events", zh:"活动现场", ru:"Мероприятия"},
+  'e9b.u4d'   : {fr:"Chapiteau, salon, mariage, tournage. Sur quelques jours, avec livraison, installation et reprise — comme le reste de nos locations.",
+                 en:"Marquee, trade show, wedding, film shoot. For a few days, with delivery, installation and collection — like the rest of our rentals.",
+                 zh:"帐篷、展会、婚礼、拍摄。租几天即可，含配送、安装和回收——和我们其他租赁一样。",
+                 ru:"Шатёр, выставка, свадьба, съёмка. На несколько дней, с доставкой, установкой и вывозом — как и вся наша аренда."},
+  'e9b.devis' : {fr:"Demander un devis →", en:"Request a quote →",
+                 zh:"申请报价 →", ru:"Запросить смету →"},
+  'e9b.note'  : {fr:"Chaque site est différent : nous chiffrons après avoir vu le volume et les ouvertures.",
+                 en:"Every site is different: we quote once we have seen the volume and the openings.",
+                 zh:"每个场地都不一样：我们看过空间和开口之后再报价。",
+                 ru:"Каждый объект свой: мы считаем после того, как увидим объём и проёмы."},
+
   'e10.kicker': {fr:"Déjà chez nous", en:"Already with us", zh:"已经是我们的客户", ru:"Уже с нами"},
   'e10.titre' : {fr:"Vous avez<em> votre espace.</em>",
                  en:"You have<em> your own account.</em>",
@@ -2335,6 +2462,8 @@ Object.assign(T, {
   'm.comment'  : {fr:"Comment ça marche", en:"How it works", zh:"服务流程", ru:"Как это работает"},
   'm.tarifs'   : {fr:"Tarifs", en:"Pricing", zh:"价格", ru:"Цены"},
   'm.avis'     : {fr:"Avis clients", en:"Customer reviews", zh:"客户评价", ru:"Отзывы клиентов"},
+  'm.pro'     : {fr:"Loc'Air Pro · entreprises", en:"Loc'Air Pro · for businesses",
+                 zh:"Loc'Air Pro · 企业方案", ru:"Loc'Air Pro · для компаний"},
   'm.questions': {fr:"Questions fréquentes", en:"Frequently asked questions", zh:"常见问题", ru:"Частые вопросы"},
   'm.espaces'  : {fr:"Vos espaces", en:"Your accounts", zh:"您的账户", ru:"Ваши кабинеты"},
   'm.client'   : {fr:"Espace client", en:"Client area", zh:"客户中心", ru:"Личный кабинет"},
