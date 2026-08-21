@@ -5374,7 +5374,7 @@ input:-webkit-autofill:focus{
                   <div class="dur-free-days">
                     <input class="dur-free-days-num" id="dfb-num" type="number" min="7" max="90" value="7" inputmode="numeric" aria-label="Nombre de jours"
                       oninput="setDurFreeInput(this)"
-                      onblur="if(!this.value||+this.value<7){this.value=7;setDurFreeInput(this);}else if(+this.value>90){this.value=90;setDurFreeInput(this);}"/>
+                      onblur="var _m=(typeof PRICING!=='undefined'&&PRICING.duree_min_jours)||7;if(!this.value||+this.value<_m){this.value=_m;setDurFreeInput(this);}else if(+this.value>90){this.value=90;setDurFreeInput(this);}"/>
                     <div class="dur-free-days-unit">jours</div>
                   </div>
                   <button type="button" class="dur-free-btn" id="dfb-plus" onclick="stepDurFree(1)" aria-label="Plus">+</button>
@@ -6382,6 +6382,8 @@ async function loadPricingConfig(){
       PRICING=d.pro;
       if(Number.isFinite(d.pro.forfait_cents))PRO_FORFAIT=d.pro.forfait_cents/100;
       DELIVERY_FEE=PRO_FORFAIT;   // le forfait REMPLACE livraison + pose
+      const _dfb=document.getElementById('dfb-num');
+      if(_dfb&&Number.isFinite(PRICING.duree_min_jours))_dfb.min=PRICING.duree_min_jours;
     }
   }catch(e){ /* PRICING garde ses valeurs par défaut — jamais bloquant */ }
   syncPricingTexts();
@@ -6489,7 +6491,13 @@ function updateDuration(days,silent){
   // prix/durée que le serveur ne facturera jamais réellement (il tronque
   // toujours à 90 jours), ce qui induirait le client en erreur sur ce qu'il
   // vient de payer.
-  days=Math.min(90,Math.max(7,Math.round(days)));
+  // La durée minimale vient de la grille en cours, plus d'un 7 écrit en dur :
+  // côté particuliers elle vaut 7 (rien ne change), côté pro elle vaut 1 —
+  // un événement dure parfois une seule journée. checkout.js applique
+  // exactement la même borne (grille.duree_min_jours), client et serveur
+  // restent donc alignés.
+  const _minJ=Math.max(1,PRICING.duree_min_jours||7);
+  days=Math.min(90,Math.max(_minJ,Math.round(days)));
   _durDays=days;
   const price=calcPrice(days);
   const rate=_baseRate(days);
@@ -10336,7 +10344,7 @@ function toggleDurFree(){
     // Deselect preset rows (without triggering auto-advance)
     document.querySelectorAll('.dur-row').forEach(c=>{c.classList.remove('on');c.setAttribute('aria-checked','false');});
     _durFree=parseInt(document.getElementById('f-dur')?.value||'7')||7;
-    if(_durFree<7)_durFree=7;
+    if(_durFree<(PRICING.duree_min_jours||7))_durFree=(PRICING.duree_min_jours||7);
     _renderDurFree();
     wrap.classList.add('open');
     if(tog){tog.classList.add('open');tog.setAttribute('aria-expanded','true');}
@@ -10354,7 +10362,7 @@ function stepDurFree(delta){
   // serveur) — sans lui, le bouton "+" pouvait dépasser 90 sans jamais
   // s'arrêter, affichant un prix/durée que le serveur ne facture jamais
   // réellement (checkout.js tronque toujours à 90 jours).
-  _durFree=Math.min(90,Math.max(7,(_durFree||7)+delta));
+  _durFree=Math.min(90,Math.max(PRICING.duree_min_jours||7,(_durFree||7)+delta));
   _renderDurFree();
 }
 function setDurFreeInput(inp){
@@ -10362,7 +10370,7 @@ function setDurFreeInput(inp){
   if(raw==='')return; // l'utilisateur efface pour retaper — on laisse le champ vide
   const v=parseInt(raw);
   if(isNaN(v))return; // saisie incomplète, on attend
-  _durFree=Math.max(7,Math.min(90,v));
+  _durFree=Math.max(PRICING.duree_min_jours||7,Math.min(90,v));
   _renderDurFree();
 }
 function _renderDurFree(){
