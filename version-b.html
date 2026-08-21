@@ -106,11 +106,23 @@ img,video,picture{max-width:100%;height:auto;display:block}
    Deux causes. Une colonne de grille refuse par défaut de devenir plus
    étroite que son contenu ; et un mot russe très long ne se coupe jamais.
    Les deux se règlent ici, une fois pour toutes les grilles de la page. */
-.e1-grid>*,.chiffre>*,.prix-grid>*,.aly>*,.specs>*,.metier>*,.conseils>*{min-width:0}
+.e1-grid>*,.chiffre>*,.prix-grid>*,.specs>*,.metier>*,.conseils>*{min-width:0}
 .titre,.dire,.conseil b,.conseil span{overflow-wrap:break-word}
 a{color:inherit;text-decoration:none}
 button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
-:focus-visible{outline:2.5px solid var(--blue);outline-offset:4px;border-radius:6px}
+/* ── L'anneau de focus ─────────────────────────────────────────────────────
+   C'est le cadre qui montre où on se trouve quand on navigue au clavier,
+   sans souris. Il était bleu partout. Mesuré : bleu sur le fond marine,
+   2,61 pour 1 — sous le minimum de 3 exigé ; et bleu sur l'écran bleu,
+   1,00 pour 1, c'est-à-dire rien du tout. Sur cet écran, quelqu'un qui
+   navigue au clavier ne savait plus où il était.
+   L'anneau prend donc la couleur qui se voit sur son fond. Sur le marine
+   c'est l'or de la marque : le repère d'accessibilité devient un signe
+   de la marque au lieu d'un réglage de navigateur. */
+:root{--focus:var(--blue)}                    /* blanc, brume  → 6,36:1 */
+.e-ink,.menu,.cook,.infobar{--focus:var(--gold)}  /* marine    → 6,86:1 */
+.e-blue,.bar.sur-fonce{--focus:#fff}          /* bleu, barre   → 6,36:1 */
+:focus-visible{outline:2.5px solid var(--focus);outline-offset:4px;border-radius:6px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 
 /* ══ L'ÉCRAN ══
@@ -161,6 +173,17 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   --n-2: clamp(38px, 5.4vw, 68px);   /* un chiffre qui porte l'écran        */
   --n-3: clamp(34px, 4.4vw, 50px);   /* un chiffre dans un bloc             */
 
+  /* ── Le mouvement ────────────────────────────────────────────────────────
+     Mesuré : dix durées différentes (.12s, .15s, .16s, .18s, .2s, .22s,
+     .25s…) et presque aucune courbe déclarée, donc la courbe par défaut du
+     navigateur. Une marque bouge d'une seule façon.
+     Trois durées, une seule courbe : elle démarre vite et finit doucement,
+     comme un objet qui se pose. */
+  --mv: cubic-bezier(.32,.72,.28,1);
+  --mv-1: .14s;   /* réaction immédiate : survol, couleur   */
+  --mv-2: .24s;   /* déplacement : panneau, menu, bandeau   */
+  --mv-3: .68s;   /* l'apparition au défilement             */
+
   --e-1: clamp(22px, 2.4vw, 32px);   /* écart serré : marge intérieure      */
   --e-2: clamp(24px, 2.9vw, 40px);   /* écart moyen : entre colonnes        */
   --e-3: clamp(28px, 3.8vw, 52px);   /* écart large : au-dessus d'un bloc   */
@@ -171,7 +194,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   text-transform:uppercase;color:var(--blue);margin-bottom:28px;
 }
 .e-ink .kicker,.e-blue .kicker{color:var(--gold)}
-.e-blue .kicker{color:rgba(255,255,255,.65)}
+.e-blue .kicker{color:rgba(255,255,255,.82)}
 .titre{
   font-size:var(--t-1);font-weight:700;letter-spacing:-.042em;
   line-height:1.02;max-width:16ch;
@@ -193,13 +216,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 }
 .geant small{font-size:.24em;letter-spacing:-.02em;font-weight:700}
 .mini{font-size:15px;color:var(--ink-3);margin-top:22px;line-height:1.55;max-width:40ch}
-.e-ink .mini,.e-blue .mini{color:rgba(255,255,255,.45)}
+.e-ink .mini,.e-blue .mini{color:rgba(255,255,255,.55)}
 
 /* ══ BOUTONS ══ */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:10px;
   padding:18px 32px;border-radius:100px;font-weight:700;font-size:17px;
-  letter-spacing:-.012em;transition:background .16s,transform .16s,border-color .16s;
+  letter-spacing:-.012em;transition:background var(--mv-1) var(--mv),transform var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
 }
 .btn-1{background:var(--blue);color:#fff}
 .btn-1:hover{background:var(--blue-d);transform:translateY(-2px)}
@@ -214,7 +237,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* ══ APPARITION ══
    Sur un format "un écran = une idée", le contenu doit arriver APRÈS que
    l'écran soit en place, sinon tout est déjà lu avant d'arriver. */
-.js .rv{opacity:0;transform:translateY(24px);transition:opacity .75s cubic-bezier(.2,.7,.3,1),transform .75s cubic-bezier(.2,.7,.3,1)}
+.js .rv{opacity:0;transform:translateY(24px);transition:opacity var(--mv-3) var(--mv),transform var(--mv-3) var(--mv)}
 .js .rv.on{opacity:1;transform:none}
 .js .rv:nth-child(2){transition-delay:.08s}
 .js .rv:nth-child(3){transition-delay:.16s}
@@ -225,7 +248,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    Sur un format long, il faut savoir où l'on en est et pouvoir sauter.
    Masqué sur téléphone : la place manque et le pouce l'accrocherait. */
 .dots{position:fixed;right:26px;top:50%;transform:translateY(-50%);z-index:800;display:flex;flex-direction:column;gap:14px}
-.dots a{width:9px;height:9px;border-radius:50%;background:var(--ink);opacity:.18;transition:opacity .2s,transform .2s}
+.dots a{width:9px;height:9px;border-radius:50%;background:var(--ink);opacity:.18;transition:opacity var(--mv-2) var(--mv),transform var(--mv-2) var(--mv)}
 .dots a:hover{opacity:.5}
 .dots a.on{opacity:1;transform:scale(1.35)}
 .dots.sur-fonce a{background:#fff}
@@ -236,7 +259,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    1000 px : sur grand écran le logo se retrouvait seul contre le bord, très
    loin de la colonne de texte. Il suit maintenant la même colonne. */
 .bar{
-  position:sticky;top:0;z-index:900;transition:background .25s,box-shadow .25s;
+  position:sticky;top:0;z-index:900;transition:background var(--mv-2) var(--mv),box-shadow var(--mv-2) var(--mv);
 }
 .bar-in{
   display:flex;align-items:center;gap:16px;
@@ -271,7 +294,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .bar.sur-fonce .btn-1{background:#fff;color:var(--ink)}
 .bar.sur-fonce .btn-1:hover{background:rgba(255,255,255,.88)}
 .bar-tel{font-weight:700;font-size:15px}
-.bar-lien{font-size:15px;font-weight:500;opacity:.68;transition:opacity .15s}
+.bar-lien{font-size:15px;font-weight:500;opacity:.68;transition:opacity var(--mv-1) var(--mv)}
 .bar-lien:hover{opacity:1}
 @media(max-width:900px){
   /* la barre du bas porte déjà le bouton : inutile de le doubler en haut.
@@ -311,18 +334,49 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .etat.complet .etat-pt{background:#B8860B;animation:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media(prefers-reduced-motion:reduce){.etat-pt{animation:none}}
+/* ── La ville suivante ─────────────────────────────────────────────────────
+   Un troisième état, à côté de « livré 7j/7 » et « sur demande » : ouvert
+   bientôt, avec une date. C'est ce qui rend l'expansion croyable. */
+.ouverture{
+  display:flex;align-items:flex-start;gap:13px;margin-top:18px;
+  padding:15px 18px;border-radius:var(--r-l);
+  background:rgba(201,162,39,.10);border:1px solid rgba(201,162,39,.34);
+}
+.ouverture .gtt{flex-shrink:0;width:11px;height:11px;margin-top:6px;
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold-txt)}
+.ouverture>div{flex:1 1 auto;min-width:0}
+.ouverture b{display:block;font-size:17.5px;letter-spacing:-.02em;color:var(--ink);margin-bottom:4px}
+.ouverture span{font-size:14.5px;line-height:1.5;color:var(--ink-2)}
+.ouverture .btn{flex-shrink:0;margin-top:2px}
+@media(max-width:640px){
+  .ouverture{flex-wrap:wrap;padding:16px 17px}
+  .ouverture .btn{width:100%;margin-top:12px;text-align:center;justify-content:center}
+}
+
+/* ── La signature de fermeture ─────────────────────────────────────────────
+   Le site se terminait sur un numéro de SIRET. Il se termine maintenant sur
+   son nom et sur sa promesse — celle-là même que l'engagement garantit. */
+.signature{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
+  margin-top:var(--e-2);padding-top:24px;border-top:1px solid rgba(255,255,255,.14)}
+.signature-n{font-size:27px;font-weight:700;letter-spacing:-.04em;color:#fff}
+.signature-b{font-size:17px;color:var(--gold);letter-spacing:-.01em}
+@media(max-width:520px){
+  .signature{gap:6px}
+  .signature-n{font-size:24px}
+  .signature-b{font-size:16px}
+}
 /* ── La liste d'attente des villes ─────────────────────────────────────────
    Le visiteur d'une autre ville n'avait rien à faire ici : il repartait.
    Maintenant il dit sa ville, et cette demande sert vraiment — elle décide
    de la prochaine ouverture. Le message part sur WhatsApp, donc aucun
    serveur à ajouter et aucune donnée stockée ici. */
-.attente{margin-top:22px;padding-top:20px;border-top:1px solid var(--line);max-width:520px}
-.attente-l{display:block;font-size:15.5px;font-weight:700;color:var(--ink);margin-bottom:12px}
+.attente{margin-top:18px;padding-top:17px;border-top:1px solid var(--line);max-width:520px}
+.attente-l{display:block;font-size:15.5px;font-weight:700;color:var(--ink);margin-bottom:10px}
 .attente-row{display:flex;gap:10px}
 .attente-i{
   flex:1 1 auto;min-width:0;background:var(--paper);border:1px solid var(--line);
   border-radius:var(--r);padding:13px 15px;font:inherit;font-size:15.5px;color:var(--ink);
-  transition:box-shadow .15s,border-color .15s;
+  transition:box-shadow var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
 }
 .attente-i::placeholder{color:var(--ink-3)}
 .attente-i:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,91,191,.16)}
@@ -403,7 +457,8 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .e-ink .signe,.e-blue .signe{border-top-color:rgba(255,255,255,.18)}
 .e-ink .signe .gtt,.e-blue .signe .gtt{background:var(--gold)}
 .e-ink .signe p,.e-blue .signe p{color:rgba(255,255,255,.86)}
-.e-ink .signe b,.e-blue .signe b{color:rgba(255,255,255,.55)}
+.e-ink .signe b{color:rgba(255,255,255,.62)}
+.e-blue .signe b{color:rgba(255,255,255,.84)}
 .e-blue .signe .gtt{background:#fff}
 .centre .signe{justify-content:center;text-align:left;margin-left:auto;margin-right:auto}
 
@@ -435,7 +490,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .e1 .titre{max-width:15ch;font-size:var(--t-2)}
 .addr{background:#fff;border-radius:var(--r-l);padding:22px;margin-top:28px;max-width:460px;box-shadow:0 1px 3px rgba(14,31,53,.05),0 18px 46px rgba(14,31,53,.1)}
 .addr label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:13px}
-.addr-row{display:flex;align-items:center;gap:12px;background:var(--mist);border-radius:var(--r);padding:15px 17px;transition:box-shadow .15s}
+.addr-row{display:flex;align-items:center;gap:12px;background:var(--mist);border-radius:var(--r);padding:15px 17px;transition:box-shadow var(--mv-1) var(--mv)}
 .addr-row:focus-within{box-shadow:inset 0 0 0 2px var(--blue)}
 .addr-row svg{flex-shrink:0;color:var(--ink-3)}
 .addr-row input{flex:1;min-width:0;border:none;outline:none;font:inherit;font-size:16px;color:var(--ink);background:none}
@@ -517,7 +572,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 }
 .sugg.on{display:block}
 .sugg button{display:block;width:100%;text-align:left;padding:11px 13px;border-radius:8px;
-  font-size:15px;color:var(--ink);line-height:1.35;transition:background .12s}
+  font-size:15px;color:var(--ink);line-height:1.35;transition:background var(--mv-1) var(--mv)}
 .sugg button:hover,.sugg button[aria-selected="true"]{background:var(--mist)}
 .sugg small{display:block;font-size:12.5px;color:var(--ink-3);margin-top:2px}
 
@@ -543,17 +598,18 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* ══ CALCULATEUR ══ */
 .calc{background:var(--ink);color:#fff;border-radius:var(--r-l);padding:var(--e-1)}
-.calc-lbl{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.45);margin-bottom:13px}
+/* 4,36 pour 1 : il s'en fallait de peu, mais un seuil ne s'arrondit pas. */
+.calc-lbl{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:13px}
 .calc-field{margin-bottom:20px}
 .step-row{display:flex;align-items:center;gap:14px;margin-bottom:13px}
-.step-btn{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(255,255,255,.24);color:#fff;font-size:21px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s,border-color .15s}
+.step-btn{width:44px;height:44px;border-radius:50%;border:1.5px solid rgba(255,255,255,.24);color:#fff;font-size:21px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv)}
 .step-btn:hover:not(:disabled){background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.5)}
 .step-btn:disabled{opacity:.28;cursor:not-allowed}
 .step-val{flex:1;text-align:center}
 .step-val b{display:block;font-size:34px;font-weight:700;line-height:1;letter-spacing:-.04em}
-.step-val span{font-size:13px;color:rgba(255,255,255,.45)}
+.step-val span{font-size:13px;color:rgba(255,255,255,.55)}
 .presets{display:flex;gap:8px;flex-wrap:wrap}
-.chip{border:1.5px solid rgba(255,255,255,.2);border-radius:100px;padding:9px 16px;font-size:14px;font-weight:500;color:rgba(255,255,255,.75);transition:all .15s}
+.chip{border:1.5px solid rgba(255,255,255,.2);border-radius:100px;padding:9px 16px;font-size:14px;font-weight:500;color:rgba(255,255,255,.75);transition:all var(--mv-1) var(--mv)}
 .chip:hover{border-color:rgba(255,255,255,.55);color:#fff}
 .chip[aria-pressed="true"]{background:#fff;border-color:#fff;color:var(--ink);font-weight:700}
 .calc-sep{height:1px;background:rgba(255,255,255,.13);margin:22px 0 18px}
@@ -567,7 +623,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .calc-day{font-size:14px;color:rgba(255,255,255,.5);margin-bottom:22px;line-height:1.5}
 .calc-day b{color:#fff;font-weight:700}
 .calc .btn{width:100%}
-.calc-legal{font-size:12.5px;color:rgba(255,255,255,.34);margin-top:14px;line-height:1.5;text-align:center}
+.calc-legal{font-size:12.5px;color:rgba(255,255,255,.52);margin-top:14px;line-height:1.5;text-align:center}
 
 /* ══ MUR DE VIDÉOS ══ */
 .rail{display:flex;gap:14px;margin-top:32px;padding:2px 0 16px;overflow-x:auto;scroll-snap-type:x proximity;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent}
@@ -577,7 +633,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .vcard video,.vcard>img{width:100%;height:100%;object-fit:cover}
 .vcard::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(8,18,32,.88) 0%,rgba(8,18,32,.1) 44%,transparent 66%)}
 .vplay{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;width:100%;color:#fff}
-.vplay span{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1.5px solid rgba(255,255,255,.42);display:flex;align-items:center;justify-content:center;transition:transform .18s,background .18s}
+.vplay span{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1.5px solid rgba(255,255,255,.42);display:flex;align-items:center;justify-content:center;transition:transform var(--mv-2) var(--mv),background var(--mv-2) var(--mv)}
 .vplay:hover span{transform:scale(1.08);background:rgba(255,255,255,.3)}
 .vcard.is-playing .vplay span{opacity:0}
 .vmeta{position:absolute;left:16px;right:16px;bottom:15px;z-index:3;pointer-events:none}
@@ -589,21 +645,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .vide b{display:block;color:rgba(255,255,255,.85);font-size:14px;margin-bottom:6px}
 @media(max-width:640px){.vcard{width:min(62vw,220px)}}
 
-/* ══ ÉCRAN ALY ══ */
-.aly{display:grid;grid-template-columns:.8fr 1.2fr;gap:var(--e-4);align-items:center}
-.aly-photo{aspect-ratio:4/5;max-height:62svh;border-radius:var(--r-l);overflow:hidden;position:relative;background:#183253;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px}
-.aly-photo img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0}
-.aly-photo b{font-size:15px;color:rgba(255,255,255,.85);margin-bottom:6px}
-.aly-photo span{font-size:13px;color:rgba(255,255,255,.48);line-height:1.55}
-.aly-tel{display:inline-flex;align-items:center;gap:14px;margin-top:32px;transition:opacity .15s}
-.aly-tel:hover{opacity:.75}
-.aly-av{width:46px;height:46px;border-radius:50%;background:var(--gold);color:var(--ink);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0}
-.aly-tel b{display:block;font-size:19px;color:#fff;font-weight:700;letter-spacing:-.02em}
-.aly-tel span{font-size:13.5px;color:rgba(255,255,255,.45)}
-@media(max-width:880px){.aly{grid-template-columns:1fr;gap:28px}.aly-photo{aspect-ratio:16/10;max-height:none}}
 
 /* ══ ÉCRAN ZONE ══ */
-.villes{display:grid;grid-template-columns:repeat(2,1fr);gap:0 var(--e-4);margin-top:26px}
+.villes{display:grid;grid-template-columns:repeat(2,1fr);gap:0 var(--e-4);margin-top:22px}
 /* Mesuré : en anglais la page débordait de 18px sur le côté d'un téléphone,
    en russe de 49px — et de 89px sur une tablette de 768px. Cause :
    l'étiquette « Livré 7j/7 » devient « Доставка 7 дней в неделю », deux fois
@@ -611,7 +655,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    Elle a maintenant le droit de descendre en dessous. Sur un grand écran,
    où tout tient sur une ligne, rien ne change. */
 .ville{display:flex;align-items:baseline;justify-content:space-between;
-  flex-wrap:wrap;gap:4px 16px;padding:13px 0;border-bottom:1px solid var(--line)}
+  flex-wrap:wrap;gap:4px 16px;padding:11px 0;border-bottom:1px solid var(--line)}
 .ville>div{min-width:0}
 .ville b{font-size:19px;font-weight:700;letter-spacing:-.025em}
 .ville span{font-size:13.5px;color:var(--ink-3);display:block;margin-top:2px}
@@ -626,7 +670,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .faq details{border-bottom:1px solid var(--line)}
 .faq summary{padding:20px 44px 20px 0;font-size:17.5px;font-weight:700;letter-spacing:-.022em;cursor:pointer;list-style:none;position:relative;line-height:1.4}
 .faq summary::-webkit-details-marker{display:none}
-.faq summary::after{content:'';position:absolute;right:6px;top:50%;width:10px;height:10px;border-right:2px solid var(--blue);border-bottom:2px solid var(--blue);transform:translateY(-70%) rotate(45deg);transition:transform .22s}
+.faq summary::after{content:'';position:absolute;right:6px;top:50%;width:10px;height:10px;border-right:2px solid var(--blue);border-bottom:2px solid var(--blue);transform:translateY(-70%) rotate(45deg);transition:transform var(--mv-2) var(--mv)}
 .faq details[open] summary::after{transform:translateY(-30%) rotate(-135deg)}
 .faq details[open] summary{color:var(--blue)}
 .faq p{padding:0 36px 24px 0;font-size:16px;color:var(--ink-2);line-height:1.68}
@@ -638,8 +682,11 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .fin-cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:40px}
 .fin-q{border-left:2px solid var(--gold);padding:4px 0 4px 22px;margin:56px auto 0;text-align:left;max-width:560px}
 .fin-q p{font-size:16.5px;color:rgba(255,255,255,.85);margin-bottom:11px;line-height:1.6}
-.fin-q cite{font-style:normal;font-size:13.5px;color:rgba(255,255,255,.42)}
-.pied{font-size:13.5px;color:rgba(255,255,255,.34);line-height:1.7;margin-top:56px}
+.fin-q cite{font-style:normal;font-size:13.5px;color:rgba(255,255,255,.55)}
+/* Les colonnes du pied et la signature sont alignées à gauche ; la ligne
+   légale était centrée toute seule au milieu. Elle rentre dans le rang. */
+.pied{font-size:13.5px;color:rgba(255,255,255,.52);line-height:1.7;
+  margin-top:18px;text-align:left}
 .pied a{border-bottom:1px solid rgba(255,255,255,.28)}
 
 /* ══ BARRE D'INFO DU HAUT ══
@@ -663,7 +710,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    Même clé de mémorisation que le site officiel ('locair-lang') : un visiteur
    qui a choisi l'anglais sur locair.fr retrouve l'anglais ici. */
 .lang{position:relative;flex-shrink:0}
-.lang-b{display:flex;align-items:center;gap:7px;padding:9px 14px;border:1.5px solid var(--line);border-radius:100px;font-size:14px;font-weight:700;transition:border-color .15s}
+.lang-b{display:flex;align-items:center;gap:7px;padding:9px 14px;border:1.5px solid var(--line);border-radius:100px;font-size:14px;font-weight:700;transition:border-color var(--mv-1) var(--mv)}
 .lang-b:hover{border-color:var(--ink)}
 .bar.sur-fonce .lang-b{border-color:rgba(255,255,255,.28)}
 .bar.sur-fonce .lang-b:hover{border-color:rgba(255,255,255,.6)}
@@ -673,10 +720,10 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   background:#fff;border-radius:var(--r);padding:7px;
   box-shadow:0 2px 8px rgba(14,31,53,.08),0 18px 44px rgba(14,31,53,.16);
   opacity:0;visibility:hidden;transform:translateY(-6px);
-  transition:opacity .16s,transform .16s,visibility .16s;
+  transition:opacity var(--mv-1) var(--mv),transform var(--mv-1) var(--mv),visibility var(--mv-1) var(--mv);
 }
 .lang-l.on{opacity:1;visibility:visible;transform:none}
-.lang-l button{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border-radius:8px;font-size:15px;color:var(--ink);text-align:left;transition:background .12s}
+.lang-l button{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border-radius:8px;font-size:15px;color:var(--ink);text-align:left;transition:background var(--mv-1) var(--mv)}
 .lang-l button:hover{background:var(--mist)}
 .lang-l button[aria-selected="true"]{font-weight:700;background:var(--blue-soft);color:var(--blue)}
 .lang-l b{font-size:16px;line-height:1}
@@ -684,7 +731,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .menu-lang{display:flex;gap:8px;flex-wrap:wrap}
 .menu-lang button{
   border:1.5px solid rgba(255,255,255,.2);border-radius:100px;padding:10px 17px;
-  font-size:15px;color:rgba(255,255,255,.75);transition:all .15s;
+  font-size:15px;color:rgba(255,255,255,.75);transition:all var(--mv-1) var(--mv);
 }
 .menu-lang button:hover{border-color:rgba(255,255,255,.55);color:#fff}
 .menu-lang button[aria-selected="true"]{background:#fff;border-color:#fff;color:var(--ink);font-weight:700}
@@ -693,7 +740,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* ══ MENU ══
    La version B n'avait aucun menu sur téléphone : les espaces client et
    ambassadeur étaient donc inaccessibles. C'est le manque le plus grave. */
-.burger{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .15s}
+.burger{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background var(--mv-1) var(--mv)}
 .burger:hover{background:rgba(0,0,0,.06)}
 .bar.sur-fonce .burger:hover{background:rgba(255,255,255,.12)}
 .burger span{display:block;width:19px;height:1.8px;background:currentColor;position:relative}
@@ -703,7 +750,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .menu{
   position:fixed;inset:0;z-index:960;background:var(--ink);color:#fff;
   display:flex;flex-direction:column;padding:24px var(--pad) max(28px,env(safe-area-inset-bottom));
-  opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s;
+  opacity:0;visibility:hidden;transition:opacity var(--mv-2) var(--mv),visibility var(--mv-2) var(--mv);
   overflow-y:auto;
 }
 .menu.on{opacity:1;visibility:visible}
@@ -712,12 +759,15 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .menu-x{width:44px;height:44px;border-radius:50%;color:rgba(255,255,255,.7);font-size:26px;line-height:1;display:flex;align-items:center;justify-content:center}
 .menu-x:hover{background:rgba(255,255,255,.12);color:#fff}
 .menu-grp{margin-bottom:30px}
-.menu-t{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:14px}
-.menu a.ml{display:block;font-size:23px;font-weight:700;letter-spacing:-.03em;padding:9px 0;transition:color .15s}
+/* Mesuré : .35 de blanc sur le marine ne donne que 3,17 pour 1, sous le
+   minimum de 4,5 exigé pour du petit texte. .52 donne 5,37. */
+.menu-t{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:14px}
+.menu a.ml{display:block;font-size:23px;font-weight:700;letter-spacing:-.03em;padding:9px 0;transition:color var(--mv-1) var(--mv)}
 .menu a.ml:hover{color:var(--gold)}
-.menu a.ms{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:16.5px;font-weight:500;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.11);transition:color .15s}
+.menu a.ms{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:16.5px;font-weight:500;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.11);transition:color var(--mv-1) var(--mv)}
 .menu a.ms:hover{color:var(--gold)}
-.menu a.ms i{font-style:normal;font-size:13px;color:rgba(255,255,255,.4)}
+/* 3,73 pour 1 auparavant : les descriptions du menu étaient sous le seuil. */
+.menu a.ms i{font-style:normal;font-size:13px;color:rgba(255,255,255,.55)}
 .menu-cta{margin-top:auto;padding-top:26px;display:grid;gap:10px}
 .menu-cta .btn{width:100%}
 
@@ -725,15 +775,15 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .portes{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:38px}
 .porte{
   background:var(--ink);color:#fff;border-radius:var(--r-l);padding:var(--e-1);
-  display:flex;flex-direction:column;transition:transform .18s ease;
+  display:flex;flex-direction:column;transition:transform var(--mv-2) var(--mv);
 }
 .porte:hover{transform:translateY(-3px)}
 .porte.or{background:var(--gold);color:var(--ink)}
 .porte-k{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
-.porte.or .porte-k{color:rgba(14,31,53,.6)}
+.porte.or .porte-k{color:rgba(14,31,53,.82)}
 .porte h3{font-size:var(--t-5);letter-spacing:-.03em;margin-bottom:12px;line-height:1.15}
 .porte>p{font-size:15px;color:rgba(255,255,255,.6);line-height:1.55;margin-bottom:20px}
-.porte.or>p{color:rgba(14,31,53,.72)}
+.porte.or>p{color:rgba(14,31,53,.84)}
 .porte ul{list-style:none;display:grid;gap:9px;margin-bottom:26px}
 .porte li{font-size:14.5px;color:rgba(255,255,255,.78);display:flex;gap:10px;line-height:1.5}
 .porte li::before{content:'→';color:var(--gold);flex-shrink:0}
@@ -744,17 +794,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* ══ PIED DE PAGE ══ */
 .pied-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:30px;margin-top:52px;padding-top:36px;border-top:1px solid rgba(255,255,255,.14);text-align:left}
-.pied-grid h4{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:14px}
+.pied-grid h4{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:14px}
 .pied-grid li{list-style:none;margin-bottom:9px}
-.pied-grid a{font-size:14.5px;color:rgba(255,255,255,.6);transition:color .15s}
+.pied-grid a{font-size:14.5px;color:rgba(255,255,255,.6);transition:color var(--mv-1) var(--mv)}
 .pied-grid a:hover{color:#fff}
 @media(max-width:880px){.pied-grid{grid-template-columns:repeat(2,1fr);gap:26px}}
 @media(max-width:520px){.pied-grid{grid-template-columns:1fr;gap:24px}}
 .pied-grid li{font-size:14.5px;color:rgba(255,255,255,.6);line-height:1.5}
-.reunion{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
-  text-align:left;margin-top:30px;padding:20px 24px;border-radius:var(--r);
-  background:rgba(255,255,255,.06);font-size:14.5px;color:rgba(255,255,255,.6)}
-.reunion strong{color:#fff;font-weight:700}
 
 /* ══ CONSENTEMENT AUX COOKIES ══
    Obligatoire avant tout dépôt de traceur publicitaire (CNIL). Refuser doit
@@ -774,7 +820,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .cook-b{display:flex;gap:10px;flex-wrap:wrap}
 .cook-b button{
   flex:1;min-width:120px;padding:12px 18px;border-radius:100px;
-  font-size:15px;font-weight:700;transition:background .15s,border-color .15s;
+  font-size:15px;font-weight:700;transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
 }
 .cook-oui{background:#fff;color:var(--ink)}
 .cook-oui:hover{background:rgba(255,255,255,.86)}
@@ -1240,8 +1286,8 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 <section class="ecran e-mist" id="e9" data-titre="Zone de livraison">
   <div class="in">
     <span class="kicker rv" data-t="e9.kicker">Où nous opérons</span>
-    <h2 class="titre rv t-2" data-th="e9.titre">Nice, aujourd'hui.<em> La liste s'allonge.</em></h2>
-    <p class="dire rv" data-t="e9.dire">Nous ouvrons une ville quand nous pouvons y tenir le créneau du matin — pas avant. Voici celles où c'est le cas.</p>
+    <h2 class="titre rv t-4" data-th="e9.titre">Nice, aujourd'hui.<em> La liste s'allonge.</em></h2>
+    <p class="dire rv" style="max-width:60ch" data-t="e9.dire">Nous ouvrons une ville quand nous pouvons y tenir le créneau du matin — pas avant. Voici celles où c'est le cas.</p>
     <div class="villes rv">
       <div class="ville"><div><b>Nice</b><span data-t="e9.nice">Tous quartiers · 60 €</span></div><span class="tag" data-t="e9.livre">Livré 7j/7</span></div>
       <div class="ville"><div><b>Saint-Laurent-du-Var</b><span data-t="e9.std">Zone standard · 60 €</span></div><span class="tag" data-t="e9.livre">Livré 7j/7</span></div>
@@ -1249,6 +1295,19 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
       <div class="ville"><div><b>Villefranche-sur-Mer</b><span data-t="e9.std">Zone standard · 60 €</span></div><span class="tag" data-t="e9.livre">Livré 7j/7</span></div>
       <div class="ville"><div><b>Beaulieu-sur-Mer</b><span data-t="e9.std">Zone standard · 60 €</span></div><span class="tag" data-t="e9.livre">Livré 7j/7</span></div>
       <div class="ville"><div><b>Cannes · Antibes · Menton</b><span data-t="e9.hors">Hors zone · 120 €</span></div><span class="tag tag-ask" data-t="e9.demande">Sur demande</span></div>
+    </div>
+
+    <!-- La ville suivante est déjà datée. Elle était en petits caractères
+         tout en bas du pied de page, sous les mentions légales : c'est
+         pourtant la seule preuve que « la liste s'allonge » n'est pas un
+         slogan. Elle remonte ici, à sa place. -->
+    <div class="ouverture rv">
+      <span class="gtt" aria-hidden="true"></span>
+      <div>
+        <b data-t="e9.ouvT">La Réunion</b>
+        <span data-t="e9.ouvD">Ouverture en novembre 2026. Livraison et installation, sans caution, comme à Nice.</span>
+      </div>
+      <a class="btn btn-out btn-s" href="/reunion" data-t="e9.ouvB">Rejoindre la liste →</a>
     </div>
 
     <!-- La liste d'attente. Pas de promesse de date : le visiteur dit sa
@@ -1399,11 +1458,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
       </div>
     </div>
 
-    <p class="reunion rv">
-      <span data-th="p.reunion"><strong>Loc'Air arrive à La Réunion</strong> — ouverture novembre 2026 · Livraison + installation · Sans caution</span>
-      <a class="btn btn-ghost btn-s" href="/reunion" data-t="p.rejoindre">Rejoindre la liste →</a>
-    </p>
-    <p class="pied rv" style="margin-top:30px">
+    <!-- La marque signe. Un site se termine sur son nom et sur ce qu'il
+         promet, pas sur un numéro de SIRET. -->
+    <div class="signature rv">
+      <span class="logo signature-n">Loc<i class="gt">'</i>Air</span>
+      <span class="signature-b" data-t="p.baseline">Le froid, à l'heure.</span>
+    </div>
+    <p class="pied rv">
       <span data-t="p.legal">THIAM ALY · SIRET 853 730 562 00024 · 11 Avenue Chantal, 06100 Nice · 7j/7 de 8h à 20h</span><br>
       <span style="color:var(--gold)" data-t="p.apercu">Page d'aperçu, non indexée.</span> <span data-t="p.officiel">Le site officiel est</span> <a href="/">locair.fr</a>.
     </p>
@@ -1746,11 +1807,8 @@ Object.assign(T, {
   'p.infos'   : {fr:"Informations", en:"Information", zh:"信息", ru:"Информация"},
   'p.joindre' : {fr:"Nous joindre", en:"Contact us", zh:"联系我们", ru:"Связаться с нами"},
   'p.zones'   : {fr:"Zones desservies", en:"Areas served", zh:"服务区域", ru:"Зоны обслуживания"},
-  'p.reunion' : {fr:"<strong>Loc'Air arrive à La Réunion</strong> — ouverture novembre 2026 · Livraison + installation · Sans caution",
-                 en:"<strong>Loc'Air is coming to Réunion</strong> — opening November 2026 · Delivery + installation · No deposit",
-                 zh:"<strong>Loc'Air 即将登陆留尼汪岛</strong> — 2026年11月开业 · 配送+安装 · 无需押金",
-                 ru:"<strong>Loc'Air открывается на Реюньоне</strong> — ноябрь 2026 · Доставка + установка · Без залога"},
-  'p.rejoindre':{fr:"Rejoindre la liste →", en:"Join the list →", zh:"加入名单 →", ru:"Записаться в список →"},
+  'p.baseline': {fr:"Le froid, à l'heure.", en:"Cool air, on time.",
+                 zh:"清凉，准时送到。", ru:"Прохлада — точно в срок."},
   'p.legal'   : {fr:"THIAM ALY · SIRET 853 730 562 00024 · 11 Avenue Chantal, 06100 Nice · 7j/7 de 8h à 20h",
                  en:"THIAM ALY · SIRET 853 730 562 00024 · 11 Avenue Chantal, 06100 Nice · 7 days a week, 8am–8pm",
                  zh:"THIAM ALY · SIRET 853 730 562 00024 · 11 Avenue Chantal, 06100 Nice · 每天 8:00–20:00",
@@ -1897,6 +1955,12 @@ Object.assign(T, {
                 en:"We open a city when we can keep the morning delivery window there — not before. These are the ones where we can.",
                 zh:"只有当我们能在一座城市守住上午的送达时段时，才会开通它——绝不提前。以下是已经做到的城市。",
                 ru:"Мы открываем город тогда, когда можем выдержать там утреннее окно доставки, — и не раньше. Вот те, где это уже так."},
+  'e9.ouvT'   : {fr:"La Réunion", en:"Réunion", zh:"留尼汪岛", ru:"Реюньон"},
+  'e9.ouvD'   : {fr:"Ouverture en novembre 2026. Livraison et installation, sans caution, comme à Nice.",
+                 en:"Opening November 2026. Delivery and installation, no deposit, just like in Nice.",
+                 zh:"2026年11月开业。配送加安装，无需押金，和尼斯一样。",
+                 ru:"Открытие в ноябре 2026 года. Доставка и установка, без залога — как в Ницце."},
+  'e9.ouvB'   : {fr:"Rejoindre la liste →", en:"Join the list →", zh:"加入名单 →", ru:"В список →"},
   'e9.attenteL': {fr:"Votre ville n'est pas dans la liste ?",
                   en:"Your city isn't on the list?",
                   zh:"名单里没有你的城市？",
