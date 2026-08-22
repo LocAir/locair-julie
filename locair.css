@@ -21,7 +21,38 @@
      utilise cette version assombrie (4,76), qui garde la teinte. */
   --gold-txt:#8A7016;
   --paper:#FFFFFF; --mist:#F5F7FA; --line:#E6EBF1; --green:#0F7A3D;
-  --pad:24px; --max:1000px; --r:12px; --r-l:20px;
+  --pad:24px; --max:1000px;
+  /* ── COINS ARRONDIS ──
+     Huit valeurs écrites à la main cohabitaient (6, 8, 10, 11, 12, 20,
+     100px, 50%) sans qu'aucune règle ne dise laquelle utiliser. Quatre
+     marches désormais : petit, carte, grande carte, pilule. */
+  --r-s:8px; --r:12px; --r-l:20px; --r-f:100px;
+  /* ── OMBRES ──
+     Douze ombres différentes, toutes écrites à la main : les cartes
+     flottaient à douze hauteurs différentes sans que rien ne le justifie.
+     Trois niveaux, un par distance : posé, soulevé, flottant. */
+  --o-1:0 1px 2px rgba(14,31,53,.05),0 2px 8px rgba(14,31,53,.05);
+  --o-2:0 4px 12px rgba(14,31,53,.06),0 12px 32px rgba(14,31,53,.10);
+  --o-3:0 8px 24px rgba(14,31,53,.09),0 28px 60px rgba(14,31,53,.16);
+  /* ── INTERLETTRAGE ──
+     Vingt-trois valeurs, de -.06em à .2em, par pas de deux millièmes.
+     Six marches : plus le texte est grand, plus il se resserre ; les
+     capitales, elles, s'écartent. */
+  --l-1:-.045em; --l-2:-.03em; --l-3:-.015em; --l-4:-.005em;
+  --l-5:.07em;   --l-6:.18em;
+  /* ── INTERLIGNE ──
+     Dix-sept valeurs, de .86 à 1.7. Cinq marches : les très petits
+     interlignes (sous 1.05) restent tels quels, ce sont des réglages
+     optiques pour les chiffres géants, pas de la conduite de texte. */
+  --h-1:1.15; --h-2:1.3; --h-3:1.4; --h-4:1.5; --h-5:1.65;
+  /* ── TAILLES DE TEXTE ──
+     Les titres avaient leur échelle (--t-1 à --t-6). Tout le reste était
+     improvisé : vingt-sept valeurs entre 11 et 27 px, par pas d'un demi-
+     pixel. Personne ne distingue 13,5 de 14 — mais l'œil sent le désordre.
+     Sept marches, choisies pour tomber sur les tailles les plus utilisées :
+     aucun texte ne bouge de plus d'un demi-pixel. */
+  --s-1:11.5px; --s-2:13px;   --s-3:14.5px; --s-4:16px;
+  --s-5:17.5px; --s-6:19.5px; --s-7:23px;
   /* DM Sans couvre le latin et le cyrillique, mais PAS les idéogrammes :
      le chinois tombait donc sur une police système au hasard. La pile ci-
      dessous nomme explicitement les polices chinoises de chaque système, et
@@ -35,7 +66,7 @@
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 body{
   font-family:var(--font);background:var(--paper);color:var(--ink);
-  font-size:17px;line-height:1.6;letter-spacing:-.005em;
+  font-size:var(--s-5);line-height:var(--h-5);letter-spacing:var(--l-4);
   -webkit-font-smoothing:antialiased;overflow-x:hidden;
 }
 img,video,picture{max-width:100%;height:auto;display:block}
@@ -62,7 +93,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 :root{--focus:var(--blue)}                    /* blanc, brume  → 6,36:1 */
 .e-ink,.menu,.cook,.infobar{--focus:var(--gold)}  /* marine    → 6,86:1 */
 .e-blue,.bar{--focus:#fff}          /* bleu, barre   → 6,36:1 */
-:focus-visible{outline:2.5px solid var(--focus);outline-offset:4px;border-radius:6px}
+:focus-visible{outline:2.5px solid var(--focus);outline-offset:4px;border-radius:var(--r-s)}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 
 /* ══ L'ÉCRAN ══
@@ -130,13 +161,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   --e-4: clamp(30px, 4.8vw, 64px);   /* écart de respiration : deux moitiés */
 }
 .kicker{
-  display:block;font-size:12px;font-weight:700;letter-spacing:.2em;
+  display:block;font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);
   text-transform:uppercase;color:var(--blue);margin-bottom:28px;
 }
 .e-ink .kicker,.e-blue .kicker{color:var(--gold)}
 .e-blue .kicker{color:rgba(255,255,255,.82)}
 .titre{
-  font-size:var(--t-1);font-weight:700;letter-spacing:-.042em;
+  font-size:var(--t-1);font-weight:700;letter-spacing:var(--l-1);
   line-height:1.02;max-width:16ch;
 }
 /* Une marche de l'échelle, choisie selon la longueur du titre. Avant, la
@@ -147,22 +178,22 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .titre em{font-style:normal;color:var(--blue)}
 .e-ink .titre em{color:var(--gold)}
 .e-blue .titre em,.e-ink.e-alt .titre em{color:#fff}
-.dire{font-size:var(--t-6);color:var(--ink-2);line-height:1.5;max-width:44ch;margin-top:28px;letter-spacing:-.012em}
+.dire{font-size:var(--t-6);color:var(--ink-2);line-height:var(--h-4);max-width:44ch;margin-top:28px;letter-spacing:var(--l-4)}
 .e-ink .dire{color:rgba(255,255,255,.6)}
 .e-blue .dire{color:rgba(255,255,255,.78)}
 .geant{
-  font-size:var(--n-1);font-weight:700;letter-spacing:-.06em;
+  font-size:var(--n-1);font-weight:700;letter-spacing:var(--l-1);
   line-height:.86;display:block;
 }
-.geant small{font-size:.24em;letter-spacing:-.02em;font-weight:700}
-.mini{font-size:15px;color:var(--ink-3);margin-top:22px;line-height:1.55;max-width:40ch}
+.geant small{font-size:.24em;letter-spacing:var(--l-3);font-weight:700}
+.mini{font-size:var(--s-3);color:var(--ink-3);margin-top:22px;line-height:var(--h-4);max-width:40ch}
 .e-ink .mini,.e-blue .mini{color:rgba(255,255,255,.55)}
 
 /* ══ BOUTONS ══ */
 .btn{
   display:inline-flex;align-items:center;justify-content:center;gap:10px;
-  padding:18px 32px;border-radius:100px;font-weight:700;font-size:17px;
-  letter-spacing:-.012em;transition:background var(--mv-1) var(--mv),transform var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
+  padding:18px 32px;border-radius:var(--r-f);font-weight:700;font-size:var(--s-5);
+  letter-spacing:var(--l-4);transition:background var(--mv-1) var(--mv),transform var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
 }
 .btn-1{background:var(--blue);color:#fff}
 .btn-1:hover{background:var(--blue-d);transform:translateY(-2px)}
@@ -177,7 +208,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .btn-out:hover{border-color:var(--ink);transform:translateY(-2px)}
 .btn-ghost{border:1.5px solid rgba(255,255,255,.3);color:#fff}
 .btn-ghost:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.6)}
-.btn-s{padding:12px 22px;font-size:15px}
+.btn-s{padding:12px 22px;font-size:var(--s-3)}
 
 /* ══ APPARITION ══
    Sur un format "un écran = une idée", le contenu doit arriver APRÈS que
@@ -252,7 +283,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    la langue (mesuré à 1440 px : il commençait à 398 px en français, 330 en
    russe, 463 en chinois — la barre se réorganisait à chaque traduction).
    Il est maintenant accroché au logo, et tout le vide part au milieu. */
-.bar .logo{font-weight:700;font-size:21px;letter-spacing:-.04em}
+.bar .logo{font-weight:700;font-size:var(--s-6);letter-spacing:var(--l-2)}
 .bar .btn-out{border-color:rgba(255,255,255,.35);color:#fff}
 /* Sur l'écran bleu, un bouton bleu disparaît dans le fond : sur tout fond
    sombre le bouton principal passe en blanc, ce qui marche aussi bien sur
@@ -282,7 +313,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    immédiatement qu'il existe deux offres et laquelle on regarde. Il tient
    dans la barre, donc il ne coûte aucune hauteur. */
 .offre{
-  display:inline-flex;gap:2px;padding:3px;border-radius:100px;
+  display:inline-flex;gap:2px;padding:3px;border-radius:var(--r-f);
   background:rgba(14,31,53,.07);margin-left:6px;margin-right:auto;
 }
 /* Sur fond sombre, la gouttière était PLUS CLAIRE que le fond : « Pro »
@@ -293,17 +324,17 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    un reflet. */
 .bar .offre{background:rgba(0,0,0,.18)}
 .offre-o{
-  padding:6px 14px;border-radius:100px;font-size:13.5px;font-weight:700;
-  letter-spacing:-.005em;color:var(--ink-2);white-space:nowrap;
+  padding:6px 14px;border-radius:var(--r-f);font-size:var(--s-2);font-weight:700;
+  letter-spacing:var(--l-4);color:var(--ink-2);white-space:nowrap;
   transition:background var(--mv-1) var(--mv),color var(--mv-1) var(--mv);
 }
 .offre-o:hover{color:var(--ink)}
-.offre-o.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(14,31,53,.12)}
+.offre-o.on{background:var(--paper);color:var(--ink);box-shadow:var(--o-1)}
 .bar .offre-o{color:rgba(255,255,255,.72)}
 .bar .offre-o:hover{color:#fff}
 .bar .offre-o.on{background:rgba(255,255,255,.94);color:var(--ink)}
 @media(max-width:900px){
-  .offre-o{padding:6px 11px;font-size:12.5px}
+  .offre-o{padding:6px 11px;font-size:var(--s-2)}
 }
 @media(max-width:560px){
   /* Mesuré : à 320px, « Частным лицам / Бизнесу » faisait déborder la barre
@@ -314,7 +345,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .bar-in{flex-wrap:wrap;row-gap:10px}
   .logo{margin-right:auto}
   .offre{order:3;flex:0 0 100%;margin-left:0;margin-right:0;display:flex}
-  .offre-o{flex:1 1 0;text-align:center;padding:8px 10px;font-size:13px}
+  .offre-o{flex:1 1 0;text-align:center;padding:8px 10px;font-size:var(--s-2)}
 }
 /* Ce qui disparaît, et quand. La barre s'est beaucoup allégée : le
    sélecteur de langue tient maintenant jusqu'à 430 px au lieu de 1000, ce
@@ -329,10 +360,10 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 @media(max-width:430px){.bar .lang{display:none}}
 
 /* ══ BANDEAU APERÇU ══ */
-.preview-bar{position:relative;z-index:901;background:var(--ink);color:rgba(255,255,255,.68);font-size:13px;text-align:center;padding:10px var(--pad)}
+.preview-bar{position:relative;z-index:901;background:var(--ink);color:rgba(255,255,255,.68);font-size:var(--s-2);text-align:center;padding:10px var(--pad)}
 .preview-bar strong{color:var(--gold);font-weight:700}
 .preview-bar a{color:#fff;border-bottom:1px solid rgba(255,255,255,.4)}
-@media(max-width:640px){.preview-bar{font-size:12px}.preview-bar .long{display:none}}
+@media(max-width:640px){.preview-bar{font-size:var(--s-1)}.preview-bar .long{display:none}}
 
 /* ══ ÉCRAN 1 : OUVERTURE ══ */
 /* --bandeau vaut 0 tant que le bandeau d'info n'est pas affiché ; le script
@@ -356,7 +387,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    l'urgence ; le texte n'a pas à crier. */
 .etat{
   display:flex;align-items:baseline;gap:11px;margin-bottom:22px;
-  font-size:16px;color:var(--ink-2);line-height:1.5;max-width:48ch;
+  font-size:var(--s-4);color:var(--ink-2);line-height:var(--h-4);max-width:48ch;
 }
 .etat b{color:var(--ink);font-weight:700}
 /* ── CE QUE NOUS LOUONS ────────────────────────────────────────────────────
@@ -364,7 +395,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    ligne donne le métier. Sans elle, l'écran d'accueil ne nommait aucun
    des deux produits — il fallait deviner d'après une photo. */
 .quoi{
-  font-size:17.5px;color:var(--ink-2);line-height:1.5;
+  font-size:var(--s-5);color:var(--ink-2);line-height:var(--h-4);
   max-width:46ch;margin:20px 0 0;
 }
 .etat-pt{
@@ -381,18 +412,18 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    En ligne plutôt qu'empilées — trois villes tiennent alors dans la hauteur
    qu'en prenait une seule. */
 .ouvertures{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
-.ouv-t{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+.ouv-t{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);text-transform:uppercase;
   color:var(--ink-3);margin:0 0 11px}
 .ouv-l{display:flex;flex-wrap:wrap;gap:9px}
 .ouv{
   display:flex;align-items:baseline;gap:9px;
-  padding:9px 15px;border-radius:100px;
+  padding:9px 15px;border-radius:var(--r-f);
   background:rgba(201,162,39,.10);border:1px solid rgba(201,162,39,.34);
 }
 .ouv .gtt{flex-shrink:0;width:9px;height:9px;align-self:center;
   border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold-txt)}
-.ouv b{font-size:15.5px;font-weight:700;letter-spacing:-.015em;color:var(--ink)}
-.ouv em{font-style:normal;font-size:13.5px;color:var(--ink-2)}
+.ouv b{font-size:var(--s-4);font-weight:700;letter-spacing:var(--l-3);color:var(--ink)}
+.ouv em{font-style:normal;font-size:var(--s-2);color:var(--ink-2)}
 .ouv.lien em{color:var(--gold-txt);font-weight:700}
 .ouv.lien{transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv)}
 .ouv.lien:hover{background:rgba(201,162,39,.18);border-color:var(--gold-txt)}
@@ -407,18 +438,18 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    de la prochaine ouverture. Le message part sur WhatsApp, donc aucun
    serveur à ajouter et aucune donnée stockée ici. */
 .attente{margin-top:18px;padding-top:17px;border-top:1px solid var(--line);max-width:520px}
-.attente-l{display:block;font-size:15.5px;font-weight:700;color:var(--ink);margin-bottom:10px}
+.attente-l{display:block;font-size:var(--s-4);font-weight:700;color:var(--ink);margin-bottom:10px}
 .attente-row{display:flex;gap:10px}
 .attente-i{
   /* L'écran est passé sur fond blanc : un champ blanc y disparaissait. */
   flex:1 1 auto;min-width:0;background:var(--mist);border:1px solid var(--line);
-  border-radius:var(--r);padding:13px 15px;font:inherit;font-size:15.5px;color:var(--ink);
+  border-radius:var(--r);padding:13px 15px;font:inherit;font-size:var(--s-4);color:var(--ink);
   transition:box-shadow var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
 }
 .attente-i::placeholder{color:var(--ink-3)}
 .attente-i:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,91,191,.16)}
 .attente-b{flex:0 0 auto}
-.attente-m{font-size:13.5px;line-height:1.55;color:var(--ink-3);margin-top:11px}
+.attente-m{font-size:var(--s-2);line-height:var(--h-4);color:var(--ink-3);margin-top:11px}
 .attente-ok{color:var(--green);font-weight:700}
 @media(max-width:520px){
   .attente-row{flex-wrap:wrap}
@@ -441,13 +472,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .socle{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:24px}
 .soc{padding:17px 19px 19px;border-radius:var(--r-l);
   background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.12)}
-.soc b{display:block;font-size:16.5px;line-height:1.3;letter-spacing:-.012em;
+.soc b{display:block;font-size:var(--s-4);line-height:var(--h-2);letter-spacing:var(--l-4);
   color:#fff;margin-bottom:7px}
-.soc span{font-size:14px;line-height:1.5;color:rgba(255,255,255,.64)}
+.soc span{font-size:var(--s-3);line-height:var(--h-4);color:rgba(255,255,255,.64)}
 @media(max-width:760px){
   .socle{grid-template-columns:1fr;gap:12px}
   .soc{padding:16px 18px 18px}
-  .soc b{font-size:16.5px}
+  .soc b{font-size:var(--s-4)}
   }
 /* Emplacement de photo, en attendant la vraie. Mieux vaut un cadre honnête
    qu'une image de banque : la page entière repose sur le fait qu'on dit ce
@@ -458,8 +489,8 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   display:flex;flex-direction:column;align-items:center;justify-content:center;
   gap:7px;text-align:center;padding:28px;
 }
-.photo-vide b{font-size:16px;font-weight:700;color:var(--ink-2)}
-.photo-vide span{font-size:14px;line-height:1.5;color:var(--ink-3);max-width:28ch}
+.photo-vide b{font-size:var(--s-4);font-weight:700;color:var(--ink-2)}
+.photo-vide span{font-size:var(--s-3);line-height:var(--h-4);color:var(--ink-3);max-width:28ch}
 @media(max-width:880px){.photo-vide{display:none}}
 
 /* ── Le formulaire de réservation pro ──────────────────────────────────────
@@ -468,17 +499,17 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .form{margin-top:18px;max-width:var(--max)}
 .form-l{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .ch{display:flex;flex-direction:column;gap:6px}
-.ch span{font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.ch span{font-size:var(--s-2);font-weight:700;letter-spacing:var(--l-5);text-transform:uppercase;color:var(--ink-3)}
 .ch input{
   background:var(--paper);border:1px solid var(--line);border-radius:var(--r);
-  padding:12px 14px;font:inherit;font-size:15.5px;color:var(--ink);width:100%;
+  padding:12px 14px;font:inherit;font-size:var(--s-4);color:var(--ink);width:100%;
   transition:box-shadow var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
 }
 .ch input::placeholder{color:var(--ink-3)}
 .ch input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(29,91,191,.16)}
 .ch:first-child,.ch:nth-child(2){grid-column:span 1}
 .form-b{margin-top:14px}
-.form-note{font-size:13.5px;line-height:1.5;color:var(--ink-3);margin:11px 0 0;max-width:56ch}
+.form-note{font-size:var(--s-2);line-height:var(--h-4);color:var(--ink-3);margin:11px 0 0;max-width:56ch}
 .form-note.form-err{color:var(--blue);font-weight:700}
 @media(max-width:700px){
   .form-l{grid-template-columns:1fr}
@@ -494,9 +525,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .ptiers{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:24px}
 .ptier{padding:16px 18px;border-radius:var(--r-l);
   background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.12)}
-.ptier b{display:block;font-size:30px;font-weight:700;letter-spacing:-.04em;
+.ptier b{display:block;font-size:30px;font-weight:700;letter-spacing:var(--l-2);
   line-height:1;color:#fff;margin-bottom:7px;font-variant-numeric:tabular-nums}
-.ptier span{font-size:13.5px;line-height:1.4;color:rgba(255,255,255,.64)}
+.ptier span{font-size:var(--s-2);line-height:var(--h-3);color:rgba(255,255,255,.64)}
 @media(max-width:760px){
   .ptiers{grid-template-columns:1fr 1fr;gap:10px}
   .ptier{padding:13px 15px}
@@ -512,11 +543,11 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .etape-n{
   display:flex;align-items:center;justify-content:center;
   width:30px;height:30px;border-radius:50%;margin-bottom:6px;
-  font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;
+  font-size:var(--s-3);font-weight:700;font-variant-numeric:tabular-nums;
   background:var(--blue);color:#fff;
 }
-.etapes b{font-size:17.5px;line-height:1.3;letter-spacing:-.015em;color:var(--ink)}
-.etapes span:not(.etape-n){font-size:14.5px;line-height:1.5;color:var(--ink-2)}
+.etapes b{font-size:var(--s-5);line-height:var(--h-2);letter-spacing:var(--l-3);color:var(--ink)}
+.etapes span:not(.etape-n){font-size:var(--s-3);line-height:var(--h-4);color:var(--ink-2)}
 .etapes.sombre{grid-template-columns:repeat(4,1fr)}
 .etapes.sombre .etape-n{background:var(--gold);color:var(--ink)}
 .etapes.sombre b{color:#fff}
@@ -535,9 +566,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .limites{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:22px}
 .lim{padding:16px 18px 18px;border-radius:var(--r-l);
   background:var(--mist);border:1px solid var(--line)}
-.lim b{display:block;font-size:16.5px;line-height:1.3;letter-spacing:-.012em;
+.lim b{display:block;font-size:var(--s-4);line-height:var(--h-2);letter-spacing:var(--l-4);
   color:var(--ink);margin-bottom:6px}
-.lim span{font-size:14px;line-height:1.5;color:var(--ink-2)}
+.lim span{font-size:var(--s-3);line-height:var(--h-4);color:var(--ink-2)}
 @media(max-width:760px){.limites{grid-template-columns:1fr;gap:11px}}
 
 /* Les cartes d'usage, version fond clair */
@@ -556,15 +587,15 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .pro-l{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
 .pro{padding:15px 18px 17px;border-radius:var(--r-l);
   background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.12)}
-.pro b{display:block;font-size:16.5px;line-height:1.3;letter-spacing:-.012em;
+.pro b{display:block;font-size:var(--s-4);line-height:var(--h-2);letter-spacing:var(--l-4);
   color:#fff;margin-bottom:7px}
-.pro span{font-size:14px;line-height:1.5;color:rgba(255,255,255,.64)}
+.pro span{font-size:var(--s-3);line-height:var(--h-4);color:rgba(255,255,255,.64)}
 .pro-cta{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:18px}
-.pro-note{font-size:13.5px;line-height:1.5;color:rgba(255,255,255,.6);max-width:42ch}
+.pro-note{font-size:var(--s-2);line-height:var(--h-4);color:rgba(255,255,255,.6);max-width:42ch}
 @media(max-width:760px){
   .pro-l{grid-template-columns:1fr;gap:11px}
   .pro{padding:15px 17px 17px}
-  .pro b{font-size:16px}
+  .pro b{font-size:var(--s-4)}
   .pro-cta{gap:13px}
   .pro-cta .btn{width:100%;justify-content:center}
 }
@@ -574,12 +605,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    sur sa promesse — celle-là même que l'engagement garantit. */
 .signature{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
   margin-top:var(--e-2);padding-top:24px;border-top:1px solid rgba(255,255,255,.14)}
-.signature-n{font-size:27px;font-weight:700;letter-spacing:-.04em;color:#fff}
-.signature-b{font-size:17px;color:var(--gold);letter-spacing:-.01em}
+.signature-n{font-size:27px;font-weight:700;letter-spacing:var(--l-2);color:#fff}
+.signature-b{font-size:var(--s-5);color:var(--gold);letter-spacing:var(--l-4)}
 @media(max-width:520px){
   .signature{gap:6px}
   .signature-n{font-size:24px}
-  .signature-b{font-size:16px}
+  .signature-b{font-size:var(--s-4)}
 }
 
 /* ── Le pied de page ───────────────────────────────────────────────────────
@@ -628,13 +659,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 }
 .ras-i{
   width:38px;height:38px;margin-bottom:11px;flex-shrink:0;
-  border-radius:11px;background:var(--blue-soft);color:var(--blue);
+  border-radius:var(--r);background:var(--blue-soft);color:var(--blue);
   display:flex;align-items:center;justify-content:center;
 }
 .ras-i svg{width:21px;height:21px}
-.ras b{font-size:15px;font-weight:700;letter-spacing:-.018em;
-  color:var(--ink);line-height:1.25;text-wrap:balance}
-.ras span{font-size:13.5px;line-height:1.45;color:var(--ink-2)}
+.ras b{font-size:var(--s-3);font-weight:700;letter-spacing:var(--l-3);
+  color:var(--ink);line-height:var(--h-2);text-wrap:balance}
+.ras span{font-size:var(--s-2);line-height:var(--h-4);color:var(--ink-2)}
 .ras i{font-style:normal;font-weight:700;color:var(--gold-txt);white-space:nowrap}
 
 @media(max-width:900px){
@@ -655,10 +686,10 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .ras{padding:0 14px}
   .ras:nth-child(odd){padding-left:0}
   .ras:nth-child(odd)::before{display:none}
-  .ras-i{width:34px;height:34px;margin-bottom:9px;border-radius:10px}
+  .ras-i{width:34px;height:34px;margin-bottom:9px;border-radius:var(--r-s)}
   .ras-i svg{width:19px;height:19px}
-  .ras b{font-size:14.5px}
-  .ras span{font-size:13px}
+  .ras b{font-size:var(--s-3)}
+  .ras span{font-size:var(--s-2)}
 }
 
 /* ── L'engagement ──────────────────────────────────────────────────────────
@@ -674,12 +705,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   border:1px solid rgba(201,162,39,.34);
 }
 .centre .engage{margin-left:auto;margin-right:auto}
-.engage-t{display:flex;align-items:baseline;gap:11px;font-size:17.5px;
-  line-height:1.5;color:var(--ink);font-weight:500}
+.engage-t{display:flex;align-items:baseline;gap:11px;font-size:var(--s-5);
+  line-height:var(--h-4);color:var(--ink);font-weight:500}
 .engage-t b{font-weight:700}
 .engage .gtt{flex-shrink:0;width:11px;height:11px;margin-top:6px;
   border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold-txt)}
-.engage-c{font-size:13.5px;line-height:1.6;color:var(--ink-3);
+.engage-c{font-size:var(--s-2);line-height:var(--h-5);color:var(--ink-3);
   margin:12px 0 0 22px}
 .e-ink .engage,.e-blue .engage{background:rgba(201,162,39,.13);
   border-color:rgba(201,162,39,.42)}
@@ -691,8 +722,8 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
      promesse qu'il garantit : sans ça, on lit la promesse et on ne voit
      jamais ce qui se passe si elle n'est pas tenue. */
   .engage{padding:16px 17px;margin-top:20px}
-  .engage-t{font-size:16px;gap:9px;line-height:1.45}
-  .engage-c{margin:10px 0 0 20px;font-size:12.5px;line-height:1.5}
+  .engage-t{font-size:var(--s-4);gap:9px;line-height:var(--h-4)}
+  .engage-c{margin:10px 0 0 20px;font-size:var(--s-2);line-height:var(--h-4)}
   .engage .gtt{width:10px;height:10px;margin-top:5px}
 }
 /* ── La phrase de la maison ────────────────────────────────────────────────
@@ -708,9 +739,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   flex-shrink:0;width:11px;height:11px;margin-top:6px;
   border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold-txt);
 }
-.signe p{font-size:17px;line-height:1.6;color:var(--ink-2);font-style:italic;margin:0}
-.signe b{display:block;font-style:normal;font-weight:700;font-size:13.5px;
-  letter-spacing:.02em;color:var(--ink-3);margin-top:9px}
+.signe p{font-size:var(--s-5);line-height:var(--h-5);color:var(--ink-2);font-style:italic;margin:0}
+.signe b{display:block;font-style:normal;font-weight:700;font-size:var(--s-2);
+  letter-spacing:var(--l-5);color:var(--ink-3);margin-top:9px}
 .e-ink .signe,.e-blue .signe{border-top-color:rgba(255,255,255,.18)}
 .e-ink .signe .gtt,.e-blue .signe .gtt{background:var(--gold)}
 .e-ink .signe p,.e-blue .signe p{color:rgba(255,255,255,.86)}
@@ -728,16 +759,16 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   background:var(--paper);border-radius:var(--r-l);padding:20px 22px 22px;
   border:1px solid var(--line);
 }
-.conseil b{display:block;font-size:18px;line-height:1.32;letter-spacing:-.01em;
+.conseil b{display:block;font-size:var(--s-5);line-height:var(--h-2);letter-spacing:var(--l-4);
   color:var(--ink);margin-bottom:8px}
-.conseil span{font-size:15px;line-height:1.55;color:var(--ink-2)}
+.conseil span{font-size:var(--s-3);line-height:var(--h-4);color:var(--ink-2)}
 /* L'écran doit tenir en entier : « une idée par écran » ne marche que si on
    voit l'idée entière sans faire défiler. */
 #e8b .dire{max-width:58ch;margin-bottom:0}
 @media(max-width:760px){
   .conseils{grid-template-columns:1fr;gap:12px}
   .conseil{padding:17px 18px 18px}
-  .conseil b{font-size:17px}
+  .conseil b{font-size:var(--s-5)}
   }
 /* Deux lignes, une par idée — et garanti dans les quatre langues : chaque
    moitié de la phrase occupe sa propre ligne au lieu de se casser au hasard
@@ -746,18 +777,18 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    titre. */
 .e1 .titre{max-width:none;font-size:var(--t-2)}
 .e1 .titre em{display:block}
-.addr{background:#fff;border-radius:var(--r-l);padding:18px;margin-top:28px;max-width:460px;box-shadow:0 1px 3px rgba(14,31,53,.05),0 18px 46px rgba(14,31,53,.1)}
-.addr label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:13px}
+.addr{background:#fff;border-radius:var(--r-l);padding:18px;margin-top:28px;max-width:460px;box-shadow:var(--o-2)}
+.addr label{display:block;font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);text-transform:uppercase;color:var(--ink-3);margin-bottom:13px}
 .addr-row{display:flex;align-items:center;gap:12px;background:var(--mist);border-radius:var(--r);padding:15px 17px;transition:box-shadow var(--mv-1) var(--mv)}
 .addr-row:focus-within{box-shadow:inset 0 0 0 2px var(--blue)}
 .addr-row svg{flex-shrink:0;color:var(--ink-3)}
-.addr-row input{flex:1;min-width:0;border:none;outline:none;font:inherit;font-size:16px;color:var(--ink);background:none}
+.addr-row input{flex:1;min-width:0;border:none;outline:none;font:inherit;font-size:var(--s-4);color:var(--ink);background:none}
 .addr-row input::placeholder{color:var(--ink-3)}
 .addr .btn{width:100%;margin-top:10px}
-.addr-note{font-size:13px;color:var(--ink-3);margin-top:13px;text-align:center}
-.preuve1{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:26px;font-size:15px;color:var(--ink-2)}
+.addr-note{font-size:var(--s-2);color:var(--ink-3);margin-top:13px;text-align:center}
+.preuve1{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:26px;font-size:var(--s-3);color:var(--ink-2)}
 .preuve1 b{color:var(--ink);font-weight:700}
-.stars{color:var(--gold-txt);letter-spacing:1.5px;font-size:14px}
+.stars{color:var(--gold-txt);letter-spacing:1.5px;font-size:var(--s-3)}
 /* sur fond sombre, l'or clair reprend sa place */
 .e-ink .stars,.e-blue .stars,.vcard .stars,.fin-q .stars{color:var(--gold)}
 @media(max-width:900px){
@@ -769,8 +800,8 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .forfaits-l{display:grid;gap:8px;margin-top:12px}
 .forfait{display:flex;align-items:baseline;justify-content:space-between;gap:14px;
   padding:12px 0;border-bottom:1px solid var(--line)}
-.forfait b{font-size:16px;font-weight:700}
-.forfait span{font-size:14px;color:var(--ink-2);white-space:nowrap}
+.forfait b{font-size:var(--s-4);font-weight:700}
+.forfait span{font-size:var(--s-3);color:var(--ink-2);white-space:nowrap}
 
 /* ══ ÉCRAN MATÉRIEL ══
    Chiffres en grand, sans cadre : même langage que l'écran "0 € de caution".
@@ -791,14 +822,14 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   padding:26px 26px 24px;min-width:0;display:flex;flex-direction:column;
 }
 .mach-e{
-  align-self:flex-start;padding:5px 12px;border-radius:100px;
+  align-self:flex-start;padding:5px 12px;border-radius:var(--r-f);
   background:var(--blue-soft);color:var(--blue);
-  font-size:11.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
+  font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-5);text-transform:uppercase;
 }
-.mach-t{display:block;font-size:var(--t-5);font-weight:700;letter-spacing:-.03em;line-height:1.15;margin-top:15px}
-.mach-d{font-size:15.5px;color:var(--ink-2);line-height:1.6;margin-top:12px}
+.mach-t{display:block;font-size:var(--t-5);font-weight:700;letter-spacing:var(--l-2);line-height:var(--h-1);margin-top:15px}
+.mach-d{font-size:var(--s-4);color:var(--ink-2);line-height:var(--h-5);margin-top:12px}
 .mach-l{margin-top:auto;padding-top:20px;display:flex;flex-direction:column;gap:11px}
-.mach-l li{list-style:none;display:flex;gap:10px;font-size:14.5px;line-height:1.5;color:var(--ink)}
+.mach-l li{list-style:none;display:flex;gap:10px;font-size:var(--s-3);line-height:var(--h-4);color:var(--ink)}
 .mach-l li::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:7px}
 .mach-l b{font-weight:700}
 @media(max-width:760px){.deux{grid-template-columns:1fr}}
@@ -820,15 +851,15 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   background:var(--gold-txt);transform:scaleX(0);transform-origin:left;
   transition:transform var(--mv-2) var(--mv);
 }
-.mcard:hover{border-color:rgba(14,31,53,.16);box-shadow:0 12px 32px rgba(14,31,53,.09);transform:translateY(-2px)}
+.mcard:hover{border-color:rgba(14,31,53,.16);box-shadow:var(--o-2);transform:translateY(-2px)}
 .mcard:hover::before{transform:scaleX(1)}
-.mcard-i{grid-row:1/3;width:44px;height:44px;border-radius:12px;background:var(--blue-soft);color:var(--blue);
+.mcard-i{grid-row:1/3;width:44px;height:44px;border-radius:var(--r);background:var(--blue-soft);color:var(--blue);
   display:flex;align-items:center;justify-content:center}
 .mcard-i svg{width:23px;height:23px}
-.mcard-t{font-size:18px;font-weight:700;letter-spacing:-.025em;color:var(--ink);align-self:end}
-.mcard-c{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--blue)}
-.mcard-d{grid-column:2/3;font-size:14.5px;color:var(--ink-2);line-height:1.55;margin-top:6px}
-.choix-n{font-size:14px;color:var(--ink-2);line-height:1.5;padding-left:2px}
+.mcard-t{font-size:var(--s-5);font-weight:700;letter-spacing:var(--l-3);color:var(--ink);align-self:end}
+.mcard-c{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-5);text-transform:uppercase;color:var(--blue)}
+.mcard-d{grid-column:2/3;font-size:var(--s-3);color:var(--ink-2);line-height:var(--h-4);margin-top:6px}
+.choix-n{font-size:var(--s-3);color:var(--ink-2);line-height:var(--h-4);padding-left:2px}
 /* Sous 900 px la colonne de droite passait sous le formulaire ; le choix,
    lui, doit se lire AVANT — c'est ce qui dit ce qu'on loue. */
 @media(max-width:900px){
@@ -841,9 +872,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* ══ ÉCRAN MÉTIER ══
    Quatre points en colonnes, sans cadre : c'est le vide qui sépare. */
 .metier{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--e-2);margin-top:var(--e-3)}
-.mt-ic{width:40px;height:40px;border-radius:11px;background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
-.metier h3{font-size:18px;letter-spacing:-.02em;margin-bottom:9px;line-height:1.25}
-.metier p{font-size:15px;color:var(--ink-2);line-height:1.55}
+.mt-ic{width:40px;height:40px;border-radius:var(--r);background:var(--blue-soft);color:var(--blue);display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.metier h3{font-size:var(--s-5);letter-spacing:var(--l-3);margin-bottom:9px;line-height:var(--h-2)}
+.metier p{font-size:var(--s-3);color:var(--ink-2);line-height:var(--h-4)}
 @media(max-width:900px){.metier{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:540px){.metier{grid-template-columns:1fr;gap:24px}}
 
@@ -886,14 +917,14 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .sugg{
   position:absolute;left:0;right:0;top:calc(100% + 8px);z-index:30;
   background:#fff;border-radius:var(--r);padding:6px;
-  box-shadow:0 2px 8px rgba(14,31,53,.07),0 16px 40px rgba(14,31,53,.16);
+  box-shadow:var(--o-3);
   display:none;max-height:262px;overflow-y:auto;
 }
 .sugg.on{display:block}
-.sugg button{display:block;width:100%;text-align:left;padding:11px 13px;border-radius:8px;
-  font-size:15px;color:var(--ink);line-height:1.35;transition:background var(--mv-1) var(--mv)}
+.sugg button{display:block;width:100%;text-align:left;padding:11px 13px;border-radius:var(--r-s);
+  font-size:var(--s-3);color:var(--ink);line-height:var(--h-2);transition:background var(--mv-1) var(--mv)}
 .sugg button:hover,.sugg button[aria-selected="true"]{background:var(--mist)}
-.sugg small{display:block;font-size:12.5px;color:var(--ink-3);margin-top:2px}
+.sugg small{display:block;font-size:var(--s-2);color:var(--ink-3);margin-top:2px}
 
 /* ══ ÉCRAN CHIFFRE ══ (aucune caution, note, délai…) */
 .chiffre{display:grid;grid-template-columns:1fr 1fr;gap:var(--e-4);align-items:center}
@@ -901,18 +932,18 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* ══ ÉCRAN LIVRAISON : le créneau ══ */
 .creneau{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap;margin-top:34px}
-.creneau b{font-size:var(--n-3);font-weight:700;letter-spacing:-.05em;line-height:1}
-.creneau span{font-size:17px;color:rgba(255,255,255,.55)}
+.creneau b{font-size:var(--n-3);font-weight:700;letter-spacing:var(--l-1);line-height:1}
+.creneau span{font-size:var(--s-5);color:rgba(255,255,255,.55)}
 
 /* ══ ÉCRAN PRIX ══ */
 .prix-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:var(--e-3);align-items:start}
 .tiers{display:grid;border-top:1px solid var(--line)}
 .tier{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}
-.tier-dur{font-size:16px;color:var(--ink-2)}
-.tier-p{font-size:21px;font-weight:700;letter-spacing:-.03em;white-space:nowrap}
-.tier-p i{font-style:normal;font-size:13.5px;font-weight:500;color:var(--ink-3)}
+.tier-dur{font-size:var(--s-4);color:var(--ink-2)}
+.tier-p{font-size:var(--s-6);font-weight:700;letter-spacing:var(--l-2);white-space:nowrap}
+.tier-p i{font-style:normal;font-size:var(--s-2);font-weight:500;color:var(--ink-3)}
 .tier.best .tier-dur,.tier.best .tier-p{color:var(--blue)}
-.tier-off{font-size:13px;font-weight:700;color:var(--blue);margin-left:8px}
+.tier-off{font-size:var(--s-2);font-weight:700;color:var(--blue);margin-left:8px}
 @media(max-width:900px){.prix-grid{grid-template-columns:1fr;gap:28px}}
 
 /* ══ CALCULATEUR ══ */
@@ -930,7 +961,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   border-left:1px solid rgba(255,255,255,.1);
   display:flex;flex-direction:column;
 }
-.calc-lbl{font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:9px}
+.calc-lbl{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:9px}
 .calc-field{margin-bottom:16px}
 
 /* ── La durée ──────────────────────────────────────────────────────────────
@@ -940,12 +971,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    barre coulissante fait le gros du chemin d'un seul geste. */
 .duree{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:11px}
 .duree-n{display:flex;align-items:baseline;gap:9px}
-.duree-n b{font-size:44px;font-weight:700;line-height:.9;letter-spacing:-.045em;
+.duree-n b{font-size:44px;font-weight:700;line-height:.9;letter-spacing:var(--l-1);
   font-variant-numeric:tabular-nums}
-.duree-n i{font-style:normal;font-size:14.5px;color:rgba(255,255,255,.6)}
+.duree-n i{font-style:normal;font-size:var(--s-3);color:rgba(255,255,255,.6)}
 .duree-pm{display:flex;gap:8px}
 .step-btn{width:40px;height:40px;border-radius:50%;border:1.5px solid rgba(255,255,255,.28);
-  color:#fff;font-size:20px;line-height:1;display:flex;align-items:center;justify-content:center;
+  color:#fff;font-size:var(--s-6);line-height:1;display:flex;align-items:center;justify-content:center;
   flex-shrink:0;transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv)}
 .step-btn:hover:not(:disabled){background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.6)}
 .step-btn:disabled{opacity:.28;cursor:not-allowed}
@@ -954,10 +985,10 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   -webkit-appearance:none;appearance:none;width:100%;height:26px;
   background:transparent;cursor:pointer;display:block;margin:0;
 }
-.gliss::-webkit-slider-runnable-track{height:6px;border-radius:100px;
+.gliss::-webkit-slider-runnable-track{height:6px;border-radius:var(--r-f);
   background:rgba(255,255,255,.18)}
-.gliss::-moz-range-track{height:6px;border-radius:100px;background:rgba(255,255,255,.18)}
-.gliss::-moz-range-progress{height:6px;border-radius:100px;background:var(--gold)}
+.gliss::-moz-range-track{height:6px;border-radius:var(--r-f);background:rgba(255,255,255,.18)}
+.gliss::-moz-range-progress{height:6px;border-radius:var(--r-f);background:var(--gold)}
 .gliss::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;
   width:24px;height:24px;border-radius:50%;background:#fff;margin-top:-9px;
   box-shadow:0 2px 8px rgba(0,0,0,.4);
@@ -969,46 +1000,46 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* Le prix du jour suivant. Le barème est dégressif : savoir ce que coûte le
    jour d'après est l'information la plus utile au moment de choisir. */
-.duree-suiv{font-size:13.5px;color:rgba(255,255,255,.58);margin:1px 0 11px;line-height:1.45}
+.duree-suiv{font-size:var(--s-2);color:rgba(255,255,255,.58);margin:1px 0 11px;line-height:var(--h-4)}
 .duree-suiv b{color:var(--gold);font-weight:700}
 .duree-suiv sup{font-size:.7em}
 
 .presets{display:flex;gap:8px;flex-wrap:wrap}
 .presets.deux{display:grid;grid-template-columns:1fr 1fr}
-.chip{border:1.5px solid rgba(255,255,255,.22);border-radius:100px;padding:9px 16px;
-  font-size:14px;font-weight:500;color:rgba(255,255,255,.78);
+.chip{border:1.5px solid rgba(255,255,255,.22);border-radius:var(--r-f);padding:9px 16px;
+  font-size:var(--s-3);font-weight:500;color:rgba(255,255,255,.78);
   transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv),color var(--mv-1) var(--mv)}
 .chip:hover{border-color:rgba(255,255,255,.6);color:#fff}
 .chip[aria-pressed="true"]{background:#fff;border-color:#fff;color:var(--ink);font-weight:700}
-.chip-s{padding:7px 13px;font-size:13.5px;flex:1 1 auto;text-align:center}
+.chip-s{padding:7px 13px;font-size:var(--s-2);flex:1 1 auto;text-align:center}
 /* Cinq cases carrées : c'est le maximum accepté par le tunnel de paiement
    (api/checkout.js), inutile d'en proposer plus. */
 .presets.qte{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
-.chip-q{padding:8px 0;font-size:16px;font-weight:700;text-align:center;border-radius:var(--r);
+.chip-q{padding:8px 0;font-size:var(--s-4);font-weight:700;text-align:center;border-radius:var(--r);
   font-variant-numeric:tabular-nums}
-.qte-note{font-size:13px;line-height:1.45;color:rgba(255,255,255,.62);margin:8px 0 0}
+.qte-note{font-size:var(--s-2);line-height:var(--h-4);color:rgba(255,255,255,.62);margin:8px 0 0}
 .qte-note b{color:var(--gold);font-weight:700}
 
 /* Le prix de l'option est écrit sur l'option. Avant, il fallait choisir puis
    descendre lire le détail pour savoir ce que le choix coûtait. */
 .chip-p{display:flex;flex-direction:column;align-items:flex-start;gap:2px;
-  border-radius:var(--r);padding:10px 14px;text-align:left;line-height:1.28}
-.chip-p i{font-style:normal;font-size:13px;font-weight:700;color:var(--gold)}
+  border-radius:var(--r);padding:10px 14px;text-align:left;line-height:var(--h-2)}
+.chip-p i{font-style:normal;font-size:var(--s-2);font-weight:700;color:var(--gold)}
 .chip-p[aria-pressed="true"] i{color:var(--blue-d)}
 
 /* ── Le panneau du prix ────────────────────────────────────────────────── */
 .calc-somme{display:block;font-size:clamp(40px,4.6vw,58px);font-weight:700;
-  letter-spacing:-.05em;line-height:1;margin-bottom:10px;font-variant-numeric:tabular-nums}
-.calc-day{font-size:13.5px;color:rgba(255,255,255,.6);line-height:1.5;
+  letter-spacing:var(--l-1);line-height:1;margin-bottom:10px;font-variant-numeric:tabular-nums}
+.calc-day{font-size:var(--s-2);color:rgba(255,255,255,.6);line-height:var(--h-4);
   padding-bottom:16px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,.13)}
 .calc-day b{color:#fff;font-weight:700}
 .calc-detail{margin-bottom:18px}
-.calc-line{display:flex;justify-content:space-between;gap:14px;padding:6px 0;font-size:14.5px}
+.calc-line{display:flex;justify-content:space-between;gap:14px;padding:6px 0;font-size:var(--s-3)}
 .calc-line span{color:rgba(255,255,255,.6)}
 .calc-line b{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
 .calc-line.off span,.calc-line.off b{opacity:.34;text-decoration:line-through}
 .calc .btn{width:100%;margin-top:auto}
-.calc-legal{font-size:12.5px;color:rgba(255,255,255,.52);margin-top:12px;line-height:1.5;text-align:center}
+.calc-legal{font-size:var(--s-2);color:rgba(255,255,255,.52);margin-top:12px;line-height:var(--h-4);text-align:center}
 
 /* Rien sur grand écran : le total y est déjà à hauteur des yeux. */
 .calc-fixe{display:none}
@@ -1024,9 +1055,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
     -webkit-backdrop-filter:blur(10px);
     border-bottom:1px solid rgba(255,255,255,.13);
   }
-  .calc-fixe span{font-size:11.5px;font-weight:700;letter-spacing:.16em;
+  .calc-fixe span{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);
     text-transform:uppercase;color:rgba(255,255,255,.52)}
-  .calc-fixe b{font-size:27px;font-weight:700;letter-spacing:-.04em;
+  .calc-fixe b{font-size:27px;font-weight:700;letter-spacing:var(--l-2);
     font-variant-numeric:tabular-nums}
   .calc-p{border-left:0;border-top:1px solid rgba(255,255,255,.1)}
   .calc-g,.calc-p{padding:20px}
@@ -1034,7 +1065,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .presets.deux{grid-template-columns:1fr}
 }
 @media(max-width:420px){
-  .chip-s{font-size:13px;padding:7px 10px}
+  .chip-s{font-size:var(--s-2);padding:7px 10px}
 }
 
 /* ══ MUR DE VIDÉOS ══ */
@@ -1044,7 +1075,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .rail{display:flex;gap:14px;margin-top:32px;padding:2px 0 16px;overflow-x:auto;scroll-snap-type:x proximity;scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--line-2, rgba(14,31,53,.22)) transparent}
 .e-ink .rail,.e-blue .rail{scrollbar-color:rgba(255,255,255,.22) transparent}
 .rail::-webkit-scrollbar{height:5px}
-.rail::-webkit-scrollbar-thumb{background:rgba(14,31,53,.22);border-radius:100px}
+.rail::-webkit-scrollbar-thumb{background:rgba(14,31,53,.22);border-radius:var(--r-f)}
 .e-ink .rail::-webkit-scrollbar-thumb,.e-blue .rail::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2)}
 .vcard{position:relative;flex:0 0 auto;width:clamp(176px,17vw,206px);aspect-ratio:9/16;border-radius:var(--r-l);overflow:hidden;scroll-snap-align:start;background:#183253}
 .vcard video,.vcard>img{width:100%;height:100%;object-fit:cover}
@@ -1057,17 +1088,17 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* Sans couleur déclarée, le prénom héritait de celle de l'écran : blanc
    tant que l'écran était sombre, invisible dès qu'il est devenu clair.
    La carte est sombre en toutes circonstances, le blanc l'est aussi. */
-.vmeta b{display:block;font-size:14.5px;font-weight:700;letter-spacing:-.015em;color:#fff}
-.vmeta span{font-size:12px;color:rgba(255,255,255,.58)}
-.vmeta .stars{font-size:11.5px;display:block;margin-bottom:4px}
+.vmeta b{display:block;font-size:var(--s-3);font-weight:700;letter-spacing:var(--l-3);color:#fff}
+.vmeta span{font-size:var(--s-1);color:rgba(255,255,255,.58)}
+.vmeta .stars{font-size:var(--s-1);display:block;margin-bottom:4px}
 /* « background:none » laissait voir l'écran à travers : sur fond sombre
    c'était une carte creuse, sur fond clair c'était un trou blanc. Elle
    porte maintenant son propre fond, un ton plus clair que les autres
    pour rester lisible comme un emplacement libre. */
 .vide{display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#132840;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
 .vide::after{display:none}   /* pas de dégradé : aucun texte à détacher */
-.vide p{font-size:13px;color:rgba(255,255,255,.5);line-height:1.55}
-.vide b{display:block;color:rgba(255,255,255,.85);font-size:14px;margin-bottom:6px}
+.vide p{font-size:var(--s-2);color:rgba(255,255,255,.5);line-height:var(--h-4)}
+.vide b{display:block;color:rgba(255,255,255,.85);font-size:var(--s-3);margin-bottom:6px}
 @media(max-width:640px){.vcard{width:min(62vw,220px)}}
 
 
@@ -1082,9 +1113,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .ville{display:flex;align-items:baseline;justify-content:space-between;
   flex-wrap:wrap;gap:4px 16px;padding:11px 0;border-bottom:1px solid var(--line)}
 .ville>div{min-width:0}
-.ville b{font-size:19px;font-weight:700;letter-spacing:-.025em}
-.ville span{font-size:13.5px;color:var(--ink-3);display:block;margin-top:2px}
-.tag{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--green);flex-shrink:0}
+.ville b{font-size:var(--s-6);font-weight:700;letter-spacing:var(--l-3)}
+.ville span{font-size:var(--s-2);color:var(--ink-3);display:block;margin-top:2px}
+.tag{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-5);text-transform:uppercase;color:var(--green);flex-shrink:0}
 .tag-ask{color:var(--ink-3)}
 @media(max-width:700px){
   .villes{grid-template-columns:1fr}
@@ -1093,12 +1124,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* ══ ÉCRAN QUESTIONS ══ */
 .faq{max-width:720px;margin-top:36px}
 .faq details{border-bottom:1px solid var(--line)}
-.faq summary{padding:20px 44px 20px 0;font-size:17.5px;font-weight:700;letter-spacing:-.022em;cursor:pointer;list-style:none;position:relative;line-height:1.4}
+.faq summary{padding:20px 44px 20px 0;font-size:var(--s-5);font-weight:700;letter-spacing:var(--l-3);cursor:pointer;list-style:none;position:relative;line-height:var(--h-3)}
 .faq summary::-webkit-details-marker{display:none}
 .faq summary::after{content:'';position:absolute;right:6px;top:50%;width:10px;height:10px;border-right:2px solid var(--blue);border-bottom:2px solid var(--blue);transform:translateY(-70%) rotate(45deg);transition:transform var(--mv-2) var(--mv)}
 .faq details[open] summary::after{transform:translateY(-30%) rotate(-135deg)}
 .faq details[open] summary{color:var(--blue)}
-.faq p{padding:0 36px 24px 0;font-size:16px;color:var(--ink-2);line-height:1.68}
+.faq p{padding:0 36px 24px 0;font-size:var(--s-4);color:var(--ink-2);line-height:var(--h-5)}
 
 /* ══ ÉCRAN FINAL ══ */
 .fin{text-align:center}
@@ -1106,11 +1137,11 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .fin .dire{margin:26px auto 0}
 .fin-cta{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:40px}
 .fin-q{border-left:2px solid var(--gold);padding:4px 0 4px 22px;margin:56px auto 0;text-align:left;max-width:560px}
-.fin-q p{font-size:16.5px;color:rgba(255,255,255,.85);margin-bottom:11px;line-height:1.6}
-.fin-q cite{font-style:normal;font-size:13.5px;color:rgba(255,255,255,.55)}
+.fin-q p{font-size:var(--s-4);color:rgba(255,255,255,.85);margin-bottom:11px;line-height:var(--h-5)}
+.fin-q cite{font-style:normal;font-size:var(--s-2);color:rgba(255,255,255,.55)}
 /* Les colonnes du pied et la signature sont alignées à gauche ; la ligne
    légale était centrée toute seule au milieu. Elle rentre dans le rang. */
-.pied{font-size:13.5px;color:rgba(255,255,255,.52);line-height:1.7;
+.pied{font-size:var(--s-2);color:rgba(255,255,255,.52);line-height:var(--h-5);
   margin-top:18px;text-align:left}
 .pied a{border-bottom:1px solid rgba(255,255,255,.28)}
 
@@ -1120,7 +1151,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    demain, sinon après-demain ; Express (sous 2h) seulement avant 18h.
    Ces deux coupures viennent du code du site, elles ne sont pas inventées. */
 .infobar{
-  background:var(--ink);color:rgba(255,255,255,.82);font-size:13.5px;
+  background:var(--ink);color:rgba(255,255,255,.82);font-size:var(--s-2);
   display:none;align-items:center;justify-content:center;gap:10px;
   /* padding symétrique : la croix de fermeture réservait 44 px à droite et
      24 à gauche, le texte « centré » était donc décalé de 10 px. */
@@ -1129,9 +1160,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .infobar.on{display:flex}
 .infobar strong{color:#fff;font-weight:700}
 .infobar .pt{width:8px;height:8px;border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold);flex-shrink:0;animation:pulse 2s ease-in-out infinite}
-.infobar-x{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;color:rgba(255,255,255,.5);font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center}
+.infobar-x{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;color:rgba(255,255,255,.5);font-size:var(--s-6);line-height:1;display:flex;align-items:center;justify-content:center}
 .infobar-x:hover{color:#fff;background:rgba(255,255,255,.1)}
-@media(max-width:560px){.infobar{font-size:12.5px;padding:10px 38px}.infobar .sec{display:none}}
+@media(max-width:560px){.infobar{font-size:var(--s-2);padding:10px 38px}.infobar .sec{display:none}}
 
 /* ══ SÉLECTEUR DE LANGUE ══
    Même clé de mémorisation que le site officiel ('locair-lang') : un visiteur
@@ -1142,7 +1173,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    langue perd son contour et prend le même traitement que le menu ☰ (fond
    au survol) : il ne reste qu'un seul bouton dessiné dans la barre, et
    c'est celui qui compte. Le chevron dit que ça ouvre quelque chose. */
-.lang-b{display:flex;align-items:center;gap:6px;padding:9px 10px;border-radius:100px;font-size:14px;font-weight:700;transition:background var(--mv-1) var(--mv)}
+.lang-b{display:flex;align-items:center;gap:6px;padding:9px 10px;border-radius:var(--r-f);font-size:var(--s-3);font-weight:700;transition:background var(--mv-1) var(--mv)}
 .lang-b:hover{background:rgba(14,31,53,.06)}
 .bar .lang-b:hover{background:rgba(255,255,255,.12)}
 .lang-b svg{opacity:.55}
@@ -1155,20 +1186,20 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .lang-l{
   position:absolute;top:calc(100% + 8px);right:0;min-width:184px;z-index:20;
   background:#fff;border-radius:var(--r);padding:7px;
-  box-shadow:0 2px 8px rgba(14,31,53,.08),0 18px 44px rgba(14,31,53,.16);
+  box-shadow:var(--o-3);
   opacity:0;visibility:hidden;transform:translateY(-6px);
   transition:opacity var(--mv-1) var(--mv),transform var(--mv-1) var(--mv),visibility var(--mv-1) var(--mv);
 }
 .lang-l.on{opacity:1;visibility:visible;transform:none}
-.lang-l button{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border-radius:8px;font-size:15px;color:var(--ink);text-align:left;transition:background var(--mv-1) var(--mv)}
+.lang-l button{display:flex;align-items:center;gap:11px;width:100%;padding:11px 13px;border-radius:var(--r-s);font-size:var(--s-3);color:var(--ink);text-align:left;transition:background var(--mv-1) var(--mv)}
 .lang-l button:hover{background:var(--mist)}
 .lang-l button[aria-selected="true"]{font-weight:700;background:var(--blue-soft);color:var(--blue)}
-.lang-l b{font-size:16px;line-height:1}
+.lang-l b{font-size:var(--s-4);line-height:1}
 /* dans le menu plein écran, la même liste mais à plat */
 .menu-lang{display:flex;gap:8px;flex-wrap:wrap}
 .menu-lang button{
-  border:1.5px solid rgba(255,255,255,.2);border-radius:100px;padding:10px 17px;
-  font-size:15px;color:rgba(255,255,255,.75);transition:all var(--mv-1) var(--mv);
+  border:1.5px solid rgba(255,255,255,.2);border-radius:var(--r-f);padding:10px 17px;
+  font-size:var(--s-3);color:rgba(255,255,255,.75);transition:all var(--mv-1) var(--mv);
 }
 .menu-lang button:hover{border-color:rgba(255,255,255,.55);color:#fff}
 .menu-lang button[aria-selected="true"]{background:#fff;border-color:#fff;color:var(--ink);font-weight:700}
@@ -1197,13 +1228,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .menu-grp{margin-bottom:30px}
 /* Mesuré : .35 de blanc sur le marine ne donne que 3,17 pour 1, sous le
    minimum de 4,5 exigé pour du petit texte. .52 donne 5,37. */
-.menu-t{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:14px}
-.menu a.ml{display:block;font-size:23px;font-weight:700;letter-spacing:-.03em;padding:9px 0;transition:color var(--mv-1) var(--mv)}
+.menu-t{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:14px}
+.menu a.ml{display:block;font-size:var(--s-7);font-weight:700;letter-spacing:var(--l-2);padding:9px 0;transition:color var(--mv-1) var(--mv)}
 .menu a.ml:hover{color:var(--gold)}
-.menu a.ms{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:16.5px;font-weight:500;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.11);transition:color var(--mv-1) var(--mv)}
+.menu a.ms{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:var(--s-4);font-weight:500;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.11);transition:color var(--mv-1) var(--mv)}
 .menu a.ms:hover{color:var(--gold)}
 /* 3,73 pour 1 auparavant : les descriptions du menu étaient sous le seuil. */
-.menu a.ms i{font-style:normal;font-size:13px;color:rgba(255,255,255,.55)}
+.menu a.ms i{font-style:normal;font-size:var(--s-2);color:rgba(255,255,255,.55)}
 .menu-cta{margin-top:auto;padding-top:26px;display:grid;gap:10px}
 .menu-cta .btn{width:100%}
 
@@ -1215,13 +1246,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 }
 .porte:hover{transform:translateY(-3px)}
 .porte.or{background:var(--gold);color:var(--ink)}
-.porte-k{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:16px}
+.porte-k{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);text-transform:uppercase;color:var(--gold);margin-bottom:16px}
 .porte.or .porte-k{color:rgba(14,31,53,.82)}
-.porte h3{font-size:var(--t-5);letter-spacing:-.03em;margin-bottom:12px;line-height:1.15}
-.porte>p{font-size:15px;color:rgba(255,255,255,.6);line-height:1.55;margin-bottom:20px}
+.porte h3{font-size:var(--t-5);letter-spacing:var(--l-2);margin-bottom:12px;line-height:var(--h-1)}
+.porte>p{font-size:var(--s-3);color:rgba(255,255,255,.6);line-height:var(--h-4);margin-bottom:20px}
 .porte.or>p{color:rgba(14,31,53,.84)}
 .porte ul{list-style:none;display:grid;gap:9px;margin-bottom:26px}
-.porte li{font-size:14.5px;color:rgba(255,255,255,.78);display:flex;gap:10px;line-height:1.5}
+.porte li{font-size:var(--s-3);color:rgba(255,255,255,.78);display:flex;gap:10px;line-height:var(--h-4)}
 .porte li::before{content:'→';color:var(--gold);flex-shrink:0}
 .porte.or li{color:rgba(14,31,53,.85)}
 .porte.or li::before{color:rgba(14,31,53,.55)}
@@ -1230,13 +1261,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* ══ PIED DE PAGE ══ */
 .pied-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:30px;margin-top:52px;padding-top:36px;border-top:1px solid rgba(255,255,255,.14);text-align:left}
-.pied-grid h4{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:14px}
+.pied-grid h4{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:14px}
 .pied-grid li{list-style:none;margin-bottom:9px}
-.pied-grid a{font-size:14.5px;color:rgba(255,255,255,.6);transition:color var(--mv-1) var(--mv)}
+.pied-grid a{font-size:var(--s-3);color:rgba(255,255,255,.6);transition:color var(--mv-1) var(--mv)}
 .pied-grid a:hover{color:#fff}
 @media(max-width:880px){.pied-grid{grid-template-columns:repeat(2,1fr);gap:26px}}
 @media(max-width:520px){.pied-grid{grid-template-columns:1fr;gap:24px}}
-.pied-grid li{font-size:14.5px;color:rgba(255,255,255,.6);line-height:1.5}
+.pied-grid li{font-size:var(--s-3);color:rgba(255,255,255,.6);line-height:var(--h-4)}
 
 /* ══ CONSENTEMENT AUX COOKIES ══
    Obligatoire avant tout dépôt de traceur publicitaire (CNIL). Refuser doit
@@ -1247,16 +1278,16 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   position:fixed;left:14px;right:14px;bottom:14px;z-index:980;
   background:var(--ink);color:rgba(255,255,255,.82);border-radius:var(--r-l);
   padding:20px 22px;max-width:520px;
-  box-shadow:0 8px 40px rgba(0,0,0,.28);
+  box-shadow:var(--o-3);
   display:none;
 }
 .cook.on{display:block}
-.cook p{font-size:14.5px;line-height:1.55;margin-bottom:16px}
+.cook p{font-size:var(--s-3);line-height:var(--h-4);margin-bottom:16px}
 .cook a{color:#fff;border-bottom:1px solid rgba(255,255,255,.4)}
 .cook-b{display:flex;gap:10px;flex-wrap:wrap}
 .cook-b button{
-  flex:1;min-width:120px;padding:12px 18px;border-radius:100px;
-  font-size:15px;font-weight:700;transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
+  flex:1;min-width:120px;padding:12px 18px;border-radius:var(--r-f);
+  font-size:var(--s-3);font-weight:700;transition:background var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
 }
 .cook-oui{background:#fff;color:var(--ink)}
 .cook-oui:hover{background:rgba(255,255,255,.86)}
@@ -1271,7 +1302,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   border-top:1px solid var(--line);padding:11px var(--pad) calc(11px + env(safe-area-inset-bottom));
   gap:10px;align-items:center;
 }
-.mbar .btn{flex:1;padding:15px 18px;font-size:15.5px}
+.mbar .btn{flex:1;padding:15px 18px;font-size:var(--s-4)}
 .mbar-tel{width:50px;height:50px;border-radius:50%;background:var(--mist);color:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0}
 @media(max-width:900px){
   .mbar{display:flex}
