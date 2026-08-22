@@ -114,7 +114,7 @@ def page_article(a):
     <div class="tete-meta">
       <span>Mis à jour le <b>{DATE_FR}</b></span>
       <span><b>{mn} min</b> de lecture</span>
-      <span>Écrit par <b>Loc'Air</b>, à Nice</span>
+      <span>Écrit par <b>Aly</b>, qui livre</span>
     </div>
   </div>
 </header>
