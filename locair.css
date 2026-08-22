@@ -120,7 +120,8 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    un repère d'accessibilité. C'est le calculateur qui comptait le plus :
    seize commandes s'y règlent au clavier. */
 .e-ink,.menu,.cook,.infobar,
-.calc,.pied-bloc,.vcard,.vide,.preview-bar{--focus:var(--gold)}  /* marine → 6,86:1 */
+.calc,.pied-bloc,.vcard,.vide,.preview-bar,
+.tete{--focus:var(--gold)}                          /* marine → 6,86:1 */
 .e-blue,.bar{--focus:#fff}                          /* sarcelle, barre → 9,84:1 */
 :focus-visible{outline:2.5px solid var(--focus);outline-offset:4px;border-radius:var(--r-s)}
 /* ── LES TRÈS GRANDS ÉCRANS ────────────────────────────────────────────────
@@ -1484,4 +1485,180 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 @media(max-width:900px){
   .mbar{display:flex}
   .ecran{padding-bottom:calc(76px + 76px)}   /* la barre ne doit rien recouvrir */
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LE BLOG — LES GUIDES
+   ─────────────────────────────────────────────────────────────────────────
+   Le site n'avait AUCUNE page de texte. Tout tenait en une seule page qui
+   défile, en « noindex » pour la version B — donc Google n'avait qu'une
+   seule porte d'entrée à proposer : la page d'accueil, sur le seul mot
+   « location climatiseur Nice ». Quelqu'un qui tape « rafraîchisseur ou
+   climatiseur », « louer ou acheter une clim », « installer une clim sans
+   percer » ne trouvait rien chez nous.
+
+   Ces pages-ci sont l'inverse d'un écran : on ne les fait pas défiler pour
+   avancer dans une histoire, on les LIT. Donc :
+     · pas de 100svh, pas d'accrochage, pas de points de progression ;
+     · une colonne de 680 px — environ 70 signes par ligne, la largeur où
+       l'œil retrouve le début de la ligne suivante sans se perdre ;
+     · le texte courant passe en --ink (et non --ink-2) : sur un écran on
+       lit trois phrases, ici on en lit cent.
+   Tout le reste — couleurs, police, barre, pied de page, goutte — vient de
+   la même feuille : un guide doit ressembler au site, pas à un blog.
+══════════════════════════════════════════════════════════════════════════ */
+
+/* Une page qui se lit n'a pas besoin de l'accrochage au défilement. */
+.page{display:block}
+
+/* La barre dit où l'on est. Le filet la sépare du nom : « Loc'Air | Guides »
+   se lit comme un chemin, pas comme deux marques. */
+.bar-fil{
+  margin-left:12px;padding-left:14px;margin-right:auto;
+  border-left:1px solid rgba(255,255,255,.2);
+  font-size:var(--s-2);font-weight:700;letter-spacing:var(--l-5);
+  text-transform:uppercase;color:rgba(255,255,255,.72);white-space:nowrap;
+}
+.bar-fil:hover{color:#fff}
+@media(max-width:560px){.bar-fil{display:none}}
+
+/* ── L'EN-TÊTE ─────────────────────────────────────────────────────────────
+   Marine, comme le pied de page : le texte est encadré par les deux bouts
+   sombres de la marque, et la lecture se fait sur du blanc entre les deux. */
+.tete{background:var(--ink);color:#fff;padding:var(--e-4) 0 var(--e-3)}
+.tete .in{max-width:var(--max)}
+.tete .kicker{color:var(--gold);margin-bottom:20px}
+.tete h1{
+  font-size:var(--t-3);font-weight:700;letter-spacing:var(--l-1);
+  line-height:1.06;max-width:19ch;
+}
+.tete h1 em{font-style:normal;color:var(--gold)}
+.tete .dire{color:rgba(255,255,255,.72);max-width:56ch}
+/* La ligne de service d'un guide : date, temps de lecture, rubrique. */
+.tete-meta{
+  margin-top:26px;padding-top:16px;border-top:1px solid rgba(255,255,255,.16);
+  display:flex;flex-wrap:wrap;gap:6px 18px;
+  font-size:var(--s-2);color:rgba(255,255,255,.62);
+}
+.tete-meta b{font-weight:700;color:rgba(255,255,255,.86)}
+/* Le fil d'Ariane : Google l'affiche sous le titre dans ses résultats, et
+   il donne au lecteur le chemin du retour. */
+.fil{font-size:var(--s-2);color:rgba(255,255,255,.55);margin-bottom:22px}
+.fil a{color:rgba(255,255,255,.78);text-decoration:underline;text-underline-offset:3px}
+.fil a:hover{color:#fff}
+.fil span{margin:0 7px;color:rgba(255,255,255,.5)}   /* mesuré : .38 donnait 3,50:1, sous la norme */
+
+/* ── LA COLONNE DE LECTURE ─────────────────────────────────────────────────
+   680 px : la largeur au-delà de laquelle l'œil saute des lignes. */
+.mes{max-width:680px;margin:0 auto;padding:0 var(--pad);width:100%}
+.art{padding:var(--e-4) 0 var(--e-4)}
+.art > .mes > p{margin-bottom:20px;color:var(--ink);line-height:var(--h-5)}
+.art > .mes > p.chapo{font-size:var(--t-6);line-height:var(--h-4);margin-bottom:var(--e-2)}
+.art h2{
+  font-size:var(--t-5);font-weight:700;letter-spacing:var(--l-2);line-height:var(--h-1);
+  margin:var(--e-3) 0 16px;scroll-margin-top:96px;
+}
+.art h3{font-size:var(--s-6);font-weight:700;letter-spacing:var(--l-3);margin:30px 0 10px}
+.art a{color:var(--vif);text-decoration:underline;text-underline-offset:3px;font-weight:500}
+.art a:hover{color:var(--vif-d)}
+.art b,.art strong{font-weight:700;color:var(--ink)}
+/* La puce est la goutte de la marque, en petit. Un signe qui revient fait
+   une identité ; une puce ronde ne dit rien. */
+.art ul{list-style:none;margin:0 0 24px}
+.art li{position:relative;padding-left:26px;margin-bottom:11px;line-height:var(--h-4)}
+.art li::before{
+  content:"";position:absolute;left:3px;top:.58em;width:7px;height:7px;
+  background:var(--vif);border-radius:50% 50% 50% 0;transform:rotate(-25deg);
+}
+/* ── LE SOMMAIRE ───────────────────────────────────────────────────────────
+   Il n'est pas décoratif : il dit en dix secondes si la page répond à la
+   question posée, et il évite de faire défiler pour le savoir. */
+.som{margin-bottom:var(--e-3);padding:20px 0 4px;border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line)}
+.som p{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);
+  text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
+.som ol{list-style:none;counter-reset:s}
+.som li{counter-increment:s;margin-bottom:10px;padding-left:28px;position:relative;
+  font-size:var(--s-4);line-height:var(--h-3)}
+.som li::before{content:counter(s);position:absolute;left:0;top:1px;
+  font-size:var(--s-2);font-weight:700;color:var(--vif);
+  font-variant-numeric:tabular-nums;
+  /* La goutte des listes du texte ne doit PAS s'appliquer ici : sans cette
+     remise à zéro, le chiffre du sommaire s'affichait à l'intérieur d'une
+     goutte de 7 px, donc illisible. */
+  width:auto;height:auto;background:none;border-radius:0;transform:none}
+.som a{color:var(--ink);text-decoration:none;font-weight:500}
+.som a:hover{color:var(--vif);text-decoration:underline;text-underline-offset:3px}
+
+/* ── LE CHIFFRE QUI COMPTE ─────────────────────────────────────────────────
+   Un filet en haut, comme partout ailleurs sur le site — pas un cadre de
+   couleur. Le chiffre est toujours vrai et vérifiable sur le site. */
+.chif{margin:var(--e-2) 0;padding-top:18px;border-top:1px solid var(--line)}
+.chif b{display:block;font-size:var(--n-3);font-weight:700;letter-spacing:var(--l-1);
+  line-height:1.04;color:var(--ink)}
+.chif span{display:block;margin-top:8px;font-size:var(--s-3);color:var(--ink-2);
+  line-height:var(--h-4);max-width:52ch}
+
+/* ── LE TABLEAU D'UN GUIDE ─────────────────────────────────────────────────
+   Même grammaire que le tableau « acheter ou louer » : filets, pas de
+   cadres, et il défile tout seul quand l'écran est trop étroit. */
+.tab{margin:var(--e-2) 0;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tab table{width:100%;border-collapse:collapse;min-width:520px;text-align:left}
+.tab th,.tab td{padding:12px 14px;border-top:1px solid var(--line);vertical-align:top;
+  font-size:var(--s-3);line-height:var(--h-3)}
+.tab thead th{border-top:0;padding-top:0;font-size:var(--s-2);font-weight:700;
+  letter-spacing:var(--l-5);text-transform:uppercase;color:var(--ink-3)}
+.tab tbody th{font-weight:700;color:var(--ink);width:34%}
+.tab td{color:var(--ink-2)}
+.tab td b{color:var(--ink)}
+
+/* ── L'APPEL DE FIN ────────────────────────────────────────────────────────
+   Un guide se termine sur ce qu'on peut faire, pas sur un point final. */
+.appel{background:var(--mist);border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line);padding:var(--e-3) 0}
+.appel h2{font-size:var(--t-5);font-weight:700;letter-spacing:var(--l-2);
+  line-height:var(--h-1);margin:0 0 12px}
+.appel p{color:var(--ink-2);margin-bottom:22px}
+.appel .btn{margin-right:10px}
+.appel .mini{margin-top:18px}
+
+/* ── LIRE AUSSI ────────────────────────────────────────────────────────────
+   Deux guides voisins, choisis à la main. Pas « articles liés » calculés au
+   hasard : chaque lien répond à la question que le texte vient d'ouvrir. */
+.suite{padding:var(--e-3) 0 var(--e-4)}
+.suite > .mes > p{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);
+  text-transform:uppercase;color:var(--ink-3);margin-bottom:18px}
+.suite-l{display:grid;gap:var(--e-1);grid-template-columns:1fr 1fr}
+.suite-l a{padding-top:16px;border-top:1px solid var(--line);display:block;
+  transition:border-color var(--mv-1) var(--mv)}
+.suite-l a:hover{border-top-color:var(--vif)}
+.suite-l b{display:block;font-size:var(--s-5);font-weight:700;letter-spacing:var(--l-3);
+  line-height:var(--h-2);color:var(--ink)}
+.suite-l span{display:block;margin-top:7px;font-size:var(--s-3);color:var(--ink-2);
+  line-height:var(--h-3)}
+.suite-l a:hover b{color:var(--vif)}
+@media(max-width:700px){.suite-l{grid-template-columns:1fr}}
+
+/* ── LA LISTE DES GUIDES ───────────────────────────────────────────────────
+   Une liste, pas une grille de vignettes : sans photo, une vignette est un
+   rectangle gris. Chaque ligne porte sa rubrique, son titre, sa promesse et
+   son temps de lecture — de quoi choisir sans cliquer. */
+.guides{padding:var(--e-4) 0}
+.guide{display:grid;grid-template-columns:1fr auto;gap:8px var(--e-2);align-items:start;
+  padding:var(--e-1) 0;border-top:1px solid var(--line);
+  transition:border-color var(--mv-1) var(--mv)}
+.guide:hover{border-top-color:var(--vif)}
+.guide:last-child{border-bottom:1px solid var(--line)}
+.guide-k{grid-column:1/-1;font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);
+  text-transform:uppercase;color:var(--vif)}
+.guide h2{font-size:var(--t-5);font-weight:700;letter-spacing:var(--l-2);
+  line-height:var(--h-1);max-width:30ch}
+.guide:hover h2{color:var(--vif)}
+.guide p{grid-column:1;font-size:var(--s-4);color:var(--ink-2);line-height:var(--h-4);
+  max-width:60ch}
+.guide-t{grid-column:2;grid-row:2;font-size:var(--s-2);color:var(--ink-3);
+  white-space:nowrap;padding-top:8px;font-variant-numeric:tabular-nums}
+@media(max-width:620px){
+  .guide{grid-template-columns:1fr}
+  .guide-t{grid-column:1;grid-row:auto;padding-top:0}
 }
