@@ -117,6 +117,49 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .calc,.pied-bloc,.vcard,.vide,.preview-bar{--focus:var(--gold)}  /* marine → 6,86:1 */
 .e-blue,.bar{--focus:#fff}                          /* sarcelle, barre → 9,84:1 */
 :focus-visible{outline:2.5px solid var(--focus);outline-offset:4px;border-radius:var(--r-s)}
+/* ── LES TRÈS GRANDS ÉCRANS ────────────────────────────────────────────────
+   Mesuré sur un écran de 1900 px : la colonne de contenu fait 1000 px, soit
+   53 % de la largeur. Presque la moitié de l'écran est de la marge, et le
+   site paraît posé au milieu d'un vide.
+   Au-delà de 1500 px, la colonne passe à 1180. En dessous, RIEN ne change —
+   toutes les mesures déjà faites restent valables. */
+@media(min-width:1500px){:root{--max:1180px}}
+
+/* ── LES EMPLACEMENTS D'IMAGE ──────────────────────────────────────────────
+   Le site n'a aucune photo — c'est ce qui lui manque le plus. Les
+   emplacements sont donc prêts d'avance :
+     · chacun réserve déjà sa proportion, donc rien ne saute quand l'image
+       arrive (pas de contenu qui se décale sous les yeux du visiteur) ;
+     · le chargement est différé : une photo hors écran ne coûte rien ;
+     · l'emplacement RESTE INVISIBLE tant que le fichier n'existe pas. Pas
+       de cadre vide, pas d'icône d'image cassée : c'est onload qui révèle
+       la figure, et onload ne se déclenche jamais sur un fichier absent.
+   Le jour où les fichiers sont déposés dans le dossier, ils apparaissent
+   sans qu'on touche au code. Formats et cadrages attendus : PHOTOS.md */
+.photo{margin:0;overflow:hidden;border-radius:var(--r-l);background:var(--mist);min-width:0}
+.photo[hidden]{display:none}
+.photo img{display:block;width:100%;height:100%;object-fit:cover}
+.photo-4-5{aspect-ratio:4/5}
+.photo-1-1{aspect-ratio:1/1}
+.photo-3-2{aspect-ratio:3/2}
+/* Sur l'accueil, la photo prend la colonne de droite et le choix des deux
+   machines passe en dessous, sur toute la largeur. Tant qu'il n'y a pas de
+   photo, la mise en page d'aujourd'hui reste intacte : c'est :has() qui
+   bascule, et il ne bascule que si une figure visible existe. */
+/* La photo ne dicte PAS la hauteur de l'écran : mesuré, une 4:5 dans une
+   colonne de 530 px faisait passer l'accueil de 618 à 1254 px — le double
+   d'un écran. Elle prend une hauteur bornée et recadre par le milieu. */
+.e1-grid:has(> .photo:not([hidden])){grid-template-columns:1fr .78fr}
+.e1-grid > .photo{aspect-ratio:auto;height:clamp(280px,34svh,400px)}
+.e1-grid:has(> .photo:not([hidden])) .choix{grid-column:1/-1;flex-direction:row;margin-top:6px}
+.e1-grid:has(> .photo:not([hidden])) .mcard{flex:1 1 0}
+/* Dans la fiche d'une machine, la photo passe en tête, sous le filet. */
+/* Dans la fiche d'une machine, la photo passe en tête, sous le filet. Elle
+   sert à RECONNAÎTRE l'objet — surtout le rafraîchisseur, que personne ne
+   connaît — pas à faire une affiche : hauteur bornée à 220 px. */
+.mach .photo{aspect-ratio:auto;height:190px;margin:0 0 16px}
+@media(max-width:760px){.e1-grid:has(> .photo:not([hidden])){grid-template-columns:1fr}
+  .e1-grid:has(> .photo:not([hidden])) .choix{flex-direction:column}}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 
 /* ══ L'ÉCRAN ══
