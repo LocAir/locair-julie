@@ -330,9 +330,19 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 @media(max-width:640px){.preview-bar{font-size:12px}.preview-bar .long{display:none}}
 
 /* ══ ÉCRAN 1 : OUVERTURE ══ */
-.e1{padding-top:32px;min-height:calc(100svh - 72px)}
-@supports not (height:100svh){.e1{min-height:calc(100vh - 72px)}}
-.e1-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:var(--e-4);align-items:center}
+/* --bandeau vaut 0 tant que le bandeau d'info n'est pas affiché ; le script
+   y met sa hauteur réelle dès qu'il apparaît. Sans ça, le bas du premier
+   écran était systématiquement coupé de 44 px. */
+.e1{padding-top:28px;padding-bottom:40px;min-height:calc(100svh - 72px - var(--bandeau, 0px))}
+@supports not (height:100svh){.e1{min-height:calc(100vh - 72px - var(--bandeau, 0px))}}
+/* Le titre traverse maintenant toute la largeur : enfermé dans une colonne
+   de 460 px, il se pliait en quatre lignes. En dessous, les deux seuls
+   gestes possibles, côte à côte — donner son adresse, ou choisir sa
+   machine. La colonne de gauche est la plus large : c'est celle qui
+   convertit. */
+.e1-grid{display:grid;grid-template-columns:1.06fr .94fr;gap:var(--e-3);align-items:start;margin-top:var(--e-2)}
+.e1-col{min-width:0}
+.e1 .addr{margin-top:0}
 /* ══ LIGNE D'ÉTAT DE LIVRAISON ══
    Remplace une pastille en capitales qui portait deux messages à la fois et
    débordait sur deux lignes. Elle était le premier élément vu de la page et
@@ -699,25 +709,29 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .conseil b{font-size:17px}
   .conseil .gtt{margin-bottom:10px}
 }
-.e1 .titre{max-width:15ch;font-size:var(--t-2)}
-.addr{background:#fff;border-radius:var(--r-l);padding:22px;margin-top:28px;max-width:460px;box-shadow:0 1px 3px rgba(14,31,53,.05),0 18px 46px rgba(14,31,53,.1)}
+/* Deux lignes, une par idée — et garanti dans les quatre langues : chaque
+   moitié de la phrase occupe sa propre ligne au lieu de se casser au hasard
+   là où la colonne se termine. Le titre se pliait en trois : « Il fait trop
+   chaud ? / Plus pour / longtemps. » Un titre plié en trois n'est plus un
+   titre. */
+.e1 .titre{max-width:none;font-size:var(--t-2)}
+.e1 .titre em{display:block}
+.addr{background:#fff;border-radius:var(--r-l);padding:18px;margin-top:28px;max-width:460px;box-shadow:0 1px 3px rgba(14,31,53,.05),0 18px 46px rgba(14,31,53,.1)}
 .addr label{display:block;font-size:11.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:13px}
 .addr-row{display:flex;align-items:center;gap:12px;background:var(--mist);border-radius:var(--r);padding:15px 17px;transition:box-shadow var(--mv-1) var(--mv)}
 .addr-row:focus-within{box-shadow:inset 0 0 0 2px var(--blue)}
 .addr-row svg{flex-shrink:0;color:var(--ink-3)}
 .addr-row input{flex:1;min-width:0;border:none;outline:none;font:inherit;font-size:16px;color:var(--ink);background:none}
 .addr-row input::placeholder{color:var(--ink-3)}
-.addr .btn{width:100%;margin-top:12px}
+.addr .btn{width:100%;margin-top:10px}
 .addr-note{font-size:13px;color:var(--ink-3);margin-top:13px;text-align:center}
 .preuve1{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:26px;font-size:15px;color:var(--ink-2)}
 .preuve1 b{color:var(--ink);font-weight:700}
 .stars{color:var(--gold-txt);letter-spacing:1.5px;font-size:14px}
 /* sur fond sombre, l'or clair reprend sa place */
 .e-ink .stars,.e-blue .stars,.vcard .stars,.fin-q .stars{color:var(--gold)}
-.e1-img{width:100%;aspect-ratio:4/5;max-height:62svh;object-fit:cover;border-radius:var(--r-l)}
 @media(max-width:900px){
   .e1-grid{grid-template-columns:1fr;gap:30px}
-  .e1-img{display:none}          /* sur téléphone, l'écran 1 doit tenir : le texte prime */
   .addr{max-width:none}
 }
 

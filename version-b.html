@@ -176,20 +176,25 @@
 <main>
 
 <!-- ══ 1 · L'ACCROCHE ══════════════════════════════════════════════════════ -->
+<!-- ══ 1 · ACCUEIL ═════════════════════════════════════════════════════════
+     Le titre était enfermé dans une colonne de 460 px : « Il fait trop chaud ?
+     Plus pour longtemps. » s'y pliait en quatre lignes, et un titre plié en
+     quatre n'est plus un titre. Il passe sur toute la largeur, où il tient
+     en deux lignes.
+     En dessous, la page pose les deux gestes possibles côte à côte : donner
+     son adresse, ou choisir sa machine. Rien d'autre. -->
 <section class="ecran e1" id="e1" data-titre="Accueil">
-  <div class="in e1-grid">
-    <div>
-      <p class="etat rv" id="etat">
+  <div class="in">
+    <p class="etat rv" id="etat">
         <span class="etat-pt" aria-hidden="true"></span>
         <span id="etat-txt" data-th="e1.etat">Livré <b>demain matin</b>, entre 8h et 12h.</span>
       </p>
-      <h1 class="titre rv" data-th="e1.titre">Il fait trop chaud&nbsp;?<em> Plus pour longtemps.</em></h1>
-      <!-- La ligne qui manquait : rien, sur cet écran, ne disait ce que
-           Loc'Air loue. Le visiteur devait le deviner d'après la photo —
-           qui ne montrait qu'un produit sur deux. -->
-      <p class="quoi rv" data-t="e1.quoi">Climatiseurs mobiles et rafraîchisseurs d'air. Livrés, installés, repris.</p>
+    <h1 class="titre rv" data-th="e1.titre">Il fait trop chaud ?<em> Plus pour longtemps.</em></h1>
+    <p class="quoi rv" data-t="e1.quoi">Climatiseurs mobiles et rafraîchisseurs d'air. Livrés, installés, repris.</p>
+
+    <div class="e1-grid">
+      <div class="e1-col">
       <form class="addr rv" action="/" method="get">
-        <label for="addr-input" data-t="e1.adresse">Adresse de livraison</label>
         <div class="addr-row">
           <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
           <input id="addr-input" name="adresse" type="text" autocomplete="off"
@@ -199,13 +204,12 @@
           <input type="hidden" name="cp" id="addr-cp">
         </div>
         <button class="btn btn-1" type="submit" data-t="e1.voir">Voir les disponibilités →</button>
-        <p class="addr-note" data-t="e1.note">Prix affiché avant de payer · Annulation gratuite</p>
       </form>
       <p class="preuve1 rv">
         <span class="stars" aria-hidden="true">★★★★★</span>
         <span><b data-note>4,9</b> · <span data-avis>32</span> <span data-t="e1.avisMot">avis Google</span> · <b>+500</b> <span data-t="e1.clients">clients livrés depuis 2019</span></span>
       </p>
-    </div>
+      </div>
     <!-- ── LE CHOIX, À LA PLACE DE LA PHOTO ──────────────────────────────
          Une photo de stock délavée portait à elle seule le travail le plus
          important de la page : dire ce qu'on loue. Elle ne montrait qu'une
@@ -228,7 +232,7 @@
         <span class="mcard-c" data-t="e1.c2c">Fenêtre ouverte</span>
         <span class="mcard-d" data-t="e1.c2d">De l'eau qui s'évapore. La terrasse, le garage, l'atelier, la véranda.</span>
       </a>
-      <p class="choix-n" data-t="e1.choixN">Vous hésitez ? Nous choisissons avec vous au téléphone.</p>
+    </div>
     </div>
   </div>
 </section>
@@ -2111,6 +2115,16 @@ Object.assign(T, {
     }
     msg.innerHTML = tete + corps;
     bar.classList.add('on');
+    /* Le premier écran réserve 100svh - 72px (la barre). Le bandeau, lui,
+       ajoutait 44 px que personne n'avait comptés : le bas de l'accueil
+       était donc TOUJOURS coupé, quelle que soit la taille de l'écran.
+       On mesure le bandeau et on le retire de la hauteur réservée. */
+    var poser = function(){
+      document.documentElement.style.setProperty(
+        '--bandeau', Math.round(bar.getBoundingClientRect().height) + 'px');
+    };
+    poser();
+    window.addEventListener('resize', poser, {passive:true});
   }
   document.addEventListener('langue', afficher);
   Livraison.ecouter(afficher);
@@ -2129,6 +2143,7 @@ Object.assign(T, {
 
   document.getElementById('infobar-x').addEventListener('click', function(){
     bar.classList.remove('on');
+    document.documentElement.style.setProperty('--bandeau', '0px');
     try{ localStorage.setItem('lb_infobar', jourParis); }catch(e){}
   });
 })();
