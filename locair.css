@@ -29,8 +29,15 @@
   --gold:#C9A227;       /* accent — sur fond SOMBRE uniquement */
   /* Le même or sur blanc ne donne que 2,42 pour 1. Sur fond clair on
      utilise cette version assombrie (4,76), qui garde la teinte. */
-  --gold-txt:#8A7016;
+  /* Mesuré : #8A7016 donnait 4,44:1 sur la brume et 4,39:1 sur la pastille
+     d'ouverture de ville (fond doré à 10 %) — sous la norme (4,5). #7A6313
+     remonte à 5,40 et 5,30, sans rien perdre de l'or. */
+  --gold-txt:#7A6313;
   --paper:#FFFFFF; --mist:#F5F7FA; --line:#E6EBF1; --green:#0F7A3D;
+  /* Trois teintes de marine et un ambre étaient écrits en dur dans le
+     fichier, sans nom : les surfaces posées SUR le marine, le survol du
+     bouton marine, et l'état « complet » du point de livraison. */
+  --ink-s:#183253; --ink-s2:#132840; --ink-h:#1A3050; --alerte:#B8860B;
   --pad:24px; --max:1000px;
   /* ── COINS ARRONDIS ──
      Huit valeurs écrites à la main cohabitaient (6, 8, 10, 11, 12, 20,
@@ -100,9 +107,15 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    L'anneau prend donc la couleur qui se voit sur son fond. Sur le marine
    c'est l'or de la marque : le repère d'accessibilité devient un signe
    de la marque au lieu d'un réglage de navigateur. */
-:root{--focus:var(--vif)}                    /* blanc, brume  → 6,36:1 */
-.e-ink,.menu,.cook,.infobar{--focus:var(--gold)}  /* marine    → 6,86:1 */
-.e-blue,.bar{--focus:#fff}          /* bleu, barre   → 6,36:1 */
+:root{--focus:var(--vif)}                           /* blanc, brume    → 5,98:1 */
+/* Toutes les surfaces SOMBRES, y compris celles posées sur un écran clair :
+   le calculateur, le pied de page, les cartes vidéo. Sans elles, l'anneau
+   restait sarcelle sur du marine — 2,77:1, sous le minimum de 3 exigé pour
+   un repère d'accessibilité. C'est le calculateur qui comptait le plus :
+   seize commandes s'y règlent au clavier. */
+.e-ink,.menu,.cook,.infobar,
+.calc,.pied-bloc,.vcard,.vide,.preview-bar{--focus:var(--gold)}  /* marine → 6,86:1 */
+.e-blue,.bar{--focus:#fff}                          /* sarcelle, barre → 9,84:1 */
 :focus-visible{outline:2.5px solid var(--focus);outline-offset:4px;border-radius:var(--r-s)}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 
@@ -215,7 +228,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    nulle part : il s'affichait en texte nu, sans forme de bouton. Sur
    fond or, l'encre est ce qui se détache le mieux (6,86 pour 1). */
 .btn-2{background:var(--ink);color:#fff}
-.btn-2:hover{background:#1A3050}
+.btn-2:hover{background:var(--ink-h)}
 .btn-light:hover{transform:translateY(-2px)}
 .btn-out{border:1.5px solid var(--line);color:var(--ink)}
 .btn-out:hover{border-color:var(--ink);transform:translateY(-2px)}
@@ -417,7 +430,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   flex-shrink:0;transform:translateY(-1px) rotate(-25deg);
   animation:pulse 2.4s ease-in-out infinite;
 }
-.etat.complet .etat-pt{background:#B8860B;animation:none}
+.etat.complet .etat-pt{background:var(--alerte);animation:none}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 @media(prefers-reduced-motion:reduce){.etat-pt{animation:none}}
 /* ── Les prochaines ouvertures ─────────────────────────────────────────────
@@ -460,7 +473,10 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   transition:box-shadow var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
 }
 .attente-i::placeholder{color:var(--ink-3)}
-.attente-i:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(29,91,191,.16)}
+/* Ces deux anneaux étaient restés au bleu roi d'avant (rgba(29,91,191,…)) :
+   la seule trace de l'ancienne couleur dans tout le fichier. Ils prennent
+   maintenant la couleur qui se voit sur leur fond, comme tout le reste. */
+.attente-i:focus{outline:2px solid var(--focus);outline-offset:2px;border-color:var(--vif)}
 .attente-b{flex:0 0 auto}
 .attente-m{font-size:var(--s-2);line-height:var(--h-4);color:var(--ink-3);margin-top:11px}
 .attente-ok{color:var(--green);font-weight:700}
@@ -518,7 +534,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   transition:box-shadow var(--mv-1) var(--mv),border-color var(--mv-1) var(--mv);
 }
 .ch input::placeholder{color:var(--ink-3)}
-.ch input:focus{outline:none;border-color:var(--vif);box-shadow:0 0 0 3px rgba(29,91,191,.16)}
+.ch input:focus{outline:2px solid var(--focus);outline-offset:2px;border-color:var(--vif)}
 .ch:first-child,.ch:nth-child(2){grid-column:span 1}
 .form-b{margin-top:14px}
 .form-note{font-size:var(--s-2);line-height:var(--h-4);color:var(--ink-3);margin:11px 0 0;max-width:56ch}
@@ -919,7 +935,10 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   content:'';position:absolute;right:0;top:50%;transform:translateY(-50%);
   width:1px;height:11px;background:currentColor;opacity:.5;
 }
-.e-ink .acte,.e-blue .acte{color:rgba(255,255,255,.42)}
+/* Mesuré : le blanc à 42 % donnait 3,97:1 sur le marine et 2,32:1 sur la
+   sarcelle — très en dessous de la norme. L'acte prend la même valeur que
+   le surtitre : c'est le filet qui les sépare, pas la luminosité. */
+.e-ink .acte,.e-blue .acte{color:rgba(255,255,255,.82)}
 
 /* ══ ÉCRANS CENTRÉS ══
    Douze écrans sur treize étaient alignés à gauche, avec la même ossature.
@@ -1097,7 +1116,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .rail::-webkit-scrollbar{height:5px}
 .rail::-webkit-scrollbar-thumb{background:rgba(14,31,53,.22);border-radius:var(--r-f)}
 .e-ink .rail::-webkit-scrollbar-thumb,.e-blue .rail::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2)}
-.vcard{position:relative;flex:0 0 auto;width:clamp(176px,17vw,206px);aspect-ratio:9/16;border-radius:var(--r-l);overflow:hidden;scroll-snap-align:start;background:#183253}
+.vcard{position:relative;flex:0 0 auto;width:clamp(176px,17vw,206px);aspect-ratio:9/16;border-radius:var(--r-l);overflow:hidden;scroll-snap-align:start;background:var(--ink-s)}
 .vcard video,.vcard>img{width:100%;height:100%;object-fit:cover}
 .vcard::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(to top,rgba(8,18,32,.88) 0%,rgba(8,18,32,.1) 44%,transparent 66%)}
 .vplay{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;width:100%;color:#fff}
@@ -1115,7 +1134,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    c'était une carte creuse, sur fond clair c'était un trou blanc. Elle
    porte maintenant son propre fond, un ton plus clair que les autres
    pour rester lisible comme un emplacement libre. */
-.vide{display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:#132840;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
+.vide{display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;background:var(--ink-s2);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18)}
 .vide::after{display:none}   /* pas de dégradé : aucun texte à détacher */
 .vide p{font-size:var(--s-2);color:rgba(255,255,255,.5);line-height:var(--h-4)}
 .vide b{display:block;color:rgba(255,255,255,.85);font-size:var(--s-3);margin-bottom:6px}
