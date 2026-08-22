@@ -1282,6 +1282,11 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* ══ ÉCRAN ZONE ══ */
 .villes{display:grid;grid-template-columns:repeat(2,1fr);gap:0 var(--e-4);margin-top:22px}
+/* Mesuré : à six villes sur deux colonnes, l'écran faisait déjà 928 px pour
+   900 de haut. À neuf villes il passait à 1085 — les prochaines ouvertures
+   et la liste d'attente tombaient sous la ligne de flottaison. Trois
+   colonnes sur grand écran ramènent la liste à trois rangées. */
+@media(min-width:980px){.villes{grid-template-columns:repeat(3,1fr);gap:0 var(--e-2)}}
 /* Mesuré : en anglais la page débordait de 18px sur le côté d'un téléphone,
    en russe de 49px — et de 89px sur une tablette de 768px. Cause :
    l'étiquette « Livré 7j/7 » devient « Доставка 7 дней в неделю », deux fois
@@ -1295,6 +1300,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .ville span{font-size:var(--s-2);color:var(--ink-3);display:block;margin-top:2px}
 .tag{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-5);text-transform:uppercase;color:var(--green);flex-shrink:0}
 .tag-ask{color:var(--ink-3)}
+/* Une ville qui a sa propre page devient cliquable. Le chevron dit que la
+   ligne mène quelque part — sans lui, quatre lignes sur neuf seraient des
+   liens sans que rien ne le montre. */
+.ville-l b{transition:color var(--mv-1) var(--mv)}
+.ville-l b::after{content:'\00a0›';color:var(--vif);font-weight:700}
+.ville-l:hover b{color:var(--vif)}
 @media(max-width:700px){
   .villes{grid-template-columns:1fr}
 }
@@ -1661,4 +1672,15 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 @media(max-width:620px){
   .guide{grid-template-columns:1fr}
   .guide-t{grid-column:1;grid-row:auto;padding-top:0}
+}
+
+/* ── LES QUARTIERS D'UNE VILLE ─────────────────────────────────────────────
+   Des noms de lieux, pas des liens : une pastille par quartier, à plat.
+   C'est la seule liste du site qui se lit en diagonale — on y cherche SON
+   quartier, on ne la lit pas en entier. */
+.qrt{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 24px}
+.qrt span{
+  padding:7px 13px;border-radius:var(--r-f);background:var(--mist);
+  border:1px solid var(--line);font-size:var(--s-3);color:var(--ink-2);
+  line-height:var(--h-2);
 }
