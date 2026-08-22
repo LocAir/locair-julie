@@ -254,16 +254,24 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    l'encre que sur le bleu. */
 .bar.sur-fonce .btn-1{background:#fff;color:var(--ink)}
 .bar.sur-fonce .btn-1:hover{background:rgba(255,255,255,.88)}
-.bar-tel{font-weight:700;font-size:15px;position:relative;flex-shrink:0;white-space:nowrap}
-/* Les cinq éléments de droite étaient séparés par le même écart de 16 px :
-   l'œil ne pouvait former aucun groupe, le numéro de téléphone se collait
-   au bouton. Un filet sépare ce qu'on lit (espace client, téléphone) de ce
-   sur quoi on clique (Réserver, langue, menu). */
-.bar-tel::after{
-  content:"";position:absolute;right:-8px;top:50%;transform:translateY(-50%);
-  width:1px;height:22px;background:var(--line);
+/* ── L'accès à son compte ──────────────────────────────────────────────────
+   « Mon espace → » et le numéro de téléphone quittent la barre. Le numéro
+   reste partout où il sert vraiment : le pied de page, le menu, et le bouton
+   d'appel de la barre du bas sur téléphone. En haut, il ne faisait
+   qu'encombrer — 126 px de chiffres à côté du bouton principal.
+   Reste une icône : elle ne se traduit pas (les trois mots « Mon espace »
+   devenaient « Мой кабинет » et faisaient déborder la barre en russe), elle
+   tient dans 44 px, et elle rejoint la langue et le menu pour former un
+   trio d'outils bien séparé de la seule action de la barre. */
+.bar-compte{
+  width:44px;height:44px;border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:background var(--mv-1) var(--mv);
 }
-.bar.sur-fonce .bar-tel::after{background:rgba(255,255,255,.24)}
+.bar-compte:hover{background:rgba(14,31,53,.06)}
+.bar.sur-fonce .bar-compte:hover{background:rgba(255,255,255,.12)}
+.bar-compte svg{opacity:.72}
+.bar-compte:hover svg{opacity:1}
 /* ── Le sélecteur d'offre ──────────────────────────────────────────────────
    Deux pastilles dans une gouttière, comme un interrupteur : on voit
    immédiatement qu'il existe deux offres et laquelle on regarde. Il tient
@@ -303,24 +311,17 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .offre{order:3;flex:0 0 100%;margin-left:0;margin-right:0;display:flex}
   .offre-o{flex:1 1 0;text-align:center;padding:8px 10px;font-size:13px}
 }
-.bar-lien{font-size:15px;font-weight:500;flex-shrink:0;white-space:nowrap;opacity:.68;transition:opacity var(--mv-1) var(--mv)}
-.bar-lien:hover{opacity:1}
-/* Mesuré : blanc à 68 % sur l'écran bleu = 3,86:1, sous la norme (4,5:1).
-   À 82 % le même texte passe à 4,84:1, sans rien perdre de sa discrétion. */
-.bar.sur-fonce .bar-lien{opacity:.82}
-/* Ce qui disparaît, et dans quel ordre. « Mon espace » part le premier : le
-   menu ☰ y mène aussi, et libérer ses 122 px permet de garder le sélecteur
-   de langue jusqu'à 900 px. Il s'arrêtait à 1000 px, cent pixels avant tout
-   le reste : entre les deux, un visiteur russe perdait le choix de la langue
-   alors que le téléphone et le bouton, eux, tenaient encore. */
-@media(max-width:1080px){.bar-lien{display:none}}
+/* Ce qui disparaît, et quand. La barre s'est beaucoup allégée : le
+   sélecteur de langue tient maintenant jusqu'à 430 px au lieu de 1000, ce
+   qui compte pour un site qui parle quatre langues à des touristes. Le
+   compte et le menu ne disparaissent jamais : le menu ☰ est le seul chemin
+   vers /partenaire, /prolongation, /reunion et les mentions légales, et il
+   reste donc visible AUSSI sur grand écran. */
 @media(max-width:900px){
-  /* la barre du bas porte déjà le bouton : inutile de le doubler en haut.
-     Le menu ☰, lui, devient le SEUL accès aux espaces : il reste — et il
-     reste AUSSI sur grand écran, parce qu'il est le seul chemin vers
-     /partenaire, /prolongation, /reunion et les mentions légales. */
-  .bar-tel,.bar-lien,.bar .btn,.bar .lang{display:none}
+  /* la barre du bas porte déjà le bouton : inutile de le doubler en haut. */
+  .bar .btn{display:none}
 }
+@media(max-width:430px){.bar .lang{display:none}}
 
 /* ══ BANDEAU APERÇU ══ */
 .preview-bar{position:relative;z-index:901;background:var(--ink);color:rgba(255,255,255,.68);font-size:13px;text-align:center;padding:10px var(--pad)}
