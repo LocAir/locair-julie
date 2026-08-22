@@ -37,7 +37,7 @@ def bloc_prix(v):
   </tbody>
 </table>
 </div>
-<p>Ce qui change à {n}, c'est <b>la livraison&nbsp;: {LIVRAISON} €</b> au lieu de 60 € — le tarif hors zone. Elle comprend l'aller <b>et</b> le retour&nbsp;: nous venons reprendre l'appareil à la fin, c'est déjà compté.</p>
+<p>Ce qui change à {n}, c'est <b>la livraison&nbsp;: {LIVRAISON} €</b> au lieu de 60 €. Notre dépôt est à Nice, à une trentaine de minutes de route&nbsp;: c'est ce trajet-là que vous payez, aller <b>et</b> retour — nous venons reprendre l'appareil à la fin, c'est déjà compté.</p>
 <div class="chif">
   <b>{TOTAL_2SEM} €</b>
   <span>Deux semaines complètes à {n}&nbsp;: {DEUX_SEMAINES} € de location plus {LIVRAISON} € de livraison et récupération. Sans caution. Ajoutez 80 € si vous voulez qu'un technicien pose l'appareil — sinon la pose libre est offerte.</span>
@@ -186,15 +186,43 @@ def page_ville(v):
     <h1>{v['h1']}</h1>
     <p class="dire">{v['resume']}</p>
     <div class="tete-meta">
+      <span><b>Dès 12 €</b> par jour</span>
       <span>Livraison <b>{LIVRAISON} €</b>, aller et retour</span>
-      <span>Location <b>dès 12 €</b> par jour</span>
-      <span><b>7j/7</b>, de 8h à 20h</span>
       <span><b>Aucune caution</b></span>
+      <span><b>4,9/5</b> sur 32 avis Google</span>
+    </div>
+    <div class="tete-act">
+      <a class="btn btn-1" href="/">Voir les disponibilités →</a>
+      <a class="btn btn-out" href="tel:+33663798756">06.63.79.87.56</a>
     </div>
   </div>
 </header>
 
 <main id="texte">
+
+<!-- Cinq lignes pour qui n'en lira pas plus. Un visiteur reste deux
+     minutes : s'il repart après ce bandeau, il sait déjà le prix, ce qui
+     est inclus, et ce qu'on ne lui demandera pas. -->
+<section class="essentiel" aria-label="L'essentiel">
+  <div class="essentiel-in">
+    <div><b>{TOTAL_2SEM} €</b><span>Deux semaines à {v['nom']}, livraison et reprise comprises.</span></div>
+    <div><b>0 €</b><span>De caution. Ni chèque, ni empreinte bancaire. Jamais.</span></div>
+    <div><b>20 min</b><span>On monte l'appareil, on pose le kit sur la fenêtre, on vous montre.</span></div>
+    <div><b>Le jour même</b><span>En cas de panne, on remplace l'appareil. Sans frais.</span></div>
+    <div><b>Zéro trou</b><span>Le kit se retire sans percer et sans laisser de trace.</span></div>
+  </div>
+</section>
+
+<!-- Le seul endroit de la page où quelqu'un parle à la première personne.
+     L'avis cité est réel, déjà publié sur locair.fr, et son auteur est
+     nommé — rien n'est écrit ici qui ne soit vérifiable. -->
+<section class="mot">
+  <div class="mot-in">
+    <p>Chez Loc'Air, il n'y a pas de standard et pas de sous-traitant. Celui qui répond au téléphone est celui qui sonne à votre porte, monte l'appareil et pose le kit sur votre fenêtre. Depuis 2019, ça fait plus de 500 livraisons — et mon prénom dans les avis, ce qui veut dire que vous saurez à qui vous avez affaire.</p>
+    <div class="mot-n"><b>Aly</b><span>Loc'Air · <a href="tel:+33663798756">06.63.79.87.56</a></span><span class="stars">★★★★★ 4,9/5</span></div>
+    <p class="mot-q">«&nbsp;Parfait pour notre colocation&nbsp;! Aly a installé deux clims en moins d'une heure, tout compris dans le prix. On a passé l'été au frais sans se ruiner.&nbsp;»<br><b>Sophie Margot</b> · avis Google</p>
+  </div>
+</section>
 
 <article class="art">
   <div class="mes">
