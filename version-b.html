@@ -774,24 +774,44 @@
 <section class="ecran" id="e7" data-titre="Les clients">
   <div class="in">
     <span class="kicker rv" data-t="e7.kicker">Ils l'ont fait</span>
-    <h2 class="titre rv t-3" style="max-width:20ch" data-th="e7.titre">Nos clients,<em> filmés chez eux.</em></h2>
-    <p class="dire rv" data-t="e7.dire">Pas d'acteurs, pas de studio. Des vidéos prises au téléphone.</p>
+    <h2 class="titre rv t-3" data-th="e7.titre">Ce qu'ils en disent,<em> sans que nous l'écrivions.</em></h2>
+    <p class="dire rv" data-th="e7.dire">Ils viennent de Google. Nous ne les choisissons pas, et nous ne pouvons pas les effacer.</p>
 
-    <!-- Pour brancher une vraie vidéo, remplacer le contenu d'une carte par :
-           <video class="vid-el" preload="none" playsinline muted loop poster="/videos/x.jpg">
-             <source src="/videos/x.webm" type="video/webm">
-             <source src="/videos/x.mp4"  type="video/mp4">
-           </video>
-           <button class="vplay" type="button" aria-label="Lire le témoignage"><span>▶</span></button>
-         preload="none" + poster : rien ne se télécharge avant le clic. -->
-    <div class="rail" id="rail" tabindex="0" role="region" data-ta="e7.rail" aria-label="Témoignages vidéo">
-      <article class="vcard rv"><div class="vplay" style="cursor:default"><span style="width:auto;height:auto;padding:8px 15px;border-radius:100px;font-size:11.5px;font-weight:700" data-t="e7.aAjouter">VIDÉO À AJOUTER</span></div><div class="vmeta"><span class="stars" aria-hidden="true">★★★★★</span><b>Yassine</b><span data-t="e7.juin">Nice · Juin 2026</span></div></article>
-      <article class="vcard rv"><div class="vplay" style="cursor:default"><span style="width:auto;height:auto;padding:8px 15px;border-radius:100px;font-size:11.5px;font-weight:700" data-t="e7.aAjouter">VIDÉO À AJOUTER</span></div><div class="vmeta"><span class="stars" aria-hidden="true">★★★★★</span><b>Lauriane</b><span data-t="e7.juin">Nice · Juin 2026</span></div></article>
-      <article class="vcard rv"><div class="vplay" style="cursor:default"><span style="width:auto;height:auto;padding:8px 15px;border-radius:100px;font-size:11.5px;font-weight:700" data-t="e7.aAjouter">VIDÉO À AJOUTER</span></div><div class="vmeta"><span class="stars" aria-hidden="true">★★★★★</span><b>Mike</b><span data-t="e7.juin">Nice · Juin 2026</span></div></article>
-      <article class="vcard rv"><div class="vplay" style="cursor:default"><span style="width:auto;height:auto;padding:8px 15px;border-radius:100px;font-size:11.5px;font-weight:700" data-t="e7.aAjouter">VIDÉO À AJOUTER</span></div><div class="vmeta"><span class="stars" aria-hidden="true">★★★★★</span><b>Fabio</b><span data-t="e7.juin">Nice · Juin 2026</span></div></article>
-      <article class="vcard vide rv"><p data-th="e7.vous"><b>Vous avez loué chez nous&nbsp;?</b>Filmez 20 secondes et envoyez-les sur WhatsApp. Nous vous offrons une journée, merci d'avance.</p></article>
+    <!-- Rempli par /api/google-rating, et par rien d'autre. Tant que Google
+         ne répond pas — ou que les clés ne sont pas configurées — ce bloc
+         reste masqué : aucun avis n'est jamais écrit à la main. -->
+    <div class="avis" id="avis" hidden></div>
+
+    <!-- Les vidéos, pour plus tard. Le rail reste masqué tant qu'aucune
+         n'existe : un cadre vide ne vaut pas mieux que rien.
+         Pour en brancher une, ajouter dans #rail :
+           <article class="vcard rv">
+             <video class="vid-el" preload="none" playsinline muted loop poster="/videos/x.jpg">
+               <source src="/videos/x.webm" type="video/webm">
+               <source src="/videos/x.mp4"  type="video/mp4">
+             </video>
+             <button class="vplay" type="button" aria-label="Lire le témoignage"><span>▶</span></button>
+           </article>
+         puis retirer l'attribut hidden ci-dessous. -->
+    <!-- L'invitation ne dépend de rien : elle tient l'écran même quand Google
+         ne répond pas. C'est aussi le seul moyen d'obtenir les vidéos qui
+         manquent — les demander. -->
+    <div class="invit rv"><p data-th="e7.vous"><b>Vous avez loué chez nous&nbsp;?</b>Filmez 20 secondes et envoyez-les sur WhatsApp. Nous vous offrons une journée, merci d'avance.</p></div>
+
+    <!-- Les vidéos, pour plus tard. Le rail reste masqué tant qu'aucune
+         n'existe : un cadre vide ne vaut pas mieux que rien.
+         Pour en brancher une, ajouter ici :
+           <article class="vcard rv">
+             <video class="vid-el" preload="none" playsinline muted loop poster="/videos/x.jpg">
+               <source src="/videos/x.webm" type="video/webm">
+               <source src="/videos/x.mp4"  type="video/mp4">
+             </video>
+             <button class="vplay" type="button" aria-label="Lire le témoignage"><span>▶</span></button>
+           </article>
+         puis retirer l'attribut hidden. -->
+    <div class="rail" id="rail" tabindex="0" role="region" data-ta="e7.rail" aria-label="Témoignages vidéo" hidden></div>
     </div>
-    <p class="mini" data-t="e7.mini">Vidéos non retouchées, publiées avec l'accord des clients.</p>
+    <p class="mini rv" data-t="e7.mini">Note et avis lus directement sur notre fiche Google, mis à jour tout seuls.</p>
   </div>
 </section>
 
@@ -1357,26 +1377,12 @@ Object.assign(T, {
 
   /* écran 7 — les clients */
   'e7.kicker': {fr:"Ils l'ont fait", en:"They did it", zh:"他们的经历", ru:"Они это сделали"},
-  'e7.titre' : {fr:"Nos clients,<em> filmés chez eux.</em>",
-                en:"Our customers,<em> filmed at home.</em>",
-                zh:"我们的客户，<em>在自己家中拍摄。</em>",
-                ru:"Наши клиенты,<em> снятые у себя дома.</em>"},
-  'e7.dire'  : {fr:"Pas d'acteurs, pas de studio. Des vidéos prises au téléphone.",
-                en:"No actors, no studio. Videos shot on a phone.",
-                zh:"没有演员，没有摄影棚。用手机拍摄的真实视频。",
-                ru:"Ни актёров, ни студии. Видео, снятые на телефон."},
   'e7.aAjouter':{fr:"VIDÉO À AJOUTER", en:"VIDEO TO ADD", zh:"待添加视频", ru:"ВИДЕО БУДЕТ ДОБАВЛЕНО"},
   'e7.juin'  : {fr:"Nice · Juin 2026", en:"Nice · June 2026", zh:"尼斯 · 2026年6月", ru:"Ницца · июнь 2026"},
   'e7.vous'  : {fr:"<b>Vous avez loué chez nous ?</b>Filmez 20 secondes et envoyez-les sur WhatsApp. Nous vous offrons une journée, merci d'avance.",
                 en:"<b>Rented from us?</b>Film 20 seconds and send them on WhatsApp. We'll give you a free day.",
                 zh:"<b>您在我们这里租过吗？</b>拍摄20秒并通过 WhatsApp 发给我们，即赠一天租期。",
                 ru:"<b>Арендовали у нас?</b>Снимите 20 секунд и пришлите в WhatsApp. Дарим один день аренды."},
-  'e7.mini'  : {fr:"Vidéos non retouchées, publiées avec l'accord des clients.",
-                en:"Unedited videos, published with the customers' consent.",
-                zh:"视频未经修饰，已获客户同意后发布。",
-                ru:"Видео без обработки, опубликованы с согласия клиентов."},
-
-  /* écran 8 — la plateforme */
   'e8.kicker': {fr:"Sous le capot", en:"Under the hood", zh:"技术底层", ru:"Что под капотом"},
   'e8.titre' : {fr:"Une camionnette arrive chez vous.<em> Un système l'a envoyée.</em>",
                 en:"A van pulls up at your door.<em> A system sent it.</em>",
@@ -1778,6 +1784,19 @@ Object.assign(T, {
                   en:"We do not know what general rental firms charge: the dash means \"it depends on the company\", not \"it is worse\". The purchase prices are those seen in shops.",
                   zh:"我们不掌握综合租赁公司的报价：破折号表示「视公司而定」，不是「更差」。购买价格取自商店实际售价。",
                   ru:"Мы не знаем расценок прокатных компаний: прочерк означает «зависит от компании», а не «хуже». Цены покупки — те, что встречаются в магазинах."},
+  'e7.titre'   : {fr:"Ce qu'ils en disent,<em> sans que nous l'écrivions.</em>",
+                  en:"What they say,<em> without us writing it.</em>",
+                  zh:"他们自己说的,<em>不是我们写的。</em>",
+                  ru:"Что говорят они,<em> а не мы за них.</em>"},
+  'e7.dire'    : {fr:"Ils viennent de Google. Nous ne les choisissons pas, et nous ne pouvons pas les effacer.",
+                 en:"They come from Google. We do not pick them, and we cannot delete them.",
+                 zh:"它们来自 Google。我们不挑选，也删不掉。",
+                 ru:"Они из Google. Мы их не выбираем и не можем удалить."},
+  'e7.mini'    : {fr:"Note et avis lus directement sur notre fiche Google, mis à jour tout seuls.",
+                  en:"Rating and reviews read straight from our Google listing, updated on their own.",
+                  zh:"评分与评价直接读取自我们的 Google 商家资料，自动更新。",
+                  ru:"Оценка и отзывы читаются прямо с нашей карточки Google и обновляются сами."},
+  'e7.surGoogle': {fr:"sur Google", en:"on Google", zh:"来自 Google", ru:"на Google"},
   'e1.titre'   : {fr:"Il fait trop chaud ?<em> Plus pour longtemps.</em>",
                   en:"Too hot to bear?<em> Not for much longer.</em>",
                   zh:"太热了？<em>很快就不会了。</em>",
@@ -2340,7 +2359,50 @@ Object.assign(T, {
       noteReelle = d;
       poserNote();
     }
+    if(d && d.available) poserAvis(d.reviews);
   });
+
+  /* ── Les avis, tels que Google les donne ──────────────────────────────
+     Aucune donnée n'est fabriquée ici : si la liste est vide, le bloc reste
+     masqué et l'écran se contente de son titre. C'est volontaire — un site
+     qui invente trois avis pour remplir un trou se fait attraper, et il le
+     mérite.
+     Le texte est inséré par textContent et jamais par innerHTML : un avis
+     est du texte écrit par un inconnu, il ne doit pas pouvoir devenir du
+     code sur notre page. */
+  function poserAvis(liste){
+    var bloc = document.getElementById('avis');
+    if(!bloc || !Array.isArray(liste) || !liste.length) return;
+    var frag = document.createDocumentFragment();
+    liste.slice(0, 3).forEach(function(a){
+      if(!a || !a.texte) return;
+      var art = document.createElement('article');
+      art.className = 'avis-c';
+
+      var et = document.createElement('span');
+      et.className = 'stars'; et.setAttribute('aria-hidden','true');
+      et.textContent = '★★★★★'.slice(0, Math.max(1, Math.round(a.note)));
+      art.appendChild(et);
+
+      var p = document.createElement('p');
+      p.className = 'avis-t'; p.textContent = a.texte;
+      art.appendChild(p);
+
+      var pied = document.createElement('p');
+      pied.className = 'avis-q';
+      var nom = document.createElement('b'); nom.textContent = a.auteur || '';
+      pied.appendChild(nom);
+      if(a.quand){ var q = document.createElement('span'); q.textContent = a.quand; pied.appendChild(q); }
+      var src = document.createElement('i'); src.textContent = mot('e7.surGoogle') || 'sur Google';
+      pied.appendChild(src);
+      art.appendChild(pied);
+
+      frag.appendChild(art);
+    });
+    if(!frag.childNodes.length) return;
+    bloc.appendChild(frag);
+    bloc.hidden = false;
+  }
 
   /* ── Stock et disponibilité ───────────────────────────────────────────
      mode-complet donne le nombre d'appareils libres aujourd'hui et l'état
