@@ -29,7 +29,9 @@ NON_TRADUISIBLE = re.compile(
     # chinois doit lire "Saint-Laurent-du-Var" pour retrouver le lieu sur une
     # carte ou le dicter à un chauffeur. Les traduire le desservirait.
     r'|^(Saint-Laurent-du-Var|Cagnes-sur-Mer|Villefranche-sur-Mer|Beaulieu-sur-Mer)$'
-    r'|^Cannes · Antibes · Menton$'
+    # Les quatre villes qui avaient leur propre page depuis la ligne « sur
+    # demande » : elles sont désormais nommées une par une.
+    r'|^(Cannes|Antibes|Monaco|Menton)$'
     r'|^Nice Centre · Promenade des Anglais$|^Vieux-Nice · Cimiez · Libération$'
     r'|^Magnan · Riquier · Caucade$|^Saint-Isidore · Moulins$'
     # Unités et notations internationales : BTU, m², dB s'écrivent pareil dans
