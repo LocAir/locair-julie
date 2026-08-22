@@ -61,7 +61,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    de la marque au lieu d'un réglage de navigateur. */
 :root{--focus:var(--blue)}                    /* blanc, brume  → 6,36:1 */
 .e-ink,.menu,.cook,.infobar{--focus:var(--gold)}  /* marine    → 6,86:1 */
-.e-blue,.bar.sur-fonce{--focus:#fff}          /* bleu, barre   → 6,36:1 */
+.e-blue,.bar{--focus:#fff}          /* bleu, barre   → 6,36:1 */
 :focus-visible{outline:2.5px solid var(--focus);outline-offset:4px;border-radius:6px}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
 
@@ -203,9 +203,22 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* L'en-tête occupait toute la largeur alors que le contenu est centré dans
    1000 px : sur grand écran le logo se retrouvait seul contre le bord, très
    loin de la colonne de texte. Il suit maintenant la même colonne. */
+/* ── LA BARRE EST SOMBRE, TOUT LE TEMPS ────────────────────────────────────
+   Elle changeait d'habit trois fois : transparente en haut de page, plaque
+   blanche une fois posée sur un écran clair, voile noir sur un écran
+   sombre. Trois apparences pour un seul élément — et celui qu'on voit le
+   plus souvent, puisqu'il ne quitte jamais l'écran.
+   Elle est maintenant toujours marine, comme le bandeau juste au-dessus :
+   un seul bloc d'en-tête, une seule couleur, le bouton blanc qui ressort
+   de partout. La marque se tient au même endroit, du premier écran au
+   dernier. */
 .bar{
-  position:sticky;top:0;z-index:900;transition:background var(--mv-2) var(--mv),box-shadow var(--mv-2) var(--mv);
+  position:sticky;top:0;z-index:900;
+  background:var(--ink);color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07);
+  transition:box-shadow var(--mv-2) var(--mv);
 }
+.bar.pose{box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 30px rgba(6,14,26,.22)}
 .bar-in{
   display:flex;align-items:center;gap:14px;
   /* 12 + 48 (le bouton) + 12 = 72 px. Ce n'est pas un chiffre choisi au
@@ -214,13 +227,6 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
      début. Les deux sont désormais d'accord. */
   max-width:var(--max);margin:0 auto;padding:12px var(--pad);
 }
-.bar.pose{background:rgba(255,255,255,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--line)}
-/* Sur fond clair la barre posait déjà une plaque blanche. Sur fond sombre
-   elle ne posait RIEN : le surtitre de l'écran traversé (« 02 /17 LA
-   PROMESSE ») se dessinait par-dessus les liens de la barre, les deux
-   textes se superposaient. Un voile noir, plutôt qu'un bleu ou un marine,
-   pour que la même plaque marche sur l'encre ET sur le bleu. */
-.bar.pose.sur-fonce{background:rgba(0,0,0,.32);box-shadow:0 1px 0 rgba(255,255,255,.10)}
 /* ── La signature ───────────────────────────────────────────────────────────
    « Loc'Air » était composé dans la même police que le reste de la page, avec
    une apostrophe bleue : c'était de la typographie, pas une marque.
@@ -239,7 +245,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
      part vers le bas-gauche — exactement le geste d'une apostrophe. */
   border-radius:50% 50% 50% 0;transform:rotate(-25deg);
 }
-.sur-fonce .gt::before,.menu .gt::before{background:var(--gold)}
+.bar .gt::before,.sur-fonce .gt::before,.menu .gt::before{background:var(--gold)}
 /* Le logo ne pousse plus le reste (plus de margin-right:auto ici). Avant,
    le logo ET le sélecteur poussaient chacun de leur côté : le sélecteur se
    retrouvait à flotter au milieu du vide, à une distance qui changeait avec
@@ -247,13 +253,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    russe, 463 en chinois — la barre se réorganisait à chaque traduction).
    Il est maintenant accroché au logo, et tout le vide part au milieu. */
 .bar .logo{font-weight:700;font-size:21px;letter-spacing:-.04em}
-.bar.sur-fonce{color:#fff}
-.bar.sur-fonce .btn-out{border-color:rgba(255,255,255,.35);color:#fff}
+.bar .btn-out{border-color:rgba(255,255,255,.35);color:#fff}
 /* Sur l'écran bleu, un bouton bleu disparaît dans le fond : sur tout fond
    sombre le bouton principal passe en blanc, ce qui marche aussi bien sur
    l'encre que sur le bleu. */
-.bar.sur-fonce .btn-1{background:#fff;color:var(--ink)}
-.bar.sur-fonce .btn-1:hover{background:rgba(255,255,255,.88)}
+.bar .btn-1{background:#fff;color:var(--ink)}
+.bar .btn-1:hover{background:rgba(255,255,255,.88)}
 /* ── L'accès à son compte ──────────────────────────────────────────────────
    « Mon espace → » et le numéro de téléphone quittent la barre. Le numéro
    reste partout où il sert vraiment : le pied de page, le menu, et le bouton
@@ -269,7 +274,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   transition:background var(--mv-1) var(--mv);
 }
 .bar-compte:hover{background:rgba(14,31,53,.06)}
-.bar.sur-fonce .bar-compte:hover{background:rgba(255,255,255,.12)}
+.bar .bar-compte:hover{background:rgba(255,255,255,.12)}
 .bar-compte svg{opacity:.72}
 .bar-compte:hover svg{opacity:1}
 /* ── Le sélecteur d'offre ──────────────────────────────────────────────────
@@ -286,7 +291,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    Une gouttière plus sombre que le fond remonte le même texte à 5,15:1,
    et se lit d'ailleurs mieux : un rail d'interrupteur est un creux, pas
    un reflet. */
-.bar.sur-fonce .offre{background:rgba(0,0,0,.18)}
+.bar .offre{background:rgba(0,0,0,.18)}
 .offre-o{
   padding:6px 14px;border-radius:100px;font-size:13.5px;font-weight:700;
   letter-spacing:-.005em;color:var(--ink-2);white-space:nowrap;
@@ -294,9 +299,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 }
 .offre-o:hover{color:var(--ink)}
 .offre-o.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(14,31,53,.12)}
-.bar.sur-fonce .offre-o{color:rgba(255,255,255,.72)}
-.bar.sur-fonce .offre-o:hover{color:#fff}
-.bar.sur-fonce .offre-o.on{background:rgba(255,255,255,.94);color:var(--ink)}
+.bar .offre-o{color:rgba(255,255,255,.72)}
+.bar .offre-o:hover{color:#fff}
+.bar .offre-o.on{background:rgba(255,255,255,.94);color:var(--ink)}
 @media(max-width:900px){
   .offre-o{padding:6px 11px;font-size:12.5px}
 }
@@ -1112,7 +1117,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    c'est celui qui compte. Le chevron dit que ça ouvre quelque chose. */
 .lang-b{display:flex;align-items:center;gap:6px;padding:9px 10px;border-radius:100px;font-size:14px;font-weight:700;transition:background var(--mv-1) var(--mv)}
 .lang-b:hover{background:rgba(14,31,53,.06)}
-.bar.sur-fonce .lang-b:hover{background:rgba(255,255,255,.12)}
+.bar .lang-b:hover{background:rgba(255,255,255,.12)}
 .lang-b svg{opacity:.55}
 .lang-b::after{
   content:"";width:0;height:0;border:4px solid transparent;
@@ -1146,7 +1151,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    ambassadeur étaient donc inaccessibles. C'est le manque le plus grave. */
 .burger{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background var(--mv-1) var(--mv)}
 .burger:hover{background:rgba(0,0,0,.06)}
-.bar.sur-fonce .burger:hover{background:rgba(255,255,255,.12)}
+.bar .burger:hover{background:rgba(255,255,255,.12)}
 .burger span{display:block;width:19px;height:1.8px;background:currentColor;position:relative}
 .burger span::before,.burger span::after{content:'';position:absolute;left:0;width:19px;height:1.8px;background:currentColor}
 .burger span::before{top:-6px}
