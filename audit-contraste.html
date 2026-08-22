@@ -1,0 +1,118 @@
+<!doctype html><meta charset="utf-8"><title>Audit de contraste — Loc'Air</title>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     MESURE DES CONTRASTES, DANS LE NAVIGATEUR
+     ───────────────────────────────────────────────────────────────────────
+     Le pendant d'audit-i18n.py pour la couleur. Lire le CSS ne suffit pas :
+     un texte peut être blanc à 78 % sur un fond lui-même translucide posé
+     sur un troisième fond. Ce fichier parcourt donc la page RÉELLE, élément
+     par élément, recompose le fond effectif en empilant les ancêtres, et
+     compare au minimum exigé (4,5 pour un texte courant, 3 pour un grand
+     titre ou un repère non textuel).
+     Il vérifie aussi que l'anneau de focus se voit sur son fond — c'est ce
+     qui avait laissé passer un anneau sarcelle sur du marine à 2,77:1.
+
+     Comment s'en servir : servir le dossier sur un petit serveur local, puis
+     ouvrir /audit-contraste.html#<liste JSON encodée des cas>, par exemple
+       [{"u":"/version-b.html"},{"l":"ru","u":"/version-b.html"},{"u":"/pro"}]
+     Le résultat s'écrit dans le <pre> en haut de page.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style>html,body{margin:0}iframe{width:1440px;height:900px;border:0}</style>
+<pre id="MESURE">…</pre><iframe id="f"></iframe>
+<script>
+const CAS=JSON.parse(decodeURIComponent(location.hash.slice(1)));
+const out=[];const f=document.getElementById('f');
+
+function rgba(s){
+  const m=String(s).match(/rgba?\(([^)]+)\)/); if(!m) return null;
+  const p=m[1].split(',').map(x=>parseFloat(x));
+  return {r:p[0],g:p[1],b:p[2],a:p.length>3?p[3]:1};
+}
+function sur(fg,bg){ // fg au-dessus de bg
+  const a=fg.a;
+  return {r:fg.r*a+bg.r*(1-a),g:fg.g*a+bg.g*(1-a),b:fg.b*a+bg.b*(1-a),a:1};
+}
+function lum(c){const s=[c.r,c.g,c.b].map(v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)});
+  return .2126*s[0]+.7152*s[1]+.0722*s[2];}
+function ratio(a,b){const l1=lum(a),l2=lum(b);return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05);}
+
+function fondEffectif(w,el){
+  // on empile les fonds des ancêtres jusqu'à trouver un fond opaque
+  let pile=[],n=el;
+  while(n && n.nodeType===1){
+    const c=rgba(w.getComputedStyle(n).backgroundColor);
+    if(c && c.a>0){ pile.push(c); if(c.a>=.999) break; }
+    n=n.parentElement;
+  }
+  let base={r:255,g:255,b:255,a:1};
+  for(let i=pile.length-1;i>=0;i--) base=sur(pile[i],base);
+  return base;
+}
+function seuil(w,el){
+  const st=w.getComputedStyle(el);
+  const px=parseFloat(st.fontSize), gras=parseInt(st.fontWeight)>=700;
+  return (px>=24 || (px>=18.66 && gras)) ? 3.0 : 4.5;
+}
+function texteDirect(el){
+  for(const n of el.childNodes) if(n.nodeType===3 && n.textContent.trim()) return n.textContent.trim();
+  return null;
+}
+function chemin(el){
+  const c=el.className&&typeof el.className==='string'?'.'+el.className.trim().split(/\s+/).slice(0,2).join('.'):'';
+  const sec=el.closest('section,footer,header,div[id]');
+  return (sec&&sec.id?sec.id+' ':'')+el.tagName.toLowerCase()+c;
+}
+function step(i){
+  if(i>=CAS.length){document.getElementById('MESURE').textContent=out.join('\n');document.title='FINI';return;}
+  const c=CAS[i];
+  f.onload=function(){
+    const w=f.contentWindow,d=w.document;
+    setTimeout(function(){
+      if(c.l){try{d.querySelector('[data-l="'+c.l+'"]').click()}catch(e){}}
+      setTimeout(function(){
+        const vus=new Set(); const ko=[]; let n=0;
+        d.querySelectorAll('*').forEach(function(el){
+          const st=w.getComputedStyle(el);
+          if(st.display==='none'||st.visibility==='hidden'||parseFloat(st.opacity)===0) return;
+          const t=texteDirect(el); if(!t) return;
+          const fg0=rgba(st.color); if(!fg0) return;
+          if(fg0.a===0) return; // texte volontairement invisible (l'apostrophe du logo, remplacée par la goutte)
+          const bg=fondEffectif(w,el);
+          const op=parseFloat(st.opacity);
+          const fg=sur({r:fg0.r,g:fg0.g,b:fg0.b,a:fg0.a*(isNaN(op)?1:op)},bg);
+          const r=ratio(fg,bg), s=seuil(w,el);
+          n++;
+          if(r<s){
+            const cle=chemin(el)+'|'+Math.round(r*100);
+            if(vus.has(cle))return; vus.add(cle);
+            ko.push('   '+r.toFixed(2)+' (exigé '+s+')  '+chemin(el).padEnd(34)+' « '+t.slice(0,42)+' »');
+          }
+        });
+        // ── les repères NON TEXTUELS : l'anneau de focus doit faire 3:1
+        //    sur le fond où il se dessine (règle WCAG 1.4.11).
+        const foc=[];
+        d.querySelectorAll('button,a,input,select,[tabindex]').forEach(function(el){
+          const st=w.getComputedStyle(el);
+          if(st.display==='none'||st.visibility==='hidden') return;
+          const cou=rgba(w.getComputedStyle(el).getPropertyValue('--focus').trim()
+            ||w.getComputedStyle(el).color);
+          let val=w.getComputedStyle(el).getPropertyValue('--focus').trim();
+          if(val.startsWith('var(')||!val) return;
+          const el2=d.createElement('span'); el2.style.color=val; d.body.appendChild(el2);
+          const c2=rgba(w.getComputedStyle(el2).color); el2.remove();
+          const bg=fondEffectif(w,el.parentElement||el);
+          const r=ratio(sur(c2,bg),bg);
+          if(r<3){var pa=[],q=el;while(q&&q!==d.body){pa.push(q.tagName.toLowerCase()+(q.id?'#'+q.id:'')+(q.className&&typeof q.className==='string'?'.'+q.className.trim().split(/\s+/).join('.'):''));q=q.parentElement;}
+            foc.push('   anneau '+r.toFixed(2)+'  '+pa.slice(0,4).join(' < ').slice(0,150)+'  href='+(el.getAttribute('href')||'-'));}
+        });
+        const vus2=new Set(); const focU=foc.filter(x=>{const k=x.slice(0,40);if(vus2.has(k))return false;vus2.add(k);return true;});
+        out.push(c.u.replace('/version-b.html','vB')+' '+(c.l||'fr')+' — '+n+' textes examinés, '
+          +(ko.length?ko.length+' SOUS LA NORME :\n'+ko.join('\n'):'aucun sous la norme ✓')
+          +' | anneaux de focus : '+(focU.length?focU.length+' faibles\n'+focU.slice(0,8).join('\n'):'tous ≥ 3:1 ✓'));
+        step(i+1);
+      },700);
+    },1500);
+  };
+  f.src=c.u;
+}
+step(0);
+</script>
