@@ -207,10 +207,20 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   position:sticky;top:0;z-index:900;transition:background var(--mv-2) var(--mv),box-shadow var(--mv-2) var(--mv);
 }
 .bar-in{
-  display:flex;align-items:center;gap:16px;
-  max-width:var(--max);margin:0 auto;padding:16px var(--pad);
+  display:flex;align-items:center;gap:14px;
+  /* 12 + 48 (le bouton) + 12 = 72 px. Ce n'est pas un chiffre choisi au
+     hasard : .e1 réserve déjà calc(100svh - 72px) pour la barre. La barre
+     mesurait 80 px, l'écran d'accueil était donc 8 px trop haut depuis le
+     début. Les deux sont désormais d'accord. */
+  max-width:var(--max);margin:0 auto;padding:12px var(--pad);
 }
 .bar.pose{background:rgba(255,255,255,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 1px 0 var(--line)}
+/* Sur fond clair la barre posait déjà une plaque blanche. Sur fond sombre
+   elle ne posait RIEN : le surtitre de l'écran traversé (« 02 /17 LA
+   PROMESSE ») se dessinait par-dessus les liens de la barre, les deux
+   textes se superposaient. Un voile noir, plutôt qu'un bleu ou un marine,
+   pour que la même plaque marche sur l'encre ET sur le bleu. */
+.bar.pose.sur-fonce{background:rgba(0,0,0,.32);box-shadow:0 1px 0 rgba(255,255,255,.10)}
 /* ── La signature ───────────────────────────────────────────────────────────
    « Loc'Air » était composé dans la même police que le reste de la page, avec
    une apostrophe bleue : c'était de la typographie, pas une marque.
@@ -230,7 +240,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   border-radius:50% 50% 50% 0;transform:rotate(-25deg);
 }
 .sur-fonce .gt::before,.menu .gt::before{background:var(--gold)}
-.bar .logo{font-weight:700;font-size:21px;letter-spacing:-.04em;margin-right:auto}
+/* Le logo ne pousse plus le reste (plus de margin-right:auto ici). Avant,
+   le logo ET le sélecteur poussaient chacun de leur côté : le sélecteur se
+   retrouvait à flotter au milieu du vide, à une distance qui changeait avec
+   la langue (mesuré à 1440 px : il commençait à 398 px en français, 330 en
+   russe, 463 en chinois — la barre se réorganisait à chaque traduction).
+   Il est maintenant accroché au logo, et tout le vide part au milieu. */
+.bar .logo{font-weight:700;font-size:21px;letter-spacing:-.04em}
 .bar.sur-fonce{color:#fff}
 .bar.sur-fonce .btn-out{border-color:rgba(255,255,255,.35);color:#fff}
 /* Sur l'écran bleu, un bouton bleu disparaît dans le fond : sur tout fond
@@ -238,16 +254,31 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    l'encre que sur le bleu. */
 .bar.sur-fonce .btn-1{background:#fff;color:var(--ink)}
 .bar.sur-fonce .btn-1:hover{background:rgba(255,255,255,.88)}
-.bar-tel{font-weight:700;font-size:15px}
+.bar-tel{font-weight:700;font-size:15px;position:relative;flex-shrink:0;white-space:nowrap}
+/* Les cinq éléments de droite étaient séparés par le même écart de 16 px :
+   l'œil ne pouvait former aucun groupe, le numéro de téléphone se collait
+   au bouton. Un filet sépare ce qu'on lit (espace client, téléphone) de ce
+   sur quoi on clique (Réserver, langue, menu). */
+.bar-tel::after{
+  content:"";position:absolute;right:-8px;top:50%;transform:translateY(-50%);
+  width:1px;height:22px;background:var(--line);
+}
+.bar.sur-fonce .bar-tel::after{background:rgba(255,255,255,.24)}
 /* ── Le sélecteur d'offre ──────────────────────────────────────────────────
    Deux pastilles dans une gouttière, comme un interrupteur : on voit
    immédiatement qu'il existe deux offres et laquelle on regarde. Il tient
    dans la barre, donc il ne coûte aucune hauteur. */
 .offre{
   display:inline-flex;gap:2px;padding:3px;border-radius:100px;
-  background:rgba(14,31,53,.07);margin-right:auto;
+  background:rgba(14,31,53,.07);margin-left:6px;margin-right:auto;
 }
-.bar.sur-fonce .offre{background:rgba(255,255,255,.12)}
+/* Sur fond sombre, la gouttière était PLUS CLAIRE que le fond : « Pro »
+   (blanc à 72 %) tombait alors à 3,18:1 sur l'écran bleu — sous la norme
+   d'accessibilité (4,5:1), donc illisible pour une partie des visiteurs.
+   Une gouttière plus sombre que le fond remonte le même texte à 5,15:1,
+   et se lit d'ailleurs mieux : un rail d'interrupteur est un creux, pas
+   un reflet. */
+.bar.sur-fonce .offre{background:rgba(0,0,0,.18)}
 .offre-o{
   padding:6px 14px;border-radius:100px;font-size:13.5px;font-weight:700;
   letter-spacing:-.005em;color:var(--ink-2);white-space:nowrap;
@@ -269,18 +300,27 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
      interrupteur. */
   .bar-in{flex-wrap:wrap;row-gap:10px}
   .logo{margin-right:auto}
-  .offre{order:3;flex:0 0 100%;margin-right:0;display:flex}
+  .offre{order:3;flex:0 0 100%;margin-left:0;margin-right:0;display:flex}
   .offre-o{flex:1 1 0;text-align:center;padding:8px 10px;font-size:13px}
 }
-.bar-lien{font-size:15px;font-weight:500;opacity:.68;transition:opacity var(--mv-1) var(--mv)}
+.bar-lien{font-size:15px;font-weight:500;flex-shrink:0;white-space:nowrap;opacity:.68;transition:opacity var(--mv-1) var(--mv)}
 .bar-lien:hover{opacity:1}
+/* Mesuré : blanc à 68 % sur l'écran bleu = 3,86:1, sous la norme (4,5:1).
+   À 82 % le même texte passe à 4,84:1, sans rien perdre de sa discrétion. */
+.bar.sur-fonce .bar-lien{opacity:.82}
+/* Ce qui disparaît, et dans quel ordre. « Mon espace » part le premier : le
+   menu ☰ y mène aussi, et libérer ses 122 px permet de garder le sélecteur
+   de langue jusqu'à 900 px. Il s'arrêtait à 1000 px, cent pixels avant tout
+   le reste : entre les deux, un visiteur russe perdait le choix de la langue
+   alors que le téléphone et le bouton, eux, tenaient encore. */
+@media(max-width:1080px){.bar-lien{display:none}}
 @media(max-width:900px){
   /* la barre du bas porte déjà le bouton : inutile de le doubler en haut.
-     Le menu ☰, lui, devient le SEUL accès aux espaces : il reste. */
-  .bar-tel,.bar-lien,.bar .btn{display:none}
-  .bar-in{padding:12px var(--pad)}
+     Le menu ☰, lui, devient le SEUL accès aux espaces : il reste — et il
+     reste AUSSI sur grand écran, parce qu'il est le seul chemin vers
+     /partenaire, /prolongation, /reunion et les mentions légales. */
+  .bar-tel,.bar-lien,.bar .btn,.bar .lang{display:none}
 }
-@media(min-width:901px){.burger{display:none}}
 
 /* ══ BANDEAU APERÇU ══ */
 .preview-bar{position:relative;z-index:901;background:var(--ink);color:rgba(255,255,255,.68);font-size:13px;text-align:center;padding:10px var(--pad)}
@@ -966,24 +1006,36 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .infobar{
   background:var(--ink);color:rgba(255,255,255,.82);font-size:13.5px;
   display:none;align-items:center;justify-content:center;gap:10px;
-  padding:11px 44px 11px var(--pad);position:relative;text-align:center;
+  /* padding symétrique : la croix de fermeture réservait 44 px à droite et
+     24 à gauche, le texte « centré » était donc décalé de 10 px. */
+  padding:11px 44px;position:relative;text-align:center;
 }
 .infobar.on{display:flex}
 .infobar strong{color:#fff;font-weight:700}
 .infobar .pt{width:8px;height:8px;border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold);flex-shrink:0;animation:pulse 2s ease-in-out infinite}
 .infobar-x{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;color:rgba(255,255,255,.5);font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center}
 .infobar-x:hover{color:#fff;background:rgba(255,255,255,.1)}
-@media(max-width:560px){.infobar{font-size:12.5px;padding:10px 40px 10px 14px}.infobar .sec{display:none}}
+@media(max-width:560px){.infobar{font-size:12.5px;padding:10px 38px}.infobar .sec{display:none}}
 
 /* ══ SÉLECTEUR DE LANGUE ══
    Même clé de mémorisation que le site officiel ('locair-lang') : un visiteur
    qui a choisi l'anglais sur locair.fr retrouve l'anglais ici. */
 .lang{position:relative;flex-shrink:0}
-.lang-b{display:flex;align-items:center;gap:7px;padding:9px 14px;border:1.5px solid var(--line);border-radius:100px;font-size:14px;font-weight:700;transition:border-color var(--mv-1) var(--mv)}
-.lang-b:hover{border-color:var(--ink)}
-.bar.sur-fonce .lang-b{border-color:rgba(255,255,255,.28)}
-.bar.sur-fonce .lang-b:hover{border-color:rgba(255,255,255,.6)}
+/* Deux pastilles côte à côte — « Réserver » plein et « FR » cerclé — se
+   disputaient le regard : on ne savait plus laquelle était l'action. La
+   langue perd son contour et prend le même traitement que le menu ☰ (fond
+   au survol) : il ne reste qu'un seul bouton dessiné dans la barre, et
+   c'est celui qui compte. Le chevron dit que ça ouvre quelque chose. */
+.lang-b{display:flex;align-items:center;gap:6px;padding:9px 10px;border-radius:100px;font-size:14px;font-weight:700;transition:background var(--mv-1) var(--mv)}
+.lang-b:hover{background:rgba(14,31,53,.06)}
+.bar.sur-fonce .lang-b:hover{background:rgba(255,255,255,.12)}
 .lang-b svg{opacity:.55}
+.lang-b::after{
+  content:"";width:0;height:0;border:4px solid transparent;
+  border-top-color:currentColor;opacity:.45;margin-top:4px;
+  transition:transform var(--mv-1) var(--mv);
+}
+.lang-b[aria-expanded="true"]::after{transform:translateY(-4px) rotate(180deg)}
 .lang-l{
   position:absolute;top:calc(100% + 8px);right:0;min-width:184px;z-index:20;
   background:#fff;border-radius:var(--r);padding:7px;
@@ -1004,7 +1056,6 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 }
 .menu-lang button:hover{border-color:rgba(255,255,255,.55);color:#fff}
 .menu-lang button[aria-selected="true"]{background:#fff;border-color:#fff;color:var(--ink);font-weight:700}
-@media(max-width:1000px){.bar .lang{display:none}}
 
 /* ══ MENU ══
    La version B n'avait aucun menu sur téléphone : les espaces client et
