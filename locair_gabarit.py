@@ -184,6 +184,9 @@ def typo_fr(page):
         # la flèche d'un bouton appartient au dernier mot : seule en début de
         # ligne, elle ressemble à une coquille
         apres = re.sub(r'(?<=[^\s\u00a0\u202f])[ \t]+([→←])', '\u00a0\\1', apres)
+        # le symbole ne se sépare jamais de son nombre : « 500 à 900 » avec
+        # « € » seul à la ligne suivante se lit comme une coquille
+        apres = re.sub(r'(\d)[ \t]+(€|%)', '\\1\u00a0\\2', apres)
         if avant != apres:
             remplacements.append((m.start(1), m.end(1), apres))
     for d, f, txt in reversed(remplacements):
