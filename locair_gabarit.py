@@ -154,3 +154,38 @@ def sommaire(corps, titre="Dans ce guide"):
             '      <ol>\n' + li + '\n      </ol>\n'
             '    </nav>\n')
 
+
+# ══ TYPOGRAPHIE FRANÇAISE ══════════════════════════════════════════════════
+#    En français, l'espace qui précède : ; ? ! » doit être INSÉCABLE. Sans
+#    elle, la ponctuation tombe seule en début de ligne — c'est exactement ce
+#    qu'on voyait sur l'écran « Sous le capot », où une ligne commençait par
+#    « : ».
+#    La correction est appliquée à la page ENTIÈRE au moment de l'écriture,
+#    et non au contenu à la source : personne n'a plus à y penser en
+#    écrivant un guide ou une page de ville.
+#    On insère le caractère réel U+00A0, jamais &nbsp; : l'audit i18n
+#    interdit les entités, et le caractère se compare à l'identique.
+
+def typo_fr(page):
+    """Insère l'espace insécable dans les nœuds de texte d'une page HTML.
+       Ne touche ni aux scripts, ni aux styles, ni aux commentaires, ni aux
+       attributs — donc ni aux URL, ni aux données structurées JSON."""
+    zones = [(m.start(), m.end()) for m in
+             re.finditer(r'<(script|style)\b.*?</\1>|<!--.*?-->', page, re.S)]
+    def protege(i):
+        return any(a <= i < b for a, b in zones)
+    remplacements = []
+    for m in re.finditer(r'>([^<>]+)<', page):
+        if protege(m.start()):
+            continue
+        avant = m.group(1)
+        apres = re.sub(r'(?<=[^\s\u00a0\u202f])[ \t]+([:;?!»])', '\u00a0\\1', avant)
+        apres = re.sub(r'(«)[ \t]+', '\\1\u00a0', apres)
+        # la flèche d'un bouton appartient au dernier mot : seule en début de
+        # ligne, elle ressemble à une coquille
+        apres = re.sub(r'(?<=[^\s\u00a0\u202f])[ \t]+([→←])', '\u00a0\\1', apres)
+        if avant != apres:
+            remplacements.append((m.start(1), m.end(1), apres))
+    for d, f, txt in reversed(remplacements):
+        page = page[:d] + txt + page[f:]
+    return page

@@ -1003,8 +1003,22 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .mach-t{display:block;font-size:var(--t-5);font-weight:700;letter-spacing:var(--l-2);line-height:var(--h-1);margin-top:15px}
 .mach-d{font-size:var(--s-4);color:var(--ink-2);line-height:var(--h-5);margin-top:12px}
 .mach-l{margin-top:auto;padding-top:20px;display:flex;flex-direction:column;gap:11px}
-.mach-l li{list-style:none;display:flex;gap:10px;font-size:var(--s-3);line-height:var(--h-4);color:var(--ink)}
-.mach-l li::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--vif);flex-shrink:0;margin-top:7px}
+/* ── UNE PUCE NE DOIT PAS COUPER LA PHRASE ─────────────────────────────────
+   display:flex sur un <li> fait de CHAQUE morceau de contenu un élément de
+   la rangée : « <b>10 000 BTU</b>, 30 m²… » devenait deux colonnes séparées
+   par la gouttière de 10 px, et « …qui entre : <b>une ouverture doit rester
+   ouverte</b> » se retrouvait coupé en deux avec un trou au milieu. Vu à
+   l'écran sur « Le matériel ».
+   La puce se pose donc SUR la ligne au lieu d'entrer dans le flux — la même
+   mécanique que les listes des guides et que les marqueurs du tableau
+   comparatif. Le texte redevient une seule phrase.
+   Et la puce prend la forme de la goutte : c'est le signe de la marque, il
+   n'y a pas de raison qu'il change d'une liste à l'autre. */
+.mach-l li{list-style:none;position:relative;padding-left:16px;
+  font-size:var(--s-3);line-height:var(--h-4);color:var(--ink)}
+.mach-l li::before{content:'';position:absolute;left:0;top:.56em;
+  width:6px;height:6px;background:var(--vif);
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg)}
 .mach-l b{font-weight:700}
 @media(max-width:760px){.deux{grid-template-columns:1fr}}
 
@@ -1489,8 +1503,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .porte>p{font-size:var(--s-3);color:rgba(255,255,255,.6);line-height:var(--h-4);margin-bottom:20px}
 .porte.or>p{color:rgba(14,31,53,.84)}
 .porte ul{list-style:none;display:grid;gap:9px;margin-bottom:26px}
-.porte li{font-size:var(--s-3);color:rgba(255,255,255,.78);display:flex;gap:10px;line-height:var(--h-4)}
-.porte li::before{content:'→';color:var(--gold);flex-shrink:0}
+.porte li{font-size:var(--s-3);color:rgba(255,255,255,.78);line-height:var(--h-4);
+  position:relative;padding-left:16px}
+.porte li::before{content:'→';color:var(--gold);position:absolute;left:0;top:0}
 .porte.or li{color:rgba(14,31,53,.85)}
 .porte.or li::before{color:rgba(14,31,53,.55)}
 .porte .btn{margin-top:auto;width:100%}
