@@ -534,14 +534,14 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* --bandeau vaut 0 tant que le bandeau d'info n'est pas affiché ; le script
    y met sa hauteur réelle dès qu'il apparaît. Sans ça, le bas du premier
    écran était systématiquement coupé de 44 px. */
-.e1{padding-top:28px;padding-bottom:40px;min-height:calc(100svh - 72px - var(--bandeau, 0px))}
+.e1{padding-top:20px;padding-bottom:28px;min-height:calc(100svh - 72px - var(--bandeau, 0px))}
 @supports not (height:100svh){.e1{min-height:calc(100vh - 72px - var(--bandeau, 0px))}}
 /* Le titre traverse maintenant toute la largeur : enfermé dans une colonne
    de 460 px, il se pliait en quatre lignes. En dessous, les deux seuls
    gestes possibles, côte à côte — donner son adresse, ou choisir sa
    machine. La colonne de gauche est la plus large : c'est celle qui
    convertit. */
-.e1-grid{display:grid;grid-template-columns:1.06fr .94fr;gap:var(--e-3);align-items:start;margin-top:var(--e-2)}
+.e1-grid{display:grid;grid-template-columns:1.06fr .94fr;gap:var(--e-3);align-items:start;margin-top:var(--e-1)}
 .e1-col{min-width:0}
 .e1 .addr{margin-top:0}
 /* ══ LIGNE D'ÉTAT DE LIVRAISON ══
@@ -551,7 +551,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    Une phrase, en casse normale, une seule information. Le point coloré porte
    l'urgence ; le texte n'a pas à crier. */
 .etat{
-  display:flex;align-items:baseline;gap:11px;margin-bottom:22px;
+  display:flex;align-items:baseline;gap:11px;margin-bottom:16px;
   font-size:var(--s-4);color:var(--ink-2);line-height:var(--h-4);max-width:48ch;
 }
 .etat b{color:var(--ink);font-weight:700}
@@ -561,7 +561,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    des deux produits — il fallait deviner d'après une photo. */
 .quoi{
   font-size:var(--s-5);color:var(--ink-2);line-height:var(--h-4);
-  max-width:46ch;margin:20px 0 0;
+  max-width:46ch;margin:16px 0 0;
 }
 .etat-pt{
   /* même goutte que l'apostrophe du nom, en petit */
@@ -1727,3 +1727,78 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   font-size:var(--s-3);color:var(--ink-2)}
 .mot-n b{font-size:var(--s-5);font-weight:700;letter-spacing:var(--l-3);color:var(--ink)}
 .mot-n .stars{color:var(--gold-txt);letter-spacing:1.5px;font-size:var(--s-2)}
+
+/* ── LE SOCLE DU PREMIER ÉCRAN ─────────────────────────────────────────────
+   Les cinq garanties entrent DANS l'écran d'accueil. Le bandeau pleine
+   largeur sur fond gris devient un socle : pas de fond, pas de bordure
+   basse, un seul filet en haut — dans un écran, une bande grise ferait une
+   deuxième page collée sous la première.
+   Il est poussé en bas de l'écran (margin-top:auto) : l'écran est un flex
+   vertical centré, donc le socle se cale sous le pli quel que soit ce qu'il
+   y a au-dessus, et le vide se referme par le bas. */
+.rassure-socle{
+  background:none;border-bottom:0;border-top:1px solid var(--line);
+  padding:18px 0 0;margin-top:var(--e-1);
+}
+/* Dans un écran, l'icône du bandeau respire moins que dans une bande à
+   part : dix-sept pixels manquaient pour que les cinq garanties tiennent
+   au-dessus du pli sur un portable de 900 px. Mesuré, puis repris ici. */
+.rassure-socle .ras-i{margin-bottom:10px}
+.rassure-socle .rassure-in{padding:0}
+@media(max-width:900px){.rassure-socle{margin-top:var(--e-2);padding-top:20px}}
+
+/* ── LE PREMIER ÉCRAN SE REMPLIT ───────────────────────────────────────────
+   Les deux cartes flottaient dans une colonne deux fois plus haute
+   qu'elles. Elles s'étirent maintenant sur toute la hauteur de la grille :
+   c'est la colonne de gauche (adresse + preuve) qui donne la mesure, et
+   plus rien ne pend dans le vide. */
+.e1-grid{align-items:stretch}
+.e1-grid > .e1-col{display:flex;flex-direction:column}
+/* flex:1 1 0 imposait aux deux cartes une hauteur ÉGALE, calculée sans
+   tenir compte de leur texte : les deux dernières lignes étaient coupées
+   net. Elles gardent leur hauteur naturelle, et c'est l'espace ENTRE elles
+   qui absorbe la différence. */
+.e1-grid > .choix{display:flex;flex-direction:column;gap:14px;
+  justify-content:space-between}
+/* margin-top:auto étirait la colonne de gauche jusqu'en bas de la grille et
+   repoussait le socle sous le pli. La preuve reste collée à son formulaire. */
+.e1 .preuve1{padding-top:18px}
+
+/* ── LA TEMPÉRATURE, LÀ OÙ ELLE SERT ───────────────────────────────────────
+   Le site interroge déjà Météo pour Nice — et affichait la réponse dans un
+   bandeau tout en haut, celui que les gens ferment. Le degré réel remonte
+   à côté de la promesse de livraison : c'est le seul élément de la page qui
+   change tout seul selon le jour, et c'est exactement ce qui fait qu'une
+   page a l'air vivante plutôt qu'imprimée.
+   Masqué tant que l'API n'a pas répondu : pas de case vide, pas de
+   « --°C ». */
+.etat-t{
+  display:inline-flex;align-items:baseline;gap:6px;margin-left:2px;
+  padding:3px 11px;border-radius:var(--r-f);
+  background:var(--vif-clair);color:var(--vif-d);
+  font-size:var(--s-2);font-weight:700;letter-spacing:var(--l-4);
+  white-space:nowrap;
+}
+.etat-t i{font-style:normal;font-weight:400;color:var(--ink-2)}
+.etat{flex-wrap:wrap;row-gap:8px}
+
+/* ── L'ENTRÉE ──────────────────────────────────────────────────────────────
+   Tout apparaissait d'un bloc. Les six éléments du premier écran entrent
+   maintenant l'un après l'autre, 90 ms d'écart : l'œil suit l'ordre de
+   lecture au lieu de choisir où se poser. Le socle ferme la séquence.
+   Rien ne bouge pour qui a demandé moins d'animation. */
+.js .e1 .etat{transition-delay:.05s}
+.js .e1 .titre{transition-delay:.14s}
+.js .e1 .quoi{transition-delay:.23s}
+.js .e1 .addr{transition-delay:.32s}
+.js .e1 .choix{transition-delay:.41s}
+.js .e1 .preuve1{transition-delay:.50s}
+.js .e1 .ras{transition-delay:.59s}
+.js .e1 .ras:nth-child(2){transition-delay:.64s}
+.js .e1 .ras:nth-child(3){transition-delay:.69s}
+.js .e1 .ras:nth-child(4){transition-delay:.74s}
+.js .e1 .ras:nth-child(5){transition-delay:.79s}
+@media(prefers-reduced-motion:reduce){
+  .js .e1 .etat,.js .e1 .titre,.js .e1 .quoi,.js .e1 .addr,
+  .js .e1 .choix,.js .e1 .preuve1,.js .e1 .ras{transition-delay:0s}
+}

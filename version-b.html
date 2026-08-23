@@ -213,6 +213,9 @@
     <p class="etat rv" id="etat">
         <span class="etat-pt" aria-hidden="true"></span>
         <span id="etat-txt" data-th="e1.etat">Livré <b>demain matin</b>, entre 8h et 12h.</span>
+        <!-- Rempli par Météo (api.open-meteo.com), et par rien d'autre :
+             tant que l'API n'a pas répondu, la pastille reste masquée. -->
+        <span class="etat-t" id="etat-t" hidden></span>
       </p>
     <h1 class="titre rv" data-th="e1.titre">Il fait trop chaud ?<em> Plus pour longtemps.</em></h1>
     <p class="quoi rv" data-t="e1.quoi">Climatiseurs mobiles et rafraîchisseurs d'air. Livrés, installés, repris.</p>
@@ -267,20 +270,21 @@
       </a>
     </div>
     </div>
-  </div>
-</section>
 
-<!-- ══ BANDEAU DE RÉASSURANCE ══════════════════════════════════════════════
-     Cinq garanties, juste après l'accroche : c'est là qu'un visiteur décide
-     de continuer ou de repartir. Ce n'est PAS un écran — pas de min-height,
-     pas de point dans la navigation : c'est du mobilier entre deux idées,
-     et le format « une idée par écran » reste intact.
-     Chaque promesse est vérifiable dans le code : horaires d'ouverture
-     (schema.org), Express avant 18h (_expressCutoffOk), caution jamais
-     demandée, remplacement le jour même (écran garantie), annulation libre
-     avant livraison. Le supplément de 60 € de l'Express est écrit : sans
-     lui, le bandeau laisserait croire que c'est offert. -->
-<section class="rassure" aria-label="Nos garanties" data-ta="a.garanties">
+    <!-- ══ LES CINQ GARANTIES, DANS L'ÉCRAN ════════════════════════════
+         Elles étaient JUSTE EN DESSOUS, dans une bande à part. Mesuré : le
+         premier écran s'arrêtait à 890 px de contenu pour 900 de haut, donc
+         un tiers de vide sous le pli — et les cinq preuves les plus fortes
+         du site attendaient un défilement que personne ne fait toujours.
+         Elles remontent dans l'écran, sur un socle séparé par un filet :
+         c'est le vide qui portait le bandeau, maintenant c'est le bandeau
+         qui remplit le vide.
+         Chaque promesse est vérifiable dans le code : horaires d'ouverture
+         (schema.org), Express avant 18h (_expressCutoffOk), caution jamais
+         demandée, remplacement le jour même (écran garantie), annulation
+         libre avant livraison. Le supplément de 60 € de l'Express est
+         écrit : sans lui, le bandeau laisserait croire que c'est offert. -->
+<div class="rassure rassure-socle" role="group" data-ta="a.garanties" aria-label="Nos garanties">
   <div class="rassure-in">
 
     <div class="ras rv">
@@ -313,6 +317,8 @@
       <span data-t="r.5d">Jusqu'à la livraison</span>
     </div>
 
+  </div>
+</div>
   </div>
 </section>
 
@@ -1188,6 +1194,7 @@ Object.assign(T, {
 
 /* ── Ligne d'état de livraison ─────────────────────────────────────────── */
 Object.assign(T, {
+  'e1.tempNice'  : {fr:"à Nice", en:"in Nice", zh:"尼斯", ru:"в Ницце"},
   'e1.etat'      : {fr:"Livré <b>demain matin</b>, entre 8h et 12h.",
                     en:"Delivered <b>tomorrow morning</b>, between 8am and 12pm.",
                     zh:"<b>明天上午</b>送达，8:00 至 12:00 之间。",
@@ -2308,6 +2315,14 @@ Object.assign(T, {
       var res  = Math.round(d.current.apparent_temperature);
       temperature = reel + '°C' + (res !== reel ? ' (' + mot('i.ressenti') + ' ' + res + '°C)' : '');
       afficher();
+      /* Le même degré, dans le premier écran. Le bandeau du haut se ferme
+         d'un clic et ne revient pas de la journée ; l'écran d'accueil, lui,
+         est vu par tout le monde. */
+      var pastille = document.getElementById('etat-t');
+      if(pastille){
+        pastille.innerHTML = '<b>' + reel + '°C</b> <i>' + mot('e1.tempNice') + '</i>';
+        pastille.hidden = false;
+      }
     })
     .catch(function(){ /* la barre reste affichée avec le délai seul */ });
 
