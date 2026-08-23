@@ -647,18 +647,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .soc{padding:16px 18px 18px}
   .soc b{font-size:var(--s-4)}
   }
-/* Emplacement de photo, en attendant la vraie. Mieux vaut un cadre honnête
-   qu'une image de banque : la page entière repose sur le fait qu'on dit ce
-   qui est. */
-.photo-vide{
-  aspect-ratio:4/5;max-height:62svh;border-radius:var(--r-l);
-  background:var(--mist);border:1.5px dashed var(--line);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:7px;text-align:center;padding:28px;
-}
-.photo-vide b{font-size:var(--s-4);font-weight:700;color:var(--ink-2)}
-.photo-vide span{font-size:var(--s-3);line-height:var(--h-4);color:var(--ink-3);max-width:28ch}
-@media(max-width:880px){.photo-vide{display:none}}
+
 
 /* ── Le formulaire de réservation pro ──────────────────────────────────────
    Il vient sous le calculateur : on voit d'abord son prix, on remplit
@@ -1815,3 +1804,70 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   border-radius:0;
 }
 @media(min-width:1048px){.banniere{border-radius:var(--r-l)}}
+
+/* ══ L'ÉCRAN PRO, AVEC SA PHOTO EN ARRIÈRE-PLAN ════════════════════════════
+   Un cadre en pointillés « photo à ajouter » annonçait un chantier à des
+   visiteurs qui venaient chercher un service. La photo devient le fond de
+   l'écran, et le texte passe dessus.
+
+   LE VOILE EST CALCULÉ POUR LE PIRE CAS. Une photo livrée peut être
+   sombre — tant mieux — ou presque blanche. Le voile est donc dimensionné
+   sur l'hypothèse la plus défavorable (photo entièrement blanche dessous),
+   à 0,88 sous le texte :
+       titre blanc      11,58:1   (norme 3)
+       texte courant     8,38:1   (norme 4,5)
+       petite ligne      6,87:1   (norme 4,5)
+       or du titre       4,79:1   (norme 4,5)
+       bord du bouton    3,71:1   (norme 3)
+   À droite, là où il n'y a aucun texte, le voile descend à 0,52 : c'est
+   par là que les appareils se voient.
+
+   Tant que le fichier n'existe pas, RIEN de tout cela ne s'applique :
+   l'image reste masquée et l'écran garde son apparence claire. */
+.p1-fond{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:center right;z-index:0;
+}
+.ecran.a-photo{position:relative;overflow:hidden;background:var(--ink)}
+.ecran.a-photo::before{
+  content:'';position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:linear-gradient(96deg,
+    rgba(14,31,53,.95) 0%, rgba(14,31,53,.88) 46%, rgba(14,31,53,.52) 100%);
+}
+.ecran.a-photo > .in{position:relative;z-index:2}
+/* Sur téléphone le texte prend toute la largeur : le dégradé devient
+   vertical et ne descend jamais sous 0,88, sinon la dernière ligne
+   passerait sur la partie claire de la photo. */
+@media(max-width:880px){
+  .ecran.a-photo::before{
+    background:linear-gradient(180deg,
+      rgba(14,31,53,.95) 0%, rgba(14,31,53,.90) 70%, rgba(14,31,53,.88) 100%);
+  }
+  .p1-fond{object-position:center}
+}
+/* Les couleurs du texte sur le voile. Valeurs mesurées ci-dessus. */
+.ecran.a-photo{--focus:var(--gold)}
+.ecran.a-photo .titre{color:#fff}
+.ecran.a-photo .titre em{color:var(--gold)}
+.ecran.a-photo .etat{color:rgba(255,255,255,.82)}
+.ecran.a-photo .etat b{color:#fff}
+.ecran.a-photo .dire{color:rgba(255,255,255,.82)}
+.ecran.a-photo .mini{color:rgba(255,255,255,.72)}
+/* Le bouton principal passe de « fond sarcelle, texte blanc » à « fond
+   blanc, texte marine ». Or .btn anime son fond sur 140 ms, et la couleur
+   du texte, elle, bascule d'un coup : pendant ces 140 ms le texte marine
+   se trouvait sur un fond encore sarcelle — 2,69:1, sous la norme. Un
+   clignotement illisible, attrapé par l'audit de contraste.
+   La transition de fond est donc retirée pour ce changement d'état, et
+   rendue au survol seulement : perdre un fondu de 140 ms sur un bouton ne
+   coûte rien, un clignotement illisible si. */
+.ecran.a-photo .btn-1{background:#fff;color:var(--ink);
+  transition:transform var(--mv-1) var(--mv)}
+.ecran.a-photo .btn-1:hover{background:rgba(255,255,255,.88);
+  transition:background var(--mv-1) var(--mv),transform var(--mv-1) var(--mv)}
+.ecran.a-photo .btn-out{border:1px solid rgba(255,255,255,.45);color:#fff}
+.ecran.a-photo .btn-out:hover{border-color:#fff;background:rgba(255,255,255,.1)}
+@media(prefers-reduced-motion:no-preference){
+  .p1-fond{animation:fondu .8s var(--mv) both}
+}
+@keyframes fondu{from{opacity:0}to{opacity:1}}
