@@ -1045,7 +1045,21 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* ══ ÉCRAN MÉTIER ══
    Quatre points en colonnes, sans cadre : c'est le vide qui sépare. */
-.metier{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--e-2);margin-top:var(--e-3)}
+/* Quatre colonnes pour quatre éléments : bien. Pour SIX, la deuxième ligne
+   n'en porte que deux et laisse un trou de deux cases — l'écran « pour qui »
+   se lisait comme une grille cassée. Au-delà de quatre éléments, trois
+   colonnes : six se rangent alors en 3 × 2, sans trou.
+   Le filet en tête de chaque bloc est le même que celui des avis, des guides
+   et des villes : c'est le seul séparateur du site, il doit être partout. */
+.metier{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--e-2) var(--e-2);margin-top:var(--e-3)}
+/* Enfermé dans une requête de largeur, sinon il gagne contre les règles
+   responsives : :has() porte la spécificité de son argument, donc
+   « .metier:has(...) » bat « .metier » écrit plus bas dans un @media. Sur
+   un écran de 320 px la grille restait à trois colonnes et la page
+   débordait de 11 px. */
+@media(min-width:901px){.metier:has(> :nth-child(5)){grid-template-columns:repeat(3,1fr)}}
+.metier > div{border-top:1px solid var(--line);padding-top:16px}
+.e-ink .metier > div,.e-blue .metier > div{border-top-color:rgba(255,255,255,.16)}
 .mt-ic{width:22px;height:22px;color:var(--ink);display:flex;align-items:center;justify-content:center;margin-bottom:18px}
 .metier h3{font-size:var(--s-5);letter-spacing:var(--l-3);margin-bottom:9px;line-height:var(--h-2)}
 .metier p{font-size:var(--s-3);color:var(--ink-2);line-height:var(--h-4)}
@@ -1114,13 +1128,43 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 
 /* ══ ÉCRAN PRIX ══ */
 .prix-grid{display:grid;grid-template-columns:.85fr 1.15fr;gap:var(--e-3);align-items:start}
+/* ── L'ÉCRAN DES TARIFS ────────────────────────────────────────────────────
+   Le barème était posé seul dans 62 % de la largeur, la note en dessous dans
+   une colonne étroite, et le tiers droit de l'écran restait vide. Les deux
+   se mettent côte à côte : le barème garde sa largeur de lecture, la note
+   occupe la colonne qui était perdue. */
+.e4-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:var(--e-3);
+  align-items:start;margin-top:38px}
+@media(max-width:900px){.e4-grid{grid-template-columns:1fr;gap:26px}}
+.e4-grid .mini{margin-top:0}
+
+/* Une grille, pas une suite de lignes en flex : les remises se rangent alors
+   dans leur PROPRE colonne et s'alignent verticalement. En flex, « −17 % »
+   flottait derrière un prix dont la largeur changeait à chaque ligne. */
 .tiers{display:grid;border-top:1px solid var(--line)}
-.tier{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}
+/* minmax(0,1fr) et non 1fr : une colonne « 1fr » refuse par défaut de devenir
+   plus étroite que son contenu. Mesuré à 320 px — la largeur d'un vieil
+   iPhone SE, et celle d'un écran zoomé à 200 % — la ligne débordait de
+   11 px. Avec minmax(0,1fr) le libellé se coupe, et rien ne dépasse. */
+.tier{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:baseline;
+  column-gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}
+@media(max-width:420px){
+  .tier{column-gap:10px}
+  .tier.best{margin:0 -10px;padding-left:10px;padding-right:10px}
+  .tier-off{min-width:0}
+}
 .tier-dur{font-size:var(--s-4);color:var(--ink-2)}
-.tier-p{font-size:var(--s-6);font-weight:700;letter-spacing:var(--l-2);white-space:nowrap}
+.tier-p{font-size:var(--s-6);font-weight:700;letter-spacing:var(--l-2);white-space:nowrap;
+  text-align:right}
 .tier-p i{font-style:normal;font-size:var(--s-2);font-weight:500;color:var(--ink-3)}
+/* La meilleure tranche : la ligne entière prend la couleur d'action et le
+   prix passe en gras appuyé. Avant, seul le libellé changeait de couleur —
+   une mise en avant à moitié faite ne se voit pas. */
 .tier.best .tier-dur,.tier.best .tier-p{color:var(--vif)}
-.tier-off{font-size:var(--s-2);font-weight:700;color:var(--vif);margin-left:8px}
+.tier.best{background:var(--vif-clair);border-bottom-color:var(--vif-clair);
+  margin:0 -14px;padding-left:14px;padding-right:14px;border-radius:var(--r-s)}
+.tier-off{font-size:var(--s-2);font-weight:700;color:var(--vif);
+  min-width:52px;text-align:right}
 @media(max-width:900px){.prix-grid{grid-template-columns:1fr;gap:28px}}
 
 /* ══ CALCULATEUR ══ */
@@ -1293,8 +1337,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    plus longue, et refusait à la fois de se réduire et de passer à la ligne.
    Elle a maintenant le droit de descendre en dessous. Sur un grand écran,
    où tout tient sur une ligne, rien ne change. */
-.ville{display:flex;align-items:baseline;justify-content:space-between;
-  flex-wrap:wrap;gap:4px 16px;padding:11px 0;border-bottom:1px solid var(--line)}
+/* Les neuf lignes portaient toutes la même étiquette « Livré 7j/7 » : sur le
+   nom le plus long elle passait à la ligne et cette ligne-là devenait plus
+   haute de 27 px que ses voisines. L'information est dite une seule fois,
+   dans l'intro de l'écran ; la ligne n'a plus qu'un nom et un prix, et
+   toutes ont exactement la même hauteur. */
+.ville{display:block;padding:11px 0;border-bottom:1px solid var(--line)}
 .ville>div{min-width:0}
 .ville b{font-size:var(--s-6);font-weight:700;letter-spacing:var(--l-3)}
 .ville span{font-size:var(--s-2);color:var(--ink-3);display:block;margin-top:2px}
