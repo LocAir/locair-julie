@@ -71,6 +71,45 @@ offre est invisible.
 
 ---
 
+## 2b. LA photo de la page pro — en arrière-plan
+
+**Fichiers :** `pro-rafraichisseurs-900.jpg` / `-1600.jpg` / `-2400.jpg`
+**Proportion :** 16:9 paysage, large (par exemple 2400 × 1350)
+
+**Ce qu'il faut dans le cadre :** **plusieurs rafraîchisseurs
+professionnels ensemble** — alignés dans le local avant une livraison, ou
+posés côte à côte chez un client. Le pluriel est le sujet de la photo : un
+appareil seul dit « j'en ai un », plusieurs disent « j'équipe un site ».
+
+**Où ça se branche :** elle devient le **fond de l'écran d'accueil pro**.
+Le texte passe par-dessus, sur un voile marine. Ce n'est plus une vignette
+dans un coin : c'est la page entière.
+
+**Le cadrage compte plus que d'habitude**, parce que le texte se pose
+dessus :
+
+- Le texte occupe **la moitié gauche**. Gardez cette zone lisible — un mur,
+  un sol, une porte de camion. Pas de détail important à gauche.
+- Les appareils doivent être **à droite du cadre**, c'est là que le voile
+  s'éclaircit et qu'on les voit.
+- **Cadrez large.** L'image est recadrée en hauteur selon l'écran ; ce qui
+  touche les bords peut disparaître.
+
+**Vous n'avez pas à vous soucier de la luminosité.** Le voile est calculé
+pour le pire cas : même une photo presque blanche laisse le titre à
+11,6 pour 1 et le texte courant à 8,4 — très au-dessus de la norme. Une
+photo claire, sombre, en plein soleil ou en intérieur : ça marchera.
+
+**Surtout pas** la photo du climatiseur mobile. Cette page explique qu'un
+climatiseur ne convient pas pour ces volumes ; le montrer contredirait le
+texte en une seconde.
+
+**En attendant :** l'écran garde exactement son apparence actuelle. Le
+cadre en pointillés « photo à ajouter » a été retiré — il était visible
+par les visiteurs et annonçait un chantier au lieu d'un service.
+
+---
+
 ## 3. Les cinq vidéos clients — écran « Les clients »
 
 **Fichiers :** `videos/client-1.mp4` … `client-5.mp4`, plus une image
@@ -211,6 +250,7 @@ Pour être clair sur ce qui n'est **pas** utile :
 |---|---|
 | 1. La pose chez un client | Le vide de l'écran d'accueil, et la preuve qu'on se déplace |
 | 2. Le rafraîchisseur | La moitié de l'offre, aujourd'hui invisible |
+| 2b. Le fond de la page pro | L'écran d'accueil entier de l'offre entreprises |
 | 3. Les vidéos clients | La preuve sociale — cinq emplacements vides attendent |
 | 4. Le climatiseur | Complète la comparaison des deux machines |
 | 5. Les captures | La crédibilité technique |
