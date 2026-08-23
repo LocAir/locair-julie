@@ -2731,6 +2731,10 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .cren-card:hover:not(.on){border-color:var(--blue)}
 .cren-time{font-size:13px;font-weight:700;color:var(--black);line-height:1.1}
 .cren-card.on .cren-time{color:var(--blue)}
+/* Étape 4 — cartes Livraison / Récupération */
+.s4-slot-card{border:1.5px solid var(--rule);border-radius:14px;padding:18px 16px 18px;background:#fff;margin-bottom:14px}
+.s4-slot-card .s5-sec-hd{border-top:none;padding-top:0;margin-bottom:0}
+.s4-slot-lbl{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px}
 .cren-sub{display:none}
 
 /* ── STEP 5 SECTIONS ── */
@@ -3816,6 +3820,8 @@ input:-webkit-autofill:focus{
 .modal #delivery-notice{color:var(--text-2)!important}
 .modal .s5-sec-hd .s5-sec-lbl{color:var(--text-2)!important}
 .modal [id^="lbl-"]{color:var(--text-2)!important}
+.modal .s4-slot-card{background:var(--navy-bg)!important;border-color:var(--rule)!important}
+.modal .s4-slot-lbl{color:var(--text-2)!important}
 
 /* ── Récapitulatif prix (étape 6) ── */
 .modal .rc-total-row[style*="opacity"]{opacity:1!important}
@@ -5682,68 +5688,114 @@ input:-webkit-autofill:focus{
         </div>
       </div>
 
-      <!-- ÉTAPE 4 — Date & créneau -->
+      <!-- ÉTAPE 4 — Date & créneau livraison + récupération -->
       <div class="step-panel" id="s4">
         <div class="sp-head">
-          <h3 class="sp-title">Votre date de livraison</h3>
+          <h3 class="sp-title">Livraison &amp; Récupération</h3>
         </div>
         <div class="flds">
-          <!-- DATE -->
-          <div class="fld">
-            <!-- Livraison Express — visuel + JS client prêt, backend à brancher -->
-            <button type="button" class="ds-express-card" id="ds-express" onclick="selectExpress(this)" aria-label="Livraison Express — aujourd'hui sous 2h">
-              <div class="ds-express-left">
-                <span class="ds-express-badge">Express</span>
-                <span class="ds-express-title">Aujourd'hui · Sous 2h</span>
-                <span style="font-size:10.5px;color:#6b7280;margin-top:2px;display:block;font-weight:400">Commande avant 18h · 7j/7</span>
+
+          <!-- ═══ CARTE LIVRAISON ═══ -->
+          <div class="s4-slot-card">
+            <div class="s5-sec-hd" style="border-top:none;padding-top:0;margin-bottom:14px">
+              <div class="s5-sec-ico">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8"/></svg>
               </div>
-              <span class="ds-express-price">+60 €</span>
-            </button>
-            <div class="ds-or-sep" aria-hidden="true"><span>ou</span></div>
-            <div class="date-shortcuts" id="date-shortcuts" role="radiogroup" aria-label="Date de livraison">
-              <button type="button" class="ds-chip on" id="ds-0" onclick="setDateOffset(1,this)" role="radio" aria-checked="true">
-                <span class="ds-badge">Recommandé</span>
-                <span class="ds-day" id="ds-day-0"></span>
-                <span class="ds-date" id="ds-dt-0"></span>
-              </button>
-              <button type="button" class="ds-chip" id="ds-1" onclick="setDateOffset(2,this)" role="radio" aria-checked="false">
-                <span class="ds-day" id="ds-day-1"></span>
-                <span class="ds-date" id="ds-dt-1"></span>
-              </button>
-              <button type="button" class="ds-chip" id="ds-2" onclick="setDateOffset(3,this)" role="radio" aria-checked="false">
-                <span class="ds-day" id="ds-day-2"></span>
-                <span class="ds-date" id="ds-dt-2"></span>
-              </button>
+              <span class="s5-sec-lbl" id="lbl-s4-liv">Livraison</span>
             </div>
-            <button type="button" class="ds-custom-link" onclick="toggleCustomDate()" id="ds-custom-btn" aria-expanded="false" aria-controls="f-date-custom-wrap">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              Choisir une autre date
-            </button>
-            <div class="f-date-custom" id="f-date-custom-wrap">
-              <div class="f-date-wrap">
-                <div id="f-date-display" class="f-date-display" aria-hidden="true"></div>
-                <input id="f-date" type="date" aria-label="Date personnalisée" required oninput="onCustomDate(this)" style="margin-top:0"/>
+
+            <!-- DATE -->
+            <div class="fld">
+              <!-- Livraison Express — visuel + JS client prêt, backend à brancher -->
+              <button type="button" class="ds-express-card" id="ds-express" onclick="selectExpress(this)" aria-label="Livraison Express — aujourd'hui sous 2h">
+                <div class="ds-express-left">
+                  <span class="ds-express-badge">Express</span>
+                  <span class="ds-express-title">Aujourd'hui · Sous 2h</span>
+                  <span style="font-size:10.5px;color:#6b7280;margin-top:2px;display:block;font-weight:400">Commande avant 18h · 7j/7</span>
+                </div>
+                <span class="ds-express-price">+60 €</span>
+              </button>
+              <div class="ds-or-sep" aria-hidden="true"><span>ou</span></div>
+              <div class="date-shortcuts" id="date-shortcuts" role="radiogroup" aria-label="Date de livraison">
+                <button type="button" class="ds-chip on" id="ds-0" onclick="setDateOffset(1,this)" role="radio" aria-checked="true">
+                  <span class="ds-badge">Recommandé</span>
+                  <span class="ds-day" id="ds-day-0"></span>
+                  <span class="ds-date" id="ds-dt-0"></span>
+                </button>
+                <button type="button" class="ds-chip" id="ds-1" onclick="setDateOffset(2,this)" role="radio" aria-checked="false">
+                  <span class="ds-day" id="ds-day-1"></span>
+                  <span class="ds-date" id="ds-dt-1"></span>
+                </button>
+                <button type="button" class="ds-chip" id="ds-2" onclick="setDateOffset(3,this)" role="radio" aria-checked="false">
+                  <span class="ds-day" id="ds-day-2"></span>
+                  <span class="ds-date" id="ds-dt-2"></span>
+                </button>
+              </div>
+              <button type="button" class="ds-custom-link" onclick="toggleCustomDate()" id="ds-custom-btn" aria-expanded="false" aria-controls="f-date-custom-wrap">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Choisir une autre date
+              </button>
+              <div class="f-date-custom" id="f-date-custom-wrap">
+                <div class="f-date-wrap">
+                  <div id="f-date-display" class="f-date-display" aria-hidden="true"></div>
+                  <input id="f-date" type="date" aria-label="Date personnalisée" required oninput="onCustomDate(this)" style="margin-top:0"/>
+                </div>
+              </div>
+              <div id="date-preview" class="date-preview" aria-live="polite"></div>
+              <div id="dispo-alert" aria-live="polite"></div>
+              <div id="cutoff-notice" style="display:none;margin-top:10px;padding:10px 13px;background:#f4f6f9;border:1.5px solid #dde3ec;border-radius:9px;font-size:12px;color:#5a6577;line-height:1.55"></div>
+            </div>
+
+            <!-- CRÉNEAU LIVRAISON (visible) -->
+            <div style="margin-top:16px">
+              <p id="lbl-creneau-liv" class="s4-slot-lbl">Créneau de livraison</p>
+              <div id="creneau-liv-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px" role="radiogroup" aria-labelledby="lbl-creneau-liv">
+                <button type="button" class="cren-card on" onclick="selectLivSlot(this,'8h – 10h')" role="radio" aria-checked="true">
+                  <span class="cren-time">8h – 10h</span>
+                </button>
+                <button type="button" class="cren-card" onclick="selectLivSlot(this,'10h – 12h')" role="radio" aria-checked="false">
+                  <span class="cren-time">10h – 12h</span>
+                </button>
               </div>
             </div>
-            <div id="date-preview" class="date-preview" aria-live="polite"></div>
-            <div id="dispo-alert" aria-live="polite"></div>
-            <div id="cutoff-notice" style="display:none;margin-top:10px;padding:10px 13px;background:#f4f6f9;border:1.5px solid #dde3ec;border-radius:9px;font-size:12px;color:#5a6577;line-height:1.55"></div>
           </div>
 
-          <!-- Éléments requis par le JS (LANG_SEQ, récap, checkout, calcul du
-               créneau Express) — visuellement absorbés dans #date-preview
-               (voir updateDatePreview) depuis la refonte de la carte livraison.
-               ds-slot-badge-lbl/ds-slot-time-lbl : texte source relu par
-               updateDatePreview() pour construire .dp-slot-badge/.dp-slot-time.
-               creneau-liv-data : valeur réellement envoyée au paiement/
-               transporteur (lue par buildRecap()/le submit). -->
-          <div style="display:none" aria-hidden="true">
-            <p id="lbl-creneau-liv">Votre créneau de livraison</p>
-            <span id="ds-slot-badge-lbl">Matin · 7j/7</span>
-            <span id="ds-slot-time-lbl">8h – 12h</span>
-            <span id="delivery-notice">Notre technicien vous appelle<br><strong>30 min avant</strong> d'arriver.</span>
-            <div id="creneau-liv-group"><span class="cren-card on" id="creneau-liv-data">8h–12h</span></div>
+          <!-- ═══ CARTE RÉCUPÉRATION ═══ -->
+          <div class="s4-slot-card">
+            <div class="s5-sec-hd" style="border-top:none;padding-top:0;margin-bottom:6px">
+              <div class="s5-sec-ico">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+              </div>
+              <div>
+                <span class="s5-sec-lbl" id="lbl-recup-section">Récupération</span>
+                <p id="recap-date-recup" style="font-size:12px;color:var(--grey);margin-top:2px">—</p>
+              </div>
+            </div>
+            <p id="lbl-creneau-recup" class="s4-slot-lbl" style="margin-top:12px">Créneau de récupération</p>
+            <div id="creneau-recup-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px" role="radiogroup" aria-labelledby="lbl-creneau-recup">
+              <button type="button" class="cren-card on" onclick="tgl(this,'cren-recup');buildRecap()" role="radio" aria-checked="true">
+                <span class="cren-time">8h – 10h</span>
+              </button>
+              <button type="button" class="cren-card" onclick="tgl(this,'cren-recup');buildRecap()" role="radio" aria-checked="false">
+                <span class="cren-time">10h – 12h</span>
+              </button>
+            </div>
+            <!-- Date input auto-remplie par buildRecap() -->
+            <div style="display:none" aria-hidden="true">
+              <label for="f-date-recup" id="lbl-date-recup">Date de récupération</label>
+              <input type="date" id="f-date-recup" oninput="buildRecap()" required/>
+            </div>
           </div>
+
+          <!-- Éléments requis par le JS — invisibles, lus par updateDatePreview()
+               / _applyCreneauLivDisplay() / buildRecap(). -->
+          <div style="display:none" aria-hidden="true">
+            <span id="ds-slot-badge-lbl">Matin · 7j/7</span>
+            <span id="ds-slot-time-lbl">8h – 10h</span>
+            <span id="delivery-notice">Notre technicien vous appelle<br><strong>30 min avant</strong> d'arriver.</span>
+            <span id="creneau-liv-data">8h–10h</span>
+          </div>
+
           <!-- INSTRUCTIONS D'ACCÈS -->
           <div style="margin-top:22px;padding-top:22px;border-top:1.5px solid var(--rule)">
             <p id="lbl-instructions-q" style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-bottom:12px">Instructions au technicien</p>
@@ -5773,26 +5825,6 @@ input:-webkit-autofill:focus{
         <div class="sp-head">
           <h3 class="sp-title">Vos coordonnées</h3>
           <p class="sp-sub" style="font-size:11px">Confirmation par email dès réception.</p>
-        </div>
-
-        <!-- RÉCUPÉRATION — masqué (date auto-calculée J+1, créneau par défaut 8h-10h) -->
-        <div class="s5-sec" style="display:none" aria-hidden="true">
-          <div class="s5-sec-hd">
-            <div class="s5-sec-ico"><svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></div>
-            <div>
-              <span class="s5-sec-lbl" id="lbl-recup-section">Récupération</span>
-              <p id="recap-date-recup" style="font-size:12px;color:var(--grey);margin-top:2px">—</p>
-            </div>
-          </div>
-          <p id="lbl-creneau-recup" style="font-size:13px;font-weight:600;color:var(--black);margin-bottom:10px">Créneau de récupération</p>
-          <div style="margin-bottom:10px">
-            <label for="f-date-recup" id="lbl-date-recup" style="font-size:12px;color:var(--grey);font-weight:500;display:block;margin-bottom:6px">Date de récupération</label>
-            <input type="date" id="f-date-recup" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:16px;font-family:var(--body);color:var(--black);background:#fff;outline:none;box-sizing:border-box" oninput="buildRecap()" required/>
-          </div>
-          <div id="creneau-recup-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-            <button type="button" class="cren-card on" onclick="tgl(this,'cren-recup');buildRecap()" role="radio" aria-checked="true"><span class="cren-time">8h – 10h</span></button>
-            <button type="button" class="cren-card" onclick="tgl(this,'cren-recup');buildRecap()" role="radio" aria-checked="false"><span class="cren-time">10h – 12h</span></button>
-          </div>
         </div>
 
         <!-- COORDONNÉES -->
@@ -6617,8 +6649,11 @@ function _applyCreneauLivDisplay(){
     if(data)data.textContent=_expressCreneauStr('–');
   }else{
     if(badge)badge.textContent=isEN?'Morning · 7 days':isZH?'早上 · 每天':isRU?'Утро · 7 дней':'Matin · 7j/7';
-    if(time)time.textContent='8h – 12h';
-    if(data)data.textContent='8h–12h';
+    // Lit le créneau sélectionné par l'utilisateur dans les boutons visibles
+    var selBtn=document.querySelector('#creneau-liv-group .cren-card.on .cren-time');
+    var livDisp=selBtn?selBtn.textContent.trim():'8h – 10h';
+    if(time)time.textContent=livDisp;
+    if(data)data.textContent=livDisp.replace(' – ','–');
   }
   // La carte visible (#date-preview, depuis la refonte "carte livraison
   // unifiée") relit ds-slot-badge-lbl/ds-slot-time-lbl pour se construire —
@@ -7645,6 +7680,17 @@ function tgl(el,group){
 function selectCren(el){
   tgl(el,'crl');
   buildRecap();
+}
+// Sélectionne un créneau de livraison visible et synchronise les éléments JS cachés
+function selectLivSlot(el,time){
+  tgl(el,'cren-liv');
+  var compact=time.replace(' – ','–');
+  var t=document.getElementById('ds-slot-time-lbl');
+  var d=document.getElementById('creneau-liv-data');
+  if(t)t.textContent=time;
+  if(d)d.textContent=compact;
+  if(typeof updateDatePreview==='function')updateDatePreview();
+  if(typeof buildRecap==='function')buildRecap();
 }
 function tglM(el){
   const on=!el.classList.contains('on');
