@@ -11,7 +11,7 @@ ne soit pas déjà écrit sur le site.
 import os, re, html
 from locair_gabarit import (BASE, DATE_ISO, DATE_FR, EDITEUR, bar, pied,
                             SCRIPT_BAR, tete_html, partage, jsonld,
-                            minutes, sommaire)
+                            minutes, sommaire, typo_fr)
 
 # ══ LE GABARIT D'UN GUIDE ══════════════════════════════════════════════════
 
@@ -243,9 +243,9 @@ def page_index():
 if __name__ == '__main__':
     cible = os.environ.get('CIBLE', 'blog')
     os.makedirs(cible, exist_ok=True)
-    open(os.path.join(cible, 'index.html'), 'w', encoding='utf-8').write(page_index())
+    open(os.path.join(cible, 'index.html'), 'w', encoding='utf-8').write(typo_fr(page_index()))
     print('blog/index.html')
     for a in ARTICLES:
         chemin = os.path.join(cible, a['slug'] + '.html')
-        open(chemin, 'w', encoding='utf-8').write(page_article(a))
+        open(chemin, 'w', encoding='utf-8').write(typo_fr(page_article(a)))
         print(chemin)

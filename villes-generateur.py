@@ -14,7 +14,7 @@ SUR LES DONNÉES STRUCTURÉES — le point qui compte pour Google :
 import os, re, html
 from locair_gabarit import (BASE, DATE_ISO, DATE_FR, EDITEUR, bar, pied,
                             SCRIPT_BAR, tete_html, partage, jsonld,
-                            minutes, sommaire)
+                            minutes, sommaire, typo_fr)
 from villes_contenu import VILLES, LIVRAISON, DEUX_SEMAINES, TOTAL_2SEM
 
 PAR_SLUG = {v['slug']: v for v in VILLES}
@@ -277,5 +277,5 @@ def page_ville(v):
 if __name__ == '__main__':
     for v in VILLES:
         chemin = f"location-climatiseur-{v['slug']}.html"
-        open(chemin, 'w', encoding='utf-8').write(page_ville(v))
+        open(chemin, 'w', encoding='utf-8').write(typo_fr(page_ville(v)))
         print(chemin)
