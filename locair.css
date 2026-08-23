@@ -156,6 +156,22 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    page où l'or dit « quelqu'un d'autre nous a jugés ». */
 #e7 .titre{max-width:none}
 #e7 .titre em{display:block}
+/* Trois titres se coupaient au mauvais endroit : « …pas. Il / se rafraîchit »,
+   « Les questions que / vous nous posez », « L'air frais dès / demain matin ».
+   Le membre de phrase doit passer sur SA ligne — la convention existait déjà
+   pour #e7, #e4b, #e1 et #e3b, elle manquait à trois écrans.
+   Sous les seuils indiqués, la phrase est simplement trop longue pour la
+   largeur : on laisse alors le navigateur couper où il peut. */
+#e9b .titre em{display:block}
+@media(min-width:761px){
+  #e11 .titre{font-size:var(--t-2);max-width:none}
+  #e11 .titre em{display:block}
+}
+@media(min-width:521px){#e12 .titre em{display:block}}
+/* Sur téléphone, « sans que nous l'écrivions. » ne rentre pas au plancher de
+   --t-3 : le titre passait à trois lignes. 26 px est le plancher de --t-4,
+   une valeur qui existe déjà dans l'échelle. */
+@media(max-width:430px){#e7 .titre{font-size:26px}}
 .avis{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--e-2);margin-top:var(--e-2)}
 .avis-c{padding:18px 0 0;border-top:1px solid var(--line);min-width:0;
   display:flex;flex-direction:column}
@@ -164,13 +180,22 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .avis-q{margin-top:auto;padding-top:16px;display:flex;flex-wrap:wrap;align-items:baseline;
   gap:4px 9px;font-size:var(--s-2);color:var(--ink-2)}
 .avis-q b{font-weight:700;color:var(--ink)}
-.avis-q i{font-style:normal;color:var(--ink-3)}
+/* « sur Google » restait sur la même ligne que le nom quand le nom était
+   court, et passait à la ligne quand il était long : les trois pieds de
+   carte n'avaient plus la même hauteur et les noms partaient en escalier.
+   Il passe TOUJOURS à la ligne. */
+.avis-q i{font-style:normal;color:var(--ink-3);flex-basis:100%}
 @media(max-width:860px){.avis{grid-template-columns:1fr;gap:var(--e-1)}}
 /* L'invitation à envoyer une vidéo : elle ne dépend d'aucune donnée, donc
    elle tient l'écran même si Google ne répond pas. Une ligne, pas une
    carte — c'est une demande, pas une offre. */
+/* max-width limitait la longueur de lecture — mais il raccourcissait du
+   même coup le FILET, qui s'arrêtait 380 px avant ceux des avis juste
+   au-dessus. Le plafond passe sur le paragraphe ; le filet reprend toute la
+   largeur, comme ses voisins. */
 .invit{margin-top:var(--e-2);padding-top:18px;border-top:1px solid var(--line);
-  max-width:62ch;font-size:var(--s-3);line-height:var(--h-4);color:var(--ink-2)}
+  font-size:var(--s-3);line-height:var(--h-4);color:var(--ink-2)}
+.invit p{max-width:62ch}
 .invit b{display:block;color:var(--ink);font-weight:700;margin-bottom:4px}
 
 /* ── ACHETER OU LOUER ──────────────────────────────────────────────────────
@@ -879,8 +904,11 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .engage-t b{font-weight:700}
 .engage .gtt{flex-shrink:0;width:11px;height:11px;margin-top:6px;
   border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold-txt)}
+/* La boîte porte déjà max-width:40ch : ce second plafond n'ajoutait rien
+   qu'un deuxième bord droit, 60 px avant celui du texte en gras juste
+   au-dessus. */
 .engage-c{font-size:var(--s-3);line-height:var(--h-5);color:var(--ink-3);
-  margin:12px 0 0 22px;max-width:var(--lire)}
+  margin:12px 0 0 22px}
 .e-ink .engage,.e-blue .engage{background:rgba(201,162,39,.13);
   border-color:rgba(201,162,39,.42)}
 .e-ink .engage .gtt,.e-blue .engage .gtt{background:var(--gold)}
@@ -1187,7 +1215,16 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
      une colonne sous 860px — sur téléphone le prix passe alors juste sous
      les réglages, jamais à six écrans de distance. */
   display:grid;grid-template-columns:1.05fr .95fr;gap:0;
-  background:var(--ink);color:#fff;border-radius:var(--r-l);overflow:hidden;
+  background:var(--ink);color:#fff;border-radius:var(--r-l);
+  /* overflow:hidden fait de .calc une ZONE DE DÉFILEMENT. position:sticky
+     s'accroche alors à elle — qui ne défile jamais — et non à la page : le
+     rappel « Total à payer » restait figé 76 px trop bas, PAR-DESSUS le
+     premier réglage, avec une bande vide au-dessus. Mesuré sur téléphone :
+     le panneau commence à 1814, la barre à 1890, soit exactement le top:76px.
+     overflow:clip coupe les coins arrondis SANS créer de zone de
+     défilement. Les deux valeurs sont écrites à la suite : un navigateur qui
+     ne connaît pas clip garde hidden et le comportement d'avant. */
+  overflow:hidden;overflow:clip;
   margin-top:26px;
 }
 .calc-g{padding:22px 26px}
@@ -1259,7 +1296,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    descendre lire le détail pour savoir ce que le choix coûtait. */
 .chip-p{display:flex;flex-direction:column;align-items:flex-start;gap:2px;
   border-radius:var(--r);padding:10px 14px;text-align:left;line-height:var(--h-2)}
-.chip-p i{font-style:normal;font-size:var(--s-2);font-weight:700;color:var(--gold)}
+/* Les deux boutons ont la même hauteur, mais leur contenu s'empilait par le
+   haut : un libellé sur trois lignes à gauche, une seule à droite, et les
+   deux prix se retrouvaient à 38 px l'un de l'autre. Le prix se cale en bas
+   des deux côtés. */
+.chip-p i{font-style:normal;font-size:var(--s-2);font-weight:700;color:var(--gold);
+  margin-top:auto}
 .chip-p[aria-pressed="true"] i{color:var(--vif-d)}
 
 /* ── Le panneau du prix ────────────────────────────────────────────────── */
@@ -1274,7 +1316,10 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .calc-line span{color:rgba(255,255,255,.6)}
 .calc-line b{font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
 .calc-line.off span,.calc-line.off b{opacity:.34;text-decoration:line-through}
-.calc .btn{width:100%;margin-top:auto}
+/* margin-top:auto poussait le bouton tout en bas et concentrait TOUT
+   l'excédent de hauteur en un seul trou noir de 178 px au milieu du panneau.
+   Le vide passe sous le bouton, où il se lit comme une marge. */
+.calc .btn{width:100%;margin-top:26px}
 .calc-legal{font-size:var(--s-2);color:rgba(255,255,255,.52);margin-top:12px;line-height:var(--h-4);text-align:center}
 
 /* Rien sur grand écran : le total y est déjà à hauteur des yeux. */
@@ -1286,6 +1331,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
     display:flex;align-items:baseline;justify-content:space-between;gap:14px;
     /* 68px : la hauteur de l'en-tête du site, mesurée. En dessous, le
        rappel se glisserait derrière lui. */
+    /* 76 px = la hauteur de l'en-tête (68) plus une marge. Mais SOUS 561 px,
+       le sélecteur Particuliers/Pro passe sur une deuxième ligne et l'en-tête
+       fait 121 px — mesuré. La barre allait donc se cacher derrière lui. */
     position:sticky;top:76px;z-index:3;margin:-20px -20px 16px;padding:13px 20px;
     background:rgba(14,31,53,.94);backdrop-filter:blur(10px);
     -webkit-backdrop-filter:blur(10px);
@@ -1300,6 +1348,11 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .duree-n b{font-size:38px}
   .presets.deux{grid-template-columns:1fr}
 }
+/* Sous 561 px le sélecteur Particuliers/Pro passe sur une deuxième ligne et
+   l'en-tête passe de 68 à 121 px — mesuré. Sans ce rattrapage, la barre de
+   total va se cacher derrière lui. Placé APRÈS le bloc 860 px, qui
+   redéclare .calc-fixe et gagnerait sinon. */
+@media(max-width:560px){.calc-fixe{top:129px}}
 @media(max-width:420px){
   .chip-s{font-size:var(--s-2);padding:7px 10px}
 }
@@ -1373,14 +1426,20 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 }
 
 /* ══ ÉCRAN QUESTIONS ══ */
-.faq{max-width:720px;margin-top:36px}
+/* La question et son filet faisaient 720 px, la réponse 346 : un décrochage
+   de 374 px à chaque ouverture. Le plafond de lecture était posé DEUX fois,
+   une fois sur le bloc et une fois sur le paragraphe, et le second était
+   bien trop serré.
+   Un seul plafond, sur le bloc : question, filet et réponse partagent la même
+   largeur, et la ligne reste dans la fourchette confortable. */
+.faq{max-width:580px;margin-top:36px}
 .faq details{border-bottom:1px solid var(--line)}
 .faq summary{padding:20px 44px 20px 0;font-size:var(--s-5);font-weight:700;letter-spacing:var(--l-3);cursor:pointer;list-style:none;position:relative;line-height:var(--h-3)}
 .faq summary::-webkit-details-marker{display:none}
 .faq summary::after{content:'';position:absolute;right:6px;top:50%;width:10px;height:10px;border-right:2px solid var(--vif);border-bottom:2px solid var(--vif);transform:translateY(-70%) rotate(45deg);transition:transform var(--mv-2) var(--mv)}
 .faq details[open] summary::after{transform:translateY(-30%) rotate(-135deg)}
 .faq details[open] summary{color:var(--vif)}
-.faq p{padding:0 36px 24px 0;font-size:var(--s-4);color:var(--ink-2);line-height:var(--h-5);max-width:var(--lire)}
+.faq p{padding:0 36px 24px 0;font-size:var(--s-4);color:var(--ink-2);line-height:var(--h-5)}
 
 /* ══ ÉCRAN FINAL ══ */
 .fin{text-align:center}
@@ -1959,3 +2018,9 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .p1-fond{animation:fondu .8s var(--mv) both}
 }
 @keyframes fondu{from{opacity:0}to{opacity:1}}
+
+/* Les deux boutons de l'appel final étaient le seul groupe du site sans
+   règle mobile : à 414 px, « Réserver maintenant » faisait 270 px et
+   « Être rappelé » 187 — un escalier. .p-cta, .pro-cta et .menu-cta passent
+   tous leurs boutons en pleine largeur ; celui-ci le fait aussi. */
+@media(max-width:520px){.fin-cta .btn{width:100%;justify-content:center}}
