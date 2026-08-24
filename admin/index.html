@@ -267,6 +267,16 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .stat-tile .deco{position:absolute;right:14px;bottom:6px;font-size:44px;opacity:.14;line-height:1;pointer-events:none;user-select:none}
 @media(max-width:520px){.stat-tile .deco{font-size:34px}}
 
+/* Assistant IA (demande d'Aly, 2026-08-20) — voir renderAssistant() */
+.assist-messages{flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.assist-msg{max-width:82%;padding:10px 14px;border-radius:16px;font-size:13.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+.assist-msg.user{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.assist-msg.bot{align-self:flex-start;background:var(--bg);color:var(--black);border-bottom-left-radius:4px}
+.assist-msg.assist-typing{opacity:.5;font-weight:700;letter-spacing:.1em}
+.assist-confirm{align-self:stretch;border:1.5px solid var(--gold);background:var(--gold-lt);border-radius:var(--r);padding:14px 16px}
+.assist-confirm-label{font-weight:700;font-size:13.5px;margin-bottom:12px;color:var(--gold-d);line-height:1.5}
+.assist-confirm-actions{display:flex;gap:10px;justify-content:flex-end}
+
 .morning-banner{background:var(--blue);color:#fff;border-radius:var(--r-lg);padding:18px 44px 18px 20px;margin-bottom:16px;box-shadow:var(--sh-blue);position:relative}
 .morning-banner .mb-title{font-family:var(--disp);font-size:17px;font-weight:600;margin-bottom:6px}
 .morning-banner .mb-text{font-size:13px;line-height:1.6;opacity:.92}
@@ -789,6 +799,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
       <div class="mobile-menu-backdrop" id="mobile-menu-backdrop" onclick="toggleMobileMenu(false)"></div>
       <div class="tabs">
         <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')">📊 Accueil</button>
+        <button data-tab="assistant" onclick="switchAdminTab('assistant')">🤖 Assistant IA</button>
         <!-- Groupé par intention (fréquence réelle d'usage), pas par table de
              base de données : Piloter = ce qu'on regarde tous les jours,
              Gérer = ce qu'on touche occasionnellement, Suivre = consultation,
@@ -834,6 +845,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 
       <div class="a-content">
         <div id="tab-accueil"></div>
+        <div id="tab-assistant" class="hidden"></div>
         <div id="tab-stock" class="hidden"></div>
         <div id="tab-reservations" class="hidden"></div>
         <div id="tab-communications" class="hidden"></div>
@@ -1894,6 +1906,10 @@ function _tabCacheClearAll(){
 // rafraîchissement de page (retour signalé par Aly, 2026-08-09).
 const _TAB_LOADERS = {
   accueil:        silent => loadDashboard(CURRENT_DASHBOARD_PERIODE, silent),
+  // Pas de "silent" ici : une conversation en cours ne doit jamais être
+  // effacée par un rafraîchissement automatique — loadAssistant() ne rend
+  // l'écran qu'une seule fois par session (voir sa garde interne).
+  assistant:      () => loadAssistant(),
   stock:          silent => loadStock(silent),
   reservations:   silent => loadReservations(silent),
   communications: () => loadCommunications(),
@@ -1924,7 +1940,7 @@ function switchAdminTab(tab){
   document.querySelectorAll('.bottom-nav .bn-item').forEach(b => {
     b.classList.toggle('on', b.dataset.tab ? b.dataset.tab===tab : !bnDirect.includes(tab));
   });
-  ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
+  ['accueil','assistant','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   const zone = document.getElementById('tab-'+tab);
@@ -8823,6 +8839,141 @@ async function saveEmailSignature(){
   }catch(e){
     showToast(e.message, 'error');
   }
+}
+
+// ── ASSISTANT IA (demande d'Aly, 2026-08-20) ────────────────────────────────
+// "Une interface IA qui a la main sur tout, peut modifier n'importe quoi" —
+// voir api/_lib/assistantTools.js pour l'explication complète des
+// garde-fous choisis par Aly lui-même avant qu'on ne code quoi que ce soit :
+// l'IA n'utilise que les actions déjà existantes de l'admin (rien de neuf
+// n'est possible), et toute action qui modifie quelque chose s'arrête pour
+// validation avant de s'exécuter réellement (ASSISTANT_PENDING ci-dessous).
+//
+// L'historique de conversation (ASSISTANT_MESSAGES) suit le format des
+// messages de l'API Claude (Anthropic) tel quel — chaque tour peut contenir
+// du texte et/ou des blocs tool_use/tool_result — pour pouvoir le renvoyer
+// sans transformation à chaque appel à admin-assistant.js. Il vit uniquement
+// en mémoire (perdu si la page est rechargée) : pas de conversation stockée
+// en base pour l'instant, un choix volontaire pour rester simple au départ.
+let ASSISTANT_MESSAGES = [];
+let ASSISTANT_PENDING  = null;  // { tool_use_id, tool_name, label, endpoint, http_action, input } ou null
+let ASSISTANT_BUSY     = false;
+
+function loadAssistant(){
+  const zone = document.getElementById('tab-assistant');
+  if(zone.dataset.rendered) return; // ne jamais réinitialiser une conversation en cours
+  zone.dataset.rendered = '1';
+  renderAssistant();
+}
+
+// N'affiche que les blocs de TEXTE d'un message — jamais les blocs
+// tool_use/tool_result (mécanique interne, pas destinée à l'admin). Un
+// message qui n'a que ça (ex. le résultat brut d'un outil) reste donc muet
+// à l'écran, ce qui est voulu : seule la réaction en texte de l'IA compte.
+function assistantTextOf(content){
+  if(typeof content === 'string') return content;
+  return (content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
+}
+
+function renderAssistant(){
+  const zone = document.getElementById('tab-assistant');
+  const locked = ASSISTANT_BUSY || !!ASSISTANT_PENDING;
+  const bubbles = ASSISTANT_MESSAGES.map(m => {
+    const text = assistantTextOf(m.content);
+    if(!text) return '';
+    return `<div class="assist-msg ${m.role==='user'?'user':'bot'}">${escHtml(text).replace(/\n/g,'<br>')}</div>`;
+  }).join('');
+  const pendingHtml = ASSISTANT_PENDING ? `
+    <div class="assist-confirm">
+      <div class="assist-confirm-label">⚠️ ${escHtml(ASSISTANT_PENDING.label)}</div>
+      <div class="assist-confirm-actions">
+        <button class="btn btn-grey" ${ASSISTANT_BUSY?'disabled':''} onclick="assistantCancel()">Annuler</button>
+        <button class="btn btn-blue" ${ASSISTANT_BUSY?'disabled':''} onclick="assistantConfirm()">Confirmer</button>
+      </div>
+    </div>` : '';
+  const typingHtml = (ASSISTANT_BUSY && !ASSISTANT_PENDING) ? `<div class="assist-msg bot assist-typing">…</div>` : '';
+  zone.innerHTML = `
+    <div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 160px);max-height:800px">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--rule)">
+        <h2 style="margin:0">🤖 Assistant IA</h2>
+        <p class="sub" style="margin:4px 0 0">Pose une question ou demande une action — pour tout ce qui modifie quelque chose, il te fait valider avant de l'exécuter.</p>
+      </div>
+      <div class="assist-messages" id="assist-messages">
+        ${bubbles || `<p class="empty">Exemples : « Combien de réservations aujourd'hui ? » · « Cherche le client Dupont » · « Passe le climatiseur n°12 en maintenance »</p>`}
+        ${pendingHtml}
+        ${typingHtml}
+      </div>
+      <div style="padding:12px 14px;border-top:1px solid var(--rule);display:flex;gap:8px">
+        <input type="text" id="assist-input" placeholder="Écris ta demande..." style="flex:1;margin:0" ${locked?'disabled':''} onkeydown="if(event.key==='Enter'){event.preventDefault();sendAssistantMessage();}"/>
+        <button class="btn btn-blue" style="width:auto;padding:0 18px" ${locked?'disabled':''} onclick="sendAssistantMessage()">Envoyer</button>
+      </div>
+    </div>`;
+  const msgsEl = document.getElementById('assist-messages');
+  if(msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+
+async function sendAssistantMessage(){
+  const input = document.getElementById('assist-input');
+  const text = (input?.value||'').trim();
+  if(!text || ASSISTANT_BUSY || ASSISTANT_PENDING) return;
+  input.value = '';
+  ASSISTANT_MESSAGES.push({role:'user', content:text});
+  renderAssistant();
+  await assistantChat();
+}
+
+// Boucle d'un seul aller-retour HTTP (admin-assistant.js gère lui-même la
+// boucle avec Claude pour les outils de lecture, voir ce fichier) — ne
+// s'arrête ici que sur une réponse finale ou une action à confirmer.
+async function assistantChat(){
+  ASSISTANT_BUSY = true; renderAssistant();
+  try{
+    const r = await fetch(API('admin-assistant'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'chat', messages:ASSISTANT_MESSAGES})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    ASSISTANT_MESSAGES.push(...(d.new_messages||[]));
+    if(d.type==='pending_confirmation'){
+      ASSISTANT_PENDING = { tool_use_id:d.tool_use_id, tool_name:d.tool_name, label:d.label, endpoint:d.endpoint, http_action:d.http_action, input:d.input };
+    }
+  }catch(e){
+    ASSISTANT_MESSAGES.push({role:'assistant', content:[{type:'text', text:`⚠️ ${e.message}`}]});
+  }finally{
+    ASSISTANT_BUSY = false; renderAssistant();
+  }
+}
+
+// Exécute réellement l'action en attente — en appelant directement le VRAI
+// point d'entrée de l'admin (même fetch que n'importe quel autre bouton de
+// cette page), donc avec exactement les mêmes vérifications de rôle et la
+// même logique métier qu'un clic humain. admin-assistant.js n'exécute lui-
+// même jamais aucune écriture (voir _lib/assistantTools.js).
+async function assistantConfirm(){
+  if(!ASSISTANT_PENDING || ASSISTANT_BUSY) return;
+  const p = ASSISTANT_PENDING;
+  ASSISTANT_BUSY = true; renderAssistant();
+  try{
+    const r = await fetch(API(p.endpoint), {method:'POST', headers:authHeaders(), body:JSON.stringify({...p.input, action:p.http_action})});
+    const d = await r.json();
+    const resultText = r.ok ? JSON.stringify(d).slice(0,4000) : `Erreur : ${d.error||'échec'}`;
+    ASSISTANT_MESSAGES.push({role:'user', content:[{type:'tool_result', tool_use_id:p.tool_use_id, content:resultText, is_error: !r.ok}]});
+  }catch(e){
+    ASSISTANT_MESSAGES.push({role:'user', content:[{type:'tool_result', tool_use_id:p.tool_use_id, content:`Erreur réseau : ${e.message}`, is_error:true}]});
+  }
+  ASSISTANT_PENDING = null;
+  ASSISTANT_BUSY = false;
+  // L'action confirmée peut avoir changé des données affichées ailleurs
+  // (stock, réservations...) — force un vrai rechargement au prochain
+  // passage sur ces onglets, même geste que taper F5 après un clic normal.
+  _TAB_LOADED.clear();
+  await assistantChat();
+}
+
+function assistantCancel(){
+  if(!ASSISTANT_PENDING || ASSISTANT_BUSY) return;
+  const p = ASSISTANT_PENDING;
+  ASSISTANT_MESSAGES.push({role:'user', content:[{type:'tool_result', tool_use_id:p.tool_use_id, content:"Action annulée par l'administrateur — non exécutée.", is_error:true}]});
+  ASSISTANT_PENDING = null;
+  assistantChat();
 }
 
 // ── ESPACE CLIENT (Module 4) — catalogue climatiseurs, centre d'aide, assistance ──
