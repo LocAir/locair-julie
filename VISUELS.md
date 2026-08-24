@@ -71,6 +71,30 @@ offre est invisible.
 
 ---
 
+## 1b. LA BANDE — le nouveau gabarit, entre la promesse et « pour qui »
+
+**Fichiers :** `photo-pose-900.jpg` / `-1600.jpg` / `-2400.jpg`
+**Proportion :** 16:9 paysage, large (par exemple 2400 × 1350)
+
+C'est le **même sujet que la photo n° 1** — un technicien qui pose le kit
+chez un client — mais dans un cadrage large, parce qu'elle occupe toute la
+largeur de l'écran.
+
+**Où ça se branche :** une bande d'un bord à l'autre, glissée entre l'écran
+qui promet « demain matin, quelqu'un sonne chez vous » et l'écran suivant.
+C'est le seul geste large du site en dehors des blocs marine. Sur un site
+entièrement fait de texte, c'est elle qui fera respirer la page.
+
+**Le cadrage :** gardez de l'air en haut et en bas — la bande est haute de
+380 px sur ordinateur et recadre par le milieu. Ce qui touche les bords
+disparaîtra. Une légende se pose en bas à gauche, sur un voile sombre : ne
+mettez rien d'important dans ce coin.
+
+**Si vous n'avez qu'une photo à faire, faites celle-là.** Elle sert à deux
+endroits : la bande, et l'emplacement portrait de l'accueil.
+
+---
+
 ## 2b. LA photo de la page pro — en arrière-plan
 
 **Fichiers :** `pro-rafraichisseurs-900.jpg` / `-1600.jpg` / `-2400.jpg`
@@ -257,6 +281,41 @@ Pour être clair sur ce qui n'est **pas** utile :
 | 6. Les bandeaux de ville | Quatre pages qui ne montrent pas leur ville |
 | 7. La camionnette | Confort |
 | 8. Le logo et la police | L'identité — le reste marche sans, mais reste anonyme |
+
+---
+
+## Une règle à connaître : les paires, c'est tout ou rien
+
+Les deux machines de l'écran « Le matériel » sont présentées côte à côte.
+Testé avec une seule des deux photos en place : la carte qui en a une
+descend de 206 px, l'autre reste en haut, et l'écran part de travers.
+
+Le site refuse donc d'afficher une photo de paire toute seule. **Tant que
+les deux ne sont pas là, aucune ne s'affiche** ; le jour où la seconde
+arrive, les deux apparaissent ensemble. Ne vous étonnez pas si vous déposez
+la photo du climatiseur et que rien ne change : il manque celle du
+rafraîchisseur.
+
+---
+
+## Comment les images sont traitées
+
+Pour que vos photos aient l'air d'appartenir à la marque plutôt que d'y
+être collées, trois règles, et pas une de plus :
+
+- **Un filet d'un pixel** à l'intérieur du bord, jamais une ombre portée.
+  Il est invisible sur une photo sombre et sauve le bord d'une photo claire,
+  qui sans lui se dissout dans le blanc de la page.
+- **Le même arrondi que les cartes** — un seul rayon dans toute la page.
+- **Un fond gris pendant le chargement**, pour qu'aucune case ne clignote
+  en blanc.
+
+Aucun cadre coloré, aucun effet, aucune ombre : ce qui fait tenir une image
+sur ce site, c'est le vide autour d'elle.
+
+Une **légende** est possible sous chaque photo. Elle reprend la goutte de la
+marque en guise de marqueur — le même signe que les puces des guides et que
+l'apostrophe du nom. Elle n'est jamais obligatoire.
 
 ---
 
