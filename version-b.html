@@ -217,7 +217,7 @@
              tant que l'API n'a pas répondu, la pastille reste masquée. -->
         <span class="etat-t" id="etat-t" hidden></span>
       </p>
-    <h1 class="titre rv" data-th="e1.titre">Il fait trop chaud ?<em> Plus pour longtemps.</em></h1>
+    <h1 class="titre rv" id="e1-titre" data-th="e1.titre">Il fait trop chaud ?<em> Livré demain matin.</em></h1>
     <p class="quoi rv" data-t="e1.quoi">Climatiseurs mobiles et rafraîchisseurs d'air. Livrés, installés, repris.</p>
 
     <div class="e1-grid">
@@ -1848,7 +1848,16 @@ Object.assign(T, {
                   zh:"评分与评价直接读取自我们的 Google 商家资料，自动更新。",
                   ru:"Оценка и отзывы читаются прямо с нашей карточки Google и обновляются сами."},
   'e7.surGoogle': {fr:"sur Google", en:"on Google", zh:"来自 Google", ru:"на Google"},
-  'e1.titre'   : {fr:"Il fait trop chaud ?<em> Plus pour longtemps.</em>",
+  'e1.titre'   : {fr:"Il fait trop chaud ?<em> Livré demain matin.</em>",
+                  en:"Too hot to bear?<em> Delivered tomorrow morning.</em>",
+                  zh:"太热了？<em>明天上午送到。</em>",
+                  ru:"Слишком жарко?<em> Доставим завтра утром.</em>"},
+  /* Le titre promet « demain matin ». Les jours ou le stock est epuise, la
+     ligne juste en dessous annonce « Complet pour demain » — le titre
+     mentirait. Il reprend alors sa forme neutre, pilotee par la MEME donnee
+     que la ligne d'etat. Un titre ne doit jamais promettre ce que la page
+     dement deux centimetres plus bas. */
+  'e1.titreNeutre': {fr:"Il fait trop chaud ?<em> Plus pour longtemps.</em>",
                   en:"Too hot to bear?<em> Not for much longer.</em>",
                   zh:"太热了？<em>很快就不会了。</em>",
                   ru:"Слишком жарко?<em> Уже ненадолго.</em>"},
@@ -2480,6 +2489,11 @@ Object.assign(T, {
     var ligne = document.getElementById('etat');
     var txt   = document.getElementById('etat-txt');
     if(!ligne || !txt || stock === null) return;
+
+    /* Le titre suit la meme donnee que la ligne : il ne peut donc pas
+       promettre demain matin un jour ou l'on est complet. */
+    var h1 = document.getElementById('e1-titre');
+    if(h1) h1.innerHTML = mot(stock.sold_out ? 'e1.titreNeutre' : 'e1.titre');
 
     if(stock.sold_out){
       ligne.classList.add('complet');
