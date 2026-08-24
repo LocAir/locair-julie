@@ -285,7 +285,45 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
        la figure, et onload ne se déclenche jamais sur un fichier absent.
    Le jour où les fichiers sont déposés dans le dossier, ils apparaissent
    sans qu'on touche au code. Formats et cadrages attendus : VISUELS.md */
-.photo{margin:0;overflow:hidden;border-radius:var(--r-l);background:var(--mist);min-width:0}
+/* ── LE TRAITEMENT D'UNE IMAGE ─────────────────────────────────────────────
+   Le site a une grammaire visuelle très nette : des FILETS comme seul
+   séparateur, presque aucune boîte, beaucoup de blanc, et des blocs marine
+   pour appuyer. Une photo posée là sans traitement casserait cette
+   grammaire — surtout une photo claire, qui se dissout dans le blanc parce
+   que rien ne dit où elle s'arrête.
+   D'où trois règles, et pas une de plus :
+     1. un FILET INTÉRIEUR d'un pixel, jamais une ombre. Il est invisible
+        sur une photo sombre et sauve le bord d'une photo claire. C'est le
+        même trait que partout ailleurs sur le site.
+     2. le MÊME RAYON que les cartes — un seul arrondi dans toute la page.
+     3. un fond gris pendant le chargement, pour qu'aucune case ne clignote
+        en blanc.
+   Aucune ombre portée, aucun cadre coloré, aucun effet : ce qui fait tenir
+   une image ici, c'est le vide autour d'elle. */
+.photo{margin:0;overflow:hidden;border-radius:var(--r-l);background:var(--mist);min-width:0;
+  position:relative}
+.photo img{box-shadow:inset 0 0 0 1px rgba(14,31,53,.07)}
+.e-ink .photo img,.e-blue .photo img,.a-photo .photo img{box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)}
+
+/* ── LA LÉGENDE ────────────────────────────────────────────────────────────
+   Une photo qui montre une scène réelle mérite qu'on dise ce qu'on regarde
+   — c'est ce qui sépare une illustration d'une preuve. La légende reprend
+   la goutte de la marque en guise de marqueur : le même signe que les puces
+   des guides et que l'apostrophe du nom. Elle n'est jamais obligatoire. */
+.photo figcaption,.legende{
+  margin-top:11px;padding-left:16px;position:relative;
+  font-size:var(--s-2);line-height:var(--h-3);color:var(--ink-3);
+}
+.photo figcaption::before,.legende::before{
+  content:'';position:absolute;left:0;top:.42em;width:6px;height:6px;
+  background:var(--vif);border-radius:50% 50% 50% 0;transform:rotate(-25deg);
+}
+.e-ink .legende,.e-blue .legende{color:rgba(255,255,255,.62)}
+.e-ink .legende::before,.e-blue .legende::before{background:var(--gold)}
+/* Une légende sort de la boîte à coins arrondis : elle se met SOUS la
+   figure, jamais dedans. */
+.photo:has(figcaption){overflow:visible;background:none;border-radius:0}
+.photo:has(figcaption) img{border-radius:var(--r-l);background:var(--mist)}
 .photo[hidden]{display:none}
 .photo img{display:block;width:100%;height:100%;object-fit:cover}
 .photo-4-5{aspect-ratio:4/5}
@@ -306,6 +344,17 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 /* Dans la fiche d'une machine, la photo passe en tête, sous le filet. Elle
    sert à RECONNAÎTRE l'objet — surtout le rafraîchisseur, que personne ne
    connaît — pas à faire une affiche : hauteur bornée à 220 px. */
+/* ── UNE PAIRE, C'EST TOUT OU RIEN ─────────────────────────────────────────
+   Testé avec une seule des deux photos en place : la carte qui en a une
+   descend de 206 px, l'autre reste en haut, et l'écran part de travers —
+   « Fenêtre fermée » se retrouve au niveau du troisième paragraphe de sa
+   voisine. Deux machines présentées côte à côte doivent être présentées de
+   la même façon.
+   Tant que les DEUX photos ne sont pas là, aucune ne s'affiche. Le jour où
+   la seconde arrive, les deux apparaissent ensemble. C'est aussi la seule
+   règle qui empêche une photo isolée de casser l'écran sans prévenir. */
+.deux:has(> .mach:first-child > .photo[hidden]) .mach > .photo,
+.deux:has(> .mach:last-child  > .photo[hidden]) .mach > .photo{display:none}
 .mach .photo{aspect-ratio:auto;height:190px;margin:0 0 16px}
 @media(max-width:760px){.e1-grid:has(> .photo:not([hidden])){grid-template-columns:1fr}
   .e1-grid:has(> .photo:not([hidden])) .choix{flex-direction:column}}
@@ -2067,3 +2116,34 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    (34ch) donnait un ruban de 314 px qui paraissait oublié là. Deux fois plus
    large : la note se lit comme la légende du tableau, ce qu'elle est. */
 #e4b .mini{max-width:68ch}
+
+/* ══ LA BANDE — le gabarit d'image qui manquait ═══════════════════════════
+   Les emplacements existants sont tous CONTENUS : une photo dans une
+   colonne, une vignette dans une carte. Il manquait le geste large — une
+   image d'un bord à l'autre, entre deux idées, qui laisse respirer une page
+   entièrement faite de texte.
+   Ce n'est PAS un écran : pas de min-height, pas de point dans la
+   navigation. C'est du mobilier entre deux écrans, comme le bandeau des
+   garanties. Les seuls éléments pleine largeur du site sont les blocs
+   marine ; une bande photo se range naturellement à côté d'eux.
+   Hauteur bornée : une image pleine largeur non bornée ferait 1000 px de
+   haut sur un grand écran et volerait la place d'un écran entier.
+   Invisible tant que le fichier n'existe pas, comme tout le reste. */
+.bande{
+  display:block;width:100%;margin:0;overflow:hidden;background:var(--ink);
+  height:clamp(200px,38svh,420px);position:relative;
+}
+.bande[hidden]{display:none}
+.bande img{display:block;width:100%;height:100%;object-fit:cover}
+/* La légende se pose SUR l'image, en bas à gauche, sur un voile calculé
+   pour le pire cas : même si la photo livrée est presque blanche, le texte
+   blanc tient à 8,4 pour 1 — la même méthode que l'écran pro. */
+.bande figcaption{
+  position:absolute;left:0;right:0;bottom:0;
+  padding:56px var(--pad) 18px;
+  background:linear-gradient(to top,rgba(14,31,53,.88),rgba(14,31,53,0));
+  color:rgba(255,255,255,.88);font-size:var(--s-2);line-height:var(--h-3);
+}
+.bande figcaption b{color:#fff;font-weight:700}
+.bande-in{max-width:var(--max);margin:0 auto}
+@media(max-width:620px){.bande{height:clamp(170px,32svh,260px)}}
