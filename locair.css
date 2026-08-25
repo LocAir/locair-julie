@@ -2257,3 +2257,71 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .mots-c{height:auto}
   .mots-p{position:static}
 }
+
+/* ══ LE BLOC ASSISTANCE — entre « Vos espaces » et « Questions » ══════════
+   Emprunté à un site américain qui met son service client dans un panneau
+   sombre avec une photo qui sort du cadre. On garde la structure, pas la
+   couleur ni les formes : ici le fond est le marine de la maison.
+   Ce n'est PAS un écran — pas de min-height, pas de point de navigation.
+   C'est du mobilier, comme la bande photo et le mot qui tourne.
+   Rien d'inventé : le numéro, le WhatsApp et les horaires sont ceux que le
+   pied de page et la FAQ affichent déjà.
+   La photo est facultative. Tant que le fichier n'existe pas, la figure
+   reste cachée et le texte occupe naturellement toute la largeur — d'où
+   le :has() qui repasse la grille sur une seule colonne. */
+/* On ne réinvente ni le fond ni les couleurs : la classe e-ink existe déjà
+   et donne le marine, le doré du surtitre et de l'italique, et le gris clair
+   du paragraphe. Ici on n'ajoute que la mise en page. */
+.eq{overflow:hidden}
+.eq-g{
+  max-width:var(--max);margin:0 auto;
+  display:grid;grid-template-columns:1fr .84fr;align-items:center;
+  gap:var(--e-2);
+}
+.eq-t{padding:var(--e-3) var(--pad)}
+.eq .titre em{display:block}          /* deux idées, deux lignes */
+.eq .dire{margin:18px 0 var(--e-1)}
+
+/* Bornée : sans photo la colonne fait toute la largeur du gabarit, et trois
+   pastilles de 1200 px de long ne ressemblent plus à des pastilles. */
+.eq-l{list-style:none;margin:0;padding:0;display:grid;gap:10px;max-width:520px}
+.eq-l li{margin:0}
+.eq-p{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 16px;border-radius:var(--r-f);
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.16);
+  color:#fff;text-decoration:none;
+  transition:background var(--mv-2) var(--mv),border-color var(--mv-2) var(--mv);
+}
+a.eq-p:hover,a.eq-p:focus-visible{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.34)}
+.eq-p svg{flex:0 0 auto;width:20px;height:20px;color:var(--gold)}
+.eq-p b{display:block;font-weight:700;font-size:var(--s-3);line-height:1.25}
+.eq-p span{display:block;color:rgba(255,255,255,.74);font-size:var(--s-2);line-height:var(--h-3)}
+
+/* La photo occupe toute la hauteur du bloc, jusqu'au bord de la colonne de
+   contenu. Elle ne va pas jusqu'au bord de l'écran comme sur la référence :
+   une image qui déborde du gabarit est la première cause de barre de
+   défilement horizontale, et le site n'en a aucune. */
+.eq-f{margin:0;align-self:stretch;min-height:320px;position:relative}
+.eq-f[hidden]{display:none}
+.eq-f img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+/* Pas de photo livrée : une seule colonne, et le texte respire au centre.
+   Le :has() est enfermé dans une requête de largeur, sinon il l'emporte sur
+   les règles téléphone qui viennent après — sa spécificité est celle de son
+   argument, pas celle d'une pseudo-classe. */
+@media(min-width:861px){
+  .eq-g:has(> .eq-f[hidden]){grid-template-columns:1fr}
+  /* Sans photo, les trois moyens de nous joindre se mettent côte à côte :
+     ils occupent la largeur laissée libre au lieu de la laisser vide. */
+  .eq-g:has(> .eq-f[hidden]) .eq-l{grid-template-columns:repeat(3,1fr);max-width:none;gap:14px}
+  .eq-g:has(> .eq-f[hidden]) .eq-p{align-items:flex-start;padding:16px 18px}
+  /* Avec la photo, le texte ne garde sa marge qu'à gauche : sinon la marge
+     et l'espace de grille s'additionnent et creusent un trou au milieu. */
+  .eq-g:not(:has(> .eq-f[hidden])) .eq-t{padding-right:0}
+}
+@media(max-width:860px){
+  .eq-g{grid-template-columns:1fr}
+  .eq-f{min-height:240px;order:-1}
+}
