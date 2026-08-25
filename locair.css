@@ -2154,3 +2154,106 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .bande figcaption b{color:#fff;font-weight:700}
 .bande-in{max-width:var(--max);margin:0 auto}
 @media(max-width:620px){.bande{height:clamp(170px,32svh,260px)}}
+
+/* ══ LES TROIS DURÉES — l'écran « Le prix » ═══════════════════════════════
+   Trois cartes côte à côte, comme sur les sites qui vendent des forfaits.
+   Mais Loc'Air NE VEND PAS de forfaits : le tarif est dégressif à la
+   journée. Les trois cartes ne sont donc pas trois offres différentes —
+   ce sont les trois durées que les gens prennent, avec leur vrai total.
+   Aucun prix n'est écrit en dur : ils sont calculés par le barème du
+   calculateur, celui qui vient de /api/pricing-config.
+
+   Identité conservée : pas de dégradé orange, pas de ruban en diagonale.
+   La carte recommandée est SOMBRE, exactement comme la colonne Loc'Air du
+   tableau comparatif, et son étiquette est l'œil-de-perdrix doré en
+   capitales espacées que le site utilise déjà là-bas. */
+.packs{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--e-1);
+  margin-top:var(--e-2)}
+.pack{
+  display:flex;flex-direction:column;padding:26px 24px 24px;
+  border:1px solid var(--line);border-radius:var(--r-l);background:var(--paper);
+  transition:border-color var(--mv-1) var(--mv),transform var(--mv-1) var(--mv);
+}
+.pack:hover{border-color:var(--vif)}
+.pack-d{font-size:var(--s-5);font-weight:700;letter-spacing:var(--l-3);color:var(--ink)}
+.pack-j{margin-top:3px;font-size:var(--s-2);color:var(--ink-3)}
+.pack-p{margin-top:20px;font-size:var(--n-3);font-weight:700;letter-spacing:var(--l-1);
+  line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.pack-u{margin-top:9px;font-size:var(--s-2);color:var(--ink-2);line-height:var(--h-3)}
+.pack-c{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
+  font-size:var(--s-3);color:var(--ink-2);line-height:var(--h-4)}
+.pack .btn{margin-top:auto;width:100%;justify-content:center}
+.pack-b{margin-top:20px}
+/* La carte qui compte : sombre, comme la colonne Loc'Air du comparatif. */
+.pack.reco{background:var(--ink);border-color:var(--ink);--focus:var(--gold)}
+.pack.reco .pack-d,.pack.reco .pack-p{color:#fff}
+.pack.reco .pack-j{color:rgba(255,255,255,.62)}
+.pack.reco .pack-u{color:rgba(255,255,255,.72)}
+.pack.reco .pack-c{color:rgba(255,255,255,.78);border-top-color:rgba(255,255,255,.16)}
+.pack.reco:hover{border-color:var(--gold)}
+.pack-r{
+  display:block;font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-5);
+  text-transform:uppercase;color:var(--gold);margin-bottom:9px;
+}
+.pack.reco .btn-1{background:#fff;color:var(--ink);
+  transition:transform var(--mv-1) var(--mv)}
+.pack.reco .btn-1:hover{background:rgba(255,255,255,.88)}
+/* Les cartes sans étiquette gardent la même hauteur que celle qui en a une :
+   sans ça, les trois prix ne seraient pas sur la même ligne. */
+.pack-r-vide{display:block;height:1em;margin-bottom:9px}
+@media(max-width:860px){.packs{grid-template-columns:1fr;gap:14px}
+  .pack-r-vide{display:none}}
+
+/* ══ LE MOT QUI TOURNE ════════════════════════════════════════════════════
+   Un bloc pleine largeur où une colonne de mots défile, celui du milieu
+   plein, les autres en contour. C'est un geste emprunté — mais pas la
+   couleur : ici le fond est le marine de la marque, pas un orange, et les
+   mots sont ceux que le site dit déjà sur l'écran « Pour qui ».
+   Il ne remplace pas cet écran : il l'annonce. Ce n'est pas un écran non
+   plus — pas de min-height, pas de point de navigation.
+   Les mots en contour sont marqués aria-hidden : un lecteur d'écran entend
+   la phrase une fois, pas six. Et tout s'arrête pour qui a demandé moins
+   d'animation. */
+/* Fond sarcelle, pas marine : l'écran juste au-dessus (« nos machines ») est
+   déjà marine, et deux blocs marine collés ne font qu'un long bloc sombre —
+   on ne voit plus la respiration. Le sarcelle est la troisième couleur de la
+   maison, déjà utilisée plus bas ; le blanc dessus tient 6,1:1. */
+.mots{
+  background:var(--vif);color:#fff;overflow:hidden;
+  padding:var(--e-3) 0;
+}
+.mots-in{
+  max-width:var(--max);margin:0 auto;padding:0 var(--pad);
+  display:flex;align-items:center;gap:var(--e-2);
+}
+.mots-l{
+  flex-shrink:0;background:#fff;color:var(--ink);
+  padding:8px 16px;border-radius:var(--r-s);
+  font-size:var(--s-6);font-weight:700;letter-spacing:var(--l-2);
+  text-transform:uppercase;white-space:nowrap;
+}
+/* Trois lignes visibles, le mot actif AU MILIEU — et un fondu en haut et en
+   bas, sinon les mots voisins sont coupés net par le bord du bloc. */
+.mots-c{position:relative;flex:1 1 auto;min-width:0;height:3.18em;
+  -webkit-mask-image:linear-gradient(to bottom,transparent,#000 22%,#000 78%,transparent);
+  mask-image:linear-gradient(to bottom,transparent,#000 22%,#000 78%,transparent);
+  font-size:clamp(30px,5.4vw,64px);font-weight:700;letter-spacing:var(--l-2);
+  line-height:1.06;}
+.mots-p{position:absolute;left:0;right:0;top:0;
+  transition:transform var(--mv-3) var(--mv)}
+.mots-p span{display:block;height:1.06em;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;
+  color:transparent;-webkit-text-stroke:1.4px rgba(255,255,255,.5);
+  transition:color var(--mv-2) var(--mv),-webkit-text-stroke-color var(--mv-2) var(--mv)}
+.mots-p span.on{color:#fff;-webkit-text-stroke-color:transparent}
+@media(max-width:700px){
+  .mots-in{flex-direction:column;align-items:flex-start;gap:14px}
+  .mots-c{height:2.2em;font-size:clamp(26px,8.4vw,44px)}
+  .mots-l{font-size:var(--s-5)}
+}
+@media(prefers-reduced-motion:reduce){
+  .mots-p{transition:none}
+  .mots-p span{color:#fff;-webkit-text-stroke-color:transparent}
+  .mots-c{height:auto}
+  .mots-p{position:static}
+}
