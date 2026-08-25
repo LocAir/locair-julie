@@ -604,6 +604,64 @@ body:not(.vl) .dash-hero{background:transparent;border-radius:0;box-shadow:none}
 /* Footer discret sur fond navy */
 body:not(.vl) .footer{background:rgba(255,255,255,.03);border-top:1px solid rgba(255,255,255,.05)}
 body:not(.vl) .footer p,body:not(.vl) .footer a{color:rgba(255,255,255,.22)!important}
+
+/* ══ L'ÉCRAN DE CONNEXION EN DEUX MOITIÉS ══════════════════════════════════
+   Forme demandée par le propriétaire : à gauche la marque et ce que l'espace
+   sait faire, à droite la carte blanche du formulaire. C'est la même carte
+   qu'avant — elle n'est ni déplacée dans le HTML, ni retouchée : seule la
+   moitié gauche est nouvelle.
+   Trois précautions :
+     · le panneau ne contient AUCUN contrôle. Sur téléphone il disparaît,
+       et rien n'est perdu — c'est du décor qui dit vrai, pas une commande ;
+     · il est aria-hidden. Un lecteur d'écran ne doit pas entendre le nom de
+       la marque deux fois avant d'atteindre le champ email ;
+     · il ne s'affiche que sous body.vl, donc jamais sur le tableau de bord.
+   Les trois lignes sont ce que l'espace client fait réellement — les mêmes
+   que celles annoncées sur la vitrine, écran « Vos espaces ». */
+.vl-cote{display:none}
+@media(min-width:1000px){
+  body.vl main{
+    display:grid;grid-template-columns:1fr 1fr;align-items:stretch;
+    padding:0;min-height:calc(100vh - 58px - 62px);
+  }
+  body.vl .vl-cote{
+    display:flex;align-items:center;justify-content:flex-end;
+    padding:56px 52px;
+  }
+  body.vl .page-wrap{
+    display:flex;align-items:center;justify-content:flex-start;
+    padding:56px 52px;
+  }
+  body.vl #screen-login,body.vl #screen-faceid{margin:0}
+  .vl-cote-in{max-width:420px}
+  .vl-logo{
+    display:block;font-family:var(--disp,inherit);
+    font-size:26px;font-weight:700;letter-spacing:-.01em;color:#fff;
+  }
+  .vl-logo em{font-style:normal;color:var(--gold)}
+  .vl-t{
+    margin:34px 0 0;font-size:clamp(30px,3.1vw,42px);line-height:1.12;
+    letter-spacing:-.02em;color:rgba(255,255,255,.72);font-weight:400;
+  }
+  .vl-t b{display:block;color:#fff;font-weight:700}
+  .vl-l{list-style:none;margin:32px 0 0;padding:0;display:grid;gap:13px}
+  .vl-l li{
+    position:relative;padding-left:26px;
+    font-size:15px;line-height:1.5;color:rgba(255,255,255,.74);
+  }
+  /* La coche est posée hors du flux : en faire un élément de la ligne
+     couperait la phrase en deux morceaux dès qu'elle passe à la ligne. */
+  .vl-l li::before{
+    content:'';position:absolute;left:2px;top:.42em;
+    width:9px;height:5px;border-left:2px solid var(--gold);
+    border-bottom:2px solid var(--gold);transform:rotate(-45deg);
+  }
+  .vl-p{
+    margin:38px 0 0;padding-top:22px;
+    border-top:1px solid rgba(255,255,255,.14);
+    font-size:13.5px;line-height:1.55;color:rgba(255,255,255,.5);
+  }
+}
 </style>
 </head>
 <body>
@@ -615,6 +673,22 @@ body:not(.vl) .footer p,body:not(.vl) .footer a{color:rgba(255,255,255,.22)!impo
 </nav>
 
 <main>
+
+  <!-- La moitié gauche de l'écran de connexion. Décor qui dit vrai : les
+       trois lignes sont ce que l'espace client fait réellement. Masquée au
+       lecteur d'écran et absente sous 1000 px — voir la feuille de style. -->
+  <aside class="vl-cote" aria-hidden="true">
+    <div class="vl-cote-in">
+      <span class="vl-logo">Loc<em>'Air</em></span>
+      <p class="vl-t">Votre location,<b>en direct.</b></p>
+      <ul class="vl-l">
+        <li>Le statut de votre livraison, en temps réel</li>
+        <li>Vos documents et vos factures</li>
+        <li>Prolonger en un clic, sans nous appeler</li>
+      </ul>
+      <p class="vl-p">Une question&nbsp;? 06.63.79.87.56 — 7j/7 de 8h à 20h.</p>
+    </div>
+  </aside>
   <div class="page-wrap">
 
     <!-- ÉCRAN 1 : identification -->
