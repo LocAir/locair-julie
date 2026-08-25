@@ -95,6 +95,30 @@ endroits : la bande, et l'emplacement portrait de l'accueil.
 
 ---
 
+## 1c. LE PANNEAU ASSISTANCE — « une seule équipe »
+
+**Fichiers :** `photo-equipe-800.jpg` / `-1200.jpg`
+**Proportion :** portrait, un peu plus haut que large (par exemple 1200 × 1400)
+
+**Le sujet :** vous, au téléphone, devant la camionnette ou devant une porte
+d'immeuble. Pas une pose de photographe : quelqu'un qui travaille et qui
+répond. C'est la photo qui prouve la phrase du bloc — celle qui répond au
+téléphone est celle qui sonne à la porte.
+
+**Où ça se branche :** à droite d'un bloc marine, juste avant les questions
+fréquentes. Le texte est à gauche, la photo remplit la moitié droite sur
+toute la hauteur du bloc.
+
+**Le cadrage :** vertical, sujet plutôt au centre. Le bloc recadre par le
+milieu et fait environ 400 px de large sur ordinateur : un plan large où
+vous faites 5 % de l'image ne donnera rien.
+
+**Tant que ce fichier n'existe pas**, le bloc se réorganise tout seul : les
+trois moyens de nous joindre se mettent côte à côte sur toute la largeur.
+Rien n'est cassé, rien n'est vide.
+
+---
+
 ## 2b. LA photo de la page pro — en arrière-plan
 
 **Fichiers :** `pro-rafraichisseurs-900.jpg` / `-1600.jpg` / `-2400.jpg`
