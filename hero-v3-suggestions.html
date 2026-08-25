@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Haut de page — trois directions, feuille blanche</title>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     TROIS HAUTS DE PAGE, REPARTIS DE ZÉRO
+     ─────────────────────────────────────────────────────────────────────────
+     Page de travail, non indexée, reliée à rien. Elle sert à choisir.
+
+     La contrainte : chacune des trois doit tenir avec les branchements que
+     le back-end de Loc'Air a DÉJÀ, sans en inventer un seul.
+       /api/mode-complet   → { sold_out, disponibles }
+       /api/disponibilite  → { total, dates, next_available, today }
+       /api/pricing-config → { pricing, pro }
+       /api/google-rating  → { available, rating, count, reviews }
+       api.open-meteo.com  → la température réelle à Nice
+     Les cinq sont déjà appelés par la page publique. Aucune des trois
+     propositions ne demande une nouvelle table, une nouvelle route, ni un
+     nouveau champ dans l'admin.
+
+     Elle charge /locair.css : les couleurs, la police et les boutons sont
+     ceux du site. Ce qu'on voit ici peut être repris tel quel.
+
+     Les valeurs affichées sans réponse d'API sont des ESPACES VIDES, pas des
+     chiffres pour faire joli : hors ligne, on voit exactement ce qu'un
+     visiteur verrait si le serveur ne répondait pas.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<link rel="stylesheet" href="/locair.css">
+<style>
+/* ── L'habillage de la planche, pas des propositions ─────────────────── */
+body{background:#0d1420;margin:0}
+.lab-t{max-width:1180px;margin:0 auto;padding:44px 24px 8px;color:rgba(255,255,255,.9)}
+.lab-t h1{font-size:26px;letter-spacing:-.02em;margin:0 0 10px}
+.lab-t p{margin:0;max-width:74ch;font-size:15px;line-height:1.62;color:rgba(255,255,255,.56)}
+.lab-l{max-width:1180px;margin:56px auto 0;padding:0 24px;display:flex;align-items:baseline;gap:14px;
+  color:rgba(255,255,255,.42);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+.lab-l b{color:#fff;font-size:15px;letter-spacing:-.01em;text-transform:none}
+.lab-l i{font-style:normal;color:rgba(255,255,255,.3);font-weight:400;letter-spacing:.02em;text-transform:none;font-size:12px}
+.lab-l::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.1)}
+.lab-c{max-width:1180px;margin:14px auto 0;padding:0 24px}
+.lab-f{border-radius:18px;overflow:hidden;background:#fff}
+.lab-n{max-width:1180px;margin:12px auto 0;padding:0 24px 8px;color:rgba(255,255,255,.4);font-size:13px;line-height:1.6}
+.lab-n b{color:rgba(255,255,255,.72);font-weight:600}
+.lab-end{height:80px}
+
+/* Le point qui bat : il ne dit pas « regardez-moi », il dit « c'est lu à
+   l'instant ». Il s'arrête pour qui a demandé moins d'animation. */
+.vif-pt{width:7px;height:7px;border-radius:50%;background:var(--vif);flex:0 0 auto;
+  animation:vifb 2.4s ease-in-out infinite}
+@keyframes vifb{0%,100%{opacity:1}50%{opacity:.32}}
+@media(prefers-reduced-motion:reduce){.vif-pt{animation:none}}
+
+/* ══ A · LE TABLEAU DE BORD ══════════════════════════════════════════════
+   Ce que Loc'Air sait et que presque aucun loueur ne sait dire : combien de
+   machines sont libres, quand est le prochain créneau, quelle température il
+   fait dehors. Aujourd'hui ces chiffres sont en gris, en petit, au-dessus du
+   titre. Ici ils deviennent la moitié de l'écran. */
+.hA{background:var(--ink);color:#fff;padding:clamp(38px,5vw,72px) 0}
+.hA-in{max-width:var(--max);margin:0 auto;padding:0 var(--pad);
+  display:grid;grid-template-columns:1.15fr .85fr;gap:clamp(28px,4vw,64px);align-items:center}
+.hA h2{font-size:clamp(32px,4.2vw,58px);line-height:1.06;letter-spacing:-.03em;margin:0 0 16px;color:#fff}
+.hA h2 em{font-style:normal;color:var(--gold);display:block}
+.hA-s{margin:0 0 26px;font-size:var(--s-5);line-height:1.5;color:rgba(255,255,255,.62);max-width:34ch}
+.hA-b{background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.14);
+  border-radius:var(--r-l);padding:6px 22px}
+.hA-r{display:flex;align-items:baseline;justify-content:space-between;gap:18px;
+  padding:15px 0;border-bottom:1px solid rgba(255,255,255,.1)}
+.hA-r:last-child{border-bottom:0}
+.hA-k{display:flex;align-items:center;gap:9px;font-size:var(--s-2);color:rgba(255,255,255,.56);
+  letter-spacing:var(--l-4)}
+.hA-v{font-size:clamp(19px,2vw,27px);font-weight:700;letter-spacing:-.02em;
+  font-variant-numeric:tabular-nums;color:#fff;text-align:right}
+.hA-v small{display:block;font-size:var(--s-2);font-weight:400;letter-spacing:0;
+  color:rgba(255,255,255,.5);margin-top:2px}
+.hA-v.att{color:var(--gold)}
+@media(max-width:880px){.hA-in{grid-template-columns:1fr}}
+
+/* ══ B · LA PHRASE ═══════════════════════════════════════════════════════
+   Une seule phrase, énorme, dont deux morceaux sont lus en direct. Rien
+   d'autre au-dessus de la ligne de flottaison qu'un champ d'adresse.
+   C'est la direction la plus risquée et la plus reconnaissable : elle tient
+   ou ne tient pas sur la qualité de la phrase. */
+.hB{background:var(--paper);padding:clamp(46px,6vw,92px) 0}
+.hB-in{max-width:var(--max);margin:0 auto;padding:0 var(--pad)}
+.hB-k{display:flex;align-items:center;gap:9px;margin:0 0 22px;
+  font-size:var(--s-2);font-weight:700;letter-spacing:var(--l-5);text-transform:uppercase;color:var(--ink-2)}
+.hB h2{font-size:clamp(34px,5.6vw,76px);line-height:1.04;letter-spacing:-.035em;
+  margin:0;max-width:17ch;color:var(--ink);text-wrap:balance}
+.hB h2 u{text-decoration:none;color:var(--vif);font-variant-numeric:tabular-nums}
+.hB-f{margin-top:clamp(28px,3.4vw,44px);display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.hB-f .addr{margin:0;flex:1 1 340px;max-width:520px}
+.hB-p{margin:20px 0 0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 18px;
+  font-size:var(--s-3);color:var(--ink-2)}
+.hB-p b{color:var(--ink)}
+
+/* ══ C · LE PRIX ═════════════════════════════════════════════════════════
+   L'autre chose que Loc'Air défend vraiment : le prix affiché est le prix
+   payé. Ici c'est le prix qui ouvre la page, avec ce qu'il contient — et le
+   chiffre vient du même barème que le calculateur, pas d'un texte écrit. */
+.hC{background:var(--vif-clair);padding:clamp(40px,5vw,76px) 0}
+.hC-in{max-width:var(--max);margin:0 auto;padding:0 var(--pad);
+  display:grid;grid-template-columns:1fr .92fr;gap:clamp(26px,4vw,60px);align-items:center}
+.hC-n{display:flex;align-items:baseline;gap:11px;margin:0;flex-wrap:nowrap}
+.hC-n b{font-size:clamp(56px,8.6vw,116px);line-height:.9;font-weight:700;
+  letter-spacing:-.045em;color:var(--ink);font-variant-numeric:tabular-nums}
+.hC-n span{display:flex;flex-direction:column;font-weight:700;color:var(--vif-d);line-height:1}
+.hC-n span{font-size:clamp(24px,3vw,40px)}
+.hC-n small{font-size:clamp(13px,1.25vw,16px);font-weight:600;margin-top:6px;
+  letter-spacing:var(--l-4);white-space:nowrap}
+.hC h2{font-size:clamp(23px,2.5vw,34px);line-height:1.14;letter-spacing:-.02em;
+  margin:16px 0 0;max-width:19ch;color:var(--ink)}
+.hC-l{list-style:none;margin:22px 0 0;padding:0;display:grid;gap:9px}
+.hC-l li{position:relative;padding-left:25px;font-size:var(--s-3);line-height:1.5;color:var(--ink-2)}
+.hC-l li::before{content:'';position:absolute;left:1px;top:.42em;width:9px;height:5px;
+  border-left:2px solid var(--vif);border-bottom:2px solid var(--vif);transform:rotate(-45deg)}
+.hC-card{background:#fff;border:1px solid var(--line);border-radius:var(--r-l);
+  padding:clamp(20px,2.4vw,30px)}
+.hC-card .addr{margin:0}
+.hC-d{display:flex;align-items:flex-start;gap:9px;margin:0 0 16px;line-height:1.45;
+  font-size:var(--s-2);color:var(--ink-2)}
+.hC-d .vif-pt{margin-top:.42em}
+.hC-note{margin:15px 0 0;font-size:var(--s-2);color:var(--ink-3);line-height:1.5}
+@media(max-width:880px){.hC-in{grid-template-columns:1fr}}
+
+/* Le champ d'adresse est celui du site, repris tel quel dans les trois. */
+.addr-row svg{color:var(--ink-3)}
+</style>
+</head>
+<body>
+
+<div class="lab-t">
+  <h1>Le haut de page, repris de zéro — trois directions</h1>
+  <p>Aucune n'invente de donnée et aucune ne demande un nouveau branchement : les trois
+     tiennent avec ce que le serveur de Loc'Air renvoie déjà — l'état du stock, la prochaine
+     date libre, le barème, la note Google, la température à Nice. Ce qui change, c'est
+     <b style="color:rgba(255,255,255,.86)">ce qu'on met en premier</b>. Sans réponse du
+     serveur, les emplacements restent vides : c'est exactement ce qu'un visiteur verrait.</p>
+</div>
+
+<!-- ══════════════════ A ══════════════════ -->
+<div class="lab-l"><span>Direction A</span><b>Le tableau de bord</b><i>on mène par l'état réel</i></div>
+<div class="lab-c"><div class="lab-f">
+<section class="hA">
+  <div class="hA-in">
+    <div>
+      <h2 data-live="titreA">Il fait trop chaud&nbsp;?<em>Livré demain matin.</em></h2>
+      <p class="hA-s">Climatiseurs mobiles et rafraîchisseurs d'air. Livrés, installés, repris.</p>
+      <form class="addr" action="/" method="get" style="max-width:440px">
+        <div class="addr-row">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <input type="text" name="adresse" autocomplete="off" placeholder="Ex. 12 av. Jean Médecin, Nice">
+        </div>
+        <button class="btn btn-1" type="submit">Voir les disponibilités →</button>
+      </form>
+    </div>
+    <div class="hA-b">
+      <div class="hA-r">
+        <span class="hA-k"><i class="vif-pt" aria-hidden="true"></i>Aujourd'hui à Nice</span>
+        <span class="hA-v" data-live="temp">—</span>
+      </div>
+      <div class="hA-r">
+        <span class="hA-k">Machines libres</span>
+        <span class="hA-v" data-live="stock">—</span>
+      </div>
+      <div class="hA-r">
+        <span class="hA-k">Prochaine livraison</span>
+        <span class="hA-v" data-live="next">—<small>entre 8h et 12h</small></span>
+      </div>
+      <div class="hA-r">
+        <span class="hA-k">À partir de</span>
+        <span class="hA-v" data-live="prix">—<small>tout compris, sans caution</small></span>
+      </div>
+    </div>
+  </div>
+</section>
+</div></div>
+<div class="lab-n"><b>Ce que ça dit de la marque :</b> une entreprise qui tient un planning et qui
+  l'ouvre. Le point vert n'est pas un ornement — il dit que les quatre chiffres sont lus à
+  l'instant. C'est la direction qui rend la concurrence incapable de copier la page : il faut
+  un vrai stock branché pour l'afficher.</div>
+
+<!-- ══════════════════ B ══════════════════ -->
+<div class="lab-l"><span>Direction B</span><b>La phrase</b><i>on mène par une seule idée, en très grand</i></div>
+<div class="lab-c"><div class="lab-f">
+<section class="hB">
+  <div class="hB-in">
+    <p class="hB-k"><i class="vif-pt" aria-hidden="true"></i><span data-live="ville">Nice</span></p>
+    <h2 data-live="phrase">Il fait <u data-live="tempN">—</u> dehors.<br>Demain matin entre 8h et 12h, quelqu'un sonne chez vous.</h2>
+    <div class="hB-f">
+      <form class="addr" action="/" method="get">
+        <div class="addr-row">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <input type="text" name="adresse" autocomplete="off" placeholder="Ex. 12 av. Jean Médecin, Nice">
+        </div>
+        <button class="btn btn-1" type="submit">Voir les disponibilités →</button>
+      </form>
+    </div>
+    <p class="hB-p">
+      <span class="stars" aria-hidden="true">★★★★★</span>
+      <span><b data-live="note">—</b> · <span data-live="avis">—</span> avis Google</span>
+      <span>·</span><span><b>+500</b> clients livrés depuis 2019</span>
+      <span>·</span><span>0 € de caution</span>
+    </p>
+  </div>
+</section>
+</div></div>
+<div class="lab-n"><b>Ce que ça dit de la marque :</b> quelqu'un qui parle, pas un catalogue. La
+  phrase entière change avec l'état du stock — complet, elle dit la vraie prochaine date au lieu
+  de promettre demain. C'est la plus mémorable et la plus fragile : elle ne tient que si la
+  phrase est bonne, et il n'y a rien d'autre pour rattraper.</div>
+
+<!-- ══════════════════ C ══════════════════ -->
+<div class="lab-l"><span>Direction C</span><b>Le prix</b><i>on mène par ce qu'on défend</i></div>
+<div class="lab-c"><div class="lab-f">
+<section class="hC">
+  <div class="hC-in">
+    <div>
+      <p class="hC-n"><b data-live="prixN">—</b><span>€<small>par jour</small></span></p>
+      <h2>Le prix affiché est le prix payé. Livraison, pose et reprise dedans.</h2>
+      <ul class="hC-l">
+        <li>0 € de caution, jamais — ni chèque, ni empreinte bancaire</li>
+        <li>Kit de calfeutrage fourni et posé, retiré sans trace</li>
+        <li>Annulation gratuite jusqu'à la livraison</li>
+      </ul>
+    </div>
+    <div class="hC-card">
+      <p class="hC-d"><i class="vif-pt" aria-hidden="true"></i><span data-live="creneau">Prochaine livraison —</span></p>
+      <form class="addr" action="/" method="get">
+        <div class="addr-row">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0116 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          <input type="text" name="adresse" autocomplete="off" placeholder="Ex. 12 av. Jean Médecin, Nice">
+        </div>
+        <button class="btn btn-1" type="submit">Voir les disponibilités →</button>
+      </form>
+      <p class="hC-note">Le tarif baisse par tranches à partir du 8ᵉ jour. Le calculateur juste
+        en dessous donne le total exact avant toute inscription.</p>
+    </div>
+  </div>
+</section>
+</div></div>
+<div class="lab-n"><b>Ce que ça dit de la marque :</b> l'honnêteté comme argument d'entrée. C'est
+  la seule des trois qui répond tout de suite à la question que les gens se posent vraiment en
+  arrivant. Le chiffre vient de <b>/api/pricing-config</b>, donc du même barème que le
+  calculateur : il ne peut pas mentir.</div>
+
+<div class="lab-end"></div>
+
+<script>
+/* ── LE BRANCHEMENT, IDENTIQUE POUR LES TROIS ──────────────────────────────
+   Une seule lecture par source, distribuée aux trois propositions. Rien
+   n'est écrit en dur : tant qu'une réponse manque, l'emplacement garde son
+   tiret. C'est volontaire — on doit voir sur cette planche ce que verrait un
+   visiteur si le serveur ne répondait pas. */
+(function(){
+  function poser(nom, txt){
+    document.querySelectorAll('[data-live="' + nom + '"]').forEach(function(e){
+      var pt = e.querySelector('small');
+      e.textContent = txt;
+      if(pt) e.appendChild(pt);
+    });
+  }
+  function json(u){ return fetch(u).then(function(r){ return r.json(); }).catch(function(){ return null; }); }
+
+  /* Température réelle à Nice — la même source que la page publique. */
+  json('https://api.open-meteo.com/v1/forecast?latitude=43.7102&longitude=7.2620&current=temperature_2m')
+    .then(function(d){
+      var t = d && d.current && d.current.temperature_2m;
+      if(typeof t !== 'number') return;
+      poser('temp', Math.round(t) + ' °C');
+      poser('tempN', Math.round(t) + ' °C');
+    });
+
+  /* État du stock + prochaine date libre. */
+  Promise.all([json('/api/mode-complet'), json('/api/disponibilite')]).then(function(r){
+    var mc = r[0], dp = r[1];
+    if(mc && typeof mc.disponibles === 'number'){
+      poser('stock', mc.sold_out ? '0' : String(mc.disponibles));
+    }
+    var complet = mc && mc.sold_out;
+    var suivante = dp && dp.next_available;
+    var jour = suivante ? new Date(suivante).toLocaleDateString('fr-FR',
+      { weekday:'long', day:'numeric', month:'long' }) : null;
+
+    /* Le titre suit le stock, comme sur le site : promettre « demain matin »
+       au-dessus d'un tableau qui affiche « 0 machine libre » serait le pire
+       des deux mondes — la promesse ET le démenti sur le même écran. */
+    var tA = document.querySelector('[data-live="titreA"]');
+    if(tA && complet) tA.innerHTML = 'Il fait trop chaud&nbsp;?<em>Plus pour longtemps.</em>';
+
+    if(!complet){
+      poser('next', 'demain matin');
+      poser('creneau', 'Prochaine livraison : demain, 8h – 12h');
+    } else if(jour){
+      poser('next', jour);
+      poser('creneau', 'Complet pour demain · prochain créneau ' + jour);
+      /* Complet : la phrase de la direction B ne peut plus promettre demain.
+         Elle dit la vérité, c'est tout l'intérêt de la brancher. */
+      var h = document.querySelector('[data-live="phrase"]');
+      if(h) h.innerHTML = 'Complet pour demain.<br>Le premier créneau libre est ' +
+        'le <u>' + jour + '</u>.';
+    }
+  });
+
+  /* Barème — le même que le calculateur de la page publique. */
+  json('/api/pricing-config').then(function(d){
+    var p = d && d.pricing;
+    var base = p && (p.base_day_price || p.prix_jour || p.tarif_base);
+    if(typeof base === 'number'){
+      poser('prix', base + ' €/jour');
+      poser('prixN', String(base));
+    }
+  });
+
+  /* Note Google. */
+  json('/api/google-rating').then(function(d){
+    if(!d || !d.available) return;
+    poser('note', d.rating.toLocaleString('fr-FR', {minimumFractionDigits:1, maximumFractionDigits:1}));
+    poser('avis', String(d.count));
+  });
+})();
+</script>
+</body>
+</html>
