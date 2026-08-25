@@ -148,12 +148,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 [hidden]{display:none!important}
 
 /* ── LES AVIS ──────────────────────────────────────────────────────────────
-   Trois cartes, remplies par /api/google-rating et par rien d'autre. Le
-   bloc reste masqué tant que Google ne répond pas : mieux vaut un écran
-   avec son seul titre qu'un écran avec trois avis inventés.
-   Pas de cadre ni de fond : un filet en haut, comme les autres grilles du
-   site. La note est en or, comme les étoiles — c'est le seul endroit de la
-   page où l'or dit « quelqu'un d'autre nous a jugés ». */
+   Des cartes remplies par /api/google-rating et par rien d'autre. Le bloc
+   reste masqué tant que Google ne répond pas : mieux vaut un écran avec son
+   seul titre qu'un écran avec trois avis inventés.
+   La note est en or, comme les étoiles — c'est le seul endroit de la page
+   où l'or dit « quelqu'un d'autre nous a jugés ».
+   La mise en forme des cartes est plus bas, avec le rail. */
 #e7 .titre{max-width:none}
 #e7 .titre em{display:block}
 /* Trois titres se coupaient au mauvais endroit : « …pas. Il / se rafraîchit »,
@@ -177,20 +177,63 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    --t-3 : le titre passait à trois lignes. 26 px est le plancher de --t-4,
    une valeur qui existe déjà dans l'échelle. */
 @media(max-width:430px){#e7 .titre{font-size:26px}}
-.avis{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--e-2);margin-top:var(--e-2)}
-.avis-c{padding:18px 0 0;border-top:1px solid var(--line);min-width:0;
-  display:flex;flex-direction:column}
+/* ── LES CARTES D'AVIS, EN CARROUSEL ───────────────────────────────────
+   Avant : trois avis en colonnes, séparés par un filet. Google en renvoie
+   six ; on n'en montrait que la moitié, et rien ne disait qu'il y en avait
+   d'autres.
+   Maintenant : un rail qui glisse, comme le rail des vidéos juste en
+   dessous — même geste, même gabarit, donc rien de nouveau à apprendre.
+   Ce qui change par rapport à la référence envoyée : pas de logo de source
+   en couleur (nous n'avons pas le droit de reproduire celui de Google), pas
+   d'ombre portée. Une carte blanche, un filet, une pastille sarcelle avec
+   l'initiale — les formes de la maison.
+   Ce qui NE change pas : le contenu vient de /api/google-rating et de rien
+   d'autre, et le bloc reste masqué si Google ne répond pas. */
+.avis{
+  display:flex;gap:16px;margin-top:var(--e-2);
+  overflow-x:auto;scroll-snap-type:x proximity;scroll-behavior:smooth;
+  padding:2px 0 16px;
+  scrollbar-width:thin;scrollbar-color:rgba(14,31,53,.22) transparent;
+}
+.avis::-webkit-scrollbar{height:5px}
+.avis::-webkit-scrollbar-thumb{background:rgba(14,31,53,.22);border-radius:var(--r-f)}
+.avis-c{
+  flex:0 0 auto;width:clamp(266px,29vw,344px);scroll-snap-align:start;
+  display:flex;flex-direction:column;
+  padding:22px 24px;border:1px solid var(--line);border-radius:var(--r-l);
+  background:#fff;
+}
+/* En-tête : l'initiale dans une pastille, le nom, la date relative. C'est
+   ce qui manquait le plus — un avis sans visage se lit comme un slogan. */
+.avis-h{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.avis-i{
+  flex:0 0 auto;width:40px;height:40px;border-radius:50%;
+  background:var(--vif-clair);color:var(--vif-d);
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:var(--s-4);line-height:1;
+}
+.avis-n{min-width:0}
+.avis-n b{display:block;font-weight:700;color:var(--ink);font-size:var(--s-3);
+  line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.avis-n span{display:block;color:var(--ink-2);font-size:var(--s-2);line-height:var(--h-3)}
 .avis-c .stars{font-size:var(--s-3);letter-spacing:1.5px}
 .avis-t{margin-top:11px;font-size:var(--s-3);line-height:var(--h-4);color:var(--ink)}
-.avis-q{margin-top:auto;padding-top:16px;display:flex;flex-wrap:wrap;align-items:baseline;
-  gap:4px 9px;font-size:var(--s-2);color:var(--ink-2)}
-.avis-q b{font-weight:700;color:var(--ink)}
-/* « sur Google » restait sur la même ligne que le nom quand le nom était
-   court, et passait à la ligne quand il était long : les trois pieds de
-   carte n'avaient plus la même hauteur et les noms partaient en escalier.
-   Il passe TOUJOURS à la ligne. */
-.avis-q i{font-style:normal;color:var(--ink-3);flex-basis:100%}
-@media(max-width:860px){.avis{grid-template-columns:1fr;gap:var(--e-1)}}
+.avis-q{margin-top:auto;padding-top:16px;font-size:var(--s-2);color:var(--ink-3)}
+
+/* Les deux flèches. Elles ne s'affichent que si le rail déborde vraiment —
+   deux flèches inertes valent moins que pas de flèches du tout. Le rail
+   reste utilisable au doigt, à la molette et au clavier sans elles. */
+.avis-nav{display:flex;gap:10px;margin-top:4px}
+.avis-b{
+  width:44px;height:44px;border-radius:50%;
+  border:1px solid var(--line);background:#fff;color:var(--ink);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:background var(--mv-2) var(--mv),border-color var(--mv-2) var(--mv);
+}
+.avis-b:hover:not(:disabled){background:var(--vif-clair);border-color:var(--vif)}
+.avis-b:disabled{opacity:.38;cursor:default}
+.avis-b svg{width:19px;height:19px}
+@media(prefers-reduced-motion:reduce){.avis{scroll-behavior:auto}}
 /* L'invitation à envoyer une vidéo : elle ne dépend d'aucune donnée, donc
    elle tient l'écran même si Google ne répond pas. Une ligne, pas une
    carte — c'est une demande, pas une offre. */
