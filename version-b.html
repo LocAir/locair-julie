@@ -886,7 +886,15 @@
     <!-- Rempli par /api/google-rating, et par rien d'autre. Tant que Google
          ne répond pas — ou que les clés ne sont pas configurées — ce bloc
          reste masqué : aucun avis n'est jamais écrit à la main. -->
-    <div class="avis" id="avis" hidden></div>
+    <div class="avis" id="avis" tabindex="0" role="region" data-ta="e7.railAvis" aria-label="Avis Google" hidden></div>
+    <div class="avis-nav" id="avis-nav" hidden>
+      <button class="avis-b" type="button" id="avis-p" data-ta="e7.prec" aria-label="Avis précédents" aria-controls="avis">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <button class="avis-b" type="button" id="avis-s" data-ta="e7.suiv" aria-label="Avis suivants" aria-controls="avis">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
+    </div>
 
     <!-- Les vidéos, pour plus tard. Le rail reste masqué tant qu'aucune
          n'existe : un cadre vide ne vaut pas mieux que rien.
@@ -1998,6 +2006,9 @@ Object.assign(T, {
                   en:"Rating and reviews read straight from our Google listing, updated on their own.",
                   zh:"评分与评价直接读取自我们的 Google 商家资料，自动更新。",
                   ru:"Оценка и отзывы читаются прямо с нашей карточки Google и обновляются сами."},
+  'e7.railAvis' : {fr:"Avis Google", en:"Google reviews", zh:"谷歌评价", ru:"Отзывы в Google"},
+  'e7.prec'     : {fr:"Avis précédents", en:"Previous reviews", zh:"上一批评价", ru:"Предыдущие отзывы"},
+  'e7.suiv'     : {fr:"Avis suivants", en:"Next reviews", zh:"下一批评价", ru:"Следующие отзывы"},
   'e7.surGoogle': {fr:"sur Google", en:"on Google", zh:"来自 Google", ru:"на Google"},
   'e1.titre'   : {fr:"Il fait trop chaud ?<em> Livré demain matin.</em>",
                   en:"Too hot to bear?<em> Delivered tomorrow morning.</em>",
@@ -2685,10 +2696,32 @@ Object.assign(T, {
     var bloc = document.getElementById('avis');
     if(!bloc || !Array.isArray(liste) || !liste.length) return;
     var frag = document.createDocumentFragment();
-    liste.slice(0, 3).forEach(function(a){
+    /* Six et non trois : c'est ce que Google renvoie, et le rail sait les
+       porter. Avant, la moitié des avis obtenus était jetée. */
+    liste.slice(0, 6).forEach(function(a){
       if(!a || !a.texte) return;
       var art = document.createElement('article');
       art.className = 'avis-c';
+
+      /* En-tête : initiale, nom, date relative. L'initiale est tirée du nom
+         que Google donne — ce n'est pas une donnée de plus, c'est la même
+         lue autrement. Si le nom est vide, pas de pastille inventée. */
+      var nom = (a.auteur || '').trim();
+      var tete = document.createElement('div');
+      tete.className = 'avis-h';
+      if(nom){
+        var past = document.createElement('span');
+        past.className = 'avis-i'; past.setAttribute('aria-hidden','true');
+        past.textContent = nom.slice(0, 1).toUpperCase();
+        tete.appendChild(past);
+      }
+      var ident = document.createElement('div');
+      ident.className = 'avis-n';
+      var b = document.createElement('b'); b.textContent = nom;
+      ident.appendChild(b);
+      if(a.quand){ var q = document.createElement('span'); q.textContent = a.quand; ident.appendChild(q); }
+      tete.appendChild(ident);
+      art.appendChild(tete);
 
       var et = document.createElement('span');
       et.className = 'stars'; et.setAttribute('aria-hidden','true');
@@ -2701,11 +2734,7 @@ Object.assign(T, {
 
       var pied = document.createElement('p');
       pied.className = 'avis-q';
-      var nom = document.createElement('b'); nom.textContent = a.auteur || '';
-      pied.appendChild(nom);
-      if(a.quand){ var q = document.createElement('span'); q.textContent = a.quand; pied.appendChild(q); }
-      var src = document.createElement('i'); src.textContent = mot('e7.surGoogle') || 'sur Google';
-      pied.appendChild(src);
+      pied.textContent = mot('e7.surGoogle') || 'sur Google';
       art.appendChild(pied);
 
       frag.appendChild(art);
@@ -2713,6 +2742,40 @@ Object.assign(T, {
     if(!frag.childNodes.length) return;
     bloc.appendChild(frag);
     bloc.hidden = false;
+    flechesAvis(bloc);
+  }
+
+  /* ── Les deux flèches du rail d'avis ──────────────────────────────────
+     Elles n'apparaissent que si le rail déborde pour de bon : sur un grand
+     écran avec trois avis, tout tient et deux flèches inertes ne servent
+     qu'à décevoir. Le rail reste utilisable au doigt, à la molette et au
+     clavier même quand elles sont absentes.
+     Un pas = la largeur d'une carte plus l'écart, lue sur la page et non
+     écrite en dur : la carte est élastique. */
+  function flechesAvis(bloc){
+    var nav = document.getElementById('avis-nav');
+    var prec = document.getElementById('avis-p');
+    var suiv = document.getElementById('avis-s');
+    if(!nav || !prec || !suiv) return;
+
+    function pas(){
+      var c = bloc.querySelector('.avis-c');
+      if(!c) return bloc.clientWidth;
+      var st = getComputedStyle(bloc);
+      return c.getBoundingClientRect().width + (parseFloat(st.columnGap || st.gap) || 16);
+    }
+    function etat(){
+      var deborde = bloc.scrollWidth - bloc.clientWidth > 2;
+      nav.hidden = !deborde;
+      if(!deborde) return;
+      prec.disabled = bloc.scrollLeft <= 2;
+      suiv.disabled = bloc.scrollLeft >= bloc.scrollWidth - bloc.clientWidth - 2;
+    }
+    prec.addEventListener('click', function(){ bloc.scrollLeft -= pas(); });
+    suiv.addEventListener('click', function(){ bloc.scrollLeft += pas(); });
+    bloc.addEventListener('scroll', etat, {passive:true});
+    addEventListener('resize', etat);
+    etat();
   }
 
   /* ── Stock et disponibilité ───────────────────────────────────────────
