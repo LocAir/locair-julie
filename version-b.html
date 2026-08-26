@@ -264,6 +264,11 @@
           <div class="sugg" id="sugg" role="listbox" data-ta="a.sugg" aria-label="Suggestions d'adresse"></div>
           <input type="hidden" name="cp" id="addr-cp">
         </div>
+        <!-- La ligne qui dit ce qui se passe. Elle etait absente : quand le
+             service d'adresses ne repondait pas, le visiteur tapait et il ne
+             se passait RIEN — ni suggestion, ni explication. role="status"
+             la fait lire a voix haute par les lecteurs d'ecran. -->
+        <p class="addr-m" id="addr-m" role="status" hidden></p>
         <button class="btn btn-1" type="submit" data-t="e1.voir">Voir les disponibilités →</button>
       </form>
       <p class="preuve1 ar ar-5">
@@ -1097,22 +1102,40 @@
 <!-- ══ 6 · LES CLIENTS ═════════════════════════════════════════════════════ -->
 <section class="ecran" id="e7" data-titre="Les clients">
   <div class="in">
-    <span class="kicker rv" data-t="e7.kicker">Ils l'ont fait</span>
-    <h2 class="titre rv t-3" data-th="e7.titre">Ce qu'ils en disent,<em> sans que nous l'écrivions.</em></h2>
+    <!-- Les fleches montent au bord du titre au lieu de trainer sous le
+         rail : on lit le titre et on voit dans le meme regard qu'il y a de
+         quoi faire defiler. Elles restent masquees tant que Google n'a pas
+         repondu — le bloc entier ne s'affiche jamais a vide. -->
+    <div class="tete-r rv">
+      <div class="tete-r-t">
+        <span class="kicker" data-t="e7.kicker">Ils l'ont fait</span>
+        <h2 class="titre t-3" data-th="e7.titre">Ce qu'ils en disent,<em> sans que nous l'écrivions.</em></h2>
+      </div>
+      <div class="avis-nav" id="avis-nav" hidden>
+        <button class="avis-b" type="button" id="avis-p" data-ta="e7.prec" aria-label="Avis précédents" aria-controls="avis">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <button class="avis-b" type="button" id="avis-s" data-ta="e7.suiv" aria-label="Avis suivants" aria-controls="avis">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
     <p class="dire rv" data-th="e7.dire">Ils viennent de Google. Nous ne les choisissons pas, et nous ne pouvons pas les effacer.</p>
 
     <!-- Rempli par /api/google-rating, et par rien d'autre. Tant que Google
          ne répond pas — ou que les clés ne sont pas configurées — ce bloc
          reste masqué : aucun avis n'est jamais écrit à la main. -->
     <div class="avis" id="avis" tabindex="0" role="region" data-ta="e7.railAvis" aria-label="Avis Google" hidden></div>
-    <div class="avis-nav" id="avis-nav" hidden>
-      <button class="avis-b" type="button" id="avis-p" data-ta="e7.prec" aria-label="Avis précédents" aria-controls="avis">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-      </button>
-      <button class="avis-b" type="button" id="avis-s" data-ta="e7.suiv" aria-label="Avis suivants" aria-controls="avis">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
-      </button>
-    </div>
+    <!-- QUAND GOOGLE NE REPOND PAS. Mesure avant d'ecrire ce bloc : l'ecran
+         annoncait « voici ce qu'ils en disent » et n'affichait rien dessous.
+         Un ecran qui promet et ne montre rien coute plus cher qu'un ecran
+         qui explique. On n'invente toujours aucun avis : on envoie lire les
+         vrais, la ou ils sont. -->
+    <p class="avis-vide" id="avis-vide" hidden>
+      <span data-t="e7.videT">Les avis ne s'affichent pas en ce moment.</span>
+      <a href="https://g.page/r/CeJQrt2gLNNrEAE" target="_blank" rel="noopener noreferrer"
+         data-t="e7.videL">Les lire sur notre fiche Google&nbsp;→</a>
+    </p>
 
     <!-- Les vidéos, pour plus tard. Le rail reste masqué tant qu'aucune
          n'existe : un cadre vide ne vaut pas mieux que rien.
@@ -1426,6 +1449,21 @@ function poserBord(cle, valeur){
   </div>
 </div>
 
+<!-- ══ REVENIR EN HAUT ═══════════════════════════════════════════════════
+     La page fait dix-huit écrans. Quelqu'un arrivé aux questions n'avait
+     aucun moyen de remonter réserver, sauf à refaire tout le chemin à
+     l'envers. Vérifié avant d'écrire : zéro bouton de ce genre sur la page.
+
+     Il n'apparaît qu'après deux écrans — avant, il n'a rien à faire là. Il
+     ne détourne jamais le défilement : il ramène en haut quand on le lui
+     demande, et c'est tout. L'écoute du défilement est passive, donc elle
+     ne peut pas ralentir le doigt. -->
+<button class="haut" id="haut" type="button" hidden
+        data-ta="a.haut" aria-label="Revenir en haut de la page">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+
 <div class="mbar">
   <a class="mbar-tel" href="tel:+33663798756" data-ta="p.appeler" aria-label="Appeler Loc'Air">
     <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 1.9.7 2.8a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.8.7a2 2 0 011.7 2z"/></svg>
@@ -1496,6 +1534,10 @@ var Livraison = (function(){
 })();
 
 Object.assign(T, {
+  'a.haut'    : {fr:"Revenir en haut de la page",
+                 en:"Back to the top of the page",
+                 zh:"返回页面顶部",
+                 ru:"Вернуться наверх страницы"},
   'a.sugg': {fr:"Suggestions d'adresse", en:"Address suggestions", zh:"地址建议", ru:"Подсказки адреса"}
 });
 
@@ -1659,6 +1701,18 @@ Object.assign(T, {
 
 /* ── Libellés des données en direct ────────────────────────────────────── */
 Object.assign(T, {
+  /* Les trois etats du champ d'adresse. Le troisieme ne se contente pas de
+     constater la panne : il dit quoi faire, parce que le formulaire accepte
+     tres bien une adresse ecrite a la main. */
+  'e1.addrCherche': {fr:"Recherche…", en:"Searching…", zh:"搜索中……", ru:"Ищем…"},
+  'e1.addrRien'   : {fr:"Aucune adresse trouvée. Continuez, nous vérifierons.",
+                     en:"No address found. Carry on — we'll check it.",
+                     zh:"没有找到该地址。请继续，我们会核实。",
+                     ru:"Адрес не найден. Продолжайте — мы проверим."},
+  'e1.addrPanne'  : {fr:"La recherche d'adresse ne répond pas. Écrivez votre adresse à la main, ça marchera aussi bien.",
+                     en:"Address lookup isn't responding. Type your address by hand — it works just as well.",
+                     zh:"地址查询暂时无响应。请手动输入地址，同样有效。",
+                     ru:"Поиск адреса не отвечает. Впишите адрес вручную — это сработает так же."},
   'e1.avisMot'  : {fr:"avis Google", en:"Google reviews", zh:"条谷歌评价", ru:"отзыва в Google"},
   'e1.clients'  : {fr:"clients livrés", en:"customers delivered", zh:"位客户", ru:"клиентов"},
   'd.restant'   : {fr:"appareil disponible", en:"unit available", zh:"台可用", ru:"аппарат в наличии"},
@@ -2359,6 +2413,16 @@ Object.assign(T, {
   'e7.railAvis' : {fr:"Avis Google", en:"Google reviews", zh:"谷歌评价", ru:"Отзывы в Google"},
   'e7.prec'     : {fr:"Avis précédents", en:"Previous reviews", zh:"上一批评价", ru:"Предыдущие отзывы"},
   'e7.suiv'     : {fr:"Avis suivants", en:"Next reviews", zh:"下一批评价", ru:"Следующие отзывы"},
+  /* Quand Google ne repond pas. On n'invente aucun avis : on envoie lire
+     les vrais, sur la fiche ou ils sont deja publies. */
+  'e7.videT'  : {fr:"Les avis ne s'affichent pas en ce moment.",
+                 en:"The reviews aren't loading right now.",
+                 zh:"评价暂时无法显示。",
+                 ru:"Отзывы сейчас не загружаются."},
+  'e7.videL'  : {fr:"Les lire sur notre fiche Google →",
+                 en:"Read them on our Google listing →",
+                 zh:"在我们的 Google 页面上查看 →",
+                 ru:"Прочитать их в нашей карточке Google →"},
   'e7.surGoogle': {fr:"sur Google", en:"on Google", zh:"来自 Google", ru:"на Google"},
   'e1.titre'   : {fr:"Il fait trop chaud ?<em> Livré demain matin.</em>",
                   en:"Too hot to bear?<em> Delivered tomorrow morning.</em>",
@@ -2576,6 +2640,40 @@ Object.assign(T, {
     });
   }, { rootMargin:'0px 0px -10% 0px', threshold:0.08 });
   blocs.forEach(function(b){ obs.observe(b); });
+})();
+
+/* ── 1 bis. Revenir en haut ──────────────────────────────────────────────
+   Il se montre passé deux écrans, et pas avant. L'écoute du défilement est
+   passive et repliée dans une frame d'animation : elle ne peut ni bloquer
+   ni ralentir le doigt. Le défilement n'est JAMAIS détourné — on ne remonte
+   que si le visiteur le demande, et « moins d'animation » remonte d'un coup
+   au lieu de glisser.
+   Après la remontée, le focus suit le regard : sinon la tabulation
+   repartirait du bas de page, là où plus personne ne se trouve.         */
+(function(){
+  var b = document.getElementById('haut');
+  if(!b) return;
+  var seuil = 0, prevu = false;
+  function calc(){ seuil = window.innerHeight * 2; }
+  function voir(){
+    prevu = false;
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    b.hidden = y < seuil;
+  }
+  function surDefilement(){
+    if(prevu) return;
+    prevu = true;
+    requestAnimationFrame(voir);
+  }
+  calc(); voir();
+  window.addEventListener('scroll', surDefilement, {passive:true});
+  window.addEventListener('resize', function(){ calc(); voir(); }, {passive:true});
+  b.addEventListener('click', function(){
+    var doux = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    window.scrollTo({ top:0, behavior: doux ? 'smooth' : 'auto' });
+    var t = document.getElementById('e1-titre');
+    if(t){ t.setAttribute('tabindex','-1'); t.focus({preventScroll:true}); }
+  });
 })();
 
 /* ── 2. Repère de progression, et couleur de la barre selon l'écran ──────
@@ -3039,7 +3137,11 @@ Object.assign(T, {
       noteReelle = d;
       poserNote();
     }
-    if(d && d.available) poserAvis(d.reviews);
+    var pose = (d && d.available) ? poserAvis(d.reviews) : false;
+    /* Rien a montrer ? On le dit, et on donne le chemin vers les vrais avis.
+       Le silence etait le pire des trois etats possibles. */
+    var repli = document.getElementById('avis-vide');
+    if(repli) repli.hidden = !!pose;
   });
 
   /* ── Les avis, tels que Google les donne ──────────────────────────────
@@ -3052,7 +3154,7 @@ Object.assign(T, {
      code sur notre page. */
   function poserAvis(liste){
     var bloc = document.getElementById('avis');
-    if(!bloc || !Array.isArray(liste) || !liste.length) return;
+    if(!bloc || !Array.isArray(liste) || !liste.length) return false;
     var frag = document.createDocumentFragment();
     /* Six et non trois : c'est ce que Google renvoie, et le rail sait les
        porter. Avant, la moitié des avis obtenus était jetée. */
@@ -3097,10 +3199,11 @@ Object.assign(T, {
 
       frag.appendChild(art);
     });
-    if(!frag.childNodes.length) return;
+    if(!frag.childNodes.length) return false;
     bloc.appendChild(frag);
     bloc.hidden = false;
     flechesAvis(bloc);
+    return true;
   }
 
   /* ── Les deux flèches du rail d'avis ──────────────────────────────────
@@ -3332,6 +3435,21 @@ Object.assign(T, {
 
   var minuteur = null, resultats = [], actif = -1;
 
+  /* Trois etats, un seul endroit : « je cherche », « je n'ai rien trouve »,
+     « le service ne repond pas ». Le troisieme dit aussi quoi faire — ecrire
+     l'adresse a la main marche tout aussi bien, le formulaire l'accepte. */
+  function dire(cle){
+    var m = document.getElementById('addr-m');
+    if(!m) return;
+    if(!cle){ m.hidden = true; m.textContent = ''; m.removeAttribute('data-t'); return; }
+    m.setAttribute('data-t', cle);
+    m.textContent = (typeof T !== 'undefined' && T[cle])
+      ? (T[cle][(typeof window.langueActuelle === 'function') ? window.langueActuelle() : 'fr'] || T[cle].fr)
+      : '';
+    m.classList.toggle('addr-m-p', cle === 'e1.addrPanne');
+    m.hidden = false;
+  }
+
   function fermer(){
     liste.classList.remove('on');
     champ.setAttribute('aria-expanded','false');
@@ -3342,7 +3460,7 @@ Object.assign(T, {
     if(!r) return;
     champ.value = r.properties.label;
     if(cp) cp.value = r.properties.postcode || '';
-    fermer();
+    fermer(); dire(null);
   }
   function afficher(){
     liste.innerHTML = '';
@@ -3372,18 +3490,21 @@ Object.assign(T, {
     clearTimeout(minuteur);
     var q = champ.value.trim();
     if(cp) cp.value = '';
-    if(q.length < 4){ resultats = []; fermer(); return; }
+    if(q.length < 4){ resultats = []; fermer(); dire(null); return; }
     /* 250 ms d'attente : on interroge quand la frappe s'arrête, pas à chaque
        lettre — sinon dix appels réseau pour une seule adresse. */
+    dire('e1.addrCherche');
     minuteur = setTimeout(function(){
       fetch('https://api-adresse.data.gouv.fr/search/?limit=5&autocomplete=1&lat=43.7102&lon=7.262&q='
             + encodeURIComponent(q))
         .then(function(r){ return r.ok ? r.json() : null; })
         .then(function(d){
+          if(d === null) throw new Error('sans reponse');
           resultats = (d && d.features) ? d.features : [];
           afficher();
+          dire(resultats.length ? null : 'e1.addrRien');
         })
-        .catch(function(){ resultats = []; fermer(); });
+        .catch(function(){ resultats = []; fermer(); dire('e1.addrPanne'); });
     }, 250);
   });
 

@@ -2729,3 +2729,159 @@ h1, h2,
 @media(prefers-reduced-motion:reduce){
   .ar,.bord:not([hidden]){animation:none;opacity:1;transform:none}
 }
+
+/* ══ L'APPUI ══════════════════════════════════════════════════════════════
+   Mesuré avant d'écrire ce bloc : 52 règles de survol, une règle de focus
+   qui couvre tout, quatre règles de désactivé — et UNE SEULE règle d'appui
+   dans les 2 700 lignes de cette feuille. C'était la poignée du curseur de
+   durée.
+
+   Or le survol n'existe pas sur un téléphone. L'appui est donc le seul
+   retour que le doigt reçoit : sans lui, on ne sait pas si le bouton a
+   compris, et le réflexe est d'appuyer une deuxième fois. Sur un bouton de
+   réservation, appuyer deux fois n'est pas anodin.
+
+   La grammaire reprend celle du survol, personne n'a rien de nouveau à
+   apprendre : ce qui se soulève au survol redescend à l'appui, ce qui est
+   rond se serre, ce qui n'a pas de forme à déplacer change de fond.
+   Chaque geste a aussi un signe qui ne bouge pas — un assombrissement ou un
+   changement de bordure — pour que l'appui reste perceptible quand le
+   visiteur a demandé moins d'animation.                                   */
+
+/* 1 · Ce qui se soulève au survol redescend d'un cran sous le doigt. */
+.btn:active,.mcard:active,.porte:active,.ouv.lien:active,
+.cook-oui:active,.cook-non:active,a.eq-p:active,.guide:active{
+  transform:translateY(1px)
+}
+.btn:active{filter:brightness(.94)}
+.mcard:active,.guide:active{border-color:var(--vif)}
+.porte:active{filter:brightness(.96)}
+
+/* 2 · Ce qui est rond ou compact se serre. */
+.chip:active,.burger:active,.menu-x:active,.lang-b:active,
+.infobar-x:active,.bar-compte:active,.mbar-tel:active,
+.avis-b:not(:disabled):active,.step-btn:not(:disabled):active{
+  transform:scale(.93);filter:brightness(.94)
+}
+.vplay:active span{transform:scale(.96)}
+
+/* 3 · Les points de progression : trop petits pour se serrer, ils grossissent. */
+.dots a:active{transform:scale(1.6);opacity:1}
+
+/* 4 · Ce qui n'a pas de forme à déplacer change de fond. */
+summary:active{background:var(--mist)}
+.ville-l:active{background:var(--mist)}
+.sugg button:active{background:var(--vif-clair)}
+.menu a.ml:active,.menu a.ms:active,.offre-o:active,
+.pied-grid a:active,.fil a:active,.bar-fil:active,
+.som a:active,.art a:active,.suite-l a:active{opacity:.62}
+
+/* L'appui doit se sentir tout de suite : la durée du survol est déjà courte,
+   celle de l'appui l'est encore plus. */
+.btn,.chip,.mcard,.porte,.burger,.menu-x,.lang-b,.infobar-x,
+.bar-compte,.avis-b,.step-btn,.cook-oui,.cook-non,a.eq-p,.ouv.lien{
+  transition-duration:var(--mv-1)
+}
+
+@media(prefers-reduced-motion:reduce){
+  /* Le déplacement disparaît ; l'assombrissement, la bordure et le fond
+     restent. L'appui se voit toujours, il ne bouge plus. */
+  .btn:active,.mcard:active,.porte:active,.ouv.lien:active,
+  .cook-oui:active,.cook-non:active,a.eq-p:active,.guide:active,
+  .chip:active,.burger:active,.menu-x:active,.lang-b:active,
+  .infobar-x:active,.bar-compte:active,.mbar-tel:active,
+  .avis-b:not(:disabled):active,.step-btn:not(:disabled):active,
+  .vplay:active span,.dots a:active{transform:none}
+  .cook-oui:active,.cook-non:active{filter:brightness(.92)}
+  .dots a:active{opacity:1;background:var(--vif)}
+}
+
+/* ══ REVENIR EN HAUT ══════════════════════════════════════════════════════
+   Dix-huit écrans, et aucun moyen de remonter : vérifié, il n'existait
+   aucun bouton de ce genre sur la page. Celui-ci est blanc et cerclé plutôt
+   que coloré, parce qu'il traverse des écrans clairs, marine et sarcelle :
+   une pastille sarcelle disparaîtrait sur l'écran sarcelle.
+   Il se range au-dessus de la barre du bas sur téléphone, et il passe SOUS
+   le bandeau cookies, qui a le dernier mot tant qu'on n'y a pas répondu. */
+.haut{
+  position:fixed;right:22px;bottom:22px;z-index:900;
+  width:46px;height:46px;border-radius:50%;
+  background:var(--paper);color:var(--ink);
+  border:1px solid var(--line);box-shadow:var(--o-2);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  transition:transform var(--mv-1) var(--mv),background var(--mv-1) var(--mv);
+}
+.haut svg{width:20px;height:20px}
+.haut:hover{background:var(--mist);transform:translateY(-2px)}
+.haut:active{transform:scale(.93);filter:brightness(.94)}
+@media(max-width:900px){
+  .haut{right:16px;bottom:calc(20px + 76px + env(safe-area-inset-bottom))}
+}
+@media(min-width:1181px){.haut{right:26px;bottom:26px}}
+@media(prefers-reduced-motion:reduce){
+  .haut:hover,.haut:active{transform:none}
+}
+
+/* ══ LA QUESTION OUVERTE SE DÉTACHE ═══════════════════════════════════════
+   Sur une liste de dix questions, l'ouverte ne se signalait que par un
+   changement de couleur du texte — trop discret pour qu'on retrouve où on
+   en est. Elle devient un panneau blanc sur le fond clair de l'écran, avec
+   une arête sarcelle à gauche, comme le mot du fondateur a la sienne.
+   La marge négative compense exactement le rembourrage : le texte ne bouge
+   pas d'un pixel quand la question s'ouvre, seul le fond déborde. */
+.faq details[open]{
+  background:var(--paper);
+  box-shadow:inset 2px 0 0 var(--vif);
+  border-bottom-color:transparent;
+  border-radius:0 var(--r) var(--r) 0;
+  margin:0 -16px;padding:0 16px;
+}
+
+/* ══ L'ACTION AU BORD DU TITRE ════════════════════════════════════════════
+   Les flèches du rail d'avis traînaient sous le rail. Elles montent à la
+   hauteur du titre : on lit le titre et on voit dans le même regard qu'il y
+   a de quoi faire défiler. Sur téléphone la ligne se replie, le titre
+   d'abord. */
+.tete-r{display:flex;align-items:flex-end;justify-content:space-between;gap:18px 24px;flex-wrap:wrap}
+.tete-r-t{min-width:0;flex:1 1 340px}
+.tete-r .titre{margin-bottom:0}
+.tete-r .avis-nav{margin:0 0 6px;flex:none}
+
+/* ══ CE QUI SE PASSE QUAND LA DONNÉE MANQUE ═══════════════════════════════
+   Mesuré avant : en coupant toutes les sources, le rail d'avis, ses flèches
+   et les trois cellules du bandeau vivant devenaient MASQUÉS — rien du tout,
+   sans un mot. Et dans le champ d'adresse, on tapait et il ne se passait
+   rien : ni suggestion, ni explication.
+   Le silence est le pire des trois états. Il donne à penser que le site est
+   cassé, alors qu'il suffisait de dire ce qui se passe.                   */
+
+/* Le champ d'adresse : « je cherche », « rien trouvé », « ça ne répond pas ».
+   La ligne ne réserve pas de place tant qu'elle n'a rien à dire — et quand
+   elle parle, c'est à la suite d'une frappe, donc jamais un saut subi. */
+.addr-m{
+  margin:9px 0 0;font-size:var(--s-2);line-height:var(--h-3);color:var(--ink-3);
+}
+.addr-m-p{color:var(--ink-2)}
+.e-ink .addr-m,.e-blue .addr-m{color:rgba(255,255,255,.62)}
+.e-ink .addr-m-p,.e-blue .addr-m-p{color:rgba(255,255,255,.82)}
+
+/* L'écran des avis quand Google ne répond pas. Il annonçait « voici ce
+   qu'ils en disent » et n'affichait rien dessous. Il explique maintenant, et
+   il donne le chemin vers les vrais avis — on n'en fabrique toujours aucun. */
+.avis-vide{
+  margin:26px 0 0;padding:18px 20px;
+  border:1px solid var(--line);border-radius:var(--r-l);
+  background:var(--paper);max-width:var(--lire);
+  font-size:var(--s-3);color:var(--ink-2);line-height:var(--h-5);
+}
+.avis-vide a{
+  display:inline-block;margin-top:7px;color:var(--vif);font-weight:700;
+  border-bottom:1px solid rgba(8,110,96,.34);
+}
+.avis-vide a:hover{border-bottom-color:var(--vif)}
+.avis-vide a:active{opacity:.62}
+.e-ink .avis-vide,.e-blue .avis-vide{
+  background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.16);
+  color:rgba(255,255,255,.76);
+}
+.e-ink .avis-vide a,.e-blue .avis-vide a{color:#fff;border-bottom-color:rgba(255,255,255,.4)}
