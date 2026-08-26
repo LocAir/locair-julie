@@ -264,6 +264,11 @@
           <div class="sugg" id="sugg" role="listbox" data-ta="a.sugg" aria-label="Suggestions d'adresse"></div>
           <input type="hidden" name="cp" id="addr-cp">
         </div>
+        <!-- La ligne qui dit ce qui se passe. Elle etait absente : quand le
+             service d'adresses ne repondait pas, le visiteur tapait et il ne
+             se passait RIEN — ni suggestion, ni explication. role="status"
+             la fait lire a voix haute par les lecteurs d'ecran. -->
+        <p class="addr-m" id="addr-m" role="status" hidden></p>
         <button class="btn btn-1" type="submit" data-t="e1.voir">Voir les disponibilités →</button>
       </form>
       <p class="preuve1 ar ar-5">
@@ -1121,6 +1126,16 @@
          ne répond pas — ou que les clés ne sont pas configurées — ce bloc
          reste masqué : aucun avis n'est jamais écrit à la main. -->
     <div class="avis" id="avis" tabindex="0" role="region" data-ta="e7.railAvis" aria-label="Avis Google" hidden></div>
+    <!-- QUAND GOOGLE NE REPOND PAS. Mesure avant d'ecrire ce bloc : l'ecran
+         annoncait « voici ce qu'ils en disent » et n'affichait rien dessous.
+         Un ecran qui promet et ne montre rien coute plus cher qu'un ecran
+         qui explique. On n'invente toujours aucun avis : on envoie lire les
+         vrais, la ou ils sont. -->
+    <p class="avis-vide" id="avis-vide" hidden>
+      <span data-t="e7.videT">Les avis ne s'affichent pas en ce moment.</span>
+      <a href="https://g.page/r/CeJQrt2gLNNrEAE" target="_blank" rel="noopener noreferrer"
+         data-t="e7.videL">Les lire sur notre fiche Google&nbsp;→</a>
+    </p>
 
     <!-- Les vidéos, pour plus tard. Le rail reste masqué tant qu'aucune
          n'existe : un cadre vide ne vaut pas mieux que rien.
@@ -1686,6 +1701,18 @@ Object.assign(T, {
 
 /* ── Libellés des données en direct ────────────────────────────────────── */
 Object.assign(T, {
+  /* Les trois etats du champ d'adresse. Le troisieme ne se contente pas de
+     constater la panne : il dit quoi faire, parce que le formulaire accepte
+     tres bien une adresse ecrite a la main. */
+  'e1.addrCherche': {fr:"Recherche…", en:"Searching…", zh:"搜索中……", ru:"Ищем…"},
+  'e1.addrRien'   : {fr:"Aucune adresse trouvée. Continuez, nous vérifierons.",
+                     en:"No address found. Carry on — we'll check it.",
+                     zh:"没有找到该地址。请继续，我们会核实。",
+                     ru:"Адрес не найден. Продолжайте — мы проверим."},
+  'e1.addrPanne'  : {fr:"La recherche d'adresse ne répond pas. Écrivez votre adresse à la main, ça marchera aussi bien.",
+                     en:"Address lookup isn't responding. Type your address by hand — it works just as well.",
+                     zh:"地址查询暂时无响应。请手动输入地址，同样有效。",
+                     ru:"Поиск адреса не отвечает. Впишите адрес вручную — это сработает так же."},
   'e1.avisMot'  : {fr:"avis Google", en:"Google reviews", zh:"条谷歌评价", ru:"отзыва в Google"},
   'e1.clients'  : {fr:"clients livrés", en:"customers delivered", zh:"位客户", ru:"клиентов"},
   'd.restant'   : {fr:"appareil disponible", en:"unit available", zh:"台可用", ru:"аппарат в наличии"},
@@ -2386,6 +2413,16 @@ Object.assign(T, {
   'e7.railAvis' : {fr:"Avis Google", en:"Google reviews", zh:"谷歌评价", ru:"Отзывы в Google"},
   'e7.prec'     : {fr:"Avis précédents", en:"Previous reviews", zh:"上一批评价", ru:"Предыдущие отзывы"},
   'e7.suiv'     : {fr:"Avis suivants", en:"Next reviews", zh:"下一批评价", ru:"Следующие отзывы"},
+  /* Quand Google ne repond pas. On n'invente aucun avis : on envoie lire
+     les vrais, sur la fiche ou ils sont deja publies. */
+  'e7.videT'  : {fr:"Les avis ne s'affichent pas en ce moment.",
+                 en:"The reviews aren't loading right now.",
+                 zh:"评价暂时无法显示。",
+                 ru:"Отзывы сейчас не загружаются."},
+  'e7.videL'  : {fr:"Les lire sur notre fiche Google →",
+                 en:"Read them on our Google listing →",
+                 zh:"在我们的 Google 页面上查看 →",
+                 ru:"Прочитать их в нашей карточке Google →"},
   'e7.surGoogle': {fr:"sur Google", en:"on Google", zh:"来自 Google", ru:"на Google"},
   'e1.titre'   : {fr:"Il fait trop chaud ?<em> Livré demain matin.</em>",
                   en:"Too hot to bear?<em> Delivered tomorrow morning.</em>",
@@ -3100,7 +3137,11 @@ Object.assign(T, {
       noteReelle = d;
       poserNote();
     }
-    if(d && d.available) poserAvis(d.reviews);
+    var pose = (d && d.available) ? poserAvis(d.reviews) : false;
+    /* Rien a montrer ? On le dit, et on donne le chemin vers les vrais avis.
+       Le silence etait le pire des trois etats possibles. */
+    var repli = document.getElementById('avis-vide');
+    if(repli) repli.hidden = !!pose;
   });
 
   /* ── Les avis, tels que Google les donne ──────────────────────────────
@@ -3113,7 +3154,7 @@ Object.assign(T, {
      code sur notre page. */
   function poserAvis(liste){
     var bloc = document.getElementById('avis');
-    if(!bloc || !Array.isArray(liste) || !liste.length) return;
+    if(!bloc || !Array.isArray(liste) || !liste.length) return false;
     var frag = document.createDocumentFragment();
     /* Six et non trois : c'est ce que Google renvoie, et le rail sait les
        porter. Avant, la moitié des avis obtenus était jetée. */
@@ -3158,10 +3199,11 @@ Object.assign(T, {
 
       frag.appendChild(art);
     });
-    if(!frag.childNodes.length) return;
+    if(!frag.childNodes.length) return false;
     bloc.appendChild(frag);
     bloc.hidden = false;
     flechesAvis(bloc);
+    return true;
   }
 
   /* ── Les deux flèches du rail d'avis ──────────────────────────────────
@@ -3393,6 +3435,21 @@ Object.assign(T, {
 
   var minuteur = null, resultats = [], actif = -1;
 
+  /* Trois etats, un seul endroit : « je cherche », « je n'ai rien trouve »,
+     « le service ne repond pas ». Le troisieme dit aussi quoi faire — ecrire
+     l'adresse a la main marche tout aussi bien, le formulaire l'accepte. */
+  function dire(cle){
+    var m = document.getElementById('addr-m');
+    if(!m) return;
+    if(!cle){ m.hidden = true; m.textContent = ''; m.removeAttribute('data-t'); return; }
+    m.setAttribute('data-t', cle);
+    m.textContent = (typeof T !== 'undefined' && T[cle])
+      ? (T[cle][(typeof window.langueActuelle === 'function') ? window.langueActuelle() : 'fr'] || T[cle].fr)
+      : '';
+    m.classList.toggle('addr-m-p', cle === 'e1.addrPanne');
+    m.hidden = false;
+  }
+
   function fermer(){
     liste.classList.remove('on');
     champ.setAttribute('aria-expanded','false');
@@ -3403,7 +3460,7 @@ Object.assign(T, {
     if(!r) return;
     champ.value = r.properties.label;
     if(cp) cp.value = r.properties.postcode || '';
-    fermer();
+    fermer(); dire(null);
   }
   function afficher(){
     liste.innerHTML = '';
@@ -3433,18 +3490,21 @@ Object.assign(T, {
     clearTimeout(minuteur);
     var q = champ.value.trim();
     if(cp) cp.value = '';
-    if(q.length < 4){ resultats = []; fermer(); return; }
+    if(q.length < 4){ resultats = []; fermer(); dire(null); return; }
     /* 250 ms d'attente : on interroge quand la frappe s'arrête, pas à chaque
        lettre — sinon dix appels réseau pour une seule adresse. */
+    dire('e1.addrCherche');
     minuteur = setTimeout(function(){
       fetch('https://api-adresse.data.gouv.fr/search/?limit=5&autocomplete=1&lat=43.7102&lon=7.262&q='
             + encodeURIComponent(q))
         .then(function(r){ return r.ok ? r.json() : null; })
         .then(function(d){
+          if(d === null) throw new Error('sans reponse');
           resultats = (d && d.features) ? d.features : [];
           afficher();
+          dire(resultats.length ? null : 'e1.addrRien');
         })
-        .catch(function(){ resultats = []; fermer(); });
+        .catch(function(){ resultats = []; fermer(); dire('e1.addrPanne'); });
     }, 250);
   });
 
