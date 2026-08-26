@@ -217,12 +217,33 @@
     <p class="etat rv" id="etat">
         <span class="etat-pt" aria-hidden="true"></span>
         <span id="etat-txt" data-th="e1.etat">Livré <b>demain matin</b>, entre 8h et 12h.</span>
-        <!-- Rempli par Météo (api.open-meteo.com), et par rien d'autre :
-             tant que l'API n'a pas répondu, la pastille reste masquée. -->
-        <span class="etat-t" id="etat-t" hidden></span>
       </p>
     <h1 class="titre rv" id="e1-titre" data-th="e1.titre">Il fait trop chaud ?<em> Livré demain matin.</em></h1>
     <p class="quoi rv" data-t="e1.quoi">Climatiseurs mobiles et rafraîchisseurs d'air. Livrés, installés, repris.</p>
+
+    <!-- ══ LE BANDEAU VIVANT ═══════════════════════════════════════════
+         Trois chiffres que le serveur connaît et que presque aucun loueur
+         ne peut afficher : la température réelle, le nombre de machines
+         libres aujourd'hui, le tarif de départ.
+         Ils étaient déjà sur la page — en gris, en petit, au-dessus du
+         titre. Ici ils occupent une ligne à eux.
+         Chaque cellule reste MASQUÉE tant que sa donnée n'est pas arrivée :
+         un tiret à la place d'un chiffre ne rassure personne. Le bandeau
+         entier disparaît si aucune des trois ne répond. -->
+    <div class="bord rv" id="bord" hidden>
+      <div class="bord-c" id="bord-c-temp" hidden>
+        <b class="bord-v" id="bord-temp"></b>
+        <span class="bord-k" data-t="e1.bTemp">à Nice, maintenant</span>
+      </div>
+      <div class="bord-c" id="bord-c-stock" hidden>
+        <b class="bord-v" id="bord-stock"></b>
+        <span class="bord-k" data-t="e1.bStock">machines libres aujourd'hui</span>
+      </div>
+      <div class="bord-c" id="bord-c-prix" hidden>
+        <b class="bord-v" id="bord-prix"></b>
+        <span class="bord-k" data-t="e1.bPrix">par jour, tout compris</span>
+      </div>
+    </div>
 
     <div class="e1-grid">
       <!-- La photo la plus importante du site : la scène, pas le produit.
@@ -1211,6 +1232,26 @@
 </footer>
 
 </main>
+<script>
+/* ── LE BANDEAU VIVANT DE L'ACCUEIL ───────────────────────────────────────
+   Déclaré UNE fois, en global, parce que les trois valeurs arrivent de trois
+   blocs différents : la température du bloc météo, le stock du bloc
+   disponibilité, le tarif du bloc calculateur. Une fonction locale à l'un
+   des trois serait invisible pour les deux autres.
+   Une cellule ne s'affiche que si sa donnée est arrivée, et le bandeau
+   entier reste masqué tant qu'aucune des trois n'a répondu : un tiret à la
+   place d'un chiffre ne rassure personne. */
+function poserBord(cle, valeur){
+  var c = document.getElementById('bord-c-' + cle);
+  var v = document.getElementById('bord-' + cle);
+  if(!c || !v || valeur == null || valeur === '') return;
+  v.textContent = valeur;
+  c.hidden = false;
+  var b = document.getElementById('bord');
+  if(b) b.hidden = false;
+}
+</script>
+
 
 <div class="cook" id="cook" role="dialog" aria-live="polite" data-ta="c.titre" aria-label="Cookies">
   <p data-th="c.texte">Nous utilisons des cookies pour mesurer l'audience de ce site. Vous pouvez les accepter ou les refuser — et changer d'avis à tout moment depuis la <a href="/confidentialite">politique de confidentialité</a>.</p>
@@ -2105,6 +2146,9 @@ Object.assign(T, {
                   en:"Too hot to bear?<em> Not for much longer.</em>",
                   zh:"太热了？<em>很快就不会了。</em>",
                   ru:"Слишком жарко?<em> Уже ненадолго.</em>"},
+  'e1.bTemp'  : {fr:"à Nice, maintenant", en:"in Nice, right now", zh:"尼斯，此刻", ru:"в Ницце, сейчас"},
+  'e1.bStock' : {fr:"machines libres aujourd'hui", en:"machines free today", zh:"今日可用机器", ru:"свободных машин сегодня"},
+  'e1.bPrix'  : {fr:"par jour, tout compris", en:"per day, all included", zh:"每天，全包价", ru:"в день, всё включено"},
   'e1.quoi'    : {fr:"Climatiseurs mobiles et rafraîchisseurs d'air. Livrés, installés, repris.",
                   en:"Portable air conditioners and evaporative coolers. Delivered, installed, collected.",
                   zh:"移动空调与蒸发式冷风机。上门配送、安装、回收。",
@@ -2619,7 +2663,12 @@ Object.assign(T, {
       /* Le même degré, dans le premier écran. Le bandeau du haut se ferme
          d'un clic et ne revient pas de la journée ; l'écran d'accueil, lui,
          est vu par tout le monde. */
-      var pastille = document.getElementById('etat-t');
+      /* La température va désormais dans le bandeau vivant, en grand. La
+         pastille qui la répétait sous la promesse a été retirée : elle
+         faisait dire trois fois la même chose au même écran — barre du
+         haut, pastille, bandeau. */
+      poserBord('temp', reel + '\u00A0°C');
+      var pastille = null;
       if(pastille){
         pastille.innerHTML = '<b>' + reel + '°C</b> <i>' + mot('e1.tempNice') + '</i>';
         pastille.hidden = false;
@@ -2910,7 +2959,12 @@ Object.assign(T, {
   }
 
   json('/api/mode-complet').then(function(d){
-    if(d && typeof d.sold_out === 'boolean'){ stock = d; Livraison.majStock(d); poserDispo(); }
+    if(d && typeof d.sold_out === 'boolean'){
+      stock = d; Livraison.majStock(d); poserDispo();
+      /* Complet : on affiche 0, c'est une information. Sinon le nombre réel.
+         Rien n'est arrondi ni enjolivé. */
+      if(typeof d.disponibles === 'number') poserBord('stock', d.sold_out ? '0' : String(d.disponibles));
+    }
   });
   json('/api/disponibilite').then(function(d){
     if(d && d.next_available){ prochaine = d.next_available; Livraison.majProchaine(d.next_available); poserDispo(); }
@@ -2919,6 +2973,18 @@ Object.assign(T, {
   /* ── Packs à prix fixe ────────────────────────────────────────────────
      Activés depuis l'admin. Sans cet appel, on les active et rien ne
      s'affiche. Le bloc reste caché tant qu'il n'y a rien à montrer. */
+  /* Le tarif de départ vient du barème de la page, jamais d'un texte écrit :
+     si l'admin change le prix, le bandeau change avec lui. */
+  function bordPrix(){
+    if(!window.Prix || !window.Prix.config) return;
+    var p = window.Prix.config();
+    var base = p && (p.base_day_price || p.prix_jour || p.tarif_base ||
+                     (p.tranches && p.tranches[0] && p.tranches[0].prix));
+    if(typeof base === 'number') poserBord('prix', window.Prix.eur(base));
+  }
+  document.addEventListener('prix', bordPrix);
+  bordPrix();
+
   json('/api/forfaits').then(function(d){
     var zone = document.getElementById('forfaits');
     if(!zone || !d || !Array.isArray(d.forfaits) || !d.forfaits.length) return;
