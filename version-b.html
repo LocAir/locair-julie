@@ -1097,22 +1097,30 @@
 <!-- ══ 6 · LES CLIENTS ═════════════════════════════════════════════════════ -->
 <section class="ecran" id="e7" data-titre="Les clients">
   <div class="in">
-    <span class="kicker rv" data-t="e7.kicker">Ils l'ont fait</span>
-    <h2 class="titre rv t-3" data-th="e7.titre">Ce qu'ils en disent,<em> sans que nous l'écrivions.</em></h2>
+    <!-- Les fleches montent au bord du titre au lieu de trainer sous le
+         rail : on lit le titre et on voit dans le meme regard qu'il y a de
+         quoi faire defiler. Elles restent masquees tant que Google n'a pas
+         repondu — le bloc entier ne s'affiche jamais a vide. -->
+    <div class="tete-r rv">
+      <div class="tete-r-t">
+        <span class="kicker" data-t="e7.kicker">Ils l'ont fait</span>
+        <h2 class="titre t-3" data-th="e7.titre">Ce qu'ils en disent,<em> sans que nous l'écrivions.</em></h2>
+      </div>
+      <div class="avis-nav" id="avis-nav" hidden>
+        <button class="avis-b" type="button" id="avis-p" data-ta="e7.prec" aria-label="Avis précédents" aria-controls="avis">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
+        </button>
+        <button class="avis-b" type="button" id="avis-s" data-ta="e7.suiv" aria-label="Avis suivants" aria-controls="avis">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
     <p class="dire rv" data-th="e7.dire">Ils viennent de Google. Nous ne les choisissons pas, et nous ne pouvons pas les effacer.</p>
 
     <!-- Rempli par /api/google-rating, et par rien d'autre. Tant que Google
          ne répond pas — ou que les clés ne sont pas configurées — ce bloc
          reste masqué : aucun avis n'est jamais écrit à la main. -->
     <div class="avis" id="avis" tabindex="0" role="region" data-ta="e7.railAvis" aria-label="Avis Google" hidden></div>
-    <div class="avis-nav" id="avis-nav" hidden>
-      <button class="avis-b" type="button" id="avis-p" data-ta="e7.prec" aria-label="Avis précédents" aria-controls="avis">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>
-      </button>
-      <button class="avis-b" type="button" id="avis-s" data-ta="e7.suiv" aria-label="Avis suivants" aria-controls="avis">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>
-      </button>
-    </div>
 
     <!-- Les vidéos, pour plus tard. Le rail reste masqué tant qu'aucune
          n'existe : un cadre vide ne vaut pas mieux que rien.
@@ -1426,6 +1434,21 @@ function poserBord(cle, valeur){
   </div>
 </div>
 
+<!-- ══ REVENIR EN HAUT ═══════════════════════════════════════════════════
+     La page fait dix-huit écrans. Quelqu'un arrivé aux questions n'avait
+     aucun moyen de remonter réserver, sauf à refaire tout le chemin à
+     l'envers. Vérifié avant d'écrire : zéro bouton de ce genre sur la page.
+
+     Il n'apparaît qu'après deux écrans — avant, il n'a rien à faire là. Il
+     ne détourne jamais le défilement : il ramène en haut quand on le lui
+     demande, et c'est tout. L'écoute du défilement est passive, donc elle
+     ne peut pas ralentir le doigt. -->
+<button class="haut" id="haut" type="button" hidden
+        data-ta="a.haut" aria-label="Revenir en haut de la page">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+       stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+</button>
+
 <div class="mbar">
   <a class="mbar-tel" href="tel:+33663798756" data-ta="p.appeler" aria-label="Appeler Loc'Air">
     <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 1.9.7 2.8a2 2 0 01-.5 2.1L8.1 9.9a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.8.7a2 2 0 011.7 2z"/></svg>
@@ -1496,6 +1519,10 @@ var Livraison = (function(){
 })();
 
 Object.assign(T, {
+  'a.haut'    : {fr:"Revenir en haut de la page",
+                 en:"Back to the top of the page",
+                 zh:"返回页面顶部",
+                 ru:"Вернуться наверх страницы"},
   'a.sugg': {fr:"Suggestions d'adresse", en:"Address suggestions", zh:"地址建议", ru:"Подсказки адреса"}
 });
 
@@ -2576,6 +2603,40 @@ Object.assign(T, {
     });
   }, { rootMargin:'0px 0px -10% 0px', threshold:0.08 });
   blocs.forEach(function(b){ obs.observe(b); });
+})();
+
+/* ── 1 bis. Revenir en haut ──────────────────────────────────────────────
+   Il se montre passé deux écrans, et pas avant. L'écoute du défilement est
+   passive et repliée dans une frame d'animation : elle ne peut ni bloquer
+   ni ralentir le doigt. Le défilement n'est JAMAIS détourné — on ne remonte
+   que si le visiteur le demande, et « moins d'animation » remonte d'un coup
+   au lieu de glisser.
+   Après la remontée, le focus suit le regard : sinon la tabulation
+   repartirait du bas de page, là où plus personne ne se trouve.         */
+(function(){
+  var b = document.getElementById('haut');
+  if(!b) return;
+  var seuil = 0, prevu = false;
+  function calc(){ seuil = window.innerHeight * 2; }
+  function voir(){
+    prevu = false;
+    var y = window.pageYOffset || document.documentElement.scrollTop || 0;
+    b.hidden = y < seuil;
+  }
+  function surDefilement(){
+    if(prevu) return;
+    prevu = true;
+    requestAnimationFrame(voir);
+  }
+  calc(); voir();
+  window.addEventListener('scroll', surDefilement, {passive:true});
+  window.addEventListener('resize', function(){ calc(); voir(); }, {passive:true});
+  b.addEventListener('click', function(){
+    var doux = !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    window.scrollTo({ top:0, behavior: doux ? 'smooth' : 'auto' });
+    var t = document.getElementById('e1-titre');
+    if(t){ t.setAttribute('tabindex','-1'); t.focus({preventScroll:true}); }
+  });
 })();
 
 /* ── 2. Repère de progression, et couleur de la barre selon l'écran ──────
