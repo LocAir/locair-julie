@@ -2676,6 +2676,32 @@ Object.assign(T, {
   });
 })();
 
+/* ── 1 ter. Le clavier ne doit pas cacher le champ qu'on remplit ────────
+   Mesuré sur un écran de 844 px : le champ d'adresse finit à 672 px du haut.
+   Un clavier d'iPhone en occupe environ 336, il ne reste que 508 px visibles
+   — le champ était donc caché au moment précis où on écrivait dedans.
+
+   visualViewport est la seule mesure qui dit ce qui reste VRAIMENT visible
+   quand le clavier monte ; la hauteur de fenêtre, elle, ne bouge pas. On ne
+   déplace la page que si le champ est réellement masqué, et seulement en
+   réponse à une frappe du visiteur : le défilement n'est jamais détourné.  */
+(function(){
+  var vv = window.visualViewport;
+  if(!vv) return;
+  function replacer(){
+    var e = document.activeElement;
+    if(!e) return;
+    var t = e.tagName;
+    if(t !== 'INPUT' && t !== 'TEXTAREA' && t !== 'SELECT') return;
+    var r = e.getBoundingClientRect();
+    var basVisible = vv.offsetTop + vv.height;
+    if(r.bottom <= basVisible - 12) return;   /* deja visible : on ne touche a rien */
+    try { e.scrollIntoView({ block:'center', behavior:'instant' }); }
+    catch(x){ e.scrollIntoView(true); }
+  }
+  vv.addEventListener('resize', replacer);
+})();
+
 /* ── 2. Repère de progression, et couleur de la barre selon l'écran ──────
    Sur un fond sombre, un logo sombre disparaît. La barre et les points
    changent donc de couleur en fonction de l'écran traversé.            */

@@ -2885,3 +2885,57 @@ summary:active{background:var(--mist)}
   color:rgba(255,255,255,.76);
 }
 .e-ink .avis-vide a,.e-blue .avis-vide a{color:#fff;border-bottom-color:rgba(255,255,255,.4)}
+
+/* ══ LE POUCE ═════════════════════════════════════════════════════════════
+   Mesuré sur un téléphone de 390 px : sur 67 cibles visibles, 25 familles
+   passaient sous les 44 px de côté qu'il faut à un pouce. Les trois pires :
+
+     · LE CHAMP D'ADRESSE, 26 px de haut — le contrôle le plus important de
+       la page. Le cadre gris en fait 56, mais son rembourrage appartenait à
+       la BOÎTE et pas au champ : appuyer sur la bordure ne faisait rien.
+       C'est le piège classique, et il coûte des réservations ;
+     · LES BOUTONS PLUS ET MOINS du calculateur, 40 px — ceux qu'on tape le
+       plus souvent, plusieurs fois de suite ;
+     · LES LIENS DU PIED DE PAGE, 16 px de haut espacés de 9 — soit un pas
+       de 25 px pour une cible de 16. On tape le lien d'à côté.
+
+   Deux méthodes, selon le cas. Pour un bouton isolé, une plaque invisible
+   par-dessus : la zone tactile passe à 44 px sans qu'un seul pixel visible
+   ne change. Pour une colonne de liens serrés, la plaque ne sert à rien —
+   elle mordrait sur le voisin — il faut de la vraie place, donc du
+   rembourrage.                                                            */
+
+/* Le champ d'adresse : le rembourrage passe de la boîte au champ. Le cadre
+   garde exactement la même taille, mais il devient tapable en entier. */
+.addr-row{padding:0 17px}
+.addr-row input{padding:15px 0}
+
+/* La plaque invisible. min-height ne rétrécit jamais une grande cible : elle
+   ne fait que relever les petites. */
+.step-btn,.chip,.offre-o,.logo{position:relative}
+.step-btn::after,.chip::after,.offre-o::after,.logo::after,.infobar-x::after{
+  content:'';position:absolute;left:50%;top:50%;
+  width:100%;height:100%;min-width:44px;min-height:44px;
+  transform:translate(-50%,-50%);
+}
+
+/* Le curseur de durée : la boîte tapable monte à 44 px, la marge négative
+   rend la hauteur au reste de la page. Rien ne bouge à l'écran. */
+/* z-index : la marge négative fait déborder la boîte de 9 px sur le bloc
+   suivant, et sans lui c'est le bloc suivant qui attrapait le doigt. */
+.gliss{height:44px;margin:-9px 0;position:relative;z-index:1}
+
+/* Les colonnes de liens : de la place, pas une plaque. Le pas passe de 25 à
+   32 px, et chaque lien de 16 à 30 px de haut. */
+.pied-grid li{margin-bottom:2px}
+.pied-grid a{display:inline-block;padding:7px 0}
+.pied a,.preview-bar a{display:inline-block;padding:5px 0}
+.avis-vide a{padding-top:9px;padding-bottom:5px}
+
+/* Le pied de page n'a pas la classe .ecran : il ne recevait donc pas le
+   dégagement qui met le contenu hors de portée de la barre du bas. Mesuré :
+   tout en bas de la page, trois liens du pied finissaient SOUS la barre — et
+   comme on ne peut pas défiler plus loin, ils étaient inatteignables. */
+@media(max-width:900px){
+  .pied-bloc{padding-bottom:calc(40px + 76px + env(safe-area-inset-bottom))}
+}
