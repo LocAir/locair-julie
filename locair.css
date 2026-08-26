@@ -461,6 +461,7 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   --mv-1: .14s;   /* réaction immédiate : survol, couleur   */
   --mv-2: .24s;   /* déplacement : panneau, menu, bandeau   */
   --mv-3: .68s;   /* l'apparition au défilement             */
+  --mv-ar:.42s;   /* l'arrivée du haut de page              */
 
   --e-1: clamp(22px, 2.4vw, 32px);   /* écart serré : marge intérieure      */
   --e-2: clamp(24px, 2.9vw, 40px);   /* écart moyen : entre colonnes        */
@@ -2683,4 +2684,48 @@ h1, h2,
   .ct::before{top:9px;left:-28px;margin-left:0}
   .ct-hub::before{top:5px;left:-31px;margin-left:0}
   .ct b{font-size:var(--s-3)}
+}
+
+/* ══ L'ARRIVÉE DU HAUT DE PAGE ════════════════════════════════════════════
+   Le haut de page utilisait le même mécanisme que le reste : .rv part à
+   opacité zéro, et c'est du JavaScript qui la remet à un quand le bloc entre
+   dans l'écran. Mesuré : la page s'affiche à 216 ms, le JavaScript ne pose
+   sa classe qu'à 341 ms, puis la transition dure 680 ms. Résultat, le titre
+   n'est complètement lisible qu'à 1 020 ms — et c'est CE chiffre que Google
+   retient comme « plus gros élément affiché ». Cent vingt-cinq millisecondes
+   de page blanche, suivies d'un fondu deux fois trop long, pour du contenu
+   déjà présent dans le HTML.
+
+   Le haut de page a donc son arrivée à lui : une animation CSS, qui part
+   toute seule au premier affichage. Pas de JavaScript dans le chemin, donc
+   pas de trou ; pas d'observateur, donc pas de hasard sur le moment ; et une
+   durée courte, parce qu'un texte qu'on attend n'est pas un texte élégant.
+
+   Le décalage est de 12 px et non de 24 : au-dessus de la ligne de flottaison
+   on accompagne l'arrivée, on ne la met pas en scène.
+   Rien ne touche au défilement, ici comme ailleurs.                        */
+@keyframes arrivee{
+  from{opacity:0;transform:translateY(12px)}
+  to  {opacity:1;transform:none}
+}
+.ar{animation:arrivee var(--mv-ar) var(--mv) both}
+/* Les retards sont écrits en clair. L'ancien système les tirait de
+   :nth-child, qui compte TOUS les frères : le formulaire et les preuves,
+   nichés dans une grille, se retrouvaient tous en premier enfant et
+   arrivaient donc en même temps que le tout premier bloc. Mesuré : les six
+   éléments du haut de page recevaient leur classe à la même milliseconde.
+   Un décalage qui ne décale rien ne sert à rien. */
+.ar-1{animation-delay:0ms}
+.ar-2{animation-delay:55ms}
+.ar-3{animation-delay:110ms}
+.ar-4{animation-delay:165ms}
+.ar-5{animation-delay:220ms}
+/* Le bandeau vivant n'arrive pas avec les autres : il attend ses données.
+   Comme il est masqué au départ, son animation ne démarre qu'au moment où il
+   cesse de l'être — display:none remet toute animation à zéro. Il se pose
+   donc en douceur au lieu d'apparaître d'un coup au milieu du texte. */
+.bord:not([hidden]){animation:arrivee var(--mv-ar) var(--mv) both}
+
+@media(prefers-reduced-motion:reduce){
+  .ar,.bord:not([hidden]){animation:none;opacity:1;transform:none}
 }
