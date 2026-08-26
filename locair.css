@@ -2627,3 +2627,60 @@ h1, h2,
 /* Le jour où la vraie photo de pose est livrée, la bande cesse d'être
    masquée — et le bandeau dessiné, qui la doublait, s'efface. */
 .bande:not([hidden]) + .kit{display:none}
+
+/* ══ LE TRAIT DE CÔTE ═════════════════════════════════════════════════════
+   Neuf villes dans leur ordre réel, sur un rail. Ce n'est pas une image :
+   c'est du texte posé sur une ligne, donc il se traduit, il grossit avec le
+   zoom et il passe le contrôle de contraste comme le reste.
+   Sur grand écran le rail est horizontal, d'ouest en est. Sur téléphone il
+   se redresse à la verticale : neuf colonnes de 40 px ne sont lisibles pour
+   personne. */
+.cote{list-style:none;display:grid;grid-template-columns:repeat(9,1fr);
+  gap:0;margin:34px 0 0;padding:0;position:relative;min-height:152px}
+.cote::before{content:'';position:absolute;left:0;right:0;top:71px;height:2px;
+  background:var(--line);border-radius:2px}
+/* Le segment coloré couvre les colonnes 3 à 5 sur 9 — Cagnes, Saint-Laurent
+   et Nice — c'est-à-dire exactement la zone standard de la liste dessous. */
+.cote::after{content:'';position:absolute;top:71px;left:27.78%;width:22.22%;
+  height:2px;background:var(--vif);border-radius:2px}
+.ct{position:relative;min-width:0}
+.ct::before{content:'';position:absolute;top:66px;left:50%;margin-left:-6px;
+  width:12px;height:12px;border-radius:50%;
+  background:var(--paper);border:2px solid var(--line)}
+/* « Saint-Laurent-du-Var » ne tient pas dans un neuvième de la largeur : il
+   se cassait en trois lignes. Un nom sur deux passe donc AU-DESSUS du trait.
+   Chaque étiquette dispose alors de deux colonnes au lieu d'une — la largeur
+   est en pourcentage, donc ça reste vrai à toutes les tailles d'écran. */
+.ct b{position:absolute;left:50%;transform:translateX(-50%);width:190%;
+  text-align:center;font-size:var(--s-2);font-weight:700;
+  line-height:var(--h-3);color:var(--ink-3)}
+.ct:nth-child(odd) b{top:90px}
+.ct:nth-child(even) b{bottom:96px}
+/* Aux deux bouts, une étiquette de deux colonnes déborderait de la page.
+   Ces deux noms-là sont courts : une colonne leur suffit. */
+.ct:first-child b,.ct:last-child b{width:100%}
+.ct-std::before{background:var(--vif);border-color:var(--vif)}
+.ct-std b{color:var(--ink)}
+/* Nice porte tout : point plus gros, halo, et le seul nom en couleur. */
+.ct-hub::before{top:63px;margin-left:-9px;width:18px;height:18px;
+  box-shadow:0 0 0 5px var(--vif-clair)}
+.ct-hub b{color:var(--vif);font-size:var(--s-4)}
+.cote-l{margin-top:20px;font-size:var(--s-2);color:var(--ink-3);line-height:var(--h-3)}
+.cote-l b{color:var(--ink-2);font-weight:700}
+
+@media(max-width:759px){
+  .cote{grid-template-columns:1fr;gap:0;padding-left:28px;margin-top:28px;min-height:0}
+  .cote::before{left:5px;right:auto;top:14px;bottom:14px;width:2px;height:auto}
+  /* À la verticale chaque nom a toute la largeur : le décalage n'a plus de
+     raison d'être, les étiquettes reviennent dans le flux. */
+  .ct b{position:static;transform:none;width:auto;text-align:left}
+  .ct:nth-child(odd) b,.ct:nth-child(even) b{top:auto;bottom:auto}
+  /* Le segment coloré se calait en pourcentage de la hauteur : à la
+     verticale les rangées n'ont pas toutes la même hauteur et il glissait.
+     Les points pleins suffisent à dire la zone. */
+  .cote::after{display:none}
+  .ct{padding:7px 0;text-align:left}
+  .ct::before{top:9px;left:-28px;margin-left:0}
+  .ct-hub::before{top:5px;left:-31px;margin-left:0}
+  .ct b{font-size:var(--s-3)}
+}
