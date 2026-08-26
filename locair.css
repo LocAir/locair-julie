@@ -2729,3 +2729,69 @@ h1, h2,
 @media(prefers-reduced-motion:reduce){
   .ar,.bord:not([hidden]){animation:none;opacity:1;transform:none}
 }
+
+/* ══ L'APPUI ══════════════════════════════════════════════════════════════
+   Mesuré avant d'écrire ce bloc : 52 règles de survol, une règle de focus
+   qui couvre tout, quatre règles de désactivé — et UNE SEULE règle d'appui
+   dans les 2 700 lignes de cette feuille. C'était la poignée du curseur de
+   durée.
+
+   Or le survol n'existe pas sur un téléphone. L'appui est donc le seul
+   retour que le doigt reçoit : sans lui, on ne sait pas si le bouton a
+   compris, et le réflexe est d'appuyer une deuxième fois. Sur un bouton de
+   réservation, appuyer deux fois n'est pas anodin.
+
+   La grammaire reprend celle du survol, personne n'a rien de nouveau à
+   apprendre : ce qui se soulève au survol redescend à l'appui, ce qui est
+   rond se serre, ce qui n'a pas de forme à déplacer change de fond.
+   Chaque geste a aussi un signe qui ne bouge pas — un assombrissement ou un
+   changement de bordure — pour que l'appui reste perceptible quand le
+   visiteur a demandé moins d'animation.                                   */
+
+/* 1 · Ce qui se soulève au survol redescend d'un cran sous le doigt. */
+.btn:active,.mcard:active,.porte:active,.ouv.lien:active,
+.cook-oui:active,.cook-non:active,a.eq-p:active,.guide:active{
+  transform:translateY(1px)
+}
+.btn:active{filter:brightness(.94)}
+.mcard:active,.guide:active{border-color:var(--vif)}
+.porte:active{filter:brightness(.96)}
+
+/* 2 · Ce qui est rond ou compact se serre. */
+.chip:active,.burger:active,.menu-x:active,.lang-b:active,
+.infobar-x:active,.bar-compte:active,.mbar-tel:active,
+.avis-b:not(:disabled):active,.step-btn:not(:disabled):active{
+  transform:scale(.93);filter:brightness(.94)
+}
+.vplay:active span{transform:scale(.96)}
+
+/* 3 · Les points de progression : trop petits pour se serrer, ils grossissent. */
+.dots a:active{transform:scale(1.6);opacity:1}
+
+/* 4 · Ce qui n'a pas de forme à déplacer change de fond. */
+summary:active{background:var(--mist)}
+.ville-l:active{background:var(--mist)}
+.sugg button:active{background:var(--vif-clair)}
+.menu a.ml:active,.menu a.ms:active,.offre-o:active,
+.pied-grid a:active,.fil a:active,.bar-fil:active,
+.som a:active,.art a:active,.suite-l a:active{opacity:.62}
+
+/* L'appui doit se sentir tout de suite : la durée du survol est déjà courte,
+   celle de l'appui l'est encore plus. */
+.btn,.chip,.mcard,.porte,.burger,.menu-x,.lang-b,.infobar-x,
+.bar-compte,.avis-b,.step-btn,.cook-oui,.cook-non,a.eq-p,.ouv.lien{
+  transition-duration:var(--mv-1)
+}
+
+@media(prefers-reduced-motion:reduce){
+  /* Le déplacement disparaît ; l'assombrissement, la bordure et le fond
+     restent. L'appui se voit toujours, il ne bouge plus. */
+  .btn:active,.mcard:active,.porte:active,.ouv.lien:active,
+  .cook-oui:active,.cook-non:active,a.eq-p:active,.guide:active,
+  .chip:active,.burger:active,.menu-x:active,.lang-b:active,
+  .infobar-x:active,.bar-compte:active,.mbar-tel:active,
+  .avis-b:not(:disabled):active,.step-btn:not(:disabled):active,
+  .vplay:active span,.dots a:active{transform:none}
+  .cook-oui:active,.cook-non:active{filter:brightness(.92)}
+  .dots a:active{opacity:1;background:var(--vif)}
+}
