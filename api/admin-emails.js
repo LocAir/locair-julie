@@ -220,14 +220,19 @@ module.exports = async (req, res) => {
           .eq('id', reservationId).eq('city_id', city.id).maybeSingle();
         if (!resaSms) return res.status(404).json({ error: 'Réservation introuvable' });
         const result = await SMS_SENDER_BY_SCENARIO[scenario](supabase, resaSms, { force: true });
-        if (!result.sent) return res.status(422).json({ error: RESEND_ERROR_LABEL[result.reason] || (result.error || result.reason) });
+        // `reason` en plus du message traduit — sans lui, le front ne peut
+        // distinguer "en pause" (récupérable en 1 clic : reprendre puis
+        // renvoyer) des autres échecs (voir envoyerRappelRecuperation() côté
+        // admin/index.html, demande d'Aly "je veux pouvoir l'envoyer à tout
+        // moment si besoin", 2026-08-25).
+        if (!result.sent) return res.status(422).json({ error: RESEND_ERROR_LABEL[result.reason] || (result.error || result.reason), reason: result.reason });
         return res.status(200).json({ ok: true });
       }
 
       const { data: resaOwned } = await supabase.from('reservations').select('id').eq('id', reservationId).eq('city_id', city.id).maybeSingle();
       if (!resaOwned) return res.status(404).json({ error: 'Réservation introuvable' });
       const result = await sendScenarioEmail(supabase, { reservationId, scenario, force: true });
-      if (!result.sent) return res.status(422).json({ error: RESEND_ERROR_LABEL[result.reason] || (result.error || result.reason) });
+      if (!result.sent) return res.status(422).json({ error: RESEND_ERROR_LABEL[result.reason] || (result.error || result.reason), reason: result.reason });
       return res.status(200).json({ ok: true });
     }
 

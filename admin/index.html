@@ -1824,6 +1824,7 @@ function missionMoreActionsHtml(m, d, compact){
             ${!d.reassignLocked?`<button onclick="openEditMissionModal(${m.id})">✏️ Modifier</button>`:''}
             ${(!d.isAutre && !d.reassignLocked)?`<button onclick="openChangeAppareilModal(${m.id})">🔄 Changer le climatiseur</button>`:''}
             ${(!d.isAutre && !d.reassignLocked)?`<button onclick="fixerTarifTransporteur(${m.id},${m.montant_du_cents||0})">💰 Fixer le tarif transporteur</button>`:''}
+            ${(!d.isAutre && m.type==='recuperation' && d.res.tel)?`<button onclick="envoyerRappelRecuperation(${d.res.id},this)">📱 Envoyer le rappel de récupération</button>`:''}
             ${(!d.isAutre && !d.reassignLocked && m.type==='recuperation')?`<button onclick="openProlongFromMissionModal(${m.id})">📅 Prolonger la location</button>`:''}
             ${['acceptee','en_route','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
             ${!d.reassignLocked?`<button onclick="openForceCompleteModal(${m.id})">✅ Forcer terminé</button>`:''}
@@ -9674,6 +9675,37 @@ function renderClientCommunications(d){
 // événementiel jamais parti (ex. confirmation) ou renvoyer un email déjà
 // envoyé (client qui l'a perdu). Respecte toujours le scénario
 // désactivé/mis en pause pour ce client.
+// Bouton "Envoyer le rappel de récupération" sur une mission (onglet
+// Missions, demande d'Aly 2026-08-25 : "je veux pouvoir l'envoyer à tout
+// moment si besoin"). Même circuit que sendClientEmailNow ci-dessous
+// (action 'resend', déjà forcé côté serveur — "déjà envoyé aujourd'hui"
+// n'est jamais bloquant), avec une différence : si ce SMS a été mis en
+// pause pour cette réservation précise (bouton "Mettre en pause" de la
+// fiche client), on le reprend automatiquement avant de renvoyer plutôt
+// que de laisser l'admin chercher où le débloquer — "à tout moment"
+// doit marcher en un clic, pas deux écrans.
+async function envoyerRappelRecuperation(reservationId, btnEl){
+  if(btnEl) btnEl.disabled = true;
+  const scenario = 'sms_rappel_recuperation';
+  try{
+    const r = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'resend', reservation_id:reservationId, scenario})});
+    const d = await r.json();
+    if(r.ok){ showToast('SMS de rappel envoyé', 'success'); return; }
+    if(d.reason !== 'skipped_by_admin') throw new Error(d.error||'Erreur');
+    // En pause : on reprend puis on renvoie, en un seul clic pour l'admin.
+    const ru = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'unskip', reservation_id:reservationId, scenario})});
+    const du = await ru.json();
+    if(!ru.ok) throw new Error(du.error||'Erreur');
+    const r2 = await fetch(API('admin-emails'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'resend', reservation_id:reservationId, scenario})});
+    const d2 = await r2.json();
+    if(!r2.ok) throw new Error(d2.error||'Erreur');
+    showToast('Reprise + SMS de rappel envoyé', 'success');
+  }catch(e){
+    showToast(e.message, 'error');
+  }finally{
+    if(btnEl) btnEl.disabled = false;
+  }
+}
 async function sendClientEmailNow(reservationId, scenario, btnEl){
   if(btnEl) btnEl.disabled = true;
   try{
