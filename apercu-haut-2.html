@@ -112,23 +112,29 @@
 
 /* Meme regle que sur la version marine : une cellule sans donnee se retire
    au lieu d'afficher un tiret que personne ne voit. */
-.h2-n{display:flex;flex-wrap:wrap;gap:0;margin:0;padding:0}
-.h2-n>div{flex:1 1 150px;padding-right:18px;min-width:0}
-.h2-n>div+div{border-left:1px solid var(--line);padding-left:22px}
-/* A partir du moment ou ils sont a cote du titre, ils s'empilent : trois
-   chiffres cote a cote dans une colonne etroite redeviendraient illisibles. */
-@media(min-width:1040px){
-  .h2-n{flex-direction:column;border-left:1px solid var(--line);padding-left:30px;
-    margin-top:14px}
-  .h2-n>div{flex:none;padding:0 0 22px}
-  .h2-n>div:last-child{padding-bottom:0}
-  .h2-n>div+div{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:22px}
-}
-.h2-n dd{margin:0;font-family:var(--font-titre);font-weight:700;
-  font-size:clamp(28px,3vw,40px);line-height:1;letter-spacing:-.03em;
-  font-variant-numeric:tabular-nums;color:var(--ink)}
-.h2-n dt{margin-top:8px;font-size:var(--s-2);color:var(--ink-3);line-height:var(--h-3)}
-
+/* ══ LES DEUX CRÉNEAUX ════════════════════════════════════════════════════
+   « Quand ? » est la première question, et la seule à laquelle le haut de
+   page ne savait pas répondre. Les deux créneaux sont donc posés côte à
+   côte, avec leur prix. Celui d'aujourd'hui coûte 60 € de plus : mieux vaut
+   que le visiteur le lise ici que trois écrans plus loin.
+   L'Express est mis en avant — fond blanc, arête sarcelle, prix en couleur —
+   parce que c'est la promesse du titre. Le standard reste posé à côté, sans
+   décoration : c'est le choix par défaut, il n'a pas besoin de se vendre. */
+.h2-quand{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:560px) and (max-width:1039px){.h2-quand{grid-template-columns:1fr 1fr}}
+.qd{position:relative;padding:16px 18px;border-radius:var(--r);
+  border:1px solid var(--line);background:rgba(255,255,255,.55)}
+.qd-1{background:var(--paper);border-color:rgba(8,110,96,.28);
+  box-shadow:inset 2px 0 0 var(--vif),0 14px 34px -22px rgba(14,31,53,.4)}
+.qd-e{display:block;font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-5);
+  text-transform:uppercase;color:var(--ink-3)}
+.qd-1 .qd-e{color:var(--vif)}
+.qd-t{display:block;margin-top:7px;font-family:var(--font-titre);font-weight:700;
+  font-size:var(--t-6);letter-spacing:-.02em;line-height:var(--h-2);color:var(--ink)}
+.qd-d{display:block;margin-top:4px;font-size:var(--s-2);color:var(--ink-3)}
+.qd-p{position:absolute;right:18px;top:16px;font-size:var(--s-3);font-weight:700;
+  color:var(--vif);font-variant-numeric:tabular-nums}
+.qd-p-0{color:var(--ink-3);font-weight:600}
 
 /* Les trois garanties, sous les chiffres : ce sont les phrases que les gens
    cherchent avant de payer. */
@@ -174,18 +180,34 @@
   </svg>
 
   <div class="h2-in">
-    <p class="h2-eye"><i></i><span>Commandé avant 18h, <b>livré sous 2h</b> · Nice et alentours, 7j/7</span></p>
+    <p class="h2-eye"><i></i><span>Nice et alentours · <b>7 jours sur 7</b>, week-ends et jours fériés compris</span></p>
 
     <div class="h2-haut">
       <div class="h2-mot">
         <h1 class="h2-t">Loc'Air livre et installe chez vous.<em> Aujourd'hui.</em></h1>
-        <p class="h2-s">Climatiseurs mobiles et rafraîchisseurs d'air. Nous montons l'appareil, nous posons le kit sur votre fenêtre, nous vérifions que ça refroidit — et le dernier jour, <b>nous revenons tout chercher</b>.</p>
+        <p class="h2-s">Nous montons l'appareil, nous posons le kit sur votre fenêtre, nous vérifions que ça refroidit — et le dernier jour, <b>nous revenons tout chercher</b>.</p>
       </div>
-      <dl class="h2-n">
-        <div id="c-temp" hidden><dd id="temp"></dd><dt>à Nice, en ce moment</dt></div>
-        <div><dd>0 €</dd><dt>de caution, jamais</dt></div>
-        <div><dd>12 €</dd><dt>par jour, tout compris</dt></div>
-      </dl>
+
+      <!-- « Quand ? » est la premiere question, et la seule que le haut de
+           page ne savait pas encore repondre. Les deux creneaux sont donc
+           poses cote a cote, avec leur prix : celui d'aujourd'hui coute
+           60 EUR de plus, et il vaut mieux que le visiteur le lise ici que
+           trois ecrans plus loin. Une promesse dont on cache le prix se
+           retourne toujours contre celui qui l'a faite. -->
+      <div class="h2-quand">
+        <div class="qd qd-1">
+          <span class="qd-e">Express</span>
+          <b class="qd-t">Aujourd'hui, sous 2h</b>
+          <span class="qd-d">Commandé avant 18h</span>
+          <span class="qd-p">+60 €</span>
+        </div>
+        <div class="qd">
+          <span class="qd-e">Standard</span>
+          <b class="qd-t">Demain matin, 8h – 12h</b>
+          <span class="qd-d">Le créneau habituel</span>
+          <span class="qd-p qd-p-0">Sans supplément</span>
+        </div>
+      </div>
     </div>
 
     <div class="h2-g">
@@ -203,9 +225,10 @@
 
       <div>
         <div class="h2-r">
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l6 6L20 6"/></svg><b>0 €</b> de caution, jamais</span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l6 6L20 6"/></svg>Dès <b>12 €</b> par jour, tout compris</span>
           <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l6 6L20 6"/></svg>Kit de calfeutrage <b>fourni</b></span>
           <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l6 6L20 6"/></svg>Récupération <b>incluse</b></span>
-          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l6 6L20 6"/></svg>Livré <b>7j/7</b>, week-ends compris</span>
         </div>
         <p class="h2-p">
           <span class="stars" aria-hidden="true">★★★★★</span>
