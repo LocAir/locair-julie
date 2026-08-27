@@ -79,7 +79,7 @@ Le même `areaServed:"France"` apparaît une deuxième fois dans le bloc
 
 | # | Défaut | Gravité | État |
 |---|---|---|---|
-| 1 | Aucune page dédiée à **Nice** — la ville du siège, la recherche la plus forte. Cannes, Antibes, Monaco et Menton en ont une. | CRITIQUE | à faire |
+| 1 | ~~Aucune page dédiée à **Nice**~~ | CRITIQUE | **✅ fait** — `/location-climatiseur-nice`, dans le sitemap, 5 liens internes |
 | 2 | `madrid.html` et `reunion.html` ont **la même description** — Google en ignore une. | IMPORTANT | à faire |
 | 3 | **7 titres dépassent 60 caractères** et 8 descriptions dépassent 160 : Google les coupe au milieu. | IMPORTANT | à faire |
 | 4 | Les pages villes n'ont **aucun `hreflang`** alors que le site existe en 4 langues. | IMPORTANT | à faire |
