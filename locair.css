@@ -3071,3 +3071,30 @@ summary:active{background:var(--mist)}
   .ct-p{stroke-width:4}
   .ct-cote{stroke-width:3.4}
 }
+
+/* ══ LE BOUTON QUI ATTEND ══════════════════════════════════════════════════
+   Mesure d'origine : aucune règle aria-busy sur toute la page. On appuyait
+   sur « Voir les disponibilités », la page suivante mettait une seconde à
+   venir sur un réseau lent, et rien ne bougeait — alors on réappuyait.
+   Le bouton n'est pas désactivé (désactiver un bouton d'envoi dans la
+   seconde annule l'envoi sur certains navigateurs) : il est simplement
+   sourd au clic suivant, et il le montre. */
+.btn[aria-busy="true"]{
+  pointer-events:none;
+  opacity:.78;
+  position:relative;
+  padding-left:calc(1.15em + 22px);
+}
+.btn[aria-busy="true"]::before{
+  content:"";position:absolute;left:1.15em;top:50%;
+  width:15px;height:15px;margin-top:-8px;
+  border:2px solid currentColor;border-top-color:transparent;
+  border-radius:50%;
+  animation:tourne .7s linear infinite;
+}
+@keyframes tourne{to{transform:rotate(360deg)}}
+/* Qui a demandé moins de mouvement garde le signal, sans la rotation :
+   un cercle ouvert immobile dit encore « ça travaille ». */
+@media(prefers-reduced-motion:reduce){
+  .btn[aria-busy="true"]::before{animation:none}
+}
