@@ -22,7 +22,7 @@ Ce qu'il contrôle, dans l'ordre d'importance pour un commerce local :
 
 Usage : python3 audit-seo.py
 """
-import io, os, re, sys, json
+import io, os, re, sys, json, html
 
 RACINE = os.path.dirname(os.path.abspath(__file__))
 SITE   = 'https://www.locair.fr'
@@ -44,14 +44,24 @@ def pages_publiques():
         out += ['blog/' + f for f in sorted(os.listdir(d)) if f.endswith('.html')]
     return out
 
+def propre(txt):
+    """Ce que Google compte, c'est le texte lu, pas le code. Une apostrophe
+       ecrite &#x27; pesait cinq caracteres au lieu d'un : la mesure declarait
+       des titres trop longs qui ne l'etaient pas."""
+    return re.sub(r'\s+', ' ', html.unescape(txt)).strip()
+
 def bloc(t, s):
     """Le contenu d'une balise simple."""
     m = re.search(r'<' + t + r'[^>]*>(.*?)</' + t + r'>', s, re.S | re.I)
-    return re.sub(r'\s+', ' ', m.group(1)).strip() if m else None
+    return propre(m.group(1)) if m else None
 
 def meta(nom, s):
-    m = re.search(r'<meta\s+name=["\']' + nom + r'["\']\s+content=["\'](.*?)["\']', s, re.S | re.I)
-    return re.sub(r'\s+', ' ', m.group(1)).strip() if m else None
+    # Le guillemet de fermeture doit etre CELUI de l'ouverture. Sans ce
+    # rappel arriere, la recherche s'arretait a la premiere apostrophe
+    # venue : « Loc'Air … » donnait une description de trois caracteres,
+    # et deux pages differentes se declaraient identiques.
+    m = re.search(r'<meta\s+name=(["\'])' + nom + r'\1\s+content=(["\'])(.*?)\2', s, re.S | re.I)
+    return propre(m.group(3)) if m else None
 
 def jsonld(s):
     """Tous les blocs de données structurées d'une page."""
@@ -72,7 +82,11 @@ def trouver(o, cle):
             for r in trouver(v, cle): yield r
 
 soucis, notes = [], []
-def pb(gravite, texte):  soucis.append((gravite, texte))
+def pb(gravite, texte):
+    # Le meme defaut releve deux fois (deux blocs de donnees d'une meme page,
+    # par exemple) faisait un rapport qui se repete — et un rapport qui se
+    # repete se lit moins bien qu'un rapport qui compte juste.
+    if (gravite, texte) not in soucis: soucis.append((gravite, texte))
 def ok(texte):           notes.append(texte)
 
 pages = pages_publiques()
