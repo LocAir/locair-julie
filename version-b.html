@@ -1609,14 +1609,33 @@ var T = {};   /* rempli plus bas, écran par écran */
 ══════════════════════════════════════════════════════════════════════════ */
 var Livraison = (function(){
   var abonnes = [];
-  var etat = { avant20h:true, avant18h:true, complet:false, stock:null, prochaine:null };
+  var etat = { avant20h:true, avant18h:true, resteExpress:0, complet:false, stock:null, prochaine:null };
 
-  var o = {};
-  new Intl.DateTimeFormat('fr-FR', { timeZone:'Europe/Paris', hour:'2-digit',
-    minute:'2-digit', hour12:false }).formatToParts(new Date())
-    .forEach(function(x){ o[x.type] = parseInt(x.value, 10); });
-  etat.avant20h = o.hour < 20 || (o.hour === 20 && o.minute === 0);
-  etat.avant18h = o.hour < 18 || (o.hour === 18 && o.minute === 0);
+  /* L'heure etait calculee UNE SEULE FOIS, au chargement. Quelqu'un qui
+     laisse l'onglet ouvert de 17h50 a 18h30 continuait donc de lire
+     « Express encore possible » alors que ce n'etait plus vrai. On la
+     recalcule chaque minute — c'est le seul moyen qu'une promesse horaire
+     reste honnete sur une page qui reste ouverte. */
+  function heureDeParis(){
+    var o = {};
+    new Intl.DateTimeFormat('fr-FR', { timeZone:'Europe/Paris', hour:'2-digit',
+      minute:'2-digit', hour12:false }).formatToParts(new Date())
+      .forEach(function(x){ o[x.type] = parseInt(x.value, 10); });
+    return o;
+  }
+  function relire(){
+    var o = heureDeParis();
+    var av20 = o.hour < 20 || (o.hour === 20 && o.minute === 0);
+    var av18 = o.hour < 18 || (o.hour === 18 && o.minute === 0);
+    /* Ce qu'il reste avant 18h, en minutes. Zero des que c'est passe. */
+    var reste = Math.max(0, (18 * 60) - (o.hour * 60 + o.minute));
+    var change = (av20 !== etat.avant20h) || (av18 !== etat.avant18h)
+              || (reste !== etat.resteExpress);
+    etat.avant20h = av20; etat.avant18h = av18; etat.resteExpress = reste;
+    return change;
+  }
+  relire();
+  setInterval(function(){ if(relire()) prevenir(); }, 60000);
 
   function prevenir(){ abonnes.forEach(function(f){ try{ f(etat); }catch(e){} }); }
   return {
@@ -2475,6 +2494,18 @@ Object.assign(T, {
                   en:" · <strong>Express within 2h</strong> still available",
                   zh:" · 仍可选<strong>2小时急速送达</strong>",
                   ru:" · <strong>Экспресс за 2 часа</strong> ещё доступен"},
+  /* Le compte a rebours de l'Express. La regle des 18h est deja publiee
+     dans les Questions ; ici on ne fait que dire combien de temps il en
+     reste. Deux cadres : avec les heures tant qu'il y en a, en minutes
+     seules sur la derniere heure — c'est la que ca compte vraiment. */
+  'i.resteHM' : {fr:" · <strong>Express sous 2h</strong> — il reste {h}\u00A0h\u00A0{m}",
+                 en:" · <strong>Express in under 2h</strong> — {h}h {m} left",
+                 zh:" · <strong>2小时极速配送</strong>——还剩 {h} 小时 {m} 分",
+                 ru:" · <strong>Экспресс за 2 ч</strong> — осталось {h} ч {m} мин"},
+  'i.resteM'  : {fr:" · <strong>Express sous 2h</strong> — il reste {m}\u00A0min",
+                 en:" · <strong>Express in under 2h</strong> — {m} min left",
+                 zh:" · <strong>2小时极速配送</strong>——还剩 {m} 分钟",
+                 ru:" · <strong>Экспресс за 2 ч</strong> — осталось {m} мин"},
   'i.complet' : {fr:"Complet pour demain", en:"Fully booked for tomorrow", zh:"明天已订满", ru:"На завтра всё занято"},
   'i.aNice'    : {fr:"à Nice", en:"in Nice", zh:"尼斯", ru:"в Ницце"},
   'i.ressenti' : {fr:"ressenti", en:"feels like", zh:"体感", ru:"ощущается как"},
@@ -3139,8 +3170,18 @@ Object.assign(T, {
          contredirait la ligne affichée juste en dessous. */
       corps = mot('i.complet');
     } else {
-      corps = mot(e.avant20h ? 'i.24h' : 'i.48h')
-            + (e.avant18h ? mot('i.express') : '');
+      /* « Express encore possible » ne disait pas combien de temps. Le site
+         connait pourtant l'heure de Paris : il ne manquait que la mise en
+         forme. Rien d'invente — c'est la meme regle de 18h qui decide deja
+         si l'option s'affiche. On arrondit vers le BAS, pour ne jamais
+         promettre une minute de plus que ce qui reste vraiment. */
+      corps = mot(e.avant20h ? 'i.24h' : 'i.48h');
+      if(e.avant18h){
+        var r = e.resteExpress || 0;
+        var h = Math.floor(r / 60), m = r % 60;
+        var cadre = h > 0 ? mot('i.resteHM') : mot('i.resteM');
+        corps += cadre.replace('{h}', h).replace('{m}', m);
+      }
     }
     msg.innerHTML = tete + corps;
     bar.classList.add('on');
