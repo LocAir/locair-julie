@@ -8,6 +8,9 @@ avec exactement le code que vous m'avez donné :
 Il reste **invisible** tant qu'il vous manque une chose que moi je ne peux
 pas avoir : le petit script de votre compte Booqable.
 
+Choix retenu : **Booqable en plus du parcours du site, pour ce seul produit.**
+La condition qui va avec est plus bas, avec les chiffres à recopier.
+
 ---
 
 ## Ce qu'il vous reste à faire (5 minutes)
@@ -77,31 +80,82 @@ S'il est différent, dites-le-moi : c'est une ligne à changer.
 
 ---
 
-## Une chose à décider, et elle est à vous
+## La décision est prise : Booqable EN PLUS, pour ce seul produit
 
-Le site a **déjà** son propre parcours de réservation : le champ d'adresse en
-haut, le calculateur (14 jours = 294 €), les trois formules à 144 / 214 /
-349 €, et le paiement par Stripe.
+Le site garde son parcours — champ d'adresse, calculateur, formules, Stripe.
+Booqable s'ajoute sur la fiche du climatiseur, et nulle part ailleurs.
 
-Booqable, c'est un **deuxième** parcours, avec ses propres prix et son propre
-panier.
+C'est ce qui est en place. **Mais cette option a une condition, et une seule :**
 
-Si les deux sont allumés en même temps, un visiteur peut voir **deux prix
-différents pour la même machine** sur la même page. C'est le genre de détail
-qui coûte une réservation.
+> Les prix dans Booqable doivent être **exactement** ceux du site.
 
-Trois façons de s'en sortir, à vous de choisir :
+Sinon un visiteur voit deux prix différents pour la même machine sur la même
+page. C'est le genre de détail qui coûte une réservation — et qui coûte la
+confiance, ce qui est pire.
 
-1. **Booqable en plus, pour ce seul produit** — ce qui est en place aujourd'hui.
-   À condition que les prix Booqable soient exactement les mêmes que ceux du
-   site.
-2. **Booqable à la place** — on retire le calculateur et les formules, et
-   tout passe par Booqable.
-3. **Booqable ailleurs** — sur une page à part, pas dans le parcours principal.
+### Le barème à recopier dans Booqable
 
-Dites-moi laquelle et je m'en occupe.
+Ce sont les chiffres du site, pris dans le code (`version-b.html`, le même
+barème que la caisse). **Location dégressive par tranches** : les 7 premiers
+jours restent à 12 €, seuls les jours suivants passent au tarif inférieur.
 
----
+| Jours | Prix par jour |
+|---|---|
+| 1 à 7 | **12,00 €** |
+| 8 à 14 | **10,00 €** |
+| 15 à 21 | **9,00 €** |
+| à partir du 22ᵉ | **8,00 €** |
+
+Et à côté de la location :
+
+| | |
+|---|---|
+| Durée minimum | **7 jours** |
+| Livraison, zone standard (Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer) | **60 €** |
+| Livraison, hors zone | **120 €** |
+| Pose sur place (option) | **80 €** |
+| Caution | **aucune** |
+| Quantité maximum | **5 machines** |
+| Durée maximum | **90 jours** |
+
+### Les trois totaux à vérifier
+
+Une fois le barème entré, faites trois essais dans Booqable. Si ces trois
+nombres tombent juste, le reste tombera juste aussi — ce sont exactement les
+trois formules affichées sur le site.
+
+| Durée | Ce que Booqable doit afficher | D'où ça vient |
+|---|---|---|
+| 7 jours | **144 €** | 84 € de location + 60 € de livraison |
+| 14 jours | **214 €** | 154 € + 60 € |
+| 30 jours | **349 €** | 289 € + 60 € |
+
+Si un seul de ces trois ne tombe pas juste, **ne mettez pas Booqable en ligne**
+et dites-le-moi : c'est le barème qui est mal entré, pas le site.
+
+### ⚠ Un piège : le calculateur affiche 294 €, pas 214 €
+
+Ne comparez pas Booqable au **calculateur** de la page, comparez-le aux
+**trois formules**.
+
+Le calculateur démarre avec **la pose incluse** (80 €). Pour 14 jours il
+affiche donc `154 + 60 + 80 = 294 €`, alors que la formule « 2 semaines »
+affiche `154 + 60 = 214 €`. Les deux sont justes — ils ne comptent pas la
+même chose.
+
+Vérifié en direct sur la page : 7 j = 144 €, 14 j = 214 €, 30 j = 349 € sans
+la pose ; 224 €, 294 € et 429 € avec.
+
+Donc : dans Booqable, la pose doit être une **option à cocher à 80 €**, pas
+un montant fondu dans le prix.
+
+### Si vous changez les prix un jour
+
+Ils sont à **deux endroits** désormais : dans Booqable, et dans le site. Le
+site les lit depuis `/api/pricing-config`, avec les valeurs ci-dessus en
+secours. Changer l'un sans l'autre remet deux prix sur la même page.
+
+Dites-le-moi quand ça arrive, je m'occupe du côté site.
 
 ## Ce que j'ai touché
 
