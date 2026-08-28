@@ -105,6 +105,31 @@
   </div>
 </section>
 
+<!-- ══ LE MOT QUI TOURNE ═════════════════════════════════════════════════
+     La page n'avait AUCUN bloc pleine largeur en couleur avant le pied de
+     page : quelqu'un qui arrive de Google ne voyait la marque nulle part.
+     La bande est celle de la page principale, mais elle dit ici les
+     quartiers de la ville — ceux de la liste « Où nous livrons », repris
+     à l'identique plus bas. Ce n'est pas un écran : c'est du mobilier. -->
+<section class="mots" aria-label="Les quartiers de Cannes où nous livrons">
+  <div class="mots-in">
+    <span class="mots-l">On livre à Cannes</span>
+    <i class="mots-g" aria-hidden="true"></i>
+    <div class="mots-c"><div class="mots-p" id="mots-p">
+      <span>La Croisette</span>
+      <span>Le Suquet</span>
+      <span>La Bocca</span>
+      <span>Palm Beach</span>
+      <span>Croix-des-Gardes</span>
+      <span>Petit Juas</span>
+      <span>République</span>
+      <span>Basse Californie</span>
+      <span>Port Canto</span>
+    </div></div>
+  </div>
+  <i class="mots-goutte" aria-hidden="true"></i>
+</section>
+
 <!-- Le seul endroit de la page où quelqu'un parle à la première personne.
      L'avis cité est réel, déjà publié sur locair.fr, et son auteur est
      nommé — rien n'est écrit ici qui ne soit vérifiable. -->
@@ -302,6 +327,78 @@
   var poser = function(){ bar.classList.toggle('pose', window.scrollY > 40); };
   poser();
   window.addEventListener('scroll', poser, {passive:true});
+})();
+</script>
+<script>
+/* ── LE MOT QUI TOURNE ─────────────────────────────────────────────────────
+   Même geste que sur la page principale : un quartier plein, les voisins en
+   contour, la colonne glisse d'un cran toutes les 2,6 s.
+   Les quartiers sont ceux de la liste « Où nous livrons », repris à
+   l'identique — rien n'est écrit ici qui ne soit déjà plus bas.
+   On clone le dernier devant et le premier derrière : il y a toujours un
+   voisin en haut et en bas, y compris à la première image, et le retour au
+   début se fait d'un cran sans transition.
+   Rien ne bouge pour qui a demandé moins d'animation, et rien ne tourne tant
+   que le bloc n'est pas à l'écran. */
+(function(){
+  var pile = document.getElementById('mots-p');
+  if(!pile) return;
+  var mots = [].slice.call(pile.children);
+  if(mots.length < 2) return;
+  var reduit = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var n = mots.length, i = 0, minuteur = null, queue = null, decale = 0;
+
+  if(!reduit){
+    var tete = mots[n - 1].cloneNode(true);
+    queue = mots[0].cloneNode(true);
+    [tete, queue].forEach(function(c){
+      c.classList.remove('on'); c.setAttribute('aria-hidden', 'true');
+    });
+    pile.insertBefore(tete, mots[0]);
+    pile.appendChild(queue);
+    decale = 1;
+  }
+  function placer(pos, sansTransition){
+    if(sansTransition) pile.style.transition = 'none';
+    pile.style.transform = 'translateY(' + ((1 - (pos + decale)) * 1.06) + 'em)';
+    if(sansTransition){ void pile.offsetHeight; pile.style.transition = ''; }
+  }
+  function marquer(){
+    mots.forEach(function(e, k){
+      var actif = (k === i);
+      e.classList.toggle('on', actif);
+      /* Sous « moins d'animation » les quartiers sont tous affichés l'un
+         sous l'autre : les cacher ferait entendre un nom là où l'œil en
+         voit dix. */
+      if(actif || reduit) e.removeAttribute('aria-hidden');
+      else e.setAttribute('aria-hidden', 'true');
+    });
+  }
+  function tourner(){
+    if(i === n - 1 && queue){
+      mots.forEach(function(e){ e.classList.remove('on'); e.setAttribute('aria-hidden','true'); });
+      queue.classList.add('on');
+      placer(n, false);
+      setTimeout(function(){
+        queue.classList.remove('on');
+        i = 0; marquer(); placer(0, true);
+      }, 760);
+      return;
+    }
+    i = (i + 1) % n; marquer(); placer(i, false);
+  }
+  marquer(); placer(i, true);
+  if(reduit) return;
+  if('IntersectionObserver' in window){
+    new IntersectionObserver(function(entrees){
+      entrees.forEach(function(e){
+        if(e.isIntersecting && !minuteur) minuteur = setInterval(tourner, 2600);
+        else if(!e.isIntersecting && minuteur){ clearInterval(minuteur); minuteur = null; }
+      });
+    }, {threshold:.2}).observe(pile.closest('.mots'));
+  } else {
+    minuteur = setInterval(tourner, 2600);
+  }
 })();
 </script>
 </body>
