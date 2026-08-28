@@ -2341,10 +2341,40 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
    on ne voit plus la respiration. Le sarcelle est la troisième couleur de la
    maison, déjà utilisée plus bas ; le blanc dessus tient 6,1:1. */
 .mots{
+  position:relative;
   background:var(--vif);color:#fff;overflow:hidden;
   padding:var(--e-3) 0;
 }
+/* La goutte de la marque, en grand et très pâle, coupée par le bord droit.
+   Elle remplit la moitié droite du bloc — vide autrement — sans jamais
+   croiser un mot : elle commence après la fin du plus long d'entre eux.
+   Même dessin que l'apostrophe de « Loc'Air », à l'échelle du bloc. */
+.mots-goutte{
+  /* Sa taille suit la HAUTEUR du bloc, pas la largeur de l'écran : mesurée
+     en vw, elle tenait à 1440 px et mangeait la bande à 1024. En pourcentage
+     de la hauteur, elle garde la même proportion partout et ne déborde
+     jamais — coupée, une goutte n'est plus une goutte, c'est une tache. */
+  position:absolute;top:28%;right:7%;
+  height:44%;aspect-ratio:1;
+  background:rgba(255,255,255,.062);
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);
+  pointer-events:none;
+  /* Sous 1200 px, le plus long des mots arrive jusqu'à elle. Mesuré à
+     1024 px : il finit à 830, la goutte commencerait à 811. Une décoration
+     qui touche un mot n'est plus une décoration — elle s'efface. */
+  display:none;
+}
+@media(min-width:1200px){ .mots-goutte{display:block} }
+/* La goutte du logo, en or : elle pointe la ligne du milieu, celle qui
+   compte. Même dessin que l'apostrophe de « Loc'Air » — trois coins ronds,
+   un coin vif, inclinée à -25°. */
+.mots-g{
+  flex-shrink:0;width:13px;height:13px;margin-right:calc(var(--e-2) * -.45);
+  background:var(--gold);
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);
+}
 .mots-in{
+  position:relative;z-index:1;
   max-width:var(--max);margin:0 auto;padding:0 var(--pad);
   display:flex;align-items:center;gap:var(--e-2);
 }
@@ -2369,8 +2399,28 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   transition:color var(--mv-2) var(--mv),-webkit-text-stroke-color var(--mv-2) var(--mv)}
 .mots-p span.on{color:#fff;-webkit-text-stroke-color:transparent}
 @media(max-width:700px){
+  /* Sous 700 px les mots prennent toute la largeur : le courant d'air
+     passerait derrière eux, et la goutte se retrouverait seule sur sa
+     ligne puisque la bande passe en colonne. Les deux s'effacent. */
+  .mots-goutte,.mots-g{display:none}
   .mots-in{flex-direction:column;align-items:flex-start;gap:14px}
-  .mots-c{height:2.2em;font-size:clamp(26px,8.4vw,44px)}
+  /* La fenêtre garde SES TROIS LIGNES sur téléphone aussi. À 2,2 em elle
+     n'en tenait que deux : le mot actif, calé sur la ligne du milieu,
+     tombait dans le fondu du bas et devenait illisible — mesuré à 390 px,
+     il occupait 35 à 69 px d'une fenêtre de 72, dont les 16 derniers sont
+     effacés par le masque. Seul le libellé « ON LIVRE » restait visible. */
+  /* ── LA BANDE ÉTAIT MUETTE SUR TÉLÉPHONE ────────────────────────────────
+     Mesuré à 390 px : la colonne de mots faisait 0 px de large. On ne
+     voyait que « ON LIVRE » sur un rectangle sarcelle vide.
+     La bande passe en colonne sur téléphone, avec align-items:flex-start :
+     la largeur de chaque enfant se règle alors sur son contenu. Or le seul
+     contenu de la colonne de mots est positionné en absolu — il ne compte
+     pas. Résultat : zéro. Elle doit prendre toute la largeur explicitement. */
+  /* La taille descend de 8,4 à 7,2 vw : mesuré, « en urgence, le jour même »
+     demandait 368 px pour 342 disponibles à 390 px d'écran, et 304 pour 272
+     à 320 px. Il finissait en « … ». Un mot coupé vaut moins qu'un mot plus
+     petit — surtout celui qui porte la promesse la plus forte. */
+  .mots-c{align-self:stretch;width:100%;font-size:clamp(23px,7.2vw,44px)}
   .mots-l{font-size:var(--s-5)}
 }
 @media(prefers-reduced-motion:reduce){
@@ -3104,3 +3154,21 @@ summary:active{background:var(--mist)}
    se trouve déjà ne mène nulle part. Elle se tient un peu plus clair que
    les autres, comme un endroit où l'on est. */
 .pied-grid [aria-current="page"]{color:rgba(255,255,255,.86);font-weight:600}
+
+/* ══ RÉSERVER CETTE MACHINE (Booqable) ═════════════════════════════════════
+   Le widget vient d'un autre serveur et apporte ses propres styles. On le
+   pose sous la fiche de la machine, séparé par un filet — pas dans un cadre
+   à lui : ce n'est pas une publicité collée sur la carte, c'est la suite de
+   la carte.
+   Le bloc est masqué tant que Booqable n'a rien posé dedans (voir le script
+   en bas de version-b.html) : une case sans donnée s'efface. */
+.loue{margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.loue-t{
+  font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);
+  text-transform:uppercase;color:var(--ink-3);margin-bottom:12px;
+}
+/* On borne ce que le widget peut faire : il ne pousse pas la page de côté,
+   et ses images ne débordent pas de la colonne. Le site tient 0 débordement
+   horizontal de 320 à 1900 px — un invité ne casse pas ça. */
+.loue .booqable-product{max-width:100%;overflow-x:auto}
+.loue img,.loue svg{max-width:100%;height:auto}
