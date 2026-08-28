@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="fr" class="no-js">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Aperçu — un haut de page pleine image</title>
+<link rel="stylesheet" href="/locair.css">
+<script>document.documentElement.className='js';</script>
+<style>
+/* ══════════════════════════════════════════════════════════════════════════
+   UN HAUT DE PAGE PLEINE IMAGE — dans le thème de la maison
+   ─────────────────────────────────────────────────────────────────────────
+   La référence montrée tient ENTIÈREMENT par sa photographie : un panneau
+   plein cadre, le titre posé dessus, deux boutons. Loc'Air n'a aucune photo
+   — quatorze fichiers sont cités dans le site, zéro existe.
+   La structure est donc construite en entier, et le FOND est dessiné : la
+   machine de la maison, au trait, à l'échelle du panneau. Le jour où une
+   vraie photo arrive, elle se glisse derrière (une ligne à décommenter) et
+   le dessin s'efface tout seul — la règle habituelle du site.
+   Rien d'autre ne change : mêmes couleurs, même police, mêmes boutons.
+══════════════════════════════════════════════════════════════════════════ */
+
+/* ── LE PANNEAU ─────────────────────────────────────────────────────────── */
+.pl{
+  position:relative;overflow:hidden;
+  min-height:calc(100svh - 72px);
+  background:var(--ink);color:#fff;
+  /* Deux rangées : le texte au milieu de la place libre, les preuves
+     épinglées au bord bas. Tout aligné en bas laissait le tiers haut du
+     panneau vide — mesuré, le titre commençait à 42 % de la hauteur. */
+  display:grid;grid-template-rows:1fr auto;align-items:center;
+}
+@supports not (height:100svh){ .pl{min-height:calc(100vh - 72px)} }
+
+/* La photo, quand elle existera. Elle se révèle elle-même : tant que le
+   fichier manque, onload ne se déclenche pas et le dessin reste. */
+.pl-photo{position:absolute;inset:0;margin:0;opacity:0;transition:opacity .5s}
+.pl-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.pl-photo:not([hidden]){opacity:1}
+/* Un voile, sinon un titre blanc sur une photo claire devient illisible.
+   Il est plus dense en bas, là où se tient le texte. */
+.pl-voile{position:absolute;inset:0;
+  background:linear-gradient(to top,rgba(9,20,34,.92) 0%,rgba(9,20,34,.72) 42%,rgba(9,20,34,.34) 100%)}
+
+/* ── LE DESSIN, TANT QU'IL N'Y A PAS DE PHOTO ───────────────────────────── */
+.pl-dessin{position:absolute;right:-4%;top:50%;transform:translateY(-50%);
+  width:min(58%,760px);color:#fff;opacity:.13;pointer-events:none}
+.pl-dessin svg{width:100%;height:auto;display:block}
+/* Le courant d'air, tout en bas, comme sur le reste du site. */
+.pl-flux{position:absolute;left:0;right:0;bottom:0;height:46%;pointer-events:none;
+  -webkit-mask-image:linear-gradient(to top,#000 8%,transparent 76%);
+          mask-image:linear-gradient(to top,#000 8%,transparent 76%)}
+.pl-flux path{fill:none;stroke:#fff;stroke-opacity:.13;stroke-width:1.4}
+/* Dès qu'une photo est là, le dessin n'a plus lieu d'être. */
+.pl:has(.pl-photo:not([hidden])) .pl-dessin,
+.pl:has(.pl-photo:not([hidden])) .pl-flux{display:none}
+
+/* ── LE TEXTE ───────────────────────────────────────────────────────────── */
+.pl-in{position:relative;z-index:2;width:100%;
+  max-width:var(--max);margin:0 auto;padding:var(--e-3) var(--pad) var(--e-1);}
+.pl-k{display:inline-flex;align-items:center;gap:9px;
+  font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);
+  text-transform:uppercase;color:rgba(255,255,255,.62);margin-bottom:18px}
+.pl-k i{width:9px;height:9px;background:var(--gold);
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg);flex:none}
+.pl-t{
+  font-family:var(--font-titre);font-weight:700;letter-spacing:var(--l-1);
+  font-size:clamp(38px,6.2vw,86px);line-height:1.02;margin:0 0 22px;
+  max-width:15ch;text-wrap:balance;
+}
+.pl-t em{font-style:normal;color:var(--gold)}
+/* Les lignes empilées de la référence : une idée par ligne, pas un
+   paragraphe. On les lit en diagonale, ce que fait un visiteur pressé. */
+.pl-l{list-style:none;margin:0 0 30px;padding:0;display:grid;gap:7px;max-width:52ch}
+.pl-l li{position:relative;padding-left:19px;
+  font-size:var(--s-5);line-height:var(--h-3);color:rgba(255,255,255,.82)}
+.pl-l li::before{content:'';position:absolute;left:0;top:.62em;
+  width:7px;height:7px;background:var(--gold);
+  border-radius:50% 50% 50% 0;transform:rotate(-25deg)}
+.pl-act{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.pl .btn-1{background:#fff;color:var(--ink)}
+.pl .btn-1:hover{background:rgba(255,255,255,.88)}
+.pl .btn-out{border-color:rgba(255,255,255,.4);color:#fff}
+.pl .btn-out:hover{background:rgba(255,255,255,.1)}
+
+/* ── LES CINQ PREUVES, DANS LE PANNEAU ──────────────────────────────────── */
+/* Mesuré sur la version en ligne : elles commencent à 836 px dans une
+   fenêtre de 900. Autant dire qu'on ne les voit pas sans défiler — alors
+   que ce sont les cinq arguments les plus forts du site. Ici elles sont
+   DANS le panneau, sur son bord bas. */
+.pl-p{position:relative;z-index:2;width:100%;
+  max-width:var(--max);margin:0 auto;padding:16px var(--pad) var(--e-2);
+  border-top:1px solid rgba(255,255,255,.16);
+  display:flex;flex-wrap:wrap;gap:8px 26px}
+.pl-p span{font-size:var(--s-2);color:rgba(255,255,255,.66);white-space:nowrap}
+.pl-p b{color:#fff;font-weight:700}
+
+@media(max-width:760px){
+  .pl-dessin{width:104%;right:-30%;opacity:.09}
+  /* Sur téléphone la place est comptée : trois lignes longues et deux
+     boutons empilés repoussaient les preuves hors de l'écran — le défaut
+     même qu'on corrige. Texte un cran plus petit, boutons côte à côte,
+     interlignes resserrés. */
+  /* Le texte est centré dans la place libre sur ordinateur ; sur téléphone
+     ça le pousse vers le bas et les preuves sortent de l'écran. Ici il
+     démarre en haut. */
+  .pl{align-items:start}
+  .pl-in{padding:var(--e-1) var(--pad) 14px}
+  .pl-t{margin-bottom:16px}
+  .pl-l{gap:5px;margin-bottom:20px}
+  .pl-l li{font-size:var(--s-4);line-height:var(--h-2)}
+  .pl-act{gap:9px}
+  .pl-act .btn{flex:1 1 auto;justify-content:center;padding-left:16px;padding-right:16px}
+  .pl-p{gap:5px 16px;padding-top:12px;padding-bottom:var(--e-1)}
+  .pl-p span{font-size:12.5px}
+}
+
+/* ══ POURQUOI LOC'AIR — la liste à gauche, la réponse à droite ═══════════ */
+.pq{padding:var(--e-3) 0;background:var(--paper)}
+.pq-in{max-width:var(--max);margin:0 auto;padding:0 var(--pad)}
+.pq-k{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);
+  text-transform:uppercase;color:var(--vif);margin-bottom:10px}
+.pq-t{font-family:var(--font-titre);font-weight:700;letter-spacing:var(--l-2);
+  font-size:clamp(27px,3.4vw,42px);line-height:var(--h-1);margin:0 0 var(--e-2);max-width:18ch}
+.pq-g{display:grid;grid-template-columns:minmax(190px,262px) 1fr;gap:var(--e-2)}
+/* La colonne de gauche : de vrais boutons, pas des liens décoratifs. */
+.pq-l{list-style:none;margin:0;padding:0;border-left:1px solid var(--line)}
+.pq-l button{
+  display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;
+  background:none;border:0;cursor:pointer;
+  padding:13px 14px;margin-left:-1px;
+  border-left:3px solid transparent;
+  font:inherit;font-weight:700;font-size:var(--s-4);line-height:var(--h-2);
+  color:var(--ink-3);transition:color .14s,border-color .14s;
+}
+.pq-l button svg{flex:none;margin-top:1px;opacity:.5;transition:opacity .14s}
+.pq-l button:hover{color:var(--ink-2)}
+.pq-l button[aria-selected=true]{color:var(--ink);border-left-color:var(--gold)}
+.pq-l button[aria-selected=true] svg{opacity:1;color:var(--vif)}
+.pq-p{min-width:0}
+.pq-p[hidden]{display:none}
+.pq-i{width:34px;height:34px;color:var(--vif);margin-bottom:14px}
+.pq-p h3{font-family:var(--font-titre);font-weight:700;letter-spacing:var(--l-2);
+  font-size:clamp(21px,2.5vw,29px);line-height:var(--h-1);margin:0 0 12px;max-width:20ch}
+.pq-p p{font-size:var(--s-5);line-height:var(--h-4);color:var(--ink-2);max-width:56ch;margin:0}
+.pq-c{margin-top:18px;display:flex;flex-wrap:wrap;gap:8px}
+.pq-c span{padding:6px 12px;border-radius:var(--r-f);background:var(--vif-clair);
+  color:var(--vif-d);font-size:var(--s-2);font-weight:700}
+@media(max-width:760px){
+  .pq-g{grid-template-columns:1fr;gap:var(--e-1)}
+  .pq-l{display:flex;overflow-x:auto;border-left:0;border-bottom:1px solid var(--line);
+    scrollbar-width:none}
+  .pq-l::-webkit-scrollbar{display:none}
+  .pq-l button{border-left:0;border-bottom:3px solid transparent;margin:0 0 -1px;
+    white-space:nowrap;padding:11px 13px}
+  .pq-l button[aria-selected=true]{border-bottom-color:var(--gold)}
+  .pq-l button svg{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="preview-bar">Aperçu · <b>haut de page pleine image</b> — non indexé. La version en ligne est sur <a href="/version-b">/version-b</a>.</div>
+
+<header class="bar" id="bar">
+  <div class="bar-in">
+    <a class="logo" href="#">Loc<i class="gt">'</i>Air</a>
+    <nav class="offre" aria-label="Choisir l'offre">
+      <a class="offre-o on" href="#" aria-current="page">Particuliers</a>
+      <a class="offre-o" href="/pro">Pro</a>
+    </nav>
+    <a class="btn btn-1 btn-s" href="/">Réserver</a>
+  </div>
+</header>
+
+<main>
+
+<!-- ══ LE PANNEAU PLEINE IMAGE ═══════════════════════════════════════════ -->
+<section class="pl">
+
+  <!-- PHOTO EN ATTENTE. Le fichier n'existe pas encore (voir VISUELS.md).
+       POUR LA BRANCHER : déposer /photo-pose-2400.jpg, puis retirer les deux
+       lignes de commentaire ci-dessous. Le dessin s'effacera tout seul.
+  <figure class="pl-photo" hidden>
+    <img src="/photo-pose-2400.jpg" width="2400" height="1350" fetchpriority="high" decoding="async"
+         srcset="/photo-pose-1400.jpg 1400w, /photo-pose-2400.jpg 2400w" sizes="100vw"
+         alt="Un technicien Loc'Air pose le kit de calfeutrage sur la fenêtre d'un client à Nice"
+         onload="this.closest('figure').hidden=false">
+  </figure>
+  -->
+
+  <!-- Le dessin de la maison, à l'échelle du panneau. C'est le même
+       climatiseur que l'écran « Le matériel », agrandi et très pâle. -->
+  <div class="pl-dessin" aria-hidden="true">
+    <svg viewBox="0 0 600 400" fill="none" stroke="currentColor" stroke-width="2.2"
+         stroke-linecap="round" stroke-linejoin="round" focusable="false">
+      <rect x="118" y="52" width="196" height="296" rx="24"/>
+      <path d="M150 96h132M150 116h132M150 136h132" stroke-opacity=".5"/>
+      <rect x="150" y="184" width="132" height="42" rx="9"/>
+      <circle cx="176" cy="205" r="4" fill="currentColor" stroke="none"/>
+      <circle cx="196" cy="205" r="4" fill="currentColor" stroke="none"/>
+      <path d="M222 205h44" stroke-width="3"/>
+      <path d="M162 268v52M192 268v52M222 268v52M252 268v52" stroke-opacity=".45"/>
+      <circle cx="152" cy="362" r="11"/><circle cx="280" cy="362" r="11"/>
+      <path d="M314 150c40 0 40 22 80 22s40-22 80-22"/>
+      <path d="M314 174c40 0 40 22 80 22s40-22 80-22"/>
+      <rect x="486" y="34" width="86" height="300" rx="7" stroke-opacity=".55"/>
+      <path d="M529 34v300" stroke-opacity=".55"/>
+      <rect x="486" y="132" width="86" height="64" rx="5" stroke-width="2.4"/>
+    </svg>
+  </div>
+  <svg class="pl-flux" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+    <path d="M-40 60C220 40 420 84 660 62S1000 22 1240 46"/>
+    <path d="M-40 128C240 108 440 152 680 130S1020 92 1240 116"/>
+    <path d="M-40 196C200 178 430 220 670 200S1030 162 1240 184"/>
+    <path d="M-40 262C230 246 440 284 680 266S1040 232 1240 252"/>
+  </svg>
+
+  <div class="pl-in">
+    <p class="pl-k"><i></i>Nice et alentours · 7 jours sur 7</p>
+    <h1 class="pl-t">Le froid livré chez vous,<em> demain matin.</em></h1>
+    <ul class="pl-l">
+      <li>Climatiseurs mobiles et rafraîchisseurs d'air, livrés et installés.</li>
+      <li>Le kit de calfeutrage posé sur votre fenêtre, sans percer.</li>
+      <li>Repris à la fin, sans que vous ayez à porter quoi que ce soit.</li>
+    </ul>
+    <div class="pl-act">
+      <a class="btn btn-1" href="/">Voir les disponibilités →</a>
+      <a class="btn btn-out" href="tel:+33663798756">06.63.79.87.56</a>
+    </div>
+  </div>
+
+  <div class="pl-p">
+    <!-- Cinq preuves, cinq lignes courtes : elles doivent tenir sur UNE
+         rangée, sinon la deuxième passe sous la ligne de flottaison et on
+         retombe exactement sur le défaut mesuré en ligne. -->
+    <span><b>Aucune caution</b></span>
+    <span><b>Express sous 2h</b> · +60 €</span>
+    <span><b>Panne remplacée</b> le jour même</span>
+    <span><b>Annulation gratuite</b></span>
+    <span><b>4,9/5</b> · 32 avis</span>
+  </div>
+</section>
+
+<!-- ══ POURQUOI LOC'AIR ══════════════════════════════════════════════════ -->
+<section class="pq" aria-labelledby="pq-t">
+  <div class="pq-in">
+    <p class="pq-k">Pourquoi Loc'Air</p>
+    <h2 class="pq-t" id="pq-t">Ce qui change, concrètement.</h2>
+
+    <div class="pq-g">
+      <ul class="pq-l" role="tablist" aria-label="Nos raisons">
+        <li><button type="button" role="tab" id="o1" aria-controls="v1" aria-selected="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg>
+          Aucune caution</button></li>
+        <li><button type="button" role="tab" id="o2" aria-controls="v2" aria-selected="false" tabindex="-1">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
+          Livré et installé</button></li>
+        <li><button type="button" role="tab" id="o3" aria-controls="v3" aria-selected="false" tabindex="-1">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v18M4 12h5"/></svg>
+          Sans percer</button></li>
+        <li><button type="button" role="tab" id="o4" aria-controls="v4" aria-selected="false" tabindex="-1">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          Repris à la fin</button></li>
+      </ul>
+
+      <div class="pq-p" id="v1" role="tabpanel" aria-labelledby="o1" tabindex="0">
+        <svg class="pq-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M12 2 4 6v6c0 5 3.4 9.4 8 10 4.6-.6 8-5 8-10V6z"/><path d="m9 12 2 2 4-4"/></svg>
+        <h3>Pas de caution. Ni chèque, ni empreinte bancaire.</h3>
+        <p>La plupart des loueurs bloquent plusieurs centaines d'euros le temps de la location. Nous ne demandons rien : vous payez la location, et c'est tout. C'est écrit dans nos conditions générales, pas seulement sur cette page.</p>
+        <div class="pq-c"><span>0 € bloqué</span><span>Aucune empreinte bancaire</span></div>
+      </div>
+
+      <div class="pq-p" id="v2" role="tabpanel" aria-labelledby="o2" tabindex="0" hidden>
+        <svg class="pq-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>
+        <h3>On monte l'appareil chez vous, et on vous montre.</h3>
+        <p>Créneau du matin, 8h – 12h, sept jours sur sept, week-ends et jours fériés compris. La pose prend vingt minutes : on branche, on pose le kit sur la fenêtre, on vous explique la télécommande, et on repart.</p>
+        <div class="pq-c"><span>8h – 12h</span><span>7 j/7</span><span>20 minutes sur place</span></div>
+      </div>
+
+      <div class="pq-p" id="v3" role="tabpanel" aria-labelledby="o3" tabindex="0" hidden>
+        <svg class="pq-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 3v18M4 12h5"/></svg>
+        <h3>Le kit se retire sans laisser une trace.</h3>
+        <p>C'est la question numéro un, et la réponse est zéro trou. Le kit de calfeutrage bouche la fenêtre autour de la gaine et se retire comme il s'est posé. Il s'adapte aux fenêtres oscillo-battantes, coulissantes, à guillotine et aux Velux.</p>
+        <div class="pq-c"><span>Zéro perçage</span><span>Quatre types de fenêtre</span></div>
+      </div>
+
+      <div class="pq-p" id="v4" role="tabpanel" aria-labelledby="o4" tabindex="0" hidden>
+        <svg class="pq-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <h3>Le dernier jour, on revient tout chercher.</h3>
+        <p>La reprise est comprise dans le prix. Vous n'avez ni carton à garder, ni appareil à porter, ni dépôt où le rapporter. Si vous voulez prolonger, cela se fait en ligne en deux minutes, sans nous appeler.</p>
+        <div class="pq-c"><span>Reprise comprise</span><span>Prolongation en ligne</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+/* Les onglets : au clavier comme à la souris. Les flèches passent d'un
+   onglet à l'autre, Origine et Fin vont aux extrémités — c'est ce qu'attend
+   quiconque navigue sans souris. Un seul onglet est un arrêt de tabulation. */
+(function(){
+  var liste = document.querySelector('.pq-l[role=tablist]');
+  if(!liste) return;
+  var onglets = [].slice.call(liste.querySelectorAll('[role=tab]'));
+  function montrer(i, donnerLeFocus){
+    onglets.forEach(function(o, k){
+      var actif = k === i;
+      o.setAttribute('aria-selected', String(actif));
+      o.tabIndex = actif ? 0 : -1;
+      document.getElementById(o.getAttribute('aria-controls')).hidden = !actif;
+    });
+    if(donnerLeFocus) onglets[i].focus();
+  }
+  onglets.forEach(function(o, i){ o.addEventListener('click', function(){ montrer(i, false); }); });
+  liste.addEventListener('keydown', function(e){
+    var i = onglets.indexOf(document.activeElement);
+    if(i < 0) return;
+    var n = onglets.length;
+    if(e.key === 'ArrowDown' || e.key === 'ArrowRight'){ e.preventDefault(); montrer((i+1)%n, true); }
+    else if(e.key === 'ArrowUp' || e.key === 'ArrowLeft'){ e.preventDefault(); montrer((i-1+n)%n, true); }
+    else if(e.key === 'Home'){ e.preventDefault(); montrer(0, true); }
+    else if(e.key === 'End'){ e.preventDefault(); montrer(n-1, true); }
+  });
+})();
+</script>
+</body>
+</html>
