@@ -1018,6 +1018,18 @@
           <li data-t="e3b.m1b">Gaine d'évacuation, kit de calfeutrage et télécommande fournis</li>
           <li data-t="e3b.m1c2">La chambre, le salon, le bureau : là où on dort et où on travaille</li>
         </ul>
+        <!-- ══ RÉSERVER CETTE MACHINE (Booqable) ═══════════════════════════
+             Le catalogue Booqable de l'entreprise, posé sur la machine qu'il
+             décrit — c'est ici, et nulle part ailleurs, qu'on se demande
+             « celle-là, je peux l'avoir quand ? ».
+             LE BLOC RESTE MASQUÉ TANT QUE BOOQABLE N'A RIEN POSÉ DEDANS.
+             Sans ça, un snippet non collé ou un script bloqué laisserait un
+             titre suivi de rien au milieu de la carte. C'est la règle de la
+             maison : une case sans donnée s'efface. -->
+        <div class="loue" id="loue-clim" hidden>
+          <p class="loue-t" data-t="e3b.loueT">Réserver cette machine</p>
+          <div class="booqable-product" data-id="climatiseur-de-longhi"></div>
+        </div>
       </article>
 
       <article class="mach">
@@ -1779,6 +1791,8 @@ Object.assign(T, {
                   zh:"示意图：靠蒸发水降温，因此需要流通的空气。",
                   ru:"Схема: испаряет воду, поэтому нужен приток свежего воздуха."},
   'e3b.m1c'    : {fr:"Fenêtre fermée", en:"Window closed", zh:"关窗使用", ru:"Окно закрыто"},
+  'e3b.loueT'  : {fr:"Réserver cette machine", en:"Book this machine",
+                  zh:"预订这台机器", ru:"Забронировать эту машину"},
   'e3b.m1t'    : {fr:"Climatiseur mobile", en:"Portable air conditioner", zh:"移动空调", ru:"Мобильный кондиционер"},
   'e3b.m1d'    : {fr:"Le De'Longhi Pinguino. Clim, déshumidificateur et ventilateur dans le même appareil, sur une prise normale — et une allure qu'on n'a pas honte de laisser au milieu du salon.",
                   en:"The De'Longhi Pinguino. Air conditioner, dehumidifier and fan in one unit, on an ordinary socket — and a look you won't mind leaving in the middle of the living room.",
@@ -3973,5 +3987,60 @@ Object.assign(T, {
 })();
 </script>
 
+
+<!-- ══ BOOQABLE ═══════════════════════════════════════════════════════════
+     LE SNIPPET DE L'ENTREPRISE SE COLLE ICI, tel quel, sans rien y changer.
+     On le trouve dans Booqable → Settings → Website Integration →
+     Javascript snippet. Il contient l'identifiant de la société : il n'est
+     pas devinable, et cette session n'y a pas accès.
+
+     Tant qu'il n'est pas collé, la page est EXACTEMENT celle d'avant : le
+     bloc « Réserver cette machine » reste masqué, il n'y a pas de trou.
+
+     ATTENTION : la Content-Security-Policy du site (vercel.json) refuse par
+     défaut tout script venu d'ailleurs, SANS message visible pour le
+     visiteur. *.booqable.com y est désormais autorisé. Si le snippet charge
+     depuis un autre domaine, il faut l'y ajouter aussi — voir BOOQABLE.md.
+
+     >>> COLLER LE SNIPPET BOOQABLE JUSTE EN DESSOUS >>>                  -->
+
+<!-- <<< COLLER LE SNIPPET BOOQABLE JUSTE AU-DESSUS <<<                   -->
+
+<script>
+/* ── LE BLOC DE RÉSERVATION NE S'AFFICHE QUE S'IL A QUELQUE CHOSE À DIRE ──
+   Le widget vient d'un autre serveur : il peut ne jamais arriver — snippet
+   non collé, script bloqué par la Content-Security-Policy, Booqable en
+   panne, visiteur hors ligne. On ne montre le cadre qu'une fois qu'il a
+   vraiment posé son contenu. Sinon la carte du climatiseur se retrouverait
+   avec un titre suivi de rien. */
+(function(){
+  var boite = document.getElementById('loue-clim');
+  if(!boite) return;
+  var cible = boite.querySelector('.booqable-product');
+  if(!cible) return;
+
+  function garni(){ return cible.children.length > 0 || cible.textContent.trim() !== ''; }
+  function montrer(){ if(!garni()) return false; boite.hidden = false; return true; }
+
+  if(montrer()) return;
+  if(!('MutationObserver' in window)) return;
+
+  var obs = new MutationObserver(function(){ if(montrer()) obs.disconnect(); });
+  obs.observe(cible, { childList:true, subtree:true });
+
+  /* Au bout de dix secondes, on ÉCRIT qu'il ne s'est rien passé — mais on
+     continue de guetter. Une première version coupait la surveillance à ce
+     moment-là : sur un réseau lent, le widget arrivait après et le bloc ne
+     s'affichait plus jamais. Guetter un seul nœud ne coûte rien ; abandonner
+     coûte une réservation.
+     Le message n'est écrit que dans la console — un visiteur n'a pas à lire
+     nos pannes. */
+  setTimeout(function(){
+    if(!garni()) console.info(
+      "Loc'Air : Booqable n'a rien affiche - snippet non colle, ou domaine "
+      + "absent de la Content-Security-Policy (vercel.json). Voir BOOQABLE.md.");
+  }, 10000);
+})();
+</script>
 </body>
 </html>
