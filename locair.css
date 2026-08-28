@@ -1610,6 +1610,14 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .infobar .pt{width:8px;height:8px;border-radius:50% 50% 50% 0;transform:rotate(-25deg);background:var(--gold);flex-shrink:0;animation:pulse 2s ease-in-out infinite}
 .infobar-x{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:30px;height:30px;border-radius:50%;color:rgba(255,255,255,.5);font-size:var(--s-6);line-height:1;display:flex;align-items:center;justify-content:center}
 .infobar-x:hover{color:#fff;background:rgba(255,255,255,.1)}
+/* La croix fait 30 x 30. J'ai essayé de l'agrandir à 44 px avec une plaque
+   invisible : ça ne peut pas marcher. La barre d'info ne mesure que 41 px de
+   haut, donc une cible de 44 px déborde forcément sur la barre d'aperçu
+   au-dessus et sur l'en-tête en dessous — mesuré, ce sont elles qui
+   répondaient au doigt, pas la croix.
+   Et la norme demande 24 x 24 (WCAG 2.5.8, niveau AA) : 30 x 30 passe. Aller
+   à 44 supposerait d'épaissir le bandeau, ce qui est un choix de dessin, pas
+   une correction. On laisse. */
 @media(max-width:560px){.infobar{font-size:var(--s-2);padding:10px 38px}.infobar .sec{display:none}}
 
 /* ══ SÉLECTEUR DE LANGUE ══
@@ -1744,7 +1752,10 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .preuves b{font-weight:700;color:rgba(255,255,255,.86)}
 
 .pied-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:30px;margin-top:52px;padding-top:36px;border-top:1px solid rgba(255,255,255,.14);text-align:left}
-.pied-grid h4{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:14px}
+/* h3 ET h4 : index.html n'est jamais touché par cette session et garde ses
+   h4. Le style vaut donc pour les deux, sinon son pied de page perdrait sa
+   mise en forme. */
+.pied-grid h3,.pied-grid h4{font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);text-transform:uppercase;color:rgba(255,255,255,.52);margin-bottom:14px}
 .pied-grid li{list-style:none;margin-bottom:9px}
 .pied-grid a{font-size:var(--s-3);color:rgba(255,255,255,.6);transition:color var(--mv-1) var(--mv)}
 .pied-grid a:hover{color:#fff}
@@ -3172,3 +3183,81 @@ summary:active{background:var(--mist)}
    horizontal de 320 à 1900 px — un invité ne casse pas ça. */
 .loue .booqable-product{max-width:100%;overflow-x:auto}
 .loue img,.loue svg{max-width:100%;height:auto}
+
+/* ══ LE PANNEAU D'ACCUEIL ══════════════════════════════════════════════════
+   L'accueil devient un panneau plein cadre, sombre, avec une scène dessinée
+   à droite.
+   TOUT EST ATTACHÉ À `.e1.e-ink`, et pas à `.e1` seul : /pro.html porte
+   AUSSI une section .e1. Mesuré, la première version avait déteint dessus —
+   fond marine, textes restés sombres, quatre textes sous la norme et deux
+   anneaux de focus faibles. Seule version-b porte la classe e-ink. */
+.e1.e-ink{background:var(--ink);color:var(--paper);position:relative;overflow:hidden}
+.e1.e-ink .in{position:relative;z-index:2}
+
+/* La scène occupe les deux tiers droits et se fond vers la gauche : le texte
+   doit rester lisible, donc l'image s'efface là où il commence. Elle se
+   dissout aussi avant la rangée de garanties, sinon la machine vient couper
+   les mots. */
+.e1.e-ink .e1-scene{
+  position:absolute;right:0;top:0;bottom:0;width:min(56%,760px);
+  color:#fff;pointer-events:none;
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 34%),
+                     linear-gradient(to bottom,#000 0,#000 78%,transparent 96%);
+          mask-image:linear-gradient(to right,transparent 0,#000 34%),
+                     linear-gradient(to bottom,#000 0,#000 78%,transparent 96%);
+  -webkit-mask-composite:source-in;mask-composite:intersect;
+}
+.e1.e-ink .e1-scene svg{width:100%;height:100%;display:block}
+
+/* Les textes du panneau passent sur fond sombre. */
+.e1.e-ink .quoi{color:rgba(255,255,255,.78)}
+.e1.e-ink .etat{color:rgba(255,255,255,.66)}
+/* Mesuré : le gras de cette ligne restait marine sur marine — contraste 1,0.
+   « après-demain matin », c'est-à-dire LA promesse de délai, était purement
+   et simplement invisible. */
+.e1.e-ink .etat b{color:#fff}
+.e1.e-ink .etat .etat-pt{background:var(--gold)}
+.e1.e-ink .preuve1{color:rgba(255,255,255,.68)}
+.e1.e-ink .preuve1 b{color:#fff}
+.e1.e-ink .bord{border-color:rgba(255,255,255,.16)}
+.e1.e-ink .bord-k{color:rgba(255,255,255,.6)}
+.e1.e-ink .bord-v{color:#fff}
+/* La carte d'adresse reste blanche : sur le marine, c'est le point le plus
+   lumineux de l'écran — et c'est celui qui convertit. */
+.e1.e-ink .addr{background:var(--paper);box-shadow:var(--o-3)}
+/* L'anneau de focus suit le fond sur lequel il est réellement tracé — c'est
+   déjà le motif du site (.tete passe en or sur le marine). Sur le panneau
+   marine : l'or, 6,86:1. Dans la carte blanche du formulaire : le sarcelle,
+   5,98:1. Aucune couleur ne tient sur les deux, donc on les sépare. */
+.e1.e-ink{--focus:var(--gold)}
+.e1.e-ink .addr{--focus:var(--vif)}
+
+/* ── LES CINQ GARANTIES, EN UNE RANGÉE QU'ON VOIT ─────────────────────────
+   Mesuré sur la version précédente : elles commençaient à 836 px dans une
+   fenêtre de 900, à opacité zéro. Autant dire que personne ne les voyait,
+   alors que ce sont les cinq arguments les plus forts de la page.
+   Elles deviennent une seule ligne, sans icônes, épinglée au bas du
+   panneau. Même texte, mêmes clés : rien n'est perdu, tout devient
+   visible. */
+.e1.e-ink .rassure-socle{border-top-color:rgba(255,255,255,.16)}
+.e1.e-ink .rassure-in{display:flex;flex-wrap:wrap;gap:7px 24px;grid-template-columns:none}
+.e1.e-ink .ras{flex:0 1 auto;min-width:0;flex-direction:row;align-items:baseline;
+  gap:6px;padding:0;white-space:nowrap}
+.e1.e-ink .ras::before{display:none}
+.e1.e-ink .ras-i{display:none}
+.e1.e-ink .ras b{color:#fff;font-size:var(--s-2)}
+.e1.e-ink .ras span{color:rgba(255,255,255,.62);font-size:var(--s-2)}
+.e1.e-ink .ras i{color:var(--gold)}
+
+/* ── LES DEUX MACHINES, SOUS LE PANNEAU ──────────────────────────────────── */
+.choix-bande{background:var(--mist);border-bottom:1px solid var(--line);
+  padding:var(--e-2) 0}
+.choix-bande .in{max-width:var(--max);margin:0 auto;padding:0 var(--pad)}
+.choix-bande .choix{margin:0}
+
+@media(max-width:900px){
+  /* Sur téléphone la scène passe derrière le texte : elle recule et se
+     décale, sinon elle croise les lignes. */
+  .e1.e-ink .e1-scene{width:132%;right:-46%;opacity:.5}
+  .e1.e-ink .rassure-in{gap:5px 16px}
+}
