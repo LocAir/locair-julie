@@ -552,7 +552,12 @@
 
       <div class="calc-p">
         <p class="calc-lbl" data-t="e5.total">Total à payer</p>
-        <b class="calc-somme" id="c-total" aria-live="polite">294 €</b>
+        <!-- Le chiffre qui défile est masqué aux lecteurs d'écran, et une
+             zone invisible à l'œil dit la valeur FINALE, une seule fois.
+             Sans cette séparation, faire défiler le total ferait annoncer
+             trente valeurs d'affilée à qui n'a que la voix. -->
+        <b class="calc-somme" id="c-total" aria-hidden="true">294 €</b>
+        <span class="sr-only" id="c-total-vocal" role="status">294 €</span>
         <p class="calc-day" id="c-jour" data-th="c.jourInit">soit <b>11 € par jour</b> de location, + 140 € de frais — une seule fois</p>
         <div class="calc-detail">
           <div class="calc-line"><span id="c-l-loc" data-t="c.locInit">Location, 14 jours</span><b id="c-v-loc">154 €</b></div>
@@ -3214,6 +3219,45 @@ Object.assign(T, {
     return (Math.round(n*100)/100).toLocaleString('fr-FR',
       {minimumFractionDigits:0, maximumFractionDigits:2}) + ' €';
   }
+  /* ── LE TOTAL QUI COMPTE ────────────────────────────────────────────────
+     Le prix passait de 294 à 304 d'un coup : rien ne disait qu'il venait
+     d'être recalculé, alors que c'est le moment où l'on décide. Il défile
+     maintenant jusqu'à sa nouvelle valeur en 380 ms — le geste dit « j'ai
+     recompté ».
+     La zone qui parle est séparée de celle qui défile (voir le HTML) : elle
+     ne reçoit que la valeur finale, une seule fois.
+     Au premier affichage, aucune animation : il n'y a rien à comparer. */
+  var vocal = document.getElementById('c-total-vocal');
+  var mini  = document.getElementById('c-total-m');
+  var image = null, affiche = null;
+  function poserTotal(cible){
+    function ecrire(v){
+      var t = eur(v);
+      out.textContent = t;
+      if(mini) mini.textContent = t;
+    }
+    function dire(){ if(vocal) vocal.textContent = eur(cible); }
+    var reduit = window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(image) cancelAnimationFrame(image);
+    if(reduit || affiche === null || affiche === cible){
+      affiche = cible; ecrire(cible); dire(); return;
+    }
+    var depart = affiche, ecart = cible - depart, t0 = null, DUREE = 380;
+    affiche = cible;
+    function pas(t){
+      if(t0 === null) t0 = t;
+      var k = Math.min(1, (t - t0) / DUREE);
+      /* Le chiffre ralentit en arrivant, comme un compteur mécanique qui se
+         cale — un défilement linéaire fait machine à sous. */
+      var doux = 1 - Math.pow(1 - k, 3);
+      ecrire(Math.round(depart + ecart * doux));
+      if(k < 1){ image = requestAnimationFrame(pas); }
+      else { image = null; ecrire(cible); dire(); }
+    }
+    image = requestAnimationFrame(pas);
+  }
+
   function render(){
     /* Règle reprise à l'identique du tunnel (api/checkout.js) :
          location × quantité + installation + livraison
@@ -3229,9 +3273,7 @@ Object.assign(T, {
     document.getElementById('c-v-liv').textContent  = eur(zone);
     document.getElementById('c-v-pose').textContent = pose ? eur(INSTALL) : '0 €';
     document.getElementById('c-line-pose').classList.toggle('off', !pose);
-    out.textContent = eur(total);
-    var mini = document.getElementById('c-total-m');
-    if(mini) mini.textContent = eur(total);
+    poserTotal(total);
     document.getElementById('c-jour').innerHTML =
       mot('c.soit') + ' <b>' + eur(loc/jours) + ' ' + mot('c.parJourDe') + ' '
       + eur(zone + inst) + ' ' + mot('c.frais');
@@ -4151,6 +4193,52 @@ Object.assign(T, {
       "Loc'Air : Booqable n'a rien affiche - snippet non colle, ou domaine "
       + "absent de la Content-Security-Policy (vercel.json). Voir BOOQABLE.md.");
   }, 10000);
+})();
+</script>
+
+<script>
+/* ── LE TRAIT DE CÔTE QUI SE DESSINE ───────────────────────────────────────
+   La carte de la zone est UN seul trait continu, de Cannes à Vintimille.
+   Quand elle arrive à l'écran, il se trace d'ouest en est en une seconde et
+   demie : c'est exactement le geste qu'on fait du doigt pour montrer un
+   trajet. Les villes et leurs noms se posent ensuite, une fois le trait
+   passé — on suit la côte, puis on lit où l'on s'arrête.
+   Une seule fois : une carte qui se redessine à chaque passage devient un
+   gadget. Rien ne bouge pour qui a demandé moins d'animation, et sans
+   JavaScript la carte est simplement là, entière. */
+(function(){
+  var carte = document.querySelector('.carte');
+  if(!carte) return;
+  var cote = carte.querySelector('.ct-cote');
+  if(!cote || typeof cote.getTotalLength !== 'function') return;
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if(!('IntersectionObserver' in window)) return;
+
+  var L;
+  try { L = cote.getTotalLength(); } catch(e){ return; }
+  if(!L || !isFinite(L)) return;
+
+  /* On n'arme le dessin qu'au dernier moment : mettre le trait à zéro dès
+     le chargement le ferait disparaître pour qui ne descend jamais jusque
+     là, et pour qui n'a pas de JavaScript actif à cet instant. */
+  function armer(){
+    cote.style.strokeDasharray = L + ' ' + L;
+    cote.style.strokeDashoffset = L;
+    /* On force le navigateur à prendre la position de départ AVANT de lui
+       donner la transition, sinon il fond les deux et rien ne se dessine. */
+    void cote.getBoundingClientRect();
+    cote.style.transition = 'stroke-dashoffset 1.5s cubic-bezier(.35,.1,.25,1)';
+    cote.style.strokeDashoffset = '0';
+    carte.classList.add('carte-trace');
+  }
+
+  new IntersectionObserver(function(entrees, obs){
+    entrees.forEach(function(e){
+      if(!e.isIntersecting) return;
+      obs.disconnect();
+      armer();
+    });
+  }, { threshold:.3 }).observe(carte);
 })();
 </script>
 </body>
