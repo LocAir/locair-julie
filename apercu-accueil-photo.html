@@ -44,16 +44,26 @@
   background:linear-gradient(to top,rgba(9,20,34,.92) 0%,rgba(9,20,34,.72) 42%,rgba(9,20,34,.34) 100%)}
 
 /* ── LE DESSIN, TANT QU'IL N'Y A PAS DE PHOTO ───────────────────────────── */
-.pl-dessin{position:absolute;right:-4%;top:50%;transform:translateY(-50%);
-  width:min(58%,760px);color:#fff;opacity:.13;pointer-events:none}
-.pl-dessin svg{width:100%;height:auto;display:block}
+/* La scène occupe les deux tiers droits et se fond vers la gauche : le
+   texte doit rester lisible, donc l'image s'efface là où il commence. Le
+   masque est vertical aussi, pour que le haut ne concurrence pas le
+   sélecteur d'offre ni le bas la rangée de preuves. */
+.pl-scene{position:absolute;right:0;top:0;bottom:0;width:min(56%,760px);
+  color:#fff;pointer-events:none;
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 34%),
+                     linear-gradient(to bottom,#000 0,#000 78%,transparent 96%);
+          mask-image:linear-gradient(to right,transparent 0,#000 34%),
+                     linear-gradient(to bottom,#000 0,#000 78%,transparent 96%);
+  -webkit-mask-composite:source-in;mask-composite:intersect;
+}
+.pl-scene svg{width:100%;height:100%;display:block}
 /* Le courant d'air, tout en bas, comme sur le reste du site. */
 .pl-flux{position:absolute;left:0;right:0;bottom:0;height:46%;pointer-events:none;
   -webkit-mask-image:linear-gradient(to top,#000 8%,transparent 76%);
           mask-image:linear-gradient(to top,#000 8%,transparent 76%)}
 .pl-flux path{fill:none;stroke:#fff;stroke-opacity:.13;stroke-width:1.4}
 /* Dès qu'une photo est là, le dessin n'a plus lieu d'être. */
-.pl:has(.pl-photo:not([hidden])) .pl-dessin,
+.pl:has(.pl-photo:not([hidden])) .pl-scene,
 .pl:has(.pl-photo:not([hidden])) .pl-flux{display:none}
 
 /* ── LE TEXTE ───────────────────────────────────────────────────────────── */
@@ -97,7 +107,9 @@
 .pl-p b{color:#fff;font-weight:700}
 
 @media(max-width:760px){
-  .pl-dessin{width:104%;right:-30%;opacity:.09}
+  /* Sur téléphone la scène passe derrière le texte : elle recule
+     franchement et se décale, sinon elle croise les lignes. */
+  .pl-scene{width:132%;right:-46%;opacity:.55}
   /* Sur téléphone la place est comptée : trois lignes longues et deux
      boutons empilés repoussaient les preuves hors de l'écran — le défaut
      même qu'on corrige. Texte un cran plus petit, boutons côte à côte,
@@ -190,33 +202,82 @@
   </figure>
   -->
 
-  <!-- Le dessin de la maison, à l'échelle du panneau. C'est le même
-       climatiseur que l'écran « Le matériel », agrandi et très pâle. -->
-  <div class="pl-dessin" aria-hidden="true">
-    <svg viewBox="0 0 600 400" fill="none" stroke="currentColor" stroke-width="2.2"
-         stroke-linecap="round" stroke-linejoin="round" focusable="false">
-      <rect x="118" y="52" width="196" height="296" rx="24"/>
-      <path d="M150 96h132M150 116h132M150 136h132" stroke-opacity=".5"/>
-      <rect x="150" y="184" width="132" height="42" rx="9"/>
-      <circle cx="176" cy="205" r="4" fill="currentColor" stroke="none"/>
-      <circle cx="196" cy="205" r="4" fill="currentColor" stroke="none"/>
-      <path d="M222 205h44" stroke-width="3"/>
-      <path d="M162 268v52M192 268v52M222 268v52M252 268v52" stroke-opacity=".45"/>
-      <circle cx="152" cy="362" r="11"/><circle cx="280" cy="362" r="11"/>
-      <path d="M314 150c40 0 40 22 80 22s40-22 80-22"/>
-      <path d="M314 174c40 0 40 22 80 22s40-22 80-22"/>
-      <rect x="486" y="34" width="86" height="300" rx="7" stroke-opacity=".55"/>
-      <path d="M529 34v300" stroke-opacity=".55"/>
-      <rect x="486" y="132" width="86" height="64" rx="5" stroke-width="2.4"/>
+  <!-- ══ LA SCÈNE ═══════════════════════════════════════════════════════
+       Une photo remplit un panneau parce qu'elle a de la PROFONDEUR : un
+       loin, un milieu, un près. Un objet posé au trait n'a que le milieu —
+       c'est pour ça que la première version ressemblait à une décoration
+       collée sur du bleu, pas à une image.
+       Ici : la mer au loin, la fenêtre et le kit au milieu, la machine tout
+       près, et le cadre coupe la scène de trois côtés comme un cadrage
+       photo. La profondeur est faite avec l'opacité du trait — plus c'est
+       loin, plus c'est pâle.
+       Un seul élément en or : l'air frais qui sort. C'est le sujet.
+       Ce n'est PAS une photo et ça ne prétend pas l'être : c'est un dessin
+       assumé, qui tient la place jusqu'à ce qu'une vraie photo arrive. -->
+  <div class="pl-scene" aria-hidden="true">
+    <svg viewBox="0 0 900 780" fill="none" stroke="currentColor"
+         stroke-linecap="round" stroke-linejoin="round" focusable="false"
+         preserveAspectRatio="xMaxYMid meet">
+
+      <!-- LOIN — la mer et l'horizon, vus par la fenêtre. La courbe est
+           celle de la baie, la même que sur la carte de la zone. -->
+      <g stroke-opacity=".075" stroke-width="2">
+        <path d="M338 236h476"/>
+        <path d="M338 268c62 0 62-13 124-13s62 13 124 13 62-13 124-13 62 13 104 13"/>
+        <path d="M338 302c62 0 62-13 124-13s62 13 124 13 62-13 124-13 62 13 104 13"/>
+        <path d="M338 336c62 0 62-13 124-13s62 13 124 13 62-13 124-13 62 13 104 13"/>
+        <path d="M556 190c26-16 58-24 92-24s66 8 92 24"/>
+      </g>
+
+      <!-- MILIEU — la fenêtre. Elle sort du cadre par le haut et par la
+           droite : on est dans la pièce, pas devant une vignette. -->
+      <g stroke-opacity=".15" stroke-width="2.6">
+        <path d="M318 -40v760"/>
+        <path d="M318 -40h620"/>
+        <path d="M318 700h620"/>
+        <path d="M318 168h620"/>
+        <path d="M628 -40v208"/>
+        <rect x="352" y="-6" width="240" height="156" rx="4" stroke-opacity=".55"/>
+        <rect x="664" y="-6" width="240" height="156" rx="4" stroke-opacity=".55"/>
+        <rect x="352" y="204" width="552" height="452" rx="4" stroke-opacity=".55"/>
+      </g>
+
+      <!-- LE KIT — le panneau de calfeutrage dans l'ouverture basse, et
+           l'orifice par lequel la gaine sort. C'est la réponse à la
+           question numéro un du visiteur. -->
+      <g stroke-opacity=".22" stroke-width="2.8">
+        <rect x="366" y="218" width="524" height="424" rx="6"/>
+        <path d="M366 300h524M366 560h524" stroke-opacity=".45"/>
+        <circle cx="452" cy="430" r="56"/>
+      </g>
+      <circle cx="452" cy="430" r="44" stroke="#C9A227" stroke-opacity=".62" stroke-width="3.4"/>
+
+      <!-- PRÈS — la gaine, puis la machine, coupée par le bas du cadre. -->
+      <g stroke-opacity=".3" stroke-width="3">
+        <path d="M396 430c-56 0-92 22-118 58s-38 82-38 126"/>
+        <path d="M424 466c-44 6-72 28-92 60s-28 74-28 118"/>
+      </g>
+      <g stroke-opacity=".34" stroke-width="3.2">
+        <rect x="112" y="352" width="228" height="500" rx="26"/>
+        <path d="M148 400h156M148 424h156M148 448h156" stroke-opacity=".5"/>
+        <rect x="148" y="500" width="156" height="52" rx="10"/>
+        <circle cx="178" cy="526" r="5" fill="currentColor" stroke="none"/>
+        <circle cx="202" cy="526" r="5" fill="currentColor" stroke="none"/>
+        <path d="M228 526h52" stroke-width="3.4"/>
+        <path d="M160 604v96M196 604v96M232 604v96M268 604v96" stroke-opacity=".45"/>
+      </g>
+
+      <!-- LE SUJET — l'air frais qui sort. Le seul élément en or. -->
+      <!-- L'air frais qui sort, du côté machine. Il reste au trait neutre :
+           l'or est déjà pris par l'orifice, et deux ors se disputeraient
+           le regard. -->
+      <g stroke-opacity=".26" stroke-width="3">
+        <path d="M74 404c-22 0-22 20-44 20"/>
+        <path d="M74 450c-22 0-22 20-44 20"/>
+        <path d="M74 496c-22 0-22 20-44 20"/>
+      </g>
     </svg>
   </div>
-  <svg class="pl-flux" viewBox="0 0 1200 300" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-    <path d="M-40 60C220 40 420 84 660 62S1000 22 1240 46"/>
-    <path d="M-40 128C240 108 440 152 680 130S1020 92 1240 116"/>
-    <path d="M-40 196C200 178 430 220 670 200S1030 162 1240 184"/>
-    <path d="M-40 262C230 246 440 284 680 266S1040 232 1240 252"/>
-  </svg>
-
   <div class="pl-in">
     <p class="pl-k"><i></i>Nice et alentours · 7 jours sur 7</p>
     <h1 class="pl-t">Le froid livré chez vous,<em> demain matin.</em></h1>
