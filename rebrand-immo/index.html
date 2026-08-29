@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>ReBrand Immo — Générateur de fiches immobilières 1-clic</title>
+<meta name="description" content="ReBrand Immo réplique la mise en page de n'importe quelle annonce et génère en un clic une fiche PDF traduite, aux couleurs de votre agence."/>
+<meta name="robots" content="noindex,nofollow"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS (build "browser", moteur JIT chargé en script) : hébergé sur unpkg.com,
+     déjà whitelisté dans la Content-Security-Policy globale (vercel.json) — pas besoin
+     d'ajouter cdn.tailwindcss.com à la CSP du site pour cette page. -->
+<script src="https://unpkg.com/@tailwindcss/browser@4.3.3"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.26.10/babel.min.js"></script>
+<script src="https://unpkg.com/lucide@1.35.0/dist/umd/lucide.min.js"></script>
+<style>
+  html,body{background:#f8fafc;font-family:'Inter',system-ui,sans-serif}
+  ::selection{background:#c7d2fe;color:#1e1b4b}
+  @keyframes ri-toast-in{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+  .ri-toast{animation:ri-toast-in .25s ease-out}
+  @keyframes ri-pop{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:scale(1)}}
+  .ri-pop{animation:ri-pop .35s ease-out}
+  /* Aperçu A4 : ratio figé pour que la fiche ressemble à un vrai document imprimable. */
+  .ri-a4{aspect-ratio:210/297}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:8px}
+  ::-webkit-scrollbar-track{background:transparent}
+  /* "Télécharger le PDF HD" ouvre l'impression du navigateur cadrée sur la fiche
+     uniquement — un export PDF réellement fonctionnel, pas juste un bouton décoratif. */
+  @media print{
+    body *{visibility:hidden}
+    #ri-pdf-canvas,#ri-pdf-canvas *{visibility:visible}
+    #ri-pdf-canvas{position:absolute;top:0;left:0;width:100%;margin:0;box-shadow:none;border:none}
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useRef, useMemo } = React;
+
+/* ————————————————————————————————————————————————————————————
+   Icônes : wrapper autour de la version "vanilla" de Lucide (UMD),
+   chargée en <script> classique (compatible avec la CSP du site,
+   qui n'autorise que 'self' + quelques domaines précis en script-src,
+   pas d'import ES module depuis un CDN tiers). React ne possède que le
+   <span> conteneur : le SVG interne est posé une fois en DOM impérative,
+   jamais diffé par React → pas de conflit entre les deux moteurs.
+   ———————————————————————————————————————————————————————————— */
+function Icon({ name, size = 18, className = "", strokeWidth = 2 }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    if (!ref.current || !window.lucide || !window.lucide[name]) return;
+    const svg = window.lucide.createElement(window.lucide[name]);
+    svg.setAttribute("width", size);
+    svg.setAttribute("height", size);
+    svg.setAttribute("stroke-width", strokeWidth);
+    ref.current.innerHTML = "";
+    ref.current.appendChild(svg);
+  }, [name, size, strokeWidth]);
+  return <span ref={ref} className={`inline-flex shrink-0 ${className}`} style={{ lineHeight: 0 }} />;
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const uid = () => Math.random().toString(36).slice(2, 10);
+
+/* ————————————————————————————————————————————————————————————
+   Données mock
+   ———————————————————————————————————————————————————————————— */
+const LANGS = [
+  { code: "fr", label: "Français" },
+  { code: "en", label: "Anglais" },
+  { code: "de", label: "Allemand" },
+  { code: "es", label: "Espagnol" },
+  { code: "it", label: "Italien" },
+  { code: "nl", label: "Néerlandais" },
+];
+
+const CONTENT = {
+  fr: { title: "Villa 5 pièces - 180 m² - Nice", price: "Prix", desc: "Description", feat: "Caractéristiques", dpe: "Diagnostic de performance énergétique", contact: "Contact",
+    body: "Magnifique villa contemporaine de 180 m² nichée sur les hauteurs de Nice, offrant une vue imprenable sur la baie des Anges. Cette propriété d'exception dispose de 5 pièces lumineuses, dont 4 chambres avec suites parentales, un salon-séjour ouvert sur une terrasse panoramique, une cuisine équipée haut de gamme et une piscine à débordement. Prestations soignées, jardin paysager et double garage." },
+  en: { title: "5-Bedroom Villa - 180 sqm - Nice", price: "Price", desc: "Description", feat: "Features", dpe: "Energy performance rating", contact: "Contact",
+    body: "Magnificent 180 sqm contemporary villa perched on the hills of Nice, offering breathtaking views over the Baie des Anges. This exceptional property features 5 bright rooms, including 4 bedrooms with en-suite bathrooms, an open-plan living room leading to a panoramic terrace, a high-end fitted kitchen and an infinity pool. Quality finishes, landscaped garden and double garage." },
+  de: { title: "Villa mit 5 Zimmern - 180 m² - Nizza", price: "Preis", desc: "Beschreibung", feat: "Ausstattung", dpe: "Energieeffizienzklasse", contact: "Kontakt",
+    body: "Prächtige, 180 m² große zeitgenössische Villa in den Hügeln von Nizza mit atemberaubendem Blick auf die Baie des Anges. Diese außergewöhnliche Immobilie bietet 5 helle Zimmer, darunter 4 Schlafzimmer mit eigenem Bad, ein offenes Wohnzimmer mit Zugang zu einer Panoramaterrasse, eine hochwertige Einbauküche und einen Infinity-Pool. Hochwertige Ausstattung, angelegter Garten und Doppelgarage." },
+  es: { title: "Villa de 5 habitaciones - 180 m² - Niza", price: "Precio", desc: "Descripción", feat: "Características", dpe: "Certificación energética", contact: "Contacto",
+    body: "Magnífica villa contemporánea de 180 m² situada en las colinas de Niza, con vistas impresionantes a la Bahía de los Ángeles. Esta propiedad excepcional cuenta con 5 habitaciones luminosas, entre ellas 4 dormitorios con baño privado, un salón abierto con acceso a una terraza panorámica, una cocina equipada de alta gama y una piscina infinita. Acabados de calidad, jardín paisajístico y garaje doble." },
+  it: { title: "Villa 5 locali - 180 m² - Nizza", price: "Prezzo", desc: "Descrizione", feat: "Caratteristiche", dpe: "Classe energetica", contact: "Contatto",
+    body: "Magnifica villa contemporanea di 180 m² situata sulle colline di Nizza, con una vista mozzafiato sulla Baie des Anges. Questa proprietà eccezionale dispone di 5 stanze luminose, tra cui 4 camere con bagno privato, un soggiorno open space affacciato su una terrazza panoramica, una cucina attrezzata di alta gamma e una piscina a sfioro. Finiture curate, giardino paesaggistico e doppio garage." },
+  nl: { title: "Villa met 5 kamers - 180 m² - Nice", price: "Prijs", desc: "Beschrijving", feat: "Kenmerken", dpe: "Energielabel", contact: "Contact",
+    body: "Prachtige eigentijdse villa van 180 m² gelegen op de heuvels van Nice, met een adembenemend uitzicht over de Baie des Anges. Dit uitzonderlijke pand beschikt over 5 lichte kamers, waaronder 4 slaapkamers met eigen badkamer, een open woonkamer met toegang tot een panoramisch terras, een luxe ingerichte keuken en een infinity pool. Verzorgde afwerking, aangelegde tuin en dubbele garage." },
+};
+
+const PROPERTY = { priceValue: "750 000 €", surface: "180 m²", rooms: "5 pièces", bedrooms: "4 chambres", baths: "2 salles de bain", land: "800 m² de terrain", dpe: "B", location: "Nice, Alpes-Maritimes" };
+
+const DPE_SCALE = [
+  { l: "A", bg: "#12a06c", w: "38%" }, { l: "B", bg: "#5cb85c", w: "46%" }, { l: "C", bg: "#a3d139", w: "54%" },
+  { l: "D", bg: "#f4d135", w: "62%" }, { l: "E", bg: "#f0a941", w: "70%" }, { l: "F", bg: "#e8704a", w: "78%" }, { l: "G", bg: "#d94b3b", w: "86%" },
+];
+
+const STRUCTURE_BLOCKS = [
+  { icon: "Layers", label: "En-tête / logo agence" },
+  { icon: "Image", label: "Photo principale" },
+  { icon: "SquareStack", label: "Grille caractéristiques (x6)" },
+  { icon: "Zap", label: "Diagramme DPE" },
+  { icon: "FileText", label: "Bloc description" },
+  { icon: "Phone", label: "Pied de page / contact agence" },
+];
+
+const INITIAL_PROFILES = [
+  { id: 1, name: "Agence Prestige Nice", initials: "PN", color: "#4f46e5", secondary: "#0f172a", phone: "04 93 12 45 78", email: "contact@prestige-nice.fr", website: "www.prestige-nice.fr" },
+  { id: 2, name: "Century Immo Cannes", initials: "CI", color: "#059669", secondary: "#0f172a", phone: "04 92 34 56 12", email: "hello@centuryimmo-cannes.fr", website: "www.centuryimmo-cannes.fr" },
+  { id: 3, name: "Riviera Sélection", initials: "RS", color: "#b45309", secondary: "#1c1917", phone: "04 89 45 67 23", email: "contact@riviera-selection.fr", website: "www.riviera-selection.fr" },
+];
+
+const INITIAL_TEMPLATES = [
+  { id: 1, name: "Villa Nice — Orpi", url: "https://www.orpi.com/vente-appartement-villa-nice-alpes-maritimes-06/12345", blocks: 6, date: "12/08/2026" },
+  { id: 2, name: "Appartement Antibes — Century21", url: "https://www.century21.fr/annonces/a/vente/appartement/antibes-06600/98765", blocks: 5, date: "05/08/2026" },
+  { id: 3, name: "Maison Cannes — SeLoger", url: "https://www.seloger.com/annonces/achat/maison/cannes-06/456123.htm", blocks: 7, date: "28/07/2026" },
+];
+
+const NAV_ITEMS = [
+  { id: "dashboard", label: "Dashboard", icon: "LayoutDashboard" },
+  { id: "config", label: "Configuration Agence", icon: "Building2" },
+  { id: "templates", label: "Modèles Sauvegardés", icon: "Bookmark" },
+  { id: "settings", label: "Paramètres / Abonnement", icon: "CreditCard" },
+];
+
+/* ————————————————————————————————————————————————————————————
+   Notifications (toasts)
+   ———————————————————————————————————————————————————————————— */
+function ToastStack({ toasts }) {
+  return (
+    <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 w-[min(92vw,340px)]">
+      {toasts.map((t) => (
+        <div key={t.id} className={`ri-toast flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 shadow-lg text-sm font-medium backdrop-blur
+          ${t.tone === "success" ? "bg-emerald-50/95 border-emerald-200 text-emerald-800" : "bg-white/95 border-slate-200 text-slate-700"}`}>
+          {t.tone === "success" ? <Icon name="CheckCircle2" size={17} className="text-emerald-600" /> : <Icon name="Loader2" size={16} className="text-indigo-500 animate-spin" />}
+          <span className="leading-snug">{t.text}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ————————————————————————————————————————————————————————————
+   Sidebar
+   ———————————————————————————————————————————————————————————— */
+function Sidebar({ active, onNavigate }) {
+  return (
+    <aside className="hidden md:flex md:flex-col w-64 shrink-0 bg-white border-r border-slate-200 min-h-screen sticky top-0">
+      <div className="flex items-center gap-2.5 px-5 h-16 border-b border-slate-100">
+        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-600 to-indigo-500 flex items-center justify-center">
+          <Icon name="Wand2" size={17} className="text-white" />
+        </div>
+        <span className="font-extrabold text-slate-900 tracking-tight text-[15px]">ReBrand Immo</span>
+      </div>
+      <nav className="flex-1 px-3 py-4 space-y-1">
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onNavigate(item.id)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
+              ${active === item.id ? "bg-indigo-50 text-indigo-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"}`}
+          >
+            <Icon name={item.icon} size={18} className={active === item.id ? "text-indigo-600" : "text-slate-400"} />
+            {item.label}
+          </button>
+        ))}
+      </nav>
+      <div className="p-4 border-t border-slate-100">
+        <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5">
+          <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5"><Icon name="Rocket" size={14} className="text-indigo-500" /> Plan Pro actif</p>
+          <p className="text-[11px] text-slate-500 mt-1 leading-snug">Fiches illimitées · 6 langues · export HD</p>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+/* ————————————————————————————————————————————————————————————
+   Header
+   ———————————————————————————————————————————————————————————— */
+function Header({ page }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(() => {
+    const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, []);
+  const pageTitles = { dashboard: "ReBrand Immo", config: "Configuration Agence", templates: "Modèles Sauvegardés", settings: "Paramètres / Abonnement" };
+  return (
+    <header className="h-16 border-b border-slate-200 bg-white/90 backdrop-blur sticky top-0 z-40 flex items-center justify-between px-4 md:px-8">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="md:hidden w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center shrink-0">
+          <Icon name="Wand2" size={15} className="text-white" />
+        </div>
+        <h1 className="text-lg font-extrabold text-slate-900 tracking-tight truncate">{pageTitles[page] || "ReBrand Immo"}</h1>
+        <span className="hidden sm:inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full">
+          <Icon name="Zap" size={11} /> Générateur 1-clic
+        </span>
+      </div>
+      <div className="relative shrink-0" ref={ref}>
+        <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2 pl-1 pr-2.5 py-1 rounded-full hover:bg-slate-100 transition-colors">
+          <div className="w-8 h-8 rounded-full bg-slate-800 text-white text-xs font-bold flex items-center justify-center">JM</div>
+          <span className="hidden sm:block text-sm font-semibold text-slate-700">Julie Martin</span>
+          <Icon name="ChevronDown" size={15} className="text-slate-400" />
+        </button>
+        {open && (
+          <div className="ri-pop absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 text-sm">
+            <div className="px-3.5 py-2 border-b border-slate-100">
+              <p className="font-semibold text-slate-800">Julie Martin</p>
+              <p className="text-xs text-slate-400">julie@prestige-nice.fr</p>
+            </div>
+            <button className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-600"><Icon name="UserCircle" size={15} /> Mon profil</button>
+            <button className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-slate-600"><Icon name="Settings" size={15} /> Paramètres</button>
+            <button className="w-full text-left px-3.5 py-2 hover:bg-slate-50 flex items-center gap-2 text-red-500"><Icon name="LogOut" size={15} /> Déconnexion</button>
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}
+
+/* ————————————————————————————————————————————————————————————
+   Aperçu "Modèle" (structure détectée, non brandée)
+   ———————————————————————————————————————————————————————————— */
+function TemplateSkeleton({ analyzed, analyzing }) {
+  if (!analyzed && !analyzing) {
+    return (
+      <div className="ri-a4 max-w-[440px] mx-auto rounded-2xl border-2 border-dashed border-slate-300 bg-slate-50 flex flex-col items-center justify-center text-center p-8">
+        <Icon name="Link2" size={30} className="text-slate-300 mb-3" />
+        <p className="text-sm font-semibold text-slate-500">Aucun modèle analysé</p>
+        <p className="text-xs text-slate-400 mt-1.5 max-w-[220px]">Collez l'URL d'une annonce ci-dessus puis cliquez sur « Analyser & Enregistrer la Structure ».</p>
+      </div>
+    );
+  }
+  return (
+    <div className="ri-a4 max-w-[440px] mx-auto rounded-2xl border border-slate-200 bg-white shadow-sm p-4 flex flex-col gap-3 overflow-hidden">
+      {STRUCTURE_BLOCKS.map((b, i) => (
+        <div key={b.label} className={`rounded-lg border-2 border-dashed border-indigo-200 bg-indigo-50/50 flex items-center gap-2.5 px-3 ${i === 1 ? "flex-1" : "py-3"} ${analyzing ? "animate-pulse" : ""}`}>
+          <Icon name={analyzing ? "Loader2" : b.icon} size={15} className={`text-indigo-400 shrink-0 ${analyzing ? "animate-spin" : ""}`} />
+          <span className="text-[11px] font-semibold text-indigo-500 truncate">{analyzing ? "Détection en cours…" : b.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ————————————————————————————————————————————————————————————
+   Fiche générée (branded PDF preview)
+   ———————————————————————————————————————————————————————————— */
+function GeneratedFlyer({ profile, lang, edit, values, onChange }) {
+  const c = CONTENT[lang];
+  const dpeIdx = DPE_SCALE.findIndex((d) => d.l === PROPERTY.dpe);
+  return (
+    <div id="ri-pdf-canvas" className="ri-a4 max-w-[440px] mx-auto rounded-2xl border border-slate-200 bg-white shadow-md overflow-hidden flex flex-col">
+      {/* En-tête */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100" style={{ background: `${profile.color}0d` }}>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-[11px] font-extrabold shrink-0" style={{ background: profile.color }}>{profile.initials}</div>
+          <div className="leading-tight">
+            <p className="text-[12px] font-extrabold text-slate-800">{profile.name}</p>
+            <p className="text-[9px] text-slate-400">{profile.website}</p>
+          </div>
+        </div>
+        <span className="text-[9px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full text-white shrink-0" style={{ background: profile.color }}>{lang.toUpperCase()}</span>
+      </div>
+
+      {/* Photo principale */}
+      <div className="relative flex-1 min-h-[92px] flex items-end p-3" style={{ background: `linear-gradient(135deg, ${profile.color}, ${profile.secondary})` }}>
+        <Icon name="Home" size={46} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/15" />
+        <div className="relative z-10 text-white w-full">
+          {edit ? (
+            <textarea value={values.title} onChange={(e) => onChange("title", e.target.value)} rows={2}
+              className="w-full bg-black/25 rounded-md px-1.5 py-1 text-[13px] font-extrabold leading-tight outline-none ring-2 ring-white/60 resize-none" />
+          ) : (
+            <p className="text-[13px] font-extrabold leading-tight drop-shadow">{values.title}</p>
+          )}
+          {edit ? (
+            <input value={values.price} onChange={(e) => onChange("price", e.target.value)}
+              className="mt-1 bg-black/25 rounded-md px-1.5 py-0.5 text-[15px] font-extrabold outline-none ring-2 ring-white/60 w-32" />
+          ) : (
+            <p className="text-[15px] font-extrabold mt-0.5 drop-shadow">{values.price}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Caractéristiques */}
+      <div className="px-3.5 pt-3">
+        <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">{c.feat}</p>
+        <div className="grid grid-cols-3 gap-1.5">
+          {[["Ruler", PROPERTY.surface], ["Layers", PROPERTY.rooms], ["BedDouble", PROPERTY.bedrooms], ["Bath", PROPERTY.baths], ["MapPin", PROPERTY.location], ["SquareStack", PROPERTY.land]].map(([icon, val]) => (
+            <div key={icon} className="rounded-md bg-slate-50 border border-slate-100 px-1.5 py-1.5 flex flex-col items-center text-center gap-0.5">
+              <Icon name={icon} size={12} style={{ color: profile.color }} />
+              <span className="text-[8px] font-semibold text-slate-600 leading-tight">{val}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* DPE */}
+      <div className="px-3.5 pt-3">
+        <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1.5">{c.dpe}</p>
+        <div className="flex gap-[2px] items-stretch h-5">
+          {DPE_SCALE.map((d, i) => (
+            <div key={d.l} className="flex items-center justify-center text-[8px] font-extrabold text-white rounded-[2px]"
+              style={{ background: d.bg, flex: 1, opacity: i === dpeIdx ? 1 : 0.35, transform: i === dpeIdx ? "scaleY(1.15)" : "scaleY(1)" }}>
+              {d.l}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Description */}
+      <div className="px-3.5 pt-3 pb-2">
+        <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400 mb-1">{c.desc}</p>
+        {edit ? (
+          <textarea value={values.body} onChange={(e) => onChange("body", e.target.value)} rows={4}
+            className="w-full text-[8.5px] leading-relaxed text-slate-600 outline-none ring-2 ring-indigo-300 rounded-md p-1 resize-none" />
+        ) : (
+          <p className="text-[8.5px] leading-relaxed text-slate-600 line-clamp-5">{values.body}</p>
+        )}
+      </div>
+
+      {/* Footer contact */}
+      <div className="mt-auto px-3.5 py-2.5 flex items-center justify-between text-white" style={{ background: profile.secondary }}>
+        <div className="flex items-center gap-2.5 text-[8.5px] font-medium">
+          <span className="flex items-center gap-1"><Icon name="Phone" size={10} /> {profile.phone}</span>
+          <span className="flex items-center gap-1"><Icon name="Mail" size={10} /> {profile.email}</span>
+        </div>
+        <span className="text-[7px] text-white/40 font-semibold">ReBrand Immo</span>
+      </div>
+    </div>
+  );
+}
+
+/* ————————————————————————————————————————————————————————————
+   Page : Dashboard
+   ———————————————————————————————————————————————————————————— */
+function DashboardPage({ profiles, pushToast, initialUrl }) {
+  const [templateUrl, setTemplateUrl] = useState(initialUrl || "https://www.orpi.com/vente-appartement-villa-nice-alpes-maritimes-06/12345");
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzed, setAnalyzed] = useState(false);
+
+  const [fileName, setFileName] = useState("villa-5pieces-nice.pdf");
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const [lang, setLang] = useState("en");
+  const [profileId, setProfileId] = useState(profiles[0].id);
+  const profile = profiles.find((p) => p.id === profileId) || profiles[0];
+
+  const [generating, setGenerating] = useState(false);
+  const [generated, setGenerated] = useState(false);
+  const [tab, setTab] = useState("template");
+  const [editMode, setEditMode] = useState(false);
+  const [values, setValues] = useState({ title: CONTENT.en.title, price: PROPERTY.priceValue, body: CONTENT.en.body });
+
+  // Les textes affichés suivent la langue choisie tant qu'on n'a pas commencé à éditer à la main.
+  useEffect(() => {
+    if (!editMode) setValues({ title: CONTENT[lang].title, price: PROPERTY.priceValue, body: CONTENT[lang].body });
+  }, [lang]);
+
+  async function handleAnalyze() {
+    if (!templateUrl.trim() || analyzing) return;
+    setAnalyzing(true);
+    setAnalyzed(false);
+    setTab("template");
+    await sleep(1500);
+    setAnalyzing(false);
+    setAnalyzed(true);
+    pushToast("6 blocs détectés dans la mise en page du modèle.", "success");
+  }
+
+  async function handleGenerate() {
+    if (generating) return;
+    setGenerating(true);
+    setGenerated(false);
+    setEditMode(false);
+    if (!analyzed) { setAnalyzing(true); await sleep(900); setAnalyzing(false); setAnalyzed(true); }
+    const steps = [
+      "Extraction des données de la fiche…",
+      "Extraction des images…",
+      `Traduction en cours (→ ${LANGS.find((l) => l.code === lang).label})…`,
+      "Application de la charte graphique de l'agence…",
+    ];
+    for (const s of steps) {
+      pushToast(s, "progress");
+      await sleep(700);
+    }
+    setValues({ title: CONTENT[lang].title, price: PROPERTY.priceValue, body: CONTENT[lang].body });
+    setGenerating(false);
+    setGenerated(true);
+    setTab("generated");
+    pushToast("Rendu PDF prêt !", "success");
+  }
+
+  function onDrop(e) {
+    e.preventDefault();
+    setDragging(false);
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) setFileName(f.name);
+  }
+
+  function handleShare() {
+    const url = `https://rebrand-immo.app/f/${uid()}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).catch(() => {});
+    }
+    pushToast("Lien de partage copié dans le presse-papiers !", "success");
+  }
+
+  function handleDownload() {
+    pushToast("Ouverture de l'export PDF…", "progress");
+    setTimeout(() => window.print(), 400);
+  }
+
+  return (
+    <div className="p-4 md:p-8 max-w-[1400px] mx-auto">
+      {/* Setup modèle */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 mb-6 shadow-sm">
+        <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2 block">URL de l'Annonce Modèle (Template)</label>
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          <div className="relative flex-1">
+            <Icon name="Link2" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              value={templateUrl}
+              onChange={(e) => setTemplateUrl(e.target.value)}
+              placeholder="https://www.orpi.com/vente-appartement..."
+              className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300"
+            />
+          </div>
+          <button onClick={handleAnalyze} disabled={analyzing}
+            className="shrink-0 inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
+            {analyzing ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="Search" size={16} />}
+            {analyzing ? "Analyse en cours…" : "Analyser & Enregistrer la Structure"}
+          </button>
+        </div>
+        {analyzed && !analyzing && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {STRUCTURE_BLOCKS.map((b) => (
+              <span key={b.label} className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 text-[11px] font-semibold px-2 py-1 rounded-full border border-emerald-100">
+                <Icon name="CheckCircle2" size={11} /> {b.label}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="grid lg:grid-cols-[380px_1fr] gap-6">
+        {/* Colonne gauche */}
+        <div className="space-y-5">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-2.5">Nouvelle Fiche / Photo / PDF à transposer</p>
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+              onDragLeave={() => setDragging(false)}
+              onDrop={onDrop}
+              onClick={() => fileInputRef.current && fileInputRef.current.click()}
+              className={`rounded-xl border-2 border-dashed p-6 text-center cursor-pointer transition-colors
+                ${dragging ? "border-indigo-400 bg-indigo-50" : "border-slate-200 bg-slate-50 hover:border-indigo-300 hover:bg-indigo-50/50"}`}
+            >
+              <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => e.target.files[0] && setFileName(e.target.files[0].name)} />
+              <Icon name="UploadCloud" size={26} className="mx-auto text-indigo-400 mb-2" />
+              <p className="text-xs text-slate-500">Glissez-déposez un fichier ici, ou cliquez pour parcourir</p>
+              <p className="text-[10px] text-slate-400 mt-1">PDF, JPG, PNG — 20 Mo max</p>
+            </div>
+            {fileName && (
+              <div className="mt-2.5 flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                <span className="flex items-center gap-2 text-xs font-medium text-slate-600 truncate">
+                  <Icon name="FileText" size={14} className="text-indigo-500 shrink-0" /> <span className="truncate">{fileName}</span>
+                </span>
+                <button onClick={(e) => { e.stopPropagation(); setFileName(null); }} className="text-slate-400 hover:text-red-500 shrink-0">
+                  <Icon name="X" size={14} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-1.5 flex items-center gap-1.5"><Icon name="Globe" size={13} /> Langue de sortie</label>
+              <div className="relative">
+                <select value={lang} onChange={(e) => setLang(e.target.value)}
+                  className="w-full appearance-none px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300">
+                  {LANGS.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
+                </select>
+                <Icon name="ChevronDown" size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-1.5 flex items-center gap-1.5"><Icon name="Building2" size={13} /> Profil Agence</label>
+              <div className="relative">
+                <select value={profileId} onChange={(e) => setProfileId(Number(e.target.value))}
+                  className="w-full appearance-none px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300">
+                  {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                <Icon name="ChevronDown" size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          <button onClick={handleGenerate} disabled={generating}
+            className="w-full inline-flex items-center justify-center gap-2.5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-70 text-white font-extrabold text-sm tracking-wide py-4 rounded-2xl shadow-lg shadow-emerald-500/25 transition-colors">
+            {generating ? <Icon name="Loader2" size={19} className="animate-spin" /> : <Icon name="Zap" size={19} />}
+            {generating ? "GÉNÉRATION EN COURS…" : "GÉNÉRER LA FICHE (1-CLIC)"}
+          </button>
+        </div>
+
+        {/* Colonne droite : aperçu */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1 mb-5 w-fit">
+            <button onClick={() => setTab("template")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${tab === "template" ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500"}`}>
+              Aperçu du Modèle
+            </button>
+            <button onClick={() => generated && setTab("generated")}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5
+                ${tab === "generated" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-400"} ${!generated ? "cursor-not-allowed opacity-50" : ""}`}>
+              Fiche Générée (Branded PDF) {generated && <Icon name="CheckCircle2" size={12} className="text-emerald-500" />}
+            </button>
+          </div>
+
+          {tab === "template" ? (
+            <TemplateSkeleton analyzed={analyzed} analyzing={analyzing} />
+          ) : (
+            <GeneratedFlyer profile={profile} lang={lang} edit={editMode} values={values}
+              onChange={(k, v) => setValues((s) => ({ ...s, [k]: v }))} />
+          )}
+
+          {tab === "generated" && generated && (
+            <div className="flex flex-wrap gap-2 justify-center mt-6 print:hidden">
+              <button onClick={handleDownload} className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-colors">
+                <Icon name="Download" size={14} /> Télécharger le PDF HD
+              </button>
+              <button onClick={() => { setEditMode((v) => !v); if (!editMode) pushToast("Mode édition activé — modifiez les textes directement sur l'aperçu.", "success"); }}
+                className={`inline-flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-xl border transition-colors
+                  ${editMode ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-600 border-slate-200 hover:border-indigo-300"}`}>
+                <Icon name="Edit3" size={14} /> {editMode ? "Terminer l'édition" : "Éditer les textes"}
+              </button>
+              <button onClick={handleShare} className="inline-flex items-center gap-2 bg-white text-slate-600 border border-slate-200 hover:border-indigo-300 text-xs font-bold px-4 py-2.5 rounded-xl transition-colors">
+                <Icon name="Share2" size={14} /> Partager le lien
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ————————————————————————————————————————————————————————————
+   Page : Configuration Agence
+   ———————————————————————————————————————————————————————————— */
+function ConfigPage({ profiles, setProfiles, pushToast }) {
+  const [editingId, setEditingId] = useState(profiles[0].id);
+  const editing = profiles.find((p) => p.id === editingId);
+  const [draft, setDraft] = useState(editing);
+  const [logoPreview, setLogoPreview] = useState(null);
+  const fileRef = useRef(null);
+
+  useEffect(() => { setDraft(profiles.find((p) => p.id === editingId)); setLogoPreview(null); }, [editingId]);
+
+  function save() {
+    setProfiles((list) => list.map((p) => (p.id === editingId ? { ...draft } : p)));
+    pushToast(`Profil « ${draft.name} » mis à jour !`, "success");
+  }
+
+  function onLogo(e) {
+    const f = e.target.files[0];
+    if (f) setLogoPreview(URL.createObjectURL(f));
+  }
+
+  return (
+    <div className="p-4 md:p-8 max-w-3xl mx-auto">
+      <p className="text-sm text-slate-500 mb-6">Gérez le logo, les couleurs et les coordonnées de chaque agence. Ces réglages alimentent automatiquement le pied de page et l'en-tête des fiches générées.</p>
+
+      <div className="flex gap-1.5 mb-5 flex-wrap">
+        {profiles.map((p) => (
+          <button key={p.id} onClick={() => setEditingId(p.id)}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors
+              ${editingId === p.id ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-200 text-slate-600 hover:border-indigo-300"}`}>
+            {p.name}
+          </button>
+        ))}
+      </div>
+
+      {draft && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-5">
+          <div className="flex items-center gap-4">
+            <div onClick={() => fileRef.current.click()} className="w-16 h-16 rounded-xl flex items-center justify-center text-white text-lg font-extrabold cursor-pointer overflow-hidden shrink-0" style={{ background: draft.color }}>
+              {logoPreview ? <img src={logoPreview} className="w-full h-full object-cover" /> : draft.initials}
+            </div>
+            <div>
+              <button onClick={() => fileRef.current.click()} className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-600 hover:text-indigo-700">
+                <Icon name="UploadCloud" size={14} /> Changer le logo
+              </button>
+              <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onLogo} />
+              <p className="text-[11px] text-slate-400 mt-1">PNG ou SVG, fond transparent recommandé</p>
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="Nom de l'agence"><input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className="ri-input" /></Field>
+            <Field label="Site web"><input value={draft.website} onChange={(e) => setDraft({ ...draft, website: e.target.value })} className="ri-input" /></Field>
+            <Field label="Téléphone"><input value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} className="ri-input" /></Field>
+            <Field label="Email"><input value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} className="ri-input" /></Field>
+            <Field label="Couleur principale">
+              <div className="flex items-center gap-2">
+                <input type="color" value={draft.color} onChange={(e) => setDraft({ ...draft, color: e.target.value })} className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer" />
+                <input value={draft.color} onChange={(e) => setDraft({ ...draft, color: e.target.value })} className="ri-input flex-1" />
+              </div>
+            </Field>
+            <Field label="Couleur secondaire">
+              <div className="flex items-center gap-2">
+                <input type="color" value={draft.secondary} onChange={(e) => setDraft({ ...draft, secondary: e.target.value })} className="w-10 h-10 rounded-lg border border-slate-200 cursor-pointer" />
+                <input value={draft.secondary} onChange={(e) => setDraft({ ...draft, secondary: e.target.value })} className="ri-input flex-1" />
+              </div>
+            </Field>
+          </div>
+
+          <button onClick={save} className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors">
+            <Icon name="Save" size={15} /> Enregistrer les modifications
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="block">
+      <span className="text-xs font-bold uppercase tracking-wide text-slate-500 mb-1.5 block">{label}</span>
+      {children}
+    </label>
+  );
+}
+
+/* ————————————————————————————————————————————————————————————
+   Page : Modèles Sauvegardés
+   ———————————————————————————————————————————————————————————— */
+function TemplatesPage({ templates, setTemplates, onUse, pushToast }) {
+  return (
+    <div className="p-4 md:p-8 max-w-4xl mx-auto">
+      <p className="text-sm text-slate-500 mb-6">Les structures de mise en page déjà analysées. Réutilisez-les en un clic sans repasser par l'étape d'analyse.</p>
+      <div className="grid sm:grid-cols-2 gap-4">
+        {templates.map((t) => (
+          <div key={t.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm flex flex-col">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="font-bold text-slate-800 text-sm truncate">{t.name}</p>
+                <p className="text-[11px] text-slate-400 truncate mt-0.5">{t.url}</p>
+              </div>
+              <button onClick={() => { setTemplates((l) => l.filter((x) => x.id !== t.id)); pushToast("Modèle supprimé.", "success"); }}
+                className="text-slate-300 hover:text-red-500 shrink-0">
+                <Icon name="Trash2" size={15} />
+              </button>
+            </div>
+            <div className="flex items-center gap-2 mt-3">
+              <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-1 rounded-full"><Icon name="Layers" size={10} /> {t.blocks} blocs</span>
+              <span className="text-[10px] text-slate-400">Analysé le {t.date}</span>
+            </div>
+            <button onClick={() => onUse(t)} className="mt-4 inline-flex items-center justify-center gap-1.5 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 text-xs font-bold py-2 rounded-xl border border-slate-200 transition-colors">
+              Utiliser ce modèle <Icon name="ArrowRight" size={13} />
+            </button>
+          </div>
+        ))}
+        {templates.length === 0 && (
+          <div className="sm:col-span-2 text-center py-14 text-sm text-slate-400">Aucun modèle sauvegardé pour le moment.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ————————————————————————————————————————————————————————————
+   Page : Paramètres / Abonnement
+   ———————————————————————————————————————————————————————————— */
+function SettingsPage({ pushToast }) {
+  const usage = 134, quota = 200;
+  return (
+    <div className="p-4 md:p-8 max-w-3xl mx-auto space-y-6">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-indigo-600 flex items-center gap-1.5"><Icon name="ShieldCheck" size={13} /> Plan actif</p>
+            <p className="text-2xl font-extrabold text-slate-900 mt-1">Pro — 49 € / mois</p>
+          </div>
+          <button onClick={() => pushToast("Redirection vers le portail de facturation… (démo)", "success")}
+            className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors">
+            <Icon name="CreditCard" size={15} /> Gérer l'abonnement
+          </button>
+        </div>
+        <ul className="grid sm:grid-cols-2 gap-2.5 mt-5">
+          {["Fiches illimitées", "6 langues de traduction", "Branding multi-agences", "Export PDF haute définition"].map((f) => (
+            <li key={f} className="flex items-center gap-2 text-sm text-slate-600"><Icon name="Check" size={15} className="text-emerald-500 shrink-0" /> {f}</li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <p className="text-sm font-bold text-slate-700 mb-3">Utilisation ce mois-ci</p>
+        <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+          <span>{usage} fiches générées</span><span>{quota} incluses</span>
+        </div>
+        <div className="w-full h-2.5 rounded-full bg-slate-100 overflow-hidden">
+          <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(100, (usage / quota) * 100)}%` }} />
+        </div>
+        <p className="text-[11px] text-slate-400 mt-3">Prochaine facturation le 15/09/2026.</p>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <p className="text-sm font-bold text-slate-700 mb-3">Comparer les plans</p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-slate-200 p-4">
+            <p className="text-sm font-bold text-slate-700">Starter — 19 €/mois</p>
+            <p className="text-[11px] text-slate-400 mt-1">20 fiches / mois · 2 langues · 1 agence</p>
+          </div>
+          <div className="rounded-xl border-2 border-indigo-500 p-4 relative">
+            <span className="absolute -top-2.5 right-3 bg-indigo-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full">Plan actif</span>
+            <p className="text-sm font-bold text-slate-700">Pro — 49 €/mois</p>
+            <p className="text-[11px] text-slate-400 mt-1">Illimité · 6 langues · multi-agences</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ————————————————————————————————————————————————————————————
+   App racine
+   ———————————————————————————————————————————————————————————— */
+function App() {
+  const [page, setPage] = useState("dashboard");
+  const [profiles, setProfiles] = useState(INITIAL_PROFILES);
+  const [templates, setTemplates] = useState(INITIAL_TEMPLATES);
+  const [toasts, setToasts] = useState([]);
+  const [dashKey, setDashKey] = useState(0);
+  const [pendingTemplate, setPendingTemplate] = useState(null);
+
+  function pushToast(text, tone = "progress") {
+    const id = uid();
+    setToasts((t) => [...t, { id, text, tone }]);
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3200);
+  }
+
+  function useTemplate(t) {
+    setPendingTemplate(t.url);
+    setDashKey((k) => k + 1); // force le remontage du Dashboard avec la nouvelle URL préremplie
+    setPage("dashboard");
+    pushToast(`Modèle « ${t.name} » chargé sur le Dashboard.`, "success");
+  }
+
+  return (
+    <div className="min-h-screen flex">
+      <Sidebar active={page} onNavigate={setPage} />
+      <div className="flex-1 min-w-0 flex flex-col">
+        <Header page={page} />
+        <main className="flex-1">
+          {page === "dashboard" && <DashboardPage key={dashKey} profiles={profiles} pushToast={pushToast} initialUrl={pendingTemplate} />}
+          {page === "config" && <ConfigPage profiles={profiles} setProfiles={setProfiles} pushToast={pushToast} />}
+          {page === "templates" && <TemplatesPage templates={templates} setTemplates={setTemplates} onUse={useTemplate} pushToast={pushToast} />}
+          {page === "settings" && <SettingsPage pushToast={pushToast} />}
+        </main>
+      </div>
+      <ToastStack toasts={toasts} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+<style>
+  .ri-input{width:100%;padding:.6rem .875rem;border-radius:.75rem;border:1px solid #e2e8f0;background:#f8fafc;font-size:.875rem;color:#334155;outline:none}
+  .ri-input:focus{box-shadow:0 0 0 2px #c7d2fe;border-color:#a5b4fc}
+</style>
+</body>
+</html>
