@@ -111,7 +111,11 @@
      de l'heure. Masquée tant que rien n'est chargé (voir le script). -->
 <div class="infobar" id="infobar" role="status">
   <span class="pt" aria-hidden="true"></span>
-  <span id="infobar-msg"></span>
+  <span id="infobar-msg"></span><!--
+    La case du compte à rebours : elle change chaque minute, elle est donc
+    hors de l'arbre d'accessibilité. Sans ça, le bandeau entier serait relu
+    à voix haute toutes les soixante secondes.
+ --><span id="infobar-reste" aria-hidden="true"></span>
   <button class="infobar-x" type="button" id="infobar-x" data-ta="b.fermer" aria-label="Fermer">×</button>
 </div>
 
@@ -1726,6 +1730,36 @@ function poserBord(cle, valeur){
   c.hidden = false;
   var b = document.getElementById('bord');
   if(b) b.hidden = false;
+  if(cle === 'temp') poserThermometre(v, valeur);
+}
+
+/* ── LA TEMPÉRATURE QUI SE POSE ────────────────────────────────────────────
+   Le degré arrive d'Open-Meteo et s'affichait d'un coup. Un chiffre qui
+   apparait tout fait ressemble a un chiffre ecrit en dur ; un chiffre qui
+   MONTE puis se stabilise dit qu'il vient d'etre mesure. C'est la seule
+   donnee vraiment vivante du haut de page, elle doit se voir comme telle.
+   Il part de six degres en dessous et met 900 ms a se caler, en ralentissant
+   a l'arrivee — un thermometre ne depasse pas puis ne redescend pas.
+   Une seule fois par visite : la valeur n'est demandee qu'une fois. */
+function poserThermometre(cible, texte){
+  if(cible.dataset.pose) return;
+  var m = String(texte).match(/^(-?\d+)/);
+  if(!m) return;
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if(typeof requestAnimationFrame !== 'function') return;
+  cible.dataset.pose = '1';
+  var fin = parseInt(m[1], 10), suite = String(texte).slice(m[1].length);
+  var debut = fin - 6, t0 = null, DUREE = 900;
+  function pas(t){
+    if(t0 === null) t0 = t;
+    var k = Math.min(1, (t - t0) / DUREE);
+    var doux = 1 - Math.pow(1 - k, 3);
+    cible.textContent = Math.round(debut + (fin - debut) * doux) + suite;
+    if(k < 1) requestAnimationFrame(pas);
+    else cible.textContent = texte;
+  }
+  cible.textContent = debut + suite;
+  requestAnimationFrame(pas);
 }
 </script>
 
@@ -3407,6 +3441,8 @@ Object.assign(T, {
    Fermeture mémorisée pour la journée en cours seulement.               */
 (function(){
   var bar = document.getElementById('infobar'), msg = document.getElementById('infobar-msg');
+  var compteur = document.getElementById('infobar-reste');
+  var dernierMsg = null;
   if(!bar || !msg) return;
 
   var jourParis = new Intl.DateTimeFormat('fr-FR', { timeZone:'Europe/Paris',
@@ -3437,6 +3473,7 @@ Object.assign(T, {
       ? '<strong>' + temperature + '</strong> ' + mot('i.aNice') + ' · '
       : '';
     var corps;
+    var reste = '';
     if(e.complet){
       /* Le stock prime : annoncer "sous 24h" alors que tout est pris
          contredirait la ligne affichée juste en dessous. */
@@ -3452,10 +3489,29 @@ Object.assign(T, {
         var r = e.resteExpress || 0;
         var h = Math.floor(r / 60), m = r % 60;
         var cadre = h > 0 ? mot('i.resteHM') : mot('i.resteM');
-        corps += cadre.replace('{h}', h).replace('{m}', m);
+        reste = cadre.replace('{h}', h).replace('{m}', m);
       }
     }
-    msg.innerHTML = tete + corps;
+    /* ── LE COMPTE À REBOURS EST SORTI DU MESSAGE ─────────────────────────
+       Le bandeau porte role="status" : tout ce qu'on y réécrit est relu à
+       voix haute. Or les minutes changent toutes les soixante secondes —
+       le message ENTIER était donc réannoncé chaque minute, indéfiniment.
+       Le compte à rebours vit maintenant dans sa propre case, marquée
+       aria-hidden : elle est hors de l'arbre d'accessibilité, donc elle
+       peut changer sans que personne ne soit interrompu. Le délai reste dit
+       une fois, par le message ; c'est le chiffre qui s'anime, pas la
+       promesse. */
+    var neuf = tete + corps;
+    if(neuf !== dernierMsg){ msg.innerHTML = neuf; dernierMsg = neuf; }
+    if(compteur.innerHTML !== reste){
+      compteur.innerHTML = reste;
+      /* Un battement d'une demi-seconde quand la minute tombe : sans lui, le
+         chiffre changeait en silence et rien ne disait que le temps tourne
+         vraiment. */
+      compteur.classList.remove('ib-bat');
+      void compteur.offsetWidth;
+      if(reste) compteur.classList.add('ib-bat');
+    }
     bar.classList.add('on');
     /* Le premier écran réserve 100svh - 72px (la barre). Le bandeau, lui,
        ajoutait 44 px que personne n'avait comptés : le bas de l'accueil
