@@ -293,7 +293,7 @@
         <span id="etat-txt" data-th="e1.etat">Livré <b>demain matin</b>, entre 8h et 12h.</span>
       </p>
     <h1 class="titre ar ar-2" id="e1-titre" data-th="e1.titre">Il fait trop chaud ?<em> Livré demain matin.</em></h1>
-    <p class="quoi ar ar-3" data-t="e1.quoi">Climatiseurs mobiles et rafraîchisseurs d'air. Livrés, installés, repris.</p>
+    <p class="quoi ar ar-3" data-t="e1.quoi">Climatiseurs mobiles et rafraîchisseurs d'air. Livrés, installés, repris — en 2 heures avec l'Express, demain matin sinon.</p>
 
     <!-- ══ LE BANDEAU VIVANT ═══════════════════════════════════════════
          Trois chiffres que le serveur connaît et que presque aucun loueur
@@ -2021,6 +2021,14 @@ Object.assign(T, {
                     en:"Delivered <b>tomorrow morning</b>, between 8am and 12pm.",
                     zh:"<b>明天上午</b>送达，8:00 至 12:00 之间。",
                     ru:"Привезём <b>завтра утром</b>, с 8:00 до 12:00."},
+  /* Quand le titre mene par l'Express, cette ligne doit dire la MEME chose,
+     sinon la page se contredit a deux centimetres d'intervalle : « chez vous
+     en 2 heures » suivi de « livre demain matin ». Elle porte donc la
+     condition — avant 18h — et le supplement, juste sous la promesse. */
+  'e1.etatExpress': {fr:"Express <b>sous 2h</b> si vous commandez avant 18h — +60 €.",
+                  en:"Express <b>within 2h</b> if you order before 6pm — +€60.",
+                  zh:"18 点前下单，<b>2 小时内</b>极速送达 —— 加收 60 欧元。",
+                  ru:"Экспресс <b>за 2 часа</b>, если заказать до 18:00 — +60 €."},
   'e1.etatSoir'  : {fr:"Livré <b>demain matin</b>. L'Express du jour même est terminé.",
                     en:"Delivered <b>tomorrow morning</b>. Same-day Express has closed for today.",
                     zh:"<b>明天上午</b>送达。今日的急速配送已截止。",
@@ -2860,6 +2868,19 @@ Object.assign(T, {
      mentirait. Il reprend alors sa forme neutre, pilotee par la MEME donnee
      que la ligne d'etat. Un titre ne doit jamais promettre ce que la page
      dement deux centimetres plus bas. */
+  /* Le titre mene desormais par l'Express — mais SEULEMENT quand l'Express
+     est encore possible. « Chez vous en 2 heures » le jour ou la commande
+     est passee a 19h, ou le jour ou tout est loue, serait un mensonge que la
+     ligne juste en dessous dementirait. Trois etats, une seule donnee :
+       avant 18h et du stock   → les 2 heures ;
+       apres 18h               → demain matin (le titre d'origine) ;
+       complet                 → la forme neutre.
+     Le supplement de 60 € est ecrit dans les garanties, deux centimetres
+     plus bas : le titre annonce, la ligne de garantie facture. */
+  'e1.titreExpress': {fr:"Il fait trop chaud ?<em> Chez vous en 2 heures.</em>",
+                  en:"Too hot to bear?<em> At your door in 2 hours.</em>",
+                  zh:"太热了？<em>2 小时内送到您家。</em>",
+                  ru:"Слишком жарко?<em> У вас через 2 часа.</em>"},
   'e1.titreNeutre': {fr:"Il fait trop chaud ?<em> Plus pour longtemps.</em>",
                   en:"Too hot to bear?<em> Not for much longer.</em>",
                   zh:"太热了？<em>很快就不会了。</em>",
@@ -2867,10 +2888,12 @@ Object.assign(T, {
   'e1.bTemp'  : {fr:"à Nice, maintenant", en:"in Nice, right now", zh:"尼斯，此刻", ru:"в Ницце, сейчас"},
   'e1.bStock' : {fr:"machines libres aujourd'hui", en:"machines free today", zh:"今日可用机器", ru:"свободных машин сегодня"},
   'e1.bPrix'  : {fr:"par jour, tout compris", en:"per day, all included", zh:"每天，全包价", ru:"в день, всё включено"},
-  'e1.quoi'    : {fr:"Climatiseurs mobiles et rafraîchisseurs d'air. Livrés, installés, repris.",
-                  en:"Portable air conditioners and evaporative coolers. Delivered, installed, collected.",
-                  zh:"移动空调与蒸发式冷风机。上门配送、安装、回收。",
-                  ru:"Мобильные кондиционеры и испарительные охладители. Доставка, установка, вывоз."},
+  /* La vitesse passe devant. La phrase reste vraie a toute heure : elle
+     decrit les DEUX creneaux, elle n'en promet aucun pour maintenant. */
+  'e1.quoi'    : {fr:"Climatiseurs mobiles et rafraîchisseurs d'air. Livrés, installés, repris — en 2 heures avec l'Express, demain matin sinon.",
+                  en:"Portable air conditioners and evaporative coolers. Delivered, installed, collected — in 2 hours with Express, tomorrow morning otherwise.",
+                  zh:"移动空调与蒸发式冷风机。上门配送、安装、回收——极速服务 2 小时送达，否则次日上午。",
+                  ru:"Мобильные кондиционеры и испарительные охладители. Доставка, установка, вывоз — за 2 часа с Экспрессом, иначе завтра утром."},
   'e1.c1t'     : {fr:"Climatiseur mobile", en:"Portable air conditioner", zh:"移动空调", ru:"Мобильный кондиционер"},
   'e1.c1c'     : {fr:"Fenêtre fermée", en:"Window closed", zh:"关窗使用", ru:"Окно закрыто"},
   'e1.c1d'     : {fr:"Du vrai froid, pour une pièce qu'on ferme. La chambre, le salon, le bureau.",
@@ -3489,7 +3512,10 @@ Object.assign(T, {
         var r = e.resteExpress || 0;
         var h = Math.floor(r / 60), m = r % 60;
         var cadre = h > 0 ? mot('i.resteHM') : mot('i.resteM');
-        reste = cadre.replace('{h}', h).replace('{m}', m);
+        /* Les minutes sur deux chiffres : « il reste 17 h 5 » se lit comme
+           une faute, pas comme une heure. */
+        reste = cadre.replace('{h}', h)
+                     .replace('{m}', h > 0 && m < 10 ? '0' + m : m);
       }
     }
     /* ── LE COMPTE À REBOURS EST SORTI DU MESSAGE ─────────────────────────
@@ -3859,7 +3885,21 @@ Object.assign(T, {
     /* Le titre suit la meme donnee que la ligne : il ne peut donc pas
        promettre demain matin un jour ou l'on est complet. */
     var h1 = document.getElementById('e1-titre');
-    if(h1) h1.innerHTML = mot(stock.sold_out ? 'e1.titreNeutre' : 'e1.titre');
+    if(h1){
+      /* Trois etats, dans cet ordre de priorite :
+           complet                      → forme neutre, on ne promet rien ;
+           Express encore possible      → les 2 heures ;
+           sinon (apres 18h)            → demain matin.
+         La meme donnee que la ligne d'etat et que le bandeau du haut : le
+         titre ne peut donc pas promettre ce que la page dement juste en
+         dessous. */
+      var e = (typeof Livraison !== 'undefined') ? Livraison.lire() : null;
+      var cle = stock.sold_out ? 'e1.titreNeutre'
+              : (e && e.avant18h) ? 'e1.titreExpress'
+              : 'e1.titre';
+      var neuf = mot(cle);
+      if(h1.innerHTML !== neuf) h1.innerHTML = neuf;
+    }
 
     if(stock.sold_out){
       ligne.classList.add('complet');
@@ -3876,9 +3916,18 @@ Object.assign(T, {
         .replace('{n}', '<b>' + stock.disponibles + '</b>')
         .replace('{mot}', stock.disponibles > 1 ? mot('d.restants') : mot('d.restant'));
     } else {
-      txt.innerHTML = mot(txt.getAttribute('data-th') || 'e1.etat');
+      /* La ligne suit le titre : Express quand l'Express est encore
+         possible, promesse horaire habituelle sinon. */
+      var ex = (typeof Livraison !== 'undefined') ? Livraison.lire() : null;
+      txt.innerHTML = mot((ex && ex.avant18h) ? 'e1.etatExpress'
+                        : (txt.getAttribute('data-th') || 'e1.etat'));
     }
   }
+  /* Le titre bascule a 18h pile : il faut donc que cette fonction repasse
+     quand la minuterie de Livraison signale un changement, pas seulement
+     quand le stock arrive du serveur. */
+  if(typeof Livraison !== 'undefined') Livraison.ecouter(poserDispo);
+
   function formatDate(iso){
     var l = (typeof langueActuelle === 'function') ? langueActuelle() : 'fr';
     var loc = {fr:'fr-FR', en:'en-GB', zh:'zh-CN', ru:'ru-RU'}[l] || 'fr-FR';
