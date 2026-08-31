@@ -219,7 +219,12 @@ module.exports = async (req, res) => {
           .from('reservations').select('id, tel, lang, prenom, ref, date_fin, reservation_origine_id')
           .eq('id', reservationId).eq('city_id', city.id).maybeSingle();
         if (!resaSms) return res.status(404).json({ error: 'Réservation introuvable' });
-        const result = await SMS_SENDER_BY_SCENARIO[scenario](supabase, resaSms, { force: true });
+        // creneau/date_prevue (optionnels) : envoyés par le bouton sur une
+        // mission de récupération précise (onglet Missions) pour que le SMS
+        // reprenne exactement CE créneau-là plutôt qu'un recalcul indépendant
+        // — voir sendRappelRecuperationSms (_lib/reservations.js).
+        const missionOverride = (body.creneau != null || body.date_prevue) ? { creneau: body.creneau, date_prevue: body.date_prevue } : null;
+        const result = await SMS_SENDER_BY_SCENARIO[scenario](supabase, resaSms, { force: true, missionOverride });
         // `reason` en plus du message traduit — sans lui, le front ne peut
         // distinguer "en pause" (récupérable en 1 clic : reprendre puis
         // renvoyer) des autres échecs (voir envoyerRappelRecuperation() côté
