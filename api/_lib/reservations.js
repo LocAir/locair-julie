@@ -463,7 +463,16 @@ async function sendRelanceProlongationSms(supabase, resa, { force = false } = {}
 // Appelé par cron-daily.js en même temps que l'email rappel_recuperation
 // (même fenêtre, voir _lib/emailSchedule.js). Idempotent sur son propre
 // scénario (sms_rappel_recuperation) : jamais renvoyé deux fois.
-async function sendRappelRecuperationSms(supabase, resa, { force = false } = {}) {
+// `missionOverride` (optionnel) : { creneau, date_prevue } de la mission de
+// récupération précise depuis laquelle l'envoi est déclenché (voir le
+// bouton "Envoyer le rappel de récupération" sur une mission, onglet
+// Missions) — prime sur la mission "active" recalculée ci-dessous. Sans ça,
+// un admin qui clique ce bouton sur UNE mission précise verrait un envoi
+// recalculé indépendamment, avec un risque (rare mais réel) de ne pas
+// tomber sur exactement la même mission si la famille de réservations en
+// a plusieurs (demande d'Aly, 2026-08-31 : "bien reprendre le créneau...
+// indiqué dans la mission de récupération").
+async function sendRappelRecuperationSms(supabase, resa, { force = false, missionOverride = null } = {}) {
   if (!resa || !resa.id || !resa.tel) return { sent: false, reason: 'no_tel' };
   // Mis en pause (ou supprimé) depuis le panneau Communications de l'admin —
   // voir wasScenarioSkipped/email_skip, même mécanisme que les 8 emails
@@ -502,8 +511,8 @@ async function sendRappelRecuperationSms(supabase, resa, { force = false } = {})
   ]);
   const lang = resa.lang || 'fr';
   const prenom = resa.prenom || '';
-  const dateRecup = fmtDate(recupMission?.date_prevue || addDays(dateFinEffective, 1), lang);
-  const creneau = recupMission?.creneau || '';
+  const dateRecup = fmtDate(missionOverride?.date_prevue || recupMission?.date_prevue || addDays(dateFinEffective, 1), lang);
+  const creneau = missionOverride ? (missionOverride.creneau || '') : (recupMission?.creneau || '');
   // Reformulé de façon plus chaleureuse (demande d'Aly, 2026-08-10) : prénom
   // du client + un mot de remerciement pour sa confiance durant la location,
   // en plus du rappel pratique — reste professionnel (pas d'emoji, pas de
