@@ -2174,10 +2174,13 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 .hero-micro{animation:heroInFast .5s .96s cubic-bezier(.22,.61,.36,1) both}
 /* 03 — Scroll reveal (desktop uniquement — iOS Safari bug avec IO) */
 @media(hover:hover)and(pointer:fine){
-  .sr{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease}
+  .sr{opacity:0;transform:translateY(28px);transition:opacity .85s cubic-bezier(.22,.61,.36,1),transform .85s cubic-bezier(.22,.61,.36,1)}
   .sr.in{opacity:1;transform:none}
+  /* Sections principales : délai léger pour un enchaînement fluide */
+  .sr-section{opacity:0;transform:translateY(20px);transition:opacity 1s cubic-bezier(.22,.61,.36,1),transform 1s cubic-bezier(.22,.61,.36,1)}
+  .sr-section.in{opacity:1;transform:none}
 }
-.rv.sr{opacity:1;transform:none}
+.rv.sr,.rv.sr-section{opacity:1;transform:none}
 
 /* 05 — Shimmer doré sur les boutons primaires */
 .btn-blue,.sb-btn{position:relative;overflow:hidden}
@@ -8682,23 +8685,33 @@ function faq(el){
 }
 
 const _srReveal=el=>{el.style.transitionDelay='0s';el.classList.add('in');};
-const _srCheck=()=>document.querySelectorAll('.sr:not(.in)').forEach(el=>{const r=el.getBoundingClientRect();if(r.top<window.innerHeight+40&&r.bottom>-40)_srReveal(el);});
+const _srCheck=()=>document.querySelectorAll('.sr:not(.in),.sr-section:not(.in)').forEach(el=>{const r=el.getBoundingClientRect();if(r.top<window.innerHeight+40&&r.bottom>-40)_srReveal(el);});
 const io=new IntersectionObserver(entries=>{
   entries.forEach(e=>{
     if(!e.isIntersecting)return;
-    const sibs=[...e.target.parentElement.querySelectorAll('.sr:not(.in)')];
+    const cls=e.target.classList.contains('sr-section')?'sr-section':'sr';
+    const sibs=[...e.target.parentElement.querySelectorAll('.'+cls+':not(.in)')];
     const i=sibs.indexOf(e.target);
-    e.target.style.transitionDelay=(Math.max(0,i)*0.04)+'s';
+    e.target.style.transitionDelay=(Math.max(0,i)*0.07)+'s';
     e.target.classList.add('in');
     io.unobserve(e.target);
   });
-},{threshold:0,rootMargin:'0px 0px 0px 0px'});
-document.querySelectorAll('.sr').forEach(el=>io.observe(el));
+},{threshold:0.06,rootMargin:'0px 0px 0px 0px'});
+// Appliquer automatiquement sr-section aux grandes sections du site
+['.reviews-in','.pricing-in','.howto-in','.bento-in',
+ '.expertise-in','.equipe-in','.faq-split','.fcta-in',
+ '.paysec-in','.cmp-in','.prod-in','.xp-in','.reassure-in'
+].forEach(sel=>document.querySelectorAll(sel).forEach(el=>{
+  if(!el.closest('#modal-root')&&!el.classList.contains('sr-section')){
+    el.classList.add('sr-section');
+  }
+}));
+document.querySelectorAll('.sr,.sr-section').forEach(el=>io.observe(el));
 // iOS Safari : l'IO ne détecte pas les éléments déjà dans le viewport au chargement
 // → vérification immédiate + à chaque scroll + fallback 600ms
 _srCheck();
 window.addEventListener('scroll',_srCheck,{passive:true});
-setTimeout(()=>document.querySelectorAll('.sr:not(.in)').forEach(_srReveal),600);
+setTimeout(()=>document.querySelectorAll('.sr:not(.in),.sr-section:not(.in)').forEach(_srReveal),600);
 
 // Nav auto-hide + indicateurs scroll
 const navEl=document.querySelector('.nav');
