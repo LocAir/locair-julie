@@ -106,9 +106,15 @@ async function computeCityStats(supabase, city, periode, since) {
   // ligne par réservation confirmée de tout l'historique de la ville — cette
   // requête est rejouée à chaque rafraîchissement automatique du tableau de
   // bord (toutes les 18s côté admin/index.html tant que l'onglet reste ouvert).
-  const { data: caTotalCentsRaw, error: caTotalErr } = await supabase.rpc('ca_total_ville', { p_city_id: city.id });
-  if (caTotalErr) throw caTotalErr;
-  const caTotalCents = typeof caTotalCentsRaw === 'number' ? caTotalCentsRaw : 0;
+  // ca_total_ville est un RPC (migration_dashboard_ca_total.sql) — si la
+  // fonction n'existe pas encore en prod, on retombe sur 0 plutôt que de
+  // planter tout le tableau de bord.
+  let caTotalCents = 0;
+  try {
+    const { data: caTotalCentsRaw, error: caTotalErr } = await supabase.rpc('ca_total_ville', { p_city_id: city.id });
+    if (caTotalErr) { console.error('[Admin dashboard] ca_total_ville RPC error:', caTotalErr.message); }
+    else { caTotalCents = typeof caTotalCentsRaw === 'number' ? caTotalCentsRaw : 0; }
+  } catch (e) { console.error('[Admin dashboard] ca_total_ville exception:', e.message); }
 
   // Même source que le bloc "État du parc" juste en dessous sur cet écran
   // (computeParcDashboard, statut réel de chaque appareil) — la tuile
@@ -146,7 +152,7 @@ async function computeCityStats(supabase, city, periode, since) {
     .eq('reservation.city_id', city.id)
     .eq('statut', 'fait')
     .gte('fait_at', hierStart).lt('fait_at', hierEnd);
-  if (missionsHierErr) throw missionsHierErr;
+  if (missionsHierErr) console.error('[Admin dashboard] missionsHier error:', missionsHierErr.message);
   const missionsTermineesHier = missionsTermineesHierCount || 0;
   const { count: incidentsHier } = await supabase
     .from('incidents').select('id', { count: 'exact', head: true })
@@ -357,6 +363,9 @@ module.exports = async (req, res) => {
     return res.status(200).json(stats);
   } catch (err) {
     console.error('[Admin dashboard]', err.message);
-    return res.status(500).json({ error: 'Erreur serveur' });
+    // On renvoie le message Supabase/Node pour aider à diagnostiquer les
+    // colonnes ou fonctions manquantes en production (l'admin est déjà
+    // authentifié, pas de risque à exposer ce niveau de détail).
+    return res.status(500).json({ error: `Erreur serveur : ${err.message}` });
   }
 };
