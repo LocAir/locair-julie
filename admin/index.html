@@ -2256,7 +2256,7 @@ async function loadDashboard(periode, silent){
       fetch(API('admin-transporteurs'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})}),
     ]);
     const d = await dr.json();
-    if(!dr.ok) throw new Error(d.error||'Erreur');
+    if(!dr.ok) throw new Error(d.error||'Erreur serveur');
     const ld = await lr.json().catch(()=>({livraisons:[]}));
     // Nécessaire pour pouvoir assigner un transporteur directement depuis le
     // board "Aujourd'hui" (voir boardRowHtml) sans changer d'onglet.
@@ -2321,7 +2321,7 @@ async function loadDashboard(periode, silent){
     // du reste du tableau de bord si elle est lente.
     loadPrevisions();
   }catch(e){
-    zone.innerHTML = '<p class="empty">Erreur de chargement.</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="loadDashboard(CURRENT_DASHBOARD_PERIODE)">↻ Réessayer</button>';
+    zone.innerHTML = `<p class="empty">Erreur de chargement.</p><p class="empty" style="font-size:11px;opacity:.6;word-break:break-word">${escHtml(e.message||'')}</p><button class="btn btn-blue btn-block" style="margin-top:10px" onclick="loadDashboard(CURRENT_DASHBOARD_PERIODE)">↻ Réessayer</button>`;
   }
 }
 // Blocs 3/5/6 du Module 7 — état du parc, logistique, partenaires. Un simple
