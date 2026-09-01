@@ -273,8 +273,19 @@ async function computePrevisions(supabase, cities) {
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  const supabase = getSupabase();
-  if (!(await checkAdminToken(req, supabase))) return res.status(401).json({ error: 'Non autorisé' });
+  // getSupabase() et checkAdminToken() sont susceptibles de lancer des
+  // exceptions (variables d'env manquantes, table login_attempts absente,
+  // etc.). Sans try/catch global ici, Vercel intercepte l'exception non
+  // gérée et renvoie "A server error occurred" en texte brut — le client
+  // ne peut pas parser le JSON et affiche "Erreur de chargement" sans détail.
+  let supabase;
+  try { supabase = getSupabase(); }
+  catch (e) { return res.status(500).json({ error: `Config serveur : ${e.message}` }); }
+
+  let authed;
+  try { authed = await checkAdminToken(req, supabase); }
+  catch (e) { return res.status(500).json({ error: `Auth : ${e.message}` }); }
+  if (!authed) return res.status(401).json({ error: 'Non autorisé' });
 
   const body    = req.body || {};
   const periode = body.periode || '7j';
