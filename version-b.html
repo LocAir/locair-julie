@@ -328,18 +328,32 @@
     <div class="e1-grid">
       <!-- La photo la plus importante du site : la scène, pas le produit.
            Voir VISUELS.md. -->
-      <!-- PHOTO EN ATTENTE. Le fichier n'existe pas encore (voir VISUELS.md) : tant qu'il
-     manque, ce bloc reste en commentaire. Le navigateur le demandait à chaque
-     visite et recevait une erreur 404 — cinq requêtes perdues par chargement.
-     POUR LE BRANCHER : déposer le fichier, puis retirer les deux lignes de
-     commentaire ci-dessous. Rien d'autre à changer.
-<figure class="photo photo-4-5" hidden>
-        <img src="/photo-pose-900.jpg" width="900" height="1125" loading="lazy" decoding="async"
-             srcset="/photo-pose-600.jpg 600w, /photo-pose-900.jpg 900w, /photo-pose-1400.jpg 1400w"
-             sizes="(max-width:760px) 92vw, 38vw" data-talt="e1.altPose" alt="Un technicien Loc'Air pose le kit de calfeutrage sur la fenêtre d'un client à Nice"
-             onload="this.parentNode.hidden=false">
+      <!-- ══ LA PHOTO ═══════════════════════════════════════════════════
+           Ce bloc attendait « photo-pose-900.jpg », qui n'a jamais existé.
+           Pendant ce temps une VRAIE photo dormait dans le dépôt —
+           hero-clim.jpg — déjà servie par la page d'accueil et déjà utilisée
+           comme image de partage. Elle ne portait simplement pas le nom que
+           ce bloc attendait. Mesure avant : 21 720 px de page, zéro image.
+           Elle est ICI et pas dans « Le matériel » : là-bas elle serait
+           seule à côté d'un dessin, et la paire part de travers (mesuré :
+           bandeau photo 190 px, dessin voisin 306). Ici elle est seule à sa
+           place, en face du champ d'adresse.
+           Trois tailles (560 · 900 · 1400) plus deux WebP, donc <picture> :
+           le WebP part en premier, le JPEG assure derrière. width et height
+           sont écrits pour que la place soit réservée avant l'arrivée du
+           fichier — sinon la page saute au chargement.
+           Le jour où la photo de la POSE arrive, elle prend cette place :
+           c'est elle qui répond à la question numéro un. -->
+      <figure class="photo photo-4-5">
+        <picture>
+          <source type="image/webp" srcset="/hero-clim-560.webp 560w, /hero-clim-900.webp 900w"
+                  sizes="(max-width:760px) 92vw, 38vw">
+          <img src="/hero-clim-900.jpg" width="900" height="1350" fetchpriority="high" decoding="async"
+               srcset="/hero-clim-560.jpg 560w, /hero-clim-900.jpg 900w, /hero-clim.jpg 1400w"
+               sizes="(max-width:760px) 92vw, 38vw"
+               data-talt="e1.altMachine" alt="Un climatiseur mobile, volets ouverts, posé au sol contre un mur blanc">
+        </picture>
       </figure>
--->
       <div class="e1-col">
       <form class="addr ar ar-4" action="/" method="get">
         <div class="addr-row">
@@ -1165,15 +1179,18 @@
     <div class="deux rv">
 
       <article class="mach">
-      <!-- PHOTO EN ATTENTE. Le fichier n'existe pas encore (voir VISUELS.md) : tant qu'il
-     manque, ce bloc reste en commentaire. Le navigateur le demandait à chaque
-     visite et recevait une erreur 404 — cinq requêtes perdues par chargement.
-     POUR LE BRANCHER : déposer le fichier, puis retirer les deux lignes de
-     commentaire ci-dessous. Rien d'autre à changer.
+      <!-- PHOTO EN ATTENTE. La photo de la machine seule est desormais dans le
+     haut de page, ou elle tient toute seule. ICI elle ne peut pas venir seule :
+     mesure a 1280 px, le bandeau photo fait 190 px et le dessin voisin 306 —
+     l'ecran part de travers, « Fenetre fermee » se retrouve au niveau du
+     troisieme paragraphe de sa voisine. La regle « une paire, c'est tout ou
+     rien » du CSS dit la meme chose.
+     POUR LE BRANCHER : le jour ou la photo du RAFRAICHISSEUR existe, deposer
+     les deux fichiers et retirer les lignes de commentaire des deux blocs.
 <figure class="photo photo-3-2" hidden>
         <img src="/photo-clim-900.jpg" width="900" height="900" loading="lazy" decoding="async"
              srcset="/photo-clim-600.jpg 600w, /photo-clim-900.jpg 900w, /photo-clim-1400.jpg 1400w"
-             sizes="(max-width:760px) 92vw, 44vw" data-talt="e3b.altClim" alt="Le climatiseur mobile De'Longhi Pinguino installé dans un salon"
+             sizes="(max-width:760px) 92vw, 44vw" data-talt="e3b.altClim" alt="Un climatiseur mobile, volets ouverts, posé au sol contre un mur blanc"
              onload="this.parentNode.hidden=false">
       </figure>
 -->
@@ -2813,10 +2830,14 @@ Object.assign(T, {
                   en:"A Loc'Air technician fitting the window sealing kit at a customer's home in Nice",
                   zh:"Loc'Air 技术员在尼斯一位客户家中安装窗户密封套件",
                   ru:"Техник Loc'Air устанавливает оконный уплотнитель у клиента в Ницце"},
-  'e3b.altClim': {fr:"Le climatiseur mobile De'Longhi Pinguino installé dans un salon",
-                  en:"The De'Longhi Pinguino portable air conditioner set up in a living room",
-                  zh:"客厅里安装好的 De'Longhi Pinguino 移动空调",
-                  ru:"Мобильный кондиционер De'Longhi Pinguino, установленный в гостиной"},
+  /* L'alt annonçait « un De'Longhi Pinguino installé dans un salon ». La
+     photo ne montre ni marque lisible, ni salon, ni installation : une
+     machine seule, volets ouverts, contre un mur blanc. Un texte de
+     remplacement décrit ce qu'on voit — sinon il ment à qui ne voit pas. */
+  'e3b.altClim': {fr:"Un climatiseur mobile, volets ouverts, posé au sol contre un mur blanc",
+                  en:"A portable air conditioner, louvres open, standing on the floor against a white wall",
+                  zh:"一台移动空调，出风口打开，靠白墙放在地上",
+                  ru:"Мобильный кондиционер с открытыми жалюзи, стоит на полу у белой стены"},
   'e3b.altRaf' : {fr:"Un rafraîchisseur d'air adiabatique posé sur une terrasse",
                   en:"An evaporative air cooler standing on a terrace",
                   zh:"露台上的蒸发式冷风机",
@@ -2926,6 +2947,13 @@ Object.assign(T, {
      sont posées par le CSS, pas ici. */
   'e1.sur'    : {fr:"Loc'Air · Nice et sa côte", en:"Loc'Air · Nice and the coast",
                  zh:"Loc'Air · 尼斯及蔚蓝海岸", ru:"Loc'Air · Ницца и побережье"},
+  /* La photo du haut de page montre la machine seule : ni marque lisible,
+     ni pièce meublée, ni installation. Le texte de remplacement décrit ce
+     qu'on voit — sinon il ment à qui ne voit pas. */
+  'e1.altMachine': {fr:"Un climatiseur mobile, volets ouverts, posé au sol contre un mur blanc",
+                 en:"A portable air conditioner, louvres open, standing on the floor against a white wall",
+                 zh:"一台移动空调，出风口打开，靠白墙放在地上",
+                 ru:"Мобильный кондиционер с открытыми жалюзи, стоит на полу у белой стены"},
   'e1.bTemp'  : {fr:"à Nice, maintenant", en:"in Nice, right now", zh:"尼斯，此刻", ru:"в Ницце, сейчас"},
   'e1.bStock' : {fr:"machines libres aujourd'hui", en:"machines free today", zh:"今日可用机器", ru:"свободных машин сегодня"},
   'e1.bPrix'  : {fr:"par jour, tout compris", en:"per day, all included", zh:"每天，全包价", ru:"в день, всё включено"},
