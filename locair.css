@@ -368,6 +368,12 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .photo:has(figcaption){overflow:visible;background:none;border-radius:0}
 .photo:has(figcaption) img{border-radius:var(--r-l);background:var(--mist)}
 .photo[hidden]{display:none}
+/* <picture> est un element INLINE. Des qu'une image passe dedans, le
+   height:100% de l'image se mesure sur le <picture> et non sur le cadre :
+   la photo se replie en bandeau et on ne voit plus qu'un bout de mur.
+   Mesure du bug : cadre 457x571 attendu, image rendue 457x686 debordant
+   d'un cadre rabote a 190. Le <picture> prend donc la taille du cadre. */
+.photo picture{display:block;width:100%;height:100%}
 .photo img{display:block;width:100%;height:100%;object-fit:cover}
 .photo-4-5{aspect-ratio:4/5}
 .photo-1-1{aspect-ratio:1/1}
@@ -3289,6 +3295,39 @@ summary:active{background:var(--mist)}
      décale, sinon elle croise les lignes. */
   .e1.e-ink .e1-scene{width:132%;right:-46%;opacity:.5}
   .e1.e-ink .rassure-in{gap:5px 16px}
+}
+
+/* ── LA PLACE DE LA PHOTO DANS LE HAUT DE PAGE ────────────────────────────
+   La hauteur de la rangée est donnée par la colonne de droite — le champ
+   d'adresse, le bouton, la note Google : 306 px. La photo s'y étire, donc
+   son cadrage suivait la largeur de l'écran : mesuré, 2,0 pour 1 à 1900 px,
+   0,89 à 320. Une photo verticale rabotée en bandeau 2:1, il n'en reste
+   qu'une tranche de carrosserie.
+   Essayé, l'autre sens : laisser la photo à son format 4/5. Le haut de page
+   passait de 900 à 1265 px, la bande des cinq garanties tombait sous le
+   pli, et la colonne de droite flottait à 235 px contre 758. Refusé.
+   Alors on borne la COLONNE, pas la photo : 360 px au plus. Le cadre reste
+   proche du carré (1,18 au pire), la place qui reste va au bouton, et le
+   haut de page ne bouge pas d'un pixel. */
+/* La mise en page était DÉJÀ prévue pour une photo ici : colonnes 1fr/.78fr
+   et hauteur bornée entre 280 et 400 px (lignes 388-389). On n'y touche pas.
+   Il ne manquait que le cadrage. Le sujet est haut dans l'image — la façade
+   et les commandes — et le cadre est plus large que haut : centré, on ne
+   garderait qu'une tranche de carrosserie. Le cadrage remonte donc.
+   Mesuré : 1,98 pour 1 à 1900 px, 1,12 à 390. */
+.e1-grid > .photo img{object-position:50% 34%}
+
+/* ── LE DESSIN S'EFFACE QUAND LA PHOTO ARRIVE ─────────────────────────────
+   La scène du haut de page a toujours été écrite pour ce qu'elle est : un
+   dessin qui tient la place jusqu'à ce qu'une vraie photo arrive. La photo
+   est arrivée. Deux images qui se disputent le même panneau, ça ne fait pas
+   deux fois plus riche, ça fait du bruit — et la carte blanche du champ
+   d'adresse se retrouvait posée en travers d'un schéma technique.
+   Le :has() est enfermé dans une requête de largeur : sa spécificité est
+   celle de son argument, il l'emporterait sinon sur les règles qui suivent.
+   Le jour où la photo repart, le dessin revient tout seul. */
+@media(min-width:1px){
+  .e1.e-ink:has(.e1-grid > .photo:not([hidden])) .e1-scene{display:none}
 }
 
 /* ── LE SURTITRE DU HAUT DE PAGE ──────────────────────────────────────────
