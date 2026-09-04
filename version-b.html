@@ -125,9 +125,16 @@
   <!-- Deux offres, deux pages. Le sélecteur les rend visibles dès la
        première seconde : sans lui, un restaurateur qui arrive sur la page
        particuliers repart avant d'avoir su que l'offre pro existe. -->
-  <nav class="offre" data-ta="a.offre" aria-label="Choisir l'offre">
-    <a class="offre-o on" href="/version-b" aria-current="page" data-t="b.part">Particuliers</a>
-    <a class="offre-o" href="/pro" data-t="b.pro">Pro</a>
+  <!-- CE SELECTEUR SEPARAIT LES PUBLICS : particuliers d'un cote, pro de
+       l'autre. C'etait faux — les deux louent les MEMES deux machines. Il
+       separe donc ce qui se choisit vraiment : la machine.
+       Chaque lien mene a son article dans « Le materiel », et celui dont
+       l'article est a l'ecran s'allume tout seul (voir le script plus bas).
+       L'offre Pro n'a pas disparu : elle a repris sa place dans l'ecran
+       « Loc'Air Pro », qui lui est entierement consacre. -->
+  <nav class="offre" data-ta="a.machine" aria-label="Choisir la machine">
+    <a class="offre-o on" href="#clim" aria-current="true" data-t="b.clim">Climatiseur</a>
+    <a class="offre-o" href="#rafraichisseur" data-t="b.rafr">Rafraîchisseur</a>
   </nav>
   <a class="btn btn-1 btn-s" href="/" data-t="b.reserver">Réserver</a>
   <!-- « Mon espace → » disparaît : trois mots à traduire dans quatre langues,
@@ -438,13 +445,13 @@
          fermée ou fenêtre ouverte. Les cartes sont construites pour accepter
          une vraie photo le jour où elle existera. -->
     <div class="choix ar ar-5">
-      <a class="mcard" href="#e3b">
+      <a class="mcard" href="#clim">
         <span class="mcard-i" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4.6" y="3" width="14.8" height="18" rx="3.2"/><path d="M8 8h8M8 11.2h8"/><path d="M9.8 16.4h4.4"/></svg></span>
         <b class="mcard-t" data-t="e1.c1t">Climatiseur mobile</b>
         <span class="mcard-c" data-t="e1.c1c">Fenêtre fermée</span>
         <span class="mcard-d" data-t="e1.c1d">Du vrai froid, pour une pièce qu'on ferme. La chambre, le salon, le bureau.</span>
       </a>
-      <a class="mcard" href="#e3b">
+      <a class="mcard" href="#rafraichisseur">
         <span class="mcard-i" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.4c3 3.8 4.6 6.4 4.6 8.5a4.6 4.6 0 1 1-9.2 0c0-2.1 1.6-4.7 4.6-8.5z"/><path d="M2.8 19.4h5.4M2.8 22.2h9.6"/></svg></span>
         <b class="mcard-t" data-t="e1.c2t">Rafraîchisseur d'air</b>
         <span class="mcard-c" data-t="e1.c2c">Fenêtre ouverte</span>
@@ -1164,7 +1171,7 @@
     <p class="dire rv" data-t="e3b.dire">Une pièce fermée qu'on veut vraiment froide, ou un espace ouvert qu'on veut rendre vivable : ce n'est pas le même appareil.</p>
     <div class="deux rv">
 
-      <article class="mach">
+      <article class="mach" id="clim">
       <!-- PHOTO EN ATTENTE. Le fichier n'existe pas encore (voir VISUELS.md) : tant qu'il
      manque, ce bloc reste en commentaire. Le navigateur le demandait à chaque
      visite et recevait une erreur 404 — cinq requêtes perdues par chargement.
@@ -1231,7 +1238,7 @@
         </div>
       </article>
 
-      <article class="mach">
+      <article class="mach" id="rafraichisseur">
       <!-- PHOTO EN ATTENTE. Le fichier n'existe pas encore (voir VISUELS.md) : tant qu'il
      manque, ce bloc reste en commentaire. Le navigateur le demandait à chaque
      visite et recevait une erreur 404 — cinq requêtes perdues par chargement.
@@ -1610,6 +1617,11 @@
 
     <div class="pro-cta rv">
       <a class="btn btn-light" href="tel:+33663798756" data-t="e9b.devis">Demander un devis →</a>
+      <!-- Le seul lien vers /pro etait le selecteur de la barre. En le
+           passant aux machines, la page Pro devenait orpheline — et une page
+           orpheline se reference mal. Elle reprend sa place ici, dans
+           l'ecran qui lui est consacre. -->
+      <a class="btn btn-ghost" href="/pro" data-t="e9b.voirPro">Voir l'offre Pro →</a>
       <span class="pro-note" data-t="e9b.note">Chaque site est différent : nous chiffrons après avoir vu le volume et les ouvertures.</span>
     </div>
   </div>
@@ -2622,6 +2634,8 @@ Object.assign(T, {
                  ru:"Шатёр, выставка, свадьба, съёмка. На несколько дней, с доставкой, установкой и вывозом — как и вся наша аренда."},
   'e9b.devis' : {fr:"Demander un devis →", en:"Request a quote →",
                  zh:"申请报价 →", ru:"Запросить смету →"},
+  'e9b.voirPro': {fr:"Voir l'offre Pro →", en:"See the Business offer →",
+                  zh:"查看企业方案 →", ru:"Посмотреть предложение для бизнеса →"},
   'e9b.note'  : {fr:"Chaque site est différent : nous chiffrons après avoir vu le volume et les ouvertures.",
                  en:"Every site is different: we quote once we have seen the volume and the openings.",
                  zh:"每个场地都不一样：我们看过空间和开口之后再报价。",
@@ -2734,9 +2748,9 @@ Object.assign(T, {
 /* ── Lot 1 : barre, menu, écrans 1 à 3 ─────────────────────────────────── */
 Object.assign(T, {
   /* barre */
-  'b.part'    : {fr:"Particuliers", en:"Individuals", zh:"个人", ru:"Частным лицам"},
-  'b.pro'     : {fr:"Pro", en:"Business", zh:"企业", ru:"Бизнесу"},
-  'a.offre'   : {fr:"Choisir l'offre", en:"Choose your offer", zh:"选择方案", ru:"Выбор предложения"},
+  'b.clim'    : {fr:"Climatiseur", en:"Air conditioner", zh:"移动空调", ru:"Кондиционер"},
+  'b.rafr'    : {fr:"Rafraîchisseur", en:"Air cooler", zh:"冷风机", ru:"Охладитель"},
+  'a.machine' : {fr:"Choisir la machine", en:"Choose your machine", zh:"选择机器", ru:"Выбор машины"},
   'b.espace'   : {fr:"Mon espace →", en:"My account →", zh:"我的账户 →", ru:"Мой кабинет →"},
   'b.reserver' : {fr:"Réserver", en:"Book", zh:"预订", ru:"Забронировать"},
   'b.menu'     : {fr:"Ouvrir le menu", en:"Open menu", zh:"打开菜单", ru:"Открыть меню"},
@@ -4547,5 +4561,80 @@ Object.assign(T, {
   else addEventListener('load', function(){ apresDeuxImages(partir); });
 })();
 </script>
+<script>
+/* ── LE SÉLECTEUR SUIT LA MACHINE QU'ON REGARDE ────────────────────────────
+   Le sélecteur de la barre séparait les publics — particuliers d'un côté,
+   pro de l'autre. C'était faux : les deux louent les mêmes deux machines.
+   Il sépare maintenant ce qui se choisit vraiment.
+
+   Un sélecteur à deux positions dont aucune n'est jamais allumée a l'air
+   cassé. Celui-ci s'allume donc tout seul, avec DEUX sources :
+
+   1. Le clic. Le sélecteur de la barre, mais aussi les deux cartes du haut
+      de page : elles mènent aux mêmes ancres, elles disent donc la même
+      chose. Ce que la personne a choisi tient.
+   2. Le défilement, mais SEULEMENT quand une seule des deux machines est à
+      l'écran. C'est le cas sur téléphone, où les deux articles se suivent.
+
+   Sur ordinateur les deux articles sont CÔTE À CÔTE, donc tous les deux à
+   l'écran en même temps. Premier essai, « la dernière visible gagne » :
+   cliquer sur la carte du climatiseur allumait le rafraîchisseur. Mesuré,
+   corrigé. Quand les deux sont là, on ne touche à rien — le choix de la
+   personne reste le sien.
+
+   aria-current="true" et non "page" : les deux liens mènent à la MÊME page.
+   Dire "page" ferait annoncer « page courante » sur un lien qui ne change
+   pas de page.
+
+   Sans JavaScript, le climatiseur reste allumé et les deux liens marchent :
+   ce sont de vraies ancres, pas des boutons. */
+(function(){
+  var nav = document.querySelector('.offre');
+  if(!nav) return;
+  var liens = [].slice.call(nav.querySelectorAll('.offre-o'));
+  if(liens.length !== 2) return;
+
+  var ids = liens.map(function(a){ return (a.getAttribute('href') || '').replace(/^#/, ''); });
+  var cibles = ids.map(function(id){ return id ? document.getElementById(id) : null; });
+  if(cibles.some(function(c){ return !c; })) return;
+
+  function marquer(i){
+    liens.forEach(function(a, k){
+      var actif = k === i;
+      a.classList.toggle('on', actif);
+      if(actif) a.setAttribute('aria-current', 'true');
+      else      a.removeAttribute('aria-current');
+    });
+  }
+
+  /* Arriver directement sur version-b#rafraichisseur doit allumer la bonne. */
+  var depart = ids.indexOf((location.hash || '').replace(/^#/, ''));
+  marquer(depart >= 0 ? depart : 0);
+
+  /* Tout lien qui mène à une machine parle au sélecteur : celui de la barre
+     comme les deux cartes du haut de page. */
+  document.addEventListener('click', function(e){
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if(!a) return;
+    var i = ids.indexOf(a.getAttribute('href').replace(/^#/, ''));
+    if(i >= 0) marquer(i);
+  });
+
+  if(!('IntersectionObserver' in window)) return;
+
+  var vus = [false, false];
+  var obs = new IntersectionObserver(function(entrees){
+    entrees.forEach(function(e){
+      var i = cibles.indexOf(e.target);
+      if(i >= 0) vus[i] = e.isIntersecting;
+    });
+    /* Une seule des deux à l'écran : c'est elle. Les deux, ou aucune : on ne
+       touche à rien, le choix de la personne tient. */
+    if(vus[0] !== vus[1]) marquer(vus[0] ? 0 : 1);
+  }, { threshold:.35 });
+  cibles.forEach(function(c){ obs.observe(c); });
+})();
+</script>
+
 </body>
 </html>
