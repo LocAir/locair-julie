@@ -531,6 +531,50 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .js .rv:nth-child(4){transition-delay:.24s}
 @media(prefers-reduced-motion:reduce){.js .rv{opacity:1;transform:none;transition:none}}
 
+/* ── TROIS NIVEAUX D'ENTREE, AU LIEU D'UN SEUL ─────────────────────────────
+   Mesure avant : 119 elements apparaissent au defilement, TOUS avec la meme
+   duree (0,68 s) et le meme geste (fondu + montee de 24 px). Le chiffre
+   geant « 0 € » entrait donc exactement comme une legende de bas de page.
+   Le decalage entre elements d'un groupe existait deja (0, 55, 110, 165,
+   220 ms) : ce qui manquait, c'etait la HIERARCHIE.
+
+   Rien a changer dans le HTML : « titre », « geant » et « kicker » portent
+   deja la classe .rv sur le meme element. Trois selecteurs suffisent.
+
+   CE QUI FRAPPE — les titres d'ecran et les grands chiffres. Ils viennent de
+   plus loin (38 px au lieu de 24), plus lentement (0,82 s), et se posent
+   depuis un cheveu plus petit : l'oeil lit « ca arrive » au lieu de « c'est
+   la ». La courbe sort plus franchement pour que la fin soit nette. */
+.js .rv.titre,
+.js .rv.geant{
+  transform:translateY(38px) scale(.988);
+  transition-duration:.82s;
+  transition-timing-function:cubic-bezier(.22,.68,.24,1);
+}
+.js .rv.titre.on,
+.js .rv.geant.on{transform:none}
+
+/* CE QUI ACCOMPAGNE — tout le reste : paragraphes, cartes, listes. Inchange,
+   c'est le geste de reference. */
+
+/* CE QUI MEUBLE — le surtitre qui annonce l'ecran. Il ne bouge plus du tout,
+   il se pose en fondu, et deux fois plus vite. Un libelle de six lettres qui
+   monte de 24 px, on le regarde arriver au lieu de lire le titre. */
+.js .rv.kicker{
+  transform:none;
+  transition-property:opacity;
+  transition-duration:.4s;
+}
+
+/* Pour qui a demande moins d'animation, ces trois regles doivent tomber
+   AUSSI. Sans ca elles l'emporteraient sur la neutralisation ci-dessus :
+   « .js .rv.titre » pese plus lourd que « .js .rv ». */
+@media(prefers-reduced-motion:reduce){
+  .js .rv.titre,
+  .js .rv.geant,
+  .js .rv.kicker{opacity:1;transform:none;transition:none}
+}
+
 /* ══ REPÈRE DE PROGRESSION ══
    Sur un format long, il faut savoir où l'on en est et pouvoir sauter.
    Masqué sur téléphone : la place manque et le pouce l'accrocherait. */
