@@ -1670,13 +1670,38 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .burger span::before,.burger span::after{content:'';position:absolute;left:0;width:19px;height:1.8px;background:currentColor}
 .burger span::before{top:-6px}
 .burger span::after{top:6px}
-.menu{
-  position:fixed;inset:0;z-index:960;background:var(--ink);color:#fff;
-  display:flex;flex-direction:column;padding:24px var(--pad) max(28px,env(safe-area-inset-bottom));
-  opacity:0;visibility:hidden;transition:opacity var(--mv-2) var(--mv),visibility var(--mv-2) var(--mv);
-  overflow-y:auto;
+/* ── LE MENU EST UN PANNEAU, PLUS UN PLEIN ECRAN ───────────────────────────
+   Il couvrait tout l'ecran, tout colle au bord gauche. Mesure a 1900 px :
+   le contenu du site vit entre 360 et 1540, le menu commencait a 24 — 336 px
+   d'ecart avec le reste de la page, et 1 500 px de vide a droite. Le contenu
+   faisait par ailleurs 1 050 px de haut pour 900 de fenetre : « Vos espaces »
+   passait sous le pli.
+   C'est maintenant un panneau ancre a droite, sous le bouton qui l'ouvre,
+   avec un voile derriere. Sur telephone il occupe toute la largeur — c'est
+   la meme regle, min() s'en charge : 440 px au plus, jamais plus que
+   l'ecran. */
+.menu-fond{
+  position:fixed;inset:0;z-index:959;background:rgba(14,31,53,.55);
+  opacity:0;visibility:hidden;
+  transition:opacity var(--mv-2) var(--mv),visibility var(--mv-2) var(--mv);
+  -webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);
 }
-.menu.on{opacity:1;visibility:visible}
+.menu-fond.on{opacity:1;visibility:visible}
+.menu{
+  position:fixed;top:0;right:0;bottom:0;left:auto;width:min(440px,100%);
+  z-index:960;background:var(--ink);color:#fff;
+  display:flex;flex-direction:column;padding:24px var(--pad) max(28px,env(safe-area-inset-bottom));
+  box-shadow:-24px 0 60px rgba(0,0,0,.32);
+  opacity:0;visibility:hidden;transform:translateX(18px);
+  transition:opacity var(--mv-2) var(--mv),visibility var(--mv-2) var(--mv),
+             transform var(--mv-2) var(--mv);
+  overflow-y:auto;overscroll-behavior:contain;
+}
+.menu.on{opacity:1;visibility:visible;transform:none}
+/* Pour qui a demande moins d'animation, le panneau se pose sans glisser. */
+@media(prefers-reduced-motion:reduce){
+  .menu{transform:none;transition:opacity var(--mv-1) linear,visibility var(--mv-1) linear}
+}
 .menu-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:34px}
 .menu-top .logo{color:#fff}
 .menu-x{width:44px;height:44px;border-radius:50%;color:rgba(255,255,255,.7);font-size:26px;line-height:1;display:flex;align-items:center;justify-content:center}
