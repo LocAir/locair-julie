@@ -3390,6 +3390,29 @@ Object.assign(T, {
   var INSTALL = 80, MAX_J = 90, MAX_Q = 5;
   var jours = 14, zone = 60, pose = 1, qte = 1;
 
+  /* ── CE QUE LE SITE RETIENT D'UNE VISITE A L'AUTRE ───────────────────────
+     Il ne retenait que deux choses : la langue, et le fait qu'on ait ferme
+     le bandeau. Quelqu'un qui revient retapait donc sa duree, sa zone et son
+     choix d'installation — alors que ce sont exactement les reponses qu'il
+     avait deja donnees.
+     Les quatre reglages sont relus au chargement, PUIS VERIFIES un par un :
+     un vieux reglage enregistre avant un changement de tarif ne doit jamais
+     pouvoir sortir un prix impossible. Une valeur hors bornes est ignoree,
+     pas corrigee — on retombe simplement sur la valeur par defaut.
+     L'ADRESSE N'EST PAS RETENUE. C'est une donnee personnelle, et la
+     politique de confidentialite ne l'annonce pas. Les quatre reglages
+     ci-dessous n'identifient personne. Voir la note au proprietaire.
+     Tout est enferme dans un try : un navigateur en navigation privee, ou
+     qui refuse le stockage, ne doit pas casser le calculateur. */
+  var MEM = 'locair-calc';
+  try {
+    var m = JSON.parse(localStorage.getItem(MEM) || '{}');
+    if(typeof m.jours === 'number' && m.jours >= 1 && m.jours <= MAX_J) jours = m.jours;
+    if(m.zone === 60 || m.zone === 120)                                 zone  = m.zone;
+    if(m.pose === 0 || m.pose === 1)                                    pose  = m.pose;
+    if(typeof m.qte === 'number' && m.qte >= 1 && m.qte <= MAX_Q)       qte   = m.qte;
+  } catch(e){ /* pas de memoire disponible : on garde les valeurs par defaut */ }
+
   /* Les libellés recomposés ici passent par le dictionnaire, et le bloc est
      réécrit à chaque changement de langue. */
   function mot(cle){
@@ -3452,6 +3475,10 @@ Object.assign(T, {
   }
 
   function render(){
+    /* On enregistre AVANT de calculer : si le calcul plante un jour, le
+       reglage choisi est deja retenu. */
+    try { localStorage.setItem(MEM, JSON.stringify({jours:jours, zone:zone, pose:pose, qte:qte})); }
+    catch(e){ /* stockage refuse : le calculateur marche quand meme */ }
     /* Règle reprise à l'identique du tunnel (api/checkout.js) :
          location × quantité + installation + livraison
        La livraison et la pose NE sont PAS multipliées — un seul
@@ -3537,6 +3564,22 @@ Object.assign(T, {
   document.getElementById('c-pose').addEventListener('click', function(e){
     var c=e.target.closest('.chip'); if(!c) return; pose=+c.dataset.i; press('#c-pose','i',pose); render();
   });
+  /* La duree minimale vient du serveur (P.duree_min_jours) et n'est donc pas
+     connue au moment ou l'on relit la memoire. On borne une seconde fois,
+     ici, avant le premier rendu. */
+  if(jours < P.duree_min_jours) jours = P.duree_min_jours;
+
+  /* LES BOUTONS DOIVENT DIRE LA MEME CHOSE QUE LE PRIX.
+     Mesure : au retour, le total affichait bien 337 € — mais « Nice » et
+     « Un technicien vient » restaient allumes, alors que la memoire disait
+     hors zone et sans pose. press() n'etait appele que dans les gestionnaires
+     de clic ; au premier rendu, personne ne le posait. Le prix disait une
+     chose, les boutons une autre.
+     Les trois groupes sont donc remis d'equerre avant le premier rendu. La
+     duree, elle, est deja geree par render(). */
+  press('#c-zone','z',zone);
+  press('#c-pose','i',pose);
+  press('#c-qte','q',qte);
   render();
   document.addEventListener('langue', render);
   /* ── UNE SEULE SOURCE DE PRIX POUR TOUTE LA PAGE ────────────────────────
