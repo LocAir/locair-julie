@@ -177,6 +177,7 @@
 <!-- ══ MENU ═══════════════════════════════════════════════════════════════════
      Reprend les accès du site officiel. Sans lui, la version B n'offrait aucun
      chemin vers l'espace client ni vers l'espace ambassadeur sur téléphone. -->
+<div class="menu-fond" id="menu-fond" aria-hidden="true"></div>
 <div class="menu" id="menu" role="dialog" aria-modal="true" data-ta="a.menu" aria-label="Menu">
   <div class="menu-top">
     <span class="logo">Loc<i class="gt">'</i>Air</span>
@@ -3566,17 +3567,33 @@ Object.assign(T, {
 (function(){
   var menu = document.getElementById('menu'), btn = document.getElementById('burger');
   if(!menu || !btn) return;
+  var fond = document.getElementById('menu-fond');
   function ouvrir(v){
     menu.classList.toggle('on', v);
+    if(fond) fond.classList.toggle('on', v);
     btn.setAttribute('aria-expanded', String(v));
     document.body.style.overflow = v ? 'hidden' : '';
-    if(!v) btn.focus();
+    if(v){ var p = menu.querySelector('a, button'); if(p) p.focus(); }
+    else  { btn.focus(); }
   }
   btn.addEventListener('click', function(){ ouvrir(!menu.classList.contains('on')); });
   document.getElementById('menu-x').addEventListener('click', function(){ ouvrir(false); });
   menu.addEventListener('click', function(e){ if(e.target.closest('a')) ouvrir(false); });
+  /* Le panneau ne couvre plus tout l'ecran : cliquer a cote doit le fermer,
+     c'est le geste que tout le monde fait. */
+  if(fond) fond.addEventListener('click', function(){ ouvrir(false); });
   document.addEventListener('keydown', function(e){
-    if(e.key === 'Escape' && menu.classList.contains('on')) ouvrir(false);
+    if(!menu.classList.contains('on')) return;
+    if(e.key === 'Escape'){ ouvrir(false); return; }
+    /* Le panneau se dit aria-modal : le clavier ne doit donc pas en sortir
+       pour aller tabuler dans la page qu'on ne voit plus. */
+    if(e.key !== 'Tab') return;
+    var f = [].slice.call(menu.querySelectorAll('a[href], button, [tabindex]:not([tabindex="-1"])'))
+              .filter(function(el){ return el.offsetParent !== null; });
+    if(!f.length) return;
+    var prem = f[0], der = f[f.length - 1];
+    if(e.shiftKey && document.activeElement === prem){ e.preventDefault(); der.focus(); }
+    else if(!e.shiftKey && document.activeElement === der){ e.preventDefault(); prem.focus(); }
   });
 })();
 
