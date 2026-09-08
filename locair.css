@@ -3604,3 +3604,77 @@ a[target="_blank"]:not(.eq-p):not(.btn)::after{
 }
 a[target="_blank"]:hover::after,
 a[target="_blank"]:focus-visible::after{opacity:.9}
+
+/* ── SUR PAPIER ──
+   Rare, mais ca arrive : quelqu'un imprime la page pour la montrer, ou
+   l'enregistre en PDF. Sans cette regle, il recevait la barre du haut,
+   les pastilles de navigation, le bandeau des cookies, et surtout des
+   aplats de couleur pleine page — bleu nuit ou sarcelle — avec du texte
+   blanc dessus que la plupart des imprimantes ne sortent tout
+   simplement pas. */
+@media print{
+  @page{margin:14mm}
+
+  /* Ce qui ne sert a rien sur du papier. */
+  .bar,.dots,.menu,.menu-fond,.haut,.cook,.cookies,.infobar,.lang-l,
+  .menu-lang,.burger,.sr-only,.vid,.mbar,.preview-bar,[hidden]{
+    display:none !important;
+  }
+
+  /* Remise a plat generale. Les fonds de couleur sont poses a beaucoup
+     d'endroits differents (ecrans, sous-sections, cartes, boutons) :
+     les enumerer un par un laissait toujours un aplat au passage, donc
+     on les enleve tous d'un coup et on rend la couleur seulement la ou
+     elle sert. */
+  *{
+    background-color:transparent !important;
+    background-image:none !important;
+    color:#000 !important;
+    box-shadow:none !important;
+    text-shadow:none !important;
+  }
+  html,body{background:#fff !important}
+  .ecran{min-height:0 !important}
+
+  /* Un bouton sans son fond devient invisible : on lui rend un trait. */
+  .btn,.pack,.mcard,.forfait,.chip{border:1px solid #666 !important}
+
+  /* Sur papier, libre et complet ne se distinguaient plus (les deux
+     n'ont plus de fond) : le trait plein contre le trait pointille. */
+  .dispo14-j{border:1px dashed #999 !important}
+  .dispo14-j.libre{border:1.5px solid #000 !important}
+  .dispo14-pt{border:1px dashed #999 !important}
+  .dispo14-pt.libre{border:1.5px solid #000 !important}
+
+  /* La goutte de l'apostrophe est un fond, pas un caractere. */
+  .gt::before{background:#000 !important}
+
+  /* Aucune animation d'entree : sur papier, un element a moitie
+     transparent sort a moitie imprime. */
+  .js .rv,.js .rv.titre,.js .rv.geant,.js .rv.kicker,.ar{
+    opacity:1 !important;transform:none !important;animation:none !important;
+    /* Sans ca, l'element est encore EN TRAIN de monter vers 1 au moment
+       ou l'imprimante prend son image : mesure a 0,983 au lieu de 1. */
+    transition:none !important;
+  }
+
+  /* L'adresse d'un lien externe s'imprime : sur papier, un mot
+     souligne ne mene nulle part. Remplace la fleche ↗, qui n'a plus
+     de sens une fois imprimee. */
+  a[href^="http"]::after,
+  a[target="_blank"]::after{
+    content:" (" attr(href) ")" / "" !important;
+    font-size:.85em;opacity:1;word-break:break-all;
+  }
+  a[href^="#"]::after,a[href^="/"]::after,a[href^="mailto"]::after,
+  a[href^="tel"]::after{content:"" !important}
+  a{text-decoration:underline}
+
+  /* Rien ne se coupe la ou ca ferait mal : un titre seul en bas de
+     page, un tableau coupe en deux, une carte a cheval. */
+  h1,h2,h3,.titre{break-after:avoid;page-break-after:avoid}
+  h1,h2,h3,.titre,li,tr,figure,table,.pack,.mcard{
+    break-inside:avoid;page-break-inside:avoid;
+  }
+  p{orphans:3;widows:3}
+}

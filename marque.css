@@ -112,3 +112,48 @@ a[target="_blank"]:focus-visible::after{opacity:.9}
 
 /* Texte reserve au lecteur d'ecran : invisible a l'oeil, lu a voix haute. */
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+
+/* ── SUR PAPIER ──
+   Les CGV, les mentions legales et la confidentialite sont les pages
+   qu'on imprime vraiment — pour les garder, les faire relire, les
+   joindre a un dossier. Sur papier elles sortaient avec la barre de
+   navigation, un bouton « retour au site » qui ne mene nulle part, un
+   fond gris qui mange l'encre, et des liens dont on ne voyait pas
+   l'adresse. */
+@media print{
+  @page{margin:16mm}
+
+  /* Ce qui ne sert a rien sur du papier. */
+  .nav,.nav-btn,.cook,.cookies,.haut,.menu,.menu-fond,.sr-only,
+  [role="dialog"],[hidden]{display:none !important}
+
+  /* Encre economisee, texte plus noir : sur papier le gris pale est
+     nettement moins lisible qu'a l'ecran. */
+  html,body{background:#fff !important;color:#000 !important}
+  body{font-size:10.5pt;line-height:1.5}
+
+  /* L'adresse d'un lien externe s'imprime : sur papier, un mot
+     souligne ne mene nulle part. Remplace la fleche ↗, qui n'a plus
+     de sens une fois imprimee. */
+  a[href^="http"]::after,
+  a[target="_blank"]::after{
+    /* !important : la fleche ↗ est posee par un selecteur plus fort
+       (a[target="_blank"]:not(.btn)) et gagnait sur cette regle. */
+    content:" (" attr(href) ")" / "" !important;
+    font-size:.85em;opacity:1;word-break:break-all;
+  }
+  a[href^="#"]::after,a[href^="/"]::after,a[href^="mailto"]::after,
+  a[href^="tel"]::after{content:"" !important}
+  a{color:#000 !important;text-decoration:underline}
+
+  /* Rien ne se coupe la ou ca ferait mal : un titre seul en bas de
+     page, un tableau coupe en deux, une clause a cheval. */
+  h1,h2,h3{break-after:avoid;page-break-after:avoid}
+  h1,h2,h3,li,tr,figure,table{break-inside:avoid;page-break-inside:avoid}
+  p{orphans:3;widows:3}
+
+  /* Le tableau des tarifs garde ses traits, sans son aplat sombre. */
+  thead th{background:#fff !important;color:#000 !important;
+           border-bottom:2px solid #000}
+  table,th,td{border-color:#999 !important}
+}
