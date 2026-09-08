@@ -65,6 +65,41 @@ livraison ». Rien d'inventé.
 Le même `areaServed:"France"` apparaît une deuxième fois dans le bloc
 `Service` de la même page : le remplacer pareil.
 
+### 3. L'image de partage est une photo verticale
+
+`index.html` déclare, deux fois (Open Graph et Twitter) :
+
+```html
+<meta property="og:image" content="https://www.locair.fr/hero-clim.jpg"/>
+```
+
+`hero-clim.jpg` fait **1400 × 2100** — une photo debout. Facebook, LinkedIn,
+WhatsApp et X affichent l'aperçu dans un cadre **couché** de 1200 × 630.
+Résultat : les deux tiers de la photo sont jetés, et ce qui reste est
+recadré au hasard par la plateforme, pas par vous.
+
+Le site a déjà une carte de partage faite pour ça : `og-locair.png`, en
+1200 × 630. C'est celle que toutes les autres pages utilisent.
+
+**À remplacer dans `index.html`** (les deux occurrences, `og:image` et
+`twitter:image`) :
+
+```html
+<meta property="og:image" content="https://www.locair.fr/og-locair.png"/>
+<meta property="og:image:width" content="1200"/>
+<meta property="og:image:height" content="630"/>
+<meta property="og:image:alt" content="Loc'Air — le froid, à l'heure."/>
+```
+
+Attention : `hero-clim.jpg` est aussi affichée **dans** la page, à quatre
+endroits. Ces quatre-là, on n'y touche pas — seules les balises d'aperçu
+changent.
+
+`madrid.html`, `madrid-en.html` et `reunion.html` avaient exactement le même
+défaut : c'est corrigé. `reunion.html` allait plus loin, elle annonçait
+elle-même `og:image:width 1400` et `og:image:height 2100` dans un cadre
+couché.
+
 ### Comment vérifier après
 
 1. Coller les deux remplacements, déployer.
@@ -83,6 +118,7 @@ Le même `areaServed:"France"` apparaît une deuxième fois dans le bloc
 | 2 | `madrid.html` et `reunion.html` ont **la même description** — Google en ignore une. | IMPORTANT | à faire |
 | 3 | **7 titres dépassent 60 caractères** et 8 descriptions dépassent 160 : Google les coupe au milieu. | IMPORTANT | à faire |
 | 4 | Les pages villes n'ont **aucun `hreflang`** alors que le site existe en 4 langues. | IMPORTANT | à faire |
+| 5 | ~~`madrid`, `madrid-en` et `reunion` envoient une **photo verticale 1400×2100** dans le cadre couché 1200×630 des réseaux sociaux~~ | IMPORTANT | **✅ fait** — les trois pointent vers `og-locair.png`. Reste `index.html`, voir plus haut. |
 
 ---
 
