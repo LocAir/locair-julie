@@ -1232,6 +1232,7 @@ function adminLogout(){
     TOKEN = ''; ROLE = 'administrateur'; NOM_COMPTE = '';
     if(window._alertsInterval){ clearInterval(window._alertsInterval); window._alertsInterval = null; }
     if(window._autoRefreshInterval){ clearInterval(window._autoRefreshInterval); window._autoRefreshInterval = null; }
+    if(STOCK_SUMMARY_POLL){ clearInterval(STOCK_SUMMARY_POLL); STOCK_SUMMARY_POLL = null; }
     document.getElementById('a-app').classList.add('hidden');
     document.getElementById('a-logout-btn').classList.add('hidden');
     document.getElementById('a-refresh-btn').classList.add('hidden');
@@ -1974,6 +1975,15 @@ function switchAdminTab(tab){
   // réseau, changement d'onglet instantané.
   _dismissTabBadges(tab);
   toggleMobileMenu(false);
+  // Tableau des chiffres clés du Stock (stockSummaryHtml) en quasi temps
+  // réel tant que cet onglet reste ouvert — coupé dès qu'on le quitte pour
+  // ne jamais laisser un poll tourner en fond sur un onglet qu'on ne
+  // regarde plus.
+  if(tab==='stock'){
+    if(!STOCK_SUMMARY_POLL) STOCK_SUMMARY_POLL = setInterval(refreshStockSummary, 8000);
+  }else if(STOCK_SUMMARY_POLL){
+    clearInterval(STOCK_SUMMARY_POLL); STOCK_SUMMARY_POLL = null;
+  }
 }
 // Tiroir latéral mobile (voir .mobile-menu-btn / .tabs.mobile-open en CSS) —
 // n'a aucun effet visuel sur desktop, où .tabs reste la barre latérale fixe.
@@ -3002,6 +3012,45 @@ function printStockLabels(){
       </div>`).join('');
   window.print();
 }
+// Tableau des chiffres clés du parc — tout en haut de l'onglet Stock
+// (demande d'Aly, 2026-08-31 : "les chiffres importants tel que le nombre
+// de machine", "sans besoin de rafraîchissement de la page"). Fonction à
+// part (au lieu d'inline dans loadStock) pour pouvoir la regénérer seule
+// depuis refreshStockSummary() ci-dessous, sans reconstruire tout l'onglet
+// (filtres en cours, position de défilement, menus ouverts... resteraient
+// sinon perturbés toutes les 8 secondes).
+function stockSummaryHtml(dd){
+  if(!dd) return '';
+  return `
+    <div class="card" id="stock-summary">
+      <h2>Tableau de bord du parc</h2>
+      <div class="stat-grid">
+        <div class="stat-tile"><div class="n">${dd.total}</div><div class="l">Total</div></div>
+        <div class="stat-tile" style="cursor:pointer" onclick="filterStockRapide('disponible')"><div class="n" style="color:var(--green)">${dd.disponibles}</div><div class="l">Disponibles</div></div>
+        <div class="stat-tile"><div class="n" style="color:var(--blue)">${dd.en_location}</div><div class="l">En location</div></div>
+        <div class="stat-tile"><div class="n" style="color:var(--amber)">${dd.en_preparation}</div><div class="l">En préparation</div></div>
+        <div class="stat-tile"><div class="n" style="color:var(--amber)">${dd.en_maintenance}</div><div class="l">Maintenance / nettoyage</div></div>
+        <div class="stat-tile" style="cursor:pointer" onclick="filterStockRapide('panne')"><div class="n" style="color:var(--red)">${dd.hors_service}</div><div class="l">Hors service</div></div>
+      </div>
+    </div>`;
+}
+// Rafraîchit UNIQUEMENT ce tableau (pas tout l'onglet Stock) — un seul petit
+// appel API toutes les 8s tant que l'onglet Stock est ouvert, voir
+// STOCK_SUMMARY_POLL dans switchAdminTab(). Échec silencieux volontaire :
+// un simple rafraîchissement de fond ne doit jamais afficher d'erreur ni
+// interrompre ce que l'admin est en train de faire, le prochain tick
+// réessaiera de lui-même.
+async function refreshStockSummary(){
+  if(!document.getElementById('stock-summary')) return; // onglet quitté entre-temps
+  try{
+    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'dashboard'})});
+    if(!r.ok) return;
+    const dd = await r.json();
+    const el = document.getElementById('stock-summary'); // re-vérifié : peut avoir disparu pendant l'attente réseau
+    if(el) el.outerHTML = stockSummaryHtml(dd);
+  }catch(e){}
+}
+let STOCK_SUMMARY_POLL = null;
 async function loadStock(silent){
   const zone = document.getElementById('tab-stock');
   if(!silent) zone.innerHTML = loading();
@@ -3029,6 +3078,7 @@ async function loadStock(silent){
     const appareils = d.appareils || [];
     STOCK_APPAREILS_CACHE = appareils;
     zone.innerHTML = `
+      ${rd.ok && dd ? stockSummaryHtml(dd) : ''}
       <div class="card">
         <h2>Flotte — ${escHtml(d.ville)}</h2>
         <div class="stock-gauge"><div class="stock-gauge-fill" style="width:${pctOccupe}%"></div></div>
@@ -3042,18 +3092,6 @@ async function loadStock(silent){
         <button class="btn btn-grey" style="margin-top:12px;margin-left:8px" onclick="openScannerModal()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;margin-right:6px"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>Scanner le stock</button>
       </div>
       ${offresPrivilegeHtml()}
-      ${rd.ok && dd ? `
-      <div class="card">
-        <h2>Tableau de bord du parc</h2>
-        <div class="stat-grid">
-          <div class="stat-tile"><div class="n">${dd.total}</div><div class="l">Total</div></div>
-          <div class="stat-tile" style="cursor:pointer" onclick="filterStockRapide('disponible')"><div class="n" style="color:var(--green)">${dd.disponibles}</div><div class="l">Disponibles</div></div>
-          <div class="stat-tile"><div class="n" style="color:var(--blue)">${dd.en_location}</div><div class="l">En location</div></div>
-          <div class="stat-tile"><div class="n" style="color:var(--amber)">${dd.en_preparation}</div><div class="l">En préparation</div></div>
-          <div class="stat-tile"><div class="n" style="color:var(--amber)">${dd.en_maintenance}</div><div class="l">Maintenance / nettoyage</div></div>
-          <div class="stat-tile" style="cursor:pointer" onclick="filterStockRapide('panne')"><div class="n" style="color:var(--red)">${dd.hors_service}</div><div class="l">Hors service</div></div>
-        </div>
-      </div>` : ''}
       <div id="entretien-zone"></div>
       <div id="commandes-fournisseur-zone"></div>
       <div class="card">
