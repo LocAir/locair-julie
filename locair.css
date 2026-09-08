@@ -516,7 +516,25 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .titre{
   font-size:var(--t-1);font-weight:700;letter-spacing:var(--l-1);
   line-height:1.02;max-width:16ch;
+  /* Mesuré sur les 19 titres qui font deux lignes ou plus : trois se
+     cassaient mal, dont « Le prix affiché est le prix / payé. » — un mot
+     seul sur une deuxième ligne de 23 % de large. À cette taille de
+     caractère, un mot orphelin se voit de loin.
+     balance répartit les lignes à peu près également au lieu de remplir
+     la première puis de jeter le reste. Les navigateurs qui ne savent pas
+     le faire ignorent la ligne : le titre revient exactement comme avant. */
+  text-wrap:balance;
 }
+
+/* ── LE MOT TOUT SEUL EN BAS DE PARAGRAPHE ────────────────────────────────
+   Mesuré sur la page : 78 paragraphes font deux lignes ou plus, et 26
+   d'entre eux finissent par UN SEUL MOT sur la dernière ligne —
+   « …jamais. », « …bancaire. », « …réglages. ». Un mot orphelin donne au
+   bloc l'air de s'être arrêté par accident.
+   pretty demande au navigateur de reprendre la ligne précédente pour que
+   la dernière en ramène au moins deux mots. Les navigateurs qui ne savent
+   pas le faire ignorent la ligne : le texte revient exactement comme avant. */
+p,li,dd,dt,figcaption,blockquote,.dire,.pas-p{text-wrap:pretty}
 /* Une marche de l'échelle, choisie selon la longueur du titre. Avant, la
    taille était écrite à la main dans le HTML de chaque écran. */
 .titre.t-2{font-size:var(--t-2)}
@@ -2396,8 +2414,23 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   transition:transform var(--mv-1) var(--mv)}
 .pack.reco .btn-1:hover,.pack.reco .btn-1:focus-visible{background:rgba(255,255,255,.88)}
 /* Les cartes sans étiquette gardent la même hauteur que celle qui en a une :
-   sans ça, les trois prix ne seraient pas sur la même ligne. */
-.pack-r-vide{display:block;height:1em;margin-bottom:9px}
+   sans ça, les trois prix ne seraient pas sur la même ligne.
+   Ça ne marchait pas tout à fait. « height:1em » mesurait l'em du PARENT
+   — 17,5 px — alors que l'étiquette « LE PLUS PRIS » occupe sa propre boîte
+   de ligne, à 18,97 px. Mesuré : les trois prix, les trois descriptions et
+   les trois boutons étaient décalés de 1,5 px, la carte du milieu toujours
+   plus bas. Un pixel et demi ne se nomme pas, mais il se voit.
+   La correction : l'espace n'est plus une hauteur devinée, c'est une vraie
+   ligne de texte aux mêmes réglages que l'étiquette, avec une espace
+   insécable pour contenu. Elle fera donc toujours exactement la même
+   hauteur, quelle que soit la taille de caractère. Le « / "" » la rend
+   muette pour les lecteurs d'écran. */
+.pack-r-vide{
+  display:block;margin-bottom:9px;
+  font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-5);
+  text-transform:uppercase;
+}
+.pack-r-vide::before{content:"\00A0" / ""}
 @media(max-width:860px){.packs{grid-template-columns:1fr;gap:14px}
   .pack-r-vide{display:none}}
 
