@@ -1733,6 +1733,25 @@
   <div class="in">
     <h2 class="titre rv" data-th="e12.titre">L'air frais<em> dès demain matin.</em></h2>
     <p class="dire rv" data-t="e12.dire">Aucune caution. Aucune surprise. Annulation gratuite avant la livraison.</p>
+
+    <!-- ── LES QUATORZE PROCHAINS JOURS ──────────────────────────────────
+         Le serveur envoie déjà, à chaque visite, le nombre d'appareils
+         libres pour CHACUN des 90 prochains jours (/api/disponibilite,
+         champ "dates"). La page ne s'en servait que pour une phrase le
+         jour où tout est complet ; les 89 autres partaient à la poubelle.
+         Ici on montre les quatorze premiers, à partir de demain — la
+         réservation minimale est J+1, afficher aujourd'hui enverrait vers
+         une date impossible.
+         Aucune donnée inventée : si l'appel échoue ou ne répond pas, le
+         bloc reste caché et la page est exactement celle d'avant. -->
+    <div class="dispo14 rv" id="dispo14" hidden>
+      <p class="dispo14-t" data-t="e12.dispoT">Les quatorze prochains jours</p>
+      <ol class="dispo14-l" id="dispo14-l"></ol>
+      <p class="dispo14-lg" id="dispo14-lg" hidden>
+        <span class="dispo14-pt libre" aria-hidden="true"></span><span data-t="e12.dispoLibre">libre</span>
+        <span class="dispo14-pt plein" aria-hidden="true"></span><span data-t="e12.dispoPlein">complet</span>
+      </p>
+    </div>
     <div class="fin-cta rv">
       <a class="btn btn-light" href="/" data-t="e12.now">Réserver maintenant</a>
       <a class="btn btn-ghost" href="tel:+33663798756" data-t="e12.rappel">Être rappelé</a>
@@ -2441,6 +2460,12 @@ Object.assign(T, {
                  en:"No deposit. No surprises. Free cancellation before delivery.",
                  zh:"无押金。无意外。配送前可免费取消。",
                  ru:"Без залога. Без сюрпризов. Бесплатная отмена до доставки."},
+  'e12.dispoT': {fr:"Les quatorze prochains jours",
+                 en:"The next fourteen days",
+                 zh:"未来十四天",
+                 ru:"Ближайшие четырнадцать дней"},
+  'e12.dispoLibre': {fr:"libre", en:"available", zh:"有货", ru:"свободно"},
+  'e12.dispoPlein': {fr:"complet", en:"full", zh:"已满", ru:"занято"},
   'e12.now'   : {fr:"Réserver maintenant", en:"Book now", zh:"立即预订", ru:"Забронировать сейчас"},
   'e12.rappel': {fr:"Être rappelé", en:"Request a callback", zh:"请求回电", ru:"Заказать обратный звонок"},
   'e12.cit'   : {fr:"« Prix clair, technicien ponctuel, clim efficace dès le premier soir. Le fait que tout soit inclus, c'est ce qui m'a convaincu. »",
@@ -4149,7 +4174,60 @@ Object.assign(T, {
   });
   json('/api/disponibilite').then(function(d){
     if(d && d.next_available){ prochaine = d.next_available; Livraison.majProchaine(d.next_available); poserDispo(); }
+    if(d && d.dates && d.today){ cal = {dates:d.dates, today:d.today}; poserCal(); }
   });
+
+  /* ── La bande des quatorze prochains jours ────────────────────────────
+     On ne calcule rien, on ne devine rien : "dates" est une simple table
+     date → nombre d'appareils libres, envoyee par le serveur. Zero = ce
+     jour-la il n'y a plus rien. On part de DEMAIN, jamais d'aujourd'hui :
+     la reservation minimale est J+1, montrer aujourd'hui enverrait vers
+     une date impossible (meme regle que next_available cote serveur). */
+  var cal = null;
+  function jourPlus(iso, n){
+    var d = new Date(iso + 'T12:00:00');
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+  function poserCal(){
+    var bloc = document.getElementById('dispo14');
+    var liste = document.getElementById('dispo14-l');
+    if(!bloc || !liste || !cal) return;
+
+    var l   = (typeof langueActuelle === 'function') ? langueActuelle() : 'fr';
+    var loc = {fr:'fr-FR', en:'en-GB', zh:'zh-CN', ru:'ru-RU'}[l] || 'fr-FR';
+    var motLibre = mot('e12.dispoLibre'), motPlein = mot('e12.dispoPlein');
+
+    liste.textContent = '';
+    var connus = 0, pleins = 0;
+    for(var i = 1; i <= 14; i++){
+      var iso = jourPlus(cal.today, i);
+      var n   = cal.dates[iso];
+      if(typeof n !== 'number') continue;   /* au-dela de l'horizon : on saute */
+      connus++;
+      var libre = n > 0;
+      if(!libre) pleins++;
+      var dt = new Date(iso + 'T12:00:00');
+      var li = document.createElement('li');
+      li.className = 'dispo14-j' + (libre ? ' libre' : '');
+      var b = document.createElement('b');
+      b.textContent = dt.toLocaleDateString(loc, {day:'numeric'});
+      var it = document.createElement('i');
+      it.textContent = dt.toLocaleDateString(loc, {weekday:'short'}).replace('.', '');
+      li.appendChild(b); li.appendChild(it);
+      /* Le lecteur d'ecran entend la date entiere et l'etat, pas "12 ven". */
+      li.setAttribute('aria-label',
+        dt.toLocaleDateString(loc, {weekday:'long', day:'numeric', month:'long'}) +
+        ' \u2014 ' + (libre ? motLibre : motPlein));
+      liste.appendChild(li);
+    }
+    /* Rien de fiable a montrer : on ne montre rien. */
+    bloc.hidden = connus === 0;
+    /* La legende n'explique "complet" que s'il y a un jour complet a
+       l'ecran. Sinon elle nomme une couleur que personne ne voit. */
+    var lg = document.getElementById('dispo14-lg');
+    if(lg) lg.hidden = pleins === 0;
+  }
 
   /* ── Packs à prix fixe ────────────────────────────────────────────────
      Activés depuis l'admin. Sans cet appel, on les active et rien ne
@@ -4186,7 +4264,7 @@ Object.assign(T, {
   });
 
   /* Les libellés ci-dessus changent avec la langue. */
-  document.addEventListener('langue', function(){ poserNote(); poserDispo(); });
+  document.addEventListener('langue', function(){ poserNote(); poserDispo(); poserCal(); });
 })();
 
 /* ══════════════════════════════════════════════════════════════════════════
