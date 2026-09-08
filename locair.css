@@ -3789,3 +3789,53 @@ a[target="_blank"]:focus-visible::after{opacity:.9}
   }
   p{orphans:3;widows:3}
 }
+
+/* ══ LES FINITIONS QUI NE SE NOMMENT PAS ══════════════════════════════════
+   Trois details qu'on ne remarque jamais quand ils sont justes, et qui
+   font « pas fini » quand ils manquent. */
+
+/* ── QUAND ON SURLIGNE DU TEXTE ──
+   Sans regle, le navigateur peint sa propre couleur : un bleu Windows qui
+   n'a rien a voir avec la marque et qui tombe en plein milieu d'une page
+   marine et sarcelle. Deux reglages, un par fond, parce qu'un surlignage
+   clair sur du marine rendrait le texte illisible. */
+::selection{background:rgba(8,110,96,.20);color:var(--ink)}
+.e-ink ::selection,.calc ::selection,
+.menu ::selection,.cook ::selection,.pied-bloc ::selection{
+  background:rgba(255,255,255,.26);color:#fff;   /* 7,10:1 */
+}
+/* Le sarcelle est trop clair pour recevoir un surlignage blanc : mesure,
+   un voile blanc a 26 % fait tomber le texte blanc a 3,59:1, sous la
+   norme. Sur ce fond-la, on ASSOMBRIT au lieu d'eclaircir. */
+.e-blue ::selection{background:rgba(14,31,53,.34);color:#fff}
+
+/* ── LE CURSEUR DE SAISIE ──
+   Dans le champ d'adresse, le trait qui clignote etait noir par defaut.
+   Il prend la couleur d'action, comme le reste de ce qui repond. */
+input,textarea,select{caret-color:var(--vif)}
+
+/* ── LES SOULIGNEMENTS ──
+   Quatre liens de texte etaient soulignes avec une BORDURE. Une bordure se
+   pose sous toute la boite : elle passe loin du texte, elle ne contourne
+   pas les jambages du p, du g ou du q, et sur un lien qui passe a la ligne
+   elle ne souligne que la derniere ligne.
+   Un vrai soulignement se place par rapport a la ligne d'ecriture, evite
+   les jambages tout seul (skip-ink), et suit le texte sur toutes ses
+   lignes. Epaisseur reglee en « em » : elle suit la taille du texte. */
+.preview-bar a,.pied a,.cook a,.avis-vide a{
+  border-bottom:0;
+  text-decoration:underline;
+  text-decoration-thickness:.07em;
+  text-underline-offset:.22em;
+  text-decoration-skip-ink:auto;
+  text-decoration-color:currentColor;
+}
+.preview-bar a,.pied a,.cook a{text-decoration-color:rgba(255,255,255,.45)}
+.preview-bar a:hover,.pied a:hover,.cook a:hover,
+.preview-bar a:focus-visible,.pied a:focus-visible,.cook a:focus-visible,
+.avis-vide a:hover,.avis-vide a:focus-visible{text-decoration-color:currentColor}
+
+/* ── LES LIGATURES ──
+   Bricolage et DM Sans dessinent des liaisons pour « fi », « fl », « ffi ».
+   Le navigateur ne les active pas toutes seules dans tous les cas. */
+body{font-variant-ligatures:common-ligatures contextual}
