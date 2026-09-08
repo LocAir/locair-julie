@@ -2730,16 +2730,19 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
 
 /* ── CRÉNEAU GRID ── */
 .cren-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.cren-card{border:1.5px solid var(--rule);border-radius:10px;padding:12px 8px;background:#fff;cursor:pointer;font-family:var(--body);text-align:center;touch-action:manipulation;transition:border-color .15s,background .15s,transform .12s;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.cren-card{border:1.5px solid var(--rule);border-radius:12px;padding:14px 10px 13px;background:#fff;cursor:pointer;font-family:var(--body);text-align:center;touch-action:manipulation;transition:border-color .15s,background .15s,transform .12s;min-height:68px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
 .cren-card.on{border-color:var(--blue);background:var(--blue-lt);transform:scale(1.02)}
 .cren-card:hover:not(.on){border-color:var(--blue)}
-.cren-time{font-size:13px;font-weight:700;color:var(--black);line-height:1.1}
+.cren-time{font-size:16px;font-weight:800;color:var(--black);line-height:1.1;letter-spacing:-.015em}
 .cren-card.on .cren-time{color:var(--blue)}
+.cren-sub{font-size:10px;color:var(--grey2);font-weight:500;line-height:1.2}
+.cren-card.on .cren-sub{color:var(--blue);opacity:.7}
 /* Étape 4 — cartes Livraison / Récupération */
 .s4-slot-card{border:1.5px solid var(--rule);border-radius:14px;padding:18px 16px 18px;background:#fff;margin-bottom:14px}
 .s4-slot-card .s5-sec-hd{border-top:none;padding-top:0;margin-bottom:0}
 .s4-slot-lbl{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-bottom:10px}
-.cren-sub{display:none}
+/* Hint "calculée automatiquement" quand la date récup est vide */
+#recap-date-recup:empty::before{content:'Calculée automatiquement';opacity:.45;font-style:italic}
 
 /* ── STEP 5 SECTIONS ── */
 .s5-sec{padding:16px 0 0}
@@ -5747,9 +5750,11 @@ input:-webkit-autofill:focus{
               <div id="creneau-liv-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px" role="radiogroup" aria-labelledby="lbl-creneau-liv">
                 <button type="button" class="cren-card on" onclick="selectLivSlot(this,'8h – 10h')" role="radio" aria-checked="true">
                   <span class="cren-time">8h – 10h</span>
+                  <span class="cren-sub">Le plus demandé</span>
                 </button>
                 <button type="button" class="cren-card" onclick="selectLivSlot(this,'10h – 12h')" role="radio" aria-checked="false">
                   <span class="cren-time">10h – 12h</span>
+                  <span class="cren-sub">Toujours 7j/7</span>
                 </button>
               </div>
             </div>
@@ -5763,16 +5768,18 @@ input:-webkit-autofill:focus{
               </div>
               <div>
                 <span class="s5-sec-lbl" id="lbl-recup-section">Récupération</span>
-                <p id="recap-date-recup" style="font-size:12px;color:var(--grey);margin-top:2px">—</p>
+                <p id="recap-date-recup" style="font-size:12px;color:var(--grey);margin-top:2px"></p>
               </div>
             </div>
             <p id="lbl-creneau-recup" class="s4-slot-lbl" style="margin-top:12px">Créneau de récupération</p>
             <div id="creneau-recup-group" style="display:grid;grid-template-columns:1fr 1fr;gap:8px" role="radiogroup" aria-labelledby="lbl-creneau-recup">
               <button type="button" class="cren-card on" onclick="tgl(this,'cren-recup');buildRecap()" role="radio" aria-checked="true">
                 <span class="cren-time">8h – 10h</span>
+                <span class="cren-sub">Le plus demandé</span>
               </button>
               <button type="button" class="cren-card" onclick="tgl(this,'cren-recup');buildRecap()" role="radio" aria-checked="false">
                 <span class="cren-time">10h – 12h</span>
+                <span class="cren-sub">Toujours 7j/7</span>
               </button>
             </div>
             <!-- Date input auto-remplie par buildRecap() -->
@@ -5793,7 +5800,8 @@ input:-webkit-autofill:focus{
 
           <!-- INSTRUCTIONS D'ACCÈS -->
           <div style="margin-top:22px;padding-top:22px;border-top:1.5px solid var(--rule)">
-            <p id="lbl-instructions-q" style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-bottom:12px">Instructions au technicien</p>
+            <p id="lbl-instructions-q" style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-bottom:3px">Instructions au technicien</p>
+            <p id="lbl-instructions-hint" style="font-size:11.5px;color:var(--grey);line-height:1.4;margin-bottom:12px">Code d'entrée, accès difficile, nom sur l'interphone…</p>
             <div class="tpills" id="instructions-toggle-group" role="radiogroup" aria-labelledby="lbl-instructions-q">
               <button type="button" class="tpill on" id="instructions-no" onclick="document.getElementById('instructions-wrap').style.display='none';document.getElementById('f-instructions').value='';this.classList.add('on');document.getElementById('instructions-yes').classList.remove('on')" role="radio" aria-checked="true">Non</button>
               <button type="button" class="tpill" id="instructions-yes" onclick="document.getElementById('instructions-wrap').style.display='block';this.classList.add('on');document.getElementById('instructions-no').classList.remove('on')" role="radio" aria-checked="false">Oui</button>
@@ -9188,6 +9196,7 @@ const LANG_MAP=[
   ['#f-raison-sociale','ph','Nom de l\'entreprise','Company name','公司名称',`Название компании`],
   ['#label-siret','html','SIRET <span style="color:var(--grey2);font-weight:400">(facultatif)</span>','SIRET <span style="color:var(--grey2);font-weight:400">(optional)</span>','SIRET <span style="color:var(--grey2);font-weight:400">（可选）</span>',`SIRET <span style="color:var(--grey2);font-weight:400">(по желанию)</span>`],
   ['#lbl-instructions-q','text','Souhaitez-vous laisser des instructions au technicien ?','Would you like to leave instructions for the technician?','您是否希望给技术员留下指示？',`Хотите оставить инструкции технику?`],
+  ['#lbl-instructions-hint','text','Code d\'entrée, accès difficile, nom sur l\'interphone…','Entry code, difficult access, name on the intercom…','门禁密码、通道说明、对讲机姓名等…',`Код входа, сложный доступ, имя на домофоне…`],
   ['#instructions-no','text','Non','No','否',`Нет`],
   ['#instructions-yes','text','Oui','Yes','是',`Да`],
   ['label[for="f-instructions"]','text','Instructions pour le technicien','Instructions for the technician','给技术员的说明',`Инструкции для техника`],
