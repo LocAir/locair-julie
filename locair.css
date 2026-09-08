@@ -3512,3 +3512,27 @@ summary:active{background:var(--mist)}
   100% {opacity:1}
 }
 @media(prefers-reduced-motion:reduce){ .ib-bat{animation:none} }
+
+/* ── LE PASSAGE D'UNE PAGE A L'AUTRE ──
+   Sans ca, chaque clic vers une autre page blanchit l'ecran puis le
+   redessine. Avec ca, le navigateur fond l'ancienne page dans la
+   nouvelle et fait glisser le logo de sa place a sa nouvelle place.
+   Ne marche qu'entre deux pages qui portent toutes les deux la regle
+   (locair.css et marque.css l'ont), et seulement sur les navigateurs
+   qui savent le faire. Ailleurs : exactement comme avant. */
+@view-transition{navigation:auto}
+
+::view-transition-old(root){animation:vt-part var(--mv-1) var(--mv) both}
+::view-transition-new(root){animation:vt-vient var(--mv-2) var(--mv) both}
+@keyframes vt-part {to  {opacity:0}}
+@keyframes vt-vient{from{opacity:0}}
+
+/* Le logo est le seul point fixe : il traverse au lieu de disparaitre. */
+a.logo{view-transition-name:logo}
+::view-transition-group(logo){animation-duration:var(--mv-ar);animation-timing-function:var(--mv)}
+
+/* Qui a demande moins d'animation ne voit aucune transition du tout. */
+@media(prefers-reduced-motion:reduce){
+  @view-transition{navigation:none}
+  a.logo{view-transition-name:none}
+}
