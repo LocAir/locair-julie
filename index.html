@@ -10000,8 +10000,10 @@ function initCity(){
     'image':CITY.url+'hero-'+CITY.name.toLowerCase()+'.jpg'
   });
   // Bannière alerte — affichée uniquement si CITY.alertActive = true
+  // ET avant 18h Paris (après 18h, le texte "Express sous 2h aujourd'hui"
+  // serait faux — initWeather prendra le relais avec "Livraison sous 24h").
   const alertEl=document.getElementById('alert-canicule');
-  if(alertEl&&CITY.alertActive&&!localStorage.getItem('alertDismissed')){
+  if(alertEl&&CITY.alertActive&&!localStorage.getItem('alertDismissed')&&_expressCutoffOk()){
     alertEl.classList.remove('hidden');
   }
   // Section email capture canicule — masquée hors saison chaude
