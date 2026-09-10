@@ -191,6 +191,7 @@ async function computeCityStats(supabase, city, periode, since) {
     periode,
     ville:              city.name,
     city_id:            city.id,
+    country_code:       city.country_code || 'FR',
     ca_euros:           caCents / 100,
     ca_total_euros:     caTotalCents / 100,
     nb_reservations:    nbResa,

@@ -11,6 +11,16 @@ function tarifCentsOrNull(v) {
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
+// Code pays ISO 3166-1 alpha-2 (FR, ES, IT...) — pas de liste blanche stricte
+// ici : le front (COUNTRY_META, admin/index.html) connaît déjà les pays
+// pris en charge et n'envoie que ceux-là ; on se contente de normaliser la
+// forme pour rester cohérent en base (toujours 2 lettres majuscules).
+function countryCodeOrDefault(v, fallback) {
+  const c = String(v || '').trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(c) ? c : fallback;
+}
+
+
 // Gestion des villes/zones — une "ville" ici est une zone opérationnelle
 // pouvant couvrir plusieurs communes (ex. Nice + Saint-Laurent-du-Var +
 // Cagnes-sur-Mer), routées par code postal (voir api/_lib/city.js,
@@ -51,6 +61,7 @@ module.exports = async (req, res) => {
       const { error } = await supabase.from('cities').insert({
         slug, name,
         dep:          (body.dep || '').trim() || null,
+        country_code: countryCodeOrDefault(body.country_code, 'FR'),
         postal:       postalCodes[0] || null,
         postal_codes: postalCodes,
         actif:        true,
@@ -76,6 +87,7 @@ module.exports = async (req, res) => {
         patch.name = name;
       }
       if (body.dep != null)   patch.dep   = body.dep.trim() || null;
+      if (body.country_code != null) patch.country_code = countryCodeOrDefault(body.country_code, 'FR');
       if (body.actif     != null) patch.actif     = Boolean(body.actif);
       // Mode "complet" : automatique par défaut (recalculé en base par les
       // triggers de migration_auto_sold_out.sql à partir du stock réel), ou
