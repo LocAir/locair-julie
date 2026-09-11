@@ -352,6 +352,39 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 
 .section-title{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--grey-soft);margin:24px 2px 10px}
 .section-title:first-child{margin-top:0}
+/* En-tête de groupe "par pays" (onglet Villes, multi-pays) — traitement
+   éditorial haut de gamme plutôt qu'un simple label utilitaire : grand
+   drapeau, nom en serif d'affichage (même police que les titres du site),
+   filet or fin en dessous. Rendu en SVG/emoji système (jamais une image
+   bitmap) : net à n'importe quelle taille d'écran ou de zoom. */
+.country-group-title{
+  display:flex;align-items:baseline;gap:12px;
+  margin:36px 2px 16px;padding-bottom:14px;
+  position:relative;
+}
+.country-group-title::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:1.5px;
+  background:linear-gradient(90deg,var(--gold) 0%,var(--gold) 30%,transparent 100%);
+}
+.country-group-title:first-child{margin-top:0}
+.country-group-flag{
+  font-size:28px;line-height:1;flex-shrink:0;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.12));
+}
+.country-group-title>span:nth-child(2){
+  font-family:var(--disp);font-size:23px;font-weight:600;color:var(--black);
+  letter-spacing:-.01em;
+}
+.country-group-count{
+  margin-left:auto;font-size:10.5px;font-weight:700;color:var(--gold-d);
+  text-transform:uppercase;letter-spacing:.08em;
+  background:var(--gold-lt);padding:4px 10px;border-radius:100px;
+  align-self:center;
+}
+/* Petit drapeau discret sur chaque carte ville — repère instantané même
+   hors contexte (recherche, capture d'écran isolée), sans dupliquer le
+   poids visuel du grand en-tête de groupe. */
+.ville-flag-badge{font-size:15px;margin-right:5px;vertical-align:-1px}
 /* Formulaire "Nouvelle réservation" (admin) — le devis (zone, dates,
    quantité, installation) passe en premier et reste visuellement à part
    (fond teinté) : c'est ce qu'un admin au téléphone doit pouvoir donner en
@@ -982,12 +1015,13 @@ function renderCityQuickMenu(){
       return `
     <div class="city-quick-row">
       <button class="city-quick-item${String(CITY_ID)===id?' current':''}" onclick="setSelectedCityId('${id}')">
-        <span>${escHtml(c.name)}</span><span class="chk">✓</span>
+        <span>${countryFlag(c.country_code)} ${escHtml(c.name)}</span><span class="chk">✓</span>
       </button>
       <button class="city-quick-block${blocked?' is-blocked':''}" onclick="quickToggleSoldOut(${c.id}, ${!blocked})" title="${blocked?'Rouvrir aux réservations':'Bloquer le stock — passer en complet'}">${blocked?'🔓':'🚫'}</button>
     </div>`;
     }).join('');
-  lbl.textContent = CITY_ID==='all' ? 'Toutes' : (CITIES_CACHE.find(c => String(c.id)===String(CITY_ID))?.name || 'Ville');
+  const currentCity = CITIES_CACHE.find(c => String(c.id)===String(CITY_ID));
+  lbl.textContent = CITY_ID==='all' ? 'Toutes' : (currentCity ? `${countryFlag(currentCity.country_code)} ${currentCity.name}` : 'Ville');
 }
 // Bloque/débloque le stock d'une ville en un clic, depuis le menu "🌍" de
 // l'en-tête — sans passer par l'onglet Villes. Force le mode manuel en
@@ -2386,7 +2420,7 @@ function parVilleTableHtml(parVille){
       ${parVille.map(v => `
         <div class="row-item">
           <div class="row-top">
-            <span class="row-title">${escHtml(v.ville)}</span>
+            <span class="row-title">${countryFlag(v.country_code)} ${escHtml(v.ville)}</span>
             <span class="chip ${v.incidents_ouverts>0?'probleme':'actif'}">${Math.round((v.taux_occupation||0)*100)}% occ.</span>
           </div>
           <div class="row-meta">${eurosMilliers(v.ca_euros)} · ${v.nb_reservations||0} réservation${v.nb_reservations>1?'s':''} · ${v.unites_occupees}/${v.flotte_totale} climatiseurs</div>
@@ -10192,10 +10226,27 @@ function openEditClientFicheModal(){
   };
 }
 
-// ── VILLES / ZONES (multi-ville) ──────────────────────────────────────────
+// ── VILLES / ZONES (multi-ville, multi-pays) ──────────────────────────────
 // Une "ville" ici est une zone opérationnelle pouvant couvrir plusieurs
 // communes (ex. Nice + Saint-Laurent-du-Var + Cagnes-sur-Mer), routée par
-// code postal — voir api/_lib/city.js (resolveCityByAddress).
+// code postal — voir api/_lib/city.js (resolveCityByAddress). Depuis
+// l'ouverture à d'autres capitales (Madrid, Rome..., 2026-09-10), chaque
+// ville porte aussi un code pays (country_code, ISO 3166-1 alpha-2) —
+// source unique du drapeau/libellé affiché partout dans l'admin. Liste
+// volontairement courte au départ : ajouter une entrée ici suffit à
+// ouvrir un nouveau pays à la création de ville, sans toucher au reste.
+const COUNTRY_META = {
+  FR: { flag: '🇫🇷', name: 'France' },
+  ES: { flag: '🇪🇸', name: 'Espagne' },
+  IT: { flag: '🇮🇹', name: 'Italie' },
+  DE: { flag: '🇩🇪', name: 'Allemagne' },
+  PT: { flag: '🇵🇹', name: 'Portugal' },
+  BE: { flag: '🇧🇪', name: 'Belgique' },
+  CH: { flag: '🇨🇭', name: 'Suisse' },
+  GB: { flag: '🇬🇧', name: 'Royaume-Uni' },
+};
+function countryFlag(code){ return (COUNTRY_META[code]||COUNTRY_META.FR).flag; }
+function countryName(code){ return (COUNTRY_META[code]||COUNTRY_META.FR).name; }
 let VILLES_CACHE = [];
 
 // Base de référence : communes françaises avec codes postaux.
@@ -10500,12 +10551,16 @@ async function loadVilles(silent){
     zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
   }
 }
-function renderVilles(){
-  const zone = document.getElementById('tab-villes');
-  const list = VILLES_CACHE.map(c => `
+// Une ville par carte, regroupées par pays (drapeau + nom en en-tête) —
+// épuré : dès qu'un 2e pays existe, le regroupement rend l'écran lisible
+// d'un coup d'œil au lieu d'une liste plate mélangeant toutes les villes.
+// Avec un seul pays actif (aujourd'hui : uniquement la France), l'en-tête
+// reste discret plutôt que d'ajouter du bruit visuel pour rien.
+function villeCardHtml(c){
+  return `
     <div class="row-item">
       <div class="row-top">
-        <span class="row-title">${escHtml(c.name)}</span>
+        <span class="row-title"><span class="ville-flag-badge">${countryFlag(c.country_code)}</span>${escHtml(c.name)}</span>
         <span style="display:flex;gap:6px;align-items:center">
           ${c.sold_out?`<span class="chip" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red)">🚫 Complet</span>`:''}
           <span class="chip ${c.actif?'actif':'inactif'}">${c.actif?'active':'inactive'}</span>
@@ -10528,26 +10583,47 @@ function renderVilles(){
         <details class="more-actions" style="margin-left:auto">
           <summary title="Plus d'actions">⋯</summary>
           <div class="more-actions-menu">
+            <button onclick="editVillePays(${c.id}, '${c.country_code||'FR'}')">Modifier le pays</button>
             <button onclick="editVillePostaux(${c.id}, '${((c.postal_codes||[]).join(', ')).replace(/'/g,"\\'")}')">Modifier les codes postaux</button>
             <button onclick="editVilleBareme(${c.id})">Modifier le barème</button>
             <button onclick="editVilleDepot(${c.id}, '${(c.depot_adresse||'').replace(/'/g,"\\'")}')">Modifier l'adresse du box</button>
           </div>
         </details>
       </div>
-    </div>`).join('') || '<p class="empty">🌍 Aucune ville configurée.</p>';
+    </div>`;
+}
+function renderVilles(){
+  const zone = document.getElementById('tab-villes');
+  // Regroupement par pays, dans l'ordre d'apparition (France en tête tant
+  // qu'elle reste la seule/première — pas de tri alphabétique qui ferait
+  // sauter les villes historiques en bas de l'écran sans raison).
+  const byCountry = new Map();
+  VILLES_CACHE.forEach(c => {
+    const code = c.country_code || 'FR';
+    if(!byCountry.has(code)) byCountry.set(code, []);
+    byCountry.get(code).push(c);
+  });
+  const list = !VILLES_CACHE.length ? '<p class="empty">🌍 Aucune ville configurée.</p>'
+    : Array.from(byCountry.entries()).map(([code, villes]) => `
+        ${byCountry.size > 1 ? `<div class="country-group-title"><span class="country-group-flag">${countryFlag(code)}</span><span>${escHtml(countryName(code))}</span><span class="country-group-count">${villes.length} ville${villes.length>1?'s':''}</span></div>` : ''}
+        ${villes.map(villeCardHtml).join('')}
+      `).join('');
   const soldOutHint = `
     <div class="affect-hint">💡 Plus de stock ? Le site affiche "Complet" tout seul, sans rien à faire. Passez une ville en "Manuel" seulement pour garder la main vous-même (incident, fermeture volontaire).</div>`;
+  const countryOptionsHtml = Object.entries(COUNTRY_META).map(([code, m]) => `<option value="${code}">${m.flag} ${escHtml(m.name)}</option>`).join('');
   zone.innerHTML = soldOutHint + list + `
     <div class="card">
       <h2>Ouvrir une nouvelle ville</h2>
       <p class="sub" style="margin-bottom:16px">Les commandes du site sont automatiquement affectées à la ville dont les codes postaux couvrent l'adresse de livraison.</p>
-      <label for="v-nom">Nom de la ville ou zone</label>
+      <label for="v-pays">Pays</label>
+      <select id="v-pays" onchange="villeAutocompleteReset()">${countryOptionsHtml}</select>
+      <label for="v-nom" style="margin-top:14px">Nom de la ville ou zone</label>
       <div style="position:relative">
-        <input type="text" id="v-nom" placeholder="Cannes, Grasse, Côte d'Azur Est…" oninput="villeAutocomplete(this.value)" autocomplete="off" onfocus="villeAutocomplete(this.value)"/>
+        <input type="text" id="v-nom" placeholder="Cannes, Grasse, Madrid, Roma…" oninput="villeAutocomplete(this.value)" autocomplete="off" onfocus="villeAutocomplete(this.value)"/>
         <div id="v-nom-dd" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg);border:1.5px solid var(--rule);border-radius:10px;margin-top:3px;max-height:220px;overflow-y:auto;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.12)"></div>
       </div>
-      <label for="v-dep" style="margin-top:14px">Département</label>
-      <input type="text" id="v-dep" placeholder="06"/>
+      <label for="v-dep" style="margin-top:14px">Département / région <span style="font-weight:400;color:var(--grey-soft)">(optionnel)</span></label>
+      <input type="text" id="v-dep" placeholder="06, Communauté de Madrid, Latium…"/>
       <p class="sub" style="margin-top:-8px;font-size:12px">Sert uniquement à l'affichage, pas au routage des commandes.</p>
       <label for="v-cp" style="margin-top:14px">Codes postaux couverts (séparés par une virgule)</label>
       <input type="text" id="v-cp" placeholder="06400, 06110, 06150" oninput="cpSearch(this.value)" autocomplete="off"/>
@@ -10555,6 +10631,15 @@ function renderVilles(){
       <button class="btn btn-blue btn-block" style="margin-top:14px" onclick="addVille()">Créer la ville</button>
       <div class="err" id="ville-err"></div>
     </div>`;
+}
+// Change de pays dans le formulaire de création : la suggestion en cours
+// (France ou internationale) ne correspond plus, on la referme plutôt que
+// de laisser affiché un résultat pour le mauvais pays.
+function villeAutocompleteReset(){
+  const dd = document.getElementById('v-nom-dd');
+  if(dd) dd.style.display = 'none';
+  const nomEl = document.getElementById('v-nom');
+  if(nomEl) villeAutocomplete(nomEl.value);
 }
 
 // ── Tarifs (panneau de contrôle du prix de location) ─────────────────────
@@ -11493,10 +11578,24 @@ function parsePostalCodesInput(raw){
   return (raw||'').split(/[,\s]+/).map(s => s.trim()).filter(Boolean);
 }
 function normVilleStr(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,''); }
+// France : recherche instantanée dans la liste FR_VILLES connue (comme
+// avant). Autre pays : recherche live sur Nominatim (couverture mondiale,
+// voir villeAutocompleteIntl) — même champ, même liste déroulante, juste
+// une source différente selon le pays choisi juste au-dessus dans le
+// formulaire (v-pays).
+let VILLE_INTL_DEBOUNCE = null;
 function villeAutocomplete(q){
   const dd = document.getElementById('v-nom-dd');
   if(!dd) return;
   if(!q || q.length < 2){ dd.style.display='none'; return; }
+  const country = document.getElementById('v-pays')?.value || 'FR';
+  if(country !== 'FR'){
+    clearTimeout(VILLE_INTL_DEBOUNCE);
+    dd.innerHTML = '<div style="padding:10px 14px;color:var(--grey-soft);font-size:13px">Recherche…</div>';
+    dd.style.display = 'block';
+    VILLE_INTL_DEBOUNCE = setTimeout(() => villeAutocompleteIntl(q, country), 400);
+    return;
+  }
   const low = normVilleStr(q);
   // Recherche par nom ET par code postal si la saisie ressemble à un nombre
   const isNum = /^\d/.test(q);
@@ -11506,12 +11605,59 @@ function villeAutocomplete(q){
   if(!matches.length){ dd.style.display='none'; return; }
   dd.innerHTML = matches.map(v => {
     const cpPreview = v.cps.slice(0,4).join(', ')+(v.cps.length>4?'…':'');
-    return `<div onclick="selectVilleRef(${JSON.stringify(JSON.stringify(v))})" style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--rule)" onmousedown="event.preventDefault()">
+    // onclick='...' en quotes SIMPLES ici, pas doubles — JSON.stringify()
+    // produit toujours des guillemets DOUBLES autour de sa sortie ; avec un
+    // attribut onclick="...", ce premier guillemet double refermait
+    // l'attribut immédiatement, laissant tout le reste (le vrai JSON) hors
+    // de l'attribut comme texte brut — le clic ne déclenchait donc RIEN
+    // (bug trouvé le 2026-09-10, jamais visible car la ville créée avait
+    // déjà le bon nom tapé au clavier avant le clic sur la suggestion).
+    return `<div onclick='selectVilleRef(${JSON.stringify(JSON.stringify(v))})' style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--rule)" onmousedown="event.preventDefault()">
       <strong>${escHtml(v.nom)}</strong> <span style="color:var(--grey-soft);font-size:11.5px">— Dép. ${escHtml(v.dep)}</span><br>
       <span style="font-size:12px;color:var(--grey)">${escHtml(cpPreview)}</span>
     </div>`;
   }).join('');
   dd.style.display='block';
+}
+// Recherche de ville hors France — aide seulement à remplir le nom et la
+// région/l'équivalent du département (affichage uniquement). Les codes
+// postaux couverts restent à saisir à la main (v-cp) : c'est une décision
+// métier (quelle zone Loc'Air dessert vraiment), pas quelque chose qu'une
+// API de géocodage peut deviner à notre place.
+async function villeAutocompleteIntl(q, country){
+  const dd = document.getElementById('v-nom-dd');
+  if(!dd) return;
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&countrycodes=${encodeURIComponent(country.toLowerCase())}&q=${encodeURIComponent(q)}`;
+    const r = await fetch(url);
+    const results = await r.json();
+    // La saisie a pu changer pendant l'attente réseau (frappe rapide) — une
+    // réponse devenue périmée ne doit jamais écraser ce qui est affiché.
+    if(document.getElementById('v-nom')?.value !== q) return;
+    if(!Array.isArray(results) || !results.length){ dd.innerHTML = '<div style="padding:10px 14px;color:var(--grey-soft);font-size:13px">Aucun résultat — tu peux quand même taper le nom directement</div>'; dd.style.display='block'; return; }
+    dd.innerHTML = results.map(place => {
+      const a = place.address || {};
+      const nom = a.city || a.town || a.village || a.municipality || (place.display_name||'').split(',')[0] || '';
+      const region = a.state || a.region || a.county || '';
+      if(!nom) return '';
+      return `<div onclick='selectVilleRefIntl(${JSON.stringify(JSON.stringify({nom, region}))})' style="padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--rule)" onmousedown="event.preventDefault()">
+        <strong>${escHtml(nom)}</strong>${region?` <span style="color:var(--grey-soft);font-size:11.5px">— ${escHtml(region)}</span>`:''}
+      </div>`;
+    }).join('');
+    dd.style.display = 'block';
+  }catch(e){
+    dd.innerHTML = '<div style="padding:10px 14px;color:var(--grey-soft);font-size:13px">Recherche indisponible — tape le nom directement</div>';
+    dd.style.display = 'block';
+  }
+}
+function selectVilleRefIntl(jsonStr){
+  const v = JSON.parse(jsonStr);
+  const nomEl = document.getElementById('v-nom');
+  const depEl = document.getElementById('v-dep');
+  if(nomEl) nomEl.value = v.nom;
+  if(depEl && v.region) depEl.value = v.region;
+  const dd = document.getElementById('v-nom-dd');
+  if(dd) dd.style.display = 'none';
 }
 function selectVilleRef(jsonStr){
   const v = JSON.parse(jsonStr);
@@ -11545,7 +11691,7 @@ function cpSearch(q){
   const matches = FR_VILLES.filter(v => v.cps.some(cp => cp.startsWith(last))).slice(0, 8);
   if(!matches.length){ sug.style.display='none'; return; }
   sug.innerHTML = '<span style="font-size:11.5px;color:var(--grey-soft);display:block;margin-bottom:5px">Communes correspondantes :</span>'
-    + matches.map(v => `<button type="button" class="btn btn-grey" style="margin:2px 2px 2px 0;padding:4px 10px;font-size:12px;border-radius:100px" onclick="addCpsFromVille(${JSON.stringify(JSON.stringify(v.cps))})">${escHtml(v.nom)} (${v.cps.join(', ')})</button>`).join('');
+    + matches.map(v => `<button type="button" class="btn btn-grey" style="margin:2px 2px 2px 0;padding:4px 10px;font-size:12px;border-radius:100px" onclick='addCpsFromVille(${JSON.stringify(JSON.stringify(v.cps))})'>${escHtml(v.nom)} (${v.cps.join(', ')})</button>`).join('');
   sug.style.display='block';
 }
 function addCpsFromVille(jsonStr){
@@ -11619,12 +11765,13 @@ function editVilleBareme(id){
 async function addVille(){
   const name = document.getElementById('v-nom').value.trim();
   const dep = document.getElementById('v-dep').value.trim();
+  const country_code = document.getElementById('v-pays')?.value || 'FR';
   const postal_codes = parsePostalCodesInput(document.getElementById('v-cp').value);
   const errEl = document.getElementById('ville-err');
   errEl.style.display='none';
   if(!name){ errEl.textContent='Nom requis'; errEl.style.display='block'; return; }
   try{
-    const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', name, dep, postal_codes, city_id:'all'})});
+    const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'create', name, dep, country_code, postal_codes, city_id:'all'})});
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     loadVilles();
@@ -11633,6 +11780,46 @@ async function addVille(){
   }catch(e){
     errEl.textContent = e.message; errEl.style.display='block';
   }
+}
+// Changer le pays d'une ville déjà créée (rare — surtout utile pour
+// corriger une erreur de saisie) : simple sélecteur en modale plutôt qu'un
+// promptAction texte libre, pour ne jamais taper un code pays à la main.
+function editVillePays(id, current){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  const options = Object.entries(COUNTRY_META).map(([code, m]) => `<option value="${code}" ${code===current?'selected':''}>${m.flag} ${escHtml(m.name)}</option>`).join('');
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:340px">
+      <h2 style="margin-bottom:14px">Pays de cette ville</h2>
+      <select id="pays-edit-select">${options}</select>
+      <div class="modal-actions" style="margin-top:16px">
+        <button class="btn btn-grey">Annuler</button>
+        <button class="btn btn-blue">Enregistrer</button>
+      </div>
+      <div class="err" id="pays-edit-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  const [cancelBtn, okBtn] = overlay.querySelectorAll('.modal-actions .btn');
+  cancelBtn.onclick = closeModal;
+  okBtn.onclick = async () => {
+    const country_code = document.getElementById('pays-edit-select').value;
+    okBtn.disabled = true;
+    try{
+      const r = await fetch(API('admin-cities'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, country_code, city_id:'all'})});
+      const d = await r.json();
+      if(!r.ok) throw new Error(d.error||'Erreur');
+      closeModal();
+      loadVilles();
+      loadCitySwitcher();
+      showToast('Pays mis à jour', 'success');
+    }catch(e){
+      document.getElementById('pays-edit-err').textContent = e.message;
+      okBtn.disabled = false;
+    }
+  };
 }
 function editVillePostaux(id, current){
   promptAction({title:'Codes postaux couverts', label:'Séparés par une virgule', value:current, placeholder:'06400, 06110'}, async (value) => {
