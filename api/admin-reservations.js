@@ -409,28 +409,71 @@ module.exports = async (req, res) => {
     // (+ référence si besoin), pour afficher ses dates et permettre à l'admin
     // de saisir la nouvelle date de fin.
     if (action === 'lookup_prolongation') {
-      const email = (body.email || '').trim().toLowerCase().slice(0, 200);
-      const ref   = (body.ref   || '').trim().slice(0, 50);
-      if (!email) return res.status(400).json({ error: 'Email requis' });
+      const PROLONG_LOOKUP_FIELDS = 'id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut';
+      const id = parseInt(body.id) || null;
 
-      let q = supabase
-        .from('reservations')
-        .select('id, ref, prenom, nom, tel, tel_secondaire, email, adresse, date_debut, date_fin, quantite, statut')
-        .eq('city_id', city.id)
-        .eq('email', email)
-        .not('source', 'eq', 'site_prolongation')
-        .in('statut', ['confirmee'])
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (ref) q = q.ilike('ref', ref.toUpperCase());
+      let resa = null;
+      if (id) {
+        // Accès direct depuis une fiche déjà ouverte (résultat de recherche,
+        // mission...) — l'admin a déjà le dossier du client sous les yeux, pas
+        // besoin de lui refaire ressaisir un email pour le retrouver. Aucune
+        // restriction de source ici (contrairement à la recherche par email
+        // ci-dessous) : cet id peut être n'importe quel maillon de la chaîne
+        // de prolongations, résolu vers la vraie date de fin juste en dessous.
+        const { data, error } = await supabase
+          .from('reservations').select(PROLONG_LOOKUP_FIELDS)
+          .eq('id', id).eq('city_id', city.id).maybeSingle();
+        if (error) throw error;
+        resa = data;
+        if (!resa) return res.status(404).json({ error: 'Réservation introuvable.' });
+      } else {
+        const email = (body.email || '').trim().toLowerCase().slice(0, 200);
+        const ref   = (body.ref   || '').trim().slice(0, 50);
+        if (!email) return res.status(400).json({ error: 'Email requis' });
 
-      const { data: resa, error } = await q.maybeSingle();
-      if (error) throw error;
-      if (!resa) {
-        return res.status(404).json({ error: `Aucune réservation active trouvée pour cet email${ref ? ' et cette référence' : ''}.` });
+        let q = supabase
+          .from('reservations')
+          .select(PROLONG_LOOKUP_FIELDS)
+          .eq('city_id', city.id)
+          .eq('email', email)
+          .not('source', 'eq', 'site_prolongation')
+          .in('statut', ['confirmee'])
+          .order('created_at', { ascending: false })
+          .limit(1);
+        if (ref) q = q.ilike('ref', ref.toUpperCase());
+
+        const { data, error } = await q.maybeSingle();
+        if (error) throw error;
+        resa = data;
+        // Repli : la référence tapée peut être celle d'une PROLONGATION déjà
+        // confirmée (ex. LOC-…-P1234, copiée depuis la liste des commandes du
+        // client) plutôt que celle de la réservation d'origine — la recherche
+        // ci-dessus l'exclut exprès (source 'site_prolongation', elle ne vise
+        // que l'originale). Sans ce repli, chercher avec CETTE référence-là ne
+        // trouvait jamais rien ("Aucune réservation active trouvée") alors
+        // qu'un dossier à prolonger existe bel et bien — audit du 2026-09-12
+        // suite à un cas réel (LOC-260912-P1548 introuvable par email+réf).
+        if (!resa && ref) {
+          const { data: anyMatch, error: e2 } = await supabase
+            .from('reservations').select(PROLONG_LOOKUP_FIELDS)
+            .eq('city_id', city.id).eq('email', email)
+            .ilike('ref', ref.toUpperCase())
+            .in('statut', ['confirmee'])
+            .maybeSingle();
+          if (e2) throw e2;
+          resa = anyMatch || null;
+        }
+        if (!resa) {
+          return res.status(404).json({ error: `Aucune réservation active trouvée pour cet email${ref ? ' et cette référence' : ''}.` });
+        }
       }
-      if (['annulee', 'remboursee'].includes(resa.statut)) {
-        return res.status(422).json({ error: 'Cette réservation ne peut pas être prolongée.' });
+
+      // Même exigence que la création réelle de la prolongation juste en
+      // dessous (action 'create_prolongation') — mieux vaut le dire tout de
+      // suite ici (ex. réservation encore 'en_attente' de paiement) que de
+      // laisser l'admin remplir toute la fiche pour se faire recaler à la fin.
+      if (resa.statut !== 'confirmee') {
+        return res.status(422).json({ error: 'Seule une réservation confirmée peut être prolongée.' });
       }
       // resa.date_fin reste la date de fin d'ORIGINE pour toujours (chaque
       // prolongation crée une ligne séparée, source 'site_prolongation',
