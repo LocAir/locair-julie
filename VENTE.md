@@ -29,7 +29,52 @@ carton, sans kit, sans pose et sans personne à rappeler.
 
 ---
 
-## Ce que vous devez me donner
+## ⚠ À FAIRE EN PREMIER : coller le SQL dans Supabase
+
+Je n'ai **aucun accès** à votre base de production. Le code est déployé,
+mais les colonnes de vente n'existent pas tant que vous n'avez pas fait ça :
+
+1. Ouvrez **Supabase → SQL Editor**
+2. Collez tout le contenu de `supabase/migration_vente_catalogue.sql`
+3. Exécutez
+4. Rechargez l'onglet **Vente** de l'admin
+
+**Rien ne casse si vous ne le faites pas tout de suite.** Le code vérifie :
+sans les colonnes, l'onglet Vente affiche « colle d'abord ce SQL », et la
+page `/acheter-climatiseur` continue simplement de demander un devis. C'est
+exactement ce qui s'est passé avec `reservations.masquee` : du code déployé
+plus vite qu'une migration. Cette fois c'est prévu.
+
+---
+
+## Ce que vous remplissez vous-même, dans l'admin
+
+**Onglet « Vente »**, à côté de Tarifs. Il liste vos modèles de climatiseur
+(ceux du catalogue qui sert déjà « Mon climatiseur » dans l'espace client) et
+vous laisse remplir, pour chacun :
+
+| Champ | Ce que ça fait sur le site |
+|---|---|
+| **Prix de vente TTC** | Le gros chiffre en haut de la page |
+| **Stock neuf** | En dessous de 1, le modèle disparaît de la page |
+| **Délai (jours)** | « Livré sous 5 jours » |
+| **Garantie fabricant (mois)** | « 24 mois, en plus des 2 ans de garantie légale » |
+| **Installation (€)** | `0` = « livraison et installation comprises » ; vide = non proposée |
+
+Puis le bouton **« Mettre en vente »**. Le serveur refuse de mettre en vente
+un modèle sans prix ou sans stock — sinon vous croiriez avoir publié quelque
+chose que la page filtre en silence.
+
+**Le stock de vente n'a rien à voir avec le parc de location.** Ce sont des
+machines neuves commandées pour être revendues ; elles n'entrent jamais dans
+le calcul de disponibilité de la location.
+
+Dès qu'un modèle est en vente, la page d'achat passe toute seule de
+« demander le prix » à une vraie fiche produit.
+
+---
+
+## Ce qui reste à décider (et que je ne peux pas inventer)
 
 Rien de tout cela n'est inventé sur la page. Les blocs qui en ont besoin
 sont écrits mais **masqués** tant que les vraies valeurs n'existent pas.

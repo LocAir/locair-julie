@@ -114,15 +114,13 @@
 <main id="texte">
 
 <!-- ── LE PRIX ──
-     Masqué tant qu'il n'y a pas de vrai prix à afficher. Rien n'est
-     inventé : le jour où les valeurs existent, on remplit les trois
-     champs et on retire l'attribut hidden. Voir VENTE.md. -->
+     Rempli par le serveur, jamais écrit en dur ici. Ce que l'admin saisit
+     dans l'onglet « Vente » arrive par /api/produits-vente et s'affiche là.
+     Tant qu'aucun modèle n'est mis en vente — ou tant que la migration
+     n'est pas appliquée — le bloc reste masqué et la page demande un devis,
+     exactement comme avant. Aucun chiffre n'est inventé. -->
 <section class="essentiel" aria-label="Le prix" id="prix-vente" hidden>
-  <div class="essentiel-in">
-    <div><b id="pv-prix"></b><span id="pv-prix-l"></span></div>
-    <div><b id="pv-modele"></b><span id="pv-modele-l"></span></div>
-    <div><b id="pv-delai"></b><span id="pv-delai-l"></span></div>
-  </div>
+  <div class="essentiel-in" id="pv-in"></div>
 </section>
 
 <!-- Ce qui est vrai aujourd'hui, sans aucun chiffre de vente. -->
@@ -304,6 +302,68 @@
   function etat(){ bar.classList.toggle('on', scrollY > 8); }
   addEventListener('scroll', etat, {passive:true});
   etat();
+})();
+
+/* ── LE PRIX, QUAND IL EXISTE ──────────────────────────────────────────────
+   /api/produits-vente renvoie les modèles que l'admin a mis en vente. Il ne
+   renvoie JAMAIS d'erreur : liste vide si la migration n'est pas appliquée,
+   si la base est injoignable, ou si rien n'est en vente. Dans ces trois cas
+   le bloc reste masqué et la page demande un devis — son comportement par
+   défaut, celui qui est écrit dans le HTML. La page se lit donc entièrement
+   sans JavaScript, et rien ici ne peut la casser. */
+(function(){
+  var bloc = document.getElementById('prix-vente');
+  var zone = document.getElementById('pv-in');
+  if(!bloc || !zone || !window.fetch) return;
+
+  function eur(cents){
+    /* Espace INSECABLE avant l'euro : sans elle, « 499 » peut se retrouver
+       en bas d'une ligne et « € » en haut de la suivante. */
+    return (Math.round(cents) / 100).toLocaleString('fr-FR',
+      {minimumFractionDigits:0, maximumFractionDigits:2}) + ' €';
+  }
+  function bloc2(gros, petit){
+    var d = document.createElement('div');
+    var b = document.createElement('b'); b.textContent = gros;
+    var s = document.createElement('span'); s.textContent = petit;
+    d.appendChild(b); d.appendChild(s);
+    return d;
+  }
+
+  fetch('/api/produits-vente', {headers:{'Accept':'application/json'}})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(d){
+      var p = d && Array.isArray(d.produits) ? d.produits[0] : null;
+      if(!p || !p.prix_vente_cents) return;      /* rien a montrer : on ne montre rien */
+
+      zone.textContent = '';
+      zone.appendChild(bloc2(eur(p.prix_vente_cents),
+        p.installation_vente_cents === 0
+          ? 'Livraison et installation comprises.'
+          : 'Prix de la machine, livr\u00E9e chez vous.'));
+
+      var quoi = [p.marque, p.modele].filter(Boolean).join(' ');
+      var spec = [
+        p.puissance_btu  ? p.puissance_btu + ' BTU' : null,
+        p.surface_max_m2 ? 'jusqu’à ' + p.surface_max_m2 + ' m²' : null,
+        p.classe_energie ? 'classe ' + p.classe_energie : null
+      ].filter(Boolean).join(' · ');
+      if(quoi) zone.appendChild(bloc2(quoi, spec || 'Le modèle que nous louons aussi.'));
+
+      if(typeof p.delai_vente_jours === 'number'){
+        zone.appendChild(bloc2(
+          p.delai_vente_jours === 0 ? 'Aujourd’hui'
+            : p.delai_vente_jours + (p.delai_vente_jours > 1 ? ' jours' : ' jour'),
+          'Délai de livraison après commande.'));
+      }
+      if(typeof p.garantie_fabricant_mois === 'number' && p.garantie_fabricant_mois > 0){
+        zone.appendChild(bloc2(p.garantie_fabricant_mois + ' mois',
+          'De garantie fabricant, en plus des 2 ans de garantie légale.'));
+      }
+
+      if(zone.children.length) bloc.hidden = false;
+    })
+    .catch(function(){ /* la page reste en demande de devis */ });
 })();
 </script>
 </body>
