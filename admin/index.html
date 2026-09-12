@@ -6772,6 +6772,13 @@ function openProlongFromMissionModal(livraisonId){
 
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
+  // id 'modal-overlay-el' indispensable : c'est ce que closeModal() cherche
+  // pour retirer la modale. Sans lui (bug corrigé ici), le clic sur
+  // "Confirmer" réussissait bel et bien côté serveur (prolongation créée)
+  // mais closeModal() ne trouvait rien à retirer — l'écran restait figé
+  // avec tous les boutons grisés pour toujours (ils ne sont réactivés que
+  // dans le bloc catch, jamais après un succès), exactement comme rapporté.
+  overlay.id = 'modal-overlay-el';
   overlay.innerHTML = `
     <div class="modal-box">
       <h2 style="margin-bottom:4px">📅 Prolonger la location</h2>
