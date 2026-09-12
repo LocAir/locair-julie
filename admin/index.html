@@ -857,6 +857,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
             <button data-tab="partenaires" onclick="switchAdminTab('partenaires')">🤝 Ambassadeurs<span class="tab-badge hidden" id="badge-partenaire_virements"></span></button>
             <button data-tab="villes" onclick="switchAdminTab('villes')">🌍 Villes</button>
             <button data-tab="tarifs" onclick="switchAdminTab('tarifs')">💶 Tarifs</button>
+            <button data-tab="vente" onclick="switchAdminTab('vente')">🏷️ Vente</button>
             <button data-tab="promotions" onclick="switchAdminTab('promotions')">🎁 Offres</button>
             <button data-tab="equipe" onclick="switchAdminTab('equipe')">🧑‍💼 Équipe</button>
             <button data-tab="clients" onclick="switchAdminTab('clients')">👤 Clients</button>
@@ -892,6 +893,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
         <div id="tab-clients" class="hidden"></div>
         <div id="tab-villes" class="hidden"></div>
         <div id="tab-tarifs" class="hidden"></div>
+        <div id="tab-vente" class="hidden"></div>
         <div id="tab-promotions" class="hidden"></div>
         <div id="tab-equipe" class="hidden"></div>
         <div id="tab-tutoriels" class="hidden"></div>
@@ -1959,6 +1961,7 @@ const _TAB_LOADERS = {
   clients:        silent => loadClients(silent),
   villes:         silent => loadVilles(silent),
   tarifs:         silent => loadTarifs(silent),
+  vente:          silent => loadVente(silent),
   promotions:     silent => loadPromotions(silent),
   equipe:         silent => loadEquipe(silent),
   tutoriels:      silent => loadTutoriels(silent),
@@ -1976,7 +1979,7 @@ function switchAdminTab(tab){
   document.querySelectorAll('.bottom-nav .bn-item').forEach(b => {
     b.classList.toggle('on', b.dataset.tab ? b.dataset.tab===tab : !bnDirect.includes(tab));
   });
-  ['accueil','assistant','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
+  ['accueil','assistant','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','vente','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   const zone = document.getElementById('tab-'+tab);
@@ -10672,6 +10675,157 @@ function villeAutocompleteReset(){
 let TARIFS_CACHE = null;
 let FORFAITS_CACHE = [];
 let FORFAIT_EDIT_ID = null; // null = formulaire en mode création
+/* ══ ONGLET VENTE ═════════════════════════════════════════════════════════
+   Vendre des climatiseurs NEUFS. Rien à voir avec l'Offre Privilège, qui
+   vend d'occasion, au cas par cas, la machine que le client loue déjà.
+
+   On ne crée aucun produit ici : les modèles viennent du catalogue qui
+   existe déjà (modeles_climatiseur) — celui qui alimente « Mon climatiseur »
+   dans l'espace client, avec la marque, la puissance, la photo et la notice.
+   Cet écran ne décide que trois choses : est-ce à vendre, à quel prix, et
+   combien il en reste.
+
+   Ce qu'on remplit ici s'affiche directement sur /acheter-climatiseur. Tant
+   qu'aucun modèle n'est en vente, cette page reste en « demander le prix ». */
+let VENTE_CACHE = [];
+let VENTE_MIGRATION = true;
+
+async function loadVente(silent){
+  const zone = document.getElementById('tab-vente');
+  if(!silent) zone.innerHTML = loading();
+  try{
+    const r = await fetch(API('admin-produits-vente'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    VENTE_CACHE = d.modeles || [];
+    VENTE_MIGRATION = d.migration !== false;
+    renderVente();
+  }catch(e){
+    zone.innerHTML = '<p class="empty">Erreur de chargement. Réessaie.</p>';
+  }
+}
+
+function venteEuros(cents){
+  if(!Number.isFinite(cents)) return '';
+  return (cents/100).toLocaleString('fr-FR', {minimumFractionDigits:0, maximumFractionDigits:2});
+}
+
+function renderVente(){
+  const zone = document.getElementById('tab-vente');
+
+  /* Le SQL n'a pas encore été collé dans Supabase. On le dit en clair, avec
+     le nom exact du fichier — sinon l'écran serait vide sans qu'on sache
+     pourquoi. */
+  if(!VENTE_MIGRATION){
+    zone.innerHTML = `
+      <div class="card">
+        <div class="section-title">🏷️ Vente de climatiseurs neufs</div>
+        <p class="empty" style="text-align:left">
+          Les colonnes de vente n'existent pas encore dans la base.<br><br>
+          Ouvre <b>Supabase → SQL Editor</b> et colle le contenu du fichier
+          <code>supabase/migration_vente_catalogue.sql</code>, puis recharge cet onglet.<br><br>
+          Tant que ce n'est pas fait, rien n'est cassé&nbsp;: la page
+          <code>/acheter-climatiseur</code> continue simplement de demander un devis.
+        </p>
+      </div>`;
+    return;
+  }
+
+  if(!VENTE_CACHE.length){
+    zone.innerHTML = `
+      <div class="card">
+        <div class="section-title">🏷️ Vente de climatiseurs neufs</div>
+        <p class="empty">Aucun modèle dans le catalogue. Ajoute d'abord une fiche modèle depuis l'onglet Stock.</p>
+      </div>`;
+    return;
+  }
+
+  const enVente = VENTE_CACHE.filter(m => m.vente_active && m.prix_vente_cents > 0 && m.stock_vente > 0).length;
+
+  const lignes = VENTE_CACHE.map(m => {
+    const pret = m.prix_vente_cents > 0 && m.stock_vente > 0;
+    const etat = !m.vente_active ? {txt:'Pas en vente', cls:'inactif'}
+               : !pret            ? {txt:'Incomplet',   cls:'inactif'}
+               :                    {txt:'En vente',    cls:'actif'};
+    return `
+    <div class="row-item">
+      <div class="row-top">
+        <span class="row-title">${escHtml(m.marque||'')} ${escHtml(m.modele||'')}</span>
+        <span class="chip ${etat.cls}">${etat.txt}</span>
+      </div>
+      <div class="row-meta">${[
+        m.puissance_btu ? escHtml(m.puissance_btu)+' BTU' : null,
+        m.surface_max_m2 ? 'jusqu\'à '+escHtml(m.surface_max_m2)+' m²' : null,
+        m.classe_energie ? 'classe '+escHtml(m.classe_energie) : null,
+      ].filter(Boolean).join(' · ') || 'Aucune caractéristique renseignée'}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-top:12px">
+        <label class="l">Prix de vente TTC (€)
+          <input class="n" type="number" step="0.01" min="0" id="v-prix-${m.id}" value="${venteEuros(m.prix_vente_cents)}" placeholder="ex. 499">
+        </label>
+        <label class="l">Stock neuf
+          <input class="n" type="number" step="1" min="0" max="999" id="v-stock-${m.id}" value="${Number.isFinite(m.stock_vente)?m.stock_vente:0}">
+        </label>
+        <label class="l">Délai (jours)
+          <input class="n" type="number" step="1" min="0" max="365" id="v-delai-${m.id}" value="${Number.isFinite(m.delai_vente_jours)?m.delai_vente_jours:''}" placeholder="ex. 5">
+        </label>
+        <label class="l">Garantie fabricant (mois)
+          <input class="n" type="number" step="1" min="0" max="240" id="v-gar-${m.id}" value="${Number.isFinite(m.garantie_fabricant_mois)?m.garantie_fabricant_mois:''}" placeholder="ex. 24">
+        </label>
+        <label class="l">Installation (€, 0 = comprise)
+          <input class="n" type="number" step="0.01" min="0" id="v-inst-${m.id}" value="${venteEuros(m.installation_vente_cents)}" placeholder="vide = non proposée">
+        </label>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:12px">
+        <button class="btn btn-blue" onclick="venteSave(${m.id}, null)">Enregistrer</button>
+        <button class="btn btn-grey" onclick="venteSave(${m.id}, ${m.vente_active ? 'false' : 'true'})">
+          ${m.vente_active ? 'Retirer de la vente' : 'Mettre en vente'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+
+  zone.innerHTML = `
+    <div class="card">
+      <div class="section-title">🏷️ Vente de climatiseurs neufs</div>
+      <p class="sub">
+        Ce que tu remplis ici s'affiche sur <b>/acheter-climatiseur</b>, la page de la campagne d'annonces.
+        Un modèle n'apparaît que s'il a un prix, du stock, et le bouton « Mettre en vente ».
+        ${enVente ? `<b>${enVente} modèle${enVente>1?'s':''} en vente aujourd'hui.</b>` : `<b>Aucun modèle en vente&nbsp;: la page demande un devis.</b>`}
+      </p>
+      <p class="sub">
+        Le stock de vente n'a rien à voir avec le parc de location&nbsp;: ce sont des machines neuves
+        commandées pour être revendues, elles n'entrent jamais dans le calcul de disponibilité.
+      </p>
+    </div>
+    <div style="margin-top:14px">${lignes}</div>`;
+}
+
+/* bascule = true/false pour changer l'état « en vente », null pour juste
+   enregistrer les champs. Dans les deux cas on envoie tout : le serveur
+   refuse de mettre en vente un modèle sans prix ou sans stock, et on veut
+   qu'il juge sur les valeurs que l'écran affiche, pas sur les anciennes. */
+async function venteSave(id, bascule){
+  const val = (p) => {
+    const el = document.getElementById('v-'+p+'-'+id);
+    return el ? el.value : undefined;
+  };
+  const corps = {
+    action:'update', id,
+    prix: val('prix'), stock: val('stock'), delai: val('delai'),
+    garantie: val('gar'), installation: val('inst'),
+  };
+  if(bascule !== null) corps.vente_active = bascule;
+  try{
+    const r = await fetch(API('admin-produits-vente'), {method:'POST', headers:authHeaders(), body:JSON.stringify(corps)});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    showToast(bascule === true ? 'Modèle mis en vente' : bascule === false ? 'Modèle retiré de la vente' : 'Enregistré', 'success');
+    loadVente(true);
+  }catch(e){
+    showToast(e.message || 'Erreur', 'error');
+  }
+}
+
 async function loadTarifs(silent){
   const zone = document.getElementById('tab-tarifs');
   if(!silent) zone.innerHTML = loading();
