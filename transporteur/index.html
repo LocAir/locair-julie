@@ -114,6 +114,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .forgot-link{display:block;width:100%;background:none;border:none;color:var(--grey);text-decoration:underline;font-size:13px;font-family:var(--body);cursor:pointer;text-align:center;margin-top:16px;padding:4px}
 .ok-msg{background:var(--green-bg);color:var(--green);border-radius:var(--r-sm);padding:12px 14px;font-size:14px;margin-top:14px;display:none;line-height:1.5}
 .t-toast{position:fixed;left:16px;right:16px;bottom:calc(20px + env(safe-area-inset-bottom));background:var(--red);color:#fff;padding:14px 16px;border-radius:var(--r-sm);font-size:14px;font-weight:600;box-shadow:var(--sh-lg);z-index:200;animation:fadeInEl .2s ease}
+/* Bandeau hors-ligne : persistant (pas un toast qui disparaît), en haut de
+   l'écran — informe sans bloquer, l'app reste entièrement navigable derrière
+   (Aly, 2026-09-14). Ambre plutôt que rouge : ce n'est pas une erreur, juste
+   un état à savoir. */
+.offline-banner{position:fixed;top:0;left:0;right:0;background:var(--amber);color:#fff;padding:9px 16px;padding-top:calc(9px + env(safe-area-inset-top));font-size:12.5px;font-weight:600;text-align:center;z-index:250;box-shadow:var(--sh-sm)}
 
 .name-btn{width:100%;padding:20px;background:var(--white);border:1.5px solid var(--rule);border-radius:var(--r);font-size:18px;font-weight:700;color:var(--black);margin-bottom:12px;cursor:pointer;text-align:left;box-shadow:var(--sh-xs);transition:background-color .15s ease,border-color .15s ease}
 .name-btn:active{background:var(--bg)}
@@ -702,6 +707,9 @@ input[type="checkbox"]{accent-color:var(--blue)}
 <!-- input caché pour la preuve de mission obligatoire (photo, caméra live) -->
 <input type="file" id="media-input" accept="image/*" capture="environment" class="hidden"/>
 
+<!-- Bandeau hors-ligne — voir renderOfflineBanner() -->
+<div id="offline-banner" class="offline-banner hidden"></div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
 <script>
 const API = (path) => '/api/' + path;
@@ -745,6 +753,10 @@ let STATE = {
   tourneeCurrentIdx: null, // index (dans tourneeMatrix) du point où se trouve le livreur "maintenant" — voir tourneeDistanceToMission()
   contratTexte: null,      // {missionId, ref, recap, articles} du contrat affiché à l'étape signature — voir fetchContratTexte()
   contratTexteError: false, // le dernier chargement a échoué (réseau), voir wizardStepBodyHtml()/fetchContratTexte()
+  // Mode hors-ligne (Aly, 2026-09-14) — voir renderOfflineBanner()/fetchMissions()/flushOfflineQueue().
+  isOffline: !navigator.onLine, // reflète l'évènement navigator online/offline, mis à jour en direct
+  missionsStale: false,    // true si STATE.missions vient du cache local (dernier fetch en échec), pas du serveur
+  missionsCacheSavedAt: null, // horodatage de ce cache local, affiché dans le bandeau hors-ligne
 };
 
 function show(id){
@@ -839,10 +851,18 @@ function todayParisStr(){
 // pour couvrir aussi doAction() et les autres actions du parcours mission,
 // jusqu'ici moins protégées que l'envoi de photo (putFileWithRetry) contre
 // une coupure en zone de signal faible.
-function friendlyErrorMessage(e){
+// Distingue un vrai échec réseau (fetch() lui-même a rejeté, avant même de
+// recevoir une réponse) d'une erreur applicative (réponse reçue, serveur pas
+// d'accord) — sert à la fois au message d'erreur générique ci-dessous et à
+// la mise en file d'attente hors-ligne (queueOfflineSignature) : seule une
+// vraie coupure réseau doit déclencher un repli hors-ligne, jamais une
+// erreur métier (ex. "Démonstration requise avant la signature").
+function isNetworkError(e){
   const raw = String((e && e.message) || '');
-  const looksNetwork = (e instanceof TypeError) || /failed to fetch|load failed|network ?error|network request failed/i.test(raw);
-  return looksNetwork ? 'Pas de connexion — vérifie ton réseau et réessaie.' : (raw || 'Erreur');
+  return (e instanceof TypeError) || /failed to fetch|load failed|network ?error|network request failed/i.test(raw);
+}
+function friendlyErrorMessage(e){
+  return isNetworkError(e) ? 'Pas de connexion — vérifie ton réseau et réessaie.' : (String((e && e.message) || '') || 'Erreur');
 }
 
 // Remplace l'ancien bloc "Prénom NOM · changer" par une salutation centrée
@@ -1248,11 +1268,138 @@ async function fetchMissions(){
     updateMissionsBadge();
     if(!STATE.checklistItems) fetchChecklistItems(); // une seule fois, en tâche de fond
     updateNotifBadge();
+    STATE.missionsStale = false;
+    saveMissionsCache();
+    // Une requête vient de réussir : on est forcément en ligne, même si
+    // l'évènement navigator 'online' ne s'est pas déclenché de façon fiable
+    // (ça arrive sur certains navigateurs mobiles) — filet de sécurité en
+    // plus du listener 'online' pour ne jamais laisser une signature
+    // en attente alors que le réseau est en fait bien revenu.
+    if(STATE.isOffline){ STATE.isOffline = false; renderOfflineBanner(); }
+    flushOfflineQueue();
     return true;
   }catch(e){
-    return false;
+    // Hors ligne ou réseau indisponible : reprend la dernière copie connue
+    // plutôt que de laisser l'écran vide — "je veux pouvoir naviguer même
+    // sans réseau" (Aly, 2026-09-14). Un vrai échec (jamais eu de réseau sur
+    // cet appareil, cache vide) reste un échec comme avant.
+    return loadMissionsCache();
   }
 }
+// Dernière copie connue des missions/checklist, pour naviguer (lecture
+// seule) sans réseau — clé par transporteur pour ne rien mélanger sur un
+// appareil partagé entre plusieurs comptes. Volontairement limité aux
+// données déjà chargées par fetchMissions() : pas de file d'attente
+// séparée à maintenir en cohérence, juste un instantané régulièrement
+// écrasé par la vraie réponse serveur dès qu'elle revient.
+function saveMissionsCache(){
+  try{
+    localStorage.setItem('t_missions_cache_'+STATE.transporteurId, JSON.stringify({
+      missions: STATE.missions, checklist: STATE.checklist, en_pause: STATE.en_pause, savedAt: Date.now(),
+    }));
+  }catch(e){} // quota localStorage plein — tant pis, pas bloquant
+}
+function loadMissionsCache(){
+  try{
+    const raw = localStorage.getItem('t_missions_cache_'+STATE.transporteurId);
+    if(!raw) return false;
+    const c = JSON.parse(raw);
+    STATE.missions = c.missions || [];
+    if(c.checklist) STATE.checklist = c.checklist;
+    STATE.en_pause = c.en_pause || false;
+    STATE.missionsStale = true;
+    STATE.missionsCacheSavedAt = c.savedAt || null;
+    return true;
+  }catch(e){ return false; }
+}
+
+// ── File d'attente hors-ligne ─────────────────────────────────────────────
+// Persistée en localStorage pour survivre à une fermeture de l'app avant
+// reconnexion. Volontairement limitée à la signature du contrat (petit PNG,
+// action autonome, voir submitClientSig) — les photos/vidéos de mission
+// restent hors scope pour l'instant : fichiers bien plus lourds, upload en
+// 2 temps avec URL signée à durée limitée, un vrai chantier à part si le
+// besoin se confirme.
+function offlineQueueKey(){ return 't_offline_queue_'+STATE.transporteurId; }
+function getOfflineQueue(){
+  try{ return JSON.parse(localStorage.getItem(offlineQueueKey())||'[]'); }catch(e){ return []; }
+}
+function saveOfflineQueue(q){
+  try{ localStorage.setItem(offlineQueueKey(), JSON.stringify(q)); }catch(e){}
+}
+function queueOfflineSignature(livraisonId, signature){
+  const q = getOfflineQueue();
+  q.push({ type:'signature', livraison_id: livraisonId, signature, queued_at: Date.now() });
+  saveOfflineQueue(q);
+}
+// Une signature mise en file d'attente n'est pas encore confirmée côté
+// serveur (m.signature_client_ok, dans STATE.missions, reste tel que le
+// dernier fetchMissions() l'a connu) — sans ce repère, rouvrir l'app avant
+// le prochain envoi (ex. app fermée puis relancée encore hors ligne)
+// remontrerait l'étape "Signature" comme si de rien n'était, au risque
+// d'en faire signer une deuxième pour rien.
+function pendingOfflineSignatureFor(livraisonId){
+  return getOfflineQueue().some(item => item.type==='signature' && item.livraison_id===livraisonId);
+}
+// Envoie la file dans l'ordre, s'arrête net au premier échec RÉSEAU (le
+// reste attend la prochaine tentative) — mais une erreur SERVEUR (ex. la
+// démonstration liée n'a finalement jamais été confirmée) est retirée de la
+// file plutôt que retentée indéfiniment, avec un avertissement explicite :
+// une signature client, ça ne se perd pas en silence.
+let _flushingOfflineQueue = false;
+async function flushOfflineQueue(){
+  if(_flushingOfflineQueue) return;
+  let q = getOfflineQueue();
+  if(!q.length) return;
+  _flushingOfflineQueue = true;
+  try{
+    while(q.length){
+      const item = q[0];
+      let sent = false, giveUp = false;
+      if(item.type === 'signature'){
+        try{
+          const r = await fetch(API('transporteur-action'), {
+            method:'POST',
+            headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+            body: JSON.stringify({action:'sauvegarder_signature', livraison_id:item.livraison_id, signature:item.signature}),
+          });
+          const d = await r.json().catch(()=>({}));
+          if(r.ok){ sent = true; }
+          else { giveUp = true; showTToast(`⚠️ Signature hors-ligne (mission #${item.livraison_id}) refusée : ${d.error||'erreur serveur'} — réessaie depuis la mission.`); }
+        }catch(e){ break; } // toujours hors ligne — on s'arrête, le reste attend la prochaine tentative
+      } else {
+        giveUp = true; // type inconnu (ne devrait pas arriver) — ne bloque pas la file pour toujours
+      }
+      if(sent || giveUp){ q = q.slice(1); saveOfflineQueue(q); }
+    }
+  } finally {
+    _flushingOfflineQueue = false;
+    renderOfflineBanner();
+    if(STATE.currentMission) renderDetail(); // enlève l'indicateur "en attente d'envoi" une fois parti
+  }
+}
+// Bandeau persistant (pas un toast qui disparaît) : état hors-ligne et/ou
+// file d'attente non vide, visible depuis n'importe quel écran — l'app reste
+// entièrement navigable derrière (Aly, 2026-09-14).
+function renderOfflineBanner(){
+  const el = document.getElementById('offline-banner');
+  if(!el) return;
+  const queued = getOfflineQueue().length;
+  if(STATE.isOffline){
+    el.textContent = queued
+      ? `📡 Hors ligne — ${queued} signature${queued>1?'s':''} en attente d'envoi. Continue, ça partira tout seul dès le retour du réseau.`
+      : '📡 Hors ligne — tu peux continuer à naviguer, les actions repartiront dès le retour du réseau.';
+    el.classList.remove('hidden');
+  } else if(queued){
+    el.textContent = `📶 Réseau revenu — envoi de ${queued} signature${queued>1?'s':''} en attente…`;
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+}
+window.addEventListener('online',  () => { STATE.isOffline = false; renderOfflineBanner(); flushOfflineQueue(); });
+window.addEventListener('offline', () => { STATE.isOffline = true;  renderOfflineBanner(); });
+
 // Checklists administrables "Installation terminée"/"Récupération terminée"
 // (Module 5) — chargées une fois, réutilisées pour toutes les missions.
 async function fetchChecklistItems(){
@@ -1290,8 +1437,17 @@ async function fetchContratTexte(missionId){
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
     STATE.contratTexte = { missionId, ...d };
+    try{ localStorage.setItem('t_contrat_cache_'+missionId, JSON.stringify(d)); }catch(e){}
   }catch(e){
-    STATE.contratTexteError = true;
+    // Hors ligne : reprend la dernière copie connue de CE contrat précis si
+    // elle existe (déjà affichée une fois pendant que le réseau marchait —
+    // le texte contractuel ne change pas d'une minute à l'autre) plutôt que
+    // de laisser l'étape Signature bloquée sur "Chargement…" sans réseau —
+    // "je veux pouvoir naviguer même sans réseau" (Aly, 2026-09-14).
+    let cached = null;
+    try{ const raw = localStorage.getItem('t_contrat_cache_'+missionId); if(raw) cached = JSON.parse(raw); }catch(err){}
+    if(cached) STATE.contratTexte = { missionId, ...cached };
+    else STATE.contratTexteError = true;
   }
   if(STATE.currentMission) renderDetail();
 }
@@ -2851,6 +3007,17 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
         <p style="font-size:13px;color:var(--grey);margin-top:6px">Le client a signé le contrat.</p>
       </div>`;
     }
+    // Signée hors ligne (queueOfflineSignature) mais pas encore confirmée par
+    // le serveur (m.signature_client_ok reste tel que le dernier fetch l'a
+    // connu) — sans ce repère, réouvrir l'app encore hors ligne remontrerait
+    // "à signer" comme si de rien n'était, au risque d'en refaire une pour rien.
+    if(pendingOfflineSignatureFor(m.id)){
+      return `<div style="text-align:center;padding:20px 0">
+        <div style="font-size:48px;margin-bottom:10px">🔌</div>
+        <p style="font-weight:700;font-size:16px;color:var(--amber)">Signature enregistrée — envoi en attente</p>
+        <p style="font-size:13px;color:var(--grey);margin-top:6px">Le client a signé. Elle partira automatiquement dès le retour du réseau.</p>
+      </div>`;
+    }
     // Le contrat affiché ici est chargé une fois par mission (voir
     // fetchContratTexte) — avant, cette étape se contentait de dire "montrez
     // le contrat sur votre téléphone" sans jamais rien afficher (demande
@@ -3320,8 +3487,8 @@ async function submitClientSig(missionId){
   if(!canvas || !_sigHasStroke){ return; }
   const btn = document.getElementById('sig-submit-btn');
   if(btn) btn.disabled = true;
+  const signature = canvas.toDataURL('image/png');
   try{
-    const signature = canvas.toDataURL('image/png');
     const r = await fetch(API('transporteur-action'), {
       method:'POST',
       headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
@@ -3329,18 +3496,37 @@ async function submitClientSig(missionId){
     });
     const d = await r.json();
     if(!r.ok) throw new Error(d.error||'Erreur');
-    // Mise à jour locale optimiste — réinitialise wizardViewIdx pour que
-    // renderDetail() avance automatiquement à l'étape Final (sans ça, si le
-    // transporteur avait navigué en arrière avant de signer, l'écran restait
-    // bloqué sur "Signature enregistrée" au lieu de passer à Terminer).
-    const m = STATE.missions.find(x => x.id === missionId);
-    if(m){ m.signature_client_ok = true; STATE.currentMission = m; }
-    STATE.wizardViewIdx = null;
-    renderDetail();
+    applySignatureSuccess(missionId);
   }catch(e){
-    showToast(e.message, 'error');
+    // Hors ligne : on ne bloque plus la signature sur une 4G capricieuse —
+    // "je veux pouvoir finaliser la signature même sans réseau" (Aly,
+    // 2026-09-14). Condition : la démonstration doit déjà avoir été
+    // confirmée par le serveur AVANT la coupure (m.demo_faite) — sinon
+    // sauvegarder_signature refusera de toute façon une fois renvoyée (voir
+    // transporteur-action.js), mieux vaut le dire tout de suite qu'après coup.
+    const m = STATE.missions.find(x => x.id === missionId);
+    if(isNetworkError(e) && m && m.demo_faite){
+      queueOfflineSignature(missionId, signature);
+      applySignatureSuccess(missionId);
+      renderOfflineBanner();
+      showTToast("🔌 Hors ligne — signature enregistrée sur l'appareil, elle partira automatiquement dès le retour du réseau.");
+      return;
+    }
+    showTToast(friendlyErrorMessage(e));
     if(btn) btn.disabled = false;
   }
+}
+// Mise à jour locale optimiste — réinitialise wizardViewIdx pour que
+// renderDetail() avance automatiquement à l'étape Final (sans ça, si le
+// transporteur avait navigué en arrière avant de signer, l'écran restait
+// bloqué sur "Signature enregistrée" au lieu de passer à Terminer). Utilisée
+// aussi bien après un envoi réussi qu'après une mise en file hors-ligne — le
+// client a bien signé dans les deux cas, seul le moment de l'envoi diffère.
+function applySignatureSuccess(missionId){
+  const m = STATE.missions.find(x => x.id === missionId);
+  if(m){ m.signature_client_ok = true; STATE.currentMission = m; }
+  STATE.wizardViewIdx = null;
+  renderDetail();
 }
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -5209,6 +5395,13 @@ function closeDayMap(){
     maybeShowOnboardingGuide();
     updateActiviteBadge();
     startTransporteurAutoRefresh();
+    // App ouverte déjà hors ligne, ou file d'attente laissée par la session
+    // précédente (app fermée avant le retour du réseau) — affiche/retente
+    // tout de suite plutôt que d'attendre un évènement online/offline qui
+    // peut ne jamais se déclencher si le réseau était déjà dans cet état à
+    // l'ouverture.
+    renderOfflineBanner();
+    if(!STATE.isOffline) flushOfflineQueue();
   } else if(STATE.token){
     // token connu mais pas de transporteur choisi -> relogin léger
     show('login-screen');
