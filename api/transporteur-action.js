@@ -12,6 +12,10 @@ const { getActiveChecklistItems, validateChecklistReponses } = require('./_lib/c
 const { setAppareilsStatutForReservation, moveAppareilsForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { todayParis } = require('./_lib/dates');
+const { getPricingConfig } = require('./_lib/pricing');
+const { getForfaitById } = require('./_lib/forfaits');
+const { buildContratContent } = require('./_lib/contratContent');
+const { CGV_VERSION } = require('./_lib/legal');
 
 const PROBLEME_LABEL = {
   client_absent:       'Client absent',
@@ -390,6 +394,33 @@ module.exports = async (req, res) => {
       if (updErr) throw updErr;
 
       return res.status(200).json({ ok: true });
+    }
+
+    // Contenu du contrat à afficher sur l'écran du livreur, juste au-dessus
+    // du pavé de signature — jusqu'ici l'étape se contentait de dire "Montrez
+    // le contrat sur votre téléphone" sans jamais rien afficher (demande
+    // d'Aly, 2026-09-13). Même texte que le PDF envoyé par email
+    // (buildContratContent, _lib/contratContent.js) : le client signe sur
+    // l'écran exactement ce qu'il recevra ensuite en pièce jointe.
+    if (action === 'contrat_texte') {
+      if (liv.type !== 'livraison') return res.status(400).json({ error: 'Non applicable à cette mission' });
+
+      const { data: resa, error: resaErr } = await supabase
+        .from('reservations')
+        .select('ref, prenom, nom, email, adresse, date_debut, date_fin, installation, type_client, raison_sociale, siret, stripe_payment_intent_id, forfait_id, cgv_accepted_at')
+        .eq('id', liv.reservation_id).maybeSingle();
+      if (resaErr) throw resaErr;
+      if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
+
+      const [{ data: reservAppareils }, pricing, forfait] = await Promise.all([
+        supabase.from('reservation_appareils').select('appareil:appareils(numero, modele:modeles_climatiseur(marque, modele))').eq('reservation_id', liv.reservation_id),
+        getPricingConfig(supabase),
+        getForfaitById(supabase, resa.forfait_id),
+      ]);
+      const appareils = (reservAppareils || []).map(r => r.appareil).filter(Boolean);
+
+      const content = buildContratContent({ reservation: resa, appareils, pricing, forfait });
+      return res.status(200).json({ ok: true, ref: resa.ref, version: CGV_VERSION, ...content });
     }
 
     if (action === 'livraison_ok' || action === 'retour_ok') {

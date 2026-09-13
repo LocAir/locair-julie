@@ -9,6 +9,10 @@ const { sendScenarioEmail, fmtDate } = require('./_lib/emailEngine');
 const { sendBrevoSms } = require('./_lib/brevo');
 const { setAppareilsStatutForReservation, releaseAppareilFromReservation, moveAppareilsForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
 const { todayParis, isValidDate } = require('./_lib/dates');
+const { getPricingConfig } = require('./_lib/pricing');
+const { getForfaitById } = require('./_lib/forfaits');
+const { buildContratContent } = require('./_lib/contratContent');
+const { CGV_VERSION } = require('./_lib/legal');
 
 const MEDIA_COLUMN = {
   photo_depart:       'photo_depart_path',
@@ -89,6 +93,7 @@ module.exports = async (req, res) => {
           accepted_at, depart_at, client_notifie_at, arrivee_at, fait_at,
           demo_faite, demo_faite_at,
           vidange_confirmee, vidange_at,
+          signature_client_path, signature_client_at,
           valide, valide_at,
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
@@ -132,6 +137,7 @@ module.exports = async (req, res) => {
           : computeBareme(l.type, l.reservation?.installation, bareme, l.reservation?.hors_zone, l.reservation?.express);
         return {
           ...l,
+          signature_client_ok: Boolean(l.signature_client_path),
           appareil_numeros: ras.map(ra => ra.appareil.numero),
           appareil_references: ras.map(ra => ra.appareil.reference).filter(Boolean),
           duree_trajet_min:    minsBetween(l.accepted_at, l.arrivee_at),
@@ -617,6 +623,65 @@ module.exports = async (req, res) => {
       if (error) throw error;
       if (!t || t.position_lat == null) return res.status(404).json({ error: 'Pas encore de position' });
       return res.status(200).json({ nom: t.nom, lat: t.position_lat, lng: t.position_lng, position_at: t.position_at });
+    }
+
+    // Signature électronique du contrat, prise directement sur le téléphone
+    // de l'admin quand c'est ELLE qui livre (et pas un transporteur) — même
+    // contenu et même mécanique que l'étape "Signature" du parcours
+    // transporteur (voir transporteur-action.js, action 'contrat_texte').
+    // Pas de restriction de statut/demo_faite ici, volontairement : contrairement
+    // au parcours pas-à-pas du livreur, ce bouton admin doit rester utilisable
+    // à tout moment sur une mission de livraison.
+    if (action === 'contrat_texte') {
+      const livraisonId = parseInt(body.livraison_id);
+      if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, type, reservation_id');
+      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
+      if (liv.type !== 'livraison') return res.status(400).json({ error: 'Non applicable à cette mission' });
+
+      const { data: resa, error: resaErr } = await supabase
+        .from('reservations')
+        .select('ref, prenom, nom, email, adresse, date_debut, date_fin, installation, type_client, raison_sociale, siret, stripe_payment_intent_id, forfait_id, cgv_accepted_at')
+        .eq('id', liv.reservation_id).maybeSingle();
+      if (resaErr) throw resaErr;
+      if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
+
+      const [{ data: reservAppareils }, pricing, forfait] = await Promise.all([
+        supabase.from('reservation_appareils').select('appareil:appareils(numero, modele:modeles_climatiseur(marque, modele))').eq('reservation_id', liv.reservation_id),
+        getPricingConfig(supabase),
+        getForfaitById(supabase, resa.forfait_id),
+      ]);
+      const appareils = (reservAppareils || []).map(r => r.appareil).filter(Boolean);
+
+      const content = buildContratContent({ reservation: resa, appareils, pricing, forfait });
+      return res.status(200).json({ ok: true, ref: resa.ref, version: CGV_VERSION, ...content });
+    }
+
+    if (action === 'sauvegarder_signature') {
+      const livraisonId = parseInt(body.livraison_id);
+      if (!livraisonId) return res.status(400).json({ error: 'livraison_id manquant' });
+      const liv = await loadLivraisonScoped(supabase, city.id, livraisonId, 'id, type, reservation_id');
+      if (!liv) return res.status(404).json({ error: 'Mission introuvable' });
+      if (liv.type !== 'livraison') return res.status(400).json({ error: 'Non applicable à cette mission' });
+
+      const sig = String(body.signature || '');
+      if (!sig.startsWith('data:image/png;base64,')) return res.status(400).json({ error: 'Signature invalide' });
+      const buffer = Buffer.from(sig.replace('data:image/png;base64,', ''), 'base64');
+      if (buffer.length > 2 * 1024 * 1024) return res.status(400).json({ error: 'Signature trop grande (max 2 Mo)' });
+
+      const { data: resaRef } = await supabase.from('reservations').select('ref').eq('id', liv.reservation_id).maybeSingle();
+      const ref = resaRef?.ref || String(liv.id);
+      const sigPath = `documents/signatures/${ref}-${Date.now()}.png`;
+      const { error: upErr } = await supabase.storage.from('missions').upload(sigPath, buffer, { contentType: 'image/png', upsert: true });
+      if (upErr) throw upErr;
+
+      const { error: updErr } = await supabase.from('livraisons').update({
+        signature_client_path: sigPath,
+        signature_client_at:   new Date().toISOString(),
+      }).eq('id', liv.id);
+      if (updErr) throw updErr;
+
+      return res.status(200).json({ ok: true });
     }
 
     if (action === 'media_url') {
