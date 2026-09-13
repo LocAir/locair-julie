@@ -1863,6 +1863,7 @@ function missionMoreActionsHtml(m, d, compact){
             ${(!d.isAutre && !d.reassignLocked)?`<button onclick="fixerTarifTransporteur(${m.id},${m.montant_du_cents||0})">💰 Fixer le tarif transporteur</button>`:''}
             ${(!d.isAutre && m.type==='recuperation' && d.res.tel)?`<button onclick="envoyerRappelRecuperation(${d.res.id},'${escAttr(m.creneau||'')}','${escAttr(m.date_prevue||'')}',this)">📱 Envoyer le rappel de récupération</button>`:''}
             ${(!d.isAutre && !d.reassignLocked && m.type==='recuperation')?`<button onclick="openProlongFromMissionModal(${m.id})">📅 Prolonger la location</button>`:''}
+            ${(!d.isAutre && m.type==='livraison' && !m.signature_client_ok)?`<button onclick="openSignatureModal(${m.id})">✍️ Faire signer le contrat</button>`:''}
             ${['acceptee','en_route','arrivee','probleme'].includes(m.statut)?`<button onclick="remettreAFaire(${m.id})">↩️ Remettre en attente d'acceptation</button>`:''}
             ${!d.reassignLocked?`<button onclick="openForceCompleteModal(${m.id})">✅ Forcer terminé</button>`:''}
             ${d.mediaBtns.join('')}
@@ -6867,6 +6868,143 @@ function openProlongFromMissionModal(livraisonId){
   confirmeBtn.onclick = () => submitProlong(true);
   cancelBtn.onclick   = closeModal;
   overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+}
+
+// ── Signature du contrat depuis l'admin (menu ⋯ › ✍️ Faire signer le
+// contrat) ───────────────────────────────────────────────────────────────
+// Pour les livraisons qu'Aly fait elle-même (pas de transporteur) : mêmes
+// contrat + pavé de signature tactile que l'étape "Signature" du parcours
+// livreur (transporteur/index.html), mais déclenchés à la demande depuis
+// une carte mission plutôt qu'imposés par un parcours pas-à-pas. Contenu du
+// contrat identique au PDF envoyé par email (buildContratContent,
+// _lib/contratContent.js) — le client signe sur l'écran exactement ce qu'il
+// recevra ensuite en pièce jointe.
+let _admSigCtx = null, _admSigDrawing = false, _admSigHasStroke = false;
+
+async function openSignatureModal(livraisonId){
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <h2 style="margin-bottom:10px">✍️ Faire signer le contrat</h2>
+      <div id="adm-sig-contrat" style="max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid var(--rule);border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:12.5px;line-height:1.5">
+        <p class="sub">Chargement du contrat…</p>
+      </div>
+      <div id="adm-sig-wrap" style="position:relative;margin:10px 0;background:#fff;border:2px solid var(--blue);border-radius:12px;overflow:hidden;touch-action:none">
+        <canvas id="adm-sig-canvas" style="display:block;width:100%;height:190px"></canvas>
+        <span id="adm-sig-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#bbb;pointer-events:none">← Signer ici →</span>
+      </div>
+      <div class="modal-actions" style="margin-top:0;flex-direction:column;gap:8px">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-grey" style="flex:1" onclick="clearAdmSigPad()">🗑 Effacer</button>
+          <button class="btn btn-blue" style="flex:1" id="adm-sig-submit-btn" disabled onclick="submitAdmClientSig(${livraisonId})">✅ Valider</button>
+        </div>
+        <button class="btn btn-grey" onclick="closeModal()">Annuler</button>
+      </div>
+      <div class="err" id="adm-sig-err"></div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeModal(); });
+  setTimeout(initAdmSigCanvas, 60);
+
+  try{
+    const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'contrat_texte', livraison_id:livraisonId})});
+    const d = await r.json();
+    const box = document.getElementById('adm-sig-contrat');
+    if(!box) return; // modale déjà refermée entre-temps
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    box.innerHTML = `
+      <p style="font-weight:700;font-size:13.5px;margin-bottom:6px">Contrat de location — Dossier ${escHtml(d.ref||'')}</p>
+      ${d.recap.map(row => `<p style="margin:2px 0"><strong>${escHtml(row.label)} :</strong> ${escHtml(row.value)}</p>`).join('')}
+      ${d.articles.map(a => `<p style="font-weight:700;margin-top:10px">Article ${a.num} — ${escHtml(a.titre)}</p><p style="white-space:pre-line;margin:4px 0 0">${escHtml(a.texte)}</p>`).join('')}`;
+  }catch(e){
+    const box = document.getElementById('adm-sig-contrat');
+    if(box) box.innerHTML = `<p class="sub" style="color:var(--red)">⚠️ ${escHtml(e.message)}</p>`;
+  }
+}
+
+// Canvas tactile — même logique que initSigCanvas/clearSigPad/submitClientSig
+// dans transporteur/index.html (fichier séparé, donc dupliqué ici plutôt que
+// partagé ; le contenu du CONTRAT, lui, l'est bel et bien côté serveur).
+function initAdmSigCanvas(){
+  const canvas = document.getElementById('adm-sig-canvas');
+  if(!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width  = Math.round(rect.width  * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  _admSigCtx = canvas.getContext('2d');
+  _admSigCtx.scale(dpr, dpr);
+  _admSigCtx.strokeStyle = '#1a2b4a';
+  _admSigCtx.lineWidth   = 2.5;
+  _admSigCtx.lineCap     = 'round';
+  _admSigCtx.lineJoin    = 'round';
+  _admSigDrawing = false; _admSigHasStroke = false;
+
+  function xyFrom(e){
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return {x: src.clientX - r.left, y: src.clientY - r.top};
+  }
+  function start(e){ e.preventDefault(); _admSigDrawing = true; const {x,y} = xyFrom(e); _admSigCtx.beginPath(); _admSigCtx.moveTo(x,y); }
+  function move(e){
+    e.preventDefault();
+    if(!_admSigDrawing) return;
+    const {x,y} = xyFrom(e);
+    _admSigCtx.lineTo(x,y); _admSigCtx.stroke();
+    if(!_admSigHasStroke){
+      _admSigHasStroke = true;
+      const hint = document.getElementById('adm-sig-hint');
+      if(hint) hint.style.display = 'none';
+      const btn = document.getElementById('adm-sig-submit-btn');
+      if(btn) btn.disabled = false;
+    }
+  }
+  function stop(){ _admSigDrawing = false; }
+
+  canvas.addEventListener('mousedown',  start);
+  canvas.addEventListener('mousemove',  move);
+  canvas.addEventListener('mouseup',    stop);
+  canvas.addEventListener('mouseleave', stop);
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove',  move,  {passive:false});
+  canvas.addEventListener('touchend',   stop);
+}
+
+function clearAdmSigPad(){
+  if(!_admSigCtx) return;
+  const canvas = document.getElementById('adm-sig-canvas');
+  if(!canvas) return;
+  _admSigCtx.clearRect(0, 0, canvas.width, canvas.height);
+  _admSigHasStroke = false;
+  const hint = document.getElementById('adm-sig-hint');
+  if(hint) hint.style.display = '';
+  const btn = document.getElementById('adm-sig-submit-btn');
+  if(btn) btn.disabled = true;
+}
+
+async function submitAdmClientSig(livraisonId){
+  const canvas = document.getElementById('adm-sig-canvas');
+  if(!canvas || !_admSigHasStroke) return;
+  const btn   = document.getElementById('adm-sig-submit-btn');
+  const errEl = document.getElementById('adm-sig-err');
+  if(errEl) errEl.style.display = 'none';
+  if(btn) btn.disabled = true;
+  try{
+    const signature = canvas.toDataURL('image/png');
+    const r = await fetch(API('admin-livraisons'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'sauvegarder_signature', livraison_id:livraisonId, signature})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    closeModal();
+    showToast('✅ Contrat signé', 'success');
+    const m = LIVRAISONS_CACHE.find(x => x.id === livraisonId);
+    if(m) m.signature_client_ok = true;
+    loadLivraisons();
+  }catch(e){
+    if(btn) btn.disabled = false;
+    if(errEl){ errEl.textContent = e.message; errEl.style.display = 'block'; }
+  }
 }
 
 // Fixe manuellement le montant payé au transporteur pour cette mission

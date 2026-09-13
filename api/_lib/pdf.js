@@ -1,6 +1,7 @@
 const PDFDocument = require('pdfkit');
 const { SELLER } = require('./legal');
 const { calcTieredPrice, DEFAULT_PRICING_CONFIG } = require('./pricing');
+const { buildContratContent } = require('./contratContent');
 
 // Palette
 const C = {
@@ -282,15 +283,15 @@ function drawFooter(doc, text) {
 // les champs sont remplacés par les données réelles de la réservation.
 // ══════════════════════════════════════════════════════════════════════════════
 function generateContratPdf({ reservation, appareils, acceptations, version, pricing, forfait }) {
-  const p = pricing || DEFAULT_PRICING_CONFIG;
+  // Récap + 7 articles : texte partagé avec l'aperçu affiché sur le téléphone
+  // du livreur au moment de la signature (voir _lib/contratContent.js — même
+  // contenu, deux mises en page, pour ne jamais laisser diverger un texte à
+  // valeur contractuelle).
+  const content = buildContratContent({ reservation, appareils, pricing, forfait });
   return renderPdf((doc) => {
     drawContratHeader(doc, reservation.ref);
 
-    const jours  = nbJours(reservation.date_debut, reservation.date_fin);
-    const modele = modeleLabel(appareils);
-    const entreprise = reservation.type_client === 'entreprise' && reservation.raison_sociale
-      ? ` (${reservation.raison_sociale}${reservation.siret ? ', SIRET ' + reservation.siret : ''})` : '';
-    const locataireNom = `${reservation.prenom || ''} ${reservation.nom || ''}`.trim();
+    const { jours, modele, entreprise, locataireNom } = content;
 
     // ── Bloc Bailleur / Locataire côte à côte ──────────────────────────────
     const halfW = (W - 12) / 2;
@@ -325,10 +326,7 @@ function generateContratPdf({ reservation, appareils, acceptations, version, pri
 
     // ── Récapitulatif de la location ──────────────────────────────────────
     drawSectionTitle(doc, 'Récapitulatif de la location');
-    drawKeyValueRow(doc, 'Équipement',  modele);
-    drawKeyValueRow(doc, 'Période',     `Du ${fmtDate(reservation.date_debut)} au ${fmtDate(reservation.date_fin)} — ${jours} jours`);
-    drawKeyValueRow(doc, 'Adresse de livraison', reservation.adresse || '—');
-    drawKeyValueRow(doc, 'Installation',     reservation.installation || 'Kit autonome sans perçage (gratuit)');
+    for (const row of content.recap) drawKeyValueRow(doc, row.label, row.value);
     doc.moveDown(0.4);
 
     // ── Articles ──────────────────────────────────────────────────────────
@@ -336,7 +334,7 @@ function generateContratPdf({ reservation, appareils, acceptations, version, pri
       if (doc.y > PH - M - 110) doc.addPage();
       doc.moveDown(0.7);
       doc.font('Helvetica-Bold').fontSize(9.5).fillColor(C.navy)
-        .text(`Article ${num} — ${titre}`, M, doc.y, { width: W });
+        .text(`Article ${num} — ${titre}`, M, doc.y, { width: W });
       doc.moveDown(0.25);
       doc.font('Helvetica').fontSize(9).fillColor(C.body)
         .text(texte, M, doc.y, { width: W, align: 'justify', lineGap: 2.5 });
@@ -346,66 +344,7 @@ function generateContratPdf({ reservation, appareils, acceptations, version, pri
       doc.y += 3;
     }
 
-    article(1, 'Parties',
-      `Bailleur : ${SELLER.nomCommercial}, exploité par Aly THIAM, ${SELLER.adresse}. SIRET : ${SELLER.siret}.\n` +
-      `Locataire : ${locataireNom}${entreprise}, demeurant au ${reservation.adresse || '—'}.`
-    );
-
-    const modeleConnu = !!(appareils && appareils[0] && appareils[0].modele);
-    article(2, 'Objet', modeleConnu
-      ? `Location d’un climatiseur mobile ${modele} (de 9 000 à 12 000 BTU, adapté aux espaces jusqu’à 20 m²) ` +
-        `avec kit d’installation complet (gaine, télécommande, kit de calfeutrage sans perçage).`
-      : `Location d’un climatiseur mobile (Rowenta RWAC10KA ou FRICO CLIMOB 12, de 9 000 à 12 000 BTU, ` +
-        `adapté aux espaces jusqu’à 20 m²) avec kit d’installation complet (gaine, télécommande, kit de calfeutrage sans perçage).`
-    );
-
-    article(3, 'Durée',
-      `La durée minimale de location est de ${p.duree_min_jours} jours. La location débute le ${fmtDate(reservation.date_debut)} et se termine le ` +
-      `${fmtDate(reservation.date_fin)}, pour une durée de ${jours} jours.`
-    );
-
-    // Un forfait (ex. "Pack Sérénité") a un prix total fixe, sans aucun
-    // rapport avec le barème dégressif normal — décrire ce dernier ici
-    // serait faux et trompeur pour le locataire (et pour Aly en cas de
-    // relecture). Le forfait garde sa description propre.
-    article(4, 'Tarification & livraison', forfait
-      ? `Cette location fait l'objet d'un forfait à prix fixe : « ${forfait.nom} », ${forfait.quantite} climatiseur${forfait.quantite > 1 ? 's' : ''} sur ${forfait.duree_jours} jours, pour un prix total de ${eur(forfait.prix_cents)} (hors livraison et installation).\n` +
-        'Frais de livraison et récupération : 60,00 € (Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche-sur-Mer, ' +
-        'Beaulieu-sur-Mer) ou 120,00 € (hors zone).\n' +
-        'Option installation par un technicien qualifié : 80,00 € (en option) ou installation en autonomie (gratuite, kit fourni sans perçage).\n' +
-        `TVA : ${SELLER.mentionTva}.`
-      : `Tarif journalier (TTC) : ${eur(p.palier1_tarif_cents)}/jour (${p.palier1_max_jours} jours) · ${eur(p.palier2_tarif_cents)}/jour (${p.palier1_max_jours + 1} à ${p.palier2_max_jours} jours) · ` +
-        `${eur(p.palier3_tarif_cents)}/jour (${p.palier2_max_jours + 1} à ${p.palier3_max_jours} jours) · ${eur(p.palier4_tarif_cents)}/jour (${p.palier3_max_jours + 1} jours et plus). Durée minimale : ${p.duree_min_jours} jours.\n` +
-        'Frais de livraison et récupération : 60,00 € (Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer, Villefranche-sur-Mer, ' +
-        'Beaulieu-sur-Mer) ou 120,00 € (hors zone).\n' +
-        'Option installation par un technicien qualifié : 80,00 € (en option) ou installation en autonomie (gratuite, kit fourni sans perçage).\n' +
-        `TVA : ${SELLER.mentionTva}.`
-    );
-
-    article(5, 'Modalités de paiement & autorisation',
-      reservation.stripe_payment_intent_id
-        ? `Le paiement est exigé à la réservation via la solution de paiement sécurisée Stripe. Aucun dépôt de garantie n’est demandé.\n` +
-          `Le locataire autorise expressément ${SELLER.nomCommercial} à enregistrer sa carte bancaire de façon sécurisée via Stripe afin de ` +
-          `permettre un prélèvement de plein droit en cas de retard de restitution, selon les tarifs de l’article 10 bis des CGV.`
-        : `Le paiement est exigé à la réservation. Aucun dépôt de garantie n’est demandé.\n` +
-          `Le locataire autorise expressément ${SELLER.nomCommercial} à procéder à un prélèvement de plein droit en cas de retard de restitution, selon les tarifs de l’article 10 bis des CGV.`
-    );
-
-    article(6, 'Conditions générales & annulation',
-      'Annulation : remboursement intégral pour toute annulation effectuée avant la livraison (prise de contact avant 20h la veille de ' +
-      'la livraison prévue). Passé ce délai, aucun remboursement n’est accordé.\n' +
-      'Garantie panne : en cas de défaillance technique non imputable au client, l’appareil est dépanné ou remplacé dans les meilleurs ' +
-      'délais. À défaut, les jours de location restants sont intégralement remboursés.\n' +
-      'Responsabilité : le locataire est responsable de l’utilisation normale de l’appareil conformément aux instructions. Il s’engage ' +
-      'à ne pas le déplacer ou tenter de le réparer sans accord préalable.\n' +
-      'Rétractation : en signant ce contrat et en demandant la livraison, le locataire renonce expressément à son droit de rétractation ' +
-      'de 14 jours pour permettre le début immédiat de la prestation.'
-    );
-
-    article(7, 'Litiges & médiation',
-      'Contrat soumis au droit français. En cas de litige non résolu à l’amiable, le locataire peut recourir gratuitement au médiateur ' +
-      'de la consommation MEDICYS (73 Boulevard de Clichy, 75009 Paris — www.medicys.fr). À défaut, les tribunaux compétents sont ceux de Nice.'
-    );
+    for (const a of content.articles) article(a.num, a.titre, a.texte);
 
     // ── Acceptation électronique ──────────────────────────────────────────
     drawSectionTitle(doc, 'Acceptation électronique');
