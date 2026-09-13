@@ -743,6 +743,8 @@ let STATE = {
   tourneeMatrix: null,     // matrice de distances (mètres) entre tous les points
   tourneeMissionIndex: [], // tourneeMissionIndex[i-1] = id mission au point d'index i de la matrice (0 = départ)
   tourneeCurrentIdx: null, // index (dans tourneeMatrix) du point où se trouve le livreur "maintenant" — voir tourneeDistanceToMission()
+  contratTexte: null,      // {missionId, ref, recap, articles} du contrat affiché à l'étape signature — voir fetchContratTexte()
+  contratTexteError: false, // le dernier chargement a échoué (réseau), voir wizardStepBodyHtml()/fetchContratTexte()
 };
 
 function show(id){
@@ -1275,6 +1277,23 @@ async function fetchChecklistItems(){
     STATE.checklistItemsError = true;
     if(STATE.currentMission) renderDetail();
   }
+}
+
+// Texte du contrat affiché à l'étape "Signature" du parcours livraison, juste
+// au-dessus du pavé de signature — même contenu que le PDF envoyé par email
+// (action 'contrat_texte', partagé côté serveur via _lib/contratContent.js).
+// Chargé une fois par mission (voir wizardStepBodyHtml, cas 'signature').
+async function fetchContratTexte(missionId){
+  STATE.contratTexteError = false;
+  try{
+    const r = await fetch(API('transporteur-action'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'contrat_texte', livraison_id:missionId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    STATE.contratTexte = { missionId, ...d };
+  }catch(e){
+    STATE.contratTexteError = true;
+  }
+  if(STATE.currentMission) renderDetail();
 }
 
 // ── Centre de notifications (Module 5, Partie 11) ────────────────────────────
@@ -2832,8 +2851,26 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
         <p style="font-size:13px;color:var(--grey);margin-top:6px">Le client a signé le contrat.</p>
       </div>`;
     }
+    // Le contrat affiché ici est chargé une fois par mission (voir
+    // fetchContratTexte) — avant, cette étape se contentait de dire "montrez
+    // le contrat sur votre téléphone" sans jamais rien afficher (demande
+    // d'Aly, 2026-09-13) : le client n'avait donc en pratique jamais le texte
+    // sous les yeux au moment de signer.
+    const ct = (STATE.contratTexte && STATE.contratTexte.missionId === m.id) ? STATE.contratTexte : null;
+    if(!ct && !STATE.contratTexteError) fetchContratTexte(m.id);
+    const contratBoxHtml = ct
+      ? `<div id="contrat-scroll" style="max-height:260px;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#fff;border:1px solid var(--rule);border-radius:12px;padding:12px 14px;margin-bottom:10px;font-size:12.5px;line-height:1.5;color:var(--body)">
+          <p style="font-weight:700;font-size:13.5px;margin-bottom:6px">Contrat de location — Dossier ${escHtml(ct.ref||'')}</p>
+          ${ct.recap.map(row => `<p style="margin:2px 0"><strong>${escHtml(row.label)} :</strong> ${escHtml(row.value)}</p>`).join('')}
+          ${ct.articles.map(a => `<p style="font-weight:700;margin-top:10px">Article ${a.num} — ${escHtml(a.titre)}</p><p style="white-space:pre-line;margin:4px 0 0">${escHtml(a.texte)}</p>`).join('')}
+        </div>
+        <p class="step-hint" style="margin-top:0">👆 Fais défiler et lire le contrat au client, puis fais-le signer ci-dessous (vaut mention « Lu et approuvé »).</p>`
+      : STATE.contratTexteError
+        ? `<p class="step-hint" style="color:var(--red)">⚠️ Impossible de charger le contrat — vérifie ta connexion.</p>
+           <button class="btn btn-grey btn-block" style="margin-bottom:10px" onclick="fetchContratTexte(${m.id})">🔄 Réessayer</button>`
+        : `<p class="step-hint" style="color:var(--grey)">Chargement du contrat…</p>`;
     return `
-      <p class="step-hint">✍️ Montrez le contrat sur votre téléphone et faites signer le client avec son doigt.</p>
+      ${contratBoxHtml}
       <div id="sig-wrap" style="position:relative;margin:14px 0;background:#fff;border:2px solid var(--blue);border-radius:12px;overflow:hidden;touch-action:none">
         <canvas id="sig-canvas" style="display:block;width:100%;height:190px"></canvas>
         <span id="sig-hint" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;color:#bbb;pointer-events:none">← Signer ici →</span>
