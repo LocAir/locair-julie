@@ -423,6 +423,28 @@ const handler = async (req, res) => {
       return res.json({ received: true, skipped: eventType });
     }
 
+    // ── Achat en boutique : flux distinct, jamais une réservation ────────────
+    // (voir api/boutique-checkout.js). Cette garde est la seule chose qui
+    // protège le tunnel de location : plus bas, TOUT ce qui n'a pas été
+    // reconnu ici est traité comme une réservation à confirmer. Sans elle,
+    // chaque vente créerait une réservation fantôme, avec une mission de
+    // livraison puis une RÉCUPÉRATION — un transporteur irait reprendre la
+    // machine chez quelqu'un qui vient de l'acheter.
+    //
+    // La marque est posée à la fois sur la session et sur le PaymentIntent
+    // (voir boutique-checkout.js) : Stripe émet les deux événements, et les
+    // deux passent par ici.
+    //
+    // Rien n'est écrit en base à ce stade : la vente est enregistrée chez
+    // Stripe, avec la ville et le modèle dans ses metadata. Le jour où elle
+    // devra sortir un appareil du stock et émettre une facture de vente,
+    // c'est ici que ça se branchera — pas dans la branche location.
+    if (meta.type_commande === 'vente') {
+      console.log('[webhook] achat boutique —',
+        meta.modele || '?', '→', meta.ville_livraison || '?', '|', amount);
+      return res.status(200).json({ received: true, type: 'vente' });
+    }
+
     // ── Offre Privilège : flux totalement distinct, jamais une réservation ────
     // (voir api/offre-privilege-pay.js) — ne touche jamais reservations.
     if (meta.type === 'offre_privilege') {
