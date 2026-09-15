@@ -1248,7 +1248,7 @@
             <path d="M122 38 L122 46" stroke="var(--vif)" stroke-width="2.4" stroke-linecap="round"/>
             <path d="M114 44 A11 11 0 1 0 130 44" fill="none" stroke="var(--vif)" stroke-width="2.4" stroke-linecap="round"/>
             <text x="68" y="55" text-anchor="middle" font-family="DM Sans,system-ui" font-size="13" font-weight="700" fill="var(--vif)">22°C</text>
-            <text x="68" y="68" text-anchor="middle" font-family="DM Sans,system-ui" font-size="9" fill="currentColor" opacity=".5">MODE FROID</text>
+            <text x="68" y="67" text-anchor="middle" font-family="DM Sans,system-ui" font-size="11" fill="currentColor">MODE FROID</text>
           </svg>
         </div>
         <span class="pas-e">Commencez à 22–24°C</span>
@@ -1525,153 +1525,172 @@
          l'autre : leurs deux étiquettes prendraient la même place, elles
          partent donc chacune sur un trait de rappel, l'une vers le haut,
          l'autre vers le bas. -->
-    <figure class="carte rv">
-      <svg viewBox="0 0 1000 640" role="img" data-ta="e9.carteAria"
-           aria-label="Carte du littoral de Cannes à Menton, avec les neuf villes livrées et la zone standard autour de Nice">
-    <!-- LA MER. Le trait de cote sort du cadre des deux cotes : une carte
-         qui s'arrete pile aux bords se lit comme un dessin, pas comme un
-         morceau de territoire.
+        <!-- ══ LA PISTE ══════════════════════════════════════════════════════
+         La carte reste ÉPINGLÉE pendant qu'on lit la liste des villes.
+         Avant, elle se dessinait puis disparaissait vers le haut : on la
+         regardait se tracer, et au moment où l'on lisait « Nice · 60 € »
+         elle n'était déjà plus à l'écran. Les deux informations se
+         répondent, elles doivent être visibles ensemble.
 
-         D'OU VIENT CE TRACE. Il etait dessine a la main, et il etait faux :
-         converti en latitude/longitude, il passait par 43.556 N / 7.148 E,
-         soit cinq kilometres au large, a l'est du cap d'Antibes. Le cap
-         etait dessine pointant vers l'EST alors qu'il pointe vers le SUD,
-         ce qui fabriquait un crochet que personne d'ici ne reconnaissait.
+         C'est du position:sticky, rien d'autre — aucun script, aucune
+         bibliothèque. Le calage vertical de la page est en « proximity »
+         et jamais en « mandatory » (voir .snap) : il ne se bat donc pas
+         avec le défilement libre dont cette piste a besoin.
 
-         Il vient maintenant des limites reelles des 163 communes des
-         Alpes-Maritimes (france-geojson, donnees IGN). Methode : toute
-         arete partagee par deux communes est interieure ; celles qui
-         n'apparaissent qu'une fois forment le contour du departement, dont
-         la partie sud EST le littoral. 370 points bruts, ramenes a 267 par
-         Douglas-Peucker. Controle : les neuf villes tombent toutes a moins
-         de 1,8 km du trait — les centres-villes sont legerement en retrait
-         de la plage, c'est normal et c'est vrai.
+         Sous 900 px la piste redevient une simple pile, exactement comme
+         avant : sur un téléphone, épingler la moitié de l'écran ne
+         laisserait plus la place de lire l'autre moitié. -->
+    <div class="piste">
+  <figure class="carte rv">
+        <svg viewBox="0 0 1000 640" role="img" data-ta="e9.carteAria"
+             aria-label="Carte du littoral de Cannes à Menton, avec les neuf villes livrées et la zone standard autour de Nice">
+      <!-- LA MER. Le trait de cote sort du cadre des deux cotes : une carte
+           qui s'arrete pile aux bords se lit comme un dessin, pas comme un
+           morceau de territoire.
 
-         Projection equirectangulaire : x=(lon-6.94332)x1578.3,
-         y=(43.81049-lat)x2181. A cette latitude un degre de longitude vaut
-         cos(43.75) fois un degre de latitude, soit 1575,6 unites pour 2181
-         — l'ecart avec 1578,3 est de 0,2 %, invisible a l'ecran. -->
-    <path class="ct-mer" d="M-15.1 720.6L-18.7 718.6L-19.3 712.9L-0.8 710.2L4.0 714.3L4.6 710.6L8.5 708.9L8.0 704.4L5.9 702.0L7.1 696.4L9.3 694.6L10.1 688.8L12.5 684.9L20.3 683.8L18.4 680.4L18.8 677.7L21.7 675.4L18.1 671.6L17.7 665.8L14.4 663.6L5.4 664.3L-1.2 661.8L-2.7 658.3L-8.7 656.5L-7.8 641.4L-4.3 639.0L-2.6 630.2L4.1 620.0L10.7 616.9L11.0 613.2L7.6 609.5L13.0 602.8L24.8 590.4L45.0 578.1L79.6 570.6L95.8 571.1L108.6 574.1L109.9 571.8L109.6 567.1L115.6 566.4L116.2 571.6L119.0 568.4L126.8 569.3L140.8 577.2L140.3 580.8L143.6 585.0L141.5 591.4L145.4 593.4L147.2 596.3L146.2 599.1L149.0 601.5L151.2 598.7L150.6 596.1L154.0 585.4L165.8 575.6L177.7 572.6L183.6 561.6L187.6 557.9L193.5 546.3L199.0 539.8L207.4 533.6L212.7 532.7L218.9 527.5L241.4 522.6L254.7 524.6L267.7 531.0L274.5 543.4L278.2 544.0L281.6 547.4L281.5 563.9L277.7 565.5L274.0 572.7L279.2 578.1L277.5 579.2L277.3 583.6L280.6 586.5L283.8 584.0L280.3 580.7L284.1 577.0L293.3 577.0L294.5 582.3L304.7 579.9L308.2 574.6L306.4 572.8L308.5 570.0L311.3 569.9L313.0 566.2L318.4 564.5L313.6 558.1L305.7 559.3L303.2 555.0L303.0 550.6L309.5 540.0L307.4 530.9L311.3 526.8L309.6 524.3L297.3 526.4L294.5 525.0L290.6 517.8L286.8 516.2L290.0 505.9L293.8 499.8L293.9 495.2L283.3 492.5L281.7 487.3L283.6 484.6L288.8 485.2L293.7 482.9L295.0 480.3L293.5 475.3L289.0 475.8L288.0 470.9L289.1 447.6L294.8 420.3L305.7 389.1L309.5 386.2L305.7 383.6L306.1 379.8L310.7 382.7L314.7 372.0L319.1 367.8L321.2 360.6L337.2 342.4L354.1 333.9L366.7 337.9L396.5 332.8L403.0 337.0L405.8 343.4L409.7 347.2L409.0 350.8L403.9 355.7L406.3 360.5L415.3 359.5L418.0 355.5L423.5 355.9L425.7 353.5L423.4 350.4L426.3 343.9L433.7 340.0L434.2 336.9L445.0 329.5L446.0 323.3L452.9 316.4L450.8 308.7L451.4 298.9L454.3 295.1L455.0 291.8L453.5 287.8L456.9 281.4L465.0 271.5L474.3 264.1L503.7 253.5L526.4 253.3L532.5 257.1L539.2 256.8L536.5 253.1L538.0 251.4L538.0 245.7L540.3 245.9L539.7 254.5L546.9 256.3L548.9 259.8L551.9 261.0L553.7 265.4L552.9 270.1L554.9 271.7L572.4 271.8L574.8 268.4L576.8 257.6L574.4 253.2L573.9 245.1L581.6 238.3L583.4 229.0L586.2 226.7L595.4 231.4L596.6 240.5L602.0 239.7L604.7 249.4L601.3 251.8L602.1 256.0L595.0 259.9L595.3 267.6L598.2 269.2L599.8 273.7L598.5 275.7L601.2 278.0L601.0 291.3L604.6 297.4L612.3 296.6L615.5 294.8L618.7 288.5L617.4 277.5L618.5 270.7L626.1 272.6L628.6 278.9L639.8 273.0L641.5 269.3L637.1 268.2L631.4 271.7L628.2 271.2L626.9 267.8L616.4 263.6L616.0 255.0L612.1 247.7L609.7 236.8L613.7 232.2L616.8 234.5L621.8 226.2L618.7 222.4L619.9 218.4L624.8 219.8L622.3 215.4L630.4 211.4L642.9 208.7L643.7 202.2L651.1 195.8L658.8 192.4L664.7 193.4L677.7 202.2L691.7 192.6L703.4 190.8L705.7 194.6L703.0 198.2L710.4 197.4L719.2 200.3L721.7 195.4L729.9 198.7L737.5 194.0L738.1 189.5L745.5 184.4L735.2 176.4L741.0 171.8L740.6 165.4L757.0 150.1L759.5 151.9L764.4 145.7L769.4 134.7L776.1 132.4L779.7 128.4L782.4 133.5L787.0 130.3L790.0 130.0L791.7 132.2L804.5 113.6L819.0 109.6L824.7 115.9L828.1 116.7L838.6 129.4L857.8 134.1L859.8 131.9L859.3 126.7L850.3 116.9L854.9 105.7L860.6 101.9L860.1 99.2L863.2 94.4L881.8 80.5L886.3 79.2L888.5 81.3L893.4 76.6L891.8 70.5L895.3 64.4L897.8 66.1L902.7 62.3L902.0 60.6L913.2 56.8L922.0 56.2 L1300 56.0 L1300 1200 L-468.2 1200 Z"/>
-    <!-- LA ZONE STANDARD. Trois communes, et rien de plus : ce n'est pas
-         une frontiere administrative, c'est un tarif.
-         C'etait une ellipse posee a cheval sur la mer et sur la montagne.
-         C'est maintenant un ruban qui SUIT la cote, de Cagnes a l'est de
-         Nice — parce que c'est la qu'on livre. Large de 90 unites, soit
-         4,6 km : la bande littorale, pas l'arriere-pays. Pas de bord net,
-         un trait plein donnerait a croire a une limite exacte. -->
-    <path class="ct-ile" d="M194.7 644.9L186.0 642.5L184.5 643.9L158.0 643.0L145.9 639.1L139.3 631.3L140.3 626.1L148.2 630.2L152.4 629.1L159.0 624.6L165.8 625.4L173.5 631.4L189.8 633.3L193.3 636.6L201.3 639.3L199.6 642.5L196.8 642.5L195.4 647.4Z M163.9 665.7L148.0 662.4L148.0 658.6L164.1 656.6L171.1 657.6L177.0 660.1L175.5 662.5L169.4 663.3L164.9 667.4Z"/>
-    <path class="ct-zone" d="M337.2 342.4L359.3 334.5L370.8 336.8L396.5 332.8L405.8 343.4L403.9 355.7L418.0 355.5L423.4 350.4L434.2 336.9L445.0 329.5L450.8 308.7L454.3 295.1L456.9 281.4L480.8 260.5L513.6 253.5L529.5 256.1L536.5 253.1L538.0 245.7" data-f=".62"/>
-    <path class="ct-cote" d="M-15.1 720.6L-18.7 718.6L-19.3 712.9L-0.8 710.2L4.0 714.3L4.6 710.6L8.5 708.9L8.0 704.4L5.9 702.0L7.1 696.4L9.3 694.6L10.1 688.8L12.5 684.9L20.3 683.8L18.4 680.4L18.8 677.7L21.7 675.4L18.1 671.6L17.7 665.8L14.4 663.6L5.4 664.3L-1.2 661.8L-2.7 658.3L-8.7 656.5L-7.8 641.4L-4.3 639.0L-2.6 630.2L4.1 620.0L10.7 616.9L11.0 613.2L7.6 609.5L13.0 602.8L24.8 590.4L45.0 578.1L79.6 570.6L95.8 571.1L108.6 574.1L109.9 571.8L109.6 567.1L115.6 566.4L116.2 571.6L119.0 568.4L126.8 569.3L140.8 577.2L140.3 580.8L143.6 585.0L141.5 591.4L145.4 593.4L147.2 596.3L146.2 599.1L149.0 601.5L151.2 598.7L150.6 596.1L154.0 585.4L165.8 575.6L177.7 572.6L183.6 561.6L187.6 557.9L193.5 546.3L199.0 539.8L207.4 533.6L212.7 532.7L218.9 527.5L241.4 522.6L254.7 524.6L267.7 531.0L274.5 543.4L278.2 544.0L281.6 547.4L281.5 563.9L277.7 565.5L274.0 572.7L279.2 578.1L277.5 579.2L277.3 583.6L280.6 586.5L283.8 584.0L280.3 580.7L284.1 577.0L293.3 577.0L294.5 582.3L304.7 579.9L308.2 574.6L306.4 572.8L308.5 570.0L311.3 569.9L313.0 566.2L318.4 564.5L313.6 558.1L305.7 559.3L303.2 555.0L303.0 550.6L309.5 540.0L307.4 530.9L311.3 526.8L309.6 524.3L297.3 526.4L294.5 525.0L290.6 517.8L286.8 516.2L290.0 505.9L293.8 499.8L293.9 495.2L283.3 492.5L281.7 487.3L283.6 484.6L288.8 485.2L293.7 482.9L295.0 480.3L293.5 475.3L289.0 475.8L288.0 470.9L289.1 447.6L294.8 420.3L305.7 389.1L309.5 386.2L305.7 383.6L306.1 379.8L310.7 382.7L314.7 372.0L319.1 367.8L321.2 360.6L337.2 342.4L354.1 333.9L366.7 337.9L396.5 332.8L403.0 337.0L405.8 343.4L409.7 347.2L409.0 350.8L403.9 355.7L406.3 360.5L415.3 359.5L418.0 355.5L423.5 355.9L425.7 353.5L423.4 350.4L426.3 343.9L433.7 340.0L434.2 336.9L445.0 329.5L446.0 323.3L452.9 316.4L450.8 308.7L451.4 298.9L454.3 295.1L455.0 291.8L453.5 287.8L456.9 281.4L465.0 271.5L474.3 264.1L503.7 253.5L526.4 253.3L532.5 257.1L539.2 256.8L536.5 253.1L538.0 251.4L538.0 245.7L540.3 245.9L539.7 254.5L546.9 256.3L548.9 259.8L551.9 261.0L553.7 265.4L552.9 270.1L554.9 271.7L572.4 271.8L574.8 268.4L576.8 257.6L574.4 253.2L573.9 245.1L581.6 238.3L583.4 229.0L586.2 226.7L595.4 231.4L596.6 240.5L602.0 239.7L604.7 249.4L601.3 251.8L602.1 256.0L595.0 259.9L595.3 267.6L598.2 269.2L599.8 273.7L598.5 275.7L601.2 278.0L601.0 291.3L604.6 297.4L612.3 296.6L615.5 294.8L618.7 288.5L617.4 277.5L618.5 270.7L626.1 272.6L628.6 278.9L639.8 273.0L641.5 269.3L637.1 268.2L631.4 271.7L628.2 271.2L626.9 267.8L616.4 263.6L616.0 255.0L612.1 247.7L609.7 236.8L613.7 232.2L616.8 234.5L621.8 226.2L618.7 222.4L619.9 218.4L624.8 219.8L622.3 215.4L630.4 211.4L642.9 208.7L643.7 202.2L651.1 195.8L658.8 192.4L664.7 193.4L677.7 202.2L691.7 192.6L703.4 190.8L705.7 194.6L703.0 198.2L710.4 197.4L719.2 200.3L721.7 195.4L729.9 198.7L737.5 194.0L738.1 189.5L745.5 184.4L735.2 176.4L741.0 171.8L740.6 165.4L757.0 150.1L759.5 151.9L764.4 145.7L769.4 134.7L776.1 132.4L779.7 128.4L782.4 133.5L787.0 130.3L790.0 130.0L791.7 132.2L804.5 113.6L819.0 109.6L824.7 115.9L828.1 116.7L838.6 129.4L857.8 134.1L859.8 131.9L859.3 126.7L850.3 116.9L854.9 105.7L860.6 101.9L860.1 99.2L863.2 94.4L881.8 80.5L886.3 79.2L888.5 81.3L893.4 76.6L891.8 70.5L895.3 64.4L897.8 66.1L902.7 62.3L902.0 60.6L913.2 56.8L922.0 56.2"/>
-    <!-- L'ECHELLE. Elle est calculee, pas dessinee a vue : 1 degre de
-         longitude vaut 80,56 km a cette latitude, et le dessin compte
-         1578,3 unites par degre. 10 km font donc 196 unites. -->
-    <g class="ct-ech">
-      <path d="M64 156 L64 172 M64 164 L260 164 M260 156 L260 172"/>
-      <text class="ct-ech-n" x="64" y="146" data-t="e9.carteEch">10 km</text>
-    </g>
-    <!-- Le nom de la mer, en creux : sur une carte, un aplat sans nom n'est
-         pas une mer, c'est une tache. -->
-    <text class="ct-mer-n" x="758" y="470" text-anchor="middle" data-t="e9.carteMer">Mer Méditerranée</text>
-    <!-- LES NEUF VILLES, UNE PAR GROUPE. Chaque groupe porte son point, son
-         nom et, quand il en faut un, son trait de rappel. C'est ce qui
-         permet de les allumer une a une au passage du trait : le JavaScript
-         cherche ou tombe le point sur la cote, et n'a rien a apparier a la
-         main. Une ville ajoutee trouve sa place toute seule. -->
-    <g class="ct-v">
-      <circle class="ct-p ct-p-hors" cx="117" cy="562" r="7"/>
-      <text class="ct-n" x="132" y="540" text-anchor="start">Cannes</text>
-    </g>
-    <g class="ct-v">
-      <circle class="ct-p ct-p-hors" cx="287" cy="501" r="7"/>
-      <text class="ct-n" x="276" y="482" text-anchor="end">Antibes</text>
-    </g>
-    <g class="ct-v">
-      <circle class="ct-p ct-p-std" cx="325" cy="320" r="7"/>
-      <text class="ct-n" x="311" y="300" text-anchor="end">Cagnes-sur-Mer</text>
-    </g>
-    <g class="ct-v">
-      <circle class="ct-p ct-p-std" cx="385" cy="311" r="7"/>
-      <text class="ct-n" x="398" y="346" text-anchor="start">Saint-Laurent-du-Var</text>
-    </g>
-    <g class="ct-v ct-v-hub">
-      <circle class="ct-halo" cx="503" cy="219" r="26"/>
-      <circle class="ct-p ct-p-hub" cx="503" cy="219" r="13"/>
-      <text class="ct-n ct-n-hub" x="488" y="268" text-anchor="start">Nice</text>
-    </g>
-    <g class="ct-v">
-      <path class="ct-tr" d="M580 224 L566 178"/>
-      <circle class="ct-p ct-p-hors" cx="580" cy="232" r="7"/>
-      <text class="ct-n" x="560" y="168" text-anchor="middle">Villefranche-sur-Mer</text>
-    </g>
-    <g class="ct-v">
-      <path class="ct-tr" d="M616 234 L638 286"/>
-      <circle class="ct-p ct-p-hors" cx="614" cy="226" r="7"/>
-      <text class="ct-n" x="640" y="296" text-anchor="start">Beaulieu-sur-Mer</text>
-    </g>
-    <g class="ct-v">
-      <circle class="ct-p ct-p-hors" cx="760" cy="157" r="7"/>
-      <text class="ct-n" x="772" y="148" text-anchor="start">Monaco</text>
-    </g>
-    <g class="ct-v">
-      <circle class="ct-p ct-p-hors" cx="874" cy="78" r="7"/>
-      <text class="ct-n" x="861" y="64" text-anchor="end">Menton</text>
-    </g>
-    <!-- LA POINTE DU CRAYON. Elle ne se pose que pendant le trace, et
-         seulement si le defilement le mene : sans JavaScript elle n'existe
-         pas, elle est ajoutee par le script. -->
-      </svg>
-      <figcaption class="carte-l" data-th="e9.carteL">Le halo couvre la <b>zone standard</b> — Nice, Saint-Laurent-du-Var et Cagnes-sur-Mer, livraison 60&nbsp;€. Partout ailleurs, 120&nbsp;€.</figcaption>
-    </figure>
+           D'OU VIENT CE TRACE. Il etait dessine a la main, et il etait faux :
+           converti en latitude/longitude, il passait par 43.556 N / 7.148 E,
+           soit cinq kilometres au large, a l'est du cap d'Antibes. Le cap
+           etait dessine pointant vers l'EST alors qu'il pointe vers le SUD,
+           ce qui fabriquait un crochet que personne d'ici ne reconnaissait.
 
-    <div class="villes rv">
-      <!-- Nice a desormais sa page, comme les quatre autres villes. La ligne
-           devient donc un lien : une page ville vers laquelle rien ne mene
-           est une page orpheline, et une page orpheline se reference mal. -->
-      <a class="ville ville-l" href="/location-climatiseur-nice"><div><b>Nice</b><span data-t="e9.nice">Tous quartiers · 60 €</span></div></a>
-      <div class="ville"><div><b>Saint-Laurent-du-Var</b><span data-t="e9.std">Zone standard · 60 €</span></div></div>
-      <div class="ville"><div><b>Cagnes-sur-Mer</b><span data-t="e9.std">Zone standard · 60 €</span></div></div>
-      <div class="ville"><div><b>Villefranche-sur-Mer</b><span data-t="e9.hors">Hors zone · 120 €</span></div></div>
-      <div class="ville"><div><b>Beaulieu-sur-Mer</b><span data-t="e9.hors">Hors zone · 120 €</span></div></div>
-      <!-- Quatre villes qui étaient réunies sur une seule ligne « sur
-           demande » : même box, même transporteur, une trentaine de minutes
-           de route. Chacune a maintenant sa page, et la ligne y mène —
-           « location climatiseur Cannes » et « location climatiseur Menton »
-           sont deux recherches différentes. -->
-      <a class="ville ville-l" href="/location-climatiseur-cannes"><div><b>Cannes</b><span data-t="e9.hors">Hors zone · 120 €</span></div></a>
-      <a class="ville ville-l" href="/location-climatiseur-antibes"><div><b>Antibes</b><span data-t="e9.hors">Hors zone · 120 €</span></div></a>
-      <a class="ville ville-l" href="/location-climatiseur-monaco"><div><b>Monaco</b><span data-t="e9.hors">Hors zone · 120 €</span></div></a>
-      <a class="ville ville-l" href="/location-climatiseur-menton"><div><b>Menton</b><span data-t="e9.hors">Hors zone · 120 €</span></div></a>
-    </div>
+           Il vient maintenant des limites reelles des 163 communes des
+           Alpes-Maritimes (france-geojson, donnees IGN). Methode : toute
+           arete partagee par deux communes est interieure ; celles qui
+           n'apparaissent qu'une fois forment le contour du departement, dont
+           la partie sud EST le littoral. 370 points bruts, ramenes a 267 par
+           Douglas-Peucker. Controle : les neuf villes tombent toutes a moins
+           de 1,8 km du trait — les centres-villes sont legerement en retrait
+           de la plage, c'est normal et c'est vrai.
 
-    <!-- La ville suivante est déjà datée. Elle était en petits caractères
-         tout en bas du pied de page, sous les mentions légales : c'est
-         pourtant la seule preuve que « la liste s'allonge » n'est pas un
-         slogan. Elle remonte ici, à sa place. -->
-    <div class="ouvertures rv">
-      <p class="ouv-t" data-t="e9.ouvT">Prochaines ouvertures</p>
-      <div class="ouv-l">
-        <!-- Deux villes sans date, une avec. On n'invente pas de calendrier :
-             une ville annoncée qui n'ouvre pas coûte plus cher que le silence.
-             La Réunion garde sa date parce qu'elle est déjà publiée, avec sa
-             propre page. -->
-        <span class="ouv"><i class="gtt" aria-hidden="true"></i><b data-t="e9.lyon">Lyon</b><em data-t="e9.prep">en préparation</em></span>
-        <span class="ouv"><i class="gtt" aria-hidden="true"></i><b data-t="e9.geneve">Genève</b><em data-t="e9.prep">en préparation</em></span>
-        <a class="ouv lien" href="/reunion"><i class="gtt" aria-hidden="true"></i><b data-t="e9.reunion">La Réunion</b><em data-t="e9.nov">novembre 2026 →</em></a>
+           Projection equirectangulaire : x=(lon-6.94332)x1578.3,
+           y=(43.81049-lat)x2181. A cette latitude un degre de longitude vaut
+           cos(43.75) fois un degre de latitude, soit 1575,6 unites pour 2181
+           — l'ecart avec 1578,3 est de 0,2 %, invisible a l'ecran. -->
+      <path class="ct-mer" d="M-15.1 720.6L-18.7 718.6L-19.3 712.9L-0.8 710.2L4.0 714.3L4.6 710.6L8.5 708.9L8.0 704.4L5.9 702.0L7.1 696.4L9.3 694.6L10.1 688.8L12.5 684.9L20.3 683.8L18.4 680.4L18.8 677.7L21.7 675.4L18.1 671.6L17.7 665.8L14.4 663.6L5.4 664.3L-1.2 661.8L-2.7 658.3L-8.7 656.5L-7.8 641.4L-4.3 639.0L-2.6 630.2L4.1 620.0L10.7 616.9L11.0 613.2L7.6 609.5L13.0 602.8L24.8 590.4L45.0 578.1L79.6 570.6L95.8 571.1L108.6 574.1L109.9 571.8L109.6 567.1L115.6 566.4L116.2 571.6L119.0 568.4L126.8 569.3L140.8 577.2L140.3 580.8L143.6 585.0L141.5 591.4L145.4 593.4L147.2 596.3L146.2 599.1L149.0 601.5L151.2 598.7L150.6 596.1L154.0 585.4L165.8 575.6L177.7 572.6L183.6 561.6L187.6 557.9L193.5 546.3L199.0 539.8L207.4 533.6L212.7 532.7L218.9 527.5L241.4 522.6L254.7 524.6L267.7 531.0L274.5 543.4L278.2 544.0L281.6 547.4L281.5 563.9L277.7 565.5L274.0 572.7L279.2 578.1L277.5 579.2L277.3 583.6L280.6 586.5L283.8 584.0L280.3 580.7L284.1 577.0L293.3 577.0L294.5 582.3L304.7 579.9L308.2 574.6L306.4 572.8L308.5 570.0L311.3 569.9L313.0 566.2L318.4 564.5L313.6 558.1L305.7 559.3L303.2 555.0L303.0 550.6L309.5 540.0L307.4 530.9L311.3 526.8L309.6 524.3L297.3 526.4L294.5 525.0L290.6 517.8L286.8 516.2L290.0 505.9L293.8 499.8L293.9 495.2L283.3 492.5L281.7 487.3L283.6 484.6L288.8 485.2L293.7 482.9L295.0 480.3L293.5 475.3L289.0 475.8L288.0 470.9L289.1 447.6L294.8 420.3L305.7 389.1L309.5 386.2L305.7 383.6L306.1 379.8L310.7 382.7L314.7 372.0L319.1 367.8L321.2 360.6L337.2 342.4L354.1 333.9L366.7 337.9L396.5 332.8L403.0 337.0L405.8 343.4L409.7 347.2L409.0 350.8L403.9 355.7L406.3 360.5L415.3 359.5L418.0 355.5L423.5 355.9L425.7 353.5L423.4 350.4L426.3 343.9L433.7 340.0L434.2 336.9L445.0 329.5L446.0 323.3L452.9 316.4L450.8 308.7L451.4 298.9L454.3 295.1L455.0 291.8L453.5 287.8L456.9 281.4L465.0 271.5L474.3 264.1L503.7 253.5L526.4 253.3L532.5 257.1L539.2 256.8L536.5 253.1L538.0 251.4L538.0 245.7L540.3 245.9L539.7 254.5L546.9 256.3L548.9 259.8L551.9 261.0L553.7 265.4L552.9 270.1L554.9 271.7L572.4 271.8L574.8 268.4L576.8 257.6L574.4 253.2L573.9 245.1L581.6 238.3L583.4 229.0L586.2 226.7L595.4 231.4L596.6 240.5L602.0 239.7L604.7 249.4L601.3 251.8L602.1 256.0L595.0 259.9L595.3 267.6L598.2 269.2L599.8 273.7L598.5 275.7L601.2 278.0L601.0 291.3L604.6 297.4L612.3 296.6L615.5 294.8L618.7 288.5L617.4 277.5L618.5 270.7L626.1 272.6L628.6 278.9L639.8 273.0L641.5 269.3L637.1 268.2L631.4 271.7L628.2 271.2L626.9 267.8L616.4 263.6L616.0 255.0L612.1 247.7L609.7 236.8L613.7 232.2L616.8 234.5L621.8 226.2L618.7 222.4L619.9 218.4L624.8 219.8L622.3 215.4L630.4 211.4L642.9 208.7L643.7 202.2L651.1 195.8L658.8 192.4L664.7 193.4L677.7 202.2L691.7 192.6L703.4 190.8L705.7 194.6L703.0 198.2L710.4 197.4L719.2 200.3L721.7 195.4L729.9 198.7L737.5 194.0L738.1 189.5L745.5 184.4L735.2 176.4L741.0 171.8L740.6 165.4L757.0 150.1L759.5 151.9L764.4 145.7L769.4 134.7L776.1 132.4L779.7 128.4L782.4 133.5L787.0 130.3L790.0 130.0L791.7 132.2L804.5 113.6L819.0 109.6L824.7 115.9L828.1 116.7L838.6 129.4L857.8 134.1L859.8 131.9L859.3 126.7L850.3 116.9L854.9 105.7L860.6 101.9L860.1 99.2L863.2 94.4L881.8 80.5L886.3 79.2L888.5 81.3L893.4 76.6L891.8 70.5L895.3 64.4L897.8 66.1L902.7 62.3L902.0 60.6L913.2 56.8L922.0 56.2 L1300 56.0 L1300 1200 L-468.2 1200 Z"/>
+      <!-- LA ZONE STANDARD. Trois communes, et rien de plus : ce n'est pas
+           une frontiere administrative, c'est un tarif.
+           C'etait une ellipse posee a cheval sur la mer et sur la montagne.
+           C'est maintenant un ruban qui SUIT la cote, de Cagnes a l'est de
+           Nice — parce que c'est la qu'on livre. Large de 90 unites, soit
+           4,6 km : la bande littorale, pas l'arriere-pays. Pas de bord net,
+           un trait plein donnerait a croire a une limite exacte. -->
+      <path class="ct-ile" d="M194.7 644.9L186.0 642.5L184.5 643.9L158.0 643.0L145.9 639.1L139.3 631.3L140.3 626.1L148.2 630.2L152.4 629.1L159.0 624.6L165.8 625.4L173.5 631.4L189.8 633.3L193.3 636.6L201.3 639.3L199.6 642.5L196.8 642.5L195.4 647.4Z M163.9 665.7L148.0 662.4L148.0 658.6L164.1 656.6L171.1 657.6L177.0 660.1L175.5 662.5L169.4 663.3L164.9 667.4Z"/>
+      <path class="ct-zone" d="M337.2 342.4L359.3 334.5L370.8 336.8L396.5 332.8L405.8 343.4L403.9 355.7L418.0 355.5L423.4 350.4L434.2 336.9L445.0 329.5L450.8 308.7L454.3 295.1L456.9 281.4L480.8 260.5L513.6 253.5L529.5 256.1L536.5 253.1L538.0 245.7" data-f=".62"/>
+      <path class="ct-cote" d="M-15.1 720.6L-18.7 718.6L-19.3 712.9L-0.8 710.2L4.0 714.3L4.6 710.6L8.5 708.9L8.0 704.4L5.9 702.0L7.1 696.4L9.3 694.6L10.1 688.8L12.5 684.9L20.3 683.8L18.4 680.4L18.8 677.7L21.7 675.4L18.1 671.6L17.7 665.8L14.4 663.6L5.4 664.3L-1.2 661.8L-2.7 658.3L-8.7 656.5L-7.8 641.4L-4.3 639.0L-2.6 630.2L4.1 620.0L10.7 616.9L11.0 613.2L7.6 609.5L13.0 602.8L24.8 590.4L45.0 578.1L79.6 570.6L95.8 571.1L108.6 574.1L109.9 571.8L109.6 567.1L115.6 566.4L116.2 571.6L119.0 568.4L126.8 569.3L140.8 577.2L140.3 580.8L143.6 585.0L141.5 591.4L145.4 593.4L147.2 596.3L146.2 599.1L149.0 601.5L151.2 598.7L150.6 596.1L154.0 585.4L165.8 575.6L177.7 572.6L183.6 561.6L187.6 557.9L193.5 546.3L199.0 539.8L207.4 533.6L212.7 532.7L218.9 527.5L241.4 522.6L254.7 524.6L267.7 531.0L274.5 543.4L278.2 544.0L281.6 547.4L281.5 563.9L277.7 565.5L274.0 572.7L279.2 578.1L277.5 579.2L277.3 583.6L280.6 586.5L283.8 584.0L280.3 580.7L284.1 577.0L293.3 577.0L294.5 582.3L304.7 579.9L308.2 574.6L306.4 572.8L308.5 570.0L311.3 569.9L313.0 566.2L318.4 564.5L313.6 558.1L305.7 559.3L303.2 555.0L303.0 550.6L309.5 540.0L307.4 530.9L311.3 526.8L309.6 524.3L297.3 526.4L294.5 525.0L290.6 517.8L286.8 516.2L290.0 505.9L293.8 499.8L293.9 495.2L283.3 492.5L281.7 487.3L283.6 484.6L288.8 485.2L293.7 482.9L295.0 480.3L293.5 475.3L289.0 475.8L288.0 470.9L289.1 447.6L294.8 420.3L305.7 389.1L309.5 386.2L305.7 383.6L306.1 379.8L310.7 382.7L314.7 372.0L319.1 367.8L321.2 360.6L337.2 342.4L354.1 333.9L366.7 337.9L396.5 332.8L403.0 337.0L405.8 343.4L409.7 347.2L409.0 350.8L403.9 355.7L406.3 360.5L415.3 359.5L418.0 355.5L423.5 355.9L425.7 353.5L423.4 350.4L426.3 343.9L433.7 340.0L434.2 336.9L445.0 329.5L446.0 323.3L452.9 316.4L450.8 308.7L451.4 298.9L454.3 295.1L455.0 291.8L453.5 287.8L456.9 281.4L465.0 271.5L474.3 264.1L503.7 253.5L526.4 253.3L532.5 257.1L539.2 256.8L536.5 253.1L538.0 251.4L538.0 245.7L540.3 245.9L539.7 254.5L546.9 256.3L548.9 259.8L551.9 261.0L553.7 265.4L552.9 270.1L554.9 271.7L572.4 271.8L574.8 268.4L576.8 257.6L574.4 253.2L573.9 245.1L581.6 238.3L583.4 229.0L586.2 226.7L595.4 231.4L596.6 240.5L602.0 239.7L604.7 249.4L601.3 251.8L602.1 256.0L595.0 259.9L595.3 267.6L598.2 269.2L599.8 273.7L598.5 275.7L601.2 278.0L601.0 291.3L604.6 297.4L612.3 296.6L615.5 294.8L618.7 288.5L617.4 277.5L618.5 270.7L626.1 272.6L628.6 278.9L639.8 273.0L641.5 269.3L637.1 268.2L631.4 271.7L628.2 271.2L626.9 267.8L616.4 263.6L616.0 255.0L612.1 247.7L609.7 236.8L613.7 232.2L616.8 234.5L621.8 226.2L618.7 222.4L619.9 218.4L624.8 219.8L622.3 215.4L630.4 211.4L642.9 208.7L643.7 202.2L651.1 195.8L658.8 192.4L664.7 193.4L677.7 202.2L691.7 192.6L703.4 190.8L705.7 194.6L703.0 198.2L710.4 197.4L719.2 200.3L721.7 195.4L729.9 198.7L737.5 194.0L738.1 189.5L745.5 184.4L735.2 176.4L741.0 171.8L740.6 165.4L757.0 150.1L759.5 151.9L764.4 145.7L769.4 134.7L776.1 132.4L779.7 128.4L782.4 133.5L787.0 130.3L790.0 130.0L791.7 132.2L804.5 113.6L819.0 109.6L824.7 115.9L828.1 116.7L838.6 129.4L857.8 134.1L859.8 131.9L859.3 126.7L850.3 116.9L854.9 105.7L860.6 101.9L860.1 99.2L863.2 94.4L881.8 80.5L886.3 79.2L888.5 81.3L893.4 76.6L891.8 70.5L895.3 64.4L897.8 66.1L902.7 62.3L902.0 60.6L913.2 56.8L922.0 56.2"/>
+      <!-- L'ECHELLE. Elle est calculee, pas dessinee a vue : 1 degre de
+           longitude vaut 80,56 km a cette latitude, et le dessin compte
+           1578,3 unites par degre. 10 km font donc 196 unites. -->
+      <g class="ct-ech">
+        <path d="M64 156 L64 172 M64 164 L260 164 M260 156 L260 172"/>
+        <text class="ct-ech-n" x="64" y="146" data-t="e9.carteEch">10 km</text>
+      </g>
+      <!-- Le nom de la mer, en creux : sur une carte, un aplat sans nom n'est
+           pas une mer, c'est une tache. -->
+      <text class="ct-mer-n" x="758" y="470" text-anchor="middle" data-t="e9.carteMer">Mer Méditerranée</text>
+      <!-- LES NEUF VILLES, UNE PAR GROUPE. Chaque groupe porte son point, son
+           nom et, quand il en faut un, son trait de rappel. C'est ce qui
+           permet de les allumer une a une au passage du trait : le JavaScript
+           cherche ou tombe le point sur la cote, et n'a rien a apparier a la
+           main. Une ville ajoutee trouve sa place toute seule. -->
+      <g class="ct-v">
+        <circle class="ct-p ct-p-hors" cx="117" cy="562" r="7"/>
+        <text class="ct-n" x="132" y="540" text-anchor="start">Cannes</text>
+      </g>
+      <g class="ct-v">
+        <circle class="ct-p ct-p-hors" cx="287" cy="501" r="7"/>
+        <text class="ct-n" x="276" y="482" text-anchor="end">Antibes</text>
+      </g>
+      <g class="ct-v">
+        <circle class="ct-p ct-p-std" cx="325" cy="320" r="7"/>
+        <text class="ct-n" x="311" y="300" text-anchor="end">Cagnes-sur-Mer</text>
+      </g>
+      <g class="ct-v">
+        <circle class="ct-p ct-p-std" cx="385" cy="311" r="7"/>
+        <text class="ct-n" x="398" y="346" text-anchor="start">Saint-Laurent-du-Var</text>
+      </g>
+      <g class="ct-v ct-v-hub">
+        <circle class="ct-halo" cx="503" cy="219" r="26"/>
+        <circle class="ct-p ct-p-hub" cx="503" cy="219" r="13"/>
+        <text class="ct-n ct-n-hub" x="488" y="268" text-anchor="start">Nice</text>
+      </g>
+      <g class="ct-v">
+        <path class="ct-tr" d="M580 224 L566 178"/>
+        <circle class="ct-p ct-p-hors" cx="580" cy="232" r="7"/>
+        <text class="ct-n" x="560" y="168" text-anchor="middle">Villefranche-sur-Mer</text>
+      </g>
+      <g class="ct-v">
+        <path class="ct-tr" d="M616 234 L638 286"/>
+        <circle class="ct-p ct-p-hors" cx="614" cy="226" r="7"/>
+        <text class="ct-n" x="640" y="296" text-anchor="start">Beaulieu-sur-Mer</text>
+      </g>
+      <g class="ct-v">
+        <circle class="ct-p ct-p-hors" cx="760" cy="157" r="7"/>
+        <text class="ct-n" x="772" y="148" text-anchor="start">Monaco</text>
+      </g>
+      <g class="ct-v">
+        <circle class="ct-p ct-p-hors" cx="874" cy="78" r="7"/>
+        <text class="ct-n" x="861" y="64" text-anchor="end">Menton</text>
+      </g>
+      <!-- LA POINTE DU CRAYON. Elle ne se pose que pendant le trace, et
+           seulement si le defilement le mene : sans JavaScript elle n'existe
+           pas, elle est ajoutee par le script. -->
+        </svg>
+        <figcaption class="carte-l" data-th="e9.carteL">Le halo couvre la <b>zone standard</b> — Nice, Saint-Laurent-du-Var et Cagnes-sur-Mer, livraison 60&nbsp;€. Partout ailleurs, 120&nbsp;€.</figcaption>
+      </figure>
+
+      <div class="piste-t">
+  <div class="villes rv">
+        <!-- Nice a desormais sa page, comme les quatre autres villes. La ligne
+             devient donc un lien : une page ville vers laquelle rien ne mene
+             est une page orpheline, et une page orpheline se reference mal. -->
+        <a class="ville ville-l" href="/location-climatiseur-nice"><div><b>Nice</b><span data-t="e9.nice">Tous quartiers · 60 €</span></div></a>
+        <div class="ville"><div><b>Saint-Laurent-du-Var</b><span data-t="e9.std">Zone standard · 60 €</span></div></div>
+        <div class="ville"><div><b>Cagnes-sur-Mer</b><span data-t="e9.std">Zone standard · 60 €</span></div></div>
+        <div class="ville"><div><b>Villefranche-sur-Mer</b><span data-t="e9.hors">Hors zone · 120 €</span></div></div>
+        <div class="ville"><div><b>Beaulieu-sur-Mer</b><span data-t="e9.hors">Hors zone · 120 €</span></div></div>
+        <!-- Quatre villes qui étaient réunies sur une seule ligne « sur
+             demande » : même box, même transporteur, une trentaine de minutes
+             de route. Chacune a maintenant sa page, et la ligne y mène —
+             « location climatiseur Cannes » et « location climatiseur Menton »
+             sont deux recherches différentes. -->
+        <a class="ville ville-l" href="/location-climatiseur-cannes"><div><b>Cannes</b><span data-t="e9.hors">Hors zone · 120 €</span></div></a>
+        <a class="ville ville-l" href="/location-climatiseur-antibes"><div><b>Antibes</b><span data-t="e9.hors">Hors zone · 120 €</span></div></a>
+        <a class="ville ville-l" href="/location-climatiseur-monaco"><div><b>Monaco</b><span data-t="e9.hors">Hors zone · 120 €</span></div></a>
+        <a class="ville ville-l" href="/location-climatiseur-menton"><div><b>Menton</b><span data-t="e9.hors">Hors zone · 120 €</span></div></a>
       </div>
-    </div>
 
-    <!-- La liste d'attente. Pas de promesse de date : le visiteur dit sa
-         ville, le message part sur WhatsApp, et la demande réelle décide de
-         la prochaine ouverture. Aucun serveur nécessaire — le lien se
-         fabrique dans le navigateur. -->
-    <div class="attente rv">
-      <label class="attente-l" for="ville-a" data-t="e9.attenteL">Votre ville n’est pas dans la liste&nbsp;?</label>
-      <div class="attente-row">
-        <input id="ville-a" class="attente-i" type="text" autocomplete="address-level2"
-               data-tp="e9.attenteP" placeholder="Marseille, Toulouse, Bordeaux…">
-        <button class="btn btn-1 btn-s attente-b" type="button" id="ville-b" data-t="e9.attenteB">Nous le dire</button>
+      <!-- La ville suivante est déjà datée. Elle était en petits caractères
+           tout en bas du pied de page, sous les mentions légales : c'est
+           pourtant la seule preuve que « la liste s'allonge » n'est pas un
+           slogan. Elle remonte ici, à sa place. -->
+      <div class="ouvertures rv">
+        <p class="ouv-t" data-t="e9.ouvT">Prochaines ouvertures</p>
+        <div class="ouv-l">
+          <!-- Deux villes sans date, une avec. On n'invente pas de calendrier :
+               une ville annoncée qui n'ouvre pas coûte plus cher que le silence.
+               La Réunion garde sa date parce qu'elle est déjà publiée, avec sa
+               propre page. -->
+          <span class="ouv"><i class="gtt" aria-hidden="true"></i><b data-t="e9.lyon">Lyon</b><em data-t="e9.prep">en préparation</em></span>
+          <span class="ouv"><i class="gtt" aria-hidden="true"></i><b data-t="e9.geneve">Genève</b><em data-t="e9.prep">en préparation</em></span>
+          <a class="ouv lien" href="/reunion"><i class="gtt" aria-hidden="true"></i><b data-t="e9.reunion">La Réunion</b><em data-t="e9.nov">novembre 2026 →</em></a>
+        </div>
       </div>
-      <p class="attente-m" data-t="e9.attenteM">Nous ouvrons les villes dans l’ordre des demandes. Merci de nous aider à choisir la prochaine.</p>
+
+      <!-- La liste d'attente. Pas de promesse de date : le visiteur dit sa
+           ville, le message part sur WhatsApp, et la demande réelle décide de
+           la prochaine ouverture. Aucun serveur nécessaire — le lien se
+           fabrique dans le navigateur. -->
+      <div class="attente rv">
+        <label class="attente-l" for="ville-a" data-t="e9.attenteL">Votre ville n’est pas dans la liste&nbsp;?</label>
+        <div class="attente-row">
+          <input id="ville-a" class="attente-i" type="text" autocomplete="address-level2"
+                 data-tp="e9.attenteP" placeholder="Marseille, Toulouse, Bordeaux…">
+          <button class="btn btn-1 btn-s attente-b" type="button" id="ville-b" data-t="e9.attenteB">Nous le dire</button>
+        </div>
+        <p class="attente-m" data-t="e9.attenteM">Nous ouvrons les villes dans l’ordre des demandes. Merci de nous aider à choisir la prochaine.</p>
+      </div>
+      </div>
     </div>
   </div>
 </section>
@@ -4773,6 +4792,16 @@ Object.assign(T, {
    876 en grand écran. */
 (function(){
   var fig = document.querySelector('.carte');
+  /* ── QUI MESURE L'AVANCEMENT DU TRAIT ──
+     Sur grand écran la carte est ÉPINGLÉE (voir .piste) : sa position à
+     l'écran ne bouge plus une fois collée, donc la mesurer, elle, ferait
+     geler le dessin à mi-parcours. C'est la PISTE qui défile — c'est donc
+     elle qu'on mesure. Sous 900 px il n'y a pas d'épinglage et la piste
+     enveloppe la carte de près : le calcul revient au même qu'avant.
+     Repli sur la carte si la piste n'existe pas, pour que l'écran
+     continue de fonctionner même si le HTML change. */
+  var piste = (fig && fig.closest) ? fig.closest('.piste') : null;
+  var mesure = piste || fig;
   if(!fig) return;
   var svg  = fig.querySelector('svg');
   var cote = fig.querySelector('.ct-cote');
@@ -4865,7 +4894,7 @@ Object.assign(T, {
 
   function poser(){
     enAttente = false;
-    var r = fig.getBoundingClientRect();
+    var r = mesure.getBoundingClientRect();
     var vh = window.innerHeight || document.documentElement.clientHeight;
     if(!vh) return;
     if(!arme){ if(r.top < vh) return; armer(); }
