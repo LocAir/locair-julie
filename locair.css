@@ -2183,6 +2183,18 @@ p,li,dd,dt,figcaption,blockquote,.dire,.pas-p{text-wrap:pretty}
 @media(max-width:900px){.essentiel-in{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:420px){.essentiel-in{grid-template-columns:1fr;gap:16px}}
 
+/* Le bouton qui suit le prix, sur /acheter-climatiseur. Il vit DANS le bloc
+   « L'essentiel », donc il n'apparaît que lorsque ce bloc apparaît —
+   c'est-à-dire seulement quand un modèle est réellement en vente. Un bouton
+   « Acheter en ligne » qui mène à une boutique vide est pire que pas de
+   bouton du tout.
+   Le <p> est hors de la grille à cinq colonnes : il reprend donc lui-même la
+   largeur et les marges du site. */
+.essentiel-cta{max-width:var(--max);margin:var(--e-1) auto 0;padding:0 var(--pad);
+  display:flex;flex-wrap:wrap;align-items:center;gap:9px 18px}
+.essentiel .essentiel-cta span{display:block;margin:0;font-size:var(--s-2);
+  color:var(--ink-2);line-height:var(--h-3)}
+
 /* ── QUELQU'UN, PAS UNE ENTREPRISE ─────────────────────────────────────────
    Le site disait « nous » du début à la fin. Or les clients, eux, écrivent
    le prénom d'Aly dans leurs avis Google — c'est lui qui sonne et qui pose.
@@ -2192,6 +2204,16 @@ p,li,dd,dt,figcaption,blockquote,.dire,.pas-p{text-wrap:pretty}
 .mot-in{max-width:680px;margin:0 auto;padding:0 var(--pad)}
 .mot p{font-size:var(--t-6);line-height:var(--h-4);color:var(--ink);
   letter-spacing:var(--l-4)}
+/* La petite ligne grise ne l'était plus. Mesuré : dans une section .mot,
+   « .mot p » (une classe + un élément) l'emporte sur « .mini » (une classe
+   seule), et les mentions en petits caractères sortaient à 23 px en marine
+   — la taille d'un paragraphe de corps, en plus foncé. Sur
+   /acheter-climatiseur, trois mentions de bas de bloc criaient aussi fort
+   que le texte principal.
+   La règle est écrite ICI, juste sous celle qu'elle corrige : une
+   correction posée cent lignes plus loin se perd, et se refait. */
+.mot p.mini{font-size:var(--s-3);line-height:var(--h-4);color:var(--ink-3);
+  letter-spacing:normal}
 .mot .mot-q{margin-top:22px;padding-top:18px;border-top:1px solid var(--line);
   font-size:var(--s-3);line-height:var(--h-4);color:var(--ink-2);max-width:var(--lire)}
 .mot .mot-q b{color:var(--ink)}
@@ -3931,3 +3953,180 @@ body{font-variant-ligatures:common-ligatures contextual}
    épingler la moitié de l'écran ne laisse plus de place pour lire
    l'autre moitié. Aucune règle à annuler — tout ce qui précède vit
    dans la requête média. */
+
+/* ══ LA BOUTIQUE ══════════════════════════════════════════════════════════
+   /boutique — la seule page du site où l'on achète une machine au lieu de
+   la louer. Trois règles ont dicté la mise en forme :
+
+   1. LE PRIX EST LE PRIX. Pas de « à partir de », pas de frais de port
+      révélés à la dernière page. Le montant est écrit gros, et la ligne
+      juste en dessous dit ce qu'il comprend. Un client qui découvre la
+      livraison au moment de payer ne revient pas.
+   2. LA VILLE SE CHOISIT DANS LA CARTE, PAS APRÈS. Le choix est au-dessus
+      du bouton, dans la même boîte que le prix : on ne paie jamais sans
+      avoir vu où ça sera livré.
+   3. PAS DE CARTE SOMBRE ICI. Les cartes de tarif de la location ont une
+      carte « recommandée » en marine, parce qu'il y a trois durées à
+      comparer. À la vente il n'y a pas de bon choix à souffler : une ou
+      deux machines, chacune sur le même fond clair.
+
+   Rien n'est repris des classes .pack : elles portent une mise en page
+   téléphone taillée pour trois colonnes de prix (nom et prix sur la même
+   ligne, bouton masqué sauf sur la carte recommandée). Réutilisées ici,
+   elles masqueraient le bouton d'achat. Des classes à part coûtent trente
+   lignes ; un bouton d'achat invisible coûte une vente. */
+.b-liste{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:var(--e-1);margin-top:var(--e-2);
+}
+.b-carte{
+  display:flex;flex-direction:column;padding:26px 24px 24px;
+  border:1px solid var(--line);border-radius:var(--r-l);background:var(--paper);
+  transition:border-color var(--mv-1) var(--mv);
+}
+.b-carte:hover{border-color:var(--vif)}
+
+/* ── LES DEUX PRIX SUR LA MÊME LIGNE ──
+   Mesuré : « Olimpia Splendid Dolceclima Air Pro 14 HP » tient sur deux
+   lignes, « De'Longhi Pinguino PAC EX100 » sur une seule. Résultat, le
+   premier prix tombait 32 px plus bas que le second. Or comparer deux prix,
+   c'est exactement ce qu'on vient faire ici : deux chiffres à des hauteurs
+   différentes, l'œil les compare mal.
+   Chaque fiche devient donc une sous-grille des mêmes six rangées : nom,
+   caractéristiques, prix, mention TTC, ce qui est compris, et le bloc
+   ville + bouton. Les six alignements se font tout seuls, quelle que soit
+   la longueur des noms.
+   Le nombre de rangées doit correspondre EXACTEMENT aux six enfants
+   construits par boutique.js — une rangée en trop et tout se décale d'un
+   cran. Sous 620 px les fiches sont empilées : il n'y a plus rien à
+   aligner, et la sous-grille est inutile. */
+@supports (grid-template-rows: subgrid) {
+  @media(min-width:620px){
+    /* row-gap:0 est indispensable : une sous-grille hérite sinon de
+       l'écart de la grille parente — ici 32 px — et les six blocs de la
+       fiche se retrouvaient séparés de 32 px chacun, comme six paragraphes
+       sans rapport. Les écarts internes restent ceux des marges. */
+    .b-carte{display:grid;grid-template-rows:subgrid;grid-row:span 6;row-gap:0}
+  }
+}
+.b-nom{font-size:var(--s-6);font-weight:700;letter-spacing:var(--l-3);
+  line-height:var(--h-2);color:var(--ink)}
+.b-spec{margin-top:4px;font-size:var(--s-2);color:var(--ink-2);line-height:var(--h-3)}
+.b-prix{
+  margin-top:20px;font-size:var(--n-3);font-weight:700;letter-spacing:var(--l-1);
+  line-height:1;color:var(--ink);font-variant-numeric:tabular-nums;
+}
+/* ── UN PIÈGE DE CASCADE, MESURÉ ──
+   Écrites « .b-ttc », « .b-note » et « .b-err », ces trois règles ne
+   s'appliquaient pas : ce sont des <p> dans une section .mot, et
+   « .mot p » (une classe + un élément) l'emporte sur une classe seule.
+   Mesuré : les trois textes sortaient à 23 px en marine au lieu de 13 px
+   en gris — la mention « prix TTC » était aussi grosse que le titre.
+   Les deux premières passent donc par leur carte (.b-carte .b-ttc, deux
+   classes), la troisième par « p.b-err », à égalité avec .mot p mais
+   écrite plus bas dans le fichier, donc gagnante. */
+.b-carte .b-ttc{margin-top:9px;font-size:var(--s-2);color:var(--ink-2);
+  line-height:var(--h-3);letter-spacing:normal}
+.b-c{
+  margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
+  font-size:var(--s-3);color:var(--ink-2);line-height:var(--h-4);
+  list-style:none;padding-left:0;
+}
+.b-c li+li{margin-top:5px}
+.b-c b{color:var(--ink);font-weight:700}
+
+/* Le choix de la ville. Poussé en bas de la carte (margin-top:auto) pour
+   que deux cartes de hauteurs différentes gardent leur bouton sur la même
+   ligne — c'est la dernière chose que l'œil compare. */
+.b-ville{margin-top:auto;padding-top:20px}
+.b-ville > label{
+  display:block;font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-5);
+  text-transform:uppercase;color:var(--ink-2);margin-bottom:7px;
+}
+/* La flèche native d'un <select> ne ressemble à rien deux fois de suite :
+   chaque système en dessine une différente. Celle-ci est dans le fichier,
+   donc identique partout. appearance:none supprime l'autre. */
+.b-sel{
+  width:100%;font:inherit;font-size:var(--s-4);color:var(--ink);
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--r);
+  padding:12px 40px 12px 14px;line-height:var(--h-3);
+  appearance:none;-webkit-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none' stroke='%2357687C' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 15px center;
+  transition:border-color var(--mv-1) var(--mv);
+}
+.b-sel:hover{border-color:var(--ink-2)}
+.b-sel:focus-visible{border-color:var(--vif)}
+.b-carte .btn{margin-top:14px;width:100%;justify-content:center}
+.b-carte .btn[aria-busy="true"]{opacity:.72;pointer-events:none}
+/* Un bouton qu'on ne peut pas cliquer doit SE VOIR. Mesuré avant : il était
+   vert plein, identique à l'autre, et ne réagissait pas au clic — on croit
+   que le site est cassé. Gris sur gris clair, il dit de lui-même qu'il
+   attend quelque chose ; c'est son texte qui dit quoi.
+   Mesuré : #57687C sur #F5F7FA = 5,28:1, au-dessus de la norme. Un bouton
+   désactivé reste du texte à lire. */
+.b-carte .btn:disabled{
+  background:var(--mist);color:var(--ink-2);border:1px solid var(--line);
+  cursor:not-allowed;transform:none;
+}
+.b-carte .btn:disabled:hover{background:var(--mist);transform:none}
+/* Le fond ne se fond plus. Mesuré : .btn fait glisser sa couleur de fond
+   sur 0,14 s, alors que la couleur du TEXTE, elle, change d'un coup. Au
+   moment où l'on choisit sa ville, le texte passait donc en blanc pendant
+   que le fond était encore gris très clair — 140 ms de blanc sur blanc,
+   rapport de contraste 1,07. Court, mais c'est exactement l'instant où
+   l'on regarde le bouton.
+   Ailleurs sur le site le fondu ne pose pas ce problème : aucun autre
+   bouton ne change d'état sous les yeux du visiteur. Ici, si. */
+.b-carte .btn{transition:transform var(--mv-1) var(--mv)}
+.b-carte .b-note{margin-top:12px;font-size:var(--s-2);color:var(--ink-3);
+  line-height:var(--h-3);letter-spacing:normal}
+
+/* Les garanties légales : une liste qui se lit, avec de l'air entre le
+   titre et le premier point. Mesuré avant : la liste collait au titre,
+   sans marge. */
+.b-lois{margin:var(--e-1) 0 0;padding-left:1.15em;font-size:var(--s-5);
+  color:var(--ink-2);line-height:var(--h-4);max-width:58ch}
+.b-lois li+li{margin-top:11px}
+.b-lois b{color:var(--ink);font-weight:700}
+
+/* « Rien en vente aujourd'hui » n'est pas une accroche : c'est une
+   excuse, et une excuse se dit doucement. Mesuré avant : le message
+   héritait de .mot p et sortait à 23 px sur 34 caractères de large — huit
+   lignes en gros caractères pour dire qu'il n'y a rien. Ramené à la taille
+   d'un paragraphe normal, sur une ligne plus longue.
+   « p.b-vide » et pas « .b-vide » : à égalité avec .mot p, et écrit plus
+   bas dans le fichier, donc gagnant. */
+p.b-vide{font-size:var(--s-5);color:var(--ink-2);line-height:var(--h-4);
+  max-width:56ch;margin-top:var(--e-1)}
+p.b-vide b{color:var(--ink)}
+p.b-vide a{color:var(--vif);text-decoration:underline;text-underline-offset:3px}
+p.b-vide a:hover,p.b-vide a:focus-visible{color:var(--vif-d)}
+
+/* Le message d'erreur d'un paiement qui n'a pas démarré. Le rouge est celui
+   de la croix du tableau comparatif — le site n'en a qu'un. */
+p.b-err{margin-top:var(--e-1);font-size:var(--s-4);color:#B3261E;
+  line-height:var(--h-4);max-width:var(--lire);font-weight:500;
+  letter-spacing:normal}
+
+/* Le retour de la page de paiement. Vert maison quand c'est payé, gris
+   quand le client a fait demi-tour — jamais du rouge : renoncer à un achat
+   n'est pas une erreur. */
+.b-retour{
+  border:1px solid var(--line);border-radius:var(--r-l);
+  background:var(--mist);padding:22px 24px;
+}
+/* « payé » et pas « ok » : « .ok » existe déjà dans ce fichier — c'est la
+   coche verte du tableau comparatif, et elle est en position absolue.
+   Mesuré avant : le message « C'est payé » se retrouvait collé en haut à
+   gauche de l'écran, 50 px de large, un mot par ligne, par-dessus l'en-tête.
+   Un nom de classe de deux lettres finit toujours par appartenir à
+   quelqu'un d'autre. */
+.b-retour.paye{background:var(--vif-clair);border-color:rgba(8,110,96,.22)}
+.b-retour b{display:block;font-size:var(--s-6);font-weight:700;
+  letter-spacing:var(--l-3);color:var(--ink);margin-bottom:6px}
+.b-retour.paye b{color:var(--vif-d)}
+.b-retour span{display:block;font-size:var(--s-4);color:var(--ink-2);
+  line-height:var(--h-4);max-width:54ch}
+.b-retour a{color:var(--vif);text-decoration:underline;text-underline-offset:3px}
+.b-retour a:hover,.b-retour a:focus-visible{color:var(--vif-d)}
