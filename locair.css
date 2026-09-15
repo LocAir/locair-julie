@@ -3866,3 +3866,68 @@ body{font-variant-ligatures:common-ligatures contextual}
 }
 .dire a:hover,.mini a:hover,
 .dire a:focus-visible,.mini a:focus-visible{text-decoration-color:currentColor}
+
+/* ══ LA PISTE — LA CARTE RESTE PENDANT QU'ON LIT ══════════════════════════
+   Écran « Zone de livraison ». Avant, la carte se dessinait puis partait
+   vers le haut : au moment où l'on lisait « Nice · 60 € », elle n'était
+   déjà plus à l'écran. Les deux informations se répondent — la liste dit
+   le prix, la carte dit où — elles doivent donc être visibles ensemble.
+
+   La carte est ÉPINGLÉE à droite, la liste défile à gauche. C'est du
+   position:sticky et rien d'autre : aucun script, aucune bibliothèque,
+   et rien à désactiver pour qui a demandé moins d'animation, puisque ce
+   n'est pas une animation mais une mise en page.
+
+   Le calage vertical de la page est en « proximity » et jamais en
+   « mandatory » (voir .snap) : il ne se bat donc pas avec le défilement
+   libre dont cette piste a besoin. */
+@media(min-width:900px){
+  .piste{
+    display:grid;
+    /* La carte prend la plus grosse part : ses étiquettes de ville sont
+       du texte, et du texte réduit de moitié ne se lit plus. */
+    grid-template-columns:minmax(0,36fr) minmax(0,64fr);
+    gap:clamp(24px,3vw,44px);
+    align-items:start;
+    margin-top:var(--e-2);
+  }
+  .piste > .carte{
+    grid-column:2;grid-row:1;
+    position:sticky;
+    /* 72 px de barre collante + une respiration. */
+    top:92px;
+    margin-top:0;
+  }
+  .piste-t{grid-column:1;grid-row:1;display:flex;flex-direction:column}
+  .piste-t > *{margin-top:0}
+  .piste-t > * + *{margin-top:var(--e-2)}
+
+  /* ── LA COMPENSATION DES ÉTIQUETTES ──
+     Mesuré : la carte faisait 950 px de large, ses noms de ville étaient
+     dessinés à 19 unités SVG, soit 18 px à l'écran. Dans la colonne de
+     droite elle n'en fait plus que 620 : les mêmes 19 unités tomberaient
+     à 11,8 px, illisibles.
+     Comme le SVG est vectoriel, on agrandit le dessin du texte dans la
+     même proportion (950/620 ≈ 1,53) pour retrouver la MÊME taille à
+     l'œil. Rien n'est deviné : chaque valeur est l'ancienne multipliée
+     par ce rapport. */
+  /* ── LA LISTE PASSE SUR UNE COLONNE ──
+     Mesuré : .villes est une grille de 3 colonnes au-dessus de 980 px.
+     Dans la piste, la colonne de gauche n'en fait plus que 420 : la
+     troisième colonne partait littéralement SOUS la carte, et « Cagnes-
+     sur-Mer », « Cannes » et « Menton » étaient coupés en deux.
+     Une seule colonne, avec le nom et le prix sur la même ligne : c'est
+     une liste qu'on parcourt en descendant, exactement comme le regard
+     descend la piste. */
+  .piste-t .villes{grid-template-columns:1fr;gap:0}
+
+  .piste .ct-n{font-size:29px}        /* 19 × 1,53 */
+  .piste .ct-n-hub{font-size:41px}    /* 27 × 1,53 */
+  .piste .ct-ech-n{font-size:24px}    /* 16 × 1,53 */
+  .piste .ct-mer-n{font-size:40px}    /* 26 × 1,53 */
+}
+
+/* Sous 900 px, la piste redevient la pile d'avant : sur un téléphone,
+   épingler la moitié de l'écran ne laisse plus de place pour lire
+   l'autre moitié. Aucune règle à annuler — tout ce qui précède vit
+   dans la requête média. */
