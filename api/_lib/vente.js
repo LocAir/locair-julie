@@ -83,4 +83,28 @@ async function getCatalogueAdmin(supabase) {
   }
 }
 
-module.exports = { getProduitsVente, getCatalogueAdmin };
+// Un seul modèle, lu CÔTÉ SERVEUR pour préparer un paiement — avec son
+// stock, que la version publique ne publie jamais.
+//
+// C'est ici, et nulle part ailleurs, que le prix d'une vente est décidé.
+// Le navigateur n'envoie qu'un identifiant de modèle : s'il pouvait
+// envoyer un montant, n'importe qui achèterait une machine à 1 €. Règle
+// valable pour tout paiement, jamais à contourner « juste pour un test ».
+async function getProduitVentePourPaiement(supabase, id) {
+  const n = parseInt(id, 10);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  try {
+    const { data, error } = await supabase
+      .from('modeles_climatiseur').select(CHAMPS + ', actif, vente_active')
+      .eq('id', n).maybeSingle();
+    if (error || !data) return null;
+    if (data.actif === false || data.vente_active !== true) return null;
+    if (!ligneComplete(data)) return null;   // prix > 0 ET stock > 0
+    return data;
+  } catch (e) {
+    console.error('[vente] getProduitVentePourPaiement:', e.message);
+    return null;
+  }
+}
+
+module.exports = { getProduitsVente, getCatalogueAdmin, getProduitVentePourPaiement };
