@@ -601,19 +601,21 @@ module.exports = async (req, res) => {
   // ── 4septies. Devis entreprise envoyé sans réponse depuis trop longtemps ──
   // Jusqu'ici un devis pouvait rester "envoyé" indéfiniment sans jamais
   // rappeler à Aly de relancer le client — perte potentielle de revenus B2B
-  // (audit automatisations, 2026-08-02).
+  // (audit automatisations, 2026-08-02). Filtre sur envoye_at (pas
+  // created_at, corrigé le 2026-09-16) : un devis resté en brouillon avant
+  // d'être envoyé n'affiche plus un délai déjà écoulé dès l'envoi.
   try {
     const SEUIL_DEVIS_JOURS = parseInt(process.env.DEVIS_ANCIEN_SEUIL_JOURS) || 5;
     const seuilDevisDate = new Date(Date.now() - SEUIL_DEVIS_JOURS * 86400000).toISOString();
     const { data: devisAnciens } = await supabase
       .from('devis')
-      .select('id, raison_sociale, prix_propose_cents, created_at')
+      .select('id, raison_sociale, prix_propose_cents, envoye_at')
       .eq('statut', 'envoye')
-      .lt('created_at', seuilDevisDate);
+      .lt('envoye_at', seuilDevisDate);
 
     let devisAncienCount = 0;
     for (const d of devisAnciens || []) {
-      const joursEnvoi = Math.round((Date.now() - new Date(d.created_at).getTime()) / 86400000);
+      const joursEnvoi = Math.round((Date.now() - new Date(d.envoye_at).getTime()) / 86400000);
       await pushToAdmin(supabase, {
         title: `📋 Devis sans réponse depuis ${joursEnvoi}j — ${d.raison_sociale || '?'}`,
         body:  `Devis de ${(d.prix_propose_cents / 100).toFixed(2)} € envoyé, toujours sans réponse — pense à relancer.`,
@@ -624,6 +626,36 @@ module.exports = async (req, res) => {
     if (devisAncienCount) report.devisAnciens = devisAncienCount;
   } catch (e) {
     console.error('[Cron devis anciens]', e.message);
+  }
+
+  // ── 4octies. Devis envoyé jamais répondu → expire automatiquement ────────
+  // Le statut "expiré" existait dans le schéma mais rien ne l'attribuait
+  // jamais (ni bouton, ni automatisation) — un devis sans réponse restait
+  // rappelé chaque jour indéfiniment (bloc précédent), sans jamais se
+  // refermer tout seul (audit du 2026-09-16). Seuil volontairement bien plus
+  // long que le rappel (45j vs 5j) : le but est de cesser de relancer une
+  // opportunité manifestement morte, jamais de fermer trop tôt une vraie
+  // négociation en cours.
+  try {
+    const SEUIL_EXPIRE_JOURS = parseInt(process.env.DEVIS_EXPIRE_SEUIL_JOURS) || 45;
+    const seuilExpireDate = new Date(Date.now() - SEUIL_EXPIRE_JOURS * 86400000).toISOString();
+    const { data: devisExpires, error: expireErr } = await supabase
+      .from('devis')
+      .update({ statut: 'expire' })
+      .eq('statut', 'envoye')
+      .lt('envoye_at', seuilExpireDate)
+      .select('id, raison_sociale');
+    if (expireErr) throw expireErr;
+    if (devisExpires && devisExpires.length) {
+      report.devisExpires = devisExpires.length;
+      await pushToAdmin(supabase, {
+        title: `📋 ${devisExpires.length} devis marqué${devisExpires.length > 1 ? 's' : ''} expiré${devisExpires.length > 1 ? 's' : ''}`,
+        body:  `Sans réponse depuis plus de ${SEUIL_EXPIRE_JOURS} jours : ${devisExpires.map(d => d.raison_sociale || '?').join(', ')}. Rouvre-le si le client revient.`,
+        tag:   'devis-expires-auto',
+      });
+    }
+  } catch (e) {
+    console.error('[Cron devis expiration auto]', e.message);
   }
 
   // ── 4octies. Dossier assurance déclaré sans suite depuis trop longtemps ───
