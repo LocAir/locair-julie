@@ -779,6 +779,12 @@ tr.bulk-selected td{background:var(--blue-lt)}
   .print-label img{width:100%;max-width:140px;height:auto}
   .print-label-num{font-size:18px;font-weight:800;margin-top:6px}
   .print-label-brand{font-size:11px;color:#777;margin-top:2px}
+  /* QR client (prolongation/espace client) — plus grand et mis en avant,
+     c'est celui-là que le CLIENT scanne, contrairement au petit QR interne
+     ci-dessus réservé à l'inventaire d'Aly. */
+  .print-label-client{margin-top:10px;padding-top:10px;border-top:1px dashed #ccc}
+  .print-label-client img{max-width:110px}
+  .print-label-client-txt{font-size:10.5px;color:#555;margin-top:3px;line-height:1.3}
 }
 </style>
 </head>
@@ -3057,9 +3063,20 @@ async function finishScanInventaire(){
 // déjà utilisé (et déjà autorisé par la CSP) pour le QR de parrainage côté
 // partenaire/index.html. Imprimé via une zone dédiée + @media print (voir
 // <style>), plutôt qu'une popup séparée qui aurait pu se heurter à la CSP.
-function printStockLabels(){
+async function printStockLabels(){
   const appareils = STOCK_APPAREILS_CACHE || [];
   if(!appareils.length){ showToast('Aucun appareil à imprimer pour cette ville', 'error'); return; }
+  // Jeton QR client (espace client + prolongation, demande d'Aly 2026-09-16)
+  // — généré au fil de l'eau côté serveur pour tout appareil qui n'en a pas
+  // encore (voir admin-stock.js, action 'ensure_qr_tokens'). Un aller-retour
+  // de plus avant impression, mais imprimé rarement (une fois par appareil
+  // dans sa vie), et jamais régénéré pour un appareil qui a déjà son étiquette.
+  let qrTokenById = {};
+  try{
+    const r = await fetch(API('admin-stock'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'ensure_qr_tokens'})});
+    const d = await r.json();
+    if(r.ok && d.appareils) for(const a of d.appareils) qrTokenById[a.id] = a.qr_token;
+  }catch(e){} // pas grave : l'étiquette imprimée gardera juste le QR client vide (voir ci-dessous)
   let area = document.getElementById('print-labels-area');
   if(!area){ area = document.createElement('div'); area.id = 'print-labels-area'; document.body.appendChild(area); }
   // Le numéro d'appareil n'est unique QUE dans sa ville — une étiquette
@@ -3068,12 +3085,21 @@ function printStockLabels(){
   // casserait la saisie manuelle "au clavier", explicitement demandée).
   const ville = (document.querySelector('#tab-stock h2')?.textContent || '').replace('Flotte — ', '');
   area.innerHTML = `<div class="print-label-note">Étiquettes valables uniquement pour : ${escHtml(ville)}</div>`
-    + appareils.map(a => `
+    + appareils.map(a => {
+        const qrToken = qrTokenById[a.id];
+        const clientUrl = qrToken ? `https://www.locair.fr/client?d=${qrToken}` : '';
+        return `
       <div class="print-label">
         <img src="https://api.qrserver.com/v1/create-qr-code/?data=${a.numero}&size=140x140&margin=0" alt="QR n°${a.numero}"/>
         <div class="print-label-num">N° ${a.numero}</div>
         <div class="print-label-brand">Loc'Air</div>
-      </div>`).join('');
+        ${clientUrl ? `
+        <div class="print-label-client">
+          <img src="https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(clientUrl)}&size=110x110&margin=0" alt="QR espace client"/>
+          <div class="print-label-client-txt">📱 Scannez pour votre espace<br/>et prolonger votre location</div>
+        </div>` : ''}
+      </div>`;
+      }).join('');
   window.print();
 }
 // Tableau des chiffres clés du parc — tout en haut de l'onglet Stock

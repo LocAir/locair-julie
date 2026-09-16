@@ -694,14 +694,14 @@ body:not(.vl) .footer p,body:not(.vl) .footer a{color:rgba(255,255,255,.22)!impo
     <!-- ÉCRAN 1 : identification -->
     <div id="screen-login">
       <p class="page-sub login-eyebrow" style="margin-bottom:12px;font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);text-decoration:underline;text-decoration-color:rgba(197,169,108,.45);text-underline-offset:6px;text-decoration-thickness:1.5px">Mon espace</p>
-      <h1>Suivez votre <em>location</em></h1>
-      <p class="page-sub">Retrouvez le statut de votre commande, vos documents et l'assistance — avec votre numéro de commande et votre email.</p>
+      <h1 id="login-h1">Suivez votre <em>location</em></h1>
+      <p class="page-sub" id="login-sub">Retrouvez le statut de votre commande, vos documents et l'assistance — avec votre numéro de commande et votre email.</p>
       <form id="login-form">
         <div class="form-group">
           <label for="f-email">Email</label>
           <input type="email" id="f-email" autocomplete="email" autofocus placeholder="marie@exemple.fr" required/>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="login-ref-group">
           <label for="f-ref">Numéro de commande</label>
           <input type="text" id="f-ref" autocomplete="off" placeholder="LOC-260710-8129" style="text-transform:uppercase" required/>
           <p style="font-size:12px;color:var(--text-3,#888);margin-top:6px;line-height:1.5">Reçu par email après votre réservation. Vous ne le trouvez pas ? <a href="https://wa.me/33663798756" target="_blank" rel="noopener noreferrer" style="color:var(--gold,#c5a96c);text-decoration:underline;font-weight:600">Contactez-nous →</a></p>
@@ -777,6 +777,27 @@ let _prolongReturnStatus = null;
     window.history.replaceState({}, '', '/client/');
   }
 })();
+
+// QR collé sur le climatiseur (demande d'Aly, 2026-09-16) : ?d=<jeton>
+// identifie l'APPAREIL scanné, pas directement le client — voir
+// api/client-login-qr.js pour la résolution vers la réservation active.
+// Capturé puis retiré de l'URL tout de suite (même principe que les 2
+// blocs juste au-dessus) pour ne jamais laisser le jeton traîner dans
+// l'historique/les favoris du navigateur.
+let _qrToken = null;
+(function _captureQrToken(){
+  const p = new URLSearchParams(window.location.search);
+  const d = p.get('d');
+  if(d){
+    _qrToken = d.trim();
+    window.history.replaceState({}, '', '/client/');
+  }
+})();
+// Posé après une connexion réussie via le QR — showDashboard() ouvre alors
+// directement "Prolonger ma location" dès l'affichage, sans que le client
+// ait à la chercher lui-même : "scanne → connecté → prolonge en 3 clics"
+// (demande d'Aly). Remis à false après usage, une seule fois par scan.
+let _qrOpenProlong = false;
 
 function escHtml(s){
   return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -854,6 +875,21 @@ async function apiClient(path, body){
   return d;
 }
 
+// Écran de connexion adapté au scan du QR d'un climatiseur : le numéro de
+// commande n'est plus demandé (l'appareil scanné suffit à retrouver LA
+// réservation active dessus) — juste l'email, "une authentification simple
+// qui prend un instant" (demande d'Aly), pour confirmer que c'est bien le
+// locataire et pas un inconnu qui aurait vu l'étiquette.
+function showQrLoginForm(){
+  document.getElementById('login-ref-group').classList.add('hidden');
+  document.getElementById('f-ref').required = false;
+  document.getElementById('login-h1').innerHTML = 'Bonjour <em>chez vous</em>';
+  document.getElementById('login-sub').textContent = "Entrez votre email pour accéder à votre location et la prolonger si besoin.";
+  document.getElementById('btn-login').textContent = 'Accéder à mon espace';
+  document.getElementById('screen-login').classList.remove('hidden');
+  document.getElementById('screen-faceid').classList.add('hidden');
+  document.getElementById('screen-dashboard').classList.add('hidden');
+}
 document.getElementById('login-form').addEventListener('submit', async function(e){
   e.preventDefault();
   const email = document.getElementById('f-email').value.trim();
@@ -863,7 +899,9 @@ document.getElementById('login-form').addEventListener('submit', async function(
   errEl.classList.add('hidden');
   btn.disabled = true; btn.textContent = 'Recherche…';
   try{
-    const r = await fetch('/api/client-login', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, ref})});
+    const url  = _qrToken ? '/api/client-login-qr' : '/api/client-login';
+    const body = _qrToken ? {qr_token:_qrToken, email} : {email, ref};
+    const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
     const d = await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(d.error || 'Erreur');
     localStorage.setItem('client_token', d.token);
@@ -873,6 +911,7 @@ document.getElementById('login-form').addEventListener('submit', async function(
     // échoue — le client n'a alors jamais à retaper ces informations.
     localStorage.setItem('client_email', email);
     localStorage.removeItem('c_fid');
+    if(_qrToken){ _qrOpenProlong = true; _qrToken = null; }
     showDashboard();
   }catch(err){
     errEl.textContent = err.message;
@@ -1666,6 +1705,14 @@ async function showDashboard(){
         : '<div class="alert-error" style="margin-bottom:14px">❌ Le paiement de votre prolongation n\'a pas abouti après la vérification bancaire. Vous pouvez réessayer depuis « Prolonger ma location » ci-dessous.</div>';
       document.getElementById('dash-content').insertAdjacentHTML('afterbegin', banner);
     }
+    if(_qrOpenProlong){
+      _qrOpenProlong = false;
+      // L'accordéon "Prolonger" n'existe dans le DOM que si sa condition
+      // d'affichage (_showProlong, voir renderDashboard) est vraie — un
+      // dossier déjà tout au bout de sa location, ou sans étape en cours,
+      // ne l'affiche pas : rien à ouvrir dans ce cas, silencieusement.
+      if(document.getElementById('action-body-prolong')) toggleAction('prolong');
+    }
     setTimeout(offerClientFaceId, 1200);
   }catch(err){
     // Session expirée (401) → retour automatique au login sans écran d'erreur
@@ -1766,7 +1813,14 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDocModa
 // Vue initiale : connexion (fond navy) — retiré quand showDashboard() est appelé
 document.body.classList.add('vl');
 
-if(localStorage.getItem('client_token')){
+if(_qrToken){
+  // Le scan d'UN appareil précis passe toujours devant une session déjà
+  // stockée dans ce navigateur (jeton d'une location différente, ou
+  // laissée ouverte depuis une visite précédente) — sans ça, l'étiquette
+  // d'un climatiseur pouvait rouvrir l'espace d'une tout autre réservation
+  // au lieu de celle réellement en cours sur cet appareil-là.
+  showQrLoginForm();
+} else if(localStorage.getItem('client_token')){
   const cFidId = localStorage.getItem(C_FID_KEY);
   if(cFidId){
     document.getElementById('screen-login').classList.add('hidden');

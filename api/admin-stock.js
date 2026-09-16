@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
 const { resolveAdminCity, notifyIfSoldOut } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
@@ -591,6 +592,31 @@ module.exports = async (req, res) => {
         throw error;
       }
       return res.status(200).json({ ok: true });
+    }
+
+    // QR client (espace client + prolongation, demande d'Aly 2026-09-16) :
+    // génère un jeton opaque par appareil, réutilisé pour toujours une fois
+    // posé — c'est ce jeton qui apparaît sur l'étiquette collée sur l'unité
+    // (voir printStockLabels côté admin/index.html), jamais le numéro
+    // interne. Volontairement un jeton séparé (pas le numéro, contrairement
+    // au QR d'inventaire déjà existant) : un numéro d'appareil se devine
+    // trivialement (1, 2, 3…) — un inconnu qui l'essaierait sur /client
+    // pourrait sinon tenter de deviner le compte d'un autre client. Le
+    // jeton, lui, n'est trouvable qu'en scannant physiquement l'étiquette.
+    // Génère seulement ce qui manque (idempotent, appelable à chaque
+    // impression sans jamais changer un jeton déjà collé sur une unité).
+    if (action === 'ensure_qr_tokens') {
+      const { data: sansToken, error: selErr } = await supabase
+        .from('appareils').select('id').eq('city_id', city.id).is('qr_token', null);
+      if (selErr) throw selErr;
+      for (const a of (sansToken || [])) {
+        const token = crypto.randomBytes(16).toString('hex');
+        await supabase.from('appareils').update({ qr_token: token }).eq('id', a.id);
+      }
+      const { data: all, error: allErr } = await supabase
+        .from('appareils').select('id, numero, qr_token').eq('city_id', city.id);
+      if (allErr) throw allErr;
+      return res.status(200).json({ ok: true, appareils: all || [] });
     }
 
     // action 'list' (par défaut) — filtres Partie 9 : statut, modèle,
