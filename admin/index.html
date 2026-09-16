@@ -192,12 +192,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   .bottom-nav button .bn-ic svg{width:19px;height:19px}
   .bottom-nav button.on{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
   .bottom-nav .bn-dot{position:absolute;top:6px;right:calc(50% - 15px);width:8px;height:8px;border-radius:50%;background:var(--red);border:1.5px solid var(--white)}
-  /* Sans ce décalage, la barre "N sélectionné(s) / Supprimer" (Stock, mode
-     sélection) se posait pile sur la barre de navigation du bas — les deux
-     fixed en bas d'écran se chevauchaient, "Supprimer" recouvrant Stock/Plus
-     et rendant la nav illisible/inutilisable tant qu'une sélection était en
-     cours. Remonte la barre de sélection au-dessus du bottom-nav. */
-  .stock-select-bar{bottom:calc(84px + env(safe-area-inset-bottom))}
+  /* Sans ce décalage, la barre "N sélectionné(s) / Supprimer" (mode
+     sélection, Stock/Réservations…) se posait pile sur la barre de
+     navigation du bas — les deux fixed en bas d'écran se chevauchaient,
+     "Supprimer" recouvrant Stock/Plus et rendant la nav illisible/
+     inutilisable tant qu'une sélection était en cours. Remonte la barre de
+     sélection au-dessus du bottom-nav. */
+  .bulk-select-bar{bottom:calc(84px + env(safe-area-inset-bottom))}
 }
 
 .a-search{position:relative;margin-bottom:16px}
@@ -513,10 +514,14 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .liv-stat-pill.warn .n{color:var(--red)}
 .btn-resa-rapide{background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);padding:9px 14px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px}
 .btn-resa-rapide:hover{filter:brightness(1.08)}
-.stock-select-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--blue-d);color:#fff;border-radius:100px;padding:12px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(0,0,0,.35);font-size:14px;font-weight:600;z-index:900;transition:opacity .15s}
-.stock-select-bar.hidden{display:none}
-.row-item.stock-selected{outline:2px solid var(--blue);background:var(--blue-lt)}
-.stock-select-cb{width:18px;height:18px;accent-color:var(--blue);cursor:pointer;flex-shrink:0}
+/* Barre de sélection multiple + case à cocher — générique, partagée par
+   toutes les listes avec sélection en masse (Stock, Réservations…). */
+.bulk-select-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--blue-d);color:#fff;border-radius:100px;padding:12px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(0,0,0,.35);font-size:14px;font-weight:600;z-index:900;transition:opacity .15s}
+.bulk-select-bar.hidden{display:none}
+.row-item.bulk-selected{outline:2px solid var(--blue);background:var(--blue-lt)}
+.bulk-select-cb{width:18px;height:18px;accent-color:var(--blue);cursor:pointer;flex-shrink:0}
+/* Table (grand écran) : case à cocher en 1re colonne + ligne surlignée. */
+tr.bulk-selected td{background:var(--blue-lt)}
 
 /* Carte réservation : hiérarchie client → dates → prix, au lieu d'une seule
    ligne de métadonnées à parser. Le prix reprend le traitement typographique
@@ -3186,9 +3191,9 @@ async function loadStock(silent){
             : (APPAREIL_STATUT_LABEL[a.statut]||a.statut);
           const isSelected = STOCK_SELECTION.has(a.id);
           return `
-          <div class="row-item${isSelected?' stock-selected':''}" id="stock-card-${a.id}">
+          <div class="row-item${isSelected?' bulk-selected':''}" id="stock-card-${a.id}">
             <div class="row-top">
-              ${STOCK_SELECTION_MODE?`<input type="checkbox" class="stock-select-cb" ${isSelected?'checked':''} onchange="toggleStockItem(${a.id}, this.checked)">`:''}
+              ${STOCK_SELECTION_MODE?`<input type="checkbox" class="bulk-select-cb" ${isSelected?'checked':''} onchange="toggleStockItem(${a.id}, this.checked)">`:''}
               <span class="row-title">Climatiseur n°${a.numero}</span>
               <span style="display:flex;gap:6px;align-items:center">
                 ${a.en_preparation?`<span class="chip a_faire">En préparation</span>`:''}
@@ -3224,7 +3229,7 @@ async function loadStock(silent){
         <button class="btn btn-blue btn-block" onclick="addAppareil()" style="margin-top:14px">+ Ajouter des appareils (nouvel achat)</button>
         <div class="err" id="stock-err"></div>
       </div>
-      <div class="stock-select-bar ${STOCK_SELECTION_MODE && STOCK_SELECTION.size>0?'':'hidden'}" id="stock-select-bar">
+      <div class="bulk-select-bar ${STOCK_SELECTION_MODE && STOCK_SELECTION.size>0?'':'hidden'}" id="stock-select-bar">
         <span>${STOCK_SELECTION.size} appareil${STOCK_SELECTION.size>1?'s':''} sélectionné${STOCK_SELECTION.size>1?'s':''}</span>
         <button style="background:#fff2;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:100px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer" onclick="cancelStockSelection()">Annuler</button>
         <button style="background:var(--red);border:none;color:#fff;border-radius:100px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer" onclick="deleteSelectedAppareils()">🗑️ Supprimer (${STOCK_SELECTION.size})</button>
@@ -3601,7 +3606,7 @@ function toggleStockSelectMode(){
 function toggleStockItem(id, checked){
   if(checked) STOCK_SELECTION.add(id); else STOCK_SELECTION.delete(id);
   const card = document.getElementById('stock-card-'+id);
-  if(card) card.classList.toggle('stock-selected', checked);
+  if(card) card.classList.toggle('bulk-selected', checked);
   const bar = document.getElementById('stock-select-bar');
   if(bar){
     bar.classList.toggle('hidden', STOCK_SELECTION.size===0);
@@ -3785,6 +3790,16 @@ let RESERVATIONS_CACHE = [];
 let RESERVATIONS_FILTER = 'toutes';
 let RESERVATIONS_SHOW_MASQUEES = false;
 let RESERVATIONS_VIEW = 'liste'; // 'liste' | 'calendrier' — le calendrier vit ici plutôt que dans un onglet séparé (même données, juste groupées par semaine)
+// Sélection multiple + suppression en masse (demande d'Aly, 2026-09-16) —
+// même mécanique que Stock (toggleStockSelectMode/toggleStockItem), voir
+// aussi la barre .bulk-select-bar partagée. Marche sur les 2 vues rendues en
+// parallèle par renderReservations() (cartes mobile + tableau grand écran) et
+// sur tous les filtres (Actives/Hors zone/En attente/Confirmées/
+// Prolongations/Annulées/Terminées) — RESA_SELECTION garde les ids cochés
+// même en changeant de filtre, pour cocher des réservations réparties sur
+// plusieurs onglets avant de les supprimer d'un coup si besoin.
+let RESA_SELECTION_MODE = false;
+let RESA_SELECTION = new Set();
 
 // Nombre de nuits + urgence relative à côté des dates — évite le calcul mental
 // pour prioriser d'un coup d'œil parmi une longue liste.
@@ -3937,9 +3952,11 @@ function reservationRowHtml(res, readOnly){
         ${readOnly ? '' : `<div class="row-actions"><button class="btn btn-grey" onclick="restoreReservation(${res.id})">Restaurer</button></div>`}
       </div>`;
   }
+  const isSelected = RESA_SELECTION.has(res.id);
   return `
-    <div class="row-item">
+    <div class="row-item${isSelected?' bulk-selected':''}" id="resa-card-${res.id}">
       <div class="row-top">
+        ${RESA_SELECTION_MODE?`<input type="checkbox" class="bulk-select-cb" ${isSelected?'checked':''} onchange="toggleResaItem(${res.id}, this.checked)">`:''}
         <span class="row-title">${nom}</span>
         <span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end">
           ${res.hors_zone?`<span class="chip probleme" title="Affectation manuelle requise">⚠️ Hors zone</span>`:''}
@@ -4158,6 +4175,7 @@ function renderReservationsToolbar(){
     <div id="resa-liste-view" class="${RESERVATIONS_VIEW==='liste'?'':'hidden'}">
       <div class="list-toolbar">
         <input type="text" id="resa-search" placeholder="🔎 Client, adresse, référence…" oninput="renderReservations()"/>
+        ${!RESERVATIONS_SHOW_MASQUEES ? `<button class="btn ${RESA_SELECTION_MODE?'btn-blue':'btn-grey'}" style="padding:7px 14px;font-size:13px" onclick="toggleResaSelectMode()">${RESA_SELECTION_MODE?'✓ Sélection activée':'☑ Sélectionner'}</button>` : ''}
         <button class="list-toolbar-export" onclick="exportReservationsCsv()" title="Exporter la liste en CSV">⬇️ CSV</button>
       </div>
       <div class="filter-scroll" style="margin-bottom:16px">
@@ -4166,6 +4184,11 @@ function renderReservationsToolbar(){
       ${RESERVATIONS_FILTER==='hors_zone'?`<div class="affect-hint">💡 Le code postal du client ne correspond à aucune ville configurée — aucun livreur n'est assigné automatiquement, choisis-en un toi-même sur chaque réservation.</div>`:''}
       <div id="resa-list" class="table-toggle-zone"></div>
       ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleMasquees()">${RESERVATIONS_SHOW_MASQUEES?'← Revenir aux réservations':`🙈 Afficher les réservations supprimées (${masqueesCount})`}</button>` : ''}
+      <div class="bulk-select-bar ${RESA_SELECTION_MODE && RESA_SELECTION.size>0?'':'hidden'}" id="resa-select-bar">
+        <span>${RESA_SELECTION.size} réservation${RESA_SELECTION.size>1?'s':''} sélectionnée${RESA_SELECTION.size>1?'s':''}</span>
+        <button style="background:#fff2;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:100px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer" onclick="cancelResaSelection()">Annuler</button>
+        <button style="background:var(--red);border:none;color:#fff;border-radius:100px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer" onclick="deleteSelectedReservations()">🗑️ Supprimer (${RESA_SELECTION.size})</button>
+      </div>
     </div>
     <div id="resa-calendrier-view" class="${RESERVATIONS_VIEW==='calendrier'?'':'hidden'}">
       <div id="resa-calendrier-content"></div>
@@ -5224,7 +5247,7 @@ function reservationsTableHtml(items){
   const thHtml = c => `<th onclick="sortReservationsTable('${c.key}')" class="${RESA_SORT.col===c.key?'sorted':''}">${c.label}<span class="sort-arrow">${RESA_SORT.col===c.key?(RESA_SORT.dir===1?'▲':'▼'):'▲'}</span></th>`;
   return `
     <div class="admin-table-wrap"><table class="admin-table">
-      <thead><tr>${cols.map(thHtml).join('')}<th>Actions</th></tr></thead>
+      <thead><tr>${RESA_SELECTION_MODE?'<th></th>':''}${cols.map(thHtml).join('')}<th>Actions</th></tr></thead>
       <tbody>${rows.map(reservationTableRowHtml).join('')}</tbody>
     </table></div>`;
 }
@@ -5241,7 +5264,9 @@ function reservationTableRowHtml(res){
       <td><button class="btn btn-grey" onclick="restoreReservation(${res.id})">Restaurer</button></td>
     </tr>`;
   }
-  return `<tr>
+  const isSelected = RESA_SELECTION.has(res.id);
+  return `<tr id="resa-row-${res.id}" class="${isSelected?'bulk-selected':''}">
+    ${RESA_SELECTION_MODE?`<td><input type="checkbox" class="bulk-select-cb" ${isSelected?'checked':''} onchange="toggleResaItem(${res.id}, this.checked)"></td>`:''}
     <td style="white-space:nowrap">${refCopyHtml(res.ref)}</td>
     <td style="white-space:nowrap">${nom}${res.type_client==='entreprise'?' 🏢':''}</td>
     <td class="ellipsis" title="${escHtml(res.adresse||'')}">${escHtml(res.adresse||'—')}</td>
@@ -5841,6 +5866,51 @@ async function restoreReservation(id){
     renderReservationsToolbar();
     showToast('Réservation restaurée', 'success');
   }catch(e){ showToast(e.message, 'error'); }
+}
+// Sélection multiple sur la liste des réservations — même mécanique que
+// Stock (toggleStockSelectMode/toggleStockItem plus haut), "Supprimer" ayant
+// ici exactement le même sens que le bouton un par un (deleteReservation) :
+// un masquage (masquee=true), jamais une suppression réelle en base — voir
+// son commentaire pour le pourquoi (dossier encore actif, appareils liés…).
+function toggleResaSelectMode(){
+  RESA_SELECTION_MODE = !RESA_SELECTION_MODE;
+  if(!RESA_SELECTION_MODE) RESA_SELECTION.clear();
+  renderReservationsToolbar();
+}
+function toggleResaItem(id, checked){
+  if(checked) RESA_SELECTION.add(id); else RESA_SELECTION.delete(id);
+  document.getElementById('resa-card-'+id)?.classList.toggle('bulk-selected', checked);
+  document.getElementById('resa-row-'+id)?.classList.toggle('bulk-selected', checked);
+  const bar = document.getElementById('resa-select-bar');
+  if(bar){
+    const count = RESA_SELECTION.size;
+    bar.classList.toggle('hidden', count===0);
+    bar.querySelector('span').textContent = `${count} réservation${count>1?'s':''} sélectionnée${count>1?'s':''}`;
+    const delBtn = bar.querySelector('button:last-child');
+    if(delBtn) delBtn.textContent = `🗑️ Supprimer (${count})`;
+  }
+}
+function cancelResaSelection(){ RESA_SELECTION.clear(); RESA_SELECTION_MODE = false; renderReservationsToolbar(); }
+async function deleteSelectedReservations(){
+  const ids = [...RESA_SELECTION];
+  if(!ids.length) return;
+  confirmAction(`Masquer ${ids.length} réservation${ids.length>1?'s':''} de l'écran ? Les réservations encore actives (en attente/confirmées) ne sont ni annulées ni remboursées — elles disparaissent juste de cette liste (et de l'onglet Livraisons), récupérables via "Afficher les réservations supprimées".`, async () => {
+    const failedIds = [];
+    for(const id of ids){
+      try{
+        const r = await fetch(API('admin-reservations'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'update', id, masquee:true})});
+        if(!r.ok) failedIds.push(id);
+        else {
+          const res = RESERVATIONS_CACHE.find(x => x.id===id); if(res) res.masquee = true;
+          RESA_SELECTION.delete(id); // succès : sort de la sélection, seuls les échecs y restent pour un nouvel essai
+        }
+      }catch(e){ failedIds.push(id); }
+    }
+    if(!failedIds.length) RESA_SELECTION_MODE = false; // tout est parti : on referme le mode sélection
+    renderReservationsToolbar();
+    if(failedIds.length) showToast(`Erreur sur ${failedIds.length} réservation${failedIds.length>1?'s':''} — le reste a bien été masqué.`, 'error');
+    else showToast(`${ids.length} réservation${ids.length>1?'s':''} masquée${ids.length>1?'s':''}`, 'success');
+  }, {danger:true, yesLabel:`Supprimer (${ids.length})`});
 }
 
 // ── LIVRAISONS ────────────────────────────────────────────────────────────────
