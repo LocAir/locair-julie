@@ -3384,7 +3384,15 @@ async function logControleAppareil(appareilId, btn){
 // (nr-*), l'admin vérifie et valide lui-même — pas de duplication de la
 // logique de création de réservation ici.
 let DEVIS_CACHE = [];
+// Devis clos (refusés, ou expirés automatiquement — voir cron-daily.js)
+// cachés par défaut, comme les réservations supprimées — repliés hors de la
+// vue principale pour ne pas noyer les devis qui demandent encore une
+// action, mais consultables d'un clic plutôt que perdus (audit du 2026-09-16 :
+// avant ce bouton, un devis "expire"/"refuse" disparaissait purement et
+// simplement de l'écran, aucun moyen de le retrouver depuis l'admin).
+let DEVIS_SHOW_CLOS = false;
 const DEVIS_STATUT_LABEL = {brouillon:'Brouillon', envoye:'Envoyé', accepte:'Accepté', refuse:'Refusé', expire:'Expiré'};
+function toggleDevisClos(){ DEVIS_SHOW_CLOS = !DEVIS_SHOW_CLOS; renderDevis(); }
 async function loadDevis(silent){
   const zone = document.getElementById('tab-devis');
   if(!silent) zone.innerHTML = '<div class="card"><p class="sub">Chargement…</p></div>';
@@ -3400,12 +3408,14 @@ async function loadDevis(silent){
 }
 // Un devis "Envoyé" sans réponse au bout de plusieurs jours est une vente
 // qui risque de se perdre en silence — sans relance, l'entreprise part
-// souvent voir un concurrent. Pas de colonne dédiée en base pour la date
-// d'envoi, mais created_at reste un repère fiable pour l'essentiel des cas
-// (un devis part généralement dans la foulée de sa création).
+// souvent voir un concurrent. Compte depuis envoye_at (date d'envoi réelle,
+// pas created_at — corrigé le 2026-09-16 : un devis resté un moment en
+// brouillon avant d'être envoyé affichait déjà un délai écoulé dès l'envoi).
+// Repli sur created_at pour un devis envoyé avant cette date (envoye_at pas
+// encore comblé pour lui) — voir la migration correspondante.
 function devisAgeHtml(x){
   if(x.statut !== 'envoye') return '';
-  const days = Math.floor((Date.now() - new Date(x.created_at).getTime()) / 86400000);
+  const days = Math.floor((Date.now() - new Date(x.envoye_at||x.created_at).getTime()) / 86400000);
   if(days < 1) return '';
   const stale = days >= 5;
   const txt = `en attente de réponse depuis ${days} j`;
@@ -3420,6 +3430,9 @@ function renderDevis(){
   // d'attente Incidents).
   const enCours = DEVIS_CACHE.filter(x => !['refuse','expire'].includes(x.statut))
     .sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+  const clos = DEVIS_CACHE.filter(x => ['refuse','expire'].includes(x.statut))
+    .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  const devisClosCount = clos.length;
   zone.innerHTML = `
     <div class="card">
       <h2>📝 Devis entreprises</h2>
@@ -3431,6 +3444,7 @@ function renderDevis(){
             <span class="chip ${x.statut==='accepte'?'ok':x.statut==='envoye'?'en_attente':'a_faire'}">${DEVIS_STATUT_LABEL[x.statut]||x.statut}</span>
           </div>
           <div class="row-meta">${escHtml(x.email)}${x.date_debut&&x.date_fin?' · du '+frDate(x.date_debut)+' au '+frDate(x.date_fin):''} · ${euros(x.prix_propose_cents)}${x.notes?' · '+escHtml(x.notes):''}${devisAgeHtml(x)}</div>
+          ${x.adresse?`<div class="row-meta">${BOARD_IC_PIN} ${escHtml(x.adresse)}</div>`:''}
           <div class="row-actions">
             ${x.statut==='brouillon'?`<button class="btn btn-blue" onclick="sendDevis(${x.id},this)">📧 Envoyer</button>`:''}
             ${x.statut==='envoye'?`<button class="btn btn-green" onclick="updateDevisStatut(${x.id},'accepte',this)">✅ Accepté</button>`:''}
@@ -3438,6 +3452,16 @@ function renderDevis(){
             ${x.statut==='accepte'?`<button class="btn btn-green" onclick="convertirDevisEnReservation(${x.id})">✅ Convertir en réservation</button>`:''}
           </div>
         </div>`).join('') : '<p class="empty">Aucun devis en cours.</p>'}
+      ${devisClosCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleDevisClos()">${DEVIS_SHOW_CLOS?'← Revenir aux devis en cours':`🙈 Voir les devis clos — refusés/expirés (${devisClosCount})`}</button>` : ''}
+      ${DEVIS_SHOW_CLOS ? clos.map(x => `
+        <div class="row-item" style="opacity:.6;margin-top:10px">
+          <div class="row-top">
+            <span class="row-title">${escHtml(x.raison_sociale)} · ${x.quantite} appareil${x.quantite>1?'s':''}</span>
+            <span class="chip a_faire">${DEVIS_STATUT_LABEL[x.statut]||x.statut}</span>
+          </div>
+          <div class="row-meta">${escHtml(x.email)}${x.date_debut&&x.date_fin?' · du '+frDate(x.date_debut)+' au '+frDate(x.date_fin):''} · ${euros(x.prix_propose_cents)}</div>
+          <div class="row-actions"><button class="btn btn-grey" onclick="updateDevisStatut(${x.id},'envoye',this)">↩️ Rouvrir (remet en Envoyé)</button></div>
+        </div>`).join('') : ''}
       <div style="margin-top:16px">
         <div class="section-title" style="margin-top:0">Nouveau devis</div>
         <label>Raison sociale *</label>
@@ -3452,6 +3476,9 @@ function renderDevis(){
         </div>
         <label style="margin-top:8px">SIRET (optionnel)</label>
         <input type="text" id="dv-siret"/>
+        <label style="margin-top:8px">Adresse de livraison</label>
+        <input type="text" id="dv-adresse"/>
+        <p class="sub" style="font-size:12px;margin-top:2px">Pas obligatoire pour chiffrer, mais reprise telle quelle si le devis est accepté (voir "Convertir en réservation").</p>
         <div class="inline-form" style="margin-top:8px">
           <div><label for="dv-debut">Date début</label><input type="date" id="dv-debut" oninput="dvRecalcPrice()"/></div>
           <div><label for="dv-fin">Date fin</label><input type="date" id="dv-fin" oninput="dvRecalcPrice()"/></div>
@@ -3503,6 +3530,7 @@ async function createDevis(){
       nom: document.getElementById('dv-nom').value.trim(),
       tel: document.getElementById('dv-tel').value.trim(),
       siret: document.getElementById('dv-siret').value.trim(),
+      adresse: document.getElementById('dv-adresse').value.trim(),
       date_debut: document.getElementById('dv-debut').value || null,
       date_fin: document.getElementById('dv-fin').value || null,
       quantite: document.getElementById('dv-qte').value,
@@ -3560,6 +3588,10 @@ async function convertirDevisEnReservation(id){
   const set = (elId, val) => { const el = document.getElementById(elId); if(el) el.value = val || ''; };
   set('nr-prenom', x.prenom); set('nr-nom', x.nom);
   set('nr-tel', x.tel); set('nr-email', x.email);
+  // Adresse de livraison — champ ajouté au devis le 2026-09-16 (audit) :
+  // avant, "Convertir en réservation" laissait ce champ pourtant obligatoire
+  // entièrement vide, il fallait le retaper de zéro à chaque conversion.
+  set('nr-adresse', x.adresse);
   set('nr-debut', x.date_debut); set('nr-fin', x.date_fin);
   set('nr-qte', x.quantite);
   set('nr-prix', ((x.prix_propose_cents||0)/100).toFixed(2));

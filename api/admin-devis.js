@@ -35,7 +35,7 @@ module.exports = async (req, res) => {
     if (action === 'list') {
       const { data, error } = await supabase
         .from('devis')
-        .select('id, prenom, nom, raison_sociale, siret, email, tel, date_debut, date_fin, quantite, installation, prix_propose_cents, statut, notes, created_at')
+        .select('id, prenom, nom, raison_sociale, siret, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_propose_cents, statut, notes, created_at, envoye_at')
         .eq('city_id', city.id)
         .order('created_at', { ascending: false })
         .limit(200);
@@ -61,6 +61,10 @@ module.exports = async (req, res) => {
         siret: (body.siret || '').trim().slice(0, 20) || null,
         email,
         tel: (body.tel || '').trim().slice(0, 30) || null,
+        // Adresse de livraison — absente jusqu'ici (audit du 2026-09-16) :
+        // sans elle, "Convertir en réservation" ne pouvait rien pré-remplir
+        // pour ce champ pourtant indispensable à toute livraison réelle.
+        adresse: (body.adresse || '').trim().slice(0, 300) || null,
         date_debut: body.date_debut || null,
         date_fin: body.date_fin || null,
         quantite,
@@ -80,11 +84,20 @@ module.exports = async (req, res) => {
       if (!id || !body.statut) return res.status(400).json({ error: 'Paramètres manquants' });
       if (!STATUTS_VALIDES.includes(body.statut)) return res.status(400).json({ error: 'Statut invalide' });
       const { data: before } = await supabase
-        .from('devis').select('id, city_id')
+        .from('devis').select('id, city_id, statut')
         .eq('id', id).maybeSingle();
       if (!before || before.city_id !== city.id) return res.status(404).json({ error: 'Devis introuvable' });
 
-      const { error } = await supabase.from('devis').update({ statut: body.statut }).eq('id', id);
+      const update = { statut: body.statut };
+      // Rouvrir un devis clos (refusé/expiré) vers "Envoyé" repart sur une
+      // nouvelle horloge — sans ça, le compteur "en attente depuis X jours"
+      // (devisAgeHtml, admin/index.html) réafficherait aussitôt le délai
+      // d'avant la fermeture, potentiellement des mois, alors que la relance
+      // vient tout juste de repartir.
+      if (body.statut === 'envoye' && ['refuse', 'expire'].includes(before.statut)) {
+        update.envoye_at = new Date().toISOString();
+      }
+      const { error } = await supabase.from('devis').update(update).eq('id', id);
       if (error) throw error;
       return res.status(200).json({ ok: true });
     }
@@ -98,7 +111,7 @@ module.exports = async (req, res) => {
       const id = parseInt(body.id);
       if (!id) return res.status(400).json({ error: 'Paramètres manquants' });
       const { data: d } = await supabase
-        .from('devis').select('id, city_id, prenom, nom, raison_sociale, email, date_debut, date_fin, quantite, installation, prix_propose_cents')
+        .from('devis').select('id, city_id, prenom, nom, raison_sociale, email, adresse, date_debut, date_fin, quantite, installation, prix_propose_cents')
         .eq('id', id).maybeSingle();
       if (!d || d.city_id !== city.id) return res.status(404).json({ error: 'Devis introuvable' });
       if (!d.email) return res.status(400).json({ error: 'Aucun email sur ce devis' });
@@ -109,6 +122,7 @@ module.exports = async (req, res) => {
         <p>Voici le chiffrage établi pour <strong>${escHtml(d.raison_sociale)}</strong> :</p>
         <div class="box">
           <p style="margin:0 0 4px"><strong>${d.quantite} climatiseur${d.quantite > 1 ? 's' : ''}</strong>${d.date_debut && d.date_fin ? ' du ' + escHtml(fmtDate(d.date_debut)) + ' au ' + escHtml(fmtDate(d.date_fin)) : ''}</p>
+          ${d.adresse ? `<p style="margin:0 0 4px">Adresse de livraison : ${escHtml(d.adresse)}</p>` : ''}
           ${d.installation ? `<p style="margin:0 0 4px">Installation : ${escHtml(d.installation)}</p>` : ''}
           <p style="margin:8px 0 0;font-size:18px;font-weight:700;color:#1b3a5f">${fmtEuros(d.prix_propose_cents)}</p>
         </div>
@@ -131,7 +145,11 @@ module.exports = async (req, res) => {
       }).then(() => {}, () => {});
       if (!result.ok) return res.status(500).json({ error: result.error || "Échec de l'envoi" });
 
-      await supabase.from('devis').update({ statut: 'envoye' }).eq('id', id);
+      // envoye_at (pas seulement le statut) : sert de vraie référence pour le
+      // compteur "en attente depuis X jours" (admin/index.html devisAgeHtml)
+      // et pour le rappel quotidien (cron-daily.js) — created_at pouvait
+      // dater de bien avant l'envoi réel si le devis était resté en brouillon.
+      await supabase.from('devis').update({ statut: 'envoye', envoye_at: new Date().toISOString() }).eq('id', id);
       return res.status(200).json({ ok: true });
     }
 
