@@ -1372,6 +1372,29 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
   .villes{grid-template-columns:1fr}
 }
 
+/* ── La carte de la zone ──────────────────────────────────────────────────
+   Elle n'existe que sur la version B pour l'instant. Le cadre reste caché
+   (attribut hidden) tant que la carte n'est pas vraiment dessinée : un
+   rectangle gris qui ne se remplit jamais fait plus de mal qu'une absence.
+   La hauteur est fixée en clamp() pour que le cadre garde sa place pendant
+   le chargement — sans ça, la liste de villes saute vers le bas au moment
+   où la carte apparaît. */
+.zone-carte{margin-top:26px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--mist);opacity:0;transition:opacity var(--mv-3) var(--mv)}
+.zone-carte.on{opacity:1}
+@media(prefers-reduced-motion:reduce){.zone-carte{transition:none}}
+.zone-map{height:clamp(240px,38vw,400px);width:100%;background:var(--mist)}
+/* Leaflet impose sa propre police et un texte minuscule à l'attribution :
+   on lui rend celle du site, et une taille lisible. */
+.zone-map .leaflet-container{font-family:inherit;background:var(--mist)}
+.zone-map .leaflet-control-attribution{font-size:10px;background:rgba(255,255,255,.82);color:var(--ink-3)}
+.zone-map .leaflet-control-attribution a{color:var(--ink-2)}
+.zone-leg{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin:0;padding:10px 14px;border-top:1px solid var(--line);background:var(--paper);font-size:var(--s-2);color:var(--ink-2)}
+.zone-leg span:not(.zone-leg-i){margin-right:12px}
+/* Les deux pastilles reprennent EXACTEMENT le remplissage des deux tracés
+   de la carte : pleine pour la zone standard, creuse pour la zone étendue. */
+.zone-leg-i{width:13px;height:13px;border-radius:4px;flex-shrink:0;background:rgba(8,110,96,.20);box-shadow:inset 0 0 0 1.5px var(--vif)}
+.zone-leg-2{background:rgba(8,110,96,.07);box-shadow:inset 0 0 0 1.5px rgba(8,110,96,.45)}
+
 /* ══ ÉCRAN QUESTIONS ══ */
 .faq{max-width:720px;margin-top:36px}
 .faq details{border-bottom:1px solid var(--line)}

@@ -709,6 +709,22 @@
     <span class="kicker rv"><i class="acte" data-t="acte.comment">Comment</i><span data-t="e9.kicker">Où nous opérons</span></span>
     <h2 class="titre rv t-4" data-th="e9.titre">Nice, aujourd'hui.<em> La liste s'allonge.</em></h2>
     <p class="dire rv" style="max-width:var(--lire)" data-th="e9.dire">Nous ouvrons une ville quand nous pouvons y tenir le créneau du matin — pas avant. Voici celles où c'est le cas, <b>toutes livrées 7j/7</b>, week-ends et jours fériés compris.</p>
+    <!-- La carte. Une liste de villes ne dit pas OÙ c'est : un visiteur qui
+         ne connaît pas la région ne sait pas si Cagnes est à côté de Nice
+         ni si Menton est loin. La carte le dit en une seconde, et montre
+         du même coup les deux tarifs de livraison au lieu de les décrire.
+         Elle est vide dans le fichier : tout se charge à l'arrivée sur
+         l'écran (voir le bloc 8 du script en bas de page). -->
+    <div class="zone-carte" id="zone-carte" hidden role="img"
+         data-ta="e9.carteAria"
+         aria-label="Carte de la zone de livraison Loc'Air, de Cannes à Menton">
+      <div class="zone-map" id="zone-map"></div>
+      <p class="zone-leg">
+        <span class="zone-leg-i"></span><span data-t="e9.legStd">Zone standard · 60 €</span>
+        <span class="zone-leg-i zone-leg-2"></span><span data-t="e9.legHors">Hors zone · 120 €</span>
+      </p>
+    </div>
+
     <div class="villes rv">
       <div class="ville"><div><b>Nice</b><span data-t="e9.nice">Tous quartiers · 60 €</span></div></div>
       <div class="ville"><div><b>Saint-Laurent-du-Var</b><span data-t="e9.std">Zone standard · 60 €</span></div></div>
@@ -1533,6 +1549,12 @@ Object.assign(T, {
   'e9.nice'  : {fr:"Tous quartiers · 60 €", en:"All districts · €60", zh:"全部城区 · 60欧元", ru:"Все районы · 60 €"},
   'e9.std'   : {fr:"Zone standard · 60 €", en:"Standard area · €60", zh:"标准区域 · 60欧元", ru:"Стандартная зона · 60 €"},
   'e9.hors'  : {fr:"Hors zone · 120 €", en:"Outside the area · €120", zh:"区域外 · 120欧元", ru:"За пределами зоны · 120 €"},
+  'e9.legStd' : {fr:"Zone standard · 60 €", en:"Standard area · €60", zh:"标准区域 · 60欧元", ru:"Стандартная зона · 60 €"},
+  'e9.legHors': {fr:"Hors zone · 120 €", en:"Outside the area · €120", zh:"区域外 · 120欧元", ru:"За пределами зоны · 120 €"},
+  'e9.carteAria': {fr:"Carte de la zone de livraison Loc'Air, de Cannes à Menton",
+                   en:"Map of the Loc'Air delivery area, from Cannes to Menton",
+                   zh:"Loc'Air 配送区域地图，从戛纳到芒通",
+                   ru:"Карта зоны доставки Loc'Air, от Канн до Ментона"},
 
   /* écran 10 — vos espaces */
   /* ── Loc'Air Pro : l'offre entreprises ───────────────────────────────── */
@@ -2719,6 +2741,139 @@ Object.assign(T, {
   champ.addEventListener('keydown', function(e){
     if(e.key === 'Enter'){ e.preventDefault(); envoyer(); }
   });
+})();
+
+/* ── 8. La carte de la zone ─────────────────────────────────────────────────
+   Une liste de villes ne dit pas où c'est. La carte le dit en une seconde,
+   et montre les deux tarifs de livraison au lieu de les décrire.
+
+   Trois précautions, dans cet ordre d'importance :
+     · elle ne se charge QUE si le visiteur arrive sur cet écran. Leaflet et
+       ses tuiles pèsent plus lourd que le reste de la page réunie, et la
+       plupart des visiteurs s'arrêtent avant d'arriver ici ;
+     · elle ne bouge pas — ni glissement, ni zoom, ni molette. Sur une page
+       qu'on parcourt au doigt, une carte qui attrape le défilement est une
+       page dont on ne peut plus sortir. C'est une illustration, pas un
+       outil : la vraie vérification d'adresse se fait à la réservation ;
+     · si quoi que ce soit échoue (réseau coupé, bloqueur de pub, CDN en
+       panne), le cadre est retiré de la page. La liste de villes juste en
+       dessous dit déjà tout — mieux vaut pas de carte qu'un rectangle gris.
+
+   Les tracés sont dessinés à la main, volontairement approximatifs et
+   arrondis : ils disent « en gros, jusqu'ici », pas « votre rue est dedans ».
+   Une frontière au mètre près serait une promesse qu'on ne peut pas tenir. */
+(function(){
+  var boite = document.getElementById('zone-carte');
+  if(!boite) return;
+  if(!('IntersectionObserver' in window)){ boite.remove(); return; }
+
+  var CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+  var JS  = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+
+  /* Zone standard (60 €) : Nice, Saint-Laurent-du-Var, Cagnes-sur-Mer. */
+  var STANDARD = [[43.780,7.105],[43.800,7.288],[43.688,7.296],[43.624,7.284],[43.620,7.118]];
+  /* Zone étendue (120 €) : la bande côtière, de Cannes à la frontière
+     italienne. Le tracé déborde sur la mer, comme sur toutes les cartes de
+     zone : une limite qui s'arrête pile au trait de côte se lit mal. */
+  var ETENDUE  = [[43.620,6.880],[43.762,7.120],[43.860,7.500],[43.700,7.572],[43.520,7.150],[43.440,6.902]];
+
+  var VILLES = [
+    { n:'Cagnes-sur-Mer',       c:[43.6636,7.1489], std:true  },
+    { n:'Saint-Laurent-du-Var', c:[43.6678,7.1836], std:true  },
+    { n:'Nice',                 c:[43.7009,7.2683], std:true  },
+    { n:'Villefranche-sur-Mer', c:[43.7044,7.3111], std:false },
+    { n:'Beaulieu-sur-Mer',     c:[43.7075,7.3325], std:false },
+    { n:'Monaco',               c:[43.7384,7.4246], std:false },
+    { n:'Menton',               c:[43.7747,7.4969], std:false },
+    { n:'Antibes',              c:[43.5808,7.1251], std:false },
+    { n:'Cannes',               c:[43.5528,7.0174], std:false }
+  ];
+
+  var VIF = '#086E60';
+  var lance = false;
+
+  var obs = new IntersectionObserver(function(es){
+    if(!es[0].isIntersecting || lance) return;
+    lance = true;
+    obs.disconnect();
+    charger();
+  }, { rootMargin: '300px 0px' });   /* 300px d'avance : la carte est prête quand l'écran arrive */
+  obs.observe(boite);
+
+  function charger(){
+    var lien = document.createElement('link');
+    lien.rel = 'stylesheet';
+    lien.href = CSS;
+    document.head.appendChild(lien);
+
+    var sc = document.createElement('script');
+    sc.src = JS;
+    sc.async = true;
+    sc.onload = dessiner;
+    sc.onerror = function(){ boite.remove(); };
+    document.head.appendChild(sc);
+  }
+
+  function dessiner(){
+    if(!window.L){ boite.remove(); return; }
+    try {
+      /* Le cadre doit avoir sa taille AVANT que Leaflet ne mesure, sinon la
+         carte se dessine dans une boîte de hauteur zéro. */
+      boite.hidden = false;
+
+      var carte = L.map('zone-map', {
+        dragging:false, touchZoom:false, scrollWheelZoom:false,
+        doubleClickZoom:false, boxZoom:false, keyboard:false,
+        zoomControl:false, tap:false
+      });
+
+      /* Fond "voyager" de CARTO : des couleurs, les parcs en vert, les noms
+         de villes déjà écrits dessus — donc aucune étiquette à rajouter.
+         Sans sous-domaine {s} : la règle de sécurité du site (vercel.json)
+         autorise ce nom d'hôte exact. */
+      L.tileLayer('https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a> · © <a href="https://carto.com/attributions" rel="noopener">CARTO</a>',
+        maxZoom: 13, minZoom: 7, detectRetina: true
+      }).addTo(carte);
+      carte.attributionControl.setPrefix('');
+
+      var etendue = L.polygon(ETENDUE, {
+        color: VIF, weight: 1.5, opacity: .55, dashArray: '5 5',
+        fillColor: VIF, fillOpacity: .07, interactive: false
+      }).addTo(carte);
+
+      L.polygon(STANDARD, {
+        color: VIF, weight: 2, opacity: .9,
+        fillColor: VIF, fillOpacity: .20, interactive: false
+      }).addTo(carte);
+
+      VILLES.forEach(function(v){
+        L.circleMarker(v.c, {
+          radius: v.std ? 5 : 4,
+          color: VIF, weight: 2, opacity: .95,
+          fillColor: v.std ? VIF : '#FFFFFF',
+          fillOpacity: 1, interactive: false
+        }).addTo(carte);
+      });
+
+      /* fitBounds plutôt qu'un centre et un zoom fixes : le cadre n'a pas la
+         même forme sur un téléphone et sur un écran large, et un zoom écrit
+         en dur coupait Cannes ou Menton selon la machine. */
+      function cadrer(){
+        carte.invalidateSize(false);
+        carte.fitBounds(etendue.getBounds(), { padding:[12,12] });
+      }
+      cadrer();
+      boite.classList.add('on');
+
+      var t;
+      window.addEventListener('resize', function(){
+        clearTimeout(t); t = setTimeout(cadrer, 200);
+      });
+    } catch(e){
+      boite.remove();
+    }
+  }
 })();
 </script>
 
