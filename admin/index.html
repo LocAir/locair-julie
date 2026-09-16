@@ -1328,6 +1328,16 @@ function onAdminLoginSuccess(token, role, nom){
   loadCitySwitcher();
   setupAdminPush();
   clearAppBadge();
+  // Charge la grille tarifaire en tâche de fond dès la connexion — sans ça,
+  // prCalcBase() (aperçu de prix dans Nouvelle réservation/Prolonger/Devis)
+  // ne connaissait la vraie grille que si l'onglet Tarifs avait déjà été
+  // visité cette session, et restait sinon bloqué sur des valeurs figées en
+  // dur dans le code. Contredisait littéralement ce que dit l'onglet Tarifs
+  // lui-même ("déjà visibles partout" dès l'enregistrement) — audit du
+  // 2026-09-16. Fire-and-forget : le pire cas (fetch pas encore fini au tout
+  // premier aperçu de prix affiché) retombe sur ces mêmes valeurs par défaut,
+  // sans jamais bloquer ni faire planter l'écran.
+  ensurePricingConfigLoaded();
   if(!window._alertsInterval) window._alertsInterval = setInterval(loadAlerts, 45000);
   // Le rafraîchissement automatique de l'onglet affiché est passé à 1h
   // (au lieu de 18s, puis 2h) — retour terrain (2026-07-31) : rechargeait
@@ -4838,11 +4848,41 @@ function reservationCreerHtml(){
 // synchronisé si la grille change là-bas. Pas de code promo ici : réservé
 // aux nouvelles réservations passées sur le site (voir _lib/promo.js).
 let PROLONG_ORIG = null;
-// Doit rester identique à calcTieredPrice (api/_lib/pricing.js). Durée
-// minimale de location : 7 jours (le palier 3-6 jours n'existe plus) — pas
-// de plancher forcé ici pour laisser l'admin composer une durée plus courte
-// à la main si besoin (ex. geste commercial), au tarif du premier palier.
-function prCalcBase(d){ d=Math.max(1,d); if(d<=7) return d*12; if(d<=14) return 7*12+(d-7)*10; if(d<=21) return 7*12+7*10+(d-14)*9; return 7*12+7*10+7*9+(d-21)*8; }
+// Grille par défaut (api/_lib/pricing.js DEFAULT_PRICING_CONFIG) — sert de
+// repli tant que TARIFS_CACHE (la VRAIE grille, éditable dans l'onglet
+// Tarifs) n'est pas encore chargée. Avant l'audit du 2026-09-16, prCalcBase
+// utilisait TOUJOURS ces valeurs figées, jamais la grille réellement
+// configurée — l'onglet Tarifs annonce pourtant "déjà visibles partout" dès
+// l'enregistrement. Le prix réellement facturé (calcTieredPrice, backend)
+// n'a jamais été concerné (toujours calculé server-side sur la vraie
+// grille) — seul l'APERÇU affiché ici (Nouvelle réservation/Prolonger/
+// Devis) pouvait rester périmé après un changement de tarif.
+const PR_DEFAULT_PRICING = { palier1_max_jours:7, palier1_tarif_cents:1200, palier2_max_jours:14, palier2_tarif_cents:1000, palier3_max_jours:21, palier3_tarif_cents:900, palier4_tarif_cents:800 };
+// Chargée une fois à la connexion (voir onAdminLoginSuccess) — pas besoin de
+// la recharger ici si l'onglet Tarifs a déjà tourné cette session (loadTarifs
+// alimente la même variable).
+async function ensurePricingConfigLoaded(){
+  if(TARIFS_CACHE) return;
+  try{
+    const r = await fetch(API('admin-pricing'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'get'})});
+    const d = await r.json();
+    if(r.ok && d.pricing) TARIFS_CACHE = d.pricing;
+  }catch(e){} // pas grave : prCalcBase retombe sur PR_DEFAULT_PRICING
+}
+// Durée minimale de location : 7 jours par défaut (le palier 3-6 jours
+// n'existe plus) — pas de plancher forcé ici pour laisser l'admin composer
+// une durée plus courte à la main si besoin (ex. geste commercial), au tarif
+// du premier palier.
+function prCalcBase(d){
+  d = Math.max(1,d);
+  const c = TARIFS_CACHE || PR_DEFAULT_PRICING;
+  const j1 = c.palier1_max_jours, j2 = c.palier2_max_jours, j3 = c.palier3_max_jours;
+  const p1 = c.palier1_tarif_cents/100, p2 = c.palier2_tarif_cents/100, p3 = c.palier3_tarif_cents/100, p4 = c.palier4_tarif_cents/100;
+  if(d<=j1) return d*p1;
+  if(d<=j2) return j1*p1+(d-j1)*p2;
+  if(d<=j3) return j1*p1+(j2-j1)*p2+(d-j2)*p3;
+  return j1*p1+(j2-j1)*p2+(j3-j2)*p3+(d-j3)*p4;
+}
 function prDiffDays(a,b){ return Math.round((new Date(b+'T00:00:00Z')-new Date(a+'T00:00:00Z'))/86400000); }
 function prAddDay(iso){ const d=new Date(iso+'T00:00:00Z'); d.setUTCDate(d.getUTCDate()+1); return d.toISOString().slice(0,10); }
 function reservationProlongerHtml(){
