@@ -1395,6 +1395,35 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .zone-leg-i{width:13px;height:13px;border-radius:4px;flex-shrink:0;background:rgba(8,110,96,.20);box-shadow:inset 0 0 0 1.5px var(--vif)}
 .zone-leg-2{background:rgba(8,110,96,.07);box-shadow:inset 0 0 0 1.5px rgba(8,110,96,.45)}
 
+/* ══ LOC'AIR SHOP — LES FICHES PRODUIT ══
+   Une fiche doit tenir debout SANS photo : le catalogue existe avant les
+   photos, et une fiche à moitié vide ne vend rien. L'image est donc un
+   bonus qui s'ajoute à gauche quand le fichier existe (voir shop.html),
+   jamais un trou réservé à l'avance. */
+.shop-l{display:grid;gap:18px;margin:26px 0 14px}
+.shop-f{display:grid;gap:0 22px;border:1px solid var(--line);border-radius:16px;background:var(--paper);overflow:hidden}
+.shop-img{margin:0;background:var(--mist)}
+.shop-img img{display:block;width:100%;height:100%;object-fit:cover;aspect-ratio:1/1}
+/* Deux colonnes seulement quand la fiche a VRAIMENT une photo : sans ça,
+   une colonne image vide laisserait la moitié de la fiche blanche. Un
+   navigateur qui ne connaît pas :has() garde la fiche sur une colonne —
+   elle reste juste, seulement moins large. */
+@media(min-width:720px){
+  .shop-f:has(.shop-img:not([hidden])){grid-template-columns:minmax(0,260px) minmax(0,1fr)}
+}
+.shop-txt{padding:20px 22px 22px;min-width:0}
+/* L'étiquette dit l'état AVANT le nom : « révisé · ex-location » est
+   l'information qui décide, et la cacher sous la fiche serait malhonnête. */
+.shop-et{display:inline-block;font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-5);text-transform:uppercase;color:var(--vif);background:var(--vif-clair);padding:4px 10px;border-radius:100px}
+.shop-txt h3{margin:10px 0 6px;font-size:var(--s-6);font-weight:700;letter-spacing:var(--l-3);line-height:var(--h-3)}
+.shop-txt>p{color:var(--ink-2);font-size:var(--s-3);line-height:var(--h-4);margin:0 0 12px}
+.shop-sp{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
+.shop-sp li{position:relative;padding-left:18px;font-size:var(--s-2);color:var(--ink-2);line-height:var(--h-4)}
+.shop-sp li::before{content:'';position:absolute;left:0;top:.52em;width:7px;height:7px;border-radius:50%;background:var(--vif);opacity:.55}
+.shop-px{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin:0 0 14px}
+.shop-px b{font-size:var(--s-7);font-weight:700;letter-spacing:var(--l-4)}
+.shop-px i{font-style:normal;font-size:var(--s-2);color:var(--ink-3)}
+
 /* ══ ÉCRAN QUESTIONS ══ */
 .faq{max-width:720px;margin-top:36px}
 .faq details{border-bottom:1px solid var(--line)}
@@ -1660,6 +1689,13 @@ button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .art h3{font-size:var(--s-6);font-weight:700;letter-spacing:var(--l-3);margin:30px 0 10px}
 .art a{color:var(--vif);text-decoration:underline;text-underline-offset:3px;font-weight:500}
 .art a:hover{color:var(--vif-d)}
+/* Un BOUTON posé dans un article héritait de la couleur des liens d'article
+   — sarcelle sur sarcelle, donc un bouton plein, sans texte visible. Vu sur
+   les fiches du Shop : le bouton d'achat s'affichait vide. Le bouton reprend
+   ses propres couleurs, et n'est jamais souligné. */
+.art a.btn{text-decoration:none;font-weight:700}
+.art a.btn-1{color:#fff}
+.art a.btn-out,.art a.btn-light{color:var(--ink)}
 .art b,.art strong{font-weight:700;color:var(--ink)}
 /* La puce est la goutte de la marque, en petit. Un signe qui revient fait
    une identité ; une puce ronde ne dit rien. */
