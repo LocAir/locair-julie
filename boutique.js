@@ -188,9 +188,19 @@
     btn.disabled = true;
     bloc.appendChild(btn);
 
-    bloc.appendChild(el('p', 'b-note',
+    /* Les conditions de vente sont LISIBLES AVANT de payer, pas remises
+       après. C'est ce que la loi demande pour une vente à distance, et
+       c'est aussi la seule version honnête : on ne fait pas signer un
+       document qu'on montre ensuite. */
+    var note = el('p', 'b-note',
       'Paiement par carte, sur la page sécurisée de Stripe. '
-      + 'L’adresse exacte se saisit à l’étape suivante.'));
+      + 'L’adresse exacte se saisit à l’étape suivante. En achetant, vous '
+      + 'acceptez nos ');
+    var cgv = el('a', null, 'conditions de vente');
+    cgv.href = '/cgv-vente';
+    note.appendChild(cgv);
+    note.appendChild(document.createTextNode('.'));
+    bloc.appendChild(note);
     c.appendChild(bloc);
 
     function dessineCompris() {

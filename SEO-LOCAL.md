@@ -65,7 +65,43 @@ livraison ». Rien d'inventé.
 Le même `areaServed:"France"` apparaît une deuxième fois dans le bloc
 `Service` de la même page : le remplacer pareil.
 
-### 3. L'image de partage est une photo verticale
+### 3. Aucun lien vers la boutique
+
+Le pied de page d'`index.html` a trois colonnes de liens : Navigation,
+Services, Zones. **Aucune ne mène à `/boutique`.** Une page qui encaisse et
+vers laquelle rien ne pointe depuis l'accueil, c'est une boutique sans
+vitrine — pour un visiteur comme pour Google.
+
+À noter : le menu qui s'ouvre avec les trois barres (« La page », « Vos
+espaces », « Informations ») n'est **pas** dans `index.html` — c'est celui
+de `version-b.html`, et il a reçu son groupe « Acheter ». Ce qui suit ne
+concerne que l'ancienne page d'accueil, tant qu'elle est encore en ligne.
+
+**Correctif.** Dans la colonne Services (`#fnav-services`), ajouter une
+quatrième entrée, et la ligne correspondante dans le tableau de traduction.
+
+Dans le HTML :
+
+```html
+<a href="/boutique">Acheter un climatiseur</a>
+```
+
+Dans le tableau de traduction (chercher `'#fnav-services a'`), ajouter la
+même valeur **à la fin de chacune des quatre listes**, dans le même ordre
+que dans le HTML :
+
+```js
+fr : 'Acheter un climatiseur'
+en : 'Buy an air conditioner'
+zh : '购买空调'
+ru : 'Купить кондиционер'
+```
+
+Attention : ces listes fonctionnent par POSITION, pas par nom. Le lien doit
+être ajouté au même rang dans le HTML et dans les quatre langues, sinon les
+libellés se décalent tous d'un cran au changement de langue.
+
+### 4. L'image de partage est une photo verticale
 
 `index.html` déclare, deux fois (Open Graph et Twitter) :
 
