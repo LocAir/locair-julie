@@ -7518,18 +7518,37 @@ async function _reverseGeocode(lat,lng){
   return{addr:[street,postal,city].filter(Boolean).join(', ')||d.display_name||'',lat,lng};
 }
 
-// Pré-chauffe silencieuse si la permission est déjà accordée
-// (pas de prompt navigateur — juste un cache en arrière-plan)
-(function _prewarmGeo(){
-  if(!navigator.geolocation||!navigator.permissions)return;
-  navigator.permissions.query({name:'geolocation'}).then(function(status){
-    if(status.state!=='granted')return;
-    navigator.geolocation.getCurrentPosition(async function(pos){
-      try{
-        window._geoCache=await _reverseGeocode(pos.coords.latitude,pos.coords.longitude);
-      }catch(e){}
-    },function(){},{timeout:5000,maximumAge:300000,enableHighAccuracy:false});
-  }).catch(function(){});
+// Géolocalisation automatique au chargement.
+// Si la permission est déjà accordée → remplit le champ adresse en silence,
+// déplace le marqueur, sans aucun prompt.
+// Si la permission n'a pas encore été demandée → demande au navigateur,
+// puis remplit si acceptée.
+// Si refusée ou indisponible → silencieux, le champ reste vide.
+(function _autoGeo(){
+  if(!navigator.geolocation)return;
+  async function _handlePos(pos){
+    try{
+      const cache=await _reverseGeocode(pos.coords.latitude,pos.coords.longitude);
+      window._geoCache=cache;
+      // N'écrase pas une adresse que l'utilisateur aurait déjà saisie à la main
+      const inp=document.getElementById('panel-addr');
+      if(inp&&!inp.value.trim())_applyGeoCache(cache);
+    }catch(e){}
+  }
+  function _requestFresh(){
+    navigator.geolocation.getCurrentPosition(
+      _handlePos,
+      function(){},
+      {timeout:10000,maximumAge:0,enableHighAccuracy:false}
+    );
+  }
+  // Passe 1 : position en cache navigateur (<200ms si permission accordée) ;
+  // Passe 2 si raté : requête fraîche (déclenche le prompt si nécessaire).
+  navigator.geolocation.getCurrentPosition(
+    _handlePos,
+    _requestFresh,
+    {timeout:200,maximumAge:Infinity,enableHighAccuracy:false}
+  );
 })();
 
 const _GEO_ICON_PIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M12 2a10 10 0 1 0 10 10"/></svg>';
@@ -7538,9 +7557,17 @@ const _GEO_ICON_SPIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 function _applyGeoCache(cache){
   const input=document.getElementById('panel-addr');
   if(input)input.value=cache.addr;
+  // La carte peut ne pas encore être montée (Leaflet async) — on retente
   if(window._heroMap&&window._heroMarker){
     window._heroMap.setView([cache.lat,cache.lng],14,{animate:true});
     window._heroMarker.setLatLng([cache.lat,cache.lng]);
+  }else{
+    setTimeout(()=>{
+      if(window._heroMap&&window._heroMarker){
+        window._heroMap.setView([cache.lat,cache.lng],14,{animate:true});
+        window._heroMarker.setLatLng([cache.lat,cache.lng]);
+      }
+    },1200);
   }
 }
 
