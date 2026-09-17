@@ -9029,13 +9029,28 @@ const io=new IntersectionObserver(entries=>{
 }));
 document.querySelectorAll('.sr,.sr-section').forEach(el=>io.observe(el));
 // iOS Safari : l'IO ne détecte pas les éléments déjà dans le viewport au chargement
-// → vérification immédiate + à chaque scroll + fallback 600ms
+// → vérification immédiate + listener auto-retiré dès qu'il n'y a plus rien à révéler
 _srCheck();
-window.addEventListener('scroll',_srCheck,{passive:true});
-setTimeout(()=>document.querySelectorAll('.sr:not(.in),.sr-section:not(.in)').forEach(_srReveal),600);
+const _srScrollCb=()=>{
+  if(!document.querySelector('.sr:not(.in),.sr-section:not(.in)')){
+    window.removeEventListener('scroll',_srScrollCb);return;
+  }
+  _srCheck();
+};
+window.addEventListener('scroll',_srScrollCb,{passive:true});
+// Fallback 600ms : révèle tout ce qui reste et supprime le listener
+setTimeout(()=>{
+  document.querySelectorAll('.sr:not(.in),.sr-section:not(.in)').forEach(_srReveal);
+  window.removeEventListener('scroll',_srScrollCb);
+},600);
 
 // Nav auto-hide + indicateurs scroll
 const navEl=document.querySelector('.nav');
+// DOM refs cachés hors du hot path scroll (évite querySelector à chaque event)
+const _heroScrollEl=document.querySelector('.hero');
+const _spacerScrollEl=document.querySelector('.hero-spacer');
+const _overlayScrollEl=document.getElementById('overlay');
+const _msBarEl=document.getElementById('ms');
 
 const waBtn=document.querySelector('.wa-btn');
 let _lastScrollY=window.scrollY;
@@ -9047,27 +9062,25 @@ window.addEventListener('scroll',()=>{
   const pct=Math.round(y/(document.body.scrollHeight-window.innerHeight)*100);
   if(!_scrollDepths[50]&&pct>=50){_scrollDepths[50]=true;(window.dataLayer=window.dataLayer||[]).push({event:'scroll_depth',percent:50});}
   if(!_scrollDepths[90]&&pct>=90){_scrollDepths[90]=true;(window.dataLayer=window.dataLayer||[]).push({event:'scroll_depth',percent:90});}
-  // Cache la nav en scrollant vers le bas (après 120px), la réaffiche vers le haut
-  if(navEl&&!document.getElementById('overlay').classList.contains('open')){
+  if(navEl&&!_overlayScrollEl.classList.contains('open')){
     if(delta>4&&y>120&&!_navHidden){
       navEl.classList.add('hidden');_navHidden=true;
-      const heroEl=document.querySelector('.hero');
-      const spacerEl=document.querySelector('.hero-spacer');
-      if(heroEl){heroEl.style.top='0';heroEl.style.height='100vh';}
-      if(spacerEl)spacerEl.style.height='100vh';
+      // rAF : regroupe les écritures de style dans le même frame de rendu
+      requestAnimationFrame(()=>{
+        if(_heroScrollEl){_heroScrollEl.style.top='0';_heroScrollEl.style.height='100vh';}
+        if(_spacerScrollEl)_spacerScrollEl.style.height='100vh';
+      });
     }
     else if(delta<-4&&_navHidden){
       navEl.classList.remove('hidden');_navHidden=false;
-      const heroEl=document.querySelector('.hero');
-      const spacerEl=document.querySelector('.hero-spacer');
-      if(heroEl){heroEl.style.top='62px';heroEl.style.height='calc(100vh - 62px)';}
-      if(spacerEl)spacerEl.style.height='calc(100vh - 62px)';
+      requestAnimationFrame(()=>{
+        if(_heroScrollEl){_heroScrollEl.style.top='62px';_heroScrollEl.style.height='calc(100vh - 62px)';}
+        if(_spacerScrollEl)_spacerScrollEl.style.height='calc(100vh - 62px)';
+      });
     }
   }
-
   if(waBtn)waBtn.classList.toggle('wa-visible',y>window.innerHeight*.65);
-  const msBar=document.getElementById('ms');
-  if(msBar&&window.innerWidth<=640)msBar.classList.toggle('m-bar-visible',y>80);
+  if(_msBarEl&&window.innerWidth<=640)_msBarEl.classList.toggle('m-bar-visible',y>80);
   _lastScrollY=y;
 },{passive:true});
 
