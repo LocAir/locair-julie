@@ -695,20 +695,29 @@ body:not(.vl) .footer p,body:not(.vl) .footer a{color:rgba(255,255,255,.22)!impo
     <div id="screen-login">
       <p class="page-sub login-eyebrow" style="margin-bottom:12px;font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);text-decoration:underline;text-decoration-color:rgba(197,169,108,.45);text-underline-offset:6px;text-decoration-thickness:1.5px">Mon espace</p>
       <h1>Suivez votre <em>location</em></h1>
-      <p class="page-sub">Retrouvez le statut de votre commande, vos documents et l'assistance — avec votre numéro de commande et votre email.</p>
+      <p class="page-sub">Entrez votre numéro de téléphone — nous vous envoyons un code par SMS.</p>
+
+      <!-- Étape 1 : numéro de téléphone -->
       <form id="login-form">
         <div class="form-group">
-          <label for="f-email">Email</label>
-          <input type="email" id="f-email" autocomplete="email" autofocus placeholder="marie@exemple.fr" required/>
-        </div>
-        <div class="form-group">
-          <label for="f-ref">Numéro de commande</label>
-          <input type="text" id="f-ref" autocomplete="off" placeholder="LOC-260710-8129" style="text-transform:uppercase" required/>
-          <p style="font-size:12px;color:var(--text-3,#888);margin-top:6px;line-height:1.5">Reçu par email après votre réservation. Vous ne le trouvez pas ? <a href="https://wa.me/33663798756" target="_blank" rel="noopener noreferrer" style="color:var(--gold,#c5a96c);text-decoration:underline;font-weight:600">Contactez-nous →</a></p>
+          <label for="f-tel">Numéro de téléphone</label>
+          <input type="tel" id="f-tel" autocomplete="tel" autofocus placeholder="06 12 34 56 78" inputmode="tel" required/>
         </div>
         <div id="login-error" class="alert-error hidden" role="alert"></div>
-        <button type="submit" class="btn-submit" id="btn-login" style="margin-top:8px">Accéder à mon espace</button>
+        <button type="submit" class="btn-submit" id="btn-send-otp" style="margin-top:8px">Recevoir le code SMS</button>
         <p style="text-align:center;font-size:11.5px;color:var(--text-3);margin-top:14px;display:flex;align-items:center;justify-content:center;gap:6px"><svg width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='11' width='18' height='11' rx='2' ry='2'/><path d='M7 11V7a5 5 0 0 1 10 0v4'/></svg> Connexion sécurisée · Vos données restent privées</p>
+      </form>
+
+      <!-- Étape 2 : code SMS (masqué jusqu'à l'envoi) -->
+      <form id="otp-form" class="hidden">
+        <p id="otp-hint" style="font-size:13px;color:var(--text-2);margin-bottom:16px;line-height:1.6">Code envoyé au <strong id="otp-tel-display"></strong>. Valable 10 minutes.</p>
+        <div class="form-group">
+          <label for="f-otp">Code reçu par SMS</label>
+          <input type="text" id="f-otp" autocomplete="one-time-code" inputmode="numeric" maxlength="6" placeholder="123456" pattern="[0-9]{6}" required style="letter-spacing:.3em;font-size:22px;text-align:center"/>
+        </div>
+        <div id="otp-error" class="alert-error hidden" role="alert"></div>
+        <button type="submit" class="btn-submit" id="btn-verify-otp" style="margin-top:8px">Accéder à mon espace</button>
+        <button type="button" id="btn-change-tel" style="width:100%;margin-top:10px;background:none;border:none;color:var(--text-3);font-size:13px;cursor:pointer;font-family:inherit;text-decoration:underline;text-underline-offset:3px" onclick="resetOtpFlow()">Changer de numéro</button>
       </form>
     </div>
 
@@ -854,24 +863,45 @@ async function apiClient(path, body){
   return d;
 }
 
+let _otpTel = '';
+
 document.getElementById('login-form').addEventListener('submit', async function(e){
   e.preventDefault();
-  const email = document.getElementById('f-email').value.trim();
-  const ref = document.getElementById('f-ref').value.trim();
-  const btn = document.getElementById('btn-login');
+  const tel = document.getElementById('f-tel').value.trim();
+  const btn = document.getElementById('btn-send-otp');
   const errEl = document.getElementById('login-error');
   errEl.classList.add('hidden');
-  btn.disabled = true; btn.textContent = 'Recherche…';
+  btn.disabled = true; btn.textContent = 'Envoi…';
   try{
-    const r = await fetch('/api/client-login', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({email, ref})});
+    const r = await fetch('/api/client-send-otp', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tel})});
+    const d = await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error || 'Erreur');
+    _otpTel = tel;
+    document.getElementById('otp-tel-display').textContent = tel;
+    document.getElementById('login-form').classList.add('hidden');
+    document.getElementById('otp-form').classList.remove('hidden');
+    document.getElementById('f-otp').focus();
+  }catch(err){
+    errEl.textContent = err.message;
+    errEl.classList.remove('hidden');
+  }finally{
+    btn.disabled = false; btn.textContent = 'Recevoir le code SMS';
+  }
+});
+
+document.getElementById('otp-form').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const code = document.getElementById('f-otp').value.trim();
+  const btn = document.getElementById('btn-verify-otp');
+  const errEl = document.getElementById('otp-error');
+  errEl.classList.add('hidden');
+  btn.disabled = true; btn.textContent = 'Vérification…';
+  try{
+    const r = await fetch('/api/client-verify-otp', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({tel: _otpTel, code})});
     const d = await r.json().catch(()=>({}));
     if(!r.ok) throw new Error(d.error || 'Erreur');
     localStorage.setItem('client_token', d.token);
     localStorage.setItem('client_ref', d.ref);
-    // Réutilisé par /prolongation (même origine, localStorage partagé) pour
-    // pré-remplir email + référence si jamais l'auto-connexion par jeton y
-    // échoue — le client n'a alors jamais à retaper ces informations.
-    localStorage.setItem('client_email', email);
     localStorage.removeItem('c_fid');
     showDashboard();
   }catch(err){
@@ -881,6 +911,15 @@ document.getElementById('login-form').addEventListener('submit', async function(
     btn.disabled = false; btn.textContent = 'Accéder à mon espace';
   }
 });
+
+function resetOtpFlow(){
+  _otpTel = '';
+  document.getElementById('f-otp').value = '';
+  document.getElementById('otp-error').classList.add('hidden');
+  document.getElementById('otp-form').classList.add('hidden');
+  document.getElementById('login-form').classList.remove('hidden');
+  document.getElementById('f-tel').focus();
+}
 
 function logout(){
   localStorage.removeItem('client_token');
