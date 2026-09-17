@@ -5963,8 +5963,8 @@ document.addEventListener('DOMContentLoaded', function(){
               <button type="button" class="ds-express-card" id="ds-express" onclick="selectExpress(this)" aria-label="Livraison Express — aujourd'hui sous 2h">
                 <div class="ds-express-left">
                   <span class="ds-express-badge">Express</span>
-                  <span class="ds-express-title">Aujourd'hui · Sous 2h</span>
-                  <span style="font-size:10.5px;color:#6b7280;margin-top:2px;display:block;font-weight:400">Commande avant 18h · 7j/7</span>
+                  <span class="ds-express-title" id="ds-express-title">Aujourd'hui · Sous 2h</span>
+                  <span id="ds-express-sub" style="font-size:10.5px;color:#6b7280;margin-top:2px;display:block;font-weight:400">Commande avant 18h · 7j/7</span>
                 </div>
                 <span class="ds-express-price">+60 €</span>
               </button>
@@ -8081,6 +8081,11 @@ function updateStepper(n){
   if(fill)fill.style.width=(n/6*100)+'%';
   if(stepNum)stepNum.textContent=(_lang==='en'?'Step ':_lang==='zh'?'第 ':_lang==='ru'?'Шаг ':'Étape ')+n+(_lang==='zh'?'/6 步':_lang==='ru'?' / 6':'/6');
   if(stepName)stepName.textContent=(names[n-1]||'');
+  // Update desktop sidebar step labels (hidden on mobile via CSS)
+  for(let i=1;i<=6;i++){
+    const nameEl=document.querySelector('#si-'+i+' .step-name');
+    if(nameEl)nameEl.textContent=names[i-1]||'';
+  }
   updateRunningTotal(n);
 }
 
@@ -9758,6 +9763,12 @@ const LANG_MAP=[
   ['#cp-gate-sub','html',"Si vous n'êtes pas dans notre zone standard (06000 · 06100 · 06200 · 06300 · 06700 · 06800 · 06230 · 06310), des frais de livraison de <strong>120 €</strong> s'appliqueront à la place de 60 €.",'If you are not in our standard zone (06000 · 06100 · 06200 · 06300 · 06700 · 06800 · 06230 · 06310), a delivery fee of <strong>€120</strong> will apply instead of €60.','如果您不在我们的标准区域内（06000 · 06100 · 06200 · 06300 · 06700 · 06800 · 06230 · 06310），将收取<strong>120 €</strong>的配送费，而非60 €。',`Если вы находитесь за пределами стандартной зоны (06000 · 06100 · 06200 · 06300 · 06700 · 06800 · 06230 · 06310), стоимость доставки составит <strong>120 €</strong> вместо 60 €.`],
   ['#cp-gate-fix','text',"Corriger l'adresse",'Fix the address','修正地址',`Исправить адрес`],
   ['#cp-gate-cont','text','Continuer quand même','Continue anyway','仍然继续',`Продолжить всё равно`],
+  /* express card (step 4) */
+  ['#ds-express','aria',"Livraison Express — aujourd'hui sous 2h","Express delivery — today within 2h","今日快速配送 — 2小时内","Экспресс-доставка — сегодня за 2ч"],
+  ['#ds-express-title','text',"Aujourd'hui · Sous 2h","Today · Within 2h","今天 · 2小时内","Сегодня · За 2ч"],
+  ['#ds-express-sub','text',"Commande avant 18h · 7j/7","Order before 6pm · 7/7","18时前下单 · 7天/7","Заказ до 18ч · 7 дней/7"],
+  /* recap-box region label */
+  ['#recap-box','aria',"Récapitulatif de votre réservation","Order summary","您的订单摘要","Сводка вашего заказа"],
 ];
 
 // Sequences: [selector, 'text'|'html', [fr_vals], [en_vals]]
@@ -10202,6 +10213,12 @@ const LANG_SEQ=[
      'Можно ли использовать его всю ночь?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>',
      'Могу ли я продлить аренду, если понадоблюсь дольше?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>'
     ]],
+  /* creneau sub-labels (step 4 — livraison & récupération) */
+  ['#creneau-liv-group .cren-sub, #creneau-recup-group .cren-sub','text',
+    ['Le plus demandé','Toujours 7j/7','Le plus demandé','Toujours 7j/7'],
+    ['Most popular','Always 7/7','Most popular','Always 7/7'],
+    ['最受欢迎','随时可用 7天/7','最受欢迎','随时可用 7天/7'],
+    ['Самый популярный','Ежедневно 7/7','Самый популярный','Ежедневно 7/7']],
 ];
 function setLang(l){
   _lang=l;
@@ -11048,7 +11065,7 @@ async function lookupProlongReservation(){
     const d=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(d.error||('API '+r.status));
     _prolongResa=d;
-    _prolongOrigDays=d.orig_days;
+    _prolongOrigDays=d.orig_days??d.nb_jours??0;
     return true;
   }catch(ex){
     if(errEl){errEl.textContent=ex.message;errEl.style.display='block';}
@@ -11074,8 +11091,17 @@ async function goProlongStep(n){
     const base=finInit?new Date(finInit):new Date();
     base.setDate(base.getDate()+1);
     const minDate=[base.getFullYear(),String(base.getMonth()+1).padStart(2,'0'),String(base.getDate()).padStart(2,'0')].join('-');
-    if(fd){fd.min=minDate;if(!fd.value||fd.value<=minDate)fd.value=minDate;}
-    onProlongNewDateChange();
+    if(fd){
+      fd.min=minDate;
+      // Pre-fill to the date matching _prolongDays already chosen on step 2
+      // (do NOT call onProlongNewDateChange here — it would overwrite _prolongDays with diff=1)
+      if(!fd.value||fd.value<=minDate){
+        const tgt=finInit?new Date(finInit):new Date();
+        tgt.setDate(tgt.getDate()+_prolongDays);
+        const tDate=[tgt.getFullYear(),String(tgt.getMonth()+1).padStart(2,'0'),String(tgt.getDate()).padStart(2,'0')].join('-');
+        fd.value=tDate>=minDate?tDate:minDate;
+      }
+    }
   }
   if(n===4)buildProlongRecap();
   const mb=document.getElementById('modal-body');if(mb)mb.scrollTop=0;
@@ -11088,7 +11114,7 @@ function validateProlongStep3(){
   const finInit=_prolongResa?.date_fin;
   const baseline=finInit?new Date(finInit):new Date();
   if(isNaN(baseline)){highlight(['pe-date']);return false;}
-  baseline.setHours(0,0,0,0);
+  baseline.setUTCHours(0,0,0,0);
   if(new Date(date)<=baseline){highlight(['pe-date']);return false;}
   return true;
 }
@@ -11098,11 +11124,12 @@ function stepProlongDur(delta){
   updateProlongPrice();
 }
 
+function ruDays(n){return n===1?'день':n>=2&&n<=4?'дня':'дней';}
 function calcProlongIncremental(origDays,addDays){
   // Miroir de _safeIncrement (checkout-prolong.js) : le palier 7j (84 €) < 6j (96 €),
   // donc l'incrément 6→7 serait négatif. On applique le tarif moyen du palier plutôt
   // que d'afficher "Offert" alors que le backend facture bien 12 €.
-  if(origDays<=0)return calcPrice(addDays);
+  if(!origDays||isNaN(origDays)||origDays<=0)return calcPrice(addDays);
   const delta=calcPrice(origDays+addDays)-calcPrice(origDays);
   if(delta>=0)return delta; // 0 inclus : passer de 6→7j coûte 0 de delta mais reste correct
   return Math.round(calcPrice(origDays+addDays)/(origDays+addDays))*addDays;
@@ -11115,7 +11142,7 @@ function updateProlongPrice(){
   const el_total=document.getElementById('pp-total');
   const el_minus=document.getElementById('prolong-minus');
   if(el_days)el_days.textContent=_prolongDays;
-  if(el_lbl)el_lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):_lang==='zh'?(_prolongDays===1?'额外天数':'额外天数'):_lang==='ru'?(_prolongDays===1?'дополнительный день':'дополнительных дня'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
+  if(el_lbl)el_lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):_lang==='zh'?'额外天数':_lang==='ru'?(_prolongDays===1?'дополнительный день':_prolongDays<=4?'дополнительных дня':'дополнительных дней'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
   if(el_total)el_total.textContent=price===0?(_lang==='en'?'Free':_lang==='zh'?'免费':_lang==='ru'?'Бесплатно':'Offert'):price+' €';
   if(el_minus)el_minus.style.opacity=_prolongDays<=1?'0.3':'1';
 }
@@ -11130,7 +11157,7 @@ function onProlongNewDateChange(){
       _prolongDays=diff;
       updateProlongPrice();
       const el=document.getElementById('pp-days');if(el)el.textContent=_prolongDays;
-      const lbl=document.getElementById('pp-day-lbl');if(lbl)lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):_lang==='zh'?(_prolongDays===1?'额外天数':'额外天数'):_lang==='ru'?(_prolongDays===1?'дополнительный день':'дополнительных дня'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
+      const lbl=document.getElementById('pp-day-lbl');if(lbl)lbl.textContent=_lang==='en'?(_prolongDays===1?'extra day':'extra days'):_lang==='zh'?'额外天数':_lang==='ru'?(_prolongDays===1?'дополнительный день':_prolongDays<=4?'дополнительных дня':'дополнительных дней'):(_prolongDays===1?'jour supplémentaire':'jours supplémentaires');
       const minus=document.getElementById('prolong-minus');if(minus)minus.style.opacity=_prolongDays<=1?'0.3':'1';
     }
   }
@@ -11339,7 +11366,7 @@ function _showProlongSuccess(){
       :_lang==='zh'
       ?'您的租赁已延长'+_prolongDays+'天。取回日期：'+dateLabel+'，时间段：'+creneau+'。几分钟内发送邮件确认。'
       :_lang==='ru'
-      ?'Ваша аренда продлена на '+_prolongDays+' дней. Возврат '+dateLabel+', временной слот: '+creneau+'. Подтверждение на email через несколько минут.'
+      ?'Ваша аренда продлена на '+_prolongDays+' '+ruDays(_prolongDays)+'. Возврат '+dateLabel+', временной слот: '+creneau+'. Подтверждение на email через несколько минут.'
       :'Votre location est prolongée de '+_prolongDays+' jour'+(_prolongDays>1?'s':'')+'. Récupération le '+dateLabel+' entre '+creneau+'. Confirmation par email dans quelques minutes.';
     const prolongRef=_prolongServerRef||_generateOrderRef();
     const refEl2=document.getElementById('prolong-ref');
