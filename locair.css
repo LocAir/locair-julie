@@ -1926,6 +1926,27 @@ p,li,dd,dt,figcaption,blockquote,.dire,.pas-p{text-wrap:pretty}
 .pied-grid a:hover,.pied-grid a:focus-visible{color:#fff}
 @media(max-width:880px){.pied-grid{grid-template-columns:repeat(2,1fr);gap:26px}}
 @media(max-width:520px){.pied-grid{grid-template-columns:1fr;gap:24px}}
+
+/* LES QUARTIERS, SUR UNE LIGNE.
+   Ils occupaient une colonne du pied de page alors que ce ne sont pas des
+   liens. Sur une ligne, ils tiennent tous, et la colonne rendue sert à la
+   boutique. Le titre reste un vrai titre pour la voix de synthèse, il est
+   simplement posé au début de la ligne au lieu d'être au-dessus. */
+.pied-zones{
+  /* .pied-haut est une grille à deux colonnes (la marque, puis les liens).
+     Sans grid-column, cette ligne devenait un TROISIÈME élément de grille
+     et retombait sous la colonne étroite de la marque : mesuré, 210 px de
+     large, dix quartiers empilés, et le pied de page passait de 493 à
+     720 px de haut. Elle traverse donc les deux colonnes. */
+  grid-column:1/-1;
+  margin-top:26px;padding-top:18px;border-top:1px solid rgba(255,255,255,.14);
+  font-size:var(--s-2);color:var(--sur-3);line-height:var(--h-4);
+}
+.pied-zones b{
+  display:inline;font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-6);
+  text-transform:uppercase;color:var(--sur-2);margin-right:10px;
+}
+@media(max-width:620px){.pied-zones b{display:block;margin:0 0 6px}}
 .pied-grid li{font-size:var(--s-3);color:var(--sur-2);line-height:var(--h-4)}
 
 /* ══ CONSENTEMENT AUX COOKIES ══
@@ -2448,70 +2469,123 @@ p,li,dd,dt,figcaption,blockquote,.dire,.pas-p{text-wrap:pretty}
 .pack{
   display:flex;flex-direction:column;padding:26px 24px 24px;
   border:1px solid var(--line);border-radius:var(--r-l);background:var(--paper);
-  transition:border-color var(--mv-1) var(--mv),transform var(--mv-1) var(--mv);
+  transition:border-color var(--mv-1) var(--mv);
 }
 .pack:hover{border-color:var(--vif)}
 .pack-d{font-size:var(--s-5);font-weight:700;letter-spacing:var(--l-3);color:var(--ink)}
 .pack-j{margin-top:3px;font-size:var(--s-2);color:var(--ink-3)}
 .pack-p{margin-top:20px;font-size:var(--n-3);font-weight:700;letter-spacing:var(--l-1);
   line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+/* La ligne du prix À LA JOURNÉE, collée sous le total. C'est la place
+   qu'occupe « par utilisateur et par mois » sur les grilles tarifaires
+   qui marchent : le total répond à « combien je paie », cette ligne-ci
+   répond à « est-ce que c'est cher ». */
 .pack-u{margin-top:9px;font-size:var(--s-2);color:var(--ink-2);line-height:var(--h-3)}
-.pack-c{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);
-  font-size:var(--s-3);color:var(--ink-2);line-height:var(--h-4)}
-.pack .btn{margin-top:auto;width:100%;justify-content:center}
-.pack-b{margin-top:20px}
-/* La carte qui compte : sombre, comme la colonne Loc'Air du comparatif. */
+/* LE BOUTON REMONTE AVANT LA LISTE.
+   Il était en dernier, sous tout le reste. La liste sert à JUSTIFIER le
+   prix, pas à retarder le clic : celui qui est déjà convaincu par le
+   chiffre ne doit pas avoir à lire trois lignes de plus pour trouver le
+   bouton. margin-top:auto pousse le bloc bouton + liste vers le bas, pour
+   que les trois boutons restent sur la même ligne. */
+.pack-b{margin-top:auto;padding-top:20px}
+.pack .btn{width:100%;justify-content:center}
+
+/* ── CE QUI EST COMPRIS, COCHE PAR COCHE ──
+   Trois lignes, sous le bouton. Rien de neuf n'y est promis : elles
+   répètent ce que la page affirme déjà ailleurs — « tout compris », le kit
+   posé sans percer, l'écran « 0 € de caution ». L'intérêt n'est pas de
+   l'annoncer, c'est de l'annoncer LÀ, à côté du prix.
+   La coche est dessinée en CSS et marquée aria-hidden par content:"" / "" :
+   une liste de trois items se lit déjà comme une liste, la voix de synthèse
+   n'a pas besoin d'entendre « coche » trois fois. */
+.pack-l{list-style:none;margin:18px 0 0;padding:0;
+  border-top:1px solid var(--line);padding-top:14px}
+.pack-l li{position:relative;padding-left:23px;margin-top:8px;
+  font-size:var(--s-3);line-height:var(--h-3);color:var(--ink-2)}
+.pack-l li:first-child{margin-top:0}
+.pack-l li::before{
+  content:"" / "";position:absolute;left:1px;top:.34em;
+  width:11px;height:6px;border-left:2px solid var(--vif);border-bottom:2px solid var(--vif);
+  transform:rotate(-45deg);
+}
+
+/* ── LA CARTE QUI COMPTE ──
+   Sombre, comme la colonne Loc'Air du tableau comparatif. */
 .pack.reco{background:var(--ink);border-color:var(--ink);--focus:var(--gold)}
 .pack.reco .pack-d,.pack.reco .pack-p{color:#fff}
 .pack.reco .pack-j{color:var(--sur-2)}
 .pack.reco .pack-u{color:var(--sur-2)}
-.pack.reco .pack-c{color:var(--sur-1);border-top-color:rgba(255,255,255,.16)}
+.pack.reco .pack-l{border-top-color:rgba(255,255,255,.16)}
+.pack.reco .pack-l li{color:var(--sur-1)}
+.pack.reco .pack-l li::before{border-color:var(--gold)}
 .pack.reco:hover{border-color:var(--gold)}
-.pack-r{
-  display:block;font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-5);
-  text-transform:uppercase;color:var(--gold);margin-bottom:9px;
-}
 .pack.reco .btn-1{background:#fff;color:var(--ink);
   transition:transform var(--mv-1) var(--mv)}
 .pack.reco .btn-1:hover,.pack.reco .btn-1:focus-visible{background:rgba(255,255,255,.88)}
-/* Les cartes sans étiquette gardent la même hauteur que celle qui en a une :
-   sans ça, les trois prix ne seraient pas sur la même ligne.
-   Ça ne marchait pas tout à fait. « height:1em » mesurait l'em du PARENT
-   — 17,5 px — alors que l'étiquette « LE PLUS PRIS » occupe sa propre boîte
-   de ligne, à 18,97 px. Mesuré : les trois prix, les trois descriptions et
-   les trois boutons étaient décalés de 1,5 px, la carte du milieu toujours
-   plus bas. Un pixel et demi ne se nomme pas, mais il se voit.
-   La correction : l'espace n'est plus une hauteur devinée, c'est une vraie
-   ligne de texte aux mêmes réglages que l'étiquette, avec une espace
-   insécable pour contenu. Elle fera donc toujours exactement la même
-   hauteur, quelle que soit la taille de caractère. Le « / "" » la rend
-   muette pour les lecteurs d'écran. */
-.pack-r-vide{
-  display:block;margin-bottom:9px;
+
+/* ── LE RUBAN ──
+   L'étiquette était un mot doré POSÉ DANS la carte, au même rang que le
+   reste : elle disait « le plus pris » sans qu'on la voie.
+   Elle devient un bandeau plein qui COIFFE la carte, bord à bord, posé
+   au-dessus d'elle et non dedans.
+
+   Première version, abandonnée : le ruban restait dans le flux et la carte
+   montait d'autant (margin-top négatif). Il fallait alors lui rendre les
+   27 px de marge intérieure qu'il avait mangés, ce qui creusait 62 px de
+   vide sombre entre le bandeau et le titre — mesuré, et bien visible.
+
+   Deuxième version, celle-ci : le ruban sort du flux (bottom:100%). Les
+   trois cartes reprennent exactement la même boîte, sans marge négative et
+   sans espace réservé ; le ruban dépasse par le haut, seul. Titres, prix,
+   lignes et boutons retombent alignés tout seuls — il n'y a plus rien à
+   compenser.
+   left/right à -1px : le ruban recouvre le filet de la carte, donc il est
+   vraiment bord à bord.
+
+   Or sur marine : les deux couleurs de la maison, et un FOND doré n'est pas
+   du texte doré sur fond clair — la règle tient. */
+.pack.reco{position:relative}
+.pack-r{
+  position:absolute;left:-1px;right:-1px;bottom:100%;
+  padding:8px 20px;border-radius:var(--r-l) var(--r-l) 0 0;
+  background:var(--gold);color:var(--ink);text-align:center;
   font-size:var(--s-1);font-weight:700;letter-spacing:var(--l-5);
   text-transform:uppercase;
 }
-.pack-r-vide::before{content:"\00A0" / ""}
-@media(max-width:860px){.packs{grid-template-columns:1fr;gap:14px}
-  .pack-r-vide{display:none}}
+/* Plus rien à réserver : le ruban ne prend aucune place dans le flux, donc
+   les deux autres cartes n'ont plus besoin d'une ligne vide pour rester à
+   la même hauteur. L'élément reste dans le HTML — il porte aria-hidden et
+   ne coûte rien — mais il ne s'affiche plus. */
+.pack-r-vide{display:none}
+/* Le ruban dépasse par le haut : il lui faut la place. Mesurée sur la
+   hauteur réelle du bandeau, pas devinée. */
+.packs{margin-top:calc(var(--e-2) + 14px)}
+
+/* Entre 621 et 860 px les cartes sont empilées sur une colonne : le ruban
+   flottant irait se poser sur la carte du dessus. Il redescend dans le
+   flux, comme sur téléphone. */
+@media(max-width:860px){
+  .packs{grid-template-columns:1fr;gap:14px;margin-top:var(--e-2)}
+  .pack-r{position:static;margin:-27px -25px 20px;padding:8px 24px;text-align:left}
+  /* Les cartes sont empilées : la liste des trois coches, identique dans
+     les trois, s'écrirait NEUF fois de suite. Mesuré à 768 px : l'écran
+     passait de 1 827 à 1 998 px de haut pour ne rien dire de plus.
+     Elle laisse la place à la ligne « tout compris » écrite une seule
+     fois sous les cartes — même clé, aucune traduction nouvelle. */
+  .pack-l{display:none}
+  .packs-u{display:block}
+}
 
 /* ── LES TROIS DURÉES SUR TÉLÉPHONE ────────────────────────────────────
-   Mesuré avant : les trois cartes empilées faisaient 977 px de haut, pour
-   un écran de 844. Trois prix ne peuvent pas coûter plus d'un écran entier
-   à lire — surtout ici, où l'on vient justement comparer.
+   Trois cartes empilées faisaient 977 px de haut pour un écran de 844.
+   Trois prix ne peuvent pas coûter plus d'un écran entier à lire — surtout
+   ici, où l'on vient justement comparer.
    On garde les trois cartes et les trois prix. Ce qu'on enlève, c'est ce
-   qui se répétait :
-     · le nom et le prix passent sur la MÊME ligne, alignés sur la même
-       base — c'est la comparaison qu'on vient chercher ;
-     · « tout compris, livraison et reprise » était écrit trois fois : il
-       n'est plus écrit qu'une fois, sous les trois cartes. Même clé de
-       traduction, donc rien de nouveau à traduire ;
-     · les trois boutons « Réserver » menaient au même endroit que la
-       barre verte fixée en bas de l'écran, toujours visible. Seul celui
-       de la carte recommandée reste.
-   Mesuré après : 524 px, soit un écran au lieu d'un écran et demi. */
-/* Écrite une seule fois sous les trois cartes, et seulement sur téléphone :
-   au-dessus de 620 px chaque carte porte déjà la mention. */
+   qui se répétait : le nom et le prix passent sur la MÊME ligne ; la liste
+   des trois coches, identique dans les trois cartes, laisse la place à la
+   ligne « tout compris » écrite une seule fois sous les cartes ; et seul
+   le bouton de la carte recommandée reste, les deux autres menant au même
+   endroit que la barre verte fixée en bas de l'écran. */
 .packs-u{display:none;margin:12px 0 0;font-size:var(--s-2);color:var(--ink-2);
   line-height:var(--h-3)}
 @media(max-width:620px){
@@ -2521,21 +2595,22 @@ p,li,dd,dt,figcaption,blockquote,.dire,.pas-p{text-wrap:pretty}
     align-items:baseline;column-gap:14px;row-gap:2px;
     padding:15px 17px 16px;border-radius:var(--r);
   }
-  /* La pastille vide reprend du service : sans elle, la carte du milieu
-     aurait une rangée de plus que les deux autres et les prix ne
-     tomberaient plus à la même hauteur dans la pile. */
-  .pack-r-vide{display:block;grid-column:1/-1;grid-row:1;height:0;margin:0}
-  .pack-r{grid-column:1/-1;grid-row:1;margin:0 0 5px;font-size:var(--s-1)}
+  /* Sur téléphone le ruban reste en haut de la carte, mais DANS le flux :
+     empilées, les cartes n'ont plus de voisines avec qui s'aligner, et un
+     bandeau flottant se cognerait à la carte du dessus. */
+  .pack-r{position:static;grid-column:1/-1;grid-row:1;margin:-16px -18px 11px;
+    border-radius:var(--r) var(--r) 0 0;padding:6px 17px;text-align:left}
   .pack-d{grid-column:1;grid-row:2}
   .pack-p{grid-column:2;grid-row:2;margin:0;text-align:right;
     font-size:clamp(27px,7.6vw,34px)}
   .pack-j{grid-column:1;grid-row:3}
-  .pack-u{display:none}
-  .pack-c{grid-column:1/-1;grid-row:4;margin-top:11px;padding-top:10px;
-    font-size:var(--s-2)}
+  .pack-u{grid-column:1/-1;grid-row:4;margin-top:9px;padding-top:9px;
+    border-top:1px solid var(--line);font-size:var(--s-2)}
+  .pack.reco .pack-u{border-top-color:rgba(255,255,255,.16)}
+  .pack-l{display:none}
   .pack-b{display:none}
-  .pack.reco .pack-b{display:block;grid-column:1/-1;grid-row:5;margin-top:13px}
-  .pack .btn{margin-top:0}
+  .pack.reco .pack-b{display:block;grid-column:1/-1;grid-row:5;
+    margin-top:0;padding-top:13px}
   .packs-u{display:block}
 }
 
@@ -3262,6 +3337,91 @@ summary:active{background:var(--mist)}
   letter-spacing:var(--l-2);line-height:var(--h-2);color:var(--ink)}
 .pas-p{margin:9px 0 0;font-size:var(--s-3);color:var(--ink-2);line-height:var(--h-5)}
 .pas-l{counter-reset:pas}
+
+/* ══ DÉMARRER LA MACHINE ══════════════════════════════════════════════════
+   Même balisage que « De la réservation à la reprise », forme entièrement
+   différente : ce ne sont pas quatre moments qu'on raconte, ce sont six
+   gestes qu'on exécute dans l'ordre. Une marche à suivre se lit en
+   DESCENDANT, une ligne par geste.
+
+   Mesuré avant : six vignettes de 170 px dans une grille de quatre —
+   1 284 px de haut, quatre cartes sur une rangée et deux orphelines sur la
+   suivante, des titres coupés sur trois lignes.
+
+   La forme vient d'un panneau de consigne à bagages : fond sombre, pastilles
+   au filet fin, un médaillon rond par geste. C'est la seule famille de
+   couleurs où l'or a le droit d'exister — sur un fond marine — et c'est
+   justement celle du panneau. La règle de la maison et la référence disent
+   la même chose.
+
+   Le fond sombre a une deuxième raison : entre le bandeau brume du kit et
+   l'écran brume qui suit, deux gris se touchaient. Le marine fait une vraie
+   marche entre les deux. */
+.tuto-demarrer{background:var(--ink);--focus:var(--gold)}
+.tuto-demarrer .kicker{color:var(--gold)}
+.tuto-demarrer .acte{color:var(--sur-1)}
+.tuto-demarrer .pc-t{color:#fff;max-width:20ch}
+.tuto-demarrer .pc-t em{color:var(--gold)}
+.tuto-demarrer .pc-d{color:var(--sur-2)}
+
+/* Une colonne, toujours. Six pastilles côte à côte redeviendraient une
+   grille — c'est-à-dire l'inverse d'un ordre. */
+.tuto-demarrer .pas-l{
+  grid-template-columns:1fr;gap:11px;max-width:780px;margin-top:var(--e-2);
+}
+.tuto-demarrer .pas{
+  display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;
+  column-gap:19px;row-gap:3px;
+  /* Le filet doré fait la pastille : sans lui il n'y a plus de pastille,
+     donc il doit se VOIR. Mesuré contre le marine : à .32 il ne donnait que
+     1,80:1, sous le seuil de 3:1 des éléments non textuels. À .58 il donne
+     3,14:1 — au-dessus, et toujours un filet, pas un trait. */
+  border:1px solid rgba(201,162,39,.58);border-radius:var(--r-f);
+  padding:13px 30px 13px 13px;
+  transition:border-color var(--mv-1) var(--mv);
+}
+.tuto-demarrer .pas:hover{border-color:rgba(201,162,39,.88)}
+
+/* Le médaillon. Il remplace la vignette blanche : sur un fond marine, une
+   boîte blanche ferait une tache. */
+.tuto-demarrer .pas-d{
+  grid-row:1/3;display:grid;place-items:center;
+  width:54px;height:54px;border-radius:50%;
+  border:1px solid rgba(201,162,39,.58);background:none;
+  margin:0;padding:0;
+}
+.tuto-demarrer .pas-d svg{width:25px;height:25px;max-width:none;color:var(--gold)}
+
+/* Le numéro passe DEVANT le geste, comme sur le panneau : « 1. Vérifiez le
+   contenu ». Il était auparavant collé au surtitre, où personne ne le
+   cherchait. */
+.tuto-demarrer .pas-t{
+  margin:0;font-size:var(--s-6);font-weight:700;letter-spacing:var(--l-3);
+  line-height:var(--h-2);color:#fff;
+}
+.tuto-demarrer .pas-t::before{
+  content:counter(pas) ". ";color:var(--gold);
+  font-variant-numeric:tabular-nums;
+}
+/* Une seule ligne sous le geste : la condition en or, puis le détail. Le
+   surtitre n'est plus un bloc à part — il devient l'entrée en matière de la
+   phrase, et la pastille garde deux lignes au lieu de trois. */
+.tuto-demarrer .pas-p{
+  margin:0;font-size:var(--s-3);color:var(--sur-2);line-height:var(--h-4);
+}
+.tuto-demarrer .pas-e{
+  display:inline;font-size:inherit;font-weight:700;letter-spacing:0;
+  text-transform:none;color:var(--gold);
+}
+.tuto-demarrer .pas-e::before{content:none}
+
+@media(max-width:560px){
+  .tuto-demarrer .pas{column-gap:14px;padding:12px 18px 12px 12px;
+    border-radius:var(--r-l)}
+  .tuto-demarrer .pas-d{width:44px;height:44px}
+  .tuto-demarrer .pas-d svg{width:21px;height:21px}
+  .tuto-demarrer .pas-t{font-size:var(--s-5)}
+}
 
 /* ══ LES COUTURES ═════════════════════════════════════════════════════════
    Mesure de toutes les jonctions, deux à deux, en comparant la luminance des
@@ -4081,6 +4241,8 @@ body{font-variant-ligatures:common-ligatures contextual}
 .b-carte .btn{transition:transform var(--mv-1) var(--mv)}
 .b-carte .b-note{margin-top:12px;font-size:var(--s-2);color:var(--ink-3);
   line-height:var(--h-3);letter-spacing:normal}
+.b-carte .b-note a{color:var(--vif);text-decoration:underline;text-underline-offset:3px}
+.b-carte .b-note a:hover,.b-carte .b-note a:focus-visible{color:var(--vif-d)}
 
 /* Les garanties légales : une liste qui se lit, avec de l'air entre le
    titre et le premier point. Mesuré avant : la liste collait au titre,
