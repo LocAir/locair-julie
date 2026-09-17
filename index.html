@@ -7569,9 +7569,9 @@ function panelSubmit(){
     setTimeout(()=>{if(addrEl)addrEl.style.borderColor='';},2000);
     return;
   }
-  // Pré-remplir le modal si possible (durée)
   const dur=parseInt(duree)||7;
-  openModal(dur);
+  // Passe l'adresse → modal saute l'étape 1 et ouvre directement à la durée
+  openModal(dur,'new',addr||undefined);
 }
 /* ── Dropdown timing panel hero ── */
 function toggleTiming(e){
@@ -7600,7 +7600,7 @@ function selectTiming(mode,label,e){
   if(df)df.style.display=mode==='later'?'block':'none';
   _closeTiming();
 }
-function openModal(dur, flowType){
+function openModal(dur, flowType, prefillAddr){
   // Une nouvelle réservation (jamais une prolongation, qui ne consomme pas
   // d'appareil supplémentaire) est bloquée tant que la ville est en mode
   // complet — sessionStorage._la ('logged as admin') permet à Aly de
@@ -7624,13 +7624,13 @@ function openModal(dur, flowType){
   if(flowType==='extend'){
     chooseFlow('extend');
   } else if(flowType==='new'){
-    chooseFlow('new');
+    chooseFlow('new',prefillAddr);
   } else {
     // Nouveaux visiteurs (pas de localStorage) → aller direct à la réservation
     // Clients existants → afficher le choix prolongation/nouvelle résa
     let _hasClient=false;try{_hasClient=!!localStorage.getItem('locair_client');}catch(e){}
     if(!_hasClient){
-      chooseFlow('new');
+      chooseFlow('new',prefillAddr);
     } else {
       goTo(0,true);
     }
@@ -10854,16 +10854,21 @@ let _prolongElements=null;
 let _prolongResa=null;
 let _prolongServerRef=null;
 
-function chooseFlow(type){
+function chooseFlow(type,prefillAddr){
   _currentFlow=type;
   if(type==='new'){
     document.querySelector('.stepper')?.classList.remove('stepper-hidden');
     document.getElementById('mob-progress')?.style.removeProperty('display');
     document.querySelector('.ms-title') && (document.querySelector('.ms-title').style.display='');
-    goTo(1,true);
-    setTimeout(()=>{
-      document.getElementById('f-addr')?.focus();
-    },100);
+    if(prefillAddr){
+      // Adresse déjà connue (saisie dans le panel hero) → pré-remplir et sauter l'étape 1
+      const fAddr=document.getElementById('f-addr');
+      if(fAddr)fAddr.value=prefillAddr;
+      goTo(2,true);
+    } else {
+      goTo(1,true);
+      setTimeout(()=>{ document.getElementById('f-addr')?.focus(); },100);
+    }
   } else {
     document.querySelector('.stepper')?.classList.add('stepper-hidden');
     document.querySelector('.modal-sidebar')?.style.setProperty('display','none');
