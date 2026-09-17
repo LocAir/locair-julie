@@ -136,6 +136,13 @@ window._loadGA4=function(){
 </script>
 <link rel="preload" href="hero-clim.jpg" as="image" fetchpriority="high"/>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"/>
+<!-- Carte du hero (voir .hero-map-area plus bas) — même version pinée que
+     transporteur/index.html, déjà autorisée par la CSP (unpkg.com). Chargement
+     non bloquant (media=print puis bascule all) : cette feuille de style ne
+     doit jamais retarder l'affichage du panel de réservation, seule partie
+     du hero réellement critique pour la conversion. -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" media="print" onload="this.media='all'"/>
+<noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/></noscript>
 <script>
 function loadGoogleFonts(){/* polices déjà chargées — conservé pour compatibilité */}
 </script>
@@ -400,8 +407,8 @@ body{
 .hero-map-area{
   flex:1;position:relative;overflow:hidden;
 }
-.hero-map-area iframe{
-  width:100%;height:100%;border:none;display:block;
+.hero-map-area .leaflet-container{
+  width:100%;height:100%;font-family:var(--body);
 }
 /* Formulaire panel */
 .p-field-group{margin-bottom:14px}
@@ -4087,16 +4094,23 @@ input:-webkit-autofill:focus{
     <a href="https://g.page/r/CeJQrt2gLNNrEAE/review" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:block;margin-top:16px;font-size:12px;color:var(--ink2)" aria-label="Voir les avis Google Loc'Air">4,9★ · 32 avis Google · <strong style="color:var(--ink)">+500 clients livrés</strong></a>
   </div>
 
-  <!-- Carte droite : OpenStreetMap -->
+  <!-- Carte droite : carte Leaflet + fonds CARTO (même combo que transporteur/index.html,
+       déjà éprouvé en prod). Remplace un ancien <iframe> OpenStreetMap embed.html
+       (audit du 2026-09-17, capture d'écran d'Aly : "Ce contenu est bloqué") — deux
+       problèmes cumulés avec cet iframe, tous deux réglés en passant à une carte
+       rendue nous-mêmes plutôt qu'embarquée : (1) openstreetmap.org n'était pas
+       autorisé dans le frame-src de la CSP du site (vercel.json), donc bloqué par
+       le navigateur lui-même avant même d'atteindre OSM ; (2) même corrigé, ce
+       service embed.html d'OSM n'est de toute façon pas prévu pour un usage
+       commercial à volume — la doc officielle recommande un vrai fournisseur de
+       tuiles pour ce cas, ce que fait déjà transporteur/index.html. Le repli
+       .map-fallback ci-dessous ne servait par ailleurs jamais dans les faits : un
+       <iframe> ne déclenche pas onerror pour un contenu bloqué (ni CSP ni un
+       statut HTTP d'erreur) — seulement pour un vrai échec réseau. Gardé ici comme
+       secours si jamais Leaflet/CARTO ne chargent pas du tout (repli JS explicite
+       plus bas, pas onerror). -->
   <div class="hero-map-area">
-    <iframe
-      src="https://www.openstreetmap.org/export/embed.html?bbox=6.88%2C43.47%2C7.50%2C43.77&layer=mapnik&marker=43.70764%2C7.26197"
-      title="Zone de livraison Loc'Air — Côte d'Azur"
-      loading="lazy"
-      allowfullscreen
-      aria-label="Carte de la zone de livraison Côte d'Azur"
-      onerror="this.style.display='none';this.parentElement.querySelector('.map-fallback').style.display='flex'">
-    </iframe>
+    <div id="hero-leaflet-map" role="img" aria-label="Carte de la zone de livraison Côte d'Azur" style="width:100%;height:100%"></div>
     <div class="map-fallback" style="display:none">
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--ink2)" stroke-width="1.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
       <span>Côte d'Azur · Nice · Cannes · Monaco</span>
@@ -4115,6 +4129,40 @@ input:-webkit-autofill:focus{
   </div>
 </section>
 <div class="hero-spacer"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script>
+// Carte du hero — voir le commentaire au-dessus de #hero-leaflet-map pour le
+// pourquoi (remplace un <iframe> OpenStreetMap qui se bloquait en prod).
+// DOMContentLoaded plutôt qu'exécution immédiate : garantit que le <script
+// defer> Leaflet juste au-dessus a déjà tourné (les scripts defer s'exécutent
+// toujours avant cet évènement, dans leur ordre d'apparition).
+document.addEventListener('DOMContentLoaded', function(){
+  const el = document.getElementById('hero-leaflet-map');
+  if(!el) return;
+  try{
+    if(typeof L === 'undefined') throw new Error('Leaflet non chargé');
+    // scrollWheelZoom désactivé : une carte décorative dans un hero ne doit
+    // jamais capter le défilement de la souris au survol — sans ça, un
+    // visiteur qui fait défiler la page avec le curseur sur la carte se
+    // retrouve à zoomer dessus au lieu d'avancer dans la page.
+    // attributionControl laissé actif (par défaut) : les tuiles CARTO
+    // gratuites l'exigent dans leurs conditions d'usage — même choix que
+    // transporteur/index.html, qui l'affiche déjà sans que ça gêne visuellement.
+    const map = L.map(el, { scrollWheelZoom:false }).setView([43.70764, 7.26197], 10);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19, subdomains:'abcd',
+    }).addTo(map);
+    L.marker([43.70764, 7.26197]).addTo(map);
+  }catch(e){
+    // Repli explicite (pas onerror, voir le commentaire plus haut) — visible
+    // seulement si Leaflet/CARTO échouent vraiment, pas juste "bloqué" côté
+    // fournisseur : le visiteur garde au moins un visuel de la zone couverte.
+    el.style.display = 'none';
+    const fb = el.parentElement.querySelector('.map-fallback');
+    if(fb) fb.style.display = 'flex';
+  }
+});
+</script>
 
 <!-- RÉASSURANCE -->
 <section class="reassure" aria-label="Nos engagements">
