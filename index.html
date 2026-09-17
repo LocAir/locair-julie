@@ -6517,6 +6517,7 @@ document.addEventListener('DOMContentLoaded', function(){
             <input id="cancel-email" type="email" placeholder="Votre email" style="width:100%;padding:8px 10px;border:1px solid var(--rule);border-radius:7px;font-size:16px;font-family:var(--body);margin-bottom:10px"/>
             <button type="button" onclick="submitCancellation()" style="width:100%;padding:9px;background:#9b2c1a;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--body)" id="cancel-sbtn">Confirmer l'annulation</button>
             <p id="cancel-msg" style="display:none;font-size:12px;color:#059669;margin-top:8px;font-weight:600;text-align:center">✓ Annulation enregistrée — vous serez remboursé sous 48h.</p>
+            <p id="cancel-err" style="display:none;font-size:12px;color:#b91c1c;margin-top:8px;text-align:center"></p>
           </div>
         </details>
       </div>
@@ -8624,7 +8625,8 @@ async function submitCancellation(){
     if(btn)btn.style.display='none';
   }catch(e){
     if(btn){btn.disabled=false;btn.textContent=_lang==='en'?'Confirm cancellation':_lang==='zh'?'确认取消':_lang==='ru'?'Подтвердить отмену':"Confirmer l'annulation";}
-    alert(_lang==='en'?"Network error — your message wasn't sent. Call us at +33 6 63 79 87 56.":_lang==='zh'?'网络错误——您的消息未能发送。请致电 +33 6 63 79 87 56。':_lang==='ru'?'Ошибка сети — сообщение не отправлено. Позвоните нам: +33 6 63 79 87 56.':"Erreur réseau — ton message n'a pas été envoyé. Appelle-nous au 06.63.79.87.56.");
+    const errEl=document.getElementById('cancel-err');
+    if(errEl){errEl.textContent=_lang==='en'?"Error — message not sent. Call +33 6 63 79 87 56.":_lang==='zh'?'发送失败，请致电 +33 6 63 79 87 56。':_lang==='ru'?'Ошибка — сообщение не отправлено. Позвоните: +33 6 63 79 87 56.':"Erreur — message non envoyé. Appelez le 06.63.79.87.56.";errEl.style.display='block';}
   }
 }
 // ── STRIPE ────────────────────────────────────────────────────────────────────
@@ -11414,7 +11416,8 @@ function submitAlerte(e){
     if(typeof gtag==='function')gtag('event','alerte_signup',{method:'email'});
   }).catch(()=>{
     if(btn){btn.disabled=false;btn.textContent=_lang==='en'?'Get the alert →':_lang==='zh'?'接收预警 →':_lang==='ru'?'Получить уведомление →':'Recevoir l\'alerte →';}
-    alert(_lang==='en'?"Network error — your signup wasn't saved. Call us at +33 6 63 79 87 56.":_lang==='zh'?'网络错误——您的注册未能保存。请致电 +33 6 63 79 87 56。':_lang==='ru'?'Ошибка сети — регистрация не сохранена. Позвоните нам: +33 6 63 79 87 56.':"Erreur réseau — ton inscription n'a pas été enregistrée. Appelle-nous au 06.63.79.87.56.");
+    const okEl=document.getElementById('ec-ok');
+    if(okEl){okEl.style.display='block';okEl.innerHTML='<p style="color:#fca5a5;font-size:12px">'+(_lang==='en'?"Error — signup not saved. Call +33 6 63 79 87 56.":_lang==='zh'?'发送失败，请致电 +33 6 63 79 87 56。':_lang==='ru'?'Ошибка. Позвоните: +33 6 63 79 87 56.':"Erreur — inscription non enregistrée. Appelle le 06.63.79.87.56.")+'</p>';}
   });
 }
 
@@ -11581,7 +11584,7 @@ function shareReferral(){
   const url=window.CITY?.url||'https://www.locair.fr/';
   const text=_lang==='en'?`I rented an AC from Loc'Air — delivered and installed in 24h, no deposit. Use my code ${code} to get €30 off.`:_lang==='zh'?`我在Loc'Air租了空调——24小时内送达并安装，零押金。使用我的推荐码 ${code} 可优惠30€。`:_lang==='ru'?`Арендуй кондиционер у Loc'Air! Используй мой код: ${code} — скидка 30€.`:`J'ai loué un climatiseur chez Loc'Air — livré et installé en 24h, aucune caution. Utilisez mon code ${code} pour obtenir 30€ de réduction.`;
   if(navigator.share){navigator.share({title:"Loc'Air — location climatiseur",text,url});}
-  else{navigator.clipboard?.writeText(text).then(()=>alert(_lang==='en'?'Message copied!':_lang==='zh'?'消息已复制！':_lang==='ru'?'Сообщение скопировано!':'Message copié !')).catch(()=>{});}
+  else{navigator.clipboard?.writeText(text).then(()=>{const sb=document.querySelector('#referral-box .ref-share');if(sb){const orig=sb.innerHTML;sb.textContent=_lang==='en'?'Copied ✓':_lang==='zh'?'已复制 ✓':_lang==='ru'?'Скопировано ✓':'Copié ✓';setTimeout(()=>{sb.innerHTML=orig;},2000);}}).catch(()=>{});}
   if(typeof gtag==='function')gtag('event','referral_share',{code});
 }
 function initReferralCode(prenom){
