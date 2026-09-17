@@ -4187,14 +4187,14 @@ input:-webkit-autofill:focus{
         <svg class="p-timing-arrow" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 8 10 13 15 8"/></svg>
       </div>
       <div class="p-timing-dd" id="timing-dd" role="listbox">
-        <div class="p-timing-opt sel" onclick="selectTiming('now','Livrer maintenant',event)" role="option" aria-selected="true">
+        <div class="p-timing-opt sel" onclick="selectTiming('now',event)" role="option" aria-selected="true">
           <div class="p-timing-opt-ico">⚡</div>
           <div>
             <div style="font-weight:700">Livrer maintenant</div>
             <div style="font-size:12px;color:var(--ink2);margin-top:1px">Livraison dès demain matin</div>
           </div>
         </div>
-        <div class="p-timing-opt" onclick="selectTiming('later','Planifier pour plus tard',event)" role="option" aria-selected="false">
+        <div class="p-timing-opt" onclick="selectTiming('later',event)" role="option" aria-selected="false">
           <div class="p-timing-opt-ico">📅</div>
           <div>
             <div style="font-weight:700">Planifier pour plus tard</div>
@@ -7604,7 +7604,7 @@ function geolocateUser(){
   if(window._geoCache){_applyGeoCache(window._geoCache);return;}
 
   if(!navigator.geolocation){
-    if(input)input.placeholder='Géolocalisation non disponible';
+    if(input)input.placeholder=_lang==='en'?'Geolocation unavailable':_lang==='zh'?'定位不可用':_lang==='ru'?'Геолокация недоступна':'Géolocalisation non disponible';
     return;
   }
   if(btn){btn.disabled=true;btn.innerHTML=_GEO_ICON_SPIN;}
@@ -7616,15 +7616,15 @@ function geolocateUser(){
       window._geoCache=cache;
       _applyGeoCache(cache);
     }catch(e){
-      if(input)input.placeholder='Adresse introuvable — saisissez-la manuellement';
+      if(input)input.placeholder=_lang==='en'?'Address not found — type it manually':_lang==='zh'?'找不到地址 — 请手动输入':_lang==='ru'?'Адрес не найден — введите вручную':'Adresse introuvable — saisissez-la manuellement';
     }
     done();
   };
   const handleErr=function(err){
     done();
     if(!input)return;
-    if(err.code===1)input.placeholder='Accès refusé — saisissez votre adresse';
-    else input.placeholder='Position indisponible — saisissez votre adresse';
+    if(err.code===1)input.placeholder=_lang==='en'?'Access denied — type your address':_lang==='zh'?'访问被拒绝 — 请手动输入地址':_lang==='ru'?'Доступ запрещён — введите адрес':'Accès refusé — saisissez votre adresse';
+    else input.placeholder=_lang==='en'?'Location unavailable — type your address':_lang==='zh'?'位置不可用 — 请手动输入地址':_lang==='ru'?'Местоположение недоступно — введите адрес':'Position indisponible — saisissez votre adresse';
   };
 
   // Passe 1 : position mise en cache dans le navigateur (même ancienne) → <200 ms
@@ -7738,10 +7738,14 @@ function _closeTiming(){
   if(dd)dd.classList.remove('show');
   if(btn){btn.classList.remove('open');btn.setAttribute('aria-expanded','false');}
 }
-function selectTiming(mode,label,e){
+function selectTiming(mode,e){
   if(e)e.stopPropagation();
   const lbl=document.getElementById('timing-label');
-  if(lbl)lbl.textContent=label;
+  const labels={
+    now:{fr:'Livrer maintenant',en:'Deliver now',zh:'立即配送',ru:'Доставить сейчас'},
+    later:{fr:'Planifier pour plus tard',en:'Schedule for later',zh:'安排稍后配送',ru:'Запланировать'}
+  };
+  if(lbl)lbl.textContent=(labels[mode]||{})[_lang]||(labels[mode]||{}).fr||mode;
   document.querySelectorAll('.p-timing-opt').forEach(o=>{o.classList.remove('sel');o.setAttribute('aria-selected','false');});
   if(e&&e.currentTarget)e.currentTarget.classList.add('sel');
   const df=document.getElementById('date-field');
@@ -7862,12 +7866,12 @@ document.addEventListener('keydown',e=>{
 });
 
 const META={
-  1:{title:'Adresse de livraison',sub:'Adresse de livraison'},
-  2:{title:'Durée de location',sub:'Combien de jours ?'},
-  3:{title:'Type de fenêtre',sub:'Pour adapter le kit d\'installation'},
-  4:{title:'Date de livraison',sub:'Pour quand souhaitez-vous être livré ?'},
-  5:{title:'Vos informations',sub:'Coordonnées et accès'},
-  6:{title:'Récapitulatif',sub:'Vérifiez et confirmez votre commande'},
+  1:{title:'delivery_address'},
+  2:{title:'rental_duration'},
+  3:{title:'window_type'},
+  4:{title:'delivery_date'},
+  5:{title:'customer_info'},
+  6:{title:'summary'},
 };
 
 // Comptage de chiffres = deviner le pays = se tromper (retour terrain,
@@ -8107,6 +8111,7 @@ function updateRunningTotal(stepArg){
   if(mobEl)mobEl.textContent=amt;
 }
 
+const _hlWired=new WeakSet();
 function highlight(ids){
   let firstEl=null;
   ids.forEach(id=>{
@@ -8116,14 +8121,18 @@ function highlight(ids){
     el.style.borderColor='#c0392b';
     el.style.boxShadow='0 0 0 3px rgba(192,57,43,.15)';
     el.setAttribute('aria-invalid','true');
-    const clear=()=>{
-      el.style.borderColor='';
-      el.style.boxShadow='';
-      el.removeAttribute('aria-invalid');
-    };
-    el.addEventListener('input',clear,{once:true});
-    el.addEventListener('change',clear,{once:true});
-    el.addEventListener('focus',clear,{once:true});
+    if(!_hlWired.has(el)){
+      _hlWired.add(el);
+      const clear=()=>{
+        _hlWired.delete(el);
+        el.style.borderColor='';
+        el.style.boxShadow='';
+        el.removeAttribute('aria-invalid');
+      };
+      el.addEventListener('input',clear,{once:true});
+      el.addEventListener('change',clear,{once:true});
+      el.addEventListener('focus',clear,{once:true});
+    }
   });
   if(firstEl){
     const mb=document.getElementById('modal-body');
