@@ -135,7 +135,9 @@ window._loadGA4=function(){
 })();
 </script>
 <link rel="preload" href="hero-clim.jpg" as="image" fetchpriority="high"/>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" media="print" onload="this.media='all'"/>
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap"/></noscript>
 <!-- Carte du hero (voir .hero-map-area plus bas) — même version pinée que
      transporteur/index.html, déjà autorisée par la CSP (unpkg.com). Chargement
      non bloquant (media=print puis bascule all) : cette feuille de style ne
@@ -559,12 +561,14 @@ body{
   position:relative;
   box-shadow:0 2px 12px rgba(0,0,0,.07);
   overflow:hidden;
+  min-height:140px;
 }
 .hero-product-visual{
   width:80px;flex-shrink:0;
   background:linear-gradient(160deg,#f0f7ff 0%,#e8f4f8 100%);
   display:flex;align-items:center;justify-content:center;
   border-right:1px solid rgba(0,0,0,.06);
+  min-height:140px;
 }
 .hero-product-info{flex:1;min-width:0;padding:14px 14px 12px 14px;border-left:3px solid var(--gold)}
 .hero-product-eye{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:3px}
@@ -5462,7 +5466,7 @@ document.addEventListener('DOMContentLoaded', function(){
           <div class="fld">
             <div class="fld-label-row">
               <label for="f-addr" id="label-addr">Adresse<span class="req">*</span></label>
-              <button type="button" class="geo-btn" id="geo-btn" onclick="geoLocate()" aria-label="Utiliser ma position actuelle pour remplir l'adresse">
+              <button type="button" class="geo-btn" id="geo-btn-modal" onclick="geoLocate()" aria-label="Utiliser ma position actuelle pour remplir l'adresse">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
                 <span id="geo-lbl">Ma position</span>
               </button>
@@ -5494,7 +5498,7 @@ document.addEventListener('DOMContentLoaded', function(){
             <div id="cp-hors-zone" role="alert" aria-live="assertive" style="display:none;margin-top:8px;padding:12px 16px;background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;font-size:13px;color:#7f1d1d;line-height:1.55">
               <strong id="cp-hors-zone-title">⛔ Loc'Air ne livre pas dans votre région</strong><br>
               <span id="cp-hors-zone-msg" style="font-size:12px;color:#991b1b">Vérifiez votre zone sur WhatsApp — on vous répond rapidement. Votre code postal indique une adresse trop éloignée de nos équipes.</span><br>
-              <a id="cp-hors-zone-wa" href="https://wa.me/33663798756?text=Bonjour%2C+je+souhaite+louer+un+climatiseur+mais+mon+adresse+est+hors+zone.+Pouvez-vous+m%27aider+%3F" target="_blank" rel="noopener noreferrer" style="color:#7f1d1d;font-weight:700;text-decoration:underline;font-size:12px">Une question ? Écrivez-nous sur WhatsApp →</a>
+              <a id="cp-hors-zone-wa" data-c-wa href="https://wa.me/33663798756?text=Bonjour%2C+je+souhaite+louer+un+climatiseur+mais+mon+adresse+est+hors+zone.+Pouvez-vous+m%27aider+%3F" target="_blank" rel="noopener noreferrer" style="color:#7f1d1d;font-weight:700;text-decoration:underline;font-size:12px">Une question ? Écrivez-nous sur WhatsApp →</a>
             </div>
             <div id="cp-gate" role="alert" aria-live="polite" style="display:none;background:#fffbeb;color:#78350f;border:1px solid #fcd34d;border-radius:10px;padding:12px 16px;font-size:13px;margin-top:10px">
               ⚠️ <strong id="cp-gate-title">Adresse non vérifiée</strong> — <span id="cp-gate-msg">nous n'avons pas pu détecter votre code postal automatiquement.</span><br>
@@ -7325,7 +7329,7 @@ document.addEventListener('click',e=>{
 
 // ── GÉOLOCALISATION ADRESSE ───────────────────────────────────────────────────────
 function geoLocate(){
-  const btn=document.getElementById('geo-btn');
+  const btn=document.getElementById('geo-btn-modal');
   const lbl=document.getElementById('geo-lbl');
   const inp=document.getElementById('f-addr');
   if(!btn||!lbl||!inp)return;
@@ -7847,21 +7851,11 @@ function closeModal(){
 }
 function overlayClick(e){
   if(e.target!==document.getElementById('overlay'))return;
-  if(curStep>=2&&(document.getElementById('f-addr')?.value.trim()||document.getElementById('f-prenom')?.value.trim())){
-    if(!confirm(_lang==='en'?'Close? Your booking will be lost.':_lang==='zh'?'关闭？您的预订将丢失。':_lang==='ru'?'Закрыть? Ваше бронирование будет потеряно.':'Fermer ? Votre réservation sera perdue.'))return;
-  }
   closeModal();
 }
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'){
-    if(curStep>=2){
-      if(confirm(_lang==='en'?'Close the form? Your input will be lost.'
-        :_lang==='zh'?'关闭表单？您的输入将丢失。'
-        :_lang==='ru'?'Закрыть форму? Введённые данные будут потеряны.'
-        :'Fermer le formulaire ? Votre saisie sera perdue.'))closeModal();
-    } else {
-      closeModal();
-    }
+    closeModal();
   }
   // Fermer si clic sur overlay avec Enter
   if(e.key==='Enter'&&document.activeElement===document.getElementById('overlay'))closeModal();
@@ -7931,7 +7925,7 @@ function combinedPhone(inputId,ccId){
 // toE164FR dans api/_lib/brevo.js, au moment de l'envoi réel).
 function isValidPhone(inputId){
   const local=(document.getElementById(inputId)?.value||'').replace(/\D/g,'').replace(/^0+/,'');
-  return local.length>=4&&local.length<=12;
+  return local.length>=7&&local.length<=12;
 }
 function goTo(n,silent){
   if(n===0){
@@ -8451,7 +8445,6 @@ function buildRecap(){
   if(recupDateVal){const[ry,rm,rd]=recupDateVal.split('-');recupDateDisplay=rd+'/'+rm+'/'+ry;}
   if(recupEl)recupEl.textContent=isEN?'On '+recupDateDisplay+' · '+creneauRecup:isZH?recupDateDisplay+' 取回 · '+creneauRecup:isRU?recupDateDisplay+' · '+creneauRecup:'Le '+recupDateDisplay+' · '+creneauRecup;
   const total=Math.max(0,calcTotal(days)-_promoDiscount+DELIVERY_FEE+EXPRESS_FEE);
-  const installLabel=_techInstall?(isEN?'Technician installation':isZH?'技术员安装 — 80 €':'Pose technicien — 80 €'):(isEN?'Self-install (free)':isZH?'自行安装（免费）':'Pose autonome — Kit fourni');
   const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:isZH?'电梯：'+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
   const durLabel=isEN?days+' days':isZH?days+' 天':isRU?days+' дней':days+' jours';
   const priceDisplay=total===0?(isEN?'On quote':isZH?'询价':'Sur devis'):Math.round(total)+' €';
@@ -11082,6 +11075,7 @@ function validateProlongStep3(){
   if(!date){highlight(['pe-date']);return false;}
   const finInit=_prolongResa?.date_fin;
   const baseline=finInit?new Date(finInit):new Date();
+  if(isNaN(baseline)){highlight(['pe-date']);return false;}
   baseline.setHours(0,0,0,0);
   if(new Date(date)<=baseline){highlight(['pe-date']);return false;}
   return true;
@@ -11139,7 +11133,7 @@ function validateProlongStep1(){
   if(!prenom)missing.push('pe-prenom');
   if(!nom)missing.push('pe-nom');
   if(!email||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))missing.push('pe-email');
-  if(!tel)missing.push('pe-tel');
+  if(!isValidPhone('pe-tel'))missing.push('pe-tel');
   if(!ref)missing.push('pe-ref');
   if(missing.length){highlight(missing);return false;}
   return true;
