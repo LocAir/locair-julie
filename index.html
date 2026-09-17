@@ -7924,7 +7924,7 @@ function combinedPhone(inputId,ccId){
 }
 // Le pays étant désormais toujours connu explicitement (menu déroulant),
 // il ne reste qu'à vérifier une longueur raisonnable du numéro LOCAL —
-// large exprès (4 à 12 chiffres couvre tous les formats nationaux réels),
+// large exprès (7 à 12 chiffres couvre tous les formats nationaux réels),
 // jamais une vraie validation par pays (faite plus tard côté serveur,
 // toE164FR dans api/_lib/brevo.js, au moment de l'envoi réel).
 function isValidPhone(inputId){
@@ -8102,7 +8102,7 @@ function updateRunningTotal(stepArg){
   const total=Math.max(0,calcTotal(days)-disc+DELIVERY_FEE+EXPRESS_FEE);
   const isEN=_lang==='en',isZH=_lang==='zh',isRU=_lang==='ru';
   const lbl=isEN?'Estimated total':isZH?'预估总价':isRU?'Примерная сумма':'Total estimé';
-  const amt=Math.round(total)+' €';
+  const amt=(Number.isInteger(total)?total:total.toFixed(2))+' €';
   const lblEl=document.getElementById('ms-total-lbl');
   const amtEl=document.getElementById('ms-total-amt');
   if(lblEl)lblEl.textContent=lbl;
@@ -8456,7 +8456,7 @@ function buildRecap(){
   const total=Math.max(0,calcTotal(days)-_promoDiscount+DELIVERY_FEE+EXPRESS_FEE);
   const etageLabel=[etage,asc!=='—'?(isEN?'Lift: '+asc:isZH?'电梯：'+asc:'Asc. '+asc):''].filter(Boolean).join(' · ')||'—';
   const durLabel=isEN?days+' days':isZH?days+' 天':isRU?days+' дней':days+' jours';
-  const priceDisplay=total===0?(isEN?'On quote':isZH?'询价':'Sur devis'):Math.round(total)+' €';
+  const priceDisplay=total===0?(isEN?'On quote':isZH?'询价':'Sur devis'):(Number.isInteger(total)?total:total.toFixed(2))+' €';
 
   // SVG icons
   const icoPin='<svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" stroke="none" fill="var(--blue)" style="opacity:.85"/></svg>';
@@ -8903,7 +8903,7 @@ function submitForm(btn,mode){
     retard_accepted:true,
     retard_accepted_at:(()=>{try{return new Date().toISOString();}catch(e){return '';}})(),
     mode:mode,
-    prix:Math.max(0,calcTotal(parseInt(document.getElementById('f-dur')?.value)||7)-_promoDiscount+DELIVERY_FEE+EXPRESS_FEE)+' €',
+    prix:(()=>{const t=Math.max(0,calcTotal(parseInt(document.getElementById('f-dur')?.value)||7)-_promoDiscount+DELIVERY_FEE+EXPRESS_FEE);return(Number.isInteger(t)?t:t.toFixed(2))+' €';})(),
     date_recuperation_souhaitee:document.getElementById('f-date-recup')?.value||'',
     date_recuperation:(()=>{try{const v=document.getElementById('f-date-recup')?.value;if(!v)return '—';const[y,m,d]=v.split('-');return new Date(Date.UTC(+y,+m-1,+d)).toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}catch(e){return '—';}})()
   };
