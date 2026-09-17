@@ -446,6 +446,23 @@ body{
 .p-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(200,146,28,.12)}
 .p-addr-wrap{position:relative}
 .p-addr-wrap .p-input{padding-right:44px}
+.p-addr-suggestions{
+  position:absolute;left:0;right:0;top:calc(100% + 4px);
+  background:#fff;border:1.5px solid var(--border);border-radius:10px;
+  box-shadow:0 4px 20px rgba(0,0,0,.10);z-index:500;
+  overflow:hidden;display:none;
+}
+.p-addr-suggestions.show{display:block}
+.p-addr-sug-item{
+  padding:10px 14px;font-size:13.5px;color:var(--ink);
+  cursor:pointer;border-bottom:1px solid var(--border);
+  font-family:var(--body);line-height:1.4;
+  transition:background .1s;
+}
+.p-addr-sug-item:last-child{border-bottom:none}
+.p-addr-sug-item:hover,.p-addr-sug-item.focused{background:var(--bg)}
+.p-addr-sug-label{font-weight:600}
+.p-addr-sug-ctx{font-size:11.5px;color:var(--ink2);margin-top:1px}
 .p-geo-btn{
   position:absolute;right:10px;top:50%;transform:translateY(-50%);
   width:32px;height:32px;border:none;background:none;cursor:pointer;
@@ -4172,7 +4189,8 @@ input:-webkit-autofill:focus{
     <div class="p-field-group">
       <label class="p-label" for="panel-addr">Adresse de livraison</label>
       <div class="p-addr-wrap">
-        <input class="p-input" type="text" id="panel-addr" name="adresse" placeholder="Ex : 12 rue de la Paix, Nice" autocomplete="street-address" aria-label="Adresse de livraison">
+        <input class="p-input" type="text" id="panel-addr" name="adresse" placeholder="Ex : 12 rue de la Paix, Nice" autocomplete="off" aria-label="Adresse de livraison" aria-autocomplete="list" aria-controls="addr-suggestions">
+        <div class="p-addr-suggestions" id="addr-suggestions" role="listbox" aria-label="Suggestions d'adresse"></div>
         <button class="p-geo-btn" id="geo-btn" type="button" onclick="geolocateUser()" aria-label="Utiliser ma position" title="Utiliser ma position">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
@@ -4182,20 +4200,8 @@ input:-webkit-autofill:focus{
       </div>
     </div>
 
-    <!-- Durée -->
-    <div class="p-field-group">
-      <label class="p-label" for="panel-duree">Durée de location</label>
-      <select class="p-input" id="panel-duree" name="duree" aria-label="Durée de location">
-        <option value="">Choisir une durée…</option>
-        <option value="7">7 jours — 12 €/jour</option>
-        <option value="10">8–14 jours — 10 €/jour (−17%)</option>
-        <option value="18">15–21 jours — 9 €/jour (−25%)</option>
-        <option value="22">22+ jours — meilleur tarif</option>
-      </select>
-    </div>
-
-    <button class="p-submit" onclick="panelSubmit()" type="button" aria-label="Voir les prix disponibles">
-      Voir les prix →
+    <button class="p-submit" onclick="panelSubmit()" type="button" aria-label="Réserver">
+      Réserver →
     </button>
 
     <div class="p-divider">ou</div>
@@ -4269,7 +4275,7 @@ document.addEventListener('DOMContentLoaded', function(){
     // attributionControl laissé actif (par défaut) : les tuiles CARTO
     // gratuites l'exigent dans leurs conditions d'usage — même choix que
     // transporteur/index.html, qui l'affiche déjà sans que ça gêne visuellement.
-    const map = L.map(el, { scrollWheelZoom:false }).setView([43.70764, 7.26197], 10);
+    const map = L.map(el, { scrollWheelZoom:false }).setView([43.70764, 7.26197], 13);
     window._heroMap = map;
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -7512,18 +7518,37 @@ async function _reverseGeocode(lat,lng){
   return{addr:[street,postal,city].filter(Boolean).join(', ')||d.display_name||'',lat,lng};
 }
 
-// Pré-chauffe silencieuse si la permission est déjà accordée
-// (pas de prompt navigateur — juste un cache en arrière-plan)
-(function _prewarmGeo(){
-  if(!navigator.geolocation||!navigator.permissions)return;
-  navigator.permissions.query({name:'geolocation'}).then(function(status){
-    if(status.state!=='granted')return;
-    navigator.geolocation.getCurrentPosition(async function(pos){
-      try{
-        window._geoCache=await _reverseGeocode(pos.coords.latitude,pos.coords.longitude);
-      }catch(e){}
-    },function(){},{timeout:5000,maximumAge:300000,enableHighAccuracy:false});
-  }).catch(function(){});
+// Géolocalisation automatique au chargement.
+// Si la permission est déjà accordée → remplit le champ adresse en silence,
+// déplace le marqueur, sans aucun prompt.
+// Si la permission n'a pas encore été demandée → demande au navigateur,
+// puis remplit si acceptée.
+// Si refusée ou indisponible → silencieux, le champ reste vide.
+(function _autoGeo(){
+  if(!navigator.geolocation)return;
+  async function _handlePos(pos){
+    try{
+      const cache=await _reverseGeocode(pos.coords.latitude,pos.coords.longitude);
+      window._geoCache=cache;
+      // N'écrase pas une adresse que l'utilisateur aurait déjà saisie à la main
+      const inp=document.getElementById('panel-addr');
+      if(inp&&!inp.value.trim())_applyGeoCache(cache);
+    }catch(e){}
+  }
+  function _requestFresh(){
+    navigator.geolocation.getCurrentPosition(
+      _handlePos,
+      function(){},
+      {timeout:10000,maximumAge:0,enableHighAccuracy:false}
+    );
+  }
+  // Passe 1 : position en cache navigateur (<200ms si permission accordée) ;
+  // Passe 2 si raté : requête fraîche (déclenche le prompt si nécessaire).
+  navigator.geolocation.getCurrentPosition(
+    _handlePos,
+    _requestFresh,
+    {timeout:200,maximumAge:Infinity,enableHighAccuracy:false}
+  );
 })();
 
 const _GEO_ICON_PIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M12 2a10 10 0 1 0 10 10"/></svg>';
@@ -7532,9 +7557,17 @@ const _GEO_ICON_SPIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 function _applyGeoCache(cache){
   const input=document.getElementById('panel-addr');
   if(input)input.value=cache.addr;
+  // La carte peut ne pas encore être montée (Leaflet async) — on retente
   if(window._heroMap&&window._heroMarker){
     window._heroMap.setView([cache.lat,cache.lng],14,{animate:true});
     window._heroMarker.setLatLng([cache.lat,cache.lng]);
+  }else{
+    setTimeout(()=>{
+      if(window._heroMap&&window._heroMarker){
+        window._heroMap.setView([cache.lat,cache.lng],14,{animate:true});
+        window._heroMarker.setLatLng([cache.lat,cache.lng]);
+      }
+    },1200);
   }
 }
 
@@ -7579,21 +7612,89 @@ function geolocateUser(){
 }
 
 /* ── Panel hero : soumission avec pré-remplissage modal ── */
+// ── Autocomplétion adresse (API adresse.data.gouv.fr) ──────────────────────
+(function(){
+  let _addrTimer=null;
+  let _focusedIdx=-1;
+  const _bbox='6.5,43.4,7.8,43.95'; // bounding box Côte d'Azur
+  const input=document.getElementById('panel-addr');
+  const box=document.getElementById('addr-suggestions');
+  if(!input||!box)return;
+
+  function _closeSug(){box.classList.remove('show');box.innerHTML='';_focusedIdx=-1;}
+  function _moveFocus(dir){
+    const items=box.querySelectorAll('.p-addr-sug-item');
+    if(!items.length)return;
+    items[_focusedIdx]?.classList.remove('focused');
+    _focusedIdx=(_focusedIdx+dir+items.length)%items.length;
+    items[_focusedIdx]?.classList.add('focused');
+  }
+  function _pick(label,lat,lng){
+    input.value=label;
+    _closeSug();
+    if(window._heroMap&&window._heroMarker){
+      window._heroMap.setView([lat,lng],15,{animate:true});
+      window._heroMarker.setLatLng([lat,lng]);
+    }
+  }
+  function _render(features){
+    box.innerHTML='';
+    if(!features||!features.length){_closeSug();return;}
+    features.slice(0,5).forEach((f,i)=>{
+      const p=f.properties||{};
+      const [lng,lat]=f.geometry?.coordinates||[];
+      const label=p.label||p.name||'';
+      const ctx=[p.postcode,p.city].filter(Boolean).join(' ');
+      const el=document.createElement('div');
+      el.className='p-addr-sug-item';
+      el.setAttribute('role','option');
+      el.innerHTML='<div class="p-addr-sug-label">'+label+'</div>'+(ctx?'<div class="p-addr-sug-ctx">'+ctx+'</div>':'');
+      el.addEventListener('mousedown',e=>{e.preventDefault();_pick(label,lat,lng);});
+      box.appendChild(el);
+    });
+    box.classList.add('show');
+    _focusedIdx=-1;
+  }
+  async function _fetch(q){
+    try{
+      const url='https://api-adresse.data.gouv.fr/search/?q='+encodeURIComponent(q)+'&limit=5&bbox='+_bbox;
+      const r=await fetch(url,{signal:AbortSignal.timeout(3000)});
+      if(!r.ok)return;
+      const d=await r.json();
+      _render(d.features);
+    }catch(e){_closeSug();}
+  }
+  input.addEventListener('input',()=>{
+    clearTimeout(_addrTimer);
+    const q=input.value.trim();
+    if(q.length<3){_closeSug();return;}
+    _addrTimer=setTimeout(()=>_fetch(q),220);
+  });
+  input.addEventListener('keydown',e=>{
+    if(!box.classList.contains('show'))return;
+    if(e.key==='ArrowDown'){e.preventDefault();_moveFocus(1);}
+    else if(e.key==='ArrowUp'){e.preventDefault();_moveFocus(-1);}
+    else if(e.key==='Enter'||e.key==='Tab'){
+      const focused=box.querySelector('.p-addr-sug-item.focused');
+      if(focused){e.preventDefault();focused.dispatchEvent(new MouseEvent('mousedown'));}
+      else _closeSug();
+    }
+    else if(e.key==='Escape'){_closeSug();}
+  });
+  document.addEventListener('click',e=>{if(!input.contains(e.target)&&!box.contains(e.target))_closeSug();});
+})();
+
 function panelSubmit(){
   const addrEl=document.getElementById('panel-addr');
-  const dureeEl=document.getElementById('panel-duree');
   const addr=addrEl?addrEl.value.trim():'';
-  const duree=dureeEl?dureeEl.value:'';
-  // Validation légère : adresse requise
   if(addrEl&&!addr){
     addrEl.style.borderColor='var(--red)';
     addrEl.focus();
     setTimeout(()=>{if(addrEl)addrEl.style.borderColor='';},2000);
     return;
   }
-  const dur=parseInt(duree)||7;
   // Passe l'adresse → modal saute l'étape 1 et ouvre directement à la durée
-  openModal(dur,'new',addr||undefined);
+  openModal(7,'new',addr||undefined);
 }
 /* ── Dropdown timing panel hero ── */
 function toggleTiming(e){
@@ -7978,7 +8079,7 @@ function updateRunningTotal(stepArg){
   }
   const days=_durDays||parseInt(document.getElementById('f-dur')?.value||'7')||7;
   const basePrice=calcPrice(days)*_qty;
-  const disc=_promoPct>0?Math.round(basePrice*_promoPct/100):_promoDiscount;
+  const disc=_promoPct>0?Math.round(basePrice*100*_promoPct/100)/100:_promoDiscount;
   const total=Math.max(0,calcTotal(days)-disc+DELIVERY_FEE+EXPRESS_FEE);
   const isEN=_lang==='en',isZH=_lang==='zh',isRU=_lang==='ru';
   const lbl=isEN?'Estimated total':isZH?'预估总价':isRU?'Примерная сумма':'Total estimé';
@@ -9266,7 +9367,7 @@ const LANG_MAP=[
   ['.hero-product-eye','text','Location · Côte d\'Azur','Rental · French Riviera','租赁 · 蔚蓝海岸','Аренда · Лазурный берег'],
   ['#timing-label','text','Livrer maintenant','Deliver now','立即配送','Доставить сейчас'],
   ['#panel-addr','ph','Ex : 12 rue de la Paix, Nice','E.g. 12 rue de la Paix, Nice','如：12 rue de la Paix, Nice','Напр.: 12 rue de la Paix, Nice'],
-  ['.p-submit','text','Voir les prix →','See prices →','查看价格 →','Посмотреть цены →'],
+  ['.p-submit','text','Réserver →','Book now →','立即预订 →','Забронировать →'],
   ['#footer-rtg','text','4,9★ · 32 avis Google','4.9★ · 32 Google reviews','4.9★ · 32条Google评价',`4,9★ · 32 отзыва Google`],
   ['#hero-rtg-txt','text','4,9 · 32 avis Google','4.9 · 32 Google reviews','4.9 · 32条Google评价',`4,9 · 32 отзыва Google`],
 
