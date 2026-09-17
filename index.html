@@ -6623,7 +6623,8 @@ function _updateDeliveryFee(){
   const notice=document.getElementById('zone-delivery-notice');
   const block=document.getElementById('cp-hors-zone');
   if(!cp){
-    // CP non détecté (adresse tapée manuellement) : garde le tarif standard par défaut
+    // CP non détecté (adresse tapée manuellement) : revenir au tarif standard
+    DELIVERY_FEE=_offrePro?PRO_FORFAIT:60;
     if(notice)notice.style.display='none';
     if(block)block.style.display='none';
     _cpOutOfZone=false;
@@ -7818,6 +7819,7 @@ function closeModal(){
   const instrTa=document.getElementById('f-instructions');if(instrTa)instrTa.value='';
   const instrWrap=document.getElementById('instructions-wrap');if(instrWrap)instrWrap.style.display='none';
   _qty=1;_techInstall=true;_selectedForfait=null;
+  EXPRESS_FEE=0;const _exBtn=document.getElementById('ds-express');if(_exBtn){_exBtn.classList.remove('on');_exBtn.removeAttribute('aria-pressed');}
   document.getElementById('modal')?.querySelectorAll('.tpill.on[role="radio"]').forEach(p=>{p.classList.remove('on');p.setAttribute('aria-checked','false');});
   const instrNo=document.getElementById('instructions-no');if(instrNo){instrNo.classList.add('on');instrNo.setAttribute('aria-checked','true');}
   const instrYes=document.getElementById('instructions-yes');if(instrYes)instrYes.setAttribute('aria-checked','false');
@@ -8409,7 +8411,8 @@ async function handleFenetrePhoto(input){
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 function buildRecap(){
   const days=parseInt(document.getElementById('f-dur')?.value||'7');
-  const price=calcPrice(days)*_qty;
+  const _fOk=_selectedForfait&&_selectedForfait.duree_jours===days&&_selectedForfait.quantite===_qty;
+  const price=_fOk?_selectedForfait.prix_cents/100:calcPrice(days)*_qty;
   // Code en % (fidélité/parrainage) : recalculé à chaque rendu à partir du
   // prix de location courant (hors pose technicien/livraison, comme côté
   // serveur — voir _lib/promo.js), pour rester juste si la durée/quantité
@@ -8621,7 +8624,7 @@ function _generateOrderRef(){
 async function submitCancellation(){
   const ref=document.getElementById('cancel-ref')?.value.trim();
   const email=document.getElementById('cancel-email')?.value.trim();
-  if(!ref||!email)return;
+  if(!ref||!email||!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))return;
   const btn=document.getElementById('cancel-sbtn');
   if(btn){btn.disabled=true;btn.textContent=_lang==='en'?'Sending…':_lang==='zh'?'发送中…':_lang==='ru'?'Отправка…':'Envoi…';}
   try{
@@ -8843,7 +8846,7 @@ function submitForm(btn,mode){
     if(!el)return;
     el.style.outline='2px solid #c0392b';el.style.boxShadow='0 0 0 3px rgba(192,57,43,.15)';el.setAttribute('aria-invalid','true');
     setTimeout(()=>{el.style.outline='';el.style.boxShadow='';el.removeAttribute('aria-invalid');},2500);
-    const lb=document.querySelector('label[for="'+lblFor+'"]');
+    const lb=el?.closest('label')||document.querySelector('label[for="'+lblFor+'"]');
     if(lb){lb.style.color='var(--red)';setTimeout(()=>lb.style.color='',2500);}
   };
   if(!cgv?.checked){highlightCb(cgv,'f-cgv');return;}
@@ -8870,7 +8873,7 @@ function submitForm(btn,mode){
     etage:document.getElementById('f-etage')?.value||'—',
     ascenseur:document.querySelector('.asc-yes')?.classList.contains('on')?'Oui':'Non',
     date:document.getElementById('f-date')?.value,
-    duree:document.getElementById('f-dur')?.value,
+    duree:parseInt(document.getElementById('f-dur')?.value)||7,
     fenetre:ouvSummaryText(),
     fenetre_detail:JSON.stringify(Object.fromEntries(ouvBreakdown().map(p=>[p.type,p.qty]))),
     fenetre_photo_path:_fenetrePhotoPath||'',
@@ -8893,12 +8896,12 @@ function submitForm(btn,mode){
     partenaire_code:localStorage.getItem('_la_p')||'',
     instructions_acces:document.getElementById('f-instructions')?.value.trim()||'',
     remise_promo:_promoDiscount>0?'-'+_promoDiscount+' €':'',
-    prenom:document.getElementById('f-prenom')?.value,
-    nom:document.getElementById('f-nom')?.value,
+    prenom:document.getElementById('f-prenom')?.value.trim()||'',
+    nom:document.getElementById('f-nom')?.value.trim()||'',
     tel:combinedPhone('f-tel','f-tel-cc'),
     tel_secondaire:combinedPhone('f-tel2','f-tel2-cc'),
-    email:document.getElementById('f-email')?.value,
-    _replyto:document.getElementById('f-email')?.value,
+    email:document.getElementById('f-email')?.value.trim()||'',
+    _replyto:document.getElementById('f-email')?.value.trim()||'',
     source:document.getElementById('f-source')?.value||'—',
     logement:document.querySelector('#logement-group .tpill.on')?.textContent.trim()||'—',
     motifs:[...document.querySelectorAll('#motif-group .tpill.on')].map(t=>t.textContent.trim()).join(', ')||'—',
@@ -11508,7 +11511,8 @@ async function validatePromo(){
   if(!inp)return;
   // Les codes promo ne sont pas cumulables avec un forfait à prix fixe
   // (le serveur rejette aussi le code dans ce cas, voir api/checkout.js).
-  if(_selectedForfait){
+  const _fActif=_selectedForfait&&_selectedForfait.duree_jours===parseInt(document.getElementById('f-dur')?.value)&&_selectedForfait.quantite===_qty;
+  if(_fActif){
     _promoDiscount=0;_promoPct=0;_promoCode='';
     if(fb){fb.textContent=_lang==='en'?'Promo codes cannot be combined with fixed-price packs':_lang==='zh'?'促销码不能与固定价格套餐组合使用':_lang==='ru'?'Промокоды не суммируются с пакетными тарифами':'Code promo non cumulable avec un forfait à prix fixe';fb.style.color='var(--red)';fb.style.display='block';}
     buildRecap();
