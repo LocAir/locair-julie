@@ -7470,34 +7470,67 @@ function _initSoldOut(){
 }
 
 /* ── Géolocalisation panel hero ── */
+// Cache partagé entre pré-chauffe et clic bouton
+window._geoCache=null;
+
+// Convertit les coords en adresse via Nominatim
+async function _reverseGeocode(lat,lng){
+  const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&accept-language=fr',{headers:{'Accept':'application/json'}});
+  if(!r.ok)throw new Error();
+  const d=await r.json();
+  const c=d.address||{};
+  const street=[c.house_number,c.road].filter(Boolean).join(' ');
+  const city=c.city||c.town||c.village||c.municipality||'';
+  const postal=c.postcode||'';
+  return{addr:[street,postal,city].filter(Boolean).join(', ')||d.display_name||'',lat,lng};
+}
+
+// Pré-chauffe silencieuse si la permission est déjà accordée
+// (pas de prompt navigateur — juste un cache en arrière-plan)
+(function _prewarmGeo(){
+  if(!navigator.geolocation||!navigator.permissions)return;
+  navigator.permissions.query({name:'geolocation'}).then(function(status){
+    if(status.state!=='granted')return;
+    navigator.geolocation.getCurrentPosition(async function(pos){
+      try{
+        window._geoCache=await _reverseGeocode(pos.coords.latitude,pos.coords.longitude);
+      }catch(e){}
+    },function(){},{timeout:5000,maximumAge:300000,enableHighAccuracy:false});
+  }).catch(function(){});
+})();
+
+const _GEO_ICON_PIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M12 2a10 10 0 1 0 10 10"/></svg>';
+const _GEO_ICON_SPIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px;animation:spin .8s linear infinite"><path d="M12 2a10 10 0 0 1 10 10"/></svg>';
+
+function _applyGeoCache(cache){
+  const input=document.getElementById('panel-addr');
+  if(input)input.value=cache.addr;
+  if(window._heroMap&&window._heroMarker){
+    window._heroMap.setView([cache.lat,cache.lng],14,{animate:true});
+    window._heroMarker.setLatLng([cache.lat,cache.lng]);
+  }
+}
+
 function geolocateUser(){
   const btn=document.getElementById('geo-btn');
   const input=document.getElementById('panel-addr');
+
+  // Cache chaud → résultat instantané, 0 ms de délai
+  if(window._geoCache){_applyGeoCache(window._geoCache);return;}
+
   if(!navigator.geolocation){
-    if(input){input.focus();input.placeholder='Géolocalisation non disponible';}
+    if(input)input.placeholder='Géolocalisation non disponible';
     return;
   }
-  const iconPin='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M12 2a10 10 0 1 0 10 10"/></svg>';
-  const iconSpin='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px;animation:spin .8s linear infinite"><path d="M12 2a10 10 0 0 1 10 10"/></svg>';
-  if(btn){btn.disabled=true;btn.innerHTML=iconSpin;}
-  const done=()=>{if(btn){btn.disabled=false;btn.innerHTML=iconPin;}};
+  if(btn){btn.disabled=true;btn.innerHTML=_GEO_ICON_SPIN;}
+  const done=()=>{if(btn){btn.disabled=false;btn.innerHTML=_GEO_ICON_PIN;}};
+
   navigator.geolocation.getCurrentPosition(
     async function(pos){
-      const{latitude:lat,longitude:lng}=pos.coords;
       try{
-        const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&accept-language=fr',{headers:{'Accept':'application/json'}});
-        if(!r.ok)throw new Error();
-        const d=await r.json();
-        const c=d.address||{};
-        const street=[c.house_number,c.road].filter(Boolean).join(' ');
-        const city=c.city||c.town||c.village||c.municipality||'';
-        const postal=c.postcode||'';
-        const addr=[street,postal,city].filter(Boolean).join(', ');
-        if(input)input.value=addr||d.display_name||'';
-        if(window._heroMap&&window._heroMarker){
-          window._heroMap.setView([lat,lng],14,{animate:true});
-          window._heroMarker.setLatLng([lat,lng]);
-        }
+        const cache=await _reverseGeocode(pos.coords.latitude,pos.coords.longitude);
+        window._geoCache=cache;
+        _applyGeoCache(cache);
       }catch(e){
         if(input)input.placeholder='Adresse introuvable — saisissez-la manuellement';
       }
@@ -7509,7 +7542,7 @@ function geolocateUser(){
       if(err.code===1)input.placeholder='Accès refusé — saisissez votre adresse';
       else input.placeholder='Position indisponible — saisissez votre adresse';
     },
-    {timeout:8000,maximumAge:60000,enableHighAccuracy:false}
+    {timeout:8000,maximumAge:300000,enableHighAccuracy:false}
   );
 }
 
