@@ -7552,24 +7552,29 @@ function geolocateUser(){
   if(btn){btn.disabled=true;btn.innerHTML=_GEO_ICON_SPIN;}
   const done=()=>{if(btn){btn.disabled=false;btn.innerHTML=_GEO_ICON_PIN;}};
 
+  const handlePos=async function(pos){
+    try{
+      const cache=await _reverseGeocode(pos.coords.latitude,pos.coords.longitude);
+      window._geoCache=cache;
+      _applyGeoCache(cache);
+    }catch(e){
+      if(input)input.placeholder='Adresse introuvable — saisissez-la manuellement';
+    }
+    done();
+  };
+  const handleErr=function(err){
+    done();
+    if(!input)return;
+    if(err.code===1)input.placeholder='Accès refusé — saisissez votre adresse';
+    else input.placeholder='Position indisponible — saisissez votre adresse';
+  };
+
+  // Passe 1 : position mise en cache dans le navigateur (même ancienne) → <200 ms
+  // Passe 2 : aucun cache trouvé → requête fraîche (spinner déjà affiché)
   navigator.geolocation.getCurrentPosition(
-    async function(pos){
-      try{
-        const cache=await _reverseGeocode(pos.coords.latitude,pos.coords.longitude);
-        window._geoCache=cache;
-        _applyGeoCache(cache);
-      }catch(e){
-        if(input)input.placeholder='Adresse introuvable — saisissez-la manuellement';
-      }
-      done();
-    },
-    function(err){
-      done();
-      if(!input)return;
-      if(err.code===1)input.placeholder='Accès refusé — saisissez votre adresse';
-      else input.placeholder='Position indisponible — saisissez votre adresse';
-    },
-    {timeout:8000,maximumAge:300000,enableHighAccuracy:false}
+    handlePos,
+    ()=>navigator.geolocation.getCurrentPosition(handlePos,handleErr,{timeout:8000,maximumAge:0,enableHighAccuracy:false}),
+    {timeout:200,maximumAge:Infinity,enableHighAccuracy:false}
   );
 }
 
