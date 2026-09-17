@@ -385,6 +385,7 @@ body{
   position:fixed;top:62px;left:0;right:0;z-index:10;
   display:flex;height:calc(100vh - 62px);
   overflow:hidden;background:var(--bg);
+  transition:top .28s cubic-bezier(.4,0,.2,1),height .28s cubic-bezier(.4,0,.2,1);
 }
 .hero-panel{
   width:420px;flex-shrink:0;
@@ -2144,13 +2145,11 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   from{opacity:0;transform:translateY(14px)}
   to{opacity:1;transform:none}
 }
-.hero-h1,.hero-desc,.hero-cta-row,.hero-trust,.hero-micro{will-change:opacity,transform}
-/* Cascade pendant le lever du rideau */
-.hero-h1{animation:heroIn .85s .38s cubic-bezier(.22,.61,.36,1) both}
-.hero-desc{animation:heroIn .65s .56s cubic-bezier(.22,.61,.36,1) both}
-.hero-cta-row{animation:heroIn .65s .72s cubic-bezier(.22,.61,.36,1) both}
-.hero-trust{animation:heroInFast .5s .88s cubic-bezier(.22,.61,.36,1) both}
-.hero-micro{animation:heroInFast .5s .96s cubic-bezier(.22,.61,.36,1) both}
+/* Hero panel : animation d'entrée */
+.hero-panel-title{animation:heroIn .6s .2s cubic-bezier(.22,.61,.36,1) both}
+.p-timing-wrap{animation:heroIn .55s .32s cubic-bezier(.22,.61,.36,1) both}
+.p-field-group,.p-submit,.p-divider,.p-alt-btns{animation:heroInFast .5s .44s cubic-bezier(.22,.61,.36,1) both}
+.hero-panel{will-change:opacity,transform}
 /* 03 — Scroll reveal (desktop uniquement — iOS Safari bug avec IO) */
 @media(hover:hover)and(pointer:fine){
   .sr{opacity:0;transform:translateY(28px);transition:opacity .85s cubic-bezier(.22,.61,.36,1),transform .85s cubic-bezier(.22,.61,.36,1)}
@@ -4066,7 +4065,7 @@ input:-webkit-autofill:focus{
       </select>
     </div>
 
-    <button class="p-submit" onclick="openModal()" type="button" aria-label="Voir les prix disponibles">
+    <button class="p-submit" onclick="panelSubmit()" type="button" aria-label="Voir les prix disponibles">
       Voir les prix →
     </button>
 
@@ -7335,6 +7334,23 @@ function _initSoldOut(){
   if(_mb){_mb.style.opacity='.55';_mb.style.cursor='default';}
 }
 
+/* ── Panel hero : soumission avec pré-remplissage modal ── */
+function panelSubmit(){
+  const addrEl=document.getElementById('panel-addr');
+  const dureeEl=document.getElementById('panel-duree');
+  const addr=addrEl?addrEl.value.trim():'';
+  const duree=dureeEl?dureeEl.value:'';
+  // Validation légère : adresse requise
+  if(addrEl&&!addr){
+    addrEl.style.borderColor='var(--red)';
+    addrEl.focus();
+    setTimeout(()=>{if(addrEl)addrEl.style.borderColor='';},2000);
+    return;
+  }
+  // Pré-remplir le modal si possible (durée)
+  const dur=parseInt(duree)||7;
+  openModal(dur);
+}
 /* ── Dropdown timing panel hero ── */
 function toggleTiming(e){
   if(e)e.stopPropagation();
@@ -8811,8 +8827,16 @@ window.addEventListener('scroll',()=>{
   if(!_scrollDepths[90]&&pct>=90){_scrollDepths[90]=true;(window.dataLayer=window.dataLayer||[]).push({event:'scroll_depth',percent:90});}
   // Cache la nav en scrollant vers le bas (après 120px), la réaffiche vers le haut
   if(navEl&&!document.getElementById('overlay').classList.contains('open')){
-    if(delta>4&&y>120&&!_navHidden){navEl.classList.add('hidden');_navHidden=true;}
-    else if(delta<-4&&_navHidden){navEl.classList.remove('hidden');_navHidden=false;}
+    if(delta>4&&y>120&&!_navHidden){
+      navEl.classList.add('hidden');_navHidden=true;
+      const heroEl=document.querySelector('.hero');
+      if(heroEl){heroEl.style.top='0';heroEl.style.height='100vh';}
+    }
+    else if(delta<-4&&_navHidden){
+      navEl.classList.remove('hidden');_navHidden=false;
+      const heroEl=document.querySelector('.hero');
+      if(heroEl){heroEl.style.top='62px';heroEl.style.height='calc(100vh - 62px)';}
+    }
   }
 
   if(waBtn)waBtn.classList.toggle('wa-visible',y>window.innerHeight*.65);
@@ -8976,13 +9000,11 @@ const LANG_MAP=[
   ['#pp-day-lbl','text','jour supplémentaire','additional day','额外天数',`дополнительный день`],
   ['#prolong-success-msg','text','Votre location est prolongée. Confirmation par email dans quelques minutes.','Your rental has been extended. Confirmation by email in a few minutes.','您的租赁已延期。确认邮件将在几分钟内发送。',`Ваша аренда продлена. Подтверждение по email придёт в ближайшие минуты.`],
   ['.forfaits-title','text','Nos packs à prix fixe','Our fixed-price packages','我们的固定价格套餐',`Наши пакеты по фиксированной цене`],
-  /* hero */
-  ['.hero-eye','text','Partout en France','Everywhere in France','全法国','По всей Франции'],
-  ['.hero-h1','html','Il fait trop chaud<br><em>pour dormir&nbsp;?</em>','Too hot<br><em>to sleep?</em>','天气太热<br><em>无法入眠？</em>',`Слишком жарко,<br><em>чтобы спать?</em>`],
-  ['.hero-desc','text','Demain soir, vous dormez au frais.','Tomorrow night, you\'ll sleep cool.','明晚，您将在清凉中入眠。',`Завтра ночью вы будете спать в прохладе.`],
-  ['.hero-cta','text','Réserver — dès 12 €/jour','Book — from €12/day','立即预订——低至每天12欧元',`Забронировать — от 12 €/день`],
-  ['.hero-cta-sec','text','Une question →','A question →','有问题？→',`Есть вопрос? →`],
-  ['.hero-micro','text','4,9★ · 32 avis Google · +500 clients livrés','4.9★ · 32 Google reviews · 500+ deliveries','4.9★ · 32条Google评价 · 逾500次配送',`4,9★ · 32 отзыва Google · 500+ доставок`],
+  /* hero panel */
+  ['.hero-panel-title','text','Réserver un climatiseur','Book an air conditioner','预订空调','Арендовать кондиционер'],
+  ['#timing-label','text','Livrer maintenant','Deliver now','立即配送','Доставить сейчас'],
+  ['#panel-addr','ph','Ex : 12 rue de la Paix, Nice','E.g. 12 rue de la Paix, Nice','如：12 rue de la Paix, Nice','Напр.: 12 rue de la Paix, Nice'],
+  ['.p-submit','text','Voir les prix →','See prices →','查看价格 →','Посмотреть цены →'],
   ['#footer-rtg','text','4,9★ · 32 avis Google','4.9★ · 32 Google reviews','4.9★ · 32条Google评价',`4,9★ · 32 отзыва Google`],
   ['.sb-btn','text','Réserver →','Book →','预订 →',`Забронировать →`],
   /* howto */
