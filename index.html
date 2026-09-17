@@ -435,6 +435,17 @@ body{
   outline:none;transition:border-color .15s;box-sizing:border-box;
 }
 .p-input:focus{border-color:#000}
+.p-addr-wrap{position:relative}
+.p-addr-wrap .p-input{padding-right:44px}
+.p-geo-btn{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  width:32px;height:32px;border:none;background:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;border-radius:6px;
+  color:var(--ink2);transition:color .15s,background .15s;padding:0;
+}
+.p-geo-btn:hover{color:var(--ink);background:var(--bg)}
+.p-geo-btn:disabled{opacity:.4;cursor:default}
+.p-geo-btn svg{width:18px;height:18px;flex-shrink:0}
 /* Dropdown timing */
 .p-timing-wrap{position:relative;margin-bottom:14px}
 .p-timing{
@@ -2189,6 +2200,7 @@ input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus
   from{opacity:0;transform:translateY(26px) scale(.975)}
   to{opacity:1;transform:translateY(0) scale(1)}
 }
+@keyframes spin{to{transform:rotate(360deg)}}
 @keyframes heroInFast{
   from{opacity:0;transform:translateY(14px)}
   to{opacity:1;transform:none}
@@ -4132,7 +4144,15 @@ input:-webkit-autofill:focus{
     <!-- Adresse -->
     <div class="p-field-group">
       <label class="p-label" for="panel-addr">Adresse de livraison</label>
-      <input class="p-input" type="text" id="panel-addr" name="adresse" placeholder="Ex : 12 rue de la Paix, Nice" autocomplete="street-address" aria-label="Adresse de livraison">
+      <div class="p-addr-wrap">
+        <input class="p-input" type="text" id="panel-addr" name="adresse" placeholder="Ex : 12 rue de la Paix, Nice" autocomplete="street-address" aria-label="Adresse de livraison">
+        <button class="p-geo-btn" id="geo-btn" type="button" onclick="geolocateUser()" aria-label="Utiliser ma position" title="Utiliser ma position">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+            <path d="M12 2a10 10 0 1 0 10 10"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <!-- Durée -->
@@ -4223,6 +4243,7 @@ document.addEventListener('DOMContentLoaded', function(){
     // gratuites l'exigent dans leurs conditions d'usage — même choix que
     // transporteur/index.html, qui l'affiche déjà sans que ça gêne visuellement.
     const map = L.map(el, { scrollWheelZoom:false }).setView([43.70764, 7.26197], 10);
+    window._heroMap = map;
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19, subdomains:'abc',
@@ -4232,7 +4253,7 @@ document.addEventListener('DOMContentLoaded', function(){
       html:'<div style="width:18px;height:18px;background:#C8921C;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.35)"></div>',
       iconSize:[18,18],iconAnchor:[9,9]
     });
-    L.marker([43.70764, 7.26197],{icon:_icon}).addTo(map);
+    window._heroMarker = L.marker([43.70764, 7.26197],{icon:_icon}).addTo(map);
   }catch(e){
     // Repli explicite (pas onerror, voir le commentaire plus haut) — visible
     // seulement si Leaflet/CARTO échouent vraiment, pas juste "bloqué" côté
@@ -7446,6 +7467,50 @@ function _initSoldOut(){
   if(_sn)_sn.style.display='none';
   // Désactiver la mobile bar booking button
   if(_mb){_mb.style.opacity='.55';_mb.style.cursor='default';}
+}
+
+/* ── Géolocalisation panel hero ── */
+function geolocateUser(){
+  const btn=document.getElementById('geo-btn');
+  const input=document.getElementById('panel-addr');
+  if(!navigator.geolocation){
+    if(input){input.focus();input.placeholder='Géolocalisation non disponible';}
+    return;
+  }
+  const iconPin='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M12 2a10 10 0 1 0 10 10"/></svg>';
+  const iconSpin='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px;animation:spin .8s linear infinite"><path d="M12 2a10 10 0 0 1 10 10"/></svg>';
+  if(btn){btn.disabled=true;btn.innerHTML=iconSpin;}
+  const done=()=>{if(btn){btn.disabled=false;btn.innerHTML=iconPin;}};
+  navigator.geolocation.getCurrentPosition(
+    async function(pos){
+      const{latitude:lat,longitude:lng}=pos.coords;
+      try{
+        const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lng+'&accept-language=fr',{headers:{'Accept':'application/json'}});
+        if(!r.ok)throw new Error();
+        const d=await r.json();
+        const c=d.address||{};
+        const street=[c.house_number,c.road].filter(Boolean).join(' ');
+        const city=c.city||c.town||c.village||c.municipality||'';
+        const postal=c.postcode||'';
+        const addr=[street,postal,city].filter(Boolean).join(', ');
+        if(input)input.value=addr||d.display_name||'';
+        if(window._heroMap&&window._heroMarker){
+          window._heroMap.setView([lat,lng],14,{animate:true});
+          window._heroMarker.setLatLng([lat,lng]);
+        }
+      }catch(e){
+        if(input)input.placeholder='Adresse introuvable — saisissez-la manuellement';
+      }
+      done();
+    },
+    function(err){
+      done();
+      if(!input)return;
+      if(err.code===1)input.placeholder='Accès refusé — saisissez votre adresse';
+      else input.placeholder='Position indisponible — saisissez votre adresse';
+    },
+    {timeout:8000,maximumAge:60000,enableHighAccuracy:false}
+  );
 }
 
 /* ── Panel hero : soumission avec pré-remplissage modal ── */
