@@ -97,7 +97,7 @@ async function sendReservationPaymentLink(supabase, stripe, resa, options = {}) 
       ? await supabase.from('reservations').select('ref').eq('id', resa.reservation_origine_id).maybeSingle()
       : await supabase
           .from('reservations').select('ref')
-          .ilike('email', resa.email).not('source', 'eq', 'site_prolongation')
+          .ilike('email', resa.email).or('source.is.null,source.neq.site_prolongation')
           .order('created_at', { ascending: false }).limit(1).maybeSingle();
     refOrigine = origResa?.ref || '';
   }

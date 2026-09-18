@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
       .from('reservations')
       .select('id, ref, prenom, email, date_debut, date_fin, quantite, statut')
       .eq('id', reservationId)
-      .not('source', 'eq', 'site_prolongation')
+      .or('source.is.null,source.neq.site_prolongation')
       .eq('statut', 'confirmee')
       .maybeSingle());
   } else {
@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
       .select('id, ref, prenom, email, date_debut, date_fin, quantite, statut')
       .ilike('email', normalizedEmail)
       .eq('ref', ref.trim().toUpperCase())
-      .not('source', 'eq', 'site_prolongation')
+      .or('source.is.null,source.neq.site_prolongation')
       .eq('statut', 'confirmee')
       .order('created_at', { ascending: false })
       .limit(1)
