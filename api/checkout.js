@@ -49,6 +49,13 @@ module.exports = async (req, res) => {
   if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
     return res.status(400).json({ error: 'Adresse email requise et doit être valide' });
   }
+  if (!data.adresse || !String(data.adresse).trim()) {
+    return res.status(400).json({ error: 'Adresse de livraison requise' });
+  }
+  if (!data.tel || String(data.tel).replace(/\D/g, '').length < 9) {
+    return res.status(400).json({ error: 'Numéro de téléphone requis' });
+  }
+  const cpNorm = String(data.code_postal || '').replace(/\s/g, '').replace(/^(\d{4})$/, '0$1');
 
   // Tarifs (panneau de contrôle admin, voir admin-pricing.js) chargés une
   // seule fois ici, réutilisés pour tout le reste du calcul — jamais
@@ -109,7 +116,7 @@ module.exports = async (req, res) => {
         .from('partenaires').select('id, taux_commission_pct').eq('code', partenaireCode).eq('actif', true).maybeSingle();
       if (partenaire) { partenaireId = partenaire.id; partenaireTaux = partenaire.taux_commission_pct; } // commission calculée ci-dessous, une fois amountCents connu
     }
-    city = await resolveCityByAddress(supabase, data.adresse, data.code_postal);
+    city = await resolveCityByAddress(supabase, data.adresse, cpNorm);
     if (!city) {
       // Code postal non couvert : accepter la commande en la marquant hors zone
       // pour traitement manuel — l'admin verra le badge dans l'onglet Réservations.
@@ -168,7 +175,7 @@ module.exports = async (req, res) => {
   // quel que soit le nombre d'appareils. Il ne s'y ajoute pas.
   const deliveryFeeCents = pro
     ? getProForfaitCents(pricing)
-    : ((city.postal_codes || []).includes((data.code_postal || '').trim()) ? 60 * 100 : 120 * 100);
+    : ((city.postal_codes || []).includes(cpNorm) ? 60 * 100 : 120 * 100);
   // Surcoût livraison express J0 sous 2h (+60 €) — activé côté client par la
   // carte "Express" dans le modal, transmis via data.express === true.
   const expressCents     = data.express === true ? EXPRESS_FEE * 100 : 0;

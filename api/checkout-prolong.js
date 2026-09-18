@@ -27,6 +27,10 @@ module.exports = async (req, res) => {
   const calcBase = (days) => calcTieredPrice(days, pricing);
 
   const data   = req.body || {};
+  if (!process.env.STRIPE_SECRET_KEY) {
+    console.error('[checkout-prolong] STRIPE_SECRET_KEY manquant');
+    return res.status(500).json({ error: 'Erreur de configuration serveur' });
+  }
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
   // Même contrôle serveur que /api/checkout — le bouton de paiement est déjà
@@ -70,7 +74,7 @@ module.exports = async (req, res) => {
     await recordFailedAttempt(supabaseRL, `checkout-prolong:${ip}`).catch(() => {});
     return res.status(400).json({ error: 'Durée de prolongation invalide' });
   }
-  jours = joursCalc;
+  jours = Math.min(90, joursCalc);
   amountCents = (clientOrigDays > 0 ? _safeIncrement(clientOrigDays, jours) : calcBase(jours)) * qty * 100;
   const today = todayParis();
   if (extDateDebut < today) {
