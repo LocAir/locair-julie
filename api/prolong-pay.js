@@ -88,7 +88,7 @@ module.exports = async (req, res) => {
     .from('reservations')
     .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, lang, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
     .ilike('email', normalizedEmail)
-    .not('source', 'eq', 'site_prolongation')
+    .or('source.is.null,source.neq.site_prolongation')
     .eq('statut', 'confirmee')
     .order('created_at', { ascending: false })
     .limit(1);
@@ -99,7 +99,7 @@ module.exports = async (req, res) => {
       .select('id, ref, prenom, nom, tel, adresse, city_id, date_debut, date_fin, quantite, statut, stripe_customer_id, tel_secondaire, hors_zone, email, partenaire_id, lang, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, logement')
       .ilike('email', normalizedEmail)
       .eq('ref', ref.trim().toUpperCase())
-      .not('source', 'eq', 'site_prolongation')
+      .or('source.is.null,source.neq.site_prolongation')
       .eq('statut', 'confirmee')
       .order('created_at', { ascending: false })
       .limit(1);

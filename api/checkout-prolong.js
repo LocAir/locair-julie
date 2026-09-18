@@ -106,7 +106,7 @@ module.exports = async (req, res) => {
     let origQuery = supabase
       .from('reservations').select('id, city_id, tel_secondaire, hors_zone, date_debut, date_fin, quantite, etage, ascenseur, fenetre, fenetre_photo_path, installation, instructions_acces, creneau, logement, partenaire_id')
       .ilike('email', String(data.email).trim())
-      .not('source', 'eq', 'site_prolongation')
+      .or('source.is.null,source.neq.site_prolongation')
       .eq('statut', 'confirmee');
     if (data.ref) origQuery = origQuery.eq('ref', String(data.ref).trim().toUpperCase());
     ({ data: orig } = await origQuery.order('created_at', { ascending: false }).limit(1).maybeSingle());
