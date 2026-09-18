@@ -55,7 +55,8 @@ module.exports = async (req, res) => {
 
     // Génère un code à 6 chiffres
     const code = String(crypto.randomInt(100000, 999999));
-    const codeHash = crypto.createHmac('sha256', process.env.TRANSPORTEUR_SECRET || '')
+    if (!process.env.TRANSPORTEUR_SECRET) throw new Error('TRANSPORTEUR_SECRET non configuré');
+    const codeHash = crypto.createHmac('sha256', process.env.TRANSPORTEUR_SECRET)
       .update(telNorm + ':' + code)
       .digest('hex');
     const expiresAt = new Date(Date.now() + OTP_VALIDITY_MINUTES * 60000).toISOString();

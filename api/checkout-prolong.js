@@ -90,7 +90,7 @@ module.exports = async (req, res) => {
     // commande est fourni (ex. lien depuis l'email "avant fin de location"),
     // il précise la recherche — utile si le client a plusieurs réservations
     // passées avec la même adresse email.
-    if (!data.email) {
+    if (!data.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((data.email || '').trim())) {
       return res.status(400).json({ error: 'Email requis pour retrouver ta réservation' });
     }
     // .eq('statut','confirmee') indispensable : sans lui, une réservation plus
@@ -171,7 +171,7 @@ module.exports = async (req, res) => {
   try {
     let customerId = '';
     if (data.email) {
-      const email = data.email.trim();
+      const email = data.email.trim().toLowerCase();
       const existing = await stripe.customers.list({ email, limit: 1 });
       if (existing.data.length > 0) {
         customerId = existing.data[0].id;

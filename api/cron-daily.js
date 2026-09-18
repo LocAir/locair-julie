@@ -9,6 +9,7 @@ const { runWeeklyReport }      = require('./cron-weekly');
 const { runFactureTransporteurHebdo } = require('./_lib/transporteurFacture');
 const { runMonthlyRecap, runDormantClientsWinback } = require('./cron-monthly');
 const { dailyRate, getPricingConfig } = require('./_lib/pricing');
+const { todayParis, dateInParis }     = require('./_lib/dates');
 const { scenariosDueToday, isSupersededReservation } = require('./_lib/emailSchedule');
 const { sendScenarioEmail, getSignature, withSignature } = require('./_lib/emailEngine');
 const { tplOffrePrivilege } = require('./_lib/emailTemplates');
@@ -37,13 +38,10 @@ module.exports = async (req, res) => {
   // seule fois pour toute la tâche, jamais recalculés en dur.
   const pricing     = await getPricingConfig(supabase);
   const today       = new Date();
-  const todayStr    = today.toISOString().slice(0, 10);
-  const tomorrow    = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowStr = tomorrow.toISOString().slice(0, 10);
-  const in7d        = new Date(today); in7d.setDate(in7d.getDate() + 7);
-  const in7dStr     = in7d.toISOString().slice(0, 10);
-  const in8d        = new Date(today); in8d.setDate(in8d.getDate() + 8);
-  const in8dStr     = in8d.toISOString().slice(0, 10);
+  const todayStr    = todayParis();
+  const tomorrowStr = dateInParis(new Date(today.getTime() + 86400000));
+  const in7dStr     = dateInParis(new Date(today.getTime() + 7 * 86400000));
+  const in8dStr     = dateInParis(new Date(today.getTime() + 8 * 86400000));
 
   const report = {};
 
@@ -213,10 +211,15 @@ module.exports = async (req, res) => {
         const { error: incInsertErr } = await supabase.from('incidents').insert({ city_id: resa.city_id || null, reservation_id: liv.reservation_id, type: 'retard', description: desc, montant_facture_cents: amountCents, statut: 'retard_a_facturer' });
         if (incInsertErr) {
           console.error('[Cron retard] CRITIQUE — PI prélevé mais incident non enregistré', intent.id, incInsertErr.message);
-          await stripe.paymentIntents.cancel(intent.id).catch(e3 => console.error('[Cron retard cancel]', e3.message));
+          const cancelled = await stripe.paymentIntents.cancel(intent.id).then(() => true).catch(e3 => { console.error('[Cron retard cancel]', e3.message); return false; });
+          if (!cancelled) {
+            // Cancel échoué : forcer un incident minimal pour que le garde-fou
+            // du lendemain (existInc) détecte ce prélèvement et n'en recrée pas un.
+            await supabase.from('incidents').insert({ city_id: resa.city_id || null, reservation_id: liv.reservation_id, type: 'retard', description: `[UNCANCELLED PI: ${intent.id}] ${desc}`, montant_facture_cents: amountCents, statut: 'retard_a_facturer' }).catch(e4 => console.error('[Cron retard incident fallback]', e4.message));
+          }
           await pushToAdmin(supabase, {
             title: '🚨 Erreur critique — prélèvement retard non tracé',
-            body: `PI ${intent.id} (résa ${liv.reservation_id}) annulé car non enregistrable en base. Vérifie immédiatement.`,
+            body: `PI ${intent.id} (résa ${liv.reservation_id}) ${cancelled ? 'annulé' : 'NON annulé — risque double prélèvement'}. Vérifie immédiatement.`,
             tag: `retard-critique-${liv.id}`,
           }).catch(() => {});
           continue;
