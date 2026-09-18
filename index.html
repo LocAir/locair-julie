@@ -4333,47 +4333,324 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 
 <!-- RÉASSURANCE -->
-<section class="reassure" aria-label="Nos engagements">
-  <div class="reassure-in">
-    <div class="ri sr">
-      <div class="ri-ico" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 13 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
-      </div>
-      <p class="ri-t" id="ri-livraison-t">Livraison sous 24h</p>
-      <p class="ri-d">7j/7 · J+1 matin · <strong>Express même jour</strong> disponible</p>
+<style>
+/* ══ REFONTE INSPIRÉE DE VERSION-B — palette du site (noir/blanc/or), pas celle de version-b ══ */
+.vb-eye{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.vb-h2{font-family:var(--disp);font-weight:800;letter-spacing:-.03em;line-height:1.08;color:var(--ink,var(--black));margin-bottom:18px}
+.vb-h2 em{font-style:italic;color:var(--gold)}
+.vb-dire{font-size:15.5px;color:var(--grey);line-height:1.65;max-width:56ch;margin-bottom:8px}
+.vb-sec{padding:var(--section-py) var(--pad);border-top:1px solid var(--rule)}
+.vb-sec-in{max-width:var(--max);margin:0 auto}
+.vb-sec-dark{background:var(--navy);color:#fff}
+.vb-sec-dark .vb-h2{color:#fff}
+.vb-sec-dark .vb-dire{color:rgba(255,255,255,.62)}
+.vb-sec-mist{background:var(--bg)}
+
+/* toggle produit — climatiseur / rafraîchisseur */
+.vb-toggle{display:inline-flex;padding:4px;border-radius:100px;background:rgba(0,0,0,.06);gap:2px;margin-bottom:28px}
+.vb-sec-dark .vb-toggle{background:rgba(255,255,255,.1)}
+.vb-toggle-btn{border:none;background:none;cursor:pointer;padding:9px 18px;border-radius:100px;font-size:13px;font-weight:700;color:var(--grey);font-family:var(--body);transition:background .15s,color .15s}
+.vb-sec-dark .vb-toggle-btn{color:rgba(255,255,255,.5)}
+.vb-toggle-btn.on{background:var(--navy);color:#fff}
+.vb-sec-dark .vb-toggle-btn.on{background:var(--gold);color:#fff}
+body:not([data-produit="raf"]) .vb-only-raf{display:none!important}
+body[data-produit="raf"] .vb-only-clim{display:none!important}
+
+/* comment ça marche — 4 étapes */
+.vb-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:8px;counter-reset:vbstep}
+.vb-step{counter-increment:vbstep}
+.vb-step-n{font-family:var(--disp);font-size:13px;font-weight:800;color:var(--gold);margin-bottom:10px}
+.vb-step-n::before{content:counter(vbstep)}
+.vb-step-e{display:block;font-size:11.5px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.vb-step-t{display:block;font-family:var(--disp);font-size:19px;font-weight:800;letter-spacing:-.01em;margin-bottom:8px;color:var(--black)}
+.vb-step-p{font-size:13.5px;color:var(--grey);line-height:1.6}
+@media(max-width:860px){.vb-steps{grid-template-columns:1fr 1fr;gap:26px 18px}}
+@media(max-width:540px){.vb-steps{grid-template-columns:1fr;gap:24px}}
+
+/* les deux machines */
+.vb-machines-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px}
+.vb-mach{border:1.5px solid var(--rule);border-radius:20px;padding:28px;background:var(--white)}
+.vb-mach-svg{width:100%;height:auto;color:var(--grey);margin-bottom:16px}
+.vb-mach-svg .vb-accent{stroke:var(--gold)}
+.vb-mach-cap{font-size:11.5px;color:var(--grey);margin-bottom:14px;font-style:italic}
+.vb-mach-e{display:block;font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.vb-mach-t{display:block;font-family:var(--disp);font-size:22px;font-weight:800;color:var(--black);margin-bottom:10px}
+.vb-mach-d{font-size:13.5px;color:var(--grey);line-height:1.6;margin-bottom:14px}
+.vb-mach-l{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.vb-mach-l li{font-size:13px;color:var(--black);line-height:1.5;padding-left:20px;position:relative}
+.vb-mach-l li::before{content:'';position:absolute;left:0;top:6px;width:7px;height:7px;border-radius:50%;background:var(--gold)}
+@media(max-width:760px){.vb-machines-grid{grid-template-columns:1fr}}
+
+/* tarifs — reskin (structure/ids existants conservés) */
+.vb-pricing-head{margin-bottom:8px}
+.vb-tiers-raf{display:grid;grid-template-columns:repeat(4,1fr);gap:2px;background:var(--rule);border:1px solid var(--rule);border-radius:14px;overflow:hidden;margin:24px 0 18px}
+.vb-tier-raf{background:var(--white);padding:18px 10px;text-align:center}
+.vb-tier-raf.best{background:var(--navy);color:#fff}
+.vb-tier-raf b{display:block;font-family:var(--disp);font-size:24px;font-weight:800}
+.vb-tier-raf span{display:block;font-size:11px;color:var(--grey);margin-top:4px}
+.vb-tier-raf.best span{color:rgba(255,255,255,.55)}
+@media(max-width:600px){.vb-tiers-raf{grid-template-columns:1fr 1fr}}
+.vb-raf-forfait{max-width:560px;margin:18px auto 0;text-align:center;padding:18px 22px;border:1.5px solid var(--rule);border-radius:14px;background:var(--bg)}
+.vb-raf-forfait b{color:var(--navy)}
+.vb-raf-note{font-size:12px;color:var(--grey);margin-top:8px}
+
+/* espaces */
+.vb-espaces-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:28px}
+.vb-esp-card{border-radius:22px;padding:32px;position:relative;overflow:hidden}
+.vb-esp-card.navy{background:var(--navy);color:#fff}
+.vb-esp-card.gold{background:var(--gold);color:#fff}
+.vb-esp-eye{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.6;margin-bottom:10px}
+.vb-esp-h{font-family:var(--disp);font-size:clamp(24px,3vw,30px);font-weight:800;line-height:1.1;margin-bottom:10px}
+.vb-esp-h em{font-style:italic;color:var(--gold)}
+.vb-esp-card.gold .vb-esp-h em{color:#fff}
+.vb-esp-p{font-size:13.5px;line-height:1.6;opacity:.8;margin-bottom:22px}
+.vb-esp-btn{display:inline-block;padding:12px 26px;border-radius:100px;background:#fff;color:var(--navy);font-size:13.5px;font-weight:700;text-decoration:none;transition:transform .15s}
+.vb-esp-btn:hover{transform:translateY(-2px)}
+@media(max-width:700px){.vb-espaces-grid{grid-template-columns:1fr}}
+
+/* FAQ rafraîchisseur — "en toute franchise" */
+.vb-limites{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:24px}
+.vb-lim{padding:20px 0;border-top:1px solid var(--rule)}
+.vb-lim b{display:block;font-family:var(--disp);font-size:15.5px;font-weight:800;color:var(--black);margin-bottom:6px}
+.vb-lim span{font-size:13px;color:var(--grey);line-height:1.6}
+@media(max-width:700px){.vb-limites{grid-template-columns:1fr}}
+</style>
+
+<!-- COMMENT ÇA MARCHE -->
+<section class="howto vb-sec" id="comment-ca-marche" aria-labelledby="howto-title">
+  <div class="vb-sec-in">
+    <p class="vb-eye">Le déroulé</p>
+    <h2 class="vb-h2 sec-h2" id="howto-title">De la réservation<br><em>à la reprise.</em></h2>
+    <p class="vb-dire">Quatre moments, et trois d'entre eux ne vous demandent rien.</p>
+    <div class="vb-toggle" role="group" aria-label="Choisir l'appareil">
+      <button type="button" class="vb-toggle-btn on" data-produit-btn="clim" onclick="setProduit('clim')" aria-pressed="true">Climatiseur</button>
+      <button type="button" class="vb-toggle-btn" data-produit-btn="raf" onclick="setProduit('raf')" aria-pressed="false">Rafraîchisseur</button>
     </div>
-    <div class="ri sr">
-      <div class="ri-ico" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-      </div>
-      <p class="ri-t">Aucune caution</p>
-      <p class="ri-d">Aucun chèque · Aucune empreinte bancaire</p>
-    </div>
-    <div class="ri sr">
-      <div class="ri-ico" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-      </div>
-      <p class="ri-t">Paiement sécurisé</p>
-      <p class="ri-d">Stripe · 3D Secure · Données chiffrées</p>
-    </div>
-    <div class="ri sr">
-      <div class="ri-ico" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      </div>
-      <p class="ri-t">Note 4,9 / 5 Google</p>
-      <p class="ri-d"><strong>32 avis</strong> vérifiés</p>
+
+    <ol class="vb-steps vb-only-clim" style="list-style:none;padding:0;margin:0">
+      <li class="vb-step"><span class="vb-step-n" aria-hidden="true"></span><span class="vb-step-e">Sur le site</span><span class="vb-step-t">Vous réservez</span><p class="vb-step-p">Dates, adresse, paiement par carte. Aucun chèque de caution, aucune empreinte bancaire.</p></li>
+      <li class="vb-step"><span class="vb-step-n" aria-hidden="true"></span><span class="vb-step-e">Demain, 8h–12h</span><span class="vb-step-t">On sonne chez vous</span><p class="vb-step-p">Il monte l'appareil, pose le kit sur votre fenêtre, vérifie que ça refroidit et vous montre les réglages.</p></li>
+      <li class="vb-step"><span class="vb-step-n" aria-hidden="true"></span><span class="vb-step-e">7 jours minimum</span><span class="vb-step-t">Vous en profitez</span><p class="vb-step-p">Et si l'été s'installe, vous prolongez en un clic depuis votre espace client, sans nous appeler.</p></li>
+      <li class="vb-step"><span class="vb-step-n" aria-hidden="true"></span><span class="vb-step-e">Le dernier jour</span><span class="vb-step-t">On revient tout chercher</span><p class="vb-step-p">Rien à rapporter, rien à démonter. La reprise est comprise dans la livraison.</p></li>
+    </ol>
+
+    <ol class="vb-steps vb-only-raf" style="list-style:none;padding:0;margin:0">
+      <li class="vb-step"><span class="vb-step-n" aria-hidden="true"></span><span class="vb-step-e">Sur WhatsApp</span><span class="vb-step-t">Vous demandez votre prix</span><p class="vb-step-p">Durée, nombre d'appareils, adresse : le tarif se calcule tout de suite, pas de devis à attendre.</p></li>
+      <li class="vb-step"><span class="vb-step-n" aria-hidden="true"></span><span class="vb-step-e">À la date convenue</span><span class="vb-step-t">Notre technicien installe</span><p class="vb-step-p">Livraison, installation et mise en route devant vos équipes — compris dans le forfait unique.</p></li>
+      <li class="vb-step"><span class="vb-step-n" aria-hidden="true"></span><span class="vb-step-e">Sans compresseur ni gaz</span><span class="vb-step-t">Vous en profitez</span><p class="vb-step-p">De l'eau qui s'évapore, prise ordinaire, aucun percement. Il faut juste de l'air qui se renouvelle.</p></li>
+      <li class="vb-step"><span class="vb-step-n" aria-hidden="true"></span><span class="vb-step-e">Le dernier jour</span><span class="vb-step-t">On revient tout chercher</span><p class="vb-step-p">Panne remplacée le jour même pendant la location — et reprise incluse à la fin.</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- LES DEUX MACHINES -->
+<section class="vb-sec vb-sec-mist" id="materiel" aria-labelledby="materiel-title">
+  <div class="vb-sec-in">
+    <p class="vb-eye">Le matériel</p>
+    <h2 class="vb-h2 sec-h2" id="materiel-title">Deux machines.<br><em>Deux façons d'avoir frais.</em></h2>
+    <p class="vb-dire">Une pièce fermée qu'on veut vraiment froide, ou un espace ouvert qu'on veut rendre vivable : ce n'est pas le même appareil.</p>
+    <div class="vb-machines-grid">
+      <article class="vb-mach">
+        <svg class="vb-mach-svg" viewBox="0 0 600 260" role="img" aria-label="Schéma d'un climatiseur mobile relié à une fenêtre par sa gaine, avec le kit de calfeutrage">
+          <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="176" y="30" width="140" height="200" rx="16"/>
+            <path d="M202 56h88M202 70h88M202 84h64"/>
+            <rect x="202" y="118" width="88" height="22" rx="6"/>
+            <circle cx="218" cy="129" r="2.6" fill="currentColor" stroke="none"/>
+            <circle cx="234" cy="129" r="2.6" fill="currentColor" stroke="none"/>
+            <path d="M340 100c20 0 20-10 40-10s20 10 40 10"/>
+            <path d="M340 114c20 0 20-10 40-10s20 10 40 10"/>
+            <rect x="440" y="40" width="60" height="170" rx="5" stroke-opacity=".5"/>
+            <path d="M470 40v170" stroke-opacity=".5"/>
+          </g>
+          <g class="vb-accent" fill="none" stroke-width="2.4" stroke-linecap="round">
+            <path d="M216 40c0-10 9-10 9-20"/><path d="M240 40c0-10 9-10 9-20"/><path d="M264 40c0-10 9-10 9-20"/>
+          </g>
+          <rect class="vb-accent" x="440" y="92" width="60" height="42" rx="4" fill-opacity=".14" stroke-width="1.6"/>
+        </svg>
+        <p class="vb-mach-cap">Schéma : la gaine sort par la fenêtre, le kit bouche le reste.</p>
+        <span class="vb-mach-e">Fenêtre fermée</span>
+        <span class="vb-mach-t">Climatiseur mobile</span>
+        <p class="vb-mach-d">Le De'Longhi Pinguino. Clim, déshumidificateur et ventilateur dans le même appareil, sur une prise normale.</p>
+        <ul class="vb-mach-l">
+          <li><strong>10 000 BTU</strong>, 30 m² annoncés par De'Longhi, classe A+++</li>
+          <li>Gaine d'évacuation, kit de calfeutrage et télécommande fournis</li>
+          <li>La chambre, le salon, le bureau : là où on dort et où on travaille</li>
+        </ul>
+      </article>
+
+      <article class="vb-mach">
+        <svg class="vb-mach-svg" viewBox="0 0 600 260" role="img" aria-label="Schéma d'un rafraîchisseur d'air avec son réservoir d'eau">
+          <g fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="196" y="16" width="122" height="196" rx="18"/>
+            <path d="M220 46v86M240 46v86M260 46v86M280 46v86M300 46v86" stroke-opacity=".45"/>
+            <rect x="220" y="152" width="76" height="18" rx="6"/>
+            <circle cx="234" cy="161" r="2.6" fill="currentColor" stroke="none"/>
+            <path d="M252 161h30" stroke-width="2.6"/>
+            <path d="M196 182h122" stroke-opacity=".55"/>
+          </g>
+          <g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-opacity=".4">
+            <path d="M138 66c18 0 18 12 36 12"/><path d="M138 90c18 0 18 12 36 12"/><path d="M138 114c18 0 18 12 36 12"/>
+          </g>
+          <path class="vb-accent" d="M212 200h90" fill="none" stroke-width="2.6" stroke-linecap="round"/>
+          <path class="vb-accent" d="M257 92c10 13 15 21 15 27a15 15 0 01-30 0c0-6 5-14 15-27z" fill-opacity=".16" stroke-width="2"/>
+          <g class="vb-accent" fill="none" stroke-width="2.4" stroke-linecap="round">
+            <path d="M330 66c18 0 18 12 36 12"/><path d="M330 90c18 0 18 12 36 12"/><path d="M330 114c18 0 18 12 36 12"/>
+          </g>
+        </svg>
+        <p class="vb-mach-cap">Schéma : il évapore de l'eau, donc il lui faut de l'air qui se renouvelle.</p>
+        <span class="vb-mach-e">Fenêtre ouverte</span>
+        <span class="vb-mach-t">Rafraîchisseur d'air</span>
+        <p class="vb-mach-d">Le rafraîchisseur adiabatique. Ni compresseur, ni gaz, ni gaine à sortir par la fenêtre : de l'eau qui s'évapore et prend au passage la chaleur de l'air.</p>
+        <ul class="vb-mach-l">
+          <li>Une prise ordinaire et de l'eau. Rien d'autre à prévoir</li>
+          <li>Il lui faut de l'air qui entre : <strong>une ouverture doit rester ouverte</strong></li>
+          <li>La terrasse, le garage, l'atelier, la véranda : là où une clim ne sert à rien</li>
+        </ul>
+      </article>
     </div>
   </div>
 </section>
-<!-- AVIS -->
-<section class="reviews" id="avis" aria-labelledby="reviews-title">
-  <div class="reviews-in">
-    <div class="rev-head">
-      <div>
-        <p class="sec-eye">Avis clients</p>
-        <h2 class="sec-h2" id="reviews-title" style="margin-bottom:8px">Ils ont loué.<br><em>Voici ce qu'ils en disent.</em></h2>
-        <p style="font-size:13px;color:var(--grey);margin-top:10px;line-height:1.6" id="reviews-aly-note">Chaque retour compte pour nous. Merci de faire confiance à Loc'Air. — <em>Aly</em></p>
+
+<!-- TARIFS -->
+<section class="pricing vb-sec" id="tarifs" aria-labelledby="pricing-title">
+  <div class="vb-sec-in vb-pricing-head">
+    <p class="vb-eye">Le prix</p>
+    <h2 class="vb-h2 sec-h2" id="pricing-title">Le prix affiché<br><em>est le prix payé.</em></h2>
+    <div class="vb-toggle" role="group" aria-label="Choisir l'appareil">
+      <button type="button" class="vb-toggle-btn on" data-produit-btn="clim" onclick="setProduit('clim')" aria-pressed="true">Climatiseur</button>
+      <button type="button" class="vb-toggle-btn" data-produit-btn="raf" onclick="setProduit('raf')" aria-pressed="false">Rafraîchisseur</button>
+    </div>
+
+    <div class="vb-only-clim">
+    <div class="plans">
+      <div class="plan plan-feat sr">
+        <div class="plan-header">
+          <div style="text-align:center;margin-bottom:16px">
+            <span class="plan-badge-new">Location · Disponible en France</span>
+          </div>
+          <div class="plan-price-row">
+            <span class="plan-price-big">12</span>
+            <span class="plan-price-unit">€ / jour</span>
+          </div>
+          <p style="text-align:center;font-size:13px;color:#888;margin-bottom:16px" id="pricing-min">Prix dégressif à partir de 7 jours.</p>
+          <a href="https://www.google.com/maps/place/Loc%27Air/@43.7076,7.2793,17z" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:18px;text-decoration:none" aria-label="Voir nos avis Google" data-c-maps>
+            <span style="color:#f59e0b;font-size:15px;letter-spacing:1px">★★★★★</span>
+            <span style="font-size:12.5px;color:var(--grey);font-weight:500" id="pricing-social-proof">4,9/5 · <strong style="color:var(--black)">32 avis</strong> Google vérifiés</span>
+          </a>
+          <button class="plan-btn pb-s" onclick="openModal('7')" type="button" id="pricing-cta">
+            Réserver ma livraison →
+          </button>
+          <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:10px" id="pricing-reassure">
+            <span style="display:inline-flex;align-items:center;gap:5px;background:#dcfce7;color:#166534;font-size:12px;font-weight:700;padding:5px 12px;border-radius:100px">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Aucune caution
+            </span>
+            <span style="font-size:11px;color:#888">Stripe sécurisé · Annulation gratuite avant livraison</span>
+          </div>
+          <p style="text-align:center;font-size:12px;color:#6b7280;margin-top:4px;line-height:1.6" id="pricing-delivery-note">Livraison &amp; récupération · <strong style="color:#374151">nous consulter</strong> selon votre adresse — contactez-nous sur WhatsApp</p>
+        </div>
+        <div class="plan-sep"></div>
+        <ul class="plan-items" id="plan-items-list">
+          <li><span class="ck-b"><svg viewBox="0 0 24 24" fill="none"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 13 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span><span id="plan-item-1"><strong>Livraison dès demain</strong></span></li>
+          <li><span class="ck-b"><svg viewBox="0 0 24 24" fill="none"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></span><span id="plan-item-2"><strong>Livraison &amp; récupération incluse : à partir de 60 €</strong> — pas de supplément en fin de location</span></li>
+          <li><span class="ck-b"><svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span id="plan-item-3"><strong>Panne ?</strong> Remplacement ou remboursement.</span></li>
+        </ul>
+        <div class="plan-sep"></div>
       </div>
+    </div>
+    <div class="price-tiers" aria-label="Barème tarifaire">
+      <div class="pt-tiers-strip" role="list" aria-label="Tarif selon la durée">
+        <div class="pt-ts-col" role="listitem">
+          <div class="pt-ts-dur">7 j</div>
+          <div class="pt-ts-price">12<span> €/j</span></div>
+        </div>
+        <div class="pt-ts-div" aria-hidden="true"></div>
+        <div class="pt-ts-col" role="listitem">
+          <div class="pt-ts-dur">8–14 j</div>
+          <div class="pt-ts-price">10<span> €/j</span></div>
+          <div class="pt-ts-pct">−17%</div>
+        </div>
+        <div class="pt-ts-div" aria-hidden="true"></div>
+        <div class="pt-ts-col" role="listitem">
+          <div class="pt-ts-dur">15–21 j</div>
+          <div class="pt-ts-price">9<span> €/j</span></div>
+          <div class="pt-ts-pct">−25%</div>
+        </div>
+        <div class="pt-ts-div" aria-hidden="true"></div>
+        <div class="pt-ts-col pt-ts-best" role="listitem">
+          <div class="pt-ts-dur">22+ j</div>
+          <div class="pt-ts-price">8<span> €/j</span></div>
+          <div class="pt-ts-pct">−33%</div>
+        </div>
+      </div>
+      <p class="pt-note">Prix garanti dès la réservation &nbsp;·&nbsp; Kit de calfeutrage fourni &nbsp;·&nbsp; Livraison &amp; récupération : à partir de 60 € &nbsp;·&nbsp; Aucune caution</p>
+      <div id="pricing-install-note" style="margin:12px auto 0;max-width:480px;padding:10px 16px;background:#f0f7ff;border:1.5px solid #bfdbfe;border-radius:10px;text-align:center;font-size:13px;color:#1e3a5f;font-weight:500">🔧 <strong>Installation par technicien : +80 €</strong> &nbsp;·&nbsp; disponible à l'étape suivante</div>
+      <div class="sr" style="max-width:560px;margin:20px auto 0;text-align:center;padding:14px 20px;border:1px solid rgba(0,0,0,.08);border-radius:12px;background:rgba(0,0,0,.03)">
+        <p id="lva-label" style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(0,0,0,.3);margin-bottom:8px">Louer vs acheter</p>
+        <p style="font-size:13px;color:var(--grey);display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:0">
+          <span id="lva-buy" style="text-decoration:line-through;color:rgba(0,0,0,.28)">Acheter : 500 à 900 €</span>
+          <span style="color:rgba(0,0,0,.25);font-size:15px">→</span>
+          <span id="lva-locair" style="color:var(--navy);font-weight:700">Loc'Air 7 j : à partir de 144 €</span>
+        </p>
+        <p id="lva-perks" style="font-size:11px;color:rgba(0,0,0,.28);margin-top:5px">Livré demain · Récupéré en fin de location · Aucun stockage</p>
+      </div>
+    </div>
+    <p class="anchor-compare sr">La moitié de nos clients prolongent — tarif jusqu'à 8 €/jour dès 22 jours · Paiement en ligne par carte via Stripe · Annulation gratuite avant livraison</p>
+    <div class="forfaits-section" id="forfaits-section" style="display:none">
+      <p class="forfaits-title">Nos packs à prix fixe</p>
+      <div class="forfaits-grid" id="forfaits-grid" role="list"></div>
+    </div>
+    </div><!-- /vb-only-clim -->
+
+    <div class="vb-only-raf">
+      <p class="vb-dire" style="max-width:none">Le tarif baisse avec la durée, et seuls les jours supplémentaires passent à la tranche suivante. Un forfait unique couvre la livraison, l'installation et la reprise — quel que soit le nombre d'appareils.</p>
+      <div class="vb-tiers-raf">
+        <div class="vb-tier-raf best"><b>40 €</b><span>Jours 1 à 7</span></div>
+        <div class="vb-tier-raf"><b>34 €</b><span>Jours 8 à 14</span></div>
+        <div class="vb-tier-raf"><b>30 €</b><span>Jours 15 à 21</span></div>
+        <div class="vb-tier-raf"><b>27 €</b><span>À partir du 22e</span></div>
+      </div>
+      <div class="vb-raf-forfait">
+        <p><b>120 € une seule fois</b>, quel que soit le nombre d'appareils : livraison, installation par notre technicien, mise en route devant vos équipes, et reprise à la fin.</p>
+        <p class="vb-raf-note">Aucune caution. Panne remplacée le jour même. Assistance 7j/7 de 8h à 20h. Facture avec TVA, réglable par virement.</p>
+      </div>
+      <p style="text-align:center;margin-top:22px">
+        <a href="/pro" class="plan-btn pb-s" style="display:inline-block;text-decoration:none;max-width:340px">Calculer mon prix rafraîchisseur →</a>
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ESPACE CLIENT + AMBASSADEUR -->
+<section class="vb-sec" id="espace-client" aria-label="Vos espaces">
+  <div class="vb-sec-in">
+    <p class="vb-eye">Déjà chez nous</p>
+    <h2 class="vb-h2 sec-h2" id="ec-title">Vous avez<br><em>votre espace.</em></h2>
+    <div class="vb-espaces-grid">
+      <div class="vb-esp-card navy">
+        <p class="vb-esp-eye">Espace client</p>
+        <p class="vb-esp-h">Suivez votre<br><em>location</em></p>
+        <p class="vb-esp-p">Statut de livraison en temps réel, documents, factures, assistance et prolongation en un clic — tout en un endroit, avec votre numéro de commande.</p>
+        <a href="/client" class="vb-esp-btn">Accéder à mon espace →</a>
+      </div>
+      <div class="vb-esp-card gold">
+        <p class="vb-esp-eye">Programme Ambassadeur</p>
+        <p class="vb-esp-h">Vous êtes une<br><em>conciergerie ?</em></p>
+        <p class="vb-esp-p">Recommandez Loc'Air à vos clients et touchez une commission sur chaque réservation, suivie depuis votre espace ambassadeur. Inscription et accès 100 % gratuits.</p>
+        <a href="/partenaire" class="vb-esp-btn">Accéder à l'espace ambassadeur →</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AVIS CLIENTS -->
+<section class="reviews vb-sec" id="avis" aria-labelledby="reviews-title">
+  <div class="vb-sec-in">
+    <p class="vb-eye">Avis clients</p>
+    <h2 class="vb-h2 sec-h2" id="reviews-title">Ils ont loué.<br><em>Voici ce qu'ils en disent.</em></h2>
+    <p style="font-size:13px;color:var(--grey);margin-top:-8px;margin-bottom:22px;line-height:1.6" id="reviews-aly-note">Chaque retour compte pour nous. Merci de faire confiance à Loc'Air. — <em>Aly</em></p>
+    <div class="rev-head" style="margin-bottom:0">
       <a href="https://www.google.com/maps/place/Loc%27Air/@43.7076,7.2793,17z" target="_blank" rel="noopener noreferrer" class="score" data-c-maps aria-label="Voir nos 32 avis Google — Note 4,9 sur 5">
         <p class="score-n" data-count="4.9" data-suffix="" data-decimal=",">4,9</p>
         <div><p class="score-stars" aria-label="4,9 étoiles sur 5">★★★★★</p><p class="score-lbl">Avis vérifiés Google</p>
@@ -4597,600 +4874,17 @@ document.addEventListener('DOMContentLoaded', function(){
   </div>
 </section>
 
-
-<!-- TARIFS -->
-<section class="pricing" id="tarifs" aria-labelledby="pricing-title">
-  <div class="pricing-in">
-    <p class="sec-eye">Tarifs</p>
-    <h2 class="sec-h2" id="pricing-title">Tarifs clairs,<br><em>sans mauvaises surprises</em></h2>
-    <div class="plans">
-      <div class="plan plan-feat sr">
-        <div class="plan-header">
-          <div style="text-align:center;margin-bottom:16px">
-            <span class="plan-badge-new">Location · Disponible en France</span>
-          </div>
-          <div class="plan-price-row">
-            <span class="plan-price-big">12</span>
-            <span class="plan-price-unit">€ / jour</span>
-          </div>
-          <p style="text-align:center;font-size:13px;color:#888;margin-bottom:16px" id="pricing-min">Prix dégressif à partir de 7 jours.</p>
-          <a href="https://www.google.com/maps/place/Loc%27Air/@43.7076,7.2793,17z" target="_blank" rel="noopener noreferrer" style="display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:18px;text-decoration:none" aria-label="Voir nos avis Google" data-c-maps>
-            <span style="color:#f59e0b;font-size:15px;letter-spacing:1px">★★★★★</span>
-            <span style="font-size:12.5px;color:var(--grey);font-weight:500" id="pricing-social-proof">4,9/5 · <strong style="color:var(--black)">32 avis</strong> Google vérifiés</span>
-          </a>
-          <button class="plan-btn pb-s" onclick="openModal('7')" type="button" id="pricing-cta">
-            Réserver ma livraison →
-          </button>
-          <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:10px" id="pricing-reassure">
-            <span style="display:inline-flex;align-items:center;gap:5px;background:#dcfce7;color:#166534;font-size:12px;font-weight:700;padding:5px 12px;border-radius:100px">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Aucune caution
-            </span>
-            <span style="font-size:11px;color:#888">Stripe sécurisé · Annulation gratuite avant livraison</span>
-          </div>
-          <p style="text-align:center;font-size:12px;color:#6b7280;margin-top:4px;line-height:1.6" id="pricing-delivery-note">Livraison &amp; récupération · <strong style="color:#374151">nous consulter</strong> selon votre adresse — contactez-nous sur WhatsApp</p>
-        </div>
-        <div class="plan-sep"></div>
-        <ul class="plan-items" id="plan-items-list">
-          <li><span class="ck-b"><svg viewBox="0 0 24 24" fill="none"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 13 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span><span id="plan-item-1"><strong>Livraison dès demain</strong></span></li>
-          <li><span class="ck-b"><svg viewBox="0 0 24 24" fill="none"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg></span><span id="plan-item-2"><strong>Livraison &amp; récupération incluse : à partir de 60 €</strong> — pas de supplément en fin de location</span></li>
-          <li><span class="ck-b"><svg viewBox="0 0 24 24" fill="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span id="plan-item-3"><strong>Panne ?</strong> Remplacement ou remboursement.</span></li>
-        </ul>
-        <div class="plan-sep"></div>
-      </div>
-    </div>
-    <div class="price-tiers" aria-label="Barème tarifaire">
-      <div class="pt-tiers-strip" role="list" aria-label="Tarif selon la durée">
-        <div class="pt-ts-col" role="listitem">
-          <div class="pt-ts-dur">7 j</div>
-          <div class="pt-ts-price">12<span> €/j</span></div>
-        </div>
-        <div class="pt-ts-div" aria-hidden="true"></div>
-        <div class="pt-ts-col" role="listitem">
-          <div class="pt-ts-dur">8–14 j</div>
-          <div class="pt-ts-price">10<span> €/j</span></div>
-          <div class="pt-ts-pct">−17%</div>
-        </div>
-        <div class="pt-ts-div" aria-hidden="true"></div>
-        <div class="pt-ts-col" role="listitem">
-          <div class="pt-ts-dur">15–21 j</div>
-          <div class="pt-ts-price">9<span> €/j</span></div>
-          <div class="pt-ts-pct">−25%</div>
-        </div>
-        <div class="pt-ts-div" aria-hidden="true"></div>
-        <div class="pt-ts-col pt-ts-best" role="listitem">
-          <div class="pt-ts-dur">22+ j</div>
-          <div class="pt-ts-price">8<span> €/j</span></div>
-          <div class="pt-ts-pct">−33%</div>
-        </div>
-      </div>
-      <p class="pt-note">Prix garanti dès la réservation &nbsp;·&nbsp; Kit de calfeutrage fourni &nbsp;·&nbsp; Livraison &amp; récupération : à partir de 60 € &nbsp;·&nbsp; Aucune caution</p>
-      <div id="pricing-install-note" style="margin:12px auto 0;max-width:480px;padding:10px 16px;background:#f0f7ff;border:1.5px solid #bfdbfe;border-radius:10px;text-align:center;font-size:13px;color:#1e3a5f;font-weight:500">🔧 <strong>Installation par technicien : +80 €</strong> &nbsp;·&nbsp; disponible à l'étape suivante</div>
-      <!-- Comparaison louer vs acheter -->
-      <div class="sr" style="max-width:560px;margin:20px auto 0;text-align:center;padding:14px 20px;border:1px solid rgba(0,0,0,.08);border-radius:12px;background:rgba(0,0,0,.03)">
-        <p id="lva-label" style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(0,0,0,.3);margin-bottom:8px">Louer vs acheter</p>
-        <p style="font-size:13px;color:var(--grey);display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin:0">
-          <span id="lva-buy" style="text-decoration:line-through;color:rgba(0,0,0,.28)">Acheter : 500 à 900 €</span>
-          <span style="color:rgba(0,0,0,.25);font-size:15px">→</span>
-          <span id="lva-locair" style="color:var(--navy);font-weight:700">Loc'Air 7 j : à partir de 144 €</span>
-        </p>
-        <p id="lva-perks" style="font-size:11px;color:rgba(0,0,0,.28);margin-top:5px">Livré demain · Récupéré en fin de location · Aucun stockage</p>
-      </div>
-    </div>
-    <p class="anchor-compare sr">La moitié de nos clients prolongent — tarif jusqu'à 8 €/jour dès 22 jours · Paiement en ligne par carte via Stripe · Annulation gratuite avant livraison</p>
-    <!-- Packs à prix fixe (ex. "Pack Sérénité Solo/Duo") — masqué tant
-         qu'aucun pack actif n'est chargé depuis /api/forfaits (voir
-         loadForfaits) : rien à afficher plutôt qu'une section vide. -->
-    <div class="forfaits-section" id="forfaits-section" style="display:none">
-      <p class="forfaits-title">Nos packs à prix fixe</p>
-      <div class="forfaits-grid" id="forfaits-grid" role="list"></div>
-    </div>
-  </div>
-</section>
-
-
-<!-- ESPACE CLIENT BENTO -->
-<section class="bento" aria-label="Espace client">
-  <div class="bento-in" style="text-align:center">
-    <p class="sec-eye" id="prolong-cta-eyebrow">Espace client</p>
-    <h2 class="sec-h2" id="prolong-cta-h">Suivez votre<br><em>location</em></h2>
-    <p style="font-size:15px;color:var(--grey);max-width:480px;margin:12px auto 0" id="prolong-cta-p">Statut de livraison, documents, assistance et prolongation — tout en un endroit, avec votre numéro de commande.</p>
-    <!-- grille 2 col pour 3 cartes : navy full width + gold/white côte à côte -->
-    <div class="bento-grid bento-grid-2">
-
-      <!-- Statut temps réel — navy, pleine largeur -->
-      <div class="bc bc-navy sr" style="grid-column:1/-1">
-        <div class="ec-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="10" r="3"/><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg></div>
-        <p class="bc-eye" id="ec-b1-eye">Statut temps réel</p>
-        <p class="bc-h" id="ec-b1-h" style="font-size:clamp(30px,5vw,50px);line-height:1.12">Votre livraison<br><em>en direct</em></p>
-        <p class="bc-p" id="prolong-cta-f1">Statut et créneau de livraison en temps réel</p>
-      </div>
-
-      <!-- Prolongation 1 clic — gold -->
-      <div class="bc bc-gold sr">
-        <div class="ec-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg></div>
-        <p class="bc-eye" id="ec-b2-eye">Prolongation</p>
-        <p class="bc-h" id="ec-b2-h">1 clic</p>
-        <p class="bc-p" id="prolong-cta-f2">Prolongation de location en un clic</p>
-      </div>
-
-      <!-- Documents & assistance — white -->
-      <div class="bc bc-w sr">
-        <div class="ec-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
-        <p class="bc-eye" id="ec-b3-eye">Documents &amp; assistance</p>
-        <p class="bc-h" id="ec-b3-h" style="font-size:clamp(20px,3.5vw,32px);line-height:1.2">Factures,<br><em>contrat &amp; aide</em></p>
-        <p class="bc-p" id="prolong-cta-f3">Documents, factures et assistance directe</p>
-      </div>
-
-    </div>
-    <div style="margin-top:28px">
-      <a href="/client" class="ec-cta-btn" id="prolong-cta-btn">Accéder à mon espace →</a>
-    </div>
-  </div>
-</section>
-
-<!-- COMMENT ÇA MARCHE -->
-<section class="howto" id="comment-ca-marche" aria-labelledby="howto-title">
-  <div class="howto-in">
-    <p class="sec-eye">Comment fonctionne la location</p>
-    <h2 class="sec-h2" id="howto-title">De la réservation<br><em>à l'air frais — dès le lendemain matin</em></h2>
-    <div class="steps-grid" role="list" aria-label="Comment fonctionne la location">
-      <div class="step-card sr" role="listitem">
-        <div class="step-num">1</div>
-        <span class="step-chip">~2 min</span>
-        <h3 class="step-t">2 minutes en ligne</h3>
-        <p class="step-d">Adresse, dates, type de fenêtre. C'est tout.</p>
-      </div>
-      <div class="step-card sr" role="listitem">
-        <div class="step-num">2</div>
-        <span class="step-chip">J+1</span>
-        <h3 class="step-t">On arrive le lendemain</h3>
-        <p class="step-d">Créneau 8h–12h · Matériel inclus.</p>
-      </div>
-      <div class="step-card sr" role="listitem">
-        <div class="step-num">3</div>
-        <span class="step-chip">~30 min</span>
-        <h3 class="step-t">Posé, testé, expliqué</h3>
-        <p class="step-d">Kit de calfeutrage fourni · Aucune caution. Vous n'avez rien à préparer.</p>
-      </div>
-      <div class="step-card sr" role="listitem">
-        <div class="step-num">4</div>
-        <span class="step-chip">La veille · J−1</span>
-        <h3 class="step-t">Récupération incluse</h3>
-        <p class="step-d">La veille de fin, on fixe un créneau et on vient récupérer. Vous ne bougez pas.</p>
-      </div>
-    </div>
-
-    <div style="text-align:center;margin-top:36px">
-      <button class="plan-btn pb-s" onclick="openModal('7')" type="button">
-        Réserver ma livraison → dès 12 €/jour
-      </button>
-      <p id="howto-cta-reassure" style="font-size:11px;color:#888;margin-top:8px">Annulation gratuite avant livraison · Aucune caution demandée</p>
-      <p id="howto-cta-urgency" style="text-align:center;font-size:12px;font-weight:600;color:#b45309;margin:8px 0 0;display:flex;align-items:center;justify-content:center;gap:5px">
-        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#f59e0b;flex-shrink:0"></span>
-        Stock limité · Livraison J+1 disponible si réservé avant 20h
-      </p>
-    </div>
-
-  </div>
-</section>
-
-<!-- BENTO GRID -->
-<section class="bento" aria-label="En bref — ce que Loc'Air vous offre">
-  <div class="bento-in">
-    <p class="sec-eye">En un coup d'œil</p>
-    <h2 class="sec-h2">L'essentiel<br><em>avant de réserver.</em></h2>
-    <div class="bento-grid">
-
-      <!-- Livraison — featured 2/3 -->
-      <div class="bc bc-navy sr">
-        <p class="bc-eye">Livraison</p>
-        <p class="bc-h">Demain<br>matin</p>
-        <p class="bc-p">Créneau 8h–12h · 7j/7 week-ends inclus<br><strong style="opacity:.9">Express sous 2h</strong> disponible avant 18h</p>
-        <span class="bc-deco" aria-hidden="true">🚚</span>
-      </div>
-
-      <!-- Prix — 1/3 gold -->
-      <div class="bc bc-gold sr">
-        <p class="bc-eye">Location à partir de</p>
-        <p class="bc-h">84<span class="bc-u">€</span></p>
-        <p class="bc-p">la semaine · kit de calfeutrage fourni · tarif dégressif dès 8 jours</p>
-        <span class="bc-deco" aria-hidden="true">💶</span>
-      </div>
-
-      <!-- Caution — 1/3 white -->
-      <div class="bc bc-w bc-zero sr">
-        <p class="bc-eye">Caution demandée</p>
-        <p class="bc-h">0 €</p>
-        <p class="bc-p">Aucun chèque · aucune empreinte bancaire · aucune somme bloquée</p>
-      </div>
-
-      <!-- Installation — 1/3 white -->
-      <div class="bc bc-w sr">
-        <p class="bc-eye">Installation technicien</p>
-        <p class="bc-h">30<span class="bc-min">min</span></p>
-        <p class="bc-p">Matériel fourni · aucun perçage · aucune préparation de votre part</p>
-        <span class="bc-deco" aria-hidden="true">🔧</span>
-      </div>
-
-      <!-- Note — 1/3 white -->
-      <div class="bc bc-w sr">
-        <p class="bc-eye">Avis clients Google</p>
-        <p class="bc-h">4,9 <em class="bc-star">★</em></p>
-        <p class="bc-p">32 avis vérifiés</p>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- POUR QUI -->
-<section class="pourqui" style="background:var(--bg);padding:var(--section-py) var(--pad);border-top:1px solid var(--rule)" aria-label="Pour qui c'est fait">
-  <div style="max-width:var(--max);margin:0 auto">
-    <p class="sec-eye">Pour qui c'est fait</p>
-    <h2 id="pourqui-title" class="sec-h2" style="margin-bottom:40px">Tout le monde peut louer.<br><em>Particuliers, pros, hôtes, familles.</em></h2>
-    <div class="pq-grid" role="list">
-      <div class="pq-card sr" role="listitem">
-        <div class="pq-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
-        <p class="pq-title">Particuliers &amp; familles</p>
-        <p class="pq-desc">Appartement sans clim ? Retrouvez des nuits fraîches sans gros travaux ni achat coûteux.</p>
-        <button class="pq-cta" onclick="openModal()" type="button">Réserver pour mon appartement →</button>
-      </div>
-      <div class="pq-card sr" role="listitem">
-        <div class="pq-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-        <p class="pq-title">Télétravailleurs</p>
-        <p class="pq-desc">Restez concentré et productif pendant la canicule, sans transformer votre bureau en fournaise.</p>
-        <button class="pq-cta" onclick="openModal()" type="button">Réserver pour mon bureau →</button>
-      </div>
-      <div class="pq-card sr" role="listitem">
-        <div class="pq-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>
-        <p class="pq-title">Pros, bureaux &amp; commerces</p>
-        <p class="pq-desc">Open space, boutique, salle d'attente : offrez du confort à vos équipes et clients, en quelques heures.</p>
-        <button class="pq-cta" onclick="openModal()" type="button">Réserver pour mon commerce →</button>
-      </div>
-      <div class="pq-card sr" role="listitem">
-        <div class="pq-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
-        <p class="pq-title">Locations saisonnières</p>
-        <p class="pq-desc">Hôtes Airbnb &amp; gîtes : améliorez vos avis voyageurs en proposant la clim sans investissement fixe.</p>
-        <button class="pq-cta" onclick="openModal()" type="button">Réserver pour mon Airbnb →</button>
-      </div>
-      <div class="pq-card sr" role="listitem">
-        <div class="pq-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg></div>
-        <p class="pq-title">Événements &amp; réceptions</p>
-        <p class="pq-desc">Mariage, séminaire, soirée : rafraîchissez vos espaces le temps d'un événement.</p>
-        <button class="pq-cta" onclick="openModal()" type="button">Réserver pour mon événement →</button>
-      </div>
-      <div class="pq-card sr" role="listitem">
-        <div class="pq-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
-        <p class="pq-title">Seniors &amp; personnes fragiles</p>
-        <p class="pq-desc">Protégez vos proches des pics de chaleur. Livraison et installation rapides, sans qu'ils aient à se déplacer.</p>
-        <button class="pq-cta" onclick="openModal()" type="button">Réserver pour un proche →</button>
-      </div>
-      <div class="pq-card sr" role="listitem">
-        <div class="pq-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><path d="M9 22V12h6v10"/></svg></div>
-        <p class="pq-title">Hôtels, EHPAD &amp; cabinets</p>
-        <p class="pq-desc">Clim en panne, chambre surchauffée ? On livre plusieurs appareils en quelques heures. Devis multi-unités sur WhatsApp.</p>
-        <a class="pq-cta" href="https://wa.me/33663798756" target="_blank" rel="noopener noreferrer" data-c-wa>Demander un devis multi-unités →</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- PRODUIT -->
-<section class="product" id="produit" aria-labelledby="product-title">
-  <div class="prod-in">
-
-    <!-- Panneau gauche : specs techniques -->
-    <div class="prod-visual sr">
-      <div class="prod-vis-top">
-        <span class="prod-avail-pip"></span>
-        <span id="product-avail-txt">Disponible en France</span>
-      </div>
-      <div class="prod-spec-grid" role="list" aria-label="Caractéristiques techniques">
-        <div class="prod-sc-card" role="listitem">
-          <div class="prod-sc-val">9–12k</div>
-          <div class="prod-sc-unt">BTU</div>
-          <div class="prod-sc-lbl" id="ps-lab-1">Puissance<br>de froid</div>
-        </div>
-        <div class="prod-sc-card" role="listitem">
-          <div class="prod-sc-val">15</div>
-          <div class="prod-sc-unt">m²</div>
-          <div class="prod-sc-lbl" id="ps-lab-2">Surface<br>recommandée</div>
-        </div>
-        <div class="prod-sc-card" role="listitem">
-          <div class="prod-sc-val">52</div>
-          <div class="prod-sc-unt">dB</div>
-          <div class="prod-sc-lbl" id="ps-lab-3">Niveau sonore<br>≈ un frigo</div>
-        </div>
-        <div class="prod-sc-card prod-sc-energy" role="listitem">
-          <div class="prod-sc-val">A</div>
-          <div class="prod-sc-unt" id="ps-unit-energy">Énergie</div>
-          <div class="prod-sc-lbl" id="ps-lab-4">Classe<br>énergétique</div>
-        </div>
-      </div>
-      <p id="product-btudesc" style="font-size:11.5px;color:var(--grey);margin:10px 4px 0;line-height:1.65">9 000–12 000 BTU = idéal pour une chambre ou salon jusqu'à 15 m². 52 dB : à peine audible en fond sonore, équivalent à un réfrigérateur.</p>
-      <div class="prod-vis-bot">
-        <span id="product-eyebrow">Sélection Loc’Air</span>
-        <span class="prod-vis-dot">·</span>
-        <span id="product-brand">Climatiseur mobile</span>
-      </div>
-    </div>
-
-    <!-- Panneau droit : contenu commercial -->
-    <div class="prod-body sr">
-      <div>
-        <h2 id="product-title">Nos climatiseurs mobiles<br><em>Rowenta, Frico &amp; Hisense</em></h2>
-        <p class="prod-lead" id="product-lead">Des climatiseurs professionnels testés et maîtrisés. Puissant et efficace : tout ce dont vous avez besoin pour traverser la canicule.</p>
-        <p style="font-size:12.5px;color:var(--grey);line-height:1.65;margin-top:10px">Pas envie de faire poser une clim fixe — travaux, propriétaire à convaincre, 1 500 € minimum ? Une mobile se branche sur une prise normale et s’installe en 10 minutes.</p>
-      </div>
-      <div class="prod-rule"></div>
-      <div>
-        <p class="prod-kit-label" id="product-kit-title">Kit fourni complet</p>
-        <div class="prod-kit-row">
-          <span class="prod-kit-chip" id="kit-chip-1">Climatiseur</span>
-          <span class="prod-kit-chip" id="kit-chip-3">Gaine d’évacuation</span>
-          <span class="prod-kit-chip" id="kit-chip-4">Kit de calfeutrage</span>
-        </div>
-      </div>
-      <button class="prod-cta-btn" onclick="openModal('7')" type="button" id="product-cta">
-        Réserver cet appareil
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </button>
-      <div class="prod-trust">
-        <div class="prod-tr-item"><span class="prod-tr-dot"></span><span id="prod-guar-1">Livraison sous 24h</span></div>
-        <div class="prod-tr-item"><span class="prod-tr-dot"></span><span id="prod-guar-2">Aucune caution</span></div>
-        <div class="prod-tr-item"><span class="prod-tr-dot"></span><span id="prod-guar-3">Panne remplacée</span></div>
-      </div>
-    </div>
-
-  </div>
-</section>
-
-<!-- ESPACE PARTENAIRE CTA (conciergeries, professionnels) -->
-<section style="background:var(--white);padding:0 var(--pad) 64px;text-align:center">
-  <div class="faq-cta-card partner-cta" style="max-width:520px;margin:0 auto">
-    <span class="partner-eyebrow" id="partner-eyebrow">Programme Ambassadeur</span>
-    <p class="faq-cta-title" id="partner-cta-h">Vous êtes une<br>conciergerie ?</p>
-    <p class="faq-cta-sub" id="partner-cta-sub">Recommandez Loc'Air à vos clients et touchez une commission sur chaque réservation, suivie depuis votre espace ambassadeur.</p>
-    <div class="partner-benefits">
-      <div class="partner-benefit" id="partner-b1">Commission sur chaque réservation</div>
-      <div class="partner-benefit" id="partner-b2">Tableau de bord ambassadeur en temps réel</div>
-      <div class="partner-benefit" id="partner-b3">Inscription et accès 100 % gratuits</div>
-    </div>
-    <a class="faq-cta-btn" href="/partenaire" id="partner-cta-btn">Accéder à l'espace ambassadeur →</a>
-  </div>
-</section>
-
-<!-- PAIEMENT SÉCURISÉ -->
-<section class="paysec" id="paiement-securise" aria-labelledby="paysec-title">
-  <div class="paysec-in">
-    <div class="paysec-hd sr">
-      <p class="sec-eye" id="paysec-eyebrow">Paiement sécurisé</p>
-      <h2 class="sec-h2" id="paysec-title">Votre paiement,<br><em>protégé à chaque étape</em></h2>
-      <p class="paysec-lead" id="paysec-lead">Nous utilisons Stripe, la solution de paiement de référence mondiale. Vos coordonnées bancaires ne nous parviennent jamais — elles vont directement chez Stripe.</p>
-    </div>
-    <div class="paysec-grid">
-      <div class="paysec-card sr">
-        <div class="paysec-ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-        </div>
-        <p class="paysec-ct" id="paysec-ct-1">Certifié PCI-DSS</p>
-        <p class="paysec-cd" id="paysec-cd-1">Stripe est audité chaque année par des organismes indépendants. Vos données bancaires sont stockées dans des coffres sécurisés — jamais sur nos serveurs.</p>
-      </div>
-      <div class="paysec-card sr">
-        <div class="paysec-ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-        </div>
-        <p class="paysec-ct" id="paysec-ct-2">3D Secure &amp; SSL 256-bit</p>
-        <p class="paysec-cd" id="paysec-cd-2">Chaque transaction est authentifiée en deux étapes par votre banque. La connexion est chiffrée de bout en bout via SSL 256 bits.</p>
-      </div>
-      <div class="paysec-card sr">
-        <div class="paysec-ico" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z"/></svg>
-        </div>
-        <p class="paysec-ct" id="paysec-ct-3">Aucune caution</p>
-        <p class="paysec-cd" id="paysec-cd-3">Aucune caution, aucun préautorisé. Vous payez uniquement la location et les frais de livraison — rien de plus, jamais.</p>
-      </div>
-    </div>
-    <div class="paysec-strip sr">
-      <div class="paysec-stripe-logo" aria-label="Stripe">
-        <svg viewBox="0 0 32 32" width="30" height="30" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <rect width="32" height="32" rx="6" fill="#635BFF"/>
-          <path d="M16.5 8.4c-3.8 0-6.5 1.7-6.5 5 0 5 6.2 4.3 6.2 6.6 0 .9-.7 1.4-2.1 1.4-1.8 0-4-.7-5.7-1.7v3.8c1.4.7 3.2 1.1 5.7 1.1 4 0 6.5-1.9 6.5-5.2 0-5.2-6.3-4.5-6.3-6.7 0-.8.7-1.2 1.9-1.2 1.6 0 3.4.5 4.9 1.3V8.9c-1.4-.4-3-.5-4.6-.5z" fill="white"/>
-        </svg>
-        <span class="paysec-stripe-txt">stripe</span>
-      </div>
-      <p class="paysec-cert-line">PCI-DSS &nbsp;·&nbsp; SSL 256-bit &nbsp;·&nbsp; 3D Secure</p>
-      <p class="paysec-card-line" id="paysec-cards">VISA &nbsp;·&nbsp; Mastercard &nbsp;·&nbsp; CB</p>
-    </div>
-  </div>
-</section>
-
-<!-- COMPARATEUR — Louer vs Acheter -->
-<section class="comparateur" id="comparateur" aria-label="Louer vs acheter un climatiseur">
-  <div class="cmp-in">
-    <div class="cmp-head sr">
-      <p class="sec-eye" id="cmp-eye">Louer ou acheter ?</p>
-      <h2 class="sec-h2" id="cmp-h2">Pourquoi louer coûte <em>moins cher</em> qu'acheter</h2>
-      <p style="color:var(--grey);font-size:15px;margin-top:8px;max-width:520px;margin-left:auto;margin-right:auto" id="cmp-sub">Pour 2 semaines de fraîcheur, la location revient à moins de la moitié du prix d'un appareil neuf. Sans les tracas.</p>
-    </div>
-    <div class="bento-grid sr">
-
-      <!-- Prix Loc'Air — navy, featured -->
-      <div class="bc bc-navy">
-        <p class="bc-eye" id="cmp-b1-eye">🧊 Loc'Air · 2 semaines</p>
-        <p class="bc-h" id="cmp-b1-h">~215 €</p>
-        <p class="bc-p" id="cmp-b1-p">Livraison + récupération incluses · kit de calfeutrage fourni · tarif dégressif dès 8 jours</p>
-      </div>
-
-      <!-- Prix achat — white, accent rouge -->
-      <div class="bc bc-w">
-        <p class="bc-eye" id="cmp-b2-eye">🛒 Acheter</p>
-        <p class="bc-h" id="cmp-b2-h" style="color:var(--red);font-size:clamp(32px,6vw,52px)">500–900 €</p>
-        <p class="bc-p" id="cmp-b2-p">Appareil seul · installation, stockage et récupération à votre charge</p>
-      </div>
-
-      <!-- Caution 0 € — green accent -->
-      <div class="bc bc-w bc-zero">
-        <p class="bc-eye" id="cmp-b3-eye">Caution</p>
-        <p class="bc-h" id="cmp-b3-h">0 €</p>
-        <p class="bc-p" id="cmp-b3-p">Aucun chèque · aucune empreinte bancaire</p>
-      </div>
-
-      <!-- Remplacement J-même — white -->
-      <div class="bc bc-w">
-        <p class="bc-eye" id="cmp-b4-eye">En cas de panne</p>
-        <p class="bc-h" id="cmp-b4-h" style="font-size:clamp(24px,4vw,36px);line-height:1.15">Remplacement<br>le jour même</p>
-        <p class="bc-p" id="cmp-b4-p">Garanti par contrat · sans délai constructeur</p>
-        <span class="bc-deco" aria-hidden="true">⚡</span>
-      </div>
-
-      <!-- On reprend tout — white -->
-      <div class="bc bc-w">
-        <p class="bc-eye" id="cmp-b5-eye">Stockage hors saison</p>
-        <p class="bc-h" id="cmp-b5-h" style="font-size:clamp(24px,4vw,36px);line-height:1.15">On reprend<br>tout</p>
-        <p class="bc-p" id="cmp-b5-p">Pas d'encombrant chez vous 11 mois/an</p>
-        <span class="bc-deco" aria-hidden="true">📦</span>
-      </div>
-
-    </div>
-    <div class="cmp-cta-row sr">
-      <button class="plan-btn pb-s" onclick="openModal('7')" type="button">Réserver ma livraison → dès 12 €/jour</button>
-      <p id="cmp-cta-reassure" style="font-size:11px;color:var(--grey2);margin-top:10px">Sans engagement · Annulation gratuite avant livraison</p>
-    </div>
-  </div>
-</section>
-
-<!-- ALERTE CANICULE — Email capture -->
-<section class="email-capture" id="alerte-canicule" aria-label="Alerte prioritaire">
-  <div class="ec-in sr">
-    <div class="ec-left">
-      <p class="ec-eye">Alerte prioritaire</p>
-      <h2 class="ec-h">Votre climatiseur réservé avant la canicule</h2>
-      <p class="ec-sub">Inscrivez-vous : vous êtes alerté dès qu'une vague de chaleur est prévue, et vous bénéficiez d'une priorité d'accès au stock avant les autres.</p>
-    </div>
-    <form class="ec-form" id="ec-form" onsubmit="submitAlerte(event)">
-      <label for="ec-email" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">Votre adresse email</label>
-      <input class="ec-input" type="email" name="email" id="ec-email" placeholder="votre@email.fr" required autocomplete="email"/>
-      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:10px">
-        <input type="checkbox" id="ec-optin" required style="margin-top:3px;flex-shrink:0;width:16px;height:16px;cursor:pointer" aria-required="true"/>
-        <label id="ec-optin-lbl" for="ec-optin" style="font-size:11px;color:rgba(255,255,255,.6);line-height:1.5;cursor:pointer">J'accepte de recevoir les alertes canicule de Loc'Air par email. <a href="/confidentialite" style="color:rgba(255,255,255,.8)">Politique de confidentialité</a>.</label>
-      </div>
-      <button class="ec-btn" type="submit" id="ec-btn">Recevoir l'alerte →</button>
-      <p class="ec-micro">Aucun spam · Résiliable en 1 clic</p>
-    </form>
-      <div class="ec-ok" id="ec-ok"></div>
-  </div>
-</section>
-
-
-<!-- EXPERTISE -->
-<section class="expertise" id="garantie" aria-labelledby="expertise-title">
-  <div class="expertise-in">
-    <div class="sr">
-      <p class="sec-eye" id="expertise-eyebrow">Notre savoir-faire</p>
-      <h2 class="sec-h2" id="expertise-title">Ce qui se passe<br><em>une fois qu'on sonne.</em></h2>
-      <p class="exp-lead" id="expertise-lead">Pas de sous-traitant. Pas de call center. La même équipe qui répond au téléphone est celle qui pose le climatiseur.</p>
-      <div class="exp-stats">
-        <div class="exp-stat">
-          <span class="exp-stat-n">500+</span>
-          <span class="exp-stat-l">installations réalisées</span>
-        </div>
-        <div class="exp-stat">
-          <span class="exp-stat-n">25 min</span>
-          <span class="exp-stat-l">pose moyenne</span>
-        </div>
-        <div class="exp-stat">
-          <span class="exp-stat-n">100%</span>
-          <span class="exp-stat-l">remplacé ou remboursé si panne</span>
-        </div>
-        <div class="exp-stat">
-          <span class="exp-stat-n">4,9<span style="font-size:.55em">/5</span></span>
-          <span class="exp-stat-l">32 avis Google</span>
-        </div>
-      </div>
-    </div>
-    <div class="bento-grid" style="margin-top:32px">
-
-      <!-- Promesse qualité — navy, pleine largeur -->
-      <div class="bc bc-navy sr">
-        <p class="bc-eye" id="exp-b1-eye">Notre engagement</p>
-        <p class="bc-h" id="exp-b1-h" style="font-size:clamp(24px,4.5vw,40px);line-height:1.1">Appareil testé<br><em style="opacity:.75;font-weight:400;font-style:italic">avant chaque livraison</em></p>
-        <p class="bc-p" id="exp-b1-p">Nettoyé, désinfecté et testé avant chaque départ. Panne à la livraison : remplacement ou remboursement intégral — garanti par contrat.</p>
-        <span class="bc-deco" aria-hidden="true">🛡️</span>
-      </div>
-
-      <!-- 20–30 min — gold -->
-      <div class="bc bc-gold sr">
-        <p class="bc-eye" id="exp-b2-eye">De la sonnette à l'air frais</p>
-        <p class="bc-h" id="exp-b2-h">20–30<span class="bc-min">min</span></p>
-        <p class="bc-p" id="exp-b2-p">Matériel fourni · sans perçage · rien à préparer</p>
-        <span class="bc-deco" aria-hidden="true">⏱</span>
-      </div>
-
-      <!-- 100% remplacé ou remboursé — green accent -->
-      <div class="bc bc-w bc-zero sr">
-        <p class="bc-eye" id="exp-b3-eye">En cas de panne</p>
-        <p class="bc-h" id="exp-b3-h">100<span class="bc-u">%</span></p>
-        <p class="bc-p" id="exp-b3-p">Remplacement ou remboursement intégral — garanti par contrat</p>
-      </div>
-
-      <!-- Techniciens directs — white, span 2 pour équilibrer la grille -->
-      <div class="bc bc-w sr" style="grid-column:span 2">
-        <p class="bc-eye" id="exp-b4-eye">Votre interlocuteur</p>
-        <p class="bc-h" id="exp-b4-h" style="font-size:clamp(22px,3.8vw,34px);line-height:1.15">Les techniciens,<br><em>directement</em></p>
-        <p class="bc-p" id="exp-b4-p">Pas de call center. Pas de sous-traitant. Vous avez le numéro direct.</p>
-        <span class="bc-deco" aria-hidden="true">👷</span>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<!-- ÉQUIPE -->
-<section class="equipe" aria-labelledby="equipe-title">
-  <div class="equipe-in">
-    <div class="equipe-photo-col">
-      <div class="equipe-avatar" aria-label="Aly Thiam, fondateur">AT</div>
-      <p class="equipe-sig">Aly</p>
-    </div>
-    <div class="equipe-content">
-      <p class="sec-eye">L'équipe</p>
-      <h2 class="sec-h2 sr" id="equipe-title">Vous n'avez pas affaire<br><em>à un service, mais à des gens.</em></h2>
-      <p class="equipe-bio sr">Je m'appelle Aly. Je fais la livraison avec mon équipe — sans sous-traitants, sans intermédiaires. Vous avez mon numéro direct, et c'est nous qui sonnons à votre porte. C'est l'écoute de nos clients qui nous guide pour adapter et élargir notre gamme, toujours au plus près de vos besoins. Merci à chacun d'entre vous — c'est votre confiance qui a construit Loc'Air.</p>
-    </div>
-  </div>
-</section>
-
-<!-- CONTACT CTA -->
-<section style="background:var(--bg);padding:64px var(--pad);text-align:center">
-  <div class="faq-cta-card" style="max-width:520px;margin:0 auto">
-    <p class="faq-cta-title" id="faq-cta-title">Une question ?<br>On répond le jour même.</p>
-    <p class="faq-cta-detail" style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.6;margin-bottom:20px">7j/7 · 8h–20h · Réponse humaine garantie</p>
-    <button class="faq-cta-btn" onclick="openModal()" type="button">Réserver maintenant →</button>
-    <a href="https://wa.me/33663798756" class="faq-cta-wa" data-c-wa target="_blank" rel="noopener noreferrer" aria-label="Poser une question sur WhatsApp">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:middle;margin-right:5px;display:inline-block" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.136.563 4.14 1.545 5.878L.057 23.97l6.233-1.633A11.94 11.94 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.859 0-3.6-.5-5.1-1.37l-.366-.217-3.7.97.988-3.605-.238-.37A9.933 9.933 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/></svg>
-      <span class="faq-wa-txt">Une question ? WhatsApp →</span>
-    </a>
-    <a href="tel:0663798756" class="faq-phone-link" style="display:block;width:100%;padding:12px 18px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.8);border:1.5px solid rgba(255,255,255,.15);border-radius:4px;font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;font-family:var(--body);cursor:pointer;text-align:center;text-decoration:none;margin-top:10px;box-sizing:border-box" data-c-tel><span data-c="phone">06.63.79.87.56</span></a>
-    <div class="faq-cta-checks">
-      <p class="faq-cta-chk faq-cta-usp"></p>
-      <p class="faq-cta-chk faq-cta-usp"></p>
-      <p class="faq-cta-chk faq-cta-usp"></p>
-      <p class="faq-cta-chk faq-cta-usp"></p>
-    </div>
-  </div>
-</section>
-
-
-
 <!-- FAQ -->
-<section class="faq" id="faq" aria-labelledby="faq-title">
-  <div class="faq-split">
-    <!-- Accordion FAQ -->
-    <div role="region" aria-label="Questions fréquentes">
-      <p class="sec-eye">Questions fréquentes</p>
-      <h2 class="sec-h2" id="faq-title" style="margin-bottom:28px">Ce qu'il faut<br><em>savoir avant de réserver</em></h2>
+<section class="faq vb-sec" id="faq" aria-labelledby="faq-title">
+  <div class="vb-sec-in">
+    <p class="vb-eye">Avant de réserver</p>
+    <h2 class="vb-h2 sec-h2" id="faq-title">Les questions<br><em>que vous nous posez.</em></h2>
+    <div class="vb-toggle" role="group" aria-label="Choisir l'appareil">
+      <button type="button" class="vb-toggle-btn on" data-produit-btn="clim" onclick="setProduit('clim')" aria-pressed="true">Climatiseur</button>
+      <button type="button" class="vb-toggle-btn" data-produit-btn="raf" onclick="setProduit('raf')" aria-pressed="false">Rafraîchisseur</button>
+    </div>
+
+    <div class="vb-only-clim" role="region" aria-label="Questions fréquentes — climatiseur">
       <div>
         <div class="fi"><button class="fi-q" onclick="faq(this)" aria-expanded="false" type="button"><span class="fi-tag" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>Quelle est la durée minimale ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></button><div class="fi-a" id="faq-tarif-a" role="region">7 jours minimum. Le tarif est dégressif par paliers : 12 €/jour pour 7 jours · 10 €/jour pour 8 à 14 jours · 9 €/jour pour 15 à 21 jours · 8 €/jour dès 22 jours. Vous choisissez la durée qui vous convient — le kit de calfeutrage est toujours fourni. Livraison & récupération : nous consulter selon votre adresse. L'installation par technicien est en option à 80€.</div></div>
         <div class="fi"><button class="fi-q" onclick="faq(this)" aria-expanded="false" type="button"><span class="fi-tag" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 13 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></span>Comment se passe la livraison ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></button><div class="fi-a" role="region">Notre technicien sonne à votre porte avec l'appareil et tout le matériel. Il pose le kit sur votre fenêtre, branche le climatiseur, vérifie que ça refroidit bien — et vous explique les réglages en 2 minutes. De la sonnette à l'air frais : 20 à 30 minutes. Vous n'avez rien à préparer, rien à acheter.</div></div>
@@ -5215,6 +4909,16 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="fi"><button class="fi-q" onclick="faq(this)" aria-expanded="false" type="button"><span class="fi-tag" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="17" y1="14" x2="17" y2="18"/><line x1="15" y1="16" x2="19" y2="16"/></svg></span>Puis-je prolonger ma location si j&#39;en ai besoin plus longtemps ?<span class="fi-ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span></button><div class="fi-a" role="region">Oui — c&#39;est pensé pour ça. Depuis votre <strong>espace client</strong> (lien dans votre email de confirmation), vous prolongez en quelques clics avant la date de fin. Pas besoin d&#39;appeler. Le tarif s&#39;ajuste automatiquement : si vous passez à 22 jours ou plus, vous bénéficiez du meilleur prix (8 €/jour) sur toute la durée. La moitié de nos clients prolongent au moins une fois — c&#39;est souvent le signe qu&#39;ils sont bien installés et au frais.</div></div>
       </div>
     </div>
+
+    <div class="vb-only-raf">
+      <p class="vb-dire" style="max-width:none">Un rafraîchisseur adiabatique n'est pas un climatiseur, et il y a des situations où il n'est pas la bonne réponse. Autant le savoir avant de signer plutôt qu'au premier jour de canicule.</p>
+      <div class="vb-limites">
+        <div class="vb-lim"><b>Il lui faut de l'air qui se renouvelle</b><span>Dans un local hermétiquement fermé, l'air se sature en humidité et l'effet s'arrête. Une porte, une fenêtre ou une bouche d'extraction suffit.</span></div>
+        <div class="vb-lim"><b>Plus l'air est humide, moins l'écart est grand</b><span>Le procédé repose sur l'évaporation. Sur le littoral, un jour très humide, la baisse est plus faible qu'en intérieur des terres. C'est pour ça que nous conseillons parfois un appareil de plus.</span></div>
+        <div class="vb-lim"><b>Il faut de l'eau</b><span>Réservoir à remplir, ou raccordement au réseau quand c'est possible. Nous réglons ce point pendant la visite, pas après la livraison.</span></div>
+        <div class="vb-lim"><b>Ce n'est pas fait pour un bureau fermé</b><span>Pour un bureau, une chambre d'hôtel ou une salle de réunion close, c'est un climatiseur qu'il vous faut — et nous en louons aussi.</span></div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -5236,40 +4940,6 @@ document.addEventListener('DOMContentLoaded', function(){
     <a class="btn-vcard" href="data:text/vcard;base64,QkVHSU46VkNBUkQNClZFUlNJT046My4wDQpGTjpMb2MnQWlyDQpPUkc6TG9jJ0Fpcg0KVEVMO1RZUEU9Q0VMTCxWT0lDRTorMzM2NjM3OTg3NTYNCkVNQUlMOmNvbnRhY3RAbG9jYWlyLmZyDQpVUkw6aHR0cHM6Ly93d3cubG9jYWlyLmZyLw0KTk9URTpMb2NhdGlvbiBkZSBmcmHDrmNoZXVyIMOgIE5pY2UgZXQgQ8O0dGUgZCdBenVyLiBMaXZyYWlzb24gc291cyAyNGguIFNhbnMgY2F1dGlvbi4NCkVORDpWQ0FSRA==" download="LocAir.vcf" aria-label="Enregistrer le contact Loc'Air">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
       <span class="vcard-txt">Gardez Loc'Air sous la main</span>
-    </a>
-  </div>
-</section>
-
-<!-- ── EXPANSION RÉUNION ── -->
-<style>
-.xp-strip{background:#0b1829;padding:28px var(--pad);border-top:1px solid rgba(200,146,28,.15)}
-.xp-in{max-width:var(--max);margin:0 auto;display:flex;align-items:center;gap:20px;flex-wrap:wrap}
-.xp-flag{font-size:28px;line-height:1;flex-shrink:0}
-.xp-txt{flex:1;min-width:180px}
-.xp-txt strong{display:block;font-size:15px;font-weight:700;color:#f5f7fa;margin-bottom:3px;letter-spacing:-.01em}
-.xp-txt span{font-size:12.5px;color:rgba(255,255,255,.45)}
-.xp-btn{
-  flex-shrink:0;display:inline-flex;align-items:center;gap:6px;
-  background:rgba(200,146,28,.1);border:1.5px solid rgba(200,146,28,.3);
-  color:#c5a96c;font-size:12.5px;font-weight:700;
-  border-radius:100px;padding:9px 18px;
-  text-decoration:none;letter-spacing:.01em;
-  transition:background .15s,border-color .15s;
-}
-.xp-btn:hover{background:rgba(200,146,28,.2);border-color:rgba(200,146,28,.55)}
-.xp-btn svg{flex-shrink:0}
-@media(max-width:500px){.xp-in{justify-content:center;text-align:center}.xp-txt{flex:none;width:100%}}
-</style>
-<section class="xp-strip" aria-label="Loc'Air bientôt à La Réunion">
-  <div class="xp-in">
-    <span aria-hidden="true" class="xp-flag">🇷🇪</span>
-    <div class="xp-txt">
-      <strong>Loc'Air arrive à La Réunion</strong>
-      <span>Ouverture novembre 2026 · Livraison + installation · Sans caution</span>
-    </div>
-    <a href="/reunion" class="xp-btn" aria-label="Rejoindre la liste prioritaire La Réunion">
-      Rejoindre la liste
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
     </a>
   </div>
 </section>
@@ -9158,6 +8828,17 @@ function startBooking(){
   },150);
 }
 
+// Bascule climatiseur / rafraîchisseur — gouverne tous les blocs .vb-only-clim
+// / .vb-only-raf de la page via un attribut sur <body> (voir CSS correspondant).
+function setProduit(p){
+  document.body.dataset.produit=p;
+  document.querySelectorAll('[data-produit-btn]').forEach(b=>{
+    const on=b.dataset.produitBtn===p;
+    b.classList.toggle('on',on);
+    b.setAttribute('aria-pressed',on?'true':'false');
+  });
+}
+
 function faq(el){
   const it=el.parentElement;
   const was=it.classList.contains('open');
@@ -9417,10 +9098,11 @@ const LANG_MAP=[
 
   /* howto */
   ['.howto .sec-eye','text','Comment fonctionne la location','How rental works','租赁流程介绍',`Как работает аренда`],
-  ['#howto-title','html','De la réservation<br><em>à l\'air frais — dès le lendemain matin</em>','From booking<br><em>to cool air — the next morning</em>','从预订到<br><em>清凉空气——次日上午即到</em>',`От бронирования<br><em>до прохлады — уже на следующее утро</em>`],
+  ['#howto-title','html','De la réservation<br><em>à la reprise.</em>','From booking<br><em>to pickup.</em>','从预订<br><em>到回收。</em>',`От бронирования<br><em>до возврата.</em>`],
+  ['#materiel-title','html','Deux machines.<br><em>Deux façons d\'avoir frais.</em>','Two machines.<br><em>Two ways to stay cool.</em>','两种设备。<br><em>两种制冷方式。</em>',`Два устройства.<br><em>Два способа охладиться.</em>`],
   /* pricing */
   ['.pricing .sec-eye','text','Tarifs','Pricing','价格',`Тарифы`],
-  ['#pricing-title','html','Tarifs clairs,<br><em>sans mauvaises surprises</em>','Clear pricing,<br><em>no hidden surprises</em>','价格透明，<br><em>无隐藏费用</em>',`Прозрачные цены,<br><em>без скрытых сюрпризов</em>`],
+  ['#pricing-title','html','Le prix affiché<br><em>est le prix payé.</em>','The price shown<br><em>is the price you pay.</em>','显示的价格<br><em>就是您支付的价格。</em>',`Указанная цена —<br><em>это цена оплаты.</em>`],
   ['#pricing-min','text','Prix dégressif à partir de 7 jours.','Tiered pricing from 7 days.','7天起享阶梯优惠价。',`Ступенчатые цены от 7 дней.`],
   ['#pricing-social-proof','html','4,9/5 · <strong style="color:var(--black)">32 avis</strong> Google vérifiés','4.9/5 · <strong style="color:var(--black)">32 reviews</strong> on Google','4.9/5 · <strong style="color:var(--black)">32条</strong>Google验证评价',`4,9/5 · <strong style="color:var(--black)">32 отзыва</strong> Google`],
   ['.plan-btn.pb-s','text','Réserver ma livraison →','Book my delivery →','预订配送 →',`Забронировать доставку →`],
@@ -9428,6 +9110,8 @@ const LANG_MAP=[
   ['.reviews .sec-eye','text','Avis clients','Customer reviews','客户评价',`Отзывы клиентов`],
   ['#reviews-title','html','Ils ont loué.<br><em>Voici ce qu\'ils en disent.</em>','They rented.<br><em>Here\'s what they say.</em>','他们已租用。<br><em>这是他们的评价。</em>',`Они арендовали.<br><em>Вот что они говорят.</em>`],
   ['#reviews-aly-note','text','Chaque retour compte pour nous. Merci de faire confiance à Loc\'Air. — Aly','Every review matters to us. Thank you for trusting Loc\'Air. — Aly','每一条评价对我们都很重要。感谢您对Loc\'Air的信任。— Aly',`Каждый отзыв важен для нас. Спасибо за доверие к Loc'Air. — Aly`],
+  /* espace client + ambassadeur */
+  ['#ec-title','html','Vous avez<br><em>votre espace.</em>','You have<br><em>your own space.</em>','您拥有<br><em>专属空间。</em>',`У вас есть<br><em>личный кабинет.</em>`],
   ['.score-lbl','text','Avis vérifiés Google','Verified Google reviews','Google验证评价',`Верифицированные отзывы Google`],
   ['#score-since','text','32 avis vérifiés','32 verified reviews','32条验证评价',`32 проверенных отзыва`],
   ['.rs-label','text','32 avis Google vérifiés','32 verified Google reviews','32条Google验证评价',`32 верифицированных отзыва Google`],
@@ -9438,7 +9122,7 @@ const LANG_MAP=[
   ['#pourqui-title','html','Tout le monde peut louer.<br><em>Particuliers, pros, hôtes, familles.</em>','Everyone can rent.<br><em>Individuals, pros, hosts, families.</em>','所有人均可租用。<br><em>个人、专业人士、民宿主、家庭。</em>',`Арендовать может каждый.<br><em>Частные лица, организации, хозяева жилья, семьи.</em>`],
   /* faq */
   ['.faq .sec-eye','text','Questions fréquentes','Frequently asked questions','常见问题',`Частые вопросы`],
-  ['#faq-title','html','Ce qu\'il faut<br><em>savoir avant de réserver</em>','What you need<br><em>to know before booking</em>','预订前<br><em>您需要了解的</em>',`Что нужно знать<br><em>перед бронированием</em>`],
+  ['#faq-title','html','Les questions<br><em>que vous nous posez.</em>','The questions<br><em>you ask us.</em>','您向我们<br><em>提出的问题。</em>',`Вопросы,<br><em>которые вы нам задаёте.</em>`],
   ['#faq-cta-title','html','Une question ?<br>On répond le jour même.','A question?<br>We answer the same day.','有疑问？<br>当天即可回复。',`Есть вопрос?<br>Отвечаем в тот же день.`],
   ['button.faq-cta-btn','text','Réserver maintenant →','Book now →','立即预订 →',`Забронировать сейчас →`],
   /* pricing badge + reassure */
