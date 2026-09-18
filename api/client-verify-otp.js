@@ -34,7 +34,8 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: GENERIC_ERROR });
   }
 
-  const expectedHash = crypto.createHmac('sha256', process.env.TRANSPORTEUR_SECRET || '')
+  if (!process.env.TRANSPORTEUR_SECRET) throw new Error('TRANSPORTEUR_SECRET non configuré');
+  const expectedHash = crypto.createHmac('sha256', process.env.TRANSPORTEUR_SECRET)
     .update(telNorm + ':' + code)
     .digest('hex');
 
@@ -56,10 +57,7 @@ module.exports = async (req, res) => {
       return res.status(401).json({ error: GENERIC_ERROR });
     }
 
-    // Marque le code comme utilisé
-    await supabase.from('otp_codes').update({ used: true }).eq('id', otp.id);
-
-    // Récupère la réservation la plus récente pour ce numéro
+    // Récupère le client pour ce numéro — AVANT de consommer le code
     const { data: client } = await supabase
       .from('clients')
       .select('id')
@@ -84,6 +82,9 @@ module.exports = async (req, res) => {
     if (!resa) {
       return res.status(404).json({ error: GENERIC_ERROR });
     }
+
+    // Marque le code comme utilisé seulement après avoir vérifié client+résa
+    await supabase.from('otp_codes').update({ used: true }).eq('id', otp.id);
 
     const token = signClientToken(resa.id, resa.ref);
     return res.status(200).json({ ok: true, token, ref: resa.ref });

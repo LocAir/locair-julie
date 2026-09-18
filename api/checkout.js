@@ -245,7 +245,7 @@ module.exports = async (req, res) => {
         date_recup_souhaitee: (data.date_recuperation_souhaitee || '').slice(0, 10),
         creneau_recup:        (data.creneau_recuperation        || '').slice(0, 50),
       },
-    }, { idempotencyKey: `checkout-${(data._ref || '').slice(0, 40)}-${amountCents}` });
+    }, { idempotencyKey: `checkout-${((data._ref || '').slice(0, 40)) || crypto.randomUUID()}-${amountCents}` });
 
     const { data: insertedResa, error: insertErr } = await supabase.from('reservations').insert({
       city_id:                  city.id,
