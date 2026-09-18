@@ -6129,7 +6129,7 @@ document.addEventListener('DOMContentLoaded', function(){
             <div class="fld">
               <p id="lbl-type-client" style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px">Vous réservez en tant que</p>
               <div class="tpills" id="type-client-group" role="radiogroup" aria-labelledby="lbl-type-client">
-                <button type="button" class="tpill on client-type-perso" onclick="tgl(this,'type');document.getElementById('siret-wrap').style.display='none'" role="radio" aria-checked="true">Particulier</button>
+                <button type="button" class="tpill on client-type-perso" onclick="tgl(this,'type');document.getElementById('siret-wrap').style.display='none';document.getElementById('f-raison-sociale').value='';document.getElementById('f-siret').value='';" role="radio" aria-checked="true">Particulier</button>
                 <button type="button" class="tpill client-type-pro" onclick="tgl(this,'type');document.getElementById('siret-wrap').style.display='block'" role="radio" aria-checked="false">Professionnel</button>
               </div>
               <div id="siret-wrap" style="display:none;margin-top:10px">
@@ -7190,7 +7190,7 @@ function _showDispoAlert(dateStr){
   const isEn=_lang==='en',isZh=_lang==='zh',isRu=_lang==='ru';
   const nextTxt=next?(isEn?` · Next available: ${_fmtDispoDate(next)}`:isZh?`· 最近可订：${_fmtDispoDate(next)}`:isRu?` · Ближайшая дата: ${_fmtDispoDate(next)}`:` · Prochaine dispo : le ${_fmtDispoDate(next)}`):'';
   el.textContent=isEn?`This date is fully booked${nextTxt}.`:isZh?`该日期已满${nextTxt}。`:isRu?`На эту дату мест нет${nextTxt}.`:`Ce créneau est complet${nextTxt}.`;
-  el.style.display='block';
+  el.removeAttribute('style');el.style.display='block';
 }
 function _updateSoldOutNextDispo(){
   const el=document.getElementById('so-next-dispo');
@@ -7808,7 +7808,7 @@ function closeModal(){
   const mobProg=document.getElementById('mob-progress');
   if(mobProg)mobProg.style.removeProperty('display');
   // Reset all booking form fields
-  ['f-addr','f-cp','f-etage','f-prenom','f-nom','f-tel','f-tel2','f-email'].forEach(id=>{
+  ['f-addr','f-cp','f-etage','f-prenom','f-nom','f-tel','f-tel2','f-email','f-raison-sociale','f-siret'].forEach(id=>{
     const el=document.getElementById(id);if(el)el.value='';
   });
   const fcgv=document.getElementById('f-cgv');if(fcgv)fcgv.checked=false;
@@ -11371,9 +11371,8 @@ function _showProlongSuccess(){
       :_lang==='ru'
       ?'Ваша аренда продлена на '+_prolongDays+' '+ruDays(_prolongDays)+'. Возврат '+dateLabel+', временной слот: '+creneau+'. Подтверждение на email через несколько минут.'
       :'Votre location est prolongée de '+_prolongDays+' jour'+(_prolongDays>1?'s':'')+'. Récupération le '+dateLabel+' entre '+creneau+'. Confirmation par email dans quelques minutes.';
-    const prolongRef=_prolongServerRef||_generateOrderRef();
     const refEl2=document.getElementById('prolong-ref');
-    if(refEl2)refEl2.textContent=(_lang==='en'?'Ref ':_lang==='zh'?'编号：':_lang==='ru'?'Номер заказа ':'Dossier ')+prolongRef;
+    if(refEl2){if(_prolongServerRef){refEl2.textContent=(_lang==='en'?'Ref ':_lang==='zh'?'编号：':_lang==='ru'?'Номер заказа ':'Dossier ')+_prolongServerRef;refEl2.style.display='';}else{refEl2.style.display='none';}}
     succ.classList.add('show');
   }
   window.dataLayer=window.dataLayer||[];
@@ -11462,7 +11461,7 @@ function _onLogementChange(btn){
   // Mise à jour des chips techniques selon la surface (1 ou 2 appareils)
   const chipM2=document.getElementById('spec-chip-m2');
   const chipBtu=document.getElementById('spec-chip-btu');
-  if(chipM2)chipM2.textContent=big?'Jusqu\'à 30 m²':'Jusqu\'à 15 m²';
+  if(chipM2)chipM2.textContent=big?(_lang==='en'?'Up to 30 m²':_lang==='zh'?'最多30 m²':_lang==='ru'?'До 30 м²':'Jusqu\'à 30 m²'):(_lang==='en'?'Up to 15 m²':_lang==='zh'?'最多15 m²':_lang==='ru'?'До 15 м²':'Jusqu\'à 15 m²');
   if(chipBtu)chipBtu.textContent=big?'18 000 – 24 000 BTU':'9 000 – 12 000 BTU';
 }
 
