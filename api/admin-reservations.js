@@ -436,7 +436,7 @@ module.exports = async (req, res) => {
           .select(PROLONG_LOOKUP_FIELDS)
           .eq('city_id', city.id)
           .eq('email', email)
-          .not('source', 'eq', 'site_prolongation')
+          .or('source.is.null,source.neq.site_prolongation')
           .in('statut', ['confirmee'])
           .order('created_at', { ascending: false })
           .limit(1);
@@ -760,7 +760,7 @@ module.exports = async (req, res) => {
             // (dossier à afficher — jamais l'identifiant technique interne de
             // cette prolongation, voir emailTemplates.js) ET pour la mise à
             // jour de date_fin ci-dessous.
-            let origLookup = supabase.from('reservations').select('*').eq('city_id', city.id).not('source', 'eq', 'site_prolongation');
+            let origLookup = supabase.from('reservations').select('*').eq('city_id', city.id).or('source.is.null,source.neq.site_prolongation');
             origLookup = before.reservation_origine_id
               ? origLookup.eq('id', before.reservation_origine_id)
               : origLookup.eq('date_fin', before.date_debut).ilike('email', (before.email || '').trim()).order('created_at', { ascending: false }).limit(1);
