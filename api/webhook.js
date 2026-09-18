@@ -371,7 +371,8 @@ const handler = async (req, res) => {
       return res.status(400).json({ error: 'Invalid signature' });
     }
   } else {
-    return res.status(400).json({ error: 'STRIPE_WEBHOOK_SECRET non configuré' });
+    console.error('[Webhook] STRIPE_WEBHOOK_SECRET non configuré');
+    return res.status(400).json({ error: 'Bad request' });
   }
 
   try {
