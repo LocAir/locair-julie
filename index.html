@@ -10575,6 +10575,7 @@ let _urgencyShown=false;
 // 60s que _renderSmartLine (voir _refreshAlertBarTiming), au lieu de rester
 // figé sur la valeur calculée une seule fois au chargement de la page.
 let _alertBarStrongText=null, _alertBarTimingActive=false;
+let _weatherCur=null,_weatherRes=null,_weatherPeak=null;
 function _setAlertBar(bar,strongText,plainText){
   const closeBtn=bar.querySelector('.alert-close');
   while(bar.firstChild)bar.removeChild(bar.firstChild);
@@ -10590,6 +10591,7 @@ function _refreshAlertBarTiming(){
   if(!_alertBarTimingActive)return;
   const bar=document.getElementById('alert-canicule');
   if(!bar||bar.classList.contains('hidden')){_alertBarTimingActive=false;return;}
+  if(_weatherCur!==null){const _wsuf=_weatherRes!=null?(_lang==='en'?' (feels like '+_weatherRes+'°C)':_lang==='zh'?' (体感 '+_weatherRes+'°C)':_lang==='ru'?' (ощущается '+_weatherRes+'°C)':' (ressenti '+_weatherRes+'°C)'):'';_alertBarStrongText=_weatherPeak>=35?(_lang==='en'?'Heatwave — '+_weatherPeak+'°C expected'+_wsuf:_lang==='zh'?'高温预警 — 预计 '+_weatherPeak+'°C'+_wsuf:_lang==='ru'?'Жара — '+_weatherPeak+'°C ожидается'+_wsuf:'Canicule — '+_weatherPeak+'°C prévus'+_wsuf):(_weatherCur+'°C'+_wsuf);}
   const timing=_cutoffOk()?(_lang==='en'?'Delivery within 24h':_lang==='zh'?'24小时内配送':_lang==='ru'?'Доставка за 24 часа':'Livraison sous 24h'):(_lang==='en'?'Delivery within 48h':_lang==='zh'?'48小时内配送':_lang==='ru'?'Доставка за 48 часов':'Livraison sous 48h');
   _setAlertBar(bar,_alertBarStrongText,timing);
   _updateChromeH();
@@ -10758,6 +10760,7 @@ function _dismissTopBar(){
     const maxToday=Math.round(d.daily?.temperature_2m_max?.[0]??0);
     const maxTomorrow=Math.round(d.daily?.temperature_2m_max?.[1]??0);
     const peakTemp=Math.max(cur??0,maxToday,maxTomorrow);
+    _weatherCur=cur;_weatherRes=res;_weatherPeak=peakTemp;
 
     const alertActive=cur!==null&&(cur>=28||maxToday>=32||maxTomorrow>=32);
 
