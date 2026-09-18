@@ -1112,6 +1112,11 @@ module.exports = async (req, res) => {
       });
       if (insertErr) {
         console.error('[rembourser] CRITIQUE — Stripe OK mais enregistrement DB échoué:', insertErr.message, '| refund_id:', refund.id, '| reservation:', id);
+        await pushToAdmin(supabase, {
+          title: `⚠️ Remboursement DB manquant — résa #${id}`,
+          body:  `Stripe refund ${refund.id} réussi mais non enregistré en base. Piste d'audit incomplète.`,
+          tag:   `refund-db-fail-${id}`,
+        }).catch(() => {});
       }
 
       return res.status(200).json({ ok: true, refund_id: refund.id, audit_ok: !insertErr });
