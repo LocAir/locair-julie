@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
   const supabase    = getSupabase();
   // Tarifs (panneau de contrôle admin, voir admin-pricing.js) chargés une
   // seule fois pour toute la tâche, jamais recalculés en dur.
-  const pricing     = await getPricingConfig(supabase);
+  const pricing     = await getPricingConfig(supabase).catch(e => { console.error('[Cron] getPricingConfig failed:', e.message); return {}; });
   const today       = new Date();
   const todayStr    = todayParis();
   const tomorrowStr = dateInParis(new Date(today.getTime() + 86400000));
@@ -188,7 +188,7 @@ module.exports = async (req, res) => {
         // Sans ce garde-fou, l'idempotencyKey change chaque jour (joursRetard
         // s'incrémente) → Stripe crée un nouveau PI chaque matin → double
         // facturation dès le 2ème jour de retard.
-        const { data: existInc } = await supabase.from('incidents').select('id').eq('reservation_id', liv.reservation_id).eq('type', 'retard').in('statut', ['retard_a_facturer', 'nouveau']).maybeSingle();
+        const { data: existInc } = await supabase.from('incidents').select('id').eq('reservation_id', liv.reservation_id).eq('type', 'retard').neq('statut', 'rembourse').maybeSingle();
         if (existInc) {
           await supabase.from('incidents').update({ description: desc, montant_facture_cents: amountCents }).eq('id', existInc.id);
           continue;
@@ -295,7 +295,8 @@ module.exports = async (req, res) => {
       .from('reservations')
       .select('id, ref, city_id, prenom, nom, email, tel, adresse, date_debut, date_fin, quantite, installation, prix_total_cents, statut, creneau, stripe_customer_id, stripe_payment_intent_id, created_at, source, lang, reservation_origine_id')
       .eq('statut', 'en_attente')
-      .or('email.not.is.null,tel.not.is.null');
+      .or('email.not.is.null,tel.not.is.null')
+      .limit(500);
 
     let relanceCount = 0, annuleCount = 0;
     if ((enAttente || []).length && process.env.STRIPE_SECRET_KEY) {
@@ -907,7 +908,8 @@ module.exports = async (req, res) => {
       .select('id, statut, date_debut, date_fin, prenom, tel, ref, lang, email, city_id, source, reservation_origine_id')
       .eq('statut', 'confirmee')
       .lte('date_debut', in14dStr)
-      .gte('date_fin', todayStr);
+      .gte('date_fin', todayStr)
+      .limit(500);
 
     // Regroupe par client (même ville + même email) pour détecter les fiches
     // supplantées par une prolongation plus récente — voir isSupersededReservation
