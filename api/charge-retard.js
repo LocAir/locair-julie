@@ -17,10 +17,10 @@ module.exports = async (req, res) => {
 
   const data   = req.body || {};
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-  const jours  = Math.max(1, parseInt(data.jours) || 1);
+  const jours  = Math.min(180, Math.max(1, parseInt(data.jours) || 1));
   // Audit 2026-08-06 I1 : manquait * qty pour les locations multi-appareils.
   // La facturation de retard ne portait que sur 1 appareil, même pour 2 ou 3.
-  const qty    = Math.max(1, parseInt(data.quantite) || 1);
+  const qty    = Math.min(5, Math.max(1, parseInt(data.quantite) || 1));
   // Tarifs (panneau de contrôle admin, voir admin-pricing.js) — jamais
   // recalculés en dur.
   const pricing     = await getPricingConfig(getSupabase());

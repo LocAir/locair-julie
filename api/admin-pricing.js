@@ -50,8 +50,8 @@ module.exports = async (req, res) => {
       const p4Cents   = toCents(body.palier4_tarif);
 
       const values = [dureeMin, p1Max, p1Cents, p2Max, p2Cents, p3Max, p3Cents, p4Cents];
-      if (values.some((v) => v === null || v < 0)) {
-        return res.status(400).json({ error: 'Tous les champs sont requis et doivent être positifs.' });
+      if (values.some((v) => v === null || v <= 0)) {
+        return res.status(400).json({ error: 'Tous les champs sont requis et doivent être strictement positifs (tarif 0 € non autorisé).' });
       }
       // Mêmes garde-fous que la contrainte SQL (pricing_config_paliers_croissants)
       // — revérifiés ici pour renvoyer un message clair avant d'atteindre la base.
@@ -86,8 +86,8 @@ module.exports = async (req, res) => {
       };
       const proFournis = Object.entries(proChamps).filter(([, v]) => v !== null);
       if (proFournis.length) {
-        if (proFournis.some(([, v]) => v < 0)) {
-          return res.status(400).json({ error: 'Les tarifs pro doivent être positifs.' });
+        if (proFournis.some(([, v]) => v <= 0)) {
+          return res.status(400).json({ error: 'Les tarifs pro doivent être strictement positifs (tarif 0 € non autorisé).' });
         }
         proFournis.forEach(([k, v]) => { maj[k] = v; });
       }
