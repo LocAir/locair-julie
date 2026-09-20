@@ -4178,7 +4178,7 @@ input:-webkit-autofill:focus{
       <div class="hero-product-info">
         <div class="hero-product-eye">Location · Côte d'Azur</div>
         <div class="hero-product-name">Climatiseur mobile</div>
-        <div class="hero-product-price">dès <strong>12 €</strong>/jour</div>
+        <div class="hero-product-price">dès <strong>12 €</strong>/jour <span id="hero-price-min" style="font-size:9.5px;font-weight:500;opacity:.65">· 7 j min</span></div>
         <div class="hero-product-tags">
           <span>Livraison J+1</span>
           <span>Sans caution</span>
@@ -4232,6 +4232,10 @@ input:-webkit-autofill:focus{
             <path d="M12 2a10 10 0 1 0 10 10"/>
           </svg>
         </button>
+      </div>
+      <div id="panel-zone-badge" style="display:none;margin-top:6px;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:7px 11px;border-radius:8px;background:rgba(22,163,74,.08);border:1px solid rgba(22,163,74,.25);color:#15803d" aria-live="polite">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+        <span id="panel-zone-txt">Adresse enregistrée</span>
       </div>
     </div>
 
@@ -7276,6 +7280,13 @@ const _GEO_ICON_SPIN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
 function _applyGeoCache(cache){
   const input=document.getElementById('panel-addr');
   if(input)input.value=cache.addr;
+  const badge=document.getElementById('panel-zone-badge');
+  const badgeTxt=document.getElementById('panel-zone-txt');
+  if(badge&&badgeTxt){
+    const city=cache.city||'';
+    badgeTxt.textContent=(city?city+' — ':'')+(_lang==='en'?'Location detected ✓':_lang==='zh'?'位置已定位 ✓':_lang==='ru'?'Местоположение определено ✓':'Position détectée ✓');
+    badge.style.display='flex';
+  }
   // La carte peut ne pas encore être montée (Leaflet async) — on retente
   if(window._heroMap&&window._heroMarker){
     window._heroMap.setView([cache.lat,cache.lng],14,{animate:true});
@@ -7351,6 +7362,14 @@ function geolocateUser(){
   function _pick(label,lat,lng){
     input.value=label;
     _closeSug();
+    const badge=document.getElementById('panel-zone-badge');
+    const badgeTxt=document.getElementById('panel-zone-txt');
+    if(badge&&badgeTxt){
+      const parts=label.split(',');
+      const city=parts.length>1?parts[parts.length-2]?.trim()||'':'';
+      badgeTxt.textContent=(city?city+' — ':'')+(_lang==='en'?'Address saved ✓':_lang==='zh'?'地址已确认 ✓':_lang==='ru'?'Адрес сохранён ✓':'Adresse enregistrée ✓');
+      badge.style.display='flex';
+    }
     if(window._heroMap&&window._heroMarker){
       window._heroMap.setView([lat,lng],15,{animate:true});
       window._heroMarker.setLatLng([lat,lng]);
@@ -7435,11 +7454,29 @@ function _closeTiming(){
 function selectTiming(mode,e){
   if(e)e.stopPropagation();
   const lbl=document.getElementById('timing-label');
-  const labels={
-    now:{fr:'Livrer maintenant',en:'Deliver now',zh:'立即配送',ru:'Доставить сейчас'},
-    later:{fr:'Planifier pour plus tard',en:'Schedule for later',zh:'安排稍后配送',ru:'Запланировать'}
-  };
-  if(lbl)lbl.textContent=(labels[mode]||{})[_lang]||(labels[mode]||{}).fr||mode;
+  if(mode==='now'&&lbl){
+    const isEn=_lang==='en',isZH=_lang==='zh',isRU=_lang==='ru';
+    const ok=_cutoffOk();
+    const MS_FR=['Jan','Fév','Mars','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
+    const MS_EN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const MS_ZH=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+    const MS_RU=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+    const DS_FR=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+    const DS_EN=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const DS_ZH=['周日','周一','周二','周三','周四','周五','周六'];
+    const DS_RU=['вс','пн','вт','ср','чт','пт','сб'];
+    const dt=_addDays(ok?1:2);
+    const dd=dt.getDate();
+    const day=isEn?DS_EN[dt.getDay()]:isZH?DS_ZH[dt.getDay()]:isRU?DS_RU[dt.getDay()]:DS_FR[dt.getDay()];
+    const mon=isEn?MS_EN[dt.getMonth()]:isZH?MS_ZH[dt.getMonth()]:isRU?MS_RU[dt.getMonth()]:MS_FR[dt.getMonth()];
+    lbl.textContent=isEn?(ok?'Deliver tomorrow':'Deliver '+dd+' '+mon)+' · '+day
+      :isZH?(ok?'明日配送':dd+mon+'配送')+' · '+day
+      :isRU?'Доставить '+(ok?'завтра':dd+' '+mon)+' · '+day
+      :'Livrer '+(ok?'demain':'le '+dd+' '+mon)+' · '+day;
+  } else if(lbl){
+    const labels={later:{fr:'Planifier pour plus tard',en:'Schedule for later',zh:'安排稍后配送',ru:'Запланировать'}};
+    lbl.textContent=(labels[mode]||{})[_lang]||(labels[mode]||{}).fr||mode;
+  }
   document.querySelectorAll('.p-timing-opt').forEach(o=>{o.classList.remove('sel');o.setAttribute('aria-selected','false');});
   if(e&&e.currentTarget)e.currentTarget.classList.add('sel');
   const df=document.getElementById('date-field');
@@ -9103,6 +9140,7 @@ const LANG_MAP=[
   /* hero panel */
   ['.hero-product-name','text','Climatiseur mobile','Mobile air conditioner','移动空调','Мобильный кондиционер'],
   ['.hero-product-eye','text','Location · Côte d\'Azur','Rental · French Riviera','租赁 · 蔚蓝海岸','Аренда · Лазурный берег'],
+  ['#hero-price-min','text','· 7 j min','· 7 d min','· 7天起','· 7 дн. мин.'],
   ['#timing-label','text','Livrer maintenant','Deliver now','立即配送','Доставить сейчас'],
   ['#panel-addr','ph','Ex : 12 rue de la Paix, Nice','E.g. 12 rue de la Paix, Nice','如：12 rue de la Paix, Nice','Напр.: 12 rue de la Paix, Nice'],
   ['.p-submit','text','Réserver →','Book now →','立即预订 →','Забронировать →'],
@@ -10336,12 +10374,15 @@ function _renderSmartLine(){
     const remMin=(20*60)-(h*60+m);
     const rh=Math.floor(remMin/60),rm=remMin%60;
     const timeStr=rh>0?rh+'h '+String(rm).padStart(2,'0')+'min':rm+' min';
-    _smartLine.innerHTML=_dot('#16a34a',true)+(isEn
-      ?timeStr+' left — guaranteed next-day delivery'
-      :isZH?'还剩 '+timeStr+' — 明日送达保证'
-      :isRU?'Осталось '+timeStr.replace('h','ч').replace('min','мин')+' — доставка гарантирована завтра'
-      :'Il vous reste '+timeStr+' — livraison garantie demain');
-    _smartLine.style.color='var(--green)';
+    const urgent=remMin<=30;
+    const dotColor=urgent?'#d97706':'#16a34a';
+    const cutoff=urgent?(isEn?' · cutoff at 8 PM ⚡':isZH?' · 20时截止 ⚡':isRU?' · последний заказ в 20:00 ⚡':' · coupure à 20h00 ⚡'):'';
+    _smartLine.innerHTML=_dot(dotColor,true)+(isEn
+      ?timeStr+' left — guaranteed next-day delivery'+cutoff
+      :isZH?'还剩 '+timeStr+' — 明日送达保证'+cutoff
+      :isRU?'Осталось '+timeStr.replace('h','ч').replace('min','мин')+' — доставка гарантирована завтра'+cutoff
+      :'Il vous reste '+timeStr+' — livraison garantie demain'+cutoff);
+    _smartLine.style.color=urgent?'#d97706':'var(--green)';
     _smartLine.style.display='block';
   }else{
     // En dehors de 8h–20h : on cache la ligne (pas de date, pas de texte superflu)
@@ -10391,6 +10432,8 @@ function _initDynamicText(){
   if(gn)gn.textContent=ok
     ?(isEn?'The whole team is ready to welcome you tomorrow. See you soon. — Aly':isZH?'全队已准备好迎接您明天的配送。很快见！— Aly':isRU?'Вся наша команда работает для вас и ждёт вас завтра. До скорой встречи. — Aly':'Toute l\'équipe est mobilisée pour votre livraison demain. À très vite. — Aly')
     :(isEn?'The whole team is ready for your delivery on '+dateLong+'. See you soon. — Aly':isZH?'全队已准备好您'+dateLong+'的配送。很快见！— Aly':isRU?'Вся наша команда работает для вас. Доставка '+dateLong+'. До скорой встречи. — Aly':'Toute l\'équipe est mobilisée pour votre livraison le '+dateLong+'. À très vite. — Aly');
+  // Timing label — show delivery date on the "now" option
+  selectTiming('now');
 }
 _urgencyShown=_renderSmartLine();
 setInterval(_renderSmartLine,60000);
