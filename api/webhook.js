@@ -716,6 +716,11 @@ const handler = async (req, res) => {
     return res.status(200).json({ received: true });
   } catch (err) {
     console.error('[Stripe webhook]', err.message);
+    pushToAdmin(getSupabase(), {
+      title: 'Erreur webhook Stripe',
+      body: err.message?.slice(0, 200) || 'Erreur inconnue',
+      type: 'erreur',
+    }).catch(() => {});
     return res.status(200).json({ received: true, error: 'internal' });
   }
 };
