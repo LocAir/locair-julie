@@ -513,7 +513,30 @@ body{
 }
 .p-timing-opt:hover{background:var(--bg)}
 .p-timing-opt.sel{font-weight:700}
-.p-date-field{display:none;margin-bottom:14px}
+.p-date-field{display:none;margin-bottom:0}
+/* Calendrier hero panel */
+.p-cal{border:1.5px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:10px;background:var(--card)}
+.p-cal-head{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)}
+.p-cal-mlabel{font-size:13px;font-weight:700;color:var(--ink)}
+.p-cal-nav{background:none;border:none;width:28px;height:28px;border-radius:7px;cursor:pointer;color:var(--ink2);font-size:18px;display:flex;align-items:center;justify-content:center;line-height:1;transition:background .12s}
+.p-cal-nav:hover{background:var(--rule)}
+.p-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);padding:8px 6px;gap:1px}
+.p-cal-dow{font-size:9px;font-weight:700;color:var(--ink2);text-align:center;padding:4px 0;opacity:.55;letter-spacing:.04em;text-transform:uppercase}
+.p-cal-d{font-size:12px;font-weight:500;text-align:center;padding:6px 1px;cursor:pointer;border-radius:5px;color:var(--ink);line-height:1;transition:background .1s,color .1s}
+.p-cal-d:hover:not(.p-cal-past):not(.p-cal-empty){background:var(--rule)}
+.p-cal-d.p-cal-empty,.p-cal-d.p-cal-past{color:var(--ink2);opacity:.28;pointer-events:none}
+.p-cal-d.p-cal-today{font-weight:800;color:var(--gold)}
+.p-cal-d.p-cal-sel-start{background:var(--ink);color:var(--bg)!important;border-radius:5px 0 0 5px}
+.p-cal-d.p-cal-sel-range{background:var(--rule);border-radius:0}
+.p-cal-d.p-cal-sel-end{background:var(--ink);color:var(--bg)!important;border-radius:0 5px 5px 0}
+.p-cal-d.p-cal-sel-start.p-cal-sel-end{border-radius:5px}
+.p-dur-row{display:flex;gap:5px;margin-bottom:10px}
+.p-dur-btn{flex:1;padding:7px 2px;font-size:10.5px;font-weight:700;border:1.5px solid var(--border);border-radius:8px;background:transparent;color:var(--ink2);cursor:pointer;transition:background .12s,color .12s,border-color .12s;line-height:1.3;text-align:center}
+.p-dur-btn:hover{border-color:var(--ink);color:var(--ink)}
+.p-dur-btn.p-dur-on{background:var(--ink);color:var(--bg)!important;border-color:var(--ink)}
+.p-cal-summary{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 12px;background:rgba(200,146,28,.06);border:1.5px solid rgba(200,146,28,.25);border-radius:10px;margin-bottom:10px}
+.p-cal-sum-price{font-size:16px;font-weight:800;color:var(--ink);white-space:nowrap}
+.p-cal-sum-detail{font-size:10.5px;color:var(--ink2);text-align:right;line-height:1.45}
 /* Bouton principal */
 .p-submit{
   width:100%;padding:15px;border-radius:10px;
@@ -4167,7 +4190,6 @@ input:-webkit-autofill:focus{
     </a>
     <div class="nav-tabs" id="nav-tabs">
       <button class="nav-tab nav-tab-active" id="ntab-loc" onclick="setNavTab('location')" type="button">Location</button>
-      <button class="nav-tab" id="ntab-ven" onclick="setNavTab('vente')" type="button">Vente</button>
     </div>
     <div class="nav-r">
       <a class="nav-google" href="https://www.google.com/maps/place/Loc%27Air/@43.7076,7.2793,17z" target="_blank" rel="noopener noreferrer" aria-label="Voir nos avis Google" data-c-maps>
@@ -4252,9 +4274,26 @@ input:-webkit-autofill:focus{
     </div>
 
     <!-- Date (visible seulement si "Planifier") -->
-    <div class="p-field-group p-date-field" id="date-field">
-      <label class="p-label" for="panel-date">Date de livraison</label>
-      <input class="p-input" type="date" id="panel-date" name="date" aria-label="Date de livraison souhaitée">
+    <div class="p-date-field" id="date-field">
+      <div class="p-cal" id="p-cal" role="application" aria-label="Calendrier de livraison">
+        <div class="p-cal-head">
+          <button class="p-cal-nav" id="cal-prev" type="button" aria-label="Mois précédent">&#8249;</button>
+          <span class="p-cal-mlabel" id="cal-mlabel"></span>
+          <button class="p-cal-nav" id="cal-next" type="button" aria-label="Mois suivant">&#8250;</button>
+        </div>
+        <div class="p-cal-grid" id="cal-grid"></div>
+      </div>
+      <div class="p-dur-row">
+        <button class="p-dur-btn p-dur-on" data-days="7" type="button">7 j<br>12€/j</button>
+        <button class="p-dur-btn" data-days="14" type="button">14 j<br>10€/j</button>
+        <button class="p-dur-btn" data-days="21" type="button">21 j<br>9€/j</button>
+        <button class="p-dur-btn" data-days="30" type="button">30 j<br>8€/j</button>
+      </div>
+      <div class="p-cal-summary" id="p-cal-summary" style="display:none">
+        <span class="p-cal-sum-price" id="p-cal-sum-price"></span>
+        <span class="p-cal-sum-detail" id="p-cal-sum-detail"></span>
+      </div>
+      <input type="hidden" id="panel-date" name="date">
     </div>
 
     <!-- Adresse + CTA côte à côte -->
@@ -5209,7 +5248,7 @@ body[data-produit="raf"] .vb-only-clim{display:none!important}
         </a>
         <span style="font-size:13px;color:rgba(255,255,255,.45);display:flex;align-items:flex-start;gap:8px;line-height:1.5">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" width="14" height="14" style="flex-shrink:0;margin-top:2px"><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          
+          Côte d'Azur, France
         </span>
         <a class="btn-vcard btn-vcard-footer" href="data:text/vcard;base64,QkVHSU46VkNBUkQNClZFUlNJT046My4wDQpGTjpMb2MnQWlyDQpPUkc6TG9jJ0Fpcg0KVEVMO1RZUEU9Q0VMTCxWT0lDRTorMzM2NjM3OTg3NTYNCkVNQUlMOmNvbnRhY3RAbG9jYWlyLmZyDQpVUkw6aHR0cHM6Ly93d3cubG9jYWlyLmZyLw0KTk9URTpMb2NhdGlvbiBkZSBjbGltYXRpc2V1ciBtb2JpbGUuIExpdnJhaXNvbiBzb3VzIDJoLiBTYW5zIGNhdXRpb24uDQpFTkQ6VkNBUkQ=" download="LocAir.vcf" aria-label="Enregistrer le contact Loc'Air" style="margin-top:4px">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
@@ -7671,7 +7710,7 @@ function panelSubmit(){
     return;
   }
   // Passe l'adresse → modal saute l'étape 1 et ouvre directement à la durée
-  openModal(7,'new',addr||undefined);
+  openModal(window._panelDur||7,'new',addr||undefined);
 }
 /* ── Dropdown timing panel hero ── */
 function toggleTiming(e){
@@ -11824,6 +11863,76 @@ function cwBook(){
 </div>
 
 <script>
+// ── Mini calendrier hero panel ───────────────────────────────────────────────
+(function(){
+  var cal=document.getElementById('p-cal');
+  if(!cal)return;
+  var grid=document.getElementById('cal-grid');
+  var mlabel=document.getElementById('cal-mlabel');
+  var summary=document.getElementById('p-cal-summary');
+  var sumPrice=document.getElementById('p-cal-sum-price');
+  var sumDetail=document.getElementById('p-cal-sum-detail');
+  var hdInput=document.getElementById('panel-date');
+  var MFR=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  var DFR=['Lu','Ma','Me','Je','Ve','Sa','Di'];
+  var today=new Date();today.setHours(0,0,0,0);
+  var cur=new Date(today.getFullYear(),today.getMonth(),1);
+  var startDate=null;
+  window._panelDur=7;
+  function rate(d){return d>=22?8:d>=15?9:d>=8?10:12;}
+  function fmtISO(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+  function fmtShort(d){return d.getDate()+' '+MFR[d.getMonth()].slice(0,3)+'.';}
+  function render(){
+    mlabel.textContent=MFR[cur.getMonth()]+' '+cur.getFullYear();
+    grid.innerHTML='';
+    DFR.forEach(function(d){var el=document.createElement('div');el.className='p-cal-dow';el.textContent=d;grid.appendChild(el);});
+    var first=new Date(cur.getFullYear(),cur.getMonth(),1);
+    var startDow=(first.getDay()+6)%7;
+    for(var i=0;i<startDow;i++){var el=document.createElement('div');el.className='p-cal-d p-cal-empty';grid.appendChild(el);}
+    var dim=new Date(cur.getFullYear(),cur.getMonth()+1,0).getDate();
+    var endDate=startDate?new Date(startDate.getTime()):null;
+    if(endDate)endDate.setDate(endDate.getDate()+(window._panelDur-1));
+    for(var d=1;d<=dim;d++){
+      var date=new Date(cur.getFullYear(),cur.getMonth(),d);
+      var el=document.createElement('div');el.className='p-cal-d';el.textContent=d;
+      var ts=date.getTime();
+      if(date<today){el.classList.add('p-cal-past');}
+      else if(ts===today.getTime()){el.classList.add('p-cal-today');}
+      if(startDate&&endDate){
+        if(ts===startDate.getTime())el.classList.add('p-cal-sel-start');
+        else if(ts===endDate.getTime())el.classList.add('p-cal-sel-end');
+        else if(date>startDate&&date<endDate)el.classList.add('p-cal-sel-range');
+      }
+      (function(d2){el.addEventListener('click',function(){
+        if(d2<today)return;
+        startDate=d2;if(hdInput)hdInput.value=fmtISO(d2);
+        updateSummary();render();
+      });})(date);
+      grid.appendChild(el);
+    }
+  }
+  function updateSummary(){
+    if(!startDate){summary.style.display='none';return;}
+    var days=window._panelDur;
+    var r=rate(days);var total=days*r+60;
+    var end=new Date(startDate.getTime());end.setDate(end.getDate()+(days-1));
+    sumPrice.textContent=total+' €';
+    sumDetail.innerHTML=days+'j · '+r+' €/j · '+fmtShort(startDate)+'&nbsp;→&nbsp;'+fmtShort(end)+'<br>livraison incluse';
+    summary.style.display='flex';
+  }
+  document.getElementById('cal-prev').addEventListener('click',function(){cur=new Date(cur.getFullYear(),cur.getMonth()-1,1);render();});
+  document.getElementById('cal-next').addEventListener('click',function(){cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);render();});
+  document.querySelectorAll('.p-dur-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      document.querySelectorAll('.p-dur-btn').forEach(function(b){b.classList.remove('p-dur-on');});
+      btn.classList.add('p-dur-on');
+      window._panelDur=parseInt(btn.dataset.days,10);
+      updateSummary();render();
+    });
+  });
+  render();
+})();
+
 /* ── Avatars initiales dans les avis ── */
 (function(){
   var COLORS=['#000000','#2563eb','#0f766e','#7c3aed','#c2410c','#0369a1','#15803d','#b45309','#9d174d','#1e40af'];
