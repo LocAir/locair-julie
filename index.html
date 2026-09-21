@@ -448,7 +448,7 @@ body{
 .hero-map-area .leaflet-container{
   width:100%;height:100%;font-family:var(--body);
 }
-.hero-map-area .leaflet-tile-pane{filter:grayscale(1) brightness(1.06) contrast(.92)}
+#hero-leaflet-map{filter:grayscale(1) brightness(1.06) contrast(.92)}
 /* Formulaire panel */
 .p-field-group{margin-bottom:10px}
 .p-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);opacity:.55;margin-bottom:5px;display:block}
@@ -578,12 +578,14 @@ body{
   text-transform:uppercase;color:var(--gold);margin-bottom:12px;
 }
 .hero-tagline{
-  font-size:17px;font-weight:800;color:var(--ink);
-  letter-spacing:-.02em;line-height:1.25;margin-bottom:6px;
+  font-family:var(--disp);
+  font-size:24px;font-weight:800;color:var(--ink);
+  letter-spacing:-.04em;line-height:1.1;margin-bottom:8px;
 }
 .hero-descriptor{
-  font-size:15px;font-weight:600;color:var(--ink);
-  margin-bottom:16px;line-height:1.4;
+  font-size:12.5px;font-weight:500;color:var(--ink2);
+  margin-bottom:14px;line-height:1.5;letter-spacing:.02em;
+  text-transform:uppercase;
 }
 .hero-tagline-divider{
   width:32px;height:1px;background:rgba(200,146,28,.3);margin-bottom:14px;
@@ -4171,6 +4173,7 @@ input:-webkit-autofill:focus{
     <div class="hero-product-card">
       <div class="hero-tagline-block">
         <div class="hero-eyebrow" id="hero-eyebrow">Livraison en 2h · Côte d'Azur</div>
+        <p class="hero-tagline">Dormez au frais<br>ce soir.</p>
         <div class="hero-descriptor" id="hero-descriptor">Climatiseurs &amp; rafraîchisseurs · Location &amp; vente</div>
         <div class="hero-tagline-divider" aria-hidden="true"></div>
       </div>
@@ -4258,9 +4261,9 @@ input:-webkit-autofill:focus{
         <div class="map-badge-dot"></div>
         Zone active — Côte d'Azur
       </div>
-      <div style="display:flex;gap:12px">
-        <div class="map-badge-sub">⚡ Express même jour</div>
-        <div class="map-badge-sub">📦 J+1 standard</div>
+      <div style="display:flex;gap:14px;align-items:center">
+        <div class="map-badge-sub" style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;background:#f59e0b;border-radius:50%;display:inline-block;flex-shrink:0"></span>Express même jour</div>
+        <div class="map-badge-sub" style="display:flex;align-items:center;gap:5px"><span style="width:6px;height:6px;background:#94a3b8;border-radius:50%;display:inline-block;flex-shrink:0"></span>J+1 standard</div>
       </div>
     </div>
   </div>
@@ -4287,9 +4290,9 @@ document.addEventListener('DOMContentLoaded', function(){
     // transporteur/index.html, qui l'affiche déjà sans que ça gêne visuellement.
     const map = L.map(el, { scrollWheelZoom:false }).setView([43.70764, 7.26197], 13);
     window._heroMap = map;
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-      maxZoom: 19, subdomains:'abcd',
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19, subdomains:'abc',
     }).addTo(map);
     const _icon = L.divIcon({
       className:'',
@@ -4422,10 +4425,6 @@ body[data-produit="raf"] .vb-only-clim{display:none!important}
   .vb-mots-p span{color:#fff;-webkit-text-stroke-color:transparent}
   .vb-mots-c{height:auto}
 }
-.vb-zones{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:16px var(--pad) 0;max-width:var(--max);margin:0 auto}
-.vb-zones-ico{flex-shrink:0;opacity:.45}
-.vb-zone{font-size:11.5px;font-weight:600;color:rgba(255,255,255,.65);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:100px;padding:4px 12px;white-space:nowrap}
-@media(max-width:700px){.vb-zones{padding-top:12px}}
 
 /* ══ GARANTIE — "Une panne ? Remplacé le jour même." (fond or, choix libre) ══ */
 .vb-garantie{background:var(--gold)!important;color:#fff;text-align:center}
@@ -4487,15 +4486,6 @@ body[data-produit="raf"] .vb-only-clim{display:none!important}
       <span>sur votre événement</span>
       <span>en urgence, le jour même</span>
     </div></div>
-  </div>
-  <div class="vb-zones">
-    <svg class="vb-zones-ico" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.85)" stroke-width="2.2" aria-hidden="true"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
-    <span class="vb-zone">Nice</span>
-    <span class="vb-zone">Antibes</span>
-    <span class="vb-zone">Cannes</span>
-    <span class="vb-zone">Villefranche-sur-Mer</span>
-    <span class="vb-zone">Menton</span>
-    <span class="vb-zone">et alentours</span>
   </div>
 </section>
 <script>
