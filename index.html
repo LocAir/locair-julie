@@ -10706,11 +10706,16 @@ function _initDynamicText(){
     :(isEn?dateShort+', 8am–12pm':isZH?dateShort+' 8–12时':isRU?dateShort+', 8–12ч':'Le '+dateShort+', 8h–12h');
   // Hero description — mise à jour quand la fenêtre J+1 est fermée (après 20h Paris)
   if(!ok){const hd=document.querySelector('.hero-desc');if(hd)hd.textContent=isEn?'Delivery '+dateShort+' — sleep cool.':isZH?dateShort+'配送 — 清凉入眠。':isRU?'Доставка '+dateShort+' — спите в прохладе.':'Livraison le '+dateShort+' — vous dormez au frais.';}
-  // Final CTA title
+  // Final CTA title — 3 états : express dispo / J+1 dispo / date future
   const fctaT=document.getElementById('fcta-title');
-  if(fctaT)fctaT.innerHTML=ok
-    ?(isEn?'Fresh air by tomorrow morning.<br><em>No deposit. No surprises.</em>':isZH?'明天早晨即享清凉。<br><em>无押金。无隐藏费用。</em>':isRU?'Свежий воздух уже завтра утром.<br><em>Без залога. Без сюрпризов.</em>':'L\'air frais dès demain matin.<br><em>Aucune caution. Aucune surprise.</em>')
-    :(isEn?'Fresh air by '+dateLong+'.<br><em>No deposit. No surprises.</em>':isZH?dateLong+'清凉入眠。<br><em>无押金。无隐藏费用。</em>':isRU?'Прохлада с '+dateLong+'.<br><em>Без залога. Без сюрпризов.</em>':'L\'air frais dès le '+dateLong+'.<br><em>Aucune caution. Aucune surprise.</em>');
+  if(fctaT){
+    const exOk=_expressCutoffOk();
+    fctaT.innerHTML=exOk
+      ?(isEn?'Fresh air within 2h.<br><em>No deposit. No surprises.</em>':isZH?'2小时内享受清凉。<br><em>无押金。无隐藏费用。</em>':isRU?'Свежий воздух за 2 часа.<br><em>Без залога. Без сюрпризов.</em>':'L\'air frais dans 2h.<br><em>Aucune caution. Aucune surprise.</em>')
+      :ok
+        ?(isEn?'Fresh air by tomorrow morning.<br><em>No deposit. No surprises.</em>':isZH?'明天早晨即享清凉。<br><em>无押金。无隐藏费用。</em>':isRU?'Свежий воздух уже завтра утром.<br><em>Без залога. Без сюрпризов.</em>':'L\'air frais dès demain matin.<br><em>Aucune caution. Aucune surprise.</em>')
+        :(isEn?'Fresh air by '+dateLong+'.<br><em>No deposit. No surprises.</em>':isZH?dateLong+'清凉入眠。<br><em>无押金。无隐藏费用。</em>':isRU?'Прохлада с '+dateLong+'.<br><em>Без залога. Без сюрпризов.</em>':'L\'air frais dès le '+dateLong+'.<br><em>Aucune caution. Aucune surprise.</em>');
+  }
   // Success screen note — use neutral text that's always true
   const gn=document.getElementById('s-gratitude-note');
   if(gn)gn.textContent=ok
