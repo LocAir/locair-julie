@@ -1636,6 +1636,11 @@ const IC_TOOL    = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" 
 const IC_SLIDERS = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>';
 const IC_RECEIPT = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M4 2h16v20l-3-2-3 2-3-2-3 2-3-2-1 1V2Z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/></svg>';
 const IC_EURO    = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M19 5a8.5 8.5 0 1 0 0 14"/><line x1="4" y1="10" x2="15" y2="10"/><line x1="4" y1="14" x2="13" y2="14"/></svg>';
+const IC_OFFICE  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.85"><rect x="4" y="2" width="16" height="20" rx="1"/><line x1="9" y1="22" x2="9" y2="18"/><line x1="15" y1="22" x2="15" y2="18"/><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="14" x2="20" y2="14"/></svg>';
+const IC_CAMERA  = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/></svg>';
+const IC_MEGAPHONE = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+const IC_DOWNLOAD = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+const IC_TRASH   = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
 
 // Boutons Appeler/WhatsApp réutilisés partout où un numéro client est affiché
 // côté admin (Réservations, Livraisons, Clients) — jusqu'ici seul le
@@ -4018,7 +4023,7 @@ function reservationRowHtml(res, readOnly){
   // déborder la carte hors de l'écran au lieu de rétrécir/passer à la ligne
   // (même bug que sur les fiches client, corrigé juste avant). Affiché en
   // texte normal sur sa propre ligne à la place.
-  const entrepriseTag = res.type_client==='entreprise' ? `<div class="row-meta">🏢 ${escHtml(res.raison_sociale||'Entreprise')}</div>` : '';
+  const entrepriseTag = res.type_client==='entreprise' ? `<div class="row-meta">${IC_OFFICE} ${escHtml(res.raison_sociale||'Entreprise')}</div>` : '';
   if(res.masquee){
     return `
       <div class="row-item" style="opacity:.6">
@@ -4039,9 +4044,9 @@ function reservationRowHtml(res, readOnly){
         ${RESA_SELECTION_MODE?`<input type="checkbox" class="bulk-select-cb" ${isSelected?'checked':''} onchange="toggleResaItem(${res.id}, this.checked)">`:''}
         <span class="row-title">${nom}</span>
         <span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end">
-          ${res.hors_zone?`<span class="chip probleme" title="Affectation manuelle requise">⚠️ Hors zone</span>`:''}
-          ${res.source==='site_prolongation'?`<span class="chip en_location">🔄 Prolongée</span>`:''}
-          ${res.appareils_en_attente_validation?`<span class="chip a_faire" title="Appareil(s) pas encore validé(s) par l'administration">🔍 Appareil à valider</span>`:''}
+          ${res.hors_zone?`<span class="chip probleme" title="Affectation manuelle requise">${IC_WARN} Hors zone</span>`:''}
+          ${res.source==='site_prolongation'?`<span class="chip en_location">${IC_CYCLE} Prolongée</span>`:''}
+          ${res.appareils_en_attente_validation?`<span class="chip a_faire" title="Appareil(s) pas encore validé(s) par l'administration">${IC_SEARCH} Appareil à valider</span>`:''}
           <span class="chip ${STATUT_COMMANDE_CSS[res.statut_commande]||res.statut}">${STATUT_COMMANDE_LABEL[res.statut_commande]||RESA_LABEL[res.statut]||res.statut}</span>
         </span>
       </div>
@@ -4050,28 +4055,28 @@ function reservationRowHtml(res, readOnly){
       ${res.fenetre_photo_path?`
       <button onclick="openFenetrePhoto(${res.id})" title="Le client ne connaissait pas son type de fenêtre — il a envoyé une photo à la place"
         style="display:flex;align-items:center;gap:6px;margin-top:6px;padding:5px 10px;border:1px solid var(--blue);border-radius:100px;background:var(--blue-lt);color:var(--blue);font-size:12px;font-weight:600;cursor:pointer">
-        📷 Photo de la fenêtre envoyée par le client
+        ${IC_CAMERA} Photo de la fenêtre envoyée par le client
       </button>`:''}
       ${(res.instructions_acces||res.etage||res.ascenseur||res.fenetre||(res.type_client==='entreprise'&&res.siret))?`
       <details class="resa-details">
-        <summary>📌 Détails d'accès</summary>
+        <summary>${IC_PIN} Détails d'accès</summary>
         <div class="resa-details-body">
-          ${res.instructions_acces?`<div class="resa-sub" style="color:var(--amber);font-weight:700">📌 ${escHtml(res.instructions_acces)}</div>`:''}
-          ${(res.etage||res.ascenseur||res.fenetre||(res.type_client==='entreprise'&&res.siret))?`<div class="resa-sub">${[res.etage?'🏢 Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?'Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?'🪟 '+escHtml(res.fenetre):'',(res.type_client==='entreprise'&&res.siret)?'SIRET : '+escHtml(res.siret):''].filter(Boolean).join(' · ')}</div>`:''}
+          ${res.instructions_acces?`<div class="resa-sub" style="color:var(--amber);font-weight:700">${IC_PIN} ${escHtml(res.instructions_acces)}</div>`:''}
+          ${(res.etage||res.ascenseur||res.fenetre||(res.type_client==='entreprise'&&res.siret))?`<div class="mission-meta-grid" style="border-top:none;padding-top:0;margin-top:6px">${[res.etage?IC_FLOOR+' Étage '+escHtml(res.etage):'',res.ascenseur&&res.ascenseur!=='—'?IC_ELEVATOR+' Ascenseur : '+escHtml(res.ascenseur):'',res.fenetre?IC_WINDOW+' '+escHtml(res.fenetre):'',(res.type_client==='entreprise'&&res.siret)?IC_OFFICE+' SIRET : '+escHtml(res.siret):''].filter(Boolean).map(b=>`<div class="mission-meta-item">${b}</div>`).join('')}</div>`:''}
         </div>
       </details>`:''}
       <div class="resa-dates">
         <span class="resa-date-range">${BOARD_IC_CAL} ${frDate(res.date_debut)} → ${frDate(res.date_fin)}</span>
         <span class="resa-rel ${isUrgent(res.date_debut)||isUrgent(res.date_fin)?'urgent':''}">${nightsLabel(res.date_debut,res.date_fin)} · ${relLabel(res.date_debut)}</span>
       </div>
-      ${res.date_recuperation_souhaitee?`<div class="resa-sub" style="color:var(--grey);margin-top:2px">🔄 Récup. souhaitée le ${frDate(res.date_recuperation_souhaitee)}${res.creneau_recuperation?' · '+escHtml(res.creneau_recuperation):''}</div>`:''}
+      ${res.date_recuperation_souhaitee?`<div class="resa-sub" style="color:var(--grey);margin-top:2px">${IC_CYCLE} Récup. souhaitée le ${frDate(res.date_recuperation_souhaitee)}${res.creneau_recuperation?' · '+escHtml(res.creneau_recuperation):''}</div>`:''}
       <div class="resa-bottom">
-        <span class="resa-price">${euros(res.prix_total_cents)}${res.express?' <span style="background:#fef3c7;color:#d97706;font-size:11px;font-weight:700;padding:1px 7px;border-radius:100px;border:1px solid rgba(217,119,6,.4);vertical-align:middle;margin-left:4px">⚡ Express</span>':''}</span>
+        <span class="resa-price">${euros(res.prix_total_cents)}${res.express?` <span style="background:#fef3c7;color:#d97706;font-size:11px;font-weight:700;padding:1px 7px;border-radius:100px;border:1px solid rgba(217,119,6,.4);vertical-align:middle;margin-left:4px">${IC_ZAP} Express</span>`:''}</span>
         <span class="resa-sub">${res.quantite} climatiseur${res.quantite>1?'s':''}${isInternalRef(res.ref)?'':' · '+refCopyHtml(res.ref)}${res.creneau?' · Créneau : '+escHtml(res.creneau):''}</span>
       </div>
       ${(res.forfait_id||res.parrain_code||res.partenaire)?`<div class="resa-badges-row">${resaForfaitBadgeHtml(res)}${resaPromoBadgeHtml(res)}${resaPartenaireBadgeHtml(res)}</div>`:''}
       ${res.statut==='confirmee' ? agentLineHtml(res.id) : ''}
-      ${res.dernier_envoi_lien ? `<div class="resa-sub" style="color:${res.dernier_envoi_lien.statut==='envoye'?'var(--green)':'var(--red)'}">${res.dernier_envoi_lien.statut==='envoye'?'✅':'⚠️'} Lien de paiement par ${res.dernier_envoi_lien.canal==='sms'?'SMS':'email'} le ${frDateHeure(res.dernier_envoi_lien.quand)}${res.dernier_envoi_lien.statut==='envoye'?'':' (échec)'}</div>` : ''}
+      ${res.dernier_envoi_lien ? `<div class="resa-sub" style="color:${res.dernier_envoi_lien.statut==='envoye'?'var(--green)':'var(--red)'}">${res.dernier_envoi_lien.statut==='envoye'?IC_CHECK:IC_WARN} Lien de paiement par ${res.dernier_envoi_lien.canal==='sms'?'SMS':'email'} le ${frDateHeure(res.dernier_envoi_lien.quand)}${res.dernier_envoi_lien.statut==='envoye'?'':' (échec)'}</div>` : ''}
       ${readOnly ? '' : `
       <div class="row-actions">
         ${contactButtonsHtml(res.tel)}
@@ -4234,29 +4239,32 @@ function renderReservationsToolbar(){
   const horsZoneCount = RESERVATIONS_CACHE.filter(r => r.hors_zone && !r.masquee).length;
   const filters = [
     {key:'toutes', label:'Actives'},
-    {key:'hors_zone', label:`⚠️ Hors zone${horsZoneCount?' ('+horsZoneCount+')':''}`},
+    {key:'hors_zone', label:`${IC_WARN} Hors zone${horsZoneCount?' ('+horsZoneCount+')':''}`},
     {key:'en_attente', label:'En attente'},
     {key:'confirmee', label:'Confirmées'},
-    {key:'prolongation', label:'🔄 Prolongations'},
+    {key:'prolongation', label:`${IC_CYCLE} Prolongations`},
     {key:'annulee', label:'Annulées'},
     {key:'terminee', label:'Terminées'},
   ];
   zone.innerHTML = `
-    <div class="periods" style="margin-bottom:16px">
-      <button class="${RESERVATIONS_VIEW==='liste'?'on':''}" onclick="setReservationsView('liste')">📋 Liste</button>
-      <button class="${RESERVATIONS_VIEW==='calendrier'?'on':''}" onclick="setReservationsView('calendrier')">📅 Calendrier</button>
-      <button class="${RESERVATIONS_VIEW==='creer'?'on':''}" onclick="setReservationsView('creer')">🆕 Créer</button>
-      <button class="${RESERVATIONS_VIEW==='prolonger'?'on':''}" onclick="PROLONG_ORIG=null;setReservationsView('prolonger')">🔄 Prolonger</button>
-      <button class="${RESERVATIONS_VIEW==='prolongation_masse'?'on':''}" onclick="setReservationsView('prolongation_masse')">📢 Offre en masse</button>
+    <div class="periods" style="margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <button class="${RESERVATIONS_VIEW==='liste'?'on':''}" style="flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap" onclick="setReservationsView('liste')">${IC_LIST} Liste</button>
+      <button class="${RESERVATIONS_VIEW==='calendrier'?'on':''}" style="flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap" onclick="setReservationsView('calendrier')">${IC_CAL} Calendrier</button>
+      <button class="${RESERVATIONS_VIEW==='creer'?'on':''}" style="flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap" onclick="setReservationsView('creer')">${IC_PLUS} Créer</button>
+      <button class="${RESERVATIONS_VIEW==='prolonger'?'on':''}" style="flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap" onclick="PROLONG_ORIG=null;setReservationsView('prolonger')">${IC_CYCLE} Prolonger</button>
+      <button class="${RESERVATIONS_VIEW==='prolongation_masse'?'on':''}" style="flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap" onclick="setReservationsView('prolongation_masse')">${IC_MEGAPHONE} Offre en masse</button>
     </div>
     <div id="resa-creer-view" class="${RESERVATIONS_VIEW==='creer'?'':'hidden'}">${reservationCreerHtml()}</div>
     <div id="resa-prolonger-view" class="${RESERVATIONS_VIEW==='prolonger'?'':'hidden'}">${reservationProlongerHtml()}</div>
     <div id="resa-prolongation-masse-view" class="${RESERVATIONS_VIEW==='prolongation_masse'?'':'hidden'}">${reservationProlongationMasseHtml()}</div>
     <div id="resa-liste-view" class="${RESERVATIONS_VIEW==='liste'?'':'hidden'}">
       <div class="list-toolbar">
-        <input type="text" id="resa-search" placeholder="🔎 Client, adresse, référence…" oninput="renderReservations()"/>
+        <div style="position:relative;flex:1;min-width:160px">
+          <span style="position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--grey-soft);display:flex;pointer-events:none" aria-hidden="true">${IC_SEARCH}</span>
+          <input type="text" id="resa-search" placeholder="Client, adresse, référence…" style="padding-left:36px;margin-bottom:0" oninput="renderReservations()"/>
+        </div>
         ${!RESERVATIONS_SHOW_MASQUEES ? `<button class="btn ${RESA_SELECTION_MODE?'btn-blue':'btn-grey'}" style="padding:7px 14px;font-size:13px" onclick="toggleResaSelectMode()">${RESA_SELECTION_MODE?'✓ Sélection activée':'☑ Sélectionner'}</button>` : ''}
-        <button class="list-toolbar-export" onclick="exportReservationsCsv()" title="Exporter la liste en CSV">⬇️ CSV</button>
+        <button class="list-toolbar-export" onclick="exportReservationsCsv()" title="Exporter la liste en CSV">${IC_DOWNLOAD} CSV</button>
       </div>
       <div class="filter-scroll" style="margin-bottom:16px">
         ${filters.map(f => `<button class="${!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER===f.key?'on':''}" onclick="setReservationsFilter('${f.key}')">${f.label}</button>`).join('')}
@@ -4267,7 +4275,7 @@ function renderReservationsToolbar(){
       <div class="bulk-select-bar ${RESA_SELECTION_MODE && RESA_SELECTION.size>0?'':'hidden'}" id="resa-select-bar">
         <span>${RESA_SELECTION.size} réservation${RESA_SELECTION.size>1?'s':''} sélectionnée${RESA_SELECTION.size>1?'s':''}</span>
         <button style="background:#fff2;border:1px solid rgba(255,255,255,.25);color:#fff;border-radius:100px;padding:6px 16px;font-size:13px;font-weight:600;cursor:pointer" onclick="cancelResaSelection()">Annuler</button>
-        <button style="background:var(--red);border:none;color:#fff;border-radius:100px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer" onclick="deleteSelectedReservations()">🗑️ Supprimer (${RESA_SELECTION.size})</button>
+        <button style="background:var(--red);border:none;color:#fff;border-radius:100px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px" onclick="deleteSelectedReservations()">${IC_TRASH} Supprimer (${RESA_SELECTION.size})</button>
       </div>
     </div>
     <div id="resa-calendrier-view" class="${RESERVATIONS_VIEW==='calendrier'?'':'hidden'}">
