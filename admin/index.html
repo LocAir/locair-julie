@@ -1659,6 +1659,9 @@ const IC_PAUSE   = '<svg width="11" height="11" viewBox="0 0 24 24" fill="curren
 const IC_ARCHIVE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="2" y="4" width="20" height="5" rx="1"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>';
 const IC_SHIELD  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>';
 const IC_HANDSHAKE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
+const IC_HOME    = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.85"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10"/></svg>';
+const IC_STAR    = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+const IC_CARD    = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
 
 // Boutons Appeler/WhatsApp réutilisés partout où un numéro client est affiché
 // côté admin (Réservations, Livraisons, Clients) — jusqu'ici seul le
@@ -2691,7 +2694,7 @@ function renderChecklistBox(d){
     <div class="card" style="margin-bottom:16px">
       <div style="display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px">
         <button class="btn btn-grey" style="min-height:44px" onclick="changeChecklistDate(-1)">← Veille</button>
-        <h2 style="text-transform:capitalize;margin:0;text-align:center">📅 ${escHtml(dateLabel)}</h2>
+        <h2 style="text-transform:capitalize;margin:0;text-align:center">${BOARD_IC_CAL} ${escHtml(dateLabel)}</h2>
         <button class="btn btn-grey" style="min-height:44px" onclick="changeChecklistDate(1)">Lendemain →</button>
       </div>
     </div>`;
@@ -2706,7 +2709,11 @@ function renderChecklistBox(d){
   const sorted = [...d.checklists].sort((a,b) => (a.validated?1:0)-(b.validated?1:0));
   zone.innerHTML = header + sorted.map(c => {
     const climatiseurPills = c.climatiseurs.map(x =>
-      `<span class="chip en_location">❄️ n°${x.numero}${x.kit==='velux'?' 🪟':''}</span>`).join('');
+      `<span class="chip en_location">${BOARD_IC_SNOW} n°${x.numero}${x.kit==='velux'?' '+IC_WINDOW:''}</span>`).join('');
+    // Emoji conservés ici volontairement (pas vectorisés) : ce sont de vrais
+    // pictogrammes d'objets physiques dans un sac de transport (calfeutrage,
+    // vidange, microfibre…), pas des icônes d'action décoratives — même
+    // logique que les drapeaux pays (COUNTRY_META) laissés tels quels.
     const items = [];
     if(c.kits.universel) items.push(`🧰 ${c.kits.universel} kit${c.kits.universel>1?'s':''} calfeutrage universel`);
     if(c.kits.velux) items.push(`🪟 ${c.kits.velux} kit${c.kits.velux>1?'s':''} calfeutrage Vélux`);
@@ -2726,12 +2733,12 @@ function renderChecklistBox(d){
     return `
       <div class="card" style="margin-bottom:14px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
-          <span style="font-family:var(--disp);font-weight:600;font-size:17px">👷 ${escHtml(c.nom)}</span>
-          <span class="chip ${c.validated?'actif':'a_faire'}">${c.validated?'✅ Prise en charge':'⏳ Pas encore prise en charge'}</span>
+          <span style="font-family:var(--disp);font-weight:600;font-size:17px">${BOARD_IC_PERSON} ${escHtml(c.nom)}</span>
+          <span class="chip ${c.validated?'actif':'a_faire'}">${c.validated?IC_CHECK+' Prise en charge':IC_CLOCK+' Pas encore prise en charge'}</span>
         </div>
         <div class="row-meta" style="margin-bottom:10px">${c.nb_missions} mission${c.nb_missions>1?'s':''}</div>
         ${climatiseurPills?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">${climatiseurPills}</div>`:''}
-        <div class="row-meta">${items.join(' · ')}</div>
+        ${items.length?`<div class="mission-meta-grid" style="border-top:none;padding-top:0;margin-top:0">${items.map(it=>`<div class="mission-meta-item">${it}</div>`).join('')}</div>`:''}
       </div>`;
   }).join('');
 }
@@ -2739,7 +2746,11 @@ function renderChecklistBox(d){
 // ── STOCK ─────────────────────────────────────────────────────────────────────
 const APPAREIL_STATUT_LABEL = {disponible:'Disponible', panne:'En panne', maintenance:'Maintenance', nettoyage:'Nettoyage', loue:'Loué', vendu:'Vendu'};
 const APPAREIL_STATUT_CHIP  = {disponible:'actif', panne:'annulee', maintenance:'a_faire', nettoyage:'a_faire', loue:'en_location', vendu:'terminee'};
-const LOCALISATION_LABEL = {stock_principal:'📍 Stock principal', vehicule_transporteur:'🚚 Véhicule transporteur', chez_client:'🏠 Chez le client', maintenance:'🔧 Maintenance', autre:'Autre'};
+// Texte pur (pas d'icône ici) : réutilisé tel quel dans l'export CSV du
+// Stock (exportStockCsv) — y injecter du HTML casserait le fichier exporté.
+// Les icônes sont ajoutées séparément à l'affichage via LOCALISATION_ICON.
+const LOCALISATION_LABEL = {stock_principal:'Stock principal', vehicule_transporteur:'Véhicule transporteur', chez_client:'Chez le client', maintenance:'Maintenance', autre:'Autre'};
+const LOCALISATION_ICON = {stock_principal:BOARD_IC_PIN, vehicule_transporteur:IC_TRUCK, chez_client:IC_HOME, maintenance:IC_TOOL};
 const MOUVEMENT_TYPE_LABEL = {
   entree_parc:'Entrée dans le parc', attribution_reservation:'Attribution réservation',
   preparation_livraison:'Préparation livraison', depart_entrepot:'Départ entrepôt',
@@ -2760,7 +2771,7 @@ function offresPrivilegeHtml(){
   if(!OFFRES_PRIVILEGE_CACHE.length) return '';
   return `
     <div class="card">
-      <h2>⭐ Offres Privilège</h2>
+      <h2>${IC_STAR} Offres Privilège</h2>
       <p class="sub" style="margin-bottom:12px">Ces climatiseurs ont été très loués et sont actuellement chez un client — tu peux leur proposer de les garder au lieu de les rendre.</p>
       ${OFFRES_PRIVILEGE_CACHE.map(o => `
         <div class="row-item">
@@ -2773,7 +2784,7 @@ function offresPrivilegeHtml(){
           <div class="row-actions">
             ${o.statut==='eligible'?`<button class="btn btn-blue" onclick="genererOffrePrivilege(${o.id}, ${o.appareil?.numero ?? 0})">Fixer un prix et proposer</button>`:''}
             ${o.statut==='eligible'||o.statut==='proposee'?`<button class="btn btn-grey" onclick="annulerOffrePrivilege(${o.id})">Retirer l'offre</button>`:''}
-            ${o.statut==='acceptee'?`<button class="btn btn-red" onclick="rembourserOffrePrivilege(${o.id}, ${o.appareil?.numero ?? 0}, ${o.prix_vente_cents})">💳 Rembourser l'achat</button>`:''}
+            ${o.statut==='acceptee'?`<button class="btn btn-red" onclick="rembourserOffrePrivilege(${o.id}, ${o.appareil?.numero ?? 0}, ${o.prix_vente_cents})">${IC_CARD} Rembourser l'achat</button>`:''}
           </div>
         </div>`).join('')}
     </div>`;
@@ -3019,7 +3030,7 @@ function scanRechercheHtml(){
         <span class="row-title">Climatiseur n°${a.numero}</span>
         <span class="chip ${APPAREIL_STATUT_CHIP[a.statut]||''}">${APPAREIL_STATUT_LABEL[a.statut]||a.statut}</span>
       </div>
-      <div class="row-meta">${LOCALISATION_LABEL[a.localisation]||a.localisation||'—'}${a.reference?' · '+escHtml(a.reference):''}</div>
+      <div class="row-meta">${LOCALISATION_ICON[a.localisation]||''} ${LOCALISATION_LABEL[a.localisation]||a.localisation||'—'}${a.reference?' · '+escHtml(a.reference):''}</div>
       ${dm?`<div class="row-meta">Dernier mouvement : ${MOUVEMENT_TYPE_LABEL[dm.type_evenement]||dm.type_evenement} (${frDateCourt(dm.created_at.slice(0,10))})</div>`:''}
       <div class="row-actions">
         <button class="btn btn-blue" onclick="closeScannerModal();voirFicheAppareil(${a.id}, ${a.numero})">Voir la fiche complète</button>
@@ -3272,7 +3283,7 @@ async function loadStock(silent){
               </span>
             </div>
             <div class="row-meta">${a.reference?escHtml(a.reference)+' · ':''}${a.en_location?'Actuellement chez un client (réservation confirmée)':a.statut==='loue'?'Loué hors système — marqué manuellement':(a.statut==='disponible'?(a.localisation==='vehicule_transporteur'?'Disponible, gardé dans un véhicule pour la prochaine livraison':'Au dépôt'):'—')}</div>
-            <div class="row-meta">${LOCALISATION_LABEL[a.localisation]||a.localisation||'—'}</div>
+            <div class="row-meta">${LOCALISATION_ICON[a.localisation]||''} ${LOCALISATION_LABEL[a.localisation]||a.localisation||'—'}</div>
             ${a.notes?`<div class="row-meta" style="font-style:italic">📝 ${escHtml(a.notes)}</div>`:''}
             <div class="row-actions">
               ${a.statut==='vendu' ? `<div class="row-meta" style="width:100%">🎉 Vendu au client via l'Offre Privilège — ne fait plus partie du parc de location.</div>` : `
@@ -3796,7 +3807,7 @@ async function voirFicheAppareil(id, numero){
       </div>`).join('') || '<p class="empty">Aucun mouvement enregistré.</p>';
 
     box.innerHTML = `
-      <h2>📋 Climatiseur n°${numero}</h2>
+      <h2>${IC_BOX} Climatiseur n°${numero}</h2>
       <p class="sub" style="margin-bottom:14px">${escHtml(d.appareil.reference||'Sans référence')} · ${APPAREIL_STATUT_LABEL[d.appareil.statut]||d.appareil.statut} · ${LOCALISATION_LABEL[d.appareil.localisation]||d.appareil.localisation}</p>
       ${statsHtml}
       <div class="section-title" style="margin-top:0">Réservations (${(d.reservations||[]).length})</div>
@@ -11478,13 +11489,16 @@ function renderPromotions(){
     const statut = promoStatusLabel(p);
     const valeurTxt = p.type_remise==='pourcentage' ? `${p.valeur}%` : `${Number(p.valeur).toFixed(2)}€`;
     const conditions = [
-      p.date_debut || p.date_fin ? `📅 ${p.date_debut?escHtml(p.date_debut):'…'} → ${p.date_fin?escHtml(p.date_fin):'…'}` : null,
-      (p.duree_min_jours!=null || p.duree_max_jours!=null) ? `⏱️ ${p.duree_min_jours??'…'}–${p.duree_max_jours??'…'} jours` : null,
-      p.premiere_resa_only ? '🆕 1ère réservation uniquement' : null,
-      p.max_utilisations!=null ? `🔢 ${p.nb_utilisations||0}/${p.max_utilisations} utilisations` : (p.nb_utilisations ? `🔢 ${p.nb_utilisations} utilisation${p.nb_utilisations>1?'s':''}` : null),
-      p.max_utilisations_client!=null ? `👤 max ${p.max_utilisations_client}/client` : null,
-      (Array.isArray(p.villes_ids) && p.villes_ids.length) ? `📍 ${p.villes_ids.map(promoVilleName).join(', ')}` : null,
-    ].filter(Boolean).join(' · ') || 'Aucune condition — s\'applique à toute réservation';
+      p.date_debut || p.date_fin ? `${IC_CAL} ${p.date_debut?escHtml(p.date_debut):'…'} → ${p.date_fin?escHtml(p.date_fin):'…'}` : null,
+      (p.duree_min_jours!=null || p.duree_max_jours!=null) ? `${IC_CLOCK} ${p.duree_min_jours??'…'}–${p.duree_max_jours??'…'} jours` : null,
+      p.premiere_resa_only ? `${IC_PLUS} 1ère réservation uniquement` : null,
+      p.max_utilisations!=null ? `${IC_TAG} ${p.nb_utilisations||0}/${p.max_utilisations} utilisations` : (p.nb_utilisations ? `${IC_TAG} ${p.nb_utilisations} utilisation${p.nb_utilisations>1?'s':''}` : null),
+      p.max_utilisations_client!=null ? `${BOARD_IC_PERSON} max ${p.max_utilisations_client}/client` : null,
+      (Array.isArray(p.villes_ids) && p.villes_ids.length) ? `${BOARD_IC_PIN} ${p.villes_ids.map(promoVilleName).join(', ')}` : null,
+    ].filter(Boolean);
+    const conditionsHtml = conditions.length
+      ? `<div class="mission-meta-grid" style="border-top:none;padding-top:0">${conditions.map(c=>`<div class="mission-meta-item">${c}</div>`).join('')}</div>`
+      : `<div class="row-meta">Aucune condition — s'applique à toute réservation</div>`;
     return `
     <div class="row-item">
       <div class="row-top">
@@ -11495,14 +11509,14 @@ function renderPromotions(){
         </span>
       </div>
       <div class="row-meta">${PROMO_CATEGORIES[p.categorie]||p.categorie}</div>
-      <div class="row-meta">${conditions}</div>
+      ${conditionsHtml}
       <div class="row-actions">
-        <button class="btn btn-grey" onclick="editPromotion(${p.id})">✏️ Modifier</button>
-        <button class="btn ${p.actif?'btn-grey':'btn-green'}" onclick="togglePromotionActif(${p.id}, ${!p.actif})">${p.actif?'Désactiver':'✅ Réactiver'}</button>
-        <button class="btn btn-red" onclick="deletePromotion(${p.id})" style="margin-left:auto">🗑️</button>
+        <button class="btn btn-grey" onclick="editPromotion(${p.id})">${IC_EDIT} Modifier</button>
+        <button class="btn ${p.actif?'btn-grey':'btn-green'}" onclick="togglePromotionActif(${p.id}, ${!p.actif})">${p.actif?'Désactiver':IC_CHECK+' Réactiver'}</button>
+        <button class="btn btn-red" onclick="deletePromotion(${p.id})" style="margin-left:auto">${IC_TRASH}</button>
       </div>
     </div>`;
-  }).join('') || '<p class="empty">🎁 Aucune offre créée pour l\'instant.</p>';
+  }).join('') || '<p class="empty">Aucune offre créée pour l\'instant.</p>';
 
   const editing = PROMO_EDIT_ID != null ? PROMOTIONS_CACHE.find(p=>p.id===PROMO_EDIT_ID) : null;
   const v = editing || {};
