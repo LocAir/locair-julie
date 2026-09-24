@@ -1671,6 +1671,8 @@ const IC_BLOCK   = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" 
 const IC_GEAR    = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>';
 const IC_HAND    = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M6 14v-2a2 2 0 0 0-4 0v3a8 8 0 0 0 8 8h1a8 8 0 0 0 8-8v-3"/></svg>';
 const IC_UNLOCK  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>';
+const IC_ROBOT   = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px;flex-shrink:0"><rect x="3" y="9" width="18" height="12" rx="2"/><circle cx="8.5" cy="15" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15" r="1.5" fill="currentColor" stroke="none"/><path d="M12 9V5"/><circle cx="12" cy="3.5" r="1.5"/></svg>';
+const IC_TOOLBOX = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M17 7V5a2 2 0 0 0-2-2h-6a2 2 0 0 0-2 2v2"/><line x1="2" y1="13" x2="22" y2="13"/><line x1="10" y1="13" x2="14" y2="13"/></svg>';
 
 // Boutons Appeler/WhatsApp réutilisés partout où un numéro client est affiché
 // côté admin (Réservations, Livraisons, Clients) — jusqu'ici seul le
@@ -8991,7 +8993,7 @@ async function updateIncidentStatut(id, statut, btnEl){
 // Checklists administrables faites CHEZ LE CLIENT avant "Installation
 // terminée"/"Récupération terminée" — distinctes de "Checklist box" (matériel
 // à prendre au box avant de partir), qui reste inchangée.
-const CHECKLIST_WORKFLOW_LABEL = {preparation:'🧰 Préparation logistique', installation:'📦 Installation', recuperation:'🔄 Récupération'};
+const CHECKLIST_WORKFLOW_LABEL = {preparation:IC_TOOLBOX+' Préparation logistique', installation:IC_BOX+' Installation', recuperation:IC_CYCLE+' Récupération'};
 async function loadChecklistItemsAdmin(silent){
   const zone = document.getElementById('tab-checklistitems');
   if(!silent) zone.innerHTML = loading();
@@ -9019,8 +9021,8 @@ function renderChecklistItemsAdmin(){
             <span class="chip ${i.actif?'actif':'inactif'}">${i.actif?'Actif':'Désactivé'}</span>
           </div>
           <div class="row-actions">
-            <button class="btn btn-grey" onclick="toggleChecklistItemActif(${i.id}, ${!i.actif})">${i.actif?'⏸️ Désactiver':'▶️ Réactiver'}</button>
-            <button class="btn btn-red" onclick="deleteChecklistItem(${i.id})">🗑️ Supprimer</button>
+            <button class="btn btn-grey" onclick="toggleChecklistItemActif(${i.id}, ${!i.actif})">${i.actif?IC_PAUSE+' Désactiver':IC_PLAY+' Réactiver'}</button>
+            <button class="btn btn-red" onclick="deleteChecklistItem(${i.id})">${IC_TRASH} Supprimer</button>
           </div>
         </div>`).join('') : '<p class="empty">Aucun item.</p>'}
       <div class="card" style="margin-top:8px;margin-bottom:20px">
@@ -9110,7 +9112,7 @@ function renderEmails(){
   const filteredEmails = EMAILS_FILTER==='erreur' ? emails.filter(e=>e.statut==='erreur') : emails;
   const filterHtml = `<div class="filter-scroll" style="margin-bottom:12px">
     <button class="${EMAILS_FILTER==='tous'?'on':''}" onclick="setEmailsFilter('tous')">Tous</button>
-    <button class="${EMAILS_FILTER==='erreur'?'on':''}" onclick="setEmailsFilter('erreur')">⚠️ Erreurs${nbErreurs?' ('+nbErreurs+')':''}</button>
+    <button class="${EMAILS_FILTER==='erreur'?'on':''}" onclick="setEmailsFilter('erreur')">${IC_WARN} Erreurs${nbErreurs?' ('+nbErreurs+')':''}</button>
   </div>`;
 
   // Board "emails et SMS actifs" — une ligne par TYPE d'envoi (moteur des 8
@@ -9131,7 +9133,7 @@ function renderEmails(){
       <div class="stat-tile"><div class="n" style="${boardErreurs?'color:var(--red)':''}">${boardErreurs}</div><div class="l">En erreur (30j)</div></div>
     </div>
     ${boardRows.map(b => {
-      const canalIcone = b.canal.includes('sms') && b.canal.includes('email') ? '📧📱' : b.canal.includes('sms') ? '📱' : '📧';
+      const canalIcone = b.canal.includes('sms') && b.canal.includes('email') ? IC_MAIL+IC_CHAT : b.canal.includes('sms') ? IC_CHAT : IC_MAIL;
       const statutChip = b.togglable
         ? `<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--grey-soft)">
              <span class="chip ${b.actif?'actif':'inactif'}">${b.actif?'Actif':'Désactivé'}</span>
@@ -9177,11 +9179,11 @@ function renderEmails(){
         </div>
         <div class="row-meta">${escHtml((r.prenom||'')+' '+(r.nom||''))}${e.destinataire?' · '+escHtml(e.destinataire):''}<br/>${new Date(e.created_at).toLocaleString('fr-FR',{dateStyle:'medium',timeStyle:'short'})}${e.erreur?' · '+escHtml(e.erreur):''}</div>
         <div class="row-actions">
-          <button class="btn btn-grey" onclick="viewCommunicationContent(${e.id},this)">👁️ Aperçu</button>
-          ${e.reservation_id?`<button class="btn btn-grey" onclick="resendEmail(${e.reservation_id},'${e.scenario}',this)">🔁 Renvoyer</button>`:''}
+          <button class="btn btn-grey" onclick="viewCommunicationContent(${e.id},this)">${IC_EYE} Aperçu</button>
+          ${e.reservation_id?`<button class="btn btn-grey" onclick="resendEmail(${e.reservation_id},'${e.scenario}',this)">${IC_CYCLE} Renvoyer</button>`:''}
         </div>
       </div>`;
-  }).join('') : `<p class="empty">${EMAILS_FILTER==='erreur'?'✅ Aucune erreur.':'Aucun email envoyé pour l\'instant.'}</p>`;
+  }).join('') : `<p class="empty">${EMAILS_FILTER==='erreur'?IC_CHECK+' Aucune erreur.':'Aucun email envoyé pour l\'instant.'}</p>`;
 
   zone.innerHTML = `
     <div class="stat-grid" style="margin-bottom:16px">
@@ -9346,7 +9348,7 @@ function renderAssistant(){
   }).join('');
   const pendingHtml = ASSISTANT_PENDING ? `
     <div class="assist-confirm">
-      <div class="assist-confirm-label">⚠️ ${escHtml(ASSISTANT_PENDING.label)}</div>
+      <div class="assist-confirm-label">${IC_WARN} ${escHtml(ASSISTANT_PENDING.label)}</div>
       <div class="assist-confirm-actions">
         <button class="btn btn-grey" ${ASSISTANT_BUSY?'disabled':''} onclick="assistantCancel()">Annuler</button>
         <button class="btn btn-blue" ${ASSISTANT_BUSY?'disabled':''} onclick="assistantConfirm()">Confirmer</button>
@@ -9356,7 +9358,7 @@ function renderAssistant(){
   zone.innerHTML = `
     <div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 160px);max-height:800px">
       <div style="padding:16px 18px;border-bottom:1px solid var(--rule)">
-        <h2 style="margin:0">🤖 Assistant IA</h2>
+        <h2 style="margin:0">${IC_ROBOT} Assistant IA</h2>
         <p class="sub" style="margin:4px 0 0">Pose une question ou demande une action — pour tout ce qui modifie quelque chose, il te fait valider avant de l'exécuter.</p>
       </div>
       <div class="assist-messages" id="assist-messages">
@@ -11323,11 +11325,11 @@ function renderForfaitsHtml(){
         </span>
       </div>
       <div class="row-meta">${f.quantite} climatiseur${f.quantite>1?'s':''} · ${f.duree_jours} jours</div>
-      <div class="row-meta">${f.nb_reservations ? `📦 ${f.nb_reservations} réservation${f.nb_reservations>1?'s':''} avec ce pack` : 'Pas encore utilisé'}</div>
+      <div class="row-meta">${f.nb_reservations ? `${IC_BOX} ${f.nb_reservations} réservation${f.nb_reservations>1?'s':''} avec ce pack` : 'Pas encore utilisé'}</div>
       <div class="row-actions">
-        <button class="btn btn-grey" onclick="editForfait(${f.id})">✏️ Modifier</button>
-        <button class="btn ${f.actif?'btn-grey':'btn-green'}" onclick="toggleForfaitActif(${f.id}, ${!f.actif})">${f.actif?'Désactiver':'✅ Réactiver'}</button>
-        <button class="btn btn-red" onclick="deleteForfait(${f.id})" style="margin-left:auto">🗑️</button>
+        <button class="btn btn-grey" onclick="editForfait(${f.id})">${IC_EDIT} Modifier</button>
+        <button class="btn ${f.actif?'btn-grey':'btn-green'}" onclick="toggleForfaitActif(${f.id}, ${!f.actif})">${f.actif?'Désactiver':IC_CHECK+' Réactiver'}</button>
+        <button class="btn btn-red" onclick="deleteForfait(${f.id})" style="margin-left:auto">${IC_TRASH}</button>
       </div>
     </div>`).join('') || '<p class="empty">Aucun pack créé pour l\'instant.</p>';
 
@@ -11708,7 +11710,7 @@ function renderEquipe(){
         <button class="btn ${u.actif?'btn-grey':'btn-green'}" onclick="toggleEquipeActif(${u.id}, ${!u.actif})">${u.actif?'Désactiver':'Réactiver'}</button>
         <button class="btn btn-red" onclick="deleteEquipeMembre(${u.id})">Supprimer</button>
       </div>
-    </div>`).join('') || '<p class="empty">🧑‍💼 Personne dans l\'équipe pour l\'instant — le mot de passe partagé reste utilisable en plus.</p>';
+    </div>`).join('') || `<p class="empty">${BOARD_IC_PERSON} Personne dans l'équipe pour l'instant — le mot de passe partagé reste utilisable en plus.</p>`;
   zone.innerHTML = `
     <p class="sub" style="margin-bottom:16px">Donne à chaque personne de ton équipe son propre code — elle ne verra que ce dont elle a besoin pour son rôle.</p>
     ${list}
