@@ -1662,6 +1662,10 @@ const IC_HANDSHAKE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none
 const IC_HOME    = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.85"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9.5a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10"/></svg>';
 const IC_STAR    = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
 const IC_CARD    = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>';
+const IC_FLASK   = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M9 2v6.5L4 18a2 2 0 0 0 1.8 3h12.4a2 2 0 0 0 1.8-3l-5-9.5V2"/><line x1="8" y1="2" x2="16" y2="2"/><line x1="7" y1="14" x2="17" y2="14"/></svg>';
+const IC_GLOBE   = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 0 20 15.3 15.3 0 0 1 0-20Z"/></svg>';
+const IC_CHART   = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
+const IC_TROPHY  = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3a2 2 0 0 1-2 4h-1M7 5H4a2 2 0 0 0 2 4h1"/></svg>';
 
 // Boutons Appeler/WhatsApp réutilisés partout où un numéro client est affiché
 // côté admin (Réservations, Livraisons, Clients) — jusqu'ici seul le
@@ -7619,8 +7623,8 @@ function loadTransporteursTab(silent){
   if(!silent || !document.getElementById('transp-view-content')){
     zone.innerHTML = `
       <div class="periods" style="margin-bottom:16px">
-        <button class="${TRANSPORTEURS_VIEW==='equipe'?'on':''}" onclick="setTransporteursView('equipe')">👷 Équipe</button>
-        <button class="${TRANSPORTEURS_VIEW==='revenus'?'on':''}" onclick="setTransporteursView('revenus')">💶 Revenus</button>
+        <button class="${TRANSPORTEURS_VIEW==='equipe'?'on':''}" onclick="setTransporteursView('equipe')">${BOARD_IC_PERSON} Équipe</button>
+        <button class="${TRANSPORTEURS_VIEW==='revenus'?'on':''}" onclick="setTransporteursView('revenus')">${IC_EURO} Revenus</button>
       </div>
       <div id="transp-view-content">${loading()}</div>`;
   }
@@ -7635,10 +7639,10 @@ function setTransporteursView(view){ TRANSPORTEURS_VIEW = view; loadTransporteur
 // (comportement historique inchangé pour un transporteur jamais restreint).
 const JOURS_LABELS = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
 const MISSION_TYPES_DEF = [
-  {key:'livraison',            label:'📦 Livraison',               tarif:'30€'},
-  {key:'livraison_technicien', label:'📦 Livraison + installation', tarif:'40€'},
-  {key:'recuperation',         label:'🔄 Récupération',            tarif:'30€'},
-  {key:'changement',           label:'🔁 Remplacement',            tarif:'40€'},
+  {key:'livraison',            label:IC_BOX+' Livraison',               tarif:'30€'},
+  {key:'livraison_technicien', label:IC_BOX+' Livraison + installation', tarif:'40€'},
+  {key:'recuperation',         label:IC_CYCLE+' Récupération',            tarif:'30€'},
+  {key:'changement',           label:IC_SWAP+' Remplacement',            tarif:'40€'},
 ];
 // Disponibilités par défaut : Lundi–Samedi, toute la journée
 const DEFAULT_DISPOS = [1,2,3,4,5,6].map(j => ({jour: j, moment: 'journee'}));
@@ -7715,7 +7719,7 @@ function editFiche(id){
   overlay.id = 'modal-overlay-el';
   overlay.innerHTML = `
     <div class="modal-box" style="max-width:420px;max-height:90vh;overflow-y:auto">
-      <h2 style="margin-bottom:14px">✏️ Fiche — ${escHtml(t.nom)}</h2>
+      <h2 style="margin-bottom:14px">${IC_EDIT} Fiche — ${escHtml(t.nom)}</h2>
       <label for="fiche-nom">Nom</label>
       <input type="text" id="fiche-nom" value="${escHtml(t.nom||'')}"/>
       <label for="fiche-tel" style="margin-top:12px">Téléphone</label>
@@ -7797,7 +7801,7 @@ async function loadTransporteursEquipe(silent){
     const testTransp = (d.transporteurs||[]).find(t => t.nom === TEST_TRANSPORTEUR_NOM);
     const testCardHtml = `
       <div class="card" style="border-color:var(--blue)">
-        <h2>🧪 Environnement de test</h2>
+        <h2>${IC_FLASK} Environnement de test</h2>
         <p class="sub">Compte factice pour ouvrir /transporteur et voir/déboguer l'espace livreur toi-même, comme un vrai transporteur — sans jamais générer de vrai virement (taux à 0 €).</p>
         ${testTransp ? `
           <div class="row-meta" style="margin-bottom:14px">Code : <strong style="font-size:16px">${escHtml(testTransp.pin)}</strong></div>
@@ -7827,7 +7831,7 @@ async function loadTransporteursEquipe(silent){
         <div class="row-top">
           <span class="row-title">${escHtml(t.nom)}</span>
           <span style="display:flex;gap:6px;align-items:center">
-            ${enPause?`<span class="chip en_attente">⏸ En pause</span>`:''}
+            ${enPause?`<span class="chip en_attente">${IC_PAUSE} En pause</span>`:''}
             <span class="chip ${t.actif?'actif':'inactif'}">${t.actif?'actif':'inactif'}</span>
           </span>
         </div>
@@ -7836,9 +7840,9 @@ async function loadTransporteursEquipe(silent){
           ${contactButtonsHtml(t.telephone)}
         </div>
         <div class="row-meta">
-          <span class="chip ${t.notifications_actives?'actif':'inactif'}" title="${t.notifications_actives?'Un abonnement notifications est enregistré pour ce transporteur.':"Aucun abonnement notifications enregistré — l'app le redemande automatiquement à sa prochaine connexion, sauf s'il a déjà bloqué la permission sur son téléphone."}">${t.notifications_actives?'🔔 Notifications activées':'🔕 Notifications pas activées'}</span>
+          <span class="chip ${t.notifications_actives?'actif':'inactif'}" title="${t.notifications_actives?'Un abonnement notifications est enregistré pour ce transporteur.':"Aucun abonnement notifications enregistré — l'app le redemande automatiquement à sa prochaine connexion, sauf s'il a déjà bloqué la permission sur son téléphone."}">${IC_BELL} ${t.notifications_actives?'Notifications activées':'Notifications pas activées'}</span>
         </div>
-        ${CITIES_CACHE.length>1?`<div class="row-meta">🌍 ${(t.villes&&t.villes.length) ? t.villes.map(id => escHtml((CITIES_CACHE.find(c=>c.id===id)||{}).name||'?')).join(', ') : 'Aucune zone'}</div>`:''}
+        ${CITIES_CACHE.length>1?`<div class="row-meta">${IC_GLOBE} ${(t.villes&&t.villes.length) ? t.villes.map(id => escHtml((CITIES_CACHE.find(c=>c.id===id)||{}).name||'?')).join(', ') : 'Aucune zone'}</div>`:''}
         ${t.notes?`<div class="row-meta" style="font-style:italic">📝 ${escHtml(t.notes)}</div>`:''}
         <div class="row-meta" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">
           ${[{key:'livraison',label:'Livraison',tarif:'30€'},{key:'livraison_technicien',label:'Livr.+install.',tarif:'40€'},{key:'recuperation',label:'Récupération',tarif:'30€'},{key:'changement',label:'Remplacement',tarif:'40€'}].filter(mt=>!(t.types_autorises&&t.types_autorises.length)||t.types_autorises.includes(mt.key)).map(mt=>`<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;background:var(--green-bg);color:var(--green)">${mt.label} · ${mt.tarif}</span>`).join('')}
@@ -7849,21 +7853,21 @@ async function loadTransporteursEquipe(silent){
             <span style="font-size:12px;color:var(--grey)">30 jours</span>
             <span class="chip ${scoreChip}" style="font-size:10.5px">${scoreLabel}</span>
             ${missions30!=null?`<span style="font-size:12px;color:var(--grey)">${missions30} mission${missions30>1?'s':''}</span>`:score==null?`<span style="font-size:12px;color:var(--grey)">Pas encore assez de missions</span>`:''}
-            <button class="btn btn-grey" style="padding:3px 10px;font-size:12px;margin-left:auto" onclick="openTransporteurStats(${t.id})">📊 Détail</button>
+            <button class="btn btn-grey" style="padding:3px 10px;font-size:12px;margin-left:auto" onclick="openTransporteurStats(${t.id})">${IC_CHART} Détail</button>
           </div>
         </div>
         <div class="row-actions">
           ${enPause
-            ? `<button class="btn btn-green" onclick="pauseTransporteur(${t.id}, false, this)">▶ Reprendre</button>`
-            : `<button class="btn btn-grey" onclick="pauseTransporteur(${t.id}, true, this)">⏸ Mettre en pause</button>`}
-          ${!t.actif?`<button class="btn btn-green" onclick="toggleTransporteur(${t.id}, true, this)">✅ Réactiver</button>`:''}
-          <button class="btn btn-blue" onclick="editFiche(${t.id})">✏️ Modifier la fiche</button>
+            ? `<button class="btn btn-green" onclick="pauseTransporteur(${t.id}, false, this)">${IC_PLAY} Reprendre</button>`
+            : `<button class="btn btn-grey" onclick="pauseTransporteur(${t.id}, true, this)">${IC_PAUSE} Mettre en pause</button>`}
+          ${!t.actif?`<button class="btn btn-green" onclick="toggleTransporteur(${t.id}, true, this)">${IC_CHECK} Réactiver</button>`:''}
+          <button class="btn btn-blue" onclick="editFiche(${t.id})">${IC_EDIT} Modifier la fiche</button>
           <details class="more-actions" style="margin-left:auto">
             <summary title="Plus d'actions">⋯</summary>
             <div class="more-actions-menu">
               ${t.actif?`<button onclick="toggleTransporteur(${t.id}, false, this)">Désactiver</button>`:''}
               <button onclick="resetPin(${t.id})">Changer le code</button>
-              <button class="danger" onclick="deleteTransporteur(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}')">🗑️ Supprimer</button>
+              <button class="danger" onclick="deleteTransporteur(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}')">${IC_TRASH} Supprimer</button>
             </div>
           </details>
         </div>
@@ -7879,7 +7883,7 @@ async function loadTransporteursEquipe(silent){
         <input type="tel" id="t-tel" placeholder="06…"/>
         <label for="t-email">Email (pour "code oublié")</label>
         <input type="text" id="t-email" placeholder="osama@email.fr"/>
-        <p class="sub" style="margin-top:2px">💶 Le montant payé par mission est le même pour toute l'équipe — réglable dans l'onglet Villes (barème).</p>
+        <p class="sub" style="margin-top:2px">${IC_EURO} Le montant payé par mission est le même pour toute l'équipe — réglable dans l'onglet Villes (barème).</p>
         <label style="margin-top:14px">Types de mission autorisés</label>
         <p class="sub" style="margin:4px 0 10px;font-size:12px">Cocher tout = aucune restriction</p>
         ${missionTypesHtml('t-new', null)}
@@ -7967,7 +7971,7 @@ async function openTransporteurStats(id){
   overlay.className = 'modal-overlay';
   overlay.id = 'modal-overlay-el';
   overlay.innerHTML = `<div class="modal-box" style="max-width:440px;max-height:90vh;overflow-y:auto">
-    <h2 style="margin-bottom:4px">📊 Stats — ${escHtml(t.nom)}</h2>
+    <h2 style="margin-bottom:4px">${IC_CHART} Stats — ${escHtml(t.nom)}</h2>
     <div class="sub" style="margin-bottom:16px">30 derniers jours</div>
     <div id="stats-modal-body">${loading()}</div>
     <div class="modal-actions" style="margin-top:18px"><button class="btn btn-grey">Fermer</button></div>
@@ -8049,7 +8053,7 @@ function transporteurRevenusCardHtml(t){
   const missionsHtml = t.missions.length ? t.missions.map(m => `
     <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
       <div class="row-top">
-        <span class="row-title" style="font-size:13px">${m.type==='livraison'?'📦 Livraison':'🔄 Récupération'} — ${escHtml(m.client||'—')}</span>
+        <span class="row-title" style="font-size:13px">${m.type==='livraison'?IC_BOX+' Livraison':IC_CYCLE+' Récupération'} — ${escHtml(m.client||'—')}</span>
         <span class="chip ${PAIEMENT_MISSION_CHIP[m.statut_paiement]||''}">${PAIEMENT_MISSION_LABEL[m.statut_paiement]||m.statut_paiement}</span>
       </div>
       <div class="row-meta" style="margin-top:2px;font-weight:600;color:var(--black)">${m.fait_at?frDateAvecJour(m.fait_at.slice(0,10)):'—'}</div>
@@ -8070,14 +8074,14 @@ function transporteurRevenusCardHtml(t){
         <span class="resa-price" style="${t.non_verse_cents>0?'color:var(--red)':''}">${euros(t.non_verse_cents)}<span style="font-family:var(--body);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-soft);display:block;margin-top:2px">Validé, à verser</span></span>
         <span class="resa-sub">${t.en_attente_validation_cents>0?euros(t.en_attente_validation_cents)+' à valider · ':''}${euros(t.verse_cents)} déjà versés</span>
       </div>
-      ${t.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par le livreur</div>':''}
-      ${t.profil_incomplet?'<div class="row-meta" style="color:var(--red);font-weight:700;margin-bottom:10px">⚠️ SIRET/adresse non renseignés — ses factures ne sont pas légalement complètes</div>':''}
+      ${t.demande_en_cours?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">${IC_BELL} Virement demandé par le livreur</div>`:''}
+      ${t.profil_incomplet?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-bottom:10px">${IC_WARN} SIRET/adresse non renseignés — ses factures ne sont pas légalement complètes</div>`:''}
       ${t.en_attente_validation_cents>0?`<button class="btn btn-grey btn-block" style="margin-bottom:8px" onclick="validerRemuneration(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.en_attente_validation_cents})">🔍 Valider les missions (${euros(t.en_attente_validation_cents)})</button>`:''}
       ${t.non_verse_cents>0
-        ?`<button class="btn btn-green btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.non_verse_cents})">✅ Marquer comme versé (${euros(t.non_verse_cents)})</button>`
+        ?`<button class="btn btn-green btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', ${t.non_verse_cents})">${IC_CHECK} Marquer comme versé (${euros(t.non_verse_cents)})</button>`
         :(t.demande_en_cours?`<button class="btn btn-grey btn-block" onclick="verserMaintenant(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}', 0)">Marquer la demande comme réglée (rien à verser)</button>`:'')}
-      <button class="btn btn-block" style="margin-top:8px;background:var(--gold-lt);color:var(--gold-d);border:1.5px solid var(--gold)" onclick="openPrimeModal(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}')">🏆 Prime de fin de saison</button>
-      <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="openFacturesTransporteursModal(${t.id})">🧾 Voir ses factures</button>
+      <button class="btn btn-block" style="margin-top:8px;background:var(--gold-lt);color:var(--gold-d);border:1.5px solid var(--gold)" onclick="openPrimeModal(${t.id}, '${escHtml(t.nom).replace(/'/g,"\\'")}')">${IC_TROPHY} Prime de fin de saison</button>
+      <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="openFacturesTransporteursModal(${t.id})">${IC_RECEIPT} Voir ses factures</button>
       ${t.missions.length?`
       <details style="margin-top:12px">
         <summary style="cursor:pointer;font-weight:700;font-size:13px;color:var(--blue)">Voir le détail (${t.missions.length} mission${t.missions.length>1?'s':''})</summary>
@@ -8087,7 +8091,7 @@ function transporteurRevenusCardHtml(t){
 }
 function modifierMontantMission(livraisonId, currentCents, dejaVerse){
   promptAction({
-    title: '💶 Modifier le montant de cette mission',
+    title: 'Modifier le montant de cette mission',
     label: dejaVerse
       ? 'Montant payé au transporteur (€) — déjà versé : ça ne change pas le virement bancaire déjà fait, juste ce que l\'app affiche.'
       : 'Montant payé au transporteur (€)',
@@ -8162,7 +8166,7 @@ function openPrimeModal(transporteurId, transporteurNom){
   const defaultMois = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
   overlay.innerHTML = `
     <div class="modal-box" style="max-width:420px">
-      <h2 style="margin-bottom:6px">🏆 Prime de fin de saison</h2>
+      <h2 style="margin-bottom:6px">${IC_TROPHY} Prime de fin de saison</h2>
       <p class="sub" style="margin-bottom:16px">Pour ${escHtml(transporteurNom)}. S'ajoute automatiquement à son solde à verser. Un email de félicitations avec ses statistiques du mois lui est envoyé s'il a une adresse email enregistrée.</p>
       <label for="prime-mois">Mois concerné</label>
       <input type="month" id="prime-mois" value="${defaultMois}"/>
