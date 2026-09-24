@@ -835,7 +835,10 @@ tr.bulk-selected td{background:var(--blue-lt)}
       <div class="err" id="a-faceid-err"></div>
     </div>
     <div class="a-search" id="a-search-wrap">
-      <input type="text" id="a-search-input" placeholder="🔎 Rechercher un client, une commande, un climatiseur…" autocomplete="off" oninput="adminSearchInput(this.value)" onfocus="adminSearchFocus()"/>
+      <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--grey-soft);display:flex;pointer-events:none;z-index:1" aria-hidden="true">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </span>
+      <input type="text" id="a-search-input" placeholder="Rechercher un client, une commande, un climatiseur…" autocomplete="off" style="padding-left:40px" oninput="adminSearchInput(this.value)" onfocus="adminSearchFocus()"/>
       <div class="a-search-results hidden" id="a-search-results"></div>
     </div>
     <div class="a-layout">
@@ -1126,12 +1129,16 @@ async function runAdminSearch(q){
     saveRecentSearch(q);
   }catch(e){}
 }
+// Icônes inlinées ici (plutôt que les constantes IC_* déclarées plus bas
+// dans ce fichier) : ce tableau est évalué immédiatement au chargement du
+// script, avant que ces constantes n'existent — les y référencer lèverait
+// une ReferenceError ("temporal dead zone").
 const SEARCH_GROUPS = [
-  {key:'commandes', title:'Commandes', icon:'🧾'},
-  {key:'clients', title:'Clients', icon:'👤'},
-  {key:'climatiseurs', title:'Climatiseurs', icon:'📦'},
-  {key:'transporteurs', title:'Transporteurs', icon:'👷'},
-  {key:'partenaires', title:'Ambassadeurs', icon:'🤝'},
+  {key:'commandes', title:'Commandes', icon:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M4 2h16v20l-3-2-3 2-3-2-3 2-3-2-1 1V2Z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="16" y2="11"/></svg>'},
+  {key:'clients', title:'Clients', icon:'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;flex-shrink:0;opacity:.6"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>'},
+  {key:'climatiseurs', title:'Climatiseurs', icon:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>'},
+  {key:'transporteurs', title:'Transporteurs', icon:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg>'},
+  {key:'partenaires', title:'Ambassadeurs', icon:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'},
 ];
 function renderSearchResults(d, q){
   const box = document.getElementById('a-search-results');
@@ -1148,7 +1155,7 @@ function renderSearchResults(d, q){
 function searchRowHtml(type, it){
   if(type==='commandes'){
     const prolongBtn = it.statut==='confirmee' && it.email
-      ? `<button class="btn btn-grey" style="font-size:11px;padding:4px 9px;flex-shrink:0" onclick="event.stopPropagation();prolongerDepuisRecherche(${escAttr(JSON.stringify({id:it.id,email:it.email,ref:it.ref,prenom:it.prenom,nom:it.nom}))})">📅 Prolonger</button>`
+      ? `<button class="btn btn-grey" style="font-size:11px;padding:4px 9px;flex-shrink:0" onclick="event.stopPropagation();prolongerDepuisRecherche(${escAttr(JSON.stringify({id:it.id,email:it.email,ref:it.ref,prenom:it.prenom,nom:it.nom}))})">${IC_CAL} Prolonger</button>`
       : '';
     return `<div class="a-search-row" data-ref="${escHtml(it.ref||'')}" onclick="goToSearchResult('commandes', ${it.id}, ${it.city_id}, null, this.dataset.ref)" style="gap:8px">
     <span style="flex:1;min-width:0"><span class="a-search-row-main">${escHtml((it.prenom||'')+' '+(it.nom||''))}</span><br><span class="a-search-row-sub">${isInternalRef(it.ref)?'':escHtml(it.ref)+' · '}${frDate(it.date_debut)} → ${frDate(it.date_fin)}</span></span>
@@ -1649,6 +1656,9 @@ const IC_LIVE    = '<svg width="9" height="9" viewBox="0 0 24 24" style="vertica
 const IC_EYE     = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"/><circle cx="12" cy="12" r="3"/></svg>';
 const IC_PLAY    = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="vertical-align:-1px;flex-shrink:0"><polygon points="6 3 20 12 6 21 6 3"/></svg>';
 const IC_PAUSE   = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" stroke="none" style="vertical-align:-1px;flex-shrink:0"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+const IC_ARCHIVE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><rect x="2" y="4" width="20" height="5" rx="1"/><path d="M4 9v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>';
+const IC_SHIELD  = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg>';
+const IC_HANDSHAKE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
 
 // Boutons Appeler/WhatsApp réutilisés partout où un numéro client est affiché
 // côté admin (Réservations, Livraisons, Clients) — jusqu'ici seul le
@@ -8779,15 +8789,15 @@ const ASSURANCE_STATUT_LABEL = {
 };
 function incidentActionsHtml(i){
   const btns = [];
-  if(i.statut==='nouveau') btns.push(`<button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'en_analyse',this)">🔍 En analyse</button>`);
-  if(!['resolu','clos'].includes(i.statut)) btns.push(`<button class="btn btn-green" onclick="updateIncidentStatut(${i.id},'resolu',this)">✅ Marquer résolu</button>`);
-  if(i.statut==='resolu') btns.push(`<button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'clos',this)">🗄️ Clore</button>`);
-  btns.push(`<button class="btn btn-grey" onclick="openAssuranceModal(${i.id})">🛡️ Assurance</button>`);
+  if(i.statut==='nouveau') btns.push(`<button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'en_analyse',this)">${IC_SEARCH} En analyse</button>`);
+  if(!['resolu','clos'].includes(i.statut)) btns.push(`<button class="btn btn-green" onclick="updateIncidentStatut(${i.id},'resolu',this)">${IC_CHECK} Marquer résolu</button>`);
+  if(i.statut==='resolu') btns.push(`<button class="btn btn-grey" onclick="updateIncidentStatut(${i.id},'clos',this)">${IC_ARCHIVE} Clore</button>`);
+  btns.push(`<button class="btn btn-grey" onclick="openAssuranceModal(${i.id})">${IC_SHIELD} Assurance</button>`);
   return btns.length ? `<div class="row-actions">${btns.join('')}</div>` : '';
 }
 function assuranceMetaHtml(i){
   if(!i.assurance_statut || i.assurance_statut==='non_declare') return '';
-  const parts = [`🛡️ ${ASSURANCE_STATUT_LABEL[i.assurance_statut]||i.assurance_statut}`];
+  const parts = [`${IC_SHIELD} ${ASSURANCE_STATUT_LABEL[i.assurance_statut]||i.assurance_statut}`];
   if(i.assurance_montant_reclame_cents) parts.push(`réclamé ${euros(i.assurance_montant_reclame_cents)}`);
   if(i.assurance_montant_rembourse_cents) parts.push(`remboursé ${euros(i.assurance_montant_rembourse_cents)}`);
   return `<div class="row-meta">${parts.join(' · ')}</div>`;
@@ -8800,7 +8810,7 @@ function openAssuranceModal(id){
   overlay.className = 'modal-overlay';
   overlay.id = 'modal-overlay-el';
   overlay.innerHTML = `<div class="modal-box" style="max-width:420px">
-    <h2>🛡️ Dossier assurance</h2>
+    <h2>${IC_SHIELD} Dossier assurance</h2>
     <label>Statut</label>
     <select id="as-statut">
       <option value="" ${!i.assurance_statut?'selected':''}>Non déclaré</option>
@@ -10508,7 +10518,7 @@ function openEditClientFicheModal(){
   overlay.id = 'modal-overlay-el';
   overlay.innerHTML = `
     <div class="modal-box" style="max-width:420px;max-height:85vh;overflow-y:auto">
-      <h2 style="margin-bottom:14px">✏️ Modifier la fiche client</h2>
+      <h2 style="margin-bottom:14px">${IC_EDIT} Modifier la fiche client</h2>
       <label for="ecf-prenom">Prénom</label>
       <input type="text" id="ecf-prenom" value="${escHtml(c.prenom||'')}"/>
       <label for="ecf-nom" style="margin-top:8px">Nom</label>
