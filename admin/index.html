@@ -1666,6 +1666,7 @@ const IC_FLASK   = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" 
 const IC_GLOBE   = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 0 20 15.3 15.3 0 0 1 0-20Z"/></svg>';
 const IC_CHART   = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
 const IC_TROPHY  = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4Z"/><path d="M17 5h3a2 2 0 0 1-2 4h-1M7 5H4a2 2 0 0 0 2 4h1"/></svg>';
+const IC_LINK    = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>';
 
 // Boutons Appeler/WhatsApp réutilisés partout où un numéro client est affiché
 // côté admin (Réservations, Livraisons, Clients) — jusqu'ici seul le
@@ -8222,8 +8223,8 @@ function loadPartenairesTab(silent){
   if(!silent || !document.getElementById('part-view-content')){
     zone.innerHTML = `
       <div class="periods" style="margin-bottom:16px">
-        <button class="${PARTENAIRES_VIEW==='equipe'?'on':''}" onclick="setPartenairesView('equipe')">🤝 Ambassadeurs</button>
-        <button class="${PARTENAIRES_VIEW==='revenus'?'on':''}" onclick="setPartenairesView('revenus')">💶 Revenus</button>
+        <button class="${PARTENAIRES_VIEW==='equipe'?'on':''}" onclick="setPartenairesView('equipe')">${IC_HANDSHAKE} Ambassadeurs</button>
+        <button class="${PARTENAIRES_VIEW==='revenus'?'on':''}" onclick="setPartenairesView('revenus')">${IC_EURO} Revenus</button>
       </div>
       <div id="part-view-content">${loading()}</div>`;
   }
@@ -8264,11 +8265,11 @@ function partenaireKpi(reservations){
 // invite à le compléter plutôt qu'un bloc vide.
 function ribBlockHtml(p){
   if(!p.iban && !p.bic && !p.titulaire_compte){
-    return `<div class="row-meta" style="margin:10px 0;color:var(--amber)">⚠️ Aucun RIB enregistré — ajoute-le depuis l'onglet Équipe (✏️ Modifier) pour préparer le virement.</div>`;
+    return `<div class="row-meta" style="margin:10px 0;color:var(--amber)">${IC_WARN} Aucun RIB enregistré — ajoute-le depuis l'onglet Équipe (${IC_EDIT} Modifier) pour préparer le virement.</div>`;
   }
   return `
     <div class="card" style="padding:14px 16px;margin:10px 0;background:var(--bg);box-shadow:none">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--grey-soft);margin-bottom:8px">💳 RIB — pour le virement</div>
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--grey-soft);margin-bottom:8px">${IC_CARD} RIB — pour le virement</div>
       ${p.titulaire_compte?`<div class="row-meta">Titulaire : <strong>${escHtml(p.titulaire_compte)}</strong></div>`:''}
       ${p.iban?`<div class="row-meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">IBAN : <strong style="font-family:monospace">${escHtml(formatIban(p.iban))}</strong> <button class="btn btn-grey" style="padding:2px 10px;font-size:11px;width:auto;min-height:auto" onclick="copyText('IBAN','${escHtml(p.iban)}')">Copier</button></div>`:''}
       ${p.bic?`<div class="row-meta" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">BIC : <strong style="font-family:monospace">${escHtml(p.bic)}</strong> <button class="btn btn-grey" style="padding:2px 10px;font-size:11px;width:auto;min-height:auto" onclick="copyText('BIC','${escHtml(p.bic)}')">Copier</button></div>`:''}
@@ -8296,17 +8297,17 @@ async function loadPartenairesEquipe(silent){
           <span class="chip ${p.actif?'actif':'inactif'}">${p.actif?'actif':'inactif'}</span>
         </div>
         <div class="row-meta">${escHtml(p.contact_nom||'—')}${p.telephone?' · '+escHtml(p.telephone):''}${p.email?' · '+escHtml(p.email):''}</div>
-        <div class="row-meta">Code personnel : <strong>${escHtml(p.pin)}</strong> · Commission : <strong>${p.taux_commission_pct}%</strong> · ${p.iban?'✅ RIB enregistré':'⚠️ Pas de RIB'}</div>
-        <div class="row-meta" style="word-break:break-all">🔗 ${escHtml(partenaireLinkFor(p.code))}</div>
+        <div class="row-meta">Code personnel : <strong>${escHtml(p.pin)}</strong> · Commission : <strong>${p.taux_commission_pct}%</strong> · ${p.iban?IC_CHECK+' RIB enregistré':IC_WARN+' Pas de RIB'}</div>
+        <div class="row-meta" style="word-break:break-all">${IC_LINK} ${escHtml(partenaireLinkFor(p.code))}</div>
         <div class="row-actions">
           <button class="btn btn-blue" onclick="copyPartenaireLink('${escHtml(p.code)}')">Copier le lien</button>
-          <button class="btn ${p.actif?'btn-grey':'btn-green'}" onclick="togglePartenaire(${p.id}, ${!p.actif}, this)">${p.actif?'Désactiver':'✅ Réactiver'}</button>
-          <button class="btn btn-blue" onclick="editPartenaireFiche(${p.id})">✏️ Modifier</button>
+          <button class="btn ${p.actif?'btn-grey':'btn-green'}" onclick="togglePartenaire(${p.id}, ${!p.actif}, this)">${p.actif?'Désactiver':IC_CHECK+' Réactiver'}</button>
+          <button class="btn btn-blue" onclick="editPartenaireFiche(${p.id})">${IC_EDIT} Modifier</button>
           <details class="more-actions" style="margin-left:auto">
             <summary title="Plus d'actions">⋯</summary>
             <div class="more-actions-menu">
               <button onclick="resetPartenairePin(${p.id})">Changer le code personnel</button>
-              <button class="danger" onclick="deletePartenaire(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}')">🗑️ Supprimer</button>
+              <button class="danger" onclick="deletePartenaire(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}')">${IC_TRASH} Supprimer</button>
             </div>
           </details>
         </div>
@@ -8409,7 +8410,7 @@ function editPartenaireFiche(id){
   overlay.id = 'modal-overlay-el';
   overlay.innerHTML = `
     <div class="modal-box" style="max-width:420px;max-height:90vh;overflow-y:auto">
-      <h2 style="margin-bottom:14px">✏️ Fiche — ${escHtml(p.nom)}</h2>
+      <h2 style="margin-bottom:14px">${IC_EDIT} Fiche — ${escHtml(p.nom)}</h2>
       <label for="fp-nom">Nom</label>
       <input type="text" id="fp-nom" value="${escHtml(p.nom||'')}"/>
       <label for="fp-contact" style="margin-top:12px">Personne de contact</label>
@@ -8480,7 +8481,7 @@ function partenaireRevenusCardHtml(p){
     <div class="row-item" style="padding:12px 14px;margin-bottom:8px">
       <div class="row-top">
         <span class="row-title" style="font-size:13px">${v.verse_at?frDate(v.verse_at.slice(0,10)):'—'} · ${euros(v.montant_cents)}</span>
-        <button class="btn ${v.facture_recue?'btn-green':'btn-grey'}" style="padding:3px 10px;font-size:11px;width:auto;min-height:auto" onclick="toggleFactureRecue(${v.id}, this)">${v.facture_recue?'✅ Facture reçue':'⚠️ Facture à demander'}</button>
+        <button class="btn ${v.facture_recue?'btn-green':'btn-grey'}" style="padding:3px 10px;font-size:11px;width:auto;min-height:auto" onclick="toggleFactureRecue(${v.id}, this)">${v.facture_recue?IC_CHECK+' Facture reçue':IC_WARN+' Facture à demander'}</button>
       </div>
     </div>`).join('') : '';
   // Réconciliation : commission déjà versée pour une réservation ensuite
@@ -8488,7 +8489,7 @@ function partenaireRevenusCardHtml(p){
   // finalement pas eu lieu, à régler manuellement (voir migration_partenaires_litiges.sql).
   const litigesHtml = (p.litiges||[]).length ? `
     <div class="row-meta" style="background:var(--red-bg);color:var(--red);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-weight:700">
-      ⚠️ ${p.litiges.length} réservation${p.litiges.length>1?'s':''} annulée${p.litiges.length>1?'s':''}/remboursée${p.litiges.length>1?'s':''} après paiement de la commission — ${euros(p.a_recuperer_cents)} à récupérer ou déduire du prochain virement
+      ${IC_WARN} ${p.litiges.length} réservation${p.litiges.length>1?'s':''} annulée${p.litiges.length>1?'s':''}/remboursée${p.litiges.length>1?'s':''} après paiement de la commission — ${euros(p.a_recuperer_cents)} à récupérer ou déduire du prochain virement
       <div style="margin-top:8px;font-weight:400">
         ${p.litiges.map(l => `
           <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(0,0,0,.08)">
@@ -8502,7 +8503,7 @@ function partenaireRevenusCardHtml(p){
   return `
     <div class="card">
       <div class="row-top" style="margin-bottom:14px">
-        <h2 style="margin:0">🤝 ${escHtml(p.nom)}</h2>
+        <h2 style="margin:0">${IC_HANDSHAKE} ${escHtml(p.nom)}</h2>
         <span class="chip ${p.actif?'actif':'annulee'}">${p.actif?'actif':'inactif'}</span>
       </div>
       <div class="stat-grid" style="margin-bottom:14px">
@@ -8514,11 +8515,11 @@ function partenaireRevenusCardHtml(p){
         <span class="resa-price" style="${p.non_verse_cents>0?'color:var(--red)':''}">${euros(p.non_verse_cents)}<span style="font-family:var(--body);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--grey-soft);display:block;margin-top:2px">À verser</span></span>
         <span class="resa-sub">${euros(p.verse_cents)} déjà versés</span>
       </div>
-      ${p.demande_en_cours?'<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">🔔 Virement demandé par l\'ambassadeur</div>':''}
+      ${p.demande_en_cours?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-bottom:10px">${IC_BELL} Virement demandé par l'ambassadeur</div>`:''}
       ${litigesHtml}
       ${ribBlockHtml(p)}
       ${p.non_verse_cents>0
-        ?`<button class="btn btn-green btn-block" onclick="verserPartenaireMaintenant(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}', ${p.non_verse_cents})">✅ Marquer comme versé (${euros(p.non_verse_cents)})</button>`
+        ?`<button class="btn btn-green btn-block" onclick="verserPartenaireMaintenant(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}', ${p.non_verse_cents})">${IC_CHECK} Marquer comme versé (${euros(p.non_verse_cents)})</button>`
         :(p.demande_en_cours?`<button class="btn btn-grey btn-block" onclick="verserPartenaireMaintenant(${p.id}, '${escHtml(p.nom).replace(/'/g,"\\'")}', 0)">Marquer la demande comme réglée (rien à verser)</button>`:'')}
       ${p.reservations.length?`
       <details style="margin-top:12px">
