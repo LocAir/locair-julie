@@ -1,5 +1,6 @@
 import { Mail, MapPin, Phone } from 'lucide-react'
-import { HOTEL } from '../config'
+import { HOTEL, WHATSAPP, lienWhatsApp } from '../config'
+import WhatsAppIcon from './WhatsAppIcon'
 
 export default function Footer() {
   return (
@@ -15,6 +16,12 @@ export default function Footer() {
             <Phone className="h-4 w-4 text-sable-300" aria-hidden />
             <a href={`tel:${HOTEL.telephone.replace(/\s/g, '')}`} className="hover:text-creme">{HOTEL.telephone}</a>
           </li>
+          {WHATSAPP.numero && (
+            <li className="flex items-center gap-3">
+              <WhatsAppIcon className="h-4 w-4 text-sable-300" />
+              <a href={lienWhatsApp()} target="_blank" rel="noopener noreferrer" className="hover:text-creme">WhatsApp</a>
+            </li>
+          )}
           <li className="flex items-center gap-3">
             <Mail className="h-4 w-4 text-sable-300" aria-hidden />
             <a href={`mailto:${HOTEL.email}`} className="hover:text-creme">{HOTEL.email}</a>

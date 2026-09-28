@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { CheckCircle2, Clock, Loader2, Lock, PhoneCall, Send } from 'lucide-react'
-import { FORM_ENDPOINT, HOTEL } from '../config'
+import { CalendarDays, CheckCircle2, Clock, Loader2, Lock, PhoneCall, Send } from 'lucide-react'
+import { CALENDLY_URL, FORM_ENDPOINT, HOTEL, WHATSAPP, lienCalendly, lienWhatsApp } from '../config'
+import WhatsAppIcon from './WhatsAppIcon'
 
 const PROFILS = ['Étudiant', 'Salarié en mission', 'Nomade digital', 'Autre']
 const DUREES = ['1 mois', '2 mois', '3 mois ou plus']
@@ -110,12 +111,37 @@ export default function ContactForm() {
             ))}
           </ol>
 
-          <p className="mt-8 text-sm text-gris">
-            Vous préférez parler de vive voix ?{' '}
-            <a href={`tel:${HOTEL.telephone.replace(/\s/g, '')}`} className="font-medium text-nuit underline underline-offset-4">
-              {HOTEL.telephone}
-            </a>
-          </p>
+          <div className="mt-8 rounded-2xl border border-sable-200 bg-sable-100/60 p-5">
+            <p className="text-sm font-medium text-nuit">Vous préférez échanger directement ?</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {WHATSAPP.numero && (
+                <a
+                  href={lienWhatsApp()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full bg-[#25D366] px-5 py-3 text-sm font-medium text-white transition hover:brightness-95"
+                >
+                  <WhatsAppIcon className="h-4 w-4" /> Écrire sur WhatsApp
+                </a>
+              )}
+              {CALENDLY_URL && (
+                <a
+                  href={lienCalendly()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-full border border-nuit/20 bg-creme px-5 py-3 text-sm font-medium text-nuit transition hover:border-nuit"
+                >
+                  <CalendarDays className="h-4 w-4" aria-hidden /> Réserver un appel
+                </a>
+              )}
+            </div>
+            <p className="mt-3 text-xs text-gris">
+              Ou par téléphone :{' '}
+              <a href={`tel:${HOTEL.telephone.replace(/\s/g, '')}`} className="font-medium text-nuit underline underline-offset-4">
+                {HOTEL.telephone}
+              </a>
+            </p>
+          </div>
         </div>
 
         {/* Colonne droite : formulaire */}
@@ -134,7 +160,30 @@ export default function ContactForm() {
                   sous 24 h au <strong className="text-nuit">{valeurs.telephone}</strong> ou par
                   e-mail pour vous aider à trouver la chambre qui vous correspond.
                 </p>
-                <p className="mt-6 inline-flex items-center gap-2 rounded-full bg-sable-100 px-4 py-2 text-sm text-nuit">
+                {CALENDLY_URL && (
+                  <div className="mt-8 w-full max-w-md rounded-2xl bg-sable-100 p-5">
+                    <p className="font-medium text-nuit">Pour aller plus vite, choisissez dès maintenant votre créneau d'appel (15 min).</p>
+                    <a
+                      href={lienCalendly({ nom: valeurs.nom, email: valeurs.email })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-nuit px-6 py-3.5 font-medium text-creme transition hover:bg-nuit-700"
+                    >
+                      <CalendarDays className="h-5 w-5" aria-hidden /> Choisir mon créneau
+                    </a>
+                  </div>
+                )}
+                {WHATSAPP.numero && (
+                  <a
+                    href={lienWhatsApp(`Bonjour, je viens d'envoyer une demande sur votre site (${valeurs.nom}, ${valeurs.profil}, ${valeurs.duree}).`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-foret underline underline-offset-4"
+                  >
+                    <WhatsAppIcon className="h-4 w-4" /> Une question urgente ? Écrivez-nous sur WhatsApp
+                  </a>
+                )}
+                <p className="mt-6 inline-flex items-center gap-2 text-sm text-gris">
                   <Clock className="h-4 w-4" aria-hidden /> Pensez à vérifier vos spams
                 </p>
                 <button

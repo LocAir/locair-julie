@@ -8,7 +8,7 @@
 export const HOTEL = {
   nom: "L'Hôtel Azur",
   slogan: 'Votre cocon tout inclus à Nice cet hiver.',
-  telephone: '+33 4 93 00 00 00',
+  telephone: '06 63 79 87 56',
   email: 'contact@hotel-azur-nice.fr',
   adresse: 'Promenade des Anglais, 06000 Nice',
 }
@@ -35,3 +35,30 @@ export const IMAGES = {
  * Laissé vide = mode démo (la page affiche le message de succès sans rien envoyer).
  */
 export const FORM_ENDPOINT = ''
+
+/**
+ * WHATSAPP : votre numéro au format international, chiffres uniquement
+ * (ex. 06 12 34 56 78 → 33612345678). Laissé vide = boutons WhatsApp masqués.
+ */
+export const WHATSAPP = {
+  numero: '33663798756',
+  message:
+    "Bonjour, je cherche une chambre à Nice cet hiver. Je suis [étudiant / saisonnier / nomade], pour [durée]. Pouvez-vous m'aider ?",
+}
+
+/**
+ * CALENDLY : le lien de votre page de rendez-vous
+ * (ex. https://calendly.com/votre-nom/appel-15min). Laissé vide = masqué.
+ */
+export const CALENDLY_URL = 'https://calendly.com/votre-nom/appel-15min' // ← À REMPLACER
+
+export const lienWhatsApp = (texte = WHATSAPP.message) =>
+  `https://wa.me/${WHATSAPP.numero}?text=${encodeURIComponent(texte)}`
+
+/** Lien Calendly avec nom et e-mail déjà remplis. */
+export const lienCalendly = ({ nom = '', email = '' } = {}) => {
+  const url = new URL(CALENDLY_URL)
+  if (nom) url.searchParams.set('name', nom)
+  if (email) url.searchParams.set('email', email)
+  return url.toString()
+}

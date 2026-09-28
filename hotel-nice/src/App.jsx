@@ -6,6 +6,7 @@ import ContactForm from './components/ContactForm'
 import Faq from './components/Faq'
 import Footer from './components/Footer'
 import MobileCta from './components/MobileCta'
+import WhatsAppFloat from './components/WhatsAppFloat'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
       </main>
       <Footer />
       <MobileCta />
+      <WhatsAppFloat />
     </>
   )
 }
