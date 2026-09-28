@@ -40,7 +40,7 @@ export default function Hero() {
             >
               Demander mes disponibilités
             </a>
-            <span className="text-sm text-gris sm:ml-2">Réponse personnalisée sous 24 h · sans engagement</span>
+            <span className="text-sm text-gris sm:ml-2">Réponse par e-mail · sans appel ni rendez-vous · sans engagement</span>
           </div>
         </div>
 

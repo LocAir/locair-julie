@@ -22,7 +22,8 @@ Sur Vercel : nouveau projet → « Root Directory » = `hotel-nice` → Deploy.
 - **Nom, slogan, téléphone, e-mail, adresse** de l'hôtel.
 - **Photos** : déposez-les dans `public/images/` (voir `LISEZ-MOI.txt`).
   Tant qu'une photo manque, un fond coloré s'affiche à la place.
-- **WhatsApp** (`WHATSAPP.numero`) et **Calendly** (`CALENDLY_URL`) : laisser vide pour masquer.
+- **WhatsApp** (`WHATSAPP.numero`) et **Calendly** (`CALENDLY_URL`) : désactivés (parcours 100 % en ligne, sans personnel). Remplir pour les réafficher.
+- **E-mail automatique** : la page promet un e-mail avec disponibilités, tarifs et lien de dossier. Il faut le programmer dans l’outil qui reçoit le formulaire (réponse automatique Formspree, Brevo, Tally…).
 - **Réception des demandes** : créez un formulaire gratuit sur
   https://formspree.io et collez son adresse dans `FORM_ENDPOINT`.
   Sans ça, la page est en mode démo (le message de succès s'affiche mais rien

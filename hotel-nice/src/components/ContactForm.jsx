@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CalendarDays, CheckCircle2, Clock, Loader2, Lock, PhoneCall, Send } from 'lucide-react'
+import { CalendarDays, CheckCircle2, Clock, FileCheck2, Loader2, Lock, MailCheck, Send } from 'lucide-react'
 import { CALENDLY_URL, FORM_ENDPOINT, HOTEL, WHATSAPP, lienCalendly, lienWhatsApp } from '../config'
 import WhatsAppIcon from './WhatsAppIcon'
 
@@ -12,16 +12,16 @@ function valider(v) {
   const e = {}
   if (v.nom.trim().length < 2) e.nom = 'Indiquez votre prénom et votre nom.'
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.email.trim())) e.email = 'Cette adresse e-mail semble incomplète.'
-  if (v.telephone.replace(/[^\d]/g, '').length < 9) e.telephone = 'Indiquez un numéro où l’on peut vous rappeler.'
+  if (v.telephone.replace(/[^\d]/g, '').length < 9) e.telephone = 'Indiquez un numéro de téléphone valide.'
   if (!v.profil) e.profil = 'Choisissez votre profil.'
   if (!v.duree) e.duree = 'Choisissez une durée.'
   return e
 }
 
 const etapes = [
-  { icon: Send, titre: 'Vous nous écrivez', texte: 'Deux minutes suffisent. Aucun paiement demandé.' },
-  { icon: PhoneCall, titre: 'On vous rappelle sous 24 h', texte: 'Pour comprendre votre besoin et vous proposer la bonne chambre.' },
-  { icon: CheckCircle2, titre: 'Vous posez vos valises', texte: 'On vous aide à monter votre dossier simplement, puis on vous accueille.' },
+  { icon: Send, titre: 'Vous remplissez le formulaire', texte: 'Deux minutes suffisent. Aucun paiement demandé.' },
+  { icon: MailCheck, titre: 'Vous recevez nos disponibilités par e-mail', texte: 'Les chambres libres, les tarifs et la marche à suivre. Pas d’appel, pas de rendez-vous.' },
+  { icon: FileCheck2, titre: 'Vous validez votre dossier en ligne', texte: 'Vous déposez vos documents depuis votre téléphone, puis vous posez vos valises.' },
 ]
 
 export default function ContactForm() {
@@ -88,11 +88,11 @@ export default function ContactForm() {
         <div className="lg:col-span-2">
           <p className="text-sm font-medium tracking-widest text-sable-500 uppercase">Demande prioritaire</p>
           <h2 className="mt-3 font-display text-3xl font-medium tracking-tight text-nuit sm:text-4xl">
-            Dites-nous ce que vous cherchez. On s'occupe de vous trouver la bonne chambre.
+            Dites-nous ce que vous cherchez. On vous aide à trouver la bonne chambre, en ligne.
           </h2>
           <p className="mt-4 text-gris">
-            Les chambres disponibles cet hiver sont en nombre limité. Laissez-nous vos
-            coordonnées : un membre de l'équipe vous aide personnellement, sans engagement.
+            Les chambres disponibles cet hiver sont en nombre limité. Tout se fait en ligne,
+            à votre rythme : pas besoin d'appeler ni de prendre rendez-vous.
           </p>
 
           <ol className="mt-8 space-y-5">
@@ -111,6 +111,7 @@ export default function ContactForm() {
             ))}
           </ol>
 
+          {(WHATSAPP.numero || CALENDLY_URL) && (
           <div className="mt-8 rounded-2xl border border-sable-200 bg-sable-100/60 p-5">
             <p className="text-sm font-medium text-nuit">Vous préférez échanger directement ?</p>
             <div className="mt-3 flex flex-wrap gap-2">
@@ -135,13 +136,8 @@ export default function ContactForm() {
                 </a>
               )}
             </div>
-            <p className="mt-3 text-xs text-gris">
-              Ou par téléphone :{' '}
-              <a href={`tel:${HOTEL.telephone.replace(/\s/g, '')}`} className="font-medium text-nuit underline underline-offset-4">
-                {HOTEL.telephone}
-              </a>
-            </p>
           </div>
+          )}
         </div>
 
         {/* Colonne droite : formulaire */}
@@ -156,9 +152,9 @@ export default function ContactForm() {
                   Merci {valeurs.nom.split(' ')[0]}, c'est bien reçu !
                 </h3>
                 <p className="mt-3 max-w-md text-gris">
-                  Votre demande prioritaire est entre de bonnes mains. Nous vous recontactons
-                  sous 24 h au <strong className="text-nuit">{valeurs.telephone}</strong> ou par
-                  e-mail pour vous aider à trouver la chambre qui vous correspond.
+                  Votre demande prioritaire est enregistrée. Vous allez recevoir à
+                  <strong className="text-nuit"> {valeurs.email}</strong> nos disponibilités, les tarifs
+                  et le lien pour compléter votre dossier en ligne.
                 </p>
                 {CALENDLY_URL && (
                   <div className="mt-8 w-full max-w-md rounded-2xl bg-sable-100 p-5">
@@ -268,7 +264,7 @@ export default function ContactForm() {
 
                 {statut === 'echec' && (
                   <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
-                    Oups, l'envoi n'a pas fonctionné. Réessayez, ou appelez-nous au {HOTEL.telephone}.
+                    Oups, l'envoi n'a pas fonctionné. Réessayez, ou écrivez-nous à {HOTEL.email}.
                   </p>
                 )}
 

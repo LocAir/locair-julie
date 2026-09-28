@@ -12,7 +12,7 @@ const questions = [
   },
   {
     q: 'Comment valider mon dossier ?',
-    r: "C'est simple et rapide : une pièce d'identité, un justificatif de situation (carte étudiant, contrat de travail, attestation de mission ou de revenus) et c'est tout. Après votre demande, nous vous rappelons et nous vous aidons à rassembler les documents — pas de paperasse inutile, pas de garant introuvable.",
+    r: "C'est simple et rapide : une pièce d'identité, un justificatif de situation (carte étudiant, contrat de travail, attestation de mission ou de revenus) et c'est tout. Après votre demande, vous recevez par e-mail un lien pour déposer ces documents en ligne, depuis votre téléphone. Pas de paperasse, pas de rendez-vous, pas de garant introuvable.",
   },
   {
     q: 'Y a-t-il un dépôt de garantie ?',

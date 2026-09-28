@@ -1,4 +1,4 @@
-import { BedDouble, Droplets, Flame, Laptop, ShieldCheck, Sparkles, UserRound, Wifi, Zap } from 'lucide-react'
+import { BedDouble, Droplets, Flame, Laptop, ShieldCheck, Smartphone, Sparkles, Wifi, Zap } from 'lucide-react'
 import Photo from './Photo'
 import RoomCarousel from './RoomCarousel'
 import { IMAGES } from '../config'
@@ -78,16 +78,16 @@ export default function Bento() {
             </ul>
           </article>
 
-          {/* Bloc 4 — Photo d'ambiance + mot de l'équipe */}
+          {/* Bloc 4 — Photo d'ambiance + parcours 100 % en ligne */}
           <article className="relative overflow-hidden rounded-3xl md:col-span-6 lg:col-span-3">
             <div className="grid h-full grid-cols-1 sm:grid-cols-2">
               <Photo src={IMAGES.services.src} alt={IMAGES.services.alt} label="Photo d'ambiance" className="h-48 w-full sm:h-full" />
               <div className="flex flex-col justify-center bg-sable-100 p-6 sm:p-7">
-                <UserRound className="h-6 w-6 text-foret" aria-hidden />
+                <Smartphone className="h-6 w-6 text-foret" aria-hidden />
                 <p className="mt-3 font-display text-lg leading-snug text-nuit">
-                  « Notre rôle : vous aider à trouver le bon logement et vous installer sans stress. »
+                  Demande, dossier, confirmation : tout se fait en ligne.
                 </p>
-                <p className="mt-2 text-sm text-gris">— L'équipe de réception</p>
+                <p className="mt-2 text-sm text-gris">Pas d'appel, pas de rendez-vous, pas de paperasse. Sur place, vous n'avez qu'à poser vos valises.</p>
               </div>
             </div>
           </article>

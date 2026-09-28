@@ -41,7 +41,7 @@ export const FORM_ENDPOINT = ''
  * (ex. 06 12 34 56 78 → 33612345678). Laissé vide = boutons WhatsApp masqués.
  */
 export const WHATSAPP = {
-  numero: '33663798756',
+  numero: '', // désactivé (parcours 100 % en ligne). Pour réactiver : '33663798756'
   message:
     "Bonjour, je cherche une chambre à Nice cet hiver. Je suis [étudiant / saisonnier / nomade], pour [durée]. Pouvez-vous m'aider ?",
 }
@@ -50,7 +50,7 @@ export const WHATSAPP = {
  * CALENDLY : le lien de votre page de rendez-vous
  * (ex. https://calendly.com/votre-nom/appel-15min). Laissé vide = masqué.
  */
-export const CALENDLY_URL = 'https://calendly.com/votre-nom/appel-15min' // ← À REMPLACER
+export const CALENDLY_URL = '' // désactivé (parcours 100 % en ligne)
 
 export const lienWhatsApp = (texte = WHATSAPP.message) =>
   `https://wa.me/${WHATSAPP.numero}?text=${encodeURIComponent(texte)}`
