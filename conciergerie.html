@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     LOC'AIR CONCIERGERIE — PAGE D'ARRIVÉE (TEST)
+     ─────────────────────────────────────────────────────────────────────────
+     Page pour trouver des PROPRIÉTAIRES qui veulent confier leur logement
+     Airbnb. Pensée pour recevoir le trafic Google Ads.
+
+     Ce qu'elle fait :
+       · un simulateur de revenus (tout se calcule dans le navigateur)
+       · un formulaire de rappel → envoyé par email via Formspree
+         (même formulaire que le site Loc'Air, avec type = "conciergerie")
+
+     À CHANGER avant de lancer pour de vrai (tout est marqué [À CHANGER]) :
+       · le nom de la marque si la conciergerie a son propre nom
+       · COMMISSION et les prix moyens du simulateur (bloc [SIMULATEUR])
+       · l'offre de lancement et les conditions
+       · retirer la ligne noindex ci-dessous + la ligne dans robots.txt
+
+     Volontairement absent : le suivi Google Ads (à ajouter au lancement).
+══════════════════════════════════════════════════════════════════════════ -->
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Conciergerie Airbnb à Nice et sur la Côte d’Azur — Loc’Air</title>
+<meta name="description" content="Confiez votre logement Airbnb : annonce, voyageurs, ménage, linge et prix. Estimez vos revenus en 30 secondes. Nice, Cannes, Antibes, Menton, Monaco.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+
+<style>
+/* ══ [COULEURS] — mêmes couleurs que le gabarit Loc'Air ══ */
+:root{
+  --ink:#0E1F35;
+  --ink-2:#57687C;
+  --ink-3:#8593A3;
+  --blue:#1D5BBF;
+  --blue-d:#17489A;
+  --blue-soft:#EEF3FC;
+  --gold:#C9A227;
+  --gold-soft:#FBF5E4;
+  --paper:#FFFFFF;
+  --mist:#F5F7FA;
+  --line:#E6EBF1;
+  --green:#0F7A3D;
+  --red:#B42318;
+
+  --max:1080px;
+  --pad:20px;
+  --sec:clamp(64px,8vw,112px);
+  --r:12px;
+  --r-l:20px;
+  --font:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:80px}
+body{font-family:var(--font);background:var(--paper);color:var(--ink);font-size:17px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:var(--blue)}
+img{max-width:100%;display:block}
+.wrap{max-width:var(--max);margin:0 auto;padding:0 var(--pad)}
+.sec{padding:var(--sec) 0}
+.sec.mist{background:var(--mist)}
+.eyebrow{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);margin-bottom:12px}
+h1,h2,h3{letter-spacing:-.02em;line-height:1.15}
+h2{font-size:clamp(28px,4vw,40px);margin-bottom:16px}
+.lead{font-size:clamp(17px,2vw,19px);color:var(--ink-2);max-width:60ch}
+
+/* ── Boutons ── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 24px;border-radius:999px;font:700 16px var(--font);text-decoration:none;border:0;cursor:pointer;transition:background .15s,transform .15s}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-blue:hover{background:var(--blue-d)}
+.btn-out{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--line)}
+.btn-out:hover{box-shadow:inset 0 0 0 1.5px var(--ink-3)}
+.btn:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* ── En-tête ── */
+.hdr{position:sticky;top:0;z-index:10;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hdr-in{display:flex;align-items:center;justify-content:space-between;height:64px;gap:12px}
+.logo{font-weight:700;font-size:20px;color:var(--ink);text-decoration:none;white-space:nowrap}
+.logo span{color:var(--gold)}
+.logo small{font-weight:500;color:var(--ink-2);font-size:14px;margin-left:6px}
+.hdr-tel{font-weight:700;color:var(--ink);text-decoration:none;white-space:nowrap}
+@media (max-width:480px){.logo small{display:none}}
+
+/* ── Hero ── */
+.hero{padding:clamp(48px,8vw,96px) 0 clamp(40px,6vw,72px);background:linear-gradient(180deg,var(--blue-soft),var(--paper))}
+.hero h1{font-size:clamp(34px,6vw,58px);max-width:18ch;margin-bottom:20px}
+.hero h1 em{font-style:normal;color:var(--blue)}
+.hero .cta{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.hero-pts{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:28px;list-style:none;color:var(--ink-2);font-size:15px}
+.hero-pts li::before{content:"✓";color:var(--green);font-weight:700;margin-right:6px}
+
+/* ── Simulateur ── */
+.sim{display:grid;grid-template-columns:1fr;gap:24px;margin-top:32px}
+@media (min-width:860px){.sim{grid-template-columns:1fr 1fr;align-items:start}}
+.card{background:var(--paper);border-radius:var(--r-l);padding:clamp(20px,3vw,32px);box-shadow:0 1px 0 var(--line),0 12px 32px rgba(14,31,53,.06)}
+.fld{margin-bottom:20px}
+.fld:last-child{margin-bottom:0}
+.fld > label,.fld > .lbl{display:block;font-weight:700;font-size:15px;margin-bottom:8px}
+select,input[type=text],input[type=tel],input[type=email]{width:100%;min-height:50px;padding:0 14px;border:1.5px solid var(--line);border-radius:var(--r);font:500 16px var(--font);color:var(--ink);background:#fff}
+select:focus,input:focus{border-color:var(--blue);outline:none}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips input{position:absolute;opacity:0;pointer-events:none}
+.chips label{min-height:44px;padding:0 16px;display:inline-flex;align-items:center;border-radius:999px;box-shadow:inset 0 0 0 1.5px var(--line);cursor:pointer;font-weight:500;font-size:15px;user-select:none}
+.chips input:checked + label{background:var(--ink);color:#fff;box-shadow:none}
+.chips input:focus-visible + label{outline:3px solid var(--gold);outline-offset:2px}
+.check{display:flex;gap:10px;align-items:center;font-size:15px;cursor:pointer}
+.check input{width:20px;height:20px;accent-color:var(--blue)}
+
+.res{background:var(--ink);color:#fff}
+.res .big{font-size:clamp(40px,7vw,56px);font-weight:700;letter-spacing:-.03em;line-height:1.05}
+.res .big small{font-size:18px;font-weight:500;color:rgba(255,255,255,.7);letter-spacing:0}
+.res .sub{color:rgba(255,255,255,.72);font-size:15px;margin-top:4px}
+.res dl{margin:24px 0;display:grid;grid-template-columns:1fr auto;gap:10px 16px;font-size:15px}
+.res dt{color:rgba(255,255,255,.72)}
+.res dd{text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.res dd.minus{color:#F3C2BD}
+.res .tot{border-top:1px solid rgba(255,255,255,.18);padding-top:10px}
+.res .btn-blue{width:100%;background:var(--gold);color:var(--ink)}
+.res .btn-blue:hover{background:#DDB63A}
+.note{font-size:13px;color:var(--ink-3);margin-top:14px;line-height:1.5}
+.res .note{color:rgba(255,255,255,.55)}
+
+/* ── Services ── */
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:16px;margin-top:32px}
+.tile{background:var(--paper);border-radius:var(--r-l);padding:24px;box-shadow:0 1px 0 var(--line)}
+.sec:not(.mist) .tile{background:var(--mist);box-shadow:none}
+.tile .ico{font-size:28px;line-height:1;margin-bottom:12px}
+.tile h3{font-size:19px;margin-bottom:6px}
+.tile p{color:var(--ink-2);font-size:15.5px}
+
+/* ── Étapes ── */
+.steps{list-style:none;counter-reset:s;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:24px;margin-top:32px}
+.steps li{counter-increment:s}
+.steps li::before{content:counter(s);display:grid;place-items:center;width:40px;height:40px;border-radius:50%;background:var(--blue);color:#fff;font-weight:700;margin-bottom:14px}
+.steps h3{font-size:18px;margin-bottom:6px}
+.steps p{color:var(--ink-2);font-size:15.5px}
+
+/* ── Tarif ── */
+.price{display:grid;grid-template-columns:1fr;gap:24px;margin-top:32px}
+@media (min-width:860px){.price{grid-template-columns:1.1fr .9fr;align-items:center}}
+.price .pct{font-size:clamp(56px,10vw,88px);font-weight:700;color:var(--blue);letter-spacing:-.04em;line-height:1}
+.price ul{list-style:none;display:grid;gap:10px}
+.price li{padding-left:28px;position:relative}
+.price li::before{content:"✓";position:absolute;left:0;color:var(--green);font-weight:700}
+.offer{background:var(--gold-soft);border-radius:var(--r-l);padding:24px}
+.offer strong{display:block;font-size:20px;margin-bottom:6px}
+
+/* ── FAQ ── */
+.faq{margin-top:32px;max-width:760px}
+.faq details{border-bottom:1px solid var(--line)}
+.faq summary{list-style:none;cursor:pointer;padding:20px 36px 20px 0;font-weight:700;position:relative}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";position:absolute;right:4px;top:16px;font-size:24px;font-weight:400;color:var(--blue)}
+.faq details[open] summary::after{content:"–"}
+.faq details p{padding:0 0 20px;color:var(--ink-2)}
+
+/* ── Formulaire ── */
+.form-wrap{display:grid;grid-template-columns:1fr;gap:32px}
+@media (min-width:860px){.form-wrap{grid-template-columns:.9fr 1.1fr;align-items:start}}
+.row2{display:grid;grid-template-columns:1fr;gap:0 16px}
+@media (min-width:560px){.row2{grid-template-columns:1fr 1fr}}
+.recap{background:var(--blue-soft);border-radius:var(--r);padding:12px 14px;font-size:14px;color:var(--ink-2);margin-bottom:20px}
+.recap[hidden]{display:none}
+.msg{margin-top:14px;font-weight:500;font-size:15px}
+.msg.ok{color:var(--green)}
+.msg.err{color:var(--red)}
+.hp{position:absolute;left:-9999px}
+.alt{display:flex;flex-wrap:wrap;gap:12px;margin-top:20px}
+
+/* ── Pied de page ── */
+.ft{background:var(--ink);color:rgba(255,255,255,.7);padding:48px 0 32px;font-size:14px}
+.ft a{color:#fff}
+.ft-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:24px}
+.ft ul{list-style:none;display:grid;gap:6px}
+
+/* ── Barre d'appel sur mobile ── */
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line)}
+.bar .btn{flex:1;min-height:48px;font-size:15px;padding:0 12px}
+@media (min-width:860px){.bar{display:none}}
+@media (max-width:859px){body{padding-bottom:76px}}
+
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.btn{transition:none}}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="wrap hdr-in">
+    <!-- [À CHANGER] nom de la marque -->
+    <a class="logo" href="/conciergerie">Loc<span>'</span>Air <small>Conciergerie</small></a>
+    <a class="hdr-tel" href="tel:+33663798756">06.63.79.87.56</a>
+  </div>
+</header>
+
+<main>
+
+<!-- ═══ HERO ═══ -->
+<section class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Conciergerie Airbnb · Côte d’Azur</p>
+    <h1>Votre appartement se loue. <em>Vous, vous ne faites rien.</em></h1>
+    <p class="lead">
+      On s’occupe de tout : l’annonce, les voyageurs, les clés, le ménage, le linge et les prix.
+      Vous recevez vos revenus et un relevé clair chaque mois.
+    </p>
+    <div class="cta">
+      <a class="btn btn-blue" href="#simulateur">Estimer mes revenus →</a>
+      <a class="btn btn-out" href="#contact">Être rappelé</a>
+    </div>
+    <ul class="hero-pts">
+      <li>Nice, Cannes, Antibes, Menton, Monaco</li>
+      <li>Aucun frais fixe</li>
+      <li>Réponse sous 24 h</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ═══ SIMULATEUR ═══ -->
+<section class="sec mist" id="simulateur">
+  <div class="wrap">
+    <p class="eyebrow">Simulateur</p>
+    <h2>Combien peut rapporter votre logement ?</h2>
+    <p class="lead">Trois questions. Le résultat s’affiche tout de suite.</p>
+
+    <div class="sim">
+      <form class="card" id="simForm" onsubmit="return false">
+        <div class="fld">
+          <label for="simVille">Ville</label>
+          <select id="simVille">
+            <option value="nice">Nice</option>
+            <option value="cannes">Cannes</option>
+            <option value="antibes">Antibes / Juan-les-Pins</option>
+            <option value="menton">Menton</option>
+            <option value="monaco">Monaco / Beausoleil</option>
+            <option value="autre">Autre ville de la Côte d’Azur</option>
+          </select>
+        </div>
+
+        <div class="fld">
+          <span class="lbl" id="lblTaille">Taille du logement</span>
+          <div class="chips" role="radiogroup" aria-labelledby="lblTaille">
+            <input type="radio" name="taille" id="t1" value="studio"><label for="t1">Studio</label>
+            <input type="radio" name="taille" id="t2" value="t2" checked><label for="t2">2 pièces</label>
+            <input type="radio" name="taille" id="t3" value="t3"><label for="t3">3 pièces</label>
+            <input type="radio" name="taille" id="t4" value="t4"><label for="t4">4 pièces et +</label>
+          </div>
+        </div>
+
+        <div class="fld">
+          <span class="lbl">Les petits plus</span>
+          <label class="check"><input type="checkbox" id="simMer"> Vue mer ou terrasse</label>
+          <label class="check" style="margin-top:10px"><input type="checkbox" id="simClim"> Climatisation</label>
+        </div>
+
+        <div class="fld">
+          <span class="lbl" id="lblDispo">Disponible à la location</span>
+          <div class="chips" role="radiogroup" aria-labelledby="lblDispo">
+            <input type="radio" name="dispo" id="d1" value="12" checked><label for="d1">Toute l’année</label>
+            <input type="radio" name="dispo" id="d2" value="6"><label for="d2">6 mois</label>
+            <input type="radio" name="dispo" id="d3" value="3"><label for="d3">L’été seulement</label>
+          </div>
+        </div>
+      </form>
+
+      <div class="card res" aria-live="polite">
+        <p class="sub">Ce qui vous reste, estimé, par an</p>
+        <p class="big"><span id="rNet">—</span> <small>€ / an</small></p>
+        <p class="sub">soit environ <strong id="rMois">—</strong> € par mois de location</p>
+        <dl>
+          <dt>Prix moyen par nuit</dt><dd id="rNuit">—</dd>
+          <dt>Nuits louées (estimation)</dt><dd id="rNuits">—</dd>
+          <dt>Loyers encaissés</dt><dd id="rBrut">—</dd>
+          <dt>Commission conciergerie (<span id="rPct">20</span> %)</dt><dd class="minus" id="rCom">—</dd>
+          <dt class="tot">Pour vous</dt><dd class="tot" id="rNet2">—</dd>
+        </dl>
+        <a class="btn btn-blue" href="#contact" id="simCta">Recevoir mon estimation précise →</a>
+        <p class="note">
+          Estimation indicative, basée sur des prix moyens constatés dans votre ville.
+          Le ménage est payé par les voyageurs. Les frais Airbnb et vos impôts ne sont pas déduits.
+          On affine le chiffre gratuitement après avoir vu votre logement.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CE QU'ON FAIT ═══ -->
+<section class="sec">
+  <div class="wrap">
+    <p class="eyebrow">Tout est inclus</p>
+    <h2>Ce qu’on fait pour vous</h2>
+    <div class="grid">
+      <div class="tile"><div class="ico" aria-hidden="true">📸</div><h3>L’annonce</h3><p>Photos, texte, publication sur Airbnb et Booking. Une annonce qui donne envie.</p></div>
+      <div class="tile"><div class="ico" aria-hidden="true">💬</div><h3>Les voyageurs</h3><p>On répond aux messages 7j/7, on accueille, on gère les imprévus.</p></div>
+      <div class="tile"><div class="ico" aria-hidden="true">🔑</div><h3>Les clés</h3><p>Boîte à clés ou serrure à code. Chaque voyageur a son code, rien ne se perd.</p></div>
+      <div class="tile"><div class="ico" aria-hidden="true">🧺</div><h3>Ménage et linge</h3><p>Ménage après chaque départ, draps et serviettes propres, contrôle en photos.</p></div>
+      <div class="tile"><div class="ico" aria-hidden="true">📈</div><h3>Les prix</h3><p>Le prix change selon la saison et les événements (Carnaval, Festival, Grand Prix…).</p></div>
+      <div class="tile"><div class="ico" aria-hidden="true">📊</div><h3>Votre espace</h3><p>Calendrier, revenus et relevés en ligne. Vous voyez tout, à tout moment.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ COMMENT ÇA MARCHE ═══ -->
+<section class="sec mist">
+  <div class="wrap">
+    <p class="eyebrow">Simple</p>
+    <h2>Comment ça marche</h2>
+    <ol class="steps">
+      <li><h3>On se parle</h3><p>Un appel de 10 minutes pour comprendre votre logement et vos attentes.</p></li>
+      <li><h3>On visite</h3><p>On passe voir le logement et on vous donne une estimation précise, gratuite.</p></li>
+      <li><h3>On prépare</h3><p>Photos, annonce, boîte à clés, linge. Tout est prêt en une semaine environ.</p></li>
+      <li><h3>Vous encaissez</h3><p>Les réservations arrivent. Vous suivez tout depuis votre espace.</p></li>
+    </ol>
+  </div>
+</section>
+
+<!-- ═══ TARIF ═══ -->
+<section class="sec">
+  <div class="wrap">
+    <p class="eyebrow">Tarif</p>
+    <h2>Un seul prix, clair</h2>
+    <div class="price">
+      <div>
+        <!-- [À CHANGER] doit être égal à COMMISSION dans le script -->
+        <p class="pct"><span id="pctBig">20</span> %</p>
+        <p class="lead" style="margin:8px 0 24px">des loyers encaissés. Si le logement ne loue pas, vous ne payez rien.</p>
+        <ul>
+          <li>Aucun frais d’inscription, aucun abonnement</li>
+          <li>Le ménage est payé par les voyageurs, pas par vous</li>
+          <li>Airbnb vous verse vos revenus directement</li>
+          <li>Relevé détaillé chaque mois</li>
+        </ul>
+      </div>
+      <!-- [À CHANGER] offre de lancement -->
+      <div class="offer">
+        <strong>Offre de lancement</strong>
+        <p>Pour nos premiers propriétaires : <b>le premier mois sans commission</b>.</p>
+        <p class="note" style="color:var(--ink-2)">Places limitées, par ville.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FAQ ═══ -->
+<section class="sec mist">
+  <div class="wrap">
+    <p class="eyebrow">Questions</p>
+    <h2>Vos questions</h2>
+    <div class="faq">
+      <details><summary>Est-ce que j’ai le droit de louer mon logement sur Airbnb ?</summary>
+        <p>Pour une résidence secondaire à Nice et dans beaucoup de villes de la Côte d’Azur, il faut une déclaration en mairie, et parfois une autorisation. On vous explique les démarches de votre ville lors du premier appel.</p></details>
+      <details><summary>Qui reçoit l’argent des locations ?</summary>
+        <p>Vous. Airbnb vous verse vos revenus directement sur votre compte. Nous vous facturons notre commission chaque mois, avec le détail de chaque séjour.</p></details>
+      <details><summary>Et si un voyageur abîme quelque chose ?</summary>
+        <p>On contrôle le logement après chaque départ, avec photos. En cas de dégât, on s’occupe de la demande auprès d’Airbnb pour vous faire rembourser.</p></details>
+      <details><summary>Je peux encore utiliser mon appartement ?</summary>
+        <p>Oui. Vous bloquez les dates que vous voulez depuis votre espace, quand vous voulez.</p></details>
+      <details><summary>Je suis engagé combien de temps ?</summary>
+        <!-- [À CHANGER] durée d'engagement réelle -->
+        <p>Pas de longue durée imposée. Vous pouvez arrêter avec un mois de préavis.</p></details>
+      <details><summary>Mon logement n’est pas meublé ou pas prêt.</summary>
+        <p>Parlons-en. On vous dit ce qu’il manque (linge, vaisselle, petit électroménager) et on peut s’en occuper pour vous.</p></details>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ CONTACT ═══ -->
+<section class="sec" id="contact">
+  <div class="wrap form-wrap">
+    <div>
+      <p class="eyebrow">Gratuit, sans engagement</p>
+      <h2>On vous rappelle</h2>
+      <p class="lead">Laissez votre numéro. On vous appelle sous 24 h pour affiner l’estimation.</p>
+      <div class="alt">
+        <a class="btn btn-out" href="tel:+33663798756">Appeler</a>
+        <a class="btn btn-out" id="waLink" href="https://wa.me/33663798756?text=Bonjour%2C%20je%20souhaite%20confier%20mon%20logement%20%C3%A0%20votre%20conciergerie." target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+    </div>
+
+    <form class="card" id="leadForm" novalidate>
+      <p class="recap" id="leadRecap" hidden></p>
+      <div class="row2">
+        <div class="fld"><label for="fNom">Nom</label><input type="text" id="fNom" name="nom" autocomplete="name" required></div>
+        <div class="fld"><label for="fTel">Téléphone</label><input type="tel" id="fTel" name="telephone" autocomplete="tel" inputmode="tel" required></div>
+      </div>
+      <div class="fld"><label for="fEmail">Email <span style="font-weight:400;color:var(--ink-3)">(facultatif)</span></label><input type="email" id="fEmail" name="email" autocomplete="email"></div>
+      <div class="fld"><label for="fAdr">Adresse ou quartier du logement</label><input type="text" id="fAdr" name="adresse" autocomplete="street-address" placeholder="ex. Nice, Port / Carré d’Or"></div>
+      <input class="hp" type="text" name="_gotcha" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <button class="btn btn-blue" type="submit" id="leadBtn" style="width:100%">Être rappelé</button>
+      <p class="msg" id="leadMsg" role="status"></p>
+      <p class="note">Vos informations servent uniquement à vous recontacter. <a href="/confidentialite">Confidentialité</a></p>
+    </form>
+  </div>
+</section>
+
+</main>
+
+<footer class="ft">
+  <div class="wrap ft-row">
+    <div>
+      <p style="color:#fff;font-weight:700;font-size:18px">Loc’Air Conciergerie</p>
+      <p style="margin-top:6px">Gestion de locations courte durée sur la Côte d’Azur.</p>
+      <p style="margin-top:12px"><a href="tel:+33663798756">06.63.79.87.56</a> · 7j/7</p>
+    </div>
+    <ul>
+      <li><a href="/mentions-legales">Mentions légales</a></li>
+      <li><a href="/confidentialite">Confidentialité</a></li>
+      <li><a href="/">Location de climatiseurs</a></li>
+    </ul>
+  </div>
+</footer>
+
+<nav class="bar" aria-label="Contact rapide">
+  <a class="btn btn-out" href="tel:+33663798756">Appeler</a>
+  <a class="btn btn-blue" href="#simulateur">Estimer mes revenus</a>
+</nav>
+
+<script>
+/* ══ [SIMULATEUR] — les seuls chiffres à ajuster ══════════════════════════
+   COMMISSION : part prise par la conciergerie sur les loyers.
+   NUIT       : prix moyen d'une nuit, sur l'année, à Nice.
+   VILLE      : combien la ville vaut par rapport à Nice (1 = pareil).
+   OCCUPATION : part des nuits louées selon la période ouverte
+                (l'été se remplit mieux que l'hiver).
+   Ce sont des ordres de grandeur prudents, à remplacer par les vrais
+   chiffres dès qu'on a quelques logements en gestion.
+═══════════════════════════════════════════════════════════════════════════ */
+const COMMISSION = 0.20;                                  // [À CHANGER]
+const NUIT  = { studio: 75, t2: 105, t3: 150, t4: 220 };  // [À CHANGER]
+const VILLE = { nice: 1, cannes: 1.15, antibes: 1.05, menton: 0.9, monaco: 1.5, autre: 0.9 };
+const OCCUPATION = { 12: 0.62, 6: 0.72, 3: 0.85 };
+const BONUS_MER = 1.2, BONUS_CLIM = 1.05;
+// Les mois ouverts sont les plus chers (été) : le prix moyen monte un peu
+const SAISON = { 12: 1, 6: 1.15, 3: 1.35 };
+
+const $ = id => document.getElementById(id);
+const eur = n => Math.round(n).toLocaleString('fr-FR');
+let derniere = null;
+
+function calcul(){
+  const ville  = $('simVille').value;
+  const taille = document.querySelector('input[name=taille]:checked').value;
+  const mois   = +document.querySelector('input[name=dispo]:checked').value;
+
+  let nuit = NUIT[taille] * VILLE[ville] * SAISON[mois];
+  if ($('simMer').checked)  nuit *= BONUS_MER;
+  if ($('simClim').checked) nuit *= BONUS_CLIM;
+
+  const nuits = Math.round(mois * 30.4 * OCCUPATION[mois]);
+  const brut  = nuit * nuits;
+  const com   = brut * COMMISSION;
+  const net   = brut - com;
+
+  $('rNuit').textContent  = eur(nuit) + ' €';
+  $('rNuits').textContent = nuits;
+  $('rBrut').textContent  = eur(brut) + ' €';
+  $('rCom').textContent   = '− ' + eur(com) + ' €';
+  $('rNet').textContent   = eur(net);
+  $('rNet2').textContent  = eur(net) + ' €';
+  $('rMois').textContent  = eur(net / mois);
+
+  derniere = {
+    ville: $('simVille').selectedOptions[0].text,
+    taille: document.querySelector('label[for=' + document.querySelector('input[name=taille]:checked').id + ']').textContent,
+    periode: document.querySelector('label[for=' + document.querySelector('input[name=dispo]:checked').id + ']').textContent,
+    vue_mer: $('simMer').checked, clim: $('simClim').checked,
+    estimation_net_an: Math.round(net)
+  };
+}
+
+const pct = Math.round(COMMISSION * 100);
+$('rPct').textContent = pct;
+$('pctBig').textContent = pct;
+$('simForm').addEventListener('input', calcul);
+$('simForm').addEventListener('change', calcul);
+calcul();
+
+// Le bouton du simulateur rappelle la simulation dans le formulaire
+$('simCta').addEventListener('click', () => {
+  if (!derniere) return;
+  const r = $('leadRecap');
+  r.textContent = `Votre simulation : ${derniere.taille} à ${derniere.ville}, ${derniere.periode.toLowerCase()} — environ ${eur(derniere.estimation_net_an)} € / an pour vous.`;
+  r.hidden = false;
+  if (!$('fAdr').value) $('fAdr').value = derniere.ville;
+});
+
+/* ══ Formulaire → Formspree (même boîte que le site Loc'Air) ══ */
+$('leadForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const msg = $('leadMsg'), btn = $('leadBtn');
+  const nom = $('fNom').value.trim(), tel = $('fTel').value.trim();
+  msg.className = 'msg';
+  if (!nom || tel.replace(/\D/g, '').length < 9) {
+    msg.className = 'msg err';
+    msg.textContent = 'Merci d’indiquer votre nom et un numéro de téléphone valide.';
+    (!nom ? $('fNom') : $('fTel')).focus();
+    return;
+  }
+  const data = Object.fromEntries(new FormData(e.target));
+  data.type = 'conciergerie';
+  data._subject = 'Conciergerie — nouveau propriétaire : ' + nom;
+  if (derniere) data.simulation = derniere;
+
+  btn.disabled = true; btn.textContent = 'Envoi…';
+  try {
+    const r = await fetch('https://formspree.io/f/mvzyngoy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!r.ok) throw new Error(r.status);
+    e.target.reset();
+    msg.className = 'msg ok';
+    msg.textContent = 'Merci ! On vous rappelle sous 24 h.';
+    btn.textContent = 'Envoyé ✓';
+  } catch (_) {
+    msg.className = 'msg err';
+    msg.innerHTML = 'L’envoi n’a pas marché. Appelez-nous au <a href="tel:+33663798756">06.63.79.87.56</a> ou écrivez-nous sur WhatsApp.';
+    btn.disabled = false; btn.textContent = 'Être rappelé';
+  }
+});
+</script>
+</body>
+</html>
