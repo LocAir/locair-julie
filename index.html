@@ -222,8 +222,8 @@ img{transition:transform .4s cubic-bezier(.4,0,.2,1),opacity .4s ease}
   --r-sm: 8px;
   --r:    12px;
   --r-lg: 16px;
-  --section-py:    80px;
-  --section-py-sm: 80px;
+  --section-py:    110px;
+  --section-py-sm: 90px;
 
   /* Ombres — subtiles sur fond blanc */
   --sh-xs: 0 1px 3px rgba(0,0,0,.06);
@@ -250,10 +250,10 @@ body{
 /* ── TYPOGRAPHIE GLOBALE ── */
 .sec-h2{
   font-family:var(--disp);
-  font-size:clamp(34px,4.2vw,56px);
+  font-size:clamp(38px,4.8vw,64px);
   font-weight:800;color:var(--ink);
-  line-height:1.02;letter-spacing:-.048em;
-  margin-bottom:32px;
+  line-height:1.0;letter-spacing:-.055em;
+  margin-bottom:36px;
   text-wrap:balance;
 }
 .sec-h2 em{font-style:italic;font-weight:800;color:var(--gold)}
@@ -672,9 +672,9 @@ body{
 }
 .hero-eye::before{content:none}
 .hero-h1{
-  font-family:var(--body);
-  font-size:clamp(38px,3.8vw,62px);
-  font-weight:800;line-height:1.04;letter-spacing:-.03em;
+  font-family:var(--disp);
+  font-size:clamp(42px,4.4vw,68px);
+  font-weight:800;line-height:1.02;letter-spacing:-.05em;
   color:var(--navy);margin-bottom:20px;max-width:100%;
   text-shadow:none;
   text-wrap:balance;
@@ -5151,6 +5151,33 @@ body[data-produit="raf"] .vb-only-clim{display:none!important}
 .entretien-btn svg{width:18px;height:18px;flex-shrink:0}
 .entretien-garantie{display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,.4)}
 .entretien-garantie svg{width:14px;height:14px;stroke:rgba(255,255,255,.35);flex-shrink:0}
+
+/* ── TYPOGRAPHIE — sous-titres de section ── */
+.vb-h2{font-size:clamp(34px,4vw,54px)!important;letter-spacing:-.048em!important;line-height:1.02!important}
+.vb-dire{font-size:16px!important;line-height:1.72!important}
+.sec-eye,.vb-eye{font-size:11.5px!important;letter-spacing:.1em!important}
+
+/* ── HERO — halo atmosphérique sur la carte ── */
+.hero-map-area::before{
+  content:'';position:absolute;inset:0;z-index:2;pointer-events:none;
+  background:linear-gradient(135deg,rgba(200,146,28,.06) 0%,transparent 55%),
+             linear-gradient(to top,rgba(0,0,0,.18) 0%,transparent 35%);
+}
+
+/* ── CTAs — glow pulsé sur le bouton principal ── */
+@keyframes cta-glow{0%,100%{box-shadow:0 4px 28px rgba(200,146,28,.28),0 1px 4px rgba(0,0,0,.08)}60%{box-shadow:0 6px 44px rgba(200,146,28,.52),0 1px 4px rgba(0,0,0,.08)}}
+.hero-cta{animation:cta-glow 3s ease-in-out infinite}
+.hero-cta:hover,.hero-cta:active{animation:none}
+.btn-blue{font-size:16px!important;padding:18px 48px!important;letter-spacing:-.02em!important}
+
+/* ── MICRO-ANIMATIONS — scroll reveal ── */
+.reveal{opacity:0;transform:translateY(24px);transition:opacity .65s cubic-bezier(.4,0,.2,1),transform .65s cubic-bezier(.4,0,.2,1)}
+.reveal.in{opacity:1;transform:none}
+.reveal-d1{transition-delay:.1s}
+.reveal-d2{transition-delay:.2s}
+.reveal-d3{transition-delay:.3s}
+.reveal-d4{transition-delay:.4s}
+@media(prefers-reduced-motion:reduce){.reveal{opacity:1!important;transform:none!important;transition:none!important}}
 </style>
 
 <!-- ON LIVRE PARTOUT — mot qui tourne -->
@@ -12939,6 +12966,24 @@ function cwBook(){
   _badgeUpdate();
 })();
 
+/* ── Micro-animations scroll reveal ── */
+(function(){
+  if(!window.IntersectionObserver)return;
+  var obs=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){e.target.classList.add('in');obs.unobserve(e.target);}
+    });
+  },{threshold:.1,rootMargin:'0px 0px -32px 0px'});
+  var sel='.vb-sec,.cat-card,.vb-step,.ri,.rv-card,.faq-item,.entretien-card,.vb-mach,.bento-card,.vb-esp-card';
+  document.querySelectorAll(sel).forEach(function(el,i){
+    el.classList.add('reveal');
+    var d=i%4;
+    if(d===1)el.classList.add('reveal-d1');
+    else if(d===2)el.classList.add('reveal-d2');
+    else if(d===3)el.classList.add('reveal-d3');
+    obs.observe(el);
+  });
+})();
 /* ── Avatars initiales dans les avis ── */
 (function(){
   var COLORS=['#000000','#2563eb','#0f766e','#7c3aed','#c2410c','#0369a1','#15803d','#b45309','#9d174d','#1e40af'];
