@@ -148,6 +148,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .mcard-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
 .mcard-late-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:3px 9px;border-radius:100px;background:var(--amber-bg);color:var(--amber)}
 .detail-late-badge{display:inline-block;font-size:12px;font-weight:800;color:var(--amber);background:var(--amber-bg);border-radius:100px;padding:4px 12px;margin-bottom:10px}
+/* Jour de la mission, bien visible sous le titre — avant, seul le créneau
+   horaire apparaissait ici (dans .sub, en petit et gris), jamais le jour :
+   voir missionDateBadgeText() pour le contexte terrain qui a motivé ça. */
+.detail-date-badge{display:flex;align-items:center;gap:8px;font-family:var(--disp);font-size:18px;font-weight:600;color:var(--black);margin-bottom:10px}
+.detail-date-creneau{font-family:var(--body);font-size:12.5px;font-weight:700;color:var(--grey);background:var(--bg);padding:3px 10px;border-radius:100px}
 /* Le gain d'une mission (surtout une nouvelle, à accepter/refuser) était
    noyé dans le sous-titre gris, à la même taille que le statut et le
    créneau — pourtant l'info la plus utile pour décider. Même code couleur
@@ -828,6 +833,23 @@ function frDate(iso){
   const d = new Date(iso+'T00:00:00');
   if(isNaN(d)) return iso;
   return d.toLocaleDateString('fr-FR', {day:'numeric', month:'long', year:'numeric'});
+}
+// Date de la mission mise en évidence sur l'écran détail — avant, seul le
+// créneau horaire (ex. "10h-12h") apparaissait sous le titre, jamais le
+// jour : un livreur ouvrant la mission plusieurs jours à l'avance pouvait la
+// lire comme "aujourd'hui" sans le remarquer (retour terrain, une
+// récupération du 5 prise pour le jour même). "Aujourd'hui"/"Demain" reprend
+// le repère déjà utilisé côté admin pour la même raison.
+function missionDateBadgeText(iso){
+  if(!iso) return '—';
+  const todayStr = todayParisStr();
+  const d = new Date(iso+'T00:00:00');
+  if(isNaN(d)) return iso;
+  const jourMois = d.toLocaleDateString('fr-FR', {day:'numeric', month:'long'});
+  if(iso === todayStr) return `Aujourd'hui ${jourMois}`;
+  if(iso === _isoAddDays(todayStr, 1)) return `Demain ${jourMois}`;
+  const weekday = d.toLocaleDateString('fr-FR', {weekday:'long'});
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${jourMois}`;
 }
 function escHtml(s){
   return String(s==null?'':s)
@@ -3628,8 +3650,9 @@ function renderDetail(){
       ${(['acceptee','en_route','arrivee','probleme'].includes(m.statut) && m.date_prevue<todayStr) ? `<div class="detail-late-badge">⏰ En retard</div>` : ''}
       ${((m.client||{}).express && m.creneau) ? `<div class="detail-late-badge">🚀 À livrer avant ${escHtml(String(m.creneau).split(/[–-]/).pop().trim())}</div>` : ''}
       <h1 style="display:flex;align-items:center;gap:8px">${typeIconSvg(m.type,22)}${missionTypeLabel(m)}</h1>
+      <div class="detail-date-badge"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><rect x="3.5" y="4.5" width="17" height="16" rx="2"/><path d="M3.5 9.5h17M8 3v3M16 3v3"/></svg>${escHtml(missionDateBadgeText(m.date_prevue))}${m.creneau?`<span class="detail-date-creneau">${escHtml(m.creneau)}</span>`:''}</div>
       ${m.montant_preview?`<div class="detail-earn">💶 ${Math.round(m.montant_preview/100)} €${(m.client||{}).hors_zone?' · Hors zone':''}${(m.client||{}).express?' · 🚀 Express':''}</div>`:''}
-      <p class="sub">${[STATUT_LABEL[m.statut]||m.statut, m.creneau?escHtml(m.creneau):''].filter(Boolean).join(' · ')}</p>
+      <p class="sub">${STATUT_LABEL[m.statut]||m.statut}</p>
       ${bodyHtml}
     </div>
   `;
