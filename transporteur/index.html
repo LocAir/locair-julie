@@ -265,6 +265,19 @@ input[type="checkbox"]{accent-color:var(--blue)}
    cohérent avec le fade déjà utilisé sur les overlays/sheets. */
 .screen-fade{animation:fadeInEl .2s ease}
 
+/* Scan QR climatiseur (livraison + retour) — plein écran plutôt qu'un sheet,
+   la caméra a besoin de toute la place. z-index sous .t-toast (200) : un
+   mauvais scan doit quand même afficher le toast d'alerte par-dessus. */
+.qr-scan-overlay{position:fixed;inset:0;background:#000;z-index:80;display:flex;flex-direction:column;animation:fadeInEl .2s ease}
+.qr-scan-overlay video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.qr-scan-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(70vw,260px);height:min(70vw,260px);border:3px solid #fff;border-radius:20px;box-shadow:0 0 0 2000px rgba(0,0,0,.45)}
+.qr-scan-top{position:relative;z-index:1;display:flex;align-items:center;gap:12px;padding:calc(16px + env(safe-area-inset-top)) 16px 12px}
+.qr-scan-close{width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;border:none;font-size:18px;flex-shrink:0}
+.qr-scan-title{color:#fff;font-weight:700;font-size:15px}
+.qr-scan-bottom{position:relative;z-index:1;margin-top:auto;padding:16px 16px calc(16px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:10px}
+.qr-scan-hint{color:#fff;text-align:center;font-size:13px;font-weight:600;text-shadow:0 1px 3px rgba(0,0,0,.5)}
+.btn-ghost-dark{background:rgba(255,255,255,.12);color:#fff;border:1.5px solid rgba(255,255,255,.35)}
+
 /* #tuto-fab / #notif-fab : avant flottants en bas d'écran (voir git blame),
    remontés dans la barre supérieure (.tb-icon-btn, voir plus haut) —
    chantier structurel, demande d'Aly. show()/updateWhoBadge() continuent de
@@ -716,6 +729,11 @@ input[type="checkbox"]{accent-color:var(--blue)}
 <div id="offline-banner" class="offline-banner hidden"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<!-- jsQR (décodage QR, scan du climatiseur à la livraison/au retour) — déjà
+     non-bloquant comme Leaflet ci-dessus ; unpkg.com déjà autorisé par la CSP
+     (vercel.json). Préféré à l'API navigateur BarcodeDetector : support bien
+     plus large (notamment Safari iOS). -->
+<script src="https://unpkg.com/jsqr@1.4.0/dist/jsQR.js" defer></script>
 <script>
 const API = (path) => '/api/' + path;
 // Même numéro que le contact public du site (index.html) — c'est la seule
@@ -762,6 +780,7 @@ let STATE = {
   isOffline: !navigator.onLine, // reflète l'évènement navigator online/offline, mis à jour en direct
   missionsStale: false,    // true si STATE.missions vient du cache local (dernier fetch en échec), pas du serveur
   missionsCacheSavedAt: null, // horodatage de ce cache local, affiché dans le bandeau hors-ligne
+  qrConfirmed: {},         // missionId -> [numéros de climatiseur confirmés par scan QR] — voir qrStepDone()
 };
 
 function show(id){
@@ -2806,8 +2825,12 @@ function actionBtnsForMission(m){
 // automatiquement sur la bonne étape.
 function missionStepDefs(m){
   const steps = [{key:'route', title:'En route'}, {key:'arrivee', title:'Arrivée'}];
-  if(m.type === 'livraison') steps.push({key:'installation', title:'Installation'}, {key:'signature', title:'Signature'});
-  else if(m.type === 'recuperation') steps.push({key:'preuve', title:'Photo appareil'}, {key:'vidange', title:'Vidange'});
+  // 'qr' : scan du QR collé sur le climatiseur, pour confirmer que c'est bien
+  // le bon appareil — demandé par Aly, dans cet ordre précis : scan PUIS
+  // signature du client (livraison), scan dès l'arrivée côté retour (rien à
+  // signer à la récupération). Voir qrStepAttendus()/qrScanStepHtml().
+  if(m.type === 'livraison') steps.push({key:'installation', title:'Installation'}, {key:'qr', title:'Climatiseur'}, {key:'signature', title:'Signature'});
+  else if(m.type === 'recuperation') steps.push({key:'qr', title:'Climatiseur'}, {key:'preuve', title:'Photo appareil'}, {key:'vidange', title:'Vidange'});
   else if(m.type === 'changement') steps.push({key:'vidange', title:'Vidange'}, {key:'ancien', title:'Ancien appareil'}, {key:'nouveau', title:'Nouvel appareil'});
   steps.push({key:'final', title:'Terminer'});
   return steps;
@@ -2815,6 +2838,7 @@ function missionStepDefs(m){
 function missionStepDoneFlag(m, key){
   if(key==='vidange') return Boolean(m.vidange_ok);
   if(key==='installation') return Boolean(m.demo_faite);
+  if(key==='qr') return qrStepDone(m);
   if(key==='signature') return Boolean(m.signature_client_ok);
   if(key==='preuve' || key==='ancien') return Boolean(m.photo_retour_ok);
   if(key==='nouveau') return Boolean(m.photo_installation_ok);
@@ -3021,6 +3045,18 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
         ? `<button class="btn btn-green btn-block" style="margin-top:6px" onclick="doAction('confirmer_demo')">✅ Confirmer la démonstration</button>`
         : ''}`;
   }
+  if(key === 'qr'){
+    const attendus = qrStepAttendus(m);
+    // Rien à comparer (appareil pas encore assigné à cette réservation) —
+    // n'a jamais bloqué le parcours pour un trou de données ailleurs,
+    // qrStepDone() renvoie déjà true dans ce cas donc cette étape est
+    // normalement sautée automatiquement ; ce texte ne s'affiche que si le
+    // livreur revient volontairement dessus via le stepper.
+    if(!attendus.length){
+      return `<p class="step-hint">Aucun climatiseur à confirmer sur cette mission.</p>`;
+    }
+    return qrScanStepHtml(m, attendus);
+  }
   if(key === 'signature'){
     if(m.signature_client_ok){
       return `<div style="text-align:center;padding:20px 0">
@@ -3118,6 +3154,164 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
     ${uploadPending ? '<p class="step-hint" style="color:var(--grey)">⏳ Envoi de la photo en cours…</p>' : ''}
     <button class="btn btn-green btn-block" id="mission-final-btn" ${(isLastRecup||hasFinalChecklist||checklistLoading||uploadPending||etatMaterielMissing)?'disabled':''} onclick="submitFinalMission('${okAction}')">${okLabel}</button>`;
 }
+
+// ── Scan QR du climatiseur (livraison + retour) ─────────────────────────────
+// Demande d'Aly : un QR collé sur chaque climatiseur (même étiquette, même
+// code, que celui déjà imprimé côté admin pour le pistolet scanner du dépôt —
+// voir admin/index.html printStockLabels(), qui encode juste le numéro en
+// clair) — le livreur le scanne à la livraison ET au retour pour confirmer
+// que c'est bien le bon appareil, avant de pouvoir continuer le parcours.
+// Pas de nouvelle colonne/table : on compare juste le numéro scanné à
+// m.appareil_numeros (déjà renvoyé par transporteur-missions.js) — la mise à
+// jour du stock elle-même se fait déjà automatiquement à la validation finale
+// de la mission (setAppareilsStatutForReservation côté serveur), le scan est
+// une vérification terrain en plus, pas un nouveau mécanisme de synchro.
+// Décodage via jsQR (chargé en <script defer>, voir <head>) plutôt que
+// l'API BarcodeDetector : support bien plus large (Safari iOS compris).
+// STATE.qrConfirmed n'est jamais envoyé au serveur ni persisté — perdu si
+// l'app recharge en cours de route, mais re-scanner prend 2 secondes.
+function qrStepAttendus(m){
+  return [...new Set((m.appareil_numeros||[]).map(Number).filter(n => !isNaN(n)))];
+}
+function qrStepDone(m){
+  const attendus = qrStepAttendus(m);
+  if(!attendus.length) return true; // rien à comparer : étape non bloquante
+  const confirmes = (STATE.qrConfirmed && STATE.qrConfirmed[m.id]) || [];
+  return attendus.every(n => confirmes.includes(n));
+}
+function qrScanStepHtml(m, attendus){
+  const confirmes = (STATE.qrConfirmed && STATE.qrConfirmed[m.id]) || [];
+  const remaining = attendus.filter(n => !confirmes.includes(n));
+  const plural = attendus.length > 1;
+  // Vue "déjà fait" en consultant cette étape après coup (clic sur une étape
+  // passée dans le stepper, voir goToWizardStep) — même langage visuel que
+  // l'étape "signature" une fois signée.
+  if(!remaining.length){
+    return `<div style="text-align:center;padding:20px 0">
+      <div style="font-size:48px;margin-bottom:10px">✅</div>
+      <p style="font-weight:700;font-size:16px;color:var(--green)">Climatiseur${plural?'s':''} confirmé${plural?'s':''}</p>
+      <p style="font-size:13px;color:var(--grey);margin-top:6px">n°${attendus.join(', ')}</p>
+    </div>`;
+  }
+  const progressHtml = confirmes.length
+    ? `<p class="step-hint" style="color:var(--green);font-weight:700">${confirmes.length}/${attendus.length} confirmé${confirmes.length>1?'s':''}</p>` : '';
+  return `
+    <p class="step-hint">📷 Scanne le QR collé sur ${plural?'chaque climatiseur':'le climatiseur'} pour confirmer que ${plural?'ce sont les bons appareils':"c'est le bon appareil"} — n°${remaining.join(', ')}.</p>
+    ${progressHtml}
+    <button class="btn btn-blue btn-block" onclick="openQrScanner()">📷 Scanner le QR</button>
+    <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="openQrManualEntry()">✍️ Je ne peux pas scanner</button>`;
+}
+let QR_SCAN_STREAM = null;
+let QR_SCAN_RAF = null;
+async function openQrScanner(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof window.jsQR !== 'function'){
+    openQrManualEntry();
+    return;
+  }
+  const overlay = document.createElement('div');
+  overlay.className = 'qr-scan-overlay';
+  overlay.id = 'qr-scan-overlay';
+  overlay.innerHTML = `
+    <video id="qr-scan-video" autoplay playsinline muted></video>
+    <canvas id="qr-scan-canvas" class="hidden"></canvas>
+    <div class="qr-scan-frame"></div>
+    <div class="qr-scan-top">
+      <button class="qr-scan-close" onclick="closeQrScanner()">✕</button>
+      <p class="qr-scan-title">Scanne le QR du climatiseur</p>
+    </div>
+    <div class="qr-scan-bottom">
+      <p class="qr-scan-hint">Vise l'étiquette collée sur le climatiseur</p>
+      <button class="btn btn-ghost-dark btn-block" onclick="openQrManualEntry()">✍️ Je ne peux pas scanner</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  try{
+    QR_SCAN_STREAM = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+  }catch(e){
+    closeQrScanner();
+    openQrManualEntry();
+    return;
+  }
+  const video = document.getElementById('qr-scan-video');
+  if(!video){ closeQrScanner(); return; } // overlay refermé pendant l'attente de la permission caméra
+  video.srcObject = QR_SCAN_STREAM;
+  qrScanLoop();
+}
+function closeQrScanner(){
+  if(QR_SCAN_RAF) cancelAnimationFrame(QR_SCAN_RAF);
+  QR_SCAN_RAF = null;
+  if(QR_SCAN_STREAM){ QR_SCAN_STREAM.getTracks().forEach(t => t.stop()); QR_SCAN_STREAM = null; }
+  document.getElementById('qr-scan-overlay')?.remove();
+}
+function qrScanLoop(){
+  const video = document.getElementById('qr-scan-video');
+  const canvas = document.getElementById('qr-scan-canvas');
+  if(!video || !canvas) return; // overlay refermé entre deux frames
+  if(video.readyState === video.HAVE_ENOUGH_DATA){
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(img.data, img.width, img.height);
+    if(code && code.data){ processQrScanResult(code.data); return; }
+  }
+  QR_SCAN_RAF = requestAnimationFrame(qrScanLoop);
+}
+// Partagé entre le scan caméra et la saisie manuelle (même validation) —
+// relance la boucle caméra seulement si elle tourne encore (pas le cas
+// depuis la saisie manuelle, où l'overlay caméra n'a jamais été ouvert).
+function processQrScanResult(raw){
+  const m = STATE.currentMission;
+  const numero = parseInt(String(raw).replace(/\D/g, ''), 10);
+  const relance = () => { if(document.getElementById('qr-scan-video')) QR_SCAN_RAF = requestAnimationFrame(qrScanLoop); };
+  if(!m || !numero){ relance(); return; }
+  const attendus = qrStepAttendus(m);
+  if(!attendus.includes(numero)){
+    showTToast(`⚠️ Ce n'est pas le bon climatiseur (n°${numero})`);
+    if(navigator.vibrate) navigator.vibrate(200);
+    relance();
+    return;
+  }
+  const confirmesAvant = (STATE.qrConfirmed && STATE.qrConfirmed[m.id]) || [];
+  if(confirmesAvant.includes(numero)){ relance(); return; } // déjà scanné, rien de plus à faire
+  if(!STATE.qrConfirmed) STATE.qrConfirmed = {};
+  STATE.qrConfirmed[m.id] = [...confirmesAvant, numero];
+  if(navigator.vibrate) navigator.vibrate(60);
+  renderDetail();
+  if(qrStepDone(m)){
+    closeQrScanner();
+    showTToast(attendus.length>1 ? '✅ Tous les climatiseurs confirmés' : `✅ Climatiseur n°${numero} confirmé`);
+  }else{
+    showTToast(`✅ n°${numero} confirmé — encore ${attendus.length - STATE.qrConfirmed[m.id].length}`);
+    relance();
+  }
+}
+function openQrManualEntry(){
+  closeQrScanner();
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'qr-manual-overlay';
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h1 style="margin-bottom:10px">✍️ Numéro du climatiseur</h1>
+      <p class="sub" style="margin-bottom:14px">Le numéro est écrit en grand à côté du QR, sur l'étiquette.</p>
+      <input type="text" id="qr-manual-input" inputmode="numeric" autocomplete="off" placeholder="Ex. 12" style="font-size:22px;text-align:center;font-weight:700"/>
+      <button class="btn btn-blue btn-block" style="margin-top:14px" onclick="submitQrManualEntry()">Valider</button>
+      <button class="forgot-link" onclick="closeQrManualEntry()">Annuler</button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeQrManualEntry(); });
+  document.getElementById('qr-manual-input')?.focus();
+}
+function closeQrManualEntry(){
+  document.getElementById('qr-manual-overlay')?.remove();
+}
+function submitQrManualEntry(){
+  const raw = document.getElementById('qr-manual-input')?.value || '';
+  closeQrManualEntry();
+  processQrScanResult(raw);
+}
+
 // Dernière récupération de la journée pour ce transporteur (aucune autre
 // récupération encore active aujourd'hui) : à ce moment, il doit passer par
 // le box pour tout déposer et recharger son sac avant la prochaine tournée.
