@@ -9,10 +9,11 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-title" content="Loc'Air Transporteur"/>
-<meta name="theme-color" content="#1a2b4a"/>
+<meta name="theme-color" content="#0E1F35"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet"/>
+<link rel="preload" href="/polices/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin/>
 <!-- Leaflet (carte des missions du jour) chargé en non-bloquant : la carte
      ne sert qu'à l'ouverture volontaire de l'écran carte, jamais à l'écran
      de connexion affiché en premier — sur un réseau faible sur le terrain,
@@ -21,28 +22,28 @@
 <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/></noscript>
 <style>
 :root{
-  /* Palette navy/blanc — Loc'Air rebrand */
-  --navy:#1a2b4a; --navy-d:#12203a; --navy-bg:#f4f6f9; --navy-bg2:#e8ecf2;
-  --text:#1a1a1a; --text-2:#555555; --text-3:#888888; --card:#ffffff;
-  /* Tokens CSS internes mis à jour pour le rebrand */
-  --blue:#1a2b4a; --blue-d:#12203a; --blue-lt:#e8ecf2;
-  --black:#1a1a1a; --black2:#1e2d45; --bg:#f4f6f9; --white:#ffffff;
-  /* --grey-soft assombri de #888 à #767676 (audit ergonomie, 2026-08-05) :
-     3.54:1 sur fond blanc, sous le seuil de lisibilité WCAG (4.5:1) pour du
-     texte — or utilisé sur des libellés bien réels (titres de section,
-     "Départ/Chez le client/Terminé" sous le stepper), pas juste des icônes
-     décoratives. Repassé à 4.54:1, en plein soleil sur le terrain ça change
-     la lisibilité, pas juste un détail. */
-  --grey:#555555; --grey2:#666666; --grey-soft:#767676; --rule:#e4e4e4; --gold:#c5a96c; --gold-lt:#f3ead9;
-  --green:#16a34a; --green-bg:#dcfce7; --red:#dc2626; --red-bg:#fee2e2; --amber:#d97706; --amber-bg:#fef3c7;
-  --disp:'Cormorant Garamond',Georgia,serif;
-  --body:'Inter',system-ui,sans-serif;
+  /* Palette de la marque Loc'Air (voir MARQUE.md) — style « Marine premium »
+     choisi par Aly (2026-10-01) : marine pour les fonds forts, sarcelle pour
+     tout ce qu'on touche, or seulement sur fond sombre. Les anciens noms
+     (--blue, --navy…) sont gardés pour ne rien casser dans le JS : seules
+     leurs valeurs changent. --blue = la couleur d'action (sarcelle). */
+  --navy:#0E1F35; --navy-d:#0A1729; --navy-bg:#F5F7FA; --navy-bg2:#E6EBF1;
+  --text:#0E1F35; --text-2:#57687C; --text-3:#5F6E80; --card:#ffffff;
+  --blue:#086E60; --blue-d:#065A4E; --blue-lt:#E7F3F0;
+  --black:#0E1F35; --black2:#1e2d45; --bg:#F5F7FA; --white:#ffffff;
+  /* Gris de texte : tous ≥ 4,5:1 sur blanc (MARQUE.md §4) — compte en plein
+     soleil sur le terrain (audit ergonomie, 2026-08-05). */
+  --grey:#57687C; --grey2:#57687C; --grey-soft:#5F6E80; --rule:#E6EBF1;
+  --gold:#C9A227; --gold-txt:#7A6313; --gold-lt:#F6EFD6;
+  --green:#0F7A3D; --green-bg:#dcfce7; --red:#dc2626; --red-bg:#fee2e2; --amber:#B45309; --amber-bg:#fef3c7;
+  --disp:'Bricolage','DM Sans',system-ui,sans-serif;
+  --body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
   --r-sm:8px; --r:14px; --r-lg:20px;
-  --sh-xs:0 1px 3px rgba(26,43,74,.04),0 1px 2px rgba(26,43,74,.03);
-  --sh-sm:0 2px 12px rgba(26,43,74,.06),0 1px 4px rgba(26,43,74,.04);
-  --sh-md:0 8px 40px rgba(26,43,74,.09),0 2px 10px rgba(26,43,74,.05);
-  --sh-lg:0 24px 80px rgba(26,43,74,.11),0 6px 24px rgba(26,43,74,.06);
-  --sh-blue:0 6px 24px rgba(26,43,74,.32);
+  --sh-xs:0 1px 3px rgba(14,31,53,.05),0 1px 2px rgba(14,31,53,.04);
+  --sh-sm:0 2px 12px rgba(14,31,53,.06),0 1px 4px rgba(14,31,53,.04);
+  --sh-md:0 8px 28px rgba(14,31,53,.10),0 2px 8px rgba(14,31,53,.05);
+  --sh-lg:0 24px 80px rgba(14,31,53,.12),0 6px 24px rgba(14,31,53,.06);
+  --sh-blue:0 6px 24px rgba(14,31,53,.32);
   /* Hauteur visuelle de .tabbar (hors zone de sécurité iPhone, ajoutée à
      part via env(safe-area-inset-bottom) partout où c'est utilisé) — un
      seul endroit à changer si la barre change de taille. */
@@ -75,7 +76,7 @@ body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:1
    boutons d'action se faire couper. */
 @media (max-width:370px){.logo-tag{display:none}}
 .tb-icon-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;border:none;background:var(--navy-bg2);color:var(--blue);font-size:15px;line-height:1;cursor:pointer;transition:background-color .15s ease}
-.tb-icon-btn:active{background-color:rgba(26,43,74,.16)}
+.tb-icon-btn:active{background-color:rgba(14,31,53,.16)}
 .tb-icon-btn .tab-badge{position:absolute;top:-4px;right:-4px}
 .topbar-greeting{font-family:var(--disp);font-size:16px;font-weight:600;color:var(--black);text-align:center}
 .eyebrow{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;color:var(--grey);margin-bottom:14px;display:flex;align-items:center;gap:10px}
@@ -104,7 +105,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .btn-red{background:var(--white);color:var(--red);border:1.5px solid rgba(220,38,38,.2)}
 .btn-red:hover:not(:disabled){background:var(--red-bg)}
 .btn-amber{background:var(--amber);color:#fff;box-shadow:var(--sh-xs)}
-.btn-grey{background:transparent;color:var(--blue);border:1.5px solid rgba(26,43,74,.2)}
+.btn-grey{background:transparent;color:var(--blue);border:1.5px solid rgba(14,31,53,.2)}
 .btn-grey:hover:not(:disabled){border-color:var(--grey-soft);color:var(--black)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn:active:not(:disabled){transform:scale(.98)}
@@ -208,7 +209,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
 /* Pulse en ombre plutôt qu'en opacité : reste lisible en plein soleil au
    lieu de faire disparaître le texte à moitié du cycle. */
 .media-btn.pulse{animation:media-btn-pulse 1.4s ease-in-out infinite}
-@keyframes media-btn-pulse{0%,100%{box-shadow:0 0 0 0 rgba(26,43,74,.3)}50%{box-shadow:0 0 0 7px rgba(26,43,74,0)}}
+@keyframes media-btn-pulse{0%,100%{box-shadow:0 0 0 0 rgba(14,31,53,.3)}50%{box-shadow:0 0 0 7px rgba(14,31,53,0)}}
 /* "Prévenir de mon arrivée" : geste à faire avant tout le reste (photo,
    installation...) — même logique d'ombre pulsée que .media-btn.pulse
    ci-dessus (jamais d'opacité, reste lisible en plein soleil), plus un léger
@@ -256,7 +257,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .probleme-list{display:flex;flex-direction:column;gap:12px}
 .probleme-list .btn{margin-top:0}
 
-.overlay{position:fixed;inset:0;background:rgba(26,43,74,.6);display:flex;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px);animation:fadeInEl .2s ease}
+.overlay{position:fixed;inset:0;background:rgba(14,31,53,.6);display:flex;align-items:flex-end;justify-content:center;z-index:50;backdrop-filter:blur(2px);animation:fadeInEl .2s ease}
 .sheet{background:var(--white);width:100%;max-width:520px;border-radius:24px 24px 0 0;padding:26px 22px 34px;box-shadow:var(--sh-lg);max-height:88vh;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:slideUpEl .26s cubic-bezier(.22,.61,.36,1)}
 @keyframes fadeInEl{from{opacity:0}to{opacity:1}}
 @keyframes slideUpEl{from{transform:translateY(18px);opacity:0}to{transform:none;opacity:1}}
@@ -337,7 +338,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
   display:flex;gap:2px;margin:0;position:fixed;left:0;right:0;bottom:0;z-index:45;
   background:var(--white);border-top:1px solid var(--rule);
   padding:7px 6px calc(7px + env(safe-area-inset-bottom));
-  box-shadow:0 -4px 20px rgba(26,43,74,.08);
+  box-shadow:0 -4px 20px rgba(14,31,53,.08);
 }
 .tabbar button{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
@@ -453,7 +454,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .vchip.verse{background:var(--green-bg);color:var(--green)}
 
 /* Célébration */
-.celebrate{position:fixed;inset:0;background:rgba(26,43,74,.72);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px;backdrop-filter:blur(3px)}
+.celebrate{position:fixed;inset:0;background:rgba(14,31,53,.72);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px;backdrop-filter:blur(3px)}
 .celebrate-card{background:var(--white);border-radius:var(--r-lg);padding:38px 28px;text-align:center;max-width:360px;box-shadow:var(--sh-lg)}
 .celebrate-emoji{font-size:50px;margin-bottom:12px}
 .celebrate-title{font-family:var(--disp);font-size:24px;font-weight:600;margin-bottom:8px}
@@ -487,14 +488,14 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .map-popup-btn{display:block;width:100%;margin-top:8px;padding:9px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:var(--body)}
 .map-pin-teardrop{
   width:32px;height:32px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);
-  box-shadow:0 3px 10px rgba(26,43,74,.35);
+  box-shadow:0 3px 10px rgba(14,31,53,.35);
   display:flex;align-items:center;justify-content:center;
 }
 .map-pin-teardrop span{transform:rotate(45deg);font-size:15px}
 .map-pin-teardrop.livraison{background:var(--blue)}
 .map-pin-teardrop.recuperation{background:var(--amber)}
 .map-pin-teardrop.future{opacity:.55}
-.leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 8px 28px rgba(26,43,74,.22)}
+.leaflet-popup-content-wrapper{border-radius:12px;box-shadow:0 8px 28px rgba(14,31,53,.22)}
 .leaflet-popup-content{font-family:var(--body);margin:12px 14px;font-size:13.5px;line-height:1.5}
 
 /* Calendrier planning — identique à admin/index.html (même composant, mêmes
@@ -522,7 +523,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .gantt-dow{font-size:9px;color:var(--grey);text-transform:uppercase;font-weight:700}
 .gantt-dnum{font-size:12.5px;font-weight:700;color:var(--black)}
 .gantt-today{background:var(--blue-lt)}
-.gantt-weekend{background:rgba(26,43,74,.05)}
+.gantt-weekend{background:rgba(14,31,53,.05)}
 /* .gantt-cell.gantt-head (2 classes) est plus spécifique que .gantt-today
    (1 classe) et gagnait toujours sur la case d'en-tête du jour "aujourd'hui"
    — elle restait blanche alors que toute la colonne en dessous était
@@ -538,6 +539,83 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .gantt-dot-confirmee{background:var(--green)}
 .gantt-legend .gantt-status-dot{margin-right:5px}
 @media(max-width:640px){.gantt-nav{justify-content:space-between}}
+
+/* ── Style « Marine premium » (choisi par Aly, 2026-10-01) ──────────────────
+   Maquette : https://claude.ai/artifact/RgfPf9UUDdDa9Mrq9zvEo6 (style A).
+   Un bandeau marine en haut d'écran (logo + goutte dorée + salutation), la
+   carte de la mission du moment posée par-dessus en blanc, la sarcelle pour
+   tout ce qui se touche. Regroupé ici, après les règles d'origine, pour que
+   le changement de style se lise d'un bloc. */
+@font-face{
+  font-family:'Bricolage';src:url('/polices/bricolage-latin.woff2') format('woff2');
+  font-weight:700;font-style:normal;font-display:swap;
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,
+    U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:'Bricolage';src:url('/polices/bricolage-latin-ext.woff2') format('woff2');
+  font-weight:700;font-style:normal;font-display:swap;
+  unicode-range:U+0100-024F,U+0259,U+1E00-1EFF,U+2020,U+20A0-20AB,U+20AD-20CF,
+    U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+h1,h2,.dash-hero h2,.week-card-title,.stat-big .amount,.stat-tile .n,.celebrate-title,.celebrate-amount,.detail-date-badge{font-weight:700;letter-spacing:-.015em}
+
+/* Bandeau marine : pleine largeur même quand .wrap est centré (ombre géante
+   coupée sur les côtés par clip-path, sans toucher à la mise en page). */
+.topbar{
+  background:var(--navy);color:#fff;
+  margin:-20px -16px 18px;padding:calc(14px + env(safe-area-inset-top)) 18px 22px;
+  box-shadow:0 0 0 100vmax var(--navy);clip-path:inset(0 -100vmax);
+  gap:14px;
+}
+.logo{font-family:var(--disp);font-size:23px;font-weight:700;color:#fff;letter-spacing:-.01em}
+.logo-tag{color:rgba(255,255,255,.74);font-size:11px;font-weight:700;letter-spacing:.12em;margin-left:6px}
+.gt{position:relative;color:transparent;margin:0 .06em;font-style:normal}
+.gt::before{content:"";position:absolute;left:50%;top:.21em;width:.30em;height:.30em;margin-left:-.15em;
+  background:var(--gold);border-radius:50% 50% 50% 0;transform:rotate(-25deg)}
+.tb-icon-btn{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.10);color:#fff}
+.tb-icon-btn:active{background-color:rgba(255,255,255,.2)}
+.tb-icon-btn svg{width:19px;height:19px}
+.tb-icon-btn .tab-badge{border-color:var(--navy)}
+/* Logo + 4 icônes (actualiser/aide/notifs/déconnexion) ne tiennent pas avec
+   l'étiquette « Transporteur » sur un téléphone courant (390px) : elle cède
+   la place, les actions restent toutes visibles. */
+@media (max-width:440px){.logo-tag{display:none}}
+.topbar-greeting{font-family:var(--disp);font-size:28px;font-weight:700;line-height:1.1;letter-spacing:-.02em;color:#fff;text-align:left}
+button.tb-icon-btn:focus-visible,.topbar a:focus-visible{outline-color:#fff}
+
+/* Sur l'Accueil, la première carte « flotte » à cheval sur le bandeau.
+   Pas quand un bandeau (position partagée, hors-ligne) s'intercale entre
+   les deux : la carte le recouvrirait. */
+@supports selector(:has(a)){
+  .wrap:has(#dashboard-screen:not(.hidden)):not(:has(#tracking-badge:not(.hidden),#offline-banner:not(.hidden))) .topbar{padding-bottom:70px}
+  .wrap:has(#dashboard-screen:not(.hidden)):not(:has(#tracking-badge:not(.hidden),#offline-banner:not(.hidden))) #dashboard-screen{margin-top:-62px;position:relative}
+}
+
+/* Carte de la mission du moment : blanche, posée sur le marine. */
+.dash-hero,.dash-hero.calm{background:var(--white);color:var(--black);border:1px solid var(--rule);border-radius:var(--r-lg);padding:22px 20px;box-shadow:0 10px 32px rgba(14,31,53,.14)}
+.dash-hero .eyebrow,.dash-hero.calm .eyebrow{color:var(--gold-txt);font-weight:700;letter-spacing:.12em}
+.dash-hero .eyebrow::before{background:var(--gold-txt)}
+.dash-hero h2{font-size:25px;line-height:1.1;margin-bottom:8px}
+.dash-hero p{opacity:1;color:var(--grey);font-size:14.5px}
+.dash-hero .stepper{margin:2px 0 18px;padding-top:16px;border-top:1px solid var(--rule)}
+
+/* Boutons : sarcelle, coins de 14px comme la maquette. */
+.btn{border-radius:14px}
+.btn-grey{color:var(--blue);border-color:rgba(8,110,96,.28)}
+.eyebrow::before{background:var(--blue)}
+
+/* Progression Départ → Chez le client → Terminé : sarcelle. */
+.step.done .step-dot,.step.done .step-line{background:var(--blue)}
+.step.active .step-dot{background:var(--white);color:var(--blue);border:2px solid var(--blue);box-shadow:0 0 0 4px var(--blue-lt)}
+.step-label{font-size:11.5px}
+.wiz-step-dot.wsd-cur{background:var(--navy)}
+
+/* Solde « Mes gains » : marine plein, montant en or (fond sombre). */
+.stat-big{background:var(--navy)}
+.stat-big .amount{color:var(--gold)}
+.tabbar{box-shadow:0 -4px 20px rgba(14,31,53,.06)}
+.tabbar button{font-size:11px}
 </style>
 </head>
 <body>
@@ -545,7 +623,7 @@ input[type="checkbox"]{accent-color:var(--blue)}
 
   <div class="topbar">
     <div class="topbar-row">
-      <div class="logo">Loc<em>'Air</em> <span class="logo-tag">Transporteur</span></div>
+      <div class="logo">Loc<i class="gt">'</i>Air <span class="logo-tag">Transporteur</span></div>
       <div class="topbar-actions">
         <button class="tb-icon-btn hidden" id="refresh-badge" onclick="location.reload()" title="Actualiser" aria-label="Actualiser">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
@@ -896,7 +974,7 @@ function updateWhoBadge(){
   if(STATE.transporteurNom){
     const prenom = STATE.transporteurNom.trim().split(/\s+/)[0] || '';
     if(greeting){
-      greeting.textContent = prenom ? `Bonjour, ${prenom} 👋` : '';
+      greeting.textContent = prenom ? `Bonjour, ${prenom}` : '';
       greeting.classList.toggle('hidden', !prenom);
     }
     document.getElementById('refresh-badge')?.classList.remove('hidden');
@@ -1991,6 +2069,7 @@ function renderDashboard(){
         <div class="eyebrow">${eyebrow}</div>
         <h2>${m.type==='autre'?escHtml(nom):nom}</h2>
         <p>${typeIconSvg(m.type,14)} ${missionTypeLabel(m)} · 📍 ${escHtml(adresse)}</p>
+        ${m.statut==='a_faire'?'':renderStepper(m)}
         <button class="btn btn-blue btn-block" onclick="${cta}">${ctaLabel}</button>
       </div>`;
   };
@@ -3451,7 +3530,7 @@ function initSigCanvas(){
   canvas.height = Math.round(rect.height * dpr);
   _sigCtx = canvas.getContext('2d');
   _sigCtx.scale(dpr, dpr);
-  _sigCtx.strokeStyle = '#1a2b4a';
+  _sigCtx.strokeStyle = '#0E1F35';
   _sigCtx.lineWidth   = 2.5;
   _sigCtx.lineCap     = 'round';
   _sigCtx.lineJoin    = 'round';
