@@ -4804,12 +4804,36 @@ input:-webkit-autofill:focus{
       <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--ink2)" stroke-width="1.5"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
       <span>Côte d'Azur · Nice · Cannes · Monaco</span>
     </div>
-    <!-- Overlay texte style Hivern -->
-    <div class="hero-map-overlay" aria-hidden="true">
+    <!-- Overlay texte + formulaire style Hivern (desktop) -->
+    <div class="hero-map-overlay">
       <p class="hero-map-eyebrow">CÔTE D'AZUR · 7J/7</p>
       <h1 class="hero-map-h1">L'air frais,<br><em>livré chez vous.</em></h1>
       <p class="hero-map-price"><span class="hero-map-from">À partir de</span> <strong class="hero-map-num">84 €</strong> <span class="hero-map-unit">/ semaine</span></p>
-      <button class="hero-map-cta" onclick="if(typeof openModal==='function')openModal();else document.querySelector('.p-submit')&&document.querySelector('.p-submit').click()" type="button">RÉSERVER →</button>
+
+      <!-- Formulaire épuré : timing + adresse + CTA -->
+      <div class="hmo-form">
+        <div class="hmo-timing">
+          <button class="hmo-tm hmo-tm-on" id="hmo-now" type="button"
+            onclick="this.classList.add('hmo-tm-on');document.getElementById('hmo-later').classList.remove('hmo-tm-on');selectTiming&&selectTiming('now',event)">
+            ⚡ Livrer maintenant
+          </button>
+          <button class="hmo-tm" id="hmo-later" type="button"
+            onclick="this.classList.add('hmo-tm-on');document.getElementById('hmo-now').classList.remove('hmo-tm-on');selectTiming&&selectTiming('later',event)">
+            📅 Planifier
+          </button>
+        </div>
+        <div class="hmo-addr-row">
+          <input type="text" id="hmo-addr" class="hmo-addr-input"
+            placeholder="Votre adresse de livraison…" autocomplete="off"
+            oninput="var p=document.getElementById('panel-addr');if(p)p.value=this.value;p&&p.dispatchEvent(new Event('input',{bubbles:true}))">
+          <button class="hmo-submit" type="button"
+            onclick="var a=document.getElementById('hmo-addr').value;var p=document.getElementById('panel-addr');if(p)p.value=a;if(typeof panelSubmit==='function')panelSubmit()">
+            RÉSERVER →
+          </button>
+        </div>
+        <p class="hmo-trust">Sans caution · Livraison 7j/7 · +500 clients livrés</p>
+      </div>
+
       <a class="hero-map-sec" href="#catalogue">COMMENT ÇA MARCHE →</a>
     </div>
     <!-- Badge zone active -->
@@ -5968,6 +5992,82 @@ body[data-produit="raf"] .vb-only-clim{display:none!important}
 .step-dot.stp-done{background:var(--forest)!important;color:#fff!important}
 .step-dot.stp-cur{background:var(--forest)!important;color:#fff!important;box-shadow:0 0 0 3px rgba(43,90,61,.18)!important}
 .step-dot.stp-pnd{background:rgba(0,0,0,.06)!important;color:var(--ink2)!important}
+
+/* ══════════════════════════════════════════════════
+   HERO PLEIN ÉCRAN — photo + formulaire épuré
+   Même structure que Hivern.vercel.app
+   ══════════════════════════════════════════════════ */
+
+/* Desktop : cacher le panneau gauche */
+@media(min-width:769px){
+  .hero-panel{ display:none!important; }
+  .hero-map-area{
+    position:absolute!important;inset:0!important;
+    width:100%!important;height:100%!important;
+  }
+}
+
+/* Mobile : cacher le form de l'overlay, garder le panel simplifié */
+@media(max-width:768px){
+  .hmo-form{ display:none!important; }
+  .hero-map-eyebrow,.hero-map-h1,.hero-map-price,.hero-map-sec{ display:none!important; }
+  /* Dans le panel mobile : ne garder que timing + adresse + submit */
+  .hero-panel-top-spacer,.hero-product-card,.hero-descriptor-label,
+  .hero-micro-trust,#hero-smart-line,.hero-raf-hint{ display:none!important; }
+}
+
+/* ── Formulaire overlay (desktop) ── */
+.hmo-form{
+  width:100%!important;max-width:480px!important;
+  margin-bottom:16px!important;
+}
+.hmo-timing{
+  display:flex!important;gap:6px!important;margin-bottom:10px!important;
+}
+.hmo-tm{
+  border:1.5px solid rgba(255,255,255,.35)!important;
+  border-radius:100px!important;
+  background:rgba(255,255,255,.12)!important;
+  color:#fff!important;font-size:13px!important;font-weight:600!important;
+  padding:8px 16px!important;cursor:pointer!important;
+  backdrop-filter:blur(6px)!important;
+  transition:background .15s,border-color .15s!important;
+}
+.hmo-tm-on{
+  background:#fff!important;color:var(--ink,#1a1a1a)!important;
+  border-color:#fff!important;
+}
+.hmo-addr-row{
+  display:flex!important;align-items:center!important;
+  background:rgba(255,255,255,.96)!important;
+  border-radius:14px!important;
+  padding:6px 6px 6px 16px!important;
+  box-shadow:0 8px 40px rgba(0,0,0,.28)!important;
+  gap:6px!important;
+  backdrop-filter:blur(8px)!important;
+}
+.hmo-addr-input{
+  flex:1!important;border:none!important;background:transparent!important;
+  font-size:15px!important;color:var(--ink,#1a1a1a)!important;
+  outline:none!important;font-family:var(--body)!important;
+  min-width:0!important;
+}
+.hmo-addr-input::placeholder{ color:#aaa!important; }
+.hmo-submit{
+  border-radius:10px!important;
+  background:var(--gold)!important;color:#000!important;
+  border:none!important;font-weight:700!important;
+  font-size:12px!important;letter-spacing:.08em!important;
+  padding:13px 20px!important;cursor:pointer!important;
+  white-space:nowrap!important;flex-shrink:0!important;
+  transition:background .15s!important;
+}
+.hmo-submit:hover{ background:#d4a030!important; }
+.hmo-trust{
+  font-size:11.5px!important;color:rgba(255,255,255,.55)!important;
+  margin-top:8px!important;margin-bottom:0!important;
+  letter-spacing:.03em!important;
+}
 
 /* ── NAV LOGO — cercle vert forêt style Hivern ── */
 .logo{
