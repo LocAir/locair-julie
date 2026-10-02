@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from blog_contenu import ARTICLES
 
 PAR_SLUG = {a['slug']: a for a in ARTICLES}
+NOMBRES = {6:'Six',7:'Sept',8:'Huit',9:'Neuf',10:'Dix',11:'Onze',12:'Douze',13:'Treize',14:'Quatorze',15:'Quinze'}
 
 def bloc_faq(faq):
     """Les questions sont ÉCRITES SUR LA PAGE, pas seulement dans les données
@@ -43,7 +44,7 @@ def page_article(a):
        "headline": a['titre_seo'],
        "description": a['desc'],
        "inLanguage": "fr-FR",
-       "datePublished": DATE_ISO, "dateModified": DATE_ISO,
+       "datePublished": a.get('date_iso', DATE_ISO), "dateModified": a.get('date_iso', DATE_ISO),
        "author": EDITEUR, "publisher": EDITEUR,
        "image": BASE + "/og-locair.png",
        "mainEntityOfPage": {"@type":"WebPage","@id": url},
@@ -73,6 +74,12 @@ def page_article(a):
     <a class="btn btn-1" href="/pro">Demander un devis →</a>
     <a class="btn btn-out" href="tel:+33663798756">06.63.79.87.56</a>
     <p class="mini">Loc'Air Pro · rafraîchisseurs d'air adiabatiques pour magasins, restaurants, entrepôts et événements.</p>'''
+    elif a.get('urgence'):
+        appel = '''    <h2>Au frais aujourd'hui.</h2>
+    <p>Express sous 2h pour toute commande passée avant 18h (+60&nbsp;€). Sinon, livraison le lendemain entre 8h et 12h, 7 jours sur 7. Aucune caution, installé sans percer.</p>
+    <a class="btn btn-1" href="/reserver#catalogue">Réserver maintenant →</a>
+    <a class="btn btn-out" href="tel:+33663798756">06.63.79.87.56</a>
+    <p class="mini">Tout le 06&nbsp;: Nice, Cannes, Antibes, Menton et alentours · 4,9/5 sur Google.</p>'''
     else:
         appel = '''    <h2>L'air frais dès demain matin.</h2>
     <p>Livraison entre 8h et 12h, 7 jours sur 7. Aucune caution, kit de calfeutrage posé, annulation gratuite jusqu'à la livraison.</p>
@@ -112,7 +119,7 @@ def page_article(a):
     <h1>{a['h1']}</h1>
     <p class="dire">{a['resume']}</p>
     <div class="tete-meta">
-      <span>Mis à jour le <b>{DATE_FR}</b></span>
+      <span>Mis à jour le <b>{a.get('date_fr', DATE_FR)}</b></span>
       <span><b>{mn} min</b> de lecture</span>
       <span>Écrit par <b>Aly</b>, qui livre</span>
     </div>
@@ -170,7 +177,7 @@ def page_index():
        "description":"Les guides de Loc'Air sur la location de climatiseurs mobiles et de rafraîchisseurs d'air à Nice : choisir sa machine, comprendre les prix, installer sans percer, tenir une canicule.",
        "publisher": EDITEUR,
        "blogPost":[{"@type":"BlogPosting","headline": a['titre_seo'],
-                    "description": a['desc'], "datePublished": DATE_ISO,
+                    "description": a['desc'], "datePublished": a.get('date_iso', DATE_ISO),
                     "url": f"{BASE}/blog/{a['slug']}"} for a in ARTICLES]},
       {"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
         {"@type":"ListItem","position":1,"name":"Accueil","item": BASE + "/"},
@@ -210,7 +217,7 @@ def page_index():
     <p class="fil"><a href="/">Accueil</a><span>›</span>Guides</p>
     <span class="kicker">Les guides</span>
     <h1>Tout ce qu'on nous demande,<em> écrit une bonne fois.</em></h1>
-    <p class="dire">Six guides, écrits par l'équipe qui livre. Aucun chiffre inventé&nbsp;: tout ce qui est écrit ici est le prix, la machine et la méthode de Loc'Air.</p>
+    <p class="dire">{NOMBRES.get(len(ARTICLES), len(ARTICLES))} guides, écrits par l'équipe qui livre. Aucun chiffre inventé&nbsp;: tout ce qui est écrit ici est le prix, la machine et la méthode de Loc'Air.</p>
   </div>
 </header>
 

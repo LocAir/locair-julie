@@ -39,7 +39,7 @@ def pied():
   <div class="in">
     <div class="pied-grid">
       <div>
-        <h4>Nos guides</h4>
+        <h3>Nos guides</h3>
         <ul>
           <li><a href="/blog">Tous les guides</a></li>
           <li><a href="/blog/climatiseur-mobile-ou-rafraichisseur-air">Clim ou rafraîchisseur&nbsp;?</a></li>
@@ -47,7 +47,7 @@ def pied():
         </ul>
       </div>
       <div>
-        <h4>Informations</h4>
+        <h3>Informations</h3>
         <ul>
           <li><a href="/cgv">Conditions générales</a></li>
           <li><a href="/mentions-legales">Mentions légales</a></li>
@@ -56,7 +56,7 @@ def pied():
         </ul>
       </div>
       <div>
-        <h4>Nous joindre</h4>
+        <h3>Nous joindre</h3>
         <ul>
           <li><a href="tel:+33663798756">06.63.79.87.56</a></li>
           <li><a href="https://wa.me/33663798756" target="_blank" rel="noopener">WhatsApp</a></li>
@@ -64,12 +64,13 @@ def pied():
         </ul>
       </div>
       <div>
-        <h4>Zones desservies</h4>
+        <h3>Nos villes</h3>
         <ul>
-          <li>Nice Centre · Promenade des Anglais</li>
-          <li>Vieux-Nice · Cimiez · Libération</li>
-          <li>Magnan · Riquier · Caucade</li>
-          <li>Saint-Isidore · Moulins</li>
+          <li><a href="/location-climatiseur-nice">Nice</a></li>
+          <li><a href="/location-climatiseur-cannes">Cannes</a></li>
+          <li><a href="/location-climatiseur-antibes">Antibes</a></li>
+          <li><a href="/location-climatiseur-monaco">Monaco</a></li>
+          <li><a href="/location-climatiseur-menton">Menton</a></li>
         </ul>
       </div>
     </div>

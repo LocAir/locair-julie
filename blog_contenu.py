@@ -386,3 +386,312 @@ faq=[
 suite=["climatiseur-mobile-ou-rafraichisseur-air", "prix-location-climatiseur-mobile-nice"],
 pro=True,
 ))
+
+# ══ 7 ══════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="clim-en-panne-solution-urgence",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Urgence",
+titre_seo="Clim en panne en pleine chaleur : que faire ?",
+h1="Votre clim vous lâche en pleine chaleur&nbsp;?<em> Voilà quoi faire, dans l'ordre.</em>",
+court="Clim en panne",
+desc="Clim en panne en pleine chaleur et réparateur débordé ? Les bons réflexes, et une clim de remplacement livrée sous 2h en Express.",
+resume="Le réparateur ne passe pas avant des jours. Vous, vous avez chaud ce soir. Voici comment tenir, et comment être au frais aujourd'hui.",
+chapo="Une clim tombe toujours en panne au pire moment : le jour où il fait le plus chaud, quand tous les réparateurs sont débordés. Bonne nouvelle : on n'est pas obligé d'attendre la réparation pour retrouver le frais.",
+corps="""
+<h2 id="verifier">D'abord, trois vérifications simples</h2>
+<p>Avant d'appeler qui que ce soit, prenez deux minutes&nbsp;:</p>
+<ul>
+  <li><b>Le disjoncteur.</b> Une clim qui force par forte chaleur peut faire sauter son disjoncteur. Regardez le tableau électrique.</li>
+  <li><b>La télécommande.</b> Piles, mode (froid et pas ventilation ou chauffage), température demandée.</li>
+  <li><b>Le filtre.</b> Un filtre bouché par la poussière peut faire tourner la clim sans qu'elle refroidisse.</li>
+</ul>
+<p>Si rien de tout ça ne change quoi que ce soit, c'est une vraie panne. Il faut un réparateur. Et en été, il faut souvent attendre.</p>
+
+<h2 id="attente">Le vrai problème&nbsp;: l'attente</h2>
+<p>Une pièce détachée à commander, un technicien qui n'a pas de créneau avant la semaine prochaine… Pendant ce temps, l'appartement chauffe. Les nuits deviennent difficiles, surtout avec des enfants, un bébé, une personne âgée ou des animaux.</p>
+<p>C'est exactement ce qu'une cliente nous a écrit dans son avis Google&nbsp;: <i>«&nbsp;Je me suis retrouvée avec ma clim en panne par cette chaleur avec mes chats et un bébé à la maison et j'ai eu la chance de tomber là-dessus, vraiment au top&nbsp;!&nbsp;»</i></p>
+
+<h2 id="relais">La solution&nbsp;: une clim de relais, le temps de la réparation</h2>
+<p>Louer un climatiseur mobile pour quelques jours, c'est garder une pièce au frais pendant que votre clim est réparée. Pas besoin d'acheter un appareil que vous n'utiliserez plus après.</p>
+<ul>
+  <li><b>Livraison sous 2h en Express</b> si vous commandez avant 18h (+60&nbsp;€). Sinon, livraison le lendemain matin entre 8h et 12h.</li>
+  <li><b>Installé sans percer.</b> Le kit fenêtre se pose et se retire sans outil et sans laisser de marque.</li>
+  <li><b>Aucune caution.</b> Vous payez la location, rien d'autre.</li>
+  <li><b>Minimum 7 jours</b>, à 12&nbsp;€ par jour la première semaine. Si la réparation traîne, vous prolongez en ligne et le prix par jour baisse.</li>
+</ul>
+
+<h2 id="quelle-piece">Quelle pièce rafraîchir en premier&nbsp;?</h2>
+<p>La chambre. Un climatiseur mobile refroidit une pièce fermée, pas tout l'appartement. Le plus important, c'est de bien dormir&nbsp;: on met la clim là où on passe la nuit. La journée, on ferme les volets et on se regroupe dans cette pièce.</p>
+<p>Votre clim en panne était une clim fixe et vous voulez un confort proche&nbsp;? La <b>PortaSplit</b> est notre appareil le plus proche d'une clim fixe, sans travaux. Elle refroidit, et elle chauffe aussi.</p>
+
+<h2 id="eviter">Ce qu'il vaut mieux éviter</h2>
+<ul>
+  <li><b>Acheter un ventilateur en pensant qu'il refroidit.</b> Il brasse l'air chaud, il ne fait pas baisser la température.</li>
+  <li><b>Acheter une clim mobile en urgence</b> dans le premier magasin venu, pour une panne qui sera réparée dans quelques jours.</li>
+  <li><b>Laisser la fenêtre grande ouverte</b> autour d'une clim mobile&nbsp;: l'air chaud rentre aussi vite qu'il sort. C'est tout l'intérêt du <a href="/blog/installer-climatiseur-mobile-sans-percer">kit de calfeutrage</a>.</li>
+</ul>
+""",
+faq=[
+ ("En combien de temps pouvez-vous livrer un climatiseur si ma clim est en panne ?",
+  "En Express, sous 2h, si vous commandez avant 18h (supplément de 60 €). Sinon, nous livrons le lendemain matin entre 8h et 12h, 7 jours sur 7."),
+ ("Puis-je louer un climatiseur juste le temps de la réparation ?",
+  "Oui. La location dure 7 jours minimum, et vous pouvez la prolonger en ligne si la réparation prend plus de temps que prévu."),
+ ("Faut-il percer un mur pour installer le climatiseur de remplacement ?",
+  "Non. Le kit fenêtre se pose et se retire sans outil et sans perçage. Il ne laisse aucune marque."),
+],
+suite=["installer-climatiseur-mobile-sans-percer", "prix-location-climatiseur-mobile-nice"],
+urgence=True,
+))
+
+# ══ 8 ══════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="pas-de-climatisation-logement",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Urgence",
+titre_seo="Pas de clim chez soi : la solution sans travaux",
+h1="Pas de clim chez vous&nbsp;?<em> Pas besoin de travaux pour avoir frais.</em>",
+court="Pas de clim chez soi",
+desc="Locataire, copropriété qui refuse, budget serré : installer une clim fixe n'est pas toujours possible. Comment avoir frais cet été sans percer ni acheter.",
+resume="Locataire, copropriété, budget : installer une clim fixe n'est pas toujours possible. Avoir frais, si.",
+chapo="Beaucoup d'appartements de la Côte d'Azur n'ont pas de climatisation. Souvent, ce n'est pas un choix : on est locataire, la copropriété refuse le bloc sur la façade, ou on ne veut pas dépenser des milliers d'euros pour quelques semaines de chaleur.",
+corps="""
+<h2 id="pourquoi">Pourquoi tant de logements n'ont pas de clim</h2>
+<ul>
+  <li><b>Vous êtes locataire.</b> Vous ne pouvez pas percer un mur ni poser un bloc dehors sans l'accord du propriétaire.</li>
+  <li><b>La copropriété dit non.</b> Un bloc extérieur sur une façade demande souvent un vote, et la réponse est parfois négative.</li>
+  <li><b>Le prix.</b> Une clim fixe, c'est l'appareil plus la pose par un professionnel. Pour quelques semaines de canicule par an, le calcul ne tient pas toujours.</li>
+</ul>
+
+<h2 id="solution">La solution&nbsp;: une clim qui se pose et repart</h2>
+<p>Un climatiseur mobile se pose par terre, se branche sur une prise normale et sort l'air chaud par la fenêtre grâce à une gaine. Le kit fenêtre bouche le reste de l'ouverture. <b>Pas de perçage, pas de bloc sur la façade, rien à demander à personne.</b></p>
+<p>À la fin de la location, on vient le reprendre. Votre logement est exactement comme avant.</p>
+
+<h2 id="choisir">Quel appareil pour quel logement</h2>
+<div class="tab">
+<table>
+  <thead><tr><th scope="col">Votre situation</th><th scope="col">Notre conseil</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Une chambre ou un salon à rafraîchir</th><td><b>Climatiseur mobile</b>, de 9&nbsp;000 à 12&nbsp;000 BTU</td></tr>
+    <tr><th scope="row">Vous voulez le confort d'une clim fixe</th><td><b>PortaSplit</b>, A++ et silencieuse, sans travaux</td></tr>
+    <tr><th scope="row">Une terrasse, un garage, une véranda ouverte</th><td><b>Rafraîchisseur d'air</b>, sans gaine</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Pas sûr de votre choix&nbsp;? Le guide <a href="/blog/climatiseur-mobile-ou-rafraichisseur-air">climatiseur mobile ou rafraîchisseur d'air</a> explique la différence en cinq minutes.</p>
+
+<h2 id="louer">Louer plutôt qu'acheter</h2>
+<p>Louer, c'est payer seulement les semaines où il fait vraiment chaud. Et quand l'appareil a un souci, ce n'est pas votre problème&nbsp;: on le remplace ou on vous rembourse. C'est écrit dans le contrat.</p>
+<p>Le prix baisse avec la durée&nbsp;: 12&nbsp;€ par jour la première semaine, jusqu'à 8&nbsp;€ par jour à partir de 22 jours. Le détail est dans <a href="/blog/prix-location-climatiseur-mobile-nice">notre guide des prix</a>, et le vrai calcul location contre achat dans <a href="/blog/louer-ou-acheter-climatiseur-mobile">celui-ci</a>.</p>
+
+<h2 id="vite">Et si c'est pour aujourd'hui</h2>
+<p>Les canicules arrivent vite. Si vous commandez avant 18h, l'Express vous livre <b>sous 2h</b> (+60&nbsp;€). Sinon, c'est le lendemain matin entre 8h et 12h, week-end et jours fériés compris.</p>
+""",
+faq=[
+ ("Je suis locataire, ai-je le droit d'installer un climatiseur mobile ?",
+  "Oui. Le climatiseur mobile ne demande aucun perçage : le kit se pose sur la fenêtre et se retire sans outil ni marque. Vous n'avez pas besoin d'être propriétaire."),
+ ("Un climatiseur mobile peut-il rafraîchir tout un appartement ?",
+  "Non. Il refroidit une pièce fermée, en général une chambre ou un salon. Pour plusieurs pièces, il faut plusieurs appareils."),
+ ("Faut-il laisser une caution ?",
+  "Non. Pas de chèque, pas d'empreinte bancaire : vous payez la location, rien d'autre."),
+],
+suite=["climatiseur-mobile-ou-rafraichisseur-air", "louer-ou-acheter-climatiseur-mobile"],
+urgence=True,
+))
+
+# ══ 9 ══════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="climatiseur-demenagement-travaux-bebe",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Situations",
+titre_seo="Déménagement, travaux, bébé : une clim temporaire",
+h1="Un été de transition&nbsp;?<em> Une clim pour la durée qu'il faut.</em>",
+court="Une clim de transition",
+desc="Nouvel appartement sans clim, travaux en cours, arrivée d'un bébé, proche à héberger : louer une clim juste le temps de la transition, sans acheter.",
+resume="Nouvel appartement, travaux, bébé, proche hébergé : il y a des étés où l'on a besoin du frais pour un temps précis.",
+chapo="Il y a des étés à part. On vient d'emménager, la cuisine est en travaux, un bébé arrive, on accueille un parent pour quelques semaines. Dans ces moments-là, on n'a ni le temps ni l'envie d'acheter et d'installer une clim. On a juste besoin du frais, tout de suite, pour une durée précise.",
+corps="""
+<h2 id="demenagement">Vous venez d'emménager</h2>
+<p>Le nouvel appartement n'a pas de clim, ou elle ne marche pas. Les cartons sont partout et vous ne savez pas encore si vous voulez faire installer une clim fixe. Une location vous laisse le temps de décider, sans dormir dans la chaleur.</p>
+<p>Le kit fenêtre se pose sans percer&nbsp;: rien à abîmer dans un logement que vous découvrez à peine.</p>
+
+<h2 id="travaux">Vous êtes en travaux</h2>
+<p>Votre clim fixe sera posée dans quelques semaines, ou la pièce où elle se trouve est en chantier. Une clim mobile fait le relais dans la pièce où vous vivez pendant ce temps. À la fin, on vient la reprendre&nbsp;: vous n'avez rien à démonter.</p>
+
+<h2 id="bebe">Un bébé arrive, ou il est déjà là</h2>
+<p>La chambre d'un bébé doit rester à une température douce, surtout la nuit. C'est une des premières raisons pour lesquelles les familles nous appellent. Pour une chambre où quelqu'un dort, nos conseils&nbsp;:</p>
+<ul>
+  <li><b>La PortaSplit</b> est silencieuse et classée A++. Elle chauffe aussi, ce qui la rend utile au-delà de l'été.</li>
+  <li><b>Un climatiseur mobile</b> fonctionne aussi très bien. Le technicien vous règle le mode le plus calme au moment de la pose.</li>
+  <li>Dans tous les cas, on rafraîchit la pièce avant le coucher, porte fermée.</li>
+</ul>
+
+<h2 id="proche">Vous accueillez un proche</h2>
+<p>Un parent âgé qui vient passer l'été, un proche qui se remet chez vous&nbsp;: les grosses chaleurs sont plus difficiles à supporter pour certaines personnes. Une chambre au frais change le séjour. Et quand le séjour se termine, la location aussi.</p>
+
+<h2 id="duree">Louer pour la bonne durée</h2>
+<p>La location dure <b>7 jours minimum</b>. Ensuite, le prix par jour baisse avec la durée totale&nbsp;: 10&nbsp;€ de 8 à 14 jours, 9&nbsp;€ de 15 à 21 jours, 8&nbsp;€ à partir de 22 jours. Si la transition dure plus longtemps que prévu, vous prolongez en ligne.</p>
+<p>Et si la situation est urgente, l'Express livre <b>sous 2h</b> pour toute commande passée avant 18h (+60&nbsp;€).</p>
+""",
+faq=[
+ ("Quel appareil choisir pour la chambre d'un bébé ?",
+  "La PortaSplit, silencieuse et classée A++. Un climatiseur mobile convient aussi : le technicien règle le mode le plus calme à la pose."),
+ ("Puis-je prolonger la location si mes travaux prennent du retard ?",
+  "Oui, la prolongation se fait en ligne. Plus la durée totale est longue, plus le prix par jour baisse."),
+ ("Est-ce que je dois démonter l'appareil à la fin ?",
+  "Non. À la fin de la location, nous revenons chercher l'appareil. Vous n'avez rien à démonter."),
+],
+suite=["pas-de-climatisation-logement", "prix-location-climatiseur-mobile-nice"],
+))
+
+# ══ 10 ═════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="climatisation-mariage-salle-des-fetes",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Événements",
+titre_seo="Mariage en été : garder ses invités au frais",
+h1="Un mariage en plein été&nbsp;?<em> Vos invités au frais, du vin d'honneur à la piste.</em>",
+court="Mariage et salle des fêtes",
+desc="Chapiteau, salle des fêtes, jardin : comment rafraîchir un mariage ou une réception en été sur la Côte d'Azur. Quel appareil, combien, et à quel prix.",
+resume="Chapiteau, salle des fêtes, jardin : comment garder une fête agréable quand il fait trente degrés.",
+chapo="Un mariage en juillet sur la Côte d'Azur, c'est la lumière, la mer, les photos. C'est aussi une salle ou un chapiteau qui chauffe en fin d'après-midi, des invités en costume, et une piste de danse où plus personne ne tient. Ça se prévoit.",
+corps="""
+<h2 id="probleme">Pourquoi une salle de fête est difficile à rafraîchir</h2>
+<p>Une salle des fêtes ou un chapiteau, c'est un grand volume, des portes qui s'ouvrent sans arrêt et beaucoup de monde. Un climatiseur a besoin d'une pièce fermée&nbsp;: ici, l'air frais sortirait aussi vite qu'il est produit. Et sous un chapiteau, il n'y a même pas de fenêtre où passer la gaine.</p>
+
+<h2 id="rafraichisseur">La bonne machine&nbsp;: le rafraîchisseur d'air</h2>
+<p>Le rafraîchisseur fait passer l'air sur de l'eau. En s'évaporant, l'eau prend de la chaleur à l'air, qui ressort plus frais. Il ne lui faut ni gaine ni fenêtre&nbsp;: <b>une prise ordinaire et de l'eau</b>. Il a même besoin que l'air se renouvelle, ce qui tombe bien dans une salle où les portes restent ouvertes.</p>
+<p>On ne cherche pas à refroidir tout le volume. On rafraîchit <b>les gens</b>&nbsp;: les tables, la piste, le buffet. C'est ce qui rend l'opération possible.</p>
+<p>Ses limites, pour être honnêtes&nbsp;: dans un lieu complètement fermé, il ajoute de l'humidité et perd son effet. Et un jour très humide au bord de la mer, la baisse est plus faible. Nous en tenons compte en conseillant parfois un appareil de plus.</p>
+
+<h2 id="ou">Où placer les appareils</h2>
+<ul>
+  <li><b>Près de la piste de danse.</b> C'est là qu'on a le plus chaud.</li>
+  <li><b>Vers les tables d'honneur.</b> Ceux qu'on photographie toute la soirée.</li>
+  <li><b>À l'entrée ou au buffet</b>, là où les invités se regroupent.</li>
+</ul>
+<p>Notre technicien installe, met en route et vous montre le fonctionnement. Il revient tout reprendre après la fête.</p>
+
+<h2 id="maison">Une réception à la maison</h2>
+<p>Pour un repas de famille dans une pièce fermée, ou pour la chambre des mariés, c'est un climatiseur mobile qu'il vous faut. Il refroidit une pièce fermée et se pose sans percer.</p>
+
+<h2 id="prix">Combien ça coûte</h2>
+<p>Le rafraîchisseur se loue <b>40&nbsp;€ HT par jour</b> la première semaine. Un forfait unique de <b>120&nbsp;€ HT</b> couvre la livraison, l'installation, la mise en route et la reprise, quel que soit le nombre d'appareils. Aucune caution. Le prix exact s'affiche tout de suite sur <a href="/pro">la page Loc'Air Pro</a>.</p>
+<p>Conseil&nbsp;: réservez dès que la date et le lieu sont fixés. En plein été, mieux vaut s'y prendre tôt.</p>
+""",
+faq=[
+ ("Peut-on climatiser un chapiteau de mariage ?",
+  "Pas avec un climatiseur : il faut une pièce fermée et une fenêtre pour la gaine. Sous un chapiteau, on utilise des rafraîchisseurs d'air, qui n'ont besoin que d'une prise et d'eau."),
+ ("Qui installe et reprend les appareils ?",
+  "Notre technicien. Il livre, installe, met en route et revient tout reprendre après l'événement. C'est compris dans le forfait de 120 € HT."),
+ ("Combien d'appareils faut-il pour une salle des fêtes ?",
+  "Cela dépend du volume, des ouvertures et du nombre d'invités. Le plus simple est de nous envoyer quelques photos du lieu sur WhatsApp : nous vous conseillons le bon nombre."),
+],
+suite=["rafraichir-stand-salon-evenement", "rafraichisseur-adiabatique-entreprise"],
+pro=True,
+))
+
+# ══ 11 ═════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="rafraichir-stand-salon-evenement",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Événements",
+titre_seo="Stand, salon, marché : rafraîchir un espace ouvert",
+h1="Un stand en plein soleil&nbsp;?<em> Rafraîchissez les gens, pas le parc des expositions.</em>",
+court="Stand et salon",
+desc="Stand de salon, marché, tournage, fête de village : rafraîchir un espace ouvert sans gaine ni travaux, avec un rafraîchisseur d'air livré et installé.",
+resume="Salon, marché, tournage, fête de village : l'espace est ouvert, il fait chaud, et les visiteurs ne restent pas.",
+chapo="Sur un stand, la chaleur fait fuir les visiteurs et fatigue l'équipe. Les gens passent vite, ne s'arrêtent pas, ne discutent pas. Un peu d'air frais au bon endroit change la journée.",
+corps="""
+<h2 id="probleme">Un espace ouvert ne se climatise pas</h2>
+<p>Un stand de salon, un barnum sur un marché, un plateau de tournage, une buvette de fête de village&nbsp;: l'air circule de partout. Un climatiseur refroidirait la rue. Il lui faut aussi une fenêtre pour sa gaine, et il n'y en a pas.</p>
+
+<h2 id="solution">Le rafraîchisseur d'air, fait pour ça</h2>
+<p>Le rafraîchisseur souffle un air rafraîchi par l'évaporation de l'eau. Il fonctionne justement quand l'air se renouvelle. Il lui faut seulement <b>une prise ordinaire et de l'eau</b>&nbsp;: pas de gaine, pas de percement, pas de gaz réfrigérant.</p>
+<p>Il consomme aussi bien moins d'électricité qu'un climatiseur. Sur un événement où plusieurs appareils partagent le même branchement, ça compte.</p>
+
+<h2 id="placer">Où le mettre sur un stand</h2>
+<ul>
+  <li><b>Vers la zone où les visiteurs s'arrêtent</b>&nbsp;: le comptoir, la démonstration, la caisse.</li>
+  <li><b>Vers l'équipe</b>, qui reste debout toute la journée.</li>
+  <li><b>Jamais face au vent dominant</b>&nbsp;: l'air frais doit rester sur le stand.</li>
+</ul>
+
+<h2 id="limites">Ce qu'il faut savoir avant</h2>
+<ul>
+  <li><b>Il faut de l'eau.</b> Un réservoir à remplir, ou un raccordement quand c'est possible. On règle ce point avant la livraison.</li>
+  <li><b>L'humidité compte.</b> Un jour très humide en bord de mer, la baisse de température est plus faible.</li>
+  <li><b>Ce n'est pas un climatiseur.</b> Pour une salle de réunion fermée, c'est un climatiseur mobile qu'il vous faut, et nous en louons aussi.</li>
+</ul>
+
+<h2 id="prix">Le prix, affiché</h2>
+<p><b>40&nbsp;€ HT par jour</b> de location la première semaine, puis moins avec la durée. Un forfait unique de <b>120&nbsp;€ HT</b> pour la livraison, l'installation, la mise en route et la reprise, quel que soit le nombre d'appareils. Aucune caution, facture avec TVA réglable par virement. Le calcul se fait en direct sur <a href="/pro">la page Loc'Air Pro</a>.</p>
+""",
+faq=[
+ ("Faut-il un branchement spécial pour un rafraîchisseur d'air ?",
+  "Non, une prise ordinaire suffit. Il faut aussi de l'eau : un réservoir à remplir ou un raccordement quand c'est possible."),
+ ("Est-ce que ça marche en plein air ?",
+  "Oui, dans un espace ouvert ou qui s'aère, c'est justement là qu'il est efficace. On oriente l'air vers les gens, pas vers tout l'espace."),
+ ("Puis-je louer pour un seul week-end ?",
+  "Oui, les événements de quelques jours font partie de nos locations. Le prix s'affiche selon le nombre de jours sur la page Loc'Air Pro."),
+],
+suite=["climatisation-mariage-salle-des-fetes", "rafraichisseur-adiabatique-entreprise"],
+pro=True,
+))
+
+# ══ 12 ═════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="climatiseur-airbnb-location-saisonniere",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Airbnb",
+titre_seo="Airbnb sans clim : équiper son logement pour l'été",
+h1="Votre Airbnb n'a pas de clim&nbsp;?<em> Vos voyageurs le remarqueront.</em>",
+court="Airbnb sans clim",
+desc="Sur la Côte d'Azur, un logement sans clim en été, ce sont des avis déçus. Louer une clim pour la saison, sans travaux ni perçage, livrée et installée.",
+resume="En été sur la Côte d'Azur, la clim fait partie de ce que les voyageurs regardent en premier.",
+chapo="Un voyageur qui a eu chaud toute la nuit ne le cache pas dans son avis. Et sur la Côte d'Azur en juillet, «&nbsp;climatisation&nbsp;» est une des premières cases que l'on coche en cherchant un logement.",
+corps="""
+<h2 id="enjeu">Pourquoi c'est important pour un Airbnb</h2>
+<ul>
+  <li><b>Les voyageurs filtrent.</b> En été, beaucoup cherchent directement les logements avec climatisation.</li>
+  <li><b>Les avis restent.</b> Une nuit trop chaude, c'est un commentaire qui suit l'annonce pendant longtemps.</li>
+  <li><b>Les urgences arrivent pendant les séjours.</b> Une clim qui tombe en panne un samedi soir, avec des voyageurs sur place, c'est le pire scénario.</li>
+</ul>
+
+<h2 id="sans-travaux">Équiper sans travaux</h2>
+<p>Installer une clim fixe dans un logement loué, c'est des travaux, parfois un accord de la copropriété, et un logement indisponible pendant ce temps. Une clim en location se pose <b>sans percer</b>&nbsp;: le kit fenêtre se pose et se retire sans outil, sans marque. Parfait pour un logement qui doit rester impeccable.</p>
+
+<h2 id="appareil">Quel appareil pour quel logement</h2>
+<ul>
+  <li><b>Studio ou chambre</b>&nbsp;: un climatiseur mobile suffit.</li>
+  <li><b>Logement haut de gamme</b>&nbsp;: la PortaSplit, A++ et silencieuse, plus proche du confort d'une clim fixe. Elle chauffe aussi, utile en mi-saison.</li>
+  <li><b>Terrasse ou jardin</b>&nbsp;: un rafraîchisseur d'air, qui fonctionne en espace ouvert.</li>
+</ul>
+
+<h2 id="saison">Louer pour la saison</h2>
+<p>Plus la location est longue, moins le jour coûte cher&nbsp;: de 12&nbsp;€ par jour la première semaine à 8&nbsp;€ par jour à partir de 22 jours. Pour un été complet, c'est le tarif le plus bas.</p>
+<p>Et si l'appareil a un souci pendant un séjour&nbsp;? On le remplace ou on vous rembourse. C'est écrit dans le contrat. Nous répondons 7j/7 de 8h à 20h, par téléphone ou WhatsApp.</p>
+
+<h2 id="dernier-moment">Un voyageur arrive ce soir&nbsp;?</h2>
+<p>L'Express livre <b>sous 2h</b> pour toute commande passée avant 18h (+60&nbsp;€). De quoi régler le problème avant l'arrivée.</p>
+
+<h2 id="conciergerie">Vous gérez plusieurs logements&nbsp;?</h2>
+<p>Loc'Air a aussi une <a href="/conciergerie">conciergerie Airbnb</a> sur la Côte d'Azur&nbsp;: annonce, voyageurs, clés, ménage et prix. Pour les propriétaires qui préfèrent ne rien gérer.</p>
+""",
+faq=[
+ ("Le climatiseur laisse-t-il des traces dans le logement ?",
+  "Non. Le kit fenêtre se pose et se retire sans perçage ni outil. Il ne laisse aucune marque."),
+ ("Que se passe-t-il si l'appareil tombe en panne pendant un séjour ?",
+  "Nous remplaçons l'appareil ou nous vous remboursons. C'est écrit dans le contrat. Nous répondons 7j/7 de 8h à 20h."),
+ ("Peut-on louer pour toute la saison ?",
+  "Oui. Le prix par jour baisse avec la durée totale : 8 € par jour à partir de 22 jours pour un climatiseur mobile."),
+],
+suite=["pas-de-climatisation-logement", "installer-climatiseur-mobile-sans-percer"],
+urgence=True,
+))
