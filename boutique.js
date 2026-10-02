@@ -145,14 +145,27 @@
     var nom = [p.marque, p.modele].filter(Boolean).join(' ');
     var idv = 'b-ville-' + i;
 
-    /* La photo : celle de l'admin si elle existe, sinon celle de notre
-       climatiseur mobile. Posée par attribut, jamais par innerHTML. */
+    /* La photo : celle de l'admin si elle existe. Posée par attribut,
+       jamais par innerHTML. */
     var ph = el('div', 'b-photo');
-    var img = document.createElement('img');
-    img.src = (typeof p.photo_url === 'string' && /^(https:\/\/|\/)/.test(p.photo_url)) ? p.photo_url : '/hero-clim-900.webp';
-    img.alt = nom;
-    img.loading = i ? 'lazy' : 'eager';
-    ph.appendChild(img);
+    if (typeof p.photo_url === 'string' && /^(https:\/\/|\/)/.test(p.photo_url)) {
+      var img = document.createElement('img');
+      img.src = p.photo_url;
+      img.alt = nom;
+      img.loading = i ? 'lazy' : 'eager';
+      ph.appendChild(img);
+    } else {
+      /* Pas de photo dans l'admin : un dessin au trait, pas une photo
+         d'un autre appareil. */
+      var ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('class', 'b-ico'); svg.setAttribute('aria-hidden', 'true');
+      [['rect', {x: 6, y: 2.5, width: 12, height: 19, rx: 2}], ['path', {d: 'M9 6h6M9 9h6M9 18h.01'}]].forEach(function (f) {
+        var n = document.createElementNS(ns, f[0]);
+        Object.keys(f[1]).forEach(function (k) { n.setAttribute(k, f[1][k]); });
+        svg.appendChild(n);
+      });
+      ph.appendChild(svg);
+    }
     ph.appendChild(el('span', 'etiquette', 'En stock'));
     carte.appendChild(ph);
 
