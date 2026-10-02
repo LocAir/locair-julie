@@ -34,4 +34,13 @@ function todayParis() {
   return dateInParis(new Date());
 }
 
-module.exports = { isValidDate, addDays, todayParis, dateInParis };
+// Heure qu'il est à Nice (0 à 23). Sert à couper l'Express à 18 h : un
+// livreur ne part pas sous 2 h à 21 h.
+function heureParis(d) {
+  const date = d instanceof Date ? d : new Date(d || Date.now());
+  return parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', hourCycle: 'h23' }).format(date), 10);
+}
+const EXPRESS_HEURE_LIMITE = 18;
+function expressPossible(d) { return heureParis(d) < EXPRESS_HEURE_LIMITE; }
+
+module.exports = { isValidDate, addDays, todayParis, dateInParis, heureParis, expressPossible, EXPRESS_HEURE_LIMITE };
