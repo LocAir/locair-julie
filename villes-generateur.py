@@ -207,8 +207,7 @@ def page_ville(v):
      qui révèle la figure, et onload ne se déclenche jamais sur un fichier
      absent. Cadrage attendu : VISUELS.md, section 6. -->
 <figure class="banniere photo photo-3-2" hidden>
-  <img src="/ville-{v['slug']}-1600.jpg" width="1600" height="1067" loading="lazy" decoding="async"
-       srcset="/ville-{v['slug']}-900.jpg 900w, /ville-{v['slug']}-1600.jpg 1600w"
+  <img src="/ville-{v['slug']}-900.jpg" width="900" height="600" decoding="async"
        sizes="(max-width:1040px) 100vw, 1000px"
        alt="{v['nom']} en été — zone de livraison Loc'Air"
        onload="this.parentNode.hidden=false">
