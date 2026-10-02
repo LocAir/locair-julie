@@ -690,8 +690,119 @@ faq=[
  ("Que se passe-t-il si l'appareil tombe en panne pendant un séjour ?",
   "Nous remplaçons l'appareil ou nous vous remboursons. C'est écrit dans le contrat. Nous répondons 7j/7 de 8h à 20h."),
  ("Peut-on louer pour toute la saison ?",
-  "Oui. Le prix par jour baisse avec la durée totale : 8 € par jour à partir de 22 jours pour un climatiseur mobile."),
+  "Oui. Le prix baisse par paliers : 12 € par jour la première semaine, puis 10 €, 9 €, et 8 € par jour à partir du 22e jour pour un climatiseur mobile."),
 ],
 suite=["pas-de-climatisation-logement", "installer-climatiseur-mobile-sans-percer"],
 urgence=True,
+))
+
+# ══ 13 ═════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="choisir-climatiseur-locataire",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Choisir",
+titre_seo="Locataire : quelle clim choisir sans travaux ?",
+h1="Locataire, quelle clim choisir&nbsp;?<em> Trois appareils, aucun trou dans le mur.</em>",
+court="Clim et locataire",
+desc="Locataire, vous ne pouvez pas percer ni poser de bloc sur la façade. Climatiseur mobile, PortaSplit ou rafraîchisseur : comment choisir, en trois questions.",
+resume="Pas de perçage, pas de bloc sur la façade : trois appareils possibles, et trois questions pour choisir.",
+chapo="Quand on est locataire, la clim fixe est rarement une option : il faut percer, poser un bloc dehors, et obtenir l'accord du propriétaire. Bonne nouvelle : il existe des appareils qui se posent, se branchent et repartent, sans rien changer au logement.",
+corps="""
+<h2 id="permis">Ce que vous pouvez installer sans rien demander</h2>
+<p>La règle est simple&nbsp;: tout ce qui est <b>posé</b>, et pas <b>fixé</b>, ne modifie pas le logement. Trois appareils entrent dans cette case&nbsp;:</p>
+<ul>
+  <li><b>Le climatiseur mobile.</b> Il se pose par terre et sort l'air chaud par la fenêtre, grâce à une gaine et un kit fenêtre.</li>
+  <li><b>Le PortaSplit.</b> Un split en deux parties, une dedans et une dehors, reliées par la fenêtre. Sans perçage.</li>
+  <li><b>Le rafraîchisseur d'air.</b> Il refroidit l'air avec de l'eau. Pas de gaine, rien à brancher sur la fenêtre.</li>
+</ul>
+<p>Une clim fixe, elle, demande en principe l'accord du propriétaire, et souvent celui de la copropriété pour le bloc extérieur. En cas de doute, relisez votre bail.</p>
+
+<h2 id="questions-choix">Trois questions pour choisir</h2>
+<h3>1. La pièce peut-elle rester fermée&nbsp;?</h3>
+<p>Un climatiseur refroidit une pièce fermée. Si la pièce reste ouverte (terrasse, véranda, garage), il faut un rafraîchisseur d'air. Le guide <a href="/blog/climatiseur-mobile-ou-rafraichisseur-air">climatiseur ou rafraîchisseur</a> explique la différence.</p>
+<h3>2. Quelle taille fait la pièce&nbsp;?</h3>
+<p>Nos climatiseurs mobiles vont de 9&nbsp;000 à 12&nbsp;000 BTU&nbsp;: une chambre ou un salon. Le PortaSplit couvre jusqu'à 35&nbsp;m².</p>
+<h3>3. Allez-vous dormir à côté&nbsp;?</h3>
+<p>Dans une chambre, le bruit compte. Le PortaSplit est le plus silencieux&nbsp;: la partie qui fait du bruit, le compresseur, reste dehors.</p>
+
+<h2 id="tableau">En résumé</h2>
+<div class="tab">
+<table>
+  <thead><tr><th scope="col">Votre situation</th><th scope="col">Notre conseil</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Une chambre ou un salon, fenêtre fermée</th><td><b>Climatiseur mobile</b></td></tr>
+    <tr><th scope="row">Le silence pour dormir, ou une grande pièce</th><td><b>PortaSplit</b>, A++</td></tr>
+    <tr><th scope="row">Une terrasse, un atelier, une pièce ouverte</th><td><b>Rafraîchisseur d'air</b></td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="louer">Locataire&nbsp;: louer plutôt qu'acheter&nbsp;?</h2>
+<p>Quand on déménage souvent, un appareil acheté se transporte, se stocke, et ne correspond pas toujours au prochain logement. En location, on le prend pour l'été, et on le rend. Le vrai calcul est dans <a href="/blog/louer-ou-acheter-climatiseur-mobile">louer ou acheter un climatiseur mobile</a>.</p>
+
+<h2 id="trace">Et en partant&nbsp;?</h2>
+<p>Le kit fenêtre se pose et se retire sans outil ni marque. À la fin de la location, on vient reprendre l'appareil&nbsp;: votre logement est exactement comme avant. Pour le pas-à-pas, voyez <a href="/blog/installer-climatiseur-mobile-sans-percer">installer un climatiseur mobile sans percer</a>.</p>
+""",
+faq=[
+ ("Mon propriétaire peut-il refuser un climatiseur mobile ?",
+  "Un climatiseur mobile n'est fixé nulle part : on le pose, on le branche, on le reprend. Rien n'est modifié dans le logement. En cas de doute, relisez votre bail."),
+ ("Quel appareil est le plus silencieux pour une chambre ?",
+  "Le PortaSplit : sa partie bruyante, le compresseur, reste dehors."),
+ ("Faut-il laisser une caution ?",
+  "Non. Pas de chèque, pas d'empreinte bancaire : vous payez la location, rien d'autre."),
+],
+suite=["pas-de-climatisation-logement", "installation-portasplit"],
+))
+
+# ══ 14 ═════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="installation-portasplit",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Pratique",
+titre_seo="PortaSplit : comment se passe l'installation",
+h1="Installer un PortaSplit&nbsp;:<em> sans travaux, étape par étape.</em>",
+court="Installer un PortaSplit",
+desc="Le PortaSplit, c'est le confort d'une clim fixe sans perçage. Ce qu'il faut vérifier avant, comment se passe l'installation, et ce qui se passe à la fin.",
+resume="Le confort d'une clim fixe, sans perçage. Ce qu'il faut vérifier avant, et comment ça se passe.",
+chapo="Le PortaSplit ressemble à une clim fixe&nbsp;: une partie dedans, une partie dehors. La différence, c'est qu'il n'y a rien à percer. Voici comment se passe son installation, du début à la fin.",
+corps="""
+<h2 id="principe">Le PortaSplit en deux mots</h2>
+<p>Il a deux parties&nbsp;: <b>une unité intérieure</b>, qui souffle l'air frais dans la pièce, et <b>une unité extérieure</b>, qui contient le compresseur. Les deux sont reliées par une liaison souple qui passe par la fenêtre.</p>
+<p>Résultat&nbsp;: le bruit du compresseur reste dehors. C'est pour ça qu'il est plus silencieux qu'un climatiseur mobile. Il est classé A++, il est réversible (il chauffe aussi), et il couvre jusqu'à 35&nbsp;m².</p>
+
+<h2 id="avant">Avant l'installation&nbsp;: trois vérifications</h2>
+<ul>
+  <li><b>Une fenêtre ou une porte-fenêtre</b> qui s'ouvre, pour faire passer la liaison.</li>
+  <li><b>Une place dehors</b> pour l'unité extérieure&nbsp;: un balcon, une terrasse ou un rebord.</li>
+  <li><b>Une prise électrique</b> près de la fenêtre.</li>
+</ul>
+<p>Pas sûr que votre fenêtre convienne&nbsp;? Envoyez-nous une photo sur WhatsApp, on vous répond.</p>
+
+<h2 id="jour-j">Le jour de l'installation</h2>
+<ol>
+  <li>On pose l'unité extérieure dehors.</li>
+  <li>On fait passer la liaison par la fenêtre.</li>
+  <li>On pose le kit fenêtre, qui bouche le reste de l'ouverture.</li>
+  <li>On branche, on lance, et on vérifie que ça refroidit (ou que ça chauffe).</li>
+  <li>On vous montre la télécommande et les réglages.</li>
+</ol>
+<p>Comptez une vingtaine de minutes. Chez Loc'Air, le PortaSplit est livré et installé par notre technicien&nbsp;: vous n'avez rien à faire.</p>
+
+<h2 id="hiver">L'hiver aussi</h2>
+<p>Le PortaSplit est réversible&nbsp;: le même appareil chauffe en hiver. Tout est expliqué sur notre page <a href="/portasplit-hiver">PortaSplit hiver</a>.</p>
+
+<h2 id="fin">À la fin de la location</h2>
+<p>On revient chercher l'appareil. Rien à démonter, rien à rapporter. Le kit fenêtre ne laisse aucune trace.</p>
+""",
+faq=[
+ ("Faut-il percer un mur pour installer un PortaSplit ?",
+  "Non. La liaison passe par une fenêtre ou une porte-fenêtre, et le kit fenêtre bouche le reste de l'ouverture."),
+ ("Pourquoi le PortaSplit est-il plus silencieux qu'un climatiseur mobile ?",
+  "Parce que sa partie bruyante, le compresseur, est dans l'unité extérieure, dehors."),
+ ("Le PortaSplit peut-il chauffer ?",
+  "Oui. Il est réversible : le même appareil refroidit l'été et chauffe l'hiver."),
+],
+suite=["choisir-climatiseur-locataire", "climatiseur-mobile-ou-rafraichisseur-air"],
 ))
