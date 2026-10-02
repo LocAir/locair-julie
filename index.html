@@ -114,24 +114,6 @@ img{display:block;max-width:100%}
 @media(min-width:900px){.nav-links{display:flex}}
 .nav-cta{font-size:14px;font-weight:500;text-decoration:none;padding:9px 20px;border-radius:999px;border:1px solid currentColor}
 
-.nav-r{display:flex;align-items:center;gap:12px}
-.burger{width:44px;height:44px;border-radius:50%;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;position:relative;z-index:62}
-.burger span{display:block;width:18px;height:1.5px;background:currentColor;transition:transform .35s var(--ease)}
-.burger[aria-expanded="true"]{color:#fff;border-color:rgba(255,255,255,.4)}
-.burger[aria-expanded="true"] span:first-child{transform:translateY(3.75px) rotate(45deg)}
-.burger[aria-expanded="true"] span:last-child{transform:translateY(-3.75px) rotate(-45deg)}
-.menu{position:fixed;inset:0;z-index:61;background:#0A0A0A;color:#fff;overflow-y:auto;opacity:0;transition:opacity .35s var(--ease)}
-.menu.on{opacity:1}
-.menu[hidden]{display:none}
-.menu-in{min-height:100%;display:flex;flex-direction:column;justify-content:space-between;padding-top:120px;padding-bottom:40px;gap:48px}
-.menu-l{list-style:none;display:flex;flex-direction:column;gap:6px}
-.menu-l a{display:inline-block;font-size:clamp(32px,6vw,56px);font-weight:400;letter-spacing:-.03em;line-height:1.15;text-decoration:none;opacity:.9;transition:opacity .2s,transform .3s var(--ease)}
-.menu-l a:hover,.menu-l a:focus-visible{opacity:1;transform:translateX(8px)}
-.menu-b{display:flex;flex-wrap:wrap;gap:12px 28px;font-size:14px;color:rgba(255,255,255,.6);border-top:1px solid rgba(255,255,255,.15);padding-top:24px}
-.menu-b a{color:#fff;text-decoration:none}
-body.menu-ouvert{overflow:hidden}
-body.menu-ouvert .nav{color:#fff;background:transparent;box-shadow:none;top:0;z-index:70;-webkit-backdrop-filter:none;backdrop-filter:none}
-body.menu-ouvert .nav-cta{visibility:hidden}
 /* ── BANDEAU NOIR (au-dessus de la nav) ── */
 .bandeau{position:absolute;top:0;left:0;right:0;z-index:51;height:38px;background:#0A0A0A;color:rgba(255,255,255,.82);border-bottom:1px solid rgba(255,255,255,.08);font-size:11px;font-weight:500;letter-spacing:.18em;text-transform:uppercase}
 .bandeau-in{height:100%;display:flex;align-items:center;justify-content:center;gap:14px;white-space:nowrap;overflow:hidden}
@@ -409,6 +391,7 @@ body.menu-ouvert .nav-cta{visibility:hidden}
   .hero h1 .typed{animation:none}
 }
 </style>
+<link rel="stylesheet" href="/menu.css"/>
 </head>
 <body>
 
@@ -431,14 +414,16 @@ body.menu-ouvert .nav-cta{visibility:hidden}
     <a href="/" class="logo">Loc'Air</a>
     <div class="nav-r">
       <a href="/reserver#catalogue" class="nav-cta">Réserver</a>
-      <button type="button" class="burger" id="burger" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
+      <button type="button" class="mb" id="burger" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
     </div>
   </div>
 </header>
-<div class="menu" id="menu" hidden>
-  <div class="container menu-in">
+<div class="mm" id="menu" hidden>
+  <div class="mm-in" role="dialog" aria-modal="true" aria-label="Menu">
+    <button type="button" class="mm-x" aria-label="Fermer le menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+
     <nav aria-label="Menu principal">
-      <ul class="menu-l">
+      <ul class="mm-l">
         <li><a href="#appareils">Appareils</a></li>
         <li><a href="#modele">Notre modèle</a></li>
         <li><a href="#process">Comment ça marche</a></li>
@@ -447,7 +432,7 @@ body.menu-ouvert .nav-cta{visibility:hidden}
         <li><a href="#faq">FAQ</a></li>
       </ul>
     </nav>
-    <div class="menu-b">
+    <div class="mm-b">
       <a href="/client">Espace client</a>
       <a href="tel:+33663798756">06 63 79 87 56</a>
       <span>7j/7 · 8 h–20 h</span>
@@ -777,22 +762,6 @@ body.menu-ouvert .nav-cta{visibility:hidden}
 
 
 
-  // Menu (bouton ☰)
-  (function(){
-    var b = document.getElementById('burger'), m = document.getElementById('menu');
-    if (!b || !m) return;
-    function ouvrir(o){
-      b.setAttribute('aria-expanded', o ? 'true' : 'false');
-      b.setAttribute('aria-label', o ? 'Fermer le menu' : 'Ouvrir le menu');
-      document.body.classList.toggle('menu-ouvert', o);
-      if (o){ m.hidden = false; requestAnimationFrame(function(){ m.classList.add('on'); }); var f = m.querySelector('a'); if (f) f.focus(); }
-      else { m.classList.remove('on'); setTimeout(function(){ if (b.getAttribute('aria-expanded') === 'false') m.hidden = true; }, 350); }
-    }
-    b.addEventListener('click', function(){ ouvrir(b.getAttribute('aria-expanded') !== 'true'); });
-    m.addEventListener('click', function(e){ if (e.target.closest('a')) ouvrir(false); });
-    document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && b.getAttribute('aria-expanded') === 'true'){ ouvrir(false); b.focus(); } });
-  })();
-
   // Apparition au défilement
   var els = document.querySelectorAll('.fu,.fs,.stagger');
   if ('IntersectionObserver' in window && !reduce) {
@@ -820,5 +789,6 @@ body.menu-ouvert .nav-cta{visibility:hidden}
   track.addEventListener('scroll', update, {passive:true}); window.addEventListener('resize', update); update();
 })();
 </script>
+<script src="/menu.js" defer></script>
 </body>
 </html>
