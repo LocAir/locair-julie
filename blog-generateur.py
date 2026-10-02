@@ -153,6 +153,7 @@ def page_article(a):
 {pied()}
 
 {SCRIPT_BAR}
+<script src="/menu.js" defer></script>
 </body>
 </html>
 '''
@@ -241,6 +242,7 @@ def page_index():
 {pied()}
 
 {SCRIPT_BAR}
+<script src="/menu.js" defer></script>
 </body>
 </html>
 '''

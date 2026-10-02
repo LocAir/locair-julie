@@ -28,11 +28,28 @@ def bar(fil="Guides", href="/blog"):
     <a class="logo" href="/">Loc<i class="gt">'</i>Air</a>
     {repere}
     <a class="btn btn-1 btn-s" href="/">Réserver</a>
-    <a class="bar-compte" href="/client" aria-label="Se connecter à mon espace">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.6 20.4a7.4 7.4 0 0 1 14.8 0"/></svg>
-    </a>
+    <button type="button" class="mb" id="burger" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
   </div>
-</header>'''
+</header>
+<div class="mm" id="menu" hidden>
+  <div class="mm-in">
+    <nav aria-label="Menu principal">
+      <ul class="mm-l">
+        <li><a href="/#appareils">Appareils</a></li>
+        <li><a href="/#modele">Notre modèle</a></li>
+        <li><a href="/#process">Comment ça marche</a></li>
+        <li><a href="/boutique">Loc'Air Shop</a></li>
+        <li><a href="/blog/">Guides</a></li>
+        <li><a href="/#faq">FAQ</a></li>
+      </ul>
+    </nav>
+    <div class="mm-b">
+      <a href="/client">Espace client</a>
+      <a href="tel:+33663798756">06 63 79 87 56</a>
+      <span>7j/7 · 8 h–20 h</span>
+    </div>
+  </div>
+</div>'''
 
 def pied():
     return '''<footer class="pied-bloc">
@@ -106,7 +123,12 @@ def tete_html():
       href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap">
 <noscript><link rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap"></noscript>
-<link rel="stylesheet" href="/locair.css">'''
+<link rel="stylesheet" href="/locair.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500&family=Inter:wght@300;400;500;600;700&display=swap">
+<link rel="stylesheet" href="/atelier.css">
+<link rel="stylesheet" href="/menu.css">'''
 
 def partage(titre, desc, url):
     return f'''<meta property="og:type" content="article">
