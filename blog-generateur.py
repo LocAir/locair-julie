@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from blog_contenu import ARTICLES
 
 PAR_SLUG = {a['slug']: a for a in ARTICLES}
-NOMBRES = {6:'Six',7:'Sept',8:'Huit',9:'Neuf',10:'Dix',11:'Onze',12:'Douze',13:'Treize',14:'Quatorze',15:'Quinze'}
+NOMBRES = {6:'Six',7:'Sept',8:'Huit',9:'Neuf',10:'Dix',11:'Onze',12:'Douze',13:'Treize',14:'Quatorze',15:'Quinze',16:'Seize',17:'Dix-sept',18:'Dix-huit',19:'Dix-neuf',20:'Vingt',21:'Vingt et un',22:'Vingt-deux'}
 
 def bloc_faq(faq):
     """Les questions sont ÉCRITES SUR LA PAGE, pas seulement dans les données

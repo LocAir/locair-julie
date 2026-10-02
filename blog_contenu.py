@@ -806,3 +806,288 @@ faq=[
 ],
 suite=["choisir-climatiseur-locataire", "climatiseur-mobile-ou-rafraichisseur-air"],
 ))
+
+# ══ 15 ═════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="climatiseur-mobile-ou-portasplit",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Choisir",
+titre_seo="Clim mobile ou PortaSplit : lequel choisir ?",
+h1="Climatiseur mobile ou PortaSplit&nbsp;?<em> La différence, en clair.</em>",
+court="Mobile ou PortaSplit",
+desc="Climatiseur mobile ou PortaSplit : le prix, le bruit, la taille de la pièce, l'hiver. Ce qui les sépare vraiment, et comment choisir en deux minutes.",
+resume="Le prix, le bruit, la pièce, l'hiver : ce qui les sépare vraiment, et comment choisir.",
+chapo="Les deux se posent sans travaux, les deux refroidissent une pièce fermée. Pourtant, ce ne sont pas du tout les mêmes appareils. Voici ce qui change, point par point.",
+corps="""
+<h2 id="difference">La vraie différence&nbsp;: où est le bruit</h2>
+<p>Un climatiseur mobile est <b>d'un seul bloc</b>&nbsp;: tout est dans la pièce, y compris le compresseur, la partie qui fait du bruit. L'air chaud sort par une gaine passée par la fenêtre.</p>
+<p>Le PortaSplit est <b>en deux parties</b>&nbsp;: une unité dedans, une unité dehors, reliées par la fenêtre. Le compresseur reste dehors. C'est pour ça qu'il est plus silencieux.</p>
+
+<h2 id="comparatif">Le comparatif</h2>
+<div class="tab">
+<table>
+  <thead><tr><th scope="col"></th><th scope="col">Climatiseur mobile</th><th scope="col">PortaSplit</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Pièce</th><td>Chambre ou salon (9&nbsp;000 à 12&nbsp;000 BTU)</td><td>Jusqu'à 35&nbsp;m²</td></tr>
+    <tr><th scope="row">Bruit</th><td>Le compresseur est dans la pièce</td><td>Le compresseur est dehors</td></tr>
+    <tr><th scope="row">L'hiver</th><td>Non</td><td>Oui, il est réversible et chauffe</td></tr>
+    <tr><th scope="row">Il faut dehors</th><td>Rien, juste une fenêtre</td><td>Une place pour l'unité extérieure (balcon, terrasse, rebord)</td></tr>
+    <tr><th scope="row">Prix en location</th><td>12&nbsp;€ par jour la première semaine, jusqu'à 8&nbsp;€</td><td>36&nbsp;€ par jour l'été</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2 id="choisir">Comment choisir en deux minutes</h2>
+<ul>
+  <li><b>Une chambre, un budget serré, pas de balcon&nbsp;:</b> le climatiseur mobile.</li>
+  <li><b>Vous dormez à côté, ou la pièce est grande&nbsp;:</b> le PortaSplit.</li>
+  <li><b>Vous voulez aussi chauffer l'hiver&nbsp;:</b> le PortaSplit, le seul des deux qui fait chaud et froid.</li>
+</ul>
+<p>Pour une pièce ouverte (terrasse, atelier), aucun des deux&nbsp;: il faut un rafraîchisseur d'air. Voyez <a href="/blog/climatiseur-mobile-ou-rafraichisseur-air">climatiseur ou rafraîchisseur</a>.</p>
+
+<h2 id="installation">Et l'installation&nbsp;?</h2>
+<p>Les deux se posent sans percer. Le climatiseur mobile, avec un kit fenêtre que vous pouvez poser vous-même. Le PortaSplit, c'est notre technicien qui l'installe. Le pas-à-pas est dans <a href="/blog/installation-portasplit">installer un PortaSplit</a>.</p>
+""",
+faq=[
+ ("Quel est le plus silencieux, le climatiseur mobile ou le PortaSplit ?",
+  "Le PortaSplit : son compresseur, la partie bruyante, est dans l'unité extérieure, dehors."),
+ ("Le climatiseur mobile peut-il chauffer ?",
+  "Non. Pour chauffer l'hiver, c'est le PortaSplit : il est réversible."),
+ ("Faut-il un balcon pour le PortaSplit ?",
+  "Il faut une place dehors pour l'unité extérieure : un balcon, une terrasse ou un rebord. Envoyez-nous une photo sur WhatsApp en cas de doute."),
+],
+suite=["installation-portasplit", "choisir-climatiseur-locataire"],
+))
+
+# ══ 16 ═════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="chauffage-appoint-hiver-nice",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Hiver",
+titre_seo="Chauffage d'appoint à Nice : louer pour l'hiver",
+h1="Chauffage d'appoint à Nice&nbsp;:<em> louer pour l'hiver, sans travaux.</em>",
+court="Chauffage d'appoint",
+desc="Appartement mal chauffé, chauffage en panne : à Nice, le PortaSplit réversible chauffe sans travaux. Comment ça marche, et combien coûte la location.",
+resume="Appartement mal chauffé, chauffage en panne : le PortaSplit chauffe sans travaux, en location pour l'hiver.",
+chapo="À Nice, beaucoup d'appartements anciens chauffent mal&nbsp;: pas de chauffage central, des radiateurs trop faibles, des nuits fraîches d'octobre à mars. Le PortaSplit, qui refroidit l'été, chauffe aussi l'hiver.",
+corps="""
+<h2 id="pourquoi">Pourquoi un PortaSplit plutôt qu'un radiateur</h2>
+<p>Un convecteur électrique fabrique de la chaleur avec de l'électricité. Le PortaSplit, lui, est un inverter&nbsp;: il <b>déplace</b> la chaleur au lieu de la fabriquer. Pour la même chaleur, il consomme jusqu'à 3 fois moins qu'un convecteur. Le détail du calcul est sur notre <a href="/portasplit-hiver">page hiver</a>.</p>
+<p>Et l'inverter module&nbsp;: quand la pièce est chaude, il ralentit au lieu de s'arrêter et repartir.</p>
+
+<h2 id="qui">Pour qui&nbsp;?</h2>
+<ul>
+  <li><b>Un appartement mal chauffé</b>&nbsp;: vieux immeuble, pas de chauffage central, radiateurs insuffisants.</li>
+  <li><b>Un chauffage en panne</b>&nbsp;: une solution le temps de la réparation.</li>
+  <li><b>Une chambre de bébé</b>&nbsp;: une température stable la nuit.</li>
+  <li><b>La mi-saison</b>&nbsp;: chaud le soir, frais la journée, avec un seul appareil.</li>
+</ul>
+
+<h2 id="prix">Combien ça coûte</h2>
+<div class="tab">
+<table>
+  <thead><tr><th scope="col">Durée</th><th scope="col">Prix</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Une semaine</th><td>150&nbsp;€</td></tr>
+    <tr><th scope="row">Un mois</th><td>290&nbsp;€</td></tr>
+    <tr><th scope="row">Deux mois</th><td>520&nbsp;€</td></tr>
+    <tr><th scope="row">La saison, de novembre à mars</th><td>Sur devis, livraison offerte</td></tr>
+  </tbody>
+</table>
+</div>
+<p>La livraison et la récupération coûtent 60&nbsp;€, offertes sur le forfait saison. Aucune caution.</p>
+
+<h2 id="installation">L'installation</h2>
+<p>Notre technicien livre et installe le PortaSplit, dès le lendemain. Rien à percer&nbsp;: la liaison passe par la fenêtre. Tout est expliqué dans <a href="/blog/installation-portasplit">installer un PortaSplit</a>.</p>
+""",
+faq=[
+ ("Le PortaSplit peut-il remplacer un radiateur ?",
+  "Oui, pour une pièce jusqu'à 35 m². Il est réversible : il chauffe l'hiver et refroidit l'été."),
+ ("Combien coûte la location d'un PortaSplit pour l'hiver ?",
+  "150 € la semaine, 290 € le mois, 520 € les deux mois. La saison complète, de novembre à mars, est sur devis, avec la livraison offerte."),
+ ("Faut-il une caution ?",
+  "Non. Pas de chèque, pas d'empreinte bancaire."),
+],
+suite=["climatiseur-mobile-ou-portasplit", "installation-portasplit"],
+))
+
+# ══ 17 ═════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="dormir-climatiseur-mobile",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Pratique",
+titre_seo="Bien dormir avec un climatiseur mobile",
+h1="Bien dormir avec un climatiseur mobile&nbsp;:<em> les bons réglages.</em>",
+court="Dormir au frais",
+desc="Quand allumer la clim, à quelle température, comment limiter le bruit : les gestes simples pour bien dormir avec un climatiseur mobile pendant la canicule.",
+resume="Quand l'allumer, à quelle température, comment limiter le bruit : les gestes simples pour bien dormir.",
+chapo="Pendant une canicule, c'est la nuit qui fatigue le plus. Un climatiseur mobile change tout, à condition de bien le régler. Voici les gestes qui marchent.",
+corps="""
+<h2 id="avant">Rafraîchir la chambre avant de se coucher</h2>
+<p>Le plus efficace, c'est d'allumer le climatiseur <b>une ou deux heures avant</b> d'aller dormir, porte et fenêtre fermées. La chambre est déjà fraîche quand vous vous couchez, et l'appareil peut ensuite tourner plus doucement.</p>
+
+<h2 id="temperature">Pas trop froid</h2>
+<p>Inutile de viser une chambre glacée&nbsp;: un écart trop grand avec l'extérieur fatigue plus qu'il ne repose. Réglez une température douce, et laissez le mode nuit (ou sommeil) faire le reste s'il existe sur votre appareil.</p>
+
+<h2 id="bruit">Limiter le bruit</h2>
+<ul>
+  <li><b>Éloignez l'appareil du lit</b>, autant que la gaine le permet.</li>
+  <li><b>Vérifiez le kit fenêtre</b>&nbsp;: une fenêtre mal fermée fait travailler l'appareil plus fort, donc plus bruyamment.</li>
+  <li><b>Baissez la ventilation</b> une fois la chambre fraîche.</li>
+</ul>
+<p>Si le bruit vous gêne vraiment, le PortaSplit est plus silencieux&nbsp;: son compresseur reste dehors. Voyez <a href="/blog/climatiseur-mobile-ou-portasplit">climatiseur mobile ou PortaSplit</a>.</p>
+
+<h2 id="etanche">Le détail qui change tout&nbsp;: la fenêtre</h2>
+<p>L'air chaud sort par la gaine. Si la fenêtre reste ouverte autour, il rentre aussitôt. Le kit fenêtre bouche l'ouverture&nbsp;: c'est lui qui décide si la chambre refroidit vraiment. Le pas-à-pas est dans <a href="/blog/installer-climatiseur-mobile-sans-percer">installer un climatiseur mobile sans percer</a>.</p>
+
+<h2 id="journee">Et dans la journée</h2>
+<p>Fermez les volets du côté du soleil. Les autres gestes gratuits sont dans notre guide <a href="/blog/canicule-appartement-frais-nice">canicule à Nice</a>.</p>
+""",
+faq=[
+ ("Peut-on laisser un climatiseur mobile allumé toute la nuit ?",
+  "Oui. Il est fait pour ça. Une ventilation basse et une température douce suffisent une fois la chambre fraîche."),
+ ("Pourquoi ma chambre ne refroidit pas assez ?",
+  "Le plus souvent, c'est la fenêtre : si elle reste ouverte autour de la gaine, l'air chaud rentre. Le kit fenêtre doit bien boucher l'ouverture."),
+ ("Quel appareil est le plus silencieux pour une chambre ?",
+  "Le PortaSplit, parce que son compresseur est dehors."),
+],
+suite=["installer-climatiseur-mobile-sans-percer", "climatiseur-mobile-ou-portasplit"],
+))
+
+# ══ 18 ═════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="teletravail-canicule-bureau",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Situations",
+titre_seo="Télétravail et canicule : rafraîchir son bureau",
+h1="Télétravail en pleine canicule&nbsp;?<em> Un bureau frais, sans travaux.</em>",
+court="Télétravail et canicule",
+desc="Ordinateur qui chauffe, pièce sous les toits, concentration en berne : comment garder un bureau frais à la maison pendant une canicule, sans travaux.",
+resume="Ordinateur qui chauffe, pièce sous les toits : garder un bureau frais à la maison, sans travaux.",
+chapo="Travailler de chez soi par 30 degrés, c'est dur&nbsp;: l'ordinateur chauffe, la concentration baisse, les visios deviennent pénibles. Bonne nouvelle&nbsp;: une seule pièce à rafraîchir, c'est simple.",
+corps="""
+<h2 id="une-piece">Rafraîchir une seule pièce</h2>
+<p>Pas besoin de climatiser tout l'appartement. Pour un bureau, <b>un climatiseur mobile suffit</b>&nbsp;: il refroidit une pièce fermée, chambre ou petit salon. Choisissez la pièce où vous travaillez, fermez la porte, et elle reste fraîche.</p>
+
+<h2 id="visio">Et les visios&nbsp;?</h2>
+<p>Un climatiseur mobile fait du bruit, puisque tout est dans la pièce. Deux astuces&nbsp;: éloignez-le du micro, et baissez la ventilation pendant l'appel une fois la pièce fraîche. Si vous passez vos journées en appel, le PortaSplit est plus discret&nbsp;: son compresseur reste dehors.</p>
+
+<h2 id="gestes">Les gestes qui aident</h2>
+<ul>
+  <li><b>Fermez les volets</b> du côté du soleil dès le matin.</li>
+  <li><b>Éteignez ce qui chauffe</b> pour rien&nbsp;: écrans en veille, lampes.</li>
+  <li><b>Bouchez bien la fenêtre</b> autour de la gaine avec le kit.</li>
+</ul>
+
+<h2 id="louer">Louer juste pour l'été</h2>
+<p>Le télétravail en canicule, c'est quelques semaines par an. La location évite d'acheter un appareil qui dort le reste de l'année. Le prix baisse par paliers&nbsp;: 12&nbsp;€ par jour la première semaine, jusqu'à 8&nbsp;€ à partir du 22<sup>e</sup> jour. Le détail est dans <a href="/blog/prix-location-climatiseur-mobile-nice">notre guide des prix</a>.</p>
+<p>Besoin d'un bureau frais dès aujourd'hui&nbsp;? Commandez avant 18&nbsp;h&nbsp;: l'Express vous livre sous 2&nbsp;h (+60&nbsp;€).</p>
+""",
+faq=[
+ ("Un climatiseur mobile suffit-il pour un bureau à la maison ?",
+  "Oui, pour une pièce fermée comme une chambre ou un petit salon."),
+ ("Le climatiseur mobile gêne-t-il les visioconférences ?",
+  "Il fait du bruit, car tout est dans la pièce. Éloignez-le du micro et baissez la ventilation pendant l'appel. Le PortaSplit est plus discret."),
+ ("Peut-on être livré le jour même ?",
+  "Oui, en Express : commandez avant 18 h, livraison sous 2 h, pour 60 € de plus."),
+],
+suite=["dormir-climatiseur-mobile", "climatiseur-mobile-ou-portasplit"],
+urgence=True,
+))
+
+# ══ 19 ═════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="canicule-personnes-agees",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Situations",
+titre_seo="Canicule : garder au frais un proche âgé",
+h1="Canicule&nbsp;: garder au frais un proche âgé.<em> Une pièce fraîche, sans travaux.</em>",
+court="Canicule et seniors",
+desc="Pendant une canicule, les personnes âgées sont les plus fragiles. Les bons gestes, et comment installer une pièce fraîche chez un proche, sans travaux ni achat.",
+resume="Les personnes âgées sont les plus fragiles en canicule. Les bons gestes, et une pièce fraîche sans travaux.",
+chapo="Pendant une canicule, les personnes âgées sont les plus exposées&nbsp;: elles ressentent moins la soif et la chaleur. Avoir au moins une pièce fraîche chez elles fait une vraie différence.",
+corps="""
+<h2 id="gestes">Les gestes de base</h2>
+<ul>
+  <li><b>Boire régulièrement</b>, même sans avoir soif.</li>
+  <li><b>Fermer les volets</b> la journée, aérer quand il fait plus frais.</li>
+  <li><b>Passer du temps dans une pièce fraîche</b> chaque jour.</li>
+  <li><b>Prendre des nouvelles</b> souvent, par téléphone ou en passant.</li>
+</ul>
+<p>En cas de malaise, appelez le <b>15</b>.</p>
+
+<h2 id="piece">Une pièce fraîche, sans travaux</h2>
+<p>Un climatiseur mobile se pose par terre, se branche sur une prise normale et sort l'air chaud par la fenêtre. Pas de perçage, rien à changer dans le logement. Il suffit de rafraîchir <b>une pièce</b>&nbsp;: la chambre, ou la pièce où votre proche passe la journée.</p>
+
+<h2 id="installe">On s'occupe de tout</h2>
+<p>Si votre proche ne peut pas installer l'appareil, prenez l'option technicien (80&nbsp;€)&nbsp;: il pose le kit fenêtre, branche l'appareil et montre les réglages. Vous pouvez commander pour quelqu'un d'autre&nbsp;: il suffit d'indiquer son adresse.</p>
+<p>Et s'il y a un souci avec l'appareil, nous le remplaçons. Nous répondons 7j/7, de 8&nbsp;h à 20&nbsp;h.</p>
+
+<h2 id="vite">Si c'est urgent</h2>
+<p>Commandez avant 18&nbsp;h&nbsp;: l'Express livre sous 2&nbsp;h (+60&nbsp;€). Le PortaSplit, plus silencieux, est aussi une bonne option pour une chambre&nbsp;: voyez <a href="/blog/climatiseur-mobile-ou-portasplit">climatiseur mobile ou PortaSplit</a>.</p>
+""",
+faq=[
+ ("Peut-on louer un climatiseur pour un parent âgé qui habite ailleurs ?",
+  "Oui. Vous réservez et payez, et vous indiquez son adresse de livraison."),
+ ("Mon proche ne peut pas installer l'appareil, que faire ?",
+  "Prenez l'option technicien (80 €) : il pose le kit fenêtre, branche l'appareil et montre les réglages."),
+ ("Que faire en cas de malaise dû à la chaleur ?",
+  "Appelez le 15."),
+],
+suite=["canicule-appartement-frais-nice", "dormir-climatiseur-mobile"],
+urgence=True,
+))
+
+# ══ 20 ═════════════════════════════════════════════════════════════════════
+ARTICLES.append(dict(
+slug="climatiseur-livre-aujourdhui-express",
+date_iso="2026-10-02",
+date_fr="2 octobre 2026",
+rubrique="Urgence",
+titre_seo="Climatiseur livré aujourd'hui à Nice : l'Express",
+h1="Un climatiseur livré aujourd'hui&nbsp;?<em> Comment marche l'Express.</em>",
+court="Livré aujourd'hui",
+desc="Besoin d'une clim aujourd'hui à Nice ? L'Express livre sous 2 h si vous commandez avant 18 h. Comment ça marche, combien ça coûte, et ce qu'il faut préparer.",
+resume="Commandez avant 18 h, livré sous 2 h à Nice. Comment ça marche et combien ça coûte.",
+chapo="Une canicule qui tombe d'un coup, une clim en panne, un invité qui arrive ce soir&nbsp;: parfois, demain, c'est trop tard. C'est pour ça qu'existe l'Express.",
+corps="""
+<h2 id="principe">Le principe</h2>
+<p>Vous commandez <b>avant 18&nbsp;h</b>, nous livrons <b>sous 2&nbsp;h</b>. Le supplément est de <b>60&nbsp;€</b>, en plus du prix de la location et de la livraison. Après 18&nbsp;h, l'Express n'est plus proposé&nbsp;: la livraison se fait le lendemain matin, entre 8&nbsp;h et 12&nbsp;h.</p>
+
+<h2 id="etapes">Comment ça se passe</h2>
+<ol>
+  <li>Vous réservez en ligne en 2 minutes, et vous cochez Express.</li>
+  <li>Vous payez par carte. Aucune caution.</li>
+  <li>Nous arrivons sous 2&nbsp;h avec l'appareil et le kit fenêtre.</li>
+  <li>Vous voulez qu'on installe&nbsp;? Ajoutez l'option technicien (80&nbsp;€).</li>
+</ol>
+
+<h2 id="preparer">Ce qu'il faut préparer</h2>
+<ul>
+  <li><b>Une fenêtre</b> près d'une prise électrique, pour la gaine.</li>
+  <li><b>L'accès</b>&nbsp;: digicode, étage, interphone.</li>
+  <li><b>Être joignable</b> au téléphone pendant les 2&nbsp;heures.</li>
+</ul>
+
+<h2 id="prix">Combien ça coûte au total</h2>
+<p>Exemple pour une semaine à Nice&nbsp;: 7 jours à 12&nbsp;€ = 84&nbsp;€, plus 60&nbsp;€ de livraison et de récupération, plus 60&nbsp;€ d'Express. Soit <b>204&nbsp;€</b>, sans caution. Tout le barème est dans <a href="/blog/prix-location-climatiseur-mobile-nice">notre guide des prix</a>.</p>
+
+<h2 id="panne">Votre clim est en panne&nbsp;?</h2>
+<p>C'est le cas le plus fréquent. Les bons réflexes avant d'appeler le réparateur sont dans <a href="/blog/clim-en-panne-solution-urgence">clim en panne en pleine chaleur</a>.</p>
+""",
+faq=[
+ ("Jusqu'à quelle heure peut-on commander en Express ?",
+  "Jusqu'à 18 h. Après, la livraison se fait le lendemain matin, entre 8 h et 12 h."),
+ ("Combien coûte l'Express ?",
+  "60 € de plus, en plus de la location et de la livraison."),
+ ("L'Express marche-t-il le week-end ?",
+  "Oui, nous livrons 7j/7, jours fériés compris."),
+],
+suite=["clim-en-panne-solution-urgence", "prix-location-climatiseur-mobile-nice"],
+urgence=True,
+))
