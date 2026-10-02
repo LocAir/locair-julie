@@ -1,5 +1,6 @@
 const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
+const { expressPossible } = require('./_lib/dates');
 const { getProduitVentePourPaiement, OPTIONS_VENTE, prixInstallationVente } = require('./_lib/vente');
 
 // Paiement d'un ACHAT depuis /boutique — voir migration_vente_catalogue.sql.
@@ -38,6 +39,9 @@ module.exports = async (req, res) => {
   const installation = body.installation === true;
   if ((express || installation) && ville !== 'Nice') {
     return res.status(400).json({ error: "L'Express et l'installation ne sont proposés qu'à Nice." });
+  }
+  if (express && !expressPossible()) {
+    return res.status(400).json({ error: "L'Express n'est plus possible après 18 h. Décochez-le : nous livrons dès demain." });
   }
 
   try {

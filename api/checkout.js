@@ -2,7 +2,7 @@ const Stripe = require('stripe');
 const { getSupabase }         = require('./_lib/supabase');
 const { resolveCityByAddress } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
-const { isValidDate, addDays, todayParis } = require('./_lib/dates');
+const { isValidDate, addDays, todayParis, expressPossible } = require('./_lib/dates');
 const { calcTieredPrice, getPricingConfig,
         getProPricing, getProForfaitCents, isOffrePro } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
@@ -178,6 +178,11 @@ module.exports = async (req, res) => {
     : ((city.postal_codes || []).includes(cpNorm) ? 60 * 100 : 120 * 100);
   // Surcoût livraison express J0 sous 2h (+60 €) — activé côté client par la
   // carte "Express" dans le modal, transmis via data.express === true.
+  // L'Express (livré aujourd'hui sous 2 h) s'arrête à 18 h, heure de Nice.
+  // La page le grise déjà ; ceci empêche de le contourner par un appel direct.
+  if (data.express === true && !expressPossible()) {
+    return res.status(400).json({ error: "L'Express n'est plus possible après 18 h. Choisissez une livraison demain matin." });
+  }
   const expressCents     = data.express === true ? EXPRESS_FEE * 100 : 0;
   const amountCents      = Math.max(0, baseCents + installCents + deliveryFeeCents + expressCents - promoDiscount);
 

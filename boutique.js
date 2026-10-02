@@ -231,6 +231,14 @@
       return cb;
     }
     var cbX = caseOption('b-x-' + i, 'Express, livré sous 2' + NBSP + 'h (commande avant 18' + NBSP + 'h) · +' + eur(EXPRESS));
+    /* Après 18 h (heure de Nice), l'Express est grisé : le serveur le
+       refuserait de toute façon (api/_lib/dates.js, expressPossible). */
+    var hNice = parseInt(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: '2-digit', hourCycle: 'h23' }).format(new Date()), 10);
+    if (hNice >= 18) {
+      cbX.disabled = true;
+      cbX.parentNode.lastChild.textContent = 'Express indisponible après 18' + NBSP + 'h : livraison dès demain';
+      cbX.parentNode.style.opacity = '.5';
+    }
     var instC = prixInstallation(p);
     var cbT = caseOption('b-t-' + i, 'Installation par un technicien · ' + (instC ? '+' + eur(instC) : 'offerte'));
     opts.hidden = true;
