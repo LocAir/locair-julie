@@ -9,10 +9,11 @@
 <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <meta name="apple-mobile-web-app-title" content="Loc'Air Admin"/>
-<meta name="theme-color" content="#1a2b4a"/>
+<meta name="theme-color" content="#0E1F35"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&display=swap" rel="stylesheet"/>
+<link rel="preload" href="/polices/bricolage-latin.woff2" as="font" type="font/woff2" crossorigin/>
 <!-- Leaflet (carte en direct) chargé en non-bloquant : la carte ne sert
      qu'à l'ouverture d'un suivi transporteur, jamais à l'écran de connexion
      affiché en premier — inutile de retarder le premier affichage pour ça. -->
@@ -20,27 +21,43 @@
 <noscript><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/></noscript>
 <style>
 :root{
-  /* Palette identique à index.html (site vitrine) — voir --root du site pour la référence */
-  --blue:#1a2b4a; --blue-d:#12203a; --blue-lt:#dce8f5;
-  --black:#1a1a1a; --bg:#f4f6f9; --white:#ffffff;
-  /* --grey-soft assombri de #707a8a à #687283 (audit ergonomie, 2026-08-05) :
-     4.34:1 sur fond blanc, sous le seuil de lisibilité WCAG (4.5:1) pour du
-     texte — or utilisé sur du texte bien réel (titres de section, libellés
-     "à verser" sur les montants financiers), pas juste des puces
-     décoratives. Repassé à 4.86:1. */
-  --grey:#5a6577; --grey-soft:#687283; --rule:#dde3ea; --gold:#c5a96c; --gold-lt:#f3ead9; --gold-d:#8a6d2f;
-  --green:#2d6a4f; --green-bg:#e6f0ea;
+  /* Palette de la marque Loc'Air (voir MARQUE.md) — style « Marine premium »,
+     déjà appliqué côté transporteur (2026-10-01). Les anciens noms de jetons
+     (--blue, --navy, --black…) sont gardés pour ne rien casser dans le JS de
+     cette page (des centaines d'appels à var(--blue) etc.) : seules leurs
+     valeurs changent. --blue reste la couleur d'action — c'est le sarcelle
+     maintenant, plus le bleu roi d'origine. --gold-d est la version de l'or
+     lisible sur fond clair (= --gold-txt de MARQUE.md) ; --gold lui-même ne
+     se pose que sur fond sombre (voir .stat-tile.gold et .gt plus bas). */
+  --blue:#086E60; --blue-d:#065A4E; --blue-lt:#E7F3F0;
+  --black:#0E1F35; --bg:#F5F7FA; --white:#ffffff;
+  /* Gris de texte : tous ≥ 4,5:1 sur blanc (MARQUE.md §4). */
+  --grey:#57687C; --grey-soft:#5F6E80; --rule:#E6EBF1; --gold:#C9A227; --gold-lt:#F6EFD6; --gold-d:#7A6313;
+  --green:#0F7A3D; --green-bg:#e6f0ea;
   --red:#9b2c1a; --red-bg:#f8e9e6;
-  --amber:#9c6a17; --amber-bg:#f6eed9;
-  --navy:#12203a;
-  --disp:'Cormorant Garamond',Georgia,serif;
-  --body:'Inter',system-ui,sans-serif;
+  --amber:#B45309; --amber-bg:#f6eed9;
+  --navy:#0E1F35;
+  --disp:'Bricolage','DM Sans',system-ui,sans-serif;
+  --body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
   --r-sm:8px; --r:12px; --r-lg:20px;
-  --sh-xs:0 1px 3px rgba(0,0,0,.04),0 1px 2px rgba(0,0,0,.03);
-  --sh-sm:0 2px 12px rgba(0,0,0,.06),0 1px 4px rgba(0,0,0,.04);
-  --sh-md:0 8px 40px rgba(0,0,0,.09),0 2px 10px rgba(0,0,0,.05);
-  --sh-lg:0 24px 80px rgba(0,0,0,.11),0 6px 24px rgba(0,0,0,.06);
-  --sh-blue:0 6px 24px rgba(26,43,74,.32);
+  /* Ombres teintées marine, jamais de noir pur (MARQUE.md §8). */
+  --sh-xs:0 1px 3px rgba(14,31,53,.05),0 1px 2px rgba(14,31,53,.04);
+  --sh-sm:0 2px 12px rgba(14,31,53,.06),0 1px 4px rgba(14,31,53,.04);
+  --sh-md:0 8px 40px rgba(14,31,53,.10),0 2px 10px rgba(14,31,53,.05);
+  --sh-lg:0 24px 80px rgba(14,31,53,.12),0 6px 24px rgba(14,31,53,.06);
+  --sh-blue:0 6px 24px rgba(14,31,53,.32);
+}
+@font-face{
+  font-family:'Bricolage';src:url('/polices/bricolage-latin.woff2') format('woff2');
+  font-weight:700;font-style:normal;font-display:swap;
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,
+    U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+@font-face{
+  font-family:'Bricolage';src:url('/polices/bricolage-latin-ext.woff2') format('woff2');
+  font-weight:700;font-style:normal;font-display:swap;
+  unicode-range:U+0100-024F,U+0259,U+1E00-1EFF,U+2020,U+20A0-20AB,U+20AD-20CF,
+    U+2113,U+2C60-2C7F,U+A720-A7FF;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:14.5px;-webkit-font-smoothing:antialiased;min-height:100vh;letter-spacing:-.005em}
@@ -51,7 +68,14 @@ body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:1
    d'action compactes plutôt que des boutons texte+emoji ("🔄 Actualiser",
    "🚪 Déconnexion") qui, avec "Loc'Air · Admin" à côté, passaient à la
    ligne sur mobile et donnaient un rendu bancal. */
-.logo{font-family:var(--disp);font-size:23px;font-weight:600;color:var(--blue);margin-bottom:26px;letter-spacing:.01em;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.logo{font-family:var(--disp);font-size:23px;font-weight:700;color:var(--black);margin-bottom:26px;letter-spacing:-.01em;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+/* La goutte dorée : seule signature graphique de la marque (MARQUE.md §1),
+   remplace l'apostrophe. Trois coins ronds + un coin pointu, penchée à
+   -25°. --gold-d (or assombri) ici car le bandeau admin reste clair —
+   --gold plein ne se pose que sur fond sombre. */
+.gt{position:relative;color:transparent;margin:0 .06em;font-style:normal}
+.gt::before{content:"";position:absolute;left:50%;top:.21em;width:.30em;height:.30em;margin-left:-.15em;
+  background:var(--gold-d);border-radius:50% 50% 50% 0;transform:rotate(-25deg)}
 .logo-tag{font-size:11px;font-weight:600;color:var(--grey-soft);font-family:var(--body);letter-spacing:.06em;text-transform:uppercase;margin-left:6px;vertical-align:middle}
 .a-topbar-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
 .tb-icon-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:none;background:var(--bg);color:var(--blue);font-size:16px;line-height:1;cursor:pointer;transition:background-color .15s ease}
@@ -59,7 +83,6 @@ body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:1
 .logout-link{font-family:var(--body);font-size:12.5px;font-weight:700;color:var(--grey);background:none;border:none;cursor:pointer;letter-spacing:normal}
 .logout-link:hover{color:var(--red)}
 .forgot-link{display:block;width:100%;text-align:center;font-family:var(--body);font-size:13px;font-weight:700;color:var(--blue);background:none;border:none;cursor:pointer;padding:6px}
-.logo em{font-style:normal;color:var(--gold)}
 .eyebrow{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.09em;color:var(--grey);margin-bottom:14px;display:flex;align-items:center;gap:10px}
 .eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--blue);flex-shrink:0}
 
@@ -171,7 +194,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
     margin-bottom:0;padding:20px 14px;gap:6px;
     mask-image:none;-webkit-mask-image:none;
     transform:translateX(-105%);transition:transform .25s ease;
-    box-shadow:2px 0 28px rgba(0,0,0,.18);
+    box-shadow:2px 0 28px rgba(14,31,53,.18);
   }
   .tabs.mobile-open{transform:translateX(0)}
   .tabs button{width:100%;text-align:left;padding:12px 16px;border-radius:12px}
@@ -261,8 +284,13 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .stat-tile{position:relative;overflow:hidden}
 .stat-tile.feat,.stat-tile.gold{border:none;color:#fff}
 .stat-tile.feat{background:var(--blue-d)}
-.stat-tile.gold{background:var(--gold)}
-.stat-tile.feat .n,.stat-tile.gold .n{color:#fff}
+/* L'or en blanc sur fond doré ne passe pas (2,42:1, MARQUE.md §3) — fond
+   marine à la place, avec le chiffre en or : seule combinaison validée
+   pour cette couleur (6,86:1), déjà utilisée pour "Mes gains" côté
+   transporteur. */
+.stat-tile.gold{background:var(--navy)}
+.stat-tile.feat .n{color:#fff}
+.stat-tile.gold .n{color:var(--gold)}
 .stat-tile.feat .l,.stat-tile.gold .l{color:#fff;opacity:.7}
 .stat-tile.feat .ic,.stat-tile.gold .ic{opacity:.9}
 .stat-tile .deco{position:absolute;right:14px;bottom:6px;font-size:44px;opacity:.14;line-height:1;pointer-events:none;user-select:none}
@@ -370,7 +398,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .country-group-title:first-child{margin-top:0}
 .country-group-flag{
   font-size:28px;line-height:1;flex-shrink:0;
-  filter:drop-shadow(0 1px 2px rgba(0,0,0,.12));
+  filter:drop-shadow(0 1px 2px rgba(14,31,53,.12));
 }
 .country-group-title>span:nth-child(2){
   font-family:var(--disp);font-size:23px;font-weight:600;color:var(--black);
@@ -522,7 +550,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .btn-resa-rapide:hover{filter:brightness(1.08)}
 /* Barre de sélection multiple + case à cocher — générique, partagée par
    toutes les listes avec sélection en masse (Stock, Réservations…). */
-.bulk-select-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--blue-d);color:#fff;border-radius:100px;padding:12px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(0,0,0,.35);font-size:14px;font-weight:600;z-index:900;transition:opacity .15s}
+.bulk-select-bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--blue-d);color:#fff;border-radius:100px;padding:12px 20px;display:flex;align-items:center;gap:14px;box-shadow:0 4px 20px rgba(14,31,53,.35);font-size:14px;font-weight:600;z-index:900;transition:opacity .15s}
 .bulk-select-bar.hidden{display:none}
 .row-item.bulk-selected{outline:2px solid var(--blue);background:var(--blue-lt)}
 .bulk-select-cb{width:18px;height:18px;accent-color:var(--blue);cursor:pointer;flex-shrink:0}
@@ -718,7 +746,7 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .map-modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px}
 .map-modal-head h2{margin:0;font-family:var(--disp);font-weight:600;font-size:19px}
 .map-modal-head button{background:var(--bg);border:none;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer;color:var(--grey);line-height:1}
-.media-modal-body{background:#12203a;display:flex;align-items:center;justify-content:center;max-height:70vh}
+.media-modal-body{background:#0E1F35;display:flex;align-items:center;justify-content:center;max-height:70vh}
 .media-modal-body img,.media-modal-body video{width:100%;max-height:70vh;object-fit:contain;display:block}
 .media-modal-foot{display:flex;justify-content:flex-end;padding:12px 20px;border-top:1px solid var(--rule)}
 .media-modal-foot a{color:var(--grey);font-size:12.5px;font-weight:600}
@@ -790,7 +818,7 @@ tr.bulk-selected td{background:var(--blue-lt)}
 </head>
 <body>
 <div class="wrap">
-  <div class="logo"><span>Loc<em>'Air</em><span class="logo-tag">Admin</span></span><span class="a-topbar-actions">
+  <div class="logo"><span>Loc<i class="gt">'</i>Air<span class="logo-tag">Admin</span></span><span class="a-topbar-actions">
     <details class="more-actions city-quick hidden" id="a-city-quick">
       <summary title="Changer de ville / zone">🌍 <span id="a-city-quick-label">Ville</span></summary>
       <div class="more-actions-menu" id="a-city-quick-menu"></div>
@@ -7167,7 +7195,7 @@ function initAdmSigCanvas(){
   canvas.height = Math.round(rect.height * dpr);
   _admSigCtx = canvas.getContext('2d');
   _admSigCtx.scale(dpr, dpr);
-  _admSigCtx.strokeStyle = '#1a2b4a';
+  _admSigCtx.strokeStyle = '#0E1F35';
   _admSigCtx.lineWidth   = 2.5;
   _admSigCtx.lineCap     = 'round';
   _admSigCtx.lineJoin    = 'round';
@@ -8498,7 +8526,7 @@ function partenaireRevenusCardHtml(p){
       ${IC_WARN} ${p.litiges.length} réservation${p.litiges.length>1?'s':''} annulée${p.litiges.length>1?'s':''}/remboursée${p.litiges.length>1?'s':''} après paiement de la commission — ${euros(p.a_recuperer_cents)} à récupérer ou déduire du prochain virement
       <div style="margin-top:8px;font-weight:400">
         ${p.litiges.map(l => `
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(0,0,0,.08)">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid rgba(14,31,53,.08)">
             <span>${escHtml(l.client||'—')}${(l.ref && !isInternalRef(l.ref))?' · '+escHtml(l.ref):''} · ${euros(l.commission_cents)}</span>
             <button class="btn btn-grey" style="padding:3px 10px;font-size:11px;width:auto;min-height:auto" onclick="resoudreLitige(${l.id}, this)">Marquer réglé</button>
           </div>`).join('')}
@@ -11009,7 +11037,7 @@ function renderVilles(){
       <label for="v-nom" style="margin-top:14px">Nom de la ville ou zone</label>
       <div style="position:relative">
         <input type="text" id="v-nom" placeholder="Cannes, Grasse, Madrid, Roma…" oninput="villeAutocomplete(this.value)" autocomplete="off" onfocus="villeAutocomplete(this.value)"/>
-        <div id="v-nom-dd" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg);border:1.5px solid var(--rule);border-radius:10px;margin-top:3px;max-height:220px;overflow-y:auto;z-index:200;box-shadow:0 6px 24px rgba(0,0,0,.12)"></div>
+        <div id="v-nom-dd" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg);border:1.5px solid var(--rule);border-radius:10px;margin-top:3px;max-height:220px;overflow-y:auto;z-index:200;box-shadow:0 6px 24px rgba(14,31,53,.12)"></div>
       </div>
       <label for="v-dep" style="margin-top:14px">Département / région <span style="font-weight:400;color:var(--grey-soft)">(optionnel)</span></label>
       <input type="text" id="v-dep" placeholder="06, Communauté de Madrid, Latium…"/>
@@ -12502,7 +12530,7 @@ async function refreshLivePosition(transporteurId){
 
     if(LIVE_DEST_COORDS){
       if(LIVE_LINE) LIVE_MAP.removeLayer(LIVE_LINE);
-      LIVE_LINE = L.polyline([point, [LIVE_DEST_COORDS.lat, LIVE_DEST_COORDS.lng]], {color:'#1a2b4a', weight:3, dashArray:'6,8'}).addTo(LIVE_MAP);
+      LIVE_LINE = L.polyline([point, [LIVE_DEST_COORDS.lat, LIVE_DEST_COORDS.lng]], {color:'#0E1F35', weight:3, dashArray:'6,8'}).addTo(LIVE_MAP);
     }
 
     const ageSec = Math.round((Date.now() - new Date(d.position_at).getTime()) / 1000);
