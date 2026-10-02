@@ -5,7 +5,7 @@
      1. lire le retour de la page de paiement (?achat=confirme|annule) ;
      2. demander à /api/produits-vente ce qui est réellement en vente et
         en dessiner les fiches ;
-     3. envoyer l'identifiant du modèle et la ville à
+     3. envoyer l'identifiant du modèle, la ville et les options cochées à
         /api/boutique-checkout, puis suivre l'adresse que Stripe renvoie.
 
    ── CE QU'IL NE FAIT JAMAIS ──
@@ -30,6 +30,15 @@
      (api/boutique-checkout.js) : un <select> se contourne, pas une
      validation serveur. */
   var VILLES = ['Nice', 'Paris'];
+
+  /* Les prix des options, les mêmes que dans api/_lib/vente.js
+     (OPTIONS_VENTE). Ici ils ne servent qu'à AFFICHER le total : le
+     serveur recalcule tout, le navigateur n'envoie que des cases cochées. */
+  var LIVRAISON = 6000, EXPRESS = 6000, INSTALLATION = 8000;
+  function prixInstallation(p) {
+    return typeof p.installation_vente_cents === 'number' && p.installation_vente_cents >= 0
+      ? p.installation_vente_cents : INSTALLATION;
+  }
 
   var NBSP = '\u00A0';
 
@@ -113,8 +122,10 @@
 
     /* Avant que la ville soit choisie, la ligne dit les deux — c'est vrai,
        et ça évite que la fiche change de hauteur au moment du choix. */
-    lignes.push(['Livraison offerte',
-      ville ? 'par Chronopost, à ' + ville + '.' : 'par Chronopost, à Nice ou à Paris.']);
+    lignes.push(['Livraison',
+      ville === 'Paris' ? 'par Chronopost à Paris : ' + eur(LIVRAISON) + '.'
+        : ville === 'Nice' ? 'à Nice : ' + eur(LIVRAISON) + ', ou sous 2' + NBSP + 'h en Express.'
+        : 'à Nice ou à Paris, ' + eur(LIVRAISON) + '.']);
 
     if (typeof p.delai_vente_jours === 'number') {
       lignes.push([
@@ -182,7 +193,7 @@
     c.appendChild(el('div', 'b-spec', spec || 'Le modèle que nous louons aussi.'));
 
     c.appendChild(el('div', 'b-prix', eur(p.prix_vente_cents)));
-    c.appendChild(el('p', 'b-ttc', 'Prix TTC, livraison comprise. Rien ne s’ajoute au moment de payer.'));
+    c.appendChild(el('p', 'b-ttc', 'Prix TTC de l’appareil. La livraison et les options s’ajoutent ci-dessous.'));
 
     /* La liste « ce qui est compris » dépend de la ville choisie : on la
        redessine à chaque changement plutôt que d'écrire « à Nice ou à
@@ -208,6 +219,25 @@
       sel.appendChild(o);
     });
     bloc.appendChild(sel);
+
+    /* Les options, proposées seulement à Nice (là où nous livrons
+       nous-mêmes). Des cases, pas des montants : le serveur fixe le prix. */
+    var opts = el('div', 'b-opts');
+    function caseOption(id, txt) {
+      var l = el('label', 'b-opt'), cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.id = id;
+      l.appendChild(cb); l.appendChild(el('span', null, txt));
+      opts.appendChild(l);
+      return cb;
+    }
+    var cbX = caseOption('b-x-' + i, 'Express, livré sous 2' + NBSP + 'h (commande avant 18' + NBSP + 'h) · +' + eur(EXPRESS));
+    var instC = prixInstallation(p);
+    var cbT = caseOption('b-t-' + i, 'Installation par un technicien · ' + (instC ? '+' + eur(instC) : 'offerte'));
+    opts.hidden = true;
+    bloc.appendChild(opts);
+
+    var total = el('p', 'b-total');
+    bloc.appendChild(total);
 
     var btn = el('button', 'btn btn-1', 'Choisissez votre ville');
     btn.type = 'button';
@@ -236,8 +266,17 @@
     /* Le texte du bouton fait le travail que ferait un message d'erreur :
        tant qu'aucune ville n'est choisie, il DIT ce qu'il attend, au lieu de
        rester sur « Acheter » et de ne rien faire quand on clique. */
+    function montant() {
+      var nice = sel.value === 'Nice';
+      return p.prix_vente_cents + LIVRAISON
+        + (nice && cbX.checked ? EXPRESS : 0)
+        + (nice && cbT.checked ? instC : 0);
+    }
     function dessineBouton() {
+      opts.hidden = sel.value !== 'Nice';
+      if (sel.value !== 'Nice') { cbX.checked = false; cbT.checked = false; }
       btn.disabled = !sel.value;
+      total.textContent = sel.value ? 'Total' + NBSP + ': ' + eur(montant()) + ', livraison comprise.' : '';
       btn.textContent = sel.value
         ? 'Acheter et faire livrer à ' + sel.value
         : 'Choisissez votre ville';
@@ -247,10 +286,12 @@
       dessineCompris();
       if (err) err.hidden = true;
     });
+    cbX.addEventListener('change', dessineBouton);
+    cbT.addEventListener('change', dessineBouton);
     dessineBouton();
     dessineCompris();
 
-    btn.addEventListener('click', function () { acheter(p, sel, btn); });
+    btn.addEventListener('click', function () { acheter(p, sel, btn, cbX, cbT); });
 
     return carte;
   }
@@ -260,7 +301,7 @@
      Le bouton se verrouille pendant l'aller-retour : deux clics rapides
      créeraient deux sessions de paiement, donc potentiellement deux
      commandes pour un seul client. */
-  function acheter(p, sel, btn) {
+  function acheter(p, sel, btn, cbX, cbT) {
     if (!sel.value) { sel.focus(); return; }
     if (btn.getAttribute('aria-busy') === 'true') return;
 
@@ -277,7 +318,8 @@
     fetch('/api/boutique-checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ modele_id: p.id, ville: sel.value })
+      body: JSON.stringify({ modele_id: p.id, ville: sel.value,
+        express: sel.value === 'Nice' && cbX.checked, installation: sel.value === 'Nice' && cbT.checked })
     })
       .then(function (r) {
         return r.json().catch(function () { return {}; })

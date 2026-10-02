@@ -107,4 +107,21 @@ async function getProduitVentePourPaiement(supabase, id) {
   }
 }
 
-module.exports = { getProduitsVente, getCatalogueAdmin, getProduitVentePourPaiement };
+// ── LES OPTIONS D'UN ACHAT ──
+// Décidées par le propriétaire : les mêmes prix que la location.
+// La livraison est obligatoire (pas de retrait) ; l'Express et
+// l'installation ne se font qu'à Nice. L'installation peut avoir un prix
+// propre au modèle (colonne installation_vente_cents, onglet Vente de
+// l'admin, 0 = offerte) ; vide, c'est le prix par défaut ci-dessous.
+// boutique.js affiche les mêmes chiffres, mais c'est ICI qu'ils font foi.
+const OPTIONS_VENTE = {
+  livraison_cents:    6000,   // Nice (par nos soins) ou Paris (Chronopost)
+  express_cents:      6000,   // en plus de la livraison, Nice uniquement
+  installation_cents: 8000,   // par défaut, Nice uniquement
+};
+function prixInstallationVente(produit) {
+  const v = produit && produit.installation_vente_cents;
+  return Number.isFinite(v) && v >= 0 ? v : OPTIONS_VENTE.installation_cents;
+}
+
+module.exports = { getProduitsVente, getCatalogueAdmin, getProduitVentePourPaiement, OPTIONS_VENTE, prixInstallationVente };

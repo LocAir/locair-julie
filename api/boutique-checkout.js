@@ -1,6 +1,6 @@
 const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
-const { getProduitVentePourPaiement } = require('./_lib/vente');
+const { getProduitVentePourPaiement, OPTIONS_VENTE, prixInstallationVente } = require('./_lib/vente');
 
 // Paiement d'un ACHAT depuis /boutique — voir migration_vente_catalogue.sql.
 //
@@ -14,8 +14,9 @@ const { getProduitVentePourPaiement } = require('./_lib/vente');
 // l'Offre Privilège et de la prolongation).
 //
 // ── LE PRIX NE VIENT JAMAIS DU NAVIGATEUR ──
-// Le client n'envoie qu'un identifiant de modèle et une ville. Le montant
-// est relu dans le catalogue, côté serveur. S'il pouvait envoyer un
+// Le client n'envoie qu'un identifiant de modèle, une ville et deux cases
+// cochées (express, installation). Le montant est relu dans le catalogue et
+// dans OPTIONS_VENTE, côté serveur. S'il pouvait envoyer un
 // montant, n'importe qui achèterait une machine à 1 €.
 
 // Les deux seules villes de livraison, en dur et côté serveur. Le <select>
@@ -32,6 +33,11 @@ module.exports = async (req, res) => {
   const ville = String(body.ville || '').trim();
   if (!VILLES.includes(ville)) {
     return res.status(400).json({ error: 'Choisissez une ville de livraison.' });
+  }
+  const express      = body.express === true;
+  const installation = body.installation === true;
+  if ((express || installation) && ville !== 'Nice') {
+    return res.status(400).json({ error: "L'Express et l'installation ne sont proposés qu'à Nice." });
   }
 
   try {
@@ -55,33 +61,51 @@ module.exports = async (req, res) => {
       ville_livraison: ville,
       modele,
       modele_id:      String(produit.id),
+      express:        express ? 'oui' : 'non',
+      installation:   installation ? 'oui' : 'non',
     };
+
+    const lignes = [{
+      quantity: 1,
+      price_data: {
+        currency: 'eur',
+        unit_amount: produit.prix_vente_cents,
+        product_data: {
+          name: modele,
+          description: 'Climatiseur mobile neuf, livré à ' + ville + '.',
+        },
+      },
+    }];
+    const installCents = installation ? prixInstallationVente(produit) : 0;
+    if (installation && installCents > 0) {
+      lignes.push({
+        quantity: 1,
+        price_data: {
+          currency: 'eur',
+          unit_amount: installCents,
+          product_data: { name: 'Installation par un technicien', description: 'Kit fenêtre posé, appareil branché, réglages expliqués.' },
+        },
+      });
+    }
+    const livraison = ville === 'Paris'
+      ? { nom: 'Chronopost — livraison à Paris', cents: OPTIONS_VENTE.livraison_cents }
+      : express
+        ? { nom: 'Livraison Express sous 2 h — Nice', cents: OPTIONS_VENTE.livraison_cents + OPTIONS_VENTE.express_cents }
+        : { nom: 'Livraison à Nice', cents: OPTIONS_VENTE.livraison_cents };
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      line_items: [{
-        quantity: 1,
-        price_data: {
-          currency: 'eur',
-          unit_amount: produit.prix_vente_cents,
-          product_data: {
-            name: modele,
-            description: 'Climatiseur mobile neuf — livraison comprise, livré à ' + ville + '.',
-          },
-        },
-      }],
-      // Une vente s'expédie : il faut une adresse. Restreinte à la France,
-      // parce que c'est la seule zone que Chronopost couvre dans ce cadre.
+      line_items: lignes,
+      // Une vente se livre : il faut une adresse, en France.
       shipping_address_collection: { allowed_countries: ['FR'] },
-      // Un seul mode, à zéro : la livraison est déjà dans le prix affiché.
-      // L'écrire comme une ligne à 0 € plutôt que de la taire, pour que le
-      // client le VOIE sur la page de paiement.
+      // La livraison est une option payante, choisie sur la boutique. Une
+      // seule ligne, déjà décidée : le client la VOIT sur la page de paiement.
       shipping_options: [{
         shipping_rate_data: {
           type: 'fixed_amount',
-          fixed_amount: { amount: 0, currency: 'eur' },
-          display_name: 'Chronopost — livraison offerte',
+          fixed_amount: { amount: livraison.cents, currency: 'eur' },
+          display_name: livraison.nom,
         },
       }],
       payment_intent_data: {
