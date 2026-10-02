@@ -25,7 +25,7 @@ def bar(fil="Guides", href="/blog"):
               else f'<span class="bar-fil">{fil}</span>') if fil else ''
     return f'''<header class="bar" id="bar">
   <div class="bar-in">
-    <a class="logo" href="/">Loc<i class="gt">'</i>Air</a>
+    <a href="/" class="logo lockup" aria-label="Loc'Air, spécialiste du confort thermique"><span class="logo-n">Loc'Air</span><span class="logo-t" aria-hidden="true">Spécialiste du confort thermique</span></a>
     {repere}
     <a class="btn btn-1 btn-s" href="/">Réserver</a>
     <button type="button" class="mb" id="burger" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="menu"><span></span><span></span></button>
