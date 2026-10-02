@@ -270,6 +270,7 @@ def page_ville(v):
 {pied()}
 
 {SCRIPT_BAR}
+<script src="/menu.js" defer></script>
 </body>
 </html>
 '''
