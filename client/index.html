@@ -909,6 +909,12 @@ body.vl .mm-dash{display:none}
 .sec-b .assist-btn:first-child{margin-top:14px}
 .sec-mini{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.14em;color:var(--text-3);margin:18px 0 4px}
 .sec-b .doc-row:first-child,.sec-b>p:first-child,.sec-b .aide-item:first-child,.sec-b .notif-row:first-child{margin-top:8px}
+
+/* Aperçu des documents (PDF.js) */
+.doc-modal-pages{flex:1;overflow:auto;-webkit-overflow-scrolling:touch;background:#3A3A3A;padding:12px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.doc-modal-pages canvas{display:block;max-width:100%;height:auto;background:#fff;border-radius:4px;box-shadow:0 2px 12px rgba(0,0,0,.35)}
+.doc-modal-msg{margin:auto;color:#fff;text-align:center;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:14px}
+.doc-modal-head{padding-top:max(10px,env(safe-area-inset-top))}
 </style>
 </head>
 <body>
@@ -2065,23 +2071,68 @@ async function activateClientFaceId(){
 }
 
 // ── Aperçu PDF ────────────────────────────────────────────────────────────
-function openDocModal(url, title, dlUrl) {
+// Les PDF sont dessinés page par page avec PDF.js (hébergé sur le site, dans
+// /vendor/pdfjs). Une iframe ne marche pas ici : la règle de sécurité du site
+// (frame-src) l'interdit, et Safari sur iPhone n'affiche de toute façon que
+// la première page d'un PDF dans une iframe.
+let _pdfLib = null, _docRendu = 0;
+function chargerPdfJs(){
+  if(_pdfLib) return _pdfLib;
+  _pdfLib = new Promise((ok, ko) => {
+    const sc = document.createElement('script');
+    sc.src = '/vendor/pdfjs/pdf.min.js';
+    sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdfjs/pdf.worker.min.js'; ok(window.pdfjsLib); };
+    sc.onerror = () => { _pdfLib = null; ko(new Error('pdfjs')); };
+    document.head.appendChild(sc);
+  });
+  return _pdfLib;
+}
+async function openDocModal(url, title, dlUrl) {
   const m  = document.getElementById('doc-modal');
-  const fr = document.getElementById('doc-modal-frame');
+  const zone = document.getElementById('doc-modal-frame');
   const lb = document.getElementById('doc-modal-lbl');
   const dl = document.getElementById('doc-modal-dl');
-  if (!m || !fr) return;
+  if (!m || !zone) return;
+  const rendu = ++_docRendu;
   lb.textContent = title || 'Document';
-  fr.src = url;
   if (dl) dl.href = dlUrl || (url + '&dl=1');
+  zone.innerHTML = '<p class="doc-modal-msg">Chargement du document…</p>';
   m.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
+  try {
+    const pdfjs = await chargerPdfJs();
+    const r = await fetch(url, { credentials: 'same-origin' });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const data = new Uint8Array(await r.arrayBuffer());
+    const pdf = await pdfjs.getDocument({ data, isEvalSupported: false }).promise;
+    if (rendu !== _docRendu) return;
+    zone.innerHTML = '';
+    const largeur = Math.min(zone.clientWidth - 24, 900);
+    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    for (let n = 1; n <= pdf.numPages; n++) {
+      const page = await pdf.getPage(n);
+      if (rendu !== _docRendu) return;
+      const base = page.getViewport({ scale: 1 });
+      const vue = page.getViewport({ scale: (largeur / base.width) * ratio });
+      const cv = document.createElement('canvas');
+      cv.width = Math.floor(vue.width); cv.height = Math.floor(vue.height);
+      cv.style.width = Math.floor(vue.width / ratio) + 'px';
+      cv.setAttribute('aria-label', 'Page ' + n + ' sur ' + pdf.numPages);
+      zone.appendChild(cv);
+      await page.render({ canvasContext: cv.getContext('2d'), viewport: vue }).promise;
+    }
+  } catch (e) {
+    if (rendu !== _docRendu) return;
+    console.warn('Aperçu document :', e);
+    zone.innerHTML = `<div class="doc-modal-msg"><p>L'aperçu n'a pas pu s'afficher.</p><a class="doc-modal-btn" href="${escHtml(url)}" target="_blank" rel="noopener">Ouvrir le document</a></div>`;
+  }
 }
 function closeDocModal() {
   const m  = document.getElementById('doc-modal');
-  const fr = document.getElementById('doc-modal-frame');
+  const zone = document.getElementById('doc-modal-frame');
+  _docRendu++;
   if (m) m.classList.add('hidden');
-  if (fr) fr.src = 'about:blank'; // libère la mémoire
+  if (zone) zone.innerHTML = ''; // libère la mémoire
   document.body.style.overflow = '';
 }
 // Fermeture avec Échap
@@ -2113,7 +2164,7 @@ if(localStorage.getItem('client_token')){
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Fermer
     </button>
   </div>
-  <iframe id="doc-modal-frame" class="doc-modal-frame" src="about:blank" title="Aperçu du document"></iframe>
+  <div id="doc-modal-frame" class="doc-modal-pages" tabindex="0" aria-live="polite"></div>
 </div>
 </body>
 </html>
