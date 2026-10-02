@@ -141,11 +141,24 @@
   }
 
   function fiche(p, i) {
-    var c = el('div', 'b-carte');
+    var carte = el('div', 'b-carte');
     var nom = [p.marque, p.modele].filter(Boolean).join(' ');
     var idv = 'b-ville-' + i;
 
-    c.appendChild(el('div', 'b-nom', nom));
+    /* La photo : celle de l'admin si elle existe, sinon celle de notre
+       climatiseur mobile. Posée par attribut, jamais par innerHTML. */
+    var ph = el('div', 'b-photo');
+    var img = document.createElement('img');
+    img.src = (typeof p.photo_url === 'string' && /^(https:\/\/|\/)/.test(p.photo_url)) ? p.photo_url : '/hero-clim-900.webp';
+    img.alt = nom;
+    img.loading = i ? 'lazy' : 'eager';
+    ph.appendChild(img);
+    ph.appendChild(el('span', 'etiquette', 'En stock'));
+    carte.appendChild(ph);
+
+    var c = el('div', 'b-info');
+    carte.appendChild(c);
+    c.appendChild(el('h3', 'b-nom', nom));
 
     var spec = [
       p.puissance_btu ? p.puissance_btu + NBSP + 'BTU' : null,
@@ -226,7 +239,7 @@
 
     btn.addEventListener('click', function () { acheter(p, sel, btn); });
 
-    return c;
+    return carte;
   }
 
   /* ── 3. LE PAIEMENT ───────────────────────────────────────────────────
