@@ -46,8 +46,11 @@ def bar(fil="Guides", href="/blog"):
         <li><a href="/#faq">FAQ</a></li>
       </ul>
     </nav>
-    <div class="mm-b">
+    <div class="mm-esp">
       <a href="/client">Espace client</a>
+      <a href="/partenaire">Espace ambassadeur</a>
+    </div>
+    <div class="mm-b">
       <a href="tel:+33663798756">06 63 79 87 56</a>
       <span>7j/7 · 8 h–20 h</span>
     </div>
