@@ -46,6 +46,11 @@
   --sh-md:0 8px 40px rgba(14,31,53,.10),0 2px 10px rgba(14,31,53,.05);
   --sh-lg:0 24px 80px rgba(14,31,53,.12),0 6px 24px rgba(14,31,53,.06);
   --sh-blue:0 6px 24px rgba(14,31,53,.32);
+  /* La courbe de mouvement de la marque (MARQUE.md §8) — avant, chaque
+     transition avait son propre "ease" générique, sans rien de délibéré
+     ni de cohérent d'un composant à l'autre (chantier ergonomie,
+     2026-10-03). */
+  --ease:cubic-bezier(.32,.72,.28,1);
 }
 @font-face{
   font-family:'Bricolage';src:url('/polices/bricolage-latin.woff2') format('woff2');
@@ -78,7 +83,7 @@ body{background:var(--bg);color:var(--black);font-family:var(--body);font-size:1
   background:var(--gold-d);border-radius:50% 50% 50% 0;transform:rotate(-25deg)}
 .logo-tag{font-size:11px;font-weight:600;color:var(--grey-soft);font-family:var(--body);letter-spacing:.06em;text-transform:uppercase;margin-left:6px;vertical-align:middle}
 .a-topbar-actions{display:flex;align-items:center;gap:6px;flex-shrink:0}
-.tb-icon-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:none;background:var(--bg);color:var(--blue);font-size:16px;line-height:1;cursor:pointer;transition:background-color .15s ease}
+.tb-icon-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:none;background:var(--bg);color:var(--blue);font-size:16px;line-height:1;cursor:pointer;transition:background-color .15s var(--ease)}
 .tb-icon-btn:active{background-color:var(--blue-lt)}
 .logout-link{font-family:var(--body);font-size:12.5px;font-weight:700;color:var(--grey);background:none;border:none;cursor:pointer;letter-spacing:normal}
 .logout-link:hover{color:var(--red)}
@@ -97,7 +102,7 @@ label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;lett
 input[type=text],input[type=password],input[type=number],input[type=tel],select,textarea{
   width:100%;padding:12px 14px;border:1.5px solid var(--rule);border-radius:var(--r-sm);font-size:14.5px;
   font-family:var(--body);background:var(--white);color:var(--black);outline:none;margin-bottom:14px;
-  transition:border-color .15s ease, box-shadow .15s ease;
+  transition:border-color .15s var(--ease), box-shadow .15s var(--ease);
   text-overflow:ellipsis;
 }
 textarea{resize:vertical;min-height:70px;line-height:1.5}
@@ -108,15 +113,20 @@ input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blu
 .field-err{border-color:var(--red) !important;background:var(--red-bg)}
 .field-err:focus{box-shadow:0 0 0 3px rgba(155,44,26,.15)}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
-.btn{padding:12px 22px;border:none;border-radius:100px;font-family:var(--body);font-size:13.5px;font-weight:700;letter-spacing:.005em;cursor:pointer;transition:background-color .15s ease,border-color .15s ease,color .15s ease,box-shadow .18s ease,transform .18s ease,opacity .15s ease}
+.btn{padding:12px 22px;border:none;border-radius:100px;font-family:var(--body);font-size:13.5px;font-weight:700;letter-spacing:.005em;cursor:pointer;transition:background-color .15s var(--ease),border-color .15s var(--ease),color .15s var(--ease),box-shadow .18s var(--ease),transform .18s var(--ease),opacity .15s var(--ease)}
 .btn-blue{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
-.btn-blue:hover:not(:disabled){background:var(--blue-d);box-shadow:0 8px 22px rgba(18,32,58,.28);transform:translateY(-1px)}
+.btn-blue:hover:not(:disabled){background:var(--blue-d);box-shadow:0 8px 22px rgba(6,90,78,.28);transform:translateY(-1px)}
 .btn-green{background:var(--green);color:#fff;box-shadow:var(--sh-xs)}
-.btn-green:hover:not(:disabled){box-shadow:0 8px 22px rgba(45,106,79,.28);transform:translateY(-1px)}
+.btn-green:hover:not(:disabled){box-shadow:0 8px 22px rgba(15,122,61,.28);transform:translateY(-1px)}
+.btn-amber{background:var(--amber);color:#fff;box-shadow:var(--sh-xs)}
+.btn-amber:hover:not(:disabled){box-shadow:0 8px 22px rgba(180,83,9,.28);transform:translateY(-1px)}
+/* Rouge/gris : boutons "contour", sans remplissage — le survol gagne quand
+   même un léger relief (avant : juste un changement de couleur, aucune des
+   deux seules variantes "pleines" n'avait ce traitement, incohérent). */
 .btn-red{background:var(--white);color:var(--red);border:1.5px solid rgba(155,44,26,.2)}
-.btn-red:hover:not(:disabled){background:var(--red-bg);transform:translateY(-1px)}
+.btn-red:hover:not(:disabled){background:var(--red-bg);box-shadow:var(--sh-sm);transform:translateY(-1px)}
 .btn-grey{background:var(--white);color:var(--grey);border:1.5px solid var(--rule)}
-.btn-grey:hover:not(:disabled){border-color:var(--grey-soft);color:var(--black);transform:translateY(-1px)}
+.btn-grey:hover:not(:disabled){border-color:var(--grey-soft);color:var(--black);box-shadow:var(--sh-sm);transform:translateY(-1px)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn-block{width:100%}
 /* Tuile d'action (Accueil : "Nouvelle réservation" / "Créer une mission") —
@@ -130,19 +140,19 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .a-cta-tile svg{flex-shrink:0}
 /* Bouton "+" accueil — accès rapide mission / prolongation */
 .a-quick-wrap{position:relative;flex-shrink:0}
-.a-quick-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:16px 18px;font-size:13px;font-weight:700;border-radius:var(--r);background:var(--navy);color:#fff;border:none;cursor:pointer;transition:background-color .15s ease;line-height:1;height:100%}
+.a-quick-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:16px 18px;font-size:13px;font-weight:700;border-radius:var(--r);background:var(--navy);color:#fff;border:none;cursor:pointer;transition:background-color .15s var(--ease);line-height:1;height:100%}
 .a-quick-btn:hover{background:var(--blue)}
 .a-quick-btn .a-quick-plus{font-size:22px;line-height:1;font-weight:300}
 .a-quick-menu{position:absolute;top:calc(100% + 6px);right:0;min-width:220px;background:var(--white);border:1.5px solid var(--rule);border-radius:var(--r);box-shadow:var(--sh-md);z-index:200;overflow:hidden;display:none}
 .a-quick-menu.open{display:block}
-.a-quick-menu button{display:flex;align-items:center;gap:10px;width:100%;padding:13px 16px;background:none;border:none;font-size:14px;font-weight:500;color:var(--black);cursor:pointer;text-align:left;transition:background-color .1s ease;border-bottom:1px solid var(--rule)}
+.a-quick-menu button{display:flex;align-items:center;gap:10px;width:100%;padding:13px 16px;background:none;border:none;font-size:14px;font-weight:500;color:var(--black);cursor:pointer;text-align:left;transition:background-color .1s var(--ease);border-bottom:1px solid var(--rule)}
 .a-quick-menu button:last-child{border-bottom:none}
 .a-quick-menu button:hover{background:var(--blue-lt)}
 .err{background:var(--red-bg);color:var(--red);border-radius:var(--r-sm);padding:11px 14px;font-size:13px;margin-top:10px;display:none;line-height:1.5}
 .hidden{display:none !important}
 
 .tabs{display:flex;gap:5px;overflow-x:auto;margin-bottom:20px;padding-bottom:2px;mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent 100%);-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 28px),transparent 100%)}
-.tabs button{flex-shrink:0;padding:9px 15px;border-radius:100px;border:1.5px solid transparent;background:transparent;font-weight:600;font-size:13px;color:var(--grey);cursor:pointer;transition:background-color .15s ease, color .15s ease}
+.tabs button{flex-shrink:0;padding:9px 15px;border-radius:100px;border:1.5px solid transparent;background:transparent;font-weight:600;font-size:13px;color:var(--grey);cursor:pointer;transition:background-color .15s var(--ease), color .15s var(--ease)}
 .tabs button:hover{background:rgba(20,30,48,.04);color:var(--black)}
 .tabs button.on{background:var(--blue);color:#fff;box-shadow:var(--sh-xs)}
 .tabs button.on:hover{background:var(--blue-d)}
@@ -237,7 +247,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .a-search-recent button{font-size:12px;padding:4px 10px;border-radius:100px;border:1px solid var(--rule);background:var(--bg);cursor:pointer;color:var(--grey)}
 
 .periods{display:flex;gap:4px;margin-bottom:18px;background:var(--bg);padding:4px;border-radius:100px}
-.periods button{flex:1;padding:8px;border-radius:100px;border:none;background:transparent;font-weight:600;font-size:12.5px;color:var(--grey);cursor:pointer;transition:background-color .15s ease,color .15s ease}
+.periods button{flex:1;padding:8px;border-radius:100px;border:none;background:transparent;font-weight:600;font-size:12.5px;color:var(--grey);cursor:pointer;transition:background-color .15s var(--ease),color .15s var(--ease)}
 .periods button.on{background:var(--white);color:var(--black);box-shadow:var(--sh-xs)}
 /* Boutons "Durée rapide" du devis (fond transparent posé sur .devis-box,
    pas la piste grise habituelle de .periods) — la sélection doit se voir
@@ -252,7 +262,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    plutôt que le flex:1 de .periods qui écrase le texte. Ne réutilise pas
    .tabs (son bloc mobile en fait un tiroir fixe hors-écran par défaut). */
 .filter-scroll{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent 100%);-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 20px),transparent 100%)}
-.filter-scroll button{flex-shrink:0;padding:8px 14px;border-radius:100px;border:1.5px solid var(--rule);background:var(--white);font-weight:600;font-size:12.5px;color:var(--grey);cursor:pointer;white-space:nowrap;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+.filter-scroll button{flex-shrink:0;padding:8px 14px;border-radius:100px;border:1.5px solid var(--rule);background:var(--white);font-weight:600;font-size:12.5px;color:var(--grey);cursor:pointer;white-space:nowrap;transition:background-color .15s var(--ease),color .15s var(--ease),border-color .15s var(--ease)}
 .filter-scroll button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
 
 /* Barre recherche + export d'une liste (Réservations, Stock, Clients) — la
@@ -261,7 +271,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    qu'avant (un gros bouton pleine largeur avant même la recherche). */
 .list-toolbar{display:flex;gap:8px;align-items:center;margin-bottom:14px}
 .list-toolbar input[type=text]{flex:1;margin-bottom:0}
-.list-toolbar-export{flex-shrink:0;background:var(--white);border:1.5px solid var(--rule);color:var(--grey);border-radius:var(--r-sm);padding:0 14px;height:44px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;transition:border-color .15s ease,color .15s ease}
+.list-toolbar-export{flex-shrink:0;background:var(--white);border:1.5px solid var(--rule);color:var(--grey);border-radius:var(--r-sm);padding:0 14px;height:44px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;transition:border-color .15s var(--ease),color .15s var(--ease)}
 .list-toolbar-export:hover{border-color:var(--grey-soft);color:var(--black)}
 
 /* Cartes agrandies (2026-08-12, chantier structurel demandé par Aly) : plus
@@ -428,7 +438,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    suivante — illisible pour le chiffre qu'on veut justement lire d'un coup
    d'œil au téléphone. Avec le wrap, chaque bloc garde assez de place pour
    son propre contenu, quitte à passer sur 2 lignes au lieu de 2 colonnes. */
-.devis-total-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:10px 16px;margin-top:14px;padding-top:14px;border-top:1px dashed rgba(26,43,74,.25)}
+.devis-total-row{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:10px 16px;margin-top:14px;padding-top:14px;border-top:1px dashed rgba(14,31,53,.25)}
 .devis-total-row>div{min-width:130px}
 .devis-total-lbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--blue)}
 .devis-total-amt{font-family:var(--disp);font-size:30px;font-weight:600;color:var(--black);letter-spacing:-.01em;line-height:1}
@@ -451,8 +461,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
    +60€, livraison aujourd'hui sous 2h. Toggle simple : au clic, force la
    date de livraison à aujourd'hui (nrToggleExpress), comme selectExpress()
    côté site. */
-.nr-express-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid var(--green);border-radius:var(--r-sm);padding:12px 16px;background:var(--green-bg);cursor:pointer;font-family:var(--body);margin:10px 0 2px;transition:box-shadow .15s ease}
-.nr-express-card.on{box-shadow:0 0 0 2.5px rgba(45,106,79,.22)}
+.nr-express-card{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:1.5px solid var(--green);border-radius:var(--r-sm);padding:12px 16px;background:var(--green-bg);cursor:pointer;font-family:var(--body);margin:10px 0 2px;transition:box-shadow .15s var(--ease)}
+.nr-express-card.on{box-shadow:0 0 0 2.5px rgba(15,122,61,.22)}
 .nr-express-left{display:flex;flex-direction:column;gap:3px;text-align:left}
 .nr-express-badge{display:inline-flex;align-items:center;gap:4px;background:var(--green);color:#fff;font-size:9px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:100px}
 .nr-express-title{font-size:12.5px;font-weight:700;color:var(--green)}
@@ -460,7 +470,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 /* Récap façon "Sous-total / Livraison / Remise / Total" d'un panier d'achat
    — remplace la ligne de détail texte unique par des lignes structurées,
    plus proche de la lecture d'un ticket que d'une phrase à parser. */
-.cart-summary{margin-top:14px;padding-top:14px;border-top:1px dashed rgba(26,43,74,.25);display:flex;flex-direction:column;gap:7px}
+.cart-summary{margin-top:14px;padding-top:14px;border-top:1px dashed rgba(14,31,53,.25);display:flex;flex-direction:column;gap:7px}
 .cart-summary-row{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;color:var(--grey)}
 .cart-summary-row span:last-child{font-weight:600;color:var(--black);font-variant-numeric:tabular-nums}
 .cart-summary-row.cart-summary-discount span:last-child{color:var(--green)}
@@ -736,7 +746,7 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .dispo-row select{width:auto;flex:1.3;padding:8px 10px;margin:0;font-size:13px}
 
 .toast-wrap{position:fixed;left:0;right:0;bottom:24px;display:flex;justify-content:center;z-index:300;pointer-events:none}
-.toast{background:var(--black);color:#fff;padding:13px 20px;border-radius:100px;font-size:13.5px;font-weight:600;box-shadow:var(--sh-md);opacity:0;transform:translateY(12px);transition:opacity .25s ease, transform .25s ease;max-width:90vw}
+.toast{background:var(--black);color:#fff;padding:13px 20px;border-radius:100px;font-size:13.5px;font-weight:600;box-shadow:var(--sh-md);opacity:0;transform:translateY(12px);transition:opacity .25s var(--ease), transform .25s var(--ease);max-width:90vw}
 .toast.show{opacity:1;transform:translateY(0)}
 .toast.toast-error{background:var(--red)}
 .toast.toast-success{background:var(--green)}
@@ -779,9 +789,17 @@ tr.bulk-selected td{background:var(--blue-lt)}
 .spinner{width:28px;height:28px;border-radius:50%;border:3px solid var(--rule);border-top-color:var(--blue);animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.btn,.tabs button,.periods button,.row-item,.stat-tile{transition:box-shadow .15s ease, transform .1s ease, background-color .15s ease, border-color .15s ease}
+/* .btn a déjà sa propre liste complète de transitions (ligne 116 plus haut)
+   — ne pas la redéclarer ici évite deux timings concurrents sur les mêmes
+   propriétés. */
+.tabs button,.periods button,.row-item,.stat-tile{transition:box-shadow .15s var(--ease), transform .1s var(--ease), background-color .15s var(--ease), border-color .15s var(--ease)}
 .btn:active:not(:disabled){transform:scale(.98)}
-.row-item:hover{box-shadow:var(--sh-md);border-color:var(--rule)}
+/* Relief au survol + léger retour au clic — même langage que les boutons,
+   pour les lignes de liste et les tuiles de stat qui sont parfois cliquables
+   (filtre rapide) et parfois non : un peu de vie au survol ne ment à
+   personne, et confirme l'action sur celles qui le sont vraiment. */
+.row-item:hover,.stat-tile:hover{box-shadow:var(--sh-md);border-color:var(--rule);transform:translateY(-1px)}
+.row-item:active,.stat-tile:active{transform:translateY(0) scale(.99)}
 
 /* ── Version ordinateur : barre latérale fixe + contenu plus large ── */
 @media (min-width:860px){
@@ -813,6 +831,21 @@ tr.bulk-selected td{background:var(--blue-lt)}
   .print-label img{width:100%;max-width:140px;height:auto}
   .print-label-num{font-size:18px;font-weight:800;margin-top:6px}
   .print-label-brand{font-size:11px;color:#777;margin-top:2px}
+}
+
+/* Changement d'onglet : léger fondu plutôt qu'une bascule instantanée —
+   même principe que .screen-fade côté transporteur (chantier ergonomie,
+   2026-10-03). Les 22 panneaux d'onglet sont tous id="tab-xxx", aucun
+   autre id du fichier ne commence par ce préfixe. */
+@keyframes tabFadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+[id^="tab-"]:not(.hidden){animation:tabFadeIn .2s var(--ease)}
+
+/* MARQUE.md §8, règle non négociable : tout ce qui bouge doit s'arrêter
+   pour qui a réglé son appareil sur "moins d'animations" — jusqu'ici
+   aucune des animations de cette page (modale, spinner, tiroir mobile,
+   pastille carte en direct...) n'en tenait compte. */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms !important;animation-iteration-count:1 !important;transition-duration:.001ms !important;scroll-behavior:auto !important}
 }
 </style>
 </head>
