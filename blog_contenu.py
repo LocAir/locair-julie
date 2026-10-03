@@ -1091,3 +1091,108 @@ faq=[
 suite=["clim-en-panne-solution-urgence", "prix-location-climatiseur-mobile-nice"],
 urgence=True,
 ))
+
+ARTICLES.append(dict(
+slug="location-rafraichisseur-air-nice",
+date_iso="2026-10-03", date_fr="3 octobre 2026",
+rubrique="Choisir",
+titre_seo="Location de rafraîchisseur d'air à Nice",
+h1="Location de rafraîchisseur d'air à Nice.<em> Pour les espaces qu'on ne ferme pas.</em>",
+court="Location rafraîchisseur",
+desc="Location de rafraîchisseur d'air à Nice et sur la Côte d'Azur : terrasse, commerce, atelier, événement. Sans gaine ni travaux, livré, installé et repris.",
+resume="Terrasse, commerce, atelier, événement : là où un climatiseur ne peut rien.",
+chapo="Une terrasse en plein soleil, un magasin dont la porte reste ouverte, un atelier, un chapiteau&nbsp;: dans tous ces endroits, un climatiseur refroidit la rue. C'est pour eux que nous louons des rafraîchisseurs d'air.",
+corps="""
+<h2 id="quand">Quand louer un rafraîchisseur plutôt qu'un climatiseur</h2>
+<p>La règle tient en une question&nbsp;: <b>est-ce que l'air de cet espace se renouvelle en permanence&nbsp;?</b> Si oui — porte ouverte, terrasse, chapiteau, quai de chargement —, c'est un rafraîchisseur. Si non — une chambre, un bureau fermé —, c'est un <a href="/">climatiseur mobile</a>.</p>
+<ul>
+  <li><b>Terrasses et restaurants</b>&nbsp;: la terrasse en plein soleil, la cuisine où le personnel tient mal la journée.</li>
+  <li><b>Commerces</b>&nbsp;: une entrée ouverte toute la journée, impossible à climatiser.</li>
+  <li><b>Ateliers et entrepôts</b>&nbsp;: on ne rafraîchit pas le bâtiment entier, on rafraîchit les postes de travail.</li>
+  <li><b>Événements</b>&nbsp;: mariage, salon, chapiteau, tournage.</li>
+</ul>
+
+<h2 id="principe">Comment ça marche</h2>
+<p>Le rafraîchisseur fait passer l'air sur de l'eau. En s'évaporant, l'eau prend de la chaleur à l'air, qui ressort plus frais — la sensation qu'on a en sortant de la mer. On appelle ça l'adiabatique.</p>
+<ul>
+  <li><b>Pas de gaine</b>, pas de fenêtre à condamner, rien à fixer au mur.</li>
+  <li><b>Une prise ordinaire et de l'eau</b>, c'est tout ce qu'il faut.</li>
+  <li><b>Une fraction de l'électricité</b> d'un climatiseur.</li>
+  <li><b>Il lui faut de l'air qui entre.</b> Dans une pièce fermée, il ajoute de l'humidité et perd son effet&nbsp;: c'est sa seule condition.</li>
+</ul>
+<p>Le détail, avec un tableau comparatif, est dans <a href="/blog/climatiseur-mobile-ou-rafraichisseur-air">notre guide&nbsp;: climatiseur mobile ou rafraîchisseur d'air</a>.</p>
+
+<h2 id="prix">Combien ça coûte</h2>
+<p>Le rafraîchisseur se loue <b>40&nbsp;€ HT par jour</b> la première semaine. Un <b>forfait unique de 120&nbsp;€ HT</b> couvre la livraison, l'installation, la mise en route et la reprise, quel que soit le nombre d'appareils. Aucune caution. Le prix exact s'affiche tout de suite sur la page <a href="/pro">Loc'Air Pro</a>.</p>
+
+<h2 id="deroule">Comment ça se passe</h2>
+<ul>
+  <li><b>Vous nous dites l'espace</b>&nbsp;: une photo et les dimensions sur WhatsApp suffisent. Nous vous disons combien d'appareils et où les placer.</li>
+  <li><b>Nous livrons et installons</b>, nous mettons en route et nous vous montrons le fonctionnement.</li>
+  <li><b>Nous revenons tout reprendre</b> à la fin. Rien à transporter.</li>
+</ul>
+<p>Nous livrons Nice et la Côte d'Azur&nbsp;: <a href="/location-climatiseur-cannes">Cannes</a>, <a href="/location-climatiseur-antibes">Antibes</a>, <a href="/location-climatiseur-monaco">Monaco</a>, <a href="/location-climatiseur-menton">Menton</a> et les communes autour.</p>
+""",
+faq=[
+ ("Un rafraîchisseur d'air, est-ce que ça refroidit vraiment ?", "Oui, dans un espace où l'air se renouvelle : terrasse, commerce ouvert, atelier, chapiteau. Il rafraîchit les personnes et l'air autour d'elles. Dans une pièce fermée, il perd son effet : c'est alors un climatiseur mobile qu'il faut."),
+ ("Faut-il une fenêtre ou une gaine ?", "Non. Le rafraîchisseur n'a ni gaine ni compresseur. Une prise ordinaire et de l'eau suffisent."),
+ ("Combien coûte la location d'un rafraîchisseur d'air ?", "40 € HT par jour la première semaine, plus un forfait unique de 120 € HT pour la livraison, l'installation, la mise en route et la reprise, quel que soit le nombre d'appareils. Aucune caution."),
+ ("Livrez-vous en dehors de Nice ?", "Oui, sur la Côte d'Azur. Envoyez-nous l'adresse sur WhatsApp, nous confirmons en quelques minutes."),
+],
+suite=["climatiseur-mobile-ou-rafraichisseur-air", "rafraichisseur-adiabatique-entreprise"],
+urgence=False,
+))
+
+ARTICLES.append(dict(
+slug="climatiser-evenement-cote-d-azur",
+date_iso="2026-10-03", date_fr="3 octobre 2026",
+rubrique="Événements",
+titre_seo="Climatiser un événement sur la Côte d'Azur",
+h1="Climatiser un événement sur la Côte d'Azur.<em> La bonne machine pour chaque espace.</em>",
+court="Événements",
+desc="Mariage, réception, salon, tournage sur la Côte d'Azur : climatiseur pour les pièces fermées, rafraîchisseur pour les espaces ouverts. Livré, installé, repris.",
+resume="Mariage, réception, salon : quelle machine, où la placer, combien ça coûte.",
+chapo="Un événement en été sur la Côte d'Azur, c'est souvent un lieu qui chauffe en fin d'après-midi et des invités qui le sentent. La bonne réponse dépend d'une seule chose&nbsp;: l'espace est-il fermé ou ouvert&nbsp;?",
+corps="""
+<h2 id="choisir">Fermé ou ouvert&nbsp;: la question qui décide</h2>
+<div class="tab">
+<table>
+  <thead><tr><th scope="col">L'espace</th><th scope="col">La machine</th></tr></thead>
+  <tbody>
+    <tr><th scope="row">Chapiteau, salle aux portes ouvertes, terrasse, stand</th><td><b>Rafraîchisseur d'air.</b> Pas de gaine, une prise et de l'eau.</td></tr>
+    <tr><th scope="row">Pièce fermée&nbsp;: loge, chambre des mariés, salle de réunion</th><td><b>Climatiseur mobile.</b> Du vrai froid, posé sans percer.</td></tr>
+  </tbody>
+</table>
+</div>
+<p>Un climatiseur a besoin d'une pièce fermée&nbsp;: dans un chapiteau ou une salle aux portes ouvertes, l'air frais sortirait aussi vite qu'il est produit. Le rafraîchisseur, lui, a besoin que l'air se renouvelle — ce qui tombe bien.</p>
+
+<h2 id="placer">Où placer les appareils</h2>
+<p>On ne cherche pas à refroidir tout le volume&nbsp;: on rafraîchit les gens.</p>
+<ul>
+  <li><b>Près de la piste ou de la scène</b>, là où l'on a le plus chaud.</li>
+  <li><b>Vers les tables</b>, et surtout la table d'honneur.</li>
+  <li><b>À l'entrée et au buffet</b>, là où les invités se regroupent.</li>
+</ul>
+
+<h2 id="prix">Combien ça coûte</h2>
+<p><b>Rafraîchisseur</b>&nbsp;: 40&nbsp;€ HT par jour la première semaine, plus un forfait unique de 120&nbsp;€ HT pour la livraison, l'installation, la mise en route et la reprise, quel que soit le nombre d'appareils. Le prix exact s'affiche sur la page <a href="/pro">Loc'Air Pro</a>.</p>
+<p><b>Climatiseur mobile</b>&nbsp;: dès 12&nbsp;€ par jour, tarif dégressif, livraison dès 60&nbsp;€ — le détail est dans <a href="/blog/prix-location-climatiseur-mobile-nice">notre guide des prix</a>.</p>
+<p>Aucune caution dans les deux cas. Conseil&nbsp;: réservez dès que la date et le lieu sont fixés — en plein été, mieux vaut s'y prendre tôt.</p>
+
+<h2 id="deroule">Comment ça se passe</h2>
+<ul>
+  <li><b>Vous nous envoyez le lieu</b>&nbsp;: une photo, les dimensions, le nombre d'invités, sur WhatsApp.</li>
+  <li><b>Nous vous disons combien d'appareils et où</b>.</li>
+  <li><b>Nous livrons, installons et mettons en route</b> avant l'événement, et nous revenons tout reprendre après.</li>
+</ul>
+<p>Pour aller plus loin&nbsp;: <a href="/blog/climatisation-mariage-salle-des-fetes">garder ses invités au frais pendant un mariage</a> et <a href="/blog/rafraichir-stand-salon-evenement">rafraîchir un stand ou un salon</a>.</p>
+""",
+faq=[
+ ("Peut-on climatiser un chapiteau ?", "Pas avec un climatiseur : il n'y a pas de pièce fermée ni de fenêtre où passer la gaine. Sous un chapiteau, c'est un rafraîchisseur d'air qu'il faut. Il rafraîchit les invités autour de lui."),
+ ("Combien d'appareils faut-il pour un événement ?", "Cela dépend du volume, des ouvertures et du nombre de personnes. Envoyez-nous une photo et les dimensions sur WhatsApp, nous vous répondons en quelques minutes."),
+ ("Combien coûte la location pour un événement ?", "Rafraîchisseur : 40 € HT par jour la première semaine, plus un forfait unique de 120 € HT pour la livraison, l'installation et la reprise. Climatiseur mobile : dès 12 € par jour, livraison dès 60 €. Aucune caution."),
+ ("Installez-vous les appareils ?", "Oui. Nous livrons, installons, mettons en route et vous montrons le fonctionnement, puis nous revenons tout reprendre après l'événement."),
+],
+suite=["climatisation-mariage-salle-des-fetes", "rafraichir-stand-salon-evenement"],
+urgence=False,
+))
