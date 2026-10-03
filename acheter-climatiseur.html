@@ -339,6 +339,17 @@
     .then(function(d){
       var p = d && Array.isArray(d.produits) ? d.produits[0] : null;
       if(!p || !p.prix_vente_cents) return;      /* rien a montrer : on ne montre rien */
+      /* Fiche produit pour Google, avec le vrai prix de l'admin. */
+      try{
+        var ld = {'@context':'https://schema.org','@type':'Product',
+          name:[p.marque,p.modele].filter(Boolean).join(' ') || 'Climatiseur mobile',
+          offers:{'@type':'Offer',price:(p.prix_vente_cents/100).toFixed(2),priceCurrency:'EUR',
+            availability:'https://schema.org/InStock',url:'https://www.locair.fr/acheter-climatiseur',
+            seller:{'@id':'https://www.locair.fr/#business'}}};
+        if(p.marque) ld.brand = {'@type':'Brand',name:p.marque};
+        var sc = document.createElement('script'); sc.type = 'application/ld+json';
+        sc.textContent = JSON.stringify(ld); document.head.appendChild(sc);
+      }catch(e){}
 
       zone.textContent = '';
       zone.appendChild(bloc2(eur(p.prix_vente_cents),

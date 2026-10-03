@@ -350,6 +350,35 @@
       });
   }
 
+  /* Fiche produit pour Google (prix et « en stock » dans les résultats).
+     Construite avec les mêmes données que les fiches affichées : aucun
+     prix écrit en dur, rien d'autre que ce que l'admin a mis en vente. */
+  function schemaProduits(ps, url) {
+    try {
+      var s = document.createElement('script');
+      s.type = 'application/ld+json';
+      s.textContent = JSON.stringify({
+        '@context': 'https://schema.org',
+        '@graph': ps.map(function (p) {
+          var nom = [p.marque, p.modele].filter(Boolean).join(' ') || 'Climatiseur mobile';
+          var o = {
+            '@type': 'Product', name: nom,
+            offers: {
+              '@type': 'Offer', price: (p.prix_vente_cents / 100).toFixed(2), priceCurrency: 'EUR',
+              availability: 'https://schema.org/InStock', url: url,
+              seller: { '@id': 'https://www.locair.fr/#business' }
+            }
+          };
+          if (p.marque) o.brand = { '@type': 'Brand', name: p.marque };
+          if (typeof p.photo_url === 'string' && /^(https:\/\/|\/)/.test(p.photo_url))
+            o.image = p.photo_url.charAt(0) === '/' ? 'https://www.locair.fr' + p.photo_url : p.photo_url;
+          return o;
+        })
+      });
+      document.head.appendChild(s);
+    } catch (e) { /* SEO uniquement — jamais bloquant */ }
+  }
+
   function charger() {
     if (!liste || !window.fetch) return;   /* le HTML dit déjà quoi faire */
 
@@ -368,6 +397,7 @@
         produits.forEach(function (p, i) { liste.appendChild(fiche(p, i)); });
         liste.hidden = false;
         if (vide) vide.hidden = true;
+        schemaProduits(produits, 'https://www.locair.fr/boutique');
       })
       .catch(function () { /* le message écrit reste */ });
   }
