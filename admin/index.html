@@ -6547,16 +6547,16 @@ function renderLivraisons(){
         <div class="row-meta">${!isInternalRef(res.ref)?escHtml(res.ref)+' · ':''}${escHtml(displayAddr)}</div>
         ${detailBits.length?`<div class="mission-meta-grid">${detailBits.map(b=>`<div class="mission-meta-item">${b}</div>`).join('')}</div>`:''}
         ${res.instructions_acces?`<div class="instructions-block">${IC_PIN} ${escHtml(res.instructions_acces)}</div>`:''}
-        ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">⚠️ ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
-        ${m.statut==='a_faire' && m.incident_id?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-top:6px">☎️ A eu un incident — client peut-être de nouveau joignable</div>`:''}
-        ${(['recuperation','changement'].includes(m.type) && m.statut==='fait' && !m.vidange_confirmee)?`<div class="row-meta" style="color:var(--amber)">⚠️ Vidange non confirmée</div>`:''}
+        ${m.statut==='probleme'?`<div class="row-meta" style="color:var(--red);font-weight:700;margin-top:6px">${IC_WARN} ${PROBLEME_LABEL[m.probleme_type]||escHtml(m.probleme_type||'')}${m.probleme_description?' — '+escHtml(m.probleme_description):''}</div>`:''}
+        ${m.statut==='a_faire' && m.incident_id?`<div class="row-meta" style="color:var(--amber);font-weight:700;margin-top:6px">${IC_PHONE} A eu un incident — client peut-être de nouveau joignable</div>`:''}
+        ${(['recuperation','changement'].includes(m.type) && m.statut==='fait' && !m.vidange_confirmee)?`<div class="row-meta" style="color:var(--amber)">${IC_WARN} Vidange non confirmée</div>`:''}
         <div class="row-actions">
           ${contactButtonsHtml(res.tel)}
           ${nonAssignee?`<div style="width:100%;font-size:11.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--red);margin-bottom:-2px">Assigner un transporteur →</div>`:''}
           ${missionTransporteurSelectHtml(m, d)}
-          <div style="width:100%;background:var(--green-bg);color:var(--green);padding:8px 12px;border-radius:var(--r);font-weight:700;font-size:13px">💰 Le transporteur gagne : ${euros(m.montant_transporteur_cents)}${montantLabel}${montantEstime?' <span style="font-weight:600;opacity:.75">(estimation)</span>':''}</div>
-          ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom.replace(/'/g,"\\'"))}', '${escHtml((res.adresse||'').replace(/'/g,"\\'"))}')">🔴 Suivre en direct</button>`:''}
-          ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">✅ Problème résolu</button>`:''}
+          <div style="width:100%;background:var(--green-bg);color:var(--green);padding:8px 12px;border-radius:var(--r);font-weight:700;font-size:13px">${IC_EURO} Le transporteur gagne : ${euros(m.montant_transporteur_cents)}${montantLabel}${montantEstime?' <span style="font-weight:600;opacity:.75">(estimation)</span>':''}</div>
+          ${enRoute?`<button class="btn btn-blue" onclick="openLiveMap(${m.transporteur.id}, '${escHtml(m.transporteur.nom.replace(/'/g,"\\'"))}', '${escHtml((res.adresse||'').replace(/'/g,"\\'"))}')">${IC_LIVE} Suivre en direct</button>`:''}
+          ${m.statut==='probleme'?`<button class="btn btn-green" onclick="resolveProbleme(${m.id})">${IC_CHECK} Problème résolu</button>`:''}
           ${mediaBtns.length===0 && m.statut==='fait' ? '<span class="row-meta" style="align-self:center">Aucune preuve enregistrée</span>' : ''}
           ${missionMoreActionsHtml(m, d)}
         </div>
