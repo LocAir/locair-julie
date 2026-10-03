@@ -144,7 +144,9 @@ villes_page = sorted(p for p in pages if p.startswith('location-climatiseur-'))
 for p in villes_page:
     v = p.replace('location-climatiseur-', '').replace('.html', '')
     t = bloc('title', lire(p)) or ''
-    print('   %-42s %s' % (v, '✓ ville dans le titre' if v.lower() in t.lower() else '✗ VILLE ABSENTE DU TITRE'))
+    import unicodedata
+    plat = lambda x: unicodedata.normalize('NFD', x.lower()).encode('ascii', 'ignore').decode().replace('-', ' ')
+    print('   %-42s %s' % (v, '✓ ville dans le titre' if plat(v) in plat(t) else '✗ VILLE ABSENTE DU TITRE'))
     if v.lower() not in t.lower():
         pb('IMPORTANT', 'La ville n\'apparaît pas dans le titre de ' + p)
 # La ville du siège mérite sa page autant que les autres.
