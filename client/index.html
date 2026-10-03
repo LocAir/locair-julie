@@ -1056,6 +1056,20 @@ body:not(.vl) .nav{position:sticky}
   body.vl .page-wrap{padding:32px 20px 48px}
   body.vl #screen-login,body.vl #screen-faceid{margin:0 auto}
 }
+
+/* Parcours replié : l'étape en cours, et la frise complète au clic */
+.ce-parcours>summary{list-style:none;cursor:pointer;padding-bottom:18px}
+.ce-parcours>summary::-webkit-details-marker{display:none}
+.ce-parcours[open]>summary{padding-bottom:6px}
+.pc-now{display:flex;align-items:center;gap:12px}
+.pc-now b{font-size:15px;font-weight:600;flex:1;min-width:0}
+.pc-dot--now{border:6.5px solid #0A0A0A;box-shadow:0 0 0 5px rgba(10,10,10,.08)}
+.pc-more{display:inline-flex;align-items:center;gap:4px;font-size:12.5px;color:var(--text-3);white-space:nowrap}
+.pc-more svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s}
+.ce-parcours[open] .pc-more svg{transform:rotate(180deg)}
+.ce-parcours[open] .pc-now,.ce-parcours[open] .pc-bar{display:none}
+.pc-bar{margin:16px 0 0}
+.ce-parcours>summary:focus-visible{outline:2px solid #0A0A0A;outline-offset:4px;border-radius:12px}
 </style>
 </head>
 <body>
@@ -1439,7 +1453,13 @@ function renderParcours(progress){
     const [t, sous] = PARCOURS[n];
     return `<li class="pc-${etat}"><span class="pc-dot">${etat==='fait' ? '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</span><div><b>${n===st && progress.stageLabel ? escHtml(progress.stageLabel) : t}</b>${etat==='actuel' ? `<small>${sous}</small>` : ''}</div></li>`;
   }).join('');
-  return `<section class="ce-parcours"><div class="ce-t-row"><h2 class="ce-t">Votre parcours</h2><span class="ce-t-aside">Étape ${st} sur 7</span></div><ol class="pc-list">${rows}</ol></section>`;
+  const actuel = st === progress.stage && progress.stageLabel ? progress.stageLabel : PARCOURS[st][0];
+  return `<details class="ce-parcours" id="s-parcours">
+    <summary><div class="ce-t-row"><h2 class="ce-t">Votre parcours</h2><span class="ce-t-aside">Étape ${st} sur 7</span></div>
+      <div class="pc-now"><span class="pc-dot pc-dot--now"></span><b>${escHtml(actuel)}</b><span class="pc-more">Voir les étapes <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></div>
+      <div class="ce-bar pc-bar"><i style="width:${Math.round(st/7*100)}%"></i></div></summary>
+    <ol class="pc-list">${rows}</ol>
+  </details>`;
 }
 
 // Rubrique dépliable (balise <details> : marche au clavier et au lecteur
@@ -1638,9 +1658,18 @@ function renderDashboard(d){
       <div class="doc-info"><div class="doc-name">Tutoriel vidéo</div></div>
       <a class="doc-btn" href="${safeHref(d.mon_climatiseur.video_tutoriel_url)}" target="_blank" rel="noopener">Voir</a>
     </div>`;
+  // Conditions acceptées : une seule ligne par type (la plus récente). La
+  // même CGV acceptée à chaque réservation s'affichait en double.
+  const _cond = new Map();
   (d.cgv_acceptees||[]).forEach(a => {
+    const k = a.type === 'conditions_utilisation' ? 'cu' : 'cgv';
+    const prev = _cond.get(k);
+    if(!prev || String(a.accepted_at||'') > String(prev.accepted_at||'')) _cond.set(k, a);
+  });
+  let condHtml = '';
+  [..._cond.values()].forEach(a => {
     const label = a.type === 'conditions_utilisation' ? "Conditions d'utilisation" : 'CGV / CGL';
-    docsHtml += `
+    condHtml += `
     <div class="doc-row">
       <div class="doc-ico" style="color:var(--green)">${_ICO.checkCircle}</div>
       <div class="doc-info">
@@ -1655,8 +1684,8 @@ function renderDashboard(d){
   // le client sache d'un coup d'œil s'il a "tout ce qu'il faut".
   const docCount = (d.documents||[]).length
     + (d.mon_climatiseur?.documentation_url ? 1 : 0)
-    + (d.mon_climatiseur?.video_tutoriel_url ? 1 : 0)
-    + (d.cgv_acceptees||[]).length;
+    + (d.mon_climatiseur?.video_tutoriel_url ? 1 : 0);
+  const condCount = _cond.size;
   if(!docsHtml) docsHtml = '<p style="color:var(--grey);font-size:13.5px">Vos documents apparaîtront ici dès qu\'ils seront disponibles.</p>';
 
   // Mon climatiseur
@@ -1863,7 +1892,8 @@ function renderDashboard(d){
 
     <aside class="ce-side">
       <h2 class="ce-t ce-t--side">Mes documents</h2>
-      ${sec('s-docs', _ICO.file, 'Contrat et factures', docCount ? docCount + ' document' + (docCount>1?'s':'') + ' disponible' + (docCount>1?'s':'') : 'Disponibles après la réservation', docsHtml, docCount > 0)}
+      ${sec('s-docs', _ICO.file, 'Contrat et factures', docCount ? docCount + ' document' + (docCount>1?'s':'') + ' disponible' + (docCount>1?'s':'') : 'Disponibles après la réservation', docsHtml, false)}
+      ${condCount ? sec('s-cond', _ICO.checkCircle, 'Conditions acceptées', condCount === 1 ? '1 document signé' : condCount + ' documents signés', condHtml, false) : ''}
       ${conciergeHtml}
       ${faqSection}
       ${notifsSection}
