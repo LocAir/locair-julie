@@ -108,7 +108,7 @@ def pied():
 
     <div class="signature">
       <span class="logo signature-n">Loc<i class="gt">'</i>Air</span>
-      <span class="signature-b">Le froid, à l'heure.</span>
+      <span class="signature-b">Le confort thermique, à l’heure.</span>
     </div>
     <p class="pied">
       <span>THIAM ALY · SIRET 853 730 562 00024 · 11 Avenue Chantal, 06100 Nice · 7j/7 de 8h à 20h</span>
@@ -154,7 +154,7 @@ def partage(titre, desc, url):
 <meta property="og:image" content="{BASE}/og-locair.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="Loc'Air — le froid, à l'heure.">
+<meta property="og:image:alt" content="Loc’Air — spécialiste du confort thermique.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="{html.escape(titre, quote=True)}">
 <meta name="twitter:description" content="{html.escape(desc, quote=True)}">
