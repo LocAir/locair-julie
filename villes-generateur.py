@@ -40,27 +40,27 @@ def bloc_prix(v):
 <p>Ce qui change à {n}, c'est <b>la livraison&nbsp;: {LIVRAISON} €</b> au lieu de 60 €. Notre dépôt est à Nice, à une trentaine de minutes de route&nbsp;: c'est ce trajet-là que vous payez, aller <b>et</b> retour — nous venons reprendre l'appareil à la fin, c'est déjà compté.</p>
 <div class="chif">
   <b>{TOTAL_2SEM} €</b>
-  <span>Deux semaines complètes à {n}&nbsp;: {DEUX_SEMAINES} € de location plus {LIVRAISON} € de livraison et récupération. Sans caution. Ajoutez 80 € si vous voulez qu'un technicien pose l'appareil — sinon la pose libre est offerte.</span>
+  <span>Deux semaines complètes à {n}&nbsp;: {DEUX_SEMAINES} € de location plus {LIVRAISON} € de livraison et récupération. Sans caution. Ajoutez 80 € si vous voulez qu’un technicien l’installe.</span>
 </div>
 <p>La durée minimale est de 7 jours. Le détail complet, tranche par tranche, est dans <a href="/blog/prix-location-climatiseur-mobile-nice">notre guide des prix</a>.</p>"""
 
 BLOC_COMPRIS = """<h2 id="compris">Ce qui est compris, et ce qui ne l'est pas</h2>
 <ul>
-  <li><b>Le kit de calfeutrage, fourni et posé.</b> C'est la pièce qui bouche la fenêtre autour de la gaine — sans elle, l'appareil tourne pour rien. Ni perçage, ni trace au retrait.</li>
+  <li><b>Le kit de calfeutrage, fourni.</b> C'est la pièce qui bouche la fenêtre autour de la gaine — sans elle, l'appareil tourne pour rien. Ni perçage, ni trace au retrait.</li>
   <li><b>La récupération</b> le dernier jour. Rien à rapporter nulle part.</li>
   <li><b>Le remplacement en cas de panne</b>, sans frais. Si la réparation sur place n'est pas possible, nous échangeons l'appareil ou nous remboursons les jours restants. C'est dans le contrat.</li>
   <li><b>L'assistance 7j/7</b>, de 8h à 20h.</li>
   <li><b>Aucune caution.</b> Ni chèque, ni empreinte bancaire, ni blocage sur la carte. Jamais.</li>
   <li><b>L'annulation est gratuite</b> tant que la livraison n'a pas eu lieu.</li>
 </ul>
-<p>Ce qui n'est pas compris&nbsp;: l'électricité, la seule dépense qui ne passe pas par nous. Comptez 1,00 € à 1,70 € pour une nuit de 8 heures selon le réglage — l'appareil que nous louons est en classe A+++, la meilleure de la catégorie.</p>"""
+<p>Ce qui n'est pas compris&nbsp;: l'électricité, la seule dépense qui ne passe pas par nous. Comptez 1,00 € à 1,70 € pour une nuit de 8 heures selon le réglage .</p>"""
 
 def bloc_deroule(v):
     return f"""<h2 id="deroule">Comment ça se passe</h2>
 <ul>
   <li><b>Vous réservez en ligne</b> avec votre adresse à {v['nom']} et vos dates. Le montant est affiché avant le paiement, et reconfirmé au moment de payer.</li>
   <li><b>Nous vous appelons le matin de la livraison</b> pour confirmer le créneau.</li>
-  <li><b>Le technicien monte l'appareil</b>, pose le kit sur votre fenêtre, vérifie que l'air qui sort est froid et vous montre les réglages — dont le mode silencieux, si c'est pour une chambre. Vingt à trente minutes, et vous n'avez rien à préparer.</li>
+  <li><b>Nous livrons l'appareil</b> et son kit fenêtre. Avec l'option installation (80 €), le technicien monte l'appareil, pose le kit, vérifie que l'air qui sort est froid et vous montre les réglages — dont le mode silencieux, si c'est pour une chambre.</li>
   <li><b>Le dernier jour, nous revenons tout chercher.</b> Si vous voulez garder l'appareil plus longtemps, la prolongation se fait en quelques clics depuis votre espace client, et le tarif s'ajuste tout seul.</li>
 </ul>"""
 
@@ -98,7 +98,7 @@ def faq_de(v):
       ("Faut-il verser une caution ?",
        "Non. Aucun chèque de caution, aucune empreinte bancaire, aucun blocage sur votre carte. Vous payez la location, rien d'autre."),
       ("Faut-il percer un mur pour installer l'appareil ?",
-       "Non. Le kit de calfeutrage se fixe sur le cadre de la fenêtre et se retire sans perçage ni trace, ce qui le rend compatible avec une location ou un Airbnb. Il est fourni et posé."),
+       "Non. Le kit de calfeutrage se fixe sur le cadre de la fenêtre et se retire sans perçage ni trace, ce qui le rend compatible avec une location ou un Airbnb. Il est fourni."),
       ("Quel type de fenêtre est compatible ?",
        "Oscillo-battante, coulissante, guillotine, Velux : dans la quasi-totalité des cas, oui. Baie vitrée avec grille : au cas par cas, une photo sur WhatsApp suffit. Le technicien apporte toujours le matériel adapté."),
     ]
@@ -220,7 +220,7 @@ def page_ville(v):
   <div class="essentiel-in">
     <div><b>{TOTAL_2SEM} €</b><span>Deux semaines à {v['nom']}, livraison et reprise comprises.</span></div>
     <div><b>0 €</b><span>De caution. Ni chèque, ni empreinte bancaire. Jamais.</span></div>
-    <div><b>20 min</b><span>On monte l'appareil, on pose le kit sur la fenêtre, on vous montre.</span></div>
+    <div><b>80 €</b><span>L’installation par un technicien, si vous la voulez. Le kit, lui, se pose sans outil.</span></div>
     <div><b>Le jour même</b><span>En cas de panne, on remplace l'appareil. Sans frais.</span></div>
     <div><b>Zéro trou</b><span>Le kit se retire sans percer et sans laisser de trace.</span></div>
   </div>
@@ -231,7 +231,7 @@ def page_ville(v):
      nommé — rien n'est écrit ici qui ne soit vérifiable. -->
 <section class="mot">
   <div class="mot-in">
-    <p>Chez Loc'Air, il n'y a pas de standard et pas de sous-traitant. Celui qui répond au téléphone est celui qui sonne à votre porte, monte l'appareil et pose le kit sur votre fenêtre. Ça fait plus de 500 livraisons — et mon prénom dans les avis, ce qui veut dire que vous saurez à qui vous avez affaire.</p>
+    <p>Chez Loc'Air, il n'y a pas de standard et pas de sous-traitant. Celui qui répond au téléphone est celui qui sonne à votre porte avec votre appareil. Ça fait plus de 500 livraisons — et mon prénom dans les avis, ce qui veut dire que vous saurez à qui vous avez affaire.</p>
     <div class="mot-n"><b>Aly</b><span>Loc'Air · <a href="tel:+33663798756">06.63.79.87.56</a></span><span class="stars">★★★★★ 4,9/5</span></div>
     <p class="mot-q">«&nbsp;Parfait pour notre colocation&nbsp;! Aly a installé deux clims en moins d'une heure, tout compris dans le prix. On a passé l'été au frais sans se ruiner.&nbsp;»<br><b>Sophie Margot</b> · avis Google</p>
   </div>
@@ -247,7 +247,7 @@ def page_ville(v):
 <section class="appel">
   <div class="mes">
     <h2>Réserver pour {v['nom']}</h2>
-    <p>Entrez votre adresse&nbsp;: le prix s'affiche avant que vous ne donniez quoi que ce soit d'autre. Aucune caution, kit posé, annulation gratuite jusqu'à la livraison.</p>
+    <p>Entrez votre adresse&nbsp;: le prix s'affiche avant que vous ne donniez quoi que ce soit d'autre. Aucune caution, kit fourni, annulation gratuite jusqu'à la livraison.</p>
     <a class="btn btn-1" href="/">Voir les disponibilités →</a>
     <a class="btn btn-out" href="tel:+33663798756">06.63.79.87.56</a>
     <p class="mini">Une question sur votre fenêtre ou votre accès&nbsp;? Une photo sur <a href="https://wa.me/33663798756" target="_blank" rel="noopener">WhatsApp</a> suffit, nous répondons en quelques minutes.</p>

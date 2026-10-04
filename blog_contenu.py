@@ -24,7 +24,7 @@ corps="""
 <p>Un climatiseur mobile bien posé fait vraiment du froid. Il fait aussi descendre l'humidité, ce qui compte beaucoup à Nice : à température égale, un air sec se supporte bien mieux qu'un air moite.</p>
 <div class="chif">
   <b>10 000 BTU</b>
-  <span>C'est la puissance du De'Longhi Pinguino que nous louons. De'Longhi annonce 30 m². Dans la vraie vie, comptez une pièce d'environ 15 m² bien fermée, porte comprise : lâché dans 40 m², un climatiseur mobile ne refroidit rien du tout.</span>
+  <span>C'est l'ordre de puissance de nos climatiseurs mobiles (9 000 à 12 000 BTU selon le modèle). Dans la vraie vie, comptez une pièce d'environ 15 m² bien fermée, porte comprise : lâché dans 40 m², un climatiseur mobile ne refroidit rien du tout.</span>
 </div>
 
 <h2 id="rafraichisseur">Comment marche un rafraîchisseur d'air</h2>
@@ -54,7 +54,7 @@ corps="""
 
 <h2 id="dormir">Et pour dormir&nbsp;?</h2>
 <p>Pour une chambre, c'est un climatiseur, sans hésiter. Un rafraîchisseur suppose une fenêtre ouverte toute la nuit — donc le bruit de la rue, et l'air chaud qui revient au petit matin.</p>
-<p>Sur le bruit de la machine elle-même : le Pinguino a un mode silencieux, prévu pour dormir dans la même pièce. Le technicien vous le règle au moment de la pose.</p>
+<p>Sur le bruit de la machine elle-même : plusieurs de nos modèles ont un mode nuit, prévu pour dormir dans la même pièce. Demandez-le à la réservation.</p>
 
 <h2 id="entreprise">Pour un commerce, un entrepôt, un événement</h2>
 <p>Là, la réponse change souvent. Un magasin dont l'entrée reste ouverte toute la journée est impossible à climatiser : l'air froid part dans la rue. Une terrasse de restaurant en plein soleil, un atelier, un chapiteau, c'est pareil. Dans ces cas, le rafraîchisseur est la seule machine qui puisse faire quelque chose. Nous avons écrit un guide entier là-dessus : <a href="/blog/rafraichisseur-adiabatique-entreprise">le rafraîchisseur adiabatique pour les professionnels</a>.</p>
@@ -109,7 +109,7 @@ corps="""
   <tbody>
     <tr><th scope="row">Deux semaines d'été</th><td>500 à 900 € + 30 à 80 € de kit</td><td><b>214 €</b>, livraison comprise</td></tr>
     <tr><th scope="row">Livraison et installation</th><td>À votre charge</td><td><b>Livré, posé, repris</b></td></tr>
-    <tr><th scope="row">Kit de calfeutrage</th><td>30 à 80 € en plus</td><td><b>Fourni et posé</b></td></tr>
+    <tr><th scope="row">Kit de calfeutrage</th><td>30 à 80 € en plus</td><td><b>Fourni</b></td></tr>
     <tr><th scope="row">En cas de panne</th><td>À vous de faire jouer la garantie</td><td><b>Remplacé le jour même, sans frais</b></td></tr>
     <tr><th scope="row">Le reste de l'année</th><td>À stocker onze mois sur douze</td><td><b>Rendu, nous venons le chercher</b></td></tr>
     <tr><th scope="row">Cinq étés de suite</th><td><b>L'achat finit moins cher</b></td><td>La location revient plus cher</td></tr>
@@ -192,14 +192,14 @@ corps="""
 <h2 id="pasdans">Ce qui n'est pas dans le prix… parce qu'il n'existe pas</h2>
 <ul>
   <li><b>Aucune caution.</b> Ni chèque, ni empreinte bancaire, ni blocage sur votre carte. Jamais, sur aucune location.</li>
-  <li><b>Aucun frais de kit.</b> Le kit de calfeutrage est fourni et posé, ce n'est pas un accessoire facturé en plus.</li>
+  <li><b>Aucun frais de kit.</b> Le kit de calfeutrage est fourni, ce n'est pas un accessoire facturé en plus.</li>
   <li><b>Aucun frais de reprise.</b> Le retour est déjà compté dans la livraison.</li>
   <li><b>Aucun frais d'annulation</b> tant que la livraison n'a pas eu lieu.</li>
   <li><b>Aucun frais de panne.</b> Si l'appareil tombe en panne, il est remplacé le jour même, sans frais.</li>
 </ul>
 
 <h2 id="electricite">Et l'électricité&nbsp;?</h2>
-<p>C'est la seule dépense qui ne passe pas par nous. Comptez <b>1,00 € à 1,70 € pour une nuit de 8 heures</b>, selon le réglage. Le Pinguino que nous louons est en classe A+++, la meilleure de la catégorie, ce qui joue directement sur cette ligne-là.</p>
+<p>C'est la seule dépense qui ne passe pas par nous. Comptez <b>1,00 € à 1,70 € pour une nuit de 8 heures</b>, selon le réglage.</p>
 
 <h2 id="simulateur">Voir votre prix à vous</h2>
 <p>Le simulateur du site calcule le total en direct : durée, nombre d'appareils, zone de livraison, pose ou non. Le montant affiché est le montant payé, et il est reconfirmé avant le paiement.</p>
@@ -240,7 +240,7 @@ corps="""
   <li><b>Aucune trace au retrait.</b> C'est le point qui compte pour un locataire ou une conciergerie.</li>
   <li><b>La fenêtre reste manœuvrable</b> : on peut ouvrir la fermeture pour sortir sur le balcon.</li>
 </ul>
-<p>Chez nous, il est fourni et posé. Ce n'est pas un accessoire facturé en plus — à l'achat en magasin, comptez 30 à 80 € de plus, et il n'est presque jamais dans le carton.</p>
+<p>Chez nous, il est fourni. Ce n'est pas un accessoire facturé en plus — à l'achat en magasin, comptez 30 à 80 € de plus, et il n'est presque jamais dans le carton.</p>
 
 <h2 id="fenetres">Quelles fenêtres acceptent le kit</h2>
 <div class="tab">
@@ -258,7 +258,7 @@ corps="""
 <p>Dans la quasi-totalité des cas, ça passe. Pour une baie vitrée avec grille, envoyez-nous une photo sur WhatsApp : nous répondons en 5 minutes. Le technicien apporte toujours le matériel adapté au type de fenêtre que vous nous avez indiqué.</p>
 
 <h2 id="pose">Comment se passe la pose</h2>
-<p>Le technicien arrive entre 8h et 12h. Il monte l'appareil, pose le kit sur votre fenêtre, branche la gaine, vérifie que l'air qui sort est froid, et vous montre les réglages — dont le mode silencieux, si c'est pour une chambre. <b>Vingt à trente minutes</b>, et vous n'avez rien à préparer.</p>
+<p>Nous livrons entre 8h et 12h. Avec l'option installation (80 €), le technicien monte l'appareil, pose le kit sur votre fenêtre, branche la gaine, vérifie que l'air qui sort est froid, et vous montre les réglages — dont le mode silencieux, si c'est pour une chambre. <b>Vingt à trente minutes</b>, et vous n'avez rien à préparer.</p>
 <p>Si vous préférez poser vous-même, c'est possible et c'est offert : nous livrons l'appareil et le kit, avec les explications.</p>
 
 <h2 id="airbnb">Airbnb, location, conciergerie</h2>
@@ -277,7 +277,7 @@ faq=[
  ("Peut-on installer un climatiseur mobile dans un logement en location ou en Airbnb ?",
   "Oui, il n'est pas nécessaire d'être propriétaire. Il faut être présent le matin de la livraison et disposer d'une fenêtre accessible."),
  ("Le kit de calfeutrage est-il facturé en plus ?",
-  "Non, il est fourni et posé avec l'appareil chez Loc'Air. À l'achat en magasin, il coûte généralement 30 à 80 € de plus."),
+  "Non, il est fourni avec l'appareil chez Loc'Air. À l'achat en magasin, il coûte généralement 30 à 80 € de plus."),
 ],
 suite=["climatiseur-mobile-ou-rafraichisseur-air", "canicule-appartement-frais-nice"],
 ))
@@ -653,7 +653,7 @@ rubrique="Airbnb",
 titre_seo="Airbnb sans clim : équiper son logement pour l'été",
 h1="Votre Airbnb n'a pas de clim&nbsp;?<em> Vos voyageurs le remarqueront.</em>",
 court="Airbnb sans clim",
-desc="Sur la Côte d'Azur, un logement sans clim en été, ce sont des avis déçus. Louer une clim pour la saison, sans travaux ni perçage, livrée et installée.",
+desc="Sur la Côte d'Azur, un logement sans clim en été, ce sont des avis déçus. Louer une clim pour la saison, sans travaux ni perçage, livrée chez vous.",
 resume="En été sur la Côte d'Azur, la clim fait partie de ce que les voyageurs regardent en premier.",
 chapo="Un voyageur qui a eu chaud toute la nuit ne le cache pas dans son avis. Et sur la Côte d'Azur en juillet, «&nbsp;climatisation&nbsp;» est une des premières cases que l'on coche en cherchant un logement.",
 corps="""
@@ -788,7 +788,7 @@ corps="""
   <li>On branche, on lance, et on vérifie que ça refroidit (ou que ça chauffe).</li>
   <li>On vous montre la télécommande et les réglages.</li>
 </ol>
-<p>Comptez une vingtaine de minutes. Chez Loc'Air, le PortaSplit est livré et installé par notre technicien&nbsp;: vous n'avez rien à faire.</p>
+<p>Comptez une vingtaine de minutes. Chez Loc'Air, notre technicien peut l'installer pour vous, en option.</p>
 
 <h2 id="hiver">L'hiver aussi</h2>
 <p>Le PortaSplit est réversible&nbsp;: le même appareil chauffe en hiver. Tout est expliqué sur notre page <a href="/portasplit-hiver">PortaSplit hiver</a>.</p>
@@ -1150,7 +1150,7 @@ rubrique="Événements",
 titre_seo="Climatiser un événement sur la Côte d'Azur",
 h1="Climatiser un événement sur la Côte d'Azur.<em> La bonne machine pour chaque espace.</em>",
 court="Événements",
-desc="Mariage, réception, salon, tournage sur la Côte d'Azur : climatiseur pour les pièces fermées, rafraîchisseur pour les espaces ouverts. Livré, installé, repris.",
+desc="Mariage, réception, salon, tournage sur la Côte d'Azur : climatiseur pour les pièces fermées, rafraîchisseur pour les espaces ouverts. Livré et repris.",
 resume="Mariage, réception, salon : quelle machine, où la placer, combien ça coûte.",
 chapo="Un événement en été sur la Côte d'Azur, c'est souvent un lieu qui chauffe en fin d'après-midi et des invités qui le sentent. La bonne réponse dépend d'une seule chose&nbsp;: l'espace est-il fermé ou ouvert&nbsp;?",
 corps="""
