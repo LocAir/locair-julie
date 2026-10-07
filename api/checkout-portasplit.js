@@ -114,6 +114,9 @@ module.exports = async (req, res) => {
   } catch (err) {
     console.error('[checkout-portasplit] Stripe error:', err.type, err.code, err.message);
     await recordFailedAttempt(getSupabase(), `portasplit:${ip}`).catch(() => {});
-    return res.status(500).json({ error: 'Erreur serveur paiement.' });
+    // Message détaillé temporaire pour débugger — à supprimer après résolution
+    return res.status(500).json({
+      error: `Erreur paiement : ${err.type || '?'} / ${err.code || '?'} — ${err.message}`,
+    });
   }
 };
