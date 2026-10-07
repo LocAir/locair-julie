@@ -526,10 +526,7 @@ input,select,textarea{font-family:inherit}
       return;
     }
 
-    var fileCni   = document.getElementById('file-cni').files[0];
-    var fileJustif = document.getElementById('file-justif').files[0];
-    var hasFiles  = fileCni && fileJustif;
-
+    /* MODE TEST : upload ignoré, on va directement à Stripe */
     function goToStripe(docsFolder) {
       setLoading('Redirection vers Stripe…');
       var payload = {
@@ -564,30 +561,7 @@ input,select,textarea{font-family:inherit}
       });
     }
 
-    if (hasFiles) {
-      setLoading('Envoi des pièces…');
-      fetch('/api/upload-docs-portasplit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ files: ['cni', 'justif'] }),
-      })
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        if (!d.urls) throw new Error(d.error || 'Erreur upload');
-        return Promise.all([
-          uploadFile(d.urls.cni.signedUrl,   fileCni,   'bar-cni',   'prog-cni'),
-          uploadFile(d.urls.justif.signedUrl, fileJustif,'bar-justif','prog-justif'),
-        ]).then(function(){ return d.folder; });
-      })
-      .then(function(folder){ goToStripe(folder); })
-      .catch(function(err){
-        showError((err && err.message) || 'Erreur upload. Réessayez.');
-        resetBtn();
-      });
-    } else {
-      /* Pas de fichiers en mode test — aller direct à Stripe */
-      goToStripe(null);
-    }
+    goToStripe(null);
   });
 
 })();
