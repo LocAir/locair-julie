@@ -27,8 +27,6 @@ module.exports = async (req, res) => {
 
   const data = req.body || {};
 
-  // Validation basique — l'email est optionnel ici car Stripe Checkout le collecte
-  // sur sa page hébergée ; s'il est fourni en avance, on pré-remplit.
   if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(data.email.trim())) {
     return res.status(400).json({ error: 'Email invalide.' });
   }
@@ -54,15 +52,21 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Date de fin de l'abonnement : exactement 12 mois à partir d'aujourd'hui.
-    // Stripe annulera automatiquement l'abonnement après la 12e mensualité.
+    // Créer le prix de l'apport en amont (évite les problèmes de price_data
+    // inline dans add_invoice_items sur certaines configs de compte Stripe)
+    const apportPrice = await stripe.prices.create({
+      currency: 'eur',
+      unit_amount: APPORT_CENTS,
+      product_data: { name: 'Apport initial PortaSplit (1 fois)' },
+    });
+
+    // Date de fin : exactement 12 mois. Stripe annule automatiquement.
     const cancelAt = new Date();
     cancelAt.setMonth(cancelAt.getMonth() + 12);
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
 
-      // Pré-remplir le client si on l'a déjà ; sinon Stripe collecte l'email
       ...(customerId
         ? { customer: customerId }
         : (data.email ? { customer_email: data.email.trim().toLowerCase() } : {})),
@@ -81,16 +85,9 @@ module.exports = async (req, res) => {
       }],
 
       subscription_data: {
-        // L'apport de 100 € est ajouté à la 1ère facture uniquement,
-        // via add_invoice_items. Résultat : 1ère facture = 199 €, suite = 99 €/mois.
-        add_invoice_items: [{
-          price_data: {
-            currency: 'eur',
-            unit_amount: APPORT_CENTS,
-            product_data: { name: 'Apport initial PortaSplit (1 fois)' },
-          },
-        }],
-        // L'abonnement s'arrête automatiquement après 12 mois
+        // L'apport 100 € est ajouté à la 1ère facture uniquement via son Price ID.
+        // Résultat : 1ère facture = 199 €, mensualités suivantes = 99 €.
+        add_invoice_items: [{ price: apportPrice.id }],
         cancel_at: Math.floor(cancelAt.getTime() / 1000),
         metadata: {
           type:    'portasplit_hiver_12mois',
@@ -117,8 +114,6 @@ module.exports = async (req, res) => {
   } catch (err) {
     console.error('[checkout-portasplit] Stripe error:', err.type, err.code, err.message);
     await recordFailedAttempt(getSupabase(), `portasplit:${ip}`).catch(() => {});
-    // En dev, retourner le détail Stripe pour faciliter le debug
-    const detail = process.env.NODE_ENV !== 'production' ? ` (${err.code || err.type}: ${err.message})` : '';
-    return res.status(500).json({ error: `Erreur serveur paiement.${detail}` });
+    return res.status(500).json({ error: 'Erreur serveur paiement.' });
   }
 };
