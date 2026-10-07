@@ -2,10 +2,10 @@ const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
-// Forfait PortaSplit Hiver — 12 mois
+// Forfait PortaSplit — 6 mois minimum
 // 1er versement : 199 € = 100 € apport + 99 € (1er mois)
-// Mensualités suivantes : 99 € × 11 mois
-// Total engagement : 1 288 € (100 + 99 × 12)
+// Mensualités suivantes : 99 € × 5 mois
+// Total engagement : 694 € (100 + 99 × 6)
 const APPORT_CENTS  = 10_000; // 100 € — facturé une seule fois sur la 1ère invoice
 const MENSUEL_CENTS =  9_900; // 99 €/mois — récurrent
 
@@ -60,9 +60,9 @@ module.exports = async (req, res) => {
       product_data: { name: 'Apport initial PortaSplit (1 fois)' },
     });
 
-    // Date de fin : exactement 12 mois. Stripe annule automatiquement.
+    // Date de fin : 6 mois. Stripe annule automatiquement après le 6e prélèvement.
     const cancelAt = new Date();
-    cancelAt.setMonth(cancelAt.getMonth() + 12);
+    cancelAt.setMonth(cancelAt.getMonth() + 6);
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
@@ -77,7 +77,7 @@ module.exports = async (req, res) => {
           unit_amount: MENSUEL_CENTS,
           recurring: { interval: 'month' },
           product_data: {
-            name: 'PortaSplit Hiver · 12 mois',
+            name: 'PortaSplit · 6 mois',
             description: 'Climatisation réversible A++ · silencieux · zéro perçage',
           },
         },
@@ -90,7 +90,7 @@ module.exports = async (req, res) => {
         add_invoice_items: [{ price: apportPrice.id }],
         cancel_at: Math.floor(cancelAt.getTime() / 1000),
         metadata: {
-          type:    'portasplit_hiver_12mois',
+          type:    'portasplit_6mois',
           prenom:  (data.prenom  || '').slice(0, 200),
           nom:     (data.nom     || '').slice(0, 200),
           tel:     (data.tel     || '').slice(0, 50),
@@ -103,7 +103,7 @@ module.exports = async (req, res) => {
       cancel_url:  `${BASE_URL}/portasplit-hiver`,
 
       metadata: {
-        type:    'portasplit_hiver_12mois',
+        type:    'portasplit_6mois',
         prenom:  (data.prenom  || '').slice(0, 200),
         adresse: (data.adresse || '').slice(0, 500),
       },
