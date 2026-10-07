@@ -115,8 +115,10 @@ module.exports = async (req, res) => {
     return res.status(200).json({ url: session.url });
 
   } catch (err) {
-    console.error('[checkout-portasplit]', err.message);
+    console.error('[checkout-portasplit] Stripe error:', err.type, err.code, err.message);
     await recordFailedAttempt(getSupabase(), `portasplit:${ip}`).catch(() => {});
-    return res.status(500).json({ error: 'Erreur serveur paiement.' });
+    // En dev, retourner le détail Stripe pour faciliter le debug
+    const detail = process.env.NODE_ENV !== 'production' ? ` (${err.code || err.type}: ${err.message})` : '';
+    return res.status(500).json({ error: `Erreur serveur paiement.${detail}` });
   }
 };
