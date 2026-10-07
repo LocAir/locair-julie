@@ -31,7 +31,9 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Email invalide.' });
   }
 
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  // Forcer l'API version 2023-10-16 — supporte cancel_at et add_invoice_items
+  // dans subscription_data de Checkout (absent sur les comptes avec version < 2020-08-27)
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' });
 
   try {
     // Trouver ou créer un Customer Stripe pour lier l'abonnement
