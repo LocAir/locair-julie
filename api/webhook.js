@@ -424,6 +424,47 @@ const handler = async (req, res) => {
       return res.json({ received: true, skipped: eventType });
     }
 
+    // ── PortaSplit : abonnement 6 mois, flux totalement distinct ─────────────
+    if (meta.type === 'portasplit_6mois') {
+      const prenom  = meta.prenom  || '';
+      const nom     = meta.nom     || '';
+      const tel     = meta.tel     || '';
+      const adresse = meta.adresse || '';
+
+      // Email de confirmation au client
+      if (email) {
+        const html = `
+<div style="font-family:sans-serif;max-width:560px;margin:0 auto;color:#1a1a1a">
+  <p style="font-size:17px;font-weight:600;margin-bottom:4px">Votre PortaSplit est réservée !</p>
+  <p style="color:#555;margin-top:0">Bonjour${prenom ? ' ' + prenom : ''},</p>
+  <p>Votre souscription PortaSplit est confirmée. Voici le récapitulatif :</p>
+  <table style="width:100%;border-collapse:collapse;margin:16px 0">
+    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;color:#555">Formule</td><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:600">PortaSplit · 6 mois</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;color:#555">1er prélèvement</td><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:600">199 € (apport 100 € + 1er mois 99 €)</td></tr>
+    <tr><td style="padding:8px 0;border-bottom:1px solid #eee;color:#555">Mensualités suivantes</td><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:600">99 € × 5 mois</td></tr>
+    ${adresse ? `<tr><td style="padding:8px 0;border-bottom:1px solid #eee;color:#555">Adresse</td><td style="padding:8px 0;border-bottom:1px solid #eee">${adresse}</td></tr>` : ''}
+  </table>
+  <p>Notre équipe va vous contacter sous <strong>24 h</strong> pour fixer la date d'installation.</p>
+  <p style="margin-top:24px">À très vite,<br><strong>L'équipe Loc'Air</strong><br><a href="tel:+33663798756" style="color:#555">06 63 79 87 56</a></p>
+</div>`.trim();
+        await sendBrevoEmail({
+          to: email,
+          subject: `Votre PortaSplit est confirmée — Loc'Air`,
+          html,
+          senderName: "Loc'Air",
+        }).catch(e => console.error('[PortaSplit webhook] email client:', e.message));
+      }
+
+      // Notification push à l'admin
+      await pushToAdmin(getSupabase(), {
+        title: 'Nouvelle souscription PortaSplit',
+        body:  [prenom, nom].filter(Boolean).join(' ') + (tel ? ' · ' + tel : '') + (adresse ? ' · ' + adresse : '') + ` · ${amount}`,
+        tag:   `portasplit-new-${obj.id}`,
+      }).catch(() => {});
+
+      return res.status(200).json({ received: true, type: 'portasplit' });
+    }
+
     // ── Achat en boutique : flux distinct, jamais une réservation ────────────
     // (voir api/boutique-checkout.js). Cette garde est la seule chose qui
     // protège le tunnel de location : plus bas, TOUT ce qui n'a pas été
