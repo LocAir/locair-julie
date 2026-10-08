@@ -31,9 +31,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Email invalide.' });
   }
 
-  // Forcer l'API version 2023-10-16 — supporte cancel_at et add_invoice_items
-  // dans subscription_data de Checkout (absent sur les comptes avec version < 2020-08-27)
-  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2023-10-16' });
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
   try {
     // Trouver ou créer un Customer Stripe pour lier l'abonnement
@@ -52,6 +50,20 @@ module.exports = async (req, res) => {
         });
         customerId = customer.id;
       }
+    }
+
+    // L'apport initial 100 € est ajouté comme InvoiceItem sur le customer
+    // AVANT la création de la session Checkout — Stripe l'inclut automatiquement
+    // dans la 1ère facture de l'abonnement.
+    // (subscription_data.add_invoice_items a été retiré des versions récentes
+    // de l'API Stripe et n'est plus accepté par le SDK v16+.)
+    if (customerId) {
+      await stripe.invoiceItems.create({
+        customer: customerId,
+        amount:   APPORT_CENTS,
+        currency: 'eur',
+        description: 'Apport initial PortaSplit (1 fois)',
+      });
     }
 
     // Date de fin : 6 mois. Stripe annule automatiquement après le 6e prélèvement.
@@ -79,15 +91,6 @@ module.exports = async (req, res) => {
       }],
 
       subscription_data: {
-        // L'apport 100 € est ajouté à la 1ère facture uniquement.
-        // Résultat : 1ère facture = 199 €, mensualités suivantes = 99 €.
-        add_invoice_items: [{
-          price_data: {
-            currency: 'eur',
-            unit_amount: APPORT_CENTS,
-            product_data: { name: 'Apport initial PortaSplit (1 fois)' },
-          },
-        }],
         cancel_at: Math.floor(cancelAt.getTime() / 1000),
         metadata: {
           type:    'portasplit_6mois',
