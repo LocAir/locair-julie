@@ -57,13 +57,17 @@ module.exports = async (req, res) => {
     // dans la 1ère facture de l'abonnement.
     // (subscription_data.add_invoice_items a été retiré des versions récentes
     // de l'API Stripe et n'est plus accepté par le SDK v16+.)
+    // L'id est conservé pour pouvoir supprimer l'item si sessions.create() échoue
+    // ensuite — sans ça, l'item reste sur le compte et serait facturé à la prochaine invoice.
+    let invoiceItemId;
     if (customerId) {
-      await stripe.invoiceItems.create({
+      const ii = await stripe.invoiceItems.create({
         customer: customerId,
         amount:   APPORT_CENTS,
         currency: 'eur',
         description: 'Apport initial PortaSplit (1 fois)',
       });
+      invoiceItemId = ii.id;
     }
 
     // Date de fin : 6 mois. Stripe annule automatiquement après le 6e prélèvement.
@@ -116,6 +120,9 @@ module.exports = async (req, res) => {
 
   } catch (err) {
     console.error('[checkout-portasplit] Stripe error:', err.type, err.code, err.message);
+    if (invoiceItemId) {
+      await stripe.invoiceItems.del(invoiceItemId).catch(() => {});
+    }
     await recordFailedAttempt(getSupabase(), `portasplit:${ip}`).catch(() => {});
     const detail = [err.type, err.code].filter(Boolean).join(' / ');
     return res.status(500).json({
