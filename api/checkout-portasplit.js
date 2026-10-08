@@ -54,14 +54,6 @@ module.exports = async (req, res) => {
       }
     }
 
-    // Créer le prix de l'apport en amont (évite les problèmes de price_data
-    // inline dans add_invoice_items sur certaines configs de compte Stripe)
-    const apportPrice = await stripe.prices.create({
-      currency: 'eur',
-      unit_amount: APPORT_CENTS,
-      product_data: { name: 'Apport initial PortaSplit (1 fois)' },
-    });
-
     // Date de fin : 6 mois. Stripe annule automatiquement après le 6e prélèvement.
     const cancelAt = new Date();
     cancelAt.setMonth(cancelAt.getMonth() + 6);
@@ -87,9 +79,15 @@ module.exports = async (req, res) => {
       }],
 
       subscription_data: {
-        // L'apport 100 € est ajouté à la 1ère facture uniquement via son Price ID.
+        // L'apport 100 € est ajouté à la 1ère facture uniquement.
         // Résultat : 1ère facture = 199 €, mensualités suivantes = 99 €.
-        add_invoice_items: [{ price: apportPrice.id }],
+        add_invoice_items: [{
+          price_data: {
+            currency: 'eur',
+            unit_amount: APPORT_CENTS,
+            product_data: { name: 'Apport initial PortaSplit (1 fois)' },
+          },
+        }],
         cancel_at: Math.floor(cancelAt.getTime() / 1000),
         metadata: {
           type:    'portasplit_6mois',
@@ -116,6 +114,10 @@ module.exports = async (req, res) => {
   } catch (err) {
     console.error('[checkout-portasplit] Stripe error:', err.type, err.code, err.message);
     await recordFailedAttempt(getSupabase(), `portasplit:${ip}`).catch(() => {});
-    return res.status(500).json({ error: 'Erreur serveur paiement.' });
+    const detail = [err.type, err.code].filter(Boolean).join(' / ');
+    return res.status(500).json({
+      error: 'Erreur serveur paiement.',
+      detail: detail || err.message || 'unknown',
+    });
   }
 };
