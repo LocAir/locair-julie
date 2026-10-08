@@ -26,9 +26,10 @@ module.exports = async (req, res) => {
   const pricing     = await getPricingConfig(getSupabase());
   const amountCents = calcTieredPrice(jours, pricing) * qty * 100;
 
+  let customerId      = (data.customer_id || '').trim();
+  let paymentMethodId = (data.payment_method_id || '').trim();
+
   try {
-    let customerId      = (data.customer_id || '').trim();
-    let paymentMethodId = (data.payment_method_id || '').trim();
 
     // Recherche par email si pas de customer_id
     if (!customerId && data.email) {
