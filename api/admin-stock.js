@@ -368,6 +368,47 @@ module.exports = async (req, res) => {
       });
     }
 
+    // CA généré par appareil (Module 6, Partie 10 — vue d'ensemble) : même
+    // méthode de calcul que l'action 'stats' ci-dessus (CA proraté par
+    // appareil quand une réservation en couvre plusieurs, seules les
+    // réservations confirmée/terminée comptent), mais pour tout le parc
+    // d'un coup plutôt qu'un appareil à la fois — demande d'Aly pour voir
+    // d'un coup d'œil quels appareils/produits rapportent le plus.
+    if (action === 'revenus_parc') {
+      const { data: appareils } = await supabase
+        .from('appareils').select('id, numero, reference, statut').eq('city_id', city.id).order('numero');
+      if (!appareils || !appareils.length) return res.status(200).json({ appareils: [] });
+
+      const appareilIds = appareils.map(a => a.id);
+      const { data: liens } = await supabase
+        .from('reservation_appareils').select('appareil_id, reservation_id').in('appareil_id', appareilIds);
+      const resaIds = [...new Set((liens || []).map(l => l.reservation_id))];
+
+      const resaById = new Map();
+      if (resaIds.length) {
+        const { data: resas } = await supabase
+          .from('reservations').select('id, prix_total_cents, quantite, statut').in('id', resaIds).in('statut', ['confirmee', 'terminee']);
+        (resas || []).forEach(r => resaById.set(r.id, r));
+      }
+
+      const parAppareil = new Map(); // appareil_id -> { ca_cents, nb_locations }
+      (liens || []).forEach(l => {
+        const r = resaById.get(l.reservation_id);
+        if (!r) return; // réservation pas confirmée/terminée (en attente, annulée, remboursée) : ne compte pas comme CA
+        const cur = parAppareil.get(l.appareil_id) || { ca_cents: 0, nb_locations: 0 };
+        cur.ca_cents += Math.round((r.prix_total_cents || 0) / (r.quantite || 1));
+        cur.nb_locations += 1;
+        parAppareil.set(l.appareil_id, cur);
+      });
+
+      const result = appareils.map(a => {
+        const rv = parAppareil.get(a.id) || { ca_cents: 0, nb_locations: 0 };
+        return { id: a.id, numero: a.numero, reference: a.reference, statut: a.statut, ca_euros: rv.ca_cents / 100, nb_locations: rv.nb_locations };
+      });
+
+      return res.status(200).json({ appareils: result });
+    }
+
     // Entretien préventif (Module 8) — le seuil d'usage (MAINTENANCE_SEUIL)
     // existe déjà côté cron (cron-daily.js) mais seulement en push, jamais
     // visible dans l'app. On y ajoute ici une notion calendaire ("pas vérifié
