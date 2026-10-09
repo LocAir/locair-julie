@@ -385,6 +385,7 @@ const handler = async (req, res) => {
     let customerId      = '';
     let paymentMethodId = '';
     let piId            = ''; // payment_intent ID canonique (pi_…) pour lookup réservation
+    let session         = null; // checkout session (checkout.session.completed uniquement)
 
     if (eventType === 'payment_intent.succeeded') {
       const intent = await stripe.paymentIntents.retrieve(obj.id || '');
@@ -397,7 +398,7 @@ const handler = async (req, res) => {
       piId            = intent.id;
 
     } else if (eventType === 'checkout.session.completed') {
-      const session = await stripe.checkout.sessions.retrieve(obj.id || '');
+      session = await stripe.checkout.sessions.retrieve(obj.id || '');
       if (session.payment_status !== 'paid') return res.json({ received: true, skipped: 'not paid' });
       meta   = session.metadata || {};
       amount = (session.amount_total / 100).toFixed(2) + ' €';
@@ -434,9 +435,9 @@ const handler = async (req, res) => {
       // Annulation automatique après 6 mois (cancel_at n'est plus accepté dans
       // subscription_data lors de la création de la session Checkout — on le pose
       // ici sur l'abonnement déjà créé, dès que le paiement est confirmé).
-      const subscriptionId = typeof session.subscription === 'string'
+      const subscriptionId = typeof session?.subscription === 'string'
         ? session.subscription
-        : (session.subscription?.id || '');
+        : (session?.subscription?.id || '');
       if (subscriptionId) {
         const cancelAt6m = new Date();
         cancelAt6m.setMonth(cancelAt6m.getMonth() + 6);
