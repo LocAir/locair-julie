@@ -431,6 +431,20 @@ const handler = async (req, res) => {
       const tel     = meta.tel     || '';
       const adresse = meta.adresse || '';
 
+      // Annulation automatique après 6 mois (cancel_at n'est plus accepté dans
+      // subscription_data lors de la création de la session Checkout — on le pose
+      // ici sur l'abonnement déjà créé, dès que le paiement est confirmé).
+      const subscriptionId = typeof session.subscription === 'string'
+        ? session.subscription
+        : (session.subscription?.id || '');
+      if (subscriptionId) {
+        const cancelAt6m = new Date();
+        cancelAt6m.setMonth(cancelAt6m.getMonth() + 6);
+        await stripe.subscriptions.update(subscriptionId, {
+          cancel_at: Math.floor(cancelAt6m.getTime() / 1000),
+        }).catch(e => console.error('[PortaSplit webhook] cancel_at update:', e.message));
+      }
+
       // Email de confirmation au client
       if (email) {
         const html = `

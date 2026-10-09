@@ -72,9 +72,6 @@ module.exports = async (req, res) => {
     }
 
     // Date de fin : 6 mois. Stripe annule automatiquement après le 6e prélèvement.
-    const cancelAt = new Date();
-    cancelAt.setMonth(cancelAt.getMonth() + 6);
-
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
 
@@ -96,7 +93,6 @@ module.exports = async (req, res) => {
       }],
 
       subscription_data: {
-        cancel_at: Math.floor(cancelAt.getTime() / 1000),
         metadata: {
           type:    'portasplit_6mois',
           prenom:  (data.prenom  || '').slice(0, 200),
