@@ -42,7 +42,7 @@ input,select,textarea{font-family:inherit}
 
 /* LAYOUT */
 .page{max-width:var(--max);margin:0 auto;padding:clamp(40px,6vw,72px) var(--pad) 80px;display:grid;grid-template-columns:1fr 340px;gap:56px;align-items:start}
-@media(max-width:860px){.page{grid-template-columns:1fr;gap:40px}}
+@media(max-width:860px){.page{grid-template-columns:1fr;gap:40px}.summary{order:-1}}
 
 /* ÉTAPES */
 .steps{display:flex;align-items:center;margin-bottom:40px}
@@ -55,7 +55,8 @@ input,select,textarea{font-family:inherit}
 .step-label.active{color:#0A0A0A;font-weight:600}
 .step-label.done{color:#0A0A0A}
 .step-sep{flex:1;height:1px;background:var(--rule);margin:0 12px;min-width:20px}
-@media(max-width:500px){.step-label{display:none}.step-sep{min-width:10px;margin:0 6px}}
+@media(max-width:500px){.step-label{font-size:11px}.step-sep{min-width:10px;margin:0 6px}}
+@media(max-width:380px){.step-label{display:none}}
 
 /* EN-TÊTE */
 .form-head{margin-bottom:32px}
@@ -97,6 +98,7 @@ input,select,textarea{font-family:inherit}
 .dur-select{background:#fff;border:1px solid #DDDDD9;border-radius:10px;padding:13px 15px;font-size:15px;color:#0A0A0A;outline:none;transition:border-color .18s;-webkit-appearance:none;appearance:none;width:100%;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B6B6B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:44px}
 .dur-select:focus{border-color:#0A0A0A;box-shadow:0 0 0 3px rgba(0,0,0,.06)}
 .dur-select.error{border-color:#D93025}
+.dur-select.error~.field-error{display:block}
 
 /* PRIX PAR JOUR BADGE */
 .price-badge{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#F0F0EE;border-radius:10px;border:1px solid var(--rule);margin-top:10px}
@@ -329,6 +331,7 @@ input,select,textarea{font-family:inherit}
                 <option value="60">60 jours</option>
                 <option value="90">90 jours</option>
               </select>
+              <span class="field-error" id="duree-error" style="display:none">Durée requise</span>
             </div>
             <div class="dur-field">
               <label for="quantite">Quantité</label>
@@ -357,7 +360,7 @@ input,select,textarea{font-family:inherit}
         <div class="form-section">
           <p class="form-section-title">Installation</p>
           <label class="opt-row" id="row-install">
-            <input type="checkbox" id="opt_install" name="opt_install" checked>
+            <input type="radio" id="opt_install" name="installation" value="tech" checked>
             <div class="opt-row-text">
               <p class="opt-row-label">Installation par un technicien</p>
               <p class="opt-row-desc">Pose du kit fenêtre, branchement, test — 20 à 30 min sur place.</p>
@@ -365,7 +368,7 @@ input,select,textarea{font-family:inherit}
             <span class="opt-price">+80 €</span>
           </label>
           <label class="opt-row">
-            <input type="checkbox" id="opt_auto" name="opt_auto">
+            <input type="radio" id="opt_auto" name="installation" value="self">
             <div class="opt-row-text">
               <p class="opt-row-label">Je pose moi-même (kit inclus)</p>
               <p class="opt-row-desc">Kit de calfeutrage fenêtre fourni avec le mode d'emploi.</p>
@@ -410,28 +413,30 @@ input,select,textarea{font-family:inherit}
 
         <!-- CGV (3 cases obligatoires) -->
         <div class="form-section">
-          <p class="form-section-title">Conditions <span style="color:#ccc;font-weight:400;letter-spacing:0;text-transform:none">*</span></p>
-          <label class="opt-row" id="row-cgv">
-            <input type="checkbox" id="cgv" required>
-            <div class="opt-row-text">
-              <p class="opt-row-label">J'accepte les CGV</p>
-              <p class="opt-row-desc"><a href="/cgv" target="_blank" style="text-decoration:underline;text-underline-offset:2px">Conditions générales de vente et mentions légales</a> Loc'Air.</p>
-            </div>
-          </label>
-          <label class="opt-row" id="row-cond">
-            <input type="checkbox" id="conditions_utilisation" required>
-            <div class="opt-row-text">
-              <p class="opt-row-label">J'accepte les conditions d'utilisation</p>
-              <p class="opt-row-desc">Utilisation correcte du matériel, responsabilité en cas de dommage.</p>
-            </div>
-          </label>
-          <label class="opt-row" id="row-retard">
-            <input type="checkbox" id="retard" required>
-            <div class="opt-row-text">
-              <p class="opt-row-label">J'autorise le prélèvement en cas de retard</p>
-              <p class="opt-row-desc">8 à 12 €/j de retard de restitution, prélevé automatiquement (voir <a href="/cgv#retard" target="_blank" style="text-decoration:underline;text-underline-offset:2px">CGV art. 10</a>). Aucun montant prélevé maintenant.</p>
-            </div>
-          </label>
+          <fieldset style="border:none;padding:0;margin:0">
+            <legend class="form-section-title">Conditions <span style="color:#ccc;font-weight:400;letter-spacing:0;text-transform:none">*</span></legend>
+            <label class="opt-row" id="row-cgv">
+              <input type="checkbox" id="cgv" required>
+              <div class="opt-row-text">
+                <p class="opt-row-label">J'accepte les CGV</p>
+                <p class="opt-row-desc"><a href="/cgv" target="_blank" style="text-decoration:underline;text-underline-offset:2px">Conditions générales de vente et mentions légales</a> Loc'Air.</p>
+              </div>
+            </label>
+            <label class="opt-row" id="row-cond">
+              <input type="checkbox" id="conditions_utilisation" required>
+              <div class="opt-row-text">
+                <p class="opt-row-label">J'accepte les conditions d'utilisation</p>
+                <p class="opt-row-desc">Utilisation correcte du matériel, responsabilité en cas de dommage.</p>
+              </div>
+            </label>
+            <label class="opt-row" id="row-retard">
+              <input type="checkbox" id="retard" required>
+              <div class="opt-row-text">
+                <p class="opt-row-label">J'autorise le prélèvement en cas de retard</p>
+                <p class="opt-row-desc">8 à 12 €/j de retard de restitution, prélevé automatiquement (voir <a href="/cgv#retard" target="_blank" style="text-decoration:underline;text-underline-offset:2px">CGV art. 10</a>). Aucun montant prélevé maintenant.</p>
+              </div>
+            </label>
+          </fieldset>
         </div>
 
         <div class="global-error" id="global-error"></div>
@@ -476,7 +481,7 @@ input,select,textarea{font-family:inherit}
       </div>
       <button class="pay-btn" type="button" id="pay-btn">
         <span id="pay-btn-text">Payer en toute sécurité</span>
-        <svg id="pay-btn-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        <svg id="pay-btn-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       </button>
       <p class="mentions" style="margin-top:16px">
         Votre carte n'est jamais stockée par Loc'Air — traitée directement par Stripe.
@@ -641,14 +646,8 @@ input,select,textarea{font-family:inherit}
 
   dureeSelect.addEventListener('change', updateSummary);
   qtySelect.addEventListener('change',   updateSummary);
-  optInstall.addEventListener('change', function() {
-    if (optInstall.checked) optAuto.checked = false;
-    updateSummary();
-  });
-  optAuto.addEventListener('change', function() {
-    if (optAuto.checked) optInstall.checked = false;
-    updateSummary();
-  });
+  optInstall.addEventListener('change', updateSummary);
+  optAuto.addEventListener('change', updateSummary);
 
   updateSummary();
 
@@ -965,7 +964,7 @@ input,select,textarea{font-family:inherit}
     if (status === 'succeeded') {
       window.location.replace('/?booking=success');
     } else if (status === 'failed') {
-      var errEl2 = document.getElementById('pay-error');
+      var errEl2 = document.getElementById('stripe-error');
       if (errEl2) {
         errEl2.textContent = 'Le paiement a échoué. Vérifiez vos informations bancaires et réessayez.';
         errEl2.style.display = 'block';

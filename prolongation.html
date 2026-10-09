@@ -212,9 +212,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
       <span>J’accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" aria-describedby="nouvel-onglet">conditions générales de vente</a> et la durée de prolongation choisie.</span>
     </label>
 
-    <button class="btn-submit" id="btn-pay" disabled>
+    <button class="btn-submit" id="btn-pay" disabled title="Sélectionnez une date et acceptez les CGV pour continuer">
       Payer <span id="btn-pay-label">—</span>
     </button>
+    <p id="btn-pay-hint" style="font-size:12px;color:var(--grey);text-align:center;margin-top:6px">Choisissez une nouvelle date et acceptez les CGV pour continuer.</p>
     <button class="btn-back" id="btn-back-1">← Modifier mon email / numéro</button>
   </div>
 
@@ -232,7 +233,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
     <div class="payment-card">
       <p class="payment-card-hdr">Paiement sécurisé</p>
       <div id="prolong-payment-element">
-        <p style="color:var(--grey);font-size:13px;text-align:center;padding:32px 0">Chargement…</p>
+        <p style="color:var(--grey);font-size:13px;text-align:center;padding:32px 0;display:flex;align-items:center;justify-content:center;gap:8px"><svg class="spin" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke-opacity=".2"/><path d="M12 3a9 9 0 019 9"/></svg>Chargement…</p>
       </div>
     </div>
     <div id="payment-error" class="alert-error" role="alert" style="display:none"></div>
@@ -309,8 +310,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
       const m = document.getElementById('success-msg');
       if(m) m.textContent = 'Votre banque valide encore le paiement — ça peut prendre quelques minutes. Vous recevrez un email de confirmation dès que ce sera fait.';
     }else{
-      show('step-1');
-      err('lookup-error', 'Le paiement n’a pas abouti après la vérification bancaire. Vous pouvez réessayer ci-dessous.');
+      show(‘step-1’);
+      err(‘lookup-error’, ‘Votre authentification 3D Secure n’a pas abouti. Retrouvez votre commande ci-dessous pour réessayer.’);
     }
   }
 
@@ -403,7 +404,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
   /* ── Calcul prix (date) ── */
   let priceValid=false;
   function updateBtnPayState(){
-    document.getElementById('btn-pay').disabled=!(priceValid&&document.getElementById('f-cgv').checked);
+    const enabled=priceValid&&document.getElementById('f-cgv').checked;
+    document.getElementById('btn-pay').disabled=!enabled;
+    const hint=document.getElementById('btn-pay-hint');
+    if(hint)hint.style.display=enabled?'none':'block';
   }
   function updatePrice(){
     newDate=document.getElementById('f-newdate').value;
@@ -429,7 +433,14 @@ input[type="date"]::-webkit-calendar-picker-indicator{opacity:.4;cursor:pointer}
   /* ── Payer → créer PI + afficher Stripe ── */
   document.getElementById('btn-pay').addEventListener('click',async function(){
     if(!resa||!newDate)return;
-    if(!document.getElementById('f-cgv').checked){err('extend-error','Merci d’accepter les CGV avant de payer.');return;}
+    if(!document.getElementById(‘f-cgv’).checked){
+      document.querySelector(‘.cgv-row’).style.outline=’2px solid var(--red)’;
+      document.querySelector(‘.cgv-row’).style.outlineOffset=’3px’;
+      err(‘extend-error’,’Merci d’accepter les CGV avant de payer.’);
+      return;
+    }
+    document.querySelector(‘.cgv-row’).style.outline=’’;
+    document.querySelector(‘.cgv-row’).style.outlineOffset=’’;
     this.disabled=true;this.innerHTML=SPIN+' Pr\xe9paration…';noerr('extend-error');
     try{
       const ctrl=new AbortController(),t=setTimeout(()=>ctrl.abort(),15000);

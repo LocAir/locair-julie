@@ -246,6 +246,11 @@ input,select,textarea{font-family:inherit}
           </div>
         </div>
         <p class="field-hint" style="margin-top:8px">Zone de livraison : Côte d'Azur (06 · 83).</p>
+        <div class="field" style="margin-top:14px">
+          <label for="etage">Étage / accès</label>
+          <input type="text" id="etage" name="etage" autocomplete="off" placeholder="Ex : 3ème étage, code 1234">
+          <span class="field-hint">Facultatif — aide le livreur.</span>
+        </div>
       </div>
 
       <!-- DATE -->
@@ -288,13 +293,23 @@ input,select,textarea{font-family:inherit}
       </div>
 
       <!-- CGV -->
-      <label class="opt-row">
-        <input type="checkbox" id="cgv" name="cgv" required>
-        <div class="opt-row-text">
-          <p class="opt-row-label">J'accepte les conditions générales <span style="color:#ccc;font-weight:400">*</span></p>
-          <p class="opt-row-desc">En cochant, vous acceptez les <a href="/mentions-legales" target="_blank" style="text-decoration:underline;text-underline-offset:2px">CGV et mentions légales</a> de Loc'Air.</p>
-        </div>
-      </label>
+      <fieldset style="border:none;padding:0;margin:0 0 8px">
+        <legend class="form-section-title" style="padding-bottom:12px;border-bottom:1px solid var(--rule);margin-bottom:16px;width:100%">Conditions <span style="color:#ccc;font-weight:400;letter-spacing:0;text-transform:none">*</span></legend>
+        <label class="opt-row" id="row-cgv">
+          <input type="checkbox" id="cgv" name="cgv" required>
+          <div class="opt-row-text">
+            <p class="opt-row-label">J'accepte les conditions générales</p>
+            <p class="opt-row-desc">En cochant, vous acceptez les <a href="/mentions-legales" target="_blank" style="text-decoration:underline;text-underline-offset:2px">CGV et mentions légales</a> de Loc'Air.</p>
+          </div>
+        </label>
+        <label class="opt-row" id="row-engage">
+          <input type="checkbox" id="engagement" name="engagement" required>
+          <div class="opt-row-text">
+            <p class="opt-row-label">Je comprends l'engagement minimum de 6 mois</p>
+            <p class="opt-row-desc">L'abonnement court 6 mois minimum à partir de la livraison. Annulation libre avant livraison.</p>
+          </div>
+        </label>
+      </fieldset>
 
       <div class="global-error" id="global-error"></div>
 
@@ -373,10 +388,11 @@ input,select,textarea{font-family:inherit}
 
   /* Date min = demain, pré-remplie */
   var dateInput = document.getElementById('date_debut');
-  var today = new Date();
-  var todayStr = today.toISOString().split('T')[0];
-  dateInput.min   = todayStr;
-  dateInput.value = todayStr;
+  var tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  var tomorrowStr = tomorrow.toISOString().split('T')[0];
+  dateInput.min   = tomorrowStr;
+  dateInput.value = tomorrowStr;
 
   var optInstall = document.getElementById('opt_install');
 
@@ -413,14 +429,20 @@ input,select,textarea{font-family:inherit}
       }
     });
 
-    /* CGV */
-    var cgvRow = document.getElementById('cgv').closest('.opt-row');
-    if (!document.getElementById('cgv').checked) {
-      cgvRow.style.borderColor = '#D93025';
-      ok = false;
-    } else {
-      cgvRow.style.borderColor = '';
-    }
+    /* CGV & engagement */
+    [
+      { id:'cgv',        rowId:'row-cgv',    msg:'Merci d\'accepter les CGV.' },
+      { id:'engagement', rowId:'row-engage', msg:'Merci de confirmer l\'engagement 6 mois.' },
+    ].forEach(function(c){
+      var cb  = document.getElementById(c.id);
+      var row = document.getElementById(c.rowId);
+      if (!cb.checked) {
+        row.style.borderColor = '#D93025';
+        ok = false;
+      } else {
+        row.style.borderColor = '';
+      }
+    });
     return ok;
   }
 
@@ -478,6 +500,7 @@ input,select,textarea{font-family:inherit}
       ].join(', '),
       date_debut:  document.getElementById('date_debut').value,
       opt_install: optInstall.checked,
+      etage: document.getElementById('etage').value.trim(),
       instructions_acces: document.getElementById('note').value.trim(),
     };
 
