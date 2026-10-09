@@ -463,7 +463,7 @@ input,select,textarea{font-family:inherit}
       <div class="summary-lines" id="summary-lines">
         <div class="summary-line" id="line-location"><span>Location</span><strong id="sum-location">—</strong></div>
         <div class="summary-line" id="line-install"><span>Installation technicien</span><strong id="sum-install">+80 €</strong></div>
-        <div class="summary-line"><span>Livraison + récupération</span><strong>+60 €</strong></div>
+        <div class="summary-line"><span>Livraison + récupération</span><strong>+60 – 120 €</strong></div>
       </div>
       <div>
         <div class="summary-total">
@@ -516,10 +516,20 @@ input,select,textarea{font-family:inherit}
     return TIERS[TIERS.length - 1].rate;
   }
 
+  // Calcul cumulatif par palier (identique au serveur calcTieredPrice)
+  function calcBase(days, qty) {
+    var d = Math.max(1, days);
+    var base;
+    if (d <= 7)       base = d * 12;
+    else if (d <= 14) base = 7 * 12 + (d - 7)  * 10;
+    else if (d <= 21) base = 7 * 12 + 7 * 10   + (d - 14) * 9;
+    else              base = 7 * 12 + 7 * 10   + 7 * 9    + (d - 21) * 8;
+    return base * (qty || 1);
+  }
+
   function calcTotal(days, qty, withInstall) {
-    var base = rateForDays(days) * days * qty;
     var install = withInstall ? INSTALL_FEE : 0;
-    return base + install + DELIVERY_FEE;
+    return calcBase(days, qty) + install + DELIVERY_FEE;
   }
 
   /* ── Date min = demain ── */
@@ -561,7 +571,7 @@ input,select,textarea{font-family:inherit}
     }
 
     var rate  = rateForDays(days);
-    var base  = rate * days * qty;
+    var base  = calcBase(days, qty);
     var total = calcTotal(days, qty, withInstall);
 
     document.getElementById('badge-val').textContent   = rate + ' €/j';
@@ -800,6 +810,7 @@ input,select,textarea{font-family:inherit}
       confirmParams: {
         return_url: window.location.origin + '/?booking=success',
       },
+      redirect: 'if_required',
     })
     .then(function(result) {
       if (result.error) {
@@ -811,6 +822,8 @@ input,select,textarea{font-family:inherit}
         var sp2 = btn2.querySelector('.spinner');
         if (sp2) sp2.remove();
         errEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+        window.location.replace('/?booking=success');
       }
     });
   });
@@ -823,6 +836,13 @@ input,select,textarea{font-family:inherit}
     if (!intent || !status) return;
     if (status === 'succeeded') {
       window.location.replace('/?booking=success');
+    } else if (status === 'failed') {
+      var errEl2 = document.getElementById('pay-error');
+      if (errEl2) {
+        errEl2.textContent = 'Le paiement a échoué. Vérifiez vos informations bancaires et réessayez.';
+        errEl2.style.display = 'block';
+        errEl2.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
     }
   })();
 
