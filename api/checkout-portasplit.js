@@ -3,11 +3,12 @@ const { getSupabase } = require('./_lib/supabase');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 
 // Forfait PortaSplit — 6 mois minimum
-// 1er versement : 199 € = 100 € apport + 99 € (1er mois)
+// 1er versement : 229 € = 100 € apport + 30 € livraison + 99 € (1er mois)
 // Mensualités suivantes : 99 € × 5 mois
-// Total engagement : 694 € (100 + 99 × 6)
-const APPORT_CENTS  = 10_000; // 100 € — facturé une seule fois sur la 1ère invoice
-const MENSUEL_CENTS =  9_900; // 99 €/mois — récurrent
+// Total engagement : 724 € (100 + 30 + 99 × 6)
+const APPORT_CENTS    = 10_000; // 100 € — facturé une seule fois sur la 1ère invoice
+const LIVRAISON_CENTS =  3_000; // 30 € — frais de livraison, one-time
+const MENSUEL_CENTS   =  9_900; // 99 €/mois — récurrent
 
 const BASE_URL = 'https://www.locair.fr';
 
@@ -49,6 +50,17 @@ module.exports = async (req, res) => {
             product_data: {
               name: 'Apport initial PortaSplit',
               description: 'Frais unique — inclus dans le 1er prélèvement',
+            },
+          },
+          quantity: 1,
+        },
+        {
+          price_data: {
+            currency: 'eur',
+            unit_amount: LIVRAISON_CENTS,
+            product_data: {
+              name: 'Frais de livraison',
+              description: 'Livraison et installation — inclus dans le 1er prélèvement',
             },
           },
           quantity: 1,
