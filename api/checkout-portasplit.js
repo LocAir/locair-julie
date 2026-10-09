@@ -33,64 +33,39 @@ module.exports = async (req, res) => {
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-  let customerId;
-  let invoiceItemId;
-
   try {
-    // Trouver ou créer un Customer Stripe pour lier l'abonnement
-    if (data.email) {
-      const email = data.email.trim().toLowerCase();
-      const existing = await stripe.customers.list({ email, limit: 1 });
-      if (existing.data.length > 0) {
-        customerId = existing.data[0].id;
-      } else {
-        const customer = await stripe.customers.create({
-          email,
-          name:  [data.prenom, data.nom].filter(Boolean).join(' ') || undefined,
-          phone: data.tel || undefined,
-          metadata: { adresse: (data.adresse || '').slice(0, 500) },
-        });
-        customerId = customer.id;
-      }
-    }
-
-    // L'apport initial 100 € est ajouté comme InvoiceItem sur le customer
-    // AVANT la création de la session Checkout — Stripe l'inclut automatiquement
-    // dans la 1ère facture de l'abonnement.
-    // (subscription_data.add_invoice_items a été retiré des versions récentes
-    // de l'API Stripe et n'est plus accepté par le SDK v16+.)
-    // L'id est conservé pour pouvoir supprimer l'item si sessions.create() échoue
-    // ensuite — sans ça, l'item reste sur le compte et serait facturé à la prochaine invoice.
-    if (customerId) {
-      const ii = await stripe.invoiceItems.create({
-        customer: customerId,
-        amount:   APPORT_CENTS,
-        currency: 'eur',
-        description: 'Apport initial PortaSplit (1 fois)',
-      });
-      invoiceItemId = ii.id;
-    }
-
-    // Date de fin : 6 mois. Stripe annule automatiquement après le 6e prélèvement.
+    // L'apport 100 € est mis en line_item sans recurring — Stripe l'affiche
+    // clairement sur la page de paiement et l'inclut dans la 1ère facture.
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
 
-      ...(customerId
-        ? { customer: customerId }
-        : (data.email ? { customer_email: data.email.trim().toLowerCase() } : {})),
+      ...(data.email ? { customer_email: data.email.trim().toLowerCase() } : {}),
 
-      line_items: [{
-        price_data: {
-          currency: 'eur',
-          unit_amount: MENSUEL_CENTS,
-          recurring: { interval: 'month' },
-          product_data: {
-            name: 'PortaSplit · 6 mois',
-            description: 'Climatisation réversible A++ · silencieux · zéro perçage',
+      line_items: [
+        {
+          price_data: {
+            currency: 'eur',
+            unit_amount: APPORT_CENTS,
+            product_data: {
+              name: 'Apport initial PortaSplit',
+              description: 'Frais unique — inclus dans le 1er prélèvement',
+            },
           },
+          quantity: 1,
         },
-        quantity: 1,
-      }],
+        {
+          price_data: {
+            currency: 'eur',
+            unit_amount: MENSUEL_CENTS,
+            recurring: { interval: 'month' },
+            product_data: {
+              name: 'PortaSplit · 6 mois',
+              description: 'Climatisation réversible A++ · silencieux · zéro perçage',
+            },
+          },
+          quantity: 1,
+        },
+      ],
 
       subscription_data: {
         metadata: {
@@ -117,9 +92,6 @@ module.exports = async (req, res) => {
 
   } catch (err) {
     console.error('[checkout-portasplit] Stripe error:', err.type, err.code, err.message);
-    if (invoiceItemId) {
-      await stripe.invoiceItems.del(invoiceItemId).catch(() => {});
-    }
     await recordFailedAttempt(getSupabase(), `portasplit:${ip}`).catch(() => {});
     const detail = [err.type, err.code].filter(Boolean).join(' / ');
     return res.status(500).json({
