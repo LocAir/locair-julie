@@ -33,9 +33,11 @@ module.exports = async (req, res) => {
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
+  let customerId;
+  let invoiceItemId;
+
   try {
     // Trouver ou créer un Customer Stripe pour lier l'abonnement
-    let customerId;
     if (data.email) {
       const email = data.email.trim().toLowerCase();
       const existing = await stripe.customers.list({ email, limit: 1 });
@@ -59,7 +61,6 @@ module.exports = async (req, res) => {
     // de l'API Stripe et n'est plus accepté par le SDK v16+.)
     // L'id est conservé pour pouvoir supprimer l'item si sessions.create() échoue
     // ensuite — sans ça, l'item reste sur le compte et serait facturé à la prochaine invoice.
-    let invoiceItemId;
     if (customerId) {
       const ii = await stripe.invoiceItems.create({
         customer: customerId,
