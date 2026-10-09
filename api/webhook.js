@@ -458,7 +458,7 @@ const handler = async (req, res) => {
     <tr><td style="padding:8px 0;border-bottom:1px solid #eee;color:#555">Mensualités suivantes</td><td style="padding:8px 0;border-bottom:1px solid #eee;font-weight:600">99 € × 5 mois</td></tr>
     ${adresse ? `<tr><td style="padding:8px 0;border-bottom:1px solid #eee;color:#555">Adresse</td><td style="padding:8px 0;border-bottom:1px solid #eee">${adresse}</td></tr>` : ''}
   </table>
-  <p>Notre équipe va vous contacter sous <strong>24 h</strong> pour fixer la date d'installation.</p>
+  <p>Notre équipe va vous contacter sous <strong>24 h</strong> pour fixer la date d'installation et vous demander votre pièce d'identité et un justificatif de domicile.</p>
   <p style="margin-top:24px">À très vite,<br><strong>L'équipe Loc'Air</strong><br><a href="tel:+33663798756" style="color:#555">06 63 79 87 56</a></p>
 </div>`.trim();
         await sendBrevoEmail({
