@@ -128,7 +128,7 @@ module.exports = async (req, res) => {
     const detail = [err.type, err.code].filter(Boolean).join(' / ');
     return res.status(500).json({
       error: 'Erreur serveur paiement.',
-      detail: detail || err.message || 'unknown',
+      detail: [detail, err.message].filter(Boolean).join(' — '),
     });
   }
 };
