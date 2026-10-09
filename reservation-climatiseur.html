@@ -225,6 +225,15 @@ input,select,textarea{font-family:inherit}
 
     <!-- STEP 1 — FORMULAIRE -->
     <div id="step1">
+
+      <!-- Bandeau sold-out (caché par défaut, affiché par JS si stock épuisé) -->
+      <div id="sold-out-banner" hidden style="background:#D93025;color:#fff;padding:14px 18px;border-radius:10px;margin-bottom:24px;font-size:14px;line-height:1.5;text-align:center">
+        <strong>Stock épuisé</strong> — Aucun climatiseur disponible en ce moment.<br>
+        Appelez-nous pour être mis en liste d'attente : <a href="tel:0663798756" style="color:#fff;font-weight:700;text-decoration:underline">06 63 79 87 56</a>
+      </div>
+      <!-- Avertissement stock faible (caché par défaut) -->
+      <div id="low-stock-msg" hidden style="background:#FFF3CD;border:1px solid #F5C842;color:#7A5C00;padding:11px 16px;border-radius:8px;margin-bottom:20px;font-size:13.5px;font-weight:500"></div>
+
       <div class="form-head">
         <p class="form-eyebrow">Climatiseur mobile · Dès 7 jours</p>
         <h1 class="form-title">Presque là.<br>Vos <em>informations</em> d'abord.</h1>
@@ -281,6 +290,10 @@ input,select,textarea{font-family:inherit}
               <input type="text" id="cp" name="cp" autocomplete="postal-code" inputmode="numeric" placeholder="06000" maxlength="5" required>
               <span class="field-error">Requis</span>
             </div>
+          </div>
+          <div class="field" style="margin-top:10px;margin-bottom:0">
+            <label for="etage">Étage / digicode</label>
+            <input type="text" id="etage" name="etage" autocomplete="off" placeholder="Ex : 3e étage · code d'entrée 1234B">
           </div>
           <p class="field-hint" style="margin-top:8px">Zone de livraison : Côte d'Azur (06 · 83).</p>
         </div>
@@ -367,6 +380,31 @@ input,select,textarea{font-family:inherit}
           <div class="field">
             <label for="note">Instructions particulières</label>
             <textarea id="note" name="note" rows="3" placeholder="Code d'interphone, étage, créneau horaire préféré…" style="resize:vertical;min-height:80px"></textarea>
+          </div>
+        </div>
+
+        <!-- CODE PROMO & SOURCE -->
+        <div class="form-section">
+          <p class="form-section-title">Informations complémentaires</p>
+          <div class="field-row">
+            <div class="field">
+              <label for="parrain_code">Code promo</label>
+              <input type="text" id="parrain_code" name="parrain_code" autocomplete="off" placeholder="CODE10" style="text-transform:uppercase">
+              <span class="field-hint">Laissez vide si vous n'en avez pas.</span>
+            </div>
+            <div class="field">
+              <label for="source_channel">Comment nous avez-vous trouvés ?</label>
+              <select id="source_channel" name="source_channel">
+                <option value="">—</option>
+                <option value="Google">Google</option>
+                <option value="Bouche à oreille">Bouche à oreille</option>
+                <option value="Instagram">Instagram</option>
+                <option value="Facebook / Meta">Facebook / Meta</option>
+                <option value="Airbnb">Airbnb</option>
+                <option value="Panneau / affiche">Panneau / affiche</option>
+                <option value="Autre">Autre</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -498,7 +536,8 @@ input,select,textarea{font-family:inherit}
 <script src="https://js.stripe.com/v3/" defer></script>
 <script>
 (function () {
-  /* ── Constantes pricing ── */
+  /* ── Constantes pricing (valeurs par défaut, mises à jour par /api/pricing-config) ── */
+  var P1J = 7, P1R = 12, P2J = 14, P2R = 10, P3J = 21, P3R = 9, P4R = 8;
   var TIERS = [
     { min: 7,  max: 7,  rate: 12 },
     { min: 8,  max: 14, rate: 10 },
@@ -520,16 +559,28 @@ input,select,textarea{font-family:inherit}
   function calcBase(days, qty) {
     var d = Math.max(1, days);
     var base;
-    if (d <= 7)       base = d * 12;
-    else if (d <= 14) base = 7 * 12 + (d - 7)  * 10;
-    else if (d <= 21) base = 7 * 12 + 7 * 10   + (d - 14) * 9;
-    else              base = 7 * 12 + 7 * 10   + 7 * 9    + (d - 21) * 8;
+    if (d <= P1J)      base = d * P1R;
+    else if (d <= P2J) base = P1J * P1R + (d - P1J) * P2R;
+    else if (d <= P3J) base = P1J * P1R + (P2J - P1J) * P2R + (d - P2J) * P3R;
+    else               base = P1J * P1R + (P2J - P1J) * P2R + (P3J - P2J) * P3R + (d - P3J) * P4R;
     return base * (qty || 1);
   }
 
   function calcTotal(days, qty, withInstall) {
     var install = withInstall ? INSTALL_FEE : 0;
     return calcBase(days, qty) + install + DELIVERY_FEE;
+  }
+
+  /* ── Mise à jour des cartes de tarifs dans le HTML ── */
+  function updateTierCards() {
+    var t1 = document.getElementById('tier1');
+    var t2 = document.getElementById('tier2');
+    var t3 = document.getElementById('tier3');
+    var t4 = document.getElementById('tier4');
+    if (t1) { t1.querySelector('.tier-days').textContent = P1J + ' jours'; t1.querySelector('.tier-price').textContent = P1R + ' €/j'; }
+    if (t2) { t2.querySelector('.tier-days').textContent = (P1J+1) + '–' + P2J + ' j'; t2.querySelector('.tier-price').textContent = P2R + ' €/j'; }
+    if (t3) { t3.querySelector('.tier-days').textContent = (P2J+1) + '–' + P3J + ' j'; t3.querySelector('.tier-price').textContent = P3R + ' €/j'; }
+    if (t4) { t4.querySelector('.tier-days').textContent = (P3J+1) + '+ jours'; t4.querySelector('.tier-price').textContent = P4R + ' €/j'; }
   }
 
   /* ── Date min = demain ── */
@@ -600,6 +651,81 @@ input,select,textarea{font-family:inherit}
   });
 
   updateSummary();
+
+  /* ── Backend : mode complet ── */
+  (function checkModeComplet() {
+    fetch('/api/mode-complet')
+      .then(function(r){ return r.json(); })
+      .then(function(d) {
+        if (d.sold_out) {
+          document.getElementById('sold-out-banner').hidden = false;
+          var btn = document.getElementById('next-btn');
+          if (btn) { btn.disabled = true; btn.textContent = 'Stock épuisé'; }
+        } else if (typeof d.disponibles === 'number' && d.disponibles <= 2 && d.disponibles > 0) {
+          var msg = document.getElementById('low-stock-msg');
+          if (msg) {
+            msg.hidden = false;
+            msg.textContent = 'Plus que ' + d.disponibles + ' appareil' + (d.disponibles > 1 ? 's' : '') + ' disponible' + (d.disponibles > 1 ? 's' : '') + ' — réservez vite.';
+          }
+        }
+      })
+      .catch(function(){});
+  })();
+
+  /* ── Backend : disponibilité ── */
+  (function checkDispo() {
+    var dateInput = document.getElementById('date');
+    if (!dateInput) return;
+    fetch('/api/disponibilite')
+      .then(function(r){ return r.json(); })
+      .then(function(d) {
+        if (!d.next_available) return;
+        var todayDispo = d.dates && typeof d.dates[d.today] === 'number' ? d.dates[d.today] : 1;
+        if (todayDispo === 0) {
+          /* Si aujourd'hui est à 0, on pousse le minimum au prochain créneau */
+          dateInput.min = d.next_available;
+          if (dateInput.value && dateInput.value < d.next_available) {
+            dateInput.value = d.next_available;
+          }
+          var hint = dateInput.parentElement && dateInput.parentElement.nextElementSibling;
+          if (hint && hint.classList.contains('date-hint')) {
+            hint.innerHTML = 'Prochain créneau disponible : <strong>' + d.next_available + '</strong>. Livraison 7j/7, confirmée par SMS sous 2h.';
+          }
+        }
+      })
+      .catch(function(){});
+  })();
+
+  /* ── Backend : tarifs dynamiques ── */
+  (function loadPricingConfig() {
+    fetch('/api/pricing-config')
+      .then(function(r){ return r.json(); })
+      .then(function(d) {
+        var p = d.pricing;
+        if (!p) return;
+        /* Mettre à jour les paliers */
+        if (p.palier1_jours)  P1J = p.palier1_jours;
+        if (p.palier1_tarif)  P1R = p.palier1_tarif;
+        if (p.palier2_jours)  P2J = p.palier2_jours;
+        if (p.palier2_tarif)  P2R = p.palier2_tarif;
+        if (p.palier3_jours)  P3J = p.palier3_jours;
+        if (p.palier3_tarif)  P3R = p.palier3_tarif;
+        if (p.palier4_tarif)  P4R = p.palier4_tarif;
+        if (p.frais_installation_technicien) INSTALL_FEE = p.frais_installation_technicien;
+        if (p.frais_livraison) DELIVERY_FEE = p.frais_livraison;
+        /* Reconstruire TIERS pour rateForDays() */
+        TIERS = [
+          { min: 1,       max: P1J,       rate: P1R },
+          { min: P1J + 1, max: P2J,       rate: P2R },
+          { min: P2J + 1, max: P3J,       rate: P3R },
+          { min: P3J + 1, max: Infinity,  rate: P4R },
+        ];
+        /* Rafraîchir les cartes de tarif et le récap */
+        updateTierCards();
+        updateSummary();
+      })
+      .catch(function(){});
+  })();
 
   /* ── Validation ── */
   function isEmpty(v) { return !v || !v.trim(); }
@@ -722,11 +848,13 @@ input,select,textarea{font-family:inherit}
       duree:       days,
       quantite:    qty,
       installation: isTech ? 'Technicien' : 'Autonome',
-      note:        document.getElementById('note').value.trim(),
+      etage:       document.getElementById('etage').value.trim(),
+      instructions_acces: document.getElementById('note').value.trim(),
+      parrain_code: (document.getElementById('parrain_code').value || '').trim().toUpperCase(),
+      source:      document.getElementById('source_channel').value || '',
       cgv_accepted:                    true,
       conditions_utilisation_accepted: true,
       retard_accepted:                 true,
-      source: 'reservation-climatiseur',
     };
 
     fetch('/api/checkout', {
