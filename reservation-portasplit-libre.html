@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PortaSplit sans engagement — 29 €/jour · Loc'Air</title>
+<meta name="description" content="Louez un PortaSplit sans engagement dès 7 jours. 29 €/jour · Livraison 7j/7 · Côte d'Azur · Paiement sécurisé par Stripe. Climatisation réversible sans perçage.">
+<link rel="canonical" href="https://www.locair.fr/reservation-portasplit-libre">
+<link rel="preconnect" href="https://js.stripe.com">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500&family=Inter:wght@300;400;500;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'"/>
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500&family=Inter:wght@300;400;500;600;700&display=swap"/></noscript>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%;overflow-x:hidden}
+body{font-family:'Inter',system-ui,sans-serif;background:#F6F6F4;color:#0A0A0A;-webkit-font-smoothing:antialiased;font-size:16px;line-height:1.6;overflow-x:hidden}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+button{cursor:pointer;font-family:inherit}
+input,select,textarea{font-family:inherit}
+@media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+
+:root{
+  --max:1080px;
+  --pad:clamp(20px,5vw,64px);
+  --rule:#E8E8E6;
+  --muted:#6B6B6B;
+  --subtle:#F0F0EE;
+  --ink:#0A0A0A;
+  --ease:cubic-bezier(.22,1,.36,1);
+}
+
+/* NAV */
+.nav{position:sticky;top:0;z-index:100;background:rgba(246,246,244,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--rule)}
+.nav-in{max-width:var(--max);margin:0 auto;padding:0 var(--pad);display:flex;align-items:center;justify-content:space-between;height:60px}
+.nav-back{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--muted);transition:color .2s}
+.nav-back:hover{color:#0A0A0A}
+.nav-back svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* LAYOUT */
+.page{max-width:var(--max);margin:0 auto;padding:clamp(40px,6vw,72px) var(--pad) 80px;display:grid;grid-template-columns:1fr 340px;gap:56px;align-items:start}
+@media(max-width:860px){.page{grid-template-columns:1fr;gap:40px}.summary{order:-1}}
+
+/* ÉTAPES */
+.steps{display:flex;align-items:center;margin-bottom:40px}
+.step{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;transition:background .3s,color .3s}
+.step-dot.active{background:#0A0A0A;color:#fff}
+.step-dot.done{background:#0A0A0A;color:#fff}
+.step-dot.inactive{background:#E8E8E6;color:#aaa}
+.step-label{color:#aaa;white-space:nowrap}
+.step-label.active{color:#0A0A0A;font-weight:600}
+.step-label.done{color:#0A0A0A}
+.step-sep{flex:1;height:1px;background:var(--rule);margin:0 12px;min-width:20px}
+@media(max-width:500px){.step-label{font-size:11px}.step-sep{min-width:10px;margin:0 6px}}
+@media(max-width:380px){.step-label{display:none}}
+
+/* EN-TÊTE */
+.form-head{margin-bottom:32px}
+.form-eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.form-title{font-size:clamp(26px,3.5vw,36px);font-weight:400;letter-spacing:-.03em;line-height:1.1;margin-bottom:10px}
+.form-title em{font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-weight:500}
+.form-sub{font-size:14px;color:var(--muted);line-height:1.6}
+
+/* BADGE PRIX FIXE */
+.price-fixed-badge{display:flex;align-items:center;gap:12px;padding:14px 18px;background:#0A0A0A;border-radius:12px;margin-bottom:20px;color:#fff}
+.pfb-price{font-size:28px;font-weight:700;letter-spacing:-.03em}
+.pfb-label{font-size:13px;opacity:.7;line-height:1.4}
+.pfb-label strong{opacity:1;font-weight:600}
+
+/* SECTIONS */
+.form-section{margin-bottom:36px}
+.form-section-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#bbb;padding-bottom:14px;border-bottom:1px solid var(--rule);margin-bottom:20px}
+
+/* CHAMPS */
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:500px){.field-row{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.field:last-child{margin-bottom:0}
+.field label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.field input,.field select,.field textarea{background:#fff;border:1px solid #DDDDD9;border-radius:10px;padding:13px 15px;font-size:15px;color:#0A0A0A;outline:none;transition:border-color .18s,box-shadow .18s;-webkit-appearance:none;appearance:none;width:100%}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B6B6B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:44px}
+.field input::placeholder,.field textarea::placeholder{color:#C0C0BC}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#0A0A0A;box-shadow:0 0 0 3px rgba(0,0,0,.06)}
+.field input.error,.field select.error{border-color:#D93025}
+.field-hint{font-size:12px;color:var(--muted);margin-top:4px}
+.field-error{font-size:12px;color:#D93025;margin-top:4px;display:none}
+.field input.error~.field-error,.field select.error~.field-error{display:block}
+
+/* ADRESSE */
+.addr-row{display:grid;grid-template-columns:1fr 100px;gap:12px}
+@media(max-width:400px){.addr-row{grid-template-columns:1fr}}
+
+/* DURÉE — sélecteur simple */
+.dur-field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.dur-field label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.dur-select{background:#fff;border:1px solid #DDDDD9;border-radius:10px;padding:13px 15px;font-size:15px;color:#0A0A0A;outline:none;transition:border-color .18s;-webkit-appearance:none;appearance:none;width:100%;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B6B6B' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:44px}
+.dur-select:focus{border-color:#0A0A0A;box-shadow:0 0 0 3px rgba(0,0,0,.06)}
+.dur-select.error{border-color:#D93025}
+.dur-total-hint{font-size:13px;color:var(--muted);background:var(--subtle);border-radius:10px;padding:12px 14px;margin-top:8px;line-height:1.55;border:1px solid var(--rule)}
+.dur-total-hint strong{color:#0A0A0A;font-weight:600}
+
+/* DATE */
+.date-hint{font-size:13px;color:var(--muted);background:var(--subtle);border-radius:10px;padding:12px 14px;margin-top:8px;line-height:1.55;border:1px solid var(--rule)}
+.date-hint strong{color:#0A0A0A;font-weight:600}
+
+/* OPT ROWS */
+.opt-row{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border-radius:10px;border:1px solid var(--rule);background:#fff;cursor:pointer;transition:border-color .18s;margin-bottom:10px}
+.opt-row:last-child{margin-bottom:0}
+.opt-row:hover{border-color:#0A0A0A}
+.opt-row.selected{border-color:#0A0A0A;background:#FAFAFA}
+.opt-row input[type=radio]{width:18px;height:18px;accent-color:#0A0A0A;flex-shrink:0;margin-top:1px;cursor:pointer}
+.opt-row input[type=checkbox]{width:18px;height:18px;border-radius:4px;accent-color:#0A0A0A;flex-shrink:0;margin-top:1px;cursor:pointer}
+.opt-row-text{flex:1}
+.opt-row-label{font-size:14px;font-weight:600;margin-bottom:2px}
+.opt-row-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.opt-price{font-size:14px;font-weight:700;white-space:nowrap;flex-shrink:0}
+
+/* MENTIONS */
+.mentions{font-size:12px;color:var(--muted);line-height:1.65;margin-top:20px}
+.mentions a{color:#0A0A0A;text-decoration:underline;text-underline-offset:2px}
+
+/* SUBMIT */
+.submit-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#0A0A0A;color:#fff;font-size:16px;font-weight:700;padding:18px 28px;border-radius:100px;border:none;transition:background .2s,opacity .2s;margin-top:28px;letter-spacing:-.01em}
+.submit-btn:hover{background:#222}
+.submit-btn:disabled{opacity:.45;cursor:default}
+.submit-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.submit-btn .spinner{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ERREUR GLOBALE */
+.global-error{display:none;background:#FFF2F0;border:1px solid #FCCCC9;border-radius:10px;padding:14px 16px;font-size:14px;color:#D93025;margin-top:16px;line-height:1.5}
+.global-error.visible{display:block}
+
+/* STEP 2 */
+#step2{display:none}
+.pay-head{margin-bottom:28px}
+.back-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer;transition:color .2s;border:none;background:none;padding:0;margin-bottom:20px;font-family:inherit}
+.back-link:hover{color:#0A0A0A}
+.back-link svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pay-amount-box{background:#fff;border:1px solid var(--rule);border-radius:14px;padding:20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center}
+.pay-amount-label{font-size:13px;color:var(--muted)}
+.pay-amount-val{font-size:26px;font-weight:700;letter-spacing:-.03em}
+#stripe-element-wrap{background:#fff;border:1px solid var(--rule);border-radius:14px;padding:20px;min-height:160px}
+#stripe-error{display:none;color:#D93025;font-size:13px;margin-top:12px;padding:10px 14px;background:#FFF2F0;border:1px solid #FCCCC9;border-radius:10px}
+.pay-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:#0A0A0A;color:#fff;font-size:16px;font-weight:700;padding:18px 28px;border-radius:100px;border:none;transition:background .2s,opacity .2s;margin-top:20px;letter-spacing:-.01em;cursor:pointer}
+.pay-btn:hover{background:#222}
+.pay-btn:disabled{opacity:.45;cursor:default}
+.pay-btn .spinner{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+
+.mini-reviews{margin:20px 0 16px;padding:14px 16px;background:#F5F4F1;border-radius:14px}
+.mini-reviews-stars{font-size:13px;font-weight:600;margin-bottom:8px}.mini-reviews-stars span{font-weight:400;color:var(--muted)}
+.mini-reviews-row{display:flex;flex-direction:column;gap:6px}
+.mini-review-item{font-size:12px;color:var(--muted);line-height:1.5}
+
+/* SIDEBAR */
+.summary{position:sticky;top:80px}
+.summary-card{background:#fff;border:1px solid var(--rule);border-radius:16px;padding:24px;margin-bottom:16px}
+.summary-eyebrow{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:18px}
+.summary-product{display:flex;align-items:center;gap:14px;margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--rule)}
+.summary-img{width:60px;height:60px;border-radius:10px;overflow:hidden;background:var(--subtle);border:1px solid var(--rule);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:28px}
+.summary-name{font-size:13px;font-weight:700;margin-bottom:3px}
+.summary-desc{font-size:11px;color:var(--muted);line-height:1.5}
+.summary-lines{display:flex;flex-direction:column;gap:10px;margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--rule)}
+.summary-line{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:13px;color:var(--muted)}
+.summary-line strong{color:#0A0A0A;font-weight:600}
+.summary-total{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.summary-total-label{font-size:13px;font-weight:700;color:var(--muted)}
+.summary-total-val{font-size:22px;font-weight:700;letter-spacing:-.03em}
+.summary-total-sub{font-size:11px;color:var(--muted);text-align:right;margin-top:2px}
+.summary-perks{display:flex;flex-direction:column;gap:9px}
+.summary-perk{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.summary-perk svg{width:14px;height:14px;stroke:#888;fill:none;stroke-width:2.5;flex-shrink:0}
+.summary-secure{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:14px;padding-top:14px;border-top:1px solid var(--rule)}
+.summary-secure svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0}
+
+/* FOOTER */
+.foot{border-top:1px solid var(--rule);padding:20px var(--pad);text-align:center;font-size:12px;color:var(--muted)}
+.foot a{color:#0A0A0A}
+.lockup{display:inline-flex;flex-direction:column;align-items:center;text-decoration:none;line-height:1;gap:6px}.lockup .logo-n{font-size:22px;font-weight:700;letter-spacing:-.02em}.lockup .logo-t{display:inline-flex;align-items:center;gap:6px;font-size:9px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;white-space:nowrap;padding-left:.18em;opacity:.5}
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-in">
+    <a href="/" class="logo lockup" aria-label="Loc'Air, spécialiste du confort thermique"><span class="logo-n">Loc'Air</span><span class="logo-t" aria-hidden="true">Spécialiste du confort thermique</span></a>
+    <a href="/catalogue" class="nav-back">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      Retour
+    </a>
+  </div>
+</header>
+
+<div class="page">
+
+  <div>
+    <!-- ÉTAPES -->
+    <div class="steps" id="steps-indicator">
+      <div class="step">
+        <div class="step-dot active" id="dot1">1</div>
+        <span class="step-label active" id="lbl1">Votre commande</span>
+      </div>
+      <div class="step-sep"></div>
+      <div class="step">
+        <div class="step-dot inactive" id="dot2">2</div>
+        <span class="step-label" id="lbl2">Paiement</span>
+      </div>
+      <div class="step-sep"></div>
+      <div class="step">
+        <div class="step-dot inactive" id="dot3">3</div>
+        <span class="step-label" id="lbl3">Confirmation</span>
+      </div>
+    </div>
+
+    <!-- STEP 1 — FORMULAIRE -->
+    <div id="step1">
+
+      <div class="form-head">
+        <p class="form-eyebrow">PortaSplit · Sans engagement · Dès 7 jours</p>
+        <h1 class="form-title">Réservez votre<br><em>PortaSplit</em> maintenant.</h1>
+        <p class="form-sub">Climatisation réversible sans perçage — livré chez vous, branché en 5 min. Paiement sécurisé, annulation libre avant livraison.</p>
+      </div>
+
+      <!-- Badge prix fixe -->
+      <div class="price-fixed-badge">
+        <div class="pfb-price">29 €/j</div>
+        <div class="pfb-label">Tarif unique · <strong>Sans engagement</strong><br>+ 30 € livraison A/R</div>
+      </div>
+
+      <form id="resa-form" novalidate>
+
+        <!-- IDENTITÉ -->
+        <div class="form-section">
+          <p class="form-section-title">Identité</p>
+          <div class="field-row">
+            <div class="field">
+              <label for="prenom">Prénom <span style="color:#ccc;font-weight:400">*</span></label>
+              <input type="text" id="prenom" name="prenom" autocomplete="given-name" placeholder="Marie" required>
+              <span class="field-error">Prénom requis</span>
+            </div>
+            <div class="field">
+              <label for="nom">Nom <span style="color:#ccc;font-weight:400">*</span></label>
+              <input type="text" id="nom" name="nom" autocomplete="family-name" placeholder="Dupont" required>
+              <span class="field-error">Nom requis</span>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="email">Email <span style="color:#ccc;font-weight:400">*</span></label>
+              <input type="email" id="email" name="email" autocomplete="email" inputmode="email" placeholder="marie@exemple.fr" required>
+              <span class="field-error">Email invalide</span>
+            </div>
+            <div class="field">
+              <label for="tel">Téléphone <span style="color:#ccc;font-weight:400">*</span></label>
+              <input type="tel" id="tel" name="tel" autocomplete="tel" inputmode="tel" placeholder="06 12 34 56 78" required>
+              <span class="field-error">Téléphone requis</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- LIVRAISON -->
+        <div class="form-section">
+          <p class="form-section-title">Adresse de livraison</p>
+          <div class="field">
+            <label for="adresse">Rue <span style="color:#ccc;font-weight:400">*</span></label>
+            <input type="text" id="adresse" name="adresse" autocomplete="street-address" placeholder="12 rue de la Paix" required>
+            <span class="field-error">Adresse requise</span>
+          </div>
+          <div class="addr-row">
+            <div class="field" style="margin-bottom:0">
+              <label for="ville">Ville <span style="color:#ccc;font-weight:400">*</span></label>
+              <input type="text" id="ville" name="ville" autocomplete="address-level2" placeholder="Nice" required>
+              <span class="field-error">Ville requise</span>
+            </div>
+            <div class="field" style="margin-bottom:0">
+              <label for="cp">Code postal <span style="color:#ccc;font-weight:400">*</span></label>
+              <input type="text" id="cp" name="cp" autocomplete="postal-code" inputmode="numeric" placeholder="06000" maxlength="5" required>
+              <span class="field-error">Requis</span>
+            </div>
+          </div>
+          <div class="field" style="margin-top:10px;margin-bottom:0">
+            <label for="etage">Étage / digicode</label>
+            <input type="text" id="etage" name="etage" autocomplete="off" placeholder="Ex : 3e étage · code d'entrée 1234B">
+          </div>
+          <p class="field-hint" style="margin-top:8px">Zone de livraison : Côte d'Azur (06 · 83).</p>
+        </div>
+
+        <!-- DATE -->
+        <div class="form-section">
+          <p class="form-section-title">Date de livraison</p>
+          <div class="field">
+            <label for="date">Date souhaitée <span style="color:#ccc;font-weight:400">*</span></label>
+            <input type="date" id="date" name="date" required>
+            <span class="field-error">Date requise</span>
+          </div>
+          <div class="date-hint">
+            Livraison <strong>7j/7</strong> · Confirmée par SMS sous 2h · Possible dès <strong>J+1</strong>.
+          </div>
+        </div>
+
+        <!-- DURÉE -->
+        <div class="form-section">
+          <p class="form-section-title">Durée de location</p>
+          <div class="dur-field">
+            <label for="duree">Nombre de jours <span style="color:#ccc;font-weight:400">*</span></label>
+            <select id="duree" name="duree" class="dur-select" required>
+              <option value="">Choisir la durée…</option>
+              <option value="7">7 jours — 203 € (hors options)</option>
+              <option value="10">10 jours — 290 € (hors options)</option>
+              <option value="14">14 jours — 406 € (hors options)</option>
+              <option value="21">21 jours — 609 € (hors options)</option>
+              <option value="30">30 jours — 870 € (hors options)</option>
+            </select>
+            <span class="field-error" id="duree-error" style="display:none">Durée requise (minimum 7 jours)</span>
+          </div>
+          <div class="dur-total-hint" id="dur-total-hint">
+            <span id="hint-text">Sélectionnez une durée pour voir le total.</span>
+          </div>
+          <p class="field-hint" style="margin-top:8px">Durée minimum : 7 jours. Aucun engagement de renouvellement.</p>
+        </div>
+
+        <!-- INSTALLATION -->
+        <div class="form-section">
+          <p class="form-section-title">Installation</p>
+          <label class="opt-row" id="row-auto">
+            <input type="radio" name="installation" id="opt_auto" value="Autonome" checked>
+            <div class="opt-row-text">
+              <div class="opt-row-label">Auto-installation</div>
+              <div class="opt-row-desc">Branchez-le vous-même en 5 min — mode d'emploi inclus. Aucune compétence requise.</div>
+            </div>
+            <span class="opt-price">Gratuit</span>
+          </label>
+          <label class="opt-row" id="row-tech">
+            <input type="radio" name="installation" id="opt_tech" value="Technicien">
+            <div class="opt-row-text">
+              <div class="opt-row-label">Technicien sur place</div>
+              <div class="opt-row-desc">Notre technicien installe et règle l'appareil à votre domicile.</div>
+            </div>
+            <span class="opt-price">+80 €</span>
+          </label>
+        </div>
+
+        <!-- NOTE -->
+        <div class="form-section">
+          <p class="form-section-title">Informations complémentaires</p>
+          <div class="field">
+            <label for="note">Note pour le livreur</label>
+            <textarea id="note" name="note" rows="3" placeholder="Ex : Accès par la porte latérale, appeler avant d'arriver…" style="resize:vertical;min-height:72px"></textarea>
+          </div>
+        </div>
+
+        <!-- CGV -->
+        <div class="form-section">
+          <p class="form-section-title">Conditions</p>
+          <label class="opt-row" id="row-cgv">
+            <input type="checkbox" id="cgv" name="cgv">
+            <div class="opt-row-text">
+              <div class="opt-row-label">CGV acceptées</div>
+              <div class="opt-row-desc">J'ai lu et j'accepte les <a href="/cgv" target="_blank" rel="noopener" style="color:#0A0A0A;text-decoration:underline">Conditions Générales de Vente</a> de Loc'Air.</div>
+            </div>
+          </label>
+          <label class="opt-row" id="row-cond">
+            <input type="checkbox" id="conditions_utilisation" name="conditions_utilisation">
+            <div class="opt-row-text">
+              <div class="opt-row-label">Conditions d'utilisation</div>
+              <div class="opt-row-desc">Je m'engage à utiliser l'appareil conformément aux <a href="/conditions-utilisation" target="_blank" rel="noopener" style="color:#0A0A0A;text-decoration:underline">conditions d'utilisation</a> et à le restituer en bon état.</div>
+            </div>
+          </label>
+        </div>
+
+        <div class="global-error" id="global-error"></div>
+
+        <button type="submit" class="submit-btn" id="submit-btn">
+          <span id="btn-text">Procéder au paiement</span>
+          <svg id="btn-arrow" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        </button>
+
+        <p class="mentions">
+          Paiement sécurisé par Stripe · Aucune caution · Annulation libre avant livraison ·
+          Des questions ? <a href="tel:0663798756">06 63 79 87 56</a>
+        </p>
+      </form>
+    </div>
+
+    <!-- STEP 2 — PAIEMENT -->
+    <div id="step2">
+      <button class="back-link" type="button" id="back-btn">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Modifier ma commande
+      </button>
+      <div class="form-head pay-head">
+        <p class="form-eyebrow">Étape 2 · Paiement</p>
+        <h2 class="form-title">Paiement <em>sécurisé</em></h2>
+        <p class="form-sub">Entrez vos coordonnées bancaires — chiffrement SSL · Stripe certifié PCI-DSS.</p>
+      </div>
+      <div class="pay-amount-box">
+        <span class="pay-amount-label">Total à payer maintenant</span>
+        <span class="pay-amount-val" id="pay-amount-display">—</span>
+      </div>
+      <div id="stripe-element-wrap">
+        <div id="stripe-payment-element"></div>
+      </div>
+      <div id="stripe-error"></div>
+      <div class="mini-reviews">
+        <div class="mini-reviews-stars">★★★★★ <span>4,9/5 · 38 avis Google</span></div>
+        <div class="mini-reviews-row">
+          <div class="mini-review-item"><strong>Sophie M.</strong> « Livré le matin, branché en 5 min. Parfait. »</div>
+          <div class="mini-review-item"><strong>Touzé Mike</strong> « Réactifs, pro, je recommande sans hésiter. »</div>
+        </div>
+      </div>
+      <button class="pay-btn" type="button" id="pay-btn">
+        <span id="pay-btn-text">Payer en toute sécurité</span>
+        <svg id="pay-btn-arrow" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      </button>
+      <p class="mentions" style="margin-top:16px">
+        Votre carte n'est jamais stockée par Loc'Air — traitée directement par Stripe.
+      </p>
+    </div>
+
+  </div>
+
+  <!-- SIDEBAR -->
+  <aside class="summary">
+    <div class="summary-card">
+      <p class="summary-eyebrow">Votre commande</p>
+      <div class="summary-product">
+        <div class="summary-img" aria-hidden="true">❄️</div>
+        <div>
+          <p class="summary-name">PortaSplit · Sans engagement</p>
+          <p class="summary-desc">Climatisation réversible A++ · Silencieux<br>Zéro perçage · Kit complet inclus</p>
+        </div>
+      </div>
+      <div class="summary-lines" id="summary-lines">
+        <div class="summary-line"><span>Tarif</span><strong>29 €/jour</strong></div>
+        <div class="summary-line" id="line-location"><span>Location</span><strong id="sum-location">—</strong></div>
+        <div class="summary-line" id="line-install" style="opacity:.4"><span>Installation technicien</span><strong id="sum-install">+80 €</strong></div>
+        <div class="summary-line"><span>Livraison A/R</span><strong>+30 €</strong></div>
+      </div>
+      <div>
+        <div class="summary-total">
+          <span class="summary-total-label">Total</span>
+          <p class="summary-total-val" id="total-val">—</p>
+        </div>
+        <p class="summary-total-sub" id="total-sub"></p>
+      </div>
+    </div>
+
+    <div class="summary-card">
+      <div class="summary-perks">
+        <div class="summary-perk"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Livraison 7j/7 · Côte d'Azur</div>
+        <div class="summary-perk"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Sans engagement — pas d'abonnement</div>
+        <div class="summary-perk"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Aucune caution</div>
+        <div class="summary-perk"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Panne → remplacement le jour même</div>
+        <div class="summary-perk"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Récupération incluse en fin de location</div>
+        <div class="summary-perk"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Annulation libre avant livraison</div>
+      </div>
+      <div class="summary-secure">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        Paiement sécurisé par Stripe
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<footer class="foot">
+  <p><a href="/">Loc'Air</a> · Location climatisation · Côte d'Azur · <a href="/mentions-legales">Mentions légales</a></p>
+</footer>
+
+<script src="https://js.stripe.com/v3/" defer></script>
+<script>
+(function () {
+  var RATE     = 29;   // €/j
+  var LIVRAISON = 30;  // €
+  var INSTALL   = 80;  // €
+  var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpYcFY8Sj4cL4pK64YO5v49flzW8SWlLek1dr00nJtbX09Y';
+
+  /* ── Date min = demain ── */
+  var dateInput = document.getElementById('date');
+  var tomorrow  = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  dateInput.min = tomorrow.toISOString().split('T')[0];
+
+  /* ── Mise à jour du résumé ── */
+  var dureeSelect = document.getElementById('duree');
+  var optAuto     = document.getElementById('opt_auto');
+  var optTech     = document.getElementById('opt_tech');
+
+  function isTech() { return optTech.checked; }
+
+  function calcTotal(days) {
+    return RATE * days + LIVRAISON + (isTech() ? INSTALL : 0);
+  }
+
+  function updateSummary() {
+    var days = parseInt(dureeSelect.value) || 0;
+    var withInstall = isTech();
+
+    if (!days) {
+      document.getElementById('sum-location').textContent = '—';
+      document.getElementById('total-val').textContent    = '—';
+      document.getElementById('total-sub').textContent    = '';
+      document.getElementById('hint-text').textContent    = 'Sélectionnez une durée pour voir le total.';
+      return;
+    }
+
+    var locationTotal = RATE * days;
+    var total         = calcTotal(days);
+
+    document.getElementById('sum-location').textContent = locationTotal + ' €';
+    document.getElementById('sum-install').textContent  = withInstall ? '+' + INSTALL + ' €' : '—';
+    document.getElementById('line-install').style.opacity = withInstall ? '1' : '.4';
+    document.getElementById('total-val').textContent    = total + ' €';
+    document.getElementById('total-sub').textContent    = RATE + ' €/j × ' + days + 'j' +
+      ' + livraison' + (withInstall ? ' + installation' : '');
+
+    document.getElementById('hint-text').innerHTML = '<strong>' + total + ' € au total</strong> ' +
+      '(' + RATE + ' €/j × ' + days + ' jours' +
+      (withInstall ? ' + 80 € installation' : '') + ' + 30 € livraison)';
+  }
+
+  dureeSelect.addEventListener('change', updateSummary);
+  optAuto.addEventListener('change', updateSummary);
+  optTech.addEventListener('change', updateSummary);
+  updateSummary();
+
+  /* ── Radio install style ── */
+  [optAuto, optTech].forEach(function(r) {
+    r.addEventListener('change', function() {
+      document.getElementById('row-auto').classList.toggle('selected', optAuto.checked);
+      document.getElementById('row-tech').classList.toggle('selected', optTech.checked);
+    });
+  });
+  document.getElementById('row-auto').classList.add('selected');
+
+  /* ── Stripe ── */
+  var _stripe   = null;
+  var _elements = null;
+  var _secret   = null;
+
+  function getStripe() {
+    if (!_stripe && typeof Stripe !== 'undefined') _stripe = Stripe(STRIPE_PK);
+    return _stripe;
+  }
+
+  /* ── Validation ── */
+  function isEmpty(v) { return !v || !v.trim(); }
+  function isEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()); }
+
+  document.querySelectorAll('input,select,textarea').forEach(function(el){
+    el.addEventListener('input', function(){ el.classList.remove('error'); });
+  });
+
+  function validate() {
+    var ok = true;
+    [
+      { id:'prenom', check: function(v){ return !isEmpty(v); } },
+      { id:'nom',    check: function(v){ return !isEmpty(v); } },
+      { id:'email',  check: function(v){ return isEmail(v); } },
+      { id:'tel',    check: function(v){ return !isEmpty(v); } },
+      { id:'adresse',check: function(v){ return !isEmpty(v); } },
+      { id:'ville',  check: function(v){ return !isEmpty(v); } },
+      { id:'cp',     check: function(v){ return /^\d{5}$/.test(v.trim()); } },
+      { id:'date',   check: function(v){ return !isEmpty(v); } },
+      { id:'duree',  check: function(v){ return !!parseInt(v); } },
+    ].forEach(function(f){
+      var inp = document.getElementById(f.id);
+      if (!f.check(inp.value)) { inp.classList.add('error'); ok = false; }
+    });
+
+    var cbDefs = [
+      { id:'cgv',                   rowId:'row-cgv'  },
+      { id:'conditions_utilisation', rowId:'row-cond' },
+    ];
+    cbDefs.forEach(function(c){
+      var cb  = document.getElementById(c.id);
+      var row = document.getElementById(c.rowId);
+      if (!cb.checked) { row.style.borderColor = '#D93025'; ok = false; }
+      else             { row.style.borderColor = ''; }
+    });
+
+    return ok;
+  }
+
+  /* ── Soumission step 1 ── */
+  var form      = document.getElementById('resa-form');
+  var btn       = document.getElementById('submit-btn');
+  var btnText   = document.getElementById('btn-text');
+  var btnArrow  = document.getElementById('btn-arrow');
+  var globalErr = document.getElementById('global-error');
+
+  function setLoading(msg) {
+    btn.disabled = true;
+    btnText.textContent = msg || 'Traitement…';
+    btnArrow.style.display = 'none';
+    if (!btn.querySelector('.spinner')) {
+      var sp = document.createElement('div');
+      sp.className = 'spinner';
+      btn.appendChild(sp);
+    }
+  }
+  function resetBtn() {
+    btn.disabled = false;
+    btnText.textContent = 'Procéder au paiement';
+    btnArrow.style.display = '';
+    var sp = btn.querySelector('.spinner');
+    if (sp) sp.remove();
+  }
+  function showError(msg) {
+    globalErr.textContent = msg;
+    globalErr.classList.add('visible');
+    globalErr.scrollIntoView({ behavior:'smooth', block:'center' });
+  }
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    globalErr.classList.remove('visible');
+    if (!validate()) {
+      var first = form.querySelector('.error');
+      if (!first) first = form.querySelector('[style*="D93025"]');
+      if (first) first.scrollIntoView({ behavior:'smooth', block:'center' });
+      return;
+    }
+
+    setLoading('Préparation du paiement…');
+
+    var days = parseInt(dureeSelect.value) || 7;
+
+    var payload = {
+      prenom:       document.getElementById('prenom').value.trim(),
+      nom:          document.getElementById('nom').value.trim(),
+      email:        document.getElementById('email').value.trim(),
+      tel:          document.getElementById('tel').value.trim(),
+      adresse:      [
+        document.getElementById('adresse').value.trim(),
+        document.getElementById('cp').value.trim(),
+        document.getElementById('ville').value.trim(),
+      ].join(', '),
+      date:         document.getElementById('date').value,
+      duree:        days,
+      installation: isTech() ? 'Technicien' : 'Autonome',
+      etage:        document.getElementById('etage').value.trim(),
+      note:         document.getElementById('note').value.trim(),
+      cgv_accepted:                    true,
+      conditions_utilisation_accepted: true,
+    };
+
+    fetch('/api/checkout-portasplit-libre', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d.clientSecret) throw new Error(d.error || 'Erreur serveur');
+      _secret = d.clientSecret;
+      showStep2(d.amountCents);
+      resetBtn();
+    })
+    .catch(function(err){
+      showError((err && err.message) || 'Erreur réseau. Réessayez ou appelez le 06 63 79 87 56.');
+      resetBtn();
+    });
+  });
+
+  /* ── Affichage step 2 ── */
+  function showStep2(amountCents) {
+    document.getElementById('step1').style.display = 'none';
+    document.getElementById('step2').style.display = 'block';
+
+    document.getElementById('dot1').className = 'step-dot done';
+    document.getElementById('lbl1').className = 'step-label done';
+    document.getElementById('dot2').className = 'step-dot active';
+    document.getElementById('lbl2').className = 'step-label active';
+
+    var euros = (amountCents / 100).toLocaleString('fr-FR', { minimumFractionDigits: 0 });
+    document.getElementById('pay-amount-display').textContent = euros + ' €';
+
+    var stripe = getStripe();
+    if (!stripe) {
+      document.getElementById('stripe-error').textContent = 'Chargement du module de paiement… Réessayez dans un instant.';
+      document.getElementById('stripe-error').style.display = 'block';
+      return;
+    }
+
+    _elements = stripe.elements({ clientSecret: _secret, locale: 'fr' });
+    var payEl = _elements.create('payment', {
+      layout: { type: 'tabs', defaultCollapsed: false },
+    });
+    payEl.mount('#stripe-payment-element');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ── Bouton retour ── */
+  document.getElementById('back-btn').addEventListener('click', function() {
+    document.getElementById('step2').style.display = 'none';
+    document.getElementById('step1').style.display = 'block';
+    document.getElementById('dot1').className = 'step-dot active';
+    document.getElementById('lbl1').className = 'step-label active';
+    document.getElementById('dot2').className = 'step-dot inactive';
+    document.getElementById('lbl2').className = 'step-label';
+    if (_elements) { try { _elements.getElement('payment').unmount(); } catch(e) {} _elements = null; }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  /* ── Paiement ── */
+  document.getElementById('pay-btn').addEventListener('click', function() {
+    var btn2  = document.getElementById('pay-btn');
+    var errEl = document.getElementById('stripe-error');
+    errEl.style.display = 'none';
+    btn2.disabled = true;
+    document.getElementById('pay-btn-text').textContent = 'Paiement en cours…';
+    document.getElementById('pay-btn-arrow').style.display = 'none';
+    if (!btn2.querySelector('.spinner')) {
+      var sp = document.createElement('div');
+      sp.className = 'spinner';
+      btn2.appendChild(sp);
+    }
+
+    getStripe().confirmPayment({
+      elements: _elements,
+      confirmParams: {
+        return_url: window.location.origin + '/portasplit-hiver?reservation=1',
+      },
+      redirect: 'if_required',
+    })
+    .then(function(result) {
+      if (result.error) {
+        errEl.textContent = result.error.message;
+        errEl.style.display = 'block';
+        btn2.disabled = false;
+        document.getElementById('pay-btn-text').textContent = 'Réessayer';
+        document.getElementById('pay-btn-arrow').style.display = '';
+        var sp2 = btn2.querySelector('.spinner');
+        if (sp2) sp2.remove();
+        errEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else if (result.paymentIntent && result.paymentIntent.status === 'succeeded') {
+        window.location.replace('/portasplit-hiver?reservation=1');
+      }
+    });
+  });
+
+  /* ── Retour 3DS ── */
+  (function checkStripeReturn() {
+    var params = new URLSearchParams(window.location.search);
+    var intent = params.get('payment_intent');
+    var status = params.get('redirect_status');
+    if (!intent || !status) return;
+    if (status === 'succeeded') {
+      window.location.replace('/portasplit-hiver?reservation=1');
+    } else if (status === 'failed') {
+      var errEl2 = document.getElementById('stripe-error');
+      if (errEl2) {
+        errEl2.textContent = 'Le paiement a échoué. Vérifiez vos informations bancaires et réessayez.';
+        errEl2.style.display = 'block';
+        document.getElementById('step1').style.display = 'none';
+        document.getElementById('step2').style.display = 'block';
+        errEl2.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  })();
+
+})();
+</script>
+
+<a style="position:fixed;bottom:24px;right:24px;z-index:999;width:54px;height:54px;background:#25D366;border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,0,0,.22);transition:transform .2s" href="https://wa.me/33663798756?text=Bonjour%2C+j%27ai+une+question+sur+le+PortaSplit+sans+engagement." target="_blank" rel="noopener noreferrer" aria-label="Question ? WhatsApp" onmouseover="this.style.transform='scale(1.08)'" onmouseout="this.style.transform='scale(1)'">
+  <svg viewBox="0 0 24 24" fill="#fff" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+</a>
+
+</body>
+</html>
