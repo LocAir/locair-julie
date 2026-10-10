@@ -192,6 +192,12 @@ a{color:inherit;text-decoration:none}
 .lcard-btn--alt{background:transparent;border:1.5px solid var(--rule);color:var(--ink);margin-top:8px;height:44px;font-size:13px;font-weight:600}
 .lcard-btn--alt:hover{border-color:var(--ink);background:transparent;transform:none}
 
+/* offer toggle on PortaSplit card */
+.lcard-toggle{display:flex;background:rgba(255,255,255,.14);border-radius:100px;padding:3px;margin-bottom:14px;gap:2px;width:100%}
+.lcard-toggle-opt{flex:1;text-align:center;padding:8px 4px;border-radius:100px;font-size:10px;font-weight:700;cursor:pointer;transition:background .18s,color .18s;color:rgba(255,255,255,.5);background:none;border:none;font-family:var(--body);letter-spacing:.04em;text-transform:uppercase;line-height:1.3}
+.lcard-toggle-opt.active{background:#fff;color:var(--ink)}
+.lcard-toggle-opt:hover:not(.active){color:rgba(255,255,255,.8)}
+
 /* btn (used in compare table & cta-fin) */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:50px;padding:0 30px;border-radius:100px;font-size:14px;font-weight:600;border:none;cursor:pointer;transition:background .15s;text-decoration:none;white-space:nowrap;font-family:var(--body)}
 .btn--dark{background:var(--ink);color:#fff}
@@ -393,11 +399,24 @@ a{color:inherit;text-decoration:none}
         <blockquote class="lcard-quote">« Frais l'été, chaud l'hiver. Je ne retournerai jamais à un radiateur. »<cite>Yasmine K. · Antibes</cite></blockquote>
       </div>
       <div class="lcard-price">
-        <p class="lcard-price-label">Abonnement 6 mois</p>
-        <p class="lcard-price-big">99 <span class="lcard-price-unit">€/mois</span></p>
-        <p class="lcard-price-note">229 € à la souscription · installation offerte</p>
-        <span class="lcard-promo lcard-promo--green">Économisez 1 200 € vs achat</span>
-        <a href="/reservation-portasplit" class="lcard-btn">SOUSCRIRE →</a>
+        <div class="lcard-toggle" role="tablist" aria-label="Choisir la formule">
+          <button role="tab" class="lcard-toggle-opt" data-offer="abo" onclick="setOffer(this,'abo')">Avec engagement</button>
+          <button role="tab" class="lcard-toggle-opt" data-offer="libre" onclick="setOffer(this,'libre')">Sans engagement</button>
+        </div>
+        <div data-offer="abo">
+          <p class="lcard-price-label">Abonnement 6 mois</p>
+          <p class="lcard-price-big">99 <span class="lcard-price-unit">€/mois</span></p>
+          <p class="lcard-price-note">229 € à la souscription · installation offerte</p>
+          <span class="lcard-promo lcard-promo--green">Économisez 1 200 € vs achat</span>
+          <a href="/reservation-portasplit" class="lcard-btn">SOUSCRIRE →</a>
+        </div>
+        <div data-offer="libre">
+          <p class="lcard-price-label">Location courte durée</p>
+          <p class="lcard-price-big">290 <span class="lcard-price-unit">€/mois</span></p>
+          <p class="lcard-price-note">À partir de 7 jours · livraison 30 €</p>
+          <span class="lcard-promo">Sans engagement · résiliable à tout moment</span>
+          <a href="https://wa.me/33663798756?text=Bonjour%2C+je+veux+louer+un+PortaSplit+%28court+terme%29" target="_blank" rel="noopener noreferrer" class="lcard-btn">DEVIS WHATSAPP →</a>
+        </div>
         <a href="/portasplit" class="lcard-btn lcard-btn--alt">En savoir plus</a>
       </div>
     </article>
@@ -583,6 +602,25 @@ document.getElementById('yr').textContent=new Date().getFullYear();
   function check(){sc.hidden=window.scrollY<320;}
   check();
   window.addEventListener('scroll',check,{passive:true});
+})();
+
+function setOffer(btn, offerId) {
+  var price = btn.closest('.lcard-price');
+  price.querySelectorAll('.lcard-toggle-opt').forEach(function(b) {
+    b.classList.toggle('active', b.dataset.offer === offerId);
+    b.setAttribute('aria-selected', b.dataset.offer === offerId ? 'true' : 'false');
+  });
+  price.querySelectorAll('[data-offer]').forEach(function(el) {
+    if(el.classList.contains('lcard-toggle-opt')) return;
+    el.hidden = el.dataset.offer !== offerId;
+  });
+}
+// Saison : mai-sept (été) → sans engagement en avant ; oct-avr (hiver) → abonnement
+(function() {
+  var m = new Date().getMonth();
+  var defaultOffer = (m >= 4 && m <= 8) ? 'libre' : 'abo';
+  var btn = document.querySelector('.lcard-toggle-opt[data-offer="' + defaultOffer + '"]');
+  if(btn) setOffer(btn, defaultOffer);
 })();
 </script>
 </body>
