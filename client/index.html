@@ -1078,6 +1078,15 @@ body:not(.vl) .nav{position:sticky}
 .otp-hint{font-size:13px;color:var(--text-2);margin-bottom:16px;line-height:1.6}
 .input-otp{letter-spacing:.3em;font-size:22px;text-align:center}
 .btn-link-sm{display:block;width:100%;margin-top:10px;background:none;border:none;color:var(--text-3);font-size:13px;cursor:pointer;font-family:inherit;text-decoration:underline;text-underline-offset:3px;padding:0}
+
+/* Bandeau dernier jour — juste au-dessus du formulaire de prolongation */
+.ce-lastday{background:#0A0A0A;border-radius:22px;padding:18px 20px;margin:0 0 12px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.ce-lastday-l{display:flex;flex-direction:column;gap:3px}
+.ce-lastday-eyebrow{font-size:10px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:rgba(255,255,255,.5)}
+.ce-lastday-t{font-size:16px;font-weight:500;color:#fff;line-height:1.35}
+.ce-lastday-t em{font-family:var(--serif);font-style:italic;font-weight:500}
+.ce-lastday-btn{flex:none;height:44px;padding:0 22px;border-radius:999px;background:#fff;color:#0A0A0A;font:600 13.5px/1 var(--body);border:none;cursor:pointer;white-space:nowrap;transition:transform .2s}
+.ce-lastday-btn:hover{transform:translateY(-1px)}
 </style>
 </head>
 <body>
@@ -1462,9 +1471,12 @@ function renderParcours(progress){
     return `<li class="pc-${etat}"><span class="pc-dot">${etat==='fait' ? '<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>' : ''}</span><div><b>${n===st && progress.stageLabel ? escHtml(progress.stageLabel) : t}</b>${etat==='actuel' ? `<small>${sous}</small>` : ''}</div></li>`;
   }).join('');
   const actuel = st === progress.stage && progress.stageLabel ? progress.stageLabel : PARCOURS[st][0];
+  const prochaine = st < 7 ? PARCOURS[st + 1]?.[0] : null;
+  const prochaineHtml = prochaine ? `<div style="font-size:12px;color:var(--text-3);margin:4px 0 0 36px">Suivant : ${escHtml(prochaine)}</div>` : '';
   return `<details class="ce-parcours" id="s-parcours">
     <summary><div class="ce-t-row"><h2 class="ce-t">Votre <em>parcours</em></h2><span class="ce-t-aside">Étape ${st} sur 7</span></div>
       <div class="pc-now"><span class="pc-dot pc-dot--now"></span><b>${escHtml(actuel)}</b><span class="pc-more">Voir les étapes <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></span></div>
+      ${prochaineHtml}
       <div class="ce-bar pc-bar"><i style="width:${Math.round(st/7*100)}%"></i></div></summary>
     <ol class="pc-list">${rows}</ol>
   </details>`;
@@ -1831,6 +1843,16 @@ function renderDashboard(d){
       ? `<div class="ce-count"><span class="ce-num ce-num--txt">Dernier jour</span><span class="ce-lbl">Fin de location aujourd'hui</span></div>`
       : `<div class="ce-count"><span class="ce-num">${joursRestants}</span><span class="ce-lbl">jour${joursRestants>1?'s':''} restant${joursRestants>1?'s':''}</span></div>`;
 
+  // Bandeau dernier jour — visible seulement quand c'est la dernière journée de location
+  const lastDayBannerHtml = joursRestants === 0 && _showProlong ? `
+    <div class="ce-lastday">
+      <div class="ce-lastday-l">
+        <span class="ce-lastday-eyebrow">Dernier jour</span>
+        <span class="ce-lastday-t">Envie de rester au frais ?<br><em>Prolongez maintenant.</em></span>
+      </div>
+      <button class="ce-lastday-btn" onclick="allerA('s-prolong')">Prolonger →</button>
+    </div>` : '';
+
   // Conciergerie : une personne à joindre, pas un formulaire
   const telAff = as.telephone || '06 63 79 87 56';
   const telHref = 'tel:' + telAff.replace(/[^\d+]/g,'');
@@ -1886,6 +1908,7 @@ function renderDashboard(d){
         ${qa('s-aide', _ICO.message, 'Conciergerie', '7j/7')}
       </nav>
 
+      ${lastDayBannerHtml}
       ${prolongHtml}
       ${offreHtml}
 
@@ -1909,6 +1932,14 @@ function renderDashboard(d){
   const recupSous = document.querySelector('#s-recup .sec-t small');
   if(recupSous) recupSous.id = 'recup-date-display';
   majLiensSections();
+  // Dernier jour → ouvrir directement le formulaire de prolongation
+  if(joursRestants === 0 && _showProlong){
+    setTimeout(()=>{
+      const body=document.getElementById('action-body-prolong');
+      const chev=document.getElementById('action-chevron-prolong');
+      if(body&&!body.classList.contains('open')){body.classList.add('open');if(chev)chev.classList.add('open');initProlongSection();}
+    },120);
+  }
 }
 
 function toggleAide(i){
