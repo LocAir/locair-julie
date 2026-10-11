@@ -94,6 +94,7 @@ module.exports = async (req, res) => {
           demo_faite, demo_faite_at,
           vidange_confirmee, vidange_at,
           signature_client_path, signature_client_at,
+          ancien_appareil_numero,
           valide, valide_at,
           transporteur:transporteurs ( id, nom ),
           reservation:reservations (
@@ -221,6 +222,12 @@ module.exports = async (req, res) => {
       // que la confirmation automatique de réservation ne couvre pas puisqu'elle
       // n'assigne qu'une fois, à la confirmation initiale.
       const appareilId = body.appareil_id ? parseInt(body.appareil_id) : null;
+      // Numéro de l'appareil remplacé, mémorisé ici pour que le transporteur
+      // puisse le scanner lui aussi au lieu d'une simple photo (demande
+      // d'Aly, 2026-10-11) — sans cette colonne, l'ancien appareil est déjà
+      // détaché de la réservation (voir plus bas) avant même que le
+      // transporteur parte, donc son numéro devient introuvable.
+      let ancienAppareilNumero = null;
       if (appareilId) {
         const { data: appareil } = await supabase
           .from('appareils').select('id, statut').eq('id', appareilId).eq('city_id', city.id).maybeSingle();
@@ -244,9 +251,10 @@ module.exports = async (req, res) => {
         // on supprime uniquement la première ligne existante (l'unité remplacée).
         if (type === 'changement') {
           const { data: existing } = await supabase
-            .from('reservation_appareils').select('appareil_id')
+            .from('reservation_appareils').select('appareil_id, appareils(numero)')
             .eq('reservation_id', reservationId).limit(1);
           if (existing && existing.length) {
+            ancienAppareilNumero = existing[0].appareils?.numero ?? null;
             // Ne repasse "disponible" que si l'ancienne unité n'a en réalité
             // jamais quitté le dépôt — sinon (déjà chez le client) elle reste
             // "loué" et un incident est créé pour la récupérer manuellement,
@@ -270,6 +278,7 @@ module.exports = async (req, res) => {
         date_prevue:     datePrevue,
         creneau,
         statut:          'a_faire',
+        ancien_appareil_numero: ancienAppareilNumero,
       }).select().single();
       if (error) throw error;
 

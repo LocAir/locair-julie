@@ -351,31 +351,13 @@ module.exports = async (req, res) => {
       return res.status(200).json({ ok: true });
     }
 
-    // Étape Installation (livraison uniquement) : la photo de preuve (climatiseur
-    // en marche + fenêtre calfeutrée + télécommande, tous visibles ensemble)
-    // doit déjà être là avant de pouvoir confirmer avoir montré le
-    // fonctionnement au client — même logique de garde-fou serveur que
-    // confirmer_vidange.
-    if (action === 'confirmer_demo') {
-      if (liv.type !== 'livraison' || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
-      const dateErr = missionStartDateError(liv);
-      if (dateErr) return res.status(409).json({ error: dateErr });
-      if (!liv.photo_installation_path) {
-        return res.status(400).json({ error: 'Photo requise avant de confirmer la démonstration' });
-      }
-      const { error: demoErr } = await supabase.from('livraisons').update({ demo_faite: true, demo_faite_at: new Date().toISOString() }).eq('id', liv.id);
-      if (demoErr) throw demoErr;
-      return res.status(200).json({ ok: true });
-    }
-
     // Signature client : reçoit un PNG en base64, stocke dans le bucket
     // "missions", enregistre le chemin dans livraisons. Appelé depuis l'étape
-    // "Signature" du wizard transporteur (entre Installation et Terminer).
+    // "Signature" du wizard transporteur (juste après le scan du climatiseur).
     if (action === 'sauvegarder_signature') {
       if (liv.type !== 'livraison' || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
-      if (!liv.demo_faite) return res.status(400).json({ error: 'Démonstration requise avant la signature' });
 
       const sig = String(body.signature || '');
       if (!sig.startsWith('data:image/png;base64,')) return res.status(400).json({ error: 'Signature invalide' });
@@ -428,14 +410,8 @@ module.exports = async (req, res) => {
       if (liv.type !== expectedType || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
-      if (expectedType === 'livraison' && !liv.demo_faite) {
-        return res.status(400).json({ error: 'Démonstration au client requise avant de valider' });
-      }
       if (expectedType === 'livraison' && !liv.signature_client_path) {
         return res.status(400).json({ error: 'Signature du client requise avant de valider' });
-      }
-      if (expectedType === 'recuperation' && !liv.photo_retour_path) {
-        return res.status(400).json({ error: 'Vidéo de l\'appareil récupéré requise avant de valider' });
       }
       if (expectedType === 'recuperation' && !liv.vidange_confirmee) {
         return res.status(400).json({ error: 'Vérification et vidange requises avant de valider' });
@@ -556,8 +532,6 @@ module.exports = async (req, res) => {
       if (liv.type !== 'changement' || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
-      if (!liv.photo_installation_path) return res.status(400).json({ error: 'Vidéo du nouvel appareil installé requise avant de valider' });
-      if (!liv.photo_retour_path) return res.status(400).json({ error: 'Vidéo de l\'ancien appareil récupéré requise avant de valider' });
       if (!liv.vidange_confirmee) return res.status(400).json({ error: 'Vidange de l\'ancien appareil requise avant de valider' });
       const checklistItems = await getActiveChecklistItems(supabase, 'changement');
       const checklistCheck = validateChecklistReponses(checklistItems, body.checklist_reponses);
