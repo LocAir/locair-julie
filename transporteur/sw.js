@@ -12,7 +12,7 @@
 // s'ouvre sans réseau — les DONNÉES fraîches (missions, statuts…) restent la
 // responsabilité de index.html, qui garde sa propre copie dans localStorage
 // (voir STATE, fetchMissions()) pour un affichage hors-ligne cohérent.
-const CACHE_NAME = 'locair-transporteur-v1';
+const CACHE_NAME = 'locair-transporteur-v2';
 const APP_SHELL = [
   '/transporteur/',
   '/transporteur/index.html',
