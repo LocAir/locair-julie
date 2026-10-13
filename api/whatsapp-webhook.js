@@ -7,6 +7,11 @@
 //   WHATSAPP_PHONE_NUMBER_ID — ID du numéro dans Meta Business Suite
 //   WHATSAPP_APP_SECRET      — App Secret pour vérifier la signature HMAC
 //   ANTHROPIC_API_KEY        — clé API Claude (déjà utilisée par admin-assistant)
+//
+// Optionnel :
+//   WHATSAPP_IGNORE_PHONES   — numéros personnels à ignorer, séparés par des virgules
+//                              ex: "33612345678,33698765432"
+//                              → Julie ne leur répondra jamais
 
 const crypto = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
@@ -94,6 +99,34 @@ async function sendReply(to, body) {
     });
     if (!r.ok) console.error('[WA send]', r.status, await r.text());
   }
+}
+
+// ── Filtres : numéros ignorés + opt-out STOP ──────────────────────────────
+
+// Numéros personnels à ignorer (var d'env Vercel, séparés par des virgules)
+function isIgnored(phone) {
+  const list = (process.env.WHATSAPP_IGNORE_PHONES || '')
+    .split(',').map(n => n.trim()).filter(Boolean);
+  return list.includes(phone);
+}
+
+// Opt-out : si le message est "STOP" ou "ARRÊT", on ajoute le numéro en base
+async function handleOptOut(supabase, phone) {
+  await supabase.from('whatsapp_opt_out').upsert({ phone }, { onConflict: 'phone' });
+  await sendReply(phone, "Compris 🙏 Je ne vous répondrai plus automatiquement. Pour reprendre, écrivez START.");
+}
+
+async function isOptedOut(supabase, phone) {
+  try {
+    const { data } = await supabase
+      .from('whatsapp_opt_out').select('phone').eq('phone', phone).maybeSingle();
+    return !!data;
+  } catch { return false; }
+}
+
+async function handleOptIn(supabase, phone) {
+  await supabase.from('whatsapp_opt_out').delete().eq('phone', phone);
+  await sendReply(phone, "Bonjour ! Julie est de retour 👋 Comment puis-je vous aider ?");
 }
 
 // ── Mémoire conversationnelle ──────────────────────────────────────────────
@@ -208,11 +241,31 @@ const handler = async (req, res) => {
           if (!text) continue;
           const from = msg.from;
 
+          // Numéros personnels ignorés (var d'env)
+          if (isIgnored(from)) continue;
+
           // Déduplication : ne répondre qu'une seule fois au même message
           const { error: insertError } = await supabase
             .from('whatsapp_messages_vus')
             .insert({ msg_id: msg.id });
           if (insertError) continue; // message déjà traité (duplicate key)
+
+          const textUp = text.toUpperCase().trim();
+
+          // Commande STOP → opt-out
+          if (textUp === 'STOP' || textUp === 'ARRÊT' || textUp === 'ARRET') {
+            await handleOptOut(supabase, from);
+            continue;
+          }
+
+          // Commande START → opt-in
+          if (textUp === 'START' || textUp === 'REPRENDRE') {
+            await handleOptIn(supabase, from);
+            continue;
+          }
+
+          // Vérifier opt-out Supabase
+          if (await isOptedOut(supabase, from)) continue;
 
           // Répondre avec l'agent IA
           const reply = await agentReply(supabase, from, text);

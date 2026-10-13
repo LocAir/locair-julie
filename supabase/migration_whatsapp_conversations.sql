@@ -11,8 +11,13 @@ create table if not exists whatsapp_conversations (
 create index if not exists whatsapp_conversations_updated_at on whatsapp_conversations(updated_at desc);
 
 -- Nettoyage automatique : supprimer les conversations inactives depuis plus de 30 jours
--- (fonction appelée par le cron-daily existant si on l'y ajoute, ou manuellement)
 create or replace function purge_old_whatsapp_conversations() returns void language sql as $$
   delete from whatsapp_conversations
   where updated_at < now() - interval '30 days';
 $$;
+
+-- Opt-out : numéros qui ont envoyé STOP et ne veulent plus de réponse auto
+create table if not exists whatsapp_opt_out (
+  phone      text primary key,
+  opted_out_at timestamptz not null default now()
+);
