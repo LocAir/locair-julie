@@ -1,202 +1,164 @@
-// Webhook WhatsApp Cloud API (Meta)
-// Détecte les mots-clés d'incident (FR/EN/ZH) → envoie un guide de dépannage
-// automatique + promesse de rappel technicien le lendemain matin.
+// Agent WhatsApp IA Loc'Air — Julie
+// Répond à tous les messages avec Claude (conversationnel, avec mémoire par numéro).
 //
 // Variables d'env requises :
-//   WHATSAPP_VERIFY_TOKEN    — jeton arbitraire à copier dans la console Meta
-//   WHATSAPP_ACCESS_TOKEN    — token d'accès permanent (System User Token)
+//   WHATSAPP_VERIFY_TOKEN    — jeton arbitraire copié dans la console Meta
+//   WHATSAPP_ACCESS_TOKEN    — System User Token permanent
 //   WHATSAPP_PHONE_NUMBER_ID — ID du numéro dans Meta Business Suite
+//   WHATSAPP_APP_SECRET      — App Secret pour vérifier la signature HMAC
+//   ANTHROPIC_API_KEY        — clé API Claude (déjà utilisée par admin-assistant)
 
-const KEYWORDS = [
-  // FR
-  'problème','probleme','marche plus','ne marche','marche pas',
-  'refroidit','refroidis','ne refroidit','ne refroidis','refroidit pas','refroidis pas',
-  "s'allume",'ne s allume','allume pas','ne s\'allume','s allume pas',
-  'fuit','fuite','panne','cassé','cassée','cassee','ne fonctionne','fonctionne pas',
-  'trop chaud','chaleur','chauffe','arrête','arrete','s\'arrête','s arrête','s arrete',
-  'éteint tout seul','eteint','éteint seul','bruit bizarre','bruyant','fait du bruit',
-  'erreur','affiche erreur','ne démarre','demarre pas','ne démarr',
-  'clim','climatiseur',
-  // EN
-  'not working','broken','leaking','dripping','strange noise','noisy',
-  'not cooling','too hot','stopped working','error code','won\'t turn on','wont turn on',
-  'not cold','water leak','problem with','issue with','trouble with',
-  'ac not','air con',
-  // ZH
-  '不工作','漏水','坏了','有问题','噪音','停了','错误','不制冷','不冷','不开机',
-  '故障','损坏','太热','制冷','空调',
-  // RU
-  'не работает','не охлаждает','не включается','не холодит','не холодно',
-  'поломка','сломан','сломалась','сломался','течет','течёт','протечка',
-  'шумит','шум','проблема','ошибка','остановился','остановилась',
-  'жарко','горячо','кондиционер','кондей',
-];
+const crypto = require('crypto');
+const { getSupabase } = require('./_lib/supabase');
+const { callClaude }  = require('./_lib/anthropic');
 
-function norm(s) {
-  return s.toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-    .replace(/['']/g, "'");
-}
+// ── Système de prompt ──────────────────────────────────────────────────────
+const SYSTEM_PROMPT = `Tu es Julie, l'assistante virtuelle de Loc'Air.
+Loc'Air est un service de location de climatiseurs sur la Côte d'Azur (Nice, Cannes, Antibes, Monaco, Menton, Cagnes-sur-Mer).
+Fondateur et contact principal : Aly Thiam — 06 63 79 87 56.
+Horaires : 7j/7, 8h–20h.
+Site : https://locair.fr
 
-// Détecte la langue du message entrant pour répondre dans la bonne langue
-function detectLang(text) {
-  if (/[一-鿿]/.test(text)) return 'zh';
-  if (/[а-яёА-ЯЁ]/.test(text)) return 'ru';
-  const t = text.toLowerCase();
-  const enMarkers = ['not working','broken','leaking','too hot','stopped','error','not cool','not cold','problem','issue','air con','ac not'];
-  if (enMarkers.some(k => t.includes(k))) return 'en';
-  return 'fr';
-}
+## Ton rôle
+Répondre aux questions des clients sur WhatsApp de façon naturelle, chaleureuse et concise.
+Tu parles toujours dans la langue du client (français, anglais, espagnol, russe, arabe, chinois…).
+Tu ne dépasses jamais 3-4 phrases sauf si une liste ou un guide de dépannage est vraiment nécessaire.
 
-function hasKeyword(text) {
-  const t = norm(text);
-  const tRaw = text; // pour la détection des caractères CJK / cyrilliques
-  // Caractères chinois → toujours pertinent
-  if (/[一-鿿]/.test(tRaw)) {
-    const zhTerms = ['不工作','漏水','坏了','有问题','噪音','停了','错误','不制冷','不冷','不开机','故障','损坏','太热','制冷','空调'];
-    if (zhTerms.some(k => tRaw.includes(k))) return true;
-  }
-  // Cyrillique (russe) → match direct sans normalisation
-  if (/[а-яёА-ЯЁ]/.test(tRaw)) {
-    const ruTerms = ['не работает','не охлаждает','не включается','не холодит','не холодно',
-      'поломка','сломан','сломалась','сломался','течет','течёт','протечка',
-      'шумит','шум','проблема','ошибка','остановился','остановилась',
-      'жарко','горячо','кондиционер','кондей'];
-    if (ruTerms.some(k => tRaw.toLowerCase().includes(k))) return true;
-  }
-  const generalTerms = ['clim','climatiseur','ac not','air con','空调','制冷'];
-  const negativeCtx  = ['problème','probleme','ne','plus','pas','panne','fuit','fuite','arrêt','arret','bruit','chaud','cassé','cassee',
-                        'not','broken','leak','noise','stopped','error','cold','hot','故障','损坏','不'];
-  for (const kw of KEYWORDS) {
-    const kwNorm = norm(kw);
-    if (!generalTerms.map(g => norm(g)).includes(kwNorm)) {
-      if (t.includes(kwNorm)) return true;
-    } else {
-      if (t.includes(kwNorm) && negativeCtx.some(c => t.includes(norm(c)))) return true;
-    }
-  }
-  return false;
-}
+## Produits et tarifs
 
-const REPLY = {
-  fr: `Bonjour 👋
+### Climatiseur mobile
+- Prix : à partir de **12 €/jour** (tarif dégressif : 9 €/j dès 7 jours, 8 €/j dès 21 jours)
+- Frais de livraison et installation : **60 €** (aller + retour inclus)
+- Puissance : 9 000 – 12 000 BTU · jusqu'à 15 m²
+- Zéro perçage, zéro travaux · kit fenêtre inclus · installé en < 20 minutes
+- Livraison J+1 ou Express 2 h selon dispo
+- Durée minimum : 7 jours
+- Réservation : https://locair.fr/reservation-climatiseur
 
-Merci pour votre message. Voici les vérifications rapides à effectuer :
+### PortaSplit réversible A++
+- **Avec engagement 6 mois** : 99 €/mois + 229 € à la souscription (installation offerte)
+- **Sans engagement** (location courte durée) : 29 €/jour, à partir de 7 jours, livraison 30 €
+- Puissance : 12 000 BTU · jusqu'à 42 m² · technologie inverter
+- Réversible : chauffe l'hiver et refroidit l'été — même appareil
+- Classe A++ · ultra-silencieux · pilotable par app mobile
+- SAV inclus · résiliable sur justificatif de déménagement
+- Réservation : https://locair.fr/reservation-portasplit
 
-🔧 *Guide de dépannage Loc'Air*
+## Politique et garanties
+- **Aucune caution** sur tous les produits
+- Panne ou problème → technicien dépêché le **jour même ou le lendemain**
+- Remplacement immédiat si l'appareil est défaillant
+- Aucun engagement sur le climatiseur mobile (résiliable à tout moment)
 
-1️⃣ *Gaine d'évacuation* — vérifiez qu'elle est bien fixée et orientée vers l'extérieur (fenêtre ou grille de ventilation).
+## Guide de dépannage rapide (à utiliser si le client signale un problème)
+1. **Gaine d'évacuation** : bien fixée et orientée vers l'extérieur ?
+2. **Filtre** : retiré et nettoyé récemment ? Un filtre bouché divise la puissance par deux.
+3. **Mode refroidissement ❄️** : sélectionné sur la télécommande (pas ventilation seule) ?
+4. **Redémarrage** : éteindre, débrancher 30 secondes, rebrancher.
+5. **Bac à condensats** : si l'appareil s'arrête seul, le bac est peut-être plein → utiliser le cordon de vidange à l'arrière.
+Si le problème persiste après ces vérifications, dis-lui qu'un technicien le rappellera dans les 2 heures.
 
-2️⃣ *Filtre* — retirez et nettoyez le filtre du panneau avant (à dévisser). Un filtre encrassé divise par deux la puissance de froid.
+## Zone de service
+Nice, Cannes, Antibes, Juan-les-Pins, Monaco, Menton, Cagnes-sur-Mer, Villeneuve-Loubet, Biot, Mougins, Valbonne.
+Hors zone → expliquer gentiment qu'on ne livre pas encore là, et proposer de laisser ses coordonnées pour être informé d'une extension.
 
-3️⃣ *Mode refroidissement* — vérifiez que le symbole ❄️ est bien sélectionné sur la télécommande (pas le mode ventilation seul).
+## Règles importantes
+- Ne jamais inventer un prix, une date ou une disponibilité : si tu n'es pas sûre, dis "je vais vérifier avec l'équipe et te revenir rapidement".
+- Pour une réservation concrète (date, lieu, quantité), diriger vers le formulaire en ligne ou proposer qu'Aly rappelle.
+- Si le client est en colère ou que la situation est complexe, transférer à Aly : "Je transmets ça à Aly en priorité, il te contacte sous peu."
+- Terminer chaque échange par une question d'aide ("Autre chose que je peux faire pour toi ?") sauf si le client vient de dire au revoir.
+- Ne pas mentionner que tu es une IA sauf si le client te le demande directement — dans ce cas, répondre honnêtement.`;
 
-4️⃣ *Redémarrage* — éteignez l'appareil, débranchez-le 30 secondes, puis rebranchez.
-
-5️⃣ *Bac à condensats* — si l'appareil s'arrête seul, le bac est peut-être plein. Utilisez le cordon de vidange à l'arrière.
-
-➡️ Plus d'aide : https://locair.fr/#faq
-
----
-Si votre problème *n'est pas résolu*, un technicien Loc'Air vous rappellera *demain matin entre 8h et 12h* 📞
-
-_Message automatique — notre équipe suit votre demande en parallèle._`,
-
-  en: `Hello 👋
-
-Thank you for your message. Here are some quick checks to try:
-
-🔧 *Loc'Air Troubleshooting Guide*
-
-1️⃣ *Exhaust duct* — make sure it is properly fitted and pointing outside (through the window or vent).
-
-2️⃣ *Filter* — remove and clean the front panel filter (unscrew it). A clogged filter cuts cooling power in half.
-
-3️⃣ *Cooling mode* — check that the ❄️ symbol is selected on the remote (not fan-only mode).
-
-4️⃣ *Restart* — turn the unit off, unplug it for 30 seconds, then plug it back in.
-
-5️⃣ *Condensate tank* — if the unit shuts off by itself, the tank may be full. Use the drain cord at the back.
-
-➡️ More help: https://locair.fr/#faq
-
----
-If your issue *is not resolved*, a Loc'Air technician will call you *tomorrow morning between 8am and 12pm* 📞
-
-_Automated message — our team is also following up on your request._`,
-
-  zh: `您好 👋
-
-感谢您的留言。请先尝试以下快速检查：
-
-🔧 *Loc'Air 故障排除指南*
-
-1️⃣ *排风管* — 确认排风管已牢固连接并朝向室外（通过窗户或通风口排出）。
-
-2️⃣ *过滤网* — 取下并清洗前面板过滤网（拧下即可）。过滤网堵塞会使制冷效果减半。
-
-3️⃣ *制冷模式* — 确认遥控器上已选择 ❄️ 符号（而非仅风扇模式）。
-
-4️⃣ *重启* — 关闭设备，拔掉电源等待30秒，再重新接通。
-
-5️⃣ *冷凝水盒* — 如设备自动关机，水盒可能已满，请使用机器背面的排水管排水。
-
-➡️ 更多帮助：https://locair.fr/#faq
-
----
-如问题*仍未解决*，Loc'Air 技术员将于*明天早上8时至12时致电*联系您 📞
-
-_自动回复 — 我们的团队正在同步跟进您的请求。_`,
-
-  ru: `Здравствуйте 👋
-
-Спасибо за ваше сообщение. Вот несколько быстрых проверок:
-
-🔧 *Руководство по устранению неисправностей Loc'Air*
-
-1️⃣ *Выхлопной шланг* — убедитесь, что он надёжно закреплён и направлен наружу (через окно или вентиляционную решётку).
-
-2️⃣ *Фильтр* — снимите и почистите фильтр на передней панели (откручивается). Загрязнённый фильтр снижает мощность охлаждения вдвое.
-
-3️⃣ *Режим охлаждения* — проверьте, что на пульте выбран символ ❄️ (а не только режим вентиляции).
-
-4️⃣ *Перезапуск* — выключите прибор, отключите его от розетки на 30 секунд, затем включите снова.
-
-5️⃣ *Поддон конденсата* — если прибор выключается сам по себе, поддон, возможно, переполнен. Воспользуйтесь дренажной трубкой сзади.
-
-➡️ Дополнительная помощь: https://locair.fr/#faq
-
----
-Если проблема *не решена*, техник Loc'Air перезвонит вам *завтра утром с 8:00 до 12:00* 📞
-
-_Автоматическое сообщение — наша команда параллельно следит за вашим запросом._`,
-};
-
+// ── Envoi de message WhatsApp ──────────────────────────────────────────────
 async function sendReply(to, body) {
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const token   = process.env.WHATSAPP_ACCESS_TOKEN;
   if (!phoneId || !token) {
-    console.warn('[WhatsApp] WHATSAPP_PHONE_NUMBER_ID ou WHATSAPP_ACCESS_TOKEN manquant');
+    console.warn('[WA] WHATSAPP_PHONE_NUMBER_ID ou WHATSAPP_ACCESS_TOKEN manquant');
     return;
   }
-  const r = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
-    method:  'POST',
-    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      recipient_type:    'individual',
-      to,
-      type: 'text',
-      text: { preview_url: false, body },
-    }),
-  });
-  if (!r.ok) console.error('[WhatsApp send]', r.status, await r.text());
+  // Découper les messages trop longs (limite WhatsApp : 4096 caractères)
+  const chunks = [];
+  for (let i = 0; i < body.length; i += 4000) chunks.push(body.slice(i, i + 4000));
+  for (const chunk of chunks) {
+    const r = await fetch(`https://graph.facebook.com/v20.0/${phoneId}/messages`, {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to,
+        type: 'text',
+        text: { preview_url: false, body: chunk },
+      }),
+    });
+    if (!r.ok) console.error('[WA send]', r.status, await r.text());
+  }
 }
 
-const crypto = require('crypto');
-const { getSupabase } = require('./_lib/supabase');
+// ── Mémoire conversationnelle ──────────────────────────────────────────────
+const MAX_MESSAGES = 20; // garder les 20 derniers échanges (10 tours)
 
+async function loadHistory(supabase, phone) {
+  try {
+    const { data } = await supabase
+      .from('whatsapp_conversations')
+      .select('messages')
+      .eq('phone', phone)
+      .maybeSingle();
+    return data?.messages || [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveHistory(supabase, phone, messages) {
+  const trimmed = messages.slice(-MAX_MESSAGES);
+  try {
+    await supabase.from('whatsapp_conversations').upsert({
+      phone,
+      messages:   trimmed,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'phone' });
+  } catch (e) {
+    console.error('[WA history save]', e.message);
+  }
+}
+
+// ── Agent Claude ───────────────────────────────────────────────────────────
+async function agentReply(supabase, from, userText) {
+  const history = await loadHistory(supabase, from);
+  const messages = [
+    ...history,
+    { role: 'user', content: userText },
+  ];
+
+  const result = await callClaude({
+    system:    SYSTEM_PROMPT,
+    messages,
+    maxTokens: 600,
+  });
+
+  if (!result.ok) {
+    console.error('[WA agent]', result.error);
+    // Message de secours si Claude ne répond pas
+    return 'Bonjour ! Je rencontre un souci technique. Merci de contacter Aly directement au 06 63 79 87 56 — il vous répondra dans les meilleurs délais. 🙏';
+  }
+
+  const reply = result.data?.content?.[0]?.text || '';
+
+  // Sauvegarder l'échange dans la mémoire
+  await saveHistory(supabase, from, [
+    ...messages,
+    { role: 'assistant', content: reply },
+  ]);
+
+  return reply;
+}
+
+// ── Handler Vercel ─────────────────────────────────────────────────────────
 const handler = async (req, res) => {
+  // Vérification webhook Meta (GET)
   if (req.method === 'GET') {
     const { 'hub.mode': mode, 'hub.verify_token': token, 'hub.challenge': challenge } = req.query;
     if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
@@ -207,6 +169,7 @@ const handler = async (req, res) => {
 
   if (req.method !== 'POST') return res.status(405).send('Method not allowed');
 
+  // Lire le body brut pour la vérification de signature
   const rawBody = await new Promise((resolve, reject) => {
     const chunks = [];
     req.on('data', c => chunks.push(c));
@@ -214,14 +177,19 @@ const handler = async (req, res) => {
     req.on('error', reject);
   });
 
+  // Vérification HMAC de la signature Meta
   const appSecret = process.env.WHATSAPP_APP_SECRET;
   if (!appSecret) return res.status(403).send('Forbidden');
   const sig = req.headers['x-hub-signature-256'];
   if (!sig) return res.status(403).send('Forbidden');
   const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
   try {
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return res.status(403).send('Forbidden');
-  } catch { return res.status(403).send('Forbidden'); }
+    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+      return res.status(403).send('Forbidden');
+    }
+  } catch {
+    return res.status(403).send('Forbidden');
+  }
 
   try {
     const payload = JSON.parse(rawBody.toString());
@@ -232,27 +200,30 @@ const handler = async (req, res) => {
     for (const entry of payload?.entry || []) {
       for (const change of entry?.changes || []) {
         if (change?.field !== 'messages') continue;
+
         for (const msg of change?.value?.messages || []) {
+          // Ignorer tout ce qui n'est pas du texte (images, vocaux, etc.)
           if (msg.type !== 'text') continue;
-          const text = msg.text?.body || '';
+          const text = msg.text?.body?.trim();
+          if (!text) continue;
           const from = msg.from;
 
-          if (!hasKeyword(text)) continue;
-
+          // Déduplication : ne répondre qu'une seule fois au même message
           const { error: insertError } = await supabase
             .from('whatsapp_messages_vus')
             .insert({ msg_id: msg.id });
-          if (insertError) continue;
+          if (insertError) continue; // message déjà traité (duplicate key)
 
-          const lang = detectLang(text);
-          await sendReply(from, REPLY[lang] || REPLY.fr);
+          // Répondre avec l'agent IA
+          const reply = await agentReply(supabase, from, text);
+          if (reply) await sendReply(from, reply);
         }
       }
     }
 
     return res.status(200).send('OK');
   } catch (err) {
-    console.error('[WhatsApp webhook]', err.message);
+    console.error('[WA webhook]', err.message);
     return res.status(200).send('OK');
   }
 };
