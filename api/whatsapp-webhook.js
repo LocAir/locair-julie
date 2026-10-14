@@ -12,6 +12,8 @@
 //   WHATSAPP_IGNORE_PHONES   — numéros personnels à ignorer, séparés par des virgules
 //                              ex: "33612345678,33698765432"
 //                              → Julie ne leur répondra jamais
+//   WHATSAPP_ALY_PHONE       — numéro WhatsApp d'Aly (ex: "33663798756") pour
+//                              recevoir une notif quand Julie escalade un message
 
 const crypto = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
@@ -129,6 +131,51 @@ async function handleOptIn(supabase, phone) {
   await sendReply(phone, "Bonjour ! Julie est de retour 👋 Comment puis-je vous aider ?");
 }
 
+// ── Lookup réservation par numéro WhatsApp ────────────────────────────────
+// Convertit "33612345678" → "0612345678" pour matcher le tel en base
+function waPhoneToFr(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  if (digits.startsWith('33') && digits.length === 11) return '0' + digits.slice(2);
+  return digits;
+}
+
+async function lookupReservation(supabase, fromPhone) {
+  try {
+    const frPhone = waPhoneToFr(fromPhone);
+    if (!frPhone || frPhone.length < 9) return null;
+    const last9 = frPhone.slice(-9); // "612345678"
+    const { data } = await supabase
+      .from('reservations')
+      .select('ref, prenom, statut, statut_detaille, date_debut, date_fin, adresse')
+      .ilike('tel', `%${last9}%`)
+      .in('statut', ['en_attente', 'confirmee'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return data || null;
+  } catch { return null; }
+}
+
+// ── Notification à Aly quand Julie escalade ────────────────────────────────
+const ESCALATION_KEYWORDS = [
+  'transmets à aly', 'transmets ça à aly', 'aly te contacte', 'aly vous contacte',
+  'aly te rappelle', 'aly vous rappelle', 'aly le rappellera', 'technicien le rappellera',
+  'technicien vous rappellera', 'technicien te rappellera',
+];
+
+function isEscalation(text) {
+  const lower = (text || '').toLowerCase();
+  return ESCALATION_KEYWORDS.some(k => lower.includes(k));
+}
+
+async function notifyAly(fromPhone, userText, julieReply) {
+  const alyPhone = (process.env.WHATSAPP_ALY_PHONE || '').trim();
+  if (!alyPhone) return;
+  const preview = (userText || '').slice(0, 120);
+  const msg = `📲 *Escalade Julie*\n\n*Client :* wa.me/${fromPhone}\n*Message :* "${preview}"\n\n_Réponds directement au numéro ci-dessus_ 👆`;
+  await sendReply(alyPhone, msg);
+}
+
 // ── Mémoire conversationnelle ──────────────────────────────────────────────
 const MAX_MESSAGES = 20; // garder les 20 derniers échanges (10 tours)
 
@@ -160,21 +207,36 @@ async function saveHistory(supabase, phone, messages) {
 
 // ── Agent Claude ───────────────────────────────────────────────────────────
 async function agentReply(supabase, from, userText) {
-  const history = await loadHistory(supabase, from);
+  const [history, resa] = await Promise.all([
+    loadHistory(supabase, from),
+    lookupReservation(supabase, from),
+  ]);
+
+  // Injecter la réservation active dans le contexte si elle existe
+  let systemWithContext = SYSTEM_PROMPT;
+  if (resa) {
+    const statuts = {
+      en_attente:'en attente de confirmation', confirmee:'confirmée',
+      livraison_prevue:'livraison prévue', en_location:'en cours de location',
+      retour_prevu:'retour prévu',
+    };
+    const label = statuts[resa.statut_detaille || resa.statut] || resa.statut;
+    systemWithContext += `\n\n## Réservation active de ce client\n- Référence : ${resa.ref}\n- Prénom : ${resa.prenom || '(non renseigné)'}\n- Statut : ${label}\n- Dates : du ${resa.date_debut} au ${resa.date_fin}\n- Adresse : ${resa.adresse || '(non renseignée)'}\n\nTu peux mentionner ces informations si le client pose une question sur sa commande.`;
+  }
+
   const messages = [
     ...history,
     { role: 'user', content: userText },
   ];
 
   const result = await callClaude({
-    system:    SYSTEM_PROMPT,
+    system:    systemWithContext,
     messages,
     maxTokens: 600,
   });
 
   if (!result.ok) {
     console.error('[WA agent]', result.error);
-    // Message de secours si Claude ne répond pas
     return 'Bonjour ! Je rencontre un souci technique. Merci de contacter Aly directement au 06 63 79 87 56 — il vous répondra dans les meilleurs délais. 🙏';
   }
 
@@ -185,6 +247,11 @@ async function agentReply(supabase, from, userText) {
     ...messages,
     { role: 'assistant', content: reply },
   ]);
+
+  // Notifier Aly si Julie escalade
+  if (isEscalation(reply)) {
+    notifyAly(from, userText, reply).catch(e => console.error('[WA escalade]', e.message));
+  }
 
   return reply;
 }
