@@ -63,7 +63,7 @@ Tu ne dépasses jamais 3-4 phrases sauf si une liste ou un guide de dépannage e
 3. **Mode refroidissement ❄️** : sélectionné sur la télécommande (pas ventilation seule) ?
 4. **Redémarrage** : éteindre, débrancher 30 secondes, rebrancher.
 5. **Bac à condensats** : si l'appareil s'arrête seul, le bac est peut-être plein → utiliser le cordon de vidange à l'arrière.
-Si le problème persiste après ces vérifications, dis-lui qu'un technicien le rappellera dans les 2 heures.
+Si le problème persiste après ces vérifications, dis au client qu'un technicien le rappellera dans les 2 heures — et termine ta réponse par [ESCALADE].
 
 ## Zone de service
 Nice, Cannes, Antibes, Juan-les-Pins, Monaco, Menton, Cagnes-sur-Mer, Villeneuve-Loubet, Biot, Mougins, Valbonne.
@@ -72,9 +72,23 @@ Hors zone → expliquer gentiment qu'on ne livre pas encore là, et proposer de 
 ## Règles importantes
 - Ne jamais inventer un prix, une date ou une disponibilité : si tu n'es pas sûre, dis "je vais vérifier avec l'équipe et te revenir rapidement".
 - Pour une réservation concrète (date, lieu, quantité), diriger vers le formulaire en ligne ou proposer qu'Aly rappelle.
-- Si le client est en colère ou que la situation est complexe, transférer à Aly : "Je transmets ça à Aly en priorité, il te contacte sous peu."
 - Terminer chaque échange par une question d'aide ("Autre chose que je peux faire pour toi ?") sauf si le client vient de dire au revoir.
-- Ne pas mentionner que tu es une IA sauf si le client te le demande directement — dans ce cas, répondre honnêtement.`;
+- Ne pas mentionner que tu es une IA sauf si le client te le demande directement — dans ce cas, répondre honnêtement.
+
+## Quand escalader à Aly — OBLIGATOIRE dans ces 10 situations
+
+Dans chacun de ces cas : réponds avec empathie, rassure le client ("je transmets ça à Aly en priorité, il te contacte sous peu"), puis termine ta réponse par [ESCALADE] (ce marqueur ne s'affiche pas au client, il alerte Aly en coulisse).
+
+1. **Client en colère ou ton agressif** — toute frustration forte, insultes, impatience marquée
+2. **Panne persistante** — le client a suivi le guide de dépannage et ça ne fonctionne toujours pas
+3. **Demande de remboursement** — partiel ou total, peu importe la raison
+4. **Demande d'annulation** — le client veut annuler sa réservation ou son abonnement
+5. **Le client demande à parler à un humain** — "je veux parler à quelqu'un", "je veux Aly", etc.
+6. **Réclamation / litige / menace juridique** — plainte, avis négatif menaçant, avocat, UFC, etc.
+7. **Problème de livraison** — retard non expliqué, mauvaise adresse, technicien qui ne vient pas
+8. **Problème de paiement ou de facturation** — paiement refusé, double débit, facture incorrecte
+9. **Devis entreprise ou client professionnel** — plusieurs appareils, durée longue, tarif pro
+10. **Situation ambiguë ou complexe** que tu ne sais pas gérer avec certitude`;
 
 // ── Envoi de message WhatsApp ──────────────────────────────────────────────
 async function sendReply(to, body) {
@@ -157,22 +171,24 @@ async function lookupReservation(supabase, fromPhone) {
 }
 
 // ── Notification à Aly quand Julie escalade ────────────────────────────────
-const ESCALATION_KEYWORDS = [
-  'transmets à aly', 'transmets ça à aly', 'aly te contacte', 'aly vous contacte',
-  'aly te rappelle', 'aly vous rappelle', 'aly le rappellera', 'technicien le rappellera',
-  'technicien vous rappellera', 'technicien te rappellera',
-];
+// Julie ajoute [ESCALADE] à la fin de sa réponse quand elle doit alerter Aly.
+// Ce marqueur est retiré avant l'envoi au client.
 
-function isEscalation(text) {
-  const lower = (text || '').toLowerCase();
-  return ESCALATION_KEYWORDS.some(k => lower.includes(k));
+function extractEscalation(text) {
+  const marker = '[ESCALADE]';
+  const idx    = (text || '').indexOf(marker);
+  if (idx === -1) return { reply: text, escalate: false };
+  return {
+    reply:    text.slice(0, idx).trimEnd(),
+    escalate: true,
+  };
 }
 
-async function notifyAly(fromPhone, userText, julieReply) {
+async function notifyAly(fromPhone, userText, motif) {
   const alyPhone = (process.env.WHATSAPP_ALY_PHONE || '').trim();
   if (!alyPhone) return;
-  const preview = (userText || '').slice(0, 120);
-  const msg = `📲 *Escalade Julie*\n\n*Client :* wa.me/${fromPhone}\n*Message :* "${preview}"\n\n_Réponds directement au numéro ci-dessus_ 👆`;
+  const preview = (userText || '').slice(0, 150);
+  const msg = `📲 *Escalade Julie*\n\n*Client :* wa.me/${fromPhone}\n*Message :* "${preview}"\n\n_Réponds directement à ce numéro_ 👆`;
   await sendReply(alyPhone, msg);
 }
 
@@ -240,17 +256,20 @@ async function agentReply(supabase, from, userText) {
     return 'Bonjour ! Je rencontre un souci technique. Merci de contacter Aly directement au 06 63 79 87 56 — il vous répondra dans les meilleurs délais. 🙏';
   }
 
-  const reply = result.data?.content?.[0]?.text || '';
+  const raw = result.data?.content?.[0]?.text || '';
 
-  // Sauvegarder l'échange dans la mémoire
+  // Détecter et retirer le marqueur d'escalade
+  const { reply, escalate } = extractEscalation(raw);
+
+  // Sauvegarder l'échange dans la mémoire (sans le marqueur)
   await saveHistory(supabase, from, [
     ...messages,
     { role: 'assistant', content: reply },
   ]);
 
-  // Notifier Aly si Julie escalade
-  if (isEscalation(reply)) {
-    notifyAly(from, userText, reply).catch(e => console.error('[WA escalade]', e.message));
+  // Notifier Aly si Julie a escaladé
+  if (escalate) {
+    notifyAly(from, userText).catch(e => console.error('[WA escalade]', e.message));
   }
 
   return reply;
