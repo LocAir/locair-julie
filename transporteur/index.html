@@ -862,6 +862,8 @@ let STATE = {
   missionsStale: false,    // true si STATE.missions vient du cache local (dernier fetch en échec), pas du serveur
   missionsCacheSavedAt: null, // horodatage de ce cache local, affiché dans le bandeau hors-ligne
   qrConfirmed: {},         // missionId -> [numéros de climatiseur confirmés par scan QR] — voir qrStepDone()
+  sortieConfirmed: {},     // missionId -> [numéros affectés par scan "sortie" libre] — voir sortieScanDone()
+  scanMode: null,          // 'sortie' | 'rentree' — posé juste avant d'afficher l'étape de scan en cours, voir handleScanResult()
 };
 
 function show(id){
@@ -2911,19 +2913,20 @@ function missionStepDefs(m){
   // le bon appareil — demandé par Aly, dans cet ordre précis : scan PUIS
   // signature du client (livraison), scan dès l'arrivée côté retour (rien à
   // signer à la récupération). Voir qrStepAttendus()/qrScanStepHtml().
-  if(m.type === 'livraison') steps.push({key:'installation', title:'Installation'}, {key:'qr', title:'Climatiseur'}, {key:'signature', title:'Signature'});
-  else if(m.type === 'recuperation') steps.push({key:'qr', title:'Climatiseur'}, {key:'preuve', title:'Photo appareil'}, {key:'vidange', title:'Vidange'});
-  else if(m.type === 'changement') steps.push({key:'vidange', title:'Vidange'}, {key:'ancien', title:'Ancien appareil'}, {key:'nouveau', title:'Nouvel appareil'});
+  if(m.type === 'livraison') steps.push({key:'qr', title:'Climatiseur'}, {key:'signature', title:'Signature'});
+  else if(m.type === 'recuperation') steps.push({key:'qr', title:'Climatiseur'}, {key:'vidange', title:'Vidange'});
+  else if(m.type === 'changement') steps.push({key:'ancien', title:'Ancien appareil'}, {key:'vidange', title:'Vidange'}, {key:'nouveau', title:'Nouvel appareil'});
   steps.push({key:'final', title:'Terminer'});
   return steps;
 }
 function missionStepDoneFlag(m, key){
   if(key==='vidange') return Boolean(m.vidange_ok);
-  if(key==='installation') return Boolean(m.demo_faite);
-  if(key==='qr') return qrStepDone(m);
+  // 'qr' sert aux deux sens : livraison = sortie (n'importe quel appareil,
+  // affecté par le scan), récupération = rentrée (vérifie l'appareil livré).
+  if(key==='qr') return m.type==='livraison' ? sortieScanDone(m) : qrStepDone(m);
+  if(key==='nouveau') return sortieScanDone(m);
   if(key==='signature') return Boolean(m.signature_client_ok);
-  if(key==='preuve' || key==='ancien') return Boolean(m.photo_retour_ok);
-  if(key==='nouveau') return Boolean(m.photo_installation_ok);
+  if(key==='ancien') return changementAncienStepDone(m);
   return false;
 }
 function missionStepIndex(m, steps){
@@ -3029,11 +3032,6 @@ function handleDetailBack(){
   }
   backToMissions();
 }
-function wizardProofStepHtml(m, kind, doneLabel, hint){
-  return `
-    <p class="step-hint">📷 ${hint}</p>
-    ${proofButtonsHtml(kind, m[kind+'_ok'], doneLabel)}`;
-}
 function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
   if(key === 'route'){
     const numeros = m.appareil_numeros||[];
@@ -3060,12 +3058,17 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
     // stock avant de partir — la récupération, elle, n'a rien à choisir en
     // stock (on ramène ce qui est déjà chez le client), donc pas d'encart ici.
     const needsPickup = m.type==='livraison' || m.type==='changement';
+    // Depuis le scan libre en stock (Aly, 2026-10-14), ce numéro n'est plus
+    // qu'une suggestion (le dernier connu/pré-assigné) — le transporteur
+    // peut prendre n'importe quel appareil disponible, seul le scan à
+    // l'étape suivante fait vraiment foi (voir sortieScanStepHtml).
     const pickupHtml = needsPickup ? (numeros.length ? `
       <div class="pickup-card">
         <span class="pickup-card-ic"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="4.5" y1="7" x2="19.5" y2="17"/><line x1="19.5" y1="7" x2="4.5" y2="17"/></svg></span>
         <div class="pickup-card-body">
-          <div class="pickup-card-label">${plural?'Climatiseurs à récupérer':'Climatiseur à récupérer'}</div>
+          <div class="pickup-card-label">${plural?'Climatiseurs suggérés':'Climatiseur suggéré'}</div>
           <div class="pickup-card-nums">${numeros.map(n=>'N°'+n).join('  ·  ')}</div>
+          <div class="pickup-card-extra">N'importe quel appareil disponible en stock convient — à confirmer par scan.</div>
           ${(m.type==='livraison' && m.client && m.client.fenetre)?(()=>{
             // Même détection que côté checklist (api/_lib/checklistBox.js,
             // isVelux) : le kit universel couvre tous les types de fenêtre
@@ -3111,24 +3114,17 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
       <p class="step-hint">💧 Vérifie ${label} et vidange-le (~5 min).</p>
       <button class="media-btn" onclick="doAction('confirmer_vidange')"><span class="ic">💧</span> Vidange ${m.type==='changement'?"de l'ancien appareil":"de l'appareil"}</button>`;
   }
-  if(key === 'installation'){
-    // photo_installation_pending : la coche verte apparaît dès la sélection
-    // de la photo (optimiste), mais l'envoi réel (compression + upload +
-    // confirmation serveur) peut prendre plusieurs secondes — le bouton doit
-    // attendre cette confirmation, sinon le serveur refuse "Photo requise"
-    // alors que la photo est bien prise (voir uploadMedia ci-dessous).
-    return `
-      <p class="step-hint">🎬 Montre le fonctionnement au client, puis prends une photo où l'on voit ensemble le climatiseur en marche et la fenêtre calfeutrée.</p>
-      ${proofButtonsHtml('photo_installation', m.photo_installation_ok, 'Photo installation')}
-      ${m.photo_installation_ok && m.photo_installation_pending
-        ? `<p class="step-hint" style="color:var(--grey)">⏳ Envoi de la photo en cours…</p>`
-        : ''}
-      ${m.photo_installation_ok && !m.photo_installation_pending
-        ? `<button class="btn btn-green btn-block" style="margin-top:6px" onclick="doAction('confirmer_demo')">✅ Confirmer la démonstration</button>`
-        : ''}`;
-  }
   if(key === 'qr'){
+    // Livraison = "sortie" (n'importe quel appareil dispo en stock, le scan
+    // AFFECTE) ; récupération = "rentrée" (vérifie que c'est bien celui
+    // livré, voir qrStepAttendus/m.appareil_numeros).
+    if(m.type === 'livraison'){
+      STATE.scanMode = 'sortie';
+      return sortieScanStepHtml(m);
+    }
+    STATE.scanMode = 'rentree';
     const attendus = qrStepAttendus(m);
+    STATE.qrScanAttendus = attendus;
     // Rien à comparer (appareil pas encore assigné à cette réservation) —
     // n'a jamais bloqué le parcours pour un trou de données ailleurs,
     // qrStepDone() renvoie déjà true dans ce cas donc cette étape est
@@ -3187,14 +3183,21 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
         <button class="btn btn-blue" style="flex:1" id="sig-submit-btn" disabled onclick="submitClientSig(${m.id})">✅ Valider</button>
       </div>`;
   }
-  if(key === 'preuve'){
-    return wizardProofStepHtml(m, 'photo_retour', 'Photo appareil récupéré', "Prends l'appareil récupéré en photo (ou choisis une photo depuis ta galerie) pour terminer la mission.");
-  }
   if(key === 'ancien'){
-    return wizardProofStepHtml(m, 'photo_retour', 'Photo ancien appareil', "Prends l'ancien appareil en photo avant de le charger.");
+    // L'ancien appareil est déjà chez le client, physiquement — rien à
+    // "choisir" ici, juste confirmer que c'est le bon (rentrée stricte).
+    STATE.scanMode = 'rentree';
+    const attendus = changementAncienAttendus(m);
+    STATE.qrScanAttendus = attendus;
+    if(!attendus.length){
+      return `<p class="step-hint">Ancien appareil inconnu pour cette mission — passe directement à la suite.</p>`;
+    }
+    return qrScanStepHtml(m, attendus, attendus.length>1?'les anciens climatiseurs':"l'ancien climatiseur");
   }
   if(key === 'nouveau'){
-    return wizardProofStepHtml(m, 'photo_installation', 'Photo nouvel appareil', "Installe le nouvel appareil et prends-le en photo pour terminer la mission.");
+    // Nouvel appareil = pris librement en stock (sortie), comme la livraison.
+    STATE.scanMode = 'sortie';
+    return sortieScanStepHtml(m, 'le nouveau climatiseur');
   }
   // 'final'
   const okAction = m.type==='livraison' ? 'livraison_ok' : m.type==='recuperation' ? 'retour_ok' : 'changement_ok';
@@ -3255,13 +3258,69 @@ function wizardStepBodyHtml(m, infoRows, key, mapsUrl){
 function qrStepAttendus(m){
   return [...new Set((m.appareil_numeros||[]).map(Number).filter(n => !isNaN(n)))];
 }
-function qrStepDone(m){
-  const attendus = qrStepAttendus(m);
+// Mission "changement" : l'ancien appareil n'est plus dans m.appareil_numeros
+// une fois la mission créée (détaché de la réservation dès l'assignation du
+// remplaçant, voir admin-livraisons.js) — son numéro est mémorisé à part
+// (ancien_appareil_numero) pour que cette étape ait quand même quelque chose
+// à comparer au scan.
+function changementAncienAttendus(m){
+  const n = Number(m.ancien_appareil_numero);
+  return (m.ancien_appareil_numero != null && !isNaN(n)) ? [n] : [];
+}
+function scanAttendusDone(mId, attendus){
   if(!attendus.length) return true; // rien à comparer : étape non bloquante
-  const confirmes = (STATE.qrConfirmed && STATE.qrConfirmed[m.id]) || [];
+  const confirmes = (STATE.qrConfirmed && STATE.qrConfirmed[mId]) || [];
   return attendus.every(n => confirmes.includes(n));
 }
-function qrScanStepHtml(m, attendus){
+function qrStepDone(m){
+  return scanAttendusDone(m.id, qrStepAttendus(m));
+}
+function changementAncienStepDone(m){
+  return scanAttendusDone(m.id, changementAncienAttendus(m));
+}
+// ── Scan "à la sortie" du dépôt (livraison + nouvel appareil d'un
+// remplacement) ───────────────────────────────────────────────────────────
+// Le transporteur n'est plus limité à une unité pré-assignée à l'avance : il
+// prend n'importe quel climatiseur disponible en stock, du moment qu'il le
+// scanne à la sortie (ici) ET à la rentrée (processQrScanResult, inchangé,
+// vérifie que c'est bien CE MÊME appareil qui revient) — demande d'Aly,
+// 2026-10-14. Contrairement au reste du scan QR, celui-ci écrit vraiment
+// côté serveur (action 'scan_appareil') : le scan EST l'affectation, pas
+// juste une vérification locale, donc il doit être validé en vrai (appareil
+// disponible ? pas déjà pris par une autre réservation ?).
+// STATE.sortieConfirmed n'est pas persisté non plus (perdu si l'app recharge
+// en cours de route) — mais l'affectation côté serveur, elle, l'est : un
+// rescan du même appareil après rechargement est accepté sans compter deux
+// fois (voir 'deja_affecte' còté serveur).
+function sortieScanNeeded(m){
+  if(m.type === 'changement') return 1; // toujours un remplacement unité pour unité
+  return (m.client && m.client.quantite) || 1;
+}
+function sortieScanDone(m){
+  const confirmes = (STATE.sortieConfirmed && STATE.sortieConfirmed[m.id]) || [];
+  return confirmes.length >= sortieScanNeeded(m);
+}
+function sortieScanStepHtml(m, nameLabel){
+  const confirmes = (STATE.sortieConfirmed && STATE.sortieConfirmed[m.id]) || [];
+  const needed = sortieScanNeeded(m);
+  const plural = needed > 1;
+  if(confirmes.length >= needed){
+    return `<div style="text-align:center;padding:20px 0">
+      <div style="font-size:48px;margin-bottom:10px">✅</div>
+      <p style="font-weight:700;font-size:16px;color:var(--green)">Climatiseur${plural?'s':''} confirmé${plural?'s':''}</p>
+      <p style="font-size:13px;color:var(--grey);margin-top:6px">n°${confirmes.join(', ')}</p>
+    </div>`;
+  }
+  const progressHtml = confirmes.length
+    ? `<p class="step-hint" style="color:var(--green);font-weight:700">${confirmes.length}/${needed} confirmé${confirmes.length>1?'s':''} — n°${confirmes.join(', ')}</p>` : '';
+  const subject = nameLabel || 'un climatiseur disponible en stock';
+  return `
+    <p class="step-hint">📷 Prends ${plural?'les climatiseurs qu\'il te faut':subject} et scanne ${plural?'chacun':'son QR'} pour confirmer la sortie de stock.</p>
+    ${progressHtml}
+    <button class="btn btn-blue btn-block" onclick="openQrScanner()">📷 Scanner le QR</button>
+    <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="openQrManualEntry()">✍️ Je ne peux pas scanner</button>`;
+}
+function qrScanStepHtml(m, attendus, nameLabel){
   const confirmes = (STATE.qrConfirmed && STATE.qrConfirmed[m.id]) || [];
   const remaining = attendus.filter(n => !confirmes.includes(n));
   const plural = attendus.length > 1;
@@ -3277,8 +3336,9 @@ function qrScanStepHtml(m, attendus){
   }
   const progressHtml = confirmes.length
     ? `<p class="step-hint" style="color:var(--green);font-weight:700">${confirmes.length}/${attendus.length} confirmé${confirmes.length>1?'s':''}</p>` : '';
+  const subject = nameLabel || (plural?'chaque climatiseur':'le climatiseur');
   return `
-    <p class="step-hint">📷 Scanne le QR collé sur ${plural?'chaque climatiseur':'le climatiseur'} pour confirmer que ${plural?'ce sont les bons appareils':"c'est le bon appareil"} — n°${remaining.join(', ')}.</p>
+    <p class="step-hint">📷 Scanne le QR collé sur ${subject} pour confirmer que ${plural?'ce sont les bons appareils':"c'est le bon appareil"} — n°${remaining.join(', ')}.</p>
     ${progressHtml}
     <button class="btn btn-blue btn-block" onclick="openQrScanner()">📷 Scanner le QR</button>
     <button class="btn btn-grey btn-block" style="margin-top:8px" onclick="openQrManualEntry()">✍️ Je ne peux pas scanner</button>`;
@@ -3335,9 +3395,18 @@ function qrScanLoop(){
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const code = jsQR(img.data, img.width, img.height);
-    if(code && code.data){ processQrScanResult(code.data); return; }
+    if(code && code.data){ handleScanResult(code.data); return; }
   }
   QR_SCAN_RAF = requestAnimationFrame(qrScanLoop);
+}
+// Aiguille vers le bon traitement selon l'étape en cours — STATE.scanMode
+// est posé par wizardStepBodyHtml juste avant d'afficher l'étape (comme
+// STATE.qrScanAttendus) : 'sortie' pour un scan qui AFFECTE un appareil pris
+// librement en stock (processSortieScanResult, aller-retour serveur),
+// sinon une simple vérification locale (processQrScanResult, inchangé).
+function handleScanResult(raw){
+  if(STATE.scanMode === 'sortie') return processSortieScanResult(raw);
+  return processQrScanResult(raw);
 }
 // Partagé entre le scan caméra et la saisie manuelle (même validation) —
 // relance la boucle caméra seulement si elle tourne encore (pas le cas
@@ -3347,7 +3416,11 @@ function processQrScanResult(raw){
   const numero = parseInt(String(raw).replace(/\D/g, ''), 10);
   const relance = () => { if(document.getElementById('qr-scan-video')) QR_SCAN_RAF = requestAnimationFrame(qrScanLoop); };
   if(!m || !numero){ relance(); return; }
-  const attendus = qrStepAttendus(m);
+  // STATE.qrScanAttendus : posé par wizardStepBodyHtml juste avant d'afficher
+  // l'étape en cours — nécessaire depuis qu'une mission "changement" a DEUX
+  // étapes de scan (ancien puis nouveau appareil), chacune avec son propre
+  // numéro attendu, au lieu d'un seul jeu valable pour toute la mission.
+  const attendus = STATE.qrScanAttendus || qrStepAttendus(m);
   if(!attendus.includes(numero)){
     showTToast(`⚠️ Ce n'est pas le bon climatiseur (n°${numero})`);
     if(navigator.vibrate) navigator.vibrate(200);
@@ -3360,11 +3433,48 @@ function processQrScanResult(raw){
   STATE.qrConfirmed[m.id] = [...confirmesAvant, numero];
   if(navigator.vibrate) navigator.vibrate(60);
   renderDetail();
-  if(qrStepDone(m)){
+  if(scanAttendusDone(m.id, attendus)){
     closeQrScanner();
     showTToast(attendus.length>1 ? '✅ Tous les climatiseurs confirmés' : `✅ Climatiseur n°${numero} confirmé`);
   }else{
-    showTToast(`✅ n°${numero} confirmé — encore ${attendus.length - STATE.qrConfirmed[m.id].length}`);
+    const restant = attendus.filter(n => !STATE.qrConfirmed[m.id].includes(n)).length;
+    showTToast(`✅ n°${numero} confirmé — encore ${restant}`);
+    relance();
+  }
+}
+// Scan "sortie" : contrairement à processQrScanResult, aucun numéro connu
+// à l'avance à comparer — n'importe quel appareil peut convenir, donc la
+// validation (disponible ? pas déjà pris ?) se fait côté serveur, d'où
+// l'aller-retour réseau avant de savoir si le scan est accepté.
+async function processSortieScanResult(raw){
+  const m = STATE.currentMission;
+  const numero = parseInt(String(raw).replace(/\D/g, ''), 10);
+  const relance = () => { if(document.getElementById('qr-scan-video')) QR_SCAN_RAF = requestAnimationFrame(qrScanLoop); };
+  if(!m || !numero){ relance(); return; }
+  if(!STATE.sortieConfirmed) STATE.sortieConfirmed = {};
+  const confirmesAvant = STATE.sortieConfirmed[m.id] || [];
+  if(confirmesAvant.includes(numero)){ relance(); return; } // déjà scanné, rien de plus à faire
+  try{
+    const r = await fetch(API('transporteur-action'), {
+      method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token},
+      body: JSON.stringify({action:'scan_appareil', livraison_id:m.id, numero}),
+    });
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error || 'Erreur');
+    STATE.sortieConfirmed[m.id] = [...confirmesAvant, numero];
+    if(navigator.vibrate) navigator.vibrate(60);
+    renderDetail();
+    const needed = sortieScanNeeded(m);
+    if(STATE.sortieConfirmed[m.id].length >= needed){
+      closeQrScanner();
+      showTToast(needed>1 ? '✅ Tous les climatiseurs confirmés' : `✅ Climatiseur n°${numero} confirmé`);
+    }else{
+      showTToast(`✅ n°${numero} confirmé — encore ${needed - STATE.sortieConfirmed[m.id].length}`);
+      relance();
+    }
+  }catch(e){
+    showTToast(`⚠️ ${friendlyErrorMessage(e)}`);
+    if(navigator.vibrate) navigator.vibrate(200);
     relance();
   }
 }
@@ -3391,7 +3501,7 @@ function closeQrManualEntry(){
 function submitQrManualEntry(){
   const raw = document.getElementById('qr-manual-input')?.value || '';
   closeQrManualEntry();
-  processQrScanResult(raw);
+  handleScanResult(raw);
 }
 
 // Dernière récupération de la journée pour ce transporteur (aucune autre
@@ -3798,12 +3908,9 @@ async function submitClientSig(missionId){
   }catch(e){
     // Hors ligne : on ne bloque plus la signature sur une 4G capricieuse —
     // "je veux pouvoir finaliser la signature même sans réseau" (Aly,
-    // 2026-09-14). Condition : la démonstration doit déjà avoir été
-    // confirmée par le serveur AVANT la coupure (m.demo_faite) — sinon
-    // sauvegarder_signature refusera de toute façon une fois renvoyée (voir
-    // transporteur-action.js), mieux vaut le dire tout de suite qu'après coup.
+    // 2026-09-14).
     const m = STATE.missions.find(x => x.id === missionId);
-    if(isNetworkError(e) && m && m.demo_faite){
+    if(isNetworkError(e) && m){
       queueOfflineSignature(missionId, signature);
       applySignatureSuccess(missionId);
       renderOfflineBanner();
@@ -3940,26 +4047,6 @@ function renderDetail(){
   }
 }
 
-// Preuve de mission obligatoire : prendre une photo en direct (caméra) ou
-// joindre une photo déjà présente dans la photothèque du téléphone — les
-// deux sources sont acceptées, contrairement à la galerie libre qui reste
-// un ajout séparé, non bloquant.
-function proofButtonsHtml(kind, done, doneLabel){
-  if(done){
-    return `<button class="media-btn done" onclick="startUpload('${kind}','camera')"><span class="ic">📷</span> ${doneLabel} ✔</button>`;
-  }
-  // Le libellé (ex. "Photo ancien appareil" / "Photo nouvel appareil") doit
-  // être visible AVANT la capture, pas seulement une fois faite — sur
-  // "Changement" les deux paires de boutons sont sinon strictement
-  // identiques et rien ne dit laquelle photographier en premier. Un mauvais
-  // choix ici envoie la preuve du mauvais appareil.
-  return `
-    <div class="section-title" style="margin:0 0 6px 2px">${doneLabel}</div>
-    <div style="display:flex;gap:8px">
-      <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','camera')"><span class="ic">📷</span> Photo</button>
-      <button class="media-btn" style="margin-bottom:0" onclick="startUpload('${kind}','galerie')"><span class="ic">🖼️</span> Depuis la galerie</button>
-    </div>`;
-}
 // Ouvre directement l'app SMS ou WhatsApp du livreur avec un message
 // pré-rempli et son prénom — plus personnel et plus fiable qu'un email
 // automatique (le client peut répondre directement au livreur). L'envoi
@@ -4197,9 +4284,9 @@ async function doAction(action, extra){
     await fetchMissions();
     const m = STATE.missions.find(x => x.id === STATE.currentMission.id);
     // Réinitialise wizardViewIdx pour que le wizard avance à la bonne étape
-    // après une action (ex: confirmer_demo depuis l'étape 'installation' après
-    // navigation arrière depuis 'signature') — sans ce reset, idx=2 (installation)
-    // restait bloqué même si l'étape était terminée.
+    // après une action (ex: confirmer_vidange après navigation arrière depuis
+    // une étape suivante) — sans ce reset, l'étape consultée restait affichée
+    // même une fois terminée.
     if(m){ STATE.wizardViewIdx = null; STATE.currentMission = m; renderDetail(); show('detail-screen'); }
     else { show('missions-screen'); renderMissions(); }
   }catch(e){

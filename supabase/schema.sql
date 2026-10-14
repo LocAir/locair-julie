@@ -421,6 +421,11 @@ create table livraisons (
   demo_faite_at          timestamptz,
   vidange_confirmee      boolean not null default false, -- vérification + vidange du climatiseur, faite chez le client à la récupération (~5 min)
   vidange_at             timestamptz,
+  -- Numéro de l'appareil remplacé par une mission de changement, mémorisé à
+  -- la création de la mission (ancienne_appareils.reservation_appareils est
+  -- déjà détaché à ce moment-là, voir admin-livraisons.js) — permet au
+  -- transporteur de scanner l'ancien appareil, pas seulement le nouveau.
+  ancien_appareil_numero integer,
   -- Checklists administrables (checklist_items), réponses figées au moment de
   -- la validation de mission — traçabilité même si la liste évolue ensuite.
   checklist_installation_reponses  jsonb,

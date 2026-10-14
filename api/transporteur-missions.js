@@ -70,6 +70,7 @@ module.exports = async (req, res) => {
         demo_faite, incident_id,
         vidange_confirmee,
         signature_client_path,
+        ancien_appareil_numero,
         probleme_type, probleme_description,
         reservation:reservations (
           id, reservation_origine_id,
@@ -144,6 +145,7 @@ module.exports = async (req, res) => {
       incident_id:         m.incident_id,
       appareil_numeros: ((m.reservation?.reservation_appareils) || [])
         .map(ra => ra.appareil?.numero).filter(n => n != null).sort((a, b) => a - b),
+      ancien_appareil_numero: m.ancien_appareil_numero ?? null,
       acces_difficile: m.reservation?.client?.acces_difficile ?? null,
       client: m.reservation ? { ...m.reservation, fenetre_photo_path: undefined } : null,
     }));
