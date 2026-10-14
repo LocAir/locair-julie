@@ -924,6 +924,7 @@ tr.bulk-selected td{background:var(--blue-lt)}
             <button data-tab="livraisons" onclick="switchAdminTab('livraisons')">🚚 Missions<span class="tab-badge hidden" id="badge-livraisons"></span></button>
             <button data-tab="reservations" onclick="switchAdminTab('reservations')">🧾 Réservations<span class="tab-badge hidden" id="badge-reservations"></span></button>
             <button data-tab="communications" onclick="switchAdminTab('communications')">🎛️ Communications<span class="tab-badge hidden" id="badge-communications"></span></button>
+            <button data-tab="julie" onclick="switchAdminTab('julie')">💬 Julie</button>
             <button data-tab="devis" onclick="switchAdminTab('devis')">📝 Devis</button>
           </div>
         </details>
@@ -978,6 +979,7 @@ tr.bulk-selected td{background:var(--blue-lt)}
         <div id="tab-emails" class="hidden"></div>
         <div id="tab-espaceclient" class="hidden"></div>
         <div id="tab-checklistitems" class="hidden"></div>
+        <div id="tab-julie" class="hidden"></div>
       </div>
     </div>
   </div>
@@ -2123,6 +2125,7 @@ const _TAB_LOADERS = {
   emails:         silent => loadEmails(silent),
   espaceclient:   silent => loadEspaceClient(silent),
   checklistitems: silent => loadChecklistItemsAdmin(silent),
+  julie:          () => loadJulie(),
 };
 function switchAdminTab(tab){
   CURRENT_TAB = tab;
@@ -12683,6 +12686,188 @@ function closeLiveMap(){
     maybeOfferAdminFaceId();
   }
 })();
+
+// ── Onglet Julie — messenger WhatsApp IA ──────────────────────────────────
+let JULIE_CACHE = [];
+let JULIE_OPEN  = null;
+
+async function loadJulie(){
+  const zone = document.getElementById('tab-julie');
+  // Squelette messenger dès le premier chargement
+  if(!JULIE_CACHE.length){
+    zone.innerHTML = julieMsgrShell();
+  }
+  // Charger la liste
+  try{
+    const r = await fetch(API('admin-julie'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    JULIE_CACHE = d.conversations || [];
+    renderJulieList();
+    // Si une conv était ouverte, la recharger
+    if(JULIE_OPEN) openJulieConv(JULIE_OPEN);
+  }catch(e){
+    const sidebar = document.getElementById('julie-sidebar');
+    if(sidebar) sidebar.innerHTML = '<p class="empty" style="padding:20px">Erreur de chargement.</p>';
+  }
+}
+
+function julieTimeShort(iso){
+  if(!iso) return '';
+  const d   = new Date(iso);
+  const now = new Date();
+  const diffH = (now - d) / 3600000;
+  if(diffH < 24){
+    return d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  }
+  if(diffH < 48) return 'hier';
+  return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit'});
+}
+
+function julieFormatPhone(phone){
+  if(!phone) return phone;
+  if(phone.startsWith('sms:')) return 'SMS ' + phone.slice(4);
+  const p = phone.replace(/\D/g,'');
+  if(p.startsWith('33') && p.length === 11)
+    return '+33 ' + p.slice(2).replace(/(.{1})(.{2})(.{2})(.{2})(.{2})/, '$1 $2 $3 $4 $5');
+  return '+' + p;
+}
+
+function julieAvatar(phone){
+  // Lettre d'avatar à partir du numéro
+  const p = (phone||'').replace(/\D/g,'');
+  const letter = p ? p.slice(-2,-1) || '?' : '?';
+  // Couleur déterministe selon le numéro
+  const colors = ['#086E60','#2563eb','#7c3aed','#db2777','#d97706','#0891b2'];
+  const idx    = parseInt(p.slice(-1)||'0') % colors.length;
+  return `<div style="width:46px;height:46px;border-radius:50%;background:${colors[idx]};color:#fff;font-size:17px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${letter}</div>`;
+}
+
+function julieMsgrShell(){
+  return `<div id="julie-msgr" style="display:flex;height:calc(100vh - 64px - 48px);min-height:400px;overflow:hidden">
+    <!-- Sidebar liste -->
+    <div id="julie-sidebar" style="width:320px;min-width:220px;border-right:1px solid var(--rule);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden">
+      <div style="padding:16px 16px 12px;border-bottom:1px solid var(--rule);flex-shrink:0">
+        <div style="font-weight:800;font-size:16px;margin-bottom:2px">💬 Julie</div>
+        <div style="font-size:12px;color:var(--grey-soft)">Agent WhatsApp IA</div>
+      </div>
+      <div id="julie-list" style="flex:1;overflow-y:auto">${loading()}</div>
+    </div>
+    <!-- Zone chat -->
+    <div id="julie-chat" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+      <div id="julie-empty-state" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--grey-soft);gap:12px;padding:32px">
+        <div style="font-size:48px">💬</div>
+        <div style="font-weight:600;font-size:15px">Sélectionne une conversation</div>
+        <div style="font-size:13px;text-align:center;max-width:240px">Clique sur un contact à gauche pour voir l'échange complet avec Julie</div>
+      </div>
+      <div id="julie-chat-inner" class="hidden" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+        <!-- Header conversation -->
+        <div id="julie-chat-head" style="padding:12px 20px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:12px;flex-shrink:0;background:var(--white)">
+          <div id="julie-head-avatar"></div>
+          <div style="flex:1;min-width:0">
+            <div id="julie-head-name" style="font-weight:700;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+            <div id="julie-head-sub" style="font-size:12px;color:var(--grey-soft)"></div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button id="julie-opt-btn" onclick="julieToggleOpt()" style="font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;border:1.5px solid;background:none;cursor:pointer;white-space:nowrap"></button>
+            <button onclick="julieClearConv()" title="Effacer l'historique" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--rule);background:none;cursor:pointer;font-size:15px;display:flex;align-items:center;justify-content:center;color:var(--grey-soft)" >🗑️</button>
+          </div>
+        </div>
+        <!-- Bulles -->
+        <div id="julie-msgs" style="flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:6px;background:#f0f2f5"></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderJulieList(){
+  const el   = document.getElementById('julie-list');
+  if(!el) return;
+  const list = JULIE_CACHE;
+  if(!list.length){
+    el.innerHTML = '<p class="empty" style="padding:20px;font-size:13px">Aucune conversation pour l\'instant.</p>';
+    return;
+  }
+  el.innerHTML = list.map(c => {
+    const isActive  = c.phone === JULIE_OPEN;
+    const isOptOut  = c.opted_out;
+    const lastIsBot = c.last_role === 'assistant';
+    return `<div onclick="openJulieConv('${c.phone}')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;border-bottom:1px solid var(--rule);background:${isActive?'var(--blue-lt)':'transparent'};transition:background .15s" onmouseover="if('${c.phone}'!==JULIE_OPEN)this.style.background='var(--bg)'" onmouseout="this.style.background='${isActive?'var(--blue-lt)':'transparent'}'">
+      ${julieAvatar(c.phone)}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px">
+          <span style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${isActive?'var(--blue)':'var(--black)'}">${julieFormatPhone(c.phone)}</span>
+          <span style="font-size:11px;color:var(--grey-soft);flex-shrink:0">${julieTimeShort(c.updated_at)}</span>
+        </div>
+        <div style="font-size:12px;color:var(--grey-soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px">${lastIsBot?'Julie : ':''} ${escHtml(c.last_msg||'…')}</div>
+        ${isOptOut?'<span style="font-size:10px;font-weight:700;background:var(--red-bg);color:var(--red);padding:1px 6px;border-radius:10px">STOP</span>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function openJulieConv(phone){
+  JULIE_OPEN = phone;
+  renderJulieList(); // surligner la ligne active
+
+  const empty  = document.getElementById('julie-empty-state');
+  const inner  = document.getElementById('julie-chat-inner');
+  const msgs   = document.getElementById('julie-msgs');
+  const name   = document.getElementById('julie-head-name');
+  const sub    = document.getElementById('julie-head-sub');
+  const avatar = document.getElementById('julie-head-avatar');
+  const optBtn = document.getElementById('julie-opt-btn');
+
+  if(empty)  empty.classList.add('hidden');
+  if(inner){ inner.classList.remove('hidden'); inner.style.display='flex'; }
+
+  name.textContent   = julieFormatPhone(phone);
+  avatar.innerHTML   = julieAvatar(phone);
+  msgs.innerHTML     = loading();
+
+  const r = await fetch(API('admin-julie'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'get', phone})});
+  const d = await r.json();
+
+  const isOptOut = !!d.opted_out;
+  const conv     = JULIE_CACHE.find(c => c.phone === phone) || {};
+  sub.textContent = `${conv.nb_messages||0} messages · ${isOptOut?'Bloqué':'Actif'}`;
+  optBtn.textContent     = isOptOut ? '✓ Réactiver' : '🚫 Bloquer';
+  optBtn.style.color     = isOptOut ? 'var(--green)' : 'var(--red)';
+  optBtn.style.borderColor = isOptOut ? 'var(--green)' : 'var(--red-bg)';
+
+  const messages = d.messages || [];
+  if(!messages.length){
+    msgs.innerHTML = '<div style="text-align:center;color:var(--grey-soft);font-size:13px;padding:24px">Aucun message dans cet historique.</div>';
+    return;
+  }
+
+  msgs.innerHTML = messages.map((m, i) => {
+    const isBot    = m.role === 'assistant';
+    const prevRole = i > 0 ? messages[i-1].role : null;
+    const showName = prevRole !== m.role; // afficher le nom si changement de locuteur
+    return `<div style="display:flex;flex-direction:column;align-items:${isBot?'flex-start':'flex-end'};gap:2px;margin-top:${showName?'10px':'2px'}">
+      ${showName ? `<div style="font-size:11px;font-weight:600;color:var(--grey-soft);padding:0 14px">${isBot?'Julie 🤖':'Client 👤'}</div>` : ''}
+      <div style="max-width:72%;background:${isBot?'#fff':'#dcf8c6'};padding:9px 14px;border-radius:${isBot?'3px 18px 18px 18px':'18px 3px 18px 18px'};font-size:13.5px;line-height:1.55;white-space:pre-wrap;word-break:break-word;box-shadow:0 1px 2px rgba(0,0,0,.08)">${escHtml(m.content)}</div>
+    </div>`;
+  }).join('');
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function julieToggleOpt(){
+  if(!JULIE_OPEN) return;
+  const conv   = JULIE_CACHE.find(c => c.phone === JULIE_OPEN);
+  const action = conv?.opted_out ? 'opt_in' : 'opt_out';
+  await fetch(API('admin-julie'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action, phone:JULIE_OPEN})});
+  await loadJulie();
+}
+
+async function julieClearConv(){
+  if(!JULIE_OPEN) return;
+  if(!confirm('Effacer tout l\'historique de cette conversation ?')) return;
+  await fetch(API('admin-julie'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'clear', phone:JULIE_OPEN})});
+  JULIE_OPEN = null;
+  await loadJulie();
+}
 </script>
 </body>
 </html>
