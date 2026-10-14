@@ -9,7 +9,7 @@ const { EXT_BY_TYPE } = require('./_lib/media');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
 const { INCIDENT_OPEN_STATUSES } = require('./_lib/incidentStatus');
 const { getActiveChecklistItems, validateChecklistReponses } = require('./_lib/checklistItems');
-const { setAppareilsStatutForReservation, moveAppareilsForReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
+const { setAppareilsStatutForReservation, moveAppareilsForReservation, releaseAppareilFromReservation, ETAT_MATERIEL_TO_APPAREIL_STATUT } = require('./_lib/appareilSync');
 const { recordMouvement } = require('./_lib/stockMouvements');
 const { todayParis } = require('./_lib/dates');
 const { getPricingConfig } = require('./_lib/pricing');
@@ -81,7 +81,7 @@ function checkMediaAllowed(liv, kind) {
 async function loadLivraison(supabase, id) {
   const { data, error } = await supabase
     .from('livraisons')
-    .select('*, reservation:reservations(installation, city_id, hors_zone, express, prenom, nom, tel, email, ref, adresse, creneau, lang)')
+    .select('*, reservation:reservations(installation, city_id, hors_zone, express, prenom, nom, tel, email, ref, adresse, creneau, lang, quantite, date_debut, date_fin)')
     .eq('id', id).maybeSingle();
   if (error || !data) return null;
   return data;
@@ -343,12 +343,102 @@ module.exports = async (req, res) => {
     }
 
     if (action === 'confirmer_vidange') {
-      if (liv.type !== 'recuperation' || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
+      // Bug pré-existant corrigé au passage : la vidange est aussi une étape
+      // du wizard "changement" (vidange de l'ancien appareil avant de le
+      // charger, voir missionStepDefs) mais était rejetée ici faute d'avoir
+      // jamais ajouté ce type — un remplacement ne pouvait donc jamais
+      // valider sa vidange, ni (changement_ok l'exige) se terminer.
+      if (!['recuperation', 'changement'].includes(liv.type) || !EN_COURS_STATUTS.includes(liv.statut)) return res.status(409).json({ error: 'Étape non disponible' });
       const dateErr = missionStartDateError(liv);
       if (dateErr) return res.status(409).json({ error: dateErr });
       const { error: vidangeErr } = await supabase.from('livraisons').update({ vidange_confirmee: true, vidange_at: new Date().toISOString() }).eq('id', liv.id);
       if (vidangeErr) throw vidangeErr;
       return res.status(200).json({ ok: true });
+    }
+
+    // Scan "à la sortie" du dépôt (livraison, ou nouvel appareil d'un
+    // remplacement) : demande d'Aly, 2026-10-14 — le transporteur n'est plus
+    // limité à une unité pré-assignée à l'avance, il prend n'importe quel
+    // climatiseur disponible en stock, et LE SCAN EST L'AFFECTATION (pas
+    // juste une vérification côté client comme les autres scans). D'où un
+    // vrai aller-retour serveur ici, contrairement au reste du scan QR qui
+    // reste purement local. Jamais pour la récupération/l'ancien appareil
+    // d'un remplacement : ceux-là sont déjà physiquement chez le client, il
+    // n'y a rien à "choisir" — le scan y reste une simple vérification
+    // (processQrScanResult côté client, inchangé).
+    if (action === 'scan_appareil') {
+      if (!['livraison', 'changement'].includes(liv.type) || !EN_COURS_STATUTS.includes(liv.statut)) {
+        return res.status(409).json({ error: 'Étape non disponible' });
+      }
+      const dateErr = missionStartDateError(liv);
+      if (dateErr) return res.status(409).json({ error: dateErr });
+
+      const numero = parseInt(body.numero);
+      if (!numero) return res.status(400).json({ error: 'Numéro invalide' });
+
+      const cityId = liv.reservation?.city_id;
+      const { data: appareil } = await supabase
+        .from('appareils').select('id, statut').eq('city_id', cityId).eq('numero', numero).maybeSingle();
+      if (!appareil) return res.status(404).json({ error: `Aucun climatiseur n°${numero} dans le stock` });
+      // Même exclusion que l'affectation manuelle admin (admin-livraisons.js)
+      // et assign_appareils() : un appareil "en nettoyage" reste assignable
+      // (il sera prêt avant le départ), seuls panne/maintenance/déjà loué
+      // sont bloquants.
+      if (['panne', 'maintenance', 'loue'].includes(appareil.statut)) {
+        return res.status(409).json({ error: `Climatiseur n°${numero} indisponible (${appareil.statut})` });
+      }
+
+      const resaId = liv.reservation_id;
+      const resa = liv.reservation;
+      if (!resa) return res.status(404).json({ error: 'Réservation introuvable' });
+
+      // Déjà affecté à une AUTRE réservation confirmée sur une période qui
+      // chevauche — même garde-fou que l'affectation manuelle admin.
+      const { data: liens } = await supabase
+        .from('reservation_appareils')
+        .select('reservation_id, reservation:reservations(statut, date_debut, date_fin)')
+        .eq('appareil_id', appareil.id).neq('reservation_id', resaId);
+      const busy = (liens || []).some(l => l.reservation?.statut === 'confirmee'
+        && l.reservation.date_debut < resa.date_fin && l.reservation.date_fin > resa.date_debut);
+      if (busy) return res.status(409).json({ error: `Climatiseur n°${numero} déjà affecté à une autre réservation sur cette période` });
+
+      if (liv.type === 'changement') {
+        // Remplacement = toujours une unité pour une autre : détache
+        // l'éventuelle unité encore liée (pré-assignée par l'admin à la
+        // création de la mission, ou pas encore libérée) avant d'attacher
+        // celle que le transporteur vient réellement de prendre — le
+        // terrain prime toujours sur ce qui était planifié.
+        const { data: existingOld } = await supabase
+          .from('reservation_appareils').select('appareil_id').eq('reservation_id', resaId).neq('appareil_id', appareil.id).limit(1);
+        if (existingOld && existingOld.length) {
+          await releaseAppareilFromReservation(supabase, {
+            appareilId: existingOld[0].appareil_id, reservationId: resaId, cityId,
+            motif: 'remplacée par le scan du transporteur (nouvel appareil)',
+          });
+        }
+        const { error: raErr } = await supabase
+          .from('reservation_appareils').upsert({ reservation_id: resaId, appareil_id: appareil.id }, { onConflict: 'reservation_id,appareil_id' });
+        if (raErr) throw raErr;
+        return res.status(200).json({ ok: true, numero });
+      }
+
+      // Livraison : peut demander plusieurs appareils (resa.quantite > 1) —
+      // chaque scan valide en ajoute un, jusqu'à la quantité réservée. Un
+      // rescan du même appareil ne compte pas deux fois (idempotent).
+      const { data: existingLink } = await supabase
+        .from('reservation_appareils').select('appareil_id').eq('reservation_id', resaId).eq('appareil_id', appareil.id).maybeSingle();
+      if (existingLink) return res.status(200).json({ ok: true, numero, deja_affecte: true });
+
+      const { count: dejaAffectes } = await supabase
+        .from('reservation_appareils').select('appareil_id', { count: 'exact', head: true }).eq('reservation_id', resaId);
+      if ((dejaAffectes || 0) >= (resa.quantite || 1)) {
+        return res.status(409).json({ error: `Déjà ${resa.quantite || 1} climatiseur${(resa.quantite || 1) > 1 ? 's' : ''} affecté${(resa.quantite || 1) > 1 ? 's' : ''} à cette réservation` });
+      }
+
+      const { error: raErr } = await supabase
+        .from('reservation_appareils').upsert({ reservation_id: resaId, appareil_id: appareil.id }, { onConflict: 'reservation_id,appareil_id' });
+      if (raErr) throw raErr;
+      return res.status(200).json({ ok: true, numero });
     }
 
     // Signature client : reçoit un PNG en base64, stocke dans le bucket
