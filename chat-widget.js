@@ -18,6 +18,14 @@
   }
 
   // ── HTML du widget ─────────────────────────────────────────────────────
+  var SUGGESTIONS = [
+    { emoji: '📅', label: 'Réserver un climatiseur' },
+    { emoji: '⏰', label: 'Prolonger ma location' },
+    { emoji: '💰', label: 'Tarifs et disponibilités' },
+    { emoji: '🔧', label: 'Problème / panne' },
+    { emoji: '🏠', label: 'Zone de livraison' },
+  ];
+
   var CSS = `
 #jw-btn{position:fixed;bottom:24px;right:90px;width:52px;height:52px;border-radius:50%;
   background:#086E60;color:#fff;border:none;cursor:pointer;z-index:8900;
@@ -61,6 +69,10 @@
 #jw-send svg{width:18px;height:18px;fill:currentColor}
 #jw-wa-link{text-align:center;padding:6px 0;font-size:11px;color:#888;flex-shrink:0;background:#fff}
 #jw-wa-link a{color:#25D366;font-weight:600;text-decoration:none}
+#jw-suggestions{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px 6px;background:#f0f2f5;flex-shrink:0}
+.jw-chip{background:#fff;border:1.5px solid #d1d5db;border-radius:18px;padding:6px 12px;font-size:12px;
+  color:#086E60;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s;font-family:inherit}
+.jw-chip:hover{background:#e7f3f0;border-color:#086E60}
 #jw-badge{position:absolute;top:-3px;right:-3px;width:16px;height:16px;border-radius:50%;
   background:#ef4444;color:#fff;font-size:10px;font-weight:700;display:flex;
   align-items:center;justify-content:center;opacity:0;transition:opacity .2s}
@@ -102,6 +114,7 @@
         <button id="jw-close" aria-label="Fermer">×</button>
       </div>
       <div id="jw-msgs"></div>
+      <div id="jw-suggestions"></div>
       <div id="jw-footer">
         <textarea id="jw-input" placeholder="Écrivez votre question…" rows="1" maxlength="1000"></textarea>
         <button id="jw-send" aria-label="Envoyer">${ICON_SEND}</button>
@@ -127,6 +140,7 @@
     hideBadge();
     if (!document.getElementById('jw-msgs').children.length) {
       addBubble('julie', 'Bonjour ! Je suis Julie, l\'assistante de Loc\'Air. Comment puis-je vous aider ? 😊');
+      showSuggestions();
     }
     setTimeout(function() { document.getElementById('jw-input').focus(); }, 250);
   }
@@ -171,6 +185,27 @@
     if (b) b.style.opacity = '0';
   }
 
+  function showSuggestions() {
+    var el = document.getElementById('jw-suggestions');
+    if (!el) return;
+    el.innerHTML = SUGGESTIONS.map(function(s) {
+      return '<button class="jw-chip" data-msg="' + s.label + '">' + s.emoji + ' ' + s.label + '</button>';
+    }).join('');
+    el.querySelectorAll('.jw-chip').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var msg = btn.getAttribute('data-msg');
+        hideSuggestions();
+        document.getElementById('jw-input').value = msg;
+        sendMessage();
+      });
+    });
+  }
+
+  function hideSuggestions() {
+    var el = document.getElementById('jw-suggestions');
+    if (el) el.innerHTML = '';
+  }
+
   function autoResize() {
     var el = document.getElementById('jw-input');
     el.style.height = 'auto';
@@ -185,6 +220,7 @@
 
     input.value = '';
     input.style.height = 'auto';
+    hideSuggestions();
     addBubble('user', text);
     showTyping();
     sending = true;
