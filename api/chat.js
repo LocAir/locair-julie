@@ -52,9 +52,23 @@ Hors zone → expliquer gentiment qu'on ne livre pas encore là.
 ## Règles importantes
 - Ne jamais inventer un prix, une date ou une disponibilité.
 - Pour une réservation concrète, diriger vers le formulaire en ligne ou proposer qu'Aly rappelle.
-- Si la situation est complexe : "Je passe ça à Aly, il te recontacte rapidement au 06 63 79 87 56."
 - Terminer chaque échange par une question d'aide sauf si le client vient de dire au revoir.
-- Ne pas mentionner que tu es une IA sauf si demandé directement.`;
+- Ne pas mentionner que tu es une IA sauf si demandé directement.
+
+## Quand escalader à Aly — OBLIGATOIRE dans ces 10 situations
+
+Dans chacun de ces cas : réponds avec empathie, rassure le visiteur ("je transmets ça à Aly en priorité, il te recontacte rapidement au 06 63 79 87 56"), puis termine ta réponse par [ESCALADE].
+
+1. Client en colère ou ton agressif
+2. Panne persistante après le guide de dépannage complet
+3. Demande de remboursement (partiel ou total)
+4. Demande d'annulation de réservation ou d'abonnement
+5. Le visiteur demande à parler à un humain
+6. Réclamation, litige ou menace juridique
+7. Problème de livraison (retard, mauvaise adresse, technicien absent)
+8. Problème de paiement ou de facturation
+9. Devis entreprise ou client professionnel (plusieurs appareils, tarif pro)
+10. Situation ambiguë ou complexe que tu ne sais pas gérer avec certitude`;
 
 const MAX_MESSAGES = 20;
 const MAX_MSG_LENGTH = 1000;
@@ -94,10 +108,13 @@ module.exports = async (req, res) => {
     }
 
     const messages = [...history, { role: 'user', content: text }];
-    const result   = await callClaude({ system: SYSTEM_PROMPT, messages, maxTokens: 400 });
+    const result = await callClaude({ system: SYSTEM_PROMPT, messages, maxTokens: 400 });
 
-    const reply = result.ok
-      ? (result.data?.content?.[0]?.text || '')
+    const raw    = result.ok ? (result.data?.content?.[0]?.text || '') : null;
+    const marker = '[ESCALADE]';
+    const idx    = raw ? raw.indexOf(marker) : -1;
+    const reply  = raw
+      ? (idx !== -1 ? raw.slice(0, idx).trimEnd() : raw)
       : 'Je rencontre un souci technique. Contactez Aly au 06 63 79 87 56. 🙏';
 
     const trimmed = [...messages, { role: 'assistant', content: reply }].slice(-MAX_MESSAGES);
