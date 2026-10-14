@@ -400,16 +400,75 @@ input,select,textarea{font-family:inherit}
 
   var optInstall = document.getElementById('opt_install');
 
+  /* ── Auto-format téléphone FR (06 63 79 87 56) ── */
+  var telInput = document.getElementById('tel');
+  telInput.addEventListener('input', function () {
+    var digits = this.value.replace(/\D/g, '').slice(0, 10);
+    var parts = digits.match(/(\d{1,2})(\d{0,2})(\d{0,2})(\d{0,2})(\d{0,2})/);
+    if (parts) {
+      this.value = [parts[1], parts[2], parts[3], parts[4], parts[5]]
+        .filter(Boolean).join(' ');
+    }
+  });
+
+  /* ── Code postal → Ville auto-remplie ── */
+  var CP_VILLES = {
+    '06000':'Nice','06100':'Nice','06200':'Nice','06300':'Nice',
+    '06400':'Cannes','06150':'Cannes',
+    '06160':'Juan-les-Pins','06600':'Antibes',
+    '06500':'Menton','06800':'Cagnes-sur-Mer',
+    '06700':'Saint-Laurent-du-Var','06560':'Valbonne',
+    '06250':'Mougins','06220':'Vallauris','06410':'Biot',
+    '06130':'Grasse','06570':'Saint-Paul-de-Vence',
+    '06480':'La Colle-sur-Loup','06640':'Saint-Jeannet',
+    '06310':'Beaulieu-sur-Mer','06360':'Èze',
+    '83000':'Draguignan','83100':'Toulon','83400':'Hyères',
+    '83600':'Fréjus','83700':'Saint-Raphaël',
+    '98000':'Monaco',
+  };
+  var cpInput    = document.getElementById('cp');
+  var villeInput = document.getElementById('ville');
+  cpInput.addEventListener('input', function () {
+    var cp = this.value.replace(/\D/g, '').slice(0, 5);
+    this.value = cp;
+    if (cp.length === 5 && CP_VILLES[cp] && !villeInput.value.trim()) {
+      villeInput.value = CP_VILLES[cp];
+      clearError(villeInput);
+    }
+  });
+
   /* Validation */
   function isEmpty(v) { return !v || !v.trim(); }
   function isEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()); }
+  function isTel(v)   { return v.replace(/\D/g,'').length >= 9; }
   function clearError(inp) {
     inp.classList.remove('error');
     var fe = inp.parentNode.querySelector('.field-error');
     if (fe) fe.style.display = 'none';
   }
-  document.querySelectorAll('input,select,textarea').forEach(function(el){
-    el.addEventListener('input', function(){ clearError(el); });
+  function showFieldError(inp) {
+    inp.classList.add('error');
+    var fe = inp.parentNode.querySelector('.field-error');
+    if (fe) fe.style.display = 'block';
+  }
+
+  /* Validation au blur (champ par champ, dès qu'on le quitte) */
+  var blurRules = [
+    { id:'prenom',     check: function(v){ return !isEmpty(v); } },
+    { id:'nom',        check: function(v){ return !isEmpty(v); } },
+    { id:'email',      check: function(v){ return isEmail(v); } },
+    { id:'tel',        check: function(v){ return isTel(v); } },
+    { id:'adresse',    check: function(v){ return !isEmpty(v); } },
+    { id:'ville',      check: function(v){ return !isEmpty(v); } },
+    { id:'cp',         check: function(v){ return /^\d{5}$/.test(v.trim()); } },
+  ];
+  blurRules.forEach(function(r) {
+    var inp = document.getElementById(r.id);
+    if (!inp) return;
+    inp.addEventListener('blur', function() {
+      if (!r.check(inp.value)) showFieldError(inp);
+    });
+    inp.addEventListener('input', function() { clearError(inp); });
   });
 
   function validate() {
