@@ -11,7 +11,8 @@
 const ANTHROPIC_TIMEOUT_MS = 50000; // sous la limite Vercel de 60s (maxDuration, vercel.json)
 const MODEL = 'claude-sonnet-5';
 
-async function callClaude({ system, messages, tools, maxTokens = 1536 }) {
+async function callClaude({ system, messages, tools, maxTokens = 1536, model: modelOverride }) {
+  const model = modelOverride || MODEL;
   if (!process.env.ANTHROPIC_API_KEY) {
     return { ok: false, error: "ANTHROPIC_API_KEY n'est pas configurée sur Vercel — l'assistant ne peut pas fonctionner tant que cette clé n'est pas ajoutée (Settings → Environment Variables)." };
   }
@@ -24,7 +25,7 @@ async function callClaude({ system, messages, tools, maxTokens = 1536 }) {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model:      MODEL,
+        model:      model,
         max_tokens: maxTokens,
         system,
         messages,

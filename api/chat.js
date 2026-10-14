@@ -108,11 +108,16 @@ module.exports = async (req, res) => {
     }
 
     const messages = [...history, { role: 'user', content: text }];
-    const result = await callClaude({ system: SYSTEM_PROMPT, messages, maxTokens: 400 });
+    const result = await callClaude({ system: SYSTEM_PROMPT, messages, maxTokens: 400, model: 'claude-haiku-4-5' });
 
-    const raw    = result.ok ? (result.data?.content?.[0]?.text || '') : null;
+    if (!result.ok) {
+      console.error('[chat] callClaude failed:', result.error);
+      return res.json({ reply: 'Je rencontre un souci technique. Contactez Aly au 06 63 79 87 56. 🙏' });
+    }
+
+    const raw    = result.data?.content?.[0]?.text || '';
     const marker = '[ESCALADE]';
-    const idx    = raw ? raw.indexOf(marker) : -1;
+    const idx    = raw.indexOf(marker);
     const reply  = raw
       ? (idx !== -1 ? raw.slice(0, idx).trimEnd() : raw)
       : 'Je rencontre un souci technique. Contactez Aly au 06 63 79 87 56. 🙏';
