@@ -132,6 +132,13 @@ input,select,textarea{font-family:inherit}
 .submit-btn .spinner{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* MINI RÉCAP AVANT PAIEMENT */
+.mini-recap{background:#F0F0EE;border-radius:12px;padding:14px 18px;margin-top:24px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.mini-recap-left{font-size:13px;color:var(--muted);line-height:1.5}
+.mini-recap-total{font-size:22px;font-weight:800;letter-spacing:-.04em;white-space:nowrap}
+.mini-recap-note{font-size:11px;color:#aaa;text-align:right;margin-top:1px}
+.mini-recap[data-empty="true"]{display:none}
+
 /* ERREUR GLOBALE */
 .global-error{display:none;background:#FFF2F0;border:1px solid #FCCCC9;border-radius:10px;padding:14px 16px;font-size:14px;color:#D93025;margin-top:16px;line-height:1.5}
 .global-error.visible{display:block}
@@ -441,6 +448,16 @@ input,select,textarea{font-family:inherit}
           </fieldset>
         </div>
 
+        <div class="mini-recap" id="mini-recap" data-empty="true">
+          <div class="mini-recap-left">
+            <span id="mini-recap-detail">—</span>
+          </div>
+          <div>
+            <div class="mini-recap-total" id="mini-recap-total">—</div>
+            <div class="mini-recap-note">livraison incluse</div>
+          </div>
+        </div>
+
         <div class="global-error" id="global-error"></div>
 
         <button class="submit-btn" type="submit" id="submit-btn">
@@ -625,6 +642,7 @@ input,select,textarea{font-family:inherit}
       document.getElementById('sum-location').textContent = '—';
       document.getElementById('total-val').textContent   = '—';
       document.getElementById('total-sub').textContent   = '';
+      document.getElementById('mini-recap').setAttribute('data-empty','true');
       return;
     }
 
@@ -644,6 +662,13 @@ input,select,textarea{font-family:inherit}
     document.getElementById('total-sub').textContent  = rate + ' €/j × ' + days + 'j' +
       (qty > 1 ? ' × ' + qty : '') +
       ' + livraison' + (withInstall ? ' + installation' : '');
+
+    document.getElementById('mini-recap-total').textContent = total + ' €';
+    document.getElementById('mini-recap-detail').innerHTML =
+      days + ' jour' + (days > 1 ? 's' : '') + ' · ' + rate + ' €/j' +
+      (qty > 1 ? ' × ' + qty + ' app.' : '') +
+      (withInstall ? ' · installation' : '');
+    document.getElementById('mini-recap').setAttribute('data-empty','false');
   }
 
   dureeSelect.addEventListener('change', updateSummary);
