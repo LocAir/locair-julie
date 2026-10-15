@@ -112,7 +112,7 @@ module.exports = async (req, res) => {
 
     if (!result.ok) {
       console.error('[chat] callClaude failed:', result.error);
-      return res.json({ reply: '[ERREUR] ' + (result.error || 'Erreur inconnue') });
+      return res.json({ reply: 'Je rencontre un souci technique. Contactez Aly au 06 63 79 87 56. 🙏' });
     }
 
     const raw    = result.data?.content?.[0]?.text || '';
