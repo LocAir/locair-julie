@@ -632,6 +632,29 @@ button.tb-icon-btn:focus-visible,.topbar a:focus-visible{outline-color:#fff}
 .stat-big .amount{color:var(--gold)}
 .tabbar{box-shadow:0 -4px 20px rgba(14,31,53,.06)}
 .tabbar button{font-size:11px}
+
+/* ── Chatbot mission ───────────────────────────────────────── */
+#chat-screen{display:flex;flex-direction:column;height:100%;background:var(--bg);overflow:hidden;}
+.chat-header{background:var(--navy);color:#fff;padding:16px 18px 14px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.chat-header-back{background:none;border:none;color:rgba(255,255,255,.65);font-size:22px;cursor:pointer;padding:0;line-height:1;}
+.chat-header-title{font-size:15px;font-weight:700;color:#fff;}
+.chat-header-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.chat-messages{flex:1;overflow-y:auto;padding:16px 16px 12px;display:flex;flex-direction:column;gap:10px;}
+.chat-bubble{max-width:86%;padding:11px 14px;border-radius:16px;font-size:14px;line-height:1.55;animation:cb-in .22s ease;}
+@keyframes cb-in{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.chat-bubble-bot{align-self:flex-start;background:#fff;color:var(--text);border:1px solid var(--rule);border-bottom-left-radius:4px;box-shadow:var(--sh-xs);}
+.chat-bubble-user{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:4px;}
+.chat-actions{padding:10px 14px 16px;flex-shrink:0;display:flex;flex-direction:column;gap:7px;background:#fff;border-top:1px solid var(--rule);}
+.chat-action-btn{width:100%;padding:14px 16px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .13s;text-align:left;display:flex;align-items:center;gap:9px;letter-spacing:.01em;}
+.chat-action-btn:active{opacity:.72;}
+.chat-action-primary{background:var(--blue);color:#fff;}
+.chat-action-secondary{background:var(--navy-bg2);color:var(--text);}
+.chat-action-danger{background:var(--red-bg);color:var(--red);}
+.chat-action-teal{background:var(--blue-lt);color:var(--blue-d);}
+.chat-typing{align-self:flex-start;padding:10px 14px;background:#fff;border:1px solid var(--rule);border-radius:16px;border-bottom-left-radius:4px;display:flex;gap:5px;align-items:center;min-height:38px;}
+.chat-dot{width:6px;height:6px;border-radius:50%;background:var(--grey2);animation:chat-dot-blink 1.1s infinite;}
+.chat-dot:nth-child(2){animation-delay:.18s;}.chat-dot:nth-child(3){animation-delay:.36s;}
+@keyframes chat-dot-blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
 </style>
 </head>
 <body>
@@ -790,6 +813,19 @@ button.tb-icon-btn:focus-visible,.topbar a:focus-visible{outline-color:#fff}
   <!-- Écran 4 : détail mission -->
   <div id="detail-screen" class="hidden"></div>
 
+  <!-- Écran chatbot mission (parcours guidé conversationnel) -->
+  <div id="chat-screen" class="hidden">
+    <div class="chat-header">
+      <button class="chat-header-back" onclick="closeChatScreen()" aria-label="Retour">←</button>
+      <div style="flex:1;overflow:hidden">
+        <div class="chat-header-title" id="chat-header-title">Mission</div>
+        <div class="chat-header-sub" id="chat-header-sub"></div>
+      </div>
+    </div>
+    <div class="chat-messages" id="chat-messages"></div>
+    <div class="chat-actions" id="chat-actions"></div>
+  </div>
+
   <!-- Écran 5 : carte du jour -->
   <div id="map-screen" class="hidden">
     <button class="detail-back" onclick="closeDayMap()">← Retour</button>
@@ -864,10 +900,11 @@ let STATE = {
   qrConfirmed: {},         // missionId -> [numéros de climatiseur confirmés par scan QR] — voir qrStepDone()
   sortieConfirmed: {},     // missionId -> [numéros affectés par scan "sortie" libre] — voir sortieScanDone()
   scanMode: null,          // 'sortie' | 'rentree' — posé juste avant d'afficher l'étape de scan en cours, voir handleScanResult()
+  chatMode: false,         // true quand le chatbot mission est actif (remplace l'écran détail pour les missions wizard)
 };
 
 function show(id){
-  ['login-screen','dashboard-screen','checklist-screen','tournee-start-screen','missions-screen','activite-screen','calendrier-screen','detail-screen','map-screen'].forEach(s=>{
+  ['login-screen','dashboard-screen','checklist-screen','tournee-start-screen','missions-screen','activite-screen','calendrier-screen','detail-screen','chat-screen','map-screen'].forEach(s=>{
     const el = document.getElementById(s);
     const wasHidden = el.classList.contains('hidden');
     el.classList.toggle('hidden', s!==id);
@@ -4020,10 +4057,12 @@ function renderDetail(){
   // sous peine de faire apparaître le parcours étape par étape à la place
   // du message "Problème signalé".
   const canPause = ['acceptee','en_route','arrivee','probleme'].includes(m.statut);
-  if(isWizard) maybeShowVidangeWarning(m);
-  const bodyHtml = isWizard
-    ? missionWizardHtml(m, infoRows, mapsUrl)
-    : `${renderStepper(m)}${infoRows}<div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div><div class="err" id="detail-err"></div>`;
+  if(isWizard){
+    STATE.chatMode = true;
+    MissionChat.open(m);
+    return;
+  }
+  const bodyHtml = `${renderStepper(m)}${infoRows}<div id="action-zone" style="margin-top:18px">${actionBtnsForMission(m)}</div><div class="err" id="detail-err"></div>`;
   document.getElementById('detail-screen').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center">
       <button class="detail-back" style="margin-bottom:14px" onclick="handleDetailBack()">← Retour</button>
@@ -4287,7 +4326,11 @@ async function doAction(action, extra){
     // après une action (ex: confirmer_vidange après navigation arrière depuis
     // une étape suivante) — sans ce reset, l'étape consultée restait affichée
     // même une fois terminée.
-    if(m){ STATE.wizardViewIdx = null; STATE.currentMission = m; renderDetail(); show('detail-screen'); }
+    if(m){
+      STATE.wizardViewIdx = null; STATE.currentMission = m;
+      if(STATE.chatMode){ MissionChat._onActionDone(action, m); }
+      else { renderDetail(); show('detail-screen'); }
+    } else if(STATE.chatMode){ MissionChat._onActionDone(action, null); }
     else { show('missions-screen'); renderMissions(); }
   }catch(e){
     // Accepter/refuser peut être déclenché directement depuis une carte de la
@@ -4299,6 +4342,8 @@ async function doAction(action, extra){
       showTToast(msg);
       await fetchMissions();
       renderMissions();
+    }else if(STATE.chatMode){
+      MissionChat._onError(friendlyErrorMessage(e));
     }else{
       renderDetail(); // reconstruit les boutons avec les bons états disabled/actifs — retaper le même bouton relance l'action
       const errEl2 = document.getElementById('detail-err');
@@ -4546,13 +4591,16 @@ async function uploadMedia(rawFile, kind, mission){
     mission[kind + '_ok'] = true;
     mission[kind + '_pending'] = false;
     if(STATE.currentMission === mission){
-      // Voir captureFinalFormState() : cette confirmation arrive typiquement
-      // pendant que le livreur remplit déjà l'écran final (checklist, état du
-      // matériel) — sans cette sauvegarde/restauration, renderDetail() ci-
-      // dessous effacerait tout ce qu'il vient de cocher/écrire.
-      const formState = captureFinalFormState();
-      renderDetail();
-      restoreFinalFormState(formState);
+      if(STATE.chatMode){ MissionChat._onPhotoDone(); }
+      else {
+        // Voir captureFinalFormState() : cette confirmation arrive typiquement
+        // pendant que le livreur remplit déjà l'écran final (checklist, état du
+        // matériel) — sans cette sauvegarde/restauration, renderDetail() ci-
+        // dessous effacerait tout ce qu'il vient de cocher/écrire.
+        const formState = captureFinalFormState();
+        renderDetail();
+        restoreFinalFormState(formState);
+      }
     }
   }catch(err){
     // Régression du jour (commit 56f82aa, "ne plus bloquer le bouton
@@ -5805,6 +5853,249 @@ function closeDayMap(){
     if(e.target.value.length===6 && !btn.disabled) doLogin();
   });
 })();
+
+// ── Chatbot mission ────────────────────────────────────────────────────────────
+// Parcours conversationnel guidé pour les missions actives (livraison,
+// récupération, changement). Flux 100 % scripté, aucune IA — simple machine
+// à états avec messages séquentiels + boutons d'action.
+const MissionChat = (() => {
+  let _m = null; // mission courante
+
+  function _el(id){ return document.getElementById(id); }
+
+  function _bot(html, delay){
+    delay = delay || 0;
+    setTimeout(() => {
+      _removeTyping();
+      const el = document.createElement('div');
+      el.className = 'chat-bubble chat-bubble-bot';
+      el.innerHTML = html;
+      _el('chat-messages').appendChild(el);
+      _scroll();
+    }, delay);
+  }
+
+  function _user(text){
+    const el = document.createElement('div');
+    el.className = 'chat-bubble chat-bubble-user';
+    el.textContent = text;
+    _el('chat-messages').appendChild(el);
+    _scroll();
+  }
+
+  function _typing(delay){
+    setTimeout(() => {
+      _removeTyping();
+      const el = document.createElement('div');
+      el.id = 'chat-typing';
+      el.className = 'chat-typing';
+      el.innerHTML = '<div class="chat-dot"></div><div class="chat-dot"></div><div class="chat-dot"></div>';
+      _el('chat-messages').appendChild(el);
+      _scroll();
+    }, delay || 0);
+  }
+
+  function _removeTyping(){
+    _el('chat-typing')?.remove();
+  }
+
+  function _actions(btns){
+    const zone = _el('chat-actions');
+    zone.innerHTML = '';
+    btns.forEach(b => {
+      const btn = document.createElement('button');
+      btn.className = `chat-action-btn ${b.cls}`;
+      btn.innerHTML = b.label;
+      btn.onclick = b.fn;
+      zone.appendChild(btn);
+    });
+  }
+
+  function _clearActions(){
+    _el('chat-actions').innerHTML = '';
+  }
+
+  function _scroll(){
+    const el = _el('chat-messages');
+    if(el) setTimeout(() => { el.scrollTop = el.scrollHeight; }, 60);
+  }
+
+  function _typeLabel(type){
+    const MAP = {livraison:'Livraison', recuperation:'Récupération', changement:'Changement'};
+    return MAP[type] || type;
+  }
+
+  // ── Étapes du flux ──────────────────────────────────────────────────────────
+
+  function _stepNewMission(){
+    const m = _m;
+    const c = m.client || {};
+    const earn = m.montant_preview ? `💶 ${Math.round(m.montant_preview / 100)} €` : '';
+    _bot(`Nouvelle mission pour vous ! 📋`);
+    _typing(700);
+    _bot(`<b>${escHtml(_typeLabel(m.type))}</b> chez <b>${escHtml(c.prenom || c.nom || 'le client')}</b><br>📍 ${escHtml(c.adresse || '')}${m.creneau ? `<br>🕐 ${escHtml(m.creneau)}` : ''}${earn ? `<br>${earn}` : ''}`, 1300);
+    setTimeout(() => {
+      _bot(`Pouvez-vous prendre cette mission ?`);
+      _actions([
+        { label: '✅ J\'accepte', cls: 'chat-action-primary', fn: _accept },
+        { label: '❌ Je ne peux pas', cls: 'chat-action-danger', fn: _refuse },
+      ]);
+    }, 2000);
+  }
+
+  function _stepRoute(){
+    const m = _m;
+    const c = m.client || {};
+    const addr = c.adresse || m.adresse_libre || '';
+    const mapsUrl = addr ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}` : null;
+    _bot(`Voici l'adresse 📍`);
+    _typing(700);
+    let details = `<b>${escHtml(addr)}</b>`;
+    if(c.etage) details += `<br>Étage : ${escHtml(String(c.etage))}`;
+    if(c.instructions_acces) details += `<br>🔑 ${escHtml(c.instructions_acces)}`;
+    _bot(details, 1200);
+    setTimeout(() => {
+      const btns = [];
+      if(mapsUrl) btns.push({ label: '🗺️ Ouvrir Google Maps', cls: 'chat-action-teal', fn: () => window.open(mapsUrl, '_blank') });
+      btns.push({ label: '🚗 Je suis en route', cls: 'chat-action-primary', fn: _commencer });
+      _actions(btns);
+    }, 1800);
+  }
+
+  function _stepEnRoute(){
+    _bot(`Parfait, vous êtes en route ! 🚗`);
+    setTimeout(() => {
+      _bot(`Prévenez le client de votre arrivée si besoin.`);
+      const m = _m;
+      const c = (m && m.client) || {};
+      const btns = [];
+      if(c.tel) btns.push({ label: '📱 Prévenir le client par SMS', cls: 'chat-action-teal', fn: () => ouvrirPrevenirModal('sms') });
+      btns.push({ label: '📍 Je suis arrivé', cls: 'chat-action-primary', fn: _arriver });
+      _actions(btns);
+    }, 800);
+  }
+
+  function _stepArrivee(){
+    const m = _m;
+    const isInstall = ['livraison', 'changement'].includes(m.type);
+    maybeShowVidangeWarning(m);
+    _bot(`Vous êtes sur place ! 🎉`);
+    if(isInstall){
+      setTimeout(() => {
+        _bot(`Avez-vous besoin de la vidéo d'installation ?`);
+        _actions([
+          { label: '🎬 Voir la vidéo d\'installation', cls: 'chat-action-teal', fn: () => openTutoLibrary() },
+          { label: '👍 Non, je continue', cls: 'chat-action-secondary', fn: () => { _clearActions(); _stepPhoto(); } },
+        ]);
+      }, 900);
+    } else {
+      setTimeout(() => _stepPhoto(), 900);
+    }
+  }
+
+  function _stepPhoto(){
+    _bot(`Prenez une photo comme preuve de la mission 📸`);
+    setTimeout(() => {
+      _actions([
+        { label: '📷 Prendre la photo', cls: 'chat-action-primary', fn: () => { _clearActions(); startUpload('proof', 'camera'); } },
+      ]);
+    }, 600);
+  }
+
+  function _stepConfirm(){
+    const m = _m;
+    const actionName = m.type === 'livraison' ? 'livraison_ok' : m.type === 'recuperation' ? 'retour_ok' : 'changement_ok';
+    _bot(`Photo enregistrée ✅`);
+    setTimeout(() => {
+      _bot(`Tout est bon ? Confirmez la fin de la mission.`);
+      _actions([
+        { label: '✅ Mission terminée !', cls: 'chat-action-primary', fn: () => _finish(actionName) },
+        { label: '⚠️ Signaler un problème', cls: 'chat-action-danger', fn: () => openProbleme() },
+      ]);
+    }, 700);
+  }
+
+  // ── Actions API ─────────────────────────────────────────────────────────────
+
+  async function _accept(){
+    _user('J\'accepte ✅');
+    _clearActions();
+    _typing(300);
+    await doAction('accepter');
+  }
+
+  async function _refuse(){
+    _user('Je ne peux pas ❌');
+    _clearActions();
+    _typing(300);
+    await doAction('indisponible');
+  }
+
+  async function _commencer(){
+    _user('Je suis en route 🚗');
+    _clearActions();
+    _typing(300);
+    await doAction('commencer');
+  }
+
+  async function _arriver(){
+    _user('Je suis arrivé 📍');
+    _clearActions();
+    _typing(300);
+    await doAction('arriver');
+  }
+
+  async function _finish(actionName){
+    _user('Mission terminée ! ✅');
+    _clearActions();
+    _typing(300);
+    await doAction(actionName);
+  }
+
+  // ── Interface publique ───────────────────────────────────────────────────────
+
+  function open(m){
+    _m = m;
+    const c = m.client || {};
+    _el('chat-header-title').textContent = _typeLabel(m.type);
+    _el('chat-header-sub').textContent = [(c.prenom || c.nom || ''), escHtml(c.adresse || m.adresse_libre || '')].filter(Boolean).join(' · ');
+    _el('chat-messages').innerHTML = '';
+    _el('chat-actions').innerHTML = '';
+    show('chat-screen');
+    const statut = m.statut;
+    if(statut === 'a_faire') setTimeout(_stepNewMission, 300);
+    else if(statut === 'acceptee') setTimeout(_stepRoute, 300);
+    else if(statut === 'en_route') setTimeout(_stepEnRoute, 300);
+    else setTimeout(_stepArrivee, 300);
+  }
+
+  function _onActionDone(action, m){
+    _removeTyping();
+    if(!m){ STATE.chatMode = false; show('missions-screen'); renderMissions(); return; }
+    if(action === 'accepter') _stepRoute();
+    else if(action === 'commencer') _stepEnRoute();
+    else if(action === 'arriver') _stepArrivee();
+    else if(action === 'indisponible'){ STATE.chatMode = false; show('missions-screen'); renderMissions(); }
+    else { STATE.chatMode = false; renderDetail(); show('detail-screen'); }
+  }
+
+  function _onPhotoDone(){
+    _stepConfirm();
+  }
+
+  function _onError(msg){
+    _removeTyping();
+    _bot(`⚠️ ${escHtml(msg)} — Réessayez.`);
+  }
+
+  return { open, _onActionDone, _onPhotoDone, _onError };
+})();
+
+function closeChatScreen(){
+  STATE.chatMode = false;
+  show('missions-screen');
+  renderMissions();
+}
 </script>
 <div style="background:var(--blue);text-align:center;padding:18px 16px;margin-top:auto;flex-shrink:0"><p style="font-size:11px;color:rgba(255,255,255,.4)">© 2026 Loc'Air</p></div>
 </body>
