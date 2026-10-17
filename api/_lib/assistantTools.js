@@ -181,6 +181,90 @@ const TOOL_SPECS = {
     },
   },
 
+  chercher_devis: {
+    mutating: false,
+    description: 'Liste les devis entreprises existants (les plus récents), avec recherche par société/nom/email — pour retrouver un devis déjà créé avant de l\'envoyer, par exemple.',
+    input_schema: { type: 'object', properties: {
+      recherche: { type: 'string', description: 'Texte à chercher (raison sociale, nom, email).' },
+    } },
+    async run(admin, token, input) {
+      const r = await invokeAction(require('../admin-devis'), token, 'list', {});
+      if (r.status !== 200) return r.data;
+      let items = r.data.devis || [];
+      if (input.recherche) {
+        const q = input.recherche.toLowerCase();
+        items = items.filter(d => [d.raison_sociale, d.nom, d.prenom, d.email].some(v => String(v || '').toLowerCase().includes(q)));
+      }
+      return { devis: items.slice(0, 15).map(d => ({
+        id: d.id, raison_sociale: d.raison_sociale, client: `${d.prenom || ''} ${d.nom || ''}`.trim(), email: d.email,
+        statut: d.statut, prix_euros: (d.prix_propose_cents || 0) / 100, quantite: d.quantite,
+        date_debut: d.date_debut, date_fin: d.date_fin, created_at: d.created_at,
+      })) };
+    },
+  },
+
+  // Calcule un prix RÉEL (même barème/formule que checkout.js — tarif
+  // dégressif chargé depuis pricing_config, pas une valeur en dur dans ce
+  // fichier qui pourrait diverger de la grille réellement appliquée aux
+  // clients) — à utiliser SYSTÉMATIQUEMENT avant de proposer un devis ou de
+  // créer une réservation, plutôt que de calculer ou deviner un montant.
+  // Climatiseur mobile uniquement (grille particuliers) : ne couvre pas le
+  // PortaSplit (abonnement, modèle de prix différent), les forfaits à prix
+  // fixe, ni les codes promo — pour ces cas, demander le prix à
+  // l'administrateur plutôt que d'improviser.
+  calculer_prix: {
+    mutating: false,
+    description: "Calcule le prix réel d'une location de climatiseur mobile (tarif dégressif selon la durée, + livraison + installation + express) — à utiliser avant tout devis ou toute réservation, ne jamais inventer un prix. Ne couvre pas le PortaSplit ni les forfaits/codes promo.",
+    input_schema: { type: 'object', properties: {
+      date_debut: { type: 'string', description: 'YYYY-MM-DD — avec date_fin, alternative à duree_jours.' },
+      date_fin: { type: 'string', description: 'YYYY-MM-DD' },
+      duree_jours: { type: 'integer', description: 'Nombre de jours de location, alternative à date_debut/date_fin.' },
+      quantite: { type: 'integer', description: 'Nombre de climatiseurs (1 à 5), défaut 1.' },
+      installation: { type: 'string', enum: ['autonome', 'technicien'], description: "'technicien' ajoute 80€ ; 'autonome' (défaut) est gratuit." },
+      express: { type: 'boolean', description: 'Livraison express sous 2h le jour même (+60€).' },
+      hors_zone: { type: 'boolean', description: "true si l'adresse du client est hors de la zone de livraison standard (120€ de livraison au lieu de 60€)." },
+    } },
+    async run(admin, token, input) {
+      const { getPricingConfig, calcTieredPrice } = require('./pricing');
+      const supabase = getSupabase();
+      const pricing = await getPricingConfig(supabase);
+
+      let duree = parseInt(input.duree_jours);
+      if (!Number.isFinite(duree) || duree <= 0) {
+        if (input.date_debut && input.date_fin) {
+          const d1 = new Date(input.date_debut + 'T12:00:00Z');
+          const d2 = new Date(input.date_fin + 'T12:00:00Z');
+          duree = Math.round((d2 - d1) / 86400000);
+        }
+      }
+      if (!Number.isFinite(duree) || duree <= 0) {
+        return { error: 'Indique soit duree_jours, soit date_debut ET date_fin.' };
+      }
+      const dureeAjustee = Math.max(pricing.duree_min_jours, Math.min(90, duree));
+      const quantite = Math.min(5, Math.max(1, parseInt(input.quantite) || 1));
+
+      const baseCents = Math.round(calcTieredPrice(dureeAjustee, pricing) * quantite * 100);
+      const installCents = String(input.installation || '').toLowerCase() === 'technicien' ? 80 * 100 : 0;
+      const deliveryFeeCents = input.hors_zone ? 120 * 100 : 60 * 100;
+      const expressCents = input.express ? 60 * 100 : 0;
+      const totalCents = baseCents + installCents + deliveryFeeCents + expressCents;
+
+      return {
+        duree_jours: dureeAjustee,
+        duree_ajustee: dureeAjustee !== duree ? `Durée demandée (${duree}j) ajustée au minimum de ${pricing.duree_min_jours} jours.` : undefined,
+        quantite,
+        detail: {
+          location_euros: baseCents / 100,
+          installation_euros: installCents / 100,
+          livraison_euros: deliveryFeeCents / 100,
+          express_euros: expressCents / 100,
+        },
+        total_euros: totalCents / 100,
+        total_cents: totalCents,
+      };
+    },
+  },
+
   // ── ÉCRITURE (jamais exécutées ici — confirmation obligatoire côté front) ─
   changer_statut_reservation: {
     mutating: true,
@@ -262,6 +346,65 @@ const TOOL_SPECS = {
       montant_cents: { type: 'integer' },
     }, required: ['transporteur_id', 'mois', 'montant_cents'] },
     label(input) { return `Créer une prime de ${(input.montant_cents / 100).toFixed(2)} € pour le transporteur #${input.transporteur_id} (${input.mois})`; },
+  },
+
+  creer_devis: {
+    mutating: true,
+    endpoint: 'admin-devis', action: 'create',
+    description: "Crée un devis entreprise (reste en brouillon, n'est PAS envoyé au client — utilise envoyer_devis ensuite). Utilise calculer_prix d'abord pour obtenir prix_propose_cents, sauf si l'administrateur donne lui-même un montant précis.",
+    input_schema: { type: 'object', properties: {
+      raison_sociale: { type: 'string', description: "Nom de l'entreprise cliente." },
+      email: { type: 'string', description: 'Email du contact, pour l\'envoi du devis.' },
+      prenom: { type: 'string' }, nom: { type: 'string' },
+      siret: { type: 'string' }, tel: { type: 'string' },
+      adresse: { type: 'string', description: 'Adresse de livraison.' },
+      date_debut: { type: 'string', description: 'YYYY-MM-DD' }, date_fin: { type: 'string', description: 'YYYY-MM-DD' },
+      quantite: { type: 'integer', description: "Nombre de climatiseurs." },
+      installation: { type: 'string' },
+      prix_propose_cents: { type: 'integer', description: 'Montant total proposé, en centimes — voir calculer_prix.' },
+      notes: { type: 'string' },
+    }, required: ['raison_sociale', 'email', 'prix_propose_cents'] },
+    label(input) { return `Créer un devis pour "${input.raison_sociale}" — ${((input.prix_propose_cents || 0) / 100).toFixed(2)} €`; },
+  },
+
+  envoyer_devis: {
+    mutating: true,
+    endpoint: 'admin-devis', action: 'send',
+    description: "Envoie par email au client un devis déjà créé (voir creer_devis ou chercher_devis pour obtenir son id).",
+    input_schema: { type: 'object', properties: {
+      id: { type: 'integer', description: 'id du devis à envoyer.' },
+    }, required: ['id'] },
+    label(input) { return `Envoyer le devis #${input.id} au client par email`; },
+  },
+
+  // Même action que le formulaire "Nouvelle réservation" de l'onglet
+  // Réservations (admin-reservations.js, action 'create') — une réservation
+  // prise au téléphone/par chat, pas une commande web. cgv_accepted n'est
+  // JAMAIS supposé true par défaut : Claude doit le demander explicitement à
+  // l'administrateur (voir system prompt), jamais le déduire silencieusement.
+  creer_reservation: {
+    mutating: true,
+    endpoint: 'admin-reservations', action: 'create',
+    description: "Crée une réservation prise par téléphone/chat (pas un paiement en ligne). Utilise calculer_prix d'abord pour obtenir prix_total_cents. Par défaut (confirmer non fourni ou true) la réservation est confirmée tout de suite et le contrat + la facture partent immédiatement au client — mets confirmer:false si le client doit encore payer lui-même (un lien de paiement lui est alors envoyé par SMS/email). Ne jamais appeler cet outil sans avoir confirmé avec l'administrateur que le client a bien accepté les CGV.",
+    input_schema: { type: 'object', properties: {
+      prenom: { type: 'string' }, nom: { type: 'string' },
+      tel: { type: 'string', description: 'Obligatoire (format français ou international).' },
+      email: { type: 'string' },
+      adresse: { type: 'string', description: 'Adresse de livraison, obligatoire.' },
+      type_client: { type: 'string', enum: ['particulier', 'entreprise'] },
+      raison_sociale: { type: 'string' },
+      date_debut: { type: 'string', description: 'YYYY-MM-DD' }, date_fin: { type: 'string', description: 'YYYY-MM-DD' },
+      quantite: { type: 'integer' },
+      installation: { type: 'string' },
+      prix_total_cents: { type: 'integer', description: 'Montant total, en centimes — voir calculer_prix.' },
+      cgv_accepted: { type: 'boolean', description: 'Le client a-t-il accepté les CGV ? À demander explicitement à l\'administrateur, jamais supposé.' },
+      confirmer: { type: 'boolean', description: "true/absent = confirmée tout de suite (contrat+facture envoyés). false = en attente, lien de paiement envoyé au client." },
+    }, required: ['tel', 'adresse', 'date_debut', 'date_fin', 'prix_total_cents', 'cgv_accepted'] },
+    label(input) {
+      const mode = input.confirmer === false ? 'en attente de paiement — un lien sera envoyé au client' : 'confirmée immédiatement — contrat et facture envoyés au client';
+      const client = `${input.prenom || ''} ${input.nom || ''}`.trim() || input.tel;
+      return `Créer la réservation de ${client} — ${((input.prix_total_cents || 0) / 100).toFixed(2)} € — ${mode}`;
+    },
   },
 };
 
