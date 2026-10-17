@@ -319,6 +319,55 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
 .assist-confirm-label{font-weight:700;font-size:13.5px;margin-bottom:12px;color:var(--gold-d);line-height:1.5}
 .assist-confirm-actions{display:flex;gap:10px;justify-content:flex-end}
 
+/* Panneau Assistant permanent (demande d'Aly, 2026-10-17 : "rendre
+   opérationnel un nouveau collaborateur en quelques minutes/heures de
+   façon autonome") — remplace l'ancien onglet "🤖 Assistant IA" : au lieu
+   d'être une destination qu'on doit penser à ouvrir, il reste visible en
+   permanence à côté de tout le reste de l'admin, comme un collègue qu'on
+   peut interpeller sans quitter l'écran en cours. Mobile : tiroir plein
+   écran ouvert via le bouton flottant .assist-fab (même mécanique que
+   .tabs.mobile-open pour la nav, voir plus bas).
+   Couleurs : mêmes tokens que le reste de la marque (--navy/--blue), pas
+   de nouvelle couleur inventée pour ce panneau. */
+.assist-panel{display:flex;flex-direction:column;background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);box-shadow:var(--sh-sm);overflow:hidden;height:calc(100vh - 64px);max-height:860px}
+.assist-panel-head{background:var(--navy);color:#fff;padding:16px 18px;flex-shrink:0;display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.assist-panel-title{display:flex;align-items:center;gap:8px;font-family:var(--disp);font-weight:700;font-size:15px}
+.assist-panel-status{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:12px;color:#fff;opacity:.75}
+.assist-panel-status .dot{width:7px;height:7px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px rgba(8,110,96,.35);flex-shrink:0}
+/* Visible seulement sur mobile : desktop n'a rien à "fermer" (le panneau
+   reste toujours ouvert, voir .assist-panel en desktop plus bas).
+   Seuil à 1180px, PAS les 860px du reste de l'admin : le panneau prend
+   340px en plus de la nav existante, un écran "tablette/petit portable"
+   qui passait déjà en mode desktop à 860px (barre latérale fixe, grille de
+   stats sur 4 colonnes) n'a pas la place pour un 3e bloc à côté sans que
+   tout se tasse — en dessous de 1180px il reste donc en tiroir plein écran,
+   comme sur mobile. */
+.assist-panel-close{display:none}
+@media (max-width:1179px){
+  .assist-panel-close{display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;flex-shrink:0}
+}
+.assist-quick{display:flex;flex-direction:column;gap:8px;padding:14px 18px}
+.assist-quick-btn{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:var(--bg);border:1px solid var(--rule);border-radius:var(--r);padding:10px 12px;font-size:13px;font-weight:600;color:var(--black);cursor:pointer;transition:background-color .15s var(--ease),border-color .15s var(--ease)}
+.assist-quick-btn:hover{background:var(--blue-lt);border-color:var(--blue)}
+.assist-fab{display:none}
+@media (max-width:1179px){
+  .assist-panel{position:fixed;inset:0;z-index:210;border-radius:0;height:100vh;max-height:none;transform:translateY(105%);transition:transform .25s var(--ease)}
+  .assist-panel.mobile-open{transform:translateY(0)}
+  .assist-fab{
+    display:flex;align-items:center;justify-content:center;position:fixed;right:16px;bottom:84px;z-index:150;
+    width:52px;height:52px;border-radius:50%;background:var(--navy);color:#fff;border:none;box-shadow:var(--sh-md);cursor:pointer;
+  }
+}
+@media (min-width:1180px){
+  .assist-panel{width:340px;flex-shrink:0;position:sticky;top:32px}
+}
+/* Entre 860 et 1179px : .bottom-nav (mobile) n'existe plus (coupure à
+   859px), donc rien à éviter en bas d'écran pour le FAB — contrairement à
+   en dessous de 860px où bottom:84px le place juste au-dessus. */
+@media (min-width:860px) and (max-width:1179px){
+  .assist-fab{bottom:24px}
+}
+
 .morning-banner{background:var(--blue);color:#fff;border-radius:var(--r-lg);padding:18px 44px 18px 20px;margin-bottom:16px;box-shadow:var(--sh-blue);position:relative}
 .morning-banner .mb-title{font-family:var(--disp);font-size:17px;font-weight:600;margin-bottom:6px}
 .morning-banner .mb-text{font-size:13px;line-height:1.6;opacity:.92}
@@ -806,7 +855,7 @@ tr.bulk-selected td{background:var(--blue-lt)}
 
 /* ── Version ordinateur : barre latérale fixe + contenu plus large ── */
 @media (min-width:860px){
-  .wrap{max-width:1120px;padding:32px 32px 80px}
+  .wrap{max-width:1480px;padding:32px 32px 80px}
   .a-layout{display:flex;align-items:flex-start;gap:28px}
   .tabs{flex-direction:column;overflow-x:visible;width:200px;flex-shrink:0;position:sticky;top:32px;gap:8px;mask-image:none;-webkit-mask-image:none}
   .tabs button{width:100%;text-align:left;padding:12px 16px;border-radius:12px}
@@ -905,12 +954,20 @@ tr.bulk-selected td{background:var(--blue-lt)}
       <input type="text" id="a-search-input" placeholder="Rechercher un client, une commande, un climatiseur…" autocomplete="off" style="padding-left:40px" oninput="adminSearchInput(this.value)" onfocus="adminSearchFocus()"/>
       <div class="a-search-results hidden" id="a-search-results"></div>
     </div>
+    <!-- Panneau Assistant permanent (demande d'Aly, 2026-10-17) — voir
+         renderAssistant() : remplace l'ancien onglet "🤖 Assistant IA",
+         reste visible quel que soit l'onglet ouvert, pour qu'un nouveau
+         collaborateur puisse se faire guider sans jamais le perdre de vue. -->
+    <button class="assist-fab" id="assist-fab" onclick="toggleAssistPanel()" aria-label="Ouvrir l'assistant" title="Assistant">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="9" width="18" height="12" rx="2"/><circle cx="8.5" cy="15" r="1.5" fill="currentColor" stroke="none"/><circle cx="15.5" cy="15" r="1.5" fill="currentColor" stroke="none"/><path d="M12 9V5"/><circle cx="12" cy="3.5" r="1.5"/></svg>
+    </button>
+
     <div class="a-layout">
+      <div id="assist-panel" class="assist-panel"></div>
       <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()">☰ Menu<span class="mobile-menu-dot hidden" id="mobile-menu-dot"></span></button>
       <div class="mobile-menu-backdrop" id="mobile-menu-backdrop" onclick="toggleMobileMenu(false)"></div>
       <div class="tabs">
         <button class="on" data-tab="accueil" onclick="switchAdminTab('accueil')">📊 Accueil</button>
-        <button data-tab="assistant" onclick="switchAdminTab('assistant')">🤖 Assistant IA</button>
         <!-- Groupé par intention (fréquence réelle d'usage), pas par table de
              base de données : Piloter = ce qu'on regarde tous les jours,
              Gérer = ce qu'on touche occasionnellement, Suivre = consultation,
@@ -958,7 +1015,6 @@ tr.bulk-selected td{background:var(--blue-lt)}
 
       <div class="a-content">
         <div id="tab-accueil"></div>
-        <div id="tab-assistant" class="hidden"></div>
         <div id="tab-stock" class="hidden"></div>
         <div id="tab-reservations" class="hidden"></div>
         <div id="tab-communications" class="hidden"></div>
@@ -1403,6 +1459,12 @@ function onAdminLoginSuccess(token, role, nom){
   _TAB_LOADED.clear();
   _tabCacheClearAll();
   switchAdminTab('accueil');
+  // Panneau Assistant permanent (plus un onglet) : rendu une fois ici, pas
+  // via _TAB_LOADERS — ASSISTANT_MESSAGES n'est jamais vidé entre deux
+  // rendus (conversation en cours préservée tant que la page n'est pas
+  // rechargée), seul un nouveau login la remet à zéro (nouveau compte).
+  ASSISTANT_MESSAGES = []; ASSISTANT_PENDING = null; ASSISTANT_BUSY = false;
+  renderAssistant();
   loadAlerts();
   loadCitySwitcher();
   setupAdminPush();
@@ -2101,10 +2163,6 @@ function _tabCacheClearAll(){
 // rafraîchissement de page (retour signalé par Aly, 2026-08-09).
 const _TAB_LOADERS = {
   accueil:        silent => loadDashboard(CURRENT_DASHBOARD_PERIODE, silent),
-  // Pas de "silent" ici : une conversation en cours ne doit jamais être
-  // effacée par un rafraîchissement automatique — loadAssistant() ne rend
-  // l'écran qu'une seule fois par session (voir sa garde interne).
-  assistant:      () => loadAssistant(),
   stock:          silent => loadStock(silent),
   reservations:   silent => loadReservations(silent),
   communications: () => loadCommunications(),
@@ -2137,7 +2195,7 @@ function switchAdminTab(tab){
   document.querySelectorAll('.bottom-nav .bn-item').forEach(b => {
     b.classList.toggle('on', b.dataset.tab ? b.dataset.tab===tab : !bnDirect.includes(tab));
   });
-  ['accueil','assistant','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','vente','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
+  ['accueil','stock','reservations','communications','devis','checklist','livraisons','virements','transporteurs','partenaires','incidents','clients','villes','tarifs','vente','promotions','equipe','tutoriels','emails','espaceclient','checklistitems'].forEach(t=>{
     document.getElementById('tab-'+t).classList.toggle('hidden', t!==tab);
   });
   const zone = document.getElementById('tab-'+tab);
@@ -9457,11 +9515,27 @@ let ASSISTANT_MESSAGES = [];
 let ASSISTANT_PENDING  = null;  // { tool_use_id, tool_name, label, endpoint, http_action, input } ou null
 let ASSISTANT_BUSY     = false;
 
-function loadAssistant(){
-  const zone = document.getElementById('tab-assistant');
-  if(zone.dataset.rendered) return; // ne jamais réinitialiser une conversation en cours
-  zone.dataset.rendered = '1';
-  renderAssistant();
+// Suggestions affichées tant qu'aucun message n'a encore été envoyé — un
+// nouveau collaborateur qui découvre l'écran n'a pas à deviner quoi taper
+// ni à connaître le vocabulaire interne : il clique, et l'assistant
+// explique ce qu'il fait en le faisant (voir system prompt,
+// api/admin-assistant.js). Le texte entre guillemets est envoyé tel quel,
+// comme si l'administrateur l'avait tapé.
+const ASSISTANT_SUGGESTIONS = [
+  { ic: IC_LIVE,  label: 'Missions du jour',     text: "Quelles sont les missions prévues aujourd'hui ?" },
+  { ic: IC_EURO,  label: 'Faire un devis',       text: 'Je veux faire un devis pour un client.' },
+  { ic: IC_BOX,   label: 'Créer une réservation', text: 'Je veux créer une réservation prise par téléphone.' },
+  { ic: IC_CHART, label: 'Chiffres du jour',      text: "Quels sont les chiffres d'aujourd'hui ?" },
+];
+
+// Ouvre/ferme le panneau sur mobile (tiroir plein écran, voir CSS
+// .assist-panel/.assist-fab) — sans effet sur desktop où le panneau reste
+// toujours visible. Même mécanique que toggleMobileMenu() pour la nav.
+function toggleAssistPanel(force){
+  const panel = document.getElementById('assist-panel');
+  if(!panel) return;
+  const open = force != null ? force : !panel.classList.contains('mobile-open');
+  panel.classList.toggle('mobile-open', open);
 }
 
 // N'affiche que les blocs de TEXTE d'un message — jamais les blocs
@@ -9474,7 +9548,8 @@ function assistantTextOf(content){
 }
 
 function renderAssistant(){
-  const zone = document.getElementById('tab-assistant');
+  const zone = document.getElementById('assist-panel');
+  if(!zone) return;
   const locked = ASSISTANT_BUSY || !!ASSISTANT_PENDING;
   const bubbles = ASSISTANT_MESSAGES.map(m => {
     const text = assistantTextOf(m.content);
@@ -9490,24 +9565,38 @@ function renderAssistant(){
       </div>
     </div>` : '';
   const typingHtml = (ASSISTANT_BUSY && !ASSISTANT_PENDING) ? `<div class="assist-msg bot assist-typing">…</div>` : '';
+  // Les suggestions ne s'affichent qu'au tout début (écran vide) — une fois
+  // la conversation lancée, elles encombreraient plus qu'elles n'aideraient.
+  const quickHtml = !ASSISTANT_MESSAGES.length ? `
+    <div class="assist-quick">
+      <p class="sub" style="margin:0 0 2px">Pour commencer, par exemple :</p>
+      ${ASSISTANT_SUGGESTIONS.map(s => `<button class="assist-quick-btn" ${locked?'disabled':''} onclick="sendAssistantSuggestion(${escHtml(JSON.stringify(s.text))})">${s.ic} ${escHtml(s.label)}</button>`).join('')}
+    </div>` : '';
   zone.innerHTML = `
-    <div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column;height:calc(100vh - 160px);max-height:800px">
-      <div style="padding:16px 18px;border-bottom:1px solid var(--rule)">
-        <h2 style="margin:0">${IC_ROBOT} Assistant IA</h2>
-        <p class="sub" style="margin:4px 0 0">Pose une question ou demande une action — pour tout ce qui modifie quelque chose, il te fait valider avant de l'exécuter.</p>
+    <div class="assist-panel-head">
+      <div>
+        <div class="assist-panel-title">${IC_ROBOT} Assistant</div>
+        <div class="assist-panel-status"><span class="dot"></span>Opérateur — prêt</div>
       </div>
-      <div class="assist-messages" id="assist-messages">
-        ${bubbles || `<p class="empty">Exemples : « Combien de réservations aujourd'hui ? » · « Cherche le client Dupont » · « Passe le climatiseur n°12 en maintenance »</p>`}
-        ${pendingHtml}
-        ${typingHtml}
-      </div>
-      <div style="padding:12px 14px;border-top:1px solid var(--rule);display:flex;gap:8px">
-        <input type="text" id="assist-input" placeholder="Écris ta demande..." style="flex:1;margin:0" ${locked?'disabled':''} onkeydown="if(event.key==='Enter'){event.preventDefault();sendAssistantMessage();}"/>
-        <button class="btn btn-blue" style="width:auto;padding:0 18px" ${locked?'disabled':''} onclick="sendAssistantMessage()">Envoyer</button>
-      </div>
+      <button class="assist-panel-close" onclick="toggleAssistPanel(false)" aria-label="Fermer l'assistant">✕</button>
+    </div>
+    <div class="assist-messages" id="assist-messages">
+      ${bubbles || `<p class="empty">Pose une question ou demande une action — pour tout ce qui modifie quelque chose (devis, réservation, statut...), il te fait valider avant de l'exécuter réellement.</p>`}
+      ${quickHtml}
+      ${pendingHtml}
+      ${typingHtml}
+    </div>
+    <div style="padding:12px 14px;border-top:1px solid var(--rule);display:flex;gap:8px;flex-shrink:0">
+      <input type="text" id="assist-input" placeholder="Écris ta demande..." style="flex:1;margin:0" ${locked?'disabled':''} onkeydown="if(event.key==='Enter'){event.preventDefault();sendAssistantMessage();}"/>
+      <button class="btn btn-blue" style="width:auto;padding:0 18px" ${locked?'disabled':''} onclick="sendAssistantMessage()">Envoyer</button>
     </div>`;
   const msgsEl = document.getElementById('assist-messages');
   if(msgsEl) msgsEl.scrollTop = msgsEl.scrollHeight;
+}
+function sendAssistantSuggestion(text){
+  const input = document.getElementById('assist-input');
+  if(input) input.value = text;
+  sendAssistantMessage();
 }
 
 async function sendAssistantMessage(){
