@@ -1,16 +1,52 @@
 // Widget chat Julie — Loc'Air
 // Insérer via : <script src="/chat-widget.js" defer></script>
+// Bot Joe (vendeur) : <script src="/chat-widget.js" data-bot="joe" defer></script>
 // S'injecte automatiquement dans la page sans rien casser.
 (function () {
   'use strict';
 
+  // ── Choix du bot (attribut data-bot du <script>) ───────────────────────
+  var BOTS = {
+    julie: {
+      name:       'Julie',
+      sub:        'Assistante Loc\'Air · répond en quelques secondes',
+      avatar:     '💬',
+      greeting:   'Bonjour ! Je suis Julie, l\'assistante de Loc\'Air. Comment puis-je vous aider ? 😊',
+      endpoint:   '/api/chat',
+      sessionKey: 'julie_session',
+      suggestions: [
+        { emoji: '📅', label: 'Réserver un climatiseur' },
+        { emoji: '⏰', label: 'Prolonger ma location' },
+        { emoji: '💰', label: 'Tarifs et disponibilités' },
+        { emoji: '🔧', label: 'Problème / panne' },
+        { emoji: '🏠', label: 'Zone de livraison' },
+      ],
+    },
+    joe: {
+      name:       'Joe',
+      sub:        'Conseiller Loc\'Air · trouve le bon clim pour vous',
+      avatar:     '🤝',
+      greeting:   'Bonjour, moi c\'est Joe ! Je vais vous aider à trouver le climatiseur parfait. À qui ai-je le plaisir de parler ? 😊',
+      endpoint:   '/api/chat-joe',
+      sessionKey: 'joe_session',
+      suggestions: [
+        { emoji: '🌡️', label: 'J\'ai trop chaud, que me conseillez-vous ?' },
+        { emoji: '💰', label: 'Combien ça coûte ?' },
+        { emoji: '🆚', label: 'Mobile ou PortaSplit ?' },
+        { emoji: '📅', label: 'Je veux réserver' },
+      ],
+    },
+  };
+  var script = document.currentScript;
+  var BOT = BOTS[(script && script.getAttribute('data-bot')) || 'julie'] || BOTS.julie;
+
   // ── Session (localStorage) ─────────────────────────────────────────────
   function getSession() {
     try {
-      var s = localStorage.getItem('julie_session');
+      var s = localStorage.getItem(BOT.sessionKey);
       if (s && /^[a-zA-Z0-9_-]{8,64}$/.test(s)) return s;
       s = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-      localStorage.setItem('julie_session', s);
+      localStorage.setItem(BOT.sessionKey, s);
       return s;
     } catch (_) {
       return 'anon_' + Math.random().toString(36).slice(2);
@@ -18,13 +54,7 @@
   }
 
   // ── HTML du widget ─────────────────────────────────────────────────────
-  var SUGGESTIONS = [
-    { emoji: '📅', label: 'Réserver un climatiseur' },
-    { emoji: '⏰', label: 'Prolonger ma location' },
-    { emoji: '💰', label: 'Tarifs et disponibilités' },
-    { emoji: '🔧', label: 'Problème / panne' },
-    { emoji: '🏠', label: 'Zone de livraison' },
-  ];
+  var SUGGESTIONS = BOT.suggestions;
 
   var CSS = `
 #jw-btn{position:fixed;bottom:24px;right:90px;width:52px;height:52px;border-radius:50%;
@@ -96,20 +126,20 @@
 
     var btn = document.createElement('button');
     btn.id = 'jw-btn';
-    btn.setAttribute('aria-label', 'Chat avec Julie');
+    btn.setAttribute('aria-label', 'Chat avec ' + BOT.name);
     btn.innerHTML = ICON_CHAT + '<span id="jw-badge"></span>';
     document.body.appendChild(btn);
 
     var panel = document.createElement('div');
     panel.id = 'jw-panel';
     panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-label', 'Chat avec Julie');
+    panel.setAttribute('aria-label', 'Chat avec ' + BOT.name);
     panel.innerHTML = `
       <div id="jw-head">
-        <div id="jw-head-avatar">💬</div>
+        <div id="jw-head-avatar">${BOT.avatar}</div>
         <div id="jw-head-text">
-          <div id="jw-head-name">Julie</div>
-          <div id="jw-head-sub">Assistante Loc'Air · répond en quelques secondes</div>
+          <div id="jw-head-name">${BOT.name}</div>
+          <div id="jw-head-sub">${BOT.sub}</div>
         </div>
         <button id="jw-close" aria-label="Fermer">×</button>
       </div>
@@ -139,7 +169,7 @@
     document.getElementById('jw-panel').classList.add('jw-open');
     hideBadge();
     if (!document.getElementById('jw-msgs').children.length) {
-      addBubble('julie', 'Bonjour ! Je suis Julie, l\'assistante de Loc\'Air. Comment puis-je vous aider ? 😊');
+      addBubble('julie', BOT.greeting);
       showSuggestions();
     }
     setTimeout(function() { document.getElementById('jw-input').focus(); }, 250);
@@ -226,7 +256,7 @@
     sending = true;
 
     try {
-      var r = await fetch('/api/chat', {
+      var r = await fetch(BOT.endpoint, {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({ session_id: session, message: text }),
