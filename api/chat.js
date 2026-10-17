@@ -1,14 +1,12 @@
 // Agent chat web — Julie (widget sur locair.fr)
 // Même agent que WhatsApp, adapté pour le chat web en temps réel.
 //
-// POST /api/chat  →  { session_id: string, message: string }
-//                 ←  { reply: string }
+// POST /api/chat — moteur commun dans _lib/webChat.js
 //
 // session_id : UUID généré côté client (localStorage), max 64 chars
 // Mémoire stockée dans whatsapp_conversations avec préfixe "web:"
 
-const { getSupabase } = require('./_lib/supabase');
-const { callClaude }  = require('./_lib/anthropic');
+const { makeChatHandler } = require('./_lib/webChat');
 const { IDENTITY, PRODUITS, GARANTIES, ZONE, DEPANNAGE, TECHNIQUE_VENTE, ESCALADE_10 } = require('./_lib/julieKnowledge');
 
 const SYSTEM_PROMPT = `Tu es Julie, l'assistante virtuelle de Loc'Air.
@@ -48,68 +46,4 @@ Dans chacun de ces cas : réponds avec empathie, rassure le visiteur ("je transm
 
 ${ESCALADE_10}`;
 
-const MAX_MESSAGES = 20;
-const MAX_MSG_LENGTH = 1000;
-
-module.exports = async (req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  const { session_id, message } = req.body || {};
-
-  if (!session_id || typeof session_id !== 'string' || session_id.length > 64 || !/^[a-zA-Z0-9_-]+$/.test(session_id))
-    return res.status(400).json({ error: 'session_id invalide' });
-  if (!message || typeof message !== 'string')
-    return res.status(400).json({ error: 'message requis' });
-
-  const text = message.trim().slice(0, MAX_MSG_LENGTH);
-  if (!text) return res.status(400).json({ error: 'message vide' });
-
-  try {
-    const supabase = getSupabase();
-    const key      = 'web:' + session_id;
-
-    const { data } = await supabase
-      .from('whatsapp_conversations')
-      .select('messages')
-      .eq('phone', key)
-      .maybeSingle();
-
-    const history  = data?.messages || [];
-
-    // Limiter les abus : 100 messages max par session
-    if (history.length >= 100) {
-      return res.json({ reply: 'Cette session a atteint sa limite. Écrivez-nous directement sur WhatsApp ou appelez le 06 63 79 87 56. 🙏' });
-    }
-
-    const messages = [...history, { role: 'user', content: text }];
-    const result = await callClaude({ system: SYSTEM_PROMPT, messages, maxTokens: 400, model: 'claude-haiku-4-5' });
-
-    if (!result.ok) {
-      console.error('[chat] callClaude failed:', result.error);
-      return res.json({ reply: 'Je rencontre un souci technique. Contactez Aly au 06 63 79 87 56. 🙏' });
-    }
-
-    const raw    = result.data?.content?.[0]?.text || '';
-    const marker = '[ESCALADE]';
-    const idx    = raw.indexOf(marker);
-    const reply  = raw
-      ? (idx !== -1 ? raw.slice(0, idx).trimEnd() : raw)
-      : 'Je rencontre un souci technique. Contactez Aly au 06 63 79 87 56. 🙏';
-
-    const trimmed = [...messages, { role: 'assistant', content: reply }].slice(-MAX_MESSAGES);
-    await supabase.from('whatsapp_conversations').upsert({
-      phone:      key,
-      messages:   trimmed,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'phone' });
-
-    return res.json({ reply });
-  } catch (e) {
-    console.error('[chat]', e.message);
-    return res.status(500).json({ error: 'Erreur serveur' });
-  }
-};
+module.exports = makeChatHandler({ systemPrompt: SYSTEM_PROMPT, sessionPrefix: 'web:', logTag: 'chat' });
