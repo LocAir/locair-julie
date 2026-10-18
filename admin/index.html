@@ -368,11 +368,36 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{ou
   .assist-fab{bottom:24px}
 }
 
-.morning-banner{background:var(--blue);color:#fff;border-radius:var(--r-lg);padding:18px 44px 18px 20px;margin-bottom:16px;box-shadow:var(--sh-blue);position:relative}
-.morning-banner .mb-title{font-family:var(--disp);font-size:17px;font-weight:600;margin-bottom:6px}
-.morning-banner .mb-text{font-size:13px;line-height:1.6;opacity:.92}
+.morning-banner{background:var(--navy);color:#fff;border-radius:var(--r-lg);padding:18px 44px 18px 20px;margin-bottom:16px;box-shadow:var(--sh-blue);position:relative}
+.morning-banner .mb-title{font-family:var(--disp);font-size:17px;font-weight:600;margin-bottom:6px;color:var(--gold)}
+.morning-banner .mb-text{font-size:13px;line-height:1.6;opacity:.85}
 .morning-banner .mb-close{position:absolute;top:12px;right:12px;background:none;border:none;color:#fff;opacity:.7;cursor:pointer;font-size:15px;padding:6px}
 .morning-banner .mb-close:hover{opacity:1}
+
+/* Tableau de bord — autre présentation (maquette Figma validée par Aly,
+   2026-10-18) : cartes "pilule" avec icône pour Logistique, carte dédiée
+   pour Ambassadeurs. Classes isolées (préfixe .dsh-) pour ne toucher à
+   aucune des ~81 grilles .stat-grid/.stat-tile existantes ailleurs dans
+   l'admin (voir commentaire au-dessus de .stat-tile). */
+.dsh-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin-top:10px}
+.dsh-stat{background:var(--bg);border-radius:var(--r-lg);padding:16px 14px;cursor:pointer;transition:transform .15s var(--ease)}
+.dsh-stat:hover{transform:translateY(-1px)}
+.dsh-stat .dsh-ic{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:999px;background:rgba(14,31,53,.08);color:var(--navy);margin-bottom:10px}
+.dsh-stat .n{font-family:var(--disp);font-size:26px;font-weight:600;color:var(--navy);font-variant-numeric:tabular-nums;line-height:1.1}
+.dsh-stat .l{font-size:11.5px;color:var(--grey);font-weight:600;margin-top:5px;letter-spacing:.02em}
+.dsh-stat.warn{background:var(--amber-bg)}
+.dsh-stat.warn .dsh-ic{background:rgba(180,83,9,.16);color:var(--amber)}
+.dsh-stat.ok .dsh-ic{background:rgba(8,110,96,.14);color:var(--blue)}
+
+.dsh-amb{background:var(--white);border:1px solid var(--rule);border-radius:var(--r-lg);padding:20px;box-shadow:var(--sh-sm);margin-bottom:20px}
+.dsh-amb-head{display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:16px}
+.dsh-amb-head .dsh-ic{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:999px;background:rgba(8,110,96,.12);color:var(--blue);flex-shrink:0}
+.dsh-amb-title{margin:0;font-size:17px}
+.dsh-amb-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 14px}
+.dsh-amb-grid .n{font-family:var(--disp);font-size:22px;font-weight:600;color:var(--navy);font-variant-numeric:tabular-nums;line-height:1.1}
+.dsh-amb-grid .n.warn{color:var(--amber)}
+.dsh-amb-grid .l{font-size:11.5px;color:var(--grey);font-weight:600;margin-top:4px;letter-spacing:.02em}
+@media(max-width:380px){.dsh-amb-grid{grid-template-columns:1fr}}
 
 .week-header{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 10px;padding-bottom:8px;border-bottom:1px solid var(--rule)}
 .week-header:first-child{margin-top:0}
@@ -2617,28 +2642,46 @@ function dashboardParcHtml(parc){
 }
 function dashboardLogistiqueHtml(logistique){
   if(!logistique) return '';
+  const tiles = [
+    {n:logistique.missions_en_cours, l:'Missions en cours', ic:IC_TRUCK, cls:'', fn:"switchAdminTab('livraisons')"},
+    {n:logistique.missions_terminees_periode, l:'Terminées (période)', ic:IC_CHECK, cls:'', fn:"switchAdminTab('livraisons')"},
+    {n:logistique.missions_en_retard, l:'En retard', ic:IC_SIREN, cls:logistique.missions_en_retard>0?'warn':'ok', fn:'goToRetards()'},
+    {n:logistique.problemes_signales, l:'Problèmes signalés', ic:IC_SHIELD, cls:logistique.problemes_signales>0?'warn':'ok', fn:"switchAdminTab('livraisons')"},
+  ];
+  if(logistique.missions_fait_total!=null) tiles.push({n:logistique.missions_fait_total, l:'Missions total (site)', ic:IC_CHART, cls:'', fn:"switchAdminTab('livraisons')", title:"Chiffre à utiliser pour '+ X clients livrés' sur le site public"});
   return `
     <div class="card">
       <h2 style="cursor:pointer" onclick="switchAdminTab('livraisons')">🚚 Logistique →</h2>
-      <div class="stat-grid" style="margin-top:10px">
-        <div class="stat-tile"><div class="n">${logistique.missions_en_cours}</div><div class="l">Missions en cours</div></div>
-        <div class="stat-tile"><div class="n">${logistique.missions_terminees_periode}</div><div class="l">Terminées (période)</div></div>
-        <div class="stat-tile ${logistique.missions_en_retard>0?'warn':''}"><div class="n">${logistique.missions_en_retard}</div><div class="l">En retard</div></div>
-        <div class="stat-tile ${logistique.problemes_signales>0?'warn':''}"><div class="n">${logistique.problemes_signales}</div><div class="l">Problèmes signalés</div></div>
-        ${logistique.missions_fait_total!=null?`<div class="stat-tile" title="Chiffre à utiliser pour '+ X clients livrés' sur le site public"><div class="n">${logistique.missions_fait_total}</div><div class="l">Missions total (site)</div></div>`:''}
+      <div class="dsh-stats">
+        ${tiles.map(t => `
+          <div class="dsh-stat ${t.cls}" ${t.title?`title="${t.title}"`:''} onclick="${t.fn}">
+            <span class="dsh-ic">${t.ic}</span>
+            <div class="n">${t.n}</div>
+            <div class="l">${t.l}</div>
+          </div>`).join('')}
       </div>
     </div>`;
 }
 function dashboardPartenairesHtml(partenaires){
   if(!partenaires) return '';
+  const cells = [
+    {n:partenaires.partenaires_actifs, l:'Ambassadeurs actifs'},
+    {n:partenaires.commandes_periode, l:'Commandes (période)'},
+    {n:partenaires.commissions_a_valider, l:'Commissions à valider', warn:partenaires.commissions_a_valider>0},
+    {n:partenaires.commissions_payees_periode, l:'Commissions payées (période)'},
+  ];
   return `
-    <div class="card">
-      <h2 style="cursor:pointer" onclick="switchAdminTab('partenaires')">🤝 Ambassadeurs →</h2>
-      <div class="stat-grid" style="margin-top:10px">
-        <div class="stat-tile"><div class="n">${partenaires.partenaires_actifs}</div><div class="l">Ambassadeurs actifs</div></div>
-        <div class="stat-tile"><div class="n">${partenaires.commandes_periode}</div><div class="l">Commandes (période)</div></div>
-        <div class="stat-tile ${partenaires.commissions_a_valider>0?'warn':''}"><div class="n">${partenaires.commissions_a_valider}</div><div class="l">Commissions à valider</div></div>
-        <div class="stat-tile"><div class="n">${partenaires.commissions_payees_periode}</div><div class="l">Commissions payées (période)</div></div>
+    <div class="dsh-amb">
+      <div class="dsh-amb-head" onclick="switchAdminTab('partenaires')">
+        <span class="dsh-ic">${IC_HANDSHAKE}</span>
+        <h2 class="dsh-amb-title">Ambassadeurs</h2>
+      </div>
+      <div class="dsh-amb-grid">
+        ${cells.map(c => `
+          <div>
+            <div class="n ${c.warn?'warn':''}">${c.n}</div>
+            <div class="l">${c.l}</div>
+          </div>`).join('')}
       </div>
     </div>`;
 }
