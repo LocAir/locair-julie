@@ -278,9 +278,13 @@ Le brief des photos qui manquent est dans `VISUELS.md`.
 
 ## 12. Où on en est : il y a deux marques
 
-C'est l'état réel, mesuré sur les 27 pages publiques.
+C'est l'état réel — mais vérifié à nouveau le 2026-10-18 (agent de
+développement de marque, cycle 1) seulement pour les pages listées
+ci-dessous, pas pour les 27 pages publiques en entier : les comptages
+« 13 pages / 14 pages » plus bas datent d'un audit antérieur et n'ont pas
+été refaits en entier cette fois — à reprendre lors d'un prochain cycle.
 
-| | **Ancienne** (13 pages) | **Nouvelle** (14 pages) |
+| | **Ancienne** | **Nouvelle** |
 |---|---|---|
 | Titres | Cormorant Garamond | Bricolage Grotesque |
 | Textes | Inter | DM Sans |
@@ -290,23 +294,43 @@ C'est l'état réel, mesuré sur les 27 pages publiques.
 | Style | 3 828 lignes dans la page | `locair.css` partagé |
 | La goutte | absente | présente |
 
-**Ancienne :** `index.html`, cgv, mentions-legales, confidentialite, madrid,
-madrid-en, reunion, 404, prolongation, retard, nouvelle-version.
+**Ancienne (vérifié 2026-10-18) :** `index.html` (interdit d'y toucher sans
+décision explicite du propriétaire, voir plus bas), madrid, madrid-en,
+reunion. Ce sont désormais les seules pages confirmées sur l'ancienne
+marque — chacune une vraie page d'atterrissage indexée (pas juste une page
+de service), donc une vraie refonte visuelle à faire avec soin, pas un
+simple remplacement de couleurs.
 
-**Nouvelle :** version-b, pro, les 5 pages de ville, les 7 articles de blog.
+**Nouvelle (vérifié 2026-10-18) :** version-b, pro, les 5 pages de ville,
+les 7 articles de blog, et désormais aussi cgv, mentions-legales,
+confidentialite, 404, prolongation, retard, nouvelle-version — ces sept
+dernières étaient encore listées « Ancienne » ici jusqu'au 2026-10-18, mais
+sont déjà passées à `marque.css` (vérifié : aucune trace de Cormorant Garamond
+ni de l'ancien marine `#1a2b4a`). Le point 1 de la liste « reste à faire »
+ci-dessous était donc déjà fait.
 
 Le vert de l'ancienne, `#16a34a`, n'est pas une couleur choisie : c'est le vert
 par défaut d'une bibliothèque de code. Son contraste sur blanc est **3,3** —
 sous la norme pour du texte. Le sarcelle maison est à **6,16**.
 
+**Images de partage (vérifié 2026-10-18) :** contrairement à ce qui était
+noté ici, la grande majorité des pages (30 sur 33 vérifiées) utilisait déjà
+la même image `og-locair.png` — ce n'était donc plus « deux images », mais
+quelques exceptions isolées, corrigées ce même jour : un lien cassé
+(`reservation-rafraichisseur.html` pointait vers une image qui n'existe
+pas), une image hors sujet (`portasplit.html` affichait la photo d'un
+article de blog sur l'hiver au lieu du produit), et un aperçu manquant en
+entier (`reservation-portasplit-libre.html`, page indexée, partagée sans
+aucune image).
+
 **Ce qu'il reste à faire, dans l'ordre :**
 
-1. Les six pages de service et légales (cgv, mentions-legales, confidentialite,
-   404, prolongation, retard). Presque pas de mise en page, et ce sont celles
-   qu'on lit **juste avant de payer**.
-2. Les deux images de partage. `locair.fr` et Madrid envoient la photo,
-   tout le reste envoie la carte au logo. Il en faut une seule.
-3. `index.html`. La plus grosse, celle qui porte tout le trafic — et celle que
+1. Les trois pages encore sur l'ancienne marque : madrid, madrid-en, reunion.
+   Contrairement aux pages de service (déjà faites), ce sont de vraies pages
+   d'atterrissage longues (500 à 1 100 lignes), indexées, qui portent du
+   vrai trafic — une refonte à faire une par une, pas d'un coup, avec une
+   vérification visuelle à chaque fois.
+2. `index.html`. La plus grosse, celle qui porte tout le trafic — et celle que
    ce dépôt interdit de modifier sans décision explicite du propriétaire.
 
 ---
