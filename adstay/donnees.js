@@ -1,0 +1,106 @@
+// AdStay : toutes les données affichées sur la tablette.
+// Étape 1 (MVP) : on modifie ce fichier à la main.
+// Étape 2 : ces données viendront d'une base (Supabase) gérée depuis un back-office.
+//
+// Les commerçants ci-dessous sont des EXEMPLES inventés, pour la démo.
+
+window.ADSTAY = {
+  ville: {
+    nom: 'Nice', lat: 43.7031, lon: 7.2661,
+    region: 'La Côte d’Azur · French Riviera',
+    photo: '/ville-nice-900.jpg', // grande photo de la diapo d'accueil du diaporama
+  },
+
+  // Contact affiché sur la page « Devenir partenaire ». Vide = bouton masqué.
+  contact: { email: '', tel: '' },
+
+  // Délai sans toucher l'écran avant le diaporama (secondes) et durée d'une diapo.
+  veille: { apresSecondes: 90, dureeDiapo: 8 },
+
+  // Formules publicitaires. Prix modifiables ici, rien n'est codé en dur ailleurs.
+  // rang : plus il est haut, plus le commerçant remonte dans la liste.
+  // diaporama : nombre d'apparitions par tour dans le diaporama de veille (0 = jamais).
+  formules: [
+    {
+      id: 'essentielle', nom: 'Essentielle', prix: 39, rang: 1, diaporama: 0, badge: '',
+      pour: 'Pour un petit commerçant ou un restaurant',
+      avantages: ['Présence dans une catégorie', 'Nom, photo, adresse et coordonnées', 'Accès à un réseau local de logements'],
+    },
+    {
+      id: 'premium', nom: 'Premium', prix: 79, rang: 2, diaporama: 1, badge: 'Recommandé',
+      pour: 'Pour les établissements qui veulent plus de visibilité',
+      avantages: ['Mise en avant prioritaire', 'Offre spéciale pour les voyageurs', 'Bouton de réservation ou de contact', 'Présence dans le diaporama de veille'],
+    },
+    {
+      id: 'exclusivite', nom: 'Exclusivité', prix: 149, rang: 3, diaporama: 2, badge: 'Coup de cœur',
+      pour: 'Pour une catégorie ou une zone géographique',
+      avantages: ['Visibilité renforcée, en tête de liste', 'Possibilité d’exclusivité par catégorie', 'Diaporama de veille ×2', 'Statistiques et bilan mensuel'],
+    },
+  ],
+
+  categories: [
+    { id: 'restaurants', nom: 'Restaurants', icone: 'restaurant' },
+    { id: 'bars', nom: 'Cafés & bars', icone: 'bar' },
+    { id: 'plages', nom: 'Plages privées', icone: 'plage' },
+    { id: 'activites', nom: 'Activités', icone: 'activite' },
+    { id: 'transport', nom: 'VTC & taxis', icone: 'voiture' },
+    { id: 'location', nom: 'Location véhicules', icone: 'scooter' },
+    { id: 'boutiques', nom: 'Boutiques & services', icone: 'boutique' },
+  ],
+
+  // couleur : deux teintes pour le fond de la carte (en attendant de vraies photos).
+  // photo : URL d'une image (optionnelle). lien : site / réservation (sert au QR code).
+  commercants: [
+    { id: 'c1', nom: 'La Table du Port', categorie: 'restaurants', formule: 'exclusivite',
+      accroche: 'Poissons du jour face aux bateaux', couleur: ['#0e4d64', '#c8a24a'],
+      description: 'Cuisine niçoise et poissons de la pêche locale, servis en terrasse sur le port Lympia.',
+      adresse: 'Quai des Docks, Nice', tel: '04 00 00 00 01', horaires: '12h–14h30 · 19h–22h30',
+      offre: 'Apéritif offert sur présentation de la tablette', lien: '' },
+    { id: 'c2', nom: 'Chez Mamé Socca', categorie: 'restaurants', formule: 'premium',
+      accroche: 'La vraie socca, cuite au feu de bois', couleur: ['#7a3b12', '#e0a25a'],
+      description: 'Socca, pissaladière et petits farcis. Une adresse simple et authentique dans le Vieux-Nice.',
+      adresse: 'Vieux-Nice', tel: '04 00 00 00 02', horaires: '11h–21h',
+      offre: '-10 % sur l’addition', lien: '' },
+    { id: 'c3', nom: 'Trattoria Garibaldi', categorie: 'restaurants', formule: 'essentielle',
+      accroche: 'Pâtes fraîches et pizzas', couleur: ['#3d5a2a', '#b9c46a'],
+      description: 'Trattoria familiale, pâtes faites maison chaque matin.',
+      adresse: 'Place Garibaldi, Nice', tel: '04 00 00 00 03', horaires: '12h–23h', offre: '', lien: '' },
+    { id: 'c4', nom: 'Le Comptoir Bleu', categorie: 'bars', formule: 'premium',
+      accroche: 'Cocktails au coucher du soleil', couleur: ['#1b2a6b', '#e07a5f'],
+      description: 'Bar à cocktails avec vue sur la Baie des Anges. DJ le vendredi et le samedi.',
+      adresse: 'Promenade des Anglais, Nice', tel: '04 00 00 00 04', horaires: '17h–1h',
+      offre: 'Happy hour prolongée jusqu’à 21h', lien: '' },
+    { id: 'c5', nom: 'Café des Fleurs', categorie: 'bars', formule: 'essentielle',
+      accroche: 'Petit-déjeuner au marché', couleur: ['#6b2d5c', '#f2b5d4'],
+      description: 'Café, viennoiseries et jus pressés à deux pas du marché aux fleurs.',
+      adresse: 'Cours Saleya, Nice', tel: '04 00 00 00 05', horaires: '7h–18h', offre: '', lien: '' },
+    { id: 'c6', nom: 'Azur Beach Club', categorie: 'plages', formule: 'exclusivite',
+      accroche: 'Transats, déjeuner les pieds dans l’eau', couleur: ['#0a6c8f', '#7fd6e8'],
+      description: 'Plage privée avec transats, restaurant et service au matelas. Réservation conseillée en été.',
+      adresse: 'Promenade des Anglais, Nice', tel: '04 00 00 00 06', horaires: '9h–19h',
+      offre: 'Transat offert pour un déjeuner', lien: '' },
+    { id: 'c7', nom: 'Cap Kayak', categorie: 'activites', formule: 'premium',
+      accroche: 'Kayak et paddle vers les criques', couleur: ['#11604a', '#79d1a8'],
+      description: 'Sorties guidées en kayak et paddle le long de la côte, débutants bienvenus.',
+      adresse: 'Port de Nice', tel: '06 00 00 00 07', horaires: '9h–18h',
+      offre: '-15 % pour les voyageurs AdStay', lien: '' },
+    { id: 'c8', nom: 'Riviera Excursions', categorie: 'activites', formule: 'essentielle',
+      accroche: 'Monaco, Èze, Saint-Paul en minibus', couleur: ['#4a3b8f', '#b8a8f0'],
+      description: 'Excursions à la journée ou à la demi-journée sur la Côte d’Azur.',
+      adresse: 'Nice centre', tel: '06 00 00 00 08', horaires: 'Départs 8h et 13h', offre: '', lien: '' },
+    { id: 'c9', nom: 'Elite Transfert', categorie: 'transport', formule: 'exclusivite',
+      accroche: 'Aéroport ↔ logement, prix fixe', couleur: ['#111827', '#9ca3af'],
+      description: 'Chauffeurs privés 24h/24. Transferts aéroport, gare et soirées. Paiement par carte.',
+      adresse: 'Nice et alentours', tel: '06 00 00 00 09', horaires: '24h/24',
+      offre: 'Transfert aéroport à prix fixe', lien: '' },
+    { id: 'c10', nom: 'Scoot’Azur', categorie: 'location', formule: 'premium',
+      accroche: 'Scooters et vélos électriques', couleur: ['#8f2d1a', '#f4a261'],
+      description: 'Location à l’heure, à la journée ou à la semaine. Casques fournis.',
+      adresse: 'Rue de France, Nice', tel: '04 00 00 00 10', horaires: '9h–19h',
+      offre: '2e jour à -50 %', lien: '' },
+    { id: 'c11', nom: 'Épicerie du Coin', categorie: 'boutiques', formule: 'essentielle',
+      accroche: 'Courses, produits locaux, ouvert tard', couleur: ['#5c4a1f', '#d9c27a'],
+      description: 'Produits frais, huile d’olive, vins locaux. Livraison au logement possible.',
+      adresse: 'Libération, Nice', tel: '04 00 00 00 11', horaires: '8h–23h', offre: '', lien: '' },
+  ],
+};

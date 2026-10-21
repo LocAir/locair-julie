@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="robots" content="noindex, nofollow, noarchive"/>
+<meta name="theme-color" content="#050d1f"/>
+<title>AdStay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Outfit:wght@300;400;500;600;700&display=swap"/>
+<style>
+:root{
+  --fond:#050d1f; --fond2:#0b1730; --carte:#101e3b; --ligne:#1f2f52;
+  --texte:#f3f5fa; --doux:#9aa6c1; --or:#d6a94a; --or2:#f3d58c;
+  --r:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--fond);color:var(--texte);font-family:Outfit,system-ui,sans-serif;
+  user-select:none;-webkit-user-select:none;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.app{height:100%;display:flex;flex-direction:column}
+
+/* En-tête */
+header{display:flex;align-items:center;gap:24px;padding:18px clamp(16px,3vw,40px);
+  background:linear-gradient(180deg,#071330,var(--fond));border-bottom:1px solid var(--ligne)}
+header img{height:64px;width:auto}
+.bienvenue{flex:1;min-width:0}
+.bienvenue h1{font-weight:500;font-size:clamp(20px,2.4vw,32px);line-height:1.1}
+.bienvenue h1 b{color:var(--or2);font-weight:600}
+.bienvenue p{color:var(--doux);font-size:15px;margin-top:4px;text-transform:capitalize}
+.meteo{text-align:right;white-space:nowrap}
+.meteo .heure{font-size:clamp(26px,3vw,40px);font-weight:300;letter-spacing:1px}
+.meteo .temps{color:var(--doux);font-size:15px}
+
+/* Recherche + catégories */
+.outils{padding:16px clamp(16px,3vw,40px) 6px;display:flex;flex-direction:column;gap:14px}
+.recherche{display:flex;align-items:center;gap:12px;background:var(--carte);border:1px solid var(--ligne);
+  border-radius:999px;padding:0 20px;height:56px}
+.recherche input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--texte);font:inherit;font-size:18px}
+.recherche input::placeholder{color:var(--doux)}
+.recherche svg{width:22px;height:22px;stroke:var(--doux)}
+.chips{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+.chips::-webkit-scrollbar{display:none}
+.chip{display:flex;align-items:center;gap:8px;flex:none;height:50px;padding:0 20px;border-radius:999px;
+  background:var(--carte);border:1px solid var(--ligne);font-size:17px;color:var(--doux);transition:.2s}
+.chip svg{width:22px;height:22px;stroke:currentColor}
+.chip[aria-pressed="true"]{background:linear-gradient(135deg,var(--or),var(--or2));color:#1a1206;border-color:transparent;font-weight:600}
+
+/* Liste */
+main{flex:1;overflow-y:auto;padding:10px clamp(16px,3vw,40px) 40px;-webkit-overflow-scrolling:touch}
+h2{font-size:15px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--or);margin:18px 0 12px}
+.une{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:18px}
+.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,270px),1fr));gap:18px}
+.carte{position:relative;text-align:left;border-radius:var(--r);overflow:hidden;background:var(--carte);
+  border:1px solid var(--ligne);display:flex;flex-direction:column;transition:transform .15s}
+.carte:active{transform:scale(.98)}
+.visuel{position:relative;height:150px;display:flex;align-items:flex-end;padding:16px;background-size:cover;background-position:center}
+.une .visuel{height:220px}
+.visuel svg.ico{position:absolute;right:16px;top:16px;width:46px;height:46px;stroke:rgba(255,255,255,.75)}
+.visuel::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.55))}
+.visuel .nom{position:relative;z-index:1;font-size:22px;font-weight:600;text-shadow:0 1px 8px rgba(0,0,0,.4)}
+.une .visuel .nom{font-size:30px}
+.badge{position:absolute;left:14px;top:14px;z-index:1;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;
+  background:linear-gradient(135deg,var(--or),var(--or2));color:#1a1206}
+.corps{padding:14px 16px 18px;display:flex;flex-direction:column;gap:8px;flex:1}
+.corps .acc{color:var(--doux);font-size:16px}
+.corps .offre{margin-top:auto;color:var(--or2);font-size:15px;display:flex;gap:8px;align-items:center}
+.corps .offre svg{width:18px;height:18px;stroke:currentColor;flex:none}
+.vide{color:var(--doux);text-align:center;padding:60px 0;font-size:18px}
+.bas{display:flex;justify-content:center;margin-top:36px;color:var(--doux);font-size:14px}
+
+/* Fiche détaillée */
+.voile{position:fixed;inset:0;background:rgba(2,6,16,.75);backdrop-filter:blur(6px);display:none;
+  align-items:center;justify-content:center;padding:16px;z-index:20}
+.voile.ouvert{display:flex}
+.fiche{width:min(860px,100%);max-height:100%;overflow-y:auto;background:var(--fond2);border:1px solid var(--ligne);
+  border-radius:28px;animation:monte .25s ease-out}
+@keyframes monte{from{transform:translateY(20px);opacity:0}}
+.fiche .visuel{height:240px;border-radius:0}
+.fiche .visuel .nom{font-size:36px}
+.fermer{position:absolute;right:16px;top:16px;z-index:2;width:52px;height:52px;border-radius:50%;
+  background:rgba(0,0,0,.45);display:grid;place-items:center}
+.fermer svg{width:26px;height:26px;stroke:#fff}
+.fiche-corps{display:grid;grid-template-columns:1fr auto;gap:28px;padding:26px 30px 32px}
+.fiche-corps p.desc{font-size:19px;line-height:1.5;color:#d9deea}
+.encart{margin-top:18px;padding:16px 18px;border-radius:16px;background:rgba(214,169,74,.12);border:1px solid rgba(214,169,74,.4);
+  color:var(--or2);font-size:18px;font-weight:500}
+.infos{list-style:none;margin-top:20px;display:flex;flex-direction:column;gap:12px;font-size:17px}
+.infos li{display:flex;gap:12px;align-items:flex-start}
+.infos svg{width:22px;height:22px;stroke:var(--or);flex:none;margin-top:1px}
+.qr{text-align:center;color:var(--doux);font-size:14px;width:200px}
+.qr img{width:200px;height:200px;border-radius:16px;background:#fff;padding:10px;display:block;margin-bottom:10px}
+
+/* Diaporama de veille */
+.veille{position:fixed;inset:0;z-index:50;background:#000;display:none;cursor:pointer}
+.veille.active{display:block}
+.diapo{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:clamp(24px,6vw,90px);
+  opacity:0;transition:opacity 1.2s;background-size:cover;background-position:center}
+.diapo.visible{opacity:1}
+.diapo::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(0,0,0,.7))}
+.diapo > *{position:relative}
+.diapo svg.ico{position:absolute;right:clamp(24px,6vw,90px);top:clamp(70px,10vw,140px);width:clamp(80px,12vw,160px);height:auto;stroke:rgba(255,255,255,.5)}
+.diapo .cat{color:var(--or2);letter-spacing:3px;text-transform:uppercase;font-size:clamp(14px,1.6vw,20px)}
+.diapo .titre{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(56px,9vw,140px);font-weight:500;line-height:1;margin:10px 0 14px}
+.diapo .acc{font-size:clamp(20px,2.6vw,36px);font-weight:300;max-width:24ch}
+.diapo .offre{display:inline-block;margin-top:24px;padding:12px 22px;border-radius:999px;font-size:clamp(16px,1.8vw,24px);
+  background:linear-gradient(135deg,var(--or),var(--or2));color:#1a1206;font-weight:600;align-self:flex-start}
+.veille .logo{border-radius:12px;position:absolute;left:clamp(24px,6vw,90px);top:clamp(24px,5vw,60px);height:clamp(50px,7vw,90px);z-index:2;opacity:.95}
+.veille .touche{position:absolute;bottom:22px;left:0;right:0;text-align:center;color:rgba(255,255,255,.6);font-size:16px;z-index:2;
+  animation:pulse 2.4s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.veille .haut{position:absolute;right:clamp(24px,6vw,90px);top:clamp(24px,5vw,60px);z-index:2;display:flex;gap:clamp(20px,4vw,60px);
+  font-size:clamp(12px,1.2vw,16px);letter-spacing:2px;text-transform:uppercase;font-weight:500;color:rgba(255,255,255,.85)}
+.diapo.accueil{justify-content:center;align-items:center;text-align:center}
+.diapo.accueil::before{background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,.1) 50%,rgba(0,0,0,.35))}
+.diapo.accueil .ville{font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;font-size:clamp(110px,22vw,340px);line-height:.9;
+  color:#fbf6ec;text-shadow:0 4px 40px rgba(0,0,0,.25)}
+.diapo.accueil .sous{margin-top:clamp(10px,2vw,30px);font-size:clamp(16px,2vw,28px);letter-spacing:2px;text-transform:uppercase;font-weight:400}
+.diapo.accueil .trait{width:clamp(50px,6vw,90px);height:1px;background:rgba(255,255,255,.8);margin:clamp(16px,2.5vw,34px) auto 0}
+.veille .heure{position:absolute;right:clamp(24px,6vw,90px);bottom:clamp(24px,6vw,90px);z-index:2;font-size:clamp(40px,6vw,90px);font-weight:200}
+
+@media (max-width:700px){
+  header{flex-wrap:wrap;gap:12px} header img{height:46px}
+  .meteo{order:2} .bienvenue{order:3;flex-basis:100%}
+  .fiche-corps{grid-template-columns:1fr} .qr{margin:0 auto}
+  .veille .heure{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <img src="logo.webp" alt="AdStay"/>
+    <div class="bienvenue">
+      <h1>Bienvenue à <b id="ville"></b></h1>
+      <p id="date"></p>
+    </div>
+    <div class="meteo">
+      <div class="heure" id="heure"></div>
+      <div class="temps" id="temps"></div>
+    </div>
+  </header>
+
+  <div class="outils">
+    <label class="recherche">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input id="q" type="search" placeholder="Restaurant, plage, taxi, scooter…" autocomplete="off"/>
+    </label>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <main id="liste"></main>
+</div>
+
+<div class="voile" id="voile"><div class="fiche" id="fiche"></div></div>
+
+<div class="veille" id="veille">
+  <img class="logo" src="logo.webp" alt=""/>
+  <div class="haut"><span id="region"></span><span id="compteur"></span></div>
+  <div id="diapos"></div>
+  <div class="heure" id="heureVeille"></div>
+  <div class="touche">Touchez l’écran pour découvrir les bonnes adresses</div>
+</div>
+
+<script src="donnees.js"></script>
+<script>
+const D = window.ADSTAY;
+const $ = s => document.querySelector(s);
+
+// Petites icônes (traits simples, couleur = currentColor ou stroke en CSS)
+const ICONES = {
+  tout: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
+  restaurant: '<path d="M7 2v9M4 2v5a3 3 0 0 0 6 0V2M7 11v11M17 2c-2 2-3 5-3 8h3v12"/>',
+  bar: '<path d="M5 3h14l-7 9zM12 12v8M8 21h8"/>',
+  plage: '<path d="M12 4a8 8 0 0 1 8 8H4a8 8 0 0 1 8-8zM12 12v9M3 21h18"/>',
+  activite: '<path d="M3 20l6-11 4 6 3-4 5 9z"/><circle cx="17" cy="5" r="2"/>',
+  voiture: '<path d="M3 13l2-6h14l2 6v5h-3M6 18H3v-5h18"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/>',
+  scooter: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M9 17h6l-2-7h-3M15 5h3l1 5"/>',
+  boutique: '<path d="M4 8h16l-1 13H5zM8 8V6a4 4 0 0 1 8 0v2"/>',
+  cadeau: '<rect x="3" y="8" width="18" height="5" rx="1"/><path d="M5 13v8h14v-8M12 8v13M12 8c-2-4-6-4-6-1s6 1 6 1c2-4 6-4 6-1s-6 1-6 1"/>',
+  lieu: '<path d="M12 22s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/>',
+  tel: '<path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A17 17 0 0 1 3 5a2 2 0 0 1 2-2z"/>',
+  horloge: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  croix: '<path d="M6 6l12 12M18 6 6 18"/>',
+};
+const svg = (nom, cls = '') =>
+  `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONES[nom] || ''}</svg>`;
+const echap = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+const formule = id => D.formules.find(f => f.id === id) || { rang: 0, diaporama: 0, badge: '' };
+const categorie = id => D.categories.find(c => c.id === id) || { nom: '', icone: 'boutique' };
+const fond = c => c.photo
+  ? `background-image:linear-gradient(0deg,rgba(0,0,0,.25),rgba(0,0,0,.25)),url('${encodeURI(c.photo)}')`
+  : `background-image:linear-gradient(135deg,${c.couleur?.[0] || '#1b2a4a'},${c.couleur?.[1] || '#3b4f7a'})`;
+
+// Ordre : la formule la plus chère d'abord. À formule égale, l'ordre change chaque jour
+// (tirage stable sur la journée) pour que personne ne soit toujours dernier.
+const graine = new Date().toDateString();
+const hash = s => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 7);
+const tries = [...D.commercants].sort((a, b) =>
+  formule(b.formule).rang - formule(a.formule).rang || hash(graine + a.id) - hash(graine + b.id));
+
+let filtreCat = 'tout', filtreTexte = '';
+
+function chips() {
+  const toutes = [{ id: 'tout', nom: 'Tout', icone: 'tout' }, ...D.categories]
+    .filter(c => c.id === 'tout' || D.commercants.some(m => m.categorie === c.id));
+  $('#chips').innerHTML = toutes.map(c =>
+    `<button class="chip" data-cat="${c.id}" aria-pressed="${c.id === filtreCat}">${svg(c.icone)}${echap(c.nom)}</button>`).join('');
+}
+
+function carte(c) {
+  const f = formule(c.formule), cat = categorie(c.categorie);
+  return `<button class="carte" data-id="${c.id}">
+    <div class="visuel" style="${fond(c)}">
+      ${f.badge ? `<span class="badge">${echap(f.badge)}</span>` : ''}
+      ${svg(cat.icone, 'ico')}
+      <span class="nom">${echap(c.nom)}</span>
+    </div>
+    <div class="corps">
+      <span class="acc">${echap(c.accroche)}</span>
+      ${c.offre ? `<span class="offre">${svg('cadeau')}${echap(c.offre)}</span>` : ''}
+    </div>
+  </button>`;
+}
+
+function liste() {
+  const q = filtreTexte.trim().toLowerCase();
+  const visibles = tries.filter(c =>
+    (filtreCat === 'tout' || c.categorie === filtreCat) &&
+    (!q || [c.nom, c.accroche, c.description, categorie(c.categorie).nom].join(' ').toLowerCase().includes(q)));
+  // « À la une » : uniquement sur l'accueil, pour la formule la plus haute.
+  const rangMax = Math.max(...D.formules.map(f => f.rang));
+  const une = filtreCat === 'tout' && !q ? visibles.filter(c => formule(c.formule).rang === rangMax) : [];
+  const reste = visibles.filter(c => !une.includes(c));
+  let html = '';
+  if (une.length) html += `<h2>À la une</h2><div class="une">${une.map(carte).join('')}</div>`;
+  if (reste.length) html += `<h2>${filtreCat === 'tout' ? 'Toutes les bonnes adresses' : echap(categorie(filtreCat).nom)}</h2><div class="grille">${reste.map(carte).join('')}</div>`;
+  if (!visibles.length) html = `<p class="vide">Aucune adresse ne correspond à votre recherche.</p>`;
+  html += `<p class="bas">Sélection AdStay · ${echap(D.ville.nom)}</p>`;
+  $('#liste').innerHTML = html;
+  $('#liste').scrollTop = 0;
+}
+
+function lienQR(c) {
+  const cible = c.lien || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.nom + ', ' + c.adresse);
+  return 'https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=' + encodeURIComponent(cible);
+}
+
+function ouvrir(id) {
+  const c = D.commercants.find(m => m.id === id); if (!c) return;
+  const f = formule(c.formule), cat = categorie(c.categorie);
+  $('#fiche').innerHTML = `
+    <div class="visuel" style="${fond(c)}">
+      ${f.badge ? `<span class="badge">${echap(f.badge)}</span>` : ''}
+      <button class="fermer" data-fermer aria-label="Fermer">${svg('croix')}</button>
+      <span class="nom">${echap(c.nom)}</span>
+    </div>
+    <div class="fiche-corps">
+      <div>
+        <p class="desc">${echap(c.description || c.accroche)}</p>
+        ${c.offre ? `<div class="encart">🎁 ${echap(c.offre)}</div>` : ''}
+        <ul class="infos">
+          <li>${svg(cat.icone)}${echap(cat.nom)}</li>
+          ${c.adresse ? `<li>${svg('lieu')}${echap(c.adresse)}</li>` : ''}
+          ${c.tel ? `<li>${svg('tel')}${echap(c.tel)}</li>` : ''}
+          ${c.horaires ? `<li>${svg('horloge')}${echap(c.horaires)}</li>` : ''}
+        </ul>
+      </div>
+      <div class="qr">
+        <img src="${lienQR(c)}" alt="QR code"/>
+        Scannez avec votre téléphone pour ${c.lien ? 'réserver' : 'l’itinéraire'}
+      </div>
+    </div>`;
+  $('#voile').classList.add('ouvert');
+}
+const fermer = () => $('#voile').classList.remove('ouvert');
+
+// Interactions
+$('#chips').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  filtreCat = b.dataset.cat; chips(); liste();
+});
+$('#q').addEventListener('input', e => { filtreTexte = e.target.value; liste(); });
+$('#liste').addEventListener('click', e => { const b = e.target.closest('.carte'); if (b) ouvrir(b.dataset.id); });
+$('#voile').addEventListener('click', e => { if (e.target.id === 'voile' || e.target.closest('[data-fermer]')) fermer(); });
+
+// Horloge, date, météo
+function horloge() {
+  const n = new Date();
+  const h = n.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  $('#heure').textContent = h; $('#heureVeille').textContent = h;
+  $('#date').textContent = n.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+const CIEL = [[0,'☀️ Ensoleillé'],[3,'⛅ Nuageux'],[45,'🌫️ Brouillard'],[51,'🌦️ Bruine'],[61,'🌧️ Pluie'],[71,'❄️ Neige'],[80,'🌦️ Averses'],[95,'⛈️ Orage']];
+async function meteo() {
+  try {
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${D.ville.lat}&longitude=${D.ville.lon}&current=temperature_2m,weather_code&timezone=auto`);
+    const j = await r.json();
+    const code = j.current.weather_code;
+    const ciel = CIEL.filter(([c]) => code >= c).pop()[1];
+    $('#temps').textContent = `${ciel} · ${Math.round(j.current.temperature_2m)}°C`;
+  } catch { /* pas de météo, pas grave */ }
+}
+
+// Diaporama de veille : seulement les formules qui y donnent droit
+const diapos = D.commercants.flatMap(c => Array(formule(c.formule).diaporama || 0).fill(c));
+// On évite deux fois la même marque d'affilée
+for (let i = 1; i < diapos.length; i++) if (diapos[i] === diapos[i - 1]) {
+  const j = diapos.findIndex((d, k) => k > i && d !== diapos[i] && d !== diapos[i - 2]);
+  if (j > 0) [diapos[i], diapos[j]] = [diapos[j], diapos[i]];
+}
+const accueil = `
+  <div class="diapo accueil" style="background-image:url('${encodeURI(D.ville.photo || '')}')">
+    <span class="ville">${echap(D.ville.nom)}</span>
+    <span class="sous">Bienvenue chez vous · Welcome home</span>
+    <span class="trait"></span>
+  </div>`;
+$('#region').textContent = D.ville.region || '';
+$('#diapos').innerHTML = accueil + diapos.map(c => `
+  <div class="diapo" style="${fond(c)}">
+    ${svg(categorie(c.categorie).icone, 'ico')}
+    <span class="cat">${echap(categorie(c.categorie).nom)}</span>
+    <span class="titre">${echap(c.nom)}</span>
+    <span class="acc">${echap(c.accroche)}</span>
+    ${c.offre ? `<span class="offre">🎁 ${echap(c.offre)}</span>` : ''}
+  </div>`).join('');
+
+let minuteur, tourne, indice = 0;
+function diapoSuivante() {
+  const els = document.querySelectorAll('.diapo'); if (!els.length) return;
+  els.forEach(e => e.classList.remove('visible'));
+  const n = indice++ % els.length;
+  els[n].classList.add('visible');
+  const deux = x => String(x).padStart(2, '0');
+  $('#compteur').textContent = `${deux(n + 1)} / ${deux(els.length)}`;
+}
+function veille() {
+  // Chaque mise en veille repart de la diapo « Bienvenue »
+  fermer(); indice = 0; $('#veille').classList.add('active'); diapoSuivante();
+  tourne = setInterval(diapoSuivante, D.veille.dureeDiapo * 1000);
+}
+function reveil() {
+  if ($('#veille').classList.contains('active')) {
+    $('#veille').classList.remove('active'); clearInterval(tourne);
+    // Retour à l'accueil, propre pour le prochain voyageur
+    filtreCat = 'tout'; filtreTexte = ''; $('#q').value = ''; chips(); liste();
+  }
+  clearTimeout(minuteur);
+  minuteur = setTimeout(veille, D.veille.apresSecondes * 1000);
+}
+['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => addEventListener(ev, reveil, { passive: true }));
+document.addEventListener('contextmenu', e => e.preventDefault());
+
+// ?veille dans l'adresse : lance directement le diaporama (pratique pour tester)
+$('#ville').textContent = D.ville.nom;
+chips(); liste(); horloge(); meteo(); reveil();
+setInterval(horloge, 15000); setInterval(meteo, 30 * 60000);
+if (new URLSearchParams(location.search).has('veille')) veille();
+</script>
+</body>
+</html>
