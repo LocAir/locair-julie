@@ -65,7 +65,11 @@ h2{text-align:center;font-size:12px;font-weight:400;letter-spacing:.3em;text-tra
 </div>
 
 <script src="/adstay/donnees.js"></script>
+<script src="/adstay/config.js"></script>
+<script src="/adstay/charger.js"></script>
 <script>
+(async () => {
+await window.ADSTAY_PRET; // prix à jour depuis la base si elle est branchée
 const D = window.ADSTAY;
 const echap = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 document.getElementById('ville').textContent = D.ville.nom;
@@ -82,6 +86,7 @@ const c = D.contact || {};
 document.getElementById('contact').innerHTML =
   (c.email ? `<a class="plein" href="mailto:${echap(c.email)}?subject=${encodeURIComponent('Devenir partenaire AdStay')}">Nous écrire</a>` : '') +
   (c.tel ? `<a class="creux" href="tel:${c.tel.replace(/\s/g, '')}">${echap(c.tel)}</a>` : '');
+})();
 </script>
 </body>
 </html>
