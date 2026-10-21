@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<meta name="robots" content="noindex, nofollow, noarchive"/>
+<meta name="theme-color" content="#060b17"/>
+<title>AdStay</title>
+<style>
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#060b17;color:#9298a6;font:300 16px/1.5 system-ui,sans-serif;text-align:center}
+img{width:180px;display:block;margin:0 auto 22px}
+a{color:#c9a66b}
+</style>
+</head>
+<body>
+<div>
+  <img src="/adstay/logo-transparent.webp" alt="AdStay"/>
+  <p id="msg">Un instant…</p>
+</div>
+<script src="/adstay/donnees.js"></script>
+<script src="/adstay/config.js"></script>
+<script src="/adstay/charger.js"></script>
+<script>
+// Page de passage des QR codes de la tablette : on compte le scan, puis on envoie
+// le voyageur vers le site du commerçant (lien) ou l'itinéraire Google Maps.
+(async () => {
+  const p = new URLSearchParams(location.search);
+  const id = p.get('f') || '', logement = p.get('l') || '';
+  await window.ADSTAY_PRET;
+  const c = (window.ADSTAY.commercants || []).find(m => String(m.id) === id);
+  let cible = c?.lien || (c ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.nom + ', ' + c.adresse) : '');
+  if (!/^https?:\/\//i.test(cible)) cible = '';
+  if (c) await Promise.race([window.adstayNoter(id, 'scan', logement), new Promise(r => setTimeout(r, 1500))]);
+  if (cible) location.replace(cible);
+  else document.getElementById('msg').textContent = 'Cette adresse n’est plus disponible.';
+})();
+</script>
+</body>
+</html>

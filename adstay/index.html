@@ -190,8 +190,14 @@ h2{font-family:var(--serif);font-weight:400;font-size:clamp(34px,3.6vw,52px);lin
 </div>
 
 <script src="/adstay/donnees.js"></script>
+<script src="/adstay/config.js"></script>
+<script src="/adstay/charger.js"></script>
 <script>
+(async () => {
+await window.ADSTAY_PRET; // fiches de la base AdStay si elle est branchée
 const D = window.ADSTAY;
+const chargeLe = Date.now();
+const logement = new URLSearchParams(location.search).get('logement') || '';
 const $ = s => document.querySelector(s);
 
 // Petites icônes (traits simples, couleur = currentColor ou stroke en CSS)
@@ -292,13 +298,17 @@ function liste() {
 }
 
 function lienQR(c) {
-  const cible = c.lien || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.nom + ', ' + c.adresse);
+  // Fiche de la base : le QR passe par /adstay/go qui compte le scan puis redirige
+  const cible = window.adstayEstUuid(c.id)
+    ? `${location.origin}/adstay/go?f=${c.id}${logement ? '&l=' + encodeURIComponent(logement) : ''}`
+    : c.lien || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.nom + ', ' + c.adresse);
   return 'https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=' + encodeURIComponent(cible);
 }
 
 function ouvrir(id) {
   const c = D.commercants.find(m => m.id === id); if (!c) return;
   const f = formule(c.formule), cat = categorie(c.categorie);
+  window.adstayNoter(c.id, 'vue', logement);
   $('#fiche').innerHTML = `
     <button class="fermer" data-fermer aria-label="Fermer">${svg('croix')}</button>
     <div class="photo ${c.photo ? '' : 'sans'}" style="${fond(c, 1200)}">${c.photo ? '' : svg(cat.icone)}</div>
@@ -318,7 +328,6 @@ function ouvrir(id) {
   $('#voile').classList.add('ouvert');
 }
 // Demande de service : QR code vers WhatsApp (message déjà écrit), sinon vers le téléphone.
-const logement = new URLSearchParams(location.search).get('logement') || '';
 function ouvrirService(id) {
   const s = (D.services || []).find(x => x.id === id); if (!s) return;
   const cc = D.conciergerie || {};
@@ -398,7 +407,7 @@ const accueil = `
 $('#region').textContent = $('#regionHaut').textContent = D.ville.region || '';
 $('#hero').style.backgroundImage = D.ville.photo ? `url('${encodeURI(D.ville.photo)}')` : '';
 $('#diapos').innerHTML = accueil + diapos.map(c => `
-  <div class="diapo">
+  <div class="diapo" data-id="${echap(c.id)}">
     <div class="fond" style="${fond(c, 1920)}"></div>
     <span class="cat petit">${echap(categorie(c.categorie).nom)}</span>
     <span class="titre">${echap(c.nom)}</span>
@@ -412,10 +421,13 @@ function diapoSuivante() {
   els.forEach(e => e.classList.remove('visible'));
   const n = indice++ % els.length;
   els[n].classList.add('visible');
+  if (els[n].dataset.id) window.adstayNoter(els[n].dataset.id, 'diaporama', logement);
   const deux = x => String(x).padStart(2, '0');
   $('#compteur').textContent = `${deux(n + 1)} / ${deux(els.length)}`;
 }
 function veille() {
+  // Tablette allumée en continu : on recharge toutes les 6 h pour prendre les nouvelles fiches
+  if (Date.now() - chargeLe > 6 * 3600 * 1000) return location.reload();
   // Chaque mise en veille repart de la diapo « Bienvenue »
   fermer(); indice = 0; $('#veille').classList.add('active'); diapoSuivante();
   tourne = setInterval(diapoSuivante, D.veille.dureeDiapo * 1000);
@@ -437,6 +449,7 @@ $('#ville').textContent = D.ville.nom;
 chips(); liste(); horloge(); meteo(); reveil();
 setInterval(horloge, 15000); setInterval(meteo, 30 * 60000);
 if (new URLSearchParams(location.search).has('veille')) veille();
+})();
 </script>
 </body>
 </html>

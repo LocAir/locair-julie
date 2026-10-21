@@ -1,0 +1,416 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="robots" content="noindex, nofollow, noarchive"/>
+<meta name="theme-color" content="#060b17"/>
+<title>AdStay — Espace partenaires</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500&display=swap"/>
+<style>
+:root{
+  --encre:#060b17; --encre2:#0c1322; --encre3:#121b2e; --ivoire:#f2ede4; --doux:#9298a6; --discret:#5f6676;
+  --champagne:#c9a66b; --trait:rgba(242,237,228,.12); --vert:#8fbf9f; --rouge:#d98c8c;
+  --serif:'Cormorant Garamond',Georgia,serif; --sans:Jost,system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{background:var(--encre);color:var(--ivoire);font-family:var(--sans);font-weight:300;line-height:1.5;-webkit-font-smoothing:antialiased;min-height:100vh}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:var(--champagne)}
+.petit{font-size:12px;letter-spacing:.26em;text-transform:uppercase;font-weight:400}
+.serif{font-family:var(--serif);font-weight:400}
+.page{max-width:1080px;margin:0 auto;padding:24px 16px 80px}
+
+/* Barre du haut */
+.barre{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:22px;border-bottom:1px solid var(--trait)}
+.barre img{height:44px}
+.barre .compte{display:flex;align-items:center;gap:18px;color:var(--doux);font-size:14px;min-width:0}
+.barre .compte span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Boutons */
+.bouton{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:50px;padding:0 26px;border-radius:2px;
+  font-size:12px;letter-spacing:.22em;text-transform:uppercase;font-weight:400;transition:opacity .2s;white-space:nowrap}
+.bouton:disabled{opacity:.4;cursor:default}
+.bouton.plein{background:var(--champagne);color:#0c1322}
+.bouton.creux{border:1px solid var(--trait);color:var(--ivoire)}
+.bouton.lien{height:auto;padding:0;letter-spacing:.18em;color:var(--doux)}
+.bouton.danger{color:var(--rouge)}
+
+/* Connexion */
+.connexion{max-width:440px;margin:clamp(40px,10vh,110px) auto 0;text-align:center}
+.connexion img{width:220px}
+.connexion h1{font-family:var(--serif);font-weight:400;font-size:clamp(40px,7vw,56px);line-height:1;margin:34px 0 12px}
+.connexion p.sous{color:var(--doux);margin-bottom:34px}
+.google{width:100%;height:54px;background:#fff;color:#1f1f1f;border-radius:2px;display:flex;align-items:center;justify-content:center;gap:12px;font-weight:500;font-size:16px}
+.google svg{width:20px;height:20px}
+.ou{display:flex;align-items:center;gap:16px;color:var(--discret);margin:26px 0}
+.ou::before,.ou::after{content:"";flex:1;height:1px;background:var(--trait)}
+.connexion form{display:flex;flex-direction:column;gap:12px}
+.connexion .bouton{width:100%}
+.note{color:var(--discret);font-size:14px;margin-top:18px}
+.message{margin-top:18px;padding:14px 16px;border:1px solid var(--trait);color:var(--ivoire);font-size:15px;text-align:left}
+.message.erreur{border-color:rgba(217,140,140,.5);color:var(--rouge)}
+
+/* Champs */
+.champ{display:flex;flex-direction:column;gap:8px;text-align:left}
+.champ label{color:var(--doux);font-size:12px;letter-spacing:.2em;text-transform:uppercase}
+.champ input,.champ select,.champ textarea{width:100%;background:var(--encre2);border:1px solid var(--trait);border-radius:2px;color:var(--ivoire);
+  font:inherit;font-size:16px;padding:13px 14px;outline:0;transition:border-color .2s}
+.champ textarea{min-height:110px;resize:vertical}
+.champ input:focus,.champ select:focus,.champ textarea:focus{border-color:var(--champagne)}
+.champ small{color:var(--discret);font-size:13px}
+
+/* Onglets */
+.onglets{display:flex;gap:32px;border-bottom:1px solid var(--trait);margin:8px 0 34px}
+.onglet{padding:20px 0 18px;color:var(--doux);border-bottom:1px solid transparent}
+.onglet[aria-pressed="true"]{color:var(--ivoire);border-color:var(--champagne)}
+
+/* Liste des fiches */
+.entete{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.entete h2{font-family:var(--serif);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1}
+.entete .petit{color:var(--champagne);display:block;margin-bottom:8px}
+.fiches{display:flex;flex-direction:column;border-top:1px solid var(--trait)}
+.ligne{display:grid;grid-template-columns:96px 1fr auto;gap:20px;align-items:center;padding:18px 0;border-bottom:1px solid var(--trait)}
+.vignette{width:96px;height:72px;border-radius:2px;background:var(--encre3) center/cover no-repeat}
+.ligne .nom{font-family:var(--serif);font-size:26px;line-height:1.1}
+.ligne .meta{color:var(--doux);font-size:14px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:4px}
+.ligne .actions{display:flex;gap:22px;flex-wrap:wrap;justify-content:flex-end}
+.statut{font-size:11px;letter-spacing:.2em;text-transform:uppercase;padding:3px 9px;border:1px solid var(--trait);border-radius:2px}
+.statut.publie{color:var(--vert);border-color:rgba(143,191,159,.4)}
+.statut.en_attente{color:var(--champagne);border-color:rgba(201,166,107,.4)}
+.statut.suspendu{color:var(--rouge);border-color:rgba(217,140,140,.4)}
+.vide{color:var(--doux);padding:40px 0;text-align:center}
+
+/* Formulaire */
+.formulaire{display:grid;grid-template-columns:1fr 1fr;gap:20px 24px}
+.formulaire .large{grid-column:1/-1}
+.photo-zone{display:flex;gap:18px;align-items:center}
+.photo-zone .vignette{width:160px;height:110px}
+.choix-formules{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.choix-formules label{display:flex;flex-direction:column;gap:4px;padding:16px;border:1px solid var(--trait);border-radius:2px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:15px;color:var(--ivoire)}
+.choix-formules input{display:none}
+.choix-formules label:has(input:checked){border-color:var(--champagne)}
+.choix-formules b{font-family:var(--serif);font-weight:500;font-size:22px}
+.choix-formules span{color:var(--doux)}
+.boutons{grid-column:1/-1;display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end;padding-top:10px;border-top:1px solid var(--trait)}
+.admin-bloc{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:20px 24px;padding:20px;border:1px dashed rgba(201,166,107,.4)}
+.admin-bloc .petit{grid-column:1/-1;color:var(--champagne)}
+
+/* Statistiques */
+.chiffres{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));border-top:1px solid var(--trait);border-bottom:1px solid var(--trait);margin-bottom:34px}
+.chiffre{padding:26px 20px 26px 0}
+.chiffre b{display:block;font-family:var(--serif);font-weight:400;font-size:clamp(46px,6vw,64px);line-height:1}
+.chiffre span{color:var(--doux);font-size:14px}
+.graphe{display:flex;align-items:flex-end;gap:3px;height:180px;padding-bottom:6px;border-bottom:1px solid var(--trait)}
+.graphe .jour{flex:1;display:flex;align-items:flex-end;gap:1px;height:100%;position:relative}
+.graphe .b{flex:1;min-height:1px;background:rgba(242,237,228,.55);border-radius:1px 1px 0 0}
+.graphe .b.s{background:var(--champagne)}
+.legende{display:flex;gap:24px;color:var(--doux);font-size:14px;margin-top:14px;align-items:center;flex-wrap:wrap}
+.legende i{display:inline-block;width:12px;height:12px;margin-right:8px;vertical-align:-1px}
+.axe{display:flex;justify-content:space-between;color:var(--discret);font-size:12px;margin-top:8px}
+
+/* Formules (admin) */
+.cartes-formules{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px}
+.carte-formule{border:1px solid var(--trait);padding:22px;display:flex;flex-direction:column;gap:14px}
+.deux{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+@media (max-width:700px){
+  .formulaire,.admin-bloc{grid-template-columns:1fr}
+  .ligne{grid-template-columns:72px 1fr} .vignette{width:72px;height:56px}
+  .ligne .actions{grid-column:1/-1;justify-content:flex-start}
+  .barre .compte span{display:none}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Base pas encore branchée -->
+  <div class="connexion" id="vue-nonbranche" hidden>
+    <img src="/adstay/logo-transparent.webp" alt="AdStay"/>
+    <h1>Espace partenaires</h1>
+    <p class="sous">Bientôt disponible. L’espace n’est pas encore relié à sa base de données.</p>
+  </div>
+
+  <!-- Connexion -->
+  <div class="connexion" id="vue-connexion" hidden>
+    <img src="/adstay/logo-transparent.webp" alt="AdStay"/>
+    <h1>Espace partenaires</h1>
+    <p class="sous">Gérez votre fiche et suivez combien de voyageurs la découvrent.</p>
+    <button class="google" id="btnGoogle">
+      <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.7c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
+      Continuer avec Google
+    </button>
+    <div class="ou petit">ou</div>
+    <form id="formEmail">
+      <div class="champ"><label for="email">Votre e-mail</label><input id="email" type="email" required autocomplete="email" placeholder="vous@exemple.fr"/></div>
+      <button class="bouton plein" type="submit" id="btnEmail">Recevoir mon lien de connexion</button>
+    </form>
+    <p class="note">Pas encore de compte ? Il est créé automatiquement à la première connexion. Pas de mot de passe à retenir.</p>
+    <div id="msgConnexion"></div>
+  </div>
+
+  <!-- Espace connecté -->
+  <div id="vue-app" hidden>
+    <div class="barre">
+      <img src="/adstay/logo-transparent.webp" alt="AdStay"/>
+      <div class="compte"><span id="monEmail"></span><button class="bouton lien" id="btnSortir">Se déconnecter</button></div>
+    </div>
+    <div class="onglets petit" id="onglets"></div>
+    <div id="contenu"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/adstay/donnees.js"></script>
+<script src="/adstay/config.js"></script>
+<script>
+const C = window.ADSTAY_CONFIG || {}, D = window.ADSTAY;
+const $ = s => document.querySelector(s);
+const echap = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sb = C.supabaseUrl && C.supabaseAnonKey && window.supabase ? supabase.createClient(C.supabaseUrl, C.supabaseAnonKey) : null;
+const RETOUR = location.origin + '/adstay/espace';
+const STATUTS = { brouillon: 'Brouillon', en_attente: 'En attente de validation', publie: 'Publiée', suspendu: 'Suspendue' };
+
+let moi = null, admin = false, formules = [], fiches = [], onglet = 'fiches';
+
+const montrer = v => ['nonbranche', 'connexion', 'app'].forEach(x => $('#vue-' + x).hidden = x !== v);
+const message = (el, texte, erreur) => { $(el).innerHTML = texte ? `<div class="message ${erreur ? 'erreur' : ''}">${echap(texte)}</div>` : ''; };
+const nomCategorie = id => D.categories.find(c => c.id === id)?.nom || id;
+const nomFormule = id => formules.find(f => f.id === id)?.nom || id;
+
+// ─── Connexion ───────────────────────────────────────────────────────────────
+$('#btnGoogle').addEventListener('click', async () => {
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: RETOUR } });
+  if (error) message('#msgConnexion', 'Connexion Google impossible pour le moment : ' + error.message, true);
+});
+$('#formEmail').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('#btnEmail').disabled = true;
+  const { error } = await sb.auth.signInWithOtp({ email: $('#email').value.trim(), options: { emailRedirectTo: RETOUR } });
+  $('#btnEmail').disabled = false;
+  if (error) message('#msgConnexion', 'Envoi impossible : ' + error.message, true);
+  else message('#msgConnexion', 'C’est envoyé. Ouvrez l’e-mail reçu et touchez le lien pour vous connecter.');
+});
+$('#btnSortir').addEventListener('click', async () => { await sb.auth.signOut(); location.replace(RETOUR); });
+
+async function entrer(user) {
+  if (moi?.id === user.id) return;
+  moi = user;
+  $('#monEmail').textContent = user.email || '';
+  const [{ data: profil }, { data: f }] = await Promise.all([
+    sb.from('profils').select('role').eq('id', user.id).maybeSingle(),
+    sb.from('formules').select('*').order('rang'),
+  ]);
+  admin = profil?.role === 'admin';
+  formules = f || [];
+  montrer('app');
+  await chargerFiches();
+  afficher();
+}
+
+async function chargerFiches() {
+  let q = sb.from('commercants').select(admin ? '*, profils(email)' : '*').order('updated_at', { ascending: false });
+  if (!admin) q = q.eq('proprietaire', moi.id);
+  const { data, error } = await q;
+  fiches = error ? [] : data;
+}
+
+// ─── Navigation ──────────────────────────────────────────────────────────────
+function afficher() {
+  const tabs = admin ? [['fiches', 'Toutes les fiches'], ['formules', 'Formules et prix']] : [['fiches', 'Mes établissements']];
+  $('#onglets').innerHTML = tabs.map(([id, nom]) => `<button class="onglet" data-onglet="${id}" aria-pressed="${id === onglet}">${nom}</button>`).join('');
+  if (onglet === 'formules' && admin) return vueFormules();
+  vueListe();
+}
+$('#onglets').addEventListener('click', e => {
+  const b = e.target.closest('[data-onglet]'); if (b) { onglet = b.dataset.onglet; afficher(); }
+});
+
+// ─── Liste des fiches ────────────────────────────────────────────────────────
+function vueListe() {
+  const enAttente = fiches.filter(f => f.statut === 'en_attente').length;
+  $('#contenu').innerHTML = `
+    <div class="entete">
+      <div><span class="petit">${admin ? `${fiches.length} fiche(s)${enAttente ? ` · ${enAttente} à valider` : ''}` : 'Vos fiches AdStay'}</span>
+        <h2>${admin ? 'Les établissements' : 'Mes établissements'}</h2></div>
+      <button class="bouton plein" data-action="nouvelle">Ajouter un établissement</button>
+    </div>
+    ${fiches.length ? `<div class="fiches">${fiches.map(f => `
+      <div class="ligne">
+        <div class="vignette" style="${f.photo ? `background-image:url('${encodeURI(f.photo)}')` : ''}"></div>
+        <div>
+          <div class="nom">${echap(f.nom)}</div>
+          <div class="meta"><span class="statut ${f.statut}">${STATUTS[f.statut]}</span>
+            <span>${echap(nomCategorie(f.categorie))}</span><span>Formule ${echap(nomFormule(f.formule))}</span>
+            ${admin && f.profils?.email ? `<span>${echap(f.profils.email)}</span>` : ''}
+            ${f.formule_souhaitee && f.formule_souhaitee !== f.formule ? `<span>Souhaite : ${echap(nomFormule(f.formule_souhaitee))}</span>` : ''}</div>
+        </div>
+        <div class="actions">
+          <button class="bouton lien" data-action="stats" data-id="${f.id}">Statistiques</button>
+          <button class="bouton lien" data-action="modifier" data-id="${f.id}">Modifier</button>
+          ${admin && f.statut !== 'publie' ? `<button class="bouton lien" style="color:var(--vert)" data-action="publier" data-id="${f.id}">Publier</button>` : ''}
+          ${admin && f.statut === 'publie' ? `<button class="bouton lien danger" data-action="suspendre" data-id="${f.id}">Suspendre</button>` : ''}
+        </div>
+      </div>`).join('')}</div>`
+    : `<p class="vide">Aucun établissement pour l’instant. Ajoutez le vôtre : il sera visible sur les tablettes après validation.</p>`}`;
+}
+
+$('#contenu').addEventListener('click', async e => {
+  const b = e.target.closest('[data-action]'); if (!b) return;
+  const id = b.dataset.id, a = b.dataset.action;
+  if (a === 'nouvelle') return vueFormulaire(null);
+  if (a === 'modifier') return vueFormulaire(fiches.find(f => f.id === id));
+  if (a === 'stats') return vueStats(fiches.find(f => f.id === id), 30);
+  if (a === 'retour') { await chargerFiches(); return afficher(); }
+  if (a === 'periode') return vueStats(fiches.find(f => f.id === id), Number(b.dataset.jours));
+  if (a === 'publier' || a === 'suspendre') {
+    await sb.from('commercants').update({ statut: a === 'publier' ? 'publie' : 'suspendu' }).eq('id', id);
+    await chargerFiches(); return afficher();
+  }
+  if (a === 'supprimer' && confirm('Supprimer définitivement cette fiche ?')) {
+    await sb.from('commercants').delete().eq('id', id);
+    await chargerFiches(); return afficher();
+  }
+  if (a === 'enregistrer-formule') return enregistrerFormule(b.dataset.id, b);
+});
+
+// ─── Formulaire d'une fiche ──────────────────────────────────────────────────
+function vueFormulaire(f) {
+  const v = f || { nom: '', categorie: D.categories[0]?.id, statut: 'brouillon', formule: 'essentielle', formule_souhaitee: 'essentielle' };
+  const champ = (id, label, type = 'text', aide = '') => `<div class="champ ${type === 'textarea' ? 'large' : ''}"><label for="f-${id}">${label}</label>
+    ${type === 'textarea' ? `<textarea id="f-${id}">${echap(v[id])}</textarea>` : `<input id="f-${id}" type="${type}" value="${echap(v[id])}"/>`}
+    ${aide ? `<small>${aide}</small>` : ''}</div>`;
+  $('#contenu').innerHTML = `
+    <div class="entete"><div><span class="petit">${f ? STATUTS[v.statut] : 'Nouvelle fiche'}</span><h2>${f ? echap(v.nom) : 'Votre établissement'}</h2></div>
+      <button class="bouton lien" data-action="retour">← Retour</button></div>
+    <form class="formulaire" id="formFiche">
+      <div class="champ"><label for="f-nom">Nom de l’établissement</label><input id="f-nom" required value="${echap(v.nom)}"/></div>
+      <div class="champ"><label for="f-categorie">Catégorie</label><select id="f-categorie">
+        ${D.categories.map(c => `<option value="${c.id}" ${c.id === v.categorie ? 'selected' : ''}>${echap(c.nom)}</option>`).join('')}</select></div>
+      ${champ('accroche', 'Accroche', 'text', 'Une phrase courte, ex. « Poissons du jour face aux bateaux »')}
+      ${champ('offre', 'Offre pour les voyageurs', 'text', 'Facultatif, ex. « Apéritif offert sur présentation de la tablette »')}
+      ${champ('description', 'Description', 'textarea')}
+      ${champ('adresse', 'Adresse')}
+      ${champ('tel', 'Téléphone', 'tel')}
+      ${champ('horaires', 'Horaires')}
+      ${champ('lien', 'Site ou lien de réservation', 'url', 'Facultatif. Sinon, le QR code mène à l’itinéraire.')}
+      <div class="champ large"><label>Photo</label>
+        <div class="photo-zone"><div class="vignette" id="apercu" style="${v.photo ? `background-image:url('${encodeURI(v.photo)}')` : ''}"></div>
+          <div><input type="file" id="f-fichier" accept="image/*"/><small id="etatPhoto">Format paysage conseillé, 5 Mo maximum.</small></div></div>
+        <input type="hidden" id="f-photo" value="${echap(v.photo)}"/></div>
+      <div class="champ large"><label>Formule souhaitée</label>
+        <div class="choix-formules">${formules.map(x => `<label><input type="radio" name="souhait" value="${x.id}" ${x.id === (v.formule_souhaitee || v.formule) ? 'checked' : ''}/>
+          <b>${echap(x.nom)}</b><span>${echap(x.prix)} € / mois</span></label>`).join('')}</div>
+        <small>Nous vous contactons pour activer la formule choisie.</small></div>
+      ${admin ? `<div class="admin-bloc"><span class="petit">Réglages admin</span>
+        <div class="champ"><label for="f-statut">Statut</label><select id="f-statut">${Object.entries(STATUTS).map(([k, n]) => `<option value="${k}" ${k === v.statut ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+        <div class="champ"><label for="f-formule">Formule active</label><select id="f-formule">${formules.map(x => `<option value="${x.id}" ${x.id === v.formule ? 'selected' : ''}>${echap(x.nom)} — ${echap(x.prix)} €</option>`).join('')}</select></div>
+      </div>` : ''}
+      <div id="msgFiche" class="large"></div>
+      <div class="boutons">
+        ${admin && f ? `<button type="button" class="bouton lien danger" data-action="supprimer" data-id="${f.id}" style="margin-right:auto">Supprimer</button>` : ''}
+        <button type="submit" class="bouton creux" data-envoi="garder">Enregistrer</button>
+        ${!admin && v.statut === 'brouillon' ? `<button type="submit" class="bouton plein" data-envoi="valider">Envoyer pour validation</button>` : ''}
+      </div>
+    </form>`;
+
+  $('#f-fichier').addEventListener('change', async e => {
+    const fichier = e.target.files[0]; if (!fichier) return;
+    if (fichier.size > 5 * 1024 * 1024) return $('#etatPhoto').textContent = 'Photo trop lourde (5 Mo maximum).';
+    $('#etatPhoto').textContent = 'Envoi de la photo…';
+    const chemin = `${moi.id}/${Date.now()}.${(fichier.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+    const { error } = await sb.storage.from('photos').upload(chemin, fichier, { contentType: fichier.type });
+    if (error) return $('#etatPhoto').textContent = 'Envoi impossible : ' + error.message;
+    const url = sb.storage.from('photos').getPublicUrl(chemin).data.publicUrl;
+    $('#f-photo').value = url; $('#apercu').style.backgroundImage = `url('${encodeURI(url)}')`;
+    $('#etatPhoto').textContent = 'Photo prête. Pensez à enregistrer.';
+  });
+
+  $('#formFiche').addEventListener('submit', async e => {
+    e.preventDefault();
+    const val = id => $('#f-' + id).value.trim();
+    const donnees = {
+      nom: val('nom'), categorie: val('categorie'), accroche: val('accroche'), offre: val('offre'),
+      description: val('description'), adresse: val('adresse'), tel: val('tel'), horaires: val('horaires'),
+      lien: val('lien'), photo: val('photo'),
+      formule_souhaitee: document.querySelector('input[name="souhait"]:checked')?.value || null,
+    };
+    if (admin) { donnees.statut = val('statut'); donnees.formule = val('formule'); }
+    else if (e.submitter?.dataset.envoi === 'valider') donnees.statut = 'en_attente';
+    const { error } = f
+      ? await sb.from('commercants').update(donnees).eq('id', f.id)
+      : await sb.from('commercants').insert(donnees);
+    if (error) return message('#msgFiche', 'Enregistrement impossible : ' + error.message, true);
+    await chargerFiches(); afficher();
+  });
+}
+
+// ─── Statistiques d'une fiche ────────────────────────────────────────────────
+async function vueStats(f, jours) {
+  $('#contenu').innerHTML = `<p class="vide">Chargement des statistiques…</p>`;
+  const { data, error } = await sb.rpc('adstay_stats', { p_commercant: f.id, p_jours: jours });
+  const lignes = error ? [] : data;
+  const total = k => lignes.reduce((s, l) => s + Number(l[k]), 0);
+  const vues = total('vues'), scans = total('scans'), diapo = total('diaporama');
+  const max = Math.max(1, ...lignes.map(l => Math.max(Number(l.vues), Number(l.scans))));
+  const date = d => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  $('#contenu').innerHTML = `
+    <div class="entete"><div><span class="petit">Statistiques · ${jours} derniers jours</span><h2>${echap(f.nom)}</h2></div>
+      <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
+        ${[7, 30, 90].map(j => `<button class="bouton lien" style="${j === jours ? 'color:var(--ivoire)' : ''}" data-action="periode" data-jours="${j}" data-id="${f.id}">${j} jours</button>`).join('')}
+        <button class="bouton lien" data-action="retour">← Retour</button></div></div>
+    ${f.statut !== 'publie' ? `<p class="message">Cette fiche n’est pas encore publiée : les statistiques démarreront dès qu’elle sera visible sur les tablettes.</p><br/>` : ''}
+    <div class="chiffres">
+      <div class="chiffre"><b>${vues}</b><span>fiche ouverte par un voyageur</span></div>
+      <div class="chiffre"><b>${scans}</b><span>QR code scanné (itinéraire, réservation)</span></div>
+      <div class="chiffre"><b>${diapo}</b><span>passage sur l’écran de veille</span></div>
+      <div class="chiffre"><b>${vues ? Math.round(scans / vues * 100) : 0} %</b><span>des voyageurs qui ouvrent la fiche scannent le QR</span></div>
+    </div>
+    <div class="graphe">${lignes.map(l => `<div class="jour" title="${date(l.jour)} : ${l.vues} vue(s), ${l.scans} scan(s)">
+      <div class="b" style="height:${Number(l.vues) / max * 100}%"></div><div class="b s" style="height:${Number(l.scans) / max * 100}%"></div></div>`).join('')}</div>
+    <div class="axe"><span>${lignes[0] ? date(lignes[0].jour) : ''}</span><span>${lignes.length ? date(lignes[lignes.length - 1].jour) : ''}</span></div>
+    <div class="legende"><span><i style="background:rgba(242,237,228,.55)"></i>Fiches ouvertes</span><span><i style="background:var(--champagne)"></i>QR scannés</span></div>`;
+}
+
+// ─── Formules et prix (admin) ────────────────────────────────────────────────
+function vueFormules() {
+  $('#contenu').innerHTML = `
+    <div class="entete"><div><span class="petit">Visible sur la page partenaires et les tablettes</span><h2>Formules et prix</h2></div></div>
+    <div class="cartes-formules">${formules.map(x => `
+      <div class="carte-formule" data-formule="${x.id}">
+        <div class="deux"><div class="champ"><label>Nom</label><input data-k="nom" value="${echap(x.nom)}"/></div>
+          <div class="champ"><label>Prix / mois (€)</label><input data-k="prix" type="number" min="0" step="1" value="${echap(x.prix)}"/></div></div>
+        <div class="champ"><label>Pour qui</label><input data-k="pour" value="${echap(x.pour)}"/></div>
+        <div class="champ"><label>Avantages (un par ligne)</label><textarea data-k="avantages">${echap((x.avantages || []).join('\n'))}</textarea></div>
+        <div class="deux"><div class="champ"><label>Étiquette</label><input data-k="badge" value="${echap(x.badge)}"/></div>
+          <div class="champ"><label>Passages diaporama</label><input data-k="diaporama" type="number" min="0" max="5" value="${echap(x.diaporama)}"/></div></div>
+        <button class="bouton creux" data-action="enregistrer-formule" data-id="${x.id}">Enregistrer</button>
+      </div>`).join('')}</div>`;
+}
+async function enregistrerFormule(id, bouton) {
+  const carte = document.querySelector(`[data-formule="${id}"]`);
+  const v = k => carte.querySelector(`[data-k="${k}"]`).value;
+  const { error } = await sb.from('formules').update({
+    nom: v('nom').trim(), prix: Number(v('prix')), pour: v('pour').trim(), badge: v('badge').trim(),
+    diaporama: Number(v('diaporama')), avantages: v('avantages').split('\n').map(s => s.trim()).filter(Boolean),
+  }).eq('id', id);
+  bouton.textContent = error ? 'Erreur : ' + error.message : 'Enregistré ✓';
+  if (!error) formules = (await sb.from('formules').select('*').order('rang')).data || formules;
+  setTimeout(() => { bouton.textContent = 'Enregistrer'; }, 2500);
+}
+
+// ─── Démarrage ───────────────────────────────────────────────────────────────
+if (!sb) montrer('nonbranche');
+else {
+  sb.auth.onAuthStateChange((_evt, session) => {
+    if (session?.user) setTimeout(() => entrer(session.user), 0);
+    else { moi = null; montrer('connexion'); }
+  });
+}
+</script>
+</body>
+</html>
