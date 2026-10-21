@@ -4,180 +4,247 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
 <meta name="robots" content="noindex, nofollow, noarchive"/>
-<meta name="theme-color" content="#060b17"/>
+<meta name="theme-color" content="#f4efe7"/>
 <title>AdStay</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500&display=swap"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400;1,500&family=Jost:wght@300;400;500&display=swap"/>
 <style>
+/* AdStay — application tablette. Ivoire, encre et laiton : l'esprit d'un palace. */
 :root{
-  --encre:#060b17; --encre2:#0c1322; --ivoire:#f2ede4; --doux:#9298a6; --discret:#5f6676;
-  --champagne:#c9a66b; --trait:rgba(242,237,228,.12);
+  --ivoire:#f4efe7; --papier:#fbf8f3; --sable:#e9e1d4; --encre:#1b2430; --encre2:#2a3442;
+  --texte2:#5b616c; --gris:#8c9099; --laiton:#a8844c; --laiton2:#c9a66b;
+  --trait:rgba(27,36,48,.09);
+  --ombre:0 1px 2px rgba(27,36,48,.04),0 18px 40px -22px rgba(27,36,48,.28);
   --serif:'Cormorant Garamond',Georgia,serif; --sans:Jost,system-ui,sans-serif;
-  --marge:clamp(16px,4vw,64px);
+  --r:22px; --ecart:clamp(12px,1.4vw,20px); --rail:132px;
 }
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
-body{background:var(--encre);color:var(--ivoire);font-family:var(--sans);font-weight:300;
-  user-select:none;-webkit-user-select:none;overflow:hidden;-webkit-font-smoothing:antialiased}
+body{background:var(--ivoire);color:var(--encre);font-family:var(--sans);font-weight:300;overflow:hidden;
+  user-select:none;-webkit-user-select:none;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left}
-main{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch}
-.petit{font-size:12px;letter-spacing:.28em;text-transform:uppercase;font-weight:400}
+.petit{font-size:12px;letter-spacing:.24em;text-transform:uppercase;font-weight:400}
+.touche{transition:transform .18s cubic-bezier(.2,.7,.2,1),box-shadow .18s}
+.touche:active{transform:scale(.975)}
 
-/* Bandeau photo */
-.hero{position:relative;height:clamp(300px,42vh,460px);background:#0b1a2e center/cover no-repeat;display:flex;flex-direction:column;
-  justify-content:space-between;padding:clamp(18px,3vw,36px) var(--marge)}
-.hero::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,11,23,.45),rgba(6,11,23,0) 35%,rgba(6,11,23,.35) 65%,var(--encre))}
-.hero > *{position:relative}
-.hero .haut{display:flex;justify-content:space-between;align-items:center}
-.hero .logo{height:clamp(44px,5vw,64px);width:auto}
-.hero .region{color:rgba(242,237,228,.85)}
-.hero .bas{display:flex;justify-content:space-between;align-items:flex-end;gap:24px}
-.hero .bienvenue .petit{color:var(--champagne)}
-.hero h1{font-family:var(--serif);font-weight:400;font-size:clamp(72px,10vw,150px);line-height:.9;letter-spacing:-.01em;margin:10px 0 6px}
-.hero .date{color:rgba(242,237,228,.8);font-size:17px;text-transform:capitalize}
-.meteo{text-align:right;white-space:nowrap}
-.meteo .heure{font-size:clamp(34px,4vw,56px);font-weight:300;line-height:1;display:flex;gap:16px;justify-content:flex-end;align-items:baseline}
-.meteo .degres{font-family:var(--serif);font-size:.85em;color:var(--champagne)}
-.meteo .degres:empty{display:none}
-.meteo .temps{margin-top:8px;color:rgba(242,237,228,.75)}
+.app{height:100%;display:grid;grid-template-columns:var(--rail) 1fr}
 
-/* Navigation */
-nav{position:sticky;top:0;z-index:5;background:rgba(6,11,23,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--trait);
-  display:flex;align-items:center;gap:24px;padding:0 var(--marge)}
-.onglets{flex:1;display:flex;gap:clamp(18px,2.4vw,36px);overflow-x:auto;scrollbar-width:none}
-.onglets::-webkit-scrollbar{display:none}
-.onglet{flex:none;padding:24px 0 22px;color:var(--doux);border-bottom:1px solid transparent;transition:color .2s,border-color .2s}
-.onglet[aria-pressed="true"]{color:var(--ivoire);border-color:var(--champagne)}
-.recherche{flex:none;display:flex;align-items:center;gap:10px;width:clamp(180px,22vw,320px);border-bottom:1px solid var(--trait);padding:8px 0}
-.recherche svg{width:18px;height:18px;stroke:var(--doux);flex:none}
-.recherche input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--ivoire);font:inherit;font-size:16px}
-.recherche input::placeholder{color:var(--discret)}
+/* ── Menu latéral ───────────────────────────────────────── */
+.rail{display:flex;flex-direction:column;align-items:center;gap:4px;padding:22px 0 18px;border-right:1px solid var(--trait);background:var(--papier);overflow-y:auto;scrollbar-width:none}
+.rail::-webkit-scrollbar{display:none}
+.rail .logo{width:96px;margin-bottom:14px}
+.nav{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%}
+.nav button{width:112px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:7px 4px;border-radius:18px;color:var(--texte2);font-size:13px;text-align:center;line-height:1.2}
+.nav .ico{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;transition:background .25s,color .25s}
+.nav svg{width:24px;height:24px;stroke:currentColor;stroke-width:1.5}
+.nav button[aria-current="true"]{color:var(--encre);font-weight:400}
+.nav button[aria-current="true"] .ico{background:var(--encre);color:var(--ivoire)}
+.rail .meteo-rail{margin-top:auto;padding-top:12px;text-align:center;color:var(--texte2);font-size:13px}
+.rail .meteo-rail b{display:block;font-family:var(--serif);font-weight:400;font-size:30px;color:var(--encre);line-height:1}
 
-/* Contenu */
-.contenu{padding:0 var(--marge) 60px}
-section{padding-top:clamp(40px,5vw,64px)}
-.titre-section{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:28px}
-.titre-section .petit{color:var(--champagne);display:block;margin-bottom:10px}
-h2{font-family:var(--serif);font-weight:400;font-size:clamp(34px,3.6vw,52px);line-height:1}
-.titre-section p{color:var(--doux);max-width:36ch;text-align:right}
+/* ── Écrans ─────────────────────────────────────────────── */
+main{position:relative;overflow:hidden}
+.ecran{position:absolute;inset:0;overflow-y:auto;padding:clamp(18px,2.4vw,36px);-webkit-overflow-scrolling:touch;animation:entre .4s cubic-bezier(.2,.7,.2,1)}
+@keyframes entre{from{opacity:0;transform:translateY(10px)}}
 
-.services{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));border-top:1px solid var(--trait)}
-.service{display:flex;flex-direction:column;gap:14px;padding:26px 22px 26px 0;border-bottom:1px solid var(--trait);transition:opacity .2s}
-.service:active{opacity:.6}
-.service svg{width:30px;height:30px;stroke:var(--champagne);stroke-width:1.2}
-.service b{font-family:var(--serif);font-weight:500;font-size:24px;line-height:1.1}
-.service span{color:var(--doux);font-size:15px}
+/* Accueil en bento */
+.bento{height:100%;min-height:640px;display:grid;gap:var(--ecart);
+  grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr .9fr;
+  grid-template-areas:"hero hero vedette vedette" "hero hero sejour guide" "c1 c2 c3 c4"}
+.tuile{position:relative;border-radius:var(--r);overflow:hidden;background:var(--papier);box-shadow:var(--ombre);display:flex;flex-direction:column;padding:clamp(18px,1.8vw,28px)}
+.tuile.photo{color:#fff;background:#2a3442 center/cover no-repeat;justify-content:flex-end}
+.tuile.photo::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,14,20,.05) 35%,rgba(10,14,20,.62))}
+.tuile > *{position:relative}
+.tuile .petit{opacity:.85}
+.hero{grid-area:hero;justify-content:space-between!important}
+.hero::before{background:linear-gradient(180deg,rgba(10,14,20,.25),rgba(10,14,20,0) 35%,rgba(10,14,20,.55))!important}
+.hero h1{font-family:var(--serif);font-weight:400;font-size:clamp(56px,6.4vw,104px);line-height:.92;letter-spacing:-.01em;margin:10px 0 12px;text-shadow:0 2px 30px rgba(10,14,20,.25)}
+.hero h1 em{font-style:italic;color:#f3e2bf}
+.hero .date{font-size:18px;text-transform:capitalize;opacity:.9}
+.verre{display:flex;align-items:center;gap:22px;align-self:flex-start;padding:14px 22px;border-radius:999px;background:rgba(255,255,255,.16);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.25)}
+.verre .heure{font-size:34px;font-weight:300;line-height:1}
+.verre .temp{font-family:var(--serif);font-size:30px;line-height:1}
+.verre .temp:empty,.verre .ciel:empty{display:none}
+.verre .ciel{font-size:14px;opacity:.9}
+.vedette{grid-area:vedette}
+.vedette .nom{font-family:var(--serif);font-weight:400;font-size:clamp(34px,3.2vw,50px);line-height:1;margin:8px 0 6px}
+.vedette .offre{font-family:var(--serif);font-style:italic;font-size:21px;color:#f3e2bf}
+.etiquette{position:absolute!important;top:18px;left:18px;padding:7px 14px;border-radius:999px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  background:rgba(251,248,243,.92);color:var(--encre);font-weight:400}
+.points{position:absolute!important;top:26px;right:22px;display:flex;gap:6px}
+.points i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.45);transition:background .3s}
+.points i.on{background:#fff}
+.sejour{grid-area:sejour;background:var(--encre)!important;color:var(--ivoire);justify-content:space-between}
+.sejour svg{width:34px;height:34px;stroke:var(--laiton2);stroke-width:1.3}
+.sejour h3,.guide h3,.cat h3{font-family:var(--serif);font-weight:400;font-size:clamp(28px,2.4vw,36px);line-height:1.02}
+.sejour p{color:rgba(244,239,231,.7);font-size:15px;margin-top:6px}
+.fleche{display:inline-flex;align-items:center;gap:10px;font-size:12px;letter-spacing:.2em;text-transform:uppercase;margin-top:14px}
+.fleche::after{content:"→";font-size:16px;letter-spacing:0}
+.sejour .fleche{color:var(--laiton2)}
+.guide{grid-area:guide;justify-content:space-between}
+.guide ol{list-style:none;display:flex;flex-direction:column;gap:10px;margin-top:10px;counter-reset:e}
+.guide li{display:flex;gap:12px;align-items:flex-start;font-size:15px;color:var(--texte2);line-height:1.35}
+.guide li::before{counter-increment:e;content:counter(e);flex:none;width:24px;height:24px;border-radius:50%;border:1px solid var(--laiton);color:var(--laiton);
+  display:grid;place-items:center;font-size:12px;font-weight:400}
+.cat h3{font-size:clamp(26px,2.2vw,34px)}
+.cat .nb{font-size:14px;opacity:.85;margin-top:4px}
+.c1{grid-area:c1}.c2{grid-area:c2}.c3{grid-area:c3}.c4{grid-area:c4}
 
-.une{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:clamp(20px,2.5vw,36px)}
-.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr));gap:clamp(20px,2.5vw,36px) clamp(16px,2vw,28px)}
-.carte{display:flex;flex-direction:column;gap:16px;transition:opacity .2s}
-.carte:active{opacity:.7}
-.image{position:relative;aspect-ratio:4/3;border-radius:4px;overflow:hidden;background:var(--encre2)}
-.une .image{aspect-ratio:5/4}
-.image img{width:100%;height:100%;object-fit:cover;display:block}
-.image .label{position:absolute;left:14px;top:14px;padding:7px 12px;background:rgba(6,11,23,.55);backdrop-filter:blur(8px);
-  color:var(--ivoire);font-size:11px;letter-spacing:.24em;text-transform:uppercase;border-radius:2px}
-.carte .cat{color:var(--champagne)}
-.carte .nom{font-family:var(--serif);font-weight:500;font-size:clamp(26px,2.2vw,32px);line-height:1.05;margin-top:-6px}
-.une .carte .nom{font-size:clamp(32px,3vw,44px)}
-.carte .acc{color:var(--doux);font-size:16px;margin-top:-6px}
-.carte .offre{color:var(--ivoire);font-size:15px;display:flex;gap:12px;align-items:center}
-.carte .offre::before{content:"";width:22px;height:1px;background:var(--champagne);flex:none}
-.vide{color:var(--doux);text-align:center;padding:80px 0;font-family:var(--serif);font-size:28px}
-.signature{text-align:center;color:var(--discret);margin-top:72px}
+/* Tuile Wi-Fi */
+.wifi{justify-content:space-between}
+.wifi .ligne{display:flex;gap:16px;align-items:center}
+.wifi img{width:96px;height:96px;border-radius:10px;background:#fff;padding:6px;border:1px solid var(--trait);flex:none}
+.wifi b{display:block;font-family:var(--serif);font-weight:500;font-size:26px;line-height:1.05;word-break:break-word}
+.wifi small{display:block;color:var(--gris);font-size:12px;letter-spacing:.18em;text-transform:uppercase;margin-top:8px}
+.wifi .mdp{font-family:var(--sans);font-weight:400;font-size:18px;letter-spacing:.04em}
+.wifi .fleche{color:var(--laiton);margin-top:0}
+.verre .coucher{font-size:14px;opacity:.9;padding-left:22px;border-left:1px solid rgba(255,255,255,.3)}
+.verre .coucher:empty{display:none}
+.hero .astuce{display:inline-flex;align-items:center;gap:10px;margin-top:14px;font-size:15px;opacity:.9}
+.hero .astuce i{width:8px;height:8px;border-radius:50%;background:#f3e2bf;animation:pulse 2.4s infinite}
 
-/* Fiche détaillée */
-.voile{position:fixed;inset:0;background:rgba(3,6,12,.8);backdrop-filter:blur(10px);display:none;align-items:center;justify-content:center;
-  padding:clamp(12px,3vw,48px);z-index:20}
+/* Bloc « Votre logement » */
+.logement{display:grid;grid-template-columns:auto 1fr 1fr;gap:var(--ecart);margin-bottom:calc(var(--ecart) * 2)}
+.logement .bloc{background:var(--papier);border-radius:var(--r);box-shadow:var(--ombre);padding:26px}
+.logement .bloc.wifi-grand{display:flex;gap:22px;align-items:center;background:var(--encre);color:var(--ivoire)}
+.logement .wifi-grand img{width:150px;height:150px;border-radius:12px;background:#fff;padding:10px;flex:none}
+.logement .wifi-grand b{display:block;font-family:var(--serif);font-weight:400;font-size:30px;line-height:1.05}
+.logement .wifi-grand .mdp{font-family:var(--sans);font-size:20px;letter-spacing:.04em;color:var(--laiton2);margin:6px 0 10px}
+.logement .wifi-grand p{color:rgba(244,239,231,.7);font-size:14px}
+.horaires{display:flex;gap:30px}
+.horaires div span{display:block;color:var(--gris);font-size:12px;letter-spacing:.2em;text-transform:uppercase}
+.horaires div b{font-family:var(--serif);font-weight:400;font-size:44px;line-height:1.1}
+.logement ul{list-style:none;display:flex;flex-direction:column;gap:10px;font-size:15px;color:var(--texte2)}
+.logement li{display:flex;gap:10px}
+.logement li::before{content:"";width:14px;height:1px;background:var(--laiton);margin-top:.75em;flex:none}
+.sous-titre{font-family:var(--serif);font-weight:400;font-size:34px;margin:0 0 16px}
+
+/* En-tête des écrans intérieurs */
+.entete{display:flex;align-items:center;gap:20px;margin-bottom:clamp(20px,2.4vw,34px);flex-wrap:wrap}
+.retour{display:inline-flex;align-items:center;gap:10px;height:56px;padding:0 24px 0 18px;border-radius:999px;background:var(--papier);box-shadow:var(--ombre);font-size:15px}
+.retour svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.5}
+.entete .titres{flex:1;min-width:240px}
+.entete .petit{color:var(--laiton)}
+.entete h2{font-family:var(--serif);font-weight:400;font-size:clamp(40px,4.4vw,64px);line-height:1}
+.entete p{color:var(--texte2);margin-top:6px;font-size:16px}
+
+/* Cartes d'adresses */
+.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:var(--ecart)}
+.carte{display:flex;flex-direction:column;background:var(--papier);border-radius:var(--r);overflow:hidden;box-shadow:var(--ombre)}
+.carte .image{position:relative;aspect-ratio:16/11;background:var(--sable) center/cover no-repeat}
+.carte .image .etiquette{top:14px;left:14px}
+.carte .corps{padding:18px 20px 22px;display:flex;flex-direction:column;gap:6px;flex:1}
+.carte .nom{font-family:var(--serif);font-weight:500;font-size:28px;line-height:1.05}
+.carte .acc{color:var(--texte2);font-size:15px}
+.carte .offre{margin-top:auto;padding-top:10px;color:var(--laiton);font-size:14px;display:flex;gap:10px;align-items:center}
+.carte .offre::before{content:"";width:18px;height:1px;background:currentColor}
+.vide{grid-column:1/-1;text-align:center;color:var(--texte2);padding:70px 0;font-family:var(--serif);font-size:28px}
+
+/* Services du séjour */
+.services{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,250px),1fr));gap:var(--ecart)}
+.service{display:flex;flex-direction:column;gap:12px;padding:26px;background:var(--papier);border-radius:var(--r);box-shadow:var(--ombre)}
+.service .rond{width:60px;height:60px;border-radius:50%;background:var(--ivoire);display:grid;place-items:center}
+.service svg{width:28px;height:28px;stroke:var(--laiton);stroke-width:1.4}
+.service b{font-family:var(--serif);font-weight:500;font-size:28px;line-height:1.05}
+.service span{color:var(--texte2);font-size:15px}
+.service .fleche{color:var(--encre);margin-top:auto}
+
+/* Recherche */
+.champ-recherche{display:flex;align-items:center;gap:14px;height:72px;padding:0 26px;border-radius:999px;background:var(--papier);box-shadow:var(--ombre);margin-bottom:var(--ecart)}
+.champ-recherche svg{width:24px;height:24px;stroke:var(--gris);stroke-width:1.5;flex:none}
+.champ-recherche input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:22px;color:var(--encre)}
+.suggestions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:calc(var(--ecart) * 1.6)}
+.suggestions button{height:46px;padding:0 20px;border-radius:999px;border:1px solid var(--trait);background:var(--papier);color:var(--texte2);font-size:15px}
+
+/* ── Fiche détaillée ────────────────────────────────────── */
+.voile{position:fixed;inset:0;z-index:20;background:rgba(27,36,48,.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  display:none;align-items:stretch;justify-content:flex-end}
 .voile.ouvert{display:flex}
-.fiche{position:relative;width:min(1080px,100%);max-height:100%;overflow-y:auto;background:var(--encre2);display:grid;grid-template-columns:1fr 1fr;
-  border-radius:4px;animation:monte .35s cubic-bezier(.2,.7,.2,1)}
-@keyframes monte{from{transform:translateY(16px);opacity:0}}
-.fiche .photo{min-height:420px;background:var(--encre) center/cover no-repeat}
-.fiche .photo.sans{display:grid;place-items:center;background:linear-gradient(160deg,#16233b,#0a1120)}
-.fiche .photo.sans svg{width:90px;height:90px;stroke:var(--champagne);stroke-width:.8}
-.fiche .texte{padding:clamp(28px,4vw,56px);display:flex;flex-direction:column;gap:18px}
-.fiche .petit{color:var(--champagne)}
-.fiche h3{font-family:var(--serif);font-weight:400;font-size:clamp(40px,4vw,60px);line-height:.95}
-.fiche .desc{color:#cfd2da;font-size:18px;line-height:1.6}
-.fiche .offre{font-family:var(--serif);font-style:italic;font-size:24px;color:var(--champagne);padding:16px 0;border-top:1px solid var(--trait);border-bottom:1px solid var(--trait)}
-.infos{list-style:none;display:flex;flex-direction:column;gap:12px;font-size:16px;color:#cfd2da}
-.infos li{display:flex;gap:14px;align-items:center}
-.infos svg{width:18px;height:18px;stroke:var(--champagne);flex:none}
-.qr{display:flex;gap:18px;align-items:center;margin-top:auto;padding-top:10px;color:var(--doux);font-size:15px}
-.qr img{width:120px;height:120px;background:#fff;padding:8px;border-radius:2px;flex:none}
-.fermer{position:absolute;right:18px;top:18px;z-index:2;width:48px;height:48px;border-radius:50%;display:grid;place-items:center;
-  background:rgba(6,11,23,.55);backdrop-filter:blur(8px);border:1px solid var(--trait)}
-.fermer svg{width:20px;height:20px;stroke:var(--ivoire)}
+.fiche{width:min(760px,100%);height:100%;background:var(--ivoire);overflow-y:auto;animation:glisse .38s cubic-bezier(.2,.7,.2,1);
+  box-shadow:-30px 0 60px -30px rgba(27,36,48,.4)}
+@keyframes glisse{from{transform:translateX(40px);opacity:.4}}
+.fiche .photo{position:relative;height:clamp(260px,40vh,440px);background:var(--sable) center/cover no-repeat}
+.fiche .photo.sans{display:grid;place-items:center;background:var(--encre)}
+.fiche .photo.sans > svg{width:80px;height:80px;stroke:var(--laiton2);stroke-width:.9}
+.fermer{position:absolute;top:22px;right:22px;z-index:2;display:inline-flex;align-items:center;gap:10px;height:54px;padding:0 22px;border-radius:999px;
+  background:rgba(251,248,243,.94);color:var(--encre);font-size:15px;box-shadow:var(--ombre)}
+.fermer svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.6}
+.fiche .texte{padding:clamp(24px,3vw,44px);display:flex;flex-direction:column;gap:16px}
+.fiche .petit{color:var(--laiton)}
+.fiche h3{font-family:var(--serif);font-weight:400;font-size:clamp(44px,4.4vw,64px);line-height:.98}
+.fiche .desc{font-size:18px;line-height:1.6;color:var(--texte2)}
+.cadeau{display:flex;gap:16px;align-items:center;padding:18px 22px;border-radius:16px;background:var(--papier);border:1px solid rgba(168,132,76,.35)}
+.cadeau svg{width:28px;height:28px;stroke:var(--laiton);stroke-width:1.4;flex:none}
+.cadeau span{font-family:var(--serif);font-style:italic;font-size:23px;line-height:1.2}
+.infos{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.infos li{display:flex;gap:12px;align-items:center;padding:16px 18px;border-radius:16px;background:var(--papier);font-size:15px}
+.infos svg{width:20px;height:20px;stroke:var(--laiton);stroke-width:1.5;flex:none}
+.scanner{display:flex;gap:24px;align-items:center;padding:22px;border-radius:var(--r);background:var(--encre);color:var(--ivoire);margin-top:6px}
+.scanner img{width:150px;height:150px;border-radius:12px;background:#fff;padding:10px;flex:none}
+.scanner b{display:block;font-family:var(--serif);font-weight:400;font-size:28px;line-height:1.05;margin-bottom:10px}
+.scanner ol{list-style:none;display:flex;flex-direction:column;gap:6px;color:rgba(244,239,231,.75);font-size:15px;counter-reset:e}
+.scanner li::before{counter-increment:e;content:counter(e) ". ";color:var(--laiton2)}
 
-/* Diaporama de veille */
-.veille{position:fixed;inset:0;z-index:50;background:#000;display:none;cursor:pointer}
+/* ── Écran de veille ────────────────────────────────────── */
+.veille{position:fixed;inset:0;z-index:50;background:#000;display:none;cursor:pointer;color:#fff}
 .veille.active{display:block}
-.diapo{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:clamp(28px,6vw,96px);
-  opacity:0;transition:opacity 1.4s;overflow:hidden}
-.diapo .fond{position:absolute;inset:0;z-index:0;background:#0b1a2e center/cover no-repeat}
+.diapo{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:clamp(28px,6vw,96px);opacity:0;transition:opacity 1.4s;overflow:hidden}
+.diapo.visible{opacity:1}
+.diapo .fond{position:absolute;inset:0;z-index:0;background:#1b2430 center/cover no-repeat}
 .diapo.visible .fond{animation:zoom 12s ease-out both}
 @keyframes zoom{from{transform:scale(1.08)}to{transform:scale(1)}}
-.diapo.visible{opacity:1}
 .diapo::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,0) 30%,rgba(0,0,0,.15) 55%,rgba(0,0,0,.72))}
 .diapo > :not(.fond){position:relative;z-index:2}
-.diapo .cat{color:var(--champagne)}
+.diapo .cat{color:var(--laiton2)}
 .diapo .titre{font-family:var(--serif);font-size:clamp(64px,9vw,150px);font-weight:400;line-height:.95;margin:14px 0 18px}
-.diapo .acc{font-size:clamp(20px,2.2vw,32px);font-weight:300;max-width:28ch;color:rgba(242,237,228,.9)}
-.diapo .offre{margin-top:26px;font-family:var(--serif);font-style:italic;font-size:clamp(22px,2.4vw,34px);color:var(--champagne);display:flex;align-items:center;gap:16px}
-.diapo .offre::before{content:"";width:40px;height:1px;background:var(--champagne)}
+.diapo .acc{font-size:clamp(20px,2.2vw,32px);font-weight:300;max-width:28ch;opacity:.9}
+.diapo .offre{margin-top:26px;font-family:var(--serif);font-style:italic;font-size:clamp(22px,2.4vw,34px);color:#f3e2bf;display:flex;align-items:center;gap:16px}
+.diapo .offre::before{content:"";width:40px;height:1px;background:currentColor}
 .diapo.accueil{justify-content:center;align-items:center;text-align:center}
-.diapo.accueil .ville{font-family:var(--serif);font-weight:400;font-size:clamp(120px,22vw,340px);line-height:.9;color:#fbf6ec;text-shadow:0 4px 40px rgba(0,0,0,.2)}
-.diapo.accueil .sous{margin-top:clamp(14px,2vw,30px);font-size:clamp(14px,1.6vw,22px);letter-spacing:.3em;text-transform:uppercase;font-weight:400}
+.diapo.accueil .ville{font-family:var(--serif);font-weight:400;font-size:clamp(120px,22vw,340px);line-height:.9;color:#fbf6ec}
+.diapo.accueil .sous{margin-top:clamp(14px,2vw,30px);font-size:clamp(14px,1.6vw,22px);letter-spacing:.3em;text-transform:uppercase}
 .diapo.accueil .trait{width:clamp(50px,6vw,90px);height:1px;background:rgba(255,255,255,.8);margin:clamp(18px,2.5vw,34px) auto 0}
 .veille .logo{position:absolute;left:clamp(28px,6vw,96px);top:clamp(24px,4vw,56px);height:clamp(48px,6vw,80px);z-index:2}
-.veille .haut{position:absolute;right:clamp(28px,6vw,96px);top:clamp(36px,5vw,70px);z-index:2;display:flex;gap:clamp(20px,4vw,60px);color:rgba(255,255,255,.85)}
+.veille .haut{position:absolute;right:clamp(28px,6vw,96px);top:clamp(36px,5vw,70px);z-index:2;display:flex;gap:clamp(20px,4vw,60px);opacity:.85}
 .veille .heure{position:absolute;right:clamp(28px,6vw,96px);bottom:clamp(28px,6vw,96px);z-index:2;font-size:clamp(40px,5vw,80px);font-weight:300}
-.veille .touche{position:absolute;bottom:24px;left:0;right:0;text-align:center;color:rgba(255,255,255,.6);z-index:2;animation:pulse 3s infinite}
-@keyframes pulse{50%{opacity:.3}}
+.veille .invite{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);z-index:2;display:flex;align-items:center;gap:12px;padding:12px 24px;border-radius:999px;white-space:nowrap;
+  background:rgba(255,255,255,.14);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.22);font-size:15px;animation:pulse 3s infinite}
+.veille .invite i{width:10px;height:10px;border-radius:50%;background:#fff}
+@keyframes pulse{50%{opacity:.55}}
 
-@media (max-width:800px){
-  nav{flex-direction:column;align-items:stretch;gap:0}
-  .recherche{width:auto;margin:6px 0 10px}
-  .onglet{padding:16px 0 14px}
-  .titre-section{flex-direction:column;align-items:flex-start} .titre-section p{text-align:left}
-  .fiche{grid-template-columns:1fr} .fiche .photo{min-height:240px}
-  .hero .region{display:none}
+/* ── Portrait et petits écrans ──────────────────────────── */
+@media (max-aspect-ratio:1/1){
+  .logement{grid-template-columns:1fr 1fr} .logement .bloc.wifi-grand{grid-column:1/-1}
+  .bento{height:auto;min-height:100%;grid-template-columns:1fr 1fr;grid-template-rows:none;grid-auto-rows:minmax(230px,1fr);
+    grid-template-areas:"hero hero" "hero hero" "vedette vedette" "sejour guide" "c1 c2" "c3 c4"}
+}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  .rail{grid-row:2;flex-direction:row;padding:8px 10px;border-right:0;border-top:1px solid var(--trait);overflow-x:auto}
+  .rail .logo,.rail .meteo-rail{display:none}
+  .nav{flex-direction:row;width:auto}
+  .nav button{width:82px;font-size:11px;padding:4px}
+  .nav .ico{width:44px;height:44px}
+  .bento{grid-template-columns:1fr;grid-template-areas:"hero" "hero" "vedette" "sejour" "guide" "c1" "c2" "c3" "c4"}
+  .infos{grid-template-columns:1fr}
+  .logement{grid-template-columns:1fr}
+  .logement .bloc.wifi-grand{flex-direction:column;text-align:center}
+  .scanner{flex-direction:column;text-align:center}
   .veille .heure{display:none}
 }
 </style>
 </head>
 <body>
-<main id="defile">
-  <header class="hero" id="hero">
-    <div class="haut">
-      <img class="logo" src="/adstay/logo-transparent.webp" alt="AdStay"/>
-      <span class="petit region" id="regionHaut"></span>
-    </div>
-    <div class="bas">
-      <div class="bienvenue">
-        <span class="petit">Bienvenue chez vous</span>
-        <h1 id="ville"></h1>
-        <p class="date" id="date"></p>
-      </div>
-      <div class="meteo">
-        <div class="heure"><span id="heure"></span><span class="degres" id="degres"></span></div>
-        <div class="temps petit" id="temps"></div>
-      </div>
-    </div>
-  </header>
-
-  <nav>
-    <div class="onglets petit" id="chips"></div>
-    <label class="recherche">
-      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
-      <input id="q" type="search" placeholder="Rechercher" autocomplete="off"/>
-    </label>
-  </nav>
-
-  <div class="contenu" id="liste"></div>
-</main>
+<div class="app">
+  <aside class="rail">
+    <img class="logo" src="/adstay/logo-encre.webp" alt="AdStay"/>
+    <nav class="nav" id="nav"></nav>
+    <div class="meteo-rail"><b id="tempRail"></b><span id="cielRail"></span></div>
+  </aside>
+  <main id="ecrans"></main>
+</div>
 
 <div class="voile" id="voile"><div class="fiche" id="fiche"></div></div>
 
@@ -186,7 +253,7 @@ h2{font-family:var(--serif);font-weight:400;font-size:clamp(34px,3.6vw,52px);lin
   <div class="haut petit"><span id="region"></span><span id="compteur"></span></div>
   <div id="diapos"></div>
   <div class="heure" id="heureVeille"></div>
-  <div class="touche petit">Touchez l’écran pour découvrir la sélection</div>
+  <div class="invite"><i></i>Touchez l’écran pour découvrir la sélection</div>
 </div>
 
 <script src="/adstay/donnees.js"></script>
@@ -200,9 +267,10 @@ const chargeLe = Date.now();
 const logement = new URLSearchParams(location.search).get('logement') || '';
 const $ = s => document.querySelector(s);
 
-// Petites icônes (traits simples, couleur = currentColor ou stroke en CSS)
 const ICONES = {
-  tout: '<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',
+  accueil: '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+  sejour: '<path d="M3 18h18"/><path d="M5 18a7 7 0 0 1 14 0"/><path d="M12 11V8"/><path d="M10 8h4"/>',
+  recherche: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
   restaurant: '<path d="M7 2v9M4 2v5a3 3 0 0 0 6 0V2M7 11v11M17 2c-2 2-3 5-3 8h3v12"/>',
   bar: '<path d="M5 3h14l-7 9zM12 12v8M8 21h8"/>',
   plage: '<path d="M12 4a8 8 0 0 1 8 8H4a8 8 0 0 1 8-8zM12 12v9M3 21h18"/>',
@@ -220,83 +288,169 @@ const ICONES = {
   courses: '<path d="M3 4h2l2.5 11h11L21 7H6.2"/><circle cx="9" cy="19.5" r="1.5"/><circle cx="17" cy="19.5" r="1.5"/>',
   horloge: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   croix: '<path d="M6 6l12 12M18 6 6 18"/>',
+  gauche: '<path d="M15 5l-7 7 7 7"/>',
 };
-const svg = (nom, cls = '') =>
-  `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONES[nom] || ''}</svg>`;
+const svg = nom => `<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">${ICONES[nom] || ''}</svg>`;
 const echap = t => String(t ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 const formule = id => D.formules.find(f => f.id === id) || { rang: 0, diaporama: 0, badge: '' };
 const categorie = id => D.categories.find(c => c.id === id) || { nom: '', icone: 'boutique' };
 // Photo à la bonne taille (les photos Unsplash sont redimensionnées à la volée)
-const photo = (c, w) => !c.photo ? '' : c.photo.includes('images.unsplash.com')
-  ? `${c.photo}${c.photo.includes('?') ? '&' : '?'}w=${w}&q=70&auto=format&fit=crop` : c.photo;
-const degrade = c => `linear-gradient(135deg,${c.couleur?.[0] || '#16233b'},${c.couleur?.[1] || '#0a1120'})`;
-const fond = (c, w) => c.photo ? `background-image:url('${encodeURI(photo(c, w))}')` : `background-image:${degrade(c)}`;
+const photo = (c, w) => !c?.photo ? '' : c.photo.includes('images.unsplash.com')
+  ? `${c.photo}${c.photo.includes('?') ? '&' : '?'}w=${w}&q=72&auto=format&fit=crop` : c.photo;
+const fond = (c, w) => c?.photo ? `background-image:url('${encodeURI(photo(c, w))}')`
+  : `background-image:linear-gradient(135deg,${c?.couleur?.[0] || '#2a3442'},${c?.couleur?.[1] || '#1b2430'})`;
 
-// Ordre : la formule la plus chère d'abord. À formule égale, l'ordre change chaque jour
-// (tirage stable sur la journée) pour que personne ne soit toujours dernier.
+// Ordre : la formule la plus chère d'abord ; à formule égale, l'ordre change chaque jour.
 const graine = new Date().toDateString();
 const hash = s => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 7);
 const tries = [...D.commercants].sort((a, b) =>
   formule(b.formule).rang - formule(a.formule).rang || hash(graine + a.id) - hash(graine + b.id));
+const rangMax = Math.max(...D.formules.map(f => f.rang));
+const dans = cat => tries.filter(c => c.categorie === cat);
+const cats = D.categories.filter(c => dans(c.id).length);
+// Libellés courts pour le menu latéral (le nom complet reste en titre d'écran)
+const NOMS_COURTS = { restaurants: 'Manger', bars: 'Sortir', plages: 'Plages', activites: 'Activités', transport: 'Taxis', location: 'Louer', boutiques: 'Shopping' };
 
-let filtreCat = 'tout', filtreTexte = '';
+// Le logement de cette tablette (?logement=…), sinon le premier (démo)
+const L = (D.logements || {})[logement] || Object.values(D.logements || {})[0] || null;
+const echapWifi = t => String(t).replace(/([\\;,:"])/g, '\\$1');
+const qrWifi = L?.wifi ? 'https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data='
+  + encodeURIComponent(`WIFI:T:WPA;S:${echapWifi(L.wifi.reseau)};P:${echapWifi(L.wifi.motdepasse)};;`) : '';
 
-function chips() {
-  const services = D.services?.length ? [{ id: 'services', nom: 'Services' }] : [];
-  const toutes = [{ id: 'tout', nom: 'Accueil' }, ...services, ...D.categories]
-    .filter(c => c.id === 'tout' || c.id === 'services' || D.commercants.some(m => m.categorie === c.id));
-  $('#chips').innerHTML = toutes.map(c =>
-    `<button class="onglet" data-cat="${c.id}" aria-pressed="${c.id === filtreCat}">${echap(c.nom)}</button>`).join('');
+// Suggestions selon le moment de la journée : un café le matin, la plage à midi, un taxi la nuit…
+const MOMENTS = [
+  [6, 'Ce matin', ['bars', 'boutiques', 'activites']],
+  [11, 'Ce midi', ['plages', 'restaurants']],
+  [14, 'Cet après-midi', ['activites', 'plages', 'location', 'boutiques']],
+  [18, 'Ce soir', ['bars', 'restaurants']],
+  [22, 'Cette nuit', ['transport', 'bars']],
+];
+const momentDuJour = () => { const h = new Date().getHours(); return h < 6 ? MOMENTS[4] : [...MOMENTS].reverse().find(m => h >= m[0]); };
+const salutation = () => { const h = new Date().getHours(); return h >= 5 && h < 12 ? 'Bonjour' : h >= 12 && h < 18 ? 'Bon après-midi' : 'Bonsoir'; };
+
+// ── Menu ─────────────────────────────────────────────────
+let ecran = 'accueil', param = '', recherche = '';
+function menu() {
+  const items = [['accueil', 'Accueil', 'accueil'], ['recherche', 'Rechercher', 'recherche'],
+    ...(D.services?.length ? [['services', 'Mon séjour', 'sejour']] : []),
+    ...cats.map(c => ['cat:' + c.id, NOMS_COURTS[c.id] || c.nom, c.icone])];
+  const actif = ecran === 'cat' ? 'cat:' + param : ecran;
+  $('#nav').innerHTML = items.map(([id, nom, ico]) =>
+    `<button class="touche" data-aller="${id}" aria-current="${id === actif}"><span class="ico">${svg(ico)}</span>${echap(nom)}</button>`).join('');
+}
+function aller(cible) {
+  const [e, p = ''] = cible.split(':');
+  ecran = e; param = p; fermer(); menu(); afficher();
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-aller]'); if (a) return aller(a.dataset.aller);
+  const f = e.target.closest('[data-fiche]'); if (f) return ouvrir(f.dataset.fiche);
+  const s = e.target.closest('[data-service]'); if (s) return ouvrirService(s.dataset.service);
+  const m = e.target.closest('[data-mot]'); if (m) { recherche = m.dataset.mot; afficher(); }
+});
+
+// ── Écrans ───────────────────────────────────────────────
+const entete = (surtitre, titre, texte) => `<div class="entete">
+  <button class="retour touche" data-aller="accueil">${svg('gauche')}Accueil</button>
+  <div class="titres"><span class="petit">${surtitre}</span><h2>${titre}</h2>${texte ? `<p>${texte}</p>` : ''}</div></div>`;
+
+function carte(c) {
+  const f = formule(c.formule);
+  return `<button class="carte touche" data-fiche="${echap(c.id)}">
+    <div class="image" style="${fond(c, 800)}">${f.badge ? `<span class="etiquette">${echap(f.badge)}</span>` : ''}</div>
+    <div class="corps"><span class="nom">${echap(c.nom)}</span><span class="acc">${echap(c.accroche)}</span>
+      ${c.offre ? `<span class="offre">${echap(c.offre)}</span>` : ''}</div></button>`;
 }
 
-function carte(c, grand) {
-  const f = formule(c.formule), cat = categorie(c.categorie);
-  return `<button class="carte" data-id="${c.id}">
-    <div class="image" style="${c.photo ? '' : `background:${degrade(c)}`}">
-      ${c.photo ? `<img src="${echap(photo(c, grand ? 1100 : 700))}" alt="" loading="lazy"/>` : ''}
-      ${f.badge ? `<span class="label">${echap(f.badge)}</span>` : ''}
-    </div>
-    <span class="cat petit">${echap(cat.nom)}</span>
-    <span class="nom">${echap(c.nom)}</span>
-    <span class="acc">${echap(c.accroche)}</span>
-    ${c.offre ? `<span class="offre">${echap(c.offre)}</span>` : ''}
-  </button>`;
-}
-
-function tuile(s) {
-  return `<button class="service" data-service="${s.id}">
-    ${svg(s.icone)}
-    <b>${echap(s.nom)}</b>
-    <span>${echap(s.prix || 'Sur demande')}</span>
-  </button>`;
-}
-
-function liste() {
-  const q = filtreTexte.trim().toLowerCase();
-  const servicesVus = (D.services || []).filter(s =>
-    ['tout', 'services'].includes(filtreCat) &&
-    (!q || [s.nom, s.description].join(' ').toLowerCase().includes(q)));
-  const visibles = filtreCat === 'services' ? [] : tries.filter(c =>
-    (filtreCat === 'tout' || c.categorie === filtreCat) &&
-    (!q || [c.nom, c.accroche, c.description, categorie(c.categorie).nom].join(' ').toLowerCase().includes(q)));
-  // « À la une » : uniquement sur l'accueil, pour la formule la plus haute.
-  const rangMax = Math.max(...D.formules.map(f => f.rang));
-  const une = filtreCat === 'tout' && !q ? visibles.filter(c => formule(c.formule).rang === rangMax) : [];
-  const reste = visibles.filter(c => !une.includes(c));
-  const titre = (surtitre, t, texte = '') => `<div class="titre-section"><div><span class="petit">${surtitre}</span><h2>${t}</h2></div>${texte ? `<p>${texte}</p>` : ''}</div>`;
+let rotation;
+function afficher() {
+  clearInterval(rotation);
   let html = '';
-  if (servicesVus.length) html += `<section>${titre('Conciergerie', 'Pour votre séjour', 'Touchez un service, puis scannez le code avec votre téléphone pour le demander.')}<div class="services">${servicesVus.map(tuile).join('')}</div></section>`;
-  if (une.length) html += `<section>${titre('À la une', 'Notre sélection')}<div class="une">${une.map(c => carte(c, true)).join('')}</div></section>`;
-  if (reste.length) html += `<section>${titre(filtreCat === 'tout' ? 'Les adresses' : 'Catégorie', filtreCat === 'tout' ? 'Autour de vous' : echap(categorie(filtreCat).nom))}<div class="grille">${reste.map(c => carte(c)).join('')}</div></section>`;
-  if (!visibles.length && !servicesVus.length) html = `<p class="vide">Aucune adresse ne correspond à votre recherche.</p>`;
-  html += `<p class="signature petit">Sélection AdStay · ${echap(D.ville.nom)}</p>`;
-  $('#liste').innerHTML = html;
-  // Après un changement d'onglet : on remonte juste sous la photo
-  const dessous = $('#hero').offsetHeight;
-  if ($('#defile').scrollTop > dessous) $('#defile').scrollTop = dessous;
+  if (ecran === 'accueil') {
+    const [, quand, catsMoment] = momentDuJour();
+    let vedettes = tries.filter(c => catsMoment.includes(c.categorie)).slice(0, 4);
+    if (!vedettes.length) vedettes = tries.filter(c => formule(c.formule).rang === rangMax);
+    const v = vedettes[0] || tries[0];
+    const tuilesCat = cats.slice(0, 4).map((c, i) => {
+      const top = dans(c.id)[0], n = dans(c.id).length;
+      return `<button class="tuile photo cat c${i + 1} touche" data-aller="cat:${c.id}" style="${fond(top, 700)}">
+        <h3>${echap(c.nom)}</h3><span class="nb">${n} adresse${n > 1 ? 's' : ''}</span></button>`;
+    }).join('');
+    html = `<div class="bento">
+      <div class="tuile photo hero" style="background-image:url('${encodeURI(D.ville.photo || '')}')">
+        <span class="petit">${echap(D.ville.region || '')}</span>
+        <div><span class="petit">${salutation()}</span><h1>Bienvenue<br/>à <em>${echap(D.ville.nom)}</em></h1>
+          <p class="date" id="date"></p><span class="astuce"><i></i>Touchez une case pour commencer</span></div>
+        <div class="verre"><span class="heure" id="heure"></span><span class="temp" id="temp"></span><span class="ciel" id="ciel"></span><span class="coucher" id="coucher"></span></div>
+      </div>
+      ${v ? `<button class="tuile photo vedette touche" id="vedette" data-fiche="${echap(v.id)}" style="${fond(v, 1100)}">
+        <span class="etiquette">${quand}, on vous suggère</span>
+        ${vedettes.length > 1 ? `<span class="points">${vedettes.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</span>` : ''}
+        <span class="petit" id="vCat">${echap(categorie(v.categorie).nom)}</span><span class="nom" id="vNom">${echap(v.nom)}</span>
+        <span class="offre" id="vOffre">${echap(v.offre || v.accroche)}</span></button>` : ''}
+      ${D.services?.length ? `<button class="tuile sejour touche" data-aller="services">${svg('sejour')}
+        <div><h3>Votre séjour</h3><p>Ménage, linge, départ tardif, courses…</p><span class="fleche">Demander</span></div></button>` : ''}
+      ${L?.wifi ? `<button class="tuile guide wifi touche" data-aller="services"><span class="petit" style="color:var(--laiton)">Wi-Fi du logement</span>
+        <div class="ligne"><img src="${qrWifi}" alt="QR Wi-Fi"/><div><b>${echap(L.wifi.reseau)}</b><small>Mot de passe</small><span class="mdp">${echap(L.wifi.motdepasse)}</span></div></div>
+        <span class="fleche">Infos du logement</span></button>`
+      : `<div class="tuile guide"><span class="petit" style="color:var(--laiton)">Mode d’emploi</span>
+        <div><h3>Comment ça marche ?</h3><ol>
+          <li>Touchez une case, ou un thème à gauche.</li><li>Choisissez une adresse.</li><li>Scannez le code avec votre téléphone.</li></ol></div></div>`}
+      ${tuilesCat}
+    </div>`;
+    $('#ecrans').innerHTML = `<section class="ecran">${html}</section>`;
+    horloge(); meteoAffiche();
+    // La tuile « Coup de cœur » fait défiler les adresses à la une
+    if (vedettes.length > 1) {
+      let i = 0;
+      rotation = setInterval(() => {
+        const el = $('#vedette'); if (!el) return;
+        const c = vedettes[++i % vedettes.length];
+        el.style.cssText = fond(c, 1100); el.dataset.fiche = c.id;
+        $('#vCat').textContent = categorie(c.categorie).nom; $('#vNom').textContent = c.nom; $('#vOffre').textContent = c.offre || c.accroche;
+        el.querySelectorAll('.points i').forEach((p, k) => p.classList.toggle('on', k === i % vedettes.length));
+      }, 6000);
+    }
+    return;
+  }
+  if (ecran === 'cat') {
+    const c = categorie(param), liste = dans(param);
+    html = entete(`${liste.length} adresse${liste.length > 1 ? 's' : ''}`, echap(c.nom), 'Touchez une adresse pour voir le détail et l’itinéraire.')
+      + `<div class="grille">${liste.map(carte).join('')}</div>`;
+  }
+  if (ecran === 'services') {
+    html = entete(L?.nom ? echap(L.nom) : 'Conciergerie', 'Votre séjour', 'Tout ce qu’il faut savoir sur le logement, et les services à demander.')
+      + (L ? `<div class="logement">
+        ${L.wifi ? `<div class="bloc wifi-grand"><img src="${qrWifi}" alt="QR Wi-Fi"/><div><span class="petit" style="color:var(--laiton2)">Wi-Fi</span>
+          <b>${echap(L.wifi.reseau)}</b><div class="mdp">${echap(L.wifi.motdepasse)}</div>
+          <p>Scannez avec l’appareil photo de votre téléphone pour vous connecter sans rien taper.</p></div></div>` : ''}
+        <div class="bloc"><div class="horaires">${L.arrivee ? `<div><span>Arrivée</span><b>${echap(L.arrivee)}</b></div>` : ''}${L.depart ? `<div><span>Départ</span><b>${echap(L.depart)}</b></div>` : ''}</div></div>
+        ${L.infos?.length ? `<div class="bloc"><ul>${L.infos.map(i => `<li>${echap(i)}</li>`).join('')}</ul></div>` : ''}
+      </div><h3 class="sous-titre">Services à la demande</h3>` : '')
+      + `<div class="services">${(D.services || []).map(s => `<button class="service touche" data-service="${s.id}">
+        <span class="rond">${svg(s.icone)}</span><b>${echap(s.nom)}</b><span>${echap(s.prix || 'Sur demande')}</span>
+        <span class="fleche">Demander</span></button>`).join('')}</div>`;
+  }
+  if (ecran === 'recherche') {
+    html = entete('Trouver une adresse', 'Rechercher', '')
+      + `<label class="champ-recherche">${svg('recherche')}<input id="q" type="search" placeholder="Restaurant, plage, taxi, scooter…" autocomplete="off" value="${echap(recherche)}"/></label>
+      <div class="suggestions">${['Poisson', 'Cocktail', 'Plage', 'Aéroport', 'Plongée', 'Scooter'].map(m => `<button class="touche" data-mot="${m}">${m}</button>`).join('')}</div>
+      <div class="grille" id="resultats"></div>`;
+  }
+  $('#ecrans').innerHTML = `<section class="ecran">${html}</section>`;
+  if (ecran === 'recherche') {
+    const maj = () => {
+      const q = recherche.trim().toLowerCase();
+      const r = q ? tries.filter(c => [c.nom, c.accroche, c.description, categorie(c.categorie).nom].join(' ').toLowerCase().includes(q)) : tries;
+      $('#resultats').innerHTML = r.length ? r.map(carte).join('') : `<p class="vide">Aucune adresse ne correspond. Essayez un autre mot.</p>`;
+    };
+    $('#q').addEventListener('input', e => { recherche = e.target.value; maj(); });
+    maj();
+  }
 }
 
+// ── Fiche d'une adresse ──────────────────────────────────
 function lienQR(c) {
   // Fiche de la base : le QR passe par /adstay/go qui compte le scan puis redirige
   const cible = window.adstayEstUuid(c.id)
@@ -304,28 +458,28 @@ function lienQR(c) {
     : c.lien || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.nom + ', ' + c.adresse);
   return 'https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=' + encodeURIComponent(cible);
 }
-
+const boutonFermer = `<button class="fermer touche" data-fermer>${svg('croix')}Fermer</button>`;
 function ouvrir(id) {
-  const c = D.commercants.find(m => m.id === id); if (!c) return;
+  const c = D.commercants.find(m => String(m.id) === id); if (!c) return;
   const f = formule(c.formule), cat = categorie(c.categorie);
   window.adstayNoter(c.id, 'vue', logement);
   $('#fiche').innerHTML = `
-    <button class="fermer" data-fermer aria-label="Fermer">${svg('croix')}</button>
-    <div class="photo ${c.photo ? '' : 'sans'}" style="${fond(c, 1200)}">${c.photo ? '' : svg(cat.icone)}</div>
+    <div class="photo" style="${fond(c, 1400)}">${boutonFermer}${f.badge ? `<span class="etiquette" style="top:30px;left:28px">${echap(f.badge)}</span>` : ''}</div>
     <div class="texte">
-      <span class="petit">${echap(cat.nom)}${f.badge ? ` · ${echap(f.badge)}` : ''}</span>
+      <span class="petit">${echap(cat.nom)}</span>
       <h3>${echap(c.nom)}</h3>
       <p class="desc">${echap(c.description || c.accroche)}</p>
-      ${c.offre ? `<p class="offre">${echap(c.offre)}</p>` : ''}
+      ${c.offre ? `<div class="cadeau">${svg('cadeau')}<span>${echap(c.offre)}</span></div>` : ''}
       <ul class="infos">
         ${c.adresse ? `<li>${svg('lieu')}${echap(c.adresse)}</li>` : ''}
-        ${c.tel ? `<li>${svg('tel')}${echap(c.tel)}</li>` : ''}
         ${c.horaires ? `<li>${svg('horloge')}${echap(c.horaires)}</li>` : ''}
+        ${c.tel ? `<li>${svg('tel')}${echap(c.tel)}</li>` : ''}
       </ul>
-      <div class="qr"><img src="${lienQR(c)}" alt="QR code"/>
-        <span>Scannez avec votre téléphone pour ${c.lien ? 'réserver' : 'obtenir l’itinéraire'}.</span></div>
+      <div class="scanner"><img src="${lienQR(c)}" alt="QR code"/>
+        <div><b>${c.lien ? 'Réserver depuis votre téléphone' : 'L’itinéraire sur votre téléphone'}</b>
+          <ol><li>Ouvrez l’appareil photo de votre téléphone.</li><li>Visez ce code.</li><li>Touchez le lien qui apparaît.</li></ol></div></div>
     </div>`;
-  $('#voile').classList.add('ouvert');
+  $('#voile').classList.add('ouvert'); $('#fiche').scrollTop = 0;
 }
 // Demande de service : QR code vers WhatsApp (message déjà écrit), sinon vers le téléphone.
 function ouvrirService(id) {
@@ -335,85 +489,70 @@ function ouvrirService(id) {
   const cible = cc.whatsapp ? `https://wa.me/${cc.whatsapp}?text=${encodeURIComponent(message)}`
     : cc.tel ? `tel:${cc.tel.replace(/\s/g, '')}` : '';
   $('#fiche').innerHTML = `
-    <button class="fermer" data-fermer aria-label="Fermer">${svg('croix')}</button>
-    <div class="photo sans">${svg(s.icone)}</div>
+    <div class="photo sans">${boutonFermer}${svg(s.icone)}</div>
     <div class="texte">
       <span class="petit">Service · ${echap(cc.nom || 'votre hôte')}</span>
       <h3>${echap(s.nom)}</h3>
       <p class="desc">${echap(s.description)}</p>
-      <p class="offre">${echap(s.prix || 'Prix sur demande')}</p>
-      ${cc.tel ? `<ul class="infos"><li>${svg('tel')}${echap(cc.tel)}</li></ul>` : ''}
-      ${cible ? `<div class="qr"><img src="https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=${encodeURIComponent(cible)}" alt="QR code"/>
-        <span>Scannez avec votre téléphone pour ${cc.whatsapp ? 'commander sur WhatsApp' : 'appeler'}.</span></div>`
-        : `<p class="qr">Pour commander, contactez votre hôte avec votre messagerie habituelle.</p>`}
+      <div class="cadeau">${svg('cle')}<span>${echap(s.prix || 'Prix sur demande')}</span></div>
+      ${cible ? `<div class="scanner"><img src="https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=${encodeURIComponent(cible)}" alt="QR code"/>
+        <div><b>${cc.whatsapp ? 'Demandez-le sur WhatsApp' : 'Appelez votre hôte'}</b>
+          <ol><li>Ouvrez l’appareil photo de votre téléphone.</li><li>Visez ce code.</li><li>${cc.whatsapp ? 'Votre message est déjà écrit : envoyez-le.' : 'Lancez l’appel.'}</li></ol></div></div>`
+      : `<p class="desc">Pour commander, contactez votre hôte avec votre messagerie habituelle.</p>`}
     </div>`;
-  $('#voile').classList.add('ouvert');
+  $('#voile').classList.add('ouvert'); $('#fiche').scrollTop = 0;
 }
-const fermer = () => $('#voile').classList.remove('ouvert');
-
-// Interactions
-$('#chips').addEventListener('click', e => {
-  const b = e.target.closest('.onglet'); if (!b) return;
-  filtreCat = b.dataset.cat; chips(); liste();
-});
-$('#q').addEventListener('input', e => { filtreTexte = e.target.value; liste(); });
-$('#liste').addEventListener('click', e => {
-  const b = e.target.closest('.carte'); if (b) return ouvrir(b.dataset.id);
-  const s = e.target.closest('.service'); if (s) ouvrirService(s.dataset.service);
-});
+function fermer() { $('#voile').classList.remove('ouvert'); }
 $('#voile').addEventListener('click', e => { if (e.target.id === 'voile' || e.target.closest('[data-fermer]')) fermer(); });
 
-// Horloge, date, météo
+// ── Heure et météo ───────────────────────────────────────
+let meteoActuelle = null;
 function horloge() {
   const n = new Date();
   const h = n.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  const deg = $('#degres').textContent;
-  $('#heure').textContent = h; $('#heureVeille').textContent = deg ? `${h} · ${deg}` : h;
-  $('#date').textContent = n.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  if ($('#heure')) $('#heure').textContent = h;
+  if ($('#date')) $('#date').textContent = n.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+  $('#heureVeille').textContent = meteoActuelle ? `${h} · ${meteoActuelle.temperature}°` : h;
 }
-// Météo via notre serveur (une seule demande partagée par toutes les tablettes)
 const CIEL = [[0,'Ensoleillé','Ciel dégagé'],[1,'Peu nuageux','Peu nuageux'],[3,'Nuageux','Nuageux'],[45,'Brouillard','Brouillard'],
   [51,'Bruine','Bruine'],[61,'Pluie','Pluie'],[71,'Neige','Neige'],[80,'Averses','Averses'],[95,'Orage','Orage']];
+function meteoAffiche() {
+  if (!meteoActuelle) return;
+  const ciel = CIEL.filter(([c]) => meteoActuelle.code >= c).pop();
+  const txt = meteoActuelle.jour ? ciel[1] : ciel[2], t = `${meteoActuelle.temperature}°`;
+  $('#tempRail').textContent = t; $('#cielRail').textContent = txt;
+  if ($('#temp')) { $('#temp').textContent = t; $('#ciel').textContent = txt; }
+  if ($('#coucher') && meteoActuelle.coucher) $('#coucher').textContent = `Coucher du soleil ${meteoActuelle.coucher.replace(':', 'h')}`;
+}
 let meteoRetry;
 async function meteo() {
   clearTimeout(meteoRetry);
   try {
     const r = await fetch(`/api/adstay-meteo?lat=${D.ville.lat}&lon=${D.ville.lon}`);
     if (!r.ok) throw new Error(r.status);
-    const m = await r.json();
-    const ciel = CIEL.filter(([c]) => m.code >= c).pop();
-    $('#degres').textContent = `${m.temperature}°`;
-    $('#temps').textContent = m.jour ? ciel[1] : ciel[2];
-    horloge();
+    meteoActuelle = await r.json();
+    meteoAffiche(); horloge();
   } catch {
     meteoRetry = setTimeout(meteo, 2 * 60000); // nouvel essai dans 2 minutes
   }
 }
 
-// Diaporama de veille : seulement les formules qui y donnent droit
+// ── Diaporama de veille ──────────────────────────────────
 const diapos = D.commercants.flatMap(c => Array(formule(c.formule).diaporama || 0).fill(c));
 // On évite deux fois la même marque d'affilée
 for (let i = 1; i < diapos.length; i++) if (diapos[i] === diapos[i - 1]) {
   const j = diapos.findIndex((d, k) => k > i && d !== diapos[i] && d !== diapos[i - 2]);
   if (j > 0) [diapos[i], diapos[j]] = [diapos[j], diapos[i]];
 }
-const accueil = `
-  <div class="diapo accueil">
-    <div class="fond" style="background-image:url('${encodeURI(D.ville.photo || '')}')"></div>
-    <span class="ville">${echap(D.ville.nom)}</span>
-    <span class="sous">Bienvenue chez vous · Welcome home</span>
-    <span class="trait"></span>
-  </div>`;
-$('#region').textContent = $('#regionHaut').textContent = D.ville.region || '';
-$('#hero').style.backgroundImage = D.ville.photo ? `url('${encodeURI(D.ville.photo)}')` : '';
-$('#diapos').innerHTML = accueil + diapos.map(c => `
-  <div class="diapo" data-id="${echap(c.id)}">
-    <div class="fond" style="${fond(c, 1920)}"></div>
+$('#region').textContent = D.ville.region || '';
+$('#diapos').innerHTML = `
+  <div class="diapo accueil"><div class="fond" style="background-image:url('${encodeURI(D.ville.photo || '')}')"></div>
+    <span class="ville">${echap(D.ville.nom)}</span><span class="sous">Bienvenue chez vous · Welcome home</span><span class="trait"></span></div>`
+  + diapos.map(c => `
+  <div class="diapo" data-id="${echap(c.id)}"><div class="fond" style="${fond(c, 1920)}"></div>
     <span class="cat petit">${echap(categorie(c.categorie).nom)}</span>
-    <span class="titre">${echap(c.nom)}</span>
-    <span class="acc">${echap(c.accroche)}</span>
-    ${c.offre ? `<span class="offre">${echap(c.offre)}</span>` : ''}
-  </div>`).join('');
+    <span class="titre">${echap(c.nom)}</span><span class="acc">${echap(c.accroche)}</span>
+    ${c.offre ? `<span class="offre">${echap(c.offre)}</span>` : ''}</div>`).join('');
 
 let minuteur, tourne, indice = 0;
 function diapoSuivante() {
@@ -428,15 +567,13 @@ function diapoSuivante() {
 function veille() {
   // Tablette allumée en continu : on recharge toutes les 6 h pour prendre les nouvelles fiches
   if (Date.now() - chargeLe > 6 * 3600 * 1000) return location.reload();
-  // Chaque mise en veille repart de la diapo « Bienvenue »
   fermer(); indice = 0; $('#veille').classList.add('active'); diapoSuivante();
   tourne = setInterval(diapoSuivante, D.veille.dureeDiapo * 1000);
 }
 function reveil() {
   if ($('#veille').classList.contains('active')) {
     $('#veille').classList.remove('active'); clearInterval(tourne);
-    // Retour à l'accueil, propre pour le prochain voyageur
-    filtreCat = 'tout'; filtreTexte = ''; $('#q').value = ''; chips(); liste(); $('#defile').scrollTop = 0;
+    recherche = ''; aller('accueil'); // propre pour le prochain voyageur
   }
   clearTimeout(minuteur);
   minuteur = setTimeout(veille, D.veille.apresSecondes * 1000);
@@ -444,10 +581,9 @@ function reveil() {
 ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => addEventListener(ev, reveil, { passive: true }));
 document.addEventListener('contextmenu', e => e.preventDefault());
 
-// ?veille dans l'adresse : lance directement le diaporama (pratique pour tester)
-$('#ville').textContent = D.ville.nom;
-chips(); liste(); horloge(); meteo(); reveil();
+menu(); afficher(); horloge(); meteo(); reveil();
 setInterval(horloge, 15000); setInterval(meteo, 30 * 60000);
+// ?veille dans l'adresse : lance directement le diaporama (pratique pour tester)
 if (new URLSearchParams(location.search).has('veille')) veille();
 })();
 </script>
