@@ -70,6 +70,18 @@ create table if not exists public.commercants (
   updated_at         timestamptz not null default now()
 );
 
+-- Ajouts : anglais, position (distance à pied), horaires structurés (« ouvert maintenant »)
+alter table public.commercants add column if not exists accroche_en    text not null default '';
+alter table public.commercants add column if not exists description_en text not null default '';
+alter table public.commercants add column if not exists offre_en       text not null default '';
+alter table public.commercants add column if not exists lat            double precision;
+alter table public.commercants add column if not exists lon            double precision;
+alter table public.commercants add column if not exists creneaux       text not null default '';   -- ex. '12:00-14:30 19:00-22:30'
+alter table public.commercants add column if not exists fermes         text[] not null default '{}'; -- ex. {lun,dim}
+alter table public.formules    add column if not exists badge_en       text not null default '';
+update public.formules set badge_en = 'Recommended' where id = 'premium' and badge_en = '';
+update public.formules set badge_en = 'Our pick' where id = 'exclusivite' and badge_en = '';
+
 -- Un commerçant ne peut ni se publier lui-même, ni changer sa formule payée,
 -- ni donner sa fiche à quelqu'un d'autre. Seul un admin le peut.
 create or replace function public.adstay_garde_commercant() returns trigger

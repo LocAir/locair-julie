@@ -94,6 +94,13 @@ a{color:var(--champagne)}
 .choix-formules label{display:flex;flex-direction:column;gap:4px;padding:16px;border:1px solid var(--trait);border-radius:2px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:15px;color:var(--ivoire)}
 .choix-formules input{display:none}
 .choix-formules label:has(input:checked){border-color:var(--champagne)}
+.jours{display:flex;gap:8px;flex-wrap:wrap}
+.jours label{display:inline-flex;align-items:center;justify-content:center;min-width:58px;height:44px;padding:0 12px;border:1px solid var(--trait);border-radius:999px;
+  cursor:pointer;text-transform:none;letter-spacing:0;font-size:14px;color:var(--ivoire)}
+.jours input{display:none}
+.jours label:has(input:checked){background:#1b2430;color:#f4efe7;border-color:#1b2430}
+.bloc-titre{grid-column:1/-1;font-family:var(--serif);font-weight:400;font-size:28px;margin-top:14px;padding-top:18px;border-top:1px solid var(--trait)}
+.bloc-titre small{display:block;font-family:var(--sans);font-size:14px;color:var(--doux);margin-top:4px}
 .choix-formules b{font-family:var(--serif);font-weight:500;font-size:22px}
 .choix-formules span{color:var(--doux)}
 .boutons{grid-column:1/-1;display:flex;gap:14px;flex-wrap:wrap;justify-content:flex-end;padding-top:10px;border-top:1px solid var(--trait)}
@@ -297,7 +304,17 @@ function vueFormulaire(f) {
       ${champ('description', 'Description', 'textarea')}
       ${champ('adresse', 'Adresse')}
       ${champ('tel', 'Téléphone', 'tel')}
-      ${champ('horaires', 'Horaires')}
+      <h3 class="bloc-titre">Horaires<small>Ils permettent d’afficher « Ouvert · ferme à 22h30 » sur la tablette.</small></h3>
+      ${champ('creneaux', 'Heures d’ouverture', 'text', 'Format : 12:00-14:30 19:00-22:30 (après minuit : 18:00-01:00 ; toujours ouvert : 00:00-24:00)')}
+      <div class="champ"><label>Jours de fermeture</label><div class="jours">
+        ${[['lun', 'Lun'], ['mar', 'Mar'], ['mer', 'Mer'], ['jeu', 'Jeu'], ['ven', 'Ven'], ['sam', 'Sam'], ['dim', 'Dim']].map(([j, n]) =>
+          `<label><input type="checkbox" name="ferme" value="${j}" ${(v.fermes || []).includes(j) ? 'checked' : ''}/>${n}</label>`).join('')}</div></div>
+      ${champ('horaires', 'Horaires en texte libre (facultatif)', 'text', 'Seulement si les créneaux ne suffisent pas, ex. « Départs 8h et 13h ».')}
+      <h3 class="bloc-titre">En anglais<small>Facultatif mais conseillé : beaucoup de voyageurs ne parlent pas français.</small></h3>
+      ${champ('accroche_en', 'Accroche (anglais)')}
+      ${champ('offre_en', 'Offre (anglais)')}
+      ${champ('description_en', 'Description (anglais)', 'textarea')}
+      <h3 class="bloc-titre">Photo, lien et formule</h3>
       ${champ('lien', 'Site ou lien de réservation', 'url', 'Facultatif. Sinon, le QR code mène à l’itinéraire.')}
       <div class="champ large"><label>Photo</label>
         <div class="photo-zone"><div class="vignette" id="apercu" style="${v.photo ? `background-image:url('${encodeURI(v.photo)}')` : ''}"></div>
@@ -338,8 +355,19 @@ function vueFormulaire(f) {
       nom: val('nom'), categorie: val('categorie'), accroche: val('accroche'), offre: val('offre'),
       description: val('description'), adresse: val('adresse'), tel: val('tel'), horaires: val('horaires'),
       lien: val('lien'), photo: val('photo'),
+      creneaux: val('creneaux').replace(/h/gi, ':').replace(/\s*[–—]\s*/g, '-').replace(/:(?=-|\s|$)/g, ':00'),
+      fermes: [...document.querySelectorAll('input[name="ferme"]:checked')].map(i => i.value),
+      accroche_en: val('accroche_en'), offre_en: val('offre_en'), description_en: val('description_en'),
       formule_souhaitee: document.querySelector('input[name="souhait"]:checked')?.value || null,
     };
+    // Position GPS trouvée depuis l'adresse (service public api-adresse) : sert à « 8 min à pied »
+    if (donnees.adresse && (donnees.adresse !== f?.adresse || !f?.lat)) {
+      try {
+        const r = await fetch('https://api-adresse.data.gouv.fr/search/?limit=1&q=' + encodeURIComponent(donnees.adresse + ' ' + (D.ville?.nom || '')));
+        const [lon, lat] = (await r.json()).features?.[0]?.geometry?.coordinates || [];
+        if (lat) Object.assign(donnees, { lat, lon });
+      } catch {}
+    }
     if (admin) { donnees.statut = val('statut'); donnees.formule = val('formule'); }
     else if (e.submitter?.dataset.envoi === 'valider') donnees.statut = 'en_attente';
     const { error } = f
