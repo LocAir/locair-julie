@@ -44,6 +44,24 @@ window.ADSTAY = {
   // Le nom du logement vient de l'adresse de la tablette : /adstay?logement=Port-3B
   conciergerie: { nom: 'Votre conciergerie', whatsapp: '', tel: '' },
 
+  // Infos pratiques de chaque logement, choisies par l'adresse de la tablette :
+  // /adstay?logement=Port-3B  → le logement 'Port-3B' ci-dessous.
+  // Sans ?logement=, la tablette montre le premier (pratique pour la démo).
+  // Le QR Wi-Fi connecte le téléphone du voyageur sans rien taper.
+  logements: {
+    'Port-3B': {
+      nom: 'Appartement du Port',
+      wifi: { reseau: 'Riviera-Invites', motdepasse: 'bienvenue2026' },
+      arrivee: '16h00', depart: '11h00',
+      infos: [
+        'Climatisation : télécommande dans le tiroir de l’entrée.',
+        'Poubelles : local dans la cour, à gauche en sortant.',
+        'Calme après 22h, merci pour les voisins.',
+        'Clés : à laisser sur la table du salon le jour du départ.',
+      ],
+    },
+  },
+
   // Boutique de services du séjour. Prix = texte libre (vide = « sur demande »).
   services: [
     { id: 's1', nom: 'Ménage supplémentaire', icone: 'menage', prix: 'à partir de 40 €',

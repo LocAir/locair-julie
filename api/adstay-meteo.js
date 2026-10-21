@@ -19,13 +19,14 @@ module.exports = async (req, res) => {
   if (!entree || Date.now() - entree.t > DUREE * 1000) {
     try {
       const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(2)}&longitude=${lon.toFixed(2)}`
-        + '&current=temperature_2m,weather_code,is_day&timezone=auto', { signal: AbortSignal.timeout(8000) });
+        + '&current=temperature_2m,weather_code,is_day&daily=sunset&forecast_days=1&timezone=auto', { signal: AbortSignal.timeout(8000) });
       if (!r.ok) throw new Error('open-meteo ' + r.status);
       const j = await r.json();
       entree = { t: Date.now(), data: {
         temperature: Math.round(j.current.temperature_2m),
         code: j.current.weather_code,
         jour: j.current.is_day === 1,
+        coucher: String(j.daily?.sunset?.[0] || '').slice(11, 16), // heure locale, ex. « 18:42 »
       } };
       cache.set(cle, entree);
     } catch (e) {
