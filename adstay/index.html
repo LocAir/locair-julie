@@ -31,7 +31,9 @@ header img{height:64px;width:auto}
 .bienvenue h1 b{color:var(--or2);font-weight:600}
 .bienvenue p{color:var(--doux);font-size:15px;margin-top:4px;text-transform:capitalize}
 .meteo{text-align:right;white-space:nowrap}
-.meteo .heure{font-size:clamp(26px,3vw,40px);font-weight:300;letter-spacing:1px}
+.meteo .heure{font-size:clamp(26px,3vw,40px);font-weight:300;letter-spacing:1px;display:flex;align-items:baseline;justify-content:flex-end;gap:18px}
+.meteo .degres{color:var(--or2)}
+.meteo .degres:empty{display:none}
 .meteo .temps{color:var(--doux);font-size:15px}
 
 /* Recherche + catégories */
@@ -148,7 +150,7 @@ h2{font-size:15px;font-weight:600;letter-spacing:2px;text-transform:uppercase;co
       <p id="date"></p>
     </div>
     <div class="meteo">
-      <div class="heure" id="heure"></div>
+      <div class="heure"><span id="heure"></span><span class="degres" id="degres"></span></div>
       <div class="temps" id="temps"></div>
     </div>
   </header>
@@ -351,18 +353,27 @@ $('#voile').addEventListener('click', e => { if (e.target.id === 'voile' || e.ta
 function horloge() {
   const n = new Date();
   const h = n.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-  $('#heure').textContent = h; $('#heureVeille').textContent = h;
+  const deg = $('#degres').textContent;
+  $('#heure').textContent = h; $('#heureVeille').textContent = deg ? `${h} · ${deg}` : h;
   $('#date').textContent = n.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
-const CIEL = [[0,'☀️ Ensoleillé'],[3,'⛅ Nuageux'],[45,'🌫️ Brouillard'],[51,'🌦️ Bruine'],[61,'🌧️ Pluie'],[71,'❄️ Neige'],[80,'🌦️ Averses'],[95,'⛈️ Orage']];
+// Météo via notre serveur (une seule demande partagée par toutes les tablettes)
+const CIEL = [[0,'Ensoleillé','Ciel dégagé'],[1,'Peu nuageux','Peu nuageux'],[3,'Nuageux','Nuageux'],[45,'Brouillard','Brouillard'],
+  [51,'Bruine','Bruine'],[61,'Pluie','Pluie'],[71,'Neige','Neige'],[80,'Averses','Averses'],[95,'Orage','Orage']];
+let meteoRetry;
 async function meteo() {
+  clearTimeout(meteoRetry);
   try {
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${D.ville.lat}&longitude=${D.ville.lon}&current=temperature_2m,weather_code&timezone=auto`);
-    const j = await r.json();
-    const code = j.current.weather_code;
-    const ciel = CIEL.filter(([c]) => code >= c).pop()[1];
-    $('#temps').textContent = `${ciel} · ${Math.round(j.current.temperature_2m)}°C`;
-  } catch { /* pas de météo, pas grave */ }
+    const r = await fetch(`/api/adstay-meteo?lat=${D.ville.lat}&lon=${D.ville.lon}`);
+    if (!r.ok) throw new Error(r.status);
+    const m = await r.json();
+    const ciel = CIEL.filter(([c]) => m.code >= c).pop();
+    $('#degres').textContent = `${m.temperature}°`;
+    $('#temps').textContent = m.jour ? ciel[1] : ciel[2];
+    horloge();
+  } catch {
+    meteoRetry = setTimeout(meteo, 2 * 60000); // nouvel essai dans 2 minutes
+  }
 }
 
 // Diaporama de veille : seulement les formules qui y donnent droit
