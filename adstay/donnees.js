@@ -38,6 +38,28 @@ window.ADSTAY = {
     },
   ],
 
+  // Qui reçoit les demandes de services du voyageur (ménage, linge…).
+  // whatsapp : numéro au format international sans + ni espaces, ex. '33612345678'.
+  // Le voyageur scanne un QR code : WhatsApp s'ouvre avec la demande déjà écrite.
+  // Le nom du logement vient de l'adresse de la tablette : /adstay?logement=Port-3B
+  conciergerie: { nom: 'Votre conciergerie', whatsapp: '', tel: '' },
+
+  // Boutique de services du séjour. Prix = texte libre (vide = « sur demande »).
+  services: [
+    { id: 's1', nom: 'Ménage supplémentaire', icone: 'menage', prix: 'à partir de 40 €',
+      description: 'Un ménage complet du logement pendant votre séjour, au créneau qui vous arrange.' },
+    { id: 's2', nom: 'Linge propre', icone: 'linge', prix: '15 € / personne',
+      description: 'Draps et serviettes propres, livrés et changés par notre équipe.' },
+    { id: 's3', nom: 'Lit bébé', icone: 'bebe', prix: '10 € / séjour',
+      description: 'Lit parapluie avec matelas et draps, installé dans le logement.' },
+    { id: 's4', nom: 'Départ tardif', icone: 'horloge', prix: '25 €',
+      description: 'Gardez le logement jusqu’à 15h le jour du départ (selon disponibilité).' },
+    { id: 's5', nom: 'Arrivée anticipée', icone: 'cle', prix: '25 €',
+      description: 'Entrez dans le logement dès 11h le jour de votre arrivée (selon disponibilité).' },
+    { id: 's6', nom: 'Livraison de courses', icone: 'courses', prix: 'frais de 10 €',
+      description: 'Envoyez votre liste : nous faisons les courses et les déposons au logement.' },
+  ],
+
   categories: [
     { id: 'restaurants', nom: 'Restaurants', icone: 'restaurant' },
     { id: 'bars', nom: 'Cafés & bars', icone: 'bar' },
