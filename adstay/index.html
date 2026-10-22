@@ -19,7 +19,7 @@
   --ombre-presse:0 1px 1px rgba(27,36,48,.06),0 3px 8px -6px rgba(27,36,48,.18);
   --lumiere:transparent; --ciel-haut:#e3ebf0; --ciel-bas:#f5f2ec;
   --serif:'Cormorant Garamond',Georgia,serif; --sans:Jost,system-ui,sans-serif;
-  --r:22px; --ecart:clamp(12px,1.4vw,20px); --rail:132px;
+  --r:22px; --ecart:clamp(12px,1.4vw,20px); --rail:148px;
   --bloc:#1b2430; --bloc-texte:#f4efe7;
 }
 /* ── Mode nuit (automatique, voir donnees.js → nuit) : sombre et doux pour une chambre ── */
@@ -59,10 +59,18 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 .touche:active{transform:scale(.975) translateY(1px)}
 .tuile.touche:active,.carte.touche:active,.service.touche:active,.annonce.touche:active,.guide-carte.touche:active{box-shadow:var(--ombre-presse)}
 
-.app{height:100%;display:grid;grid-template-columns:var(--rail) 1fr}
+.app{height:100%;display:grid;grid-template-columns:var(--rail) 1fr;
+  background:radial-gradient(90% 70% at 82% -12%,var(--lumiere),transparent 62%),linear-gradient(180deg,var(--ciel-haut) 0%,var(--ciel-bas) 72%);
+  transition:transform .5s cubic-bezier(.2,.8,.2,1),border-radius .5s,filter .5s;transform-origin:50% 0}
 
 /* ── Menu latéral ───────────────────────────────────────── */
-.rail{display:flex;flex-direction:column;align-items:center;gap:4px;padding:22px 0 18px;border-right:1px solid var(--trait);background:var(--rail-fond);box-shadow:inset -12px 0 24px -20px rgba(27,36,48,.18);overflow-y:auto;scrollbar-width:none}
+/* Menu en « verre » flottant (esprit iPadOS) : le ciel passe derrière, flouté */
+.rail{display:flex;flex-direction:column;align-items:center;gap:4px;padding:20px 0 16px;margin:14px 0 14px 14px;border-radius:32px;overflow-y:auto;scrollbar-width:none;
+  background:linear-gradient(150deg,rgba(255,255,255,.62),rgba(255,255,255,.34));backdrop-filter:blur(26px) saturate(1.7);-webkit-backdrop-filter:blur(26px) saturate(1.7);
+  border:1px solid rgba(255,255,255,.7);box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 18px 40px -22px rgba(27,36,48,.35),0 2px 6px -2px rgba(27,36,48,.08)}
+body.nuit .rail{background:linear-gradient(150deg,rgba(32,42,58,.72),rgba(16,22,32,.55));border-color:rgba(255,255,255,.08);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 18px 40px -22px rgba(0,0,0,.8)}
+.nav button{width:118px}
 .rail::-webkit-scrollbar{display:none}
 .rail .logo{width:104px;margin-bottom:16px}
 .nav{display:flex;flex-direction:column;align-items:center;gap:2px;width:100%}
@@ -76,7 +84,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-a
 
 /* ── Écrans ─────────────────────────────────────────────── */
 /* Fond « ciel de Nice » : la couleur suit le vrai ciel (aube, journée, coucher du soleil, nuit) — voir cielDeNice() */
-main{position:relative;overflow:hidden;background:radial-gradient(90% 70% at 82% -12%,var(--lumiere),transparent 62%),linear-gradient(180deg,var(--ciel-haut) 0%,var(--ciel-bas) 72%)}
+main{position:relative;overflow:hidden}
 /* La Baie des Anges dessinée d'un trait doré : montagnes, Promenade, dôme du Negresco, palmiers, colline du Château */
 main::before{content:"";position:absolute;left:0;right:0;bottom:0;aspect-ratio:1600/220;max-height:30%;z-index:0;pointer-events:none;background:var(--laiton);opacity:.42;
   -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 220' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E %3Cpath stroke-opacity='.45' d='M0 122C110 100 190 84 290 96S460 70 560 88S760 64 860 84S1060 72 1170 94'/%3E %3Cpath d='M0 180C420 198 900 198 1190 172'/%3E %3Cpath d='M140 182V160H185V151H232V161H290V147H338V157H392V150H446V160H500V148H552V156H600V146H640V138H660A20 20 0 0 1 700 138H720V150H770V144H822V156H874V147H926V158H980V150H1032V160H1086V152H1140V164H1180V172'/%3E %3Cpath d='M680 118V107'/%3E %3Cpath d='M1190 172C1236 128 1296 100 1356 102C1418 104 1468 140 1538 160L1600 166'/%3E %3Cpath d='M1350 103V88H1363V103'/%3E %3Cpath d='M462 184C464 168 466 154 470 140M470 140C452 136 438 142 428 154M470 140C458 128 444 126 432 130M470 140C482 128 498 126 510 132M470 140C488 140 500 148 506 160M470 140C472 128 468 118 462 112'/%3E %3Cpath d='M1004 184C1006 170 1008 158 1012 146M1012 146C996 142 984 148 976 158M1012 146C1002 136 990 134 980 138M1012 146C1022 136 1036 134 1046 140M1012 146C1028 146 1038 152 1044 162'/%3E %3Cpath stroke-opacity='.55' d='M220 204q10-5 20 0t20 0M520 210q10-5 20 0t20 0M860 205q10-5 20 0t20 0M1180 199q10-5 20 0t20 0M1420 192q10-5 20 0t20 0'/%3E %3C/svg%3E") center bottom/100% 100% no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 220' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E %3Cpath stroke-opacity='.45' d='M0 122C110 100 190 84 290 96S460 70 560 88S760 64 860 84S1060 72 1170 94'/%3E %3Cpath d='M0 180C420 198 900 198 1190 172'/%3E %3Cpath d='M140 182V160H185V151H232V161H290V147H338V157H392V150H446V160H500V148H552V156H600V146H640V138H660A20 20 0 0 1 700 138H720V150H770V144H822V156H874V147H926V158H980V150H1032V160H1086V152H1140V164H1180V172'/%3E %3Cpath d='M680 118V107'/%3E %3Cpath d='M1190 172C1236 128 1296 100 1356 102C1418 104 1468 140 1538 160L1600 166'/%3E %3Cpath d='M1350 103V88H1363V103'/%3E %3Cpath d='M462 184C464 168 466 154 470 140M470 140C452 136 438 142 428 154M470 140C458 128 444 126 432 130M470 140C482 128 498 126 510 132M470 140C488 140 500 148 506 160M470 140C472 128 468 118 462 112'/%3E %3Cpath d='M1004 184C1006 170 1008 158 1012 146M1012 146C996 142 984 148 976 158M1012 146C1002 136 990 134 980 138M1012 146C1022 136 1036 134 1046 140M1012 146C1028 146 1038 152 1044 162'/%3E %3Cpath stroke-opacity='.55' d='M220 204q10-5 20 0t20 0M520 210q10-5 20 0t20 0M860 205q10-5 20 0t20 0M1180 199q10-5 20 0t20 0M1420 192q10-5 20 0t20 0'/%3E %3C/svg%3E") center bottom/100% 100% no-repeat}
@@ -132,8 +140,8 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 .etiquette{position:absolute!important;top:18px;left:18px;padding:7px 14px;border-radius:999px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
   background:rgba(251,248,243,.92);color:var(--encre);font-weight:400}
 .points{position:absolute!important;top:26px;right:22px;display:flex;gap:6px}
-.points i{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.45);transition:background .3s}
-.points i.on{background:#fff}
+.points i{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.45);transition:width .4s cubic-bezier(.2,.8,.2,1),background .3s}
+.points i.on{width:20px;background:#fff}
 .sejour{grid-area:sejour;background:var(--bloc)!important;color:var(--bloc-texte);justify-content:space-between}
 .sejour svg{width:34px;height:34px;stroke:var(--laiton2);stroke-width:1.3}
 .sejour h3,.guide h3,.cat h3{font-family:var(--serif);font-weight:400;font-size:clamp(24px,min(2.4vw,4.2vh),36px);line-height:1.02}
@@ -158,7 +166,7 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 .bande .piste{display:flex;gap:var(--ecart);height:100%;width:max-content;animation:defile var(--duree,60s) linear infinite}
 .bande:active .piste,.bande.pause .piste{animation-play-state:paused}
 @keyframes defile{to{transform:translateX(calc(-50% - var(--ecart) / 2))}}
-.annonce{position:relative;flex:none;width:clamp(260px,22vw,380px);height:100%;border-radius:18px;overflow:hidden;color:#fff;background:#2a3442 center/cover no-repeat;
+.annonce{position:relative;flex:none;width:clamp(260px,22vw,380px);height:100%;border-radius:var(--r);overflow:hidden;color:#fff;background:#2a3442 center/cover no-repeat;
   display:flex;flex-direction:column;justify-content:flex-end;padding:clamp(12px,1.6vh,18px) 18px;text-align:left}
 .annonce::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,14,20,.08) 0%,rgba(10,14,20,.38) 38%,rgba(10,14,20,.9))}
 .annonce .nom,.annonce .meta,.vedette .meta,.vedette .nom,.vedette .accv{text-shadow:0 1px 14px rgba(0,0,0,.45)}
@@ -293,12 +301,18 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 .suggestions button{height:46px;padding:0 20px;border-radius:999px;border:1px solid var(--trait);background:var(--papier);color:var(--texte2);font-size:15px}
 
 /* ── Fiche détaillée ────────────────────────────────────── */
-.voile{position:fixed;inset:0;z-index:20;background:rgba(27,36,48,.35);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  display:none;align-items:stretch;justify-content:flex-end}
+.voile{position:fixed;inset:0;z-index:20;background:rgba(12,17,24,.38);
+  display:none;align-items:flex-end;justify-content:center}
 .voile.ouvert{display:flex}
-.fiche{width:min(760px,100%);height:100%;background:var(--ivoire);overflow-y:auto;animation:glisse .38s cubic-bezier(.2,.7,.2,1);
-  box-shadow:-30px 0 60px -30px rgba(27,36,48,.4)}
-@keyframes glisse{from{transform:translateX(40px);opacity:.4}}
+.fiche{position:relative;width:min(820px,94vw);height:calc(100% - 34px);background:var(--ivoire);overflow-y:auto;border-radius:38px 38px 0 0;
+  animation:monte .5s cubic-bezier(.2,.9,.25,1.02);box-shadow:0 -20px 60px -20px rgba(0,0,0,.45);overscroll-behavior:contain}
+/* Petite poignée en haut : on peut tirer la feuille vers le bas pour la fermer */
+.fiche::before{content:"";position:sticky;top:10px;display:block;width:46px;height:5px;margin:10px auto -15px;border-radius:3px;background:rgba(255,255,255,.8);
+  box-shadow:0 1px 4px rgba(0,0,0,.25);z-index:6}
+@keyframes monte{from{transform:translateY(100%)}}
+body.feuille{background:#0b0f15}
+body.feuille .app{transform:scale(.94);border-radius:28px;overflow:hidden;filter:brightness(.82)}
+@media (prefers-reduced-motion:reduce){.fiche{animation:none}.app{transition:none}}
 .fiche .photo{position:relative;height:clamp(190px,32vh,420px);background:var(--sable) center/cover no-repeat}
 .fiche .photo.sans{display:grid;place-items:center;background:var(--bloc)}
 .fiche .photo.sans > svg{width:80px;height:80px;stroke:var(--laiton2);stroke-width:.9}
@@ -313,7 +327,7 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 .cadeau svg{width:28px;height:28px;stroke:var(--laiton);stroke-width:1.4;flex:none}
 .cadeau span{font-family:var(--serif);font-style:italic;font-size:23px;line-height:1.2}
 .infos{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.infos li{display:flex;gap:12px;align-items:center;padding:16px 18px;border-radius:16px;background:var(--papier);font-size:15px}
+.infos li{display:flex;gap:12px;align-items:center;padding:16px 18px;border-radius:var(--r);background:var(--papier);font-size:15px}
 .infos svg{width:20px;height:20px;stroke:var(--laiton);stroke-width:1.5;flex:none}
 .scanner{display:flex;gap:24px;align-items:center;padding:clamp(14px,2.4vh,22px);border-radius:var(--r);background:var(--bloc);color:var(--bloc-texte)}
 .scanner img{width:clamp(110px,18vh,150px);height:clamp(110px,18vh,150px);border-radius:12px;background:#fff;padding:10px;flex:none}
@@ -432,7 +446,9 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 @media (max-width:760px){.profil .choix{grid-template-columns:1fr 1fr}}
 
 /* ── Séjour, mot de l'hôte, événements ───────────────────── */
-.verre .sejour-p{font-size:14px;padding-left:clamp(12px,1.6vw,22px);border-left:1px solid rgba(255,255,255,.3);color:#f3e2bf}
+.verre .sejour-p{font-size:14px;padding-left:clamp(12px,1.6vw,22px);border-left:1px solid rgba(255,255,255,.3);color:#f3e2bf;display:inline-flex;align-items:center;gap:9px}
+.anneau{width:22px;height:22px;transform:rotate(-90deg);flex:none}
+.anneau circle{fill:none;stroke-width:3}.anneau .fond-a{stroke:rgba(255,255,255,.25)}.anneau .plein-a{stroke:#f3e2bf;stroke-linecap:round}
 .mot-hote{position:relative;padding:28px 32px 26px 70px;margin-bottom:var(--ecart);background:var(--papier);border-radius:var(--r);box-shadow:var(--ombre)}
 .mot-hote::before{content:"“";position:absolute;left:24px;top:6px;font-family:var(--serif);font-size:84px;color:var(--laiton);line-height:1}
 .mot-hote p{font-family:var(--serif);font-style:italic;font-size:clamp(20px,1.8vw,26px);line-height:1.35}
@@ -458,7 +474,7 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 @container (max-width:320px){.wifi img{width:58px;height:58px;padding:4px}.wifi b{font-size:clamp(18px,1.5vw,22px)}}
 /* Accueil : le dessin de la baie est caché derrière les cases, il ne dépasse plus entre elles */
 main::before{transition:opacity .6s}
-main:has(.bento)::before{opacity:0}
+main:has(.bento)::before,body.nuit main:has(.bento)::before{opacity:0}
 @media (max-height:900px) and (min-aspect-ratio:1/1){.hero .astuce{display:none}}
 
 /* ── Écrans peu hauts : accueil allégé pour que tout tienne ─ */
@@ -490,8 +506,9 @@ main:has(.bento)::before{opacity:0}
   .bande{min-height:230px}
 }
 @media (max-width:760px){
+  .fiche{width:100%;height:calc(100% - 18px);border-radius:28px 28px 0 0}
   .app{grid-template-columns:1fr;grid-template-rows:1fr auto}
-  .rail{grid-row:2;flex-direction:row;padding:8px 10px;border-right:0;border-top:1px solid var(--trait);overflow-x:auto}
+  .rail{grid-row:2;flex-direction:row;padding:8px 10px;margin:0 10px 10px;border-radius:28px;overflow-x:auto}
   .rail .logo,.rail .meteo-rail{display:none}
   .langue{margin:0 0 0 8px;align-self:center;flex:none}
   .parcours::before,.parcours li::before{display:none} .parcours li{grid-template-columns:1fr;gap:6px} .parcours .quand{text-align:left}
@@ -863,6 +880,12 @@ function etatSejour() {
 }
 // « mardi 20 octobre » sous l'heure d'arrivée / de départ
 const dateSejour = iso => iso ? `<i>${new Date(iso + 'T12:00').toLocaleDateString(t('locale'), { weekday: 'long', day: 'numeric', month: 'long' })}</i>` : '';
+// Jauge ronde : part du séjour déjà passée (comme les widgets de l'écran verrouillé)
+function anneau(sj) {
+  const total = Math.max(1, Math.round((new Date(L0.sejour.au) - new Date(L0.sejour.du)) / 864e5));
+  const f = Math.min(1, Math.max(.06, (total - sj.nuits) / total)), c = 2 * Math.PI * 9;
+  return `<svg class="anneau" viewBox="0 0 22 22" aria-hidden="true"><circle class="fond-a" cx="11" cy="11" r="9"/><circle class="plein-a" cx="11" cy="11" r="9" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}"/></svg>`;
+}
 // Petite barre : où en est le séjour (« Encore 4 nuits »)
 function avancee() {
   const sj = etatSejour(); if (!sj) return '';
@@ -1013,7 +1036,7 @@ function afficher() {
         <span class="petit">${echap(D.ville.region || '')}</span>
         <div><span class="petit">${salutation()}${sj?.prenoms ? ` ${echap(sj.prenoms)}` : ''}${profil ? `<button class="profil-actuel" data-aller="profil">${echap(tr((D.profils || []).find(p => p.id === profil), 'nom'))} · ${t('changer')}</button>` : ''}</span><h1>${t('bienvenue')} <em>${echap(D.ville.nom)}</em></h1>
           <p class="date" id="date"></p><span class="astuce"><i></i>${t('commencer')}</span></div>
-        <div class="verre"><span class="heure" id="heure"></span><span class="temp" id="temp"></span><span class="ciel" id="ciel"></span><span class="coucher" id="coucher"></span>${sj ? `<span class="sejour-p">${
+        <div class="verre"><span class="heure" id="heure"></span><span class="temp" id="temp"></span><span class="ciel" id="ciel"></span><span class="coucher" id="coucher"></span>${sj ? `<span class="sejour-p">${anneau(sj)}${
           sj.depart ? echap(t('departAujourdhui')(heureLibre(L0.depart || ''))) : sj.arrivee ? t('arriveeAujourdhui') : t('nuitsRestantes')(sj.nuits)}</span>` : ''}</div>
       </div>
       ${v ? `<button class="tuile photo vedette touche" id="vedette" data-fiche="${echap(v.id)}">
@@ -1177,7 +1200,7 @@ function ouvrir(id) {
         ${c.tel ? `<li>${svg('tel')}${echap(c.tel)}</li>` : ''}
       </ul>
     </div>`;
-  $('#voile').classList.add('ouvert'); $('#fiche').scrollTop = 0;
+  $('#voile').classList.add('ouvert'); document.body.classList.add('feuille'); $('#fiche').scrollTop = 0;
   if ($('#promoChronoFiche')) lancerChrono();
 }
 // Demande de service : QR code vers WhatsApp (message déjà écrit), sinon vers le téléphone.
@@ -1200,9 +1223,26 @@ function ouvrirService(id) {
       : `<p class="desc">${t('contacterHote')}</p>`}
       <p class="desc">${echap(tr(s, 'description'))}</p>
     </div>`;
-  $('#voile').classList.add('ouvert'); $('#fiche').scrollTop = 0;
+  $('#voile').classList.add('ouvert'); document.body.classList.add('feuille'); $('#fiche').scrollTop = 0;
 }
-function fermer() { $('#voile').classList.remove('ouvert'); }
+function fermer() {
+  $('#voile').classList.remove('ouvert'); document.body.classList.remove('feuille');
+  $('#fiche').style.transform = ''; $('#fiche').style.transition = '';
+}
+// Tirer la feuille vers le bas (depuis le haut) pour la fermer, comme sur iPad
+{ let y0 = null, dy = 0;
+  $('#fiche').addEventListener('pointerdown', e => { if ($('#fiche').scrollTop <= 0 && e.pointerType !== 'mouse') { y0 = e.clientY; dy = 0; } });
+  addEventListener('pointermove', e => {
+    if (y0 === null) return; dy = Math.max(0, e.clientY - y0);
+    $('#fiche').style.transition = 'none'; $('#fiche').style.transform = `translateY(${dy}px)`;
+  });
+  const lacher = () => {
+    if (y0 === null) return; y0 = null;
+    $('#fiche').style.transition = 'transform .35s cubic-bezier(.2,.8,.2,1)';
+    if (dy > 140) { $('#fiche').style.transform = 'translateY(100%)'; setTimeout(fermer, 250); } else $('#fiche').style.transform = '';
+  };
+  addEventListener('pointerup', lacher); addEventListener('pointercancel', lacher);
+}
 $('#voile').addEventListener('click', e => { if (e.target.id === 'voile' || e.target.closest('[data-fermer]')) fermer(); });
 
 // ── Heure et météo ───────────────────────────────────────
