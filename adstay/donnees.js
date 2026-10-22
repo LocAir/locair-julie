@@ -14,6 +14,9 @@ window.ADSTAY = {
   // Contact affiché sur la page « Devenir partenaire ». Vide = bouton masqué.
   contact: { email: '', tel: '' },
 
+  // Mode nuit automatique : écran sombre et doux entre ces deux heures (actif: false pour couper).
+  nuit: { actif: true, debut: '22:00', fin: '06:30' },
+
   // Délai sans toucher l'écran avant le diaporama (secondes) et durée d'une diapo.
   veille: { apresSecondes: 90, dureeDiapo: 8 },
 
