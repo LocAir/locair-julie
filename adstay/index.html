@@ -203,6 +203,12 @@ main{position:relative;overflow:hidden}
 .scanner ol{list-style:none;display:flex;flex-direction:column;gap:6px;color:rgba(244,239,231,.75);font-size:15px;counter-reset:e}
 .scanner li::before{counter-increment:e;content:counter(e) ". ";color:var(--laiton2)}
 
+/* Boutons d'action (téléphone uniquement) */
+.actions-tel{display:none;gap:10px}
+.actions-tel a{flex:1;display:inline-flex;align-items:center;justify-content:center;height:54px;border-radius:999px;border:1px solid var(--encre);
+  color:var(--encre);text-decoration:none;font-size:13px;letter-spacing:.18em;text-transform:uppercase}
+.actions-tel a.plein{background:var(--encre);color:var(--ivoire)}
+
 /* ── Écran de veille ────────────────────────────────────── */
 .veille{position:fixed;inset:0;z-index:50;background:#000;display:none;cursor:pointer;color:#fff}
 .veille.active{display:block}
@@ -300,7 +306,7 @@ main{position:relative;overflow:hidden}
   .infos{grid-template-columns:1fr}
   .logement{grid-template-columns:1fr}
   .logement .bloc.wifi-grand{flex-direction:column;text-align:center}
-  .scanner{flex-direction:column;text-align:center}
+  .scanner{display:none} .actions-tel{display:flex}
   .veille .heure{display:none}
   .diapo .qr-veille{display:none} .diapo:not(.accueil){padding-right:28px}
 }
@@ -362,6 +368,7 @@ const T = {
     service: 'Service', votreHote: 'votre hôte', prixDemande: 'Prix sur demande',
     whatsapp: 'Demandez-le sur WhatsApp', appeler: 'Appelez votre hôte', messagePret: 'Votre message est déjà écrit : envoyez-le.', lancerAppel: 'Lancez l’appel.',
     contacterHote: 'Pour commander, contactez votre hôte avec votre messagerie habituelle.',
+    btnItineraire: 'Itinéraire', btnReserver: 'Réserver', btnAppeler: 'Appeler',
     invite: 'Touchez l’écran pour découvrir la sélection', scanIti: 'Scannez pour l’itinéraire', scanResa: 'Scannez pour réserver',
     aPied: m => `${m} min à pied`, km: k => `${k.toFixed(1).replace('.', ',')} km`,
     ouvert: 'Ouvert', ferme: 'Fermé', fermeA: h => `ferme à ${h}`, ouvreA: h => `ouvre à ${h}`, ouvreDemain: h => `ouvre demain à ${h}`,
@@ -391,6 +398,7 @@ const T = {
     service: 'Service', votreHote: 'your host', prixDemande: 'Price on request',
     whatsapp: 'Request it on WhatsApp', appeler: 'Call your host', messagePret: 'Your message is ready: just send it.', lancerAppel: 'Start the call.',
     contacterHote: 'To order, contact your host through your usual messaging app.',
+    btnItineraire: 'Directions', btnReserver: 'Book', btnAppeler: 'Call',
     invite: 'Tap the screen to discover our selection', scanIti: 'Scan for directions', scanResa: 'Scan to book',
     aPied: m => `${m} min walk`, km: k => `${k.toFixed(1)} km`,
     ouvert: 'Open', ferme: 'Closed', fermeA: h => `closes ${h}`, ouvreA: h => `opens ${h}`, ouvreDemain: h => `opens tomorrow ${h}`,
@@ -684,13 +692,14 @@ function afficher() {
 }
 
 // ── Fiche d'une adresse ──────────────────────────────────
-function lienQR(c) {
-  // Fiche de la base : le QR passe par /adstay/go qui compte le scan puis redirige
-  const cible = window.adstayEstUuid(c.id)
-    ? `${location.origin}/adstay/go?f=${c.id}${logement ? '&l=' + encodeURIComponent(logement) : ''}`
-    : c.lien || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.nom + ', ' + c.adresse);
-  return 'https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=' + encodeURIComponent(cible);
-}
+// Fiche de la base : le lien passe par /adstay/go qui compte le scan puis redirige
+const cibleAdresse = c => window.adstayEstUuid(c.id)
+  ? `${location.origin}/adstay/go?f=${c.id}${logement ? '&l=' + encodeURIComponent(logement) : ''}`
+  : c.lien || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.nom + ', ' + c.adresse);
+const lienQR = c => 'https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=' + encodeURIComponent(cibleAdresse(c));
+// Sur téléphone, pas de QR à scanner : de vrais boutons
+const boutonsTel = liens => `<div class="actions-tel">${liens.filter(Boolean).map(([href, txt, plein]) =>
+  `<a class="${plein ? 'plein' : ''}" href="${echap(href)}" target="_blank" rel="noopener">${echap(txt)}</a>`).join('')}</div>`;
 const boutonFermer = () => `<button class="fermer touche" data-fermer>${svg('croix')}${t('fermer')}</button>`;
 const etapesScan = (fin = t('scan')[2]) => `<ol><li>${t('scan')[0]}</li><li>${t('scan')[1]}</li><li>${fin}</li></ol>`;
 function ouvrir(id) {
@@ -706,6 +715,7 @@ function ouvrir(id) {
       ${tr(c, 'offre') ? `<div class="cadeau">${svg('cadeau')}<span>${echap(tr(c, 'offre'))}</span></div>` : ''}
       <div class="scanner"><img src="${lienQR(c)}" alt="QR code"/>
         <div><b>${c.lien ? t('reserverTel') : t('itineraireTel')}</b>${etapesScan()}</div></div>
+      ${boutonsTel([[cibleAdresse(c), c.lien ? t('btnReserver') : t('btnItineraire'), true], c.tel && [`tel:${c.tel.replace(/\s/g, '')}`, t('btnAppeler')]])}
       <p class="desc">${echap(tr(c, 'description') || tr(c, 'accroche'))}</p>
       <ul class="infos">
         ${c.adresse ? `<li>${svg('lieu')}${echap(c.adresse)}</li>` : ''}
@@ -729,7 +739,8 @@ function ouvrirService(id) {
       <h3>${echap(tr(s, 'nom'))}</h3>
       <div class="cadeau">${svg('cle')}<span>${echap(tr(s, 'prix') || t('prixDemande'))}</span></div>
       ${cible ? `<div class="scanner"><img src="https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=${encodeURIComponent(cible)}" alt="QR code"/>
-        <div><b>${cc.whatsapp ? t('whatsapp') : t('appeler')}</b>${etapesScan(cc.whatsapp ? t('messagePret') : t('lancerAppel'))}</div></div>`
+        <div><b>${cc.whatsapp ? t('whatsapp') : t('appeler')}</b>${etapesScan(cc.whatsapp ? t('messagePret') : t('lancerAppel'))}</div></div>
+      ${boutonsTel([[cible, cc.whatsapp ? 'WhatsApp' : t('btnAppeler'), true]])}`
       : `<p class="desc">${t('contacterHote')}</p>`}
       <p class="desc">${echap(tr(s, 'description'))}</p>
     </div>`;
