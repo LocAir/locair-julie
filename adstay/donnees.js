@@ -38,6 +38,34 @@ window.ADSTAY = {
     },
   ],
 
+  // ─── Page de vente (/adstay/partenaires) ──────────────────────────────────
+  // Comparatif : chaque ligne indique dans quelles formules l'avantage est inclus.
+  // Ces règles correspondent à ce que la tablette fait vraiment (ne pas promettre plus).
+  vente: {
+    // Places « Exclusivité » vendues par catégorie (la carte « À la une » tourne entre elles).
+    placesExclusiviteParCategorie: 1,
+    comparatif: [
+      { texte: 'Fiche complète : photo, description, adresse, horaires, téléphone', formules: ['essentielle', 'premium', 'exclusivite'] },
+      { texte: 'Badges « Ouvert maintenant » et « 8 min à pied »', formules: ['essentielle', 'premium', 'exclusivite'] },
+      { texte: 'QR code itinéraire sur la fiche', formules: ['essentielle', 'premium', 'exclusivite'] },
+      { texte: 'Statistiques en ligne : fiches ouvertes, QR scannés', formules: ['essentielle', 'premium', 'exclusivite'] },
+      { texte: 'Offre spéciale voyageurs mise en valeur', formules: ['premium', 'exclusivite'] },
+      { texte: 'Bouton et QR de réservation (votre site, TheFork…)', formules: ['premium', 'exclusivite'] },
+      { texte: 'Étiquette dorée et place prioritaire dans la liste', formules: ['premium', 'exclusivite'] },
+      { texte: 'Plein écran sur l’écran de veille (avec QR)', formules: ['premium', 'exclusivite'], detail: { premium: '1 passage par tour', exclusivite: '2 passages par tour' } },
+      { texte: 'Grande carte « À la une » sur l’accueil', formules: ['exclusivite'] },
+      { texte: 'Exclusivité dans votre catégorie', formules: ['exclusivite'] },
+      { texte: 'Bilan mensuel commenté', formules: ['exclusivite'] },
+    ],
+    faq: [
+      { q: 'Combien de temps faut-il pour être visible ?', r: 'Créez votre fiche en 10 minutes. Après validation, elle apparaît sur toutes les tablettes du réseau, en général sous 48 heures.' },
+      { q: 'Y a-t-il un engagement ?', r: 'Non. L’abonnement est mensuel, sans durée minimum. Vous pouvez changer de formule ou arrêter quand vous voulez.' },
+      { q: 'Comment savoir si ça marche ?', r: 'Votre espace affiche chaque jour combien de voyageurs ont ouvert votre fiche, vu votre publicité en veille et scanné votre QR code.' },
+      { q: 'Qui voit ma publicité ?', r: 'Les voyageurs logés dans les appartements et villas équipés de nos tablettes : des touristes déjà sur place, qui cherchent où manger, sortir ou se déplacer.' },
+      { q: 'Puis-je proposer une offre aux voyageurs ?', r: 'Oui, à partir de la formule Premium : un apéritif offert, une remise, un transat… Elle s’affiche en valeur sur votre fiche et en plein écran.' },
+    ],
+  },
+
   // Qui reçoit les demandes de services du voyageur (ménage, linge…).
   // whatsapp : numéro au format international sans + ni espaces, ex. '33612345678'.
   // Le voyageur scanne un QR code : WhatsApp s'ouvre avec la demande déjà écrite.
