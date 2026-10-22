@@ -142,6 +142,16 @@ a{color:var(--champagne)}
   .barre .compte span{display:none}
 }
 .choix-retenu{margin:-6px auto 22px;padding:10px 18px;border-radius:999px;background:rgba(168,132,76,.12);color:#7d6236;font-size:14px;width:fit-content;max-width:100%}
+.logements .ligne{grid-template-columns:1fr auto}
+.point{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--discret);margin-right:8px;vertical-align:middle}
+.point.en-ligne{background:var(--vert);box-shadow:0 0 0 3px rgba(79,138,98,.15)} .point.hors-ligne{background:var(--rouge)}
+.recherche-l{width:100%;max-width:420px;height:46px;padding:0 16px;border:1px solid var(--trait);border-radius:2px;background:var(--encre2);color:var(--ivoire);font:inherit;margin:4px 0 8px}
+.installer{display:grid;grid-template-columns:260px 1fr;gap:34px;align-items:start;margin-top:10px}
+.installer img{width:260px;height:260px;background:#fff;padding:12px;border:1px solid var(--trait)}
+.installer ol{display:flex;flex-direction:column;gap:14px;padding-left:20px;color:var(--doux);font-size:16px;line-height:1.5}
+.installer ol b{color:var(--ivoire);font-weight:400}
+.installer code{display:block;margin-top:16px;padding:12px 14px;background:var(--encre2);border:1px solid var(--trait);font-size:14px;word-break:break-all;user-select:all}
+@media (max-width:760px){.installer{grid-template-columns:1fr}.installer img{width:220px;height:220px}}
 </style>
 </head>
 <body>
@@ -191,6 +201,7 @@ a{color:var(--champagne)}
 </div>
 
 <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="/adstay/vendor/qrcode-generator-1.4.4.js"></script>
 <script src="/adstay/donnees.js"></script>
 <script src="/adstay/config.js"></script>
 <script>
@@ -201,7 +212,7 @@ const sb = C.supabaseUrl && C.supabaseAnonKey && window.supabase ? supabase.crea
 const RETOUR = location.origin + '/adstay/espace';
 const STATUTS = { brouillon: 'Brouillon', en_attente: 'En attente de validation', publie: 'Publiée', suspendu: 'Suspendue' };
 
-let moi = null, admin = false, formules = [], fiches = [], onglet = 'fiches', compteurs = {};
+let moi = null, admin = false, formules = [], fiches = [], onglet = 'fiches', compteurs = {}, logements = [], filtreL = '';
 // Formule cliquée sur la page de vente (« Choisir Premium ») : gardée même après la connexion Google
 const CLE_CHOIX = 'adstay-formule-choisie';
 const choixUrl = new URLSearchParams(location.search).get('formule');
@@ -257,9 +268,10 @@ async function chargerFiches() {
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
 function afficher() {
-  const tabs = admin ? [['fiches', 'Toutes les fiches'], ['formules', 'Formules et prix']] : [['fiches', 'Mes établissements']];
+  const tabs = admin ? [['fiches', 'Toutes les fiches'], ['logements', 'Logements et tablettes'], ['formules', 'Formules et prix']] : [['fiches', 'Mes établissements']];
   $('#onglets').innerHTML = tabs.map(([id, nom]) => `<button class="onglet" data-onglet="${id}" aria-pressed="${id === onglet}">${nom}</button>`).join('');
   if (onglet === 'formules' && admin) return vueFormules();
+  if (onglet === 'logements' && admin) return vueLogements();
   vueListe();
 }
 $('#onglets').addEventListener('click', e => {
@@ -320,6 +332,7 @@ $('#contenu').addEventListener('click', async e => {
     await chargerFiches(); return afficher();
   }
   if (a === 'enregistrer-formule') return enregistrerFormule(b.dataset.id, b);
+  if (a.startsWith('logement-')) return actionLogement(a, id);
 });
 
 // ─── Formulaire d'une fiche ──────────────────────────────────────────────────
@@ -439,6 +452,152 @@ async function vueStats(f, jours) {
       <div class="b" style="height:${Number(l.vues) / max * 100}%"></div><div class="b s" style="height:${Number(l.scans) / max * 100}%"></div></div>`).join('')}</div>
     <div class="axe"><span>${lignes[0] ? date(lignes[0].jour) : ''}</span><span>${lignes.length ? date(lignes[lignes.length - 1].jour) : ''}</span></div>
     <div class="legende"><span><i style="background:rgba(27,36,48,.35)"></i>Fiches ouvertes</span><span><i style="background:var(--champagne)"></i>QR scannés</span></div>`;
+}
+
+// ─── Logements et tablettes (admin) ──────────────────────────────────────────
+// Un logement = une tablette. Ici : ajouter un logement, l'installer (QR), changer les
+// voyageurs, et voir d'un coup d'œil les tablettes éteintes ou débranchées.
+function qr(texte) {
+  try {
+    const q = qrcode(0, 'M'); q.addData(unescape(encodeURIComponent(texte))); q.make();
+    const n = q.getModuleCount(); let d = '';
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (q.isDark(y, x)) d += `M${x} ${y}h1v1h-1z`;
+    return 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges"><rect width="${n}" height="${n}" fill="#fff"/><path d="${d}" fill="#111"/></svg>`);
+  } catch { return ''; }
+}
+const lienTablette = l => `${location.origin}/adstay?t=${l.code}`;
+const duree = min => min < 120 ? `${Math.round(min)} min` : min < 2880 ? `${Math.round(min / 60)} h` : `${Math.round(min / 1440)} jours`;
+const jourCourt = d => d ? new Date(d + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : '';
+const aujourdhui = () => new Date().toLocaleDateString('sv-SE');
+// La tablette se signale toutes les 10 min : au-delà de 30 min sans nouvelles, elle est « hors ligne »
+function etatTablette(l) {
+  if (!l.actif) return { cle: 3, classe: '', texte: 'Désactivé' };
+  if (!l.vu_le) return { cle: 1, classe: '', texte: 'Tablette pas encore installée' };
+  const min = (Date.now() - new Date(l.vu_le)) / 60e3;
+  return min < 30 ? { cle: 2, classe: 'en-ligne', texte: 'En ligne' } : { cle: 0, classe: 'hors-ligne', texte: `Hors ligne depuis ${duree(min)}` };
+}
+async function chargerLogements() {
+  const { data } = await sb.from('logements').select('*').order('nom');
+  logements = data || [];
+}
+async function vueLogements() {
+  $('#contenu').innerHTML = `<p class="vide">Chargement des logements…</p>`;
+  await chargerLogements();
+  const etats = logements.map(etatTablette), n = cle => etats.filter(e => e.cle === cle).length;
+  const presents = logements.filter(l => l.sejour_du && l.sejour_du <= aujourdhui() && l.sejour_au >= aujourdhui()).length;
+  $('#contenu').innerHTML = `
+    <div class="entete"><div><span class="petit">${logements.length} logement(s) équipé(s)</span><h2>Logements et tablettes</h2></div>
+      <button class="bouton plein" data-action="logement-nouveau">Ajouter un logement</button></div>
+    ${logements.length ? `<div class="total">
+      <div><b>${n(2)}</b><span>tablettes en ligne</span></div>
+      <div><b style="${n(0) ? 'color:var(--rouge)' : ''}">${n(0)}</b><span>hors ligne (à vérifier)</span></div>
+      <div><b>${n(1)}</b><span>pas encore installées</span></div>
+      <div><b>${presents}</b><span>logements avec voyageurs aujourd’hui</span></div></div>
+      <input class="recherche-l" id="rechL" type="search" placeholder="Chercher un logement (nom, adresse, voyageurs)…" value="${echap(filtreL)}"/>
+      <div class="fiches logements" id="listeL"></div>`
+    : `<p class="vide">Aucun logement pour l’instant. Ajoutez le premier, puis installez sa tablette avec le QR code.</p>`}`;
+  const lister = () => {
+    const f = filtreL.toLowerCase();
+    // Les problèmes d'abord : hors ligne, puis pas installées, puis en ligne
+    const liste = logements.filter(l => !f || `${l.nom} ${l.adresse} ${l.sejour_prenoms}`.toLowerCase().includes(f))
+      .sort((a, b) => etatTablette(a).cle - etatTablette(b).cle || a.nom.localeCompare(b.nom, 'fr'));
+    $('#listeL').innerHTML = liste.map(l => { const e = etatTablette(l); return `
+      <div class="ligne">
+        <div><div class="nom">${echap(l.nom)}</div>
+          <div class="meta"><span><i class="point ${e.classe}"></i>${e.texte}</span>
+            ${l.adresse ? `<span>${echap(l.adresse)}</span>` : ''}
+            ${l.sejour_du ? `<span>${echap(l.sejour_prenoms || 'Voyageurs')} · ${jourCourt(l.sejour_du)} → ${jourCourt(l.sejour_au)}</span>` : '<span>Pas de séjour renseigné</span>'}</div></div>
+        <div class="actions">
+          <button class="bouton lien" data-action="logement-installer" data-id="${l.id}">Installer la tablette</button>
+          <button class="bouton lien" data-action="logement-modifier" data-id="${l.id}">Modifier</button></div>
+      </div>`; }).join('') || `<p class="vide">Aucun logement ne correspond.</p>`;
+  };
+  if (logements.length) { lister(); $('#rechL').addEventListener('input', e => { filtreL = e.target.value; lister(); }); }
+}
+function vueInstaller(l) {
+  $('#contenu').innerHTML = `
+    <div class="entete"><div><span class="petit">${echap(l.nom)}</span><h2>Installer la tablette</h2></div>
+      <button class="bouton lien" data-action="logement-retour">← Retour</button></div>
+    <div class="installer"><img src="${qr(lienTablette(l))}" alt="QR d’installation"/>
+      <div><ol>
+        <li><b>Allumez la tablette</b> dans le logement et connectez-la au Wi-Fi.</li>
+        <li><b>Scannez ce QR code</b> avec l’appareil photo de la tablette (ou tapez l’adresse ci-dessous).</li>
+        <li><b>Ajoutez la page à l’écran d’accueil</b> et activez le mode « une seule application » (Android : épinglage de l’écran · iPad : Accès guidé).</li>
+        <li>C’est tout : la tablette se souvient de son logement, même après un redémarrage. Ici, elle passe <b>« En ligne »</b> tout de suite.</li>
+      </ol>
+      <code>${echap(lienTablette(l))}</code>
+      <p class="note">Ce lien est secret : il donne accès au Wi-Fi et aux prénoms des voyageurs. Si une tablette est perdue,
+        <button class="bouton lien" data-action="logement-code" data-id="${l.id}" style="letter-spacing:.06em">changez le code</button> : l’ancienne tablette n’aura plus accès.</p>
+      </div></div>`;
+}
+function vueFormLogement(l) {
+  const v = l || { nom: '', adresse: '', wifi_reseau: '', wifi_mdp: '', arrivee: '16:00', depart: '11:00', infos: [], infos_en: [], mot_hote: '', mot_hote_en: '', signature: '', sejour_prenoms: '', sejour_du: '', sejour_au: '', actif: true };
+  const champ = (id, label, type = 'text', aide = '', valeur = v[id]) => `<div class="champ ${type === 'textarea' ? 'large' : ''}"><label for="l-${id}">${label}</label>
+    ${type === 'textarea' ? `<textarea id="l-${id}">${echap(valeur)}</textarea>` : `<input id="l-${id}" type="${type}" value="${echap(valeur ?? '')}"/>`}
+    ${aide ? `<small>${aide}</small>` : ''}</div>`;
+  $('#contenu').innerHTML = `
+    <div class="entete"><div><span class="petit">${l ? 'Logement' : 'Nouveau logement'}</span><h2>${l ? echap(l.nom) : 'Ajouter un logement'}</h2></div>
+      <button class="bouton lien" data-action="logement-retour">← Retour</button></div>
+    <form class="formulaire" id="formLogement">
+      ${champ('nom', 'Nom affiché', 'text', 'Ex. « Appartement du Port ». Visible en haut de « Votre séjour ».')}
+      ${champ('adresse', 'Adresse', 'text', 'Sert à calculer « 8 min à pied » vers chaque adresse.')}
+      <h3 class="bloc-titre large">Séjour en cours<small>À mettre à jour à chaque arrivée : la tablette accueille les voyageurs par leur prénom et compte les nuits.</small></h3>
+      ${champ('sejour_prenoms', 'Prénoms des voyageurs', 'text', 'Ex. « Sophie & Marc »')}
+      <div class="deux">${champ('sejour_du', 'Arrivée le', 'date')}${champ('sejour_au', 'Départ le', 'date')}</div>
+      <h3 class="bloc-titre large">Wi-Fi et horaires</h3>
+      ${champ('wifi_reseau', 'Nom du Wi-Fi')}${champ('wifi_mdp', 'Mot de passe Wi-Fi')}
+      ${champ('arrivee', 'Heure d’arrivée', 'text', 'Ex. 16:00')}${champ('depart', 'Heure de départ', 'text', 'Ex. 11:00')}
+      <h3 class="bloc-titre large">Mot d’accueil et infos pratiques</h3>
+      ${champ('mot_hote', 'Mot d’accueil', 'textarea')}${champ('mot_hote_en', 'Mot d’accueil (anglais)', 'textarea')}
+      ${champ('signature', 'Signature', 'text', 'Ex. « L’équipe de la conciergerie »')}
+      ${champ('infos', 'Infos pratiques (une par ligne)', 'textarea', '', (v.infos || []).join('\n'))}
+      ${champ('infos_en', 'Infos pratiques en anglais (une par ligne)', 'textarea', '', (v.infos_en || []).join('\n'))}
+      <div class="champ large"><label><input type="checkbox" id="l-actif" ${v.actif ? 'checked' : ''}/> Tablette active</label>
+        <small>Décochez pour couper l’accès de la tablette (logement retiré, tablette perdue…).</small></div>
+      <div id="msgLogement" class="large"></div>
+      <div class="boutons">
+        ${l ? `<button type="button" class="bouton lien danger" data-action="logement-supprimer" data-id="${l.id}" style="margin-right:auto">Supprimer</button>` : ''}
+        <button type="submit" class="bouton plein">Enregistrer</button></div>
+    </form>`;
+  $('#formLogement').addEventListener('submit', async e => {
+    e.preventDefault();
+    const val = id => $('#l-' + id).value.trim(), lignes = id => val(id).split('\n').map(x => x.trim()).filter(Boolean);
+    const d = { nom: val('nom'), adresse: val('adresse'), sejour_prenoms: val('sejour_prenoms'),
+      sejour_du: val('sejour_du') || null, sejour_au: val('sejour_au') || null,
+      wifi_reseau: val('wifi_reseau'), wifi_mdp: val('wifi_mdp'), arrivee: val('arrivee'), depart: val('depart'),
+      mot_hote: val('mot_hote'), mot_hote_en: val('mot_hote_en'), signature: val('signature'),
+      infos: lignes('infos'), infos_en: lignes('infos_en'), actif: $('#l-actif').checked };
+    if (!d.nom) return message('#msgLogement', 'Donnez un nom au logement.', true);
+    if (d.sejour_du && d.sejour_au && d.sejour_au < d.sejour_du) return message('#msgLogement', 'La date de départ est avant la date d’arrivée.', true);
+    if (d.adresse && (d.adresse !== l?.adresse || !l?.lat)) {
+      try {
+        const r = await fetch('https://api-adresse.data.gouv.fr/search/?limit=1&q=' + encodeURIComponent(d.adresse + ' ' + (D.ville?.nom || '')));
+        const [lon, lat] = (await r.json()).features?.[0]?.geometry?.coordinates || [];
+        if (lat) Object.assign(d, { lat, lon });
+      } catch {}
+    }
+    const { data, error } = l ? await sb.from('logements').update(d).eq('id', l.id).select().single()
+      : await sb.from('logements').insert(d).select().single();
+    if (error) return message('#msgLogement', 'Enregistrement impossible : ' + error.message, true);
+    // Nouveau logement : on enchaîne directement sur l'installation de sa tablette
+    if (!l) return vueInstaller(data);
+    vueLogements();
+  });
+}
+async function actionLogement(a, id) {
+  const l = logements.find(x => x.id === id);
+  if (a === 'logement-nouveau') return vueFormLogement(null);
+  if (a === 'logement-retour') return vueLogements();
+  if (a === 'logement-modifier') return vueFormLogement(l);
+  if (a === 'logement-installer') return vueInstaller(l);
+  if (a === 'logement-supprimer' && confirm(`Supprimer « ${l.nom} » ? Sa tablette n’affichera plus ce logement.`)) {
+    await sb.from('logements').delete().eq('id', id); return vueLogements();
+  }
+  if (a === 'logement-code' && confirm('Changer le code ? La tablette actuelle devra être réinstallée avec le nouveau QR code.')) {
+    const code = [...crypto.getRandomValues(new Uint8Array(6))].map(b => b.toString(16).padStart(2, '0')).join('');
+    const { data, error } = await sb.from('logements').update({ code }).eq('id', id).select().single();
+    if (!error) { logements = logements.map(x => x.id === id ? data : x); vueInstaller(data); }
+  }
 }
 
 // ─── Formules et prix (admin) ────────────────────────────────────────────────

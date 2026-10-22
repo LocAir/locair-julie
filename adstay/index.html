@@ -534,7 +534,8 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 await window.ADSTAY_PRET; // fiches de la base AdStay si elle est branchée
 const D = window.ADSTAY;
 const chargeLe = Date.now();
-const logement = new URLSearchParams(location.search).get('logement') || '';
+// Logement de la tablette : fixé par l'installation (?t=CODE, voir charger.js), sinon ?logement= (démo)
+const logement = window.ADSTAY_LOGEMENT || new URLSearchParams(location.search).get('logement') || '';
 const $ = s => document.querySelector(s);
 
 // ── Langue ───────────────────────────────────────────────
@@ -1169,7 +1170,8 @@ function ouvrir(id) {
 function ouvrirService(id) {
   const s = (D.services || []).find(x => x.id === id); if (!s) return;
   const cc = D.conciergerie || {};
-  const message = T[lang].message(tr(s, 'nom'), logement);
+  // La conciergerie gère des centaines de logements : le message dit lequel (nom et adresse)
+  const message = T[lang].message(tr(s, 'nom'), [L0?.nom, L0?.adresse].filter(Boolean).join(', ') || logement);
   const cible = cc.whatsapp ? `https://wa.me/${cc.whatsapp}?text=${encodeURIComponent(message)}`
     : cc.tel ? `tel:${cc.tel.replace(/\s/g, '')}` : '';
   $('#fiche').innerHTML = `
@@ -1298,6 +1300,14 @@ function modeNuit() {
   document.querySelector('meta[name="theme-color"]').content = nuit ? '#0c1118' : '#f4efe7';
 }
 modeNuit(); setInterval(modeNuit, 60000);
+// Tablette installée : toutes les 10 min elle dit « je suis allumée » et récupère son logement.
+// Si la conciergerie a changé quelque chose (nouveaux voyageurs, Wi-Fi…), elle se recharge
+// quand personne ne s'en sert (écran de veille, ou aucun toucher depuis 3 min).
+if (window.ADSTAY_TABLETTE) setInterval(async () => {
+  if (!(await window.adstayLogement())) return;
+  const recharger = () => $('#veille').classList.contains('active') || Date.now() - toucheNote > 180e3 ? location.reload() : setTimeout(recharger, 60e3);
+  recharger();
+}, 10 * 60e3);
 menu(); afficher(); horloge(); meteo(); reveil();
 setInterval(horloge, 15000); setInterval(meteo, 30 * 60000);
 // Les badges « ouvert / fermé » se mettent à jour toutes les 5 minutes

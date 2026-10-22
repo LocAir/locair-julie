@@ -210,3 +210,61 @@ language sql stable security definer set search_path = public as $$
   where public.est_admin() or c.proprietaire = auth.uid()
   group by c.id;
 $$;
+
+-- ─── Logements équipés d'une tablette (des centaines) ───────────────────────
+-- Chaque logement a un code secret. La tablette est installée une seule fois en
+-- ouvrant /adstay?t=CODE (QR affiché dans l'espace admin) ; ensuite elle s'en souvient.
+-- Le code n'est jamais montré aux voyageurs ni aux commerçants (les statistiques
+-- utilisent l'identifiant du logement, pas le code).
+create table if not exists public.logements (
+  id              uuid primary key default gen_random_uuid(),
+  code            text not null unique default lower(substr(replace(gen_random_uuid()::text, '-', ''), 1, 12)),
+  nom             text not null,
+  adresse         text not null default '',
+  lat             double precision,
+  lon             double precision,
+  wifi_reseau     text not null default '',
+  wifi_mdp        text not null default '',
+  arrivee         text not null default '16:00',
+  depart          text not null default '11:00',
+  infos           text[] not null default '{}',
+  infos_en        text[] not null default '{}',
+  mot_hote        text not null default '',
+  mot_hote_en     text not null default '',
+  signature       text not null default '',
+  sejour_prenoms  text not null default '',
+  sejour_du       date,
+  sejour_au       date,
+  actif           boolean not null default true,
+  vu_le           timestamptz,              -- dernier signal de la tablette (toutes les 10 min)
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+alter table public.logements enable row level security;
+-- Seuls les admins voient et gèrent les logements (Wi-Fi, prénoms des voyageurs…)
+drop policy if exists "logements: admin" on public.logements;
+create policy "logements: admin" on public.logements for all
+  using (public.est_admin()) with check (public.est_admin());
+
+create or replace function public.adstay_logement_maj() returns trigger
+language plpgsql as $$ begin new.updated_at := now(); return new; end $$;
+drop trigger if exists adstay_logement_maj on public.logements;
+create trigger adstay_logement_maj before update of nom, adresse, lat, lon, wifi_reseau, wifi_mdp, arrivee, depart,
+  infos, infos_en, mot_hote, mot_hote_en, signature, sejour_prenoms, sejour_du, sejour_au, actif, code
+  on public.logements for each row execute function public.adstay_logement_maj();
+
+-- La tablette (sans compte) lit SON logement grâce au code, et signale qu'elle est allumée.
+create or replace function public.adstay_tablette(p_code text)
+returns json language plpgsql volatile security definer set search_path = public as $$
+declare r public.logements;
+begin
+  if p_code is null or length(p_code) < 8 then return null; end if;
+  update public.logements set vu_le = now() where code = p_code and actif returning * into r;
+  if r.id is null then return null; end if;
+  return json_build_object('id', r.id, 'nom', r.nom, 'adresse', r.adresse, 'lat', r.lat, 'lon', r.lon,
+    'wifi_reseau', r.wifi_reseau, 'wifi_mdp', r.wifi_mdp, 'arrivee', r.arrivee, 'depart', r.depart,
+    'infos', r.infos, 'infos_en', r.infos_en, 'mot_hote', r.mot_hote, 'mot_hote_en', r.mot_hote_en,
+    'signature', r.signature, 'sejour_prenoms', r.sejour_prenoms, 'sejour_du', r.sejour_du, 'sejour_au', r.sejour_au,
+    'maj', r.updated_at);
+end $$;
+grant execute on function public.adstay_tablette(text) to anon, authenticated;
