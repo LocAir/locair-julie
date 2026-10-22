@@ -31,6 +31,10 @@ header p{color:var(--texte2);margin-top:8px}
 .boutons a{flex:1;display:flex;align-items:center;justify-content:center;height:48px;border-radius:999px;border:1px solid var(--encre);color:var(--encre);
   text-decoration:none;font-size:12px;letter-spacing:.14em;text-transform:uppercase}
 .boutons a.plein{background:var(--encre);color:var(--ivoire)}
+.adresse .etat{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--texte2)}
+.adresse .etat::before{content:'';width:8px;height:8px;border-radius:50%;background:#b9b3a8;flex:none}
+.adresse .etat.ouvert{color:#3f6b4e}
+.adresse .etat.ouvert::before{background:#4f8a62;box-shadow:0 0 0 3px rgba(79,138,98,.16)}
 .vide{text-align:center;color:var(--texte2);padding:40px 0}
 footer{text-align:center;color:var(--texte2);font-size:13px;margin-top:26px}
 </style>
@@ -66,6 +70,39 @@ footer{text-align:center;color:var(--texte2);font-size:13px;margin-top:26px}
   const liste = ids.map(id => (D.commercants || []).find(c => String(c.id) === id)).filter(Boolean);
   const cat = c => tr((D.categories || []).find(x => x.id === c.categorie), 'nom');
 
+  // Ouvert maintenant ? (même règle que la tablette : creneaux '12:00-14:30 19:00-22:30', fermes ['lun'])
+  const JOURS = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+  const NOMS = en ? { lun: 'Monday', mar: 'Tuesday', mer: 'Wednesday', jeu: 'Thursday', ven: 'Friday', sam: 'Saturday', dim: 'Sunday' }
+                  : { lun: 'lundi', mar: 'mardi', mer: 'mercredi', jeu: 'jeudi', ven: 'vendredi', sam: 'samedi', dim: 'dimanche' };
+  const minutes = h => { const [H, M = '0'] = h.split(':'); return +H * 60 + +M; };
+  const plagesDe = c => String(c.creneaux || '').trim().split(/\s+/).filter(Boolean)
+    .map(p => p.split('-').map(minutes)).filter(([a, b]) => !isNaN(a) && !isNaN(b));
+  const heure = m => {
+    m = ((m % 1440) + 1440) % 1440; const H = Math.floor(m / 60), M = m % 60, mm = M ? String(M).padStart(2, '0') : '';
+    return en ? `${H % 12 || 12}${mm ? ':' + mm : ''} ${H < 12 ? 'am' : 'pm'}` : `${H}h${mm}`;
+  };
+  function ouverture(c, now = new Date()) {
+    const plages = plagesDe(c); if (!plages.length) return null;
+    const fermes = c.fermes || [], min = now.getHours() * 60 + now.getMinutes(), j = now.getDay();
+    const ouvert = b => ({ ouvert: true, texte: en ? `Open · closes at ${heure(b)}` : `Ouvert · ferme à ${heure(b)}` });
+    if (plages.some(([a, b]) => a === 0 && b >= 1440) && !fermes.length) return { ouvert: true, texte: en ? 'Open 24/7' : 'Ouvert 24h/24' };
+    for (const [a, b0] of plages) {
+      const b = b0 <= a ? b0 + 1440 : b0;
+      if (!fermes.includes(JOURS[j]) && min >= a && min < b) return ouvert(b);
+      if (b > 1440 && !fermes.includes(JOURS[(j + 6) % 7]) && min < b - 1440) return ouvert(b);
+    }
+    for (let d = 0; d < 8; d++) {
+      const jd = (j + d) % 7; if (fermes.includes(JOURS[jd])) continue;
+      const debut = plages.map(p => p[0]).filter(a => d > 0 || a > min).sort((x, y) => x - y)[0];
+      if (debut === undefined) continue;
+      const h = heure(debut), quand = d === 0 ? (en ? `opens at ${h}` : `ouvre à ${h}`)
+        : d === 1 ? (en ? `opens tomorrow at ${h}` : `ouvre demain à ${h}`) : (en ? `opens ${NOMS[JOURS[jd]]} at ${h}` : `ouvre ${NOMS[JOURS[jd]]} à ${h}`);
+      return { ouvert: false, texte: `${en ? 'Closed' : 'Fermé'} · ${quand}` };
+    }
+    return { ouvert: false, texte: en ? 'Closed' : 'Fermé' };
+  }
+  const etat = c => { const o = ouverture(c); return o ? `<span class="etat${o.ouvert ? ' ouvert' : ''}" data-id="${echap(c.id)}">${echap(o.texte)}</span>` : ''; };
+
   document.title = en ? 'My list — AdStay' : 'Ma sélection — AdStay';
   document.getElementById('titre').textContent = en ? `My ${D.ville.nom}` : `Mon ${D.ville.nom}`;
   document.getElementById('sous').textContent = en ? `${liste.length} places saved during your stay` : `${liste.length} adresse${liste.length > 1 ? 's' : ''} gardée${liste.length > 1 ? 's' : ''} pendant votre séjour`;
@@ -84,11 +121,18 @@ footer{text-align:center;color:var(--texte2);font-size:13px;margin-top:26px}
         <div class="corps"><span class="cat">${echap(cat(c))}</span><h2>${echap(c.nom)}</h2>
           <span class="acc">${echap(tr(c, 'accroche'))}</span>
           ${premium(c) && tr(c, 'offre') ? `<span class="offre">${echap(tr(c, 'offre'))}</span>` : ''}
+          ${etat(c)}
           ${c.adresse ? `<span class="info">${echap(c.adresse)}</span>` : ''}
           <div class="boutons">
             <a class="plein" href="${echap(premium(c) && c.lien ? c.lien : maps(c))}" target="_blank" rel="noopener">${premium(c) && c.lien ? (en ? 'Book' : 'Réserver') : (en ? 'Directions' : 'Itinéraire')}</a>
             ${c.tel ? `<a href="tel:${echap(c.tel.replace(/\s/g, ''))}">${en ? 'Call' : 'Appeler'}</a>` : ''}
           </div></div></article>`).join('');
+
+  // La page reste ouverte tout le séjour : on remet « ouvert / fermé » à l'heure chaque minute
+  setInterval(() => document.querySelectorAll('.etat[data-id]').forEach(e => {
+    const o = ouverture(liste.find(c => String(c.id) === e.dataset.id) || {});
+    if (o) { e.textContent = o.texte; e.classList.toggle('ouvert', o.ouvert); }
+  }), 60e3);
 
   // Statistiques : chaque adresse de la base emportée compte comme un scan
   liste.forEach(c => window.adstayNoter(c.id, 'scan', logement));
