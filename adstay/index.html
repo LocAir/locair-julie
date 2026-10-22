@@ -575,7 +575,9 @@ function afficher() {
     // La grande carte est réservée aux clients de la formule la plus haute (ils paient pour).
     // Celui qui colle au moment de la journée passe en premier.
     const top = tries.filter(c => formule(c.formule).rang === rangMax);
-    const vedettes = [...top.filter(c => catsMoment.includes(c.categorie)), ...top.filter(c => !catsMoment.includes(c.categorie))];
+    // Ordre : d'abord ceux qui collent au moment ET sont ouverts, les adresses fermées en dernier
+    const score = c => (catsMoment.includes(c.categorie) ? 2 : 0) + (ouverture(c)?.ouvert === false ? 0 : 1);
+    const vedettes = [...top].sort((a, b) => score(b) - score(a));
     const v = vedettes[0];
     const etiquetteV = c => catsMoment.includes(c.categorie) ? t('suggere')(quand) : t('coupCoeur');
     const metaV = c => { const d = distance(c); return `${etatHtml(c)}${d ? `<span>${svg('marche')}${d}</span>` : ''}`; };
