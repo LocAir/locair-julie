@@ -90,6 +90,8 @@ window.ADSTAY = {
   // Partout : un champ « xxx_en » donne la version anglaise de « xxx ».
   // S'il manque, la tablette affiche le français.
 
+  // Base branchée : les logements se gèrent dans l'espace admin (onglet « Logements et tablettes »)
+  // et chaque tablette s'installe avec son QR code. Ce qui suit ne sert qu'à la démo.
   // Infos pratiques de chaque logement, choisies par l'adresse de la tablette :
   // /adstay?logement=Port-3B  → le logement 'Port-3B' ci-dessous.
   // Sans ?logement=, la tablette montre le premier (pratique pour la démo).
