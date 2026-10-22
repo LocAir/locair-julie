@@ -27,7 +27,8 @@ header p{color:var(--texte2);margin-top:8px}
 .adresse h2{font-family:var(--serif);font-weight:500;font-size:30px;line-height:1.05}
 .adresse .acc,.adresse .info{color:var(--texte2);font-size:15px}
 .adresse .offre{color:var(--laiton);font-family:var(--serif);font-style:italic;font-size:19px}
-.boutons{display:flex;gap:10px;margin-top:10px}
+.boutons{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px}
+.boutons a.bon{flex-basis:100%;background:#a8844c;border-color:#a8844c;color:#fff}
 .boutons a{flex:1;display:flex;align-items:center;justify-content:center;height:48px;border-radius:999px;border:1px solid var(--encre);color:var(--encre);
   text-decoration:none;font-size:12px;letter-spacing:.14em;text-transform:uppercase}
 .boutons a.plein{background:var(--encre);color:var(--ivoire)}
@@ -120,10 +121,11 @@ footer{text-align:center;color:var(--texte2);font-size:13px;margin-top:26px}
         <div class="img" style="background-image:url('${encodeURI(photo(c))}')"></div>
         <div class="corps"><span class="cat">${echap(cat(c))}</span><h2>${echap(c.nom)}</h2>
           <span class="acc">${echap(tr(c, 'accroche'))}</span>
-          ${premium(c) && tr(c, 'offre') ? `<span class="offre">${echap(tr(c, 'offre'))}</span>` : ''}
+          ${tr(c, 'offre') ? `<span class="offre">${echap(tr(c, 'offre'))}</span>` : ''}
           ${etat(c)}
           ${c.adresse ? `<span class="info">${echap(c.adresse)}</span>` : ''}
           <div class="boutons">
+            ${tr(c, 'offre') ? `<a class="bon" href="/adstay/bon?f=${encodeURIComponent(c.id)}${logement ? '&l=' + encodeURIComponent(logement) : ''}&lang=${en ? 'en' : 'fr'}">${en ? 'My gift voucher' : 'Mon bon cadeau'}</a>` : ''}
             <a class="plein" href="${echap(premium(c) && c.lien ? c.lien : maps(c))}" target="_blank" rel="noopener">${premium(c) && c.lien ? (en ? 'Book' : 'Réserver') : (en ? 'Directions' : 'Itinéraire')}</a>
             ${c.tel ? `<a href="tel:${echap(c.tel.replace(/\s/g, ''))}">${en ? 'Call' : 'Appeler'}</a>` : ''}
           </div></div></article>`).join('');

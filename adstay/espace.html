@@ -160,6 +160,9 @@ a{color:var(--champagne)}
 .ajout-c{display:flex;gap:12px;flex-wrap:wrap;margin:6px 0 4px}
 .ajout-c input{flex:1;min-width:240px;height:50px;padding:0 16px;border:1px solid var(--trait);border-radius:2px;background:var(--encre2);color:var(--ivoire);font:inherit}
 @media (max-width:760px){.o-ligne{grid-template-columns:1fr auto}.o-barre{grid-column:1/-1;order:3}}
+.bons-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:8px}
+.bons-l div{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid var(--trait);border-radius:2px;font-size:14px}
+.bons-l b{font-weight:400;letter-spacing:.08em}.bons-l span{color:var(--doux)}
 </style>
 </head>
 <body>
@@ -304,8 +307,9 @@ function vueListe() {
     </div>
     ${fiches.length ? (() => { const t = k => fiches.reduce((n, f) => n + Number(compteurs[f.id]?.[k] || 0), 0);
       return `<div class="total"><div><b>${t('vues')}</b><span>visites de fiches · 30 jours</span></div>
-        <div><b>${t('scans')}</b><span>QR scannés</span></div><div><b>${t('diaporama')}</b><span>passages en veille</span></div>
-        <div><b>${t('vues_aujourdhui')}</b><span>visites aujourd’hui</span></div></div>`; })() : ''}
+        <div><b>${t('diaporama')}</b><span>passages en veille</span></div>
+        <div><b>${t('bons')}</b><span>bons reçus par des voyageurs</span></div>
+        <div><b style="color:var(--vert)">${t('bons_utilises')}</b><span>bons utilisés chez vous</span></div></div>`; })() : ''}
     ${fiches.length ? `<div class="fiches">${fiches.map(f => `
       <div class="ligne">
         <div class="vignette" style="${f.photo ? `background-image:url('${encodeURI(f.photo)}')` : ''}"></div>
@@ -318,7 +322,8 @@ function vueListe() {
         </div>
         <div class="compteur" title="30 derniers jours">
           <div><b>${Number(compteurs[f.id]?.vues || 0)}</b><span>Visites</span>${Number(compteurs[f.id]?.vues_aujourdhui) ? `<div class="auj">+${compteurs[f.id].vues_aujourdhui} auj.</div>` : ''}</div>
-          <div><b>${Number(compteurs[f.id]?.scans || 0)}</b><span>Scans</span></div>
+          <div><b>${Number(compteurs[f.id]?.bons || 0)}</b><span>Bons</span></div>
+          <div><b style="color:var(--vert)">${Number(compteurs[f.id]?.bons_utilises || 0)}</b><span>Utilisés</span></div>
         </div>
         <div class="actions">
           <button class="bouton lien" data-action="stats" data-id="${f.id}">Statistiques</button>
@@ -365,7 +370,7 @@ function vueFormulaire(f) {
       <div class="champ"><label for="f-categorie">Catégorie</label><select id="f-categorie">
         ${D.categories.map(c => `<option value="${c.id}" ${c.id === v.categorie ? 'selected' : ''}>${echap(c.nom)}</option>`).join('')}</select></div>
       ${champ('accroche', 'Accroche', 'text', 'Une phrase courte, ex. « Poissons du jour face aux bateaux »')}
-      ${champ('offre', 'Offre pour les voyageurs', 'text', 'Visible à partir de la formule Premium. Ex. « Apéritif offert sur présentation de la tablette »')}
+      ${champ('offre', 'Votre offre pour les voyageurs (obligatoire)', 'text', 'Ce que vous offrez aux clients AdStay : apéritif offert, -10 %, transat… Le voyageur scanne le QR de votre fiche et reçoit un bon à présenter en caisse.')}
       ${champ('description', 'Description', 'textarea')}
       ${champ('adresse', 'Adresse')}
       ${champ('tel', 'Téléphone', 'tel')}
@@ -393,6 +398,9 @@ function vueFormulaire(f) {
         <div class="champ"><label for="f-statut">Statut</label><select id="f-statut">${Object.entries(STATUTS).map(([k, n]) => `<option value="${k}" ${k === v.statut ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
         <div class="champ"><label for="f-formule">Formule active</label><select id="f-formule">${formules.map(x => `<option value="${x.id}" ${x.id === v.formule ? 'selected' : ''}>${echap(x.nom)} — ${echap(x.prix)} €</option>`).join('')}</select></div>
       </div>` : ''}
+      ${f ? `<h3 class="bloc-titre">Bons cadeaux<small>Quand un voyageur vous montre son bon, touchez « Valider » sur son téléphone et tapez ce code. Gardez-le pour votre équipe.</small></h3>
+        <div class="champ"><label for="f-pin">Code de validation (4 chiffres)</label><input id="f-pin" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="…"/>
+          <small>Vous pouvez le changer à tout moment.</small></div>` : ''}
       <div id="msgFiche" class="large"></div>
       <div class="boutons">
         ${admin && f ? `<button type="button" class="bouton lien danger" data-action="supprimer" data-id="${f.id}" style="margin-right:auto">Supprimer</button>` : ''}
@@ -401,6 +409,9 @@ function vueFormulaire(f) {
       </div>
     </form>`;
 
+  let pinActuel = '';
+  if (f) sb.from('commercants_secrets').select('code_validation').eq('commercant', f.id).maybeSingle()
+    .then(({ data }) => { pinActuel = data?.code_validation || ''; if ($('#f-pin')) $('#f-pin').value = pinActuel; });
   $('#f-fichier').addEventListener('change', async e => {
     const fichier = e.target.files[0]; if (!fichier) return;
     if (fichier.size > 5 * 1024 * 1024) return $('#etatPhoto').textContent = 'Photo trop lourde (5 Mo maximum).';
@@ -416,6 +427,8 @@ function vueFormulaire(f) {
   $('#formFiche').addEventListener('submit', async e => {
     e.preventDefault();
     const val = id => $('#f-' + id).value.trim();
+    if (!val('offre')) { $('#f-offre').focus(); return message('#msgFiche', 'L’offre pour les voyageurs est obligatoire : c’est la règle du réseau AdStay.', true); }
+    if (f && val('pin') && !/^[0-9]{4}$/.test(val('pin'))) return message('#msgFiche', 'Le code de validation doit faire exactement 4 chiffres.', true);
     const donnees = {
       nom: val('nom'), categorie: val('categorie'), accroche: val('accroche'), offre: val('offre'),
       description: val('description'), adresse: val('adresse'), tel: val('tel'), horaires: val('horaires'),
@@ -439,6 +452,10 @@ function vueFormulaire(f) {
       ? await sb.from('commercants').update(donnees).eq('id', f.id)
       : await sb.from('commercants').insert(donnees);
     if (error) return message('#msgFiche', 'Enregistrement impossible : ' + error.message, true);
+    if (f && val('pin') && val('pin') !== pinActuel) {
+      const { error: e2 } = await sb.from('commercants_secrets').upsert({ commercant: f.id, code_validation: val('pin') });
+      if (e2) return message('#msgFiche', 'Code de validation non enregistré : ' + e2.message, true);
+    }
     await chargerFiches(); afficher();
   });
 }
@@ -449,6 +466,9 @@ async function vueStats(f, jours) {
   const [{ data, error }, { data: orig }] = await Promise.all([
     sb.rpc('adstay_stats', { p_commercant: f.id, p_jours: jours }),
     sb.rpc('adstay_origine', { p_commercant: f.id, p_jours: jours })]);
+  const depuis = new Date(Date.now() - (jours - 1) * 864e5); depuis.setHours(0, 0, 0, 0);
+  const { data: bonsData } = await sb.from('bons').select('code, cree_le, utilise_le').eq('commercant', f.id).gte('cree_le', depuis.toISOString()).order('cree_le', { ascending: false });
+  const bons = bonsData || [], utilises = bons.filter(b => b.utilise_le);
   const lignes = error ? [] : data, origine = orig || [];
   const maxO = Math.max(1, ...origine.map(o => Number(o.vues)));
   const total = k => lignes.reduce((s, l) => s + Number(l[k]), 0);
@@ -463,10 +483,13 @@ async function vueStats(f, jours) {
     ${f.statut !== 'publie' ? `<p class="message">Cette fiche n’est pas encore publiée : les statistiques démarreront dès qu’elle sera visible sur les tablettes.</p><br/>` : ''}
     <div class="chiffres">
       <div class="chiffre"><b>${vues}</b><span>fiche ouverte par un voyageur</span></div>
-      <div class="chiffre"><b>${scans}</b><span>QR code scanné (itinéraire, réservation)</span></div>
+      <div class="chiffre"><b>${bons.length}</b><span>bon cadeau reçu sur un téléphone</span></div>
+      <div class="chiffre"><b style="color:var(--vert)">${utilises.length}</b><span>bon utilisé chez vous : un client apporté par AdStay</span></div>
+      <div class="chiffre"><b>${bons.length ? Math.round(utilises.length / bons.length * 100) : 0} %</b><span>des bons reçus sont utilisés</span></div>
       <div class="chiffre"><b>${diapo}</b><span>passage sur l’écran de veille</span></div>
-      <div class="chiffre"><b>${vues ? Math.round(scans / vues * 100) : 0} %</b><span>des voyageurs qui ouvrent la fiche scannent le QR</span></div>
     </div>
+    ${utilises.length ? `<h3 class="bloc-titre" style="margin-top:30px">Derniers bons utilisés<small>Chaque ligne est un client venu chez vous grâce à la tablette.</small></h3>
+      <div class="bons-l">${utilises.slice(0, 12).map(b => `<div><b>${echap(b.code)}</b><span>${new Date(b.utilise_le).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>`).join('')}</div>` : ''}
     <div class="graphe">${lignes.map(l => `<div class="jour" title="${date(l.jour)} : ${l.vues} vue(s), ${l.scans} scan(s)">
       <div class="b" style="height:${Number(l.vues) / max * 100}%"></div><div class="b s" style="height:${Number(l.scans) / max * 100}%"></div></div>`).join('')}</div>
     <div class="axe"><span>${lignes[0] ? date(lignes[0].jour) : ''}</span><span>${lignes.length ? date(lignes[lignes.length - 1].jour) : ''}</span></div>

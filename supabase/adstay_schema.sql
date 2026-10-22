@@ -39,9 +39,9 @@ create table if not exists public.formules (
 );
 insert into public.formules (id, nom, prix, rang, diaporama, badge, pour, avantages) values
   ('essentielle', 'Essentielle', 39, 1, 0, '', 'Pour un petit commerçant ou un restaurant',
-   array['Présence dans une catégorie', 'Nom, photo, adresse et coordonnées', 'Accès à un réseau local de logements']),
+   array['Présence dans une catégorie', 'Votre offre voyageurs, avec bon à présenter', 'Bons utilisés comptés dans votre espace']),
   ('premium', 'Premium', 79, 2, 1, 'Recommandé', 'Pour les établissements qui veulent plus de visibilité',
-   array['Mise en avant prioritaire', 'Offre spéciale pour les voyageurs', 'Bouton de réservation ou de contact', 'Présence dans le diaporama de veille']),
+   array['Mise en avant prioritaire', 'Offre mise en valeur sur l’accueil', 'Bouton de réservation ou de contact', 'Présence dans le diaporama de veille']),
   ('exclusivite', 'Exclusivité', 149, 3, 2, 'Coup de cœur', 'Pour une catégorie ou une zone géographique',
    array['Visibilité renforcée, en tête de liste', 'Possibilité d’exclusivité par catégorie', 'Diaporama de veille ×2', 'Statistiques et bilan mensuel'])
 on conflict (id) do nothing;
@@ -193,23 +193,7 @@ begin
     group by d order by d;
 end $$;
 
--- ─── Compteur de visites par fiche (tableau de l'espace partenaires) ────────
--- Totaux sur N jours pour chaque fiche : l'admin voit toutes les fiches,
--- un commerçant seulement les siennes.
-create or replace function public.adstay_resume(p_jours int default 30)
-returns table (commercant uuid, vues bigint, scans bigint, diaporama bigint, vues_aujourdhui bigint)
-language sql stable security definer set search_path = public as $$
-  select c.id,
-    count(e.*) filter (where e.type = 'vue'),
-    count(e.*) filter (where e.type = 'scan'),
-    count(e.*) filter (where e.type = 'diaporama'),
-    count(e.*) filter (where e.type = 'vue' and e.created_at >= current_date)
-  from public.commercants c
-  left join public.evenements e
-    on e.commercant = c.id and e.created_at >= current_date - (least(greatest(p_jours, 1), 365) - 1)
-  where public.est_admin() or c.proprietaire = auth.uid()
-  group by c.id;
-$$;
+-- ─── Compteur de visites par fiche : voir « adstay_resume » plus bas (avec les bons) ──
 
 -- ─── Logements équipés d'une tablette (des centaines) ───────────────────────
 -- Chaque logement a un code secret. La tablette est installée une seule fois en
@@ -377,3 +361,120 @@ begin
       and e.created_at >= current_date - (least(greatest(p_jours, 1), 365) - 1)
     group by 1 order by 2 desc, 3 desc limit 50;
 end $$;
+
+-- ─── Bons de promotion ──────────────────────────────────────────────────────
+-- Chaque commerçant fait obligatoirement une offre aux voyageurs. Le voyageur scanne
+-- le QR de la fiche → un bon unique s'affiche sur son téléphone (/adstay/bon).
+-- En caisse, le commerçant tape son code à 4 chiffres : le bon est marqué « utilisé »
+-- (utilise_le) et ne peut plus resservir. C'est ce qui prouve les clients apportés.
+
+-- Offre obligatoire pour être publié (vérifié par la base, pas seulement par la page)
+create or replace function public.adstay_offre_obligatoire() returns trigger
+language plpgsql as $$
+begin
+  if new.statut = 'publie' and coalesce(trim(new.offre), '') = '' then
+    raise exception 'Une offre pour les voyageurs est obligatoire pour être publié';
+  end if;
+  return new;
+end $$;
+drop trigger if exists adstay_offre_obligatoire on public.commercants;
+create trigger adstay_offre_obligatoire before insert or update on public.commercants
+  for each row execute function public.adstay_offre_obligatoire();
+
+-- Code de validation de chaque commerçant (à part : jamais lisible par les tablettes)
+create table if not exists public.commercants_secrets (
+  commercant       uuid primary key references public.commercants(id) on delete cascade,
+  code_validation  text not null default lpad((floor(random() * 10000))::int::text, 4, '0')
+                     check (code_validation ~ '^[0-9]{4}$')
+);
+alter table public.commercants_secrets enable row level security;
+drop policy if exists "secrets: propriétaire" on public.commercants_secrets;
+create policy "secrets: propriétaire" on public.commercants_secrets for all
+  using (public.est_admin() or exists (select 1 from public.commercants c where c.id = commercant and c.proprietaire = auth.uid()))
+  with check (public.est_admin() or exists (select 1 from public.commercants c where c.id = commercant and c.proprietaire = auth.uid()));
+create or replace function public.adstay_nouveau_secret() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin insert into public.commercants_secrets (commercant) values (new.id) on conflict do nothing; return new; end $$;
+drop trigger if exists adstay_nouveau_secret on public.commercants;
+create trigger adstay_nouveau_secret after insert on public.commercants
+  for each row execute function public.adstay_nouveau_secret();
+insert into public.commercants_secrets (commercant) select id from public.commercants on conflict do nothing;
+
+create table if not exists public.bons (
+  id          uuid primary key default gen_random_uuid(),
+  code        text not null unique,
+  commercant  uuid not null references public.commercants(id) on delete cascade,
+  logement    text not null default '' check (length(logement) <= 80),
+  offre       text not null default '',
+  offre_en    text not null default '',
+  cree_le     timestamptz not null default now(),
+  expire_le   timestamptz not null default now() + interval '7 days',
+  utilise_le  timestamptz,
+  essais      int not null default 0
+);
+create index if not exists bons_commercant_date on public.bons (commercant, cree_le);
+alter table public.bons enable row level security;
+-- Lecture : le commerçant (ses bons) et l'admin. Les voyageurs passent par les fonctions ci-dessous.
+drop policy if exists "bons: propriétaire lit" on public.bons;
+create policy "bons: propriétaire lit" on public.bons for select
+  using (public.est_admin() or exists (select 1 from public.commercants c where c.id = commercant and c.proprietaire = auth.uid()));
+
+-- Le téléphone du voyageur crée son bon (fiche publiée avec une offre seulement)
+create or replace function public.adstay_bon_creer(p_commercant uuid, p_logement text default '')
+returns json language plpgsql volatile security definer set search_path = public as $$
+declare c public.commercants; b public.bons; v_code text; lettres text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+begin
+  select * into c from public.commercants where id = p_commercant and statut = 'publie';
+  if c.id is null or coalesce(trim(c.offre), '') = '' then return null; end if;
+  loop
+    v_code := 'AD-' || (select string_agg(substr(lettres, 1 + floor(random() * length(lettres))::int, 1), '') from generate_series(1, 5));
+    exit when not exists (select 1 from public.bons where code = v_code);
+  end loop;
+  insert into public.bons (code, commercant, logement, offre, offre_en)
+    values (v_code, c.id, left(coalesce(p_logement, ''), 80), c.offre, c.offre_en) returning * into b;
+  return json_build_object('code', b.code, 'offre', b.offre, 'offre_en', b.offre_en, 'cree_le', b.cree_le, 'expire_le', b.expire_le, 'utilise_le', b.utilise_le);
+end $$;
+
+-- Relire un bon (état à jour : valable, utilisé, expiré)
+create or replace function public.adstay_bon_lire(p_code text)
+returns json language sql stable security definer set search_path = public as $$
+  select json_build_object('code', code, 'commercant', commercant, 'offre', offre, 'offre_en', offre_en,
+    'cree_le', cree_le, 'expire_le', expire_le, 'utilise_le', utilise_le)
+  from public.bons where code = upper(trim(p_code));
+$$;
+
+-- En caisse : le commerçant tape son code. 5 erreurs → bon bloqué.
+create or replace function public.adstay_bon_utiliser(p_code text, p_pin text)
+returns json language plpgsql volatile security definer set search_path = public as $$
+declare b public.bons; s public.commercants_secrets;
+begin
+  select * into b from public.bons where code = upper(trim(p_code)) for update;
+  if b.id is null then return json_build_object('ok', false, 'raison', 'inconnu'); end if;
+  if b.utilise_le is not null then return json_build_object('ok', false, 'raison', 'deja', 'utilise_le', b.utilise_le); end if;
+  if b.expire_le < now() then return json_build_object('ok', false, 'raison', 'expire'); end if;
+  if b.essais >= 5 then return json_build_object('ok', false, 'raison', 'bloque'); end if;
+  select * into s from public.commercants_secrets where commercant = b.commercant;
+  if s.commercant is null or s.code_validation is distinct from trim(p_pin) then
+    update public.bons set essais = essais + 1 where id = b.id;
+    return json_build_object('ok', false, 'raison', 'pin', 'essais_restants', greatest(0, 4 - b.essais));
+  end if;
+  update public.bons set utilise_le = now() where id = b.id returning * into b;
+  return json_build_object('ok', true, 'utilise_le', b.utilise_le);
+end $$;
+grant execute on function public.adstay_bon_creer(uuid, text), public.adstay_bon_lire(text), public.adstay_bon_utiliser(text, text) to anon, authenticated;
+
+-- Compteurs de la liste des fiches : on ajoute les bons reçus et utilisés
+drop function if exists public.adstay_resume(int);
+create function public.adstay_resume(p_jours int default 30)
+returns table (commercant uuid, vues bigint, scans bigint, diaporama bigint, vues_aujourdhui bigint, bons bigint, bons_utilises bigint)
+language sql stable security definer set search_path = public as $$
+  select c.id,
+    (select count(*) from public.evenements e where e.commercant = c.id and e.type = 'vue' and e.created_at >= current_date - (least(greatest(p_jours, 1), 365) - 1)),
+    (select count(*) from public.evenements e where e.commercant = c.id and e.type = 'scan' and e.created_at >= current_date - (least(greatest(p_jours, 1), 365) - 1)),
+    (select count(*) from public.evenements e where e.commercant = c.id and e.type = 'diaporama' and e.created_at >= current_date - (least(greatest(p_jours, 1), 365) - 1)),
+    (select count(*) from public.evenements e where e.commercant = c.id and e.type = 'vue' and e.created_at >= current_date),
+    (select count(*) from public.bons b where b.commercant = c.id and b.cree_le >= current_date - (least(greatest(p_jours, 1), 365) - 1)),
+    (select count(*) from public.bons b where b.commercant = c.id and b.utilise_le >= current_date - (least(greatest(p_jours, 1), 365) - 1))
+  from public.commercants c
+  where public.est_admin() or c.proprietaire = auth.uid();
+$$;

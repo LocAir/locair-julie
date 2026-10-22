@@ -590,6 +590,7 @@ const T = {
     ideesTitre: 'Idées de journée', ideesSur: 'Inspiration', ideesTexte: 'Des parcours imaginés pour vous, à suivre à votre rythme.',
     etapes: n => `${n} étapes`, voir: 'Voir l’adresse', fermer: 'Fermer',
     reserverTel: 'Réserver depuis votre téléphone', itineraireTel: 'L’itinéraire sur votre téléphone',
+    bonTel: 'Votre bon cadeau sur votre téléphone', bonFin: 'Touchez le lien : votre bon s’affiche. Montrez-le en caisse.', btnBon: 'Mon bon cadeau', scanBon: 'Scannez pour votre bon cadeau',
     scan: ['Ouvrez l’appareil photo de votre téléphone.', 'Visez ce code.', 'Touchez le lien qui apparaît.'],
     service: 'Service', votreHote: 'votre hôte', prixDemande: 'Prix sur demande',
     whatsapp: 'Demandez-le sur WhatsApp', appeler: 'Appelez votre hôte', messagePret: 'Votre message est déjà écrit : envoyez-le.', lancerAppel: 'Lancez l’appel.',
@@ -630,6 +631,7 @@ const T = {
     ideesTitre: 'Day ideas', ideesSur: 'Inspiration', ideesTexte: 'Routes designed for you, to enjoy at your own pace.',
     etapes: n => `${n} stops`, voir: 'See the place', fermer: 'Close',
     reserverTel: 'Book from your phone', itineraireTel: 'Directions on your phone',
+    bonTel: 'Your gift voucher on your phone', bonFin: 'Tap the link: your voucher appears. Show it when you pay.', btnBon: 'My gift voucher', scanBon: 'Scan for your gift voucher',
     scan: ['Open your phone’s camera.', 'Point it at this code.', 'Tap the link that appears.'],
     service: 'Service', votreHote: 'your host', prixDemande: 'Price on request',
     whatsapp: 'Request it on WhatsApp', appeler: 'Call your host', messagePret: 'Your message is ready: just send it.', lancerAppel: 'Start the call.',
@@ -734,7 +736,8 @@ const rangMax = Math.max(...D.formules.map(f => f.rang));
 // Avantages payants : l'offre spéciale et le lien de réservation sont réservés aux formules
 // à partir de « Premium » (rang 2), comme annoncé sur la page partenaires.
 const RANG_AVANTAGES = 2;
-const offre = c => formule(c.formule).rang >= RANG_AVANTAGES ? tr(c, 'offre') : '';
+// Chaque commerçant fait une offre aux voyageurs (règle du réseau, toutes formules)
+const offre = c => tr(c, 'offre');
 // Tablette : un seul libellé neutre « Partenaire » pour les emplacements payants (publicité
 // identifiable, pas de faux avis « Coup de cœur ») ; les noms de formules restent pour la vente.
 const badgeTablette = c => formule(c.formule).rang >= RANG_AVANTAGES ? t('partenaire') : '';
@@ -1166,7 +1169,9 @@ function afficher() {
 const cibleAdresse = c => window.adstayEstUuid(c.id)
   ? `${location.origin}/adstay/go?f=${c.id}${logement ? '&l=' + encodeURIComponent(logement) : ''}`
   : lienDe(c) || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.nom + ', ' + c.adresse);
-const lienQR = c => qr(cibleAdresse(c));
+// QR de la fiche : un bon de promotion sur le téléphone (à présenter en caisse)
+const lienBon = c => `${location.origin}/adstay/bon?f=${encodeURIComponent(c.id)}${logement ? '&l=' + encodeURIComponent(logement) : ''}&lang=${lang}`;
+const lienQR = c => qr(offre(c) ? lienBon(c) : cibleAdresse(c));
 // Sur téléphone, pas de QR à scanner : de vrais boutons
 const boutonsTel = liens => `<div class="actions-tel">${liens.filter(Boolean).map(([href, txt, plein]) =>
   `<a class="${plein ? 'plein' : ''}" href="${echap(href)}" target="_blank" rel="noopener">${echap(txt)}</a>`).join('')}</div>`;
@@ -1191,8 +1196,8 @@ function ouvrir(id) {
         <div class="cases" id="promoChronoFiche" data-id="${echap(c.id)}">${casesChrono(x.reste)}</div></div>` : ''; })()}
       ${offre(c) ? `<div class="cadeau">${svg('cadeau')}<span>${echap(offre(c))}</span></div>` : ''}
       <div class="scanner"><img src="${lienQR(c)}" alt="QR code"/>
-        <div><b>${lienDe(c) ? t('reserverTel') : t('itineraireTel')}</b>${etapesScan()}</div></div>
-      ${boutonsTel([[cibleAdresse(c), lienDe(c) ? t('btnReserver') : t('btnItineraire'), true], c.tel && [`tel:${c.tel.replace(/\s/g, '')}`, t('btnAppeler')]])}
+        <div><b>${offre(c) ? t('bonTel') : lienDe(c) ? t('reserverTel') : t('itineraireTel')}</b>${etapesScan(offre(c) ? t('bonFin') : undefined)}</div></div>
+      ${boutonsTel([offre(c) && [lienBon(c), t('btnBon'), true], [cibleAdresse(c), lienDe(c) ? t('btnReserver') : t('btnItineraire'), !offre(c)], c.tel && [`tel:${c.tel.replace(/\s/g, '')}`, t('btnAppeler')]])}
       <p class="desc">${echap(tr(c, 'description') || tr(c, 'accroche'))}</p>
       <ul class="infos">
         ${c.adresse ? `<li>${svg('lieu')}${echap(c.adresse)}</li>` : ''}
@@ -1294,7 +1299,7 @@ function diapositives() {
     <span class="cat petit">${echap(tr(categorie(c.categorie), 'nom'))}</span>
     <span class="titre">${echap(c.nom)}</span><span class="acc">${echap(tr(c, 'accroche'))}</span>
     ${offre(c) ? `<span class="offre">${echap(offre(c))}</span>` : ''}
-    <div class="qr-veille"><img src="${lienQR(c)}" alt="QR code" loading="lazy"/>${lienDe(c) ? t('scanResa') : t('scanIti')}</div></div>`).join('');
+    <div class="qr-veille"><img src="${lienQR(c)}" alt="QR code" loading="lazy"/>${offre(c) ? t('scanBon') : lienDe(c) ? t('scanResa') : t('scanIti')}</div></div>`).join('');
 }
 
 let minuteur, tourne, indice = 0;
