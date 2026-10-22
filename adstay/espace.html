@@ -140,7 +140,12 @@ a{color:var(--champagne)}
   <div class="connexion" id="vue-nonbranche" hidden>
     <img src="/adstay/logo-encre.webp" alt="AdStay"/>
     <h1>Espace partenaires</h1>
-    <p class="sous">Bientôt disponible. L’espace n’est pas encore relié à sa base de données.</p>
+    <p class="sous">Les inscriptions ouvrent très bientôt. En attendant, découvrez la tablette et nos formules<span id="phraseContact" hidden>, ou contactez-nous pour réserver votre place</span>.</p>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <a class="bouton plein" href="/adstay/partenaires" style="text-decoration:none">Voir les formules</a>
+      <a class="bouton creux" href="/adstay" target="_blank" rel="noopener" style="text-decoration:none">Voir la tablette en démo</a>
+      <span id="contactAttente" style="display:contents"></span>
+    </div>
   </div>
 
   <!-- Connexion -->
@@ -433,7 +438,14 @@ async function enregistrerFormule(id, bouton) {
 }
 
 // ─── Démarrage ───────────────────────────────────────────────────────────────
-if (!sb) montrer('nonbranche');
+if (!sb) {
+  montrer('nonbranche');
+  const c = D.contact || {};
+  $('#phraseContact').hidden = !(c.email || c.tel);
+  $('#contactAttente').innerHTML =
+    (c.email ? `<a class="bouton creux" style="text-decoration:none" href="mailto:${echap(c.email)}?subject=${encodeURIComponent('Devenir partenaire AdStay')}">Nous écrire</a>` : '') +
+    (c.tel ? `<a class="bouton creux" style="text-decoration:none" href="tel:${c.tel.replace(/\s/g, '')}">${echap(c.tel)}</a>` : '');
+}
 else {
   sb.auth.onAuthStateChange((_evt, session) => {
     if (session?.user) setTimeout(() => entrer(session.user), 0);
