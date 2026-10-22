@@ -29,12 +29,12 @@ window.ADSTAY = {
     {
       id: 'premium', nom: 'Premium', prix: 79, rang: 2, diaporama: 1, badge: 'Recommandé', badge_en: 'Recommended',
       pour: 'Pour les établissements qui veulent plus de visibilité',
-      avantages: ['Mise en avant prioritaire', 'Offre spéciale pour les voyageurs', 'Bouton de réservation ou de contact', 'Présence dans le diaporama de veille'],
+      avantages: ['Annonce dans le bandeau défilant de l’accueil', 'Offre du jour avec compte à rebours', 'Offre spéciale et bouton de réservation', 'Plein écran sur l’écran de veille'],
     },
     {
       id: 'exclusivite', nom: 'Exclusivité', prix: 149, rang: 3, diaporama: 2, badge: 'Coup de cœur', badge_en: 'Our pick',
       pour: 'Pour une catégorie ou une zone géographique',
-      avantages: ['Visibilité renforcée, en tête de liste', 'Possibilité d’exclusivité par catégorie', 'Diaporama de veille ×2', 'Statistiques et bilan mensuel'],
+      avantages: ['La grande carte « À la une » de l’accueil', 'Seul de votre catégorie à ce niveau', 'Tout Premium, et le plein écran ×2', 'Statistiques et bilan mensuel'],
     },
   ],
 
@@ -52,6 +52,8 @@ window.ADSTAY = {
       { texte: 'Offre spéciale voyageurs mise en valeur', formules: ['premium', 'exclusivite'] },
       { texte: 'Bouton et QR de réservation (votre site, TheFork…)', formules: ['premium', 'exclusivite'] },
       { texte: 'Étiquette dorée et place prioritaire dans la liste', formules: ['premium', 'exclusivite'] },
+      { texte: 'Annonce dans le bandeau défilant de l’accueil', formules: ['premium', 'exclusivite'] },
+      { texte: 'Offre du jour avec compte à rebours en direct', formules: ['premium', 'exclusivite'] },
       { texte: 'Plein écran sur l’écran de veille (avec QR)', formules: ['premium', 'exclusivite'], detail: { premium: '1 passage par tour', exclusivite: '2 passages par tour' } },
       { texte: 'Grande carte « À la une » sur l’accueil', formules: ['exclusivite'] },
       { texte: 'Exclusivité dans votre catégorie', formules: ['exclusivite'] },
@@ -62,6 +64,7 @@ window.ADSTAY = {
       { q: 'Y a-t-il un engagement ?', r: 'Non. L’abonnement est mensuel, sans durée minimum. Vous pouvez changer de formule ou arrêter quand vous voulez.' },
       { q: 'Comment savoir si ça marche ?', r: 'Votre espace affiche chaque jour combien de voyageurs ont ouvert votre fiche, vu votre publicité en veille et scanné votre QR code.' },
       { q: 'Qui voit ma publicité ?', r: 'Les voyageurs logés dans les appartements et villas équipés de nos tablettes : des touristes déjà sur place, qui cherchent où manger, sortir ou se déplacer.' },
+      { q: 'Comment fonctionne l’Offre du jour ?', r: 'Vous choisissez un créneau (ex. 17h–21h) et une promotion. Pendant ce créneau, elle s’affiche en grand sur l’accueil avec un compte à rebours. Si plusieurs offres tombent en même temps, celle qui se termine le plus tôt passe devant.' },
       { q: 'Puis-je proposer une offre aux voyageurs ?', r: 'Oui, à partir de la formule Premium : un apéritif offert, une remise, un transat… Elle s’affiche en valeur sur votre fiche et en plein écran.' },
     ],
   },
@@ -207,6 +210,27 @@ window.ADSTAY = {
       description: 'Créateurs locaux, linge de plage, objets de déco et idées cadeaux.',
       description_en: 'Local designers, beach linen, decor and gift ideas.',
       adresse: 'Libération, Nice', tel: '04 00 00 00 11', lat: 43.7120, lon: 7.2620, creneaux: '10:00-19:30', fermes: ['dim'], offre: '', lien: '' },
+  ],
+
+  // ─── Offre du jour (encart « urgence » de l'accueil, de la fiche et de la veille) ─
+  // debut / fin : créneau de la journée où l'offre est valable (HH:MM).
+  // jours : jours où elle a lieu (vide = tous les jours). rarete : texte libre fourni
+  // par le commerçant (ex. « Plus que 4 places ») — à tenir à jour, ne rien inventer.
+  // Réservé aux commerçants Premium et Exclusivité. Si plusieurs sont en cours,
+  // celle qui se termine le plus tôt passe devant (la plus urgente).
+  promos: [
+    { commercant: 'c7', debut: '08:00', fin: '13:00', valeur: '−25 %', valeur_en: '25% off',
+      titre: 'Baptême de plongée ce matin', titre_en: 'First dive this morning',
+      rarete: 'Plus que 4 places', rarete_en: 'Only 4 spots left', code: 'ADSTAY-PLONGEE' },
+    { commercant: 'c6', debut: '11:00', fin: '15:00', valeur: 'Transat offert', valeur_en: 'Free sunbed',
+      titre: 'Pour tout déjeuner sur la plage', titre_en: 'With any lunch on the beach',
+      rarete: 'Places limitées', rarete_en: 'Limited spots', code: 'ADSTAY-SOLEIL' },
+    { commercant: 'c4', debut: '17:00', fin: '21:00', valeur: '1 = 2', valeur_en: '2 for 1',
+      titre: 'Cocktail offert au coucher du soleil', titre_en: 'Free cocktail at sunset',
+      rarete: '', code: 'ADSTAY-SUNSET' },
+    { commercant: 'c1', debut: '19:00', fin: '22:30', valeur: '−20 %', valeur_en: '20% off',
+      titre: 'Menu dégustation face au port', titre_en: 'Tasting menu by the harbour',
+      rarete: 'Plus que 3 tables ce soir', rarete_en: 'Only 3 tables left tonight', code: 'ADSTAY-PORT' },
   ],
 
   // ─── Guides « idées de journée » ──────────────────────────────────────────

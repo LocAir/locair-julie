@@ -50,8 +50,8 @@ main{position:relative;overflow:hidden}
 
 /* Accueil en bento */
 .bento{height:100%;min-height:560px;display:grid;gap:var(--ecart);
-  grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr .82fr;
-  grid-template-areas:"hero hero vedette vedette" "hero hero vedette vedette" "sejour guide c4 c1"}
+  grid-template-columns:repeat(4,1fr);grid-template-rows:1.5fr .78fr .62fr;
+  grid-template-areas:"hero hero vedette vedette" "sejour guide c4 c1" "bande bande bande bande"}
 .tuile{position:relative;border-radius:var(--r);overflow:hidden;background:var(--papier);box-shadow:var(--ombre);display:flex;flex-direction:column;padding:clamp(16px,min(1.8vw,2.6vh),28px);min-height:0;min-width:0}
 .tuile.photo{color:#fff;background:#2a3442 center/cover no-repeat;justify-content:flex-end}
 .tuile.photo::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,14,20,.05) 35%,rgba(10,14,20,.62))}
@@ -106,6 +106,71 @@ main{position:relative;overflow:hidden}
 .cat h3{font-size:clamp(22px,min(2.2vw,4vh),34px)}
 .cat .nb{font-size:14px;opacity:.85;margin-top:4px}
 .c1{grid-area:c1}.c2{grid-area:c2}.c3{grid-area:c3}.c4{grid-area:c4}
+.bento.avec-promo{grid-template-areas:"hero hero vedette vedette" "promo promo promo guide" "bande bande bande bande"}
+
+/* ── Bandeau défilant : les annonceurs de second plan ───── */
+.bande{grid-area:bande;position:relative;overflow:hidden;min-height:0;border-radius:var(--r);
+  -webkit-mask:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent);mask:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent)}
+.bande .piste{display:flex;gap:var(--ecart);height:100%;width:max-content;animation:defile var(--duree,60s) linear infinite}
+.bande:active .piste,.bande.pause .piste{animation-play-state:paused}
+@keyframes defile{to{transform:translateX(calc(-50% - var(--ecart) / 2))}}
+.annonce{position:relative;flex:none;width:clamp(260px,22vw,380px);height:100%;border-radius:18px;overflow:hidden;color:#fff;background:#2a3442 center/cover no-repeat;
+  display:flex;flex-direction:column;justify-content:flex-end;padding:clamp(12px,1.6vh,18px) 18px;text-align:left}
+.annonce::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,14,20,0) 25%,rgba(10,14,20,.78))}
+.annonce > *{position:relative}
+.annonce .etiquette{top:12px;left:12px;font-size:10px;padding:5px 10px}
+.annonce .nom{font-family:var(--serif);font-size:clamp(21px,min(1.6vw,3.2vh),27px);line-height:1.05}
+.annonce .meta{color:rgba(255,255,255,.88);font-size:12px;margin-top:4px}
+.annonce .etat{color:#bfe3c9} .annonce .etat.ferme{color:#f0c1bb}
+@media (prefers-reduced-motion:reduce){.bande .piste{animation:none}.bande{overflow-x:auto}}
+
+/* ── Offre du jour : encart « urgence » ─────────────────── */
+@property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+.promo{grid-area:promo;position:relative;border-radius:var(--r);overflow:hidden;color:#fff;background:#120f0c;display:grid;
+  grid-template-columns:1.25fr 1fr;align-items:stretch;padding:0!important;isolation:isolate;box-shadow:0 22px 50px -24px rgba(120,80,20,.55)}
+.promo::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:2px;z-index:4;pointer-events:none;
+  background:conic-gradient(from var(--ang),#f6e3b0,#a8844c 18%,#fff6dc 30%,#7c5a26 48%,#f6e3b0 62%,#a8844c 80%,#f6e3b0);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:tourne 6s linear infinite}
+@keyframes tourne{to{--ang:360deg}}
+.promo .fond{position:absolute;inset:0;z-index:0;background:#120f0c center/cover no-repeat;animation:zoomlent 16s ease-in-out infinite alternate}
+.promo::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(90deg,rgba(14,10,6,.94) 0%,rgba(14,10,6,.78) 42%,rgba(14,10,6,.25) 75%,rgba(14,10,6,.55) 100%)}
+.promo .gauche,.promo .droite{position:relative;z-index:2;padding:clamp(16px,min(1.8vw,2.6vh),26px);display:flex;flex-direction:column;justify-content:center;min-width:0}
+.promo .droite{align-items:flex-end;justify-content:space-between;text-align:right}
+.flash{display:inline-flex;align-items:center;gap:10px;align-self:flex-start;padding:6px 12px;border-radius:999px;font-size:11px;letter-spacing:.22em;text-transform:uppercase;font-weight:500;
+  background:linear-gradient(90deg,#c23b2b,#e0613f);color:#fff;box-shadow:0 0 0 0 rgba(226,90,60,.6);animation:alerte 1.8s ease-out infinite}
+.flash i{width:8px;height:8px;border-radius:50%;background:#fff;animation:clignote 1s steps(2) infinite}
+.flash.bientot{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);animation:none}
+.flash.bientot i{background:#f3d58c}
+@keyframes alerte{0%{box-shadow:0 0 0 0 rgba(226,90,60,.55)}70%{box-shadow:0 0 0 14px rgba(226,90,60,0)}100%{box-shadow:0 0 0 0 rgba(226,90,60,0)}}
+@keyframes clignote{50%{opacity:.25}}
+.valeur{font-family:var(--serif);font-weight:500;font-size:clamp(40px,min(4.4vw,8vh),78px);line-height:.95;margin:clamp(6px,1.2vh,12px) 0 4px;
+  background:linear-gradient(100deg,#b88a3e 0%,#f6e3b0 22%,#fff8e6 30%,#d6ae62 45%,#f6e3b0 70%,#b88a3e 100%);background-size:250% 100%;
+  -webkit-background-clip:text;background-clip:text;color:transparent;animation:reflet 4.5s ease-in-out infinite}
+@keyframes reflet{0%,100%{background-position:100% 0}50%{background-position:0 0}}
+.promo .titre-p{font-family:var(--serif);font-size:clamp(19px,min(1.7vw,3vh),27px);line-height:1.1}
+.promo .chez{font-size:13px;opacity:.82;margin-top:6px;display:flex;gap:10px;flex-wrap:wrap}
+.chrono{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.chrono .lib{font-size:11px;letter-spacing:.22em;text-transform:uppercase;opacity:.85}
+.cases{display:flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums}
+.cases b{display:grid;place-items:center;min-width:clamp(40px,3.2vw,56px);height:clamp(42px,6vh,60px);border-radius:10px;font-family:var(--sans);font-weight:300;font-size:clamp(22px,min(2vw,3.6vh),34px);
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.cases span{opacity:.6;font-size:20px}
+.jauge{width:min(240px,100%);height:4px;border-radius:4px;background:rgba(255,255,255,.18);overflow:hidden}
+.jauge i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#f6e3b0,#e0613f);transition:width 1s linear}
+.rarete{font-size:13px;font-weight:400;color:#ffd7c4;display:inline-flex;align-items:center;gap:8px}
+.rarete::before{content:"";width:7px;height:7px;border-radius:50%;background:#e0613f;animation:clignote 1.2s steps(2) infinite}
+.promo .profiter{display:inline-flex;align-items:center;gap:10px;height:44px;padding:0 20px;border-radius:999px;background:#f6e3b0;color:#1b1206;
+  font-size:12px;letter-spacing:.2em;text-transform:uppercase;font-weight:500}
+.promo .profiter::after{content:"→";letter-spacing:0;font-size:15px}
+.promo.urgent .cases b{border-color:rgba(226,90,60,.8);background:rgba(194,59,43,.35);animation:clignote 2s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){.promo::after,.promo .fond,.valeur,.flash,.flash i,.rarete::before,.promo.urgent .cases b{animation:none}}
+
+/* Offre du jour dans la fiche */
+.promo-fiche{position:relative;border-radius:18px;padding:18px 20px;color:#fff;background:linear-gradient(120deg,#1a120b,#3a2614);display:flex;gap:16px;align-items:center;flex-wrap:wrap;overflow:hidden}
+.promo-fiche .valeur{font-size:44px;margin:0}
+.promo-fiche .txt{flex:1;min-width:180px;display:flex;flex-direction:column;gap:6px}
+.promo-fiche .code{font-family:var(--sans);font-size:14px;letter-spacing:.14em;padding:8px 12px;border:1px dashed rgba(246,227,176,.7);border-radius:8px;color:#f6e3b0}
+.promo-fiche .cases b{min-width:38px;height:40px;font-size:20px}
 
 /* Tuile Wi-Fi */
 .wifi{justify-content:space-between}
@@ -278,6 +343,17 @@ main{position:relative;overflow:hidden}
 .parcours .lieu .fleche{margin:0;color:var(--laiton);white-space:nowrap}
 .idee .etiquette{background:var(--laiton)!important;color:#fff!important}
 
+/* ── Écrans peu hauts : accueil allégé pour que tout tienne ─ */
+@media (max-height:820px) and (min-width:761px) and (min-aspect-ratio:1/1){
+  .bento{grid-template-rows:1.3fr .95fr .62fr}
+  .hero .region,.hero .astuce,.hero > .petit{display:none}
+  .hero h1{font-size:clamp(40px,min(5vw,9vh),80px);margin:4px 0 6px}
+  .verre{padding:6px 14px} .verre .coucher{display:none}
+  .promo .profiter{display:none} .promo .chez{margin-top:2px}
+  .valeur{font-size:clamp(34px,min(3.6vw,7vh),60px)}
+  .cases b{height:clamp(34px,5vh,48px)}
+  .vedette .accv{display:none}
+}
 /* ── Écrans peu hauts : menu resserré ───────────────────── */
 @media (max-height:860px) and (min-width:761px){
   .rail{padding:14px 0 10px} .rail .logo{width:80px;margin-bottom:10px}
@@ -290,6 +366,9 @@ main{position:relative;overflow:hidden}
   .logement{grid-template-columns:1fr 1fr} .logement .bloc.wifi-grand{grid-column:1/-1}
   .bento{height:auto;min-height:100%;grid-template-columns:1fr 1fr;grid-template-rows:none;grid-auto-rows:minmax(230px,1fr);
     grid-template-areas:"hero hero" "hero hero" "vedette vedette" "vedette vedette" "sejour guide" "c4 c1"}
+  .bento.avec-promo{grid-template-areas:"hero hero" "hero hero" "vedette vedette" "vedette vedette" "promo promo" "guide guide" "bande bande"}
+  .bento:not(.avec-promo){grid-template-areas:"hero hero" "hero hero" "vedette vedette" "vedette vedette" "sejour guide" "c4 c1" "bande bande"}
+  .bande{min-height:230px}
 }
 @media (max-width:760px){
   .app{grid-template-columns:1fr;grid-template-rows:1fr auto}
@@ -301,6 +380,11 @@ main{position:relative;overflow:hidden}
   .nav button{width:82px;font-size:11px;padding:4px}
   .nav .ico{width:44px;height:44px}
   .bento{grid-template-columns:1fr;grid-template-rows:none;grid-auto-rows:auto;grid-template-areas:"hero" "vedette" "sejour" "guide" "c4" "c1"}
+  .bento.avec-promo{grid-template-areas:"hero" "promo" "vedette" "bande" "guide"}
+  .bento:not(.avec-promo){grid-template-areas:"hero" "vedette" "bande" "sejour" "guide" "c4" "c1"}
+  .bande{min-height:220px} .annonce{width:250px}
+  .promo{grid-template-columns:1fr;min-height:360px} .promo .droite{align-items:flex-start;text-align:left;gap:14px} .chrono{align-items:flex-start}
+  .promo::before{background:linear-gradient(180deg,rgba(14,10,6,.55),rgba(14,10,6,.92))}
   .hero{min-height:440px} .vedette{min-height:500px;padding-top:70px!important} .sejour,.guide{min-height:200px} .cat{min-height:220px}
   .vedette .bas{flex-direction:column;align-items:flex-start}
   .infos{grid-template-columns:1fr}
@@ -369,6 +453,8 @@ const T = {
     whatsapp: 'Demandez-le sur WhatsApp', appeler: 'Appelez votre hôte', messagePret: 'Votre message est déjà écrit : envoyez-le.', lancerAppel: 'Lancez l’appel.',
     contacterHote: 'Pour commander, contactez votre hôte avec votre messagerie habituelle.',
     btnItineraire: 'Itinéraire', btnReserver: 'Réserver', btnAppeler: 'Appeler',
+    offreJour: 'Offre du jour', enDirect: 'En direct', finDans: 'Se termine dans', debutDans: 'Commence dans', aPartirDe: h => `À partir de ${h}`,
+    jusqua: h => `jusqu’à ${h}`, chez: n => `chez ${n}`, profiter: 'En profiter', codePromo: 'Code à présenter',
     invite: 'Touchez l’écran pour découvrir la sélection', scanIti: 'Scannez pour l’itinéraire', scanResa: 'Scannez pour réserver',
     aPied: m => `${m} min à pied`, km: k => `${k.toFixed(1).replace('.', ',')} km`,
     ouvert: 'Ouvert', ferme: 'Fermé', fermeA: h => `ferme à ${h}`, ouvreA: h => `ouvre à ${h}`, ouvreDemain: h => `ouvre demain à ${h}`,
@@ -399,6 +485,8 @@ const T = {
     whatsapp: 'Request it on WhatsApp', appeler: 'Call your host', messagePret: 'Your message is ready: just send it.', lancerAppel: 'Start the call.',
     contacterHote: 'To order, contact your host through your usual messaging app.',
     btnItineraire: 'Directions', btnReserver: 'Book', btnAppeler: 'Call',
+    offreJour: 'Deal of the day', enDirect: 'Live now', finDans: 'Ends in', debutDans: 'Starts in', aPartirDe: h => `From ${h}`,
+    jusqua: h => `until ${h}`, chez: n => `at ${n}`, profiter: 'Get it', codePromo: 'Code to show',
     invite: 'Tap the screen to discover our selection', scanIti: 'Scan for directions', scanResa: 'Scan to book',
     aPied: m => `${m} min walk`, km: k => `${k.toFixed(1)} km`,
     ouvert: 'Open', ferme: 'Closed', fermeA: h => `closes ${h}`, ouvreA: h => `opens ${h}`, ouvreDemain: h => `opens tomorrow ${h}`,
@@ -525,6 +613,50 @@ function horairesTexte(c) {
   const txt = p.map(([a, b]) => `${heure(a)}–${heure(b)}`).join(' · ');
   return c.fermes?.length ? `${txt} · ${t('fermeLe')(c.fermes.map(j => t('jours')[j]).join(', '))}` : txt;
 }
+// ── Offre du jour : en cours (la plus urgente d'abord), sinon la prochaine de la journée
+function promoDuJour(now = new Date()) {
+  const min = now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60, j = JOURS[now.getDay()];
+  const liste = (D.promos || []).map(p => ({ p, c: parId(p.commercant), a: minutes(p.debut || '00:00'), b: minutes(p.fin || '24:00') }))
+    .filter(x => x.c && formule(x.c.formule).rang >= RANG_AVANTAGES && (!x.p.jours?.length || x.p.jours.includes(j)) && min < x.b);
+  const enCours = liste.filter(x => min >= x.a).sort((x, y) => x.b - y.b);
+  if (enCours.length) return { ...enCours[0], etat: 'direct', reste: (enCours[0].b - min) * 60, total: (enCours[0].b - enCours[0].a) * 60 };
+  const bientot = liste.sort((x, y) => x.a - y.a)[0];
+  return bientot ? { ...bientot, etat: 'bientot', reste: (bientot.a - min) * 60, total: 0 } : null;
+}
+const casesChrono = sec => { sec = Math.max(0, Math.floor(sec)); const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s2 = sec % 60;
+  return [h, m, s2].map(n => `<b>${String(n).padStart(2, '0')}</b>`).join('<span>:</span>'); };
+function promoHtml(x) {
+  const c = x.c, d = distance(c), direct = x.etat === 'direct';
+  return `<button class="tuile promo touche ${direct && x.reste < 1800 ? 'urgent' : ''}" id="promo" data-fiche="${echap(c.id)}">
+    <div class="fond" style="${fond(c, 1600)}"></div>
+    <div class="gauche">
+      <span class="flash ${direct ? '' : 'bientot'}"><i></i>${t('offreJour')} · ${direct ? t('enDirect') : echap(t('aPartirDe')(heure(x.a)))}</span>
+      <span class="valeur">${echap(tr(x.p, 'valeur'))}</span>
+      <span class="titre-p">${echap(tr(x.p, 'titre'))}</span>
+      <span class="chez"><span>${echap(t('chez')(c.nom))}</span>${d ? `<span>· ${d}</span>` : ''}</span>
+    </div>
+    <div class="droite">
+      <div class="chrono"><span class="lib">${direct ? t('finDans') : t('debutDans')}</span>
+        <div class="cases" id="promoChrono">${casesChrono(x.reste)}</div>
+        ${direct ? `<div class="jauge"><i id="promoJauge" style="width:${Math.max(2, x.reste / x.total * 100)}%"></i></div>` : ''}
+        ${tr(x.p, 'rarete') ? `<span class="rarete">${echap(tr(x.p, 'rarete'))}</span>` : ''}</div>
+      <span class="profiter">${t('profiter')}</span>
+    </div></button>`;
+}
+// Compte à rebours en direct (accueil et fiche) ; à la fin du créneau, l'écran se met à jour
+let chronoPromo;
+function lancerChrono() {
+  clearInterval(chronoPromo);
+  chronoPromo = setInterval(() => {
+    const x = promoDuJour(), el = $('#promoChrono'), elF = $('#promoChronoFiche');
+    if (!el && !elF) return clearInterval(chronoPromo);
+    if (!x || (el && $('#promo')?.dataset.fiche !== String(x.c.id))) { if (el && ecran === 'accueil') afficher(); return; }
+    if (el) { el.innerHTML = casesChrono(x.reste);
+      if (x.etat === 'direct') { $('#promoJauge') && ($('#promoJauge').style.width = Math.max(2, x.reste / x.total * 100) + '%'); $('#promo').classList.toggle('urgent', x.reste < 1800); } }
+    if (elF && elF.dataset.id === String(x.c.id)) elF.innerHTML = casesChrono(x.reste);
+  }, 1000);
+}
+
 const etatHtml = c => { const o = ouverture(c); return o ? `<span class="etat ${o.ouvert ? '' : 'ferme'}"><i></i>${echap(o.texte)}</span>` : ''; };
 
 // Suggestions selon le moment de la journée : un café le matin, la plage à midi, un taxi la nuit…
@@ -603,7 +735,17 @@ function afficher() {
         <h3>${echap(tr(c, 'nom'))}</h3><span class="nb">${t('adresses')(n)}</span></button>`;
     }).join('') + (g ? `<button class="tuile photo cat c4 idee touche" data-aller="guide:${g.id}" style="${fond(g, 1000)}">
         <span class="etiquette">${t('ideesSur')}</span><h3>${echap(tr(g, 'titre'))}</h3><span class="nb">${t('etapes')(g.etapes.length)}</span></button>` : '');
-    html = `<div class="bento">
+    const promo = promoDuJour();
+    // Second plan : tous les abonnés Premium et plus, sauf ceux déjà affichés en grand
+    const secondPlan = tries.filter(c => formule(c.formule).rang >= RANG_AVANTAGES && String(c.id) !== String(promo?.c.id));
+    const annonce = c => { const f = formule(c.formule), d = distance(c);
+      return `<button class="annonce touche" data-fiche="${echap(c.id)}" style="${fond(c, 900)}">
+        ${f.badge ? `<span class="etiquette">${echap(tr(f, 'badge'))}</span>` : ''}
+        <span class="petit" style="font-size:10px;opacity:.85">${echap(tr(categorie(c.categorie), 'nom'))}</span>
+        <span class="nom">${echap(c.nom)}</span><span class="meta">${etatHtml(c)}${d ? `<span>${svg('marche')}${d}</span>` : ''}</span></button>`; };
+    const bande = secondPlan.length ? `<div class="bande" style="--duree:${secondPlan.length * 9}s"><div class="piste">${
+      [...secondPlan, ...secondPlan].map(annonce).join('')}</div></div>` : '';
+    html = `<div class="bento ${promo ? 'avec-promo' : ''}">
       <div class="tuile photo hero" style="${fond(D.ville, 1800)}">
         <span class="petit">${echap(D.ville.region || '')}</span>
         <div><span class="petit">${salutation()}</span><h1>${t('bienvenue')} <em>${echap(D.ville.nom)}</em></h1>
@@ -617,15 +759,16 @@ function afficher() {
         <span class="petit" id="vCat">${echap(tr(categorie(v.categorie), 'nom'))}</span><span class="nom" id="vNom">${echap(v.nom)}</span>
         <span class="accv" id="vAcc">${echap(tr(v, 'accroche'))}</span><span class="offre" id="vOffre">${echap(offre(v))}</span>
         <span class="bas"><span class="meta" id="vMeta">${metaV(v)}</span><span class="decouvrir">${t('decouvrir')}</span></span></button>` : ''}
-      ${D.services?.length ? `<button class="tuile sejour touche" data-aller="services">${svg('sejour')}
+      ${!promo && D.services?.length ? `<button class="tuile sejour touche" data-aller="services">${svg('sejour')}
         <div><h3>${t('votreSejour')}</h3><p>${t('sejourTexte')}</p><span class="fleche">${t('demander')}</span></div></button>` : ''}
       ${L?.wifi ? `<button class="tuile guide wifi touche" data-aller="services"><span class="petit" style="color:var(--laiton)">${t('wifiLogement')}</span>
         <div class="ligne"><img src="${qrWifi}" alt="QR Wi-Fi"/><div><b>${echap(L.wifi.reseau)}</b><small>${t('mdp')}</small><span class="mdp">${echap(L.wifi.motdepasse)}</span></div></div>
         <span class="fleche">${t('infosLogement')}</span></button>` : ''}
-      ${tuilesCat}
+      ${promo ? promoHtml(promo) : tuilesCat}
+      ${bande}
     </div>`;
     $('#ecrans').innerHTML = `<section class="ecran">${html}</section>`;
-    horloge(); meteoAffiche();
+    horloge(); meteoAffiche(); if (promo) lancerChrono();
     // La tuile « suggestion » fait défiler les adresses du moment
     if (vedettes.length > 1) {
       let i = 0;
@@ -721,6 +864,12 @@ function ouvrir(id) {
       <span class="petit">${echap(tr(cat, 'nom'))}</span>
       <h3>${echap(c.nom)}</h3>
       ${o || dist ? `<span class="meta grand">${etatHtml(c)}${dist ? `<span>${svg('marche')}${dist}</span>` : ''}</span>` : ''}
+      ${(() => { const x = promoDuJour(); return x && String(x.c.id) === String(c.id) ? `<div class="promo-fiche">
+        <span class="valeur">${echap(tr(x.p, 'valeur'))}</span>
+        <div class="txt"><span class="petit" style="color:#f6e3b0">${t('offreJour')} · ${x.etat === 'direct' ? echap(t('jusqua')(heure(x.b))) : echap(t('aPartirDe')(heure(x.a)))}</span>
+          <b style="font-family:var(--serif);font-weight:400;font-size:22px">${echap(tr(x.p, 'titre'))}</b>
+          ${x.p.code ? `<span><span class="code">${t('codePromo')} : ${echap(x.p.code)}</span></span>` : ''}</div>
+        <div class="cases" id="promoChronoFiche" data-id="${echap(c.id)}">${casesChrono(x.reste)}</div></div>` : ''; })()}
       ${offre(c) ? `<div class="cadeau">${svg('cadeau')}<span>${echap(offre(c))}</span></div>` : ''}
       <div class="scanner"><img src="${lienQR(c)}" alt="QR code"/>
         <div><b>${lienDe(c) ? t('reserverTel') : t('itineraireTel')}</b>${etapesScan()}</div></div>
@@ -733,6 +882,7 @@ function ouvrir(id) {
       </ul>
     </div>`;
   $('#voile').classList.add('ouvert'); $('#fiche').scrollTop = 0;
+  if ($('#promoChronoFiche')) lancerChrono();
 }
 // Demande de service : QR code vers WhatsApp (message déjà écrit), sinon vers le téléphone.
 function ouvrirService(id) {
