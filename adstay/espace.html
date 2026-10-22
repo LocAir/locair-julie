@@ -79,6 +79,15 @@ a{color:var(--champagne)}
 .ligne .nom{font-family:var(--serif);font-size:26px;line-height:1.1}
 .ligne .meta{color:var(--doux);font-size:14px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:4px}
 .ligne .actions{display:flex;gap:22px;flex-wrap:wrap;justify-content:flex-end}
+.ligne{grid-template-columns:96px 1fr auto auto}
+.compteur{display:flex;gap:18px;padding:0 18px;border-left:1px solid var(--trait);border-right:1px solid var(--trait)}
+.compteur div{text-align:center;min-width:56px}
+.compteur b{display:block;font-family:var(--serif);font-weight:400;font-size:30px;line-height:1}
+.compteur span{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--doux)}
+.compteur .auj{color:var(--vert);font-size:12px;letter-spacing:0;text-transform:none}
+.total{display:flex;gap:36px;flex-wrap:wrap;padding:20px 0;margin-bottom:6px}
+.total b{font-family:var(--serif);font-weight:400;font-size:40px;line-height:1;display:block}
+.total span{color:var(--doux);font-size:14px}
 .statut{font-size:11px;letter-spacing:.2em;text-transform:uppercase;padding:3px 9px;border:1px solid var(--trait);border-radius:2px}
 .statut.publie{color:var(--vert);border-color:rgba(143,191,159,.4)}
 .statut.en_attente{color:var(--champagne);border-color:rgba(201,166,107,.4)}
@@ -129,6 +138,7 @@ a{color:var(--champagne)}
   .formulaire,.admin-bloc{grid-template-columns:1fr}
   .ligne{grid-template-columns:72px 1fr} .vignette{width:72px;height:56px}
   .ligne .actions{grid-column:1/-1;justify-content:flex-start}
+  .ligne{grid-template-columns:72px 1fr} .compteur{grid-column:1/-1;border:0;padding:0}
   .barre .compte span{display:none}
 }
 </style>
@@ -188,7 +198,7 @@ const sb = C.supabaseUrl && C.supabaseAnonKey && window.supabase ? supabase.crea
 const RETOUR = location.origin + '/adstay/espace';
 const STATUTS = { brouillon: 'Brouillon', en_attente: 'En attente de validation', publie: 'Publiée', suspendu: 'Suspendue' };
 
-let moi = null, admin = false, formules = [], fiches = [], onglet = 'fiches';
+let moi = null, admin = false, formules = [], fiches = [], onglet = 'fiches', compteurs = {};
 
 const montrer = v => ['nonbranche', 'connexion', 'app'].forEach(x => $('#vue-' + x).hidden = x !== v);
 const message = (el, texte, erreur) => { $(el).innerHTML = texte ? `<div class="message ${erreur ? 'erreur' : ''}">${echap(texte)}</div>` : ''; };
@@ -230,6 +240,9 @@ async function chargerFiches() {
   if (!admin) q = q.eq('proprietaire', moi.id);
   const { data, error } = await q;
   fiches = error ? [] : data;
+  // Compteur de visites de chaque fiche (30 derniers jours)
+  const { data: res } = await sb.rpc('adstay_resume', { p_jours: 30 });
+  compteurs = Object.fromEntries((res || []).map(x => [x.commercant, x]));
 }
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
@@ -252,6 +265,10 @@ function vueListe() {
         <h2>${admin ? 'Les établissements' : 'Mes établissements'}</h2></div>
       <button class="bouton plein" data-action="nouvelle">Ajouter un établissement</button>
     </div>
+    ${fiches.length ? (() => { const t = k => fiches.reduce((n, f) => n + Number(compteurs[f.id]?.[k] || 0), 0);
+      return `<div class="total"><div><b>${t('vues')}</b><span>visites de fiches · 30 jours</span></div>
+        <div><b>${t('scans')}</b><span>QR scannés</span></div><div><b>${t('diaporama')}</b><span>passages en veille</span></div>
+        <div><b>${t('vues_aujourdhui')}</b><span>visites aujourd’hui</span></div></div>`; })() : ''}
     ${fiches.length ? `<div class="fiches">${fiches.map(f => `
       <div class="ligne">
         <div class="vignette" style="${f.photo ? `background-image:url('${encodeURI(f.photo)}')` : ''}"></div>
@@ -261,6 +278,10 @@ function vueListe() {
             <span>${echap(nomCategorie(f.categorie))}</span><span>Formule ${echap(nomFormule(f.formule))}</span>
             ${admin && f.profils?.email ? `<span>${echap(f.profils.email)}</span>` : ''}
             ${f.formule_souhaitee && f.formule_souhaitee !== f.formule ? `<span>Souhaite : ${echap(nomFormule(f.formule_souhaitee))}</span>` : ''}</div>
+        </div>
+        <div class="compteur" title="30 derniers jours">
+          <div><b>${Number(compteurs[f.id]?.vues || 0)}</b><span>Visites</span>${Number(compteurs[f.id]?.vues_aujourdhui) ? `<div class="auj">+${compteurs[f.id].vues_aujourdhui} auj.</div>` : ''}</div>
+          <div><b>${Number(compteurs[f.id]?.scans || 0)}</b><span>Scans</span></div>
         </div>
         <div class="actions">
           <button class="bouton lien" data-action="stats" data-id="${f.id}">Statistiques</button>

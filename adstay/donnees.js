@@ -14,6 +14,15 @@ window.ADSTAY = {
   // Contact affiché sur la page « Devenir partenaire ». Vide = bouton masqué.
   contact: { email: '', tel: '' },
 
+  // Profils voyageurs : la tablette demande « Vous voyagez… » et met en avant les adresses
+  // dont « pour » contient ce profil (à formule égale ; la formule payée reste prioritaire).
+  profils: [
+    { id: 'couple', nom: 'En couple', nom_en: 'As a couple', icone: 'coeur' },
+    { id: 'famille', nom: 'En famille', nom_en: 'With family', icone: 'famille' },
+    { id: 'amis', nom: 'Entre amis', nom_en: 'With friends', icone: 'amis' },
+    { id: 'travail', nom: 'Pour le travail', nom_en: 'For work', icone: 'valise' },
+  ],
+
   // Mode nuit automatique : écran sombre et doux entre ces deux heures (actif: false pour couper).
   nuit: { actif: true, debut: '22:00', fin: '06:30' },
 
@@ -88,6 +97,15 @@ window.ADSTAY = {
   logements: {
     'Port-3B': {
       nom: 'Appartement du Port', lat: 43.6985, lon: 7.2830,
+      // Séjour en cours : prénoms et dates (AAAA-MM-JJ). Vide = accueil sans prénom.
+      // À remplir à chaque arrivée (plus tard depuis l'espace admin). Exemple pour la démo :
+      sejour: { prenoms: 'Sophie & Marc', du: '2026-10-20', au: '2026-10-26' },
+      // Petit mot affiché en haut de « Votre séjour ».
+      motHote: {
+        texte: 'Bienvenue chez vous ! Nous avons préparé ce guide avec nos adresses préférées du quartier. Une question, une envie ? Écrivez-nous, nous répondons vite.',
+        texte_en: 'Welcome home! We put together this guide with our favourite places in the neighbourhood. Any question or request? Message us, we reply quickly.',
+        signature: 'L’équipe de la conciergerie', signature_en: 'The concierge team',
+      },
       wifi: { reseau: 'Riviera-Invites', motdepasse: 'bienvenue2026' },
       arrivee: '16h00', depart: '11h00',
       infos: [
@@ -150,65 +168,65 @@ window.ADSTAY = {
   // fermes : jours de fermeture parmi 'lun','mar','mer','jeu','ven','sam','dim'.
   // → la tablette affiche « Ouvert · ferme à 22h30 » ou « Fermé · ouvre à 19h ».
   commercants: [
-    { id: 'c1', photo: 'https://images.unsplash.com/photo-1529543544282-ea669407fca3', nom: 'La Table du Port', categorie: 'restaurants', formule: 'exclusivite',
+    { id: 'c1', pour: ['couple', 'famille', 'travail'], photo: 'https://images.unsplash.com/photo-1529543544282-ea669407fca3', nom: 'La Table du Port', categorie: 'restaurants', formule: 'exclusivite',
       accroche: 'Poissons du jour face aux bateaux', accroche_en: 'Catch of the day, facing the boats',
       description: 'Cuisine niçoise et poissons de la pêche locale, servis en terrasse sur le port Lympia.',
       description_en: 'Niçoise cooking and locally caught fish, served on a terrace overlooking Lympia harbour.',
       adresse: 'Quai des Docks, Nice', tel: '04 00 00 00 01', lat: 43.6955, lon: 7.2855,
       creneaux: '12:00-14:30 19:00-22:30', fermes: ['lun'],
       offre: 'Apéritif offert sur présentation de la tablette', offre_en: 'Free aperitif when you mention the tablet', lien: '' },
-    { id: 'c2', photo: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0', nom: 'Chez Mamé Socca', categorie: 'restaurants', formule: 'premium',
+    { id: 'c2', pour: ['famille', 'amis'], photo: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0', nom: 'Chez Mamé Socca', categorie: 'restaurants', formule: 'premium',
       accroche: 'La vraie socca, cuite au feu de bois', accroche_en: 'Real socca, baked over a wood fire',
       description: 'Socca, pissaladière et petits farcis. Une adresse simple et authentique dans le Vieux-Nice.',
       description_en: 'Socca, pissaladière and stuffed vegetables. A simple, authentic spot in Old Nice.',
       adresse: 'Vieux-Nice', tel: '04 00 00 00 02', lat: 43.6977, lon: 7.2765, creneaux: '11:00-21:00',
       offre: '-10 % sur l’addition', offre_en: '10% off the bill', lien: '' },
-    { id: 'c3', photo: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4', nom: 'Trattoria Garibaldi', categorie: 'restaurants', formule: 'essentielle',
+    { id: 'c3', pour: ['famille', 'amis'], photo: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4', nom: 'Trattoria Garibaldi', categorie: 'restaurants', formule: 'essentielle',
       accroche: 'Pâtes fraîches et pizzas', accroche_en: 'Fresh pasta and pizza',
       description: 'Trattoria familiale, pâtes faites maison chaque matin.',
       description_en: 'Family trattoria, pasta made fresh every morning.',
       adresse: 'Place Garibaldi, Nice', tel: '04 00 00 00 03', lat: 43.7010, lon: 7.2810, creneaux: '12:00-23:00', offre: '', lien: '' },
-    { id: 'c4', photo: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187', nom: 'Le Comptoir Bleu', categorie: 'bars', formule: 'premium',
+    { id: 'c4', pour: ['couple', 'amis'], photo: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187', nom: 'Le Comptoir Bleu', categorie: 'bars', formule: 'premium',
       accroche: 'Cocktails au coucher du soleil', accroche_en: 'Sunset cocktails',
       description: 'Bar à cocktails avec vue sur la Baie des Anges. DJ le vendredi et le samedi.',
       description_en: 'Cocktail bar overlooking the Baie des Anges. DJ on Fridays and Saturdays.',
       adresse: 'Promenade des Anglais, Nice', tel: '04 00 00 00 04', lat: 43.6950, lon: 7.2600, creneaux: '17:00-01:00',
       offre: 'Happy hour prolongée jusqu’à 21h', offre_en: 'Happy hour extended until 9 pm', lien: '' },
-    { id: 'c5', photo: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085', nom: 'Café des Fleurs', categorie: 'bars', formule: 'essentielle',
+    { id: 'c5', pour: ['couple', 'famille', 'travail'], photo: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085', nom: 'Café des Fleurs', categorie: 'bars', formule: 'essentielle',
       accroche: 'Petit-déjeuner au marché', accroche_en: 'Breakfast at the market',
       description: 'Café, viennoiseries et jus pressés à deux pas du marché aux fleurs.',
       description_en: 'Coffee, pastries and fresh juice, steps from the flower market.',
       adresse: 'Cours Saleya, Nice', tel: '04 00 00 00 05', lat: 43.6955, lon: 7.2755, creneaux: '07:00-18:00', offre: '', lien: '' },
-    { id: 'c6', photo: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e', nom: 'Azur Beach Club', categorie: 'plages', formule: 'exclusivite',
+    { id: 'c6', pour: ['couple', 'amis', 'famille'], photo: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e', nom: 'Azur Beach Club', categorie: 'plages', formule: 'exclusivite',
       accroche: 'Transats, déjeuner les pieds dans l’eau', accroche_en: 'Sunbeds and lunch by the water',
       description: 'Plage privée avec transats, restaurant et service au matelas. Réservation conseillée en été.',
       description_en: 'Private beach with sunbeds, restaurant and service to your lounger. Booking advised in summer.',
       adresse: 'Promenade des Anglais, Nice', tel: '04 00 00 00 06', lat: 43.6940, lon: 7.2650, creneaux: '09:00-19:00',
       offre: 'Transat offert pour un déjeuner', offre_en: 'Free sunbed with lunch', lien: '' },
-    { id: 'c7', photo: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5', nom: 'Cap Plongée', categorie: 'activites', formule: 'premium',
+    { id: 'c7', pour: ['amis', 'couple'], photo: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5', nom: 'Cap Plongée', categorie: 'activites', formule: 'premium',
       accroche: 'Baptêmes et plongées dans les criques', accroche_en: 'Dives and first dives in hidden coves',
       description: 'Plongées encadrées le long de la côte, baptêmes pour débutants, matériel fourni.',
       description_en: 'Guided dives along the coast, first dives for beginners, equipment provided.',
       adresse: 'Port de Nice', tel: '06 00 00 00 07', lat: 43.6965, lon: 7.2850, creneaux: '09:00-18:00',
       offre: '-15 % pour les voyageurs AdStay', offre_en: '15% off for AdStay guests', lien: '' },
-    { id: 'c8', photo: 'https://images.unsplash.com/photo-1533105079780-92b9be482077', nom: 'Riviera Excursions', categorie: 'activites', formule: 'essentielle',
+    { id: 'c8', pour: ['famille', 'couple'], photo: 'https://images.unsplash.com/photo-1533105079780-92b9be482077', nom: 'Riviera Excursions', categorie: 'activites', formule: 'essentielle',
       accroche: 'Monaco, Èze, Saint-Paul en minibus', accroche_en: 'Monaco, Èze, Saint-Paul by minibus',
       description: 'Excursions à la journée ou à la demi-journée sur la Côte d’Azur.',
       description_en: 'Full-day and half-day trips along the French Riviera.',
       adresse: 'Nice centre', tel: '06 00 00 00 08', lat: 43.7010, lon: 7.2690, creneaux: '08:00-17:00', offre: '', lien: '' },
-    { id: 'c9', photo: 'https://images.unsplash.com/photo-1601362840469-51e4d8d58785', nom: 'Elite Transfert', categorie: 'transport', formule: 'exclusivite',
+    { id: 'c9', pour: ['travail', 'couple'], photo: 'https://images.unsplash.com/photo-1601362840469-51e4d8d58785', nom: 'Elite Transfert', categorie: 'transport', formule: 'exclusivite',
       accroche: 'Aéroport ↔ logement, prix fixe', accroche_en: 'Airport ↔ apartment, fixed price',
       description: 'Chauffeurs privés 24h/24. Transferts aéroport, gare et soirées. Paiement par carte.',
       description_en: 'Private drivers 24/7. Airport, station and evening transfers. Card payment.',
       adresse: 'Nice et alentours', tel: '06 00 00 00 09', creneaux: '00:00-24:00',
       offre: 'Transfert aéroport à prix fixe', offre_en: 'Fixed-price airport transfer', lien: '' },
-    { id: 'c10', photo: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39', nom: 'Scoot’Azur', categorie: 'location', formule: 'premium',
+    { id: 'c10', pour: ['amis', 'couple'], photo: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39', nom: 'Scoot’Azur', categorie: 'location', formule: 'premium',
       accroche: 'Scooters et vélos électriques', accroche_en: 'Scooters and e-bikes',
       description: 'Location à l’heure, à la journée ou à la semaine. Casques fournis.',
       description_en: 'Rent by the hour, day or week. Helmets included.',
       adresse: 'Rue de France, Nice', tel: '04 00 00 00 10', lat: 43.6965, lon: 7.2580, creneaux: '09:00-19:00', fermes: ['dim'],
       offre: '2e jour à -50 %', offre_en: '2nd day half price', lien: '' },
-    { id: 'c11', photo: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8', nom: 'Maison Riviera', categorie: 'boutiques', formule: 'essentielle',
+    { id: 'c11', pour: ['couple', 'famille'], photo: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8', nom: 'Maison Riviera', categorie: 'boutiques', formule: 'essentielle',
       accroche: 'Concept store : mode, déco, souvenirs', accroche_en: 'Concept store: fashion, decor, gifts',
       description: 'Créateurs locaux, linge de plage, objets de déco et idées cadeaux.',
       description_en: 'Local designers, beach linen, decor and gift ideas.',
@@ -234,6 +252,18 @@ window.ADSTAY = {
     { commercant: 'c1', debut: '19:00', fin: '22:30', valeur: '−20 %', valeur_en: '20% off',
       titre: 'Menu dégustation face au port', titre_en: 'Tasting menu by the harbour',
       rarete: 'Plus que 3 tables ce soir', rarete_en: 'Only 3 tables left tonight', code: 'ADSTAY-PORT' },
+  ],
+
+  // ─── Événements et rendez-vous de la semaine (rubrique « Idées ») ─────────
+  // jours : jours où ça a lieu ; du / au (facultatif) : période de l'année.
+  // Vérifier les horaires auprès de la mairie avant de les afficher.
+  evenements: [
+    { titre: 'Marché aux fleurs', titre_en: 'Flower market', lieu: 'Cours Saleya, Vieux-Nice',
+      jours: ['mar', 'mer', 'jeu', 'ven', 'sam', 'dim'], horaires: 'Le matin', horaires_en: 'Mornings',
+      texte: 'Fleurs, fruits et spécialités niçoises, au cœur du Vieux-Nice.', texte_en: 'Flowers, fruit and Niçoise specialities in the heart of Old Nice.' },
+    { titre: 'Brocante du lundi', titre_en: 'Monday flea market', lieu: 'Cours Saleya, Vieux-Nice',
+      jours: ['lun'], horaires: 'Toute la journée', horaires_en: 'All day',
+      texte: 'Antiquités, vinyles et objets chinés : le grand rendez-vous des curieux.', texte_en: 'Antiques, vinyl and vintage finds: a treasure hunt by the sea.' },
   ],
 
   // ─── Guides « idées de journée » ──────────────────────────────────────────
@@ -264,7 +294,7 @@ window.ADSTAY = {
           texte: 'Poisson du jour en terrasse, face aux bateaux illuminés.',
           texte_en: 'Catch of the day on a terrace, facing the lit-up boats.' },
       ] },
-    { id: 'amoureux', photo: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187',
+    { id: 'amoureux', pour: ['couple'], photo: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187',
       titre: 'Nice en amoureux', titre_en: 'Nice for two',
       accroche: 'Criques secrètes, village perché et dîner aux chandelles.',
       accroche_en: 'Hidden coves, a hilltop village and a candlelit dinner.',
