@@ -206,7 +206,7 @@ main{position:relative;overflow:hidden}
 /* ── Écran de veille ────────────────────────────────────── */
 .veille{position:fixed;inset:0;z-index:50;background:#000;display:none;cursor:pointer;color:#fff}
 .veille.active{display:block}
-.diapo{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:clamp(28px,6vw,96px);opacity:0;transition:opacity 1.4s;overflow:hidden}
+.diapo{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:clamp(28px,6vw,96px);padding-bottom:calc(clamp(28px,6vw,96px) + 56px);opacity:0;transition:opacity 1.4s;overflow:hidden}
 .diapo.visible{opacity:1}
 .diapo .fond{position:absolute;inset:0;z-index:0;background:#1b2430 center/cover no-repeat}
 .diapo.visible .fond{animation:zoom 12s ease-out both}
@@ -224,7 +224,13 @@ main{position:relative;overflow:hidden}
 .diapo.accueil .trait{width:clamp(50px,6vw,90px);height:1px;background:rgba(255,255,255,.8);margin:clamp(18px,2.5vw,34px) auto 0}
 .veille .logo{position:absolute;left:clamp(28px,6vw,96px);top:clamp(24px,4vw,56px);height:clamp(48px,6vw,80px);z-index:2}
 .veille .haut{position:absolute;right:clamp(28px,6vw,96px);top:clamp(36px,5vw,70px);z-index:2;display:flex;gap:clamp(20px,4vw,60px);opacity:.85}
-.veille .heure{position:absolute;right:clamp(28px,6vw,96px);bottom:clamp(28px,6vw,96px);z-index:2;font-size:clamp(40px,5vw,80px);font-weight:300}
+.veille .haut .heure{letter-spacing:.08em}
+/* QR sur chaque pub : le voyageur scanne sans toucher la tablette (compté dans les stats) */
+.diapo .qr-veille{position:absolute!important;right:clamp(28px,6vw,96px);bottom:calc(clamp(28px,6vw,96px) + 56px);display:flex;flex-direction:column;align-items:center;gap:10px;
+  padding:14px;border-radius:18px;background:rgba(251,248,243,.94);color:var(--encre);font-size:13px;text-align:center;max-width:180px}
+.diapo .qr-veille img{width:clamp(96px,10vw,140px);height:clamp(96px,10vw,140px);display:block}
+.diapo.accueil .qr-veille{display:none}
+.diapo:not(.accueil){padding-right:calc(clamp(28px,6vw,96px) + 200px)}
 .veille .invite{position:absolute;bottom:26px;left:50%;transform:translateX(-50%);z-index:2;display:flex;align-items:center;gap:12px;padding:12px 24px;border-radius:999px;white-space:nowrap;
   background:rgba(255,255,255,.14);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.22);font-size:15px;animation:pulse 3s infinite}
 .veille .invite i{width:10px;height:10px;border-radius:50%;background:#fff}
@@ -296,6 +302,7 @@ main{position:relative;overflow:hidden}
   .logement .bloc.wifi-grand{flex-direction:column;text-align:center}
   .scanner{flex-direction:column;text-align:center}
   .veille .heure{display:none}
+  .diapo .qr-veille{display:none} .diapo:not(.accueil){padding-right:28px}
 }
 </style>
 </head>
@@ -314,9 +321,8 @@ main{position:relative;overflow:hidden}
 
 <div class="veille" id="veille">
   <img class="logo" src="/adstay/logo-transparent.webp" alt=""/>
-  <div class="haut petit"><span id="region"></span><span id="compteur"></span></div>
+  <div class="haut petit"><span id="region"></span><span class="heure" id="heureVeille"></span><span id="compteur"></span></div>
   <div id="diapos"></div>
-  <div class="heure" id="heureVeille"></div>
   <div class="invite"><i></i><span id="inviteTexte"></span></div>
 </div>
 
@@ -356,7 +362,7 @@ const T = {
     service: 'Service', votreHote: 'votre hôte', prixDemande: 'Prix sur demande',
     whatsapp: 'Demandez-le sur WhatsApp', appeler: 'Appelez votre hôte', messagePret: 'Votre message est déjà écrit : envoyez-le.', lancerAppel: 'Lancez l’appel.',
     contacterHote: 'Pour commander, contactez votre hôte avec votre messagerie habituelle.',
-    invite: 'Touchez l’écran pour découvrir la sélection',
+    invite: 'Touchez l’écran pour découvrir la sélection', scanIti: 'Scannez pour l’itinéraire', scanResa: 'Scannez pour réserver',
     aPied: m => `${m} min à pied`, km: k => `${k.toFixed(1).replace('.', ',')} km`,
     ouvert: 'Ouvert', ferme: 'Fermé', fermeA: h => `ferme à ${h}`, ouvreA: h => `ouvre à ${h}`, ouvreDemain: h => `ouvre demain à ${h}`,
     ouvreJour: (j, h) => `ouvre ${j} à ${h}`, ouvert24: 'Ouvert 24h/24', fermeLe: j => `fermé le ${j}`,
@@ -385,7 +391,7 @@ const T = {
     service: 'Service', votreHote: 'your host', prixDemande: 'Price on request',
     whatsapp: 'Request it on WhatsApp', appeler: 'Call your host', messagePret: 'Your message is ready: just send it.', lancerAppel: 'Start the call.',
     contacterHote: 'To order, contact your host through your usual messaging app.',
-    invite: 'Tap the screen to discover our selection',
+    invite: 'Tap the screen to discover our selection', scanIti: 'Scan for directions', scanResa: 'Scan to book',
     aPied: m => `${m} min walk`, km: k => `${k.toFixed(1)} km`,
     ouvert: 'Open', ferme: 'Closed', fermeA: h => `closes ${h}`, ouvreA: h => `opens ${h}`, ouvreDemain: h => `opens tomorrow ${h}`,
     ouvreJour: (j, h) => `opens ${j} ${h}`, ouvert24: 'Open 24/7', fermeLe: j => `closed ${j}`,
@@ -771,7 +777,8 @@ function diapositives() {
   <div class="diapo" data-id="${echap(c.id)}"><div class="fond" style="${fond(c, 1920)}"></div>
     <span class="cat petit">${echap(tr(categorie(c.categorie), 'nom'))}</span>
     <span class="titre">${echap(c.nom)}</span><span class="acc">${echap(tr(c, 'accroche'))}</span>
-    ${tr(c, 'offre') ? `<span class="offre">${echap(tr(c, 'offre'))}</span>` : ''}</div>`).join('');
+    ${tr(c, 'offre') ? `<span class="offre">${echap(tr(c, 'offre'))}</span>` : ''}
+    <div class="qr-veille"><img src="${lienQR(c)}" alt="QR code" loading="lazy"/>${c.lien ? t('scanResa') : t('scanIti')}</div></div>`).join('');
 }
 
 let minuteur, tourne, indice = 0;
