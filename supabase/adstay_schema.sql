@@ -241,10 +241,7 @@ create table if not exists public.logements (
   updated_at      timestamptz not null default now()
 );
 alter table public.logements enable row level security;
--- Seuls les admins voient et gèrent les logements (Wi-Fi, prénoms des voyageurs…)
-drop policy if exists "logements: admin" on public.logements;
-create policy "logements: admin" on public.logements for all
-  using (public.est_admin()) with check (public.est_admin());
+-- Droits : voir plus bas « Comptes conciergerie » (admin : tout ; conciergerie : ses logements)
 
 create or replace function public.adstay_logement_maj() returns trigger
 language plpgsql as $$ begin new.updated_at := now(); return new; end $$;
@@ -268,3 +265,115 @@ begin
     'maj', r.updated_at);
 end $$;
 grant execute on function public.adstay_tablette(text) to anon, authenticated;
+
+-- ─── Comptes « conciergerie » : chacune gère SES logements ──────────────────
+-- Un admin donne le rôle « conciergerie » à un compte (onglet « Conciergeries »).
+-- Ses coordonnées reçoivent les demandes de services des voyageurs de ses logements.
+alter table public.profils drop constraint if exists profils_role_check;
+alter table public.profils add constraint profils_role_check check (role in ('commercant', 'admin', 'conciergerie'));
+alter table public.profils add column if not exists nom      text not null default '';
+alter table public.profils add column if not exists whatsapp text not null default '';
+alter table public.profils add column if not exists tel      text not null default '';
+
+create or replace function public.est_conciergerie() returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.profils where id = auth.uid() and role = 'conciergerie');
+$$;
+
+-- Chacun peut modifier son nom et ses coordonnées, jamais son rôle (seul un admin le peut)
+create or replace function public.adstay_garde_profil() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  -- auth.uid() vide = SQL Editor de Supabase (le propriétaire) : autorisé, pour nommer le premier admin
+  if auth.uid() is not null and not public.est_admin() then new.role := old.role; new.id := old.id; new.email := old.email; end if;
+  return new;
+end $$;
+drop trigger if exists adstay_garde_profil on public.profils;
+create trigger adstay_garde_profil before update on public.profils
+  for each row execute function public.adstay_garde_profil();
+drop policy if exists "profil: soi modifie" on public.profils;
+create policy "profil: soi modifie" on public.profils for update
+  using (id = auth.uid()) with check (id = auth.uid());
+
+alter table public.logements add column if not exists gestionnaire uuid references public.profils(id) on delete set null;
+create index if not exists logements_gestionnaire on public.logements (gestionnaire);
+
+-- Une conciergerie ne voit et ne modifie que ses logements ; elle ne peut pas les donner à une autre
+create or replace function public.adstay_garde_logement() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if public.est_admin() or auth.uid() is null then return new; end if;
+  if tg_op = 'INSERT' then new.gestionnaire := auth.uid(); else new.gestionnaire := old.gestionnaire; end if;
+  return new;
+end $$;
+drop trigger if exists adstay_garde_logement on public.logements;
+create trigger adstay_garde_logement before insert or update on public.logements
+  for each row execute function public.adstay_garde_logement();
+
+drop policy if exists "logements: admin" on public.logements;
+drop policy if exists "logements: lire" on public.logements;
+create policy "logements: lire" on public.logements for select
+  using (public.est_admin() or gestionnaire = auth.uid());
+drop policy if exists "logements: ajouter" on public.logements;
+create policy "logements: ajouter" on public.logements for insert
+  with check (public.est_admin() or public.est_conciergerie());
+drop policy if exists "logements: modifier" on public.logements;
+create policy "logements: modifier" on public.logements for update
+  using (public.est_admin() or gestionnaire = auth.uid());
+drop policy if exists "logements: supprimer" on public.logements;
+create policy "logements: supprimer" on public.logements for delete
+  using (public.est_admin() or gestionnaire = auth.uid());
+
+-- La tablette reçoit aussi les coordonnées de la conciergerie de son logement
+create or replace function public.adstay_tablette(p_code text)
+returns json language plpgsql volatile security definer set search_path = public as $$
+declare r public.logements; g public.profils;
+begin
+  if p_code is null or length(p_code) < 8 then return null; end if;
+  update public.logements set vu_le = now() where code = p_code and actif returning * into r;
+  if r.id is null then return null; end if;
+  select * into g from public.profils where id = r.gestionnaire;
+  return json_build_object('id', r.id, 'nom', r.nom, 'adresse', r.adresse, 'lat', r.lat, 'lon', r.lon,
+    'wifi_reseau', r.wifi_reseau, 'wifi_mdp', r.wifi_mdp, 'arrivee', r.arrivee, 'depart', r.depart,
+    'infos', r.infos, 'infos_en', r.infos_en, 'mot_hote', r.mot_hote, 'mot_hote_en', r.mot_hote_en,
+    'signature', r.signature, 'sejour_prenoms', r.sejour_prenoms, 'sejour_du', r.sejour_du, 'sejour_au', r.sejour_au,
+    'conciergerie', case when g.id is null then null else json_build_object('nom', g.nom, 'whatsapp', g.whatsapp, 'tel', g.tel) end,
+    'maj', md5(concat_ws('|', r.updated_at, g.nom, g.whatsapp, g.tel)));
+end $$;
+grant execute on function public.adstay_tablette(text) to anon, authenticated;
+
+-- ─── Statistiques par logement ──────────────────────────────────────────────
+-- Pour l'admin et les conciergeries : l'activité des voyageurs sur chaque tablette.
+create or replace function public.adstay_activite_logements(p_jours int default 30)
+returns table (logement uuid, vues bigint, scans bigint, vues_7j bigint)
+language sql stable security definer set search_path = public as $$
+  select l.id,
+    count(e.*) filter (where e.type = 'vue'),
+    count(e.*) filter (where e.type = 'scan'),
+    count(e.*) filter (where e.type = 'vue' and e.created_at >= current_date - 6)
+  from public.logements l
+  left join public.evenements e
+    on e.logement = l.id::text and e.created_at >= current_date - (least(greatest(p_jours, 1), 365) - 1)
+  where public.est_admin() or l.gestionnaire = auth.uid()
+  group by l.id;
+$$;
+
+-- Pour un commerçant : d'où viennent les visiteurs de sa fiche (nom du logement seulement —
+-- jamais l'adresse exacte, le Wi-Fi ni les voyageurs).
+create or replace function public.adstay_origine(p_commercant uuid, p_jours int default 30)
+returns table (logement text, vues bigint, scans bigint)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not (public.est_admin() or exists (select 1 from public.commercants
+          where id = p_commercant and proprietaire = auth.uid())) then
+    raise exception 'acces refuse';
+  end if;
+  return query
+    select coalesce(l.nom, 'Autres'),
+      count(*) filter (where e.type = 'vue'), count(*) filter (where e.type = 'scan')
+    from public.evenements e
+    left join public.logements l on l.id::text = e.logement
+    where e.commercant = p_commercant and e.type in ('vue', 'scan')
+      and e.created_at >= current_date - (least(greatest(p_jours, 1), 365) - 1)
+    group by 1 order by 2 desc, 3 desc limit 50;
+end $$;

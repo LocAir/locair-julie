@@ -152,6 +152,14 @@ a{color:var(--champagne)}
 .installer ol b{color:var(--ivoire);font-weight:400}
 .installer code{display:block;margin-top:16px;padding:12px 14px;background:var(--encre2);border:1px solid var(--trait);font-size:14px;word-break:break-all;user-select:all}
 @media (max-width:760px){.installer{grid-template-columns:1fr}.installer img{width:220px;height:220px}}
+.origine{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+.o-ligne{display:grid;grid-template-columns:minmax(140px,240px) 1fr auto;gap:16px;align-items:center;font-size:15px}
+.o-nom{font-family:var(--serif);font-size:20px}
+.o-barre{height:6px;background:var(--trait);border-radius:3px;overflow:hidden}.o-barre i{display:block;height:100%;background:var(--champagne)}
+.o-chiffres{color:var(--doux);white-space:nowrap}.o-chiffres b{color:var(--ivoire);font-weight:400}
+.ajout-c{display:flex;gap:12px;flex-wrap:wrap;margin:6px 0 4px}
+.ajout-c input{flex:1;min-width:240px;height:50px;padding:0 16px;border:1px solid var(--trait);border-radius:2px;background:var(--encre2);color:var(--ivoire);font:inherit}
+@media (max-width:760px){.o-ligne{grid-template-columns:1fr auto}.o-barre{grid-column:1/-1;order:3}}
 </style>
 </head>
 <body>
@@ -212,7 +220,7 @@ const sb = C.supabaseUrl && C.supabaseAnonKey && window.supabase ? supabase.crea
 const RETOUR = location.origin + '/adstay/espace';
 const STATUTS = { brouillon: 'Brouillon', en_attente: 'En attente de validation', publie: 'Publiée', suspendu: 'Suspendue' };
 
-let moi = null, admin = false, formules = [], fiches = [], onglet = 'fiches', compteurs = {}, logements = [], filtreL = '';
+let moi = null, admin = false, formules = [], fiches = [], onglet = 'fiches', compteurs = {}, logements = [], filtreL = '', conciergerie = false, monProfil = {}, conciergeries = [], activite = {};
 // Formule cliquée sur la page de vente (« Choisir Premium ») : gardée même après la connexion Google
 const CLE_CHOIX = 'adstay-formule-choisie';
 const choixUrl = new URLSearchParams(location.search).get('formule');
@@ -246,10 +254,13 @@ async function entrer(user) {
   moi = user;
   $('#monEmail').textContent = user.email || '';
   const [{ data: profil }, { data: f }] = await Promise.all([
-    sb.from('profils').select('role').eq('id', user.id).maybeSingle(),
+    sb.from('profils').select('role, nom, whatsapp, tel').eq('id', user.id).maybeSingle(),
     sb.from('formules').select('*').order('rang'),
   ]);
   admin = profil?.role === 'admin';
+  conciergerie = profil?.role === 'conciergerie';
+  monProfil = profil || {};
+  if (conciergerie) onglet = 'logements';
   formules = f || [];
   montrer('app');
   await chargerFiches();
@@ -268,10 +279,14 @@ async function chargerFiches() {
 
 // ─── Navigation ──────────────────────────────────────────────────────────────
 function afficher() {
-  const tabs = admin ? [['fiches', 'Toutes les fiches'], ['logements', 'Logements et tablettes'], ['formules', 'Formules et prix']] : [['fiches', 'Mes établissements']];
+  const tabs = admin ? [['fiches', 'Toutes les fiches'], ['logements', 'Logements et tablettes'], ['conciergeries', 'Conciergeries'], ['formules', 'Formules et prix']]
+    : conciergerie ? [['logements', 'Mes logements'], ['compte', 'Mon compte']]
+    : [['fiches', 'Mes établissements']];
   $('#onglets').innerHTML = tabs.map(([id, nom]) => `<button class="onglet" data-onglet="${id}" aria-pressed="${id === onglet}">${nom}</button>`).join('');
   if (onglet === 'formules' && admin) return vueFormules();
-  if (onglet === 'logements' && admin) return vueLogements();
+  if (onglet === 'logements' && (admin || conciergerie)) return vueLogements();
+  if (onglet === 'conciergeries' && admin) return vueConciergeries();
+  if (onglet === 'compte' && conciergerie) return vueCompte();
   vueListe();
 }
 $('#onglets').addEventListener('click', e => {
@@ -333,6 +348,7 @@ $('#contenu').addEventListener('click', async e => {
   }
   if (a === 'enregistrer-formule') return enregistrerFormule(b.dataset.id, b);
   if (a.startsWith('logement-')) return actionLogement(a, id);
+  if (a === 'c-retirer') return retirerConciergerie(id);
 });
 
 // ─── Formulaire d'une fiche ──────────────────────────────────────────────────
@@ -430,8 +446,11 @@ function vueFormulaire(f) {
 // ─── Statistiques d'une fiche ────────────────────────────────────────────────
 async function vueStats(f, jours) {
   $('#contenu').innerHTML = `<p class="vide">Chargement des statistiques…</p>`;
-  const { data, error } = await sb.rpc('adstay_stats', { p_commercant: f.id, p_jours: jours });
-  const lignes = error ? [] : data;
+  const [{ data, error }, { data: orig }] = await Promise.all([
+    sb.rpc('adstay_stats', { p_commercant: f.id, p_jours: jours }),
+    sb.rpc('adstay_origine', { p_commercant: f.id, p_jours: jours })]);
+  const lignes = error ? [] : data, origine = orig || [];
+  const maxO = Math.max(1, ...origine.map(o => Number(o.vues)));
   const total = k => lignes.reduce((s, l) => s + Number(l[k]), 0);
   const vues = total('vues'), scans = total('scans'), diapo = total('diaporama');
   const max = Math.max(1, ...lignes.map(l => Math.max(Number(l.vues), Number(l.scans))));
@@ -451,7 +470,11 @@ async function vueStats(f, jours) {
     <div class="graphe">${lignes.map(l => `<div class="jour" title="${date(l.jour)} : ${l.vues} vue(s), ${l.scans} scan(s)">
       <div class="b" style="height:${Number(l.vues) / max * 100}%"></div><div class="b s" style="height:${Number(l.scans) / max * 100}%"></div></div>`).join('')}</div>
     <div class="axe"><span>${lignes[0] ? date(lignes[0].jour) : ''}</span><span>${lignes.length ? date(lignes[lignes.length - 1].jour) : ''}</span></div>
-    <div class="legende"><span><i style="background:rgba(27,36,48,.35)"></i>Fiches ouvertes</span><span><i style="background:var(--champagne)"></i>QR scannés</span></div>`;
+    <div class="legende"><span><i style="background:rgba(27,36,48,.35)"></i>Fiches ouvertes</span><span><i style="background:var(--champagne)"></i>QR scannés</span></div>
+    ${origine.length ? `<h3 class="bloc-titre" style="margin-top:34px">D’où viennent vos visiteurs<small>Les logements dont les voyageurs ont ouvert votre fiche, sur la même période.</small></h3>
+      <div class="origine">${origine.map(o => `<div class="o-ligne"><span class="o-nom">${echap(o.logement)}</span>
+        <span class="o-barre"><i style="width:${Number(o.vues) / maxO * 100}%"></i></span>
+        <span class="o-chiffres"><b>${Number(o.vues)}</b> visite${Number(o.vues) > 1 ? 's' : ''} · ${Number(o.scans)} scan${Number(o.scans) > 1 ? 's' : ''}</span></div>`).join('')}</div>` : ''}`;
 }
 
 // ─── Logements et tablettes (admin) ──────────────────────────────────────────
@@ -477,22 +500,30 @@ function etatTablette(l) {
   return min < 30 ? { cle: 2, classe: 'en-ligne', texte: 'En ligne' } : { cle: 0, classe: 'hors-ligne', texte: `Hors ligne depuis ${duree(min)}` };
 }
 async function chargerLogements() {
-  const { data } = await sb.from('logements').select('*').order('nom');
+  const [{ data }, { data: act }, { data: cs }] = await Promise.all([
+    sb.from('logements').select('*').order('nom'),
+    sb.rpc('adstay_activite_logements', { p_jours: 30 }),
+    admin ? sb.from('profils').select('id, email, nom, whatsapp, tel').eq('role', 'conciergerie') : Promise.resolve({ data: [] })]);
   logements = data || [];
+  activite = Object.fromEntries((act || []).map(a => [a.logement, a]));
+  conciergeries = cs || [];
 }
+const nomConciergerie = id => { const c = conciergeries.find(x => x.id === id); return c ? (c.nom || c.email) : ''; };
 async function vueLogements() {
   $('#contenu').innerHTML = `<p class="vide">Chargement des logements…</p>`;
   await chargerLogements();
   const etats = logements.map(etatTablette), n = cle => etats.filter(e => e.cle === cle).length;
   const presents = logements.filter(l => l.sejour_du && l.sejour_du <= aujourdhui() && l.sejour_au >= aujourdhui()).length;
+  const totalVues = Object.values(activite).reduce((n, a) => n + Number(a.vues || 0), 0);
   $('#contenu').innerHTML = `
-    <div class="entete"><div><span class="petit">${logements.length} logement(s) équipé(s)</span><h2>Logements et tablettes</h2></div>
+    <div class="entete"><div><span class="petit">${logements.length} logement(s) équipé(s)</span><h2>${conciergerie ? 'Mes logements' : 'Logements et tablettes'}</h2></div>
       <button class="bouton plein" data-action="logement-nouveau">Ajouter un logement</button></div>
     ${logements.length ? `<div class="total">
       <div><b>${n(2)}</b><span>tablettes en ligne</span></div>
       <div><b style="${n(0) ? 'color:var(--rouge)' : ''}">${n(0)}</b><span>hors ligne (à vérifier)</span></div>
       <div><b>${n(1)}</b><span>pas encore installées</span></div>
-      <div><b>${presents}</b><span>logements avec voyageurs aujourd’hui</span></div></div>
+      <div><b>${presents}</b><span>logements avec voyageurs aujourd’hui</span></div>
+      <div><b>${totalVues}</b><span>adresses consultées par vos voyageurs · 30 jours</span></div></div>
       <input class="recherche-l" id="rechL" type="search" placeholder="Chercher un logement (nom, adresse, voyageurs)…" value="${echap(filtreL)}"/>
       <div class="fiches logements" id="listeL"></div>`
     : `<p class="vide">Aucun logement pour l’instant. Ajoutez le premier, puis installez sa tablette avec le QR code.</p>`}`;
@@ -506,7 +537,9 @@ async function vueLogements() {
         <div><div class="nom">${echap(l.nom)}</div>
           <div class="meta"><span><i class="point ${e.classe}"></i>${e.texte}</span>
             ${l.adresse ? `<span>${echap(l.adresse)}</span>` : ''}
-            ${l.sejour_du ? `<span>${echap(l.sejour_prenoms || 'Voyageurs')} · ${jourCourt(l.sejour_du)} → ${jourCourt(l.sejour_au)}</span>` : '<span>Pas de séjour renseigné</span>'}</div></div>
+            ${l.sejour_du ? `<span>${echap(l.sejour_prenoms || 'Voyageurs')} · ${jourCourt(l.sejour_du)} → ${jourCourt(l.sejour_au)}</span>` : '<span>Pas de séjour renseigné</span>'}
+            ${admin && l.gestionnaire ? `<span>Géré par ${echap(nomConciergerie(l.gestionnaire))}</span>` : ''}</div>
+          ${activite[l.id] && Number(activite[l.id].vues) ? `<div class="meta">${Number(activite[l.id].vues)} adresses consultées · ${Number(activite[l.id].scans)} QR scannés · 30 jours</div>` : ''}</div>
         <div class="actions">
           <button class="bouton lien" data-action="logement-installer" data-id="${l.id}">Installer la tablette</button>
           <button class="bouton lien" data-action="logement-modifier" data-id="${l.id}">Modifier</button></div>
@@ -552,6 +585,10 @@ function vueFormLogement(l) {
       ${champ('signature', 'Signature', 'text', 'Ex. « L’équipe de la conciergerie »')}
       ${champ('infos', 'Infos pratiques (une par ligne)', 'textarea', '', (v.infos || []).join('\n'))}
       ${champ('infos_en', 'Infos pratiques en anglais (une par ligne)', 'textarea', '', (v.infos_en || []).join('\n'))}
+      ${admin ? `<div class="champ large"><label for="l-gestionnaire">Géré par</label><select id="l-gestionnaire">
+        <option value="">AdStay (aucune conciergerie)</option>
+        ${conciergeries.map(c => `<option value="${c.id}" ${c.id === v.gestionnaire ? 'selected' : ''}>${echap(c.nom || c.email)}</option>`).join('')}</select>
+        <small>Les demandes de services des voyageurs de ce logement partent vers cette conciergerie.</small></div>` : ''}
       <div class="champ large"><label><input type="checkbox" id="l-actif" ${v.actif ? 'checked' : ''}/> Tablette active</label>
         <small>Décochez pour couper l’accès de la tablette (logement retiré, tablette perdue…).</small></div>
       <div id="msgLogement" class="large"></div>
@@ -567,6 +604,7 @@ function vueFormLogement(l) {
       wifi_reseau: val('wifi_reseau'), wifi_mdp: val('wifi_mdp'), arrivee: val('arrivee'), depart: val('depart'),
       mot_hote: val('mot_hote'), mot_hote_en: val('mot_hote_en'), signature: val('signature'),
       infos: lignes('infos'), infos_en: lignes('infos_en'), actif: $('#l-actif').checked };
+    if (admin) d.gestionnaire = $('#l-gestionnaire').value || null;
     if (!d.nom) return message('#msgLogement', 'Donnez un nom au logement.', true);
     if (d.sejour_du && d.sejour_au && d.sejour_au < d.sejour_du) return message('#msgLogement', 'La date de départ est avant la date d’arrivée.', true);
     if (d.adresse && (d.adresse !== l?.adresse || !l?.lat)) {
@@ -598,6 +636,63 @@ async function actionLogement(a, id) {
     const { data, error } = await sb.from('logements').update({ code }).eq('id', id).select().single();
     if (!error) { logements = logements.map(x => x.id === id ? data : x); vueInstaller(data); }
   }
+}
+
+// ─── Conciergeries (admin) ───────────────────────────────────────────────────
+// Une conciergerie se connecte comme tout le monde (Google ou e-mail), puis un admin
+// lui donne le rôle ici. Elle ne voit ensuite que ses logements.
+async function vueConciergeries() {
+  $('#contenu').innerHTML = `<p class="vide">Chargement…</p>`;
+  await chargerLogements();
+  const nb = id => logements.filter(l => l.gestionnaire === id).length;
+  $('#contenu').innerHTML = `
+    <div class="entete"><div><span class="petit">${conciergeries.length} conciergerie(s)</span><h2>Conciergeries</h2></div></div>
+    <form class="ajout-c" id="formC"><input id="c-email" type="email" placeholder="E-mail du compte de la conciergerie" required/>
+      <button class="bouton plein" type="submit">Donner l’accès conciergerie</button></form>
+    <p class="note">La personne doit s’être connectée une première fois à cet espace (Google ou e-mail).</p>
+    <div id="msgC"></div>
+    ${conciergeries.length ? `<div class="fiches">${conciergeries.map(c => `
+      <div class="ligne" style="grid-template-columns:1fr auto"><div><div class="nom">${echap(c.nom || c.email)}</div>
+        <div class="meta"><span>${echap(c.email || '')}</span><span>${nb(c.id)} logement(s)</span>
+          ${c.whatsapp ? `<span>WhatsApp ${echap(c.whatsapp)}</span>` : c.tel ? `<span>${echap(c.tel)}</span>` : '<span style="color:var(--rouge)">Aucun contact pour les voyageurs</span>'}</div></div>
+        <div class="actions"><button class="bouton lien danger" data-action="c-retirer" data-id="${c.id}">Retirer l’accès</button></div></div>`).join('')}</div>`
+      : `<p class="vide">Aucune conciergerie pour l’instant.</p>`}`;
+  $('#formC').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = $('#c-email').value.trim().toLowerCase();
+    const { data } = await sb.from('profils').update({ role: 'conciergerie' }).ilike('email', email).neq('role', 'admin').select();
+    if (!data?.length) return message('#msgC', `Aucun compte trouvé pour ${email}. Demandez-lui de se connecter une première fois, puis réessayez.`, true);
+    vueConciergeries();
+  });
+}
+async function retirerConciergerie(id) {
+  const c = conciergeries.find(x => x.id === id);
+  if (!confirm(`Retirer l’accès de ${c?.nom || c?.email} ? Ses logements restent en place, gérés par AdStay.`)) return;
+  await sb.from('logements').update({ gestionnaire: null }).eq('gestionnaire', id);
+  await sb.from('profils').update({ role: 'commercant' }).eq('id', id);
+  vueConciergeries();
+}
+// ─── Mon compte (conciergerie) ───────────────────────────────────────────────
+function vueCompte() {
+  $('#contenu').innerHTML = `
+    <div class="entete"><div><span class="petit">Visible par vos voyageurs</span><h2>Mon compte</h2></div></div>
+    <form class="formulaire" id="formCompte">
+      <div class="champ large"><label for="p-nom">Nom de la conciergerie</label><input id="p-nom" value="${echap(monProfil.nom || '')}"/>
+        <small>Affiché sur la tablette quand un voyageur demande un service.</small></div>
+      <div class="champ"><label for="p-whatsapp">WhatsApp</label><input id="p-whatsapp" value="${echap(monProfil.whatsapp || '')}" placeholder="33612345678"/>
+        <small>Numéro au format international, sans + ni espaces. Conseillé : le voyageur scanne et vous écrit directement.</small></div>
+      <div class="champ"><label for="p-tel">Téléphone</label><input id="p-tel" type="tel" value="${echap(monProfil.tel || '')}"/>
+        <small>Utilisé si vous n’avez pas WhatsApp.</small></div>
+      <div id="msgCompte" class="large"></div>
+      <div class="boutons"><button type="submit" class="bouton plein">Enregistrer</button></div>
+    </form>`;
+  $('#formCompte').addEventListener('submit', async e => {
+    e.preventDefault();
+    const d = { nom: $('#p-nom').value.trim(), whatsapp: $('#p-whatsapp').value.replace(/[^0-9]/g, ''), tel: $('#p-tel').value.trim() };
+    const { error } = await sb.from('profils').update(d).eq('id', moi.id);
+    if (error) return message('#msgCompte', 'Enregistrement impossible : ' + error.message, true);
+    Object.assign(monProfil, d); message('#msgCompte', 'Enregistré. Vos tablettes l’affichent d’ici 10 minutes.');
+  });
 }
 
 // ─── Formules et prix (admin) ────────────────────────────────────────────────

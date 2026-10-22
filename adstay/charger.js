@@ -34,6 +34,9 @@
     if (!x) return;
     window.ADSTAY.logements = { [x.id]: versTablette(x) };
     window.ADSTAY_LOGEMENT = x.id; // identifiant (pas le code) : sert aux statistiques
+    // Les demandes de services partent vers la conciergerie qui gère CE logement
+    const c = x.conciergerie;
+    if (c && (c.whatsapp || c.tel)) window.ADSTAY.conciergerie = { ...window.ADSTAY.conciergerie, nom: c.nom || window.ADSTAY.conciergerie?.nom, whatsapp: c.whatsapp, tel: c.tel };
   }
   // Lit le logement et signale « tablette allumée ». Renvoie true si ses infos ont changé.
   window.adstayLogement = async () => {
