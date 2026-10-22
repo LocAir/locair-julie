@@ -443,9 +443,11 @@ const echap = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&
 
 const formule = id => D.formules.find(f => f.id === id) || { rang: 0, diaporama: 0, badge: '' };
 const categorie = id => D.categories.find(c => c.id === id) || { nom: '', icone: 'boutique' };
-// Photo à la bonne taille (les photos Unsplash sont redimensionnées à la volée)
+// Photo en très haute définition : largeur demandée × densité de l'écran (jusqu'à 4K),
+// format moderne (AVIF/WebP) choisi par Unsplash pour garder un poids raisonnable.
+const DPR = Math.min(Math.max(window.devicePixelRatio || 1, 1.5), 3);
 const photo = (c, w) => !c?.photo ? '' : c.photo.includes('images.unsplash.com')
-  ? `${c.photo}${c.photo.includes('?') ? '&' : '?'}w=${w}&q=72&auto=format&fit=crop` : c.photo;
+  ? `${c.photo}${c.photo.includes('?') ? '&' : '?'}w=${Math.min(3840, Math.round(w * DPR))}&q=82&auto=format&fit=crop` : c.photo;
 const fond = (c, w) => c?.photo ? `background-image:url('${encodeURI(photo(c, w))}')`
   : `background-image:linear-gradient(135deg,${c?.couleur?.[0] || '#2a3442'},${c?.couleur?.[1] || '#1b2430'})`;
 
@@ -568,7 +570,7 @@ const entete = (surtitre, titre, texte, retour = 'accueil', libelle = t('accueil
 function carte(c) {
   const f = formule(c.formule), dist = distance(c);
   return `<button class="carte touche" data-fiche="${echap(c.id)}">
-    <div class="image" style="${fond(c, 800)}">${f.badge ? `<span class="etiquette">${echap(tr(f, 'badge'))}</span>` : ''}</div>
+    <div class="image" style="${fond(c, 1000)}">${f.badge ? `<span class="etiquette">${echap(tr(f, 'badge'))}</span>` : ''}</div>
     <div class="corps"><span class="nom">${echap(c.nom)}</span><span class="acc">${echap(tr(c, 'accroche'))}</span>
       <span class="meta">${etatHtml(c)}${dist ? `<span>${svg('marche')}${dist}</span>` : ''}</span>
       ${tr(c, 'offre') ? `<span class="offre">${echap(tr(c, 'offre'))}</span>` : ''}</div></button>`;
@@ -592,19 +594,19 @@ function afficher() {
     const g = D.guides?.[0];
     const tuilesCat = cats.slice(0, g ? 1 : 2).map((c, i) => {
       const premier = dans(c.id)[0], n = dans(c.id).length;
-      return `<button class="tuile photo cat ${i ? 'c4' : 'c1'} touche" data-aller="cat:${c.id}" style="${fond(premier, 700)}">
+      return `<button class="tuile photo cat ${i ? 'c4' : 'c1'} touche" data-aller="cat:${c.id}" style="${fond(premier, 1000)}">
         <h3>${echap(tr(c, 'nom'))}</h3><span class="nb">${t('adresses')(n)}</span></button>`;
-    }).join('') + (g ? `<button class="tuile photo cat c4 idee touche" data-aller="guide:${g.id}" style="${fond(g, 700)}">
+    }).join('') + (g ? `<button class="tuile photo cat c4 idee touche" data-aller="guide:${g.id}" style="${fond(g, 1000)}">
         <span class="etiquette">${t('ideesSur')}</span><h3>${echap(tr(g, 'titre'))}</h3><span class="nb">${t('etapes')(g.etapes.length)}</span></button>` : '');
     html = `<div class="bento">
-      <div class="tuile photo hero" style="background-image:url('${encodeURI(D.ville.photo || '')}')">
+      <div class="tuile photo hero" style="${fond(D.ville, 1800)}">
         <span class="petit">${echap(D.ville.region || '')}</span>
         <div><span class="petit">${salutation()}</span><h1>${t('bienvenue')} <em>${echap(D.ville.nom)}</em></h1>
           <p class="date" id="date"></p><span class="astuce"><i></i>${t('commencer')}</span></div>
         <div class="verre"><span class="heure" id="heure"></span><span class="temp" id="temp"></span><span class="ciel" id="ciel"></span><span class="coucher" id="coucher"></span></div>
       </div>
       ${v ? `<button class="tuile photo vedette touche" id="vedette" data-fiche="${echap(v.id)}">
-        <div class="fond" style="${fond(v, 1400)}"></div>
+        <div class="fond" style="${fond(v, 1800)}"></div>
         <span class="etiquette" id="vEtiq">${etiquetteV(v)}</span>
         ${vedettes.length > 1 ? `<span class="points">${vedettes.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</span>` : ''}
         <span class="petit" id="vCat">${echap(tr(categorie(v.categorie), 'nom'))}</span><span class="nom" id="vNom">${echap(v.nom)}</span>
@@ -626,8 +628,10 @@ function afficher() {
         const el = $('#vedette'); if (!el) return;
         const c = vedettes[++i % vedettes.length];
         // Nouvelle photo en fondu par-dessus l'ancienne, qu'on retire ensuite
-        el.insertAdjacentHTML('afterbegin', `<div class="fond" style="${fond(c, 1400)}"></div>`);
-        const anciens = el.querySelectorAll('.fond'); setTimeout(() => anciens.forEach((f, k) => k && f.remove()), 1300);
+        // La nouvelle photo se pose PAR-DESSUS l'ancienne (fondu), puis l'ancienne est retirée
+        const anciens = [...el.querySelectorAll('.fond')];
+        anciens[anciens.length - 1].insertAdjacentHTML('afterend', `<div class="fond" style="${fond(c, 1800)}"></div>`);
+        setTimeout(() => anciens.forEach(f => f.remove()), 1300);
         el.dataset.fiche = c.id;
         $('#vEtiq').textContent = etiquetteV(c); $('#vCat').textContent = tr(categorie(c.categorie), 'nom'); $('#vNom').textContent = c.nom;
         $('#vAcc').textContent = tr(c, 'accroche'); $('#vOffre').textContent = tr(c, 'offre'); $('#vMeta').innerHTML = metaV(c);
@@ -656,7 +660,7 @@ function afficher() {
   if (ecran === 'idees') {
     html = entete(t('ideesSur'), t('ideesTitre'), t('ideesTexte'))
       + `<div class="guides">${D.guides.map(g => `<button class="guide-carte touche" data-aller="guide:${g.id}">
-        <div class="image" style="${fond(g, 1200)}"></div>
+        <div class="image" style="${fond(g, 1400)}"></div>
         <div class="corps"><span class="petit">${t('etapes')(g.etapes.length)}</span><span class="nom">${echap(tr(g, 'titre'))}</span>
           <span class="acc">${echap(tr(g, 'accroche'))}</span></div></button>`).join('')}</div>`;
   }
@@ -707,7 +711,7 @@ function ouvrir(id) {
   const f = formule(c.formule), cat = categorie(c.categorie), o = ouverture(c), dist = distance(c);
   window.adstayNoter(c.id, 'vue', logement);
   $('#fiche').innerHTML = `
-    <div class="photo" style="${fond(c, 1400)}">${boutonFermer()}${f.badge ? `<span class="etiquette" style="top:30px;left:28px">${echap(tr(f, 'badge'))}</span>` : ''}</div>
+    <div class="photo" style="${fond(c, 1600)}">${boutonFermer()}${f.badge ? `<span class="etiquette" style="top:30px;left:28px">${echap(tr(f, 'badge'))}</span>` : ''}</div>
     <div class="texte">
       <span class="petit">${echap(tr(cat, 'nom'))}</span>
       <h3>${echap(c.nom)}</h3>
@@ -789,10 +793,10 @@ for (let i = 1; i < diapos.length; i++) if (diapos[i] === diapos[i - 1]) {
 $('#region').textContent = D.ville.region || '';
 function diapositives() {
   $('#diapos').innerHTML = `
-  <div class="diapo accueil"><div class="fond" style="background-image:url('${encodeURI(D.ville.photo || '')}')"></div>
+  <div class="diapo accueil"><div class="fond" style="${fond(D.ville, 3840)}"></div>
     <span class="ville">${echap(D.ville.nom)}</span><span class="sous">Bienvenue chez vous · Welcome home</span><span class="trait"></span></div>`
   + diapos.map(c => `
-  <div class="diapo" data-id="${echap(c.id)}"><div class="fond" style="${fond(c, 1920)}"></div>
+  <div class="diapo" data-id="${echap(c.id)}"><div class="fond" style="${fond(c, 3840)}"></div>
     <span class="cat petit">${echap(tr(categorie(c.categorie), 'nom'))}</span>
     <span class="titre">${echap(c.nom)}</span><span class="acc">${echap(tr(c, 'accroche'))}</span>
     ${tr(c, 'offre') ? `<span class="offre">${echap(tr(c, 'offre'))}</span>` : ''}
