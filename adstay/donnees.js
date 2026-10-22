@@ -36,12 +36,12 @@ window.ADSTAY = {
     {
       id: 'essentielle', nom: 'Essentielle', prix: 39, rang: 1, diaporama: 0, badge: '',
       pour: 'Pour un petit commerçant ou un restaurant',
-      avantages: ['Présence dans une catégorie', 'Nom, photo, adresse et coordonnées', 'Accès à un réseau local de logements'],
+      avantages: ['Présence dans une catégorie', 'Votre offre voyageurs, avec bon à présenter', 'Bons utilisés comptés dans votre espace'],
     },
     {
       id: 'premium', nom: 'Premium', prix: 79, rang: 2, diaporama: 1, badge: 'Recommandé', badge_en: 'Recommended',
       pour: 'Pour les établissements qui veulent plus de visibilité',
-      avantages: ['Annonce dans le bandeau défilant de l’accueil', 'Offre du jour avec compte à rebours', 'Offre spéciale et bouton de réservation', 'Plein écran sur l’écran de veille'],
+      avantages: ['Annonce dans le bandeau défilant de l’accueil', 'Offre du jour avec compte à rebours', 'Offre mise en valeur et bouton de réservation', 'Plein écran sur l’écran de veille'],
     },
     {
       id: 'exclusivite', nom: 'Exclusivité', prix: 149, rang: 3, diaporama: 2, badge: 'Coup de cœur', badge_en: 'Our pick',
@@ -59,9 +59,9 @@ window.ADSTAY = {
     comparatif: [
       { texte: 'Fiche complète : photo, description, adresse, horaires, téléphone', formules: ['essentielle', 'premium', 'exclusivite'] },
       { texte: 'Badges « Ouvert maintenant » et « 8 min à pied »', formules: ['essentielle', 'premium', 'exclusivite'] },
-      { texte: 'QR code itinéraire sur la fiche', formules: ['essentielle', 'premium', 'exclusivite'] },
-      { texte: 'Statistiques en ligne : fiches ouvertes, QR scannés', formules: ['essentielle', 'premium', 'exclusivite'] },
-      { texte: 'Offre spéciale voyageurs mise en valeur', formules: ['premium', 'exclusivite'] },
+      { texte: 'Votre offre voyageurs : QR code → bon sur le téléphone, à présenter chez vous', formules: ['essentielle', 'premium', 'exclusivite'] },
+      { texte: 'Statistiques : fiches ouvertes, bons reçus, bons utilisés en caisse', formules: ['essentielle', 'premium', 'exclusivite'] },
+      { texte: 'Offre mise en valeur sur l’accueil et en plein écran', formules: ['premium', 'exclusivite'] },
       { texte: 'Bouton et QR de réservation (votre site, TheFork…)', formules: ['premium', 'exclusivite'] },
       { texte: 'Étiquette dorée et place prioritaire dans la liste', formules: ['premium', 'exclusivite'] },
       { texte: 'Annonce dans le bandeau défilant de l’accueil', formules: ['premium', 'exclusivite'] },
@@ -74,10 +74,11 @@ window.ADSTAY = {
     faq: [
       { q: 'Combien de temps faut-il pour être visible ?', r: 'Créez votre fiche en 10 minutes. Après validation, elle apparaît sur toutes les tablettes du réseau, en général sous 48 heures.' },
       { q: 'Y a-t-il un engagement ?', r: 'Non. L’abonnement est mensuel, sans durée minimum. Vous pouvez changer de formule ou arrêter quand vous voulez.' },
-      { q: 'Comment savoir si ça marche ?', r: 'Votre espace affiche chaque jour combien de voyageurs ont ouvert votre fiche, vu votre publicité en veille et scanné votre QR code.' },
+      { q: 'Comment savoir si ça marche ?', r: 'Chaque client AdStay vient avec un bon sur son téléphone. Vous le validez en caisse avec votre code à 4 chiffres : votre espace compte les bons reçus et les bons vraiment utilisés chez vous, jour par jour.' },
       { q: 'Qui voit ma publicité ?', r: 'Les voyageurs logés dans les appartements et villas équipés de nos tablettes : des touristes déjà sur place, qui cherchent où manger, sortir ou se déplacer.' },
       { q: 'Comment fonctionne l’Offre du jour ?', r: 'Vous choisissez un créneau (ex. 17h–21h) et une promotion. Pendant ce créneau, elle s’affiche en grand sur l’accueil avec un compte à rebours. Si plusieurs offres tombent en même temps, celle qui se termine le plus tôt passe devant.' },
-      { q: 'Puis-je proposer une offre aux voyageurs ?', r: 'Oui, à partir de la formule Premium : un apéritif offert, une remise, un transat… Elle s’affiche en valeur sur votre fiche et en plein écran.' },
+      { q: 'Dois-je faire une offre aux voyageurs ?', r: 'Oui, c’est la règle du réseau, dans toutes les formules : un apéritif offert, une remise, un transat… Le voyageur scanne le QR code de votre fiche, reçoit un bon sur son téléphone et le présente chez vous. Chaque bon ne sert qu’une fois.' },
+      { q: 'Comment valider un bon ?', r: 'Le voyageur vous montre son bon. Vous touchez « Valider », tapez votre code à 4 chiffres (dans votre espace) : le bon est tamponné « Utilisé » et compté dans vos statistiques.' },
     ],
   },
 
@@ -187,7 +188,7 @@ window.ADSTAY = {
       accroche: 'Pâtes fraîches et pizzas', accroche_en: 'Fresh pasta and pizza',
       description: 'Trattoria familiale, pâtes faites maison chaque matin.',
       description_en: 'Family trattoria, pasta made fresh every morning.',
-      adresse: 'Place Garibaldi, Nice', tel: '04 00 00 00 03', lat: 43.7010, lon: 7.2810, creneaux: '12:00-23:00', offre: '', lien: '' },
+      adresse: 'Place Garibaldi, Nice', tel: '04 00 00 00 03', lat: 43.7010, lon: 7.2810, creneaux: '12:00-23:00', offre: 'Limoncello offert en fin de repas', offre_en: 'Free limoncello after your meal', lien: '' },
     { id: 'c4', pour: ['couple', 'amis'], photo: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187', nom: 'Le Comptoir Bleu', categorie: 'bars', formule: 'premium',
       accroche: 'Cocktails au coucher du soleil', accroche_en: 'Sunset cocktails',
       description: 'Bar à cocktails avec vue sur la Baie des Anges. DJ le vendredi et le samedi.',
@@ -198,7 +199,7 @@ window.ADSTAY = {
       accroche: 'Petit-déjeuner au marché', accroche_en: 'Breakfast at the market',
       description: 'Café, viennoiseries et jus pressés à deux pas du marché aux fleurs.',
       description_en: 'Coffee, pastries and fresh juice, steps from the flower market.',
-      adresse: 'Cours Saleya, Nice', tel: '04 00 00 00 05', lat: 43.6955, lon: 7.2755, creneaux: '07:00-18:00', offre: '', lien: '' },
+      adresse: 'Cours Saleya, Nice', tel: '04 00 00 00 05', lat: 43.6955, lon: 7.2755, creneaux: '07:00-18:00', offre: 'Café offert avec un petit-déjeuner', offre_en: 'Free coffee with any breakfast', lien: '' },
     { id: 'c6', pour: ['couple', 'amis', 'famille'], photo: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e', nom: 'Azur Beach Club', categorie: 'plages', formule: 'exclusivite',
       accroche: 'Transats, déjeuner les pieds dans l’eau', accroche_en: 'Sunbeds and lunch by the water',
       description: 'Plage privée avec transats, restaurant et service au matelas. Réservation conseillée en été.',
@@ -215,7 +216,7 @@ window.ADSTAY = {
       accroche: 'Monaco, Èze, Saint-Paul en minibus', accroche_en: 'Monaco, Èze, Saint-Paul by minibus',
       description: 'Excursions à la journée ou à la demi-journée sur la Côte d’Azur.',
       description_en: 'Full-day and half-day trips along the French Riviera.',
-      adresse: 'Nice centre', tel: '06 00 00 00 08', lat: 43.7010, lon: 7.2690, creneaux: '08:00-17:00', offre: '', lien: '' },
+      adresse: 'Nice centre', tel: '06 00 00 00 08', lat: 43.7010, lon: 7.2690, creneaux: '08:00-17:00', offre: '-10 % sur toutes les excursions', offre_en: '10% off every excursion', lien: '' },
     { id: 'c9', pour: ['travail', 'couple'], photo: 'https://images.unsplash.com/photo-1601362840469-51e4d8d58785', nom: 'Elite Transfert', categorie: 'transport', formule: 'exclusivite',
       accroche: 'Aéroport ↔ logement, prix fixe', accroche_en: 'Airport ↔ apartment, fixed price',
       description: 'Chauffeurs privés 24h/24. Transferts aéroport, gare et soirées. Paiement par carte.',
@@ -232,7 +233,7 @@ window.ADSTAY = {
       accroche: 'Concept store : mode, déco, souvenirs', accroche_en: 'Concept store: fashion, decor, gifts',
       description: 'Créateurs locaux, linge de plage, objets de déco et idées cadeaux.',
       description_en: 'Local designers, beach linen, decor and gift ideas.',
-      adresse: 'Libération, Nice', tel: '04 00 00 00 11', lat: 43.7120, lon: 7.2620, creneaux: '10:00-19:30', fermes: ['dim'], offre: '', lien: '' },
+      adresse: 'Libération, Nice', tel: '04 00 00 00 11', lat: 43.7120, lon: 7.2620, creneaux: '10:00-19:30', fermes: ['dim'], offre: 'Paquet cadeau offert et -10 %', offre_en: 'Free gift wrap and 10% off', lien: '' },
   ],
 
   // ─── Offre du jour (encart « urgence » de l'accueil, de la fiche et de la veille) ─
