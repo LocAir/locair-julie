@@ -479,6 +479,11 @@ function heure(m) {
   const h12 = H % 12 || 12;
   return `${h12}${M ? ':' + String(M).padStart(2, '0') : ''} ${H < 12 ? 'am' : 'pm'}`;
 }
+// « 16h00 », « 16h », « 16:00 » → affiché dans la langue (16h / 4 pm) ; autre texte laissé tel quel
+function heureLibre(txt) {
+  const m = String(txt).trim().match(/^(\d{1,2})\s*[h:]\s*(\d{2})?$/i);
+  return m ? heure(+m[1] * 60 + +(m[2] || 0)) : txt;
+}
 function ouverture(c, now = new Date()) {
   const plages = plagesDe(c); if (!plages.length) return null;
   const fermes = c.fermes || [], min = now.getHours() * 60 + now.getMinutes(), j = now.getDay();
@@ -631,7 +636,7 @@ function afficher() {
       + (L ? `<div class="logement">
         ${L.wifi ? `<div class="bloc wifi-grand"><img src="${qrWifi}" alt="QR Wi-Fi"/><div><span class="petit" style="color:var(--laiton2)">Wi-Fi</span>
           <b>${echap(L.wifi.reseau)}</b><div class="mdp">${echap(L.wifi.motdepasse)}</div><p>${t('wifiScan')}</p></div></div>` : ''}
-        <div class="bloc"><div class="horaires">${L.arrivee ? `<div><span>${t('arrivee')}</span><b>${echap(L.arrivee)}</b></div>` : ''}${L.depart ? `<div><span>${t('depart')}</span><b>${echap(L.depart)}</b></div>` : ''}</div></div>
+        <div class="bloc"><div class="horaires">${L.arrivee ? `<div><span>${t('arrivee')}</span><b>${echap(heureLibre(L.arrivee))}</b></div>` : ''}${L.depart ? `<div><span>${t('depart')}</span><b>${echap(heureLibre(L.depart))}</b></div>` : ''}</div></div>
         ${tr(L, 'infos')?.length ? `<div class="bloc"><ul>${tr(L, 'infos').map(i => `<li>${echap(i)}</li>`).join('')}</ul></div>` : ''}
       </div>` : '')
       + (D.services?.length ? `<h3 class="sous-titre">${t('servicesDemande')}</h3><div class="services">${D.services.map(s => `<button class="service touche" data-service="${s.id}">
