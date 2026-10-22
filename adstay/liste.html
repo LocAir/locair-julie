@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="robots" content="noindex, nofollow, noarchive"/>
+<meta name="theme-color" content="#f4efe7"/>
+<title>Ma sélection — AdStay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Jost:wght@300;400;500&display=swap"/>
+<style>
+:root{--ivoire:#f4efe7;--papier:#fbf8f3;--encre:#1b2430;--texte2:#5b616c;--laiton:#a8844c;--trait:rgba(27,36,48,.1);--serif:'Cormorant Garamond',Georgia,serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--ivoire);color:var(--encre);font-family:Jost,system-ui,sans-serif;font-weight:300;-webkit-font-smoothing:antialiased}
+.page{max-width:640px;margin:0 auto;padding:22px 16px 60px}
+header{text-align:center;padding:10px 0 22px}
+header img{width:150px}
+h1{font-family:var(--serif);font-weight:400;font-size:44px;line-height:1;margin-top:18px}
+header p{color:var(--texte2);margin-top:8px}
+.tout{display:flex;align-items:center;justify-content:center;gap:10px;height:54px;margin:4px 0 22px;border-radius:999px;background:var(--encre);color:var(--ivoire);
+  text-decoration:none;font-size:13px;letter-spacing:.16em;text-transform:uppercase}
+.adresse{background:var(--papier);border-radius:22px;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 2px rgba(27,36,48,.05),0 16px 34px -22px rgba(27,36,48,.3)}
+.adresse .img{aspect-ratio:16/9;background:#e9e1d4 center/cover no-repeat}
+.adresse .corps{padding:18px 20px 20px;display:flex;flex-direction:column;gap:6px}
+.adresse .cat{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--laiton)}
+.adresse h2{font-family:var(--serif);font-weight:500;font-size:30px;line-height:1.05}
+.adresse .acc,.adresse .info{color:var(--texte2);font-size:15px}
+.adresse .offre{color:var(--laiton);font-family:var(--serif);font-style:italic;font-size:19px}
+.boutons{display:flex;gap:10px;margin-top:10px}
+.boutons a{flex:1;display:flex;align-items:center;justify-content:center;height:48px;border-radius:999px;border:1px solid var(--encre);color:var(--encre);
+  text-decoration:none;font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.boutons a.plein{background:var(--encre);color:var(--ivoire)}
+.vide{text-align:center;color:var(--texte2);padding:40px 0}
+footer{text-align:center;color:var(--texte2);font-size:13px;margin-top:26px}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <img src="/adstay/logo-encre.webp" alt="AdStay"/>
+    <h1 id="titre"></h1>
+    <p id="sous"></p>
+  </header>
+  <div id="liste"></div>
+  <footer id="pied"></footer>
+</div>
+<script src="/adstay/donnees.js"></script>
+<script src="/adstay/config.js"></script>
+<script src="/adstay/charger.js"></script>
+<script>
+// Page reçue sur le téléphone du voyageur après avoir scanné « Emportez votre sélection ».
+// Elle reste ouverte dans son navigateur : c'est son carnet d'adresses pour le séjour.
+(async () => {
+  await window.ADSTAY_PRET;
+  const D = window.ADSTAY, q = new URLSearchParams(location.search);
+  const en = q.get('lang') === 'en', logement = q.get('l') || '';
+  document.documentElement.lang = en ? 'en' : 'fr';
+  const tr = (o, k) => (en && o?.[k + '_en']) || o?.[k] || '';
+  const echap = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const formule = id => D.formules.find(f => f.id === id) || { rang: 0 };
+  const premium = c => formule(c.formule).rang >= 2;
+  const photo = c => !c.photo ? '' : c.photo.includes('images.unsplash.com') ? `${c.photo}${c.photo.includes('?') ? '&' : '?'}w=1200&q=80&auto=format&fit=crop` : c.photo;
+  const maps = c => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.nom + ', ' + c.adresse);
+  const ids = (q.get('ids') || '').split(',').filter(Boolean);
+  const liste = ids.map(id => (D.commercants || []).find(c => String(c.id) === id)).filter(Boolean);
+  const cat = c => tr((D.categories || []).find(x => x.id === c.categorie), 'nom');
+
+  document.title = en ? 'My list — AdStay' : 'Ma sélection — AdStay';
+  document.getElementById('titre').textContent = en ? `My ${D.ville.nom}` : `Mon ${D.ville.nom}`;
+  document.getElementById('sous').textContent = en ? `${liste.length} places saved during your stay` : `${liste.length} adresse${liste.length > 1 ? 's' : ''} gardée${liste.length > 1 ? 's' : ''} pendant votre séjour`;
+  document.getElementById('pied').textContent = en ? 'Keep this page: your list stays here for the rest of your trip.' : 'Gardez cette page : votre sélection reste ici pour toute la suite du séjour.';
+
+  // Itinéraire qui passe par toutes les adresses (Google Maps accepte jusqu'à 9 étapes)
+  const avecAdresse = liste.filter(c => c.adresse);
+  const tout = avecAdresse.length > 1 ? 'https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=' + encodeURIComponent(avecAdresse.at(-1).nom + ', ' + avecAdresse.at(-1).adresse)
+    + '&waypoints=' + encodeURIComponent(avecAdresse.slice(0, -1).slice(0, 9).map(c => c.nom + ', ' + c.adresse).join('|')) : '';
+
+  document.getElementById('liste').innerHTML = !liste.length
+    ? `<p class="vide">${en ? 'This list is empty.' : 'Cette sélection est vide.'}</p>`
+    : (tout ? `<a class="tout" href="${echap(tout)}" target="_blank" rel="noopener">${en ? 'Route through all my places' : 'Itinéraire par toutes mes adresses'}</a>` : '')
+      + liste.map(c => `<article class="adresse">
+        <div class="img" style="background-image:url('${encodeURI(photo(c))}')"></div>
+        <div class="corps"><span class="cat">${echap(cat(c))}</span><h2>${echap(c.nom)}</h2>
+          <span class="acc">${echap(tr(c, 'accroche'))}</span>
+          ${premium(c) && tr(c, 'offre') ? `<span class="offre">${echap(tr(c, 'offre'))}</span>` : ''}
+          ${c.adresse ? `<span class="info">${echap(c.adresse)}</span>` : ''}
+          <div class="boutons">
+            <a class="plein" href="${echap(premium(c) && c.lien ? c.lien : maps(c))}" target="_blank" rel="noopener">${premium(c) && c.lien ? (en ? 'Book' : 'Réserver') : (en ? 'Directions' : 'Itinéraire')}</a>
+            ${c.tel ? `<a href="tel:${echap(c.tel.replace(/\s/g, ''))}">${en ? 'Call' : 'Appeler'}</a>` : ''}
+          </div></div></article>`).join('');
+
+  // Statistiques : chaque adresse de la base emportée compte comme un scan
+  liste.forEach(c => window.adstayNoter(c.id, 'scan', logement));
+})();
+</script>
+</body>
+</html>

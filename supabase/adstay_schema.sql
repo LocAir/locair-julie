@@ -192,3 +192,21 @@ begin
       on e.commercant = p_commercant and e.created_at >= d and e.created_at < d + interval '1 day'
     group by d order by d;
 end $$;
+
+-- ─── Compteur de visites par fiche (tableau de l'espace partenaires) ────────
+-- Totaux sur N jours pour chaque fiche : l'admin voit toutes les fiches,
+-- un commerçant seulement les siennes.
+create or replace function public.adstay_resume(p_jours int default 30)
+returns table (commercant uuid, vues bigint, scans bigint, diaporama bigint, vues_aujourdhui bigint)
+language sql stable security definer set search_path = public as $$
+  select c.id,
+    count(e.*) filter (where e.type = 'vue'),
+    count(e.*) filter (where e.type = 'scan'),
+    count(e.*) filter (where e.type = 'diaporama'),
+    count(e.*) filter (where e.type = 'vue' and e.created_at >= current_date)
+  from public.commercants c
+  left join public.evenements e
+    on e.commercant = c.id and e.created_at >= current_date - (least(greatest(p_jours, 1), 365) - 1)
+  where public.est_admin() or c.proprietaire = auth.uid()
+  group by c.id;
+$$;
