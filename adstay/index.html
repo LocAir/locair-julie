@@ -511,6 +511,7 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
   <div class="invite"><i></i><span id="inviteTexte"></span></div>
 </div>
 
+<script src="/adstay/vendor/qrcode-generator-1.4.4.js"></script>
 <script src="/adstay/donnees.js"></script>
 <script src="/adstay/config.js"></script>
 <script src="/adstay/charger.js"></script>
@@ -689,8 +690,16 @@ const parId = id => D.commercants.find(m => String(m.id) === String(id));
 // Le logement de cette tablette (?logement=…), sinon le premier (démo)
 const L = (D.logements || {})[logement] || Object.values(D.logements || {})[0] || null;
 const echapWifi = s => String(s).replace(/([\;,:"])/g, '\\$1');
-const qrWifi = L?.wifi ? 'https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data='
-  + encodeURIComponent(`WIFI:T:WPA;S:${echapWifi(L.wifi.reseau)};P:${echapWifi(L.wifi.motdepasse)};;`) : '';
+// Codes QR fabriqués sur la tablette (plus de service extérieur : rapides, et toujours là même si Internet faiblit)
+function qr(texte) {
+  try {
+    const q = qrcode(0, 'M'); q.addData(unescape(encodeURIComponent(texte))); q.make();
+    const n = q.getModuleCount(); let d = '';
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) if (q.isDark(y, x)) d += `M${x} ${y}h1v1h-1z`;
+    return 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges"><rect width="${n}" height="${n}" fill="#fff"/><path d="${d}" fill="#111"/></svg>`);
+  } catch { return ''; }
+}
+const qrWifi = L?.wifi ? qr(`WIFI:T:WPA;S:${echapWifi(L.wifi.reseau)};P:${echapWifi(L.wifi.motdepasse)};;`) : '';
 
 // ── Distance à pied depuis le logement ──────────────────
 function distance(c) {
@@ -1023,7 +1032,7 @@ function afficher() {
     const liste = selection.map(parId).filter(Boolean);
     html = entete(t('selSur')(liste.length), t('maSelection'), '')
       + (liste.length ? `<div class="selection"><div class="grille">${liste.map(carte).join('')}</div>
-        <aside class="emporter"><b>${t('emporter')}</b><img src="https://api.qrserver.com/v1/create-qr-code/?size=480x480&margin=0&data=${encodeURIComponent(lienListe())}" alt="QR"/>
+        <aside class="emporter"><b>${t('emporter')}</b><img src="${qr(lienListe())}" alt="QR"/>
           <p>${t('emporterTxt')}</p>${boutonsTel([[lienListe(), t('emporter'), true]])}<button class="vider" data-vider>${t('vider')}</button></aside></div>`
       : `<div class="sel-vide">${svg('coeur')}<b>${t('selVide')}</b><p>${t('selVideTxt')}</p></div>`);
   }
@@ -1083,7 +1092,7 @@ function afficher() {
 const cibleAdresse = c => window.adstayEstUuid(c.id)
   ? `${location.origin}/adstay/go?f=${c.id}${logement ? '&l=' + encodeURIComponent(logement) : ''}`
   : lienDe(c) || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.nom + ', ' + c.adresse);
-const lienQR = c => 'https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=' + encodeURIComponent(cibleAdresse(c));
+const lienQR = c => qr(cibleAdresse(c));
 // Sur téléphone, pas de QR à scanner : de vrais boutons
 const boutonsTel = liens => `<div class="actions-tel">${liens.filter(Boolean).map(([href, txt, plein]) =>
   `<a class="${plein ? 'plein' : ''}" href="${echap(href)}" target="_blank" rel="noopener">${echap(txt)}</a>`).join('')}</div>`;
@@ -1133,7 +1142,7 @@ function ouvrirService(id) {
       <span class="petit">${t('service')} · ${echap(cc.nom || t('votreHote'))}</span>
       <h3>${echap(tr(s, 'nom'))}</h3>
       <div class="cadeau">${svg('cle')}<span>${echap(tr(s, 'prix') || t('prixDemande'))}</span></div>
-      ${cible ? `<div class="scanner"><img src="https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=${encodeURIComponent(cible)}" alt="QR code"/>
+      ${cible ? `<div class="scanner"><img src="${qr(cible)}" alt="QR code"/>
         <div><b>${cc.whatsapp ? t('whatsapp') : t('appeler')}</b>${etapesScan(cc.whatsapp ? t('messagePret') : t('lancerAppel'))}</div></div>
       ${boutonsTel([[cible, cc.whatsapp ? 'WhatsApp' : t('btnAppeler'), true]])}`
       : `<p class="desc">${t('contacterHote')}</p>`}
