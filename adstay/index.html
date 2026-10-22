@@ -236,6 +236,12 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 .horaires{display:flex;gap:30px}
 .horaires div span{display:block;color:var(--gris);font-size:12px;letter-spacing:.2em;text-transform:uppercase}
 .horaires div b{font-family:var(--serif);font-weight:400;font-size:44px;line-height:1.1}
+.horaires div i{display:block;font-style:normal;color:var(--gris);font-size:14px;margin-top:2px}
+.horaires div i::first-letter{text-transform:uppercase}
+.avancee{margin-top:22px}
+.avancee .barre{height:3px;border-radius:3px;background:var(--trait,rgba(27,36,48,.1));overflow:hidden}
+.avancee .barre span{display:block;height:100%;border-radius:3px;background:var(--laiton)}
+.avancee p{margin-top:10px;font-size:14px;color:var(--gris)}
 .logement ul{list-style:none;display:flex;flex-direction:column;gap:10px;font-size:15px;color:var(--texte2)}
 .logement li{display:flex;gap:10px}
 .logement li::before{content:"";width:14px;height:1px;background:var(--laiton);margin-top:.75em;flex:none}
@@ -832,6 +838,16 @@ function etatSejour() {
   const nuits = Math.round((new Date(sj.au) - new Date(auj)) / 864e5);
   return { prenoms: sj.prenoms || '', nuits, depart: auj === sj.au, arrivee: auj === sj.du };
 }
+// « mardi 20 octobre » sous l'heure d'arrivée / de départ
+const dateSejour = iso => iso ? `<i>${new Date(iso + 'T12:00').toLocaleDateString(t('locale'), { weekday: 'long', day: 'numeric', month: 'long' })}</i>` : '';
+// Petite barre : où en est le séjour (« Encore 4 nuits »)
+function avancee() {
+  const sj = etatSejour(); if (!sj) return '';
+  const total = Math.max(1, Math.round((new Date(L0.sejour.au) - new Date(L0.sejour.du)) / 864e5));
+  const fait = Math.min(100, Math.max(4, Math.round((total - sj.nuits) / total * 100)));
+  const txt = sj.depart ? t('departAujourdhui')(heureLibre(L0.depart || '')) : sj.arrivee ? t('arriveeAujourdhui') : t('nuitsRestantes')(sj.nuits);
+  return `<div class="avancee"><div class="barre"><span style="width:${fait}%"></span></div><p>${echap(txt)}</p></div>`;
+}
 function contexte() {
   const sj = etatSejour(), h = new Date().getHours();
   if (sj?.depart && h < 14) return 'depart';
@@ -1030,7 +1046,7 @@ function afficher() {
       + (L ? `<div class="logement">
         ${L.wifi ? `<div class="bloc wifi-grand"><img src="${qrWifi}" alt="QR Wi-Fi"/><div><span class="petit" style="color:var(--laiton2)">Wi-Fi</span>
           <b>${echap(L.wifi.reseau)}</b><div class="mdp">${echap(L.wifi.motdepasse)}</div><p>${t('wifiScan')}</p></div></div>` : ''}
-        <div class="bloc"><div class="horaires">${L.arrivee ? `<div><span>${t('arrivee')}</span><b>${echap(heureLibre(L.arrivee))}</b></div>` : ''}${L.depart ? `<div><span>${t('depart')}</span><b>${echap(heureLibre(L.depart))}</b></div>` : ''}</div></div>
+        <div class="bloc"><div class="horaires">${L.arrivee ? `<div><span>${t('arrivee')}</span><b>${echap(heureLibre(L.arrivee))}</b>${dateSejour(L.sejour?.du)}</div>` : ''}${L.depart ? `<div><span>${t('depart')}</span><b>${echap(heureLibre(L.depart))}</b>${dateSejour(L.sejour?.au)}</div>` : ''}</div>${avancee()}</div>
         ${tr(L, 'infos')?.length ? `<div class="bloc"><ul>${tr(L, 'infos').map(i => `<li>${echap(i)}</li>`).join('')}</ul></div>` : ''}
       </div>` : '')
       + (D.services?.length ? `<h3 class="sous-titre">${t('servicesDemande')}</h3><div class="services">${D.services.map(s => `<button class="service touche" data-service="${s.id}">
