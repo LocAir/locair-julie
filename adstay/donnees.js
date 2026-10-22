@@ -221,7 +221,7 @@ window.ADSTAY = {
       description: 'Chauffeurs privés 24h/24. Transferts aéroport, gare et soirées. Paiement par carte.',
       description_en: 'Private drivers 24/7. Airport, station and evening transfers. Card payment.',
       adresse: 'Nice et alentours', tel: '06 00 00 00 09', creneaux: '00:00-24:00',
-      offre: 'Transfert aéroport à prix fixe', offre_en: 'Fixed-price airport transfer', lien: '' },
+      offre: '−10 % pour les voyageurs AdStay', offre_en: '10% off for AdStay guests', lien: '' },
     { id: 'c10', pour: ['amis', 'couple'], photo: 'https://images.unsplash.com/photo-1558981806-ec527fa84c39', nom: 'Scoot’Azur', categorie: 'location', formule: 'premium',
       accroche: 'Scooters et vélos électriques', accroche_en: 'Scooters and e-bikes',
       description: 'Location à l’heure, à la journée ou à la semaine. Casques fournis.',

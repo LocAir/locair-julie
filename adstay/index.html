@@ -98,12 +98,12 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 .tuile.photo::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,14,20,.05) 35%,rgba(10,14,20,.62))}
 .tuile > *{position:relative}
 .tuile .petit{opacity:.85}
-.hero{grid-area:hero;justify-content:space-between!important}
+.hero{grid-area:hero;justify-content:space-between!important;container-type:inline-size}
 .hero::before{background:linear-gradient(180deg,rgba(10,14,20,.25),rgba(10,14,20,0) 35%,rgba(10,14,20,.55))!important}
 .hero h1{font-family:var(--serif);font-weight:400;font-size:clamp(44px,min(6.4vw,10.5vh),104px);line-height:.92;letter-spacing:-.01em;margin:10px 0 12px;text-shadow:0 2px 30px rgba(10,14,20,.25)}
 .hero h1 em{font-style:italic;color:#f3e2bf}
 .hero .date{font-size:clamp(15px,2vh,18px);text-transform:capitalize;opacity:.9}
-.verre{display:flex;align-items:center;gap:clamp(12px,1.6vw,22px);align-self:flex-start;padding:clamp(8px,1.4vh,14px) clamp(14px,1.6vw,22px);flex-wrap:wrap;border-radius:999px;background:rgba(255,255,255,.16);
+.verre{display:flex;align-items:center;gap:clamp(12px,1.6vw,22px);align-self:flex-start;padding:clamp(8px,1.4vh,14px) clamp(14px,1.6vw,22px);flex-wrap:nowrap;white-space:nowrap;max-width:100%;border-radius:999px;background:rgba(255,255,255,.16);
   backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.25)}
 .verre .heure{font-size:clamp(24px,4vh,34px);font-weight:300;line-height:1}
 .verre .temp{font-family:var(--serif);font-size:clamp(22px,3.4vh,30px);line-height:1}
@@ -114,7 +114,7 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 .vedette .fond{position:absolute!important;inset:0;z-index:0;background:#1b2430 center/cover no-repeat;animation:fondu 1.2s ease both,zoomlent 14s ease-out both}
 @keyframes fondu{from{opacity:0}}
 @keyframes zoomlent{from{transform:scale(1.07)}to{transform:scale(1)}}
-.vedette::before{z-index:1;background:linear-gradient(180deg,rgba(10,14,20,.2),rgba(10,14,20,0) 30%,rgba(10,14,20,.1) 50%,rgba(10,14,20,.78))!important}
+.vedette::before{z-index:1;background:linear-gradient(90deg,rgba(10,14,20,.38),rgba(10,14,20,0) 62%),linear-gradient(180deg,rgba(10,14,20,.2),rgba(10,14,20,0) 30%,rgba(10,14,20,.12) 50%,rgba(10,14,20,.8))!important}
 .vedette > :not(.fond){z-index:2;transition:opacity .35s}
 .vedette.bascule > :not(.fond):not(.points){opacity:0}
 .vedette > .etiquette{position:relative!important;top:auto;left:auto;align-self:flex-start;margin-bottom:auto}
@@ -446,6 +446,20 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 .evenement p{color:var(--texte2);font-size:14px;margin-top:4px}
 .son button{width:42px;height:34px;border-radius:999px;display:grid;place-items:center;color:var(--texte2)}
 .son svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.6;fill:none}
+
+/* Barre heure / météo : une seule ligne ; si la case est étroite, on retire d'abord le coucher du soleil, puis le ciel */
+@container (max-width:760px){.verre .coucher{display:none}}
+@container (max-width:520px){.verre .ciel{display:none}}
+/* Petits textes posés sur photo : toujours lisibles, même sur une image claire */
+.vedette #vCat,.vedette .meta,.chrono .lib,.hero .petit,.hero .date{text-shadow:0 1px 12px rgba(0,0,0,.55)}
+/* Wi-Fi : le nom ne se coupe jamais au milieu ; case étroite → QR plus petit */
+.wifi{container-type:inline-size}
+.wifi b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal}
+@container (max-width:320px){.wifi img{width:58px;height:58px;padding:4px}.wifi b{font-size:clamp(18px,1.5vw,22px)}}
+/* Accueil : le dessin de la baie est caché derrière les cases, il ne dépasse plus entre elles */
+main::before{transition:opacity .6s}
+main:has(.bento)::before{opacity:0}
+@media (max-height:900px) and (min-aspect-ratio:1/1){.hero .astuce{display:none}}
 
 /* ── Écrans peu hauts : accueil allégé pour que tout tienne ─ */
 @media (max-height:820px) and (min-width:761px) and (min-aspect-ratio:1/1){
