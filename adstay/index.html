@@ -666,6 +666,16 @@ const L0 = (D.logements || {})[logement] || Object.values(D.logements || {})[0] 
 const cleSejour = 'adstay-' + (L0?.sejour?.du || 'demo');
 const lire = k => { try { return JSON.parse(localStorage.getItem(cleSejour + k)); } catch { return null; } };
 const ecrire = (k, v) => { try { localStorage.setItem(cleSejour + k, JSON.stringify(v)); } catch {} };
+// Sans dates de séjour renseignées, rien ne distingue deux voyageurs : après 12 h sans aucun
+// toucher, on considère qu'un nouveau voyageur est arrivé et on efface sélection et profil.
+function nouveauVoyageur() {
+  if (L0?.sejour?.du) return false;
+  const dernier = lire('-touche') || 0;
+  if (dernier && Date.now() - dernier < 12 * 3600e3) return false;
+  ['-selection', '-profil', '-profil-vu'].forEach(k => { try { localStorage.removeItem(cleSejour + k); } catch {} });
+  return true;
+}
+nouveauVoyageur();
 let profil = lire('-profil');
 const affinite = c => profil && c.pour?.includes(profil) ? 1 : 0;
 let tries = [];
@@ -1221,7 +1231,10 @@ function veille() {
   fermer(); indice = 0; $('#veille').classList.add('active'); diapoSuivante();
   tourne = setInterval(diapoSuivante, D.veille.dureeDiapo * 1000);
 }
-function reveil() {
+let toucheNote = 0;
+function reveil(e) {
+  // Note l'heure du dernier vrai toucher du voyageur (au plus une fois par minute ; pas au démarrage)
+  if (e && Date.now() - toucheNote > 60e3) { toucheNote = Date.now(); ecrire('-touche', toucheNote); }
   if ($('#veille').classList.contains('active')) {
     $('#veille').classList.remove('active'); clearInterval(tourne);
     recherche = ''; ecran = ''; aller('accueil'); // propre pour le prochain voyageur, avec l'animation d'arrivée
