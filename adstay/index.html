@@ -457,6 +457,11 @@ const hash = s => [...s].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) | 0, 7);
 const tries = [...D.commercants].sort((a, b) =>
   formule(b.formule).rang - formule(a.formule).rang || hash(graine + a.id) - hash(graine + b.id));
 const rangMax = Math.max(...D.formules.map(f => f.rang));
+// Avantages payants : l'offre spéciale et le lien de réservation sont réservés aux formules
+// à partir de « Premium » (rang 2), comme annoncé sur la page partenaires.
+const RANG_AVANTAGES = 2;
+const offre = c => formule(c.formule).rang >= RANG_AVANTAGES ? tr(c, 'offre') : '';
+const lienDe = c => formule(c.formule).rang >= RANG_AVANTAGES ? c.lien || '' : '';
 const dans = cat => tries.filter(c => c.categorie === cat);
 const cats = D.categories.filter(c => dans(c.id).length);
 const parId = id => D.commercants.find(m => String(m.id) === String(id));
@@ -573,7 +578,7 @@ function carte(c) {
     <div class="image" style="${fond(c, 1000)}">${f.badge ? `<span class="etiquette">${echap(tr(f, 'badge'))}</span>` : ''}</div>
     <div class="corps"><span class="nom">${echap(c.nom)}</span><span class="acc">${echap(tr(c, 'accroche'))}</span>
       <span class="meta">${etatHtml(c)}${dist ? `<span>${svg('marche')}${dist}</span>` : ''}</span>
-      ${tr(c, 'offre') ? `<span class="offre">${echap(tr(c, 'offre'))}</span>` : ''}</div></button>`;
+      ${offre(c) ? `<span class="offre">${echap(offre(c))}</span>` : ''}</div></button>`;
 }
 
 let rotation;
@@ -610,7 +615,7 @@ function afficher() {
         <span class="etiquette" id="vEtiq">${etiquetteV(v)}</span>
         ${vedettes.length > 1 ? `<span class="points">${vedettes.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</span>` : ''}
         <span class="petit" id="vCat">${echap(tr(categorie(v.categorie), 'nom'))}</span><span class="nom" id="vNom">${echap(v.nom)}</span>
-        <span class="accv" id="vAcc">${echap(tr(v, 'accroche'))}</span><span class="offre" id="vOffre">${echap(tr(v, 'offre'))}</span>
+        <span class="accv" id="vAcc">${echap(tr(v, 'accroche'))}</span><span class="offre" id="vOffre">${echap(offre(v))}</span>
         <span class="bas"><span class="meta" id="vMeta">${metaV(v)}</span><span class="decouvrir">${t('decouvrir')}</span></span></button>` : ''}
       ${D.services?.length ? `<button class="tuile sejour touche" data-aller="services">${svg('sejour')}
         <div><h3>${t('votreSejour')}</h3><p>${t('sejourTexte')}</p><span class="fleche">${t('demander')}</span></div></button>` : ''}
@@ -634,7 +639,7 @@ function afficher() {
         setTimeout(() => anciens.forEach(f => f.remove()), 1300);
         el.dataset.fiche = c.id;
         $('#vEtiq').textContent = etiquetteV(c); $('#vCat').textContent = tr(categorie(c.categorie), 'nom'); $('#vNom').textContent = c.nom;
-        $('#vAcc').textContent = tr(c, 'accroche'); $('#vOffre').textContent = tr(c, 'offre'); $('#vMeta').innerHTML = metaV(c);
+        $('#vAcc').textContent = tr(c, 'accroche'); $('#vOffre').textContent = offre(c); $('#vMeta').innerHTML = metaV(c);
         el.querySelectorAll('.points i').forEach((p, k) => p.classList.toggle('on', k === i % vedettes.length));
       }, 7000);
     }
@@ -699,7 +704,7 @@ function afficher() {
 // Fiche de la base : le lien passe par /adstay/go qui compte le scan puis redirige
 const cibleAdresse = c => window.adstayEstUuid(c.id)
   ? `${location.origin}/adstay/go?f=${c.id}${logement ? '&l=' + encodeURIComponent(logement) : ''}`
-  : c.lien || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.nom + ', ' + c.adresse);
+  : lienDe(c) || 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(c.nom + ', ' + c.adresse);
 const lienQR = c => 'https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=' + encodeURIComponent(cibleAdresse(c));
 // Sur téléphone, pas de QR à scanner : de vrais boutons
 const boutonsTel = liens => `<div class="actions-tel">${liens.filter(Boolean).map(([href, txt, plein]) =>
@@ -716,10 +721,10 @@ function ouvrir(id) {
       <span class="petit">${echap(tr(cat, 'nom'))}</span>
       <h3>${echap(c.nom)}</h3>
       ${o || dist ? `<span class="meta grand">${etatHtml(c)}${dist ? `<span>${svg('marche')}${dist}</span>` : ''}</span>` : ''}
-      ${tr(c, 'offre') ? `<div class="cadeau">${svg('cadeau')}<span>${echap(tr(c, 'offre'))}</span></div>` : ''}
+      ${offre(c) ? `<div class="cadeau">${svg('cadeau')}<span>${echap(offre(c))}</span></div>` : ''}
       <div class="scanner"><img src="${lienQR(c)}" alt="QR code"/>
-        <div><b>${c.lien ? t('reserverTel') : t('itineraireTel')}</b>${etapesScan()}</div></div>
-      ${boutonsTel([[cibleAdresse(c), c.lien ? t('btnReserver') : t('btnItineraire'), true], c.tel && [`tel:${c.tel.replace(/\s/g, '')}`, t('btnAppeler')]])}
+        <div><b>${lienDe(c) ? t('reserverTel') : t('itineraireTel')}</b>${etapesScan()}</div></div>
+      ${boutonsTel([[cibleAdresse(c), lienDe(c) ? t('btnReserver') : t('btnItineraire'), true], c.tel && [`tel:${c.tel.replace(/\s/g, '')}`, t('btnAppeler')]])}
       <p class="desc">${echap(tr(c, 'description') || tr(c, 'accroche'))}</p>
       <ul class="infos">
         ${c.adresse ? `<li>${svg('lieu')}${echap(c.adresse)}</li>` : ''}
@@ -799,8 +804,8 @@ function diapositives() {
   <div class="diapo" data-id="${echap(c.id)}"><div class="fond" style="${fond(c, 3840)}"></div>
     <span class="cat petit">${echap(tr(categorie(c.categorie), 'nom'))}</span>
     <span class="titre">${echap(c.nom)}</span><span class="acc">${echap(tr(c, 'accroche'))}</span>
-    ${tr(c, 'offre') ? `<span class="offre">${echap(tr(c, 'offre'))}</span>` : ''}
-    <div class="qr-veille"><img src="${lienQR(c)}" alt="QR code" loading="lazy"/>${c.lien ? t('scanResa') : t('scanIti')}</div></div>`).join('');
+    ${offre(c) ? `<span class="offre">${echap(offre(c))}</span>` : ''}
+    <div class="qr-veille"><img src="${lienQR(c)}" alt="QR code" loading="lazy"/>${lienDe(c) ? t('scanResa') : t('scanIti')}</div></div>`).join('');
 }
 
 let minuteur, tourne, indice = 0;
