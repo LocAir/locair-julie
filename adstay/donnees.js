@@ -8,7 +8,7 @@ window.ADSTAY = {
   ville: {
     nom: 'Nice', lat: 43.7031, lon: 7.2661,
     region: 'La Côte d’Azur · French Riviera',
-    photo: '/ville-nice-900.jpg', // grande photo de la diapo d'accueil du diaporama
+    photo: 'https://images.unsplash.com/photo-1643914729809-4aa59fdc4c17', // Baie des Anges (Unsplash, très haute définition)
   },
 
   // Contact affiché sur la page « Devenir partenaire ». Vide = bouton masqué.
@@ -185,7 +185,7 @@ window.ADSTAY = {
   // Chaque étape peut citer une adresse partenaire (commercant: 'c5') : elle
   // s'affiche alors avec sa photo et ouvre sa fiche. Bel emplacement à vendre.
   guides: [
-    { id: 'journee', photo: '/ville-nice-900.jpg',
+    { id: 'journee', photo: 'https://images.unsplash.com/photo-1729710429542-ef3b7e2ebde1',
       titre: 'Une journée parfaite à Nice', titre_en: 'A perfect day in Nice',
       accroche: 'Du marché aux fleurs au coucher de soleil sur la Baie des Anges.',
       accroche_en: 'From the flower market to sunset over the Baie des Anges.',
