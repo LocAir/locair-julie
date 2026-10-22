@@ -181,15 +181,15 @@ main{position:relative;overflow:hidden}
 .fiche{width:min(760px,100%);height:100%;background:var(--ivoire);overflow-y:auto;animation:glisse .38s cubic-bezier(.2,.7,.2,1);
   box-shadow:-30px 0 60px -30px rgba(27,36,48,.4)}
 @keyframes glisse{from{transform:translateX(40px);opacity:.4}}
-.fiche .photo{position:relative;height:clamp(260px,40vh,440px);background:var(--sable) center/cover no-repeat}
+.fiche .photo{position:relative;height:clamp(190px,32vh,420px);background:var(--sable) center/cover no-repeat}
 .fiche .photo.sans{display:grid;place-items:center;background:var(--encre)}
 .fiche .photo.sans > svg{width:80px;height:80px;stroke:var(--laiton2);stroke-width:.9}
 .fermer{position:absolute;top:22px;right:22px;z-index:2;display:inline-flex;align-items:center;gap:10px;height:54px;padding:0 22px;border-radius:999px;
   background:rgba(251,248,243,.94);color:var(--encre);font-size:15px;box-shadow:var(--ombre)}
 .fermer svg{width:18px;height:18px;stroke:currentColor;stroke-width:1.6}
-.fiche .texte{padding:clamp(24px,3vw,44px);display:flex;flex-direction:column;gap:16px}
+.fiche .texte{padding:clamp(20px,min(3vw,4vh),44px);display:flex;flex-direction:column;gap:clamp(10px,1.8vh,16px)}
 .fiche .petit{color:var(--laiton)}
-.fiche h3{font-family:var(--serif);font-weight:400;font-size:clamp(44px,4.4vw,64px);line-height:.98}
+.fiche h3{font-family:var(--serif);font-weight:400;font-size:clamp(36px,min(4.4vw,7vh),64px);line-height:.98}
 .fiche .desc{font-size:18px;line-height:1.6;color:var(--texte2)}
 .cadeau{display:flex;gap:16px;align-items:center;padding:18px 22px;border-radius:16px;background:var(--papier);border:1px solid rgba(168,132,76,.35)}
 .cadeau svg{width:28px;height:28px;stroke:var(--laiton);stroke-width:1.4;flex:none}
@@ -197,8 +197,8 @@ main{position:relative;overflow:hidden}
 .infos{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .infos li{display:flex;gap:12px;align-items:center;padding:16px 18px;border-radius:16px;background:var(--papier);font-size:15px}
 .infos svg{width:20px;height:20px;stroke:var(--laiton);stroke-width:1.5;flex:none}
-.scanner{display:flex;gap:24px;align-items:center;padding:22px;border-radius:var(--r);background:var(--encre);color:var(--ivoire);margin-top:6px}
-.scanner img{width:150px;height:150px;border-radius:12px;background:#fff;padding:10px;flex:none}
+.scanner{display:flex;gap:24px;align-items:center;padding:clamp(14px,2.4vh,22px);border-radius:var(--r);background:var(--encre);color:var(--ivoire)}
+.scanner img{width:clamp(110px,18vh,150px);height:clamp(110px,18vh,150px);border-radius:12px;background:#fff;padding:10px;flex:none}
 .scanner b{display:block;font-family:var(--serif);font-weight:400;font-size:28px;line-height:1.05;margin-bottom:10px}
 .scanner ol{list-style:none;display:flex;flex-direction:column;gap:6px;color:rgba(244,239,231,.75);font-size:15px;counter-reset:e}
 .scanner li::before{counter-increment:e;content:counter(e) ". ";color:var(--laiton2)}
@@ -690,15 +690,15 @@ function ouvrir(id) {
       <span class="petit">${echap(tr(cat, 'nom'))}</span>
       <h3>${echap(c.nom)}</h3>
       ${o || dist ? `<span class="meta grand">${etatHtml(c)}${dist ? `<span>${svg('marche')}${dist}</span>` : ''}</span>` : ''}
-      <p class="desc">${echap(tr(c, 'description') || tr(c, 'accroche'))}</p>
       ${tr(c, 'offre') ? `<div class="cadeau">${svg('cadeau')}<span>${echap(tr(c, 'offre'))}</span></div>` : ''}
+      <div class="scanner"><img src="${lienQR(c)}" alt="QR code"/>
+        <div><b>${c.lien ? t('reserverTel') : t('itineraireTel')}</b>${etapesScan()}</div></div>
+      <p class="desc">${echap(tr(c, 'description') || tr(c, 'accroche'))}</p>
       <ul class="infos">
         ${c.adresse ? `<li>${svg('lieu')}${echap(c.adresse)}</li>` : ''}
         ${horairesTexte(c) ? `<li>${svg('horloge')}${echap(horairesTexte(c))}</li>` : ''}
         ${c.tel ? `<li>${svg('tel')}${echap(c.tel)}</li>` : ''}
       </ul>
-      <div class="scanner"><img src="${lienQR(c)}" alt="QR code"/>
-        <div><b>${c.lien ? t('reserverTel') : t('itineraireTel')}</b>${etapesScan()}</div></div>
     </div>`;
   $('#voile').classList.add('ouvert'); $('#fiche').scrollTop = 0;
 }
@@ -714,11 +714,11 @@ function ouvrirService(id) {
     <div class="texte">
       <span class="petit">${t('service')} · ${echap(cc.nom || t('votreHote'))}</span>
       <h3>${echap(tr(s, 'nom'))}</h3>
-      <p class="desc">${echap(tr(s, 'description'))}</p>
       <div class="cadeau">${svg('cle')}<span>${echap(tr(s, 'prix') || t('prixDemande'))}</span></div>
       ${cible ? `<div class="scanner"><img src="https://api.qrserver.com/v1/create-qr-code/?size=360x360&margin=0&data=${encodeURIComponent(cible)}" alt="QR code"/>
         <div><b>${cc.whatsapp ? t('whatsapp') : t('appeler')}</b>${etapesScan(cc.whatsapp ? t('messagePret') : t('lancerAppel'))}</div></div>`
       : `<p class="desc">${t('contacterHote')}</p>`}
+      <p class="desc">${echap(tr(s, 'description'))}</p>
     </div>`;
   $('#voile').classList.add('ouvert'); $('#fiche').scrollTop = 0;
 }
