@@ -8,6 +8,8 @@ window.ADSTAY = {
   ville: {
     nom: 'Nice', lat: 43.7031, lon: 7.2661,
     region: 'La Côte d’Azur · French Riviera',
+    // Où regarder le coucher du soleil (affiché une heure avant, avec la distance à pied)
+    pointDeVue: { nom: 'la colline du Château', nom_en: 'Castle Hill', lat: 43.6953, lon: 7.2811 },
     photo: 'https://images.unsplash.com/photo-1643914729809-4aa59fdc4c17', // Baie des Anges (Unsplash, très haute définition)
   },
 
