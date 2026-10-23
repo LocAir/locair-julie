@@ -31,10 +31,10 @@ body.nuit{
   --ombre-presse:0 1px 2px rgba(0,0,0,.4);
 }
 body.nuit .rail .logo-jour,body:not(.nuit) .rail .logo-nuit{display:none}
-body.nuit .tuile.photo,body.nuit .annonce,body.nuit .carte .image,body.nuit .fiche .photo{filter:brightness(.88) saturate(.95)}
+body.nuit .tuile.photo:not(.vedette),body.nuit .annonce,body.nuit .carte .image,body.nuit .fiche .photo{filter:brightness(.88) saturate(.95)}
 body.nuit .veille .diapo .fond{filter:brightness(.75)}
 /* Pastilles posées sur les photos : sombres la nuit, texte clair */
-body.nuit .etiquette:not(.idee .etiquette),body.nuit .vedette .decouvrir,body.nuit .fermer,body.nuit .retour{background:rgba(20,27,38,.9);color:var(--encre);border-color:var(--trait)}
+body.nuit .etiquette:not(.idee .etiquette),body.nuit .fermer,body.nuit .retour{background:rgba(20,27,38,.9);color:var(--encre);border-color:var(--trait)}
 body{transition:background-color 1.2s}
 
 /* ── Animation d'arrivée sur l'accueil : les cases apparaissent l'une après l'autre ── */
@@ -117,26 +117,57 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 .verre .temp{font-family:var(--serif);font-size:clamp(22px,3.4vh,30px);line-height:1}
 .verre .temp:empty,.verre .ciel:empty{display:none}
 .verre .ciel{font-size:14px;opacity:.9}
-/* Carte « À la une » : réservée à la formule la plus haute (clients Exclusivité) */
-.vedette{grid-area:vedette;background:#1b2430!important}
+/* Carte « À la une » : réservée à la formule la plus haute (clients Exclusivité).
+   Traitement « magazine de luxe » : passe-partout doré, bandeau de titre, offre en écrin, bouton en verre. */
+.vedette{grid-area:vedette;background:#11161e!important;container-type:inline-size;padding:clamp(22px,2.6vw,38px)!important;justify-content:space-between!important}
 .vedette .fond{position:absolute!important;inset:0;z-index:0;background:#1b2430 center/cover no-repeat;animation:fondu 1.2s ease both,zoomlent 14s ease-out both}
 @keyframes fondu{from{opacity:0}}
 @keyframes zoomlent{from{transform:scale(1.07)}to{transform:scale(1)}}
-.vedette::before{z-index:1;background:linear-gradient(90deg,rgba(10,14,20,.38),rgba(10,14,20,0) 62%),linear-gradient(180deg,rgba(10,14,20,.2),rgba(10,14,20,0) 30%,rgba(10,14,20,.12) 50%,rgba(10,14,20,.8))!important}
+.vedette::before{z-index:1;background:radial-gradient(130% 95% at 0% 100%,rgba(8,11,16,.82),rgba(8,11,16,0) 62%),
+  linear-gradient(180deg,rgba(8,11,16,.42),rgba(8,11,16,0) 26%,rgba(8,11,16,0) 46%,rgba(8,11,16,.55))!important}
+.vedette .cadre{position:absolute;inset:10px;z-index:1;border:1px solid rgba(243,226,191,.3);border-radius:calc(var(--r) - 7px);pointer-events:none}
 .vedette > :not(.fond){z-index:2;transition:opacity .35s}
-.vedette.bascule > :not(.fond):not(.points){opacity:0}
-.vedette > .etiquette{position:relative!important;top:auto;left:auto;align-self:flex-start;margin-bottom:auto}
-.vedette .nom{font-family:var(--serif);font-weight:400;font-size:clamp(36px,min(4.6vw,8.5vh),76px);line-height:.95;margin:10px 0 10px}
-.vedette .accv{font-size:clamp(15px,2.2vh,18px);opacity:.9;max-width:34ch}
-.vedette .offre{font-family:var(--serif);font-style:italic;font-size:clamp(19px,2.8vh,24px);color:#f3e2bf;display:flex;align-items:center;gap:14px;margin-top:14px}
-.vedette .offre::before{content:"";width:30px;height:1px;background:currentColor}
-.vedette .offre:empty{display:none}
-.vedette .bas{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:clamp(10px,2.4vh,22px);flex-wrap:wrap}
-.vedette .meta{color:rgba(255,255,255,.88);font-size:14px}
-.vedette .etat{color:#bfe3c9} .vedette .etat.ferme{color:#f0c1bb}
-.vedette .decouvrir{display:inline-flex;align-items:center;gap:10px;height:50px;padding:0 24px;border-radius:999px;background:rgba(251,248,243,.94);color:var(--encre);
-  font-size:12px;letter-spacing:.2em;text-transform:uppercase}
-.vedette .decouvrir::after{content:"→";letter-spacing:0;font-size:16px}
+.vedette.bascule .v-corps,.vedette.bascule .v-label{opacity:0}
+.v-haut{display:flex;align-items:center;gap:14px;font-size:11px;letter-spacing:.26em;text-transform:uppercase;line-height:1;text-shadow:0 1px 10px rgba(0,0,0,.5)}
+.v-label{display:inline-flex;align-items:center;gap:12px;color:#f3e2bf;font-weight:400;transition:opacity .35s}
+.v-label::before{content:"";width:28px;height:1px;background:currentColor}
+.v-pub{color:rgba(255,255,255,.72);padding-left:14px;border-left:1px solid rgba(255,255,255,.3)}
+.v-num{margin-left:auto;font-family:var(--serif);font-size:15px;letter-spacing:.08em;color:rgba(255,255,255,.7)}
+.v-num b{font-weight:500;font-size:19px;color:#fff}
+.v-prog{width:clamp(40px,6cqi,72px);height:1px;background:rgba(255,255,255,.28);overflow:hidden}
+.v-prog i{display:block;height:100%;background:#f3e2bf;transform-origin:0 50%;animation:vprog 7s linear both}
+@keyframes vprog{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.v-corps{display:flex;flex-direction:column;align-items:flex-start;transition:opacity .35s}
+.v-cat{font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:rgba(255,255,255,.86);margin-bottom:clamp(6px,1.2vh,12px)}
+.vedette .nom{font-family:var(--serif);font-weight:400;font-size:clamp(38px,min(9.2cqi,9vh),84px);line-height:.94;letter-spacing:-.012em}
+.vedette .accv{font-size:clamp(15px,2vh,18px);opacity:.88;max-width:36ch;margin-top:clamp(6px,1.2vh,12px)}
+.vedette .offre{display:inline-flex;align-items:center;gap:12px;margin-top:clamp(12px,2vh,20px);padding:9px 20px 9px 14px;border-radius:999px;
+  font-family:var(--serif);font-style:italic;font-size:clamp(18px,min(2.4cqi,2.8vh),23px);line-height:1.15;color:#f8ead0;
+  background:linear-gradient(120deg,rgba(243,226,191,.2),rgba(243,226,191,.08));border:1px solid rgba(243,226,191,.42);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);max-width:100%}
+.vedette .offre svg{width:20px;height:20px;flex:none;stroke:#f3e2bf;stroke-width:1.4;fill:none}
+.vedette .offre[hidden]{display:none}
+.vedette .bas{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-top:clamp(12px,2.4vh,24px);flex-wrap:wrap;align-self:stretch}
+.vedette .meta{color:rgba(255,255,255,.9);font-size:14px}
+.vedette .etat{color:#bfe3c9} .vedette .etat.ferme{color:#f3e2bf} /* « ouvre à 19h » : une promesse, pas un refus */
+.vedette .decouvrir{display:inline-flex;align-items:center;gap:14px;height:52px;padding:0 7px 0 24px;border-radius:999px;color:#fff;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.42);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  font-size:12px;letter-spacing:.22em;text-transform:uppercase}
+.vedette .decouvrir::after{content:"→";display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#fbf8f3;color:var(--encre);letter-spacing:0;font-size:16px;transition:transform .3s}
+.vedette:active .decouvrir::after{transform:translateX(3px)}
+@media (prefers-reduced-motion:reduce){.v-prog i{animation:none;transform:none}}
+/* Carte étroite : le bandeau reste sur une ligne (titre raccourci si besoin), rien ne se touche */
+.v-haut > *{white-space:nowrap}
+.v-label{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.v-haut{margin-bottom:14px}
+@container (max-width:640px){.v-haut{gap:10px;letter-spacing:.2em}.v-label::before{width:18px}.v-prog{display:none}.vedette .offre{padding:7px 16px 7px 12px}}
+.v-court{display:none}
+@container (max-width:560px){.v-long{display:none}.v-court{display:inline}}
+@container (max-width:520px){.v-num{display:none}.vedette .decouvrir{height:46px;padding-left:18px}.vedette .decouvrir::after{width:34px;height:34px}}
+/* Carte peu haute : l'accroche s'efface, l'offre reste (c'est elle qui compte) */
+@media (max-height:900px) and (min-aspect-ratio:1/1){.vedette .accv{display:none}}
+@media (max-height:760px) and (min-aspect-ratio:1/1){.vedette .v-cat{display:none}}
+.vedette .v-pub{margin-right:4px}
 .etiquette{position:absolute!important;top:18px;left:18px;padding:7px 14px;border-radius:999px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
   background:rgba(251,248,243,.92);color:var(--encre);font-weight:400}
 .points{position:absolute!important;top:26px;right:22px;display:flex;gap:6px}
@@ -467,7 +498,7 @@ body.feuille .app{transform:scale(.94);border-radius:28px;overflow:hidden;filter
 @container (max-width:760px){.verre .coucher{display:none}}
 @container (max-width:520px){.verre .ciel{display:none}}
 /* Petits textes posés sur photo : toujours lisibles, même sur une image claire */
-.vedette #vCat,.vedette .meta,.chrono .lib,.hero .petit,.hero .date{text-shadow:0 1px 12px rgba(0,0,0,.55)}
+.vedette .v-cat,.vedette .meta,.chrono .lib,.hero .petit,.hero .date{text-shadow:0 1px 12px rgba(0,0,0,.55)}
 /* Wi-Fi : le nom ne se coupe jamais au milieu ; case étroite → QR plus petit */
 .wifi{container-type:inline-size}
 .wifi b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal}
@@ -521,7 +552,7 @@ main:has(.bento)::before,body.nuit main:has(.bento)::before{opacity:0}
   .bande{min-height:220px} .annonce{width:250px}
   .promo{grid-template-columns:1fr;min-height:360px} .promo .droite{align-items:flex-start;text-align:left;gap:14px} .chrono{align-items:flex-start}
   .promo::before{background:linear-gradient(180deg,rgba(14,10,6,.55),rgba(14,10,6,.92))}
-  .hero{min-height:440px} .vedette{min-height:500px;padding-top:70px!important} .sejour,.guide{min-height:200px} .cat{min-height:220px}
+  .hero{min-height:440px} .vedette{min-height:500px} .sejour,.guide{min-height:200px} .cat{min-height:220px}
   .vedette .bas{flex-direction:column;align-items:flex-start}
   .infos{grid-template-columns:1fr}
   .selection{grid-template-columns:1fr} .emporter{position:static;order:-1} .emporter img{display:none}
@@ -1013,9 +1044,11 @@ function afficher() {
     const top = tries.filter(c => formule(c.formule).rang === rangMax);
     // Ordre : d'abord ceux qui collent au moment ET sont ouverts, les adresses fermées en dernier
     const score = c => (catsMoment.includes(c.categorie) ? 2 : 0) + (ouverture(c)?.ouvert === false ? 0 : 1.5) + affinite(c);
-    const vedettes = [...top].sort((a, b) => score(b) - score(a));
+    // L'emplacement le plus cher ne montre jamais une adresse fermée (sauf si elle ouvre dans moins de 2 h)
+    const utile = c => { const o = ouverture(c); return !o || o.ouvert || ouverture(c, new Date(Date.now() + 2 * 3600e3))?.ouvert; };
+    const vedettes = (top.some(utile) ? top.filter(utile) : top).sort((a, b) => score(b) - score(a));
     const v = vedettes[0];
-    const etiquetteV = c => `${catsMoment.includes(c.categorie) ? t('suggere')(quand) : t('coupCoeur')} · ${t('partenaire')}`;
+    const etiquetteV = c => catsMoment.includes(c.categorie) ? t('suggere')(quand) : t('coupCoeur');
     const metaV = c => { const d = distance(c); return `${etatHtml(c)}${d ? `<span>${svg('marche')}${d}</span>` : ''}`; };
     const g = [...(D.guides || [])].sort((a, b) => (b.pour?.includes(profil) ? 1 : 0) - (a.pour?.includes(profil) ? 1 : 0))[0];
     const tuilesCat = cats.slice(0, g ? 1 : 2).map((c, i) => {
@@ -1044,11 +1077,14 @@ function afficher() {
       </div>
       ${v ? `<button class="tuile photo vedette touche" id="vedette" data-fiche="${echap(v.id)}">
         <div class="fond" style="${fond(v, 1800)}"></div>
-        <span class="etiquette" id="vEtiq">${etiquetteV(v)}</span>
-        ${vedettes.length > 1 ? `<span class="points">${vedettes.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</span>` : ''}
-        <span class="petit" id="vCat">${echap(tr(categorie(v.categorie), 'nom'))}</span><span class="nom" id="vNom">${echap(v.nom)}</span>
-        <span class="accv" id="vAcc">${echap(tr(v, 'accroche'))}</span><span class="offre" id="vOffre">${echap(offre(v))}</span>
-        <span class="bas"><span class="meta" id="vMeta">${metaV(v)}</span><span class="decouvrir">${t('decouvrir')}</span></span></button>` : ''}
+        <span class="cadre" aria-hidden="true"></span>
+        <span class="v-haut"><span class="v-label"><span class="v-long" id="vEtiq">${etiquetteV(v)}</span><span class="v-court">${t('coupCoeur')}</span></span><span class="v-pub">${t('partenaire')}</span>
+          ${vedettes.length > 1 ? `<span class="v-num"><b id="vNum">01</b> / ${String(vedettes.length).padStart(2, '0')}</span><span class="v-prog"><i id="vProg"></i></span>` : ''}</span>
+        <span class="v-corps">
+          <span class="v-cat" id="vCat">${echap(tr(categorie(v.categorie), 'nom'))}</span><span class="nom" id="vNom">${echap(v.nom)}</span>
+          <span class="accv" id="vAcc">${echap(tr(v, 'accroche'))}</span>
+          <span class="offre" id="vOffreB" ${offre(v) ? '' : 'hidden'}>${svg('cadeau')}<span id="vOffre">${echap(offre(v))}</span></span>
+          <span class="bas"><span class="meta" id="vMeta">${metaV(v)}</span><span class="decouvrir">${t('decouvrir')}</span></span></span></button>` : ''}
       ${D.services?.length ? `<button class="tuile sejour touche" data-aller="services">${svg('sejour')}
         <div><h3>${t('votreSejour')}</h3><p>${t('sejourTexte')}</p><span class="fleche">${t('demander')}</span></div></button>` : ''}
       ${L?.wifi ? `<button class="tuile guide wifi touche" data-aller="services"><span class="petit" style="color:var(--laiton)">${t('wifiLogement')}</span>
@@ -1077,8 +1113,9 @@ function afficher() {
           setTimeout(() => anciens.forEach(f => f.remove()), 1300);
           el.dataset.fiche = c.id;
           $('#vEtiq').textContent = etiquetteV(c); $('#vCat').textContent = tr(categorie(c.categorie), 'nom'); $('#vNom').textContent = c.nom;
-          $('#vAcc').textContent = tr(c, 'accroche'); $('#vOffre').textContent = offre(c); $('#vMeta').innerHTML = metaV(c);
-          el.querySelectorAll('.points i').forEach((p, k) => p.classList.toggle('on', k === i % vedettes.length));
+          $('#vAcc').textContent = tr(c, 'accroche'); $('#vOffre').textContent = offre(c); $('#vOffreB').hidden = !offre(c); $('#vMeta').innerHTML = metaV(c);
+          $('#vNum').textContent = String(i % vedettes.length + 1).padStart(2, '0');
+          const pr = $('#vProg'); pr.replaceWith(pr.cloneNode()); // relance la barre de temps
         };
         if (!url) return changer();
         const img = new Image(); img.onload = img.onerror = changer; img.src = url;
