@@ -42,6 +42,7 @@
   --max:1100px;
   --pad:clamp(20px,5vw,60px);
   --r:14px;
+  --ann-h:40px;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:hidden}
@@ -50,8 +51,19 @@ img{max-width:100%;display:block}
 a{color:inherit;text-decoration:none}
 @media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;animation-duration:.01ms!important}}
 
+/* ── BARRE ANNONCE ── */
+.ann{position:fixed;top:0;left:0;right:0;z-index:101;height:var(--ann-h,40px);overflow:hidden;transition:height .3s cubic-bezier(.22,1,.36,1),opacity .3s cubic-bezier(.22,1,.36,1);background:rgba(10,10,10,.96);border-bottom:1px solid rgba(255,255,255,.06);backdrop-filter:blur(12px);display:flex;align-items:center;justify-content:center}
+.ann.dismissed{height:0!important;opacity:0;pointer-events:none}
+.ann-in{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:500;color:rgba(255,255,255,.65);padding:0 44px 0 16px}
+.ann-in svg{width:14px;height:14px;stroke:var(--gold);fill:none;stroke-width:2;flex-shrink:0}
+.ann-in a{color:rgba(255,255,255,.9);font-weight:700;border-bottom:1px solid rgba(255,255,255,.25);transition:border-color .15s}
+.ann-in a:hover{border-color:rgba(255,255,255,.6)}
+.ann-close{position:absolute;right:12px;top:50%;transform:translateY(-50%);width:24px;height:24px;display:flex;align-items:center;justify-content:center;background:none;border:none;cursor:pointer;color:rgba(255,255,255,.4);transition:color .15s}
+.ann-close:hover{color:#fff}
+.ann-close svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2}
+
 /* ── NAV SIMPLE ── */
-.nav{position:sticky;top:0;z-index:100;background:rgba(0,0,0,.96);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08)}
+.nav{position:sticky;top:var(--ann-h,0px);z-index:100;background:rgba(0,0,0,.96);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.08)}
 .nav-in{max-width:var(--max);margin:0 auto;padding:0 var(--pad);display:flex;align-items:center;justify-content:space-between;height:60px;gap:16px}
 .ps-nav-link{font-size:13px;font-weight:500;color:rgba(255,255,255,.55);transition:color .15s;text-decoration:none}
 .ps-nav-link:hover{color:#fff}
@@ -269,14 +281,18 @@ a{color:inherit;text-decoration:none}
 <body>
 
 <!-- NAV -->
+<div class="ann" id="ann-bar" role="banner" aria-label="Offre en cours">
+  <div class="ann-in">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Express sous 2h disponible — commandez avant 18h ·
+    <a href="/reservation-portasplit">Réserver maintenant</a>
+  </div>
+  <button class="ann-close" id="ann-close" aria-label="Fermer l'annonce"><svg viewBox="0 0 24 24" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+</div>
 <header class="nav">
   <div class="nav-in">
     <a href="/" class="logo lockup" aria-label="Loc'Air, spécialiste du confort thermique"><span class="logo-n">Loc'Air</span><span class="logo-t" aria-hidden="true">Spécialiste du confort thermique</span></a>
-    <nav style="display:flex;align-items:center;gap:24px">
-      <a href="/" class="ps-nav-link">Accueil</a>
-      <a href="/catalogue" class="ps-nav-link">Nos offres</a>
-      <a href="/reservation-portasplit" class="nav-cta">Réserver →</a>
-    </nav>
+    <a href="/reservation-portasplit" class="nav-cta">Réserver →</a>
   </div>
 </header>
 <nav class="breadcrumb" aria-label="Fil d'Ariane"><div class="breadcrumb-in"><a href="/">Accueil</a><span class="breadcrumb-sep" aria-hidden="true">›</span><a href="/catalogue">Catalogue</a><span class="breadcrumb-sep" aria-hidden="true">›</span><span class="breadcrumb-cur" aria-current="page">PortaSplit réversible</span></div></nav>
@@ -747,6 +763,19 @@ function setPrixMode(mode, btn) {
   var defaultMode = (m >= 4 && m <= 8) ? 'libre' : 'abo';
   var btn = document.querySelector('.prix-toggle-btn[data-mode="' + defaultMode + '"]');
   if(btn) setPrixMode(defaultMode, btn);
+})();
+</script>
+<script>
+(function(){
+  var bar=document.getElementById('ann-bar');
+  var btn=document.getElementById('ann-close');
+  if(!bar||!btn)return;
+  try{if(sessionStorage.getItem('ann-dismissed')){bar.classList.add('dismissed');document.documentElement.style.setProperty('--ann-h','0px');}}catch(e){}
+  btn.addEventListener('click',function(){
+    bar.classList.add('dismissed');
+    document.documentElement.style.setProperty('--ann-h','0px');
+    try{sessionStorage.setItem('ann-dismissed','1');}catch(e){}
+  });
 })();
 </script>
 </body>
