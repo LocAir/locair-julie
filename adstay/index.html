@@ -13,7 +13,7 @@
 /* AdStay — application tablette. Ivoire, encre et laiton : l'esprit d'un palace. */
 :root{
   --ivoire:#f5f2ec; --papier:#fdfbf8; --sable:#e9e2d6; --rail-fond:#ece6dc; --encre:#1b2430; --encre2:#2a3442;
-  --texte2:#5b616c; --gris:#8c9099; --laiton:#a8844c; --laiton2:#c9a66b;
+  --texte2:#555b66; --gris:#6f747d; --laiton:#94733d; --laiton2:#c9a66b;
   --trait:rgba(27,36,48,.09);
   --ombre:0 1px 1px rgba(27,36,48,.04),0 6px 14px -8px rgba(27,36,48,.10),0 22px 44px -26px rgba(27,36,48,.30);
   --ombre-presse:0 1px 1px rgba(27,36,48,.06),0 3px 8px -6px rgba(27,36,48,.18);
@@ -51,7 +51,7 @@ body{transition:background-color 1.2s}
 @media (prefers-reduced-motion:reduce){.bento.arrivee > *,.bento.arrivee .hero h1{animation:none}}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
-body{background:var(--ivoire);color:var(--encre);font-family:var(--sans);font-weight:300;overflow:hidden;
+body{font-variant-numeric:lining-nums;background:var(--ivoire);color:var(--encre);font-family:var(--sans);font-weight:300;overflow:hidden;
   user-select:none;-webkit-user-select:none;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left}
 .petit{font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:400}
@@ -91,15 +91,20 @@ main::before{content:"";position:absolute;left:0;right:0;bottom:0;aspect-ratio:1
 body.nuit main::before{opacity:.28}
 main > .ecran{z-index:1}
 /* Grain de papier presque invisible, pour un rendu « papier d'hôtel » plutôt qu'un aplat d'écran */
-body::after{content:"";position:fixed;inset:0;z-index:60;pointer-events:none;opacity:.05;mix-blend-mode:multiply;
+body::after{content:"";position:fixed;inset:0;z-index:60;pointer-events:none;opacity:.035;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
-body.nuit::after{mix-blend-mode:screen;opacity:.035}
+body.nuit::after{opacity:.02}
+/* Tablette modeste (peu de mémoire / de cœurs) : pas de flou ni d'animations en boucle */
+body.leger *{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+body.leger .rail{background:rgba(253,251,248,.94)} body.nuit.leger .rail{background:rgba(20,27,38,.94)}
+body.leger *:not(.piste):not(.v-prog i){animation-iteration-count:1!important}
+body.leger::after{display:none}
 .ecran{position:absolute;inset:0;overflow-y:auto;padding:clamp(18px,2.4vw,36px);-webkit-overflow-scrolling:touch;animation:entre .4s cubic-bezier(.2,.7,.2,1)}
 @keyframes entre{from{opacity:0;transform:translateY(10px)}}
 
 /* Accueil en bento */
-.bento{height:100%;min-height:560px;display:grid;gap:var(--ecart);
-  grid-template-columns:repeat(4,1fr);grid-template-rows:1.5fr .78fr .62fr;
+.bento{height:100%;min-height:0;display:grid;gap:var(--ecart);
+  grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:minmax(0,1.5fr) minmax(0,.78fr) minmax(0,.62fr);
   grid-template-areas:"hero hero vedette vedette" "sejour guide c4 c1" "bande bande bande bande"}
 .tuile{position:relative;border-radius:var(--r);overflow:hidden;background:var(--papier);box-shadow:var(--ombre);display:flex;flex-direction:column;padding:clamp(16px,min(1.8vw,2.6vh),28px);min-height:0;min-width:0}
 .tuile.photo{color:#fff;background:#2a3442 center/cover no-repeat;justify-content:flex-end}
@@ -266,7 +271,7 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 .wifi b{display:block;font-family:var(--serif);font-weight:500;font-size:clamp(19px,min(1.7vw,3.4vh),26px);line-height:1.05;overflow-wrap:anywhere}
 .wifi small{display:block;color:var(--gris);font-size:12px;letter-spacing:.18em;text-transform:uppercase;margin-top:8px}
 .wifi .mdp{font-family:var(--sans);font-weight:400;font-size:clamp(14px,min(1.2vw,2.4vh),18px);letter-spacing:.02em;overflow-wrap:anywhere}
-.wifi .fleche{color:var(--laiton);margin-top:0}
+.wifi .fleche{color:var(--laiton);margin-top:0;white-space:nowrap;letter-spacing:.14em}
 .verre .coucher{font-size:14px;opacity:.9;padding-left:clamp(12px,1.6vw,22px);border-left:1px solid rgba(255,255,255,.3)}
 .verre .coucher:empty{display:none}
 .hero .astuce{display:inline-flex;align-items:center;gap:10px;margin-top:14px;font-size:15px;opacity:.9}
@@ -328,6 +333,13 @@ body.nuit::after{mix-blend-mode:screen;opacity:.035}
 .champ-recherche{display:flex;align-items:center;gap:14px;height:72px;padding:0 26px;border-radius:999px;background:var(--papier);box-shadow:var(--ombre);margin-bottom:var(--ecart)}
 .champ-recherche svg{width:24px;height:24px;stroke:var(--gris);stroke-width:1.5;flex:none}
 .champ-recherche input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:22px;color:var(--encre)}
+.rayons{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:calc(var(--ecart) * 1.4)}
+.rayon{display:flex;align-items:center;gap:12px;height:64px;padding:0 18px;border-radius:16px;background:var(--papier);box-shadow:var(--ombre);font-size:16px}
+.rayon svg{width:24px;height:24px;stroke:var(--laiton);stroke-width:1.4;fill:none;flex:none}
+.rayon b{font-weight:400;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rayon span{color:var(--gris);font-size:13px}
+.hero .langue-mob{display:none!important;position:absolute;top:14px;right:14px;z-index:3;margin:0;background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.3)}
+.hero .langue-mob button{color:#fff}
 .suggestions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:calc(var(--ecart) * 1.6)}
 .suggestions button{height:46px;padding:0 20px;border-radius:999px;border:1px solid var(--trait);background:var(--papier);color:var(--texte2);font-size:15px}
 
@@ -503,6 +515,7 @@ body.feuille .app{transform:scale(.94);border-radius:28px;overflow:hidden;filter
 .wifi{container-type:inline-size}
 .wifi b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal}
 @container (max-width:320px){.wifi img{width:58px;height:58px;padding:4px}.wifi b{font-size:clamp(18px,1.5vw,22px)}}
+@container (max-width:240px){.wifi img{display:none}.wifi .fleche{letter-spacing:.08em;font-size:11px}}
 /* Accueil : le dessin de la baie est caché derrière les cases, il ne dépasse plus entre elles */
 main::before{transition:opacity .6s}
 main:has(.bento)::before,body.nuit main:has(.bento)::before{opacity:0}
@@ -510,7 +523,7 @@ main:has(.bento)::before,body.nuit main:has(.bento)::before{opacity:0}
 
 /* ── Écrans peu hauts : accueil allégé pour que tout tienne ─ */
 @media (max-height:820px) and (min-width:761px) and (min-aspect-ratio:1/1){
-  .bento{grid-template-rows:1.3fr .95fr .62fr}
+  .bento{grid-template-rows:minmax(0,1.3fr) minmax(0,.95fr) minmax(0,.62fr)}
   .hero .region,.hero .astuce,.hero > .petit{display:none}
   .hero h1{font-size:clamp(40px,min(5vw,9vh),80px);margin:4px 0 6px}
   .verre{padding:6px 14px} .verre .coucher{display:none}
@@ -518,6 +531,14 @@ main:has(.bento)::before,body.nuit main:has(.bento)::before{opacity:0}
   .valeur{font-size:clamp(34px,min(3.6vw,7vh),60px)}
   .cases b{height:clamp(34px,5vh,48px)}
   .vedette .accv{display:none}
+}
+/* Paysage : l'accueil tient toujours sur un écran (repli seulement sous 520 px de haut) */
+@media (min-width:761px) and (min-aspect-ratio:1/1){.ecran:has(> .bento){overflow:hidden}}
+@media (max-height:520px) and (min-aspect-ratio:1/1){.ecran:has(> .bento){overflow-y:auto}.bento{height:auto;min-height:520px}}
+.promo,.promo > *{min-height:0}
+@media (max-height:720px) and (min-width:761px) and (min-aspect-ratio:1/1){
+  .ecran:has(> .bento){padding:14px 18px} :root{--ecart:10px}
+  .cases b{height:34px;min-width:36px;font-size:20px} .promo .chez{display:none}
 }
 /* ── Écrans peu hauts : menu resserré ───────────────────── */
 @media (max-height:860px) and (min-width:761px){
@@ -536,6 +557,19 @@ main:has(.bento)::before,body.nuit main:has(.bento)::before{opacity:0}
   .bento:not(.avec-promo){grid-template-areas:"hero hero" "hero hero" "vedette vedette" "vedette vedette" "sejour guide" "c4 c1" "bande bande"}
   .bande{min-height:230px}
 }
+@media (max-aspect-ratio:1/1) and (min-width:761px){
+  .ecran:has(> .bento){overflow:hidden}
+  .bento{height:100%;min-height:0;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:0;
+    grid-template-rows:minmax(0,1.25fr) minmax(0,1.3fr) minmax(0,.78fr) minmax(0,.66fr) minmax(0,.5fr)}
+  .bento.avec-promo{grid-template-areas:"hero hero" "vedette vedette" "promo promo" "sejour guide" "bande bande"}
+  .bento:not(.avec-promo){grid-template-areas:"hero hero" "vedette vedette" "sejour guide" "c4 c1" "bande bande"}
+  .bande{min-height:0}
+}
+/* Portrait de taille moyenne (ex. 768×1024) : on garde l'essentiel dans les grandes cases */
+@media (max-aspect-ratio:1/1) and (min-width:761px) and (max-height:1150px){
+  .hero .region,.hero .astuce,.hero > .petit{display:none} .hero h1{font-size:clamp(40px,7vw,60px);margin:6px 0 8px}
+  .vedette .accv,.vedette .v-cat{display:none} .vedette .nom{font-size:clamp(36px,7.5cqi,60px)}
+}
 @media (max-width:760px){
   .fiche{width:100%;height:calc(100% - 18px);border-radius:28px 28px 0 0}
   .app{grid-template-columns:1fr;grid-template-rows:1fr auto}
@@ -543,8 +577,11 @@ main:has(.bento)::before,body.nuit main:has(.bento)::before{opacity:0}
   .rail .logo,.rail .meteo-rail{display:none}
   .langue{margin:0 0 0 8px;align-self:center;flex:none}
   .parcours::before,.parcours li::before{display:none} .parcours li{grid-template-columns:1fr;gap:6px} .parcours .quand{text-align:left}
-  .nav{flex-direction:row;width:auto}
-  .nav button{width:82px;font-size:11px;padding:4px}
+  .rail{overflow:hidden;padding:6px 6px} .rail .langue,.rail .son{display:none}
+  .nav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:100%;gap:0}
+  .nav button{width:auto;min-width:0;font-size:11px;padding:4px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hero .langue-mob{display:flex!important} .hero > .petit{display:none}
+  .actions-tel{flex-wrap:wrap} .actions-tel a{white-space:nowrap;letter-spacing:.12em;flex:1 1 40%} .actions-tel a.plein{flex-basis:100%}
   .nav .ico{width:44px;height:44px}
   .bento{grid-template-columns:1fr;grid-template-rows:none;grid-auto-rows:auto;grid-template-areas:"hero" "vedette" "sejour" "guide" "c4" "c1"}
   .bento.avec-promo{grid-template-areas:"hero" "promo" "vedette" "bande" "sejour" "guide"}
@@ -606,7 +643,7 @@ let lang = 'fr';
 try { if (localStorage.getItem('adstay-langue') === 'en') lang = 'en'; } catch {}
 const T = {
   fr: {
-    accueil: 'Accueil', rechercher: 'Rechercher', idees: 'Idées', sejour: 'Mon séjour',
+    accueil: 'Accueil', rechercher: 'Rechercher', lieux: 'Adresses', idees: 'Idées', sejour: 'Mon séjour',
     bonjour: 'Bonjour', apresmidi: 'Bon après-midi', bonsoir: 'Bonsoir', bienvenue: 'Bienvenue<br/>à',
     commencer: 'Touchez une case pour commencer', coucher: 'Coucher du soleil',
     suggere: q => `${q}, on vous suggère`, coupCoeur: 'À la une', decouvrir: 'Découvrir', moments: ['Ce matin', 'Ce midi', 'Cet après-midi', 'Ce soir', 'Cette nuit'],
@@ -647,7 +684,7 @@ const T = {
     message: (s, l) => `Bonjour, je souhaite commander : ${s}${l ? ` (logement ${l})` : ''}.`, locale: 'fr-FR',
   },
   en: {
-    accueil: 'Home', rechercher: 'Search', idees: 'Ideas', sejour: 'My stay',
+    accueil: 'Home', rechercher: 'Search', lieux: 'Places', idees: 'Ideas', sejour: 'My stay',
     bonjour: 'Good morning', apresmidi: 'Good afternoon', bonsoir: 'Good evening', bienvenue: 'Welcome<br/>to',
     commencer: 'Tap any tile to start', coucher: 'Sunset',
     suggere: q => `${q}, we suggest`, coupCoeur: 'Featured', decouvrir: 'Discover', moments: ['This morning', 'At lunchtime', 'This afternoon', 'This evening', 'Tonight'],
@@ -941,12 +978,12 @@ const salutation = () => { const h = new Date().getHours(); return h >= 5 && h <
 // ── Menu ─────────────────────────────────────────────────
 let ecran = 'accueil', param = '', recherche = '';
 function menu() {
-  const items = [['accueil', t('accueil'), 'accueil'], ['recherche', t('rechercher'), 'recherche'],
+  // 5 entrées seulement (tient sur tous les écrans) ; les catégories sont dans « Adresses »
+  const items = [['accueil', t('accueil'), 'accueil'], ['recherche', t('lieux'), 'recherche'],
     ...(D.guides?.length ? [['idees', t('idees'), 'idees']] : []),
-    ['selection', t('maSelection'), 'coeur'],
     ...(D.services?.length || L ? [['services', t('sejour'), 'sejour']] : []),
-    ...cats.map(c => ['cat:' + c.id, tr(c, 'court') || tr(c, 'nom'), c.icone])];
-  const actif = ecran === 'cat' ? 'cat:' + param : ecran === 'guide' ? 'idees' : ecran;
+    ['selection', t('maSelection'), 'coeur']];
+  const actif = ecran === 'cat' ? 'recherche' : ecran === 'guide' ? 'idees' : ecran;
   $('#nav').innerHTML = items.map(([id, nom, ico]) =>
     `<button class="touche" data-aller="${id}" aria-current="${id === actif}"><span class="ico">${svg(ico)}</span>${echap(nom)}${
       id === 'selection' && selection.length ? `<span class="nb-sel">${selection.length}</span>` : ''}</button>`).join('');
@@ -1072,6 +1109,7 @@ function afficher() {
         <span class="petit">${echap(D.ville.region || '')}</span>
         <div><span class="petit">${salutation()}${sj?.prenoms ? ` ${echap(sj.prenoms)}` : ''}${profil ? `<button class="profil-actuel" data-aller="profil">${echap(tr((D.profils || []).find(p => p.id === profil), 'nom'))} · ${t('changer')}</button>` : ''}</span><h1>${t('bienvenue')} <em>${echap(D.ville.nom)}</em></h1>
           <p class="date" id="date"></p><span class="astuce"><i></i>${t('commencer')}</span></div>
+        <span class="langue langue-mob">${['fr', 'en'].map(l => `<button data-langue="${l}" aria-pressed="${l === lang}">${l.toUpperCase()}</button>`).join('')}</span>
         <div class="verre"><span class="heure" id="heure"></span><span class="temp" id="temp"></span><span class="ciel" id="ciel"></span><span class="coucher" id="coucher"></span>${sj ? `<span class="sejour-p">${anneau(sj)}${
           sj.depart ? echap(t('departAujourdhui')(heureLibre(L0.depart || ''))) : sj.arrivee ? t('arriveeAujourdhui') : t('nuitsRestantes')(sj.nuits)}</span>` : ''}</div>
       </div>
@@ -1183,8 +1221,9 @@ function afficher() {
       }).join('')}</ol>`;
   }
   if (ecran === 'recherche') {
-    html = entete(t('trouver'), t('rechercher'), '')
-      + `<label class="champ-recherche">${svg('recherche')}<input id="q" type="search" placeholder="${t('placeholder')}" autocomplete="off" value="${echap(recherche)}"/></label>
+    html = entete(t('trouver'), t('lieux'), '')
+      + `<div class="rayons">${cats.map(c => `<button class="rayon touche" data-aller="cat:${c.id}">${svg(c.icone)}<b>${echap(tr(c, 'court') || tr(c, 'nom'))}</b><span>${dans(c.id).length}</span></button>`).join('')}</div>
+      <label class="champ-recherche">${svg('recherche')}<input id="q" type="search" placeholder="${t('placeholder')}" autocomplete="off" value="${echap(recherche)}"/></label>
       <div class="suggestions">${t('motsCles').map(m => `<button class="touche" data-mot="${m}">${m}</button>`).join('')}</div>
       <div class="grille" id="resultats"></div>`;
   }
@@ -1369,6 +1408,7 @@ function reveil(e) {
 ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => addEventListener(ev, reveil, { passive: true }));
 document.addEventListener('contextmenu', e => e.preventDefault());
 
+if ((navigator.deviceMemory || 4) <= 2 || (navigator.hardwareConcurrency || 4) <= 2) document.body.classList.add('leger');
 document.documentElement.lang = lang; $('#inviteTexte').textContent = t('invite');
 diapositives(); // Mode nuit : entre D.nuit.debut et D.nuit.fin (par défaut 22h → 6h30), vérifié chaque minute
 // Ciel de Nice : le fond prend la couleur du ciel du moment, en douceur (recalculé chaque minute).
