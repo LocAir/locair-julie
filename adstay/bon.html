@@ -25,6 +25,7 @@ body{min-height:100vh;color:var(--encre);font-family:Jost,system-ui,sans-serif;f
 .ticket .photo::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,14,20,.1),rgba(10,14,20,.65))}
 .ticket .photo span{position:absolute;left:22px;bottom:16px;z-index:1;color:#fff;font-size:11px;letter-spacing:.2em;text-transform:uppercase}
 .ticket .haut{padding:22px 24px 24px;text-align:center}
+.ticket .pour{font-family:var(--serif);font-style:italic;font-size:20px;color:var(--texte2);margin-bottom:8px}
 .ticket .chez{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--laiton)}
 .ticket h1{font-family:var(--serif);font-weight:500;font-size:34px;line-height:1.05;margin-top:6px}
 .ticket .offre{font-family:var(--serif);font-style:italic;font-size:30px;line-height:1.15;color:#7d6236;margin-top:16px}
@@ -94,7 +95,7 @@ body{min-height:100vh;color:var(--encre);font-family:Jost,system-ui,sans-serif;f
 (async () => {
   await window.ADSTAY_PRET;
   const D = window.ADSTAY, C = window.ADSTAY_CONFIG || {}, q = new URLSearchParams(location.search);
-  const en = q.get('lang') === 'en', id = q.get('f') || '', logement = q.get('l') || '';
+  const en = q.get('lang') === 'en', id = q.get('f') || '', logement = q.get('l') || '', pour = (q.get('pour') || '').slice(0, 60);
   document.documentElement.lang = en ? 'en' : 'fr';
   const T = en ? {
     titre: 'Your voucher', chez: 'Your gift at', valable: d => `Valid until ${d}`, vivant: 'Live voucher', mode: '<b>Show this voucher when you pay.</b> The staff validates it with their code. One use only.',
@@ -160,7 +161,7 @@ body{min-height:100vh;color:var(--encre);font-family:Jost,system-ui,sans-serif;f
     $('#contenu').innerHTML = `
       <div class="ticket ${utilise || expire ? 'fini' : ''} ${expire ? 'expire' : ''}" id="ticket">
         <div class="photo" style="${photo ? `background-image:url('${encodeURI(photo)}')` : ''}"><span>${echap(categorie)}</span></div>
-        <div class="haut"><div class="chez">${T.chez}</div><h1>${echap(c.nom)}</h1>
+        <div class="haut">${pour ? `<div class="pour">${en ? 'For' : 'Pour'} ${echap(pour)}</div>` : ''}<div class="chez">${T.chez}</div><h1>${echap(c.nom)}</h1>
           <div class="offre">${echap(tr(bon, 'offre') || tr(c, 'offre'))}</div></div>
         <div class="coupe"></div>
         <div class="bas">
