@@ -163,6 +163,16 @@ a{color:var(--champagne)}
 .bons-l{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:8px}
 .bons-l div{display:flex;justify-content:space-between;gap:12px;padding:12px 16px;border:1px solid var(--trait);border-radius:2px;font-size:14px}
 .bons-l b{font-weight:400;letter-spacing:.08em}.bons-l span{color:var(--doux)}
+.bilan{margin:6px 0 26px;padding:24px 26px;border:1px solid var(--champagne);border-radius:2px}
+.bilan .phrase{font-family:var(--serif);font-size:clamp(24px,3vw,34px);line-height:1.2;margin:8px 0 14px}
+.bilan .phrase b{font-weight:500;color:var(--vert)}
+.bilan .ticket{color:var(--doux);font-size:14px}
+.bilan input{width:90px;height:38px;margin:0 6px;padding:0 10px;border:1px solid var(--trait);border-radius:2px;background:var(--encre2);color:var(--ivoire);font:inherit}
+@media print{
+  .barre,#onglets,.entete .bouton,.bilan .ticket,.compte{display:none!important}
+  body{background:#fff} .page{max-width:none;padding:0}
+  .bilan{break-inside:avoid}
+}
 </style>
 </head>
 <body>
@@ -469,6 +479,8 @@ async function vueStats(f, jours) {
   const depuis = new Date(Date.now() - (jours - 1) * 864e5); depuis.setHours(0, 0, 0, 0);
   const { data: bonsData } = await sb.from('bons').select('code, cree_le, utilise_le').eq('commercant', f.id).gte('cree_le', depuis.toISOString()).order('cree_le', { ascending: false });
   const bons = bonsData || [], utilises = bons.filter(b => b.utilise_le);
+  // Dépense moyenne saisie une fois par le commerçant (gardée sur son appareil) : sert à estimer le chiffre d'affaires apporté
+  const cleTicket = 'adstay-ticket-' + f.id; let ticket = 0; try { ticket = Number(localStorage.getItem(cleTicket)) || 0; } catch {}
   const lignes = error ? [] : data, origine = orig || [];
   const maxO = Math.max(1, ...origine.map(o => Number(o.vues)));
   const total = k => lignes.reduce((s, l) => s + Number(l[k]), 0);
@@ -479,7 +491,13 @@ async function vueStats(f, jours) {
     <div class="entete"><div><span class="petit">Statistiques · ${jours} derniers jours</span><h2>${echap(f.nom)}</h2></div>
       <div style="display:flex;gap:22px;align-items:center;flex-wrap:wrap">
         ${[7, 30, 90].map(j => `<button class="bouton lien" style="${j === jours ? 'color:var(--ivoire)' : ''}" data-action="periode" data-jours="${j}" data-id="${f.id}">${j} jours</button>`).join('')}
+        <button class="bouton lien" onclick="window.print()">Imprimer le bilan</button>
         <button class="bouton lien" data-action="retour">← Retour</button></div></div>
+    <div class="bilan">
+      <span class="petit">Bilan · du ${new Date(Date.now() - (jours - 1) * 864e5).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })} au ${new Date().toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+      <p class="phrase"><b>${utilises.length}</b> voyageur${utilises.length > 1 ? 's sont venus' : ' est venu'} chez vous grâce à AdStay${ticket && utilises.length ? `, soit environ <b>${(utilises.length * ticket).toLocaleString('fr-FR')} €</b> de chiffre d’affaires` : ''}.</p>
+      <label class="ticket">Dépense moyenne d’un client chez vous : <input id="ticketMoyen" type="number" min="0" step="1" value="${ticket || ''}" placeholder="ex. 45"/> €</label>
+    </div>
     ${f.statut !== 'publie' ? `<p class="message">Cette fiche n’est pas encore publiée : les statistiques démarreront dès qu’elle sera visible sur les tablettes.</p><br/>` : ''}
     <div class="chiffres">
       <div class="chiffre"><b>${vues}</b><span>fiche ouverte par un voyageur</span></div>
@@ -498,6 +516,7 @@ async function vueStats(f, jours) {
       <div class="origine">${origine.map(o => `<div class="o-ligne"><span class="o-nom">${echap(o.logement)}</span>
         <span class="o-barre"><i style="width:${Number(o.vues) / maxO * 100}%"></i></span>
         <span class="o-chiffres"><b>${Number(o.vues)}</b> visite${Number(o.vues) > 1 ? 's' : ''} · ${Number(o.scans)} scan${Number(o.scans) > 1 ? 's' : ''}</span></div>`).join('')}</div>` : ''}`;
+  $('#ticketMoyen')?.addEventListener('change', e => { try { localStorage.setItem(cleTicket, String(Math.max(0, Number(e.target.value) || 0))); } catch {} vueStats(f, jours); });
 }
 
 // ─── Logements et tablettes (admin) ──────────────────────────────────────────

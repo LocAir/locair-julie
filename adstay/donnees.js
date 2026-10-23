@@ -58,6 +58,9 @@ window.ADSTAY = {
   vente: {
     // Places « Exclusivité » vendues par catégorie (la carte « À la une » tourne entre elles).
     placesExclusiviteParCategorie: 1,
+    // Chiffres du réseau affichés en haut de la page de vente. Vide = rien n'est affiché (jamais de chiffre inventé).
+    // Ex. { valeur: '120', texte: 'logements équipés' }, { valeur: '2 400', texte: 'voyageurs par mois' }, { valeur: '310', texte: 'bons validés le mois dernier' }
+    chiffres: [],
     comparatif: [
       { texte: 'Fiche complète : photo, description, adresse, horaires, téléphone', formules: ['essentielle', 'premium', 'exclusivite'] },
       { texte: 'Badges « Ouvert maintenant » et « 8 min à pied »', formules: ['essentielle', 'premium', 'exclusivite'] },
