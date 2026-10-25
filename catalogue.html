@@ -532,41 +532,6 @@ a{color:inherit;text-decoration:none}
   );
 }
 
-/* ── Urgency / Express card (dark) ── */
-.bcard-urg{
-  border-radius:22px;overflow:hidden;
-  background:#0A0A0A;
-  display:flex;align-items:center;justify-content:space-between;
-  gap:20px;padding:24px 28px;
-}
-.bcard-urg-left{display:flex;flex-direction:column;gap:4px}
-.bcard-urg-eye{
-  font-size:10px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
-  color:#FF6200;margin-bottom:4px;
-}
-.bcard-urg-title{
-  font-size:clamp(20px,2.2vw,28px);font-weight:700;
-  letter-spacing:-.035em;color:#fff;line-height:1.1;
-}
-.bcard-urg-sub{font-size:13px;color:rgba(255,255,255,.4);margin-top:6px}
-.bcard-urg-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
-.bcard-urg-timer-label{
-  font-size:9px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;
-  color:rgba(255,255,255,.3);
-}
-.bcard-urg-countdown{
-  font-size:clamp(28px,2.5vw,36px);font-weight:900;letter-spacing:-.06em;
-  color:#fff;line-height:1;
-}
-.bcard-urg-btn{
-  display:inline-flex;align-items:center;justify-content:center;
-  height:42px;padding:0 22px;border-radius:100px;
-  background:#FF6200;color:#fff;
-  font-size:13px;font-weight:700;letter-spacing:.02em;
-  text-decoration:none;white-space:nowrap;
-  transition:background .15s,transform .1s;flex-shrink:0;
-}
-.bcard-urg-btn:hover{background:#CC4E00;transform:translateY(-1px)}
 
 /* Rafraîchisseur — wide bottom card */
 .bcard--wide{
@@ -582,9 +547,6 @@ a{color:inherit;text-decoration:none}
 }
 .bcard--wide .bcard-name{font-size:clamp(22px,2.5vw,32px)}
 
-/* pulse on countdown */
-@keyframes urg-pulse{0%,100%{opacity:1}50%{opacity:.7}}
-.bcard-urg-countdown{animation:urg-pulse 2s ease-in-out infinite}
 
 /* ── responsive ── */
 @media(max-width:760px){
@@ -596,9 +558,7 @@ a{color:inherit;text-decoration:none}
   .bcard--tall{grid-row:auto;min-height:360px}
   .bcard-inner{min-height:360px}
   .bcard--wide{height:auto;min-height:200px}
-  .bcard-urg{flex-direction:column;align-items:flex-start;gap:16px;padding:20px}
-  .bcard-urg-right{align-items:flex-start}
-  .bcard-urg-btn{align-self:stretch;text-align:center}
+
 }
 @media(max-width:480px){
   .bcard--tall .bcard-inner,.bcard-inner{min-height:300px}
@@ -717,20 +677,6 @@ a{color:inherit;text-decoration:none}
           </div>
         </div>
       </a>
-
-      <!-- Urgence / Express — bottom right -->
-      <div class="bcard-urg" id="express-card">
-        <div class="bcard-urg-left">
-          <p class="bcard-urg-eye">EXPRESS · LIVRAISON SOUS 2H</p>
-          <p class="bcard-urg-title">Livré avant <strong>19h</strong><br>ce soir</p>
-          <p class="bcard-urg-sub">Côte d’Azur · 7j/7 · dès 8h</p>
-        </div>
-        <div class="bcard-urg-right">
-          <p class="bcard-urg-timer-label">FERME DANS</p>
-          <p class="bcard-urg-countdown" id="express-countdown">-- h --</p>
-          <a href="/reservation-climatiseur" class="bcard-urg-btn">Réserver Express →</a>
-        </div>
-      </div>
 
     </div>
 
@@ -940,32 +886,6 @@ function setOffer(btn, offerId) {
   if(btn) setOffer(btn, defaultOffer);
 })();
 
-// Express countdown
-(function() {
-  var el = document.getElementById('express-countdown');
-  if (!el) return;
-  function update() {
-    var now = new Date();
-    var cutoff = new Date(now);
-    cutoff.setHours(19, 0, 0, 0);
-    if (now >= cutoff) {
-      el.textContent = 'Demain';
-      var card = document.getElementById('express-card');
-      if (card) {
-        card.querySelector('.bcard-urg-title').innerHTML = 'Express disponible<br>dès demain 8h';
-        var lbl = card.querySelector('.bcard-urg-timer-label');
-        if (lbl) lbl.textContent = '';
-      }
-      return;
-    }
-    var diff = Math.floor((cutoff - now) / 1000);
-    var h = Math.floor(diff / 3600);
-    var m = Math.floor((diff % 3600) / 60);
-    el.textContent = h + ' h ' + (m < 10 ? '0' : '') + m;
-  }
-  update();
-  setInterval(update, 30000);
-})();
 
 </script>
 </body>
