@@ -228,29 +228,34 @@ a{color:inherit;text-decoration:none}
 /* ═══════════════════════════════════════════════
    BENTO GRID — AdStay-inspired product showcase
    ═══════════════════════════════════════════════ */
-.bento{background:#F3EDE3;padding:0 var(--pad) clamp(32px,4vw,48px)}
+.bento{background:#fff;padding:clamp(24px,3vw,36px) var(--pad) clamp(48px,6vw,72px)}
 .bento-in{max-width:var(--max);margin:0 auto}
 
 .bento-grid{
   display:grid;
   grid-template-columns:1.15fr 0.85fr;
-  grid-template-rows:460px 200px;
-  gap:14px;
-  margin-bottom:14px;
+  grid-template-rows:500px 185px;
+  gap:16px;
+  margin-bottom:16px;
 }
 .bcard-full-row{grid-column:1/-1}
 
 /* ── base card ── */
 .bcard{
   position:relative;
-  border-radius:22px;
+  border-radius:24px;
   overflow:hidden;
   display:block;
   text-decoration:none;
   color:#fff;
+  box-shadow:0 2px 4px rgba(0,0,0,.14),0 8px 28px rgba(0,0,0,.2);
+  transition:box-shadow .3s ease,transform .3s ease;
 }
+.bcard:hover{box-shadow:0 4px 8px rgba(0,0,0,.16),0 20px 52px rgba(0,0,0,.28);transform:translateY(-2px)}
 /* PortaSplit spans 2 rows */
 .bcard--tall{grid-row:1/3}
+.bcard--tall::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,#FF6200 0%,rgba(255,98,0,.25) 100%);z-index:4;pointer-events:none}
 
 /* image fill */
 .bcard-bg{
@@ -259,7 +264,11 @@ a{color:inherit;text-decoration:none}
   transition:transform .6s ease;
 }
 .bcard:hover .bcard-bg{transform:scale(1.03)}
-.bcard--tall{--bcard-bg:linear-gradient(160deg,#1c1c2e 0%,#0e0e1c 100%)}
+/* grain overlay */
+.bcard::after{content:'';position:absolute;inset:0;z-index:3;pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)' opacity='.5'/%3E%3C/svg%3E");
+  opacity:.045;mix-blend-mode:overlay}
+.bcard--tall{--bcard-bg:linear-gradient(160deg,#1a1628 0%,#0d0b19 55%,#080710 100%)}
 .bcard--orange{--bcard-bg:linear-gradient(160deg,#2c1a08 0%,#180d04 100%)}
 .bcard-prod-wrap{
   position:absolute;
@@ -286,12 +295,12 @@ a{color:inherit;text-decoration:none}
 .bcard-grad{
   position:absolute;
   bottom:0;left:0;right:0;
-  height:55%;
+  height:64%;
   background:linear-gradient(
     to bottom,
     rgba(0,0,0,0)   0%,
-    rgba(0,0,0,.5)  50%,
-    rgba(0,0,0,.82) 100%
+    rgba(0,0,0,.44) 45%,
+    rgba(0,0,0,.9)  100%
   );
 }
 
@@ -303,26 +312,28 @@ a{color:inherit;text-decoration:none}
   display:flex;
   flex-direction:column;
   justify-content:space-between;
-  padding:18px 20px 20px;
+  padding:20px 22px 24px;
 }
 
 /* top row */
 .bcard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
 .bcard-eyebrow{
   font-size:10px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;
-  color:rgba(255,255,255,.7);
-  background:rgba(0,0,0,.35);
-  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  padding:5px 11px;border-radius:100px;
+  color:rgba(255,255,255,.65);
+  background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  padding:4px 12px;border-radius:100px;
   white-space:nowrap;
 }
 .bcard-status{
   display:flex;align-items:center;gap:6px;
   font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
-  color:rgba(255,255,255,.85);
-  background:rgba(0,0,0,.3);
-  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  padding:5px 11px;border-radius:100px;white-space:nowrap;
+  color:rgba(255,255,255,.8);
+  background:rgba(0,0,0,.25);
+  border:1px solid rgba(255,255,255,.1);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  padding:4px 12px;border-radius:100px;white-space:nowrap;
 }
 .bcard-status i{
   width:6px;height:6px;border-radius:50%;
@@ -334,34 +345,35 @@ a{color:inherit;text-decoration:none}
 .bcard-bot{display:flex;flex-direction:column;gap:6px}
 .bcard-name{
   font-size:clamp(26px,3vw,38px);font-weight:700;
-  letter-spacing:-.045em;line-height:1.05;
+  letter-spacing:-.05em;line-height:1.0;
   text-wrap:balance;color:#fff;
-  text-shadow:0 2px 12px rgba(0,0,0,.4);
+  text-shadow:0 2px 20px rgba(0,0,0,.55);
 }
-.bcard--tall .bcard-name{font-size:clamp(32px,3.8vw,50px)}
+.bcard--tall .bcard-name{font-size:clamp(34px,4.2vw,56px)}
 .bcard-sub{
-  font-size:13px;color:rgba(255,255,255,.6);
-  line-height:1.4;max-width:32ch;
+  font-size:12.5px;color:rgba(255,255,255,.45);
+  line-height:1.45;max-width:30ch;
 }
 .bcard-pr{
   display:flex;align-items:center;justify-content:space-between;
-  gap:12px;margin-top:8px;
+  gap:14px;margin-top:12px;
 }
 .bcard-price{
   font-size:clamp(30px,2.8vw,42px);font-weight:900;letter-spacing:-.06em;
   color:#fff;
 }
-.bcard-price span{font-size:.38em;font-weight:500;letter-spacing:0;opacity:.75;margin-left:2px}
+.bcard-price span{font-size:.36em;font-weight:400;letter-spacing:.01em;opacity:.5;margin-left:3px}
 .bcard-cta{
   display:inline-flex;align-items:center;justify-content:center;
   height:44px;padding:0 22px;border-radius:100px;
-  background:rgba(255,255,255,.92);
-  border:1px solid rgba(255,255,255,.92);
-  color:#0A0A0A;font-size:13px;font-weight:700;letter-spacing:.02em;
-  white-space:nowrap;transition:background .2s,transform .15s;
+  background:rgba(255,255,255,.1);
+  border:1px solid rgba(255,255,255,.22);
+  color:rgba(255,255,255,.9);font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  white-space:nowrap;transition:background .2s,border-color .2s,transform .15s;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
 }
-.bcard:hover .bcard-cta{background:#fff;transform:translateY(-1px)}
-.bcard--orange .bcard-cta{background:#FF6200;border-color:#FF6200;color:#fff}
+.bcard:hover .bcard-cta{background:rgba(255,255,255,.18);border-color:rgba(255,255,255,.38);transform:translateY(-1px)}
+.bcard--orange .bcard-cta{background:#FF6200;border-color:#FF6200;color:#fff;backdrop-filter:none;-webkit-backdrop-filter:none;text-transform:none;letter-spacing:.02em;font-size:13px}
 .bcard--orange:hover .bcard-cta{background:#CC4E00;border-color:#CC4E00}
 
 /* orange accent card (Climatiseur) */
@@ -378,7 +390,7 @@ a{color:inherit;text-decoration:none}
 
 /* Rafraîchisseur — wide bottom card */
 .bcard--wide{
-  height:220px;
+  height:200px;
   background:linear-gradient(135deg,#111 0%,#2a1408 60%,#1a0a00 100%);
 }
 .bcard--wide .bcard-grad{
