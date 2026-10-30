@@ -78,6 +78,8 @@ alter table public.commercants add column if not exists lat            double pr
 alter table public.commercants add column if not exists lon            double precision;
 alter table public.commercants add column if not exists creneaux       text not null default '';   -- ex. '12:00-14:30 19:00-22:30'
 alter table public.commercants add column if not exists fermes         text[] not null default '{}'; -- ex. {lun,dim}
+-- Option payante « L'Ouverture » : publicité plein écran sur l'accueil (activée par un admin seulement)
+alter table public.commercants add column if not exists ouverture      boolean not null default false;
 alter table public.formules    add column if not exists badge_en       text not null default '';
 update public.formules set badge_en = 'Recommended' where id = 'premium' and badge_en = '';
 update public.formules set badge_en = 'Our pick' where id = 'exclusivite' and badge_en = '';
@@ -92,10 +94,12 @@ begin
   if tg_op = 'INSERT' then
     new.proprietaire := auth.uid();
     new.formule := 'essentielle';
+    new.ouverture := false;
     if new.statut not in ('brouillon', 'en_attente') then new.statut := 'brouillon'; end if;
   else
     new.proprietaire := old.proprietaire;
     new.formule := old.formule;
+    new.ouverture := old.ouverture;
     if new.statut is distinct from old.statut
        and not (old.statut = 'brouillon' and new.statut = 'en_attente') then
       new.statut := old.statut;
@@ -478,3 +482,7 @@ language sql stable security definer set search_path = public as $$
   from public.commercants c
   where public.est_admin() or c.proprietaire = auth.uid();
 $$;
+
+-- ─── Option « L'Ouverture » : compter les affichages plein écran ────────────
+alter table public.evenements drop constraint if exists evenements_type_check;
+alter table public.evenements add constraint evenements_type_check check (type in ('vue', 'diaporama', 'scan', 'ouverture'));

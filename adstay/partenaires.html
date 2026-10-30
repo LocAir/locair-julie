@@ -144,6 +144,17 @@ h1 b{font-style:italic}
 .t-touches{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .t-touches button{height:48px;border:0;border-radius:14px;background:#efe9df;font:inherit;font-size:22px;cursor:pointer}
 @media (max-width:760px){.demo-bon{grid-template-columns:1fr}}
+.option-ouv{display:grid;grid-template-columns:1.6fr 1fr;gap:28px;align-items:center;margin-top:20px;padding:30px 32px;border-radius:4px;color:#f4efe7;
+  background:linear-gradient(120deg,#11161e,#1f2a3a);border:1px solid rgba(201,166,107,.55)}
+.option-ouv h3{font-family:var(--serif);font-weight:300;font-size:44px;line-height:1;margin:10px 0 10px}
+.option-ouv p{color:rgba(244,239,231,.75)}
+.option-ouv .badge-o{font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:#d9bd8a}
+.option-ouv .droite-o{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.option-ouv .prix{color:#f1dfb6;margin:0}
+.option-ouv b{font-weight:400;font-size:14px;letter-spacing:.1em;text-transform:uppercase}
+.option-ouv b.ok{color:#9fd3b1} .option-ouv b.complet{color:#f0b9a3}
+.option-ouv a{display:inline-flex;align-items:center;height:50px;padding:0 26px;border-radius:2px;background:#d9bd8a;color:#1b1206;text-decoration:none;font-size:12px;letter-spacing:.22em;text-transform:uppercase;font-weight:500}
+@media (max-width:760px){.option-ouv{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -168,6 +179,9 @@ h1 b{font-style:italic}
 
   <h2>Où votre établissement apparaît</h2>
   <div class="emplacements">
+    <div class="emplacement"><img src="/adstay/apercus/ouverture.webp" alt="Publicité plein écran L'Ouverture sur l'accueil de la tablette" loading="lazy"/>
+      <div><b>L’Ouverture, le plein écran</b><span>Quand le voyageur revient vers la tablette, votre établissement s’ouvre en plein écran, en très haute définition, avec votre offre et le QR de son bon cadeau. Une seule maison à la fois, au plus une fois toutes les 3 heures : on s’en souvient.</span>
+        <span class="tags"><i class="or">Option</i></span></div></div>
     <div class="emplacement"><img src="/adstay/apercus/accueil.webp" alt="Accueil de la tablette avec la carte À la une" loading="lazy"/>
       <div><b>La carte « À la une »</b><span>La moitié de l’écran d’accueil, la première chose que voit le voyageur. Elle met en avant l’adresse qui correspond au moment : un café le matin, un dîner le soir.</span>
         <span class="tags"><i class="or">Exclusivité</i></span></div></div>
@@ -213,6 +227,7 @@ h1 b{font-style:italic}
 
   <h2>Nos formules</h2>
   <div class="formules" id="formules"></div>
+  <div class="option-ouv" id="optionOuv" hidden></div>
 
   <details class="replie"><summary>Comparer les formules en détail</summary>
   <div class="tableau"><table id="comparatif"></table></div></details>
@@ -278,6 +293,17 @@ $('formules').innerHTML = tri.map(f => `
       <ul style="margin-top:8px">${places.map(p => `<li><span>${echap(p.nom)}</span><span class="${p.libres ? 'ok' : 'complet'}">${p.libres ? 'disponible' : 'complet'}</span></li>`).join('')}</ul></div>` : ''}
     <div class="choisir"><a href="/adstay/espace?formule=${encodeURIComponent(f.id)}">Choisir ${echap(f.nom)}</a></div>
   </div>`).join('');
+
+// Option « L'Ouverture » : prix et places restantes (calculées depuis les fiches en ligne)
+const O = V.optionOuverture;
+if (O) {
+  const prises = (D.commercants || []).filter(m => m.ouverture).length, libres = Math.max(0, (O.places || 0) - prises);
+  $('optionOuv').innerHTML = `<div><span class="badge-o">Option · avec Premium ou Exclusivité</span><h3>${echap(O.nom)}</h3><p>${echap(O.pitch)}</p></div>
+    <div class="droite-o"><div class="prix">+${echap(O.prix)} €<small> / mois</small></div>
+      <b class="${libres ? 'ok' : 'complet'}">${libres ? `${libres} place${libres > 1 ? 's' : ''} sur ${O.places}` : 'Complet'}</b>
+      <a href="/adstay/espace?formule=exclusivite">Réserver L’Ouverture</a></div>`;
+  $('optionOuv').hidden = false;
+}
 
 // Comparatif détaillé
 $('comparatif').innerHTML = `<thead><tr><th></th>${tri.map(f => `<th class="${f.rang === rangMax ? 'top' : ''}">${echap(f.nom)}<small>${echap(f.prix)} € / mois</small></th>`).join('')}</tr></thead>

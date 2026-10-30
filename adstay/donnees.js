@@ -58,6 +58,10 @@ window.ADSTAY = {
   vente: {
     // Places « Exclusivité » vendues par catégorie (la carte « À la une » tourne entre elles).
     placesExclusiviteParCategorie: 1,
+    // Option « L'Ouverture » : la publicité plein écran (4K) qui s'ouvre sur l'accueil.
+    // Vendue en plus d'une formule Premium ou Exclusivité ; peu de places pour qu'elle reste précieuse.
+    optionOuverture: { nom: 'L’Ouverture', prix: 99, places: 3,
+      pitch: 'Votre établissement en plein écran, en très haute définition, au moment où le voyageur revient vers la tablette. Une seule maison à la fois, jamais plus d’une fois toutes les 3 heures : un vrai moment, pas une publicité de plus.' },
     // Chiffres du réseau affichés en haut de la page de vente. Vide = rien n'est affiché (jamais de chiffre inventé).
     // Ex. { valeur: '120', texte: 'logements équipés' }, { valeur: '2 400', texte: 'voyageurs par mois' }, { valeur: '310', texte: 'bons validés le mois dernier' }
     chiffres: [],
@@ -73,6 +77,7 @@ window.ADSTAY = {
       { texte: 'Offre du jour avec compte à rebours en direct', formules: ['premium', 'exclusivite'] },
       { texte: 'Plein écran sur l’écran de veille (avec QR)', formules: ['premium', 'exclusivite'], detail: { premium: '1 passage par tour', exclusivite: '2 passages par tour' } },
       { texte: 'Grande carte « À la une » sur l’accueil', formules: ['exclusivite'] },
+      { texte: 'L’Ouverture : plein écran 4K sur l’accueil (en option)', formules: ['premium', 'exclusivite'], detail: { premium: 'en option', exclusivite: 'en option' } },
       { texte: 'Exclusivité dans votre catégorie', formules: ['exclusivite'] },
       { texte: 'Bilan mensuel commenté', formules: ['exclusivite'] },
     ],
@@ -194,7 +199,7 @@ window.ADSTAY = {
       description: 'Trattoria familiale, pâtes faites maison chaque matin.',
       description_en: 'Family trattoria, pasta made fresh every morning.',
       adresse: 'Place Garibaldi, Nice', tel: '04 00 00 00 03', lat: 43.7010, lon: 7.2810, creneaux: '12:00-23:00', offre: 'Limoncello offert en fin de repas', offre_en: 'Free limoncello after your meal', lien: '' },
-    { id: 'c4', pour: ['couple', 'amis'], photo: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187', nom: 'Le Comptoir Bleu', categorie: 'bars', formule: 'premium',
+    { id: 'c4', pour: ['couple', 'amis'], photo: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187', nom: 'Le Comptoir Bleu', categorie: 'bars', formule: 'premium', ouverture: true,
       accroche: 'Cocktails au coucher du soleil', accroche_en: 'Sunset cocktails',
       description: 'Bar à cocktails avec vue sur la Baie des Anges. DJ le vendredi et le samedi.',
       description_en: 'Cocktail bar overlooking the Baie des Anges. DJ on Fridays and Saturdays.',
@@ -205,7 +210,7 @@ window.ADSTAY = {
       description: 'Café, viennoiseries et jus pressés à deux pas du marché aux fleurs.',
       description_en: 'Coffee, pastries and fresh juice, steps from the flower market.',
       adresse: 'Cours Saleya, Nice', tel: '04 00 00 00 05', lat: 43.6955, lon: 7.2755, creneaux: '07:00-18:00', offre: 'Café offert avec un petit-déjeuner', offre_en: 'Free coffee with any breakfast', lien: '' },
-    { id: 'c6', pour: ['couple', 'amis', 'famille'], photo: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e', nom: 'Azur Beach Club', categorie: 'plages', formule: 'exclusivite',
+    { id: 'c6', pour: ['couple', 'amis', 'famille'], photo: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e', nom: 'Azur Beach Club', categorie: 'plages', formule: 'exclusivite', ouverture: true,
       accroche: 'Transats, déjeuner les pieds dans l’eau', accroche_en: 'Sunbeds and lunch by the water',
       description: 'Plage privée avec transats, restaurant et service au matelas. Réservation conseillée en été.',
       description_en: 'Private beach with sunbeds, restaurant and service to your lounger. Booking advised in summer.',
