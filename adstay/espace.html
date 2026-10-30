@@ -407,6 +407,8 @@ function vueFormulaire(f) {
       ${admin ? `<div class="admin-bloc"><span class="petit">Réglages admin</span>
         <div class="champ"><label for="f-statut">Statut</label><select id="f-statut">${Object.entries(STATUTS).map(([k, n]) => `<option value="${k}" ${k === v.statut ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
         <div class="champ"><label for="f-formule">Formule active</label><select id="f-formule">${formules.map(x => `<option value="${x.id}" ${x.id === v.formule ? 'selected' : ''}>${echap(x.nom)} — ${echap(x.prix)} €</option>`).join('')}</select></div>
+        <div class="champ large"><label><input type="checkbox" id="f-ouverture" ${v.ouverture ? 'checked' : ''}/> Option « L’Ouverture » (pop-up plein écran sur l’accueil${D.vente?.optionOuverture ? `, ${D.vente.optionOuverture.prix} € / mois` : ''})</label>
+          <small>Active seulement avec une formule Premium ou Exclusivité et une offre. Affichée au plus une fois toutes les 3 h par tablette, jamais la nuit.</small></div>
       </div>` : ''}
       ${f ? `<h3 class="bloc-titre">Bons cadeaux<small>Quand un voyageur vous montre son bon, touchez « Valider » sur son téléphone et tapez ce code. Gardez-le pour votre équipe.</small></h3>
         <div class="champ"><label for="f-pin">Code de validation (4 chiffres)</label><input id="f-pin" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" placeholder="…"/>
@@ -456,7 +458,7 @@ function vueFormulaire(f) {
         if (lat) Object.assign(donnees, { lat, lon });
       } catch {}
     }
-    if (admin) { donnees.statut = val('statut'); donnees.formule = val('formule'); }
+    if (admin) { donnees.statut = val('statut'); donnees.formule = val('formule'); donnees.ouverture = $('#f-ouverture').checked; }
     else if (e.submitter?.dataset.envoi === 'valider') donnees.statut = 'en_attente';
     const { error } = f
       ? await sb.from('commercants').update(donnees).eq('id', f.id)
@@ -479,6 +481,9 @@ async function vueStats(f, jours) {
   const depuis = new Date(Date.now() - (jours - 1) * 864e5); depuis.setHours(0, 0, 0, 0);
   const { data: bonsData } = await sb.from('bons').select('code, cree_le, utilise_le').eq('commercant', f.id).gte('cree_le', depuis.toISOString()).order('cree_le', { ascending: false });
   const bons = bonsData || [], utilises = bons.filter(b => b.utilise_le);
+  // Option « L'Ouverture » : nombre d'affichages plein écran sur la période
+  let ouvertures = 0;
+  if (f.ouverture) try { const r = await sb.from('evenements').select('id', { count: 'exact', head: true }).eq('commercant', f.id).eq('type', 'ouverture').gte('created_at', depuis.toISOString()); ouvertures = r.count || 0; } catch {}
   // Dépense moyenne saisie une fois par le commerçant (gardée sur son appareil) : sert à estimer le chiffre d'affaires apporté
   const cleTicket = 'adstay-ticket-' + f.id; let ticket = 0; try { ticket = Number(localStorage.getItem(cleTicket)) || 0; } catch {}
   const lignes = error ? [] : data, origine = orig || [];
@@ -505,6 +510,7 @@ async function vueStats(f, jours) {
       <div class="chiffre"><b style="color:var(--vert)">${utilises.length}</b><span>bon utilisé chez vous : un client apporté par AdStay</span></div>
       <div class="chiffre"><b>${bons.length ? Math.round(utilises.length / bons.length * 100) : 0} %</b><span>des bons reçus sont utilisés</span></div>
       <div class="chiffre"><b>${diapo}</b><span>passage sur l’écran de veille</span></div>
+      ${f.ouverture ? `<div class="chiffre"><b>${ouvertures}</b><span>affichage en plein écran d’accueil (L’Ouverture)</span></div>` : ''}
     </div>
     ${utilises.length ? `<h3 class="bloc-titre" style="margin-top:30px">Derniers bons utilisés<small>Chaque ligne est un client venu chez vous grâce à la tablette.</small></h3>
       <div class="bons-l">${utilises.slice(0, 12).map(b => `<div><b>${echap(b.code)}</b><span>${new Date(b.utilise_le).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></div>`).join('')}</div>` : ''}

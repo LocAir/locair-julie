@@ -70,7 +70,7 @@
     try {
       const [formules, fiches] = await Promise.all([
         lire('formules?select=*'),
-        lire('commercants?statut=eq.publie&select=id,nom,categorie,formule,accroche,accroche_en,description,description_en,'
+        lire('commercants?statut=eq.publie&select=id,nom,categorie,formule,ouverture,accroche,accroche_en,description,description_en,'
           + 'adresse,tel,horaires,creneaux,fermes,lat,lon,offre,offre_en,lien,photo'),
       ]);
       appliquer({ formules, fiches });
