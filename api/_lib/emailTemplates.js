@@ -64,8 +64,9 @@ function wrap({ headColor = '#0A0A0A', title, intro, bodyHtml, ctaHref, ctaLabel
   <style>
     body{font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#F6F5F1;margin:0;padding:0;-webkit-font-smoothing:antialiased}
     .wrap{max-width:560px;margin:24px auto;background:#ffffff;border-radius:20px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.07)}
-    .brand{color:#ffffff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;font-size:18px;font-weight:700;letter-spacing:-.02em;margin:0 0 14px}
-    .brand em{font-style:normal;color:#FF6200}
+    .brand{display:inline-flex;flex-direction:column;align-items:center;gap:5px;margin:0 0 18px;text-decoration:none}
+    .brand-n{color:#ffffff;font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;font-size:20px;font-weight:600;letter-spacing:-.02em;margin:0;line-height:1}
+    .brand-t{color:rgba(255,255,255,.65);font-family:'Plus Jakarta Sans',-apple-system,BlinkMacSystemFont,sans-serif;font-size:8px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;margin:0;line-height:1}
     .head{background:${headColor};padding:32px 32px 28px;text-align:center}
     .head h1{color:#fff;font-size:22px;line-height:1.3;margin:0 0 8px;font-weight:700;letter-spacing:-.02em}
     .head p{color:rgba(255,255,255,.75);font-size:14px;margin:0;font-weight:400;line-height:1.5}
@@ -80,7 +81,7 @@ function wrap({ headColor = '#0A0A0A', title, intro, bodyHtml, ctaHref, ctaLabel
   </style></head><body>
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all">${preheader}</div>
   <div class="wrap">
-    <div class="head"><p class="brand">Loc<em>'</em>Air</p><h1>${title}</h1>${intro ? `<p>${intro}</p>` : ''}</div>
+    <div class="head"><div class="brand"><p class="brand-n">Loc&#x2019;Air</p><p class="brand-t">Sp&#xe9;cialiste du confort thermique</p></div><h1>${title}</h1>${intro ? `<p>${intro}</p>` : ''}</div>
     <div class="body">${bodyHtml}${btnHtml}</div>
   </div></body></html>`;
 }
