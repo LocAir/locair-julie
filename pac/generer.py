@@ -1,0 +1,321 @@
+# Générateur du site test « Côte Chaleur » (pompes à chaleur, Côte d'Azur).
+# Lancer :  python3 pac/generer.py
+# Il fabrique pac/index.html + une page par ville (pac/nice.html, …).
+# Pour ajouter une ville : ajouter un bloc dans VILLES, relancer.
+# Pour changer la marque / le téléphone : modifier MARQUE et TEL, relancer.
+
+import html, pathlib
+
+ICI = pathlib.Path(__file__).parent
+MARQUE = "Côte Chaleur"
+TEL = ""          # ex. "06 12 34 56 78" — vide = bouton téléphone masqué
+INDEXER = False   # passer à True quand le site est prêt pour Google
+
+VILLES = {
+    "nice": {
+        "nom": "Nice", "cp": "06000",
+        "intro": "À Nice, la plupart des logements sont des appartements. La pompe à chaleur air-air y est reine : elle chauffe l'hiver et rafraîchit l'été avec un seul appareil.",
+        "conseil": "En copropriété, poser le bloc extérieur sur une façade ou un balcon demande souvent l'accord de l'assemblée générale. Pensez à le demander tôt : l'installateur peut vous fournir le dossier technique à présenter.",
+    },
+    "cannes": {
+        "nom": "Cannes", "cp": "06400",
+        "intro": "À Cannes, beaucoup de logements sont des résidences secondaires. Une pompe à chaleur pilotable depuis le téléphone permet d'arriver dans un logement déjà chaud — ou déjà frais.",
+        "conseil": "Demandez un modèle avec contrôle à distance (Wi-Fi) et un mode « hors gel » : le logement reste protégé quand vous n'y êtes pas, pour une consommation très faible.",
+    },
+    "antibes": {
+        "nom": "Antibes", "cp": "06600",
+        "intro": "À Antibes et Juan-les-Pins, on trouve beaucoup de maisons et de villas. Selon le logement, une pompe à chaleur air-air multi-pièces ou une air-eau qui remplace la chaudière sont les deux options.",
+        "conseil": "Près de la mer, l'air salin use plus vite les blocs extérieurs. Demandez un appareil avec traitement anticorrosion (souvent appelé « Blue Fin » ou « Gold Fin »).",
+    },
+    "grasse": {
+        "nom": "Grasse", "cp": "06130",
+        "intro": "À Grasse et dans l'arrière-pays, les hivers sont plus frais que sur le littoral. Beaucoup de maisons chauffent encore au fioul : c'est là qu'une pompe à chaleur air-eau fait les plus grosses économies.",
+        "conseil": "Si vous remplacez une chaudière au fioul, demandez à l'installateur quelles aides vous concernent : selon vos revenus, elles peuvent couvrir une bonne partie du prix.",
+    },
+    "menton": {
+        "nom": "Menton", "cp": "06500",
+        "intro": "Menton a l'un des climats les plus doux de France. Les besoins en chauffage sont modestes : une pompe à chaleur air-air bien dimensionnée suffit souvent pour tout le logement.",
+        "conseil": "Avec des hivers doux, inutile de surdimensionner : un appareil trop puissant coûte plus cher et s'use plus vite. Une visite technique permet de choisir la bonne puissance.",
+    },
+}
+
+CSS = """
+:root{--nuit:#14233b;--braise:#e0602b;--braise-f:#b8461a;--sable:#fbf6ef;--blanc:#fff;--gris:#5c6573;--trait:#e7dfd3;--ok:#2f6d4f}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--sable);color:var(--nuit);line-height:1.55;font-size:16px}
+a{color:inherit}
+.c{max-width:1080px;margin:0 auto;padding:0 16px}
+header{background:var(--blanc);border-bottom:1px solid var(--trait);position:sticky;top:0;z-index:10}
+header .c{display:flex;align-items:center;justify-content:space-between;height:60px}
+.logo{font-weight:800;font-size:19px;text-decoration:none;letter-spacing:-.3px}
+.logo span{color:var(--braise)}
+.btn{display:inline-block;background:var(--braise);color:#fff;text-decoration:none;font-weight:700;padding:13px 22px;border-radius:10px;border:0;font-size:16px;cursor:pointer;font-family:inherit}
+.btn:hover{background:var(--braise-f)}
+.btn.s{padding:9px 14px;font-size:14px}
+.btn.l{background:transparent;color:var(--nuit);border:1.5px solid var(--nuit)}
+.hero{padding:44px 0 36px}
+.hero .c{display:grid;grid-template-columns:1.1fr .9fr;gap:36px;align-items:start}
+h1{font-size:clamp(30px,5vw,46px);line-height:1.1;letter-spacing:-1px;margin-bottom:16px}
+h1 em{font-style:normal;color:var(--braise)}
+.sous{font-size:18px;color:var(--gris);margin-bottom:22px}
+.puces{list-style:none;display:grid;gap:9px;margin-bottom:24px}
+.puces li{padding-left:28px;position:relative}
+.puces li:before{content:"✓";position:absolute;left:0;top:0;color:var(--ok);font-weight:800}
+.carte{background:var(--blanc);border:1px solid var(--trait);border-radius:16px;padding:24px;box-shadow:0 10px 30px rgba(20,35,59,.07)}
+.carte h2{font-size:21px;margin-bottom:4px}
+.carte .p{color:var(--gris);font-size:14px;margin-bottom:16px}
+label{display:block;font-weight:600;font-size:14px;margin:12px 0 6px}
+input,select,textarea{width:100%;padding:12px;border:1.5px solid var(--trait);border-radius:9px;font-size:16px;font-family:inherit;background:#fff;color:var(--nuit)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--braise);border-color:transparent}
+.choix{display:grid;grid-template-columns:1fr;gap:8px}
+.choix label{margin:0;font-weight:500;display:flex;gap:10px;align-items:center;border:1.5px solid var(--trait);border-radius:9px;padding:11px 12px;cursor:pointer}
+.choix input{width:auto}
+.choix label:has(input:checked){border-color:var(--braise);background:#fff4ec}
+.deux{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.etape[hidden]{display:none}
+.nav{display:flex;gap:10px;margin-top:18px}
+.nav .btn{flex:1;text-align:center}
+.consent{display:flex;gap:10px;align-items:flex-start;font-weight:400;font-size:13px;color:var(--gris)}
+.consent input{width:auto;margin-top:3px}
+.pot{position:absolute;left:-9999px}
+.msg{margin-top:12px;font-size:14px}
+.msg.err{color:#b3261e}
+.merci{text-align:center;padding:20px 0}
+.merci b{display:block;font-size:22px;margin-bottom:8px}
+.progress{height:5px;background:var(--trait);border-radius:5px;margin-bottom:14px;overflow:hidden}
+.progress i{display:block;height:100%;width:50%;background:var(--braise);transition:width .3s}
+section{padding:52px 0}
+section.b{background:var(--blanc);border-top:1px solid var(--trait);border-bottom:1px solid var(--trait)}
+h2.t{font-size:clamp(24px,3.5vw,32px);letter-spacing:-.5px;margin-bottom:10px}
+.lead{color:var(--gris);margin-bottom:28px;max-width:680px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.bloc{background:var(--sable);border:1px solid var(--trait);border-radius:14px;padding:22px}
+section.b .bloc{background:var(--sable)}
+section:not(.b) .bloc{background:var(--blanc)}
+.bloc h3{font-size:18px;margin-bottom:6px}
+.bloc p{color:var(--gris);font-size:15px}
+.num{display:inline-flex;width:32px;height:32px;border-radius:50%;background:var(--nuit);color:#fff;align-items:center;justify-content:center;font-weight:800;margin-bottom:10px}
+table{width:100%;border-collapse:collapse;background:var(--blanc);border-radius:12px;overflow:hidden;border:1px solid var(--trait)}
+th,td{text-align:left;padding:13px 14px;border-bottom:1px solid var(--trait);font-size:15px}
+th{background:var(--nuit);color:#fff;font-weight:600}
+tr:last-child td{border-bottom:0}
+.note{font-size:13px;color:var(--gris);margin-top:10px}
+details{background:var(--blanc);border:1px solid var(--trait);border-radius:12px;padding:16px 18px;margin-bottom:10px}
+summary{font-weight:700;cursor:pointer}
+details p{margin-top:10px;color:var(--gris)}
+.conseil{background:#fff4ec;border-left:4px solid var(--braise);padding:18px 20px;border-radius:10px}
+.villes{display:flex;flex-wrap:wrap;gap:8px}
+.villes a{background:var(--blanc);border:1px solid var(--trait);border-radius:20px;padding:7px 14px;text-decoration:none;font-size:14px}
+.villes a.on{background:var(--nuit);color:#fff;border-color:var(--nuit)}
+footer{padding:32px 0 90px;color:var(--gris);font-size:13px}
+footer p{margin-bottom:8px}
+.fixe{position:fixed;left:0;right:0;bottom:0;padding:10px 16px;background:var(--blanc);border-top:1px solid var(--trait);display:none;z-index:20}
+.fixe .btn{width:100%;text-align:center}
+@media(max-width:860px){
+ .hero .c,.g3,.g2{grid-template-columns:1fr}
+ .hero{padding:28px 0}
+ .fixe{display:block}
+ header .btn.s.dev{display:none}
+}
+"""
+
+JS = """
+(function(){
+ var f=document.getElementById('devis'); if(!f) return;
+ var e1=f.querySelector('[data-e="1"]'), e2=f.querySelector('[data-e="2"]'), bar=f.querySelector('.progress i'), msg=f.querySelector('.msg');
+ function val(n){var el=f.elements[n]; if(!el) return ''; if(el.length&&el[0]&&el[0].type==='radio'){for(var i=0;i<el.length;i++) if(el[i].checked) return el[i].value; return ''} return (el.value||'').trim()}
+ f.querySelector('[data-suivant]').onclick=function(){
+  msg.textContent='';msg.className='msg';
+  if(!val('projet')||!val('logement')){msg.textContent='Choisissez votre projet et votre type de logement.';msg.className='msg err';return}
+  if(!/^\\d{5}$/.test(val('code_postal'))){msg.textContent='Indiquez un code postal à 5 chiffres.';msg.className='msg err';return}
+  e1.hidden=true;e2.hidden=false;bar.style.width='100%';f.elements.nom.focus();
+ };
+ f.querySelector('[data-retour]').onclick=function(){e2.hidden=true;e1.hidden=false;bar.style.width='50%'};
+ f.onsubmit=function(ev){
+  ev.preventDefault();msg.textContent='';msg.className='msg';
+  var tel=val('telephone').replace(/[^\\d+]/g,'');
+  if(!val('nom')||tel.length<9){msg.textContent='Indiquez votre nom et un numéro de téléphone valide.';msg.className='msg err';return}
+  if(!f.elements.consentement.checked){msg.textContent='Cochez la case pour que nous puissions vous rappeler.';msg.className='msg err';return}
+  var d={};['projet','logement','surface','chauffage','statut','delai','code_postal','nom','telephone','email','message','site_web'].forEach(function(n){d[n]=val(n)});
+  d.ville=f.dataset.ville;d.consentement=true;
+  var b=f.querySelector('[type=submit]');b.disabled=true;b.textContent='Envoi…';
+  fetch('/api/devis-pac',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
+  .then(function(r){if(!r.ok) throw r.status; return r.json()})
+  .then(function(){f.innerHTML='<div class="merci"><b>Merci, c\\u2019est envoyé ✅</b>Un conseiller vous rappelle sous 48 h ouvrées pour préparer la visite gratuite.</div>';
+    if(window.gtag) gtag('event','generate_lead');})
+  .catch(function(s){b.disabled=false;b.textContent='Recevoir mon devis gratuit';msg.className='msg err';
+    msg.textContent=s===429?'Trop de demandes envoyées. Réessayez dans une heure.':'L\\u2019envoi n\\u2019a pas marché. Réessayez dans un instant.'});
+ };
+})();
+"""
+
+
+def e(s):
+    return html.escape(s, quote=True)
+
+
+def formulaire(ville_label):
+    return f"""
+<form class="carte" id="devis" data-ville="{e(ville_label)}" novalidate>
+ <h2>Devis gratuit en 1 minute</h2>
+ <p class="p">Sans engagement. Un installateur de votre secteur vous recontacte.</p>
+ <div class="progress"><i></i></div>
+ <div class="etape" data-e="1">
+  <label>Votre projet</label>
+  <div class="choix">
+   <label><input type="radio" name="projet" value="Chauffer + rafraîchir (air-air)"> Chauffer l'hiver et rafraîchir l'été</label>
+   <label><input type="radio" name="projet" value="Remplacer ma chaudière (air-eau)"> Remplacer ma chaudière (fioul, gaz)</label>
+   <label><input type="radio" name="projet" value="Je ne sais pas encore"> Je ne sais pas encore, je veux un conseil</label>
+  </div>
+  <div class="deux">
+   <div><label for="logement">Logement</label>
+    <select id="logement" name="logement"><option value="">Choisir</option><option>Appartement</option><option>Maison</option><option>Local professionnel</option></select></div>
+   <div><label for="surface">Surface</label>
+    <select id="surface" name="surface"><option value="">Choisir</option><option>Moins de 50 m²</option><option>50 à 100 m²</option><option>100 à 150 m²</option><option>Plus de 150 m²</option></select></div>
+  </div>
+  <div class="deux">
+   <div><label for="chauffage">Chauffage actuel</label>
+    <select id="chauffage" name="chauffage"><option value="">Choisir</option><option>Radiateurs électriques</option><option>Chaudière fioul</option><option>Chaudière gaz</option><option>Clim / PAC à remplacer</option><option>Autre / aucun</option></select></div>
+   <div><label for="code_postal">Code postal</label>
+    <input id="code_postal" name="code_postal" inputmode="numeric" maxlength="5" autocomplete="postal-code" placeholder="06000"></div>
+  </div>
+  <div class="nav"><button type="button" class="btn" data-suivant>Continuer →</button></div>
+ </div>
+ <div class="etape" data-e="2" hidden>
+  <label for="nom">Nom</label><input id="nom" name="nom" autocomplete="name" maxlength="120">
+  <div class="deux">
+   <div><label for="telephone">Téléphone</label><input id="telephone" name="telephone" type="tel" autocomplete="tel" maxlength="20"></div>
+   <div><label for="email">Email (facultatif)</label><input id="email" name="email" type="email" autocomplete="email" maxlength="120"></div>
+  </div>
+  <div class="deux">
+   <div><label for="statut">Vous êtes</label>
+    <select id="statut" name="statut"><option value="">Choisir</option><option>Propriétaire</option><option>Locataire</option><option>Syndic / gestionnaire</option></select></div>
+   <div><label for="delai">Quand ?</label>
+    <select id="delai" name="delai"><option value="">Choisir</option><option>Dès que possible</option><option>Dans 1 à 3 mois</option><option>Plus tard / je me renseigne</option></select></div>
+  </div>
+  <label for="message">Un détail à ajouter ? (facultatif)</label>
+  <textarea id="message" name="message" rows="2" maxlength="1500"></textarea>
+  <input class="pot" name="site_web" tabindex="-1" autocomplete="off" aria-hidden="true">
+  <label class="consent"><input type="checkbox" name="consentement"> J'accepte d'être rappelé au sujet de ma demande et que mes coordonnées soient transmises à un installateur partenaire de mon secteur, uniquement pour ce projet.</label>
+  <div class="nav"><button type="button" class="btn l" data-retour>←</button><button type="submit" class="btn">Recevoir mon devis gratuit</button></div>
+ </div>
+ <p class="msg" role="alert"></p>
+</form>"""
+
+
+def page(slug, v):
+    nom = v["nom"] if v else "la Côte d'Azur"
+    dans = f"à {v['nom']}" if v else "sur la Côte d'Azur"
+    titre = f"Pompe à chaleur {dans} : devis gratuit | {MARQUE}"
+    desc = f"Installation de pompe à chaleur {dans} : chauffage l'hiver, fraîcheur l'été. Devis gratuit et sans engagement par un installateur local qualifié."
+    robots = "index,follow" if INDEXER else "noindex,nofollow"
+    tel_btn = f'<a class="btn s l" href="tel:{TEL.replace(" ", "")}">📞 {e(TEL)}</a>' if TEL else ""
+    villes = "".join(
+        f'<a href="/pac/{s}"{" class=on" if s == slug else ""}>{e(x["nom"])}</a>' for s, x in VILLES.items()
+    )
+    bloc_ville = ""
+    if v:
+        bloc_ville = f"""
+<section class="b"><div class="c">
+ <h2 class="t">Pompe à chaleur à {e(v['nom'])} : ce qu'il faut savoir</h2>
+ <p class="lead">{e(v['intro'])}</p>
+ <div class="conseil"><b>Le conseil pour {e(v['nom'])} :</b> {e(v['conseil'])}</div>
+</div></section>"""
+
+    return f"""<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{e(titre)}</title>
+<meta name="description" content="{e(desc)}">
+<meta name="robots" content="{robots}">
+<meta name="theme-color" content="#14233b">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🔥%3C/text%3E%3C/svg%3E">
+<style>{CSS}</style>
+</head>
+<body>
+<header><div class="c">
+ <a class="logo" href="/pac">Côte <span>Chaleur</span></a>
+ <div style="display:flex;gap:8px">{tel_btn}<a class="btn s dev" href="#devis">Devis gratuit</a></div>
+</div></header>
+
+<div class="hero"><div class="c">
+ <div>
+  <h1>Pompe à chaleur {e(dans)} : <em>chaud l'hiver, frais l'été</em>, facture allégée.</h1>
+  <p class="sous">Décrivez votre projet en 1 minute. Un installateur qualifié de votre secteur vous rappelle et fait une visite gratuite pour vous faire un devis précis.</p>
+  <ul class="puces">
+   <li>Un seul appareil pour le chauffage <b>et</b> la climatisation</li>
+   <li>Jusqu'à 3 fois moins d'électricité consommée qu'un radiateur électrique classique, pour la même chaleur</li>
+   <li>Visite et devis gratuits, sans engagement</li>
+   <li>Installateur local, assuré, habilité à manipuler les fluides frigorigènes</li>
+  </ul>
+ </div>
+ {formulaire(nom)}
+</div></div>
+{bloc_ville}
+<section{' class="b"' if not v else ''}><div class="c">
+ <h2 class="t">Comment ça se passe</h2>
+ <p class="lead">Simple et sans surprise : vous ne payez rien tant que vous n'avez pas accepté un devis.</p>
+ <div class="g3">
+  <div class="bloc"><span class="num">1</span><h3>Vous décrivez votre projet</h3><p>1 minute en ligne : votre logement, votre chauffage actuel, votre code postal.</p></div>
+  <div class="bloc"><span class="num">2</span><h3>Visite technique gratuite</h3><p>Un installateur de votre secteur vient voir le logement pour choisir le bon appareil et la bonne puissance.</p></div>
+  <div class="bloc"><span class="num">3</span><h3>Devis précis, puis pose</h3><p>Vous recevez un devis détaillé. Si vous l'acceptez, la pose prend en général 1 à 3 jours.</p></div>
+ </div>
+</div></section>
+
+<section{' class="b"' if v else ''}><div class="c">
+ <h2 class="t">Quelle pompe à chaleur choisir ?</h2>
+ <p class="lead">Il en existe deux grandes familles. La visite technique permet de trancher selon votre logement.</p>
+ <div class="g2">
+  <div class="bloc"><h3>Air-air (« clim réversible »)</h3><p>Elle souffle de l'air chaud l'hiver et de l'air frais l'été. Idéale pour les appartements et le climat doux de la Côte d'Azur. Un bloc dehors, un ou plusieurs blocs dans les pièces.</p></div>
+  <div class="bloc"><h3>Air-eau</h3><p>Elle chauffe l'eau de vos radiateurs ou de votre plancher chauffant, et souvent l'eau du ballon. Elle remplace une chaudière fioul ou gaz, surtout dans les maisons.</p></div>
+ </div>
+</div></section>
+
+<section{' class="b"' if not v else ''}><div class="c">
+ <h2 class="t">Combien ça coûte ?</h2>
+ <p class="lead">Des ordres de grandeur, pose comprise, avant aides éventuelles. Seule la visite permet un prix exact.</p>
+ <table>
+  <tr><th>Projet</th><th>Prix indicatif posé</th></tr>
+  <tr><td>Air-air, 1 pièce (mono-split)</td><td>1 500 € à 3 500 €</td></tr>
+  <tr><td>Air-air, plusieurs pièces (multi-split)</td><td>4 000 € à 9 000 €</td></tr>
+  <tr><td>Air-eau, remplacement de chaudière</td><td>10 000 € à 18 000 €</td></tr>
+ </table>
+ <p class="note">Selon vos revenus et votre projet, des aides peuvent réduire le prix (par exemple MaPrimeRénov' ou les primes énergie CEE pour une pompe à chaleur air-eau). Elles demandent un installateur certifié RGE : il vous indique lesquelles vous concernent. {e(MARQUE)} n'est pas un organisme public.</p>
+</div></section>
+
+<section{' class="b"' if v else ''}><div class="c">
+ <h2 class="t">Questions fréquentes</h2>
+ <details><summary>Qui va installer ma pompe à chaleur ?</summary><p>{e(MARQUE)} est un service de mise en relation : nous ne posons pas nous-mêmes. Nous transmettons votre demande à un installateur partenaire de votre secteur, dont nous vérifions l'assurance décennale et l'attestation de capacité aux fluides frigorigènes.</p></details>
+ <details><summary>Le devis est-il vraiment gratuit ?</summary><p>Oui. La visite et le devis ne vous coûtent rien et ne vous engagent à rien.</p></details>
+ <details><summary>Est-ce que ça marche quand il fait froid ?</summary><p>Oui. Sur la Côte d'Azur, les hivers sont doux : c'est justement là qu'une pompe à chaleur est la plus efficace. Les modèles récents fonctionnent bien en dessous de 0 °C.</p></details>
+ <details><summary>Est-ce bruyant ?</summary><p>Le bloc intérieur est très discret. Le bloc extérieur fait un léger bruit de ventilateur : l'installateur choisit un emplacement qui ne gêne ni vous ni vos voisins.</p></details>
+ <details><summary>Je suis locataire, est-ce possible ?</summary><p>Il faut l'accord écrit du propriétaire. Vous pouvez quand même faire la demande : le devis l'aidera à décider.</p></details>
+ <details><summary>Qu'est-ce que vous faites de mes coordonnées ?</summary><p>Elles servent uniquement à traiter votre demande : vous rappeler et la transmettre à un installateur de votre secteur. Elles ne sont ni vendues ni utilisées pour autre chose. Pour les faire supprimer, écrivez à contact@locair.fr.</p></details>
+</div></section>
+
+<section class="b"><div class="c">
+ <h2 class="t">Nous intervenons dans les Alpes-Maritimes</h2>
+ <div class="villes">{villes}</div>
+</div></section>
+
+<footer><div class="c">
+ <p><b>{e(MARQUE)}</b> — service de mise en relation avec des installateurs de pompes à chaleur dans les Alpes-Maritimes. Service édité par Loc'Air (<a href="/mentions-legales">mentions légales</a>).</p>
+ <p>Prix donnés à titre indicatif. {e(MARQUE)} n'est pas un organisme public et n'est pas lié à MaPrimeRénov' ou à l'Anah.</p>
+</div></footer>
+<div class="fixe"><a class="btn" href="#devis">Recevoir mon devis gratuit</a></div>
+<script>{JS}</script>
+</body>
+</html>
+"""
+
+
+(ICI / "index.html").write_text(page("", None), encoding="utf-8")
+for slug, v in VILLES.items():
+    (ICI / f"{slug}.html").write_text(page(slug, v), encoding="utf-8")
+print("OK :", 1 + len(VILLES), "pages générées dans", ICI)
