@@ -12,7 +12,7 @@
 <style>
 :root{--ivoire:#f4efe7;--papier:#fbf8f3;--encre:#1b2430;--texte2:#5b616c;--laiton:#a8844c;--trait:rgba(27,36,48,.1);--serif:'Cormorant Garamond',Georgia,serif}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--ivoire);color:var(--encre);font-family:Jost,system-ui,sans-serif;font-weight:300;-webkit-font-smoothing:antialiased}
+body{font-variant-numeric:lining-nums;background:var(--ivoire);color:var(--encre);font-family:Jost,system-ui,sans-serif;font-weight:300;-webkit-font-smoothing:antialiased}
 .page{max-width:640px;margin:0 auto;padding:22px 16px 60px}
 header{text-align:center;padding:10px 0 22px}
 header img{width:150px}
@@ -23,6 +23,10 @@ header p{color:var(--texte2);margin-top:8px}
 .adresse{background:var(--papier);border-radius:22px;overflow:hidden;margin-bottom:16px;box-shadow:0 1px 2px rgba(27,36,48,.05),0 16px 34px -22px rgba(27,36,48,.3)}
 .adresse .img{aspect-ratio:16/9;background:#e9e1d4 center/cover no-repeat}
 .adresse .corps{padding:18px 20px 20px;display:flex;flex-direction:column;gap:6px}
+.adresse .cat .pub{color:var(--texte2)}
+.adresse.maison{position:relative;box-shadow:0 0 0 1px rgba(168,132,76,.5),0 16px 34px -22px rgba(90,60,20,.45)}
+.adresse.maison .img{position:relative}
+.adresse.maison .cadre-m{position:absolute;inset:7px;border:1px solid rgba(243,226,191,.6);border-radius:16px;pointer-events:none}
 .adresse .cat{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--laiton)}
 .adresse h2{font-family:var(--serif);font-weight:500;font-size:30px;line-height:1.05}
 .adresse .acc,.adresse .info{color:var(--texte2);font-size:15px}
@@ -117,9 +121,9 @@ footer{text-align:center;color:var(--texte2);font-size:13px;margin-top:26px}
   document.getElementById('liste').innerHTML = !liste.length
     ? `<p class="vide">${en ? 'This list is empty.' : 'Cette sélection est vide.'}</p>`
     : (tout ? `<a class="tout" href="${echap(tout)}" target="_blank" rel="noopener">${en ? 'Route through all my places' : 'Itinéraire par toutes mes adresses'}</a>` : '')
-      + liste.map(c => `<article class="adresse">
-        <div class="img" style="background-image:url('${encodeURI(photo(c))}')"></div>
-        <div class="corps"><span class="cat">${echap(cat(c))}</span><h2>${echap(c.nom)}</h2>
+      + liste.map(c => `<article class="adresse ${premium(c) ? 'maison' : ''}">
+        <div class="img" style="background-image:url('${encodeURI(photo(c))}')">${premium(c) ? '<span class="cadre-m" aria-hidden="true"></span>' : ''}</div>
+        <div class="corps"><span class="cat">${echap(cat(c))}${premium(c) ? ` <span class="pub">· ${en ? 'Partner venue' : 'Maison partenaire'}</span>` : ''}</span><h2>${echap(c.nom)}</h2>
           <span class="acc">${echap(tr(c, 'accroche'))}</span>
           ${tr(c, 'offre') ? `<span class="offre">${echap(tr(c, 'offre'))}</span>` : ''}
           ${etat(c)}
