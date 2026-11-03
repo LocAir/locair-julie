@@ -213,7 +213,15 @@ body.leger::after{display:none}
 .annonce .etiquette{top:12px;left:12px;font-size:10px;padding:5px 10px}
 .annonce .nom{font-family:var(--serif);font-size:clamp(21px,min(1.6vw,3.2vh),27px);line-height:1.05}
 .annonce .meta{color:rgba(255,255,255,.88);font-size:12px;margin-top:4px}
-.annonce .etat{color:#bfe3c9} .annonce .etat.ferme{color:#f0c1bb}
+.annonce .etat{color:#bfe3c9} .annonce .etat.ferme{color:#f3e2bf} .annonce .etat.ferme i{background:#f3c27a}
+/* Bandeau (Premium) : même écrin que les autres emplacements payants — filet doré, mention, cadeau */
+.annonce .cadre-a{position:absolute!important;inset:7px;border:1px solid rgba(243,226,191,.24);border-radius:calc(var(--r) - 7px);pointer-events:none}
+.annonce .pub-a{position:absolute!important;top:16px;right:18px;font-size:9.5px;letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.78);text-shadow:0 1px 8px rgba(0,0,0,.5)}
+.annonce .offre-a{display:flex;align-items:center;gap:8px;margin-top:5px;font-family:var(--serif);font-style:italic;font-size:clamp(15px,min(1.15vw,2.3vh),19px);color:#f6e7c8;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 10px rgba(0,0,0,.55)}
+.annonce .offre-a > span{overflow:hidden;text-overflow:ellipsis}
+.annonce .offre-a svg{width:15px;height:15px;stroke:#f3e2bf;stroke-width:1.5;fill:none;flex:none}
+@media (max-height:820px) and (min-aspect-ratio:1/1){.annonce .meta{display:none}}
 @media (prefers-reduced-motion:reduce){.bande .piste{animation:none}.bande{overflow-x:auto}}
 
 /* ── Offre du jour : encart « urgence » ─────────────────── */
@@ -1284,7 +1292,9 @@ function afficher() {
       .sort((a, b) => (formule(a.formule).rang === rangMax) - (formule(b.formule).rang === rangMax));
     const annonce = c => { const f = formule(c.formule), d = distance(c);
       return `<button class="annonce touche" data-fiche="${echap(c.id)}" style="${fond(c, 900)}">
-        <span class="nom">${echap(c.nom)}</span><span class="meta">${etatHtml(c)}${d ? `<span>${svg('marche')}${d}</span>` : ''}</span></button>`; };
+        <span class="cadre-a" aria-hidden="true"></span><span class="pub-a">${t('partenaire')}</span>
+        <span class="nom">${echap(c.nom)}</span>${offre(c) ? `<span class="offre-a">${svg('cadeau')}<span>${echap(offre(c))}</span></span>` : ''}
+        <span class="meta">${etatHtml(c)}${d ? `<span>${svg('marche')}${d}</span>` : ''}</span></button>`; };
     const bande = secondPlan.length ? `<div class="bande" style="--duree:${secondPlan.length * 9}s"><div class="piste">${
       [...secondPlan, ...secondPlan].map(annonce).join('')}</div></div>` : '';
     html = `<div class="bento ${promo ? 'avec-promo' : ''} ${arrivee ? 'arrivee' : ''}">
