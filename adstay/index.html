@@ -316,6 +316,10 @@ body.leger::after{display:none}
 .carte .image .etiquette{top:14px;left:14px}
 .carte .corps{padding:18px 20px 22px;display:flex;flex-direction:column;gap:6px;flex:1}
 .carte .nom{font-family:var(--serif);font-weight:400;font-size:30px;line-height:1.04}
+.carte-ex{position:relative;box-shadow:0 0 0 1px rgba(168,132,76,.55),0 30px 60px -36px rgba(90,60,20,.55)!important}
+.carte-ex .cadre-c{position:absolute;inset:7px;z-index:3;border:1px solid rgba(243,226,191,.55);border-radius:calc(var(--r) - 7px);pointer-events:none}
+.carte-ex .corps{background:linear-gradient(180deg,rgba(201,166,107,.09),rgba(201,166,107,0) 70%)}
+body.nuit .carte-ex{box-shadow:0 0 0 1px rgba(217,189,138,.5),0 30px 60px -36px rgba(0,0,0,.8)!important}
 .carte .maison{font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--laiton);font-weight:500;margin-bottom:2px}
 .fiche .maison-f{color:var(--texte2)}
 .carte .acc{color:var(--texte2);font-size:15px}
@@ -1164,9 +1168,11 @@ const entete = (surtitre, titre, texte, retour = 'accueil', libelle = t('accueil
 
 function carte(c) {
   const f = formule(c.formule), dist = distance(c);
-  return `<button class="carte touche" data-fiche="${echap(c.id)}">
+  // Exclusivité : la carte porte le même écrin doré que ses autres emplacements (À la une, L'Ouverture)
+  const ex = f.rang === rangMax;
+  return `<button class="carte touche ${ex ? 'carte-ex' : ''}" data-fiche="${echap(c.id)}">${ex ? '<span class="cadre-c" aria-hidden="true"></span>' : ''}
     <div class="image" style="${fond(c, 1000)}">${boutonCoeur(c)}</div>
-    <div class="corps">${badgeTablette(c) ? `<span class="maison">${badgeTablette(c)}</span>` : ''}<span class="nom">${echap(c.nom)}</span><span class="acc">${echap(tr(c, 'accroche'))}</span>
+    <div class="corps">${badgeTablette(c) ? `<span class="maison">${ex ? `${t('coupCoeur')} · ` : ''}${badgeTablette(c)}</span>` : ''}<span class="nom">${echap(c.nom)}</span><span class="acc">${echap(tr(c, 'accroche'))}</span>
       <span class="meta">${etatHtml(c)}${dist ? `<span>${svg('marche')}${dist}</span>` : ''}</span>
       ${offre(c) ? `<span class="offre">${echap(offre(c))}</span>` : ''}</div></button>`;
 }
