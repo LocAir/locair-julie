@@ -2,10 +2,18 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
 <meta name="robots" content="noindex, nofollow, noarchive"/>
 <meta name="theme-color" content="#f4efe7"/>
 <title>AdStay</title>
+<!-- Application installable : icône sur l'écran d'accueil, plein écran, fonctionne hors connexion -->
+<link rel="manifest" href="/adstay/manifest.webmanifest"/>
+<link rel="apple-touch-icon" href="/adstay/app/apple-touch-icon.png"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/adstay/app/icone-192.png"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="AdStay"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Jost:wght@300;400;500&display=swap"/>
@@ -51,7 +59,12 @@ body{transition:background-color 1.2s}
 .bento.arrivee .hero h1{animation:arrive 1s .15s cubic-bezier(.2,.75,.2,1) both}
 @media (prefers-reduced-motion:reduce){.bento.arrivee > *,.bento.arrivee .hero h1{animation:none}}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
+html,body{height:100%;height:100dvh}
+/* Comportement d'application : pas de rebond, pas de zoom, pas de surlignage au toucher */
+html,body{overscroll-behavior:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-touch-callout:none}
+img{-webkit-user-drag:none;user-select:none}
+/* Encoches et coins arrondis des écrans : rien ne passe dessous */
+.app{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 body{font-variant-numeric:lining-nums;background:var(--ivoire);color:var(--encre);font-family:var(--sans);font-weight:300;overflow:hidden;
   user-select:none;-webkit-user-select:none;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;text-align:left}
@@ -1644,6 +1657,18 @@ function reveil(e) {
 ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(ev => addEventListener(ev, reveil, { passive: true }));
 document.addEventListener('contextmenu', e => e.preventDefault());
 
+// ── Format application ──
+// Hors connexion : service worker (copie de l'app sur la tablette)
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/adstay-sw.js', { scope: '/adstay' }).catch(() => {});
+// L'écran reste allumé tant que l'app est affichée (la veille prend le relais, pas l'extinction)
+async function resterAllume() { try { if (document.visibilityState === 'visible') await navigator.wakeLock?.request('screen'); } catch {} }
+resterAllume(); document.addEventListener('visibilitychange', resterAllume);
+// Tablette ouverte dans le navigateur (pas encore installée) : plein écran au premier toucher
+const installee = matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches || navigator.standalone;
+if (!installee && matchMedia('(pointer: coarse)').matches) addEventListener('pointerdown', () => {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen?.({ navigationUI: 'hide' }).catch(() => {});
+}, { passive: true });
+document.addEventListener('gesturestart', e => e.preventDefault()); // pas de zoom à deux doigts sur iPad
 if ((navigator.deviceMemory || 4) <= 2 || (navigator.hardwareConcurrency || 4) <= 2) document.body.classList.add('leger');
 document.documentElement.lang = lang; $('#inviteTexte').textContent = t('invite');
 diapositives(); // Mode nuit : entre D.nuit.debut et D.nuit.fin (par défaut 22h → 6h30), vérifié chaque minute
