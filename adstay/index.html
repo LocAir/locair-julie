@@ -389,11 +389,27 @@ body.feuille .app{transform:scale(.94);border-radius:28px;overflow:hidden;filter
 @keyframes zoom{from{transform:scale(1.08)}to{transform:scale(1)}}
 .diapo::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,0) 30%,rgba(0,0,0,.15) 55%,rgba(0,0,0,.72))}
 .diapo > :not(.fond){position:relative;z-index:2}
-.diapo .cat{color:var(--laiton2)}
-.diapo .titre{font-family:var(--serif);font-size:clamp(64px,9vw,150px);font-weight:400;line-height:.95;margin:14px 0 18px}
-.diapo .acc{font-size:clamp(20px,2.2vw,32px);font-weight:300;max-width:28ch;opacity:.9}
-.diapo .offre{margin-top:26px;font-family:var(--serif);font-style:italic;font-size:clamp(22px,2.4vw,34px);color:#f3e2bf;display:flex;align-items:center;gap:16px}
-.diapo .offre::before{content:"";width:40px;height:1px;background:currentColor}
+/* Diapositives partenaires (Premium ×1, Exclusivité ×2) : même écrin que « À la une » et « L'Ouverture » */
+.diapo:not(.accueil)::before{background:radial-gradient(120% 90% at 0% 100%,rgba(8,11,16,.85),rgba(8,11,16,0) 60%),linear-gradient(180deg,rgba(8,11,16,.5),rgba(8,11,16,0) 26%,rgba(8,11,16,0) 50%,rgba(8,11,16,.6))}
+.diapo .cadre-v{position:absolute!important;inset:clamp(14px,1.6vw,24px);border:1px solid rgba(243,226,191,.28);border-radius:20px;pointer-events:none}
+.diapo .haut-v{display:flex;align-items:center;gap:16px;font-size:clamp(12px,1vw,15px);letter-spacing:.28em;text-transform:uppercase;white-space:nowrap}
+.diapo .haut-v .v-label{display:inline-flex;align-items:center;gap:14px;color:#f3e2bf}
+.diapo .haut-v .v-label::before{content:"";width:40px;height:1px;background:currentColor}
+.diapo .haut-v .v-pub{color:rgba(255,255,255,.75);padding-left:16px;border-left:1px solid rgba(255,255,255,.35)}
+.diapo .titre{font-family:var(--serif);font-size:clamp(64px,9vw,160px);font-weight:300;line-height:.92;letter-spacing:-.015em;margin:clamp(12px,1.4vw,22px) 0 clamp(10px,1.2vw,18px);text-shadow:0 2px 30px rgba(0,0,0,.3)}
+.diapo .acc{font-size:clamp(19px,1.8vw,28px);font-weight:300;max-width:34ch;opacity:.9;text-shadow:0 1px 12px rgba(0,0,0,.5)}
+.diapo .offre{align-self:flex-start;margin-top:clamp(18px,2vw,30px);display:inline-flex;align-items:center;gap:16px;padding:clamp(10px,1vw,15px) clamp(22px,2vw,30px) clamp(10px,1vw,15px) clamp(16px,1.4vw,20px);
+  border-radius:999px;font-family:var(--serif);font-style:italic;font-size:clamp(22px,2.2vw,34px);color:#f8ead0;
+  background:linear-gradient(120deg,rgba(243,226,191,.22),rgba(243,226,191,.08));border:1px solid rgba(243,226,191,.45)}
+.diapo .offre svg{width:clamp(22px,2vw,30px);height:clamp(22px,2vw,30px);stroke:#f3e2bf;stroke-width:1.4;fill:none;flex:none}
+.diapo .meta-v{display:flex;gap:22px;margin-top:clamp(14px,1.4vw,20px);font-size:clamp(14px,1.1vw,17px);color:#fff;text-shadow:0 1px 10px rgba(0,0,0,.6)}
+.diapo .meta-v span{display:inline-flex;align-items:center;gap:8px} .diapo .meta-v svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.5}
+.diapo .meta-v .etat{color:#c8f0d4} .diapo .meta-v .etat.ferme{color:#f3e2bf}
+/* Entrée du texte, ligne après ligne */
+.diapo:not(.accueil) > :is(.haut-v,.titre,.acc,.offre,.meta-v){opacity:0;transform:translateY(16px);transition:opacity .8s cubic-bezier(.22,1,.36,1),transform .8s cubic-bezier(.22,1,.36,1)}
+.diapo.visible > :is(.haut-v,.titre,.acc,.offre,.meta-v){opacity:1;transform:none}
+.diapo.visible > .titre{transition-delay:.12s} .diapo.visible > .acc{transition-delay:.24s} .diapo.visible > .offre{transition-delay:.36s} .diapo.visible > .meta-v{transition-delay:.48s}
+@media (prefers-reduced-motion:reduce){.diapo:not(.accueil) > *{transition:none!important}}
 .diapo.accueil{justify-content:center;align-items:center;text-align:center}
 .diapo.accueil .ville{font-family:var(--serif);font-weight:400;font-size:clamp(120px,22vw,340px);line-height:.9;color:#fbf6ec}
 .diapo.accueil .sous{margin-top:clamp(14px,2vw,30px);font-size:clamp(14px,1.6vw,22px);letter-spacing:.3em;text-transform:uppercase}
@@ -403,7 +419,10 @@ body.feuille .app{transform:scale(.94);border-radius:28px;overflow:hidden;filter
 .veille .haut .heure{letter-spacing:.08em}
 /* QR sur chaque pub : le voyageur scanne sans toucher la tablette (compté dans les stats) */
 .diapo .qr-veille{position:absolute!important;right:clamp(28px,6vw,96px);bottom:calc(clamp(28px,6vw,96px) + 56px);display:flex;flex-direction:column;align-items:center;gap:10px;
-  padding:14px;border-radius:18px;background:rgba(251,248,243,.94);color:var(--encre);font-size:13px;text-align:center;max-width:180px}
+  padding:clamp(14px,1.2vw,20px);border-radius:22px;background:rgba(251,248,243,.95);color:#1b2430;font-size:13px;text-align:center;max-width:220px;box-shadow:0 30px 60px -30px rgba(0,0,0,.7)}
+.diapo .qr-veille b{font-family:var(--serif);font-weight:400;font-size:clamp(18px,1.4vw,22px);line-height:1.1;margin-top:2px}
+.diapo .qr-veille span{color:#555b66;line-height:1.35}
+#compteur{display:none} /* repère technique sans intérêt pour le voyageur */
 .diapo .qr-veille img{width:clamp(96px,10vw,140px);height:clamp(96px,10vw,140px);display:block}
 .diapo.accueil .qr-veille{display:none}
 .diapo:not(.accueil){padding-right:calc(clamp(28px,6vw,96px) + 200px)}
@@ -1541,11 +1560,12 @@ function diapositives() {
   <div class="diapo accueil"><div class="fond" style="${fond(D.ville, 3840)}"></div>
     <span class="ville">${echap(D.ville.nom)}</span><span class="sous">Bienvenue chez vous · Welcome home</span><span class="trait"></span></div>`
   + diapos.map(c => `
-  <div class="diapo" data-id="${echap(c.id)}"><div class="fond" style="${fond(c, 3840)}"></div>
-    <span class="cat petit">${echap(tr(categorie(c.categorie), 'nom'))}</span>
+  <div class="diapo" data-id="${echap(c.id)}"><div class="fond" style="${fond(c, 3840)}"></div><span class="cadre-v" aria-hidden="true"></span>
+    <span class="haut-v"><span class="v-label">${echap(tr(categorie(c.categorie), 'nom'))}</span><span class="v-pub">${t('partenaire')}</span></span>
     <span class="titre">${echap(c.nom)}</span><span class="acc">${echap(tr(c, 'accroche'))}</span>
-    ${offre(c) ? `<span class="offre">${echap(offre(c))}</span>` : ''}
-    <div class="qr-veille"><img src="${lienQR(c)}" alt="QR code" loading="lazy"/>${offre(c) ? t('scanBon') : lienDe(c) ? t('scanResa') : t('scanIti')}</div></div>`).join('');
+    ${offre(c) ? `<span class="offre">${svg('cadeau')}<span>${echap(offre(c))}</span></span>` : ''}
+    <span class="meta-v">${etatHtml(c)}${distance(c) ? `<span>${svg('marche')}${distance(c)}</span>` : ''}</span>
+    <div class="qr-veille"><img src="${lienQR(c)}" alt="QR code" loading="lazy"/><b>${echap(c.nom)}</b><span>${offre(c) ? t('scanBon') : lienDe(c) ? t('scanResa') : t('scanIti')}</span></div></div>`).join('');
 }
 
 let minuteur, tourne, indice = 0;
