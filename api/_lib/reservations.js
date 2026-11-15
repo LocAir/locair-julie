@@ -8,7 +8,7 @@ const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
 const { sendScenarioEmail, getSignature, withSignature, fmtDate, wasScenarioSkipped } = require('./emailEngine');
 const { tplProlongConfirmation } = require('./emailTemplates');
 const { pushToAdmin } = require('./push');
-const { sendWhatsappMessage, frToWaPhone } = require('./whatsapp');
+const { sendWhatsappMessage, sendWhatsappTemplate, frToWaPhone } = require('./whatsapp');
 const { getEffectiveDateFin, getActiveRecuperationMission } = require('./dateFin');
 
 // Bug trouvé le 2026-08-12 : un même numéro français peut arriver en format
@@ -486,18 +486,32 @@ async function sendRelanceProlongationWhatsapp(supabase, resa, { force = false }
   const lang = resa.lang || 'fr';
   const prenom = resa.prenom || '';
   const ref = resa.ref || '';
-  let content;
-  if (lang === 'en') {
-    content = `Hello ${prenom} 👋\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n• Extend your rental\n• Choose your collection time slot\n\nYour order number: *${ref}*\n\nhttps://www.locair.fr/client\n\nHave a great day!\n_Aly from Loc'Air_`;
-  } else if (lang === 'zh') {
-    content = `您好 ${prenom} 👋\n\n您的Loc'Air租赁即将结束。在您的客户空间，只需几步即可：\n• 续租\n• 选择取回时间段\n\n您的订单编号：*${ref}*\n\nhttps://www.locair.fr/client\n\n祝您愉快！\n_Loc'Air的Aly_`;
-  } else if (lang === 'ru') {
-    content = `Здравствуйте, ${prenom} 👋\n\nСрок аренды Loc'Air скоро истекает. В личном кабинете в несколько кликов вы можете:\n• Продлить аренду\n• Выбрать время возврата\n\nВаш номер заказа: *${ref}*\n\nhttps://www.locair.fr/client\n\nХорошего дня!\n_Aly, Loc'Air_`;
-  } else {
-    content = `Bonjour ${prenom} 👋\n\nVotre location Loc'Air touche à sa fin. Depuis votre espace client, en quelques clics vous pouvez :\n• Prolonger la location\n• Choisir votre créneau de récupération\n\nVotre numéro de commande : *${ref}*\n\nhttps://www.locair.fr/client\n\nBonne journée !\n_Aly de Loc'Air_`;
-  }
 
-  const result = await sendWhatsappMessage(waPhone, content);
+  // Priorité au template approuvé (fonctionne même sans fenêtre 24h).
+  // La var d'env WHATSAPP_USE_TEMPLATES active le mode template une fois
+  // que Meta a approuvé "relance_prolongation" / "relance_prolongation_en".
+  // Sans elle, on envoie en texte libre (fenêtre 24h seulement).
+  const useTemplate = process.env.WHATSAPP_USE_TEMPLATES === '1';
+  let result;
+  let content;
+
+  if (useTemplate) {
+    const tplLang = lang === 'en' ? 'en' : 'fr';
+    const tplName = lang === 'en' ? 'relance_prolongation_en' : 'relance_prolongation';
+    result = await sendWhatsappTemplate(waPhone, tplName, tplLang, [prenom, ref]);
+    content = `[template:${tplName}] prenom=${prenom} ref=${ref}`;
+  } else {
+    if (lang === 'en') {
+      content = `Hello ${prenom} 👋\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n• Extend your rental\n• Choose your collection time slot\n\nYour order number: *${ref}*\n\nhttps://www.locair.fr/client\n\nHave a great day!\n_Aly from Loc'Air_`;
+    } else if (lang === 'zh') {
+      content = `您好 ${prenom} 👋\n\n您的Loc'Air租赁即将结束。在您的客户空间，只需几步即可：\n• 续租\n• 选择取回时间段\n\n您的订单编号：*${ref}*\n\nhttps://www.locair.fr/client\n\n祝您愉快！\n_Loc'Air的Aly_`;
+    } else if (lang === 'ru') {
+      content = `Здравствуйте, ${prenom} 👋\n\nСрок аренды Loc'Air скоро истекает. В личном кабинете в несколько кликов вы можете:\n• Продлить аренду\n• Выбрать время возврата\n\nВаш номер заказа: *${ref}*\n\nhttps://www.locair.fr/client\n\nХорошего дня!\n_Aly, Loc'Air_`;
+    } else {
+      content = `Bonjour ${prenom} 👋\n\nVotre location Loc'Air touche à sa fin. Depuis votre espace client, en quelques clics vous pouvez :\n• Prolonger la location\n• Choisir votre créneau de récupération\n\nVotre numéro de commande : *${ref}*\n\nhttps://www.locair.fr/client\n\nBonne journée !\n_Aly de Loc'Air_`;
+    }
+    result = await sendWhatsappMessage(waPhone, content);
+  }
   await supabase.from('email_log').insert({
     reservation_id: resa.id, scenario: 'whatsapp_relance_prolongation', canal: 'whatsapp',
     destinataire: waPhone, modele: 'whatsapp_relance_prolongation',
