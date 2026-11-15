@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const { getSupabase } = require('./_lib/supabase');
 const { daysDiff, isSupersededReservation } = require('./_lib/emailSchedule');
-const { sendRelanceProlongationSms } = require('./_lib/reservations');
+const { sendRelanceProlongationSms, sendRelanceProlongationWhatsapp } = require('./_lib/reservations');
 
 function verifyCronAuth(req) {
   const secret = process.env.CRON_SECRET;
@@ -37,6 +37,7 @@ module.exports = async (req, res) => {
   // qu'avant son déplacement depuis cron-daily.js). Idempotent sur son
   // propre scénario (sms_relance_prolongation), voir _lib/reservations.js.
   let sentProlongation = 0;
+  let sentProlongationWa = 0;
   try {
     const cible = new Date(); cible.setUTCDate(cible.getUTCDate() + 4);
     const cibleStr = cible.toISOString().slice(0, 10);
@@ -58,19 +59,27 @@ module.exports = async (req, res) => {
 
       // Écarte une fiche "d'origine" supplantée par une prolongation déjà
       // confirmée qui repousse la vraie fin de contrat plus loin dans le
-      // temps — sans quoi ce SMS partirait à tort à un client qui a déjà
-      // prolongé (voir isSupersededReservation, _lib/emailSchedule.js).
+      // temps — sans quoi ce SMS/WhatsApp partirait à tort à un client qui
+      // a déjà prolongé (voir isSupersededReservation, _lib/emailSchedule.js).
       const { data: peers } = await supabase
         .from('reservations').select('id, statut, date_debut, date_fin, reservation_origine_id')
         .eq('city_id', resa.city_id).ilike('email', resa.email || '').eq('statut', 'confirmee');
       if (isSupersededReservation(resa, peers || [])) continue;
 
-      const result = await sendRelanceProlongationSms(supabase, resa);
-      if (result.sent) sentProlongation++;
+      const resultSms = await sendRelanceProlongationSms(supabase, resa);
+      if (resultSms.sent) sentProlongation++;
+
+      // WhatsApp en complément du SMS — même message, même moment, canal différent.
+      try {
+        const resultWa = await sendRelanceProlongationWhatsapp(supabase, resa);
+        if (resultWa.sent) sentProlongationWa++;
+      } catch (e) {
+        console.error('[cron-sms-avis] Erreur relance prolongation WhatsApp:', e.message);
+      }
     }
   } catch (e) {
     console.error('[cron-sms-avis] Erreur relance prolongation:', e.message);
   }
 
-  return res.status(200).json({ ok: true, sentProlongation });
+  return res.status(200).json({ ok: true, sentProlongation, sentProlongationWa });
 };

@@ -8,6 +8,7 @@ const { sendBrevoEmail, sendBrevoSms } = require('./brevo');
 const { sendScenarioEmail, getSignature, withSignature, fmtDate, wasScenarioSkipped } = require('./emailEngine');
 const { tplProlongConfirmation } = require('./emailTemplates');
 const { pushToAdmin } = require('./push');
+const { sendWhatsappMessage, frToWaPhone } = require('./whatsapp');
 const { getEffectiveDateFin, getActiveRecuperationMission } = require('./dateFin');
 
 // Bug trouvé le 2026-08-12 : un même numéro français peut arriver en format
@@ -456,6 +457,65 @@ async function sendRelanceProlongationSms(supabase, resa, { force = false } = {}
   return result.ok ? { sent: true } : { sent: false, reason: 'error', error: result.error };
 }
 
+// WhatsApp envoyé 4 jours avant la fin de location — même fenêtre et même
+// contenu que sms_relance_prolongation, canal différent. Idempotent sur son
+// propre scénario (whatsapp_relance_prolongation). Vérifie l'opt-out WhatsApp
+// (table whatsapp_opt_out, format international "33XXXXXXXXX").
+async function sendRelanceProlongationWhatsapp(supabase, resa, { force = false } = {}) {
+  if (!resa || !resa.id || !resa.tel) return { sent: false, reason: 'no_tel' };
+
+  const waPhone = frToWaPhone(resa.tel);
+  if (!waPhone || waPhone.length < 10) return { sent: false, reason: 'invalid_phone' };
+
+  if (await wasScenarioSkipped(supabase, resa.id, 'whatsapp_relance_prolongation')) return { sent: false, reason: 'skipped_by_admin' };
+
+  if (!force) {
+    const { count: dejaEnvoye } = await supabase
+      .from('email_log').select('id', { count: 'exact', head: true })
+      .eq('reservation_id', resa.id).eq('scenario', 'whatsapp_relance_prolongation').eq('statut', 'envoye');
+    if (dejaEnvoye > 0) return { sent: false, reason: 'already_sent' };
+  }
+
+  // Vérification opt-out WhatsApp (numéro international)
+  try {
+    const { data: optOut } = await supabase
+      .from('whatsapp_opt_out').select('phone').eq('phone', waPhone).maybeSingle();
+    if (optOut) return { sent: false, reason: 'opted_out' };
+  } catch { /* non bloquant */ }
+
+  const lang = resa.lang || 'fr';
+  const prenom = resa.prenom || '';
+  const ref = resa.ref || '';
+  let content;
+  if (lang === 'en') {
+    content = `Hello ${prenom} 👋\n\nYour Loc'Air rental is ending soon. From your client space, in a few clicks you can:\n• Extend your rental\n• Choose your collection time slot\n\nYour order number: *${ref}*\n\nhttps://www.locair.fr/client\n\nHave a great day!\n_Aly from Loc'Air_`;
+  } else if (lang === 'zh') {
+    content = `您好 ${prenom} 👋\n\n您的Loc'Air租赁即将结束。在您的客户空间，只需几步即可：\n• 续租\n• 选择取回时间段\n\n您的订单编号：*${ref}*\n\nhttps://www.locair.fr/client\n\n祝您愉快！\n_Loc'Air的Aly_`;
+  } else if (lang === 'ru') {
+    content = `Здравствуйте, ${prenom} 👋\n\nСрок аренды Loc'Air скоро истекает. В личном кабинете в несколько кликов вы можете:\n• Продлить аренду\n• Выбрать время возврата\n\nВаш номер заказа: *${ref}*\n\nhttps://www.locair.fr/client\n\nХорошего дня!\n_Aly, Loc'Air_`;
+  } else {
+    content = `Bonjour ${prenom} 👋\n\nVotre location Loc'Air touche à sa fin. Depuis votre espace client, en quelques clics vous pouvez :\n• Prolonger la location\n• Choisir votre créneau de récupération\n\nVotre numéro de commande : *${ref}*\n\nhttps://www.locair.fr/client\n\nBonne journée !\n_Aly de Loc'Air_`;
+  }
+
+  const result = await sendWhatsappMessage(waPhone, content);
+  await supabase.from('email_log').insert({
+    reservation_id: resa.id, scenario: 'whatsapp_relance_prolongation', canal: 'whatsapp',
+    destinataire: waPhone, modele: 'whatsapp_relance_prolongation',
+    statut: result.ok ? 'envoye' : 'erreur',
+    erreur: result.ok ? null : String(result.error || '').slice(0, 500),
+    contenu: content,
+  }).then(() => {}, () => {});
+
+  if (result.ok) {
+    await pushToAdmin(supabase, {
+      title: `💬 WhatsApp prolongation envoyé — ${ref || 'dossier ' + resa.id}`,
+      body:  `${prenom || 'Un client'} a reçu le WhatsApp lui proposant de prolonger sa location.`,
+      tag:   `wa-relance-prolongation-${resa.id}`,
+    });
+  }
+  return result.ok ? { sent: true } : { sent: false, reason: 'error', error: result.error };
+}
+
 // SMS envoyé le jour de la fin de location, en complément de l'email
 // "rappel_recuperation" — la mission de récupération elle-même est
 // programmée le lendemain de date_fin (jamais le jour même, voir
@@ -819,5 +879,5 @@ async function confirmReservationAndCreateLivraisons(supabase, paymentIntentId) 
 module.exports = {
   confirmReservationAndCreateLivraisons, confirmReservation, pickTransporteurForMission, normalizeTel,
   sendConfirmationCommunications, sendProlongationConfirmation, sendRelanceProlongationSms,
-  sendRappelRecuperationSms, sendSuiviInstallationSms, getEffectiveDateFin,
+  sendRelanceProlongationWhatsapp, sendRappelRecuperationSms, sendSuiviInstallationSms, getEffectiveDateFin,
 };
