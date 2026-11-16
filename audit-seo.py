@@ -146,8 +146,9 @@ for p in villes_page:
     t = bloc('title', lire(p)) or ''
     import unicodedata
     plat = lambda x: unicodedata.normalize('NFD', x.lower()).encode('ascii', 'ignore').decode().replace('-', ' ')
-    print('   %-42s %s' % (v, '✓ ville dans le titre' if plat(v) in plat(t) else '✗ VILLE ABSENTE DU TITRE'))
-    if v.lower() not in t.lower():
+    ville_ok = plat(v) in plat(t)
+    print('   %-42s %s' % (v, '✓ ville dans le titre' if ville_ok else '✗ VILLE ABSENTE DU TITRE'))
+    if not ville_ok:
         pb('IMPORTANT', 'La ville n\'apparaît pas dans le titre de ' + p)
 # La ville du siège mérite sa page autant que les autres.
 siege = None
