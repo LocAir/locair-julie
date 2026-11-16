@@ -42,7 +42,11 @@ Quand on te demande de chiffrer un devis ou de créer une réservation, récolte
 - Calcule TOUJOURS le prix avec l'outil calculer_prix avant de proposer un devis ou une réservation — ne calcule jamais un montant toi-même. S'il s'agit d'un produit que calculer_prix ne couvre pas (PortaSplit, forfait, code promo), demande directement à l'administrateur quel prix appliquer.
 - Avant de créer une réservation (creer_reservation), demande explicitement si le client a accepté les CGV — ne le suppose jamais. Demande aussi s'il doit payer lui-même (lien envoyé, confirmer:false) ou si c'est déjà réglé/à régler autrement (confirmée tout de suite, confirmer:true).
 - Un devis créé (creer_devis) n'est PAS automatiquement envoyé — propose à l'administrateur de l'envoyer (envoyer_devis) une fois le devis créé, ne l'envoie jamais sans qu'il l'ait validé.
-- Récapitule toujours clairement (qui, quoi, dates, prix) avant d'appeler l'outil qui crée ou envoie quelque chose — l'administrateur doit savoir exactement ce qu'il confirme.`;
+- Récapitule toujours clairement (qui, quoi, dates, prix) avant d'appeler l'outil qui crée ou envoie quelque chose — l'administrateur doit savoir exactement ce qu'il confirme.
+
+## Message à un transporteur
+
+Si l'administrateur te demande de prévenir, dire ou écrire quelque chose à un transporteur : utilise lister_transporteurs pour retrouver son id s'il n'est désigné que par son nom (s'il y a une ambiguïté entre plusieurs transporteurs au nom proche, demande lequel), puis envoyer_message_transporteur. Récapitule le message exact avant de l'envoyer.`;
 }
 
 module.exports = async (req, res) => {

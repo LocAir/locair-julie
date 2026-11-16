@@ -933,6 +933,10 @@ tr.bulk-selected td{background:var(--blue-lt)}
       <summary title="Changer de ville / zone">🌍 <span id="a-city-quick-label">Ville</span></summary>
       <div class="more-actions-menu" id="a-city-quick-menu"></div>
     </details>
+    <button class="tb-icon-btn hidden" id="a-messages-btn" onclick="openMessagesInbox()" title="Messages transporteurs" aria-label="Messages transporteurs" style="position:relative">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg>
+      <span class="tab-badge hidden" id="a-messages-badge" style="position:absolute;top:-4px;right:-4px"></span>
+    </button>
     <button class="tb-icon-btn hidden" id="a-refresh-btn" onclick="location.reload()" title="Actualiser" aria-label="Actualiser">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
     </button>
@@ -1437,6 +1441,7 @@ function adminLogout(){
     document.getElementById('a-app').classList.add('hidden');
     document.getElementById('a-logout-btn').classList.add('hidden');
     document.getElementById('a-refresh-btn').classList.add('hidden');
+    document.getElementById('a-messages-btn').classList.add('hidden');
     document.getElementById('a-login').classList.remove('hidden');
     document.getElementById('a-pwd').value = '';
   });
@@ -1473,6 +1478,7 @@ function onAdminLoginSuccess(token, role, nom){
   document.getElementById('a-app').classList.remove('hidden');
   document.getElementById('a-logout-btn').classList.remove('hidden');
   document.getElementById('a-refresh-btn').classList.remove('hidden');
+  document.getElementById('a-messages-btn').classList.remove('hidden');
   applyRoleVisibility();
   // Un autre compte a pu se connecter entre-temps sur le même appareil
   // (déconnexion ne recharge jamais la page) — sans ce nettoyage, revenir
@@ -2319,6 +2325,114 @@ async function loadAlerts(){
     const anyAlert = (d.reservations||0) + (d.livraisons||0) + (d.virements||0) + (d.partenaire_virements||0) + (d.partenaire_litiges||0) + (d.incidents||0) + (d.communications||0) > 0;
     document.getElementById('bn-plus-dot')?.classList.toggle('hidden', !anyAlert);
   }catch(e){}
+  updateAdminMessagesBadge();
+}
+
+// Messages éclair des transporteurs (demande d'Aly, 2026-11-16) — même
+// cycle de 45s que loadAlerts() ci-dessus, pas de minuteur dédié. Un
+// "toast" (showToast) n'apparaît que si le total de non-lus a AUGMENTÉ
+// depuis le dernier passage, pas à chaque sondage — sinon le même message
+// non lu réapparaîtrait en pop toutes les 45 secondes tant qu'il n'est pas
+// ouvert.
+let _lastMessagesUnreadTotal = 0;
+async function updateAdminMessagesBadge(){
+  try{
+    const r = await fetch(API('admin-messages'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list_conversations'})});
+    const d = await r.json();
+    if(!r.ok) return;
+    const conversations = d.conversations || [];
+    const total = conversations.reduce((s,c) => s + (c.non_lues||0), 0);
+    const badge = document.getElementById('a-messages-badge');
+    if(badge){
+      badge.textContent = total > 9 ? '9+' : String(total || '');
+      badge.classList.toggle('hidden', !total);
+    }
+    if(total > _lastMessagesUnreadTotal){
+      const nouveau = conversations.find(c => c.non_lues > 0 && c.dernier?.expediteur === 'transporteur');
+      if(nouveau) showToast(`💬 ${nouveau.transporteur.nom} : ${nouveau.dernier.contenu}`.slice(0,120));
+    }
+    _lastMessagesUnreadTotal = total;
+  }catch(e){}
+}
+function closeMessagesModal(){ closeModal(); }
+function openMessagesInbox(){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `<div class="modal-box" style="max-width:460px;max-height:80vh;overflow-y:auto">
+    <h2 style="margin-bottom:14px">${IC_CHAT} Messages transporteurs</h2>
+    <div id="messages-inbox-list"><p class="empty">Chargement...</p></div>
+    <button class="btn btn-grey btn-block" style="margin-top:14px" onclick="closeMessagesModal()">Fermer</button>
+  </div>`;
+  document.body.appendChild(overlay);
+  loadMessagesInbox();
+}
+async function loadMessagesInbox(){
+  const zone = document.getElementById('messages-inbox-list');
+  if(!zone) return;
+  try{
+    const r = await fetch(API('admin-messages'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list_conversations'})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const conversations = d.conversations || [];
+    zone.innerHTML = conversations.length ? conversations.map(c => `
+      <div class="row-item" style="cursor:pointer" onclick="openMessageThread(${c.transporteur.id}, ${JSON.stringify(c.transporteur.nom)})">
+        <div class="row-top">
+          <span class="row-title">${escHtml(c.transporteur.nom)}</span>
+          ${c.non_lues ? `<span class="tab-badge">${c.non_lues}</span>` : ''}
+        </div>
+        <div class="row-meta">${c.dernier.expediteur==='admin'?'Toi : ':''}${escHtml(c.dernier.contenu)}</div>
+      </div>`).join('') : '<p class="empty">Aucun message pour l\'instant.</p>';
+  }catch(e){
+    zone.innerHTML = `<p class="empty">Erreur de chargement.</p>`;
+  }
+}
+async function openMessageThread(transporteurId, nom){
+  closeModal();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'modal-overlay-el';
+  overlay.innerHTML = `<div class="modal-box" style="max-width:460px;max-height:85vh;display:flex;flex-direction:column">
+    <h2 style="margin-bottom:10px">${IC_CHAT} ${escHtml(nom)}</h2>
+    <div id="msg-thread-list" style="display:flex;flex-direction:column;gap:10px;overflow-y:auto;flex:1;margin-bottom:12px"><p class="empty">Chargement...</p></div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <textarea id="admin-msg-input" rows="1" maxlength="500" style="flex:1;margin-bottom:0;resize:none;max-height:90px" placeholder="Écrire un message..."></textarea>
+      <button class="btn btn-blue" style="width:auto;flex-shrink:0;padding:10px 16px" onclick="envoyerMessageAdmin(${transporteurId})">Envoyer</button>
+    </div>
+    <button class="btn btn-grey btn-block" style="margin-top:12px" onclick="closeMessagesModal()">Fermer</button>
+  </div>`;
+  document.body.appendChild(overlay);
+  await loadMessageThread(transporteurId);
+  fetch(API('admin-messages'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'marquer_lu', transporteur_id:transporteurId})}).then(()=>updateAdminMessagesBadge());
+}
+async function loadMessageThread(transporteurId){
+  const zone = document.getElementById('msg-thread-list');
+  if(!zone) return;
+  try{
+    const r = await fetch(API('admin-messages'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'list_thread', transporteur_id:transporteurId})});
+    const d = await r.json();
+    if(!r.ok) throw new Error(d.error||'Erreur');
+    const msgs = d.messages || [];
+    zone.innerHTML = msgs.length ? msgs.map(m => `
+      <div class="assist-msg ${m.expediteur==='admin'?'user':'bot'}">${escHtml(m.contenu)}</div>
+    `).join('') : '<p class="empty">Aucun message pour l\'instant.</p>';
+    zone.scrollTop = zone.scrollHeight;
+  }catch(e){
+    zone.innerHTML = `<p class="empty">Erreur de chargement.</p>`;
+  }
+}
+async function envoyerMessageAdmin(transporteurId){
+  const input = document.getElementById('admin-msg-input');
+  const contenu = (input?.value || '').trim();
+  if(!contenu) return;
+  input.value = '';
+  try{
+    const r = await fetch(API('admin-messages'), {method:'POST', headers:authHeaders(), body:JSON.stringify({action:'envoyer', transporteur_id:transporteurId, contenu})});
+    const d = await r.json();
+    if(r.ok) await loadMessageThread(transporteurId);
+    else input.value = contenu;
+  }catch(e){ input.value = contenu; }
 }
 const _BADGE_SEEN_KEY = 'a_badge_seen';
 const _badgeCounts = {};
@@ -12816,6 +12930,7 @@ function closeLiveMap(){
     document.getElementById('a-app').classList.remove('hidden');
     document.getElementById('a-logout-btn').classList.remove('hidden');
     document.getElementById('a-refresh-btn').classList.remove('hidden');
+    document.getElementById('a-messages-btn').classList.remove('hidden');
     applyRoleVisibility();
     switchAdminTab('accueil');
     // Panneau Assistant permanent (plus un onglet, voir onAdminLoginSuccess)
