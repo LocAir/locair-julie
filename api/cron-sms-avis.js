@@ -61,9 +61,11 @@ module.exports = async (req, res) => {
       // confirmée qui repousse la vraie fin de contrat plus loin dans le
       // temps — sans quoi ce SMS/WhatsApp partirait à tort à un client qui
       // a déjà prolongé (voir isSupersededReservation, _lib/emailSchedule.js).
-      const { data: peers } = await supabase
+      let peersQ = supabase
         .from('reservations').select('id, statut, date_debut, date_fin, reservation_origine_id')
-        .eq('city_id', resa.city_id).ilike('email', resa.email || '').eq('statut', 'confirmee');
+        .eq('city_id', resa.city_id).eq('statut', 'confirmee');
+      peersQ = resa.email ? peersQ.ilike('email', resa.email) : peersQ.is('email', null);
+      const { data: peers } = await peersQ;
       if (isSupersededReservation(resa, peers || [])) continue;
 
       const resultSms = await sendRelanceProlongationSms(supabase, resa);
