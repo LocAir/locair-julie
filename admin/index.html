@@ -5613,7 +5613,7 @@ function renderReservations(){
     items = [...items].sort((a,b) => resaUrgencyDate(a).localeCompare(resaUrgencyDate(b)));
   }
   if(!items.length){
-    list.innerHTML = `<p class="empty">🧾 ${RESERVATIONS_SHOW_MASQUEES?'Aucune réservation supprimée.':'Aucune réservation pour l\'instant.'}</p>`;
+    list.innerHTML = `<p class="empty">${IC_RECEIPT} ${RESERVATIONS_SHOW_MASQUEES?'Aucune réservation supprimée.':'Aucune réservation pour l\'instant.'}</p>`;
     return;
   }
   list.innerHTML = `<div class="row-grid">${items.map(r => reservationRowHtml(r)).join('')}</div>${reservationsTableHtml(items)}`;
@@ -8874,16 +8874,16 @@ async function loadVirementsTab(silent){
       <div class="stat-grid" style="margin-bottom:20px">
         <div class="stat-tile"><div class="n" style="${aVerserTransp>0?'color:var(--red)':''}">${euros(aVerserTransp)}</div><div class="l">À verser · transporteurs</div></div>
         <div class="stat-tile"><div class="n" style="${aVerserPart>0?'color:var(--red)':''}">${euros(aVerserPart)}</div><div class="l">À verser · ambassadeurs</div></div>
-        ${aRecuperer>0?`<div class="stat-tile" style="grid-column:1/-1"><div class="n" style="color:var(--red)">${euros(aRecuperer)}</div><div class="l">⚠️ Commissions versées à récupérer (résas annulées/remboursées)</div></div>`:''}
+        ${aRecuperer>0?`<div class="stat-tile" style="grid-column:1/-1"><div class="n" style="color:var(--red)">${euros(aRecuperer)}</div><div class="l">${IC_WARN} Commissions versées à récupérer (résas annulées/remboursées)</div></div>`:''}
       </div>
-      <button class="btn btn-grey" style="margin-bottom:20px" onclick="openFacturesTransporteursModal()">🧾 Factures transporteurs</button>`;
+      <button class="btn btn-grey" style="margin-bottom:20px" onclick="openFacturesTransporteursModal()">${IC_RECEIPT} Factures transporteurs</button>`;
 
     const transpSection = `
-      <div class="section-title" style="margin-top:0">🚚 Transporteurs</div>
+      <div class="section-title" style="margin-top:0"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0;opacity:.8"><rect x="1" y="6" width="14" height="11" rx="1"/><path d="M15 9h4l3 3v5h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="17.5" cy="19" r="2"/></svg> Transporteurs</div>
       ${transporteurs.length ? sortParUrgenceVirement(transporteurs).map(transporteurRevenusCardHtml).join('') : '<p class="empty">Aucun transporteur.</p>'}`;
 
     const partSection = `
-      <div class="section-title">🤝 Ambassadeurs</div>
+      <div class="section-title">${IC_HANDSHAKE} Ambassadeurs</div>
       ${partenaires.length ? sortParUrgenceVirement(partenaires).map(partenaireRevenusCardHtml).join('') : '<p class="empty">Aucun ambassadeur.</p>'}`;
 
     zone.innerHTML = sommaireHtml + transpSection + partSection;
@@ -8904,7 +8904,7 @@ async function openFacturesTransporteursModal(preselectTransporteurId){
   overlay.className = 'modal-overlay';
   overlay.id = 'modal-overlay-el';
   overlay.innerHTML = `<div class="modal-box" style="max-width:580px;max-height:90vh;overflow-y:auto">
-    <h2 style="margin-bottom:4px">🧾 Factures transporteurs</h2>
+    <h2 style="margin-bottom:4px">${IC_RECEIPT} Factures transporteurs</h2>
     <p class="sub" style="margin-bottom:14px">Générées automatiquement par les transporteurs, une par semaine.</p>
     <div style="display:flex;gap:8px;margin-bottom:14px">
       <select id="factt-vue" style="flex:1"><option value="liste">Par facture</option><option value="recap">Récap par période</option></select>
