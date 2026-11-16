@@ -495,7 +495,11 @@ async function sendRelanceProlongationWhatsapp(supabase, resa, { force = false }
   let result;
   let content;
 
-  if (useTemplate) {
+  // Templates Meta disponibles uniquement en FR et EN — les clients zh/ru
+  // tombent dans le texte libre même en mode template (pas de template approuvé
+  // dans leur langue).
+  const hasApprovedTemplate = lang === 'en' || !lang || lang === 'fr';
+  if (useTemplate && hasApprovedTemplate) {
     const tplLang = lang === 'en' ? 'en' : 'fr';
     const tplName = lang === 'en' ? 'relance_prolongation_en' : 'relance_prolongation';
     result = await sendWhatsappTemplate(waPhone, tplName, tplLang, [prenom, ref]);

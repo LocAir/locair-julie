@@ -694,7 +694,7 @@ button.tb-icon-btn:focus-visible,.topbar a:focus-visible{outline-color:#fff}
        qu'après coup, au moment où une action précise échouait, avec un
        message technique brut (voir friendlyErrorMessage). Ici le livreur
        comprend tout de suite, avant même de taper quoi que ce soit. -->
-  <div class="banner-warning hidden" id="offline-banner" style="text-align:center">📡 Pas de connexion — reconnecte-toi pour continuer</div>
+  <div class="banner-warning hidden" id="login-offline-banner" style="text-align:center">📡 Pas de connexion — reconnecte-toi pour continuer</div>
 
   <div class="tracking-badge hidden" id="tracking-badge">📍 Ta position est partagée avec Aly pendant cette mission</div>
 
@@ -931,6 +931,7 @@ function show(id){
 // dans l'état constaté), donc rien à écouter pour l'avoir la 1re fois.
 function updateOfflineBanner(){
   document.getElementById('offline-banner')?.classList.toggle('hidden', navigator.onLine);
+  document.getElementById('login-offline-banner')?.classList.toggle('hidden', navigator.onLine);
 }
 window.addEventListener('online', updateOfflineBanner);
 window.addEventListener('offline', updateOfflineBanner);
@@ -1536,7 +1537,9 @@ async function flushOfflineQueue(){
   } finally {
     _flushingOfflineQueue = false;
     renderOfflineBanner();
-    if(STATE.currentMission) renderDetail(); // enlève l'indicateur "en attente d'envoi" une fois parti
+    // Ne pas reconstruire le DOM si le client est en train de signer — le canvas
+    // serait détruit et la signature perdue. sig-canvas n'existe qu'à l'étape signature.
+    if(STATE.currentMission && !document.getElementById('sig-canvas')) renderDetail();
   }
 }
 // Bandeau persistant (pas un toast qui disparaît) : état hors-ligne et/ou

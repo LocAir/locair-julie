@@ -630,13 +630,22 @@ body{font-family:'Plus Jakarta Sans',system-ui,sans-serif;background:var(--bg);c
   if(form){
     form.addEventListener('submit',function(e){
       e.preventDefault();
-      var req=['prenom','nom','tel','adresse'];
+      var req=['prenom','nom','tel','email','adresse'];
       var ok=req.every(function(id){var el=document.getElementById(id);return el&&el.value.trim().length>0;});
       if(!ok){req.forEach(function(id){var el=document.getElementById(id);if(el&&!el.value.trim()){el.style.borderColor='rgba(255,80,80,.6)';el.addEventListener('input',function(){el.style.borderColor='';},{once:true});}});return;}
       var btn=form.querySelector('.btn-submit');
       btn.disabled=true;btn.style.opacity='.5';
-      msg.classList.add('show');
-      msg.scrollIntoView({behavior:'smooth',block:'nearest'});
+      var body={};
+      ['prenom','nom','tel','email','adresse','surface'].forEach(function(id){var el=document.getElementById(id);if(el)body[id]=el.value.trim();});
+      var tl=form.querySelector('input[name="type_logement"]:checked');if(tl)body.type_logement=tl.value;
+      var ext=form.querySelector('input[name="ext"]:checked');if(ext)body.ext=ext.value;
+      var st=form.querySelector('input[name="statut"]:checked');if(st)body.statut=st.value;
+      fetch('/api/contact',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+        .catch(function(){})
+        .finally(function(){
+          msg.classList.add('show');
+          msg.scrollIntoView({behavior:'smooth',block:'nearest'});
+        });
     });
   }
 
