@@ -16,7 +16,7 @@ Horaires : 7j/7, 8h–20h.
 Site : https://locair.fr`;
 
 const PRODUITS = `### Climatiseur mobile
-- Prix : à partir de 12 €/jour (tarif dégressif : 9 €/j dès 7 jours, 8 €/j dès 21 jours)
+- Prix : 12 €/jour pour 7 jours, 10 €/jour pour 8 à 14 jours, 9 €/jour pour 15 à 21 jours, 8 €/jour dès 22 jours
 - Frais de livraison et installation : 60 € (aller + retour inclus)
 - Puissance : 9 000 – 12 000 BTU · jusqu'à 15 m²
 - Zéro perçage, zéro travaux · kit fenêtre inclus · installé en moins de 20 minutes
@@ -35,7 +35,7 @@ const PRODUITS = `### Climatiseur mobile
 // Version condensée (SMS, 320 caractères par message au total) — mêmes
 // chiffres que PRODUITS ci-dessus, jamais désynchronisés : si un tarif
 // change, les deux constantes sont juste à côté l'une de l'autre.
-const PRODUITS_COURT = `Climatiseur mobile : 12 €/j (9 €/j dès 7j · 8 €/j dès 21j) + 60 € livraison. Réservation : locair.fr/reservation-climatiseur
+const PRODUITS_COURT = `Climatiseur mobile : 12 €/j (7j) · 10 €/j (8-14j) · 9 €/j (15-21j) · 8 €/j (22j+) + 60 € livraison. Réservation : locair.fr/reservation-climatiseur
 PortaSplit réversible A++ : 99 €/mois (engagement 6 mois, 229 € à la souscription) ou 29 €/j sans engagement. Réservation : locair.fr/reservation-portasplit`;
 
 const GARANTIES = `- Aucune caution sur tous les produits
