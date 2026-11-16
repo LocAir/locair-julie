@@ -1836,6 +1836,9 @@ const IC_CART_LG     = '<svg width="20" height="20" viewBox="0 0 24 24" fill="no
 const IC_CHART_LG    = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
 const IC_CHART_DECO  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" style="width:1em;height:1em;display:block"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>';
 const IC_WARN_LG     = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+// Ampoule des encarts "affect-hint" (conseils/astuces) — une seule icône
+// réutilisée partout où un emoji 💡 servait avant.
+const IC_IDEA = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;flex-shrink:0"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>';
 
 // Boutons Appeler/WhatsApp réutilisés partout où un numéro client est affiché
 // côté admin (Réservations, Livraisons, Clients) — jusqu'ici seul le
@@ -4555,7 +4558,7 @@ function renderReservationsToolbar(){
       <div class="filter-scroll" style="margin-bottom:16px">
         ${filters.map(f => `<button class="${!RESERVATIONS_SHOW_MASQUEES && RESERVATIONS_FILTER===f.key?'on':''}" onclick="setReservationsFilter('${f.key}')">${f.label}</button>`).join('')}
       </div>
-      ${RESERVATIONS_FILTER==='hors_zone'?`<div class="affect-hint">💡 Le code postal du client ne correspond à aucune ville configurée — aucun livreur n'est assigné automatiquement, choisis-en un toi-même sur chaque réservation.</div>`:''}
+      ${RESERVATIONS_FILTER==='hors_zone'?`<div class="affect-hint">${IC_IDEA} Le code postal du client ne correspond à aucune ville configurée — aucun livreur n'est assigné automatiquement, choisis-en un toi-même sur chaque réservation.</div>`:''}
       <div id="resa-list" class="table-toggle-zone"></div>
       ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleMasquees()">${RESERVATIONS_SHOW_MASQUEES?'← Revenir aux réservations':`🙈 Afficher les réservations supprimées (${masqueesCount})`}</button>` : ''}
       <div class="bulk-select-bar ${RESA_SELECTION_MODE && RESA_SELECTION.size>0?'':'hidden'}" id="resa-select-bar">
@@ -6424,7 +6427,7 @@ function renderLivraisonsToolbar(){
       <div class="filter-scroll" style="margin:16px 0">
         ${filters.map(f => `<button class="${!LIVRAISONS_SHOW_MASQUEES && LIVRAISONS_FILTER===f.key?'on':''}" onclick="setLivraisonsFilter('${f.key}')">${f.label}</button>`).join('')}
       </div>
-      ${LIVRAISONS_FILTER==='non_assignees'?(LIVRAISONS_NON_ASSIGNEES_ALERT_ONLY?`<div class="affect-hint">💡 Vue filtrée depuis l'alerte du bandeau : uniquement les missions non assignées dues sous 72h (ou déjà en retard) — exactement ce qui a été compté. <a href="#" onclick="event.preventDefault();setLivraisonsFilter('non_assignees')">Voir toutes les non assignées →</a></div>`:`<div class="affect-hint">💡 Les nouvelles missions sont assignées automatiquement selon la zone et la disponibilité du livreur (regroupées par code postal quand possible). Le badge rouge en haut ne compte que ce qui est dû sous 72h — cette liste montre tout, y compris ce qui peut attendre.</div>`):''}
+      ${LIVRAISONS_FILTER==='non_assignees'?(LIVRAISONS_NON_ASSIGNEES_ALERT_ONLY?`<div class="affect-hint">${IC_IDEA} Vue filtrée depuis l'alerte du bandeau : uniquement les missions non assignées dues sous 72h (ou déjà en retard) — exactement ce qui a été compté. <a href="#" onclick="event.preventDefault();setLivraisonsFilter('non_assignees')">Voir toutes les non assignées →</a></div>`:`<div class="affect-hint">${IC_IDEA} Les nouvelles missions sont assignées automatiquement selon la zone et la disponibilité du livreur (regroupées par code postal quand possible). Le badge rouge en haut ne compte que ce qui est dû sous 72h — cette liste montre tout, y compris ce qui peut attendre.</div>`):''}
       <div id="liv-list" class="table-toggle-zone"></div>
       ${masqueesCount ? `<button class="btn btn-grey btn-block" style="margin-top:14px" onclick="toggleLivraisonsMasquees()">${LIVRAISONS_SHOW_MASQUEES?'← Revenir aux missions':`🙈 Afficher les missions supprimées (${masqueesCount})`}</button>` : ''}
     </div>
@@ -8246,7 +8249,7 @@ async function openTransporteurStats(id){
         <div style="font-size:40px;font-weight:900;color:${scoreColor}">${p.score != null ? p.score : '—'}</div>
         <div style="font-size:12px;color:var(--grey)">Score de performance</div>
       </div>
-      <div class="affect-hint">💡 Le score pondère surtout la complétion (30%) et l'acceptation (25%) — les preuves terrain et l'absence d'incident comptent moins mais s'additionnent.</div>
+      <div class="affect-hint">${IC_IDEA} Le score pondère surtout la complétion (30%) et l'acceptation (25%) — les preuves terrain et l'absence d'incident comptent moins mais s'additionnent.</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
         <div class="card" style="padding:12px;text-align:center">
           <div style="font-size:22px;font-weight:800">${d.total||0}</div>
@@ -11275,7 +11278,7 @@ function renderVilles(){
         ${villes.map(villeCardHtml).join('')}
       `).join('');
   const soldOutHint = `
-    <div class="affect-hint">💡 Plus de stock ? Le site affiche "Complet" tout seul, sans rien à faire. Passez une ville en "Manuel" seulement pour garder la main vous-même (incident, fermeture volontaire).</div>`;
+    <div class="affect-hint">${IC_IDEA} Plus de stock ? Le site affiche "Complet" tout seul, sans rien à faire. Passez une ville en "Manuel" seulement pour garder la main vous-même (incident, fermeture volontaire).</div>`;
   const countryOptionsHtml = Object.entries(COUNTRY_META).map(([code, m]) => `<option value="${code}">${m.flag} ${escHtml(m.name)}</option>`).join('');
   zone.innerHTML = soldOutHint + list + `
     <div class="card">
@@ -11531,7 +11534,7 @@ function renderTarifs(){
   const c = TARIFS_CACHE;
   const euros = (cents) => (cents/100).toFixed(2);
   zone.innerHTML = `
-    <div class="affect-hint">💡 3 outils différents, à ne pas confondre : <strong>ci-dessous</strong> le tarif de base (automatique, pour toute réservation) · <strong>plus bas sur cette page</strong> les packs à prix fixe (une formule toute faite, comme "Pack Sérénité") · <strong>onglet 🎁 Offres</strong> les codes promo (une réduction en plus, activée par un code que le client tape).</div>
+    <div class="affect-hint">${IC_IDEA} 3 outils différents, à ne pas confondre : <strong>ci-dessous</strong> le tarif de base (automatique, pour toute réservation) · <strong>plus bas sur cette page</strong> les packs à prix fixe (une formule toute faite, comme "Pack Sérénité") · <strong>onglet Offres</strong> les codes promo (une réduction en plus, activée par un code que le client tape).</div>
     <p class="sub" style="margin:-4px 0 14px">Le prix de location est dégressif par palier de durée. Change les valeurs ci-dessous, vérifie l'aperçu, puis enregistre — ça change le vrai prix affiché sur le site, dans le contrat, la facture, les CGV et la page retard, immédiatement, partout.</p>
     <div class="card">
       <h2 style="margin-bottom:2px">Durée minimale</h2>
@@ -11814,7 +11817,7 @@ function renderPromotions(){
     </label>`).join('') || '<p class="sub">Aucune ville configurée.</p>';
 
   zone.innerHTML = `
-    <div class="affect-hint">💡 Une remise en plus du tarif normal, activée par un code que le client tape à la réservation. Pour un vrai prix figé sans code (ex. "Pack Sérénité"), c'est plutôt dans l'onglet 💶 Tarifs, tout en bas.</div>
+    <div class="affect-hint">${IC_IDEA} Une remise en plus du tarif normal, activée par un code que le client tape à la réservation. Pour un vrai prix figé sans code (ex. "Pack Sérénité"), c'est plutôt dans l'onglet Tarifs, tout en bas.</div>
     <p class="sub" style="margin:-4px 0 14px">Crée un code promo, une réduction saisonnière, une offre de bienvenue… tout ce que tu enregistres ici s'applique immédiatement au paiement, sans redéploiement. Un client entre le code au moment de payer.</p>
     ${list}
     <div class="card" id="promo-form-card">
