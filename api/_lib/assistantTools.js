@@ -161,6 +161,17 @@ const TOOL_SPECS = {
     },
   },
 
+  lister_transporteurs: {
+    mutating: false,
+    description: "Liste les transporteurs actifs (id et nom) — pour retrouver l'id d'un transporteur quand l'administrateur le désigne par son nom (ex. avant d'envoyer un message ou une prime).",
+    input_schema: { type: 'object', properties: {} },
+    async run(admin, token) {
+      const r = await invokeAction(require('../admin-transporteurs'), token, 'list', {});
+      if (r.status !== 200) return r.data;
+      return { transporteurs: (r.data.transporteurs || []).filter(t => t.actif).map(t => ({ id: t.id, nom: t.nom })) };
+    },
+  },
+
   virements_a_verser: {
     mutating: false,
     description: 'Total à verser aux transporteurs et aux ambassadeurs, détaillé par personne.',
@@ -346,6 +357,17 @@ const TOOL_SPECS = {
       montant_cents: { type: 'integer' },
     }, required: ['transporteur_id', 'mois', 'montant_cents'] },
     label(input) { return `Créer une prime de ${(input.montant_cents / 100).toFixed(2)} € pour le transporteur #${input.transporteur_id} (${input.mois})`; },
+  },
+
+  envoyer_message_transporteur: {
+    mutating: true,
+    endpoint: 'admin-messages', action: 'envoyer',
+    description: "Envoie un message éclair (texte libre) à un transporteur — arrive en notification sur son téléphone. Utilise lister_transporteurs d'abord si l'id n'est pas déjà connu.",
+    input_schema: { type: 'object', properties: {
+      transporteur_id: { type: 'integer' },
+      contenu: { type: 'string', description: 'Texte du message, 500 caractères maximum.' },
+    }, required: ['transporteur_id', 'contenu'] },
+    label(input) { return `Envoyer ce message au transporteur #${input.transporteur_id} : "${input.contenu}"`; },
   },
 
   creer_devis: {
