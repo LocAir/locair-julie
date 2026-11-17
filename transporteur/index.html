@@ -464,6 +464,15 @@ input[type="checkbox"]{accent-color:var(--blue)}
 .dash-link-card .chev{color:var(--grey-soft);font-size:18px;flex-shrink:0}
 .vrow{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule);font-size:14px}
 .vrow:last-child{border-bottom:none}
+/* Fil de messages éclair avec l'admin (demande d'Aly, 2026-11-16) — bulles
+   gauche/droite, même recette visuelle que le panneau Assistant côté admin. */
+.msg-thread{display:flex;flex-direction:column;gap:10px;max-height:50vh;overflow-y:auto;margin:14px 0;padding-right:2px}
+.msg-bubble{max-width:82%;padding:10px 14px;border-radius:16px;font-size:13.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;text-align:left}
+.msg-bubble.self{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.msg-bubble.other{align-self:flex-start;background:var(--bg);color:var(--black);border-bottom-left-radius:4px}
+.msg-bubble .msg-time{display:block;font-size:10.5px;opacity:.65;margin-top:3px}
+.msg-send-row{display:flex;gap:8px;align-items:flex-end}
+.msg-send-row textarea{flex:1;margin-bottom:0;resize:none;max-height:90px}
 .vchip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:4px 10px 4px 8px;border-radius:100px}
 .vchip::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
 .vchip.demande{background:var(--amber-bg);color:var(--amber)}
@@ -680,6 +689,10 @@ button.tb-icon-btn:focus-visible,.topbar a:focus-visible{outline-color:#fff}
         <button id="notif-fab" class="tb-icon-btn hidden" onclick="openNotifCenter()" title="Notifications" aria-label="Notifications">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           <span class="tab-badge hidden" id="notif-fab-badge"></span>
+        </button>
+        <button id="message-fab" class="tb-icon-btn hidden" onclick="openMessagesThread()" title="Message à l'admin" aria-label="Message à l'admin">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"/></svg>
+          <span class="tab-badge hidden" id="message-fab-badge"></span>
         </button>
         <button class="tb-icon-btn hidden" id="logout-btn" onclick="logout()" title="Se déconnecter" aria-label="Se déconnecter">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -919,6 +932,7 @@ function show(id){
   // dans chacun des 8 écrans. Même principe pour le centre de notifications.
   document.getElementById('tuto-fab')?.classList.toggle('hidden', id==='login-screen');
   document.getElementById('notif-fab')?.classList.toggle('hidden', id==='login-screen');
+  document.getElementById('message-fab')?.classList.toggle('hidden', id==='login-screen');
 }
 
 // Signal fiable de coupure réseau, indépendant de toute action (voir
@@ -1430,6 +1444,7 @@ async function fetchMissions(){
     updateMissionsBadge();
     if(!STATE.checklistItems) fetchChecklistItems(); // une seule fois, en tâche de fond
     updateNotifBadge();
+    updateMessagesBadge();
     STATE.missionsStale = false;
     saveMissionsCache();
     // Une requête vient de réussir : on est forcément en ligne, même si
@@ -1690,6 +1705,80 @@ async function marquerToutLu(){
     renderNotifCenter();
     updateNotifBadge();
   }catch(e){ /* pas bloquant */ }
+}
+
+// Messages éclair avec l'admin (demande d'Aly, 2026-11-16) — un seul fil,
+// toujours avec l'admin (compte partagé), pas de choix de destinataire côté
+// transporteur. Même principe que le centre de notifications ci-dessus
+// (badge mis à jour sur le même cycle), mais ici le transporteur peut aussi
+// écrire, pas seulement lire.
+async function updateMessagesBadge(){
+  try{
+    const r = await fetch(API('transporteur-messages'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'list'})});
+    const d = await r.json();
+    if(!r.ok) return;
+    STATE.messages = d.messages || [];
+    const badge = document.getElementById('message-fab-badge');
+    if(badge){
+      badge.textContent = d.non_lues > 9 ? '9+' : String(d.non_lues || '');
+      badge.classList.toggle('hidden', !d.non_lues);
+    }
+  }catch(e){ /* pas bloquant */ }
+}
+function closeMessagesThread(){
+  const o = document.getElementById('messages-overlay');
+  if(o) o.remove();
+}
+async function openMessagesThread(){
+  const overlay = document.createElement('div');
+  overlay.className = 'overlay';
+  overlay.id = 'messages-overlay';
+  overlay.addEventListener('click', e => { if(e.target===overlay) closeMessagesThread(); });
+  document.body.appendChild(overlay);
+  renderMessagesThread();
+  await updateMessagesBadge();
+  renderMessagesThread();
+  try{
+    await fetch(API('transporteur-messages'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'marquer_lu'})});
+    (STATE.messages||[]).forEach(m => { if(m.expediteur==='admin') m.lu = true; });
+    const badge = document.getElementById('message-fab-badge');
+    if(badge) badge.classList.add('hidden');
+  }catch(e){ /* pas bloquant */ }
+}
+function renderMessagesThread(){
+  const overlay = document.getElementById('messages-overlay');
+  if(!overlay) return;
+  const msgs = STATE.messages || [];
+  overlay.innerHTML = `
+    <div class="sheet">
+      <h1 style="margin:0 0 4px">💬 Message à l'admin</h1>
+      <p class="sub" style="margin-bottom:10px">Pour une question rapide — pas besoin d'appeler.</p>
+      <div class="msg-thread" id="msg-thread-list">
+        ${msgs.length ? msgs.map(m => `<div class="msg-bubble ${m.expediteur==='transporteur'?'self':'other'}">${escHtml(m.contenu)}<span class="msg-time">${new Date(m.created_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span></div>`).join('') : '<p class="empty">Aucun message pour l\'instant.</p>'}
+      </div>
+      <div class="msg-send-row">
+        <textarea id="msg-input" rows="1" maxlength="500" placeholder="Écrire un message..."></textarea>
+        <button class="btn btn-blue" style="width:auto;flex-shrink:0;min-height:0;padding:12px 16px" onclick="envoyerMessage()">Envoyer</button>
+      </div>
+      <button class="btn btn-grey btn-block" style="margin-top:14px" onclick="closeMessagesThread()">Fermer</button>
+    </div>`;
+  const list = document.getElementById('msg-thread-list');
+  if(list) list.scrollTop = list.scrollHeight;
+}
+async function envoyerMessage(){
+  const input = document.getElementById('msg-input');
+  const contenu = (input?.value || '').trim();
+  if(!contenu) return;
+  input.value = '';
+  try{
+    const r = await fetch(API('transporteur-messages'), {method:'POST', headers:{'Content-Type':'application/json','x-transporteur-token':STATE.token}, body: JSON.stringify({action:'envoyer', contenu})});
+    const d = await r.json();
+    if(r.ok && d.message){
+      STATE.messages = STATE.messages || [];
+      STATE.messages.push(d.message);
+      renderMessagesThread();
+    } else if(input){ input.value = contenu; }
+  }catch(e){ if(input) input.value = contenu; }
 }
 // Une mission acceptée pour AUJOURD'HUI ne peut être démarrée (coordonnées
 // client, appel, étapes sur place) qu'une fois la checklist "avant de partir"
