@@ -499,3 +499,60 @@ rappelle et confirme le stock.
 À créer seulement quand l'envoi d'emails marche (clé Brevo et adresse de
 prospection prêtes), et pas avant avril. Horaire : lundi 7h53 (heure de
 Paris), un peu avant 8h pour éviter l'embouteillage de l'heure pile.
+
+## Planning annuel des emails
+
+Le fil rouge de l'année : **on prépare l'été pendant l'hiver**, on sert les
+clients pendant l'été, et on parle chauffage (PortaSplit) à l'automne.
+Toujours **une seule verticale en prospection à la fois** (voir les
+sprints). Chaque message saisonnier est écrit à partir des règles de sa
+verticale et **validé par le propriétaire avant le premier envoi** ; seul
+le modèle « préparer l'été » (verticale A) existe déjà.
+
+### Règles de fréquence (pour ne jamais devenir du spam)
+
+- **Une séquence = 1 email + 2 relances au plus** (J+5, J+12).
+- Après une séquence sans réponse : **pause d'au moins 3 mois** avant de
+  recontacter la même personne, et avec un **angle nouveau** (pas le même
+  message renvoyé).
+- **Au plus 1 séquence par trimestre et par prospect.** L'alerte chaleur
+  (voir « Déclencheur météo ») est à part : 1 par mois au plus, d'avril à
+  septembre.
+- **Pas d'envoi du 20 décembre au 5 janvier**, ni le week-end, ni les
+  jours fériés.
+- « Stop » = plus jamais. La liste stop est vérifiée avant chaque envoi.
+- Les **clients** (ceux qui ont déjà loué) ont leur propre fil, plus
+  léger, ci-dessous. Ils ne reçoivent jamais les emails de prospection.
+
+### Calendrier
+
+| Mois | Prospection (une verticale) | Angle du message | Autres envois |
+|---|---|---|---|
+| **Novembre** | Mise en place : adresse de prospection + échauffement (2 à 3 semaines) | — | Construire les listes C et D |
+| **Décembre** (jusqu'au 19) | **A — Conciergeries**, sprint 1 | « Préparez l'été dès maintenant » (modèle existant) | — |
+| **Janvier** (dès le 6) | **A**, sprint 2 (cibles restantes) | « Préparez l'été dès maintenant » | Bilan des sprints A |
+| **Février** | **B — Installateurs** | « Devenez partenaire avant la saison : vos clients qui attendent un chantier n'auront plus chaud » + lien partenaire | — |
+| **Mars** | **C — Syndics & agences** | « Pannes de clim chez vos locataires cet été : une solution pour le lendemain, payée par le locataire » | Construire la page météo du site |
+| **Avril** | **D — Campings, résidences, événementiel** | « Réservez vos dates chargées de l'été maintenant » | Ouverture de saison pour A (1 email, aux non-stop, 3 mois après leur séquence) : « La saison commence, notre numéro dépannage + Express 2h » · **Début du déclencheur météo** · Clients : « On est prêts pour l'été » |
+| **Mai** | **D**, sprint 2 (événements de juin à septembre) | « Mariages, salons, tournages : rafraîchir sans faire sauter l'électricité » | Rappel B aux partenaires inscrits : « La saison arrive, pensez à votre lien » |
+| **Juin** | Pas de nouveau sprint froid | — | Déclencheur météo (alertes chaleur) · Clients : rien sauf besoin |
+| **Juillet – août** | Pas de nouveau sprint froid (le stock part aux clients) | — | Déclencheur météo seulement. Les leads chauds passent avant tout. |
+| **Septembre** | Bilan de la saison | — | Fin du déclencheur météo · Clients : « Merci pour la saison » + 1 question (qu'est-ce qu'on améliore ?) |
+| **Octobre** | **A puis C** (non-stop, 3 mois après leur dernier email) | **PortaSplit hiver** : « Chauffer vos logements cet hiver, sans travaux » | Clients : offre hiver PortaSplit |
+| **Novembre** | Préparer l'année suivante : nouvelles listes, nouveaux sprints A | — | Bilan de l'année |
+
+### Le fil des clients (ceux qui ont déjà loué)
+
+3 emails par an au plus, en dehors des confirmations de réservation :
+
+1. **Avril** — « On est prêts pour l'été » : rappel du numéro, de
+   l'Express 2h et de la remise quantité.
+2. **Septembre** — « Merci pour la saison » + une seule question.
+3. **Octobre** — l'offre hiver PortaSplit (seulement pour ceux à qui elle
+   peut servir : logements loués toute l'année, bureaux).
+
+### Avant chaque mois
+
+L'agent prépare, pour le propriétaire : la liste du mois, le brouillon de
+chaque nouveau message et le nombre d'envois prévus. **Rien ne part sans
+sa validation** (règle de la boucle quotidienne).
