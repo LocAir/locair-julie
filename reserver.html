@@ -4609,7 +4609,7 @@ input:-webkit-autofill:focus{
 <body>
 <div class="annbar" style="background:#0D3FA0;color:rgba(255,255,255,.92);font-size:13px;font-weight:500;text-align:center;padding:9px 24px;display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;">
   <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5" aria-hidden="true"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-  <strong>Express 2h</strong> — Climatisation, rafraîchissement &amp; épuration d’air livrés sur toute la Côte d’Azur
+  <strong>Express 2h</strong> — Climatisation, chauffage &amp; rafraîchissement livrés sur toute la Côte d’Azur
 </div>
 <header class="ld-navbar" style="position:sticky;top:0;z-index:200;background:#fff;border-bottom:1.5px solid #DDE6F5;box-shadow:0 1px 8px rgba(26,94,219,.07);">
   <div class="ld-nav-inner" style="max-width:1200px;margin:0 auto;padding:0 24px;height:64px;display:flex;align-items:center;gap:28px;">
@@ -8210,7 +8210,7 @@ a:hover{opacity:.85}
   <div style="max-width:1200px;margin:0 auto;padding:0 24px;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:32px;">
     <div>
       <div style="font-weight:900;font-size:20px;color:#fff;letter-spacing:-.04em;margin-bottom:10px;">Loc’Air<sup style="font-size:10px;">®</sup></div>
-      <p style="font-size:13px;line-height:1.6;max-width:240px;margin-bottom:12px;">Location de climatiseurs, rafraîchisseurs et épurateurs d’air sur la Côte d’Azur. Livraison en 2h, 7j/7.</p>
+      <p style="font-size:13px;line-height:1.6;max-width:240px;margin-bottom:12px;">Location de climatiseurs, PortaSplit et rafraîchisseurs d’air sur la Côte d’Azur. Livraison en 2h, 7j/7.</p>
     </div>
     <div>
       <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#fff;margin-bottom:14px;">Produits</div>
@@ -9052,14 +9052,15 @@ a:hover{opacity:.85}
             <div class="fld">
               <p id="lbl-type-client" style="font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--grey2);margin-bottom:6px">Vous réservez en tant que</p>
               <div class="tpills" id="type-client-group" role="radiogroup" aria-labelledby="lbl-type-client">
-                <button type="button" class="tpill on client-type-perso" onclick="tgl(this,'type');document.getElementById('siret-wrap').style.display='none';document.getElementById('f-raison-sociale').value='';document.getElementById('f-siret').value='';" role="radio" aria-checked="true">Particulier</button>
-                <button type="button" class="tpill client-type-pro" onclick="tgl(this,'type');document.getElementById('siret-wrap').style.display='block'" role="radio" aria-checked="false">Professionnel</button>
+                <button type="button" class="tpill on client-type-perso" onclick="tgl(this,'type');document.getElementById('siret-wrap').style.display='none';document.getElementById('f-raison-sociale').value='';document.getElementById('f-siret').value='';_majRemisePro();" role="radio" aria-checked="true">Particulier</button>
+                <button type="button" class="tpill client-type-pro" onclick="tgl(this,'type');document.getElementById('siret-wrap').style.display='block';_majRemisePro()" role="radio" aria-checked="false">Professionnel</button>
               </div>
               <div id="siret-wrap" style="display:none;margin-top:10px">
                 <label id="label-raison-sociale" for="f-raison-sociale" style="font-size:12px;font-weight:500;color:var(--black2);display:block;margin-bottom:6px">Raison sociale</label>
                 <input id="f-raison-sociale" type="text" placeholder="Nom de l'entreprise" autocomplete="organization" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:16px;font-family:var(--body);color:var(--black);background:#fff;outline:none;margin-bottom:10px"/>
                 <label id="label-siret" for="f-siret" style="font-size:12px;font-weight:500;color:var(--black2);display:block;margin-bottom:6px">SIRET <span style="color:var(--grey2);font-weight:400">(facultatif)</span></label>
-                <input id="f-siret" type="text" placeholder="123 456 789 00012" autocomplete="off" inputmode="numeric" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:16px;font-family:var(--body);color:var(--black);background:#fff;outline:none"/>
+                <input id="f-siret" oninput="_majRemisePro()" type="text" placeholder="123 456 789 00012" autocomplete="off" inputmode="numeric" style="width:100%;padding:9px 12px;border:1.5px solid var(--rule);border-radius:10px;font-size:16px;font-family:var(--body);color:var(--black);background:#fff;outline:none"/>
+                <p id="remise-pro-info" style="font-size:12px;line-height:1.5;color:var(--grey2);margin:6px 0 0">Remise pro avec un SIRET valide : −10 % dès 3 climatiseurs, −15 % dès 5.</p>
               </div>
               <div style="margin-top:10px">
                 <label for="f-parrain" style="font-size:12px;font-weight:500;color:var(--black2);display:block;margin-bottom:6px">Code promo <span style="color:var(--grey2);font-weight:400">(facultatif)</span></label>
@@ -9591,7 +9592,46 @@ function calcTotal(days){
   }
   // En mode pro, la pose est déjà dans le forfait unique : la facturer une
   // seconde fois ferait payer deux fois le même déplacement.
-  return calcPrice(days)*_qty+((_techInstall&&!_offrePro)?INSTALL_FEE:0);
+  // Remise pro selon la quantité : même calcul au centime près que
+  // api/checkout.js (remiseCents), sinon le total affiché et le montant
+  // payé ne colleraient plus.
+  const loc=calcPrice(days)*_qty;
+  const remise=Math.round(loc*100*_remiseQuantitePct()/100)/100;
+  return loc-remise+((_techInstall&&!_offrePro)?INSTALL_FEE:0);
+}
+
+// Remise pro selon la quantité — même barème que remiseQuantitePct() dans
+// api/_lib/pricing.js. Seulement une entreprise (bouton « Professionnel »)
+// avec un SIRET valide, jamais sur l'offre rafraîchisseur (déjà à prix
+// pro). Le serveur refait le même contrôle : ce calcul ne sert qu'à
+// afficher le bon total.
+function _siretValide(v){
+  const s=String(v||'').replace(/\s/g,'');
+  if(!/^\d{14}$/.test(s))return false;
+  if(s.startsWith('356000000'))return s.split('').reduce((a,c)=>a+Number(c),0)%5===0;
+  let sum=0;
+  for(let i=0;i<14;i++){let d=Number(s[13-i]);if(i%2===1){d*=2;if(d>9)d-=9;}sum+=d;}
+  return sum%10===0;
+}
+function _remiseQuantitePct(){
+  if(_offrePro)return 0;
+  if(!document.querySelector('#type-client-group .tpill.on.client-type-pro'))return 0;
+  if(!_siretValide(document.getElementById('f-siret')?.value))return 0;
+  const q=_qty||1;
+  return q>=10?20:q>=5?15:q>=3?10:0;
+}
+function _majRemisePro(){
+  const el=document.getElementById('remise-pro-info');
+  if(el){
+    const pct=_remiseQuantitePct();
+    el.style.display=_offrePro?'none':'block';
+    el.style.color=pct?'var(--green,#15803d)':'var(--grey2)';
+    const L=typeof _lang==='string'?_lang:'fr';
+    el.textContent=pct
+      ?(L==='en'?`Business discount applied: −${pct} %`:L==='zh'?`已享受企业折扣：−${pct}%`:L==='ru'?`Скидка для бизнеса применена: −${pct} %`:`Remise pro appliquée : −${pct} %`)
+      :(L==='en'?'Business discount with a valid SIRET: −10 % from 3 units, −15 % from 5.':L==='zh'?'凭有效SIRET享企业折扣：3台起−10%，5台起−15%。':L==='ru'?'Скидка для бизнеса с действующим SIRET: −10 % от 3 аппаратов, −15 % от 5.':'Remise pro avec un SIRET valide : −10 % dès 3 climatiseurs, −15 % dès 5.');
+  }
+  try{updateRunningTotal();}catch(e){}
 }
 
 // Charge les vrais tarifs (panneau de contrôle admin) au premier affichage
@@ -13322,6 +13362,7 @@ function setLang(l){
   if(typeof _renderSmartLine==='function')_renderSmartLine();
   if(typeof _initDynamicText==='function')_initDynamicText();
   if(typeof applyGoogleRatingDOM==='function')applyGoogleRatingDOM();
+  try{_majRemisePro();}catch(e){}
 }
 
 // ── Note & avis Google (API Places côté serveur, chiffres uniquement) ──
@@ -14611,6 +14652,7 @@ function setQty(n){
   const maxStock=Math.min(5,STOCK_DISPONIBLES!=null&&STOCK_DISPONIBLES>0?STOCK_DISPONIBLES:5);
   n=Math.min(maxStock,Math.max(1,Math.round(n)));
   _qty=n;_unit2=(n>1);
+  try{_majRemisePro();}catch(e){}
   const cb=document.getElementById('f-unit2');if(cb)cb.checked=_unit2;
   // Stepper UI
   const valEl=document.getElementById('qty-val');

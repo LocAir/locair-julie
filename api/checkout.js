@@ -4,7 +4,8 @@ const { resolveCityByAddress } = require('./_lib/city');
 const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays, todayParis, expressPossible } = require('./_lib/dates');
 const { calcTieredPrice, getPricingConfig,
-        getProPricing, getProForfaitCents, isOffrePro } = require('./_lib/pricing');
+        getProPricing, getProForfaitCents, isOffrePro,
+        remiseQuantitePct, isSiretValide } = require('./_lib/pricing');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { resolvePromotion, recordPromotionUsage } = require('./_lib/promotions');
 const { getMatchingForfait } = require('./_lib/forfaits');
@@ -88,6 +89,15 @@ module.exports = async (req, res) => {
   const duree = forfait ? forfait.duree_jours : Math.min(90, Math.max(grille.duree_min_jours, rawDuree));
   const qty   = forfait ? forfait.quantite    : rawQty;
   const baseCents     = forfait ? forfait.prix_cents : calcTieredPrice(duree, grille) * qty * 100;
+  // Remise pro selon la quantité (voir remiseQuantitePct dans _lib/pricing.js) :
+  // seulement une entreprise identifiée (« Professionnel » + SIRET valide),
+  // seulement sur le climatiseur (jamais l'offre rafraîchisseur, déjà à prix
+  // pro), jamais sur un pack à prix fixe. Calculée sur le prix de location
+  // seul — le code promo éventuel reste calculé sur baseCents, comme le fait
+  // reserver.html, pour que le montant affiché et le montant payé collent.
+  const clientPro   = String(data.type_client || '').toLowerCase().startsWith('pro') && isSiretValide(data.siret);
+  const remisePct   = (!pro && !forfait && clientPro) ? remiseQuantitePct(qty) : 0;
+  const remiseCents = Math.round(baseCents * remisePct / 100);
   const isTech        = (data.installation || '').startsWith('Technicien');
   const installCents  = (pro || !isTech) ? 0 : INSTALL_FEE * 100;
   const promoCode     = (data.parrain_code || '').trim().toUpperCase();
@@ -184,7 +194,7 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: "L'Express n'est plus possible après 18 h. Choisissez une livraison demain matin." });
   }
   const expressCents     = data.express === true ? EXPRESS_FEE * 100 : 0;
-  const amountCents      = Math.max(0, baseCents + installCents + deliveryFeeCents + expressCents - promoDiscount);
+  const amountCents      = Math.max(0, baseCents - remiseCents + installCents + deliveryFeeCents + expressCents - promoDiscount);
 
   if (!amountCents || amountCents < 5000) {
     return res.status(400).json({ error: 'Montant invalide' });
@@ -253,6 +263,7 @@ module.exports = async (req, res) => {
         hors_zone:    horsZone ? 'oui' : 'non',
         promo:        promoCode,
         forfait:      forfait ? forfait.nom.slice(0, 200) : '',
+        remise_pro:   remisePct ? `${remisePct} % (${remiseCents / 100} EUR)` : '',
         customer_id:  customerId,
         date_recup_souhaitee: (data.date_recuperation_souhaitee || '').slice(0, 10),
         creneau_recup:        (data.creneau_recuperation        || '').slice(0, 50),

@@ -153,8 +153,46 @@ function dailyRate(day, config) {
   return c.palier4_tarif_cents / 100;
 }
 
+// ── Remise pro selon la quantité ──────────────────────────────────────────
+// Climatiseur mobile loué par une ENTREPRISE (bouton « Professionnel » +
+// SIRET valide) : plus il y a d'appareils dans la commande, plus le prix de
+// location baisse. Ne touche ni la livraison, ni la pose, ni l'Express.
+// Jamais appliquée à l'offre rafraîchisseur (déjà un prix pro) ni à un pack
+// à prix fixe. Même barème dans reserver.html (_remiseQuantitePct) et dans
+// CLAUDE.md — les trois doivent rester identiques.
+const PALIERS_REMISE_QUANTITE = [
+  { min: 10, pct: 20 },
+  { min: 5,  pct: 15 },
+  { min: 3,  pct: 10 },
+];
+function remiseQuantitePct(qty) {
+  const q = parseInt(qty, 10) || 0;
+  const palier = PALIERS_REMISE_QUANTITE.find((p) => q >= p.min);
+  return palier ? palier.pct : 0;
+}
+
+// SIRET = 14 chiffres avec clé de contrôle (formule de Luhn). Exception
+// officielle : les établissements de La Poste (SIREN 356000000), dont la
+// somme des chiffres est un multiple de 5. Sans ce contrôle, n'importe qui
+// cocherait « Professionnel » avec un numéro inventé pour avoir la remise.
+function isSiretValide(siret) {
+  const s = String(siret || '').replace(/\s/g, '');
+  if (!/^\d{14}$/.test(s)) return false;
+  if (s.startsWith('356000000')) {
+    return s.split('').reduce((a, c) => a + Number(c), 0) % 5 === 0;
+  }
+  let sum = 0;
+  for (let i = 0; i < 14; i++) {
+    let d = Number(s[13 - i]);
+    if (i % 2 === 1) { d *= 2; if (d > 9) d -= 9; }
+    sum += d;
+  }
+  return sum % 10 === 0;
+}
+
 module.exports = {
   calcTieredPrice, dailyRate, getPricingConfig, DEFAULT_PRICING_CONFIG,
   getProPricing, getProForfaitCents, isOffrePro,
   DEFAULT_PRO_PRICING, DEFAULT_PRO_FORFAIT_CENTS,
+  remiseQuantitePct, isSiretValide, PALIERS_REMISE_QUANTITE,
 };
