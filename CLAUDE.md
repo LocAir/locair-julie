@@ -170,10 +170,18 @@ bras). Chaque outil a un seul rôle.
   (50 conciergeries, 50 frigoristes). Une ligne = une entreprise.
 - **Jamais dans ce dépôt** : tout fichier du dépôt non exclu par
   `.vercelignore` est publié sur locair.fr.
-- **Colonnes :** Verticale, Type, Nom, Enseigne, Ville, Téléphone,
-  Email, Site web, Statut, Date dernier contact, Prochaine action,
-  Historique des échanges, Notes, Gérant, Salariés, Adresse, Fiche
-  officielle.
+- **Trois canaux seulement :** téléphone, email et courrier
+  (publipostage). La base ne garde **que ce qui sert à ces trois
+  canaux** ; rien d'autre n'y entre (pas de site web, d'effectif, de
+  SIRET, de lien vers une fiche…).
+- **Colonnes :** Verticale, Type, Société, Contact (gérant), Téléphone,
+  Email, Adresse, Code postal, Ville, Statut, Date dernier contact,
+  Prochaine action, Historique des échanges, Notes.
+  - **Société** = le nom sous lequel l'entreprise travaille (enseigne).
+  - **Contact** = le dirigeant inscrit dans l'annuaire officiel, pour
+    « Bonjour {prénom} » et « À l'attention de » sur un courrier.
+  - **Adresse / Code postal / Ville** séparés, pour le publipostage. Le
+    code postal est du texte (il garde son 0 : `06600`).
 - **Statuts possibles** (un seul à la fois) :
 
 | Statut | Veut dire |
