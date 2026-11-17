@@ -112,8 +112,10 @@ Comptée sur le nombre d'appareils d'**une même commande** :
   8h à 20h.
 - Commande **avant 20h → livré le lendemain**, sinon le surlendemain.
 - Option **Express 2h** (jour même, commande avant 18h, +60 €) : prévue
-  pour les particuliers. Pour un pro, ne pas la promettre par écrit sans
-  l'accord du propriétaire (surtout pour plusieurs appareils).
+  pour les particuliers. Pour un pro, elle peut être proposée **seulement
+  dans la verticale A** (conciergeries, voir « Prospection par sprints »),
+  pour 1 ou 2 climatiseurs, aux mêmes conditions. Ailleurs, ou pour plus
+  d'appareils, ne pas la promettre par écrit sans l'accord du propriétaire.
 - Au-delà de 5 appareils : appel obligatoire pour vérifier le stock avant
   de promettre une date.
 - Rafraîchisseur : l'eau (réservoir ou raccordement) se règle **pendant
@@ -155,3 +157,136 @@ Toujours partir du problème, pas de la machine.
 - Climatiseur mobile : il ne marche que dans une pièce fermée, et
   jusqu'à environ 15 m² par appareil.
 - PortaSplit : jusqu'à environ 42 m² par appareil.
+
+## Prospection par sprints (4 verticales)
+
+On ne prospecte **jamais toutes les cibles en même temps**. On travaille
+une verticale à la fois, en « sprint » : une liste, un message, un suivi,
+puis un bilan avant de passer à la suivante. Chaque verticale a son
+objectif, son produit et ses règles ci-dessous. Elles s'ajoutent à
+l'offre B2B au-dessus : aucun prix, délai ou promesse en dehors de ce qui
+y est écrit.
+
+### Règles communes à tous les sprints
+
+- **Une verticale par sprint.** Un sprint = 20 à 30 cibles maximum, tirées
+  du même fichier, du même type. Ne jamais mélanger deux verticales dans
+  un même envoi ni un même fichier de suivi.
+- **Ordre conseillé :** A → B → C → D. Ne lancer le sprint suivant
+  qu'après le bilan du précédent (combien de réponses, de rendez-vous, de
+  commandes).
+- **Les listes de prospects ne vont jamais dans ce dépôt.** Tout ce qui
+  est dans le dépôt est publié sur Vercel, donc lisible par n'importe qui
+  sur locair.fr. Les listes restent dans des fichiers à part (CSV
+  envoyés au propriétaire).
+- **Sources autorisées :** annuaire officiel des entreprises
+  (recherche-entreprises.api.gouv.fr), sites web des entreprises,
+  Pages Jaunes. Pas d'aspiration automatique de Google Maps (interdite par
+  Google).
+- **Rien d'inventé :** une coordonnée non trouvée reste vide. Un numéro
+  douteux (autre ville, autre SIRET) est marqué « à vérifier » dans la
+  colonne Notes.
+- **Emails de prospection (règle CNIL pour les entreprises) :** le message
+  doit parler du métier de la personne, dire qui écrit (Loc'Air,
+  téléphone 06 63 79 87 56) et contenir un moyen simple de ne plus rien
+  recevoir. Quelqu'un qui dit stop n'est plus jamais recontacté.
+- **Un message = un problème + une solution + une seule action** (appeler,
+  répondre, réserver). Partir du problème du client, jamais de la
+  machine. Phrases courtes, pas de jargon.
+- **Suivi :** au plus 2 relances, espacées d'au moins 5 jours. Noter
+  chaque contact dans la colonne Notes (date, canal, réponse).
+- **Colonnes du fichier de suivi :** type, nom, ville, téléphone, email,
+  site, statut (à contacter / contacté / relancé / intéressé / client /
+  pas intéressé / stop), date du dernier contact, notes.
+
+### Verticale A — Conciergeries & gestionnaires Airbnb
+
+- **Objectif :** devenir leur **partenaire d'urgence**. Quand un
+  voyageur a trop chaud, la conciergerie nous appelle et on livre vite,
+  avant que le voyageur laisse un mauvais avis.
+- **Le problème à nommer :** un logement sans clim en pleine chaleur =
+  un mauvais avis = moins de réservations. Ce n'est pas l'appareil qu'ils
+  achètent, c'est leur note.
+- **Produits :** climatiseur mobile (urgence, été). PortaSplit pour les
+  logements loués toute l'année (il chauffe aussi l'hiver).
+- **Ce qu'on peut promettre :** Express 2h le jour même si commande avant
+  18h (+60 €), pour 1 ou 2 climatiseurs. Sinon, livré le lendemain si
+  commande avant 20h. Remise quantité dès 3 appareils (SIRET valide).
+  Panne remplacée le jour même. Aucune caution.
+- **Ce qu'on ne promet pas :** une livraison en 2h garantie à toute
+  heure, une réserve d'appareils bloquée pour eux, un prix spécial non
+  écrit dans l'offre B2B.
+- **Action demandée :** enregistrer notre numéro comme « dépannage clim »
+  et nous appeler à la prochaine urgence. Bonus : équiper d'avance leurs
+  logements les plus exposés (dernier étage, plein sud).
+- **Fichier :** lignes « Conciergerie » de la liste des Alpes-Maritimes.
+
+### Verticale B — Installateurs de clim fixe & frigoristes
+
+- **Objectif :** qu'ils nous recommandent à leurs clients qui attendent
+  un chantier. Entre le devis et la pose d'une clim fixe, il peut se
+  passer des semaines ; pendant ce temps, leur client a chaud.
+- **Le problème à nommer :** un client qui attend s'impatiente, et
+  risque d'aller voir un concurrent plus rapide. Un appareil en attendant
+  le garde patient.
+- **Produits :** climatiseur mobile (attente courte), PortaSplit (attente
+  longue ou chantier repoussé).
+- **Ce n'est pas un concurrent :** on ne vend pas de clim fixe. On loue
+  le temps que leur chantier se fasse. Le dire clairement dès la première
+  phrase.
+- **Ce qu'on peut promettre :** livré le lendemain si commande avant
+  20h, reprise à la fin de la location, aucune caution, remise quantité
+  dès 3 appareils (SIRET valide) si l'installateur commande lui-même.
+- **À décider par le propriétaire avant le premier envoi :** qui paie le
+  « prêt de courtoisie » (le client final au prix normal, l'installateur
+  avec la remise pro, ou une commission pour l'installateur qui nous
+  envoie un client). Tant que ce n'est pas décidé, ne parler d'aucune
+  gratuité ni commission dans les messages.
+- **Action demandée :** donner notre numéro (ou un lien de réservation) à
+  leurs clients en attente.
+- **Fichier :** lignes « Frigoriste / climaticien » de la liste des
+  Alpes-Maritimes.
+
+### Verticale C — Syndics & agences de gestion locative
+
+- **Objectif :** être la **solution temporaire** qu'ils proposent quand la
+  clim d'un locataire tombe en panne, le temps de la réparation.
+- **Le problème à nommer :** un locataire sans clim en été appelle
+  l'agence tous les jours. La réparation prend du temps (pièce à
+  commander, technicien débordé). On calme la situation dès le lendemain.
+- **Produits :** climatiseur mobile (réparation courte), PortaSplit
+  (réparation longue, ou logement sans clim toute l'année).
+- **Ce qu'on peut promettre :** livré le lendemain si commande avant 20h,
+  installation sans travaux ni perçage (rien à demander à la copropriété),
+  reprise à la fin, facture au nom de l'agence ou du propriétaire, aucune
+  caution.
+- **À décider par le propriétaire avant le premier envoi :** qui commande
+  et paie (l'agence pour le compte du propriétaire, ou le locataire
+  directement).
+- **Action demandée :** nous ajouter à leur liste de dépanneurs et donner
+  notre numéro au locataire en cas de panne.
+- **Fichier :** à construire (annuaire officiel, activités « administration
+  d'immeubles » et « agences immobilières » dans les Alpes-Maritimes).
+
+### Verticale D — Campings, résidences de tourisme & événementiel
+
+- **Objectif :** du **volume** sur les week-ends chargés et les vagues de
+  chaleur (plusieurs appareils d'un coup, sur quelques jours).
+- **Le problème à nommer :** pendant une canicule, les clients se
+  plaignent, partent plus tôt ou annulent. Pour un événement, la chaleur
+  gâche la journée et l'électricité ne suit pas avec des climatiseurs.
+- **Produits :** rafraîchisseur (espaces ouverts, accueil, salle, chapiteau,
+  dès 1 jour, forfait 120 € HT une seule fois). Climatiseur mobile pour
+  les mobil-homes, chambres et bungalows fermés (remise quantité).
+- **Ce qu'on peut promettre :** les prix et délais de l'offre B2B, rien
+  de plus. **Au-delà de 5 appareils, appel obligatoire** pour vérifier le
+  stock avant de promettre une date. Pendant une vague de chaleur, ne
+  jamais promettre une disponibilité sans avoir vérifié le stock.
+- **Le bon moment :** contacter **avant** la saison (printemps) et avant
+  les dates d'événements, pas pendant la canicule, quand le stock est déjà
+  pris.
+- **Action demandée :** réserver à l'avance les dates chargées, ou
+  demander un devis pour l'été.
+- **Fichier :** à construire (campings, résidences de tourisme, organisateurs
+  d'événements et salles de réception des Alpes-Maritimes).
+
