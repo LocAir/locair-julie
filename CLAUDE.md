@@ -303,3 +303,199 @@ y est écrit.
 - **Fichier :** à construire (campings, résidences de tourisme, organisateurs
   d'événements et salles de réception des Alpes-Maritimes).
 
+
+## Boucle de prospection quotidienne
+
+Le propriétaire supervise **15 minutes par jour**, en deux moments fixes.
+Tout le reste, l'agent le fait seul, en respectant les règles des sprints
+ci-dessus.
+
+| Quand | Qui | Quoi |
+|---|---|---|
+| La nuit | Agent | Trouver et qualifier les cibles du sprint, écrire les emails. |
+| **9h00** (10 min) | **Propriétaire** | Lire la liste et les brouillons. Valider, barrer ou corriger. |
+| La journée | Agent | Envoyer petit à petit, programmer les relances. |
+| Toute la journée | Agent | Trier les réponses, prévenir le propriétaire. |
+| **17h30** (5 min) | **Propriétaire** | Lire le bilan du jour. |
+
+### 1. Chercher et qualifier (la nuit)
+
+- **25 cibles qualifiées par jour au maximum**, d'une seule verticale.
+- Lire le site de chaque cible. Verticale A : garder celles qui gèrent des
+  logements en location courte ; éliminer celles qui ne font que de la
+  vente immobilière.
+- **Taille :** noter « plus de 15 biens » seulement si c'est visible
+  (nombre de logements affichés, « +30 appartements », etc.). Sinon
+  « à vérifier » — on n'élimine pas une cible parce qu'on ne sait pas.
+- **Nom du gérant :** pris dans l'annuaire officiel des entreprises.
+- **Un détail réel** tiré de leur site, avec le lien de la page, pour
+  personnaliser l'email. Jamais une affirmation sur une loi ou un
+  règlement (« la clim est interdite dans… »). Si rien de précis : pas de
+  détail, plutôt qu'un détail inventé.
+- Vérifier la liste « déjà contactés » et la liste « stop » avant
+  d'ajouter une cible.
+
+### 2. Écrire (la nuit)
+
+- 4 à 5 phrases, ton direct, zéro blabla commercial.
+- Utiliser le modèle de la verticale (voir « Modèles d'emails »).
+- **Rien ne part sans le feu vert du propriétaire à 9h.** Après 2 ou 3
+  sprints sans erreur, il pourra passer à une validation au hasard
+  (5 emails sur la liste du jour).
+
+### 3. Envoyer et relancer (la journée)
+
+- **Jamais depuis `contact@locair.fr`** sans l'accord écrit du
+  propriétaire : c'est l'adresse des confirmations de réservation des
+  vrais clients. Si la prospection la fait classer en spam, les clients ne
+  reçoivent plus leurs emails. À utiliser : une adresse à part, sur un
+  autre nom de domaine.
+- **Échauffement d'une nouvelle adresse :** 10 envois par jour la 1re
+  semaine, 20 la 2e, puis 30 maximum. Envois étalés dans la journée.
+- **Relances :** à J+5 puis J+12, annulées dès que la personne répond.
+  Après la 2e relance, on s'arrête.
+- **Freins d'urgence :** plus de 3 % d'emails qui reviennent en erreur,
+  ou une plainte pour spam → arrêter tous les envois et prévenir le
+  propriétaire. Le mot « STOP » du propriétaire coupe tout.
+
+### 4. Trier les réponses (toute la journée)
+
+- **L'agent ne répond jamais lui-même aux prospects.** Il classe chaque
+  réponse et prévient le propriétaire, qui répond lui-même.
+- **Intéressé / demande les prix / « appelez-moi »** → alerte immédiate
+  au propriétaire (notification de l'appli admin), avec le nom, le numéro
+  et la réponse.
+- **Stop / pas intéressé** → retiré de la liste pour toujours, sans
+  rien lui écrire.
+- **Message d'absence** → ignoré, la relance attend.
+
+### 5. Bilan (17h30)
+
+Nombre d'envois, de réponses, de leads chauds, d'erreurs, et ce qui
+bloque.
+
+### Outils (état au 17/11/2026)
+
+- **Envoi :** le site utilise déjà Brevo (`api/_lib/brevo.js`, expéditeur
+  `contact@locair.fr`). L'agent n'y a pas encore accès : il faut une clé
+  Brevo, donnée par le formulaire sécurisé, jamais dans le chat.
+- **Lecture des réponses :** Brevo ne lit pas les réponses. Il faut un
+  accès à la boîte mail qui les reçoit (par exemple Gmail).
+- **Base de prospects :** une Google Sheet (jamais dans ce dépôt).
+- **Recherche :** Firecrawl, environ 250 à 400 crédits pour 25 cibles.
+
+## Modèles d'emails
+
+Remplacer `{…}` à chaque envoi. Le `{détail réel}` vient du site de la
+cible ; s'il n'y en a pas, enlever la phrase. Signature : `{prénom du
+propriétaire}` — à compléter quand il l'aura donné.
+
+### Verticale A — conciergeries, angle « préparer l'été »
+
+**Objet :** Vos voyageurs et la chaleur de l'été prochain
+
+> Bonjour {prénom},
+>
+> J'ai vu sur votre site que {détail réel}.
+>
+> L'été, un logement trop chaud, c'est souvent un mauvais avis — et un
+> mauvais avis fait perdre des réservations.
+>
+> Je suis Loc'Air, à Nice : on livre et on installe des climatiseurs
+> mobiles en location, sans travaux, le lendemain — et même le jour même
+> en 2h si vous appelez avant 18h (option Express).
+>
+> Enregistrez simplement ce numéro comme « dépannage clim » pour vos
+> urgences de l'été prochain : 06 63 79 87 56 (7j/7, 8h–20h).
+>
+> {prénom du propriétaire} — Loc'Air
+> *Vous ne souhaitez plus recevoir nos messages ? Répondez « stop ».*
+
+**Relance J+5 :**
+
+> Bonjour {prénom}, je me permets de revenir vers vous : quand la chaleur
+> arrive, les conciergeries qui ont déjà un numéro de dépannage gagnent un
+> temps précieux. Le nôtre : 06 63 79 87 56. Bonne journée,
+> {prénom du propriétaire} — Loc'Air.
+> *Répondez « stop » pour ne plus rien recevoir.*
+
+**Relance J+12 (la dernière) :**
+
+> Bonjour {prénom}, dernier message de ma part : si un jour un voyageur a
+> trop chaud dans un de vos logements, on peut livrer un climatiseur le
+> jour même. Je vous souhaite une belle saison, {prénom du propriétaire}
+> — Loc'Air, 06 63 79 87 56.
+> *Répondez « stop » pour ne plus rien recevoir.*
+
+## Déclencheur météo (chaque lundi)
+
+Une tâche planifiée réveille l'agent **chaque lundi à 8h (heure de
+Paris)**. Elle n'est utile que **d'avril à septembre** ; le reste de
+l'année, l'agent continue juste la prospection de fond.
+
+### Lire la météo
+
+- Température maximale prévue sur les **7 jours à venir**, à **Nice,
+  Cannes et Antibes** (là où sont les clients). On retient la plus haute.
+- Source : Open-Meteo (gratuit, déjà utilisé par le site). Depuis la
+  machine de l'agent, il refuse parfois (« limite du jour atteinte »,
+  machine partagée). Solution prévue : une petite page du site (comme
+  `api/adstay-meteo.js`) qui donne la prévision de la semaine, appelée par
+  l'agent. À construire avant la première saison.
+- Si la météo est illisible : ne rien envoyer, prévenir le propriétaire.
+
+### Trois niveaux
+
+| Maximum prévu | Mode | Ce que fait l'agent |
+|---|---|---|
+| Moins de 27 °C | **Calme** | Prospection de fond normale. |
+| 27 à 28 °C | **Vigilance** | Prospection normale + prévenir le propriétaire qu'un pic peut arriver (vérifier le stock). |
+| 29 °C et plus | **Urgence** | Préparer l'alerte chaleur (ci-dessous). |
+
+### Mode urgence
+
+1. L'agent prépare l'email d'alerte et la liste des destinataires, et
+   envoie au propriétaire : la prévision (jour, ville, température), le
+   nombre de destinataires, l'email.
+2. **Le propriétaire répond « GO » et donne le stock réellement
+   disponible.** Rien ne part sans ça : pendant une vague de chaleur, on
+   ne promet jamais une disponibilité sans avoir vérifié le stock.
+3. L'agent envoie, au rythme permis par l'adresse d'envoi.
+
+**Qui reçoit l'alerte (la « base tiède ») :** les prospects déjà
+contactés pendant la saison, qui n'ont pas dit stop, et qui n'ont pas
+encore reçu d'alerte chaleur depuis 30 jours. **Une alerte chaleur au
+maximum par prospect et par mois.** On ne trie pas sur « a ouvert
+l'email » : les ouvertures sont peu fiables (certaines boîtes mail les
+déclenchent toutes seules) et les suivre demande des précautions CNIL.
+
+**Ce qu'on ne fait pas :** inventer une rareté (« nos 10 dernières
+machines ») ou promettre un stock bloqué pour eux. Un chiffre de stock
+n'est écrit que s'il est vrai, donné par le propriétaire le jour même.
+
+**Modèle d'alerte chaleur :**
+
+**Objet :** {température} °C annoncés {jour} sur la Côte d'Azur
+
+> Bonjour {prénom},
+>
+> Météo : {température} °C annoncés {jour} à {ville}.
+>
+> Dans ces moments-là, nos climatiseurs partent vite. {Phrase de stock
+> donnée par le propriétaire, ex. « Il nous en reste 8 pour cette
+> semaine. » — sinon enlever la phrase.}
+>
+> Pour en réserver pour vos logements, répondez « OUI » ou appelez le
+> 06 63 79 87 56 (7j/7, 8h–20h). On confirme la date par téléphone.
+>
+> {prénom du propriétaire} — Loc'Air
+> *Vous ne souhaitez plus recevoir nos messages ? Répondez « stop ».*
+
+Chaque « OUI » est un lead chaud : alerte immédiate au propriétaire, qui
+rappelle et confirme le stock.
+
+### La tâche planifiée
+
+À créer seulement quand l'envoi d'emails marche (clé Brevo et adresse de
+prospection prêtes), et pas avant avril. Horaire : lundi 7h53 (heure de
+Paris), un peu avant 8h pour éviter l'embouteillage de l'heure pile.
