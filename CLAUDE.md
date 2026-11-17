@@ -158,6 +158,56 @@ Toujours partir du problème, pas de la machine.
   jusqu'à environ 15 m² par appareil.
 - PortaSplit : jusqu'à environ 42 m² par appareil.
 
+## Outils de prospection (« cerveau + bras »)
+
+L'agent décide (le cerveau) ; des outils branchés agissent pour lui (les
+bras). Chaque outil a un seul rôle.
+
+### La base des prospects (le quartier général)
+
+- **Une Google Sheet dans le Drive du propriétaire :** « Loc'Air — Base
+  prospects pro ». Créée le 17/11/2026 avec les 100 premiers prospects
+  (50 conciergeries, 50 frigoristes). Une ligne = une entreprise.
+- **Jamais dans ce dépôt** : tout fichier du dépôt non exclu par
+  `.vercelignore` est publié sur locair.fr.
+- **Colonnes :** Verticale, Type, Nom, Enseigne, Ville, Téléphone,
+  Email, Site web, Statut, Date dernier contact, Prochaine action,
+  Historique des échanges, Notes, Gérant, Salariés, Adresse, Fiche
+  officielle.
+- **Statuts possibles** (un seul à la fois) :
+
+| Statut | Veut dire |
+|---|---|
+| À contacter | Prêt pour le prochain sprint |
+| Sans contact | Aucune coordonnée publiée trouvée |
+| À vérifier | Doute (entreprise fermée, numéro d'une autre ville…) |
+| Contacté | 1er email envoyé |
+| Relance 1 | Relance J+5 envoyée |
+| Relance 2 | Relance J+12 envoyée (la dernière) |
+| Intéressé | A répondu positivement : le propriétaire prend la main |
+| Signé | Client ou partenaire |
+| Pas intéressé | A dit non poliment ; recontact possible au bout de 3 mois avec un autre angle |
+| Stop | Ne plus jamais contacter |
+
+- **Historique des échanges :** une ligne par contact, du plus récent au
+  plus ancien : `date — canal — ce qui s'est passé`.
+- **Modifier la Sheet en place** (même fichier, même lien). Pour ça,
+  l'agent a besoin du connecteur **Google Sheets** ; avec Google Drive
+  seul, il peut la lire et en créer une nouvelle, pas la modifier.
+
+### Les outils branchés (état au 17/11/2026)
+
+| Rôle | Outil | État |
+|---|---|---|
+| Chercher les entreprises | Annuaire officiel (recherche-entreprises.api.gouv.fr) | ✅ Marche, gratuit |
+| Lire leurs sites, trouver téléphone et email | Firecrawl | ✅ Branché (≈ 250 à 400 crédits pour 25 cibles) |
+| Fiches Google Maps | — | ❌ Écarté : Google interdit d'aspirer ses fiches |
+| Base des prospects | Google Drive / Google Sheets | ⚠️ Drive branché ; Sheets à brancher pour modifier la base |
+| Envoyer les emails | Brevo | ⏳ Le site l'utilise déjà ; l'agent n'y a pas accès (clé à donner par le formulaire sécurisé) + adresse de prospection séparée à créer |
+| Lire les réponses | Boîte mail (ex. Gmail) | ⏳ À brancher |
+| Prévenir le propriétaire | Notifications de l'appli admin | ⏳ À relier à l'agent |
+| Météo à 7 jours | Open-Meteo via une page du site | ⏳ À construire avant avril |
+
 ## Prospection par sprints (4 verticales)
 
 On ne prospecte **jamais toutes les cibles en même temps**. On travaille
@@ -176,9 +226,10 @@ y est écrit.
   qu'après le bilan du précédent (combien de réponses, de rendez-vous, de
   commandes).
 - **Les listes de prospects ne vont jamais dans ce dépôt.** Tout ce qui
-  est dans le dépôt est publié sur Vercel, donc lisible par n'importe qui
-  sur locair.fr. Les listes restent dans des fichiers à part (CSV
-  envoyés au propriétaire).
+  est dans le dépôt est publié sur Vercel (sauf ce qu'exclut
+  `.vercelignore`), donc lisible par n'importe qui sur locair.fr. Les
+  listes vivent dans la base Google Sheet (voir « Outils de
+  prospection »).
 - **Sources autorisées :** annuaire officiel des entreprises
   (recherche-entreprises.api.gouv.fr), sites web des entreprises,
   Pages Jaunes. Pas d'aspiration automatique de Google Maps (interdite par
@@ -195,9 +246,8 @@ y est écrit.
   machine. Phrases courtes, pas de jargon.
 - **Suivi :** au plus 2 relances, espacées d'au moins 5 jours. Noter
   chaque contact dans la colonne Notes (date, canal, réponse).
-- **Colonnes du fichier de suivi :** type, nom, ville, téléphone, email,
-  site, statut (à contacter / contacté / relancé / intéressé / client /
-  pas intéressé / stop), date du dernier contact, notes.
+- **Suivi :** dans la base Google Sheet, avec ses colonnes et ses
+  statuts (voir « Outils de prospection »).
 
 ### Verticale A — Conciergeries & gestionnaires Airbnb
 
