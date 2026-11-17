@@ -524,22 +524,63 @@ le modèle « préparer l'été » (verticale A) existe déjà.
 - Les **clients** (ceux qui ont déjà loué) ont leur propre fil, plus
   léger, ci-dessous. Ils ne reçoivent jamais les emails de prospection.
 
-### Calendrier
+### Vue d'ensemble : qui est en prospection quel mois
 
-| Mois | Prospection (une verticale) | Angle du message | Autres envois |
-|---|---|---|---|
-| **Novembre** | Mise en place : adresse de prospection + échauffement (2 à 3 semaines) | — | Construire les listes C et D |
-| **Décembre** (jusqu'au 19) | **A — Conciergeries**, sprint 1 | « Préparez l'été dès maintenant » (modèle existant) | — |
-| **Janvier** (dès le 6) | **A**, sprint 2 (cibles restantes) | « Préparez l'été dès maintenant » | Bilan des sprints A |
-| **Février** | **B — Installateurs** | « Devenez partenaire avant la saison : vos clients qui attendent un chantier n'auront plus chaud » + lien partenaire | — |
-| **Mars** | **C — Syndics & agences** | « Pannes de clim chez vos locataires cet été : une solution pour le lendemain, payée par le locataire » | Construire la page météo du site |
-| **Avril** | **D — Campings, résidences, événementiel** | « Réservez vos dates chargées de l'été maintenant » | Ouverture de saison pour A (1 email, aux non-stop, 3 mois après leur séquence) : « La saison commence, notre numéro dépannage + Express 2h » · **Début du déclencheur météo** · Clients : « On est prêts pour l'été » |
-| **Mai** | **D**, sprint 2 (événements de juin à septembre) | « Mariages, salons, tournages : rafraîchir sans faire sauter l'électricité » | Rappel B aux partenaires inscrits : « La saison arrive, pensez à votre lien » |
-| **Juin** | Pas de nouveau sprint froid | — | Déclencheur météo (alertes chaleur) · Clients : rien sauf besoin |
-| **Juillet – août** | Pas de nouveau sprint froid (le stock part aux clients) | — | Déclencheur météo seulement. Les leads chauds passent avant tout. |
-| **Septembre** | Bilan de la saison | — | Fin du déclencheur météo · Clients : « Merci pour la saison » + 1 question (qu'est-ce qu'on améliore ?) |
-| **Octobre** | **A puis C** (non-stop, 3 mois après leur dernier email) | **PortaSplit hiver** : « Chauffer vos logements cet hiver, sans travaux » | Clients : offre hiver PortaSplit |
-| **Novembre** | Préparer l'année suivante : nouvelles listes, nouveaux sprints A | — | Bilan de l'année |
+Une seule verticale en sprint de prospection à la fois. Les autres lignes
+de chaque mois sont des envois à des contacts **déjà connus** (suivi,
+relance saisonnière), pas de nouvelles cibles.
+
+| Mois | Sprint de prospection |
+|---|---|
+| Novembre | Mise en place (adresse de prospection + échauffement), listes C et D |
+| Décembre (→ 19) | **A** Conciergeries |
+| Janvier (6 →) | **A** Conciergeries (suite) |
+| Février | **B** Installateurs |
+| Mars | **C** Syndics & agences |
+| Avril | **D** Campings, résidences, événementiel |
+| Mai | **D** (événements de l'été) |
+| Juin – août | Aucun sprint froid : alertes chaleur et clients |
+| Septembre | Bilan de saison |
+| Octobre | **A** puis **C** : angle PortaSplit hiver |
+| Novembre | Nouvelles listes pour l'année suivante |
+
+### Verticale A — Conciergeries & gestionnaires Airbnb
+
+| Mois | Envoi | Message |
+|---|---|---|
+| Décembre – janvier | **Séquence de prospection** (email + J+5 + J+12) | « Préparez l'été dès maintenant » — modèle existant |
+| Avril | **Ouverture de saison** (1 email, non-stop, au moins 3 mois après leur dernier email) | « La saison commence : notre numéro dépannage clim et l'Express 2h le jour même » |
+| Avril – septembre | **Alerte chaleur** (1 par mois au plus, seulement si ≥ 29 °C et « GO » du propriétaire) | Modèle d'alerte chaleur |
+| Octobre | **Séquence hiver** (email + J+5 + J+12) | « Chauffer vos logements loués cet hiver, sans travaux » — PortaSplit |
+
+### Verticale B — Installateurs de clim fixe & frigoristes
+
+| Mois | Envoi | Message |
+|---|---|---|
+| Février | **Séquence de prospection** (email + J+5 + J+12) | « Devenez partenaire avant la saison : vos clients qui attendent un chantier n'auront plus chaud, et vous touchez une commission » |
+| Mai | **Rappel aux partenaires inscrits** (1 email) | « La saison arrive : pensez à donner votre lien / QR code à vos clients en attente » |
+| Mai | **Seconde chance** aux non-inscrits non-stop (1 email, 3 mois après) | « Vos chantiers de l'été vont s'accumuler : un appareil pour patienter » |
+| Septembre | **Bilan aux partenaires** (1 email) | Leurs clients envoyés et leur commission de la saison (chiffres de l'espace partenaire) |
+| — | Pas d'alerte chaleur | Ce ne sont pas eux qui louent |
+
+### Verticale C — Syndics & agences de gestion locative
+
+| Mois | Envoi | Message |
+|---|---|---|
+| Mars | **Séquence de prospection** (email + J+5 + J+12) | « Pannes de clim chez vos locataires cet été : une solution dès le lendemain, payée par le locataire, sans travaux » |
+| Juin | **Rappel avant l'été** (1 email, non-stop, 3 mois après) | « Gardez notre numéro pour vos locataires en panne » |
+| Octobre | **Séquence hiver** (email + J+5 + J+12) | « Chauffage en panne chez un locataire : un PortaSplit le lendemain » |
+| — | Pas d'alerte chaleur | Ils ne louent pas eux-mêmes ; c'est le locataire qui commande |
+
+### Verticale D — Campings, résidences de tourisme & événementiel
+
+| Mois | Envoi | Message |
+|---|---|---|
+| Avril | **Séquence de prospection** (email + J+5 + J+12) | « Réservez vos dates chargées de l'été maintenant » |
+| Mai | **Séquence événements** (organisateurs, salles, nouvelles cibles) | « Mariages, salons, tournages : rafraîchir sans faire sauter l'électricité » — rafraîchisseur dès 1 jour |
+| Juin – septembre | **Alerte chaleur** (1 par mois au plus, ≥ 29 °C, « GO » + stock réel du propriétaire) | Modèle d'alerte chaleur, version « vos clients / vos invités » |
+| Septembre | **Bilan** aux clients de la saison (1 email) | « Merci pour la saison » + réserver tôt l'an prochain |
+| — | Pas de séquence en hiver | Rien à leur proposer d'octobre à février |
 
 ### Le fil des clients (ceux qui ont déjà loué)
 
