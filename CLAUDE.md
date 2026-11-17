@@ -65,8 +65,8 @@ occupés toute l'année, logements meublés.
 - Abonnement 6 mois : 99 €/mois + 229 € à la souscription
   (installation offerte).
 
-**Épurateurs d'air : plus proposés.** Ils vont être retirés du site. Ne
-plus les citer dans l'offre pro, ni ailleurs.
+**Épurateurs d'air : plus proposés.** Retirés du site (accueil, menus,
+pied de page) et de Julie. Ne plus les citer nulle part.
 
 ### Remise pro selon la quantité (climatiseur et PortaSplit)
 
@@ -84,9 +84,18 @@ Comptée sur le nombre d'appareils d'**une même commande** :
 - **Livraison comptée une seule fois** pour toute la commande, pas une
   fois par appareil.
 - Le rafraîchisseur n'est pas concerné (il a déjà son prix pro).
-- ⚠ Cette remise **n'est pas encore programmée** sur le site : le
-  paiement en ligne applique le prix normal. Pour l'instant, elle passe
-  par un devis (téléphone ou WhatsApp).
+- **Réservée aux entreprises** : bouton « Professionnel » + **SIRET
+  valide** (le site vérifie le numéro). Sans SIRET valide, prix normal.
+- **Climatiseur : programmée sur le site** (`reserver.html` pour le total
+  affiché, `api/checkout.js` pour le montant payé, barème dans
+  `api/_lib/pricing.js` → `remiseQuantitePct`). Les trois doivent rester
+  identiques. En ligne, on peut prendre 5 appareils au maximum ; 10 et
+  plus passe par un devis.
+- **PortaSplit : sur devis** (téléphone ou WhatsApp). Le paiement en ligne
+  du PortaSplit ne gère qu'un appareil à la fois.
+- La remise s'ajoute à un éventuel code promo (le code est calculé sur le
+  prix avant remise, côté site comme côté serveur).
+- Sur la facture, la remise apparaît dans la ligne « Remise commerciale ».
 
 ### Ce que tout client pro a, quel que soit l'appareil
 
