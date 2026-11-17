@@ -237,13 +237,25 @@ y est écrit.
 - **Ce qu'on peut promettre :** livré le lendemain si commande avant
   20h, reprise à la fin de la location, aucune caution, remise quantité
   dès 3 appareils (SIRET valide) si l'installateur commande lui-même.
-- **À décider par le propriétaire avant le premier envoi :** qui paie le
-  « prêt de courtoisie » (le client final au prix normal, l'installateur
-  avec la remise pro, ou une commission pour l'installateur qui nous
-  envoie un client). Tant que ce n'est pas décidé, ne parler d'aucune
-  gratuité ni commission dans les messages.
-- **Action demandée :** donner notre numéro (ou un lien de réservation) à
-  leurs clients en attente.
+- **Qui paie (décidé par le propriétaire) :** le **client final** paie sa
+  location au prix normal. L'installateur ne paie rien : il devient
+  **apporteur d'affaires** et touche une **commission** sur chaque client
+  qu'il nous envoie.
+- **Comment ça marche (déjà en place sur le site) :** on crée
+  l'installateur comme partenaire dans l'admin (onglet Partenaires). Il
+  reçoit un lien personnel (`locair.fr/?p=SONCODE`) et un QR code. Quand
+  son client réserve par ce lien, la commission est comptée toute seule,
+  et l'installateur la suit dans son espace `locair.fr/partenaire`.
+- **Montant :** un pourcentage du montant payé par le client, réglé
+  partenaire par partenaire dans l'admin (10 % par défaut). Ne jamais
+  écrire un autre taux dans un message sans l'accord du propriétaire.
+- **Limite à connaître :** la commission automatique marche pour les
+  climatiseurs réservés en ligne. Pour un PortaSplit, ou une commande
+  passée par téléphone, la commission se note à la main.
+- **Ne jamais dire « gratuit » :** l'appareil n'est pas offert, c'est le
+  client qui le loue.
+- **Action demandée :** accepter de devenir partenaire, puis donner son
+  lien ou son QR code à ses clients qui attendent un chantier.
 - **Fichier :** lignes « Frigoriste / climaticien » de la liste des
   Alpes-Maritimes.
 
@@ -258,11 +270,12 @@ y est écrit.
   (réparation longue, ou logement sans clim toute l'année).
 - **Ce qu'on peut promettre :** livré le lendemain si commande avant 20h,
   installation sans travaux ni perçage (rien à demander à la copropriété),
-  reprise à la fin, facture au nom de l'agence ou du propriétaire, aucune
-  caution.
-- **À décider par le propriétaire avant le premier envoi :** qui commande
-  et paie (l'agence pour le compte du propriétaire, ou le locataire
-  directement).
+  reprise à la fin, aucune caution.
+- **Qui paie (décidé par le propriétaire) :** le **locataire**. Il
+  réserve et paie lui-même, au prix normal, comme un particulier.
+  L'agence ne paie rien et ne s'engage à rien : elle donne juste notre
+  numéro ou notre lien. Ne jamais dire au syndic que la location est
+  à sa charge ou à celle du propriétaire du logement.
 - **Action demandée :** nous ajouter à leur liste de dépanneurs et donner
   notre numéro au locataire en cas de panne.
 - **Fichier :** à construire (annuaire officiel, activités « administration
