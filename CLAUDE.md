@@ -191,9 +191,16 @@ bras). Chaque outil a un seul rôle.
 
 - **Historique des échanges :** une ligne par contact, du plus récent au
   plus ancien : `date — canal — ce qui s'est passé`.
-- **Modifier la Sheet en place** (même fichier, même lien). Pour ça,
-  l'agent a besoin du connecteur **Google Sheets** ; avec Google Drive
-  seul, il peut la lire et en créer une nouvelle, pas la modifier.
+- **Deux onglets :** « Prospects » (une ligne par entreprise ; listes
+  déroulantes pour Verticale et Statut, couleurs par statut, filtres) et
+  « Tableau de bord » (nombre de prospects par statut et par verticale,
+  taux de réponse — tout en formules, rien à remplir).
+- **Modifier la Sheet en place** (même fichier, même lien) avec le
+  connecteur **Google Sheets** (branché le 17/11/2026). Ne jamais
+  recréer le fichier.
+- **La Sheet est réglée en français :** dans les formules, séparer les
+  arguments par des **points-virgules** (`=COUNTIFS(A:A;"x";B:B;"y")`),
+  sinon elles affichent une erreur.
 
 ### Les outils branchés (état au 17/11/2026)
 
@@ -202,7 +209,7 @@ bras). Chaque outil a un seul rôle.
 | Chercher les entreprises | Annuaire officiel (recherche-entreprises.api.gouv.fr) | ✅ Marche, gratuit |
 | Lire leurs sites, trouver téléphone et email | Firecrawl | ✅ Branché (≈ 250 à 400 crédits pour 25 cibles) |
 | Fiches Google Maps | — | ❌ Écarté : Google interdit d'aspirer ses fiches |
-| Base des prospects | Google Drive / Google Sheets | ⚠️ Drive branché ; Sheets à brancher pour modifier la base |
+| Base des prospects | Google Drive / Google Sheets | ✅ Branchés : l'agent lit et modifie la base |
 | Envoyer les emails | Brevo | ⏳ Le site l'utilise déjà ; l'agent n'y a pas accès (clé à donner par le formulaire sécurisé) + adresse de prospection séparée à créer |
 | Lire les réponses | Boîte mail (ex. Gmail) | ⏳ À brancher |
 | Prévenir le propriétaire | Notifications de l'appli admin | ⏳ À relier à l'agent |
