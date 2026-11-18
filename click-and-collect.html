@@ -5,7 +5,8 @@
      de retrait : pas de frais de livraison, il ne paie que la location.
 
      LE PARCOURS (une action par écran) :
-       Ville → Point (carte) → Durée → Jour → Vos infos → C'est noté
+       Ville → Point (carte) → Dates (calendrier façon Airbnb : retrait
+       puis retour, jours de fermeture barrés) → Vos infos → C'est noté
      - Le titre reprend les mots de l'annonce, la première action (ville ou
        « point le plus proche ») est visible sans défiler.
      - Un résumé (point · durée · prix) suit le client d'écran en écran.
@@ -106,7 +107,7 @@ a{color:var(--vif)}
 .resume span{font-size:13px;font-weight:700;color:var(--vif-d);background:var(--vif-clair);border-radius:var(--r-f);padding:3px 10px;font-variant-numeric:tabular-nums}
 
 main{flex:1;width:100%}
-.ecran{animation:vient .24s var(--mv) both}
+.ecran{animation:vient .24s var(--mv) backwards}  /* backwards : aucune transformation ne reste après l'animation (sinon les barres « fixed » restent collées à l'écran) */
 .ecran[hidden]{display:none}
 @keyframes vient{from{opacity:0;transform:translateY(8px)}}
 h1,h2,h3{font-family:var(--font-titre);font-weight:700;letter-spacing:-.01em;line-height:1.12;text-wrap:balance}
@@ -293,6 +294,49 @@ body.a-cook .collant{bottom:64px}
 .note-bas{font-size:13px;color:var(--ink-2);text-align:center;margin-top:12px}
 .note-bas b{color:var(--vif)}
 
+/* ── LE CALENDRIER (façon Airbnb) ── */
+.avec-barre{padding-bottom:110px}
+.sel-dates{display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:6px;margin-bottom:12px;box-shadow:var(--o-1)}
+.sel-dates svg{width:18px;height:18px;stroke:var(--ink-3);fill:none;stroke-width:2;flex-shrink:0}
+.sel{flex:1;min-width:0;text-align:left;background:none;border:1.5px solid transparent;border-radius:10px;padding:8px 10px}
+.sel small{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.sel b{display:block;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sel.actif{border-color:var(--ink);background:var(--mist)}
+.raccourcis{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:8px;scrollbar-width:none}
+.raccourcis[hidden]{display:none}
+.raccourcis button{flex-shrink:0;border:1.5px solid var(--line);background:var(--paper);border-radius:var(--r-f);padding:8px 14px;font-size:14px;font-weight:700;color:var(--ink)}
+.raccourcis button small{font-weight:500;color:var(--ink-2);margin-left:4px}
+.raccourcis button[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:#fff}
+.raccourcis button[aria-pressed="true"] small{color:rgba(255,255,255,.75)}
+.cal{display:grid;gap:22px;margin-top:8px}
+.mois h3{font-family:var(--font);font-size:16.5px;font-weight:700;margin:0 0 10px 4px;text-transform:capitalize}
+.sem,.jours-g{display:grid;grid-template-columns:repeat(7,1fr)}
+.sem span{font-size:11.5px;font-weight:700;color:var(--ink-3);text-align:center;padding-bottom:6px}
+.jours-g{row-gap:2px}
+.j{position:relative;aspect-ratio:1;border:0;background:none;font-size:15px;font-weight:600;color:var(--ink);display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;padding:0}
+.j span{position:relative;z-index:1;width:min(44px,100%);height:min(44px,100%);border-radius:50%;display:flex;align-items:center;justify-content:center;transition:background .12s var(--mv),color .12s var(--mv)}
+.j:not(:disabled):hover span{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.j:disabled{color:#C3CCD9;cursor:default}
+.j.ferme span{text-decoration:line-through}
+.j.court{color:var(--ink-3)}
+.j.auj span{box-shadow:inset 0 0 0 1px var(--line)}
+.j.entre::before,.j.debut.a-fin::before,.j.fin::before{content:"";position:absolute;top:8%;bottom:8%;left:0;right:0;background:#DCE7FB}
+.j.debut.a-fin::before{left:50%}
+.j.fin::before{right:50%}
+.j.debut.fin::before{display:none}
+.j.debut span,.j.fin span{background:var(--vif);color:#fff;box-shadow:none}
+.plus-mois{display:block;width:100%;margin-top:16px;border:1.5px solid var(--line);background:var(--paper);border-radius:var(--r-f);min-height:48px;font-weight:700;color:var(--ink)}
+.barre-dates{position:fixed;left:0;right:0;bottom:0;z-index:40;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line);
+  padding:10px var(--gut-d) calc(10px + env(safe-area-inset-bottom,0px)) var(--gut-g);box-shadow:0 -6px 20px rgba(14,23,38,.06)}
+.barre-dates .col{display:flex;align-items:center;gap:10px;padding:0}
+.barre-dates p{flex:1;min-width:0;font-size:12.5px;color:var(--ink-2);line-height:1.3}
+.barre-dates p b{display:block;font-size:15.5px;color:var(--ink)}
+.barre-dates .effacer{background:none;border:0;font-size:14px;font-weight:700;text-decoration:underline;text-underline-offset:3px;color:var(--ink);padding:8px 4px}
+.barre-dates .effacer[hidden]{display:none}
+.barre-dates .btn{width:auto;min-height:48px;padding:0 22px;font-size:15.5px}
+.barre-dates .btn:disabled{background:#C3CCD9;box-shadow:none;cursor:not-allowed}
+body.a-cook .barre-dates{bottom:64px}
+
 /* panneaux « autre durée » / « autre date » */
 .libre{background:var(--paper);border-radius:var(--r-l);box-shadow:var(--o-2);padding:18px 16px;margin-top:10px;display:grid;gap:14px}
 .libre[hidden]{display:none}
@@ -375,7 +419,7 @@ body.a-cook{padding-bottom:72px}
     <div class="suivi-l">
       <button type="button" class="retour" id="retour"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>Retour</button>
       <ol class="etapes" id="etapes" aria-label="Étapes">
-        <li data-e="point">Point</li><li data-e="duree">Durée</li><li data-e="jour">Jour</li><li data-e="infos">Vos infos</li>
+        <li data-e="point">Point</li><li data-e="dates">Dates</li><li data-e="infos">Vos infos</li>
       </ol>
     </div>
     <p class="resume" id="resume" aria-live="polite" hidden></p>
@@ -500,36 +544,26 @@ body.a-cook{padding-bottom:72px}
       <p class="note-bas">Disponibilité confirmée par téléphone avant votre passage.</p>
     </section>
 
-    <!-- ══ 3. LA DURÉE ══ -->
-    <section class="ecran etape" data-ecran="duree" aria-labelledby="t-duree" hidden>
-      <h2 id="t-duree" tabindex="-1">Pour combien de temps&nbsp;?</h2>
-      <p class="dire">Plus c’est long, moins le jour coûte. 7 jours minimum.</p>
-      <div class="cartes" id="durees"></div>
-      <div class="libre" id="duree-libre" hidden>
-        <div class="compteur">
-          <button type="button" class="pm" id="moins" aria-label="Un jour de moins">−</button>
-          <div class="jours" aria-live="polite"><b id="nb-jours">10</b><span>jours</span></div>
-          <button type="button" class="pm" id="plus" aria-label="Un jour de plus">+</button>
+    <!-- ══ 3. VOS DATES (calendrier, comme Airbnb) ══ -->
+    <section class="ecran etape avec-barre" data-ecran="dates" aria-labelledby="t-dates" hidden>
+      <h2 id="t-dates" tabindex="-1">Vos dates</h2>
+      <p class="dire" id="dates-dire">Touchez le jour du retrait, puis le jour du retour.</p>
+      <div class="sel-dates" aria-live="polite">
+        <button type="button" class="sel" id="sel-debut"><small>Retrait</small><b>Choisir</b></button>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        <button type="button" class="sel" id="sel-fin"><small>Retour</small><b>—</b></button>
+      </div>
+      <div class="raccourcis" id="raccourcis" hidden></div>
+      <p class="msg msg-alerte" id="cal-msg" role="status" hidden></p>
+      <div class="cal" id="cal"></div>
+      <button type="button" class="plus-mois" id="plus-mois">Afficher plus de mois</button>
+      <p class="note-bas" id="cal-note"></p>
+      <div class="barre-dates" id="barre-dates">
+        <div class="col">
+          <p id="bd-txt"><b>Choisissez vos dates</b>7 jours minimum</p>
+          <button type="button" class="effacer" id="effacer">Effacer</button>
+          <button type="button" class="btn" id="dates-ok" disabled>Continuer</button>
         </div>
-        <p class="libre-prix" aria-live="polite"><b id="prix-libre"></b> au total</p>
-        <button type="button" class="btn" id="duree-ok">Valider cette durée</button>
-      </div>
-      <p class="note-bas">Livraison <b>0 €</b> · Caution <b>0 €</b></p>
-    </section>
-
-    <!-- ══ 4. LE JOUR ══ -->
-    <section class="ecran etape" data-ecran="jour" aria-labelledby="t-jour" hidden>
-      <h2 id="t-jour" tabindex="-1">Quand passez-vous&nbsp;?</h2>
-      <p class="dire" id="jour-dire"></p>
-      <div class="cartes" id="jours">
-        <button type="button" class="carte" data-d="0"><span class="carte-txt"><span class="carte-t">Aujourd’hui</span><span class="carte-s" data-dl="0"></span></span><svg class="carte-fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
-        <button type="button" class="carte" data-d="1"><span class="carte-txt"><span class="carte-t">Demain</span><span class="carte-s" data-dl="1"></span></span><svg class="carte-fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
-        <button type="button" class="carte carte-2" id="jour-autre" aria-expanded="false" aria-controls="jour-libre"><span class="carte-txt"><span class="carte-t">Une autre date</span></span><svg class="carte-fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
-      </div>
-      <div class="libre" id="jour-libre" hidden>
-        <label for="date" class="champ-l">Jour du retrait</label>
-        <input class="champ" type="date" id="date">
-        <button type="button" class="btn" id="jour-ok">Valider cette date</button>
       </div>
     </section>
 
@@ -538,9 +572,9 @@ body.a-cook{padding-bottom:72px}
       <h2 id="t-infos" tabindex="-1">Dernière étape.</h2>
       <p class="dire">Vérifiez, laissez votre numéro&nbsp;: on vous rappelle pour confirmer.</p>
       <dl class="recap" id="recap">
-        <div><dt>Retrait</dt><dd id="r-point"></dd><button type="button" class="modif" data-modif="point" aria-label="Modifier le point de retrait">Modifier</button></div>
-        <div><dt>Le</dt><dd id="r-date"></dd><button type="button" class="modif" data-modif="jour" aria-label="Modifier le jour">Modifier</button></div>
-        <div><dt>Durée</dt><dd id="r-duree"></dd><button type="button" class="modif" data-modif="duree" aria-label="Modifier la durée">Modifier</button></div>
+        <div><dt>Point</dt><dd id="r-point"></dd><button type="button" class="modif" data-modif="point" aria-label="Modifier le point de retrait">Modifier</button></div>
+        <div><dt>Retrait</dt><dd id="r-date"></dd><button type="button" class="modif" data-modif="dates" aria-label="Modifier les dates">Modifier</button></div>
+        <div><dt>Retour</dt><dd id="r-duree"></dd><button type="button" class="modif" data-modif="dates" aria-label="Modifier les dates">Modifier</button></div>
         <div><dt>Livraison</dt><dd><span class="barre-prix" id="r-livr-barre"></span>0 €</dd></div>
         <div class="total"><dt>Total</dt><dd id="r-prix"></dd></div>
       </dl>
@@ -605,26 +639,29 @@ body.a-cook{padding-bottom:72px}
    livraison : prix qu'aurait coûté la livraison dans cette ville, affiché
    barré au récapitulatif (60 € à Nice, Saint-Laurent-du-Var et
    Cagnes-sur-Mer, 120 € ailleurs — comme les pages de ville).
+   fermes : jours où le point est fermé (0 = dimanche, 1 = lundi… 6 =
+   samedi). Ces jours sont barrés dans le calendrier, pour le retrait
+   comme pour le retour.
    exemple:false quand l'adresse est réelle : la pastille disparaît. */
 var POINTS = [
-  {ville:'Nice',                 nom:'Nice Centre',            lat:43.7009, lng:7.2683, adresse:'Adresse à venir, 06000 Nice',                 horaires:'Lun–Sam · 9h–19h', livraison:60,  exemple:true},
-  {ville:'Nice',                 nom:'Nice Port',              lat:43.6966, lng:7.2852, adresse:'Adresse à venir, 06300 Nice',                 horaires:'Lun–Sam · 9h–19h', livraison:60,  exemple:true},
-  {ville:'Nice',                 nom:'Nice Ouest',             lat:43.6845, lng:7.2010, adresse:'Adresse à venir, 06200 Nice',                 horaires:'Lun–Sam · 9h–19h', livraison:60,  exemple:true},
-  {ville:'Saint-Laurent-du-Var', nom:'Saint-Laurent-du-Var',   lat:43.6731, lng:7.1907, adresse:'Adresse à venir, 06700 Saint-Laurent-du-Var', horaires:'Lun–Sam · 9h–19h', livraison:60,  exemple:true},
-  {ville:'Cagnes-sur-Mer',       nom:'Cagnes-sur-Mer',         lat:43.6644, lng:7.1489, adresse:'Adresse à venir, 06800 Cagnes-sur-Mer',       horaires:'Lun–Sam · 9h–19h', livraison:60,  exemple:true},
-  {ville:'Antibes',              nom:'Antibes',                lat:43.5804, lng:7.1251, adresse:'Adresse à venir, 06600 Antibes',              horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true},
-  {ville:'Antibes',              nom:'Juan-les-Pins',          lat:43.5684, lng:7.1110, adresse:'Adresse à venir, 06160 Juan-les-Pins',        horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true},
-  {ville:'Cannes',               nom:'Cannes',                 lat:43.5528, lng:7.0174, adresse:'Adresse à venir, 06400 Cannes',               horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true},
-  {ville:'Grasse',               nom:'Grasse',                 lat:43.6584, lng:6.9225, adresse:'Adresse à venir, 06130 Grasse',               horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true},
-  {ville:'Villefranche-sur-Mer', nom:'Villefranche-sur-Mer',   lat:43.7040, lng:7.3111, adresse:'Adresse à venir, 06230 Villefranche-sur-Mer', horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true},
-  {ville:'Beausoleil',           nom:'Beausoleil (Monaco)',    lat:43.7429, lng:7.4236, adresse:'Adresse à venir, 06240 Beausoleil',           horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true},
-  {ville:'Menton',               nom:'Menton',                 lat:43.7747, lng:7.4975, adresse:'Adresse à venir, 06500 Menton',               horaires:'Lun–Sam · 9h–19h', livraison:120, exemple:true}
+  {ville:'Nice',                 nom:'Nice Centre',            lat:43.7009, lng:7.2683, adresse:'Adresse à venir, 06000 Nice',                 horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
+  {ville:'Nice',                 nom:'Nice Port',              lat:43.6966, lng:7.2852, adresse:'Adresse à venir, 06300 Nice',                 horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
+  {ville:'Nice',                 nom:'Nice Ouest',             lat:43.6845, lng:7.2010, adresse:'Adresse à venir, 06200 Nice',                 horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
+  {ville:'Saint-Laurent-du-Var', nom:'Saint-Laurent-du-Var',   lat:43.6731, lng:7.1907, adresse:'Adresse à venir, 06700 Saint-Laurent-du-Var', horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
+  {ville:'Cagnes-sur-Mer',       nom:'Cagnes-sur-Mer',         lat:43.6644, lng:7.1489, adresse:'Adresse à venir, 06800 Cagnes-sur-Mer',       horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:60,  exemple:true},
+  {ville:'Antibes',              nom:'Antibes',                lat:43.5804, lng:7.1251, adresse:'Adresse à venir, 06600 Antibes',              horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
+  {ville:'Antibes',              nom:'Juan-les-Pins',          lat:43.5684, lng:7.1110, adresse:'Adresse à venir, 06160 Juan-les-Pins',        horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
+  {ville:'Cannes',               nom:'Cannes',                 lat:43.5528, lng:7.0174, adresse:'Adresse à venir, 06400 Cannes',               horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
+  {ville:'Grasse',               nom:'Grasse',                 lat:43.6584, lng:6.9225, adresse:'Adresse à venir, 06130 Grasse',               horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
+  {ville:'Villefranche-sur-Mer', nom:'Villefranche-sur-Mer',   lat:43.7040, lng:7.3111, adresse:'Adresse à venir, 06230 Villefranche-sur-Mer', horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
+  {ville:'Beausoleil',           nom:'Beausoleil (Monaco)',    lat:43.7429, lng:7.4236, adresse:'Adresse à venir, 06240 Beausoleil',           horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true},
+  {ville:'Menton',               nom:'Menton',                 lat:43.7747, lng:7.4975, adresse:'Adresse à venir, 06500 Menton',               horaires:'Lun–Sam · 9h–19h', fermes:[0], livraison:120, exemple:true}
 ];
 
 /* Barème par défaut — remplacé par /api/pricing-config dès qu'il répond. */
 var PALIERS = [[7,12],[14,10],[21,9],[Infinity,8]];
 var JOURS_MIN = 7, JOURS_MAX = 90;
-var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
+var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];   /* raccourcis du calendrier */
 
 /* ── MESURE : consentement, puis événements ─────────────────────────── */
 (function(){
@@ -650,8 +687,8 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
 
 /* ── LE PARCOURS ───────────────────────────────────────────────────────── */
 (function(){
-  var ORDRE = ['ville','point','duree','jour','infos','merci'];
-  var etat = {ville:null, point:null, jours:null, libre:10, date:null, pile:[], liste:[], pos:null, edition:false};
+  var ORDRE = ['ville','point','dates','infos','merci'];
+  var etat = {ville:null, point:null, jours:null, date:null, debut:null, fin:null, mois:3, pile:[], liste:[], pos:null, edition:false};
   var $ = function(id){ return document.getElementById(id); };
   var ecrans = {};
   [].forEach.call(document.querySelectorAll('[data-ecran]'), function(e){ ecrans[e.dataset.ecran] = e; });
@@ -681,7 +718,7 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
     });
     majResume(nom);
     if(typeof majCollant === 'function') majCollant();
-    if(nom === 'jour') majJour();
+    if(nom === 'dates') dessinerCal();
     if(nom === 'infos') remplirRecap();
     if(nom === 'point' && carte) setTimeout(function(){ carte.resize(); }, 0);
     window.scrollTo(0, 0);
@@ -712,9 +749,7 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
   function majResume(nom){
     var r = [], el = $('resume');
     if(etat.point && nom !== 'point') r.push(etat.point.nom);
-    if(etat.jours && nom !== 'duree' && nom !== 'point') r.push(etat.jours + ' jours');
-    if(etat.date && nom === 'infos') r.push(lisible(etat.date).replace(/^\w+ /, ''));
-    if(etat.jours && nom !== 'duree' && nom !== 'point') r.push(euros(prix(etat.jours)));
+    if(etat.jours && nom === 'infos'){ r.push(etat.jours + ' jours'); r.push(euros(prix(etat.jours))); }
     el.innerHTML = r.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join('');
     el.hidden = !r.length;
   }
@@ -730,7 +765,7 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
     var b = e.target.closest('[data-ville]'); if(!b) return;
     etat.ville = b.dataset.ville; etat.pos = null;
     var liste = POINTS.filter(function(p){ return p.ville === etat.ville; });
-    if(liste.length === 1 && !etat.edition){ etat.point = liste[0]; etat.liste = liste; suite('duree'); }
+    if(liste.length === 1 && !etat.edition){ etat.point = liste[0]; etat.liste = liste; verifierDates(); suite('dates'); }
     else { dessinerPoints(liste, null); aller('point'); montrerCarte(); }
   });
 
@@ -756,7 +791,7 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
         '<svg class="carte-fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>';
     }).join('');
   }
-  function choisirPoint(p){ etat.point = p; window._ccValeur = 0; suite('duree'); }
+  function choisirPoint(p){ etat.point = p; verifierDates(); suite(etat.edition && !etat.debut ? (etat.edition = false, 'dates') : 'dates'); }
   $('points').addEventListener('click', function(e){
     var b = e.target.closest('[data-point]'); if(b) choisirPoint(POINTS[+b.dataset.point]);
   });
@@ -834,52 +869,112 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
     }, {enableHighAccuracy:false, timeout:10000, maximumAge:600000});
   });
 
-  /* ── 3. durée ── */
-  function dessinerDurees(){
-    $('durees').innerHTML = DUREES.map(function(d){
-      var t = prix(d[0]);
-      return '<button type="button" class="carte" data-j="' + d[0] + '"><span class="carte-txt"><span class="carte-t">' + d[1] + '</span><span class="carte-s">' + d[0] + ' jours</span></span>' +
-        '<span class="carte-p"><b>' + euros(t) + '</b><small>' + parJour(t, d[0]) + '</small></span></button>';
-    }).join('') + '<button type="button" class="carte carte-2" id="duree-autre" aria-expanded="false" aria-controls="duree-libre"><span class="carte-txt"><span class="carte-t">Autre durée</span><span class="carte-s">De ' + JOURS_MIN + ' à ' + JOURS_MAX + ' jours</span></span><svg class="carte-fl" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>';
-    $('duree-autre').onclick = function(){ ouvrir(this, $('duree-libre')); };
+  /* ── textes de prix (héros, vitrine, FAQ, bouton collé) ── */
+  function majPrixTextes(){
     var f = $('faq-prix'); if(f) f.textContent = 'Une semaine : ' + euros(prix(7)) + '. Deux semaines : ' + euros(prix(14)) + '. Pas de livraison, pas de caution. Le prix par jour baisse à partir du 8ᵉ jour. Location de 7 jours minimum.';
     var pj = String(PALIERS[0][1]).replace('.', ',');
     $('prix-mini').textContent = pj; $('v-jour').textContent = pj; $('c-prix').textContent = pj;
     $('v-semaine').textContent = euros(prix(7));
   }
-  $('durees').addEventListener('click', function(e){
-    var b = e.target.closest('[data-j]'); if(!b) return;
-    etat.jours = +b.dataset.j; window._ccValeur = prix(etat.jours); suite('jour');
-  });
-  function ouvrir(bouton, panneau){
-    var o = panneau.hidden; panneau.hidden = !o; bouton.setAttribute('aria-expanded', o ? 'true' : 'false');
-    if(o) panneau.scrollIntoView({block:'nearest'});
-  }
-  function majLibre(){
-    $('nb-jours').textContent = etat.libre; $('prix-libre').textContent = euros(prix(etat.libre));
-    $('moins').disabled = etat.libre <= JOURS_MIN; $('plus').disabled = etat.libre >= JOURS_MAX;
-  }
-  $('moins').onclick = function(){ etat.libre = Math.max(JOURS_MIN, etat.libre - 1); majLibre(); };
-  $('plus').onclick  = function(){ etat.libre = Math.min(JOURS_MAX, etat.libre + 1); majLibre(); };
-  $('duree-ok').onclick = function(){ etat.jours = etat.libre; window._ccValeur = prix(etat.jours); suite('jour'); };
 
-  /* ── 4. jour ── */
-  function majJour(){
-    $('jour-dire').textContent = etat.point ? etat.point.nom + ' · ' + etat.point.horaires + '. On vous confirme l’heure par téléphone.' : '';
-    [].forEach.call(document.querySelectorAll('[data-dl]'), function(s){ s.textContent = lisible(dans(+s.dataset.dl)); });
+  /* ── 3. le calendrier ──────────────────────────────────────────────────
+     1er toucher = retrait, 2e = retour (comme Airbnb). Jours passés et
+     jours de fermeture du point barrés. Retour au moins 7 jours après,
+     au plus 90. jours = nombre de jours entre retrait et retour. */
+  var MOIS_MAX = 12;
+  function d2(s){ var p = s.split('-'); return new Date(+p[0], p[1]-1, +p[2]); }
+  function ecart(a, b){ return Math.round((d2(b) - d2(a)) / 864e5); }
+  function court(s){ return d2(s).toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}); }
+  function ferme(s){ var f = (etat.point && etat.point.fermes) || []; return f.indexOf(d2(s).getDay()) >= 0; }
+  function prochainOuvert(s){ var n = 0; while(ferme(s) && n++ < 7) s = plus(s, 1); return s; }
+  function msgCal(t){ var m = $('cal-msg'); m.textContent = t || ''; m.hidden = !t; }
+
+  function dessinerCal(){
+    var auj = dans(0), max = dans(365), html = '';
+    var base = new Date(); base.setDate(1);
+    for(var m = 0; m < etat.mois; m++){
+      var d0 = new Date(base.getFullYear(), base.getMonth() + m, 1);
+      var nb = new Date(d0.getFullYear(), d0.getMonth() + 1, 0).getDate();
+      var dec = (d0.getDay() + 6) % 7;                         /* semaine commençant le lundi */
+      html += '<section class="mois" aria-label="' + d0.toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) + '"><h3>' + d0.toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) + '</h3>' +
+        '<div class="sem" aria-hidden="true"><span>L</span><span>M</span><span>M</span><span>J</span><span>V</span><span>S</span><span>D</span></div><div class="jours-g">';
+      for(var v = 0; v < dec; v++) html += '<span></span>';
+      for(var j = 1; j <= nb; j++){
+        var s = iso(new Date(d0.getFullYear(), d0.getMonth(), j)), cls = ['j'], off = false, note = '';
+        if(s < auj || s > max){ off = true; }
+        else if(ferme(s)){ off = true; cls.push('ferme'); note = ', point fermé'; }
+        if(s === auj) cls.push('auj');
+        if(etat.debut && !etat.fin && s > etat.debut){
+          var e = ecart(etat.debut, s);
+          if(e < JOURS_MIN){ cls.push('court'); note = ', trop court'; }
+          if(e > JOURS_MAX){ off = true; }
+        }
+        if(s === etat.debut){ cls.push('debut'); if(etat.fin) cls.push('a-fin'); }
+        if(s === etat.fin) cls.push('fin');
+        if(etat.debut && etat.fin && s > etat.debut && s < etat.fin) cls.push('entre');
+        var lab = d2(s).toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) + note +
+          (s === etat.debut ? ', retrait' : '') + (s === etat.fin ? ', retour' : '');
+        html += '<button type="button" class="' + cls.join(' ') + '" data-s="' + s + '"' + (off ? ' disabled' : '') +
+          ' aria-label="' + lab + '"' + ((s === etat.debut || s === etat.fin) ? ' aria-pressed="true"' : '') + '><span>' + j + '</span></button>';
+      }
+      html += '</div></section>';
+    }
+    $('cal').innerHTML = html;
+    $('plus-mois').hidden = etat.mois >= MOIS_MAX;
+    var p = etat.point;
+    $('cal-note').textContent = p ? p.nom + ' · ' + p.horaires + (p.fermes && p.fermes.length ? ' · jours barrés : point fermé' : '') + '. On vous confirme l’heure par téléphone.' : '';
+    majSelection();
   }
-  $('jours').addEventListener('click', function(e){
-    var b = e.target.closest('[data-d]'); if(!b) return;
-    etat.date = dans(+b.dataset.d); suite('infos');
+  function majSelection(){
+    var deb = $('sel-debut'), fin = $('sel-fin');
+    deb.querySelector('b').textContent = etat.debut ? court(etat.debut) : 'Choisir';
+    fin.querySelector('b').textContent = etat.fin ? court(etat.fin) : (etat.debut ? 'Choisir' : '—');
+    deb.classList.toggle('actif', !etat.debut); fin.classList.toggle('actif', !!etat.debut && !etat.fin);
+    $('dates-dire').textContent = !etat.debut ? 'Touchez le jour du retrait.' : (!etat.fin ? 'Touchez le jour du retour (7 jours minimum).' : 'Parfait. Vous pouvez changer en touchant une autre date.');
+    /* raccourcis de durée, une fois le retrait choisi */
+    var r = $('raccourcis');
+    r.hidden = !etat.debut;
+    if(etat.debut){
+      var j = etat.fin ? ecart(etat.debut, etat.fin) : 0;
+      r.innerHTML = DUREES.map(function(d){ return '<button type="button" data-plus="' + d[0] + '" aria-pressed="' + (j === d[0]) + '">' + d[1] + '<small>' + euros(prix(d[0])) + '</small></button>'; }).join('');
+    }
+    var ok = etat.debut && etat.fin, t = $('bd-txt');
+    if(ok){ var n = ecart(etat.debut, etat.fin); t.innerHTML = '<b>' + n + ' jours · ' + euros(prix(n)) + '</b>' + esc(court(etat.debut) + ' → ' + court(etat.fin)); }
+    else t.innerHTML = '<b>' + (etat.debut ? 'Choisissez le retour' : 'Choisissez vos dates') + '</b>7 jours minimum · 0 € livraison';
+    $('dates-ok').disabled = !ok; $('effacer').hidden = !etat.debut;
+    window._ccValeur = ok ? prix(ecart(etat.debut, etat.fin)) : 0;
+  }
+  $('cal').addEventListener('click', function(e){
+    var b = e.target.closest('[data-s]'); if(!b || b.disabled) return;
+    var s = b.dataset.s; msgCal('');
+    if(!etat.debut || etat.fin || s <= etat.debut){ etat.debut = s; etat.fin = null; }
+    else {
+      var n = ecart(etat.debut, s);
+      if(n < JOURS_MIN){ msgCal('7 jours minimum : retour à partir du ' + lisible(prochainOuvert(plus(etat.debut, JOURS_MIN))) + '.'); return; }
+      etat.fin = s;
+    }
+    var y = window.scrollY; dessinerCal(); window.scrollTo(0, y);
   });
-  $('jour-autre').onclick = function(){ ouvrir(this, $('jour-libre')); };
-  $('date').min = dans(0); $('date').max = dans(365);
-  $('jour-ok').onclick = function(){ var v = $('date').value; if(!v){ $('date').focus(); return; } etat.date = v; suite('infos'); };
+  $('raccourcis').addEventListener('click', function(e){
+    var b = e.target.closest('[data-plus]'); if(!b) return;
+    etat.fin = prochainOuvert(plus(etat.debut, +b.dataset.plus)); msgCal('');
+    var y = window.scrollY; dessinerCal(); window.scrollTo(0, y);
+  });
+  $('sel-debut').onclick = function(){ etat.debut = null; etat.fin = null; msgCal(''); dessinerCal(); };
+  $('sel-fin').onclick = function(){ if(etat.debut){ etat.fin = null; msgCal(''); dessinerCal(); } };
+  $('effacer').onclick = function(){ etat.debut = null; etat.fin = null; msgCal(''); dessinerCal(); };
+  $('plus-mois').onclick = function(){ etat.mois = Math.min(MOIS_MAX, etat.mois + 3); var y = window.scrollY; dessinerCal(); window.scrollTo(0, y); };
+  $('dates-ok').onclick = function(){
+    if(!etat.debut || !etat.fin) return;
+    etat.date = etat.debut; etat.jours = ecart(etat.debut, etat.fin); suite('infos');
+  };
+  /* changement de point : des dates devenues impossibles (jour fermé) sont effacées */
+  function verifierDates(){ if(etat.debut && (ferme(etat.debut) || (etat.fin && ferme(etat.fin)))){ etat.debut = etat.fin = null; } }
 
   /* ── 5. vos infos ── */
   function lignesRecap(){
     var p = etat.point, retour = plus(etat.date, etat.jours);
-    return {point: p.nom + (p.exemple ? ' (exemple)' : ''), date: lisible(etat.date), duree: etat.jours + ' jours · retour le ' + lisible(retour).replace(/^\w+ /, ''), prix: euros(prix(etat.jours))};
+    return {point: p.nom + (p.exemple ? ' (exemple)' : ''), date: lisible(etat.date), retour: lisible(retour), duree: etat.jours + ' jours · retour le ' + lisible(retour), prix: euros(prix(etat.jours))};
   }
   function messageWA(){
     var p = etat.point, l = lignesRecap();
@@ -887,7 +982,7 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
   }
   function remplirRecap(){
     var l = lignesRecap();
-    $('r-point').textContent = l.point; $('r-date').textContent = l.date; $('r-duree').textContent = l.duree; $('r-prix').textContent = l.prix;
+    $('r-point').textContent = l.point; $('r-date').textContent = l.date; $('r-duree').textContent = l.retour + ' (' + etat.jours + ' jours)'; $('r-prix').textContent = l.prix;
     $('r-livr-barre').textContent = etat.point.livraison ? etat.point.livraison + ' €' : '';
     $('wa').href = 'https://wa.me/33663798756?text=' + encodeURIComponent(messageWA());
   }
@@ -935,7 +1030,7 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
     var l = lignesRecap();
     $('m-prenom').textContent = prenom;
     $('m-texte').textContent = 'On vous rappelle au ' + tel + ' pour confirmer l’heure du retrait (7j/7, 8h–20h). Rien à payer pour l’instant.';
-    $('m-recap').innerHTML = [['Retrait', l.point + ' — ' + etat.point.adresse], ['Le', l.date], ['Durée', l.duree], ['Total', total ? euros(total) : l.prix]]
+    $('m-recap').innerHTML = [['Point', l.point + ' — ' + etat.point.adresse], ['Retrait', l.date], ['Retour', l.retour + ' (' + etat.jours + ' jours)'], ['Total', total ? euros(total) : l.prix]]
       .map(function(x, i){ return '<div' + (i === 3 ? ' class="total"' : '') + '><dt>' + x[0] + '</dt><dd>' + esc(x[1]) + '</dd></div>'; }).join('');
     etat.pile = [];
     aller('merci');
@@ -943,12 +1038,12 @@ var DUREES = [[7,'1 semaine'],[14,'2 semaines'],[30,'1 mois']];
 
   /* ── prix de l'admin ── */
   $('nb-points').textContent = POINTS.length;
-  dessinerDurees(); majLibre();
+  majPrixTextes();
   fetch('/api/pricing-config').then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
     var c = j && j.pricing; if(!c) return;
     var n = function(v){ return Number(v); };
     var p = [[n(c.palier1_max_jours), n(c.palier1_tarif_cents)/100],[n(c.palier2_max_jours), n(c.palier2_tarif_cents)/100],[n(c.palier3_max_jours), n(c.palier3_tarif_cents)/100],[Infinity, n(c.palier4_tarif_cents)/100]];
-    if(p.every(function(x){ return isFinite(x[1]) && x[1] > 0 && (x[0] === Infinity || x[0] > 0); })){ PALIERS = p; dessinerDurees(); majLibre(); }
+    if(p.every(function(x){ return isFinite(x[1]) && x[1] > 0 && (x[0] === Infinity || x[0] > 0); })){ PALIERS = p; majPrixTextes(); if(!ecrans.dates.hidden) dessinerCal(); }
   }).catch(function(){});
 
   aller('ville', true);
