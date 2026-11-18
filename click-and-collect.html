@@ -89,7 +89,7 @@ a{color:var(--vif)}
 .nav-tel svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2.2}
 
 /* ── PROGRESSION : étapes nommées + résumé qui suit le client ── */
-.suivi{background:var(--paper);border-bottom:1px solid var(--line)}
+.suivi{background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:58px;z-index:25}
 .suivi[hidden]{display:none}
 .suivi .col{padding-block:10px 12px;display:grid;gap:10px}
 .suivi-l{display:flex;align-items:center;gap:10px}
@@ -318,6 +318,27 @@ body.a-cook .barre-dates{bottom:64px}
 .villes .squelette{min-height:48px;border-radius:var(--r-f);background:linear-gradient(90deg,var(--mist),#E9EEF6,var(--mist));background-size:200% 100%;animation:brille 1.2s infinite}
 @keyframes brille{to{background-position:-200% 0}}
 
+/* ── DÉTAILS D'ERGONOMIE ── */
+button,a,.j,.carte,.ville{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+body.en-etape .annonce{display:none}
+.ville .nbp{font-size:11.5px;font-weight:700;color:var(--ink-3);margin-left:4px}
+.ville:hover .nbp{color:var(--vif)}
+.prive{display:flex;align-items:center;justify-content:center;gap:5px;font-size:12px;color:var(--ink-3);margin-top:8px}
+.prive svg{width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.2}
+.etapes li.fait{cursor:pointer}
+.etapes li.fait:hover{color:var(--vif)}
+.resume button{font:inherit;font-size:13px;font-weight:700;color:var(--vif-d);background:var(--vif-clair);border:0;border-radius:var(--r-f);padding:3px 10px}
+.resume button:hover{background:#DCE7FB}
+.resume button::after{content:" ✎";font-size:11px;opacity:.6}
+.carte-pts:not(.pret){background:linear-gradient(90deg,#EEF1F5,#E3E9F2,#EEF1F5);background-size:200% 100%;animation:brille 1.2s infinite}
+.mois h3{position:sticky;top:var(--haut-suivi,112px);z-index:2;background:var(--mist);padding:8px 4px;margin:0 0 4px;box-shadow:0 6px 8px -8px rgba(14,23,38,.2)}
+.champ-ok{position:relative}
+.champ-ok .champ{padding-right:40px}
+.champ-ok::after{content:"";position:absolute;right:16px;top:46px;width:16px;height:9px;border-left:2.5px solid var(--ok);border-bottom:2.5px solid var(--ok);transform:rotate(-45deg)}
+.suggere{display:block;margin-top:6px;font-size:13.5px;color:var(--ink-2)}
+.suggere button{background:none;border:0;padding:0;font:inherit;font-weight:700;color:var(--vif);text-decoration:underline;text-underline-offset:3px}
+.suggere[hidden]{display:none}
+
 /* ── C'EST NOTÉ ── */
 .merci{text-align:center;padding-block:36px 40px}
 .merci-ico{width:72px;height:72px;border-radius:50%;background:var(--ok-fond);display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
@@ -387,6 +408,7 @@ body.a-cook{padding-bottom:72px}
         <button type="button" class="localiser" id="localiser">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="4"/></svg>
           Trouver le point le plus proche</button>
+        <p class="prive"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>Votre position reste sur votre téléphone.</p>
         <p class="msg msg-alerte" id="loc-err" role="status" hidden></p>
         <p class="ou-ville">ou choisissez votre ville</p>
         <div class="villes" id="villes"></div>
@@ -454,14 +476,15 @@ body.a-cook{padding-bottom:72px}
         </div>
         <div>
           <label class="champ-l" for="email">Email</label>
-          <input class="champ" id="email" name="email" type="email" inputmode="email" autocomplete="email" enterkeyhint="next" required maxlength="120" placeholder="vous@exemple.fr">
+          <input class="champ" id="email" name="email" type="email" inputmode="email" autocomplete="email" enterkeyhint="next" required maxlength="120" placeholder="vous@exemple.fr" autocapitalize="off" spellcheck="false">
+          <p class="suggere" id="email-sugg" hidden></p>
         </div>
         <div>
           <label class="champ-l" for="tel">Téléphone</label>
           <input class="champ" id="tel" name="tel" type="tel" inputmode="tel" autocomplete="tel" enterkeyhint="done" required maxlength="20" placeholder="06 12 34 56 78" aria-describedby="tel-aide">
           <p class="aide" id="tel-aide">Pour vous appeler et fixer l’heure du retrait.</p>
         </div>
-        <label class="coche"><input type="checkbox" id="cgv"><span>J’accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer">CGV/CGL</a>, les conditions d’utilisation du climatiseur et l’autorisation de prélèvement en cas de retour en retard.</span></label>
+        <label class="coche"><input type="checkbox" id="cgv"><span>J’accepte les <a href="/cgv" target="_blank" rel="noopener noreferrer">conditions de location</a> et d’utilisation, et un prélèvement seulement si je rends l’appareil en retard.</span></label>
         <p class="msg msg-erreur" id="form-err" role="alert" hidden></p>
         <button type="submit" class="btn" id="envoyer">Continuer vers le paiement</button>
         <p class="mentions">Aucune caution. Vos coordonnées servent uniquement à cette réservation. <a href="/confidentialite">Confidentialité</a></p>
@@ -615,7 +638,8 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       if(i === k) li.setAttribute('aria-current', 'step'); else li.removeAttribute('aria-current');
     });
     majResume(nom);
-    if(nom === 'dates') dessinerCal();
+    document.body.classList.toggle('en-etape', nom !== 'ville');
+    if(nom === 'dates'){ dessinerCal(); requestAnimationFrame(function(){ hauteurSuivi(); allerAuMois(); }); }
     if(nom === 'infos') remplirRecap();
     if(nom === 'point'){ if(carte) setTimeout(function(){ carte.resize(); }, 0); else montrerCarte(); }
     sauver(nom);
@@ -630,20 +654,36 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
   function suite(nom){ if(etat.edition){ etat.edition = false; aller('infos'); } else aller(nom); }
   $('retour').onclick = function(){ history.back(); };
 
+  /* résumé : chaque pastille ramène à l'étape qui la règle */
   function majResume(nom){
     var r = [], el = $('resume');
-    if(etat.point && nom !== 'point') r.push(etat.point.nom);
-    if(etat.debut && etat.fin && (nom === 'infos' || nom === 'paiement')){ var n = ecart(etat.debut, etat.fin); r.push(n + ' jours'); r.push(euros(prix(n))); }
-    el.innerHTML = r.map(function(x){ return '<span>' + esc(x) + '</span>'; }).join('');
+    if(etat.point && nom !== 'point') r.push([etat.point.nom, 'point']);
+    if(etat.debut && etat.fin && (nom === 'infos' || nom === 'paiement')){ var n = ecart(etat.debut, etat.fin); r.push([n + ' jours', 'dates']); r.push([euros(prix(n)), 'dates']); }
+    el.innerHTML = r.map(function(x){ return '<button type="button" data-va="' + x[1] + '" aria-label="Modifier : ' + esc(x[0]) + '">' + esc(x[0]) + '</button>'; }).join('');
     el.hidden = !r.length;
   }
+  function revenirA(cible){
+    if(cible === 'point'){ dessinerPoints(etat.pos ? etat.liste : POINTS.filter(function(p){ return p.ville === etat.ville; }), etat.pos); }
+    if(!ecrans.infos.hidden || !ecrans.paiement.hidden) etat.edition = true;
+    aller(cible);
+  }
+  $('resume').addEventListener('click', function(e){ var b = e.target.closest('[data-va]'); if(b) revenirA(b.dataset.va); });
+  $('etapes').addEventListener('click', function(e){ var li = e.target.closest('li.fait'); if(li && possible(li.dataset.e)) revenirA(li.dataset.e); });
+  function hauteurSuivi(){ document.documentElement.style.setProperty('--haut-suivi', (document.querySelector('.nav').offsetHeight + $('suivi').offsetHeight) + 'px'); }
+  function allerAuMois(){
+    if(!etat.debut) return;
+    var b = $('cal').querySelector('[data-s="' + etat.debut + '"]');
+    if(b){ var y = b.closest('.mois').getBoundingClientRect().top + window.scrollY - (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--haut-suivi')) || 112) - 8; if(y > 200) window.scrollTo(0, y); }
+  }
+  function vibre(){ try{ if(navigator.vibrate) navigator.vibrate(8); }catch(e){} }
 
   /* ── 1. villes (après lecture des points) ── */
   $('villes').innerHTML = '<span class="squelette"></span><span class="squelette"></span><span class="squelette"></span><span class="squelette"></span>';
   function construireVilles(){
     var villes = POINTS.map(function(p){ return p.ville; }).filter(function(v, k, t){ return t.indexOf(v) === k; });
     $('villes').innerHTML = villes.map(function(v){
-      return '<button type="button" class="ville' + (v.length > 11 ? ' large' : '') + '" data-ville="' + esc(v) + '">' + esc(v) + FLECHE + '</button>';
+      var nb = POINTS.filter(function(p){ return p.ville === v; }).length;
+      return '<button type="button" class="ville' + (v.length > 11 ? ' large' : '') + '" data-ville="' + esc(v) + '" aria-label="' + esc(v) + ', ' + nb + ' point' + (nb > 1 ? 's' : '') + ' de retrait">' + esc(v) + (nb > 1 ? '<span class="nbp" aria-hidden="true">· ' + nb + '</span>' : '') + FLECHE + '</button>';
     }).join('') + '<a class="ville ville-autre" href="tel:+33663798756" data-mesure="cc_appel">Autre ville&nbsp;? Appelez-nous</a>';
     [].slice.call($('villes').querySelectorAll('.large')).forEach(function(b){ $('villes').insertBefore(b, $('villes').querySelector('.ville-autre')); });
   }
@@ -732,6 +772,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
         carte = new ml.Map({container:boite, style:'https://tiles.openfreemap.org/styles/positron',
           center:[7.2, 43.65], zoom:9, attributionControl:{compact:true}, cooperativeGestures:true, dragRotate:false, pitchWithRotate:false});
         carte.touchZoomRotate.disableRotation();
+        carte.on('load', function(){ boite.classList.add('pret'); });
       }
       majCarte();
     }).catch(function(){ boite.hidden = true; });
@@ -820,7 +861,7 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       r.innerHTML = DUREES.map(function(d){ return '<button type="button" data-plus="' + d[0] + '" aria-pressed="' + (j === d[0]) + '">' + d[1] + '<small>' + euros(prix(d[0])) + '</small></button>'; }).join('');
     }
     var ok = etat.debut && etat.fin, t = $('bd-txt');
-    if(ok){ var n = ecart(etat.debut, etat.fin); t.innerHTML = '<b>' + n + ' jours · ' + euros(prix(n)) + '</b>' + esc(court(etat.debut) + ' → ' + court(etat.fin)); }
+    if(ok){ var n = ecart(etat.debut, etat.fin), tot = prix(n); t.innerHTML = '<b>' + n + ' jours · ' + euros(tot) + '</b>' + esc(court(etat.debut) + ' → ' + court(etat.fin)) + ' · soit ' + (tot / n).toLocaleString('fr-FR', {maximumFractionDigits:2}) + ' €/jour'; }
     else t.innerHTML = '<b>' + (etat.debut ? 'Choisissez le retour' : 'Choisissez vos dates') + '</b>7 jours minimum · 0 € livraison';
     $('dates-ok').disabled = !ok; $('effacer').hidden = !etat.debut;
     window._ccValeur = ok ? prix(ecart(etat.debut, etat.fin)) : 0;
@@ -836,11 +877,11 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
       if(n < JOURS_MIN){ msgCal('7 jours minimum : retour à partir du ' + lisible(prochainOuvert(plus(etat.debut, JOURS_MIN))) + '.'); return; }
       etat.fin = s;
     }
-    redessiner();
+    vibre(); redessiner();
   });
   $('raccourcis').addEventListener('click', function(e){
     var b = e.target.closest('[data-plus]'); if(!b) return;
-    etat.fin = prochainOuvert(plus(etat.debut, +b.dataset.plus)); msgCal(''); redessiner();
+    etat.fin = prochainOuvert(plus(etat.debut, +b.dataset.plus)); msgCal(''); vibre(); redessiner();
   });
   $('sel-debut').onclick = function(){ etat.debut = null; etat.fin = null; msgCal(''); dessinerCal(); };
   $('sel-fin').onclick = function(){ if(etat.debut){ etat.fin = null; msgCal(''); dessinerCal(); } };
@@ -882,7 +923,33 @@ var STRIPE_PK = 'pk_live_51TeLMfFs0bamd26ewOCytZvuoYxnZvhIEYnHMxJEVjrW593LTrHWpY
     if(/^0\d*$/.test(d) && d.length <= 10 && v.indexOf('+') < 0){ this.value = d.replace(/(\d{2})(?=\d)/g, '$1 '); }
     if(this.getAttribute('aria-invalid')){ this.removeAttribute('aria-invalid'); $('tel-aide').className = 'aide'; $('tel-aide').textContent = 'Pour vous appeler et fixer l’heure du retrait.'; }
   });
-  ['prenom','nom','email'].forEach(function(k){ $(k).addEventListener('input', function(){ this.removeAttribute('aria-invalid'); }); });
+  /* coche verte quand un champ est bon (au départ du champ), rien de rouge
+     tant que la personne tape */
+  var VALIDE = {
+    prenom: function(v){ return v.trim().length > 0; },
+    nom: function(v){ return v.trim().length > 0; },
+    email: function(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()); },
+    tel: function(v){ return telValide(v); }
+  };
+  Object.keys(VALIDE).forEach(function(k){
+    $(k).addEventListener('input', function(){ this.removeAttribute('aria-invalid'); this.parentNode.classList.toggle('champ-ok', VALIDE[k](this.value)); });
+    $(k).addEventListener('blur', function(){ this.parentNode.classList.toggle('champ-ok', VALIDE[k](this.value)); if(k === 'email') suggererEmail(); });
+    $(k).addEventListener('input', function(){ if(k === 'email') $('email-sugg').hidden = true; });
+  });
+  /* fautes de frappe courantes dans l'email : sinon la confirmation se perd */
+  var DOMAINES = {'gmial.com':'gmail.com','gmai.com':'gmail.com','gmail.fr':'gmail.com','gmal.com':'gmail.com','gamil.com':'gmail.com','gmail.co':'gmail.com','gmail.con':'gmail.com',
+    'hotmial.com':'hotmail.com','hotmail.con':'hotmail.com','hotmal.fr':'hotmail.fr','hotmai.fr':'hotmail.fr','yaho.fr':'yahoo.fr','yahoo.f':'yahoo.fr',
+    'outlok.fr':'outlook.fr','outlook.con':'outlook.com','orange.f':'orange.fr','oragne.fr':'orange.fr','wanado.fr':'wanadoo.fr','iclod.com':'icloud.com','icloud.fr':'icloud.com','free.f':'free.fr','sfr.f':'sfr.fr'};
+  function suggererEmail(){
+    var v = $('email').value.trim(), m = v.match(/^([^@\s]+)@([^@\s]+)$/), z = $('email-sugg');
+    var bon = m && DOMAINES[m[2].toLowerCase()];
+    if(!bon){ z.hidden = true; return; }
+    var prop = m[1] + '@' + bon;
+    z.innerHTML = 'Vouliez-vous dire <button type="button">' + esc(prop) + '</button>&nbsp;?';
+    $('email').parentNode.classList.remove('champ-ok');
+    z.hidden = false;
+    z.querySelector('button').onclick = function(){ $('email').value = prop; z.hidden = true; $('email').parentNode.classList.add('champ-ok'); $('tel').focus(); };
+  }
   $('cgv').addEventListener('change', function(){ this.closest('.coche').classList.remove('err'); });
 
   var campagne = (function(){
