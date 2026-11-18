@@ -18,6 +18,16 @@
 //   lat, lng  position sur la carte (clic droit sur Google Maps)
 //   livraison prix de la livraison à domicile dans cette ville, affiché barré
 //   exemple   true = point fictif, paiement refusé
+//   stock     appareils déposés au point pour la saison (stock figé, 4 par
+//             défaut) : au-delà, le point refuse de nouvelles réservations
+//             sur les mêmes dates
+//   partenaire_code  code du commerçant dans l'admin (onglet Partenaires) :
+//             la réservation lui est rattachée et sa commission comptée
+//   commission_pct   commission du commerçant sur la location payée (15 %,
+//             décidé par le propriétaire le 18/11/2026)
+//   zone      'cote-azur' ou 'madrid' (page et langue)
+const STOCK_PAR_DEFAUT = 4;
+const COMMISSION_POINT_PCT = 15;
 const POINTS_RETRAIT = [
   { id: 'nice-centre',      ville: 'Nice',                 nom: 'Nice Centre',          lat: 43.7009, lng: 7.2683, adresse: 'Adresse à venir, 06000 Nice',                 horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 60,  exemple: true },
   { id: 'nice-port',        ville: 'Nice',                 nom: 'Nice Port',            lat: 43.6966, lng: 7.2852, adresse: 'Adresse à venir, 06300 Nice',                 horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 60,  exemple: true },
@@ -33,8 +43,23 @@ const POINTS_RETRAIT = [
   { id: 'menton',           ville: 'Menton',               nom: 'Menton',               lat: 43.7747, lng: 7.4975, adresse: 'Adresse à venir, 06500 Menton',               horaires: 'Lun–Sam · 9h–19h', fermes: [0], livraison: 120, exemple: true },
 ];
 
+// Valeurs par défaut posées une seule fois : chaque point a toujours un
+// stock, une commission et une zone, même si la ligne ne les écrit pas.
+POINTS_RETRAIT.forEach((p) => {
+  if (!Number.isFinite(p.stock)) p.stock = STOCK_PAR_DEFAUT;
+  if (!Number.isFinite(p.commission_pct)) p.commission_pct = COMMISSION_POINT_PCT;
+  if (!p.zone) p.zone = 'cote-azur';
+  if (!('partenaire_code' in p)) p.partenaire_code = null;
+});
+
 function getPointRetrait(id) {
   return POINTS_RETRAIT.find((p) => p.id === id) || null;
+}
+
+// Les points d'une même ville forment un « cluster » : c'est sur lui qu'on
+// mesure le taux d'occupation pour le prix fort.
+function pointsDuCluster(point) {
+  return POINTS_RETRAIT.filter((p) => p.zone === point.zone && p.ville === point.ville);
 }
 
 function codePostalDuPoint(point) {
@@ -52,4 +77,4 @@ function pointFermeLe(point, iso) {
   return (point.fermes || []).includes(jourSemaine(iso));
 }
 
-module.exports = { POINTS_RETRAIT, getPointRetrait, codePostalDuPoint, pointFermeLe };
+module.exports = { POINTS_RETRAIT, getPointRetrait, pointsDuCluster, codePostalDuPoint, pointFermeLe, STOCK_PAR_DEFAUT, COMMISSION_POINT_PCT };

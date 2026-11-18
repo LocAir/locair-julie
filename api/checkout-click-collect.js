@@ -17,12 +17,13 @@
 const Stripe = require('stripe');
 const { getSupabase } = require('./_lib/supabase');
 const { resolveCityByAddress } = require('./_lib/city');
-const { getAvailability } = require('./_lib/stock');
 const { isValidDate, addDays, todayParis } = require('./_lib/dates');
-const { calcTieredPrice, getPricingConfig } = require('./_lib/pricing');
+const { getPricingConfig } = require('./_lib/pricing');
+const { getAvailability } = require('./_lib/stock');
 const { CGV_VERSION, ACCEPTANCE_TYPES } = require('./_lib/legal');
 const { getClientIp, isRateLimited, recordFailedAttempt } = require('./_lib/ratelimit');
 const { getPointRetrait, codePostalDuPoint, pointFermeLe } = require('./_lib/pointsRetrait');
+const { prixClickCollect, lienRemise, imageQrRemise } = require('./_lib/clickCollect');
 
 const JOURS_MAX = 90;
 const clip = (s, n) => String(s == null ? '' : s).trim().slice(0, n);
@@ -77,10 +78,31 @@ module.exports = async (req, res) => {
     return res.status(400).json({ error: 'Le point de retrait est fermé ce jour-là. Choisissez une autre date.' });
   }
 
-  const amountCents = Math.round(calcTieredPrice(duree, pricing) * 100);
-  if (!amountCents || amountCents < 5000) return res.status(400).json({ error: 'Montant invalide.' });
-
   const supabase = getSupabase();
+  // Prix (avec la règle du prix fort à 80 % d'occupation) et stock du point :
+  // même calcul que celui affiché sur la page (api/click-collect-prix.js).
+  let prix;
+  try { prix = await prixClickCollect(supabase, point, dateDebut, duree, pricing); }
+  catch (e) { console.error('[CC prix]', e.message); return res.status(503).json({ error: 'Impossible de calculer le prix. Réessayez dans un instant.' }); }
+  if (prix.libresAuPoint < 1) return res.status(409).json({ error: 'Ce point de retrait est complet à ces dates. Choisissez un autre point ou d’autres dates.' });
+  const amountCents = prix.totalCents;
+  if (!amountCents || amountCents < 5000) return res.status(400).json({ error: 'Montant invalide.' });
+  // Le prix vu par le client ne doit jamais changer sans qu'il le sache.
+  const vu = parseInt(data.prix_vu_cents, 10);
+  if (Number.isFinite(vu) && vu !== amountCents) {
+    return res.status(409).json({ error: 'Le prix vient de changer pour ces dates (forte demande). Vérifiez le nouveau prix avant de payer.', nouveauPrixCents: amountCents, majore: prix.majore });
+  }
+
+  // Commerçant du point : la réservation lui est rattachée et sa commission
+  // (15 % de la location payée) comptée, comme pour les autres partenaires
+  // (espace partenaire, virements). Point sans partenaire = pas de commission.
+  let partenaireId = null, commissionCents = 0;
+  if (point.partenaire_code) {
+    try {
+      const { data: part } = await supabase.from('partenaires').select('id').eq('code', String(point.partenaire_code).toLowerCase()).eq('actif', true).maybeSingle();
+      if (part) { partenaireId = part.id; commissionCents = Math.round(amountCents * point.commission_pct / 100); }
+    } catch (e) { console.error('[CC partenaire]', e.message); }
+  }
   const cp = codePostalDuPoint(point);
   let city;
   try {
@@ -91,6 +113,8 @@ module.exports = async (req, res) => {
   }
   if (!city) return res.status(422).json({ error: 'Ce point n’est rattaché à aucune ville Loc’Air — contactez-nous.' });
 
+  // Double contrôle : le stock du point (ci-dessus) ET les appareils
+  // réellement enregistrés pour la ville dans l'admin.
   try {
     const dispo = await getAvailability(supabase, city.id, dateDebut, dateFin);
     if (dispo < 1) return res.status(409).json({ error: 'Plus d’appareil disponible à ces dates. Essayez d’autres dates ou appelez-nous.' });
@@ -131,6 +155,7 @@ module.exports = async (req, res) => {
         customer_id: customerId,
         campagne: clip(data.campagne, 400),
         piece_identite: pi.type,
+        prix_fort: prix.majore ? `oui (+${prix.majorationPct} %)` : 'non',
       },
     }, { idempotencyKey: `cc-${ref}-${amountCents}-${dateDebut}-${point.id}` });
 
@@ -157,14 +182,17 @@ module.exports = async (req, res) => {
       type_client: 'particulier',
       cgv_accepted_at: new Date().toISOString(),
       piece_identite_paths: chemins,
+      point_retrait_id: point.id,
+      partenaire_id: partenaireId,
+      partenaire_commission_cents: commissionCents,
     };
     let { data: resa, error: insertErr } = await supabase.from('reservations').insert(ligne).select('id').single();
     // Colonne piece_identite_paths pas encore créée en base (migration SQL à
     // passer par le propriétaire) : on enregistre quand même la réservation,
     // les chemins de la pièce d'identité partant dans les consignes, pour ne
-    // rien perdre. Voir supabase/migration_2026-11-18_piece_identite.sql.
-    if (insertErr && /piece_identite_paths/.test(insertErr.message || '')) {
-      delete ligne.piece_identite_paths;
+    // rien perdre. Voir supabase/migration_2026-11-18_click_collect.sql.
+    if (insertErr && /piece_identite_paths|point_retrait_id/.test(insertErr.message || '')) {
+      delete ligne.piece_identite_paths; delete ligne.point_retrait_id;
       ligne.instructions_acces = `${ligne.instructions_acces} | PIÈCE D'IDENTITÉ (${pi.type}) : ${chemins.join(' ; ')}`.slice(0, 1000);
       ({ data: resa, error: insertErr } = await supabase.from('reservations').insert(ligne).select('id').single());
     }
@@ -184,7 +212,11 @@ module.exports = async (req, res) => {
       ]);
     } catch (e) { console.error('[CC CGV]', e.message); }
 
-    return res.status(200).json({ clientSecret: intent.client_secret, amountCents, ref });
+    return res.status(200).json({
+      clientSecret: intent.client_secret, amountCents, ref, majore: prix.majore,
+      // QR de remise : montré au client, scanné par le commerçant au retrait.
+      remise: { lien: lienRemise(resa.id, ref), qr: imageQrRemise(resa.id, ref) },
+    });
   } catch (err) {
     console.error('[CC Stripe]', err.message);
     await recordFailedAttempt(supabase, `checkout:${ip}`).catch(() => {});

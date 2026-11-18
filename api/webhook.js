@@ -10,6 +10,7 @@ const { generateAndSendDocuments, generateAndSendDocumentsAfterProlongation, gen
 const { computeBareme, getBaremeForCity } = require('./_lib/bareme');
 const { todayParis } = require('./_lib/dates');
 const { sendScenarioEmail } = require('./_lib/emailEngine');
+const { imageQrRemise } = require('./_lib/clickCollect');
 
 // Offre Privilège (Step 2) : le client vient de payer pour garder son
 // climatiseur actuel. Idempotent (un webhook Stripe peut être redélivré) —
@@ -809,7 +810,10 @@ async function sendConfirmationClickCollect(supabase, resa, meta, amount) {
 <h2 style="color:#1A5EDB;margin:0 0 12px">C’est réservé, ${esc(resa.prenom)} !</h2>
 <p>Votre climatiseur mobile vous attend. On vous appelle pour fixer l’heure du retrait.</p>
 <table style="font-size:15px;border-collapse:collapse;margin:14px 0">${lignes}</table>
-<p>Pensez à venir en voiture : l’appareil est livré avec son kit de fenêtre, sans perçage.</p>
+<p style="margin:18px 0 6px"><b>Votre QR code de retrait</b> — montrez-le au comptoir, avec votre pièce d’identité :</p>
+<p style="margin:0 0 6px"><img src="${imageQrRemise(resa.id, resa.ref, 220)}" width="220" height="220" alt="QR code de retrait"></p>
+<p style="color:#4B5873;font-size:13px;margin:0 0 14px">Code de réservation : <b>${esc(resa.ref || '')}</b></p>
+<p>Pensez à venir en voiture : l’appareil vous est remis avec son kit de fenêtre, sans perçage.</p>
 <p>Une question ? <a href="tel:+33663798756">06 63 79 87 56</a> · 7j/7, 8h–20h.</p>
 <p style="color:#4B5873;font-size:13px">Loc’Air · locair.fr</p></div>`;
     const r = await sendBrevoEmail({ to: resa.email, subject: `Click & Collect confirmé — retrait le ${fmt(resa.date_debut)}`, html, senderName: "Loc'Air" });
